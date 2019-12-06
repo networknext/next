@@ -7,13 +7,13 @@ package core
 
 import (
 	"fmt"
+	"github.com/stretchr/testify/assert"
+	"hash/fnv"
 	"io/ioutil"
 	"net"
 	"reflect"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func StopBeingAnnoyingGolang() {
@@ -786,8 +786,14 @@ func Analyze(t *testing.T, route_matrix *RouteMatrix) {
 
 // -----------------------------------------------------
 
+func GetTestRelayId(name string) RelayId {
+	hash := fnv.New32a()
+	hash.Write([]byte(name))
+	return RelayId(hash.Sum32())
+}
+
 type TestRelayData struct {
-	id         RelayCoreID
+	id         RelayId
 	name       string
 	address    *net.UDPAddr
 	publicKey  []byte
@@ -820,7 +826,7 @@ func (env *TestEnvironment) Clear() {
 
 func (env *TestEnvironment) AddRelay(relayName string, relayAddress string) {
 	relay := &TestRelayData{}
-	relay.id = GetRelayId(relayName)
+	relay.id = GetTestRelayId(relayName)
 	relay.name = relayName
 	relay.address = ParseAddress(relayAddress)
 	relay.publicKey, relay.privateKey = GenerateRelayKeyPair()
@@ -846,7 +852,7 @@ func (env *TestEnvironment) GetRelayData(relayName string) *TestRelayData {
 func (env *TestEnvironment) GetCostMatrix() *CostMatrix {
 	costMatrix := &CostMatrix{}
 	numRelays := len(env.relays)
-	costMatrix.RelayIds = make([]RelayCoreID, numRelays)
+	costMatrix.RelayIds = make([]RelayId, numRelays)
 	costMatrix.RelayNames = make([]string, numRelays)
 	costMatrix.RelayAddresses = make([][]byte, numRelays)
 	costMatrix.RelayPublicKeys = make([][]byte, numRelays)
@@ -864,7 +870,7 @@ func (env *TestEnvironment) GetCostMatrix() *CostMatrix {
 			costMatrix.RTT[index] = env.rtt[i][j]
 		}
 	}
-	costMatrix.RelayDatacenters = make(map[DatacenterCoreID][]RelayCoreID)
+	costMatrix.RelayDatacenters = make(map[DatacenterId][]RelayId)
 	return costMatrix
 }
 
@@ -967,10 +973,10 @@ func TestCostMatrixReadAndWrite(t *testing.T) {
 	env.SetRTT("a", "chicago", 10)
 
 	costMatrix := env.GetCostMatrix()
-	costMatrix.DatacenterIds = []DatacenterCoreID{
-		DatacenterCoreID(0),
-		DatacenterCoreID(1),
-		DatacenterCoreID(2),
+	costMatrix.DatacenterIds = []DatacenterId{
+		DatacenterId(0),
+		DatacenterId(1),
+		DatacenterId(2),
 	}
 	costMatrix.DatacenterNames = []string{
 		"a",
@@ -1388,7 +1394,7 @@ func TestRouteSlice(t *testing.T) {
 	slice.PredictedRoute.RTT = 50.0
 	slice.PredictedRoute.Jitter = 10.0
 	slice.PredictedRoute.PacketLoss = 0.01
-	slice.PredictedRoute.RelayIds = []RelayCoreID{1,2,3,4}
+	slice.PredictedRoute.RelayIds = []RelayId{1, 2, 3, 4}
 
 	const BufferSize = 1024
 
@@ -1405,7 +1411,7 @@ func TestRouteSlice(t *testing.T) {
 	buffer := writeStream.GetData()
 
 	readStream := CreateReadStream(buffer[:bytesWritten])
-	
+
 	var readSlice RouteSlice
 
 	err = readSlice.Serialize(readStream)
