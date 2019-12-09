@@ -14,12 +14,16 @@ clean: ## cleans the dist directory of all builds
 	@rm -fr ${DIST_DIR}
 
 .PHONY: lint
-lint: ## runs o vet
+lint: ## runs go vet
 	go vet ./...
 
 .PHONY: test
 test: lint ## runs linters and all tests with coverage
 	go test -v ./...
+
+.PHONY: dev-optimizer
+dev-optimizer: ## runs a local optimizer
+	go run cmd/optimizer/optimizer.go
 
 .PHONY: dev-relay-ingress
 dev-relay-ingress: ## runs a local relay_ingress
@@ -29,13 +33,17 @@ dev-relay-ingress: ## runs a local relay_ingress
 dev-server-ingress: ## runs a local server_ingress
 	go run cmd/server_ingress/server.go
 
+.PHONY: build-optimizer
+build-optimizer: ## builds the optimizer binary
+	go build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/optimizer ./cmd/optimizer/optimizer.go
+
 .PHONY: build-relay-ingress
-build-relay-ingress: ## builds the relay_ingress binary.
+build-relay-ingress: ## builds the relay_ingress binary
 	go build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/relay_ingress ./cmd/relay_ingress/relay_ingress.go
 
 .PHONY: build-server-ingress
-build-server-ingress: ## builds the server_ingress binary.
+build-server-ingress: ## builds the server_ingress binary
 	go build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/server_ingress ./cmd/server_ingress/server_ingress.go
 
 .PHONY: build-all
-build-all: build-relay-ingress build-server-ingress ## builds everything
+build-all: build-optimizer build-relay-ingress build-server-ingress ## builds everything
