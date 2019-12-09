@@ -21,21 +21,21 @@ lint: ## runs o vet
 test: lint ## runs linters and all tests with coverage
 	go test -v ./...
 
-.PHONY: dev-router
-dev-router: ## runs a local router-ingress
-	go run cmd/router-ingress/router.go
+.PHONY: dev-relay-ingress
+dev-relay-ingress: ## runs a local relay_ingress
+	go run cmd/relay_ingress/relay_ingress.go
 
-.PHONY: dev-server
-dev-server: ## runs a local server-ingress
-	go run cmd/server-ingress/server.go
+.PHONY: dev-server-ingress
+dev-server-ingress: ## runs a local server_ingress
+	go run cmd/server_ingress/server.go
 
-.PHONY: build-router
-build-router: ## builds the router-ingress binary.
-	go build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/router ./cmd/router-ingress/router.go
+.PHONY: build-relay-ingress
+build-relay-ingress: ## builds the relay_ingress binary.
+	go build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/relay_ingress ./cmd/relay_ingress/relay_ingress.go
 
-.PHONY: build-server
-build-server: ## builds the server-ingress binary.
-	go build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/server ./cmd/server-ingress/server.go
+.PHONY: build-server-ingress
+build-server-ingress: ## builds the server_ingress binary.
+	go build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/server_ingress ./cmd/server_ingress/server_ingress.go
 
 .PHONY: build-all
-build-all: build-router build-server ## builds everything
+build-all: build-relay-ingress build-server-ingress ## builds everything
