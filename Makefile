@@ -21,6 +21,21 @@ lint: ## runs o vet
 test: lint ## runs linters and all tests with coverage
 	go test -v ./...
 
-.PHONY: build
-build: ## builds the server-ingress binary.
-	go build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/backend ./cmd/backend/backend.go
+.PHONY: dev-router
+dev-router: ## runs a local router-ingress
+	go run cmd/router-ingress/router.go
+
+.PHONY: dev-server
+dev-server: ## runs a local server-ingress
+	go run cmd/server-ingress/server.go
+
+.PHONY: build-router
+build-router: ## builds the router-ingress binary.
+	go build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/router ./cmd/router-ingress/router.go
+
+.PHONY: build-server
+build-server: ## builds the server-ingress binary.
+	go build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/server ./cmd/server-ingress/server.go
+
+.PHONY: build-all
+build-all: build-router build-server ## builds everything
