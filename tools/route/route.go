@@ -7,9 +7,9 @@ package main
 
 import (
 	"fmt"
+	"github.com/networknext/backend/core"
 	"io/ioutil"
 	"os"
-	"core"
 )
 
 func LoadRouteMatrix(filename string) *core.RouteMatrix {
@@ -87,14 +87,14 @@ func main() {
 	datacenterName := args[1]
 
 	relayIndex := FindRelayByName(routeMatrix, relayName)
-	
+
 	if relayIndex == -1 {
 		fmt.Printf("\nerror: can't find relay called '%s'\n\n", relayName)
 		os.Exit(1)
 	}
 
 	datacenterIndex := GetDatacenterIndex(routeMatrix, datacenterName)
-	
+
 	if datacenterIndex == -1 {
 		fmt.Printf("\nerror: can't find datacenter called '%s'\n\n", datacenterName)
 		os.Exit(1)
@@ -106,8 +106,8 @@ func main() {
 
 	fmt.Printf("%d relays in datacenter\n", len(relaysInDatacenter))
 
-	for i :=range relaysInDatacenter {
-		
+	for i := range relaysInDatacenter {
+
 		destRelayId := relaysInDatacenter[i]
 
 		destRelayIndex := FindRelayById(routeMatrix, core.RelayCoreID(destRelayId))
@@ -118,74 +118,74 @@ func main() {
 
 		destRelayName := routeMatrix.RelayNames[destRelayIndex]
 
-		fmt.Printf( "%s -> %s\n", relayName, destRelayName)
+		fmt.Printf("%s -> %s\n", relayName, destRelayName)
 	}
 
 	/*
-	a_id := core.RelayId(a)
-	b_id := core.RelayId(b)
+		a_id := core.RelayId(a)
+		b_id := core.RelayId(b)
 
-	abFlatIndex := core.TriMatrixIndex(a_index, b_index)
+		abFlatIndex := core.TriMatrixIndex(a_index, b_index)
 
-	entry_rtt := route_matrix_rtt.Entries[abFlatIndex]
-	entry_jitter := route_matrix_jitter.Entries[abFlatIndex]
-	entry_packet_loss := route_matrix_packet_loss.Entries[abFlatIndex]
+		entry_rtt := route_matrix_rtt.Entries[abFlatIndex]
+		entry_jitter := route_matrix_jitter.Entries[abFlatIndex]
+		entry_packet_loss := route_matrix_packet_loss.Entries[abFlatIndex]
 
-	if len(entry_rtt.Routes) == 0 && len(entry_jitter.Routes) == 0 && len(entry_packet_loss.Routes) == 0 {
-		fmt.Printf("No routes found!\n\n")
-		os.Exit(1)
-	}
+		if len(entry_rtt.Routes) == 0 && len(entry_jitter.Routes) == 0 && len(entry_packet_loss.Routes) == 0 {
+			fmt.Printf("No routes found!\n\n")
+			os.Exit(1)
+		}
 
-	entry := entry_rtt
-	if len(entry.Routes) == 0 {
-		entry = entry_jitter
+		entry := entry_rtt
 		if len(entry.Routes) == 0 {
-			entry = entry_packet_loss
+			entry = entry_jitter
+			if len(entry.Routes) == 0 {
+				entry = entry_packet_loss
+			}
 		}
-	}
 
-	fmt.Printf("Direct RTT = %.2f\n", entry.DirectRTT)
-	fmt.Printf("Direct Jitter = %.2f\n", entry.DirectJitter)
-	fmt.Printf("Direct Packet Loss = %.2f\n\n", entry.DirectPacketLoss)
+		fmt.Printf("Direct RTT = %.2f\n", entry.DirectRTT)
+		fmt.Printf("Direct Jitter = %.2f\n", entry.DirectJitter)
+		fmt.Printf("Direct Packet Loss = %.2f\n\n", entry.DirectPacketLoss)
 
-	numRelays := len(route_matrix_rtt.RelayIds)
-	relayIdToIndex := make(map[uint64]int)
-	for i := 0; i < numRelays; i++ {
-		id := route_matrix_rtt.RelayIds[i]
-		relayIdToIndex[id] = i
-	}
-
-	relayNames := route_matrix_rtt.RelayNames
-
-	routes_rtt := core.GetRoutesBetweenRelays(a_id, b_id, route_matrix_rtt, relayIdToIndex)
-	routes_jitter := core.GetRoutesBetweenRelays(a_id, b_id, route_matrix_jitter, relayIdToIndex)
-	routes_packet_loss := core.GetRoutesBetweenRelays(a_id, b_id, route_matrix_packet_loss, relayIdToIndex)
-
-	if len(routes_rtt) > 1 {
-		fmt.Printf("RTT Reducing Routes:\n\n")
-		for i := range routes_rtt {
-			route := routes_rtt[i]
-			fmt.Printf("    %s (%.2fms)\n", RelayNamesString(route.RelayIds, relayIdToIndex, relayNames), entry.DirectRTT-route.RTT)
+		numRelays := len(route_matrix_rtt.RelayIds)
+		relayIdToIndex := make(map[uint64]int)
+		for i := 0; i < numRelays; i++ {
+			id := route_matrix_rtt.RelayIds[i]
+			relayIdToIndex[id] = i
 		}
-		fmt.Printf("\n")
-	}
 
-	if len(routes_jitter) > 1 {
-		fmt.Printf("Jitter Reducing Routes:\n\n")
-		for i := range routes_jitter {
-			route := routes_jitter[i]
-			fmt.Printf("    %s (%.2fms)\n", RelayNamesString(route.RelayIds, relayIdToIndex, relayNames), entry.DirectJitter-route.Jitter)
-		}
-		fmt.Printf("\n")
-	}
+		relayNames := route_matrix_rtt.RelayNames
 
-	if len(routes_packet_loss) > 1 {
-		fmt.Printf("Packet Loss Reducing Routes:\n\n")
-		for i := range routes_packet_loss {
-			route := routes_packet_loss[i]
-			fmt.Printf("    %s (%.2f%%)\n", RelayNamesString(route.RelayIds, relayIdToIndex, relayNames), entry.DirectPacketLoss-route.PacketLoss)
+		routes_rtt := core.GetRoutesBetweenRelays(a_id, b_id, route_matrix_rtt, relayIdToIndex)
+		routes_jitter := core.GetRoutesBetweenRelays(a_id, b_id, route_matrix_jitter, relayIdToIndex)
+		routes_packet_loss := core.GetRoutesBetweenRelays(a_id, b_id, route_matrix_packet_loss, relayIdToIndex)
+
+		if len(routes_rtt) > 1 {
+			fmt.Printf("RTT Reducing Routes:\n\n")
+			for i := range routes_rtt {
+				route := routes_rtt[i]
+				fmt.Printf("    %s (%.2fms)\n", RelayNamesString(route.RelayIds, relayIdToIndex, relayNames), entry.DirectRTT-route.RTT)
+			}
+			fmt.Printf("\n")
 		}
-		fmt.Printf("\n")
-	}
+
+		if len(routes_jitter) > 1 {
+			fmt.Printf("Jitter Reducing Routes:\n\n")
+			for i := range routes_jitter {
+				route := routes_jitter[i]
+				fmt.Printf("    %s (%.2fms)\n", RelayNamesString(route.RelayIds, relayIdToIndex, relayNames), entry.DirectJitter-route.Jitter)
+			}
+			fmt.Printf("\n")
+		}
+
+		if len(routes_packet_loss) > 1 {
+			fmt.Printf("Packet Loss Reducing Routes:\n\n")
+			for i := range routes_packet_loss {
+				route := routes_packet_loss[i]
+				fmt.Printf("    %s (%.2f%%)\n", RelayNamesString(route.RelayIds, relayIdToIndex, relayNames), entry.DirectPacketLoss-route.PacketLoss)
+			}
+			fmt.Printf("\n")
+		}
 	*/
 }

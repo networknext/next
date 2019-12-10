@@ -23,7 +23,7 @@ import (
 	"encoding/json"
 	"encoding/binary"
 	"github.com/gorilla/mux"
-	"../core"
+	"github.com/networknext/backend/core"
 )
 
 const NEXT_BACKEND_PORT = 40001

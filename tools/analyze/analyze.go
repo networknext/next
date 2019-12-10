@@ -9,7 +9,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"./core"
+
+	"github.com/networknext/backend/core"
 )
 
 func LoadRouteMatrix(filename string) *core.RouteMatrix {

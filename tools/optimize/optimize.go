@@ -6,8 +6,8 @@
 package main
 
 import (
-	"core"
 	"fmt"
+	"github.com/networknext/backend/core"
 	"io/ioutil"
 	"log"
 )

@@ -7,9 +7,9 @@ package main
 
 import (
 	"fmt"
+	"github.com/networknext/backend/core"
 	"io/ioutil"
 	"os"
-	"core"
 )
 
 func LoadRouteMatrix(filename string) *core.RouteMatrix {
@@ -71,7 +71,7 @@ func main() {
 		if routeMatrix.Entries[index].NumRoutes != 0 {
 			fmt.Printf("    %*dms (%d) %s\n", 5, routeMatrix.Entries[index].RouteRTT[0], routeMatrix.Entries[index].NumRoutes, routeMatrix.RelayNames[b])
 		} else {
-			fmt.Printf("       ---- (0) %s\n", routeMatrix.RelayNames[b] )
+			fmt.Printf("       ---- (0) %s\n", routeMatrix.RelayNames[b])
 		}
 	}
 
