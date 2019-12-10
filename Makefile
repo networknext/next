@@ -18,8 +18,9 @@ lint: ## runs go vet
 	go vet ./...
 
 .PHONY: test
-test: lint ## runs linters and all tests with coverage
-	go test -v ./...
+test: lint build-relay ## runs linters and all tests with coverage
+	go test ./...
+	./dist/relay test
 
 .PHONY: dev-optimizer
 dev-optimizer: ## runs a local optimizer
@@ -36,6 +37,10 @@ dev-server-backend: ## runs a local server_backend
 .PHONY: build-optimizer
 build-optimizer: ## builds the optimizer binary
 	go build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/optimizer ./cmd/optimizer/optimizer.go
+
+.PHONY: build-relay
+build-relay:
+	g++ -o ./dist/relay ./cmd/relay/*.cpp -lsodium -lcurl -lpthread -lm
 
 .PHONY: build-relay-backend
 build-relay-backend: ## builds the relay_backend binary

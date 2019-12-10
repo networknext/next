@@ -11,6 +11,7 @@
 #include <stdarg.h>
 #include <sodium.h>
 #include <math.h>
+#include <curl/curl.h>
 
 #define RELAY_MTU                                               1300
 
@@ -4175,8 +4176,6 @@ template <typename T> struct relay_vector_t
 };
 
 // -----------------------------------------------------------------------------
-
-#include "curl/curl.h"
 
 typedef void CURL;
 typedef void CURLM;
