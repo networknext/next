@@ -36,7 +36,7 @@ func FindRelayByName(routeMatrix *core.RouteMatrix, relayName string) int {
 	return -1
 }
 
-func FindRelayById(routeMatrix *core.RouteMatrix, relayId core.RelayCoreID) int {
+func FindRelayById(routeMatrix *core.RouteMatrix, relayId core.RelayId) int {
 	for i := range routeMatrix.RelayIds {
 		if routeMatrix.RelayIds[i] == relayId {
 			return i
@@ -110,7 +110,7 @@ func main() {
 
 		destRelayId := relaysInDatacenter[i]
 
-		destRelayIndex := FindRelayById(routeMatrix, core.RelayCoreID(destRelayId))
+		destRelayIndex := FindRelayById(routeMatrix, core.RelayId(destRelayId))
 
 		if destRelayIndex == -1 {
 			panic("WTF!")
