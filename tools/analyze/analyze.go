@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"core"
+	"./core"
 )
 
 func LoadRouteMatrix(filename string) *core.RouteMatrix {
