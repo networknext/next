@@ -48,6 +48,17 @@ build-relay:
 build-sdk:
 	g++ -o ./dist/sdk ./sdk/*.cpp -lsodium -lcurl -lpthread -lm
 
+PHONY: build-tools
+build-tools:
+	go build -o ./dist/analyze ./cmd/tools/analyze/analyze.go
+	go build -o ./dist/cost ./cmd/tools/cost/cost.go
+	go build -o ./dist/debug ./cmd/tools/debug/debug.go
+	go build -o ./dist/optimize ./cmd/tools/optimize/optimize.go
+	go build -o ./dist/route ./cmd/tools/route/route.go
+	go build -o ./dist/backend ./cmd/tools/functional/backend/*.go
+	go build -o ./dist/tests ./cmd/tools/functional/tests/functional_tests.go
+	cd cmd/tools/keygen && ./build.sh
+
 .PHONY: build-relay-backend
 build-relay-backend: ## builds the relay_backend binary
 	go build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/relay_backend ./cmd/relay_backend/relay_backend.go
