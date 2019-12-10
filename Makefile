@@ -16,12 +16,13 @@ clean: ## cleans the dist directory of all builds
 
 .PHONY: lint
 lint: ## runs go vet
-	go vet ./...
+	go vet ./core/...
 
 .PHONY: test
-test: clean lint build-relay ## runs linters and all tests with coverage
-	go test ./...
+test: clean lint build-relay build-sdk ## runs linters and all tests with coverage
 	./dist/relay test
+	./dist/sdk
+	go test ./core/...
 
 .PHONY: dev-optimizer
 dev-optimizer: ## runs a local optimizer
@@ -42,6 +43,10 @@ build-optimizer: ## builds the optimizer binary
 .PHONY: build-relay
 build-relay:
 	g++ -o ./dist/relay ./cmd/relay/*.cpp -lsodium -lcurl -lpthread -lm
+
+.PHONY: build-sdk
+build-sdk:
+	g++ -o ./dist/sdk ./sdk/*.cpp -lsodium -lcurl -lpthread -lm
 
 .PHONY: build-relay-backend
 build-relay-backend: ## builds the relay_backend binary
