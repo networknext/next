@@ -11,14 +11,15 @@ help: ## this list
 
 .PHONY: clean
 clean: ## cleans the dist directory of all builds
-	@rm -fr ${DIST_DIR}
+	rm -fr ${DIST_DIR}
+	mkdir ${DIST_DIR}
 
 .PHONY: lint
 lint: ## runs go vet
 	go vet ./...
 
 .PHONY: test
-test: lint build-relay ## runs linters and all tests with coverage
+test: clean lint build-relay ## runs linters and all tests with coverage
 	go test ./...
 	./dist/relay test
 
