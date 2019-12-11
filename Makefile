@@ -36,13 +36,13 @@ test: clean lint build-relay build-sdk-test ## runs linters and all tests with c
 	go test ./core/...
 
 .PHONY: build-sdk-test
-build-sdk-test: build-sdk
+build-sdk-test: build-sdk ## builds the sdk test binary
 	@echo -n "Building sdk test... "
 	@$(CXX) -Isdk -o $(DIST_DIR)/$(SDKNAME)_test ./sdk/next_test.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@echo "done"
 
 PHONY: build-tools
-build-tools:
+build-tools: ## builds all the tools
 	@./cmd/tools/build.sh
 
 #####################
@@ -68,13 +68,13 @@ build-optimizer: ## builds the optimizer binary
 	@echo "done"
 
 .PHONY: build-relay
-build-relay:
+build-relay: ## builds the relay
 	@echo -n "Building relay... "
 	@$(CXX) -o $(DIST_DIR)/relay ./cmd/relay/*.cpp $(LDFLAGS)
 	@echo "done"
 
 .PHONY: build-sdk
-build-sdk: clean
+build-sdk: clean ## builds the sdk into a shared object for linking
 	@echo -n "Building sdk... "
 	@$(CXX) -fPIC -shared -o $(DIST_DIR)/$(SDKNAME).so ./sdk/next.cpp ./sdk/next_ios.cpp ./sdk/next_linux.cpp ./sdk/next_mac.cpp ./sdk/next_ps4.cpp ./sdk/next_switch.cpp ./sdk/next_windows.cpp ./sdk/next_xboxone.cpp $(LDFLAGS)
 	@echo "done"
@@ -92,13 +92,13 @@ build-server-backend: ## builds the server_backend binary
 	@echo "done"
 
 .PHONY: build-server
-build-server: build-sdk
+build-server: build-sdk ## builds the game server linking in the sdk shared library
 	@echo -n "Building server... "
 	@$(CXX) -Isdk -o $(DIST_DIR)/server ./cmd/server/server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@echo "done"
 
 .PHONY: build-client
-build-client: build-sdk
+build-client: build-sdk ## builds the game client linking in the sdk shared library
 	@echo -n "Building client... "
 	@$(CXX) -Isdk -o $(DIST_DIR)/client ./cmd/client/client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@echo "done"
