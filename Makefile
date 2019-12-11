@@ -33,7 +33,7 @@ lint: ## runs go vet
 test: clean lint build-relay build-sdk-test ## runs linters and all tests with coverage
 	@$(DIST_DIR)/relay test
 	@$(DIST_DIR)/$(SDKNAME)_test
-	@$(GO) test -parallel=1 ./core/...
+	@$(GO) test -race ./core/...
 
 .PHONY: build-sdk-test
 build-sdk-test: build-sdk ## builds the sdk test binary

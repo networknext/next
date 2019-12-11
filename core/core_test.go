@@ -7,13 +7,14 @@ package core
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"hash/fnv"
 	"io/ioutil"
 	"net"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func StopBeingAnnoyingGolang() {
@@ -41,7 +42,7 @@ func CompareContinueTokens(a *ContinueToken, b *ContinueToken, t *testing.T) {
 
 func TestContinueToken(t *testing.T) {
 
-	t.Parallel()
+	// t.Parallel()
 
 	relayPublicKey := [...]byte{0x71, 0x16, 0xce, 0xc5, 0x16, 0x1a, 0xda, 0xc7, 0xa5, 0x89, 0xb2, 0x51, 0x2b, 0x67, 0x4f, 0x8f, 0x98, 0x21, 0xad, 0x8f, 0xe6, 0x2d, 0x39, 0xca, 0xe3, 0x9b, 0xec, 0xdf, 0x3e, 0xfc, 0x2c, 0x24}
 	relayPrivateKey := [...]byte{0xb6, 0x7d, 0x01, 0x0d, 0xaf, 0xba, 0xd1, 0x40, 0x75, 0x99, 0x08, 0x15, 0x0d, 0x3a, 0xce, 0x7b, 0x82, 0x28, 0x01, 0x5f, 0x7d, 0xa0, 0x75, 0xb6, 0xc1, 0x15, 0x56, 0x33, 0xe1, 0x01, 0x99, 0xd6}
@@ -92,7 +93,7 @@ func NibblinsToDollars(nibblins int64) float64 {
 
 func TestDollarString(t *testing.T) {
 
-	t.Parallel()
+	// t.Parallel()
 
 	x, err := DollarStringToNibblins("0.08372111111") // maximum precision supported by nibblins
 	if err != nil {
@@ -166,7 +167,7 @@ func TestDollarString(t *testing.T) {
 
 func TestBitpacker(t *testing.T) {
 
-	t.Parallel()
+	// t.Parallel()
 
 	const BufferSize = 256
 
@@ -237,7 +238,7 @@ func TestBitpacker(t *testing.T) {
 }
 
 func TestBitsRequired(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 	assert.Equal(t, 0, BitsRequired(0, 0))
 	assert.Equal(t, 1, BitsRequired(0, 1))
 	assert.Equal(t, 2, BitsRequired(0, 2))
@@ -350,7 +351,7 @@ func (obj *testObject) Serialize(stream Stream) error {
 
 func TestStream(t *testing.T) {
 
-	t.Parallel()
+	// t.Parallel()
 
 	const BufferSize = 1024
 
@@ -377,7 +378,7 @@ func TestStream(t *testing.T) {
 
 func TestStreamCpp(t *testing.T) {
 
-	t.Parallel()
+	// t.Parallel()
 
 	// this byte buffer is copy-pasted from C++ next_test()
 	buffer := []byte{
@@ -405,7 +406,7 @@ func TestStreamCpp(t *testing.T) {
 }
 
 func TestTriMatrix(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 	size := 100
 	length := TriMatrixLength(size)
 	values := make([]int, length)
@@ -425,7 +426,7 @@ func TestTriMatrix(t *testing.T) {
 
 func TestProtocolVersionAtLeast(t *testing.T) {
 
-	t.Parallel()
+	// t.Parallel()
 
 	assert.True(t, ProtocolVersionAtLeast(0, 0, 0, 3, 1, 2))
 	assert.True(t, ProtocolVersionAtLeast(0, 0, 0, -1, -1, -1))
@@ -450,7 +451,7 @@ func TestProtocolVersionAtLeast(t *testing.T) {
 
 func TestRouteManager(t *testing.T) {
 
-	t.Parallel()
+	// t.Parallel()
 
 	routeManager := NewRouteManager()
 
@@ -911,7 +912,7 @@ func (env *TestEnvironment) GetRoutes(routeMatrix *RouteMatrix, sourceRelayName 
 
 func TestTheTestEnvironment(t *testing.T) {
 
-	t.Parallel()
+	// t.Parallel()
 
 	env := NewTestEnvironment()
 
@@ -957,7 +958,7 @@ func TestTheTestEnvironment(t *testing.T) {
 
 func TestCostMatrixReadAndWrite(t *testing.T) {
 
-	t.Parallel()
+	// t.Parallel()
 
 	env := NewTestEnvironment()
 
@@ -1007,7 +1008,7 @@ func TestCostMatrixReadAndWrite(t *testing.T) {
 
 func TestRouteMatrixReadAndWrite(t *testing.T) {
 
-	t.Parallel()
+	// t.Parallel()
 
 	env := NewTestEnvironment()
 
@@ -1088,7 +1089,7 @@ func TestRouteMatrixReadAndWrite(t *testing.T) {
 
 func TestIndirectRoute3(t *testing.T) {
 
-	t.Parallel()
+	// t.Parallel()
 
 	env := NewTestEnvironment()
 
@@ -1121,7 +1122,7 @@ func TestIndirectRoute3(t *testing.T) {
 
 func TestIndirectRoute4(t *testing.T) {
 
-	t.Parallel()
+	// t.Parallel()
 
 	env := NewTestEnvironment()
 
@@ -1153,7 +1154,7 @@ func TestIndirectRoute4(t *testing.T) {
 
 func TestIndirectRoute5(t *testing.T) {
 
-	t.Parallel()
+	// t.Parallel()
 
 	env := NewTestEnvironment()
 
@@ -1190,7 +1191,7 @@ func TestIndirectRoute5(t *testing.T) {
 
 func TestFasterRoute3(t *testing.T) {
 
-	t.Parallel()
+	// t.Parallel()
 
 	env := NewTestEnvironment()
 
@@ -1219,7 +1220,7 @@ func TestFasterRoute3(t *testing.T) {
 
 func TestFasterRoute4(t *testing.T) {
 
-	t.Parallel()
+	// t.Parallel()
 
 	env := NewTestEnvironment()
 
@@ -1249,7 +1250,7 @@ func TestFasterRoute4(t *testing.T) {
 
 func TestFasterRoute5(t *testing.T) {
 
-	t.Parallel()
+	// t.Parallel()
 
 	env := NewTestEnvironment()
 
@@ -1285,7 +1286,7 @@ func TestFasterRoute5(t *testing.T) {
 
 func TestSlowerRoute(t *testing.T) {
 
-	t.Parallel()
+	// t.Parallel()
 
 	env := NewTestEnvironment()
 
@@ -1319,7 +1320,7 @@ func TestSlowerRoute(t *testing.T) {
 
 func TestHistoryMax(t *testing.T) {
 
-	t.Parallel()
+	// t.Parallel()
 
 	history := HistoryNotSet()
 
@@ -1334,7 +1335,7 @@ func TestHistoryMax(t *testing.T) {
 
 func TestHistoryMean(t *testing.T) {
 
-	t.Parallel()
+	// t.Parallel()
 
 	history := HistoryNotSet()
 
@@ -1349,7 +1350,7 @@ func TestHistoryMean(t *testing.T) {
 
 func TestHaversineDistance(t *testing.T) {
 
-	t.Parallel()
+	// t.Parallel()
 
 	losangelesLatitude := 34.0522
 	losangelesLongitude := -118.2437
@@ -1364,7 +1365,7 @@ func TestHaversineDistance(t *testing.T) {
 
 func TestRouteSlice(t *testing.T) {
 
-	t.Parallel()
+	// t.Parallel()
 
 	var slice RouteSlice
 
@@ -1422,7 +1423,7 @@ func TestRouteSlice(t *testing.T) {
 
 func TestRouteSliceReadFail(t *testing.T) {
 
-	t.Parallel()
+	// t.Parallel()
 
 	buffer := make([]byte, 0)
 	readStream := CreateReadStream(buffer)
