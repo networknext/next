@@ -6,7 +6,7 @@ This is a monorepo that contains a WIP migration/refactor of the Network Next se
 
 ## Development
 
-The toolchain used for development is kept simple to make it easy for any operating system to install and use and work out of the box for POSIX Linux distrobutions.
+The toolchain used for development is kept simple to make it easy for any operating system to install and use and work out of the box for POSIX Linux distributions.
 
 - [Docker](https://www.docker.com)
 - [make](http://man7.org/linux/man-pages/man1/make.1.html)
