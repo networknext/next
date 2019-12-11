@@ -68,25 +68,3 @@ This is a reference implentation of a **game client** using the Network Next SDK
 ## SDK (C++)
 
 This is the C++ SDK which is used by game developers when building their game clients and servers that handles talking to the Relay network.
-
-## Team
-
-- [Slack](https://network-next.slack.com)
-- [Monday.com](https://network-next.monday.com)
-- [Common Drive](https://drive.google.com/open?id=1BA-g2a0Jn1L0hcUNHvHHu4c36ewNJi_z)
-
-## Devops
-
-- [StackDriver](https://app.google.stackdriver.com/?project=network-next-v3-stackdriver-ws)
-- [PagerDuty](https://networknext.pagerduty.com)
-- [Statuspage](https://www.statuspage.io/)
-- [ZeroTier](https://my.zerotier.com/login)
-- [Antsle (requires ZeroTier)](http://antsle.networknext.com/)
-
-## HR
-
-- [Bill.com](https://bill.com)
-- [Expensify](https://expensify.com)
-- [Gusto Payroll](https://gusto.com)
-- [Guideline 401k](https://guideline.com)
-- [Beam Insurance](https://app.beam.dental)
