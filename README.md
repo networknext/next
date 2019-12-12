@@ -2,7 +2,7 @@
 
 <br>
 
-This is a monorepo that contains a WIP migration/refactor of the Network Next services.
+This is a monorepo that contains a WIP migration/refactor of the Network Next backend.
 
 ## Development
 
@@ -17,15 +17,21 @@ The toolchain used for development is kept simple to make it easy for any operat
     - [libsodium](https://libsodium.gitbook.io)
     - [libpthread](https://www.gnu.org/software/hurd/libpthread.html)
 
-### Installing Shared Libraries
+### Linux
 
 ```sh
-$ sudo apt install libsodium-dev libcurl4-openssl-dev
+$ sudo apt install golang libsodium libcurl4-openssl-dev
 ```
 
 ### macOS
 
-TBD any notes needed to require things to run on macOS.
+Install [brew](https://brew.sh)
+
+Then:
+
+```sh
+brew install golang libsodium
+```
 
 ### Windows
 
@@ -33,7 +39,7 @@ Using the Windows Subsystem for Linux (WSL) with Ubuntu makes it easy to work wi
 
 ## Components
 
-### Relay (C++)
+## Relay (C++)
 
 This is the service that suppliers install on their hardware to become part of the Network Next relay network.
 
@@ -41,30 +47,36 @@ This is the service that suppliers install on their hardware to become part of t
 
 ## Relay Backend (Go)
 
-This ingests information from all online Relays to feed into the Optimizer to calculate the Relay matrix of optimal routes.
+Manages the database of connected relays and tells them which other relays to ping. Collates ping statistics received from relays into a cost matrix which is used by the optimizer to calculate the route matrix.
 
 - Command: [`cmd/relay_backend`](./cmd/relay_backend)
 
-## Server (aka Game Server, C++)
+## Optimizer (Go)
 
-This is a reference implentation of a **game server** using the Network Next SDK. This game server gets optimal route information from the Server Backend.
+Pulls the cost matrix from the relay backend and transforms it into a route matrix.
+
+- Command: [`cmd/relay`](./cmd/relay)
+
+## Server (C++)
+
+Reference implentation of a server using the Network Next SDK.
 
 - Command: [`cmd/server`](./cmd/server)
-- Dependancies: [`sdk`](./sdk)
+- Dependencies: [`sdk`](./sdk)
 
 ## Server Backend (Go)
 
-This pulls information from the Optimizer and distrubutes the optimal routes to the proper game servers.
+Pulls the route matrix from the optimizer and uses this to serve up routes between clients and servers across the relay network.
 
 - Command: [`cmd/server_backend`](./cmd/server_backend)
 
-## Client (aka Game Client, C++)
+## Client (C++)
 
-This is a reference implentation of a **game client** using the Network Next SDK. This game client talks to the game server and is instructed which relays it should start sending traffic through.
+Reference implentation of a client using the Network Next SDK. 
 
 - Command: [`cmd/client`](./cmd/client)
-- Dependancies: [`sdk`](./sdk)
+- Dependencies: [`sdk`](./sdk)
 
 ## SDK (C++)
 
-This is the C++ SDK which is used by game developers when building their game clients and servers that handles talking to the Relay network.
+This is the SDK we ship to customers.
