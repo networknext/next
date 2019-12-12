@@ -39,31 +39,31 @@ test: clean lint build-relay build-sdk-test ## runs linters and all tests with c
 	@$(DIST_DIR)/$(SDKNAME)_test
 	@$(DIST_DIR)/relay test
 	@$(GO) test -race -v ./core/...
-	@echo
+	@printf "\n"
 
-.PHONY: functional ## build and run functional tests
-functional: clean build-sdk build-relay
+.PHONY: func ## build and run functional tests
+func: clean build-sdk build-relay
 	@printf "Building functional backend... "
-	@go build -o ./dist/functional_backend ./cmd/tools/functional/backend/*.go
+	@go build -o ./dist/func_backend ./cmd/tools/functional/backend/*.go
 	@printf "done\n"
 
 	@printf "Building functional server... "
-	@$(CXX) -Isdk -o $(DIST_DIR)/functional_server ./cmd/tools/functional/server/functional_server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@$(CXX) -Isdk -o $(DIST_DIR)/func_server ./cmd/tools/functional/server/func_server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
 	@printf "Building functional client... "
-	@$(CXX) -Isdk -o $(DIST_DIR)/functional_client ./cmd/tools/functional/client/functional_client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@$(CXX) -Isdk -o $(DIST_DIR)/func_client ./cmd/tools/functional/client/func_client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
-	@printf "Running functional tests... "
-	@$(GO) run ./cmd/tools/functional/tests/functional_tests.go
-	@printf "done\n"
+	@printf "\nRunning functional tests:\n\n"
+	@$(GO) run ./cmd/tools/functional/tests/func_tests.go
+	@printf "\n"
 
 .PHONY: build-sdk-test
 build-sdk-test: build-sdk ## builds the sdk test binary
 	@printf "Building sdk test... "
 	@$(CXX) -Isdk -o $(DIST_DIR)/$(SDKNAME)_test ./sdk/next_test.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
-	@echo "done"
+	@printf "done\n"
 
 PHONY: build-tools
 build-tools: ## builds all the tools
@@ -89,43 +89,43 @@ dev-server-backend: ## runs a local server_backend
 build-optimizer: ## builds the optimizer binary
 	@printf "Building optimizer... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/optimizer ./cmd/optimizer/optimizer.go
-	@echo "done"
+	@printf "done\n"
 
 .PHONY: build-relay
 build-relay: ## builds the relay
 	@printf "Building relay... "
 	@$(CXX) -o $(DIST_DIR)/relay ./cmd/relay/*.cpp $(LDFLAGS)
-	@echo "done"
+	@printf "done\n"
 
 .PHONY: build-sdk
 build-sdk: clean ## builds the sdk into a shared object for linking
 	@printf "Building sdk... "
 	@$(CXX) -fPIC -shared -o $(DIST_DIR)/$(SDKNAME).so ./sdk/next.cpp ./sdk/next_ios.cpp ./sdk/next_linux.cpp ./sdk/next_mac.cpp ./sdk/next_ps4.cpp ./sdk/next_switch.cpp ./sdk/next_windows.cpp ./sdk/next_xboxone.cpp $(LDFLAGS)
-	@echo "done"
+	@printf "done\n"
 
 .PHONY: build-relay-backend
 build-relay-backend: ## builds the relay_backend binary
 	@printf "Building relay backend... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/relay_backend ./cmd/relay_backend/relay_backend.go
-	@echo "done"
+	@printf "done\n"
 
 .PHONY: build-server-backend
 build-server-backend: ## builds the server_backend binary
 	@printf "Building server backend... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/server_backend ./cmd/server_backend/server_backend.go
-	@echo "done"
+	@printf "done\n"
 
 .PHONY: build-server
 build-server: build-sdk ## builds the game server linking in the sdk shared library
 	@printf "Building server... "
 	@$(CXX) -Isdk -o $(DIST_DIR)/server ./cmd/server/server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
-	@echo "done"
+	@printf "done\n"
 
 .PHONY: build-client
 build-client: build-sdk ## builds the game client linking in the sdk shared library
 	@printf "Building client... "
 	@$(CXX) -Isdk -o $(DIST_DIR)/client ./cmd/client/client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
-	@echo "done"
+	@printf "done\n"
 
 .PHONY: build-all
 build-all: build-optimizer build-relay-backend build-server-backend build-relay build-sdk-test build-tools ## builds everything

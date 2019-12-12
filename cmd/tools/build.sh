@@ -20,12 +20,14 @@ printf "Building route tool... "
 go build -o ./dist/route ./cmd/tools/route/route.go
 printf "done\n"
 
-printf "Building backend tool... "
-go build -o ./dist/backend ./cmd/tools/functional/backend/*.go
+printf "Building functional backend... "
+go build -o ./dist/func_backend ./cmd/tools/functional/backend/*.go
 printf "done\n"
 
-printf "Building tests tool... "
-go build -o ./dist/tests ./cmd/tools/functional/tests/functional_tests.go
+# todo: build func client and func server?
+
+printf "Building functional tests... "
+go build -o ./dist/func_tests ./cmd/tools/functional/tests/func_tests.go
 printf "done\n"
 
 cd cmd/tools/keygen && ./build.sh
