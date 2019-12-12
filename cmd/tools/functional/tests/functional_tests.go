@@ -17,27 +17,6 @@ import (
 	"github.com/networknext/backend/tools"
 )
 
-func build() {
-
-	if ok, output := tools.BashQuiet("cd relay && premake5 gmake && make relay"); !ok {
-		fmt.Printf("error: failed to build relay\n")
-		fmt.Printf("\n%s\n\n", output)
-		os.Exit(1)
-	}
-
-	if ok, output := tools.BashQuiet("cd tools/functional_tests && premake5 gmake && make"); !ok {
-		fmt.Printf("error: failed to build sdk\n")
-		fmt.Printf("\n%s\n\n", output)
-		os.Exit(1)
-	}
-
-	if ok, output := tools.BashQuiet("go build -v -o ./bin/backend ./tools/backend/*.go"); !ok {
-		fmt.Printf("error: failed to build backend\n")
-		fmt.Printf("\n%s\n\n", output)
-		os.Exit(1)
-	}
-
-}
 
 func backend(mode string) (*exec.Cmd, *bytes.Buffer) {
 
@@ -1388,8 +1367,6 @@ func main() {
 	}
 
 	fmt.Printf("\nRunning functional tests:\n\n")
-
-	build()
 
 	for i := range tests {
 		tests[i]()
