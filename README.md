@@ -20,7 +20,7 @@ The toolchain used for development is kept simple to make it easy for any operat
 ### Installing Shared Libraries
 
 ```sh
-$ sudo apt install golang libsodium
+$ sudo apt install golang libsodium libcurl4-openssl-dev
 ```
 
 ### macOS
