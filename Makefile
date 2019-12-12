@@ -39,6 +39,7 @@ test: clean lint build-relay build-sdk-test ## runs linters and all tests with c
 	@$(DIST_DIR)/$(SDKNAME)_test
 	@$(DIST_DIR)/relay test
 	@$(GO) test -race -v ./core/...
+	@echo
 
 .PHONY: build-sdk-test
 build-sdk-test: build-sdk ## builds the sdk test binary
