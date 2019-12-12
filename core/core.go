@@ -2964,6 +2964,8 @@ func Optimize(costMatrix *CostMatrix, thresholdRTT int32) *RouteMatrix {
 
 	numCPUs := runtime.NumCPU()
 
+	fmt.Printf("num cpus = %d\n", numCPUs)
+
 	numSegments := numRelays
 	if numCPUs < numRelays {
 		numSegments = numRelays / 5
