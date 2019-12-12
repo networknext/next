@@ -41,6 +41,24 @@ test: clean lint build-relay build-sdk-test ## runs linters and all tests with c
 	@$(GO) test -race -v ./core/...
 	@echo
 
+.PHONY: functional ## build and run functional tests
+functional: clean build-sdk build-relay
+	@printf "Building functional backend... "
+	@go build -o ./dist/functional_backend ./cmd/tools/functional/backend/*.go
+	@printf "done\n"
+
+	@printf "Building functional server... "
+	@$(CXX) -Isdk -o $(DIST_DIR)/functional_server ./cmd/tools/functional/server/functional_server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@printf "done\n"
+
+	@printf "Building functional client... "
+	@$(CXX) -Isdk -o $(DIST_DIR)/functional_client ./cmd/tools/functional/client/functional_client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@printf "done\n"
+
+	@printf "Running functional tests... "
+	@$(GO) run ./cmd/tools/functional/tests/functional_tests.go
+	@printf "done\n"
+
 .PHONY: build-sdk-test
 build-sdk-test: build-sdk ## builds the sdk test binary
 	@printf "Building sdk test... "
