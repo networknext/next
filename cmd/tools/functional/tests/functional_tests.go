@@ -13,35 +13,18 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/networknext/backend/tools"
 )
 
-func build() {
-
-	if ok, output := tools.BashQuiet("cd relay && premake5 gmake && make relay"); !ok {
-		fmt.Printf("error: failed to build relay\n")
-		fmt.Printf("\n%s\n\n", output)
-		os.Exit(1)
-	}
-
-	if ok, output := tools.BashQuiet("cd tools/functional_tests && premake5 gmake && make"); !ok {
-		fmt.Printf("error: failed to build sdk\n")
-		fmt.Printf("\n%s\n\n", output)
-		os.Exit(1)
-	}
-
-	if ok, output := tools.BashQuiet("go build -v -o ./bin/backend ./tools/backend/*.go"); !ok {
-		fmt.Printf("error: failed to build backend\n")
-		fmt.Printf("\n%s\n\n", output)
-		os.Exit(1)
-	}
-
-}
+const (
+	relayBin   = "./dist/relay"
+	backendBin = "./dist/functional_backend"
+	clientBin  = "./dist/functional_client"
+	serverBin  = "./dist/functional_server"
+)
 
 func backend(mode string) (*exec.Cmd, *bytes.Buffer) {
 
-	cmd := exec.Command("./bin/backend")
+	cmd := exec.Command(backendBin)
 	if cmd == nil {
 		return nil, nil
 	}
@@ -61,7 +44,7 @@ func backend(mode string) (*exec.Cmd, *bytes.Buffer) {
 
 func relay() (*exec.Cmd, *bytes.Buffer) {
 
-	cmd := exec.Command("./relay/bin/relay")
+	cmd := exec.Command(relayBin)
 	if cmd == nil {
 		return nil, nil
 	}
@@ -99,7 +82,7 @@ type ClientConfig struct {
 
 func client(config *ClientConfig) (*exec.Cmd, *bytes.Buffer, *bytes.Buffer) {
 
-	cmd := exec.Command("./tools/functional_tests/bin/client")
+	cmd := exec.Command(clientBin)
 	if cmd == nil {
 		return nil, nil, nil
 	}
@@ -163,7 +146,7 @@ type ServerConfig struct {
 
 func server(config *ServerConfig) (*exec.Cmd, *bytes.Buffer) {
 
-	cmd := exec.Command("./tools/functional_tests/bin/server")
+	cmd := exec.Command(serverBin)
 	if cmd == nil {
 		return nil, nil
 	}
@@ -1387,14 +1370,7 @@ func main() {
 		test_multipath,
 	}
 
-	fmt.Printf("\nRunning functional tests:\n\n")
-
-	build()
-
 	for i := range tests {
 		tests[i]()
 	}
-
-	fmt.Printf("\nAll tests passed.\n\n")
-
 }
