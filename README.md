@@ -39,7 +39,7 @@ Using the Windows Subsystem for Linux (WSL) with Ubuntu makes it easy to work wi
 
 ## Components
 
-### Relay (C++)
+## Relay (C++)
 
 This is the service that suppliers install on their hardware to become part of the Network Next relay network.
 
@@ -50,6 +50,12 @@ This is the service that suppliers install on their hardware to become part of t
 Manages the database of connected relays and tells them which other relays to ping. Collates ping statistics received from relays into a cost matrix which is used by the optimizer to calculate the route matrix.
 
 - Command: [`cmd/relay_backend`](./cmd/relay_backend)
+
+## Optimizer (Go)
+
+Pulls the cost matrix from the relay backend and transforms it into a route matrix.
+
+- Command: [`cmd/relay`](./cmd/relay)
 
 ## Server (C++)
 
