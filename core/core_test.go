@@ -1209,6 +1209,8 @@ func TestFasterRoute3(t *testing.T) {
 
 	costMatrix := env.GetCostMatrix()
 
+	fmt.Printf("%+v\n", costMatrix)
+
 	routeMatrix := Optimize(costMatrix, 5)
 
 	fmt.Printf("%+v\n", routeMatrix)
