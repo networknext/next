@@ -66,7 +66,7 @@ Reference implentation of a server using the Network Next SDK.
 
 ## Server Backend (Go)
 
-Pulls the route matrix from the optimizer and uses this to serve up routes between clients to servers across the relay network.
+Pulls the route matrix from the optimizer and uses this to serve up routes between clients and servers across the relay network.
 
 - Command: [`cmd/server_backend`](./cmd/server_backend)
 
