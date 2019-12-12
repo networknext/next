@@ -17,7 +17,7 @@ The toolchain used for development is kept simple to make it easy for any operat
     - [libsodium](https://libsodium.gitbook.io)
     - [libpthread](https://www.gnu.org/software/hurd/libpthread.html)
 
-### Installing Shared Libraries
+### Linux
 
 ```sh
 $ sudo apt install golang libsodium libcurl4-openssl-dev
