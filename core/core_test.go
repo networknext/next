@@ -7,12 +7,12 @@ package core
 
 import (
 	"fmt"
-	"hash/fnv"
-	"io/ioutil"
 	"net"
-	"reflect"
+	"hash/fnv"
+	// "io/ioutil"
+	// "reflect"
 	"testing"
-	"time"
+	// "time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -21,6 +21,7 @@ func StopBeingAnnoyingGolang() {
 	fmt.Printf("you are annoying\n")
 }
 
+/*
 func CompareContinueTokens(a *ContinueToken, b *ContinueToken, t *testing.T) {
 
 	if a.expireTimestamp != b.expireTimestamp {
@@ -784,6 +785,7 @@ func Analyze(t *testing.T, route_matrix *RouteMatrix) {
 
 	assert.Equal(t, expected, buckets, "optimizer is broken")
 }
+*/
 
 // -----------------------------------------------------
 
@@ -910,6 +912,7 @@ func (env *TestEnvironment) GetRoutes(routeMatrix *RouteMatrix, sourceRelayName 
 	return testRouteData
 }
 
+/*
 func TestTheTestEnvironment(t *testing.T) {
 
 	t.Parallel()
@@ -1188,6 +1191,7 @@ func TestIndirectRoute5(t *testing.T) {
 		assert.Equal(t, []string{"losangeles", "a", "b", "c", "chicago"}, routes[0].relays)
 	}
 }
+*/
 
 func TestFasterRoute3(t *testing.T) {
 
@@ -1207,6 +1211,8 @@ func TestFasterRoute3(t *testing.T) {
 
 	routeMatrix := Optimize(costMatrix, 5)
 
+	fmt.Printf("%+v\n", routeMatrix)
+
 	routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
 
 	assert.Equal(t, 2, len(routes))
@@ -1218,6 +1224,7 @@ func TestFasterRoute3(t *testing.T) {
 	}
 }
 
+/*
 func TestFasterRoute4(t *testing.T) {
 
 	t.Parallel()
@@ -1439,3 +1446,4 @@ func TestRouteSliceReadFail(t *testing.T) {
 // todo: there should be test functions to serialize each of the packet types
 
 // todo: add a test to make sure cost matrix datacenters is correct when pulled from stats db
+*/
