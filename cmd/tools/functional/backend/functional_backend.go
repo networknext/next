@@ -23,7 +23,7 @@ import (
 	"encoding/json"
 	"encoding/binary"
 	"github.com/gorilla/mux"
-	"github.com/networknext/backend/core"
+	"../core"
 )
 
 const NEXT_BACKEND_PORT = 40001
@@ -65,6 +65,7 @@ type RelayEntry struct {
 	name string
 	address *net.UDPAddr
 	lastUpdate int64
+	token []byte
 }
 
 type ServerEntry struct {
@@ -128,10 +129,10 @@ func TimeoutThread() {
 	}
 }
 
-func GetRelayId(name string) uint32 {
-	hash := fnv.New32a()
+func GetRelayId(name string) uint64 {
+	hash := fnv.New64a()
 	hash.Write([]byte(name))
-	return hash.Sum32()
+	return hash.Sum64()
 }
 
 func GetNearRelays() ([]uint64, []net.UDPAddr) {
@@ -460,10 +461,14 @@ func main() {
 
 // -----------------------------------------------------------
 
-const InitMagic = uint32(0x9083708f)
-const InitVersion = 0
+const InitRequestMagic = uint32(0x9083708f)
+const InitRequestVersion = 0
+const InitResponseVersion = 0
+const UpdateRequestVersion = 0
+const UpdateResponseVersion = 0
 const MaxRelayIdLength = 256
 const MaxRelayAddressLength = 256
+const RelayTokenBytes = 32
 
 func ReadUint32(data []byte, index *int, value *uint32) bool {
 	if *index + 4 > len(data) {
@@ -494,20 +499,50 @@ func ReadString(data []byte, index *int, value *string, maxStringLength uint32) 
 	return true
 }
 
-func GetRelayPublicKey(relay_id string) []byte {
-	if relay_id == "local" {
-		return []byte{0x06, 0xb0, 0x4d, 0x9e, 0xa6, 0xf5, 0x7c, 0x0b, 0x3c, 0x6a, 0x2d, 0x9d, 0xbf, 0x34, 0x32, 0xb6, 0x66, 0x00, 0xa0, 0x3b, 0x2b, 0x5b, 0x5d, 0x00, 0x91, 0x4a, 0x32, 0xee, 0xf2, 0x36, 0xc2, 0x9c}
-	} else {
-		return []byte{}
+func ReadBytes(data []byte, index *int, value *[]byte, bytes uint32) bool {
+	if *index + int(bytes) > len(data) {
+		return false
+	}
+	*value = make([]byte, bytes)
+	for i := uint32(0); i < bytes; i++ {
+		(*value)[i] = data[*index]
+		*index += 1
+	}
+	return true
+}
+
+func WriteUint32(data []byte, index *int, value uint32) {
+	binary.LittleEndian.PutUint32(data[*index:], value)
+	*index += 4
+}
+
+func WriteUint64(data []byte, index *int, value uint64) {
+	binary.LittleEndian.PutUint64(data[*index:], value)
+	*index += 8
+}
+
+func WriteString(data []byte, index *int, value string, maxStringLength uint32) {
+	stringLength := uint32(len(value))
+	if stringLength > maxStringLength {
+		panic("string is too long!\n")
+	}
+	binary.LittleEndian.PutUint32(data[*index:], stringLength)
+	*index += 4
+	for i := 0; i < int(stringLength); i++ {
+		data[*index] = value[i]
+		*index++
 	}
 }
 
-func GetRelayAddress(relay_id string) string {
-	if relay_id == "local" {
-		return "127.0.0.1:50000"
-	} else {
-		return ""
+func WriteBytes(data []byte, index *int, value []byte, numBytes int) {
+	for i := 0; i < numBytes; i++ {
+		data[*index] = value[i]
+		*index++
 	}
+}
+
+func GetRelayPublicKey(relay_address string) []byte {
+	return []byte{0x06, 0xb0, 0x4d, 0x9e, 0xa6, 0xf5, 0x7c, 0x0b, 0x3c, 0x6a, 0x2d, 0x9d, 0xbf, 0x34, 0x32, 0xb6, 0x66, 0x00, 0xa0, 0x3b, 0x2b, 0x5b, 0x5d, 0x00, 0x91, 0x4a, 0x32, 0xee, 0xf2, 0x36, 0xc2, 0x9c}
 }
 
 func SignatureCheck(data []byte, publicKey []byte) bool {
@@ -529,26 +564,12 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 	index := C.crypto_sign_BYTES
 
 	var magic uint32
-	if !ReadUint32(body, &index, &magic) || magic != InitMagic {
+	if !ReadUint32(body, &index, &magic) || magic != InitRequestMagic {
 		return
 	}
 
 	var version uint32
-	if !ReadUint32(body, &index, &version) || version != InitVersion {
-		return
-	}
-
-	var relay_id string
-	if !ReadString(body, &index, &relay_id, MaxRelayIdLength) {
-		return
-	}
-
-	relay_public_key := GetRelayPublicKey(relay_id)
-	if len(relay_public_key) == 0 {
-		return
-	}
-
-	if !SignatureCheck(body, relay_public_key) {
+	if !ReadUint32(body, &index, &version) || version != InitRequestVersion {
 		return
 	}
 
@@ -557,7 +578,9 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	if relay_address != GetRelayAddress(relay_id) {
+	relay_public_key := GetRelayPublicKey(relay_address)
+
+	if !SignatureCheck(body, relay_public_key) {
 		return
 	}
 
@@ -572,27 +595,132 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	fmt.Printf("%s: %s\n", relay_id, relay_address)
-
 	relayEntry := RelayEntry{}
 	relayEntry.name = relay_address
-	relayEntry.id = uint64(GetRelayId(relay_address))			// todo: not strictly correct, but works for now
+	relayEntry.id = GetRelayId(relay_address)
 	relayEntry.address = core.ParseAddress(relay_address)
 	relayEntry.lastUpdate = time.Now().Unix()
+	relayEntry.token = core.RandomBytes(RelayTokenBytes)
 
 	backend.mutex.Lock()
 	backend.relayDatabase[key] = relayEntry
 	backend.dirty = true
 	backend.mutex.Unlock()
 
-	// todo: we actually need to send a nonce down (random 8 bytes), to be passed back up
+	writer.Header().Set("Content-Type", "application/octet-stream")
 
-	writer.WriteHeader(http.StatusOK)
+	responseData := make([]byte, 64)
+	index = 0
+	WriteUint32(responseData, &index, InitResponseVersion)
+	WriteBytes(responseData, &index, relayEntry.token, RelayTokenBytes)
+	responseData = responseData[:index]
+	writer.Write(responseData)
+}
+
+func CompareTokens(a []byte, b []byte) bool {
+	if len(a) != len(b) {
+		fmt.Printf("token length is wrong\n")
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			fmt.Printf("token value is wrong: %d vs. %d\n", a[i], b[i])
+			return false
+		}
+	}
+	return true
+}
+
+func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
+
+    body, err := ioutil.ReadAll(request.Body)
+    if err != nil {
+        return
+    }
+
+	index := 0
+
+	var version uint32
+	if !ReadUint32(body, &index, &version) || version != UpdateRequestVersion {
+		return
+	}
+
+	var relay_address string
+	if !ReadString(body, &index, &relay_address, MaxRelayAddressLength) {
+		return
+	}
+
+	var token []byte
+	if !ReadBytes(body, &index, &token, RelayTokenBytes) {
+		return
+	}
+
+	key := relay_address
+
+	backend.mutex.RLock()
+	relayEntry, ok := backend.relayDatabase[key]
+	found := false
+	if ok && CompareTokens(token, relayEntry.token) {
+		found = true
+	}
+	backend.mutex.RUnlock()
+
+	if !found {
+		writer.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	relayEntry = RelayEntry{}
+	relayEntry.name = relay_address
+	relayEntry.id = GetRelayId(relay_address)
+	relayEntry.address = core.ParseAddress(relay_address)
+	relayEntry.lastUpdate = time.Now().Unix()
+	relayEntry.token = token
+
+	type RelayPingData struct {
+		id uint64
+		address string
+	}
+
+	relaysToPing := make([]RelayPingData, 0)
+
+	backend.mutex.Lock()
+	backend.relayDatabase[key] = relayEntry
+	for k,v := range backend.relayDatabase {
+		if k != relay_address {
+			if k != relay_address {
+				relaysToPing = append(relaysToPing, RelayPingData{id: v.id, address: k})
+			}
+		}
+	}
+	backend.mutex.Unlock()
+
+	responseData := make([]byte, 10*1024)
+
+	index = 0
+
+	WriteUint32(responseData, &index, UpdateResponseVersion)
+
+	WriteUint32(responseData, &index, uint32(len(relaysToPing)))
+
+	for i := range relaysToPing {
+		WriteUint64(responseData, &index, relaysToPing[i].id)
+		WriteString(responseData, &index, relaysToPing[i].address, MaxRelayAddressLength)
+	}
+
+	responseLength := index
+
+	responseData = responseData[:responseLength]
+
+	writer.Header().Set("Content-Type", "application/octet-stream")
+
+	writer.Write(responseData)
 }
 
 func WebServer() {
 	router := mux.NewRouter()
 	router.HandleFunc("/relay_init", RelayInitHandler).Methods("POST")
+	router.HandleFunc("/relay_update", RelayUpdateHandler).Methods("POST")
 	http.ListenAndServe(":30000", router)
 }
 
@@ -793,17 +921,13 @@ func TerribleOldShite() {
 
 				relayEntry := RelayEntry{}
 				relayEntry.name = from.String()
-				relayEntry.id = uint64(GetRelayId(from.String()))
+				relayEntry.id = GetRelayId(from.String())
 				relayEntry.address = from
 				relayEntry.lastUpdate = time.Now().Unix()
 
 				key := string(from.String())
 
 				backend.mutex.Lock()
-				_, ok := backend.relayDatabase[key]
-				if !ok {
-					backend.dirty = true
-				}
 				backend.relayDatabase[key] = relayEntry
 				backend.mutex.Unlock()
 

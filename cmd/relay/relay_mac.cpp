@@ -92,7 +92,7 @@ void relay_platform_sleep( double time )
 
 void relay_platform_socket_destroy( relay_platform_socket_t * socket );
 
-relay_platform_socket_t * relay_platform_socket_create( void * context, relay_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size )
+relay_platform_socket_t * relay_platform_socket_create( relay_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size )
 {
     assert( address );
     assert( address->type != RELAY_ADDRESS_NONE );
@@ -100,8 +100,6 @@ relay_platform_socket_t * relay_platform_socket_create( void * context, relay_ad
     relay_platform_socket_t * socket = (relay_platform_socket_t*) malloc( sizeof( relay_platform_socket_t ) );
 
     assert( socket );
-
-    socket->context = context;
 
     // create socket
 
@@ -359,14 +357,12 @@ int relay_platform_socket_receive_packet( relay_platform_socket_t * socket, rela
 
 // ---------------------------------------------------
 
-relay_platform_thread_t * relay_platform_thread_create( void * context, relay_platform_thread_func_t * thread_function, void * arg )
+relay_platform_thread_t * relay_platform_thread_create( relay_platform_thread_func_t * thread_function, void * arg )
 {
     relay_platform_thread_t * thread = (relay_platform_thread_t*) malloc( sizeof( relay_platform_thread_t) );
 
     assert( thread );
 
-    thread->context = context;
-    
     if ( pthread_create( &thread->handle, NULL, thread_function, arg ) != 0 )
     {
         free( thread );
@@ -396,13 +392,11 @@ void relay_platform_thread_set_sched_max( relay_platform_thread_t * thread )
 
 // ---------------------------------------------------
 
-relay_platform_mutex_t * relay_platform_mutex_create( void * context )
+relay_platform_mutex_t * relay_platform_mutex_create()
 {
     relay_platform_mutex_t * mutex = (relay_platform_mutex_t*) malloc( sizeof(relay_platform_mutex_t) ); assert( mutex );
 
     assert( mutex );
-
-    mutex->context = context;
 
     pthread_mutexattr_t attr;
     pthread_mutexattr_init(&attr);

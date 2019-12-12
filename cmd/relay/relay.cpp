@@ -4,14 +4,14 @@
  */
 
 #include "relay.h"
-
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <sodium.h>
 #include <math.h>
-#include <curl/curl.h>
+#include <signal.h>
+#include "curl/curl.h"
 
 #define RELAY_MTU                                               1300
 
@@ -65,7 +65,7 @@ extern double relay_platform_time();
 
 extern void relay_platform_sleep( double time );
 
-extern relay_platform_socket_t * relay_platform_socket_create( void * context, struct relay_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size );
+extern relay_platform_socket_t * relay_platform_socket_create( struct relay_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size );
 
 extern void relay_platform_socket_destroy( relay_platform_socket_t * socket );
 
@@ -73,7 +73,7 @@ extern void relay_platform_socket_send_packet( relay_platform_socket_t * socket,
 
 extern int relay_platform_socket_receive_packet( relay_platform_socket_t * socket, relay_address_t * from, void * packet_data, int max_packet_size );
 
-extern relay_platform_thread_t * relay_platform_thread_create( void * context, relay_platform_thread_func_t * func, void * arg );
+extern relay_platform_thread_t * relay_platform_thread_create( relay_platform_thread_func_t * func, void * arg );
 
 extern void relay_platform_thread_join( relay_platform_thread_t * thread );
 
@@ -81,7 +81,7 @@ extern void relay_platform_thread_destroy( relay_platform_thread_t * thread );
 
 extern void relay_platform_thread_set_sched_max( relay_platform_thread_t * thread );
 
-extern relay_platform_mutex_t * relay_platform_mutex_create( void * context );
+extern relay_platform_mutex_t * relay_platform_mutex_create();
 
 extern void relay_platform_mutex_acquire( relay_platform_mutex_t * mutex );
 
@@ -3590,7 +3590,7 @@ static void test_platform_socket()
         relay_address_t local_address;
         relay_address_parse( &bind_address, "0.0.0.0" );
         relay_address_parse( &local_address, "127.0.0.1" );
-        relay_platform_socket_t * socket = relay_platform_socket_create( NULL, &bind_address, RELAY_PLATFORM_SOCKET_NON_BLOCKING, 0, 64*1024, 64*1024 );
+        relay_platform_socket_t * socket = relay_platform_socket_create( &bind_address, RELAY_PLATFORM_SOCKET_NON_BLOCKING, 0, 64*1024, 64*1024 );
         local_address.port = bind_address.port;
         check( socket );
         uint8_t packet[256];
@@ -3610,7 +3610,7 @@ static void test_platform_socket()
         relay_address_t local_address;
         relay_address_parse( &bind_address, "0.0.0.0" );
         relay_address_parse( &local_address, "127.0.0.1" );
-        relay_platform_socket_t * socket = relay_platform_socket_create( NULL, &bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, 0.01f, 64*1024, 64*1024 );
+        relay_platform_socket_t * socket = relay_platform_socket_create( &bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, 0.01f, 64*1024, 64*1024 );
         local_address.port = bind_address.port;
         check( socket );
         uint8_t packet[256];
@@ -3630,7 +3630,7 @@ static void test_platform_socket()
         relay_address_t local_address;
         relay_address_parse( &bind_address, "0.0.0.0" );
         relay_address_parse( &local_address, "127.0.0.1" );
-        relay_platform_socket_t * socket = relay_platform_socket_create( NULL, &bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, -1.0f, 64*1024, 64*1024 );
+        relay_platform_socket_t * socket = relay_platform_socket_create( &bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, -1.0f, 64*1024, 64*1024 );
         local_address.port = bind_address.port;
         check( socket );
         uint8_t packet[256];
@@ -3649,7 +3649,7 @@ static void test_platform_socket()
         relay_address_t local_address;
         relay_address_parse( &bind_address, "[::]" );
         relay_address_parse( &local_address, "[::1]" );
-        relay_platform_socket_t * socket = relay_platform_socket_create( NULL, &bind_address, RELAY_PLATFORM_SOCKET_NON_BLOCKING, 0, 64*1024, 64*1024 );
+        relay_platform_socket_t * socket = relay_platform_socket_create( &bind_address, RELAY_PLATFORM_SOCKET_NON_BLOCKING, 0, 64*1024, 64*1024 );
         local_address.port = bind_address.port;
         check( socket );
         uint8_t packet[256];
@@ -3669,7 +3669,7 @@ static void test_platform_socket()
         relay_address_t local_address;
         relay_address_parse( &bind_address, "[::]" );
         relay_address_parse( &local_address, "[::1]" );
-        relay_platform_socket_t * socket = relay_platform_socket_create( NULL, &bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, 0.01f, 64*1024, 64*1024 );
+        relay_platform_socket_t * socket = relay_platform_socket_create( &bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, 0.01f, 64*1024, 64*1024 );
         local_address.port = bind_address.port;
         check( socket );
         uint8_t packet[256];
@@ -3689,7 +3689,7 @@ static void test_platform_socket()
         relay_address_t local_address;
         relay_address_parse( &bind_address, "[::]" );
         relay_address_parse( &local_address, "[::1]" );
-        relay_platform_socket_t * socket = relay_platform_socket_create( NULL, &bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, -1.0f, 64*1024, 64*1024 );
+        relay_platform_socket_t * socket = relay_platform_socket_create( &bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, -1.0f, 64*1024, 64*1024 );
         local_address.port = bind_address.port;
         check( socket );
         uint8_t packet[256];
@@ -3713,7 +3713,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC test_thread_fun
 
 static void test_platform_thread()
 {
-    relay_platform_thread_t * thread = relay_platform_thread_create( NULL, test_thread_function, NULL );
+    relay_platform_thread_t * thread = relay_platform_thread_create( test_thread_function, NULL );
     check( thread );
     relay_platform_thread_join( thread );
     relay_platform_thread_destroy( thread );
@@ -3722,7 +3722,7 @@ static void test_platform_thread()
 
 static void test_platform_mutex()
 {
-    relay_platform_mutex_t * mutex = relay_platform_mutex_create( NULL );
+    relay_platform_mutex_t * mutex = relay_platform_mutex_create();
     check( mutex );
     relay_platform_mutex_acquire( mutex );
     relay_platform_mutex_release( mutex );
@@ -4050,557 +4050,245 @@ void relay_test()
 
 // -----------------------------------------------------------------------------
 
-template <typename T> struct relay_vector_t
-{
-    T * data;
-    int length;
-    int reserved;
-
-    inline relay_vector_t( int reserve_count = 0 )
-    {
-        assert( reserve_count >= 0 );
-        data = 0;
-        length = 0;
-        reserved = 0;
-        if ( reserve_count > 0 )
-        {
-            reserve( reserve_count );
-        }
-    }
-
-    inline ~relay_vector_t()
-    {
-        clear();
-    }
-
-    inline void clear() 
-    {
-        if ( data )
-        {
-            free( data );
-        }
-        data = NULL;
-        length = 0;
-        reserved = 0;
-    }
-
-    inline const T & operator [] ( int i ) const
-    {
-        assert( data );
-        assert( i >= 0 && i < length );
-        return *( data + i );
-    }
-
-    inline T & operator [] ( int i )
-    {
-        assert( data );
-        assert( i >= 0 && i < length );
-        return *( data + i );
-    }
-
-    void reserve( int size )
-    {
-        assert( size >= 0 );
-        if ( size > reserved )
-        {
-            const double VECTOR_GROWTH_FACTOR = 1.5;
-            const int VECTOR_INITIAL_RESERVATION = 1;
-            unsigned int next_size = (unsigned int)( pow( VECTOR_GROWTH_FACTOR, int( log( double( size ) ) / log( double( VECTOR_GROWTH_FACTOR ) ) ) + 1 ) );
-            if ( !reserved )
-            {
-                next_size = next_size > VECTOR_INITIAL_RESERVATION ? next_size : VECTOR_INITIAL_RESERVATION;
-                data = (T*)( malloc( next_size * sizeof(T) ) );
-            }
-            else
-            {
-                data = (T*)( realloc( data, next_size * sizeof(T) ) );
-            }
-            assert( data );
-            memset( (void*)( &data[reserved] ), 0, ( next_size - reserved ) * sizeof(T) );
-            reserved = next_size;
-        }
-    }
-
-    void resize( int i )
-    {
-        reserve( i );
-        length = i;
-    }
-
-    void remove( int i )
-    {
-        assert( data );
-        assert( i >= 0 && i < length );
-        if ( i != length - 1 )
-        {
-            data[i] = data[length - 1];
-        }
-        length--;
-    }
-
-    void remove_ordered( int i )
-    {
-        assert( data );
-        assert( i >= 0 && i < length );
-        memmove( &data[i], &data[i + 1], sizeof( T ) * ( length - ( i + 1 ) ) );
-        length--;
-    }
-
-    T * insert( int i )
-    {
-        assert( i >= 0 && i <= length );
-        resize( length + 1 );
-        memmove( &data[i + 1], &data[i], sizeof( T ) * ( length - 1 - i ) );
-        return &data[i];
-    }
-
-    T * insert( int i, const T & t )
-    {
-        T * p = insert( i );
-        *p = t;
-        return p;
-    }
-
-    T * add()
-    {
-        reserve( ++length );
-        return &data[length - 1];
-    }
-
-    T * add( const T & t )
-    {
-        T * p = add();
-        *p = t;
-        return p;
-    }
-};
-
-// -----------------------------------------------------------------------------
-
-typedef void CURL;
-typedef void CURLM;
-struct curl_slist;
-
-typedef bool relay_http_callback_t( int status, const char * response, void * user_data ); // return false if the callback deleted the http context
-
-struct relay_http_request_t
-{
-    relay_http_callback_t * callback;
-    CURL * easy;
-    void * user_data;
-    curl_slist * request_headers;
-    relay_vector_t<char> data;
-    char error[256];
-};
-
-struct relay_http_t
-{
-    CURLM * multi;
-    CURL * easy;
-    relay_vector_t<relay_http_request_t*> active;
-    char url_base[1024];
-};
-
-bool relay_curl_init()
-{
-    CURLcode result;
-    if ( ( result = curl_global_init_mem( CURL_GLOBAL_ALL, malloc, free, realloc, strdup, calloc ) ) != CURLE_OK )
-    {
-        relay_printf( RELAY_LOG_LEVEL_ERROR, "failed to initialize curl: %s", curl_easy_strerror( result ) );
-        return false;
-    }
-
-    return true;
-}
-
-void relay_http_term()
-{
-    curl_global_cleanup();
-}
-
-void relay_http_create( relay_http_t * context, const char * url )
-{
-    assert( url );
-    assert( context );
-
-    memset( context, 0, sizeof( *context ) );
-
-    strncpy( context->url_base, url, 1023 );
-}
-
-static void http_request_cleanup( relay_http_request_t * request )
-{
-    curl_easy_cleanup( request->easy );
-    request->data.clear();
-    if ( request->request_headers )
-    {
-        curl_slist_free_all( request->request_headers );
-    }
-    free( request );
-}
-
-void relay_http_cancel_all( relay_http_t * context )
-{
-    for ( int i = 0; i < context->active.length; i++ )
-    {
-        relay_http_request_t * request = context->active[i];
-        curl_multi_remove_handle( context->multi, request->easy );
-        http_request_cleanup( request );
-    }
-    context->active.length = 0;
-}
-
-void relay_http_destroy( relay_http_t * context )
-{
-    if ( context->easy )
-    {
-        curl_easy_cleanup( context->easy );
-    }
-
-    relay_http_cancel_all( context );
-    context->active.clear();
-
-    if ( context->multi )
-    {
-        curl_multi_cleanup( context->multi );
-    }
-}
-
-struct http_response_buffer
-{
-    char * pointer;
-    size_t available;
-};
-
-static size_t relay_http_response_callback( void * contents, size_t size, size_t nmemb, void * userp )
-{
-    http_response_buffer * buffer = (http_response_buffer *)( userp );
-
-    if ( buffer->available > 0 )
-    {
-        size_t available = size_t( buffer->available - 1 );
-        size *= nmemb;
-        size_t to_copy = ( size > available ) ? available : size;
-        memcpy( buffer->pointer, contents, to_copy );
-        buffer->available -= to_copy;
-        buffer->pointer += to_copy;
-        buffer->pointer[0] = '\0';
-        return to_copy;
-    }
-
-    return 0;
-}
-
-static size_t relay_http_response_callback_null( void * contents, size_t size, size_t nmemb, void * userp )
-{
-    (void) contents;
-    (void) userp;
-    return nmemb * size;
-}
-
-void relay_platform_curl_easy_init( CURL * curl )
-{
-    (void) curl;
-    // ...
-}
-
-static CURL * http_easy_init()
-{
-    CURL * curl = curl_easy_init();
-    if ( curl )
-    {
-        curl_easy_setopt( curl, CURLOPT_VERBOSE, ( log_level >= RELAY_LOG_LEVEL_DEBUG ) ? 1L : 0L );
-        curl_easy_setopt( curl, CURLOPT_SSL_VERIFYPEER, 1L );
-        curl_easy_setopt( curl, CURLOPT_SSL_VERIFYHOST, 2L );
-        curl_easy_setopt( curl, CURLOPT_USERAGENT, "next/1.0");
-        relay_platform_curl_easy_init( curl );
-    }
-    return curl;
-}
-
-int relay_http_get( relay_http_t * context, const char * path, char * response, int * response_bytes, int timeout_ms )
-{
-    assert( path );
-    assert( response );
-    assert( response_bytes );
-    assert( *response_bytes > 0 );
-
-    if ( !context->easy )
-    {
-        context->easy = http_easy_init();
-        if ( !context->easy )
-            return -1;
-    }
-
-    curl_easy_setopt( context->easy, CURLOPT_HTTPGET, 1L ); 
-
-    char url[1024];
-    snprintf( url, sizeof(url), "%s%s", context->url_base, path );
-
-    curl_easy_setopt( context->easy, CURLOPT_URL, url );
-
-    curl_easy_setopt( context->easy, CURLOPT_HTTPHEADER, NULL );
-
-    curl_easy_setopt( context->easy, CURLOPT_TIMEOUT_MS, long( timeout_ms ) );
-
-    http_response_buffer buffer;
-    buffer.pointer = response;
-    buffer.available = *response_bytes;
-
-    curl_easy_setopt( context->easy, CURLOPT_WRITEDATA, (void *)( &buffer ) );
-    curl_easy_setopt( context->easy, CURLOPT_WRITEFUNCTION, relay_http_response_callback );
-
-    int response_code;
-
-    CURLcode result;
-    if ( ( result = curl_easy_perform( context->easy ) ) == CURLE_OK )
-    {
-        long code;
-        curl_easy_getinfo( context->easy, CURLINFO_RESPONSE_CODE, &code );
-        response_code = int( code );
-        *response_bytes = *response_bytes - int( buffer.available );
-    }
-    else
-    {
-        relay_printf( RELAY_LOG_LEVEL_WARN, "http request failed: %s", curl_easy_strerror( result ) );
-        response[0] = '\0';
-        *response_bytes = 0;
-        response_code = -1;
-    }
-
-    return response_code;
-}
-
-int relay_http_post_json( relay_http_t * context, const char * path, const char * body, char * response, int * response_bytes, int timeout_ms )
-{
-    assert( path );
-    assert( response );
-    assert( response_bytes );
-    assert( *response_bytes > 0 );
-
-    if ( !context->easy )
-    {
-        context->easy = http_easy_init();
-        if ( !context->easy )
-            return -1;
-    }
-
-    curl_easy_setopt( context->easy, CURLOPT_POST, 1L );
-    curl_easy_setopt( context->easy, CURLOPT_POSTFIELDS, body );
-
-    char url[1024];
-    snprintf( url, 1024, "%s%s", context->url_base, path );
-    curl_easy_setopt( context->easy, CURLOPT_URL, url );
-
-    struct curl_slist * headers = NULL;
-
-    headers = curl_slist_append( headers, "Content-Type: application/json" );
-    headers = curl_slist_append( headers, "Expect:" );
-
-    curl_easy_setopt( context->easy, CURLOPT_HTTPHEADER, headers );
-
-    curl_easy_setopt( context->easy, CURLOPT_TIMEOUT_MS, long( timeout_ms ) );
-
-    http_response_buffer buffer;
-    if ( response )
-    {
-        buffer.pointer = response;
-        buffer.available = *response_bytes;
-
-        curl_easy_setopt( context->easy, CURLOPT_WRITEDATA, (void *)( &buffer ) );
-        curl_easy_setopt( context->easy, CURLOPT_WRITEFUNCTION, relay_http_response_callback );
-    }
-    else
-    {
-        curl_easy_setopt( context->easy, CURLOPT_WRITEDATA, NULL );
-        curl_easy_setopt( context->easy, CURLOPT_WRITEFUNCTION, relay_http_response_callback_null );
-        memset( &buffer, 0, sizeof( buffer ) );
-    }
-
-    int response_code;
-
-    CURLcode result;
-    if ( ( result = curl_easy_perform( context->easy ) ) == CURLE_OK )
-    {
-        long code;
-        curl_easy_getinfo( context->easy, CURLINFO_RESPONSE_CODE, &code );
-        response_code = int( code );
-    }
-    else
-    {
-        response_code = -1;
-    }
-
-    curl_easy_setopt( context->easy, CURLOPT_HTTPHEADER, NULL );
-
-    curl_slist_free_all( headers );
-
-    if ( response_bytes )
-        *response_bytes = *response_bytes - int( buffer.available );
-
-    return response_code;
-}
-
-static size_t relay_http_nonblock_response_callback( void * contents, size_t size, size_t nmemb, void * userp )
-{
-    relay_http_request_t * request = (relay_http_request_t *)( userp );
-    size_t total = size * nmemb;
-    int offset = request->data.length == 0 ? 0 : request->data.length - 1;
-    request->data.resize( offset + int( total ) + 1 );
-    memcpy( &request->data[offset], contents, total );
-    request->data[request->data.length - 1] = '\0';
-    return total;
-}
-
-void relay_http_nonblock_get( relay_http_t * context, const char * path, relay_http_callback_t * callback, void * user_data, int timeout_ms )
-{
-    assert( path );
-
-    if ( !context->multi )
-    {
-        context->multi = curl_multi_init();
-        assert( context->multi );
-    }
-
-    relay_http_request_t * request = (relay_http_request_t *)( malloc( sizeof( relay_http_request_t ) ) );
-    assert( request );
-
-    request->easy = http_easy_init();
-    assert( request->easy );
-
-    request->callback = callback;
-    request->user_data = user_data;
-    memset( &request->data, 0, sizeof( request->data ) );
-    request->error[0] = '\0';
-    request->request_headers = NULL;
-
-    context->active.add( request );
-
-    char url[1024];
-    snprintf( url, sizeof(url), "%s%s", context->url_base, path );
-    curl_easy_setopt( request->easy, CURLOPT_URL, url );
-
-    curl_easy_setopt( request->easy, CURLOPT_HTTPGET, 1L ); 
-    curl_easy_setopt( request->easy, CURLOPT_TIMEOUT_MS, long( timeout_ms ) );
-    curl_easy_setopt( request->easy, CURLOPT_WRITEDATA, (void *)( request ) );
-
-    if ( callback )
-    {
-        curl_easy_setopt( request->easy, CURLOPT_WRITEFUNCTION, relay_http_nonblock_response_callback );
-    }
-    else
-    {
-        curl_easy_setopt( request->easy, CURLOPT_WRITEFUNCTION, relay_http_response_callback_null );
-    }
-
-    curl_multi_add_handle( context->multi, request->easy );
-}
-
-void relay_http_nonblock_post_json( relay_http_t * context, const char * path, const char * body, relay_http_callback_t * callback, void * user_data, int timeout_ms )
-{
-    assert( path );
-
-    if ( !context->multi )
-    {
-        context->multi = curl_multi_init();
-        assert( context->multi );
-    }
-
-    relay_http_request_t * request = (relay_http_request_t *)( malloc( sizeof( relay_http_request_t ) ) );
-    assert( request );
-
-    request->easy = http_easy_init();
-    assert( request->easy );
-
-    request->callback = callback;
-    request->user_data = user_data;
-    memset( &request->data, 0, sizeof( request->data ) );
-    request->error[0] = '\0';
-    request->request_headers = NULL;
-    request->request_headers = curl_slist_append( request->request_headers, "Content-Type: application/json" );
-    request->request_headers = curl_slist_append( request->request_headers, "Expect:" );
-
-    context->active.add( request );
-
-    char url[1024];
-    snprintf( url, sizeof(url), "%s%s", context->url_base, path );
-    curl_easy_setopt( request->easy, CURLOPT_URL, url );
-
-    curl_easy_setopt( request->easy, CURLOPT_POST, 1L );
-    curl_easy_setopt( request->easy, CURLOPT_COPYPOSTFIELDS, body );
-    curl_easy_setopt( request->easy, CURLOPT_HTTPHEADER, request->request_headers );
-    curl_easy_setopt( request->easy, CURLOPT_TIMEOUT_MS, long( timeout_ms ) );
-    curl_easy_setopt( request->easy, CURLOPT_WRITEDATA, (void *)( request ) );
-    if ( callback )
-    {
-        curl_easy_setopt( request->easy, CURLOPT_WRITEFUNCTION, relay_http_nonblock_response_callback );
-    }
-    else
-    {
-        curl_easy_setopt( request->easy, CURLOPT_WRITEFUNCTION, relay_http_response_callback_null );
-    }
-
-    curl_multi_add_handle( context->multi, request->easy );
-}
-
-void relay_http_nonblock_update( relay_http_t * context )
-{
-    if ( !context->multi )
-        return;
-
-    int _; // never used
-    curl_multi_perform(context->multi, &_);
-
-    while ( CURLMsg * msg = curl_multi_info_read(context->multi, &_) )
-    {
-        if ( msg->msg == CURLMSG_DONE )
-        {
-            CURL * easy = msg->easy_handle;
-            curl_multi_remove_handle( context->multi, easy );
-            relay_http_request_t * request = NULL;
-            for (int i = 0; i < context->active.length; i++ )
-            {
-                relay_http_request_t * r = context->active[i];
-                if (r->easy == easy)
-                {
-                    request = r;
-                    context->active.remove( i );
-                    break;
-                }
-            }
-            assert( request );
-
-            long response_code;
-            curl_easy_getinfo(request->easy, CURLINFO_RESPONSE_CODE, &response_code);
-            const char* response = request->data.length > 0 ? &request->data[0] : NULL;
-#if RELAY_DEBUG_HTTP
-            {
-                char * url = NULL;
-                curl_easy_getinfo(request->easy, CURLINFO_EFFECTIVE_URL, &url);
-                relay_printf( RELAY_LOG_LEVEL_DEBUG, "HTTP response - %s - code %d: %s", url, response_code, response );
-                if ( request->error[0] )
-                    relay_printf( RELAY_LOG_LEVEL_DEBUG, "HTTP error: %s", request->error );
-            }
-#endif // #if RELAY_DEBUG_HTTP
-            if (request->callback)
-            {
-                if ( !request->callback(response_code, response, request->user_data) )
-                {
-                    // if the callback returns false, that means it deleted the HTTP context. exit immediately.
-                    break;
-                }
-            }
-            http_request_cleanup( request );
-        }
-    }
-}
-
-// -----------------------------------------------------------------------------
+#define RELAY_TOKEN_BYTES 32
+#define RESPONSE_MAX_BYTES 1024 * 1024
 
 struct relay_t
 {
     // ...
 };
+
+struct curl_buffer_t
+{
+    int size;
+    int max_size;
+    uint8_t * data;
+};
+
+size_t curl_buffer_write_function( char * ptr, size_t size, size_t nmemb, void * userdata )
+{
+    curl_buffer_t * buffer = (curl_buffer_t*) userdata;
+    assert( buffer );
+    assert( size == 1 );
+    if ( int( buffer->size + size*nmemb ) > buffer->max_size )
+        return 0;
+    memcpy( buffer->data + buffer->size, ptr, size*nmemb );
+    buffer->size += size * nmemb;
+    return size * nmemb;
+}
+
+int relay_initialize( CURL * curl, uint8_t * relay_token, const char * relay_address, const uint8_t * relay_private_key )
+{
+    const uint32_t init_request_magic = 0x9083708f;
+
+    uint32_t init_request_version = 0;
+
+    uint8_t init_data[1024];
+    memset( init_data, 0, sizeof(init_data) );
+
+    uint8_t * p = init_data;
+    relay_write_uint32( &p, init_request_magic );
+    relay_write_uint32( &p, init_request_version );
+    relay_write_string( &p, relay_address, RELAY_MAX_ADDRESS_STRING_LENGTH );
+
+    int init_length = (int) ( p - init_data );
+
+    uint8_t signed_init_data[sizeof(init_data) + crypto_sign_BYTES];
+    unsigned long long signed_init_length;
+    if ( crypto_sign( signed_init_data, &signed_init_length, init_data, init_length, relay_private_key ) != 0 )
+    {
+        // printf( "\nerror: failed to sign relay init data\n\n" );
+        return RELAY_ERROR;
+    }
+
+    assert( memcmp( init_data, signed_init_data + crypto_sign_BYTES, init_length ) == 0 );
+
+    struct curl_slist * slist = curl_slist_append( NULL, "Content-Type:application/octet-stream" );
+
+    curl_buffer_t init_response_buffer;
+    init_response_buffer.size = 0;
+    init_response_buffer.max_size = 1024;
+    init_response_buffer.data = (uint8_t*) alloca( init_response_buffer.max_size );
+
+    curl_easy_setopt( curl, CURLOPT_BUFFERSIZE, 102400L );
+    // todo: dynamically build from hostname
+    curl_easy_setopt( curl, CURLOPT_URL, "http://localhost:30000/relay_init" );
+    curl_easy_setopt( curl, CURLOPT_NOPROGRESS, 1L );
+    curl_easy_setopt( curl, CURLOPT_POSTFIELDS, signed_init_data );
+    curl_easy_setopt( curl, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)signed_init_length );
+    curl_easy_setopt( curl, CURLOPT_HTTPHEADER, slist );
+    curl_easy_setopt( curl, CURLOPT_USERAGENT, "curl/7.64.1" );
+    curl_easy_setopt( curl, CURLOPT_MAXREDIRS, 50L );
+    curl_easy_setopt( curl, CURLOPT_HTTP_VERSION, (long)CURL_HTTP_VERSION_2TLS );
+    curl_easy_setopt( curl, CURLOPT_TCP_KEEPALIVE, 1L );
+    curl_easy_setopt( curl, CURLOPT_TIMEOUT_MS, long( 1000 ) );
+    curl_easy_setopt( curl, CURLOPT_WRITEDATA, &init_response_buffer );
+    curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, &curl_buffer_write_function );
+
+    CURLcode ret = curl_easy_perform( curl );
+
+    curl_slist_free_all( slist );
+    slist = NULL;
+
+    if ( ret != 0 )
+    {
+        return RELAY_ERROR;
+    }
+
+    long code;
+    curl_easy_getinfo( curl, CURLINFO_RESPONSE_CODE, &code );
+    if ( code != 200 )
+    {
+        return RELAY_ERROR;
+    }
+
+    if ( init_response_buffer.size < 4 )
+    {
+        // printf( "\nerror: bad relay init response size. too small to have valid data (%d)\n\n", init_response_buffer.size ); 
+        return RELAY_ERROR;
+    }
+
+    const uint8_t * q = init_response_buffer.data;
+
+    uint32_t version = relay_read_uint32( &q );
+
+    const uint32_t init_response_version = 0;
+
+    if ( version != init_response_version )
+    {
+        // printf( "\nerror: bad relay init response version. expected %d, got %d\n\n", init_response_version, version );
+        return RELAY_ERROR;
+    }
+
+    if ( init_response_buffer.size != 4 + RELAY_TOKEN_BYTES )
+    {
+        // printf( "\nerror: bad relay init response size. expected %d bytes, got %d\n\n", RELAY_TOKEN_BYTES, init_response_buffer.size );        
+        return RELAY_ERROR;
+    }
+
+    memcpy( relay_token, init_response_buffer.data + 4, RELAY_TOKEN_BYTES );
+
+    return RELAY_OK;
+}
+
+int relay_update( CURL * curl, const uint8_t * relay_token, const char * relay_address, uint8_t * update_response_memory )
+{
+    // build update data
+
+    uint32_t update_version = 0;
+
+    uint8_t update_data[10*1024];
+
+    uint8_t * p = update_data;
+    relay_write_uint32( &p, update_version );
+    relay_write_string( &p, relay_address, 256 );
+    relay_write_bytes( &p, relay_token, RELAY_TOKEN_BYTES );
+
+    int update_data_length = (int) ( p - update_data );
+
+    // post it to backend
+
+    struct curl_slist * slist = curl_slist_append( NULL, "Content-Type:application/octet-stream" );
+
+    curl_buffer_t update_response_buffer;
+    update_response_buffer.size = 0;
+    update_response_buffer.max_size = RESPONSE_MAX_BYTES;
+    update_response_buffer.data = (uint8_t*) update_response_memory;
+
+    curl_easy_setopt( curl, CURLOPT_BUFFERSIZE, 102400L );
+    curl_easy_setopt( curl, CURLOPT_URL, "http://localhost:30000/relay_update" );
+    curl_easy_setopt( curl, CURLOPT_NOPROGRESS, 1L );
+    curl_easy_setopt( curl, CURLOPT_POSTFIELDS, update_data );
+    curl_easy_setopt( curl, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)update_data_length );
+    curl_easy_setopt( curl, CURLOPT_HTTPHEADER, slist );
+    curl_easy_setopt( curl, CURLOPT_USERAGENT, "curl/7.64.1" );
+    curl_easy_setopt( curl, CURLOPT_MAXREDIRS, 50L );
+    curl_easy_setopt( curl, CURLOPT_HTTP_VERSION, (long)CURL_HTTP_VERSION_2TLS );
+    curl_easy_setopt( curl, CURLOPT_TCP_KEEPALIVE, 1L );
+    curl_easy_setopt( curl, CURLOPT_TIMEOUT_MS, long( 1000 ) );
+    curl_easy_setopt( curl, CURLOPT_WRITEDATA, &update_response_buffer );
+    curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, &curl_buffer_write_function );
+
+    CURLcode ret = curl_easy_perform( curl );
+
+    curl_slist_free_all( slist );
+    slist = NULL;
+
+    if ( ret != 0 )
+    {
+        // printf( "\nerror: could not post relay update\n\n" );
+        return RELAY_ERROR;
+    }
+
+    long code;
+    curl_easy_getinfo( curl, CURLINFO_RESPONSE_CODE, &code );
+    if ( code != 200 )
+    {
+        // printf( "\nerror: relay update response was %d, expected 200\n\n", int(code) );
+        return RELAY_ERROR;
+    }
+
+    // parse update response
+
+    const uint8_t * q = update_response_buffer.data;
+
+    uint32_t version = relay_read_uint32( &q );
+
+    const uint32_t update_response_version = 0;
+
+    if ( version != update_response_version )
+    {
+        // printf( "\nerror: bad relay update response version. expected %d, got %d\n\n", update_response_version, version );
+        return RELAY_ERROR;
+    }
+
+    const uint32_t MAX_RELAYS = 4096;
+
+    uint32_t num_relays = relay_read_uint32( &q );
+
+    if ( num_relays > MAX_RELAYS )
+    {
+        // printf( "\nerror: too many relays to ping. max is %d, got %d\n\n", MAX_RELAYS, version );
+        return RELAY_ERROR;
+    }
+
+    struct relay_data_t
+    {
+        uint64_t id;
+        relay_address_t address;
+    };
+
+    bool error = false;
+    
+    relay_data_t relay_data[MAX_RELAYS];
+
+    for ( uint32_t i = 0; i < num_relays; ++i )
+    {
+        char address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
+        relay_data[i].id = relay_read_uint64( &q );
+        relay_read_string( &q, address_string, RELAY_MAX_ADDRESS_STRING_LENGTH );
+        if ( relay_address_parse( &relay_data[i].address, address_string ) != RELAY_OK )
+        {
+            error = true;
+            break;
+        }
+    }
+
+    if ( error )
+    {
+        // printf( "\nerror: error while reading set of relays to ping in update response\n\n" );
+        return RELAY_ERROR;
+    }
+
+    return RELAY_OK;
+}
+
+static volatile int quit = 0;
+
+void interrupt_handler( int signal )
+{
+    (void) signal; quit = 1;
+}
 
 int main( int argc, const char ** argv )
 {
@@ -4610,12 +4298,9 @@ int main( int argc, const char ** argv )
         return 0;
     }
 
-    const char * relay_id = relay_platform_getenv( "RELAY_ID" );
-    if ( !relay_id || relay_id[0] == '\0' )
-    {
-        printf( "\nerror: RELAY_ID not set\n\n" );
-        return 1;
-    }
+    printf( "\nNetwork Next Relay\n");
+
+    printf( "\nEnvironment:\n\n" );
 
     const char * relay_address_env = relay_platform_getenv( "RELAY_ADDRESS" );
     if ( !relay_address_env )
@@ -4631,7 +4316,16 @@ int main( int argc, const char ** argv )
         return 1;
     }
 
-    uint16_t relay_port = relay_address.port;
+    {
+        relay_address_t address_without_port = relay_address;
+        address_without_port.port = 0;
+        char address_buffer[RELAY_MAX_ADDRESS_STRING_LENGTH];
+        printf( "    relay address is '%s'\n", relay_address_to_string( &address_without_port, address_buffer ) );
+    }
+
+    uint16_t relay_bind_port = relay_address.port;
+
+    printf( "    relay bind port is %d\n", relay_bind_port);
 
     const char * relay_private_key_env = relay_platform_getenv( "RELAY_PRIVATE_KEY" );
     if ( !relay_private_key_env )
@@ -4647,6 +4341,8 @@ int main( int argc, const char ** argv )
         return 1;
     }
 
+    printf( "    relay private key is '%s'\n", relay_private_key_env );
+
     const char * relay_public_key_env = relay_platform_getenv( "RELAY_PUBLIC_KEY" );
     if ( !relay_public_key_env )
     {
@@ -4660,6 +4356,8 @@ int main( int argc, const char ** argv )
         printf( "\nerror: invalid relay public key\n\n" );
         return 1;
     }
+
+    printf( "    relay public key is '%s'\n", relay_public_key_env );
 
     const char * router_public_key_env = relay_platform_getenv( "RELAY_ROUTER_PUBLIC_KEY" );
     if ( !router_public_key_env )
@@ -4675,6 +4373,8 @@ int main( int argc, const char ** argv )
         return 1;
     }
 
+    printf( "    router public key is '%s'\n", router_public_key_env );
+
     const char * backend_hostname = relay_platform_getenv( "RELAY_BACKEND_HOSTNAME" );
     if ( !backend_hostname )
     {
@@ -4682,12 +4382,7 @@ int main( int argc, const char ** argv )
         return 1;
     }
 
-    (void) relay_id;
-    (void) relay_address;
-    (void) relay_port;
-    (void) relay_private_key;
-    (void) relay_public_key;
-    (void) router_public_key;
+    printf( "    backend hostname is '%s'\n", backend_hostname );
 
     if ( relay_init() != RELAY_OK )
     {
@@ -4695,91 +4390,90 @@ int main( int argc, const char ** argv )
         return 1;
     }
 
-    printf( "\nHello, relay world!\n\n" );
-
-    relay_t relay;
-
-    (void) relay;
-
-    // ---------------------------------------------------------------------
-
-    const uint32_t hello_magic = 0x9083708f;
-
-    uint32_t hello_version = 0;
-
-    uint8_t hello_data[1024];
-    memset( hello_data, 0, sizeof(hello_data) );
-
-    uint8_t hello_nonce[32];
-    relay_random_bytes( hello_nonce, 32 );
-
-    uint32_t hello_length = 0;
-
-    uint8_t * p = hello_data;
-    relay_write_uint32( &p, hello_magic );
-    relay_write_uint32( &p, hello_version );
-    uint8_t * q = p;
-    relay_write_uint32( &p, hello_length );
-    relay_write_string( &p, relay_id, 256 );
-    relay_write_bytes( &p, hello_nonce, 32 );
-
-    hello_length = (uint32_t) ( p - hello_data );
-
-    relay_write_uint32( &q, hello_length );
-
-    uint8_t * sign_data = hello_data;
-    int sign_length = hello_length;
-
-    uint8_t signed_hello_data[crypto_sign_BYTES + 1024];
-    unsigned long long signed_hello_length;
-    if ( crypto_sign( signed_hello_data, &signed_hello_length, sign_data, sign_length, relay_private_key ) != 0 )
+    relay_platform_socket_t * socket = relay_platform_socket_create( &relay_address, RELAY_PLATFORM_SOCKET_BLOCKING, 0.0f, 100 * 1024, 100 * 1024 );
+    if ( socket == NULL )
     {
-        printf( "\nerror: failed to sign relay hello data\n\n" );
+        printf( "\nserver could not create server socket\n\n" );
+        relay_term();
+        return 1;
     }
 
-    printf( "signed hello data is %d bytes\n\n", (int) signed_hello_length );
-
-    // ---------------------------------------------------------------------
+    printf( "\nRelay socket opened on port %d\n", relay_address.port );
+    char relay_address_buffer[RELAY_MAX_ADDRESS_STRING_LENGTH];
+    const char * relay_address_string = relay_address_to_string( &relay_address, relay_address_buffer );
 
     CURL * curl = curl_easy_init();
     if ( !curl )
     {
         printf( "\nerror: could not initialize curl\n\n" );
-        return 1;
-    }
-
-    struct curl_slist * slist = curl_slist_append( NULL, "Content-Type:application/octet-stream" );
-
-    curl_easy_setopt( curl, CURLOPT_BUFFERSIZE, 102400L );
-    curl_easy_setopt( curl, CURLOPT_URL, "http://localhost:30000/relay_hello" );
-    curl_easy_setopt( curl, CURLOPT_NOPROGRESS, 1L );
-    curl_easy_setopt( curl, CURLOPT_POSTFIELDS, signed_hello_data );
-    curl_easy_setopt( curl, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)signed_hello_length );
-    curl_easy_setopt( curl, CURLOPT_HTTPHEADER, slist );
-    curl_easy_setopt( curl, CURLOPT_USERAGENT, "curl/7.64.1" );
-    curl_easy_setopt( curl, CURLOPT_MAXREDIRS, 50L );
-    curl_easy_setopt( curl, CURLOPT_HTTP_VERSION, (long)CURL_HTTP_VERSION_2TLS );
-    curl_easy_setopt( curl, CURLOPT_TCP_KEEPALIVE, 1L );
-    curl_easy_setopt( curl, CURLOPT_TIMEOUT_MS, long( 10*1000 ) );
-
-    CURLcode ret = curl_easy_perform( curl );
-
-    curl_slist_free_all( slist );
-    slist = NULL;
-
-    if ( ret != 0 )
-    {
-        printf( "\nerror: could not post relay hello\n\n" );
+        relay_platform_socket_destroy( socket );
         curl_easy_cleanup( curl );
         relay_term();
         return 1;
     }
 
-    // ---------------------------------------------------------------------
+    uint8_t relay_token[RELAY_TOKEN_BYTES];
 
-    // ...
+    printf( "\nInitializing relay\n" );
 
-    // ---------------------------------------------------------------------
+    bool relay_initialized = false;
+
+    for ( int i = 0; i < 60; ++i )
+    {
+        if ( relay_initialize( curl, relay_token, relay_address_string, relay_private_key ) == RELAY_OK )
+        {
+            printf( "\n" );
+            relay_initialized = true;
+            break;
+        }    
+
+        printf( "." );
+        fflush( stdout );
+
+        relay_platform_sleep( 1.0 );
+    }
+    
+    if ( !relay_initialized )
+    {
+        printf( "\nerror: could not initialize relay\n\n" );
+        relay_platform_socket_destroy( socket );
+        curl_easy_cleanup( curl );
+        relay_term();
+        return 1;
+    }
+
+    printf( "Relay initialized\n\n" );
+        
+    signal( SIGINT, interrupt_handler );
+
+    uint8_t * update_response_memory = (uint8_t*) malloc( RESPONSE_MAX_BYTES );
+
+    while ( !quit )
+    {
+        bool updated = false;
+
+        for ( int i = 0; i < 10; ++i )
+        {
+            if ( relay_update( curl, relay_token, relay_address_string, update_response_memory ) == RELAY_OK )
+            {
+                updated = true;
+                break;
+            }
+        }
+
+        if ( !updated )
+        {
+            printf( "\nerror: could not update relay\n\n" );
+        }
+
+        relay_platform_sleep( 1.0 );
+    }
+
+    printf( "\nCleaning up\n" );
+
+    free( update_response_memory );
+
+    relay_platform_socket_destroy( socket );
 
     curl_easy_cleanup( curl );
 

@@ -93,7 +93,7 @@ void relay_platform_sleep( double time )
 
 void relay_platform_socket_destroy( relay_platform_socket_t * socket );
 
-relay_platform_socket_t * relay_platform_socket_create( void * context, relay_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size )
+relay_platform_socket_t * relay_platform_socket_create( relay_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size )
 {
     assert( address );
     assert( address->type != RELAY_ADDRESS_NONE );
@@ -101,8 +101,6 @@ relay_platform_socket_t * relay_platform_socket_create( void * context, relay_ad
     relay_platform_socket_t * socket = (relay_platform_socket_t*) malloc( sizeof( relay_platform_socket_t ) );
 
     assert( socket );
-
-    socket->context = context;
 
     // create socket
 
@@ -305,57 +303,6 @@ void relay_platform_socket_send_packet( relay_platform_socket_t * socket, const 
     }
 }
 
-void relay_platform_socket_send_packets( relay_platform_socket_t * socket, const relay_address_t * to, void ** packet_data, int * packet_bytes, int num_packets )
-{
-    assert( socket );
-    assert( to );
-    assert( packet_data );
-    assert( packet_bytes );
-    assert( num_packets >= 0 );
-
-    if ( num_packets == 0 )
-        return;
-
-    iovec * msg = (iovec*) alloca( sizeof(iovec) * num_packets );
-
-    for ( int i = 0; i < num_packets; ++i )
-    {
-        msg[i].iov_base = packet_data[i];
-        msg[i].iov_len = packet_bytes[i];
-    }
-
-    sockaddr_in * socket_address = (sockaddr_in*) alloca( sizeof(sockaddr_in) * num_packets );
-
-    for ( int i = 0; i < num_packets; ++i )
-    {
-        assert( to[i].type == RELAY_ADDRESS_IPV4 );                 // note: ipv6 not supported
-        memset( &socket_address[i], 0, sizeof(sockaddr_in) );
-        socket_address[i].sin_family = AF_INET;
-        socket_address[i].sin_addr.s_addr = ( ( (uint32_t) to[i].data.ipv4[0] ) )        | 
-                                            ( ( (uint32_t) to[i].data.ipv4[1] ) << 8 )   | 
-                                            ( ( (uint32_t) to[i].data.ipv4[2] ) << 16 )  | 
-                                            ( ( (uint32_t) to[i].data.ipv4[3] ) << 24 );
-        socket_address[i].sin_port = relay_platform_htons( to->port );
-    }
-
-    mmsghdr * packet_array = (mmsghdr*) alloca( sizeof(mmsghdr) * num_packets );
-
-    for ( int i = 0; i < num_packets; ++i )
-    {
-        packet_array[i].msg_hdr.msg_name = &socket_address[i];
-        packet_array[i].msg_hdr.msg_namelen = sizeof(sockaddr_in);
-        packet_array[i].msg_hdr.msg_iov = &msg[i];
-        packet_array[i].msg_hdr.msg_iovlen = 1;
-    }
-
-    int result = sendmmsg( socket->handle, packet_array, num_packets, 0 );
-    
-    if ( result == -1 )
-    {
-        relay_printf( RELAY_LOG_LEVEL_ERROR, "sendmmsg failed to send packets" );
-    }
-}
-
 int relay_platform_socket_receive_packet( relay_platform_socket_t * socket, relay_address_t * from, void * packet_data, int max_packet_size )
 {
     assert( socket );
@@ -411,86 +358,14 @@ int relay_platform_socket_receive_packet( relay_platform_socket_t * socket, rela
     return result;
 }
 
-void relay_platform_socket_receive_packets( relay_platform_socket_t * socket, int max_packets, int max_packet_bytes, relay_address_t * from, void ** packet_data, int * packet_bytes, int * num_packets )
-{
-    assert( socket );
-    assert( max_packets >= 1 );
-    assert( max_packet_bytes > 0 );
-    assert( from );
-    assert( packet_data );
-    assert( packet_bytes );
-    assert( num_packets );
-
-    (void) socket;
-    (void) max_packets;
-    (void) max_packet_bytes;
-    (void) from;
-    (void) packet_data;
-    (void) packet_bytes;
-    (void) num_packets;
-
-    // todo
-    
-/*
-#define VLEN 10
-#define BUFSIZE 200
-#define TIMEOUT 1
-    int sockfd, retval, i;
-    struct sockaddr_in sa;
-    struct mmsghdr msgs[VLEN];
-    struct iovec iovecs[VLEN];
-    char bufs[VLEN][BUFSIZE+1];
-    struct timespec timeout;
-
-   sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sockfd == -1) {
-        perror("socket()");
-        exit(EXIT_FAILURE);
-    }
-
-   sa.sin_family = AF_INET;
-    sa.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-    sa.sin_port = htons(1234);
-    if (bind(sockfd, (struct sockaddr *) &sa, sizeof(sa)) == -1) {
-        perror("bind()");
-        exit(EXIT_FAILURE);
-    }
-
-   memset(msgs, 0, sizeof(msgs));
-    for (i = 0; i < VLEN; i++) {
-        iovecs[i].iov_base         = bufs[i];
-        iovecs[i].iov_len          = BUFSIZE;
-        msgs[i].msg_hdr.msg_iov    = &iovecs[i];
-        msgs[i].msg_hdr.msg_iovlen = 1;
-    }
-
-   timeout.tv_sec = TIMEOUT;
-    timeout.tv_nsec = 0;
-
-   retval = recvmmsg(sockfd, msgs, VLEN, 0, &timeout);
-    if (retval == -1) {
-        perror("recvmmsg()");
-        exit(EXIT_FAILURE);
-    }
-
-   printf("%d messages received\n", retval);
-    for (i = 0; i < retval; i++) {
-        bufs[i][msgs[i].msg_len] = 0;
-        printf("%d %s", i+1, bufs[i]);
-    }
-*/    
-}
-
 // ---------------------------------------------------
 
-relay_platform_thread_t * relay_platform_thread_create( void * context, relay_platform_thread_func_t * thread_function, void * arg )
+relay_platform_thread_t * relay_platform_thread_create( relay_platform_thread_func_t * thread_function, void * arg )
 {
     relay_platform_thread_t * thread = (relay_platform_thread_t*) malloc( sizeof( relay_platform_thread_t) );
 
     assert( thread );
 
-    thread->context = context;
-    
     if ( pthread_create( &thread->handle, NULL, thread_function, arg ) != 0 )
     {
         free( thread );
@@ -524,13 +399,11 @@ void relay_platform_thread_set_sched_max( relay_platform_thread_t * thread )
 
 // ---------------------------------------------------
 
-relay_platform_mutex_t * relay_platform_mutex_create( void * context )
+relay_platform_mutex_t * relay_platform_mutex_create()
 {
     relay_platform_mutex_t * mutex = (relay_platform_mutex_t*) malloc( sizeof(relay_platform_mutex_t) ); assert( mutex );
 
     assert( mutex );
-
-    mutex->context = context;
 
     pthread_mutexattr_t attr;
     pthread_mutexattr_init(&attr);

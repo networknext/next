@@ -24,7 +24,6 @@ typedef int relay_platform_socket_handle_t;
 
 struct relay_platform_socket_t
 {
-    void * context;
     int type;
     relay_platform_socket_handle_t handle;
 };
@@ -33,7 +32,6 @@ struct relay_platform_socket_t
 
 struct relay_platform_thread_t
 {
-    void * context;
     pthread_t handle;
 };
 
@@ -49,7 +47,6 @@ typedef relay_platform_thread_return_t (RELAY_PLATFORM_THREAD_FUNC relay_platfor
 
 struct relay_platform_mutex_t
 {
-    void * context;
     pthread_mutex_t handle;
 };
 
