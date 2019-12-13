@@ -47,7 +47,7 @@ This is the service that suppliers run on their hardware to become part of Netwo
 
 ## Relay Backend (Go)
 
-Manages the database of connected relays and tells them which other relays to ping. Collates ping statistics received from relays into a cost matrix which is used by the optimizer to calculate the route matrix.
+Manages the database of connected relays and tells them which other relays to ping. Collates ping statistics received from relays into a cost matrix.
 
 - Command: [`cmd/relay_backend`](./cmd/relay_backend)
 
