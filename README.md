@@ -41,7 +41,7 @@ Using the Windows Subsystem for Linux (WSL) with Ubuntu makes it easy to work wi
 
 ## Relay (C++)
 
-This is the service that suppliers install on their hardware to become part of the Network Next relay network.
+This is the service that suppliers run on their hardware to become part of the Network Next.
 
 - Command: [`cmd/relay`](./cmd/relay)
 
