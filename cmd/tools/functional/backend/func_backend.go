@@ -20,7 +20,6 @@ import (
 	"math/rand"
 	"hash/fnv"
 	"io/ioutil"
-	"encoding/json"
 	"encoding/binary"
 	"github.com/gorilla/mux"
 
@@ -198,8 +197,6 @@ func main() {
 
 	go TimeoutThread()
 
-	go TerribleOldShite()
-
 	go WebServer()
 
 	listenAddress := net.UDPAddr{
@@ -215,7 +212,7 @@ func main() {
 
 	defer connection.Close()
 
-	fmt.Printf( "started local backend on port %d\n", NEXT_BACKEND_PORT )
+	fmt.Printf( "started functional backend on port %d\n", NEXT_BACKEND_PORT )
 
 	packetData := make([]byte, NEXT_MAX_PACKET_BYTES)
 
@@ -727,48 +724,6 @@ func WebServer() {
 
 // -----------------------------------------------------------
 
-const NEXT_PACKET_TYPE_RELAY_INIT_REQUEST = 43
-const NEXT_PACKET_TYPE_RELAY_INIT_RESPONSE = 52
-const NEXT_PACKET_TYPE_RELAY_CONFIG_REQUEST  = 50
-const NEXT_PACKET_TYPE_RELAY_CONFIG_RESPONSE = 51
-const NEXT_PACKET_TYPE_RELAY_REPORT = 48
-
-var MasterTokenSignKey = []byte{
-	0x15, 0xa0, 0x59, 0x84, 0x51, 0x1e, 0xf7, 0x96,
-	0xed, 0x4b, 0x82, 0xd2, 0x44, 0xec, 0x04, 0x65,
-	0x0c, 0x55, 0x71, 0xa0, 0xfd, 0xf8, 0x0a, 0xc3,
-	0x64, 0x90, 0x0f, 0x16, 0x24, 0xb7, 0x8f, 0x3a,
-}
-
-var MasterUDPSignPrivateKey = []byte{
-	0x84, 0xc7, 0x24, 0xfa, 0x5f, 0x94, 0x86, 0x99,
-	0x0d, 0x22, 0x40, 0xaf, 0xa1, 0x62, 0x8c, 0x24,
-	0x51, 0xef, 0xfc, 0x10, 0x6f, 0xef, 0x04, 0xb3,
-	0x50, 0x9b, 0xbc, 0xb0, 0xce, 0xcb, 0xc3, 0x03,
-	0x60, 0x45, 0x96, 0x52, 0x4f, 0x1c, 0x00, 0xda,
-	0x35, 0x1b, 0x6c, 0x17, 0x8b, 0xa8, 0xaa, 0xac,
-	0xb4, 0x8c, 0x76, 0xb1, 0x72, 0xa6, 0xfa, 0x7f,
-	0x52, 0x28, 0xd8, 0x6d, 0x9e, 0x2b, 0x91, 0xec,
-}
-var MasterUDPSignPublicKey = []byte{
-	0x60, 0x45, 0x96, 0x52, 0x4f, 0x1c, 0x00, 0xda,
-	0x35, 0x1b, 0x6c, 0x17, 0x8b, 0xa8, 0xaa, 0xac,
-	0xb4, 0x8c, 0x76, 0xb1, 0x72, 0xa6, 0xfa, 0x7f,
-	0x52, 0x28, 0xd8, 0x6d, 0x9e, 0x2b, 0x91, 0xec,
-}
-var MasterUDPSealPrivateKey = []byte{
-	0xb7, 0xca, 0x67, 0x4b, 0x12, 0xe7, 0x6a, 0x19,
-	0xab, 0x69, 0xbc, 0x32, 0x31, 0xf9, 0x9b, 0x29,
-	0x49, 0xe8, 0xa9, 0x5b, 0x7e, 0xb6, 0xe8, 0x4c,
-	0x8a, 0x8a, 0x9e, 0xb3, 0xc2, 0x7b, 0x1f, 0x98,
-}
-var MasterUDPSealPublicKey = []byte{
-	0x77, 0x9f, 0xf2, 0xeb, 0x45, 0xfb, 0xe8, 0x25,
-	0x7a, 0xf3, 0x78, 0xf9, 0x26, 0x22, 0x29, 0xc0,
-	0xa8, 0xd0, 0x66, 0x92, 0x8b, 0xf9, 0x47, 0xcc,
-	0x8b, 0x93, 0x62, 0xbe, 0xb3, 0x88, 0xf9, 0x6f,
-}
-
 const (
 	ADDRESS_NONE = 0
 	ADDRESS_IPV4 = 1
@@ -798,33 +753,6 @@ func WriteAddress(buffer []byte, address *net.UDPAddr) {
 	}
 }
 
-func WriteMasterToken(buffer []byte, address *net.UDPAddr) error {
-	if len(buffer) < MasterTokenBytes {
-		return fmt.Errorf("expected %d byte buffer, got %d bytes", MasterTokenBytes, len(buffer))
-	}
-	WriteAddress(buffer, address)
-	hmac, err := CryptoAuth(buffer[0:AddressBytes], MasterTokenSignKey)
-	if err != nil {
-		return fmt.Errorf("failed to sign master token: %v", err)
-	}
-	if len(hmac) != 32 {
-		panic("wrong hmac size")
-	}
-	copy(buffer[AddressBytes:], hmac[:])
-	return nil
-}
-
-func CryptoAuth(data []byte, key []byte) ([]byte, error) {
-	if len(key) != C.crypto_auth_KEYBYTES {
-		return nil, fmt.Errorf("expected %d byte key, got %d bytes", C.crypto_auth_KEYBYTES, len(key))
-	}
-	var signature [C.crypto_auth_BYTES]byte
-	if C.crypto_auth((*C.uchar)(&signature[0]), (*C.uchar)(&data[0]), (C.ulonglong)(len(data)), (*C.uchar)(&key[0])) != 0 {
-		return nil, fmt.Errorf("failed to sign data with key")
-	}
-	return signature[:], nil
-}
-
 type InitResponseJSON struct {
 	Timestamp   uint64
 	IP          []byte
@@ -846,96 +774,4 @@ type RelayJSON struct {
 	State             int
 	Address           string
 	ManagementAddress string
-}
-
-func TerribleOldShite() {
-
-	listener := UDPListenerMasterCreate(MasterTokenSignKey, MasterUDPSealPublicKey, MasterUDPSealPrivateKey)
-
-	builder := UDPPacketToClientBuilderCreate(MasterUDPSignPrivateKey)
-
-	var packetsReceivedCount int64
-
-	go listener.Listen(
-		&packetsReceivedCount,
-		func(packet *UDPPacketToMaster, from *net.UDPAddr, conn *net.UDPConn) error {
-
-			if packet.Type == NEXT_PACKET_TYPE_RELAY_INIT_REQUEST {
-
-				var token [MasterTokenBytes]byte
-				err := WriteMasterToken(token[:], &net.UDPAddr{IP: from.IP, Port: 0})
-				if err != nil {
-					return fmt.Errorf("could not write master token: %v", err)
-					return nil
-				}
-
-				response := &InitResponseJSON{
-					Timestamp:   uint64(time.Now().UnixNano() / 1000000), // milliseconds
-					IP2Location: "",
-					IP:          []byte(from.String()),
-					Token:       token[:],
-				}
-
-				responseData, _ := json.Marshal(response)
-
-				packets, err := builder.Build(&UDPPacketToClient{Type: NEXT_PACKET_TYPE_RELAY_INIT_RESPONSE, ID: packet.ID, Status: uint16(200), Data: responseData})
-				if err != nil {
-					return fmt.Errorf("could not build relay init response packet: %v", err)
-				}
-
-				for _, packet := range packets {
-					conn.WriteToUDP(packet, from)
-				}
-				return nil
-
-			} else if packet.Type == NEXT_PACKET_TYPE_RELAY_CONFIG_REQUEST {
-
-				var request RelayConfigRequest
-				if err := json.Unmarshal(packet.Data, &request); err != nil {
-					fmt.Printf("could not parse relay config request json: %s", err)
-					return nil
-				}
-
-				response := &RelayJSON{
-					Name:              "local",
-					UpdateKey:         make([]byte, 32),
-					Group:             "local",
-					Role:              "default",
-					State:             0,
-					Address:           from.String(),
-					ManagementAddress: from.String(),
-				}
-
-				responseData, _ := json.Marshal(response)
-
-				packets, err := builder.Build(&UDPPacketToClient{Type: NEXT_PACKET_TYPE_RELAY_CONFIG_RESPONSE, ID: packet.ID, Status: uint16(200), Data: responseData})
-				if err != nil {
-					return fmt.Errorf("could not build relay config response packet: %v", err)
-				}
-
-				for _, packet := range packets {
-					conn.WriteToUDP(packet, from)
-				}
-				return nil
-
-			} else if packet.Type == NEXT_PACKET_TYPE_RELAY_REPORT {
-
-				relayEntry := RelayEntry{}
-				relayEntry.name = from.String()
-				relayEntry.id = GetRelayId(from.String())
-				relayEntry.address = from
-				relayEntry.lastUpdate = time.Now().Unix()
-
-				key := string(from.String())
-
-				backend.mutex.Lock()
-				backend.relayDatabase[key] = relayEntry
-				backend.mutex.Unlock()
-
-			}
-
-			return nil
-		},
-		":40000",
-	)
 }
