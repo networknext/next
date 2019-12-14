@@ -12860,12 +12860,13 @@ static void test_backend_packets()
 
 static void test_relay_manager()
 {
-    const int NumRelays = 16;
+    const int MaxRelays = 64;
+    const int NumRelays = 32;
 
-    uint64_t relay_ids[NumRelays];
-    next_address_t relay_addresses[NumRelays];
+    uint64_t relay_ids[MaxRelays];
+    next_address_t relay_addresses[MaxRelays];
 
-    for ( int i = 0; i < NumRelays; ++i )
+    for ( int i = 0; i < MaxRelays; ++i )
     {
         relay_ids[i] = i;
         char address_string[256];
@@ -12922,12 +12923,12 @@ static void test_relay_manager()
     
     // now add a few new relays, while some relays remain the same
 
-    next_relay_manager_update( manager, NumRelays, relay_ids + 4, relay_addresses + 4);
+    next_relay_manager_update( manager, NumRelays, relay_ids + 4, relay_addresses + 4 );
     {
         next_relay_stats_t stats;
         next_relay_manager_get_stats( manager, &stats );
         check( stats.num_relays == NumRelays );
-        for ( int i = 0; i < NumRelays; ++i )
+        for ( int i = 0; i < NumRelays - 4; ++i )
         {
             check( relay_ids[i+4] == stats.relay_ids[i] );
         }

@@ -4427,12 +4427,13 @@ static void test_base64()
 
 static void test_relay_manager()
 {
-    const int NumRelays = 64;
+    const int MaxRelays = 64;
+    const int NumRelays = 32;
 
-    uint64_t relay_ids[NumRelays];
-    relay_address_t relay_addresses[NumRelays];
+    uint64_t relay_ids[MaxRelays];
+    relay_address_t relay_addresses[MaxRelays];
 
-    for ( int i = 0; i < NumRelays; ++i )
+    for ( int i = 0; i < MaxRelays; ++i )
     {
         relay_ids[i] = i;
         char address_string[256];
