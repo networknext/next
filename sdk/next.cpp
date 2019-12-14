@@ -12860,7 +12860,7 @@ static void test_backend_packets()
 
 static void test_relay_manager()
 {
-    const int NumRelays = 64;
+    const int NumRelays = 16;
 
     uint64_t relay_ids[NumRelays];
     next_address_t relay_addresses[NumRelays];
@@ -12884,12 +12884,12 @@ static void test_relay_manager()
 
     // add max relays
     
-    next_relay_manager_update( manager, NEXT_MAX_NEAR_RELAYS, relay_ids, relay_addresses );
+    next_relay_manager_update( manager, NumRelays, relay_ids, relay_addresses );
     {
         next_relay_stats_t stats;
         next_relay_manager_get_stats( manager, &stats );
-        check( stats.num_relays == NEXT_MAX_NEAR_RELAYS );
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        check( stats.num_relays == NumRelays );
+        for ( int i = 0; i < NumRelays; ++i )
         {
             check( relay_ids[i] == stats.relay_ids[i] );
         }
@@ -12908,12 +12908,12 @@ static void test_relay_manager()
 
     for ( int j = 0; j < 2; ++j )
     {
-        next_relay_manager_update( manager, NEXT_MAX_NEAR_RELAYS, relay_ids, relay_addresses );
+        next_relay_manager_update( manager, NumRelays, relay_ids, relay_addresses );
         {
             next_relay_stats_t stats;
             next_relay_manager_get_stats( manager, &stats );
-            check( stats.num_relays == NEXT_MAX_NEAR_RELAYS );
-            for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+            check( stats.num_relays == NumRelays );
+            for ( int i = 0; i < NumRelays; ++i )
             {
                 check( relay_ids[i] == stats.relay_ids[i] );
             }
@@ -12922,12 +12922,12 @@ static void test_relay_manager()
     
     // now add a few new relays, while some relays remain the same
 
-    next_relay_manager_update( manager, NEXT_MAX_NEAR_RELAYS, relay_ids + 4, relay_addresses + 4);
+    next_relay_manager_update( manager, NumRelays, relay_ids + 4, relay_addresses + 4);
     {
         next_relay_stats_t stats;
         next_relay_manager_get_stats( manager, &stats );
-        check( stats.num_relays == NEXT_MAX_NEAR_RELAYS );
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        check( stats.num_relays == NumRelays );
+        for ( int i = 0; i < NumRelays; ++i )
         {
             check( relay_ids[i+4] == stats.relay_ids[i] );
         }
