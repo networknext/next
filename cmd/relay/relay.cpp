@@ -3195,52 +3195,6 @@ void relay_manager_update( relay_manager_t * manager, int num_relays, const uint
 #endif // #ifndef DEBUG
 }
 
-void relay_manager_send_pings( relay_manager_t * manager, relay_platform_socket_t * socket, uint64_t ping_session_id )
-{
-    (void) manager;
-    (void) socket;
-    (void) ping_session_id;
-
-    assert( manager );
-    assert( socket );
-
-    uint8_t packet_data[RELAY_MAX_PACKET_BYTES];
-
-    // todo
-    (void) packet_data;
-
-    double current_time = relay_platform_time();
-
-    for ( int i = 0; i < manager->num_relays; ++i )
-    {
-        if ( manager->relay_last_ping_time[i] + RELAY_PING_TIME <= current_time )
-        {
-            uint64_t ping_sequence = relay_ping_history_ping_sent( manager->relay_ping_history[i], relay_platform_time() );
-
-            (void) ping_sequence;
-
-            // todo: send the actual ping
-            /*
-            NextRelayPingPacket packet;
-            packet.ping_sequence = ping_sequence;
-            packet.session_id = session_id;
-            
-            int packet_bytes = 0;
-
-            if ( relay_write_packet( NEXT_RELAY_PING_PACKET, &packet, packet_data, &packet_bytes, NULL, NULL, NULL ) != NEXT_OK )
-            {
-                next_printf( NEXT_LOG_LEVEL_ERROR, "failed to write ping packet" );
-                continue;
-            }
-
-            next_platform_socket_send_packet( socket, &manager->relay_addresses[i], packet_data, packet_bytes );
-            */
-
-            manager->relay_last_ping_time[i] = current_time;
-        }
-    }
-}
-
 bool relay_manager_process_pong( relay_manager_t * manager, const relay_address_t * from, uint64_t sequence )
 {
     assert( manager );
@@ -4552,19 +4506,15 @@ void relay_test()
 #define RELAY_PING_PACKET 75
 #define RELAY_PONG_PACKET 76
 
-struct relay_ping_data_t
-{
-    uint64_t id;
-    relay_address_t address;
-};
-
 struct relay_t
 {
     relay_manager_t * relay_manager;
     relay_platform_socket_t * socket;
     relay_platform_mutex_t * mutex;
-    int num_relays_to_ping;
-    relay_ping_data_t relay_ping_data[MAX_RELAYS];
+    bool relays_dirty;
+    int num_relays;
+    uint64_t relay_ids[MAX_RELAYS];
+    relay_address_t relay_addresses[MAX_RELAYS];
 };
 
 struct curl_buffer_t
@@ -4693,6 +4643,20 @@ int relay_update( CURL * curl, const uint8_t * relay_token, const char * relay_a
     relay_write_string( &p, relay_address, 256 );
     relay_write_bytes( &p, relay_token, RELAY_TOKEN_BYTES );
 
+    relay_platform_mutex_acquire( relay->mutex );
+    relay_stats_t stats;
+    relay_manager_get_stats( relay->relay_manager, &stats );
+    relay_platform_mutex_release( relay->mutex );
+
+    relay_write_uint32( &p, stats.num_relays );
+    for ( int i = 0; i < stats.num_relays; ++i )
+    {
+        relay_write_uint64( &p, stats.relay_ids[i] );
+        relay_write_float32( &p, stats.relay_rtt[i] );
+        relay_write_float32( &p, stats.relay_jitter[i] );
+        relay_write_float32( &p, stats.relay_packet_loss[i] );
+    }
+
     int update_data_length = (int) ( p - update_data );
 
     // post it to backend
@@ -4762,6 +4726,13 @@ int relay_update( CURL * curl, const uint8_t * relay_token, const char * relay_a
 
     bool error = false;
     
+    struct relay_ping_data_t
+    {
+        
+        uint64_t id;
+        relay_address_t address;
+    };
+
     relay_ping_data_t relay_ping_data[MAX_RELAYS];
 
     for ( uint32_t i = 0; i < num_relays; ++i )
@@ -4783,11 +4754,13 @@ int relay_update( CURL * curl, const uint8_t * relay_token, const char * relay_a
     }
 
     relay_platform_mutex_acquire( relay->mutex );
-    relay->num_relays_to_ping = num_relays;
+    relay->num_relays = num_relays;
     for ( int i = 0; i < int(num_relays); ++i )
     {
-        relay->relay_ping_data[i] = relay_ping_data[i];
+        relay->relay_ids[i] = relay_ping_data[i].id;
+        relay->relay_addresses[i] = relay_ping_data[i].address;
     }
+    relay->relays_dirty = true;
     relay_platform_mutex_release( relay->mutex );
 
     return RELAY_OK;
@@ -4802,18 +4775,30 @@ void interrupt_handler( int signal )
 
 static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_function( void * context )
 {
-    relay_platform_socket_t * socket = (relay_platform_socket_t*) context;
+    relay_t * relay = (relay_t*) context;
 
     uint8_t packet_data[RELAY_MAX_PACKET_BYTES];
 
     while ( !quit )
     {
         relay_address_t from;   
-        const int packet_bytes = relay_platform_socket_receive_packet( socket, &from, packet_data, sizeof(packet_data) );
+        const int packet_bytes = relay_platform_socket_receive_packet( relay->socket, &from, packet_data, sizeof(packet_data) );
         if ( packet_bytes == 0 )
             continue;
 
-        printf( "received packet (%d bytes)\n", packet_bytes );
+        if ( packet_data[0] == RELAY_PING_PACKET && packet_bytes == 9 )
+        {
+            packet_data[0] = RELAY_PONG_PACKET;
+            relay_platform_socket_send_packet( relay->socket, &from, packet_data, 9 );
+        }
+        else if ( packet_data[0] == RELAY_PONG_PACKET && packet_bytes == 9 )
+        {
+            relay_platform_mutex_acquire( relay->mutex );
+            const uint8_t * p = packet_data + 1;
+            uint64_t sequence = relay_read_uint64( &p );
+            relay_manager_process_pong( relay->relay_manager, &from, sequence );
+            relay_platform_mutex_release( relay->mutex );
+        }
     }
 
     RELAY_PLATFORM_THREAD_RETURN();
@@ -4821,14 +4806,52 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
 static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_function( void * context )
 {
-    relay_platform_socket_t * socket = (relay_platform_socket_t*) context;
+    relay_t * relay = (relay_t*) context;
 
     while ( !quit )
     {
-        // todo: send pings to relays in relay list
-        (void) socket;
+        relay_platform_mutex_acquire( relay->mutex );
 
-        relay_platform_sleep( 1.0 );
+        if ( relay->relays_dirty )
+        {
+            relay_manager_update( relay->relay_manager, relay->num_relays, relay->relay_ids, relay->relay_addresses );
+            relay->relays_dirty = false;
+        }
+
+        double current_time = relay_platform_time();
+
+        struct ping_data_t
+        {
+            uint64_t sequence;
+            relay_address_t address;
+        };
+
+        int num_pings = 0;
+        ping_data_t pings[MAX_RELAYS];
+
+        for ( int i = 0; i < relay->relay_manager->num_relays; ++i )
+        {
+            if ( relay->relay_manager->relay_last_ping_time[i] + RELAY_PING_TIME <= current_time )
+            {
+                pings[num_pings].sequence = relay_ping_history_ping_sent( relay->relay_manager->relay_ping_history[i], current_time );
+                pings[num_pings].address = relay->relay_manager->relay_addresses[i];
+                relay->relay_manager->relay_last_ping_time[i] = current_time;
+                num_pings++;
+            }
+        }
+
+        relay_platform_mutex_release( relay->mutex );
+
+        for ( int i = 0; i < num_pings; ++i )
+        {
+            uint8_t packet_data[9];            
+            packet_data[0] = RELAY_PING_PACKET;
+            uint8_t * p = packet_data + 1;
+            relay_write_uint64( &p, pings[i].sequence );
+            relay_platform_socket_send_packet( relay->socket, &pings[i].address, packet_data, 9 );
+        }
+
+        relay_platform_sleep( 1.0 / 100.0 );
     }
 
     RELAY_PLATFORM_THREAD_RETURN();
@@ -4836,9 +4859,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
 
 int main( int argc, const char ** argv )
 {
-        relay_test();
-        return 0;
-
     if ( argc == 2 && strcmp( argv[1], "test" ) == 0 )
     {
         relay_test();
@@ -5010,14 +5030,14 @@ int main( int argc, const char ** argv )
         quit = 1;
     }
 
-    relay_platform_thread_t * receive_thread = relay_platform_thread_create( receive_thread_function, socket );
+    relay_platform_thread_t * receive_thread = relay_platform_thread_create( receive_thread_function, &relay );
     if ( !receive_thread )
     {
         printf( "\nerror: could not create receive thread\n\n" );
         quit = 1;
     }
 
-    relay_platform_thread_t * ping_thread = relay_platform_thread_create( ping_thread_function, socket );
+    relay_platform_thread_t * ping_thread = relay_platform_thread_create( ping_thread_function, &relay );
     if ( !ping_thread )
     {
         printf( "\nerror: could not create ping thread\n\n" );
