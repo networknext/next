@@ -60,6 +60,7 @@ func RelayNamesString(relayIds []uint64, relayIdToIndex map[uint64]int, relayNam
 func main() {
 	relay := flag.String("relay", "", "name of the relay")
 	datacenter := flag.String("datacenter", "", "name of the relay")
+	flag.Parse()
 
 	data, err := ioutil.ReadAll(os.Stdin)
 	if err != nil {

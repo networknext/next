@@ -26,6 +26,7 @@ func GetRelayIndex(routeMatrix *core.RouteMatrix, relayName string) int {
 
 func main() {
 	relay := flag.String("relay", "", "name of the relay")
+	flag.Parse()
 
 	data, err := ioutil.ReadAll(os.Stdin)
 	if err != nil {
