@@ -102,13 +102,13 @@ func main() {
 
 	datacenterId := routeMatrix.DatacenterIds[datacenterIndex]
 
-	relaysInDatacenter := routeMatrix.RelayDatacenters[datacenterId]
+	datacenterRelays := routeMatrix.DatacenterRelays[datacenterId]
 
-	fmt.Printf("%d relays in datacenter\n", len(relaysInDatacenter))
+	fmt.Printf("%d relays in datacenter\n", len(datacenterRelays))
 
-	for i := range relaysInDatacenter {
+	for i := range datacenterRelays {
 
-		destRelayId := relaysInDatacenter[i]
+		destRelayId := datacenterRelays[i]
 
 		destRelayIndex := FindRelayById(routeMatrix, core.RelayId(destRelayId))
 

@@ -41,13 +41,13 @@ Using the Windows Subsystem for Linux (WSL) with Ubuntu makes it easy to work wi
 
 ## Relay (C++)
 
-This is the service that suppliers install on their hardware to become part of the Network Next relay network.
+This is the service that suppliers run on their hardware to become part of Network Next.
 
 - Command: [`cmd/relay`](./cmd/relay)
 
 ## Relay Backend (Go)
 
-Manages the database of connected relays and tells them which other relays to ping. Collates ping statistics received from relays into a cost matrix which is used by the optimizer to calculate the route matrix.
+Manages the database of connected relays and tells them which other relays to ping. Collates ping statistics received from relays into a cost matrix.
 
 - Command: [`cmd/relay_backend`](./cmd/relay_backend)
 
@@ -66,7 +66,7 @@ Reference implentation of a server using the Network Next SDK.
 
 ## Server Backend (Go)
 
-Pulls the route matrix from the optimizer and uses this to serve up routes between clients and servers across the relay network.
+Pulls the route matrix from the optimizer and uses it to serve up routes across the relay network.
 
 - Command: [`cmd/server_backend`](./cmd/server_backend)
 

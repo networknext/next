@@ -16,11 +16,11 @@ import (
 	"time"
 	"sync"
 	"sort"
+	"math"
 	"net/http"
 	"math/rand"
 	"hash/fnv"
 	"io/ioutil"
-	"encoding/json"
 	"encoding/binary"
 	"github.com/gorilla/mux"
 
@@ -57,6 +57,12 @@ type Backend struct {
 	relayDatabase map[string]RelayEntry
 	serverDatabase map[string]ServerEntry
 	sessionDatabase map[uint64]SessionEntry
+	statsDatabase *core.StatsDatabase
+	costMatrix *core.CostMatrix
+	costMatrixData []byte
+	routeMatrix *core.RouteMatrix
+	routeMatrixData []byte
+	nearData []byte
 }
 
 var backend Backend
@@ -82,6 +88,58 @@ type SessionEntry struct {
 	route           []uint64
 	next 			bool
 	slice           uint64
+}
+
+const RTT_Threshold = 1.0
+const CostMatrixBytes = 10 * 1024 * 1024
+const RouteMatrixBytes = 32 * 1024 * 1024
+
+func OptimizeThread() {
+	for {
+		time.Sleep(time.Second*1)
+
+		backend.mutex.RLock()
+		statsDatabase := backend.statsDatabase.MakeCopy()
+		backend.mutex.RUnlock()
+
+		relayDatabase := &core.RelayDatabase{}
+		backend.mutex.RLock()
+		for _,v := range backend.relayDatabase {
+			relayData := core.RelayData{}
+			relayData.Id = core.RelayId(v.id)
+			relayData.Name = v.name
+			relayData.Address = v.address.String()
+			relayData.Datacenter =core.DatacenterId(0)
+			relayData.DatacenterName = "local"
+			relayData.PublicKey = GetRelayPublicKey(v.address.String())
+		}
+		backend.mutex.RUnlock()
+		
+		costMatrix := statsDatabase.GetCostMatrix(relayDatabase)
+		costMatrixData := make([]byte, CostMatrixBytes)
+		costMatrixData = core.WriteCostMatrix(costMatrixData, costMatrix)
+
+		costMatrix, err := core.ReadCostMatrix(costMatrixData)
+		if err != nil {
+			panic("could not read cost matrix")
+		}
+
+		routeMatrix := core.Optimize(costMatrix, RTT_Threshold)
+
+		routeMatrixData := core.WriteRouteMatrix(make([]byte, RouteMatrixBytes), routeMatrix)
+
+		routeMatrix, err = core.ReadRouteMatrix(routeMatrixData)
+		if err != nil {
+			panic("could not read route matrix")
+		}
+
+		backend.mutex.Lock()
+		backend.costMatrix = costMatrix
+		backend.costMatrixData = costMatrixData
+		backend.routeMatrix = routeMatrix
+		backend.routeMatrixData = routeMatrixData
+		backend.mutex.Unlock()
+	}
 }
 
 func TimeoutThread() {
@@ -175,6 +233,9 @@ func main() {
 	backend.relayDatabase = make(map[string]RelayEntry)
 	backend.serverDatabase = make(map[string]ServerEntry)
 	backend.sessionDatabase = make(map[uint64]SessionEntry)
+	backend.statsDatabase = core.NewStatsDatabase()
+	backend.costMatrix = &core.CostMatrix{}
+	backend.routeMatrix = &core.RouteMatrix{}
 
 	if os.Getenv("BACKEND_MODE") == "FORCE_DIRECT" {
 		backend.mode = BACKEND_MODE_FORCE_DIRECT
@@ -196,9 +257,9 @@ func main() {
 		backend.mode = BACKEND_MODE_ROUTE_SWITCHING
 	}
 
-	go TimeoutThread()
+	go OptimizeThread()
 
-	go TerribleOldShite()
+	go TimeoutThread()
 
 	go WebServer()
 
@@ -470,6 +531,7 @@ const UpdateResponseVersion = 0
 const MaxRelayIdLength = 256
 const MaxRelayAddressLength = 256
 const RelayTokenBytes = 32
+const MaxRelays = 1024
 
 func ReadUint32(data []byte, index *int, value *uint32) bool {
 	if *index + 4 > len(data) {
@@ -477,6 +539,24 @@ func ReadUint32(data []byte, index *int, value *uint32) bool {
 	}
 	*value = binary.LittleEndian.Uint32(data[*index:])
 	*index += 4
+	return true
+}
+
+func ReadUint64(data []byte, index *int, value *uint64) bool {
+	if *index + 8 > len(data) {
+		return false
+	}
+	*value = binary.LittleEndian.Uint64(data[*index:])
+	*index += 8
+	return true
+}
+
+func ReadFloat32(data []byte, index *int, value *float32) bool {
+	var int_value uint32
+	if !ReadUint32(data, index, &int_value) {
+		return false
+	}
+	*value = math.Float32frombits(int_value)
 	return true
 }
 
@@ -671,6 +751,45 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
+	var num_relays uint32
+	if !ReadUint32(body, &index, &num_relays) {
+		return
+	}
+
+	if num_relays > MaxRelays {
+		return
+	}
+
+	statsUpdate := &core.RelayStatsUpdate{}
+	statsUpdate.Id = core.RelayId(relayEntry.id)
+
+	for i := 0; i < int(num_relays); i++ {
+		var id uint64
+		var rtt, jitter, packet_loss float32
+		if !ReadUint64(body, &index, &id) {
+			return
+		}
+		if !ReadFloat32(body, &index, &rtt) {
+			return
+		}
+		if !ReadFloat32(body, &index, &jitter) {
+			return
+		}
+		if !ReadFloat32(body, &index, &packet_loss) {
+			return
+		}
+		ping := core.RelayStatsPing{}
+		ping.RelayId = core.RelayId(id)
+		ping.RTT = rtt
+		ping.Jitter = jitter
+		ping.PacketLoss = packet_loss
+		statsUpdate.PingStats = append(statsUpdate.PingStats, ping)
+	}
+
+	backend.mutex.Lock()
+	backend.statsDatabase.ProcessStats(statsUpdate)
+	backend.mutex.Unlock()
+
 	relayEntry = RelayEntry{}
 	relayEntry.name = relay_address
 	relayEntry.id = GetRelayId(relay_address)
@@ -718,224 +837,39 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	writer.Write(responseData)
 }
 
+func CostMatrixHandler(writer http.ResponseWriter, request *http.Request) {
+	backend.mutex.RLock()
+	costMatrixData := backend.costMatrixData
+	backend.mutex.RUnlock()
+	writer.WriteHeader(http.StatusOK)
+	writer.Header().Set("Content-Type", "application/octet-stream")
+	writer.Write(costMatrixData)
+}
+
+func RouteMatrixHandler(writer http.ResponseWriter, request *http.Request) {
+	backend.mutex.RLock()
+	routeMatrixData := backend.routeMatrixData
+	backend.mutex.RUnlock()
+	writer.WriteHeader(http.StatusOK)
+	writer.Header().Set("Content-Type", "application/octet-stream")
+	writer.Write(routeMatrixData)
+}
+
+func NearHandler(writer http.ResponseWriter, request *http.Request) {
+	backend.mutex.RLock()
+	nearData := backend.nearData
+	backend.mutex.RUnlock()
+	writer.WriteHeader(http.StatusOK)
+	writer.Header().Set("Content-Type", "application/octet-stream")
+	writer.Write(nearData)
+}
+
 func WebServer() {
 	router := mux.NewRouter()
 	router.HandleFunc("/relay_init", RelayInitHandler).Methods("POST")
 	router.HandleFunc("/relay_update", RelayUpdateHandler).Methods("POST")
+	router.HandleFunc("/cost_matrix", CostMatrixHandler).Methods("GET")
+	router.HandleFunc("/route_matrix", RouteMatrixHandler).Methods("GET")
+	router.HandleFunc("/near", NearHandler).Methods("GET")
 	http.ListenAndServe(":30000", router)
-}
-
-// -----------------------------------------------------------
-
-const NEXT_PACKET_TYPE_RELAY_INIT_REQUEST = 43
-const NEXT_PACKET_TYPE_RELAY_INIT_RESPONSE = 52
-const NEXT_PACKET_TYPE_RELAY_CONFIG_REQUEST  = 50
-const NEXT_PACKET_TYPE_RELAY_CONFIG_RESPONSE = 51
-const NEXT_PACKET_TYPE_RELAY_REPORT = 48
-
-var MasterTokenSignKey = []byte{
-	0x15, 0xa0, 0x59, 0x84, 0x51, 0x1e, 0xf7, 0x96,
-	0xed, 0x4b, 0x82, 0xd2, 0x44, 0xec, 0x04, 0x65,
-	0x0c, 0x55, 0x71, 0xa0, 0xfd, 0xf8, 0x0a, 0xc3,
-	0x64, 0x90, 0x0f, 0x16, 0x24, 0xb7, 0x8f, 0x3a,
-}
-
-var MasterUDPSignPrivateKey = []byte{
-	0x84, 0xc7, 0x24, 0xfa, 0x5f, 0x94, 0x86, 0x99,
-	0x0d, 0x22, 0x40, 0xaf, 0xa1, 0x62, 0x8c, 0x24,
-	0x51, 0xef, 0xfc, 0x10, 0x6f, 0xef, 0x04, 0xb3,
-	0x50, 0x9b, 0xbc, 0xb0, 0xce, 0xcb, 0xc3, 0x03,
-	0x60, 0x45, 0x96, 0x52, 0x4f, 0x1c, 0x00, 0xda,
-	0x35, 0x1b, 0x6c, 0x17, 0x8b, 0xa8, 0xaa, 0xac,
-	0xb4, 0x8c, 0x76, 0xb1, 0x72, 0xa6, 0xfa, 0x7f,
-	0x52, 0x28, 0xd8, 0x6d, 0x9e, 0x2b, 0x91, 0xec,
-}
-var MasterUDPSignPublicKey = []byte{
-	0x60, 0x45, 0x96, 0x52, 0x4f, 0x1c, 0x00, 0xda,
-	0x35, 0x1b, 0x6c, 0x17, 0x8b, 0xa8, 0xaa, 0xac,
-	0xb4, 0x8c, 0x76, 0xb1, 0x72, 0xa6, 0xfa, 0x7f,
-	0x52, 0x28, 0xd8, 0x6d, 0x9e, 0x2b, 0x91, 0xec,
-}
-var MasterUDPSealPrivateKey = []byte{
-	0xb7, 0xca, 0x67, 0x4b, 0x12, 0xe7, 0x6a, 0x19,
-	0xab, 0x69, 0xbc, 0x32, 0x31, 0xf9, 0x9b, 0x29,
-	0x49, 0xe8, 0xa9, 0x5b, 0x7e, 0xb6, 0xe8, 0x4c,
-	0x8a, 0x8a, 0x9e, 0xb3, 0xc2, 0x7b, 0x1f, 0x98,
-}
-var MasterUDPSealPublicKey = []byte{
-	0x77, 0x9f, 0xf2, 0xeb, 0x45, 0xfb, 0xe8, 0x25,
-	0x7a, 0xf3, 0x78, 0xf9, 0x26, 0x22, 0x29, 0xc0,
-	0xa8, 0xd0, 0x66, 0x92, 0x8b, 0xf9, 0x47, 0xcc,
-	0x8b, 0x93, 0x62, 0xbe, 0xb3, 0x88, 0xf9, 0x6f,
-}
-
-const (
-	ADDRESS_NONE = 0
-	ADDRESS_IPV4 = 1
-	ADDRESS_IPV6 = 2
-)
-
-func WriteAddress(buffer []byte, address *net.UDPAddr) {
-	if address == nil {
-		buffer[0] = ADDRESS_NONE
-		return
-	}
-	ipv4 := address.IP.To4()
-	port := address.Port
-	if ipv4 != nil {
-		buffer[0] = ADDRESS_IPV4
-		buffer[1] = ipv4[0]
-		buffer[2] = ipv4[1]
-		buffer[3] = ipv4[2]
-		buffer[4] = ipv4[3]
-		buffer[5] = (byte)(port & 0xFF)
-		buffer[6] = (byte)(port >> 8)
-	} else {
-		buffer[0] = ADDRESS_IPV6
-		copy(buffer[1:], address.IP)
-		buffer[17] = (byte)(port & 0xFF)
-		buffer[18] = (byte)(port >> 8)
-	}
-}
-
-func WriteMasterToken(buffer []byte, address *net.UDPAddr) error {
-	if len(buffer) < MasterTokenBytes {
-		return fmt.Errorf("expected %d byte buffer, got %d bytes", MasterTokenBytes, len(buffer))
-	}
-	WriteAddress(buffer, address)
-	hmac, err := CryptoAuth(buffer[0:AddressBytes], MasterTokenSignKey)
-	if err != nil {
-		return fmt.Errorf("failed to sign master token: %v", err)
-	}
-	if len(hmac) != 32 {
-		panic("wrong hmac size")
-	}
-	copy(buffer[AddressBytes:], hmac[:])
-	return nil
-}
-
-func CryptoAuth(data []byte, key []byte) ([]byte, error) {
-	if len(key) != C.crypto_auth_KEYBYTES {
-		return nil, fmt.Errorf("expected %d byte key, got %d bytes", C.crypto_auth_KEYBYTES, len(key))
-	}
-	var signature [C.crypto_auth_BYTES]byte
-	if C.crypto_auth((*C.uchar)(&signature[0]), (*C.uchar)(&data[0]), (C.ulonglong)(len(data)), (*C.uchar)(&key[0])) != 0 {
-		return nil, fmt.Errorf("failed to sign data with key")
-	}
-	return signature[:], nil
-}
-
-type InitResponseJSON struct {
-	Timestamp   uint64
-	IP          []byte
-	IP2Location string
-	Token       []byte
-}
-
-type RelayConfigRequest struct {
-	RelayId   uint64
-	Timestamp uint64
-	Signature []byte
-}
-
-type RelayJSON struct {
-	Name              string
-	UpdateKey         []byte
-	Group             string
-	Role              string
-	State             int
-	Address           string
-	ManagementAddress string
-}
-
-func TerribleOldShite() {
-
-	listener := UDPListenerMasterCreate(MasterTokenSignKey, MasterUDPSealPublicKey, MasterUDPSealPrivateKey)
-
-	builder := UDPPacketToClientBuilderCreate(MasterUDPSignPrivateKey)
-
-	var packetsReceivedCount int64
-
-	go listener.Listen(
-		&packetsReceivedCount,
-		func(packet *UDPPacketToMaster, from *net.UDPAddr, conn *net.UDPConn) error {
-
-			if packet.Type == NEXT_PACKET_TYPE_RELAY_INIT_REQUEST {
-
-				var token [MasterTokenBytes]byte
-				err := WriteMasterToken(token[:], &net.UDPAddr{IP: from.IP, Port: 0})
-				if err != nil {
-					return fmt.Errorf("could not write master token: %v", err)
-					return nil
-				}
-
-				response := &InitResponseJSON{
-					Timestamp:   uint64(time.Now().UnixNano() / 1000000), // milliseconds
-					IP2Location: "",
-					IP:          []byte(from.String()),
-					Token:       token[:],
-				}
-
-				responseData, _ := json.Marshal(response)
-
-				packets, err := builder.Build(&UDPPacketToClient{Type: NEXT_PACKET_TYPE_RELAY_INIT_RESPONSE, ID: packet.ID, Status: uint16(200), Data: responseData})
-				if err != nil {
-					return fmt.Errorf("could not build relay init response packet: %v", err)
-				}
-
-				for _, packet := range packets {
-					conn.WriteToUDP(packet, from)
-				}
-				return nil
-
-			} else if packet.Type == NEXT_PACKET_TYPE_RELAY_CONFIG_REQUEST {
-
-				var request RelayConfigRequest
-				if err := json.Unmarshal(packet.Data, &request); err != nil {
-					fmt.Printf("could not parse relay config request json: %s", err)
-					return nil
-				}
-
-				response := &RelayJSON{
-					Name:              "local",
-					UpdateKey:         make([]byte, 32),
-					Group:             "local",
-					Role:              "default",
-					State:             0,
-					Address:           from.String(),
-					ManagementAddress: from.String(),
-				}
-
-				responseData, _ := json.Marshal(response)
-
-				packets, err := builder.Build(&UDPPacketToClient{Type: NEXT_PACKET_TYPE_RELAY_CONFIG_RESPONSE, ID: packet.ID, Status: uint16(200), Data: responseData})
-				if err != nil {
-					return fmt.Errorf("could not build relay config response packet: %v", err)
-				}
-
-				for _, packet := range packets {
-					conn.WriteToUDP(packet, from)
-				}
-				return nil
-
-			} else if packet.Type == NEXT_PACKET_TYPE_RELAY_REPORT {
-
-				relayEntry := RelayEntry{}
-				relayEntry.name = from.String()
-				relayEntry.id = GetRelayId(from.String())
-				relayEntry.address = from
-				relayEntry.lastUpdate = time.Now().Unix()
-
-				key := string(from.String())
-
-				backend.mutex.Lock()
-				backend.relayDatabase[key] = relayEntry
-				backend.mutex.Unlock()
-
-			}
-
-			return nil
-		},
-		":40000",
-	)
 }

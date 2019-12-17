@@ -10,6 +10,7 @@
 #include <stdarg.h>
 #include <sodium.h>
 #include <math.h>
+#include <float.h>
 #include <signal.h>
 #include "curl/curl.h"
 
@@ -40,8 +41,15 @@
 #define RELAY_SESSION_PONG_PACKET                                 12
 #define RELAY_CONTINUE_REQUEST_PACKET                             13
 #define RELAY_CONTINUE_RESPONSE_PACKET                            14
-#define RELAY_NEAR_PING_PACKET                                    73
-#define RELAY_NEAR_PONG_PACKET                                    74
+
+#define RELAY_PING_HISTORY_ENTRY_COUNT                           256
+
+#define RELAY_PING_TIME                                          0.1
+
+#define RELAY_STATS_WINDOW                                       100
+#define RELAY_PING_SAFETY                                         10
+
+#define RELAY_MAX_PACKET_BYTES                                  1500
 
 // -------------------------------------------------------------------------------------
 
@@ -2869,6 +2877,366 @@ int relay_base64_decode_string( const char * input, char * output, size_t output
     return output_length;
 }
 
+// ---------------------------------------------------------------
+
+struct relay_route_stats_t
+{
+    float rtt;
+    float jitter;
+    float packet_loss;
+};
+
+struct relay_ping_history_entry_t
+{
+    uint64_t sequence;
+    double time_ping_sent;
+    double time_pong_received;
+};
+
+struct relay_ping_history_t
+{
+    uint64_t sequence;
+    relay_ping_history_entry_t entries[RELAY_PING_HISTORY_ENTRY_COUNT];
+};
+
+void relay_ping_history_clear( relay_ping_history_t * history )
+{
+    assert( history );
+    history->sequence = 0;
+    for ( int i = 0; i < RELAY_PING_HISTORY_ENTRY_COUNT; ++i )
+    {
+        history->entries[i].sequence = 0xFFFFFFFFFFFFFFFFULL;
+        history->entries[i].time_ping_sent = -1.0;
+        history->entries[i].time_pong_received = -1.0;
+    }
+}
+
+uint64_t relay_ping_history_ping_sent( relay_ping_history_t * history, double time )
+{
+    assert( history );
+    const int index = history->sequence % RELAY_PING_HISTORY_ENTRY_COUNT;
+    relay_ping_history_entry_t * entry = &history->entries[index];
+    entry->sequence = history->sequence;
+    entry->time_ping_sent = time;
+    entry->time_pong_received = -1.0;
+    history->sequence++;
+    return entry->sequence;
+}
+
+void relay_ping_history_pong_received( relay_ping_history_t * history, uint64_t sequence, double time )
+{
+    const int index = sequence % RELAY_PING_HISTORY_ENTRY_COUNT;
+    relay_ping_history_entry_t * entry = &history->entries[index];
+    if ( entry->sequence == sequence )
+    {
+        entry->time_pong_received = time;
+    }
+}
+
+void relay_route_stats_from_ping_history( const relay_ping_history_t * history, double start, double end, relay_route_stats_t * stats, double ping_safety )
+{
+    assert( history );
+    assert( stats );
+    assert( start < end );
+
+    stats->rtt = 0.0f;
+    stats->jitter = 0.0f;
+    stats->packet_loss = 0.0f;
+
+    // calculate packet loss
+
+    int num_pings_sent = 0;
+    int num_pongs_received = 0;
+
+    for ( int i = 0; i < RELAY_PING_HISTORY_ENTRY_COUNT; i++ )
+    {
+        const relay_ping_history_entry_t * entry = &history->entries[i];
+
+        if ( entry->time_ping_sent >= start && entry->time_ping_sent <= end - ping_safety )
+        {
+            num_pings_sent++;
+
+            if ( entry->time_pong_received >= entry->time_ping_sent )
+                num_pongs_received++;
+        }
+    }
+
+    if ( num_pings_sent > 0 )
+    {
+        stats->packet_loss = (float) ( 100.0 * ( 1.0 - ( double( num_pongs_received ) / double( num_pings_sent ) ) ) );
+    }
+
+    // calculate mean RTT
+
+    double mean_rtt = 0.0;
+    int num_pings = 0;
+    int num_pongs = 0;
+
+    for ( int i = 0; i < RELAY_PING_HISTORY_ENTRY_COUNT; i++ )
+    {
+        const relay_ping_history_entry_t * entry = &history->entries[i];
+
+        if ( entry->time_ping_sent >= start && entry->time_ping_sent <= end )
+        {
+            if ( entry->time_pong_received > entry->time_ping_sent )
+            {
+                mean_rtt += 1000.0 * ( entry->time_pong_received - entry->time_ping_sent );
+                num_pongs++;
+            }
+            num_pings++;
+        }
+    }
+
+    mean_rtt = ( num_pongs > 0 ) ? ( mean_rtt / num_pongs ) : 10000.0;
+
+    assert( mean_rtt >= 0.0 );
+
+    stats->rtt = float( mean_rtt );
+
+    // calculate jitter
+
+    int num_jitter_samples = 0;
+  
+    double stddev_rtt = 0.0;
+
+    for ( int i = 0; i < RELAY_PING_HISTORY_ENTRY_COUNT; i++ )
+    {
+        const relay_ping_history_entry_t * entry = &history->entries[i];
+
+        if ( entry->time_ping_sent >= start && entry->time_ping_sent <= end )
+        {
+            if ( entry->time_pong_received > entry->time_ping_sent )
+            {
+                // pong received
+                double rtt = 1000.0 * ( entry->time_pong_received - entry->time_ping_sent );
+                if ( rtt >= mean_rtt )
+                {
+                    double error = rtt - mean_rtt;
+                    stddev_rtt += error * error;
+                    num_jitter_samples++;
+                }
+            }
+        }
+    }
+
+    if ( num_jitter_samples > 0 )
+    {
+        stats->jitter = 3.0f * (float) sqrt( stddev_rtt / num_jitter_samples );
+    }
+}
+
+// --------------------------------------------------------------------------
+
+#define MAX_RELAYS 1024
+
+struct relay_stats_t
+{
+    int num_relays;
+    uint64_t relay_ids[MAX_RELAYS];
+    float relay_rtt[MAX_RELAYS];
+    float relay_jitter[MAX_RELAYS];
+    float relay_packet_loss[MAX_RELAYS];
+};
+
+struct relay_manager_t
+{
+    int num_relays;
+    uint64_t relay_ids[MAX_RELAYS];
+    double relay_last_ping_time[MAX_RELAYS];
+    relay_address_t relay_addresses[MAX_RELAYS];
+    relay_ping_history_t * relay_ping_history[MAX_RELAYS];
+    relay_ping_history_t ping_history_array[MAX_RELAYS];
+};
+
+void relay_manager_reset( relay_manager_t * manager );
+
+relay_manager_t * relay_manager_create()
+{
+    relay_manager_t * manager = (relay_manager_t*) malloc( sizeof(relay_manager_t) );
+    if ( !manager ) 
+        return NULL;
+    relay_manager_reset( manager );
+    return manager;
+}
+
+void relay_manager_reset( relay_manager_t * manager )
+{
+    assert( manager );
+    manager->num_relays = 0;
+    memset( manager->relay_ids, 0, sizeof(manager->relay_ids) );
+    memset( manager->relay_last_ping_time, 0, sizeof(manager->relay_last_ping_time) );
+    memset( manager->relay_addresses, 0, sizeof(manager->relay_addresses) );
+    memset( manager->relay_ping_history, 0, sizeof(manager->relay_ping_history) );
+    for ( int i = 0; i < MAX_RELAYS; ++i )
+    {
+        relay_ping_history_clear( &manager->ping_history_array[i] );
+    }    
+}
+
+void relay_manager_update( relay_manager_t * manager, int num_relays, const uint64_t * relay_ids, const relay_address_t * relay_addresses )
+{
+    assert( manager );
+    assert( num_relays >= 0 );
+    assert( num_relays <= MAX_RELAYS );
+    assert( relay_ids );
+    assert( relay_addresses );
+
+    // first copy all current relays that are also in the updated relay relay list
+
+    bool history_slot_taken[MAX_RELAYS];
+    memset( history_slot_taken, 0, sizeof(history_slot_taken) );
+
+    bool found[MAX_RELAYS];
+    memset( found, 0, sizeof(found) );
+
+    uint64_t new_relay_ids[MAX_RELAYS];
+    double new_relay_last_ping_time[MAX_RELAYS];
+    relay_address_t new_relay_addresses[MAX_RELAYS];
+    relay_ping_history_t * new_relay_ping_history[MAX_RELAYS];
+
+    int index = 0;
+
+    for ( int i = 0; i < manager->num_relays; ++i )
+    {
+        for ( int j = 0; j < num_relays; ++j )
+        {
+            if ( manager->relay_ids[i] == relay_ids[j] )
+            {
+                found[j] = true;
+                new_relay_ids[index] = manager->relay_ids[i];
+                new_relay_last_ping_time[index] = manager->relay_last_ping_time[i];
+                new_relay_addresses[index] = manager->relay_addresses[i];
+                new_relay_ping_history[index] = manager->relay_ping_history[i];
+                const int slot = manager->relay_ping_history[i] - manager->ping_history_array;
+                assert( slot >= 0 );
+                assert( slot < MAX_RELAYS );
+                history_slot_taken[slot] = true;
+                index++;
+                break;
+            }
+        }
+    }
+
+    // now copy all near relays not found in the current relay list
+
+    for ( int i = 0; i < num_relays; ++i )
+    {
+        if ( !found[i] )
+        {
+            new_relay_ids[index] = relay_ids[i];
+            new_relay_last_ping_time[index] = -10000.0;
+            new_relay_addresses[index] = relay_addresses[i];
+            new_relay_ping_history[index] = NULL;
+            for ( int j = 0; j < MAX_RELAYS; ++j )
+            {
+                if ( !history_slot_taken[j] )
+                {
+                    new_relay_ping_history[index] = &manager->ping_history_array[j];
+                    relay_ping_history_clear( new_relay_ping_history[index] );
+                    history_slot_taken[j] = true;
+                    break;
+                }
+            }
+            assert( new_relay_ping_history[index] );
+            index++;
+        }                
+    }
+
+    // commit the updated relay array
+
+    manager->num_relays = index;
+    memcpy( manager->relay_ids, new_relay_ids, 8 * index );
+    memcpy( manager->relay_last_ping_time, new_relay_last_ping_time, 8 * index );
+    memcpy( manager->relay_addresses, new_relay_addresses, sizeof(relay_address_t) * index );
+    memcpy( manager->relay_ping_history, new_relay_ping_history, sizeof(relay_ping_history_t*) * index );
+
+    // make sure all ping times are evenly distributed to avoid clusters of ping packets
+
+    double current_time = relay_platform_time();
+
+    if ( manager->num_relays > 0 )
+    {
+        for ( int i = 0; i < manager->num_relays; ++i )
+        {
+            manager->relay_last_ping_time[i] = current_time - RELAY_PING_TIME + i * RELAY_PING_TIME / manager->num_relays;
+        }
+    }
+
+#ifndef NDEBUG
+
+    // make sure everything is correct
+
+    assert( num_relays == index );
+
+    int num_found = 0;
+    for ( int i = 0; i < num_relays; ++i )
+    {
+        for ( int j = 0; j < manager->num_relays; ++j )
+        {
+            if ( relay_ids[i] == manager->relay_ids[j] && relay_address_equal( &relay_addresses[i], &manager->relay_addresses[j] ) == 1 )
+            {
+                num_found++;
+                break;
+            }
+        }
+    }
+    assert( num_found == num_relays );
+
+    for ( int i = 0; i < num_relays; ++i )
+    {
+        for ( int j = 0; j < num_relays; ++j )
+        {
+            if ( i == j )
+                continue;
+            assert( manager->relay_ping_history[i] != manager->relay_ping_history[j] );
+        }
+    }
+
+#endif // #ifndef DEBUG
+}
+
+bool relay_manager_process_pong( relay_manager_t * manager, const relay_address_t * from, uint64_t sequence )
+{
+    assert( manager );
+    assert( from );
+
+    for ( int i = 0; i < manager->num_relays; ++i )
+    {
+        if ( relay_address_equal( from, &manager->relay_addresses[i] ) )
+        {
+            relay_ping_history_pong_received( manager->relay_ping_history[i], sequence, relay_platform_time() );
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void relay_manager_get_stats( relay_manager_t * manager, relay_stats_t * stats )
+{
+    assert( manager );
+    assert( stats );
+
+    double current_time = relay_platform_time();
+    
+    stats->num_relays = manager->num_relays;
+
+    for ( int i = 0; i < stats->num_relays; ++i )
+    {        
+        relay_route_stats_t route_stats;
+        relay_route_stats_from_ping_history( manager->relay_ping_history[i], current_time - RELAY_STATS_WINDOW, current_time, &route_stats, RELAY_PING_SAFETY );
+        stats->relay_ids[i] = manager->relay_ids[i];
+        stats->relay_rtt[i] = route_stats.rtt;
+        stats->relay_jitter[i] = route_stats.jitter;
+        stats->relay_packet_loss[i] = route_stats.packet_loss;
+    }
+}
+
+void relay_manager_destroy( relay_manager_t * manager )
+{
+    free( manager );
+}
+
 // --------------------------------------------------------------------------
 
 #define RUN_TEST( test_function )                                           \
@@ -3590,7 +3958,7 @@ static void test_platform_socket()
         relay_address_t local_address;
         relay_address_parse( &bind_address, "0.0.0.0" );
         relay_address_parse( &local_address, "127.0.0.1" );
-        relay_platform_socket_t * socket = relay_platform_socket_create( &bind_address, RELAY_PLATFORM_SOCKET_NON_BLOCKING, 0, 64*1024, 64*1024 );
+        relay_platform_socket_t * socket = relay_platform_socket_create( &bind_address, RELAY_PLATFORM_SOCKET_NON_BLOCKING, 1.0, 64*1024, 64*1024 );
         local_address.port = bind_address.port;
         check( socket );
         uint8_t packet[256];
@@ -4011,6 +4379,85 @@ static void test_base64()
     check( relay_base64_decode_string( encoded, decoded, 10 ) == 0 );
 }
 
+static void test_relay_manager()
+{
+    const int MaxRelays = 64;
+    const int NumRelays = 32;
+
+    uint64_t relay_ids[MaxRelays];
+    relay_address_t relay_addresses[MaxRelays];
+
+    for ( int i = 0; i < MaxRelays; ++i )
+    {
+        relay_ids[i] = i;
+        char address_string[256];
+        sprintf( address_string, "127.0.0.1:%d", 40000 + i );
+        relay_address_parse( &relay_addresses[i], address_string );
+    }
+
+    relay_manager_t * manager = relay_manager_create();
+
+    // should be no relays when manager is first created
+    {
+        relay_stats_t stats;
+        relay_manager_get_stats( manager, &stats );
+        check( stats.num_relays == 0 );
+    }
+
+    // add max relays
+    
+    relay_manager_update( manager, NumRelays, relay_ids, relay_addresses );
+    {
+        relay_stats_t stats;
+        relay_manager_get_stats( manager, &stats );
+        check( stats.num_relays == NumRelays );
+        for ( int i = 0; i < NumRelays; ++i )
+        {
+            check( relay_ids[i] == stats.relay_ids[i] );
+        }
+    }
+
+    // remove all relays
+
+    relay_manager_update( manager, 0, relay_ids, relay_addresses );
+    {
+        relay_stats_t stats;
+        relay_manager_get_stats( manager, &stats );
+        check( stats.num_relays == 0 );
+    }
+    
+    // add same relay set repeatedly
+
+    for ( int j = 0; j < 2; ++j )
+    {
+        relay_manager_update( manager, NumRelays, relay_ids, relay_addresses );
+        {
+            relay_stats_t stats;
+            relay_manager_get_stats( manager, &stats );
+            check( stats.num_relays == NumRelays );
+            for ( int i = 0; i < NumRelays; ++i )
+            {
+                check( relay_ids[i] == stats.relay_ids[i] );
+            }
+        }
+    }
+    
+    // now add a few new relays, while some relays remain the same
+
+    relay_manager_update( manager, NumRelays, relay_ids + 4, relay_addresses + 4);
+    {
+        relay_stats_t stats;
+        relay_manager_get_stats( manager, &stats );
+        check( stats.num_relays == NumRelays );
+        for ( int i = 0; i < NumRelays; ++i )
+        {
+            check( relay_ids[i+4] == stats.relay_ids[i] );
+        }
+    }
+
+    relay_manager_destroy( manager );
+}
+
 void relay_test()
 {
     printf( "\nRunning relay tests:\n\n" );
@@ -4040,6 +4487,7 @@ void relay_test()
     RUN_TEST( test_continue_token );
     RUN_TEST( test_header );
     RUN_TEST( test_base64 );
+    RUN_TEST( test_relay_manager );
     
     printf( "\n" );
 
@@ -4053,9 +4501,20 @@ void relay_test()
 #define RELAY_TOKEN_BYTES 32
 #define RESPONSE_MAX_BYTES 1024 * 1024
 
+#define NEAR_PING_PACKET 73
+#define NEAR_PONG_PACKET 74
+#define RELAY_PING_PACKET 75
+#define RELAY_PONG_PACKET 76
+
 struct relay_t
 {
-    // ...
+    relay_manager_t * relay_manager;
+    relay_platform_socket_t * socket;
+    relay_platform_mutex_t * mutex;
+    bool relays_dirty;
+    int num_relays;
+    uint64_t relay_ids[MAX_RELAYS];
+    relay_address_t relay_addresses[MAX_RELAYS];
 };
 
 struct curl_buffer_t
@@ -4171,7 +4630,7 @@ int relay_initialize( CURL * curl, uint8_t * relay_token, const char * relay_add
     return RELAY_OK;
 }
 
-int relay_update( CURL * curl, const uint8_t * relay_token, const char * relay_address, uint8_t * update_response_memory )
+int relay_update( CURL * curl, const uint8_t * relay_token, const char * relay_address, uint8_t * update_response_memory, relay_t * relay )
 {
     // build update data
 
@@ -4183,6 +4642,20 @@ int relay_update( CURL * curl, const uint8_t * relay_token, const char * relay_a
     relay_write_uint32( &p, update_version );
     relay_write_string( &p, relay_address, 256 );
     relay_write_bytes( &p, relay_token, RELAY_TOKEN_BYTES );
+
+    relay_platform_mutex_acquire( relay->mutex );
+    relay_stats_t stats;
+    relay_manager_get_stats( relay->relay_manager, &stats );
+    relay_platform_mutex_release( relay->mutex );
+
+    relay_write_uint32( &p, stats.num_relays );
+    for ( int i = 0; i < stats.num_relays; ++i )
+    {
+        relay_write_uint64( &p, stats.relay_ids[i] );
+        relay_write_float32( &p, stats.relay_rtt[i] );
+        relay_write_float32( &p, stats.relay_jitter[i] );
+        relay_write_float32( &p, stats.relay_packet_loss[i] );
+    }
 
     int update_data_length = (int) ( p - update_data );
 
@@ -4196,6 +4669,7 @@ int relay_update( CURL * curl, const uint8_t * relay_token, const char * relay_a
     update_response_buffer.data = (uint8_t*) update_response_memory;
 
     curl_easy_setopt( curl, CURLOPT_BUFFERSIZE, 102400L );
+    // todo: dynamically build from hostname
     curl_easy_setopt( curl, CURLOPT_URL, "http://localhost:30000/relay_update" );
     curl_easy_setopt( curl, CURLOPT_NOPROGRESS, 1L );
     curl_easy_setopt( curl, CURLOPT_POSTFIELDS, update_data );
@@ -4242,8 +4716,6 @@ int relay_update( CURL * curl, const uint8_t * relay_token, const char * relay_a
         return RELAY_ERROR;
     }
 
-    const uint32_t MAX_RELAYS = 4096;
-
     uint32_t num_relays = relay_read_uint32( &q );
 
     if ( num_relays > MAX_RELAYS )
@@ -4252,22 +4724,23 @@ int relay_update( CURL * curl, const uint8_t * relay_token, const char * relay_a
         return RELAY_ERROR;
     }
 
-    struct relay_data_t
+    bool error = false;
+    
+    struct relay_ping_data_t
     {
+        
         uint64_t id;
         relay_address_t address;
     };
 
-    bool error = false;
-    
-    relay_data_t relay_data[MAX_RELAYS];
+    relay_ping_data_t relay_ping_data[MAX_RELAYS];
 
     for ( uint32_t i = 0; i < num_relays; ++i )
     {
         char address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
-        relay_data[i].id = relay_read_uint64( &q );
+        relay_ping_data[i].id = relay_read_uint64( &q );
         relay_read_string( &q, address_string, RELAY_MAX_ADDRESS_STRING_LENGTH );
-        if ( relay_address_parse( &relay_data[i].address, address_string ) != RELAY_OK )
+        if ( relay_address_parse( &relay_ping_data[i].address, address_string ) != RELAY_OK )
         {
             error = true;
             break;
@@ -4280,14 +4753,108 @@ int relay_update( CURL * curl, const uint8_t * relay_token, const char * relay_a
         return RELAY_ERROR;
     }
 
+    relay_platform_mutex_acquire( relay->mutex );
+    relay->num_relays = num_relays;
+    for ( int i = 0; i < int(num_relays); ++i )
+    {
+        relay->relay_ids[i] = relay_ping_data[i].id;
+        relay->relay_addresses[i] = relay_ping_data[i].address;
+    }
+    relay->relays_dirty = true;
+    relay_platform_mutex_release( relay->mutex );
+
     return RELAY_OK;
 }
 
-static volatile int quit = 0;
+static volatile uint64_t quit = 0;
 
 void interrupt_handler( int signal )
 {
     (void) signal; quit = 1;
+}
+
+static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_function( void * context )
+{
+    relay_t * relay = (relay_t*) context;
+
+    uint8_t packet_data[RELAY_MAX_PACKET_BYTES];
+
+    while ( !quit )
+    {
+        relay_address_t from;   
+        const int packet_bytes = relay_platform_socket_receive_packet( relay->socket, &from, packet_data, sizeof(packet_data) );
+        if ( packet_bytes == 0 )
+            continue;
+
+        if ( packet_data[0] == RELAY_PING_PACKET && packet_bytes == 9 )
+        {
+            packet_data[0] = RELAY_PONG_PACKET;
+            relay_platform_socket_send_packet( relay->socket, &from, packet_data, 9 );
+        }
+        else if ( packet_data[0] == RELAY_PONG_PACKET && packet_bytes == 9 )
+        {
+            relay_platform_mutex_acquire( relay->mutex );
+            const uint8_t * p = packet_data + 1;
+            uint64_t sequence = relay_read_uint64( &p );
+            relay_manager_process_pong( relay->relay_manager, &from, sequence );
+            relay_platform_mutex_release( relay->mutex );
+        }
+    }
+
+    RELAY_PLATFORM_THREAD_RETURN();
+}
+
+static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_function( void * context )
+{
+    relay_t * relay = (relay_t*) context;
+
+    while ( !quit )
+    {
+        relay_platform_mutex_acquire( relay->mutex );
+
+        if ( relay->relays_dirty )
+        {
+            relay_manager_update( relay->relay_manager, relay->num_relays, relay->relay_ids, relay->relay_addresses );
+            relay->relays_dirty = false;
+        }
+
+        double current_time = relay_platform_time();
+
+        struct ping_data_t
+        {
+            uint64_t sequence;
+            relay_address_t address;
+        };
+
+        int num_pings = 0;
+        ping_data_t pings[MAX_RELAYS];
+
+        for ( int i = 0; i < relay->relay_manager->num_relays; ++i )
+        {
+            if ( relay->relay_manager->relay_last_ping_time[i] + RELAY_PING_TIME <= current_time )
+            {
+                pings[num_pings].sequence = relay_ping_history_ping_sent( relay->relay_manager->relay_ping_history[i], current_time );
+                pings[num_pings].address = relay->relay_manager->relay_addresses[i];
+                relay->relay_manager->relay_last_ping_time[i] = current_time;
+                num_pings++;
+            }
+        }
+
+        relay_platform_mutex_release( relay->mutex );
+
+        for ( int i = 0; i < num_pings; ++i )
+        {
+            uint8_t packet_data[9];            
+            packet_data[0] = RELAY_PING_PACKET;
+            uint8_t * p = packet_data + 1;
+            relay_write_uint64( &p, pings[i].sequence );
+            relay_platform_socket_send_packet( relay->socket, &pings[i].address, packet_data, 9 );
+        }
+
+        relay_platform_sleep( 1.0 / 100.0 );
+    }
+
+    RELAY_PLATFORM_THREAD_RETURN();
 }
 
 int main( int argc, const char ** argv )
@@ -4390,10 +4957,10 @@ int main( int argc, const char ** argv )
         return 1;
     }
 
-    relay_platform_socket_t * socket = relay_platform_socket_create( &relay_address, RELAY_PLATFORM_SOCKET_BLOCKING, 0.0f, 100 * 1024, 100 * 1024 );
+    relay_platform_socket_t * socket = relay_platform_socket_create( &relay_address, RELAY_PLATFORM_SOCKET_BLOCKING, 0.1f, 100 * 1024, 100 * 1024 );
     if ( socket == NULL )
     {
-        printf( "\nserver could not create server socket\n\n" );
+        printf( "\ncould not create socket\n\n" );
         relay_term();
         return 1;
     }
@@ -4446,6 +5013,37 @@ int main( int argc, const char ** argv )
         
     signal( SIGINT, interrupt_handler );
 
+    relay_t relay;
+    memset( &relay, 0, sizeof(relay) );
+    relay.socket = socket;
+    relay.mutex = relay_platform_mutex_create();
+    if ( !relay.mutex )
+    {
+        printf( "\nerror: could not create ping thread\n\n" );
+        quit = 1;
+    }
+
+    relay.relay_manager = relay_manager_create();
+    if ( !relay.relay_manager )
+    {
+        printf( "\nerror: could not create relay manager\n\n" );
+        quit = 1;
+    }
+
+    relay_platform_thread_t * receive_thread = relay_platform_thread_create( receive_thread_function, &relay );
+    if ( !receive_thread )
+    {
+        printf( "\nerror: could not create receive thread\n\n" );
+        quit = 1;
+    }
+
+    relay_platform_thread_t * ping_thread = relay_platform_thread_create( ping_thread_function, &relay );
+    if ( !ping_thread )
+    {
+        printf( "\nerror: could not create ping thread\n\n" );
+        quit = 1;
+    }
+
     uint8_t * update_response_memory = (uint8_t*) malloc( RESPONSE_MAX_BYTES );
 
     while ( !quit )
@@ -4454,7 +5052,7 @@ int main( int argc, const char ** argv )
 
         for ( int i = 0; i < 10; ++i )
         {
-            if ( relay_update( curl, relay_token, relay_address_string, update_response_memory ) == RELAY_OK )
+            if ( relay_update( curl, relay_token, relay_address_string, update_response_memory, &relay ) == RELAY_OK )
             {
                 updated = true;
                 break;
@@ -4463,15 +5061,33 @@ int main( int argc, const char ** argv )
 
         if ( !updated )
         {
-            printf( "\nerror: could not update relay\n\n" );
+            printf( "error: could not update relay\n\n" );
+            quit = 1;
+            break;
         }
 
         relay_platform_sleep( 1.0 );
     }
 
-    printf( "\nCleaning up\n" );
+    printf( "Cleaning up\n" );
+
+    if ( receive_thread )
+    {
+        relay_platform_thread_join( receive_thread );
+        relay_platform_thread_destroy( receive_thread );
+    }
+
+    if ( ping_thread )
+    {
+        relay_platform_thread_join( ping_thread );
+        relay_platform_thread_destroy( ping_thread );
+    }
 
     free( update_response_memory );
+
+    relay_manager_destroy( relay.relay_manager );
+
+    relay_platform_mutex_destroy( relay.mutex );
 
     relay_platform_socket_destroy( socket );
 
