@@ -41,7 +41,6 @@ void client_packet_received( next_client_t * client, void * context, const uint8
     (void) client; (void) context; (void) packet_data; (void) packet_bytes;
 }
 
-// todo: hack test
 #define NEXT_CLIENT_COUNTER_MAX 64
 extern void next_client_counters( next_client_t * client, uint64_t * counters );
 extern float next_fake_direct_packet_loss;

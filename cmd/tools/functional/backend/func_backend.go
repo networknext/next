@@ -108,24 +108,14 @@ func OptimizeThread() {
 			relayData := core.RelayData{}
 			relayData.Id = core.RelayId(v.id)
 			relayData.Name = v.name
+			relayData.Address = v.address.String()
 			relayData.Datacenter =core.DatacenterId(0)
 			relayData.DatacenterName = "local"
 			relayData.PublicKey = GetRelayPublicKey(v.address.String())
 		}
 		backend.mutex.RUnlock()
 		
-		// todo: this should really just all go in relayDatabase... WTF (!!!)
-		relayConfig := make(map[core.RelayId]core.RelayConfigData)
-		backend.mutex.RLock()
-		for _,v := range backend.relayDatabase {
-			configData := core.RelayConfigData{}
-			configData.Name = "local"
-			configData.Address = v.address.String()
-			relayConfig[core.RelayId(v.id)] = configData
-		}
-		backend.mutex.RUnlock()
-
-		costMatrix := statsDatabase.GetCostMatrix(relayDatabase, relayConfig, false)
+		costMatrix := statsDatabase.GetCostMatrix(relayDatabase)
 		costMatrixData := make([]byte, CostMatrixBytes)
 		costMatrixData = core.WriteCostMatrix(costMatrixData, costMatrix)
 

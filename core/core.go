@@ -69,7 +69,7 @@ var BackendPrivateKey = []byte{21, 124, 5, 171, 56, 198, 148, 140, 20, 15, 8, 17
 
 // ============================================================================
 
-var MaxJitter float32 = 1.0
+var MaxJitter float32 = 10.0
 var MaxPacketLoss float32 = 0.1
 
 const InvalidRouteValue = 10000.0
@@ -218,25 +218,23 @@ func (slice *RouteSlice) Serialize(stream Stream) error {
 // ============================================================================
 
 type RelayUpdate struct {
-	Id         RelayId
-	Datacenter DatacenterId
-	PublicKey  []byte
-	PingKey    []byte
-	Role       byte
-	Shutdown   bool
-	Usage      float32
+	Id              RelayId
+	Name            string
+	Address         string
+	Datacenter      DatacenterId
+	DatacenterName  string
+	PublicKey  		[]byte
+	Shutdown        bool
 }
 
 type RelayData struct {
-	LastUpdateTime uint64
 	Id             RelayId
 	Name           string
+	Address        string
 	Datacenter     DatacenterId
 	DatacenterName string
 	PublicKey      []byte
-	PingKey        []byte
-	Role           byte
-	Usage          float32
+	LastUpdateTime uint64
 }
 
 type RelayDatabase struct {
@@ -249,7 +247,7 @@ func NewRelayDatabase() *RelayDatabase {
 	return database
 }
 
-func (database *RelayDatabase) UpdateRelay(update *RelayUpdate, name string, datacenterName string) bool {
+func (database *RelayDatabase) UpdateRelay(update *RelayUpdate) bool {
 	id := update.Id
 	if update.Shutdown == true {
 		delete(database.Relays, id)
@@ -257,14 +255,12 @@ func (database *RelayDatabase) UpdateRelay(update *RelayUpdate, name string, dat
 	}
 	relayData, relayExistedAlready := database.Relays[id]
 	relayData.Id = update.Id
-	relayData.Name = name
+	relayData.Name = update.Name
+	relayData.Address = update.Address
 	relayData.PublicKey = update.PublicKey
-	relayData.PingKey = update.PingKey
-	relayData.Role = update.Role
 	relayData.LastUpdateTime = uint64(time.Now().Unix())
 	relayData.Datacenter = update.Datacenter
-	relayData.DatacenterName = datacenterName
-	relayData.Usage = update.Usage
+	relayData.DatacenterName = update.DatacenterName
 	database.Relays[id] = relayData
 	return !relayExistedAlready
 }
@@ -444,25 +440,7 @@ func (database *StatsDatabase) GetSample(relays *RelayDatabase, relay1 RelayId, 
 	}
 }
 
-type RelayConfigData struct {
-	Address string
-	Name    string
-}
-
-func AutomaticallyFillInPortNumberForRelayAddress(input string) string {
-	address := &net.UDPAddr{}
-	ip_string, port_string, err := net.SplitHostPort(input)
-	if err != nil {
-		address.IP = net.ParseIP(input)
-		address.Port = 40000 // default relay port number
-	} else {
-		address.IP = net.ParseIP(ip_string)
-		address.Port, _ = strconv.Atoi(port_string)
-	}
-	return address.String()
-}
-
-func (database *StatsDatabase) GetCostMatrix(relays *RelayDatabase, relayConfigData map[RelayId]RelayConfigData, includeJitterAndPacketLoss bool) *CostMatrix {
+func (database *StatsDatabase) GetCostMatrix(relays *RelayDatabase) *CostMatrix {
 
 	numRelays := len(relays.Relays)
 
@@ -473,7 +451,7 @@ func (database *StatsDatabase) GetCostMatrix(relays *RelayDatabase, relayConfigD
 	costMatrix.RelayNames = make([]string, numRelays)
 	costMatrix.RelayAddresses = make([][]byte, numRelays)
 	costMatrix.RelayPublicKeys = make([][]byte, numRelays)
-	costMatrix.RelayDatacenters = make(map[DatacenterId][]RelayId)
+	costMatrix.DatacenterRelays = make(map[DatacenterId][]RelayId)
 	costMatrix.RTT = make([]int32, entryCount)
 
 	datacenterNameMap := make(map[DatacenterId]string)
@@ -491,14 +469,10 @@ func (database *StatsDatabase) GetCostMatrix(relays *RelayDatabase, relayConfigD
 		costMatrix.RelayIds[i] = relayData.Id
 		costMatrix.RelayNames[i] = relayData.Name
 		costMatrix.RelayPublicKeys[i] = relayData.PublicKey
-		relayConfigData, dataFound := relayConfigData[relayData.Id]
-		if dataFound {
-			costMatrix.RelayAddresses[i] = []byte(AutomaticallyFillInPortNumberForRelayAddress(relayConfigData.Address))
-		}
 		if relayData.Datacenter != DatacenterId(0) {
-			datacenter := costMatrix.RelayDatacenters[relayData.Datacenter]
+			datacenter := costMatrix.DatacenterRelays[relayData.Datacenter]
 			datacenter = append(datacenter, RelayId(relayData.Id))
-			costMatrix.RelayDatacenters[relayData.Datacenter] = datacenter
+			costMatrix.DatacenterRelays[relayData.Datacenter] = datacenter
 			datacenterNameMap[relayData.Datacenter] = relayData.DatacenterName
 		}
 	}
@@ -508,40 +482,18 @@ func (database *StatsDatabase) GetCostMatrix(relays *RelayDatabase, relayConfigD
 		costMatrix.DatacenterNames = append(costMatrix.DatacenterNames, name)
 	}
 
-	if !includeJitterAndPacketLoss {
+	// fast path
 
-		// fast path
-
-		for i := 0; i < numRelays; i++ {
-			for j := 0; j < i; j++ {
-				id_i := costMatrix.RelayIds[i]
-				id_j := costMatrix.RelayIds[j]
-				rtt, jitter, packetLoss := database.GetSample(relays, id_i, id_j)
-				ij_index := TriMatrixIndex(i, j)
-				if rtt != InvalidRouteValue && jitter <= MaxJitter && packetLoss <= MaxPacketLoss {
-					costMatrix.RTT[ij_index] = int32(math.Floor(float64(rtt)))
-				} else {
-					costMatrix.RTT[ij_index] = -1
-				}
-			}
-		}
-
-	} else {
-
-		// debug only path
-
-		costMatrix.Jitter = make([]float32, entryCount)
-		costMatrix.PacketLoss = make([]float32, entryCount)
-
-		for i := 0; i < numRelays; i++ {
-			for j := 0; j < i; j++ {
-				id_i := costMatrix.RelayIds[i]
-				id_j := costMatrix.RelayIds[j]
-				rtt, jitter, packetLoss := database.GetSample(relays, id_i, id_j)
-				ij_index := TriMatrixIndex(i, j)
-				costMatrix.RTT[ij_index] = int32(math.Floor(float64(rtt)))
-				costMatrix.Jitter[ij_index] = float32(jitter)
-				costMatrix.PacketLoss[ij_index] = float32(packetLoss)
+	for i := 0; i < numRelays; i++ {
+		for j := 0; j < i; j++ {
+			id_i := costMatrix.RelayIds[i]
+			id_j := costMatrix.RelayIds[j]
+			rtt, jitter, packetLoss := database.GetSample(relays, id_i, id_j)
+			ij_index := TriMatrixIndex(i, j)
+			if rtt != InvalidRouteValue && jitter <= MaxJitter && packetLoss <= MaxPacketLoss {
+				costMatrix.RTT[ij_index] = int32(math.Floor(float64(rtt+jitter)))
+			} else {
+				costMatrix.RTT[ij_index] = -1
 			}
 		}
 	}
@@ -2406,12 +2358,10 @@ type CostMatrix struct {
 	RelayNames       []string
 	RelayAddresses   [][]byte
 	RelayPublicKeys  [][]byte
-	RelayDatacenters map[DatacenterId][]RelayId
 	DatacenterIds    []DatacenterId
 	DatacenterNames  []string
+	DatacenterRelays map[DatacenterId][]RelayId
 	RTT              []int32
-	Jitter           []float32 // todo: urg... we don't want this
-	PacketLoss       []float32
 }
 
 // IMPORTANT: Bump this version whenever you change the binary format
@@ -2420,6 +2370,8 @@ const CostMatrixVersion = 2
 func WriteCostMatrix(buffer []byte, costMatrix *CostMatrix) []byte {
 
 	var index int
+
+	// todo: update this to the new way of reading/writing binary as per-backend.go
 
 	binary.LittleEndian.PutUint32(buffer[index:], CostMatrixVersion)
 	index += 4
@@ -2458,11 +2410,11 @@ func WriteCostMatrix(buffer []byte, costMatrix *CostMatrix) []byte {
 		index += WriteBytes(buffer[index:], costMatrix.RelayPublicKeys[i])
 	}
 
-	numDatacenters := int32(len(costMatrix.RelayDatacenters))
+	numDatacenters := int32(len(costMatrix.DatacenterRelays))
 	binary.LittleEndian.PutUint32(buffer[index:], uint32(numDatacenters))
 	index += 4
 
-	for k, v := range costMatrix.RelayDatacenters {
+	for k, v := range costMatrix.DatacenterRelays {
 
 		binary.LittleEndian.PutUint32(buffer[index:], uint32(k))
 		index += 4
@@ -2490,6 +2442,8 @@ func ReadCostMatrix(buffer []byte) (*CostMatrix, error) {
 	var index int
 
 	var costMatrix CostMatrix
+
+	// todo: update to new way to read/write binary as per backend.go
 
 	version := binary.LittleEndian.Uint32(buffer[index:])
 	index += 4
@@ -2546,7 +2500,7 @@ func ReadCostMatrix(buffer []byte) (*CostMatrix, error) {
 	numDatacenters := int32(binary.LittleEndian.Uint32(buffer[index:]))
 	index += 4
 
-	costMatrix.RelayDatacenters = make(map[DatacenterId][]RelayId)
+	costMatrix.DatacenterRelays = make(map[DatacenterId][]RelayId)
 
 	for i := 0; i < int(numDatacenters); i++ {
 
@@ -2556,10 +2510,10 @@ func ReadCostMatrix(buffer []byte) (*CostMatrix, error) {
 		numRelaysInDatacenter := int32(binary.LittleEndian.Uint32(buffer[index:]))
 		index += 4
 
-		costMatrix.RelayDatacenters[datacenterId] = make([]RelayId, numRelaysInDatacenter)
+		costMatrix.DatacenterRelays[datacenterId] = make([]RelayId, numRelaysInDatacenter)
 
 		for j := 0; j < int(numRelaysInDatacenter); j++ {
-			costMatrix.RelayDatacenters[datacenterId][j] = RelayId(binary.LittleEndian.Uint32(buffer[index:]))
+			costMatrix.DatacenterRelays[datacenterId][j] = RelayId(binary.LittleEndian.Uint32(buffer[index:]))
 			index += 4
 		}
 	}
@@ -2581,7 +2535,7 @@ type RouteMatrix struct {
 	RelayNames       []string
 	RelayAddresses   [][]byte
 	RelayPublicKeys  [][]byte
-	RelayDatacenters map[DatacenterId][]RelayId
+	DatacenterRelays map[DatacenterId][]RelayId
 	DatacenterIds    []DatacenterId
 	DatacenterNames  []string
 	Entries          []RouteMatrixEntry
@@ -2601,6 +2555,8 @@ const RouteMatrixVersion = 2
 func WriteRouteMatrix(buffer []byte, routeMatrix *RouteMatrix) []byte {
 
 	var index int
+
+	// todo: update to new way to read/write binary as per backend.go
 
 	binary.LittleEndian.PutUint32(buffer[index:], RouteMatrixVersion)
 	index += 4
@@ -2639,11 +2595,11 @@ func WriteRouteMatrix(buffer []byte, routeMatrix *RouteMatrix) []byte {
 		index += WriteBytes(buffer[index:], routeMatrix.RelayPublicKeys[i])
 	}
 
-	numDatacenters := int32(len(routeMatrix.RelayDatacenters))
+	numDatacenters := int32(len(routeMatrix.DatacenterRelays))
 	binary.LittleEndian.PutUint32(buffer[index:], uint32(numDatacenters))
 	index += 4
 
-	for k, v := range routeMatrix.RelayDatacenters {
+	for k, v := range routeMatrix.DatacenterRelays {
 
 		binary.LittleEndian.PutUint32(buffer[index:], uint32(k))
 		index += 4
@@ -2689,6 +2645,8 @@ func ReadRouteMatrix(buffer []byte) (*RouteMatrix, error) {
 	var index int
 
 	var routeMatrix RouteMatrix
+
+	// todo: update to new and better way to read/write binary
 
 	version := binary.LittleEndian.Uint32(buffer[index:])
 	index += 4
@@ -2746,7 +2704,7 @@ func ReadRouteMatrix(buffer []byte) (*RouteMatrix, error) {
 	numDatacenters := int32(binary.LittleEndian.Uint32(buffer[index:]))
 	index += 4
 
-	routeMatrix.RelayDatacenters = make(map[DatacenterId][]RelayId)
+	routeMatrix.DatacenterRelays = make(map[DatacenterId][]RelayId)
 
 	for i := 0; i < int(numDatacenters); i++ {
 
@@ -2756,10 +2714,10 @@ func ReadRouteMatrix(buffer []byte) (*RouteMatrix, error) {
 		numRelaysInDatacenter := int32(binary.LittleEndian.Uint32(buffer[index:]))
 		index += 4
 
-		routeMatrix.RelayDatacenters[datacenterId] = make([]RelayId, numRelaysInDatacenter)
+		routeMatrix.DatacenterRelays[datacenterId] = make([]RelayId, numRelaysInDatacenter)
 
 		for j := 0; j < int(numRelaysInDatacenter); j++ {
-			routeMatrix.RelayDatacenters[datacenterId][j] = RelayId(binary.LittleEndian.Uint32(buffer[index:]))
+			routeMatrix.DatacenterRelays[datacenterId][j] = RelayId(binary.LittleEndian.Uint32(buffer[index:]))
 			index += 4
 		}
 	}
@@ -2946,9 +2904,9 @@ func Optimize(costMatrix *CostMatrix, thresholdRTT int32) *RouteMatrix {
 	result.RelayNames = costMatrix.RelayNames
 	result.RelayAddresses = costMatrix.RelayAddresses
 	result.RelayPublicKeys = costMatrix.RelayPublicKeys
-	result.RelayDatacenters = costMatrix.RelayDatacenters
 	result.DatacenterIds = costMatrix.DatacenterIds
 	result.DatacenterNames = costMatrix.DatacenterNames
+	result.DatacenterRelays = costMatrix.DatacenterRelays
 	result.Entries = make([]RouteMatrixEntry, entryCount)
 
 	type Indirect struct {

@@ -594,7 +594,7 @@ func TestCostMatrix(t *testing.T) {
 	}
 
 	assert.Equal(t, costMatrix.RelayIds, readCostMatrix.RelayIds, "relay id mismatch")
-	// todo: costMatrix.RelayIds once the version is updated
+	// todo: costMatrix.RelayNames once the version is updated
 	assert.Equal(t, costMatrix.RelayAddresses, readCostMatrix.RelayAddresses, "relay address mismatch")
 	assert.Equal(t, costMatrix.RelayPublicKeys, readCostMatrix.RelayPublicKeys, "relay public key mismatch")
 	assert.Equal(t, costMatrix.RelayDatacenters, readCostMatrix.RelayDatacenters, "relay datacenter mismatch")
