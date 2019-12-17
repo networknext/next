@@ -47,7 +47,7 @@ lint: ## runs go vet
 #####################
 
 .PHONY: test
-test: clean lint test-unit test-soak test-func ## runs linters and all tests with coverage
+test: clean lint test-unit test-soak-valgrind test-func ## runs linters and all tests with coverage
 
 .PHONY: test-unit
 test-unit: clean build-sdk-test build-relay ## runts unit tests for sdk, relay, and core
@@ -59,6 +59,11 @@ test-unit: clean build-sdk-test build-relay ## runts unit tests for sdk, relay, 
 .PHONY: test-soak
 test-soak: clean build-sdk-test build-soak-test ## runs soak test
 	@$(DIST_DIR)/$(SDKNAME)_soak_test
+	@printf "\n"
+
+.PHONY: test-soak-valgrind
+test-soak-valgrind: clean build-sdk-test build-soak-test
+	@valgrind --tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes --track-origins=yes $(DIST_DIR)/$(SDKNAME)_soak_test
 	@printf "\n"
 
 .PHONY: test-func
