@@ -47,14 +47,22 @@ lint: ## runs go vet
 #####################
 
 .PHONY: test
-test: clean lint build-relay build-sdk-test ## runs linters and all tests with coverage
+test: clean lint test-unit test-soak test-func ## runs linters and all tests with coverage
+
+.PHONY: test-unit
+test-unit: clean build-sdk-test build-relay ## runts unit tests for sdk, relay, and core
 	@$(DIST_DIR)/$(SDKNAME)_test
 	@$(DIST_DIR)/relay test
 	@$(GO) test -race -v ./core/...
 	@printf "\n"
 
-.PHONY: func ## build and run functional tests
-func: clean build-sdk build-relay build-functional-server build-functional-client
+.PHONY: test-soak
+test-soak: clean build-sdk-test build-soak-test ## runs soak test
+	@$(DIST_DIR)/$(SDKNAME)_soak_test
+	@printf "\n"
+
+.PHONY: test-func
+test-func: clean build-sdk build-relay build-functional-server build-functional-client ## runs functional tests
 	@printf "Building functional backend... "
 	@go build -o ./dist/func_backend ./cmd/tools/functional/backend/*.go
 	@printf "done\n"
@@ -63,10 +71,16 @@ func: clean build-sdk build-relay build-functional-server build-functional-clien
 	@$(GO) run ./cmd/tools/functional/tests/func_tests.go
 	@printf "done\n"
 
-.PHONY: build-sdk-test
+.PHONY: build-sdk-test 
 build-sdk-test: build-sdk ## builds the sdk test binary
 	@printf "Building sdk test... "
 	@$(CXX) -Isdk -o $(DIST_DIR)/$(SDKNAME)_test ./sdk/next_test.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@printf "done\n"
+
+.PHONY: build-soak-test
+build-soak-test: build-sdk ## builds the sdk test binary
+	@printf "Building soak test... "
+	@$(CXX) -Isdk -o $(DIST_DIR)/$(SDKNAME)_soak_test ./sdk/next_soak.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
 PHONY: build-tools
