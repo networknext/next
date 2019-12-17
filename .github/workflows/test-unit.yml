@@ -1,0 +1,16 @@
+name: Test Unit
+
+on: [push, pull_request]
+  
+jobs:
+  test_unit:
+    name: Test Unit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v1
+
+      - name: Run tests
+        uses: ./.github/workflows
+        with:
+          target: test-unit
