@@ -1,0 +1,35 @@
+name: Test Other
+
+on:
+  push:
+    branches:
+      - master
+    tags: []
+  pull_request:
+    branches:
+      - master
+  
+jobs:
+  test_func:
+    name: Test Func
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v1
+
+      - name: Run tests
+        uses: ./.github/workflows
+        with:
+          target: test-func
+
+  test_soak:
+    name: Test Soak
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v1
+
+      - name: Run tests
+        uses: ./.github/workflows
+        with:
+          target: test-soak-valgrind
