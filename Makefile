@@ -67,7 +67,7 @@ test-func: clean build-sdk build-relay build-functional-server build-functional-
 	@go build -o ./dist/func_backend ./cmd/tools/functional/backend/*.go
 	@printf "done\n"
 
-	@printf "Running functional tests... "
+	@printf "\nRunning functional tests...\n\n"
 	@$(GO) run ./cmd/tools/functional/tests/func_tests.go
 	@printf "done\n"
 
