@@ -57,7 +57,7 @@ test-unit: clean build-sdk-test build-relay ## runts unit tests for sdk, relay, 
 	@printf "\n"
 
 .PHONY: test-soak
-test-soak: clean build-sdk-test build-sdk-test ## runs soak test
+test-soak: clean build-sdk-test build-soak-test ## runs soak test
 	@$(DIST_DIR)/$(SDKNAME)_soak_test
 	@printf "\n"
 
