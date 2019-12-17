@@ -10,7 +10,7 @@ on:
   
 jobs:
   test:
-    name: Test
+    name: Test All
     runs-on: ubuntu-latest
     steps:
       - name: Set up Go
@@ -24,5 +24,8 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v1
 
-      - name: Run tests
+      - name: Run unit tests
         run: make test
+
+      - name: Run func tests
+        run: make func

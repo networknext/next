@@ -60,7 +60,7 @@ func: clean build-sdk build-relay build-functional-server build-functional-clien
 	@printf "done\n"
 
 	@printf "Running functional tests... "
-	@$(GO) run ./cmd/tools/functional/tests/functional_tests.go
+	@$(GO) run ./cmd/tools/functional/tests/func_tests.go
 	@printf "done\n"
 
 .PHONY: build-sdk-test
