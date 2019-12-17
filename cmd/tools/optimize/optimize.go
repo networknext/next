@@ -28,7 +28,7 @@ func main() {
 
 	fmt.Printf("\nWelcome to Network Next!\n\n")
 
-	raw, err := ioutil.ReadFile("cost.bin")
+	raw, err := ioutil.ReadFile("./dist/cost.bin")
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
@@ -40,7 +40,7 @@ func main() {
 
 	routeMatrix := core.Optimize(costMatrix, ThresholdRTT)
 
-	WriteResult("optimize.bin", routeMatrix)
+	WriteResult("./dist/optimize.bin", routeMatrix)
 
 	fmt.Printf("\nFinished.\n\n")
 }

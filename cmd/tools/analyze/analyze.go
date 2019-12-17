@@ -148,7 +148,7 @@ func main() {
 
 	fmt.Printf("\nWelcome to Network Next!\n\n")
 
-	routeMatrix := LoadRouteMatrix("optimize.bin")
+	routeMatrix := LoadRouteMatrix("./dist/optimize.bin")
 
 	fmt.Printf("\n")
 

@@ -7,27 +7,22 @@ package main
 
 import (
 	"fmt"
-	// "io/ioutil"
-	// "os"
+	"net/http"
+	"io/ioutil"
 )
 
 func main() {
 
 	fmt.Printf("\nWelcome to Network Next!\n\n")
 
-	/*
-	common.InitEnvironment()
-
-	common.UpdateEnvironment()
-
-	responseData, err := common.GetHttpAuth(common.MasterConfig.Address + "/admin/api/cost_matrix")
+	resp, err := http.Get("http://localhost:30000/cost_matrix")
 	if err != nil {
-		fmt.Printf("error: failed to get cost matrix: %v\n", err)
-		os.Exit(1)
+		fmt.Printf("error: could not get cost matrix: %v", err)
 	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
 
-	ioutil.WriteFile("cost.bin", responseData, 0644)
+	ioutil.WriteFile("./dist/cost.bin", body, 0644)
 
-	fmt.Printf("Wrote cost matrix to 'cost.bin'\n\n")
-	*/
+	fmt.Printf("Wrote cost matrix to 'dist/cost.bin'\n\n")
 }

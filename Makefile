@@ -111,6 +111,22 @@ dev-server-backend: ## runs a local server_backend
 dev-backend: ## runs a local mock backend that encompasses the relay backend and server backend
 	$(GO) run cmd/tools/functional/backend/*.go
 
+.PHONY: dev-cost
+dev-cost: ## runs the cost tool
+	$(GO) run cmd/tools/cost/*.go
+
+.PHONY: dev-optimize
+dev-optimize: ## runs the optimize tool
+	$(GO) run cmd/tools/optimize/*.go
+
+.PHONY: dev-analyze
+dev-analyze: ## runs the analyze tool
+	$(GO) run cmd/tools/analyze/*.go
+
+.PHONY: dev-keygen
+dev-keygen: ## runs the keygen tool
+	$(GO) run cmd/tools/keygen/*.go
+
 .PHONY: dev-server
 dev-server: build-functional-server  ## runs a local mock backend that encompasses the relay backend and server backend
 	@./dist/functional_server
