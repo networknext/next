@@ -24,8 +24,5 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v1
 
-      - name: Run unit tests
+      - name: Run all tests
         run: make test
-
-      - name: Run func tests
-        run: make func
