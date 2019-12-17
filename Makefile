@@ -15,7 +15,10 @@ SHA ?= $(shell git rev-parse --short HEAD)
 TAG ?= $(shell git describe --tags 2> /dev/null)
 
 CURRENT_DIR = $(shell pwd -P)
-DIST_DIR = "./dist"
+DIST_DIR = ./dist
+
+COST_FILE = $(DIST_DIR)/cost.bin
+OPTIMIZE_FILE = $(DIST_DIR)/optimize.bin
 
 #####################
 ##    RELAY ENV    ##
@@ -95,6 +98,26 @@ build-tools: ## builds all the tools
 #####################
 ## MAIN COMPONENTS ##
 #####################
+
+.PHONY: dev-cost
+dev-cost: ## generate ./dist/cost.bin from local backend
+	$(DIST_DIR)/cost -url=http://localhost:30000/cost_matrix > $(COST_FILE)
+
+.PHONY: dev-optimize
+dev-optimize: ## generate ./dist/optimize.bin from ./dist/cost.bin
+	cat $(COST_FILE) | $(DIST_DIR)/optimize -threshold-rtt=1 > $(OPTIMIZE_FILE)
+
+.PHONY: dev-analyze
+dev-analyze: ## analyze ./dist/optimize.bin
+	cat $(OPTIMIZE_FILE) | $(DIST_DIR)/analyze
+
+.PHONY: dev-debug
+dev-debug: ## debug ./dist/optimize.bin with relay=name
+	cat $(OPTIMIZE_FILE) | $(DIST_DIR)/debug -relay=$(relay)
+
+.PHONY: dev-route
+dev-route: ## route ./dist/optimize.bin with relay=name datacenter=name
+	cat $(OPTIMIZE_FILE) | $(DIST_DIR)/route -relay=$(relay) -datacenter=$(datacenter)
 
 .PHONY: dev-relay
 dev-relay: build-relay
