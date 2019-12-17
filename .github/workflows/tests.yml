@@ -17,4 +17,4 @@ jobs:
         uses: actions/checkout@v1
 
       - name: Run tests
-        uses: ./Dockerfile
+        uses: ./.github/workflows/Dockerfile
