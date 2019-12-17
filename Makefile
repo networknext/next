@@ -25,7 +25,7 @@ export RELAY_ID = local
 export RELAY_ADDRESS = 127.0.0.1
 export RELAY_PUBLIC_KEY = BrBNnqb1fAs8ai2dvzQytmYAoDsrW10AkUoy7vI2wpw=
 export RELAY_PRIVATE_KEY = sQXQuzR9HixMjhL+mJ2FCFg76cBcrS+MTN2H+qTxS+wGsE2epvV8CzxqLZ2/NDK2ZgCgOytbXQCRSjLu8jbCnA==
-export RELAY_BACKEND_HOSTNAME = https://localhost:30000
+export RELAY_BACKEND_HOSTNAME = http://localhost:30000
 export RELAY_ROUTER_PUBLIC_KEY = SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
 
 .PHONY: help
