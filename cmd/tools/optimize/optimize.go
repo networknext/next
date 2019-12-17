@@ -6,41 +6,38 @@
 package main
 
 import (
+	"bytes"
+	"flag"
 	"fmt"
-	"github.com/networknext/backend/core"
+	"io"
 	"io/ioutil"
 	"log"
+	"os"
+
+	"github.com/networknext/backend/core"
 )
 
-const ThresholdRTT = 1.0
-
-func WriteResult(filename string, result *core.RouteMatrix) {
-	fmt.Printf("Writing result to '%s'\n", filename)
-	buffer := make([]byte, 20*1024*1024)
-	buffer = core.WriteRouteMatrix(buffer, result)
-	err := ioutil.WriteFile(filename, buffer, 0644)
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
 func main() {
+	rtt := flag.Int64("threshold-rtt", 1.0, "set the threshold RTT")
+	flag.Parse()
 
-	fmt.Printf("\nWelcome to Network Next!\n\n")
-
-	raw, err := ioutil.ReadFile("./dist/cost.bin")
+	costraw, err := ioutil.ReadAll(os.Stdin)
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatalln(fmt.Errorf("error reading from stdin: %w", err))
 	}
 
-	costMatrix, err := core.ReadCostMatrix(raw)
+	costmatrix, err := core.ReadCostMatrix(costraw)
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatalln(fmt.Errorf("error reading cost matrix: %w", err))
 	}
 
-	routeMatrix := core.Optimize(costMatrix, ThresholdRTT)
+	routeMatrix := core.Optimize(costmatrix, int32(*rtt))
 
-	WriteResult("./dist/optimize.bin", routeMatrix)
+	buffer := make([]byte, 20*1024*1024)
+	buffer = core.WriteRouteMatrix(buffer, routeMatrix)
 
-	fmt.Printf("\nFinished.\n\n")
+	buf := bytes.NewBuffer(buffer)
+	if _, err := io.Copy(os.Stdout, buf); err != nil {
+		log.Fatalln(fmt.Errorf("error writing optimize matrix to stdout: %w", err))
+	}
 }

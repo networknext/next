@@ -6,23 +6,24 @@
 package main
 
 import (
-	"fmt"
+	"flag"
+	"io"
+	"log"
 	"net/http"
-	"io/ioutil"
+	"os"
 )
 
 func main() {
+	url := flag.String("url", "http://localhost:30000/cost_matrix", "http://localhost:30000/cost_matrix")
+	flag.Parse()
 
-	fmt.Printf("\nWelcome to Network Next!\n\n")
-
-	resp, err := http.Get("http://localhost:30000/cost_matrix")
+	resp, err := http.Get(*url)
 	if err != nil {
-		fmt.Printf("error: could not get cost matrix: %v", err)
+		log.Fatalf("error: could not get cost matrix: %v\n", err)
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
 
-	ioutil.WriteFile("./dist/cost.bin", body, 0644)
-
-	fmt.Printf("Wrote cost matrix to 'dist/cost.bin'\n\n")
+	if _, err := io.Copy(os.Stdout, resp.Body); err != nil {
+		log.Fatalln(err)
+	}
 }
