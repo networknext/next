@@ -17,6 +17,18 @@ TAG ?= $(shell git describe --tags 2> /dev/null)
 CURRENT_DIR = $(shell pwd -P)
 DIST_DIR = "./dist"
 
+#####################
+##    RELAY ENV    ##
+#####################
+
+export RELAY_ID = local
+export RELAY_ADDRESS = 127.0.0.1:50000
+export RELAY_PUBLIC_KEY = BrBNnqb1fAs8ai2dvzQytmYAoDsrW10AkUoy7vI2wpw=
+export RELAY_PRIVATE_KEY = sQXQuzR9HixMjhL+mJ2FCFg76cBcrS+MTN2H+qTxS+wGsE2epvV8CzxqLZ2/NDK2ZgCgOytbXQCRSjLu8jbCnA==
+export RELAY_LOG_LEVEL = 4
+export RELAY_BACKEND_HOSTNAME = https://localhost:30000
+export RELAY_ROUTER_PUBLIC_KEY = SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
+
 .PHONY: help
 help: ## this list
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
@@ -42,22 +54,14 @@ test: clean lint build-relay build-sdk-test ## runs linters and all tests with c
 	@printf "\n"
 
 .PHONY: func ## build and run functional tests
-func: clean build-sdk build-relay
+func: clean build-sdk build-relay build-functional-server build-functional-client
 	@printf "Building functional backend... "
 	@go build -o ./dist/func_backend ./cmd/tools/functional/backend/*.go
 	@printf "done\n"
 
-	@printf "Building functional server... "
-	@$(CXX) -Isdk -o $(DIST_DIR)/func_server ./cmd/tools/functional/server/func_server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@printf "Running functional tests... "
+	@$(GO) run ./cmd/tools/functional/tests/functional_tests.go
 	@printf "done\n"
-
-	@printf "Building functional client... "
-	@$(CXX) -Isdk -o $(DIST_DIR)/func_client ./cmd/tools/functional/client/func_client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
-	@printf "done\n"
-
-	@printf "\nRunning functional tests:\n\n"
-	@$(GO) run ./cmd/tools/functional/tests/func_tests.go
-	@printf "\n"
 
 .PHONY: build-sdk-test
 build-sdk-test: build-sdk ## builds the sdk test binary
@@ -73,6 +77,10 @@ build-tools: ## builds all the tools
 ## MAIN COMPONENTS ##
 #####################
 
+.PHONY: dev-relay
+dev-relay: build-relay
+	@./dist/relay
+
 .PHONY: dev-optimizer
 dev-optimizer: ## runs a local optimizer
 	$(GO) run cmd/optimizer/optimizer.go
@@ -84,6 +92,18 @@ dev-relay-backend: ## runs a local relay_backend
 .PHONY: dev-server-backend
 dev-server-backend: ## runs a local server_backend
 	$(GO) run cmd/server_backend/server_backend.go
+
+.PHONY: dev-backend
+dev-backend: ## runs a local mock backend that encompasses the relay backend and server backend
+	$(GO) run cmd/tools/functional/backend/*.go
+
+.PHONY: dev-server
+dev-server: build-functional-server  ## runs a local mock backend that encompasses the relay backend and server backend
+	@./dist/functional_server
+
+.PHONY: dev-client
+dev-client: build-functional-client  ## runs a local mock backend that encompasses the relay backend and client backend
+	@./dist/functional_client
 
 .PHONY: build-optimizer
 build-optimizer: ## builds the optimizer binary
@@ -119,6 +139,18 @@ build-server-backend: ## builds the server_backend binary
 build-server: build-sdk ## builds the game server linking in the sdk shared library
 	@printf "Building server... "
 	@$(CXX) -Isdk -o $(DIST_DIR)/server ./cmd/server/server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@printf "done\n"
+
+.PHONY: build-functional-server
+build-functional-server:
+	@printf "Building functional server... "
+	@$(CXX) -Isdk -o $(DIST_DIR)/func_server ./cmd/tools/functional/server/func_server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@printf "done\n"
+
+.PHONY: build-functional-client
+build-functional-client:
+	@printf "Building functional client... "
+	@$(CXX) -Isdk -o $(DIST_DIR)/func_client ./cmd/tools/functional/client/func_client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-client
