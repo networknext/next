@@ -597,7 +597,7 @@ func TestCostMatrix(t *testing.T) {
 	// todo: costMatrix.RelayNames once the version is updated
 	assert.Equal(t, costMatrix.RelayAddresses, readCostMatrix.RelayAddresses, "relay address mismatch")
 	assert.Equal(t, costMatrix.RelayPublicKeys, readCostMatrix.RelayPublicKeys, "relay public key mismatch")
-	assert.Equal(t, costMatrix.RelayDatacenters, readCostMatrix.RelayDatacenters, "relay datacenter mismatch")
+	assert.Equal(t, costMatrix.DatacenterRelays, readCostMatrix.DatacenterRelays, "datacenter relays mismatch")
 	assert.Equal(t, costMatrix.RTT, readCostMatrix.RTT, "relay rtt mismatch")
 }
 
@@ -674,7 +674,7 @@ func TestRouteMatrix(t *testing.T) {
 	// todo: relay names soon
 	assert.Equal(t, routeMatrix.RelayAddresses, readRouteMatrix.RelayAddresses, "relay address mismatch")
 	assert.Equal(t, routeMatrix.RelayPublicKeys, readRouteMatrix.RelayPublicKeys, "relay public key mismatch")
-	assert.Equal(t, routeMatrix.RelayDatacenters, readRouteMatrix.RelayDatacenters, "relay datacenter mismatch")
+	assert.Equal(t, routeMatrix.DatacenterRelays, readRouteMatrix.DatacenterRelays, "datacenter relays mismatch")
 
 	equal := true
 
@@ -871,7 +871,7 @@ func (env *TestEnvironment) GetCostMatrix() *CostMatrix {
 			costMatrix.RTT[index] = env.rtt[i][j]
 		}
 	}
-	costMatrix.RelayDatacenters = make(map[DatacenterId][]RelayId)
+	costMatrix.DatacenterRelays = make(map[DatacenterId][]RelayId)
 	return costMatrix
 }
 
@@ -1000,10 +1000,10 @@ func TestCostMatrixReadAndWrite(t *testing.T) {
 	assert.Equal(t, costMatrix.RelayNames, readCostMatrix.RelayNames, "relay name mismatch")
 	assert.Equal(t, costMatrix.RelayAddresses, readCostMatrix.RelayAddresses, "relay address mismatch")
 	assert.Equal(t, costMatrix.RelayPublicKeys, readCostMatrix.RelayPublicKeys, "relay public key mismatch")
-	assert.Equal(t, costMatrix.RelayDatacenters, readCostMatrix.RelayDatacenters, "relay datacenter mismatch")
-	assert.Equal(t, costMatrix.RTT, readCostMatrix.RTT, "relay rtt mismatch")
 	assert.Equal(t, costMatrix.DatacenterIds, readCostMatrix.DatacenterIds, "datacenter id mismatch")
 	assert.Equal(t, costMatrix.DatacenterNames, readCostMatrix.DatacenterNames, "datacenter names mismatch")
+	assert.Equal(t, costMatrix.DatacenterRelays, readCostMatrix.DatacenterRelays, "datacenter relays mismatch")
+	assert.Equal(t, costMatrix.RTT, readCostMatrix.RTT, "relay rtt mismatch")
 }
 
 func TestRouteMatrixReadAndWrite(t *testing.T) {
@@ -1042,7 +1042,7 @@ func TestRouteMatrixReadAndWrite(t *testing.T) {
 	assert.Equal(t, routeMatrix.RelayNames, readRouteMatrix.RelayNames, "relay name mismatch")
 	assert.Equal(t, routeMatrix.RelayAddresses, readRouteMatrix.RelayAddresses, "relay address mismatch")
 	assert.Equal(t, routeMatrix.RelayPublicKeys, readRouteMatrix.RelayPublicKeys, "relay public key mismatch")
-	assert.Equal(t, routeMatrix.RelayDatacenters, readRouteMatrix.RelayDatacenters, "relay datacenter mismatch")
+	assert.Equal(t, routeMatrix.DatacenterRelays, readRouteMatrix.DatacenterRelays, "datacenter relays mismatch")
 
 	equal := true
 
