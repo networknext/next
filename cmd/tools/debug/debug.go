@@ -6,26 +6,14 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	"github.com/networknext/backend/core"
 	"io/ioutil"
+	"log"
 	"os"
-)
 
-func LoadRouteMatrix(filename string) *core.RouteMatrix {
-	fmt.Printf("Loading '%s'\n", filename)
-	data, err := ioutil.ReadFile(filename)
-	if err != nil {
-		fmt.Printf("error: could not read %s\n", filename)
-		os.Exit(1)
-	}
-	routeMatrix, err := core.ReadRouteMatrix(data)
-	if err != nil {
-		fmt.Printf("error: could not read route matrix\n")
-		os.Exit(1)
-	}
-	return routeMatrix
-}
+	"github.com/networknext/backend/core"
+)
 
 func GetRelayIndex(routeMatrix *core.RouteMatrix, relayName string) int {
 	for i := range routeMatrix.RelayNames {
@@ -37,28 +25,27 @@ func GetRelayIndex(routeMatrix *core.RouteMatrix, relayName string) int {
 }
 
 func main() {
+	relay := flag.String("relay", "", "name of the relay")
 
-	args := os.Args[1:]
-
-	if len(args) != 1 {
-		fmt.Printf("\nUsage: 'next debug [relayname]'\n\n")
-		return
+	data, err := ioutil.ReadAll(os.Stdin)
+	if err != nil {
+		log.Fatal("error reading from stdin")
 	}
 
-	fmt.Printf("\nWelcome to Network Next!\n\n")
+	routeMatrix, err := core.ReadRouteMatrix(data)
+	if err != nil {
+		log.Fatalln("error reading route matrix")
+	}
 
-	routeMatrix := LoadRouteMatrix("optimize.bin")
-
-	relayName := args[0]
+	relayName := *relay
 
 	relayIndex := GetRelayIndex(routeMatrix, relayName)
 
 	if relayIndex == -1 {
-		fmt.Printf("\nerror: can't find relay called '%s'\n\n", relayName)
-		os.Exit(1)
+		log.Fatalf("error: can't find relay called '%s'\n", relayName)
 	}
 
-	fmt.Printf("\nDebug %s:\n\n", relayName)
+	fmt.Printf("Debug %s:\n", relayName)
 
 	numRelays := len(routeMatrix.RelayIds)
 
@@ -74,6 +61,4 @@ func main() {
 			fmt.Printf("       ---- (0) %s\n", routeMatrix.RelayNames[b])
 		}
 	}
-
-	fmt.Printf("\n")
 }

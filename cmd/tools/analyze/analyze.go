@@ -8,25 +8,11 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 
 	"github.com/networknext/backend/core"
 )
-
-func LoadRouteMatrix(filename string) *core.RouteMatrix {
-	fmt.Printf("Loading '%s'\n", filename)
-	data, err := ioutil.ReadFile(filename)
-	if err != nil {
-		fmt.Printf("error: could not read %s\n", filename)
-		os.Exit(1)
-	}
-	routeMatrix, err := core.ReadRouteMatrix(data)
-	if err != nil {
-		fmt.Printf("error: could not read route matrix\n")
-		os.Exit(1)
-	}
-	return routeMatrix
-}
 
 type routeData struct {
 	Improvement int32
@@ -145,12 +131,16 @@ func Analyze(name string, unit string, route_matrix *core.RouteMatrix) {
 }
 
 func main() {
+	optimizeraw, err := ioutil.ReadAll(os.Stdin)
+	if err != nil {
+		log.Fatalln(fmt.Errorf("error reading from stdin: %w", err))
+	}
 
-	fmt.Printf("\nWelcome to Network Next!\n\n")
-
-	routeMatrix := LoadRouteMatrix("./dist/optimize.bin")
-
-	fmt.Printf("\n")
+	routeMatrix, err := core.ReadRouteMatrix(optimizeraw)
+	if err != nil {
+		fmt.Printf("error: could not read route matrix\n")
+		os.Exit(1)
+	}
 
 	Analyze("RTT", "ms", routeMatrix)
 }
