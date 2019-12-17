@@ -74,7 +74,7 @@ func Analyze(name string, unit string, route_matrix *core.RouteMatrix) {
 		}
 	}
 
-	fmt.Printf("%s Improvement:\n\n", name)
+	fmt.Printf("\n%s Improvement:\n\n", name)
 
 	fmt.Printf("    None: %d (%.2f%%)\n", int(numValidRelayPairsWithoutImprovement), numValidRelayPairsWithoutImprovement/numValidRelayPairs*100.0)
 

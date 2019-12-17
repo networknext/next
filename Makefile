@@ -106,18 +106,21 @@ build-tools: ## builds all the tools
 #####################
 
 .PHONY: dev-cost
-dev-cost: ## generate ./dist/cost.bin from local backend
+dev-cost: ## get the cost matrix from the local backend
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/cost ./cmd/tools/cost/cost.go
 	$(DIST_DIR)/cost -url=http://localhost:30000/cost_matrix > $(COST_FILE)
 
 .PHONY: dev-optimize
-dev-optimize: ## generate ./dist/optimize.bin from ./dist/cost.bin
-	cat $(COST_FILE) | $(DIST_DIR)/optimize -threshold-rtt=1 > $(OPTIMIZE_FILE)
+dev-optimize: ## transform the cost matrix into a route matrix
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/optimize ./cmd/tools/optimize/optimize.go
+	cat $(COST_FILE) | ./dist/optimize -threshold-rtt=1 > $(OPTIMIZE_FILE)
 
 .PHONY: dev-analyze
-dev-analyze: ## analyze ./dist/optimize.bin
+dev-analyze: ## analyze the route matrix
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/analyze ./cmd/tools/analyze/analyze.go
 	cat $(OPTIMIZE_FILE) | $(DIST_DIR)/analyze
 
-.PHONY: dev-debug
+.PHONY: debug
 dev-debug: ## debug ./dist/optimize.bin with relay=name
 	cat $(OPTIMIZE_FILE) | $(DIST_DIR)/debug -relay=$(relay)
 
@@ -142,7 +145,7 @@ dev-server-backend: ## runs a local server_backend
 	$(GO) run cmd/server_backend/server_backend.go
 
 .PHONY: dev-backend
-dev-backend: ## runs a local mock backend that encompasses the server backend, relay backend and optimizer
+dev-backend: ## runs a local mock backend
 	$(GO) run cmd/tools/functional/backend/*.go
 
 .PHONY: dev-server
