@@ -10,19 +10,12 @@ on:
   
 jobs:
   test:
-    name: Test All
+    name: Test
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Go
-        uses: actions/setup-go@v1
-        with:
-          go-version: 1.13
-
-      - name: Set up C/C++ Libs
-        run: sudo apt-get update && sudo apt-get install libsodium-dev libcurl4-gnutls-dev
-
       - name: Check out code
         uses: actions/checkout@v1
 
-      - name: Run all tests
+      - name: Run tests
+        uses: ./Dockerfile
         run: make test
