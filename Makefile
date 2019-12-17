@@ -15,7 +15,10 @@ SHA ?= $(shell git rev-parse --short HEAD)
 TAG ?= $(shell git describe --tags 2> /dev/null)
 
 CURRENT_DIR = $(shell pwd -P)
-DIST_DIR = "./dist"
+DIST_DIR = ./dist
+
+COST_FILE = $(DIST_DIR)/cost.bin
+OPTIMIZE_FILE = $(DIST_DIR)/optimize.bin
 
 #####################
 ##    RELAY ENV    ##
@@ -96,6 +99,26 @@ build-tools: ## builds all the tools
 ## MAIN COMPONENTS ##
 #####################
 
+.PHONY: dev-cost
+dev-cost: ## generate ./dist/cost.bin from local backend
+	$(DIST_DIR)/cost -url=http://localhost:30000/cost_matrix > $(COST_FILE)
+
+.PHONY: dev-optimize
+dev-optimize: ## generate ./dist/optimize.bin from ./dist/cost.bin
+	cat $(COST_FILE) | $(DIST_DIR)/optimize -threshold-rtt=1 > $(OPTIMIZE_FILE)
+
+.PHONY: dev-analyze
+dev-analyze: ## analyze ./dist/optimize.bin
+	cat $(OPTIMIZE_FILE) | $(DIST_DIR)/analyze
+
+.PHONY: dev-debug
+dev-debug: ## debug ./dist/optimize.bin with relay=name
+	cat $(OPTIMIZE_FILE) | $(DIST_DIR)/debug -relay=$(relay)
+
+.PHONY: dev-route
+dev-route: ## route ./dist/optimize.bin with relay=name datacenter=name
+	cat $(OPTIMIZE_FILE) | $(DIST_DIR)/route -relay=$(relay) -datacenter=$(datacenter)
+
 .PHONY: dev-relay
 dev-relay: build-relay
 	@./dist/relay
@@ -115,22 +138,6 @@ dev-server-backend: ## runs a local server_backend
 .PHONY: dev-backend
 dev-backend: ## runs a local mock backend that encompasses the relay backend and server backend
 	$(GO) run cmd/tools/functional/backend/*.go
-
-.PHONY: dev-cost
-dev-cost: ## runs the cost tool
-	$(GO) run cmd/tools/cost/*.go
-
-.PHONY: dev-optimize
-dev-optimize: ## runs the optimize tool
-	$(GO) run cmd/tools/optimize/*.go
-
-.PHONY: dev-analyze
-dev-analyze: ## runs the analyze tool
-	$(GO) run cmd/tools/analyze/*.go
-
-.PHONY: dev-keygen
-dev-keygen: ## runs the keygen tool
-	$(GO) run cmd/tools/keygen/*.go
 
 .PHONY: dev-server
 dev-server: build-functional-server  ## runs a local mock backend that encompasses the relay backend and server backend
