@@ -47,7 +47,11 @@ lint: ## runs go vet
 #####################
 
 .PHONY: test
+ifeq ($(OS),linux)
 test: clean lint test-unit test-soak-valgrind test-func ## runs linters and all tests with coverage
+else
+test: clean lint test-unit test-func ## runs linters and all tests with coverage
+endif
 
 .PHONY: test-unit
 test-unit: clean build-sdk-test build-relay ## runts unit tests for sdk, relay, and core
@@ -61,10 +65,12 @@ test-soak: clean build-sdk-test build-soak-test ## runs soak test
 	@$(DIST_DIR)/$(SDKNAME)_soak_test
 	@printf "\n"
 
+ifeq ($(OS),linux)
 .PHONY: test-soak-valgrind
 test-soak-valgrind: clean build-sdk-test build-soak-test
 	@valgrind --tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes --track-origins=yes $(DIST_DIR)/$(SDKNAME)_soak_test
 	@printf "\n"
+endif
 
 .PHONY: test-func
 test-func: clean build-sdk build-relay build-functional-server build-functional-client ## runs functional tests
@@ -74,7 +80,7 @@ test-func: clean build-sdk build-relay build-functional-server build-functional-
 
 	@printf "\nRunning functional tests...\n\n"
 	@$(GO) run ./cmd/tools/functional/tests/func_tests.go
-	@printf "done\n"
+	@printf "\ndone\n\n"
 
 .PHONY: build-sdk-test 
 build-sdk-test: build-sdk ## builds the sdk test binary
@@ -113,7 +119,7 @@ dev-server-backend: ## runs a local server_backend
 	$(GO) run cmd/server_backend/server_backend.go
 
 .PHONY: dev-backend
-dev-backend: ## runs a local mock backend that encompasses the relay backend and server backend
+dev-backend: ## runs a local mock backend that encompasses the server backend, relay backend and optimizer
 	$(GO) run cmd/tools/functional/backend/*.go
 
 .PHONY: dev-cost
@@ -133,12 +139,12 @@ dev-keygen: ## runs the keygen tool
 	$(GO) run cmd/tools/keygen/*.go
 
 .PHONY: dev-server
-dev-server: build-functional-server  ## runs a local mock backend that encompasses the relay backend and server backend
-	@./dist/functional_server
+dev-server: build-server  ## runs a local server
+	@./dist/server
 
 .PHONY: dev-client
-dev-client: build-functional-client  ## runs a local mock backend that encompasses the relay backend and client backend
-	@./dist/functional_client
+dev-client: build-client  ## runs a local client
+	@./dist/client
 
 .PHONY: build-optimizer
 build-optimizer: ## builds the optimizer binary
