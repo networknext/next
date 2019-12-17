@@ -1,6 +1,6 @@
 name: Test Unit
 
-on: [push, pull_request]
+on: push
   
 jobs:
   test_unit:
