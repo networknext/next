@@ -780,12 +780,9 @@ func Analyze(t *testing.T, route_matrix *RouteMatrix) {
 		}
 	}
 
-	// fmt.Printf("%d\n", numValidRelayPairsWithoutImprovement)
-	// fmt.Printf("%v\n", buckets)
-
 	assert.Equal(t, 43916, numValidRelayPairsWithoutImprovement, "optimizer is broken")
 
-	expected := []int{1760, 8768, 6751, 4861, 3259, 2380, 1793, 1370, 1091, 778, 5083}
+	expected := []int{2561, 8443, 6531, 4690, 3208, 2336, 1775, 1364, 1078, 749, 5159}
 
 	assert.Equal(t, expected, buckets, "optimizer is broken")
 }
