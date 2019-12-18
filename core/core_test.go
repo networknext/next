@@ -407,6 +407,11 @@ func TestStreamCpp(t *testing.T) {
 
 func TestTriMatrix(t *testing.T) {
 	t.Parallel()
+	assert.Equal(t, 0, TriMatrixLength(0))
+	assert.Equal(t, 0, TriMatrixLength(1))
+	assert.Equal(t, 1, TriMatrixLength(2))
+	assert.Equal(t, 3, TriMatrixLength(3))
+	assert.Equal(t, 6, TriMatrixLength(4))
 	size := 100
 	length := TriMatrixLength(size)
 	values := make([]int, length)

@@ -104,6 +104,7 @@ func OptimizeThread() {
 
 		relayDatabase := &core.RelayDatabase{}
 		backend.mutex.RLock()
+		relayDatabase.Relays = make(map[core.RelayId]core.RelayData)
 		for _,v := range backend.relayDatabase {
 			relayData := core.RelayData{}
 			relayData.Id = core.RelayId(v.id)
@@ -112,6 +113,7 @@ func OptimizeThread() {
 			relayData.Datacenter =core.DatacenterId(0)
 			relayData.DatacenterName = "local"
 			relayData.PublicKey = GetRelayPublicKey(v.address.String())
+			relayDatabase.Relays[relayData.Id] = relayData
 		}
 		backend.mutex.RUnlock()
 		

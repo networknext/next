@@ -482,8 +482,6 @@ func (database *StatsDatabase) GetCostMatrix(relays *RelayDatabase) *CostMatrix 
 		costMatrix.DatacenterNames = append(costMatrix.DatacenterNames, name)
 	}
 
-	// fast path
-
 	for i := 0; i < numRelays; i++ {
 		for j := 0; j < i; j++ {
 			id_i := costMatrix.RelayIds[i]
@@ -2952,8 +2950,6 @@ func Optimize(costMatrix *CostMatrix, thresholdRTT int32) *RouteMatrix {
 
 				indirect[i] = make([][]Indirect, numRelays)
 
-				row_index := TriMatrixIndex(i, 0)
-
 				for j := 0; j < numRelays; j++ {
 
 					// can't route to self
@@ -2961,7 +2957,7 @@ func Optimize(costMatrix *CostMatrix, thresholdRTT int32) *RouteMatrix {
 						continue
 					}
 
-					ij_index := row_index + j
+					ij_index := TriMatrixIndex(i, j)
 
 					numRoutes := 0
 					rtt_direct := rtt[ij_index]
@@ -3043,11 +3039,9 @@ func Optimize(costMatrix *CostMatrix, thresholdRTT int32) *RouteMatrix {
 
 			for i := startIndex; i <= endIndex; i++ {
 
-				row_index := TriMatrixIndex(i, 0)
-
 				for j := 0; j < i; j++ {
 
-					ij_index := row_index + j
+					ij_index := TriMatrixIndex(i, j)
 
 					if indirect[i][j] == nil {
 
