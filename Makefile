@@ -26,8 +26,8 @@ OPTIMIZE_FILE = $(DIST_DIR)/optimize.bin
 
 export RELAY_ID = local
 export RELAY_ADDRESS = 127.0.0.1
-export RELAY_PUBLIC_KEY = BrBNnqb1fAs8ai2dvzQytmYAoDsrW10AkUoy7vI2wpw=
-export RELAY_PRIVATE_KEY = sQXQuzR9HixMjhL+mJ2FCFg76cBcrS+MTN2H+qTxS+wGsE2epvV8CzxqLZ2/NDK2ZgCgOytbXQCRSjLu8jbCnA==
+export RELAY_PUBLIC_KEY = 9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=
+export RELAY_PRIVATE_KEY = lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=
 export RELAY_BACKEND_HOSTNAME = http://localhost:30000
 export RELAY_ROUTER_PUBLIC_KEY = SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
 export RELAY_DEBUG = 0
@@ -49,12 +49,14 @@ lint: ## runs go vet
 ## TESTS AND TOOLS ##
 #####################
 
-.PHONY: test
 ifeq ($(OS),linux)
-test: clean lint test-unit test-soak-valgrind test-func ## runs linters and all tests with coverage
+TESTS = clean lint test-unit test-soak-valgrind test-func
 else
-test: clean lint test-unit test-func ## runs linters and all tests with coverage
+TESTS = clean lint test-unit test-func
 endif
+
+.PHONY: test
+test: $(TESTS) ## runs linters and all tests with coverage
 
 .PHONY: test-unit
 test-unit: clean build-sdk-test build-relay ## runts unit tests for sdk, relay, and core

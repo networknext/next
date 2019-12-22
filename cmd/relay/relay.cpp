@@ -51,6 +51,9 @@
 
 #define RELAY_MAX_PACKET_BYTES                                  1500
 
+#define RELAY_PUBLIC_KEY_BYTES                                    32
+#define RELAY_PRIVATE_KEY_BYTES                                   32
+
 // -------------------------------------------------------------------------------------
 
 extern int relay_platform_init();
@@ -176,7 +179,7 @@ void relay_printf( int level, const char * format, ... )
 
 // -----------------------------------------------------------------------------
 
-int relay_init()
+int relay_initialize()
 {
     if ( relay_platform_init() != RELAY_OK )
     {
@@ -4462,7 +4465,7 @@ void relay_test()
 {
     printf( "\nRunning relay tests:\n\n" );
 
-    check( relay_init() == RELAY_OK );
+    check( relay_initialize() == RELAY_OK );
 
     RUN_TEST( test_endian );
     RUN_TEST( test_bitpacker );
@@ -4511,6 +4514,11 @@ struct relay_t
     relay_manager_t * relay_manager;
     relay_platform_socket_t * socket;
     relay_platform_mutex_t * mutex;
+    double initialize_time;
+    uint64_t initialize_router_timestamp;
+    uint8_t relay_public_key[RELAY_PUBLIC_KEY_BYTES];
+    uint8_t relay_private_key[RELAY_PRIVATE_KEY_BYTES];
+    uint8_t router_public_key[RELAY_PUBLIC_KEY_BYTES];
     bool relays_dirty;
     int num_relays;
     uint64_t relay_ids[MAX_RELAYS];
@@ -4536,7 +4544,7 @@ size_t curl_buffer_write_function( char * ptr, size_t size, size_t nmemb, void *
     return size * nmemb;
 }
 
-int relay_initialize( CURL * curl, uint8_t * relay_token, const char * relay_address, const uint8_t * relay_private_key )
+int relay_init( CURL * curl, const char * hostname, uint8_t * relay_token, const char * relay_address, const uint8_t * router_public_key, const uint8_t * relay_private_key, uint64_t * router_timestamp )
 {
     const uint32_t init_request_magic = 0x9083708f;
 
@@ -4545,22 +4553,28 @@ int relay_initialize( CURL * curl, uint8_t * relay_token, const char * relay_add
     uint8_t init_data[1024];
     memset( init_data, 0, sizeof(init_data) );
 
+    unsigned char nonce[crypto_box_NONCEBYTES];
+    relay_random_bytes( nonce, crypto_box_NONCEBYTES );
+
     uint8_t * p = init_data;
+
     relay_write_uint32( &p, init_request_magic );
     relay_write_uint32( &p, init_request_version );
+    relay_write_bytes( &p, nonce, crypto_box_NONCEBYTES );
     relay_write_string( &p, relay_address, RELAY_MAX_ADDRESS_STRING_LENGTH );
 
-    int init_length = (int) ( p - init_data );
+    uint8_t * q = p;
 
-    uint8_t signed_init_data[sizeof(init_data) + crypto_sign_BYTES];
-    unsigned long long signed_init_length;
-    if ( crypto_sign( signed_init_data, &signed_init_length, init_data, init_length, relay_private_key ) != 0 )
+    relay_write_bytes( &p, relay_token, RELAY_TOKEN_BYTES );
+
+    int encrypt_length = int( p - q );
+
+    if ( crypto_box_easy( q, q, encrypt_length, nonce, router_public_key, relay_private_key ) != 0 )
     {
-        // printf( "\nerror: failed to sign relay init data\n\n" );
         return RELAY_ERROR;
     }
 
-    assert( memcmp( init_data, signed_init_data + crypto_sign_BYTES, init_length ) == 0 );
+    int init_length = (int) ( p - init_data ) + encrypt_length + crypto_box_MACBYTES;
 
     struct curl_slist * slist = curl_slist_append( NULL, "Content-Type:application/octet-stream" );
 
@@ -4569,14 +4583,16 @@ int relay_initialize( CURL * curl, uint8_t * relay_token, const char * relay_add
     init_response_buffer.max_size = 1024;
     init_response_buffer.data = (uint8_t*) alloca( init_response_buffer.max_size );
 
+    char init_url[1024];
+    sprintf( init_url, "%s/relay_init", hostname );
+
     curl_easy_setopt( curl, CURLOPT_BUFFERSIZE, 102400L );
-    // todo: dynamically build from hostname
-    curl_easy_setopt( curl, CURLOPT_URL, "http://localhost:30000/relay_init" );
+    curl_easy_setopt( curl, CURLOPT_URL, init_url );
     curl_easy_setopt( curl, CURLOPT_NOPROGRESS, 1L );
-    curl_easy_setopt( curl, CURLOPT_POSTFIELDS, signed_init_data );
-    curl_easy_setopt( curl, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)signed_init_length );
+    curl_easy_setopt( curl, CURLOPT_POSTFIELDS, init_data );
+    curl_easy_setopt( curl, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)init_length );
     curl_easy_setopt( curl, CURLOPT_HTTPHEADER, slist );
-    curl_easy_setopt( curl, CURLOPT_USERAGENT, "curl/7.64.1" );
+    curl_easy_setopt( curl, CURLOPT_USERAGENT, "network next relay" );
     curl_easy_setopt( curl, CURLOPT_MAXREDIRS, 50L );
     curl_easy_setopt( curl, CURLOPT_HTTP_VERSION, (long)CURL_HTTP_VERSION_2TLS );
     curl_easy_setopt( curl, CURLOPT_TCP_KEEPALIVE, 1L );
@@ -4607,9 +4623,9 @@ int relay_initialize( CURL * curl, uint8_t * relay_token, const char * relay_add
         return RELAY_ERROR;
     }
 
-    const uint8_t * q = init_response_buffer.data;
+    const uint8_t * r = init_response_buffer.data;
 
-    uint32_t version = relay_read_uint32( &q );
+    uint32_t version = relay_read_uint32( &r );
 
     const uint32_t init_response_version = 0;
 
@@ -4619,18 +4635,20 @@ int relay_initialize( CURL * curl, uint8_t * relay_token, const char * relay_add
         return RELAY_ERROR;
     }
 
-    if ( init_response_buffer.size != 4 + RELAY_TOKEN_BYTES )
+    if ( init_response_buffer.size != 4 + 8 + RELAY_TOKEN_BYTES )
     {
         // printf( "\nerror: bad relay init response size. expected %d bytes, got %d\n\n", RELAY_TOKEN_BYTES, init_response_buffer.size );        
         return RELAY_ERROR;
     }
 
-    memcpy( relay_token, init_response_buffer.data + 4, RELAY_TOKEN_BYTES );
+    *router_timestamp = relay_read_uint64( &r );
+
+    memcpy( relay_token, init_response_buffer.data + 4 + 8, RELAY_TOKEN_BYTES );
 
     return RELAY_OK;
 }
 
-int relay_update( CURL * curl, const uint8_t * relay_token, const char * relay_address, uint8_t * update_response_memory, relay_t * relay )
+int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_token, const char * relay_address, uint8_t * update_response_memory, relay_t * relay )
 {
     // build update data
 
@@ -4668,14 +4686,16 @@ int relay_update( CURL * curl, const uint8_t * relay_token, const char * relay_a
     update_response_buffer.max_size = RESPONSE_MAX_BYTES;
     update_response_buffer.data = (uint8_t*) update_response_memory;
 
+    char update_url[1024];
+    sprintf( update_url, "%s/relay_update", hostname );
+
     curl_easy_setopt( curl, CURLOPT_BUFFERSIZE, 102400L );
-    // todo: dynamically build from hostname
-    curl_easy_setopt( curl, CURLOPT_URL, "http://localhost:30000/relay_update" );
+    curl_easy_setopt( curl, CURLOPT_URL, update_url );
     curl_easy_setopt( curl, CURLOPT_NOPROGRESS, 1L );
     curl_easy_setopt( curl, CURLOPT_POSTFIELDS, update_data );
     curl_easy_setopt( curl, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)update_data_length );
     curl_easy_setopt( curl, CURLOPT_HTTPHEADER, slist );
-    curl_easy_setopt( curl, CURLOPT_USERAGENT, "curl/7.64.1" );
+    curl_easy_setopt( curl, CURLOPT_USERAGENT, "network next relay" );
     curl_easy_setopt( curl, CURLOPT_MAXREDIRS, 50L );
     curl_easy_setopt( curl, CURLOPT_HTTP_VERSION, (long)CURL_HTTP_VERSION_2TLS );
     curl_easy_setopt( curl, CURLOPT_TCP_KEEPALIVE, 1L );
@@ -4773,6 +4793,14 @@ void interrupt_handler( int signal )
     (void) signal; quit = 1;
 }
 
+uint64_t relay_timestamp( relay_t * relay )
+{
+    assert( relay );
+    double current_time = relay_platform_time();
+    uint64_t seconds_since_initialize = uint64_t( current_time - relay->initialize_time );
+    return relay->initialize_router_timestamp + seconds_since_initialize;
+}
+
 static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_function( void * context )
 {
     relay_t * relay = (relay_t*) context;
@@ -4781,11 +4809,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
     while ( !quit )
     {
-        relay_address_t from;   
+        relay_address_t from;
         const int packet_bytes = relay_platform_socket_receive_packet( relay->socket, &from, packet_data, sizeof(packet_data) );
         if ( packet_bytes == 0 )
             continue;
-
         if ( packet_data[0] == RELAY_PING_PACKET && packet_bytes == 9 )
         {
             packet_data[0] = RELAY_PONG_PACKET;
@@ -4798,6 +4825,26 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             uint64_t sequence = relay_read_uint64( &p );
             relay_manager_process_pong( relay->relay_manager, &from, sequence );
             relay_platform_mutex_release( relay->mutex );
+        }
+        else if ( packet_data[0] == RELAY_ROUTE_REQUEST_PACKET )
+        {
+            if ( packet_bytes < int( 1 + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES * 2 ) )
+            {
+                // relay_printf( NEXT_LOG_LEVEL_DEBUG, "ignoring route request. bad packet size (%d)", packet_bytes );
+                continue;
+            }
+            uint8_t * p = &packet_data[1];
+            relay_route_token_t token;
+            if ( relay_read_encrypted_route_token( &p, &token, relay->router_public_key, relay->relay_private_key ) != RELAY_OK )
+            {
+                // relay_printf( NEXT_LOG_LEVEL_DEBUG, "ignoring route request. could not read flow token" );
+                continue;
+            }
+            if ( token.expire_timestamp < relay_timestamp( relay ) )
+            {
+                continue;
+            }
+            printf( "route request\n" );
         }
     }
 
@@ -4901,8 +4948,8 @@ int main( int argc, const char ** argv )
         return 1;
     }
 
-    uint8_t relay_private_key[crypto_sign_SECRETKEYBYTES];
-    if ( relay_base64_decode_data( relay_private_key_env, relay_private_key, crypto_sign_SECRETKEYBYTES ) != crypto_sign_SECRETKEYBYTES )
+    uint8_t relay_private_key[RELAY_PRIVATE_KEY_BYTES];
+    if ( relay_base64_decode_data( relay_private_key_env, relay_private_key, RELAY_PRIVATE_KEY_BYTES ) != RELAY_PRIVATE_KEY_BYTES )
     {
         printf( "\nerror: invalid relay private key\n\n" );
         return 1;
@@ -4917,8 +4964,8 @@ int main( int argc, const char ** argv )
         return 1;
     }
 
-    uint8_t relay_public_key[crypto_sign_PUBLICKEYBYTES];
-    if ( relay_base64_decode_data( relay_public_key_env, relay_public_key, crypto_sign_PUBLICKEYBYTES ) != crypto_sign_PUBLICKEYBYTES )
+    uint8_t relay_public_key[RELAY_PUBLIC_KEY_BYTES];
+    if ( relay_base64_decode_data( relay_public_key_env, relay_public_key, RELAY_PUBLIC_KEY_BYTES ) != RELAY_PUBLIC_KEY_BYTES )
     {
         printf( "\nerror: invalid relay public key\n\n" );
         return 1;
@@ -4951,7 +4998,7 @@ int main( int argc, const char ** argv )
 
     printf( "    backend hostname is '%s'\n", backend_hostname );
 
-    if ( relay_init() != RELAY_OK )
+    if ( relay_initialize() != RELAY_OK )
     {
         printf( "\nerror: failed to initialize relay\n\n" );
         return 1;
@@ -4985,9 +5032,11 @@ int main( int argc, const char ** argv )
 
     bool relay_initialized = false;
 
+    uint64_t router_timestamp = 0;
+
     for ( int i = 0; i < 60; ++i )
     {
-        if ( relay_initialize( curl, relay_token, relay_address_string, relay_private_key ) == RELAY_OK )
+        if ( relay_init( curl, backend_hostname, relay_token, relay_address_string, router_public_key, relay_private_key, &router_timestamp ) == RELAY_OK )
         {
             printf( "\n" );
             relay_initialized = true;
@@ -4999,7 +5048,7 @@ int main( int argc, const char ** argv )
 
         relay_platform_sleep( 1.0 );
     }
-    
+
     if ( !relay_initialized )
     {
         printf( "\nerror: could not initialize relay\n\n" );
@@ -5009,12 +5058,14 @@ int main( int argc, const char ** argv )
         return 1;
     }
 
-    printf( "Relay initialized\n\n" );
-        
-    signal( SIGINT, interrupt_handler );
-
     relay_t relay;
     memset( &relay, 0, sizeof(relay) );
+    relay.initialize_time = relay_platform_time();
+    relay.initialize_router_timestamp = router_timestamp;
+    memcpy( relay.relay_public_key, relay_public_key, RELAY_PUBLIC_KEY_BYTES );
+    memcpy( relay.relay_private_key, relay_private_key, RELAY_PRIVATE_KEY_BYTES );
+    memcpy( relay.router_public_key, router_public_key, crypto_sign_PUBLICKEYBYTES );
+
     relay.socket = socket;
     relay.mutex = relay_platform_mutex_create();
     if ( !relay.mutex )
@@ -5044,6 +5095,10 @@ int main( int argc, const char ** argv )
         quit = 1;
     }
 
+    printf( "Relay initialized\n\n" );
+        
+    signal( SIGINT, interrupt_handler );
+
     uint8_t * update_response_memory = (uint8_t*) malloc( RESPONSE_MAX_BYTES );
 
     while ( !quit )
@@ -5052,7 +5107,7 @@ int main( int argc, const char ** argv )
 
         for ( int i = 0; i < 10; ++i )
         {
-            if ( relay_update( curl, relay_token, relay_address_string, update_response_memory, &relay ) == RELAY_OK )
+            if ( relay_update( curl, backend_hostname, relay_token, relay_address_string, update_response_memory, &relay ) == RELAY_OK )
             {
                 updated = true;
                 break;
