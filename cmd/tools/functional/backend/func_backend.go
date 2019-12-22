@@ -628,13 +628,8 @@ func GetRelayPublicKey(relay_address string) []byte {
 	return []byte{0x06, 0xb0, 0x4d, 0x9e, 0xa6, 0xf5, 0x7c, 0x0b, 0x3c, 0x6a, 0x2d, 0x9d, 0xbf, 0x34, 0x32, 0xb6, 0x66, 0x00, 0xa0, 0x3b, 0x2b, 0x5b, 0x5d, 0x00, 0x91, 0x4a, 0x32, 0xee, 0xf2, 0x36, 0xc2, 0x9c}
 }
 
-func SignatureCheck(data []byte, publicKey []byte) bool {
-    dummy := make([]byte, len(data))
-    dummy_length := uint64(0)
-	if C.crypto_sign_open((*C.uchar)(&dummy[0]), (*C.ulonglong)(&dummy_length), (*C.uchar)(&data[0]), C.ulonglong(len(data)), (*C.uchar)(&publicKey[0])) != 0 {
-		return false
-	}
-	return true
+func CryptoCheck(data []byte, nonce []byte, publicKey []byte, privateKey []byte) bool {
+	return C.crypto_box_open( (*C.uchar)(&data[0]), (*C.uchar)(&data[0]), C.ulonglong(len(data)), (*C.uchar)(&nonce[0]), (*C.uchar)(&publicKey[0]), (*C.uchar)(&privateKey[0]) ) != 0
 }
 
 func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
@@ -644,7 +639,7 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
         return
     }
 
-	index := C.crypto_sign_BYTES
+	index := 0
 
 	var magic uint32
 	if !ReadUint32(body, &index, &magic) || magic != InitRequestMagic {
@@ -656,14 +651,22 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
+	var nonce []byte
+	if !ReadBytes(body, &index, &nonce, C.crypto_box_NONCEBYTES) {
+		return
+	}
+
 	var relay_address string
 	if !ReadString(body, &index, &relay_address, MaxRelayAddressLength) {
 		return
 	}
 
-	relay_public_key := GetRelayPublicKey(relay_address)
+	var encrypted_token []byte
+	if !ReadBytes(body, &index, &encrypted_token, RelayTokenBytes + C.crypto_box_MACBYTES) {
+		return
+	}
 
-	if !SignatureCheck(body, relay_public_key) {
+	if !CryptoCheck(encrypted_token, nonce, relayPublicKey[:], core.RouterPrivateKey[:]) {
 		return
 	}
 
@@ -695,6 +698,7 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 	responseData := make([]byte, 64)
 	index = 0
 	WriteUint32(responseData, &index, InitResponseVersion)
+	WriteUint64(responseData, &index, uint64(time.Now().Unix()))
 	WriteBytes(responseData, &index, relayEntry.token, RelayTokenBytes)
 	responseData = responseData[:index]
 	writer.Write(responseData)
