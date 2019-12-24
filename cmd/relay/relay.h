@@ -21,12 +21,6 @@
 #define RELAY_PLATFORM_MAC                                         2
 #define RELAY_PLATFORM_LINUX                                       3
 
-#define RELAY_LOG_LEVEL_NONE                                       0
-#define RELAY_LOG_LEVEL_ERROR                                      1
-#define RELAY_LOG_LEVEL_INFO                                       2
-#define RELAY_LOG_LEVEL_WARN                                       3
-#define RELAY_LOG_LEVEL_DEBUG                                      4
-
 #if defined(_WIN32)
     #define RELAY_PLATFORM RELAY_PLATFORM_WINDOWS
 #elif defined(__APPLE__)
@@ -98,11 +92,7 @@ struct relay_address_t
     uint8_t type;
 };
 
-void relay_printf( int level, const char * format, ... );
-
-void relay_log_level( int level );
-
-void relay_log_function( void (*function)( int level, const char * format, ... ) );
+void relay_printf( const char * format, ... );
 
 int relay_address_parse( relay_address_t * address, const char * address_string_in );
 

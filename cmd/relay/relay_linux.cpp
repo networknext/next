@@ -110,7 +110,7 @@ relay_platform_socket_t * relay_platform_socket_create( relay_address_t * addres
 
     if ( socket->handle < 0 )
     {
-        relay_printf( RELAY_LOG_LEVEL_ERROR, "failed to create socket" );
+        relay_printf( "failed to create socket" );
         return NULL;
     }
 
@@ -121,7 +121,7 @@ relay_platform_socket_t * relay_platform_socket_create( relay_address_t * addres
         int yes = 1;
         if ( setsockopt( socket->handle, IPPROTO_IPV6, IPV6_V6ONLY, (char*)( &yes ), sizeof( yes ) ) != 0 )
         {
-            relay_printf( RELAY_LOG_LEVEL_ERROR, "failed to set socket ipv6 only" );
+            relay_printf( "failed to set socket ipv6 only" );
             relay_platform_socket_destroy( socket );
             return NULL;
         }
@@ -131,13 +131,13 @@ relay_platform_socket_t * relay_platform_socket_create( relay_address_t * addres
 
     if ( setsockopt( socket->handle, SOL_SOCKET, SO_SNDBUF, (char*)( &send_buffer_size ), sizeof( int ) ) != 0 )
     {
-        relay_printf( RELAY_LOG_LEVEL_ERROR, "failed to set socket send buffer size" );
+        relay_printf( "failed to set socket send buffer size" );
         return NULL;
     }
 
     if ( setsockopt( socket->handle, SOL_SOCKET, SO_RCVBUF, (char*)( &receive_buffer_size ), sizeof( int ) ) != 0 )
     {
-        relay_printf( RELAY_LOG_LEVEL_ERROR, "failed to set socket receive buffer size" );
+        relay_printf( "failed to set socket receive buffer size" );
         relay_platform_socket_destroy( socket );
         return NULL;
     }
@@ -157,7 +157,7 @@ relay_platform_socket_t * relay_platform_socket_create( relay_address_t * addres
 
         if ( bind( socket->handle, (sockaddr*) &socket_address, sizeof( socket_address ) ) < 0 )
         {
-            relay_printf( RELAY_LOG_LEVEL_ERROR, "failed to bind socket (ipv6)" );
+            relay_printf( "failed to bind socket (ipv6)" );
             relay_platform_socket_destroy( socket );
             return NULL;
         }
@@ -175,7 +175,7 @@ relay_platform_socket_t * relay_platform_socket_create( relay_address_t * addres
 
         if ( bind( socket->handle, (sockaddr*) &socket_address, sizeof( socket_address ) ) < 0 )
         {
-            relay_printf( RELAY_LOG_LEVEL_ERROR, "failed to bind socket (ipv4)" );
+            relay_printf( "failed to bind socket (ipv4)" );
             relay_platform_socket_destroy( socket );
             return NULL;
         }
@@ -191,7 +191,7 @@ relay_platform_socket_t * relay_platform_socket_create( relay_address_t * addres
             socklen_t len = sizeof( sin );
             if ( getsockname( socket->handle, (sockaddr*)( &sin ), &len ) == -1 )
             {
-                relay_printf( RELAY_LOG_LEVEL_ERROR, "failed to get socket port (ipv6)" );
+                relay_printf( "failed to get socket port (ipv6)" );
                 relay_platform_socket_destroy( socket );
                 return NULL;
             }
@@ -203,7 +203,7 @@ relay_platform_socket_t * relay_platform_socket_create( relay_address_t * addres
             socklen_t len = sizeof( sin );
             if ( getsockname( socket->handle, (sockaddr*)( &sin ), &len ) == -1 )
             {
-                relay_printf( RELAY_LOG_LEVEL_ERROR, "failed to get socket port (ipv4)" );
+                relay_printf( "failed to get socket port (ipv4)" );
                 relay_platform_socket_destroy( socket );
                 return NULL;
             }
@@ -217,7 +217,7 @@ relay_platform_socket_t * relay_platform_socket_create( relay_address_t * addres
     {
         if ( fcntl( socket->handle, F_SETFL, O_NONBLOCK, 1 ) == -1 )
         {
-            relay_printf( RELAY_LOG_LEVEL_ERROR, "failed to set socket to non-blocking" );
+            relay_printf( "failed to set socket to non-blocking" );
             relay_platform_socket_destroy( socket );
             return NULL;
         }
@@ -230,7 +230,7 @@ relay_platform_socket_t * relay_platform_socket_create( relay_address_t * addres
         tv.tv_usec = (int) ( timeout_seconds * 1000000.0f );
         if ( setsockopt( socket->handle, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof( tv ) ) < 0 )
         {
-            relay_printf( RELAY_LOG_LEVEL_ERROR, "failed to set socket receive timeout" );
+            relay_printf( "failed to set socket receive timeout" );
             relay_platform_socket_destroy( socket );
             return NULL;
         }
@@ -276,7 +276,7 @@ void relay_platform_socket_send_packet( relay_platform_socket_t * socket, const 
         {
             char address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
             relay_address_to_string( to, address_string );
-            relay_printf( RELAY_LOG_LEVEL_DEBUG, "sendto (%s) failed: %s", address_string, strerror( errno ) );
+            relay_printf( "sendto (%s) failed: %s", address_string, strerror( errno ) );
         }
     }
     else if ( to->type == RELAY_ADDRESS_IPV4 )
@@ -294,12 +294,12 @@ void relay_platform_socket_send_packet( relay_platform_socket_t * socket, const 
         {
             char address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
             relay_address_to_string( to, address_string );
-            relay_printf( RELAY_LOG_LEVEL_DEBUG, "sendto (%s) failed: %s", address_string, strerror( errno ) );
+            relay_printf( "sendto (%s) failed: %s", address_string, strerror( errno ) );
         }
     }
     else
     {
-        relay_printf( RELAY_LOG_LEVEL_ERROR, "invalid address type. could not send packet" );
+        relay_printf( "invalid address type. could not send packet" );
     }
 }
 
@@ -322,7 +322,7 @@ int relay_platform_socket_receive_packet( relay_platform_socket_t * socket, rela
             return 0;
         }
 
-        relay_printf( RELAY_LOG_LEVEL_DEBUG, "recvfrom failed with error %d", errno );
+        relay_printf( "recvfrom failed with error %d", errno );
         
         return 0;
     }
@@ -393,7 +393,7 @@ void relay_platform_thread_set_sched_max( relay_platform_thread_t * thread )
     param.sched_priority = sched_get_priority_max( SCHED_FIFO );
     int ret = pthread_setschedparam( thread->handle, SCHED_FIFO, &param );
     if (ret) {
-        relay_printf( RELAY_LOG_LEVEL_INFO, "unable to increase server thread priority: %s", strerror(ret) );
+        relay_printf( "unable to increase server thread priority: %s", strerror(ret) );
     }
 }
 

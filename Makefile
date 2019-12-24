@@ -32,6 +32,17 @@ export RELAY_BACKEND_HOSTNAME = http://localhost:30000
 export RELAY_ROUTER_PUBLIC_KEY = SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
 export RELAY_DEBUG = 0
 
+###################
+##    SDK ENV    ##
+###################
+
+export NEXT_LOG_LEVEL = 4
+export NEXT_DATACENTER = local
+export NEXT_CUSTOMER_PUBLIC_KEY = leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==
+export NEXT_CUSTOMER_PRIVATE_KEY = leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn
+export NEXT_HOSTNAME = 127.0.0.1
+export NEXT_PORT = 30000
+
 .PHONY: help
 help: ## this list
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'

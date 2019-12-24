@@ -7,9 +7,11 @@
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
+#include <inttypes.h>
 #include <stdarg.h>
 #include <sodium.h>
 #include <math.h>
+#include <map>
 #include <float.h>
 #include <signal.h>
 #include "curl/curl.h"
@@ -41,6 +43,8 @@
 #define RELAY_SESSION_PONG_PACKET                                 12
 #define RELAY_CONTINUE_REQUEST_PACKET                             13
 #define RELAY_CONTINUE_RESPONSE_PACKET                            14
+#define RELAY_NEAR_PING_PACKET                                    73
+#define RELAY_NEAR_PONG_PACKET                                    74
 
 #define RELAY_PING_HISTORY_ENTRY_COUNT                           256
 
@@ -121,59 +125,20 @@ relay_mutex_helper_t::~relay_mutex_helper_t()
     relay_platform_mutex_release( mutex );
     mutex = NULL;
 }
-// -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 
-static int log_level = RELAY_LOG_LEVEL_INFO;
+static int relay_debug = 0;
 
-void relay_log_level( int level )
+void relay_printf( const char * format, ... ) 
 {
-    log_level = level;
-}
-
-const char * relay_log_level_string( int level )
-{
-    if ( level == RELAY_LOG_LEVEL_DEBUG )
-        return "debug";
-    else if ( level == RELAY_LOG_LEVEL_INFO )
-        return "info";
-    else if ( level == RELAY_LOG_LEVEL_ERROR )
-        return "error";
-    else if ( level == RELAY_LOG_LEVEL_WARN )
-        return "warning";
-    else
-        return "???";
-}
-
-static void default_log_function( int level, const char * format, ... ) 
-{
-    va_list args;
-    va_start( args, format );
-    char buffer[1024];
-    vsnprintf( buffer, sizeof( buffer ), format, args );
-    const char * level_string = relay_log_level_string( level );
-    printf( "%.6f: %s: %s\n", relay_platform_time(), level_string, buffer );
-    va_end( args );
-    fflush( stdout );
-}
-
-static void (*log_function)( int level, const char * format, ... ) = default_log_function;
-
-void relay_log_function( void (*function)( int level, const char * format, ... ) )
-{
-    log_function = function;
-}
-
-void relay_printf( int level, const char * format, ... ) 
-{
-    if ( level > log_level )
+    if ( relay_debug )
         return;
     va_list args;
     va_start( args, format );
     char buffer[1024];
     vsnprintf( buffer, sizeof( buffer ), format, args );
-    log_function( level, "%s", buffer );
+    printf( "%s\n", buffer );
     va_end( args );
 }
 
@@ -183,20 +148,20 @@ int relay_initialize()
 {
     if ( relay_platform_init() != RELAY_OK )
     {
-        relay_printf( RELAY_LOG_LEVEL_ERROR, "failed to initialize platform" );
+        relay_printf( "failed to initialize platform" );
         return RELAY_ERROR;
     }
 
     if ( sodium_init() == -1 )
     {
-        relay_printf( RELAY_LOG_LEVEL_ERROR, "failed to initialize sodium" );
+        relay_printf( "failed to initialize sodium" );
         return RELAY_ERROR;
     }
 
-    const char * log_level_override = relay_platform_getenv( "RELAY_LOG_LEVEL" );
-    if ( log_level_override )
+    const char * relay_debug_env = relay_platform_getenv( "RELAY_DEBUG" );
+    if ( relay_debug_env )
     {
-        log_level = atoi( log_level_override );
+        relay_debug = atoi( relay_debug_env );
     }
 
     return RELAY_OK;
@@ -593,7 +558,7 @@ const char * relay_address_to_string( const relay_address_t * address, char * bu
         {
             if ( snprintf( buffer, RELAY_MAX_ADDRESS_STRING_LENGTH, "[%s]:%hu", address_string, address->port ) < 0 )
             {
-                relay_printf( RELAY_LOG_LEVEL_ERROR, "address string truncated: [%s]:%hu", address_string, address->port );
+                relay_printf( "address string truncated: [%s]:%hu", address_string, address->port );
             }
             return buffer;
         }
@@ -2542,7 +2507,7 @@ int relay_read_encrypted_continue_token( uint8_t ** buffer, relay_continue_token
 
 // --------------------------------------------------------------------------
 
-int relay_write_header( int direction, uint8_t type, uint64_t sequence, uint64_t session_id, uint8_t session_version, uint8_t session_flags, const uint8_t * private_key, uint8_t * buffer, int buffer_length )
+int relay_write_header( int direction, uint8_t type, uint64_t sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, uint8_t * buffer, int buffer_length )
 {
     assert( private_key );
     assert( buffer );
@@ -2585,7 +2550,7 @@ int relay_write_header( int direction, uint8_t type, uint64_t sequence, uint64_t
 
     relay_write_uint64( &buffer, session_id );
     relay_write_uint8( &buffer, session_version );
-    relay_write_uint8( &buffer, session_flags );
+    relay_write_uint8( &buffer, 0 );    // todo: remove this once we fully switch to new relay
 
     uint8_t nonce[12];
     {
@@ -2611,7 +2576,7 @@ int relay_write_header( int direction, uint8_t type, uint64_t sequence, uint64_t
     return RELAY_OK;
 }
 
-int relay_peek_header( int direction, uint8_t * type, uint64_t * sequence, uint64_t * session_id, uint8_t * session_version, uint8_t * session_flags, const uint8_t * buffer, int buffer_length )
+int relay_peek_header( int direction, uint8_t * type, uint64_t * sequence, uint64_t * session_id, uint8_t * session_version, const uint8_t * buffer, int buffer_length )
 {
     uint8_t packet_type;
     uint64_t packet_sequence;
@@ -2655,12 +2620,11 @@ int relay_peek_header( int direction, uint8_t * type, uint64_t * sequence, uint6
     *sequence = packet_sequence;
     *session_id = relay_read_uint64( &buffer );
     *session_version = relay_read_uint8( &buffer );
-    *session_flags = relay_read_uint8( &buffer );
 
     return RELAY_OK;
 }
 
-int relay_read_header( int direction, uint8_t * type, uint64_t * sequence, uint64_t * session_id, uint8_t * session_version, uint8_t * session_flags, const uint8_t * private_key, uint8_t * buffer, int buffer_length )
+int relay_verify_header( int direction, const uint8_t * private_key, uint8_t * buffer, int buffer_length )
 {
     assert( private_key );
     assert( buffer );
@@ -2710,7 +2674,11 @@ int relay_read_header( int direction, uint8_t * type, uint64_t * sequence, uint6
 
     uint64_t packet_session_id = relay_read_uint64( &p );
     uint8_t packet_session_version = relay_read_uint8( &p );
-    uint8_t packet_session_flags = relay_read_uint8( &p );
+    uint8_t packet_session_flags = relay_read_uint8( &p );      // todo: remove once we fully switch over to new relay
+    
+    (void) packet_session_id;
+    (void) packet_session_version;
+    (void) packet_session_flags;
 
     uint8_t nonce[12];
     {
@@ -2730,12 +2698,6 @@ int relay_read_header( int direction, uint8_t * type, uint64_t * sequence, uint6
     {
         return RELAY_ERROR;
     }
-
-    *type = packet_type;
-    *sequence = packet_sequence;
-    *session_id = packet_session_id;
-    *session_version = packet_session_version;
-    *session_flags = packet_session_flags;
 
     return RELAY_OK;
 }
@@ -4299,37 +4261,22 @@ static void test_header()
         uint64_t sequence = 123123130131LL;
         uint64_t session_id = 0x12313131;
         uint8_t session_version = 0x12;
-        uint8_t session_flags = 0x1;
 
-        check( relay_write_header( RELAY_DIRECTION_CLIENT_TO_SERVER, RELAY_CLIENT_TO_SERVER_PACKET, sequence, session_id, session_version, session_flags, private_key, buffer, sizeof( buffer ) ) == RELAY_OK );
+        check( relay_write_header( RELAY_DIRECTION_CLIENT_TO_SERVER, RELAY_CLIENT_TO_SERVER_PACKET, sequence, session_id, session_version, private_key, buffer, sizeof( buffer ) ) == RELAY_OK );
 
         uint8_t read_type = 0;
         uint64_t read_sequence = 0;
         uint64_t read_session_id = 0;
         uint8_t read_session_version = 0;
-        uint8_t read_session_flags = 0;
 
-        check( relay_peek_header( RELAY_DIRECTION_CLIENT_TO_SERVER, &read_type, &read_sequence, &read_session_id, &read_session_version, &read_session_flags, buffer, sizeof( buffer ) ) == RELAY_OK );
-
-        check( read_type == RELAY_CLIENT_TO_SERVER_PACKET );
-        check( read_sequence == sequence );
-        check( read_session_id == session_id );
-        check( read_session_version == session_version );
-        check( read_session_flags == session_flags );
-
-        read_type = 0;
-        read_sequence = 0;
-        read_session_id = 0;
-        read_session_version = 0;
-        read_session_flags = 0;
-
-        check( relay_read_header( RELAY_DIRECTION_CLIENT_TO_SERVER, &read_type, &read_sequence, &read_session_id, &read_session_version, &read_session_flags, private_key, buffer, sizeof( buffer ) ) == RELAY_OK );
+        check( relay_peek_header( RELAY_DIRECTION_CLIENT_TO_SERVER, &read_type, &read_sequence, &read_session_id, &read_session_version, buffer, sizeof( buffer ) ) == RELAY_OK );
 
         check( read_type == RELAY_CLIENT_TO_SERVER_PACKET );
         check( read_sequence == sequence );
         check( read_session_id == session_id );
         check( read_session_version == session_version );
-        check( read_session_flags == session_flags );
+
+        check( relay_verify_header( RELAY_DIRECTION_CLIENT_TO_SERVER, private_key, buffer, sizeof( buffer ) ) == RELAY_OK );
     }
 
     // server -> client
@@ -4337,37 +4284,22 @@ static void test_header()
         uint64_t sequence = 123123130131LL | ( 1ULL << 63 );
         uint64_t session_id = 0x12313131;
         uint8_t session_version = 0x12;
-        uint8_t session_flags = 0x1;
 
-        check( relay_write_header( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_SERVER_TO_CLIENT_PACKET, sequence, session_id, session_version, session_flags, private_key, buffer, sizeof( buffer ) ) == RELAY_OK );
+        check( relay_write_header( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_SERVER_TO_CLIENT_PACKET, sequence, session_id, session_version, private_key, buffer, sizeof( buffer ) ) == RELAY_OK );
 
         uint8_t read_type = 0;
         uint64_t read_sequence = 0;
         uint64_t read_session_id = 0;
         uint8_t read_session_version = 0;
-        uint8_t read_session_flags = 0;
 
-        check( relay_peek_header( RELAY_DIRECTION_SERVER_TO_CLIENT, &read_type, &read_sequence, &read_session_id, &read_session_version, &read_session_flags, buffer, sizeof( buffer ) ) == RELAY_OK );
-
-        check( read_type == RELAY_SERVER_TO_CLIENT_PACKET );
-        check( read_sequence == sequence );
-        check( read_session_id == session_id );
-        check( read_session_version == session_version );
-        check( read_session_flags == session_flags );
-
-        read_type = 0;
-        read_sequence = 0;
-        read_session_id = 0;
-        read_session_version = 0;
-        read_session_flags = 0;
-
-        check( relay_read_header( RELAY_DIRECTION_SERVER_TO_CLIENT, &read_type, &read_sequence, &read_session_id, &read_session_version, &read_session_flags, private_key, buffer, sizeof( buffer ) ) == RELAY_OK );
+        check( relay_peek_header( RELAY_DIRECTION_SERVER_TO_CLIENT, &read_type, &read_sequence, &read_session_id, &read_session_version, buffer, sizeof( buffer ) ) == RELAY_OK );
 
         check( read_type == RELAY_SERVER_TO_CLIENT_PACKET );
         check( read_sequence == sequence );
         check( read_session_id == session_id );
         check( read_session_version == session_version );
-        check( read_session_flags == session_flags );
+
+        check( relay_verify_header( RELAY_DIRECTION_SERVER_TO_CLIENT, private_key, buffer, sizeof( buffer ) ) == RELAY_OK );
     }
 }
 
@@ -4509,6 +4441,22 @@ void relay_test()
 #define RELAY_PING_PACKET 75
 #define RELAY_PONG_PACKET 76
 
+struct relay_session_t
+{
+    uint64_t expire_timestamp;
+    uint64_t session_id;
+    uint8_t session_version;
+    uint64_t client_to_server_sequence;
+    uint64_t server_to_client_sequence;
+    int kbps_up;
+    int kbps_down;
+    relay_address_t prev_address;
+    relay_address_t next_address;
+    uint8_t private_key[crypto_box_SECRETKEYBYTES];
+    relay_replay_protection_t replay_protection_server_to_client;
+    relay_replay_protection_t replay_protection_client_to_server;
+};
+
 struct relay_t
 {
     relay_manager_t * relay_manager;
@@ -4519,6 +4467,7 @@ struct relay_t
     uint8_t relay_public_key[RELAY_PUBLIC_KEY_BYTES];
     uint8_t relay_private_key[RELAY_PRIVATE_KEY_BYTES];
     uint8_t router_public_key[RELAY_PUBLIC_KEY_BYTES];
+    std::map<uint64_t, relay_session_t*> * sessions;
     bool relays_dirty;
     int num_relays;
     uint64_t relay_ids[MAX_RELAYS];
@@ -4619,7 +4568,7 @@ int relay_init( CURL * curl, const char * hostname, uint8_t * relay_token, const
 
     if ( init_response_buffer.size < 4 )
     {
-        // printf( "\nerror: bad relay init response size. too small to have valid data (%d)\n\n", init_response_buffer.size ); 
+        relay_printf( "\nerror: bad relay init response size. too small to have valid data (%d)\n\n", init_response_buffer.size ); 
         return RELAY_ERROR;
     }
 
@@ -4631,13 +4580,13 @@ int relay_init( CURL * curl, const char * hostname, uint8_t * relay_token, const
 
     if ( version != init_response_version )
     {
-        // printf( "\nerror: bad relay init response version. expected %d, got %d\n\n", init_response_version, version );
+        relay_printf( "\nerror: bad relay init response version. expected %d, got %d\n\n", init_response_version, version );
         return RELAY_ERROR;
     }
 
     if ( init_response_buffer.size != 4 + 8 + RELAY_TOKEN_BYTES )
     {
-        // printf( "\nerror: bad relay init response size. expected %d bytes, got %d\n\n", RELAY_TOKEN_BYTES, init_response_buffer.size );        
+        relay_printf( "\nerror: bad relay init response size. expected %d bytes, got %d\n\n", RELAY_TOKEN_BYTES, init_response_buffer.size );        
         return RELAY_ERROR;
     }
 
@@ -4710,7 +4659,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
 
     if ( ret != 0 )
     {
-        // printf( "\nerror: could not post relay update\n\n" );
+        relay_printf( "\nerror: could not post relay update\n\n" );
         return RELAY_ERROR;
     }
 
@@ -4718,7 +4667,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
     curl_easy_getinfo( curl, CURLINFO_RESPONSE_CODE, &code );
     if ( code != 200 )
     {
-        // printf( "\nerror: relay update response was %d, expected 200\n\n", int(code) );
+        relay_printf( "\nerror: relay update response was %d, expected 200\n\n", int(code) );
         return RELAY_ERROR;
     }
 
@@ -4732,7 +4681,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
 
     if ( version != update_response_version )
     {
-        // printf( "\nerror: bad relay update response version. expected %d, got %d\n\n", update_response_version, version );
+        relay_printf( "\nerror: bad relay update response version. expected %d, got %d\n\n", update_response_version, version );
         return RELAY_ERROR;
     }
 
@@ -4740,7 +4689,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
 
     if ( num_relays > MAX_RELAYS )
     {
-        // printf( "\nerror: too many relays to ping. max is %d, got %d\n\n", MAX_RELAYS, version );
+        relay_printf( "\nerror: too many relays to ping. max is %d, got %d\n\n", MAX_RELAYS, version );
         return RELAY_ERROR;
     }
 
@@ -4769,7 +4718,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
 
     if ( error )
     {
-        // printf( "\nerror: error while reading set of relays to ping in update response\n\n" );
+        relay_printf( "\nerror: error while reading set of relays to ping in update response\n\n" );
         return RELAY_ERROR;
     }
 
@@ -4801,6 +4750,12 @@ uint64_t relay_timestamp( relay_t * relay )
     return relay->initialize_router_timestamp + seconds_since_initialize;
 }
 
+uint64_t relay_clean_sequence( uint64_t sequence )
+{
+    uint64_t mask = ~( (1ULL<<63) | (1ULL<<62) );
+    return sequence & mask;
+}
+
 static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_function( void * context )
 {
     relay_t * relay = (relay_t*) context;
@@ -4830,21 +4785,303 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
         {
             if ( packet_bytes < int( 1 + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES * 2 ) )
             {
-                // relay_printf( NEXT_LOG_LEVEL_DEBUG, "ignoring route request. bad packet size (%d)", packet_bytes );
+                relay_printf( "ignoring route request. bad packet size (%d)", packet_bytes );
                 continue;
             }
             uint8_t * p = &packet_data[1];
             relay_route_token_t token;
             if ( relay_read_encrypted_route_token( &p, &token, relay->router_public_key, relay->relay_private_key ) != RELAY_OK )
             {
-                // relay_printf( NEXT_LOG_LEVEL_DEBUG, "ignoring route request. could not read flow token" );
+                relay_printf( "ignoring route request. could not read route token" );
                 continue;
             }
             if ( token.expire_timestamp < relay_timestamp( relay ) )
             {
                 continue;
             }
-            printf( "route request\n" );
+            uint64_t hash = token.session_id ^ token.session_version;
+            if ( relay->sessions->find(hash) == relay->sessions->end() )
+            {
+                relay_session_t * session = (relay_session_t*) malloc( sizeof( relay_session_t ) );
+                assert( session );
+                session->expire_timestamp = token.expire_timestamp;
+                session->session_id = token.session_id;
+                session->session_version = token.session_version;
+                session->client_to_server_sequence = 0;
+                session->server_to_client_sequence = 0;
+                session->kbps_up = token.kbps_up;
+                session->kbps_down = token.kbps_down;
+                session->prev_address = from;
+                session->next_address = token.next_address;
+                memcpy( session->private_key, token.private_key, crypto_box_SECRETKEYBYTES );
+                relay_replay_protection_reset( &session->replay_protection_client_to_server );
+                relay_replay_protection_reset( &session->replay_protection_server_to_client );
+                relay->sessions->insert( std::make_pair(hash, session) );
+                printf( "session created: %" PRIx64 ".%d\n", token.session_id, token.session_version );
+            }
+            packet_data[RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES] = RELAY_ROUTE_REQUEST_PACKET;
+            relay_platform_socket_send_packet( relay->socket, &token.next_address, packet_data + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES, packet_bytes - RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES );
+        }
+        else if ( packet_data[0] == RELAY_ROUTE_RESPONSE_PACKET )
+        {
+            if ( packet_bytes != RELAY_HEADER_BYTES )
+            {
+                continue;
+            }
+            uint8_t type;
+            uint64_t sequence;
+            uint64_t session_id;
+            uint8_t session_version;
+            if ( relay_peek_header( RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, packet_data, packet_bytes ) != RELAY_OK )
+            {
+                continue;
+            }
+            uint64_t hash = session_id ^ session_version;
+            relay_session_t * session = (*(relay->sessions))[hash];
+            if ( !session )
+            {
+                continue;
+            }
+            if ( session->expire_timestamp < relay_timestamp( relay ) )
+            {
+                continue;
+            }
+            uint64_t clean_sequence = relay_clean_sequence( sequence );
+            if ( clean_sequence <= session->server_to_client_sequence )
+            {
+                continue;
+            }
+            session->server_to_client_sequence = clean_sequence;
+            if ( relay_verify_header( RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data, packet_bytes ) != RELAY_OK )
+            {
+                continue;
+            }
+            relay_platform_socket_send_packet( relay->socket, &session->prev_address, packet_data, packet_bytes );
+        }
+        else if ( packet_data[0] == RELAY_CONTINUE_REQUEST_PACKET )
+        {
+            if ( packet_bytes < int( 1 + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES * 2 ) )
+            {
+                relay_printf( "ignoring continue request. bad packet size (%d)", packet_bytes );
+                continue;
+            }
+            uint8_t * p = &packet_data[1];
+            relay_continue_token_t token;
+            if ( relay_read_encrypted_continue_token( &p, &token, relay->router_public_key, relay->relay_private_key ) != RELAY_OK )
+            {
+                relay_printf( "ignoring continue request. could not read continue token" );
+                continue;
+            }
+            if ( token.expire_timestamp < relay_timestamp( relay ) )
+            {
+                continue;
+            }
+            uint64_t hash = token.session_id ^ token.session_version;
+            relay_session_t * session = (*(relay->sessions))[hash];
+            if ( !session )
+            {
+                continue;
+            }
+            if ( session->expire_timestamp < relay_timestamp( relay ) )
+            {
+                continue;
+            }
+            if ( session->expire_timestamp != token.expire_timestamp )
+            {
+                printf( "session continued: %" PRIx64 ".%d\n", token.session_id, token.session_version );
+            }
+            session->expire_timestamp = token.expire_timestamp;
+            packet_data[RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES] = RELAY_CONTINUE_REQUEST_PACKET;
+            relay_platform_socket_send_packet( relay->socket, &session->next_address, packet_data + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES, packet_bytes - RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES );
+        }
+        else if ( packet_data[0] == RELAY_CONTINUE_RESPONSE_PACKET )
+        {
+            if ( packet_bytes != RELAY_HEADER_BYTES )
+            {
+                continue;
+            }
+            uint8_t type;
+            uint64_t sequence;
+            uint64_t session_id;
+            uint8_t session_version;
+            if ( relay_peek_header( RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, packet_data, packet_bytes ) != RELAY_OK )
+            {
+                continue;
+            }
+            uint64_t hash = session_id ^ session_version;
+            relay_session_t * session = (*(relay->sessions))[hash];
+            if ( !session )
+            {
+                continue;
+            }
+            if ( session->expire_timestamp < relay_timestamp( relay ) )
+            {
+                continue;
+            }
+            uint64_t clean_sequence = relay_clean_sequence( sequence );
+            if ( clean_sequence <= session->server_to_client_sequence )
+            {
+                continue;
+            }
+            session->server_to_client_sequence = clean_sequence;
+            if ( relay_verify_header( RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data, packet_bytes ) != RELAY_OK )
+            {
+                continue;
+            }
+            relay_platform_socket_send_packet( relay->socket, &session->prev_address, packet_data, packet_bytes );
+        }
+        else if ( packet_data[0] == RELAY_CLIENT_TO_SERVER_PACKET )
+        {
+            if ( packet_bytes <= RELAY_HEADER_BYTES || packet_bytes > RELAY_HEADER_BYTES + RELAY_MTU )
+            {
+                continue;
+            }
+            uint8_t type;
+            uint64_t sequence;
+            uint64_t session_id;
+            uint8_t session_version;
+            if ( relay_peek_header( RELAY_DIRECTION_CLIENT_TO_SERVER, &type, &sequence, &session_id, &session_version, packet_data, packet_bytes ) != RELAY_OK )
+            {
+                continue;
+            }
+            uint64_t hash = session_id ^ session_version;
+            relay_session_t * session = (*(relay->sessions))[hash];
+            if ( !session )
+            {
+                continue;
+            }
+            if ( session->expire_timestamp < relay_timestamp( relay ) )
+            {
+                continue;
+            }
+            uint64_t clean_sequence = relay_clean_sequence( sequence );
+            if ( relay_replay_protection_already_received( &session->replay_protection_client_to_server, clean_sequence ) )
+            {
+                continue;
+            }
+            relay_replay_protection_advance_sequence( &session->replay_protection_client_to_server, clean_sequence );
+            if ( relay_verify_header( RELAY_DIRECTION_CLIENT_TO_SERVER, session->private_key, packet_data, packet_bytes ) != RELAY_OK )
+            {
+                continue;
+            }
+            relay_platform_socket_send_packet( relay->socket, &session->next_address, packet_data, packet_bytes );
+        }
+        else if ( packet_data[0] == RELAY_SERVER_TO_CLIENT_PACKET )
+        {
+            if ( packet_bytes <= RELAY_HEADER_BYTES || packet_bytes > RELAY_HEADER_BYTES + RELAY_MTU )
+            {
+                continue;
+            }
+            uint8_t type;
+            uint64_t sequence;
+            uint64_t session_id;
+            uint8_t session_version;
+            if ( relay_peek_header( RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, packet_data, packet_bytes ) != RELAY_OK )
+            {
+                continue;
+            }
+            uint64_t hash = session_id ^ session_version;
+            relay_session_t * session = (*(relay->sessions))[hash];
+            if ( !session )
+            {
+                continue;
+            }
+            if ( session->expire_timestamp < relay_timestamp( relay ) )
+            {
+                continue;
+            }
+            uint64_t clean_sequence = relay_clean_sequence( sequence );
+            if ( relay_replay_protection_already_received( &session->replay_protection_server_to_client, clean_sequence ) )
+            {
+                continue;
+            }
+            relay_replay_protection_advance_sequence( &session->replay_protection_server_to_client, clean_sequence );
+            if ( relay_verify_header( RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data, packet_bytes ) != RELAY_OK )
+            {
+                continue;
+            }
+            relay_platform_socket_send_packet( relay->socket, &session->prev_address, packet_data, packet_bytes );
+        }
+        else if ( packet_data[0] == RELAY_SESSION_PING_PACKET )
+        {
+            if ( packet_bytes > RELAY_HEADER_BYTES + 32 )
+            {
+                continue;
+            }
+            uint8_t type;
+            uint64_t sequence;
+            uint64_t session_id;
+            uint8_t session_version;
+            if ( relay_peek_header( RELAY_DIRECTION_CLIENT_TO_SERVER, &type, &sequence, &session_id, &session_version, packet_data, packet_bytes ) != RELAY_OK )
+            {
+                continue;
+            }
+            uint64_t hash = session_id ^ session_version;
+            relay_session_t * session = (*(relay->sessions))[hash];
+            if ( !session )
+            {
+                continue;
+            }
+            if ( session->expire_timestamp < relay_timestamp( relay ) )
+            {
+                continue;
+            }
+            uint64_t clean_sequence = relay_clean_sequence( sequence );
+            if ( clean_sequence <= session->client_to_server_sequence )
+            {
+                continue;
+            }
+            session->client_to_server_sequence = clean_sequence;
+            if ( relay_verify_header( RELAY_DIRECTION_CLIENT_TO_SERVER, session->private_key, packet_data, packet_bytes ) != RELAY_OK )
+            {
+                continue;
+            }
+            relay_platform_socket_send_packet( relay->socket, &session->next_address, packet_data, packet_bytes );
+        }
+        else if ( packet_data[0] == RELAY_SESSION_PONG_PACKET )
+        {
+            if ( packet_bytes > RELAY_HEADER_BYTES + 32 )
+            {
+                continue;
+            }
+            uint8_t type;
+            uint64_t sequence;
+            uint64_t session_id;
+            uint8_t session_version;
+            if ( relay_peek_header( RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, packet_data, packet_bytes ) != RELAY_OK )
+            {
+                continue;
+            }
+            uint64_t hash = session_id ^ session_version;
+            relay_session_t * session = (*(relay->sessions))[hash];
+            if ( !session )
+            {
+                continue;
+            }
+            if ( session->expire_timestamp < relay_timestamp( relay ) )
+            {
+                continue;
+            }
+            uint64_t clean_sequence = relay_clean_sequence( sequence );
+            if ( clean_sequence <= session->server_to_client_sequence )
+            {
+                continue;
+            }
+            session->server_to_client_sequence = clean_sequence;
+            if ( relay_verify_header( RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data, packet_bytes ) != RELAY_OK )
+            {
+                continue;
+            }
+            relay_platform_socket_send_packet( relay->socket, &session->prev_address, packet_data, packet_bytes );
+        }
+        else if ( packet_data[0] == RELAY_NEAR_PING_PACKET )
+        {
+            if ( packet_bytes != 1 + 8 + 8 + 8 + 8 )
+            {
+                continue;
+            }
+            packet_data[0] = RELAY_NEAR_PONG_PACKET;
+            relay_platform_socket_send_packet( relay->socket, &from, packet_data, packet_bytes - 16 );
         }
     }
 
@@ -5062,6 +5299,7 @@ int main( int argc, const char ** argv )
     memset( &relay, 0, sizeof(relay) );
     relay.initialize_time = relay_platform_time();
     relay.initialize_router_timestamp = router_timestamp;
+    relay.sessions = new std::map<uint64_t, relay_session_t*>();
     memcpy( relay.relay_public_key, relay_public_key, RELAY_PUBLIC_KEY_BYTES );
     memcpy( relay.relay_private_key, relay_private_key, RELAY_PRIVATE_KEY_BYTES );
     memcpy( relay.router_public_key, router_public_key, crypto_sign_PUBLICKEYBYTES );
@@ -5139,6 +5377,13 @@ int main( int argc, const char ** argv )
     }
 
     free( update_response_memory );
+
+    for ( std::map<uint64_t, relay_session_t*>::iterator itor = relay.sessions->begin(); itor != relay.sessions->end(); ++itor )
+    {
+        delete itor->second;
+    }
+
+    delete relay.sessions;
 
     relay_manager_destroy( relay.relay_manager );
 
