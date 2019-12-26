@@ -155,7 +155,7 @@ func server(config *ServerConfig) (*exec.Cmd, *bytes.Buffer) {
 
 	cmd.Env = append(cmd.Env, "NEXT_DATACENTER=local")
 	cmd.Env = append(cmd.Env, "NEXT_HOSTNAME=127.0.0.1")
-	cmd.Env = append(cmd.Env, "NEXT_PORT=40001")
+	cmd.Env = append(cmd.Env, "NEXT_PORT=30000")
 
 	if config.duration != 0 {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("SERVER_DURATION=%d", config.duration))
@@ -1353,8 +1353,6 @@ func main() {
 		test_direct_with_backend,
 		test_fallback_to_direct_without_backend,
 		test_fallback_to_direct_is_not_sticky,
-		// todo: disabled until we get new relay working and it passes functional tests
-		/*
 		test_packets_over_next_with_relay_and_backend,
 		test_try_before_you_buy_completed,
 		test_try_before_you_buy_abort_latency,
@@ -1370,7 +1368,6 @@ func main() {
 		test_route_switching,
 		test_on_off,
 		test_multipath,
-		*/
 	}
 
 	for i := range tests {
