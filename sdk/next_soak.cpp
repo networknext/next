@@ -32,8 +32,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-const int MaxServers = 8;
-const int MaxClients = 100;
+const int MaxServers = 64;
+const int MaxClients = 256;
 
 static next_server_t * servers[MaxServers];
 static next_client_t * clients[MaxClients];
@@ -71,7 +71,7 @@ int main( int argc, char ** argv )
     uint8_t packet_data[NEXT_MTU];
     memset( packet_data, 0, sizeof( packet_data ) );
 
-    int iterations = 1000;
+    int iterations = 10000;
     if ( argc == 2 ) 
     {
         iterations = atoi( argv[1] );
