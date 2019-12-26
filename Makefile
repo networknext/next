@@ -55,17 +55,8 @@ format: ## runs gofmt on all go source code
 ## TESTS AND TOOLS ##
 #####################
 
-ifeq ($(OS),linux)
-TESTS = clean lint test-unit test-soak-valgrind test-func
-else
-TESTS = clean lint test-unit test-func
-endif
-
 .PHONY: test
-test: $(TESTS) ## runs linters and all tests with coverage
-
-.PHONY: test-unit
-test-unit: clean build-sdk-test build-relay ## runs unit tests for sdk, relay, and core
+test: clean lint build-sdk-test build-relay ## runs unit tests for sdk, relay, and core
 	@$(DIST_DIR)/$(SDKNAME)_test
 	@$(DIST_DIR)/relay test
 	@$(GO) test -race -v ./core/...
