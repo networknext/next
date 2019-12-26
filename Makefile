@@ -47,7 +47,7 @@ lint: ## runs go vet
 	@$(GO) vet ./core/...
 
 .PHONY: format
-format: ## run gofmt on all go source code
+format: ## runs gofmt on all go source code
 	@$(GOFMT) -s -w .
 	@printf "\n"
 
@@ -65,7 +65,7 @@ endif
 test: $(TESTS) ## runs linters and all tests with coverage
 
 .PHONY: test-unit
-test-unit: clean build-sdk-test build-relay ## runts unit tests for sdk, relay, and core
+test-unit: clean build-sdk-test build-relay ## runs unit tests for sdk, relay, and core
 	@$(DIST_DIR)/$(SDKNAME)_test
 	@$(DIST_DIR)/relay test
 	@$(GO) test -race -v ./core/...
@@ -114,26 +114,26 @@ build-tools: ## builds all the tools
 #####################
 
 .PHONY: dev-cost
-dev-cost: ## get the cost matrix from the local backend
+dev-cost: ## gets the cost matrix from the local backend
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/cost ./cmd/tools/cost/cost.go
 	$(DIST_DIR)/cost -url=http://localhost:30000/cost_matrix > $(COST_FILE)
 
 .PHONY: dev-optimize
-dev-optimize: ## transform the cost matrix into a route matrix
+dev-optimize: ## transforms the cost matrix into a route matrix
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/optimize ./cmd/tools/optimize/optimize.go
 	cat $(COST_FILE) | ./dist/optimize -threshold-rtt=1 > $(OPTIMIZE_FILE)
 
 .PHONY: dev-analyze
-dev-analyze: ## analyze the route matrix
+dev-analyze: ## analyzes the route matrix
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/analyze ./cmd/tools/analyze/analyze.go
 	cat $(OPTIMIZE_FILE) | $(DIST_DIR)/analyze
 
 .PHONY: debug
-dev-debug: ## debug relay in route matrix
+dev-debug: ## debugs relay in route matrix
 	cat $(OPTIMIZE_FILE) | $(DIST_DIR)/debug -relay=$(relay)
 
 .PHONY: dev-route
-dev-route: ## print out routes from relay to datacenter
+dev-route: ## prints routes from relay to datacenter in route matrix
 	cat $(OPTIMIZE_FILE) | $(DIST_DIR)/route -relay=$(relay) -datacenter=$(datacenter)
 
 .PHONY: dev-relay
