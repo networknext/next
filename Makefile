@@ -1,5 +1,6 @@
 CXX = g++
 GO = go
+GOFMT = gofmt
 
 OS := $(shell uname -s | tr A-Z a-z)
 ifeq ($(OS),darwin)
@@ -44,6 +45,11 @@ clean: ## cleans the dist directory of all builds
 .PHONY: lint
 lint: ## runs go vet
 	@$(GO) vet ./core/...
+
+.PHONY: format
+format: ## run gofmt on all go source code
+	@$(GOFMT) -s -w .
+	@printf "\n"
 
 #####################
 ## TESTS AND TOOLS ##
@@ -139,11 +145,11 @@ dev-optimizer: ## runs a local optimizer
 	$(GO) run cmd/optimizer/optimizer.go
 
 .PHONY: dev-relay-backend
-dev-relay-backend: ## runs a local relay_backend
+dev-relay-backend: ## runs a local relay backend
 	$(GO) run cmd/relay_backend/relay_backend.go
 
 .PHONY: dev-server-backend
-dev-server-backend: ## runs a local server_backend
+dev-server-backend: ## runs a local server backend
 	$(GO) run cmd/server_backend/server_backend.go
 
 .PHONY: dev-backend
@@ -185,13 +191,13 @@ build-sdk: clean ## builds the sdk into a shared object for linking
 	@printf "done\n"
 
 .PHONY: build-relay-backend
-build-relay-backend: ## builds the relay_backend binary
+build-relay-backend: ## builds the relay backend binary
 	@printf "Building relay backend... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/relay_backend ./cmd/relay_backend/relay_backend.go
 	@printf "done\n"
 
 .PHONY: build-server-backend
-build-server-backend: ## builds the server_backend binary
+build-server-backend: ## builds the server backend binary
 	@printf "Building server backend... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/server_backend ./cmd/server_backend/server_backend.go
 	@printf "done\n"

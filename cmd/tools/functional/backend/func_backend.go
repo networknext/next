@@ -10,19 +10,19 @@ package main
 import "C"
 
 import (
-	"os"
-	"net"
+	"encoding/binary"
 	"fmt"
-	"time"
-	"sync"
-	"sort"
-	"math"
-	"net/http"
-	"math/rand"
+	"github.com/gorilla/mux"
 	"hash/fnv"
 	"io/ioutil"
-	"encoding/binary"
-	"github.com/gorilla/mux"
+	"math"
+	"math/rand"
+	"net"
+	"net/http"
+	"os"
+	"sort"
+	"sync"
+	"time"
 
 	"github.com/networknext/backend/core"
 )
@@ -36,8 +36,8 @@ const NEXT_VERSION_MINOR = 0
 const NEXT_VERSION_PATCH = 0
 const NEXT_MAX_PACKET_BYTES = 1500
 
-var relayPublicKey = []byte{ 
-	0xf5, 0x22, 0xad, 0xc1, 0xee, 0x04, 0x6a, 0xbe, 
+var relayPublicKey = []byte{
+	0xf5, 0x22, 0xad, 0xc1, 0xee, 0x04, 0x6a, 0xbe,
 	0x7d, 0x89, 0x0c, 0x81, 0x3a, 0x08, 0x31, 0xba,
 	0xdc, 0xdd, 0xb5, 0x52, 0xcb, 0x73, 0x56, 0x10,
 	0xda, 0xa9, 0xc0, 0xae, 0x08, 0xa2, 0xcf, 0x5e,
@@ -51,42 +51,42 @@ const BACKEND_MODE_ON_OFF = 4
 const BACKEND_MODE_ROUTE_SWITCHING = 5
 
 type Backend struct {
-	mutex sync.RWMutex
-	dirty bool
-	mode int
-	relayDatabase map[string]RelayEntry
-	serverDatabase map[string]ServerEntry
+	mutex           sync.RWMutex
+	dirty           bool
+	mode            int
+	relayDatabase   map[string]RelayEntry
+	serverDatabase  map[string]ServerEntry
 	sessionDatabase map[uint64]SessionEntry
-	statsDatabase *core.StatsDatabase
-	costMatrix *core.CostMatrix
-	costMatrixData []byte
-	routeMatrix *core.RouteMatrix
+	statsDatabase   *core.StatsDatabase
+	costMatrix      *core.CostMatrix
+	costMatrixData  []byte
+	routeMatrix     *core.RouteMatrix
 	routeMatrixData []byte
-	nearData []byte
+	nearData        []byte
 }
 
 var backend Backend
 
 type RelayEntry struct {
-	id uint64
-	name string
-	address *net.UDPAddr
+	id         uint64
+	name       string
+	address    *net.UDPAddr
 	lastUpdate int64
-	token []byte
+	token      []byte
 }
 
 type ServerEntry struct {
-	address *net.UDPAddr
-	publicKey []byte
+	address    *net.UDPAddr
+	publicKey  []byte
 	lastUpdate int64
 }
 
 type SessionEntry struct {
-	id 				uint64
-	version 		uint8
+	id              uint64
+	version         uint8
 	expireTimestamp uint64
 	route           []uint64
-	next 			bool
+	next            bool
 	slice           uint64
 }
 
@@ -96,7 +96,7 @@ const RouteMatrixBytes = 32 * 1024 * 1024
 
 func OptimizeThread() {
 	for {
-		time.Sleep(time.Second*1)
+		time.Sleep(time.Second * 1)
 
 		backend.mutex.RLock()
 		statsDatabase := backend.statsDatabase.MakeCopy()
@@ -105,18 +105,18 @@ func OptimizeThread() {
 		relayDatabase := &core.RelayDatabase{}
 		backend.mutex.RLock()
 		relayDatabase.Relays = make(map[core.RelayId]core.RelayData)
-		for _,v := range backend.relayDatabase {
+		for _, v := range backend.relayDatabase {
 			relayData := core.RelayData{}
 			relayData.Id = core.RelayId(v.id)
 			relayData.Name = v.name
 			relayData.Address = v.address.String()
-			relayData.Datacenter =core.DatacenterId(0)
+			relayData.Datacenter = core.DatacenterId(0)
 			relayData.DatacenterName = "local"
 			relayData.PublicKey = GetRelayPublicKey(v.address.String())
 			relayDatabase.Relays[relayData.Id] = relayData
 		}
 		backend.mutex.RUnlock()
-		
+
 		costMatrix := statsDatabase.GetCostMatrix(relayDatabase)
 		costMatrixData := make([]byte, CostMatrixBytes)
 		costMatrixData = core.WriteCostMatrix(costMatrixData, costMatrix)
@@ -146,24 +146,24 @@ func OptimizeThread() {
 
 func TimeoutThread() {
 	for {
-		time.Sleep(time.Second*1)
+		time.Sleep(time.Second * 1)
 		backend.mutex.Lock()
 		currentTimestamp := time.Now().Unix()
-		for k,v := range backend.relayDatabase {
-			if currentTimestamp - v.lastUpdate > 15 {
+		for k, v := range backend.relayDatabase {
+			if currentTimestamp-v.lastUpdate > 15 {
 				backend.dirty = true
 				delete(backend.relayDatabase, k)
 				continue
 			}
 		}
-		for k,v := range backend.serverDatabase {
-			if currentTimestamp - v.lastUpdate > 15 {
+		for k, v := range backend.serverDatabase {
+			if currentTimestamp-v.lastUpdate > 15 {
 				delete(backend.serverDatabase, k)
 				backend.dirty = true
 				continue
 			}
 		}
-		for k,v := range backend.sessionDatabase {
+		for k, v := range backend.sessionDatabase {
 			if uint64(currentTimestamp) >= v.expireTimestamp {
 				delete(backend.sessionDatabase, k)
 				backend.dirty = true
@@ -171,18 +171,18 @@ func TimeoutThread() {
 			}
 		}
 		if backend.dirty {
-			fmt.Printf( "-----------------------------\n" )
-			for _,v := range backend.relayDatabase {
-				fmt.Printf( "relay: %s\n", v.address );
+			fmt.Printf("-----------------------------\n")
+			for _, v := range backend.relayDatabase {
+				fmt.Printf("relay: %s\n", v.address)
 			}
-			for _,v := range backend.serverDatabase {
-				fmt.Printf( "server: %s\n", v.address );
+			for _, v := range backend.serverDatabase {
+				fmt.Printf("server: %s\n", v.address)
 			}
-			for k,_ := range backend.sessionDatabase {
-				fmt.Printf( "session: %x\n", k );
+			for k := range backend.sessionDatabase {
+				fmt.Printf("session: %x\n", k)
 			}
 			if len(backend.relayDatabase) == 0 && len(backend.serverDatabase) == 0 {
-				fmt.Printf( "(nil)\n" )
+				fmt.Printf("(nil)\n")
 			}
 			backend.dirty = false
 		}
@@ -199,7 +199,7 @@ func GetRelayId(name string) uint64 {
 func GetNearRelays() ([]uint64, []net.UDPAddr) {
 	nearRelays := make([]RelayEntry, 0)
 	backend.mutex.RLock()
-	for _,v := range backend.relayDatabase {
+	for _, v := range backend.relayDatabase {
 		nearRelays = append(nearRelays, v)
 	}
 	backend.mutex.RUnlock()
@@ -266,19 +266,19 @@ func main() {
 	go WebServer()
 
 	listenAddress := net.UDPAddr{
-    	Port: NEXT_BACKEND_PORT,
-    	IP:   net.ParseIP("0.0.0.0"),
+		Port: NEXT_BACKEND_PORT,
+		IP:   net.ParseIP("0.0.0.0"),
 	}
 
 	connection, err := net.ListenUDP("udp", &listenAddress)
 	if err != nil {
-		fmt.Printf( "error: could not listen on %s\n", listenAddress.String())
+		fmt.Printf("error: could not listen on %s\n", listenAddress.String())
 		return
 	}
 
 	defer connection.Close()
 
-	fmt.Printf( "started local backend on port %d\n", NEXT_BACKEND_PORT )
+	fmt.Printf("started local backend on port %d\n", NEXT_BACKEND_PORT)
 
 	packetData := make([]byte, NEXT_MAX_PACKET_BYTES)
 
@@ -299,7 +299,7 @@ func main() {
 			serverUpdate := &core.NextBackendServerUpdatePacket{}
 
 			if err := serverUpdate.Serialize(readStream); err != nil {
-				fmt.Printf( "error: failed to read server update packet: %v\n", err)
+				fmt.Printf("error: failed to read server update packet: %v\n", err)
 				continue
 			}
 
@@ -328,7 +328,7 @@ func main() {
 			}
 
 			if sessionUpdate.FallbackToDirect {
-				fmt.Printf( "error: fallback to direct %s\n", from )
+				fmt.Printf("error: fallback to direct %s\n", from)
 				continue
 			}
 
@@ -336,7 +336,7 @@ func main() {
 			serverEntry, ok := backend.serverDatabase[string(from.String())]
 			backend.mutex.RUnlock()
 			if !ok {
-				fmt.Printf( "error: could not find server %s\n", from )
+				fmt.Printf("error: could not find server %s\n", from)
 				continue
 			}
 
@@ -353,10 +353,10 @@ func main() {
 			if newSession {
 				sessionEntry.id = sessionUpdate.SessionId
 				sessionEntry.version = 0
-                sessionEntry.expireTimestamp = uint64(time.Now().Unix()) + 20
+				sessionEntry.expireTimestamp = uint64(time.Now().Unix()) + 20
 			} else {
-				sessionEntry.expireTimestamp += 10		
-				sessionEntry.slice++		
+				sessionEntry.expireTimestamp += 10
+				sessionEntry.slice++
 			}
 
 			takeNetworkNext := len(nearRelayIds) > 0
@@ -370,13 +370,16 @@ func main() {
 			}
 
 			if backend.mode == BACKEND_MODE_ON_OFF {
-				if ( sessionEntry.slice & 1 ) == 0 {
+				if (sessionEntry.slice & 1) == 0 {
 					takeNetworkNext = false
 				}
 			}
 
 			if backend.mode == BACKEND_MODE_ROUTE_SWITCHING {
-				rand.Shuffle(len(nearRelayIds), func(i, j int) { nearRelayIds[i], nearRelayIds[j] = nearRelayIds[j], nearRelayIds[i]; nearRelayAddresses[i], nearRelayAddresses[j] = nearRelayAddresses[j], nearRelayAddresses[i] })
+				rand.Shuffle(len(nearRelayIds), func(i, j int) {
+					nearRelayIds[i], nearRelayIds[j] = nearRelayIds[j], nearRelayIds[i]
+					nearRelayAddresses[i], nearRelayAddresses[j] = nearRelayAddresses[j], nearRelayAddresses[i]
+				})
 			}
 
 			multipath := len(nearRelayIds) > 0 && backend.mode == BACKEND_MODE_MULTIPATH
@@ -406,7 +409,7 @@ func main() {
 				// next route
 
 				numRelays := len(nearRelayIds)
-				if ( numRelays > 5 ) {
+				if numRelays > 5 {
 					numRelays = 5
 				}
 
@@ -479,7 +482,7 @@ func main() {
 			}
 
 			if sessionResponse == nil {
-				fmt.Printf( "error: nil session response\n" );
+				fmt.Printf("error: nil session response\n")
 				continue
 			}
 
@@ -536,7 +539,7 @@ const RelayTokenBytes = 32
 const MaxRelays = 1024
 
 func ReadUint32(data []byte, index *int, value *uint32) bool {
-	if *index + 4 > len(data) {
+	if *index+4 > len(data) {
 		return false
 	}
 	*value = binary.LittleEndian.Uint32(data[*index:])
@@ -545,7 +548,7 @@ func ReadUint32(data []byte, index *int, value *uint32) bool {
 }
 
 func ReadUint64(data []byte, index *int, value *uint64) bool {
-	if *index + 8 > len(data) {
+	if *index+8 > len(data) {
 		return false
 	}
 	*value = binary.LittleEndian.Uint64(data[*index:])
@@ -570,7 +573,7 @@ func ReadString(data []byte, index *int, value *string, maxStringLength uint32) 
 	if stringLength > maxStringLength {
 		return false
 	}
-	if *index + int(stringLength) > len(data) {
+	if *index+int(stringLength) > len(data) {
 		return false
 	}
 	stringData := make([]byte, stringLength)
@@ -583,7 +586,7 @@ func ReadString(data []byte, index *int, value *string, maxStringLength uint32) 
 }
 
 func ReadBytes(data []byte, index *int, value *[]byte, bytes uint32) bool {
-	if *index + int(bytes) > len(data) {
+	if *index+int(bytes) > len(data) {
 		return false
 	}
 	*value = make([]byte, bytes)
@@ -629,15 +632,15 @@ func GetRelayPublicKey(relay_address string) []byte {
 }
 
 func CryptoCheck(data []byte, nonce []byte, publicKey []byte, privateKey []byte) bool {
-	return C.crypto_box_open( (*C.uchar)(&data[0]), (*C.uchar)(&data[0]), C.ulonglong(len(data)), (*C.uchar)(&nonce[0]), (*C.uchar)(&publicKey[0]), (*C.uchar)(&privateKey[0]) ) != 0
+	return C.crypto_box_open((*C.uchar)(&data[0]), (*C.uchar)(&data[0]), C.ulonglong(len(data)), (*C.uchar)(&nonce[0]), (*C.uchar)(&publicKey[0]), (*C.uchar)(&privateKey[0])) != 0
 }
 
 func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 
-    body, err := ioutil.ReadAll(request.Body)
-    if err != nil {
-        return
-    }
+	body, err := ioutil.ReadAll(request.Body)
+	if err != nil {
+		return
+	}
 
 	index := 0
 
@@ -662,7 +665,7 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	var encrypted_token []byte
-	if !ReadBytes(body, &index, &encrypted_token, RelayTokenBytes + C.crypto_box_MACBYTES) {
+	if !ReadBytes(body, &index, &encrypted_token, RelayTokenBytes+C.crypto_box_MACBYTES) {
 		return
 	}
 
@@ -720,10 +723,10 @@ func CompareTokens(a []byte, b []byte) bool {
 
 func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
-    body, err := ioutil.ReadAll(request.Body)
-    if err != nil {
-        return
-    }
+	body, err := ioutil.ReadAll(request.Body)
+	if err != nil {
+		return
+	}
 
 	index := 0
 
@@ -804,7 +807,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	relayEntry.token = token
 
 	type RelayPingData struct {
-		id uint64
+		id      uint64
 		address string
 	}
 
@@ -812,7 +815,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
 	backend.mutex.Lock()
 	backend.relayDatabase[key] = relayEntry
-	for k,v := range backend.relayDatabase {
+	for k, v := range backend.relayDatabase {
 		if k != relay_address {
 			if k != relay_address {
 				relaysToPing = append(relaysToPing, RelayPingData{id: v.id, address: k})

@@ -7,9 +7,9 @@ package core
 
 import (
 	"fmt"
-	"net"
 	"hash/fnv"
 	"io/ioutil"
+	"net"
 	"reflect"
 	"testing"
 	"time"

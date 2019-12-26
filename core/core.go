@@ -218,13 +218,13 @@ func (slice *RouteSlice) Serialize(stream Stream) error {
 // ============================================================================
 
 type RelayUpdate struct {
-	Id              RelayId
-	Name            string
-	Address         string
-	Datacenter      DatacenterId
-	DatacenterName  string
-	PublicKey  		[]byte
-	Shutdown        bool
+	Id             RelayId
+	Name           string
+	Address        string
+	Datacenter     DatacenterId
+	DatacenterName string
+	PublicKey      []byte
+	Shutdown       bool
 }
 
 type RelayData struct {
@@ -489,7 +489,7 @@ func (database *StatsDatabase) GetCostMatrix(relays *RelayDatabase) *CostMatrix 
 			rtt, jitter, packetLoss := database.GetSample(relays, id_i, id_j)
 			ij_index := TriMatrixIndex(i, j)
 			if rtt != InvalidRouteValue && jitter <= MaxJitter && packetLoss <= MaxPacketLoss {
-				costMatrix.RTT[ij_index] = int32(math.Floor(float64(rtt+jitter)))
+				costMatrix.RTT[ij_index] = int32(math.Floor(float64(rtt + jitter)))
 			} else {
 				costMatrix.RTT[ij_index] = -1
 			}
