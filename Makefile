@@ -123,11 +123,11 @@ dev-analyze: ## analyze the route matrix
 	cat $(OPTIMIZE_FILE) | $(DIST_DIR)/analyze
 
 .PHONY: debug
-dev-debug: ## debug ./dist/optimize.bin with relay=name
+dev-debug: ## debug relay in route matrix
 	cat $(OPTIMIZE_FILE) | $(DIST_DIR)/debug -relay=$(relay)
 
 .PHONY: dev-route
-dev-route: ## route ./dist/optimize.bin with relay=name datacenter=name
+dev-route: ## print out routes from relay to datacenter
 	cat $(OPTIMIZE_FILE) | $(DIST_DIR)/route -relay=$(relay) -datacenter=$(datacenter)
 
 .PHONY: dev-relay
