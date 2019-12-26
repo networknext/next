@@ -56,7 +56,7 @@ format: ## runs gofmt on all go source code
 #####################
 
 .PHONY: test
-test: clean lint build-sdk-test build-relay ## runs unit tests for sdk, relay, and core
+test: clean lint build-sdk-test build-relay ## runs unit tests
 	@$(DIST_DIR)/$(SDKNAME)_test
 	@$(DIST_DIR)/relay test
 	@$(GO) test -race -v ./core/...
