@@ -40,8 +40,6 @@ int main()
 
     next_term();
 
-    printf( "\n" );
-
     fflush( stdout );
 
     return 0;
