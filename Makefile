@@ -115,20 +115,20 @@ dev-cost: ## gets the cost matrix from the local backend
 .PHONY: dev-optimize
 dev-optimize: ## transforms the cost matrix into a route matrix
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/optimize ./cmd/tools/optimize/optimize.go
-	cat $(COST_FILE) | ./dist/optimize -threshold-rtt=1 > $(OPTIMIZE_FILE)
+	test -f $(COST_FILE) && cat $(COST_FILE) | ./dist/optimize -threshold-rtt=1 > $(OPTIMIZE_FILE)
 
 .PHONY: dev-analyze
 dev-analyze: ## analyzes the route matrix
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/analyze ./cmd/tools/analyze/analyze.go
-	cat $(OPTIMIZE_FILE) | $(DIST_DIR)/analyze
+	test -f $(OPTIMIZE_FILE) && cat $(OPTIMIZE_FILE) | $(DIST_DIR)/analyze
 
 .PHONY: debug
 dev-debug: ## debugs relay in route matrix
-	cat $(OPTIMIZE_FILE) | $(DIST_DIR)/debug -relay=$(relay)
+	test -f $(OPTIMIZE_FILE) && cat $(OPTIMIZE_FILE) | $(DIST_DIR)/debug -relay=$(relay)
 
 .PHONY: dev-route
 dev-route: ## prints routes from relay to datacenter in route matrix
-	cat $(OPTIMIZE_FILE) | $(DIST_DIR)/route -relay=$(relay) -datacenter=$(datacenter)
+	test -f $(OPTIMIZE_FILE) && cat $(OPTIMIZE_FILE) | $(DIST_DIR)/route -relay=$(relay) -datacenter=$(datacenter)
 
 .PHONY: dev-relay
 dev-relay: build-relay
