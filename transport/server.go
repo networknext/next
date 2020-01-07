@@ -17,10 +17,10 @@ const (
 )
 
 // UDPHandlerFunc acts the same way http.HandlerFunc does, but for UDP packets and address
-type UDPHandlerFunc func(*bytes.Buffer, net.Addr)
+type UDPHandlerFunc func([]byte, *net.UDPAddr)
 
-// RelayServer is a simple UDP router for specific packets and runs each UDPHandlerFunc based on the incoming packet type
-type RelayServer struct {
+// ServerIngress is a simple UDP router for specific packets and runs each UDPHandlerFunc based on the incoming packet type
+type UDPServerMux struct {
 	Conn          *net.UDPConn
 	MaxPacketSize int
 
@@ -29,24 +29,24 @@ type RelayServer struct {
 }
 
 // Start begins accepting UDP packets from the UDP connection and will block
-func (rs *RelayServer) Start() error {
-	if rs.Conn == nil {
+func (m *UDPServerMux) Start() error {
+	if m.Conn == nil {
 		return errors.New("relay server cannot be nil")
 	}
 
-	packet := make([]byte, rs.MaxPacketSize)
+	packet := make([]byte, m.MaxPacketSize)
 
 	for {
-		numbytes, addr, _ := rs.Conn.ReadFrom(packet)
+		numbytes, addr, _ := m.Conn.ReadFromUDP(packet)
 		if numbytes <= 0 {
 			continue
 		}
 
 		switch packet[0] {
 		case PacketTypeServerUpdate:
-			rs.ServerUpdateHandlerFunc(bytes.NewBuffer(packet[1:numbytes]), addr)
+			m.ServerUpdateHandlerFunc(packet[1:numbytes], addr)
 		case PacketTypeSessionUpdate:
-			rs.SessionUpdateHandlerFunc(bytes.NewBuffer(packet[1:numbytes]), addr)
+			m.SessionUpdateHandlerFunc(packet[1:numbytes], addr)
 		}
 	}
 }
@@ -65,9 +65,9 @@ func (sup *ServerUpdatePacket) UnmarshalBinary(data []byte) error {
 }
 
 // ServerUpdateHandlerFunc ...
-func ServerUpdateHandlerFunc(packet *bytes.Buffer, from net.Addr) {
+func ServerUpdateHandlerFunc(packet []byte, from *net.UDPAddr) {
 	var sup ServerUpdatePacket
-	if err := binary.Read(packet, binary.LittleEndian, &sup); err != nil {
+	if err := binary.Read(bytes.NewBuffer(packet), binary.LittleEndian, &sup); err != nil {
 		log.Println(err)
 	}
 
@@ -88,9 +88,9 @@ func (sup *SessionUpdatePacket) UnmarshalBinary(data []byte) error {
 }
 
 // SessionUpdateHandlerFunc ...
-func SessionUpdateHandlerFunc(packet *bytes.Buffer, from net.Addr) {
+func SessionUpdateHandlerFunc(packet []byte, from *net.UDPAddr) {
 	var sup SessionUpdatePacket
-	if err := binary.Read(packet, binary.LittleEndian, &sup); err != nil {
+	if err := binary.Read(bytes.NewBuffer(packet), binary.LittleEndian, &sup); err != nil {
 		log.Println(err)
 	}
 

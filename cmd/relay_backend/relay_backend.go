@@ -6,49 +6,40 @@
 package main
 
 import (
-	"log"
-	"net"
+	"bufio"
+	"fmt"
 	"os"
-	"os/signal"
-	"strconv"
 
 	"github.com/networknext/backend/transport"
 )
 
 func main() {
-	var err error
+	backend := transport.NewBackend()
+	port := os.Getenv("NN_RELAY_BACKEND_PORT")
 
-	var port int64
-	if port, err = strconv.ParseInt(os.Getenv("RELAY_BACKEND_PORT"), 10, 64); err != nil {
-		port = 30000
-		log.Printf("unable to parse port %s, defauling to 30000\n", os.Getenv("RELAY_BACKEND_PORT"))
+	if len(port) == 0 {
+		port = "30000"
 	}
 
-	{
-		addr := net.UDPAddr{
-			Port: int(port),
-			IP:   net.ParseIP("0.0.0.0"),
-		}
+	router := transport.MakeRouter(backend)
 
-		conn, err := net.ListenUDP("udp", &addr)
-		if err != nil {
-			log.Printf("error: could not listen on %s\n", addr.String())
-		}
+	go optimizeRoutine()
 
-		rs := transport.RelayServer{
-			Conn:          conn,
-			MaxPacketSize: transport.DefaultMaxPacketSize,
+	go timeoutRoutine()
 
-			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc,
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc,
-		}
+	go transport.HTTPStart(port, router)
 
-		if err := rs.Start(); err != nil {
-			log.Println(err)
-		}
-	}
+	// so my pc doesn't kill itself with a infinite loop
+	input := bufio.NewScanner(os.Stdin)
+	input.Scan()
+}
 
-	sigint := make(chan os.Signal, 1)
-	signal.Notify(sigint, os.Interrupt)
-	<-sigint
+// TODO
+func optimizeRoutine() {
+	fmt.Println("TODO optimizeRoutine()")
+}
+
+// TODO
+func timeoutRoutine() {
+	fmt.Println("TODO timeoutRoutine()")
 }
