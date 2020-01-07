@@ -16,7 +16,7 @@ const (
 	DefaultMaxPacketSize = 1500
 )
 
-// UDPHandlerFunc acs the same way http.HandlerFunc does, but for UDP packets and address
+// UDPHandlerFunc acts the same way http.HandlerFunc does, but for UDP packets and address
 type UDPHandlerFunc func(*bytes.Buffer, net.Addr)
 
 // RelayServer is a simple UDP router for specific packets and runs each UDPHandlerFunc based on the incoming packet type
