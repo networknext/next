@@ -1,4 +1,4 @@
-package crypto
+package rw
 
 import (
 	"encoding/binary"

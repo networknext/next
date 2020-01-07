@@ -31,6 +31,12 @@ var gRelayPublicKey = []byte{
 	0xda, 0xa9, 0xc0, 0xae, 0x08, 0xa2, 0xcf, 0x5e,
 }
 
+func getRelayId(name string) uint64 {
+	hash := fnv.New64a()
+	hash.Write([]byte(name))
+	return hash.Sum64()
+}
+
 func RelayInitHandlerFunc(backend interface{}) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		body, err := ioutil.ReadAll(request.Body)
@@ -89,7 +95,7 @@ func RelayInitHandlerFunc(backend interface{}) func(writer http.ResponseWriter, 
 
 		relayEntry := RelayEntry{}
 		relayEntry.name = relay_address
-		relayEntry.id = crypto.GetRelayId(relay_address)
+		relayEntry.id = getRelayId(relay_address)
 		relayEntry.address = core.ParseAddress(relay_address)
 		relayEntry.lastUpdate = time.Now().Unix()
 		relayEntry.token = core.RandomBytes(gRelayTokenBytes)
@@ -123,16 +129,19 @@ func RelayUpdateHandlerFunc(backend interface{}) func(writer http.ResponseWriter
 
 		var version uint32
 		if !crypto.ReadUint32(body, &index, &version) || version != gUpdateRequestVersion {
+			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		var relay_address string
 		if !crypto.ReadString(body, &index, &relay_address, gMaxRelayAddressLength) {
+			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		var token []byte
 		if !crypto.ReadBytes(body, &index, &token, gRelayTokenBytes) {
+			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
@@ -153,10 +162,12 @@ func RelayUpdateHandlerFunc(backend interface{}) func(writer http.ResponseWriter
 
 		var num_relays uint32
 		if !crypto.ReadUint32(body, &index, &num_relays) {
+			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		if num_relays > gMaxRelays {
+			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
@@ -193,7 +204,7 @@ func RelayUpdateHandlerFunc(backend interface{}) func(writer http.ResponseWriter
 
 		relayEntry = RelayEntry{}
 		relayEntry.name = relay_address
-		relayEntry.id = crypto.GetRelayId(relay_address)
+		relayEntry.id = getRelayId(relay_address)
 		relayEntry.address = core.ParseAddress(relay_address)
 		relayEntry.lastUpdate = time.Now().Unix()
 		relayEntry.token = token

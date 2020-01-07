@@ -44,16 +44,7 @@ func putInitRequestMagic(buff []byte) {
 
 func putInitRequestVersion(buff []byte) {
 	const gInitRequestVersion = 0
-
-	secondBuff := make([]byte, 4)
-	binary.LittleEndian.PutUint32(secondBuff, gInitRequestVersion)
-
-	// ? this cannot be the right way to do this
-	// &buff[x] does not work here
-	buff[4] = secondBuff[0]
-	buff[5] = secondBuff[1]
-	buff[6] = secondBuff[2]
-	buff[7] = secondBuff[3]
+	binary.LittleEndian.PutUint32(buff[4:], gInitRequestVersion)
 }
 
 func TestRelayInitHandler_MissingMagicNumber(t *testing.T) {
