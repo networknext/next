@@ -14,23 +14,22 @@ import (
 	// Relay entry
 )
 
-const initRequestMagic = uint32(0x9083708f)
-const initRequestVersion = 0
-const initResponseVersion = 0
-const updateRequestVersion = 0
-const updateResponseVersion = 0
-const maxRelayIdLength = 256
-const maxRelayAddressLength = 256
-const relayTokenBytes = 32
-const maxRelays = 1024
+const gInitRequestMagic = uint32(0x9083708f)
+const gInitRequestVersion = 0
+const gInitResponseVersion = 0
+const gUpdateRequestVersion = 0
+const gUpdateResponseVersion = 0
+const gMaxRelayIdLength = 256
+const gMaxRelayAddressLength = 256
+const gRelayTokenBytes = 32
+const gMaxRelays = 1024
 
-var relayPublicKey = []byte{
+var gRelayPublicKey = []byte{
 	0xf5, 0x22, 0xad, 0xc1, 0xee, 0x04, 0x6a, 0xbe,
 	0x7d, 0x89, 0x0c, 0x81, 0x3a, 0x08, 0x31, 0xba,
 	0xdc, 0xdd, 0xb5, 0x52, 0xcb, 0x73, 0x56, 0x10,
 	0xda, 0xa9, 0xc0, 0xae, 0x08, 0xa2, 0xcf, 0x5e,
 }
-
 
 func RelayInitHandlerFunc(backend interface{}) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
@@ -43,31 +42,37 @@ func RelayInitHandlerFunc(backend interface{}) func(writer http.ResponseWriter, 
 		index := 0
 
 		var magic uint32
-		if !crypto.ReadUint32(body, &index, &magic) || magic != initRequestMagic {
+		if !crypto.ReadUint32(body, &index, &magic) || magic != gInitRequestMagic {
+			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		var version uint32
-		if !crypto.ReadUint32(body, &index, &version) || version != initRequestVersion {
+		if !crypto.ReadUint32(body, &index, &version) || version != gInitRequestVersion {
+			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		var nonce []byte
 		if !crypto.ReadBytes(body, &index, &nonce, C.crypto_box_NONCEBYTES) {
+			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		var relay_address string
-		if !crypto.ReadString(body, &index, &relay_address, maxRelayAddressLength) {
+		if !crypto.ReadString(body, &index, &relay_address, gMaxRelayAddressLength) {
+			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		var encrypted_token []byte
-		if !crypto.ReadBytes(body, &index, &encrypted_token, relayTokenBytes+C.crypto_box_MACBYTES) {
+		if !crypto.ReadBytes(body, &index, &encrypted_token, gRelayTokenBytes+C.crypto_box_MACBYTES) {
+			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		if !crypto.CryptoCheck(encrypted_token, nonce, relayPublicKey[:], core.RouterPrivateKey[:]) {
+		if !crypto.CryptoCheck(encrypted_token, nonce, gRelayPublicKey[:], core.RouterPrivateKey[:]) {
+			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
@@ -87,7 +92,7 @@ func RelayInitHandlerFunc(backend interface{}) func(writer http.ResponseWriter, 
 		relayEntry.id = crypto.GetRelayId(relay_address)
 		relayEntry.address = core.ParseAddress(relay_address)
 		relayEntry.lastUpdate = time.Now().Unix()
-		relayEntry.token = core.RandomBytes(relayTokenBytes)
+		relayEntry.token = core.RandomBytes(gRelayTokenBytes)
 
 		backend.mutex.Lock()
 		backend.relayDatabase[key] = relayEntry
@@ -98,11 +103,10 @@ func RelayInitHandlerFunc(backend interface{}) func(writer http.ResponseWriter, 
 
 		index = 0
 		responseData := make([]byte, 64)
-		crypto.WriteUint32(responseData, &index, initResponseVersion)
+		crypto.WriteUint32(responseData, &index, gInitResponseVersion)
 		crypto.WriteUint64(responseData, &index, uint64(time.Now().Unix()))
-		crypto.WriteBytes(responseData, &index, relayEntry.token, relayTokenBytes)
+		crypto.WriteBytes(responseData, &index, relayEntry.token, gRelayTokenBytes)
 
-		// TODO ask what is going on here
 		responseData = responseData[:index]
 		writer.Write(responseData)
 	}
@@ -118,17 +122,17 @@ func RelayUpdateHandlerFunc(backend interface{}) func(writer http.ResponseWriter
 		index := 0
 
 		var version uint32
-		if !crypto.ReadUint32(body, &index, &version) || version != updateRequestVersion {
+		if !crypto.ReadUint32(body, &index, &version) || version != gUpdateRequestVersion {
 			return
 		}
 
 		var relay_address string
-		if !crypto.ReadString(body, &index, &relay_address, maxRelayAddressLength) {
+		if !crypto.ReadString(body, &index, &relay_address, gMaxRelayAddressLength) {
 			return
 		}
 
 		var token []byte
-		if !crypto.ReadBytes(body, &index, &token, relayTokenBytes) {
+		if !crypto.ReadBytes(body, &index, &token, gRelayTokenBytes) {
 			return
 		}
 
@@ -152,7 +156,7 @@ func RelayUpdateHandlerFunc(backend interface{}) func(writer http.ResponseWriter
 			return
 		}
 
-		if num_relays > MaxRelays {
+		if num_relays > gMaxRelays {
 			return
 		}
 
@@ -189,7 +193,7 @@ func RelayUpdateHandlerFunc(backend interface{}) func(writer http.ResponseWriter
 
 		relayEntry = RelayEntry{}
 		relayEntry.name = relay_address
-		relayEntry.id = GetRelayId(relay_address)
+		relayEntry.id = crypto.GetRelayId(relay_address)
 		relayEntry.address = core.ParseAddress(relay_address)
 		relayEntry.lastUpdate = time.Now().Unix()
 		relayEntry.token = token
@@ -216,13 +220,12 @@ func RelayUpdateHandlerFunc(backend interface{}) func(writer http.ResponseWriter
 
 		index = 0
 
-		WriteUint32(responseData, &index, UpdateResponseVersion)
-
-		WriteUint32(responseData, &index, uint32(len(relaysToPing)))
+		crypto.WriteUint32(responseData, &index, gUpdateResponseVersion)
+		crypto.WriteUint32(responseData, &index, uint32(len(relaysToPing)))
 
 		for i := range relaysToPing {
-			WriteUint64(responseData, &index, relaysToPing[i].id)
-			WriteString(responseData, &index, relaysToPing[i].address, MaxRelayAddressLength)
+			crypto.WriteUint64(responseData, &index, relaysToPing[i].id)
+			crypto.WriteString(responseData, &index, relaysToPing[i].address, gMaxRelayAddressLength)
 		}
 
 		responseLength := index
