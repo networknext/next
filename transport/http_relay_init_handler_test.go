@@ -49,75 +49,78 @@ func putInitRequestVersion(buff []byte) {
 	binary.LittleEndian.PutUint32(buff[4:], gInitRequestVersion)
 }
 
-func TestRelayInitHandler_MissingMagicNumber(t *testing.T) {
-	buff := make([]byte, 0)
-	relayInitAssertions(t, buff, http.StatusBadRequest)
-}
+func TestRelayInitHandler(t *testing.T) {
+	t.Run("missing magic number", func(t *testing.T) {
+		buff := make([]byte, 0)
+		relayInitAssertions(t, buff, http.StatusBadRequest)
+	})
 
-func TestRelayInitHandler_MissingRequestVersion(t *testing.T) {
-	buff := make([]byte, sizeOfInitRequestMagic)
-	putInitRequestMagic(buff)
-	relayInitAssertions(t, buff, http.StatusBadRequest)
-}
+	t.Run("missing request version", func(t *testing.T) {
+		buff := make([]byte, sizeOfInitRequestMagic)
+		putInitRequestMagic(buff)
+		relayInitAssertions(t, buff, http.StatusBadRequest)
+	})
 
-func TestRelayInitHandler_MissingNonceBytes(t *testing.T) {
-	buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion)
-	putInitRequestMagic(buff)
-	putInitRequestVersion(buff)
-	relayInitAssertions(t, buff, http.StatusBadRequest)
-}
+	t.Run("missing nonce bytes", func(t *testing.T) {
+		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion)
+		putInitRequestMagic(buff)
+		putInitRequestVersion(buff)
+		relayInitAssertions(t, buff, http.StatusBadRequest)
+	})
 
-func TestRelayInitHandler_MissingRelayAddress1(t *testing.T) {
-	buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+sizeOfNonceBytes)
-	putInitRequestMagic(buff)
-	putInitRequestVersion(buff)
-	// ? can nonce bytes be 0'ed
-	relayInitAssertions(t, buff, http.StatusBadRequest)
-}
+	t.Run("missing relay address", func(t *testing.T) {
+		t.Run("byte array is not proper length", func(t *testing.T) {
+			buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+sizeOfNonceBytes)
+			putInitRequestMagic(buff)
+			putInitRequestVersion(buff)
+			// ? can nonce bytes be 0'ed
+			relayInitAssertions(t, buff, http.StatusBadRequest)
+		})
 
-func TestRelayInitHandler_MissingRelayAddress2(t *testing.T) {
-	buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+sizeOfNonceBytes+sizeOfRelayAddressLength)
-	putInitRequestMagic(buff)
-	putInitRequestVersion(buff)
-	putRelayAddress(buff, "")
-	// ? can nonce bytes be 0'ed
-	relayInitAssertions(t, buff, http.StatusBadRequest)
-}
+		t.Run("byte array is proper length but there is a blank string", func(t *testing.T) {
+			buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+sizeOfNonceBytes+sizeOfRelayAddressLength)
+			putInitRequestMagic(buff)
+			putInitRequestVersion(buff)
+			putRelayAddress(buff, "")
+			relayInitAssertions(t, buff, http.StatusBadRequest)
+		})
+	})
 
-func TestRelayInitHandler_MissingEncryptedToken(t *testing.T) {
-	buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+sizeOfNonceBytes+sizeOfRelayAddressLength)
-	putInitRequestMagic(buff)
-	putInitRequestVersion(buff)
-	putRelayAddress(buff, "127.0.0.1")
-	// ? can relay address also be 0'ed
-	relayInitAssertions(t, buff, http.StatusBadRequest)
-}
+	t.Run("missing encryption token", func(t *testing.T) {
+		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+sizeOfNonceBytes+sizeOfRelayAddressLength)
+		putInitRequestMagic(buff)
+		putInitRequestVersion(buff)
+		putRelayAddress(buff, "127.0.0.1")
+		// ? can relay address also be 0'ed
+		relayInitAssertions(t, buff, http.StatusBadRequest)
+	})
 
-func TestRelayInitHandler_CryptoCheckFails(t *testing.T) {
-	buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+sizeOfNonceBytes+sizeOfRelayAddressLength+sizeOfEncryptedToken)
-	putInitRequestMagic(buff)
-	putInitRequestVersion(buff)
-	putRelayAddress(buff, "127.0.0.1")
-	// ? if encrypted token is 0'ed will that cause a fail
-	relayInitAssertions(t, buff, http.StatusBadRequest)
-}
+	t.Run("crypto check returns false", func(t *testing.T) {
+		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+sizeOfNonceBytes+sizeOfRelayAddressLength+sizeOfEncryptedToken)
+		putInitRequestMagic(buff)
+		putInitRequestVersion(buff)
+		putRelayAddress(buff, "127.0.0.1")
+		// ? if encrypted token is 0'ed will that cause a fail
+		relayInitAssertions(t, buff, http.StatusBadRequest)
+	})
 
-func TestRelayInitHandler_RelayAlreadyExists(t *testing.T) {
-	buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+sizeOfNonceBytes+sizeOfRelayAddressLength+sizeOfEncryptedToken)
-	putInitRequestMagic(buff)
-	putInitRequestVersion(buff)
-	putRelayAddress(buff, "127.0.0.1")
-	// put address into backend.relayDatabase here
-	relayInitAssertions(t, buff, http.StatusNotFound)
-}
+	t.Run("relay already exists", func(t *testing.T) {
+		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+sizeOfNonceBytes+sizeOfRelayAddressLength+sizeOfEncryptedToken)
+		putInitRequestMagic(buff)
+		putInitRequestVersion(buff)
+		putRelayAddress(buff, "127.0.0.1")
+		// put address into backend.relayDatabase here
+		relayInitAssertions(t, buff, http.StatusNotFound)
+	})
 
-func TestRelayInitHandler_Valid(t *testing.T) {
-	buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+sizeOfNonceBytes+sizeOfRelayAddressLength+sizeOfEncryptedToken)
-	putInitRequestMagic(buff)
-	putInitRequestVersion(buff)
-	putRelayAddress(buff, "127.0.0.1")
-	// stub stuff out here
-	writer := relayInitAssertions(t, buff, http.StatusOK)
-	assert.Equal(t, writer.Header()["Content-Type"], "application/octet-stream")
-	// TODO assert writer data, unsure how to access that, found MultiWriter but unsure if that's the right thing to use
+	t.Run("valid", func(t *testing.T) {
+		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+sizeOfNonceBytes+sizeOfRelayAddressLength+sizeOfEncryptedToken)
+		putInitRequestMagic(buff)
+		putInitRequestVersion(buff)
+		putRelayAddress(buff, "127.0.0.1")
+		// stub stuff out here
+		writer := relayInitAssertions(t, buff, http.StatusOK)
+		assert.Equal(t, writer.Header()["Content-Type"], "application/octet-stream")
+		// TODO assert writer data, unsure how to access that, found MultiWriter but unsure if that's the right thing to use
+	})
 }

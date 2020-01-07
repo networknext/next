@@ -6,6 +6,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 
@@ -13,22 +14,24 @@ import (
 )
 
 func main() {
+	backend := transport.NewBackend()
 	port := os.Getenv("NN_BACKEND_PORT")
 
 	if len(port) == 0 {
 		port = "30000"
 	}
 
-	router := transport.MakeRouter()
+	router := transport.MakeRouter(backend)
 
 	go optimizeRoutine()
 
 	go timeoutRoutine()
 
-	go transport.HttpStart(port, router)
+	go transport.HTTPStart(port, router)
 
-	for {
-	}
+	// so my pc doesn't kill itself with a infinite loop
+	input := bufio.NewScanner(os.Stdin)
+	input.Scan()
 }
 
 // TODO
