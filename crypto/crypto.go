@@ -1,0 +1,29 @@
+package crypto
+
+// #cgo pkg-config: libsodium
+// #include <sodium.h>
+import "C"
+
+import (
+	"fmt"
+)
+
+// Check TODO
+func Check(data []byte, nonce []byte, publicKey []byte, privateKey []byte) bool {
+	return C.crypto_box_open((*C.uchar)(&data[0]), (*C.uchar)(&data[0]), C.ulonglong(len(data)), (*C.uchar)(&nonce[0]), (*C.uchar)(&publicKey[0]), (*C.uchar)(&privateKey[0])) != 0
+}
+
+// CompareTokens TODO
+func CompareTokens(a []byte, b []byte) bool {
+	if len(a) != len(b) {
+		fmt.Printf("token length is wrong\n")
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			fmt.Printf("token value is wrong: %d vs. %d\n", a[i], b[i])
+			return false
+		}
+	}
+	return true
+}

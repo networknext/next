@@ -21,6 +21,7 @@ func putUpdateRequestVersion(buff []byte) {
 }
 
 func relayUpdateAssertions(t *testing.T, body []byte, expectedCode int) http.ResponseWriter {
+	backend := transport.NewBackend()
 	writer := httptest.NewRecorder()
 	request, _ := http.NewRequest("POST", "/relay_update", bytes.NewBuffer(body))
 
