@@ -23,8 +23,11 @@ import (
 	"sort"
 	"sync"
 	"time"
+	"bytes"
+	"log"
 
 	"github.com/networknext/backend/core"
+	"github.com/networknext/backend/transport"
 )
 
 const NEXT_BACKEND_PORT = 30000
@@ -265,46 +268,35 @@ func main() {
 
 	go WebServer()
 
-	listenAddress := net.UDPAddr{
+	addr := net.UDPAddr{
 		Port: NEXT_BACKEND_PORT,
 		IP:   net.ParseIP("0.0.0.0"),
 	}
 
-	connection, err := net.ListenUDP("udp", &listenAddress)
+	conn, err := net.ListenUDP("udp", &addr)
 	if err != nil {
-		fmt.Printf("error: could not listen on %s\n", listenAddress.String())
+		fmt.Printf("error: could not listen on %s\n", addr.String())
 		return
 	}
 
-	defer connection.Close()
+	defer conn.Close()
 
-	fmt.Printf("started local backend on port %d\n", NEXT_BACKEND_PORT)
+	rs := transport.RelayServer{
+		Conn: conn,
+		MaxPacketSize: transport.DefaultMaxPacketSize,
 
-	packetData := make([]byte, NEXT_MAX_PACKET_BYTES)
-
-	for {
-
-		packetBytes, from, _ := connection.ReadFromUDP(packetData)
-
-		if packetBytes <= 0 {
-			continue
-		}
-
-		packetType := packetData[0]
-
-		if packetType == NEXT_BACKEND_SERVER_UPDATE_PACKET {
-
-			readStream := core.CreateReadStream(packetData[1:])
+		ServerUpdateHandlerFunc: func(packet *bytes.Buffer, from net.Addr) {
+			readStream := core.CreateReadStream(packet.Bytes())
 
 			serverUpdate := &core.NextBackendServerUpdatePacket{}
 
 			if err := serverUpdate.Serialize(readStream); err != nil {
 				fmt.Printf("error: failed to read server update packet: %v\n", err)
-				continue
+				return
 			}
 
 			serverEntry := ServerEntry{}
-			serverEntry.address = from
+			serverEntry.address = from.(*net.UDPAddr)
 			serverEntry.publicKey = serverUpdate.ServerRoutePublicKey
 			serverEntry.lastUpdate = time.Now().Unix()
 
@@ -317,19 +309,19 @@ func main() {
 			}
 			backend.serverDatabase[key] = serverEntry
 			backend.mutex.Unlock()
+		},
 
-		} else if packetType == NEXT_BACKEND_SESSION_UPDATE_PACKET {
-
-			readStream := core.CreateReadStream(packetData[1:])
+		SessionUpdateHandlerFunc: func(packet *bytes.Buffer, from net.Addr) {
+			readStream := core.CreateReadStream(packet.Bytes())
 			sessionUpdate := &core.NextBackendSessionUpdatePacket{}
 			if err := sessionUpdate.Serialize(readStream, NEXT_VERSION_MAJOR, NEXT_VERSION_MINOR, NEXT_VERSION_PATCH); err != nil {
 				fmt.Printf("error: failed to read server session update packet: %v\n", err)
-				continue
+				return
 			}
 
 			if sessionUpdate.FallbackToDirect {
 				fmt.Printf("error: fallback to direct %s\n", from)
-				continue
+				return
 			}
 
 			backend.mutex.RLock()
@@ -337,7 +329,7 @@ func main() {
 			backend.mutex.RUnlock()
 			if !ok {
 				fmt.Printf("error: could not find server %s\n", from)
-				continue
+				return
 			}
 
 			nearRelayIds, nearRelayAddresses := GetNearRelays()
@@ -431,7 +423,7 @@ func main() {
 					publicKeys[1+i] = relayPublicKey
 				}
 
-				addresses[numNodes-1] = from
+				addresses[numNodes-1] = from.(*net.UDPAddr)
 				publicKeys[numNodes-1] = serverEntry.publicKey
 
 				var tokens []byte
@@ -446,7 +438,7 @@ func main() {
 					tokens, err = core.WriteRouteTokens(sessionEntry.expireTimestamp, sessionEntry.id, sessionEntry.version, 0, 256, 256, numNodes, addresses, publicKeys, core.RouterPrivateKey)
 					if err != nil {
 						fmt.Printf("error: could not write route tokens: %v\n", err)
-						continue
+						return
 					}
 					responseType = core.NEXT_UPDATE_TYPE_ROUTE
 
@@ -457,7 +449,7 @@ func main() {
 					tokens, err = core.WriteContinueTokens(sessionEntry.expireTimestamp, sessionEntry.id, sessionEntry.version, 0, numNodes, publicKeys, core.RouterPrivateKey)
 					if err != nil {
 						fmt.Printf("error: could not write continue tokens: %v\n", err)
-						continue
+						return
 					}
 					responseType = core.NEXT_UPDATE_TYPE_CONTINUE
 
@@ -483,7 +475,7 @@ func main() {
 
 			if sessionResponse == nil {
 				fmt.Printf("error: nil session response\n")
-				continue
+				return
 			}
 
 			backend.mutex.Lock()
@@ -498,32 +490,37 @@ func main() {
 			sessionResponse.Signature = core.CryptoSignCreate(signResponseData, core.BackendPrivateKey)
 			if sessionResponse.Signature == nil {
 				fmt.Printf("error: failed to sign session response packet")
-				continue
+				return
 			}
 
 			writeStream, err := core.CreateWriteStream(NEXT_MAX_PACKET_BYTES)
 			if err != nil {
 				fmt.Printf("error: failed to write session response packet: %v\n", err)
-				continue
+				return
 			}
 			responsePacketType := uint32(NEXT_BACKEND_SESSION_RESPONSE_PACKET)
 			writeStream.SerializeBits(&responsePacketType, 8)
 			if err := sessionResponse.Serialize(writeStream, NEXT_VERSION_MAJOR, NEXT_VERSION_MINOR, NEXT_VERSION_PATCH); err != nil {
 				fmt.Printf("error: failed to write session response packet: %v\n", err)
-				continue
+				return
 			}
 			writeStream.Flush()
 
 			responsePacketData := writeStream.GetData()[0:writeStream.GetBytesProcessed()]
 
-			_, err = connection.WriteToUDP(responsePacketData, from)
+			_, err = conn.WriteToUDP(responsePacketData, from.(*net.UDPAddr))
 			if err != nil {
 				fmt.Printf("error: failed to send udp response: %v\n", err)
-				continue
+				return
 			}
-
-		}
+		},
 	}
+
+	if err := rs.Start(); err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("started local backend on port %d\n", NEXT_BACKEND_PORT)
 }
 
 // -----------------------------------------------------------

@@ -62,7 +62,7 @@ test: test-unit
 test-unit: clean lint build-sdk-test build-relay ## runs unit tests
 	@$(DIST_DIR)/$(SDKNAME)_test
 	@$(DIST_DIR)/relay test
-	@$(GO) test -race -v ./core/...
+	@$(GO) test -race -v ./core/... ./transport/...
 	@printf "\n"
 
 .PHONY: test-soak
