@@ -12,6 +12,9 @@ import (
 	"os/signal"
 	"strconv"
 
+	"github.com/alicebob/miniredis"
+	"github.com/gomodule/redigo/redis"
+
 	"github.com/networknext/backend/transport"
 )
 
@@ -22,6 +25,21 @@ func main() {
 	if port, err = strconv.ParseInt(os.Getenv("SERVER_BACKEND_PORT"), 10, 64); err != nil {
 		port = 30000
 		log.Printf("unable to parse port %s, defauling to 30000\n", os.Getenv("SERVER_BACKEND_PORT"))
+	}
+
+	// Attempt to connect to REDIS_URL
+	// If it fails to connect then start a local in memory instance and connect to that instead
+	var redisConn redis.Conn
+	if redisConn, err = redis.DialURL(os.Getenv("REDIS_URL")); err != nil {
+		redisServer, err := miniredis.Run()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		redisConn, err = redis.Dial("tcp", redisServer.Addr())
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	{
@@ -39,8 +57,8 @@ func main() {
 			Conn:          conn,
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
-			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc,
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc,
+			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(redisConn),
+			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(redisConn),
 		}
 
 		if err := mux.Start(); err != nil {
