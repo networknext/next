@@ -19,14 +19,6 @@ import (
 	// Relay entry
 )
 
-const gInitRequestMagic = uint32(0x9083708f)
-const gInitRequestVersion = 0
-const gInitResponseVersion = 0
-const gUpdateRequestVersion = 0
-const gUpdateResponseVersion = 0
-const gRelayTokenBytes = 32
-const gMaxRelays = 1024
-
 var gRelayPublicKey = []byte{
 	0xf5, 0x22, 0xad, 0xc1, 0xee, 0x04, 0x6a, 0xbe,
 	0x7d, 0x89, 0x0c, 0x81, 0x3a, 0x08, 0x31, 0xba,
@@ -79,7 +71,9 @@ func RelayInitHandlerFunc(backend *Backend) func(writer http.ResponseWriter, req
 			return
 		}
 
-		if !crypto.Check(relayInitPacket.encryptedToken, relayInitPacket.nonce, gRelayPublicKey[:], core.RouterPrivateKey[:]) {
+		if relayInitPacket.magic != InitRequestMagic ||
+			relayInitPacket.version != InitRequestVersion ||
+			!crypto.Check(relayInitPacket.encryptedToken, relayInitPacket.nonce, gRelayPublicKey[:], core.RouterPrivateKey[:]) {
 			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -99,7 +93,7 @@ func RelayInitHandlerFunc(backend *Backend) func(writer http.ResponseWriter, req
 		relayEntry.id = getRelayID(relayInitPacket.address)
 		relayEntry.address = core.ParseAddress(relayInitPacket.address)
 		relayEntry.lastUpdate = time.Now().Unix()
-		relayEntry.token = core.RandomBytes(gRelayTokenBytes)
+		relayEntry.token = core.RandomBytes(RelayTokenBytes)
 
 		backend.Mutex.Lock()
 		backend.RelayDatabase[key] = relayEntry
@@ -110,9 +104,9 @@ func RelayInitHandlerFunc(backend *Backend) func(writer http.ResponseWriter, req
 
 		index = 0
 		responseData := make([]byte, 64)
-		rw.WriteUint32(responseData, &index, gInitResponseVersion)
+		rw.WriteUint32(responseData, &index, InitResponseVersion)
 		rw.WriteUint64(responseData, &index, uint64(time.Now().Unix()))
-		rw.WriteBytes(responseData, &index, relayEntry.token, gRelayTokenBytes)
+		rw.WriteBytes(responseData, &index, relayEntry.token, RelayTokenBytes)
 
 		writer.Write(responseData[:index])
 	}
@@ -128,30 +122,24 @@ func RelayUpdateHandlerFunc(backend *Backend) func(writer http.ResponseWriter, r
 
 		index := 0
 
-		var version uint32
-		if !rw.ReadUint32(body, &index, &version) || version != gUpdateRequestVersion {
+		relayUpdatePacket := RelayUpdatePacket{}
+		if err = relayUpdatePacket.UnmarshalBinary(body); err != nil {
+			writer.WriteHeader(http.StatusBadRequest)
+			log.Println(err)
+			return
+		}
+
+		if relayUpdatePacket.version != UpdateRequestVersion || relayUpdatePacket.numRelays > MaxRelays {
 			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		var relayAddress string
-		if !rw.ReadString(body, &index, &relayAddress, gMaxRelayAddressLength) {
-			writer.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		var token []byte
-		if !rw.ReadBytes(body, &index, &token, gRelayTokenBytes) {
-			writer.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		key := relayAddress
+		key := relayUpdatePacket.address
 		// --VerifyRelay()?--
 		backend.Mutex.RLock()
 		relayEntry, ok := backend.RelayDatabase[key]
 		found := false
-		if ok && crypto.CompareTokens(token, relayEntry.token) {
+		if ok && crypto.CompareTokens(relayUpdatePacket.token, relayEntry.token) {
 			found = true
 		}
 		backend.Mutex.RUnlock()
@@ -162,54 +150,24 @@ func RelayUpdateHandlerFunc(backend *Backend) func(writer http.ResponseWriter, r
 			return
 		}
 
-		var numRelays uint32
-		if !rw.ReadUint32(body, &index, &numRelays) {
-			writer.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		if numRelays > gMaxRelays {
-			writer.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
 		statsUpdate := &core.RelayStatsUpdate{}
 		statsUpdate.Id = core.RelayId(relayEntry.id)
 
-		for i := 0; i < int(numRelays); i++ {
-			var id uint64
-			var rtt, jitter, packetLoss float32
-			if !rw.ReadUint64(body, &index, &id) {
-				return
-			}
-			if !rw.ReadFloat32(body, &index, &rtt) {
-				return
-			}
-			if !rw.ReadFloat32(body, &index, &jitter) {
-				return
-			}
-			if !rw.ReadFloat32(body, &index, &packetLoss) {
-				return
-			}
-
-			ping := core.RelayStatsPing{}
-			ping.RelayId = core.RelayId(id)
-			ping.RTT = rtt
-			ping.Jitter = jitter
-			ping.PacketLoss = packetLoss
-			statsUpdate.PingStats = append(statsUpdate.PingStats, ping)
+		for _, ps := range relayUpdatePacket.pingStats {
+			statsUpdate.PingStats = append(statsUpdate.PingStats, ps)
 		}
 
 		backend.Mutex.Lock()
 		backend.StatsDatabase.ProcessStats(statsUpdate)
 		backend.Mutex.Unlock()
 
-		relayEntry = RelayEntry{}
-		relayEntry.name = relayAddress
-		relayEntry.id = getRelayID(relayAddress)
-		relayEntry.address = core.ParseAddress(relayAddress)
-		relayEntry.lastUpdate = time.Now().Unix()
-		relayEntry.token = token
+		relayEntry = RelayEntry{
+			name:       relayUpdatePacket.address,
+			id:         getRelayID(relayUpdatePacket.address),
+			address:    core.ParseAddress(relayUpdatePacket.address),
+			lastUpdate: time.Now().Unix(),
+			token:      relayUpdatePacket.token,
+		}
 
 		type RelayPingData struct {
 			id      uint64
@@ -221,8 +179,8 @@ func RelayUpdateHandlerFunc(backend *Backend) func(writer http.ResponseWriter, r
 		backend.Mutex.Lock()
 		backend.RelayDatabase[key] = relayEntry
 		for k, v := range backend.RelayDatabase {
-			if k != relayAddress {
-				if k != relayAddress {
+			if k != relayUpdatePacket.address {
+				if k != relayUpdatePacket.address {
 					relaysToPing = append(relaysToPing, RelayPingData{id: v.id, address: k})
 				}
 			}
@@ -233,12 +191,12 @@ func RelayUpdateHandlerFunc(backend *Backend) func(writer http.ResponseWriter, r
 
 		index = 0
 
-		rw.WriteUint32(responseData, &index, gUpdateResponseVersion)
+		rw.WriteUint32(responseData, &index, UpdateResponseVersion)
 		rw.WriteUint32(responseData, &index, uint32(len(relaysToPing)))
 
 		for i := range relaysToPing {
 			rw.WriteUint64(responseData, &index, relaysToPing[i].id)
-			rw.WriteString(responseData, &index, relaysToPing[i].address, gMaxRelayAddressLength)
+			rw.WriteString(responseData, &index, relaysToPing[i].address, MaxRelayAddressLength)
 		}
 
 		responseLength := index

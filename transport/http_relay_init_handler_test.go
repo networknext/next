@@ -3,8 +3,6 @@ package transport_test
 import (
 	"bytes"
 	"encoding/binary"
-	"io/ioutil"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -41,7 +39,7 @@ func putInitRequestMagic(buff []byte) {
 	binary.LittleEndian.PutUint32(buff, gInitRequestMagic)
 }
 
-func putRelayAddress(buff []byte, address string) {
+func putInitRelayAddress(buff []byte, address string) {
 	offset := sizeOfInitRequestMagic + sizeOfInitRequestVersion + sizeOfNonceBytes
 	binary.LittleEndian.PutUint32(buff[offset:], uint32(len(address)))
 	copy(buff[offset+4:], address)
@@ -53,7 +51,6 @@ func putInitRequestVersion(buff []byte) {
 }
 
 func TestRelayInitHandler(t *testing.T) {
-	log.SetOutput(ioutil.Discard)
 	t.Run("missing magic number", func(t *testing.T) {
 		buff := make([]byte, 0)
 		relayInitAssertions(t, buff, http.StatusBadRequest, nil)
@@ -85,7 +82,7 @@ func TestRelayInitHandler(t *testing.T) {
 			buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+sizeOfNonceBytes+4+len(addr))
 			putInitRequestMagic(buff)
 			putInitRequestVersion(buff)
-			putRelayAddress(buff, addr)
+			putInitRelayAddress(buff, addr)
 			relayInitAssertions(t, buff, http.StatusBadRequest, nil)
 		})
 	})
@@ -95,7 +92,7 @@ func TestRelayInitHandler(t *testing.T) {
 		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+sizeOfNonceBytes+4+len(addr))
 		putInitRequestMagic(buff)
 		putInitRequestVersion(buff)
-		putRelayAddress(buff, addr)
+		putInitRelayAddress(buff, addr)
 		relayInitAssertions(t, buff, http.StatusBadRequest, nil)
 	})
 
@@ -104,7 +101,7 @@ func TestRelayInitHandler(t *testing.T) {
 		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+sizeOfNonceBytes+4+len(addr)+sizeOfEncryptedToken)
 		putInitRequestMagic(buff)
 		putInitRequestVersion(buff)
-		putRelayAddress(buff, addr)
+		putInitRelayAddress(buff, addr)
 		relayInitAssertions(t, buff, http.StatusOK, nil) // should it return ok if it is 0'ed out?
 	})
 
@@ -115,7 +112,7 @@ func TestRelayInitHandler(t *testing.T) {
 		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+sizeOfNonceBytes+4+len(addr)+sizeOfEncryptedToken)
 		putInitRequestMagic(buff)
 		putInitRequestVersion(buff)
-		putRelayAddress(buff, addr)
+		putInitRelayAddress(buff, addr)
 		relayInitAssertions(t, buff, http.StatusNotFound, backend)
 	})
 
@@ -124,7 +121,7 @@ func TestRelayInitHandler(t *testing.T) {
 		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+sizeOfNonceBytes+4+len(addr)+sizeOfEncryptedToken)
 		putInitRequestMagic(buff)
 		putInitRequestVersion(buff)
-		putRelayAddress(buff, addr)
+		putInitRelayAddress(buff, addr)
 		writer := relayInitAssertions(t, buff, http.StatusOK, nil)
 		header := writer.Header()
 		contentType, _ := header["Content-Type"]

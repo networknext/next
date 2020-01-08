@@ -10,9 +10,6 @@ import (
 	"github.com/networknext/backend/rw"
 )
 
-const gMaxRelayIDLength = 256
-const gMaxRelayAddressLength = 256
-
 // RelayInitPacket is the struct that describes the packets comming into the relay_init endpoint
 type RelayInitPacket struct {
 	magic          uint32
@@ -28,8 +25,8 @@ func (r *RelayInitPacket) UnmarshalBinary(buf []byte) error {
 	if !(rw.ReadUint32(buf, &index, &r.magic) &&
 		rw.ReadUint32(buf, &index, &r.version) &&
 		rw.ReadBytes(buf, &index, &r.nonce, C.crypto_box_NONCEBYTES) &&
-		rw.ReadString(buf, &index, &r.address, gMaxRelayAddressLength) &&
-		rw.ReadBytes(buf, &index, &r.encryptedToken, gRelayTokenBytes+C.crypto_box_MACBYTES)) {
+		rw.ReadString(buf, &index, &r.address, MaxRelayAddressLength) &&
+		rw.ReadBytes(buf, &index, &r.encryptedToken, RelayTokenBytes+C.crypto_box_MACBYTES)) {
 		return errors.New("Invalid Packet")
 	}
 
