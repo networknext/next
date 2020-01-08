@@ -6,27 +6,27 @@ import (
 	"github.com/networknext/backend/core"
 )
 
-// Backend ? need help commenting on this one, "internal structure for handling connections" maybe?
+// Backend in-memory version of the actual backend, replace usage with actual backend calls when known
 type Backend struct {
-	mutex           sync.RWMutex
-	dirty           bool
-	mode            int
-	relayDatabase   map[string]RelayEntry
-	serverDatabase  map[string]ServerEntry
-	sessionDatabase map[uint64]SessionEntry
-	statsDatabase   *core.StatsDatabase
-	costMatrix      *core.CostMatrix
-	costMatrixData  []byte
-	routeMatrix     *core.RouteMatrix
-	routeMatrixData []byte
-	nearData        []byte
+	Mutex           sync.RWMutex
+	Dirty           bool
+	Mode            int
+	RelayDatabase   map[string]RelayEntry
+	ServerDatabase  map[string]ServerEntry
+	SessionDatabase map[uint64]SessionEntry
+	StatsDatabase   *core.StatsDatabase
+	CostMatrix      *core.CostMatrix
+	CostMatrixData  []byte
+	RouteMatrix     *core.RouteMatrix
+	RouteMatrixData []byte
+	NearData        []byte
 }
 
 // NewBackend creates a new backend initialized properly
 func NewBackend() *Backend {
 	backend := new(Backend)
-	backend.relayDatabase = make(map[string]RelayEntry)
-	backend.serverDatabase = make(map[string]ServerEntry)
-	backend.sessionDatabase = make(map[uint64]SessionEntry)
+	backend.RelayDatabase = make(map[string]RelayEntry)
+	backend.ServerDatabase = make(map[string]ServerEntry)
+	backend.SessionDatabase = make(map[uint64]SessionEntry)
 	return backend
 }

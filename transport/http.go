@@ -40,7 +40,6 @@ func getRelayID(name string) uint64 {
 	return hash.Sum64()
 }
 
-
 // MakeRouter creates a router with the specified endpoints
 func MakeRouter(backend *Backend) *mux.Router {
 	router := mux.NewRouter()
@@ -64,71 +63,56 @@ func HTTPStart(port string, router *mux.Router) {
 // RelayInitHandlerFunc returns the function for the relay init endpoint
 func RelayInitHandlerFunc(backend *Backend) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		body, err := ioutil.ReadAll(request.Body)
-		if err != nil {
-			// Error handling besides return?
+		log.Println("Got packet")
+
+		var body []byte
+		var err error
+		if body, err = ioutil.ReadAll(request.Body); err != nil {
 			return
 		}
 
 		index := 0
 
-		var magic uint32
-		if !rw.ReadUint32(body, &index, &magic) || magic != gInitRequestMagic {
+		relayInitPacket := RelayInitPacket{}
+
+		if err = relayInitPacket.UnmarshalBinary(body); err != nil {
+			writer.WriteHeader(http.StatusBadRequest)
+			log.Println(err)
+			return
+		}
+
+		log.Println("Read packet successfully")
+
+		if !crypto.Check(relayInitPacket.encryptedToken, relayInitPacket.nonce, gRelayPublicKey[:], core.RouterPrivateKey[:]) {
 			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		var version uint32
-		if !rw.ReadUint32(body, &index, &version) || version != gInitRequestVersion {
-			writer.WriteHeader(http.StatusBadRequest)
-			return
-		}
+		log.Println("Crypto check passed")
 
-		var nonce []byte
-		if !rw.ReadBytes(body, &index, &nonce, C.crypto_box_NONCEBYTES) {
-			writer.WriteHeader(http.StatusBadRequest)
-			return
-		}
+		key := relayInitPacket.address
 
-		var relayAddress string
-		if !rw.ReadString(body, &index, &relayAddress, gMaxRelayAddressLength) {
-			writer.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		var encryptedToken []byte
-		if !rw.ReadBytes(body, &index, &encryptedToken, gRelayTokenBytes+C.crypto_box_MACBYTES) {
-			writer.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		if !crypto.Check(encryptedToken, nonce, gRelayPublicKey[:], core.RouterPrivateKey[:]) {
-			writer.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		key := relayAddress
-
-		backend.mutex.RLock()
-		_, relayAlreadyExists := backend.relayDatabase[key]
-		backend.mutex.RUnlock()
-
+		backend.Mutex.RLock()
+		_, relayAlreadyExists := backend.RelayDatabase[key]
+		backend.Mutex.RUnlock()
 		if relayAlreadyExists {
 			writer.WriteHeader(http.StatusNotFound)
 			return
 		}
 
+		log.Println("Relay does not exist")
+
 		relayEntry := RelayEntry{}
-		relayEntry.name = relayAddress
-		relayEntry.id = getRelayID(relayAddress)
-		relayEntry.address = core.ParseAddress(relayAddress)
+		relayEntry.name = relayInitPacket.address
+		relayEntry.id = getRelayID(relayInitPacket.address)
+		relayEntry.address = core.ParseAddress(relayInitPacket.address)
 		relayEntry.lastUpdate = time.Now().Unix()
 		relayEntry.token = core.RandomBytes(gRelayTokenBytes)
 
-		backend.mutex.Lock()
-		backend.relayDatabase[key] = relayEntry
-		backend.dirty = true
-		backend.mutex.Unlock()
+		backend.Mutex.Lock()
+		backend.RelayDatabase[key] = relayEntry
+		backend.Dirty = true
+		backend.Mutex.Unlock()
 
 		writer.Header().Set("Content-Type", "application/octet-stream")
 
@@ -138,8 +122,9 @@ func RelayInitHandlerFunc(backend *Backend) func(writer http.ResponseWriter, req
 		rw.WriteUint64(responseData, &index, uint64(time.Now().Unix()))
 		rw.WriteBytes(responseData, &index, relayEntry.token, gRelayTokenBytes)
 
-		responseData = responseData[:index]
-		writer.Write(responseData)
+		writer.Write(responseData[:index])
+
+		log.Println("Packet handled successfully")
 	}
 }
 
@@ -172,14 +157,15 @@ func RelayUpdateHandlerFunc(backend *Backend) func(writer http.ResponseWriter, r
 		}
 
 		key := relayAddress
-
-		backend.mutex.RLock()
-		relayEntry, ok := backend.relayDatabase[key]
+		// --VerifyRelay()?--
+		backend.Mutex.RLock()
+		relayEntry, ok := backend.RelayDatabase[key]
 		found := false
 		if ok && crypto.CompareTokens(token, relayEntry.token) {
 			found = true
 		}
-		backend.mutex.RUnlock()
+		backend.Mutex.RUnlock()
+		// ------------------
 
 		if !found {
 			writer.WriteHeader(http.StatusNotFound)
@@ -224,9 +210,9 @@ func RelayUpdateHandlerFunc(backend *Backend) func(writer http.ResponseWriter, r
 			statsUpdate.PingStats = append(statsUpdate.PingStats, ping)
 		}
 
-		backend.mutex.Lock()
-		backend.statsDatabase.ProcessStats(statsUpdate)
-		backend.mutex.Unlock()
+		backend.Mutex.Lock()
+		backend.StatsDatabase.ProcessStats(statsUpdate)
+		backend.Mutex.Unlock()
 
 		relayEntry = RelayEntry{}
 		relayEntry.name = relayAddress
@@ -242,16 +228,16 @@ func RelayUpdateHandlerFunc(backend *Backend) func(writer http.ResponseWriter, r
 
 		relaysToPing := make([]RelayPingData, 0)
 
-		backend.mutex.Lock()
-		backend.relayDatabase[key] = relayEntry
-		for k, v := range backend.relayDatabase {
+		backend.Mutex.Lock()
+		backend.RelayDatabase[key] = relayEntry
+		for k, v := range backend.RelayDatabase {
 			if k != relayAddress {
 				if k != relayAddress {
 					relaysToPing = append(relaysToPing, RelayPingData{id: v.id, address: k})
 				}
 			}
 		}
-		backend.mutex.Unlock()
+		backend.Mutex.Unlock()
 
 		responseData := make([]byte, 10*1024)
 
@@ -278,9 +264,9 @@ func RelayUpdateHandlerFunc(backend *Backend) func(writer http.ResponseWriter, r
 // CostMatrixHandlerFunc returns the function for the cost matrix endpoint
 func CostMatrixHandlerFunc(backend *Backend) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		backend.mutex.RLock()
-		costMatrixData := backend.costMatrixData
-		backend.mutex.RUnlock()
+		backend.Mutex.RLock()
+		costMatrixData := backend.CostMatrixData
+		backend.Mutex.RUnlock()
 		writer.WriteHeader(http.StatusOK)
 		writer.Header().Set("Content-Type", "application/octet-stream")
 		writer.Write(costMatrixData)
@@ -290,9 +276,9 @@ func CostMatrixHandlerFunc(backend *Backend) func(writer http.ResponseWriter, re
 // RouteMatrixHandlerFunc returns the function for the matrix endpoint
 func RouteMatrixHandlerFunc(backend *Backend) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		backend.mutex.RLock()
-		routeMatrixData := backend.routeMatrixData
-		backend.mutex.RUnlock()
+		backend.Mutex.RLock()
+		routeMatrixData := backend.RouteMatrixData
+		backend.Mutex.RUnlock()
 		writer.WriteHeader(http.StatusOK)
 		writer.Header().Set("Content-Type", "application/octet-stream")
 		writer.Write(routeMatrixData)
@@ -302,9 +288,9 @@ func RouteMatrixHandlerFunc(backend *Backend) func(writer http.ResponseWriter, r
 // NearHandlerFunc returns the function for the near endpoint
 func NearHandlerFunc(backend *Backend) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		backend.mutex.RLock()
-		nearData := backend.nearData
-		backend.mutex.RUnlock()
+		backend.Mutex.RLock()
+		nearData := backend.NearData
+		backend.Mutex.RUnlock()
 		writer.WriteHeader(http.StatusOK)
 		writer.Header().Set("Content-Type", "application/octet-stream")
 		writer.Write(nearData)

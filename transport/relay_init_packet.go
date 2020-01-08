@@ -18,7 +18,7 @@ type RelayInitPacket struct {
 	magic          uint32
 	version        uint32
 	nonce          []byte
-	relayAddress   string
+	address        string
 	encryptedToken []byte
 }
 
@@ -28,7 +28,7 @@ func (r *RelayInitPacket) UnmarshalBinary(buf []byte) error {
 	if !(rw.ReadUint32(buf, &index, &r.magic) &&
 		rw.ReadUint32(buf, &index, &r.version) &&
 		rw.ReadBytes(buf, &index, &r.nonce, C.crypto_box_NONCEBYTES) &&
-		rw.ReadString(buf, &index, &r.relayAddress, gMaxRelayAddressLength) &&
+		rw.ReadString(buf, &index, &r.address, gMaxRelayAddressLength) &&
 		rw.ReadBytes(buf, &index, &r.encryptedToken, gRelayTokenBytes+C.crypto_box_MACBYTES)) {
 		return errors.New("Invalid Packet")
 	}
