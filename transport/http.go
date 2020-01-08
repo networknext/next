@@ -63,11 +63,9 @@ func HTTPStart(port string, router *mux.Router) {
 // RelayInitHandlerFunc returns the function for the relay init endpoint
 func RelayInitHandlerFunc(backend *Backend) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		log.Println("Got packet")
+		body, err := ioutil.ReadAll(request.Body)
 
-		var body []byte
-		var err error
-		if body, err = ioutil.ReadAll(request.Body); err != nil {
+		if err != nil {
 			return
 		}
 
@@ -81,14 +79,10 @@ func RelayInitHandlerFunc(backend *Backend) func(writer http.ResponseWriter, req
 			return
 		}
 
-		log.Println("Read packet successfully")
-
 		if !crypto.Check(relayInitPacket.encryptedToken, relayInitPacket.nonce, gRelayPublicKey[:], core.RouterPrivateKey[:]) {
 			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
-
-		log.Println("Crypto check passed")
 
 		key := relayInitPacket.address
 
@@ -99,8 +93,6 @@ func RelayInitHandlerFunc(backend *Backend) func(writer http.ResponseWriter, req
 			writer.WriteHeader(http.StatusNotFound)
 			return
 		}
-
-		log.Println("Relay does not exist")
 
 		relayEntry := RelayEntry{}
 		relayEntry.name = relayInitPacket.address
@@ -123,8 +115,6 @@ func RelayInitHandlerFunc(backend *Backend) func(writer http.ResponseWriter, req
 		rw.WriteBytes(responseData, &index, relayEntry.token, gRelayTokenBytes)
 
 		writer.Write(responseData[:index])
-
-		log.Println("Packet handled successfully")
 	}
 }
 

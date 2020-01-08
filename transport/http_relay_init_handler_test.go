@@ -3,7 +3,8 @@ package transport_test
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
+	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -52,6 +53,7 @@ func putInitRequestVersion(buff []byte) {
 }
 
 func TestRelayInitHandler(t *testing.T) {
+	log.SetOutput(ioutil.Discard)
 	t.Run("missing magic number", func(t *testing.T) {
 		buff := make([]byte, 0)
 		relayInitAssertions(t, buff, http.StatusBadRequest, nil)
