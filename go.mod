@@ -3,7 +3,10 @@ module github.com/networknext/backend
 go 1.13
 
 require (
+	github.com/alicebob/miniredis v2.5.0+incompatible
+	github.com/alicebob/miniredis/v2 v2.11.1 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+	github.com/gomodule/redigo v1.7.1-0.20190322064113-39e2c31b7ca3
 	github.com/gorilla/context v1.1.1
 	github.com/gorilla/mux v1.7.3
 	github.com/stretchr/testify v1.4.0
