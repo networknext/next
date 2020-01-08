@@ -56,27 +56,34 @@ func (m *UDPServerMux) Start() error {
 // ServerUpdateHandlerFunc ...
 func ServerUpdateHandlerFunc(redisConn redis.Conn) UDPHandlerFunc {
 	return func(conn *net.UDPConn, packet []byte, from *net.UDPAddr) {
+		// Deserialize the Session packet
 		var sup core.ServerUpdatePacket
-		if err := sup.Serialize(core.CreateReadStream(packet)); err != nil {
-			fmt.Printf("failed to read server update packet: %v\n", err)
-			return
+		{
+			if err := sup.Serialize(core.CreateReadStream(packet)); err != nil {
+				fmt.Printf("failed to read server update packet: %v\n", err)
+				return
+			}
 		}
 
+		// Verify the Session packet version
 		if !core.ProtocolVersionAtLeast(sup.VersionMajor, sup.VersionMinor, sup.VersionPatch, core.SDKVersionMajorMin, core.SDKVersionMinorMin, core.SDKVersionPatchMin) {
 			log.Printf("sdk version is too old. Using %d.%d.%d but require at least %d.%d.%d", sup.VersionMajor, sup.VersionMinor, sup.VersionPatch, core.SDKVersionMajorMin, core.SDKVersionMinorMin, core.SDKVersionPatchMin)
 			return
 		}
 
-		serverdata, err := redis.Bytes(redisConn.Do("GET", "SERVER-"+from.String()))
-		if err != nil {
-			log.Printf("failed to register server %s: %v", from.String(), err)
-			return
-		}
+		// Get the the old Server packet from Redis
+		var serverentry core.ServerUpdatePacket
+		{
+			serverdata, err := redis.Bytes(redisConn.Do("GET", "SERVER-"+from.String()))
+			if err != nil {
+				log.Printf("failed to register server %s: %v", from.String(), err)
+				return
+			}
 
-		var serverentry core.ServerEntry
-		if err := serverentry.Serialize(core.CreateReadStream(serverdata)); err != nil {
-			fmt.Printf("failed to read server entry: %v\n", err)
-			return
+			if err := serverentry.Serialize(core.CreateReadStream(serverdata)); err != nil {
+				fmt.Printf("failed to read server entry: %v\n", err)
+				return
+			}
 		}
 
 		// TODO 1. Get Buyer and Customer information from ConfigStore
@@ -85,25 +92,25 @@ func ServerUpdateHandlerFunc(redisConn redis.Conn) UDPHandlerFunc {
 
 		// signdata := sup.GetSignData()
 
-		// seq := hash.Fnv64a(fmt.Sprintf("seq#%s#server", string(serverPublicKey), suffix))
+		// Save the Server packet to Redis
+		{
+			ws, err := core.CreateWriteStream(DefaultMaxPacketSize)
+			if err != nil {
+				fmt.Printf("failed to create server entry read stream: %v\n", err)
+				return
+			}
 
-		// serverdata, err = server.MarshalBinary()
-		// if err != nil {
-		// 	log.Printf("failed to marshal server db entry: %v", from.String(), err)
-		// 	return
-		// }
+			if err := serverentry.Serialize(ws); err != nil {
+				fmt.Printf("failed to read server entry: %v\n", err)
+				return
+			}
+			ws.Flush()
 
-		ws, err := core.CreateWriteStream(DefaultMaxPacketSize)
-		if err := serverentry.Serialize(ws); err != nil {
-			fmt.Printf("failed to read server entry: %v\n", err)
-			return
-		}
-		ws.Flush()
+			serverdata := ws.GetData()
 
-		serverdata = ws.GetData()
-
-		if _, err := redisConn.Do("SET", "SERVER-"+from.String(), serverdata[:ws.GetBytesProcessed()]); err != nil {
-			log.Printf("failed to save server db entry for %s: %v", from.String(), err)
+			if _, err := redisConn.Do("SET", "SERVER-"+from.String(), serverdata[:ws.GetBytesProcessed()]); err != nil {
+				log.Printf("failed to save server db entry for %s: %v", from.String(), err)
+			}
 		}
 	}
 }
@@ -111,10 +118,36 @@ func ServerUpdateHandlerFunc(redisConn redis.Conn) UDPHandlerFunc {
 // SessionUpdateHandlerFunc ...
 func SessionUpdateHandlerFunc(redisConn redis.Conn) UDPHandlerFunc {
 	return func(conn *net.UDPConn, packet []byte, from *net.UDPAddr) {
-		session := core.SessionUpdatePacket{}
-		if err := session.Serialize(core.CreateReadStream(packet), core.SDKVersionMajorMax, core.SDKVersionMinorMax, core.SDKVersionPatchMax); err != nil {
-			fmt.Printf("failed to read server update packet: %v\n", err)
-			return
+		// Deserialize the Session packet
+		sup := core.SessionUpdatePacket{}
+		{
+			if err := sup.Serialize(core.CreateReadStream(packet), core.SDKVersionMajorMax, core.SDKVersionMinorMax, core.SDKVersionPatchMax); err != nil {
+				fmt.Printf("failed to read session update packet: %v\n", err)
+				return
+			}
+		}
+
+		// Change Session Packet
+
+		// Save the Session packet to Redis
+		{
+			ws, err := core.CreateWriteStream(DefaultMaxPacketSize)
+			if err != nil {
+				fmt.Printf("failed to create session entry read stream: %v\n", err)
+				return
+			}
+
+			if err := sup.Serialize(ws, core.SDKVersionMajorMin, core.SDKVersionMinorMin, core.SDKVersionPatchMin); err != nil {
+				fmt.Printf("failed to read session entry: %v\n", err)
+				return
+			}
+			ws.Flush()
+
+			sessiondata := ws.GetData()
+
+			if _, err := redisConn.Do("SET", fmt.Sprintf("SESSION-%d", sup.SessionId), sessiondata[:ws.GetBytesProcessed()]); err != nil {
+				log.Printf("failed to save session db entry for %s: %v", from.String(), err)
+			}
 		}
 	}
 }
