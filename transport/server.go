@@ -75,14 +75,18 @@ func ServerUpdateHandlerFunc(redisConn redis.Conn) UDPHandlerFunc {
 		var serverentry core.ServerUpdatePacket
 		{
 			serverdata, err := redis.Bytes(redisConn.Do("GET", "SERVER-"+from.String()))
-			if err != nil {
+			if err != nil && err != redis.ErrNil {
 				log.Printf("failed to register server %s: %v", from.String(), err)
 				return
 			}
 
-			if err := serverentry.Serialize(core.CreateReadStream(serverdata)); err != nil {
-				fmt.Printf("failed to read server entry: %v\n", err)
-				return
+			if serverdata != nil {
+				if err := serverentry.Serialize(core.CreateReadStream(serverdata)); err != nil {
+					fmt.Printf("failed to read server entry: %v\n", err)
+					return
+				}
+
+				sup = serverentry
 			}
 		}
 
@@ -100,7 +104,7 @@ func ServerUpdateHandlerFunc(redisConn redis.Conn) UDPHandlerFunc {
 				return
 			}
 
-			if err := serverentry.Serialize(ws); err != nil {
+			if err := sup.Serialize(ws); err != nil {
 				fmt.Printf("failed to read server entry: %v\n", err)
 				return
 			}
@@ -108,7 +112,7 @@ func ServerUpdateHandlerFunc(redisConn redis.Conn) UDPHandlerFunc {
 
 			serverdata := ws.GetData()
 
-			if _, err := redisConn.Do("SET", "SERVER-"+from.String(), serverdata[:ws.GetBytesProcessed()]); err != nil {
+			if _, err := redisConn.Do("SET", "SERVER-"+from.String(), serverdata); err != nil {
 				log.Printf("failed to save server db entry for %s: %v", from.String(), err)
 			}
 		}
