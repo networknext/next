@@ -24,7 +24,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 )
 
 const MaxRelays = 5

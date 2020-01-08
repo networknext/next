@@ -7,7 +7,6 @@ import "C"
 import (
 	"fmt"
 	"github.com/gorilla/mux"
-	"hash/fnv"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -16,7 +15,6 @@ import (
 	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/rw"
-	// Relay entry
 )
 
 var gRelayPublicKey = []byte{
@@ -26,17 +24,11 @@ var gRelayPublicKey = []byte{
 	0xda, 0xa9, 0xc0, 0xae, 0x08, 0xa2, 0xcf, 0x5e,
 }
 
-func getRelayID(name string) uint64 {
-	hash := fnv.New64a()
-	hash.Write([]byte(name))
-	return hash.Sum64()
-}
-
 // MakeRouter creates a router with the specified endpoints
-func MakeRouter(backend *Backend) *mux.Router {
+func MakeRouter(relaydb *core.RelayDatabase, statsdb *core.StatsDatabase, backend *StubbedBackend) *mux.Router {
 	router := mux.NewRouter()
-	router.HandleFunc("/relay_init", RelayInitHandlerFunc(backend)).Methods("POST")
-	router.HandleFunc("/relay_update", RelayUpdateHandlerFunc(backend)).Methods("POST")
+	router.HandleFunc("/relay_init", RelayInitHandlerFunc(relaydb)).Methods("POST")
+	router.HandleFunc("/relay_update", RelayUpdateHandlerFunc(relaydb, statsdb)).Methods("POST")
 	router.HandleFunc("/cost_matrix", CostMatrixHandlerFunc(backend)).Methods("GET")
 	router.HandleFunc("/route_matrix", RouteMatrixHandlerFunc(backend)).Methods("GET")
 	router.HandleFunc("/near", NearHandlerFunc(backend)).Methods("GET")
@@ -53,7 +45,7 @@ func HTTPStart(port string, router *mux.Router) {
 }
 
 // RelayInitHandlerFunc returns the function for the relay init endpoint
-func RelayInitHandlerFunc(backend *Backend) func(writer http.ResponseWriter, request *http.Request) {
+func RelayInitHandlerFunc(relaydb *core.RelayDatabase) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		body, err := ioutil.ReadAll(request.Body)
 
@@ -78,27 +70,22 @@ func RelayInitHandlerFunc(backend *Backend) func(writer http.ResponseWriter, req
 			return
 		}
 
-		key := relayInitPacket.address
+		key := core.GetRelayID(relayInitPacket.address)
 
-		backend.Mutex.RLock()
-		_, relayAlreadyExists := backend.RelayDatabase[key]
-		backend.Mutex.RUnlock()
+		_, relayAlreadyExists := relaydb.Relays[key]
 		if relayAlreadyExists {
 			writer.WriteHeader(http.StatusNotFound)
 			return
 		}
 
-		relayEntry := RelayEntry{}
-		relayEntry.name = relayInitPacket.address
-		relayEntry.id = getRelayID(relayInitPacket.address)
-		relayEntry.address = core.ParseAddress(relayInitPacket.address)
-		relayEntry.lastUpdate = time.Now().Unix()
-		relayEntry.token = core.RandomBytes(RelayTokenBytes)
+		entry := core.RelayData{}
+		entry.Name = relayInitPacket.address
+		entry.Id = core.GetRelayID(relayInitPacket.address)
+		entry.Address = relayInitPacket.address //core.ParseAddress(relayInitPacket.address)
+		entry.LastUpdateTime = uint64(time.Now().Unix())
+		entry.PublicKey = core.RandomBytes(RelayTokenBytes)
 
-		backend.Mutex.Lock()
-		backend.RelayDatabase[key] = relayEntry
-		backend.Dirty = true
-		backend.Mutex.Unlock()
+		relaydb.Relays[entry.Id] = entry
 
 		writer.Header().Set("Content-Type", "application/octet-stream")
 
@@ -106,14 +93,14 @@ func RelayInitHandlerFunc(backend *Backend) func(writer http.ResponseWriter, req
 		responseData := make([]byte, 64)
 		rw.WriteUint32(responseData, &index, InitResponseVersion)
 		rw.WriteUint64(responseData, &index, uint64(time.Now().Unix()))
-		rw.WriteBytes(responseData, &index, relayEntry.token, RelayTokenBytes)
+		rw.WriteBytes(responseData, &index, entry.PublicKey, RelayTokenBytes)
 
 		writer.Write(responseData[:index])
 	}
 }
 
 // RelayUpdateHandlerFunc returns the function fora the relay update endpoint
-func RelayUpdateHandlerFunc(backend *Backend) func(writer http.ResponseWriter, request *http.Request) {
+func RelayUpdateHandlerFunc(relaydb *core.RelayDatabase, statsdb *core.StatsDatabase) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		body, err := ioutil.ReadAll(request.Body)
 		if err != nil {
@@ -134,16 +121,12 @@ func RelayUpdateHandlerFunc(backend *Backend) func(writer http.ResponseWriter, r
 			return
 		}
 
-		key := relayUpdatePacket.address
-		// --VerifyRelay()?--
-		backend.Mutex.RLock()
-		relayEntry, ok := backend.RelayDatabase[key]
+		key := core.GetRelayID(relayUpdatePacket.address)
+		entry, ok := relaydb.Relays[key]
 		found := false
-		if ok && crypto.CompareTokens(relayUpdatePacket.token, relayEntry.token) {
+		if ok && crypto.CompareTokens(relayUpdatePacket.token, entry.PublicKey) {
 			found = true
 		}
-		backend.Mutex.RUnlock()
-		// ------------------
 
 		if !found {
 			writer.WriteHeader(http.StatusNotFound)
@@ -151,22 +134,20 @@ func RelayUpdateHandlerFunc(backend *Backend) func(writer http.ResponseWriter, r
 		}
 
 		statsUpdate := &core.RelayStatsUpdate{}
-		statsUpdate.Id = core.RelayId(relayEntry.id)
+		statsUpdate.ID = entry.Id
 
 		for _, ps := range relayUpdatePacket.pingStats {
 			statsUpdate.PingStats = append(statsUpdate.PingStats, ps)
 		}
 
-		backend.Mutex.Lock()
-		backend.StatsDatabase.ProcessStats(statsUpdate)
-		backend.Mutex.Unlock()
+		statsdb.ProcessStats(statsUpdate)
 
-		relayEntry = RelayEntry{
-			name:       relayUpdatePacket.address,
-			id:         getRelayID(relayUpdatePacket.address),
-			address:    core.ParseAddress(relayUpdatePacket.address),
-			lastUpdate: time.Now().Unix(),
-			token:      relayUpdatePacket.token,
+		entry = core.RelayData{
+			Name:           relayUpdatePacket.address,
+			Id:             core.GetRelayID(relayUpdatePacket.address),
+			Address:        relayUpdatePacket.address,
+			LastUpdateTime: uint64(time.Now().Unix()),
+			PublicKey:      relayUpdatePacket.token,
 		}
 
 		type RelayPingData struct {
@@ -176,16 +157,13 @@ func RelayUpdateHandlerFunc(backend *Backend) func(writer http.ResponseWriter, r
 
 		relaysToPing := make([]RelayPingData, 0)
 
-		backend.Mutex.Lock()
-		backend.RelayDatabase[key] = relayEntry
-		for k, v := range backend.RelayDatabase {
-			if k != relayUpdatePacket.address {
-				if k != relayUpdatePacket.address {
-					relaysToPing = append(relaysToPing, RelayPingData{id: v.id, address: k})
-				}
+		relaydb.Relays[key] = entry
+		hashedAddress := core.GetRelayID(relayUpdatePacket.address)
+		for k, v := range relaydb.Relays {
+			if k != hashedAddress {
+				relaysToPing = append(relaysToPing, RelayPingData{id: uint64(v.Id), address: v.Address})
 			}
 		}
-		backend.Mutex.Unlock()
 
 		responseData := make([]byte, 10*1024)
 
@@ -210,11 +188,11 @@ func RelayUpdateHandlerFunc(backend *Backend) func(writer http.ResponseWriter, r
 }
 
 // CostMatrixHandlerFunc returns the function for the cost matrix endpoint
-func CostMatrixHandlerFunc(backend *Backend) func(writer http.ResponseWriter, request *http.Request) {
+func CostMatrixHandlerFunc(backend *StubbedBackend) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		backend.Mutex.RLock()
-		costMatrixData := backend.CostMatrixData
-		backend.Mutex.RUnlock()
+		backend.mutex.RLock()
+		costMatrixData := backend.costMatrixData
+		backend.mutex.RUnlock()
 		writer.WriteHeader(http.StatusOK)
 		writer.Header().Set("Content-Type", "application/octet-stream")
 		writer.Write(costMatrixData)
@@ -222,11 +200,11 @@ func CostMatrixHandlerFunc(backend *Backend) func(writer http.ResponseWriter, re
 }
 
 // RouteMatrixHandlerFunc returns the function for the matrix endpoint
-func RouteMatrixHandlerFunc(backend *Backend) func(writer http.ResponseWriter, request *http.Request) {
+func RouteMatrixHandlerFunc(backend *StubbedBackend) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		backend.Mutex.RLock()
-		routeMatrixData := backend.RouteMatrixData
-		backend.Mutex.RUnlock()
+		backend.mutex.RLock()
+		routeMatrixData := backend.routeMatrixData
+		backend.mutex.RUnlock()
 		writer.WriteHeader(http.StatusOK)
 		writer.Header().Set("Content-Type", "application/octet-stream")
 		writer.Write(routeMatrixData)
@@ -234,11 +212,11 @@ func RouteMatrixHandlerFunc(backend *Backend) func(writer http.ResponseWriter, r
 }
 
 // NearHandlerFunc returns the function for the near endpoint
-func NearHandlerFunc(backend *Backend) func(writer http.ResponseWriter, request *http.Request) {
+func NearHandlerFunc(backend *StubbedBackend) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		backend.Mutex.RLock()
-		nearData := backend.NearData
-		backend.Mutex.RUnlock()
+		backend.mutex.RLock()
+		nearData := backend.nearData
+		backend.mutex.RUnlock()
 		writer.WriteHeader(http.StatusOK)
 		writer.Header().Set("Content-Type", "application/octet-stream")
 		writer.Write(nearData)

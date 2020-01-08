@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/transport"
 	"github.com/stretchr/testify/assert"
 )
@@ -17,15 +18,15 @@ const sizeOfNonceBytes = 24
 const sizeOfEncryptedToken = 32 + 16 // global + value of MACBYTES
 
 // Returns the writer as a means to read the data that the writer contains
-func relayInitAssertions(t *testing.T, body []byte, expectedCode int, backend *transport.Backend) http.ResponseWriter {
-	if backend == nil {
-		backend = transport.NewBackend()
+func relayInitAssertions(t *testing.T, body []byte, expectedCode int, relaydb *core.RelayDatabase) http.ResponseWriter {
+	if relaydb == nil {
+		relaydb = core.NewRelayDatabase()
 	}
 
 	writer := httptest.NewRecorder()
 	request, _ := http.NewRequest("POST", "/relay_init", bytes.NewBuffer(body))
 
-	handler := transport.RelayInitHandlerFunc(backend)
+	handler := transport.RelayInitHandlerFunc(relaydb)
 
 	handler(writer, request)
 
@@ -106,14 +107,14 @@ func TestRelayInitHandler(t *testing.T) {
 	})
 
 	t.Run("relay already exists", func(t *testing.T) {
-		backend := transport.NewBackend()
+		relaydb := core.NewRelayDatabase()
 		addr := "127.0.0.1"
-		backend.RelayDatabase[addr] = transport.RelayEntry{}
+		relaydb.Relays[core.GetRelayID(addr)] = core.RelayData{}
 		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+sizeOfNonceBytes+4+len(addr)+sizeOfEncryptedToken)
 		putInitRequestMagic(buff)
 		putInitRequestVersion(buff)
 		putInitRelayAddress(buff, addr)
-		relayInitAssertions(t, buff, http.StatusNotFound, backend)
+		relayInitAssertions(t, buff, http.StatusNotFound, relaydb)
 	})
 
 	t.Run("valid", func(t *testing.T) {

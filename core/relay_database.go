@@ -1,5 +1,10 @@
 package core
 
+import (
+	"hash/fnv"
+	"time"
+)
+
 type RelayUpdate struct {
 	Id             RelayId
 	Name           string
@@ -66,4 +71,10 @@ func (database *RelayDatabase) MakeCopy() *RelayDatabase {
 		database_copy.Relays[k] = v
 	}
 	return database_copy
+}
+
+func GetRelayID(name string) RelayId {
+	hash := fnv.New64a()
+	hash.Write([]byte(name))
+	return RelayId(hash.Sum64())
 }

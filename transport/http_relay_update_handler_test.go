@@ -3,6 +3,7 @@ package transport_test
 import (
 	"bytes"
 	"encoding/binary"
+	"github.com/networknext/backend/core"
 	"math"
 	"math/rand"
 	"net/http"
@@ -52,15 +53,19 @@ func putPingStats(buff []byte, count uint64, addressLength int) {
 	}
 }
 
-func relayUpdateAssertions(t *testing.T, body []byte, expectedCode int, backend *transport.Backend) http.ResponseWriter {
-	if backend == nil {
-		backend = transport.NewBackend()
+func relayUpdateAssertions(t *testing.T, body []byte, expectedCode int, relaydb *core.RelayDatabase, statsdb *core.StatsDatabase) http.ResponseWriter {
+	if relaydb == nil {
+		relaydb = core.NewRelayDatabase()
+	}
+
+	if statsdb == nil {
+		statsdb = core.NewStatsDatabase()
 	}
 
 	writer := httptest.NewRecorder()
 	request, _ := http.NewRequest("POST", "/relay_update", bytes.NewBuffer(body))
 
-	handler := transport.RelayUpdateHandlerFunc(backend)
+	handler := transport.RelayUpdateHandlerFunc(relaydb, statsdb)
 
 	handler(writer, request)
 
@@ -72,14 +77,14 @@ func relayUpdateAssertions(t *testing.T, body []byte, expectedCode int, backend 
 func TestRelayUpdateHandler(t *testing.T) {
 	t.Run("missing request version", func(t *testing.T) {
 		buff := make([]byte, 0)
-		relayUpdateAssertions(t, buff, http.StatusBadRequest, nil)
+		relayUpdateAssertions(t, buff, http.StatusBadRequest, nil, nil)
 	})
 
 	t.Run("missing relay address", func(t *testing.T) {
 		t.Run("byte array is not proper length", func(t *testing.T) {
 			buff := make([]byte, sizeOfUpdateRequestVersion)
 			putUpdateRequestVersion(buff)
-			relayUpdateAssertions(t, buff, http.StatusBadRequest, nil)
+			relayUpdateAssertions(t, buff, http.StatusBadRequest, nil, nil)
 		})
 
 		t.Run("byte array is proper length but value is empty string", func(t *testing.T) {
@@ -87,7 +92,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 			buff := make([]byte, sizeOfUpdateRequestVersion+4+len(addr))
 			putUpdateRequestVersion(buff)
 			putUpdateRelayAddress(buff, addr)
-			relayUpdateAssertions(t, buff, http.StatusBadRequest, nil)
+			relayUpdateAssertions(t, buff, http.StatusBadRequest, nil, nil)
 		})
 	})
 
@@ -96,7 +101,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 		buff := make([]byte, sizeOfUpdateRequestVersion+4+len(addr))
 		putUpdateRequestVersion(buff)
 		putUpdateRelayAddress(buff, addr)
-		relayUpdateAssertions(t, buff, http.StatusBadRequest, nil)
+		relayUpdateAssertions(t, buff, http.StatusBadRequest, nil, nil)
 	})
 
 	t.Run("missing number of relays", func(t *testing.T) {
@@ -104,7 +109,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 		buff := make([]byte, sizeOfUpdateRequestVersion+4+len(addr)+sizeOfRelayToken)
 		putUpdateRequestVersion(buff)
 		putUpdateRelayAddress(buff, addr)
-		relayUpdateAssertions(t, buff, http.StatusBadRequest, nil)
+		relayUpdateAssertions(t, buff, http.StatusBadRequest, nil, nil)
 	})
 
 	t.Run("number of relays exceeds max", func(t *testing.T) {
@@ -114,7 +119,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 		putUpdateRequestVersion(buff)
 		putUpdateRelayAddress(buff, addr)
 		putPingStats(buff, uint64(numRelays), len(addr))
-		relayUpdateAssertions(t, buff, http.StatusBadRequest, nil)
+		relayUpdateAssertions(t, buff, http.StatusBadRequest, nil, nil)
 	})
 
 	t.Run("relay not found", func(t *testing.T) {
@@ -124,6 +129,6 @@ func TestRelayUpdateHandler(t *testing.T) {
 		putUpdateRequestVersion(buff)
 		putUpdateRelayAddress(buff, addr)
 		putPingStats(buff, uint64(numRelays), len(addr))
-		relayUpdateAssertions(t, buff, http.StatusNotFound, nil)
+		relayUpdateAssertions(t, buff, http.StatusNotFound, nil, nil)
 	})
 }
