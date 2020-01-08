@@ -286,10 +286,10 @@ func main() {
 		Conn:          connection,
 		MaxPacketSize: transport.DefaultMaxPacketSize,
 
-		ServerUpdateHandlerFunc: func(data []byte, from *net.UDPAddr) {
+		ServerUpdateHandlerFunc: func(conn *net.UDPConn, data []byte, from *net.UDPAddr) {
 			readStream := core.CreateReadStream(data)
 
-			serverUpdate := &core.NextBackendServerUpdatePacket{}
+			serverUpdate := &core.ServerUpdatePacket{}
 
 			if err := serverUpdate.Serialize(readStream); err != nil {
 				fmt.Printf("error: failed to read server update packet: %v\n", err)
@@ -312,9 +312,9 @@ func main() {
 			backend.mutex.Unlock()
 		},
 
-		SessionUpdateHandlerFunc: func(data []byte, from *net.UDPAddr) {
+		SessionUpdateHandlerFunc: func(conn *net.UDPConn, data []byte, from *net.UDPAddr) {
 			readStream := core.CreateReadStream(data)
-			sessionUpdate := &core.NextBackendSessionUpdatePacket{}
+			sessionUpdate := &core.SessionUpdatePacket{}
 			if err := sessionUpdate.Serialize(readStream, NEXT_VERSION_MAJOR, NEXT_VERSION_MINOR, NEXT_VERSION_PATCH); err != nil {
 				fmt.Printf("error: failed to read server session update packet: %v\n", err)
 				return
@@ -335,7 +335,7 @@ func main() {
 
 			nearRelayIds, nearRelayAddresses := GetNearRelays()
 
-			var sessionResponse *core.NextBackendSessionResponsePacket
+			var sessionResponse *core.SessionResponsePacket
 
 			backend.mutex.RLock()
 			sessionEntry, ok := backend.sessionDatabase[sessionUpdate.SessionId]
@@ -381,7 +381,7 @@ func main() {
 
 				// direct route
 
-				sessionResponse = &core.NextBackendSessionResponsePacket{
+				sessionResponse = &core.SessionResponsePacket{
 					Sequence:             sessionUpdate.Sequence,
 					SessionId:            sessionUpdate.SessionId,
 					NumNearRelays:        int32(len(nearRelayIds)),
@@ -456,7 +456,7 @@ func main() {
 
 				}
 
-				sessionResponse = &core.NextBackendSessionResponsePacket{
+				sessionResponse = &core.SessionResponsePacket{
 					Sequence:             sessionUpdate.Sequence,
 					SessionId:            sessionUpdate.SessionId,
 					NumNearRelays:        int32(len(nearRelayIds)),
@@ -518,253 +518,6 @@ func main() {
 	}
 
 	mux.Start()
-
-	// Blocking
-
-	packetData := make([]byte, NEXT_MAX_PACKET_BYTES)
-
-	for {
-
-		packetBytes, from, _ := connection.ReadFromUDP(packetData)
-
-		if packetBytes <= 0 {
-			continue
-		}
-
-		packetType := packetData[0]
-
-		if packetType == NEXT_BACKEND_SERVER_UPDATE_PACKET {
-
-			readStream := core.CreateReadStream(packetData[1:])
-
-			serverUpdate := &core.NextBackendServerUpdatePacket{}
-
-			if err := serverUpdate.Serialize(readStream); err != nil {
-				fmt.Printf("error: failed to read server update packet: %v\n", err)
-				continue
-			}
-
-			serverEntry := ServerEntry{}
-			serverEntry.address = from
-			serverEntry.publicKey = serverUpdate.ServerRoutePublicKey
-			serverEntry.lastUpdate = time.Now().Unix()
-
-			key := string(from.String())
-
-			backend.mutex.Lock()
-			_, ok := backend.serverDatabase[key]
-			if !ok {
-				backend.dirty = true
-			}
-			backend.serverDatabase[key] = serverEntry
-			backend.mutex.Unlock()
-
-		} else if packetType == NEXT_BACKEND_SESSION_UPDATE_PACKET {
-
-			readStream := core.CreateReadStream(packetData[1:])
-			sessionUpdate := &core.NextBackendSessionUpdatePacket{}
-			if err := sessionUpdate.Serialize(readStream, NEXT_VERSION_MAJOR, NEXT_VERSION_MINOR, NEXT_VERSION_PATCH); err != nil {
-				fmt.Printf("error: failed to read server session update packet: %v\n", err)
-				continue
-			}
-
-			if sessionUpdate.FallbackToDirect {
-				fmt.Printf("error: fallback to direct %s\n", from)
-				continue
-			}
-
-			backend.mutex.RLock()
-			serverEntry, ok := backend.serverDatabase[string(from.String())]
-			backend.mutex.RUnlock()
-			if !ok {
-				fmt.Printf("error: could not find server %s\n", from)
-				continue
-			}
-
-			nearRelayIds, nearRelayAddresses := GetNearRelays()
-
-			var sessionResponse *core.NextBackendSessionResponsePacket
-
-			backend.mutex.RLock()
-			sessionEntry, ok := backend.sessionDatabase[sessionUpdate.SessionId]
-			backend.mutex.RUnlock()
-
-			newSession := !ok
-
-			if newSession {
-				sessionEntry.id = sessionUpdate.SessionId
-				sessionEntry.version = 0
-				sessionEntry.expireTimestamp = uint64(time.Now().Unix()) + 20
-			} else {
-				sessionEntry.expireTimestamp += 10
-				sessionEntry.slice++
-			}
-
-			takeNetworkNext := len(nearRelayIds) > 0
-
-			if backend.mode == BACKEND_MODE_FORCE_DIRECT {
-				takeNetworkNext = false
-			}
-
-			if backend.mode == BACKEND_MODE_RANDOM {
-				takeNetworkNext = takeNetworkNext && rand.Float32() > 0.5
-			}
-
-			if backend.mode == BACKEND_MODE_ON_OFF {
-				if (sessionEntry.slice & 1) == 0 {
-					takeNetworkNext = false
-				}
-			}
-
-			if backend.mode == BACKEND_MODE_ROUTE_SWITCHING {
-				rand.Shuffle(len(nearRelayIds), func(i, j int) {
-					nearRelayIds[i], nearRelayIds[j] = nearRelayIds[j], nearRelayIds[i]
-					nearRelayAddresses[i], nearRelayAddresses[j] = nearRelayAddresses[j], nearRelayAddresses[i]
-				})
-			}
-
-			multipath := len(nearRelayIds) > 0 && backend.mode == BACKEND_MODE_MULTIPATH
-
-			if !takeNetworkNext {
-
-				// direct route
-
-				sessionResponse = &core.NextBackendSessionResponsePacket{
-					Sequence:             sessionUpdate.Sequence,
-					SessionId:            sessionUpdate.SessionId,
-					NumNearRelays:        int32(len(nearRelayIds)),
-					NearRelayIds:         nearRelayIds,
-					NearRelayAddresses:   nearRelayAddresses,
-					ResponseType:         int32(core.NEXT_UPDATE_TYPE_DIRECT),
-					NumTokens:            0,
-					Tokens:               nil,
-					ServerRoutePublicKey: serverEntry.publicKey,
-					Signature:            nil,
-				}
-
-				sessionEntry.route = nil
-				sessionEntry.next = false
-
-			} else {
-
-				// next route
-
-				numRelays := len(nearRelayIds)
-				if numRelays > 5 {
-					numRelays = 5
-				}
-
-				route := make([]uint64, numRelays)
-				for i := 0; i < numRelays; i++ {
-					route[i] = nearRelayIds[i]
-				}
-
-				routeChanged := RouteChanged(sessionEntry.route, route)
-
-				numNodes := numRelays + 2
-
-				addresses := make([]*net.UDPAddr, numNodes)
-				publicKeys := make([][]byte, numNodes)
-				publicKeys[0] = sessionUpdate.ClientRoutePublicKey[:]
-
-				for i := 0; i < numRelays; i++ {
-					addresses[1+i] = &nearRelayAddresses[i]
-					publicKeys[1+i] = relayPublicKey
-				}
-
-				addresses[numNodes-1] = from
-				publicKeys[numNodes-1] = serverEntry.publicKey
-
-				var tokens []byte
-
-				var responseType int32
-
-				if !sessionEntry.next || routeChanged {
-
-					// new route
-
-					sessionEntry.version++
-					tokens, err = core.WriteRouteTokens(sessionEntry.expireTimestamp, sessionEntry.id, sessionEntry.version, 0, 256, 256, numNodes, addresses, publicKeys, core.RouterPrivateKey)
-					if err != nil {
-						fmt.Printf("error: could not write route tokens: %v\n", err)
-						continue
-					}
-					responseType = core.NEXT_UPDATE_TYPE_ROUTE
-
-				} else {
-
-					// continue route
-
-					tokens, err = core.WriteContinueTokens(sessionEntry.expireTimestamp, sessionEntry.id, sessionEntry.version, 0, numNodes, publicKeys, core.RouterPrivateKey)
-					if err != nil {
-						fmt.Printf("error: could not write continue tokens: %v\n", err)
-						continue
-					}
-					responseType = core.NEXT_UPDATE_TYPE_CONTINUE
-
-				}
-
-				sessionResponse = &core.NextBackendSessionResponsePacket{
-					Sequence:             sessionUpdate.Sequence,
-					SessionId:            sessionUpdate.SessionId,
-					NumNearRelays:        int32(len(nearRelayIds)),
-					NearRelayIds:         nearRelayIds,
-					NearRelayAddresses:   nearRelayAddresses,
-					ResponseType:         responseType,
-					Multipath:            multipath,
-					NumTokens:            int32(numNodes),
-					Tokens:               tokens,
-					ServerRoutePublicKey: serverEntry.publicKey,
-					Signature:            nil,
-				}
-
-				sessionEntry.route = route
-				sessionEntry.next = true
-			}
-
-			if sessionResponse == nil {
-				fmt.Printf("error: nil session response\n")
-				continue
-			}
-
-			backend.mutex.Lock()
-			if newSession {
-				backend.dirty = true
-			}
-			backend.sessionDatabase[sessionUpdate.SessionId] = sessionEntry
-			backend.mutex.Unlock()
-
-			signResponseData := sessionResponse.GetSignData(NEXT_VERSION_MAJOR, NEXT_VERSION_MINOR, NEXT_VERSION_PATCH)
-
-			sessionResponse.Signature = core.CryptoSignCreate(signResponseData, core.BackendPrivateKey)
-			if sessionResponse.Signature == nil {
-				fmt.Printf("error: failed to sign session response packet")
-				continue
-			}
-
-			writeStream, err := core.CreateWriteStream(NEXT_MAX_PACKET_BYTES)
-			if err != nil {
-				fmt.Printf("error: failed to write session response packet: %v\n", err)
-				continue
-			}
-			responsePacketType := uint32(NEXT_BACKEND_SESSION_RESPONSE_PACKET)
-			writeStream.SerializeBits(&responsePacketType, 8)
-			if err := sessionResponse.Serialize(writeStream, NEXT_VERSION_MAJOR, NEXT_VERSION_MINOR, NEXT_VERSION_PATCH); err != nil {
-				fmt.Printf("error: failed to write session response packet: %v\n", err)
-				continue
-			}
-			writeStream.Flush()
-
-			responsePacketData := writeStream.GetData()[0:writeStream.GetBytesProcessed()]
-
-			_, err = connection.WriteToUDP(responsePacketData, from)
-			if err != nil {
-				fmt.Printf("error: failed to send udp response: %v\n", err)
-				continue
-			}
-
-		}
-	}
 }
 
 // -----------------------------------------------------------
