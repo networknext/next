@@ -10,18 +10,21 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/transport"
 )
 
 func main() {
-	backend := transport.NewBackend()
+	relaydb := core.NewRelayDatabase()
+	statsdb := core.NewStatsDatabase()
+	backend := transport.NewStubbedBackend()
 	port := os.Getenv("NN_RELAY_BACKEND_PORT")
 
 	if len(port) == 0 {
 		port = "30000"
 	}
 
-	router := transport.MakeRouter(backend)
+	router := transport.MakeRouter(relaydb, statsdb, backend)
 
 	go optimizeRoutine()
 
@@ -29,7 +32,7 @@ func main() {
 
 	go transport.HTTPStart(port, router)
 
-	// so my pc doesn't kill itself with a infinite loop
+	// so my pc doesn't kill itself with an infinite loop
 	input := bufio.NewScanner(os.Stdin)
 	input.Scan()
 }

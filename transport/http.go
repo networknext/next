@@ -47,6 +47,7 @@ func HTTPStart(port string, router *mux.Router) {
 // RelayInitHandlerFunc returns the function for the relay init endpoint
 func RelayInitHandlerFunc(relaydb *core.RelayDatabase) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
+		log.Println("Received Relay Init Packet")
 		body, err := ioutil.ReadAll(request.Body)
 
 		if err != nil {
@@ -102,6 +103,7 @@ func RelayInitHandlerFunc(relaydb *core.RelayDatabase) func(writer http.Response
 // RelayUpdateHandlerFunc returns the function fora the relay update endpoint
 func RelayUpdateHandlerFunc(relaydb *core.RelayDatabase, statsdb *core.StatsDatabase) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
+		log.Println("Received Relay Update Packet")
 		body, err := ioutil.ReadAll(request.Body)
 		if err != nil {
 			return
