@@ -1,6 +1,8 @@
 package transport_test
 
 import (
+	"net/http"
+
 	"github.com/alicebob/miniredis"
 	"github.com/go-redis/redis/v7"
 )
@@ -17,4 +19,16 @@ func NewTestRedis() (*miniredis.Miniredis, *redis.Client) {
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
 	return redisServer, redisClient
+}
+
+type RoundTripFunc func(req *http.Request) *http.Response
+
+func (f RoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req), nil
+}
+
+func NewTestHTTPClient(fn RoundTripFunc) *http.Client {
+	return &http.Client{
+		Transport: RoundTripFunc(fn),
+	}
 }
