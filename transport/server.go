@@ -1,11 +1,12 @@
 package transport
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"net"
+
+	jsoniter "github.com/json-iterator/go"
 
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/core"
@@ -68,11 +69,11 @@ type ServerEntry struct {
 }
 
 func (e *ServerEntry) UnmarshalBinary(data []byte) error {
-	return json.Unmarshal(data, e)
+	return jsoniter.Unmarshal(data, e)
 }
 
 func (e ServerEntry) MarshalBinary() ([]byte, error) {
-	return json.Marshal(e)
+	return jsoniter.Marshal(e)
 }
 
 // ServerUpdateHandlerFunc ...
@@ -152,11 +153,11 @@ type SessionEntry struct {
 }
 
 func (e *SessionEntry) UnmarshalBinary(data []byte) error {
-	return json.Unmarshal(data, e)
+	return jsoniter.Unmarshal(data, e)
 }
 
 func (e SessionEntry) MarshalBinary() ([]byte, error) {
-	return json.Marshal(e)
+	return jsoniter.Marshal(e)
 }
 
 // SessionUpdateHandlerFunc ...
