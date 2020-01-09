@@ -10,6 +10,28 @@ import (
 )
 
 func TestRelayDatabase(t *testing.T) {
+	fillDB := func(relaydb *core.RelayDatabase) {
+		fillData := func(relaydb *core.RelayDatabase, addr string, updateTime int64) {
+			id := core.GetRelayID(addr)
+			data := core.RelayData{
+				ID:             id,
+				Name:           "n/a",
+				Address:        addr,
+				Datacenter:     core.DatacenterId(123),
+				DatacenterName: "n/a",
+				PublicKey:      []byte{0x01, 0x02, 0x03, 0x04},
+				LastUpdateTime: uint64(updateTime),
+			}
+			relaydb.Relays[id] = data
+		}
+
+		fillData(relaydb, "127.0.0.1", time.Now().Unix()-1)
+		fillData(relaydb, "123.4.5.6", time.Now().Unix()-10)
+		fillData(relaydb, "654.3.2.1", time.Now().Unix()-100)
+		fillData(relaydb, "000.0.0.0", time.Now().Unix()-25)
+		fillData(relaydb, "999.9.9.9", time.Now().Unix()-1000)
+	}
+
 	t.Run("UpdateRelay()", func(t *testing.T) {
 		t.Run("shutdown = true also deletes database entry", func(t *testing.T) {
 			relaydb := core.NewRelayDatabase()
@@ -75,27 +97,6 @@ func TestRelayDatabase(t *testing.T) {
 	})
 
 	t.Run("CheckForTimeouts()", func(t *testing.T) {
-		fillDB := func(relaydb *core.RelayDatabase) {
-			fillData := func(relaydb *core.RelayDatabase, addr string, updateTime int64) {
-				id := core.GetRelayID(addr)
-				data := core.RelayData{
-					ID:             id,
-					Name:           "n/a",
-					Address:        addr,
-					Datacenter:     core.DatacenterId(123),
-					DatacenterName: "n/a",
-					PublicKey:      []byte{0x01, 0x02, 0x03, 0x04},
-					LastUpdateTime: uint64(updateTime),
-				}
-				relaydb.Relays[id] = data
-			}
-
-			fillData(relaydb, "127.0.0.1", time.Now().Unix()-1)
-			fillData(relaydb, "123.4.5.6", time.Now().Unix()-10)
-			fillData(relaydb, "654.3.2.1", time.Now().Unix()-100)
-			fillData(relaydb, "000.0.0.0", time.Now().Unix()-25)
-			fillData(relaydb, "999.9.9.9", time.Now().Unix()-1000)
-		}
 
 		t.Run("dead relays are present", func(t *testing.T) {
 			relaydb := core.NewRelayDatabase()
@@ -121,7 +122,10 @@ func TestRelayDatabase(t *testing.T) {
 
 	t.Run("MakeCopy()", func(t *testing.T) {
 		t.Run("returns an exact copy", func(t *testing.T) {
-			t.Skip()
+			relaydb := core.NewRelayDatabase()
+			fillDB(relaydb)
+			cpy := relaydb.MakeCopy()
+			assert.Equal(t, relaydb, cpy)
 		})
 	})
 }
