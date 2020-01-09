@@ -90,11 +90,11 @@ func TestRelayDatabase(t *testing.T) {
 				relaydb.Relays[id] = data
 			}
 
-			fillData(relaydb, "127.0.0.1", time.Now().Unix()-1)    // safe
-			fillData(relaydb, "123.4.5.6", time.Now().Unix()-10)   // safe
-			fillData(relaydb, "654.3.2.1", time.Now().Unix()-100)  // deleted
-			fillData(relaydb, "000.0.0.0", time.Now().Unix()-25)   // safe
-			fillData(relaydb, "999.9.9.9", time.Now().Unix()-1000) // deleted
+			fillData(relaydb, "127.0.0.1", time.Now().Unix()-1)
+			fillData(relaydb, "123.4.5.6", time.Now().Unix()-10)
+			fillData(relaydb, "654.3.2.1", time.Now().Unix()-100)
+			fillData(relaydb, "000.0.0.0", time.Now().Unix()-25)
+			fillData(relaydb, "999.9.9.9", time.Now().Unix()-1000)
 		}
 
 		t.Run("dead relays are present", func(t *testing.T) {
@@ -111,7 +111,11 @@ func TestRelayDatabase(t *testing.T) {
 		})
 
 		t.Run("all relays are alive", func(t *testing.T) {
-			t.Skip()
+			relaydb := core.NewRelayDatabase()
+			fillDB(relaydb)
+			deadRelays := relaydb.CheckForTimeouts(2000)
+			assert.Empty(t, deadRelays)
+			assert.Len(t, relaydb.Relays, 5)
 		})
 	})
 
