@@ -15,6 +15,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 
 	// Create a ServerUpdatePacket and marshal it to binary so sent it into the UDP handler
 	packet := core.ServerUpdatePacket{
+		ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
 		ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
 		ServerRoutePublicKey: TestPublicKey,
 		Signature:            []byte{0x00},
@@ -55,7 +56,8 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 
 	// Unmarshal the data in redis to the actual ServerEntry saved
 	var actual transport.ServerEntry
-	actual.UnmarshalBinary([]byte(ds))
+	err = actual.UnmarshalBinary([]byte(ds))
+	assert.NoError(t, err)
 
 	// Finally compare both ServerEntry struct to ensure we saved the right data in redis
 	assert.Equal(t, expected, actual)
