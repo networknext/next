@@ -27,42 +27,6 @@ import (
 	"time"
 )
 
-const MaxRelays = 5
-const MaxNodes = 7
-const MaxNearRelays = 10
-const BillingSliceSeconds = 10
-const MinimumKbps = 100
-const AddressBytes = 19
-const SessionTokenBytes = 77
-const EncryptedSessionTokenBytes = 117
-const ContinueTokenBytes = 18
-const EncryptedContinueTokenBytes = 58
-const MaxRoutesPerRelayPair = 8
-
-const (
-	ADDRESS_NONE = 0
-	ADDRESS_IPV4 = 1
-	ADDRESS_IPV6 = 2
-)
-
-const (
-	NEXT_CONNECTION_TYPE_UNKNOWN  = 0
-	NEXT_CONNECTION_TYPE_WIRED    = 1
-	NEXT_CONNECTION_TYPE_WIFI     = 2
-	NEXT_CONNECTION_TYPE_CELLULAR = 3
-)
-
-const (
-	NEXT_PLATFORM_UNKNOWN  = 0
-	NEXT_PLATFORM_WINDOWS  = 1
-	NEXT_PLATFORM_MAC      = 2
-	NEXT_PLATFORM_UNIX     = 3
-	NEXT_PLATFORM_SWITCH   = 4
-	NEXT_PLATFORM_PS4      = 5
-	NEXT_PLATFORM_IOS      = 6
-	NEXT_PLATFORM_XBOX_ONE = 7
-)
-
 const (
 	SDKVersionMajorMin = 3
 	SDKVersionMinorMin = 3
@@ -70,6 +34,44 @@ const (
 	SDKVersionMajorMax = 254
 	SDKVersionMinorMax = 1023
 	SDKVersionPatchMax = 254
+
+	MaxRelays                   = 5
+	MaxNodes                    = 7
+	MaxNearRelays               = 10
+	BillingSliceSeconds         = 10
+	MinimumKbps                 = 100
+	AddressBytes                = 19
+	SessionTokenBytes           = 77
+	EncryptedSessionTokenBytes  = 117
+	ContinueTokenBytes          = 18
+	EncryptedContinueTokenBytes = 58
+	MaxRoutesPerRelayPair       = 8
+
+	IPAddressNone = iota
+	IPAddressIPv4
+	IPAddressIPv6
+
+	ConnectionTypeUnknown = iota
+	ConnectionTypeWired
+	ConnectionTypeWifi
+	ConnectionTypeCellular
+
+	PlatformUnknown = iota
+	PlatformWindows
+	PlatformMac
+	PlatformUnix
+	PlatformSwitch
+	PlatformPS4
+	PlatformIOS
+	PlatformXboxOne
+
+	RouteSliceFlagNext                = (uint64(1) << 1)
+	RouteSliceFlagReported            = (uint64(1) << 2)
+	RouteSliceFlagVetoed              = (uint64(1) << 3)
+	RouteSliceFlagFallbackToDirect    = (uint64(1) << 4)
+	RouteSliceFlagPacketLossMultipath = (uint64(1) << 5)
+	RouteSliceFlagJitterMultipath     = (uint64(1) << 6)
+	RouteSliceFlagRTTMultipath        = (uint64(1) << 7)
 )
 
 var RouterPrivateKey = [...]byte{0x96, 0xce, 0x57, 0x8b, 0x00, 0x19, 0x44, 0x27, 0xf2, 0xb9, 0x90, 0x1b, 0x43, 0x56, 0xfd, 0x4f, 0x56, 0xe1, 0xd9, 0x56, 0x58, 0xf2, 0xf4, 0x3b, 0x86, 0x9f, 0x12, 0x75, 0x24, 0xd2, 0x47, 0xb3}
@@ -127,14 +129,6 @@ type RouteSample struct {
 	NextStats   RouteStats
 	NearRelays  []RelayStats
 }
-
-const ROUTE_SLICE_FLAG_NEXT = (uint64(1) << 1)
-const ROUTE_SLICE_FLAG_REPORTED = (uint64(1) << 2)
-const ROUTE_SLICE_FLAG_VETOED = (uint64(1) << 3)
-const ROUTE_SLICE_FLAG_FALLBACK_TO_DIRECT = (uint64(1) << 4)
-const ROUTE_SLICE_FLAG_PACKET_LOSS_MULTIPATH = (uint64(1) << 5)
-const ROUTE_SLICE_FLAG_JITTER_MULTIPATH = (uint64(1) << 6)
-const ROUTE_SLICE_FLAG_RTT_MULTIPATH = (uint64(1) << 7)
 
 type RouteSlice struct {
 	Flags          uint64
@@ -593,13 +587,13 @@ func ReadBytes(buffer []byte) ([]byte, int) {
 
 func WriteAddress(buffer []byte, address *net.UDPAddr) {
 	if address == nil {
-		buffer[0] = ADDRESS_NONE
+		buffer[0] = IPAddressNone
 		return
 	}
 	ipv4 := address.IP.To4()
 	port := address.Port
 	if ipv4 != nil {
-		buffer[0] = ADDRESS_IPV4
+		buffer[0] = IPAddressIPv4
 		buffer[1] = ipv4[0]
 		buffer[2] = ipv4[1]
 		buffer[3] = ipv4[2]
@@ -607,7 +601,7 @@ func WriteAddress(buffer []byte, address *net.UDPAddr) {
 		buffer[5] = (byte)(port & 0xFF)
 		buffer[6] = (byte)(port >> 8)
 	} else {
-		buffer[0] = ADDRESS_IPV6
+		buffer[0] = IPAddressIPv6
 		copy(buffer[1:], address.IP)
 		buffer[17] = (byte)(port & 0xFF)
 		buffer[18] = (byte)(port >> 8)
@@ -616,9 +610,10 @@ func WriteAddress(buffer []byte, address *net.UDPAddr) {
 
 func ReadAddress(buffer []byte) *net.UDPAddr {
 	addressType := buffer[0]
-	if addressType == ADDRESS_IPV4 {
+	switch addressType {
+	case IPAddressIPv4:
 		return &net.UDPAddr{IP: net.IPv4(buffer[1], buffer[2], buffer[3], buffer[4]), Port: ((int)(binary.LittleEndian.Uint16(buffer[5:])))}
-	} else if addressType == ADDRESS_IPV6 {
+	case IPAddressIPv6:
 		return &net.UDPAddr{IP: buffer[1:], Port: ((int)(binary.LittleEndian.Uint16(buffer[17:])))}
 	}
 	return nil
@@ -1501,25 +1496,25 @@ func (stream *WriteStream) SerializeAddress(addr *net.UDPAddr) {
 
 	addrType := uint32(0)
 	if addr.IP == nil {
-		addrType = ADDRESS_NONE
+		addrType = IPAddressNone
 	} else if addr.IP.To4() == nil {
-		addrType = ADDRESS_IPV6
+		addrType = IPAddressIPv6
 	} else {
-		addrType = ADDRESS_IPV4
+		addrType = IPAddressIPv4
 	}
 
 	stream.SerializeBits(&addrType, 2)
 	if stream.err != nil {
 		return
 	}
-	if addrType == uint32(ADDRESS_IPV4) {
+	if addrType == uint32(IPAddressIPv4) {
 		stream.SerializeBytes(addr.IP[12:])
 		if stream.err != nil {
 			return
 		}
 		port := uint32(addr.Port)
 		stream.SerializeBits(&port, 16)
-	} else if addrType == uint32(ADDRESS_IPV6) {
+	} else if addrType == uint32(IPAddressIPv6) {
 		addr.IP = make([]byte, 16)
 		for i := 0; i < 8; i++ {
 			uint32Value := uint32(binary.BigEndian.Uint16(addr.IP[i*2:]))
@@ -1921,7 +1916,7 @@ func (stream *ReadStream) SerializeAddress(addr *net.UDPAddr) {
 	if stream.err != nil {
 		return
 	}
-	if addrType == uint32(ADDRESS_IPV4) {
+	if addrType == uint32(IPAddressIPv4) {
 		addr.IP = make([]byte, 16)
 		addr.IP[10] = 255
 		addr.IP[11] = 255
@@ -1935,7 +1930,7 @@ func (stream *ReadStream) SerializeAddress(addr *net.UDPAddr) {
 			return
 		}
 		addr.Port = int(port)
-	} else if addrType == uint32(ADDRESS_IPV6) {
+	} else if addrType == uint32(IPAddressIPv6) {
 		addr.IP = make([]byte, 16)
 		for i := 0; i < 8; i++ {
 			uint32Value := uint32(0)
@@ -2192,7 +2187,7 @@ func (packet *SessionUpdatePacket) Serialize(stream Stream, versionMajor int32, 
 	stream.SerializeBool(&packet.Flagged)
 	stream.SerializeBool(&packet.FallbackToDirect)
 	stream.SerializeBool(&packet.TryBeforeYouBuy)
-	stream.SerializeInteger(&packet.ConnectionType, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_CELLULAR)
+	stream.SerializeInteger(&packet.ConnectionType, ConnectionTypeUnknown, ConnectionTypeCellular)
 	stream.SerializeFloat32(&packet.DirectMinRtt)
 	stream.SerializeFloat32(&packet.DirectMaxRtt)
 	stream.SerializeFloat32(&packet.DirectMeanRtt)
