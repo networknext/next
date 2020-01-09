@@ -7,22 +7,24 @@ import (
 	"github.com/networknext/backend/core"
 )
 
+func RandomPublicKey() []byte {
+	arr := make([]byte, 64)
+	for i := 0; i < 64; i++ {
+		arr[i] = byte(rand.Int())
+	}
+	return arr
+}
+
 func FillRelayDatabase(relaydb *core.RelayDatabase) {
 	fillData := func(relaydb *core.RelayDatabase, addr string, updateTime int64) {
-		id := core.GetRelayId(addr)
+		id := core.GetRelayID(addr)
 		data := core.RelayData{
-			Id:             id,
+			ID:             id,
 			Name:           addr,
 			Address:        addr,
-			Datacenter:     core.DatacenterId(123),
+			Datacenter:     core.DatacenterId(0),
 			DatacenterName: "n/a",
-			PublicKey: func() []byte {
-				arr := make([]byte, 64)
-				for i := 0; i < 64; i++ {
-					arr[i] = byte(rand.Int())
-				}
-				return arr
-			}(),
+			PublicKey:      RandomPublicKey(),
 			LastUpdateTime: uint64(updateTime),
 		}
 		relaydb.Relays[id] = data
@@ -40,14 +42,14 @@ func FillStatsDatabase(statsdb *core.StatsDatabase) {
 		entry := core.NewStatsEntry()
 		makeStats := func(entry *core.StatsEntry, addr string) {
 			stats := core.NewStatsEntryRelay()
-			entry.Relays[core.GetRelayId(addr)] = stats
+			entry.Relays[core.GetRelayID(addr)] = stats
 		}
 
 		for _, c := range conns {
 			makeStats(entry, c)
 		}
 
-		statsdb.Entries[core.GetRelayId(addr)] = *entry
+		statsdb.Entries[core.GetRelayID(addr)] = *entry
 	}
 
 	makeEntry(statsdb, "127.0.0.1", "127.0.0.2", "123.4.5.6", "654.3.2.1", "000.0.0.0", "999.9.9.9")

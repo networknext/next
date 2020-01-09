@@ -111,7 +111,7 @@ func TestRelayInitHandler(t *testing.T) {
 	t.Run("relay already exists", func(t *testing.T) {
 		relaydb := core.NewRelayDatabase()
 		addr := "127.0.0.1"
-		relaydb.Relays[core.GetRelayId(addr)] = core.RelayData{}
+		relaydb.Relays[core.GetRelayID(addr)] = core.RelayData{}
 		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+sizeOfNonceBytes+4+len(addr)+sizeOfEncryptedToken)
 		putInitRequestMagic(buff)
 		putInitRequestVersion(buff)

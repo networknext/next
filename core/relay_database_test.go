@@ -2,6 +2,8 @@ package core_test
 
 import (
 	"hash/fnv"
+	"math"
+	"math/rand"
 	"testing"
 
 	"github.com/networknext/backend/core"
@@ -13,12 +15,12 @@ func TestRelayDatabase(t *testing.T) {
 		t.Run("shutdown = true also deletes database entry", func(t *testing.T) {
 			relaydb := core.NewRelayDatabase()
 			addr := "127.0.0.1"
-			id := core.GetRelayId(addr)
+			id := core.GetRelayID(addr)
 			relaydb.Relays[id] = core.RelayData{}
 
 			update := core.RelayUpdate{}
 			update.Shutdown = true
-			update.Id = id
+			update.ID = id
 
 			_, ok := relaydb.Relays[id]
 			assert.True(t, ok)
@@ -36,11 +38,11 @@ func TestRelayDatabase(t *testing.T) {
 		t.Run("relay did already exist", func(t *testing.T) {
 			relaydb := core.NewRelayDatabase()
 			addr := "127.0.0.1"
-			id := core.GetRelayId(addr)
+			id := core.GetRelayID(addr)
 			relaydb.Relays[id] = core.RelayData{}
 
 			update := core.RelayUpdate{}
-			update.Id = id
+			update.ID = id
 
 			assert.False(t, relaydb.UpdateRelay(&update))
 		})
@@ -48,14 +50,14 @@ func TestRelayDatabase(t *testing.T) {
 		t.Run("updates correctly", func(t *testing.T) {
 			relaydb := core.NewRelayDatabase()
 			addr := "127.0.0.1"
-			id := core.GetRelayId(addr)
+			id := core.GetRelayID(addr)
 			update := core.RelayUpdate{
-				Id:             id,
-				Name:           "I don't know what this is supposed to be",
+				ID:             id,
+				Name:           "Some Name",
 				Address:        addr,
-				Datacenter:     core.DatacenterId(123),
-				DatacenterName: "I also don't know what a good stub name should be",
-				PublicKey:      []byte{0x01, 0x02, 0x03, 0x04},
+				Datacenter:     core.DatacenterId(rand.Int()%math.MaxInt32 + 1),
+				DatacenterName: "Some Datacenter",
+				PublicKey:      RandomPublicKey(),
 				Shutdown:       false,
 			}
 
@@ -64,7 +66,7 @@ func TestRelayDatabase(t *testing.T) {
 			assert.True(t, ok)
 
 			// is there a go equivalent for c++ operator== overloading? or Java's .equal() method? Googling did me no help
-			assert.Equal(t, update.Id, value.Id)
+			assert.Equal(t, update.ID, value.ID)
 			assert.Equal(t, update.Name, value.Name)
 			assert.Equal(t, update.Address, value.Address)
 			assert.Equal(t, update.Datacenter, value.Datacenter)
@@ -79,13 +81,13 @@ func TestRelayDatabase(t *testing.T) {
 		t.Run("dead relays are present", func(t *testing.T) {
 			relaydb := core.NewRelayDatabase()
 			FillRelayDatabase(relaydb)
-			expectedDeadRelays := []core.RelayId{core.GetRelayId("654.3.2.1"), core.GetRelayId("999.9.9.9")}
+			expectedDeadRelays := []core.RelayId{core.GetRelayID("654.3.2.1"), core.GetRelayID("999.9.9.9")}
 
 			deadRelays := relaydb.CheckForTimeouts(50)
 			assert.Equal(t, expectedDeadRelays, deadRelays)
 			for _, id := range expectedDeadRelays {
 				_, ok := relaydb.Relays[id]
-				assert.False(t, ok, "Id: %x", id)
+				assert.False(t, ok, "ID: %x", id)
 			}
 		})
 
@@ -117,6 +119,6 @@ func TestGetRelayId(t *testing.T) {
 		}
 
 		value := "127.0.0.1"
-		assert.Equal(t, duplicateFunction(value), core.GetRelayId(value))
+		assert.Equal(t, duplicateFunction(value), core.GetRelayID(value))
 	})
 }

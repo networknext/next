@@ -5,13 +5,11 @@ import (
 	"sort"
 )
 
-const (
-	InvalidRouteValue = 10000.0
-)
+const InvalidRouteValue = 10000.0
 
 // RelayStatsPing is the ping stats for a relay
 type RelayStatsPing struct {
-	RelayId    RelayId
+	RelayID    RelayId
 	RTT        float32
 	Jitter     float32
 	PacketLoss float32
@@ -19,7 +17,7 @@ type RelayStatsPing struct {
 
 // RelayStatsUpdate is a struct for updating relay stats
 type RelayStatsUpdate struct {
-	Id        RelayId
+	ID        RelayId
 	PingStats []RelayStatsPing
 }
 
@@ -70,19 +68,19 @@ func NewStatsEntryRelay() *StatsEntryRelay {
 
 // ProcessStats processes the stats update, creating the needed entries if they do not already exist
 func (database *StatsDatabase) ProcessStats(statsUpdate *RelayStatsUpdate) {
-	sourceRelayId := statsUpdate.Id
+	sourceRelayID := statsUpdate.ID
 
-	entry, entryExists := database.Entries[sourceRelayId]
+	entry, entryExists := database.Entries[sourceRelayID]
 	if !entryExists {
 		entry = *NewStatsEntry()
-		database.Entries[sourceRelayId] = entry
+		database.Entries[sourceRelayID] = entry
 	}
 
 	for _, stats := range statsUpdate.PingStats {
 
-		destRelayId := stats.RelayId
+		destRelayID := stats.RelayID
 
-		relay, relayExists := entry.Relays[destRelayId]
+		relay, relayExists := entry.Relays[destRelayID]
 
 		if !relayExists {
 			relay = NewStatsEntryRelay()
@@ -96,7 +94,7 @@ func (database *StatsDatabase) ProcessStats(statsUpdate *RelayStatsUpdate) {
 		relay.Jitter = HistoryMean(relay.JitterHistory[:])
 		relay.PacketLoss = HistoryMean(relay.PacketLossHistory[:])
 
-		entry.Relays[destRelayId] = relay // is this needed? relay is a pointer
+		entry.Relays[destRelayID] = relay // is this needed? relay is a pointer
 	}
 }
 
@@ -161,16 +159,16 @@ func (database *StatsDatabase) GetCostMatrix(relaydb *RelayDatabase) *CostMatrix
 	}
 
 	sort.SliceStable(stableRelays, func(i, j int) bool {
-		return stableRelays[i].Id < stableRelays[j].Id
+		return stableRelays[i].ID < stableRelays[j].ID
 	})
 
 	for i, relayData := range stableRelays {
-		costMatrix.RelayIds[i] = relayData.Id
+		costMatrix.RelayIds[i] = relayData.ID
 		costMatrix.RelayNames[i] = relayData.Name
 		costMatrix.RelayPublicKeys[i] = relayData.PublicKey
 		if relayData.Datacenter != DatacenterId(0) {
 			datacenter := costMatrix.DatacenterRelays[relayData.Datacenter]
-			datacenter = append(datacenter, RelayId(relayData.Id))
+			datacenter = append(datacenter, RelayId(relayData.ID))
 			costMatrix.DatacenterRelays[relayData.Datacenter] = datacenter
 			datacenterNameMap[relayData.Datacenter] = relayData.DatacenterName
 		}

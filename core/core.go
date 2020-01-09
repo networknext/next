@@ -257,7 +257,7 @@ type EntityId struct {
 
 type RelayId uint64
 
-func GetRelayIdOld(id *EntityId) (RelayId, error) {
+func GetRelayId(id *EntityId) (RelayId, error) {
 	if id.Kind != "Relay" {
 		return RelayId(0), fmt.Errorf("not a valid relay: %+v", id)
 	}
