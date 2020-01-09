@@ -1,48 +1,87 @@
 package transport_test
 
 import (
-	"fmt"
 	"net"
 	"testing"
 
-	"github.com/alicebob/miniredis"
-	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/transport"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestServerUpdateHandlerFunc(t *testing.T) {
-	serverentry := core.ServerUpdatePacket{
-		Sequence:             13,
-		ServerRoutePublicKey: make([]byte, 1),
-		Signature:            make([]byte, 1),
+	// Get an in-memory redis server and a client that is connected to it
+	redisServer, redisClient := NewTestRedis()
+
+	// Create a ServerUpdatePacket and marshal it to binary so sent it into the UDP handler
+	packet := core.ServerUpdatePacket{
+		ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
+		ServerRoutePublicKey: TestPublicKey,
+		Signature:            []byte{0x00},
+
+		DatacenterId: 13,
+
+		VersionMajor: core.SDKVersionMajorMin,
+		VersionMinor: core.SDKVersionMinorMin,
+		VersionPatch: core.SDKVersionPatchMin,
 	}
-	packet, err := serverentry.MarshalBinary()
-	if err != nil {
-		fmt.Printf("failed to marshal server entry: %v\n", err)
-		return
-	}
+	data, err := packet.MarshalBinary()
+	assert.NoError(t, err)
 
-	redisServer, _ := miniredis.Run()
-	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
+	assert.NoError(t, err)
 
-	addr, _ := net.ResolveUDPAddr("udp", ":30000")
-
+	// Initialize the UDP handler with the required redis client
 	handler := transport.ServerUpdateHandlerFunc(redisClient)
-	handler(nil, packet, addr)
 
-	ds, _ := redisServer.Get("SERVER-:30000")
+	// Invoke the handler with the data packet and address it is coming from
+	handler(nil, data, addr)
 
-	assert.Equal(t, uint8(0xD), uint8(ds[0]))
+	// Get the server entry directly from the in-memory redis and assert there is no error
+	ds, err := redisServer.Get("SERVER-0.0.0.0:13")
+	assert.NoError(t, err)
+
+	// Create an "expected" ServerEntry based on the incoming ServerUpdatePacket above
+	expected := transport.ServerEntry{
+		ServerRoutePublicKey: packet.ServerRoutePublicKey,
+		ServerPrivateAddr:    *addr,
+
+		DatacenterID: packet.DatacenterId,
+
+		VersionMajor: packet.VersionMajor,
+		VersionMinor: packet.VersionMinor,
+		VersionPatch: packet.VersionPatch,
+	}
+
+	// Unmarshal the data in redis to the actual ServerEntry saved
+	var actual transport.ServerEntry
+	actual.UnmarshalBinary([]byte(ds))
+
+	// Finally compare both ServerEntry struct to ensure we saved the right data in redis
+	assert.Equal(t, expected, actual)
 }
 
 func TestSessionUpdateHandlerFunc(t *testing.T) {
-	t.Skip()
+	redisServer, redisClient := NewTestRedis()
 
-	packet := make([]byte, 0)
+	packet := core.SessionUpdatePacket{
+		SessionId:            13,
+		ClientRoutePublicKey: make([]byte, 1),
+		Signature:            make([]byte, 1),
+	}
+	data, err := packet.MarshalBinary()
+	assert.NoError(t, err)
+
 	addr, _ := net.ResolveUDPAddr("udp", ":30000")
 
-	handler := transport.ServerUpdateHandlerFunc(nil)
-	handler(nil, packet, addr)
+	handler := transport.SessionUpdateHandlerFunc(redisClient)
+	handler(nil, data, addr)
+
+	ds, err := redisServer.Get("SESSION-13")
+	assert.NoError(t, err)
+
+	var sessionentry transport.SessionEntry
+	sessionentry.UnmarshalBinary([]byte(ds))
+
+	assert.Equal(t, sessionentry, transport.SessionEntry{})
 }
