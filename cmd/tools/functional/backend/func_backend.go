@@ -764,7 +764,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	statsUpdate := &core.RelayStatsUpdate{}
-	statsUpdate.Id = core.RelayId(relayEntry.id)
+	statsUpdate.ID = core.RelayId(relayEntry.id)
 
 	for i := 0; i < int(num_relays); i++ {
 		var id uint64
