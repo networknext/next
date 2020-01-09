@@ -160,7 +160,7 @@ func (e SessionEntry) MarshalBinary() ([]byte, error) {
 }
 
 // SessionUpdateHandlerFunc ...
-func SessionUpdateHandlerFunc(redisClient *redis.Client) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(redisClient *redis.Client, ipStackClient *IPStackClient) UDPHandlerFunc {
 	return func(conn *net.UDPConn, data []byte, from *net.UDPAddr) {
 		// Deserialize the Session packet
 		var packet core.SessionUpdatePacket
