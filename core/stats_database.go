@@ -11,7 +11,7 @@ const (
 
 // RelayStatsPing is the ping stats for a relay
 type RelayStatsPing struct {
-	RelayID    RelayId
+	RelayId    RelayId
 	RTT        float32
 	Jitter     float32
 	PacketLoss float32
@@ -19,7 +19,7 @@ type RelayStatsPing struct {
 
 // RelayStatsUpdate is a struct for updating relay stats
 type RelayStatsUpdate struct {
-	ID        RelayId
+	Id        RelayId
 	PingStats []RelayStatsPing
 }
 
@@ -70,19 +70,19 @@ func NewStatsEntryRelay() *StatsEntryRelay {
 
 // ProcessStats processes the stats update, creating the needed entries if they do not already exist
 func (database *StatsDatabase) ProcessStats(statsUpdate *RelayStatsUpdate) {
-	sourceRelayID := statsUpdate.ID
+	sourceRelayId := statsUpdate.Id
 
-	entry, entryExists := database.Entries[sourceRelayID]
+	entry, entryExists := database.Entries[sourceRelayId]
 	if !entryExists {
 		entry = *NewStatsEntry()
-		database.Entries[sourceRelayID] = entry
+		database.Entries[sourceRelayId] = entry
 	}
 
 	for _, stats := range statsUpdate.PingStats {
 
-		destRelayID := stats.RelayID
+		destRelayId := stats.RelayId
 
-		relay, relayExists := entry.Relays[destRelayID]
+		relay, relayExists := entry.Relays[destRelayId]
 
 		if !relayExists {
 			relay = NewStatsEntryRelay()
@@ -96,7 +96,7 @@ func (database *StatsDatabase) ProcessStats(statsUpdate *RelayStatsUpdate) {
 		relay.Jitter = HistoryMean(relay.JitterHistory[:])
 		relay.PacketLoss = HistoryMean(relay.PacketLossHistory[:])
 
-		entry.Relays[destRelayID] = relay // is this needed? relay is a pointer
+		entry.Relays[destRelayId] = relay // is this needed? relay is a pointer
 	}
 }
 
@@ -139,9 +139,9 @@ func (database *StatsDatabase) GetSample(relay1 RelayId, relay2 RelayId) (float3
 }
 
 // GetCostMatrix TODO
-func (database *StatsDatabase) GetCostMatrix(relays *RelayDatabase) *CostMatrix {
+func (database *StatsDatabase) GetCostMatrix(relaydb *RelayDatabase) *CostMatrix {
 
-	numRelays := len(relays.Relays)
+	numRelays := len(relaydb.Relays)
 
 	entryCount := TriMatrixLength(numRelays)
 
@@ -156,21 +156,21 @@ func (database *StatsDatabase) GetCostMatrix(relays *RelayDatabase) *CostMatrix 
 	datacenterNameMap := make(map[DatacenterId]string)
 
 	var stableRelays []RelayData
-	for _, relayData := range relays.Relays {
+	for _, relayData := range relaydb.Relays {
 		stableRelays = append(stableRelays, relayData)
 	}
 
 	sort.SliceStable(stableRelays, func(i, j int) bool {
-		return stableRelays[i].ID < stableRelays[j].ID
+		return stableRelays[i].Id < stableRelays[j].Id
 	})
 
 	for i, relayData := range stableRelays {
-		costMatrix.RelayIds[i] = relayData.ID
+		costMatrix.RelayIds[i] = relayData.Id
 		costMatrix.RelayNames[i] = relayData.Name
 		costMatrix.RelayPublicKeys[i] = relayData.PublicKey
 		if relayData.Datacenter != DatacenterId(0) {
 			datacenter := costMatrix.DatacenterRelays[relayData.Datacenter]
-			datacenter = append(datacenter, RelayId(relayData.ID))
+			datacenter = append(datacenter, RelayId(relayData.Id))
 			costMatrix.DatacenterRelays[relayData.Datacenter] = datacenter
 			datacenterNameMap[relayData.Datacenter] = relayData.DatacenterName
 		}

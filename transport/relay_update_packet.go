@@ -39,7 +39,7 @@ func (r *RelayUpdatePacket) UnmarshalBinary(buff []byte) error {
 			return errors.New("Invalid Packet")
 		}
 
-		pingStats.RelayID = core.RelayId(id)
+		pingStats.RelayId = core.RelayId(id)
 
 		r.PingStats = append(r.PingStats, pingStats)
 	}

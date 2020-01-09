@@ -85,7 +85,7 @@ func RelayInitHandlerFunc(relaydb *core.RelayDatabase) func(writer http.Response
 			return
 		}
 
-		key := core.GetRelayID(relayInitPacket.Address)
+		key := core.GetRelayId(relayInitPacket.Address)
 
 		_, relayAlreadyExists := relaydb.Relays[key]
 		if relayAlreadyExists {
@@ -95,12 +95,12 @@ func RelayInitHandlerFunc(relaydb *core.RelayDatabase) func(writer http.Response
 
 		entry := core.RelayData{}
 		entry.Name = relayInitPacket.Address
-		entry.ID = core.GetRelayID(relayInitPacket.Address)
+		entry.Id = core.GetRelayId(relayInitPacket.Address)
 		entry.Address = relayInitPacket.Address //core.ParseAddress(relayInitPacket.address)
 		entry.LastUpdateTime = uint64(time.Now().Unix())
 		entry.PublicKey = core.RandomBytes(LengthOfRelayToken)
 
-		relaydb.Relays[entry.ID] = entry
+		relaydb.Relays[entry.Id] = entry
 
 		writer.Header().Set("Content-Type", "application/octet-stream")
 
@@ -137,7 +137,7 @@ func RelayUpdateHandlerFunc(relaydb *core.RelayDatabase, statsdb *core.StatsData
 			return
 		}
 
-		key := core.GetRelayID(relayUpdatePacket.Address)
+		key := core.GetRelayId(relayUpdatePacket.Address)
 		entry, ok := relaydb.Relays[key]
 		found := false
 		if ok && crypto.CompareTokens(relayUpdatePacket.Token, entry.PublicKey) {
@@ -150,7 +150,7 @@ func RelayUpdateHandlerFunc(relaydb *core.RelayDatabase, statsdb *core.StatsData
 		}
 
 		statsUpdate := &core.RelayStatsUpdate{}
-		statsUpdate.ID = entry.ID
+		statsUpdate.Id = entry.Id
 
 		for _, ps := range relayUpdatePacket.PingStats {
 			statsUpdate.PingStats = append(statsUpdate.PingStats, ps)
@@ -160,7 +160,7 @@ func RelayUpdateHandlerFunc(relaydb *core.RelayDatabase, statsdb *core.StatsData
 
 		entry = core.RelayData{
 			Name:           relayUpdatePacket.Address,
-			ID:             core.GetRelayID(relayUpdatePacket.Address),
+			Id:             core.GetRelayId(relayUpdatePacket.Address),
 			Address:        relayUpdatePacket.Address,
 			LastUpdateTime: uint64(time.Now().Unix()),
 			PublicKey:      relayUpdatePacket.Token,
@@ -174,10 +174,10 @@ func RelayUpdateHandlerFunc(relaydb *core.RelayDatabase, statsdb *core.StatsData
 		relaysToPing := make([]RelayPingData, 0)
 
 		relaydb.Relays[key] = entry
-		hashedAddress := core.GetRelayID(relayUpdatePacket.Address)
+		hashedAddress := core.GetRelayId(relayUpdatePacket.Address)
 		for k, v := range relaydb.Relays {
 			if k != hashedAddress {
-				relaysToPing = append(relaysToPing, RelayPingData{id: uint64(v.ID), address: v.Address})
+				relaysToPing = append(relaysToPing, RelayPingData{id: uint64(v.Id), address: v.Address})
 			}
 		}
 
