@@ -39,7 +39,7 @@ var gRelayPublicKey = []byte{
 }
 
 // MakeRouter creates a router with the specified endpoints
-func MakeRouter(relaydb *core.RelayDatabase, statsdb *core.StatsDatabase, backend *StubbedBackend) *mux.Router {
+func NewRouter(relaydb *core.RelayDatabase, statsdb *core.StatsDatabase, backend *StubbedBackend) *mux.Router {
 	router := mux.NewRouter()
 	router.HandleFunc("/relay_init", RelayInitHandlerFunc(relaydb)).Methods("POST")
 	router.HandleFunc("/relay_update", RelayUpdateHandlerFunc(relaydb, statsdb)).Methods("POST")

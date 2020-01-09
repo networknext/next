@@ -24,7 +24,7 @@ func main() {
 		port = "30000"
 	}
 
-	router := transport.MakeRouter(relaydb, statsdb, backend)
+	router := transport.NewRouter(relaydb, statsdb, backend)
 
 	go optimizeRoutine()
 
