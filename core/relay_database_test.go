@@ -18,7 +18,7 @@ func TestRelayDatabase(t *testing.T) {
 
 			update := core.RelayUpdate{}
 			update.Shutdown = true
-			update.Id = id
+			update.ID = id
 
 			_, ok := relaydb.Relays[id]
 			assert.True(t, ok)
@@ -40,16 +40,36 @@ func TestRelayDatabase(t *testing.T) {
 			relaydb.Relays[id] = core.RelayData{}
 
 			update := core.RelayUpdate{}
-			update.Id = id
+			update.ID = id
 
 			assert.False(t, relaydb.UpdateRelay(&update))
 		})
 
 		t.Run("updates correctly", func(t *testing.T) {
 			relaydb := core.NewRelayDatabase()
-			addr := core.RelayUpdate{
-				Id
+			addr := "127.0.0.1"
+			id := core.GetRelayID(addr)
+			update := core.RelayUpdate{
+				ID:             id,
+				Name:           "I don't know what this is supposed to be",
+				Address:        addr,
+				Datacenter:     core.DatacenterId(123),
+				DatacenterName: "I also don't know what a good stub name should be",
+				PublicKey:      []byte{0x01, 0x02, 0x03, 0x04},
+				Shutdown:       false,
 			}
+
+			assert.True(t, relaydb.UpdateRelay(&update))
+			value, ok := relaydb.Relays[id]
+			assert.True(t, ok)
+
+			// is there a go equivalent for c++ operator== overloading? or Java's .equal() method? Googling did me no help
+			assert.Equal(t, update.ID, value.ID)
+			assert.Equal(t, update.Name, value.Name)
+			assert.Equal(t, update.Address, value.Address)
+			assert.Equal(t, update.Datacenter, value.Datacenter)
+			assert.Equal(t, update.DatacenterName, value.DatacenterName)
+			assert.Equal(t, update.PublicKey, value.PublicKey)
 		})
 	})
 
