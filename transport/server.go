@@ -6,7 +6,7 @@ import (
 	"log"
 	"net"
 
-	"github.com/gomodule/redigo/redis"
+	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/core"
 )
 
@@ -46,23 +46,20 @@ func (m *UDPServerMux) Start() error {
 
 		switch packet[0] {
 		case PacketTypeServerUpdate:
-			m.ServerUpdateHandlerFunc(m.Conn, packet[1:numbytes], addr)
+			m.ServerUpdateHandlerFunc(m.Conn, packet[1:], addr)
 		case PacketTypeSessionUpdate:
-			m.SessionUpdateHandlerFunc(m.Conn, packet[1:numbytes], addr)
+			m.SessionUpdateHandlerFunc(m.Conn, packet[1:], addr)
 		}
 	}
 }
 
 // ServerUpdateHandlerFunc ...
-func ServerUpdateHandlerFunc(redisConn redis.Conn) UDPHandlerFunc {
+func ServerUpdateHandlerFunc(redisClient *redis.Client) UDPHandlerFunc {
 	return func(conn *net.UDPConn, packet []byte, from *net.UDPAddr) {
-		// Deserialize the Session packet
 		var sup core.ServerUpdatePacket
-		{
-			if err := sup.Serialize(core.CreateReadStream(packet)); err != nil {
-				fmt.Printf("failed to read server update packet: %v\n", err)
-				return
-			}
+		if err := sup.UnmarshalBinary(packet); err != nil {
+			fmt.Printf("failed to read server update packet: %v\n", err)
+			return
 		}
 
 		// Verify the Session packet version
@@ -74,9 +71,14 @@ func ServerUpdateHandlerFunc(redisConn redis.Conn) UDPHandlerFunc {
 		// Get the the old Server packet from Redis
 		var serverentry core.ServerUpdatePacket
 		{
-			serverdata, err := redis.Bytes(redisConn.Do("GET", "SERVER-"+from.String()))
-			if err != nil && err != redis.ErrNil {
-				log.Printf("failed to register server %s: %v", from.String(), err)
+			result := redisClient.Get("SERVER-" + from.String())
+			if result.Err() != redis.Nil {
+				log.Printf("failed to register server %s: %v", from.String(), result.Err())
+				return
+			}
+			serverdata, err := result.Bytes()
+			if err != redis.Nil {
+				log.Printf("failed to get bytes from redis: %v", result.Err())
 				return
 			}
 
@@ -98,29 +100,23 @@ func ServerUpdateHandlerFunc(redisConn redis.Conn) UDPHandlerFunc {
 
 		// Save the Server packet to Redis
 		{
-			ws, err := core.CreateWriteStream(DefaultMaxPacketSize)
+			serverdata, err := sup.MarshalBinary()
 			if err != nil {
-				fmt.Printf("failed to create server entry read stream: %v\n", err)
+				fmt.Printf("failed to marshal server entry: %v\n", err)
 				return
 			}
 
-			if err := sup.Serialize(ws); err != nil {
-				fmt.Printf("failed to read server entry: %v\n", err)
+			result := redisClient.Set("SERVER-"+from.String(), serverdata, 0)
+			if result.Err() != nil {
+				log.Printf("failed to register server %s: %v", from.String(), result.Err())
 				return
-			}
-			ws.Flush()
-
-			serverdata := ws.GetData()
-
-			if _, err := redisConn.Do("SET", "SERVER-"+from.String(), serverdata); err != nil {
-				log.Printf("failed to save server db entry for %s: %v", from.String(), err)
 			}
 		}
 	}
 }
 
 // SessionUpdateHandlerFunc ...
-func SessionUpdateHandlerFunc(redisConn redis.Conn) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(redisClient *redis.Client) UDPHandlerFunc {
 	return func(conn *net.UDPConn, packet []byte, from *net.UDPAddr) {
 		// Deserialize the Session packet
 		sup := core.SessionUpdatePacket{}
@@ -149,8 +145,10 @@ func SessionUpdateHandlerFunc(redisConn redis.Conn) UDPHandlerFunc {
 
 			sessiondata := ws.GetData()
 
-			if _, err := redisConn.Do("SET", fmt.Sprintf("SESSION-%d", sup.SessionId), sessiondata[:ws.GetBytesProcessed()]); err != nil {
-				log.Printf("failed to save session db entry for %s: %v", from.String(), err)
+			result := redisClient.Set(fmt.Sprintf("SESSION-%d", sup.SessionId), sessiondata, 0)
+			if result.Err() != nil {
+				log.Printf("failed to save session db entry for %s: %v", from.String(), result.Err())
+				return
 			}
 		}
 	}
