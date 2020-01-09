@@ -14,10 +14,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const sizeOfUpdateRequestVersion = 4
-const sizeOfRelayToken = 32
-const sizeOfNumberOfRelays = 4
-const sizeOfRelayPingStat = 20
+const (
+	sizeOfUpdateRequestVersion = 4
+	sizeOfRelayToken           = 32
+	sizeOfNumberOfRelays       = 4
+	sizeOfRelayPingStat        = 20
+)
 
 func putUpdateRequestVersion(buff []byte) {
 	const gUpdateRequestVersion = 0

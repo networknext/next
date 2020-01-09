@@ -14,7 +14,21 @@ import (
 
 	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
-	"github.com/networknext/backend/rw"
+	"github.com/networknext/backend/encoding"
+)
+
+const (
+	InitRequestMagic = uint32(0x9083708f)
+
+	LengthOfRelayToken = 32
+
+	MaxRelays             = 1024
+	MaxRelayAddressLength = 256
+
+	VersionNumberInitRequest    = 0
+	VersionNumberInitResponse   = 0
+	VersionNumberUpdateRequest  = 0
+	VersionNumberUpdateResponse = 0
 )
 
 var gRelayPublicKey = []byte{
@@ -24,8 +38,8 @@ var gRelayPublicKey = []byte{
 	0xda, 0xa9, 0xc0, 0xae, 0x08, 0xa2, 0xcf, 0x5e,
 }
 
-// MakeRouter creates a router with the specified endpoints
-func MakeRouter(relaydb *core.RelayDatabase, statsdb *core.StatsDatabase, backend *StubbedBackend) *mux.Router {
+// NewRouter creates a router with the specified endpoints
+func NewRouter(relaydb *core.RelayDatabase, statsdb *core.StatsDatabase, backend *StubbedBackend) *mux.Router {
 	router := mux.NewRouter()
 	router.HandleFunc("/relay_init", RelayInitHandlerFunc(relaydb)).Methods("POST")
 	router.HandleFunc("/relay_update", RelayUpdateHandlerFunc(relaydb, statsdb)).Methods("POST")
@@ -64,14 +78,14 @@ func RelayInitHandlerFunc(relaydb *core.RelayDatabase) func(writer http.Response
 			return
 		}
 
-		if relayInitPacket.magic != InitRequestMagic ||
-			relayInitPacket.version != InitRequestVersion ||
-			!crypto.Check(relayInitPacket.encryptedToken, relayInitPacket.nonce, gRelayPublicKey[:], core.RouterPrivateKey[:]) {
+		if relayInitPacket.Magic != InitRequestMagic ||
+			relayInitPacket.Version != VersionNumberInitRequest ||
+			!crypto.Check(relayInitPacket.EncryptedToken, relayInitPacket.Nonce, gRelayPublicKey[:], core.RouterPrivateKey[:]) {
 			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		key := core.GetRelayID(relayInitPacket.address)
+		key := core.GetRelayID(relayInitPacket.Address)
 
 		_, relayAlreadyExists := relaydb.Relays[key]
 		if relayAlreadyExists {
@@ -80,11 +94,11 @@ func RelayInitHandlerFunc(relaydb *core.RelayDatabase) func(writer http.Response
 		}
 
 		entry := core.RelayData{}
-		entry.Name = relayInitPacket.address
-		entry.ID = core.GetRelayID(relayInitPacket.address)
-		entry.Address = relayInitPacket.address //core.ParseAddress(relayInitPacket.address)
+		entry.Name = relayInitPacket.Address
+		entry.ID = core.GetRelayID(relayInitPacket.Address)
+		entry.Address = relayInitPacket.Address //core.ParseAddress(relayInitPacket.address)
 		entry.LastUpdateTime = uint64(time.Now().Unix())
-		entry.PublicKey = core.RandomBytes(RelayTokenBytes)
+		entry.PublicKey = core.RandomBytes(LengthOfRelayToken)
 
 		relaydb.Relays[entry.ID] = entry
 
@@ -92,9 +106,9 @@ func RelayInitHandlerFunc(relaydb *core.RelayDatabase) func(writer http.Response
 
 		index = 0
 		responseData := make([]byte, 64)
-		rw.WriteUint32(responseData, &index, InitResponseVersion)
-		rw.WriteUint64(responseData, &index, uint64(time.Now().Unix()))
-		rw.WriteBytes(responseData, &index, entry.PublicKey, RelayTokenBytes)
+		encoding.WriteUint32(responseData, &index, VersionNumberInitResponse)
+		encoding.WriteUint64(responseData, &index, uint64(time.Now().Unix()))
+		encoding.WriteBytes(responseData, &index, entry.PublicKey, LengthOfRelayToken)
 
 		writer.Write(responseData[:index])
 	}
@@ -118,15 +132,15 @@ func RelayUpdateHandlerFunc(relaydb *core.RelayDatabase, statsdb *core.StatsData
 			return
 		}
 
-		if relayUpdatePacket.version != UpdateRequestVersion || relayUpdatePacket.numRelays > MaxRelays {
+		if relayUpdatePacket.Version != VersionNumberUpdateRequest || relayUpdatePacket.NumRelays > MaxRelays {
 			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		key := core.GetRelayID(relayUpdatePacket.address)
+		key := core.GetRelayID(relayUpdatePacket.Address)
 		entry, ok := relaydb.Relays[key]
 		found := false
-		if ok && crypto.CompareTokens(relayUpdatePacket.token, entry.PublicKey) {
+		if ok && crypto.CompareTokens(relayUpdatePacket.Token, entry.PublicKey) {
 			found = true
 		}
 
@@ -138,18 +152,18 @@ func RelayUpdateHandlerFunc(relaydb *core.RelayDatabase, statsdb *core.StatsData
 		statsUpdate := &core.RelayStatsUpdate{}
 		statsUpdate.ID = entry.ID
 
-		for _, ps := range relayUpdatePacket.pingStats {
+		for _, ps := range relayUpdatePacket.PingStats {
 			statsUpdate.PingStats = append(statsUpdate.PingStats, ps)
 		}
 
 		statsdb.ProcessStats(statsUpdate)
 
 		entry = core.RelayData{
-			Name:           relayUpdatePacket.address,
-			ID:             core.GetRelayID(relayUpdatePacket.address),
-			Address:        relayUpdatePacket.address,
+			Name:           relayUpdatePacket.Address,
+			ID:             core.GetRelayID(relayUpdatePacket.Address),
+			Address:        relayUpdatePacket.Address,
 			LastUpdateTime: uint64(time.Now().Unix()),
-			PublicKey:      relayUpdatePacket.token,
+			PublicKey:      relayUpdatePacket.Token,
 		}
 
 		type RelayPingData struct {
@@ -160,7 +174,7 @@ func RelayUpdateHandlerFunc(relaydb *core.RelayDatabase, statsdb *core.StatsData
 		relaysToPing := make([]RelayPingData, 0)
 
 		relaydb.Relays[key] = entry
-		hashedAddress := core.GetRelayID(relayUpdatePacket.address)
+		hashedAddress := core.GetRelayID(relayUpdatePacket.Address)
 		for k, v := range relaydb.Relays {
 			if k != hashedAddress {
 				relaysToPing = append(relaysToPing, RelayPingData{id: uint64(v.ID), address: v.Address})
@@ -171,12 +185,12 @@ func RelayUpdateHandlerFunc(relaydb *core.RelayDatabase, statsdb *core.StatsData
 
 		index = 0
 
-		rw.WriteUint32(responseData, &index, UpdateResponseVersion)
-		rw.WriteUint32(responseData, &index, uint32(len(relaysToPing)))
+		encoding.WriteUint32(responseData, &index, VersionNumberUpdateResponse)
+		encoding.WriteUint32(responseData, &index, uint32(len(relaysToPing)))
 
 		for i := range relaysToPing {
-			rw.WriteUint64(responseData, &index, relaysToPing[i].id)
-			rw.WriteString(responseData, &index, relaysToPing[i].address, MaxRelayAddressLength)
+			encoding.WriteUint64(responseData, &index, relaysToPing[i].id)
+			encoding.WriteString(responseData, &index, relaysToPing[i].address, MaxRelayAddressLength)
 		}
 
 		responseLength := index

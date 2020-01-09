@@ -1,4 +1,4 @@
-package rw
+package encoding
 
 import (
 	"encoding/binary"

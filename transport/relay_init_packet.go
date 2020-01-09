@@ -7,26 +7,26 @@ import "C"
 import (
 	"errors"
 
-	"github.com/networknext/backend/rw"
+	"github.com/networknext/backend/encoding"
 )
 
 // RelayInitPacket is the struct that describes the packets comming into the relay_init endpoint
 type RelayInitPacket struct {
-	magic          uint32
-	version        uint32
-	nonce          []byte
-	address        string
-	encryptedToken []byte
+	Magic          uint32
+	Version        uint32
+	Nonce          []byte
+	Address        string
+	EncryptedToken []byte
 }
 
 // UnmarshalBinary decodes binary data into a RelayInitPacket struct
 func (r *RelayInitPacket) UnmarshalBinary(buf []byte) error {
 	index := 0
-	if !(rw.ReadUint32(buf, &index, &r.magic) &&
-		rw.ReadUint32(buf, &index, &r.version) &&
-		rw.ReadBytes(buf, &index, &r.nonce, C.crypto_box_NONCEBYTES) &&
-		rw.ReadString(buf, &index, &r.address, MaxRelayAddressLength) &&
-		rw.ReadBytes(buf, &index, &r.encryptedToken, RelayTokenBytes+C.crypto_box_MACBYTES)) {
+	if !(encoding.ReadUint32(buf, &index, &r.Magic) &&
+		encoding.ReadUint32(buf, &index, &r.Version) &&
+		encoding.ReadBytes(buf, &index, &r.Nonce, C.crypto_box_NONCEBYTES) &&
+		encoding.ReadString(buf, &index, &r.Address, MaxRelayAddressLength) &&
+		encoding.ReadBytes(buf, &index, &r.EncryptedToken, LengthOfRelayToken+C.crypto_box_MACBYTES)) {
 		return errors.New("Invalid Packet")
 	}
 
