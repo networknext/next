@@ -9,25 +9,25 @@ import (
 
 // RelayUpdatePacket is the struct wrapping a update packet
 type RelayUpdatePacket struct {
-	version   uint32
-	address   string
-	token     []byte
-	numRelays uint32
+	Version   uint32
+	Address   string
+	Token     []byte
+	NumRelays uint32
 
-	pingStats []core.RelayStatsPing
+	PingStats []core.RelayStatsPing
 }
 
 // UnmarshalBinary decodes the binary data into a RelayUpdatePacket struct
 func (r *RelayUpdatePacket) UnmarshalBinary(buff []byte) error {
 	index := 0
-	if !(encoding.ReadUint32(buff, &index, &r.version) &&
-		encoding.ReadString(buff, &index, &r.address, MaxRelayAddressLength) &&
-		encoding.ReadBytes(buff, &index, &r.token, LengthOfRelayToken) &&
-		encoding.ReadUint32(buff, &index, &r.numRelays)) {
+	if !(encoding.ReadUint32(buff, &index, &r.Version) &&
+		encoding.ReadString(buff, &index, &r.Address, MaxRelayAddressLength) &&
+		encoding.ReadBytes(buff, &index, &r.Token, LengthOfRelayToken) &&
+		encoding.ReadUint32(buff, &index, &r.NumRelays)) {
 		return errors.New("Invalid Packet")
 	}
 
-	for i := 0; i < int(r.numRelays); i++ {
+	for i := 0; i < int(r.NumRelays); i++ {
 		var id uint64
 
 		pingStats := core.RelayStatsPing{}
@@ -41,7 +41,7 @@ func (r *RelayUpdatePacket) UnmarshalBinary(buff []byte) error {
 
 		pingStats.RelayId = core.RelayId(id)
 
-		r.pingStats = append(r.pingStats, pingStats)
+		r.PingStats = append(r.PingStats, pingStats)
 	}
 
 	return nil

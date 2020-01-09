@@ -38,7 +38,7 @@ var gRelayPublicKey = []byte{
 	0xda, 0xa9, 0xc0, 0xae, 0x08, 0xa2, 0xcf, 0x5e,
 }
 
-// MakeRouter creates a router with the specified endpoints
+// NewRouter creates a router with the specified endpoints
 func NewRouter(relaydb *core.RelayDatabase, statsdb *core.StatsDatabase, backend *StubbedBackend) *mux.Router {
 	router := mux.NewRouter()
 	router.HandleFunc("/relay_init", RelayInitHandlerFunc(relaydb)).Methods("POST")
@@ -78,14 +78,14 @@ func RelayInitHandlerFunc(relaydb *core.RelayDatabase) func(writer http.Response
 			return
 		}
 
-		if relayInitPacket.magic != InitRequestMagic ||
-			relayInitPacket.version != VersionNumberInitRequest ||
-			!crypto.Check(relayInitPacket.encryptedToken, relayInitPacket.nonce, gRelayPublicKey[:], core.RouterPrivateKey[:]) {
+		if relayInitPacket.Magic != InitRequestMagic ||
+			relayInitPacket.Version != VersionNumberInitRequest ||
+			!crypto.Check(relayInitPacket.EncryptedToken, relayInitPacket.Nonce, gRelayPublicKey[:], core.RouterPrivateKey[:]) {
 			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		key := core.GetRelayID(relayInitPacket.address)
+		key := core.GetRelayID(relayInitPacket.Address)
 
 		_, relayAlreadyExists := relaydb.Relays[key]
 		if relayAlreadyExists {
@@ -94,9 +94,9 @@ func RelayInitHandlerFunc(relaydb *core.RelayDatabase) func(writer http.Response
 		}
 
 		entry := core.RelayData{}
-		entry.Name = relayInitPacket.address
-		entry.Id = core.GetRelayID(relayInitPacket.address)
-		entry.Address = relayInitPacket.address //core.ParseAddress(relayInitPacket.address)
+		entry.Name = relayInitPacket.Address
+		entry.Id = core.GetRelayID(relayInitPacket.Address)
+		entry.Address = relayInitPacket.Address //core.ParseAddress(relayInitPacket.address)
 		entry.LastUpdateTime = uint64(time.Now().Unix())
 		entry.PublicKey = core.RandomBytes(LengthOfRelayToken)
 
@@ -132,15 +132,15 @@ func RelayUpdateHandlerFunc(relaydb *core.RelayDatabase, statsdb *core.StatsData
 			return
 		}
 
-		if relayUpdatePacket.version != VersionNumberUpdateRequest || relayUpdatePacket.numRelays > MaxRelays {
+		if relayUpdatePacket.Version != VersionNumberUpdateRequest || relayUpdatePacket.NumRelays > MaxRelays {
 			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		key := core.GetRelayID(relayUpdatePacket.address)
+		key := core.GetRelayID(relayUpdatePacket.Address)
 		entry, ok := relaydb.Relays[key]
 		found := false
-		if ok && crypto.CompareTokens(relayUpdatePacket.token, entry.PublicKey) {
+		if ok && crypto.CompareTokens(relayUpdatePacket.Token, entry.PublicKey) {
 			found = true
 		}
 
@@ -152,18 +152,18 @@ func RelayUpdateHandlerFunc(relaydb *core.RelayDatabase, statsdb *core.StatsData
 		statsUpdate := &core.RelayStatsUpdate{}
 		statsUpdate.ID = entry.Id
 
-		for _, ps := range relayUpdatePacket.pingStats {
+		for _, ps := range relayUpdatePacket.PingStats {
 			statsUpdate.PingStats = append(statsUpdate.PingStats, ps)
 		}
 
 		statsdb.ProcessStats(statsUpdate)
 
 		entry = core.RelayData{
-			Name:           relayUpdatePacket.address,
-			Id:             core.GetRelayID(relayUpdatePacket.address),
-			Address:        relayUpdatePacket.address,
+			Name:           relayUpdatePacket.Address,
+			Id:             core.GetRelayID(relayUpdatePacket.Address),
+			Address:        relayUpdatePacket.Address,
 			LastUpdateTime: uint64(time.Now().Unix()),
-			PublicKey:      relayUpdatePacket.token,
+			PublicKey:      relayUpdatePacket.Token,
 		}
 
 		type RelayPingData struct {
@@ -174,7 +174,7 @@ func RelayUpdateHandlerFunc(relaydb *core.RelayDatabase, statsdb *core.StatsData
 		relaysToPing := make([]RelayPingData, 0)
 
 		relaydb.Relays[key] = entry
-		hashedAddress := core.GetRelayID(relayUpdatePacket.address)
+		hashedAddress := core.GetRelayID(relayUpdatePacket.Address)
 		for k, v := range relaydb.Relays {
 			if k != hashedAddress {
 				relaysToPing = append(relaysToPing, RelayPingData{id: uint64(v.Id), address: v.Address})
