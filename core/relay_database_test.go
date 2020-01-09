@@ -3,6 +3,7 @@ package core_test
 import (
 	"hash/fnv"
 	"testing"
+	"time"
 
 	"github.com/networknext/backend/core"
 	"github.com/stretchr/testify/assert"
@@ -74,8 +75,39 @@ func TestRelayDatabase(t *testing.T) {
 	})
 
 	t.Run("CheckForTimeouts()", func(t *testing.T) {
+		fillDB := func(relaydb *core.RelayDatabase) {
+			fillData := func(relaydb *core.RelayDatabase, addr string, updateTime int64) {
+				id := core.GetRelayID(addr)
+				data := core.RelayData{
+					ID:             id,
+					Name:           "n/a",
+					Address:        addr,
+					Datacenter:     core.DatacenterId(123),
+					DatacenterName: "n/a",
+					PublicKey:      []byte{0x01, 0x02, 0x03, 0x04},
+					LastUpdateTime: uint64(updateTime),
+				}
+				relaydb.Relays[id] = data
+			}
+
+			fillData(relaydb, "127.0.0.1", time.Now().Unix()-1)    // safe
+			fillData(relaydb, "123.4.5.6", time.Now().Unix()-10)   // safe
+			fillData(relaydb, "654.3.2.1", time.Now().Unix()-100)  // deleted
+			fillData(relaydb, "000.0.0.0", time.Now().Unix()-25)   // safe
+			fillData(relaydb, "999.9.9.9", time.Now().Unix()-1000) // deleted
+		}
+
 		t.Run("dead relays are present", func(t *testing.T) {
-			t.Skip()
+			relaydb := core.NewRelayDatabase()
+			fillDB(relaydb)
+			expectedDeadRelays := []core.RelayId{core.GetRelayID("654.3.2.1"), core.GetRelayID("999.9.9.9")}
+
+			deadRelays := relaydb.CheckForTimeouts(50)
+			assert.Equal(t, expectedDeadRelays, deadRelays)
+			for _, id := range expectedDeadRelays {
+				_, ok := relaydb.Relays[id]
+				assert.False(t, ok, "ID: %x", id)
+			}
 		})
 
 		t.Run("all relays are alive", func(t *testing.T) {
