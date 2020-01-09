@@ -12,6 +12,18 @@ func TestStatsDatabase(t *testing.T) {
 	relay1ID := core.GetRelayID("127.0.0.1")
 	relay2ID := core.GetRelayID("999.999.9.9")
 
+	makeBasicStats := func() *core.StatsEntryRelay {
+		entry := core.NewStatsEntryRelay()
+		entry.Index = 1
+		entry.Rtt = 1
+		entry.Jitter = 1
+		entry.PacketLoss = 1
+		entry.RttHistory[0] = 1
+		entry.JitterHistory[0] = 1
+		entry.PacketLossHistory[0] = 1
+		return entry
+	}
+
 	t.Run("ProcessStats()", func(t *testing.T) {
 		update := core.RelayStatsUpdate{
 			ID: sourceID,
@@ -70,14 +82,7 @@ func TestStatsDatabase(t *testing.T) {
 			statsdb := core.NewStatsDatabase()
 			entry := core.NewStatsEntry()
 			// this entry makes no sense, test puposes only
-			statsEntry1 := core.NewStatsEntryRelay()
-			statsEntry1.Index = 1
-			statsEntry1.Rtt = 1
-			statsEntry1.Jitter = 1
-			statsEntry1.PacketLoss = 1
-			statsEntry1.RttHistory[0] = 1
-			statsEntry1.JitterHistory[0] = 1
-			statsEntry1.PacketLossHistory[0] = 1
+			statsEntry1 := makeBasicStats()
 			entry.Relays[relay1ID] = statsEntry1
 			statsdb.Entries[update.ID] = *entry
 
@@ -96,14 +101,7 @@ func TestStatsDatabase(t *testing.T) {
 			statsdb := core.NewStatsDatabase()
 			entry := core.NewStatsEntry()
 			// this entry makes no sense, test puposes only
-			statsEntry1 := core.NewStatsEntryRelay()
-			statsEntry1.Index = 1
-			statsEntry1.Rtt = 1
-			statsEntry1.Jitter = 1
-			statsEntry1.PacketLoss = 1
-			statsEntry1.RttHistory[0] = 1
-			statsEntry1.JitterHistory[0] = 1
-			statsEntry1.PacketLossHistory[0] = 1
+			statsEntry1 := makeBasicStats()
 			entry.Relays[relay1ID] = statsEntry1
 			statsdb.Entries[sourceID] = *entry
 
@@ -136,14 +134,7 @@ func TestStatsDatabase(t *testing.T) {
 			statsdb := core.NewStatsDatabase()
 			entry := core.NewStatsEntry()
 			// this entry makes no sense, test puposes only
-			statsEntry1 := core.NewStatsEntryRelay()
-			statsEntry1.Index = 1
-			statsEntry1.Rtt = 1
-			statsEntry1.Jitter = 1
-			statsEntry1.PacketLoss = 1
-			statsEntry1.RttHistory[0] = 1
-			statsEntry1.JitterHistory[0] = 1
-			statsEntry1.PacketLossHistory[0] = 1
+			statsEntry1 := makeBasicStats()
 			entry.Relays[relay1ID] = statsEntry1
 			statsdb.Entries[sourceID] = *entry
 
