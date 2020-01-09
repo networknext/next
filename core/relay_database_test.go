@@ -28,11 +28,21 @@ func TestRelayDatabase(t *testing.T) {
 		})
 
 		t.Run("relay did not already exist", func(t *testing.T) {
-			t.Skip()
+			relaydb := core.NewRelayDatabase()
+			update := core.RelayUpdate{}
+			assert.True(t, relaydb.UpdateRelay(&update))
 		})
 
 		t.Run("relay did already exist", func(t *testing.T) {
-			t.Skip()
+			relaydb := core.NewRelayDatabase()
+			addr := "127.0.0.1"
+			id := core.GetRelayID(addr)
+			relaydb.Relays[id] = core.RelayData{}
+
+			update := core.RelayUpdate{}
+			update.Id = id
+
+			assert.False(t, relaydb.UpdateRelay(&update))
 		})
 	})
 
