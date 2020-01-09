@@ -12,6 +12,9 @@ import (
 	"os/signal"
 	"strconv"
 
+	"github.com/alicebob/miniredis"
+	"github.com/go-redis/redis/v7"
+
 	"github.com/networknext/backend/transport"
 )
 
@@ -21,7 +24,24 @@ func main() {
 	var port int64
 	if port, err = strconv.ParseInt(os.Getenv("SERVER_BACKEND_PORT"), 10, 64); err != nil {
 		port = 30000
-		log.Printf("unable to parse port %s, defauling to 30000\n", os.Getenv("SERVER_BACKEND_PORT"))
+		log.Printf("unable to parse SERVER_BACKEND_PORT '%s', defaulting to 30000\n", os.Getenv("SERVER_BACKEND_PORT"))
+	}
+
+	// Attempt to connect to REDIS_HOST
+	// If it fails to connect then start a local in memory instance and connect to that instead
+	redisClient := redis.NewClient(&redis.Options{Addr: os.Getenv("REDIS_HOST")})
+	if err := redisClient.Ping().Err(); err != nil {
+		redisServer, err := miniredis.Run()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		redisClient = redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+		if err := redisClient.Ping().Err(); err != nil {
+			log.Fatal(err)
+		}
+
+		log.Printf("unable to connect to REDIS_HOST '%s', connected to in-memory redis %s", os.Getenv("REDIS_URL"), redisServer.Addr())
 	}
 
 	{
@@ -39,8 +59,8 @@ func main() {
 			Conn:          conn,
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
-			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc,
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc,
+			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(redisClient),
+			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(redisClient),
 		}
 
 		if err := mux.Start(); err != nil {

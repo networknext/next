@@ -62,7 +62,10 @@ test: test-unit
 test-unit: clean lint build-sdk-test build-relay ## runs unit tests
 	@$(DIST_DIR)/$(SDKNAME)_test
 	@$(DIST_DIR)/relay test
-	@$(GO) test -race -v ./core/... ./transport/...
+	@printf "Running go tests:\n\n"
+	@$(GO) test  ./... -coverprofile ./cover.out
+	@printf "\n\nCoverage results of go tests:\n\n"
+	@$(GO) tool cover -func ./cover.out
 	@printf "\n"
 
 .PHONY: test-soak

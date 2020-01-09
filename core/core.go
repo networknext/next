@@ -63,6 +63,15 @@ const (
 	NEXT_PLATFORM_XBOX_ONE = 7
 )
 
+const (
+	SDKVersionMajorMin = 3
+	SDKVersionMinorMin = 3
+	SDKVersionPatchMin = 2
+	SDKVersionMajorMax = 254
+	SDKVersionMinorMax = 1023
+	SDKVersionPatchMax = 254
+)
+
 var RouterPrivateKey = [...]byte{0x96, 0xce, 0x57, 0x8b, 0x00, 0x19, 0x44, 0x27, 0xf2, 0xb9, 0x90, 0x1b, 0x43, 0x56, 0xfd, 0x4f, 0x56, 0xe1, 0xd9, 0x56, 0x58, 0xf2, 0xf4, 0x3b, 0x86, 0x9f, 0x12, 0x75, 0x24, 0xd2, 0x47, 0xb3}
 
 var BackendPrivateKey = []byte{21, 124, 5, 171, 56, 198, 148, 140, 20, 15, 8, 170, 212, 222, 84, 155, 149, 84, 122, 199, 107, 225, 243, 246, 133, 85, 118, 114, 114, 126, 200, 4, 76, 97, 202, 140, 71, 135, 62, 212, 160, 181, 151, 195, 202, 224, 207, 113, 8, 45, 37, 60, 145, 14, 212, 111, 25, 34, 175, 186, 37, 150, 163, 64}
@@ -1973,10 +1982,6 @@ func (stream *ReadStream) GetBytesProcessed() int {
 
 // ===========================================================
 
-const NEXT_VERSION_MAJOR_MAX = 254
-const NEXT_VERSION_MINOR_MAX = 1023
-const NEXT_VERSION_PATCH_MAX = 254
-
 func ProtocolVersionAtLeast(serverVersionMajor int32, serverVersionMinor int32, serverVersionPatch int32, targetProtocolVersionMajor int32, targetProtocolVersionMinor int32, targetProtocolVersionPatch int32) bool {
 	if serverVersionMajor == 0 && serverVersionMinor == 0 && serverVersionPatch == 0 {
 		// This is an internal build, assume latest version.
@@ -2021,7 +2026,7 @@ const NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES = 117
 const NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES = 58
 const NEXT_MTU = 1300
 
-type NextBackendServerUpdatePacket struct {
+type ServerUpdatePacket struct {
 	Sequence             uint64
 	VersionMajor         int32
 	VersionMinor         int32
@@ -2036,11 +2041,32 @@ type NextBackendServerUpdatePacket struct {
 	Signature            []byte
 }
 
-func (packet *NextBackendServerUpdatePacket) Serialize(stream Stream) error {
+func (packet *ServerUpdatePacket) UnmarshalBinary(data []byte) error {
+	if err := packet.Serialize(CreateReadStream(data)); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (packet *ServerUpdatePacket) MarshalBinary() ([]byte, error) {
+	ws, err := CreateWriteStream(1500)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := packet.Serialize(ws); err != nil {
+		return nil, err
+	}
+	ws.Flush()
+
+	return ws.GetData(), nil
+}
+
+func (packet *ServerUpdatePacket) Serialize(stream Stream) error {
 	stream.SerializeUint64(&packet.Sequence)
-	stream.SerializeInteger(&packet.VersionMajor, 0, NEXT_VERSION_MAJOR_MAX)
-	stream.SerializeInteger(&packet.VersionMinor, 0, NEXT_VERSION_MINOR_MAX)
-	stream.SerializeInteger(&packet.VersionPatch, 0, NEXT_VERSION_PATCH_MAX)
+	stream.SerializeInteger(&packet.VersionMajor, 0, SDKVersionMajorMax)
+	stream.SerializeInteger(&packet.VersionMinor, 0, SDKVersionMinorMax)
+	stream.SerializeInteger(&packet.VersionPatch, 0, SDKVersionPatchMax)
 	stream.SerializeUint64(&packet.CustomerId)
 	stream.SerializeUint64(&packet.DatacenterId)
 	stream.SerializeUint32(&packet.NumSessionsPending)
@@ -2056,7 +2082,7 @@ func (packet *NextBackendServerUpdatePacket) Serialize(stream Stream) error {
 	return stream.Error()
 }
 
-func (packet *NextBackendServerUpdatePacket) GetSignData() []byte {
+func (packet *ServerUpdatePacket) GetSignData() []byte {
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.LittleEndian, packet.Sequence)
 	binary.Write(buf, binary.LittleEndian, uint64(packet.VersionMajor))
@@ -2079,7 +2105,7 @@ func (packet *NextBackendServerUpdatePacket) GetSignData() []byte {
 	return buf.Bytes()
 }
 
-type NextBackendSessionUpdatePacket struct {
+type SessionUpdatePacket struct {
 	Sequence                  uint64
 	CustomerId                uint64
 	SessionId                 uint64
@@ -2119,6 +2145,27 @@ type NextBackendSessionUpdatePacket struct {
 	Signature                 []byte
 }
 
+func (packet *SessionUpdatePacket) UnmarshalBinary(data []byte) error {
+	if err := packet.Serialize(CreateReadStream(data), SDKVersionMajorMin, SDKVersionMinorMin, SDKVersionPatchMin); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (packet *SessionUpdatePacket) MarshalBinary() ([]byte, error) {
+	ws, err := CreateWriteStream(1500)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := packet.Serialize(ws, SDKVersionMajorMin, SDKVersionMinorMin, SDKVersionPatchMin); err != nil {
+		return nil, err
+	}
+	ws.Flush()
+
+	return ws.GetData(), nil
+}
+
 const NEXT_FLAGS_BAD_ROUTE_TOKEN = uint32(1 << 0)
 const NEXT_FLAGS_NO_ROUTE_TO_CONTINUE = uint32(1 << 1)
 const NEXT_FLAGS_PREVIOUS_UPDATE_STILL_PENDING = uint32(1 << 2)
@@ -2131,7 +2178,7 @@ const NEXT_FLAGS_TRY_BEFORE_YOU_BUY_ABORT = uint32(1 << 8)
 const NEXT_FLAGS_DIRECT_ROUTE_EXPIRED = uint32(1 << 9)
 const NEXT_FLAGS_COUNT = 10
 
-func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream, versionMajor int32, versionMinor int32, versionPatch int32) error {
+func (packet *SessionUpdatePacket) Serialize(stream Stream, versionMajor int32, versionMinor int32, versionPatch int32) error {
 	stream.SerializeUint64(&packet.Sequence)
 	stream.SerializeUint64(&packet.CustomerId)
 	stream.SerializeAddress(&packet.ServerAddress)
@@ -2193,14 +2240,14 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream, versionMa
 	return stream.Error()
 }
 
-func (packet *NextBackendSessionUpdatePacket) HeaderSerialize(stream Stream) error {
+func (packet *SessionUpdatePacket) HeaderSerialize(stream Stream) error {
 	stream.SerializeUint64(&packet.Sequence)
 	stream.SerializeUint64(&packet.CustomerId)
 	stream.SerializeAddress(&packet.ServerAddress)
 	return stream.Error()
 }
 
-func (packet *NextBackendSessionUpdatePacket) GetSignData(versionMajor int32, versionMinor int32, versionPatch int32) []byte {
+func (packet *SessionUpdatePacket) GetSignData(versionMajor int32, versionMinor int32, versionPatch int32) []byte {
 
 	buf := new(bytes.Buffer)
 
@@ -2271,7 +2318,7 @@ func (packet *NextBackendSessionUpdatePacket) GetSignData(versionMajor int32, ve
 	return buf.Bytes()
 }
 
-type NextBackendSessionResponsePacket struct {
+type SessionResponsePacket struct {
 	Sequence             uint64
 	SessionId            uint64
 	NumNearRelays        int32
@@ -2285,7 +2332,7 @@ type NextBackendSessionResponsePacket struct {
 	Signature            []byte
 }
 
-func (packet *NextBackendSessionResponsePacket) Serialize(stream Stream, versionMajor int32, versionMinor int32, versionPatch int32) error {
+func (packet *SessionResponsePacket) Serialize(stream Stream, versionMajor int32, versionMinor int32, versionPatch int32) error {
 	stream.SerializeUint64(&packet.Sequence)
 	stream.SerializeUint64(&packet.SessionId)
 	stream.SerializeInteger(&packet.NumNearRelays, 0, NEXT_MAX_NEAR_RELAYS)
@@ -2318,7 +2365,7 @@ func (packet *NextBackendSessionResponsePacket) Serialize(stream Stream, version
 	return stream.Error()
 }
 
-func (packet *NextBackendSessionResponsePacket) GetSignData(versionMajor int32, versionMinor int32, versionPatch int32) []byte {
+func (packet *SessionResponsePacket) GetSignData(versionMajor int32, versionMinor int32, versionPatch int32) []byte {
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.LittleEndian, packet.Sequence)
 	binary.Write(buf, binary.LittleEndian, packet.SessionId)
