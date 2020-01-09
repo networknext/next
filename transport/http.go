@@ -14,7 +14,21 @@ import (
 
 	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
-	"github.com/networknext/backend/rw"
+	"github.com/networknext/backend/encoding"
+)
+
+const (
+	InitRequestMagic = uint32(0x9083708f)
+
+	LengthOfRelayToken = 32
+
+	MaxRelays             = 1024
+	MaxRelayAddressLength = 256
+
+	VersionNumberInitRequest    = 0
+	VersionNumberInitResponse   = 0
+	VersionNumberUpdateRequest  = 0
+	VersionNumberUpdateResponse = 0
 )
 
 var gRelayPublicKey = []byte{
@@ -65,7 +79,7 @@ func RelayInitHandlerFunc(relaydb *core.RelayDatabase) func(writer http.Response
 		}
 
 		if relayInitPacket.magic != InitRequestMagic ||
-			relayInitPacket.version != InitRequestVersion ||
+			relayInitPacket.version != VersionNumberInitRequest ||
 			!crypto.Check(relayInitPacket.encryptedToken, relayInitPacket.nonce, gRelayPublicKey[:], core.RouterPrivateKey[:]) {
 			writer.WriteHeader(http.StatusBadRequest)
 			return
@@ -84,7 +98,7 @@ func RelayInitHandlerFunc(relaydb *core.RelayDatabase) func(writer http.Response
 		entry.Id = core.GetRelayID(relayInitPacket.address)
 		entry.Address = relayInitPacket.address //core.ParseAddress(relayInitPacket.address)
 		entry.LastUpdateTime = uint64(time.Now().Unix())
-		entry.PublicKey = core.RandomBytes(RelayTokenBytes)
+		entry.PublicKey = core.RandomBytes(LengthOfRelayToken)
 
 		relaydb.Relays[entry.Id] = entry
 
@@ -92,9 +106,9 @@ func RelayInitHandlerFunc(relaydb *core.RelayDatabase) func(writer http.Response
 
 		index = 0
 		responseData := make([]byte, 64)
-		rw.WriteUint32(responseData, &index, InitResponseVersion)
-		rw.WriteUint64(responseData, &index, uint64(time.Now().Unix()))
-		rw.WriteBytes(responseData, &index, entry.PublicKey, RelayTokenBytes)
+		encoding.WriteUint32(responseData, &index, VersionNumberInitResponse)
+		encoding.WriteUint64(responseData, &index, uint64(time.Now().Unix()))
+		encoding.WriteBytes(responseData, &index, entry.PublicKey, LengthOfRelayToken)
 
 		writer.Write(responseData[:index])
 	}
@@ -118,7 +132,7 @@ func RelayUpdateHandlerFunc(relaydb *core.RelayDatabase, statsdb *core.StatsData
 			return
 		}
 
-		if relayUpdatePacket.version != UpdateRequestVersion || relayUpdatePacket.numRelays > MaxRelays {
+		if relayUpdatePacket.version != VersionNumberUpdateRequest || relayUpdatePacket.numRelays > MaxRelays {
 			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -171,12 +185,12 @@ func RelayUpdateHandlerFunc(relaydb *core.RelayDatabase, statsdb *core.StatsData
 
 		index = 0
 
-		rw.WriteUint32(responseData, &index, UpdateResponseVersion)
-		rw.WriteUint32(responseData, &index, uint32(len(relaysToPing)))
+		encoding.WriteUint32(responseData, &index, VersionNumberUpdateResponse)
+		encoding.WriteUint32(responseData, &index, uint32(len(relaysToPing)))
 
 		for i := range relaysToPing {
-			rw.WriteUint64(responseData, &index, relaysToPing[i].id)
-			rw.WriteString(responseData, &index, relaysToPing[i].address, MaxRelayAddressLength)
+			encoding.WriteUint64(responseData, &index, relaysToPing[i].id)
+			encoding.WriteString(responseData, &index, relaysToPing[i].address, MaxRelayAddressLength)
 		}
 
 		responseLength := index
