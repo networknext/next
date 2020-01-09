@@ -9,7 +9,7 @@ import (
 
 func TestStatsDatabase(t *testing.T) {
 	sourceID := core.GetRelayID("127.0.0.1")
-	relay1ID := core.GetRelayID("127.0.0.1")
+	relay1ID := core.GetRelayID("127.9.9.9")
 	relay2ID := core.GetRelayID("999.999.9.9")
 
 	makeBasicStats := func() *core.StatsEntryRelay {
@@ -144,7 +144,71 @@ func TestStatsDatabase(t *testing.T) {
 		})
 	})
 
+	t.Run("GetSample()", func(t *testing.T) {
+		id1 := sourceID
+		id2 := relay1ID
+
+		makeBasicConnection := func(statsdb *core.StatsDatabase, id1 core.RelayId, id2 core.RelayId) {
+			stats := core.NewStatsEntryRelay()
+			entry := core.NewStatsEntry()
+			entry.Relays[id2] = stats
+			statsdb.Entries[id1] = *entry
+		}
+
+		t.Run("relay 1 -> relay 2 does not exist", func(t *testing.T) {
+			statsdb := core.NewStatsDatabase()
+			statsdb.Entries[id1] = *core.NewStatsEntry()
+			makeBasicConnection(statsdb, id2, id1)
+
+			rtt, jitter, packetLoss := statsdb.GetSample(id1, id2)
+
+			assert.Equal(t, float32(core.InvalidRouteValue), rtt)
+			assert.Equal(t, float32(core.InvalidRouteValue), jitter)
+			assert.Equal(t, float32(core.InvalidRouteValue), packetLoss)
+		})
+
+		t.Run("relay 2 -> relay 1 does not exist", func(t *testing.T) {
+			statsdb := core.NewStatsDatabase()
+			statsdb.Entries[id2] = *core.NewStatsEntry()
+			makeBasicConnection(statsdb, id1, id2)
+
+			rtt, jitter, packetLoss := statsdb.GetSample(id1, id2)
+
+			assert.Equal(t, float32(core.InvalidRouteValue), rtt)
+			assert.Equal(t, float32(core.InvalidRouteValue), jitter)
+			assert.Equal(t, float32(core.InvalidRouteValue), packetLoss)
+		})
+
+		t.Run("both relays are valid", func(t *testing.T) {
+			statsdb := core.NewStatsDatabase()
+			entryForID1 := core.NewStatsEntry()
+			entryForID2 := core.NewStatsEntry()
+			statsForID1 := core.NewStatsEntryRelay()
+			statsForID2 := core.NewStatsEntryRelay()
+
+			statsForID1.Rtt = 1000.0
+			statsForID1.Jitter = 12.345
+			statsForID1.PacketLoss = 987.654
+
+			statsForID2.Rtt = 999.99
+			statsForID2.Jitter = 13.0
+			statsForID2.PacketLoss = 989.0
+
+			entryForID1.Relays[id2] = statsForID2
+			entryForID2.Relays[id1] = statsForID1
+
+			statsdb.Entries[id1] = *entryForID1
+			statsdb.Entries[id2] = *entryForID2
+
+			rtt, jitter, packetLoss := statsdb.GetSample(id1, id2)
+
+			assert.Equal(t, float32(1000.0), rtt)
+			assert.Equal(t, float32(13.0), jitter)
+			assert.Equal(t, float32(989.0), packetLoss)
+		})
+	})
+
 	t.Run("GetCostMatrix()", func(t *testing.T) {
-		// TODO taking a moment away from this to work on PR fixes
+		t.Skip()
 	})
 }

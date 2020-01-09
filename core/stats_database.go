@@ -5,6 +5,10 @@ import (
 	"sort"
 )
 
+const (
+	InvalidRouteValue = 10000.0
+)
+
 // RelayStatsPing is the ping stats for a relay
 type RelayStatsPing struct {
 	RelayID    RelayId
@@ -64,7 +68,7 @@ func NewStatsEntryRelay() *StatsEntryRelay {
 	return entry
 }
 
-// ProcessStats TODO
+// ProcessStats processes the stats update, creating the needed entries if they do not already exist
 func (database *StatsDatabase) ProcessStats(statsUpdate *RelayStatsUpdate) {
 	sourceRelayID := statsUpdate.ID
 
@@ -96,7 +100,7 @@ func (database *StatsDatabase) ProcessStats(statsUpdate *RelayStatsUpdate) {
 	}
 }
 
-// MakeCopy TODO
+// MakeCopy makes a exact copy of the stats db
 func (database *StatsDatabase) MakeCopy() *StatsDatabase {
 	databaseCopy := NewStatsDatabase()
 	for k, v := range database.Entries {
@@ -110,23 +114,23 @@ func (database *StatsDatabase) MakeCopy() *StatsDatabase {
 	return databaseCopy
 }
 
-// GetEntry TODO
+// GetEntry retrieves the stats for the supplied relay id's, if either or both do not exist the function returns nil
 func (database *StatsDatabase) GetEntry(relay1 RelayId, relay2 RelayId) *StatsEntryRelay {
-	entry, entryExists := database.Entries[relay1]
-	if entryExists {
-		relay, relayExists := entry.Relays[relay2]
-		if relayExists {
+	if entry, entryExists := database.Entries[relay1]; entryExists {
+		if relay, relayExists := entry.Relays[relay2]; relayExists {
 			return relay
 		}
 	}
+
 	return nil
 }
 
-// GetSample TODO
-func (database *StatsDatabase) GetSample(relays *RelayDatabase, relay1 RelayId, relay2 RelayId) (float32, float32, float32) {
+// GetSample returns the max values of each stats field of the bidirectional entries in the database
+func (database *StatsDatabase) GetSample(relay1 RelayId, relay2 RelayId) (float32, float32, float32) {
 	a := database.GetEntry(relay1, relay2)
 	b := database.GetEntry(relay2, relay1)
 	if a != nil && b != nil {
+		// math.Max requires float64 but we're returning float32's hence... whatever this is
 		return float32(math.Max(float64(a.Rtt), float64(b.Rtt))),
 			float32(math.Max(float64(a.Jitter), float64(b.Jitter))),
 			float32(math.Max(float64(a.PacketLoss), float64(b.PacketLoss)))
@@ -181,7 +185,7 @@ func (database *StatsDatabase) GetCostMatrix(relays *RelayDatabase) *CostMatrix 
 		for j := 0; j < i; j++ {
 			idI := costMatrix.RelayIds[i]
 			idJ := costMatrix.RelayIds[j]
-			rtt, jitter, packetLoss := database.GetSample(relays, idI, idJ)
+			rtt, jitter, packetLoss := database.GetSample(idI, idJ)
 			ijIndex := TriMatrixIndex(i, j)
 			if rtt != InvalidRouteValue && jitter <= MaxJitter && packetLoss <= MaxPacketLoss {
 				costMatrix.RTT[ijIndex] = int32(math.Floor(float64(rtt + jitter)))

@@ -80,7 +80,6 @@ var BackendPrivateKey = []byte{21, 124, 5, 171, 56, 198, 148, 140, 20, 15, 8, 17
 var MaxJitter float32 = 10.0
 var MaxPacketLoss float32 = 0.1
 
-const InvalidRouteValue = 10000.0
 const InvalidHistoryValue = -1
 const RelayTimeoutSeconds = 60
 
