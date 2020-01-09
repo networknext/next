@@ -35,6 +35,7 @@ func NewRelayDatabase() *RelayDatabase {
 	return database
 }
 
+// UpdateRelay updates the relay who's id is within the update data
 func (database *RelayDatabase) UpdateRelay(update *RelayUpdate) bool {
 	id := update.Id
 	if update.Shutdown == true {
@@ -53,6 +54,7 @@ func (database *RelayDatabase) UpdateRelay(update *RelayUpdate) bool {
 	return !relayExistedAlready
 }
 
+// CheckForTimeouts loops over all relays and if any exceed the timout then they are removed
 func (database *RelayDatabase) CheckForTimeouts(timeoutSeconds int) []RelayId {
 	disconnected := make([]RelayId, 0)
 	currentTime := uint64(time.Now().Unix())
@@ -65,14 +67,16 @@ func (database *RelayDatabase) CheckForTimeouts(timeoutSeconds int) []RelayId {
 	return disconnected
 }
 
+// MakeCopy makes a new relay database whose contents are identical to the calling db
 func (database *RelayDatabase) MakeCopy() *RelayDatabase {
-	database_copy := NewRelayDatabase()
+	databaseCopy := NewRelayDatabase()
 	for k, v := range database.Relays {
-		database_copy.Relays[k] = v
+		databaseCopy.Relays[k] = v
 	}
-	return database_copy
+	return databaseCopy
 }
 
+// GetRelayID hashes the name of the relay and returns the result. Typically name is the address of the relay
 func GetRelayID(name string) RelayId {
 	hash := fnv.New64a()
 	hash.Write([]byte(name))
