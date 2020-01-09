@@ -8,11 +8,13 @@ import (
 )
 
 func TestStatsDatabase(t *testing.T) {
+	sourceID := core.GetRelayID("127.0.0.1")
+	relay1ID := core.GetRelayID("127.0.0.1")
+	relay2ID := core.GetRelayID("999.999.9.9")
+
 	t.Run("ProcessStats()", func(t *testing.T) {
-		relay1ID := core.GetRelayID("127.0.0.1")
-		relay2ID := core.GetRelayID("999.999.9.9")
 		update := core.RelayStatsUpdate{
-			ID: core.GetRelayID("127.0.0.1"),
+			ID: sourceID,
 			PingStats: []core.RelayStatsPing{
 				core.RelayStatsPing{
 					RelayID:    relay1ID,
@@ -87,5 +89,71 @@ func TestStatsDatabase(t *testing.T) {
 			assert.Equal(t, float32(0.95), statsEntry1.PacketLoss)
 			// can't assert length of history, well you can but it'll always be the length of HistorySize
 		})
+	})
+
+	t.Run("MakeCopy()", func(t *testing.T) {
+		t.Run("makes a copy", func(t *testing.T) {
+			statsdb := core.NewStatsDatabase()
+			entry := core.NewStatsEntry()
+			// this entry makes no sense, test puposes only
+			statsEntry1 := core.NewStatsEntryRelay()
+			statsEntry1.Index = 1
+			statsEntry1.Rtt = 1
+			statsEntry1.Jitter = 1
+			statsEntry1.PacketLoss = 1
+			statsEntry1.RttHistory[0] = 1
+			statsEntry1.JitterHistory[0] = 1
+			statsEntry1.PacketLossHistory[0] = 1
+			entry.Relays[relay1ID] = statsEntry1
+			statsdb.Entries[sourceID] = *entry
+
+			cpy := statsdb.MakeCopy()
+
+			assert.Equal(t, statsdb, cpy)
+		})
+	})
+
+	t.Run("GetEntry()", func(t *testing.T) {
+		t.Run("entry does not exist", func(t *testing.T) {
+			statsdb := core.NewStatsDatabase()
+
+			stats := statsdb.GetEntry(sourceID, relay1ID)
+
+			assert.Nil(t, stats)
+		})
+
+		t.Run("entry exists but stats for the internal entry does not", func(t *testing.T) {
+			statsdb := core.NewStatsDatabase()
+			entry := core.NewStatsEntry()
+			statsdb.Entries[sourceID] = *entry
+
+			stats := statsdb.GetEntry(sourceID, relay1ID)
+
+			assert.Nil(t, stats)
+		})
+
+		t.Run("both the entry and the internal entry exist", func(t *testing.T) {
+			statsdb := core.NewStatsDatabase()
+			entry := core.NewStatsEntry()
+			// this entry makes no sense, test puposes only
+			statsEntry1 := core.NewStatsEntryRelay()
+			statsEntry1.Index = 1
+			statsEntry1.Rtt = 1
+			statsEntry1.Jitter = 1
+			statsEntry1.PacketLoss = 1
+			statsEntry1.RttHistory[0] = 1
+			statsEntry1.JitterHistory[0] = 1
+			statsEntry1.PacketLossHistory[0] = 1
+			entry.Relays[relay1ID] = statsEntry1
+			statsdb.Entries[sourceID] = *entry
+
+			stats := statsdb.GetEntry(sourceID, relay1ID)
+
+			assert.Equal(t, statsEntry1, stats)
+		})
+	})
+
+	t.Run("GetCostMatrix()", func(t *testing.T) {
+
 	})
 }
