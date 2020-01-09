@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -53,27 +54,48 @@ func (m *UDPServerMux) Start() error {
 	}
 }
 
+type ServerEntry struct {
+	ServerRoutePublicKey []byte
+	ServerPrivateAddr    net.UDPAddr
+
+	DatacenterID      uint64
+	DatacenterName    string
+	DatacenterEnabled bool
+
+	VersionMajor int32
+	VersionMinor int32
+	VersionPatch int32
+}
+
+func (e *ServerEntry) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, e)
+}
+
+func (e ServerEntry) MarshalBinary() ([]byte, error) {
+	return json.Marshal(e)
+}
+
 // ServerUpdateHandlerFunc ...
 func ServerUpdateHandlerFunc(redisClient *redis.Client) UDPHandlerFunc {
-	return func(conn *net.UDPConn, packet []byte, from *net.UDPAddr) {
-		var sup core.ServerUpdatePacket
-		if err := sup.UnmarshalBinary(packet); err != nil {
+	return func(conn *net.UDPConn, data []byte, from *net.UDPAddr) {
+		var packet core.ServerUpdatePacket
+		if err := packet.UnmarshalBinary(data); err != nil {
 			fmt.Printf("failed to read server update packet: %v\n", err)
 			return
 		}
 
 		// Verify the Session packet version
-		if !core.ProtocolVersionAtLeast(sup.VersionMajor, sup.VersionMinor, sup.VersionPatch, core.SDKVersionMajorMin, core.SDKVersionMinorMin, core.SDKVersionPatchMin) {
-			log.Printf("sdk version is too old. Using %d.%d.%d but require at least %d.%d.%d", sup.VersionMajor, sup.VersionMinor, sup.VersionPatch, core.SDKVersionMajorMin, core.SDKVersionMinorMin, core.SDKVersionPatchMin)
+		if !core.ProtocolVersionAtLeast(packet.VersionMajor, packet.VersionMinor, packet.VersionPatch, core.SDKVersionMajorMin, core.SDKVersionMinorMin, core.SDKVersionPatchMin) {
+			log.Printf("sdk version is too old. Using %d.%d.%d but require at least %d.%d.%d", packet.VersionMajor, packet.VersionMinor, packet.VersionPatch, core.SDKVersionMajorMin, core.SDKVersionMinorMin, core.SDKVersionPatchMin)
 			return
 		}
 
-		// Get the the old Server packet from Redis
-		var serverentry core.ServerUpdatePacket
+		// Get the the old ServerEntry from Redis
+		serverentry := ServerEntry{}
 		{
 			result := redisClient.Get("SERVER-" + from.String())
 			if result.Err() != redis.Nil {
-				log.Printf("failed to register server %s: %v", from.String(), result.Err())
+				log.Printf("failed to get server %s from redis: %v", from.String(), result.Err())
 				return
 			}
 			serverdata, err := result.Bytes()
@@ -81,14 +103,10 @@ func ServerUpdateHandlerFunc(redisClient *redis.Client) UDPHandlerFunc {
 				log.Printf("failed to get bytes from redis: %v", result.Err())
 				return
 			}
-
 			if serverdata != nil {
-				if err := serverentry.Serialize(core.CreateReadStream(serverdata)); err != nil {
+				if err := serverentry.UnmarshalBinary(serverdata); err != nil {
 					fmt.Printf("failed to read server entry: %v\n", err)
-					return
 				}
-
-				sup = serverentry
 			}
 		}
 
@@ -98,15 +116,20 @@ func ServerUpdateHandlerFunc(redisClient *redis.Client) UDPHandlerFunc {
 
 		// signdata := sup.GetSignData()
 
-		// Save the Server packet to Redis
+		// Save the ServerEntry to Redis
 		{
-			serverdata, err := sup.MarshalBinary()
-			if err != nil {
-				fmt.Printf("failed to marshal server entry: %v\n", err)
-				return
-			}
+			serverentry = ServerEntry{
+				ServerRoutePublicKey: packet.ServerRoutePublicKey,
+				ServerPrivateAddr:    packet.ServerPrivateAddress,
 
-			result := redisClient.Set("SERVER-"+from.String(), serverdata, 0)
+				DatacenterID: packet.DatacenterId,
+
+				VersionMajor: packet.VersionMajor,
+				VersionMinor: packet.VersionMinor,
+				VersionPatch: packet.VersionPatch,
+			}
+			fmt.Println(serverentry.ServerPrivateAddr)
+			result := redisClient.Set("SERVER-"+from.String(), serverentry, 0)
 			if result.Err() != nil {
 				log.Printf("failed to register server %s: %v", from.String(), result.Err())
 				return
@@ -115,37 +138,43 @@ func ServerUpdateHandlerFunc(redisClient *redis.Client) UDPHandlerFunc {
 	}
 }
 
+type SessionEntry struct {
+	ServerRoutePublicKey []byte
+	ServerPrivateAddr    net.UDPAddr
+
+	DatacenterID      uint64
+	DatacenterName    string
+	DatacenterEnabled bool
+
+	VersionMajor int32
+	VersionMinor int32
+	VersionPatch int32
+}
+
+func (e *SessionEntry) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, e)
+}
+
+func (e SessionEntry) MarshalBinary() ([]byte, error) {
+	return json.Marshal(e)
+}
+
 // SessionUpdateHandlerFunc ...
 func SessionUpdateHandlerFunc(redisClient *redis.Client) UDPHandlerFunc {
-	return func(conn *net.UDPConn, packet []byte, from *net.UDPAddr) {
+	return func(conn *net.UDPConn, data []byte, from *net.UDPAddr) {
 		// Deserialize the Session packet
-		sup := core.SessionUpdatePacket{}
-		{
-			if err := sup.Serialize(core.CreateReadStream(packet), core.SDKVersionMajorMax, core.SDKVersionMinorMax, core.SDKVersionPatchMax); err != nil {
-				fmt.Printf("failed to read session update packet: %v\n", err)
-				return
-			}
+		var packet core.SessionUpdatePacket
+		if err := packet.UnmarshalBinary(data); err != nil {
+			fmt.Printf("failed to read server update packet: %v\n", err)
+			return
 		}
 
 		// Change Session Packet
 
 		// Save the Session packet to Redis
+		var sessionentry SessionEntry
 		{
-			ws, err := core.CreateWriteStream(DefaultMaxPacketSize)
-			if err != nil {
-				fmt.Printf("failed to create session entry read stream: %v\n", err)
-				return
-			}
-
-			if err := sup.Serialize(ws, core.SDKVersionMajorMin, core.SDKVersionMinorMin, core.SDKVersionPatchMin); err != nil {
-				fmt.Printf("failed to read session entry: %v\n", err)
-				return
-			}
-			ws.Flush()
-
-			sessiondata := ws.GetData()
-
-			result := redisClient.Set(fmt.Sprintf("SESSION-%d", sup.SessionId), sessiondata, 0)
+			result := redisClient.Set(fmt.Sprintf("SESSION-%d", packet.SessionId), sessionentry, 0)
 			if result.Err() != nil {
 				log.Printf("failed to save session db entry for %s: %v", from.String(), result.Err())
 				return
