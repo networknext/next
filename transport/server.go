@@ -92,7 +92,7 @@ func ServerUpdateHandlerFunc(redisClient *redis.Client) UDPHandlerFunc {
 		}
 
 		// Get the the old ServerEntry from Redis
-		serverentry := ServerEntry{}
+		var serverentry ServerEntry
 		{
 			result := redisClient.Get("SERVER-" + from.String())
 			if result.Err() != redis.Nil {
@@ -129,7 +129,6 @@ func ServerUpdateHandlerFunc(redisClient *redis.Client) UDPHandlerFunc {
 				VersionMinor: packet.VersionMinor,
 				VersionPatch: packet.VersionPatch,
 			}
-			fmt.Println(serverentry.ServerPrivateAddr)
 			result := redisClient.Set("SERVER-"+from.String(), serverentry, 0)
 			if result.Err() != nil {
 				log.Printf("failed to register server %s: %v", from.String(), result.Err())
