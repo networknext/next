@@ -47,23 +47,23 @@ const (
 	EncryptedContinueTokenBytes = 58
 	MaxRoutesPerRelayPair       = 8
 
-	IPAddressNone = iota
-	IPAddressIPv4
-	IPAddressIPv6
+	IPAddressNone = 0
+	IPAddressIPv4 = 1
+	IPAddressIPv6 = 2
 
-	ConnectionTypeUnknown = iota
-	ConnectionTypeWired
-	ConnectionTypeWifi
-	ConnectionTypeCellular
+	ConnectionTypeUnknown  = 0
+	ConnectionTypeWired    = 1
+	ConnectionTypeWifi     = 2
+	ConnectionTypeCellular = 3
 
-	PlatformUnknown = iota
-	PlatformWindows
-	PlatformMac
-	PlatformUnix
-	PlatformSwitch
-	PlatformPS4
-	PlatformIOS
-	PlatformXboxOne
+	PlatformUnknown = 0
+	PlatformWindows = 1
+	PlatformMac     = 2
+	PlatformUnix    = 3
+	PlatformSwitch  = 4
+	PlatformPS4     = 5
+	PlatformIOS     = 6
+	PlatformXboxOne = 7
 
 	RouteSliceFlagNext                = (uint64(1) << 1)
 	RouteSliceFlagReported            = (uint64(1) << 2)
