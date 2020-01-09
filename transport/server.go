@@ -139,16 +139,48 @@ func ServerUpdateHandlerFunc(redisClient *redis.Client) UDPHandlerFunc {
 }
 
 type SessionEntry struct {
+	CustomerID uint64
+	SessionID  uint64
+	UserID     uint64
+	PlatformID uint64
+
+	NearRelays []RelayEntry
+
+	DirectRTT        float64
+	DirectJitter     float64
+	DirectPacketLoss float64
+	NextRTT          float64
+	NextJitter       float64
+	NextPacketLoss   float64
+
 	ServerRoutePublicKey []byte
 	ServerPrivateAddr    net.UDPAddr
+	ServerAddr           net.UDPAddr
+	ClientAddr           net.UDPAddr
 
-	DatacenterID      uint64
-	DatacenterName    string
-	DatacenterEnabled bool
+	ConnectionType int32
+
+	GeoLocation IPStackResponse
+
+	Tag   uint64
+	Flags uint32
+
+	Flagged          bool
+	TryBeforeYouBuy  bool
+	OnNetworkNext    bool
+	FallbackToDirect bool
 
 	VersionMajor int32
 	VersionMinor int32
 	VersionPatch int32
+}
+
+type RelayEntry struct {
+	RelayID uint64
+
+	RTT        float64
+	Jitter     float64
+	PacketLoss float64
 }
 
 func (e *SessionEntry) UnmarshalBinary(data []byte) error {
@@ -165,14 +197,51 @@ func SessionUpdateHandlerFunc(redisClient *redis.Client, ipStackClient *IPStackC
 		// Deserialize the Session packet
 		var packet core.SessionUpdatePacket
 		if err := packet.UnmarshalBinary(data); err != nil {
-			fmt.Printf("failed to read server update packet: %v\n", err)
+			log.Printf("failed to read server update packet: %v\n", err)
 			return
 		}
+
+		ipres, err := ipStackClient.Lookup(packet.ClientAddress.IP.String())
+		if err != nil {
+			log.Printf("failed to lookup client ip '%s': %v", packet.ClientAddress.IP.String(), err)
+			return
+		}
+
+		var serverentry ServerEntry
 
 		// Change Session Packet
 
 		// Save the Session packet to Redis
-		var sessionentry SessionEntry
+		sessionentry := SessionEntry{
+			SessionID:  packet.SessionId,
+			UserID:     packet.UserHash,
+			PlatformID: packet.PlatformId,
+
+			DirectRTT:        float64(packet.DirectMinRtt),
+			DirectJitter:     float64(packet.DirectJitter),
+			DirectPacketLoss: float64(packet.DirectPacketLoss),
+			NextRTT:          float64(packet.NextMinRtt),
+			NextJitter:       float64(packet.NextJitter),
+			NextPacketLoss:   float64(packet.NextPacketLoss),
+
+			ServerRoutePublicKey: serverentry.ServerRoutePublicKey,
+			ServerPrivateAddr:    serverentry.ServerPrivateAddr,
+			ServerAddr:           packet.ServerAddress,
+			ClientAddr:           packet.ClientAddress,
+
+			ConnectionType: packet.ConnectionType,
+
+			GeoLocation: *ipres,
+
+			Tag:              packet.Tag,
+			Flagged:          packet.Flagged,
+			FallbackToDirect: packet.FallbackToDirect,
+			OnNetworkNext:    packet.OnNetworkNext,
+
+			VersionMajor: serverentry.VersionMajor,
+			VersionMinor: serverentry.VersionMinor,
+			VersionPatch: serverentry.VersionPatch,
+		}
 		{
 			result := redisClient.Set(fmt.Sprintf("SESSION-%d", packet.SessionId), sessionentry, 0)
 			if result.Err() != nil {
