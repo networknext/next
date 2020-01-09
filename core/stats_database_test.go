@@ -145,6 +145,6 @@ func TestStatsDatabase(t *testing.T) {
 	})
 
 	t.Run("GetCostMatrix()", func(t *testing.T) {
-
+		// TODO taking a moment away from this to work on PR fixes
 	})
 }
