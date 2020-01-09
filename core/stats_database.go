@@ -5,18 +5,15 @@ import (
 	"sort"
 )
 
-// HistorySize is the limit to how big the history of the relay entries should be
-const HistorySize = 6
-
 // RelayStatsPing is the ping stats for a relay
 type RelayStatsPing struct {
-	RelayId    RelayId
+	RelayID    RelayId
 	RTT        float32
 	Jitter     float32
 	PacketLoss float32
 }
 
-// RelayStatsUpdate
+// RelayStatsUpdate is a struct for updating relay stats
 type RelayStatsUpdate struct {
 	ID        RelayId
 	PingStats []RelayStatsPing
@@ -35,71 +32,38 @@ type StatsEntryRelay struct {
 
 // StatsEntry is a entry in the stats db
 type StatsEntry struct {
-	relays map[RelayId]*StatsEntryRelay
+	Relays map[RelayId]*StatsEntryRelay
 }
 
 // StatsDatabase is a relay statistics database (shocking right?)
 type StatsDatabase struct {
-	entries map[RelayId]StatsEntry
+	Entries map[RelayId]StatsEntry
 }
 
 // NewStatsDatabase creates a new stats database (never would have guessed that)
 func NewStatsDatabase() *StatsDatabase {
 	database := &StatsDatabase{}
-	database.entries = make(map[RelayId]StatsEntry)
+	database.Entries = make(map[RelayId]StatsEntry)
 	return database
 }
 
-func HistoryMax(history []float32) float32 {
-	var max float32
-	for i := 0; i < len(history); i++ {
-		if history[i] > max {
-			max = history[i]
-		}
-	}
-	return max
-}
-
-func HistoryNotSet() [HistorySize]float32 {
-	var res [HistorySize]float32
-	for i := 0; i < HistorySize; i++ {
-		res[i] = InvalidHistoryValue
-	}
-	return res
-}
-
-func HistoryMean(history []float32) float32 {
-	var sum float32
-	var size int
-	for i := 0; i < len(history); i++ {
-		if history[i] != InvalidHistoryValue {
-			sum += history[i]
-			size++
-		}
-	}
-	if size == 0 {
-		return 0
-	}
-	return sum / float32(size)
-}
-
+// ProcessStats TODO
 func (database *StatsDatabase) ProcessStats(statsUpdate *RelayStatsUpdate) {
-
 	sourceRelay := statsUpdate.ID
 
-	entry, entryExists := database.entries[sourceRelay]
+	entry, entryExists := database.Entries[sourceRelay]
 	if !entryExists {
 		entry = StatsEntry{
-			relays: make(map[RelayId]*StatsEntryRelay),
+			Relays: make(map[RelayId]*StatsEntryRelay),
 		}
-		database.entries[sourceRelay] = entry
+		database.Entries[sourceRelay] = entry
 	}
 
 	for _, stats := range statsUpdate.PingStats {
 
-		destRelay := stats.RelayId
+		destRelay := stats.RelayID
 
-		relay, relayExists := entry.relays[destRelay]
+		relay, relayExists := entry.Relays[destRelay]
 
 		if !relayExists {
 			relay = &StatsEntryRelay{
@@ -117,29 +81,31 @@ func (database *StatsDatabase) ProcessStats(statsUpdate *RelayStatsUpdate) {
 		relay.jitter = HistoryMean(relay.jitterHistory[:])
 		relay.packetLoss = HistoryMean(relay.packetLossHistory[:])
 
-		entry.relays[destRelay] = relay
+		entry.Relays[destRelay] = relay
 	}
 }
 
+// MakeCopy TODO
 func (database *StatsDatabase) MakeCopy() *StatsDatabase {
-	database_copy := NewStatsDatabase()
-	for k, v := range database.entries {
+	databaseCopy := NewStatsDatabase()
+	for k, v := range database.Entries {
 		newEntry := StatsEntry{
-			relays: make(map[RelayId]*StatsEntryRelay),
+			Relays: make(map[RelayId]*StatsEntryRelay),
 		}
-		for k2, v2 := range v.relays {
-			v_copy := *v2
-			newEntry.relays[k2] = &v_copy
+		for k2, v2 := range v.Relays {
+			vCopy := *v2
+			newEntry.Relays[k2] = &vCopy
 		}
-		database_copy.entries[k] = newEntry
+		databaseCopy.Entries[k] = newEntry
 	}
-	return database_copy
+	return databaseCopy
 }
 
+// GetEntry TODO
 func (database *StatsDatabase) GetEntry(relay1 RelayId, relay2 RelayId) *StatsEntryRelay {
-	entry, entryExists := database.entries[relay1]
+	entry, entryExists := database.Entries[relay1]
 	if entryExists {
-		relay, relayExists := entry.relays[relay2]
+		relay, relayExists := entry.Relays[relay2]
 		if relayExists {
 			return relay
 		}
@@ -147,24 +113,19 @@ func (database *StatsDatabase) GetEntry(relay1 RelayId, relay2 RelayId) *StatsEn
 	return nil
 }
 
-func max(x float32, y float32) float32 {
-	if x > y {
-		return x
-	} else {
-		return y
-	}
-}
-
+// GetSample TODO
 func (database *StatsDatabase) GetSample(relays *RelayDatabase, relay1 RelayId, relay2 RelayId) (float32, float32, float32) {
 	a := database.GetEntry(relay1, relay2)
 	b := database.GetEntry(relay2, relay1)
 	if a != nil && b != nil {
-		return max(a.rtt, b.rtt), max(a.jitter, b.jitter), max(a.packetLoss, b.packetLoss)
-	} else {
-		return InvalidRouteValue, InvalidRouteValue, InvalidRouteValue
+		return float32(math.Max(float64(a.rtt), float64(b.rtt))),
+			float32(math.Max(float64(a.jitter), float64(b.jitter))),
+			float32(math.Max(float64(a.packetLoss), float64(b.packetLoss)))
 	}
+	return InvalidRouteValue, InvalidRouteValue, InvalidRouteValue
 }
 
+// GetCostMatrix TODO
 func (database *StatsDatabase) GetCostMatrix(relays *RelayDatabase) *CostMatrix {
 
 	numRelays := len(relays.Relays)
