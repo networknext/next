@@ -2041,6 +2041,27 @@ type ServerUpdatePacket struct {
 	Signature            []byte
 }
 
+func (packet *ServerUpdatePacket) UnmarshalBinary(data []byte) error {
+	if err := packet.Serialize(CreateReadStream(data)); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (packet *ServerUpdatePacket) MarshalBinary() ([]byte, error) {
+	ws, err := CreateWriteStream(1500)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := packet.Serialize(ws); err != nil {
+		return nil, err
+	}
+	ws.Flush()
+
+	return ws.GetData(), nil
+}
+
 func (packet *ServerUpdatePacket) Serialize(stream Stream) error {
 	stream.SerializeUint64(&packet.Sequence)
 	stream.SerializeInteger(&packet.VersionMajor, 0, SDKVersionMajorMax)
@@ -2122,6 +2143,27 @@ type SessionUpdatePacket struct {
 	PacketsLostClientToServer uint64
 	PacketsLostServerToClient uint64
 	Signature                 []byte
+}
+
+func (packet *SessionUpdatePacket) UnmarshalBinary(data []byte) error {
+	if err := packet.Serialize(CreateReadStream(data), SDKVersionMajorMin, SDKVersionMinorMin, SDKVersionPatchMin); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (packet *SessionUpdatePacket) MarshalBinary() ([]byte, error) {
+	ws, err := CreateWriteStream(1500)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := packet.Serialize(ws, SDKVersionMajorMin, SDKVersionMinorMin, SDKVersionPatchMin); err != nil {
+		return nil, err
+	}
+	ws.Flush()
+
+	return ws.GetData(), nil
 }
 
 const NEXT_FLAGS_BAD_ROUTE_TOKEN = uint32(1 << 0)
