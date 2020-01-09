@@ -21,13 +21,13 @@ type RelayStatsUpdate struct {
 
 // StatsEntryRelay is a entry for relay stats in the stats db
 type StatsEntryRelay struct {
-	rtt               float32
-	jitter            float32
-	packetLoss        float32
-	index             int
-	rttHistory        [HistorySize]float32
-	jitterHistory     [HistorySize]float32
-	packetLossHistory [HistorySize]float32
+	Rtt               float32
+	Jitter            float32
+	PacketLoss        float32
+	Index             int
+	RttHistory        [HistorySize]float32
+	JitterHistory     [HistorySize]float32
+	PacketLossHistory [HistorySize]float32
 }
 
 // StatsEntry is a entry in the stats db
@@ -35,53 +35,64 @@ type StatsEntry struct {
 	Relays map[RelayId]*StatsEntryRelay
 }
 
-// StatsDatabase is a relay statistics database (shocking right?)
+// StatsDatabase is a relay statistics database
+// Each entry contains data about the entry relay to other relays
 type StatsDatabase struct {
 	Entries map[RelayId]StatsEntry
 }
 
-// NewStatsDatabase creates a new stats database (never would have guessed that)
+// NewStatsDatabase creates a new stats database
 func NewStatsDatabase() *StatsDatabase {
 	database := &StatsDatabase{}
 	database.Entries = make(map[RelayId]StatsEntry)
 	return database
 }
 
+// NewStatsEntry creates a new stats entry
+func NewStatsEntry() *StatsEntry {
+	entry := new(StatsEntry)
+	entry.Relays = make(map[RelayId]*StatsEntryRelay)
+	return entry
+}
+
+// NewStatsEntryRelay creates a new stats entry relay
+func NewStatsEntryRelay() *StatsEntryRelay {
+	entry := new(StatsEntryRelay)
+	entry.RttHistory = HistoryNotSet()
+	entry.JitterHistory = HistoryNotSet()
+	entry.PacketLossHistory = HistoryNotSet()
+	return entry
+}
+
 // ProcessStats TODO
 func (database *StatsDatabase) ProcessStats(statsUpdate *RelayStatsUpdate) {
-	sourceRelay := statsUpdate.ID
+	sourceRelayID := statsUpdate.ID
 
-	entry, entryExists := database.Entries[sourceRelay]
+	entry, entryExists := database.Entries[sourceRelayID]
 	if !entryExists {
-		entry = StatsEntry{
-			Relays: make(map[RelayId]*StatsEntryRelay),
-		}
-		database.Entries[sourceRelay] = entry
+		entry = *NewStatsEntry()
+		database.Entries[sourceRelayID] = entry
 	}
 
 	for _, stats := range statsUpdate.PingStats {
 
-		destRelay := stats.RelayID
+		destRelayID := stats.RelayID
 
-		relay, relayExists := entry.Relays[destRelay]
+		relay, relayExists := entry.Relays[destRelayID]
 
 		if !relayExists {
-			relay = &StatsEntryRelay{
-				rttHistory:        HistoryNotSet(),
-				jitterHistory:     HistoryNotSet(),
-				packetLossHistory: HistoryNotSet(),
-			}
+			relay = NewStatsEntryRelay()
 		}
 
-		relay.rttHistory[relay.index] = stats.RTT
-		relay.jitterHistory[relay.index] = stats.Jitter
-		relay.packetLossHistory[relay.index] = stats.PacketLoss
-		relay.index = (relay.index + 1) % HistorySize
-		relay.rtt = HistoryMean(relay.rttHistory[:])
-		relay.jitter = HistoryMean(relay.jitterHistory[:])
-		relay.packetLoss = HistoryMean(relay.packetLossHistory[:])
+		relay.RttHistory[relay.Index] = stats.RTT
+		relay.JitterHistory[relay.Index] = stats.Jitter
+		relay.PacketLossHistory[relay.Index] = stats.PacketLoss
+		relay.Index = (relay.Index + 1) % HistorySize
+		relay.Rtt = HistoryMean(relay.RttHistory[:])
+		relay.Jitter = HistoryMean(relay.JitterHistory[:])
+		relay.PacketLoss = HistoryMean(relay.PacketLossHistory[:])
 
-		entry.Relays[destRelay] = relay
+		entry.Relays[destRelayID] = relay // is this needed? relay is a pointer
 	}
 }
 
@@ -89,14 +100,12 @@ func (database *StatsDatabase) ProcessStats(statsUpdate *RelayStatsUpdate) {
 func (database *StatsDatabase) MakeCopy() *StatsDatabase {
 	databaseCopy := NewStatsDatabase()
 	for k, v := range database.Entries {
-		newEntry := StatsEntry{
-			Relays: make(map[RelayId]*StatsEntryRelay),
-		}
+		newEntry := NewStatsEntry()
 		for k2, v2 := range v.Relays {
 			vCopy := *v2
 			newEntry.Relays[k2] = &vCopy
 		}
-		databaseCopy.Entries[k] = newEntry
+		databaseCopy.Entries[k] = *newEntry
 	}
 	return databaseCopy
 }
@@ -118,9 +127,9 @@ func (database *StatsDatabase) GetSample(relays *RelayDatabase, relay1 RelayId, 
 	a := database.GetEntry(relay1, relay2)
 	b := database.GetEntry(relay2, relay1)
 	if a != nil && b != nil {
-		return float32(math.Max(float64(a.rtt), float64(b.rtt))),
-			float32(math.Max(float64(a.jitter), float64(b.jitter))),
-			float32(math.Max(float64(a.packetLoss), float64(b.packetLoss)))
+		return float32(math.Max(float64(a.Rtt), float64(b.Rtt))),
+			float32(math.Max(float64(a.Jitter), float64(b.Jitter))),
+			float32(math.Max(float64(a.PacketLoss), float64(b.PacketLoss)))
 	}
 	return InvalidRouteValue, InvalidRouteValue, InvalidRouteValue
 }
