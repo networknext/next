@@ -12,10 +12,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const sizeOfInitRequestMagic = 4
-const sizeOfInitRequestVersion = 4
-const sizeOfNonceBytes = 24
-const sizeOfEncryptedToken = 32 + 16 // global + value of MACBYTES
+const (
+	sizeOfInitRequestMagic   = 4
+	sizeOfInitRequestVersion = 4
+	sizeOfNonceBytes         = 24
+	sizeOfEncryptedToken     = 32 + 16 // global + value of MACBYTES
+)
 
 // Returns the writer as a means to read the data that the writer contains
 func relayInitAssertions(t *testing.T, body []byte, expectedCode int, relaydb *core.RelayDatabase) http.ResponseWriter {
