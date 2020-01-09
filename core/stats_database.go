@@ -187,16 +187,16 @@ func (database *StatsDatabase) GetCostMatrix(relays *RelayDatabase) *CostMatrix 
 	}
 
 	sort.SliceStable(stableRelays, func(i, j int) bool {
-		return stableRelays[i].Id < stableRelays[j].Id
+		return stableRelays[i].ID < stableRelays[j].ID
 	})
 
 	for i, relayData := range stableRelays {
-		costMatrix.RelayIds[i] = relayData.Id
+		costMatrix.RelayIds[i] = relayData.ID
 		costMatrix.RelayNames[i] = relayData.Name
 		costMatrix.RelayPublicKeys[i] = relayData.PublicKey
 		if relayData.Datacenter != DatacenterId(0) {
 			datacenter := costMatrix.DatacenterRelays[relayData.Datacenter]
-			datacenter = append(datacenter, RelayId(relayData.Id))
+			datacenter = append(datacenter, RelayId(relayData.ID))
 			costMatrix.DatacenterRelays[relayData.Datacenter] = datacenter
 			datacenterNameMap[relayData.Datacenter] = relayData.DatacenterName
 		}
@@ -209,14 +209,14 @@ func (database *StatsDatabase) GetCostMatrix(relays *RelayDatabase) *CostMatrix 
 
 	for i := 0; i < numRelays; i++ {
 		for j := 0; j < i; j++ {
-			id_i := costMatrix.RelayIds[i]
-			id_j := costMatrix.RelayIds[j]
-			rtt, jitter, packetLoss := database.GetSample(relays, id_i, id_j)
-			ij_index := TriMatrixIndex(i, j)
+			idI := costMatrix.RelayIds[i]
+			idJ := costMatrix.RelayIds[j]
+			rtt, jitter, packetLoss := database.GetSample(relays, idI, idJ)
+			ijIndex := TriMatrixIndex(i, j)
 			if rtt != InvalidRouteValue && jitter <= MaxJitter && packetLoss <= MaxPacketLoss {
-				costMatrix.RTT[ij_index] = int32(math.Floor(float64(rtt + jitter)))
+				costMatrix.RTT[ijIndex] = int32(math.Floor(float64(rtt + jitter)))
 			} else {
-				costMatrix.RTT[ij_index] = -1
+				costMatrix.RTT[ijIndex] = -1
 			}
 		}
 	}

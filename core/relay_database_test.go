@@ -44,6 +44,13 @@ func TestRelayDatabase(t *testing.T) {
 
 			assert.False(t, relaydb.UpdateRelay(&update))
 		})
+
+		t.Run("updates correctly", func(t *testing.T) {
+			relaydb := core.NewRelayDatabase()
+			addr := core.RelayUpdate{
+				Id
+			}
+		})
 	})
 
 	t.Run("CheckForTimeouts()", func(t *testing.T) {

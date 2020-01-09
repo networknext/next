@@ -81,12 +81,12 @@ func RelayInitHandlerFunc(relaydb *core.RelayDatabase) func(writer http.Response
 
 		entry := core.RelayData{}
 		entry.Name = relayInitPacket.address
-		entry.Id = core.GetRelayID(relayInitPacket.address)
+		entry.ID = core.GetRelayID(relayInitPacket.address)
 		entry.Address = relayInitPacket.address //core.ParseAddress(relayInitPacket.address)
 		entry.LastUpdateTime = uint64(time.Now().Unix())
 		entry.PublicKey = core.RandomBytes(RelayTokenBytes)
 
-		relaydb.Relays[entry.Id] = entry
+		relaydb.Relays[entry.ID] = entry
 
 		writer.Header().Set("Content-Type", "application/octet-stream")
 
@@ -136,7 +136,7 @@ func RelayUpdateHandlerFunc(relaydb *core.RelayDatabase, statsdb *core.StatsData
 		}
 
 		statsUpdate := &core.RelayStatsUpdate{}
-		statsUpdate.ID = entry.Id
+		statsUpdate.ID = entry.ID
 
 		for _, ps := range relayUpdatePacket.pingStats {
 			statsUpdate.PingStats = append(statsUpdate.PingStats, ps)
@@ -146,7 +146,7 @@ func RelayUpdateHandlerFunc(relaydb *core.RelayDatabase, statsdb *core.StatsData
 
 		entry = core.RelayData{
 			Name:           relayUpdatePacket.address,
-			Id:             core.GetRelayID(relayUpdatePacket.address),
+			ID:             core.GetRelayID(relayUpdatePacket.address),
 			Address:        relayUpdatePacket.address,
 			LastUpdateTime: uint64(time.Now().Unix()),
 			PublicKey:      relayUpdatePacket.token,
@@ -163,7 +163,7 @@ func RelayUpdateHandlerFunc(relaydb *core.RelayDatabase, statsdb *core.StatsData
 		hashedAddress := core.GetRelayID(relayUpdatePacket.address)
 		for k, v := range relaydb.Relays {
 			if k != hashedAddress {
-				relaysToPing = append(relaysToPing, RelayPingData{id: uint64(v.Id), address: v.Address})
+				relaysToPing = append(relaysToPing, RelayPingData{id: uint64(v.ID), address: v.Address})
 			}
 		}
 
