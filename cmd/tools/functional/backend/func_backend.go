@@ -109,13 +109,13 @@ func OptimizeThread() {
 		relayDatabase.Relays = make(map[core.RelayId]core.RelayData)
 		for _, v := range backend.relayDatabase {
 			relayData := core.RelayData{}
-			relayData.Id = core.RelayId(v.id)
+			relayData.ID = core.RelayId(v.id)
 			relayData.Name = v.name
 			relayData.Address = v.address.String()
 			relayData.Datacenter = core.DatacenterId(0)
 			relayData.DatacenterName = "local"
 			relayData.PublicKey = GetRelayPublicKey(v.address.String())
-			relayDatabase.Relays[relayData.Id] = relayData
+			relayDatabase.Relays[relayData.ID] = relayData
 		}
 		backend.mutex.RUnlock()
 
@@ -764,7 +764,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	statsUpdate := &core.RelayStatsUpdate{}
-	statsUpdate.Id = core.RelayId(relayEntry.id)
+	statsUpdate.ID = core.RelayId(relayEntry.id)
 
 	for i := 0; i < int(num_relays); i++ {
 		var id uint64
@@ -782,7 +782,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 			return
 		}
 		ping := core.RelayStatsPing{}
-		ping.RelayId = core.RelayId(id)
+		ping.RelayID = core.RelayId(id)
 		ping.RTT = rtt
 		ping.Jitter = jitter
 		ping.PacketLoss = packet_loss
