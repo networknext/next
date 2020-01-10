@@ -10,6 +10,7 @@ require (
 	github.com/gomodule/redigo v1.7.1-0.20190322064113-39e2c31b7ca3
 	github.com/gorilla/context v1.1.1
 	github.com/gorilla/mux v1.7.3
+	github.com/json-iterator/go v1.1.9
 	github.com/stretchr/testify v1.4.0
 	golang.org/x/net v0.0.0-20191209160850-c0dbc17a3553
 	golang.org/x/oauth2 v0.0.0-20191202225959-858c2ad4c8b6
