@@ -3,18 +3,14 @@
 package core
 
 import (
-	"crypto/ed25519"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
 	"hash/fnv"
-	"log"
 	"math"
 	"net"
 	"strconv"
-	"strings"
 )
 
 const (
@@ -89,32 +85,6 @@ const RelayTimeoutSeconds = 60
 
 // ============================================================================
 
-func GenerateRelayKeyPair() ([]byte, []byte) {
-	publicKey, privateKey, err := ed25519.GenerateKey(nil)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	return publicKey, privateKey
-}
-
-func GenerateCustomerKeyPair() ([]byte, []byte) {
-	customerId := make([]byte, 8)
-	rand.Read(customerId)
-	publicKey, privateKey, err := ed25519.GenerateKey(nil)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	customerPublicKey := make([]byte, 0)
-	customerPublicKey = append(customerPublicKey, customerId...)
-	customerPublicKey = append(customerPublicKey, publicKey...)
-	customerPrivateKey := make([]byte, 0)
-	customerPrivateKey = append(customerPrivateKey, customerId...)
-	customerPrivateKey = append(customerPrivateKey, privateKey...)
-	return customerPublicKey, customerPrivateKey
-}
-
-// ============================================================================
-
 // todo: this whole old entity id / relay id etc. is incompatible with how the new backend should work.
 // talk to me to learn more. -- glenn
 
@@ -146,6 +116,8 @@ func GetDatacenterId(id *EntityId) (DatacenterId, error) {
 }
 
 // ============================================================================
+
+// todo: these read/write versions are old and we should not use them. the new ones from the func_backend.go are much better (with index) -- glenn
 
 func WriteString(buffer []byte, value string) int {
 	binary.LittleEndian.PutUint32(buffer, uint32(len(value)))
@@ -228,6 +200,7 @@ func ParseKeyFromBase64(input_base64 string) []byte {
 	return CheckKey(input)
 }
 
+// todo: this is a stupid function
 func CheckKey(input []byte) []byte {
 	if len(input) != KeyBytes {
 		return nil
@@ -247,26 +220,6 @@ func Checksum(data []byte) []byte {
 	hasher := sha256.New()
 	hasher.Write(data)
 	return hasher.Sum(nil)
-}
-
-// ===========================================================================
-
-type SessionToken struct {
-	expireTimestamp uint64
-	sessionId       uint64
-	sessionVersion  uint8
-	sessionFlags    uint8
-	kbpsUp          uint32
-	kbpsDown        uint32
-	nextAddress     *net.UDPAddr
-	privateKey      []byte
-}
-
-type ContinueToken struct {
-	expireTimestamp uint64
-	sessionId       uint64
-	sessionVersion  uint8
-	sessionFlags    uint8
 }
 
 // =====================================================================================================
@@ -296,63 +249,6 @@ func TriMatrixIndex(i, j int) int {
 		i, j = j, i
 	}
 	return i*(i+1)/2 - i + j
-}
-
-func NibblinsToDollarString(nibblins int64) string {
-	cents := float64(nibblins) / 1e9
-	dollars := cents / 100
-	return fmt.Sprintf("%f", dollars)
-}
-
-func DollarStringToNibblins(str string) (int64, error) {
-	if len(str) == 0 {
-		return 0, nil
-	}
-	decimal := strings.Index(str, ".")
-	if decimal == -1 {
-		decimal = len(str)
-	}
-
-	start := 0
-	if str[0] == '-' {
-		start = 1
-	}
-
-	dollars := int64(0)
-	if decimal > start {
-		var err error
-		dollars, err = strconv.ParseInt(str[start:decimal], 10, 64)
-		if err != nil {
-			return 0, err
-		}
-	}
-	nibblins := int64(0)
-	if decimal+1 < len(str) {
-		length := len(str) - (decimal + 1)
-		if length < 11 {
-			length = 11
-		}
-		for i := 0; i < length; i += 1 {
-			if i < 11 {
-				nibblins *= 10
-			}
-			index := decimal + 1 + i
-			if index < len(str) {
-				char := str[index]
-				if char < byte('0') || char > byte('9') {
-					return 0, fmt.Errorf("invalid dollar string: %s", str)
-				}
-				if i < 11 {
-					nibblins += int64(char - byte('0'))
-				}
-			}
-		}
-	}
-	if str[0] == '-' {
-		dollars = -dollars
-		nibblins = -nibblins
-	}
-	return (dollars * 1e11) + nibblins, nil
 }
 
 // ====================================================================

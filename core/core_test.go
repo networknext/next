@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/networknext/backend/crypto"
 )
 
 func StopBeingAnnoyingGolang() {
@@ -832,7 +833,7 @@ func (env *TestEnvironment) AddRelay(relayName string, relayAddress string) {
 	relay.id = GetTestRelayId(relayName)
 	relay.name = relayName
 	relay.address = ParseAddress(relayAddress)
-	relay.publicKey, relay.privateKey = GenerateRelayKeyPair()
+	relay.publicKey, relay.privateKey = crypto.GenerateRelayKeyPair()
 	relay.index = len(env.relayArray)
 	env.relays[relayName] = relay
 	env.relayArray = append(env.relayArray, relay)
