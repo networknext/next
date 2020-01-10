@@ -201,13 +201,29 @@ func SessionUpdateHandlerFunc(redisClient *redis.Client, ipStackClient *IPStackC
 			return
 		}
 
+		result := redisClient.Get("SERVER-" + from.String())
+		if result.Err() != nil {
+			log.Fatalf("failed to get server entry from redis for '%s': %v", from.String(), result.Err())
+			return
+		}
+
+		serverdata, err := result.Bytes()
+		if err != nil {
+			log.Fatalf("failed to get server entry from redis for '%s': %v", from.String(), err)
+			return
+		}
+
+		var serverentry ServerEntry
+		if err := serverentry.UnmarshalBinary(serverdata); err != nil {
+			log.Fatalf("failed to unmarshal server entry from redis for '%s': %v", from.String(), err)
+			return
+		}
+
 		ipres, err := ipStackClient.Lookup(packet.ClientAddress.IP.String())
 		if err != nil {
 			log.Printf("failed to lookup client ip '%s': %v", packet.ClientAddress.IP.String(), err)
 			return
 		}
-
-		var serverentry ServerEntry
 
 		// Change Session Packet
 
