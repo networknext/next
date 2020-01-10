@@ -1,34 +1,10 @@
 package transport
 
 import (
-	"net"
 	"sync"
 
 	"github.com/networknext/backend/core"
 )
-
-type RelayEntry struct {
-	id         uint64
-	name       string
-	address    *net.UDPAddr
-	lastUpdate int64
-	token      []byte
-}
-
-type ServerEntry struct {
-	address    *net.UDPAddr
-	publicKey  []byte
-	lastUpdate int64
-}
-
-type SessionEntry struct {
-	id              uint64
-	version         uint8
-	expireTimestamp uint64
-	route           []uint64
-	next            bool
-	slice           uint64
-}
 
 type StubbedBackend struct {
 	mutex           sync.RWMutex
