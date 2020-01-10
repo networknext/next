@@ -1,6 +1,7 @@
 package core_test
 
 import (
+	"math"
 	"math/rand"
 	"time"
 
@@ -15,6 +16,14 @@ func RandomPublicKey() []byte {
 	return arr
 }
 
+func RandomString(length int) string {
+	arr := make([]byte, length)
+	for i := 0; i < length; i++ {
+		arr[i] = byte(rand.Int()%26 + 65)
+	}
+	return string(arr)
+}
+
 func FillRelayDatabase(relaydb *core.RelayDatabase) {
 	fillData := func(relaydb *core.RelayDatabase, addr string, updateTime int64) {
 		id := core.GetRelayID(addr)
@@ -22,8 +31,8 @@ func FillRelayDatabase(relaydb *core.RelayDatabase) {
 			ID:             id,
 			Name:           addr,
 			Address:        addr,
-			Datacenter:     core.DatacenterId(0),
-			DatacenterName: "n/a",
+			Datacenter:     core.DatacenterId(rand.Int()%(math.MaxInt32-1) + 1), // non-zero random number
+			DatacenterName: RandomString(5),
 			PublicKey:      RandomPublicKey(),
 			LastUpdateTime: uint64(updateTime),
 		}

@@ -213,21 +213,66 @@ func TestStatsDatabase(t *testing.T) {
 			relaydb := core.NewRelayDatabase()
 			statsdb := core.NewStatsDatabase()
 
+			// Setup
+
 			FillRelayDatabase(relaydb)
 			FillStatsDatabase(statsdb)
 
+			// make the datacenter of the first relay 0
+			// otherwise push the rest into the validDcIDs array
+			validDcIDs := make([]core.DatacenterId, 0)
+			validDcNames := make([]string, 0)
+
+			i := 0
 			for _, r := range relaydb.Relays {
-				r.Datacenter = core.DatacenterId(0)
-				relaydb.Relays[core.GetRelayID(r.Address)] = r
+				if i == 0 {
+					r.Datacenter = core.DatacenterId(0)
+					relaydb.Relays[core.GetRelayID(r.Address)] = r
+				} else {
+					r.Datacenter = core.DatacenterId(i)
+					relaydb.Relays[core.GetRelayID(r.Address)] = r
+					validDcIDs = append(validDcIDs, r.Datacenter)
+					validDcNames = append(validDcNames, r.DatacenterName)
+				}
+				i++
 			}
 
 			costMatrix := statsdb.GetCostMatrix(relaydb)
+
+			// Testing
 
 			// assert each entry in the relay db is present in the cost matrix
 			for _, relay := range relaydb.Relays {
 				assert.Contains(t, costMatrix.RelayIds, relay.ID)
 				assert.Contains(t, costMatrix.RelayNames, relay.Name)
 				assert.Contains(t, costMatrix.RelayPublicKeys, relay.PublicKey)
+			}
+
+			// assert the length of the valid ids equals the length of all the datacenter ids in the matrix
+			assert.Equal(t, len(validDcIDs), len(costMatrix.DatacenterIds))
+			assert.Equal(t, len(validDcNames), len(costMatrix.DatacenterNames))
+			for i, id := range validDcIDs {
+				// assert all valid ids are present in the matrix
+				assert.Contains(t, costMatrix.DatacenterIds, id)
+
+				// find the relays whose datacenter id matches this one
+				validRelayIDs := make([]core.RelayId, 0)
+				for _, relay := range relaydb.Relays {
+					if relay.Datacenter == id {
+						validRelayIDs = append(validRelayIDs, relay.ID)
+						break
+					}
+				}
+
+				// assert the datacenter id -> relay ids mapping contains the actual ids
+				// i + 1 because in the first for loop each datacenter id is reset as i which is > 0
+				for _, relayID := range validRelayIDs {
+					assert.Contains(t, costMatrix.DatacenterRelays[core.DatacenterId(i+1)], relayID)
+				}
+			}
+
+			for _, name := range validDcNames {
+				assert.Contains(t, costMatrix.DatacenterNames, name)
 			}
 		})
 	})
