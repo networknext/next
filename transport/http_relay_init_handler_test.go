@@ -5,8 +5,10 @@ import (
 	"encoding/binary"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
+	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/transport"
 	"github.com/stretchr/testify/assert"
@@ -20,15 +22,15 @@ const (
 )
 
 // Returns the writer as a means to read the data that the writer contains
-func relayInitAssertions(t *testing.T, body []byte, expectedCode int, relaydb *core.RelayDatabase) http.ResponseWriter {
-	if relaydb == nil {
-		relaydb = core.NewRelayDatabase()
+func relayInitAssertions(t *testing.T, body []byte, expectedCode int, redisClient *redis.Client) http.ResponseWriter {
+	if redisClient == nil {
+		_, redisClient = NewTestRedis()
 	}
 
 	writer := httptest.NewRecorder()
 	request, _ := http.NewRequest("POST", "/relay_init", bytes.NewBuffer(body))
 
-	handler := transport.RelayInitHandlerFunc(relaydb)
+	handler := transport.RelayInitHandlerFunc(redisClient)
 
 	handler(writer, request)
 
@@ -109,14 +111,30 @@ func TestRelayInitHandler(t *testing.T) {
 	})
 
 	t.Run("relay already exists", func(t *testing.T) {
-		relaydb := core.NewRelayDatabase()
+		name := "some name"
 		addr := "127.0.0.1"
-		relaydb.Relays[core.GetRelayID(addr)] = core.RelayData{}
+		dcname := "another name"
+		pubkey := make([]byte, 32)
+		entry := transport.RelayData{
+			ID:             core.GetRelayID(addr),
+			Name:           name,
+			Address:        addr,
+			Datacenter:     32,
+			DatacenterName: dcname,
+			PublicKey:      pubkey,
+			LastUpdateTime: 1234,
+		}
+
+		length := 8 + 4 + len(name) + 4 + len(addr) + 8 + 4 + len(dcname) + len(pubkey) + 8
+		data := make([]byte, length)
+		entry.MarshalBinary(data)
+		redisServer, redisClient := NewTestRedis()
+		redisServer.HSet(transport.RedisHashName, transport.RedisHashKeyStart+strconv.FormatUint(entry.ID, 10), string(data))
 		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+sizeOfNonceBytes+4+len(addr)+sizeOfEncryptedToken)
 		putInitRequestMagic(buff)
 		putInitRequestVersion(buff)
 		putInitRelayAddress(buff, addr)
-		relayInitAssertions(t, buff, http.StatusNotFound, relaydb)
+		relayInitAssertions(t, buff, http.StatusNotFound, redisClient)
 	})
 
 	t.Run("valid", func(t *testing.T) {
