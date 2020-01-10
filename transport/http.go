@@ -11,10 +11,12 @@ import (
 	"log"
 	"net/http"
 	"time"
+	"strconv"
 
 	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
+	"github.com/go-redis/redis/v7"
 )
 
 const (
@@ -29,6 +31,9 @@ const (
 	VersionNumberInitResponse   = 0
 	VersionNumberUpdateRequest  = 0
 	VersionNumberUpdateResponse = 0
+
+	RedisHashName = "ALL_RELAYS"
+	RedisHashKeyStart = "RELAY-"
 )
 
 var gRelayPublicKey = []byte{
@@ -39,10 +44,10 @@ var gRelayPublicKey = []byte{
 }
 
 // NewRouter creates a router with the specified endpoints
-func NewRouter(relaydb *core.RelayDatabase, statsdb *core.StatsDatabase, backend *StubbedBackend) *mux.Router {
+func NewRouter(redisClient *redis.Client, statsdb *core.StatsDatabase, backend *StubbedBackend) *mux.Router {
 	router := mux.NewRouter()
-	router.HandleFunc("/relay_init", RelayInitHandlerFunc(relaydb)).Methods("POST")
-	router.HandleFunc("/relay_update", RelayUpdateHandlerFunc(relaydb, statsdb)).Methods("POST")
+	router.HandleFunc("/relay_init", RelayInitHandlerFunc(redisClient)).Methods("POST")
+	router.HandleFunc("/relay_update", RelayUpdateHandlerFunc(redisClient, statsdb)).Methods("POST")
 	router.HandleFunc("/cost_matrix", CostMatrixHandlerFunc(backend)).Methods("GET")
 	router.HandleFunc("/route_matrix", RouteMatrixHandlerFunc(backend)).Methods("GET")
 	router.HandleFunc("/near", NearHandlerFunc(backend)).Methods("GET")
@@ -59,7 +64,7 @@ func HTTPStart(port string, router *mux.Router) {
 }
 
 // RelayInitHandlerFunc returns the function for the relay init endpoint
-func RelayInitHandlerFunc(relaydb *core.RelayDatabase) func(writer http.ResponseWriter, request *http.Request) {
+func RelayInitHandlerFunc(redisClient *redis.Client) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		log.Println("Received Relay Init Packet")
 		body, err := ioutil.ReadAll(request.Body)
@@ -87,20 +92,30 @@ func RelayInitHandlerFunc(relaydb *core.RelayDatabase) func(writer http.Response
 
 		key := core.GetRelayID(relayInitPacket.Address)
 
-		_, relayAlreadyExists := relaydb.Relays[key]
-		if relayAlreadyExists {
+		// _, relayAlreadyExists := relaydb.Relays[key]
+		exists := redisClient.HExists(RedisHashName, RedisHashKeyStart + strconv.FormatUint(uint64(key), 10))
+		if exists.Err() != redis.Nil {
+			log.Printf("failed to get relay %s from redis: %v", relayInitPacket.Address, exists.Err())
 			writer.WriteHeader(http.StatusNotFound)
 			return
 		}
 
-		entry := core.RelayData{}
-		entry.Name = relayInitPacket.Address
-		entry.Id = core.GetRelayID(relayInitPacket.Address)
-		entry.Address = relayInitPacket.Address //core.ParseAddress(relayInitPacket.address)
-		entry.LastUpdateTime = uint64(time.Now().Unix())
-		entry.PublicKey = core.RandomBytes(LengthOfRelayToken)
+		if exists.Val() {
+			log.Println("relay entry exists, returning")
+			writer.WriteHeader(http.StatusNotFound)
+			return
+		}
 
-		relaydb.Relays[entry.Id] = entry
+		entry := RelayData{
+			Name: relayInitPacket.Address,
+			ID: key,
+			Address: relayInitPacket.Address, //core.ParseAddress(relayInitPacket.address)
+			LastUpdateTime: uint64(time.Now().Unix()),
+			PublicKey: core.RandomBytes(LengthOfRelayToken),
+		}
+
+		//relaydb.Relays[entry.Id] = entry
+		redisClient.HSet(RedisHashName, RedisHashKeyStart + strconv.FormatUint(uint64(key), 10), entry)
 
 		writer.Header().Set("Content-Type", "application/octet-stream")
 
@@ -115,7 +130,7 @@ func RelayInitHandlerFunc(relaydb *core.RelayDatabase) func(writer http.Response
 }
 
 // RelayUpdateHandlerFunc returns the function fora the relay update endpoint
-func RelayUpdateHandlerFunc(relaydb *core.RelayDatabase, statsdb *core.StatsDatabase) func(writer http.ResponseWriter, request *http.Request) {
+func RelayUpdateHandlerFunc(redisClient *redis.Client, statsdb *core.StatsDatabase) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		log.Println("Received Relay Update Packet")
 		body, err := ioutil.ReadAll(request.Body)
@@ -138,10 +153,37 @@ func RelayUpdateHandlerFunc(relaydb *core.RelayDatabase, statsdb *core.StatsData
 		}
 
 		key := core.GetRelayID(relayUpdatePacket.Address)
-		entry, ok := relaydb.Relays[key]
+		//entry, ok := relaydb.Relays[key]
+		redisKey := RedisHashKeyStart + strconv.FormatUint(uint64(key), 10)
+		exists := redisClient.HExists(RedisHashName, redisKey)
+		var entry RelayData
 		found := false
-		if ok && crypto.CompareTokens(relayUpdatePacket.Token, entry.PublicKey) {
-			found = true
+
+		if exists.Val() {
+			result := redisClient.HGet(RedisHashName, redisKey)
+			if result.Err() != redis.Nil {
+				log.Printf("failed to get relay %s from redis: %v", relayUpdatePacket.Address, result.Err())
+				writer.WriteHeader(http.StatusNotFound)
+				return
+			}
+
+			data, err := result.Bytes()
+
+			if err != redis.Nil {
+				log.Printf("failed to get bytes from redis: %v", result.Err())
+				writer.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			if err = entry.MarshalBinary(data); err != nil {
+				log.Printf("failed to marshal data into struct: %v", err)
+				writer.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			if crypto.CompareTokens(relayUpdatePacket.Token, entry.PublicKey) {
+				found = true
+			}
 		}
 
 		if !found {
@@ -150,7 +192,7 @@ func RelayUpdateHandlerFunc(relaydb *core.RelayDatabase, statsdb *core.StatsData
 		}
 
 		statsUpdate := &core.RelayStatsUpdate{}
-		statsUpdate.ID = entry.Id
+		statsUpdate.ID = entry.ID
 
 		for _, ps := range relayUpdatePacket.PingStats {
 			statsUpdate.PingStats = append(statsUpdate.PingStats, ps)
@@ -158,9 +200,9 @@ func RelayUpdateHandlerFunc(relaydb *core.RelayDatabase, statsdb *core.StatsData
 
 		statsdb.ProcessStats(statsUpdate)
 
-		entry = core.RelayData{
+		entry = RelayData{
 			Name:           relayUpdatePacket.Address,
-			Id:             core.GetRelayID(relayUpdatePacket.Address),
+			ID:             core.GetRelayID(relayUpdatePacket.Address),
 			Address:        relayUpdatePacket.Address,
 			LastUpdateTime: uint64(time.Now().Unix()),
 			PublicKey:      relayUpdatePacket.Token,
@@ -173,11 +215,21 @@ func RelayUpdateHandlerFunc(relaydb *core.RelayDatabase, statsdb *core.StatsData
 
 		relaysToPing := make([]RelayPingData, 0)
 
-		relaydb.Relays[key] = entry
-		hashedAddress := core.GetRelayID(relayUpdatePacket.Address)
-		for k, v := range relaydb.Relays {
-			if k != hashedAddress {
-				relaysToPing = append(relaysToPing, RelayPingData{id: uint64(v.Id), address: v.Address})
+		// relaydb.Relays[key] = entry
+		redisClient.HSet(RedisHashName, redisKey, entry)
+		result := redisClient.HGetAll(RedisHashName)
+
+		if result.Err() != redis.Nil {
+			log.Printf("failed to get all relays from redis: %v", result.Err())
+			writer.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		for k, v := range result.Val() {
+			if k != redisKey {
+				var marshaledValue RelayData
+				marshaledValue.MarshalBinary([]byte(v))
+				relaysToPing = append(relaysToPing, RelayPingData{id: uint64(marshaledValue.ID), address: marshaledValue.Address})
 			}
 		}
 

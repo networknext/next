@@ -6,7 +6,7 @@ import (
 )
 
 type RelayUpdate struct {
-	Id             RelayId
+	ID             uint64
 	Name           string
 	Address        string
 	Datacenter     DatacenterId
@@ -16,7 +16,7 @@ type RelayUpdate struct {
 }
 
 type RelayData struct {
-	Id             RelayId
+	ID             uint64
 	Name           string
 	Address        string
 	Datacenter     DatacenterId
@@ -26,23 +26,23 @@ type RelayData struct {
 }
 
 type RelayDatabase struct {
-	Relays map[RelayId]RelayData
+	Relays map[uint64]RelayData
 }
 
 func NewRelayDatabase() *RelayDatabase {
 	database := &RelayDatabase{}
-	database.Relays = make(map[RelayId]RelayData)
+	database.Relays = make(map[uint64]RelayData)
 	return database
 }
 
 func (database *RelayDatabase) UpdateRelay(update *RelayUpdate) bool {
-	id := update.Id
+	id := update.ID
 	if update.Shutdown == true {
 		delete(database.Relays, id)
 		return false
 	}
 	relayData, relayExistedAlready := database.Relays[id]
-	relayData.Id = update.Id
+	relayData.ID = update.ID
 	relayData.Name = update.Name
 	relayData.Address = update.Address
 	relayData.PublicKey = update.PublicKey
@@ -53,12 +53,12 @@ func (database *RelayDatabase) UpdateRelay(update *RelayUpdate) bool {
 	return !relayExistedAlready
 }
 
-func (database *RelayDatabase) CheckForTimeouts(timeoutSeconds int) []RelayId {
-	disconnected := make([]RelayId, 0)
+func (database *RelayDatabase) CheckForTimeouts(timeoutSeconds int) []uint64 {
+	disconnected := make([]uint64, 0)
 	currentTime := uint64(time.Now().Unix())
 	for k, v := range database.Relays {
 		if v.LastUpdateTime+uint64(timeoutSeconds) <= currentTime {
-			disconnected = append(disconnected, v.Id)
+			disconnected = append(disconnected, v.ID)
 			delete(database.Relays, k)
 		}
 	}
@@ -73,8 +73,8 @@ func (database *RelayDatabase) MakeCopy() *RelayDatabase {
 	return database_copy
 }
 
-func GetRelayID(name string) RelayId {
+func GetRelayID(name string) uint64 {
 	hash := fnv.New64a()
 	hash.Write([]byte(name))
-	return RelayId(hash.Sum64())
+	return hash.Sum64()
 }

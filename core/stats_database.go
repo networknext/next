@@ -10,7 +10,7 @@ const HistorySize = 6
 
 // RelayStatsPing is the ping stats for a relay
 type RelayStatsPing struct {
-	RelayId    RelayId
+	RelayID    uint64
 	RTT        float32
 	Jitter     float32
 	PacketLoss float32
@@ -18,7 +18,7 @@ type RelayStatsPing struct {
 
 // RelayStatsUpdate
 type RelayStatsUpdate struct {
-	ID        RelayId
+	ID        uint64
 	PingStats []RelayStatsPing
 }
 
@@ -35,18 +35,18 @@ type StatsEntryRelay struct {
 
 // StatsEntry is a entry in the stats db
 type StatsEntry struct {
-	relays map[RelayId]*StatsEntryRelay
+	relays map[uint64]*StatsEntryRelay
 }
 
 // StatsDatabase is a relay statistics database (shocking right?)
 type StatsDatabase struct {
-	entries map[RelayId]StatsEntry
+	entries map[uint64]StatsEntry
 }
 
 // NewStatsDatabase creates a new stats database (never would have guessed that)
 func NewStatsDatabase() *StatsDatabase {
 	database := &StatsDatabase{}
-	database.entries = make(map[RelayId]StatsEntry)
+	database.entries = make(map[uint64]StatsEntry)
 	return database
 }
 
@@ -90,14 +90,14 @@ func (database *StatsDatabase) ProcessStats(statsUpdate *RelayStatsUpdate) {
 	entry, entryExists := database.entries[sourceRelay]
 	if !entryExists {
 		entry = StatsEntry{
-			relays: make(map[RelayId]*StatsEntryRelay),
+			relays: make(map[uint64]*StatsEntryRelay),
 		}
 		database.entries[sourceRelay] = entry
 	}
 
 	for _, stats := range statsUpdate.PingStats {
 
-		destRelay := stats.RelayId
+		destRelay := stats.RelayID
 
 		relay, relayExists := entry.relays[destRelay]
 
@@ -125,7 +125,7 @@ func (database *StatsDatabase) MakeCopy() *StatsDatabase {
 	database_copy := NewStatsDatabase()
 	for k, v := range database.entries {
 		newEntry := StatsEntry{
-			relays: make(map[RelayId]*StatsEntryRelay),
+			relays: make(map[uint64]*StatsEntryRelay),
 		}
 		for k2, v2 := range v.relays {
 			v_copy := *v2
@@ -136,7 +136,7 @@ func (database *StatsDatabase) MakeCopy() *StatsDatabase {
 	return database_copy
 }
 
-func (database *StatsDatabase) GetEntry(relay1 RelayId, relay2 RelayId) *StatsEntryRelay {
+func (database *StatsDatabase) GetEntry(relay1 uint64, relay2 uint64) *StatsEntryRelay {
 	entry, entryExists := database.entries[relay1]
 	if entryExists {
 		relay, relayExists := entry.relays[relay2]
@@ -155,7 +155,7 @@ func max(x float32, y float32) float32 {
 	}
 }
 
-func (database *StatsDatabase) GetSample(relays *RelayDatabase, relay1 RelayId, relay2 RelayId) (float32, float32, float32) {
+func (database *StatsDatabase) GetSample(relays *RelayDatabase, relay1 uint64, relay2 uint64) (float32, float32, float32) {
 	a := database.GetEntry(relay1, relay2)
 	b := database.GetEntry(relay2, relay1)
 	if a != nil && b != nil {
@@ -187,16 +187,16 @@ func (database *StatsDatabase) GetCostMatrix(relays *RelayDatabase) *CostMatrix 
 	}
 
 	sort.SliceStable(stableRelays, func(i, j int) bool {
-		return stableRelays[i].Id < stableRelays[j].Id
+		return stableRelays[i].ID < stableRelays[j].ID
 	})
 
 	for i, relayData := range stableRelays {
-		costMatrix.RelayIds[i] = relayData.Id
+		costMatrix.RelayIds[i] = RelayId(relayData.ID)
 		costMatrix.RelayNames[i] = relayData.Name
 		costMatrix.RelayPublicKeys[i] = relayData.PublicKey
 		if relayData.Datacenter != DatacenterId(0) {
 			datacenter := costMatrix.DatacenterRelays[relayData.Datacenter]
-			datacenter = append(datacenter, RelayId(relayData.Id))
+			datacenter = append(datacenter, RelayId(relayData.ID))
 			costMatrix.DatacenterRelays[relayData.Datacenter] = datacenter
 			datacenterNameMap[relayData.Datacenter] = relayData.DatacenterName
 		}
@@ -209,8 +209,8 @@ func (database *StatsDatabase) GetCostMatrix(relays *RelayDatabase) *CostMatrix 
 
 	for i := 0; i < numRelays; i++ {
 		for j := 0; j < i; j++ {
-			id_i := costMatrix.RelayIds[i]
-			id_j := costMatrix.RelayIds[j]
+			id_i := uint64(costMatrix.RelayIds[i])
+			id_j := uint64(costMatrix.RelayIds[j])
 			rtt, jitter, packetLoss := database.GetSample(relays, id_i, id_j)
 			ij_index := TriMatrixIndex(i, j)
 			if rtt != InvalidRouteValue && jitter <= MaxJitter && packetLoss <= MaxPacketLoss {
