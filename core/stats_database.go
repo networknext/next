@@ -141,15 +141,13 @@ func (database *StatsDatabase) GetCostMatrix(relaydb *RelayDatabase) *CostMatrix
 
 	numRelays := len(relaydb.Relays)
 
-	entryCount := TriMatrixLength(numRelays)
-
 	costMatrix := &CostMatrix{}
 	costMatrix.RelayIds = make([]RelayId, numRelays)
 	costMatrix.RelayNames = make([]string, numRelays)
 	costMatrix.RelayAddresses = make([][]byte, numRelays)
 	costMatrix.RelayPublicKeys = make([][]byte, numRelays)
 	costMatrix.DatacenterRelays = make(map[DatacenterId][]RelayId)
-	costMatrix.RTT = make([]int32, entryCount)
+	costMatrix.RTT = make([]int32, TriMatrixLength(numRelays))
 
 	datacenterNameMap := make(map[DatacenterId]string)
 

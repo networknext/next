@@ -40,6 +40,7 @@ func FillRelayDatabase(relaydb *core.RelayDatabase) {
 	}
 
 	fillData(relaydb, "127.0.0.1", time.Now().Unix()-1)
+	fillData(relaydb, "127.0.0.2", time.Now().Unix()-5)
 	fillData(relaydb, "123.4.5.6", time.Now().Unix()-10)
 	fillData(relaydb, "654.3.2.1", time.Now().Unix()-100)
 	fillData(relaydb, "000.0.0.0", time.Now().Unix()-25)

@@ -81,7 +81,6 @@ func TestStatsDatabase(t *testing.T) {
 		t.Run("source and destination do exist and their entries are updated", func(t *testing.T) {
 			statsdb := core.NewStatsDatabase()
 			entry := core.NewStatsEntry()
-			// this entry makes no sense, test puposes only
 			statsEntry1 := makeBasicStats()
 			entry.Relays[relay1Id] = statsEntry1
 			statsdb.Entries[update.ID] = *entry
@@ -92,7 +91,6 @@ func TestStatsDatabase(t *testing.T) {
 			assert.Equal(t, float32(0.75), statsEntry1.Rtt)
 			assert.Equal(t, float32(0.85), statsEntry1.Jitter)
 			assert.Equal(t, float32(0.95), statsEntry1.PacketLoss)
-			// can't assert length of history, well you can but it'll always be the length of HistorySize
 		})
 	})
 
@@ -100,7 +98,6 @@ func TestStatsDatabase(t *testing.T) {
 		t.Run("makes a copy", func(t *testing.T) {
 			statsdb := core.NewStatsDatabase()
 			entry := core.NewStatsEntry()
-			// this entry makes no sense, test puposes only
 			statsEntry1 := makeBasicStats()
 			entry.Relays[relay1Id] = statsEntry1
 			statsdb.Entries[sourceId] = *entry
@@ -220,6 +217,7 @@ func TestStatsDatabase(t *testing.T) {
 
 			// make the datacenter of the first relay 0
 			// otherwise push the rest into the validDcIDs array
+			// same with Dc names
 			validDcIDs := make([]core.DatacenterId, 0)
 			validDcNames := make([]string, 0)
 
@@ -236,6 +234,25 @@ func TestStatsDatabase(t *testing.T) {
 				}
 				i++
 			}
+
+			modifyEntry := func(addr1, addr2 string, rtt, jitter, packetloss float32) {
+				entry := statsdb.GetEntry(core.GetRelayID(addr1), core.GetRelayID(addr2))
+				entry.Rtt = rtt
+				entry.Jitter = jitter
+				entry.PacketLoss = packetloss
+			}
+
+			// valid
+			modifyEntry("127.0.0.1", "127.0.0.2", 123.00, 1.3, 0.0)
+
+			// invalid - rtt = invalid route value
+			modifyEntry("127.0.0.1", "123.4.5.6", core.InvalidRouteValue, 0.3, 0.0)
+
+			// invalid - jitter > MaxJitter
+			modifyEntry("127.0.0.1", "654.3.2.1", 1.0, core.MaxJitter+1, 0.0)
+
+			// invalid - packet loss > MaxPacketLoss
+			modifyEntry("127.0.0.1", "000.0.0.0", 1.0, 0.3, core.MaxPacketLoss+1)
 
 			costMatrix := statsdb.GetCostMatrix(relaydb)
 
@@ -271,9 +288,34 @@ func TestStatsDatabase(t *testing.T) {
 				}
 			}
 
+			// assert all names valid Dc names are within the cost matrix
 			for _, name := range validDcNames {
 				assert.Contains(t, costMatrix.DatacenterNames, name)
 			}
+
+			// assert that all non-invalid rtt's are within the cost matrix
+			getAddressIndex := func(addr1, addr2 string) int {
+				addr1ID := core.GetRelayID(addr1)
+				addr2ID := core.GetRelayID(addr2)
+				indxOfI := -1
+				indxOfJ := -1
+
+				for i, id := range costMatrix.RelayIds {
+					if id == addr1ID {
+						indxOfI = i
+					} else if id == addr2ID {
+						indxOfJ = i
+					}
+
+					if indxOfI != -1 && indxOfJ != -1 {
+						break
+					}
+				}
+
+				return core.TriMatrixIndex(indxOfI, indxOfJ)
+			}
+
+			assert.Equal(t, 124, costMatrix.RTT[getAddressIndex("127.0.0.1", "127.0.0.2")])
 		})
 	})
 }

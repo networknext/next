@@ -96,7 +96,7 @@ func TestRelayDatabase(t *testing.T) {
 			FillRelayDatabase(relaydb)
 			deadRelays := relaydb.CheckForTimeouts(2000)
 			assert.Empty(t, deadRelays)
-			assert.Len(t, relaydb.Relays, 5)
+			assert.Len(t, relaydb.Relays, 6)
 		})
 	})
 
