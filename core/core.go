@@ -72,6 +72,18 @@ const (
 	RouteSliceFlagPacketLossMultipath = (uint64(1) << 5)
 	RouteSliceFlagJitterMultipath     = (uint64(1) << 6)
 	RouteSliceFlagRTTMultipath        = (uint64(1) << 7)
+
+	FlagBadRouteToken           = uint32(1 << 0)
+	FlagNoRouteToContinue       = uint32(1 << 1)
+	FlagPreviousUpdatePending   = uint32(1 << 2)
+	FlagBadContinueToken        = uint32(1 << 3)
+	FlagRouteExpired            = uint32(1 << 4)
+	FlagRouteRequestTimedOut    = uint32(1 << 5)
+	FlagContinueRequestTimedOut = uint32(1 << 6)
+	FlagClientTimedOut          = uint32(1 << 7)
+	FlagTryBeforeYouBuyAbort    = uint32(1 << 8)
+	FlagDirectRouteExpired      = uint32(1 << 9)
+	FlagTotalCount              = 10
 )
 
 var RouterPrivateKey = [...]byte{0x96, 0xce, 0x57, 0x8b, 0x00, 0x19, 0x44, 0x27, 0xf2, 0xb9, 0x90, 0x1b, 0x43, 0x56, 0xfd, 0x4f, 0x56, 0xe1, 0xd9, 0x56, 0x58, 0xf2, 0xf4, 0x3b, 0x86, 0x9f, 0x12, 0x75, 0x24, 0xd2, 0x47, 0xb3}
@@ -2161,18 +2173,6 @@ func (packet *SessionUpdatePacket) MarshalBinary() ([]byte, error) {
 	return ws.GetData(), nil
 }
 
-const NEXT_FLAGS_BAD_ROUTE_TOKEN = uint32(1 << 0)
-const NEXT_FLAGS_NO_ROUTE_TO_CONTINUE = uint32(1 << 1)
-const NEXT_FLAGS_PREVIOUS_UPDATE_STILL_PENDING = uint32(1 << 2)
-const NEXT_FLAGS_BAD_CONTINUE_TOKEN = uint32(1 << 3)
-const NEXT_FLAGS_ROUTE_EXPIRED = uint32(1 << 4)
-const NEXT_FLAGS_ROUTE_REQUEST_TIMED_OUT = uint32(1 << 5)
-const NEXT_FLAGS_CONTINUE_REQUEST_TIMED_OUT = uint32(1 << 6)
-const NEXT_FLAGS_CLIENT_TIMED_OUT = uint32(1 << 7)
-const NEXT_FLAGS_TRY_BEFORE_YOU_BUY_ABORT = uint32(1 << 8)
-const NEXT_FLAGS_DIRECT_ROUTE_EXPIRED = uint32(1 << 9)
-const NEXT_FLAGS_COUNT = 10
-
 func (packet *SessionUpdatePacket) Serialize(stream Stream, versionMajor int32, versionMinor int32, versionPatch int32) error {
 	stream.SerializeUint64(&packet.Sequence)
 	stream.SerializeUint64(&packet.CustomerId)
@@ -2182,7 +2182,7 @@ func (packet *SessionUpdatePacket) Serialize(stream Stream, versionMajor int32, 
 	stream.SerializeUint64(&packet.PlatformId)
 	stream.SerializeUint64(&packet.Tag)
 	if ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 3, 3, 4) {
-		stream.SerializeBits(&packet.Flags, NEXT_FLAGS_COUNT)
+		stream.SerializeBits(&packet.Flags, FlagTotalCount)
 	}
 	stream.SerializeBool(&packet.Flagged)
 	stream.SerializeBool(&packet.FallbackToDirect)
