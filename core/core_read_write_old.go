@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 )
 
-// todo: these read/write versions are old and we should not use them. the new ones from the func_backend.go are much better (with index) -- glenn
+// todo: these read/write versions are old and we should not use them moving forward. the new ones from the func_backend.go are much better (with index) -- glenn
 
 func WriteString(buffer []byte, value string) int {
 	binary.LittleEndian.PutUint32(buffer, uint32(len(value)))

@@ -3,10 +3,7 @@
 package core
 
 import (
-	"crypto/sha256"
 	"encoding/base64"
-	"fmt"
-	"hash/fnv"
 	"math"
 	"net"
 	"strconv"
@@ -82,39 +79,15 @@ const InvalidRouteValue = 10000.0
 const InvalidHistoryValue = -1
 const RelayTimeoutSeconds = 60
 
-// ============================================================================
-
-// todo: this whole old entity id / relay id etc. is incompatible with how the new backend should work.
-// talk to me to learn more. -- glenn
-
-type EntityId struct {
-	Kind string
-	Name string
-}
-
-type RelayId uint64
-
-func GetRelayId(id *EntityId) (RelayId, error) {
-	if id.Kind != "Relay" {
-		return RelayId(0), fmt.Errorf("not a valid relay: %+v", id)
-	}
-	hash := fnv.New64a()
-	hash.Write([]byte(id.Name))
-	return RelayId(hash.Sum64()), nil
-}
-
-type DatacenterId uint64
-
-func GetDatacenterId(id *EntityId) (DatacenterId, error) {
-	if id.Kind != "Datacenter" {
-		return DatacenterId(0), fmt.Errorf("not a valid datacenter: %+v", id)
-	}
-	hash := fnv.New64a()
-	hash.Write([]byte(id.Name))
-	return DatacenterId(hash.Sum64()), nil
-}
-
-// ============================================================================
+// todo: convert these to standard golang const format
+const NEXT_MAX_NEAR_RELAYS = 32
+const NEXT_UPDATE_TYPE_DIRECT = 0
+const NEXT_UPDATE_TYPE_ROUTE = 1
+const NEXT_UPDATE_TYPE_CONTINUE = 2
+const NEXT_MAX_TOKENS = 7
+const NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES = 117
+const NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES = 58
+const NEXT_MTU = 1300
 
 func ParseAddress(input string) *net.UDPAddr {
 	address := &net.UDPAddr{}
@@ -134,11 +107,6 @@ func ParseKeyFromBase64(input_base64 string) []byte {
 	if err != nil {
 		return nil
 	}
-	return CheckKey(input)
-}
-
-// todo: this is a stupid function
-func CheckKey(input []byte) []byte {
 	if len(input) != KeyBytes {
 		return nil
 	}
@@ -151,12 +119,6 @@ func ParseAddressFromBase64(input_base64 string) *net.UDPAddr {
 		return nil
 	}
 	return ParseAddress(string(input))
-}
-
-func Checksum(data []byte) []byte {
-	hasher := sha256.New()
-	hasher.Write(data)
-	return hasher.Sum(nil)
 }
 
 func HaversineDistance(lat1 float64, long1 float64, lat2 float64, long2 float64) float64 {
@@ -186,50 +148,28 @@ func TriMatrixIndex(i, j int) int {
 	return i*(i+1)/2 - i + j
 }
 
-// ====================================================================
-
 func ProtocolVersionAtLeast(serverVersionMajor int32, serverVersionMinor int32, serverVersionPatch int32, targetProtocolVersionMajor int32, targetProtocolVersionMinor int32, targetProtocolVersionPatch int32) bool {
 	if serverVersionMajor == 0 && serverVersionMinor == 0 && serverVersionPatch == 0 {
-		// This is an internal build, assume latest version.
+		// This is an internal build. Always pass.
 		return true
 	}
-
 	if serverVersionMajor > targetProtocolVersionMajor {
-		// The server has a major version newer than the target, ignore minor and patch numbers and pass.
+		// The server has a major version newer than the target. Pass.
 		return true
 	}
-
 	if serverVersionMajor == targetProtocolVersionMajor {
-		// The server has a matching major version, now check minor version.
-
 		if serverVersionMinor > targetProtocolVersionMinor {
-			// The server has a minor version newer than the target, ignore patch number and pass.
+			// The server has a minor version newer than the target. Pass
 			return true
 		}
 
 		if serverVersionMinor == targetProtocolVersionMinor {
-			// The server has a matching minor version, now check patch version.
-
 			if serverVersionPatch >= targetProtocolVersionPatch {
-				// The patch version is newer or equal to the desired version, pass.
+				// The patch version is newer than or equal to the desired version. Pass
 				return true
 			}
 		}
 	}
-
-	// Server version is not new enough.
+	// Fail.
 	return false
 }
-
-// ===========================================================
-
-const NEXT_MAX_NEAR_RELAYS = 32
-const NEXT_UPDATE_TYPE_DIRECT = 0
-const NEXT_UPDATE_TYPE_ROUTE = 1
-const NEXT_UPDATE_TYPE_CONTINUE = 2
-const NEXT_MAX_TOKENS = 7
-const NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES = 117
-const NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES = 58
-const NEXT_MTU = 1300
-
-// =============================================================================
