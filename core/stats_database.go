@@ -5,6 +5,7 @@ import (
 	"sort"
 )
 
+// InvalidRouteValue ...
 const InvalidRouteValue = 10000.0
 
 // RelayStatsPing is the ping stats for a relay
@@ -37,7 +38,7 @@ type StatsEntry struct {
 	Relays map[RelayId]*StatsEntryRelay
 }
 
-// StatsDatabase is a relay statistics database
+// StatsDatabase is a relay statistics database.
 // Each entry contains data about the entry relay to other relays
 type StatsDatabase struct {
 	Entries map[RelayId]StatsEntry
@@ -136,7 +137,7 @@ func (database *StatsDatabase) GetSample(relay1 RelayId, relay2 RelayId) (float3
 	return InvalidRouteValue, InvalidRouteValue, InvalidRouteValue
 }
 
-// GetCostMatrix TODO
+// GetCostMatrix returns the cost matrix composed of all current information
 func (database *StatsDatabase) GetCostMatrix(relaydb *RelayDatabase) *CostMatrix {
 
 	numRelays := len(relaydb.Relays)
