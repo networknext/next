@@ -219,4 +219,4 @@ build-client: build-sdk ## builds the game client linking in the sdk shared libr
 	@printf "done\n"
 
 .PHONY: build-all
-build-all: build-relay-backend build-server-backend build-relay build-sdk-test build-tools ## builds everything
+build-all: build-relay-backend build-server-backend build-relay build-client build-server build-functional build-sdk-test build-soak-test build-tools ## builds everything
