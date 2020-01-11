@@ -170,12 +170,6 @@ dev-client: build-client  ## runs a local client
 	export NEXT_CUSTOMER_PUBLIC_KEY=leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw== ;\
 	./dist/client
 
-.PHONY: build-optimizer
-build-optimizer: ## builds the optimizer binary
-	@printf "Building optimizer... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/optimizer ./cmd/optimizer/optimizer.go
-	@printf "done\n"
-
 .PHONY: build-relay
 build-relay: ## builds the relay
 	@printf "Building relay... "
@@ -225,4 +219,4 @@ build-client: build-sdk ## builds the game client linking in the sdk shared libr
 	@printf "done\n"
 
 .PHONY: build-all
-build-all: build-optimizer build-relay-backend build-server-backend build-relay build-sdk-test build-tools ## builds everything
+build-all: build-relay-backend build-server-backend build-relay build-sdk-test build-tools ## builds everything
