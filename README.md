@@ -55,7 +55,7 @@ Manages the database of connected relays and tells them which other relays to pi
 
 Pulls the cost matrix from the relay backend and transforms it into a route matrix.
 
-- Command: [`cmd/relay`](./cmd/relay)
+- Command: [`cmd/optimizer`](./cmd/optimizer)
 
 ## Server (C++)
 
