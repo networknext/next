@@ -1,8 +1,8 @@
 package core
 
 import (
-	"fmt"
 	"encoding/binary"
+	"fmt"
 )
 
 type RouteMatrix struct {

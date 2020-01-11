@@ -1,8 +1,8 @@
 package core
 
 import (
-	"net"
 	"encoding/binary"
+	"net"
 )
 
 // todo: these read/write versions are old and we should not use them moving forward. the new ones from the func_backend.go are much better (with index) -- glenn

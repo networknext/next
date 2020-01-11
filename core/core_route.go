@@ -1,10 +1,10 @@
 package core
 
 import (
-	"net"
+	"encoding/binary"
 	"fmt"
 	"hash/fnv"
-	"encoding/binary"
+	"net"
 )
 
 type RouteContext struct {

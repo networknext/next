@@ -1,11 +1,11 @@
 package core
 
 import (
-	"net"
+	"encoding/binary"
 	"fmt"
 	"math"
+	"net"
 	"runtime/debug"
-	"encoding/binary"
 )
 
 type Stream interface {

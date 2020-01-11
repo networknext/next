@@ -2,8 +2,8 @@ package core
 
 import (
 	"fmt"
-	"strings"
 	"strconv"
+	"strings"
 )
 
 func NibblinsToDollarString(nibblins int64) string {

@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/networknext/backend/crypto"
+	"github.com/stretchr/testify/assert"
 )
 
 func StopBeingAnnoyingGolang() {

@@ -1,9 +1,9 @@
 package core
 
 import (
-	"sync"
-	"sort"
 	"runtime"
+	"sort"
+	"sync"
 )
 
 func RouteHash(relays ...uint32) uint32 {

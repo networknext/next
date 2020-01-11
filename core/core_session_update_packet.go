@@ -1,9 +1,9 @@
 package core
 
 import (
-	"net"
 	"bytes"
 	"encoding/binary"
+	"net"
 )
 
 type SessionUpdatePacket struct {

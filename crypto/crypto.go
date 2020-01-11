@@ -5,9 +5,9 @@ package crypto
 import "C"
 
 import (
-	"log"
-	"crypto/rand"
 	"crypto/ed25519"
+	"crypto/rand"
+	"log"
 )
 
 // Check checks encyption of the packet

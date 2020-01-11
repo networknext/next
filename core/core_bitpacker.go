@@ -1,9 +1,9 @@
 package core
 
 import (
+	"encoding/binary"
 	"fmt"
 	"math/bits"
-	"encoding/binary"
 )
 
 func uintsToBytes(vs []uint32) []byte {
