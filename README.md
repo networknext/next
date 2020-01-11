@@ -51,12 +51,6 @@ Manages the database of connected relays and tells them which other relays to pi
 
 - Command: [`cmd/relay_backend`](./cmd/relay_backend)
 
-## Optimizer (Go)
-
-Pulls the cost matrix from the relay backend and transforms it into a route matrix.
-
-- Command: [`cmd/optimizer`](./cmd/optimizer)
-
 ## Server (C++)
 
 Reference implentation of a server using the Network Next SDK.
