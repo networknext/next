@@ -10,4 +10,8 @@ type Relay struct {
 
 	Latitude  float64
 	Longitude float64
+
+	RTT        float64
+	Jitter     float64
+	PacketLoss float64
 }
