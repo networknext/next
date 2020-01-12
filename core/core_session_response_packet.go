@@ -18,6 +18,26 @@ type SessionResponsePacket struct {
 	Tokens               []byte
 	ServerRoutePublicKey []byte
 	Signature            []byte
+
+func (packet *SessionResponsePacket) UnmarshalBinary(data []byte) error {
+	if err := packet.Serialize(CreateReadStream(data), SDKVersionMajorMin, SDKVersionMinorMin, SDKVersionPatchMin); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (packet *SessionResponsePacket) MarshalBinary() ([]byte, error) {
+	ws, err := CreateWriteStream(1500)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := packet.Serialize(ws, SDKVersionMajorMin, SDKVersionMinorMin, SDKVersionPatchMin); err != nil {
+		return nil, err
+	}
+	ws.Flush()
+
+	return ws.GetData(), nil
 }
 
 func (packet *SessionResponsePacket) Serialize(stream Stream, versionMajor int32, versionMinor int32, versionPatch int32) error {
