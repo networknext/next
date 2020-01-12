@@ -17,7 +17,8 @@ type SessionResponsePacket struct {
 	NumTokens            int32
 	Tokens               []byte
 	ServerRoutePublicKey []byte
-	Signature            []byte
+	signature            []byte
+}
 
 func (packet *SessionResponsePacket) UnmarshalBinary(data []byte) error {
 	if err := packet.Serialize(CreateReadStream(data), SDKVersionMajorMin, SDKVersionMinorMin, SDKVersionPatchMin); err != nil {
@@ -66,14 +67,14 @@ func (packet *SessionResponsePacket) Serialize(stream Stream, versionMajor int32
 	}
 	if stream.IsReading() {
 		packet.ServerRoutePublicKey = make([]byte, Crypto_box_PUBLICKEYBYTES)
-		packet.Signature = make([]byte, SignatureBytes)
+		packet.signature = make([]byte, SignatureBytes)
 	}
 	stream.SerializeBytes(packet.ServerRoutePublicKey)
-	stream.SerializeBytes(packet.Signature)
+	stream.SerializeBytes(packet.signature)
 	return stream.Error()
 }
 
-func (packet *SessionResponsePacket) GetSignData(versionMajor int32, versionMinor int32, versionPatch int32) []byte {
+func (packet *SessionResponsePacket) Sign(versionMajor int32, versionMinor int32, versionPatch int32) {
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.LittleEndian, packet.Sequence)
 	binary.Write(buf, binary.LittleEndian, packet.SessionId)
@@ -101,5 +102,6 @@ func (packet *SessionResponsePacket) GetSignData(versionMajor int32, versionMino
 		binary.Write(buf, binary.LittleEndian, packet.Tokens)
 	}
 	binary.Write(buf, binary.LittleEndian, packet.ServerRoutePublicKey)
-	return buf.Bytes()
+
+	packet.signature = CryptoSignCreate(buf.Bytes(), BackendPrivateKey)
 }
