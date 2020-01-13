@@ -2,9 +2,6 @@ package transport_test
 
 import (
 	"net/http"
-
-	"github.com/alicebob/miniredis/v2"
-	"github.com/go-redis/redis/v7"
 )
 
 var TestPublicKey = []byte{
@@ -12,13 +9,6 @@ var TestPublicKey = []byte{
 	0x7d, 0x89, 0x0c, 0x81, 0x3a, 0x08, 0x31, 0xba,
 	0xdc, 0xdd, 0xb5, 0x52, 0xcb, 0x73, 0x56, 0x10,
 	0xda, 0xa9, 0xc0, 0xae, 0x08, 0xa2, 0xcf, 0x5e,
-}
-
-func NewTestRedis() (*miniredis.Miniredis, *redis.Client) {
-	redisServer, _ := miniredis.Run()
-	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
-
-	return redisServer, redisClient
 }
 
 type RoundTripFunc func(req *http.Request) *http.Response

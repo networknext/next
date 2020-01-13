@@ -7,7 +7,7 @@ import (
 )
 
 type GeoClient struct {
-	RedisClient *redis.Client
+	RedisClient redis.Cmdable
 	Namespace   string
 }
 
