@@ -6,11 +6,13 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
 	"strconv"
 	"time"
 
@@ -80,9 +82,11 @@ func main() {
 			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(redisClient, &ipStackClient),
 		}
 
-		if err := mux.Start(); err != nil {
-			log.Println(err)
-		}
+		go func() {
+			if err := mux.Start(context.Background(), runtime.NumCPU()); err != nil {
+				log.Println(err)
+			}
+		}()
 	}
 
 	sigint := make(chan os.Signal, 1)

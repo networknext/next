@@ -1,8 +1,11 @@
 package transport
 
 import (
+	"bytes"
+	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net"
 
@@ -10,18 +13,31 @@ import (
 
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/core"
+	"github.com/networknext/backend/routing"
 )
 
 const (
 	PacketTypeServerUpdate = iota + 200
 	PacketTypeSessionUpdate
-	PacketTypeSessionResponse
+)
 
+const (
+	ResponseTypeDirect = iota
+	ResponseTypeRoute
+	ResponseTypeContinue
+)
+
+const (
 	DefaultMaxPacketSize = 1500
 )
 
+type UDPPacket struct {
+	SourceAddr *net.UDPAddr
+	Data       []byte
+}
+
 // UDPHandlerFunc acts the same way http.HandlerFunc does, but for UDP packets and address
-type UDPHandlerFunc func(*net.UDPConn, []byte, *net.UDPAddr)
+type UDPHandlerFunc func(io.Writer, *UDPPacket)
 
 // ServerIngress is a simple UDP router for specific packets and runs each UDPHandlerFunc based on the incoming packet type
 type UDPServerMux struct {
@@ -33,24 +49,48 @@ type UDPServerMux struct {
 }
 
 // Start begins accepting UDP packets from the UDP connection and will block
-func (m *UDPServerMux) Start() error {
+func (m *UDPServerMux) Start(ctx context.Context, handlers int) error {
 	if m.Conn == nil {
 		return errors.New("relay server cannot be nil")
 	}
 
-	packet := make([]byte, m.MaxPacketSize)
+	for i := 0; i < handlers; i++ {
+		go m.handler(ctx, i)
+	}
+
+	<-ctx.Done()
+
+	return nil
+}
+
+func (m *UDPServerMux) handler(ctx context.Context, id int) {
+	data := make([]byte, m.MaxPacketSize)
 
 	for {
-		numbytes, addr, _ := m.Conn.ReadFromUDP(packet)
+		numbytes, addr, _ := m.Conn.ReadFromUDP(data)
 		if numbytes <= 0 {
 			continue
 		}
+		log.Printf("handler %d read %d bytes from %s", id, numbytes, addr.String())
 
-		switch packet[0] {
+		var buf bytes.Buffer
+		packet := UDPPacket{
+			SourceAddr: addr,
+			Data:       data[1:],
+		}
+
+		switch data[0] {
 		case PacketTypeServerUpdate:
-			m.ServerUpdateHandlerFunc(m.Conn, packet[1:], addr)
+			m.ServerUpdateHandlerFunc(&buf, &packet)
 		case PacketTypeSessionUpdate:
-			m.SessionUpdateHandlerFunc(m.Conn, packet[1:], addr)
+			m.SessionUpdateHandlerFunc(&buf, &packet)
+		}
+
+		if buf.Len() > 0 {
+			_, err := m.Conn.WriteToUDP(buf.Bytes(), addr)
+			if err != nil {
+				log.Printf("failed to write to server '%s': %v", addr.String(), err)
+			}
 		}
 	}
 }
@@ -77,10 +117,10 @@ func (e ServerEntry) MarshalBinary() ([]byte, error) {
 }
 
 // ServerUpdateHandlerFunc ...
-func ServerUpdateHandlerFunc(redisClient *redis.Client) UDPHandlerFunc {
-	return func(conn *net.UDPConn, data []byte, from *net.UDPAddr) {
+func ServerUpdateHandlerFunc(redisClient redis.Cmdable) UDPHandlerFunc {
+	return func(w io.Writer, incoming *UDPPacket) {
 		var packet core.ServerUpdatePacket
-		if err := packet.UnmarshalBinary(data); err != nil {
+		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
 			fmt.Printf("failed to read server update packet: %v\n", err)
 			return
 		}
@@ -94,13 +134,13 @@ func ServerUpdateHandlerFunc(redisClient *redis.Client) UDPHandlerFunc {
 		// Get the the old ServerEntry from Redis
 		var serverentry ServerEntry
 		{
-			result := redisClient.Get("SERVER-" + from.String())
-			if result.Err() != redis.Nil {
-				log.Printf("failed to get server %s from redis: %v", from.String(), result.Err())
+			result := redisClient.Get("SERVER-" + incoming.SourceAddr.String())
+			if result.Err() != nil && result.Err() != redis.Nil {
+				log.Printf("failed to get server %s from redis: %v", incoming.SourceAddr.String(), result.Err())
 				return
 			}
 			serverdata, err := result.Bytes()
-			if err != redis.Nil {
+			if err != nil && result.Err() != redis.Nil {
 				log.Printf("failed to get bytes from redis: %v", result.Err())
 				return
 			}
@@ -129,9 +169,9 @@ func ServerUpdateHandlerFunc(redisClient *redis.Client) UDPHandlerFunc {
 				VersionMinor: packet.VersionMinor,
 				VersionPatch: packet.VersionPatch,
 			}
-			result := redisClient.Set("SERVER-"+from.String(), serverentry, 0)
+			result := redisClient.Set("SERVER-"+incoming.SourceAddr.String(), serverentry, 0)
 			if result.Err() != nil {
-				log.Printf("failed to register server %s: %v", from.String(), result.Err())
+				log.Printf("failed to register server %s: %v", incoming.SourceAddr.String(), result.Err())
 				return
 			}
 		}
@@ -144,7 +184,7 @@ type SessionEntry struct {
 	UserID     uint64
 	PlatformID uint64
 
-	NearRelays []RelayEntry
+	NearRelays []routing.Relay
 
 	DirectRTT        float64
 	DirectJitter     float64
@@ -175,14 +215,6 @@ type SessionEntry struct {
 	VersionPatch int32
 }
 
-type RelayEntry struct {
-	RelayID uint64
-
-	RTT        float64
-	Jitter     float64
-	PacketLoss float64
-}
-
 func (e *SessionEntry) UnmarshalBinary(data []byte) error {
 	return jsoniter.Unmarshal(data, e)
 }
@@ -192,30 +224,30 @@ func (e SessionEntry) MarshalBinary() ([]byte, error) {
 }
 
 // SessionUpdateHandlerFunc ...
-func SessionUpdateHandlerFunc(redisClient *redis.Client, ipStackClient *IPStackClient) UDPHandlerFunc {
-	return func(conn *net.UDPConn, data []byte, from *net.UDPAddr) {
+func SessionUpdateHandlerFunc(redisClient redis.Cmdable, ipStackClient *IPStackClient) UDPHandlerFunc {
+	return func(w io.Writer, incoming *UDPPacket) {
 		// Deserialize the Session packet
 		var packet core.SessionUpdatePacket
-		if err := packet.UnmarshalBinary(data); err != nil {
+		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
 			log.Printf("failed to read server update packet: %v\n", err)
 			return
 		}
 
-		result := redisClient.Get("SERVER-" + from.String())
+		result := redisClient.Get("SERVER-" + incoming.SourceAddr.String())
 		if result.Err() != nil {
-			log.Fatalf("failed to get server entry from redis for '%s': %v", from.String(), result.Err())
+			log.Fatalf("failed to get server entry from redis for '%s': %v", incoming.SourceAddr.String(), result.Err())
 			return
 		}
 
 		serverdata, err := result.Bytes()
 		if err != nil {
-			log.Fatalf("failed to get server entry from redis for '%s': %v", from.String(), err)
+			log.Fatalf("failed to get server entry from redis for '%s': %v", incoming.SourceAddr.String(), err)
 			return
 		}
 
 		var serverentry ServerEntry
 		if err := serverentry.UnmarshalBinary(serverdata); err != nil {
-			log.Fatalf("failed to unmarshal server entry from redis for '%s': %v", from.String(), err)
+			log.Fatalf("failed to unmarshal server entry from redis for '%s': %v", incoming.SourceAddr.String(), err)
 			return
 		}
 
@@ -261,9 +293,33 @@ func SessionUpdateHandlerFunc(redisClient *redis.Client, ipStackClient *IPStackC
 		{
 			result := redisClient.Set(fmt.Sprintf("SESSION-%d", packet.SessionId), sessionentry, 0)
 			if result.Err() != nil {
-				log.Printf("failed to save session db entry for %s: %v", from.String(), result.Err())
+				log.Printf("failed to save session db entry for %s: %v", incoming.SourceAddr.String(), result.Err())
 				return
 			}
+		}
+
+		response := core.SessionResponsePacket{
+			ResponseType:         ResponseTypeContinue,
+			Sequence:             packet.Sequence,
+			SessionId:            packet.SessionId,
+			NumNearRelays:        3,
+			NearRelayIds:         []uint64{1, 2, 3},
+			NearRelayAddresses:   []net.UDPAddr{{IP: net.IPv4zero, Port: 10000}, {IP: net.IPv4zero, Port: 20000}, {IP: net.IPv4zero, Port: 30000}},
+			Multipath:            false,
+			NumTokens:            0,
+			Tokens:               make([]byte, 1),
+			ServerRoutePublicKey: serverentry.ServerRoutePublicKey,
+		}
+		response.Sign(serverentry.VersionMajor, serverentry.VersionMinor, serverentry.VersionPatch)
+
+		res, err := response.MarshalBinary()
+		if err != nil {
+			log.Printf("failed to marshal session response to '%s': %v", incoming.SourceAddr.String(), err)
+			return
+		}
+
+		if _, err := w.Write(res); err != nil {
+			log.Printf("failed to write session response to '%s': %v", incoming.SourceAddr.String(), err)
 		}
 	}
 }
