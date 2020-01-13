@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/alicebob/miniredis/v2"
+	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/transport"
 	"github.com/stretchr/testify/assert"
@@ -14,7 +16,8 @@ import (
 
 func TestServerUpdateHandlerFunc(t *testing.T) {
 	// Get an in-memory redis server and a client that is connected to it
-	redisServer, redisClient := NewTestRedis()
+	redisServer, _ := miniredis.Run()
+	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
 	// Create a ServerUpdatePacket and marshal it to binary so sent it into the UDP handler
 	packet := core.ServerUpdatePacket{
@@ -78,7 +81,8 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 }
 
 func TestSessionUpdateHandlerFunc(t *testing.T) {
-	redisServer, redisClient := NewTestRedis()
+	redisServer, _ := miniredis.Run()
+	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
 	// New IPStackClient that mocks a successful response
 	ipStackClient := transport.IPStackClient{

@@ -7,7 +7,7 @@ import (
 )
 
 type GeoClient struct {
-	RedisClient *redis.Client
+	RedisClient redis.Cmdable
 	Namespace   string
 }
 
@@ -23,6 +23,7 @@ func (c *GeoClient) Add(r Relay) error {
 
 func (c *GeoClient) RelaysWithin(lat float64, long float64, radius float64, uom string) ([]Relay, error) {
 	geoquery := redis.GeoRadiusQuery{
+		Radius:    radius,
 		Unit:      uom,
 		WithCoord: true,
 		Sort:      "ASC",
