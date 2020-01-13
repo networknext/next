@@ -10,8 +10,12 @@ package main
 import "C"
 
 import (
+	"runtime"
+	"io"
 	"encoding/binary"
 	"fmt"
+	"log"
+	"context"
 	"hash/fnv"
 	"io/ioutil"
 	"math"
@@ -286,8 +290,8 @@ func main() {
 		Conn:          connection,
 		MaxPacketSize: transport.DefaultMaxPacketSize,
 
-		ServerUpdateHandlerFunc: func(conn *net.UDPConn, data []byte, from *net.UDPAddr) {
-			readStream := core.CreateReadStream(data)
+		ServerUpdateHandlerFunc: func(w io.Writer, incoming *transport.UDPPacket) {
+			readStream := core.CreateReadStream(incoming.Data)
 
 			serverUpdate := &core.ServerUpdatePacket{}
 
@@ -297,11 +301,11 @@ func main() {
 			}
 
 			serverEntry := ServerEntry{}
-			serverEntry.address = from
+			serverEntry.address = incoming.SourceAddr
 			serverEntry.publicKey = serverUpdate.ServerRoutePublicKey
 			serverEntry.lastUpdate = time.Now().Unix()
 
-			key := string(from.String())
+			key := string(incoming.SourceAddr.String())
 
 			backend.mutex.Lock()
 			_, ok := backend.serverDatabase[key]
@@ -312,8 +316,8 @@ func main() {
 			backend.mutex.Unlock()
 		},
 
-		SessionUpdateHandlerFunc: func(conn *net.UDPConn, data []byte, from *net.UDPAddr) {
-			readStream := core.CreateReadStream(data)
+		SessionUpdateHandlerFunc: func(w io.Writer, incoming *transport.UDPPacket) {
+			readStream := core.CreateReadStream(incoming.Data)
 			sessionUpdate := &core.SessionUpdatePacket{}
 			if err := sessionUpdate.Serialize(readStream, NEXT_VERSION_MAJOR, NEXT_VERSION_MINOR, NEXT_VERSION_PATCH); err != nil {
 				fmt.Printf("error: failed to read server session update packet: %v\n", err)
@@ -321,15 +325,15 @@ func main() {
 			}
 
 			if sessionUpdate.FallbackToDirect {
-				fmt.Printf("error: fallback to direct %s\n", from)
+				fmt.Printf("error: fallback to direct %s\n", incoming.SourceAddr)
 				return
 			}
 
 			backend.mutex.RLock()
-			serverEntry, ok := backend.serverDatabase[string(from.String())]
+			serverEntry, ok := backend.serverDatabase[string(incoming.SourceAddr.String())]
 			backend.mutex.RUnlock()
 			if !ok {
-				fmt.Printf("error: could not find server %s\n", from)
+				fmt.Printf("error: could not find server %s\n", incoming.SourceAddr)
 				return
 			}
 
@@ -391,7 +395,6 @@ func main() {
 					NumTokens:            0,
 					Tokens:               nil,
 					ServerRoutePublicKey: serverEntry.publicKey,
-					Signature:            nil,
 				}
 
 				sessionEntry.route = nil
@@ -424,7 +427,7 @@ func main() {
 					publicKeys[1+i] = relayPublicKey
 				}
 
-				addresses[numNodes-1] = from
+				addresses[numNodes-1] = incoming.SourceAddr
 				publicKeys[numNodes-1] = serverEntry.publicKey
 
 				var tokens []byte
@@ -467,7 +470,6 @@ func main() {
 					NumTokens:            int32(numNodes),
 					Tokens:               tokens,
 					ServerRoutePublicKey: serverEntry.publicKey,
-					Signature:            nil,
 				}
 
 				sessionEntry.route = route
@@ -486,13 +488,7 @@ func main() {
 			backend.sessionDatabase[sessionUpdate.SessionId] = sessionEntry
 			backend.mutex.Unlock()
 
-			signResponseData := sessionResponse.GetSignData(NEXT_VERSION_MAJOR, NEXT_VERSION_MINOR, NEXT_VERSION_PATCH)
-
-			sessionResponse.Signature = core.CryptoSignCreate(signResponseData, core.BackendPrivateKey)
-			if sessionResponse.Signature == nil {
-				fmt.Printf("error: failed to sign session response packet")
-				return
-			}
+			sessionResponse.Sign(NEXT_VERSION_MAJOR, NEXT_VERSION_MINOR, NEXT_VERSION_PATCH)
 
 			writeStream, err := core.CreateWriteStream(NEXT_MAX_PACKET_BYTES)
 			if err != nil {
@@ -509,7 +505,7 @@ func main() {
 
 			responsePacketData := writeStream.GetData()[0:writeStream.GetBytesProcessed()]
 
-			_, err = connection.WriteToUDP(responsePacketData, from)
+			_, err = w.Write(responsePacketData)
 			if err != nil {
 				fmt.Printf("error: failed to send udp response: %v\n", err)
 				return
@@ -517,7 +513,9 @@ func main() {
 		},
 	}
 
-	mux.Start()
+	if err := mux.Start(context.Background(), runtime.NumCPU()); err != nil {
+		log.Fatalf("failed to start udp server: %v", err)
+	}
 }
 
 // -----------------------------------------------------------
