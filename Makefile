@@ -147,6 +147,7 @@ dev-relay-backend: ## runs a local relay backend
 
 .PHONY: dev-server-backend
 dev-server-backend: ## runs a local server backend
+	@export IPSTACK_ACCESS_KEY=2a3640e34301da9ab257c59243b0d7c6 ; \
 	$(GO) run cmd/server_backend/server_backend.go
 
 .PHONY: dev-backend
@@ -168,12 +169,6 @@ dev-client: build-client  ## runs a local client
 	export NEXT_DATACENTER=local ; \
 	export NEXT_CUSTOMER_PUBLIC_KEY=leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw== ;\
 	./dist/client
-
-.PHONY: build-optimizer
-build-optimizer: ## builds the optimizer binary
-	@printf "Building optimizer... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/optimizer ./cmd/optimizer/optimizer.go
-	@printf "done\n"
 
 .PHONY: build-relay
 build-relay: ## builds the relay
@@ -224,4 +219,4 @@ build-client: build-sdk ## builds the game client linking in the sdk shared libr
 	@printf "done\n"
 
 .PHONY: build-all
-build-all: build-optimizer build-relay-backend build-server-backend build-relay build-sdk-test build-tools ## builds everything
+build-all: build-relay-backend build-server-backend build-relay build-client build-server build-functional build-sdk-test build-soak-test build-tools ## builds everything

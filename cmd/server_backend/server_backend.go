@@ -8,9 +8,11 @@ package main
 import (
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
+	"time"
 
 	"github.com/alicebob/miniredis"
 	"github.com/go-redis/redis/v7"
@@ -44,6 +46,21 @@ func main() {
 		log.Printf("unable to connect to REDIS_HOST '%s', connected to in-memory redis %s", os.Getenv("REDIS_URL"), redisServer.Addr())
 	}
 
+	// Configure the IPStackClient used for IP lookups
+	var ipStackClient transport.IPStackClient
+	{
+		if os.Getenv("IPSTACK_ACCESS_KEY") == "" {
+			log.Fatal("IPSTACK_ACCESS_KEY environment variable is empty")
+		}
+
+		ipStackClient = transport.IPStackClient{
+			Client: &http.Client{
+				Timeout: time.Second,
+			},
+			AccessKey: os.Getenv("IPSTACK_ACCESS_KEY"),
+		}
+	}
+
 	{
 		addr := net.UDPAddr{
 			Port: int(port),
@@ -60,7 +77,7 @@ func main() {
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
 			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(redisClient),
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(redisClient),
+			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(redisClient, &ipStackClient),
 		}
 
 		if err := mux.Start(); err != nil {
