@@ -112,10 +112,10 @@ func TestRelayDatabase(t *testing.T) {
 
 func TestGetRelayId(t *testing.T) {
 	t.Run("returns the hash of the supplied value", func(t *testing.T) {
-		duplicateFunction := func(value string) core.RelayId {
+		duplicateFunction := func(value string) uint64 {
 			hash := fnv.New64a()
 			hash.Write([]byte(value))
-			return core.RelayId(hash.Sum64())
+			return hash.Sum64()
 		}
 
 		value := "127.0.0.1"

@@ -260,7 +260,7 @@ func TestStatsDatabase(t *testing.T) {
 
 			// assert each entry in the relay db is present in the cost matrix
 			for _, relay := range relaydb.Relays {
-				assert.Contains(t, costMatrix.RelayIds, relay.ID)
+				assert.Contains(t, costMatrix.RelayIds, core.RelayId(relay.ID))
 				assert.Contains(t, costMatrix.RelayNames, relay.Name)
 				assert.Contains(t, costMatrix.RelayPublicKeys, relay.PublicKey)
 			}
@@ -284,7 +284,7 @@ func TestStatsDatabase(t *testing.T) {
 				// assert the datacenter id -> relay ids mapping contains the actual ids
 				// i + 1 because in the first for loop each datacenter id is reset as i which is > 0
 				for _, relayID := range validRelayIDs {
-					assert.Contains(t, costMatrix.DatacenterRelays[core.DatacenterId(i+1)], relayID)
+					assert.Contains(t, costMatrix.DatacenterRelays[core.DatacenterId(i+1)], core.RelayId(relayID))
 				}
 			}
 
