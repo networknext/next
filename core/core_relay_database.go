@@ -6,7 +6,7 @@ import (
 )
 
 type RelayUpdate struct {
-	Id             RelayId
+	ID             RelayId
 	Name           string
 	Address        string
 	Datacenter     DatacenterId
@@ -16,7 +16,7 @@ type RelayUpdate struct {
 }
 
 type RelayData struct {
-	Id             RelayId
+	ID             RelayId
 	Name           string
 	Address        string
 	Datacenter     DatacenterId
@@ -35,14 +35,15 @@ func NewRelayDatabase() *RelayDatabase {
 	return database
 }
 
+// UpdateRelay updates the relay who's id is within the update data
 func (database *RelayDatabase) UpdateRelay(update *RelayUpdate) bool {
-	id := update.Id
+	id := update.ID
 	if update.Shutdown == true {
 		delete(database.Relays, id)
 		return false
 	}
 	relayData, relayExistedAlready := database.Relays[id]
-	relayData.Id = update.Id
+	relayData.ID = update.ID
 	relayData.Name = update.Name
 	relayData.Address = update.Address
 	relayData.PublicKey = update.PublicKey
@@ -53,26 +54,29 @@ func (database *RelayDatabase) UpdateRelay(update *RelayUpdate) bool {
 	return !relayExistedAlready
 }
 
+// CheckForTimeouts loops over all relays and if any exceed the timout then they are removed
 func (database *RelayDatabase) CheckForTimeouts(timeoutSeconds int) []RelayId {
 	disconnected := make([]RelayId, 0)
 	currentTime := uint64(time.Now().Unix())
 	for k, v := range database.Relays {
 		if v.LastUpdateTime+uint64(timeoutSeconds) <= currentTime {
-			disconnected = append(disconnected, v.Id)
+			disconnected = append(disconnected, v.ID)
 			delete(database.Relays, k)
 		}
 	}
 	return disconnected
 }
 
+// MakeCopy makes a new relay database whose contents are identical to the calling db
 func (database *RelayDatabase) MakeCopy() *RelayDatabase {
-	database_copy := NewRelayDatabase()
+	databaseCopy := NewRelayDatabase()
 	for k, v := range database.Relays {
-		database_copy.Relays[k] = v
+		databaseCopy.Relays[k] = v
 	}
-	return database_copy
+	return databaseCopy
 }
 
+// GetRelayId hashes the name of the relay and returns the result. Typically name is the address of the relay
 func GetRelayID(name string) RelayId {
 	hash := fnv.New64a()
 	hash.Write([]byte(name))
