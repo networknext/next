@@ -4,13 +4,14 @@ import (
 	"sync"
 
 	"github.com/networknext/backend/core"
+	"github.com/networknext/backend/routing"
 )
 
 type StubbedBackend struct {
 	mutex           sync.RWMutex
 	dirty           bool
 	mode            int
-	relayDatabase   map[string]RelayEntry
+	relayDatabase   map[string]routing.Relay
 	serverDatabase  map[string]ServerEntry
 	sessionDatabase map[uint64]SessionEntry
 	statsDatabase   *core.StatsDatabase
@@ -23,7 +24,7 @@ type StubbedBackend struct {
 
 func NewStubbedBackend() *StubbedBackend {
 	backend := new(StubbedBackend)
-	backend.relayDatabase = make(map[string]RelayEntry)
+	backend.relayDatabase = make(map[string]routing.Relay)
 	backend.serverDatabase = make(map[string]ServerEntry)
 	backend.sessionDatabase = make(map[uint64]SessionEntry)
 	backend.statsDatabase = new(core.StatsDatabase)

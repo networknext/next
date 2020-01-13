@@ -35,11 +35,20 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 	assert.NoError(t, err)
 
+	// Create an in-memory buffer to give to the hander since it implements io.Writer
+	var buf bytes.Buffer
+
+	// Create a UDPPacket for the handler
+	incoming := transport.UDPPacket{
+		SourceAddr: addr,
+		Data:       data,
+	}
+
 	// Initialize the UDP handler with the required redis client
 	handler := transport.ServerUpdateHandlerFunc(redisClient)
 
 	// Invoke the handler with the data packet and address it is coming from
-	handler(nil, data, addr)
+	handler(&buf, &incoming)
 
 	// Get the server entry directly from the in-memory redis and assert there is no error
 	ds, err := redisServer.Get("SERVER-0.0.0.0:13")
@@ -64,6 +73,8 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 
 	// Finally compare both ServerEntry struct to ensure we saved the right data in redis
 	assert.Equal(t, expected, actual)
+
+	assert.Equal(t, 0, buf.Len())
 }
 
 func TestSessionUpdateHandlerFunc(t *testing.T) {
@@ -92,7 +103,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 		}),
 	}
 
-	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
+	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:12345")
 	assert.NoError(t, err)
 
 	// Create a ServerEntry to put into redis for a SessionUpdate to read
@@ -108,7 +119,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Set the ServerEntry in redis
-	err = redisServer.Set("SERVER-0.0.0.0:13", string(serverdata))
+	err = redisServer.Set("SERVER-0.0.0.0:12345", string(serverdata))
 	assert.NoError(t, err)
 
 	// Create an incoming SessionUpdatePacket for the handler
@@ -162,9 +173,15 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 	data, err := packet.MarshalBinary()
 	assert.NoError(t, err)
 
+	var buf bytes.Buffer
+	incoming := transport.UDPPacket{
+		SourceAddr: addr,
+		Data:       data,
+	}
+
 	// Create and invoke the handler with the packet and from addr
 	handler := transport.SessionUpdateHandlerFunc(redisClient, &ipStackClient)
-	handler(nil, data, addr)
+	handler(&buf, &incoming)
 
 	// Get the SessionEntry from redis based on the SessionUpdatePacket.Sequence number
 	ds, err := redisServer.Get("SESSION-13")
@@ -222,4 +239,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 
 	// Finally compare that the SessionUpdatePacket created the right SessionEntry in redis
 	assert.Equal(t, expected, actual)
+
+	// Need to test the buf SessionResponsePacket
+	// log.Fatal(buf.Bytes())
 }
