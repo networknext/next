@@ -37,14 +37,20 @@ func putUpdateRelayAddress(buff []byte, address string) {
 	copy(buff[offset+4:], address)
 }
 
-func putPingStats(buff []byte, count uint64, addressLength int) {
+// doesn't actually insert anything
+func putStubbedPingStats(buff []byte, addressLength int, count uint64) {
+	offset := sizeOfUpdateRequestVersion + 4 + addressLength + sizeOfRelayToken
+	binary.LittleEndian.PutUint64(buff[offset:], count)
+}
+
+func putPingStats(buff []byte, addressLength int, addrs ...string) {
 	offset := sizeOfUpdateRequestVersion + 4 + addressLength + sizeOfRelayToken
 
-	binary.LittleEndian.PutUint64(buff[offset:], count)
+	binary.LittleEndian.PutUint64(buff[offset:], uint64(len(addrs)))
 	offset += 4
 
-	for i := 0; i < int(count); i++ {
-		id := uint64(i)
+	for _, addr := range addrs {
+		id := core.GetRelayID(addr)
 		rtt := rand.Float32()
 		jitter := rand.Float32()
 		packetLoss := rand.Float32()
@@ -139,7 +145,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 		buff := make([]byte, sizeOfUpdateRequestVersion+4+len(addr)+sizeOfRelayToken+sizeOfNumberOfRelays+numRelays*sizeOfRelayPingStat)
 		putUpdateRequestVersion(buff)
 		putUpdateRelayAddress(buff, addr)
-		putPingStats(buff, uint64(numRelays), len(addr))
+		putStubbedPingStats(buff, len(addr), uint64(numRelays))
 		relayUpdateAssertions(t, buff, http.StatusBadRequest, nil, nil)
 	})
 
@@ -149,20 +155,21 @@ func TestRelayUpdateHandler(t *testing.T) {
 		buff := make([]byte, sizeOfUpdateRequestVersion+4+len(addr)+sizeOfRelayToken+sizeOfNumberOfRelays+numRelays*sizeOfRelayPingStat)
 		putUpdateRequestVersion(buff)
 		putUpdateRelayAddress(buff, addr)
-		putPingStats(buff, uint64(numRelays), len(addr))
+		putStubbedPingStats(buff, len(addr), uint64(numRelays))
 		relayUpdateAssertions(t, buff, http.StatusNotFound, nil, nil)
 	})
 
 	t.Run("valid", func(t *testing.T) {
 		redisServer, redisClient := NewTestRedis()
-		numRelays := 3
+		numRelays := 4
 		addr := "127.0.0.1"
 		buff := make([]byte, sizeOfUpdateRequestVersion+4+len(addr)+sizeOfRelayToken+sizeOfNumberOfRelays+numRelays*sizeOfRelayPingStat)
 		putUpdateRequestVersion(buff)
 		putUpdateRelayAddress(buff, addr)
-		putPingStats(buff, uint64(numRelays), len(addr))
 
 		testAddrs := []string{"127.0.0.2", "127.0.0.3", "127.0.0.4", "127.0.0.5"}
+		putPingStats(buff, len(addr), testAddrs...)
+
 		seedRedis(redisServer, testAddrs)
 
 		entry := transport.RelayData{
@@ -193,6 +200,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 		assert.Equal(t, entry.PublicKey, actual.PublicKey)
 		assert.NotEqual(t, entry.LastUpdateTime, actual.LastUpdateTime)
 
+		// response assertions
 		header := recorder.Header()
 		contentType, _ := header["Content-Type"]
 		assert.Equal(t, "application/octet-stream", contentType[0])
