@@ -22,7 +22,7 @@ type RelayStatsUpdate struct {
 	PingStats []RelayStatsPing
 }
 
-// StatsEntryRelay is a entry for relay stats in the stats db
+// StatsEntryRelay is an entry for relay stats in the stats db
 type StatsEntryRelay struct {
 	rtt               float32
 	jitter            float32
@@ -33,7 +33,7 @@ type StatsEntryRelay struct {
 	packetLossHistory [HistorySize]float32
 }
 
-// StatsEntry is a entry in the stats db
+// StatsEntry is an entry in the stats db
 type StatsEntry struct {
 	relays map[uint64]*StatsEntryRelay
 }
