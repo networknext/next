@@ -8,9 +8,11 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/core"
+	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/transport"
 	"github.com/stretchr/testify/assert"
 )
@@ -22,22 +24,22 @@ const (
 	sizeOfEncryptedToken     = 32 + 16 // global + value of MACBYTES
 )
 
-// Returns the writer as a means to read the data that the writer contains
-func relayInitAssertions(t *testing.T, body []byte, expectedCode int, redisClient *redis.Client) http.ResponseWriter {
+// Returns the recorder as a means to read the data that the recorder contains
+func relayInitAssertions(t *testing.T, body []byte, expectedCode int, redisClient *redis.Client) *httptest.ResponseRecorder {
 	if redisClient == nil {
 		_, redisClient = NewTestRedis()
 	}
 
-	writer := httptest.NewRecorder()
+	recorder := httptest.NewRecorder()
 	request, _ := http.NewRequest("POST", "/relay_init", bytes.NewBuffer(body))
 
 	handler := transport.RelayInitHandlerFunc(redisClient)
 
-	handler(writer, request)
+	handler(recorder, request)
 
-	assert.Equal(t, expectedCode, writer.Code)
+	assert.Equal(t, expectedCode, recorder.Code)
 
-	return writer
+	return recorder
 }
 
 func putInitRequestMagic(buff []byte) {
@@ -140,30 +142,49 @@ func TestRelayInitHandler(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		_, redisClient := NewTestRedis()
 		addr := "127.0.0.1"
+		before := uint64(time.Now().Unix())
 		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+sizeOfNonceBytes+4+len(addr)+sizeOfEncryptedToken)
 		putInitRequestMagic(buff)
 		putInitRequestVersion(buff)
 		putInitRelayAddress(buff, addr)
-		writer := relayInitAssertions(t, buff, http.StatusOK, redisClient)
-		header := writer.Header()
+		recorder := relayInitAssertions(t, buff, http.StatusOK, redisClient)
+
+		header := recorder.Header()
 		contentType, _ := header["Content-Type"]
-		assert.Equal(t, "application/octet-stream", contentType[0])
 		expected := transport.RelayData{
-			ID:        core.GetRelayID(addr),
-			Name:      addr,
-			Address:   addr,
-			PublicKey: core.RandomBytes(transport.LengthOfRelayToken),
+			ID:      core.GetRelayID(addr),
+			Name:    addr,
+			Address: addr,
 		}
 
-		resp := redisClient.HGet(transport.RedisHashName, transport.IDToKey(core.GetRelayID(addr)))
-		assert.Truef(t, resp.Err() == nil || resp.Err() == redis.Nil, "test response had error: %v", resp.Err())
+		resp := redisClient.HGet(transport.RedisHashName, transport.IDToRedisKey(core.GetRelayID(addr)))
+
 		var actual transport.RelayData
 		bin, _ := resp.Bytes()
 		actual.UnmarshalBinary(bin)
+
+		indx := 0
+		body := recorder.Body.Bytes()
+
+		var version uint32
+		encoding.ReadUint32(body, &indx, &version)
+
+		var timestamp uint64
+		encoding.ReadUint64(body, &indx, &timestamp)
+
+		var publicKey []byte
+		encoding.ReadBytes(body, &indx, &publicKey, transport.LengthOfRelayToken)
+
+		assert.Equal(t, "application/octet-stream", contentType[0])
+		assert.Equal(t, transport.VersionNumberInitResponse, int(version))
+		assert.LessOrEqual(t, before, timestamp)
+		assert.GreaterOrEqual(t, uint64(time.Now().Unix()), timestamp)
+		assert.Equal(t, actual.PublicKey, publicKey) // entry gets a public key assigned at init which is returned in the response
+
 		assert.Equal(t, expected.ID, actual.ID)
 		assert.Equal(t, expected.Name, actual.Name)
 		assert.Equal(t, expected.Address, actual.Address)
 		assert.NotZero(t, actual.LastUpdateTime)
-		assert.Len(t, actual.PublicKey, len(expected.PublicKey))
+		assert.Len(t, actual.PublicKey, 32)
 	})
 }

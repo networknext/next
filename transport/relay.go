@@ -4,6 +4,7 @@ import (
 	"errors"
 	"math"
 
+	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/encoding"
 )
 
@@ -16,6 +17,16 @@ type RelayData struct {
 	DatacenterName string
 	PublicKey      []byte
 	LastUpdateTime uint64
+}
+
+func NewRelayData(addr string) *RelayData {
+	relay := new(RelayData)
+	relay.ID = core.GetRelayID(addr)
+	relay.Name = addr
+	relay.Address = addr
+	relay.PublicKey = make([]byte, 32)
+
+	return relay
 }
 
 func (r *RelayData) UnmarshalBinary(data []byte) error {

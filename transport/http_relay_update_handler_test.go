@@ -9,9 +9,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
+	"github.com/alicebob/miniredis/v2"
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/core"
+	"github.com/networknext/backend/encoding"
 
 	"github.com/networknext/backend/transport"
 	"github.com/stretchr/testify/assert"
@@ -58,7 +61,21 @@ func putPingStats(buff []byte, count uint64, addressLength int) {
 	}
 }
 
-func relayUpdateAssertions(t *testing.T, body []byte, expectedCode int, redisClient *redis.Client, statsdb *core.StatsDatabase) http.ResponseWriter {
+func seedRedis(redisServer *miniredis.Miniredis) {
+	addEntry := func(addr string) {
+		relay := transport.NewRelayData(addr)
+		bin, _ := relay.MarshalBinary()
+		redisServer.HSet(transport.RedisHashName, transport.IDToRedisKey(relay.ID), string(bin))
+	}
+
+	addEntry("127.0.0.1")
+	addEntry("127.0.0.2")
+	addEntry("127.0.0.3")
+	addEntry("127.0.0.4")
+	addEntry("127.0.0.5")
+}
+
+func relayUpdateAssertions(t *testing.T, body []byte, expectedCode int, redisClient *redis.Client, statsdb *core.StatsDatabase) *httptest.ResponseRecorder {
 	if redisClient == nil {
 		_, redisClient = NewTestRedis()
 	}
@@ -67,16 +84,16 @@ func relayUpdateAssertions(t *testing.T, body []byte, expectedCode int, redisCli
 		statsdb = core.NewStatsDatabase()
 	}
 
-	writer := httptest.NewRecorder()
+	recorder := httptest.NewRecorder()
 	request, _ := http.NewRequest("POST", "/relay_update", bytes.NewBuffer(body))
 
 	handler := transport.RelayUpdateHandlerFunc(redisClient, statsdb)
 
-	handler(writer, request)
+	handler(recorder, request)
 
-	assert.Equal(t, expectedCode, writer.Code)
+	assert.Equal(t, expectedCode, recorder.Code)
 
-	return writer
+	return recorder
 }
 
 func TestRelayUpdateHandler(t *testing.T) {
@@ -136,5 +153,64 @@ func TestRelayUpdateHandler(t *testing.T) {
 		putUpdateRelayAddress(buff, addr)
 		putPingStats(buff, uint64(numRelays), len(addr))
 		relayUpdateAssertions(t, buff, http.StatusNotFound, nil, nil)
+	})
+
+	t.Run("valid", func(t *testing.T) {
+		redisServer, redisClient := NewTestRedis()
+		numRelays := 3
+		addr := "127.0.0.1"
+		buff := make([]byte, sizeOfUpdateRequestVersion+4+len(addr)+sizeOfRelayToken+sizeOfNumberOfRelays+numRelays*sizeOfRelayPingStat)
+		putUpdateRequestVersion(buff)
+		putUpdateRelayAddress(buff, addr)
+		putPingStats(buff, uint64(numRelays), len(addr))
+		seedRedis(redisServer)
+
+		entry := transport.RelayData{
+			ID:             core.GetRelayID(addr),
+			Name:           addr,
+			Address:        addr,
+			Datacenter:     1,
+			DatacenterName: "some name",
+			PublicKey:      make([]byte, transport.LengthOfRelayToken),
+			LastUpdateTime: uint64(time.Now().Unix() - 1),
+		}
+
+		raw, _ := entry.MarshalBinary()
+		redisServer.HSet(transport.RedisHashName, transport.IDToRedisKey(core.GetRelayID(addr)), string(raw))
+
+		recorder := relayUpdateAssertions(t, buff, http.StatusOK, redisClient, nil)
+
+		res := redisClient.HGet(transport.RedisHashName, transport.IDToRedisKey(core.GetRelayID(addr)))
+		var actual transport.RelayData
+		raw, _ = res.Bytes()
+		actual.UnmarshalBinary(raw)
+
+		assert.Equal(t, entry.ID, actual.ID)
+		assert.Equal(t, entry.Name, actual.Name)
+		assert.Equal(t, entry.Address, actual.Address)
+		assert.Equal(t, entry.Datacenter, actual.Datacenter)
+		assert.Equal(t, entry.DatacenterName, actual.DatacenterName)
+		assert.Equal(t, entry.PublicKey, actual.PublicKey)
+		assert.NotEqual(t, entry.LastUpdateTime, actual.LastUpdateTime)
+
+		header := recorder.Header()
+		contentType, _ := header["Content-Type"]
+		assert.Equal(t, "application/octet-stream", contentType[0])
+
+		indx := 0
+		body := recorder.Body.Bytes()
+
+		var version uint32
+		encoding.ReadUint32(body, &indx, &version)
+
+		var numRelaysToPing uint32
+		encoding.ReadUint32(body, &indx, &numRelaysToPing)
+
+		//relaysToPingIDs := make([]uint64, 0)
+		//relaysToPingAddrs := make([]string, 0)
+
+		for i := 0; uint32(i) < numRelaysToPing; i++ {
+
+		}
 	})
 }

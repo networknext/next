@@ -1,22 +1,18 @@
 package transport
 
-// #cgo pkg-config: libsodium
-// #include <sodium.h>
-import "C"
-
 import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"time"
 	"strconv"
+	"time"
 
+	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
-	"github.com/go-redis/redis/v7"
 )
 
 const (
@@ -32,7 +28,7 @@ const (
 	VersionNumberUpdateRequest  = 0
 	VersionNumberUpdateResponse = 0
 
-	RedisHashName = "ALL_RELAYS"
+	RedisHashName     = "ALL_RELAYS"
 	RedisHashKeyStart = "RELAY-"
 )
 
@@ -43,7 +39,7 @@ var gRelayPublicKey = []byte{
 	0xda, 0xa9, 0xc0, 0xae, 0x08, 0xa2, 0xcf, 0x5e,
 }
 
-func IDToKey(id uint64) string {
+func IDToRedisKey(id uint64) string {
 	return RedisHashKeyStart + strconv.FormatUint(id, 10)
 }
 
@@ -97,7 +93,7 @@ func RelayInitHandlerFunc(redisClient *redis.Client) func(writer http.ResponseWr
 		key := core.GetRelayID(relayInitPacket.Address)
 
 		// _, relayAlreadyExists := relaydb.Relays[key]
-		exists := redisClient.HExists(RedisHashName, IDToKey(key))
+		exists := redisClient.HExists(RedisHashName, IDToRedisKey(key))
 
 		if exists.Err() != nil && exists.Err() != redis.Nil {
 			log.Printf("failed to get relay %s from redis: %v", relayInitPacket.Address, exists.Err())
@@ -112,15 +108,15 @@ func RelayInitHandlerFunc(redisClient *redis.Client) func(writer http.ResponseWr
 		}
 
 		entry := RelayData{
-			Name: relayInitPacket.Address,
-			ID: key,
-			Address: relayInitPacket.Address, //core.ParseAddress(relayInitPacket.address)
+			Name:           relayInitPacket.Address,
+			ID:             key,
+			Address:        relayInitPacket.Address, //core.ParseAddress(relayInitPacket.address)
 			LastUpdateTime: uint64(time.Now().Unix()),
-			PublicKey: core.RandomBytes(LengthOfRelayToken),
+			PublicKey:      core.RandomBytes(LengthOfRelayToken),
 		}
 
 		//relaydb.Relays[entry.Id] = entry
-		res := redisClient.HSet(RedisHashName, IDToKey(key), entry)
+		res := redisClient.HSet(RedisHashName, IDToRedisKey(key), entry)
 
 		if res.Err() != nil && res.Err() != redis.Nil {
 			log.Printf("failed to set relay %s into redis hash: %v", relayInitPacket.Address, res.Err())
@@ -165,7 +161,7 @@ func RelayUpdateHandlerFunc(redisClient *redis.Client, statsdb *core.StatsDataba
 
 		key := core.GetRelayID(relayUpdatePacket.Address)
 		//entry, ok := relaydb.Relays[key]
-		redisKey := IDToKey(key)
+		redisKey := IDToRedisKey(key)
 		var entry RelayData
 		found := false
 
@@ -191,7 +187,7 @@ func RelayUpdateHandlerFunc(redisClient *redis.Client, statsdb *core.StatsDataba
 				return
 			}
 
-			if  err = entry.UnmarshalBinary(data); err != nil {
+			if err = entry.UnmarshalBinary(data); err != nil {
 				log.Printf("failed to marshal data into struct: %v", err)
 				writer.WriteHeader(http.StatusInternalServerError)
 				return
@@ -216,13 +212,7 @@ func RelayUpdateHandlerFunc(redisClient *redis.Client, statsdb *core.StatsDataba
 
 		statsdb.ProcessStats(statsUpdate)
 
-		entry = RelayData{
-			Name:           relayUpdatePacket.Address,
-			ID:             core.GetRelayID(relayUpdatePacket.Address),
-			Address:        relayUpdatePacket.Address,
-			LastUpdateTime: uint64(time.Now().Unix()),
-			PublicKey:      relayUpdatePacket.Token,
-		}
+		entry.LastUpdateTime = uint64(time.Now().Unix())
 
 		type RelayPingData struct {
 			id      uint64
@@ -263,11 +253,9 @@ func RelayUpdateHandlerFunc(redisClient *redis.Client, statsdb *core.StatsDataba
 
 		responseLength := index
 
-		responseData = responseData[:responseLength]
-
 		writer.Header().Set("Content-Type", "application/octet-stream")
 
-		writer.Write(responseData)
+		writer.Write(responseData[:responseLength])
 	}
 }
 
