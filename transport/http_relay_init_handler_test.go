@@ -24,7 +24,6 @@ const (
 	sizeOfEncryptedToken     = 32 + 16 // global + value of MACBYTES
 )
 
-// Returns the recorder as a means to read the data that the recorder contains
 func relayInitAssertions(t *testing.T, body []byte, expectedCode int, redisClient *redis.Client) *httptest.ResponseRecorder {
 	if redisClient == nil {
 		_, redisClient = NewTestRedis()

@@ -15,7 +15,6 @@ import (
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/encoding"
-
 	"github.com/networknext/backend/transport"
 	"github.com/stretchr/testify/assert"
 )
