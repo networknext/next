@@ -22,7 +22,7 @@ func (r *RelayData) UnmarshalBinary(data []byte) error {
 	index := 0
 	if !(encoding.ReadUint64(data, &index, &r.ID) &&
 		encoding.ReadString(data, &index, &r.Name, math.MaxInt32) && // TODO define a actual limit on this
-		encoding.ReadString(data, &index, &r.Address, math.MaxInt32) && // and this
+		encoding.ReadString(data, &index, &r.Address, math.MaxInt32) && // and this, probably something like 15?
 		encoding.ReadUint64(data, &index, &r.Datacenter) &&
 		encoding.ReadString(data, &index, &r.DatacenterName, math.MaxInt32) &&
 		encoding.ReadBytes(data, &index, &r.PublicKey, LengthOfRelayToken) &&
@@ -33,11 +33,10 @@ func (r *RelayData) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
-func (r *RelayData) MarshalBinary(data []byte) error {
+func (r RelayData) MarshalBinary() (data []byte, err error) {
 	length := 8 + 4 + len(r.Name) + 4 + len(r.Address) + 8 + 4 + len(r.DatacenterName) + len(r.PublicKey) + 8
-	if len(data) < length {
-		return errors.New("Length of buffer is too small")
-	}
+
+	data = make([]byte, length)
 
 	index := 0
 	encoding.WriteUint64(data, &index, r.ID)
@@ -48,5 +47,5 @@ func (r *RelayData) MarshalBinary(data []byte) error {
 	encoding.WriteBytes(data, &index, r.PublicKey, LengthOfRelayToken)
 	encoding.WriteUint64(data, &index, r.LastUpdateTime)
 
-	return nil
+	return data, err
 }

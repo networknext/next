@@ -3,6 +3,7 @@ package transport_test
 import (
 	"bytes"
 	"encoding/binary"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -56,6 +57,7 @@ func putInitRequestVersion(buff []byte) {
 }
 
 func TestRelayInitHandler(t *testing.T) {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	t.Run("missing magic number", func(t *testing.T) {
 		buff := make([]byte, 0)
 		relayInitAssertions(t, buff, http.StatusBadRequest, nil)
@@ -125,9 +127,7 @@ func TestRelayInitHandler(t *testing.T) {
 			LastUpdateTime: 1234,
 		}
 
-		length := 8 + 4 + len(name) + 4 + len(addr) + 8 + 4 + len(dcname) + len(pubkey) + 8
-		data := make([]byte, length)
-		entry.MarshalBinary(data)
+		data, _ := entry.MarshalBinary()
 		redisServer, redisClient := NewTestRedis()
 		redisServer.HSet(transport.RedisHashName, transport.RedisHashKeyStart+strconv.FormatUint(entry.ID, 10), string(data))
 		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+sizeOfNonceBytes+4+len(addr)+sizeOfEncryptedToken)
@@ -138,14 +138,32 @@ func TestRelayInitHandler(t *testing.T) {
 	})
 
 	t.Run("valid", func(t *testing.T) {
+		_, redisClient := NewTestRedis()
 		addr := "127.0.0.1"
 		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+sizeOfNonceBytes+4+len(addr)+sizeOfEncryptedToken)
 		putInitRequestMagic(buff)
 		putInitRequestVersion(buff)
 		putInitRelayAddress(buff, addr)
-		writer := relayInitAssertions(t, buff, http.StatusOK, nil)
+		writer := relayInitAssertions(t, buff, http.StatusOK, redisClient)
 		header := writer.Header()
 		contentType, _ := header["Content-Type"]
 		assert.Equal(t, "application/octet-stream", contentType[0])
+		expected := transport.RelayData{
+			ID:        core.GetRelayID(addr),
+			Name:      addr,
+			Address:   addr,
+			PublicKey: core.RandomBytes(transport.LengthOfRelayToken),
+		}
+
+		resp := redisClient.HGet(transport.RedisHashName, transport.IDToKey(core.GetRelayID(addr)))
+		assert.Truef(t, resp.Err() == nil || resp.Err() == redis.Nil, "test response had error: %v", resp.Err())
+		var actual transport.RelayData
+		bin, _ := resp.Bytes()
+		actual.UnmarshalBinary(bin)
+		assert.Equal(t, expected.ID, actual.ID)
+		assert.Equal(t, expected.Name, actual.Name)
+		assert.Equal(t, expected.Address, actual.Address)
+		assert.NotZero(t, actual.LastUpdateTime)
+		assert.Len(t, actual.PublicKey, len(expected.PublicKey))
 	})
 }

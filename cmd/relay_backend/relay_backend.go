@@ -18,6 +18,7 @@ import (
 )
 
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	statsdb := core.NewStatsDatabase()
 	backend := transport.NewStubbedBackend()
 	port := os.Getenv("NN_PORT")

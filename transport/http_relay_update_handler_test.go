@@ -3,12 +3,15 @@ package transport_test
 import (
 	"bytes"
 	"encoding/binary"
-	"github.com/networknext/backend/core"
+	"log"
 	"math"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/go-redis/redis/v7"
+	"github.com/networknext/backend/core"
 
 	"github.com/networknext/backend/transport"
 	"github.com/stretchr/testify/assert"
@@ -55,9 +58,9 @@ func putPingStats(buff []byte, count uint64, addressLength int) {
 	}
 }
 
-func relayUpdateAssertions(t *testing.T, body []byte, expectedCode int, relaydb *core.RelayDatabase, statsdb *core.StatsDatabase) http.ResponseWriter {
-	if relaydb == nil {
-		relaydb = core.NewRelayDatabase()
+func relayUpdateAssertions(t *testing.T, body []byte, expectedCode int, redisClient *redis.Client, statsdb *core.StatsDatabase) http.ResponseWriter {
+	if redisClient == nil {
+		_, redisClient = NewTestRedis()
 	}
 
 	if statsdb == nil {
@@ -67,7 +70,7 @@ func relayUpdateAssertions(t *testing.T, body []byte, expectedCode int, relaydb 
 	writer := httptest.NewRecorder()
 	request, _ := http.NewRequest("POST", "/relay_update", bytes.NewBuffer(body))
 
-	handler := transport.RelayUpdateHandlerFunc(relaydb, statsdb)
+	handler := transport.RelayUpdateHandlerFunc(redisClient, statsdb)
 
 	handler(writer, request)
 
@@ -77,6 +80,7 @@ func relayUpdateAssertions(t *testing.T, body []byte, expectedCode int, relaydb 
 }
 
 func TestRelayUpdateHandler(t *testing.T) {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	t.Run("missing request version", func(t *testing.T) {
 		buff := make([]byte, 0)
 		relayUpdateAssertions(t, buff, http.StatusBadRequest, nil, nil)

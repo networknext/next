@@ -43,6 +43,10 @@ var gRelayPublicKey = []byte{
 	0xda, 0xa9, 0xc0, 0xae, 0x08, 0xa2, 0xcf, 0x5e,
 }
 
+func IDToKey(id uint64) string {
+	return RedisHashKeyStart + strconv.FormatUint(id, 10)
+}
+
 // NewRouter creates a router with the specified endpoints
 func NewRouter(redisClient *redis.Client, statsdb *core.StatsDatabase, backend *StubbedBackend) *mux.Router {
 	router := mux.NewRouter()
@@ -93,8 +97,9 @@ func RelayInitHandlerFunc(redisClient *redis.Client) func(writer http.ResponseWr
 		key := core.GetRelayID(relayInitPacket.Address)
 
 		// _, relayAlreadyExists := relaydb.Relays[key]
-		exists := redisClient.HExists(RedisHashName, RedisHashKeyStart + strconv.FormatUint(uint64(key), 10))
-		if exists.Err() != redis.Nil {
+		exists := redisClient.HExists(RedisHashName, IDToKey(key))
+
+		if exists.Err() != nil && exists.Err() != redis.Nil {
 			log.Printf("failed to get relay %s from redis: %v", relayInitPacket.Address, exists.Err())
 			writer.WriteHeader(http.StatusNotFound)
 			return
@@ -115,7 +120,13 @@ func RelayInitHandlerFunc(redisClient *redis.Client) func(writer http.ResponseWr
 		}
 
 		//relaydb.Relays[entry.Id] = entry
-		redisClient.HSet(RedisHashName, RedisHashKeyStart + strconv.FormatUint(uint64(key), 10), entry)
+		res := redisClient.HSet(RedisHashName, IDToKey(key), entry)
+
+		if res.Err() != nil && res.Err() != redis.Nil {
+			log.Printf("failed to set relay %s into redis hash: %v", relayInitPacket.Address, res.Err())
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 
 		writer.Header().Set("Content-Type", "application/octet-stream")
 
@@ -154,14 +165,19 @@ func RelayUpdateHandlerFunc(redisClient *redis.Client, statsdb *core.StatsDataba
 
 		key := core.GetRelayID(relayUpdatePacket.Address)
 		//entry, ok := relaydb.Relays[key]
-		redisKey := RedisHashKeyStart + strconv.FormatUint(uint64(key), 10)
-		exists := redisClient.HExists(RedisHashName, redisKey)
+		redisKey := IDToKey(key)
 		var entry RelayData
 		found := false
 
+		exists := redisClient.HExists(RedisHashName, redisKey)
+
+		if exists.Err() != nil && exists.Err() != redis.Nil {
+			log.Printf("failed to check if relay %s exists: %v", relayUpdatePacket.Address, exists.Err())
+		}
+
 		if exists.Val() {
 			result := redisClient.HGet(RedisHashName, redisKey)
-			if result.Err() != redis.Nil {
+			if result.Err() != nil && result.Err() != redis.Nil {
 				log.Printf("failed to get relay %s from redis: %v", relayUpdatePacket.Address, result.Err())
 				writer.WriteHeader(http.StatusNotFound)
 				return
@@ -169,13 +185,13 @@ func RelayUpdateHandlerFunc(redisClient *redis.Client, statsdb *core.StatsDataba
 
 			data, err := result.Bytes()
 
-			if err != redis.Nil {
+			if err != nil && err != redis.Nil {
 				log.Printf("failed to get bytes from redis: %v", result.Err())
 				writer.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 
-			if err = entry.MarshalBinary(data); err != nil {
+			if  err = entry.UnmarshalBinary(data); err != nil {
 				log.Printf("failed to marshal data into struct: %v", err)
 				writer.WriteHeader(http.StatusInternalServerError)
 				return
@@ -219,7 +235,7 @@ func RelayUpdateHandlerFunc(redisClient *redis.Client, statsdb *core.StatsDataba
 		redisClient.HSet(RedisHashName, redisKey, entry)
 		result := redisClient.HGetAll(RedisHashName)
 
-		if result.Err() != redis.Nil {
+		if result.Err() != nil && result.Err() != redis.Nil {
 			log.Printf("failed to get all relays from redis: %v", result.Err())
 			writer.WriteHeader(http.StatusNotFound)
 			return
@@ -227,9 +243,9 @@ func RelayUpdateHandlerFunc(redisClient *redis.Client, statsdb *core.StatsDataba
 
 		for k, v := range result.Val() {
 			if k != redisKey {
-				var marshaledValue RelayData
-				marshaledValue.MarshalBinary([]byte(v))
-				relaysToPing = append(relaysToPing, RelayPingData{id: uint64(marshaledValue.ID), address: marshaledValue.Address})
+				var unmarshaledValue RelayData
+				unmarshaledValue.UnmarshalBinary([]byte(v))
+				relaysToPing = append(relaysToPing, RelayPingData{id: uint64(unmarshaledValue.ID), address: unmarshaledValue.Address})
 			}
 		}
 
