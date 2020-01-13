@@ -33,7 +33,7 @@ func (r *RelayData) UnmarshalBinary(data []byte) error {
 	index := 0
 	if !(encoding.ReadUint64(data, &index, &r.ID) &&
 		encoding.ReadString(data, &index, &r.Name, math.MaxInt32) && // TODO define a actual limit on this
-		encoding.ReadString(data, &index, &r.Address, math.MaxInt32) && // and this, probably something like 15?
+		encoding.ReadString(data, &index, &r.Address, MaxRelayAddressLength) &&
 		encoding.ReadUint64(data, &index, &r.Datacenter) &&
 		encoding.ReadString(data, &index, &r.DatacenterName, math.MaxInt32) &&
 		encoding.ReadBytes(data, &index, &r.PublicKey, LengthOfRelayToken) &&

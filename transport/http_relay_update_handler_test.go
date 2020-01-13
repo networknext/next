@@ -61,18 +61,17 @@ func putPingStats(buff []byte, count uint64, addressLength int) {
 	}
 }
 
-func seedRedis(redisServer *miniredis.Miniredis) {
+func seedRedis(redisServer *miniredis.Miniredis, addressesToAdd []string) {
 	addEntry := func(addr string) {
 		relay := transport.NewRelayData(addr)
 		bin, _ := relay.MarshalBinary()
 		redisServer.HSet(transport.RedisHashName, transport.IDToRedisKey(relay.ID), string(bin))
 	}
 
-	addEntry("127.0.0.1")
-	addEntry("127.0.0.2")
-	addEntry("127.0.0.3")
-	addEntry("127.0.0.4")
-	addEntry("127.0.0.5")
+	for _, addr := range addressesToAdd {
+		addEntry(addr)
+	}
+
 }
 
 func relayUpdateAssertions(t *testing.T, body []byte, expectedCode int, redisClient *redis.Client, statsdb *core.StatsDatabase) *httptest.ResponseRecorder {
@@ -163,7 +162,9 @@ func TestRelayUpdateHandler(t *testing.T) {
 		putUpdateRequestVersion(buff)
 		putUpdateRelayAddress(buff, addr)
 		putPingStats(buff, uint64(numRelays), len(addr))
-		seedRedis(redisServer)
+
+		testAddrs := []string{"127.0.0.2", "127.0.0.3", "127.0.0.4", "127.0.0.5"}
+		seedRedis(redisServer, testAddrs)
 
 		entry := transport.RelayData{
 			ID:             core.GetRelayID(addr),
@@ -206,11 +207,26 @@ func TestRelayUpdateHandler(t *testing.T) {
 		var numRelaysToPing uint32
 		encoding.ReadUint32(body, &indx, &numRelaysToPing)
 
-		//relaysToPingIDs := make([]uint64, 0)
-		//relaysToPingAddrs := make([]string, 0)
+		assert.Equal(t, uint32(len(testAddrs)), numRelaysToPing)
+
+		relaysToPingIDs := make([]uint64, 0)
+		relaysToPingAddrs := make([]string, 0)
 
 		for i := 0; uint32(i) < numRelaysToPing; i++ {
-
+			var id uint64
+			var addr string
+			encoding.ReadUint64(body, &indx, &id)
+			encoding.ReadString(body, &indx, &addr, transport.MaxRelayAddressLength)
+			relaysToPingIDs = append(relaysToPingIDs, id)
+			relaysToPingAddrs = append(relaysToPingAddrs, addr)
 		}
+
+		for _, addr := range testAddrs {
+			assert.Contains(t, relaysToPingIDs, core.GetRelayID(addr))
+			assert.Contains(t, relaysToPingAddrs, addr)
+		}
+
+		assert.NotContains(t, relaysToPingIDs, core.GetRelayID(addr))
+		assert.NotContains(t, relaysToPingAddrs, addr)
 	})
 }
