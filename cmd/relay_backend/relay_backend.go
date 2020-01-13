@@ -25,7 +25,7 @@ func main() {
 
 	if len(port) == 0 {
 		port = "30000"
-		fmt.Printf("NN_RELAY_BACKEND_PORT env var is unset, settings port as 30000")
+		fmt.Printf("NN_PORT env var is unset, settings port as 30000")
 	}
 
 	// Attempt to connect to REDIS_HOST

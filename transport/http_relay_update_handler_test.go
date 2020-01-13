@@ -161,6 +161,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 
 	t.Run("valid", func(t *testing.T) {
 		redisServer, redisClient := NewTestRedis()
+		statsdb := core.NewStatsDatabase()
 		numRelays := 4
 		addr := "127.0.0.1"
 		buff := make([]byte, sizeOfUpdateRequestVersion+4+len(addr)+sizeOfRelayToken+sizeOfNumberOfRelays+numRelays*sizeOfRelayPingStat)
@@ -185,7 +186,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 		raw, _ := entry.MarshalBinary()
 		redisServer.HSet(transport.RedisHashName, transport.IDToRedisKey(core.GetRelayID(addr)), string(raw))
 
-		recorder := relayUpdateAssertions(t, buff, http.StatusOK, redisClient, nil)
+		recorder := relayUpdateAssertions(t, buff, http.StatusOK, redisClient, statsdb)
 
 		res := redisClient.HGet(transport.RedisHashName, transport.IDToRedisKey(core.GetRelayID(addr)))
 		var actual transport.RelayData
@@ -228,9 +229,12 @@ func TestRelayUpdateHandler(t *testing.T) {
 			relaysToPingAddrs = append(relaysToPingAddrs, addr)
 		}
 
+		assert.Contains(t, statsdb.Entries, core.GetRelayID(addr))
+		relations := statsdb.Entries[core.GetRelayID(addr)]
 		for _, addr := range testAddrs {
 			assert.Contains(t, relaysToPingIDs, core.GetRelayID(addr))
 			assert.Contains(t, relaysToPingAddrs, addr)
+			assert.Contains(t, relations.Relays, core.GetRelayID(addr))
 		}
 
 		assert.NotContains(t, relaysToPingIDs, core.GetRelayID(addr))
