@@ -1,7 +1,6 @@
 package routing
 
 import (
-	"log"
 	"strconv"
 
 	"github.com/go-redis/redis/v7"
@@ -35,7 +34,6 @@ func (c *GeoClient) RelaysWithin(lat float64, long float64, radius float64, uom 
 	}
 
 	geolocs, err := res.Result()
-	log.Println(geolocs)
 	if err != nil {
 		return nil, err
 	}

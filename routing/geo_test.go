@@ -1,10 +1,9 @@
 package routing_test
 
 import (
-	"log"
 	"testing"
 
-	"github.com/alicebob/miniredis"
+	"github.com/alicebob/miniredis/v2"
 	"github.com/go-redis/redis/v7"
 	"github.com/stretchr/testify/assert"
 
@@ -15,7 +14,7 @@ func TestGeoClient(t *testing.T) {
 	t.Skip()
 
 	redisServer, _ := miniredis.Run()
-	redisClient := redis.NewClient(&redis.Options{})
+	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
 	geoclient := routing.GeoClient{
 		RedisClient: redisClient,
@@ -65,9 +64,7 @@ func TestGeoClient(t *testing.T) {
 		err = geoclient.Add(r2)
 		assert.NoError(t, err)
 
-		relays, err := geoclient.RelaysWithin(37, 15, 200, "km")
+		_, err = geoclient.RelaysWithin(37, 15, 200, "km")
 		assert.NoError(t, err)
-
-		log.Fatal(relays)
 	})
 }
