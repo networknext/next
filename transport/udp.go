@@ -23,12 +23,6 @@ const (
 )
 
 const (
-	ResponseTypeDirect = iota
-	ResponseTypeRoute
-	ResponseTypeContinue
-)
-
-const (
 	DefaultMaxPacketSize = 1500
 )
 
