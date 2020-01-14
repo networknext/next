@@ -19,6 +19,7 @@ import (
 const (
 	PacketTypeServerUpdate = iota + 200
 	PacketTypeSessionUpdate
+	PacketTypeSessionResponse
 )
 
 const (
@@ -71,12 +72,12 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 		if numbytes <= 0 {
 			continue
 		}
-		log.Printf("handler %d read %d bytes from %s", id, numbytes, addr.String())
+		log.Println("handler", id, "addr", addr.String(), "bytes", numbytes)
 
 		var buf bytes.Buffer
 		packet := UDPPacket{
 			SourceAddr: addr,
-			Data:       data[1:],
+			Data:       data,
 		}
 
 		switch data[0] {
@@ -89,7 +90,7 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 		if buf.Len() > 0 {
 			_, err := m.Conn.WriteToUDP(buf.Bytes(), addr)
 			if err != nil {
-				log.Printf("failed to write to server '%s': %v", addr.String(), err)
+				log.Println("addr", addr.String(), "msg", err.Error())
 			}
 		}
 	}
