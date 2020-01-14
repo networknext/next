@@ -19,6 +19,7 @@ import (
 	"github.com/alicebob/miniredis"
 	"github.com/go-redis/redis/v7"
 
+	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/transport"
 )
 
@@ -63,6 +64,11 @@ func main() {
 		}
 	}
 
+	geoClient := routing.GeoClient{
+		RedisClient: redisClient,
+		Namespace:   "RELAY_LOCATIONS",
+	}
+
 	{
 		addr := net.UDPAddr{
 			Port: int(port),
@@ -79,7 +85,7 @@ func main() {
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
 			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(redisClient),
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(redisClient, &ipStackClient),
+			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(redisClient, &ipStackClient, &geoClient),
 		}
 
 		go func() {
