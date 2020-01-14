@@ -45,8 +45,8 @@ type IPStackResponse struct {
 	RegionName    string  `json:"region_name"`
 	City          string  `json:"city"`
 	ZIP           string  `json:"zip"`
-	Latitude      float32 `json:"latitude"`
-	Longitude     float32 `json:"longitude"`
+	Latitude      float64 `json:"latitude"`
+	Longitude     float64 `json:"longitude"`
 	Location      struct {
 		GeonameID int    `json:"geoname_id"`
 		Capital   string `json:"capital"`
