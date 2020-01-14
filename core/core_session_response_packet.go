@@ -12,7 +12,7 @@ type SessionResponsePacket struct {
 	NumNearRelays        int32
 	NearRelayIds         []uint64
 	NearRelayAddresses   []net.UDPAddr
-	ResponseType         int32
+	RouteType            int32
 	Multipath            bool
 	NumTokens            int32
 	Tokens               []byte
@@ -57,15 +57,15 @@ func (packet *SessionResponsePacket) Serialize(stream Stream, versionMajor int32
 		stream.SerializeUint64(&packet.NearRelayIds[i])
 		stream.SerializeAddress(&packet.NearRelayAddresses[i])
 	}
-	stream.SerializeInteger(&packet.ResponseType, 0, NEXT_UPDATE_TYPE_CONTINUE)
-	if packet.ResponseType != NEXT_UPDATE_TYPE_DIRECT {
+	stream.SerializeInteger(&packet.RouteType, 0, NEXT_UPDATE_TYPE_CONTINUE)
+	if packet.RouteType != NEXT_UPDATE_TYPE_DIRECT {
 		stream.SerializeBool(&packet.Multipath)
 		stream.SerializeInteger(&packet.NumTokens, 0, NEXT_MAX_TOKENS)
 	}
-	if packet.ResponseType == NEXT_UPDATE_TYPE_ROUTE {
+	if packet.RouteType == NEXT_UPDATE_TYPE_ROUTE {
 		stream.SerializeBytes(packet.Tokens)
 	}
-	if packet.ResponseType == NEXT_UPDATE_TYPE_CONTINUE {
+	if packet.RouteType == NEXT_UPDATE_TYPE_CONTINUE {
 		stream.SerializeBytes(packet.Tokens)
 	}
 	if stream.IsReading() {
@@ -89,8 +89,8 @@ func (packet *SessionResponsePacket) Sign(versionMajor int32, versionMinor int32
 		WriteAddress(address, &packet.NearRelayAddresses[i])
 		binary.Write(buf, binary.LittleEndian, address)
 	}
-	binary.Write(buf, binary.LittleEndian, uint8(packet.ResponseType))
-	if packet.ResponseType != NEXT_UPDATE_TYPE_DIRECT {
+	binary.Write(buf, binary.LittleEndian, uint8(packet.RouteType))
+	if packet.RouteType != NEXT_UPDATE_TYPE_DIRECT {
 		if packet.Multipath {
 			binary.Write(buf, binary.LittleEndian, uint8(1))
 		} else {
@@ -98,10 +98,10 @@ func (packet *SessionResponsePacket) Sign(versionMajor int32, versionMinor int32
 		}
 		binary.Write(buf, binary.LittleEndian, uint8(packet.NumTokens))
 	}
-	if packet.ResponseType == NEXT_UPDATE_TYPE_ROUTE {
+	if packet.RouteType == NEXT_UPDATE_TYPE_ROUTE {
 		binary.Write(buf, binary.LittleEndian, packet.Tokens)
 	}
-	if packet.ResponseType == NEXT_UPDATE_TYPE_CONTINUE {
+	if packet.RouteType == NEXT_UPDATE_TYPE_CONTINUE {
 		binary.Write(buf, binary.LittleEndian, packet.Tokens)
 	}
 	binary.Write(buf, binary.LittleEndian, packet.ServerRoutePublicKey)
