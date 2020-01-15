@@ -1,7 +1,6 @@
 package routing
 
 import (
-	"encoding/binary"
 	"fmt"
 	"log"
 	"math"
@@ -423,8 +422,8 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 							routes.Entries[ijIndex].NumRoutes = 1
 							routes.Entries[ijIndex].RouteRTT[0] = rtt[ijIndex]
 							routes.Entries[ijIndex].RouteNumRelays[0] = 2
-							routes.Entries[ijIndex].RouteRelays[0][0] = uint32(i)
-							routes.Entries[ijIndex].RouteRelays[0][1] = uint32(j)
+							routes.Entries[ijIndex].RouteRelays[0][0] = uint64(i)
+							routes.Entries[ijIndex].RouteRelays[0][1] = uint64(j)
 
 						}
 
@@ -490,7 +489,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 								routes.Entries[ijIndex].RouteNumRelays[u] = routeManager.RouteNumRelays[u]
 								numRelays := int(routes.Entries[ijIndex].RouteNumRelays[u])
 								for v := 0; v < numRelays; v++ {
-									routes.Entries[ijIndex].RouteRelays[u][v] = routeManager.RouteRelays[u][v]
+									routes.Entries[ijIndex].RouteRelays[u][v] = uint64(routeManager.RouteRelays[u][v])
 								}
 							}
 						}
@@ -702,90 +701,110 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 
 // MarshalBinary ...
 func (m RouteMatrix) MarshalBinary() ([]byte, error) {
-	var index int
+	data := make([]byte, m.getBufferSize())
+	index := 0
 
-	// todo: update to new way to read/write binary as per backend.go
+	//binary.LittleEndian.PutUint32(buffer[index:], RouteMatrixVersion)
+	//index += 4
+	encoding.WriteUint32(data, &index, RouteMatrixVersion)
 
-	binary.LittleEndian.PutUint32(buffer[index:], RouteMatrixVersion)
-	index += 4
+	numRelays := len(m.RelayIds)
 
-	numRelays := len(routeMatrix.RelayIds)
-	binary.LittleEndian.PutUint32(buffer[index:], uint32(numRelays))
-	index += 4
+	//binary.LittleEndian.PutUint32(buffer[index:], uint32(numRelays))
+	//index += 4
+	encoding.WriteUint32(data, &index, uint32(numRelays))
 
-	for i := range routeMatrix.RelayIds {
-		binary.LittleEndian.PutUint32(buffer[index:], uint32(routeMatrix.RelayIds[i]))
-		index += 4
+	for _, id := range m.RelayIds {
+		//binary.LittleEndian.PutUint32(buffer[index:], uint32(routeMatrix.RelayIds[i]))
+		//index += 4
+		encoding.WriteUint32(data, &index, uint32(id))
 	}
 
-	for i := range routeMatrix.RelayNames {
-		index += WriteString(buffer[index:], routeMatrix.RelayNames[i])
+	for _, name := range m.RelayNames {
+		//index += WriteString(buffer[index:], routeMatrix.RelayNames[i])
+		encoding.WriteString(data, &index, name, uint32(len(name)))
 	}
 
-	if len(routeMatrix.DatacenterIds) != len(routeMatrix.DatacenterNames) {
+	if len(m.DatacenterIds) != len(m.DatacenterNames) {
 		panic("datacenter ids length does not match datacenter names length")
 	}
 
-	binary.LittleEndian.PutUint32(buffer[index:], uint32(len(routeMatrix.DatacenterIds)))
-	index += 4
+	//binary.LittleEndian.PutUint32(buffer[index:], uint32(len(routeMatrix.DatacenterIds)))
+	//index += 4
+	encoding.WriteUint32(data, &index, uint32(len(m.DatacenterIds)))
 
-	for i := 0; i < len(routeMatrix.DatacenterIds); i++ {
-		binary.LittleEndian.PutUint32(buffer[index:], uint32(routeMatrix.DatacenterIds[i]))
-		index += 4
-		index += WriteString(buffer[index:], routeMatrix.DatacenterNames[i])
+	for i := 0; i < len(m.DatacenterIds); i++ {
+		//binary.LittleEndian.PutUint32(buffer[index:], uint32(routeMatrix.DatacenterIds[i]))
+		//index += 4
+		encoding.WriteUint32(data, &index, uint32(m.DatacenterIds[i]))
+		//index += WriteString(buffer[index:], routeMatrix.DatacenterNames[i])
+		encoding.WriteString(data, &index, m.DatacenterNames[i], uint32(len(m.DatacenterNames[i])))
 	}
 
-	for i := range routeMatrix.RelayAddresses {
-		index += WriteBytes(buffer[index:], routeMatrix.RelayAddresses[i])
+	for _, addr := range m.RelayAddresses {
+		//index += WriteBytes(buffer[index:], routeMatrix.RelayAddresses[i])
+		encoding.WriteBytes(data, &index, addr, MaxRelayAddressLength)
 	}
 
-	for i := range routeMatrix.RelayPublicKeys {
-		index += WriteBytes(buffer[index:], routeMatrix.RelayPublicKeys[i])
+	for _, pk := range m.RelayPublicKeys {
+		//index += WriteBytes(buffer[index:], routeMatrix.RelayPublicKeys[i])
+		encoding.WriteBytes(data, &index, pk, LengthOfRelayToken)
 	}
 
-	numDatacenters := int32(len(routeMatrix.DatacenterRelays))
-	binary.LittleEndian.PutUint32(buffer[index:], uint32(numDatacenters))
-	index += 4
+	numDatacenters := len(m.DatacenterRelays)
 
-	for k, v := range routeMatrix.DatacenterRelays {
+	//binary.LittleEndian.PutUint32(buffer[index:], uint32(numDatacenters))
+	//index += 4
+	encoding.WriteUint32(data, &index, uint32(numDatacenters))
 
-		binary.LittleEndian.PutUint32(buffer[index:], uint32(k))
-		index += 4
+	for k, v := range m.DatacenterRelays {
+
+		//binary.LittleEndian.PutUint32(buffer[index:], uint32(k))
+		//index += 4
+		encoding.WriteUint64(data, &index, k)
 
 		numRelaysInDatacenter := len(v)
-		binary.LittleEndian.PutUint32(buffer[index:], uint32(numRelaysInDatacenter))
-		index += 4
 
-		for i := 0; i < numRelaysInDatacenter; i++ {
-			binary.LittleEndian.PutUint32(buffer[index:], uint32(v[i]))
-			index += 4
+		//binary.LittleEndian.PutUint32(buffer[index:], uint32(numRelaysInDatacenter))
+		//index += 4
+		encoding.WriteUint32(data, &index, uint32(numRelaysInDatacenter))
+
+		for _, ids := range v {
+			//binary.LittleEndian.PutUint32(buffer[index:], uint32(v[i]))
+			//index += 4
+			encoding.WriteUint64(data, &index, ids)
 		}
 	}
 
-	for i := range routeMatrix.Entries {
+	for _, entry := range m.Entries {
 
-		binary.LittleEndian.PutUint32(buffer[index:], uint32(routeMatrix.Entries[i].DirectRTT))
-		index += 4
+		//binary.LittleEndian.PutUint32(buffer[index:], uint32(routeMatrix.Entries[i].DirectRTT))
+		//index += 4
+		encoding.WriteUint32(data, &index, uint32(entry.DirectRTT))
 
-		binary.LittleEndian.PutUint32(buffer[index:], uint32(routeMatrix.Entries[i].NumRoutes))
-		index += 4
+		//binary.LittleEndian.PutUint32(buffer[index:], uint32(routeMatrix.Entries[i].NumRoutes))
+		//index += 4
+		encoding.WriteUint32(data, &index, uint32(entry.NumRoutes))
 
-		for j := 0; j < int(routeMatrix.Entries[i].NumRoutes); j++ {
+		for i := 0; i < int(entry.NumRoutes); i++ {
 
-			binary.LittleEndian.PutUint32(buffer[index:], uint32(routeMatrix.Entries[i].RouteRTT[j]))
-			index += 4
+			//binary.LittleEndian.PutUint32(buffer[index:], uint32(routeMatrix.Entries[i].RouteRTT[j]))
+			//index += 4
+			encoding.WriteUint32(data, &index, uint32(entry.RouteRTT[i]))
 
-			binary.LittleEndian.PutUint32(buffer[index:], uint32(routeMatrix.Entries[i].RouteNumRelays[j]))
-			index += 4
+			//binary.LittleEndian.PutUint32(buffer[index:], uint32(routeMatrix.Entries[i].RouteNumRelays[j]))
+			//index += 4
+			encoding.WriteUint32(data, &index, uint32(entry.RouteNumRelays[i]))
 
-			for k := 0; k < int(routeMatrix.Entries[i].RouteNumRelays[j]); k++ {
-				binary.LittleEndian.PutUint32(buffer[index:], uint32(routeMatrix.Entries[i].RouteRelays[j][k]))
-				index += 4
+			for _, relay := range entry.RouteRelays[i] {
+				//binary.LittleEndian.PutUint32(buffer[index:], uint32(routeMatrix.Entries[i].RouteRelays[j][k]))
+				//index += 4
+				encoding.WriteUint64(data, &index, relay)
 			}
 		}
 	}
 
-	return buffer[:index]
+	return data, nil
 }
 
 func (m RouteMatrix) getBufferSize() uint64 {

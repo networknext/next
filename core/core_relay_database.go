@@ -77,8 +77,8 @@ func (database *RelayDatabase) MakeCopy() *RelayDatabase {
 }
 
 // GetRelayId hashes the name of the relay and returns the result. Typically name is the address of the relay
-func GetRelayID(name string) uint64 {
+func GetRelayID(name string) RelayId {
 	hash := fnv.New64a()
 	hash.Write([]byte(name))
-	return hash.Sum64()
+	return RelayId(hash.Sum64())
 }

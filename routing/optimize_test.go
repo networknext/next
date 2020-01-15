@@ -13,7 +13,7 @@ import (
 func addrsToIDs(addrs []string) []uint64 {
 	retval := make([]uint64, len(addrs))
 	for i, addr := range addrs {
-		retval[i] = core.GetRelayID(addr)
+		retval[i] = uint64(core.GetRelayID(addr))
 	}
 	return retval
 }
@@ -183,7 +183,7 @@ func TestOptimize(t *testing.T) {
 
 				numDatacenters := len(datacenters)
 
-				datacenterRelays := [][]uint64{{core.GetRelayID("127.0.0.1")}, {core.GetRelayID("127.0.0.2")}}
+				datacenterRelays := [][]uint64{{uint64(core.GetRelayID("127.0.0.1"))}, {uint64(core.GetRelayID("127.0.0.2"))}}
 
 				rtts := make([]int32, core.TriMatrixLength(numRelays))
 
@@ -215,7 +215,7 @@ func TestOptimize(t *testing.T) {
 				publicKeys := [][]byte{core.RandomBytes(routing.LengthOfRelayToken), core.RandomBytes(routing.LengthOfRelayToken)}
 				datacenters := []uint64{0, 1}
 				numDatacenters := len(datacenters)
-				datacenterRelays := [][]uint64{{core.GetRelayID("127.0.0.1")}, {core.GetRelayID("127.0.0.2")}}
+				datacenterRelays := [][]uint64{{uint64(core.GetRelayID("127.0.0.1"))}, {uint64(core.GetRelayID("127.0.0.2"))}}
 				rtts := make([]int32, core.TriMatrixLength(numRelays))
 
 				for i, _ := range rtts {
@@ -251,7 +251,7 @@ func TestOptimize(t *testing.T) {
 				publicKeys := [][]byte{core.RandomBytes(routing.LengthOfRelayToken), core.RandomBytes(routing.LengthOfRelayToken)}
 				datacenters := []uint64{0, 1}
 				numDatacenters := len(datacenters)
-				datacenterRelays := [][]uint64{{core.GetRelayID("127.0.0.1")}, {core.GetRelayID("127.0.0.2")}}
+				datacenterRelays := [][]uint64{{uint64(core.GetRelayID("127.0.0.1"))}, {uint64(core.GetRelayID("127.0.0.2"))}}
 				rtts := make([]int32, core.TriMatrixLength(numRelays))
 
 				for i, _ := range rtts {
