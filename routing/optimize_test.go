@@ -80,6 +80,48 @@ func putRtts(buff []byte, offset *int, rtts []int32) {
 func TestOptimize(t *testing.T) {
 	t.Run("CostMatrix", func(t *testing.T) {
 		t.Run("UnmarshalBinary()", func(t *testing.T) {
+			unmarshalAssertionsVer0 := func(matrix *routing.CostMatrix, buff []byte, numRelays, numDatacenters int, relayIDs, datacenters []uint64, relayAddrs []string, datacenterRelays [][]uint64, publicKeys [][]byte, rtts []int32) {
+				err := matrix.UnmarshalBinary(buff)
+
+				assert.Nil(t, err)
+
+				assert.Len(t, matrix.RelayIds, numRelays)
+				assert.Len(t, matrix.RelayNames, 0)
+				assert.Len(t, matrix.RelayAddresses, numRelays)
+				assert.Len(t, matrix.RelayPublicKeys, numRelays)
+				assert.Len(t, matrix.DatacenterIds, 0)
+				assert.Len(t, matrix.DatacenterNames, 0)
+				assert.Len(t, matrix.DatacenterRelays, numDatacenters)
+				assert.Len(t, matrix.RTT, len(rtts))
+
+				for _, id := range relayIDs {
+					assert.Contains(t, matrix.RelayIds, id)
+				}
+
+				for _, addr := range relayAddrs {
+					tmp := make([]byte, routing.MaxRelayAddressLength)
+					copy(tmp, addr)
+					assert.Contains(t, matrix.RelayAddresses, tmp)
+				}
+
+				for _, pk := range publicKeys {
+					assert.Contains(t, matrix.RelayPublicKeys, pk)
+				}
+
+				for i := 0; i < numDatacenters; i++ {
+					assert.Contains(t, matrix.DatacenterRelays, datacenters[i])
+
+					relays := matrix.DatacenterRelays[datacenters[i]]
+					for j := 0; j < len(datacenterRelays[i]); j++ {
+						assert.Contains(t, relays, datacenterRelays[i][j])
+					}
+				}
+
+				for _, rtt := range rtts {
+					assert.Contains(t, matrix.RTT, rtt)
+				}
+			}
+
 			t.Run("version of incoming bin data too high", func(t *testing.T) {
 				buff := make([]byte, 4)
 				offset := 0
@@ -124,45 +166,7 @@ func TestOptimize(t *testing.T) {
 
 				var matrix routing.CostMatrix
 
-				err := matrix.UnmarshalBinary(buff)
-
-				assert.Nil(t, err)
-
-				assert.Len(t, matrix.RelayIds, numRelays)
-				assert.Len(t, matrix.RelayNames, 0)
-				assert.Len(t, matrix.RelayAddresses, numRelays)
-				assert.Len(t, matrix.RelayPublicKeys, numRelays)
-				assert.Len(t, matrix.DatacenterIds, 0)
-				assert.Len(t, matrix.DatacenterNames, 0)
-				assert.Len(t, matrix.DatacenterRelays, numDatacenters)
-				assert.Len(t, matrix.RTT, len(rtts))
-
-				for _, id := range relayIDs {
-					assert.Contains(t, matrix.RelayIds, id)
-				}
-
-				for _, addr := range relayAddrs {
-					tmp := make([]byte, routing.MaxRelayAddressLength)
-					copy(tmp, addr)
-					assert.Contains(t, matrix.RelayAddresses, tmp)
-				}
-
-				for _, pk := range publicKeys {
-					assert.Contains(t, matrix.RelayPublicKeys, pk)
-				}
-
-				for i := 0; i < numDatacenters; i++ {
-					assert.Contains(t, matrix.DatacenterRelays, datacenters[i])
-
-					relays := matrix.DatacenterRelays[datacenters[i]]
-					for j := 0; j < len(datacenterRelays[i]); j++ {
-						assert.Contains(t, relays, datacenterRelays[i][j])
-					}
-				}
-
-				for _, rtt := range rtts {
-					assert.Contains(t, matrix.RTT, rtt)
-				}
+				unmarshalAssertionsVer0(&matrix, buff, numRelays, numDatacenters, relayIDs, datacenters, relayAddrs, datacenterRelays, publicKeys, rtts)
 			})
 
 			t.Run("version number == 1", func(t *testing.T) {
@@ -207,9 +211,8 @@ func TestOptimize(t *testing.T) {
 				matrix.DatacenterRelays[111] = make([]uint64, 1)
 				matrix.DatacenterRelays[111][0] = 456
 
-				matrix.RTT = make([]int32, 2)
+				matrix.RTT = make([]int32, 1)
 				matrix.RTT[0] = 7
-				matrix.RTT[1] = 13
 
 				var other routing.CostMatrix
 
