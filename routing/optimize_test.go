@@ -580,7 +580,60 @@ func TestOptimize(t *testing.T) {
 		})
 
 		t.Run("MarshalBinary()", func(t *testing.T) {
+			t.Run("MarshalBinary -> UnmarshalBinary equality", func(t *testing.T) {
+				var matrix routing.RouteMatrix
+				matrix.RelayIds = make([]uint64, 2)
+				matrix.RelayIds[0] = 123
+				matrix.RelayIds[1] = 456
 
+				matrix.RelayNames = make([]string, 2)
+				matrix.RelayNames[0] = "first"
+				matrix.RelayNames[1] = "second"
+
+				matrix.RelayAddresses = make([][]byte, 2)
+				matrix.RelayAddresses[0] = core.RandomBytes(routing.MaxRelayAddressLength)
+				matrix.RelayAddresses[1] = core.RandomBytes(routing.MaxRelayAddressLength)
+
+				matrix.RelayPublicKeys = make([][]byte, 2)
+				matrix.RelayPublicKeys[0] = core.RandomBytes(routing.LengthOfRelayToken)
+				matrix.RelayPublicKeys[1] = core.RandomBytes(routing.LengthOfRelayToken)
+
+				matrix.DatacenterIds = make([]uint64, 2)
+				matrix.DatacenterIds[0] = 999
+				matrix.DatacenterIds[1] = 111
+
+				matrix.DatacenterNames = make([]string, 2)
+				matrix.DatacenterNames[0] = "a name"
+				matrix.DatacenterNames[1] = "another name"
+
+				matrix.DatacenterRelays = make(map[uint64][]uint64)
+				matrix.DatacenterRelays[999] = make([]uint64, 1)
+				matrix.DatacenterRelays[999][0] = 123
+				matrix.DatacenterRelays[111] = make([]uint64, 1)
+				matrix.DatacenterRelays[111][0] = 456
+
+				matrix.Entries = []routing.RouteMatrixEntry{
+					routing.RouteMatrixEntry{
+						DirectRTT:      123,
+						NumRoutes:      1,
+						RouteRTT:       [8]int32{1},
+						RouteNumRelays: [8]int32{2},
+						RouteRelays:    [8][5]uint64{{123, 456}},
+					},
+				}
+
+				var other routing.RouteMatrix
+
+				bin, err := matrix.MarshalBinary()
+
+				// essentialy this asserts the result of MarshalBinary(),
+				// if Unmarshal tests pass then the binary data from Marshal
+				// is valid if unmarshaling equals the original
+				other.UnmarshalBinary(bin)
+
+				assert.Nil(t, err)
+				assert.Equal(t, matrix, other)
+			})
 		})
 	})
 }

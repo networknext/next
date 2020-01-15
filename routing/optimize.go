@@ -584,6 +584,7 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 	}
 
 	var numRelays uint32
+
 	//numRelays = int32(binary.LittleEndian.Uint32(data[index:]))
 	//index += 4
 	encoding.ReadUint32(data, &index, &numRelays)
@@ -724,7 +725,7 @@ func (m RouteMatrix) MarshalBinary() ([]byte, error) {
 	for _, id := range m.RelayIds {
 		//binary.LittleEndian.PutUint32(buffer[index:], uint32(routeMatrix.RelayIds[i]))
 		//index += 4
-		encoding.WriteUint32(data, &index, uint32(id))
+		encoding.WriteUint64(data, &index, id)
 	}
 
 	for _, name := range m.RelayNames {
@@ -743,7 +744,7 @@ func (m RouteMatrix) MarshalBinary() ([]byte, error) {
 	for i := 0; i < len(m.DatacenterIds); i++ {
 		//binary.LittleEndian.PutUint32(buffer[index:], uint32(routeMatrix.DatacenterIds[i]))
 		//index += 4
-		encoding.WriteUint32(data, &index, uint32(m.DatacenterIds[i]))
+		encoding.WriteUint64(data, &index, m.DatacenterIds[i])
 		//index += WriteString(buffer[index:], routeMatrix.DatacenterNames[i])
 		encoding.WriteString(data, &index, m.DatacenterNames[i], uint32(len(m.DatacenterNames[i])))
 	}
