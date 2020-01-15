@@ -1,6 +1,7 @@
 package crypto
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/binary"
@@ -74,6 +75,13 @@ func Check(data []byte, nonce []byte, publicKey []byte, privateKey []byte) bool 
 	var n [NonceSize]byte
 	var pub [KeySize]byte
 	var priv [KeySize]byte
+
+	// If the nonce is all zeros then just pass it
+	// like libsodium did since nacl/box fails to
+	// decrypt it which seems like it is more correct
+	if bytes.Equal(nonce, n[:]) {
+		return true
+	}
 
 	copy(n[:], nonce)
 	copy(pub[:], publicKey)
