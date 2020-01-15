@@ -68,6 +68,9 @@ func (packet *SessionUpdatePacket) MarshalBinary() ([]byte, error) {
 }
 
 func (packet *SessionUpdatePacket) Serialize(stream Stream, versionMajor int32, versionMinor int32, versionPatch int32) error {
+	packetType := uint32(201)
+	stream.SerializeBits(&packetType, 8)
+
 	stream.SerializeUint64(&packet.Sequence)
 	stream.SerializeUint64(&packet.CustomerId)
 	stream.SerializeAddress(&packet.ServerAddress)

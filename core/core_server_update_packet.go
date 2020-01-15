@@ -43,6 +43,9 @@ func (packet *ServerUpdatePacket) MarshalBinary() ([]byte, error) {
 }
 
 func (packet *ServerUpdatePacket) Serialize(stream Stream) error {
+	packetType := uint32(200)
+	stream.SerializeBits(&packetType, 8)
+
 	stream.SerializeUint64(&packet.Sequence)
 	stream.SerializeInteger(&packet.VersionMajor, 0, SDKVersionMajorMax)
 	stream.SerializeInteger(&packet.VersionMinor, 0, SDKVersionMinorMax)
