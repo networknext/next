@@ -1,12 +1,9 @@
 package transport
 
-// #cgo pkg-config: libsodium
-// #include <sodium.h>
-import "C"
-
 import (
 	"errors"
 
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
 )
 
@@ -24,10 +21,10 @@ func (r *RelayInitPacket) UnmarshalBinary(buf []byte) error {
 	index := 0
 	if !(encoding.ReadUint32(buf, &index, &r.Magic) &&
 		encoding.ReadUint32(buf, &index, &r.Version) &&
-		encoding.ReadBytes(buf, &index, &r.Nonce, C.crypto_box_NONCEBYTES) &&
+		encoding.ReadBytes(buf, &index, &r.Nonce, crypto.NonceSize) &&
 		encoding.ReadString(buf, &index, &r.Address, MaxRelayAddressLength) &&
-		encoding.ReadBytes(buf, &index, &r.EncryptedToken, LengthOfRelayToken+C.crypto_box_MACBYTES)) {
-		return errors.New("Invalid Packet")
+		encoding.ReadBytes(buf, &index, &r.EncryptedToken, crypto.PublicKeySize+crypto.MACSize)) {
+		return errors.New("invalid packet")
 	}
 
 	return nil

@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/networknext/backend/core"
+	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/transport"
 	"github.com/stretchr/testify/assert"
 )
@@ -15,8 +17,6 @@ import (
 const (
 	sizeOfInitRequestMagic   = 4
 	sizeOfInitRequestVersion = 4
-	sizeOfNonceBytes         = 24
-	sizeOfEncryptedToken     = 32 + 16 // global + value of MACBYTES
 )
 
 // Returns the writer as a means to read the data that the writer contains
@@ -43,7 +43,7 @@ func putInitRequestMagic(buff []byte) {
 }
 
 func putInitRelayAddress(buff []byte, address string) {
-	offset := sizeOfInitRequestMagic + sizeOfInitRequestVersion + sizeOfNonceBytes
+	offset := sizeOfInitRequestMagic + sizeOfInitRequestVersion + crypto.NonceSize
 	binary.LittleEndian.PutUint32(buff[offset:], uint32(len(address)))
 	copy(buff[offset+4:], address)
 }
@@ -74,7 +74,7 @@ func TestRelayInitHandler(t *testing.T) {
 
 	t.Run("missing relay address", func(t *testing.T) {
 		t.Run("byte array is not proper length", func(t *testing.T) {
-			buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+sizeOfNonceBytes)
+			buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+crypto.NonceSize)
 			putInitRequestMagic(buff)
 			putInitRequestVersion(buff)
 			relayInitAssertions(t, buff, http.StatusBadRequest, nil)
@@ -82,7 +82,7 @@ func TestRelayInitHandler(t *testing.T) {
 
 		t.Run("byte array is proper length but there is a blank string", func(t *testing.T) {
 			addr := ""
-			buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+sizeOfNonceBytes+4+len(addr))
+			buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+crypto.NonceSize+4+len(addr))
 			putInitRequestMagic(buff)
 			putInitRequestVersion(buff)
 			putInitRelayAddress(buff, addr)
@@ -92,7 +92,7 @@ func TestRelayInitHandler(t *testing.T) {
 
 	t.Run("missing encryption token", func(t *testing.T) {
 		addr := "127.0.0.1"
-		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+sizeOfNonceBytes+4+len(addr))
+		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+crypto.NonceSize+4+len(addr))
 		putInitRequestMagic(buff)
 		putInitRequestVersion(buff)
 		putInitRelayAddress(buff, addr)
@@ -101,7 +101,7 @@ func TestRelayInitHandler(t *testing.T) {
 
 	t.Run("encryption token is 0'ed", func(t *testing.T) {
 		addr := "127.0.0.1"
-		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+sizeOfNonceBytes+4+len(addr)+sizeOfEncryptedToken)
+		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+crypto.NonceSize+4+len(addr)+routing.TokenSize)
 		putInitRequestMagic(buff)
 		putInitRequestVersion(buff)
 		putInitRelayAddress(buff, addr)
@@ -112,7 +112,7 @@ func TestRelayInitHandler(t *testing.T) {
 		relaydb := core.NewRelayDatabase()
 		addr := "127.0.0.1"
 		relaydb.Relays[core.GetRelayID(addr)] = core.RelayData{}
-		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+sizeOfNonceBytes+4+len(addr)+sizeOfEncryptedToken)
+		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+crypto.NonceSize+4+len(addr)+routing.TokenSize)
 		putInitRequestMagic(buff)
 		putInitRequestVersion(buff)
 		putInitRelayAddress(buff, addr)
@@ -121,13 +121,12 @@ func TestRelayInitHandler(t *testing.T) {
 
 	t.Run("valid", func(t *testing.T) {
 		addr := "127.0.0.1"
-		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+sizeOfNonceBytes+4+len(addr)+sizeOfEncryptedToken)
+		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+crypto.NonceSize+4+len(addr)+routing.TokenSize)
 		putInitRequestMagic(buff)
 		putInitRequestVersion(buff)
 		putInitRelayAddress(buff, addr)
 		writer := relayInitAssertions(t, buff, http.StatusOK, nil)
-		header := writer.Header()
-		contentType, _ := header["Content-Type"]
-		assert.Equal(t, "application/octet-stream", contentType[0])
+		contentType := writer.Header().Get("Content-Type")
+		assert.Equal(t, "application/octet-stream", contentType)
 	})
 }
