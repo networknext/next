@@ -49,7 +49,7 @@ func main() {
 	}
 
 	// Open the Maxmind DB and create a routing.MaxmindDB from it
-	mmreader, err := geoip2.Open("./GeoLite2-City.mmdb")
+	mmreader, err := geoip2.Open(os.Getenv("MAXMIND_DB_URI"))
 	if err != nil {
 		log.Fatalf("failed to open Maxmind GeoIP2 database: %v", err)
 	}
