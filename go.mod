@@ -13,8 +13,9 @@ require (
 	github.com/json-iterator/go v1.1.9
 	github.com/oschwald/geoip2-golang v1.4.0
 	github.com/stretchr/testify v1.4.0
-	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
+	golang.org/x/crypto v0.0.0-20200115085410-6d4e4cb37c7d
 	golang.org/x/net v0.0.0-20191209160850-c0dbc17a3553
 	golang.org/x/oauth2 v0.0.0-20191202225959-858c2ad4c8b6
+	golang.org/x/sys v0.0.0-20200113162924-86b910548bc1 // indirect
 	golang.org/x/text v0.3.2
 )

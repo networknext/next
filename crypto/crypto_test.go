@@ -23,7 +23,7 @@ func TestGenerate(t *testing.T) {
 	t.Run("CustomerKeyPair", func(t *testing.T) {
 		pub, priv, err := crypto.GenerateCustomerKeyPair()
 		assert.NoError(t, err)
-		assert.Equal(t, crypto.CustomerPublicKeySize, len(pub))
-		assert.Equal(t, crypto.CustomerPrivateKeySize, len(priv))
+		assert.Equal(t, crypto.PublicKeySize+8, len(pub))
+		assert.Equal(t, crypto.PrivateKeySize+8, len(priv))
 	})
 }
