@@ -79,51 +79,6 @@ func putRtts(buff []byte, offset *int, rtts []int32) {
 
 func TestOptimize(t *testing.T) {
 	t.Run("CostMatrix", func(t *testing.T) {
-		t.Run("MarshalBinary -> UnmarshalBinary equality", func(t *testing.T) {
-			t.Skip()
-			var matrix routing.CostMatrix
-			matrix.RelayIds = make([]uint64, 2)
-			matrix.RelayIds[0] = 123
-			matrix.RelayIds[1] = 456
-
-			matrix.RelayNames = make([]string, 2)
-			matrix.RelayNames[0] = "first"
-			matrix.RelayNames[1] = "second"
-
-			matrix.RelayAddresses = make([][]byte, 2)
-			matrix.RelayAddresses[0] = core.RandomBytes(routing.MaxRelayAddressLength)
-			matrix.RelayAddresses[1] = core.RandomBytes(routing.MaxRelayAddressLength)
-
-			matrix.RelayPublicKeys = make([][]byte, 2)
-			matrix.RelayPublicKeys[0] = core.RandomBytes(routing.LengthOfRelayToken)
-			matrix.RelayPublicKeys[1] = core.RandomBytes(routing.LengthOfRelayToken)
-
-			matrix.DatacenterIds = make([]uint64, 2)
-			matrix.DatacenterIds[0] = 999
-			matrix.DatacenterIds[1] = 111
-
-			matrix.DatacenterNames = make([]string, 2)
-			matrix.DatacenterNames[0] = "a name"
-			matrix.DatacenterNames[1] = "another name"
-
-			matrix.DatacenterRelays = make(map[uint64][]uint64)
-			matrix.DatacenterRelays[999] = make([]uint64, 1)
-			matrix.DatacenterRelays[999][0] = 123
-			matrix.DatacenterRelays[111] = make([]uint64, 1)
-			matrix.DatacenterRelays[111][0] = 456
-
-			matrix.RTT = make([]int32, 2)
-			matrix.RTT[0] = 7
-			matrix.RTT[1] = 13
-
-			var other routing.CostMatrix
-
-			bin, _ := matrix.MarshalBinary()
-			other.UnmarshalBinary(bin)
-
-			//assert.Equal(t, matrix, other)
-		})
-
 		t.Run("UnmarshalBinary()", func(t *testing.T) {
 			t.Run("version of incoming bin data too high", func(t *testing.T) {
 				buff := make([]byte, 4)
@@ -216,6 +171,57 @@ func TestOptimize(t *testing.T) {
 
 			t.Run("version number >= 2", func(t *testing.T) {
 
+			})
+		})
+
+		t.Run("MarshalBinary()", func(t *testing.T) {
+			t.Run("MarshalBinary -> UnmarshalBinary equality", func(t *testing.T) {
+				var matrix routing.CostMatrix
+				matrix.RelayIds = make([]uint64, 2)
+				matrix.RelayIds[0] = 123
+				matrix.RelayIds[1] = 456
+
+				matrix.RelayNames = make([]string, 2)
+				matrix.RelayNames[0] = "first"
+				matrix.RelayNames[1] = "second"
+
+				matrix.RelayAddresses = make([][]byte, 2)
+				matrix.RelayAddresses[0] = core.RandomBytes(routing.MaxRelayAddressLength)
+				matrix.RelayAddresses[1] = core.RandomBytes(routing.MaxRelayAddressLength)
+
+				matrix.RelayPublicKeys = make([][]byte, 2)
+				matrix.RelayPublicKeys[0] = core.RandomBytes(routing.LengthOfRelayToken)
+				matrix.RelayPublicKeys[1] = core.RandomBytes(routing.LengthOfRelayToken)
+
+				matrix.DatacenterIds = make([]uint64, 2)
+				matrix.DatacenterIds[0] = 999
+				matrix.DatacenterIds[1] = 111
+
+				matrix.DatacenterNames = make([]string, 2)
+				matrix.DatacenterNames[0] = "a name"
+				matrix.DatacenterNames[1] = "another name"
+
+				matrix.DatacenterRelays = make(map[uint64][]uint64)
+				matrix.DatacenterRelays[999] = make([]uint64, 1)
+				matrix.DatacenterRelays[999][0] = 123
+				matrix.DatacenterRelays[111] = make([]uint64, 1)
+				matrix.DatacenterRelays[111][0] = 456
+
+				matrix.RTT = make([]int32, 2)
+				matrix.RTT[0] = 7
+				matrix.RTT[1] = 13
+
+				var other routing.CostMatrix
+
+				bin, err := matrix.MarshalBinary()
+
+				// essentialy this asserts the result of MarshalBinary(),
+				// if the Unmarshal test passes then the result of Marshal
+				// should work
+				other.UnmarshalBinary(bin)
+
+				assert.Nil(t, err)
+				assert.Equal(t, matrix, other)
 			})
 		})
 	})

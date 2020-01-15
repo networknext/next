@@ -81,7 +81,7 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 
 	m.RelayIds = make([]uint64, numRelays)
 	for i := 0; i < int(numRelays); i++ {
-		//m.RelayIds[i] = binary.LittleEndian.Uint64(data[index:])
+		//m.RelayIds[i] = binary.LittleEndian.Uint32(data[index:])
 		//index += 4
 		encoding.ReadUint64(data, &index, &m.RelayIds[i])
 	}
@@ -96,10 +96,10 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 	}
 
 	if version >= 2 {
-		//datacenterCount := binary.LittleEndian.Uint64(data[index:])
+		//datacenterCount := binary.LittleEndian.Uint32(data[index:])
 		//index += 4
-		var datacenterCount uint64
-		encoding.ReadUint64(data, &index, &datacenterCount)
+		var datacenterCount uint32
+		encoding.ReadUint32(data, &index, &datacenterCount)
 
 		m.DatacenterIds = make([]uint64, datacenterCount)
 		m.DatacenterNames = make([]string, datacenterCount)
@@ -175,8 +175,6 @@ func (m CostMatrix) MarshalBinary() ([]byte, error) {
 	log.Printf("BufferSize: %d\n", buffSize)
 	data := make([]byte, buffSize)
 
-	log.Println("1")
-
 	//binary.LittleEndian.PutUint32(buffer[index:], CostMatrixVersion)
 	//index += 4
 	encoding.WriteUint32(data, &index, CostMatrixVersion)
@@ -216,8 +214,6 @@ func (m CostMatrix) MarshalBinary() ([]byte, error) {
 		//index += WriteString(buffer[index:], m.DatacenterNames[i])
 		encoding.WriteString(data, &index, m.DatacenterNames[i], uint32(len(m.DatacenterNames[i])))
 	}
-
-	log.Println("2")
 
 	for i := range m.RelayAddresses {
 		//index += WriteBytes(buffer[index:], m.RelayAddresses[i])
@@ -260,7 +256,7 @@ func (m CostMatrix) MarshalBinary() ([]byte, error) {
 		encoding.WriteUint32(data, &index, uint32(m.RTT[i]))
 	}
 
-	log.Println("3")
+	log.Println("Returning")
 
 	return data, nil
 }
