@@ -327,13 +327,27 @@ func TestOptimize(t *testing.T) {
 				bin, err := matrix.MarshalBinary()
 
 				// essentialy this asserts the result of MarshalBinary(),
-				// if the Unmarshal test passes then the result of Marshal
-				// should work
+				// if Unmarshal tests pass then the binary data from Marshal
+				// is valid if unmarshaling equals the original
 				other.UnmarshalBinary(bin)
 
 				assert.Nil(t, err)
 				assert.Equal(t, matrix, other)
 			})
+		})
+
+		t.Run("Optimize()", func(t *testing.T) {
+			t.Skip("Unimplemented until RouteMatrix is done")
+		})
+	})
+
+	t.Run("RouteMatrix", func(t *testing.T) {
+		t.Run("UnmarshalBinary()", func(t *testing.T) {
+
+		})
+
+		t.Run("MarshalBinary()", func(t *testing.T) {
+
 		})
 	})
 }
