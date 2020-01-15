@@ -1,14 +1,59 @@
 package routing_test
 
 import (
+	"net"
 	"testing"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/go-redis/redis/v7"
+	"github.com/oschwald/geoip2-golang"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/networknext/backend/routing"
 )
+
+func TestIPLocator(t *testing.T) {
+	t.Run("Maxmind", func(t *testing.T) {
+		mmreader, err := geoip2.Open("./GeoIP2-City-Test.mmdb")
+		assert.NoError(t, err)
+
+		mmdb := routing.MaxmindDB{
+			Reader: mmreader,
+		}
+
+		{
+			expected := routing.Location{
+				Continent: "Europe",
+				Country:   "United Kingdom",
+				Region:    "England",
+				City:      "London",
+				Latitude:  51.5142,
+				Longitude: -0.0931,
+			}
+
+			actual, err := mmdb.LocateIP(net.ParseIP("81.2.69.160"))
+			assert.NoError(t, err)
+
+			assert.Equal(t, expected, actual)
+		}
+
+		{
+			actual, err := mmdb.LocateIP(net.ParseIP("0.0.0.0"))
+			assert.EqualError(t, err, "no location found for '0.0.0.0'")
+
+			assert.Equal(t, routing.Location{}, actual)
+		}
+
+		{
+			mmdb := routing.MaxmindDB{}
+
+			actual, err := mmdb.LocateIP(net.ParseIP("0.0.0.0"))
+			assert.EqualError(t, err, "not configured with a Maxmind DB")
+
+			assert.Equal(t, routing.Location{}, actual)
+		}
+	})
+}
 
 func TestGeoClient(t *testing.T) {
 	redisServer, _ := miniredis.Run()

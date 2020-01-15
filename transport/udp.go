@@ -195,7 +195,8 @@ type SessionEntry struct {
 
 	ConnectionType int32
 
-	GeoLocation IPStackResponse
+	Latitude  float64
+	Longitude float64
 
 	Tag   uint64
 	Flags uint32
@@ -219,7 +220,7 @@ func (e SessionEntry) MarshalBinary() ([]byte, error) {
 }
 
 // SessionUpdateHandlerFunc ...
-func SessionUpdateHandlerFunc(redisClient redis.Cmdable, ipStackClient *IPStackClient, geoClient *routing.GeoClient) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(redisClient redis.Cmdable, iploc routing.IPLocator, geoClient *routing.GeoClient) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		// Deserialize the Session packet
 		var packet core.SessionUpdatePacket
@@ -246,14 +247,13 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, ipStackClient *IPStackC
 			return
 		}
 
-		// Get the location of the Client's IP address
-		ipres, err := ipStackClient.Lookup(packet.ClientAddress.IP.String())
+		location, err := iploc.LocateIP(packet.ClientAddress.IP)
 		if err != nil {
 			log.Printf("failed to lookup client ip '%s': %v", packet.ClientAddress.IP.String(), err)
 			return
 		}
 
-		relays, err := geoClient.RelaysWithin(ipres.Latitude, ipres.Longitude, 500, "mi")
+		relays, err := geoClient.RelaysWithin(location.Latitude, location.Longitude, 500, "mi")
 		if err != nil {
 			log.Printf("failed to lookup client ip '%s': %v", packet.ClientAddress.IP.String(), err)
 			return
@@ -279,7 +279,8 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, ipStackClient *IPStackC
 
 			ConnectionType: packet.ConnectionType,
 
-			GeoLocation: *ipres,
+			Latitude:  location.Latitude,
+			Longitude: location.Longitude,
 
 			Tag:              packet.Tag,
 			Flagged:          packet.Flagged,

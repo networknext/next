@@ -2,9 +2,7 @@ package transport_test
 
 import (
 	"bytes"
-	"io/ioutil"
 	"net"
-	"net/http"
 	"testing"
 
 	"github.com/alicebob/miniredis/v2"
@@ -85,28 +83,17 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-	// New IPStackClient that mocks a successful response
-	ipStackClient := transport.IPStackClient{
-		Client: NewTestHTTPClient(func(req *http.Request) *http.Response {
-			return &http.Response{
-				StatusCode: 200,
-				Header:     make(http.Header),
-				Body: ioutil.NopCloser(bytes.NewBufferString(`{
-					"ip": "1.1.1.1",
-					"continent_code": "NA",
-					"country_code": "US",
-					"region_code": "NY",
-					"city": "Troy",
-					"latitude": 43.05036163330078,
-					"longitude": -73.75393676757812,
-					"connection": {
-						"asn": 11351,
-						"isp": "Charter Communications Inc"
-					}
-				}`)),
-			}
-		}),
-	}
+	// Define a static LocateIPFunc so it will satisfy the IPLocator interface required by the UDP handler
+	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
+		return routing.Location{
+			Continent: "NA",
+			Country:   "US",
+			Region:    "NY",
+			City:      "Troy",
+			Latitude:  43.05036163330078,
+			Longitude: -73.75393676757812,
+		}, nil
+	})
 
 	geoClient := routing.GeoClient{
 		RedisClient: redisClient,
@@ -190,15 +177,15 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 	}
 
 	// Create and invoke the handler with the packet and from addr
-	handler := transport.SessionUpdateHandlerFunc(redisClient, &ipStackClient, &geoClient)
+	handler := transport.SessionUpdateHandlerFunc(redisClient, iploc, &geoClient)
 	handler(&resbuf, &incoming)
 
 	// Get the SessionEntry from redis based on the SessionUpdatePacket.Sequence number
 	ds, err := redisServer.Get("SESSION-13")
 	assert.NoError(t, err)
 
+	// Create the expected SessionEntry
 	{
-		// Create the expected SessionEntry
 		expected := transport.SessionEntry{
 			SessionID:  packet.SessionId,
 			UserID:     packet.UserHash,
@@ -218,22 +205,8 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 
 			ConnectionType: packet.ConnectionType,
 
-			GeoLocation: transport.IPStackResponse{
-				IP:            "1.1.1.1",
-				ContinentCode: "NA",
-				CountryCode:   "US",
-				RegionCode:    "NY",
-				City:          "Troy",
-				Latitude:      43.05036163330078,
-				Longitude:     -73.75393676757812,
-				Connection: struct {
-					ASN int    `json:"asn"`
-					ISP string `json:"isp"`
-				}{
-					ASN: 11351,
-					ISP: "Charter Communications Inc",
-				},
-			},
+			Latitude:  43.05036163330078,
+			Longitude: -73.75393676757812,
 
 			Tag:              packet.Tag,
 			Flagged:          packet.Flagged,

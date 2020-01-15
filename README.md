@@ -64,6 +64,10 @@ Pulls the route matrix from the optimizer and uses it to serve up routes across 
 
 - Command: [`cmd/server_backend`](./cmd/server_backend)
 
+### Environment Variables
+
+- `MAXMIND_DB_URI`: local path to a `.mmdb` file for IP lookups. Defaults to `./GeoLite2-City.mmdb`. You can ask a dev for a copy of one or register and download one from https://www.maxmind.com.
+
 ## Client (C++)
 
 Reference implentation of a client using the Network Next SDK. 
