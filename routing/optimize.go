@@ -503,7 +503,7 @@ type RouteMatrix struct {
 	Entries          []RouteMatrixEntry
 }
 
-/* Binary data outline for RouteMatrix v2: "->" means seqential elements in memory and not another section
+/* Binary data outline for RouteMatrix v2: "->" means seqential elements in memory and not another section, "(...)" mean that section sequentially repeats for however many
  * Version number { uint32 }
  * Number of relays { uint32 }
  * Relay IDs { [NumberOfRelays]uint64 }
@@ -515,6 +515,13 @@ type RouteMatrix struct {
  * Number of Datacenters { uint32 }
  * Datacenter ID { uint64 } -> Number of Relays in Datacenter { uint32 } -> Relay IDs in Datacenter { [NumberOfRelaysInDatacenter]uint64 }
  * RTT Info { []uint32 }
+ * Entries { []RouteMatrixEntry } (
+ * 	Direct RTT { uint32 }
+ *	Number of routes { uint32 }
+ *	Route RTT { [8]uint32 }
+ *	Number of relays in the route { [8]uint32 }
+ *	Relay IDs in each route { [8][5]uint64 }
+ * )
  */
 
 // UnmarshalBinary ...
