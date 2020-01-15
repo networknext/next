@@ -507,27 +507,35 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 }
 
 func (m CostMatrix) getBufferSize() uint64 {
+	var length uint64
 	numRelays := uint64(len(m.RelayIds))
 	numDatacenters := uint64(len(m.DatacenterIds))
-	var length uint64
+
+	// uint32 version number + number of relays + allocation for all relay ids
 	length = 4 + 4 + 8*numRelays
 
 	for _, name := range m.RelayNames {
+		// length of relay name + allocation for relay name
 		length += uint64(4 + len(name))
 	}
 
+	// number of datacenters + allocation for datacenter ids
 	length += 8 + 8*numDatacenters
 
 	for _, name := range m.DatacenterNames {
+		// length of datacenter name + allocation for datacenter name
 		length += uint64(4 + len(name))
 	}
 
+	// allocation for relay addresses + allocation for relay public keys + the No. of datacenters, duplication?
 	length += numRelays*uint64(MaxRelayAddressLength+LengthOfRelayToken) + 4
 
 	for _, v := range m.DatacenterRelays {
+		// datacenter id + number of relays for that datacenter + allocation for all of those relay ids
 		length += uint64(8 + 4 + 8*len(v))
 	}
 
+	// length so far + number of rtt entries
 	return length + uint64(4*len(m.RTT))
 }
 
@@ -778,4 +786,44 @@ func (m RouteMatrix) MarshalBinary() ([]byte, error) {
 	}
 
 	return buffer[:index]
+}
+
+func (m RouteMatrix) getBufferSize() uint64 {
+	var length uint64
+	numRelays := uint64(len(m.RelayIds))
+	numDatacenters := uint64(len(m.DatacenterIds))
+	// same as CostMatrix's
+	length = 4 + 4 + 8*numRelays
+
+	for _, name := range m.RelayNames {
+		// same as CostMatrix's
+		length += uint64(4 + len(name))
+	}
+
+	// same as CostMatrix's
+	length += 8 + 8*numDatacenters
+
+	for _, name := range m.DatacenterNames {
+		// same as CostMatrix's
+		length += uint64(4 + len(name))
+	}
+
+	// same as CostMatrix's
+	length += numRelays*uint64(MaxRelayAddressLength+LengthOfRelayToken) + 4
+
+	// same as CostMatrix's
+	for _, v := range m.DatacenterRelays {
+		length += uint64(8 + 4 + 8*len(v))
+	}
+
+	for _, entry := range m.Entries {
+		// DirectRTT + NumRoutes + allocation for RouteRTTs + allocation for RouteNumRelays
+		length += uint64(4 + 4 + 4*len(entry.RouteRTT) + 4*len(entry.RouteNumRelays))
+
+		for _, relays := range entry.RouteRelays {
+			length += uint64(8 * len(relays))
+		}
+	}
+
+	return length
 }
