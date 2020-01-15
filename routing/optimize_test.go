@@ -35,6 +35,30 @@ func putRelayIDs(buff []byte, offset *int, ids []uint64) {
 	}
 }
 
+func putRelayNames(buff []byte, offset *int, names []string) {
+	for _, name := range names {
+		binary.LittleEndian.PutUint32(buff[*offset:], uint32(len(name)))
+		*offset += 4
+		copy(buff[*offset:], name)
+		*offset += len(name)
+	}
+}
+
+func putDatacenterStuff(buff []byte, offset *int, ids []uint64, names []string) {
+	binary.LittleEndian.PutUint32(buff[*offset:], uint32(len(ids)))
+	*offset += 4
+
+	for i := 0; i < len(ids); i++ {
+		id, name := ids[i], names[i]
+		binary.LittleEndian.PutUint64(buff[*offset:], id)
+		*offset += 8
+		binary.LittleEndian.PutUint32(buff[*offset:], uint32(len(name)))
+		*offset += 4
+		copy(buff[*offset:], name)
+		*offset += len(name)
+	}
+}
+
 func putRelayAddresses(buff []byte, offset *int, addrs []string) {
 	for _, addr := range addrs {
 		tmp := make([]byte, routing.MaxRelayAddressLength)
@@ -80,17 +104,10 @@ func putRtts(buff []byte, offset *int, rtts []int32) {
 func TestOptimize(t *testing.T) {
 	t.Run("CostMatrix", func(t *testing.T) {
 		t.Run("UnmarshalBinary()", func(t *testing.T) {
-			unmarshalAssertionsVer0 := func(matrix *routing.CostMatrix, buff []byte, numRelays, numDatacenters int, relayIDs, datacenters []uint64, relayAddrs []string, datacenterRelays [][]uint64, publicKeys [][]byte, rtts []int32) {
-				err := matrix.UnmarshalBinary(buff)
-
-				assert.Nil(t, err)
-
+			unmarshalAssertionsVer0 := func(matrix *routing.CostMatrix, numRelays, numDatacenters int, relayIDs, datacenters []uint64, relayAddrs []string, datacenterRelays [][]uint64, publicKeys [][]byte, rtts []int32) {
 				assert.Len(t, matrix.RelayIds, numRelays)
-				assert.Len(t, matrix.RelayNames, 0)
 				assert.Len(t, matrix.RelayAddresses, numRelays)
 				assert.Len(t, matrix.RelayPublicKeys, numRelays)
-				assert.Len(t, matrix.DatacenterIds, 0)
-				assert.Len(t, matrix.DatacenterNames, 0)
 				assert.Len(t, matrix.DatacenterRelays, numDatacenters)
 				assert.Len(t, matrix.RTT, len(rtts))
 
@@ -119,6 +136,26 @@ func TestOptimize(t *testing.T) {
 
 				for _, rtt := range rtts {
 					assert.Contains(t, matrix.RTT, rtt)
+				}
+			}
+
+			unmarshalAssertionsVer1 := func(matrix *routing.CostMatrix, relayNames []string) {
+				assert.Len(t, matrix.RelayNames, len(relayNames))
+				for _, name := range relayNames {
+					assert.Contains(t, matrix.RelayNames, name)
+				}
+			}
+
+			unmarshalAssertionsVer2 := func(matrix *routing.CostMatrix, datacenterIDs []uint64, datacenterNames []string) {
+				assert.Len(t, matrix.DatacenterIds, len(datacenterIDs))
+				assert.Len(t, matrix.DatacenterNames, len(datacenterNames))
+
+				for _, id := range datacenterIDs {
+					assert.Contains(t, matrix.DatacenterIds, id)
+				}
+
+				for _, name := range datacenterNames {
+					assert.Contains(t, matrix.DatacenterNames, name)
 				}
 			}
 
@@ -165,16 +202,87 @@ func TestOptimize(t *testing.T) {
 				putRtts(buff, &offset, rtts)
 
 				var matrix routing.CostMatrix
-
-				unmarshalAssertionsVer0(&matrix, buff, numRelays, numDatacenters, relayIDs, datacenters, relayAddrs, datacenterRelays, publicKeys, rtts)
+				err := matrix.UnmarshalBinary(buff)
+				assert.Nil(t, err)
+				unmarshalAssertionsVer0(&matrix, numRelays, numDatacenters, relayIDs, datacenters, relayAddrs, datacenterRelays, publicKeys, rtts)
 			})
 
 			t.Run("version number == 1", func(t *testing.T) {
+				// version 0 stuff
+				relayAddrs := []string{"127.0.0.1", "127.0.0.2"}
+				relayIDs := addrsToIDs(relayAddrs)
+				numRelays := len(relayAddrs)
+				publicKeys := [][]byte{core.RandomBytes(routing.LengthOfRelayToken), core.RandomBytes(routing.LengthOfRelayToken)}
+				datacenters := []uint64{0, 1}
+				numDatacenters := len(datacenters)
+				datacenterRelays := [][]uint64{{core.GetRelayID("127.0.0.1")}, {core.GetRelayID("127.0.0.2")}}
+				rtts := make([]int32, core.TriMatrixLength(numRelays))
 
+				for i, _ := range rtts {
+					rtts[i] = int32(rand.Int())
+				}
+
+				// version 1 stuff
+				relayNames := []string{"a name", "another name"}
+
+				buff := make([]byte, 4+4+8*numRelays+routing.MaxRelayAddressLength*numRelays+routing.LengthOfRelayToken*numRelays+4+8*numDatacenters+4*numRelays+8*numRelays+4*len(rtts)+4+len(relayNames[0])+4+len(relayNames[1]))
+
+				offset := 0
+				putVersionNumber(buff, &offset, 1)
+				putRelayIDs(buff, &offset, addrsToIDs(relayAddrs))
+				putRelayNames(buff, &offset, relayNames) //version >= 1
+				putRelayAddresses(buff, &offset, relayAddrs)
+				putRelayPublicKeys(buff, &offset, publicKeys)
+				putDatacenters(buff, &offset, datacenters, datacenterRelays)
+				putRtts(buff, &offset, rtts)
+
+				var matrix routing.CostMatrix
+				err := matrix.UnmarshalBinary(buff)
+				assert.Nil(t, err)
+				unmarshalAssertionsVer0(&matrix, numRelays, numDatacenters, relayIDs, datacenters, relayAddrs, datacenterRelays, publicKeys, rtts)
+				unmarshalAssertionsVer1(&matrix, relayNames)
 			})
 
 			t.Run("version number >= 2", func(t *testing.T) {
+				// version 0 stuff
+				relayAddrs := []string{"127.0.0.1", "127.0.0.2"}
+				relayIDs := addrsToIDs(relayAddrs)
+				numRelays := len(relayAddrs)
+				publicKeys := [][]byte{core.RandomBytes(routing.LengthOfRelayToken), core.RandomBytes(routing.LengthOfRelayToken)}
+				datacenters := []uint64{0, 1}
+				numDatacenters := len(datacenters)
+				datacenterRelays := [][]uint64{{core.GetRelayID("127.0.0.1")}, {core.GetRelayID("127.0.0.2")}}
+				rtts := make([]int32, core.TriMatrixLength(numRelays))
 
+				for i, _ := range rtts {
+					rtts[i] = int32(rand.Int())
+				}
+
+				// version 1 stuff
+				relayNames := []string{"a name", "another name"}
+
+				// version 2 stuff
+				// resusing datacenters for the ID array
+				datacenterNames := []string{"a datacenter", "another datacenter"}
+
+				buff := make([]byte, 4+4+8*numRelays+routing.MaxRelayAddressLength*numRelays+routing.LengthOfRelayToken*numRelays+4+8*numDatacenters+4*numRelays+8*numRelays+4*len(rtts)+4+len(relayNames[0])+4+len(relayNames[1])+4+8+4+len(datacenterNames[0])+8+4+len(datacenterNames[1]))
+
+				offset := 0
+				putVersionNumber(buff, &offset, 2)
+				putRelayIDs(buff, &offset, addrsToIDs(relayAddrs))
+				putRelayNames(buff, &offset, relayNames)                        // version 1
+				putDatacenterStuff(buff, &offset, datacenters, datacenterNames) // version 2
+				putRelayAddresses(buff, &offset, relayAddrs)
+				putRelayPublicKeys(buff, &offset, publicKeys)
+				putDatacenters(buff, &offset, datacenters, datacenterRelays)
+				putRtts(buff, &offset, rtts)
+
+				var matrix routing.CostMatrix
+				err := matrix.UnmarshalBinary(buff)
+				assert.Nil(t, err)
+				unmarshalAssertionsVer0(&matrix, numRelays, numDatacenters, relayIDs, datacenters, relayAddrs, datacenterRelays, publicKeys, rtts)
+				unmarshalAssertionsVer1(&matrix, relayNames)
+				unmarshalAssertionsVer2(&matrix, datacenters, datacenterNames)
 			})
 		})
 
