@@ -19,12 +19,7 @@ import (
 const (
 	PacketTypeServerUpdate = iota + 200
 	PacketTypeSessionUpdate
-)
-
-const (
-	ResponseTypeDirect = iota
-	ResponseTypeRoute
-	ResponseTypeContinue
+	PacketTypeSessionResponse
 )
 
 const (
@@ -71,12 +66,12 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 		if numbytes <= 0 {
 			continue
 		}
-		log.Printf("handler %d read %d bytes from %s", id, numbytes, addr.String())
+		log.Println("handler", id, "addr", addr.String(), "bytes", numbytes)
 
 		var buf bytes.Buffer
 		packet := UDPPacket{
 			SourceAddr: addr,
-			Data:       data[1:],
+			Data:       data,
 		}
 
 		switch data[0] {
@@ -89,7 +84,7 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 		if buf.Len() > 0 {
 			_, err := m.Conn.WriteToUDP(buf.Bytes(), addr)
 			if err != nil {
-				log.Printf("failed to write to server '%s': %v", addr.String(), err)
+				log.Println("addr", addr.String(), "msg", err.Error())
 			}
 		}
 	}
@@ -200,7 +195,8 @@ type SessionEntry struct {
 
 	ConnectionType int32
 
-	GeoLocation IPStackResponse
+	Latitude  float64
+	Longitude float64
 
 	Tag   uint64
 	Flags uint32
@@ -224,7 +220,7 @@ func (e SessionEntry) MarshalBinary() ([]byte, error) {
 }
 
 // SessionUpdateHandlerFunc ...
-func SessionUpdateHandlerFunc(redisClient redis.Cmdable, ipStackClient *IPStackClient) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(redisClient redis.Cmdable, iploc routing.IPLocator, geoClient *routing.GeoClient) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		// Deserialize the Session packet
 		var packet core.SessionUpdatePacket
@@ -251,13 +247,17 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, ipStackClient *IPStackC
 			return
 		}
 
-		ipres, err := ipStackClient.Lookup(packet.ClientAddress.IP.String())
+		location, err := iploc.LocateIP(packet.ClientAddress.IP)
 		if err != nil {
 			log.Printf("failed to lookup client ip '%s': %v", packet.ClientAddress.IP.String(), err)
 			return
 		}
 
-		// Change Session Packet
+		relays, err := geoClient.RelaysWithin(location.Latitude, location.Longitude, 500, "mi")
+		if err != nil {
+			log.Printf("failed to lookup client ip '%s': %v", packet.ClientAddress.IP.String(), err)
+			return
+		}
 
 		// Save the Session packet to Redis
 		sessionentry := SessionEntry{
@@ -279,7 +279,8 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, ipStackClient *IPStackC
 
 			ConnectionType: packet.ConnectionType,
 
-			GeoLocation: *ipres,
+			Latitude:  location.Latitude,
+			Longitude: location.Longitude,
 
 			Tag:              packet.Tag,
 			Flagged:          packet.Flagged,
@@ -298,20 +299,38 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, ipStackClient *IPStackC
 			}
 		}
 
+		// Create a zeo-value route for now until we get this information from the optimized route matrix/router
+		route := routing.Route{
+			Type:      routing.RouteTypeDirect,
+			NumTokens: 0,
+			Tokens:    nil,
+			Multipath: false,
+		}
+
+		// Create the Session Response for the server
 		response := core.SessionResponsePacket{
-			ResponseType:         ResponseTypeContinue,
 			Sequence:             packet.Sequence,
 			SessionId:            packet.SessionId,
-			NumNearRelays:        3,
-			NearRelayIds:         []uint64{1, 2, 3},
-			NearRelayAddresses:   []net.UDPAddr{{IP: net.IPv4zero, Port: 10000}, {IP: net.IPv4zero, Port: 20000}, {IP: net.IPv4zero, Port: 30000}},
-			Multipath:            false,
-			NumTokens:            0,
-			Tokens:               make([]byte, 1),
+			RouteType:            int32(route.Type),
+			NumTokens:            int32(route.NumTokens),
+			Tokens:               route.Tokens,
+			Multipath:            route.Multipath,
 			ServerRoutePublicKey: serverentry.ServerRoutePublicKey,
 		}
+
+		// Fill in the near relays
+		response.NumNearRelays = int32(len(relays))
+		response.NearRelayIds = make([]uint64, len(relays))
+		response.NearRelayAddresses = make([]net.UDPAddr, len(relays))
+		for idx, relay := range relays {
+			response.NearRelayIds[idx] = relay.ID
+			response.NearRelayAddresses[idx] = relay.Addr
+		}
+
+		// Sign the response
 		response.Sign(serverentry.VersionMajor, serverentry.VersionMinor, serverentry.VersionPatch)
 
+		// Send the Session Response back to the server
 		res, err := response.MarshalBinary()
 		if err != nil {
 			log.Printf("failed to marshal session response to '%s': %v", incoming.SourceAddr.String(), err)

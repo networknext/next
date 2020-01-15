@@ -9,16 +9,16 @@ import (
 	"context"
 	"log"
 	"net"
-	"net/http"
 	"os"
 	"os/signal"
 	"runtime"
 	"strconv"
-	"time"
 
 	"github.com/alicebob/miniredis"
 	"github.com/go-redis/redis/v7"
+	"github.com/oschwald/geoip2-golang"
 
+	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/transport"
 )
 
@@ -48,19 +48,19 @@ func main() {
 		log.Printf("unable to connect to REDIS_HOST '%s', connected to in-memory redis %s", os.Getenv("REDIS_URL"), redisServer.Addr())
 	}
 
-	// Configure the IPStackClient used for IP lookups
-	var ipStackClient transport.IPStackClient
-	{
-		if os.Getenv("IPSTACK_ACCESS_KEY") == "" {
-			log.Fatal("IPSTACK_ACCESS_KEY environment variable is empty")
-		}
+	// Open the Maxmind DB and create a routing.MaxmindDB from it
+	mmreader, err := geoip2.Open(os.Getenv("MAXMIND_DB_URI"))
+	if err != nil {
+		log.Fatalf("failed to open Maxmind GeoIP2 database: %v", err)
+	}
+	mmdb := routing.MaxmindDB{
+		Reader: mmreader,
+	}
+	defer mmreader.Close()
 
-		ipStackClient = transport.IPStackClient{
-			Client: &http.Client{
-				Timeout: time.Second,
-			},
-			AccessKey: os.Getenv("IPSTACK_ACCESS_KEY"),
-		}
+	geoClient := routing.GeoClient{
+		RedisClient: redisClient,
+		Namespace:   "RELAY_LOCATIONS",
 	}
 
 	{
@@ -79,7 +79,7 @@ func main() {
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
 			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(redisClient),
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(redisClient, &ipStackClient),
+			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(redisClient, &mmdb, &geoClient),
 		}
 
 		go func() {
