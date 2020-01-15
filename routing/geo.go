@@ -1,6 +1,8 @@
 package routing
 
 import (
+	"errors"
+	"fmt"
 	"net"
 	"strconv"
 
@@ -30,9 +32,17 @@ type MaxmindDB struct {
 
 // LocateIP queries the Maxmind geoip2.Reader for the net.IP and parses the response into a routing.Location
 func (mmdb *MaxmindDB) LocateIP(ip net.IP) (Location, error) {
+	if mmdb.Reader == nil {
+		return Location{}, errors.New("not configured with a Maxmind DB")
+	}
+
 	res, err := mmdb.Reader.City(ip)
 	if err != nil {
 		return Location{}, err
+	}
+
+	if len(res.City.Names) <= 0 {
+		return Location{}, fmt.Errorf("no location found for '%s'", ip.String())
 	}
 
 	return Location{
