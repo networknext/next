@@ -2,6 +2,7 @@ package routing_test
 
 import (
 	"encoding/binary"
+	"io/ioutil"
 	"math/rand"
 	"testing"
 
@@ -365,7 +366,40 @@ func TestOptimize(t *testing.T) {
 		})
 
 		t.Run("Optimize()", func(t *testing.T) {
-			t.Skip("Unimplemented until RouteMatrix is done")
+			t.Run("test using example data", func(t *testing.T) {
+				var cmatrix routing.CostMatrix
+				var rmatrix routing.RouteMatrix
+
+				raw, err := ioutil.ReadFile("test_data/cost-for-sanity-check-v2.bin")
+				assert.Nil(t, err)
+
+				err = cmatrix.UnmarshalBinary(raw)
+				assert.Nil(t, err)
+
+				err = cmatrix.Optimize(&rmatrix, 1.0)
+				assert.Nil(t, err)
+
+				src := rmatrix.RelayIds
+				dest := rmatrix.RelayIds
+
+				for i := range src {
+					for j := range dest {
+						if j < i {
+							ijFlatIndex := core.TriMatrixIndex(i, j)
+
+							entries := rmatrix.Entries[ijFlatIndex]
+							for k := 0; k < int(entries.NumRoutes); k++ {
+								numRelays := entries.RouteNumRelays[k]
+								firstRelay := entries.RouteRelays[k][0]
+								lastRelay := entries.RouteRelays[k][numRelays-1]
+
+								assert.Equal(t, src[firstRelay], dest[i], "invalid route entry #%d at (%d,%d), near relay %d (idx %d) != %d (idx %d)\n", k, i, j, src[firstRelay], firstRelay, dest[i], i)
+								assert.Equal(t, src[lastRelay], dest[j], "invalid route entry #%d at (%d,%d), dest relay %d (idx %d) != %d (idx %d)\n", k, i, j, src[lastRelay], lastRelay, dest[j], j)
+							}
+						}
+					}
+				}
+			})
 		})
 	})
 
