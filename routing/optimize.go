@@ -2,7 +2,6 @@ package routing
 
 import (
 	"fmt"
-	"log"
 	"math"
 	"runtime"
 	"sort"
@@ -172,7 +171,6 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 func (m CostMatrix) MarshalBinary() ([]byte, error) {
 	index := 0
 	buffSize := m.getBufferSize()
-	log.Printf("BufferSize: %d\n", buffSize)
 	data := make([]byte, buffSize)
 
 	//binary.LittleEndian.PutUint32(buffer[index:], CostMatrixVersion)
@@ -255,8 +253,6 @@ func (m CostMatrix) MarshalBinary() ([]byte, error) {
 		//index += 4
 		encoding.WriteUint32(data, &index, uint32(m.RTT[i]))
 	}
-
-	log.Println("Returning")
 
 	return data, nil
 }
