@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"crypto/rand"
 	"fmt"
-	"github.com/gorilla/mux"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/gorilla/mux"
 
 	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
@@ -70,8 +71,12 @@ func RelayInitHandlerFunc(relaydb *core.RelayDatabase) func(writer http.Response
 		}
 
 		if relayInitPacket.Magic != InitRequestMagic ||
-			relayInitPacket.Version != VersionNumberInitRequest ||
-			!crypto.Check(relayInitPacket.EncryptedToken, relayInitPacket.Nonce, crypto.RelayPublicKey[:], crypto.RouterPrivateKey[:]) {
+			relayInitPacket.Version != VersionNumberInitRequest {
+			writer.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		if _, ok := crypto.Open(relayInitPacket.EncryptedToken, relayInitPacket.Nonce, crypto.RelayPublicKey[:], crypto.RouterPrivateKey[:]); !ok {
 			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -90,7 +95,7 @@ func RelayInitHandlerFunc(relaydb *core.RelayDatabase) func(writer http.Response
 		entry.Address = relayInitPacket.Address //core.ParseAddress(relayInitPacket.address)
 		entry.LastUpdateTime = uint64(time.Now().Unix())
 
-		entry.PublicKey = make([]byte, crypto.PublicKeySize)
+		entry.PublicKey = make([]byte, crypto.KeySize)
 		if _, err := rand.Read(entry.PublicKey); err != nil {
 			writer.WriteHeader(http.StatusInternalServerError)
 			return
@@ -104,7 +109,7 @@ func RelayInitHandlerFunc(relaydb *core.RelayDatabase) func(writer http.Response
 		responseData := make([]byte, 64)
 		encoding.WriteUint32(responseData, &index, VersionNumberInitResponse)
 		encoding.WriteUint64(responseData, &index, uint64(time.Now().Unix()))
-		encoding.WriteBytes(responseData, &index, entry.PublicKey, crypto.PublicKeySize)
+		encoding.WriteBytes(responseData, &index, entry.PublicKey, crypto.KeySize)
 
 		writer.Write(responseData[:index])
 	}
@@ -128,7 +133,7 @@ func RelayUpdateHandlerFunc(relaydb *core.RelayDatabase, statsdb *core.StatsData
 			return
 		}
 
-		if relayUpdatePacket.Version != VersionNumberUpdateRequest || relayUpdatePacket.NumRelays > MaxRelays {
+		if relayUpdatePacket.Version != VersionNumberUpdateRequest || relayUpdatePacket.NumRelays == 0 || relayUpdatePacket.NumRelays > MaxRelays {
 			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
