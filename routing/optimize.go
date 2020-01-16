@@ -289,7 +289,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 	routes.Entries = make([]RouteMatrixEntry, entryCount)
 
 	type Indirect struct {
-		relay int64
+		relay uint64
 		rtt   int32
 	}
 
@@ -358,7 +358,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 							if ikRtt < 0 || kjRtt < 0 {
 								continue
 							}
-							working[numRoutes].relay = int64(k)
+							working[numRoutes].relay = uint64(k)
 							working[numRoutes].rtt = ikRtt + kjRtt
 							numRoutes++
 						}
@@ -382,7 +382,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 							if indirectRTT > rttDirect-thresholdRTT {
 								continue
 							}
-							working[numRoutes].relay = int64(k)
+							working[numRoutes].relay = uint64(k)
 							working[numRoutes].rtt = indirectRTT
 							numRoutes++
 						}
@@ -451,7 +451,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 
 							y := indirect[i][j][k]
 
-							routeManager.AddRoute(y.rtt, uint64(i), uint64(y.relay), uint64(j))
+							routeManager.AddRoute(y.rtt, uint64(i), y.relay, uint64(j))
 
 							var x *Indirect
 							if indirect[i][y.relay] != nil {
@@ -469,7 +469,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 								yjIndex := core.TriMatrixIndex(int(y.relay), j)
 
 								routeManager.AddRoute(rtt[ixIndex]+rtt[xyIndex]+rtt[yjIndex],
-									uint64(i), uint64(x.relay), uint64(y.relay), uint64(j))
+									uint64(i), x.relay, y.relay, uint64(j))
 							}
 
 							if z != nil {
@@ -478,7 +478,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 								zjIndex := core.TriMatrixIndex(int(z.relay), j)
 
 								routeManager.AddRoute(rtt[iyIndex]+rtt[yzIndex]+rtt[zjIndex],
-									uint64(i), uint64(y.relay), uint64(z.relay), uint64(j))
+									uint64(i), y.relay, z.relay, uint64(j))
 							}
 
 							if x != nil && z != nil {
@@ -488,7 +488,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 								zjIndex := core.TriMatrixIndex(int(z.relay), j)
 
 								routeManager.AddRoute(rtt[ixIndex]+rtt[xyIndex]+rtt[yzIndex]+rtt[zjIndex],
-									uint64(i), uint64(x.relay), uint64(y.relay), uint64(z.relay), uint64(j))
+									uint64(i), x.relay, y.relay, z.relay, uint64(j))
 							}
 
 							numRoutes := routeManager.NumRoutes

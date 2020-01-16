@@ -179,6 +179,104 @@ func putEntriesOld(buff []byte, offset *int, entries []routing.RouteMatrixEntry)
 	}
 }
 
+func sizeofVersionNumber() int {
+	return 4
+}
+
+func sizeofRelayCount() int {
+	return 4
+}
+
+func sizeofRelayIDs32(ids []uint64) int {
+	return 4 * len(ids)
+}
+
+func sizeofRelayIDs64(ids []uint64) int {
+	return 8 * len(ids)
+}
+
+func sizeofRelayNames(names []string) int {
+	length := 0
+	for _, name := range names {
+		length += 4 + len(name)
+	}
+	return length
+
+}
+
+func sizeofDatacenterCount() int {
+	return 4
+}
+
+func sizeofDatacenterIDs32(datacenterIDs []uint64) int {
+	return 4 * len(datacenterIDs)
+}
+
+func sizeofDatacenterIDs64(datacenterIDs []uint64) int {
+	return 8 * len(datacenterIDs)
+}
+
+func sizeofDatacenterNames(names []string) int {
+	length := 0
+	for _, name := range names {
+		length += 4 + len(name)
+	}
+	return length
+}
+
+func sizeofRelayAddressOld(addrs []string) int {
+	length := 0
+	for _, addr := range addrs {
+		length += 4 + len(addr)
+	}
+	return length
+}
+
+func sizeofRelayAddress(addrs []string) int {
+	return len(addrs) * routing.MaxRelayAddressLength
+}
+
+func sizeofRelayPublicKeysOld(keys [][]byte) int {
+	length := 0
+	for _, key := range keys {
+		length += 4 + len(key)
+	}
+	return length
+}
+
+func sizeofRelayPublicKeys(keys [][]byte) int {
+	return len(keys) * routing.LengthOfRelayToken
+}
+
+// the second area the datacenter count is stored, as of right now identical to the other func
+func sizeofDataCenterCount2() int {
+	return 4
+}
+
+func sizeofRelaysInDatacenterCount(datacenterIDs []uint64) int {
+	return 4 * len(datacenterIDs)
+}
+
+func sizeofRTTs(rtts []int32) int {
+	return 4 * len(rtts)
+}
+
+func sizeofRelayMatrixEntry(entries []routing.RouteMatrixEntry) int {
+	length := 0
+	for _, entry := range entries {
+		length += 4 + 4 + (4+4+8)*int(entry.NumRoutes)
+	}
+	return length
+}
+
+func sizeofRelayMatrixEntryOld(entries []routing.RouteMatrixEntry) int {
+	length := 0
+	for _, entry := range entries {
+		length += 4 + 4 + (4+4+4)*int(entry.NumRoutes)
+	}
+	return length
+}
+
 func analyze(t *testing.T, route_matrix *routing.RouteMatrix) {
 	src := route_matrix.RelayIds
 	dest := route_matrix.RelayIds
@@ -357,19 +455,25 @@ func TestOptimize(t *testing.T) {
 			})
 
 			t.Run("version number == 0", func(t *testing.T) {
-				relayAddrs := []string{"127.0.0.1", "127.0.0.2"}
+				relayAddrs := []string{"127.0.0.1", "127.0.0.2", "127.0.0.3", "127.0.0.4", "127.0.0.5"}
 
 				relayIDs := addrsToIDs(relayAddrs)
 
 				numRelays := len(relayAddrs)
 
-				publicKeys := [][]byte{core.RandomBytes(routing.LengthOfRelayToken), core.RandomBytes(routing.LengthOfRelayToken)}
+				publicKeys := [][]byte{
+					core.RandomBytes(routing.LengthOfRelayToken),
+					core.RandomBytes(routing.LengthOfRelayToken),
+					core.RandomBytes(routing.LengthOfRelayToken),
+					core.RandomBytes(routing.LengthOfRelayToken),
+					core.RandomBytes(routing.LengthOfRelayToken),
+				}
 
-				datacenters := []uint64{0, 1}
+				datacenters := []uint64{0, 1, 2, 3, 4}
 
 				numDatacenters := len(datacenters)
 
-				datacenterRelays := [][]uint64{{uint64(core.GetRelayID("127.0.0.1"))}, {uint64(core.GetRelayID("127.0.0.2"))}}
+				datacenterRelays := [][]uint64{{relayIDs[0]}, {relayIDs[1]}, {relayIDs[2]}, {relayIDs[3]}, {relayIDs[4]}}
 
 				rtts := make([]int32, core.TriMatrixLength(numRelays))
 
@@ -377,7 +481,28 @@ func TestOptimize(t *testing.T) {
 					rtts[i] = int32(rand.Int())
 				}
 
-				buffSize := 4 + 4 + 8*numRelays + routing.MaxRelayAddressLength*numRelays + routing.LengthOfRelayToken*numRelays + 4 + 8*numDatacenters + 4*numRelays + 8*numRelays + 4*len(rtts)
+				buffSize := 0
+				// ...
+				buffSize += sizeofVersionNumber()
+				// relay count number
+				buffSize += sizeofRelayCount()
+				// all relay ids
+				buffSize += sizeofRelayIDs32(relayIDs)
+				// relay addresses in the old format
+				buffSize += sizeofRelayAddressOld(relayAddrs)
+				// relay public keys in the old format
+				buffSize += sizeofRelayPublicKeysOld(publicKeys)
+				// the second time the datacenter count is read
+				buffSize += sizeofDataCenterCount2()
+				// the datacenter ids that will be put into the map
+				buffSize += sizeofDatacenterIDs32(datacenters)
+				// the number of relays in the datacenter
+				buffSize += sizeofRelaysInDatacenterCount(datacenters)
+				// the relays in the datacenters
+				buffSize += sizeofRelayIDs32(relayIDs)
+				// the rtt entries
+				buffSize += sizeofRTTs(rtts)
+
 				buff := make([]byte, buffSize)
 
 				offset := 0
@@ -396,23 +521,40 @@ func TestOptimize(t *testing.T) {
 
 			t.Run("version number == 1", func(t *testing.T) {
 				// version 0 stuff
-				relayAddrs := []string{"127.0.0.1", "127.0.0.2"}
+				relayAddrs := []string{"127.0.0.1", "127.0.0.2", "127.0.0.3", "127.0.0.4", "127.0.0.5"}
 				relayIDs := addrsToIDs(relayAddrs)
 				numRelays := len(relayAddrs)
-				publicKeys := [][]byte{core.RandomBytes(routing.LengthOfRelayToken), core.RandomBytes(routing.LengthOfRelayToken)}
-				datacenters := []uint64{0, 1}
+				publicKeys := [][]byte{
+					core.RandomBytes(routing.LengthOfRelayToken),
+					core.RandomBytes(routing.LengthOfRelayToken),
+					core.RandomBytes(routing.LengthOfRelayToken),
+					core.RandomBytes(routing.LengthOfRelayToken),
+					core.RandomBytes(routing.LengthOfRelayToken),
+				}
+				datacenters := []uint64{0, 1, 2, 3, 4}
 				numDatacenters := len(datacenters)
-				datacenterRelays := [][]uint64{{uint64(core.GetRelayID("127.0.0.1"))}, {uint64(core.GetRelayID("127.0.0.2"))}}
+				datacenterRelays := [][]uint64{{relayIDs[0]}, {relayIDs[1]}, {relayIDs[2]}, {relayIDs[3]}, {relayIDs[4]}}
 				rtts := make([]int32, core.TriMatrixLength(numRelays))
-
 				for i, _ := range rtts {
 					rtts[i] = int32(rand.Int())
 				}
 
 				// version 1 stuff
-				relayNames := []string{"a name", "another name"}
+				relayNames := []string{"a name", "another name", "oh boy another", "they just keep coming", "i'm out of sarcasm"}
 
-				buffSize := 4 + 4 + 8*numRelays + routing.MaxRelayAddressLength*numRelays + routing.LengthOfRelayToken*numRelays + 4 + 8*numDatacenters + 4*numRelays + 8*numRelays + 4*len(rtts) + 4 + len(relayNames[0]) + 4 + len(relayNames[1])
+				buffSize := 0
+				buffSize += sizeofVersionNumber()
+				buffSize += sizeofRelayCount()
+				buffSize += sizeofRelayIDs32(relayIDs)
+				// the relay names
+				buffSize += sizeofRelayNames(relayNames)
+				buffSize += sizeofRelayAddressOld(relayAddrs)
+				buffSize += sizeofRelayPublicKeysOld(publicKeys)
+				buffSize += sizeofDataCenterCount2()
+				buffSize += sizeofDatacenterIDs32(datacenters)
+				buffSize += sizeofRelaysInDatacenterCount(datacenters)
+				buffSize += sizeofRelayIDs32(relayIDs)
+				buffSize += sizeofRTTs(rtts)
 
 				buff := make([]byte, buffSize)
 
@@ -434,27 +576,48 @@ func TestOptimize(t *testing.T) {
 
 			t.Run("version number >= 2", func(t *testing.T) {
 				// version 0 stuff
-				relayAddrs := []string{"127.0.0.1", "127.0.0.2"}
+				relayAddrs := []string{"127.0.0.1", "127.0.0.2", "127.0.0.3", "127.0.0.4", "127.0.0.5"}
 				relayIDs := addrsToIDs(relayAddrs)
 				numRelays := len(relayAddrs)
-				publicKeys := [][]byte{core.RandomBytes(routing.LengthOfRelayToken), core.RandomBytes(routing.LengthOfRelayToken)}
-				datacenters := []uint64{0, 1}
+				publicKeys := [][]byte{
+					core.RandomBytes(routing.LengthOfRelayToken),
+					core.RandomBytes(routing.LengthOfRelayToken),
+					core.RandomBytes(routing.LengthOfRelayToken),
+					core.RandomBytes(routing.LengthOfRelayToken),
+					core.RandomBytes(routing.LengthOfRelayToken),
+				}
+				datacenters := []uint64{0, 1, 2, 3, 4}
 				numDatacenters := len(datacenters)
-				datacenterRelays := [][]uint64{{uint64(core.GetRelayID("127.0.0.1"))}, {uint64(core.GetRelayID("127.0.0.2"))}}
+				datacenterRelays := [][]uint64{{relayIDs[0]}, {relayIDs[1]}, {relayIDs[2]}, {relayIDs[3]}, {relayIDs[4]}}
 				rtts := make([]int32, core.TriMatrixLength(numRelays))
-
 				for i, _ := range rtts {
 					rtts[i] = int32(rand.Int())
 				}
 
 				// version 1 stuff
-				relayNames := []string{"a name", "another name"}
-
+				relayNames := []string{"a name", "another name", "oh boy another", "they just keep coming", "i'm out of sarcasm"}
 				// version 2 stuff
 				// resusing datacenters for the ID array
-				datacenterNames := []string{"a datacenter", "another datacenter"}
+				datacenterNames := []string{"a datacenter", "another datacenter", "third", "fourth", "fifth"}
 
-				buffSize := 4 + 4 + 8*numRelays + routing.MaxRelayAddressLength*numRelays + routing.LengthOfRelayToken*numRelays + 4 + 8*numDatacenters + 4*numRelays + 8*numRelays + 4*len(rtts) + 4 + len(relayNames[0]) + 4 + len(relayNames[1]) + 4 + 8 + 4 + len(datacenterNames[0]) + 8 + 4 + len(datacenterNames[1])
+				buffSize := 0
+				buffSize += sizeofVersionNumber()
+				buffSize += sizeofRelayCount()
+				buffSize += sizeofRelayIDs32(relayIDs)
+				buffSize += sizeofRelayNames(relayNames)
+				// the first time the datacenter count is read
+				buffSize += sizeofDatacenterCount()
+				// all the individual datacenter ids
+				buffSize += sizeofDatacenterIDs32(datacenters)
+				// all the individual datacenter names
+				buffSize += sizeofDatacenterNames(datacenterNames)
+				buffSize += sizeofRelayAddressOld(relayAddrs)
+				buffSize += sizeofRelayPublicKeysOld(publicKeys)
+				buffSize += sizeofDataCenterCount2()
+				buffSize += sizeofDatacenterIDs32(datacenters)
+				buffSize += sizeofRelaysInDatacenterCount(datacenters)
+				buffSize += sizeofRelayIDs32(relayIDs)
+				buffSize += sizeofRTTs(rtts)
 
 				buff := make([]byte, buffSize)
 
