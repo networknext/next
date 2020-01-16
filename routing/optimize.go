@@ -2,7 +2,6 @@ package routing
 
 import (
 	"fmt"
-	"log"
 	"math"
 	"runtime"
 	"sort"
@@ -733,7 +732,6 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 		encoding.ReadUint32(data, &index, &numRoutes)
 		entry.NumRoutes = int32(numRoutes)
 
-		fmt.Println(entry.NumRoutes)
 		for j := 0; j < int(entry.NumRoutes); j++ {
 			var routeRtt uint32
 			encoding.ReadUint32(data, &index, &routeRtt)
@@ -743,14 +741,12 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 			encoding.ReadUint32(data, &index, &routeNumRelays)
 			entry.RouteNumRelays[j] = int32(routeNumRelays)
 
-			log.Println(entry.RouteNumRelays[j])
 			if version >= 3 {
 				for k := 0; k < int(entry.RouteNumRelays[j]); k++ {
 					encoding.ReadUint64(data, &index, &entry.RouteRelays[j][k])
 				}
 			} else {
 				for k := 0; k < int(entry.RouteNumRelays[j]); k++ {
-					log.Println(k)
 					var tmp uint32
 					encoding.ReadUint32(data, &index, &tmp)
 					entry.RouteRelays[j][k] = uint64(tmp)

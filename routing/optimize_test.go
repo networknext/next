@@ -2,7 +2,6 @@ package routing_test
 
 import (
 	"encoding/binary"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -199,8 +198,6 @@ func putEntries(buff []byte, offset *int, entries []routing.RouteMatrixEntry) {
 
 func putEntriesOld(buff []byte, offset *int, entries []routing.RouteMatrixEntry) {
 	for _, entry := range entries {
-		s, _ := json.MarshalIndent(entry, "", "\t")
-		fmt.Printf("Entry: %s", s)
 		putInt32s(buff, offset, entry.DirectRTT)
 		putInt32s(buff, offset, entry.NumRoutes)
 
@@ -822,7 +819,6 @@ func TestOptimize(t *testing.T) {
 			})
 
 			t.Run("another test with sample data", func(t *testing.T) {
-				t.Skip()
 				raw, err := ioutil.ReadFile("test_data/cost-v2.bin")
 				assert.Nil(t, err)
 				assert.Equal(t, 452692, len(raw), "cost.bin should be 452692 bytes")
