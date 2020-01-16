@@ -1,10 +1,10 @@
 name: Test Other
 
-on:
-  push:
-    branches:
-      - master
-    tags: []
+# on:
+#   push:
+#     branches:
+#       - master
+#     tags: []
   
 jobs:
   test_func:
