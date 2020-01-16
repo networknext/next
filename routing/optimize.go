@@ -14,11 +14,11 @@ import (
 const (
 	// CostMatrixVersion ...
 	// IMPORTANT: Bump this version whenever you change the binary format
-	CostMatrixVersion = 2
+	CostMatrixVersion = 3
 
 	// RouteMatrixVersion ...
 	// IMPORTANT: Increment this when you change the binary format
-	RouteMatrixVersion = 2
+	RouteMatrixVersion = 3
 
 	// MaxRelays ...
 	MaxRelays = 5
@@ -35,6 +35,7 @@ const (
 	LengthOfRelayToken = 32
 )
 
+// CostMatrix ...
 type CostMatrix struct {
 	RelayIds         []uint64
 	RelayNames       []string
@@ -72,17 +73,36 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 	}
 
 	var numRelays uint32
+
 	encoding.ReadUint32(data, &index, &numRelays)
 
 	m.RelayIds = make([]uint64, numRelays)
-	for i := 0; i < int(numRelays); i++ {
-		encoding.ReadUint64(data, &index, &m.RelayIds[i])
+
+	if version >= 3 {
+		for i := 0; i < int(numRelays); i++ {
+			encoding.ReadUint64(data, &index, &m.RelayIds[i])
+		}
+	} else {
+		for i := 0; i < int(numRelays); i++ {
+			var tmp uint32
+			encoding.ReadUint32(data, &index, &tmp)
+			m.RelayIds[i] = uint64(tmp)
+		}
 	}
 
 	if version >= 1 {
 		m.RelayNames = make([]string, numRelays)
-		for i := range m.RelayNames {
-			encoding.ReadString(data, &index, &m.RelayNames[i], math.MaxInt32)
+
+		if version >= 3 {
+			for i := range m.RelayNames {
+				encoding.ReadString(data, &index, &m.RelayNames[i], math.MaxInt32)
+			}
+		} else {
+			for i := range m.RelayNames {
+				var bytesRead int
+				m.RelayNames[i], bytesRead = encoding.ReadStringOld(data[index:])
+				index += bytesRead
+			}
 		}
 	}
 
@@ -92,20 +112,49 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 
 		m.DatacenterIds = make([]uint64, datacenterCount)
 		m.DatacenterNames = make([]string, datacenterCount)
-		for i := 0; i < int(datacenterCount); i++ {
-			encoding.ReadUint64(data, &index, &m.DatacenterIds[i])
-			encoding.ReadString(data, &index, &m.DatacenterNames[i], math.MaxInt32)
+
+		if version >= 3 {
+			for i := 0; i < int(datacenterCount); i++ {
+				encoding.ReadUint64(data, &index, &m.DatacenterIds[i])
+				encoding.ReadString(data, &index, &m.DatacenterNames[i], math.MaxInt32)
+			}
+		} else {
+			for i := 0; i < int(datacenterCount); i++ {
+				var tmp uint32
+				encoding.ReadUint32(data, &index, &tmp)
+				m.DatacenterIds[i] = uint64(tmp)
+
+				var bytesRead int
+				m.DatacenterNames[i], bytesRead = encoding.ReadStringOld(data[index:])
+				index += bytesRead
+			}
 		}
 	}
 
 	m.RelayAddresses = make([][]byte, numRelays)
-	for i := range m.RelayAddresses {
-		encoding.ReadBytes(data, &index, &m.RelayAddresses[i], MaxRelayAddressLength)
+	if version >= 3 {
+		for i := range m.RelayAddresses {
+			encoding.ReadBytes(data, &index, &m.RelayAddresses[i], MaxRelayAddressLength)
+		}
+	} else {
+		for i := range m.RelayAddresses {
+			var bytesRead int
+			m.RelayAddresses[i], bytesRead = encoding.ReadBytesOld(data[index:])
+			index += bytesRead
+		}
 	}
 
 	m.RelayPublicKeys = make([][]byte, numRelays)
-	for i := range m.RelayPublicKeys {
-		encoding.ReadBytes(data, &index, &m.RelayPublicKeys[i], LengthOfRelayToken)
+	if version >= 3 {
+		for i := range m.RelayPublicKeys {
+			encoding.ReadBytes(data, &index, &m.RelayPublicKeys[i], LengthOfRelayToken)
+		}
+	} else {
+		for i := range m.RelayPublicKeys {
+			var bytesRead int
+			m.RelayPublicKeys[i], bytesRead = encoding.ReadBytesOld(data[index:])
+			index += bytesRead
+		}
 	}
 
 	var numDatacenters uint32
@@ -114,24 +163,40 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 	m.DatacenterRelays = make(map[uint64][]uint64)
 
 	for i := 0; i < int(numDatacenters); i++ {
-
 		var datacenterID uint64
-		encoding.ReadUint64(data, &index, &datacenterID)
+
+		if version >= 3 {
+			encoding.ReadUint64(data, &index, &datacenterID)
+		} else {
+			var tmp uint32
+			encoding.ReadUint32(data, &index, &tmp)
+			datacenterID = uint64(tmp)
+		}
 
 		var numRelaysInDatacenter uint32
 		encoding.ReadUint32(data, &index, &numRelaysInDatacenter)
 
 		m.DatacenterRelays[datacenterID] = make([]uint64, numRelaysInDatacenter)
 
-		for j := 0; j < int(numRelaysInDatacenter); j++ {
-			encoding.ReadUint64(data, &index, &m.DatacenterRelays[datacenterID][j])
+		if version >= 3 {
+			for j := 0; j < int(numRelaysInDatacenter); j++ {
+				encoding.ReadUint64(data, &index, &m.DatacenterRelays[datacenterID][j])
+			}
+		} else {
+			for j := 0; j < int(numRelaysInDatacenter); j++ {
+				var tmp uint32
+				encoding.ReadUint32(data, &index, &tmp)
+				m.DatacenterRelays[datacenterID][j] = uint64(tmp)
+			}
 		}
 	}
 
 	entryCount := core.TriMatrixLength(int(numRelays))
 	m.RTT = make([]int32, entryCount)
+
 	for i := range m.RTT {
 		var tmp uint32
+		// read rtt entries
 		encoding.ReadUint32(data, &index, &tmp)
 		m.RTT[i] = int32(tmp)
 	}
@@ -221,7 +286,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 	routes.Entries = make([]RouteMatrixEntry, entryCount)
 
 	type Indirect struct {
-		relay int32
+		relay int64
 		rtt   int32
 	}
 
@@ -290,7 +355,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 							if ikRtt < 0 || kjRtt < 0 {
 								continue
 							}
-							working[numRoutes].relay = int32(k)
+							working[numRoutes].relay = int64(k)
 							working[numRoutes].rtt = ikRtt + kjRtt
 							numRoutes++
 						}
@@ -314,7 +379,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 							if indirectRTT > rttDirect-thresholdRTT {
 								continue
 							}
-							working[numRoutes].relay = int32(k)
+							working[numRoutes].relay = int64(k)
 							working[numRoutes].rtt = indirectRTT
 							numRoutes++
 						}
@@ -375,15 +440,15 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 
 						// subdivide routes from i -> j as follows: i -> (x) -> (y) -> (z) -> j, where the subdivision improves significantly on RTT
 
-						routeManager := core.NewRouteManager()
+						routeManager := NewRouteManager()
 
 						for k := range indirect[i][j] {
 
-							routeManager.AddRoute(rtt[ijIndex], uint32(i), uint32(j))
+							routeManager.AddRoute(rtt[ijIndex], uint64(i), uint64(j))
 
 							y := indirect[i][j][k]
 
-							routeManager.AddRoute(y.rtt, uint32(i), uint32(y.relay), uint32(j))
+							routeManager.AddRoute(y.rtt, uint64(i), uint64(y.relay), uint64(j))
 
 							var x *Indirect
 							if indirect[i][y.relay] != nil {
@@ -401,7 +466,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 								yjIndex := core.TriMatrixIndex(int(y.relay), j)
 
 								routeManager.AddRoute(rtt[ixIndex]+rtt[xyIndex]+rtt[yjIndex],
-									uint32(i), uint32(x.relay), uint32(y.relay), uint32(j))
+									uint64(i), uint64(x.relay), uint64(y.relay), uint64(j))
 							}
 
 							if z != nil {
@@ -410,7 +475,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 								zjIndex := core.TriMatrixIndex(int(z.relay), j)
 
 								routeManager.AddRoute(rtt[iyIndex]+rtt[yzIndex]+rtt[zjIndex],
-									uint32(i), uint32(y.relay), uint32(z.relay), uint32(j))
+									uint64(i), uint64(y.relay), uint64(z.relay), uint64(j))
 							}
 
 							if x != nil && z != nil {
@@ -420,7 +485,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 								zjIndex := core.TriMatrixIndex(int(z.relay), j)
 
 								routeManager.AddRoute(rtt[ixIndex]+rtt[xyIndex]+rtt[yzIndex]+rtt[zjIndex],
-									uint32(i), uint32(x.relay), uint32(y.relay), uint32(z.relay), uint32(j))
+									uint64(i), uint64(x.relay), uint64(y.relay), uint64(z.relay), uint64(j))
 							}
 
 							numRoutes := routeManager.NumRoutes
@@ -433,7 +498,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 								routes.Entries[ijIndex].RouteNumRelays[u] = routeManager.RouteNumRelays[u]
 								numRelays := int(routes.Entries[ijIndex].RouteNumRelays[u])
 								for v := 0; v < numRelays; v++ {
-									routes.Entries[ijIndex].RouteRelays[u][v] = uint64(routeManager.RouteRelays[u][v])
+									routes.Entries[ijIndex].RouteRelays[u][v] = routeManager.RouteRelays[u][v]
 								}
 							}
 						}
@@ -529,9 +594,6 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 	index := 0
 
 	var version uint32
-
-	//version := binary.LittleEndian.Uint32(data[index:])
-	//index += 4
 	encoding.ReadUint32(data, &index, &version)
 
 	if version > RouteMatrixVersion {
@@ -539,123 +601,155 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 	}
 
 	var numRelays uint32
-
-	//numRelays = int32(binary.LittleEndian.Uint32(data[index:]))
-	//index += 4
 	encoding.ReadUint32(data, &index, &numRelays)
 
 	m.RelayIds = make([]uint64, numRelays)
-	for i := 0; i < int(numRelays); i++ {
-		//routeMatrix.RelayIds[i] = RelayId(binary.LittleEndian.Uint32(data[index:]))
-		//index += 4
-		encoding.ReadUint64(data, &index, &m.RelayIds[i])
+	if version >= 3 {
+		for i := 0; i < int(numRelays); i++ {
+			encoding.ReadUint64(data, &index, &m.RelayIds[i])
+		}
+	} else {
+		for i := 0; i < int(numRelays); i++ {
+			var tmp uint32
+			encoding.ReadUint32(data, &index, &tmp)
+			m.RelayIds[i] = uint64(tmp)
+		}
 	}
 
 	m.RelayNames = make([]string, numRelays)
 	if version >= 1 {
-		for i := range m.RelayNames {
-			//routeMatrix.RelayNames[i], bytes_read = ReadString(data[index:])
-			//index += bytes_read
-			encoding.ReadString(data, &index, &m.RelayNames[i], math.MaxInt32)
+		if version >= 3 {
+			for i := range m.RelayNames {
+				encoding.ReadString(data, &index, &m.RelayNames[i], math.MaxInt32)
+			}
+		} else {
+			for i := range m.RelayNames {
+				var bytesRead int
+				m.RelayNames[i], bytesRead = encoding.ReadStringOld(data[index:])
+				index += bytesRead
+			}
 		}
 	}
 
 	if version >= 2 {
-		//datacenterCount := binary.LittleEndian.Uint32(data[index:])
-		//index += 4
 		var datacenterCount uint32
 		encoding.ReadUint32(data, &index, &datacenterCount)
 
 		m.DatacenterIds = make([]uint64, datacenterCount)
 		m.DatacenterNames = make([]string, datacenterCount)
-		for i := 0; i < int(datacenterCount); i++ {
-			//routeMatrix.DatacenterIds[i] = DatacenterId(binary.LittleEndian.Uint32(data[index:]))
-			//index += 4
-			encoding.ReadUint64(data, &index, &m.DatacenterIds[i])
-			//routeMatrix.DatacenterNames[i], bytes_read = ReadString(data[index:])
-			//index += bytes_read
-			encoding.ReadString(data, &index, &m.DatacenterNames[i], math.MaxInt32)
+		if version >= 3 {
+			for i := 0; i < int(datacenterCount); i++ {
+				encoding.ReadUint64(data, &index, &m.DatacenterIds[i])
+				encoding.ReadString(data, &index, &m.DatacenterNames[i], math.MaxInt32)
+			}
+		} else {
+			for i := 0; i < int(datacenterCount); i++ {
+				var tmp uint32
+				encoding.ReadUint32(data, &index, &tmp)
+				m.DatacenterIds[i] = uint64(tmp)
+
+				var bytesRead int
+				m.DatacenterNames[i], bytesRead = encoding.ReadStringOld(data[index:])
+				index += bytesRead
+			}
 		}
 	}
 
 	m.RelayAddresses = make([][]byte, numRelays)
-	for i := range m.RelayAddresses {
-		//routeMatrix.RelayAddresses[i], bytes_read = ReadBytes(data[index:])
-		//index += bytes_read
-		encoding.ReadBytes(data, &index, &m.RelayAddresses[i], MaxRelayAddressLength)
+
+	if version >= 3 {
+		for i := range m.RelayAddresses {
+			encoding.ReadBytes(data, &index, &m.RelayAddresses[i], MaxRelayAddressLength)
+		}
+	} else {
+		for i := range m.RelayAddresses {
+			var bytesRead int
+			m.RelayAddresses[i], bytesRead = encoding.ReadBytesOld(data[index:])
+			index += bytesRead
+		}
 	}
 
 	m.RelayPublicKeys = make([][]byte, numRelays)
-	for i := range m.RelayPublicKeys {
-		//routeMatrix.RelayPublicKeys[i], bytes_read = ReadBytes(data[index:])
-		//index += bytes_read
-		encoding.ReadBytes(data, &index, &m.RelayPublicKeys[i], LengthOfRelayToken)
+	if version >= 3 {
+		for i := range m.RelayPublicKeys {
+			encoding.ReadBytes(data, &index, &m.RelayPublicKeys[i], LengthOfRelayToken)
+		}
+	} else {
+		for i := range m.RelayPublicKeys {
+			var bytesRead int
+			m.RelayPublicKeys[i], bytesRead = encoding.ReadBytesOld(data[index:])
+			index += bytesRead
+		}
 	}
 
-	//numDatacenters := int32(binary.LittleEndian.Uint32(data[index:]))
-	//index += 4
 	var numDatacenters uint32
 	encoding.ReadUint32(data, &index, &numDatacenters)
 
 	m.DatacenterRelays = make(map[uint64][]uint64)
 
 	for i := 0; i < int(numDatacenters); i++ {
-
-		//datacenterId := DatacenterId(binary.LittleEndian.Uint32(data[index:]))
-		//index += 4
 		var datacenterID uint64
-		encoding.ReadUint64(data, &index, &datacenterID)
 
-		//numRelaysInDatacenter := int32(binary.LittleEndian.Uint32(data[index:]))
-		//index += 4
+		if version >= 3 {
+			encoding.ReadUint64(data, &index, &datacenterID)
+		} else {
+			var tmp uint32
+			encoding.ReadUint32(data, &index, &tmp)
+			datacenterID = uint64(tmp)
+		}
+
 		var numRelaysInDatacenter uint32
 		encoding.ReadUint32(data, &index, &numRelaysInDatacenter)
 
 		m.DatacenterRelays[datacenterID] = make([]uint64, numRelaysInDatacenter)
 
-		for j := 0; j < int(numRelaysInDatacenter); j++ {
-			//routeMatrix.DatacenterRelays[datacenterId][j] = RelayId(binary.LittleEndian.Uint32(data[index:]))
-			//index += 4
-			encoding.ReadUint64(data, &index, &m.DatacenterRelays[datacenterID][j])
+		if version >= 3 {
+			for j := 0; j < int(numRelaysInDatacenter); j++ {
+				encoding.ReadUint64(data, &index, &m.DatacenterRelays[datacenterID][j])
+			}
+		} else {
+			for j := 0; j < int(numRelaysInDatacenter); j++ {
+				var tmp uint32
+				encoding.ReadUint32(data, &index, &tmp)
+				m.DatacenterRelays[datacenterID][j] = uint64(tmp)
+			}
 		}
 	}
 
 	entryCount := core.TriMatrixLength(int(numRelays))
-
 	m.Entries = make([]RouteMatrixEntry, entryCount)
 
 	for i := range m.Entries {
 
-		//routeMatrix.Entries[i].DirectRTT = int32(binary.LittleEndian.Uint32(buffer[index:]))
-		//index += 4
 		var directRtt uint32
 		encoding.ReadUint32(data, &index, &directRtt)
 		m.Entries[i].DirectRTT = int32(directRtt)
 
-		//routeMatrix.Entries[i].NumRoutes = int32(binary.LittleEndian.Uint32(buffer[index:]))
-		//index += 4
 		var numRoutes uint32
 		encoding.ReadUint32(data, &index, &numRoutes)
 		m.Entries[i].NumRoutes = int32(numRoutes)
 
 		for j := 0; j < int(m.Entries[i].NumRoutes); j++ {
-			//routeMatrix.Entries[i].RouteRTT[j] = int32(binary.LittleEndian.Uint32(buffer[index:]))
-			//index += 4
 			var routeRtt uint32
 			encoding.ReadUint32(data, &index, &routeRtt)
 			m.Entries[i].RouteRTT[j] = int32(routeRtt)
 
-			//routeMatrix.Entries[i].RouteNumRelays[j] = int32(binary.LittleEndian.Uint32(buffer[index:]))
-			//index += 4
 			var routeNumRelays uint32
 			encoding.ReadUint32(data, &index, &routeNumRelays)
 			m.Entries[i].RouteNumRelays[j] = int32(routeNumRelays)
 
-			for k := 0; k < int(m.Entries[i].RouteNumRelays[j]); k++ {
-				//routeMatrix.Entries[i].RouteRelays[j][k] = binary.LittleEndian.Uint32(buffer[index:])
-				//index += 4
-				encoding.ReadUint64(data, &index, &m.Entries[i].RouteRelays[j][k])
+			if version >= 3 {
+				for k := 0; k < int(m.Entries[i].RouteNumRelays[j]); k++ {
+					encoding.ReadUint64(data, &index, &m.Entries[i].RouteRelays[j][k])
+				}
+			} else {
+				for k := 0; k < int(m.Entries[i].RouteNumRelays[j]); k++ {
+					var tmp uint32
+					encoding.ReadUint32(data, &index, &tmp)
+					m.Entries[i].RouteRelays[j][k] = uint64(tmp)
+				}
 			}
+
 		}
 	}
 
@@ -667,24 +761,17 @@ func (m RouteMatrix) MarshalBinary() ([]byte, error) {
 	data := make([]byte, m.getBufferSize())
 	index := 0
 
-	//binary.LittleEndian.PutUint32(buffer[index:], RouteMatrixVersion)
-	//index += 4
 	encoding.WriteUint32(data, &index, RouteMatrixVersion)
 
 	numRelays := len(m.RelayIds)
 
-	//binary.LittleEndian.PutUint32(buffer[index:], uint32(numRelays))
-	//index += 4
 	encoding.WriteUint32(data, &index, uint32(numRelays))
 
 	for _, id := range m.RelayIds {
-		//binary.LittleEndian.PutUint32(buffer[index:], uint32(routeMatrix.RelayIds[i]))
-		//index += 4
 		encoding.WriteUint64(data, &index, id)
 	}
 
 	for _, name := range m.RelayNames {
-		//index += WriteString(buffer[index:], routeMatrix.RelayNames[i])
 		encoding.WriteString(data, &index, name, uint32(len(name)))
 	}
 
@@ -692,76 +779,53 @@ func (m RouteMatrix) MarshalBinary() ([]byte, error) {
 		panic("datacenter ids length does not match datacenter names length")
 	}
 
-	//binary.LittleEndian.PutUint32(buffer[index:], uint32(len(routeMatrix.DatacenterIds)))
-	//index += 4
-	encoding.WriteUint32(data, &index, uint32(len(m.DatacenterIds)))
+	numDatacenters := len(m.DatacenterIds)
 
-	for i := 0; i < len(m.DatacenterIds); i++ {
-		//binary.LittleEndian.PutUint32(buffer[index:], uint32(routeMatrix.DatacenterIds[i]))
-		//index += 4
+	encoding.WriteUint32(data, &index, uint32(numDatacenters))
+
+	for i := 0; i < numDatacenters; i++ {
 		encoding.WriteUint64(data, &index, m.DatacenterIds[i])
-		//index += WriteString(buffer[index:], routeMatrix.DatacenterNames[i])
 		encoding.WriteString(data, &index, m.DatacenterNames[i], uint32(len(m.DatacenterNames[i])))
 	}
 
 	for _, addr := range m.RelayAddresses {
-		//index += WriteBytes(buffer[index:], routeMatrix.RelayAddresses[i])
 		encoding.WriteBytes(data, &index, addr, MaxRelayAddressLength)
 	}
 
 	for _, pk := range m.RelayPublicKeys {
-		//index += WriteBytes(buffer[index:], routeMatrix.RelayPublicKeys[i])
 		encoding.WriteBytes(data, &index, pk, LengthOfRelayToken)
 	}
 
-	numDatacenters := len(m.DatacenterRelays)
+	numDatacenters = len(m.DatacenterRelays)
 
-	//binary.LittleEndian.PutUint32(buffer[index:], uint32(numDatacenters))
-	//index += 4
 	encoding.WriteUint32(data, &index, uint32(numDatacenters))
 
 	for k, v := range m.DatacenterRelays {
 
-		//binary.LittleEndian.PutUint32(buffer[index:], uint32(k))
-		//index += 4
 		encoding.WriteUint64(data, &index, k)
 
 		numRelaysInDatacenter := len(v)
 
-		//binary.LittleEndian.PutUint32(buffer[index:], uint32(numRelaysInDatacenter))
-		//index += 4
 		encoding.WriteUint32(data, &index, uint32(numRelaysInDatacenter))
 
 		for _, ids := range v {
-			//binary.LittleEndian.PutUint32(buffer[index:], uint32(v[i]))
-			//index += 4
 			encoding.WriteUint64(data, &index, ids)
 		}
 	}
 
 	for _, entry := range m.Entries {
 
-		//binary.LittleEndian.PutUint32(buffer[index:], uint32(routeMatrix.Entries[i].DirectRTT))
-		//index += 4
 		encoding.WriteUint32(data, &index, uint32(entry.DirectRTT))
 
-		//binary.LittleEndian.PutUint32(buffer[index:], uint32(routeMatrix.Entries[i].NumRoutes))
-		//index += 4
 		encoding.WriteUint32(data, &index, uint32(entry.NumRoutes))
 
 		for i := 0; i < int(entry.NumRoutes); i++ {
 
-			//binary.LittleEndian.PutUint32(buffer[index:], uint32(routeMatrix.Entries[i].RouteRTT[j]))
-			//index += 4
 			encoding.WriteUint32(data, &index, uint32(entry.RouteRTT[i]))
 
-			//binary.LittleEndian.PutUint32(buffer[index:], uint32(routeMatrix.Entries[i].RouteNumRelays[j]))
-			//index += 4
 			encoding.WriteUint32(data, &index, uint32(entry.RouteNumRelays[i]))
 
 			for _, relay := range entry.RouteRelays[i] {
-				//binary.LittleEndian.PutUint32(buffer[index:], uint32(routeMatrix.Entries[i].RouteRelays[j][k]))
-				//index += 4
 				encoding.WriteUint64(data, &index, relay)
 			}
 		}
@@ -809,4 +873,176 @@ func (m RouteMatrix) getBufferSize() uint64 {
 	}
 
 	return length
+}
+
+// RouteManager ...
+type RouteManager struct {
+	NumRoutes      int
+	RouteRTT       [MaxRoutesPerRelayPair]int32
+	RouteHash      [MaxRoutesPerRelayPair]uint64
+	RouteNumRelays [MaxRoutesPerRelayPair]int32
+	RouteRelays    [MaxRoutesPerRelayPair][MaxRelays]uint64
+}
+
+// NewRouteManager ...
+func NewRouteManager() *RouteManager {
+	manager := &RouteManager{}
+	return manager
+}
+
+// fnv32
+func routeHash32(relays ...uint32) uint32 {
+	hash := uint32(0)
+	for i := range relays {
+		hash *= uint32(0x811C9DC5)
+		hash ^= (relays[i] >> 24) & 0xFF
+		hash *= uint32(0x811C9DC5)
+		hash ^= (relays[i] >> 16) & 0xFF
+		hash *= uint32(0x811C9DC5)
+		hash ^= (relays[i] >> 8) & 0xFF
+		hash *= uint32(0x811C9DC5)
+		hash ^= relays[i] & 0xFF
+	}
+	return hash
+}
+
+// fnv64
+func routeHash(relays ...uint64) uint64 {
+	// http://www.isthe.com/chongo/tech/comp/fnv/
+	const fnv64OffsetBasis = uint64(0xCBF29CE484222325)
+
+	hash := uint64(0)
+	for i := range relays {
+		hash *= fnv64OffsetBasis
+		hash ^= (relays[i] >> 56) & 0xFF
+		hash *= fnv64OffsetBasis
+		hash ^= (relays[i] >> 48) & 0xFF
+		hash *= fnv64OffsetBasis
+		hash ^= (relays[i] >> 40) & 0xFF
+		hash *= fnv64OffsetBasis
+		hash ^= (relays[i] >> 32) & 0xFF
+		hash *= fnv64OffsetBasis
+		hash ^= (relays[i] >> 24) & 0xFF
+		hash *= fnv64OffsetBasis
+		hash ^= (relays[i] >> 16) & 0xFF
+		hash *= fnv64OffsetBasis
+		hash ^= (relays[i] >> 8) & 0xFF
+		hash *= fnv64OffsetBasis
+		hash ^= relays[i] & 0xFF
+	}
+
+	return hash
+}
+
+// AddRoute ...
+func (manager *RouteManager) AddRoute(rtt int32, relays ...uint64) {
+	if rtt < 0 {
+		return
+	}
+
+	if manager.NumRoutes == 0 {
+
+		// no routes yet. add the route
+
+		manager.NumRoutes = 1
+		manager.RouteRTT[0] = rtt
+		manager.RouteHash[0] = routeHash(relays...)
+		manager.RouteNumRelays[0] = int32(len(relays))
+		for i := range relays {
+			manager.RouteRelays[0][i] = relays[i]
+		}
+
+	} else if manager.NumRoutes < MaxRoutesPerRelayPair {
+
+		// not at max routes yet. insert according RTT sort order
+
+		routeHash := routeHash(relays...)
+		for i := 0; i < manager.NumRoutes; i++ {
+			if routeHash == manager.RouteHash[i] {
+				return
+			}
+		}
+
+		if rtt >= manager.RouteRTT[manager.NumRoutes-1] {
+
+			// RTT is greater than existing entries. append.
+
+			manager.RouteRTT[manager.NumRoutes] = rtt
+			manager.RouteHash[manager.NumRoutes] = routeHash
+			manager.RouteNumRelays[manager.NumRoutes] = int32(len(relays))
+			for i := range relays {
+				manager.RouteRelays[manager.NumRoutes][i] = relays[i]
+			}
+			manager.NumRoutes++
+
+		} else {
+
+			// RTT is lower than at least one entry. insert.
+
+			insertIndex := manager.NumRoutes - 1
+			for {
+				if insertIndex == 0 || rtt > manager.RouteRTT[insertIndex-1] {
+					break
+				}
+				insertIndex--
+			}
+			manager.NumRoutes++
+			for i := manager.NumRoutes - 1; i > insertIndex; i-- {
+				manager.RouteRTT[i] = manager.RouteRTT[i-1]
+				manager.RouteHash[i] = manager.RouteHash[i-1]
+				manager.RouteNumRelays[i] = manager.RouteNumRelays[i-1]
+				for j := 0; j < int(manager.RouteNumRelays[i]); j++ {
+					manager.RouteRelays[i][j] = manager.RouteRelays[i-1][j]
+				}
+			}
+			manager.RouteRTT[insertIndex] = rtt
+			manager.RouteHash[insertIndex] = routeHash
+			manager.RouteNumRelays[insertIndex] = int32(len(relays))
+			for i := range relays {
+				manager.RouteRelays[insertIndex][i] = relays[i]
+			}
+
+		}
+
+	} else {
+
+		// route set is full. only insert if lower RTT than at least one current route.
+
+		if rtt >= manager.RouteRTT[manager.NumRoutes-1] {
+			return
+		}
+
+		routeHash := routeHash(relays...)
+		for i := 0; i < manager.NumRoutes; i++ {
+			if routeHash == manager.RouteHash[i] {
+				return
+			}
+		}
+
+		insertIndex := manager.NumRoutes - 1
+		for {
+			if insertIndex == 0 || rtt > manager.RouteRTT[insertIndex-1] {
+				break
+			}
+			insertIndex--
+		}
+
+		for i := manager.NumRoutes - 1; i > insertIndex; i-- {
+			manager.RouteRTT[i] = manager.RouteRTT[i-1]
+			manager.RouteHash[i] = manager.RouteHash[i-1]
+			manager.RouteNumRelays[i] = manager.RouteNumRelays[i-1]
+			for j := 0; j < int(manager.RouteNumRelays[i]); j++ {
+				manager.RouteRelays[i][j] = manager.RouteRelays[i-1][j]
+			}
+		}
+
+		manager.RouteRTT[insertIndex] = rtt
+		manager.RouteHash[insertIndex] = routeHash
+		manager.RouteNumRelays[insertIndex] = int32(len(relays))
+
+		for i := range relays {
+			manager.RouteRelays[insertIndex][i] = relays[i]
+		}
+
+	}
 }

@@ -46,10 +46,18 @@ func ReadString(data []byte, index *int, value *string, maxStringLength uint32) 
 	stringData := make([]byte, stringLength)
 	for i := uint32(0); i < stringLength; i++ {
 		stringData[i] = data[*index]
-		*index += 1
+		*index++
 	}
 	*value = string(stringData)
 	return true
+}
+
+// used for CostMatrix & RouteMatrix unmarshaling. needed for when version < 3
+func ReadStringOld(buffer []byte) (string, int) {
+	stringLength := binary.LittleEndian.Uint32(buffer)
+	stringData := make([]byte, stringLength)
+	copy(stringData, buffer[4:4+stringLength])
+	return string(stringData), int(4 + stringLength)
 }
 
 func ReadBytes(data []byte, index *int, value *[]byte, bytes uint32) bool {
@@ -59,7 +67,15 @@ func ReadBytes(data []byte, index *int, value *[]byte, bytes uint32) bool {
 	*value = make([]byte, bytes)
 	for i := uint32(0); i < bytes; i++ {
 		(*value)[i] = data[*index]
-		*index += 1
+		*index++
 	}
 	return true
+}
+
+// used for CostMatrix & RouteMatrix unmarshaling. needed for when version < 3
+func ReadBytesOld(buffer []byte) ([]byte, int) {
+	length := binary.LittleEndian.Uint32(buffer)
+	data := make([]byte, length)
+	copy(data, buffer[4:4+length])
+	return data, int(4 + length)
 }
