@@ -90,22 +90,19 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 	}
 }
 
-type ServerEntry struct {
-	ServerRoutePublicKey []byte
-	ServerPrivateAddr    net.UDPAddr
-
-	DatacenterID      uint64
-	DatacenterName    string
-	DatacenterEnabled bool
+type ServerCacheEntry struct {
+	Sequence   uint64
+	Server     routing.Server
+	Datacenter routing.Datacenter
 
 	SDKVersion SDKVersion
 }
 
-func (e *ServerEntry) UnmarshalBinary(data []byte) error {
+func (e *ServerCacheEntry) UnmarshalBinary(data []byte) error {
 	return jsoniter.Unmarshal(data, e)
 }
 
-func (e ServerEntry) MarshalBinary() ([]byte, error) {
+func (e ServerCacheEntry) MarshalBinary() ([]byte, error) {
 	return jsoniter.Marshal(e)
 }
 
@@ -127,50 +124,43 @@ func ServerUpdateHandlerFunc(redisClient redis.Cmdable) UDPHandlerFunc {
 			return
 		}
 
-		// Get the the old ServerEntry from Redis
-		var serverentry ServerEntry
+		// Get the the old ServerCacheEntry if it exists, otherwise serverentry is in zero value state
+		var serverentry ServerCacheEntry
 		{
 			result := redisClient.Get("SERVER-" + incoming.SourceAddr.String())
 			if result.Err() != nil && result.Err() != redis.Nil {
-				log.Printf("failed to get server %s from redis: %v", incoming.SourceAddr.String(), result.Err())
+				log.Printf("failed to load server %s from cache: %v", incoming.SourceAddr.String(), result.Err())
 				return
 			}
 			serverdata, err := result.Bytes()
 			if err != nil && result.Err() != redis.Nil {
-				log.Printf("failed to get bytes from redis: %v", result.Err())
+				log.Printf("failed to get bytes from cache: %v", result.Err())
 				return
 			}
 			if serverdata != nil {
 				if err := serverentry.UnmarshalBinary(serverdata); err != nil {
-					fmt.Printf("failed to read server entry: %v\n", err)
+					fmt.Printf("failed to unmarshal server cache entry: %v\n", err)
 				}
 			}
 		}
 
-		// TODO 1. Get Buyer and Customer information from ConfigStore
+		// Drop the packet if the sequence number is older than the previously cache sequence number
+		if packet.Sequence < serverentry.Sequence {
+			log.Printf("packet too old: (packet) %d < %d (Redis)", packet.Sequence, serverentry.Sequence)
+			return
+		}
 
-		// TODO 2. Check server packet version for customer and don't let them use 0.0.0
-
-		// signdata := sup.GetSignData()
-
-		// Save the ServerEntry to Redis
-		{
-			serverentry = ServerEntry{
-				ServerRoutePublicKey: packet.ServerRoutePublicKey,
-				ServerPrivateAddr:    packet.ServerPrivateAddress,
-
-				DatacenterID: packet.DatacenterId,
-
-				VersionMajor: packet.VersionMajor,
-				VersionMinor: packet.VersionMinor,
-				VersionPatch: packet.VersionPatch,
-			}
-			result := redisClient.Set("SERVER-"+incoming.SourceAddr.String(), serverentry, 0)
-			if result.Err() != nil {
-				log.Printf("failed to register server %s: %v", incoming.SourceAddr.String(), result.Err())
-				return
-			}
+		// Save some of the packet information to be used in SessionUpdateHandlerFunc
+		serverentry = ServerCacheEntry{
+			Sequence:   packet.Sequence,
+			Server:     routing.Server{Addr: packet.ServerPrivateAddress, PublicKey: packet.ServerRoutePublicKey},
+			Datacenter: routing.Datacenter{ID: packet.DatacenterId},
 			SDKVersion: SDKVersion{packet.VersionMajor, packet.VersionMinor, packet.VersionPatch},
+		}
+		result := redisClient.Set("SERVER-"+incoming.SourceAddr.String(), serverentry, 5*time.Minute)
+		if result.Err() != nil {
+			log.Printf("failed to cache server %s: %v", incoming.SourceAddr.String(), result.Err())
+			return
 		}
 	}
 }
@@ -241,7 +231,7 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, iploc routing.IPLocator
 			return
 		}
 
-		var serverentry ServerEntry
+		var serverentry ServerCacheEntry
 		if err := serverentry.UnmarshalBinary(serverdata); err != nil {
 			log.Fatalf("failed to unmarshal server entry from redis for '%s': %v", incoming.SourceAddr.String(), err)
 			return
@@ -272,8 +262,8 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, iploc routing.IPLocator
 			NextJitter:       float64(packet.NextJitter),
 			NextPacketLoss:   float64(packet.NextPacketLoss),
 
-			ServerRoutePublicKey: serverentry.ServerRoutePublicKey,
-			ServerPrivateAddr:    serverentry.ServerPrivateAddr,
+			ServerRoutePublicKey: serverentry.Server.PublicKey,
+			ServerPrivateAddr:    serverentry.Server.Addr,
 			ServerAddr:           packet.ServerAddress,
 			ClientAddr:           packet.ClientAddress,
 
@@ -313,7 +303,7 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, iploc routing.IPLocator
 			NumTokens:            int32(route.NumTokens),
 			Tokens:               route.Tokens,
 			Multipath:            route.Multipath,
-			ServerRoutePublicKey: serverentry.ServerRoutePublicKey,
+			ServerRoutePublicKey: serverentry.Server.PublicKey,
 		}
 
 		// Fill in the near relays
