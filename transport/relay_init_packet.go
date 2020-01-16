@@ -23,7 +23,7 @@ func (r *RelayInitPacket) UnmarshalBinary(buf []byte) error {
 		encoding.ReadUint32(buf, &index, &r.Version) &&
 		encoding.ReadBytes(buf, &index, &r.Nonce, crypto.NonceSize) &&
 		encoding.ReadString(buf, &index, &r.Address, MaxRelayAddressLength) &&
-		encoding.ReadBytes(buf, &index, &r.EncryptedToken, crypto.PublicKeySize+crypto.MACSize)) {
+		encoding.ReadBytes(buf, &index, &r.EncryptedToken, crypto.KeySize+crypto.MACSize)) {
 		return errors.New("invalid packet")
 	}
 
