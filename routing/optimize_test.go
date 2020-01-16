@@ -570,7 +570,6 @@ func TestOptimize(t *testing.T) {
 		})
 
 		t.Run("Optimize()", func(t *testing.T) {
-			t.Skip()
 			t.Run("test using example data", func(t *testing.T) {
 				var cmatrix routing.CostMatrix
 				var rmatrix routing.RouteMatrix
@@ -607,6 +606,7 @@ func TestOptimize(t *testing.T) {
 			})
 
 			t.Run("another test with sample data", func(t *testing.T) {
+				t.Skip()
 				raw, err := ioutil.ReadFile("test_data/cost-v2.bin")
 				assert.Nil(t, err)
 				assert.Equal(t, 452692, len(raw), "cost.bin should be 452692 bytes")

@@ -234,16 +234,19 @@ func (m CostMatrix) MarshalBinary() ([]byte, error) {
 
 	for i := 0; i < numDatacenters; i++ {
 		encoding.WriteUint64(data, &index, m.DatacenterIds[i])
-
 		encoding.WriteString(data, &index, m.DatacenterNames[i], uint32(len(m.DatacenterNames[i])))
 	}
 
 	for i := range m.RelayAddresses {
-		encoding.WriteBytes(data, &index, m.RelayAddresses[i], MaxRelayAddressLength)
+		tmp := make([]byte, MaxRelayAddressLength)
+		copy(tmp, m.RelayAddresses[i])
+		encoding.WriteBytes(data, &index, tmp, MaxRelayAddressLength)
 	}
 
 	for i := range m.RelayPublicKeys {
-		encoding.WriteBytes(data, &index, m.RelayPublicKeys[i], LengthOfRelayToken)
+		tmp := make([]byte, MaxRelayAddressLength)
+		copy(tmp, m.RelayPublicKeys[i])
+		encoding.WriteBytes(data, &index, tmp, LengthOfRelayToken)
 	}
 
 	numDatacenters = len(m.DatacenterRelays)
