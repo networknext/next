@@ -351,14 +351,14 @@ func TestOptimize(t *testing.T) {
 					assert.Contains(t, matrix.RelayIds, id&0xFFFFFFFF)
 				}
 
-				for _, addr := range relayAddrs {
+				for i, addr := range relayAddrs {
 					tmp := make([]byte, len(addr))
 					copy(tmp, addr)
-					assert.Contains(t, matrix.RelayAddresses, tmp)
+					assert.Equal(t, matrix.RelayAddresses[i], tmp)
 				}
 
-				for _, pk := range publicKeys {
-					assert.Contains(t, matrix.RelayPublicKeys, pk)
+				for i, pk := range publicKeys {
+					assert.Equal(t, matrix.RelayPublicKeys[i], pk)
 				}
 
 				for i := 0; i < numDatacenters; i++ {
@@ -366,12 +366,12 @@ func TestOptimize(t *testing.T) {
 
 					relays := matrix.DatacenterRelays[datacenters[i]]
 					for j := 0; j < len(datacenterRelays[i]); j++ {
-						assert.Contains(t, relays, datacenterRelays[i][j]&0xFFFFFFFF)
+						assert.Equal(t, relays[j], datacenterRelays[i][j]&0xFFFFFFFF)
 					}
 				}
 
-				for _, rtt := range rtts {
-					assert.Contains(t, matrix.RTT, rtt)
+				for i, rtt := range rtts {
+					assert.Equal(t, matrix.RTT[i], rtt)
 				}
 			}
 
@@ -425,8 +425,8 @@ func TestOptimize(t *testing.T) {
 					}
 				}
 
-				for _, rtt := range rtts {
-					assert.Contains(t, matrix.RTT, rtt)
+				for i, rtt := range rtts {
+					assert.Equal(t, matrix.RTT[i], rtt)
 				}
 
 				unmarshalAssertionsVer1(t, matrix, relayNames)
