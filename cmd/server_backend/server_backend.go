@@ -18,9 +18,20 @@ import (
 	"github.com/go-redis/redis/v7"
 	"github.com/oschwald/geoip2-golang"
 
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
+	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 )
+
+type BuyerProvider struct{}
+
+func (bp *BuyerProvider) GetBuyer(id uint64) (storage.Buyer, error) {
+	return storage.Buyer{
+		ID:        13,
+		PublicKey: make([]byte, crypto.KeySize),
+	}, nil
+}
 
 func main() {
 	var err error
@@ -78,7 +89,7 @@ func main() {
 			Conn:          conn,
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
-			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(redisClient),
+			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(redisClient, &BuyerProvider{}),
 			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(redisClient, &mmdb, &geoClient),
 		}
 
