@@ -55,6 +55,13 @@ func putBytes(buff []byte, offset *int, bytes ...[]byte) {
 	}
 }
 
+func putBytesOld(buff []byte, offset *int, bytes ...[]byte) {
+	for _, arr := range bytes {
+		putUint32s(buff, offset, uint32(len(arr)))
+		putBytes(buff, offset, arr)
+	}
+}
+
 func putVersionNumber(buff []byte, offset *int, version uint32) {
 	putUint32s(buff, offset, version)
 }
@@ -64,7 +71,7 @@ func putRelayIDs(buff []byte, offset *int, ids []uint64) {
 	putUint64s(buff, offset, ids...)
 }
 
-func putRelayIDs32(buff []byte, offset *int, ids []uint64) {
+func putRelayIDsOld(buff []byte, offset *int, ids []uint64) {
 	putUint32s(buff, offset, uint32(len(ids)))
 
 	for _, id := range ids {
@@ -86,7 +93,7 @@ func putDatacenterStuff(buff []byte, offset *int, ids []uint64, names []string) 
 	}
 }
 
-func putDatacenterStuff32(buff []byte, offset *int, ids []uint64, names []string) {
+func putDatacenterStuffOld(buff []byte, offset *int, ids []uint64, names []string) {
 	putUint32s(buff, offset, uint32(len(ids)))
 
 	for i := 0; i < len(ids); i++ {
@@ -104,8 +111,18 @@ func putRelayAddresses(buff []byte, offset *int, addrs []string) {
 	}
 }
 
+func putRelayAddressesOld(buff []byte, offset *int, addrs []string) {
+	for _, addr := range addrs {
+		putBytesOld(buff, offset, []byte(addr))
+	}
+}
+
 func putRelayPublicKeys(buff []byte, offset *int, pks [][]byte) {
 	putBytes(buff, offset, pks...)
+}
+
+func putRelayPublicKeysOld(buff []byte, offset *int, pks [][]byte) {
+	putBytesOld(buff, offset, pks...)
 }
 
 func putDatacenters(buff []byte, offset *int, datacenterIDs []uint64, relayIDs [][]uint64) {
@@ -115,6 +132,18 @@ func putDatacenters(buff []byte, offset *int, datacenterIDs []uint64, relayIDs [
 		putUint64s(buff, offset, dcID)
 		putUint32s(buff, offset, uint32(len(relayIDs[i])))
 		putUint64s(buff, offset, relayIDs[i]...)
+	}
+}
+
+func putDatacentersOld(buff []byte, offset *int, datacenterIDs []uint64, relayIDs [][]uint64) {
+	putUint32s(buff, offset, uint32(len(datacenterIDs)))
+
+	for i, dcID := range datacenterIDs {
+		putUint32s(buff, offset, uint32(dcID))
+		putUint32s(buff, offset, uint32(len(relayIDs[i])))
+		for _, rID := range relayIDs[i] {
+			putUint32s(buff, offset, uint32(rID))
+		}
 	}
 }
 
@@ -131,6 +160,21 @@ func putEntries(buff []byte, offset *int, entries []routing.RouteMatrixEntry) {
 			putInt32s(buff, offset, entry.RouteRTT[i])
 			putInt32s(buff, offset, entry.RouteNumRelays[i])
 			putUint64s(buff, offset, entry.RouteRelays[i][:]...)
+		}
+	}
+}
+
+func putEntriesOld(buff []byte, offset *int, entries []routing.RouteMatrixEntry) {
+	for _, entry := range entries {
+		putInt32s(buff, offset, entry.DirectRTT)
+		putInt32s(buff, offset, entry.NumRoutes)
+
+		for i := 0; i < int(entry.NumRoutes); i++ {
+			putInt32s(buff, offset, entry.RouteRTT[i])
+			putInt32s(buff, offset, entry.RouteNumRelays[i])
+			for _, id := range entry.RouteRelays[i] {
+				putUint32s(buff, offset, uint32(id))
+			}
 		}
 	}
 }
@@ -206,7 +250,7 @@ func TestOptimize(t *testing.T) {
 				assert.Len(t, matrix.RTT, len(rtts))
 
 				for _, id := range relayIDs {
-					assert.Contains(t, matrix.RelayIds, id)
+					assert.Contains(t, matrix.RelayIds, id&0xFFFFFFFF)
 				}
 
 				for _, addr := range relayAddrs {
@@ -220,11 +264,11 @@ func TestOptimize(t *testing.T) {
 				}
 
 				for i := 0; i < numDatacenters; i++ {
-					assert.Contains(t, matrix.DatacenterRelays, datacenters[i])
+					assert.Contains(t, matrix.DatacenterRelays, datacenters[i]&0xFFFFFFFF)
 
 					relays := matrix.DatacenterRelays[datacenters[i]]
 					for j := 0; j < len(datacenterRelays[i]); j++ {
-						assert.Contains(t, relays, datacenterRelays[i][j])
+						assert.Contains(t, relays, datacenterRelays[i][j]&0xFFFFFFFF)
 					}
 				}
 
@@ -290,10 +334,10 @@ func TestOptimize(t *testing.T) {
 
 				offset := 0
 				putVersionNumber(buff, &offset, 0)
-				putRelayIDs32(buff, &offset, addrsToIDs(relayAddrs))
-				putRelayAddresses(buff, &offset, relayAddrs)
-				putRelayPublicKeys(buff, &offset, publicKeys)
-				putDatacenters(buff, &offset, datacenters, datacenterRelays)
+				putRelayIDsOld(buff, &offset, addrsToIDs(relayAddrs))
+				putRelayAddressesOld(buff, &offset, relayAddrs)
+				putRelayPublicKeysOld(buff, &offset, publicKeys)
+				putDatacentersOld(buff, &offset, datacenters, datacenterRelays)
 				putRtts(buff, &offset, rtts)
 
 				var matrix routing.CostMatrix
