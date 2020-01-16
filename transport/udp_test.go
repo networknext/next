@@ -2,6 +2,7 @@ package transport_test
 
 import (
 	"bytes"
+	"crypto/ed25519"
 	"net"
 	"testing"
 
@@ -9,28 +10,49 @@ import (
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/routing"
+	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 	"github.com/stretchr/testify/assert"
 )
 
+type mockBuyerProvider struct {
+	buyer storage.Buyer
+	err   error
+}
+
+func (bp *mockBuyerProvider) GetBuyer(id uint64) (storage.Buyer, error) {
+	return bp.buyer, bp.err
+}
+
 func TestServerUpdateHandlerFunc(t *testing.T) {
+	buyersServerPubKey, buyersServerPrivKey, err := ed25519.GenerateKey(nil)
+	assert.NoError(t, err)
+
 	// Get an in-memory redis server and a client that is connected to it
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
+	bp := mockBuyerProvider{
+		buyer: storage.Buyer{
+			PublicKey: buyersServerPubKey,
+		},
+	}
+
 	// Create a ServerUpdatePacket and marshal it to binary so sent it into the UDP handler
 	packet := core.ServerUpdatePacket{
+		Sequence:             13,
 		ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
 		ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
 		ServerRoutePublicKey: TestPublicKey,
-		Signature:            []byte{0x00},
 
 		DatacenterId: 13,
 
-		VersionMajor: core.SDKVersionMajorMin,
-		VersionMinor: core.SDKVersionMinorMin,
-		VersionPatch: core.SDKVersionPatchMin,
+		VersionMajor: transport.SDKVersionMin.Major,
+		VersionMinor: transport.SDKVersionMin.Minor,
+		VersionPatch: transport.SDKVersionMin.Patch,
 	}
+	packet.Signature = ed25519.Sign(buyersServerPrivKey, packet.GetSignData())
+
 	data, err := packet.MarshalBinary()
 	assert.NoError(t, err)
 
@@ -47,7 +69,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 	}
 
 	// Initialize the UDP handler with the required redis client
-	handler := transport.ServerUpdateHandlerFunc(redisClient)
+	handler := transport.ServerUpdateHandlerFunc(redisClient, &bp)
 
 	// Invoke the handler with the data packet and address it is coming from
 	handler(&buf, &incoming)
@@ -57,19 +79,15 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Create an "expected" ServerEntry based on the incoming ServerUpdatePacket above
-	expected := transport.ServerEntry{
-		ServerRoutePublicKey: packet.ServerRoutePublicKey,
-		ServerPrivateAddr:    *addr,
-
-		DatacenterID: packet.DatacenterId,
-
-		VersionMajor: packet.VersionMajor,
-		VersionMinor: packet.VersionMinor,
-		VersionPatch: packet.VersionPatch,
+	expected := transport.ServerCacheEntry{
+		Sequence:   13,
+		Server:     routing.Server{Addr: *addr, PublicKey: packet.ServerRoutePublicKey},
+		Datacenter: routing.Datacenter{ID: packet.DatacenterId},
+		SDKVersion: transport.SDKVersion{packet.VersionMajor, packet.VersionMinor, packet.VersionPatch},
 	}
 
 	// Unmarshal the data in redis to the actual ServerEntry saved
-	var actual transport.ServerEntry
+	var actual transport.ServerCacheEntry
 	err = actual.UnmarshalBinary([]byte(ds))
 	assert.NoError(t, err)
 
@@ -104,13 +122,9 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Create a ServerEntry to put into redis for a SessionUpdate to read
-	serverentry := transport.ServerEntry{
-		ServerRoutePublicKey: TestPublicKey,
-		ServerPrivateAddr:    *addr,
-
-		VersionMajor: core.SDKVersionMajorMin,
-		VersionMinor: core.SDKVersionMinorMin,
-		VersionPatch: core.SDKVersionPatchMin,
+	serverentry := transport.ServerCacheEntry{
+		Server:     routing.Server{Addr: *addr, PublicKey: TestPublicKey},
+		SDKVersion: transport.SDKVersionMin,
 	}
 	serverdata, err := serverentry.MarshalBinary()
 	assert.NoError(t, err)
@@ -198,8 +212,8 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 			NextJitter:       float64(packet.NextJitter),
 			NextPacketLoss:   float64(packet.NextPacketLoss),
 
-			ServerRoutePublicKey: serverentry.ServerRoutePublicKey,
-			ServerPrivateAddr:    serverentry.ServerPrivateAddr,
+			ServerRoutePublicKey: serverentry.Server.PublicKey,
+			ServerPrivateAddr:    serverentry.Server.Addr,
 			ServerAddr:           packet.ServerAddress,
 			ClientAddr:           packet.ClientAddress,
 
@@ -213,9 +227,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 			FallbackToDirect: packet.FallbackToDirect,
 			OnNetworkNext:    packet.OnNetworkNext,
 
-			VersionMajor: serverentry.VersionMajor,
-			VersionMinor: serverentry.VersionMinor,
-			VersionPatch: serverentry.VersionPatch,
+			SDKVersion: serverentry.SDKVersion,
 		}
 
 		var actual transport.SessionEntry
@@ -234,12 +246,12 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 			NumTokens:            0,
 			Tokens:               nil,
 			Multipath:            false,
-			ServerRoutePublicKey: serverentry.ServerRoutePublicKey,
+			ServerRoutePublicKey: serverentry.Server.PublicKey,
 			NumNearRelays:        0,
 			NearRelayIds:         make([]uint64, 0),
 			NearRelayAddresses:   make([]net.UDPAddr, 0),
 		}
-		expected.Sign(serverentry.VersionMajor, serverentry.VersionMinor, serverentry.VersionPatch)
+		expected.Sign(serverentry.SDKVersion.Major, serverentry.SDKVersion.Minor, serverentry.SDKVersion.Patch)
 
 		var actual core.SessionResponsePacket
 		actual.UnmarshalBinary(resbuf.Bytes())
