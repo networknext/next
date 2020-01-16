@@ -1,16 +1,15 @@
 package transport
 
-// #cgo pkg-config: libsodium
-// #include <sodium.h>
-import "C"
-
 import (
+	"bytes"
+	"crypto/rand"
 	"fmt"
-	"github.com/gorilla/mux"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/gorilla/mux"
 
 	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
@@ -30,13 +29,6 @@ const (
 	VersionNumberUpdateRequest  = 0
 	VersionNumberUpdateResponse = 0
 )
-
-var gRelayPublicKey = []byte{
-	0xf5, 0x22, 0xad, 0xc1, 0xee, 0x04, 0x6a, 0xbe,
-	0x7d, 0x89, 0x0c, 0x81, 0x3a, 0x08, 0x31, 0xba,
-	0xdc, 0xdd, 0xb5, 0x52, 0xcb, 0x73, 0x56, 0x10,
-	0xda, 0xa9, 0xc0, 0xae, 0x08, 0xa2, 0xcf, 0x5e,
-}
 
 // NewRouter creates a router with the specified endpoints
 func NewRouter(relaydb *core.RelayDatabase, statsdb *core.StatsDatabase, backend *StubbedBackend) *mux.Router {
@@ -79,8 +71,12 @@ func RelayInitHandlerFunc(relaydb *core.RelayDatabase) func(writer http.Response
 		}
 
 		if relayInitPacket.Magic != InitRequestMagic ||
-			relayInitPacket.Version != VersionNumberInitRequest ||
-			!crypto.Check(relayInitPacket.EncryptedToken, relayInitPacket.Nonce, gRelayPublicKey[:], core.RouterPrivateKey[:]) {
+			relayInitPacket.Version != VersionNumberInitRequest {
+			writer.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		if _, ok := crypto.Open(relayInitPacket.EncryptedToken, relayInitPacket.Nonce, crypto.RelayPublicKey[:], crypto.RouterPrivateKey[:]); !ok {
 			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -98,7 +94,12 @@ func RelayInitHandlerFunc(relaydb *core.RelayDatabase) func(writer http.Response
 		entry.ID = core.GetRelayID(relayInitPacket.Address)
 		entry.Address = relayInitPacket.Address //core.ParseAddress(relayInitPacket.address)
 		entry.LastUpdateTime = uint64(time.Now().Unix())
-		entry.PublicKey = core.RandomBytes(LengthOfRelayToken)
+
+		entry.PublicKey = make([]byte, crypto.KeySize)
+		if _, err := rand.Read(entry.PublicKey); err != nil {
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 
 		relaydb.Relays[entry.ID] = entry
 
@@ -108,7 +109,7 @@ func RelayInitHandlerFunc(relaydb *core.RelayDatabase) func(writer http.Response
 		responseData := make([]byte, 64)
 		encoding.WriteUint32(responseData, &index, VersionNumberInitResponse)
 		encoding.WriteUint64(responseData, &index, uint64(time.Now().Unix()))
-		encoding.WriteBytes(responseData, &index, entry.PublicKey, LengthOfRelayToken)
+		encoding.WriteBytes(responseData, &index, entry.PublicKey, crypto.KeySize)
 
 		writer.Write(responseData[:index])
 	}
@@ -132,7 +133,7 @@ func RelayUpdateHandlerFunc(relaydb *core.RelayDatabase, statsdb *core.StatsData
 			return
 		}
 
-		if relayUpdatePacket.Version != VersionNumberUpdateRequest || relayUpdatePacket.NumRelays > MaxRelays {
+		if relayUpdatePacket.Version != VersionNumberUpdateRequest || relayUpdatePacket.NumRelays == 0 || relayUpdatePacket.NumRelays > MaxRelays {
 			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -140,7 +141,7 @@ func RelayUpdateHandlerFunc(relaydb *core.RelayDatabase, statsdb *core.StatsData
 		key := core.GetRelayID(relayUpdatePacket.Address)
 		entry, ok := relaydb.Relays[key]
 		found := false
-		if ok && crypto.CompareTokens(relayUpdatePacket.Token, entry.PublicKey) {
+		if ok && bytes.Equal(relayUpdatePacket.Token, entry.PublicKey) {
 			found = true
 		}
 
@@ -151,10 +152,7 @@ func RelayUpdateHandlerFunc(relaydb *core.RelayDatabase, statsdb *core.StatsData
 
 		statsUpdate := &core.RelayStatsUpdate{}
 		statsUpdate.ID = entry.ID
-
-		for _, ps := range relayUpdatePacket.PingStats {
-			statsUpdate.PingStats = append(statsUpdate.PingStats, ps)
-		}
+		statsUpdate.PingStats = append(statsUpdate.PingStats, relayUpdatePacket.PingStats...)
 
 		statsdb.ProcessStats(statsUpdate)
 

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net"
 	"unsafe"
+	"crypto/ed25519"
 )
 
 const Crypto_kx_PUBLICKEYBYTES = C.crypto_kx_PUBLICKEYBYTES
@@ -19,6 +20,10 @@ const KeyBytes = 32
 const NonceBytes = 24
 const SignatureBytes = C.crypto_sign_BYTES
 const PublicKeyBytes = C.crypto_sign_PUBLICKEYBYTES
+
+func GenerateRelayKeyPair() ([]byte, []byte, error) {
+	return ed25519.GenerateKey(nil)
+}
 
 func Encrypt(senderPrivateKey []byte, receiverPublicKey []byte, nonce []byte, buffer []byte, bytes int) error {
 	result := C.crypto_box_easy((*C.uchar)(&buffer[0]),

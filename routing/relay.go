@@ -1,6 +1,14 @@
 package routing
 
-import "net"
+import (
+	"net"
+
+	"github.com/networknext/backend/crypto"
+)
+
+const (
+	TokenSize = crypto.KeySize + crypto.MACSize
+)
 
 type Relay struct {
 	ID uint64
