@@ -98,9 +98,7 @@ type ServerEntry struct {
 	DatacenterName    string
 	DatacenterEnabled bool
 
-	VersionMajor int32
-	VersionMinor int32
-	VersionPatch int32
+	SDKVersion SDKVersion
 }
 
 func (e *ServerEntry) UnmarshalBinary(data []byte) error {
@@ -120,9 +118,12 @@ func ServerUpdateHandlerFunc(redisClient redis.Cmdable) UDPHandlerFunc {
 			return
 		}
 
-		// Verify the Session packet version
-		if !core.ProtocolVersionAtLeast(packet.VersionMajor, packet.VersionMinor, packet.VersionPatch, core.SDKVersionMajorMin, core.SDKVersionMinorMin, core.SDKVersionPatchMin) {
-			log.Printf("sdk version is too old. Using %d.%d.%d but require at least %d.%d.%d", packet.VersionMajor, packet.VersionMinor, packet.VersionPatch, core.SDKVersionMajorMin, core.SDKVersionMinorMin, core.SDKVersionPatchMin)
+		// Drop the packet if version is older that the minimun sdk version
+		psdkv := SDKVersion{packet.VersionMajor, packet.VersionMinor, packet.VersionPatch}
+		if psdkv.Compare(SDKVersionMin) == SDKVersionOlder {
+			log.Printf("sdk version is too old. Using %s but require at least %s", psdkv, SDKVersionMin)
+			return
+		}
 			return
 		}
 
@@ -169,6 +170,7 @@ func ServerUpdateHandlerFunc(redisClient redis.Cmdable) UDPHandlerFunc {
 				log.Printf("failed to register server %s: %v", incoming.SourceAddr.String(), result.Err())
 				return
 			}
+			SDKVersion: SDKVersion{packet.VersionMajor, packet.VersionMinor, packet.VersionPatch},
 		}
 	}
 }
@@ -206,9 +208,7 @@ type SessionEntry struct {
 	OnNetworkNext    bool
 	FallbackToDirect bool
 
-	VersionMajor int32
-	VersionMinor int32
-	VersionPatch int32
+	SDKVersion SDKVersion
 }
 
 func (e *SessionEntry) UnmarshalBinary(data []byte) error {
@@ -287,9 +287,7 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, iploc routing.IPLocator
 			FallbackToDirect: packet.FallbackToDirect,
 			OnNetworkNext:    packet.OnNetworkNext,
 
-			VersionMajor: serverentry.VersionMajor,
-			VersionMinor: serverentry.VersionMinor,
-			VersionPatch: serverentry.VersionPatch,
+			SDKVersion: serverentry.SDKVersion,
 		}
 		{
 			result := redisClient.Set(fmt.Sprintf("SESSION-%d", packet.SessionId), sessionentry, 0)
@@ -328,7 +326,7 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, iploc routing.IPLocator
 		}
 
 		// Sign the response
-		response.Sign(serverentry.VersionMajor, serverentry.VersionMinor, serverentry.VersionPatch)
+		response.Sign(serverentry.SDKVersion.Major, serverentry.SDKVersion.Minor, serverentry.SDKVersion.Patch)
 
 		// Send the Session Response back to the server
 		res, err := response.MarshalBinary()
