@@ -3,17 +3,20 @@ package transport
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net"
+	"time"
 
 	jsoniter "github.com/json-iterator/go"
 
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/routing"
+	"github.com/networknext/backend/storage"
 )
 
 const (
@@ -94,7 +97,6 @@ type ServerCacheEntry struct {
 	Sequence   uint64
 	Server     routing.Server
 	Datacenter routing.Datacenter
-
 	SDKVersion SDKVersion
 }
 
@@ -106,8 +108,12 @@ func (e ServerCacheEntry) MarshalBinary() ([]byte, error) {
 	return jsoniter.Marshal(e)
 }
 
+type BuyerProvider interface {
+	GetBuyer(uint64) (storage.Buyer, error)
+}
+
 // ServerUpdateHandlerFunc ...
-func ServerUpdateHandlerFunc(redisClient redis.Cmdable) UDPHandlerFunc {
+func ServerUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		var packet core.ServerUpdatePacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
@@ -121,6 +127,23 @@ func ServerUpdateHandlerFunc(redisClient redis.Cmdable) UDPHandlerFunc {
 			log.Printf("sdk version is too old. Using %s but require at least %s", psdkv, SDKVersionMin)
 			return
 		}
+
+		// Get the buyer information for the id in the packet
+		buyer, err := bp.GetBuyer(packet.CustomerId)
+		if err != nil {
+			log.Printf("failed to get buyer '%d'", packet.CustomerId)
+			return
+		}
+
+		// Drop the packet if the buyer is not an admin and they are using an internal build
+		if !buyer.Admin && psdkv.Compare(SDKVersionInternal) == SDKVersionEqual {
+			log.Printf("non-admin buyer using an internal sdk")
+			return
+		}
+
+		// Drop the packet if the signed packet data cannot be verified with the buyers public key
+		if !ed25519.Verify(buyer.PublicKey, packet.GetSignData(), packet.Signature) {
+			log.Printf("failed to verify server update signature")
 			return
 		}
 
