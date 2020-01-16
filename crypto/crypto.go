@@ -1,23 +1,19 @@
 package crypto
 
 import (
-	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/binary"
 
+	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/nacl/box"
 	"golang.org/x/crypto/poly1305"
 )
 
 const (
 	MACSize   = poly1305.TagSize
-	NonceSize = 24
-	KeySize   = 32
-
-	SignatureSize  = ed25519.SignatureSize
-	PublicKeySize  = ed25519.PublicKeySize
-	PrivateKeySize = ed25519.PrivateKeySize
+	NonceSize = chacha20poly1305.NonceSizeX
+	KeySize   = chacha20poly1305.KeySize
 )
 
 var (
@@ -33,12 +29,14 @@ var (
 		0x08, 0x2d, 0x25, 0x3c, 0x91, 0x0e, 0xd4, 0x6f, 0x19, 0x22, 0xaf, 0xba, 0x25, 0x96, 0xa3, 0x40,
 	}
 
+	// This is a simulated key and it not used in production!
 	RelayPublicKey = [...]byte{
 		0xf5, 0x22, 0xad, 0xc1, 0xee, 0x04, 0x6a, 0xbe, 0x7d, 0x89, 0x0c, 0x81, 0x3a, 0x08, 0x31, 0xba,
 		0xdc, 0xdd, 0xb5, 0x52, 0xcb, 0x73, 0x56, 0x10, 0xda, 0xa9, 0xc0, 0xae, 0x08, 0xa2, 0xcf, 0x5e,
 	}
 )
 
+// GenerateSessionID creates a uint64 from random bytes
 func GenerateSessionID() uint64 {
 	buf := make([]byte, 8)
 	rand.Read(buf)
@@ -49,13 +47,16 @@ func GenerateSessionID() uint64 {
 	return id
 }
 
+// GenerateRelayKeyPair creates a public and private keypair using crypto/ed25519
 func GenerateRelayKeyPair() ([]byte, []byte, error) {
 	return ed25519.GenerateKey(nil)
 }
 
+// GenerateRelayKeyPair creates a public and private keypair using crypto/ed25519 and prepends a random 8 byte customer ID
 func GenerateCustomerKeyPair() ([]byte, []byte, error) {
 	customerId := make([]byte, 8)
 	rand.Read(customerId)
+
 	publicKey, privateKey, err := ed25519.GenerateKey(nil)
 	if err != nil {
 		return nil, nil, err
@@ -71,38 +72,28 @@ func GenerateCustomerKeyPair() ([]byte, []byte, error) {
 	return customerPublicKey, customerPrivateKey, nil
 }
 
-func Check(data []byte, nonce []byte, publicKey []byte, privateKey []byte) bool {
+// Open wraps (x/crypto/nacl/box).Open to make working with byte slices easier
+func Open(data []byte, nonce []byte, publicKey []byte, privateKey []byte) ([]byte, bool) {
 	var n [NonceSize]byte
 	var pub [KeySize]byte
 	var priv [KeySize]byte
-
-	// If the nonce is all zeros then just pass it
-	// like libsodium did since nacl/box fails to
-	// decrypt it which seems like it is more correct
-	if bytes.Equal(nonce, n[:]) {
-		return true
-	}
 
 	copy(n[:], nonce)
 	copy(pub[:], publicKey)
 	copy(priv[:], privateKey)
 
-	_, ok := box.Open(nil, data, &n, &pub, &priv)
-	return ok
+	return box.Open(nil, data, &n, &pub, &priv)
 }
 
-func Encrypt(buffer []byte, nonce *[24]byte, receiverPublicKey *[32]byte, senderPrivateKey *[32]byte) []byte {
-	return box.Seal(nil, buffer, nonce, receiverPublicKey, senderPrivateKey)
-}
+// Seal wraps (x/crypto/nacl/box).Seal to make working with byte slices easier
+func Seal(data []byte, nonce []byte, publicKey []byte, privateKey []byte) []byte {
+	var n [NonceSize]byte
+	var pub [KeySize]byte
+	var priv [KeySize]byte
 
-func Decrypt(buffer []byte, nonce *[24]byte, senderPublicKey *[32]byte, receiverPrivateKey *[32]byte) ([]byte, bool) {
-	return box.Open(nil, buffer, nonce, senderPublicKey, receiverPrivateKey)
-}
+	copy(n[:], nonce)
+	copy(pub[:], publicKey)
+	copy(priv[:], privateKey)
 
-func Sign(privateKey []byte, buffer []byte) []byte {
-	return ed25519.Sign(privateKey, buffer)
-}
-
-func Verify(publicKey []byte, buffer []byte, sig []byte) bool {
-	return ed25519.Verify(publicKey, buffer, sig)
+	return box.Seal(nil, data, &n, &pub, &priv)
 }
