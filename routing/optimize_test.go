@@ -2,7 +2,6 @@ package routing_test
 
 import (
 	"encoding/binary"
-	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"strings"
@@ -784,6 +783,7 @@ func TestOptimize(t *testing.T) {
 		})
 
 		t.Run("Optimize()", func(t *testing.T) {
+			t.Skip("using old Optimize() tests from core/core_test.go for now")
 		})
 	})
 
@@ -1318,13 +1318,13 @@ func TestOptimize(t *testing.T) {
 			for i := 0; i < len(routeMatrix.Entries); i++ {
 
 				if routeMatrix.Entries[i].DirectRTT != readRouteMatrix.Entries[i].DirectRTT {
-					fmt.Printf("DirectRTT mismatch: %d != %d\n", routeMatrix.Entries[i].DirectRTT, readRouteMatrix.Entries[i].DirectRTT)
+					t.Errorf("DirectRTT mismatch: %d != %d\n", routeMatrix.Entries[i].DirectRTT, readRouteMatrix.Entries[i].DirectRTT)
 					equal = false
 					break
 				}
 
 				if routeMatrix.Entries[i].NumRoutes != readRouteMatrix.Entries[i].NumRoutes {
-					fmt.Printf("NumRoutes mismatch\n")
+					t.Errorf("NumRoutes mismatch\n")
 					equal = false
 					break
 				}
@@ -1332,20 +1332,20 @@ func TestOptimize(t *testing.T) {
 				for j := 0; j < int(routeMatrix.Entries[i].NumRoutes); j++ {
 
 					if routeMatrix.Entries[i].RouteRTT[j] != readRouteMatrix.Entries[i].RouteRTT[j] {
-						fmt.Printf("RouteRTT mismatch\n")
+						t.Errorf("RouteRTT mismatch\n")
 						equal = false
 						break
 					}
 
 					if routeMatrix.Entries[i].RouteNumRelays[j] != readRouteMatrix.Entries[i].RouteNumRelays[j] {
-						fmt.Printf("RouteNumRelays mismatch\n")
+						t.Errorf("RouteNumRelays mismatch\n")
 						equal = false
 						break
 					}
 
 					for k := 0; k < int(routeMatrix.Entries[i].RouteNumRelays[j]); k++ {
 						if routeMatrix.Entries[i].RouteRelays[j][k] != readRouteMatrix.Entries[i].RouteRelays[j][k] {
-							fmt.Printf("RouteRelayId mismatch\n")
+							t.Errorf("RouteRelayId mismatch\n")
 							equal = false
 							break
 						}

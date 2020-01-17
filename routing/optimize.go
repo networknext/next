@@ -255,7 +255,7 @@ func (m CostMatrix) MarshalBinary() ([]byte, error) {
 	numDatacenters := len(m.DatacenterIds)
 
 	if numDatacenters != len(m.DatacenterNames) {
-		return nil, fmt.Errorf("Length of Datacenter IDs not equal to length of Datacenter Names: %d != %d", numDatacenters, len(m.DatacenterIds))
+		return nil, fmt.Errorf("Length of Datacenter IDs not equal to length of Datacenter Names: %d != %d", numDatacenters, len(m.DatacenterNames))
 	}
 
 	encoding.WriteUint32(data, &index, uint32(numDatacenters))
@@ -846,11 +846,11 @@ func (m RouteMatrix) MarshalBinary() ([]byte, error) {
 		encoding.WriteString(data, &index, name, uint32(len(name)))
 	}
 
-	if len(m.DatacenterIds) != len(m.DatacenterNames) {
-		panic("datacenter ids length does not match datacenter names length")
-	}
-
 	numDatacenters := len(m.DatacenterIds)
+
+	if numDatacenters != len(m.DatacenterNames) {
+		return nil, fmt.Errorf("Length of Datacenter IDs not equal to length of Datacenter Names: %d != %d", numDatacenters, len(m.DatacenterNames))
+	}
 
 	encoding.WriteUint32(data, &index, uint32(numDatacenters))
 
