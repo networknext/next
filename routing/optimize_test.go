@@ -1269,7 +1269,6 @@ func TestOptimize(t *testing.T) {
 		})
 
 		t.Run("TestRouteMatrix() - another test with different version 0 sample data", func(t *testing.T) {
-			t.Skip()
 			raw, err := ioutil.ReadFile("test_data/cost.bin")
 			assert.Nil(t, err)
 			assert.Equal(t, len(raw), 355188, "cost.bin should be 355188 bytes")
