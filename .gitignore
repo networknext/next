@@ -3,3 +3,4 @@ dist
 .vscode
 cover.out
 *.swp
+*.mmdb

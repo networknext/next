@@ -147,7 +147,7 @@ dev-relay-backend: ## runs a local relay backend
 
 .PHONY: dev-server-backend
 dev-server-backend: ## runs a local server backend
-	@export IPSTACK_ACCESS_KEY=2a3640e34301da9ab257c59243b0d7c6 ; \
+	@export MAXMIND_DB_URI=./GeoLite2-City.mmdb ; \
 	$(GO) run cmd/server_backend/server_backend.go
 
 .PHONY: dev-backend

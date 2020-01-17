@@ -9,27 +9,24 @@ import (
 	"context"
 	"log"
 	"net"
-	"net/http"
 	"os"
 	"os/signal"
 	"runtime"
-	"strconv"
-	"time"
 
 	"github.com/alicebob/miniredis"
 	"github.com/go-redis/redis/v7"
+	"github.com/oschwald/geoip2-golang"
+	"google.golang.org/grpc"
 
+	"github.com/networknext/backend/routing"
+	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 )
 
 func main() {
-	var err error
+	ctx := context.Background()
 
-	var port int64
-	if port, err = strconv.ParseInt(os.Getenv("SERVER_BACKEND_PORT"), 10, 64); err != nil {
-		port = 30000
-		log.Printf("unable to parse SERVER_BACKEND_PORT '%s', defaulting to 30000\n", os.Getenv("SERVER_BACKEND_PORT"))
-	}
+	var err error
 
 	// Attempt to connect to REDIS_HOST
 	// If it fails to connect then start a local in memory instance and connect to that instead
@@ -48,24 +45,41 @@ func main() {
 		log.Printf("unable to connect to REDIS_HOST '%s', connected to in-memory redis %s", os.Getenv("REDIS_URL"), redisServer.Addr())
 	}
 
-	// Configure the IPStackClient used for IP lookups
-	var ipStackClient transport.IPStackClient
-	{
-		if os.Getenv("IPSTACK_ACCESS_KEY") == "" {
-			log.Fatal("IPSTACK_ACCESS_KEY environment variable is empty")
+	// Open the Maxmind DB and create a routing.MaxmindDB from it
+	mmreader, err := geoip2.Open(os.Getenv("MAXMIND_DB_URI"))
+	if err != nil {
+		log.Fatalf("failed to open Maxmind GeoIP2 database: %v", err)
+	}
+	mmdb := routing.MaxmindDB{
+		Reader: mmreader,
+	}
+	defer mmreader.Close()
+
+	geoClient := routing.GeoClient{
+		RedisClient: redisClient,
+		Namespace:   "RELAY_LOCATIONS",
+	}
+
+	// Create an in-memory buyer provider
+	var buyerProvider transport.BuyerProvider = &storage.InMemory{}
+	if os.Getenv("CONFIGSTORE_HOST") != "" {
+		grpcconn, err := grpc.Dial(os.Getenv("CONFIGSTORE_HOST"), grpc.WithInsecure())
+		if err != nil {
+			log.Fatalf("could not dial configstore: %v", err)
+		}
+		configstore, err := storage.ConnectToConfigstore(ctx, grpcconn)
+		if err != nil {
+			log.Fatalf("could not dial configstore: %v", err)
 		}
 
-		ipStackClient = transport.IPStackClient{
-			Client: &http.Client{
-				Timeout: time.Second,
-			},
-			AccessKey: os.Getenv("IPSTACK_ACCESS_KEY"),
-		}
+		// If CONFIGSTORE_HOST exists and a successful connection was made
+		// then replace the in-memory with the gRPC one
+		buyerProvider = configstore.Buyers
 	}
 
 	{
 		addr := net.UDPAddr{
-			Port: int(port),
+			Port: 30000,
 			IP:   net.ParseIP("0.0.0.0"),
 		}
 
@@ -78,12 +92,13 @@ func main() {
 			Conn:          conn,
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
-			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(redisClient),
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(redisClient, &ipStackClient),
+			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(redisClient, buyerProvider),
+			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(redisClient, &mmdb, &geoClient),
 		}
 
 		go func() {
-			if err := mux.Start(context.Background(), runtime.NumCPU()); err != nil {
+			log.Printf("started on %s\n", addr.String())
+			if err := mux.Start(ctx, runtime.NumCPU()); err != nil {
 				log.Println(err)
 			}
 		}()

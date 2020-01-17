@@ -1,8 +1,9 @@
 package transport
 
 import (
+	"bytes"
+	"crypto/rand"
 	"fmt"
-	"github.com/gorilla/mux"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -10,6 +11,8 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v7"
+	"github.com/gorilla/mux"
+
 	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
@@ -84,8 +87,12 @@ func RelayInitHandlerFunc(redisClient *redis.Client) func(writer http.ResponseWr
 		}
 
 		if relayInitPacket.Magic != InitRequestMagic ||
-			relayInitPacket.Version != VersionNumberInitRequest ||
-			!crypto.Check(relayInitPacket.EncryptedToken, relayInitPacket.Nonce, gRelayPublicKey[:], core.RouterPrivateKey[:]) {
+			relayInitPacket.Version != VersionNumberInitRequest {
+			writer.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		if _, ok := crypto.Open(relayInitPacket.EncryptedToken, relayInitPacket.Nonce, crypto.RelayPublicKey[:], crypto.RouterPrivateKey[:]); !ok {
 			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -104,6 +111,17 @@ func RelayInitHandlerFunc(redisClient *redis.Client) func(writer http.ResponseWr
 		if exists.Val() {
 			log.Println("relay entry exists, returning")
 			writer.WriteHeader(http.StatusNotFound)
+		}
+
+		entry := core.RelayData{}
+		entry.Name = relayInitPacket.Address
+		entry.ID = core.GetRelayID(relayInitPacket.Address)
+		entry.Address = relayInitPacket.Address //core.ParseAddress(relayInitPacket.address)
+		entry.LastUpdateTime = uint64(time.Now().Unix())
+
+		entry.PublicKey = make([]byte, crypto.KeySize)
+		if _, err := rand.Read(entry.PublicKey); err != nil {
+			writer.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
@@ -130,7 +148,7 @@ func RelayInitHandlerFunc(redisClient *redis.Client) func(writer http.ResponseWr
 		responseData := make([]byte, 64)
 		encoding.WriteUint32(responseData, &index, VersionNumberInitResponse)
 		encoding.WriteUint64(responseData, &index, uint64(time.Now().Unix()))
-		encoding.WriteBytes(responseData, &index, entry.PublicKey, LengthOfRelayToken)
+		encoding.WriteBytes(responseData, &index, entry.PublicKey, crypto.KeySize)
 
 		writer.Write(responseData[:index])
 	}
@@ -154,7 +172,7 @@ func RelayUpdateHandlerFunc(redisClient *redis.Client, statsdb *core.StatsDataba
 			return
 		}
 
-		if relayUpdatePacket.Version != VersionNumberUpdateRequest || relayUpdatePacket.NumRelays > MaxRelays {
+		if relayUpdatePacket.Version != VersionNumberUpdateRequest || relayUpdatePacket.NumRelays == 0 || relayUpdatePacket.NumRelays > MaxRelays {
 			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -198,6 +216,10 @@ func RelayUpdateHandlerFunc(redisClient *redis.Client, statsdb *core.StatsDataba
 			}
 		}
 
+		if bytes.Equal(relayUpdatePacket.Token, entry.PublicKey) {
+			found = true
+		}
+
 		if !found {
 			writer.WriteHeader(http.StatusNotFound)
 			return
@@ -205,10 +227,7 @@ func RelayUpdateHandlerFunc(redisClient *redis.Client, statsdb *core.StatsDataba
 
 		statsUpdate := &core.RelayStatsUpdate{}
 		statsUpdate.ID = entry.ID
-
-		for _, ps := range relayUpdatePacket.PingStats {
-			statsUpdate.PingStats = append(statsUpdate.PingStats, ps)
-		}
+		statsUpdate.PingStats = append(statsUpdate.PingStats, relayUpdatePacket.PingStats...)
 
 		statsdb.ProcessStats(statsUpdate)
 
