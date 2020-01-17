@@ -3,6 +3,7 @@ package encoding
 import (
 	"encoding/binary"
 	"math"
+	"net"
 )
 
 func ReadUint32(data []byte, index *int, value *uint32) bool {
@@ -62,4 +63,15 @@ func ReadBytes(data []byte, index *int, value *[]byte, bytes uint32) bool {
 		*index += 1
 	}
 	return true
+}
+
+func ReadAddress(buffer []byte) *net.UDPAddr {
+	addressType := buffer[0]
+	switch addressType {
+	case IPAddressIPv4:
+		return &net.UDPAddr{IP: net.IPv4(buffer[1], buffer[2], buffer[3], buffer[4]), Port: ((int)(binary.LittleEndian.Uint16(buffer[5:])))}
+	case IPAddressIPv6:
+		return &net.UDPAddr{IP: buffer[1:], Port: ((int)(binary.LittleEndian.Uint16(buffer[17:])))}
+	}
+	return nil
 }

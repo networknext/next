@@ -2,6 +2,7 @@ package encoding
 
 import (
 	"encoding/binary"
+	"net"
 )
 
 func WriteUint32(data []byte, index *int, value uint32) {
@@ -31,5 +32,28 @@ func WriteBytes(data []byte, index *int, value []byte, numBytes int) {
 	for i := 0; i < numBytes; i++ {
 		data[*index] = value[i]
 		*index++
+	}
+}
+
+func WriteAddress(buffer []byte, address *net.UDPAddr) {
+	if address == nil {
+		buffer[0] = IPAddressNone
+		return
+	}
+	ipv4 := address.IP.To4()
+	port := address.Port
+	if ipv4 != nil {
+		buffer[0] = IPAddressIPv4
+		buffer[1] = ipv4[0]
+		buffer[2] = ipv4[1]
+		buffer[3] = ipv4[2]
+		buffer[4] = ipv4[3]
+		buffer[5] = (byte)(port & 0xFF)
+		buffer[6] = (byte)(port >> 8)
+	} else {
+		buffer[0] = IPAddressIPv6
+		copy(buffer[1:], address.IP)
+		buffer[17] = (byte)(port & 0xFF)
+		buffer[18] = (byte)(port >> 8)
 	}
 }
