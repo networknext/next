@@ -309,66 +309,6 @@ func sizeofRouteMatrixEntryOld(entries []routing.RouteMatrixEntry) int {
 	return length
 }
 
-func analyze(t *testing.T, route_matrix *routing.RouteMatrix) {
-	src := route_matrix.RelayIds
-	dest := route_matrix.RelayIds
-
-	entries := make([]int32, 0, len(src)*len(dest))
-
-	numRelayPairs := 0
-	numValidRelayPairs := 0
-	numValidRelayPairsWithoutImprovement := 0
-
-	buckets := make([]int, 11)
-
-	for i := range src {
-		for j := range dest {
-			if j < i {
-				numRelayPairs++
-				abFlatIndex := core.TriMatrixIndex(i, j)
-				if len(route_matrix.Entries[abFlatIndex].RouteRTT) > 0 {
-					numValidRelayPairs++
-					improvement := route_matrix.Entries[abFlatIndex].DirectRTT - route_matrix.Entries[abFlatIndex].RouteRTT[0]
-					if improvement > 0.0 {
-						entries = append(entries, improvement)
-						if improvement <= 5 {
-							buckets[0]++
-						} else if improvement <= 10 {
-							buckets[1]++
-						} else if improvement <= 15 {
-							buckets[2]++
-						} else if improvement <= 20 {
-							buckets[3]++
-						} else if improvement <= 25 {
-							buckets[4]++
-						} else if improvement <= 30 {
-							buckets[5]++
-						} else if improvement <= 35 {
-							buckets[6]++
-						} else if improvement <= 40 {
-							buckets[7]++
-						} else if improvement <= 45 {
-							buckets[8]++
-						} else if improvement <= 50 {
-							buckets[9]++
-						} else {
-							buckets[10]++
-						}
-					} else {
-						numValidRelayPairsWithoutImprovement++
-					}
-				}
-			}
-		}
-	}
-
-	assert.Equal(t, 43916, numValidRelayPairsWithoutImprovement, "optimizer is broken")
-
-	expected := []int{2561, 8443, 6531, 4690, 3208, 2336, 1775, 1364, 1078, 749, 5159}
-
-	assert.Equal(t, expected, buckets, "optimizer is broken")
-}
-
 func TestOptimize(t *testing.T) {
 	t.Run("CostMatrix", func(t *testing.T) {
 		t.Run("UnmarshalBinary()", func(t *testing.T) {
@@ -1203,6 +1143,66 @@ func TestOptimize(t *testing.T) {
 	})
 
 	t.Run("Old tests from core/core_test.go", func(t *testing.T) {
+		analyze := func(t *testing.T, route_matrix *routing.RouteMatrix) {
+			src := route_matrix.RelayIds
+			dest := route_matrix.RelayIds
+
+			entries := make([]int32, 0, len(src)*len(dest))
+
+			numRelayPairs := 0
+			numValidRelayPairs := 0
+			numValidRelayPairsWithoutImprovement := 0
+
+			buckets := make([]int, 11)
+
+			for i := range src {
+				for j := range dest {
+					if j < i {
+						numRelayPairs++
+						abFlatIndex := core.TriMatrixIndex(i, j)
+						if len(route_matrix.Entries[abFlatIndex].RouteRTT) > 0 {
+							numValidRelayPairs++
+							improvement := route_matrix.Entries[abFlatIndex].DirectRTT - route_matrix.Entries[abFlatIndex].RouteRTT[0]
+							if improvement > 0.0 {
+								entries = append(entries, improvement)
+								if improvement <= 5 {
+									buckets[0]++
+								} else if improvement <= 10 {
+									buckets[1]++
+								} else if improvement <= 15 {
+									buckets[2]++
+								} else if improvement <= 20 {
+									buckets[3]++
+								} else if improvement <= 25 {
+									buckets[4]++
+								} else if improvement <= 30 {
+									buckets[5]++
+								} else if improvement <= 35 {
+									buckets[6]++
+								} else if improvement <= 40 {
+									buckets[7]++
+								} else if improvement <= 45 {
+									buckets[8]++
+								} else if improvement <= 50 {
+									buckets[9]++
+								} else {
+									buckets[10]++
+								}
+							} else {
+								numValidRelayPairsWithoutImprovement++
+							}
+						}
+					}
+				}
+			}
+
+			assert.Equal(t, 43916, numValidRelayPairsWithoutImprovement, "optimizer is broken")
+
+			expected := []int{2561, 8443, 6531, 4690, 3208, 2336, 1775, 1364, 1078, 749, 5159}
+
+			assert.Equal(t, expected, buckets, "optimizer is broken")
+		}
+
 		t.Run("TestCostMatrix() - cost matrix assertions with version 0 data", func(t *testing.T) {
 			raw, err := ioutil.ReadFile("test_data/cost.bin")
 			assert.Nil(t, err)
