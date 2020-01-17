@@ -3,17 +3,20 @@ package transport
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net"
+	"time"
 
 	jsoniter "github.com/json-iterator/go"
 
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/routing"
+	"github.com/networknext/backend/storage"
 )
 
 const (
@@ -90,85 +93,98 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 	}
 }
 
-type ServerEntry struct {
-	ServerRoutePublicKey []byte
-	ServerPrivateAddr    net.UDPAddr
-
-	DatacenterID      uint64
-	DatacenterName    string
-	DatacenterEnabled bool
-
-	VersionMajor int32
-	VersionMinor int32
-	VersionPatch int32
+type ServerCacheEntry struct {
+	Sequence   uint64
+	Server     routing.Server
+	Datacenter routing.Datacenter
+	SDKVersion SDKVersion
 }
 
-func (e *ServerEntry) UnmarshalBinary(data []byte) error {
+func (e *ServerCacheEntry) UnmarshalBinary(data []byte) error {
 	return jsoniter.Unmarshal(data, e)
 }
 
-func (e ServerEntry) MarshalBinary() ([]byte, error) {
+func (e ServerCacheEntry) MarshalBinary() ([]byte, error) {
 	return jsoniter.Marshal(e)
 }
 
+type BuyerProvider interface {
+	GetAndCheckBySdkVersion3PublicKeyId(key uint64) (*storage.Buyer, bool)
+}
+
 // ServerUpdateHandlerFunc ...
-func ServerUpdateHandlerFunc(redisClient redis.Cmdable) UDPHandlerFunc {
+func ServerUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		var packet core.ServerUpdatePacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
-			fmt.Printf("failed to read server update packet: %v\n", err)
+			log.Printf("failed to read server update packet: %v\n", err)
 			return
 		}
 
-		// Verify the Session packet version
-		if !core.ProtocolVersionAtLeast(packet.VersionMajor, packet.VersionMinor, packet.VersionPatch, core.SDKVersionMajorMin, core.SDKVersionMinorMin, core.SDKVersionPatchMin) {
-			log.Printf("sdk version is too old. Using %d.%d.%d but require at least %d.%d.%d", packet.VersionMajor, packet.VersionMinor, packet.VersionPatch, core.SDKVersionMajorMin, core.SDKVersionMinorMin, core.SDKVersionPatchMin)
+		// Drop the packet if version is older that the minimun sdk version
+		psdkv := SDKVersion{packet.VersionMajor, packet.VersionMinor, packet.VersionPatch}
+		if psdkv.Compare(SDKVersionMin) == SDKVersionOlder {
+			log.Printf("sdk version is too old. Using %s but require at least %s", psdkv, SDKVersionMin)
 			return
 		}
 
-		// Get the the old ServerEntry from Redis
-		var serverentry ServerEntry
+		// Get the buyer information for the id in the packet
+		buyer, ok := bp.GetAndCheckBySdkVersion3PublicKeyId(packet.CustomerId)
+		if !ok {
+			log.Printf("failed to get buyer '%d'", packet.CustomerId)
+			return
+		}
+		buyPublicKey := buyer.GetSdkVersion3PublicKeyData()
+
+		// Drop the packet if the buyer is not an admin and they are using an internal build
+		// if !buyer.GetA && psdkv.Compare(SDKVersionInternal) == SDKVersionEqual {
+		// 	log.Printf("non-admin buyer using an internal sdk")
+		// 	return
+		// }
+
+		// Drop the packet if the signed packet data cannot be verified with the buyers public key
+		if !ed25519.Verify(buyPublicKey, packet.GetSignData(), packet.Signature) {
+			log.Printf("failed to verify server update signature")
+			return
+		}
+
+		// Get the the old ServerCacheEntry if it exists, otherwise serverentry is in zero value state
+		var serverentry ServerCacheEntry
 		{
 			result := redisClient.Get("SERVER-" + incoming.SourceAddr.String())
 			if result.Err() != nil && result.Err() != redis.Nil {
-				log.Printf("failed to get server %s from redis: %v", incoming.SourceAddr.String(), result.Err())
+				log.Printf("failed to load server %s from cache: %v", incoming.SourceAddr.String(), result.Err())
 				return
 			}
 			serverdata, err := result.Bytes()
 			if err != nil && result.Err() != redis.Nil {
-				log.Printf("failed to get bytes from redis: %v", result.Err())
+				log.Printf("failed to get bytes from cache: %v", result.Err())
 				return
 			}
 			if serverdata != nil {
 				if err := serverentry.UnmarshalBinary(serverdata); err != nil {
-					fmt.Printf("failed to read server entry: %v\n", err)
+					fmt.Printf("failed to unmarshal server cache entry: %v\n", err)
 				}
 			}
 		}
 
-		// TODO 1. Get Buyer and Customer information from ConfigStore
+		// Drop the packet if the sequence number is older than the previously cache sequence number
+		if packet.Sequence < serverentry.Sequence {
+			log.Printf("packet too old: (packet) %d < %d (Redis)", packet.Sequence, serverentry.Sequence)
+			return
+		}
 
-		// TODO 2. Check server packet version for customer and don't let them use 0.0.0
-
-		// signdata := sup.GetSignData()
-
-		// Save the ServerEntry to Redis
-		{
-			serverentry = ServerEntry{
-				ServerRoutePublicKey: packet.ServerRoutePublicKey,
-				ServerPrivateAddr:    packet.ServerPrivateAddress,
-
-				DatacenterID: packet.DatacenterId,
-
-				VersionMajor: packet.VersionMajor,
-				VersionMinor: packet.VersionMinor,
-				VersionPatch: packet.VersionPatch,
-			}
-			result := redisClient.Set("SERVER-"+incoming.SourceAddr.String(), serverentry, 0)
-			if result.Err() != nil {
-				log.Printf("failed to register server %s: %v", incoming.SourceAddr.String(), result.Err())
-				return
-			}
+		// Save some of the packet information to be used in SessionUpdateHandlerFunc
+		serverentry = ServerCacheEntry{
+			Sequence:   packet.Sequence,
+			Server:     routing.Server{Addr: packet.ServerPrivateAddress, PublicKey: packet.ServerRoutePublicKey},
+			Datacenter: routing.Datacenter{ID: packet.DatacenterId},
+			SDKVersion: SDKVersion{packet.VersionMajor, packet.VersionMinor, packet.VersionPatch},
+		}
+		result := redisClient.Set("SERVER-"+incoming.SourceAddr.String(), serverentry, 5*time.Minute)
+		if result.Err() != nil {
+			log.Printf("failed to cache server %s: %v", incoming.SourceAddr.String(), result.Err())
+			return
 		}
 	}
 }
@@ -206,9 +222,7 @@ type SessionEntry struct {
 	OnNetworkNext    bool
 	FallbackToDirect bool
 
-	VersionMajor int32
-	VersionMinor int32
-	VersionPatch int32
+	SDKVersion SDKVersion
 }
 
 func (e *SessionEntry) UnmarshalBinary(data []byte) error {
@@ -241,7 +255,7 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, iploc routing.IPLocator
 			return
 		}
 
-		var serverentry ServerEntry
+		var serverentry ServerCacheEntry
 		if err := serverentry.UnmarshalBinary(serverdata); err != nil {
 			log.Fatalf("failed to unmarshal server entry from redis for '%s': %v", incoming.SourceAddr.String(), err)
 			return
@@ -272,8 +286,8 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, iploc routing.IPLocator
 			NextJitter:       float64(packet.NextJitter),
 			NextPacketLoss:   float64(packet.NextPacketLoss),
 
-			ServerRoutePublicKey: serverentry.ServerRoutePublicKey,
-			ServerPrivateAddr:    serverentry.ServerPrivateAddr,
+			ServerRoutePublicKey: serverentry.Server.PublicKey,
+			ServerPrivateAddr:    serverentry.Server.Addr,
 			ServerAddr:           packet.ServerAddress,
 			ClientAddr:           packet.ClientAddress,
 
@@ -287,9 +301,7 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, iploc routing.IPLocator
 			FallbackToDirect: packet.FallbackToDirect,
 			OnNetworkNext:    packet.OnNetworkNext,
 
-			VersionMajor: serverentry.VersionMajor,
-			VersionMinor: serverentry.VersionMinor,
-			VersionPatch: serverentry.VersionPatch,
+			SDKVersion: serverentry.SDKVersion,
 		}
 		{
 			result := redisClient.Set(fmt.Sprintf("SESSION-%d", packet.SessionId), sessionentry, 0)
@@ -315,7 +327,7 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, iploc routing.IPLocator
 			NumTokens:            int32(route.NumTokens),
 			Tokens:               route.Tokens,
 			Multipath:            route.Multipath,
-			ServerRoutePublicKey: serverentry.ServerRoutePublicKey,
+			ServerRoutePublicKey: serverentry.Server.PublicKey,
 		}
 
 		// Fill in the near relays
@@ -328,7 +340,7 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, iploc routing.IPLocator
 		}
 
 		// Sign the response
-		response.Sign(serverentry.VersionMajor, serverentry.VersionMinor, serverentry.VersionPatch)
+		response.Sign(serverentry.SDKVersion.Major, serverentry.SDKVersion.Minor, serverentry.SDKVersion.Patch)
 
 		// Send the Session Response back to the server
 		res, err := response.MarshalBinary()
