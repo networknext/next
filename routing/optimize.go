@@ -860,7 +860,14 @@ func (m RouteMatrix) MarshalBinary() ([]byte, error) {
 	}
 
 	for _, addr := range m.RelayAddresses {
-		encoding.WriteBytes(data, &index, addr, MaxRelayAddressLength)
+		address := addr
+
+		if len(addr) != MaxRelayAddressLength {
+			address = make([]byte, MaxRelayAddressLength)
+			copy(address, addr)
+		}
+
+		encoding.WriteBytes(data, &index, address, MaxRelayAddressLength)
 	}
 
 	for _, pk := range m.RelayPublicKeys {

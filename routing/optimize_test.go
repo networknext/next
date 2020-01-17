@@ -1272,7 +1272,6 @@ func TestOptimize(t *testing.T) {
 			raw, err := ioutil.ReadFile("test_data/cost.bin")
 			assert.Nil(t, err)
 			assert.Equal(t, len(raw), 355188, "cost.bin should be 355188 bytes")
-			return
 
 			var costMatrix routing.CostMatrix
 			err = costMatrix.UnmarshalBinary(raw)
@@ -1285,9 +1284,6 @@ func TestOptimize(t *testing.T) {
 			err = readCostMatrix.UnmarshalBinary(costMatrixData)
 			assert.Nil(t, err)
 			assert.Equal(t, costMatrix, readCostMatrix)
-			if err != nil {
-				return
-			}
 
 			var routeMatrix routing.RouteMatrix
 			costMatrix.Optimize(&routeMatrix, 5)
@@ -1302,13 +1298,16 @@ func TestOptimize(t *testing.T) {
 			var readRouteMatrix routing.RouteMatrix
 			err = readRouteMatrix.UnmarshalBinary(routeMatrixData)
 			assert.Nil(t, err)
-			if err != nil {
-				return
-			}
 
 			assert.Equal(t, routeMatrix.RelayIds, readRouteMatrix.RelayIds, "relay id mismatch")
 			// todo: relay names soon
-			assert.Equal(t, routeMatrix.RelayAddresses, readRouteMatrix.RelayAddresses, "relay address mismatch")
+			// this was the old line however because relay addresses are written with extra 0's this is how they must be checked
+			// assert.Equal(t, routeMatrix.RelayAddresses, readRouteMatrix.RelayAddresses, "relay address mismatch")
+
+			assert.Len(t, readCostMatrix.RelayAddresses, len(costMatrix.RelayAddresses))
+			for i, addr := range costMatrix.RelayAddresses {
+				assert.Equal(t, string(addr), strings.Trim(string(readCostMatrix.RelayAddresses[i]), string([]byte{0x0})))
+			}
 			assert.Equal(t, routeMatrix.RelayPublicKeys, readRouteMatrix.RelayPublicKeys, "relay public key mismatch")
 			assert.Equal(t, routeMatrix.DatacenterRelays, readRouteMatrix.DatacenterRelays, "datacenter relays mismatch")
 
