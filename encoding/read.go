@@ -52,14 +52,6 @@ func ReadString(data []byte, index *int, value *string, maxStringLength uint32) 
 	return true
 }
 
-// used for CostMatrix & RouteMatrix unmarshaling. needed for when version < 3
-func ReadStringOld(buffer []byte) (string, int) {
-	stringLength := binary.LittleEndian.Uint32(buffer)
-	stringData := make([]byte, stringLength)
-	copy(stringData, buffer[4:4+stringLength])
-	return string(stringData), int(4 + stringLength)
-}
-
 func ReadBytes(data []byte, index *int, value *[]byte, bytes uint32) bool {
 	if *index+int(bytes) > len(data) {
 		return false
@@ -72,7 +64,7 @@ func ReadBytes(data []byte, index *int, value *[]byte, bytes uint32) bool {
 	return true
 }
 
-// used for CostMatrix & RouteMatrix unmarshaling. needed for when version < 3
+// used for CostMatrix & RouteMatrix unmarshaling. needed for when version < 3, basically ReadString()
 func ReadBytesOld(buffer []byte) ([]byte, int) {
 	length := binary.LittleEndian.Uint32(buffer)
 	data := make([]byte, length)

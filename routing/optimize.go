@@ -1,6 +1,7 @@
 package routing
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"runtime"
@@ -66,67 +67,76 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 	index := 0
 
 	var version uint32
-	encoding.ReadUint32(data, &index, &version)
+	if !encoding.ReadUint32(data, &index, &version) {
+		return errors.New("[CostMatrix] invalid read at version number")
+	}
 
 	if version > CostMatrixVersion {
 		return fmt.Errorf("unknown cost matrix version %d", version)
 	}
 
 	var numRelays uint32
-
-	encoding.ReadUint32(data, &index, &numRelays)
+	if !encoding.ReadUint32(data, &index, &numRelays) {
+		return errors.New("[CostMatrix] invalid read at number of relays")
+	}
 
 	m.RelayIds = make([]uint64, numRelays)
 
 	if version >= 3 {
 		for i := 0; i < int(numRelays); i++ {
-			encoding.ReadUint64(data, &index, &m.RelayIds[i])
+			if !encoding.ReadUint64(data, &index, &m.RelayIds[i]) {
+				return errors.New("[CostMatrix] invalid read at relay ids - v3")
+			}
 		}
 	} else {
 		for i := 0; i < int(numRelays); i++ {
 			var tmp uint32
-			encoding.ReadUint32(data, &index, &tmp)
+			if !encoding.ReadUint32(data, &index, &tmp) {
+				return errors.New("[CostMatrix] invalid read at relay ids - ver < 3")
+			}
 			m.RelayIds[i] = uint64(tmp)
 		}
 	}
 
+	m.RelayNames = make([]string, numRelays)
 	if version >= 1 {
-		m.RelayNames = make([]string, numRelays)
-
-		if version >= 3 {
-			for i := range m.RelayNames {
-				encoding.ReadString(data, &index, &m.RelayNames[i], math.MaxInt32)
-			}
-		} else {
-			for i := range m.RelayNames {
-				var bytesRead int
-				m.RelayNames[i], bytesRead = encoding.ReadStringOld(data[index:])
-				index += bytesRead
+		for i := range m.RelayNames {
+			if !encoding.ReadString(data, &index, &m.RelayNames[i], math.MaxInt32) {
+				return errors.New("[CostMatrix] invalid read at relay names")
 			}
 		}
 	}
 
 	if version >= 2 {
 		var datacenterCount uint32
-		encoding.ReadUint32(data, &index, &datacenterCount)
+		if !encoding.ReadUint32(data, &index, &datacenterCount) {
+			return errors.New("[CostMatrix] invalid read at datacenter count")
+		}
 
 		m.DatacenterIds = make([]uint64, datacenterCount)
 		m.DatacenterNames = make([]string, datacenterCount)
 
 		if version >= 3 {
 			for i := 0; i < int(datacenterCount); i++ {
-				encoding.ReadUint64(data, &index, &m.DatacenterIds[i])
-				encoding.ReadString(data, &index, &m.DatacenterNames[i], math.MaxInt32)
+				if !encoding.ReadUint64(data, &index, &m.DatacenterIds[i]) {
+					return errors.New("[CostMatrix] invalid read at datacenter ids - v3")
+				}
+
+				if !encoding.ReadString(data, &index, &m.DatacenterNames[i], math.MaxInt32) {
+					return errors.New("[CostMatrix] invalid read at datacenter names - v3")
+				}
 			}
 		} else {
 			for i := 0; i < int(datacenterCount); i++ {
 				var tmp uint32
-				encoding.ReadUint32(data, &index, &tmp)
+				if !encoding.ReadUint32(data, &index, &tmp) {
+					return errors.New("[CostMatrix] invalid read at ids - ver < 3")
+				}
 				m.DatacenterIds[i] = uint64(tmp)
 
-				var bytesRead int
-				m.DatacenterNames[i], bytesRead = encoding.ReadStringOld(data[index:])
-				index += bytesRead
+				if !encoding.ReadString(data, &index, &m.DatacenterNames[i], math.MaxInt32) {
+					return errors.New("[CostMatrix] invalid read at datacenter names - ver < 3")
+				}
 			}
 		}
 	}
@@ -134,7 +144,9 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 	m.RelayAddresses = make([][]byte, numRelays)
 	if version >= 3 {
 		for i := range m.RelayAddresses {
-			encoding.ReadBytes(data, &index, &m.RelayAddresses[i], MaxRelayAddressLength)
+			if !encoding.ReadBytes(data, &index, &m.RelayAddresses[i], MaxRelayAddressLength) {
+				return errors.New("[CostMatrix] invalid read at relay addresses - v3")
+			}
 		}
 	} else {
 		for i := range m.RelayAddresses {
@@ -147,7 +159,9 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 	m.RelayPublicKeys = make([][]byte, numRelays)
 	if version >= 3 {
 		for i := range m.RelayPublicKeys {
-			encoding.ReadBytes(data, &index, &m.RelayPublicKeys[i], LengthOfRelayToken)
+			if !encoding.ReadBytes(data, &index, &m.RelayPublicKeys[i], LengthOfRelayToken) {
+				return errors.New("[CostMatrix] invalid read at relay public keys - v3")
+			}
 		}
 	} else {
 		for i := range m.RelayPublicKeys {
@@ -158,7 +172,9 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 	}
 
 	var numDatacenters uint32
-	encoding.ReadUint32(data, &index, &numDatacenters)
+	if !encoding.ReadUint32(data, &index, &numDatacenters) {
+		return errors.New("[CostMatrix] invalid read at number of datacenters (second time)")
+	}
 
 	m.DatacenterRelays = make(map[uint64][]uint64)
 
@@ -166,26 +182,36 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 		var datacenterID uint64
 
 		if version >= 3 {
-			encoding.ReadUint64(data, &index, &datacenterID)
+			if !encoding.ReadUint64(data, &index, &datacenterID) {
+				return errors.New("[CostMatrix] invalid read at datacenter id - v3")
+			}
 		} else {
 			var tmp uint32
-			encoding.ReadUint32(data, &index, &tmp)
+			if !encoding.ReadUint32(data, &index, &tmp) {
+				return errors.New("[CostMatrix] invalid read at datacenter id - ver < 3")
+			}
 			datacenterID = uint64(tmp)
 		}
 
 		var numRelaysInDatacenter uint32
-		encoding.ReadUint32(data, &index, &numRelaysInDatacenter)
+		if !encoding.ReadUint32(data, &index, &numRelaysInDatacenter) {
+			return errors.New("[CostMatrix] invalid read at number of relays in datacenter")
+		}
 
 		m.DatacenterRelays[datacenterID] = make([]uint64, numRelaysInDatacenter)
 
 		if version >= 3 {
 			for j := 0; j < int(numRelaysInDatacenter); j++ {
-				encoding.ReadUint64(data, &index, &m.DatacenterRelays[datacenterID][j])
+				if !encoding.ReadUint64(data, &index, &m.DatacenterRelays[datacenterID][j]) {
+					return errors.New("[CostMatrix] invalid read at relay ids for datacenter - v3")
+				}
 			}
 		} else {
 			for j := 0; j < int(numRelaysInDatacenter); j++ {
 				var tmp uint32
-				encoding.ReadUint32(data, &index, &tmp)
+				if !encoding.ReadUint32(data, &index, &tmp) {
+					return errors.New("[CostMatrix] invalid read at relay ids for datacenter - ver < 3")
+				}
 				m.DatacenterRelays[datacenterID][j] = uint64(tmp)
 			}
 		}
@@ -197,7 +223,9 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 	for i := range m.RTT {
 		var tmp uint32
 		// read rtt entries
-		encoding.ReadUint32(data, &index, &tmp)
+		if !encoding.ReadUint32(data, &index, &tmp) {
+			return errors.New("[CostMatrix] invalid read at rtt")
+		}
 		m.RTT[i] = int32(tmp)
 	}
 
@@ -597,63 +625,75 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 	index := 0
 
 	var version uint32
-	encoding.ReadUint32(data, &index, &version)
+	if !encoding.ReadUint32(data, &index, &version) {
+		return errors.New("[RouteMatrix] invalid read at version number")
+	}
 
 	if version > RouteMatrixVersion {
 		return fmt.Errorf("unknown route matrix version: %d", version)
 	}
 
 	var numRelays uint32
-	encoding.ReadUint32(data, &index, &numRelays)
+	if !encoding.ReadUint32(data, &index, &numRelays) {
+		return errors.New("[RouteMatrix] invalid read at number of relays")
+	}
 
 	m.RelayIds = make([]uint64, numRelays)
+
 	if version >= 3 {
 		for i := 0; i < int(numRelays); i++ {
-			encoding.ReadUint64(data, &index, &m.RelayIds[i])
+			if !encoding.ReadUint64(data, &index, &m.RelayIds[i]) {
+				return errors.New("[RouteMatrix] invalid read at relay ids - v3")
+			}
 		}
 	} else {
 		for i := 0; i < int(numRelays); i++ {
 			var tmp uint32
-			encoding.ReadUint32(data, &index, &tmp)
+			if !encoding.ReadUint32(data, &index, &tmp) {
+				return errors.New("[RouteMatrix] invalid read at relay ids - ver < 3")
+			}
 			m.RelayIds[i] = uint64(tmp)
 		}
 	}
 
 	m.RelayNames = make([]string, numRelays)
 	if version >= 1 {
-		if version >= 3 {
-			for i := range m.RelayNames {
-				encoding.ReadString(data, &index, &m.RelayNames[i], math.MaxInt32)
-			}
-		} else {
-			for i := range m.RelayNames {
-				var bytesRead int
-				m.RelayNames[i], bytesRead = encoding.ReadStringOld(data[index:])
-				index += bytesRead
+		for i := range m.RelayNames {
+			if !encoding.ReadString(data, &index, &m.RelayNames[i], math.MaxInt32) {
+				return errors.New("[RouteMatrix] invalid read at relay names")
 			}
 		}
 	}
 
 	if version >= 2 {
 		var datacenterCount uint32
-		encoding.ReadUint32(data, &index, &datacenterCount)
+		if !encoding.ReadUint32(data, &index, &datacenterCount) {
+			return errors.New("[RouteMatrix] invalid read at datacenter count")
+		}
 
 		m.DatacenterIds = make([]uint64, datacenterCount)
 		m.DatacenterNames = make([]string, datacenterCount)
 		if version >= 3 {
 			for i := 0; i < int(datacenterCount); i++ {
-				encoding.ReadUint64(data, &index, &m.DatacenterIds[i])
-				encoding.ReadString(data, &index, &m.DatacenterNames[i], math.MaxInt32)
+				if !encoding.ReadUint64(data, &index, &m.DatacenterIds[i]) {
+					return errors.New("[RouteMatrix] invalid read at datacenter ids - v3")
+				}
+
+				if !encoding.ReadString(data, &index, &m.DatacenterNames[i], math.MaxInt32) {
+					return errors.New("[RouteMatrix] invalid read at datacenter names - v3")
+				}
 			}
 		} else {
 			for i := 0; i < int(datacenterCount); i++ {
 				var tmp uint32
-				encoding.ReadUint32(data, &index, &tmp)
+				if !encoding.ReadUint32(data, &index, &tmp) {
+					return errors.New("[RouteMatrix] invalid read at ids - ver < 3")
+				}
 				m.DatacenterIds[i] = uint64(tmp)
 
-				var bytesRead int
-				m.DatacenterNames[i], bytesRead = encoding.ReadStringOld(data[index:])
-				index += bytesRead
+				if !encoding.ReadString(data, &index, &m.DatacenterNames[i], math.MaxInt32) {
+					return errors.New("[RouteMatrix] invalid read at datacenter names - v3")
+				}
 			}
 		}
 	}
@@ -662,7 +702,9 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 
 	if version >= 3 {
 		for i := range m.RelayAddresses {
-			encoding.ReadBytes(data, &index, &m.RelayAddresses[i], MaxRelayAddressLength)
+			if !encoding.ReadBytes(data, &index, &m.RelayAddresses[i], MaxRelayAddressLength) {
+				return errors.New("[RouteMatrix] invalid read at relay addresses - v3")
+			}
 		}
 	} else {
 		for i := range m.RelayAddresses {
@@ -675,7 +717,9 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 	m.RelayPublicKeys = make([][]byte, numRelays)
 	if version >= 3 {
 		for i := range m.RelayPublicKeys {
-			encoding.ReadBytes(data, &index, &m.RelayPublicKeys[i], LengthOfRelayToken)
+			if !encoding.ReadBytes(data, &index, &m.RelayPublicKeys[i], LengthOfRelayToken) {
+				return errors.New("[RouteMatrix] invalid read at relay public keys - v3")
+			}
 		}
 	} else {
 		for i := range m.RelayPublicKeys {
@@ -686,7 +730,9 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 	}
 
 	var numDatacenters uint32
-	encoding.ReadUint32(data, &index, &numDatacenters)
+	if !encoding.ReadUint32(data, &index, &numDatacenters) {
+		return errors.New("[RouteMatrix] invalid read at number of datacenters (second time)")
+	}
 
 	m.DatacenterRelays = make(map[uint64][]uint64)
 
@@ -694,26 +740,36 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 		var datacenterID uint64
 
 		if version >= 3 {
-			encoding.ReadUint64(data, &index, &datacenterID)
+			if !encoding.ReadUint64(data, &index, &datacenterID) {
+				return errors.New("[RouteMatrix] invalid read at datacenter id - v3")
+			}
 		} else {
 			var tmp uint32
-			encoding.ReadUint32(data, &index, &tmp)
+			if !encoding.ReadUint32(data, &index, &tmp) {
+				return errors.New("[RouteMatrix] invalid read at datacenter id - ver < 3")
+			}
 			datacenterID = uint64(tmp)
 		}
 
 		var numRelaysInDatacenter uint32
-		encoding.ReadUint32(data, &index, &numRelaysInDatacenter)
+		if !encoding.ReadUint32(data, &index, &numRelaysInDatacenter) {
+			return errors.New("[RouteMatrix] invalid read at number of relays in datacenter")
+		}
 
 		m.DatacenterRelays[datacenterID] = make([]uint64, numRelaysInDatacenter)
 
 		if version >= 3 {
 			for j := 0; j < int(numRelaysInDatacenter); j++ {
-				encoding.ReadUint64(data, &index, &m.DatacenterRelays[datacenterID][j])
+				if !encoding.ReadUint64(data, &index, &m.DatacenterRelays[datacenterID][j]) {
+					return errors.New("[RouteMatrix] invalid read at relay ids for datacenter - v3")
+				}
 			}
 		} else {
 			for j := 0; j < int(numRelaysInDatacenter); j++ {
 				var tmp uint32
-				encoding.ReadUint32(data, &index, &tmp)
+				if !encoding.ReadUint32(data, &index, &tmp) {
+					return errors.New("[RouteMatrix] invalid read at relay ids for datacenter - ver < 3")
+				}
 				m.DatacenterRelays[datacenterID][j] = uint64(tmp)
 			}
 		}
@@ -725,30 +781,42 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 	for i := range m.Entries {
 		entry := &m.Entries[i]
 		var directRtt uint32
-		encoding.ReadUint32(data, &index, &directRtt)
+		if !encoding.ReadUint32(data, &index, &directRtt) {
+			return errors.New("[RouteMatrix] invalid read at direct rtt")
+		}
 		entry.DirectRTT = int32(directRtt)
 
 		var numRoutes uint32
-		encoding.ReadUint32(data, &index, &numRoutes)
+		if !encoding.ReadUint32(data, &index, &numRoutes) {
+			return errors.New("[RouteMatrix] invalid read at number of routes")
+		}
 		entry.NumRoutes = int32(numRoutes)
 
 		for j := 0; j < int(entry.NumRoutes); j++ {
 			var routeRtt uint32
-			encoding.ReadUint32(data, &index, &routeRtt)
+			if !encoding.ReadUint32(data, &index, &routeRtt) {
+				return errors.New("[RouteMatrix] invalid read at route rtt")
+			}
 			entry.RouteRTT[j] = int32(routeRtt)
 
 			var routeNumRelays uint32
-			encoding.ReadUint32(data, &index, &routeNumRelays)
+			if !encoding.ReadUint32(data, &index, &routeNumRelays) {
+				return errors.New("[RouteMatrix] invalid read at number of relays in route")
+			}
 			entry.RouteNumRelays[j] = int32(routeNumRelays)
 
 			if version >= 3 {
 				for k := 0; k < int(entry.RouteNumRelays[j]); k++ {
-					encoding.ReadUint64(data, &index, &entry.RouteRelays[j][k])
+					if !encoding.ReadUint64(data, &index, &entry.RouteRelays[j][k]) {
+						return errors.New("[RouteMatrix] invalid read at relays in route - v3")
+					}
 				}
 			} else {
 				for k := 0; k < int(entry.RouteNumRelays[j]); k++ {
 					var tmp uint32
-					encoding.ReadUint32(data, &index, &tmp)
+					if !encoding.ReadUint32(data, &index, &tmp) {
+						return errors.New("[RouteMatrix] invalid read at relays in route - ver < 3")
+					}
 					entry.RouteRelays[j][k] = uint64(tmp)
 				}
 			}

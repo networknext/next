@@ -27,13 +27,6 @@ func WriteString(data []byte, index *int, value string, maxStringLength uint32) 
 	}
 }
 
-// used for CostMatrix & RouteMatrix marshaling. needed for when version < 3
-func WriteStringOld(buffer []byte, value string) int {
-	binary.LittleEndian.PutUint32(buffer, uint32(len(value)))
-	copy(buffer[4:], []byte(value))
-	return 4 + len([]byte(value))
-}
-
 func WriteBytes(data []byte, index *int, value []byte, numBytes int) {
 	for i := 0; i < numBytes; i++ {
 		data[*index] = value[i]
@@ -41,7 +34,7 @@ func WriteBytes(data []byte, index *int, value []byte, numBytes int) {
 	}
 }
 
-// used for CostMatrix & RouteMatrix marshaling. needed for when version < 3
+// used for CostMatrix & RouteMatrix marshaling. needed for when version < 3, basically WriteString()
 func WriteBytesOld(buffer []byte, value []byte) int {
 	binary.LittleEndian.PutUint32(buffer, uint32(len(value)))
 	copy(buffer[4:], value)

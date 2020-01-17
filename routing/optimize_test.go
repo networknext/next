@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
+	"strings"
 	"testing"
 
 	"github.com/networknext/backend/core"
@@ -783,128 +784,6 @@ func TestOptimize(t *testing.T) {
 		})
 
 		t.Run("Optimize()", func(t *testing.T) {
-			t.Run("test using example data", func(t *testing.T) {
-				var cmatrix routing.CostMatrix
-				var rmatrix routing.RouteMatrix
-
-				raw, err := ioutil.ReadFile("test_data/cost-for-sanity-check-v2.bin")
-				assert.Nil(t, err)
-
-				err = cmatrix.UnmarshalBinary(raw)
-				assert.Nil(t, err)
-
-				err = cmatrix.Optimize(&rmatrix, 1.0)
-				assert.Nil(t, err)
-
-				src := rmatrix.RelayIds
-				dest := rmatrix.RelayIds
-
-				for i := range src {
-					for j := range dest {
-						if j < i {
-							ijFlatIndex := core.TriMatrixIndex(i, j)
-
-							entries := rmatrix.Entries[ijFlatIndex]
-							for k := 0; k < int(entries.NumRoutes); k++ {
-								numRelays := entries.RouteNumRelays[k]
-								firstRelay := entries.RouteRelays[k][0]
-								lastRelay := entries.RouteRelays[k][numRelays-1]
-
-								assert.Equal(t, src[firstRelay], dest[i], "invalid route entry #%d at (%d,%d), near relay %d (idx %d) != %d (idx %d)\n", k, i, j, src[firstRelay], firstRelay, dest[i], i)
-								assert.Equal(t, src[lastRelay], dest[j], "invalid route entry #%d at (%d,%d), dest relay %d (idx %d) != %d (idx %d)\n", k, i, j, src[lastRelay], lastRelay, dest[j], j)
-							}
-						}
-					}
-				}
-			})
-
-			t.Run("another test with sample data", func(t *testing.T) {
-				raw, err := ioutil.ReadFile("test_data/cost-v2.bin")
-				assert.Nil(t, err)
-				assert.Equal(t, 452692, len(raw), "cost.bin should be 452692 bytes")
-
-				var costMatrix routing.CostMatrix
-				err = costMatrix.UnmarshalBinary(raw)
-				assert.Nil(t, err)
-
-				costMatrixData, err := costMatrix.MarshalBinary()
-				assert.Nil(t, err)
-
-				var readCostMatrix routing.CostMatrix
-				err = readCostMatrix.UnmarshalBinary(costMatrixData)
-				assert.Nil(t, err)
-				assert.Equal(t, costMatrix, readCostMatrix)
-				if err != nil {
-					return
-				}
-
-				var routeMatrix routing.RouteMatrix
-				costMatrix.Optimize(&routeMatrix, 5)
-				assert.NotNil(t, routeMatrix)
-				assert.Equal(t, costMatrix.RelayIds, routeMatrix.RelayIds, "relay id mismatch")
-				assert.Equal(t, costMatrix.RelayAddresses, routeMatrix.RelayAddresses, "relay address mismatch")
-				assert.Equal(t, costMatrix.RelayPublicKeys, routeMatrix.RelayPublicKeys, "relay public key mismatch")
-
-				routeMatrixData, err := routeMatrix.MarshalBinary()
-				assert.Nil(t, err)
-
-				var readRouteMatrix routing.RouteMatrix
-				err = readRouteMatrix.UnmarshalBinary(routeMatrixData)
-				assert.Nil(t, err)
-				if err != nil {
-					return
-				}
-
-				assert.Equal(t, routeMatrix.RelayIds, readRouteMatrix.RelayIds, "relay id mismatch")
-				// todo: relay names soon
-				assert.Equal(t, routeMatrix.RelayAddresses, readRouteMatrix.RelayAddresses, "relay address mismatch")
-				assert.Equal(t, routeMatrix.RelayPublicKeys, readRouteMatrix.RelayPublicKeys, "relay public key mismatch")
-				assert.Equal(t, routeMatrix.DatacenterRelays, readRouteMatrix.DatacenterRelays, "datacenter relays mismatch")
-
-				equal := true
-
-				assert.Len(t, readRouteMatrix.Entries, len(routeMatrix.Entries))
-				for i := 0; i < len(routeMatrix.Entries); i++ {
-
-					if routeMatrix.Entries[i].DirectRTT != readRouteMatrix.Entries[i].DirectRTT {
-						fmt.Printf("DirectRTT mismatch: %d != %d\n", routeMatrix.Entries[i].DirectRTT, readRouteMatrix.Entries[i].DirectRTT)
-						equal = false
-						break
-					}
-
-					if routeMatrix.Entries[i].NumRoutes != readRouteMatrix.Entries[i].NumRoutes {
-						fmt.Printf("NumRoutes mismatch\n")
-						equal = false
-						break
-					}
-
-					for j := 0; j < int(routeMatrix.Entries[i].NumRoutes); j++ {
-
-						if routeMatrix.Entries[i].RouteRTT[j] != readRouteMatrix.Entries[i].RouteRTT[j] {
-							fmt.Printf("RouteRTT mismatch\n")
-							equal = false
-							break
-						}
-
-						if routeMatrix.Entries[i].RouteNumRelays[j] != readRouteMatrix.Entries[i].RouteNumRelays[j] {
-							fmt.Printf("RouteNumRelays mismatch\n")
-							equal = false
-							break
-						}
-
-						for k := 0; k < int(routeMatrix.Entries[i].RouteNumRelays[j]); k++ {
-							if routeMatrix.Entries[i].RouteRelays[j][k] != readRouteMatrix.Entries[i].RouteRelays[j][k] {
-								fmt.Printf("RouteRelayId mismatch\n")
-								equal = false
-								break
-							}
-						}
-					}
-				}
-
-				assert.True(t, equal, "route matrix entries mismatch")
-				analyze(t, &readRouteMatrix)
-			})
 		})
 	})
 
@@ -1320,6 +1199,163 @@ func TestOptimize(t *testing.T) {
 				assert.Nil(t, err)
 				assert.Equal(t, matrix, other)
 			})
+		})
+	})
+
+	t.Run("Old tests from core/core_test.go", func(t *testing.T) {
+		t.Run("TestCostMatrix() - cost matrix assertions with version 0 data", func(t *testing.T) {
+			raw, err := ioutil.ReadFile("test_data/cost.bin")
+			assert.Nil(t, err)
+			assert.Equal(t, len(raw), 355188, "cost.bin should be 355188 bytes")
+
+			var costMatrix routing.CostMatrix
+			err = costMatrix.UnmarshalBinary(raw)
+			assert.Nil(t, err)
+
+			costMatrixData, err := costMatrix.MarshalBinary()
+
+			var readCostMatrix routing.CostMatrix
+			err = readCostMatrix.UnmarshalBinary(costMatrixData)
+			assert.Nil(t, err)
+
+			assert.Equal(t, costMatrix.RelayIds, readCostMatrix.RelayIds, "relay id mismatch")
+
+			// this was the old line however because relay addresses are written with extra 0's this is how they must be checked
+			// assert.Equal(t, costMatrix.RelayAddresses, readCostMatrix.RelayAddresses, "relay address mismatch")
+
+			assert.Len(t, readCostMatrix.RelayAddresses, len(costMatrix.RelayAddresses))
+			for i, addr := range costMatrix.RelayAddresses {
+				assert.Equal(t, string(addr), strings.Trim(string(readCostMatrix.RelayAddresses[i]), string([]byte{0x0})))
+			}
+
+			assert.Equal(t, costMatrix.RelayPublicKeys, readCostMatrix.RelayPublicKeys, "relay public key mismatch")
+			assert.Equal(t, costMatrix.DatacenterRelays, readCostMatrix.DatacenterRelays, "datacenter relays mismatch")
+			assert.Equal(t, costMatrix.RTT, readCostMatrix.RTT, "relay rtt mismatch")
+		})
+
+		t.Run("TestRouteMatrixSanity() - test using version 2 example data", func(t *testing.T) {
+			var cmatrix routing.CostMatrix
+			var rmatrix routing.RouteMatrix
+
+			raw, err := ioutil.ReadFile("test_data/cost-for-sanity-check.bin")
+			assert.Nil(t, err)
+
+			err = cmatrix.UnmarshalBinary(raw)
+			assert.Nil(t, err)
+
+			err = cmatrix.Optimize(&rmatrix, 1.0)
+			assert.Nil(t, err)
+
+			src := rmatrix.RelayIds
+			dest := rmatrix.RelayIds
+
+			for i := range src {
+				for j := range dest {
+					if j < i {
+						ijFlatIndex := core.TriMatrixIndex(i, j)
+
+						entries := rmatrix.Entries[ijFlatIndex]
+						for k := 0; k < int(entries.NumRoutes); k++ {
+							numRelays := entries.RouteNumRelays[k]
+							firstRelay := entries.RouteRelays[k][0]
+							lastRelay := entries.RouteRelays[k][numRelays-1]
+
+							assert.Equal(t, src[firstRelay], dest[i], "invalid route entry #%d at (%d,%d), near relay %d (idx %d) != %d (idx %d)\n", k, i, j, src[firstRelay], firstRelay, dest[i], i)
+							assert.Equal(t, src[lastRelay], dest[j], "invalid route entry #%d at (%d,%d), dest relay %d (idx %d) != %d (idx %d)\n", k, i, j, src[lastRelay], lastRelay, dest[j], j)
+						}
+					}
+				}
+			}
+		})
+
+		t.Run("TestRouteMatrix() - another test with different version 0 sample data", func(t *testing.T) {
+			t.Skip()
+			raw, err := ioutil.ReadFile("test_data/cost.bin")
+			assert.Nil(t, err)
+			assert.Equal(t, len(raw), 355188, "cost.bin should be 355188 bytes")
+			return
+
+			var costMatrix routing.CostMatrix
+			err = costMatrix.UnmarshalBinary(raw)
+			assert.Nil(t, err)
+
+			costMatrixData, err := costMatrix.MarshalBinary()
+			assert.Nil(t, err)
+
+			var readCostMatrix routing.CostMatrix
+			err = readCostMatrix.UnmarshalBinary(costMatrixData)
+			assert.Nil(t, err)
+			assert.Equal(t, costMatrix, readCostMatrix)
+			if err != nil {
+				return
+			}
+
+			var routeMatrix routing.RouteMatrix
+			costMatrix.Optimize(&routeMatrix, 5)
+			assert.NotNil(t, routeMatrix)
+			assert.Equal(t, costMatrix.RelayIds, routeMatrix.RelayIds, "relay id mismatch")
+			assert.Equal(t, costMatrix.RelayAddresses, routeMatrix.RelayAddresses, "relay address mismatch")
+			assert.Equal(t, costMatrix.RelayPublicKeys, routeMatrix.RelayPublicKeys, "relay public key mismatch")
+
+			routeMatrixData, err := routeMatrix.MarshalBinary()
+			assert.Nil(t, err)
+
+			var readRouteMatrix routing.RouteMatrix
+			err = readRouteMatrix.UnmarshalBinary(routeMatrixData)
+			assert.Nil(t, err)
+			if err != nil {
+				return
+			}
+
+			assert.Equal(t, routeMatrix.RelayIds, readRouteMatrix.RelayIds, "relay id mismatch")
+			// todo: relay names soon
+			assert.Equal(t, routeMatrix.RelayAddresses, readRouteMatrix.RelayAddresses, "relay address mismatch")
+			assert.Equal(t, routeMatrix.RelayPublicKeys, readRouteMatrix.RelayPublicKeys, "relay public key mismatch")
+			assert.Equal(t, routeMatrix.DatacenterRelays, readRouteMatrix.DatacenterRelays, "datacenter relays mismatch")
+
+			equal := true
+
+			assert.Len(t, readRouteMatrix.Entries, len(routeMatrix.Entries))
+			for i := 0; i < len(routeMatrix.Entries); i++ {
+
+				if routeMatrix.Entries[i].DirectRTT != readRouteMatrix.Entries[i].DirectRTT {
+					fmt.Printf("DirectRTT mismatch: %d != %d\n", routeMatrix.Entries[i].DirectRTT, readRouteMatrix.Entries[i].DirectRTT)
+					equal = false
+					break
+				}
+
+				if routeMatrix.Entries[i].NumRoutes != readRouteMatrix.Entries[i].NumRoutes {
+					fmt.Printf("NumRoutes mismatch\n")
+					equal = false
+					break
+				}
+
+				for j := 0; j < int(routeMatrix.Entries[i].NumRoutes); j++ {
+
+					if routeMatrix.Entries[i].RouteRTT[j] != readRouteMatrix.Entries[i].RouteRTT[j] {
+						fmt.Printf("RouteRTT mismatch\n")
+						equal = false
+						break
+					}
+
+					if routeMatrix.Entries[i].RouteNumRelays[j] != readRouteMatrix.Entries[i].RouteNumRelays[j] {
+						fmt.Printf("RouteNumRelays mismatch\n")
+						equal = false
+						break
+					}
+
+					for k := 0; k < int(routeMatrix.Entries[i].RouteNumRelays[j]); k++ {
+						if routeMatrix.Entries[i].RouteRelays[j][k] != readRouteMatrix.Entries[i].RouteRelays[j][k] {
+							fmt.Printf("RouteRelayId mismatch\n")
+							equal = false
+							break
+						}
+					}
+				}
+			}
+
+			assert.True(t, equal, "route matrix entries mismatch")
+			analyze(t, &readRouteMatrix)
 		})
 	})
 }
