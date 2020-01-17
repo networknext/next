@@ -3,6 +3,7 @@ package routing
 import (
 	"errors"
 	"fmt"
+	"log"
 	"math"
 	"runtime"
 	"sort"
@@ -778,6 +779,7 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 	entryCount := core.TriMatrixLength(int(numRelays))
 	m.Entries = make([]RouteMatrixEntry, entryCount)
 
+	log.Printf("Reading %d entries", entryCount)
 	for i := range m.Entries {
 		entry := &m.Entries[i]
 		var directRtt uint32
@@ -891,20 +893,21 @@ func (m RouteMatrix) MarshalBinary() ([]byte, error) {
 		}
 	}
 
-	for _, entry := range m.Entries {
+	for i := 0; i < len(m.Entries); i++ {
+		entry := &m.Entries[i]
 
 		encoding.WriteUint32(data, &index, uint32(entry.DirectRTT))
 
 		encoding.WriteUint32(data, &index, uint32(entry.NumRoutes))
 
-		for i := 0; i < int(entry.NumRoutes); i++ {
+		for j := 0; j < int(entry.NumRoutes); j++ {
 
-			encoding.WriteUint32(data, &index, uint32(entry.RouteRTT[i]))
+			encoding.WriteUint32(data, &index, uint32(entry.RouteRTT[j]))
 
-			encoding.WriteUint32(data, &index, uint32(entry.RouteNumRelays[i]))
+			encoding.WriteUint32(data, &index, uint32(entry.RouteNumRelays[j]))
 
-			for _, relay := range entry.RouteRelays[i] {
-				encoding.WriteUint64(data, &index, relay)
+			for k := 0; k < int(entry.RouteNumRelays[j]); k++ {
+				encoding.WriteUint64(data, &index, entry.RouteRelays[j][k])
 			}
 		}
 	}
