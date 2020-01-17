@@ -17,83 +17,268 @@ import (
 
 type mockBuyerProvider struct {
 	buyer *storage.Buyer
+	ok    bool
 }
 
 func (bp *mockBuyerProvider) GetAndCheckBySdkVersion3PublicKeyId(id uint64) (*storage.Buyer, bool) {
-	return bp.buyer, true
+	return bp.buyer, bp.ok
 }
 
 func TestServerUpdateHandlerFunc(t *testing.T) {
-	buyersServerPubKey, buyersServerPrivKey, err := ed25519.GenerateKey(nil)
-	assert.NoError(t, err)
+	t.Run("failed to unmarshal packet", func(t *testing.T) {
+		redisServer, _ := miniredis.Run()
+		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-	// Get an in-memory redis server and a client that is connected to it
-	redisServer, _ := miniredis.Run()
-	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
+		assert.NoError(t, err)
 
-	bp := mockBuyerProvider{
-		buyer: &storage.Buyer{
-			SdkVersion3PublicKeyData: buyersServerPubKey,
-		},
-	}
+		handler := transport.ServerUpdateHandlerFunc(redisClient, nil)
+		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: []byte("this is not a proper packet")})
 
-	// Create a ServerUpdatePacket and marshal it to binary so sent it into the UDP handler
-	packet := core.ServerUpdatePacket{
-		Sequence:             13,
-		ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
-		ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
-		ServerRoutePublicKey: TestPublicKey,
+		_, err = redisServer.Get("SERVER-0.0.0.0:13")
+		assert.Error(t, err)
+	})
 
-		DatacenterId: 13,
+	t.Run("sdk version too old", func(t *testing.T) {
+		redisServer, _ := miniredis.Run()
+		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-		VersionMajor: transport.SDKVersionMin.Major,
-		VersionMinor: transport.SDKVersionMin.Minor,
-		VersionPatch: transport.SDKVersionMin.Patch,
-	}
-	packet.Signature = ed25519.Sign(buyersServerPrivKey, packet.GetSignData())
+		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
+		assert.NoError(t, err)
 
-	data, err := packet.MarshalBinary()
-	assert.NoError(t, err)
+		packet := core.ServerUpdatePacket{
+			Sequence:             13,
+			ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
+			ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
+			ServerRoutePublicKey: TestPublicKey,
 
-	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
-	assert.NoError(t, err)
+			DatacenterId: 13,
 
-	// Create an in-memory buffer to give to the hander since it implements io.Writer
-	var buf bytes.Buffer
+			VersionMajor: 1,
+			VersionMinor: 2,
+			VersionPatch: 3,
 
-	// Create a UDPPacket for the handler
-	incoming := transport.UDPPacket{
-		SourceAddr: addr,
-		Data:       data,
-	}
+			Signature: make([]byte, ed25519.SignatureSize),
+		}
 
-	// Initialize the UDP handler with the required redis client
-	handler := transport.ServerUpdateHandlerFunc(redisClient, &bp)
+		data, err := packet.MarshalBinary()
+		assert.NoError(t, err)
 
-	// Invoke the handler with the data packet and address it is coming from
-	handler(&buf, &incoming)
+		handler := transport.ServerUpdateHandlerFunc(redisClient, nil)
+		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
-	// Get the server entry directly from the in-memory redis and assert there is no error
-	ds, err := redisServer.Get("SERVER-0.0.0.0:13")
-	assert.NoError(t, err)
+		_, err = redisServer.Get("SERVER-0.0.0.0:13")
+		assert.Error(t, err)
+	})
 
-	// Create an "expected" ServerEntry based on the incoming ServerUpdatePacket above
-	expected := transport.ServerCacheEntry{
-		Sequence:   13,
-		Server:     routing.Server{Addr: *addr, PublicKey: packet.ServerRoutePublicKey},
-		Datacenter: routing.Datacenter{ID: packet.DatacenterId},
-		SDKVersion: transport.SDKVersion{packet.VersionMajor, packet.VersionMinor, packet.VersionPatch},
-	}
+	t.Run("did not get a buyer", func(t *testing.T) {
+		redisServer, _ := miniredis.Run()
+		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-	// Unmarshal the data in redis to the actual ServerEntry saved
-	var actual transport.ServerCacheEntry
-	err = actual.UnmarshalBinary([]byte(ds))
-	assert.NoError(t, err)
+		bp := mockBuyerProvider{
+			ok: false,
+		}
 
-	// Finally compare both ServerEntry struct to ensure we saved the right data in redis
-	assert.Equal(t, expected, actual)
+		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
+		assert.NoError(t, err)
 
-	assert.Equal(t, 0, buf.Len())
+		packet := core.ServerUpdatePacket{
+			Sequence:             13,
+			ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
+			ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
+			ServerRoutePublicKey: TestPublicKey,
+
+			DatacenterId: 13,
+
+			VersionMajor: transport.SDKVersionMin.Major,
+			VersionMinor: transport.SDKVersionMin.Minor,
+			VersionPatch: transport.SDKVersionMin.Patch,
+
+			Signature: make([]byte, ed25519.SignatureSize),
+		}
+
+		data, err := packet.MarshalBinary()
+		assert.NoError(t, err)
+
+		handler := transport.ServerUpdateHandlerFunc(redisClient, &bp)
+		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
+
+		_, err = redisServer.Get("SERVER-0.0.0.0:13")
+		assert.Error(t, err)
+	})
+
+	t.Run("buyer's public key failed verification", func(t *testing.T) {
+		_, buyersServerPrivKey, err := ed25519.GenerateKey(nil)
+		assert.NoError(t, err)
+
+		redisServer, _ := miniredis.Run()
+		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+		bp := mockBuyerProvider{
+			buyer: &storage.Buyer{
+				SdkVersion3PublicKeyData: make([]byte, ed25519.PublicKeySize),
+			},
+			ok: true,
+		}
+
+		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
+		assert.NoError(t, err)
+
+		packet := core.ServerUpdatePacket{
+			Sequence:             13,
+			ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
+			ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
+			ServerRoutePublicKey: TestPublicKey,
+
+			DatacenterId: 13,
+
+			VersionMajor: transport.SDKVersionMin.Major,
+			VersionMinor: transport.SDKVersionMin.Minor,
+			VersionPatch: transport.SDKVersionMin.Patch,
+
+			Signature: make([]byte, ed25519.SignatureSize),
+		}
+		packet.Signature = ed25519.Sign(buyersServerPrivKey, packet.GetSignData())
+
+		data, err := packet.MarshalBinary()
+		assert.NoError(t, err)
+
+		handler := transport.ServerUpdateHandlerFunc(redisClient, &bp)
+		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
+
+		_, err = redisServer.Get("SERVER-0.0.0.0:13")
+		assert.Error(t, err)
+	})
+
+	t.Run("packet sequence too old", func(t *testing.T) {
+		buyersServerPubKey, buyersServerPrivKey, err := ed25519.GenerateKey(nil)
+		assert.NoError(t, err)
+
+		redisServer, _ := miniredis.Run()
+		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+		bp := mockBuyerProvider{
+			buyer: &storage.Buyer{
+				SdkVersion3PublicKeyData: buyersServerPubKey,
+			},
+			ok: true,
+		}
+
+		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
+		assert.NoError(t, err)
+
+		packet := core.ServerUpdatePacket{
+			Sequence:             1,
+			ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
+			ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
+			ServerRoutePublicKey: TestPublicKey,
+
+			DatacenterId: 13,
+
+			VersionMajor: transport.SDKVersionMin.Major,
+			VersionMinor: transport.SDKVersionMin.Minor,
+			VersionPatch: transport.SDKVersionMin.Patch,
+		}
+		packet.Signature = ed25519.Sign(buyersServerPrivKey, packet.GetSignData())
+
+		data, err := packet.MarshalBinary()
+		assert.NoError(t, err)
+
+		expected := transport.ServerCacheEntry{
+			Sequence: 13,
+		}
+		se, err := expected.MarshalBinary()
+		assert.NoError(t, err)
+
+		err = redisServer.Set("SERVER-0.0.0.0:13", string(se))
+		assert.NoError(t, err)
+
+		handler := transport.ServerUpdateHandlerFunc(redisClient, &bp)
+		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
+
+		ds, err := redisServer.Get("SERVER-0.0.0.0:13")
+		assert.NoError(t, err)
+
+		var actual transport.ServerCacheEntry
+		err = actual.UnmarshalBinary([]byte(ds))
+		assert.NoError(t, err)
+
+		assert.Equal(t, expected.Sequence, actual.Sequence)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		buyersServerPubKey, buyersServerPrivKey, err := ed25519.GenerateKey(nil)
+		assert.NoError(t, err)
+
+		// Get an in-memory redis server and a client that is connected to it
+		redisServer, _ := miniredis.Run()
+		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+		bp := mockBuyerProvider{
+			buyer: &storage.Buyer{
+				SdkVersion3PublicKeyData: buyersServerPubKey,
+			},
+			ok: true,
+		}
+
+		// Create a ServerUpdatePacket and marshal it to binary so sent it into the UDP handler
+		packet := core.ServerUpdatePacket{
+			Sequence:             13,
+			ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
+			ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
+			ServerRoutePublicKey: TestPublicKey,
+
+			DatacenterId: 13,
+
+			VersionMajor: transport.SDKVersionMin.Major,
+			VersionMinor: transport.SDKVersionMin.Minor,
+			VersionPatch: transport.SDKVersionMin.Patch,
+		}
+		packet.Signature = ed25519.Sign(buyersServerPrivKey, packet.GetSignData())
+
+		data, err := packet.MarshalBinary()
+		assert.NoError(t, err)
+
+		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
+		assert.NoError(t, err)
+
+		// Create an in-memory buffer to give to the hander since it implements io.Writer
+		var buf bytes.Buffer
+
+		// Create a UDPPacket for the handler
+		incoming := transport.UDPPacket{
+			SourceAddr: addr,
+			Data:       data,
+		}
+
+		// Initialize the UDP handler with the required redis client
+		handler := transport.ServerUpdateHandlerFunc(redisClient, &bp)
+
+		// Invoke the handler with the data packet and address it is coming from
+		handler(&buf, &incoming)
+
+		// Get the server entry directly from the in-memory redis and assert there is no error
+		ds, err := redisServer.Get("SERVER-0.0.0.0:13")
+		assert.NoError(t, err)
+
+		// Create an "expected" ServerEntry based on the incoming ServerUpdatePacket above
+		expected := transport.ServerCacheEntry{
+			Sequence:   13,
+			Server:     routing.Server{Addr: *addr, PublicKey: packet.ServerRoutePublicKey},
+			Datacenter: routing.Datacenter{ID: packet.DatacenterId},
+			SDKVersion: transport.SDKVersion{packet.VersionMajor, packet.VersionMinor, packet.VersionPatch},
+		}
+
+		// Unmarshal the data in redis to the actual ServerEntry saved
+		var actual transport.ServerCacheEntry
+		err = actual.UnmarshalBinary([]byte(ds))
+		assert.NoError(t, err)
+
+		// Finally compare both ServerEntry struct to ensure we saved the right data in redis
+		assert.Equal(t, expected, actual)
+
+		assert.Equal(t, 0, buf.Len())
+	})
 }
 
 func TestSessionUpdateHandlerFunc(t *testing.T) {
