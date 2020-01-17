@@ -16,12 +16,11 @@ import (
 )
 
 type mockBuyerProvider struct {
-	buyer storage.Buyer
-	err   error
+	buyer *storage.Buyer
 }
 
-func (bp *mockBuyerProvider) GetBuyer(id uint64) (storage.Buyer, error) {
-	return bp.buyer, bp.err
+func (bp *mockBuyerProvider) GetAndCheckBySdkVersion3PublicKeyId(id uint64) (*storage.Buyer, bool) {
+	return bp.buyer, true
 }
 
 func TestServerUpdateHandlerFunc(t *testing.T) {
@@ -33,8 +32,8 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
 	bp := mockBuyerProvider{
-		buyer: storage.Buyer{
-			PublicKey: buyersServerPubKey,
+		buyer: &storage.Buyer{
+			SdkVersion3PublicKeyData: buyersServerPubKey,
 		},
 	}
 
