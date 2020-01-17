@@ -109,7 +109,7 @@ func (e ServerCacheEntry) MarshalBinary() ([]byte, error) {
 }
 
 type BuyerProvider interface {
-	GetBuyer(uint64) (storage.Buyer, error)
+	GetAndCheckBySdkVersion3PublicKeyId(key uint64) (*storage.Buyer, bool)
 }
 
 // ServerUpdateHandlerFunc ...
@@ -129,20 +129,21 @@ func ServerUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider) UDPHan
 		}
 
 		// Get the buyer information for the id in the packet
-		buyer, err := bp.GetBuyer(packet.CustomerId)
-		if err != nil {
+		buyer, ok := bp.GetAndCheckBySdkVersion3PublicKeyId(packet.CustomerId)
+		if !ok {
 			log.Printf("failed to get buyer '%d'", packet.CustomerId)
 			return
 		}
+		buyPublicKey := buyer.GetSdkVersion3PublicKeyData()
 
 		// Drop the packet if the buyer is not an admin and they are using an internal build
-		if !buyer.Admin && psdkv.Compare(SDKVersionInternal) == SDKVersionEqual {
-			log.Printf("non-admin buyer using an internal sdk")
-			return
-		}
+		// if !buyer.GetA && psdkv.Compare(SDKVersionInternal) == SDKVersionEqual {
+		// 	log.Printf("non-admin buyer using an internal sdk")
+		// 	return
+		// }
 
 		// Drop the packet if the signed packet data cannot be verified with the buyers public key
-		if !ed25519.Verify(buyer.PublicKey, packet.GetSignData(), packet.Signature) {
+		if !ed25519.Verify(buyPublicKey, packet.GetSignData(), packet.Signature) {
 			log.Printf("failed to verify server update signature")
 			return
 		}
