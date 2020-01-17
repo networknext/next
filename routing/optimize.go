@@ -961,22 +961,6 @@ func NewRouteManager() *RouteManager {
 	return manager
 }
 
-// fnv32
-func routeHash32(relays ...uint32) uint32 {
-	hash := uint32(0)
-	for i := range relays {
-		hash *= uint32(0x811C9DC5)
-		hash ^= (relays[i] >> 24) & 0xFF
-		hash *= uint32(0x811C9DC5)
-		hash ^= (relays[i] >> 16) & 0xFF
-		hash *= uint32(0x811C9DC5)
-		hash ^= (relays[i] >> 8) & 0xFF
-		hash *= uint32(0x811C9DC5)
-		hash ^= relays[i] & 0xFF
-	}
-	return hash
-}
-
 // fnv64
 func routeHash(relays ...uint64) uint64 {
 	// http://www.isthe.com/chongo/tech/comp/fnv/
