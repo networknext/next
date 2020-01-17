@@ -117,7 +117,7 @@ func ServerUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider) UDPHan
 	return func(w io.Writer, incoming *UDPPacket) {
 		var packet core.ServerUpdatePacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
-			fmt.Printf("failed to read server update packet: %v\n", err)
+			log.Printf("failed to read server update packet: %v\n", err)
 			return
 		}
 
