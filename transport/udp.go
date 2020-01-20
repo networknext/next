@@ -19,16 +19,6 @@ import (
 	"github.com/networknext/backend/storage"
 )
 
-const (
-	PacketTypeServerUpdate = iota + 200
-	PacketTypeSessionUpdate
-	PacketTypeSessionResponse
-)
-
-const (
-	DefaultMaxPacketSize = 1500
-)
-
 type UDPPacket struct {
 	SourceAddr *net.UDPAddr
 	Data       []byte

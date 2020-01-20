@@ -11,6 +11,12 @@ import (
 )
 
 const (
+	DefaultMaxPacketSize = 1500
+
+	PacketTypeServerUpdate    = 200
+	PacketTypeSessionUpdate   = 201
+	PacketTypeSessionResponse = 202
+
 	MaxNearRelays = 32
 	MaxTokens     = 7
 
@@ -78,7 +84,7 @@ func (packet *ServerUpdatePacket) UnmarshalBinary(data []byte) error {
 }
 
 func (packet *ServerUpdatePacket) MarshalBinary() ([]byte, error) {
-	ws, err := encoding.CreateWriteStream(1500)
+	ws, err := encoding.CreateWriteStream(DefaultMaxPacketSize)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +98,7 @@ func (packet *ServerUpdatePacket) MarshalBinary() ([]byte, error) {
 }
 
 func (packet *ServerUpdatePacket) Serialize(stream encoding.Stream) error {
-	packetType := uint32(200)
+	packetType := uint32(PacketTypeServerUpdate)
 	stream.SerializeBits(&packetType, 8)
 
 	stream.SerializeUint64(&packet.Sequence)
@@ -185,7 +191,7 @@ func (packet *SessionUpdatePacket) UnmarshalBinary(data []byte) error {
 }
 
 func (packet *SessionUpdatePacket) MarshalBinary() ([]byte, error) {
-	ws, err := encoding.CreateWriteStream(1500)
+	ws, err := encoding.CreateWriteStream(DefaultMaxPacketSize)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +205,7 @@ func (packet *SessionUpdatePacket) MarshalBinary() ([]byte, error) {
 }
 
 func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream, version SDKVersion) error {
-	packetType := uint32(201)
+	packetType := uint32(PacketTypeSessionUpdate)
 	stream.SerializeBits(&packetType, 8)
 
 	stream.SerializeUint64(&packet.Sequence)
@@ -367,7 +373,7 @@ func (packet *SessionResponsePacket) UnmarshalBinary(data []byte) error {
 }
 
 func (packet *SessionResponsePacket) MarshalBinary() ([]byte, error) {
-	ws, err := encoding.CreateWriteStream(1500)
+	ws, err := encoding.CreateWriteStream(DefaultMaxPacketSize)
 	if err != nil {
 		return nil, err
 	}
@@ -381,7 +387,7 @@ func (packet *SessionResponsePacket) MarshalBinary() ([]byte, error) {
 }
 
 func (packet *SessionResponsePacket) Serialize(stream encoding.Stream, version SDKVersion) error {
-	packetType := uint32(202)
+	packetType := uint32(PacketTypeSessionResponse)
 	stream.SerializeBits(&packetType, 8)
 
 	stream.SerializeUint64(&packet.Sequence)
