@@ -233,8 +233,12 @@ func (e SessionEntry) MarshalBinary() ([]byte, error) {
 	return jsoniter.Marshal(e)
 }
 
+type RouteProvider interface {
+	Route() (routing.Route, error)
+}
+
 // SessionUpdateHandlerFunc ...
-func SessionUpdateHandlerFunc(redisClient redis.Cmdable, iploc routing.IPLocator, geoClient *routing.GeoClient) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		// Deserialize the Session packet
 		var packet SessionUpdatePacket
@@ -261,6 +265,23 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, iploc routing.IPLocator
 			return
 		}
 
+		buyer, ok := bp.GetAndCheckBySdkVersion3PublicKeyId(packet.CustomerId)
+		if !ok {
+			log.Printf("failed to get buyer '%d'", packet.CustomerId)
+			return
+		}
+		buyPublicKey := buyer.GetSdkVersion3PublicKeyData()
+
+		if !ed25519.Verify(buyPublicKey, packet.GetSignData(serverentry.SDKVersion), packet.Signature) {
+			log.Printf("failed to verify session update signature")
+			return
+		}
+
+		if packet.Sequence < serverentry.Sequence {
+			log.Printf("packet too old: (packet) %d < %d (Redis)", packet.Sequence, serverentry.Sequence)
+			return
+		}
+
 		location, err := iploc.LocateIP(packet.ClientAddress.IP)
 		if err != nil {
 			log.Printf("failed to lookup client ip '%s': %v", packet.ClientAddress.IP.String(), err)
@@ -273,50 +294,14 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, iploc routing.IPLocator
 			return
 		}
 
-		// Save the Session packet to Redis
-		sessionentry := SessionEntry{
-			SessionID:  packet.SessionId,
-			UserID:     packet.UserHash,
-			PlatformID: packet.PlatformId,
+		// Get a route from the RouteProvider an on error ensure it falls back to direct
+		route, err := rp.Route()
+		if err != nil {
+			log.Printf("failed to get a route for client ip '%s': %v", packet.ClientAddress.IP.String(), err)
 
-			DirectRTT:        float64(packet.DirectMinRtt),
-			DirectJitter:     float64(packet.DirectJitter),
-			DirectPacketLoss: float64(packet.DirectPacketLoss),
-			NextRTT:          float64(packet.NextMinRtt),
-			NextJitter:       float64(packet.NextJitter),
-			NextPacketLoss:   float64(packet.NextPacketLoss),
-
-			ServerRoutePublicKey: serverentry.Server.PublicKey,
-			ServerPrivateAddr:    serverentry.Server.Addr,
-			ServerAddr:           packet.ServerAddress,
-			ClientAddr:           packet.ClientAddress,
-
-			ConnectionType: packet.ConnectionType,
-
-			Latitude:  location.Latitude,
-			Longitude: location.Longitude,
-
-			Tag:              packet.Tag,
-			Flagged:          packet.Flagged,
-			FallbackToDirect: packet.FallbackToDirect,
-			OnNetworkNext:    packet.OnNetworkNext,
-
-			SDKVersion: serverentry.SDKVersion,
-		}
-		{
-			result := redisClient.Set(fmt.Sprintf("SESSION-%d", packet.SessionId), sessionentry, 0)
-			if result.Err() != nil {
-				log.Printf("failed to save session db entry for %s: %v", incoming.SourceAddr.String(), result.Err())
-				return
+			route = routing.Route{
+				Type: routing.RouteTypeDirect,
 			}
-		}
-
-		// Create a zeo-value route for now until we get this information from the optimized route matrix/router
-		route := routing.Route{
-			Type:      routing.RouteTypeDirect,
-			NumTokens: 0,
-			Tokens:    nil,
-			Multipath: false,
 		}
 
 		// Create the Session Response for the server
