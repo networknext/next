@@ -1,9 +1,9 @@
 package routing
 
 const (
-	RouteTypeDirect = iota
-	RouteTypeNew
-	RouteTypeContinue
+	RouteTypeDirect   = 0
+	RouteTypeNew      = 1
+	RouteTypeContinue = 2
 )
 
 type Route struct {
