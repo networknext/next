@@ -9,9 +9,11 @@ import (
 	"context"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"runtime"
+	"time"
 
 	"github.com/alicebob/miniredis"
 	"github.com/go-redis/redis/v7"
@@ -82,18 +84,24 @@ func main() {
 	// to get Routes for Sessions.
 	var routeMatrix routing.RouteMatrix
 	{
-		costFile, err := os.Open("./routing/test_data/cost.bin")
-		if err != nil {
-			log.Println("failed to open cost.bin")
-		}
+		if os.Getenv("ROUTE_MATRIX_URI") != "" {
+			go func() {
+				for {
+					res, err := http.Get(os.Getenv("ROUTE_MATRIX_URI"))
+					if err != nil {
+						log.Fatalf("failed to get route matrix: %v\n", err)
+					}
 
-		var costMatrix routing.CostMatrix
-		if _, err := costMatrix.ReadFom(costFile); err != nil {
-			log.Println("failed to open cost.bin")
-		}
+					n, err := routeMatrix.ReadFom(res.Body)
+					if err != nil {
+						log.Printf("failed to read route matrix: %v\n", err)
+					}
 
-		if err := costMatrix.Optimize(&routeMatrix, 1); err != nil {
-			log.Println("failed to optimize into route matrix")
+					log.Printf("read %d bytes into route matrix for %d entries\n", n, len(routeMatrix.Entries))
+
+					time.Sleep(10 * time.Second)
+				}
+			}()
 		}
 	}
 
