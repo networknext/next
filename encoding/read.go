@@ -47,7 +47,7 @@ func ReadString(data []byte, index *int, value *string, maxStringLength uint32) 
 	stringData := make([]byte, stringLength)
 	for i := uint32(0); i < stringLength; i++ {
 		stringData[i] = data[*index]
-		*index += 1
+		*index++
 	}
 	*value = string(stringData)
 	return true
@@ -60,9 +60,17 @@ func ReadBytes(data []byte, index *int, value *[]byte, bytes uint32) bool {
 	*value = make([]byte, bytes)
 	for i := uint32(0); i < bytes; i++ {
 		(*value)[i] = data[*index]
-		*index += 1
+		*index++
 	}
 	return true
+}
+
+// used for CostMatrix & RouteMatrix unmarshaling. needed for when version < 3, basically ReadString()
+func ReadBytesOld(buffer []byte) ([]byte, int) {
+	length := binary.LittleEndian.Uint32(buffer)
+	data := make([]byte, length)
+	copy(data, buffer[4:4+length])
+	return data, int(4 + length)
 }
 
 func ReadAddress(buffer []byte) *net.UDPAddr {
