@@ -2,6 +2,8 @@ package routing
 
 import (
 	"errors"
+	"io"
+	"io/ioutil"
 	"fmt"
 	"log"
 	"math"
@@ -47,6 +49,35 @@ type CostMatrix struct {
 	DatacenterNames  []string
 	DatacenterRelays map[uint64][]uint64
 	RTT              []int32
+}
+
+// ReadFrom implements the io.ReadFrom interface
+func (m *CostMatrix) ReadFom(r io.Reader) (int64, error) {
+	data, err := ioutil.ReadAll(r)
+	if err != nil {
+		return 0, err
+	}
+
+	if err := m.UnmarshalBinary(data); err != nil {
+		return 0, err
+	}
+
+	return int64(len(data)), nil
+}
+
+// WriteTo implements the io.WriteTo interface
+func (m *CostMatrix) WriteTo(w io.Writer) (int64, error) {
+	data, err := m.MarshalBinary()
+	if err != nil {
+		return 0, err
+	}
+
+	n, err := w.Write(data)
+	if err != nil {
+		return 0, err
+	}
+
+	return int64(n), nil
 }
 
 /* Binary data outline for CostMatrix v2: "->" means seqential elements in memory and not another section
@@ -598,6 +629,41 @@ type RouteMatrix struct {
 	DatacenterIds    []uint64
 	DatacenterNames  []string
 	Entries          []RouteMatrixEntry
+}
+
+func (rm *RouteMatrix) Route() (Route, error) {
+	return Route{
+		Type: RouteTypeDirect,
+	}, nil
+}
+
+// ReadFrom implements the io.ReadFrom interface
+func (m *RouteMatrix) ReadFom(r io.Reader) (int64, error) {
+	data, err := ioutil.ReadAll(r)
+	if err != nil {
+		return 0, err
+	}
+
+	if err := m.UnmarshalBinary(data); err != nil {
+		return 0, err
+	}
+
+	return int64(len(data)), nil
+}
+
+// WriteTo implements the io.WriteTo interface
+func (m *RouteMatrix) WriteTo(w io.Writer) (int64, error) {
+	data, err := m.MarshalBinary()
+	if err != nil {
+		return 0, err
+	}
+
+	n, err := w.Write(data)
+	if err != nil {
+		return 0, err
+	}
+
+	return int64(n), nil
 }
 
 /* Binary data outline for RouteMatrix v2: "->" means seqential elements in memory and not another section, "(...)" mean that section sequentially repeats for however many
