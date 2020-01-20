@@ -14,6 +14,7 @@ import (
 	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
+	"github.com/networknext/backend/routing"
 )
 
 const (
@@ -31,13 +32,13 @@ const (
 )
 
 // NewRouter creates a router with the specified endpoints
-func NewRouter(relaydb *core.RelayDatabase, statsdb *core.StatsDatabase, backend *StubbedBackend) *mux.Router {
+func NewRouter(relaydb *core.RelayDatabase, statsdb *core.StatsDatabase, costmatrix *routing.CostMatrix, routematrix *routing.RouteMatrix) *mux.Router {
 	router := mux.NewRouter()
 	router.HandleFunc("/relay_init", RelayInitHandlerFunc(relaydb)).Methods("POST")
 	router.HandleFunc("/relay_update", RelayUpdateHandlerFunc(relaydb, statsdb)).Methods("POST")
-	router.HandleFunc("/cost_matrix", CostMatrixHandlerFunc(backend)).Methods("GET")
-	router.HandleFunc("/route_matrix", RouteMatrixHandlerFunc(backend)).Methods("GET")
-	router.HandleFunc("/near", NearHandlerFunc(backend)).Methods("GET")
+	router.Handle("/cost_matrix", costmatrix).Methods("GET")
+	router.Handle("/route_matrix", routematrix).Methods("GET")
+	router.HandleFunc("/near", NearHandlerFunc(nil)).Methods("GET")
 	return router
 }
 
@@ -198,30 +199,6 @@ func RelayUpdateHandlerFunc(relaydb *core.RelayDatabase, statsdb *core.StatsData
 		writer.Header().Set("Content-Type", "application/octet-stream")
 
 		writer.Write(responseData)
-	}
-}
-
-// CostMatrixHandlerFunc returns the function for the cost matrix endpoint
-func CostMatrixHandlerFunc(backend *StubbedBackend) func(writer http.ResponseWriter, request *http.Request) {
-	return func(writer http.ResponseWriter, request *http.Request) {
-		backend.mutex.RLock()
-		costMatrixData := backend.costMatrixData
-		backend.mutex.RUnlock()
-		writer.WriteHeader(http.StatusOK)
-		writer.Header().Set("Content-Type", "application/octet-stream")
-		writer.Write(costMatrixData)
-	}
-}
-
-// RouteMatrixHandlerFunc returns the function for the matrix endpoint
-func RouteMatrixHandlerFunc(backend *StubbedBackend) func(writer http.ResponseWriter, request *http.Request) {
-	return func(writer http.ResponseWriter, request *http.Request) {
-		backend.mutex.RLock()
-		routeMatrixData := backend.routeMatrixData
-		backend.mutex.RUnlock()
-		writer.WriteHeader(http.StatusOK)
-		writer.Header().Set("Content-Type", "application/octet-stream")
-		writer.Write(routeMatrixData)
 	}
 }
 

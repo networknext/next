@@ -2,11 +2,12 @@ package routing
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
-	"fmt"
 	"log"
 	"math"
+	"net/http"
 	"runtime"
 	"sort"
 	"sync"
@@ -78,6 +79,11 @@ func (m *CostMatrix) WriteTo(w io.Writer) (int64, error) {
 	}
 
 	return int64(n), nil
+}
+
+func (m *CostMatrix) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/octet-stream")
+	m.WriteTo(w)
 }
 
 /* Binary data outline for CostMatrix v2: "->" means seqential elements in memory and not another section
@@ -664,6 +670,11 @@ func (m *RouteMatrix) WriteTo(w io.Writer) (int64, error) {
 	}
 
 	return int64(n), nil
+}
+
+func (m *RouteMatrix) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/octet-stream")
+	m.WriteTo(w)
 }
 
 /* Binary data outline for RouteMatrix v2: "->" means seqential elements in memory and not another section, "(...)" mean that section sequentially repeats for however many
