@@ -14,7 +14,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 
 	"github.com/go-redis/redis/v7"
-	"github.com/networknext/backend/core"
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 )
@@ -115,7 +115,7 @@ type BuyerProvider interface {
 // ServerUpdateHandlerFunc ...
 func ServerUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
-		var packet core.ServerUpdatePacket
+		var packet ServerUpdatePacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
 			log.Printf("failed to read server update packet: %v\n", err)
 			return
@@ -237,7 +237,7 @@ func (e SessionEntry) MarshalBinary() ([]byte, error) {
 func SessionUpdateHandlerFunc(redisClient redis.Cmdable, iploc routing.IPLocator, geoClient *routing.GeoClient) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		// Deserialize the Session packet
-		var packet core.SessionUpdatePacket
+		var packet SessionUpdatePacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
 			log.Printf("failed to read server update packet: %v\n", err)
 			return
@@ -320,7 +320,7 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, iploc routing.IPLocator
 		}
 
 		// Create the Session Response for the server
-		response := core.SessionResponsePacket{
+		response := SessionResponsePacket{
 			Sequence:             packet.Sequence,
 			SessionId:            packet.SessionId,
 			RouteType:            int32(route.Type),
@@ -340,7 +340,7 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, iploc routing.IPLocator
 		}
 
 		// Sign the response
-		response.Sign(serverentry.SDKVersion.Major, serverentry.SDKVersion.Minor, serverentry.SDKVersion.Patch)
+		response.Signature = ed25519.Sign(crypto.BackendPrivateKey, response.GetSignData())
 
 		// Send the Session Response back to the server
 		res, err := response.MarshalBinary()

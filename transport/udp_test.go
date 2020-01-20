@@ -9,6 +9,7 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/core"
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
@@ -46,7 +47,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 		assert.NoError(t, err)
 
-		packet := core.ServerUpdatePacket{
+		packet := transport.ServerUpdatePacket{
 			Sequence:             13,
 			ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
 			ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
@@ -82,7 +83,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 		assert.NoError(t, err)
 
-		packet := core.ServerUpdatePacket{
+		packet := transport.ServerUpdatePacket{
 			Sequence:             13,
 			ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
 			ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
@@ -124,7 +125,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 		assert.NoError(t, err)
 
-		packet := core.ServerUpdatePacket{
+		packet := transport.ServerUpdatePacket{
 			Sequence:             13,
 			ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
 			ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
@@ -167,7 +168,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 		assert.NoError(t, err)
 
-		packet := core.ServerUpdatePacket{
+		packet := transport.ServerUpdatePacket{
 			Sequence:             1,
 			ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
 			ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
@@ -222,7 +223,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 		}
 
 		// Create a ServerUpdatePacket and marshal it to binary so sent it into the UDP handler
-		packet := core.ServerUpdatePacket{
+		packet := transport.ServerUpdatePacket{
 			Sequence:             13,
 			ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
 			ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
@@ -318,7 +319,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Create an incoming SessionUpdatePacket for the handler
-	packet := core.SessionUpdatePacket{
+	packet := transport.SessionUpdatePacket{
 		Sequence:   13,
 		CustomerId: 13,
 		SessionId:  13,
@@ -363,7 +364,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 		ServerAddress:        *addr,
 		ClientAddress:        *addr,
 		ClientRoutePublicKey: TestPublicKey,
-		Signature:            make([]byte, 5),
+		Signature:            make([]byte, ed25519.SignatureSize),
 	}
 	data, err := packet.MarshalBinary()
 	assert.NoError(t, err)
@@ -423,7 +424,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 
 	{
 		// Create the expected SessionEntry
-		expected := core.SessionResponsePacket{
+		expected := transport.SessionResponsePacket{
 			Sequence:             packet.Sequence,
 			SessionId:            packet.SessionId,
 			RouteType:            routing.RouteTypeDirect,
@@ -435,9 +436,9 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 			NearRelayIds:         make([]uint64, 0),
 			NearRelayAddresses:   make([]net.UDPAddr, 0),
 		}
-		expected.Sign(serverentry.SDKVersion.Major, serverentry.SDKVersion.Minor, serverentry.SDKVersion.Patch)
+		expected.Signature = ed25519.Sign(crypto.BackendPrivateKey, expected.GetSignData())
 
-		var actual core.SessionResponsePacket
+		var actual transport.SessionResponsePacket
 		actual.UnmarshalBinary(resbuf.Bytes())
 
 		assert.Equal(t, expected, actual)
