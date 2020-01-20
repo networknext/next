@@ -42,6 +42,8 @@ const (
 
 // CostMatrix ...
 type CostMatrix struct {
+	mu sync.Mutex
+
 	RelayIds         []uint64
 	RelayNames       []string
 	RelayAddresses   [][]byte
@@ -54,6 +56,9 @@ type CostMatrix struct {
 
 // ReadFrom implements the io.ReadFrom interface
 func (m *CostMatrix) ReadFom(r io.Reader) (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	data, err := ioutil.ReadAll(r)
 	if err != nil {
 		return 0, err
@@ -68,6 +73,9 @@ func (m *CostMatrix) ReadFom(r io.Reader) (int64, error) {
 
 // WriteTo implements the io.WriteTo interface
 func (m *CostMatrix) WriteTo(w io.Writer) (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	data, err := m.MarshalBinary()
 	if err != nil {
 		return 0, err
@@ -341,6 +349,13 @@ func (m CostMatrix) MarshalBinary() ([]byte, error) {
 
 // Optimize will fill up a *RouteMatrix with the optimized routes based on cost.
 func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
+	m.mu.Lock()
+	routes.mu.Lock()
+	defer func() {
+		m.mu.Unlock()
+		routes.mu.Unlock()
+	}()
+
 	numRelays := len(m.RelayIds)
 
 	entryCount := core.TriMatrixLength(numRelays)
@@ -627,6 +642,8 @@ type RouteMatrixEntry struct {
 
 // RouteMatrix ...
 type RouteMatrix struct {
+	mu sync.Mutex
+
 	RelayIds         []uint64
 	RelayNames       []string
 	RelayAddresses   [][]byte
@@ -638,6 +655,9 @@ type RouteMatrix struct {
 }
 
 func (m *RouteMatrix) Route() (Route, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	return Route{
 		Type: RouteTypeDirect,
 	}, nil
@@ -645,6 +665,9 @@ func (m *RouteMatrix) Route() (Route, error) {
 
 // ReadFrom implements the io.ReadFrom interface
 func (m *RouteMatrix) ReadFom(r io.Reader) (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	data, err := ioutil.ReadAll(r)
 	if err != nil {
 		return 0, err
@@ -659,6 +682,9 @@ func (m *RouteMatrix) ReadFom(r io.Reader) (int64, error) {
 
 // WriteTo implements the io.WriteTo interface
 func (m *RouteMatrix) WriteTo(w io.Writer) (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	data, err := m.MarshalBinary()
 	if err != nil {
 		return 0, err
