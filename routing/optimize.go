@@ -631,7 +631,7 @@ type RouteMatrix struct {
 	Entries          []RouteMatrixEntry
 }
 
-func (rm *RouteMatrix) Route() (Route, error) {
+func (m *RouteMatrix) Route() (Route, error) {
 	return Route{
 		Type: RouteTypeDirect,
 	}, nil

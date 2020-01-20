@@ -77,6 +77,26 @@ func main() {
 		buyerProvider = configstore.Buyers
 	}
 
+	// For demo reaons just read a local cost.bin file and optimze it once.
+	// This will change so we can periodically get an up to date RouteMatrix
+	// to get Routes for Sessions.
+	var routeMatrix routing.RouteMatrix
+	{
+		costFile, err := os.Open("./routing/test_data/cost.bin")
+		if err != nil {
+			log.Println("failed to open cost.bin")
+		}
+
+		var costMatrix routing.CostMatrix
+		if _, err := costMatrix.ReadFom(costFile); err != nil {
+			log.Println("failed to open cost.bin")
+		}
+
+		if err := costMatrix.Optimize(&routeMatrix, 1); err != nil {
+			log.Println("failed to optimize into route matrix")
+		}
+	}
+
 	{
 		addr := net.UDPAddr{
 			Port: 30000,
@@ -93,7 +113,7 @@ func main() {
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
 			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(redisClient, buyerProvider),
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(redisClient, buyerProvider, nil, &mmdb, &geoClient),
+			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(redisClient, buyerProvider, &routeMatrix, &mmdb, &geoClient),
 		}
 
 		go func() {
