@@ -25,6 +25,12 @@ func (bp *mockBuyerProvider) GetAndCheckBySdkVersion3PublicKeyId(id uint64) (*st
 	return bp.buyer, bp.ok
 }
 
+type mockRouteProvider struct{}
+
+func (rp *mockRouteProvider) Route() (routing.Route, error) {
+	return routing.Route{}, nil
+}
+
 func TestServerUpdateHandlerFunc(t *testing.T) {
 	t.Run("failed to unmarshal packet", func(t *testing.T) {
 		redisServer, _ := miniredis.Run()
@@ -283,8 +289,20 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 }
 
 func TestSessionUpdateHandlerFunc(t *testing.T) {
+	buyersServerPubKey, buyersServerPrivKey, err := ed25519.GenerateKey(nil)
+	assert.NoError(t, err)
+
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+	bp := mockBuyerProvider{
+		buyer: &storage.Buyer{
+			SdkVersion3PublicKeyData: buyersServerPubKey,
+		},
+		ok: true,
+	}
+
+	rp := mockRouteProvider{}
 
 	// Define a static LocateIPFunc so it will satisfy the IPLocator interface required by the UDP handler
 	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
@@ -364,8 +382,9 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 		ServerAddress:        *addr,
 		ClientAddress:        *addr,
 		ClientRoutePublicKey: TestPublicKey,
-		Signature:            make([]byte, ed25519.SignatureSize),
 	}
+	packet.Signature = ed25519.Sign(buyersServerPrivKey, packet.GetSignData(serverentry.SDKVersion))
+
 	data, err := packet.MarshalBinary()
 	assert.NoError(t, err)
 
@@ -376,51 +395,8 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 	}
 
 	// Create and invoke the handler with the packet and from addr
-	handler := transport.SessionUpdateHandlerFunc(redisClient, iploc, &geoClient)
+	handler := transport.SessionUpdateHandlerFunc(redisClient, &bp, &rp, iploc, &geoClient)
 	handler(&resbuf, &incoming)
-
-	// Get the SessionEntry from redis based on the SessionUpdatePacket.Sequence number
-	ds, err := redisServer.Get("SESSION-13")
-	assert.NoError(t, err)
-
-	// Create the expected SessionEntry
-	{
-		expected := transport.SessionEntry{
-			SessionID:  packet.SessionId,
-			UserID:     packet.UserHash,
-			PlatformID: packet.PlatformId,
-
-			DirectRTT:        float64(packet.DirectMinRtt),
-			DirectJitter:     float64(packet.DirectJitter),
-			DirectPacketLoss: float64(packet.DirectPacketLoss),
-			NextRTT:          float64(packet.NextMinRtt),
-			NextJitter:       float64(packet.NextJitter),
-			NextPacketLoss:   float64(packet.NextPacketLoss),
-
-			ServerRoutePublicKey: serverentry.Server.PublicKey,
-			ServerPrivateAddr:    serverentry.Server.Addr,
-			ServerAddr:           packet.ServerAddress,
-			ClientAddr:           packet.ClientAddress,
-
-			ConnectionType: packet.ConnectionType,
-
-			Latitude:  43.05036163330078,
-			Longitude: -73.75393676757812,
-
-			Tag:              packet.Tag,
-			Flagged:          packet.Flagged,
-			FallbackToDirect: packet.FallbackToDirect,
-			OnNetworkNext:    packet.OnNetworkNext,
-
-			SDKVersion: serverentry.SDKVersion,
-		}
-
-		var actual transport.SessionEntry
-		actual.UnmarshalBinary([]byte(ds))
-
-		// Finally compare that the SessionUpdatePacket created the right SessionEntry in redis
-		assert.Equal(t, expected, actual)
-	}
 
 	{
 		// Create the expected SessionEntry

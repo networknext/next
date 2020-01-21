@@ -3,8 +3,11 @@ package routing
 import (
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
 	"math"
+	"net/http"
 	"runtime"
 	"sort"
 	"sync"
@@ -39,6 +42,8 @@ const (
 
 // CostMatrix ...
 type CostMatrix struct {
+	mu sync.Mutex
+
 	RelayIds         []uint64
 	RelayNames       []string
 	RelayAddresses   [][]byte
@@ -47,6 +52,46 @@ type CostMatrix struct {
 	DatacenterNames  []string
 	DatacenterRelays map[uint64][]uint64
 	RTT              []int32
+}
+
+// ReadFrom implements the io.ReadFrom interface
+func (m *CostMatrix) ReadFom(r io.Reader) (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	data, err := ioutil.ReadAll(r)
+	if err != nil {
+		return 0, err
+	}
+
+	if err := m.UnmarshalBinary(data); err != nil {
+		return 0, err
+	}
+
+	return int64(len(data)), nil
+}
+
+// WriteTo implements the io.WriteTo interface
+func (m *CostMatrix) WriteTo(w io.Writer) (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	data, err := m.MarshalBinary()
+	if err != nil {
+		return 0, err
+	}
+
+	n, err := w.Write(data)
+	if err != nil {
+		return 0, err
+	}
+
+	return int64(n), nil
+}
+
+func (m *CostMatrix) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/octet-stream")
+	m.WriteTo(w)
 }
 
 /* Binary data outline for CostMatrix v2: "->" means seqential elements in memory and not another section
@@ -304,6 +349,13 @@ func (m CostMatrix) MarshalBinary() ([]byte, error) {
 
 // Optimize will fill up a *RouteMatrix with the optimized routes based on cost.
 func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
+	m.mu.Lock()
+	routes.mu.Lock()
+	defer func() {
+		m.mu.Unlock()
+		routes.mu.Unlock()
+	}()
+
 	numRelays := len(m.RelayIds)
 
 	entryCount := core.TriMatrixLength(numRelays)
@@ -590,6 +642,8 @@ type RouteMatrixEntry struct {
 
 // RouteMatrix ...
 type RouteMatrix struct {
+	mu sync.Mutex
+
 	RelayIds         []uint64
 	RelayNames       []string
 	RelayAddresses   [][]byte
@@ -598,6 +652,55 @@ type RouteMatrix struct {
 	DatacenterIds    []uint64
 	DatacenterNames  []string
 	Entries          []RouteMatrixEntry
+}
+
+func (m *RouteMatrix) Route() (Route, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	return Route{
+		Type: RouteTypeDirect,
+	}, nil
+}
+
+// ReadFrom implements the io.ReadFrom interface
+func (m *RouteMatrix) ReadFom(r io.Reader) (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	data, err := ioutil.ReadAll(r)
+	if err != nil {
+		return 0, err
+	}
+
+	if err := m.UnmarshalBinary(data); err != nil {
+		return 0, err
+	}
+
+	return int64(len(data)), nil
+}
+
+// WriteTo implements the io.WriteTo interface
+func (m *RouteMatrix) WriteTo(w io.Writer) (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	data, err := m.MarshalBinary()
+	if err != nil {
+		return 0, err
+	}
+
+	n, err := w.Write(data)
+	if err != nil {
+		return 0, err
+	}
+
+	return int64(n), nil
+}
+
+func (m *RouteMatrix) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/octet-stream")
+	m.WriteTo(w)
 }
 
 /* Binary data outline for RouteMatrix v2: "->" means seqential elements in memory and not another section, "(...)" mean that section sequentially repeats for however many
