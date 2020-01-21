@@ -9,9 +9,11 @@ import (
 	"context"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"runtime"
+	"time"
 
 	"github.com/alicebob/miniredis"
 	"github.com/go-redis/redis/v7"
@@ -77,6 +79,32 @@ func main() {
 		buyerProvider = configstore.Buyers
 	}
 
+	// For demo reaons just read a local cost.bin file and optimze it once.
+	// This will change so we can periodically get an up to date RouteMatrix
+	// to get Routes for Sessions.
+	var routeMatrix routing.RouteMatrix
+	{
+		if os.Getenv("ROUTE_MATRIX_URI") != "" {
+			go func() {
+				for {
+					res, err := http.Get(os.Getenv("ROUTE_MATRIX_URI"))
+					if err != nil {
+						log.Fatalf("failed to get route matrix: %v\n", err)
+					}
+
+					n, err := routeMatrix.ReadFom(res.Body)
+					if err != nil {
+						log.Printf("failed to read route matrix: %v\n", err)
+					}
+
+					log.Printf("read %d bytes into route matrix for %d entries\n", n, len(routeMatrix.Entries))
+
+					time.Sleep(10 * time.Second)
+				}
+			}()
+		}
+	}
+
 	{
 		addr := net.UDPAddr{
 			Port: 30000,
@@ -93,7 +121,7 @@ func main() {
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
 			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(redisClient, buyerProvider),
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(redisClient, &mmdb, &geoClient),
+			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(redisClient, buyerProvider, &routeMatrix, &mmdb, &geoClient),
 		}
 
 		go func() {

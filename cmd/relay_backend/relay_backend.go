@@ -6,21 +6,37 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
+	"time"
 
 	"github.com/alicebob/miniredis"
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/core"
+	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/transport"
 )
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	statsdb := core.NewStatsDatabase()
-	backend := transport.NewStubbedBackend()
+
+	var costmatrix routing.CostMatrix
+	var routematrix routing.RouteMatrix
+	go func() {
+		for {
+			if err := costmatrix.Optimize(&routematrix, 1); err != nil {
+				log.Printf("failed to optimize cost matrix into route matrix: %v", err)
+			}
+
+			log.Printf("optimized %d entries into route matrix from cost matrix\n", len(routematrix.Entries))
+
+			time.Sleep(10 * time.Second)
+		}
+	}()
+
 	port := os.Getenv("NN_PORT")
 
 	if len(port) == 0 {
@@ -45,25 +61,11 @@ func main() {
 		log.Printf("unable to connect to REDIS_HOST '%s', connected to in-memory redis %s", os.Getenv("REDIS_URL"), redisServer.Addr())
 	}
 
-	router := transport.NewRouter(redisClient, statsdb, backend)
-
-	go optimizeRoutine()
-
-	go timeoutRoutine()
+	router := transport.NewRouter(redisClient, statsdb, &costmatrix, &routematrix)
 
 	go transport.HTTPStart(port, router)
 
-	// so my pc doesn't kill itself with an infinite loop
-	input := bufio.NewScanner(os.Stdin)
-	input.Scan()
-}
-
-// TODO
-func optimizeRoutine() {
-	fmt.Println("TODO optimizeRoutine()")
-}
-
-// TODO
-func timeoutRoutine() {
-	fmt.Println("TODO timeoutRoutine()")
+	sigint := make(chan os.Signal, 1)
+	signal.Notify(sigint, os.Interrupt)
+	<-sigint
 }

@@ -3,6 +3,7 @@ package encoding
 import (
 	"encoding/binary"
 	"math"
+	"net"
 )
 
 func ReadUint32(data []byte, index *int, value *uint32) bool {
@@ -46,7 +47,7 @@ func ReadString(data []byte, index *int, value *string, maxStringLength uint32) 
 	stringData := make([]byte, stringLength)
 	for i := uint32(0); i < stringLength; i++ {
 		stringData[i] = data[*index]
-		*index += 1
+		*index++
 	}
 	*value = string(stringData)
 	return true
@@ -59,7 +60,26 @@ func ReadBytes(data []byte, index *int, value *[]byte, bytes uint32) bool {
 	*value = make([]byte, bytes)
 	for i := uint32(0); i < bytes; i++ {
 		(*value)[i] = data[*index]
-		*index += 1
+		*index++
 	}
 	return true
+}
+
+// used for CostMatrix & RouteMatrix unmarshaling. needed for when version < 3, basically ReadString()
+func ReadBytesOld(buffer []byte) ([]byte, int) {
+	length := binary.LittleEndian.Uint32(buffer)
+	data := make([]byte, length)
+	copy(data, buffer[4:4+length])
+	return data, int(4 + length)
+}
+
+func ReadAddress(buffer []byte) *net.UDPAddr {
+	addressType := buffer[0]
+	switch addressType {
+	case IPAddressIPv4:
+		return &net.UDPAddr{IP: net.IPv4(buffer[1], buffer[2], buffer[3], buffer[4]), Port: ((int)(binary.LittleEndian.Uint16(buffer[5:])))}
+	case IPAddressIPv6:
+		return &net.UDPAddr{IP: buffer[1:], Port: ((int)(binary.LittleEndian.Uint16(buffer[17:])))}
+	}
+	return nil
 }

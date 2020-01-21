@@ -9,6 +9,7 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/core"
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
@@ -22,6 +23,12 @@ type mockBuyerProvider struct {
 
 func (bp *mockBuyerProvider) GetAndCheckBySdkVersion3PublicKeyId(id uint64) (*storage.Buyer, bool) {
 	return bp.buyer, bp.ok
+}
+
+type mockRouteProvider struct{}
+
+func (rp *mockRouteProvider) Route() (routing.Route, error) {
+	return routing.Route{}, nil
 }
 
 func TestServerUpdateHandlerFunc(t *testing.T) {
@@ -46,7 +53,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 		assert.NoError(t, err)
 
-		packet := core.ServerUpdatePacket{
+		packet := transport.ServerUpdatePacket{
 			Sequence:             13,
 			ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
 			ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
@@ -82,7 +89,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 		assert.NoError(t, err)
 
-		packet := core.ServerUpdatePacket{
+		packet := transport.ServerUpdatePacket{
 			Sequence:             13,
 			ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
 			ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
@@ -124,7 +131,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 		assert.NoError(t, err)
 
-		packet := core.ServerUpdatePacket{
+		packet := transport.ServerUpdatePacket{
 			Sequence:             13,
 			ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
 			ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
@@ -167,7 +174,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 		assert.NoError(t, err)
 
-		packet := core.ServerUpdatePacket{
+		packet := transport.ServerUpdatePacket{
 			Sequence:             1,
 			ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
 			ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
@@ -222,7 +229,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 		}
 
 		// Create a ServerUpdatePacket and marshal it to binary so sent it into the UDP handler
-		packet := core.ServerUpdatePacket{
+		packet := transport.ServerUpdatePacket{
 			Sequence:             13,
 			ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
 			ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
@@ -282,8 +289,20 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 }
 
 func TestSessionUpdateHandlerFunc(t *testing.T) {
+	buyersServerPubKey, buyersServerPrivKey, err := ed25519.GenerateKey(nil)
+	assert.NoError(t, err)
+
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+	bp := mockBuyerProvider{
+		buyer: &storage.Buyer{
+			SdkVersion3PublicKeyData: buyersServerPubKey,
+		},
+		ok: true,
+	}
+
+	rp := mockRouteProvider{}
 
 	// Define a static LocateIPFunc so it will satisfy the IPLocator interface required by the UDP handler
 	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
@@ -318,7 +337,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Create an incoming SessionUpdatePacket for the handler
-	packet := core.SessionUpdatePacket{
+	packet := transport.SessionUpdatePacket{
 		Sequence:   13,
 		CustomerId: 13,
 		SessionId:  13,
@@ -363,8 +382,9 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 		ServerAddress:        *addr,
 		ClientAddress:        *addr,
 		ClientRoutePublicKey: TestPublicKey,
-		Signature:            make([]byte, 5),
 	}
+	packet.Signature = ed25519.Sign(buyersServerPrivKey, packet.GetSignData(serverentry.SDKVersion))
+
 	data, err := packet.MarshalBinary()
 	assert.NoError(t, err)
 
@@ -375,55 +395,12 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 	}
 
 	// Create and invoke the handler with the packet and from addr
-	handler := transport.SessionUpdateHandlerFunc(redisClient, iploc, &geoClient)
+	handler := transport.SessionUpdateHandlerFunc(redisClient, &bp, &rp, iploc, &geoClient)
 	handler(&resbuf, &incoming)
-
-	// Get the SessionEntry from redis based on the SessionUpdatePacket.Sequence number
-	ds, err := redisServer.Get("SESSION-13")
-	assert.NoError(t, err)
-
-	// Create the expected SessionEntry
-	{
-		expected := transport.SessionEntry{
-			SessionID:  packet.SessionId,
-			UserID:     packet.UserHash,
-			PlatformID: packet.PlatformId,
-
-			DirectRTT:        float64(packet.DirectMinRtt),
-			DirectJitter:     float64(packet.DirectJitter),
-			DirectPacketLoss: float64(packet.DirectPacketLoss),
-			NextRTT:          float64(packet.NextMinRtt),
-			NextJitter:       float64(packet.NextJitter),
-			NextPacketLoss:   float64(packet.NextPacketLoss),
-
-			ServerRoutePublicKey: serverentry.Server.PublicKey,
-			ServerPrivateAddr:    serverentry.Server.Addr,
-			ServerAddr:           packet.ServerAddress,
-			ClientAddr:           packet.ClientAddress,
-
-			ConnectionType: packet.ConnectionType,
-
-			Latitude:  43.05036163330078,
-			Longitude: -73.75393676757812,
-
-			Tag:              packet.Tag,
-			Flagged:          packet.Flagged,
-			FallbackToDirect: packet.FallbackToDirect,
-			OnNetworkNext:    packet.OnNetworkNext,
-
-			SDKVersion: serverentry.SDKVersion,
-		}
-
-		var actual transport.SessionEntry
-		actual.UnmarshalBinary([]byte(ds))
-
-		// Finally compare that the SessionUpdatePacket created the right SessionEntry in redis
-		assert.Equal(t, expected, actual)
-	}
 
 	{
 		// Create the expected SessionEntry
-		expected := core.SessionResponsePacket{
+		expected := transport.SessionResponsePacket{
 			Sequence:             packet.Sequence,
 			SessionId:            packet.SessionId,
 			RouteType:            routing.RouteTypeDirect,
@@ -435,9 +412,9 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 			NearRelayIds:         make([]uint64, 0),
 			NearRelayAddresses:   make([]net.UDPAddr, 0),
 		}
-		expected.Sign(serverentry.SDKVersion.Major, serverentry.SDKVersion.Minor, serverentry.SDKVersion.Patch)
+		expected.Signature = ed25519.Sign(crypto.BackendPrivateKey, expected.GetSignData())
 
-		var actual core.SessionResponsePacket
+		var actual transport.SessionResponsePacket
 		actual.UnmarshalBinary(resbuf.Bytes())
 
 		assert.Equal(t, expected, actual)
