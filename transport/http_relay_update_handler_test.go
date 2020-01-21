@@ -6,6 +6,7 @@ import (
 	"log"
 	"math"
 	"math/rand"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -69,9 +70,12 @@ func putPingStats(buff []byte, addressLength int, addrs ...string) {
 
 func seedRedis(redisServer *miniredis.Miniredis, addressesToAdd []string) {
 	addEntry := func(addr string) {
-		relay := transport.NewRelayData(addr)
+		relay := routing.NewRelay()
+		udpAddr, _ := net.ResolveUDPAddr("udp", addr)
+		relay.Addr = *udpAddr
+		relay.ID = core.GetRelayID(addr)
 		bin, _ := relay.MarshalBinary()
-		redisServer.HSet(transport.RedisHashName, transport.IDToRedisKey(relay.ID), string(bin))
+		redisServer.HSet(transport.RedisHashName, relay.Key(), string(bin))
 	}
 
 	for _, addr := range addressesToAdd {
@@ -82,7 +86,8 @@ func seedRedis(redisServer *miniredis.Miniredis, addressesToAdd []string) {
 
 func relayUpdateAssertions(t *testing.T, body []byte, expectedCode int, redisClient *redis.Client, statsdb *core.StatsDatabase) *httptest.ResponseRecorder {
 	if redisClient == nil {
-		_, redisClient = NewTestRedis()
+		redisServer, _ := miniredis.Run()
+		redisClient = redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 	}
 
 	if statsdb == nil {
@@ -163,11 +168,13 @@ func TestRelayUpdateHandler(t *testing.T) {
 	})
 
 	t.Run("valid", func(t *testing.T) {
-		redisServer, redisClient := NewTestRedis()
+		redisServer, _ := miniredis.Run()
+		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 		statsdb := core.NewStatsDatabase()
 		numRelays := 4
 		addr := "127.0.0.1"
-		buff := make([]byte, sizeOfUpdateRequestVersion+4+len(addr)+sizeOfRelayToken+sizeOfNumberOfRelays+numRelays*sizeOfRelayPingStat)
+		udpAddr, _ := net.ResolveUDPAddr("udp", addr)
+		buff := make([]byte, sizeOfUpdateRequestVersion+4+len(addr)+routing.TokenSize+sizeOfNumberOfRelays+numRelays*sizeOfRelayPingStat)
 		putUpdateRequestVersion(buff)
 		putUpdateRelayAddress(buff, addr)
 
@@ -176,10 +183,10 @@ func TestRelayUpdateHandler(t *testing.T) {
 
 		seedRedis(redisServer, testAddrs)
 
-		entry := transport.RelayData{
+		entry := routing.Relay{
 			ID:             core.GetRelayID(addr),
 			Name:           addr,
-			Address:        addr,
+			Addr:           *udpAddr,
 			Datacenter:     1,
 			DatacenterName: "some name",
 			PublicKey:      make([]byte, transport.LengthOfRelayToken),
@@ -187,18 +194,18 @@ func TestRelayUpdateHandler(t *testing.T) {
 		}
 
 		raw, _ := entry.MarshalBinary()
-		redisServer.HSet(transport.RedisHashName, transport.IDToRedisKey(core.GetRelayID(addr)), string(raw))
+		redisServer.HSet(transport.RedisHashName, entry.Key(), string(raw))
 
 		recorder := relayUpdateAssertions(t, buff, http.StatusOK, redisClient, statsdb)
 
-		res := redisClient.HGet(transport.RedisHashName, transport.IDToRedisKey(core.GetRelayID(addr)))
-		var actual transport.RelayData
+		res := redisClient.HGet(transport.RedisHashName, entry.Key())
+		var actual routing.Relay
 		raw, _ = res.Bytes()
 		actual.UnmarshalBinary(raw)
 
 		assert.Equal(t, entry.ID, actual.ID)
 		assert.Equal(t, entry.Name, actual.Name)
-		assert.Equal(t, entry.Address, actual.Address)
+		assert.Equal(t, entry.Addr, actual.Addr)
 		assert.Equal(t, entry.Datacenter, actual.Datacenter)
 		assert.Equal(t, entry.DatacenterName, actual.DatacenterName)
 		assert.Equal(t, entry.PublicKey, actual.PublicKey)

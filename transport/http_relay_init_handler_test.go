@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"encoding/binary"
 	"log"
+	"net"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"testing"
 	"time"
 
+	"github.com/alicebob/miniredis/v2"
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
@@ -26,7 +27,8 @@ const (
 
 func relayInitAssertions(t *testing.T, body []byte, expectedCode int, redisClient *redis.Client) *httptest.ResponseRecorder {
 	if redisClient == nil {
-		_, redisClient = NewTestRedis()
+		redisServer, _ := miniredis.Run()
+		redisClient = redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 	}
 
 	recorder := httptest.NewRecorder()
@@ -105,13 +107,14 @@ func TestRelayInitHandler(t *testing.T) {
 
 	t.Run("relay already exists", func(t *testing.T) {
 		name := "some name"
-		addr := "127.0.0.1"
+		addr := "127.0.0.1:40000"
+		udpAddr, _ := net.ResolveUDPAddr("udp", addr)
 		dcname := "another name"
 		pubkey := make([]byte, 32)
-		entry := transport.RelayData{
+		entry := routing.Relay{
 			ID:             core.GetRelayID(addr),
 			Name:           name,
-			Address:        addr,
+			Addr:           *udpAddr,
 			Datacenter:     32,
 			DatacenterName: dcname,
 			PublicKey:      pubkey,
@@ -119,36 +122,39 @@ func TestRelayInitHandler(t *testing.T) {
 		}
 
 		data, _ := entry.MarshalBinary()
-		redisServer, redisClient := NewTestRedis()
-		redisServer.HSet(transport.RedisHashName, transport.RedisHashKeyStart+strconv.FormatUint(entry.ID, 10), string(data))
-		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+sizeOfNonceBytes+4+len(addr)+sizeOfEncryptedToken)
-		putInitRequestMagic(buff)
-		putInitRequestVersion(buff)
-		putInitRelayAddress(buff, addr)
+		redisServer, _ := miniredis.Run()
+		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+		redisServer.HSet(transport.RedisHashName, entry.Key(), string(data))
+		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+crypto.NonceSize+4+len(addr)+routing.TokenSize)
+		binary.LittleEndian.PutUint32(buff, transport.InitRequestMagic)
+		binary.LittleEndian.PutUint32(buff[4:], transport.VersionNumberInitRequest)
+		writeRelayAddress(buff, addr)
 		relayInitAssertions(t, buff, http.StatusNotFound, redisClient)
 	})
 
 	t.Run("valid", func(t *testing.T) {
-		_, redisClient := NewTestRedis()
-		addr := "127.0.0.1"
+		redisServer, _ := miniredis.Run()
+		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+		addr := "127.0.0.1:40000"
+		udpAddr, _ := net.ResolveUDPAddr("udp", addr)
 		before := uint64(time.Now().Unix())
-		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+sizeOfNonceBytes+4+len(addr)+sizeOfEncryptedToken)
-		putInitRequestMagic(buff)
-		putInitRequestVersion(buff)
-		putInitRelayAddress(buff, addr)
+		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+crypto.NonceSize+4+len(addr)+routing.TokenSize)
+		binary.LittleEndian.PutUint32(buff, transport.InitRequestMagic)
+		binary.LittleEndian.PutUint32(buff[4:], transport.VersionNumberInitRequest)
+		writeRelayAddress(buff, addr)
 		recorder := relayInitAssertions(t, buff, http.StatusOK, redisClient)
 
 		header := recorder.Header()
 		contentType, _ := header["Content-Type"]
-		expected := transport.RelayData{
-			ID:      core.GetRelayID(addr),
-			Name:    addr,
-			Address: addr,
+		expected := routing.Relay{
+			ID:   core.GetRelayID(addr),
+			Name: addr,
+			Addr: *udpAddr,
 		}
 
-		resp := redisClient.HGet(transport.RedisHashName, transport.IDToRedisKey(core.GetRelayID(addr)))
+		resp := redisClient.HGet(transport.RedisHashName, expected.Key())
 
-		var actual transport.RelayData
+		var actual routing.Relay
 		bin, _ := resp.Bytes()
 		actual.UnmarshalBinary(bin)
 
@@ -172,7 +178,7 @@ func TestRelayInitHandler(t *testing.T) {
 
 		assert.Equal(t, expected.ID, actual.ID)
 		assert.Equal(t, expected.Name, actual.Name)
-		assert.Equal(t, expected.Address, actual.Address)
+		assert.Equal(t, expected.Addr, actual.Addr)
 		assert.NotZero(t, actual.LastUpdateTime)
 		assert.Len(t, actual.PublicKey, 32)
 	})

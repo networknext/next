@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/go-redis/redis/v7"
@@ -32,8 +32,7 @@ const (
 	VersionNumberUpdateRequest  = 0
 	VersionNumberUpdateResponse = 0
 
-	RedisHashName     = "ALL_RELAYS"
-	RedisHashKeyStart = "RELAY-"
+	RedisHashName = "ALL_RELAYS"
 )
 
 var gRelayPublicKey = []byte{
@@ -41,10 +40,6 @@ var gRelayPublicKey = []byte{
 	0x7d, 0x89, 0x0c, 0x81, 0x3a, 0x08, 0x31, 0xba,
 	0xdc, 0xdd, 0xb5, 0x52, 0xcb, 0x73, 0x56, 0x10,
 	0xda, 0xa9, 0xc0, 0xae, 0x08, 0xa2, 0xcf, 0x5e,
-}
-
-func IDToRedisKey(id uint64) string {
-	return RedisHashKeyStart + strconv.FormatUint(id, 10)
 }
 
 // NewRouter creates a router with the specified endpoints
@@ -98,10 +93,14 @@ func RelayInitHandlerFunc(redisClient *redis.Client) func(writer http.ResponseWr
 			return
 		}
 
-		key := core.GetRelayID(relayInitPacket.Address)
+		udpAddr, _ := net.ResolveUDPAddr("udp", relayInitPacket.Address)
+		relay := routing.Relay{
+			ID:             core.GetRelayID(relayInitPacket.Address),
+			Addr:           *udpAddr,
+			LastUpdateTime: uint64(time.Now().Unix()),
+		}
 
-		// _, relayAlreadyExists := relaydb.Relays[key]
-		exists := redisClient.HExists(RedisHashName, IDToRedisKey(key))
+		exists := redisClient.HExists(RedisHashName, relay.Key())
 
 		if exists.Err() != nil && exists.Err() != redis.Nil {
 			log.Printf("failed to get relay %s from redis: %v", relayInitPacket.Address, exists.Err())
@@ -114,28 +113,16 @@ func RelayInitHandlerFunc(redisClient *redis.Client) func(writer http.ResponseWr
 			writer.WriteHeader(http.StatusNotFound)
 		}
 
-		entry := core.RelayData{}
-		entry.Name = relayInitPacket.Address
-		entry.ID = core.GetRelayID(relayInitPacket.Address)
-		entry.Address = relayInitPacket.Address //core.ParseAddress(relayInitPacket.address)
-		entry.LastUpdateTime = uint64(time.Now().Unix())
-
-		entry.PublicKey = make([]byte, crypto.KeySize)
-		if _, err := rand.Read(entry.PublicKey); err != nil {
+		relay.PublicKey = make([]byte, crypto.KeySize)
+		if _, err := rand.Read(relay.PublicKey); err != nil {
 			writer.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		entry := RelayData{
-			Name:           relayInitPacket.Address,
-			ID:             key,
-			Address:        relayInitPacket.Address, //core.ParseAddress(relayInitPacket.address)
-			LastUpdateTime: uint64(time.Now().Unix()),
-			PublicKey:      core.RandomBytes(LengthOfRelayToken),
-		}
+		relay.LastUpdateTime = uint64(time.Now().Unix())
+		relay.PublicKey = core.RandomBytes(LengthOfRelayToken)
 
-		//relaydb.Relays[entry.Id] = entry
-		res := redisClient.HSet(RedisHashName, IDToRedisKey(key), entry)
+		res := redisClient.HSet(RedisHashName, relay.Key(), relay)
 
 		if res.Err() != nil && res.Err() != redis.Nil {
 			log.Printf("failed to set relay %s into redis hash: %v", relayInitPacket.Address, res.Err())
@@ -149,7 +136,7 @@ func RelayInitHandlerFunc(redisClient *redis.Client) func(writer http.ResponseWr
 		responseData := make([]byte, 64)
 		encoding.WriteUint32(responseData, &index, VersionNumberInitResponse)
 		encoding.WriteUint64(responseData, &index, uint64(time.Now().Unix()))
-		encoding.WriteBytes(responseData, &index, entry.PublicKey, crypto.KeySize)
+		encoding.WriteBytes(responseData, &index, relay.PublicKey, crypto.KeySize)
 
 		writer.Write(responseData[:index])
 	}
@@ -173,25 +160,24 @@ func RelayUpdateHandlerFunc(redisClient *redis.Client, statsdb *core.StatsDataba
 			return
 		}
 
-		if relayUpdatePacket.Version != VersionNumberUpdateRequest || relayUpdatePacket.NumRelays == 0 || relayUpdatePacket.NumRelays > MaxRelays {
+		if relayUpdatePacket.Version != VersionNumberUpdateRequest || relayUpdatePacket.NumRelays > MaxRelays {
 			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		key := core.GetRelayID(relayUpdatePacket.Address)
-		//entry, ok := relaydb.Relays[key]
-		redisKey := IDToRedisKey(key)
-		var entry RelayData
-		found := false
+		relay := routing.Relay{
+			ID: core.GetRelayID(relayUpdatePacket.Address),
+		}
 
-		exists := redisClient.HExists(RedisHashName, redisKey)
+		found := false
+		exists := redisClient.HExists(RedisHashName, relay.Key())
 
 		if exists.Err() != nil && exists.Err() != redis.Nil {
 			log.Printf("failed to check if relay %s exists: %v", relayUpdatePacket.Address, exists.Err())
 		}
 
 		if exists.Val() {
-			result := redisClient.HGet(RedisHashName, redisKey)
+			result := redisClient.HGet(RedisHashName, relay.Key())
 			if result.Err() != nil && result.Err() != redis.Nil {
 				log.Printf("failed to get relay %s from redis: %v", relayUpdatePacket.Address, result.Err())
 				writer.WriteHeader(http.StatusNotFound)
@@ -206,18 +192,18 @@ func RelayUpdateHandlerFunc(redisClient *redis.Client, statsdb *core.StatsDataba
 				return
 			}
 
-			if err = entry.UnmarshalBinary(data); err != nil {
+			if err = relay.UnmarshalBinary(data); err != nil {
 				log.Printf("failed to marshal data into struct: %v", err)
 				writer.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 
-			if crypto.CompareTokens(relayUpdatePacket.Token, entry.PublicKey) {
+			if bytes.Equal(relayUpdatePacket.Token, relay.PublicKey) {
 				found = true
 			}
 		}
 
-		if bytes.Equal(relayUpdatePacket.Token, entry.PublicKey) {
+		if bytes.Equal(relayUpdatePacket.Token, relay.PublicKey) {
 			found = true
 		}
 
@@ -227,12 +213,12 @@ func RelayUpdateHandlerFunc(redisClient *redis.Client, statsdb *core.StatsDataba
 		}
 
 		statsUpdate := &core.RelayStatsUpdate{}
-		statsUpdate.ID = entry.ID
+		statsUpdate.ID = relay.ID
 		statsUpdate.PingStats = append(statsUpdate.PingStats, relayUpdatePacket.PingStats...)
 
 		statsdb.ProcessStats(statsUpdate)
 
-		entry.LastUpdateTime = uint64(time.Now().Unix())
+		relay.LastUpdateTime = uint64(time.Now().Unix())
 
 		type RelayPingData struct {
 			id      uint64
@@ -241,8 +227,7 @@ func RelayUpdateHandlerFunc(redisClient *redis.Client, statsdb *core.StatsDataba
 
 		relaysToPing := make([]RelayPingData, 0)
 
-		// relaydb.Relays[key] = entry
-		redisClient.HSet(RedisHashName, redisKey, entry)
+		redisClient.HSet(RedisHashName, relay.Key(), relay)
 		result := redisClient.HGetAll(RedisHashName)
 
 		if result.Err() != nil && result.Err() != redis.Nil {
@@ -252,10 +237,10 @@ func RelayUpdateHandlerFunc(redisClient *redis.Client, statsdb *core.StatsDataba
 		}
 
 		for k, v := range result.Val() {
-			if k != redisKey {
-				var unmarshaledValue RelayData
+			if k != relay.Key() {
+				var unmarshaledValue routing.Relay
 				unmarshaledValue.UnmarshalBinary([]byte(v))
-				relaysToPing = append(relaysToPing, RelayPingData{id: uint64(unmarshaledValue.ID), address: unmarshaledValue.Address})
+				relaysToPing = append(relaysToPing, RelayPingData{id: uint64(unmarshaledValue.ID), address: unmarshaledValue.Addr.String()})
 			}
 		}
 
