@@ -6,22 +6,44 @@
 package main
 
 import (
+	"encoding/base64"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
 	"time"
 
+	"github.com/alicebob/miniredis"
+	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/transport"
 )
 
 func main() {
-	relaydb := core.NewRelayDatabase()
-	statsdb := core.NewStatsDatabase()
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
+	var relayPublicKey []byte
+	var routerPrivateKey []byte
+
+	if key := os.Getenv("NN_RELAY_KEY_PUBLIC"); len(key) != 0 {
+		relayPublicKey, _ = base64.StdEncoding.DecodeString(key)
+	} else {
+		log.Println("Env var 'NN_RELAY_KEY_PUBLIC' is not set, exiting!")
+		os.Exit(1)
+	}
+
+	if key := os.Getenv("NN_ROUTER_KEY_PRIVATE"); len(key) != 0 {
+		routerPrivateKey, _ = base64.StdEncoding.DecodeString(key)
+	} else {
+		log.Println("Env var 'NN_ROUTER_KEY_PRIVATE' is not set, exiting!")
+		os.Exit(1)
+	}
+
+	statsdb := core.NewStatsDatabase()
 	var costmatrix routing.CostMatrix
 	var routematrix routing.RouteMatrix
+
 	go func() {
 		for {
 			if err := costmatrix.Optimize(&routematrix, 1); err != nil {
@@ -34,13 +56,31 @@ func main() {
 		}
 	}()
 
-	port := os.Getenv("NN_RELAY_BACKEND_PORT")
+	port := os.Getenv("NN_PORT")
 
 	if len(port) == 0 {
-		port = "30000"
+		port = "40000"
+		fmt.Printf("NN_PORT env var is unset, setting port as %s\n", port)
 	}
 
-	router := transport.NewRouter(relaydb, statsdb, &costmatrix, &routematrix)
+	// Attempt to connect to REDIS_HOST
+	// If it fails to connect then start a local in memory instance and connect to that instead
+	redisClient := redis.NewClient(&redis.Options{Addr: os.Getenv("REDIS_HOST")})
+	if err := redisClient.Ping().Err(); err != nil {
+		redisServer, err := miniredis.Run()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		redisClient = redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+		if err := redisClient.Ping().Err(); err != nil {
+			log.Fatal(err)
+		}
+
+		log.Printf("unable to connect to REDIS_HOST '%s', connected to in-memory redis %s", os.Getenv("REDIS_URL"), redisServer.Addr())
+	}
+
+	router := transport.NewRouter(redisClient, statsdb, &costmatrix, &routematrix, relayPublicKey, routerPrivateKey)
 
 	go transport.HTTPStart(port, router)
 

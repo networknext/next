@@ -45,13 +45,6 @@ func TestGenerate(t *testing.T) {
 		assert.NotZero(t, id)
 	})
 
-	t.Run("RelayKeyPair", func(t *testing.T) {
-		pub, priv, err := crypto.GenerateRelayKeyPair()
-		assert.NoError(t, err)
-		assert.Equal(t, ed25519.PublicKeySize, len(pub))
-		assert.Equal(t, ed25519.PrivateKeySize, len(priv))
-	})
-
 	t.Run("CustomerKeyPair", func(t *testing.T) {
 		pub, priv, err := crypto.GenerateCustomerKeyPair()
 		assert.NoError(t, err)

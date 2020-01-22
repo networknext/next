@@ -6,7 +6,7 @@ import (
 )
 
 type RelayUpdate struct {
-	ID             RelayId
+	ID             uint64
 	Name           string
 	Address        string
 	Datacenter     DatacenterId
@@ -16,7 +16,7 @@ type RelayUpdate struct {
 }
 
 type RelayData struct {
-	ID             RelayId
+	ID             uint64
 	Name           string
 	Address        string
 	Datacenter     DatacenterId
@@ -26,12 +26,12 @@ type RelayData struct {
 }
 
 type RelayDatabase struct {
-	Relays map[RelayId]RelayData
+	Relays map[uint64]RelayData
 }
 
 func NewRelayDatabase() *RelayDatabase {
 	database := &RelayDatabase{}
-	database.Relays = make(map[RelayId]RelayData)
+	database.Relays = make(map[uint64]RelayData)
 	return database
 }
 
@@ -55,8 +55,8 @@ func (database *RelayDatabase) UpdateRelay(update *RelayUpdate) bool {
 }
 
 // CheckForTimeouts loops over all relays and if any exceed the timout then they are removed
-func (database *RelayDatabase) CheckForTimeouts(timeoutSeconds int) []RelayId {
-	disconnected := make([]RelayId, 0)
+func (database *RelayDatabase) CheckForTimeouts(timeoutSeconds int) []uint64 {
+	disconnected := make([]uint64, 0)
 	currentTime := uint64(time.Now().Unix())
 	for k, v := range database.Relays {
 		if v.LastUpdateTime+uint64(timeoutSeconds) <= currentTime {
@@ -77,8 +77,8 @@ func (database *RelayDatabase) MakeCopy() *RelayDatabase {
 }
 
 // GetRelayId hashes the name of the relay and returns the result. Typically name is the address of the relay
-func GetRelayID(name string) RelayId {
+func GetRelayID(addr string) uint64 {
 	hash := fnv.New64a()
-	hash.Write([]byte(name))
-	return RelayId(hash.Sum64())
+	hash.Write([]byte(addr))
+	return hash.Sum64()
 }

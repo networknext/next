@@ -10,7 +10,7 @@ const InvalidRouteValue = 10000.0
 
 // RelayStatsPing is the ping stats for a relay
 type RelayStatsPing struct {
-	RelayID    RelayId
+	RelayID    uint64
 	RTT        float32
 	Jitter     float32
 	PacketLoss float32
@@ -18,7 +18,7 @@ type RelayStatsPing struct {
 
 // RelayStatsUpdate is a struct for updating relay stats
 type RelayStatsUpdate struct {
-	ID        RelayId
+	ID        uint64
 	PingStats []RelayStatsPing
 }
 
@@ -35,26 +35,26 @@ type StatsEntryRelay struct {
 
 // StatsEntry is an entry in the stats db
 type StatsEntry struct {
-	Relays map[RelayId]*StatsEntryRelay
+	Relays map[uint64]*StatsEntryRelay
 }
 
 // StatsDatabase is a relay statistics database.
 // Each entry contains data about the entry relay to other relays
 type StatsDatabase struct {
-	Entries map[RelayId]StatsEntry
+	Entries map[uint64]StatsEntry
 }
 
 // NewStatsDatabase creates a new stats database
 func NewStatsDatabase() *StatsDatabase {
 	database := &StatsDatabase{}
-	database.Entries = make(map[RelayId]StatsEntry)
+	database.Entries = make(map[uint64]StatsEntry)
 	return database
 }
 
 // NewStatsEntry creates a new stats entry
 func NewStatsEntry() *StatsEntry {
 	entry := new(StatsEntry)
-	entry.Relays = make(map[RelayId]*StatsEntryRelay)
+	entry.Relays = make(map[uint64]*StatsEntryRelay)
 	return entry
 }
 
@@ -114,7 +114,7 @@ func (database *StatsDatabase) MakeCopy() *StatsDatabase {
 }
 
 // GetEntry retrieves the stats for the supplied relay id's, if either or both do not exist the function returns nil
-func (database *StatsDatabase) GetEntry(relay1 RelayId, relay2 RelayId) *StatsEntryRelay {
+func (database *StatsDatabase) GetEntry(relay1, relay2 uint64) *StatsEntryRelay {
 	if entry, entryExists := database.Entries[relay1]; entryExists {
 		if relay, relayExists := entry.Relays[relay2]; relayExists {
 			return relay
@@ -125,7 +125,7 @@ func (database *StatsDatabase) GetEntry(relay1 RelayId, relay2 RelayId) *StatsEn
 }
 
 // GetSample returns the max values of each stats field of the bidirectional entries in the database
-func (database *StatsDatabase) GetSample(relay1 RelayId, relay2 RelayId) (float32, float32, float32) {
+func (database *StatsDatabase) GetSample(relay1, relay2 uint64) (float32, float32, float32) {
 	a := database.GetEntry(relay1, relay2)
 	b := database.GetEntry(relay2, relay1)
 	if a != nil && b != nil {
@@ -162,7 +162,7 @@ func (database *StatsDatabase) GetCostMatrix(relaydb *RelayDatabase) *CostMatrix
 	})
 
 	for i, relayData := range stableRelays {
-		costMatrix.RelayIds[i] = relayData.ID
+		costMatrix.RelayIds[i] = RelayId(relayData.ID)
 		costMatrix.RelayNames[i] = relayData.Name
 		costMatrix.RelayPublicKeys[i] = relayData.PublicKey
 		if relayData.Datacenter != DatacenterId(0) {
@@ -180,8 +180,8 @@ func (database *StatsDatabase) GetCostMatrix(relaydb *RelayDatabase) *CostMatrix
 
 	for i := 0; i < numRelays; i++ {
 		for j := 0; j < i; j++ {
-			idI := costMatrix.RelayIds[i]
-			idJ := costMatrix.RelayIds[j]
+			idI := uint64(costMatrix.RelayIds[i])
+			idJ := uint64(costMatrix.RelayIds[j])
 			rtt, jitter, packetLoss := database.GetSample(idI, idJ)
 			ijIndex := TriMatrixIndex(i, j)
 			if rtt != InvalidRouteValue && jitter <= MaxJitter && packetLoss <= MaxPacketLoss {

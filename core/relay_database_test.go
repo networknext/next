@@ -82,7 +82,7 @@ func TestRelayDatabase(t *testing.T) {
 		t.Run("dead relays are present", func(t *testing.T) {
 			relaydb := core.NewRelayDatabase()
 			FillRelayDatabase(relaydb)
-			expectedDeadRelays := []core.RelayId{core.GetRelayID("654.3.2.1"), core.GetRelayID("999.9.9.9")}
+			expectedDeadRelays := []uint64{core.GetRelayID("654.3.2.1"), core.GetRelayID("999.9.9.9")}
 
 			deadRelays := relaydb.CheckForTimeouts(50)
 			assert.Equal(t, expectedDeadRelays, deadRelays)
@@ -113,10 +113,10 @@ func TestRelayDatabase(t *testing.T) {
 
 func TestGetRelayId(t *testing.T) {
 	t.Run("returns the hash of the supplied value", func(t *testing.T) {
-		duplicateFunction := func(value string) core.RelayId {
+		duplicateFunction := func(value string) uint64 {
 			hash := fnv.New64a()
 			hash.Write([]byte(value))
-			return core.RelayId(hash.Sum64())
+			return hash.Sum64()
 		}
 
 		value := "127.0.0.1"

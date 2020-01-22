@@ -145,7 +145,7 @@ func TestStatsDatabase(t *testing.T) {
 		id1 := sourceId
 		id2 := relay1Id
 
-		makeBasicConnection := func(statsdb *core.StatsDatabase, id1 core.RelayId, id2 core.RelayId) {
+		makeBasicConnection := func(statsdb *core.StatsDatabase, id1, id2 uint64) {
 			stats := core.NewStatsEntryRelay()
 			entry := core.NewStatsEntry()
 			entry.Relays[id2] = stats
@@ -260,7 +260,7 @@ func TestStatsDatabase(t *testing.T) {
 
 			// assert each entry in the relay db is present in the cost matrix
 			for _, relay := range relaydb.Relays {
-				assert.Contains(t, costMatrix.RelayIds, relay.ID)
+				assert.Contains(t, costMatrix.RelayIds, core.RelayId(relay.ID))
 				assert.Contains(t, costMatrix.RelayNames, relay.Name)
 				assert.Contains(t, costMatrix.RelayPublicKeys, relay.PublicKey)
 			}
@@ -273,7 +273,7 @@ func TestStatsDatabase(t *testing.T) {
 				assert.Contains(t, costMatrix.DatacenterIds, id)
 
 				// find the relays whose datacenter id matches this one
-				validRelayIDs := make([]core.RelayId, 0)
+				validRelayIDs := make([]uint64, 0)
 				for _, relay := range relaydb.Relays {
 					if relay.Datacenter == id {
 						validRelayIDs = append(validRelayIDs, relay.ID)
@@ -284,7 +284,7 @@ func TestStatsDatabase(t *testing.T) {
 				// assert the datacenter id -> relay ids mapping contains the actual ids
 				// i + 1 because in the first for loop each datacenter id is reset as i which is > 0
 				for _, relayID := range validRelayIDs {
-					assert.Contains(t, costMatrix.DatacenterRelays[core.DatacenterId(i+1)], relayID)
+					assert.Contains(t, costMatrix.DatacenterRelays[core.DatacenterId(i+1)], core.RelayId(relayID))
 				}
 			}
 
@@ -301,9 +301,9 @@ func TestStatsDatabase(t *testing.T) {
 				indxOfJ := -1
 
 				for i, id := range costMatrix.RelayIds {
-					if id == addr1ID {
+					if uint64(id) == addr1ID {
 						indxOfI = i
-					} else if id == addr2ID {
+					} else if uint64(id) == addr2ID {
 						indxOfJ = i
 					}
 
