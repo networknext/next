@@ -12,7 +12,6 @@ import (
 	"github.com/go-redis/redis/v7"
 	"github.com/gorilla/mux"
 
-	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/routing"
@@ -40,7 +39,7 @@ var gRelayPublicKey = []byte{
 }
 
 // NewRouter creates a router with the specified endpoints
-func NewRouter(redisClient *redis.Client, statsdb *core.StatsDatabase, costmatrix *routing.CostMatrix, routematrix *routing.RouteMatrix, relayPublicKey []byte, routerPrivateKey []byte) *mux.Router {
+func NewRouter(redisClient *redis.Client, statsdb *routing.StatsDatabase, costmatrix *routing.CostMatrix, routematrix *routing.RouteMatrix, relayPublicKey []byte, routerPrivateKey []byte) *mux.Router {
 	router := mux.NewRouter()
 	router.HandleFunc("/relay_init", RelayInitHandlerFunc(redisClient, relayPublicKey, routerPrivateKey)).Methods("POST")
 	router.HandleFunc("/relay_update", RelayUpdateHandlerFunc(redisClient, statsdb)).Methods("POST")
@@ -92,7 +91,7 @@ func RelayInitHandlerFunc(redisClient *redis.Client, relayPublicKey []byte, rout
 		}
 
 		relay := routing.Relay{
-			ID:             core.GetRelayID(relayInitPacket.Address.String()),
+			ID:             routing.GetRelayID(relayInitPacket.Address.String()),
 			Addr:           relayInitPacket.Address,
 			LastUpdateTime: uint64(time.Now().Unix()),
 		}
@@ -117,7 +116,8 @@ func RelayInitHandlerFunc(redisClient *redis.Client, relayPublicKey []byte, rout
 		}
 
 		relay.LastUpdateTime = uint64(time.Now().Unix())
-		relay.PublicKey = core.RandomBytes(crypto.KeySize)
+		relay.PublicKey = make([]byte, crypto.KeySize)
+		rand.Read(relay.PublicKey)
 
 		res := redisClient.HSet(RedisHashName, relay.Key(), relay)
 
@@ -140,7 +140,7 @@ func RelayInitHandlerFunc(redisClient *redis.Client, relayPublicKey []byte, rout
 }
 
 // RelayUpdateHandlerFunc returns the function for the relay update endpoint
-func RelayUpdateHandlerFunc(redisClient *redis.Client, statsdb *core.StatsDatabase) func(writer http.ResponseWriter, request *http.Request) {
+func RelayUpdateHandlerFunc(redisClient *redis.Client, statsdb *routing.StatsDatabase) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		log.Println("Received Relay Update Packet")
 		body, err := ioutil.ReadAll(request.Body)
@@ -163,7 +163,7 @@ func RelayUpdateHandlerFunc(redisClient *redis.Client, statsdb *core.StatsDataba
 		}
 
 		relay := routing.Relay{
-			ID: core.GetRelayID(relayUpdatePacket.Address.String()),
+			ID: routing.GetRelayID(relayUpdatePacket.Address.String()),
 		}
 
 		exists := redisClient.HExists(RedisHashName, relay.Key())
@@ -207,7 +207,7 @@ func RelayUpdateHandlerFunc(redisClient *redis.Client, statsdb *core.StatsDataba
 			return
 		}
 
-		statsUpdate := &core.RelayStatsUpdate{}
+		statsUpdate := &routing.RelayStatsUpdate{}
 		statsUpdate.ID = relay.ID
 		statsUpdate.PingStats = append(statsUpdate.PingStats, relayUpdatePacket.PingStats...)
 
