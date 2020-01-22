@@ -36,7 +36,7 @@ func (r *RelayInitPacket) UnmarshalBinary(buf []byte) error {
 	if udp, err := net.ResolveUDPAddr("udp", addr); udp != nil && err == nil {
 		r.Address = *udp
 	} else {
-		return fmt.Errorf("Could not resolve init packet address '%s': %v", addr, err)
+		return fmt.Errorf("could not resolve init packet with address '%s' with reason: %v", addr, err)
 	}
 
 	return nil
@@ -73,13 +73,13 @@ func (r *RelayUpdatePacket) UnmarshalBinary(buff []byte) error {
 		encoding.ReadString(buff, &index, &addr, MaxRelayAddressLength) &&
 		encoding.ReadBytes(buff, &index, &r.Token, crypto.KeySize) &&
 		encoding.ReadUint32(buff, &index, &r.NumRelays)) {
-		return errors.New("Invalid Packet")
+		return errors.New("invalid packet")
 	}
 
 	if udp, err := net.ResolveUDPAddr("udp", addr); udp != nil && err == nil {
 		r.Address = *udp
 	} else {
-		return fmt.Errorf("Could not resolve update packet address '%s': %v", addr, err)
+		return fmt.Errorf("could not resolve init packet with address '%s' with reason: %v", addr, err)
 	}
 
 	r.PingStats = make([]core.RelayStatsPing, r.NumRelays)
@@ -90,7 +90,7 @@ func (r *RelayUpdatePacket) UnmarshalBinary(buff []byte) error {
 			encoding.ReadFloat32(buff, &index, &stats.RTT) &&
 			encoding.ReadFloat32(buff, &index, &stats.Jitter) &&
 			encoding.ReadFloat32(buff, &index, &stats.PacketLoss)) {
-			return errors.New("Invalid Packet")
+			return errors.New("invalid packet")
 		}
 	}
 

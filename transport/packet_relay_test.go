@@ -2,6 +2,7 @@ package transport_test
 
 import (
 	"encoding/binary"
+	"errors"
 	"math"
 	"math/rand"
 	"net"
@@ -18,14 +19,14 @@ func TestRelayInitPacket(t *testing.T) {
 	t.Run("UnmarshalBinary()", func(t *testing.T) {
 		t.Run("returns 'invalid packet' when missing magic number", func(t *testing.T) {
 			var packet transport.RelayInitPacket
-			assert.Errorf(t, packet.UnmarshalBinary(make([]byte, 0)), "invalid packet")
+			assert.Equal(t, packet.UnmarshalBinary(make([]byte, 0)), errors.New("invalid packet"))
 		})
 
 		t.Run("missing request version", func(t *testing.T) {
 			var packet transport.RelayInitPacket
 			buff := make([]byte, 4)
 			binary.LittleEndian.PutUint32(buff, rand.Uint32()) // can be anything for testing purposes
-			assert.Errorf(t, packet.UnmarshalBinary(buff), "invalid packet")
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet"))
 		})
 
 		t.Run("missing nonce bytes", func(t *testing.T) {
@@ -33,7 +34,7 @@ func TestRelayInitPacket(t *testing.T) {
 			buff := make([]byte, 8)
 			binary.LittleEndian.PutUint32(buff, rand.Uint32())
 			binary.LittleEndian.PutUint32(buff[4:], rand.Uint32())
-			assert.Errorf(t, packet.UnmarshalBinary(buff), "invalid packet")
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet"))
 		})
 
 		t.Run("missing relay address", func(t *testing.T) {
@@ -41,7 +42,7 @@ func TestRelayInitPacket(t *testing.T) {
 			buff := make([]byte, 8+crypto.NonceSize)
 			binary.LittleEndian.PutUint32(buff, rand.Uint32())
 			binary.LittleEndian.PutUint32(buff[4:], rand.Uint32())
-			assert.Errorf(t, packet.UnmarshalBinary(buff), "invalid packet")
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet"))
 		})
 
 		t.Run("missing encryption token", func(t *testing.T) {
@@ -52,7 +53,18 @@ func TestRelayInitPacket(t *testing.T) {
 			binary.LittleEndian.PutUint32(buff[4:], rand.Uint32())
 			binary.LittleEndian.PutUint32(buff[8+crypto.NonceSize:], uint32(len(addr)))
 			copy(buff[12+crypto.NonceSize:], addr)
-			assert.Errorf(t, packet.UnmarshalBinary(buff), "invalid packet")
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet"))
+		})
+
+		t.Run("address not formatted correctly", func(t *testing.T) {
+			var packet transport.RelayInitPacket
+			addr := "invalid"
+			buff := make([]byte, 8+crypto.NonceSize+4+len(addr)+routing.EncryptedTokenSize)
+			binary.LittleEndian.PutUint32(buff, rand.Uint32())
+			binary.LittleEndian.PutUint32(buff[4:], rand.Uint32())
+			binary.LittleEndian.PutUint32(buff[8+crypto.NonceSize:], uint32(len(addr)))
+			copy(buff[12+crypto.NonceSize:], addr)
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("could not resolve init packet with address 'invalid' with reason: address invalid: missing port in address"))
 		})
 
 		t.Run("valid", func(t *testing.T) {
@@ -95,14 +107,14 @@ func TestRelayUpdatePacket(t *testing.T) {
 	t.Run("UnmarshalBinary()", func(t *testing.T) {
 		t.Run("missing request version", func(t *testing.T) {
 			var packet transport.RelayUpdatePacket
-			assert.Errorf(t, packet.UnmarshalBinary(make([]byte, 0)), "invalid packet")
+			assert.Equal(t, packet.UnmarshalBinary(make([]byte, 0)), errors.New("invalid packet"))
 		})
 
 		t.Run("missing relay address", func(t *testing.T) {
 			var packet transport.RelayUpdatePacket
 			buff := make([]byte, 4)
 			binary.LittleEndian.PutUint32(buff, rand.Uint32()) //version
-			assert.Errorf(t, packet.UnmarshalBinary(buff), "invalid packet")
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet"))
 		})
 
 		t.Run("missing relay token", func(t *testing.T) {
@@ -110,7 +122,7 @@ func TestRelayUpdatePacket(t *testing.T) {
 			buff := make([]byte, 4+13)
 			binary.LittleEndian.PutUint32(buff, rand.Uint32())
 			binary.LittleEndian.PutUint32(buff[4:], 13) // address length
-			assert.Errorf(t, packet.UnmarshalBinary(buff), "invalid packet")
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet"))
 		})
 
 		t.Run("missing number of relays", func(t *testing.T) {
@@ -118,7 +130,7 @@ func TestRelayUpdatePacket(t *testing.T) {
 			buff := make([]byte, 4+4+13+crypto.KeySize)
 			binary.LittleEndian.PutUint32(buff, rand.Uint32())
 			binary.LittleEndian.PutUint32(buff[4:], 13)
-			assert.Errorf(t, packet.UnmarshalBinary(buff), "invalid packet")
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet"))
 		})
 
 		t.Run("address is not formatted correctly", func(t *testing.T) {
@@ -129,7 +141,7 @@ func TestRelayUpdatePacket(t *testing.T) {
 			binary.LittleEndian.PutUint32(buff[4:], uint32(len(addr)))
 			copy(buff[8:], addr)
 			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1) // number of relays
-			assert.Errorf(t, packet.UnmarshalBinary(buff), "invalid packet")
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("could not resolve init packet with address 'invalid' with reason: address invalid: missing port in address"))
 		})
 
 		t.Run("missing various relay ping stats", func(t *testing.T) {
@@ -141,7 +153,7 @@ func TestRelayUpdatePacket(t *testing.T) {
 				binary.LittleEndian.PutUint32(buff[4:], uint32(len(addr)))
 				copy(buff[8:], addr)
 				binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1) // number of relays
-				assert.Errorf(t, packet.UnmarshalBinary(buff), "invalid packet")
+				assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet"))
 			})
 
 			t.Run("missing the rtt", func(t *testing.T) {
@@ -153,7 +165,7 @@ func TestRelayUpdatePacket(t *testing.T) {
 				copy(buff[8:], addr)
 				binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1)
 				binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+4:], rand.Uint64()) // relay id
-				assert.Errorf(t, packet.UnmarshalBinary(buff), "invalid packet")
+				assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet"))
 			})
 
 			t.Run("missing the jitter", func(t *testing.T) {
@@ -166,7 +178,7 @@ func TestRelayUpdatePacket(t *testing.T) {
 				binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1)
 				binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+4:], rand.Uint64())
 				binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+12:], math.Float32bits(rand.Float32())) // rtt
-				assert.Errorf(t, packet.UnmarshalBinary(buff), "invalid packet")
+				assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet"))
 			})
 
 			t.Run("missing the packet loss", func(t *testing.T) {
@@ -180,7 +192,7 @@ func TestRelayUpdatePacket(t *testing.T) {
 				binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+4:], rand.Uint64())
 				binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+12:], math.Float32bits(rand.Float32()))
 				binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+16:], math.Float32bits(rand.Float32())) // jitter
-				assert.Errorf(t, packet.UnmarshalBinary(buff), "invalid packet")
+				assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet"))
 			})
 		})
 
