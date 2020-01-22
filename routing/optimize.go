@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"math"
 	"net/http"
 	"runtime"
@@ -882,7 +881,6 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 	entryCount := core.TriMatrixLength(int(numRelays))
 	m.Entries = make([]RouteMatrixEntry, entryCount)
 
-	log.Printf("Reading %d entries", entryCount)
 	for i := range m.Entries {
 		entry := &m.Entries[i]
 		var directRtt uint32

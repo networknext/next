@@ -2,6 +2,7 @@ package routing
 
 import (
 	"errors"
+	"hash/fnv"
 	"math"
 	"net"
 	"strconv"
@@ -96,9 +97,16 @@ func (r Relay) Key() string {
 type RelayUpdate struct {
 	ID             uint64
 	Name           string
-	Address        string
+	Address        net.UDPAddr
 	Datacenter     uint64
 	DatacenterName string
 	PublicKey      []byte
 	Shutdown       bool
+}
+
+// GetRelayID hashes the name of the relay and returns the result. Typically name is the address of the relay
+func GetRelayID(addr string) uint64 {
+	hash := fnv.New64a()
+	hash.Write([]byte(addr))
+	return hash.Sum64()
 }
