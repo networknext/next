@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/networknext/backend/core"
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/stretchr/testify/assert"
 )
@@ -15,7 +16,7 @@ import (
 func addrsToIDs(addrs []string) []uint64 {
 	retval := make([]uint64, len(addrs))
 	for i, addr := range addrs {
-		retval[i] = uint64(core.GetRelayID(addr))
+		retval[i] = uint64(routing.GetRelayID(addr))
 	}
 	return retval
 }
@@ -277,7 +278,7 @@ func sizeofRelayPublicKeysOld(keys [][]byte) int {
 }
 
 func sizeofRelayPublicKeys(keys [][]byte) int {
-	return len(keys) * routing.LengthOfRelayToken
+	return len(keys) * crypto.KeySize
 }
 
 // the second area the datacenter count is stored, as of right now identical to the other func
@@ -434,11 +435,11 @@ func TestOptimize(t *testing.T) {
 				numRelays := len(relayAddrs)
 
 				publicKeys := [][]byte{
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
+					core.RandomBytes(crypto.KeySize),
+					core.RandomBytes(crypto.KeySize),
+					core.RandomBytes(crypto.KeySize),
+					core.RandomBytes(crypto.KeySize),
+					core.RandomBytes(crypto.KeySize),
 				}
 
 				datacenters := []uint64{0, 1, 2, 3, 4}
@@ -497,11 +498,11 @@ func TestOptimize(t *testing.T) {
 				relayIDs := addrsToIDs(relayAddrs)
 				numRelays := len(relayAddrs)
 				publicKeys := [][]byte{
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
+					core.RandomBytes(crypto.KeySize),
+					core.RandomBytes(crypto.KeySize),
+					core.RandomBytes(crypto.KeySize),
+					core.RandomBytes(crypto.KeySize),
+					core.RandomBytes(crypto.KeySize),
 				}
 				datacenters := []uint64{0, 1, 2, 3, 4}
 				numDatacenters := len(datacenters)
@@ -552,11 +553,11 @@ func TestOptimize(t *testing.T) {
 				relayIDs := addrsToIDs(relayAddrs)
 				numRelays := len(relayAddrs)
 				publicKeys := [][]byte{
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
+					core.RandomBytes(crypto.KeySize),
+					core.RandomBytes(crypto.KeySize),
+					core.RandomBytes(crypto.KeySize),
+					core.RandomBytes(crypto.KeySize),
+					core.RandomBytes(crypto.KeySize),
 				}
 				datacenters := []uint64{0, 1, 2, 3, 4}
 				numDatacenters := len(datacenters)
@@ -617,11 +618,11 @@ func TestOptimize(t *testing.T) {
 				relayIDs := addrsToIDs(relayAddrs)
 				numRelays := len(relayAddrs)
 				publicKeys := [][]byte{
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
+					core.RandomBytes(crypto.KeySize),
+					core.RandomBytes(crypto.KeySize),
+					core.RandomBytes(crypto.KeySize),
+					core.RandomBytes(crypto.KeySize),
+					core.RandomBytes(crypto.KeySize),
 				}
 				datacenters := []uint64{0, 1, 2, 3, 4}
 				numDatacenters := len(datacenters)
@@ -688,8 +689,8 @@ func TestOptimize(t *testing.T) {
 				matrix.RelayAddresses[1] = core.RandomBytes(routing.MaxRelayAddressLength)
 
 				matrix.RelayPublicKeys = make([][]byte, 2)
-				matrix.RelayPublicKeys[0] = core.RandomBytes(routing.LengthOfRelayToken)
-				matrix.RelayPublicKeys[1] = core.RandomBytes(routing.LengthOfRelayToken)
+				matrix.RelayPublicKeys[0] = core.RandomBytes(crypto.KeySize)
+				matrix.RelayPublicKeys[1] = core.RandomBytes(crypto.KeySize)
 
 				matrix.DatacenterIds = make([]uint64, 2)
 				matrix.DatacenterIds[0] = 999
@@ -862,11 +863,11 @@ func TestOptimize(t *testing.T) {
 				numRelays := len(relayAddrs)
 
 				publicKeys := [][]byte{
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
+					core.RandomBytes(crypto.KeySize),
+					core.RandomBytes(crypto.KeySize),
+					core.RandomBytes(crypto.KeySize),
+					core.RandomBytes(crypto.KeySize),
+					core.RandomBytes(crypto.KeySize),
 				}
 
 				datacenters := []uint64{0, 1, 2, 3, 4}
@@ -914,11 +915,11 @@ func TestOptimize(t *testing.T) {
 				relayIDs := addrsToIDs(relayAddrs)
 				numRelays := len(relayAddrs)
 				publicKeys := [][]byte{
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
+					core.RandomBytes(crypto.KeySize),
+					core.RandomBytes(crypto.KeySize),
+					core.RandomBytes(crypto.KeySize),
+					core.RandomBytes(crypto.KeySize),
+					core.RandomBytes(crypto.KeySize),
 				}
 				datacenters := []uint64{0, 1, 2, 3, 4}
 				numDatacenters := len(datacenters)
@@ -967,11 +968,11 @@ func TestOptimize(t *testing.T) {
 				relayIDs := addrsToIDs(relayAddrs)
 				numRelays := len(relayAddrs)
 				publicKeys := [][]byte{
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
+					core.RandomBytes(crypto.KeySize),
+					core.RandomBytes(crypto.KeySize),
+					core.RandomBytes(crypto.KeySize),
+					core.RandomBytes(crypto.KeySize),
+					core.RandomBytes(crypto.KeySize),
 				}
 				datacenters := []uint64{0, 1, 2, 3, 4}
 				numDatacenters := len(datacenters)
@@ -1029,11 +1030,11 @@ func TestOptimize(t *testing.T) {
 				relayIDs := addrsToIDs(relayAddrs)
 				numRelays := len(relayAddrs)
 				publicKeys := [][]byte{
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
+					core.RandomBytes(crypto.KeySize),
+					core.RandomBytes(crypto.KeySize),
+					core.RandomBytes(crypto.KeySize),
+					core.RandomBytes(crypto.KeySize),
+					core.RandomBytes(crypto.KeySize),
 				}
 				datacenters := []uint64{0, 1, 2, 3, 4}
 				numDatacenters := len(datacenters)
@@ -1100,8 +1101,8 @@ func TestOptimize(t *testing.T) {
 				matrix.RelayAddresses[1] = core.RandomBytes(routing.MaxRelayAddressLength)
 
 				matrix.RelayPublicKeys = make([][]byte, 2)
-				matrix.RelayPublicKeys[0] = core.RandomBytes(routing.LengthOfRelayToken)
-				matrix.RelayPublicKeys[1] = core.RandomBytes(routing.LengthOfRelayToken)
+				matrix.RelayPublicKeys[0] = core.RandomBytes(crypto.KeySize)
+				matrix.RelayPublicKeys[1] = core.RandomBytes(crypto.KeySize)
 
 				matrix.DatacenterIds = make([]uint64, 2)
 				matrix.DatacenterIds[0] = 999
