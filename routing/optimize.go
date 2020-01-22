@@ -11,7 +11,6 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
 )
@@ -260,7 +259,7 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 		}
 	}
 
-	entryCount := core.TriMatrixLength(int(numRelays))
+	entryCount := TriMatrixLength(int(numRelays))
 	m.RTT = make([]int32, entryCount)
 
 	for i := range m.RTT {
@@ -355,7 +354,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 
 	numRelays := len(m.RelayIds)
 
-	entryCount := core.TriMatrixLength(numRelays)
+	entryCount := TriMatrixLength(numRelays)
 
 	routes.RelayIds = m.RelayIds
 	routes.RelayNames = m.RelayNames
@@ -416,7 +415,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 						continue
 					}
 
-					ijIndex := core.TriMatrixIndex(i, j)
+					ijIndex := TriMatrixIndex(i, j)
 
 					numRoutes := 0
 					rttDirect := rtt[ijIndex]
@@ -429,8 +428,8 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 							if k == i || k == j {
 								continue
 							}
-							ikIndex := core.TriMatrixIndex(i, k)
-							kjIndex := core.TriMatrixIndex(k, j)
+							ikIndex := TriMatrixIndex(i, k)
+							kjIndex := TriMatrixIndex(k, j)
 							ikRtt := rtt[ikIndex]
 							kjRtt := rtt[kjIndex]
 							if ikRtt < 0 || kjRtt < 0 {
@@ -449,8 +448,8 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 							if k == i || k == j {
 								continue
 							}
-							ikIndex := core.TriMatrixIndex(i, k)
-							kjIndex := core.TriMatrixIndex(k, j)
+							ikIndex := TriMatrixIndex(i, k)
+							kjIndex := TriMatrixIndex(k, j)
 							ikRtt := rtt[ikIndex]
 							kjRtt := rtt[kjIndex]
 							if ikRtt < 0 || kjRtt < 0 {
@@ -500,7 +499,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 
 				for j := 0; j < i; j++ {
 
-					ijIndex := core.TriMatrixIndex(i, j)
+					ijIndex := TriMatrixIndex(i, j)
 
 					if indirect[i][j] == nil {
 
@@ -542,28 +541,28 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 							}
 
 							if x != nil {
-								ixIndex := core.TriMatrixIndex(i, int(x.relay))
-								xyIndex := core.TriMatrixIndex(int(x.relay), int(y.relay))
-								yjIndex := core.TriMatrixIndex(int(y.relay), j)
+								ixIndex := TriMatrixIndex(i, int(x.relay))
+								xyIndex := TriMatrixIndex(int(x.relay), int(y.relay))
+								yjIndex := TriMatrixIndex(int(y.relay), j)
 
 								routeManager.AddRoute(rtt[ixIndex]+rtt[xyIndex]+rtt[yjIndex],
 									uint64(i), x.relay, y.relay, uint64(j))
 							}
 
 							if z != nil {
-								iyIndex := core.TriMatrixIndex(i, int(y.relay))
-								yzIndex := core.TriMatrixIndex(int(y.relay), int(z.relay))
-								zjIndex := core.TriMatrixIndex(int(z.relay), j)
+								iyIndex := TriMatrixIndex(i, int(y.relay))
+								yzIndex := TriMatrixIndex(int(y.relay), int(z.relay))
+								zjIndex := TriMatrixIndex(int(z.relay), j)
 
 								routeManager.AddRoute(rtt[iyIndex]+rtt[yzIndex]+rtt[zjIndex],
 									uint64(i), y.relay, z.relay, uint64(j))
 							}
 
 							if x != nil && z != nil {
-								ixIndex := core.TriMatrixIndex(i, int(x.relay))
-								xyIndex := core.TriMatrixIndex(int(x.relay), int(y.relay))
-								yzIndex := core.TriMatrixIndex(int(y.relay), int(z.relay))
-								zjIndex := core.TriMatrixIndex(int(z.relay), j)
+								ixIndex := TriMatrixIndex(i, int(x.relay))
+								xyIndex := TriMatrixIndex(int(x.relay), int(y.relay))
+								yzIndex := TriMatrixIndex(int(y.relay), int(z.relay))
+								zjIndex := TriMatrixIndex(int(z.relay), j)
 
 								routeManager.AddRoute(rtt[ixIndex]+rtt[xyIndex]+rtt[yzIndex]+rtt[zjIndex],
 									uint64(i), x.relay, y.relay, z.relay, uint64(j))
@@ -876,7 +875,7 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 		}
 	}
 
-	entryCount := core.TriMatrixLength(int(numRelays))
+	entryCount := TriMatrixLength(int(numRelays))
 	m.Entries = make([]RouteMatrixEntry, entryCount)
 
 	for i := range m.Entries {

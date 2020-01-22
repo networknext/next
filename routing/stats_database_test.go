@@ -31,6 +31,38 @@ func TestHistory(t *testing.T) {
 			assert.Equal(t, float32(25.0/9.0), routing.HistoryMean(history))
 		})
 	})
+
+	t.Run("Old tests", func(t *testing.T) {
+		t.Run("TestHistoryMax()", func(t *testing.T) {
+
+			t.Parallel()
+
+			history := routing.HistoryNotSet()
+
+			assert.Equal(t, float32(0.0), routing.HistoryMax(history[:]))
+
+			history[0] = 5.0
+			history[1] = 3.0
+			history[2] = 100.0
+
+			assert.Equal(t, float32(100.0), routing.HistoryMax(history[:]))
+		})
+
+		t.Run("TestHistoryMean", func(t *testing.T) {
+
+			t.Parallel()
+
+			history := routing.HistoryNotSet()
+
+			assert.Equal(t, float32(0.0), routing.HistoryMean(history[:]))
+
+			history[0] = 5.0
+			history[1] = 3.0
+			history[2] = 100.0
+
+			assert.Equal(t, float32(36.0), routing.HistoryMean(history[:]))
+		})
+	})
 }
 
 func TestStatsDatabase(t *testing.T) {
