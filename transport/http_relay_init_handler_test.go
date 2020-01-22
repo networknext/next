@@ -12,7 +12,6 @@ import (
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/go-redis/redis/v7"
-	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/routing"
@@ -104,7 +103,8 @@ func TestRelayInitHandler(t *testing.T) {
 		nonce := make([]byte, crypto.NonceSize)
 
 		// generate random token
-		token := core.RandomBytes(crypto.KeySize)
+		token := make([]byte, crypto.KeySize)
+		rand.Read(token)
 
 		// seal it with the bad nonce
 		encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
@@ -158,7 +158,7 @@ func TestRelayInitHandler(t *testing.T) {
 		buff, _ := packet.MarshalBinary()
 
 		entry := routing.Relay{
-			ID:             core.GetRelayID(addr),
+			ID:             routing.GetRelayID(addr),
 			Name:           name,
 			Addr:           *udpAddr,
 			Datacenter:     32,
@@ -209,7 +209,7 @@ func TestRelayInitHandler(t *testing.T) {
 		header := recorder.Header()
 		contentType, _ := header["Content-Type"]
 		expected := routing.Relay{
-			ID:   core.GetRelayID(addr),
+			ID:   routing.GetRelayID(addr),
 			Addr: *udpAddr,
 		}
 
