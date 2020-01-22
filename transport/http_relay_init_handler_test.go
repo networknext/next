@@ -18,6 +18,7 @@ import (
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/transport"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/crypto/nacl/box"
 )
 
 func relayInitAssertions(t *testing.T, body []byte, expectedCode int, redisClient *redis.Client, relayPublicKey []byte, routerPrivateKey []byte) *httptest.ResponseRecorder {
@@ -43,19 +44,19 @@ func TestRelayInitHandler(t *testing.T) {
 
 	t.Run("address is invalid", func(t *testing.T) {
 		// generate keys
-		relayPublicKey, relayPrivateKey, _ := crypto.GenerateRelayKeyPair()
-		routerPublicKey, routerPrivateKey, _ := crypto.GenerateRelayKeyPair()
+		relayPublicKey, relayPrivateKey, _ := box.GenerateKey(rand.Reader)
+		routerPublicKey, routerPrivateKey, _ := box.GenerateKey(rand.Reader)
 
 		// generate nonce
 		nonce := make([]byte, crypto.NonceSize)
 		rand.Read(nonce)
 
 		// generate token
-		token := make([]byte, routing.TokenSize)
+		token := make([]byte, crypto.KeySize)
 		rand.Read(token)
 
 		// encrypt token
-		encryptedToken := crypto.Seal(token, nonce, routerPublicKey, relayPrivateKey)
+		encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
 
 		packet := transport.RelayInitPacket{
 			Magic:          transport.InitRequestMagic,
@@ -65,20 +66,20 @@ func TestRelayInitHandler(t *testing.T) {
 			EncryptedToken: encryptedToken,
 		}
 		buff, _ := packet.MarshalBinary()
-		relayInitAssertions(t, buff, http.StatusBadRequest, nil, relayPublicKey, routerPrivateKey)
+		relayInitAssertions(t, buff, http.StatusBadRequest, nil, relayPublicKey[:], routerPrivateKey[:])
 	})
 
 	t.Run("encryption token is 0'ed", func(t *testing.T) {
 		// generate keys
-		relayPublicKey, _, _ := crypto.GenerateRelayKeyPair()
-		_, routerPrivateKey, _ := crypto.GenerateRelayKeyPair()
+		relayPublicKey, _, _ := box.GenerateKey(rand.Reader)
+		_, routerPrivateKey, _ := box.GenerateKey(rand.Reader)
 
 		// generate nonce
 		nonce := make([]byte, crypto.NonceSize)
 		rand.Read(nonce)
 
 		// generate token but leave it as 0's
-		token := make([]byte, routing.TokenSize)
+		token := make([]byte, routing.EncryptedTokenSize)
 
 		packet := transport.RelayInitPacket{
 			Magic:          transport.InitRequestMagic,
@@ -88,22 +89,22 @@ func TestRelayInitHandler(t *testing.T) {
 			EncryptedToken: token,
 		}
 		buff, _ := packet.MarshalBinary()
-		relayInitAssertions(t, buff, http.StatusUnauthorized, nil, relayPublicKey, routerPrivateKey)
+		relayInitAssertions(t, buff, http.StatusUnauthorized, nil, relayPublicKey[:], routerPrivateKey[:])
 	})
 
 	t.Run("nonce bytes are 0'ed", func(t *testing.T) {
 		// generate keys
-		relayPublicKey, relayPrivateKey, _ := crypto.GenerateRelayKeyPair()
-		routerPublicKey, routerPrivateKey, _ := crypto.GenerateRelayKeyPair()
+		relayPublicKey, relayPrivateKey, _ := box.GenerateKey(rand.Reader)
+		routerPublicKey, routerPrivateKey, _ := box.GenerateKey(rand.Reader)
 
 		// generate nonce but leave it as 0's
 		nonce := make([]byte, crypto.NonceSize)
 
 		// generate random token
-		token := core.RandomBytes(routing.TokenSize)
+		token := core.RandomBytes(crypto.KeySize)
 
 		// seal it with the bad nonce
-		encryptedToken := crypto.Seal(token, nonce, routerPublicKey, relayPrivateKey)
+		encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
 
 		packet := transport.RelayInitPacket{
 			Magic:          transport.InitRequestMagic,
@@ -115,7 +116,7 @@ func TestRelayInitHandler(t *testing.T) {
 
 		buff, _ := packet.MarshalBinary()
 
-		relayInitAssertions(t, buff, http.StatusUnauthorized, nil, relayPublicKey, routerPrivateKey)
+		relayInitAssertions(t, buff, http.StatusOK, nil, relayPublicKey[:], routerPrivateKey[:])
 	})
 
 	t.Run("relay already exists", func(t *testing.T) {
@@ -123,19 +124,19 @@ func TestRelayInitHandler(t *testing.T) {
 		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
 		// generate keys
-		relayPublicKey, relayPrivateKey, _ := crypto.GenerateRelayKeyPair()
-		routerPublicKey, routerPrivateKey, _ := crypto.GenerateRelayKeyPair()
+		relayPublicKey, relayPrivateKey, _ := box.GenerateKey(rand.Reader)
+		routerPublicKey, routerPrivateKey, _ := box.GenerateKey(rand.Reader)
 
 		// generate nonce
 		nonce := make([]byte, crypto.NonceSize)
 		rand.Read(nonce)
 
 		// generate token
-		token := make([]byte, routing.TokenSize)
+		token := make([]byte, crypto.KeySize)
 		rand.Read(token)
 
 		// encrypt token
-		encryptedToken := crypto.Seal(token, nonce, routerPublicKey, relayPrivateKey)
+		encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
 
 		name := "some name"
 		addr := "127.0.0.1:40000"
@@ -168,15 +169,15 @@ func TestRelayInitHandler(t *testing.T) {
 		// set it in the redis instance
 		redisServer.HSet(transport.RedisHashName, entry.Key(), string(data))
 
-		relayInitAssertions(t, buff, http.StatusNotFound, redisClient, routerPrivateKey, relayPublicKey)
+		relayInitAssertions(t, buff, http.StatusNotFound, redisClient, relayPublicKey[:], routerPrivateKey[:])
 	})
 
 	t.Run("valid", func(t *testing.T) {
 		redisServer, _ := miniredis.Run()
 		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-		relayPublicKey, relayPrivateKey, _ := crypto.GenerateRelayKeyPair()
-		routerPublicKey, routerPrivateKey, _ := crypto.GenerateRelayKeyPair()
+		relayPublicKey, relayPrivateKey, _ := box.GenerateKey(rand.Reader)
+		routerPublicKey, routerPrivateKey, _ := box.GenerateKey(rand.Reader)
 
 		nonce := make([]byte, crypto.NonceSize)
 		rand.Read(nonce)
@@ -184,10 +185,10 @@ func TestRelayInitHandler(t *testing.T) {
 		addr := "127.0.0.1:40000"
 		udpAddr, _ := net.ResolveUDPAddr("udp", addr)
 
-		token := make([]byte, routing.TokenSize)
+		token := make([]byte, crypto.KeySize)
 		rand.Read(token)
 
-		encryptedToken := crypto.Seal(token, nonce, routerPublicKey, relayPrivateKey)
+		encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
 
 		before := uint64(time.Now().Unix())
 
@@ -199,13 +200,12 @@ func TestRelayInitHandler(t *testing.T) {
 		}
 		buff, _ := packet.MarshalBinary()
 
-		recorder := relayInitAssertions(t, buff, http.StatusOK, redisClient, relayPublicKey, routerPrivateKey)
+		recorder := relayInitAssertions(t, buff, http.StatusOK, redisClient, relayPublicKey[:], routerPrivateKey[:])
 
 		header := recorder.Header()
 		contentType, _ := header["Content-Type"]
 		expected := routing.Relay{
 			ID:   core.GetRelayID(addr),
-			Name: addr,
 			Addr: *udpAddr,
 		}
 
@@ -213,7 +213,7 @@ func TestRelayInitHandler(t *testing.T) {
 
 		var actual routing.Relay
 		bin, _ := resp.Bytes()
-		actual.UnmarshalBinary(bin)
+		assert.Nil(t, actual.UnmarshalBinary(bin))
 
 		indx := 0
 		body := recorder.Body.Bytes()
@@ -225,11 +225,9 @@ func TestRelayInitHandler(t *testing.T) {
 		encoding.ReadUint64(body, &indx, &timestamp)
 
 		var publicKey []byte
-		encoding.ReadBytes(body, &indx, &publicKey, routing.TokenSize)
+		encoding.ReadBytes(body, &indx, &publicKey, crypto.KeySize)
 
-		if recorder.Code == 200 {
-			assert.Equal(t, "application/octet-stream", contentType[0])
-		}
+		assert.Equal(t, "application/octet-stream", contentType[0])
 		assert.Equal(t, transport.VersionNumberInitResponse, int(version))
 		assert.LessOrEqual(t, before, timestamp)
 		assert.GreaterOrEqual(t, uint64(time.Now().Unix()), timestamp)

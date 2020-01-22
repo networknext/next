@@ -125,7 +125,7 @@ func RelayInitHandlerFunc(redisClient *redis.Client, relayPublicKey []byte, rout
 		}
 
 		relay.LastUpdateTime = uint64(time.Now().Unix())
-		relay.PublicKey = core.RandomBytes(routing.TokenSize)
+		relay.PublicKey = core.RandomBytes(crypto.KeySize)
 
 		res := redisClient.HSet(RedisHashName, relay.Key(), relay)
 
@@ -174,46 +174,44 @@ func RelayUpdateHandlerFunc(redisClient *redis.Client, statsdb *core.StatsDataba
 			ID: core.GetRelayID(relayUpdatePacket.Address),
 		}
 
-		found := false
 		exists := redisClient.HExists(RedisHashName, relay.Key())
 
 		if exists.Err() != nil && exists.Err() != redis.Nil {
 			log.Printf("failed to check if relay %s exists: %v", relayUpdatePacket.Address, exists.Err())
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 
-		if exists.Val() {
-			result := redisClient.HGet(RedisHashName, relay.Key())
-			if result.Err() != nil && result.Err() != redis.Nil {
-				log.Printf("failed to get relay %s from redis: %v", relayUpdatePacket.Address, result.Err())
-				writer.WriteHeader(http.StatusNotFound)
-				return
-			}
-
-			data, err := result.Bytes()
-
-			if err != nil && err != redis.Nil {
-				log.Printf("failed to get bytes from redis: %v", result.Err())
-				writer.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-
-			if err = relay.UnmarshalBinary(data); err != nil {
-				log.Printf("failed to marshal data into struct: %v", err)
-				writer.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-
-			if bytes.Equal(relayUpdatePacket.Token, relay.PublicKey) {
-				found = true
-			}
-		}
-
-		if bytes.Equal(relayUpdatePacket.Token, relay.PublicKey) {
-			found = true
-		}
-
-		if !found {
+		if !exists.Val() {
+			log.Printf("failed to find relay with address '%s' in redis", relayUpdatePacket.Address)
 			writer.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		hgetResult := redisClient.HGet(RedisHashName, relay.Key())
+		if hgetResult.Err() != nil && hgetResult.Err() != redis.Nil {
+			log.Printf("failed to get relay %s from redis: %v", relayUpdatePacket.Address, hgetResult.Err())
+			writer.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		data, err := hgetResult.Bytes()
+
+		if err != nil && err != redis.Nil {
+			log.Printf("failed to get bytes from redis: %v", hgetResult.Err())
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		if err = relay.UnmarshalBinary(data); err != nil {
+			log.Printf("failed to marshal data into struct: %v", err)
+			writer.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		if !bytes.Equal(relayUpdatePacket.Token, relay.PublicKey) {
+			log.Printf("update packet for address '%s' not equal to existing entry", relayUpdatePacket.Address)
+			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
@@ -233,15 +231,15 @@ func RelayUpdateHandlerFunc(redisClient *redis.Client, statsdb *core.StatsDataba
 		relaysToPing := make([]RelayPingData, 0)
 
 		redisClient.HSet(RedisHashName, relay.Key(), relay)
-		result := redisClient.HGetAll(RedisHashName)
+		hgetallResult := redisClient.HGetAll(RedisHashName)
 
-		if result.Err() != nil && result.Err() != redis.Nil {
-			log.Printf("failed to get all relays from redis: %v", result.Err())
+		if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
+			log.Printf("failed to get all relays from redis: %v", hgetallResult.Err())
 			writer.WriteHeader(http.StatusNotFound)
 			return
 		}
 
-		for k, v := range result.Val() {
+		for k, v := range hgetallResult.Val() {
 			if k != relay.Key() {
 				var unmarshaledValue routing.Relay
 				unmarshaledValue.UnmarshalBinary([]byte(v))

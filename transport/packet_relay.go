@@ -26,7 +26,7 @@ func (r *RelayInitPacket) UnmarshalBinary(buf []byte) error {
 		encoding.ReadUint32(buf, &index, &r.Version) &&
 		encoding.ReadBytes(buf, &index, &r.Nonce, crypto.NonceSize) &&
 		encoding.ReadString(buf, &index, &r.Address, MaxRelayAddressLength) &&
-		encoding.ReadBytes(buf, &index, &r.EncryptedToken, routing.TokenSize)) {
+		encoding.ReadBytes(buf, &index, &r.EncryptedToken, routing.EncryptedTokenSize)) {
 		return errors.New("invalid packet")
 	}
 
@@ -34,13 +34,13 @@ func (r *RelayInitPacket) UnmarshalBinary(buf []byte) error {
 }
 
 func (r RelayInitPacket) MarshalBinary() ([]byte, error) {
-	data := make([]byte, 4+4+crypto.NonceSize+4+len(r.Address)+routing.TokenSize)
+	data := make([]byte, 4+4+crypto.NonceSize+4+len(r.Address)+routing.EncryptedTokenSize)
 	index := 0
 	encoding.WriteUint32(data, &index, r.Magic)
 	encoding.WriteUint32(data, &index, r.Version)
 	encoding.WriteBytes(data, &index, r.Nonce, crypto.NonceSize)
 	encoding.WriteString(data, &index, r.Address, uint32(len(r.Address)))
-	encoding.WriteBytes(data, &index, r.EncryptedToken, routing.TokenSize)
+	encoding.WriteBytes(data, &index, r.EncryptedToken, routing.EncryptedTokenSize)
 
 	return data, nil
 }
@@ -60,7 +60,7 @@ func (r *RelayUpdatePacket) UnmarshalBinary(buff []byte) error {
 	index := 0
 	if !(encoding.ReadUint32(buff, &index, &r.Version) &&
 		encoding.ReadString(buff, &index, &r.Address, MaxRelayAddressLength) &&
-		encoding.ReadBytes(buff, &index, &r.Token, routing.TokenSize) &&
+		encoding.ReadBytes(buff, &index, &r.Token, crypto.KeySize) &&
 		encoding.ReadUint32(buff, &index, &r.NumRelays)) {
 		return errors.New("Invalid Packet")
 	}
@@ -82,12 +82,12 @@ func (r *RelayUpdatePacket) UnmarshalBinary(buff []byte) error {
 
 // MarshalBinary ...
 func (r RelayUpdatePacket) MarshalBinary() ([]byte, error) {
-	data := make([]byte, 4+4+len(r.Address)+routing.TokenSize+4+20*len(r.PingStats))
+	data := make([]byte, 4+4+len(r.Address)+routing.EncryptedTokenSize+4+20*len(r.PingStats))
 
 	index := 0
 	encoding.WriteUint32(data, &index, r.Version)
 	encoding.WriteString(data, &index, r.Address, math.MaxInt32)
-	encoding.WriteBytes(data, &index, r.Token, routing.TokenSize)
+	encoding.WriteBytes(data, &index, r.Token, crypto.KeySize)
 	encoding.WriteUint32(data, &index, r.NumRelays)
 
 	for i := 0; i < int(r.NumRelays); i++ {

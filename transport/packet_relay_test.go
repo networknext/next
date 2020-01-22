@@ -54,7 +54,7 @@ func TestRelayInitPacket(t *testing.T) {
 
 		t.Run("valid", func(t *testing.T) {
 			var packet transport.RelayInitPacket
-			buff := make([]byte, 8+crypto.NonceSize+4+13+routing.TokenSize)
+			buff := make([]byte, 8+crypto.NonceSize+4+13+routing.EncryptedTokenSize)
 			binary.LittleEndian.PutUint32(buff, rand.Uint32())
 			binary.LittleEndian.PutUint32(buff[4:], rand.Uint32())
 			binary.LittleEndian.PutUint32(buff[8+crypto.NonceSize:], 13)
@@ -64,7 +64,7 @@ func TestRelayInitPacket(t *testing.T) {
 
 	t.Run("MarshalBinary()", func(t *testing.T) {
 		nonce := make([]byte, crypto.NonceSize)
-		token := make([]byte, routing.TokenSize)
+		token := make([]byte, routing.EncryptedTokenSize)
 		rand.Read(nonce)
 		rand.Read(token)
 
@@ -109,7 +109,7 @@ func TestRelayUpdatePacket(t *testing.T) {
 
 		t.Run("missing number of relays", func(t *testing.T) {
 			var packet transport.RelayUpdatePacket
-			buff := make([]byte, 4+4+13+routing.TokenSize)
+			buff := make([]byte, 4+4+13+routing.EncryptedTokenSize)
 			binary.LittleEndian.PutUint32(buff, rand.Uint32())
 			binary.LittleEndian.PutUint32(buff[4:], 13)
 			assert.Errorf(t, packet.UnmarshalBinary(buff), "invalid packet")
@@ -118,57 +118,57 @@ func TestRelayUpdatePacket(t *testing.T) {
 		t.Run("missing relay ping stats", func(t *testing.T) {
 			t.Run("missing the id", func(t *testing.T) {
 				var packet transport.RelayUpdatePacket
-				buff := make([]byte, 4+4+13+routing.TokenSize+4)
+				buff := make([]byte, 4+4+13+routing.EncryptedTokenSize+4)
 				binary.LittleEndian.PutUint32(buff, rand.Uint32())
 				binary.LittleEndian.PutUint32(buff[4:], 13)
-				binary.LittleEndian.PutUint32(buff[21+routing.TokenSize:], 1) // number of relays
+				binary.LittleEndian.PutUint32(buff[21+routing.EncryptedTokenSize:], 1) // number of relays
 				assert.Errorf(t, packet.UnmarshalBinary(buff), "invalid packet")
 			})
 
 			t.Run("missing the rtt", func(t *testing.T) {
 				var packet transport.RelayUpdatePacket
-				buff := make([]byte, 4+4+13+routing.TokenSize+4+8)
+				buff := make([]byte, 4+4+13+routing.EncryptedTokenSize+4+8)
 				binary.LittleEndian.PutUint32(buff, rand.Uint32())
 				binary.LittleEndian.PutUint32(buff[4:], 13)
-				binary.LittleEndian.PutUint32(buff[21+routing.TokenSize:], 1)
-				binary.LittleEndian.PutUint64(buff[21+routing.TokenSize+4:], rand.Uint64()) // relay id
+				binary.LittleEndian.PutUint32(buff[21+routing.EncryptedTokenSize:], 1)
+				binary.LittleEndian.PutUint64(buff[21+routing.EncryptedTokenSize+4:], rand.Uint64()) // relay id
 				assert.Errorf(t, packet.UnmarshalBinary(buff), "invalid packet")
 			})
 
 			t.Run("missing the jitter", func(t *testing.T) {
 				var packet transport.RelayUpdatePacket
-				buff := make([]byte, 4+4+13+routing.TokenSize+4+8+4)
+				buff := make([]byte, 4+4+13+routing.EncryptedTokenSize+4+8+4)
 				binary.LittleEndian.PutUint32(buff, rand.Uint32())
 				binary.LittleEndian.PutUint32(buff[4:], 13)
-				binary.LittleEndian.PutUint32(buff[21+routing.TokenSize:], 1)
-				binary.LittleEndian.PutUint64(buff[21+routing.TokenSize+4:], rand.Uint64())
-				binary.LittleEndian.PutUint32(buff[21+routing.TokenSize+12:], math.Float32bits(rand.Float32())) // rtt
+				binary.LittleEndian.PutUint32(buff[21+routing.EncryptedTokenSize:], 1)
+				binary.LittleEndian.PutUint64(buff[21+routing.EncryptedTokenSize+4:], rand.Uint64())
+				binary.LittleEndian.PutUint32(buff[21+routing.EncryptedTokenSize+12:], math.Float32bits(rand.Float32())) // rtt
 				assert.Errorf(t, packet.UnmarshalBinary(buff), "invalid packet")
 			})
 
 			t.Run("missing the packet loss", func(t *testing.T) {
 				var packet transport.RelayUpdatePacket
-				buff := make([]byte, 4+4+13+routing.TokenSize+4+8+4+4)
+				buff := make([]byte, 4+4+13+routing.EncryptedTokenSize+4+8+4+4)
 				binary.LittleEndian.PutUint32(buff, rand.Uint32())
 				binary.LittleEndian.PutUint32(buff[4:], 13)
-				binary.LittleEndian.PutUint32(buff[21+routing.TokenSize:], 1)
-				binary.LittleEndian.PutUint64(buff[21+routing.TokenSize+4:], rand.Uint64())
-				binary.LittleEndian.PutUint32(buff[21+routing.TokenSize+12:], math.Float32bits(rand.Float32()))
-				binary.LittleEndian.PutUint32(buff[21+routing.TokenSize+16:], math.Float32bits(rand.Float32())) // jitter
+				binary.LittleEndian.PutUint32(buff[21+routing.EncryptedTokenSize:], 1)
+				binary.LittleEndian.PutUint64(buff[21+routing.EncryptedTokenSize+4:], rand.Uint64())
+				binary.LittleEndian.PutUint32(buff[21+routing.EncryptedTokenSize+12:], math.Float32bits(rand.Float32()))
+				binary.LittleEndian.PutUint32(buff[21+routing.EncryptedTokenSize+16:], math.Float32bits(rand.Float32())) // jitter
 				assert.Errorf(t, packet.UnmarshalBinary(buff), "invalid packet")
 			})
 		})
 
 		t.Run("valid", func(t *testing.T) {
 			var packet transport.RelayUpdatePacket
-			buff := make([]byte, 4+4+13+routing.TokenSize+4+8+4+4+4)
+			buff := make([]byte, 4+4+13+routing.EncryptedTokenSize+4+8+4+4+4)
 			binary.LittleEndian.PutUint32(buff, rand.Uint32())
 			binary.LittleEndian.PutUint32(buff[4:], 13)
-			binary.LittleEndian.PutUint32(buff[21+routing.TokenSize:], 1)
-			binary.LittleEndian.PutUint64(buff[21+routing.TokenSize+4:], rand.Uint64())
-			binary.LittleEndian.PutUint32(buff[21+routing.TokenSize+12:], math.Float32bits(rand.Float32()))
-			binary.LittleEndian.PutUint32(buff[21+routing.TokenSize+16:], math.Float32bits(rand.Float32()))
-			binary.LittleEndian.PutUint32(buff[21+routing.TokenSize+20:], math.Float32bits(rand.Float32())) // packet loss
+			binary.LittleEndian.PutUint32(buff[21+routing.EncryptedTokenSize:], 1)
+			binary.LittleEndian.PutUint64(buff[21+routing.EncryptedTokenSize+4:], rand.Uint64())
+			binary.LittleEndian.PutUint32(buff[21+routing.EncryptedTokenSize+12:], math.Float32bits(rand.Float32()))
+			binary.LittleEndian.PutUint32(buff[21+routing.EncryptedTokenSize+16:], math.Float32bits(rand.Float32()))
+			binary.LittleEndian.PutUint32(buff[21+routing.EncryptedTokenSize+20:], math.Float32bits(rand.Float32())) // packet loss
 			assert.Nil(t, packet.UnmarshalBinary(buff))
 		})
 	})
@@ -184,7 +184,7 @@ func TestRelayUpdatePacket(t *testing.T) {
 			stat.PacketLoss = rand.Float32()
 		}
 
-		token := make([]byte, routing.TokenSize)
+		token := make([]byte, crypto.KeySize)
 		rand.Read(token)
 
 		expected := transport.RelayUpdatePacket{

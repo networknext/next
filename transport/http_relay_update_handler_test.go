@@ -13,6 +13,7 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/core"
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/routing"
 
@@ -61,10 +62,10 @@ func relayUpdateAssertions(t *testing.T, body []byte, expectedCode int, redisCli
 func TestRelayUpdateHandler(t *testing.T) {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
-	t.Run("address is an empty string", func(t *testing.T) {
+	t.Run("address is invalid", func(t *testing.T) {
 		packet := transport.RelayUpdatePacket{
-			Address: "",
-			Token:   make([]byte, routing.TokenSize),
+			Address: "invalid",
+			Token:   make([]byte, routing.EncryptedTokenSize),
 		}
 		buff, _ := packet.MarshalBinary()
 		relayUpdateAssertions(t, buff, http.StatusBadRequest, nil, nil)
@@ -72,9 +73,9 @@ func TestRelayUpdateHandler(t *testing.T) {
 
 	t.Run("number of relays exceeds max", func(t *testing.T) {
 		packet := transport.RelayUpdatePacket{
-			Address:   "127.0.0.1",
+			Address:   "127.0.0.1:40000",
 			NumRelays: 1025,
-			Token:     make([]byte, routing.TokenSize),
+			Token:     make([]byte, routing.EncryptedTokenSize),
 			PingStats: make([]core.RelayStatsPing, 1025),
 		}
 		buff, _ := packet.MarshalBinary()
@@ -84,8 +85,8 @@ func TestRelayUpdateHandler(t *testing.T) {
 	t.Run("relay not found", func(t *testing.T) {
 		packet := transport.RelayUpdatePacket{
 			NumRelays: 3,
-			Address:   "127.0.0.1",
-			Token:     make([]byte, routing.TokenSize),
+			Address:   "127.0.0.1:40000",
+			Token:     make([]byte, crypto.KeySize),
 			PingStats: make([]core.RelayStatsPing, 3),
 		}
 		buff, _ := packet.MarshalBinary()
@@ -100,7 +101,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 		packet := transport.RelayUpdatePacket{
 			NumRelays: uint32(len(statIps)),
 			Address:   "127.0.0.1:40000",
-			Token:     make([]byte, routing.TokenSize),
+			Token:     make([]byte, routing.EncryptedTokenSize),
 		}
 		udpAddr, _ := net.ResolveUDPAddr("udp", packet.Address)
 
@@ -120,7 +121,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 			Addr:           *udpAddr,
 			Datacenter:     1,
 			DatacenterName: "some name",
-			PublicKey:      make([]byte, routing.TokenSize),
+			PublicKey:      make([]byte, crypto.KeySize),
 			LastUpdateTime: uint64(time.Now().Unix() - 1),
 		}
 
@@ -147,7 +148,9 @@ func TestRelayUpdateHandler(t *testing.T) {
 		// response assertions
 		header := recorder.Header()
 		contentType, _ := header["Content-Type"]
-		assert.Equal(t, "application/octet-stream", contentType[0])
+		if recorder.Code == 200 {
+			assert.Equal(t, "application/octet-stream", contentType[0])
+		}
 
 		indx := 0
 		body := recorder.Body.Bytes()

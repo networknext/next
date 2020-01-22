@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	TokenSize = crypto.KeySize + crypto.MACSize
+	EncryptedTokenSize = crypto.KeySize + crypto.MACSize
 
 	RedisHashKeyStart = "RELAY-"
 )
@@ -40,7 +40,7 @@ type Relay struct {
 
 func NewRelay() *Relay {
 	relay := new(Relay)
-	relay.PublicKey = make([]byte, TokenSize)
+	relay.PublicKey = make([]byte, crypto.KeySize)
 	return relay
 }
 
@@ -54,12 +54,15 @@ func (r *Relay) UnmarshalBinary(data []byte) error {
 		encoding.ReadString(data, &index, &addr, MaxRelayAddressLength) &&
 		encoding.ReadUint64(data, &index, &r.Datacenter) &&
 		encoding.ReadString(data, &index, &r.DatacenterName, math.MaxInt32) &&
-		encoding.ReadBytes(data, &index, &r.PublicKey, TokenSize) &&
+		encoding.ReadBytes(data, &index, &r.PublicKey, crypto.KeySize) &&
 		encoding.ReadUint64(data, &index, &r.LastUpdateTime)) {
 		return errors.New("Invalid RelayData")
 	}
-	udp, _ := net.ResolveUDPAddr("udp", addr)
-	r.Addr = *udp
+	if udp, err := net.ResolveUDPAddr("udp", addr); udp != nil && err == nil {
+		r.Addr = *udp
+	} else {
+		return errors.New("Invalid relay address")
+	}
 	return nil
 }
 
@@ -76,7 +79,7 @@ func (r Relay) MarshalBinary() (data []byte, err error) {
 	encoding.WriteString(data, &index, strAddr, uint32(len(strAddr)))
 	encoding.WriteUint64(data, &index, r.Datacenter)
 	encoding.WriteString(data, &index, r.DatacenterName, uint32(len(r.DatacenterName)))
-	encoding.WriteBytes(data, &index, r.PublicKey, TokenSize)
+	encoding.WriteBytes(data, &index, r.PublicKey, crypto.KeySize)
 	encoding.WriteUint64(data, &index, r.LastUpdateTime)
 
 	return data, err
