@@ -2,9 +2,7 @@ package transport_test
 
 import (
 	"bytes"
-	"encoding/binary"
 	"log"
-	"math"
 	"math/rand"
 	"net"
 	"net/http"
@@ -22,53 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const (
-	sizeOfUpdateRequestVersion = 4
-	sizeOfNumberOfRelays       = 4
-	sizeOfRelayPingStat        = 20
-)
-
-func putUpdateRequestVersion(buff []byte) {
-	const gUpdateRequestVersion = 0
-	binary.LittleEndian.PutUint32(buff, gUpdateRequestVersion)
-}
-
-func putUpdateRelayAddress(buff []byte, address string) {
-	offset := sizeOfUpdateRequestVersion
-	binary.LittleEndian.PutUint32(buff[offset:], uint32(len(address)))
-	copy(buff[offset+4:], address)
-}
-
-// doesn't actually insert anything
-func putStubbedPingStats(buff []byte, addressLength int, count uint64) {
-	offset := sizeOfUpdateRequestVersion + 4 + addressLength + routing.TokenSize
-	binary.LittleEndian.PutUint64(buff[offset:], count)
-}
-
-func putPingStats(buff []byte, addressLength int, addrs ...string) {
-	offset := sizeOfUpdateRequestVersion + 4 + addressLength + routing.TokenSize
-
-	binary.LittleEndian.PutUint64(buff[offset:], uint64(len(addrs)))
-	offset += 4
-
-	for _, addr := range addrs {
-		id := core.GetRelayID(addr)
-		rtt := rand.Float32()
-		jitter := rand.Float32()
-		packetLoss := rand.Float32()
-
-		binary.LittleEndian.PutUint64(buff[offset:], id)
-		offset += 8
-		binary.LittleEndian.PutUint32(buff[offset:], math.Float32bits(rtt))
-		offset += 4
-		binary.LittleEndian.PutUint32(buff[offset:], math.Float32bits(jitter))
-		offset += 4
-		binary.LittleEndian.PutUint32(buff[offset:], math.Float32bits(packetLoss))
-		offset += 4
-	}
-}
-
-func seedRedis(redisServer *miniredis.Miniredis, addressesToAdd []string) {
+func seedRedis(t *testing.T, redisServer *miniredis.Miniredis, addressesToAdd []string) {
 	addEntry := func(addr string) {
 		relay := routing.NewRelay()
 		udpAddr, _ := net.ResolveUDPAddr("udp", addr)
@@ -108,62 +60,35 @@ func relayUpdateAssertions(t *testing.T, body []byte, expectedCode int, redisCli
 
 func TestRelayUpdateHandler(t *testing.T) {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	t.Run("missing request version", func(t *testing.T) {
-		buff := make([]byte, 0)
-		relayUpdateAssertions(t, buff, http.StatusBadRequest, nil, nil)
-	})
 
-	t.Run("missing relay address", func(t *testing.T) {
-		t.Run("byte array is not proper length", func(t *testing.T) {
-			buff := make([]byte, sizeOfUpdateRequestVersion)
-			putUpdateRequestVersion(buff)
-			relayUpdateAssertions(t, buff, http.StatusBadRequest, nil, nil)
-		})
-
-		t.Run("byte array is proper length but value is empty string", func(t *testing.T) {
-			addr := ""
-			buff := make([]byte, sizeOfUpdateRequestVersion+4+len(addr))
-			putUpdateRequestVersion(buff)
-			putUpdateRelayAddress(buff, addr)
-			relayUpdateAssertions(t, buff, http.StatusBadRequest, nil, nil)
-		})
-	})
-
-	t.Run("missing relay token", func(t *testing.T) {
-		addr := "127.0.0.1"
-		buff := make([]byte, sizeOfUpdateRequestVersion+4+len(addr))
-		putUpdateRequestVersion(buff)
-		putUpdateRelayAddress(buff, addr)
-		relayUpdateAssertions(t, buff, http.StatusBadRequest, nil, nil)
-	})
-
-	t.Run("missing number of relays", func(t *testing.T) {
-		addr := "127.0.0.1"
-		buff := make([]byte, sizeOfUpdateRequestVersion+4+len(addr)+routing.TokenSize)
-		putUpdateRequestVersion(buff)
-		putUpdateRelayAddress(buff, addr)
+	t.Run("address is an empty string", func(t *testing.T) {
+		packet := transport.RelayUpdatePacket{
+			Address: "",
+			Token:   make([]byte, routing.TokenSize),
+		}
+		buff, _ := packet.MarshalBinary()
 		relayUpdateAssertions(t, buff, http.StatusBadRequest, nil, nil)
 	})
 
 	t.Run("number of relays exceeds max", func(t *testing.T) {
-		numRelays := 1025
-		addr := "127.0.0.1"
-		buff := make([]byte, sizeOfUpdateRequestVersion+4+len(addr)+routing.TokenSize+sizeOfNumberOfRelays+numRelays*sizeOfRelayPingStat)
-		putUpdateRequestVersion(buff)
-		putUpdateRelayAddress(buff, addr)
-		putStubbedPingStats(buff, len(addr), uint64(numRelays))
+		packet := transport.RelayUpdatePacket{
+			Address:   "127.0.0.1",
+			NumRelays: 1025,
+			Token:     make([]byte, routing.TokenSize),
+			PingStats: make([]core.RelayStatsPing, 1025),
+		}
+		buff, _ := packet.MarshalBinary()
 		relayUpdateAssertions(t, buff, http.StatusBadRequest, nil, nil)
 	})
 
 	t.Run("relay not found", func(t *testing.T) {
-		t.Skip("missing dependancy on config store to pull relay's public key to pass decryption")
-
-		numRelays := 3
-		addr := "127.0.0.1"
-		buff := make([]byte, sizeOfUpdateRequestVersion+4+len(addr)+routing.TokenSize+sizeOfNumberOfRelays+numRelays*sizeOfRelayPingStat)
-		putUpdateRequestVersion(buff)
-		putUpdateRelayAddress(buff, addr)
-		putStubbedPingStats(buff, len(addr), uint64(numRelays))
+		packet := transport.RelayUpdatePacket{
+			NumRelays: 3,
+			Address:   "127.0.0.1",
+			Token:     make([]byte, routing.TokenSize),
+			PingStats: make([]core.RelayStatsPing, 3),
+		}
+		buff, _ := packet.MarshalBinary()
 		relayUpdateAssertions(t, buff, http.StatusNotFound, nil, nil)
 	})
 
@@ -171,30 +96,38 @@ func TestRelayUpdateHandler(t *testing.T) {
 		redisServer, _ := miniredis.Run()
 		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 		statsdb := core.NewStatsDatabase()
-		numRelays := 4
-		addr := "127.0.0.1"
-		udpAddr, _ := net.ResolveUDPAddr("udp", addr)
-		buff := make([]byte, sizeOfUpdateRequestVersion+4+len(addr)+routing.TokenSize+sizeOfNumberOfRelays+numRelays*sizeOfRelayPingStat)
-		putUpdateRequestVersion(buff)
-		putUpdateRelayAddress(buff, addr)
+		statIps := []string{"127.0.0.2:40000", "127.0.0.3:40000", "127.0.0.4:40000", "127.0.0.5:40000"}
+		packet := transport.RelayUpdatePacket{
+			NumRelays: uint32(len(statIps)),
+			Address:   "127.0.0.1:40000",
+			Token:     make([]byte, routing.TokenSize),
+		}
+		udpAddr, _ := net.ResolveUDPAddr("udp", packet.Address)
 
-		testAddrs := []string{"127.0.0.2", "127.0.0.3", "127.0.0.4", "127.0.0.5"}
-		putPingStats(buff, len(addr), testAddrs...)
+		packet.PingStats = make([]core.RelayStatsPing, packet.NumRelays)
+		for i, addr := range statIps {
+			stats := &packet.PingStats[i]
+			stats.RelayID = core.GetRelayID(addr)
+			stats.RTT = rand.Float32()
+			stats.Jitter = rand.Float32()
+			stats.PacketLoss = rand.Float32()
+		}
 
-		seedRedis(redisServer, testAddrs)
+		seedRedis(t, redisServer, statIps)
 
 		entry := routing.Relay{
-			ID:             core.GetRelayID(addr),
-			Name:           addr,
+			ID:             core.GetRelayID(packet.Address),
 			Addr:           *udpAddr,
 			Datacenter:     1,
 			DatacenterName: "some name",
-			PublicKey:      make([]byte, transport.LengthOfRelayToken),
+			PublicKey:      make([]byte, routing.TokenSize),
 			LastUpdateTime: uint64(time.Now().Unix() - 1),
 		}
 
 		raw, _ := entry.MarshalBinary()
 		redisServer.HSet(transport.RedisHashName, entry.Key(), string(raw))
+
+		buff, _ := packet.MarshalBinary()
 
 		recorder := relayUpdateAssertions(t, buff, http.StatusOK, redisClient, statsdb)
 
@@ -225,7 +158,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 		var numRelaysToPing uint32
 		encoding.ReadUint32(body, &indx, &numRelaysToPing)
 
-		assert.Equal(t, uint32(len(testAddrs)), numRelaysToPing)
+		assert.Equal(t, uint32(len(statIps)), numRelaysToPing)
 
 		relaysToPingIDs := make([]uint64, 0)
 		relaysToPingAddrs := make([]string, 0)
@@ -239,15 +172,16 @@ func TestRelayUpdateHandler(t *testing.T) {
 			relaysToPingAddrs = append(relaysToPingAddrs, addr)
 		}
 
-		assert.Contains(t, statsdb.Entries, core.GetRelayID(addr))
-		relations := statsdb.Entries[core.GetRelayID(addr)]
-		for _, addr := range testAddrs {
-			assert.Contains(t, relaysToPingIDs, core.GetRelayID(addr))
+		assert.Contains(t, statsdb.Entries, entry.ID)
+		relations := statsdb.Entries[entry.ID]
+		for _, addr := range statIps {
+			id := core.GetRelayID(addr)
+			assert.Contains(t, relaysToPingIDs, id)
 			assert.Contains(t, relaysToPingAddrs, addr)
-			assert.Contains(t, relations.Relays, core.GetRelayID(addr))
+			assert.Contains(t, relations.Relays, id)
 		}
 
-		assert.NotContains(t, relaysToPingIDs, core.GetRelayID(addr))
-		assert.NotContains(t, relaysToPingAddrs, addr)
+		assert.NotContains(t, relaysToPingIDs, entry.ID)
+		assert.NotContains(t, relaysToPingAddrs, packet.Address)
 	})
 }

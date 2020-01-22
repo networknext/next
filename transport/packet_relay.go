@@ -2,10 +2,12 @@ package transport
 
 import (
 	"errors"
+	"math"
 
 	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
+	"github.com/networknext/backend/routing"
 )
 
 // RelayInitPacket is the struct that describes the packets comming into the relay_init endpoint
@@ -24,11 +26,23 @@ func (r *RelayInitPacket) UnmarshalBinary(buf []byte) error {
 		encoding.ReadUint32(buf, &index, &r.Version) &&
 		encoding.ReadBytes(buf, &index, &r.Nonce, crypto.NonceSize) &&
 		encoding.ReadString(buf, &index, &r.Address, MaxRelayAddressLength) &&
-		encoding.ReadBytes(buf, &index, &r.EncryptedToken, crypto.KeySize+crypto.MACSize)) {
+		encoding.ReadBytes(buf, &index, &r.EncryptedToken, routing.TokenSize)) {
 		return errors.New("invalid packet")
 	}
 
 	return nil
+}
+
+func (r RelayInitPacket) MarshalBinary() ([]byte, error) {
+	data := make([]byte, 4+4+crypto.NonceSize+4+len(r.Address)+routing.TokenSize)
+	index := 0
+	encoding.WriteUint32(data, &index, r.Magic)
+	encoding.WriteUint32(data, &index, r.Version)
+	encoding.WriteBytes(data, &index, r.Nonce, crypto.NonceSize)
+	encoding.WriteString(data, &index, r.Address, uint32(len(r.Address)))
+	encoding.WriteBytes(data, &index, r.EncryptedToken, routing.TokenSize)
+
+	return data, nil
 }
 
 // RelayUpdatePacket is the struct wrapping a update packet
@@ -46,27 +60,44 @@ func (r *RelayUpdatePacket) UnmarshalBinary(buff []byte) error {
 	index := 0
 	if !(encoding.ReadUint32(buff, &index, &r.Version) &&
 		encoding.ReadString(buff, &index, &r.Address, MaxRelayAddressLength) &&
-		encoding.ReadBytes(buff, &index, &r.Token, LengthOfRelayToken) &&
+		encoding.ReadBytes(buff, &index, &r.Token, routing.TokenSize) &&
 		encoding.ReadUint32(buff, &index, &r.NumRelays)) {
 		return errors.New("Invalid Packet")
 	}
 
+	r.PingStats = make([]core.RelayStatsPing, r.NumRelays)
 	for i := 0; i < int(r.NumRelays); i++ {
-		var id uint64
+		stats := &r.PingStats[i]
 
-		pingStats := core.RelayStatsPing{}
-
-		if !(encoding.ReadUint64(buff, &index, &id) &&
-			encoding.ReadFloat32(buff, &index, &pingStats.RTT) &&
-			encoding.ReadFloat32(buff, &index, &pingStats.Jitter) &&
-			encoding.ReadFloat32(buff, &index, &pingStats.PacketLoss)) {
+		if !(encoding.ReadUint64(buff, &index, &stats.RelayID) &&
+			encoding.ReadFloat32(buff, &index, &stats.RTT) &&
+			encoding.ReadFloat32(buff, &index, &stats.Jitter) &&
+			encoding.ReadFloat32(buff, &index, &stats.PacketLoss)) {
 			return errors.New("Invalid Packet")
 		}
-
-		pingStats.RelayID = id
-
-		r.PingStats = append(r.PingStats, pingStats)
 	}
 
 	return nil
+}
+
+// MarshalBinary ...
+func (r RelayUpdatePacket) MarshalBinary() ([]byte, error) {
+	data := make([]byte, 4+4+len(r.Address)+routing.TokenSize+4+20*len(r.PingStats))
+
+	index := 0
+	encoding.WriteUint32(data, &index, r.Version)
+	encoding.WriteString(data, &index, r.Address, math.MaxInt32)
+	encoding.WriteBytes(data, &index, r.Token, routing.TokenSize)
+	encoding.WriteUint32(data, &index, r.NumRelays)
+
+	for i := 0; i < int(r.NumRelays); i++ {
+		stats := &r.PingStats[i]
+
+		encoding.WriteUint64(data, &index, stats.RelayID)
+		encoding.WriteUint32(data, &index, math.Float32bits(stats.RTT))
+		encoding.WriteUint32(data, &index, math.Float32bits(stats.Jitter))
+		encoding.WriteUint32(data, &index, math.Float32bits(stats.PacketLoss))
+	}
+
+	return data, nil
 }

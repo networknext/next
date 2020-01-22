@@ -2,7 +2,7 @@ package transport_test
 
 import (
 	"bytes"
-	"encoding/binary"
+	"crypto/rand"
 	"log"
 	"net"
 	"net/http"
@@ -20,12 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const (
-	sizeOfInitRequestMagic   = 4
-	sizeOfInitRequestVersion = 4
-)
-
-func relayInitAssertions(t *testing.T, body []byte, expectedCode int, redisClient *redis.Client) *httptest.ResponseRecorder {
+func relayInitAssertions(t *testing.T, body []byte, expectedCode int, redisClient *redis.Client, relayPublicKey []byte, routerPrivateKey []byte) *httptest.ResponseRecorder {
 	if redisClient == nil {
 		redisServer, _ := miniredis.Run()
 		redisClient = redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
@@ -34,7 +29,7 @@ func relayInitAssertions(t *testing.T, body []byte, expectedCode int, redisClien
 	recorder := httptest.NewRecorder()
 	request, _ := http.NewRequest("POST", "/relay_init", bytes.NewBuffer(body))
 
-	handler := transport.RelayInitHandlerFunc(redisClient)
+	handler := transport.RelayInitHandlerFunc(redisClient, relayPublicKey, routerPrivateKey)
 
 	handler(recorder, request)
 
@@ -43,106 +38,168 @@ func relayInitAssertions(t *testing.T, body []byte, expectedCode int, redisClien
 	return recorder
 }
 
-func writeRelayAddress(buff []byte, address string) {
-	offset := sizeOfInitRequestMagic + sizeOfInitRequestVersion + crypto.NonceSize
-	binary.LittleEndian.PutUint32(buff[offset:], uint32(len(address)))
-	copy(buff[offset+4:], address)
-}
-
 func TestRelayInitHandler(t *testing.T) {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	t.Run("missing magic number", func(t *testing.T) {
-		buff := make([]byte, 0)
-		relayInitAssertions(t, buff, http.StatusBadRequest, nil)
-	})
 
-	t.Run("missing request version", func(t *testing.T) {
-		buff := make([]byte, sizeOfInitRequestMagic)
-		binary.LittleEndian.PutUint32(buff, transport.InitRequestMagic)
-		relayInitAssertions(t, buff, http.StatusBadRequest, nil)
-	})
+	t.Run("address is invalid", func(t *testing.T) {
+		// generate keys
+		relayPublicKey, relayPrivateKey, _ := crypto.GenerateRelayKeyPair()
+		routerPublicKey, routerPrivateKey, _ := crypto.GenerateRelayKeyPair()
 
-	t.Run("missing nonce bytes", func(t *testing.T) {
-		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion)
-		binary.LittleEndian.PutUint32(buff, transport.InitRequestMagic)
-		binary.LittleEndian.PutUint32(buff[4:], 0)
-		relayInitAssertions(t, buff, http.StatusBadRequest, nil)
-	})
+		// generate nonce
+		nonce := make([]byte, crypto.NonceSize)
+		rand.Read(nonce)
 
-	t.Run("missing relay address", func(t *testing.T) {
-		t.Run("byte array is not proper length", func(t *testing.T) {
-			buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+crypto.NonceSize)
-			binary.LittleEndian.PutUint32(buff, transport.InitRequestMagic)
-			binary.LittleEndian.PutUint32(buff[4:], 0)
-			relayInitAssertions(t, buff, http.StatusBadRequest, nil)
-		})
+		// generate token
+		token := make([]byte, routing.TokenSize)
+		rand.Read(token)
 
-		t.Run("byte array is proper length but there is a blank string", func(t *testing.T) {
-			addr := ""
-			buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+crypto.NonceSize+4+len(addr))
-			binary.LittleEndian.PutUint32(buff, transport.InitRequestMagic)
-			binary.LittleEndian.PutUint32(buff[4:], 0)
-			writeRelayAddress(buff, addr)
-			relayInitAssertions(t, buff, http.StatusBadRequest, nil)
-		})
-	})
+		// encrypt token
+		encryptedToken := crypto.Seal(token, nonce, routerPublicKey, relayPrivateKey)
 
-	t.Run("missing encryption token", func(t *testing.T) {
-		addr := "127.0.0.1"
-		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+crypto.NonceSize+4+len(addr))
-		binary.LittleEndian.PutUint32(buff, transport.InitRequestMagic)
-		binary.LittleEndian.PutUint32(buff[4:], 0)
-		writeRelayAddress(buff, addr)
-		relayInitAssertions(t, buff, http.StatusBadRequest, nil)
+		packet := transport.RelayInitPacket{
+			Magic:          transport.InitRequestMagic,
+			Version:        0,
+			Nonce:          nonce,
+			Address:        "invalid",
+			EncryptedToken: encryptedToken,
+		}
+		buff, _ := packet.MarshalBinary()
+		relayInitAssertions(t, buff, http.StatusBadRequest, nil, relayPublicKey, routerPrivateKey)
 	})
 
 	t.Run("encryption token is 0'ed", func(t *testing.T) {
-		addr := "127.0.0.1"
-		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+crypto.NonceSize+4+len(addr)+routing.TokenSize)
-		binary.LittleEndian.PutUint32(buff, transport.InitRequestMagic)
-		binary.LittleEndian.PutUint32(buff[4:], 0)
-		writeRelayAddress(buff, addr)
-		relayInitAssertions(t, buff, http.StatusBadRequest, nil)
+		// generate keys
+		relayPublicKey, _, _ := crypto.GenerateRelayKeyPair()
+		_, routerPrivateKey, _ := crypto.GenerateRelayKeyPair()
+
+		// generate nonce
+		nonce := make([]byte, crypto.NonceSize)
+		rand.Read(nonce)
+
+		// generate token but leave it as 0's
+		token := make([]byte, routing.TokenSize)
+
+		packet := transport.RelayInitPacket{
+			Magic:          transport.InitRequestMagic,
+			Version:        0,
+			Nonce:          nonce,
+			Address:        "127.0.0.1:40000",
+			EncryptedToken: token,
+		}
+		buff, _ := packet.MarshalBinary()
+		relayInitAssertions(t, buff, http.StatusUnauthorized, nil, relayPublicKey, routerPrivateKey)
+	})
+
+	t.Run("nonce bytes are 0'ed", func(t *testing.T) {
+		// generate keys
+		relayPublicKey, relayPrivateKey, _ := crypto.GenerateRelayKeyPair()
+		routerPublicKey, routerPrivateKey, _ := crypto.GenerateRelayKeyPair()
+
+		// generate nonce but leave it as 0's
+		nonce := make([]byte, crypto.NonceSize)
+
+		// generate random token
+		token := core.RandomBytes(routing.TokenSize)
+
+		// seal it with the bad nonce
+		encryptedToken := crypto.Seal(token, nonce, routerPublicKey, relayPrivateKey)
+
+		packet := transport.RelayInitPacket{
+			Magic:          transport.InitRequestMagic,
+			Version:        0,
+			Nonce:          nonce,
+			Address:        "127.0.0.1:40000",
+			EncryptedToken: encryptedToken,
+		}
+
+		buff, _ := packet.MarshalBinary()
+
+		relayInitAssertions(t, buff, http.StatusUnauthorized, nil, relayPublicKey, routerPrivateKey)
 	})
 
 	t.Run("relay already exists", func(t *testing.T) {
+		redisServer, _ := miniredis.Run()
+		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+		// generate keys
+		relayPublicKey, relayPrivateKey, _ := crypto.GenerateRelayKeyPair()
+		routerPublicKey, routerPrivateKey, _ := crypto.GenerateRelayKeyPair()
+
+		// generate nonce
+		nonce := make([]byte, crypto.NonceSize)
+		rand.Read(nonce)
+
+		// generate token
+		token := make([]byte, routing.TokenSize)
+		rand.Read(token)
+
+		// encrypt token
+		encryptedToken := crypto.Seal(token, nonce, routerPublicKey, relayPrivateKey)
+
 		name := "some name"
 		addr := "127.0.0.1:40000"
 		udpAddr, _ := net.ResolveUDPAddr("udp", addr)
 		dcname := "another name"
-		pubkey := make([]byte, 32)
+
+		packet := transport.RelayInitPacket{
+			Magic:          transport.InitRequestMagic,
+			Version:        0,
+			Nonce:          nonce,
+			Address:        addr,
+			EncryptedToken: encryptedToken,
+		}
+
+		buff, _ := packet.MarshalBinary()
+
 		entry := routing.Relay{
 			ID:             core.GetRelayID(addr),
 			Name:           name,
 			Addr:           *udpAddr,
 			Datacenter:     32,
 			DatacenterName: dcname,
-			PublicKey:      pubkey,
+			PublicKey:      token,
 			LastUpdateTime: 1234,
 		}
 
+		// get the binary data from the entry
 		data, _ := entry.MarshalBinary()
-		redisServer, _ := miniredis.Run()
-		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+		// set it in the redis instance
 		redisServer.HSet(transport.RedisHashName, entry.Key(), string(data))
-		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+crypto.NonceSize+4+len(addr)+routing.TokenSize)
-		binary.LittleEndian.PutUint32(buff, transport.InitRequestMagic)
-		binary.LittleEndian.PutUint32(buff[4:], transport.VersionNumberInitRequest)
-		writeRelayAddress(buff, addr)
-		relayInitAssertions(t, buff, http.StatusNotFound, redisClient)
+
+		relayInitAssertions(t, buff, http.StatusNotFound, redisClient, routerPrivateKey, relayPublicKey)
 	})
 
 	t.Run("valid", func(t *testing.T) {
 		redisServer, _ := miniredis.Run()
 		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+		relayPublicKey, relayPrivateKey, _ := crypto.GenerateRelayKeyPair()
+		routerPublicKey, routerPrivateKey, _ := crypto.GenerateRelayKeyPair()
+
+		nonce := make([]byte, crypto.NonceSize)
+		rand.Read(nonce)
+
 		addr := "127.0.0.1:40000"
 		udpAddr, _ := net.ResolveUDPAddr("udp", addr)
+
+		token := make([]byte, routing.TokenSize)
+		rand.Read(token)
+
+		encryptedToken := crypto.Seal(token, nonce, routerPublicKey, relayPrivateKey)
+
 		before := uint64(time.Now().Unix())
-		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+crypto.NonceSize+4+len(addr)+routing.TokenSize)
-		binary.LittleEndian.PutUint32(buff, transport.InitRequestMagic)
-		binary.LittleEndian.PutUint32(buff[4:], transport.VersionNumberInitRequest)
-		writeRelayAddress(buff, addr)
-		recorder := relayInitAssertions(t, buff, http.StatusOK, redisClient)
+
+		packet := transport.RelayInitPacket{
+			Magic:          transport.InitRequestMagic,
+			Nonce:          nonce,
+			Address:        addr,
+			EncryptedToken: encryptedToken,
+		}
+		buff, _ := packet.MarshalBinary()
+
+		recorder := relayInitAssertions(t, buff, http.StatusOK, redisClient, relayPublicKey, routerPrivateKey)
 
 		header := recorder.Header()
 		contentType, _ := header["Content-Type"]
@@ -168,9 +225,11 @@ func TestRelayInitHandler(t *testing.T) {
 		encoding.ReadUint64(body, &indx, &timestamp)
 
 		var publicKey []byte
-		encoding.ReadBytes(body, &indx, &publicKey, transport.LengthOfRelayToken)
+		encoding.ReadBytes(body, &indx, &publicKey, routing.TokenSize)
 
-		assert.Equal(t, "application/octet-stream", contentType[0])
+		if recorder.Code == 200 {
+			assert.Equal(t, "application/octet-stream", contentType[0])
+		}
 		assert.Equal(t, transport.VersionNumberInitResponse, int(version))
 		assert.LessOrEqual(t, before, timestamp)
 		assert.GreaterOrEqual(t, uint64(time.Now().Unix()), timestamp)

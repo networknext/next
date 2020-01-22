@@ -22,8 +22,6 @@ import (
 const (
 	InitRequestMagic = uint32(0x9083708f)
 
-	LengthOfRelayToken = 32
-
 	MaxRelays             = 1024
 	MaxRelayAddressLength = 256
 
@@ -43,9 +41,9 @@ var gRelayPublicKey = []byte{
 }
 
 // NewRouter creates a router with the specified endpoints
-func NewRouter(redisClient *redis.Client, statsdb *core.StatsDatabase, costmatrix *routing.CostMatrix, routematrix *routing.RouteMatrix) *mux.Router {
+func NewRouter(redisClient *redis.Client, statsdb *core.StatsDatabase, costmatrix *routing.CostMatrix, routematrix *routing.RouteMatrix, relayPublicKey []byte, routerPrivateKey []byte) *mux.Router {
 	router := mux.NewRouter()
-	router.HandleFunc("/relay_init", RelayInitHandlerFunc(redisClient)).Methods("POST")
+	router.HandleFunc("/relay_init", RelayInitHandlerFunc(redisClient, relayPublicKey, routerPrivateKey)).Methods("POST")
 	router.HandleFunc("/relay_update", RelayUpdateHandlerFunc(redisClient, statsdb)).Methods("POST")
 	router.Handle("/cost_matrix", costmatrix).Methods("GET")
 	router.Handle("/route_matrix", routematrix).Methods("GET")
@@ -63,12 +61,13 @@ func HTTPStart(port string, router *mux.Router) {
 }
 
 // RelayInitHandlerFunc returns the function for the relay init endpoint
-func RelayInitHandlerFunc(redisClient *redis.Client) func(writer http.ResponseWriter, request *http.Request) {
+func RelayInitHandlerFunc(redisClient *redis.Client, relayPublicKey []byte, routerPrivateKey []byte) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		log.Println("Received Relay Init Packet")
 		body, err := ioutil.ReadAll(request.Body)
 
 		if err != nil {
+			log.Printf("Could not read init packet: %v", err)
 			return
 		}
 
@@ -88,16 +87,22 @@ func RelayInitHandlerFunc(redisClient *redis.Client) func(writer http.ResponseWr
 			return
 		}
 
-		if _, ok := crypto.Open(relayInitPacket.EncryptedToken, relayInitPacket.Nonce, crypto.RelayPublicKey[:], crypto.RouterPrivateKey[:]); !ok {
-			writer.WriteHeader(http.StatusBadRequest)
+		if _, ok := crypto.Open(relayInitPacket.EncryptedToken, relayInitPacket.Nonce, relayPublicKey, routerPrivateKey); !ok {
+			writer.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 
-		udpAddr, _ := net.ResolveUDPAddr("udp", relayInitPacket.Address)
-		relay := routing.Relay{
-			ID:             core.GetRelayID(relayInitPacket.Address),
-			Addr:           *udpAddr,
-			LastUpdateTime: uint64(time.Now().Unix()),
+		var relay routing.Relay
+		if udpAddr, err := net.ResolveUDPAddr("udp", relayInitPacket.Address); udpAddr != nil && err == nil {
+			relay = routing.Relay{
+				ID:             core.GetRelayID(relayInitPacket.Address),
+				Addr:           *udpAddr,
+				LastUpdateTime: uint64(time.Now().Unix()),
+			}
+		} else {
+			log.Printf("could not resolve address: %v", err)
+			writer.WriteHeader(http.StatusBadRequest)
+			return
 		}
 
 		exists := redisClient.HExists(RedisHashName, relay.Key())
@@ -120,7 +125,7 @@ func RelayInitHandlerFunc(redisClient *redis.Client) func(writer http.ResponseWr
 		}
 
 		relay.LastUpdateTime = uint64(time.Now().Unix())
-		relay.PublicKey = core.RandomBytes(LengthOfRelayToken)
+		relay.PublicKey = core.RandomBytes(routing.TokenSize)
 
 		res := redisClient.HSet(RedisHashName, relay.Key(), relay)
 

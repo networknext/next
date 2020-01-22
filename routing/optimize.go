@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"math"
 	"net/http"
 	"runtime"
@@ -35,9 +34,6 @@ const (
 
 	// MaxRelayAddressLength ...
 	MaxRelayAddressLength = 256
-
-	// LengthOfRelayToken ...
-	LengthOfRelayToken = 32
 )
 
 // CostMatrix ...
@@ -197,7 +193,9 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 	} else {
 		for i := range m.RelayAddresses {
 			var bytesRead int
-			m.RelayAddresses[i], bytesRead = encoding.ReadBytesOld(data[index:])
+			addr, bytesRead := encoding.ReadBytesOld(data[index:])
+			m.RelayAddresses[i] = make([]byte, MaxRelayAddressLength)
+			copy(m.RelayAddresses[i], addr)
 			index += bytesRead
 		}
 	}
@@ -205,14 +203,16 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 	m.RelayPublicKeys = make([][]byte, numRelays)
 	if version >= 3 {
 		for i := range m.RelayPublicKeys {
-			if !encoding.ReadBytes(data, &index, &m.RelayPublicKeys[i], LengthOfRelayToken) {
+			if !encoding.ReadBytes(data, &index, &m.RelayPublicKeys[i], TokenSize) {
 				return errors.New("[CostMatrix] invalid read at relay public keys - v3")
 			}
 		}
 	} else {
 		for i := range m.RelayPublicKeys {
 			var bytesRead int
-			m.RelayPublicKeys[i], bytesRead = encoding.ReadBytesOld(data[index:])
+			pk, bytesRead := encoding.ReadBytesOld(data[index:])
+			m.RelayPublicKeys[i] = make([]byte, TokenSize)
+			copy(m.RelayPublicKeys[i], pk)
 			index += bytesRead
 		}
 	}
@@ -320,7 +320,7 @@ func (m CostMatrix) MarshalBinary() ([]byte, error) {
 	for i := range m.RelayPublicKeys {
 		tmp := make([]byte, MaxRelayAddressLength)
 		copy(tmp, m.RelayPublicKeys[i])
-		encoding.WriteBytes(data, &index, tmp, LengthOfRelayToken)
+		encoding.WriteBytes(data, &index, tmp, TokenSize)
 	}
 
 	numDatacenters = len(m.DatacenterRelays)
@@ -620,7 +620,7 @@ func (m CostMatrix) getBufferSize() uint64 {
 	}
 
 	// allocation for relay addresses + allocation for relay public keys + the No. of datacenters, duplication?
-	length += numRelays*uint64(MaxRelayAddressLength+LengthOfRelayToken) + 4
+	length += numRelays*uint64(MaxRelayAddressLength+TokenSize) + 4
 
 	for _, v := range m.DatacenterRelays {
 		// datacenter id + number of relays for that datacenter + allocation for all of those relay ids
@@ -813,7 +813,9 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 	} else {
 		for i := range m.RelayAddresses {
 			var bytesRead int
-			m.RelayAddresses[i], bytesRead = encoding.ReadBytesOld(data[index:])
+			addr, bytesRead := encoding.ReadBytesOld(data[index:])
+			m.RelayAddresses[i] = make([]byte, MaxRelayAddressLength)
+			copy(m.RelayAddresses[i], addr)
 			index += bytesRead
 		}
 	}
@@ -821,14 +823,16 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 	m.RelayPublicKeys = make([][]byte, numRelays)
 	if version >= 3 {
 		for i := range m.RelayPublicKeys {
-			if !encoding.ReadBytes(data, &index, &m.RelayPublicKeys[i], LengthOfRelayToken) {
+			if !encoding.ReadBytes(data, &index, &m.RelayPublicKeys[i], TokenSize) {
 				return errors.New("[RouteMatrix] invalid read at relay public keys - v3")
 			}
 		}
 	} else {
 		for i := range m.RelayPublicKeys {
 			var bytesRead int
-			m.RelayPublicKeys[i], bytesRead = encoding.ReadBytesOld(data[index:])
+			pk, bytesRead := encoding.ReadBytesOld(data[index:])
+			m.RelayPublicKeys[i] = make([]byte, TokenSize)
+			copy(m.RelayPublicKeys[i], pk)
 			index += bytesRead
 		}
 	}
@@ -882,7 +886,6 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 	entryCount := core.TriMatrixLength(int(numRelays))
 	m.Entries = make([]RouteMatrixEntry, entryCount)
 
-	log.Printf("Reading %d entries", entryCount)
 	for i := range m.Entries {
 		entry := &m.Entries[i]
 		var directRtt uint32
@@ -976,7 +979,7 @@ func (m RouteMatrix) MarshalBinary() ([]byte, error) {
 	}
 
 	for _, pk := range m.RelayPublicKeys {
-		encoding.WriteBytes(data, &index, pk, LengthOfRelayToken)
+		encoding.WriteBytes(data, &index, pk, TokenSize)
 	}
 
 	numDatacenters = len(m.DatacenterRelays)
@@ -1039,7 +1042,7 @@ func (m RouteMatrix) getBufferSize() uint64 {
 	}
 
 	// same as CostMatrix's
-	length += numRelays*uint64(MaxRelayAddressLength+LengthOfRelayToken) + 4
+	length += numRelays*uint64(MaxRelayAddressLength+TokenSize) + 4
 
 	// same as CostMatrix's
 	for _, v := range m.DatacenterRelays {
