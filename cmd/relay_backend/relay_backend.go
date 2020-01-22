@@ -15,7 +15,6 @@ import (
 
 	"github.com/alicebob/miniredis"
 	"github.com/go-redis/redis/v7"
-	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/transport"
 )
@@ -40,7 +39,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	statsdb := core.NewStatsDatabase()
+	statsdb := routing.NewStatsDatabase()
 	var costmatrix routing.CostMatrix
 	var routematrix routing.RouteMatrix
 
