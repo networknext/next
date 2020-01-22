@@ -46,19 +46,23 @@ func TestRelayInitPacket(t *testing.T) {
 
 		t.Run("missing encryption token", func(t *testing.T) {
 			var packet transport.RelayInitPacket
-			buff := make([]byte, 8+crypto.NonceSize+4+13) // 4 is the uint32 for address length, '13' is the address even though it's all 0's
+			addr := "127.0.0.1:40000"
+			buff := make([]byte, 8+crypto.NonceSize+4+len(addr)) // 4 is the uint32 for address length
 			binary.LittleEndian.PutUint32(buff, rand.Uint32())
 			binary.LittleEndian.PutUint32(buff[4:], rand.Uint32())
-			binary.LittleEndian.PutUint32(buff[8+crypto.NonceSize:], 13)
+			binary.LittleEndian.PutUint32(buff[8+crypto.NonceSize:], uint32(len(addr)))
+			copy(buff[12+crypto.NonceSize:], addr)
 			assert.Errorf(t, packet.UnmarshalBinary(buff), "invalid packet")
 		})
 
 		t.Run("valid", func(t *testing.T) {
 			var packet transport.RelayInitPacket
-			buff := make([]byte, 8+crypto.NonceSize+4+13+routing.EncryptedTokenSize)
+			addr := "127.0.0.1:40000"
+			buff := make([]byte, 8+crypto.NonceSize+4+len(addr)+routing.EncryptedTokenSize)
 			binary.LittleEndian.PutUint32(buff, rand.Uint32())
 			binary.LittleEndian.PutUint32(buff[4:], rand.Uint32())
-			binary.LittleEndian.PutUint32(buff[8+crypto.NonceSize:], 13)
+			binary.LittleEndian.PutUint32(buff[8+crypto.NonceSize:], uint32(len(addr)))
+			copy(buff[12+crypto.NonceSize:], addr)
 			assert.Nil(t, packet.UnmarshalBinary(buff))
 		})
 	})
@@ -69,11 +73,12 @@ func TestRelayInitPacket(t *testing.T) {
 		rand.Read(nonce)
 		rand.Read(token)
 
+		udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 		expected := transport.RelayInitPacket{
 			Magic:          rand.Uint32(),
 			Version:        rand.Uint32(),
 			Nonce:          nonce,
-			Address:        "127.0.0.1:40000",
+			Address:        *udp,
 			EncryptedToken: token,
 		}
 

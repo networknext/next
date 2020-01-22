@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net"
 	"net/http"
 	"time"
 
@@ -77,7 +76,7 @@ func RelayInitHandlerFunc(redisClient *redis.Client, relayPublicKey []byte, rout
 
 		if err = relayInitPacket.UnmarshalBinary(body); err != nil {
 			writer.WriteHeader(http.StatusBadRequest)
-			log.Println(err)
+			log.Printf("Could not read init packet: %v", err)
 			return
 		}
 
@@ -92,23 +91,16 @@ func RelayInitHandlerFunc(redisClient *redis.Client, relayPublicKey []byte, rout
 			return
 		}
 
-		var relay routing.Relay
-		if udpAddr, err := net.ResolveUDPAddr("udp", relayInitPacket.Address); udpAddr != nil && err == nil {
-			relay = routing.Relay{
-				ID:             core.GetRelayID(relayInitPacket.Address),
-				Addr:           *udpAddr,
-				LastUpdateTime: uint64(time.Now().Unix()),
-			}
-		} else {
-			log.Printf("could not resolve address: %v", err)
-			writer.WriteHeader(http.StatusBadRequest)
-			return
+		relay := routing.Relay{
+			ID:             core.GetRelayID(relayInitPacket.Address.String()),
+			Addr:           relayInitPacket.Address,
+			LastUpdateTime: uint64(time.Now().Unix()),
 		}
 
 		exists := redisClient.HExists(RedisHashName, relay.Key())
 
 		if exists.Err() != nil && exists.Err() != redis.Nil {
-			log.Printf("failed to get relay %s from redis: %v", relayInitPacket.Address, exists.Err())
+			log.Printf("failed to get relay %s from redis: %v", relayInitPacket.Address.String(), exists.Err())
 			writer.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -130,7 +122,7 @@ func RelayInitHandlerFunc(redisClient *redis.Client, relayPublicKey []byte, rout
 		res := redisClient.HSet(RedisHashName, relay.Key(), relay)
 
 		if res.Err() != nil && res.Err() != redis.Nil {
-			log.Printf("failed to set relay %s into redis hash: %v", relayInitPacket.Address, res.Err())
+			log.Printf("failed to set relay %s into redis hash: %v", relayInitPacket.Address.String(), res.Err())
 			writer.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -147,7 +139,7 @@ func RelayInitHandlerFunc(redisClient *redis.Client, relayPublicKey []byte, rout
 	}
 }
 
-// RelayUpdateHandlerFunc returns the function fora the relay update endpoint
+// RelayUpdateHandlerFunc returns the function for the relay update endpoint
 func RelayUpdateHandlerFunc(redisClient *redis.Client, statsdb *core.StatsDatabase) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		log.Println("Received Relay Update Packet")
@@ -161,7 +153,7 @@ func RelayUpdateHandlerFunc(redisClient *redis.Client, statsdb *core.StatsDataba
 		relayUpdatePacket := RelayUpdatePacket{}
 		if err = relayUpdatePacket.UnmarshalBinary(body); err != nil {
 			writer.WriteHeader(http.StatusBadRequest)
-			log.Println(err)
+			log.Printf("Could not read update packet: %v", err)
 			return
 		}
 

@@ -17,31 +17,39 @@ type RelayInitPacket struct {
 	Magic          uint32
 	Version        uint32
 	Nonce          []byte
-	Address        string
+	Address        net.UDPAddr
 	EncryptedToken []byte
 }
 
 // UnmarshalBinary decodes binary data into a RelayInitPacket struct
 func (r *RelayInitPacket) UnmarshalBinary(buf []byte) error {
 	index := 0
+	var addr string
 	if !(encoding.ReadUint32(buf, &index, &r.Magic) &&
 		encoding.ReadUint32(buf, &index, &r.Version) &&
 		encoding.ReadBytes(buf, &index, &r.Nonce, crypto.NonceSize) &&
-		encoding.ReadString(buf, &index, &r.Address, MaxRelayAddressLength) &&
+		encoding.ReadString(buf, &index, &addr, MaxRelayAddressLength) &&
 		encoding.ReadBytes(buf, &index, &r.EncryptedToken, routing.EncryptedTokenSize)) {
 		return errors.New("invalid packet")
+	}
+
+	if udp, err := net.ResolveUDPAddr("udp", addr); udp != nil && err == nil {
+		r.Address = *udp
+	} else {
+		return fmt.Errorf("Could not resolve init packet address '%s': %v", addr, err)
 	}
 
 	return nil
 }
 
+// MarshalBinary ...
 func (r RelayInitPacket) MarshalBinary() ([]byte, error) {
-	data := make([]byte, 4+4+crypto.NonceSize+4+len(r.Address)+routing.EncryptedTokenSize)
+	data := make([]byte, 4+4+crypto.NonceSize+4+len(r.Address.String())+routing.EncryptedTokenSize)
 	index := 0
 	encoding.WriteUint32(data, &index, r.Magic)
 	encoding.WriteUint32(data, &index, r.Version)
 	encoding.WriteBytes(data, &index, r.Nonce, crypto.NonceSize)
-	encoding.WriteString(data, &index, r.Address, uint32(len(r.Address)))
+	encoding.WriteString(data, &index, r.Address.String(), uint32(len(r.Address.String())))
 	encoding.WriteBytes(data, &index, r.EncryptedToken, routing.EncryptedTokenSize)
 
 	return data, nil
@@ -71,7 +79,7 @@ func (r *RelayUpdatePacket) UnmarshalBinary(buff []byte) error {
 	if udp, err := net.ResolveUDPAddr("udp", addr); udp != nil && err == nil {
 		r.Address = *udp
 	} else {
-		return fmt.Errorf("Could not resolve packet address '%s': %v", addr, err)
+		return fmt.Errorf("Could not resolve update packet address '%s': %v", addr, err)
 	}
 
 	r.PingStats = make([]core.RelayStatsPing, r.NumRelays)

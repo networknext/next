@@ -58,14 +58,16 @@ func TestRelayInitHandler(t *testing.T) {
 		// encrypt token
 		encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
 
+		udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 		packet := transport.RelayInitPacket{
 			Magic:          transport.InitRequestMagic,
 			Version:        0,
 			Nonce:          nonce,
-			Address:        "invalid",
+			Address:        *udp,
 			EncryptedToken: encryptedToken,
 		}
 		buff, _ := packet.MarshalBinary()
+		buff[8+crypto.NonceSize] = 'x' // first number in ip address is now 'x'
 		relayInitAssertions(t, buff, http.StatusBadRequest, nil, relayPublicKey[:], routerPrivateKey[:])
 	})
 
@@ -81,11 +83,12 @@ func TestRelayInitHandler(t *testing.T) {
 		// generate token but leave it as 0's
 		token := make([]byte, routing.EncryptedTokenSize)
 
+		udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 		packet := transport.RelayInitPacket{
 			Magic:          transport.InitRequestMagic,
 			Version:        0,
 			Nonce:          nonce,
-			Address:        "127.0.0.1:40000",
+			Address:        *udp,
 			EncryptedToken: token,
 		}
 		buff, _ := packet.MarshalBinary()
@@ -106,11 +109,12 @@ func TestRelayInitHandler(t *testing.T) {
 		// seal it with the bad nonce
 		encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
 
+		udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 		packet := transport.RelayInitPacket{
 			Magic:          transport.InitRequestMagic,
 			Version:        0,
 			Nonce:          nonce,
-			Address:        "127.0.0.1:40000",
+			Address:        *udp,
 			EncryptedToken: encryptedToken,
 		}
 
@@ -147,7 +151,7 @@ func TestRelayInitHandler(t *testing.T) {
 			Magic:          transport.InitRequestMagic,
 			Version:        0,
 			Nonce:          nonce,
-			Address:        addr,
+			Address:        *udpAddr,
 			EncryptedToken: encryptedToken,
 		}
 
@@ -195,7 +199,7 @@ func TestRelayInitHandler(t *testing.T) {
 		packet := transport.RelayInitPacket{
 			Magic:          transport.InitRequestMagic,
 			Nonce:          nonce,
-			Address:        addr,
+			Address:        *udpAddr,
 			EncryptedToken: encryptedToken,
 		}
 		buff, _ := packet.MarshalBinary()
