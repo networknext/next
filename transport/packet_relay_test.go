@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"math"
 	"math/rand"
+	"net"
 	"testing"
 
 	"github.com/networknext/backend/core"
@@ -109,66 +110,87 @@ func TestRelayUpdatePacket(t *testing.T) {
 
 		t.Run("missing number of relays", func(t *testing.T) {
 			var packet transport.RelayUpdatePacket
-			buff := make([]byte, 4+4+13+routing.EncryptedTokenSize)
+			buff := make([]byte, 4+4+13+crypto.KeySize)
 			binary.LittleEndian.PutUint32(buff, rand.Uint32())
 			binary.LittleEndian.PutUint32(buff[4:], 13)
 			assert.Errorf(t, packet.UnmarshalBinary(buff), "invalid packet")
 		})
 
-		t.Run("missing relay ping stats", func(t *testing.T) {
+		t.Run("address is not formatted correctly", func(t *testing.T) {
+			var packet transport.RelayUpdatePacket
+			addr := "invalid"
+			buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4)
+			binary.LittleEndian.PutUint32(buff, rand.Uint32())
+			binary.LittleEndian.PutUint32(buff[4:], uint32(len(addr)))
+			copy(buff[8:], addr)
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1) // number of relays
+			assert.Errorf(t, packet.UnmarshalBinary(buff), "invalid packet")
+		})
+
+		t.Run("missing various relay ping stats", func(t *testing.T) {
 			t.Run("missing the id", func(t *testing.T) {
 				var packet transport.RelayUpdatePacket
-				buff := make([]byte, 4+4+13+routing.EncryptedTokenSize+4)
+				addr := "127.0.0.1:40000"
+				buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4)
 				binary.LittleEndian.PutUint32(buff, rand.Uint32())
-				binary.LittleEndian.PutUint32(buff[4:], 13)
-				binary.LittleEndian.PutUint32(buff[21+routing.EncryptedTokenSize:], 1) // number of relays
+				binary.LittleEndian.PutUint32(buff[4:], uint32(len(addr)))
+				copy(buff[8:], addr)
+				binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1) // number of relays
 				assert.Errorf(t, packet.UnmarshalBinary(buff), "invalid packet")
 			})
 
 			t.Run("missing the rtt", func(t *testing.T) {
 				var packet transport.RelayUpdatePacket
-				buff := make([]byte, 4+4+13+routing.EncryptedTokenSize+4+8)
+				addr := "127.0.0.1:40000"
+				buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4+8)
 				binary.LittleEndian.PutUint32(buff, rand.Uint32())
-				binary.LittleEndian.PutUint32(buff[4:], 13)
-				binary.LittleEndian.PutUint32(buff[21+routing.EncryptedTokenSize:], 1)
-				binary.LittleEndian.PutUint64(buff[21+routing.EncryptedTokenSize+4:], rand.Uint64()) // relay id
+				binary.LittleEndian.PutUint32(buff[4:], uint32(len(addr)))
+				copy(buff[8:], addr)
+				binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1)
+				binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+4:], rand.Uint64()) // relay id
 				assert.Errorf(t, packet.UnmarshalBinary(buff), "invalid packet")
 			})
 
 			t.Run("missing the jitter", func(t *testing.T) {
 				var packet transport.RelayUpdatePacket
-				buff := make([]byte, 4+4+13+routing.EncryptedTokenSize+4+8+4)
+				addr := "127.0.0.1:40000"
+				buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4+8+4)
 				binary.LittleEndian.PutUint32(buff, rand.Uint32())
-				binary.LittleEndian.PutUint32(buff[4:], 13)
-				binary.LittleEndian.PutUint32(buff[21+routing.EncryptedTokenSize:], 1)
-				binary.LittleEndian.PutUint64(buff[21+routing.EncryptedTokenSize+4:], rand.Uint64())
-				binary.LittleEndian.PutUint32(buff[21+routing.EncryptedTokenSize+12:], math.Float32bits(rand.Float32())) // rtt
+				binary.LittleEndian.PutUint32(buff[4:], uint32(len(addr)))
+				copy(buff[8:], addr)
+				binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1)
+				binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+4:], rand.Uint64())
+				binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+12:], math.Float32bits(rand.Float32())) // rtt
 				assert.Errorf(t, packet.UnmarshalBinary(buff), "invalid packet")
 			})
 
 			t.Run("missing the packet loss", func(t *testing.T) {
 				var packet transport.RelayUpdatePacket
-				buff := make([]byte, 4+4+13+routing.EncryptedTokenSize+4+8+4+4)
+				addr := "127.0.0.1:40000"
+				buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4+8+4+4)
 				binary.LittleEndian.PutUint32(buff, rand.Uint32())
-				binary.LittleEndian.PutUint32(buff[4:], 13)
-				binary.LittleEndian.PutUint32(buff[21+routing.EncryptedTokenSize:], 1)
-				binary.LittleEndian.PutUint64(buff[21+routing.EncryptedTokenSize+4:], rand.Uint64())
-				binary.LittleEndian.PutUint32(buff[21+routing.EncryptedTokenSize+12:], math.Float32bits(rand.Float32()))
-				binary.LittleEndian.PutUint32(buff[21+routing.EncryptedTokenSize+16:], math.Float32bits(rand.Float32())) // jitter
+				binary.LittleEndian.PutUint32(buff[4:], uint32(len(addr)))
+				copy(buff[8:], addr)
+				binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1)
+				binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+4:], rand.Uint64())
+				binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+12:], math.Float32bits(rand.Float32()))
+				binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+16:], math.Float32bits(rand.Float32())) // jitter
 				assert.Errorf(t, packet.UnmarshalBinary(buff), "invalid packet")
 			})
 		})
 
 		t.Run("valid", func(t *testing.T) {
 			var packet transport.RelayUpdatePacket
-			buff := make([]byte, 4+4+13+routing.EncryptedTokenSize+4+8+4+4+4)
+			addr := "127.0.0.1:40000"
+			buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4+8+4+4+4)
 			binary.LittleEndian.PutUint32(buff, rand.Uint32())
-			binary.LittleEndian.PutUint32(buff[4:], 13)
-			binary.LittleEndian.PutUint32(buff[21+routing.EncryptedTokenSize:], 1)
-			binary.LittleEndian.PutUint64(buff[21+routing.EncryptedTokenSize+4:], rand.Uint64())
-			binary.LittleEndian.PutUint32(buff[21+routing.EncryptedTokenSize+12:], math.Float32bits(rand.Float32()))
-			binary.LittleEndian.PutUint32(buff[21+routing.EncryptedTokenSize+16:], math.Float32bits(rand.Float32()))
-			binary.LittleEndian.PutUint32(buff[21+routing.EncryptedTokenSize+20:], math.Float32bits(rand.Float32())) // packet loss
+			binary.LittleEndian.PutUint32(buff[4:], uint32(len(addr)))
+			copy(buff[8:], addr)
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1)
+			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+4:], rand.Uint64())
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+12:], math.Float32bits(rand.Float32()))
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+16:], math.Float32bits(rand.Float32()))
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+20:], math.Float32bits(rand.Float32())) // packet loss
 			assert.Nil(t, packet.UnmarshalBinary(buff))
 		})
 	})
@@ -187,9 +209,10 @@ func TestRelayUpdatePacket(t *testing.T) {
 		token := make([]byte, crypto.KeySize)
 		rand.Read(token)
 
+		udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 		expected := transport.RelayUpdatePacket{
 			Version:   rand.Uint32(),
-			Address:   "127.0.0.1:40000",
+			Address:   *udp,
 			Token:     token,
 			NumRelays: uint32(len(stats)),
 			PingStats: stats,

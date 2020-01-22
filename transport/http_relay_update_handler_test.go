@@ -63,17 +63,20 @@ func TestRelayUpdateHandler(t *testing.T) {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 	t.Run("address is invalid", func(t *testing.T) {
+		udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 		packet := transport.RelayUpdatePacket{
-			Address: "invalid",
+			Address: *udp,
 			Token:   make([]byte, routing.EncryptedTokenSize),
 		}
 		buff, _ := packet.MarshalBinary()
+		buff[10] = 'x' // assign this index (which should be the first item in the address) as the letter 'x' making it invalid
 		relayUpdateAssertions(t, buff, http.StatusBadRequest, nil, nil)
 	})
 
 	t.Run("number of relays exceeds max", func(t *testing.T) {
+		udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 		packet := transport.RelayUpdatePacket{
-			Address:   "127.0.0.1:40000",
+			Address:   *udp,
 			NumRelays: 1025,
 			Token:     make([]byte, routing.EncryptedTokenSize),
 			PingStats: make([]core.RelayStatsPing, 1025),
@@ -83,9 +86,10 @@ func TestRelayUpdateHandler(t *testing.T) {
 	})
 
 	t.Run("relay not found", func(t *testing.T) {
+		udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 		packet := transport.RelayUpdatePacket{
 			NumRelays: 3,
-			Address:   "127.0.0.1:40000",
+			Address:   *udp,
 			Token:     make([]byte, crypto.KeySize),
 			PingStats: make([]core.RelayStatsPing, 3),
 		}
@@ -96,14 +100,15 @@ func TestRelayUpdateHandler(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		redisServer, _ := miniredis.Run()
 		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+		addr := "127.0.0.1:40000"
+		udp, _ := net.ResolveUDPAddr("udp", addr)
 		statsdb := core.NewStatsDatabase()
 		statIps := []string{"127.0.0.2:40000", "127.0.0.3:40000", "127.0.0.4:40000", "127.0.0.5:40000"}
 		packet := transport.RelayUpdatePacket{
 			NumRelays: uint32(len(statIps)),
-			Address:   "127.0.0.1:40000",
+			Address:   *udp,
 			Token:     make([]byte, routing.EncryptedTokenSize),
 		}
-		udpAddr, _ := net.ResolveUDPAddr("udp", packet.Address)
 
 		packet.PingStats = make([]core.RelayStatsPing, packet.NumRelays)
 		for i, addr := range statIps {
@@ -117,8 +122,8 @@ func TestRelayUpdateHandler(t *testing.T) {
 		seedRedis(t, redisServer, statIps)
 
 		entry := routing.Relay{
-			ID:             core.GetRelayID(packet.Address),
-			Addr:           *udpAddr,
+			ID:             core.GetRelayID(addr),
+			Addr:           *udp,
 			Datacenter:     1,
 			DatacenterName: "some name",
 			PublicKey:      make([]byte, crypto.KeySize),

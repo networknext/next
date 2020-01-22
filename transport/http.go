@@ -171,26 +171,26 @@ func RelayUpdateHandlerFunc(redisClient *redis.Client, statsdb *core.StatsDataba
 		}
 
 		relay := routing.Relay{
-			ID: core.GetRelayID(relayUpdatePacket.Address),
+			ID: core.GetRelayID(relayUpdatePacket.Address.String()),
 		}
 
 		exists := redisClient.HExists(RedisHashName, relay.Key())
 
 		if exists.Err() != nil && exists.Err() != redis.Nil {
-			log.Printf("failed to check if relay %s exists: %v", relayUpdatePacket.Address, exists.Err())
+			log.Printf("failed to check if relay %s exists: %v", relayUpdatePacket.Address.String(), exists.Err())
 			writer.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		if !exists.Val() {
-			log.Printf("failed to find relay with address '%s' in redis", relayUpdatePacket.Address)
+			log.Printf("failed to find relay with address '%s' in redis", relayUpdatePacket.Address.String())
 			writer.WriteHeader(http.StatusNotFound)
 			return
 		}
 
 		hgetResult := redisClient.HGet(RedisHashName, relay.Key())
 		if hgetResult.Err() != nil && hgetResult.Err() != redis.Nil {
-			log.Printf("failed to get relay %s from redis: %v", relayUpdatePacket.Address, hgetResult.Err())
+			log.Printf("failed to get relay %s from redis: %v", relayUpdatePacket.Address.String(), hgetResult.Err())
 			writer.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -210,7 +210,7 @@ func RelayUpdateHandlerFunc(redisClient *redis.Client, statsdb *core.StatsDataba
 		}
 
 		if !bytes.Equal(relayUpdatePacket.Token, relay.PublicKey) {
-			log.Printf("update packet for address '%s' not equal to existing entry", relayUpdatePacket.Address)
+			log.Printf("update packet for address '%s' not equal to existing entry", relayUpdatePacket.Address.String())
 			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}

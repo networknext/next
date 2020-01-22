@@ -2,7 +2,9 @@ package transport
 
 import (
 	"errors"
+	"fmt"
 	"math"
+	"net"
 
 	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
@@ -48,7 +50,7 @@ func (r RelayInitPacket) MarshalBinary() ([]byte, error) {
 // RelayUpdatePacket is the struct wrapping a update packet
 type RelayUpdatePacket struct {
 	Version   uint32
-	Address   string
+	Address   net.UDPAddr
 	Token     []byte
 	NumRelays uint32
 
@@ -58,11 +60,18 @@ type RelayUpdatePacket struct {
 // UnmarshalBinary decodes the binary data into a RelayUpdatePacket struct
 func (r *RelayUpdatePacket) UnmarshalBinary(buff []byte) error {
 	index := 0
+	var addr string
 	if !(encoding.ReadUint32(buff, &index, &r.Version) &&
-		encoding.ReadString(buff, &index, &r.Address, MaxRelayAddressLength) &&
+		encoding.ReadString(buff, &index, &addr, MaxRelayAddressLength) &&
 		encoding.ReadBytes(buff, &index, &r.Token, crypto.KeySize) &&
 		encoding.ReadUint32(buff, &index, &r.NumRelays)) {
 		return errors.New("Invalid Packet")
+	}
+
+	if udp, err := net.ResolveUDPAddr("udp", addr); udp != nil && err == nil {
+		r.Address = *udp
+	} else {
+		return fmt.Errorf("Could not resolve packet address '%s': %v", addr, err)
 	}
 
 	r.PingStats = make([]core.RelayStatsPing, r.NumRelays)
@@ -82,11 +91,11 @@ func (r *RelayUpdatePacket) UnmarshalBinary(buff []byte) error {
 
 // MarshalBinary ...
 func (r RelayUpdatePacket) MarshalBinary() ([]byte, error) {
-	data := make([]byte, 4+4+len(r.Address)+routing.EncryptedTokenSize+4+20*len(r.PingStats))
+	data := make([]byte, 4+4+len(r.Address.String())+routing.EncryptedTokenSize+4+20*len(r.PingStats))
 
 	index := 0
 	encoding.WriteUint32(data, &index, r.Version)
-	encoding.WriteString(data, &index, r.Address, math.MaxInt32)
+	encoding.WriteString(data, &index, r.Address.String(), math.MaxInt32)
 	encoding.WriteBytes(data, &index, r.Token, crypto.KeySize)
 	encoding.WriteUint32(data, &index, r.NumRelays)
 
