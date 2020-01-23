@@ -642,31 +642,36 @@ type RouteMatrix struct {
 	Entries          []RouteMatrixEntry
 }
 
+// RelaysIn will retern the set of Relays in the provided Datacenter
 func (m *RouteMatrix) RelaysIn(d Datacenter) []Relay {
 	relayIDs, ok := m.DatacenterRelays[d.ID]
 	if !ok {
 		return nil
 	}
 
-	relays := make([]Relay, len(relayIDs))
+	var relays []Relay
 	for i := 0; i < len(relayIDs); i++ {
-		relays[i] = Relay{ID: relayIDs[i]}
+		relays = append(relays, Relay{ID: relayIDs[i]})
 	}
 
 	return relays
 }
 
-func (m *RouteMatrix) AllRoutes(from Relay, to []Relay) []Route {
+// Routes will return all routes for each from and to Relay sets
+func (m *RouteMatrix) Routes(from []Relay, to []Relay) []Route {
 	var routes []Route
 
-	for _, relay := range to {
-		routes = append(routes, m.Routes(from, relay)...)
+	for _, fromrelay := range from {
+		for _, torelay := range to {
+			routes = append(routes, m.routes(fromrelay, torelay)...)
+		}
 	}
 
 	return routes
 }
 
-func (m *RouteMatrix) Routes(from Relay, to Relay) []Route {
+// route is just the internal function to get all routes from one relay to another
+func (m *RouteMatrix) routes(from Relay, to Relay) []Route {
 	var routes []Route
 
 	toidx, ok := m.RelayIndicies[to.ID]
@@ -714,12 +719,7 @@ func (m *RouteMatrix) Routes(from Relay, to Relay) []Route {
 }
 
 func (m *RouteMatrix) Route(datacenter Datacenter, relays []Relay) (Decision, error) {
-	datacenterelays := m.RelaysIn(datacenter)
-
-	var routes []Route
-	for _, relay := range datacenterelays {
-		routes = append(routes, m.AllRoutes(relay, relays)...)
-	}
+	// _ := m.Routes(m.RelaysIn(datacenter), relays)
 
 	return Decision{}, nil
 }

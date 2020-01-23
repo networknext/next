@@ -1,7 +1,6 @@
 package routing_test
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io/ioutil"
@@ -1379,78 +1378,105 @@ func TestOptimize(t *testing.T) {
 }
 
 func TestRouting(t *testing.T) {
-	t.Skip()
-	costfile, err := os.Open("./test_data/cost.bin")
-	assert.NoError(t, err)
-
-	var costMatrix routing.CostMatrix
-	_, err = costMatrix.ReadFom(costfile)
-	assert.NoError(t, err)
-
-	var routeMatrix routing.RouteMatrix
-	err = costMatrix.Optimize(&routeMatrix, 1)
-	assert.NoError(t, err)
-
-	// fmt.Println(routeMatrix.RelaysIn(routing.Datacenter{ID: 819286586}))
-	// fmt.Println(routeMatrix.RelayIds[10:30])
-
-	datacenter := routing.Datacenter{ID: 819286586}
-
-	nearby := []routing.Relay{
-		{
-			ID: 4258991808,
-			Stats: routing.Stats{
-				RTT:        50,
-				Jitter:     10,
-				PacketLoss: 2,
+	t.Run("RelaysIn", func(t *testing.T) {
+		matrix := routing.RouteMatrix{
+			DatacenterRelays: map[uint64][]uint64{
+				1: []uint64{1, 2, 3},
+				2: []uint64{4, 5, 6},
+				3: []uint64{},
 			},
-		},
-		{
-			ID: 772292620,
-			Stats: routing.Stats{
-				RTT:        5,
-				Jitter:     0,
-				PacketLoss: 5,
-			},
-		},
-		{
-			ID: 927576981,
-			Stats: routing.Stats{
-				RTT:        100,
-				Jitter:     50,
-				PacketLoss: 25,
-			},
-		},
-	}
-
-	var buf bytes.Buffer
-	for _, r := range nearby {
-		fmt.Fprintf(&buf, "%d, ", r.ID)
-	}
-	fmt.Printf("Nearby: %s\n", buf.String())
-	fmt.Printf("Datacenter: %d\n", datacenter.ID)
-	for _, relay := range routeMatrix.RelaysIn(datacenter) {
-		for _, route := range routeMatrix.AllRoutes(relay, nearby) {
-			var buf bytes.Buffer
-			for idx, r := range route.Relays {
-				fmt.Fprintf(&buf, "%d", r.ID)
-				if idx+1 < len(route.Relays) {
-					fmt.Fprint(&buf, " -> ")
-				}
-			}
-			fmt.Printf("\tRTT (%f): (Datacenter) %s (Nearby)\n", route.Stats.RTT, buf.String())
 		}
-	}
 
-	// fmt.Println("Relay to Relay")
-	// for _, route := range routeMatrix.Routes(from, to[0]) {
-	// 	fmt.Printf("Num Relays: %d, Total Status: %+v\n", len(route.Relays), route.Stats)
-	// }
-	// fmt.Println()
-	// fmt.Println("Relay to multiple Relays")
-	// for _, route := range routeMatrix.AllRoutes(from, to) {
-	// 	fmt.Printf("Num Relays: %d, Total Status: %+v\n", len(route.Relays), route.Stats)
-	// }
+		tests := []struct {
+			name     string
+			input    routing.Datacenter
+			expected []routing.Relay
+		}{
+			{"datacenter not found", routing.Datacenter{ID: 0}, nil},
+			{"datacenter with no relays", routing.Datacenter{ID: 3}, nil},
+			{"datacenter with relays", routing.Datacenter{ID: 1}, []routing.Relay{{ID: 1}, {ID: 2}, {ID: 3}}},
+		}
 
-	t.Fail()
+		for _, test := range tests {
+			t.Run(test.name, func(t *testing.T) {
+				actual := matrix.RelaysIn(test.input)
+				assert.Equal(t, test.expected, actual)
+			})
+		}
+	})
+
+	t.Run("Routes", func(t *testing.T) {
+		costfile, err := os.Open("./test_data/cost.bin")
+		assert.NoError(t, err)
+
+		var costMatrix routing.CostMatrix
+		_, err = costMatrix.ReadFom(costfile)
+		assert.NoError(t, err)
+
+		var routeMatrix routing.RouteMatrix
+		err = costMatrix.Optimize(&routeMatrix, 1)
+		assert.NoError(t, err)
+
+		tests := []struct {
+			name     string
+			from     []routing.Relay
+			to       []routing.Relay
+			expected []routing.Route
+		}{
+			{"empty from/to sets", []routing.Relay{}, []routing.Relay{}, nil},
+			{"relays not found", []routing.Relay{{ID: 1}}, []routing.Relay{{ID: 2}}, nil},
+			{"one relay found", []routing.Relay{{ID: 1}}, []routing.Relay{{ID: 1500948990}}, nil},
+			{
+				"routes found",
+				[]routing.Relay{{ID: 2836356269}},
+				[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
+				[]routing.Route{
+					routing.Route{
+						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2923051732}, {ID: 1884974764}, {ID: 3263834878}},
+						Stats:  routing.Stats{RTT: 182},
+					},
+					routing.Route{
+						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2641807504}, {ID: 3263834878}},
+						Stats:  routing.Stats{RTT: 182},
+					},
+					routing.Route{
+						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
+						Stats:  routing.Stats{RTT: 182},
+					},
+					routing.Route{
+						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2576485547}, {ID: 1835585494}, {ID: 3263834878}},
+						Stats:  routing.Stats{RTT: 183},
+					},
+					routing.Route{
+						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
+						Stats:  routing.Stats{RTT: 183},
+					},
+					routing.Route{
+						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2663193268}, {ID: 2504465311}, {ID: 3263834878}},
+						Stats:  routing.Stats{RTT: 184},
+					},
+					routing.Route{
+						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 427962386}, {ID: 2504465311}, {ID: 3263834878}},
+						Stats:  routing.Stats{RTT: 184},
+					},
+					routing.Route{
+						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 4058587524}, {ID: 1350942731}, {ID: 3263834878}},
+						Stats:  routing.Stats{RTT: 184},
+					},
+					routing.Route{
+						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1500948990}},
+						Stats:  routing.Stats{RTT: 311},
+					},
+				},
+			},
+		}
+
+		for _, test := range tests {
+			t.Run(test.name, func(t *testing.T) {
+				actual := routeMatrix.Routes(test.from, test.to)
+				fmt.Printf("%+v\n", actual)
+				assert.Equal(t, test.expected, actual)
+			})
+		}
+	})
 }
