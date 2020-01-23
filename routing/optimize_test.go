@@ -15,7 +15,7 @@ import (
 func addrsToIDs(addrs []string) []uint64 {
 	retval := make([]uint64, len(addrs))
 	for i, addr := range addrs {
-		retval[i] = uint64(routing.GetRelayID(addr))
+		retval[i] = uint64(crypto.HashID(addr))
 	}
 	return retval
 }

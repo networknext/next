@@ -89,7 +89,7 @@ func RelayInitHandlerFunc(redisClient *redis.Client, relayPublicKey []byte, rout
 		}
 
 		relay := routing.Relay{
-			ID:             routing.GetRelayID(relayInitPacket.Address.String()),
+			ID:             crypto.HashID(relayInitPacket.Address.String()),
 			Addr:           relayInitPacket.Address,
 			LastUpdateTime: uint64(time.Now().Unix()),
 		}
@@ -161,7 +161,7 @@ func RelayUpdateHandlerFunc(redisClient *redis.Client, statsdb *routing.StatsDat
 		}
 
 		relay := routing.Relay{
-			ID: routing.GetRelayID(relayUpdatePacket.Address.String()),
+			ID: crypto.HashID(relayUpdatePacket.Address.String()),
 		}
 
 		exists := redisClient.HExists(routing.HashKeyAllRelays, relay.Key())

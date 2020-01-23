@@ -27,7 +27,7 @@ func RandomString(length int) string {
 
 func FillRelayDatabase(redisClient *redis.Client) {
 	fillData := func(addr string, updateTime int64) {
-		id := routing.GetRelayID(addr)
+		id := crypto.HashID(addr)
 		udp, _ := net.ResolveUDPAddr("udp", addr)
 		data := routing.Relay{
 			ID:             id,
@@ -54,14 +54,14 @@ func FillStatsDatabase(statsdb *routing.StatsDatabase) {
 		entry := routing.NewStatsEntry()
 		makeStats := func(entry *routing.StatsEntry, addr string) {
 			stats := routing.NewStatsEntryRelay()
-			entry.Relays[routing.GetRelayID(addr)] = stats
+			entry.Relays[crypto.HashID(addr)] = stats
 		}
 
 		for _, c := range conns {
 			makeStats(entry, c)
 		}
 
-		statsdb.Entries[routing.GetRelayID(addr)] = *entry
+		statsdb.Entries[crypto.HashID(addr)] = *entry
 	}
 
 	makeEntry(statsdb, "127.0.0.1:40000", "127.0.0.2:40000", "127.0.0.3:40000", "127.0.0.4:40000", "127.0.0.5:40000", "127.0.0.6:40000")
