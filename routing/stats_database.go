@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"sync"
 
 	"github.com/go-redis/redis/v7"
 )
@@ -103,6 +104,8 @@ type StatsEntry struct {
 // Each entry contains data about the entry relay to other relays
 type StatsDatabase struct {
 	Entries map[uint64]StatsEntry
+
+	mu sync.Mutex
 }
 
 // NewStatsDatabase creates a new stats database
@@ -132,10 +135,15 @@ func NewStatsEntryRelay() *StatsEntryRelay {
 func (database *StatsDatabase) ProcessStats(statsUpdate *RelayStatsUpdate) {
 	sourceRelayID := statsUpdate.ID
 
+	database.mu.Lock()
 	entry, entryExists := database.Entries[sourceRelayID]
+	database.mu.Unlock()
+
 	if !entryExists {
 		entry = *NewStatsEntry()
+		database.mu.Lock()
 		database.Entries[sourceRelayID] = entry
+		database.mu.Unlock()
 	}
 
 	for _, stats := range statsUpdate.PingStats {
@@ -176,7 +184,11 @@ func (database *StatsDatabase) MakeCopy() *StatsDatabase {
 
 // GetEntry retrieves the stats for the supplied relay id's, if either or both do not exist the function returns nil
 func (database *StatsDatabase) GetEntry(relay1, relay2 uint64) *StatsEntryRelay {
-	if entry, entryExists := database.Entries[relay1]; entryExists {
+	database.mu.Lock()
+	entry, entryExists := database.Entries[relay1]
+	database.mu.Unlock()
+
+	if entryExists {
 		if relay, relayExists := entry.Relays[relay2]; relayExists {
 			return relay
 		}
