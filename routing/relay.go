@@ -102,6 +102,12 @@ func (r Relay) Key() string {
 	return r.cachedKey
 }
 
+type Stats struct {
+	RTT        float64
+	Jitter     float64
+	PacketLoss float64
+}
+
 // RelayUpdate ...
 type RelayUpdate struct {
 	ID             uint64

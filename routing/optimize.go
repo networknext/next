@@ -710,12 +710,6 @@ func (m *RouteMatrix) Routes(from Relay, to Relay) []Route {
 		routes = append(routes, route)
 	}
 
-	for _, route := range routes {
-		route.Stats.RTT += to.Stats.RTT
-		route.Stats.Jitter += to.Stats.Jitter
-		route.Stats.PacketLoss += to.Stats.PacketLoss
-	}
-
 	return routes
 }
 

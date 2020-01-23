@@ -1,10 +1,11 @@
 package routing
 
+import "encoding/json"
+
 const (
 	DecisionTypeDirect   = 0
 	DecisionTypeNew      = 1
 	DecisionTypeContinue = 2
-
 )
 
 var (
@@ -26,3 +27,7 @@ func (r *Decision) UnmarshalBinary(data []byte) error {
 	return json.Unmarshal(data, r)
 }
 
+type Route struct {
+	Relays []Relay
+	Stats  Stats
+}
