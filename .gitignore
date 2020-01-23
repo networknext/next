@@ -4,3 +4,5 @@ dist
 cover.out
 *.swp
 *.mmdb
+obj/*
+
