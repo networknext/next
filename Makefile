@@ -1,4 +1,5 @@
 CXX = g++
+CXX_FLAGS := -Wall -Wextra
 GO = go
 GOFMT = gofmt
 
@@ -26,11 +27,25 @@ OPTIMIZE_FILE = $(DIST_DIR)/optimize.bin
 #####################
 
 export RELAY_ID = local
+
+ifndef RELAY_ADDRESS
 export RELAY_ADDRESS = 127.0.0.1
+endif
+
+ifndef RELAY_PUBLIC_KEY
 export RELAY_PUBLIC_KEY = 9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=
+endif
+
+ifndef RELAY_PRIVATE_KEY
 export RELAY_PRIVATE_KEY = lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=
+endif
+
 export RELAY_BACKEND_HOSTNAME = http://localhost:30000
+
+ifndef RELAY_ROUTER_PUBLIC_KEY
 export RELAY_ROUTER_PUBLIC_KEY = SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
+endif
+
 export RELAY_DEBUG = 0
 
 .PHONY: help
@@ -90,7 +105,7 @@ test-func: clean build-sdk build-relay build-functional-server build-functional-
 	@$(GO) run ./cmd/tools/functional/tests/func_tests.go
 	@printf "\ndone\n\n"
 
-.PHONY: build-sdk-test 
+.PHONY: build-sdk-test
 build-sdk-test: build-sdk ## builds the sdk test binary
 	@printf "Building sdk test... "
 	@$(CXX) -Isdk -o $(DIST_DIR)/$(SDKNAME)_test ./sdk/next_test.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
