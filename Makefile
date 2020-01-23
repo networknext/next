@@ -1,4 +1,5 @@
 CXX = g++
+CXX_FLAGS := -Wall -Wextra
 GO = go
 GOFMT = gofmt
 
@@ -26,11 +27,25 @@ OPTIMIZE_FILE = $(DIST_DIR)/optimize.bin
 #####################
 
 export RELAY_ID = local
+
+ifndef RELAY_ADDRESS
 export RELAY_ADDRESS = 127.0.0.1
+endif
+
+ifndef RELAY_PUBLIC_KEY
 export RELAY_PUBLIC_KEY = 9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=
+endif
+
+ifndef RELAY_PRIVATE_KEY
 export RELAY_PRIVATE_KEY = lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=
+endif
+
 export RELAY_BACKEND_HOSTNAME = http://localhost:30000
+
+ifndef RELAY_ROUTER_PUBLIC_KEY
 export RELAY_ROUTER_PUBLIC_KEY = SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
+endif
+
 export RELAY_DEBUG = 0
 
 .PHONY: help
@@ -90,7 +105,7 @@ test-func: clean build-sdk build-relay build-functional-server build-functional-
 	@$(GO) run ./cmd/tools/functional/tests/func_tests.go
 	@printf "\ndone\n\n"
 
-.PHONY: build-sdk-test 
+.PHONY: build-sdk-test
 build-sdk-test: build-sdk ## builds the sdk test binary
 	@printf "Building sdk test... "
 	@$(CXX) -Isdk -o $(DIST_DIR)/$(SDKNAME)_test ./sdk/next_test.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
@@ -136,6 +151,40 @@ dev-route: ## prints routes from relay to datacenter in route matrix
 .PHONY: dev-relay
 dev-relay: build-relay
 	@./dist/relay
+
+#######################
+# Relay Build Process #
+#######################
+
+rwildcard=$(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))
+
+RELAY_BIN			:= $(DIST_DIR)
+RELAY_OBJ			:= obj
+RELAY_SRC			:= cmd/relay
+
+RELAY_SRC_FILES		:= $(call rwildcard,$(RELAY_SRC),*.cpp)
+RELAY_OBJ_FILES		:= $(patsubst $(RELAY_SRC)/%.cpp, $(RELAY_OBJ)/%.o, $(RELAY_SRC_FILES))
+RELAY_SUB_DIRS		:= $(shell find $(RELAY_SRC)/* -type d -print)
+RELAY_OBJ_DIRS		:= $(patsubst $(RELAY_SRC)/%, $(RELAY_OBJ)/%, $(RELAY_SUB_DIRS))
+
+RELAY_EXE			:= relay
+
+relay_mkdirs:
+	@mkdir -p $(RELAY_OBJ) $(RELAY_OBJ_DIRS)
+
+$(RELAY_BIN)/$(RELAY_EXE): $(RELAY_OBJ_FILES)
+	@printf "Building relay... "
+	@$(CXX) $(CXX_FLAGS) $^ -o $@ $(LDFLAGS)
+
+dev-relay-v2: relay_mkdirs dev-run-relay
+
+dev-run-relay: $(RELAY_BIN)/$(RELAY_EXE)
+	@$<
+
+$(RELAY_OBJ)/%.o: $(RELAY_SRC)/%.cpp
+	$(CXX) $(CXX_FLAGS) -c $< -o $@
+
+######################
 
 .PHONY: dev-optimizer
 dev-optimizer: ## runs a local optimizer

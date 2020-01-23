@@ -39,29 +39,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	statsdb := routing.NewStatsDatabase()
-	var costmatrix routing.CostMatrix
-	var routematrix routing.RouteMatrix
-
-	go func() {
-		for {
-			if err := costmatrix.Optimize(&routematrix, 1); err != nil {
-				log.Printf("failed to optimize cost matrix into route matrix: %v", err)
-			}
-
-			log.Printf("optimized %d entries into route matrix from cost matrix\n", len(routematrix.Entries))
-
-			time.Sleep(10 * time.Second)
-		}
-	}()
-
-	port := os.Getenv("RELAY_PORT")
-
-	if len(port) == 0 {
-		port = "40000"
-		fmt.Printf("RELAY_PORT env var is unset, setting port as %s\n", port)
-	}
-
 	// Attempt to connect to REDIS_HOST
 	// If it fails to connect then start a local in memory instance and connect to that instead
 	redisClient := redis.NewClient(&redis.Options{Addr: os.Getenv("REDIS_HOST")})
@@ -77,6 +54,33 @@ func main() {
 		}
 
 		log.Printf("unable to connect to REDIS_HOST '%s', connected to in-memory redis %s", os.Getenv("REDIS_URL"), redisServer.Addr())
+	}
+
+	statsdb := routing.NewStatsDatabase()
+	var costmatrix routing.CostMatrix
+	var routematrix routing.RouteMatrix
+
+	go func() {
+		for {
+			if err := statsdb.GetCostMatrix(&costmatrix, redisClient); err != nil {
+				log.Printf("failed to get the cost matrix: %v\n", err)
+			}
+
+			if err := costmatrix.Optimize(&routematrix, 1); err != nil {
+				log.Printf("failed to optimize cost matrix into route matrix: %v", err)
+			}
+
+			log.Printf("optimized %d entries into route matrix from cost matrix\n", len(routematrix.Entries))
+
+			time.Sleep(10 * time.Second)
+		}
+	}()
+
+	port := os.Getenv("RELAY_PORT")
+
+	if len(port) == 0 {
+		port = "40000"
+		fmt.Printf("RELAY_PORT env var is unset, setting port as %s\n", port)
 	}
 
 	router := transport.NewRouter(redisClient, statsdb, &costmatrix, &routematrix, relayPublicKey, routerPrivateKey)

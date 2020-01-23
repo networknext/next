@@ -320,7 +320,8 @@ func TestStatsDatabase(t *testing.T) {
 			// invalid - packet loss > MaxPacketLoss
 			modifyEntry("127.0.0.1:40000", "127.0.0.5:40000", 1.0, 0.3, routing.MaxPacketLoss+1)
 
-			costMatrix := statsdb.GetCostMatrix(redisClient)
+			var costMatrix routing.CostMatrix
+			assert.NoError(t, statsdb.GetCostMatrix(&costMatrix, redisClient))
 
 			// Testing
 			hgetallResult = redisClient.HGetAll(routing.RedisHashName)
