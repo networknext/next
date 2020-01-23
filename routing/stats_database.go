@@ -1,7 +1,6 @@
 package routing
 
 import (
-	"fmt"
 	"log"
 	"math"
 	"sort"
@@ -212,12 +211,11 @@ func (database *StatsDatabase) GetSample(relay1, relay2 uint64) (float32, float3
 }
 
 // GetCostMatrix returns the cost matrix composed of all current information
-func (database *StatsDatabase) GetCostMatrix(redisClient *redis.Client, costMatrix *CostMatrix) error {
+func (database *StatsDatabase) GetCostMatrix(costMatrix *CostMatrix, redisClient *redis.Client) bool {
 	hgetallResult := redisClient.HGetAll(RedisHashName)
 	if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
-		err := fmt.Errorf("failed to get all relays from redis: %v", hgetallResult.Err())
-		log.Println(err)
-		return err
+		log.Printf("failed to get all relays from redis: %v", hgetallResult.Err())
+		return false
 	}
 	numRelays := len(hgetallResult.Val())
 
@@ -234,9 +232,8 @@ func (database *StatsDatabase) GetCostMatrix(redisClient *redis.Client, costMatr
 	for _, rawRelay := range hgetallResult.Val() {
 		var relay Relay
 		if err := relay.UnmarshalBinary([]byte(rawRelay)); err != nil {
-			e := fmt.Errorf("failed to unmarshal relay when creating cost matrix: %v", err)
-			log.Println(e)
-			return e
+			log.Printf("failed to unmarshal relay when creating cost matrix: %v", err)
+			return false
 		}
 		stableRelays = append(stableRelays, relay)
 	}
@@ -276,5 +273,5 @@ func (database *StatsDatabase) GetCostMatrix(redisClient *redis.Client, costMatr
 		}
 	}
 
-	return nil
+	return true
 }
