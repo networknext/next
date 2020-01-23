@@ -321,7 +321,7 @@ func TestStatsDatabase(t *testing.T) {
 			modifyEntry("127.0.0.1:40000", "127.0.0.5:40000", 1.0, 0.3, routing.MaxPacketLoss+1)
 
 			var costMatrix routing.CostMatrix
-			assert.True(t, statsdb.GetCostMatrix(&costMatrix, redisClient))
+			assert.NoError(t, statsdb.GetCostMatrix(&costMatrix, redisClient))
 
 			// Testing
 			hgetallResult = redisClient.HGetAll(routing.RedisHashName)
