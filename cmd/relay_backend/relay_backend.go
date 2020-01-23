@@ -28,14 +28,14 @@ func main() {
 	if key := os.Getenv("RELAY_KEY_PUBLIC"); len(key) != 0 {
 		relayPublicKey, _ = base64.StdEncoding.DecodeString(key)
 	} else {
-		log.Println("Env var 'NN_RELAY_KEY_PUBLIC' is not set, exiting!")
+		log.Println("Env var 'RELAY_KEY_PUBLIC' is not set, exiting!")
 		os.Exit(1)
 	}
 
 	if key := os.Getenv("ROUTER_KEY_PRIVATE"); len(key) != 0 {
 		routerPrivateKey, _ = base64.StdEncoding.DecodeString(key)
 	} else {
-		log.Println("Env var 'NN_ROUTER_KEY_PRIVATE' is not set, exiting!")
+		log.Println("Env var 'ROUTER_KEY_PRIVATE' is not set, exiting!")
 		os.Exit(1)
 	}
 
