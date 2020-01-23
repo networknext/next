@@ -59,13 +59,15 @@ func (r *Relay) UnmarshalBinary(data []byte) error {
 
 	var addr string
 	if !(encoding.ReadUint64(data, &index, &r.ID) &&
-		encoding.ReadString(data, &index, &r.Name, math.MaxInt32) && // TODO define a actual limit on this
+		encoding.ReadString(data, &index, &r.Name, math.MaxInt32) && // TODO define an actual limit on this
 		encoding.ReadString(data, &index, &addr, MaxRelayAddressLength) &&
 		encoding.ReadUint64(data, &index, &r.Datacenter) &&
 		encoding.ReadString(data, &index, &r.DatacenterName, math.MaxInt32) &&
 		encoding.ReadBytes(data, &index, &r.PublicKey, crypto.KeySize) &&
+		encoding.ReadFloat64(data, &index, &r.Latitude) &&
+		encoding.ReadFloat64(data, &index, &r.Longitude) &&
 		encoding.ReadUint64(data, &index, &r.LastUpdateTime)) {
-		return errors.New("Invalid RelayData")
+		return errors.New("Invalid Relay")
 	}
 	if udp, err := net.ResolveUDPAddr("udp", addr); udp != nil && err == nil {
 		r.Addr = *udp
@@ -79,7 +81,7 @@ func (r *Relay) UnmarshalBinary(data []byte) error {
 // TODO add other fields to this
 func (r Relay) MarshalBinary() (data []byte, err error) {
 	strAddr := r.Addr.String()
-	length := 8 + 4 + len(r.Name) + 4 + len(strAddr) + 8 + 4 + len(r.DatacenterName) + len(r.PublicKey) + 8
+	length := 8 + 4 + len(r.Name) + 4 + len(strAddr) + 8 + 4 + len(r.DatacenterName) + len(r.PublicKey) + 8 + 8 + 8
 
 	data = make([]byte, length)
 
@@ -90,6 +92,8 @@ func (r Relay) MarshalBinary() (data []byte, err error) {
 	encoding.WriteUint64(data, &index, r.Datacenter)
 	encoding.WriteString(data, &index, r.DatacenterName, uint32(len(r.DatacenterName)))
 	encoding.WriteBytes(data, &index, r.PublicKey, crypto.KeySize)
+	encoding.WriteFloat64(data, &index, r.Latitude)
+	encoding.WriteFloat64(data, &index, r.Longitude)
 	encoding.WriteUint64(data, &index, r.LastUpdateTime)
 
 	return data, err

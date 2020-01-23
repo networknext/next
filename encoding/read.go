@@ -25,11 +25,20 @@ func ReadUint64(data []byte, index *int, value *uint64) bool {
 }
 
 func ReadFloat32(data []byte, index *int, value *float32) bool {
-	var int_value uint32
-	if !ReadUint32(data, index, &int_value) {
+	var intValue uint32
+	if !ReadUint32(data, index, &intValue) {
 		return false
 	}
-	*value = math.Float32frombits(int_value)
+	*value = math.Float32frombits(intValue)
+	return true
+}
+
+func ReadFloat64(data []byte, index *int, value *float64) bool {
+	var uintValue uint64
+	if !ReadUint64(data, index, &uintValue) {
+		return false
+	}
+	*value = math.Float64frombits(uintValue)
 	return true
 }
 
