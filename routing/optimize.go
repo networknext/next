@@ -652,15 +652,96 @@ type RouteMatrix struct {
 	DatacenterIds    []uint64
 	DatacenterNames  []string
 	Entries          []RouteMatrixEntry
+
+	relayIdx map[uint64]int
 }
 
-func (m *RouteMatrix) Route() (Route, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+func (m *RouteMatrix) RelaysIn(d Datacenter) []Relay {
+	relayIDs, ok := m.DatacenterRelays[d.ID]
+	if !ok {
+		return nil
+	}
 
-	return Route{
-		Type: RouteTypeDirect,
-	}, nil
+	relays := make([]Relay, len(relayIDs))
+	for i := 0; i < len(relayIDs); i++ {
+		relays[i] = Relay{ID: relayIDs[i]}
+	}
+
+	return relays
+}
+
+func (m *RouteMatrix) AllRoutes(from Relay, to []Relay) []Route {
+	var routes []Route
+
+	for _, relay := range to {
+		routes = append(routes, m.Routes(from, relay)...)
+	}
+
+	return routes
+}
+
+func (m *RouteMatrix) Routes(from Relay, to Relay) []Route {
+	var routes []Route
+
+	toidx, ok := m.relayIdx[to.ID]
+	if !ok {
+		return nil
+	}
+
+	fromidx, ok := m.relayIdx[from.ID]
+	if !ok {
+		return nil
+	}
+
+	reverse := toidx > fromidx
+	fromtoidx := TriMatrixIndex(fromidx, toidx)
+
+	for i := 0; i < int(m.Entries[fromtoidx].NumRoutes); i++ {
+
+		numRelays := int(m.Entries[fromtoidx].RouteNumRelays[i])
+
+		routeRelays := make([]Relay, numRelays)
+
+		if !reverse {
+			for j := 0; j < numRelays; j++ {
+				relayIndex := m.Entries[fromtoidx].RouteRelays[i][j]
+				routeRelays[j] = Relay{ID: m.RelayIds[relayIndex]}
+			}
+		} else {
+			for j := 0; j < numRelays; j++ {
+				relayIndex := m.Entries[fromtoidx].RouteRelays[i][j]
+				routeRelays[numRelays-1-j] = Relay{ID: m.RelayIds[relayIndex]}
+			}
+		}
+
+		route := Route{
+			Relays: routeRelays,
+			Stats: Stats{
+				RTT: float64(m.Entries[fromtoidx].RouteRTT[i]),
+			},
+		}
+
+		routes = append(routes, route)
+	}
+
+	for _, route := range routes {
+		route.Stats.RTT += to.Stats.RTT
+		route.Stats.Jitter += to.Stats.Jitter
+		route.Stats.PacketLoss += to.Stats.PacketLoss
+	}
+
+	return routes
+}
+
+func (m *RouteMatrix) Route(datacenter Datacenter, relays []Relay) (Decision, error) {
+	datacenterelays := m.RelaysIn(datacenter)
+
+	var routes []Route
+	for _, relay := range datacenterelays {
+		routes = append(routes, m.AllRoutes(relay, relays)...)
+	}
+
+	return Decision{}, nil
 }
 
 // ReadFrom implements the io.ReadFrom interface
@@ -1213,4 +1294,11 @@ func (manager *RouteManager) AddRoute(rtt int32, relays ...uint64) {
 		}
 
 	}
+}
+
+func TriMatrixIndex(i, j int) int {
+	if i <= j {
+		i, j = j, i
+	}
+	return i*(i+1)/2 - i + j
 }

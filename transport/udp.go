@@ -124,6 +124,14 @@ func ServerUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider) UDPHan
 			log.Printf("failed to get buyer '%d'", packet.CustomerId)
 			return
 		}
+
+		// This was in the Router, but no sense having that buried in there when we already have
+		// a Buyer to check before requesting a Route
+		if !buyer.GetActive() {
+			log.Printf("buy '%s' is inactive", buyer.GetName())
+			return
+		}
+
 		buyPublicKey := buyer.GetSdkVersion3PublicKeyData()
 
 		// Drop the packet if the buyer is not an admin and they are using an internal build
@@ -224,7 +232,7 @@ func (e SessionEntry) MarshalBinary() ([]byte, error) {
 }
 
 type RouteProvider interface {
-	Route() (routing.Route, error)
+	Route(routing.Datacenter, []routing.Relay) (routing.Decision, error)
 }
 
 // SessionUpdateHandlerFunc ...
@@ -278,19 +286,19 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp Ro
 			return
 		}
 
-		relays, err := geoClient.RelaysWithin(location.Latitude, location.Longitude, 500, "mi")
+		clientrelays, err := geoClient.RelaysWithin(location.Latitude, location.Longitude, 500, "mi")
 		if err != nil {
 			log.Printf("failed to lookup client ip '%s': %v", packet.ClientAddress.IP.String(), err)
 			return
 		}
 
 		// Get a route from the RouteProvider an on error ensure it falls back to direct
-		route, err := rp.Route()
+		route, err := rp.Route(serverentry.Datacenter, clientrelays)
 		if err != nil {
 			log.Printf("failed to get a route for client ip '%s': %v", packet.ClientAddress.IP.String(), err)
 
-			route = routing.Route{
-				Type: routing.RouteTypeDirect,
+			route = routing.Decision{
+				Type: routing.DecisionTypeDirect,
 			}
 		}
 
@@ -306,10 +314,10 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp Ro
 		}
 
 		// Fill in the near relays
-		response.NumNearRelays = int32(len(relays))
-		response.NearRelayIds = make([]uint64, len(relays))
-		response.NearRelayAddresses = make([]net.UDPAddr, len(relays))
-		for idx, relay := range relays {
+		response.NumNearRelays = int32(len(clientrelays))
+		response.NearRelayIds = make([]uint64, len(clientrelays))
+		response.NearRelayAddresses = make([]net.UDPAddr, len(clientrelays))
+		for idx, relay := range clientrelays {
 			response.NearRelayIds[idx] = relay.ID
 			response.NearRelayAddresses[idx] = relay.Addr
 		}
