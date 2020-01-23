@@ -1,9 +1,12 @@
 package routing_test
 
 import (
+	"bytes"
 	"encoding/binary"
+	"fmt"
 	"io/ioutil"
 	"math/rand"
+	"os"
 	"strings"
 	"testing"
 
@@ -1373,4 +1376,81 @@ func TestOptimize(t *testing.T) {
 			analyze(t, &readRouteMatrix)
 		})
 	})
+}
+
+func TestRouting(t *testing.T) {
+	t.Skip()
+	costfile, err := os.Open("./test_data/cost.bin")
+	assert.NoError(t, err)
+
+	var costMatrix routing.CostMatrix
+	_, err = costMatrix.ReadFom(costfile)
+	assert.NoError(t, err)
+
+	var routeMatrix routing.RouteMatrix
+	err = costMatrix.Optimize(&routeMatrix, 1)
+	assert.NoError(t, err)
+
+	// fmt.Println(routeMatrix.RelaysIn(routing.Datacenter{ID: 819286586}))
+	// fmt.Println(routeMatrix.RelayIds[10:30])
+
+	datacenter := routing.Datacenter{ID: 819286586}
+
+	nearby := []routing.Relay{
+		{
+			ID: 4258991808,
+			Stats: routing.Stats{
+				RTT:        50,
+				Jitter:     10,
+				PacketLoss: 2,
+			},
+		},
+		{
+			ID: 772292620,
+			Stats: routing.Stats{
+				RTT:        5,
+				Jitter:     0,
+				PacketLoss: 5,
+			},
+		},
+		{
+			ID: 927576981,
+			Stats: routing.Stats{
+				RTT:        100,
+				Jitter:     50,
+				PacketLoss: 25,
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	for _, r := range nearby {
+		fmt.Fprintf(&buf, "%d, ", r.ID)
+	}
+	fmt.Printf("Nearby: %s\n", buf.String())
+	fmt.Printf("Datacenter: %d\n", datacenter.ID)
+	for _, relay := range routeMatrix.RelaysIn(datacenter) {
+		for _, route := range routeMatrix.AllRoutes(relay, nearby) {
+			var buf bytes.Buffer
+			for idx, r := range route.Relays {
+				fmt.Fprintf(&buf, "%d", r.ID)
+				if idx+1 < len(route.Relays) {
+					fmt.Fprint(&buf, " -> ")
+				}
+			}
+			fmt.Printf("\tRTT (%f): (Datacenter) %s (Nearby)\n", route.Stats.RTT, buf.String())
+		}
+	}
+
+	// fmt.Println("Relay to Relay")
+	// for _, route := range routeMatrix.Routes(from, to[0]) {
+	// 	fmt.Printf("Num Relays: %d, Total Status: %+v\n", len(route.Relays), route.Stats)
+	// }
+	// fmt.Println()
+	// fmt.Println("Relay to multiple Relays")
+	// for _, route := range routeMatrix.AllRoutes(from, to) {
+	// 	fmt.Printf("Num Relays: %d, Total Status: %+v\n", len(route.Relays), route.Stats)
+	// }
+
+	t.Fail()
 }
