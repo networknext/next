@@ -62,8 +62,8 @@ func main() {
 
 	go func() {
 		for {
-			if err := statsdb.GetCostMatrix(&costmatrix, redisClient); err != nil {
-				log.Printf("failed to get the cost matrix: %v", err)
+			if !statsdb.GetCostMatrix(&costmatrix, redisClient) {
+				log.Println("failed to get the cost matrix")
 			}
 
 			if err := costmatrix.Optimize(&routematrix, 1); err != nil {
