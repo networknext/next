@@ -12,7 +12,6 @@ import (
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/go-redis/redis/v7"
-	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/routing"
@@ -26,7 +25,7 @@ func seedRedis(t *testing.T, redisServer *miniredis.Miniredis, addressesToAdd []
 		relay := routing.NewRelay()
 		udpAddr, _ := net.ResolveUDPAddr("udp", addr)
 		relay.Addr = *udpAddr
-		relay.ID = core.GetRelayID(addr)
+		relay.ID = routing.GetRelayID(addr)
 		bin, _ := relay.MarshalBinary()
 		redisServer.HSet(transport.RedisHashName, relay.Key(), string(bin))
 	}
@@ -37,14 +36,14 @@ func seedRedis(t *testing.T, redisServer *miniredis.Miniredis, addressesToAdd []
 
 }
 
-func relayUpdateAssertions(t *testing.T, body []byte, expectedCode int, redisClient *redis.Client, statsdb *core.StatsDatabase) *httptest.ResponseRecorder {
+func relayUpdateAssertions(t *testing.T, body []byte, expectedCode int, redisClient *redis.Client, statsdb *routing.StatsDatabase) *httptest.ResponseRecorder {
 	if redisClient == nil {
 		redisServer, _ := miniredis.Run()
 		redisClient = redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 	}
 
 	if statsdb == nil {
-		statsdb = core.NewStatsDatabase()
+		statsdb = routing.NewStatsDatabase()
 	}
 
 	recorder := httptest.NewRecorder()
@@ -79,7 +78,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 			Address:   *udp,
 			NumRelays: 1025,
 			Token:     make([]byte, routing.EncryptedTokenSize),
-			PingStats: make([]core.RelayStatsPing, 1025),
+			PingStats: make([]routing.RelayStatsPing, 1025),
 		}
 		buff, _ := packet.MarshalBinary()
 		relayUpdateAssertions(t, buff, http.StatusBadRequest, nil, nil)
@@ -91,7 +90,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 			NumRelays: 3,
 			Address:   *udp,
 			Token:     make([]byte, crypto.KeySize),
-			PingStats: make([]core.RelayStatsPing, 3),
+			PingStats: make([]routing.RelayStatsPing, 3),
 		}
 		buff, _ := packet.MarshalBinary()
 		relayUpdateAssertions(t, buff, http.StatusNotFound, nil, nil)
@@ -102,7 +101,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 		addr := "127.0.0.1:40000"
 		udp, _ := net.ResolveUDPAddr("udp", addr)
-		statsdb := core.NewStatsDatabase()
+		statsdb := routing.NewStatsDatabase()
 		statIps := []string{"127.0.0.2:40000", "127.0.0.3:40000", "127.0.0.4:40000", "127.0.0.5:40000"}
 		packet := transport.RelayUpdatePacket{
 			NumRelays: uint32(len(statIps)),
@@ -110,10 +109,10 @@ func TestRelayUpdateHandler(t *testing.T) {
 			Token:     make([]byte, routing.EncryptedTokenSize),
 		}
 
-		packet.PingStats = make([]core.RelayStatsPing, packet.NumRelays)
+		packet.PingStats = make([]routing.RelayStatsPing, packet.NumRelays)
 		for i, addr := range statIps {
 			stats := &packet.PingStats[i]
-			stats.RelayID = core.GetRelayID(addr)
+			stats.RelayID = routing.GetRelayID(addr)
 			stats.RTT = rand.Float32()
 			stats.Jitter = rand.Float32()
 			stats.PacketLoss = rand.Float32()
@@ -122,7 +121,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 		seedRedis(t, redisServer, statIps)
 
 		entry := routing.Relay{
-			ID:             core.GetRelayID(addr),
+			ID:             routing.GetRelayID(addr),
 			Addr:           *udp,
 			Datacenter:     1,
 			DatacenterName: "some name",
@@ -183,7 +182,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 		assert.Contains(t, statsdb.Entries, entry.ID)
 		relations := statsdb.Entries[entry.ID]
 		for _, addr := range statIps {
-			id := core.GetRelayID(addr)
+			id := routing.GetRelayID(addr)
 			assert.Contains(t, relaysToPingIDs, id)
 			assert.Contains(t, relaysToPingAddrs, addr)
 			assert.Contains(t, relations.Relays, id)

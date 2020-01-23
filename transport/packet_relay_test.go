@@ -8,7 +8,6 @@ import (
 	"net"
 	"testing"
 
-	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/transport"
@@ -213,7 +212,7 @@ func TestRelayUpdatePacket(t *testing.T) {
 	})
 
 	t.Run("MarshalBinary()", func(t *testing.T) {
-		stats := make([]core.RelayStatsPing, 5)
+		stats := make([]routing.RelayStatsPing, 5)
 
 		for i := 0; i < 5; i++ {
 			stat := &stats[i]

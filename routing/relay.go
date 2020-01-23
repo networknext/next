@@ -2,6 +2,7 @@ package routing
 
 import (
 	"errors"
+	"hash/fnv"
 	"math"
 	"net"
 	"strconv"
@@ -11,11 +12,14 @@ import (
 )
 
 const (
+	// EncryptedTokenSize ...
 	EncryptedTokenSize = crypto.KeySize + crypto.MACSize
 
+	// RedisHashKeyStart ...
 	RedisHashKeyStart = "RELAY-"
 )
 
+// Relay ...
 type Relay struct {
 	ID   uint64
 	Name string
@@ -35,16 +39,18 @@ type Relay struct {
 
 	LastUpdateTime uint64
 
-	_CachedKey string
+	cachedKey string
 }
 
+// NewRelay ...
 func NewRelay() *Relay {
 	relay := new(Relay)
 	relay.PublicKey = make([]byte, crypto.KeySize)
 	return relay
 }
 
-// TODO add other things to this
+// UnmarshalBinary ...
+// TODO add other fields to this
 func (r *Relay) UnmarshalBinary(data []byte) error {
 	index := 0
 
@@ -66,7 +72,8 @@ func (r *Relay) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
-// TODO add other things to this
+// MarshalBinary ...
+// TODO add other fields to this
 func (r Relay) MarshalBinary() (data []byte, err error) {
 	strAddr := r.Addr.String()
 	length := 8 + 4 + len(r.Name) + 4 + len(strAddr) + 8 + 4 + len(r.DatacenterName) + len(r.PublicKey) + 8
@@ -85,20 +92,29 @@ func (r Relay) MarshalBinary() (data []byte, err error) {
 	return data, err
 }
 
+// Key returns the key used for Redis
 func (r Relay) Key() string {
-	if len(r._CachedKey) == 0 {
-		r._CachedKey = RedisHashKeyStart + strconv.FormatUint(r.ID, 10)
+	if len(r.cachedKey) == 0 {
+		r.cachedKey = RedisHashKeyStart + strconv.FormatUint(r.ID, 10)
 	}
 
-	return r._CachedKey
+	return r.cachedKey
 }
 
+// RelayUpdate ...
 type RelayUpdate struct {
 	ID             uint64
 	Name           string
-	Address        string
+	Address        net.UDPAddr
 	Datacenter     uint64
 	DatacenterName string
 	PublicKey      []byte
 	Shutdown       bool
+}
+
+// GetRelayID hashes the name of the relay and returns the result. Typically name is the address of the relay
+func GetRelayID(addr string) uint64 {
+	hash := fnv.New64a()
+	hash.Write([]byte(addr))
+	return hash.Sum64()
 }

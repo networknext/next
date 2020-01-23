@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/networknext/backend/core"
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/stretchr/testify/assert"
 )
@@ -15,7 +15,7 @@ import (
 func addrsToIDs(addrs []string) []uint64 {
 	retval := make([]uint64, len(addrs))
 	for i, addr := range addrs {
-		retval[i] = uint64(core.GetRelayID(addr))
+		retval[i] = uint64(routing.GetRelayID(addr))
 	}
 	return retval
 }
@@ -277,7 +277,7 @@ func sizeofRelayPublicKeysOld(keys [][]byte) int {
 }
 
 func sizeofRelayPublicKeys(keys [][]byte) int {
-	return len(keys) * routing.LengthOfRelayToken
+	return len(keys) * crypto.KeySize
 }
 
 // the second area the datacenter count is stored, as of right now identical to the other func
@@ -434,11 +434,11 @@ func TestOptimize(t *testing.T) {
 				numRelays := len(relayAddrs)
 
 				publicKeys := [][]byte{
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
+					RandomPublicKey(),
+					RandomPublicKey(),
+					RandomPublicKey(),
+					RandomPublicKey(),
+					RandomPublicKey(),
 				}
 
 				datacenters := []uint64{0, 1, 2, 3, 4}
@@ -447,7 +447,7 @@ func TestOptimize(t *testing.T) {
 
 				datacenterRelays := [][]uint64{{relayIDs[0]}, {relayIDs[1]}, {relayIDs[2]}, {relayIDs[3]}, {relayIDs[4]}}
 
-				rtts := make([]int32, core.TriMatrixLength(numRelays))
+				rtts := make([]int32, routing.TriMatrixLength(numRelays))
 
 				for i, _ := range rtts {
 					rtts[i] = int32(rand.Int())
@@ -497,16 +497,16 @@ func TestOptimize(t *testing.T) {
 				relayIDs := addrsToIDs(relayAddrs)
 				numRelays := len(relayAddrs)
 				publicKeys := [][]byte{
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
+					RandomPublicKey(),
+					RandomPublicKey(),
+					RandomPublicKey(),
+					RandomPublicKey(),
+					RandomPublicKey(),
 				}
 				datacenters := []uint64{0, 1, 2, 3, 4}
 				numDatacenters := len(datacenters)
 				datacenterRelays := [][]uint64{{relayIDs[0]}, {relayIDs[1]}, {relayIDs[2]}, {relayIDs[3]}, {relayIDs[4]}}
-				rtts := make([]int32, core.TriMatrixLength(numRelays))
+				rtts := make([]int32, routing.TriMatrixLength(numRelays))
 				for i, _ := range rtts {
 					rtts[i] = int32(rand.Int())
 				}
@@ -552,16 +552,16 @@ func TestOptimize(t *testing.T) {
 				relayIDs := addrsToIDs(relayAddrs)
 				numRelays := len(relayAddrs)
 				publicKeys := [][]byte{
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
+					RandomPublicKey(),
+					RandomPublicKey(),
+					RandomPublicKey(),
+					RandomPublicKey(),
+					RandomPublicKey(),
 				}
 				datacenters := []uint64{0, 1, 2, 3, 4}
 				numDatacenters := len(datacenters)
 				datacenterRelays := [][]uint64{{relayIDs[0]}, {relayIDs[1]}, {relayIDs[2]}, {relayIDs[3]}, {relayIDs[4]}}
-				rtts := make([]int32, core.TriMatrixLength(numRelays))
+				rtts := make([]int32, routing.TriMatrixLength(numRelays))
 				for i, _ := range rtts {
 					rtts[i] = int32(rand.Int())
 				}
@@ -617,16 +617,16 @@ func TestOptimize(t *testing.T) {
 				relayIDs := addrsToIDs(relayAddrs)
 				numRelays := len(relayAddrs)
 				publicKeys := [][]byte{
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
+					RandomPublicKey(),
+					RandomPublicKey(),
+					RandomPublicKey(),
+					RandomPublicKey(),
+					RandomPublicKey(),
 				}
 				datacenters := []uint64{0, 1, 2, 3, 4}
 				numDatacenters := len(datacenters)
 				datacenterRelays := [][]uint64{{relayIDs[0]}, {relayIDs[1]}, {relayIDs[2]}, {relayIDs[3]}, {relayIDs[4]}}
-				rtts := make([]int32, core.TriMatrixLength(numRelays))
+				rtts := make([]int32, routing.TriMatrixLength(numRelays))
 				for i, _ := range rtts {
 					rtts[i] = int32(rand.Int())
 				}
@@ -683,13 +683,18 @@ func TestOptimize(t *testing.T) {
 				matrix.RelayNames[0] = "first"
 				matrix.RelayNames[1] = "second"
 
+				tmpAddr1 := make([]byte, routing.MaxRelayAddressLength)
+				tmpAddr2 := make([]byte, routing.MaxRelayAddressLength)
+
 				matrix.RelayAddresses = make([][]byte, 2)
-				matrix.RelayAddresses[0] = core.RandomBytes(routing.MaxRelayAddressLength)
-				matrix.RelayAddresses[1] = core.RandomBytes(routing.MaxRelayAddressLength)
+				rand.Read(tmpAddr1)
+				matrix.RelayAddresses[0] = tmpAddr1
+				rand.Read(tmpAddr2)
+				matrix.RelayAddresses[1] = tmpAddr2
 
 				matrix.RelayPublicKeys = make([][]byte, 2)
-				matrix.RelayPublicKeys[0] = core.RandomBytes(routing.LengthOfRelayToken)
-				matrix.RelayPublicKeys[1] = core.RandomBytes(routing.LengthOfRelayToken)
+				matrix.RelayPublicKeys[0] = RandomPublicKey()
+				matrix.RelayPublicKeys[1] = RandomPublicKey()
 
 				matrix.DatacenterIds = make([]uint64, 2)
 				matrix.DatacenterIds[0] = 999
@@ -862,11 +867,11 @@ func TestOptimize(t *testing.T) {
 				numRelays := len(relayAddrs)
 
 				publicKeys := [][]byte{
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
+					RandomPublicKey(),
+					RandomPublicKey(),
+					RandomPublicKey(),
+					RandomPublicKey(),
+					RandomPublicKey(),
 				}
 
 				datacenters := []uint64{0, 1, 2, 3, 4}
@@ -875,7 +880,7 @@ func TestOptimize(t *testing.T) {
 
 				datacenterRelays := [][]uint64{{relayIDs[0]}, {relayIDs[1]}, {relayIDs[2]}, {relayIDs[3]}, {relayIDs[4]}}
 
-				numEntries := core.TriMatrixLength(numRelays)
+				numEntries := routing.TriMatrixLength(numRelays)
 				entries := make([]routing.RouteMatrixEntry, numEntries)
 				generateRouteMatrixEntries(entries)
 
@@ -914,16 +919,16 @@ func TestOptimize(t *testing.T) {
 				relayIDs := addrsToIDs(relayAddrs)
 				numRelays := len(relayAddrs)
 				publicKeys := [][]byte{
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
+					RandomPublicKey(),
+					RandomPublicKey(),
+					RandomPublicKey(),
+					RandomPublicKey(),
+					RandomPublicKey(),
 				}
 				datacenters := []uint64{0, 1, 2, 3, 4}
 				numDatacenters := len(datacenters)
 				datacenterRelays := [][]uint64{{relayIDs[0]}, {relayIDs[1]}, {relayIDs[2]}, {relayIDs[3]}, {relayIDs[4]}}
-				numEntries := core.TriMatrixLength(numRelays)
+				numEntries := routing.TriMatrixLength(numRelays)
 				entries := make([]routing.RouteMatrixEntry, numEntries)
 				generateRouteMatrixEntries(entries)
 
@@ -967,16 +972,16 @@ func TestOptimize(t *testing.T) {
 				relayIDs := addrsToIDs(relayAddrs)
 				numRelays := len(relayAddrs)
 				publicKeys := [][]byte{
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
+					RandomPublicKey(),
+					RandomPublicKey(),
+					RandomPublicKey(),
+					RandomPublicKey(),
+					RandomPublicKey(),
 				}
 				datacenters := []uint64{0, 1, 2, 3, 4}
 				numDatacenters := len(datacenters)
 				datacenterRelays := [][]uint64{{relayIDs[0]}, {relayIDs[1]}, {relayIDs[2]}, {relayIDs[3]}, {relayIDs[4]}}
-				numEntries := core.TriMatrixLength(numRelays)
+				numEntries := routing.TriMatrixLength(numRelays)
 				entries := make([]routing.RouteMatrixEntry, numEntries)
 				generateRouteMatrixEntries(entries)
 
@@ -1029,16 +1034,16 @@ func TestOptimize(t *testing.T) {
 				relayIDs := addrsToIDs(relayAddrs)
 				numRelays := len(relayAddrs)
 				publicKeys := [][]byte{
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
-					core.RandomBytes(routing.LengthOfRelayToken),
+					RandomPublicKey(),
+					RandomPublicKey(),
+					RandomPublicKey(),
+					RandomPublicKey(),
+					RandomPublicKey(),
 				}
 				datacenters := []uint64{0, 1, 2, 3, 4}
 				numDatacenters := len(datacenters)
 				datacenterRelays := [][]uint64{{relayIDs[0]}, {relayIDs[1]}, {relayIDs[2]}, {relayIDs[3]}, {relayIDs[4]}}
-				numEntries := core.TriMatrixLength(numRelays)
+				numEntries := routing.TriMatrixLength(numRelays)
 				entries := make([]routing.RouteMatrixEntry, numEntries)
 				generateRouteMatrixEntries(entries)
 
@@ -1095,13 +1100,18 @@ func TestOptimize(t *testing.T) {
 				matrix.RelayNames[0] = "first"
 				matrix.RelayNames[1] = "second"
 
+				tmpAddr1 := make([]byte, routing.MaxRelayAddressLength)
+				tmpAddr2 := make([]byte, routing.MaxRelayAddressLength)
+
 				matrix.RelayAddresses = make([][]byte, 2)
-				matrix.RelayAddresses[0] = core.RandomBytes(routing.MaxRelayAddressLength)
-				matrix.RelayAddresses[1] = core.RandomBytes(routing.MaxRelayAddressLength)
+				rand.Read(tmpAddr1)
+				matrix.RelayAddresses[0] = tmpAddr1
+				rand.Read(tmpAddr2)
+				matrix.RelayAddresses[1] = tmpAddr2
 
 				matrix.RelayPublicKeys = make([][]byte, 2)
-				matrix.RelayPublicKeys[0] = core.RandomBytes(routing.LengthOfRelayToken)
-				matrix.RelayPublicKeys[1] = core.RandomBytes(routing.LengthOfRelayToken)
+				matrix.RelayPublicKeys[0] = RandomPublicKey()
+				matrix.RelayPublicKeys[1] = RandomPublicKey()
 
 				matrix.DatacenterIds = make([]uint64, 2)
 				matrix.DatacenterIds[0] = 999
@@ -1159,7 +1169,7 @@ func TestOptimize(t *testing.T) {
 				for j := range dest {
 					if j < i {
 						numRelayPairs++
-						abFlatIndex := core.TriMatrixIndex(i, j)
+						abFlatIndex := routing.TriMatrixIndex(i, j)
 						if len(route_matrix.Entries[abFlatIndex].RouteRTT) > 0 {
 							numValidRelayPairs++
 							improvement := route_matrix.Entries[abFlatIndex].DirectRTT - route_matrix.Entries[abFlatIndex].RouteRTT[0]
@@ -1252,7 +1262,7 @@ func TestOptimize(t *testing.T) {
 			for i := range src {
 				for j := range dest {
 					if j < i {
-						ijFlatIndex := core.TriMatrixIndex(i, j)
+						ijFlatIndex := routing.TriMatrixIndex(i, j)
 
 						entries := rmatrix.Entries[ijFlatIndex]
 						for k := 0; k < int(entries.NumRoutes); k++ {

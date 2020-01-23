@@ -6,7 +6,6 @@ import (
 	"math"
 	"net"
 
-	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/routing"
@@ -62,7 +61,7 @@ type RelayUpdatePacket struct {
 	Token     []byte
 	NumRelays uint32
 
-	PingStats []core.RelayStatsPing
+	PingStats []routing.RelayStatsPing
 }
 
 // UnmarshalBinary decodes the binary data into a RelayUpdatePacket struct
@@ -82,7 +81,7 @@ func (r *RelayUpdatePacket) UnmarshalBinary(buff []byte) error {
 		return fmt.Errorf("could not resolve init packet with address '%s' with reason: %v", addr, err)
 	}
 
-	r.PingStats = make([]core.RelayStatsPing, r.NumRelays)
+	r.PingStats = make([]routing.RelayStatsPing, r.NumRelays)
 	for i := 0; i < int(r.NumRelays); i++ {
 		stats := &r.PingStats[i]
 
