@@ -283,7 +283,7 @@ func TestStatsDatabase(t *testing.T) {
 			validDcIDs := make([]uint64, 0)
 			validDcNames := make([]string, 0)
 
-			hgetallResult := redisClient.HGetAll(routing.RedisHashName)
+			hgetallResult := redisClient.HGetAll(routing.HashKeyAllRelays)
 
 			i := 0
 			for _, raw := range hgetallResult.Val() {
@@ -291,10 +291,10 @@ func TestStatsDatabase(t *testing.T) {
 				r.UnmarshalBinary([]byte(raw))
 				if i == 0 {
 					r.Datacenter = 0
-					redisClient.HSet(routing.RedisHashName, r.Key(), r)
+					redisClient.HSet(routing.HashKeyAllRelays, r.Key(), r)
 				} else {
 					r.Datacenter = uint64(i)
-					redisClient.HSet(routing.RedisHashName, r.Key(), r)
+					redisClient.HSet(routing.HashKeyAllRelays, r.Key(), r)
 					validDcIDs = append(validDcIDs, r.Datacenter)
 					validDcNames = append(validDcNames, r.DatacenterName)
 				}
@@ -324,7 +324,7 @@ func TestStatsDatabase(t *testing.T) {
 			assert.NoError(t, statsdb.GetCostMatrix(&costMatrix, redisClient))
 
 			// Testing
-			hgetallResult = redisClient.HGetAll(routing.RedisHashName)
+			hgetallResult = redisClient.HGetAll(routing.HashKeyAllRelays)
 
 			// assert each entry in the relay db is present in the cost matrix
 			for _, raw := range hgetallResult.Val() {

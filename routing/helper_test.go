@@ -38,7 +38,7 @@ func FillRelayDatabase(redisClient *redis.Client) {
 			PublicKey:      RandomPublicKey(),
 			LastUpdateTime: uint64(updateTime),
 		}
-		redisClient.HSet(routing.RedisHashName, data.Key(), data)
+		redisClient.HSet(routing.HashKeyAllRelays, data.Key(), data)
 	}
 
 	fillData("127.0.0.1:40000", time.Now().Unix()-1)

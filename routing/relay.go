@@ -15,11 +15,11 @@ const (
 	// EncryptedTokenSize ...
 	EncryptedTokenSize = crypto.KeySize + crypto.MACSize
 
-	// RedisHashKeyStart ...
-	RedisHashKeyStart = "RELAY-"
+	// HashKeyPrefixRelay ...
+	HashKeyPrefixRelay = "RELAY-"
 
-	// RedisHashName ...
-	RedisHashName = "ALL_RELAYS"
+	// HashKeyAllRelays ...
+	HashKeyAllRelays = "ALL_RELAYS"
 )
 
 // Relay ...
@@ -96,9 +96,9 @@ func (r Relay) MarshalBinary() (data []byte, err error) {
 }
 
 // Key returns the key used for Redis
-func (r Relay) Key() string {
+func (r *Relay) Key() string {
 	if len(r.cachedKey) == 0 {
-		r.cachedKey = RedisHashKeyStart + strconv.FormatUint(r.ID, 10)
+		r.cachedKey = HashKeyPrefixRelay + strconv.FormatUint(r.ID, 10)
 	}
 
 	return r.cachedKey

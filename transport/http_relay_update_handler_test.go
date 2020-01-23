@@ -27,7 +27,7 @@ func seedRedis(t *testing.T, redisServer *miniredis.Miniredis, addressesToAdd []
 		relay.Addr = *udpAddr
 		relay.ID = routing.GetRelayID(addr)
 		bin, _ := relay.MarshalBinary()
-		redisServer.HSet(transport.RedisHashName, relay.Key(), string(bin))
+		redisServer.HSet(routing.HashKeyAllRelays, relay.Key(), string(bin))
 	}
 
 	for _, addr := range addressesToAdd {
@@ -130,13 +130,13 @@ func TestRelayUpdateHandler(t *testing.T) {
 		}
 
 		raw, _ := entry.MarshalBinary()
-		redisServer.HSet(transport.RedisHashName, entry.Key(), string(raw))
+		redisServer.HSet(routing.HashKeyAllRelays, entry.Key(), string(raw))
 
 		buff, _ := packet.MarshalBinary()
 
 		recorder := relayUpdateAssertions(t, buff, http.StatusOK, redisClient, statsdb)
 
-		res := redisClient.HGet(transport.RedisHashName, entry.Key())
+		res := redisClient.HGet(routing.HashKeyAllRelays, entry.Key())
 		var actual routing.Relay
 		raw, _ = res.Bytes()
 		actual.UnmarshalBinary(raw)
