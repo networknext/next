@@ -46,9 +46,11 @@ type Relay struct {
 }
 
 // NewRelay ...
-func NewRelay() *Relay {
-	relay := new(Relay)
-	relay.PublicKey = make([]byte, crypto.KeySize)
+func NewRelay() Relay {
+	relay := Relay{
+		PublicKey: make([]byte, crypto.KeySize),
+	}
+
 	return relay
 }
 
