@@ -62,7 +62,7 @@ func main() {
 
 	go func() {
 		for {
-			if err := statsdb.GetCostMatrix(redisClient, &costmatrix); err != nil {
+			if err := statsdb.GetCostMatrix(&costmatrix, redisClient); err != nil {
 				log.Printf("failed to get the cost matrix: %v", err)
 			}
 
