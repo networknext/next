@@ -663,7 +663,7 @@ func (m *RouteMatrix) Routes(from []Relay, to []Relay) []Route {
 
 	for _, fromrelay := range from {
 		for _, torelay := range to {
-			routes = append(routes, m.routes(fromrelay, torelay)...)
+			m.fillRoutes(&routes, fromrelay, torelay)
 		}
 	}
 
@@ -671,17 +671,15 @@ func (m *RouteMatrix) Routes(from []Relay, to []Relay) []Route {
 }
 
 // route is just the internal function to get all routes from one relay to another
-func (m *RouteMatrix) routes(from Relay, to Relay) []Route {
-	var routes []Route
-
+func (m *RouteMatrix) fillRoutes(routes *[]Route, from Relay, to Relay) {
 	toidx, ok := m.RelayIndicies[to.ID]
 	if !ok {
-		return nil
+		return
 	}
 
 	fromidx, ok := m.RelayIndicies[from.ID]
 	if !ok {
-		return nil
+		return
 	}
 
 	reverse := toidx > fromidx
@@ -712,10 +710,8 @@ func (m *RouteMatrix) routes(from Relay, to Relay) []Route {
 			},
 		}
 
-		routes = append(routes, route)
+		*routes = append(*routes, route)
 	}
-
-	return routes
 }
 
 func (m *RouteMatrix) Route(datacenter Datacenter, relays []Relay) (Decision, error) {

@@ -1480,3 +1480,22 @@ func TestRouting(t *testing.T) {
 		}
 	})
 }
+
+func BenchmarkRouting(b *testing.B) {
+	costfile, _ := os.Open("./test_data/cost.bin")
+
+	var costMatrix routing.CostMatrix
+	costMatrix.ReadFom(costfile)
+
+	var routeMatrix routing.RouteMatrix
+	costMatrix.Optimize(&routeMatrix, 1)
+
+	from := []routing.Relay{{ID: 2836356269}}
+	to := []routing.Relay{{ID: 3263834878}, {ID: 1500948990}}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		routeMatrix.Routes(from, to)
+	}
+}
