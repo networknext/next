@@ -25,17 +25,17 @@ func main() {
 	var relayPublicKey []byte
 	var routerPrivateKey []byte
 
-	if key := os.Getenv("NN_RELAY_KEY_PUBLIC"); len(key) != 0 {
+	if key := os.Getenv("RELAY_KEY_PUBLIC"); len(key) != 0 {
 		relayPublicKey, _ = base64.StdEncoding.DecodeString(key)
 	} else {
-		log.Println("Env var 'NN_RELAY_KEY_PUBLIC' is not set, exiting!")
+		log.Println("Env var 'RELAY_KEY_PUBLIC' is not set, exiting!")
 		os.Exit(1)
 	}
 
-	if key := os.Getenv("NN_ROUTER_KEY_PRIVATE"); len(key) != 0 {
+	if key := os.Getenv("ROUTER_KEY_PRIVATE"); len(key) != 0 {
 		routerPrivateKey, _ = base64.StdEncoding.DecodeString(key)
 	} else {
-		log.Println("Env var 'NN_ROUTER_KEY_PRIVATE' is not set, exiting!")
+		log.Println("Env var 'ROUTER_KEY_PRIVATE' is not set, exiting!")
 		os.Exit(1)
 	}
 
@@ -55,11 +55,11 @@ func main() {
 		}
 	}()
 
-	port := os.Getenv("NN_PORT")
+	port := os.Getenv("RELAY_PORT")
 
 	if len(port) == 0 {
 		port = "40000"
-		fmt.Printf("NN_PORT env var is unset, setting port as %s\n", port)
+		fmt.Printf("RELAY_PORT env var is unset, setting port as %s\n", port)
 	}
 
 	// Attempt to connect to REDIS_HOST

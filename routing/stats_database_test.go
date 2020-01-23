@@ -3,6 +3,8 @@ package routing_test
 import (
 	"testing"
 
+	"github.com/alicebob/miniredis/v2"
+	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/routing"
 	"github.com/stretchr/testify/assert"
 )
@@ -265,12 +267,14 @@ func TestStatsDatabase(t *testing.T) {
 
 	t.Run("GetCostMatrix()", func(t *testing.T) {
 		t.Run("returns the cost matrix", func(t *testing.T) {
-			relaydb := routing.NewRelayDatabase()
+			redisServer, _ := miniredis.Run()
+			redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
 			statsdb := routing.NewStatsDatabase()
 
 			// Setup
 
-			FillRelayDatabase(relaydb)
+			FillRelayDatabase(redisClient)
 			FillStatsDatabase(statsdb)
 
 			// make the datacenter of the first relay 0
@@ -279,14 +283,18 @@ func TestStatsDatabase(t *testing.T) {
 			validDcIDs := make([]uint64, 0)
 			validDcNames := make([]string, 0)
 
+			hgetallResult := redisClient.HGetAll(routing.RedisHashName)
+
 			i := 0
-			for _, r := range relaydb.Relays {
+			for _, raw := range hgetallResult.Val() {
+				var r routing.Relay
+				r.UnmarshalBinary([]byte(raw))
 				if i == 0 {
 					r.Datacenter = 0
-					relaydb.Relays[routing.GetRelayID(r.Addr.String())] = r
+					redisClient.HSet(routing.RedisHashName, r.Key(), r)
 				} else {
 					r.Datacenter = uint64(i)
-					relaydb.Relays[routing.GetRelayID(r.Addr.String())] = r
+					redisClient.HSet(routing.RedisHashName, r.Key(), r)
 					validDcIDs = append(validDcIDs, r.Datacenter)
 					validDcNames = append(validDcNames, r.DatacenterName)
 				}
@@ -312,12 +320,15 @@ func TestStatsDatabase(t *testing.T) {
 			// invalid - packet loss > MaxPacketLoss
 			modifyEntry("127.0.0.1:40000", "127.0.0.5:40000", 1.0, 0.3, routing.MaxPacketLoss+1)
 
-			costMatrix := statsdb.GetCostMatrix(relaydb)
+			costMatrix := statsdb.GetCostMatrix(redisClient)
 
 			// Testing
+			hgetallResult = redisClient.HGetAll(routing.RedisHashName)
 
 			// assert each entry in the relay db is present in the cost matrix
-			for _, relay := range relaydb.Relays {
+			for _, raw := range hgetallResult.Val() {
+				var relay routing.Relay
+				relay.UnmarshalBinary([]byte(raw))
 				assert.Contains(t, costMatrix.RelayIds, relay.ID)
 				assert.Contains(t, costMatrix.RelayNames, relay.Name)
 				assert.Contains(t, costMatrix.RelayPublicKeys, relay.PublicKey)
@@ -332,7 +343,9 @@ func TestStatsDatabase(t *testing.T) {
 
 				// find the relays whose datacenter id matches this one
 				validRelayIDs := make([]uint64, 0)
-				for _, relay := range relaydb.Relays {
+				for _, raw := range hgetallResult.Val() {
+					var relay routing.Relay
+					relay.UnmarshalBinary([]byte(raw))
 					if relay.Datacenter == id {
 						validRelayIDs = append(validRelayIDs, relay.ID)
 						break

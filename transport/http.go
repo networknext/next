@@ -28,7 +28,7 @@ const (
 	VersionNumberUpdateRequest  = 0
 	VersionNumberUpdateResponse = 0
 
-	RedisHashName = "ALL_RELAYS"
+	RedisHashName = routing.RedisHashName
 )
 
 var gRelayPublicKey = []byte{
@@ -223,8 +223,8 @@ func RelayUpdateHandlerFunc(redisClient *redis.Client, statsdb *routing.StatsDat
 		relaysToPing := make([]RelayPingData, 0)
 
 		redisClient.HSet(RedisHashName, relay.Key(), relay)
-		hgetallResult := redisClient.HGetAll(RedisHashName)
 
+		hgetallResult := redisClient.HGetAll(RedisHashName)
 		if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
 			log.Printf("failed to get all relays from redis: %v", hgetallResult.Err())
 			writer.WriteHeader(http.StatusNotFound)

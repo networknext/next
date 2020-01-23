@@ -17,6 +17,9 @@ const (
 
 	// RedisHashKeyStart ...
 	RedisHashKeyStart = "RELAY-"
+
+	// RedisHashName ...
+	RedisHashName = "ALL_RELAYS"
 )
 
 // Relay ...

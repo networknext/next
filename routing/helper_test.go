@@ -6,6 +6,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 )
@@ -24,8 +25,8 @@ func RandomString(length int) string {
 	return string(arr)
 }
 
-func FillRelayDatabase(relaydb *routing.RelayDatabase) {
-	fillData := func(relaydb *routing.RelayDatabase, addr string, updateTime int64) {
+func FillRelayDatabase(redisClient *redis.Client) {
+	fillData := func(addr string, updateTime int64) {
 		id := routing.GetRelayID(addr)
 		udp, _ := net.ResolveUDPAddr("udp", addr)
 		data := routing.Relay{
@@ -37,15 +38,15 @@ func FillRelayDatabase(relaydb *routing.RelayDatabase) {
 			PublicKey:      RandomPublicKey(),
 			LastUpdateTime: uint64(updateTime),
 		}
-		relaydb.Relays[id] = data
+		redisClient.HSet(routing.RedisHashName, data.Key(), data)
 	}
 
-	fillData(relaydb, "127.0.0.1:40000", time.Now().Unix()-1)
-	fillData(relaydb, "127.0.0.2:40000", time.Now().Unix()-5)
-	fillData(relaydb, "127.0.0.3:40000", time.Now().Unix()-10)
-	fillData(relaydb, "127.0.0.4:40000", time.Now().Unix()-100)
-	fillData(relaydb, "127.0.0.5:40000", time.Now().Unix()-25)
-	fillData(relaydb, "127.0.0.6:40000", time.Now().Unix()-1000)
+	fillData("127.0.0.1:40000", time.Now().Unix()-1)
+	fillData("127.0.0.2:40000", time.Now().Unix()-5)
+	fillData("127.0.0.3:40000", time.Now().Unix()-10)
+	fillData("127.0.0.4:40000", time.Now().Unix()-100)
+	fillData("127.0.0.5:40000", time.Now().Unix()-25)
+	fillData("127.0.0.6:40000", time.Now().Unix()-1000)
 }
 
 func FillStatsDatabase(statsdb *routing.StatsDatabase) {
