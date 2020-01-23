@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"math"
 	"net/http"
 	"runtime"
 	"sort"
 	"sync"
 
-	"github.com/networknext/backend/core"
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
 )
 
@@ -35,10 +34,37 @@ const (
 
 	// MaxRelayAddressLength ...
 	MaxRelayAddressLength = 256
-
-	// LengthOfRelayToken ...
-	LengthOfRelayToken = 32
 )
+
+func readIDOld(data []byte, index *int, storage *uint64, errmsg string) error {
+	var tmp uint32
+	if !encoding.ReadUint32(data, index, &tmp) {
+		return errors.New(errmsg + " - ver < 3")
+	}
+	*storage = uint64(tmp)
+	return nil
+}
+
+func readIDNew(data []byte, index *int, storage *uint64, errmsg string) error {
+	if !encoding.ReadUint64(data, index, storage) {
+		return errors.New(errmsg + " - v3")
+	}
+	return nil
+}
+
+func readBytesOld(data []byte, index *int, storage *[]byte, length uint32, errmsg string) error {
+	var bytesRead int
+	*storage, bytesRead = encoding.ReadBytesOld(data[*index:])
+	*index += bytesRead
+	return nil
+}
+
+func readBytesNew(data []byte, index *int, storage *[]byte, length uint32, errmsg string) error {
+	if !encoding.ReadBytes(data, index, storage, length) {
+		return errors.New(errmsg + " - v3")
+	}
+	return nil
+}
 
 // CostMatrix ...
 type CostMatrix struct {
@@ -102,7 +128,7 @@ func (m *CostMatrix) ServeHTTP(w http.ResponseWriter, r *http.Request) {
  * Number of Datacenters { uint32 }
  * Datacenter ID { [NumberOfDatacenters]uint64 } -> Datacenter Name { [NumberOfDatacenters]string }
  * Relay Addresses { [NumberOfRelays][MaxRelayAddressLength]byte }
- * Relay Public Keys { [NumberOfRelays][LengthOfRelayToken]byte }
+ * Relay Public Keys { [NumberOfRelays][crypto.KeySize]byte }
  * Number of Datacenters { uint32 }
  * Datacenter ID { uint64 } -> Number of Relays in Datacenter { uint32 } -> Relay IDs in Datacenter { [NumberOfRelaysInDatacenter]uint64 }
  * RTT Info { []uint32 }
@@ -121,6 +147,17 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 		return fmt.Errorf("unknown cost matrix version %d", version)
 	}
 
+	var idReadFunc func([]byte, *int, *uint64, string) error
+	var bytesReadFunc func([]byte, *int, *[]byte, uint32, string) error
+
+	if version >= 3 {
+		idReadFunc = readIDNew
+		bytesReadFunc = readBytesNew
+	} else {
+		idReadFunc = readIDOld
+		bytesReadFunc = readBytesOld
+	}
+
 	var numRelays uint32
 	if !encoding.ReadUint32(data, &index, &numRelays) {
 		return errors.New("[CostMatrix] invalid read at number of relays")
@@ -128,19 +165,9 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 
 	m.RelayIds = make([]uint64, numRelays)
 
-	if version >= 3 {
-		for i := 0; i < int(numRelays); i++ {
-			if !encoding.ReadUint64(data, &index, &m.RelayIds[i]) {
-				return errors.New("[CostMatrix] invalid read at relay ids - v3")
-			}
-		}
-	} else {
-		for i := 0; i < int(numRelays); i++ {
-			var tmp uint32
-			if !encoding.ReadUint32(data, &index, &tmp) {
-				return errors.New("[CostMatrix] invalid read at relay ids - ver < 3")
-			}
-			m.RelayIds[i] = uint64(tmp)
+	for i := 0; i < int(numRelays); i++ {
+		if err := idReadFunc(data, &index, &m.RelayIds[i], "[CostMatrix] invalid read at relay ids"); err != nil {
+			return err
 		}
 	}
 
@@ -162,58 +189,28 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 		m.DatacenterIds = make([]uint64, datacenterCount)
 		m.DatacenterNames = make([]string, datacenterCount)
 
-		if version >= 3 {
-			for i := 0; i < int(datacenterCount); i++ {
-				if !encoding.ReadUint64(data, &index, &m.DatacenterIds[i]) {
-					return errors.New("[CostMatrix] invalid read at datacenter ids - v3")
-				}
-
-				if !encoding.ReadString(data, &index, &m.DatacenterNames[i], math.MaxInt32) {
-					return errors.New("[CostMatrix] invalid read at datacenter names - v3")
-				}
+		for i := 0; i < int(datacenterCount); i++ {
+			if err := idReadFunc(data, &index, &m.DatacenterIds[i], "[CostMatrix] invalid read at datacenter ids"); err != nil {
+				return err
 			}
-		} else {
-			for i := 0; i < int(datacenterCount); i++ {
-				var tmp uint32
-				if !encoding.ReadUint32(data, &index, &tmp) {
-					return errors.New("[CostMatrix] invalid read at ids - ver < 3")
-				}
-				m.DatacenterIds[i] = uint64(tmp)
 
-				if !encoding.ReadString(data, &index, &m.DatacenterNames[i], math.MaxInt32) {
-					return errors.New("[CostMatrix] invalid read at datacenter names - ver < 3")
-				}
+			if !encoding.ReadString(data, &index, &m.DatacenterNames[i], math.MaxInt32) {
+				return errors.New("[CostMatrix] invalid read at datacenter names")
 			}
 		}
 	}
 
 	m.RelayAddresses = make([][]byte, numRelays)
-	if version >= 3 {
-		for i := range m.RelayAddresses {
-			if !encoding.ReadBytes(data, &index, &m.RelayAddresses[i], MaxRelayAddressLength) {
-				return errors.New("[CostMatrix] invalid read at relay addresses - v3")
-			}
-		}
-	} else {
-		for i := range m.RelayAddresses {
-			var bytesRead int
-			m.RelayAddresses[i], bytesRead = encoding.ReadBytesOld(data[index:])
-			index += bytesRead
+	for i := range m.RelayAddresses {
+		if err := bytesReadFunc(data, &index, &m.RelayAddresses[i], MaxRelayAddressLength, "[CostMatrix] invalid read at relay addresses"); err != nil {
+			return err
 		}
 	}
 
 	m.RelayPublicKeys = make([][]byte, numRelays)
-	if version >= 3 {
-		for i := range m.RelayPublicKeys {
-			if !encoding.ReadBytes(data, &index, &m.RelayPublicKeys[i], LengthOfRelayToken) {
-				return errors.New("[CostMatrix] invalid read at relay public keys - v3")
-			}
-		}
-	} else {
-		for i := range m.RelayPublicKeys {
-			var bytesRead int
-			m.RelayPublicKeys[i], bytesRead = encoding.ReadBytesOld(data[index:])
-			index += bytesRead
+	for i := range m.RelayPublicKeys {
+		if err := bytesReadFunc(data, &index, &m.RelayPublicKeys[i], crypto.KeySize, "[CostMatrix] invalid read at relay public keys"); err != nil {
+			return err
 		}
 	}
 
@@ -227,16 +224,8 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 	for i := 0; i < int(numDatacenters); i++ {
 		var datacenterID uint64
 
-		if version >= 3 {
-			if !encoding.ReadUint64(data, &index, &datacenterID) {
-				return errors.New("[CostMatrix] invalid read at datacenter id - v3")
-			}
-		} else {
-			var tmp uint32
-			if !encoding.ReadUint32(data, &index, &tmp) {
-				return errors.New("[CostMatrix] invalid read at datacenter id - ver < 3")
-			}
-			datacenterID = uint64(tmp)
+		if err := idReadFunc(data, &index, &datacenterID, "[CostMatrix] invalid read at datacenter id"); err != nil {
+			return err
 		}
 
 		var numRelaysInDatacenter uint32
@@ -246,24 +235,14 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 
 		m.DatacenterRelays[datacenterID] = make([]uint64, numRelaysInDatacenter)
 
-		if version >= 3 {
-			for j := 0; j < int(numRelaysInDatacenter); j++ {
-				if !encoding.ReadUint64(data, &index, &m.DatacenterRelays[datacenterID][j]) {
-					return errors.New("[CostMatrix] invalid read at relay ids for datacenter - v3")
-				}
-			}
-		} else {
-			for j := 0; j < int(numRelaysInDatacenter); j++ {
-				var tmp uint32
-				if !encoding.ReadUint32(data, &index, &tmp) {
-					return errors.New("[CostMatrix] invalid read at relay ids for datacenter - ver < 3")
-				}
-				m.DatacenterRelays[datacenterID][j] = uint64(tmp)
+		for j := 0; j < int(numRelaysInDatacenter); j++ {
+			if err := idReadFunc(data, &index, &m.DatacenterRelays[datacenterID][j], "[CostMatrix] invalid read at relay ids for datacenter"); err != nil {
+				return err
 			}
 		}
 	}
 
-	entryCount := core.TriMatrixLength(int(numRelays))
+	entryCount := TriMatrixLength(int(numRelays))
 	m.RTT = make([]int32, entryCount)
 
 	for i := range m.RTT {
@@ -320,7 +299,7 @@ func (m CostMatrix) MarshalBinary() ([]byte, error) {
 	for i := range m.RelayPublicKeys {
 		tmp := make([]byte, MaxRelayAddressLength)
 		copy(tmp, m.RelayPublicKeys[i])
-		encoding.WriteBytes(data, &index, tmp, LengthOfRelayToken)
+		encoding.WriteBytes(data, &index, tmp, crypto.KeySize)
 	}
 
 	numDatacenters = len(m.DatacenterRelays)
@@ -358,7 +337,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 
 	numRelays := len(m.RelayIds)
 
-	entryCount := core.TriMatrixLength(numRelays)
+	entryCount := TriMatrixLength(numRelays)
 
 	routes.RelayIds = m.RelayIds
 	routes.RelayNames = m.RelayNames
@@ -419,7 +398,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 						continue
 					}
 
-					ijIndex := core.TriMatrixIndex(i, j)
+					ijIndex := TriMatrixIndex(i, j)
 
 					numRoutes := 0
 					rttDirect := rtt[ijIndex]
@@ -432,8 +411,8 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 							if k == i || k == j {
 								continue
 							}
-							ikIndex := core.TriMatrixIndex(i, k)
-							kjIndex := core.TriMatrixIndex(k, j)
+							ikIndex := TriMatrixIndex(i, k)
+							kjIndex := TriMatrixIndex(k, j)
 							ikRtt := rtt[ikIndex]
 							kjRtt := rtt[kjIndex]
 							if ikRtt < 0 || kjRtt < 0 {
@@ -452,8 +431,8 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 							if k == i || k == j {
 								continue
 							}
-							ikIndex := core.TriMatrixIndex(i, k)
-							kjIndex := core.TriMatrixIndex(k, j)
+							ikIndex := TriMatrixIndex(i, k)
+							kjIndex := TriMatrixIndex(k, j)
 							ikRtt := rtt[ikIndex]
 							kjRtt := rtt[kjIndex]
 							if ikRtt < 0 || kjRtt < 0 {
@@ -503,7 +482,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 
 				for j := 0; j < i; j++ {
 
-					ijIndex := core.TriMatrixIndex(i, j)
+					ijIndex := TriMatrixIndex(i, j)
 
 					if indirect[i][j] == nil {
 
@@ -545,28 +524,28 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 							}
 
 							if x != nil {
-								ixIndex := core.TriMatrixIndex(i, int(x.relay))
-								xyIndex := core.TriMatrixIndex(int(x.relay), int(y.relay))
-								yjIndex := core.TriMatrixIndex(int(y.relay), j)
+								ixIndex := TriMatrixIndex(i, int(x.relay))
+								xyIndex := TriMatrixIndex(int(x.relay), int(y.relay))
+								yjIndex := TriMatrixIndex(int(y.relay), j)
 
 								routeManager.AddRoute(rtt[ixIndex]+rtt[xyIndex]+rtt[yjIndex],
 									uint64(i), x.relay, y.relay, uint64(j))
 							}
 
 							if z != nil {
-								iyIndex := core.TriMatrixIndex(i, int(y.relay))
-								yzIndex := core.TriMatrixIndex(int(y.relay), int(z.relay))
-								zjIndex := core.TriMatrixIndex(int(z.relay), j)
+								iyIndex := TriMatrixIndex(i, int(y.relay))
+								yzIndex := TriMatrixIndex(int(y.relay), int(z.relay))
+								zjIndex := TriMatrixIndex(int(z.relay), j)
 
 								routeManager.AddRoute(rtt[iyIndex]+rtt[yzIndex]+rtt[zjIndex],
 									uint64(i), y.relay, z.relay, uint64(j))
 							}
 
 							if x != nil && z != nil {
-								ixIndex := core.TriMatrixIndex(i, int(x.relay))
-								xyIndex := core.TriMatrixIndex(int(x.relay), int(y.relay))
-								yzIndex := core.TriMatrixIndex(int(y.relay), int(z.relay))
-								zjIndex := core.TriMatrixIndex(int(z.relay), j)
+								ixIndex := TriMatrixIndex(i, int(x.relay))
+								xyIndex := TriMatrixIndex(int(x.relay), int(y.relay))
+								yzIndex := TriMatrixIndex(int(y.relay), int(z.relay))
+								zjIndex := TriMatrixIndex(int(z.relay), j)
 
 								routeManager.AddRoute(rtt[ixIndex]+rtt[xyIndex]+rtt[yzIndex]+rtt[zjIndex],
 									uint64(i), x.relay, y.relay, z.relay, uint64(j))
@@ -620,7 +599,7 @@ func (m CostMatrix) getBufferSize() uint64 {
 	}
 
 	// allocation for relay addresses + allocation for relay public keys + the No. of datacenters, duplication?
-	length += numRelays*uint64(MaxRelayAddressLength+LengthOfRelayToken) + 4
+	length += numRelays*uint64(MaxRelayAddressLength+crypto.KeySize) + 4
 
 	for _, v := range m.DatacenterRelays {
 		// datacenter id + number of relays for that datacenter + allocation for all of those relay ids
@@ -792,7 +771,7 @@ func (m *RouteMatrix) ServeHTTP(w http.ResponseWriter, r *http.Request) {
  * Number of Datacenters { uint32 }
  * Datacenter ID { [NumberOfDatacenters]uint64 } -> Datacenter Name { [NumberOfDatacenters]string }
  * Relay Addresses { [NumberOfRelays][MaxRelayAddressLength]byte }
- * Relay Public Keys { [NumberOfRelays][LengthOfRelayToken]byte }
+ * Relay Public Keys { [NumberOfRelays][crypto.KeySize]byte }
  * Number of Datacenters { uint32 }
  * Datacenter ID { uint64 } -> Number of Relays in Datacenter { uint32 } -> Relay IDs in Datacenter { [NumberOfRelaysInDatacenter]uint64 }
  * RTT Info { []uint32 }
@@ -818,6 +797,17 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 		return fmt.Errorf("unknown route matrix version: %d", version)
 	}
 
+	var idReadFunc func([]byte, *int, *uint64, string) error
+	var bytesReadFunc func([]byte, *int, *[]byte, uint32, string) error
+
+	if version >= 3 {
+		idReadFunc = readIDNew
+		bytesReadFunc = readBytesNew
+	} else {
+		idReadFunc = readIDOld
+		bytesReadFunc = readBytesOld
+	}
+
 	var numRelays uint32
 	if !encoding.ReadUint32(data, &index, &numRelays) {
 		return errors.New("[RouteMatrix] invalid read at number of relays")
@@ -825,19 +815,9 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 
 	m.RelayIds = make([]uint64, numRelays)
 
-	if version >= 3 {
-		for i := 0; i < int(numRelays); i++ {
-			if !encoding.ReadUint64(data, &index, &m.RelayIds[i]) {
-				return errors.New("[RouteMatrix] invalid read at relay ids - v3")
-			}
-		}
-	} else {
-		for i := 0; i < int(numRelays); i++ {
-			var tmp uint32
-			if !encoding.ReadUint32(data, &index, &tmp) {
-				return errors.New("[RouteMatrix] invalid read at relay ids - ver < 3")
-			}
-			m.RelayIds[i] = uint64(tmp)
+	for i := 0; i < int(numRelays); i++ {
+		if err := idReadFunc(data, &index, &m.RelayIds[i], "[RouteMatrix] invalid read at relay ids"); err != nil {
+			return err
 		}
 	}
 
@@ -858,59 +838,28 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 
 		m.DatacenterIds = make([]uint64, datacenterCount)
 		m.DatacenterNames = make([]string, datacenterCount)
-		if version >= 3 {
-			for i := 0; i < int(datacenterCount); i++ {
-				if !encoding.ReadUint64(data, &index, &m.DatacenterIds[i]) {
-					return errors.New("[RouteMatrix] invalid read at datacenter ids - v3")
-				}
-
-				if !encoding.ReadString(data, &index, &m.DatacenterNames[i], math.MaxInt32) {
-					return errors.New("[RouteMatrix] invalid read at datacenter names - v3")
-				}
+		for i := 0; i < int(datacenterCount); i++ {
+			if err := idReadFunc(data, &index, &m.DatacenterIds[i], "[CostMatrix] invalid read at datacenter ids"); err != nil {
+				return err
 			}
-		} else {
-			for i := 0; i < int(datacenterCount); i++ {
-				var tmp uint32
-				if !encoding.ReadUint32(data, &index, &tmp) {
-					return errors.New("[RouteMatrix] invalid read at ids - ver < 3")
-				}
-				m.DatacenterIds[i] = uint64(tmp)
 
-				if !encoding.ReadString(data, &index, &m.DatacenterNames[i], math.MaxInt32) {
-					return errors.New("[RouteMatrix] invalid read at datacenter names - v3")
-				}
+			if !encoding.ReadString(data, &index, &m.DatacenterNames[i], math.MaxInt32) {
+				return errors.New("[RouteMatrix] invalid read at datacenter names")
 			}
 		}
 	}
 
 	m.RelayAddresses = make([][]byte, numRelays)
-
-	if version >= 3 {
-		for i := range m.RelayAddresses {
-			if !encoding.ReadBytes(data, &index, &m.RelayAddresses[i], MaxRelayAddressLength) {
-				return errors.New("[RouteMatrix] invalid read at relay addresses - v3")
-			}
-		}
-	} else {
-		for i := range m.RelayAddresses {
-			var bytesRead int
-			m.RelayAddresses[i], bytesRead = encoding.ReadBytesOld(data[index:])
-			index += bytesRead
+	for i := range m.RelayAddresses {
+		if err := bytesReadFunc(data, &index, &m.RelayAddresses[i], MaxRelayAddressLength, "[RouteMatrix] invalid read at relay addresses"); err != nil {
+			return err
 		}
 	}
 
 	m.RelayPublicKeys = make([][]byte, numRelays)
-	if version >= 3 {
-		for i := range m.RelayPublicKeys {
-			if !encoding.ReadBytes(data, &index, &m.RelayPublicKeys[i], LengthOfRelayToken) {
-				return errors.New("[RouteMatrix] invalid read at relay public keys - v3")
-			}
-		}
-	} else {
-		for i := range m.RelayPublicKeys {
-			var bytesRead int
-			m.RelayPublicKeys[i], bytesRead = encoding.ReadBytesOld(data[index:])
-			index += bytesRead
+	for i := range m.RelayPublicKeys {
+		if err := bytesReadFunc(data, &index, &m.RelayPublicKeys[i], crypto.KeySize, "[RouteMatrix] invalid read at relay public keys"); err != nil {
+			return err
 		}
 	}
 
@@ -924,16 +873,8 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 	for i := 0; i < int(numDatacenters); i++ {
 		var datacenterID uint64
 
-		if version >= 3 {
-			if !encoding.ReadUint64(data, &index, &datacenterID) {
-				return errors.New("[RouteMatrix] invalid read at datacenter id - v3")
-			}
-		} else {
-			var tmp uint32
-			if !encoding.ReadUint32(data, &index, &tmp) {
-				return errors.New("[RouteMatrix] invalid read at datacenter id - ver < 3")
-			}
-			datacenterID = uint64(tmp)
+		if err := idReadFunc(data, &index, &datacenterID, "[RouteMatrix] invalid read at datacenter id"); err != nil {
+			return err
 		}
 
 		var numRelaysInDatacenter uint32
@@ -943,27 +884,16 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 
 		m.DatacenterRelays[datacenterID] = make([]uint64, numRelaysInDatacenter)
 
-		if version >= 3 {
-			for j := 0; j < int(numRelaysInDatacenter); j++ {
-				if !encoding.ReadUint64(data, &index, &m.DatacenterRelays[datacenterID][j]) {
-					return errors.New("[RouteMatrix] invalid read at relay ids for datacenter - v3")
-				}
-			}
-		} else {
-			for j := 0; j < int(numRelaysInDatacenter); j++ {
-				var tmp uint32
-				if !encoding.ReadUint32(data, &index, &tmp) {
-					return errors.New("[RouteMatrix] invalid read at relay ids for datacenter - ver < 3")
-				}
-				m.DatacenterRelays[datacenterID][j] = uint64(tmp)
+		for j := 0; j < int(numRelaysInDatacenter); j++ {
+			if err := idReadFunc(data, &index, &m.DatacenterRelays[datacenterID][j], "[RouteMatrix] invalid read at relay ids for datacenter"); err != nil {
+				return err
 			}
 		}
 	}
 
-	entryCount := core.TriMatrixLength(int(numRelays))
+	entryCount := TriMatrixLength(int(numRelays))
 	m.Entries = make([]RouteMatrixEntry, entryCount)
 
-	log.Printf("Reading %d entries", entryCount)
 	for i := range m.Entries {
 		entry := &m.Entries[i]
 		var directRtt uint32
@@ -1057,7 +987,7 @@ func (m RouteMatrix) MarshalBinary() ([]byte, error) {
 	}
 
 	for _, pk := range m.RelayPublicKeys {
-		encoding.WriteBytes(data, &index, pk, LengthOfRelayToken)
+		encoding.WriteBytes(data, &index, pk, crypto.KeySize)
 	}
 
 	numDatacenters = len(m.DatacenterRelays)
@@ -1120,7 +1050,7 @@ func (m RouteMatrix) getBufferSize() uint64 {
 	}
 
 	// same as CostMatrix's
-	length += numRelays*uint64(MaxRelayAddressLength+LengthOfRelayToken) + 4
+	length += numRelays*uint64(MaxRelayAddressLength+crypto.KeySize) + 4
 
 	// same as CostMatrix's
 	for _, v := range m.DatacenterRelays {

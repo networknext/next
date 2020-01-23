@@ -2,126 +2,245 @@ package transport_test
 
 import (
 	"bytes"
-	"encoding/binary"
+	"crypto/rand"
+	"log"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
-	"github.com/networknext/backend/core"
+	"github.com/alicebob/miniredis/v2"
+	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/transport"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/crypto/nacl/box"
 )
 
-const (
-	sizeOfInitRequestMagic   = 4
-	sizeOfInitRequestVersion = 4
-)
-
-// Returns the writer as a means to read the data that the writer contains
-func relayInitAssertions(t *testing.T, body []byte, expectedCode int, relaydb *core.RelayDatabase) http.ResponseWriter {
-	if relaydb == nil {
-		relaydb = core.NewRelayDatabase()
+func relayInitAssertions(t *testing.T, body []byte, expectedCode int, redisClient *redis.Client, relayPublicKey []byte, routerPrivateKey []byte) *httptest.ResponseRecorder {
+	if redisClient == nil {
+		redisServer, _ := miniredis.Run()
+		redisClient = redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 	}
 
-	writer := httptest.NewRecorder()
+	recorder := httptest.NewRecorder()
 	request, _ := http.NewRequest("POST", "/relay_init", bytes.NewBuffer(body))
 
-	handler := transport.RelayInitHandlerFunc(relaydb)
+	handler := transport.RelayInitHandlerFunc(redisClient, relayPublicKey, routerPrivateKey)
 
-	handler(writer, request)
+	handler(recorder, request)
 
-	assert.Equal(t, expectedCode, writer.Code)
+	assert.Equal(t, expectedCode, recorder.Code)
 
-	return writer
-}
-
-func writeRelayAddress(buff []byte, address string) {
-	offset := sizeOfInitRequestMagic + sizeOfInitRequestVersion + crypto.NonceSize
-	binary.LittleEndian.PutUint32(buff[offset:], uint32(len(address)))
-	copy(buff[offset+4:], address)
+	return recorder
 }
 
 func TestRelayInitHandler(t *testing.T) {
-	t.Run("missing magic number", func(t *testing.T) {
-		buff := make([]byte, 0)
-		relayInitAssertions(t, buff, http.StatusBadRequest, nil)
-	})
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
-	t.Run("missing request version", func(t *testing.T) {
-		buff := make([]byte, sizeOfInitRequestMagic)
-		binary.LittleEndian.PutUint32(buff, transport.InitRequestMagic)
-		relayInitAssertions(t, buff, http.StatusBadRequest, nil)
-	})
+	t.Run("address is invalid", func(t *testing.T) {
+		// generate keys
+		relayPublicKey, relayPrivateKey, _ := box.GenerateKey(rand.Reader)
+		routerPublicKey, routerPrivateKey, _ := box.GenerateKey(rand.Reader)
 
-	t.Run("missing nonce bytes", func(t *testing.T) {
-		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion)
-		binary.LittleEndian.PutUint32(buff, transport.InitRequestMagic)
-		binary.LittleEndian.PutUint32(buff[4:], 0)
-		relayInitAssertions(t, buff, http.StatusBadRequest, nil)
-	})
+		// generate nonce
+		nonce := make([]byte, crypto.NonceSize)
+		rand.Read(nonce)
 
-	t.Run("missing relay address", func(t *testing.T) {
-		t.Run("byte array is not proper length", func(t *testing.T) {
-			buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+crypto.NonceSize)
-			binary.LittleEndian.PutUint32(buff, transport.InitRequestMagic)
-			binary.LittleEndian.PutUint32(buff[4:], 0)
-			relayInitAssertions(t, buff, http.StatusBadRequest, nil)
-		})
+		// generate token
+		token := make([]byte, crypto.KeySize)
+		rand.Read(token)
 
-		t.Run("byte array is proper length but there is a blank string", func(t *testing.T) {
-			addr := ""
-			buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+crypto.NonceSize+4+len(addr))
-			binary.LittleEndian.PutUint32(buff, transport.InitRequestMagic)
-			binary.LittleEndian.PutUint32(buff[4:], 0)
-			writeRelayAddress(buff, addr)
-			relayInitAssertions(t, buff, http.StatusBadRequest, nil)
-		})
-	})
+		// encrypt token
+		encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
 
-	t.Run("missing encryption token", func(t *testing.T) {
-		addr := "127.0.0.1"
-		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+crypto.NonceSize+4+len(addr))
-		binary.LittleEndian.PutUint32(buff, transport.InitRequestMagic)
-		binary.LittleEndian.PutUint32(buff[4:], 0)
-		writeRelayAddress(buff, addr)
-		relayInitAssertions(t, buff, http.StatusBadRequest, nil)
+		udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+		packet := transport.RelayInitPacket{
+			Magic:          transport.InitRequestMagic,
+			Version:        0,
+			Nonce:          nonce,
+			Address:        *udp,
+			EncryptedToken: encryptedToken,
+		}
+		buff, _ := packet.MarshalBinary()
+		buff[8+crypto.NonceSize] = 'x' // first number in ip address is now 'x'
+		relayInitAssertions(t, buff, http.StatusBadRequest, nil, relayPublicKey[:], routerPrivateKey[:])
 	})
 
 	t.Run("encryption token is 0'ed", func(t *testing.T) {
-		addr := "127.0.0.1"
-		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+crypto.NonceSize+4+len(addr)+routing.TokenSize)
-		binary.LittleEndian.PutUint32(buff, transport.InitRequestMagic)
-		binary.LittleEndian.PutUint32(buff[4:], 0)
-		writeRelayAddress(buff, addr)
-		relayInitAssertions(t, buff, http.StatusBadRequest, nil)
+		// generate keys
+		relayPublicKey, _, _ := box.GenerateKey(rand.Reader)
+		_, routerPrivateKey, _ := box.GenerateKey(rand.Reader)
+
+		// generate nonce
+		nonce := make([]byte, crypto.NonceSize)
+		rand.Read(nonce)
+
+		// generate token but leave it as 0's
+		token := make([]byte, routing.EncryptedTokenSize)
+
+		udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+		packet := transport.RelayInitPacket{
+			Magic:          transport.InitRequestMagic,
+			Version:        0,
+			Nonce:          nonce,
+			Address:        *udp,
+			EncryptedToken: token,
+		}
+		buff, _ := packet.MarshalBinary()
+		relayInitAssertions(t, buff, http.StatusUnauthorized, nil, relayPublicKey[:], routerPrivateKey[:])
+	})
+
+	t.Run("nonce bytes are 0'ed", func(t *testing.T) {
+		// generate keys
+		relayPublicKey, relayPrivateKey, _ := box.GenerateKey(rand.Reader)
+		routerPublicKey, routerPrivateKey, _ := box.GenerateKey(rand.Reader)
+
+		// generate nonce but leave it as 0's
+		nonce := make([]byte, crypto.NonceSize)
+
+		// generate random token
+		token := make([]byte, crypto.KeySize)
+		rand.Read(token)
+
+		// seal it with the bad nonce
+		encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
+
+		udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+		packet := transport.RelayInitPacket{
+			Magic:          transport.InitRequestMagic,
+			Version:        0,
+			Nonce:          nonce,
+			Address:        *udp,
+			EncryptedToken: encryptedToken,
+		}
+
+		buff, _ := packet.MarshalBinary()
+
+		relayInitAssertions(t, buff, http.StatusOK, nil, relayPublicKey[:], routerPrivateKey[:])
 	})
 
 	t.Run("relay already exists", func(t *testing.T) {
-		t.Skip("missing dependancy on config store to pull relay's public key to pass decryption")
+		redisServer, _ := miniredis.Run()
+		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-		relaydb := core.NewRelayDatabase()
-		addr := "127.0.0.1"
-		relaydb.Relays[core.GetRelayID(addr)] = core.RelayData{}
-		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+crypto.NonceSize+4+len(addr)+routing.TokenSize)
-		binary.LittleEndian.PutUint32(buff, transport.InitRequestMagic)
-		binary.LittleEndian.PutUint32(buff[4:], 0)
-		writeRelayAddress(buff, addr)
-		relayInitAssertions(t, buff, http.StatusNotFound, relaydb)
+		// generate keys
+		relayPublicKey, relayPrivateKey, _ := box.GenerateKey(rand.Reader)
+		routerPublicKey, routerPrivateKey, _ := box.GenerateKey(rand.Reader)
+
+		// generate nonce
+		nonce := make([]byte, crypto.NonceSize)
+		rand.Read(nonce)
+
+		// generate token
+		token := make([]byte, crypto.KeySize)
+		rand.Read(token)
+
+		// encrypt token
+		encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
+
+		name := "some name"
+		addr := "127.0.0.1:40000"
+		udpAddr, _ := net.ResolveUDPAddr("udp", addr)
+		dcname := "another name"
+
+		packet := transport.RelayInitPacket{
+			Magic:          transport.InitRequestMagic,
+			Version:        0,
+			Nonce:          nonce,
+			Address:        *udpAddr,
+			EncryptedToken: encryptedToken,
+		}
+
+		buff, _ := packet.MarshalBinary()
+
+		entry := routing.Relay{
+			ID:             routing.GetRelayID(addr),
+			Name:           name,
+			Addr:           *udpAddr,
+			Datacenter:     32,
+			DatacenterName: dcname,
+			PublicKey:      token,
+			LastUpdateTime: 1234,
+		}
+
+		// get the binary data from the entry
+		data, _ := entry.MarshalBinary()
+
+		// set it in the redis instance
+		redisServer.HSet(transport.RedisHashName, entry.Key(), string(data))
+
+		relayInitAssertions(t, buff, http.StatusNotFound, redisClient, relayPublicKey[:], routerPrivateKey[:])
 	})
 
 	t.Run("valid", func(t *testing.T) {
-		t.Skip("missing dependancy on config store to pull relay's public key to pass decryption")
+		redisServer, _ := miniredis.Run()
+		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-		addr := "127.0.0.1"
-		buff := make([]byte, sizeOfInitRequestMagic+sizeOfInitRequestVersion+crypto.NonceSize+4+len(addr)+routing.TokenSize)
-		binary.LittleEndian.PutUint32(buff, transport.InitRequestMagic)
-		binary.LittleEndian.PutUint32(buff[4:], 0)
-		writeRelayAddress(buff, addr)
+		relayPublicKey, relayPrivateKey, _ := box.GenerateKey(rand.Reader)
+		routerPublicKey, routerPrivateKey, _ := box.GenerateKey(rand.Reader)
 
-		writer := relayInitAssertions(t, buff, http.StatusOK, nil)
-		contentType := writer.Header().Get("Content-Type")
-		assert.Equal(t, "application/octet-stream", contentType)
+		nonce := make([]byte, crypto.NonceSize)
+		rand.Read(nonce)
+
+		addr := "127.0.0.1:40000"
+		udpAddr, _ := net.ResolveUDPAddr("udp", addr)
+
+		token := make([]byte, crypto.KeySize)
+		rand.Read(token)
+
+		encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
+
+		before := uint64(time.Now().Unix())
+
+		packet := transport.RelayInitPacket{
+			Magic:          transport.InitRequestMagic,
+			Nonce:          nonce,
+			Address:        *udpAddr,
+			EncryptedToken: encryptedToken,
+		}
+		buff, _ := packet.MarshalBinary()
+
+		recorder := relayInitAssertions(t, buff, http.StatusOK, redisClient, relayPublicKey[:], routerPrivateKey[:])
+
+		header := recorder.Header()
+		contentType, _ := header["Content-Type"]
+		expected := routing.Relay{
+			ID:   routing.GetRelayID(addr),
+			Addr: *udpAddr,
+		}
+
+		resp := redisClient.HGet(transport.RedisHashName, expected.Key())
+
+		var actual routing.Relay
+		bin, _ := resp.Bytes()
+		assert.Nil(t, actual.UnmarshalBinary(bin))
+
+		indx := 0
+		body := recorder.Body.Bytes()
+
+		var version uint32
+		encoding.ReadUint32(body, &indx, &version)
+
+		var timestamp uint64
+		encoding.ReadUint64(body, &indx, &timestamp)
+
+		var publicKey []byte
+		encoding.ReadBytes(body, &indx, &publicKey, crypto.KeySize)
+
+		assert.Equal(t, "application/octet-stream", contentType[0])
+		assert.Equal(t, transport.VersionNumberInitResponse, int(version))
+		assert.LessOrEqual(t, before, timestamp)
+		assert.GreaterOrEqual(t, uint64(time.Now().Unix()), timestamp)
+		assert.Equal(t, actual.PublicKey, publicKey) // entry gets a public key assigned at init which is returned in the response
+
+		assert.Equal(t, expected.ID, actual.ID)
+		assert.Equal(t, expected.Name, actual.Name)
+		assert.Equal(t, expected.Addr, actual.Addr)
+		assert.NotZero(t, actual.LastUpdateTime)
+		assert.Len(t, actual.PublicKey, 32)
 	})
 }

@@ -1,9 +1,70 @@
-package core
+package routing
 
 import (
+	"log"
 	"math"
 	"sort"
+
+	"github.com/go-redis/redis/v7"
 )
+
+// HistorySize is the limit to how big the history of the relay entries should be
+const (
+	HistoryInvalidValue = -1
+	HistorySize         = 6
+
+	MaxJitter     = 10.0
+	MaxPacketLoss = 0.1
+)
+
+// TriMatrixLength returns the length of a triangular shaped matrix
+func TriMatrixLength(size int) int {
+	return (size * (size - 1)) / 2
+}
+
+// TriMatrixLength returns the index of the ij coord for a triangular shaped matrix
+func TriMatrixIndex(i, j int) int {
+	if i <= j {
+		i, j = j, i
+	}
+	return i*(i+1)/2 - i + j
+}
+
+// HistoryMax returns the max value in the history array
+func HistoryMax(history []float32) float32 {
+	var max float32
+	for i := 0; i < len(history); i++ {
+		if history[i] > max {
+			max = history[i]
+		}
+	}
+	return max
+}
+
+// HistoryNotSet returns a history array initialized with invalid history values
+func HistoryNotSet() [HistorySize]float32 {
+	var res [HistorySize]float32
+	for i := 0; i < HistorySize; i++ {
+		res[i] = HistoryInvalidValue
+	}
+	return res
+}
+
+// HistoryMean returns the average value of all the history entries
+func HistoryMean(history []float32) float32 {
+	var sum float32
+	var size int
+	for i := 0; i < len(history); i++ {
+		if history[i] != HistoryInvalidValue {
+			sum += history[i]
+			size++
+		}
+	}
+	if size == 0 {
+		return 0
+	}
+	return sum / float32(size)
+}
 
 // InvalidRouteValue ...
 const InvalidRouteValue = 10000.0
@@ -138,23 +199,33 @@ func (database *StatsDatabase) GetSample(relay1, relay2 uint64) (float32, float3
 }
 
 // GetCostMatrix returns the cost matrix composed of all current information
-func (database *StatsDatabase) GetCostMatrix(relaydb *RelayDatabase) *CostMatrix {
+func (database *StatsDatabase) GetCostMatrix(redisClient *redis.Client) *CostMatrix {
 
-	numRelays := len(relaydb.Relays)
+	hgetallResult := redisClient.HGetAll(RedisHashName)
+	if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
+		log.Printf("failed to get all relays from redis: %v", hgetallResult.Err())
+		return nil
+	}
+	numRelays := len(hgetallResult.Val())
 
 	costMatrix := &CostMatrix{}
-	costMatrix.RelayIds = make([]RelayId, numRelays)
+	costMatrix.RelayIds = make([]uint64, numRelays)
 	costMatrix.RelayNames = make([]string, numRelays)
 	costMatrix.RelayAddresses = make([][]byte, numRelays)
 	costMatrix.RelayPublicKeys = make([][]byte, numRelays)
-	costMatrix.DatacenterRelays = make(map[DatacenterId][]RelayId)
+	costMatrix.DatacenterRelays = make(map[uint64][]uint64)
 	costMatrix.RTT = make([]int32, TriMatrixLength(numRelays))
 
-	datacenterNameMap := make(map[DatacenterId]string)
+	datacenterNameMap := make(map[uint64]string)
 
-	var stableRelays []RelayData
-	for _, relayData := range relaydb.Relays {
-		stableRelays = append(stableRelays, relayData)
+	var stableRelays []Relay
+	for _, rawRelay := range hgetallResult.Val() {
+		var relay Relay
+		if err := relay.UnmarshalBinary([]byte(rawRelay)); err != nil {
+			log.Printf("Failed to unmarshle relay when creating cost matrix: %v", err)
+			return nil
+		}
+		stableRelays = append(stableRelays, relay)
 	}
 
 	sort.SliceStable(stableRelays, func(i, j int) bool {
@@ -162,12 +233,12 @@ func (database *StatsDatabase) GetCostMatrix(relaydb *RelayDatabase) *CostMatrix
 	})
 
 	for i, relayData := range stableRelays {
-		costMatrix.RelayIds[i] = RelayId(relayData.ID)
+		costMatrix.RelayIds[i] = relayData.ID
 		costMatrix.RelayNames[i] = relayData.Name
 		costMatrix.RelayPublicKeys[i] = relayData.PublicKey
-		if relayData.Datacenter != DatacenterId(0) {
+		if relayData.Datacenter != 0 {
 			datacenter := costMatrix.DatacenterRelays[relayData.Datacenter]
-			datacenter = append(datacenter, RelayId(relayData.ID))
+			datacenter = append(datacenter, relayData.ID)
 			costMatrix.DatacenterRelays[relayData.Datacenter] = datacenter
 			datacenterNameMap[relayData.Datacenter] = relayData.DatacenterName
 		}
