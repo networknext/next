@@ -62,12 +62,12 @@ func main() {
 
 	go func() {
 		for {
-			if err := statsdb.GetCostMatrix(redisClient, &costmatrix); err == nil {
-				if err := costmatrix.Optimize(&routematrix, 1); err != nil {
-					log.Printf("failed to optimize cost matrix into route matrix: %v", err)
-				}
-			} else {
+			if err := statsdb.GetCostMatrix(redisClient, &costmatrix); err != nil {
 				log.Printf("failed to get the cost matrix: %v", err)
+			}
+
+			if err := costmatrix.Optimize(&routematrix, 1); err != nil {
+				log.Printf("failed to optimize cost matrix into route matrix: %v", err)
 			}
 
 			log.Printf("optimized %d entries into route matrix from cost matrix\n", len(routematrix.Entries))
