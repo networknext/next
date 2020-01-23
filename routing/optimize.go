@@ -70,6 +70,8 @@ func readBytesNew(data []byte, index *int, storage *[]byte, length uint32, errms
 type CostMatrix struct {
 	mu sync.Mutex
 
+	RelayIndicies map[uint64]int
+
 	RelayIds         []uint64
 	RelayNames       []string
 	RelayAddresses   [][]byte
@@ -163,12 +165,16 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 		return errors.New("[CostMatrix] invalid read at number of relays")
 	}
 
+	m.RelayIndicies = make(map[uint64]int)
 	m.RelayIds = make([]uint64, numRelays)
 
 	for i := 0; i < int(numRelays); i++ {
-		if err := idReadFunc(data, &index, &m.RelayIds[i], "[CostMatrix] invalid read at relay ids"); err != nil {
+		var tmp uint64
+		if err := idReadFunc(data, &index, &tmp, "[CostMatrix] invalid read at relay ids"); err != nil {
 			return err
 		}
+		m.RelayIndicies[tmp] = i
+		m.RelayIds[i] = tmp
 	}
 
 	m.RelayNames = make([]string, numRelays)
@@ -339,6 +345,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 
 	entryCount := TriMatrixLength(numRelays)
 
+	routes.RelayIndicies = m.RelayIndicies
 	routes.RelayIds = m.RelayIds
 	routes.RelayNames = m.RelayNames
 	routes.RelayAddresses = m.RelayAddresses
@@ -623,6 +630,8 @@ type RouteMatrixEntry struct {
 type RouteMatrix struct {
 	mu sync.Mutex
 
+	RelayIndicies map[uint64]int
+
 	RelayIds         []uint64
 	RelayNames       []string
 	RelayAddresses   [][]byte
@@ -631,8 +640,6 @@ type RouteMatrix struct {
 	DatacenterIds    []uint64
 	DatacenterNames  []string
 	Entries          []RouteMatrixEntry
-
-	relayIdx map[uint64]int
 }
 
 func (m *RouteMatrix) RelaysIn(d Datacenter) []Relay {
@@ -662,12 +669,12 @@ func (m *RouteMatrix) AllRoutes(from Relay, to []Relay) []Route {
 func (m *RouteMatrix) Routes(from Relay, to Relay) []Route {
 	var routes []Route
 
-	toidx, ok := m.relayIdx[to.ID]
+	toidx, ok := m.RelayIndicies[to.ID]
 	if !ok {
 		return nil
 	}
 
-	fromidx, ok := m.relayIdx[from.ID]
+	fromidx, ok := m.RelayIndicies[from.ID]
 	if !ok {
 		return nil
 	}
@@ -813,12 +820,16 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 		return errors.New("[RouteMatrix] invalid read at number of relays")
 	}
 
+	m.RelayIndicies = make(map[uint64]int)
 	m.RelayIds = make([]uint64, numRelays)
 
 	for i := 0; i < int(numRelays); i++ {
-		if err := idReadFunc(data, &index, &m.RelayIds[i], "[RouteMatrix] invalid read at relay ids"); err != nil {
+		var tmp uint64
+		if err := idReadFunc(data, &index, &tmp, "[RouteMatrix] invalid read at relay ids"); err != nil {
 			return err
 		}
+		m.RelayIndicies[tmp] = i
+		m.RelayIds[i] = tmp
 	}
 
 	m.RelayNames = make([]string, numRelays)
@@ -1224,11 +1235,4 @@ func (manager *RouteManager) AddRoute(rtt int32, relays ...uint64) {
 		}
 
 	}
-}
-
-func TriMatrixIndex(i, j int) int {
-	if i <= j {
-		i, j = j, i
-	}
-	return i*(i+1)/2 - i + j
 }

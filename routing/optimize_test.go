@@ -675,6 +675,10 @@ func TestOptimize(t *testing.T) {
 		t.Run("MarshalBinary()", func(t *testing.T) {
 			t.Run("MarshalBinary -> UnmarshalBinary equality", func(t *testing.T) {
 				var matrix routing.CostMatrix
+				matrix.RelayIndicies = make(map[uint64]int)
+				matrix.RelayIndicies[123] = 0
+				matrix.RelayIndicies[456] = 1
+
 				matrix.RelayIds = make([]uint64, 2)
 				matrix.RelayIds[0] = 123
 				matrix.RelayIds[1] = 456
@@ -1092,6 +1096,10 @@ func TestOptimize(t *testing.T) {
 		t.Run("MarshalBinary()", func(t *testing.T) {
 			t.Run("MarshalBinary -> UnmarshalBinary equality", func(t *testing.T) {
 				var matrix routing.RouteMatrix
+				matrix.RelayIndicies = make(map[uint64]int)
+				matrix.RelayIndicies[123] = 0
+				matrix.RelayIndicies[456] = 1
+
 				matrix.RelayIds = make([]uint64, 2)
 				matrix.RelayIds[0] = 123
 				matrix.RelayIds[1] = 456
