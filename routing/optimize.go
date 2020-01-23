@@ -260,8 +260,7 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 // MarshalBinary ...
 func (m CostMatrix) MarshalBinary() ([]byte, error) {
 	index := 0
-	buffSize := m.getBufferSize()
-	data := make([]byte, buffSize)
+	data := make([]byte, m.Size())
 
 	encoding.WriteUint32(data, &index, CostMatrixVersion)
 
@@ -577,7 +576,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 	return nil
 }
 
-func (m CostMatrix) getBufferSize() uint64 {
+func (m *CostMatrix) Size() uint64 {
 	var length uint64
 	numRelays := uint64(len(m.RelayIds))
 	numDatacenters := uint64(len(m.DatacenterIds))
@@ -864,7 +863,7 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 
 // MarshalBinary ...
 func (m RouteMatrix) MarshalBinary() ([]byte, error) {
-	data := make([]byte, m.getBufferSize())
+	data := make([]byte, m.Size())
 	index := 0
 
 	encoding.WriteUint32(data, &index, RouteMatrixVersion)
@@ -948,7 +947,7 @@ func (m RouteMatrix) MarshalBinary() ([]byte, error) {
 	return data, nil
 }
 
-func (m RouteMatrix) getBufferSize() uint64 {
+func (m *RouteMatrix) Size() uint64 {
 	var length uint64
 	numRelays := uint64(len(m.RelayIds))
 	numDatacenters := uint64(len(m.DatacenterIds))
