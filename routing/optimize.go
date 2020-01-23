@@ -502,7 +502,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 
 						// subdivide routes from i -> j as follows: i -> (x) -> (y) -> (z) -> j, where the subdivision improves significantly on RTT
 
-						routeManager := NewRouteManager()
+						var routeManager RouteManager
 
 						for k := range indirect[i][j] {
 
@@ -995,12 +995,6 @@ type RouteManager struct {
 	RouteHash      [MaxRoutesPerRelayPair]uint64
 	RouteNumRelays [MaxRoutesPerRelayPair]int32
 	RouteRelays    [MaxRoutesPerRelayPair][MaxRelays]uint64
-}
-
-// NewRouteManager ...
-func NewRouteManager() *RouteManager {
-	manager := &RouteManager{}
-	return manager
 }
 
 // fnv64
