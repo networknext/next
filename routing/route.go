@@ -1,14 +1,33 @@
 package routing
 
+import "encoding/json"
+
 const (
-	RouteTypeDirect   = 0
-	RouteTypeNew      = 1
-	RouteTypeContinue = 2
+	DecisionTypeDirect   = 0
+	DecisionTypeNew      = 1
+	DecisionTypeContinue = 2
 )
 
-type Route struct {
+var (
+	DecisionDirect = Decision{Type: DecisionTypeDirect}
+)
+
+type Decision struct {
 	Type      int
 	NumTokens int
 	Tokens    []byte
 	Multipath bool
+}
+
+func (r Decision) MarshalBinary() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func (r *Decision) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, r)
+}
+
+type Route struct {
+	Relays []Relay
+	Stats  Stats
 }

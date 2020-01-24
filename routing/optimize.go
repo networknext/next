@@ -70,6 +70,8 @@ func readBytesNew(data []byte, index *int, storage *[]byte, length uint32, errms
 type CostMatrix struct {
 	mu sync.Mutex
 
+	RelayIndicies map[uint64]int
+
 	RelayIds         []uint64
 	RelayNames       []string
 	RelayAddresses   [][]byte
@@ -163,12 +165,16 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 		return errors.New("[CostMatrix] invalid read at number of relays")
 	}
 
+	m.RelayIndicies = make(map[uint64]int)
 	m.RelayIds = make([]uint64, numRelays)
 
 	for i := 0; i < int(numRelays); i++ {
-		if err := idReadFunc(data, &index, &m.RelayIds[i], "[CostMatrix] invalid read at relay ids"); err != nil {
+		var tmp uint64
+		if err := idReadFunc(data, &index, &tmp, "[CostMatrix] invalid read at relay ids"); err != nil {
 			return err
 		}
+		m.RelayIndicies[tmp] = i
+		m.RelayIds[i] = tmp
 	}
 
 	m.RelayNames = make([]string, numRelays)
@@ -339,6 +345,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 
 	entryCount := TriMatrixLength(numRelays)
 
+	routes.RelayIndicies = m.RelayIndicies
 	routes.RelayIds = m.RelayIds
 	routes.RelayNames = m.RelayNames
 	routes.RelayAddresses = m.RelayAddresses
@@ -623,6 +630,8 @@ type RouteMatrixEntry struct {
 type RouteMatrix struct {
 	mu sync.Mutex
 
+	RelayIndicies map[uint64]int
+
 	RelayIds         []uint64
 	RelayNames       []string
 	RelayAddresses   [][]byte
@@ -633,13 +642,82 @@ type RouteMatrix struct {
 	Entries          []RouteMatrixEntry
 }
 
-func (m *RouteMatrix) Route() (Route, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+// RelaysIn will retern the set of Relays in the provided Datacenter
+func (m *RouteMatrix) RelaysIn(d Datacenter) []Relay {
+	relayIDs, ok := m.DatacenterRelays[d.ID]
+	if !ok {
+		return nil
+	}
 
-	return Route{
-		Type: RouteTypeDirect,
-	}, nil
+	var relays []Relay
+	for i := 0; i < len(relayIDs); i++ {
+		relays = append(relays, Relay{ID: relayIDs[i]})
+	}
+
+	return relays
+}
+
+// Routes will return all routes for each from and to Relay sets
+func (m *RouteMatrix) Routes(from []Relay, to []Relay) []Route {
+	var routes []Route
+
+	for _, fromrelay := range from {
+		for _, torelay := range to {
+			m.fillRoutes(&routes, fromrelay, torelay)
+		}
+	}
+
+	return routes
+}
+
+// route is just the internal function to get all routes from one relay to another
+func (m *RouteMatrix) fillRoutes(routes *[]Route, from Relay, to Relay) {
+	toidx, ok := m.RelayIndicies[to.ID]
+	if !ok {
+		return
+	}
+
+	fromidx, ok := m.RelayIndicies[from.ID]
+	if !ok {
+		return
+	}
+
+	reverse := toidx > fromidx
+	fromtoidx := TriMatrixIndex(fromidx, toidx)
+
+	for i := 0; i < int(m.Entries[fromtoidx].NumRoutes); i++ {
+
+		numRelays := int(m.Entries[fromtoidx].RouteNumRelays[i])
+
+		routeRelays := make([]Relay, numRelays)
+
+		if !reverse {
+			for j := 0; j < numRelays; j++ {
+				relayIndex := m.Entries[fromtoidx].RouteRelays[i][j]
+				routeRelays[j] = Relay{ID: m.RelayIds[relayIndex]}
+			}
+		} else {
+			for j := 0; j < numRelays; j++ {
+				relayIndex := m.Entries[fromtoidx].RouteRelays[i][j]
+				routeRelays[numRelays-1-j] = Relay{ID: m.RelayIds[relayIndex]}
+			}
+		}
+
+		route := Route{
+			Relays: routeRelays,
+			Stats: Stats{
+				RTT: float64(m.Entries[fromtoidx].RouteRTT[i]),
+			},
+		}
+
+		*routes = append(*routes, route)
+	}
+}
+
+func (m *RouteMatrix) Route(datacenter Datacenter, relays []Relay) (Decision, error) {
+	// _ := m.Routes(m.RelaysIn(datacenter), relays)
+
+	return Decision{}, nil
 }
 
 // ReadFrom implements the io.ReadFrom interface
@@ -732,12 +810,16 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 		return errors.New("[RouteMatrix] invalid read at number of relays")
 	}
 
+	m.RelayIndicies = make(map[uint64]int)
 	m.RelayIds = make([]uint64, numRelays)
 
 	for i := 0; i < int(numRelays); i++ {
-		if err := idReadFunc(data, &index, &m.RelayIds[i], "[RouteMatrix] invalid read at relay ids"); err != nil {
+		var tmp uint64
+		if err := idReadFunc(data, &index, &tmp, "[RouteMatrix] invalid read at relay ids"); err != nil {
 			return err
 		}
+		m.RelayIndicies[tmp] = i
+		m.RelayIds[i] = tmp
 	}
 
 	m.RelayNames = make([]string, numRelays)

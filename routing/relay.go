@@ -36,9 +36,7 @@ type Relay struct {
 	Latitude  float64
 	Longitude float64
 
-	RTT        float64
-	Jitter     float64
-	PacketLoss float64
+	Stats Stats
 
 	LastUpdateTime uint64
 
@@ -102,6 +100,12 @@ func (r Relay) Key() string {
 	}
 
 	return r.cachedKey
+}
+
+type Stats struct {
+	RTT        float64
+	Jitter     float64
+	PacketLoss float64
 }
 
 // RelayUpdate ...
