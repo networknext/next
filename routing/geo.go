@@ -47,10 +47,6 @@ func (mmdb *MaxmindDB) LocateIP(ip net.IP) (Location, error) {
 		return Location{}, nil
 	}
 
-	if ip.IsLinkLocalUnicast() {
-		return Location{}, nil
-	}
-
 	res, err := mmdb.Reader.City(ip)
 	if err != nil {
 		return Location{}, err
