@@ -17,6 +17,7 @@ import (
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/transport"
+	"github.com/oschwald/geoip2-golang"
 )
 
 func main() {
@@ -56,6 +57,20 @@ func main() {
 		log.Printf("unable to connect to REDIS_HOST '%s', connected to in-memory redis %s", os.Getenv("REDIS_URL"), redisServer.Addr())
 	}
 
+	geoClient := routing.GeoClient{
+		RedisClient: redisClient,
+		Namespace:   "RELAY_LOCATIONS",
+	}
+
+	mmreader, err := geoip2.Open(os.Getenv("MAXMIND_DB_URI"))
+	if err != nil {
+		log.Fatalf("failed to open Maxmind GeoIP2 database: %v", err)
+	}
+	mmdb := routing.MaxmindDB{
+		Reader: mmreader,
+	}
+	defer mmreader.Close()
+
 	statsdb := routing.NewStatsDatabase()
 	var costmatrix routing.CostMatrix
 	var routematrix routing.RouteMatrix
@@ -83,7 +98,7 @@ func main() {
 		fmt.Printf("RELAY_PORT env var is unset, setting port as %s\n", port)
 	}
 
-	router := transport.NewRouter(redisClient, statsdb, &costmatrix, &routematrix, relayPublicKey, routerPrivateKey)
+	router := transport.NewRouter(redisClient, &geoClient, &mmdb, statsdb, &costmatrix, &routematrix, relayPublicKey, routerPrivateKey)
 
 	go transport.HTTPStart(port, router)
 

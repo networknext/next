@@ -2,6 +2,7 @@ package encoding
 
 import (
 	"encoding/binary"
+	"math"
 	"net"
 )
 
@@ -13,6 +14,11 @@ func WriteUint32(data []byte, index *int, value uint32) {
 func WriteUint64(data []byte, index *int, value uint64) {
 	binary.LittleEndian.PutUint64(data[*index:], value)
 	*index += 8
+}
+
+func WriteFloat64(data []byte, index *int, value float64) {
+	uintValue := math.Float64bits(value)
+	WriteUint64(data, index, uintValue)
 }
 
 func WriteString(data []byte, index *int, value string, maxStringLength uint32) {

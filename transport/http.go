@@ -37,9 +37,9 @@ var gRelayPublicKey = []byte{
 }
 
 // NewRouter creates a router with the specified endpoints
-func NewRouter(redisClient *redis.Client, statsdb *routing.StatsDatabase, costmatrix *routing.CostMatrix, routematrix *routing.RouteMatrix, relayPublicKey []byte, routerPrivateKey []byte) *mux.Router {
+func NewRouter(redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, statsdb *routing.StatsDatabase, costmatrix *routing.CostMatrix, routematrix *routing.RouteMatrix, relayPublicKey []byte, routerPrivateKey []byte) *mux.Router {
 	router := mux.NewRouter()
-	router.HandleFunc("/relay_init", RelayInitHandlerFunc(redisClient, relayPublicKey, routerPrivateKey)).Methods("POST")
+	router.HandleFunc("/relay_init", RelayInitHandlerFunc(redisClient, geoClient, ipLocator, relayPublicKey, routerPrivateKey)).Methods("POST")
 	router.HandleFunc("/relay_update", RelayUpdateHandlerFunc(redisClient, statsdb)).Methods("POST")
 	router.Handle("/cost_matrix", costmatrix).Methods("GET")
 	router.Handle("/route_matrix", routematrix).Methods("GET")
@@ -57,7 +57,7 @@ func HTTPStart(port string, router *mux.Router) {
 }
 
 // RelayInitHandlerFunc returns the function for the relay init endpoint
-func RelayInitHandlerFunc(redisClient *redis.Client, relayPublicKey []byte, routerPrivateKey []byte) func(writer http.ResponseWriter, request *http.Request) {
+func RelayInitHandlerFunc(redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, relayPublicKey []byte, routerPrivateKey []byte) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		log.Println("Received Relay Init Packet")
 		body, err := ioutil.ReadAll(request.Body)
@@ -117,10 +117,24 @@ func RelayInitHandlerFunc(redisClient *redis.Client, relayPublicKey []byte, rout
 		relay.PublicKey = make([]byte, crypto.KeySize)
 		rand.Read(relay.PublicKey)
 
-		res := redisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay)
+		loc, err := ipLocator.LocateIP(relay.Addr.IP)
+		if err != nil {
+			log.Printf("failed to lookup relay ip '%s': %v", relay.Addr.String(), err)
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 
-		if res.Err() != nil && res.Err() != redis.Nil {
+		relay.Latitude = loc.Latitude
+		relay.Longitude = loc.Longitude
+
+		if res := redisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay); res.Err() != nil && res.Err() != redis.Nil {
 			log.Printf("failed to set relay %s into redis hash: %v", relayInitPacket.Address.String(), res.Err())
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		if err := geoClient.Add(relay); err != nil {
+			log.Printf("failed to add relay %s into geo client: %v", relayInitPacket.Address.String(), err)
 			writer.WriteHeader(http.StatusInternalServerError)
 			return
 		}

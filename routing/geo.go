@@ -4,10 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"regexp"
 	"strconv"
 
 	"github.com/go-redis/redis/v7"
 	"github.com/oschwald/geoip2-golang"
+)
+
+const (
+	regexLocalhostIPs = `127\.0\.0\.1|localhost`
 )
 
 // IPLocator defines anything that returns a routing.Location given an net.IP
@@ -34,6 +39,12 @@ type MaxmindDB struct {
 func (mmdb *MaxmindDB) LocateIP(ip net.IP) (Location, error) {
 	if mmdb.Reader == nil {
 		return Location{}, errors.New("not configured with a Maxmind DB")
+	}
+
+	// if the ip is localhost, return nothing so we can test on our dev machines
+	matches, _ := regexp.Match(regexLocalhostIPs, []byte(ip.String()))
+	if matches {
+		return Location{}, nil
 	}
 
 	res, err := mmdb.Reader.City(ip)
@@ -78,6 +89,7 @@ func (c *GeoClient) Add(r Relay) error {
 	return c.RedisClient.GeoAdd(c.Namespace, &geoloc).Err()
 }
 
+// uom can be one of the following: "m", "km", "mi", "ft"
 func (c *GeoClient) RelaysWithin(lat float64, long float64, radius float64, uom string) ([]Relay, error) {
 	geoquery := redis.GeoRadiusQuery{
 		Radius:    radius,
