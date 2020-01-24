@@ -291,7 +291,7 @@ func TestRelayInitHandler(t *testing.T) {
 		if assert.Len(t, relaysInLocation, 1) {
 			relay := relaysInLocation[0]
 
-			assert.Equal(t, routing.GetRelayID(addr), relay.ID)
+			assert.Equal(t, crypto.HashID(addr), relay.ID)
 			assert.Equal(t, location.Latitude, math.Round(relay.Latitude*1000)/1000)
 			assert.Equal(t, location.Longitude, math.Round(relay.Longitude*1000)/1000)
 		}

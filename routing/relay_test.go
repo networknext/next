@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"errors"
-	"hash/fnv"
 	"net"
 	"testing"
 
@@ -154,17 +153,5 @@ func TestRelay(t *testing.T) {
 		}
 
 		assert.Equal(t, "RELAY-123", relay.Key())
-	})
-}
-
-func TestGetRelayID(t *testing.T) {
-	t.Run("basic test", func(t *testing.T) {
-		dup := func(addr string) uint64 {
-			hash := fnv.New64a()
-			hash.Write([]byte(addr))
-			return hash.Sum64()
-		}
-
-		assert.Equal(t, dup("127.0.0.1"), routing.GetRelayID("127.0.0.1"))
 	})
 }
