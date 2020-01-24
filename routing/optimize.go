@@ -266,8 +266,7 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 // MarshalBinary ...
 func (m CostMatrix) MarshalBinary() ([]byte, error) {
 	index := 0
-	buffSize := m.getBufferSize()
-	data := make([]byte, buffSize)
+	data := make([]byte, m.Size())
 
 	encoding.WriteUint32(data, &index, CostMatrixVersion)
 
@@ -510,7 +509,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 
 						// subdivide routes from i -> j as follows: i -> (x) -> (y) -> (z) -> j, where the subdivision improves significantly on RTT
 
-						routeManager := NewRouteManager()
+						var routeManager RouteManager
 
 						for k := range indirect[i][j] {
 
@@ -584,7 +583,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 	return nil
 }
 
-func (m CostMatrix) getBufferSize() uint64 {
+func (m *CostMatrix) Size() uint64 {
 	var length uint64
 	numRelays := uint64(len(m.RelayIds))
 	numDatacenters := uint64(len(m.DatacenterIds))
@@ -946,7 +945,7 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 
 // MarshalBinary ...
 func (m RouteMatrix) MarshalBinary() ([]byte, error) {
-	data := make([]byte, m.getBufferSize())
+	data := make([]byte, m.Size())
 	index := 0
 
 	encoding.WriteUint32(data, &index, RouteMatrixVersion)
@@ -1030,7 +1029,7 @@ func (m RouteMatrix) MarshalBinary() ([]byte, error) {
 	return data, nil
 }
 
-func (m RouteMatrix) getBufferSize() uint64 {
+func (m *RouteMatrix) Size() uint64 {
 	var length uint64
 	numRelays := uint64(len(m.RelayIds))
 	numDatacenters := uint64(len(m.DatacenterIds))
@@ -1080,14 +1079,8 @@ type RouteManager struct {
 	RouteRelays    [MaxRoutesPerRelayPair][MaxRelays]uint64
 }
 
-// NewRouteManager ...
-func NewRouteManager() *RouteManager {
-	manager := &RouteManager{}
-	return manager
-}
-
 // fnv64
-func routeHash(relays ...uint64) uint64 {
+func RouteHash(relays ...uint64) uint64 {
 	// http://www.isthe.com/chongo/tech/comp/fnv/
 	const fnv64OffsetBasis = uint64(0xCBF29CE484222325)
 
@@ -1126,7 +1119,7 @@ func (manager *RouteManager) AddRoute(rtt int32, relays ...uint64) {
 
 		manager.NumRoutes = 1
 		manager.RouteRTT[0] = rtt
-		manager.RouteHash[0] = routeHash(relays...)
+		manager.RouteHash[0] = RouteHash(relays...)
 		manager.RouteNumRelays[0] = int32(len(relays))
 		for i := range relays {
 			manager.RouteRelays[0][i] = relays[i]
@@ -1136,9 +1129,9 @@ func (manager *RouteManager) AddRoute(rtt int32, relays ...uint64) {
 
 		// not at max routes yet. insert according RTT sort order
 
-		routeHash := routeHash(relays...)
+		hash := RouteHash(relays...)
 		for i := 0; i < manager.NumRoutes; i++ {
-			if routeHash == manager.RouteHash[i] {
+			if hash == manager.RouteHash[i] {
 				return
 			}
 		}
@@ -1148,7 +1141,7 @@ func (manager *RouteManager) AddRoute(rtt int32, relays ...uint64) {
 			// RTT is greater than existing entries. append.
 
 			manager.RouteRTT[manager.NumRoutes] = rtt
-			manager.RouteHash[manager.NumRoutes] = routeHash
+			manager.RouteHash[manager.NumRoutes] = hash
 			manager.RouteNumRelays[manager.NumRoutes] = int32(len(relays))
 			for i := range relays {
 				manager.RouteRelays[manager.NumRoutes][i] = relays[i]
@@ -1176,7 +1169,7 @@ func (manager *RouteManager) AddRoute(rtt int32, relays ...uint64) {
 				}
 			}
 			manager.RouteRTT[insertIndex] = rtt
-			manager.RouteHash[insertIndex] = routeHash
+			manager.RouteHash[insertIndex] = hash
 			manager.RouteNumRelays[insertIndex] = int32(len(relays))
 			for i := range relays {
 				manager.RouteRelays[insertIndex][i] = relays[i]
@@ -1192,9 +1185,9 @@ func (manager *RouteManager) AddRoute(rtt int32, relays ...uint64) {
 			return
 		}
 
-		routeHash := routeHash(relays...)
+		hash := RouteHash(relays...)
 		for i := 0; i < manager.NumRoutes; i++ {
-			if routeHash == manager.RouteHash[i] {
+			if hash == manager.RouteHash[i] {
 				return
 			}
 		}
@@ -1217,7 +1210,7 @@ func (manager *RouteManager) AddRoute(rtt int32, relays ...uint64) {
 		}
 
 		manager.RouteRTT[insertIndex] = rtt
-		manager.RouteHash[insertIndex] = routeHash
+		manager.RouteHash[insertIndex] = hash
 		manager.RouteNumRelays[insertIndex] = int32(len(relays))
 
 		for i := range relays {

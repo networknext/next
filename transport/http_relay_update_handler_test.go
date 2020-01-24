@@ -25,9 +25,9 @@ func seedRedis(t *testing.T, redisServer *miniredis.Miniredis, addressesToAdd []
 		relay := routing.NewRelay()
 		udpAddr, _ := net.ResolveUDPAddr("udp", addr)
 		relay.Addr = *udpAddr
-		relay.ID = routing.GetRelayID(addr)
+		relay.ID = crypto.HashID(addr)
 		bin, _ := relay.MarshalBinary()
-		redisServer.HSet(transport.RedisHashName, relay.Key(), string(bin))
+		redisServer.HSet(routing.HashKeyAllRelays, relay.Key(), string(bin))
 	}
 
 	for _, addr := range addressesToAdd {
@@ -112,7 +112,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 		packet.PingStats = make([]routing.RelayStatsPing, packet.NumRelays)
 		for i, addr := range statIps {
 			stats := &packet.PingStats[i]
-			stats.RelayID = routing.GetRelayID(addr)
+			stats.RelayID = crypto.HashID(addr)
 			stats.RTT = rand.Float32()
 			stats.Jitter = rand.Float32()
 			stats.PacketLoss = rand.Float32()
@@ -121,7 +121,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 		seedRedis(t, redisServer, statIps)
 
 		entry := routing.Relay{
-			ID:             routing.GetRelayID(addr),
+			ID:             crypto.HashID(addr),
 			Addr:           *udp,
 			Datacenter:     1,
 			DatacenterName: "some name",
@@ -130,13 +130,13 @@ func TestRelayUpdateHandler(t *testing.T) {
 		}
 
 		raw, _ := entry.MarshalBinary()
-		redisServer.HSet(transport.RedisHashName, entry.Key(), string(raw))
+		redisServer.HSet(routing.HashKeyAllRelays, entry.Key(), string(raw))
 
 		buff, _ := packet.MarshalBinary()
 
 		recorder := relayUpdateAssertions(t, buff, http.StatusOK, redisClient, statsdb)
 
-		res := redisClient.HGet(transport.RedisHashName, entry.Key())
+		res := redisClient.HGet(routing.HashKeyAllRelays, entry.Key())
 		var actual routing.Relay
 		raw, _ = res.Bytes()
 		actual.UnmarshalBinary(raw)
@@ -182,7 +182,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 		assert.Contains(t, statsdb.Entries, entry.ID)
 		relations := statsdb.Entries[entry.ID]
 		for _, addr := range statIps {
-			id := routing.GetRelayID(addr)
+			id := crypto.HashID(addr)
 			assert.Contains(t, relaysToPingIDs, id)
 			assert.Contains(t, relaysToPingAddrs, addr)
 			assert.Contains(t, relations.Relays, id)

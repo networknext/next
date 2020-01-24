@@ -17,7 +17,7 @@ import (
 func addrsToIDs(addrs []string) []uint64 {
 	retval := make([]uint64, len(addrs))
 	for i, addr := range addrs {
-		retval[i] = uint64(routing.GetRelayID(addr))
+		retval[i] = uint64(crypto.HashID(addr))
 	}
 	return retval
 }
@@ -722,13 +722,14 @@ func TestOptimize(t *testing.T) {
 				var other routing.CostMatrix
 
 				bin, err := matrix.MarshalBinary()
+				assert.NoError(t, err)
 
 				// essentialy this asserts the result of MarshalBinary(),
 				// if Unmarshal tests pass then the binary data from Marshal
 				// is valid if unmarshaling equals the original
-				other.UnmarshalBinary(bin)
+				err = other.UnmarshalBinary(bin)
+				assert.NoError(t, err)
 
-				assert.Nil(t, err)
 				assert.Equal(t, matrix, other)
 			})
 		})

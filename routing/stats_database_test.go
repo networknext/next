@@ -5,6 +5,7 @@ import (
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/go-redis/redis/v7"
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/stretchr/testify/assert"
 )
@@ -68,9 +69,9 @@ func TestHistory(t *testing.T) {
 }
 
 func TestStatsDatabase(t *testing.T) {
-	sourceId := routing.GetRelayID("127.0.0.1")
-	relay1Id := routing.GetRelayID("127.9.9.9")
-	relay2Id := routing.GetRelayID("999.999.9.9")
+	sourceId := crypto.HashID("127.0.0.1")
+	relay1Id := crypto.HashID("127.9.9.9")
+	relay2Id := crypto.HashID("999.999.9.9")
 
 	makeBasicStats := func() *routing.StatsEntryRelay {
 		entry := routing.NewStatsEntryRelay()
@@ -283,7 +284,7 @@ func TestStatsDatabase(t *testing.T) {
 			validDcIDs := make([]uint64, 0)
 			validDcNames := make([]string, 0)
 
-			hgetallResult := redisClient.HGetAll(routing.RedisHashName)
+			hgetallResult := redisClient.HGetAll(routing.HashKeyAllRelays)
 
 			i := 0
 			for _, raw := range hgetallResult.Val() {
@@ -291,10 +292,10 @@ func TestStatsDatabase(t *testing.T) {
 				r.UnmarshalBinary([]byte(raw))
 				if i == 0 {
 					r.Datacenter = 0
-					redisClient.HSet(routing.RedisHashName, r.Key(), r)
+					redisClient.HSet(routing.HashKeyAllRelays, r.Key(), r)
 				} else {
 					r.Datacenter = uint64(i)
-					redisClient.HSet(routing.RedisHashName, r.Key(), r)
+					redisClient.HSet(routing.HashKeyAllRelays, r.Key(), r)
 					validDcIDs = append(validDcIDs, r.Datacenter)
 					validDcNames = append(validDcNames, r.DatacenterName)
 				}
@@ -302,7 +303,7 @@ func TestStatsDatabase(t *testing.T) {
 			}
 
 			modifyEntry := func(addr1, addr2 string, rtt, jitter, packetloss float32) {
-				entry := statsdb.GetEntry(routing.GetRelayID(addr1), routing.GetRelayID(addr2))
+				entry := statsdb.GetEntry(crypto.HashID(addr1), crypto.HashID(addr2))
 				entry.Rtt = rtt
 				entry.Jitter = jitter
 				entry.PacketLoss = packetloss
@@ -324,7 +325,7 @@ func TestStatsDatabase(t *testing.T) {
 			assert.NoError(t, statsdb.GetCostMatrix(&costMatrix, redisClient))
 
 			// Testing
-			hgetallResult = redisClient.HGetAll(routing.RedisHashName)
+			hgetallResult = redisClient.HGetAll(routing.HashKeyAllRelays)
 
 			// assert each entry in the relay db is present in the cost matrix
 			for _, raw := range hgetallResult.Val() {
@@ -367,8 +368,8 @@ func TestStatsDatabase(t *testing.T) {
 
 			// assert that all non-invalid rtt's are within the cost matrix
 			getAddressIndex := func(addr1, addr2 string) int {
-				addr1ID := routing.GetRelayID(addr1)
-				addr2ID := routing.GetRelayID(addr2)
+				addr1ID := crypto.HashID(addr1)
+				addr2ID := crypto.HashID(addr2)
 				indxOfI := -1
 				indxOfJ := -1
 
