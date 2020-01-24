@@ -4,10 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"regexp"
 	"strconv"
 
 	"github.com/go-redis/redis/v7"
 	"github.com/oschwald/geoip2-golang"
+)
+
+const (
+	regexLocalhostIPs = `(127\.0\.0\.1|localhost):[0-9]+`
 )
 
 // IPLocator defines anything that returns a routing.Location given an net.IP
@@ -34,6 +39,16 @@ type MaxmindDB struct {
 func (mmdb *MaxmindDB) LocateIP(ip net.IP) (Location, error) {
 	if mmdb.Reader == nil {
 		return Location{}, errors.New("not configured with a Maxmind DB")
+	}
+
+	// if the ip is localhost, return nothing so we can test on our dev machines
+	matches, _ := regexp.Match(regexLocalhostIPs, []byte(ip.String()))
+	if matches {
+		return Location{}, nil
+	}
+
+	if ip.IsLinkLocalUnicast() {
+		return Location{}, nil
 	}
 
 	res, err := mmdb.Reader.City(ip)
