@@ -27,8 +27,8 @@ func (bp *mockBuyerProvider) GetAndCheckBySdkVersion3PublicKeyId(id uint64) (*st
 
 type mockRouteProvider struct{}
 
-func (rp *mockRouteProvider) Route() (routing.Route, error) {
-	return routing.Route{}, nil
+func (rp *mockRouteProvider) Route(d routing.Datacenter, rs []routing.Relay) (routing.Decision, error) {
+	return routing.Decision{}, nil
 }
 
 func TestServerUpdateHandlerFunc(t *testing.T) {
@@ -224,6 +224,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 		bp := mockBuyerProvider{
 			buyer: &storage.Buyer{
 				SdkVersion3PublicKeyData: buyersServerPubKey,
+				Active:                   true,
 			},
 			ok: true,
 		}
@@ -403,7 +404,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 		expected := transport.SessionResponsePacket{
 			Sequence:             packet.Sequence,
 			SessionId:            packet.SessionId,
-			RouteType:            routing.RouteTypeDirect,
+			RouteType:            routing.DecisionTypeDirect,
 			NumTokens:            0,
 			Tokens:               nil,
 			Multipath:            false,

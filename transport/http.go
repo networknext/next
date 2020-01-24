@@ -27,8 +27,6 @@ const (
 	VersionNumberInitResponse   = 0
 	VersionNumberUpdateRequest  = 0
 	VersionNumberUpdateResponse = 0
-
-	RedisHashName = routing.RedisHashName
 )
 
 var gRelayPublicKey = []byte{
@@ -91,12 +89,12 @@ func RelayInitHandlerFunc(redisClient *redis.Client, geoClient *routing.GeoClien
 		}
 
 		relay := routing.Relay{
-			ID:             routing.GetRelayID(relayInitPacket.Address.String()),
+			ID:             crypto.HashID(relayInitPacket.Address.String()),
 			Addr:           relayInitPacket.Address,
 			LastUpdateTime: uint64(time.Now().Unix()),
 		}
 
-		exists := redisClient.HExists(RedisHashName, relay.Key())
+		exists := redisClient.HExists(routing.HashKeyAllRelays, relay.Key())
 
 		if exists.Err() != nil && exists.Err() != redis.Nil {
 			log.Printf("failed to get relay %s from redis: %v", relayInitPacket.Address.String(), exists.Err())
@@ -129,7 +127,7 @@ func RelayInitHandlerFunc(redisClient *redis.Client, geoClient *routing.GeoClien
 		relay.Latitude = loc.Latitude
 		relay.Longitude = loc.Longitude
 
-		res := redisClient.HSet(RedisHashName, relay.Key(), relay)
+		res := redisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay)
 		geoClient.Add(relay)
 
 		if res.Err() != nil && res.Err() != redis.Nil {
@@ -174,10 +172,10 @@ func RelayUpdateHandlerFunc(redisClient *redis.Client, statsdb *routing.StatsDat
 		}
 
 		relay := routing.Relay{
-			ID: routing.GetRelayID(relayUpdatePacket.Address.String()),
+			ID: crypto.HashID(relayUpdatePacket.Address.String()),
 		}
 
-		exists := redisClient.HExists(RedisHashName, relay.Key())
+		exists := redisClient.HExists(routing.HashKeyAllRelays, relay.Key())
 
 		if exists.Err() != nil && exists.Err() != redis.Nil {
 			log.Printf("failed to check if relay %s exists: %v", relayUpdatePacket.Address.String(), exists.Err())
@@ -191,7 +189,7 @@ func RelayUpdateHandlerFunc(redisClient *redis.Client, statsdb *routing.StatsDat
 			return
 		}
 
-		hgetResult := redisClient.HGet(RedisHashName, relay.Key())
+		hgetResult := redisClient.HGet(routing.HashKeyAllRelays, relay.Key())
 		if hgetResult.Err() != nil && hgetResult.Err() != redis.Nil {
 			log.Printf("failed to get relay %s from redis: %v", relayUpdatePacket.Address.String(), hgetResult.Err())
 			writer.WriteHeader(http.StatusNotFound)
@@ -233,9 +231,9 @@ func RelayUpdateHandlerFunc(redisClient *redis.Client, statsdb *routing.StatsDat
 
 		relaysToPing := make([]RelayPingData, 0)
 
-		redisClient.HSet(RedisHashName, relay.Key(), relay)
+		redisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay)
 
-		hgetallResult := redisClient.HGetAll(RedisHashName)
+		hgetallResult := redisClient.HGetAll(routing.HashKeyAllRelays)
 		if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
 			log.Printf("failed to get all relays from redis: %v", hgetallResult.Err())
 			writer.WriteHeader(http.StatusNotFound)

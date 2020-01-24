@@ -4,6 +4,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/binary"
+	"hash/fnv"
 
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/nacl/box"
@@ -35,6 +36,13 @@ var (
 		0xdc, 0xdd, 0xb5, 0x52, 0xcb, 0x73, 0x56, 0x10, 0xda, 0xa9, 0xc0, 0xae, 0x08, 0xa2, 0xcf, 0x5e,
 	}
 )
+
+// HashID hashes a string to a uint64 so it can be used as IDs for Relays, Datacenters, etc.
+func HashID(s string) uint64 {
+	hash := fnv.New64a()
+	hash.Write([]byte(s))
+	return hash.Sum64()
+}
 
 // GenerateSessionID creates a uint64 from random bytes
 func GenerateSessionID() uint64 {

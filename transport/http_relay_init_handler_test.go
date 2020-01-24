@@ -182,7 +182,7 @@ func TestRelayInitHandler(t *testing.T) {
 		buff, _ := packet.MarshalBinary()
 
 		entry := routing.Relay{
-			ID:             routing.GetRelayID(addr),
+			ID:             crypto.HashID(addr),
 			Name:           name,
 			Addr:           *udpAddr,
 			Datacenter:     32,
@@ -195,7 +195,7 @@ func TestRelayInitHandler(t *testing.T) {
 		data, _ := entry.MarshalBinary()
 
 		// set it in the redis instance
-		redisServer.HSet(transport.RedisHashName, entry.Key(), string(data))
+		redisServer.HSet(routing.HashKeyAllRelays, entry.Key(), string(data))
 
 		relayInitAssertions(t, buff, http.StatusNotFound, nil, nil, redisClient, relayPublicKey[:], routerPrivateKey[:])
 	})
@@ -252,11 +252,11 @@ func TestRelayInitHandler(t *testing.T) {
 		header := recorder.Header()
 		contentType, _ := header["Content-Type"]
 		expected := routing.Relay{
-			ID:   routing.GetRelayID(addr),
+			ID:   crypto.HashID(addr),
 			Addr: *udpAddr,
 		}
 
-		resp := redisClient.HGet(transport.RedisHashName, expected.Key())
+		resp := redisClient.HGet(routing.HashKeyAllRelays, expected.Key())
 
 		var actual routing.Relay
 		bin, _ := resp.Bytes()
