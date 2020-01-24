@@ -35,11 +35,13 @@ start_relays() {
     begin_port="$1"
     end_port="$2"
 
+    # enable the option to just spawn a single relay
     if [ -z "$end_port" ]; then
 	end_port="$begin_port"
     fi
 
     if [ "$(( end_port - begin_port ))" -lt 0 ]; then
+	echo "The lesser port must be first followed by the greater port"
 	return
     fi
 

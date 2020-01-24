@@ -45,11 +45,36 @@ This is the service that suppliers run on their hardware to become part of Netwo
 
 - Command: [`cmd/relay`](./cmd/relay)
 
+### To Run
+You must have the following environment variables set:
+- `RELAY_ADDRESS`: The address of this relay. Example being "127.0.0.1:1234"
+- `RELAY_PRIVATE_KEY`: The relay's private key. To generate see [generating keys](#generating-keys)
+- `RELAY_PUBLIC_KEY`:
+- `RELAY_ROUTER_PUBLIC_KEY`:
+- `RELAY_BACKEND_HOSTNAME`:
+
 ## Relay Backend (Go)
 
-Manages the database of connected relays and tells them which other relays to ping. Collates ping statistics received from relays into a cost matrix.
+Manages the database (Redis) of connected relays and tells them which other relays to ping. Collates ping statistics received from relays into a cost matrix.
 
 - Command: [`cmd/relay_backend`](./cmd/relay_backend)
+
+### To Run
+You must have the following environment variables set:
+- `RELAY_KEY_PUBLIC`
+- `ROUTER_KEY_PRIVATE`
+
+### What it does
+- Opens a couple endpoints for communication with the relays and server backend
+- Takes data from the in memory StatsDatabase and generates a CostMatrix, then takes the CostMatrix and generates a RouteMatrix for the server backend once every 10 seconds
+### Endpoints
+- `/relay_init`: When a relay starts up, the first thing it will do is call this endpoint with its information
+  - Gathers geolocation information
+  - Generates the relay public keys, which is sent back in the body of the response
+  - Stores the relay in redis in binary format
+- `/relay_update`: After a relay has confirmation of successful initialization, it will keep sending this endpoint stats about its network timings
+  - Within the response body will be a list of all other relays to ping and gather stats on
+
 
 ## Server (C++)
 
@@ -60,7 +85,7 @@ Reference implentation of a server using the Network Next SDK.
 
 ## Server Backend (Go)
 
-Pulls the route matrix from the optimizer and uses it to serve up routes across the relay network.
+Pulls the route matrix from the relay backend and uses it to serve up routes across the relay network.
 
 - Command: [`cmd/server_backend`](./cmd/server_backend)
 
@@ -70,7 +95,7 @@ Pulls the route matrix from the optimizer and uses it to serve up routes across 
 
 ## Client (C++)
 
-Reference implentation of a client using the Network Next SDK. 
+Reference implentation of a client using the Network Next SDK.
 
 - Command: [`cmd/client`](./cmd/client)
 - Dependencies: [`sdk`](./sdk)
@@ -78,3 +103,20 @@ Reference implentation of a client using the Network Next SDK.
 ## SDK (C++)
 
 This is the SDK we ship to customers.
+
+## Tools
+
+## relay-spawner.sh
+
+Uses the env var `RUNNING_RELAYS` to keep track of spawned relays
+- Because of that, the script must be sourced to work properly
+- It will exit if you try to run the script directly
+
+Usage: `source relay-spawner.sh` [`options`] [`starting port number`] [`ending port number`]
+- Spawns relays with the port numbers between the given arguments, inclusively
+- If the ending port number is not specified, one relay with the starting port number will be spawned
+- `-k` is used to kill all relays spawned with this script, any spawned without the script will be left alive
+
+## Generating Key Pairs
+
+Keys must be generated with Go's `box.GenerateKey()` function call. The parameter to pass is `rand.Reader`.
