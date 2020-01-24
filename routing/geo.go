@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	regexLocalhostIPs = `(127\.0\.0\.1|localhost):[0-9]+`
+	regexLocalhostIPs = `127\.0\.0\.1|localhost`
 )
 
 // IPLocator defines anything that returns a routing.Location given an net.IP
