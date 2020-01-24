@@ -3,6 +3,7 @@ package transport_test
 import (
 	"bytes"
 	crand "crypto/rand"
+	"errors"
 	"log"
 	"math"
 	mrand "math/rand"
@@ -198,6 +199,39 @@ func TestRelayInitHandler(t *testing.T) {
 		redisServer.HSet(routing.HashKeyAllRelays, entry.Key(), string(data))
 
 		relayInitAssertions(t, buff, http.StatusNotFound, nil, nil, redisClient, relayPublicKey[:], routerPrivateKey[:])
+	})
+
+	t.Run("could not lookup relay location", func(t *testing.T) {
+		redisServer, _ := miniredis.Run()
+		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+		relayPublicKey, relayPrivateKey, _ := box.GenerateKey(crand.Reader)
+		routerPublicKey, routerPrivateKey, _ := box.GenerateKey(crand.Reader)
+
+		ipfunc := func(ip net.IP) (routing.Location, error) {
+			return routing.Location{}, errors.New("descriptive error")
+		}
+
+		nonce := make([]byte, crypto.NonceSize)
+		crand.Read(nonce)
+
+		addr := "127.0.0.1:40000"
+		udpAddr, _ := net.ResolveUDPAddr("udp", addr)
+
+		token := make([]byte, crypto.KeySize)
+		crand.Read(token)
+
+		encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
+
+		packet := transport.RelayInitPacket{
+			Magic:          transport.InitRequestMagic,
+			Nonce:          nonce,
+			Address:        *udpAddr,
+			EncryptedToken: encryptedToken,
+		}
+		buff, _ := packet.MarshalBinary()
+
+		relayInitAssertions(t, buff, http.StatusInternalServerError, nil, ipfunc, redisClient, relayPublicKey[:], routerPrivateKey[:])
 	})
 
 	t.Run("valid", func(t *testing.T) {

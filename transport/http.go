@@ -127,11 +127,14 @@ func RelayInitHandlerFunc(redisClient *redis.Client, geoClient *routing.GeoClien
 		relay.Latitude = loc.Latitude
 		relay.Longitude = loc.Longitude
 
-		res := redisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay)
-		geoClient.Add(relay)
-
-		if res.Err() != nil && res.Err() != redis.Nil {
+		if res := redisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay); res.Err() != nil && res.Err() != redis.Nil {
 			log.Printf("failed to set relay %s into redis hash: %v", relayInitPacket.Address.String(), res.Err())
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		if err := geoClient.Add(relay); err != nil {
+			log.Printf("failed to add relay %s into geo client: %v", relayInitPacket.Address.String(), err)
 			writer.WriteHeader(http.StatusInternalServerError)
 			return
 		}
