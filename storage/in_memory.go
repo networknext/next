@@ -1,6 +1,7 @@
 package storage
 
-type InMemory struct{}
+type InMemory struct {
+}
 
 func (m *InMemory) GetAndCheckBySdkVersion3PublicKeyId(key uint64) (*Buyer, bool) {
 	return &Buyer{
@@ -10,5 +11,15 @@ func (m *InMemory) GetAndCheckBySdkVersion3PublicKeyId(key uint64) (*Buyer, bool
 			0xb8, 0xb9, 0x3e, 0x1f, 0xd4, 0x16, 0xbc, 0x3c, 0x41, 0x2f, 0x21, 0x00, 0x3f, 0x52, 0x41, 0x99,
 			0x2e, 0x54, 0xfe, 0xb1, 0xd7, 0x8b, 0x44, 0x72, 0xac, 0x56, 0xa6, 0x99, 0xab, 0xbd, 0xb7, 0x67,
 		},
+	}, true
+}
+
+func (m *InMemory) GetAndCheck(key *Key) (*Datacenter, bool) {
+	return &Datacenter{}, true
+}
+
+func (m *InMemory) GetAndCheckByRelayCoreId(key uint32) (*Relay, bool) {
+	return &Relay{
+		Datacenter: &Key{},
 	}, true
 }

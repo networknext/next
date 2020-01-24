@@ -6,6 +6,7 @@
 package main
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"log"
@@ -15,13 +16,18 @@ import (
 
 	"github.com/alicebob/miniredis"
 	"github.com/go-redis/redis/v7"
-	"github.com/networknext/backend/routing"
-	"github.com/networknext/backend/transport"
 	"github.com/oschwald/geoip2-golang"
+	"google.golang.org/grpc"
+
+	"github.com/networknext/backend/routing"
+	"github.com/networknext/backend/storage"
+	"github.com/networknext/backend/transport"
 )
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
+	ctx := context.Background()
 
 	var relayPublicKey []byte
 	var routerPrivateKey []byte
@@ -38,6 +44,26 @@ func main() {
 	} else {
 		log.Println("Env var 'ROUTER_KEY_PRIVATE' is not set, exiting!")
 		os.Exit(1)
+	}
+
+	// Create an in-memory relay & datacenter store
+	var relayProvider transport.RelayProvider = &storage.InMemory{}
+	var datacenterProvider transport.DatacenterProvider = &storage.InMemory{}
+
+	if os.Getenv("CONFIGSTORE_HOST") != "" {
+		grpcconn, err := grpc.Dial(os.Getenv("CONFIGSTORE_HOST"), grpc.WithInsecure())
+		if err != nil {
+			log.Fatalf("could not dial configstore: %v", err)
+		}
+		configstore, err := storage.ConnectToConfigstore(ctx, grpcconn)
+		if err != nil {
+			log.Fatalf("could not dial configstore: %v", err)
+		}
+
+		// If CONFIGSTORE_HOST exists and a successful connection was made
+		// then replace the in-memory with the gRPC one
+		relayProvider = configstore.Relays
+		datacenterProvider = configstore.Datacenters
 	}
 
 	// Attempt to connect to REDIS_HOST
@@ -98,7 +124,7 @@ func main() {
 		fmt.Printf("RELAY_PORT env var is unset, setting port as %s\n", port)
 	}
 
-	router := transport.NewRouter(redisClient, &geoClient, &mmdb, statsdb, &costmatrix, &routematrix, relayPublicKey, routerPrivateKey)
+	router := transport.NewRouter(redisClient, &geoClient, &mmdb, relayProvider, datacenterProvider, statsdb, &costmatrix, &routematrix, relayPublicKey, routerPrivateKey)
 
 	go transport.HTTPStart(port, router)
 

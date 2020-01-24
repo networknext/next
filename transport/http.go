@@ -15,10 +15,11 @@ import (
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/routing"
+	"github.com/networknext/backend/storage"
 )
 
 const (
-	InitRequestMagic = uint32(0x9083708f)
+	InitRequestMagic = 0x9083708f
 
 	MaxRelays             = 1024
 	MaxRelayAddressLength = 256
@@ -36,10 +37,18 @@ var gRelayPublicKey = []byte{
 	0xda, 0xa9, 0xc0, 0xae, 0x08, 0xa2, 0xcf, 0x5e,
 }
 
+type RelayProvider interface {
+	GetAndCheckByRelayCoreId(key uint32) (*storage.Relay, bool)
+}
+
+type DatacenterProvider interface {
+	GetAndCheck(key *storage.Key) (*storage.Datacenter, bool)
+}
+
 // NewRouter creates a router with the specified endpoints
-func NewRouter(redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, statsdb *routing.StatsDatabase, costmatrix *routing.CostMatrix, routematrix *routing.RouteMatrix, relayPublicKey []byte, routerPrivateKey []byte) *mux.Router {
+func NewRouter(redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, relayProvider RelayProvider, datacenterProvider DatacenterProvider, statsdb *routing.StatsDatabase, costmatrix *routing.CostMatrix, routematrix *routing.RouteMatrix, relayPublicKey []byte, routerPrivateKey []byte) *mux.Router {
 	router := mux.NewRouter()
-	router.HandleFunc("/relay_init", RelayInitHandlerFunc(redisClient, geoClient, ipLocator, relayPublicKey, routerPrivateKey)).Methods("POST")
+	router.HandleFunc("/relay_init", RelayInitHandlerFunc(redisClient, geoClient, ipLocator, relayProvider, datacenterProvider, relayPublicKey, routerPrivateKey)).Methods("POST")
 	router.HandleFunc("/relay_update", RelayUpdateHandlerFunc(redisClient, statsdb)).Methods("POST")
 	router.Handle("/cost_matrix", costmatrix).Methods("GET")
 	router.Handle("/route_matrix", routematrix).Methods("GET")
@@ -57,7 +66,7 @@ func HTTPStart(port string, router *mux.Router) {
 }
 
 // RelayInitHandlerFunc returns the function for the relay init endpoint
-func RelayInitHandlerFunc(redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, relayPublicKey []byte, routerPrivateKey []byte) func(writer http.ResponseWriter, request *http.Request) {
+func RelayInitHandlerFunc(redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, relayProvider RelayProvider, datacenterProvider DatacenterProvider, relayPublicKey []byte, routerPrivateKey []byte) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		log.Println("Received Relay Init Packet")
 		body, err := ioutil.ReadAll(request.Body)
@@ -93,6 +102,24 @@ func RelayInitHandlerFunc(redisClient *redis.Client, geoClient *routing.GeoClien
 			Addr:           relayInitPacket.Address,
 			LastUpdateTime: uint64(time.Now().Unix()),
 		}
+
+		dbRelay, ok := relayProvider.GetAndCheckByRelayCoreId(uint32(relay.ID)) // TODO config store will have to use uint64's at some later point
+
+		if !ok {
+			log.Printf("failed to get relay %s from configstore\n", relay.Addr.String())
+			writer.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		dbDatacenter, ok := datacenterProvider.GetAndCheck(dbRelay.Datacenter)
+
+		if !ok {
+			log.Println("failed to get datacenter from configstore") // TODO figure out how to turn storage.Key into something human readable
+			writer.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		log.Println(dbDatacenter)
 
 		exists := redisClient.HExists(routing.HashKeyAllRelays, relay.Key())
 
