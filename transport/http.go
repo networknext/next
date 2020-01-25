@@ -3,10 +3,13 @@ package transport
 import (
 	"bytes"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/go-redis/redis/v7"
@@ -43,6 +46,52 @@ type RelayProvider interface {
 
 type DatacenterProvider interface {
 	GetAndCheck(key *storage.Key) (*storage.Datacenter, bool)
+}
+
+var relayIDToDatacenterIDFunc func(relayID uint64, rp RelayProvider, dp DatacenterProvider) (uint64, error)
+
+func debugRelayIDToDatacenterIDFunc(relayID uint64, rp RelayProvider, dp DatacenterProvider) (uint64, error) {
+	return 0, nil
+}
+
+func releaseRelayIDToDatacenterIDFunc(relayID uint64, rp RelayProvider, dp DatacenterProvider) (uint64, error) {
+	dbRelay, ok := rp.GetAndCheckByRelayCoreId(uint32(relayID)) // TODO config store will have to use uint64's at some later point
+
+	if !ok {
+		return 0, errors.New("relay not found in configstore")
+	}
+
+	_, ok = dp.GetAndCheck(dbRelay.Datacenter)
+
+	if !ok {
+		return 0, errors.New("datacenter not found in configstore")
+	}
+
+	return 0, nil
+}
+
+var ipLookupFunc func(addr net.UDPAddr, ipLocator routing.IPLocator) (routing.Location, error)
+
+func debugIPLookupFunc(addr net.UDPAddr, ipLocator routing.IPLocator) (routing.Location, error) {
+	return routing.Location{
+		Latitude:  0,
+		Longitude: 0,
+	}, nil
+}
+
+func releaseIPLookupFunc(addr net.UDPAddr, ipLocator routing.IPLocator) (routing.Location, error) {
+	return ipLocator.LocateIP(addr.IP)
+}
+
+func init() {
+	debug := os.Getenv("RELAY_DEBUG")
+	if len(debug) != 0 {
+		relayIDToDatacenterIDFunc = debugRelayIDToDatacenterIDFunc
+		ipLookupFunc = debugIPLookupFunc
+	} else {
+		relayIDToDatacenterIDFunc = releaseRelayIDToDatacenterIDFunc
+		ipLookupFunc = releaseIPLookupFunc
+	}
 }
 
 // NewRouter creates a router with the specified endpoints
@@ -103,23 +152,13 @@ func RelayInitHandlerFunc(redisClient *redis.Client, geoClient *routing.GeoClien
 			LastUpdateTime: uint64(time.Now().Unix()),
 		}
 
-		dbRelay, ok := relayProvider.GetAndCheckByRelayCoreId(uint32(relay.ID)) // TODO config store will have to use uint64's at some later point
-
-		if !ok {
-			log.Printf("failed to get relay %s from configstore\n", relay.Addr.String())
-			writer.WriteHeader(http.StatusNotFound)
+		if dcID, err := relayIDToDatacenterIDFunc(relay.ID, relayProvider, datacenterProvider); err != nil {
+			log.Printf("Unable to get datacenter ID for relay '%s': %v", relay.Addr.String(), err)
+			writer.WriteHeader(http.StatusInternalServerError)
 			return
+		} else {
+			relay.Datacenter = dcID
 		}
-
-		dbDatacenter, ok := datacenterProvider.GetAndCheck(dbRelay.Datacenter)
-
-		if !ok {
-			log.Println("failed to get datacenter from configstore") // TODO figure out how to turn storage.Key into something human readable
-			writer.WriteHeader(http.StatusNotFound)
-			return
-		}
-
-		log.Println(dbDatacenter)
 
 		exists := redisClient.HExists(routing.HashKeyAllRelays, relay.Key())
 
@@ -144,7 +183,7 @@ func RelayInitHandlerFunc(redisClient *redis.Client, geoClient *routing.GeoClien
 		relay.PublicKey = make([]byte, crypto.KeySize)
 		rand.Read(relay.PublicKey)
 
-		loc, err := ipLocator.LocateIP(relay.Addr.IP)
+		loc, err := ipLookupFunc(relay.Addr, ipLocator)
 		if err != nil {
 			log.Printf("failed to lookup relay ip '%s': %v", relay.Addr.String(), err)
 			writer.WriteHeader(http.StatusInternalServerError)
