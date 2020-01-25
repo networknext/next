@@ -3,11 +3,11 @@ package transport
 import (
 	"bytes"
 	"crypto/rand"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"time"
@@ -48,14 +48,29 @@ type DatacenterProvider interface {
 	GetAndCheck(key *storage.Key) (*storage.Datacenter, bool)
 }
 
-var relayIDToDatacenterIDFunc func(relayID uint64, rp RelayProvider, dp DatacenterProvider) (uint64, error)
-
-func debugRelayIDToDatacenterIDFunc(relayID uint64, rp RelayProvider, dp DatacenterProvider) (uint64, error) {
-	return 0, nil
+type FakeRelayData struct {
+	Latitude     float64
+	Longitude    float64
+	DatacenterID uint64
 }
 
-func releaseRelayIDToDatacenterIDFunc(relayID uint64, rp RelayProvider, dp DatacenterProvider) (uint64, error) {
-	dbRelay, ok := rp.GetAndCheckByRelayCoreId(uint32(relayID)) // TODO config store will have to use uint64's at some later point
+var StubbedRelayData map[int]FakeRelayData
+
+var relayIDToDatacenterIDFunc func(relay *routing.Relay, rp RelayProvider, dp DatacenterProvider) (uint64, error)
+
+func debugRelayIDToDatacenterIDFunc(relay *routing.Relay, rp RelayProvider, dp DatacenterProvider) (uint64, error) {
+	fakeData, ok := StubbedRelayData[relay.Addr.Port]
+	if ok {
+		fmt.Printf("Found fake datacenter for port %d\n", relay.Addr.Port)
+		return fakeData.DatacenterID, nil
+	} else {
+		return 0, nil
+	}
+}
+
+func releaseRelayIDToDatacenterIDFunc(relay *routing.Relay, rp RelayProvider, dp DatacenterProvider) (uint64, error) {
+	// TODO config store will have to use uint64's at some later point
+	dbRelay, ok := rp.GetAndCheckByRelayCoreId(uint32(relay.ID))
 
 	if !ok {
 		return 0, errors.New("relay not found in configstore")
@@ -70,22 +85,42 @@ func releaseRelayIDToDatacenterIDFunc(relayID uint64, rp RelayProvider, dp Datac
 	return 0, nil
 }
 
-var ipLookupFunc func(addr net.UDPAddr, ipLocator routing.IPLocator) (routing.Location, error)
+var ipLookupFunc func(relay *routing.Relay, ipLocator routing.IPLocator) (routing.Location, error)
 
-func debugIPLookupFunc(addr net.UDPAddr, ipLocator routing.IPLocator) (routing.Location, error) {
-	return routing.Location{
-		Latitude:  0,
-		Longitude: 0,
-	}, nil
+func debugIPLookupFunc(relay *routing.Relay, ipLocator routing.IPLocator) (routing.Location, error) {
+	fakeData, ok := StubbedRelayData[relay.Addr.Port]
+	if ok {
+		fmt.Printf("Found fake location for port %d\n", relay.Addr.Port)
+		return routing.Location{
+			Latitude:  fakeData.Latitude,
+			Longitude: fakeData.Longitude,
+		}, nil
+	} else {
+		return routing.Location{
+			Latitude:  0,
+			Longitude: 0,
+		}, nil
+	}
 }
 
-func releaseIPLookupFunc(addr net.UDPAddr, ipLocator routing.IPLocator) (routing.Location, error) {
-	return ipLocator.LocateIP(addr.IP)
+func releaseIPLookupFunc(relay *routing.Relay, ipLocator routing.IPLocator) (routing.Location, error) {
+	return ipLocator.LocateIP(relay.Addr.IP)
 }
 
 func init() {
 	debug := os.Getenv("RELAY_DEBUG")
 	if len(debug) != 0 {
+		filename := os.Getenv("RELAY_DEBUG_FILENAME")
+
+		var data []byte
+		if len(filename) > 0 {
+			fmt.Println("Using debug file for fake data")
+			data, _ = ioutil.ReadFile(filename)
+		} else {
+			data = []byte("{}")
+		}
+
+		json.Unmarshal(data, &StubbedRelayData)
 		relayIDToDatacenterIDFunc = debugRelayIDToDatacenterIDFunc
 		ipLookupFunc = debugIPLookupFunc
 	} else {
@@ -152,7 +187,7 @@ func RelayInitHandlerFunc(redisClient *redis.Client, geoClient *routing.GeoClien
 			LastUpdateTime: uint64(time.Now().Unix()),
 		}
 
-		if dcID, err := relayIDToDatacenterIDFunc(relay.ID, relayProvider, datacenterProvider); err != nil {
+		if dcID, err := relayIDToDatacenterIDFunc(&relay, relayProvider, datacenterProvider); err != nil {
 			log.Printf("Unable to get datacenter ID for relay '%s': %v", relay.Addr.String(), err)
 			writer.WriteHeader(http.StatusInternalServerError)
 			return
@@ -183,7 +218,7 @@ func RelayInitHandlerFunc(redisClient *redis.Client, geoClient *routing.GeoClien
 		relay.PublicKey = make([]byte, crypto.KeySize)
 		rand.Read(relay.PublicKey)
 
-		loc, err := ipLookupFunc(relay.Addr, ipLocator)
+		loc, err := ipLookupFunc(&relay, ipLocator)
 		if err != nil {
 			log.Printf("failed to lookup relay ip '%s': %v", relay.Addr.String(), err)
 			writer.WriteHeader(http.StatusInternalServerError)
