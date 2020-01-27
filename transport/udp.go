@@ -232,7 +232,7 @@ func (e SessionEntry) MarshalBinary() ([]byte, error) {
 }
 
 type RouteProvider interface {
-	Route(routing.Datacenter, []routing.Relay) (routing.Decision, error)
+	Route(routing.Datacenter, []routing.Relay) ([]routing.Route, error)
 }
 
 // SessionUpdateHandlerFunc ...
@@ -268,9 +268,9 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp Ro
 			log.Printf("failed to get buyer '%d'", packet.CustomerId)
 			return
 		}
-		buyPublicKey := buyer.GetSdkVersion3PublicKeyData()
+		buyerServerPublicKey := buyer.GetSdkVersion3PublicKeyData()
 
-		if !ed25519.Verify(buyPublicKey, packet.GetSignData(serverentry.SDKVersion), packet.Signature) {
+		if !ed25519.Verify(buyerServerPublicKey, packet.GetSignData(serverentry.SDKVersion), packet.Signature) {
 			log.Printf("failed to verify session update signature")
 			return
 		}
@@ -292,24 +292,47 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp Ro
 			return
 		}
 
-		// Get a route from the RouteProvider an on error ensure it falls back to direct
-		route, err := rp.Route(serverentry.Datacenter, clientrelays)
+		// Get a set of possible routes from the RouteProvider an on error ensure it falls back to direct
+		routes, err := rp.Route(serverentry.Datacenter, clientrelays)
 		if err != nil {
 			log.Printf("failed to get a route for client ip '%s': %v", packet.ClientAddress.IP.String(), err)
-
-			route = routing.Decision{
-				Type: routing.DecisionTypeDirect,
-			}
+			return
 		}
+		chosenRoute := routes[0] // Just take the first one it find regardless of optimizations
+
+		// Build the next route with the client, server, and set of relays to use
+		nextRoute := routing.NextRouteDecision{
+			Expires: uint64(time.Now().Add(10 * time.Second).Unix()),
+
+			SessionId: packet.SessionId,
+
+			SessionVersion: 0, // Haven't figured out what this is for
+			SessionFlags:   0, // Haven't figured out what this is for
+
+			Client: routing.Client{
+				Addr:      packet.ClientAddress,
+				PublicKey: packet.ClientRoutePublicKey,
+			},
+
+			Server: routing.Server{
+				Addr:      packet.ServerAddress,
+				PublicKey: buyerServerPublicKey,
+			},
+
+			Relays: chosenRoute.Relays,
+		}
+
+		// Encrypt the next route with the our private key
+		routeTokens := nextRoute.Encrypt(crypto.RouterPrivateKey)
 
 		// Create the Session Response for the server
 		response := SessionResponsePacket{
 			Sequence:             packet.Sequence,
 			SessionId:            packet.SessionId,
-			RouteType:            int32(route.Type),
-			NumTokens:            int32(route.NumTokens),
-			Tokens:               route.Tokens,
-			Multipath:            route.Multipath,
+			RouteType:            int32(routing.DecisionTypeNew),
+			NumTokens:            int32(len(chosenRoute.Relays) + 2), // Num of relays + client + server
+			Tokens:               routeTokens,
+			Multipath:            false, // Haven't figured out what this is for
 			ServerRoutePublicKey: serverentry.Server.PublicKey,
 		}
 
