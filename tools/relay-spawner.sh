@@ -9,31 +9,35 @@ kill_relays=0
 flush_redis=0
 use_relay_count=0
 
-# because it must be sourced, reset OPTIND to 1
-OPTIND=1
+# because it must be sourced, reset OPTIND to 1 everywhere the program can exit, or in this case return
+# so that other scripts that use getopts don't break
 while getopts ":n:khr" opt; do
     case "$opt" in
 	(n)
 	    use_relay_count=1
 	    relay_count="$OPTARG"
 	    ;;
-	(k) 
+	(k)
 	    kill_relays=1
 	    ;;
-	(h) 
-	    echo "Usage: relay-spawner.sh [-k] [-s port] [starting port] [ending port]"
-	    printf "k\tKill all relays that were spawned using this script\n"
-	    printf "h\tPrint this help menu\n"
-	    printf "r\tReset redis before any other operation\n"
+	(h)
+	    OPTIND=1
+	    printf "Usage: relay-spawner.sh [-r] [-k] [-n relay_count] [starting port] [ending port]\n\n"
+	    printf "n\t\tCreate n relays with ports incrementing from the given port number\n"
+	    printf "k\t\tKill all relays that were spawned using this script\n"
+	    printf "h\t\tPrint this help menu\n"
+	    printf "r [relay_count]\tReset Redis before any other operation\n"
 	    return 0
 	    ;;
-	(r) 
+	(r)
 	    flush_redis=1
 	    ;;
-	(\?) 
-	    echo "Bad option '$OPTARG'" && return 1 
+	(\?)
+	    OPTIND=1
+	    echo "Bad option '$OPTARG'" && return 1
 	    ;;
 	(:)
+	    OPTIND=1
 	    echo "Bad param: '$OPTARG'" && return 1
 	    ;;
     esac
@@ -57,8 +61,10 @@ else
     if [[ "$#" == 0 ]]; then
 	if [[ "$flush_redis" == 0 ]]; then
 	    echo "You must supply a port number"
+	    OPTIND=1
 	    return 1
 	else
+	    OPTIND=1
 	    return 0
 	fi
     fi
@@ -67,15 +73,16 @@ else
     end_port="$2"
 
     if [[ "$use_relay_count" == 1 ]]; then
-	end_port="$relay_count"
+	end_port="$((begin_port + relay_count - 1))"
     elif [ -z "$end_port" ]; then
 	# enable the option to just spawn a single relay
 	end_port="$begin_port"
     fi
 
-    if [ "$(( end_port - begin_port ))" -lt 0 ]; then
+    if [[ "$(( end_port - begin_port ))" -lt 0 ]]; then
 	echo "The lesser port must be first followed by the greater port"
-	return
+	OPTIND=1
+	return 1
     fi
 
     echo "Spawning $(( end_port - begin_port + 1 )) relays between $begin_port and $end_port"
@@ -88,3 +95,4 @@ else
     done
 fi
 
+OPTIND=1
