@@ -138,9 +138,7 @@ func main() {
 }
 
 func initProviders() {
-	// check if the env var is set
-	_, set := os.LookupEnv("RELAY_DEBUG")
-	if set {
+	if _, set := os.LookupEnv("RELAY_DEBUG"); set {
 		filename := os.Getenv("RELAY_DEBUG_FILENAME")
 
 		var data []byte
@@ -154,8 +152,5 @@ func initProviders() {
 		json.Unmarshal(data, &transport.StubbedRelayData)
 		transport.RelayIDToDatacenterIDFunc = transport.DebugRelayIDToDatacenterIDFunc
 		transport.IpLookupFunc = transport.DebugIPLookupFunc
-	} else {
-		transport.RelayIDToDatacenterIDFunc = transport.ReleaseRelayIDToDatacenterIDFunc
-		transport.IpLookupFunc = transport.ReleaseIPLookupFunc
 	}
 }

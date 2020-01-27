@@ -310,7 +310,7 @@ type fakeRelayData struct {
 
 var StubbedRelayData map[int]fakeRelayData
 
-var RelayIDToDatacenterIDFunc func(relay *routing.Relay, rp RelayProvider, dp DatacenterProvider) (uint64, error)
+var RelayIDToDatacenterIDFunc func(relay *routing.Relay, rp RelayProvider, dp DatacenterProvider) (uint64, error) = ReleaseRelayIDToDatacenterIDFunc
 
 func DebugRelayIDToDatacenterIDFunc(relay *routing.Relay, rp RelayProvider, dp DatacenterProvider) (uint64, error) {
 	fakeData, ok := StubbedRelayData[relay.Addr.Port]
@@ -339,7 +339,7 @@ func ReleaseRelayIDToDatacenterIDFunc(relay *routing.Relay, rp RelayProvider, dp
 	return crypto.HashID(dbDatacenter.Name), nil
 }
 
-var IpLookupFunc func(relay *routing.Relay, ipLocator routing.IPLocator) (routing.Location, error)
+var IpLookupFunc func(relay *routing.Relay, ipLocator routing.IPLocator) (routing.Location, error) = ReleaseIPLookupFunc
 
 func DebugIPLookupFunc(relay *routing.Relay, ipLocator routing.IPLocator) (routing.Location, error) {
 	fakeData, ok := StubbedRelayData[relay.Addr.Port]

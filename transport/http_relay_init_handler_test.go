@@ -18,6 +18,7 @@ import (
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/routing"
+	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/nacl/box"
@@ -54,7 +55,7 @@ func relayInitAssertions(t *testing.T, body []byte, expectedCode int, geoClient 
 	recorder := httptest.NewRecorder()
 	request, _ := http.NewRequest("POST", "/relay_init", bytes.NewBuffer(body))
 
-	handler := transport.RelayInitHandlerFunc(redisClient, geoClient, ipfunc, relayPublicKey, routerPrivateKey)
+	handler := transport.RelayInitHandlerFunc(redisClient, geoClient, ipfunc, &storage.InMemory{}, &storage.InMemory{}, relayPublicKey, routerPrivateKey)
 
 	handler(recorder, request)
 
