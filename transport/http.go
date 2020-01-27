@@ -3,13 +3,11 @@ package transport
 import (
 	"bytes"
 	"crypto/rand"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/go-redis/redis/v7"
@@ -106,7 +104,7 @@ func RelayInitHandlerFunc(redisClient *redis.Client, geoClient *routing.GeoClien
 			LastUpdateTime: uint64(time.Now().Unix()),
 		}
 
-		if dcID, err := relayIDToDatacenterIDFunc(&relay, relayProvider, datacenterProvider); err != nil {
+		if dcID, err := RelayIDToDatacenterIDFunc(&relay, relayProvider, datacenterProvider); err != nil {
 			log.Printf("Unable to get datacenter ID for relay '%s': %v", relay.Addr.String(), err)
 			writer.WriteHeader(http.StatusInternalServerError)
 			return
@@ -137,7 +135,7 @@ func RelayInitHandlerFunc(redisClient *redis.Client, geoClient *routing.GeoClien
 		relay.PublicKey = make([]byte, crypto.KeySize)
 		rand.Read(relay.PublicKey)
 
-		loc, err := ipLookupFunc(&relay, ipLocator)
+		loc, err := IpLookupFunc(&relay, ipLocator)
 		if err != nil {
 			log.Printf("failed to lookup relay ip '%s': %v", relay.Addr.String(), err)
 			writer.WriteHeader(http.StatusInternalServerError)
@@ -310,12 +308,12 @@ type fakeRelayData struct {
 	DatacenterID uint64
 }
 
-var stubbedRelayData map[int]fakeRelayData
+var StubbedRelayData map[int]fakeRelayData
 
-var relayIDToDatacenterIDFunc func(relay *routing.Relay, rp RelayProvider, dp DatacenterProvider) (uint64, error)
+var RelayIDToDatacenterIDFunc func(relay *routing.Relay, rp RelayProvider, dp DatacenterProvider) (uint64, error)
 
-func debugRelayIDToDatacenterIDFunc(relay *routing.Relay, rp RelayProvider, dp DatacenterProvider) (uint64, error) {
-	fakeData, ok := stubbedRelayData[relay.Addr.Port]
+func DebugRelayIDToDatacenterIDFunc(relay *routing.Relay, rp RelayProvider, dp DatacenterProvider) (uint64, error) {
+	fakeData, ok := StubbedRelayData[relay.Addr.Port]
 	if ok {
 		fmt.Printf("Found fake datacenter for port %d\n", relay.Addr.Port)
 		return fakeData.DatacenterID, nil
@@ -324,7 +322,7 @@ func debugRelayIDToDatacenterIDFunc(relay *routing.Relay, rp RelayProvider, dp D
 	}
 }
 
-func releaseRelayIDToDatacenterIDFunc(relay *routing.Relay, rp RelayProvider, dp DatacenterProvider) (uint64, error) {
+func ReleaseRelayIDToDatacenterIDFunc(relay *routing.Relay, rp RelayProvider, dp DatacenterProvider) (uint64, error) {
 	// TODO config store will have to use uint64's at some later point
 	dbRelay, ok := rp.GetAndCheckByRelayCoreId(uint32(relay.ID))
 
@@ -341,10 +339,10 @@ func releaseRelayIDToDatacenterIDFunc(relay *routing.Relay, rp RelayProvider, dp
 	return crypto.HashID(dbDatacenter.Name), nil
 }
 
-var ipLookupFunc func(relay *routing.Relay, ipLocator routing.IPLocator) (routing.Location, error)
+var IpLookupFunc func(relay *routing.Relay, ipLocator routing.IPLocator) (routing.Location, error)
 
-func debugIPLookupFunc(relay *routing.Relay, ipLocator routing.IPLocator) (routing.Location, error) {
-	fakeData, ok := stubbedRelayData[relay.Addr.Port]
+func DebugIPLookupFunc(relay *routing.Relay, ipLocator routing.IPLocator) (routing.Location, error) {
+	fakeData, ok := StubbedRelayData[relay.Addr.Port]
 	if ok {
 		fmt.Printf("Found fake location for port %d\n", relay.Addr.Port)
 		return routing.Location{
@@ -359,28 +357,6 @@ func debugIPLookupFunc(relay *routing.Relay, ipLocator routing.IPLocator) (routi
 	}
 }
 
-func releaseIPLookupFunc(relay *routing.Relay, ipLocator routing.IPLocator) (routing.Location, error) {
+func ReleaseIPLookupFunc(relay *routing.Relay, ipLocator routing.IPLocator) (routing.Location, error) {
 	return ipLocator.LocateIP(relay.Addr.IP)
-}
-
-func init() {
-	debug := os.Getenv("RELAY_DEBUG")
-	if len(debug) != 0 {
-		filename := os.Getenv("RELAY_DEBUG_FILENAME")
-
-		var data []byte
-		if len(filename) > 0 {
-			fmt.Println("Using debug file for fake data")
-			data, _ = ioutil.ReadFile(filename)
-		} else {
-			data = []byte("{}")
-		}
-
-		json.Unmarshal(data, &stubbedRelayData)
-		relayIDToDatacenterIDFunc = debugRelayIDToDatacenterIDFunc
-		ipLookupFunc = debugIPLookupFunc
-	} else {
-		relayIDToDatacenterIDFunc = releaseRelayIDToDatacenterIDFunc
-		ipLookupFunc = releaseIPLookupFunc
-	}
 }

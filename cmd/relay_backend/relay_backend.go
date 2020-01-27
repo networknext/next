@@ -8,7 +8,9 @@ package main
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
@@ -26,6 +28,8 @@ import (
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
+	initProviders()
 
 	ctx := context.Background()
 
@@ -131,4 +135,27 @@ func main() {
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
 	<-sigint
+}
+
+func initProviders() {
+	// check if the env var is set
+	_, set := os.LookupEnv("RELAY_DEBUG")
+	if set {
+		filename := os.Getenv("RELAY_DEBUG_FILENAME")
+
+		var data []byte
+		if len(filename) > 0 {
+			fmt.Println("Using debug file for fake data")
+			data, _ = ioutil.ReadFile(filename)
+		} else {
+			data = []byte("{}")
+		}
+
+		json.Unmarshal(data, &transport.StubbedRelayData)
+		transport.RelayIDToDatacenterIDFunc = transport.DebugRelayIDToDatacenterIDFunc
+		transport.IpLookupFunc = transport.DebugIPLookupFunc
+	} else {
+		transport.RelayIDToDatacenterIDFunc = transport.ReleaseRelayIDToDatacenterIDFunc
+		transport.IpLookupFunc = transport.ReleaseIPLookupFunc
+	}
 }
