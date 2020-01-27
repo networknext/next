@@ -5,6 +5,10 @@ import (
 	"net"
 )
 
+const (
+	AddressSize = 19
+)
+
 func WriteUint32(data []byte, index *int, value uint32) {
 	binary.LittleEndian.PutUint32(data[*index:], value)
 	*index += 4
