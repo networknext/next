@@ -61,6 +61,43 @@ func relayUpdateAssertions(t *testing.T, body []byte, expectedCode int, redisCli
 func TestRelayUpdateHandler(t *testing.T) {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
+	t.Run("relay data is invalid", func(t *testing.T) {
+		buff := make([]byte, 10) // invalid relay packet size
+		relayUpdateAssertions(t, buff, http.StatusBadRequest, nil, nil)
+	})
+
+	t.Run("relay public token bytes not equal", func(t *testing.T) {
+		redisServer, _ := miniredis.Run()
+		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+		addr := "127.0.0.1:40000"
+		udp, _ := net.ResolveUDPAddr("udp", addr)
+
+		token1 := make([]byte, routing.EncryptedTokenSize)
+		rand.Read(token1)
+		token2 := make([]byte, routing.EncryptedTokenSize)
+		rand.Read(token2)
+		packet := transport.RelayUpdatePacket{
+			Address:   *udp,
+			Token:     token1,
+			PingStats: make([]routing.RelayStatsPing, 0),
+		}
+
+		entry := routing.Relay{
+			ID:             crypto.HashID(addr),
+			Addr:           *udp,
+			Datacenter:     1,
+			DatacenterName: "some name",
+			PublicKey:      token2,
+			LastUpdateTime: uint64(time.Now().Unix() - 1),
+		}
+
+		raw, _ := entry.MarshalBinary()
+		redisServer.HSet(routing.HashKeyAllRelays, entry.Key(), string(raw))
+
+		buff, _ := packet.MarshalBinary()
+		relayUpdateAssertions(t, buff, http.StatusBadRequest, redisClient, nil)
+	})
+
 	t.Run("address is invalid", func(t *testing.T) {
 		udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 		packet := transport.RelayUpdatePacket{
