@@ -109,8 +109,20 @@ func TestRelay(t *testing.T) {
 			assert.Equal(t, errors.New("Invalid Relay"), subject.UnmarshalBinary(buff))
 		})
 
-		t.Run("valid", func(t *testing.T) {
+		t.Run("invalid address", func(t *testing.T) {
+			addr := "---not-valid---"
 			size += 8
+			buff := make([]byte, size)
+			binary.LittleEndian.PutUint32(buff[8:], uint32(len(relayname)))
+			binary.LittleEndian.PutUint32(buff[12+len(relayname):], uint32(len(addr)))
+			binary.LittleEndian.PutUint32(buff[24+len(relayname)+len(addr):], uint32(len(dcname)))
+			copy(buff[12:], relayname)
+			copy(buff[16+len(relayname):], addr)
+			copy(buff[28+len(relayname)+len(addr):], dcname)
+			assert.Equal(t, errors.New("Invalid relay address"), subject.UnmarshalBinary(buff))
+		})
+
+		t.Run("valid", func(t *testing.T) {
 			buff := make([]byte, size)
 			binary.LittleEndian.PutUint32(buff[8:], uint32(len(relayname)))
 			binary.LittleEndian.PutUint32(buff[12+len(relayname):], uint32(len(addr)))
