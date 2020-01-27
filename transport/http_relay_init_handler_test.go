@@ -67,6 +67,32 @@ func relayInitAssertions(t *testing.T, body []byte, expectedCode int, geoClient 
 func TestRelayInitHandler(t *testing.T) {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
+	t.Run("magic is invalid", func(t *testing.T) {
+		udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+		packet := transport.RelayInitPacket{
+			Magic:          0xFFFFFFFF,
+			Version:        0,
+			Address:        *udp,
+			Nonce:          make([]byte, crypto.NonceSize),
+			EncryptedToken: make([]byte, routing.EncryptedTokenSize),
+		}
+		buff, _ := packet.MarshalBinary()
+		relayInitAssertions(t, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
+	})
+
+	t.Run("version is invalid", func(t *testing.T) {
+		udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+		packet := transport.RelayInitPacket{
+			Magic:          0xFFFFFFFF,
+			Version:        0,
+			Address:        *udp,
+			Nonce:          make([]byte, crypto.NonceSize),
+			EncryptedToken: make([]byte, routing.EncryptedTokenSize),
+		}
+		buff, _ := packet.MarshalBinary()
+		relayInitAssertions(t, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
+	})
+
 	t.Run("address is invalid", func(t *testing.T) {
 		// generate keys
 		relayPublicKey, relayPrivateKey, _ := box.GenerateKey(crand.Reader)
