@@ -48,87 +48,6 @@ type DatacenterProvider interface {
 	GetAndCheck(key *storage.Key) (*storage.Datacenter, bool)
 }
 
-type FakeRelayData struct {
-	Latitude     float64
-	Longitude    float64
-	DatacenterID uint64
-}
-
-var StubbedRelayData map[int]FakeRelayData
-
-var relayIDToDatacenterIDFunc func(relay *routing.Relay, rp RelayProvider, dp DatacenterProvider) (uint64, error)
-
-func debugRelayIDToDatacenterIDFunc(relay *routing.Relay, rp RelayProvider, dp DatacenterProvider) (uint64, error) {
-	fakeData, ok := StubbedRelayData[relay.Addr.Port]
-	if ok {
-		fmt.Printf("Found fake datacenter for port %d\n", relay.Addr.Port)
-		return fakeData.DatacenterID, nil
-	} else {
-		return 0, nil
-	}
-}
-
-func releaseRelayIDToDatacenterIDFunc(relay *routing.Relay, rp RelayProvider, dp DatacenterProvider) (uint64, error) {
-	// TODO config store will have to use uint64's at some later point
-	dbRelay, ok := rp.GetAndCheckByRelayCoreId(uint32(relay.ID))
-
-	if !ok {
-		return 0, errors.New("relay not found in configstore")
-	}
-
-	_, ok = dp.GetAndCheck(dbRelay.Datacenter)
-
-	if !ok {
-		return 0, errors.New("datacenter not found in configstore")
-	}
-
-	return 0, nil
-}
-
-var ipLookupFunc func(relay *routing.Relay, ipLocator routing.IPLocator) (routing.Location, error)
-
-func debugIPLookupFunc(relay *routing.Relay, ipLocator routing.IPLocator) (routing.Location, error) {
-	fakeData, ok := StubbedRelayData[relay.Addr.Port]
-	if ok {
-		fmt.Printf("Found fake location for port %d\n", relay.Addr.Port)
-		return routing.Location{
-			Latitude:  fakeData.Latitude,
-			Longitude: fakeData.Longitude,
-		}, nil
-	} else {
-		return routing.Location{
-			Latitude:  0,
-			Longitude: 0,
-		}, nil
-	}
-}
-
-func releaseIPLookupFunc(relay *routing.Relay, ipLocator routing.IPLocator) (routing.Location, error) {
-	return ipLocator.LocateIP(relay.Addr.IP)
-}
-
-func init() {
-	debug := os.Getenv("RELAY_DEBUG")
-	if len(debug) != 0 {
-		filename := os.Getenv("RELAY_DEBUG_FILENAME")
-
-		var data []byte
-		if len(filename) > 0 {
-			fmt.Println("Using debug file for fake data")
-			data, _ = ioutil.ReadFile(filename)
-		} else {
-			data = []byte("{}")
-		}
-
-		json.Unmarshal(data, &StubbedRelayData)
-		relayIDToDatacenterIDFunc = debugRelayIDToDatacenterIDFunc
-		ipLookupFunc = debugIPLookupFunc
-	} else {
-		relayIDToDatacenterIDFunc = releaseRelayIDToDatacenterIDFunc
-		ipLookupFunc = releaseIPLookupFunc
-	}
-}
-
 // NewRouter creates a router with the specified endpoints
 func NewRouter(redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, relayProvider RelayProvider, datacenterProvider DatacenterProvider, statsdb *routing.StatsDatabase, costmatrix *routing.CostMatrix, routematrix *routing.RouteMatrix, relayPublicKey []byte, routerPrivateKey []byte) *mux.Router {
 	router := mux.NewRouter()
@@ -381,5 +300,87 @@ func NearHandlerFunc(backend *StubbedBackend) func(writer http.ResponseWriter, r
 		writer.WriteHeader(http.StatusOK)
 		writer.Header().Set("Content-Type", "application/octet-stream")
 		writer.Write(nearData)
+	}
+}
+
+// Dev debug logic
+type fakeRelayData struct {
+	Latitude     float64
+	Longitude    float64
+	DatacenterID uint64
+}
+
+var stubbedRelayData map[int]fakeRelayData
+
+var relayIDToDatacenterIDFunc func(relay *routing.Relay, rp RelayProvider, dp DatacenterProvider) (uint64, error)
+
+func debugRelayIDToDatacenterIDFunc(relay *routing.Relay, rp RelayProvider, dp DatacenterProvider) (uint64, error) {
+	fakeData, ok := stubbedRelayData[relay.Addr.Port]
+	if ok {
+		fmt.Printf("Found fake datacenter for port %d\n", relay.Addr.Port)
+		return fakeData.DatacenterID, nil
+	} else {
+		return 0, nil
+	}
+}
+
+func releaseRelayIDToDatacenterIDFunc(relay *routing.Relay, rp RelayProvider, dp DatacenterProvider) (uint64, error) {
+	// TODO config store will have to use uint64's at some later point
+	dbRelay, ok := rp.GetAndCheckByRelayCoreId(uint32(relay.ID))
+
+	if !ok {
+		return 0, errors.New("relay not found in configstore")
+	}
+
+	dbDatacenter, ok := dp.GetAndCheck(dbRelay.Datacenter)
+
+	if !ok {
+		return 0, errors.New("datacenter not found in configstore")
+	}
+
+	return crypto.HashID(dbDatacenter.Name), nil
+}
+
+var ipLookupFunc func(relay *routing.Relay, ipLocator routing.IPLocator) (routing.Location, error)
+
+func debugIPLookupFunc(relay *routing.Relay, ipLocator routing.IPLocator) (routing.Location, error) {
+	fakeData, ok := stubbedRelayData[relay.Addr.Port]
+	if ok {
+		fmt.Printf("Found fake location for port %d\n", relay.Addr.Port)
+		return routing.Location{
+			Latitude:  fakeData.Latitude,
+			Longitude: fakeData.Longitude,
+		}, nil
+	} else {
+		return routing.Location{
+			Latitude:  0,
+			Longitude: 0,
+		}, nil
+	}
+}
+
+func releaseIPLookupFunc(relay *routing.Relay, ipLocator routing.IPLocator) (routing.Location, error) {
+	return ipLocator.LocateIP(relay.Addr.IP)
+}
+
+func init() {
+	debug := os.Getenv("RELAY_DEBUG")
+	if len(debug) != 0 {
+		filename := os.Getenv("RELAY_DEBUG_FILENAME")
+
+		var data []byte
+		if len(filename) > 0 {
+			fmt.Println("Using debug file for fake data")
+			data, _ = ioutil.ReadFile(filename)
+		} else {
+			data = []byte("{}")
+		}
+
+		json.Unmarshal(data, &stubbedRelayData)
+		relayIDToDatacenterIDFunc = debugRelayIDToDatacenterIDFunc
+		ipLookupFunc = debugIPLookupFunc
+	} else {
+		relayIDToDatacenterIDFunc = releaseRelayIDToDatacenterIDFunc
+		ipLookupFunc = releaseIPLookupFunc
 	}
 }
