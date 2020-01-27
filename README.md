@@ -46,35 +46,59 @@ This is the service that suppliers run on their hardware to become part of Netwo
 - Command: [`cmd/relay`](./cmd/relay)
 
 ### To Run
-You must have the following environment variables set:
-- `RELAY_ADDRESS`: The address of this relay. Example being "127.0.0.1:1234"
-- `RELAY_PRIVATE_KEY`: The relay's private key. To generate see [generating keys](#generating-keys)
-- `RELAY_PUBLIC_KEY`:
-- `RELAY_ROUTER_PUBLIC_KEY`:
-- `RELAY_BACKEND_HOSTNAME`:
+
+Run `make dev-relay`
+
+### Environment Variables
+
+#### Required
+
+- `RELAY_ADDRESS`: The address of this relay, defualts to "127.0.0.1" when run using make.
+- `RELAY_BACKEND_HOSTNAME`: The address of the relay backend, defaults to "http://localhost:30000" when run using make.
+
+#### To get values for the following three variables, see [Generating Key Pairs](#generating-key-pairs)
+
+- `RELAY_PRIVATE_KEY`: The private key of each relay.
+- `RELAY_PUBLIC_KEY`: The public key of each relay generated with the private key.
+- `RELAY_ROUTER_PUBLIC_KEY`: The public key of the router.
 
 ## Relay Backend (Go)
 
-Manages the database (Redis) of connected relays and tells them which other relays to ping. Collates ping statistics received from relays into a cost matrix.
+Manages the database (Redis) of connected relays and tells them which other relays to ping. Collates ping statistics received from relays into a cost matrix. Collates data in the cost matrix into a route matrix for the server backend
 
 - Command: [`cmd/relay_backend`](./cmd/relay_backend)
 
 ### To Run
-You must have the following environment variables set:
-- `RELAY_KEY_PUBLIC`
-- `ROUTER_KEY_PRIVATE`
+
+Run `make dev-relay-backend`
+
+### Environment Variables
+
+#### Required
+
+To get values for the following two variables, see [Generating Key Pairs](#generating-key-pairs)
+
+- `RELAY_KEY_PUBLIC`: The public key of each relay.
+- `ROUTER_KEY_PRIVATE`: The private key of the router.
+
+#### Optional
+
+- `RELAY_PORT`: The port the relay backend will use
+- `REDIS_HOST`: The address of the Redis server you want to connect to
 
 ### What it does
+
 - Opens a couple endpoints for communication with the relays and server backend
 - Takes data from the in memory StatsDatabase and generates a CostMatrix, then takes the CostMatrix and generates a RouteMatrix for the server backend once every 10 seconds
+
 ### Endpoints
+
 - `/relay_init`: When a relay starts up, the first thing it will do is call this endpoint with its information
   - Gathers geolocation information
   - Generates the relay public keys, which is sent back in the body of the response
   - Stores the relay in redis in binary format
 - `/relay_update`: After a relay has confirmation of successful initialization, it will keep sending this endpoint stats about its network timings
   - Within the response body will be a list of all other relays to ping and gather stats on
-
 
 ## Server (C++)
 
@@ -85,13 +109,21 @@ Reference implentation of a server using the Network Next SDK.
 
 ## Server Backend (Go)
 
-Pulls the route matrix from the relay backend and uses it to serve up routes across the relay network.
+Pulls the route matrix from the relay backend once every 10 seconds and uses it to serve up routes across the relay network.
 
 - Command: [`cmd/server_backend`](./cmd/server_backend)
 
 ### Environment Variables
 
+#### Required
+
 - `MAXMIND_DB_URI`: local path to a `.mmdb` file for IP lookups. Defaults to `./GeoLite2-City.mmdb`. You can ask a dev for a copy of one or register and download one from https://www.maxmind.com.
+
+#### Optional
+
+- `REDIS_HOST`: The address of the Redis server you want to connect to, uses the in-memory version if not supplied or invalid
+- `CONFIGSTORE_HOST`: The address to configstore, uses the in-memory version if not supplied
+- `ROUTE_MATRIX_URI`: The address of the Relay Backend, if empty the server backend will not pull the Route Matrix
 
 ## Client (C++)
 
@@ -115,8 +147,25 @@ Uses the env var `RUNNING_RELAYS` to keep track of spawned relays
 Usage: `source relay-spawner.sh` [`options`] [`starting port number`] [`ending port number`]
 - Spawns relays with the port numbers between the given arguments, inclusively
 - If the ending port number is not specified, one relay with the starting port number will be spawned
-- `-k` is used to kill all relays spawned with this script, any spawned without the script will be left alive
+- `-h` to display all options
 
 ## Generating Key Pairs
 
 Keys must be generated with Go's `box.GenerateKey()` function call. The parameter to pass is `rand.Reader`.
+
+Generate two sets. One for relays, and one for the router. Set the following environment variables appropriately:
+
+### Relay Environment Variables
+
+- `RELAY_PRIVATE_KEY`
+- `RELAY_PUBLIC_KEY`
+- `RELAY_ROUTER_PUBLIC_KEY`
+
+### Relay Backend Environment Variables
+
+- `RELAY_KEY_PUBLIC`
+- `RELAY_KEY_PRIVATE`
+- `ROUTER_KEY_PUBLIC`
+- `ROUTER_KEY_PRIVATE`
+
+Likely the values for the three relay environment variables will be reused for the relay backend.
