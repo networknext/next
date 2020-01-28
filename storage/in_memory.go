@@ -1,24 +1,12 @@
 package storage
 
-import "log"
-
-type InMemoryRelayStore struct {
-	RelaysToDatacenterName map[uint32]string
-}
-
-type InMemoryDatacenterStore struct {
-}
-
 type InMemory struct {
-	RelayStore      InMemoryRelayStore
-	DatacenterStore InMemoryDatacenterStore
+	RelayDatacenterNames map[uint32]string
 }
 
 func NewInMemory() InMemory {
 	return InMemory{
-		RelayStore: InMemoryRelayStore{
-			RelaysToDatacenterName: make(map[uint32]string),
-		},
+		RelayDatacenterNames: make(map[uint32]string),
 	}
 }
 
@@ -33,18 +21,17 @@ func (m *InMemory) GetAndCheckBySdkVersion3PublicKeyId(key uint64) (*Buyer, bool
 	}, true
 }
 
-func (m *InMemoryDatacenterStore) GetAndCheck(key *Key) (*Datacenter, bool) {
+func (m *InMemory) GetAndCheck(key *Key) (*Datacenter, bool) {
 	// can't simulate a failed lookup here as well, at least not yet
 	return &Datacenter{
 		Name: key.PartitionId.Namespace,
 	}, true
 }
 
-func (m *InMemoryRelayStore) GetAndCheckByRelayCoreId(key uint32) (*Relay, bool) {
-	name, ok := m.RelaysToDatacenterName[key]
-
-	if ok {
-		log.Printf("Found stubbed relay [%d] datacenter: %s", key, name)
+func (m *InMemory) GetAndCheckByRelayCoreId(key uint32) (*Relay, bool) {
+	name, ok := m.RelayDatacenterNames[key]
+	if !ok {
+		name = "local"
 	}
 
 	// return the value of 'ok' to simulate a failed lookup
@@ -54,5 +41,5 @@ func (m *InMemoryRelayStore) GetAndCheckByRelayCoreId(key uint32) (*Relay, bool)
 				Namespace: name,
 			},
 		},
-	}, ok
+	}, true
 }
