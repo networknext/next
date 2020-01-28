@@ -147,9 +147,13 @@ func initStubbedData(inMemory *storage.InMemory, ipLocator *routing.IPLocator) {
 	if _, set := os.LookupEnv("RELAY_DEBUG"); set {
 		filename := os.Getenv("RELAY_DEBUG_FILENAME")
 
+		if len(filename) == 0 {
+			filename = "tools/stubbed-relay-data.json"
+		}
+
 		var data []byte
 		if len(filename) > 0 {
-			fmt.Println("Using debug file for fake data")
+			log.Println("Using debug file for fake data")
 			data, _ = ioutil.ReadFile(filename)
 		} else {
 			data = []byte("{}")
