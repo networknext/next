@@ -58,11 +58,9 @@ func relayInitAssertions(t *testing.T, relay routing.Relay, body []byte, expecte
 	rtodcnameMap := make(map[uint32]string)
 	rtodcnameMap[uint32(relay.ID)] = relay.DatacenterName
 	inMemory := storage.InMemory{
-		RelayStore: storage.InMemoryRelayStore{
-			RelaysToDatacenterName: rtodcnameMap,
-		},
+		RelayDatacenterNames: rtodcnameMap,
 	}
-	handler := transport.RelayInitHandlerFunc(redisClient, geoClient, ipfunc, &inMemory.RelayStore, &inMemory.DatacenterStore, relayPublicKey, routerPrivateKey)
+	handler := transport.RelayInitHandlerFunc(redisClient, geoClient, ipfunc, &inMemory, &inMemory, relayPublicKey, routerPrivateKey)
 
 	handler(recorder, request)
 
