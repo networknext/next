@@ -56,7 +56,6 @@ func main() {
 	var datacenterProvider transport.DatacenterProvider = &inMemoryProvider.DatacenterStore
 
 	var ipLocator routing.IPLocator
-
 	initStubbedData(&inMemoryProvider, &ipLocator)
 
 	if os.Getenv("CONFIGSTORE_HOST") != "" {
@@ -157,9 +156,9 @@ func initStubbedData(inMemory *storage.InMemory, ipLocator *routing.IPLocator) {
 		}
 
 		type fakeRelayData struct {
-			Latitude       float64
-			Longitude      float64
-			DatacenterName string
+			Latitude       float64 `json:"latitude"`
+			Longitude      float64 `json:"longitude"`
+			DatacenterName string  `json:"datacenter_name"`
 		}
 
 		var fakeData map[string]fakeRelayData
@@ -173,9 +172,12 @@ func initStubbedData(inMemory *storage.InMemory, ipLocator *routing.IPLocator) {
 		ipToLatLong := make(map[string]latLong)
 
 		for k, v := range fakeData {
-			inMemory.RelayStore.RelaysToDatacenterName[uint32(crypto.HashID(k))] = v.DatacenterName
+			relayID := uint32(crypto.HashID(k))
+			log.Printf("storing relay [%d] for with stubbed datacenter name: %s", relayID, v.DatacenterName)
+			inMemory.RelayStore.RelaysToDatacenterName[relayID] = v.DatacenterName
 
 			if udp, err := net.ResolveUDPAddr("udp", k); err == nil {
+				log.Printf("storing lat [%f] long [%f] for address: '%s'", v.Latitude, v.Longitude, udp.IP.String())
 				ipToLatLong[udp.IP.String()] = latLong{
 					Latitude:  v.Latitude,
 					Longitude: v.Longitude,
@@ -186,7 +188,7 @@ func initStubbedData(inMemory *storage.InMemory, ipLocator *routing.IPLocator) {
 		*ipLocator = routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
 			ll, ok := ipToLatLong[ip.String()]
 			if ok {
-				log.Printf("found stubbed lat long for relay address: %s", ip.String())
+				log.Printf("found stubbed lat long for relay address: '%s'", ip.String())
 				return routing.Location{
 					Latitude:  ll.Latitude,
 					Longitude: ll.Longitude,
@@ -197,7 +199,7 @@ func initStubbedData(inMemory *storage.InMemory, ipLocator *routing.IPLocator) {
 			return routing.Location{
 				Latitude:  0.0,
 				Longitude: 0.0,
-			}, fmt.Errorf("could not locate lat/long for %s", ip.String())
+			}, fmt.Errorf("could not locate lat/long for '%s'", ip.String())
 		})
 	}
 }

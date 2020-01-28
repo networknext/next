@@ -42,7 +42,7 @@ func (m *InMemoryDatacenterStore) GetAndCheck(key *Key) (*Datacenter, bool) {
 func (m *InMemoryRelayStore) GetAndCheckByRelayCoreId(key uint32) (*Relay, bool) {
 	name, ok := m.RelaysToDatacenterName[key]
 	if ok {
-		log.Printf("Found stubbed data for relay: %d", key)
+		log.Printf("Found stubbed relay [%d] datacenter: %s", key, name)
 	}
 
 	return &Relay{

@@ -87,6 +87,8 @@ func RelayInitHandlerFunc(redisClient *redis.Client, geoClient *routing.GeoClien
 			return
 		}
 
+		log.Printf("Initializing relay with address %s", relayInitPacket.Address.IP.String())
+
 		if relayInitPacket.Magic != InitRequestMagic ||
 			relayInitPacket.Version != VersionNumberInitRequest {
 			writer.WriteHeader(http.StatusBadRequest)
