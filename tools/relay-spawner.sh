@@ -87,11 +87,12 @@ else
 
     echo "Spawning $(( end_port - begin_port + 1 )) relays between $begin_port and $end_port"
 
-    for ((port=${begin_port} ; port<=${end_port} ; port++)); do
-	RELAY_ADDRESS="127.0.0.1:$port" make dev-relay-v2 > /dev/null &
+    for ((port=${begin_port}, addr_suffix=1 ; port<=${end_port} ; port++, addr_suffix++)); do
+	addr="127.0.0.$addr_suffix:$port"
+	RELAY_ADDRESS="$addr" make dev-relay-v2 > /dev/null &
 	pid="$!"
 	export RUNNING_RELAYS="$RUNNING_RELAYS:$pid"
-	echo "Started Relay on port $port with pid: $pid"
+	echo "Started Relay using address $addr with pid: $pid"
     done
 fi
 

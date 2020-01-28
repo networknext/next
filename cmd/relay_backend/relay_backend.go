@@ -6,22 +6,32 @@
 package main
 
 import (
+	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"net"
 	"os"
 	"os/signal"
 	"time"
 
 	"github.com/alicebob/miniredis"
 	"github.com/go-redis/redis/v7"
-	"github.com/networknext/backend/routing"
-	"github.com/networknext/backend/transport"
 	"github.com/oschwald/geoip2-golang"
+	"google.golang.org/grpc"
+
+	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/routing"
+	"github.com/networknext/backend/storage"
+	"github.com/networknext/backend/transport"
 )
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
+	ctx := context.Background()
 
 	var relayPublicKey []byte
 	var routerPrivateKey []byte
@@ -40,6 +50,30 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Create an in-memory relay & datacenter store
+	inMemoryProvider := storage.NewInMemory()
+	var relayProvider transport.RelayProvider = &inMemoryProvider.RelayStore
+	var datacenterProvider transport.DatacenterProvider = &inMemoryProvider.DatacenterStore
+
+	var ipLocator routing.IPLocator
+	initStubbedData(&inMemoryProvider, &ipLocator)
+
+	if os.Getenv("CONFIGSTORE_HOST") != "" {
+		grpcconn, err := grpc.Dial(os.Getenv("CONFIGSTORE_HOST"), grpc.WithInsecure())
+		if err != nil {
+			log.Fatalf("could not dial configstore: %v", err)
+		}
+		configstore, err := storage.ConnectToConfigstore(ctx, grpcconn)
+		if err != nil {
+			log.Fatalf("could not dial configstore: %v", err)
+		}
+
+		// If CONFIGSTORE_HOST exists and a successful connection was made
+		// then replace the in-memory with the gRPC one
+		relayProvider = configstore.Relays
+		datacenterProvider = configstore.Datacenters
+	}
+
 	// Attempt to connect to REDIS_HOST
 	// If it fails to connect then start a local in memory instance and connect to that instead
 	redisClient := redis.NewClient(&redis.Options{Addr: os.Getenv("REDIS_HOST")})
@@ -54,7 +88,7 @@ func main() {
 			log.Fatal(err)
 		}
 
-		log.Printf("unable to connect to REDIS_HOST '%s', connected to in-memory redis %s", os.Getenv("REDIS_HOST"), redisServer.Addr())
+		log.Printf("unable to connect to REDIS_HOST '%s', connected to in-memory redis %s\n", os.Getenv("REDIS_HOST"), redisServer.Addr())
 	}
 
 	geoClient := routing.GeoClient{
@@ -62,14 +96,17 @@ func main() {
 		Namespace:   "RELAY_LOCATIONS",
 	}
 
-	mmreader, err := geoip2.Open(os.Getenv("MAXMIND_DB_URI"))
-	if err != nil {
-		log.Fatalf("failed to open Maxmind GeoIP2 database: %v", err)
+	// Attempt to read the maxmind db
+	if uri, set := os.LookupEnv("RELAY_MAXMIND_DB_URI"); set {
+		mmreader, err := geoip2.Open(uri)
+		if err != nil {
+			log.Fatalf("failed to open Maxmind GeoIP2 database: %v", err)
+		}
+		ipLocator = &routing.MaxmindDB{
+			Reader: mmreader,
+		}
+		defer mmreader.Close()
 	}
-	mmdb := routing.MaxmindDB{
-		Reader: mmreader,
-	}
-	defer mmreader.Close()
 
 	statsdb := routing.NewStatsDatabase()
 	var costmatrix routing.CostMatrix
@@ -98,11 +135,82 @@ func main() {
 		fmt.Printf("RELAY_PORT env var is unset, setting port as %s\n", port)
 	}
 
-	router := transport.NewRouter(redisClient, &geoClient, &mmdb, statsdb, &costmatrix, &routematrix, relayPublicKey, routerPrivateKey)
+	router := transport.NewRouter(redisClient, &geoClient, ipLocator, relayProvider, datacenterProvider, statsdb, &costmatrix, &routematrix, relayPublicKey, routerPrivateKey)
 
 	go transport.HTTPStart(port, router)
 
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
 	<-sigint
+}
+
+func initStubbedData(inMemory *storage.InMemory, ipLocator *routing.IPLocator) {
+	// if running in development mode, load a json file containing relay information to stub with
+	if _, set := os.LookupEnv("RELAY_DEV"); set {
+		filename := os.Getenv("RELAY_STUBBED_DATA_FILENAME")
+
+		// default to the local one if the env var is not set
+		if len(filename) == 0 {
+			log.Println("Using debug file for fake data")
+			filename = "tools/stubbed-relay-data.json"
+		} else {
+
+		}
+
+		data, err := ioutil.ReadFile(filename)
+		if err != nil {
+			log.Printf("Could not read debug file%s\n", filename)
+			return
+		}
+
+		// the structure of the json values
+		type fakeRelayData struct {
+			Latitude       float64 `json:"latitude"`
+			Longitude      float64 `json:"longitude"`
+			DatacenterName string  `json:"datacenter_name"`
+		}
+
+		// string is the ip & port, "127.0.0.1:1234"
+		var fakeData map[string]fakeRelayData
+		json.Unmarshal(data, &fakeData)
+
+		type latLong struct {
+			Latitude  float64
+			Longitude float64
+		}
+
+		ipToLatLong := make(map[string]latLong)
+
+		// loop over the data
+		for k, v := range fakeData {
+			relayID := uint32(crypto.HashID(k))
+			log.Printf("storing relay [%d] for with stubbed datacenter name: %s\n", relayID, v.DatacenterName)
+			inMemory.RelayStore.RelaysToDatacenterName[relayID] = v.DatacenterName
+
+			if udp, err := net.ResolveUDPAddr("udp", k); err == nil {
+				log.Printf("storing lat [%f] long [%f] for address: '%s'\n", v.Latitude, v.Longitude, udp.IP.String())
+				ipToLatLong[udp.IP.String()] = latLong{
+					Latitude:  v.Latitude,
+					Longitude: v.Longitude,
+				}
+			}
+		}
+
+		*ipLocator = routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
+			ll, ok := ipToLatLong[ip.String()]
+			if ok {
+				log.Printf("found stubbed lat long for relay address: '%s'\n", ip.String())
+				return routing.Location{
+					Latitude:  ll.Latitude,
+					Longitude: ll.Longitude,
+				}, nil
+			}
+
+			// To simulate a geoip error
+			return routing.Location{
+				Latitude:  0.0,
+				Longitude: 0.0,
+			}, fmt.Errorf("could not locate lat/long for '%s'", ip.String())
+		})
+	}
 }
