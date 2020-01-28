@@ -88,7 +88,7 @@ func main() {
 			log.Fatal(err)
 		}
 
-		log.Printf("unable to connect to REDIS_HOST '%s', connected to in-memory redis %s", os.Getenv("REDIS_HOST"), redisServer.Addr())
+		log.Printf("unable to connect to REDIS_HOST '%s', connected to in-memory redis %s\n", os.Getenv("REDIS_HOST"), redisServer.Addr())
 	}
 
 	geoClient := routing.GeoClient{
@@ -96,6 +96,7 @@ func main() {
 		Namespace:   "RELAY_LOCATIONS",
 	}
 
+	// Attempt to read the maxmind db
 	if uri, set := os.LookupEnv("RELAY_MAXMIND_DB_URI"); set {
 		mmreader, err := geoip2.Open(uri)
 		if err != nil {
@@ -144,27 +145,32 @@ func main() {
 }
 
 func initStubbedData(inMemory *storage.InMemory, ipLocator *routing.IPLocator) {
+	// if running in development mode, load a json file containing relay information to stub with
 	if _, set := os.LookupEnv("RELAY_DEV"); set {
 		filename := os.Getenv("RELAY_STUBBED_DATA_FILENAME")
 
+		// default to the local one if the env var is not set
 		if len(filename) == 0 {
-			filename = "tools/stubbed-relay-data.json"
-		}
-
-		var data []byte
-		if len(filename) > 0 {
 			log.Println("Using debug file for fake data")
-			data, _ = ioutil.ReadFile(filename)
+			filename = "tools/stubbed-relay-data.json"
 		} else {
-			data = []byte("{}")
+
 		}
 
+		data, err := ioutil.ReadFile(filename)
+		if err != nil {
+			log.Printf("Could not read debug file%s\n", filename)
+			return
+		}
+
+		// the structure of the json values
 		type fakeRelayData struct {
 			Latitude       float64 `json:"latitude"`
 			Longitude      float64 `json:"longitude"`
 			DatacenterName string  `json:"datacenter_name"`
 		}
 
+		// string is the ip & port, "127.0.0.1:1234"
 		var fakeData map[string]fakeRelayData
 		json.Unmarshal(data, &fakeData)
 
@@ -175,13 +181,14 @@ func initStubbedData(inMemory *storage.InMemory, ipLocator *routing.IPLocator) {
 
 		ipToLatLong := make(map[string]latLong)
 
+		// loop over the data
 		for k, v := range fakeData {
 			relayID := uint32(crypto.HashID(k))
-			log.Printf("storing relay [%d] for with stubbed datacenter name: %s", relayID, v.DatacenterName)
+			log.Printf("storing relay [%d] for with stubbed datacenter name: %s\n", relayID, v.DatacenterName)
 			inMemory.RelayStore.RelaysToDatacenterName[relayID] = v.DatacenterName
 
 			if udp, err := net.ResolveUDPAddr("udp", k); err == nil {
-				log.Printf("storing lat [%f] long [%f] for address: '%s'", v.Latitude, v.Longitude, udp.IP.String())
+				log.Printf("storing lat [%f] long [%f] for address: '%s'\n", v.Latitude, v.Longitude, udp.IP.String())
 				ipToLatLong[udp.IP.String()] = latLong{
 					Latitude:  v.Latitude,
 					Longitude: v.Longitude,
@@ -192,7 +199,7 @@ func initStubbedData(inMemory *storage.InMemory, ipLocator *routing.IPLocator) {
 		*ipLocator = routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
 			ll, ok := ipToLatLong[ip.String()]
 			if ok {
-				log.Printf("found stubbed lat long for relay address: '%s'", ip.String())
+				log.Printf("found stubbed lat long for relay address: '%s'\n", ip.String())
 				return routing.Location{
 					Latitude:  ll.Latitude,
 					Longitude: ll.Longitude,
