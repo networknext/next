@@ -713,12 +713,6 @@ func (m *RouteMatrix) fillRoutes(routes *[]Route, from Relay, to Relay) {
 	}
 }
 
-func (m *RouteMatrix) Route(datacenter Datacenter, relays []Relay) (Decision, error) {
-	// _ := m.Routes(m.RelaysIn(datacenter), relays)
-
-	return Decision{}, nil
-}
-
 // ReadFrom implements the io.ReadFrom interface
 func (m *RouteMatrix) ReadFom(r io.Reader) (int64, error) {
 	m.mu.Lock()

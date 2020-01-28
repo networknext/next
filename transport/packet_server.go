@@ -20,9 +20,9 @@ const (
 	MaxNearRelays = 32
 	MaxTokens     = 7
 
-	EncryptedTokenRouteSize    = 117
-	EncryptedTokenContinueSize = 58
-	MTUSize                    = 1300
+	// EncryptedTokenRouteSize    = 117
+	// EncryptedTokenContinueSize = 58
+	MTUSize = 1300
 
 	ConnectionTypeUnknown  = 0
 	ConnectionTypeWired    = 1
@@ -403,22 +403,24 @@ func (packet *SessionResponsePacket) Serialize(stream encoding.Stream, version S
 		stream.SerializeAddress(&packet.NearRelayAddresses[i])
 	}
 	stream.SerializeInteger(&packet.RouteType, 0, routing.DecisionTypeContinue)
-	if packet.RouteType != routing.DecisionTypeDirect {
+	stream.SerializeInteger(&packet.NumTokens, 0, MaxTokens)
+
+	if stream.IsReading() {
+		packet.Tokens = make([]byte, packet.NumTokens*routing.EncryptedNextRouteTokenSize)
+	}
+	switch packet.RouteType {
+	case routing.DecisionTypeNew, routing.DecisionTypeContinue:
 		stream.SerializeBool(&packet.Multipath)
-		stream.SerializeInteger(&packet.NumTokens, 0, MaxTokens)
-	}
-	if packet.RouteType == routing.DecisionTypeNew {
 		stream.SerializeBytes(packet.Tokens)
 	}
-	if packet.RouteType == routing.DecisionTypeContinue {
-		stream.SerializeBytes(packet.Tokens)
-	}
+
 	if stream.IsReading() {
 		packet.ServerRoutePublicKey = make([]byte, ed25519.PublicKeySize)
 		packet.Signature = make([]byte, ed25519.SignatureSize)
 	}
 	stream.SerializeBytes(packet.ServerRoutePublicKey)
 	stream.SerializeBytes(packet.Signature)
+
 	return stream.Error()
 }
 

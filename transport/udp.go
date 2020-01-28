@@ -14,7 +14,6 @@ import (
 	jsoniter "github.com/json-iterator/go"
 
 	"github.com/go-redis/redis/v7"
-	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 )
@@ -232,11 +231,11 @@ func (e SessionEntry) MarshalBinary() ([]byte, error) {
 }
 
 type RouteProvider interface {
-	Route(routing.Datacenter, []routing.Relay) (routing.Decision, error)
+	Route(routing.Datacenter, []routing.Relay) ([]routing.Route, error)
 }
 
 // SessionUpdateHandlerFunc ...
-func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, encryptionPrivateKey []byte, signingPrivateKey []byte) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		// Deserialize the Session packet
 		var packet SessionUpdatePacket
@@ -268,9 +267,9 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp Ro
 			log.Printf("failed to get buyer '%d'", packet.CustomerId)
 			return
 		}
-		buyPublicKey := buyer.GetSdkVersion3PublicKeyData()
+		buyerServerPublicKey := buyer.GetSdkVersion3PublicKeyData()
 
-		if !ed25519.Verify(buyPublicKey, packet.GetSignData(serverentry.SDKVersion), packet.Signature) {
+		if !ed25519.Verify(buyerServerPublicKey, packet.GetSignData(serverentry.SDKVersion), packet.Signature) {
 			log.Printf("failed to verify session update signature")
 			return
 		}
@@ -292,24 +291,51 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp Ro
 			return
 		}
 
-		// Get a route from the RouteProvider an on error ensure it falls back to direct
-		route, err := rp.Route(serverentry.Datacenter, clientrelays)
+		// Get a set of possible routes from the RouteProvider an on error ensure it falls back to direct
+		routes, err := rp.Route(serverentry.Datacenter, clientrelays)
 		if err != nil {
 			log.Printf("failed to get a route for client ip '%s': %v", packet.ClientAddress.IP.String(), err)
+			return
+		}
+		chosenRoute := routes[0] // Just take the first one it find regardless of optimizations
 
-			route = routing.Decision{
-				Type: routing.DecisionTypeDirect,
-			}
+		// Build the next route with the client, server, and set of relays to use
+		nextRoute := routing.NextRouteToken{
+			Expires: uint64(time.Now().Add(10 * time.Second).Unix()),
+
+			SessionId: packet.SessionId,
+
+			SessionVersion: 0, // Haven't figured out what this is for
+			SessionFlags:   0, // Haven't figured out what this is for
+
+			Client: routing.Client{
+				Addr:      packet.ClientAddress,
+				PublicKey: packet.ClientRoutePublicKey,
+			},
+
+			Server: routing.Server{
+				Addr:      packet.ServerAddress,
+				PublicKey: buyerServerPublicKey,
+			},
+
+			Relays: chosenRoute.Relays,
+		}
+
+		// Encrypt the next route with the our private key
+		routeTokens, err := nextRoute.Encrypt(encryptionPrivateKey)
+		if err != nil {
+			log.Fatalf("failed to encrypt route token: %v", err)
+			return
 		}
 
 		// Create the Session Response for the server
 		response := SessionResponsePacket{
 			Sequence:             packet.Sequence,
 			SessionId:            packet.SessionId,
-			RouteType:            int32(route.Type),
-			NumTokens:            int32(route.NumTokens),
-			Tokens:               route.Tokens,
-			Multipath:            route.Multipath,
+			RouteType:            int32(routing.DecisionTypeNew),
+			NumTokens:            int32(len(chosenRoute.Relays) + 2), // Num of relays + client + server
+			Tokens:               routeTokens,
+			Multipath:            false, // Haven't figured out what this is for
 			ServerRoutePublicKey: serverentry.Server.PublicKey,
 		}
 
@@ -323,7 +349,7 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp Ro
 		}
 
 		// Sign the response
-		response.Signature = ed25519.Sign(crypto.BackendPrivateKey, response.GetSignData())
+		response.Signature = ed25519.Sign(signingPrivateKey, response.GetSignData())
 
 		// Send the Session Response back to the server
 		res, err := response.MarshalBinary()
