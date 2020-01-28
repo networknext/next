@@ -55,7 +55,12 @@ func relayInitAssertions(t *testing.T, body []byte, expectedCode int, geoClient 
 	recorder := httptest.NewRecorder()
 	request, _ := http.NewRequest("POST", "/relay_init", bytes.NewBuffer(body))
 
-	handler := transport.RelayInitHandlerFunc(redisClient, geoClient, ipfunc, &storage.InMemory{}, &storage.InMemory{}, relayPublicKey, routerPrivateKey)
+	inMemory := storage.InMemory{
+		RelayStore: storage.InMemoryRelayStore{
+			RelaysToDatacenterName: make(map[uint32]string),
+		},
+	}
+	handler := transport.RelayInitHandlerFunc(redisClient, geoClient, ipfunc, &inMemory.RelayStore, &inMemory.DatacenterStore, relayPublicKey, routerPrivateKey)
 
 	handler(recorder, request)
 

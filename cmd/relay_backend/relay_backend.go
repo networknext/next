@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"os"
 	"os/signal"
 	"time"
@@ -21,6 +22,7 @@ import (
 	"github.com/oschwald/geoip2-golang"
 	"google.golang.org/grpc"
 
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
@@ -28,8 +30,6 @@ import (
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-
-	initProviders()
 
 	ctx := context.Background()
 
@@ -51,8 +51,13 @@ func main() {
 	}
 
 	// Create an in-memory relay & datacenter store
-	var relayProvider transport.RelayProvider = &storage.InMemory{}
-	var datacenterProvider transport.DatacenterProvider = &storage.InMemory{}
+	inMemoryProvider := storage.NewInMemory()
+	var relayProvider transport.RelayProvider = &inMemoryProvider.RelayStore
+	var datacenterProvider transport.DatacenterProvider = &inMemoryProvider.DatacenterStore
+
+	var ipLocator routing.IPLocator
+
+	initStubbedData(&inMemoryProvider, &ipLocator)
 
 	if os.Getenv("CONFIGSTORE_HOST") != "" {
 		grpcconn, err := grpc.Dial(os.Getenv("CONFIGSTORE_HOST"), grpc.WithInsecure())
@@ -92,14 +97,16 @@ func main() {
 		Namespace:   "RELAY_LOCATIONS",
 	}
 
-	mmreader, err := geoip2.Open(os.Getenv("MAXMIND_DB_URI"))
-	if err != nil {
-		log.Fatalf("failed to open Maxmind GeoIP2 database: %v", err)
+	if uri, set := os.LookupEnv("MAXMIND_DB_URI"); set {
+		mmreader, err := geoip2.Open(uri)
+		if err != nil {
+			log.Fatalf("failed to open Maxmind GeoIP2 database: %v", err)
+		}
+		ipLocator = &routing.MaxmindDB{
+			Reader: mmreader,
+		}
+		defer mmreader.Close()
 	}
-	mmdb := routing.MaxmindDB{
-		Reader: mmreader,
-	}
-	defer mmreader.Close()
 
 	statsdb := routing.NewStatsDatabase()
 	var costmatrix routing.CostMatrix
@@ -128,7 +135,7 @@ func main() {
 		fmt.Printf("RELAY_PORT env var is unset, setting port as %s\n", port)
 	}
 
-	router := transport.NewRouter(redisClient, &geoClient, &mmdb, relayProvider, datacenterProvider, statsdb, &costmatrix, &routematrix, relayPublicKey, routerPrivateKey)
+	router := transport.NewRouter(redisClient, &geoClient, ipLocator, relayProvider, datacenterProvider, statsdb, &costmatrix, &routematrix, relayPublicKey, routerPrivateKey)
 
 	go transport.HTTPStart(port, router)
 
@@ -137,7 +144,7 @@ func main() {
 	<-sigint
 }
 
-func initProviders() {
+func initStubbedData(inMemory *storage.InMemory, ipLocator *routing.IPLocator) {
 	if _, set := os.LookupEnv("RELAY_DEBUG"); set {
 		filename := os.Getenv("RELAY_DEBUG_FILENAME")
 
@@ -149,8 +156,46 @@ func initProviders() {
 			data = []byte("{}")
 		}
 
-		json.Unmarshal(data, &transport.StubbedRelayData)
-		transport.RelayIDToDatacenterIDFunc = transport.DebugRelayIDToDatacenterIDFunc
-		transport.IpLookupFunc = transport.DebugIPLookupFunc
+		type fakeRelayData struct {
+			Latitude       float64
+			Longitude      float64
+			DatacenterName string
+		}
+
+		var fakeData map[string]fakeRelayData
+		json.Unmarshal(data, &fakeData)
+
+		type latLong struct {
+			Latitude  float64
+			Longitude float64
+		}
+
+		ipToLatLong := make(map[string]latLong)
+
+		for k, v := range fakeData {
+			inMemory.RelayStore.RelaysToDatacenterName[uint32(crypto.HashID(k))] = v.DatacenterName
+
+			if udp, err := net.ResolveUDPAddr("udp", k); err == nil {
+				ipToLatLong[udp.IP.String()] = latLong{
+					Latitude:  v.Latitude,
+					Longitude: v.Longitude,
+				}
+			}
+		}
+
+		*ipLocator = routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
+			ll, ok := ipToLatLong[ip.String()]
+			if ok {
+				return routing.Location{
+					Latitude:  ll.Latitude,
+					Longitude: ll.Longitude,
+				}, nil
+			}
+
+			return routing.Location{
+				Latitude:  0.0,
+				Longitude: 0.0,
+			}, fmt.Errorf("could not locate lat/long for %s", ip.String())
+		})
 	}
 }

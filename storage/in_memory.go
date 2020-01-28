@@ -1,6 +1,25 @@
 package storage
 
+import "log"
+
+type InMemoryRelayStore struct {
+	RelaysToDatacenterName map[uint32]string
+}
+
+type InMemoryDatacenterStore struct {
+}
+
 type InMemory struct {
+	RelayStore      InMemoryRelayStore
+	DatacenterStore InMemoryDatacenterStore
+}
+
+func NewInMemory() InMemory {
+	return InMemory{
+		RelayStore: InMemoryRelayStore{
+			RelaysToDatacenterName: make(map[uint32]string),
+		},
+	}
 }
 
 func (m *InMemory) GetAndCheckBySdkVersion3PublicKeyId(key uint64) (*Buyer, bool) {
@@ -14,12 +33,23 @@ func (m *InMemory) GetAndCheckBySdkVersion3PublicKeyId(key uint64) (*Buyer, bool
 	}, true
 }
 
-func (m *InMemory) GetAndCheck(key *Key) (*Datacenter, bool) {
-	return &Datacenter{}, true
+func (m *InMemoryDatacenterStore) GetAndCheck(key *Key) (*Datacenter, bool) {
+	return &Datacenter{
+		Name: key.PartitionId.Namespace,
+	}, true
 }
 
-func (m *InMemory) GetAndCheckByRelayCoreId(key uint32) (*Relay, bool) {
+func (m *InMemoryRelayStore) GetAndCheckByRelayCoreId(key uint32) (*Relay, bool) {
+	name, ok := m.RelaysToDatacenterName[key]
+	if ok {
+		log.Printf("Found stubbed data for relay: %d", key)
+	}
+
 	return &Relay{
-		Datacenter: &Key{},
+		Datacenter: &Key{
+			PartitionId: &PartitionId{
+				Namespace: name,
+			},
+		},
 	}, true
 }

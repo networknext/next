@@ -135,7 +135,7 @@ func RelayInitHandlerFunc(redisClient *redis.Client, geoClient *routing.GeoClien
 		relay.PublicKey = make([]byte, crypto.KeySize)
 		rand.Read(relay.PublicKey)
 
-		loc, err := IpLookupFunc(&relay, ipLocator)
+		loc, err := ipLocator.LocateIP(relay.Addr.IP)
 		if err != nil {
 			log.Printf("failed to lookup relay ip '%s': %v", relay.Addr.String(), err)
 			writer.WriteHeader(http.StatusInternalServerError)
