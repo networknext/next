@@ -53,7 +53,8 @@ func main() {
 	var relayProvider transport.RelayProvider = &inMemoryProvider.RelayStore
 	var datacenterProvider transport.DatacenterProvider = &inMemoryProvider.DatacenterStore
 
-	var ipLocator routing.IPLocator
+	// Set the default IPLocator to resolve all lookups to 0/0 aka Null Island
+	var ipLocator routing.IPLocator = routing.NullIsland
 	initStubbedData(&inMemoryProvider, &ipLocator)
 
 	if os.Getenv("CONFIGSTORE_HOST") != "" {

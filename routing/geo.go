@@ -74,6 +74,10 @@ func (f LocateIPFunc) LocateIP(ip net.IP) (Location, error) {
 	return f(ip)
 }
 
+var NullIsland = LocateIPFunc(func(ip net.IP) (Location, error) {
+	return Location{}, nil
+})
+
 type GeoClient struct {
 	RedisClient redis.Cmdable
 	Namespace   string
