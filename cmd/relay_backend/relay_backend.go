@@ -89,7 +89,7 @@ func main() {
 			log.Fatal(err)
 		}
 
-		log.Printf("unable to connect to REDIS_HOST '%s', connected to in-memory redis %s", os.Getenv("REDIS_URL"), redisServer.Addr())
+		log.Printf("unable to connect to REDIS_HOST '%s', connected to in-memory redis %s", os.Getenv("REDIS_HOST"), redisServer.Addr())
 	}
 
 	geoClient := routing.GeoClient{
