@@ -14,7 +14,6 @@ import (
 	jsoniter "github.com/json-iterator/go"
 
 	"github.com/go-redis/redis/v7"
-	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 )
@@ -236,7 +235,7 @@ type RouteProvider interface {
 }
 
 // SessionUpdateHandlerFunc ...
-func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, encryptionPrivateKey []byte, signingPrivateKey []byte) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		// Deserialize the Session packet
 		var packet SessionUpdatePacket
@@ -301,7 +300,7 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp Ro
 		chosenRoute := routes[0] // Just take the first one it find regardless of optimizations
 
 		// Build the next route with the client, server, and set of relays to use
-		nextRoute := routing.NextRouteDecision{
+		nextRoute := routing.NextRouteToken{
 			Expires: uint64(time.Now().Add(10 * time.Second).Unix()),
 
 			SessionId: packet.SessionId,
@@ -323,7 +322,11 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp Ro
 		}
 
 		// Encrypt the next route with the our private key
-		routeTokens := nextRoute.Encrypt(crypto.RouterPrivateKey)
+		routeTokens, err := nextRoute.Encrypt(encryptionPrivateKey)
+		if err != nil {
+			log.Fatalf("failed to encrypt route token: %v", err)
+			return
+		}
 
 		// Create the Session Response for the server
 		response := SessionResponsePacket{
@@ -346,7 +349,7 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp Ro
 		}
 
 		// Sign the response
-		response.Signature = ed25519.Sign(crypto.BackendPrivateKey, response.GetSignData())
+		response.Signature = ed25519.Sign(signingPrivateKey, response.GetSignData())
 
 		// Send the Session Response back to the server
 		res, err := response.MarshalBinary()

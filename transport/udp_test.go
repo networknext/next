@@ -3,6 +3,9 @@ package transport_test
 import (
 	"bytes"
 	"crypto/ed25519"
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
 	"net"
 	"testing"
 
@@ -14,6 +17,7 @@ import (
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/crypto/nacl/box"
 )
 
 type mockBuyerProvider struct {
@@ -29,7 +33,13 @@ type mockRouteProvider struct{}
 
 func (rp *mockRouteProvider) Route(d routing.Datacenter, rs []routing.Relay) ([]routing.Route, error) {
 	return []routing.Route{
-		{Relays: []routing.Relay{{ID: 1}, {ID: 2}, {ID: 3}}},
+		{
+			Relays: []routing.Relay{
+				{ID: 1, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 123}, PublicKey: make([]byte, crypto.KeySize)},
+				{ID: 2, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 123}, PublicKey: make([]byte, crypto.KeySize)},
+				{ID: 3, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 123}, PublicKey: make([]byte, crypto.KeySize)},
+			},
+		},
 	}, nil
 }
 
@@ -292,6 +302,12 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 }
 
 func TestSessionUpdateHandlerFunc(t *testing.T) {
+	_, serverBackendPrivKey, err := ed25519.GenerateKey(nil)
+	assert.NoError(t, err)
+
+	_, routerServerPrivKey, err := box.GenerateKey(rand.Reader)
+	assert.NoError(t, err)
+
 	buyersServerPubKey, buyersServerPrivKey, err := ed25519.GenerateKey(nil)
 	assert.NoError(t, err)
 
@@ -398,7 +414,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 	}
 
 	// Create and invoke the handler with the packet and from addr
-	handler := transport.SessionUpdateHandlerFunc(redisClient, &bp, &rp, iploc, &geoClient)
+	handler := transport.SessionUpdateHandlerFunc(redisClient, &bp, &rp, iploc, &geoClient, routerServerPrivKey[:], serverBackendPrivKey)
 	handler(&resbuf, &incoming)
 
 	{
@@ -406,9 +422,9 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 		expected := transport.SessionResponsePacket{
 			Sequence:             packet.Sequence,
 			SessionId:            packet.SessionId,
-			RouteType:            routing.DecisionTypeDirect,
-			NumTokens:            0,
-			Tokens:               nil,
+			RouteType:            int32(routing.DecisionTypeNew),
+			NumTokens:            5,
+			Tokens:               make([]byte, 5*routing.EncryptedNextRouteTokenSize),
 			Multipath:            false,
 			ServerRoutePublicKey: serverentry.Server.PublicKey,
 			NumNearRelays:        0,
@@ -417,9 +433,21 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 		}
 		expected.Signature = ed25519.Sign(crypto.BackendPrivateKey, expected.GetSignData())
 
+		data := resbuf.Bytes()
+		fmt.Println(hex.Dump(data))
 		var actual transport.SessionResponsePacket
-		actual.UnmarshalBinary(resbuf.Bytes())
+		err = actual.UnmarshalBinary(data)
+		assert.NoError(t, err)
 
-		assert.Equal(t, expected, actual)
+		assert.Equal(t, expected.Sequence, actual.Sequence)
+		assert.Equal(t, expected.SessionId, actual.SessionId)
+		assert.Equal(t, expected.RouteType, actual.RouteType)
+		assert.Equal(t, expected.NumTokens, actual.NumTokens)
+		assert.Equal(t, len(expected.Tokens), len(actual.Tokens))
+		assert.Equal(t, expected.Multipath, actual.Multipath)
+		assert.Equal(t, expected.ServerRoutePublicKey, actual.ServerRoutePublicKey)
+		assert.Equal(t, expected.NumNearRelays, actual.NumNearRelays)
+		assert.Equal(t, expected.NearRelayIds, actual.NearRelayIds)
+		assert.Equal(t, expected.NearRelayAddresses, actual.NearRelayAddresses)
 	}
 }
