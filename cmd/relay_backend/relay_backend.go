@@ -186,12 +186,14 @@ func initStubbedData(inMemory *storage.InMemory, ipLocator *routing.IPLocator) {
 		*ipLocator = routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
 			ll, ok := ipToLatLong[ip.String()]
 			if ok {
+				log.Printf("found stubbed lat long for relay address: %s", ip.String())
 				return routing.Location{
 					Latitude:  ll.Latitude,
 					Longitude: ll.Longitude,
 				}, nil
 			}
 
+			// To simulate a geoip error
 			return routing.Location{
 				Latitude:  0.0,
 				Longitude: 0.0,
