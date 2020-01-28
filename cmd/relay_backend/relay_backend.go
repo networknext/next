@@ -10,7 +10,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -49,13 +48,59 @@ func main() {
 	}
 
 	// Create an in-memory relay & datacenter store
-	inMemoryProvider := storage.NewInMemory()
-	var relayProvider transport.RelayProvider = &inMemoryProvider.RelayStore
-	var datacenterProvider transport.DatacenterProvider = &inMemoryProvider.DatacenterStore
+	inMemory := storage.NewInMemory()
+	var relayProvider transport.RelayProvider = &inMemory
+	var datacenterProvider transport.DatacenterProvider = &inMemory
 
 	// Set the default IPLocator to resolve all lookups to 0/0 aka Null Island
 	var ipLocator routing.IPLocator = routing.NullIsland
-	initStubbedData(&inMemoryProvider, &ipLocator)
+
+	if filename, ok := os.LookupEnv("RELAY_STUBBED_DATA_FILENAME"); ok {
+		type relays struct {
+			routing.Location
+			DatacenterName string
+		}
+		relaydata := make(map[string]relays)
+
+		f, err := os.Open(filename)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if err := json.NewDecoder(f).Decode(&relaydata); err != nil {
+			log.Fatal(err)
+		}
+
+		for ip, relay := range relaydata {
+			inMemory.RelayDatacenterNames[uint32(crypto.HashID(ip))] = relay.DatacenterName
+		}
+
+		ipLocator = routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
+			if relay, ok := relaydata[ip.String()]; ok {
+				log.Printf("found stubbed lat long for relay address: '%s'\n", ip.String())
+				return routing.Location{
+					Latitude:  relay.Latitude,
+					Longitude: relay.Longitude,
+				}, nil
+			}
+
+			return routing.Location{}, fmt.Errorf("relay address '%s' could not be found", ip.String())
+		})
+
+		log.Printf("loaded %d relays from %s\n", len(relaydata), filename)
+	}
+
+	// Set the IPLocator to use Maxmind if set
+	if uri, ok := os.LookupEnv("RELAY_MAXMIND_DB_URI"); ok {
+		mmreader, err := geoip2.Open(uri)
+		if err != nil {
+			log.Fatalf("failed to open Maxmind GeoIP2 database: %v", err)
+		}
+		ipLocator = &routing.MaxmindDB{
+			Reader: mmreader,
+		}
+		defer mmreader.Close()
+	}
 
 	if os.Getenv("CONFIGSTORE_HOST") != "" {
 		grpcconn, err := grpc.Dial(os.Getenv("CONFIGSTORE_HOST"), grpc.WithInsecure())
@@ -95,18 +140,6 @@ func main() {
 		Namespace:   "RELAY_LOCATIONS",
 	}
 
-	// Attempt to read the maxmind db
-	if uri, set := os.LookupEnv("RELAY_MAXMIND_DB_URI"); set {
-		mmreader, err := geoip2.Open(uri)
-		if err != nil {
-			log.Fatalf("failed to open Maxmind GeoIP2 database: %v", err)
-		}
-		ipLocator = &routing.MaxmindDB{
-			Reader: mmreader,
-		}
-		defer mmreader.Close()
-	}
-
 	statsdb := routing.NewStatsDatabase()
 	var costmatrix routing.CostMatrix
 	var routematrix routing.RouteMatrix
@@ -141,75 +174,4 @@ func main() {
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
 	<-sigint
-}
-
-func initStubbedData(inMemory *storage.InMemory, ipLocator *routing.IPLocator) {
-	// if running in development mode, load a json file containing relay information to stub with
-	if _, set := os.LookupEnv("RELAY_DEV"); set {
-		filename := os.Getenv("RELAY_STUBBED_DATA_FILENAME")
-
-		// default to the local one if the env var is not set
-		if len(filename) == 0 {
-			log.Println("Using debug file for fake data")
-			filename = "tools/stubbed-relay-data.json"
-		} else {
-
-		}
-
-		data, err := ioutil.ReadFile(filename)
-		if err != nil {
-			log.Printf("Could not read debug file%s\n", filename)
-			return
-		}
-
-		// the structure of the json values
-		type fakeRelayData struct {
-			Latitude       float64 `json:"latitude"`
-			Longitude      float64 `json:"longitude"`
-			DatacenterName string  `json:"datacenter_name"`
-		}
-
-		// string is the ip & port, "127.0.0.1:1234"
-		var fakeData map[string]fakeRelayData
-		json.Unmarshal(data, &fakeData)
-
-		type latLong struct {
-			Latitude  float64
-			Longitude float64
-		}
-
-		ipToLatLong := make(map[string]latLong)
-
-		// loop over the data
-		for k, v := range fakeData {
-			relayID := uint32(crypto.HashID(k))
-			log.Printf("storing relay [%d] for with stubbed datacenter name: %s\n", relayID, v.DatacenterName)
-			inMemory.RelayStore.RelaysToDatacenterName[relayID] = v.DatacenterName
-
-			if udp, err := net.ResolveUDPAddr("udp", k); err == nil {
-				log.Printf("storing lat [%f] long [%f] for address: '%s'\n", v.Latitude, v.Longitude, udp.IP.String())
-				ipToLatLong[udp.IP.String()] = latLong{
-					Latitude:  v.Latitude,
-					Longitude: v.Longitude,
-				}
-			}
-		}
-
-		*ipLocator = routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
-			ll, ok := ipToLatLong[ip.String()]
-			if ok {
-				log.Printf("found stubbed lat long for relay address: '%s'\n", ip.String())
-				return routing.Location{
-					Latitude:  ll.Latitude,
-					Longitude: ll.Longitude,
-				}, nil
-			}
-
-			// To simulate a geoip error
-			return routing.Location{
-				Latitude:  0.0,
-				Longitude: 0.0,
-			}, fmt.Errorf("could not locate lat/long for '%s'", ip.String())
-		})
-	}
 }
