@@ -7,7 +7,7 @@
 
 #if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
 
-#include <assert.h>
+#include <cassert>
 #include <netdb.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -167,9 +167,9 @@ relay_platform_socket_t * relay_platform_socket_create( relay_address_t * addres
         sockaddr_in socket_address;
         memset( &socket_address, 0, sizeof( socket_address ) );
         socket_address.sin_family = AF_INET;
-        socket_address.sin_addr.s_addr = ( ( (uint32_t) address->data.ipv4[0] ) )      | 
-                                         ( ( (uint32_t) address->data.ipv4[1] ) << 8 )  | 
-                                         ( ( (uint32_t) address->data.ipv4[2] ) << 16 ) | 
+        socket_address.sin_addr.s_addr = ( ( (uint32_t) address->data.ipv4[0] ) )      |
+                                         ( ( (uint32_t) address->data.ipv4[1] ) << 8 )  |
+                                         ( ( (uint32_t) address->data.ipv4[2] ) << 16 ) |
                                          ( ( (uint32_t) address->data.ipv4[3] ) << 24 );
         socket_address.sin_port = relay_platform_htons( address->port );
 
@@ -284,9 +284,9 @@ void relay_platform_socket_send_packet( relay_platform_socket_t * socket, const 
         sockaddr_in socket_address;
         memset( &socket_address, 0, sizeof( socket_address ) );
         socket_address.sin_family = AF_INET;
-        socket_address.sin_addr.s_addr = ( ( (uint32_t) to->data.ipv4[0] ) )        | 
-                                         ( ( (uint32_t) to->data.ipv4[1] ) << 8 )   | 
-                                         ( ( (uint32_t) to->data.ipv4[2] ) << 16 )  | 
+        socket_address.sin_addr.s_addr = ( ( (uint32_t) to->data.ipv4[0] ) )        |
+                                         ( ( (uint32_t) to->data.ipv4[1] ) << 8 )   |
+                                         ( ( (uint32_t) to->data.ipv4[2] ) << 16 )  |
                                          ( ( (uint32_t) to->data.ipv4[3] ) << 24 );
         socket_address.sin_port = relay_platform_htons( to->port );
         int result = int( sendto( socket->handle, (const char*)( packet_data ), packet_bytes, 0, (sockaddr*)( &socket_address ), sizeof(sockaddr_in) ) );
@@ -323,7 +323,7 @@ int relay_platform_socket_receive_packet( relay_platform_socket_t * socket, rela
         }
 
         relay_printf( "recvfrom failed with error %d", errno );
-        
+
         return 0;
     }
 
@@ -352,7 +352,7 @@ int relay_platform_socket_receive_packet( relay_platform_socket_t * socket, rela
         assert( 0 );
         return 0;
     }
-  
+
     assert( result >= 0 );
 
     return result;
