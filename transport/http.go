@@ -3,7 +3,6 @@ package transport
 import (
 	"bytes"
 	"crypto/rand"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -105,14 +104,22 @@ func RelayInitHandlerFunc(redisClient *redis.Client, geoClient *routing.GeoClien
 			Addr:           relayInitPacket.Address,
 			LastUpdateTime: uint64(time.Now().Unix()),
 		}
-
-		if dcID, err := RelayIDToDatacenterIDFunc(&relay, relayProvider, datacenterProvider); err != nil {
-			log.Printf("Unable to get datacenter ID for relay '%s': %v", relay.Addr.String(), err)
+		rdbEntry, ok := relayProvider.GetAndCheckByRelayCoreId(uint32(relay.ID))
+		if !ok {
+			log.Printf("coult not get relay with address '%s' from configstore database", relay.Addr.String())
 			writer.WriteHeader(http.StatusInternalServerError)
 			return
-		} else {
-			relay.Datacenter = dcID
 		}
+
+		dcdbEntry, ok := datacenterProvider.GetAndCheck(rdbEntry.Datacenter)
+		if !ok {
+			log.Printf("coult not get datacenter for relay with address '%s' from configstore database", relay.Addr.String())
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		relay.DatacenterName = dcdbEntry.Name
+		relay.Datacenter = crypto.HashID(relay.DatacenterName)
 
 		exists := redisClient.HExists(routing.HashKeyAllRelays, relay.Key())
 
@@ -301,64 +308,4 @@ func NearHandlerFunc(backend *StubbedBackend) func(writer http.ResponseWriter, r
 		writer.Header().Set("Content-Type", "application/octet-stream")
 		writer.Write(nearData)
 	}
-}
-
-// Dev debug logic
-type fakeRelayData struct {
-	Latitude     float64
-	Longitude    float64
-	DatacenterID uint64
-}
-
-var StubbedRelayData map[int]fakeRelayData
-
-var RelayIDToDatacenterIDFunc func(relay *routing.Relay, rp RelayProvider, dp DatacenterProvider) (uint64, error) = ReleaseRelayIDToDatacenterIDFunc
-
-func DebugRelayIDToDatacenterIDFunc(relay *routing.Relay, rp RelayProvider, dp DatacenterProvider) (uint64, error) {
-	fakeData, ok := StubbedRelayData[relay.Addr.Port]
-	if ok {
-		fmt.Printf("Found fake datacenter for port %d\n", relay.Addr.Port)
-		return fakeData.DatacenterID, nil
-	} else {
-		return 0, nil
-	}
-}
-
-func ReleaseRelayIDToDatacenterIDFunc(relay *routing.Relay, rp RelayProvider, dp DatacenterProvider) (uint64, error) {
-	// TODO config store will have to use uint64's at some later point
-	dbRelay, ok := rp.GetAndCheckByRelayCoreId(uint32(relay.ID))
-
-	if !ok {
-		return 0, errors.New("relay not found in configstore")
-	}
-
-	dbDatacenter, ok := dp.GetAndCheck(dbRelay.Datacenter)
-
-	if !ok {
-		return 0, errors.New("datacenter not found in configstore")
-	}
-
-	return crypto.HashID(dbDatacenter.Name), nil
-}
-
-var IpLookupFunc func(relay *routing.Relay, ipLocator routing.IPLocator) (routing.Location, error) = ReleaseIPLookupFunc
-
-func DebugIPLookupFunc(relay *routing.Relay, ipLocator routing.IPLocator) (routing.Location, error) {
-	fakeData, ok := StubbedRelayData[relay.Addr.Port]
-	if ok {
-		fmt.Printf("Found fake location for port %d\n", relay.Addr.Port)
-		return routing.Location{
-			Latitude:  fakeData.Latitude,
-			Longitude: fakeData.Longitude,
-		}, nil
-	} else {
-		return routing.Location{
-			Latitude:  0,
-			Longitude: 0,
-		}, nil
-	}
-}
-
-func ReleaseIPLookupFunc(relay *routing.Relay, ipLocator routing.IPLocator) (routing.Location, error) {
-	return ipLocator.LocateIP(relay.Addr.IP)
 }
