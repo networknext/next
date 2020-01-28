@@ -34,6 +34,7 @@ func (m *InMemory) GetAndCheckBySdkVersion3PublicKeyId(key uint64) (*Buyer, bool
 }
 
 func (m *InMemoryDatacenterStore) GetAndCheck(key *Key) (*Datacenter, bool) {
+	// can't simulate a failed lookup here as well, at least not yet
 	return &Datacenter{
 		Name: key.PartitionId.Namespace,
 	}, true
@@ -41,15 +42,17 @@ func (m *InMemoryDatacenterStore) GetAndCheck(key *Key) (*Datacenter, bool) {
 
 func (m *InMemoryRelayStore) GetAndCheckByRelayCoreId(key uint32) (*Relay, bool) {
 	name, ok := m.RelaysToDatacenterName[key]
+
 	if ok {
 		log.Printf("Found stubbed relay [%d] datacenter: %s", key, name)
 	}
 
+	// return the value of 'ok' to simulate a failed lookup
 	return &Relay{
 		Datacenter: &Key{
 			PartitionId: &PartitionId{
 				Namespace: name,
 			},
 		},
-	}, true
+	}, ok
 }
