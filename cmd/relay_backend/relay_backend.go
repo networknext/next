@@ -96,7 +96,7 @@ func main() {
 		Namespace:   "RELAY_LOCATIONS",
 	}
 
-	if uri, set := os.LookupEnv("MAXMIND_DB_URI"); set {
+	if uri, set := os.LookupEnv("RELAY_MAXMIND_DB_URI"); set {
 		mmreader, err := geoip2.Open(uri)
 		if err != nil {
 			log.Fatalf("failed to open Maxmind GeoIP2 database: %v", err)
@@ -144,8 +144,8 @@ func main() {
 }
 
 func initStubbedData(inMemory *storage.InMemory, ipLocator *routing.IPLocator) {
-	if _, set := os.LookupEnv("RELAY_DEBUG"); set {
-		filename := os.Getenv("RELAY_DEBUG_FILENAME")
+	if _, set := os.LookupEnv("RELAY_DEV"); set {
+		filename := os.Getenv("RELAY_STUBBED_DATA_FILENAME")
 
 		if len(filename) == 0 {
 			filename = "tools/stubbed-relay-data.json"
