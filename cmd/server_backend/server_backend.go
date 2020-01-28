@@ -34,16 +34,16 @@ func main() {
 	var serverPrivateKey []byte
 	var routerPrivateKey []byte
 
-	if key := os.Getenv("SERVER_KEY_PRIVATE"); len(key) != 0 {
+	if key := os.Getenv("SERVER_BACKEND_PRIVATE_KEY"); len(key) != 0 {
 		serverPrivateKey, _ = base64.StdEncoding.DecodeString(key)
 	} else {
-		log.Fatal("env var 'SERVER_KEY_PRIVATE' is not set")
+		log.Fatal("env var 'SERVER_BACKEND_PRIVATE_KEY' is not set")
 	}
 
-	if key := os.Getenv("ROUTER_KEY_PRIVATE"); len(key) != 0 {
+	if key := os.Getenv("RELAY_ROUTER_PRIVATE_KEY"); len(key) != 0 {
 		routerPrivateKey, _ = base64.StdEncoding.DecodeString(key)
 	} else {
-		log.Fatal("env var 'ROUTER_KEY_PRIVATE' is not set")
+		log.Fatal("env var 'RELAY_ROUTER_PRIVATE_KEY' is not set")
 	}
 
 	// Attempt to connect to REDIS_HOST
@@ -64,14 +64,16 @@ func main() {
 	}
 
 	// Open the Maxmind DB and create a routing.MaxmindDB from it
-	mmreader, err := geoip2.Open(os.Getenv("MAXMIND_DB_URI"))
-	if err != nil {
-		log.Fatalf("failed to open Maxmind GeoIP2 database: %v", err)
+	var ipLocator routing.IPLocator = routing.NullIsland
+	if mmreader, err := geoip2.Open(os.Getenv("MAXMIND_DB_URI")); err != nil {
+		if err != nil {
+			log.Fatalf("failed to open Maxmind GeoIP2 database: %v", err)
+		}
+		ipLocator = &routing.MaxmindDB{
+			Reader: mmreader,
+		}
+		defer mmreader.Close()
 	}
-	mmdb := routing.MaxmindDB{
-		Reader: mmreader,
-	}
-	defer mmreader.Close()
 
 	geoClient := routing.GeoClient{
 		RedisClient: redisClient,
@@ -137,7 +139,7 @@ func main() {
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
 			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(redisClient, buyerProvider),
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(redisClient, buyerProvider, nil, &mmdb, &geoClient, serverPrivateKey, routerPrivateKey),
+			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(redisClient, buyerProvider, nil, ipLocator, &geoClient, serverPrivateKey, routerPrivateKey),
 		}
 
 		go func() {

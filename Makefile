@@ -26,7 +26,8 @@ OPTIMIZE_FILE = $(DIST_DIR)/optimize.bin
 ##    SHARED ENV   ##
 #####################
 
-export RELAY_BACKEND_HOSTNAME = http://localhost:30000
+export SERVER_BACKEND_HOSTNAME = http://localhost:30000
+export RELAY_BACKEND_HOSTNAME = http://localhost:40000
 export RELAY_ID = local
 
 ifndef RELAY_ADDRESS
@@ -207,12 +208,11 @@ dev-optimizer: ## runs a local optimizer
 
 .PHONY: dev-relay-backend
 dev-relay-backend: ## runs a local relay backend
-	$(GO) run cmd/relay_backend/relay_backend.go
+	@$(GO) run cmd/relay_backend/relay_backend.go
 
 .PHONY: dev-server-backend
 dev-server-backend: ## runs a local server backend
-	@export MAXMIND_DB_URI=./GeoLite2-City.mmdb ; \
-	export ROUTE_MATRIX_URI=http://localhost:30000/route_matrix ; \
+	@export ROUTE_MATRIX_URI=http://localhost:40000/route_matrix ; \
 	$(GO) run cmd/server_backend/server_backend.go
 
 .PHONY: dev-backend
