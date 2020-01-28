@@ -7,6 +7,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"log"
 	"net"
 	"net/http"
@@ -29,6 +30,21 @@ func main() {
 	ctx := context.Background()
 
 	var err error
+
+	var serverPrivateKey []byte
+	var routerPrivateKey []byte
+
+	if key := os.Getenv("SERVER_KEY_PRIVATE"); len(key) != 0 {
+		serverPrivateKey, _ = base64.StdEncoding.DecodeString(key)
+	} else {
+		log.Fatal("env var 'SERVER_KEY_PRIVATE' is not set")
+	}
+
+	if key := os.Getenv("ROUTER_KEY_PRIVATE"); len(key) != 0 {
+		routerPrivateKey, _ = base64.StdEncoding.DecodeString(key)
+	} else {
+		log.Fatal("env var 'ROUTER_KEY_PRIVATE' is not set")
+	}
 
 	// Attempt to connect to REDIS_HOST
 	// If it fails to connect then start a local in memory instance and connect to that instead
@@ -121,7 +137,7 @@ func main() {
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
 			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(redisClient, buyerProvider),
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(redisClient, buyerProvider, nil, &mmdb, &geoClient),
+			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(redisClient, buyerProvider, nil, &mmdb, &geoClient, serverPrivateKey, routerPrivateKey),
 		}
 
 		go func() {
