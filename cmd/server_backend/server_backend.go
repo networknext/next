@@ -29,8 +29,6 @@ import (
 func main() {
 	ctx := context.Background()
 
-	var err error
-
 	var serverPrivateKey []byte
 	var routerPrivateKey []byte
 
