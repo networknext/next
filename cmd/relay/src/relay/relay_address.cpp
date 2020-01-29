@@ -3,8 +3,12 @@
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
+#include <cstdio>
 
 #include "config.hpp"
+#include "relay_platform.hpp"
+
+#include "net/net.hpp"
 
 namespace relay
 {
@@ -93,4 +97,83 @@ namespace relay
         return RELAY_ERROR;
     }
 
+    const char* relay_address_to_string(const relay::relay_address_t* address, char* buffer)
+    {
+        assert(buffer);
+
+        if (address->type == RELAY_ADDRESS_IPV6) {
+#if defined(WINVER) && WINVER <= 0x0502
+            // ipv6 not supported
+            buffer[0] = '\0';
+            return buffer;
+#else
+            uint16_t ipv6_network_order[8];
+            for (int i = 0; i < 8; ++i)
+                ipv6_network_order[i] = net::relay_htons(address->data.ipv6[i]);
+            char address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
+            relay_platform_inet_ntop6(ipv6_network_order, address_string, sizeof(address_string));
+            if (address->port == 0) {
+                strncpy(buffer, address_string, RELAY_MAX_ADDRESS_STRING_LENGTH);
+                return buffer;
+            } else {
+                if (snprintf(buffer, RELAY_MAX_ADDRESS_STRING_LENGTH, "[%s]:%hu", address_string, address->port) < 0) {
+                    relay_printf("address string truncated: [%s]:%hu", address_string, address->port);
+                }
+                return buffer;
+            }
+#endif
+        } else if (address->type == RELAY_ADDRESS_IPV4) {
+            if (address->port != 0) {
+                snprintf(buffer,
+                    RELAY_MAX_ADDRESS_STRING_LENGTH,
+                    "%d.%d.%d.%d:%d",
+                    address->data.ipv4[0],
+                    address->data.ipv4[1],
+                    address->data.ipv4[2],
+                    address->data.ipv4[3],
+                    address->port);
+            } else {
+                snprintf(buffer,
+                    RELAY_MAX_ADDRESS_STRING_LENGTH,
+                    "%d.%d.%d.%d",
+                    address->data.ipv4[0],
+                    address->data.ipv4[1],
+                    address->data.ipv4[2],
+                    address->data.ipv4[3]);
+            }
+            return buffer;
+        } else {
+            snprintf(buffer, RELAY_MAX_ADDRESS_STRING_LENGTH, "%s", "NONE");
+            return buffer;
+        }
+    }
+
+    int relay_address_equal(const relay::relay_address_t* a, const relay::relay_address_t* b)
+    {
+        assert(a);
+        assert(b);
+
+        if (a->type != b->type)
+            return 0;
+
+        if (a->type == RELAY_ADDRESS_IPV4) {
+            if (a->port != b->port)
+                return 0;
+
+            for (int i = 0; i < 4; ++i) {
+                if (a->data.ipv4[i] != b->data.ipv4[i])
+                    return 0;
+            }
+        } else if (a->type == RELAY_ADDRESS_IPV6) {
+            if (a->port != b->port)
+                return 0;
+
+            for (int i = 0; i < 8; ++i) {
+                if (a->data.ipv6[i] != b->data.ipv6[i])
+                    return 0;
+            }
+        }
+
+        return 1;
+    }
 }  // namespace relay

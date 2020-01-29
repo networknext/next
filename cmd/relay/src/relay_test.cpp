@@ -2,11 +2,20 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <sodium.h>
 
+#include "config.hpp"
+
+#include "encoding/read.hpp"
+#include "encoding/write.hpp"
 #include "encoding/bit_reader.hpp"
 #include "encoding/bit_writer.hpp"
 #include "encoding/write_stream.hpp"
 #include "encoding/read_stream.hpp"
+
+#include "relay/relay_address.hpp"
+#include "relay/relay_replay_protection.hpp"
+#include "relay/relay_platform.hpp"
 
 #define RUN_TEST(test_function)             \
     do {                                    \
@@ -59,7 +68,7 @@ namespace testing
         uint64_t uint64_value;
         uint8_t bytes[17];
         char string[256];
-        relay_address_t address_a, address_b, address_c;
+        relay::relay_address_t address_a, address_b, address_c;
     };
 
     struct TestContext
@@ -95,7 +104,7 @@ namespace testing
 
             strcpy(data.string, "hello world!");
 
-            memset(&data.address_a, 0, sizeof(relay_address_t));
+            memset(&data.address_a, 0, sizeof(relay::relay_address_t));
 
             relay_address_parse(&data.address_b, "127.0.0.1:50000");
 
@@ -267,7 +276,7 @@ namespace testing
     static void test_address()
     {
         {
-            struct relay_address_t address;
+            relay::relay_address_t address;
             check(relay_address_parse(&address, "") == RELAY_ERROR);
             check(relay_address_parse(&address, "[") == RELAY_ERROR);
             check(relay_address_parse(&address, "[]") == RELAY_ERROR);
@@ -290,8 +299,8 @@ namespace testing
         }
 
         {
-            struct relay_address_t address;
-            check(relay_address_parse(&address, "107.77.207.77") == RELAY_OK);
+            struct relay::relay_address_t address;
+            check(relay::relay_address_parse(&address, "107.77.207.77") == RELAY_OK);
             check(address.type == RELAY_ADDRESS_IPV4);
             check(address.port == 0);
             check(address.data.ipv4[0] == 107);
@@ -301,8 +310,8 @@ namespace testing
         }
 
         {
-            struct relay_address_t address;
-            check(relay_address_parse(&address, "127.0.0.1") == RELAY_OK);
+            struct relay::relay_address_t address;
+            check(relay::relay_address_parse(&address, "127.0.0.1") == RELAY_OK);
             check(address.type == RELAY_ADDRESS_IPV4);
             check(address.port == 0);
             check(address.data.ipv4[0] == 127);
@@ -312,8 +321,8 @@ namespace testing
         }
 
         {
-            struct relay_address_t address;
-            check(relay_address_parse(&address, "107.77.207.77:40000") == RELAY_OK);
+            struct relay::relay_address_t address;
+            check(relay::relay_address_parse(&address, "107.77.207.77:40000") == RELAY_OK);
             check(address.type == RELAY_ADDRESS_IPV4);
             check(address.port == 40000);
             check(address.data.ipv4[0] == 107);
@@ -323,8 +332,8 @@ namespace testing
         }
 
         {
-            struct relay_address_t address;
-            check(relay_address_parse(&address, "127.0.0.1:40000") == RELAY_OK);
+            struct relay::relay_address_t address;
+            check(relay::relay_address_parse(&address, "127.0.0.1:40000") == RELAY_OK);
             check(address.type == RELAY_ADDRESS_IPV4);
             check(address.port == 40000);
             check(address.data.ipv4[0] == 127);
@@ -334,8 +343,8 @@ namespace testing
         }
 
         {
-            struct relay_address_t address;
-            check(relay_address_parse(&address, "fe80::202:b3ff:fe1e:8329") == RELAY_OK);
+            struct relay::relay_address_t address;
+            check(relay::relay_address_parse(&address, "fe80::202:b3ff:fe1e:8329") == RELAY_OK);
             check(address.type == RELAY_ADDRESS_IPV6);
             check(address.port == 0);
             check(address.data.ipv6[0] == 0xfe80);
@@ -349,8 +358,8 @@ namespace testing
         }
 
         {
-            struct relay_address_t address;
-            check(relay_address_parse(&address, "::") == RELAY_OK);
+            struct relay::relay_address_t address;
+            check(relay::relay_address_parse(&address, "::") == RELAY_OK);
             check(address.type == RELAY_ADDRESS_IPV6);
             check(address.port == 0);
             check(address.data.ipv6[0] == 0x0000);
@@ -364,8 +373,8 @@ namespace testing
         }
 
         {
-            struct relay_address_t address;
-            check(relay_address_parse(&address, "::1") == RELAY_OK);
+            struct relay::relay_address_t address;
+            check(relay::relay_address_parse(&address, "::1") == RELAY_OK);
             check(address.type == RELAY_ADDRESS_IPV6);
             check(address.port == 0);
             check(address.data.ipv6[0] == 0x0000);
@@ -379,8 +388,8 @@ namespace testing
         }
 
         {
-            struct relay_address_t address;
-            check(relay_address_parse(&address, "[fe80::202:b3ff:fe1e:8329]:40000") == RELAY_OK);
+            struct relay::relay_address_t address;
+            check(relay::relay_address_parse(&address, "[fe80::202:b3ff:fe1e:8329]:40000") == RELAY_OK);
             check(address.type == RELAY_ADDRESS_IPV6);
             check(address.port == 40000);
             check(address.data.ipv6[0] == 0xfe80);
@@ -394,8 +403,8 @@ namespace testing
         }
 
         {
-            struct relay_address_t address;
-            check(relay_address_parse(&address, "[::]:40000") == RELAY_OK);
+            struct relay::relay_address_t address;
+            check(relay::relay_address_parse(&address, "[::]:40000") == RELAY_OK);
             check(address.type == RELAY_ADDRESS_IPV6);
             check(address.port == 40000);
             check(address.data.ipv6[0] == 0x0000);
@@ -409,8 +418,8 @@ namespace testing
         }
 
         {
-            struct relay_address_t address;
-            check(relay_address_parse(&address, "[::1]:40000") == RELAY_OK);
+            struct relay::relay_address_t address;
+            check(relay::relay_address_parse(&address, "[::1]:40000") == RELAY_OK);
             check(address.type == RELAY_ADDRESS_IPV6);
             check(address.port == 40000);
             check(address.data.ipv6[0] == 0x0000);
@@ -426,11 +435,11 @@ namespace testing
 
     static void test_replay_protection()
     {
-        relay_replay_protection_t replay_protection;
+        relay::relay_replay_protection_t replay_protection;
 
         int i;
         for (i = 0; i < 2; ++i) {
-            relay_replay_protection_reset(&replay_protection);
+            relay::relay_replay_protection_reset(&replay_protection);
 
             check(replay_protection.most_recent_sequence == 0);
 
@@ -440,29 +449,29 @@ namespace testing
 
             uint64_t sequence;
             for (sequence = 0; sequence < MAX_SEQUENCE; ++sequence) {
-                check(relay_replay_protection_already_received(&replay_protection, sequence) == 0);
-                relay_replay_protection_advance_sequence(&replay_protection, sequence);
+                check(relay::relay_replay_protection_already_received(&replay_protection, sequence) == 0);
+                relay::relay_replay_protection_advance_sequence(&replay_protection, sequence);
             }
 
             // old packets outside buffer should be considered already received
 
-            check(relay_replay_protection_already_received(&replay_protection, 0) == 1);
+            check(relay::relay_replay_protection_already_received(&replay_protection, 0) == 1);
 
             // packets received a second time should be flagged already received
 
             for (sequence = MAX_SEQUENCE - 10; sequence < MAX_SEQUENCE; ++sequence) {
-                check(relay_replay_protection_already_received(&replay_protection, sequence) == 1);
+                check(relay::relay_replay_protection_already_received(&replay_protection, sequence) == 1);
             }
 
             // jumping ahead to a much higher sequence should be considered not already received
 
-            check(relay_replay_protection_already_received(
+            check(relay::relay_replay_protection_already_received(
                       &replay_protection, MAX_SEQUENCE + RELAY_REPLAY_PROTECTION_BUFFER_SIZE) == 0);
 
             // old packets should be considered already received
 
             for (sequence = 0; sequence < MAX_SEQUENCE; ++sequence) {
-                check(relay_replay_protection_already_received(&replay_protection, sequence) == 1);
+                check(relay::relay_replay_protection_already_received(&replay_protection, sequence) == 1);
             }
         }
     }
@@ -676,28 +685,28 @@ namespace testing
         uint8_t buffer[1024];
 
         uint8_t* p = buffer;
-        relay_write_uint8(&p, 105);
-        relay_write_uint16(&p, 10512);
-        relay_write_uint32(&p, 105120000);
-        relay_write_uint64(&p, 105120000000000000LL);
-        relay_write_float32(&p, 100.0f);
-        relay_write_float64(&p, 100000000000000.0);
-        relay_write_bytes(&p, (uint8_t*)"hello", 6);
-        relay_write_string(&p, "hey ho, let's go!", 32);
+        encoding::relay_write_uint8(&p, 105);
+        encoding::relay_write_uint16(&p, 10512);
+        encoding::relay_write_uint32(&p, 105120000);
+        encoding::relay_write_uint64(&p, 105120000000000000LL);
+        encoding::relay_write_float32(&p, 100.0f);
+        encoding::relay_write_float64(&p, 100000000000000.0);
+        encoding::relay_write_bytes(&p, (uint8_t*)"hello", 6);
+        encoding::relay_write_string(&p, "hey ho, let's go!", 32);
 
         const uint8_t* q = buffer;
 
-        uint8_t a = relay_read_uint8(&q);
-        uint16_t b = relay_read_uint16(&q);
-        uint32_t c = relay_read_uint32(&q);
-        uint64_t d = relay_read_uint64(&q);
-        float e = relay_read_float32(&q);
-        double f = relay_read_float64(&q);
+        uint8_t a = encoding::relay_read_uint8(&q);
+        uint16_t b = encoding::relay_read_uint16(&q);
+        uint32_t c = encoding::relay_read_uint32(&q);
+        uint64_t d = encoding::relay_read_uint64(&q);
+        float e = encoding::relay_read_float32(&q);
+        double f = encoding::relay_read_float64(&q);
         uint8_t g[6];
-        relay_read_bytes(&q, g, 6);
+        encoding::relay_read_bytes(&q, g, 6);
         char string_buffer[32 + 1];
         memset(string_buffer, 0xFF, sizeof(string_buffer));
-        relay_read_string(&q, string_buffer, 32);
+        encoding::relay_read_string(&q, string_buffer, 32);
         check(strcmp(string_buffer, "hey ho, let's go!") == 0);
 
         check(a == 105);
@@ -711,29 +720,29 @@ namespace testing
 
     static void test_address_read_and_write()
     {
-        struct relay_address_t a, b, c;
+        struct relay::relay_address_t a, b, c;
 
         memset(&a, 0, sizeof(a));
 
-        relay_address_parse(&b, "127.0.0.1:50000");
+        relay::relay_address_parse(&b, "127.0.0.1:50000");
 
-        relay_address_parse(&c, "[::1]:50000");
+        relay::relay_address_parse(&c, "[::1]:50000");
 
         uint8_t buffer[1024];
 
         uint8_t* p = buffer;
 
-        relay_write_address(&p, &a);
-        relay_write_address(&p, &b);
-        relay_write_address(&p, &c);
+        encoding::relay_write_address(&p, &a);
+        encoding::relay_write_address(&p, &b);
+        encoding::relay_write_address(&p, &c);
 
-        struct relay_address_t read_a, read_b, read_c;
+        struct relay::relay_address_t read_a, read_b, read_c;
 
         const uint8_t* q = buffer;
 
-        relay_read_address(&q, &read_a);
-        relay_read_address(&q, &read_b);
-        relay_read_address(&q, &read_c);
+        encoding::relay_read_address(&q, &read_a);
+        encoding::relay_read_address(&q, &read_b);
+        encoding::relay_read_address(&q, &read_c);
 
         check(relay_address_equal(&a, &read_a));
         check(relay_address_equal(&b, &read_b));
@@ -744,18 +753,18 @@ namespace testing
     {
         // non-blocking socket (ipv4)
         {
-            relay_address_t bind_address;
-            relay_address_t local_address;
-            relay_address_parse(&bind_address, "0.0.0.0");
-            relay_address_parse(&local_address, "127.0.0.1");
-            relay_platform_socket_t* socket =
-                relay_platform_socket_create(&bind_address, RELAY_PLATFORM_SOCKET_NON_BLOCKING, 1.0, 64 * 1024, 64 * 1024);
+            relay::relay_address_t bind_address;
+            relay::relay_address_t local_address;
+            relay::relay_address_parse(&bind_address, "0.0.0.0");
+            relay::relay_address_parse(&local_address, "127.0.0.1");
+            relay::relay_platform_socket_t* socket =
+                relay::relay_platform_socket_create(&bind_address, RELAY_PLATFORM_SOCKET_NON_BLOCKING, 1.0, 64 * 1024, 64 * 1024);
             local_address.port = bind_address.port;
             check(socket);
             uint8_t packet[256];
             memset(packet, 0, sizeof(packet));
-            relay_platform_socket_send_packet(socket, &local_address, packet, sizeof(packet));
-            relay_address_t from;
+            relay::relay_platform_socket_send_packet(socket, &local_address, packet, sizeof(packet));
+            relay::relay_address_t from;
             while (relay_platform_socket_receive_packet(socket, &from, packet, sizeof(packet))) {
                 check(relay_address_equal(&from, &local_address));
             }
@@ -764,108 +773,108 @@ namespace testing
 
         // blocking socket with timeout (ipv4)
         {
-            relay_address_t bind_address;
-            relay_address_t local_address;
-            relay_address_parse(&bind_address, "0.0.0.0");
-            relay_address_parse(&local_address, "127.0.0.1");
-            relay_platform_socket_t* socket =
-                relay_platform_socket_create(&bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, 0.01f, 64 * 1024, 64 * 1024);
+            relay::relay_address_t bind_address;
+            relay::relay_address_t local_address;
+            relay::relay_address_parse(&bind_address, "0.0.0.0");
+            relay::relay_address_parse(&local_address, "127.0.0.1");
+            relay::relay_platform_socket_t* socket =
+                relay::relay_platform_socket_create(&bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, 0.01f, 64 * 1024, 64 * 1024);
             local_address.port = bind_address.port;
             check(socket);
             uint8_t packet[256];
             memset(packet, 0, sizeof(packet));
-            relay_platform_socket_send_packet(socket, &local_address, packet, sizeof(packet));
-            relay_address_t from;
-            while (relay_platform_socket_receive_packet(socket, &from, packet, sizeof(packet))) {
-                check(relay_address_equal(&from, &local_address));
+            relay::relay_platform_socket_send_packet(socket, &local_address, packet, sizeof(packet));
+            relay::relay_address_t from;
+            while (relay::relay_platform_socket_receive_packet(socket, &from, packet, sizeof(packet))) {
+                check(relay::relay_address_equal(&from, &local_address));
             }
-            relay_platform_socket_destroy(socket);
+            relay::relay_platform_socket_destroy(socket);
         }
 
         // blocking socket with no timeout (ipv4)
         {
-            relay_address_t bind_address;
-            relay_address_t local_address;
-            relay_address_parse(&bind_address, "0.0.0.0");
-            relay_address_parse(&local_address, "127.0.0.1");
-            relay_platform_socket_t* socket =
-                relay_platform_socket_create(&bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, -1.0f, 64 * 1024, 64 * 1024);
+            relay::relay_address_t bind_address;
+            relay::relay_address_t local_address;
+            relay::relay_address_parse(&bind_address, "0.0.0.0");
+            relay::relay_address_parse(&local_address, "127.0.0.1");
+            relay::relay_platform_socket_t* socket =
+                relay::relay_platform_socket_create(&bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, -1.0f, 64 * 1024, 64 * 1024);
             local_address.port = bind_address.port;
             check(socket);
             uint8_t packet[256];
             memset(packet, 0, sizeof(packet));
-            relay_platform_socket_send_packet(socket, &local_address, packet, sizeof(packet));
-            relay_address_t from;
-            relay_platform_socket_receive_packet(socket, &from, packet, sizeof(packet));
-            check(relay_address_equal(&from, &local_address));
-            relay_platform_socket_destroy(socket);
+            relay::relay_platform_socket_send_packet(socket, &local_address, packet, sizeof(packet));
+            relay::relay_address_t from;
+            relay::relay_platform_socket_receive_packet(socket, &from, packet, sizeof(packet));
+            check(relay::relay_address_equal(&from, &local_address));
+            relay::relay_platform_socket_destroy(socket);
         }
 
         // non-blocking socket (ipv6)
 #if RELAY_PLATFORM_HAS_IPV6
         {
-            relay_address_t bind_address;
-            relay_address_t local_address;
-            relay_address_parse(&bind_address, "[::]");
-            relay_address_parse(&local_address, "[::1]");
-            relay_platform_socket_t* socket =
-                relay_platform_socket_create(&bind_address, RELAY_PLATFORM_SOCKET_NON_BLOCKING, 0, 64 * 1024, 64 * 1024);
+            relay::relay_address_t bind_address;
+            relay::relay_address_t local_address;
+            relay::relay_address_parse(&bind_address, "[::]");
+            relay::relay_address_parse(&local_address, "[::1]");
+            relay::relay_platform_socket_t* socket =
+                relay::relay_platform_socket_create(&bind_address, RELAY_PLATFORM_SOCKET_NON_BLOCKING, 0, 64 * 1024, 64 * 1024);
             local_address.port = bind_address.port;
             check(socket);
             uint8_t packet[256];
             memset(packet, 0, sizeof(packet));
-            relay_platform_socket_send_packet(socket, &local_address, packet, sizeof(packet));
-            relay_address_t from;
-            while (relay_platform_socket_receive_packet(socket, &from, packet, sizeof(packet))) {
-                check(relay_address_equal(&from, &local_address));
+            relay::relay_platform_socket_send_packet(socket, &local_address, packet, sizeof(packet));
+            relay::relay_address_t from;
+            while (relay::relay_platform_socket_receive_packet(socket, &from, packet, sizeof(packet))) {
+                check(relay::relay_address_equal(&from, &local_address));
             }
-            relay_platform_socket_destroy(socket);
+            relay::relay_platform_socket_destroy(socket);
         }
 
         // blocking socket with timeout (ipv6)
         {
-            relay_address_t bind_address;
-            relay_address_t local_address;
-            relay_address_parse(&bind_address, "[::]");
-            relay_address_parse(&local_address, "[::1]");
-            relay_platform_socket_t* socket =
-                relay_platform_socket_create(&bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, 0.01f, 64 * 1024, 64 * 1024);
+            relay::relay_address_t bind_address;
+            relay::relay_address_t local_address;
+            relay::relay_address_parse(&bind_address, "[::]");
+            relay::relay_address_parse(&local_address, "[::1]");
+            relay::relay_platform_socket_t* socket =
+                relay::relay_platform_socket_create(&bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, 0.01f, 64 * 1024, 64 * 1024);
             local_address.port = bind_address.port;
             check(socket);
             uint8_t packet[256];
             memset(packet, 0, sizeof(packet));
-            relay_platform_socket_send_packet(socket, &local_address, packet, sizeof(packet));
-            relay_address_t from;
-            while (relay_platform_socket_receive_packet(socket, &from, packet, sizeof(packet))) {
-                check(relay_address_equal(&from, &local_address));
+            relay::relay_platform_socket_send_packet(socket, &local_address, packet, sizeof(packet));
+            relay::relay_address_t from;
+            while (relay::relay_platform_socket_receive_packet(socket, &from, packet, sizeof(packet))) {
+                check(relay::relay_address_equal(&from, &local_address));
             }
-            relay_platform_socket_destroy(socket);
+            relay::relay_platform_socket_destroy(socket);
         }
 
         // blocking socket with no timeout (ipv6)
         {
-            relay_address_t bind_address;
-            relay_address_t local_address;
-            relay_address_parse(&bind_address, "[::]");
-            relay_address_parse(&local_address, "[::1]");
-            relay_platform_socket_t* socket =
-                relay_platform_socket_create(&bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, -1.0f, 64 * 1024, 64 * 1024);
+            relay::relay_address_t bind_address;
+            relay::relay_address_t local_address;
+            relay::relay_address_parse(&bind_address, "[::]");
+            relay::relay_address_parse(&local_address, "[::1]");
+            relay::relay_platform_socket_t* socket =
+                relay::relay_platform_socket_create(&bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, -1.0f, 64 * 1024, 64 * 1024);
             local_address.port = bind_address.port;
             check(socket);
             uint8_t packet[256];
             memset(packet, 0, sizeof(packet));
-            relay_platform_socket_send_packet(socket, &local_address, packet, sizeof(packet));
-            relay_address_t from;
-            relay_platform_socket_receive_packet(socket, &from, packet, sizeof(packet));
-            check(relay_address_equal(&from, &local_address));
-            relay_platform_socket_destroy(socket);
+            relay::relay_platform_socket_send_packet(socket, &local_address, packet, sizeof(packet));
+            relay::relay_address_t from;
+            relay::relay_platform_socket_receive_packet(socket, &from, packet, sizeof(packet));
+            check(relay::relay_address_equal(&from, &local_address));
+            relay::relay_platform_socket_destroy(socket);
         }
 #endif
     }
 
     static bool threads_work = false;
 
-    static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC test_thread_function(void*)
+    static relay::relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC test_thread_function(void*)
     {
         threads_work = true;
         RELAY_PLATFORM_THREAD_RETURN();
@@ -873,24 +882,24 @@ namespace testing
 
     static void test_platform_thread()
     {
-        relay_platform_thread_t* thread = relay_platform_thread_create(test_thread_function, NULL);
+        relay::relay_platform_thread_t* thread = relay::relay_platform_thread_create(test_thread_function, NULL);
         check(thread);
-        relay_platform_thread_join(thread);
-        relay_platform_thread_destroy(thread);
+        relay::relay_platform_thread_join(thread);
+        relay::relay_platform_thread_destroy(thread);
         check(threads_work);
     }
 
     static void test_platform_mutex()
     {
-        relay_platform_mutex_t* mutex = relay_platform_mutex_create();
+        relay::relay_platform_mutex_t* mutex = relay::relay_platform_mutex_create();
         check(mutex);
         relay_platform_mutex_acquire(mutex);
         relay_platform_mutex_release(mutex);
         {
-            relay_mutex_guard(mutex);
+            relay::relay_mutex_guard(mutex);
             // ...
         }
-        relay_platform_mutex_destroy(mutex);
+        relay::relay_platform_mutex_destroy(mutex);
     }
 
     static void test_bandwidth_limiter()

@@ -1,6 +1,8 @@
 #ifndef UTIL_NET_H
 #define UTIL_NET_H
 
+#include <cinttypes>
+
 #include "sysinfo.hpp"
 #include "util/binary.hpp"
 
@@ -41,5 +43,19 @@ namespace net
         return value;
 #endif  // #if RELAY_BIG_ENDIAN
     }
-}  // namespace util
+
+    // Previously called relay_platform_ntohs
+    // TODO doesn't this depend on processor arch and not platform (Linux, Mac, Windows)?
+
+    inline uint16_t relay_ntohs(uint16_t in)
+    {
+        return (uint16_t)(((in << 8) & 0xFF00) | ((in >> 8) & 0x00FF));
+    }
+
+    inline uint16_t relay_htons(uint16_t in)
+    {
+        return (uint16_t)(((in << 8) & 0xFF00) | ((in >> 8) & 0x00FF));
+    }
+
+}  // namespace net
 #endif
