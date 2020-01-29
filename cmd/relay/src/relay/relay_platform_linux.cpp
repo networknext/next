@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <alloca.h>
+#include <sched.h>
 
 #include "config.hpp"
 #include "util.hpp"

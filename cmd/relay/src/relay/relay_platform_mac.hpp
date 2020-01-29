@@ -8,10 +8,13 @@
 
 #include "sysinfo.hpp"
 
-#if RELAY_PLATFORM == RELAY_PLATFORM_MAC
+#if RELAY_PLATFORM == RELAY_PLATFORM_MAC or 1
 
 #include <pthread.h>
 #include <unistd.h>
+
+#include "relay/relay_platform_socket.hpp"
+#include "relay/relay_address.hpp"
 
 #define RELAY_PLATFORM_HAS_IPV6 1
 #define RELAY_PLATFORM_SOCKET_NON_BLOCKING 0
