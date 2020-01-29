@@ -1,9 +1,11 @@
-#ifndef UTIL_BINARY_HPP
-#define UTIL_BINARY_HPP
+#ifndef ENCODING_BINARY_HPP
+#define ENCODING_BINARY_HPP
 
 #include <cinttypes>
 
-namespace util
+#include <sodium.h>
+
+namespace encoding
 {
     /**
         Reverse the order of bytes in a 64 bit integer.
@@ -182,6 +184,11 @@ namespace util
     inline bool sequence_less_than(uint16_t s1, uint16_t s2)
     {
         return sequence_greater_than(s2, s1);
+    }
+
+    inline void relay_random_bytes(uint8_t* buffer, int bytes)
+    {
+        randombytes_buf(buffer, bytes);
     }
 }  // namespace util
 #endif

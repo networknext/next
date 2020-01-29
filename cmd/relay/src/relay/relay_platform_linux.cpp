@@ -29,6 +29,7 @@
 #include <alloca.h>
 
 #include "config.hpp"
+#include "util.hpp"
 
 namespace
 {
@@ -37,6 +38,18 @@ namespace
 
 namespace relay
 {
+    // TODO doesn't this depend on processor arch and not platform (Linux, Mac, Windows)?
+
+    uint16_t relay_platform_ntohs(uint16_t in)
+    {
+        return (uint16_t)(((in << 8) & 0xFF00) | ((in >> 8) & 0x00FF));
+    }
+
+    uint16_t relay_platform_htons(uint16_t in)
+    {
+        return (uint16_t)(((in << 8) & 0xFF00) | ((in >> 8) & 0x00FF));
+    }
+
     int relay_platform_init()
     {
         timespec ts;
@@ -281,6 +294,7 @@ namespace relay
         pthread_mutex_destroy(&mutex->handle);
         free(mutex);
     }
+}
 
 #else   // #if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
 

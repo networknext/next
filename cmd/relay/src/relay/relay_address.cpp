@@ -6,6 +6,8 @@
 #include <cstdio>
 
 #include "config.hpp"
+#include "util.hpp"
+
 #include "relay_platform.hpp"
 
 #include "net/net.hpp"

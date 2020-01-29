@@ -4,7 +4,7 @@
 #include <cinttypes>
 
 #include "sysinfo.hpp"
-#include "util/binary.hpp"
+#include "encoding/binary.hpp"
 
 namespace net
 {
@@ -44,9 +44,7 @@ namespace net
 #endif  // #if RELAY_BIG_ENDIAN
     }
 
-    // Previously called relay_platform_ntohs
-    // TODO doesn't this depend on processor arch and not platform (Linux, Mac, Windows)?
-
+    // TODO same as the funcs in net, which were previously relay_platform_...()
     inline uint16_t relay_ntohs(uint16_t in)
     {
         return (uint16_t)(((in << 8) & 0xFF00) | ((in >> 8) & 0x00FF));
@@ -56,6 +54,5 @@ namespace net
     {
         return (uint16_t)(((in << 8) & 0xFF00) | ((in >> 8) & 0x00FF));
     }
-
 }  // namespace net
 #endif

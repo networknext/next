@@ -2,7 +2,7 @@
 
 #include <cassert>
 
-#include "util/binary.hpp"
+#include "encoding/binary.hpp"
 
 namespace encoding
 {
@@ -12,7 +12,7 @@ namespace encoding
     bool ReadStream::SerializeInteger(int32_t& value, int32_t min, int32_t max)
     {
         assert(min < max);
-        const int bits = util::bits_required(min, max);
+        const int bits = encoding::bits_required(min, max);
         if (m_reader.WouldReadPastEnd(bits))
             return false;
         uint32_t unsigned_value = m_reader.ReadBits(bits);

@@ -3,7 +3,7 @@
     Copyright © 2017 - 2020 Network Next, Inc. All rights reserved.
 */
 
-#include "relay_mac.h"
+#include "relay_platform_mac.hpp"
 
 #if RELAY_PLATFORM == RELAY_PLATFORM_MAC
 

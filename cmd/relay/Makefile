@@ -2,7 +2,7 @@ CXX			:= g++
 CXX_FLAGS 		:= -Wall -Wextra -std=c++17
 
 SRC			:= src
-INCLUDE			:= include
+INCLUDE			:= $(SRC) # include path is the same as the src dir
 SPEC			:= spec
 
 INCLUDE_DIRS		:= -I$(INCLUDE) 
@@ -35,6 +35,6 @@ make_dirs:
 	@mkdir -p $(BIN) $(OBJ) $(OBJ_DIRS)
 
 clean:
-	-rm $(BIN)/* $(OBJ)/*
+	-rm -rf $(BIN)/* $(OBJ)/*
 
 FORCE:

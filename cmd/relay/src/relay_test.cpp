@@ -1,4 +1,3 @@
-#include "relay.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -6,6 +5,8 @@
 
 #include "config.hpp"
 
+#include "encoding/base64.hpp"
+#include "encoding/binary.hpp"
 #include "encoding/read.hpp"
 #include "encoding/write.hpp"
 #include "encoding/bit_reader.hpp"
@@ -13,9 +14,13 @@
 #include "encoding/write_stream.hpp"
 #include "encoding/read_stream.hpp"
 
+#include "relay/relay.hpp"
 #include "relay/relay_address.hpp"
-#include "relay/relay_replay_protection.hpp"
+#include "relay/relay_bandwidth_limiter.hpp"
+#include "relay/relay_continue_token.hpp"
 #include "relay/relay_platform.hpp"
+#include "relay/relay_replay_protection.hpp"
+#include "relay/relay_route_token.hpp"
 
 #define RUN_TEST(test_function)             \
     do {                                    \
@@ -480,10 +485,10 @@ namespace testing
     {
         const int BufferSize = 64;
         uint8_t buffer[BufferSize];
-        relay_random_bytes(buffer, BufferSize);
+        encoding::relay_random_bytes(buffer, BufferSize);
         for (int i = 0; i < 100; ++i) {
             uint8_t next_buffer[BufferSize];
-            relay_random_bytes(next_buffer, BufferSize);
+            encoding::relay_random_bytes(next_buffer, BufferSize);
             check(memcmp(buffer, next_buffer, BufferSize) != 0);
             memcpy(buffer, next_buffer, BufferSize);
         }
@@ -505,7 +510,7 @@ namespace testing
 
         unsigned char nonce[crypto_box_NONCEBYTES];
         unsigned char ciphertext[CRYPTO_BOX_CIPHERTEXT_LEN];
-        relay_random_bytes(nonce, sizeof nonce);
+        encoding::relay_random_bytes(nonce, sizeof nonce);
         check(crypto_box_easy(
                   ciphertext, CRYPTO_BOX_MESSAGE, CRYPTO_BOX_MESSAGE_LEN, nonce, receiver_publickey, sender_secretkey) == 0);
 
@@ -904,11 +909,11 @@ namespace testing
 
     static void test_bandwidth_limiter()
     {
-        relay_bandwidth_limiter_t bandwidth_limiter;
+        relay::relay_bandwidth_limiter_t bandwidth_limiter;
 
-        relay_bandwidth_limiter_reset(&bandwidth_limiter);
+        relay::relay_bandwidth_limiter_reset(&bandwidth_limiter);
 
-        check(relay_bandwidth_limiter_usage_kbps(&bandwidth_limiter, 0.0) == 0.0);
+        check(relay::relay_bandwidth_limiter_usage_kbps(&bandwidth_limiter, 0.0) == 0.0);
 
         // come in way under
         {
@@ -916,20 +921,20 @@ namespace testing
             const int packet_bits = 50;
 
             for (int i = 0; i < 10; ++i) {
-                check(!relay_bandwidth_limiter_add_packet(
+                check(!relay::relay_bandwidth_limiter_add_packet(
                     &bandwidth_limiter, i * (RELAY_BANDWIDTH_LIMITER_INTERVAL / 10.0), kbps_allowed, packet_bits));
             }
         }
 
         // get really close
         {
-            relay_bandwidth_limiter_reset(&bandwidth_limiter);
+            relay::relay_bandwidth_limiter_reset(&bandwidth_limiter);
 
             const int kbps_allowed = 1000;
             const int packet_bits = kbps_allowed / 10 * 1000;
 
             for (int i = 0; i < 10; ++i) {
-                check(!relay_bandwidth_limiter_add_packet(
+                check(!relay::relay_bandwidth_limiter_add_packet(
                     &bandwidth_limiter, i * (RELAY_BANDWIDTH_LIMITER_INTERVAL / 10.0), kbps_allowed, packet_bits));
             }
         }
@@ -969,7 +974,7 @@ namespace testing
     {
         uint8_t buffer[RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES];
 
-        relay_route_token_t input_token;
+        relay::relay_route_token_t input_token;
         memset(&input_token, 0, sizeof(input_token));
 
         input_token.expire_timestamp = 1234241431241LL;
@@ -994,15 +999,15 @@ namespace testing
         crypto_box_keypair(receiver_public_key, receiver_private_key);
 
         unsigned char nonce[crypto_box_NONCEBYTES];
-        relay_random_bytes(nonce, crypto_box_NONCEBYTES);
+        encoding::relay_random_bytes(nonce, crypto_box_NONCEBYTES);
 
-        check(relay_encrypt_route_token(sender_private_key, receiver_public_key, nonce, buffer, sizeof(buffer)) == RELAY_OK);
+        check(relay::relay_encrypt_route_token(sender_private_key, receiver_public_key, nonce, buffer, sizeof(buffer)) == RELAY_OK);
 
-        check(relay_decrypt_route_token(sender_public_key, receiver_private_key, nonce, buffer) == RELAY_OK);
+        check(relay::relay_decrypt_route_token(sender_public_key, receiver_private_key, nonce, buffer) == RELAY_OK);
 
-        relay_route_token_t output_token;
+        relay::relay_route_token_t output_token;
 
-        relay_read_route_token(&output_token, buffer);
+        relay::relay_read_route_token(&output_token, buffer);
 
         check(input_token.expire_timestamp == output_token.expire_timestamp);
         check(input_token.session_id == output_token.session_id);
@@ -1035,7 +1040,7 @@ namespace testing
     {
         uint8_t buffer[RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES];
 
-        relay_continue_token_t input_token;
+        relay::relay_continue_token_t input_token;
         memset(&input_token, 0, sizeof(input_token));
 
         input_token.expire_timestamp = 1234241431241LL;
@@ -1043,7 +1048,7 @@ namespace testing
         input_token.session_version = 5;
         input_token.session_flags = 1;
 
-        relay_write_continue_token(&input_token, buffer, RELAY_CONTINUE_TOKEN_BYTES);
+        relay::relay_write_continue_token(&input_token, buffer, RELAY_CONTINUE_TOKEN_BYTES);
 
         unsigned char sender_public_key[crypto_box_PUBLICKEYBYTES];
         unsigned char sender_private_key[crypto_box_SECRETKEYBYTES];
@@ -1054,15 +1059,15 @@ namespace testing
         crypto_box_keypair(receiver_public_key, receiver_private_key);
 
         unsigned char nonce[crypto_box_NONCEBYTES];
-        relay_random_bytes(nonce, crypto_box_NONCEBYTES);
+        encoding::relay_random_bytes(nonce, crypto_box_NONCEBYTES);
 
-        check(relay_encrypt_continue_token(sender_private_key, receiver_public_key, nonce, buffer, sizeof(buffer)) == RELAY_OK);
+        check(relay::relay_encrypt_continue_token(sender_private_key, receiver_public_key, nonce, buffer, sizeof(buffer)) == RELAY_OK);
 
-        check(relay_decrypt_continue_token(sender_public_key, receiver_private_key, nonce, buffer) == RELAY_OK);
+        check(relay::relay_decrypt_continue_token(sender_public_key, receiver_private_key, nonce, buffer) == RELAY_OK);
 
-        relay_continue_token_t output_token;
+        relay::relay_continue_token_t output_token;
 
-        relay_read_continue_token(&output_token, buffer);
+        relay::relay_read_continue_token(&output_token, buffer);
 
         check(input_token.expire_timestamp == output_token.expire_timestamp);
         check(input_token.session_id == output_token.session_id);
@@ -1088,7 +1093,7 @@ namespace testing
     {
         uint8_t private_key[crypto_box_SECRETKEYBYTES];
 
-        relay_random_bytes(private_key, crypto_box_SECRETKEYBYTES);
+        encoding::relay_random_bytes(private_key, crypto_box_SECRETKEYBYTES);
 
         uint8_t buffer[RELAY_MTU];
 
@@ -1098,7 +1103,7 @@ namespace testing
             uint64_t session_id = 0x12313131;
             uint8_t session_version = 0x12;
 
-            check(relay_write_header(RELAY_DIRECTION_CLIENT_TO_SERVER,
+            check(relay::relay_write_header(RELAY_DIRECTION_CLIENT_TO_SERVER,
                       RELAY_CLIENT_TO_SERVER_PACKET,
                       sequence,
                       session_id,
@@ -1112,7 +1117,7 @@ namespace testing
             uint64_t read_session_id = 0;
             uint8_t read_session_version = 0;
 
-            check(relay_peek_header(RELAY_DIRECTION_CLIENT_TO_SERVER,
+            check(relay::relay_peek_header(RELAY_DIRECTION_CLIENT_TO_SERVER,
                       &read_type,
                       &read_sequence,
                       &read_session_id,
@@ -1125,7 +1130,7 @@ namespace testing
             check(read_session_id == session_id);
             check(read_session_version == session_version);
 
-            check(relay_verify_header(RELAY_DIRECTION_CLIENT_TO_SERVER, private_key, buffer, sizeof(buffer)) == RELAY_OK);
+            check(relay::relay_verify_header(RELAY_DIRECTION_CLIENT_TO_SERVER, private_key, buffer, sizeof(buffer)) == RELAY_OK);
         }
 
         // server -> client
@@ -1134,7 +1139,7 @@ namespace testing
             uint64_t session_id = 0x12313131;
             uint8_t session_version = 0x12;
 
-            check(relay_write_header(RELAY_DIRECTION_SERVER_TO_CLIENT,
+            check(relay::relay_write_header(RELAY_DIRECTION_SERVER_TO_CLIENT,
                       RELAY_SERVER_TO_CLIENT_PACKET,
                       sequence,
                       session_id,
@@ -1148,7 +1153,7 @@ namespace testing
             uint64_t read_session_id = 0;
             uint8_t read_session_version = 0;
 
-            check(relay_peek_header(RELAY_DIRECTION_SERVER_TO_CLIENT,
+            check(relay::relay_peek_header(RELAY_DIRECTION_SERVER_TO_CLIENT,
                       &read_type,
                       &read_sequence,
                       &read_session_id,
@@ -1161,7 +1166,7 @@ namespace testing
             check(read_session_id == session_id);
             check(read_session_version == session_version);
 
-            check(relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, private_key, buffer, sizeof(buffer)) == RELAY_OK);
+            check(relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, private_key, buffer, sizeof(buffer)) == RELAY_OK);
         }
     }
 
@@ -1170,10 +1175,10 @@ namespace testing
         const char* input = "a test string. let's see if it works properly";
         char encoded[1024];
         char decoded[1024];
-        check(relay_base64_encode_string(input, encoded, sizeof(encoded)) > 0);
-        check(relay_base64_decode_string(encoded, decoded, sizeof(decoded)) > 0);
+        check(encoding::relay_base64_encode_string(input, encoded, sizeof(encoded)) > 0);
+        check(encoding::relay_base64_decode_string(encoded, decoded, sizeof(decoded)) > 0);
         check(strcmp(decoded, input) == 0);
-        check(relay_base64_decode_string(encoded, decoded, 10) == 0);
+        check(encoding::relay_base64_decode_string(encoded, decoded, 10) == 0);
     }
 
     static void test_relay_manager()
@@ -1182,7 +1187,7 @@ namespace testing
         const int NumRelays = 32;
 
         uint64_t relay_ids[MaxRelays];
-        relay_address_t relay_addresses[MaxRelays];
+        relay::relay_address_t relay_addresses[MaxRelays];
 
         for (int i = 0; i < MaxRelays; ++i) {
             relay_ids[i] = i;
@@ -1191,11 +1196,11 @@ namespace testing
             relay_address_parse(&relay_addresses[i], address_string);
         }
 
-        relay_manager_t* manager = relay_manager_create();
+        relay::relay_manager_t* manager = relay::relay_manager_create();
 
         // should be no relays when manager is first created
         {
-            relay_stats_t stats;
+            relay::relay_stats_t stats;
             relay_manager_get_stats(manager, &stats);
             check(stats.num_relays == 0);
         }
@@ -1204,7 +1209,7 @@ namespace testing
 
         relay_manager_update(manager, NumRelays, relay_ids, relay_addresses);
         {
-            relay_stats_t stats;
+            relay::relay_stats_t stats;
             relay_manager_get_stats(manager, &stats);
             check(stats.num_relays == NumRelays);
             for (int i = 0; i < NumRelays; ++i) {
@@ -1216,7 +1221,7 @@ namespace testing
 
         relay_manager_update(manager, 0, relay_ids, relay_addresses);
         {
-            relay_stats_t stats;
+            relay::relay_stats_t stats;
             relay_manager_get_stats(manager, &stats);
             check(stats.num_relays == 0);
         }
@@ -1226,7 +1231,7 @@ namespace testing
         for (int j = 0; j < 2; ++j) {
             relay_manager_update(manager, NumRelays, relay_ids, relay_addresses);
             {
-                relay_stats_t stats;
+                relay::relay_stats_t stats;
                 relay_manager_get_stats(manager, &stats);
                 check(stats.num_relays == NumRelays);
                 for (int i = 0; i < NumRelays; ++i) {
@@ -1239,7 +1244,7 @@ namespace testing
 
         relay_manager_update(manager, NumRelays, relay_ids + 4, relay_addresses + 4);
         {
-            relay_stats_t stats;
+            relay::relay_stats_t stats;
             relay_manager_get_stats(manager, &stats);
             check(stats.num_relays == NumRelays);
             for (int i = 0; i < NumRelays; ++i) {
@@ -1254,7 +1259,7 @@ namespace testing
     {
         printf("\nRunning relay tests:\n\n");
 
-        check(relay_initialize() == RELAY_OK);
+        check(relay::relay_initialize() == RELAY_OK);
 
         RUN_TEST(test_endian);
         RUN_TEST(test_bitpacker);
@@ -1285,6 +1290,6 @@ namespace testing
 
         fflush(stdout);
 
-        relay_term();
+        relay::relay_term();
     }
 }  // namespace testing
