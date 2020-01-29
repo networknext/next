@@ -13,7 +13,6 @@
 #include <pthread.h>
 #include <unistd.h>
 
-#include "relay/relay_platform_socket.hpp"
 #include "relay/relay_address.hpp"
 
 #define RELAY_PLATFORM_HAS_IPV6 1
