@@ -89,7 +89,7 @@ else
 
     for ((port=${begin_port}, addr_suffix=1 ; port<=${end_port} ; port++, addr_suffix++)); do
 	addr="127.0.0.$addr_suffix:$port"
-	RELAY_ADDRESS="$addr" make dev-relay-v2 > /dev/null &
+	RELAY_ADDRESS="$addr" make dev-relay > /dev/null &
 	pid="$!"
 	export RUNNING_RELAYS="$RUNNING_RELAYS:$pid"
 	echo "Started Relay using address $addr with pid: $pid"
