@@ -13,7 +13,6 @@
 #include <pthread.h>
 #include <unistd.h>
 
-#include "relay/relay_platform_socket.hpp"
 #include "relay/relay_address.hpp"
 
 #define RELAY_PLATFORM_HAS_IPV6 1
@@ -23,6 +22,17 @@
 namespace relay
 {
     // -------------------------------------
+    typedef int relay_platform_socket_handle_t;
+
+    struct relay_platform_socket_t
+    {
+        int type;
+        relay_platform_socket_handle_t handle;
+    };
+
+    relay_platform_socket_t* relay_platform_socket_create(
+        relay_address_t* address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size);
+    void relay_platform_socket_destroy(relay_platform_socket_t* socket);
 
     struct relay_platform_thread_t
     {
