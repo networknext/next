@@ -24,7 +24,9 @@
 #include <SystemConfiguration/SystemConfiguration.h>
 #include <CoreFoundation/CoreFoundation.h>
 
-// ---------------------------------------------------
+#include "config.hpp"
+#include "util.hpp"
+
 namespace
 {
     mach_timebase_info_data_t timebase_info;

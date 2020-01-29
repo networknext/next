@@ -3,16 +3,15 @@
     Copyright © 2017 - 2020 Network Next, Inc. All rights reserved.
 */
 
-#include "sysinfo.hpp"
-
 #ifndef RELAY_RELAY_PLATFORM_LINUX_HPP
 #define RELAY_RELAY_PLATFORM_LINUX_HPP
+
+#include "sysinfo.hpp"
 
 #if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
 
 #include <pthread.h>
 #include <unistd.h>
-#include <sched.h>
 
 #include "relay/relay_platform_socket.hpp"
 #include "relay/relay_address.hpp"
