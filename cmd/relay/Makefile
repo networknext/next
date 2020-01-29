@@ -42,6 +42,8 @@ all: $(BIN) $(OBJ) $(OBJ_DIRS) $(BIN)/$(EXE) $(DIST_DIR)/$(EXE)
 clean:
 	-rm -rf $(BIN) $(OBJ) $(DIST_DIR)/$(EXE)
 
+force: clean all
+
 $(BIN)/$(EXE): $(SRC_OBJ_FILES)
 	$(CXX) $(CXX_FLAGS) $(INCLUDE_DIRS) $(LIBRARY_DIRS) $^ $(STATIC_LIBS) -o $@ $(LIBRARIES)
 

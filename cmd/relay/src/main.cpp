@@ -448,7 +448,7 @@ int main(int argc, const char** argv)
     }
 
     uint8_t relay_private_key[RELAY_PRIVATE_KEY_BYTES];
-    if (encoding::relay_base64_decode_data(relay_private_key_env, relay_private_key, RELAY_PRIVATE_KEY_BYTES) !=
+    if (encoding::base64_decode_data(relay_private_key_env, relay_private_key, RELAY_PRIVATE_KEY_BYTES) !=
         RELAY_PRIVATE_KEY_BYTES) {
         printf("\nerror: invalid relay private key\n\n");
         return 1;
@@ -463,7 +463,7 @@ int main(int argc, const char** argv)
     }
 
     uint8_t relay_public_key[RELAY_PUBLIC_KEY_BYTES];
-    if (encoding::relay_base64_decode_data(relay_public_key_env, relay_public_key, RELAY_PUBLIC_KEY_BYTES) !=
+    if (encoding::base64_decode_data(relay_public_key_env, relay_public_key, RELAY_PUBLIC_KEY_BYTES) !=
         RELAY_PUBLIC_KEY_BYTES) {
         printf("\nerror: invalid relay public key\n\n");
         return 1;
@@ -478,7 +478,7 @@ int main(int argc, const char** argv)
     }
 
     uint8_t router_public_key[crypto_sign_PUBLICKEYBYTES];
-    if (encoding::relay_base64_decode_data(router_public_key_env, router_public_key, crypto_sign_PUBLICKEYBYTES) !=
+    if (encoding::base64_decode_data(router_public_key_env, router_public_key, crypto_sign_PUBLICKEYBYTES) !=
         crypto_sign_PUBLICKEYBYTES) {
         printf("\nerror: invalid router public key\n\n");
         return 1;
