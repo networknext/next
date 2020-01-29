@@ -385,6 +385,19 @@ namespace relay
         return mutex;
     }
 
+    relay_mutex_helper_t::relay_mutex_helper_t(relay_platform_mutex_t* mutex) : mutex(mutex)
+    {
+        assert(mutex);
+        relay_platform_mutex_acquire(mutex);
+    }
+
+    relay_mutex_helper_t::~relay_mutex_helper_t()
+    {
+        assert(mutex);
+        relay_platform_mutex_release(mutex);
+        mutex = NULL;
+    }
+
     void relay_platform_mutex_acquire(relay_platform_mutex_t* mutex)
     {
         assert(mutex);
