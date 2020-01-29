@@ -8,7 +8,7 @@
 
 #include "sysinfo.hpp"
 
-#if RELAY_PLATFORM == RELAY_PLATFORM_MAC
+#if RELAY_PLATFORM == RELAY_PLATFORM_MAC or 1
 
 #include <pthread.h>
 #include <unistd.h>
@@ -19,10 +19,15 @@
 #define RELAY_PLATFORM_SOCKET_NON_BLOCKING 0
 #define RELAY_PLATFORM_SOCKET_BLOCKING 1
 
-// -------------------------------------
 namespace relay
 {
-    // -------------------------------------
+    typedef int relay_platform_socket_handle_t;
+
+    struct relay_platform_socket_t
+    {
+        int type;
+        relay_platform_socket_handle_t handle;
+    };
 
     struct relay_platform_thread_t
     {
