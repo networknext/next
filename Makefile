@@ -156,6 +156,9 @@ RELAY_DIR	:= ./cmd/relay
 RELAY_BIN	:= ./$(RELAY_DIR)/bin
 RELAY_EXE	:= relay
 
+.PHONY: $(RELAY_BIN)/$(RELAY_EXE)
+$(RELAY_BIN)/$(RELAY_EXE):
+
 .PHONY: dev-relay
 dev-relay: $(RELAY_BIN)/$(RELAY_EXE)
 	@printf "Building relay... "
