@@ -102,9 +102,7 @@ namespace relay
     };
 
 #define relay_mutex_guard(_mutex) relay_mutex_helper_t __mutex_helper(_mutex)
-
-    // -------------------------------------
+}  // namespace relay
 
 #endif  // #if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
-}
 #endif  // #ifndef RELAY_LINUX_H
