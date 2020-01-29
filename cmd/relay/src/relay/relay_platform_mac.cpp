@@ -5,7 +5,7 @@
 
 #include "relay_platform_mac.hpp"
 
-#if RELAY_PLATFORM == RELAY_PLATFORM_MAC
+#if RELAY_PLATFORM == RELAY_PLATFORM_MAC or 1
 
 #include <string.h>
 #include <netdb.h>
