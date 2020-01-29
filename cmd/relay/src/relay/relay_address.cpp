@@ -1,5 +1,7 @@
 #include "relay_address.hpp"
 
+#include <algorithm>
+
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
@@ -14,6 +16,170 @@
 
 namespace relay
 {
+    RelayAddress::RelayAddress() : mType(0), mPort(0)
+    {}
+
+    bool RelayAddress::parse(const char* address_string_in)
+    {
+        assert(address_string_in);
+
+        if (!address_string_in) {
+            return false;
+        }
+
+        // first try to parse the string as an IPv6 address:
+        // 1. if the first character is '[' then it's probably an ipv6 in form "[addr6]:portnum"
+        // 2. otherwise try to parse as a raw IPv6 address using inet_pton
+
+        char buffer[RELAY_MAX_ADDRESS_STRING_LENGTH + RELAY_ADDRESS_BUFFER_SAFETY * 2];
+
+        char* address_string = buffer + RELAY_ADDRESS_BUFFER_SAFETY;
+        strncpy(address_string, address_string_in, RELAY_MAX_ADDRESS_STRING_LENGTH - 1);
+        address_string[RELAY_MAX_ADDRESS_STRING_LENGTH - 1] = '\0';
+
+        int address_string_length = (int)strlen(address_string);
+
+        if (address_string[0] == '[') {
+            const int base_index = address_string_length - 1;
+
+            // note: no need to search past 6 characters as ":65535" is longest possible port value
+            for (int i = 0; i < 6; ++i) {
+                const int index = base_index - i;
+                if (index < 0) {
+                    return false;
+                }
+                if (address_string[index] == ':') {
+                    this->mPort = (uint16_t)(atoi(&address_string[index + 1]));
+                    address_string[index - 1] = '\0';
+                    break;
+                } else if (address_string[index] == ']') {
+                    // no port number
+                    this->mPort = 0;
+                    address_string[index] = '\0';
+                    break;
+                }
+            }
+            address_string += 1;
+        }
+        uint16_t addr6[8];
+        if (relay_platform_inet_pton6(address_string, addr6) == true) {
+            this->mType = RELAY_ADDRESS_IPV6;
+            for (int i = 0; i < 8; ++i) {
+                this->mIPv6[i] = relay_platform_ntohs(addr6[i]);
+            }
+            return true;
+        }
+
+        // otherwise it's probably an IPv4 address:
+        // 1. look for ":portnum", if found save the portnum and strip it out
+        // 2. parse remaining ipv4 address via inet_pton
+
+        address_string_length = (int)strlen(address_string);
+        const int base_index = address_string_length - 1;
+        for (int i = 0; i < 6; ++i) {
+            const int index = base_index - i;
+            if (index < 0)
+                break;
+            if (address_string[index] == ':') {
+                this->mPort = (uint16_t)(atoi(&address_string[index + 1]));
+                address_string[index] = '\0';
+            }
+        }
+
+        uint32_t addr4;
+        if (relay_platform_inet_pton4(address_string, &addr4) == true) {
+            this->mType = RELAY_ADDRESS_IPV4;
+            this->mIPv4[3] = (uint8_t)((addr4 & 0xFF000000) >> 24);
+            this->mIPv4[2] = (uint8_t)((addr4 & 0x00FF0000) >> 16);
+            this->mIPv4[1] = (uint8_t)((addr4 & 0x0000FF00) >> 8);
+            this->mIPv4[0] = (uint8_t)((addr4 & 0x000000FF));
+            return true;
+        }
+
+        return false;
+    }
+
+    void RelayAddress::toString(std::string& buffer)
+    {
+        std::array<char, RELAY_MAX_ADDRESS_STRING_LENGTH> buf;
+        if (this->mType == RELAY_ADDRESS_IPV6) {
+            // TODO check if c++17 is ok for development, can replace this with "if constexpr" for less preprocessor littered
+            // code
+#if defined(WINVER) && WINVER <= 0x0502
+            // ipv6 not supported
+            buffer[0] = '\0';
+#else
+            uint16_t ipv6_network_order[8];
+            for (int i = 0; i < 8; ++i)
+                ipv6_network_order[i] = net::relay_htons(this->mIPv6[i]);
+            char address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
+            relay_platform_inet_ntop6(ipv6_network_order, address_string, sizeof(address_string));
+            if (this->mPort == 0) {
+                buffer.assign(address_string);
+            } else {
+                if (snprintf(buf.data(), RELAY_MAX_ADDRESS_STRING_LENGTH, "[%s]:%hu", address_string, this->mPort) < 0) {
+                    buffer.assign(buf.begin(), buf.end());
+                    relay_printf("address string truncated: [%s]:%hu", address_string, this->mPort);
+                }
+            }
+#endif
+        } else if (this->mType == RELAY_ADDRESS_IPV4) {
+            char buf[RELAY_MAX_ADDRESS_STRING_LENGTH];
+            if (this->mPort != 0) {
+                snprintf(buf,
+                    RELAY_MAX_ADDRESS_STRING_LENGTH,
+                    "%d.%d.%d.%d:%d",
+                    this->mIPv4[0],
+                    this->mIPv4[1],
+                    this->mIPv4[2],
+                    this->mIPv4[3],
+                    this->mPort);
+                buffer.assign(buf);
+            } else {
+                snprintf(buf,
+                    RELAY_MAX_ADDRESS_STRING_LENGTH,
+                    "%d.%d.%d.%d",
+                    this->mIPv4[0],
+                    this->mIPv4[1],
+                    this->mIPv4[2],
+                    this->mIPv4[3]);
+                buffer.assign(buf);
+            }
+        } else {
+            snprintf(buf.data(), RELAY_MAX_ADDRESS_STRING_LENGTH, "%s", "NONE");
+            buffer.assign(buf.begin(), buf.end());
+        }
+    }
+
+    std::string RelayAddress::toString()
+    {
+        std::string buffer;
+        this->toString(buffer);
+        return buffer;
+    }
+
+    bool RelayAddress::operator==(const RelayAddress& other)
+    {
+        if (this->mType != other.mType || this->mPort != other.mPort) {
+            return false;
+        }
+
+        switch (this->mType) {
+            case RELAY_ADDRESS_IPV4:
+                return this->mIPv4 == other.mIPv4;
+            case RELAY_ADDRESS_IPV6:
+                return this->mIPv6 == other.mIPv6;
+            default:
+                return false;
+        }
+    }
+
+    // TODO make this inline or remove
+    bool RelayAddress::equal(const RelayAddress& other)
+    {
+        return (*this) == other;
+    }
+
     int relay_address_parse(relay_address_t* address, const char* address_string_in)
     {
         assert(address);

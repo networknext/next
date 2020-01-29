@@ -52,15 +52,15 @@ $(OBJ)/%.o: $(SRC)/%.cpp
 
 $(BIN):
 	@echo "Creating bin directory"
-	@mkdir $@ 
+	-@mkdir $@ 
 
 $(OBJ):
 	@echo "Creating obj directory"
-	@mkdir $@
+	-@mkdir $@
 
 $(OBJ_DIRS):
 	@echo "creating obj directory: $@"
-	@mkdir -p $@
+	-@mkdir -p $@
 
 $(DIST_DIR)/$(EXE): $(BIN)/$(EXE)
 	@cp $< $@

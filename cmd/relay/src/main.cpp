@@ -17,7 +17,8 @@
 
 #include "sysinfo.hpp"
 #include "config.hpp"
-#include "relay_test.hpp"
+#include "test/test.hpp"
+#include "bench/bench.hpp"
 #include "util.hpp"
 
 #include "encoding/base64.hpp"
@@ -411,6 +412,11 @@ int main(int argc, const char** argv)
 {
     if (argc == 2 && strcmp(argv[1], "test") == 0) {
         testing::relay_test();
+        return 0;
+    }
+
+    if (argc == 2 && strcmp(argv[1], "bench") == 0) {
+        benchmarking::Benchmark::Run();
         return 0;
     }
 
