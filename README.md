@@ -43,7 +43,7 @@ Using the Windows Subsystem for Linux (WSL) with Ubuntu makes it easy to work wi
 
 This is the service that suppliers run on their hardware to become part of Network Next.
 
-- Command: [`cmd/relay`](./cmd/relay)
+- Command: `cmd/relay/bin/relay` or `make dev-relay`
 
 ### To Run
 
