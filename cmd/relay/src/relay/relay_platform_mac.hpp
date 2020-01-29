@@ -8,7 +8,7 @@
 
 #include "sysinfo.hpp"
 
-#if RELAY_PLATFORM == RELAY_PLATFORM_MAC or 1
+#if RELAY_PLATFORM == RELAY_PLATFORM_MAC
 
 #include <pthread.h>
 #include <unistd.h>
