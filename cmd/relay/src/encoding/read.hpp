@@ -3,6 +3,9 @@
 
 #include <cinttypes>
 #include <cstring>
+#include <cassert>
+
+#include "config.hpp"
 
 #include "relay/relay_address.hpp"
 

@@ -5,6 +5,7 @@
 #include <cassert>
 
 #include "relay_platform.hpp"
+#include "relay_route_stats.hpp"
 
 namespace relay
 {

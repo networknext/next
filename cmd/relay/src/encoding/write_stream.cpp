@@ -2,7 +2,7 @@
 
 #include <cassert>
 
-#include "util/binary.hpp"
+#include "encoding/binary.hpp"
 
 namespace encoding
 {
@@ -14,7 +14,7 @@ namespace encoding
         assert(min < max);
         assert(value >= min);
         assert(value <= max);
-        const int bits = util::bits_required(min, max);
+        const int bits = encoding::bits_required(min, max);
         uint32_t unsigned_value = value - min;
         m_writer.WriteBits(unsigned_value, bits);
         return true;

@@ -9,8 +9,13 @@
 #include <fcntl.h>
 
 #include "config.hpp"
+#include "util.hpp"
+
+#include "relay_platform.hpp"
+
 #include "net/net.hpp"
 
+// TODO consider putting this in config, but the decision should be made after windows sockets are compatable
 #define RELAY_SOCKET_NON_BLOCKING 0
 #define RELAY_SOCKET_BLOCKING 1
 
@@ -88,7 +93,7 @@ namespace relay
             socket_address.sin_addr.s_addr = (((uint32_t)address->data.ipv4[0])) | (((uint32_t)address->data.ipv4[1]) << 8) |
                                              (((uint32_t)address->data.ipv4[2]) << 16) |
                                              (((uint32_t)address->data.ipv4[3]) << 24);
-            socket_address.sin_port = relay_htons(address->port);
+            socket_address.sin_port = net::relay_htons(address->port);
 
             if (bind(socket->handle, (sockaddr*)&socket_address, sizeof(socket_address)) < 0) {
                 relay_printf("failed to bind socket (ipv4)");

@@ -3,7 +3,7 @@
     Copyright © 2017 - 2020 Network Next, Inc. All rights reserved.
 */
 
-#include "relay.h"
+#include "sysinfo.hpp"
 
 #ifndef RELAY_RELAY_PLATFORM_LINUX_HPP
 #define RELAY_RELAY_PLATFORM_LINUX_HPP
@@ -100,8 +100,6 @@ namespace relay
         relay_mutex_helper_t(relay_platform_mutex_t* mutex);
         ~relay_mutex_helper_t();
         relay_platform_mutex_t* mutex;
-        relay_mutex_helper_t(relay_platform_mutex_t* mutex);
-        ~relay_mutex_helper_t();
     };
 
 #define relay_mutex_guard(_mutex) relay_mutex_helper_t __mutex_helper(_mutex)

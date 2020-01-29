@@ -8,6 +8,15 @@
 
 namespace encoding
 {
+    /**
+        Stream class for reading bitpacked data.
+        This class is a wrapper around the bit reader class. Its purpose is to provide unified interface for reading and
+       writing. You can determine if you are reading from a stream by calling Stream::IsReading inside your templated serialize
+       method. This is evaluated at compile time, letting the compiler generate optimized serialize functions without the hassle
+       of maintaining separate read and write functions. IMPORTANT: Generally, you don't call methods on this class directly.
+       Use the serialize_* macros instead. See test/shared.h for some examples.
+     */
+
     class ReadStream : public BaseStream
     {
        public:
