@@ -13,20 +13,20 @@
 
 namespace encoding
 {
-    inline void relay_write_uint8(uint8_t** p, uint8_t value)
+    inline void write_uint8(uint8_t** p, uint8_t value)
     {
         **p = value;
         ++(*p);
     }
 
-    inline void relay_write_uint16(uint8_t** p, uint16_t value)
+    inline void write_uint16(uint8_t** p, uint16_t value)
     {
         (*p)[0] = value & 0xFF;
         (*p)[1] = value >> 8;
         *p += 2;
     }
 
-    inline void relay_write_uint32(uint8_t** p, uint32_t value)
+    inline void write_uint32(uint8_t** p, uint32_t value)
     {
         (*p)[0] = value & 0xFF;
         (*p)[1] = (value >> 8) & 0xFF;
@@ -35,7 +35,7 @@ namespace encoding
         *p += 4;
     }
 
-    inline void relay_write_uint64(uint8_t** p, uint64_t value)
+    inline void write_uint64(uint8_t** p, uint64_t value)
     {
         (*p)[0] = value & 0xFF;
         (*p)[1] = (value >> 8) & 0xFF;
@@ -48,44 +48,44 @@ namespace encoding
         *p += 8;
     }
 
-    inline void relay_write_float32(uint8_t** p, float value)
+    inline void write_float32(uint8_t** p, float value)
     {
         uint32_t value_int = 0;
         char* p_value = (char*)(&value);
         char* p_value_int = (char*)(&value_int);
         memcpy(p_value_int, p_value, sizeof(uint32_t));
-        relay_write_uint32(p, value_int);
+        write_uint32(p, value_int);
     }
 
-    inline void relay_write_float64(uint8_t** p, double value)
+    inline void write_float64(uint8_t** p, double value)
     {
         uint64_t value_int = 0;
         char* p_value = (char*)(&value);
         char* p_value_int = (char*)(&value_int);
         memcpy(p_value_int, p_value, sizeof(uint64_t));
-        relay_write_uint64(p, value_int);
+        write_uint64(p, value_int);
     }
 
-    inline void relay_write_bytes(uint8_t** p, const uint8_t* byte_array, int num_bytes)
+    inline void write_bytes(uint8_t** p, const uint8_t* byte_array, int num_bytes)
     {
         for (int i = 0; i < num_bytes; ++i) {
-            relay_write_uint8(p, byte_array[i]);
+            write_uint8(p, byte_array[i]);
         }
     }
 
-    inline void relay_write_string(uint8_t** p, const char* string_data, uint32_t max_length)
+    inline void write_string(uint8_t** p, const char* string_data, uint32_t max_length)
     {
         uint32_t length = strlen(string_data);
         assert(length <= max_length);
         if (length > max_length)
             length = max_length;
-        relay_write_uint32(p, length);
+        write_uint32(p, length);
         for (uint32_t i = 0; i < length; ++i) {
-            relay_write_uint8(p, string_data[i]);
+            write_uint8(p, string_data[i]);
         }
     }
 
-    inline void relay_write_address(uint8_t** buffer, const relay::relay_address_t* address)
+    inline void write_address(uint8_t** buffer, const relay::relay_address_t* address)
     {
         assert(buffer);
         assert(*buffer);
@@ -96,23 +96,23 @@ namespace encoding
 #endif
 
         if (address->type == RELAY_ADDRESS_IPV4) {
-            relay_write_uint8(buffer, RELAY_ADDRESS_IPV4);
+            write_uint8(buffer, RELAY_ADDRESS_IPV4);
             for (int i = 0; i < 4; ++i) {
-                relay_write_uint8(buffer, address->data.ipv4[i]);
+                write_uint8(buffer, address->data.ipv4[i]);
             }
-            relay_write_uint16(buffer, address->port);
+            write_uint16(buffer, address->port);
             for (int i = 0; i < 12; ++i) {
-                relay_write_uint8(buffer, 0);
+                write_uint8(buffer, 0);
             }
         } else if (address->type == RELAY_ADDRESS_IPV6) {
-            relay_write_uint8(buffer, RELAY_ADDRESS_IPV6);
+            write_uint8(buffer, RELAY_ADDRESS_IPV6);
             for (int i = 0; i < 8; ++i) {
-                relay_write_uint16(buffer, address->data.ipv6[i]);
+                write_uint16(buffer, address->data.ipv6[i]);
             }
-            relay_write_uint16(buffer, address->port);
+            write_uint16(buffer, address->port);
         } else {
             for (int i = 0; i < RELAY_ADDRESS_BYTES; ++i) {
-                relay_write_uint8(buffer, 0);
+                write_uint8(buffer, 0);
             }
         }
 

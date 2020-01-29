@@ -61,7 +61,7 @@ namespace
             } else if (packet_data[0] == RELAY_PONG_PACKET && packet_bytes == 9) {
                 relay_platform_mutex_acquire(relay->mutex);
                 const uint8_t* p = packet_data + 1;
-                uint64_t sequence = encoding::relay_read_uint64(&p);
+                uint64_t sequence = encoding::read_uint64(&p);
                 relay_manager_process_pong(relay->relay_manager, &from, sequence);
                 relay_platform_mutex_release(relay->mutex);
             } else if (packet_data[0] == RELAY_ROUTE_REQUEST_PACKET) {
@@ -396,7 +396,7 @@ namespace
                 uint8_t packet_data[9];
                 packet_data[0] = RELAY_PING_PACKET;
                 uint8_t* p = packet_data + 1;
-                encoding::relay_write_uint64(&p, pings[i].sequence);
+                encoding::write_uint64(&p, pings[i].sequence);
                 relay_platform_socket_send_packet(relay->socket, &pings[i].address, packet_data, 9);
             }
 

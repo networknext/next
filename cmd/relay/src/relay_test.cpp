@@ -690,28 +690,28 @@ namespace testing
         uint8_t buffer[1024];
 
         uint8_t* p = buffer;
-        encoding::relay_write_uint8(&p, 105);
-        encoding::relay_write_uint16(&p, 10512);
-        encoding::relay_write_uint32(&p, 105120000);
-        encoding::relay_write_uint64(&p, 105120000000000000LL);
-        encoding::relay_write_float32(&p, 100.0f);
-        encoding::relay_write_float64(&p, 100000000000000.0);
-        encoding::relay_write_bytes(&p, (uint8_t*)"hello", 6);
-        encoding::relay_write_string(&p, "hey ho, let's go!", 32);
+        encoding::write_uint8(&p, 105);
+        encoding::write_uint16(&p, 10512);
+        encoding::write_uint32(&p, 105120000);
+        encoding::write_uint64(&p, 105120000000000000LL);
+        encoding::write_float32(&p, 100.0f);
+        encoding::write_float64(&p, 100000000000000.0);
+        encoding::write_bytes(&p, (uint8_t*)"hello", 6);
+        encoding::write_string(&p, "hey ho, let's go!", 32);
 
         const uint8_t* q = buffer;
 
-        uint8_t a = encoding::relay_read_uint8(&q);
-        uint16_t b = encoding::relay_read_uint16(&q);
-        uint32_t c = encoding::relay_read_uint32(&q);
-        uint64_t d = encoding::relay_read_uint64(&q);
-        float e = encoding::relay_read_float32(&q);
-        double f = encoding::relay_read_float64(&q);
+        uint8_t a = encoding::read_uint8(&q);
+        uint16_t b = encoding::read_uint16(&q);
+        uint32_t c = encoding::read_uint32(&q);
+        uint64_t d = encoding::read_uint64(&q);
+        float e = encoding::read_float32(&q);
+        double f = encoding::read_float64(&q);
         uint8_t g[6];
-        encoding::relay_read_bytes(&q, g, 6);
+        encoding::read_bytes(&q, g, 6);
         char string_buffer[32 + 1];
         memset(string_buffer, 0xFF, sizeof(string_buffer));
-        encoding::relay_read_string(&q, string_buffer, 32);
+        encoding::read_string(&q, string_buffer, 32);
         check(strcmp(string_buffer, "hey ho, let's go!") == 0);
 
         check(a == 105);
@@ -737,17 +737,17 @@ namespace testing
 
         uint8_t* p = buffer;
 
-        encoding::relay_write_address(&p, &a);
-        encoding::relay_write_address(&p, &b);
-        encoding::relay_write_address(&p, &c);
+        encoding::write_address(&p, &a);
+        encoding::write_address(&p, &b);
+        encoding::write_address(&p, &c);
 
         struct relay::relay_address_t read_a, read_b, read_c;
 
         const uint8_t* q = buffer;
 
-        encoding::relay_read_address(&q, &read_a);
-        encoding::relay_read_address(&q, &read_b);
-        encoding::relay_read_address(&q, &read_c);
+        encoding::read_address(&q, &read_a);
+        encoding::read_address(&q, &read_b);
+        encoding::read_address(&q, &read_c);
 
         check(relay_address_equal(&a, &read_a));
         check(relay_address_equal(&b, &read_b));
