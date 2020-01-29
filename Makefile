@@ -175,9 +175,7 @@ RELAY_EXE	:= relay
 $(RELAY_BIN)/$(RELAY_EXE):
 
 .PHONY: dev-relay
-dev-relay: $(RELAY_BIN)/$(RELAY_EXE)
-	@printf "Building relay... "
-	@cd $(RELAY_DIR) && make
+dev-relay: $(RELAY_BIN)/$(RELAY_EXE) build-relay
 	@$<
 
 #######################
@@ -219,7 +217,7 @@ dev-client: build-client  ## runs a local client
 .PHONY: build-relay
 build-relay: ## builds the relay
 	@printf "Building relay... "
-	@$(CXX) -o $(DIST_DIR)/relay ./cmd/relay/*.cpp $(LDFLAGS)
+	@cd $(RELAY_DIR) && make
 	@printf "done\n"
 
 .PHONY: build-sdk
