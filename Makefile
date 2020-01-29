@@ -23,15 +23,18 @@ COST_FILE = $(DIST_DIR)/cost.bin
 OPTIMIZE_FILE = $(DIST_DIR)/optimize.bin
 
 #####################
-##    RELAY ENV    ##
+##    SHARED ENV   ##
 #####################
 
+export RELAY_BACKEND_HOSTNAME = http://localhost:30000
 export RELAY_ID = local
 
 ifndef RELAY_ADDRESS
 export RELAY_ADDRESS = 127.0.0.1
 endif
 
+## Relay keys are unique to each relay and used to DECRYPT only the segment in the route token indended for itself
+## For local dev purposes ALL relays we run will have the same keys, but in production they are all different 
 ifndef RELAY_PUBLIC_KEY
 export RELAY_PUBLIC_KEY = 9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=
 endif
@@ -40,10 +43,22 @@ ifndef RELAY_PRIVATE_KEY
 export RELAY_PRIVATE_KEY = lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=
 endif
 
-export RELAY_BACKEND_HOSTNAME = http://localhost:30000
+## Server backend keys are used for SIGNING data so game servers can verify response data's authenticity 
+ifndef SERVER_BACKEND_PUBLIC_KEY
+export SERVER_BACKEND_PUBLIC_KEY = TGHKjEeHPtSgtZfDyuDPcQgtJTyRDtRvGSKvuiWWo0A=
+endif
 
+ifndef SERVER_BACKEND_PRIVATE_KEY
+export SERVER_BACKEND_PRIVATE_KEY = FXwFqzjGlIwUDwiq1N5Um5VUesdr4fP2hVV2cnJ+yARMYcqMR4c+1KC1l8PK4M9xCC0lPJEO1G8ZIq+6JZajQA==
+endif
+
+## Relay routing keys are used to ENCRYPT route tokens for the client, server, and all relays in between
 ifndef RELAY_ROUTER_PUBLIC_KEY
 export RELAY_ROUTER_PUBLIC_KEY = SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
+endif
+
+ifndef RELAY_ROUTER_PRIVATE_KEY
+export RELAY_ROUTER_PRIVATE_KEY = ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
 endif
 
 export RELAY_DEBUG = 0
