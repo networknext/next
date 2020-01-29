@@ -168,14 +168,13 @@ dev-route: ## prints routes from relay to datacenter in route matrix
 #######################
 
 RELAY_DIR	:= ./cmd/relay
-RELAY_BIN	:= ./$(RELAY_DIR)/bin
 RELAY_EXE	:= relay
 
-.PHONY: $(RELAY_BIN)/$(RELAY_EXE)
-$(RELAY_BIN)/$(RELAY_EXE):
+.PHONY: $(DIST_DIR)/$(RELAY_EXE)
+$(DIST_DIR)/$(RELAY_EXE):
 
 .PHONY: dev-relay
-dev-relay: $(RELAY_BIN)/$(RELAY_EXE) build-relay
+dev-relay: $(DIST_DIR)/$(RELAY_EXE) build-relay
 	@$<
 
 #######################
