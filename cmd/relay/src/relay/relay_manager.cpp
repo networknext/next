@@ -4,6 +4,8 @@
 #include <cstring>
 #include <cassert>
 
+#include "relay_platform.hpp"
+
 namespace relay
 {
     relay_manager_t* relay_manager_create()

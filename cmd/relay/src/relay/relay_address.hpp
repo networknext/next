@@ -21,5 +21,9 @@ namespace relay
     const char* relay_address_to_string(const relay_address_t* address, char* buffer);
 
     int relay_address_equal(const relay_address_t* a, const relay_address_t* b);
+
+    const char* relay_address_to_string(const relay_address_t* address, char* buffer);
+
+    int relay_address_equal(const relay_address_t* a, const relay_address_t* b);
 }  // namespace relay
 #endif

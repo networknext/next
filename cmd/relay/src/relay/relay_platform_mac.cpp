@@ -3,11 +3,11 @@
     Copyright © 2017 - 2020 Network Next, Inc. All rights reserved.
 */
 
-#include "relay_linux.h"
+#include "relay_mac.h"
 
-#if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
+#if RELAY_PLATFORM == RELAY_PLATFORM_MAC
 
-#include <cassert>
+#include <string.h>
 #include <netdb.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -19,24 +19,23 @@
 #include <unistd.h>
 #include <errno.h>
 #include <unistd.h>
-#include <linux/netlink.h>
-#include <linux/rtnetlink.h>
-#include <sys/ioctl.h>
-#include <linux/wireless.h>
-#include <string.h>
-#include <stdlib.h>
-#include <math.h>
-#include <alloca.h>
+#include <mach/mach.h>
+#include <mach/mach_time.h>
+#include <SystemConfiguration/SystemConfiguration.h>
+#include <CoreFoundation/CoreFoundation.h>
 
-#include "config.hpp"
+// ---------------------------------------------------
 
-static double time_start;
+static mach_timebase_info_data_t timebase_info;
+
+static uint64_t time_start;
 
 int relay_platform_init()
 {
-    timespec ts;
-    clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
-    time_start = ts.tv_sec + ((double)(ts.tv_nsec)) / 1000000000.0;
+    mach_timebase_info(&timebase_info);
+
+    time_start = mach_absolute_time();
+
     return RELAY_OK;
 }
 
@@ -49,8 +48,6 @@ const char* relay_platform_getenv(const char* var)
 {
     return getenv(var);
 }
-
-// ---------------------------------------------------
 
 uint16_t relay_platform_ntohs(uint16_t in)
 {
@@ -82,16 +79,16 @@ int relay_platform_inet_ntop6(const uint16_t* address, char* address_string, siz
 
 double relay_platform_time()
 {
-    timespec ts;
-    clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
-    double current = ts.tv_sec + ((double)(ts.tv_nsec)) / 1000000000.0;
-    return current - time_start;
+    uint64_t current = mach_absolute_time();
+    return ((double)(current - time_start)) * ((double)timebase_info.numer) / ((double)timebase_info.denom) / 1000000000.0;
 }
 
 void relay_platform_sleep(double time)
 {
     usleep((int)(time * 1000000));
 }
+
+// ---------------------------------------------------
 
 void relay_platform_socket_destroy(relay_platform_socket_t* socket);
 
@@ -106,8 +103,6 @@ relay_platform_socket_t* relay_platform_socket_create(
     assert(socket);
 
     // create socket
-
-    socket->type = socket_type;
 
     socket->handle = ::socket((address->type == RELAY_ADDRESS_IPV6) ? AF_INET6 : AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
@@ -207,7 +202,7 @@ relay_platform_socket_t* relay_platform_socket_create(
         // set receive timeout
         struct timeval tv;
         tv.tv_sec = 0;
-        tv.tv_usec = (int)(timeout_seconds * 1000000.0f);
+        tv.tv_usec = (int)(timeout_seconds * 1000000.0);
         if (setsockopt(socket->handle, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
             relay_printf("failed to set socket receive timeout");
             relay_platform_socket_destroy(socket);
@@ -283,12 +278,7 @@ int relay_platform_socket_receive_packet(
     sockaddr_storage sockaddr_from;
     socklen_t from_length = sizeof(sockaddr_from);
 
-    int result = int(recvfrom(socket->handle,
-        (char*)packet_data,
-        max_packet_size,
-        socket->type == RELAY_PLATFORM_SOCKET_NON_BLOCKING ? MSG_DONTWAIT : 0,
-        (sockaddr*)&sockaddr_from,
-        &from_length));
+    int result = int(recvfrom(socket->handle, (char*)packet_data, max_packet_size, 0, (sockaddr*)&sockaddr_from, &from_length));
 
     if (result <= 0) {
         if (errno == EAGAIN || errno == EINTR) {
@@ -355,12 +345,8 @@ void relay_platform_thread_destroy(relay_platform_thread_t* thread)
 
 void relay_platform_thread_set_sched_max(relay_platform_thread_t* thread)
 {
-    struct sched_param param;
-    param.sched_priority = sched_get_priority_max(SCHED_FIFO);
-    int ret = pthread_setschedparam(thread->handle, SCHED_FIFO, &param);
-    if (ret) {
-        relay_printf("unable to increase server thread priority: %s", strerror(ret));
-    }
+    // linux only
+    (void)thread;
 }
 
 // ---------------------------------------------------
@@ -386,19 +372,6 @@ relay_platform_mutex_t* relay_platform_mutex_create()
     return mutex;
 }
 
-relay_mutex_helper_t::relay_mutex_helper_t(relay_platform_mutex_t* mutex) : mutex(mutex)
-{
-    assert(mutex);
-    relay_platform_mutex_acquire(mutex);
-}
-
-relay_mutex_helper_t::~relay_mutex_helper_t()
-{
-    assert(mutex);
-    relay_platform_mutex_release(mutex);
-    mutex = NULL;
-}
-
 void relay_platform_mutex_acquire(relay_platform_mutex_t* mutex)
 {
     assert(mutex);
@@ -418,8 +391,10 @@ void relay_platform_mutex_destroy(relay_platform_mutex_t* mutex)
     free(mutex);
 }
 
-#else  // #if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
+// ---------------------------------------------------
 
-int relay_linux_dummy_symbol = 0;
+#else  // #if RELAY_PLATFORM == RELAY_PLATFORM_MAC
 
-#endif  // #if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
+int relay_mac_dummy_symbol = 0;
+
+#endif  // #if RELAY_PLATFORM == RELAY_PLATFORM_MAC

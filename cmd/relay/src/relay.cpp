@@ -22,6 +22,9 @@
 #include "encoding/base64.hpp"
 #include "relay/relay_replay_protection.hpp"
 #include "relay/relay_ping_history.hpp"
+#include "relay/relay_address.hpp"
+#include "sysinfo.hpp"
+#include "relay/relay_platform.hpp"
 
 
 // -----------------------------------------------------------------------------
@@ -44,7 +47,7 @@ void relay_printf(const char* format, ...)
 
 int relay_initialize()
 {
-    if (relay_platform_init() != RELAY_OK) {
+    if (relay::relay_platform_init() != RELAY_OK) {
         relay_printf("failed to initialize platform");
         return RELAY_ERROR;
     }
@@ -54,7 +57,7 @@ int relay_initialize()
         return RELAY_ERROR;
     }
 
-    const char* relay_debug_env = relay_platform_getenv("RELAY_DEBUG");
+    const char* relay_debug_env = relay::relay_platform_getenv("RELAY_DEBUG");
     if (relay_debug_env) {
         relay_debug = atoi(relay_debug_env);
     }
@@ -64,7 +67,7 @@ int relay_initialize()
 
 void relay_term()
 {
-    relay_platform_term();
+    relay::relay_platform_term();
 }
 
 // -----------------------------------------------------------------------------
@@ -83,315 +86,6 @@ uint16_t relay_htons(uint16_t in)
 {
     return (uint16_t)(((in << 8) & 0xFF00) | ((in >> 8) & 0x00FF));
 }
-
-// -----------------------------------------------------------------------------
-
-void relay_write_uint8(uint8_t** p, uint8_t value)
-{
-    **p = value;
-    ++(*p);
-}
-
-void relay_write_uint16(uint8_t** p, uint16_t value)
-{
-    (*p)[0] = value & 0xFF;
-    (*p)[1] = value >> 8;
-    *p += 2;
-}
-
-void relay_write_uint32(uint8_t** p, uint32_t value)
-{
-    (*p)[0] = value & 0xFF;
-    (*p)[1] = (value >> 8) & 0xFF;
-    (*p)[2] = (value >> 16) & 0xFF;
-    (*p)[3] = value >> 24;
-    *p += 4;
-}
-
-void relay_write_uint64(uint8_t** p, uint64_t value)
-{
-    (*p)[0] = value & 0xFF;
-    (*p)[1] = (value >> 8) & 0xFF;
-    (*p)[2] = (value >> 16) & 0xFF;
-    (*p)[3] = (value >> 24) & 0xFF;
-    (*p)[4] = (value >> 32) & 0xFF;
-    (*p)[5] = (value >> 40) & 0xFF;
-    (*p)[6] = (value >> 48) & 0xFF;
-    (*p)[7] = value >> 56;
-    *p += 8;
-}
-
-void relay_write_float32(uint8_t** p, float value)
-{
-    uint32_t value_int = 0;
-    char* p_value = (char*)(&value);
-    char* p_value_int = (char*)(&value_int);
-    memcpy(p_value_int, p_value, sizeof(uint32_t));
-    relay_write_uint32(p, value_int);
-}
-
-void relay_write_float64(uint8_t** p, double value)
-{
-    uint64_t value_int = 0;
-    char* p_value = (char*)(&value);
-    char* p_value_int = (char*)(&value_int);
-    memcpy(p_value_int, p_value, sizeof(uint64_t));
-    relay_write_uint64(p, value_int);
-}
-
-void relay_write_bytes(uint8_t** p, const uint8_t* byte_array, int num_bytes)
-{
-    for (int i = 0; i < num_bytes; ++i) {
-        relay_write_uint8(p, byte_array[i]);
-    }
-}
-
-void relay_write_string(uint8_t** p, const char* string_data, uint32_t max_length)
-{
-    uint32_t length = strlen(string_data);
-    assert(length <= max_length);
-    if (length > max_length)
-        length = max_length;
-    relay_write_uint32(p, length);
-    for (uint32_t i = 0; i < length; ++i) {
-        relay_write_uint8(p, string_data[i]);
-    }
-}
-
-uint8_t relay_read_uint8(const uint8_t** p)
-{
-    uint8_t value = **p;
-    ++(*p);
-    return value;
-}
-
-uint16_t relay_read_uint16(const uint8_t** p)
-{
-    uint16_t value;
-    value = (*p)[0];
-    value |= (((uint16_t)((*p)[1])) << 8);
-    *p += 2;
-    return value;
-}
-
-uint32_t relay_read_uint32(const uint8_t** p)
-{
-    uint32_t value;
-    value = (*p)[0];
-    value |= (((uint32_t)((*p)[1])) << 8);
-    value |= (((uint32_t)((*p)[2])) << 16);
-    value |= (((uint32_t)((*p)[3])) << 24);
-    *p += 4;
-    return value;
-}
-
-uint64_t relay_read_uint64(const uint8_t** p)
-{
-    uint64_t value;
-    value = (*p)[0];
-    value |= (((uint64_t)((*p)[1])) << 8);
-    value |= (((uint64_t)((*p)[2])) << 16);
-    value |= (((uint64_t)((*p)[3])) << 24);
-    value |= (((uint64_t)((*p)[4])) << 32);
-    value |= (((uint64_t)((*p)[5])) << 40);
-    value |= (((uint64_t)((*p)[6])) << 48);
-    value |= (((uint64_t)((*p)[7])) << 56);
-    *p += 8;
-    return value;
-}
-
-float relay_read_float32(const uint8_t** p)
-{
-    uint32_t value_int = relay_read_uint32(p);
-    float value_float = 0.0f;
-    uint8_t* pointer_int = (uint8_t*)(&value_int);
-    uint8_t* pointer_float = (uint8_t*)(&value_float);
-    memcpy(pointer_float, pointer_int, sizeof(value_int));
-    return value_float;
-}
-
-double relay_read_float64(const uint8_t** p)
-{
-    uint64_t value_int = relay_read_uint64(p);
-    double value_float = 0.0;
-    uint8_t* pointer_int = (uint8_t*)(&value_int);
-    uint8_t* pointer_float = (uint8_t*)(&value_float);
-    memcpy(pointer_float, pointer_int, sizeof(value_int));
-    return value_float;
-}
-
-void relay_read_bytes(const uint8_t** p, uint8_t* byte_array, int num_bytes)
-{
-    for (int i = 0; i < num_bytes; ++i) {
-        byte_array[i] = relay_read_uint8(p);
-    }
-}
-
-void relay_read_string(const uint8_t** p, char* string_data, uint32_t max_length)
-{
-    uint32_t length = relay_read_uint32(p);
-    if (length > max_length) {
-        length = 0;
-        return;
-    }
-    uint32_t i = 0;
-    for (; i < length; ++i) {
-        string_data[i] = relay_read_uint8(p);
-    }
-    string_data[i] = 0;
-}
-
-// -----------------------------------------------------------------------------
-
-void relay_read_address(const uint8_t** buffer, relay::relay_address_t* address)
-{
-    const uint8_t* start = *buffer;
-
-    address->type = relay_read_uint8(buffer);
-
-    if (address->type == RELAY_ADDRESS_IPV4) {
-        for (int j = 0; j < 4; ++j) {
-            address->data.ipv4[j] = relay_read_uint8(buffer);
-        }
-        address->port = relay_read_uint16(buffer);
-        for (int i = 0; i < 12; ++i) {
-            uint8_t dummy = relay_read_uint8(buffer);
-            (void)dummy;
-        }
-    } else if (address->type == RELAY_ADDRESS_IPV6) {
-        for (int j = 0; j < 8; ++j) {
-            address->data.ipv6[j] = relay_read_uint16(buffer);
-        }
-        address->port = relay_read_uint16(buffer);
-    } else {
-        for (int i = 0; i < RELAY_ADDRESS_BYTES - 1; ++i) {
-            uint8_t dummy = relay_read_uint8(buffer);
-            (void)dummy;
-        }
-    }
-
-    (void)start;
-
-    assert(*buffer - start == RELAY_ADDRESS_BYTES);
-}
-
-void relay_write_address(uint8_t** buffer, const relay::relay_address_t* address)
-{
-    assert(buffer);
-    assert(*buffer);
-    assert(address);
-
-    uint8_t* start = *buffer;
-
-    (void)buffer;
-
-    if (address->type == RELAY_ADDRESS_IPV4) {
-        relay_write_uint8(buffer, RELAY_ADDRESS_IPV4);
-        for (int i = 0; i < 4; ++i) {
-            relay_write_uint8(buffer, address->data.ipv4[i]);
-        }
-        relay_write_uint16(buffer, address->port);
-        for (int i = 0; i < 12; ++i) {
-            relay_write_uint8(buffer, 0);
-        }
-    } else if (address->type == RELAY_ADDRESS_IPV6) {
-        relay_write_uint8(buffer, RELAY_ADDRESS_IPV6);
-        for (int i = 0; i < 8; ++i) {
-            relay_write_uint16(buffer, address->data.ipv6[i]);
-        }
-        relay_write_uint16(buffer, address->port);
-    } else {
-        for (int i = 0; i < RELAY_ADDRESS_BYTES; ++i) {
-            relay_write_uint8(buffer, 0);
-        }
-    }
-
-    (void)start;
-
-    assert(*buffer - start == RELAY_ADDRESS_BYTES);
-}
-
-const char* relay_address_to_string(const relay::relay_address_t* address, char* buffer)
-{
-    assert(buffer);
-
-    if (address->type == RELAY_ADDRESS_IPV6) {
-#if defined(WINVER) && WINVER <= 0x0502
-        // ipv6 not supported
-        buffer[0] = '\0';
-        return buffer;
-#else
-        uint16_t ipv6_network_order[8];
-        for (int i = 0; i < 8; ++i)
-            ipv6_network_order[i] = relay_htons(address->data.ipv6[i]);
-        char address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
-        relay_platform_inet_ntop6(ipv6_network_order, address_string, sizeof(address_string));
-        if (address->port == 0) {
-            strncpy(buffer, address_string, RELAY_MAX_ADDRESS_STRING_LENGTH);
-            return buffer;
-        } else {
-            if (snprintf(buffer, RELAY_MAX_ADDRESS_STRING_LENGTH, "[%s]:%hu", address_string, address->port) < 0) {
-                relay_printf("address string truncated: [%s]:%hu", address_string, address->port);
-            }
-            return buffer;
-        }
-#endif
-    } else if (address->type == RELAY_ADDRESS_IPV4) {
-        if (address->port != 0) {
-            snprintf(buffer,
-                RELAY_MAX_ADDRESS_STRING_LENGTH,
-                "%d.%d.%d.%d:%d",
-                address->data.ipv4[0],
-                address->data.ipv4[1],
-                address->data.ipv4[2],
-                address->data.ipv4[3],
-                address->port);
-        } else {
-            snprintf(buffer,
-                RELAY_MAX_ADDRESS_STRING_LENGTH,
-                "%d.%d.%d.%d",
-                address->data.ipv4[0],
-                address->data.ipv4[1],
-                address->data.ipv4[2],
-                address->data.ipv4[3]);
-        }
-        return buffer;
-    } else {
-        snprintf(buffer, RELAY_MAX_ADDRESS_STRING_LENGTH, "%s", "NONE");
-        return buffer;
-    }
-}
-
-int relay_address_equal(const relay::relay_address_t* a, const relay::relay_address_t* b)
-{
-    assert(a);
-    assert(b);
-
-    if (a->type != b->type)
-        return 0;
-
-    if (a->type == RELAY_ADDRESS_IPV4) {
-        if (a->port != b->port)
-            return 0;
-
-        for (int i = 0; i < 4; ++i) {
-            if (a->data.ipv4[i] != b->data.ipv4[i])
-                return 0;
-        }
-    } else if (a->type == RELAY_ADDRESS_IPV6) {
-        if (a->port != b->port)
-            return 0;
-
-        for (int i = 0; i < 8; ++i) {
-            if (a->data.ipv6[i] != b->data.ipv6[i])
-                return 0;
-        }
-    }
-
-    return 1;
-}
-
-// -----------------------------------------------------------------------------
 
 namespace relay
 {
@@ -1469,97 +1163,6 @@ int relay_verify_header(int direction, const uint8_t* private_key, uint8_t* buff
 }
 
 // -------------------------------------------------------------
-
-struct relay_route_stats_t
-{
-    float rtt;
-    float jitter;
-    float packet_loss;
-};
-
-void relay_route_stats_from_ping_history(
-    const relay::relay_ping_history_t* history, double start, double end, relay_route_stats_t* stats, double ping_safety)
-{
-    assert(history);
-    assert(stats);
-    assert(start < end);
-
-    stats->rtt = 0.0f;
-    stats->jitter = 0.0f;
-    stats->packet_loss = 0.0f;
-
-    // calculate packet loss
-
-    int num_pings_sent = 0;
-    int num_pongs_received = 0;
-
-    for (int i = 0; i < RELAY_PING_HISTORY_ENTRY_COUNT; i++) {
-        const relay::relay_ping_history_entry_t* entry = &history->entries[i];
-
-        if (entry->time_ping_sent >= start && entry->time_ping_sent <= end - ping_safety) {
-            num_pings_sent++;
-
-            if (entry->time_pong_received >= entry->time_ping_sent)
-                num_pongs_received++;
-        }
-    }
-
-    if (num_pings_sent > 0) {
-        stats->packet_loss = (float)(100.0 * (1.0 - (double(num_pongs_received) / double(num_pings_sent))));
-    }
-
-    // calculate mean RTT
-
-    double mean_rtt = 0.0;
-    int num_pings = 0;
-    int num_pongs = 0;
-
-    for (int i = 0; i < RELAY_PING_HISTORY_ENTRY_COUNT; i++) {
-        const relay::relay_ping_history_entry_t* entry = &history->entries[i];
-
-        if (entry->time_ping_sent >= start && entry->time_ping_sent <= end) {
-            if (entry->time_pong_received > entry->time_ping_sent) {
-                mean_rtt += 1000.0 * (entry->time_pong_received - entry->time_ping_sent);
-                num_pongs++;
-            }
-            num_pings++;
-        }
-    }
-
-    mean_rtt = (num_pongs > 0) ? (mean_rtt / num_pongs) : 10000.0;
-
-    assert(mean_rtt >= 0.0);
-
-    stats->rtt = float(mean_rtt);
-
-    // calculate jitter
-
-    int num_jitter_samples = 0;
-
-    double stddev_rtt = 0.0;
-
-    for (int i = 0; i < RELAY_PING_HISTORY_ENTRY_COUNT; i++) {
-        const relay::relay_ping_history_entry_t* entry = &history->entries[i];
-
-        if (entry->time_ping_sent >= start && entry->time_ping_sent <= end) {
-            if (entry->time_pong_received > entry->time_ping_sent) {
-                // pong received
-                double rtt = 1000.0 * (entry->time_pong_received - entry->time_ping_sent);
-                if (rtt >= mean_rtt) {
-                    double error = rtt - mean_rtt;
-                    stddev_rtt += error * error;
-                    num_jitter_samples++;
-                }
-            }
-        }
-    }
-
-    if (num_jitter_samples > 0) {
-        stats->jitter = 3.0f * (float)sqrt(stddev_rtt / num_jitter_samples);
-    }
-}
-
-// --------------------------------------------------------------------------
 
 #define RELAY_TOKEN_BYTES 32
 #define RESPONSE_MAX_BYTES 1024 * 1024

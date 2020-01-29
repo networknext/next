@@ -5,8 +5,8 @@
 
 #include "relay.h"
 
-#ifndef RELAY_MAC_H
-#define RELAY_MAC_H
+#ifndef RELAY_RELAY_PLATFORM_MAC_HPP
+#define RELAY_RELAY_PLATFORM_MAC_HPP
 
 #if RELAY_PLATFORM == RELAY_PLATFORM_MAC
 
