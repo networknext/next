@@ -20,13 +20,6 @@
 // -------------------------------------
 namespace relay
 {
-    typedef int relay_platform_socket_handle_t;
-
-    struct relay_platform_socket_t
-    {
-        relay_platform_socket_handle_t handle;
-    };
-
     // -------------------------------------
 
     struct relay_platform_thread_t
