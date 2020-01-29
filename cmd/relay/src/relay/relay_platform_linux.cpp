@@ -299,5 +299,5 @@ namespace relay
 #else   // #if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
 
 int relay_linux_dummy_symbol = 0;
-}
+
 #endif  // #if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
