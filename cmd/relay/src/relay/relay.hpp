@@ -10,7 +10,6 @@
 #include "relay_address.hpp"
 #include "relay_manager.hpp"
 #include "relay_replay_protection.hpp"
-#include "relay_platform_socket.hpp"
 #include "relay_platform.hpp"
 
 namespace relay
