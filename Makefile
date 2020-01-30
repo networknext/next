@@ -121,13 +121,13 @@ test-func: clean build-sdk build-relay build-functional-server build-functional-
 	@printf "\ndone\n\n"
 
 .PHONY: build-sdk-test
-build-sdk-test: clean build-sdk ## builds the sdk test binary
+build-sdk-test: build-sdk ## builds the sdk test binary
 	@printf "Building sdk test... "
 	@$(CXX) -Isdk -o $(DIST_DIR)/$(SDKNAME)_test ./sdk/next_test.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-soak-test
-build-soak-test: clean build-sdk ## builds the sdk test binary
+build-soak-test: build-sdk ## builds the sdk test binary
 	@printf "Building soak test... "
 	@$(CXX) -Isdk -o $(DIST_DIR)/$(SDKNAME)_soak_test ./sdk/next_soak.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"

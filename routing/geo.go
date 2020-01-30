@@ -101,9 +101,6 @@ func (c *GeoClient) RelaysWithin(lat float64, long float64, radius float64, uom 
 	}
 
 	res := c.RedisClient.GeoRadius(c.Namespace, long, lat, &geoquery)
-	if res.Err() != nil {
-		return nil, res.Err()
-	}
 
 	geolocs, err := res.Result()
 	if err != nil {
