@@ -31,7 +31,7 @@ func (bp *mockBuyerProvider) GetAndCheckBySdkVersion3PublicKeyId(id uint64) (*st
 
 type mockRouteProvider struct{}
 
-func (rp *mockRouteProvider) Route(d routing.Datacenter, rs []routing.Relay) ([]routing.Route, error) {
+func (rp *mockRouteProvider) AllRoutes(d routing.Datacenter, rs []routing.Relay) []routing.Route {
 	return []routing.Route{
 		{
 			Relays: []routing.Relay{
@@ -40,7 +40,7 @@ func (rp *mockRouteProvider) Route(d routing.Datacenter, rs []routing.Relay) ([]
 				{ID: 3, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 123}, PublicKey: make([]byte, crypto.KeySize)},
 			},
 		},
-	}, nil
+	}
 }
 
 func TestServerUpdateHandlerFunc(t *testing.T) {
