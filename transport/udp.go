@@ -112,7 +112,8 @@ func ServerUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider) UDPHan
 
 		// Drop the packet if version is older that the minimun sdk version
 		psdkv := SDKVersion{packet.VersionMajor, packet.VersionMinor, packet.VersionPatch}
-		if psdkv.Compare(SDKVersionMin) == SDKVersionOlder {
+		if !incoming.SourceAddr.IP.IsLoopback() &&
+			psdkv.Compare(SDKVersionMin) == SDKVersionOlder {
 			log.Printf("sdk version is too old. Using %s but require at least %s", psdkv, SDKVersionMin)
 			return
 		}
