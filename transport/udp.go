@@ -231,7 +231,7 @@ func (e SessionEntry) MarshalBinary() ([]byte, error) {
 }
 
 type RouteProvider interface {
-	Route(routing.Datacenter, []routing.Relay) ([]routing.Route, error)
+	AllRoutes(routing.Datacenter, []routing.Relay) []routing.Route
 }
 
 // SessionUpdateHandlerFunc ...
@@ -292,9 +292,9 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp Ro
 		}
 
 		// Get a set of possible routes from the RouteProvider an on error ensure it falls back to direct
-		routes, err := rp.Route(serverentry.Datacenter, clientrelays)
-		if err != nil {
-			log.Printf("failed to get a route for client ip '%s': %v", packet.ClientAddress.IP.String(), err)
+		routes := rp.AllRoutes(serverentry.Datacenter, clientrelays)
+		if routes == nil {
+			fmt.Println("failed to find routes")
 			return
 		}
 		chosenRoute := routes[0] // Just take the first one it find regardless of optimizations
