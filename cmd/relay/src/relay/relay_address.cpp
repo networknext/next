@@ -19,25 +19,22 @@ namespace relay
     RelayAddress::RelayAddress() : mType(0), mPort(0)
     {}
 
-    bool RelayAddress::parse(const char* address_string_in)
+    bool RelayAddress::parse(const std::string&& address_string_in)
     {
-        assert(address_string_in);
-
-        if (!address_string_in) {
-            return false;
-        }
-
         // first try to parse the string as an IPv6 address:
         // 1. if the first character is '[' then it's probably an ipv6 in form "[addr6]:portnum"
         // 2. otherwise try to parse as a raw IPv6 address using inet_pton
 
-        char buffer[RELAY_MAX_ADDRESS_STRING_LENGTH + RELAY_ADDRESS_BUFFER_SAFETY * 2];
+        std::array<char, RELAY_MAX_ADDRESS_STRING_LENGTH + RELAY_ADDRESS_BUFFER_SAFETY * 2> buffer;
 
-        char* address_string = buffer + RELAY_ADDRESS_BUFFER_SAFETY;
-        strncpy(address_string, address_string_in, RELAY_MAX_ADDRESS_STRING_LENGTH - 1);
-        address_string[RELAY_MAX_ADDRESS_STRING_LENGTH - 1] = '\0';
+        //char* address_string = buffer.data() + RELAY_ADDRESS_BUFFER_SAFETY;
+        //strncpy(address_string, address_string_in, RELAY_MAX_ADDRESS_STRING_LENGTH - 1);
+        //address_string[RELAY_MAX_ADDRESS_STRING_LENGTH - 1] = '\0';
 
-        int address_string_length = (int)strlen(address_string);
+        std::string address_string;
+        std::copy(address_string_in.begin(), address_string_in.end(), address_string.begin());
+
+        auto address_string_length = address_string.length();
 
         if (address_string[0] == '[') {
             const int base_index = address_string_length - 1;
@@ -62,7 +59,7 @@ namespace relay
             address_string += 1;
         }
         uint16_t addr6[8];
-        if (relay_platform_inet_pton6(address_string, addr6) == true) {
+        if (relay_platform_inet_pton6(address_string.data(), addr6) == true) {
             this->mType = RELAY_ADDRESS_IPV6;
             for (int i = 0; i < 8; ++i) {
                 this->mIPv6[i] = relay_platform_ntohs(addr6[i]);
@@ -74,7 +71,6 @@ namespace relay
         // 1. look for ":portnum", if found save the portnum and strip it out
         // 2. parse remaining ipv4 address via inet_pton
 
-        address_string_length = (int)strlen(address_string);
         const int base_index = address_string_length - 1;
         for (int i = 0; i < 6; ++i) {
             const int index = base_index - i;
@@ -87,7 +83,7 @@ namespace relay
         }
 
         uint32_t addr4;
-        if (relay_platform_inet_pton4(address_string, &addr4) == true) {
+        if (relay_platform_inet_pton4(address_string.c_str(), &addr4) == true) {
             this->mType = RELAY_ADDRESS_IPV4;
             this->mIPv4[3] = (uint8_t)((addr4 & 0xFF000000) >> 24);
             this->mIPv4[2] = (uint8_t)((addr4 & 0x00FF0000) >> 16);

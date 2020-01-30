@@ -14,7 +14,7 @@ namespace relay
         RelayAddress();
         ~RelayAddress() = default;
 
-        bool parse(const char* address_string_in);
+        bool parse(const std::string&& address_string_in);
 
         void toString(std::string& buffer);
         std::string toString();
