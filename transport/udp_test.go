@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
-	"encoding/hex"
-	"fmt"
 	"net"
 	"testing"
 
@@ -157,7 +155,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 
 			Signature: make([]byte, ed25519.SignatureSize),
 		}
-		packet.Signature = ed25519.Sign(buyersServerPrivKey, packet.GetSignData())
+		packet.Signature = crypto.Sign(packet.GetSignData(), buyersServerPrivKey)
 
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
@@ -198,7 +196,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 			VersionMinor: transport.SDKVersionMin.Minor,
 			VersionPatch: transport.SDKVersionMin.Patch,
 		}
-		packet.Signature = ed25519.Sign(buyersServerPrivKey, packet.GetSignData())
+		packet.Signature = crypto.Sign(packet.GetSignData(), buyersServerPrivKey)
 
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
@@ -246,7 +244,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 			Sequence:             13,
 			ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
 			ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
-			ServerRoutePublicKey: TestPublicKey,
+			ServerRoutePublicKey: make([]byte, 32),
 
 			DatacenterId: 13,
 
@@ -254,7 +252,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 			VersionMinor: transport.SDKVersionMin.Minor,
 			VersionPatch: transport.SDKVersionMin.Patch,
 		}
-		packet.Signature = ed25519.Sign(buyersServerPrivKey, packet.GetSignData())
+		packet.Signature = crypto.Sign(packet.GetSignData(), buyersServerPrivKey)
 
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
@@ -434,7 +432,6 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 		expected.Signature = ed25519.Sign(crypto.BackendPrivateKey, expected.GetSignData())
 
 		data := resbuf.Bytes()
-		fmt.Println(hex.Dump(data))
 		var actual transport.SessionResponsePacket
 		err = actual.UnmarshalBinary(data)
 		assert.NoError(t, err)

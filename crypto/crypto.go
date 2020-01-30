@@ -101,12 +101,16 @@ func Seal(data []byte, nonce []byte, publicKey []byte, privateKey []byte) []byte
 	return box.Seal(nil, data, &n, &pub, &priv)
 }
 
-// Open wraps (x/crypto/nacl/box).Open to make working with byte slices easier
+// Sign wraps sodiumSign with is a wrapper around libsodium
+// We wrap this to avoid inclding C in other libs breaking
+// code linting
 func Sign(data []byte, privateKey []byte) []byte {
 	return sodiumSign(data, privateKey)
 }
 
-// Seal wraps (x/crypto/nacl/box).Seal to make working with byte slices easier
+// Verify wraps sodiumVerify with is a wrapper around libsodium
+// We wrap this to avoid inclding C in other libs breaking
+// code linting
 func Verify(data []byte, sig []byte, publicKey []byte) bool {
 	return sodiumVerify(data, sig, publicKey)
 }
