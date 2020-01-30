@@ -38,57 +38,78 @@ Bench(RelayAddress_vs_relay_address_t_address_parsing)
 Bench(Relay_vs_relay_address_t_stringify_ipv4)
 {
     auto addr = "127.0.0.1:20000";
-    relay::RelayAddress object;
-    relay::relay_address_t structure;
-    object.parse(addr);
-    relay::relay_address_parse(&structure, addr);
 
-    std::string str;
-    Do(REPS)
+    // toString(string)
     {
-        object.toString(str);
-    }
-    auto object_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
-    std::cout << "toString() nanoseconds: " << object_elapsed << '\n';
-
-    char buffer[64];
-    Do(REPS)
-    {
-        relay::relay_address_to_string(&structure, buffer);
+        relay::RelayAddress object;
+        object.parse(addr);
+        std::string str;
+        Do(REPS)
+        {
+            object.toString(str);
+        }
+        auto object_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+        std::cout << "toString(string) nanoseconds: " << object_elapsed << '\n';
+        std::cout << "Address: " << str << '\n';
     }
 
-    auto structure_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
-    std::cout << "relay_address_to_string() nanoseconds: " << structure_elapsed << '\n';
+    // string toString()
+    {
+        relay::RelayAddress object;
+        object.parse(addr);
+        std::string str;
+        Do(REPS)
+        {
+            str = object.toString();
+        }
+        auto object_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+        std::cout << "string toString() nanoseconds: " << object_elapsed << '\n';
+        std::cout << "Address: " << str << '\n';
+    }
 
-    std::cout << "\nclass: " << str << '\n';
-    std::cout << "struct: " << buffer << '\n';
+    // relay_address_to_string()
+    {
+        relay::relay_address_t structure;
+        relay::relay_address_parse(&structure, addr);
+        char buffer[64];
+        Do(REPS)
+        {
+            relay::relay_address_to_string(&structure, buffer);
+        }
+        auto structure_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+        std::cout << "relay_address_to_string() nanoseconds: " << structure_elapsed << '\n';
+        std::cout << "Address: " << buffer << '\n';
+    }
 }
 
 Bench(Relay_vs_relay_address_t_stringify_ipv6)
 {
     auto addr = "[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:20000";
-    relay::RelayAddress object;
-    relay::relay_address_t structure;
-    object.parse(addr);
-    relay::relay_address_parse(&structure, addr);
 
-    std::string str;
-    Do(REPS)
     {
-        object.toString(str);
-    }
-    auto object_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
-    std::cout << "toString() nanoseconds: " << object_elapsed << '\n';
-
-    char buffer[128];
-    Do(REPS)
-    {
-        relay::relay_address_to_string(&structure, buffer);
+        relay::RelayAddress object;
+        object.parse(addr);
+        std::string str;
+        Do(REPS)
+        {
+            object.toString(str);
+        }
+        auto object_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+        std::cout << "toString() nanoseconds: " << object_elapsed << '\n';
+        std::cout << "Address: " << str << '\n';
     }
 
-    auto structure_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
-    std::cout << "relay_address_to_string() nanoseconds: " << structure_elapsed << '\n';
+    {
+        relay::relay_address_t structure;
+        relay::relay_address_parse(&structure, addr);
+        char buffer[128];
+        Do(REPS)
+        {
+            relay::relay_address_to_string(&structure, buffer);
+        }
 
-    std::cout << "\nclass: " << str << '\n';
-    std::cout << "struct: " << buffer << '\n';
+        auto structure_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+        std::cout << "relay_address_to_string() nanoseconds: " << structure_elapsed << '\n';
+        std::cout << "Address: " << buffer << '\n';
+    }
 }

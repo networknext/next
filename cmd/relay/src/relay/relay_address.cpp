@@ -169,7 +169,7 @@ namespace relay
     std::string RelayAddress::toString()
     {
         std::string buffer;
-        this->toString(buffer);
+        toString(buffer);
         return std::move(buffer);
     }
 
