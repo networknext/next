@@ -103,30 +103,28 @@ namespace relay
     {
         std::array<char, RELAY_MAX_ADDRESS_STRING_LENGTH> buf;
         if (this->mType == RELAY_ADDRESS_IPV6) {
-            // TODO check if c++17 is ok for development, can replace this with "if constexpr" for less preprocessor littered
-            // code
+            // TODO check if c++17 is ok, can replace this with "if constexpr" for less preprocessor littered code
 #if defined(WINVER) && WINVER <= 0x0502
             // ipv6 not supported
-            buffer[0] = '\0';
+            buf[0] = '\0';
 #else
             uint16_t ipv6_network_order[8];
-            for (int i = 0; i < 8; ++i)
+            for (int i = 0; i < 8; ++i) {
                 ipv6_network_order[i] = net::relay_htons(this->mIPv6[i]);
+            }
+
             char address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
             relay_platform_inet_ntop6(ipv6_network_order, address_string, sizeof(address_string));
-            if (this->mPort == 0) {
-                buffer.assign(address_string);
-            } else {
+
+            if (this->mPort != 0) {
                 if (snprintf(buf.data(), RELAY_MAX_ADDRESS_STRING_LENGTH, "[%s]:%hu", address_string, this->mPort) < 0) {
-                    buffer.assign(buf.begin(), buf.end());
                     relay_printf("address string truncated: [%s]:%hu", address_string, this->mPort);
                 }
             }
 #endif
         } else if (this->mType == RELAY_ADDRESS_IPV4) {
-            char buf[RELAY_MAX_ADDRESS_STRING_LENGTH];
             if (this->mPort != 0) {
-                snprintf(buf,
+                snprintf(buf.data(),
                     RELAY_MAX_ADDRESS_STRING_LENGTH,
                     "%d.%d.%d.%d:%d",
                     this->mIPv4[0],
@@ -134,21 +132,19 @@ namespace relay
                     this->mIPv4[2],
                     this->mIPv4[3],
                     this->mPort);
-                buffer.assign(buf);
             } else {
-                snprintf(buf,
+                snprintf(buf.data(),
                     RELAY_MAX_ADDRESS_STRING_LENGTH,
                     "%d.%d.%d.%d",
                     this->mIPv4[0],
                     this->mIPv4[1],
                     this->mIPv4[2],
                     this->mIPv4[3]);
-                buffer.assign(buf);
             }
         } else {
             snprintf(buf.data(), RELAY_MAX_ADDRESS_STRING_LENGTH, "%s", "NONE");
-            buffer.assign(buf.begin(), buf.end());
         }
+        buffer.assign(buf.begin(), buf.end());
     }
 
     std::string RelayAddress::toString()

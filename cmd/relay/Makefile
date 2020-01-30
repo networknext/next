@@ -44,6 +44,9 @@ clean:
 
 force: clean all
 
+run-benchmarks: all
+	$(BIN)/$(EXE) bench
+
 $(BIN)/$(EXE): $(SRC_OBJ_FILES)
 	$(CXX) $(CXX_FLAGS) $(INCLUDE_DIRS) $(LIBRARY_DIRS) $^ $(STATIC_LIBS) -o $@ $(LIBRARIES)
 

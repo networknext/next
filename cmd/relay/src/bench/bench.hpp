@@ -6,16 +6,23 @@
 
 #include "clock.hpp"
 
-#define Bench(benchmark_name)                                         \
-    class _bench_##benchmark_name##_ : public benchmarking::Benchmark \
-    {                                                                 \
-       public:                                                        \
+#define Bench(benchmark_name)                                                   \
+    class _bench_##benchmark_name##_ : public benchmarking::Benchmark           \
+    {                                                                           \
+       public:                                                                  \
         _bench_##benchmark_name##_() : benchmarking::Benchmark(#benchmark_name) \
-        {}                                                            \
-        void body() override;                                         \
-    };                                                                \
-    _bench_##benchmark_name##_ _var_##benchmark_name##_;              \
+        {}                                                                      \
+        void body() override;                                                   \
+    };                                                                          \
+    _bench_##benchmark_name##_ _var_##benchmark_name##_;                        \
     void _bench_##benchmark_name##_::body()
+
+#define Do(times)  \
+    Timer.reset(); \
+    for (int i = 0; i < times; i++)
+
+// Just for readability
+#define Skip() return
 
 extern benchmarking::Clock Timer;
 
