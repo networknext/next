@@ -61,7 +61,7 @@ func HTTPStart(port string, router *mux.Router) {
 	log.Printf("Starting server with port %s\n", port) // log
 	err := http.ListenAndServe(fmt.Sprintf(":%s", port), router)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 }
 
@@ -73,6 +73,7 @@ func RelayInitHandlerFunc(redisClient *redis.Client, geoClient *routing.GeoClien
 
 		if err != nil {
 			log.Printf("Could not read init packet: %v", err)
+			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
@@ -81,20 +82,27 @@ func RelayInitHandlerFunc(redisClient *redis.Client, geoClient *routing.GeoClien
 		relayInitPacket := RelayInitPacket{}
 
 		if err = relayInitPacket.UnmarshalBinary(body); err != nil {
-			writer.WriteHeader(http.StatusBadRequest)
 			log.Printf("Could not read init packet: %v", err)
+			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		log.Printf("Initializing relay with address %s", relayInitPacket.Address.IP.String())
 
-		if relayInitPacket.Magic != InitRequestMagic ||
-			relayInitPacket.Version != VersionNumberInitRequest {
+		if relayInitPacket.Magic != InitRequestMagic {
+			log.Printf("relay init packet magic mismatch %d != %d", relayInitPacket.Magic, InitRequestMagic)
+			writer.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		if relayInitPacket.Version != VersionNumberInitRequest {
+			log.Printf("relay init packet version number mismatch %d != %d", relayInitPacket.Version, VersionNumberInitRequest)
 			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		if _, ok := crypto.Open(relayInitPacket.EncryptedToken, relayInitPacket.Nonce, relayPublicKey, routerPrivateKey); !ok {
+			log.Printf("unauthorized relay packet detected from ip %s", relayInitPacket.Address.String())
 			writer.WriteHeader(http.StatusUnauthorized)
 			return
 		}
