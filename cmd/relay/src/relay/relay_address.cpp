@@ -30,11 +30,9 @@ namespace relay
 
         std::string bare_address = address_string;  // what the name implies
 
-        const int base_index = address_string.length() - 1;
-
         if (address_string[0] == '[') {
             // note: no need to search past 6 characters as ":65535" is longest possible port value
-            int index = base_index;
+            int index = address_string.length() - 1;
             for (int i = 0; i < 6; i++, index--) {
                 if (index < 0) {
                     return false;
@@ -43,13 +41,16 @@ namespace relay
                 if (address_string[index] == ':') {
                     try {
                         this->mPort = std::stoi(address_string.substr(index + 1));
-                        bare_address = std::move(address_string.substr(1, address_string.length() - i - 3));
+                        bare_address = std::move(address_string.substr(1, index - 3));
                     } catch (const std::invalid_argument& ia) {
                         LogDebug("Invalid argument except when parsing ipv6: ", ia.what());
+                        return false;
                     } catch (const std::out_of_range& oor) {
                         LogDebug("Out of range except when parsing ipv6: ", oor.what());
+                        return false;
                     } catch (const std::exception& e) {
                         LogDebug("Generic except when parsing ipv6: ", e.what());
+                        return false;
                     }
                     break;
                 }
@@ -77,8 +78,8 @@ namespace relay
 
         // 1. look for ":portnum", if found save the portnum and strip it out
 
-        for (int i = 0; i < 6; ++i) {
-            const int index = base_index - i;
+        int index = address_string.length() - 1;
+        for (int i = 0; i < 6; i--, index--) {
             if (index < 0) {
                 break;
             }
@@ -89,10 +90,13 @@ namespace relay
                     bare_address = address_string.substr(0, index);
                 } catch (const std::invalid_argument& ia) {
                     LogDebug("Invalid argument except when parsing ipv4: ", ia.what());
+                    return false;
                 } catch (const std::out_of_range& oor) {
                     LogDebug("Out of range except when parsing ipv4: ", oor.what());
+                    return false;
                 } catch (const std::exception& e) {
                     LogDebug("Generic except when parsing ipv4: ", e.what());
+                    return false;
                 }
                 break;
             }
@@ -212,7 +216,18 @@ namespace relay
                     return RELAY_ERROR;
                 }
                 if (address_string[index] == ':') {
-                    address->port = (uint16_t)(atoi(&address_string[index + 1]));  // atoi throws exceptions
+                    try {
+                        address->port = (uint16_t)(atoi(&address_string[index + 1]));  // atoi throws exceptions in c++
+                    } catch (const std::invalid_argument& ia) {
+                        LogDebug("Invalid argument except when parsing ipv6: ", ia.what());
+                        return RELAY_ERROR;
+                    } catch (const std::out_of_range& oor) {
+                        LogDebug("Out of range except when parsing ipv6: ", oor.what());
+                        return RELAY_ERROR;
+                    } catch (const std::exception& e) {
+                        LogDebug("Generic except when parsing ipv6: ", e.what());
+                        return RELAY_ERROR;
+                    }
                     address_string[index - 1] = '\0';
                     break;
                 } else if (address_string[index] == ']') {
@@ -244,7 +259,18 @@ namespace relay
             if (index < 0)
                 break;
             if (address_string[index] == ':') {
-                address->port = (uint16_t)(atoi(&address_string[index + 1]));
+                try {
+                    address->port = (uint16_t)(atoi(&address_string[index + 1])); // for same reason as above
+                } catch (const std::invalid_argument& ia) {
+                    LogDebug("Invalid argument except when parsing ipv4: ", ia.what());
+                    return RELAY_ERROR;
+                } catch (const std::out_of_range& oor) {
+                    LogDebug("Out of range except when parsing ipv4: ", oor.what());
+                    return RELAY_ERROR;
+                } catch (const std::exception& e) {
+                    LogDebug("Generic except when parsing ipv4: ", e.what());
+                    return RELAY_ERROR;
+                }
                 address_string[index] = '\0';
             }
         }

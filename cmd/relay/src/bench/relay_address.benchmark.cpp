@@ -12,16 +12,16 @@ Bench(RelayAddress_vs_relay_address_t_address_parsing)
         object.parse(straddr);
     }
 
-    auto object_elapsed = Timer.elapsed<benchmarking::Microsecond>() / 10000;
-    std::cout << "parse() microseconds: " << object_elapsed << '\n';
+    auto object_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / 10000;
+    std::cout << "parse() nanoseconds: " << object_elapsed << '\n';
 
     Do(10000)
     {
         relay::relay_address_parse(&structure, "127.0.0.1:20000");
     }
 
-    auto structure_elapsed = Timer.elapsed<benchmarking::Microsecond>() / 10000;
-    std::cout << "relay_address_parse() microseconds: " << structure_elapsed << '\n';
+    auto structure_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / 10000;
+    std::cout << "relay_address_parse() nanoseconds: " << structure_elapsed << '\n';
 }
 
 Bench(Relay_vs_relay_address_t_stringify)
@@ -34,21 +34,21 @@ Bench(Relay_vs_relay_address_t_stringify)
     relay::relay_address_parse(&structure, addr);
 
     std::string str;
-    Do(10000)
+    Do(100000)
     {
         object.toString(str);
     }
-    auto object_elapsed = Timer.elapsed<benchmarking::Microsecond>() / 10000;
-    std::cout << "toString() microseconds: " << object_elapsed << '\n';
+    auto object_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / 100000;
+    std::cout << "toString() nanoseconds: " << object_elapsed << '\n';
 
     char buffer[64];
-    Do(10000)
+    Do(100000)
     {
         relay::relay_address_to_string(&structure, buffer);
     }
 
-    auto structure_elapsed = Timer.elapsed<benchmarking::Microsecond>() / 10000;
-    std::cout << "relay_address_to_string() microseconds: " << structure_elapsed << '\n';
+    auto structure_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / 100000;
+    std::cout << "relay_address_to_string() nanoseconds: " << structure_elapsed << '\n';
 
     std::cout << "\nclass: " << str << '\n';
     std::cout << "struct: " << buffer << '\n';

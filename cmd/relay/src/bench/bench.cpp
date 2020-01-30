@@ -15,10 +15,10 @@ namespace benchmarking
     void Benchmark::Run()
     {
         std::cout << "Running " << mBenchmarks.size() << " benchmarks"
-                  << "\n\n";
+                  << "\n";
 
         for (auto benchmark : mBenchmarks) {
-            std::cout << "Running '" << benchmark->BenchmarkName << "'\n\n";
+            std::cout << "\nRunning '\x1b[35m" << benchmark->BenchmarkName << "\x1b[m'\n\n";
             benchmark->body();
         }
     }
