@@ -440,7 +440,7 @@ int main(int argc, const char** argv)
         relay::relay_address_t address_without_port = relay_address;
         address_without_port.port = 0;
         char address_buffer[RELAY_MAX_ADDRESS_STRING_LENGTH];
-        printf("    relay address is '%s'\n", relay_address_to_string(&address_without_port, address_buffer));
+        printf("    relay address is '%s'\n", relay::relay_address_to_string(&address_without_port, address_buffer));
     }
 
     uint16_t relay_bind_port = relay_address.port;

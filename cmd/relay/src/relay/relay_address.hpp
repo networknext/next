@@ -14,13 +14,20 @@ namespace relay
         RelayAddress();
         ~RelayAddress() = default;
 
-        bool parse(const std::string&& address_string_in);
+        bool parse(const std::string& address_string_in);
 
         void toString(std::string& buffer);
         std::string toString();
 
         bool operator==(const RelayAddress& other);
         bool equal(const RelayAddress& other);
+
+        // mainly for debugging
+
+        inline uint16_t port()
+        {
+            return mPort;
+        }
 
        private:
         uint8_t mType;
