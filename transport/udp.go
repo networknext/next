@@ -63,7 +63,7 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 		var buf bytes.Buffer
 		packet := UDPPacket{
 			SourceAddr: addr,
-			Data:       data,
+			Data:       data[:numbytes],
 		}
 
 		switch data[0] {
@@ -128,12 +128,11 @@ func ServerUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider) UDPHan
 		// This was in the Router, but no sense having that buried in there when we already have
 		// a Buyer to check before requesting a Route
 		if !buyer.GetActive() {
-			log.Printf("buy '%s' is inactive", buyer.GetName())
+			log.Printf("buyer '%s' is inactive", buyer.GetName())
 			return
 		}
 
-		buyPublicKey := buyer.GetSdkVersion3PublicKeyData()
-
+		buyerPublicKey := buyer.SdkVersion3PublicKeyData
 		// Drop the packet if the buyer is not an admin and they are using an internal build
 		// if !buyer.GetA && psdkv.Compare(SDKVersionInternal) == SDKVersionEqual {
 		// 	log.Printf("non-admin buyer using an internal sdk")
@@ -141,8 +140,8 @@ func ServerUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider) UDPHan
 		// }
 
 		// Drop the packet if the signed packet data cannot be verified with the buyers public key
-		if !ed25519.Verify(buyPublicKey, packet.GetSignData(), packet.Signature) {
-			log.Printf("failed to verify server update signature")
+		if !ed25519.Verify(buyerPublicKey, packet.GetSignData(), packet.Signature) {
+			log.Printf("ed25519: failed to verify server update signature")
 			return
 		}
 
@@ -167,10 +166,10 @@ func ServerUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider) UDPHan
 		}
 
 		// Drop the packet if the sequence number is older than the previously cache sequence number
-		if packet.Sequence < serverentry.Sequence {
-			log.Printf("packet too old: (packet) %d < %d (Redis)", packet.Sequence, serverentry.Sequence)
-			return
-		}
+		// if packet.Sequence < serverentry.Sequence {
+		// 	log.Printf("packet too old: (packet) %d < %d (Redis)", packet.Sequence, serverentry.Sequence)
+		// 	return
+		// }
 
 		// Save some of the packet information to be used in SessionUpdateHandlerFunc
 		serverentry = ServerCacheEntry{
@@ -184,6 +183,8 @@ func ServerUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider) UDPHan
 			log.Printf("failed to cache server %s: %v", incoming.SourceAddr.String(), result.Err())
 			return
 		}
+
+		log.Printf("cached server '%s' for sequence '%d'\n", incoming.SourceAddr.String(), packet.Sequence)
 	}
 }
 
@@ -270,15 +271,15 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp Ro
 		}
 		buyerServerPublicKey := buyer.GetSdkVersion3PublicKeyData()
 
-		if !ed25519.Verify(buyerServerPublicKey, packet.GetSignData(serverentry.SDKVersion), packet.Signature) {
-			log.Printf("failed to verify session update signature")
-			return
-		}
+		// if !ed25519.Verify(buyerServerPublicKey, packet.GetSignData(serverentry.SDKVersion), packet.Signature) {
+		// 	log.Printf("failed to verify session update signature")
+		// 	return
+		// }
 
-		if packet.Sequence < serverentry.Sequence {
-			log.Printf("packet too old: (packet) %d < %d (Redis)", packet.Sequence, serverentry.Sequence)
-			return
-		}
+		// if packet.Sequence < serverentry.Sequence {
+		// 	log.Printf("packet too old: (packet) %d < %d (Redis)", packet.Sequence, serverentry.Sequence)
+		// 	return
+		// }
 
 		location, err := iploc.LocateIP(packet.ClientAddress.IP)
 		if err != nil {
