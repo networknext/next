@@ -22,7 +22,9 @@
     for (int i = 0; i < times; i++)
 
 // Just for readability
-#define Skip() return
+#define Skip()                           \
+    std::cout << "Skipping benchmark\n"; \
+    return
 
 extern benchmarking::Clock Timer;
 

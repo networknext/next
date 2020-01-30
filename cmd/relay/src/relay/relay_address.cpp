@@ -10,6 +10,8 @@
 #include "config.hpp"
 #include "util.hpp"
 
+#include "util/logger.hpp"
+
 #include "relay_platform.hpp"
 
 #include "net/net.hpp"
@@ -23,43 +25,44 @@ namespace relay
     {
         // first try to parse the string as an IPv6 address:
         // 1. if the first character is '[' then it's probably an ipv6 in form "[addr6]:portnum"
-        // 2. otherwise try to parse as a raw IPv6 address using inet_pton
 
-        std::array<char, RELAY_MAX_ADDRESS_STRING_LENGTH + RELAY_ADDRESS_BUFFER_SAFETY * 2> buffer;
+        std::string address_string;  // the whole address, ex. "127.0.0.1:1234"
+        std::string without_port;    // what the name implies
 
-        //char* address_string = buffer.data() + RELAY_ADDRESS_BUFFER_SAFETY;
-        //strncpy(address_string, address_string_in, RELAY_MAX_ADDRESS_STRING_LENGTH - 1);
-        //address_string[RELAY_MAX_ADDRESS_STRING_LENGTH - 1] = '\0';
-
-        std::string address_string;
         std::copy(address_string_in.begin(), address_string_in.end(), address_string.begin());
-
         auto address_string_length = address_string.length();
 
         if (address_string[0] == '[') {
             const int base_index = address_string_length - 1;
 
             // note: no need to search past 6 characters as ":65535" is longest possible port value
+
             for (int i = 0; i < 6; ++i) {
                 const int index = base_index - i;
                 if (index < 0) {
                     return false;
-                }
-                if (address_string[index] == ':') {
-                    this->mPort = (uint16_t)(atoi(&address_string[index + 1]));
-                    address_string[index - 1] = '\0';
+                } else if (address_string[index] == ':') {
+                    try {
+                        this->mPort = std::stoi(address_string.substr(index + 1));
+                        without_port = address_string.substr(0, index);
+                    } catch (const std::invalid_argument& ia) {
+                        LogDebug("Invalid argument except: ", ia.what());
+                    } catch (const std::out_of_range& oor) {
+                        LogDebug("Out of range except: ", oor.what());
+                    } catch (const std::exception& e) {
+                        LogDebug("Generic except: ", e.what());
+                    }
                     break;
                 } else if (address_string[index] == ']') {
                     // no port number
-                    this->mPort = 0;
-                    address_string[index] = '\0';
                     break;
                 }
             }
-            address_string += 1;
         }
+
+        // 2. otherwise try to parse as a raw IPv6 address using inet_pton
         uint16_t addr6[8];
-        if (relay_platform_inet_pton6(address_string.data(), addr6) == true) {
+        if (relay_platform_inet_pton6(without_port.data(), addr6) == RELAY_OK) {
             this->mType = RELAY_ADDRESS_IPV6;
             for (int i = 0; i < 8; ++i) {
                 this->mIPv6[i] = relay_platform_ntohs(addr6[i]);
@@ -69,21 +72,28 @@ namespace relay
 
         // otherwise it's probably an IPv4 address:
         // 1. look for ":portnum", if found save the portnum and strip it out
-        // 2. parse remaining ipv4 address via inet_pton
-
         const int base_index = address_string_length - 1;
         for (int i = 0; i < 6; ++i) {
             const int index = base_index - i;
-            if (index < 0)
+            if (index < 0) {
                 break;
-            if (address_string[index] == ':') {
-                this->mPort = (uint16_t)(atoi(&address_string[index + 1]));
-                address_string[index] = '\0';
+            } else if (address_string[index] == ':') {
+                try {
+                    this->mPort = std::stoi(address_string.substr(index + 1));
+                    without_port = address_string.substr(0, index);
+                } catch (const std::invalid_argument& ia) {
+                    LogDebug("Invalid argument except: ", ia.what());
+                } catch (const std::out_of_range& oor) {
+                    LogDebug("Out of range except: ", oor.what());
+                } catch (const std::exception& e) {
+                    LogDebug("Generic except: ", e.what());
+                }
             }
         }
 
+        // 2. parse remaining ipv4 address via inet_pton
         uint32_t addr4;
-        if (relay_platform_inet_pton4(address_string.c_str(), &addr4) == true) {
+        if (relay_platform_inet_pton4(address_string.c_str(), &addr4) == RELAY_OK) {
             this->mType = RELAY_ADDRESS_IPV4;
             this->mIPv4[3] = (uint8_t)((addr4 & 0xFF000000) >> 24);
             this->mIPv4[2] = (uint8_t)((addr4 & 0x00FF0000) >> 16);
