@@ -27,6 +27,16 @@ func TestSDKVersion(t *testing.T) {
 		b := transport.SDKVersion{1, 1, 1}
 
 		assert.Equal(t, transport.SDKVersionNewer, a.Compare(b))
+
+		a = transport.SDKVersion{1, 2, 3}
+		b = transport.SDKVersion{1, 1, 3}
+
+		assert.Equal(t, transport.SDKVersionNewer, a.Compare(b))
+
+		a = transport.SDKVersion{1, 2, 3}
+		b = transport.SDKVersion{1, 2, 2}
+
+		assert.Equal(t, transport.SDKVersionNewer, a.Compare(b))
 	})
 
 	t.Run("string", func(t *testing.T) {

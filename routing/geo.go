@@ -43,7 +43,9 @@ func (mmdb *MaxmindDB) LocateIP(ip net.IP) (Location, error) {
 
 	// if the ip is localhost, return nothing so we can test on our dev machines
 	matches, _ := regexp.Match(regexLocalhostIPs, []byte(ip.String()))
-	if matches {
+	localhostMatches, _ := regexp.Match(regexLocalhostIPs, ip) // For the "localhost" case
+
+	if matches || localhostMatches {
 		return Location{}, nil
 	}
 
@@ -55,7 +57,7 @@ func (mmdb *MaxmindDB) LocateIP(ip net.IP) (Location, error) {
 	if len(res.City.Names) <= 0 {
 		return Location{}, fmt.Errorf("no location found for '%s'", ip.String())
 	}
-
+	
 	return Location{
 		Continent: res.Continent.Names["en"],
 		Country:   res.Country.Names["en"],

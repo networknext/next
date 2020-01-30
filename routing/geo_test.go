@@ -38,6 +38,20 @@ func TestIPLocator(t *testing.T) {
 		}
 
 		{
+			actual, err := mmdb.LocateIP(net.ParseIP("127.0.0.1"))
+			assert.NoError(t, err)
+
+			assert.Equal(t, routing.Location{}, actual)
+		}
+
+		{
+			actual, err := mmdb.LocateIP(([]byte)("localhost"))
+			assert.NoError(t, err)
+
+			assert.Equal(t, routing.Location{}, actual)
+		}
+
+		{
 			actual, err := mmdb.LocateIP(net.ParseIP("0.0.0.0"))
 			assert.EqualError(t, err, "no location found for '0.0.0.0'")
 

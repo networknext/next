@@ -121,13 +121,13 @@ test-func: clean build-sdk build-relay build-functional-server build-functional-
 	@printf "\ndone\n\n"
 
 .PHONY: build-sdk-test
-build-sdk-test: build-sdk ## builds the sdk test binary
+build-sdk-test: clean build-sdk ## builds the sdk test binary
 	@printf "Building sdk test... "
 	@$(CXX) -Isdk -o $(DIST_DIR)/$(SDKNAME)_test ./sdk/next_test.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-soak-test
-build-soak-test: build-sdk ## builds the sdk test binary
+build-soak-test: clean build-sdk ## builds the sdk test binary
 	@printf "Building soak test... "
 	@$(CXX) -Isdk -o $(DIST_DIR)/$(SDKNAME)_soak_test ./sdk/next_soak.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
@@ -242,7 +242,7 @@ build-relay: ## builds the relay
 	@printf "done\n"
 
 .PHONY: build-sdk
-build-sdk: clean ## builds the sdk into a shared object for linking
+build-sdk: ## builds the sdk into a shared object for linking
 	@printf "Building sdk... "
 	@$(CXX) -fPIC -shared -o $(DIST_DIR)/$(SDKNAME).so ./sdk/next.cpp ./sdk/next_ios.cpp ./sdk/next_linux.cpp ./sdk/next_mac.cpp ./sdk/next_ps4.cpp ./sdk/next_switch.cpp ./sdk/next_windows.cpp ./sdk/next_xboxone.cpp $(LDFLAGS)
 	@printf "done\n"
@@ -277,6 +277,9 @@ build-functional-client:
 	@$(CXX) -Isdk -o $(DIST_DIR)/func_client ./cmd/tools/functional/client/func_client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
+.PHONY: build-functional
+build-functional: build-functional-client build-functional-server
+
 .PHONY: build-client
 build-client: build-sdk ## builds the game client linking in the sdk shared library
 	@printf "Building client... "
@@ -285,3 +288,6 @@ build-client: build-sdk ## builds the game client linking in the sdk shared libr
 
 .PHONY: build-all
 build-all: build-relay-backend build-server-backend build-relay build-client build-server build-functional build-sdk-test build-soak-test build-tools ## builds everything
+
+.PHONY: rebuild-all
+rebuild-all: clean build-all
