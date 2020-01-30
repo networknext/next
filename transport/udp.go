@@ -14,6 +14,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 
 	"github.com/go-redis/redis/v7"
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 )
@@ -140,7 +141,7 @@ func ServerUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider) UDPHan
 		// }
 
 		// Drop the packet if the signed packet data cannot be verified with the buyers public key
-		if !ed25519.Verify(buyerPublicKey, packet.GetSignData(), packet.Signature) {
+		if !crypto.Verify(packet.GetSignData(), packet.Signature, buyerPublicKey) {
 			log.Printf("ed25519: failed to verify server update signature")
 			return
 		}
