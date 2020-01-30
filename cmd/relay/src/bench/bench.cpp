@@ -18,8 +18,10 @@ namespace benchmarking
                   << "\n";
 
         for (auto benchmark : mBenchmarks) {
-            std::cout << "\nRunning '\x1b[35m" << benchmark->BenchmarkName << "\x1b[m'\n\n";
+            std::cout << "\n=============================================\n\n"
+                      << "Running '\x1b[35m" << benchmark->BenchmarkName << "\x1b[m'\n\n";
             benchmark->body();
         }
+        std::cout << "\n=============================================\n\n";
     }
 }  // namespace benchmarking
