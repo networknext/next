@@ -43,9 +43,9 @@ Bench(Relay_vs_relay_address_t_stringify_ipv4)
     object.parse(addr);
     relay::relay_address_parse(&structure, addr);
 
+    std::string str;
     Do(REPS)
     {
-        std::string str;
         object.toString(str);
     }
     auto object_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
@@ -59,6 +59,9 @@ Bench(Relay_vs_relay_address_t_stringify_ipv4)
 
     auto structure_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
     std::cout << "relay_address_to_string() nanoseconds: " << structure_elapsed << '\n';
+
+    std::cout << "\nclass: " << str << '\n';
+    std::cout << "struct: " << buffer << '\n';
 }
 
 Bench(Relay_vs_relay_address_t_stringify_ipv6)

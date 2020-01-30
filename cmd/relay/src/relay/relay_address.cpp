@@ -120,15 +120,18 @@ namespace relay
         return false;
     }
 
-    void RelayAddress::toString(std::string& buffer)
+    // TODO consider making this a bool retval. Since some windows versions can't do ipv6 then that would be the only case it
+    // returns false
+    void RelayAddress::toString(std::string& output)
     {
-        std::stringstream ss;
+        std::array<char, RELAY_MAX_ADDRESS_STRING_LENGTH> buff;
+        unsigned int total = 0;
 
         if (mType == RELAY_ADDRESS_IPV6) {
             // TODO check if c++17 is ok, can replace this with "if constexpr" for less preprocessor littered code
 #if defined(WINVER) && WINVER <= 0x0502
             // ipv6 not supported
-            buf[0] = '\0';
+            return;
 #else
             uint16_t ipv6_network_order[8];
             for (int i = 0; i < 8; ++i) {
@@ -137,22 +140,30 @@ namespace relay
 
             std::array<char, RELAY_MAX_ADDRESS_STRING_LENGTH> address_string;
             relay_platform_inet_ntop6(ipv6_network_order, address_string.data(), address_string.size() * sizeof(char));
-            ss << '[' << address_string.data() << ']';
+            total += snprintf(buff.data(), RELAY_MAX_ADDRESS_STRING_LENGTH, "[%s]", address_string.data());
             if (mPort != 0) {
-                ss << ':' << mPort;
+                total += snprintf(&buff[total], RELAY_MAX_ADDRESS_STRING_LENGTH - total, ":%hu", mPort);
             }
 #endif
         } else if (mType == RELAY_ADDRESS_IPV4) {
-            ss << (unsigned int)mIPv4[0] << '.' << (unsigned int)mIPv4[1] << '.' << (unsigned int)mIPv4[2] << '.'
-               << (unsigned int)mIPv4[3];
+            total +=
+                snprintf(buff.data(), RELAY_MAX_ADDRESS_STRING_LENGTH, "%d.%d.%d.%d", mIPv4[0], mIPv4[1], mIPv4[2], mIPv4[3]);
             if (mPort != 0) {
-                ss << ':' << mPort;
+                total += snprintf(&buff[total], RELAY_MAX_ADDRESS_STRING_LENGTH - total, ":%hu", mPort);
             }
         } else {
-            ss << "NONE";
+            total += snprintf(buff.data(), sizeof("NONE"), "NONE");
         }
 
-        buffer = std::move(ss.str());
+        // method 1 - 1st fastest
+        output.resize(total);
+        std::copy(buff.begin(), buff.begin() + total, output.begin());
+
+        // method 2 - slow
+        // output = std::move(std::string(buff.begin(), buff.begin() + total));
+
+        // method 3 - almost tied with method 1
+        // output.assign(buff.begin(), buff.begin() + total);
     }
 
     std::string RelayAddress::toString()
