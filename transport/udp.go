@@ -3,32 +3,19 @@ package transport
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net"
+	"time"
 
 	jsoniter "github.com/json-iterator/go"
 
 	"github.com/go-redis/redis/v7"
-	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/routing"
-)
-
-const (
-	PacketTypeServerUpdate = iota + 200
-	PacketTypeSessionUpdate
-)
-
-const (
-	ResponseTypeDirect = iota
-	ResponseTypeRoute
-	ResponseTypeContinue
-)
-
-const (
-	DefaultMaxPacketSize = 1500
+	"github.com/networknext/backend/storage"
 )
 
 type UDPPacket struct {
@@ -71,7 +58,7 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 		if numbytes <= 0 {
 			continue
 		}
-		log.Printf("handler %d read %d bytes from %s", id, numbytes, addr.String())
+		log.Println("handler", id, "addr", addr.String(), "bytes", numbytes)
 
 		var buf bytes.Buffer
 		packet := UDPPacket{
@@ -89,91 +76,112 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 		if buf.Len() > 0 {
 			_, err := m.Conn.WriteToUDP(buf.Bytes(), addr)
 			if err != nil {
-				log.Printf("failed to write to server '%s': %v", addr.String(), err)
+				log.Println("addr", addr.String(), "msg", err.Error())
 			}
 		}
 	}
 }
 
-type ServerEntry struct {
-	ServerRoutePublicKey []byte
-	ServerPrivateAddr    net.UDPAddr
-
-	DatacenterID      uint64
-	DatacenterName    string
-	DatacenterEnabled bool
-
-	VersionMajor int32
-	VersionMinor int32
-	VersionPatch int32
+type ServerCacheEntry struct {
+	Sequence   uint64
+	Server     routing.Server
+	Datacenter routing.Datacenter
+	SDKVersion SDKVersion
 }
 
-func (e *ServerEntry) UnmarshalBinary(data []byte) error {
+func (e *ServerCacheEntry) UnmarshalBinary(data []byte) error {
 	return jsoniter.Unmarshal(data, e)
 }
 
-func (e ServerEntry) MarshalBinary() ([]byte, error) {
+func (e ServerCacheEntry) MarshalBinary() ([]byte, error) {
 	return jsoniter.Marshal(e)
 }
 
+type BuyerProvider interface {
+	GetAndCheckBySdkVersion3PublicKeyId(key uint64) (*storage.Buyer, bool)
+}
+
 // ServerUpdateHandlerFunc ...
-func ServerUpdateHandlerFunc(redisClient redis.Cmdable) UDPHandlerFunc {
+func ServerUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
-		var packet core.ServerUpdatePacket
+		var packet ServerUpdatePacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
-			fmt.Printf("failed to read server update packet: %v\n", err)
+			log.Printf("failed to read server update packet: %v\n", err)
 			return
 		}
 
-		// Verify the Session packet version
-		if !core.ProtocolVersionAtLeast(packet.VersionMajor, packet.VersionMinor, packet.VersionPatch, core.SDKVersionMajorMin, core.SDKVersionMinorMin, core.SDKVersionPatchMin) {
-			log.Printf("sdk version is too old. Using %d.%d.%d but require at least %d.%d.%d", packet.VersionMajor, packet.VersionMinor, packet.VersionPatch, core.SDKVersionMajorMin, core.SDKVersionMinorMin, core.SDKVersionPatchMin)
+		// Drop the packet if version is older that the minimun sdk version
+		psdkv := SDKVersion{packet.VersionMajor, packet.VersionMinor, packet.VersionPatch}
+		if psdkv.Compare(SDKVersionMin) == SDKVersionOlder {
+			log.Printf("sdk version is too old. Using %s but require at least %s", psdkv, SDKVersionMin)
 			return
 		}
 
-		// Get the the old ServerEntry from Redis
-		var serverentry ServerEntry
+		// Get the buyer information for the id in the packet
+		buyer, ok := bp.GetAndCheckBySdkVersion3PublicKeyId(packet.CustomerId)
+		if !ok {
+			log.Printf("failed to get buyer '%d'", packet.CustomerId)
+			return
+		}
+
+		// This was in the Router, but no sense having that buried in there when we already have
+		// a Buyer to check before requesting a Route
+		if !buyer.GetActive() {
+			log.Printf("buy '%s' is inactive", buyer.GetName())
+			return
+		}
+
+		buyPublicKey := buyer.GetSdkVersion3PublicKeyData()
+
+		// Drop the packet if the buyer is not an admin and they are using an internal build
+		// if !buyer.GetA && psdkv.Compare(SDKVersionInternal) == SDKVersionEqual {
+		// 	log.Printf("non-admin buyer using an internal sdk")
+		// 	return
+		// }
+
+		// Drop the packet if the signed packet data cannot be verified with the buyers public key
+		if !ed25519.Verify(buyPublicKey, packet.GetSignData(), packet.Signature) {
+			log.Printf("failed to verify server update signature")
+			return
+		}
+
+		// Get the the old ServerCacheEntry if it exists, otherwise serverentry is in zero value state
+		var serverentry ServerCacheEntry
 		{
 			result := redisClient.Get("SERVER-" + incoming.SourceAddr.String())
 			if result.Err() != nil && result.Err() != redis.Nil {
-				log.Printf("failed to get server %s from redis: %v", incoming.SourceAddr.String(), result.Err())
+				log.Printf("failed to load server %s from cache: %v", incoming.SourceAddr.String(), result.Err())
 				return
 			}
 			serverdata, err := result.Bytes()
 			if err != nil && result.Err() != redis.Nil {
-				log.Printf("failed to get bytes from redis: %v", result.Err())
+				log.Printf("failed to get bytes from cache: %v", result.Err())
 				return
 			}
 			if serverdata != nil {
 				if err := serverentry.UnmarshalBinary(serverdata); err != nil {
-					fmt.Printf("failed to read server entry: %v\n", err)
+					fmt.Printf("failed to unmarshal server cache entry: %v\n", err)
 				}
 			}
 		}
 
-		// TODO 1. Get Buyer and Customer information from ConfigStore
+		// Drop the packet if the sequence number is older than the previously cache sequence number
+		if packet.Sequence < serverentry.Sequence {
+			log.Printf("packet too old: (packet) %d < %d (Redis)", packet.Sequence, serverentry.Sequence)
+			return
+		}
 
-		// TODO 2. Check server packet version for customer and don't let them use 0.0.0
-
-		// signdata := sup.GetSignData()
-
-		// Save the ServerEntry to Redis
-		{
-			serverentry = ServerEntry{
-				ServerRoutePublicKey: packet.ServerRoutePublicKey,
-				ServerPrivateAddr:    packet.ServerPrivateAddress,
-
-				DatacenterID: packet.DatacenterId,
-
-				VersionMajor: packet.VersionMajor,
-				VersionMinor: packet.VersionMinor,
-				VersionPatch: packet.VersionPatch,
-			}
-			result := redisClient.Set("SERVER-"+incoming.SourceAddr.String(), serverentry, 0)
-			if result.Err() != nil {
-				log.Printf("failed to register server %s: %v", incoming.SourceAddr.String(), result.Err())
-				return
-			}
+		// Save some of the packet information to be used in SessionUpdateHandlerFunc
+		serverentry = ServerCacheEntry{
+			Sequence:   packet.Sequence,
+			Server:     routing.Server{Addr: packet.ServerPrivateAddress, PublicKey: packet.ServerRoutePublicKey},
+			Datacenter: routing.Datacenter{ID: packet.DatacenterId},
+			SDKVersion: SDKVersion{packet.VersionMajor, packet.VersionMinor, packet.VersionPatch},
+		}
+		result := redisClient.Set("SERVER-"+incoming.SourceAddr.String(), serverentry, 5*time.Minute)
+		if result.Err() != nil {
+			log.Printf("failed to cache server %s: %v", incoming.SourceAddr.String(), result.Err())
+			return
 		}
 	}
 }
@@ -200,7 +208,8 @@ type SessionEntry struct {
 
 	ConnectionType int32
 
-	GeoLocation IPStackResponse
+	Latitude  float64
+	Longitude float64
 
 	Tag   uint64
 	Flags uint32
@@ -210,9 +219,7 @@ type SessionEntry struct {
 	OnNetworkNext    bool
 	FallbackToDirect bool
 
-	VersionMajor int32
-	VersionMinor int32
-	VersionPatch int32
+	SDKVersion SDKVersion
 }
 
 func (e *SessionEntry) UnmarshalBinary(data []byte) error {
@@ -223,11 +230,15 @@ func (e SessionEntry) MarshalBinary() ([]byte, error) {
 	return jsoniter.Marshal(e)
 }
 
+type RouteProvider interface {
+	Route(routing.Datacenter, []routing.Relay) ([]routing.Route, error)
+}
+
 // SessionUpdateHandlerFunc ...
-func SessionUpdateHandlerFunc(redisClient redis.Cmdable, ipStackClient *IPStackClient) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, encryptionPrivateKey []byte, signingPrivateKey []byte) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		// Deserialize the Session packet
-		var packet core.SessionUpdatePacket
+		var packet SessionUpdatePacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
 			log.Printf("failed to read server update packet: %v\n", err)
 			return
@@ -245,73 +256,102 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, ipStackClient *IPStackC
 			return
 		}
 
-		var serverentry ServerEntry
+		var serverentry ServerCacheEntry
 		if err := serverentry.UnmarshalBinary(serverdata); err != nil {
 			log.Fatalf("failed to unmarshal server entry from redis for '%s': %v", incoming.SourceAddr.String(), err)
 			return
 		}
 
-		ipres, err := ipStackClient.Lookup(packet.ClientAddress.IP.String())
+		buyer, ok := bp.GetAndCheckBySdkVersion3PublicKeyId(packet.CustomerId)
+		if !ok {
+			log.Printf("failed to get buyer '%d'", packet.CustomerId)
+			return
+		}
+		buyerServerPublicKey := buyer.GetSdkVersion3PublicKeyData()
+
+		if !ed25519.Verify(buyerServerPublicKey, packet.GetSignData(serverentry.SDKVersion), packet.Signature) {
+			log.Printf("failed to verify session update signature")
+			return
+		}
+
+		if packet.Sequence < serverentry.Sequence {
+			log.Printf("packet too old: (packet) %d < %d (Redis)", packet.Sequence, serverentry.Sequence)
+			return
+		}
+
+		location, err := iploc.LocateIP(packet.ClientAddress.IP)
 		if err != nil {
 			log.Printf("failed to lookup client ip '%s': %v", packet.ClientAddress.IP.String(), err)
 			return
 		}
 
-		// Change Session Packet
-
-		// Save the Session packet to Redis
-		sessionentry := SessionEntry{
-			SessionID:  packet.SessionId,
-			UserID:     packet.UserHash,
-			PlatformID: packet.PlatformId,
-
-			DirectRTT:        float64(packet.DirectMinRtt),
-			DirectJitter:     float64(packet.DirectJitter),
-			DirectPacketLoss: float64(packet.DirectPacketLoss),
-			NextRTT:          float64(packet.NextMinRtt),
-			NextJitter:       float64(packet.NextJitter),
-			NextPacketLoss:   float64(packet.NextPacketLoss),
-
-			ServerRoutePublicKey: serverentry.ServerRoutePublicKey,
-			ServerPrivateAddr:    serverentry.ServerPrivateAddr,
-			ServerAddr:           packet.ServerAddress,
-			ClientAddr:           packet.ClientAddress,
-
-			ConnectionType: packet.ConnectionType,
-
-			GeoLocation: *ipres,
-
-			Tag:              packet.Tag,
-			Flagged:          packet.Flagged,
-			FallbackToDirect: packet.FallbackToDirect,
-			OnNetworkNext:    packet.OnNetworkNext,
-
-			VersionMajor: serverentry.VersionMajor,
-			VersionMinor: serverentry.VersionMinor,
-			VersionPatch: serverentry.VersionPatch,
-		}
-		{
-			result := redisClient.Set(fmt.Sprintf("SESSION-%d", packet.SessionId), sessionentry, 0)
-			if result.Err() != nil {
-				log.Printf("failed to save session db entry for %s: %v", incoming.SourceAddr.String(), result.Err())
-				return
-			}
+		clientrelays, err := geoClient.RelaysWithin(location.Latitude, location.Longitude, 500, "mi")
+		if err != nil {
+			log.Printf("failed to lookup client ip '%s': %v", packet.ClientAddress.IP.String(), err)
+			return
 		}
 
-		response := core.SessionResponsePacket{
-			ResponseType:         ResponseTypeContinue,
+		// Get a set of possible routes from the RouteProvider an on error ensure it falls back to direct
+		routes, err := rp.Route(serverentry.Datacenter, clientrelays)
+		if err != nil {
+			log.Printf("failed to get a route for client ip '%s': %v", packet.ClientAddress.IP.String(), err)
+			return
+		}
+		chosenRoute := routes[0] // Just take the first one it find regardless of optimizations
+
+		// Build the next route with the client, server, and set of relays to use
+		nextRoute := routing.NextRouteToken{
+			Expires: uint64(time.Now().Add(10 * time.Second).Unix()),
+
+			SessionId: packet.SessionId,
+
+			SessionVersion: 0, // Haven't figured out what this is for
+			SessionFlags:   0, // Haven't figured out what this is for
+
+			Client: routing.Client{
+				Addr:      packet.ClientAddress,
+				PublicKey: packet.ClientRoutePublicKey,
+			},
+
+			Server: routing.Server{
+				Addr:      packet.ServerAddress,
+				PublicKey: buyerServerPublicKey,
+			},
+
+			Relays: chosenRoute.Relays,
+		}
+
+		// Encrypt the next route with the our private key
+		routeTokens, err := nextRoute.Encrypt(encryptionPrivateKey)
+		if err != nil {
+			log.Fatalf("failed to encrypt route token: %v", err)
+			return
+		}
+
+		// Create the Session Response for the server
+		response := SessionResponsePacket{
 			Sequence:             packet.Sequence,
 			SessionId:            packet.SessionId,
-			NumNearRelays:        3,
-			NearRelayIds:         []uint64{1, 2, 3},
-			NearRelayAddresses:   []net.UDPAddr{{IP: net.IPv4zero, Port: 10000}, {IP: net.IPv4zero, Port: 20000}, {IP: net.IPv4zero, Port: 30000}},
-			Multipath:            false,
-			NumTokens:            0,
-			Tokens:               make([]byte, 1),
-			ServerRoutePublicKey: serverentry.ServerRoutePublicKey,
+			RouteType:            int32(routing.DecisionTypeNew),
+			NumTokens:            int32(len(chosenRoute.Relays) + 2), // Num of relays + client + server
+			Tokens:               routeTokens,
+			Multipath:            false, // Haven't figured out what this is for
+			ServerRoutePublicKey: serverentry.Server.PublicKey,
 		}
-		response.Sign(serverentry.VersionMajor, serverentry.VersionMinor, serverentry.VersionPatch)
 
+		// Fill in the near relays
+		response.NumNearRelays = int32(len(clientrelays))
+		response.NearRelayIds = make([]uint64, len(clientrelays))
+		response.NearRelayAddresses = make([]net.UDPAddr, len(clientrelays))
+		for idx, relay := range clientrelays {
+			response.NearRelayIds[idx] = relay.ID
+			response.NearRelayAddresses[idx] = relay.Addr
+		}
+
+		// Sign the response
+		response.Signature = ed25519.Sign(signingPrivateKey, response.GetSignData())
+
+		// Send the Session Response back to the server
 		res, err := response.MarshalBinary()
 		if err != nil {
 			log.Printf("failed to marshal session response to '%s': %v", incoming.SourceAddr.String(), err)

@@ -1,26 +1,25 @@
 package transport
 
-// #cgo pkg-config: libsodium
-// #include <sodium.h>
-import "C"
-
 import (
+	"bytes"
+	"crypto/rand"
 	"fmt"
-	"github.com/gorilla/mux"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
 
-	"github.com/networknext/backend/core"
+	"github.com/go-redis/redis/v7"
+	"github.com/gorilla/mux"
+
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
+	"github.com/networknext/backend/routing"
+	"github.com/networknext/backend/storage"
 )
 
 const (
-	InitRequestMagic = uint32(0x9083708f)
-
-	LengthOfRelayToken = 32
+	InitRequestMagic = 0x9083708f
 
 	MaxRelays             = 1024
 	MaxRelayAddressLength = 256
@@ -38,14 +37,22 @@ var gRelayPublicKey = []byte{
 	0xda, 0xa9, 0xc0, 0xae, 0x08, 0xa2, 0xcf, 0x5e,
 }
 
+type RelayProvider interface {
+	GetAndCheckByRelayCoreId(key uint32) (*storage.Relay, bool)
+}
+
+type DatacenterProvider interface {
+	GetAndCheck(key *storage.Key) (*storage.Datacenter, bool)
+}
+
 // NewRouter creates a router with the specified endpoints
-func NewRouter(relaydb *core.RelayDatabase, statsdb *core.StatsDatabase, backend *StubbedBackend) *mux.Router {
+func NewRouter(redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, relayProvider RelayProvider, datacenterProvider DatacenterProvider, statsdb *routing.StatsDatabase, costmatrix *routing.CostMatrix, routematrix *routing.RouteMatrix, relayPublicKey []byte, routerPrivateKey []byte) *mux.Router {
 	router := mux.NewRouter()
-	router.HandleFunc("/relay_init", RelayInitHandlerFunc(relaydb)).Methods("POST")
-	router.HandleFunc("/relay_update", RelayUpdateHandlerFunc(relaydb, statsdb)).Methods("POST")
-	router.HandleFunc("/cost_matrix", CostMatrixHandlerFunc(backend)).Methods("GET")
-	router.HandleFunc("/route_matrix", RouteMatrixHandlerFunc(backend)).Methods("GET")
-	router.HandleFunc("/near", NearHandlerFunc(backend)).Methods("GET")
+	router.HandleFunc("/relay_init", RelayInitHandlerFunc(redisClient, geoClient, ipLocator, relayProvider, datacenterProvider, relayPublicKey, routerPrivateKey)).Methods("POST")
+	router.HandleFunc("/relay_update", RelayUpdateHandlerFunc(redisClient, statsdb)).Methods("POST")
+	router.Handle("/cost_matrix", costmatrix).Methods("GET")
+	router.Handle("/route_matrix", routematrix).Methods("GET")
+	router.HandleFunc("/near", NearHandlerFunc(nil)).Methods("GET")
 	return router
 }
 
@@ -54,17 +61,19 @@ func HTTPStart(port string, router *mux.Router) {
 	log.Printf("Starting server with port %s\n", port) // log
 	err := http.ListenAndServe(fmt.Sprintf(":%s", port), router)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 }
 
 // RelayInitHandlerFunc returns the function for the relay init endpoint
-func RelayInitHandlerFunc(relaydb *core.RelayDatabase) func(writer http.ResponseWriter, request *http.Request) {
+func RelayInitHandlerFunc(redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, relayProvider RelayProvider, datacenterProvider DatacenterProvider, relayPublicKey []byte, routerPrivateKey []byte) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		log.Println("Received Relay Init Packet")
 		body, err := ioutil.ReadAll(request.Body)
 
 		if err != nil {
+			log.Printf("Could not read init packet: %v", err)
+			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
@@ -73,34 +82,97 @@ func RelayInitHandlerFunc(relaydb *core.RelayDatabase) func(writer http.Response
 		relayInitPacket := RelayInitPacket{}
 
 		if err = relayInitPacket.UnmarshalBinary(body); err != nil {
-			writer.WriteHeader(http.StatusBadRequest)
-			log.Println(err)
-			return
-		}
-
-		if relayInitPacket.Magic != InitRequestMagic ||
-			relayInitPacket.Version != VersionNumberInitRequest ||
-			!crypto.Check(relayInitPacket.EncryptedToken, relayInitPacket.Nonce, gRelayPublicKey[:], core.RouterPrivateKey[:]) {
+			log.Printf("Could not read init packet: %v", err)
 			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		key := core.GetRelayID(relayInitPacket.Address)
+		log.Printf("Initializing relay with address %s", relayInitPacket.Address.IP.String())
 
-		_, relayAlreadyExists := relaydb.Relays[key]
-		if relayAlreadyExists {
+		if relayInitPacket.Magic != InitRequestMagic {
+			log.Printf("relay init packet magic mismatch %d != %d", relayInitPacket.Magic, InitRequestMagic)
+			writer.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		if relayInitPacket.Version != VersionNumberInitRequest {
+			log.Printf("relay init packet version number mismatch %d != %d", relayInitPacket.Version, VersionNumberInitRequest)
+			writer.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		if _, ok := crypto.Open(relayInitPacket.EncryptedToken, relayInitPacket.Nonce, relayPublicKey, routerPrivateKey); !ok {
+			log.Printf("unauthorized relay packet detected from ip %s", relayInitPacket.Address.String())
+			writer.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		relay := routing.Relay{
+			ID:             crypto.HashID(relayInitPacket.Address.String()),
+			Addr:           relayInitPacket.Address,
+			LastUpdateTime: uint64(time.Now().Unix()),
+		}
+		rdbEntry, ok := relayProvider.GetAndCheckByRelayCoreId(uint32(relay.ID))
+		if !ok {
+			log.Printf("coult not get relay with address '%s' from configstore database", relay.Addr.String())
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		dcdbEntry, ok := datacenterProvider.GetAndCheck(rdbEntry.Datacenter)
+		if !ok {
+			log.Printf("coult not get datacenter for relay with address '%s' from configstore database", relay.Addr.String())
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		relay.DatacenterName = dcdbEntry.Name
+		relay.Datacenter = crypto.HashID(relay.DatacenterName)
+
+		exists := redisClient.HExists(routing.HashKeyAllRelays, relay.Key())
+
+		if exists.Err() != nil && exists.Err() != redis.Nil {
+			log.Printf("failed to get relay %s from redis: %v", relayInitPacket.Address.String(), exists.Err())
 			writer.WriteHeader(http.StatusNotFound)
 			return
 		}
 
-		entry := core.RelayData{}
-		entry.Name = relayInitPacket.Address
-		entry.ID = core.GetRelayID(relayInitPacket.Address)
-		entry.Address = relayInitPacket.Address //core.ParseAddress(relayInitPacket.address)
-		entry.LastUpdateTime = uint64(time.Now().Unix())
-		entry.PublicKey = core.RandomBytes(LengthOfRelayToken)
+		if exists.Val() {
+			log.Println("relay entry exists, returning")
+			writer.WriteHeader(http.StatusNotFound)
+		}
 
-		relaydb.Relays[entry.ID] = entry
+		relay.PublicKey = make([]byte, crypto.KeySize)
+		if _, err := rand.Read(relay.PublicKey); err != nil {
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		relay.LastUpdateTime = uint64(time.Now().Unix())
+		relay.PublicKey = make([]byte, crypto.KeySize)
+		rand.Read(relay.PublicKey)
+
+		loc, err := ipLocator.LocateIP(relay.Addr.IP)
+		if err != nil {
+			log.Printf("failed to lookup relay ip '%s': %v", relay.Addr.String(), err)
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		relay.Latitude = loc.Latitude
+		relay.Longitude = loc.Longitude
+
+		if res := redisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay); res.Err() != nil && res.Err() != redis.Nil {
+			log.Printf("failed to set relay %s into redis hash: %v", relayInitPacket.Address.String(), res.Err())
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		if err := geoClient.Add(relay); err != nil {
+			log.Printf("failed to add relay %s into geo client: %v", relayInitPacket.Address.String(), err)
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 
 		writer.Header().Set("Content-Type", "application/octet-stream")
 
@@ -108,14 +180,14 @@ func RelayInitHandlerFunc(relaydb *core.RelayDatabase) func(writer http.Response
 		responseData := make([]byte, 64)
 		encoding.WriteUint32(responseData, &index, VersionNumberInitResponse)
 		encoding.WriteUint64(responseData, &index, uint64(time.Now().Unix()))
-		encoding.WriteBytes(responseData, &index, entry.PublicKey, LengthOfRelayToken)
+		encoding.WriteBytes(responseData, &index, relay.PublicKey, crypto.KeySize)
 
 		writer.Write(responseData[:index])
 	}
 }
 
-// RelayUpdateHandlerFunc returns the function fora the relay update endpoint
-func RelayUpdateHandlerFunc(relaydb *core.RelayDatabase, statsdb *core.StatsDatabase) func(writer http.ResponseWriter, request *http.Request) {
+// RelayUpdateHandlerFunc returns the function for the relay update endpoint
+func RelayUpdateHandlerFunc(redisClient *redis.Client, statsdb *routing.StatsDatabase) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		log.Println("Received Relay Update Packet")
 		body, err := ioutil.ReadAll(request.Body)
@@ -128,7 +200,7 @@ func RelayUpdateHandlerFunc(relaydb *core.RelayDatabase, statsdb *core.StatsData
 		relayUpdatePacket := RelayUpdatePacket{}
 		if err = relayUpdatePacket.UnmarshalBinary(body); err != nil {
 			writer.WriteHeader(http.StatusBadRequest)
-			log.Println(err)
+			log.Printf("Could not read update packet: %v", err)
 			return
 		}
 
@@ -137,34 +209,58 @@ func RelayUpdateHandlerFunc(relaydb *core.RelayDatabase, statsdb *core.StatsData
 			return
 		}
 
-		key := core.GetRelayID(relayUpdatePacket.Address)
-		entry, ok := relaydb.Relays[key]
-		found := false
-		if ok && crypto.CompareTokens(relayUpdatePacket.Token, entry.PublicKey) {
-			found = true
+		relay := routing.Relay{
+			ID: crypto.HashID(relayUpdatePacket.Address.String()),
 		}
 
-		if !found {
+		exists := redisClient.HExists(routing.HashKeyAllRelays, relay.Key())
+
+		if exists.Err() != nil && exists.Err() != redis.Nil {
+			log.Printf("failed to check if relay %s exists: %v", relayUpdatePacket.Address.String(), exists.Err())
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		if !exists.Val() {
+			log.Printf("failed to find relay with address '%s' in redis", relayUpdatePacket.Address.String())
 			writer.WriteHeader(http.StatusNotFound)
 			return
 		}
 
-		statsUpdate := &core.RelayStatsUpdate{}
-		statsUpdate.ID = entry.ID
-
-		for _, ps := range relayUpdatePacket.PingStats {
-			statsUpdate.PingStats = append(statsUpdate.PingStats, ps)
+		hgetResult := redisClient.HGet(routing.HashKeyAllRelays, relay.Key())
+		if hgetResult.Err() != nil && hgetResult.Err() != redis.Nil {
+			log.Printf("failed to get relay %s from redis: %v", relayUpdatePacket.Address.String(), hgetResult.Err())
+			writer.WriteHeader(http.StatusNotFound)
+			return
 		}
+
+		data, err := hgetResult.Bytes()
+
+		if err != nil && err != redis.Nil {
+			log.Printf("failed to get bytes from redis: %v", hgetResult.Err())
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		if err = relay.UnmarshalBinary(data); err != nil {
+			log.Printf("failed to marshal data into struct: %v", err)
+			writer.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		if !bytes.Equal(relayUpdatePacket.Token, relay.PublicKey) {
+			log.Printf("update packet for address '%s' not equal to existing entry", relayUpdatePacket.Address.String())
+			writer.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		statsUpdate := &routing.RelayStatsUpdate{}
+		statsUpdate.ID = relay.ID
+		statsUpdate.PingStats = append(statsUpdate.PingStats, relayUpdatePacket.PingStats...)
 
 		statsdb.ProcessStats(statsUpdate)
 
-		entry = core.RelayData{
-			Name:           relayUpdatePacket.Address,
-			ID:             core.GetRelayID(relayUpdatePacket.Address),
-			Address:        relayUpdatePacket.Address,
-			LastUpdateTime: uint64(time.Now().Unix()),
-			PublicKey:      relayUpdatePacket.Token,
-		}
+		relay.LastUpdateTime = uint64(time.Now().Unix())
 
 		type RelayPingData struct {
 			id      uint64
@@ -173,11 +269,20 @@ func RelayUpdateHandlerFunc(relaydb *core.RelayDatabase, statsdb *core.StatsData
 
 		relaysToPing := make([]RelayPingData, 0)
 
-		relaydb.Relays[key] = entry
-		hashedAddress := core.GetRelayID(relayUpdatePacket.Address)
-		for k, v := range relaydb.Relays {
-			if k != hashedAddress {
-				relaysToPing = append(relaysToPing, RelayPingData{id: uint64(v.ID), address: v.Address})
+		redisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay)
+
+		hgetallResult := redisClient.HGetAll(routing.HashKeyAllRelays)
+		if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
+			log.Printf("failed to get all relays from redis: %v", hgetallResult.Err())
+			writer.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		for k, v := range hgetallResult.Val() {
+			if k != relay.Key() {
+				var unmarshaledValue routing.Relay
+				unmarshaledValue.UnmarshalBinary([]byte(v))
+				relaysToPing = append(relaysToPing, RelayPingData{id: uint64(unmarshaledValue.ID), address: unmarshaledValue.Addr.String()})
 			}
 		}
 
@@ -195,35 +300,9 @@ func RelayUpdateHandlerFunc(relaydb *core.RelayDatabase, statsdb *core.StatsData
 
 		responseLength := index
 
-		responseData = responseData[:responseLength]
-
 		writer.Header().Set("Content-Type", "application/octet-stream")
 
-		writer.Write(responseData)
-	}
-}
-
-// CostMatrixHandlerFunc returns the function for the cost matrix endpoint
-func CostMatrixHandlerFunc(backend *StubbedBackend) func(writer http.ResponseWriter, request *http.Request) {
-	return func(writer http.ResponseWriter, request *http.Request) {
-		backend.mutex.RLock()
-		costMatrixData := backend.costMatrixData
-		backend.mutex.RUnlock()
-		writer.WriteHeader(http.StatusOK)
-		writer.Header().Set("Content-Type", "application/octet-stream")
-		writer.Write(costMatrixData)
-	}
-}
-
-// RouteMatrixHandlerFunc returns the function for the matrix endpoint
-func RouteMatrixHandlerFunc(backend *StubbedBackend) func(writer http.ResponseWriter, request *http.Request) {
-	return func(writer http.ResponseWriter, request *http.Request) {
-		backend.mutex.RLock()
-		routeMatrixData := backend.routeMatrixData
-		backend.mutex.RUnlock()
-		writer.WriteHeader(http.StatusOK)
-		writer.Header().Set("Content-Type", "application/octet-stream")
-		writer.Write(routeMatrixData)
+		writer.Write(responseData[:responseLength])
 	}
 }
 

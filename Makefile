@@ -1,4 +1,5 @@
 CXX = g++
+CXX_FLAGS := -Wall -Wextra
 GO = go
 GOFMT = gofmt
 
@@ -22,15 +23,44 @@ COST_FILE = $(DIST_DIR)/cost.bin
 OPTIMIZE_FILE = $(DIST_DIR)/optimize.bin
 
 #####################
-##    RELAY ENV    ##
+##    SHARED ENV   ##
 #####################
 
-export RELAY_ID = local
-export RELAY_ADDRESS = 127.0.0.1
-export RELAY_PUBLIC_KEY = 9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=
-export RELAY_PRIVATE_KEY = lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=
 export RELAY_BACKEND_HOSTNAME = http://localhost:30000
+export RELAY_ID = local
+
+ifndef RELAY_ADDRESS
+export RELAY_ADDRESS = 127.0.0.1
+endif
+
+## Relay keys are unique to each relay and used to DECRYPT only the segment in the route token indended for itself
+## For local dev purposes ALL relays we run will have the same keys, but in production they are all different 
+ifndef RELAY_PUBLIC_KEY
+export RELAY_PUBLIC_KEY = 9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=
+endif
+
+ifndef RELAY_PRIVATE_KEY
+export RELAY_PRIVATE_KEY = lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=
+endif
+
+## Server backend keys are used for SIGNING data so game servers can verify response data's authenticity 
+ifndef SERVER_BACKEND_PUBLIC_KEY
+export SERVER_BACKEND_PUBLIC_KEY = TGHKjEeHPtSgtZfDyuDPcQgtJTyRDtRvGSKvuiWWo0A=
+endif
+
+ifndef SERVER_BACKEND_PRIVATE_KEY
+export SERVER_BACKEND_PRIVATE_KEY = FXwFqzjGlIwUDwiq1N5Um5VUesdr4fP2hVV2cnJ+yARMYcqMR4c+1KC1l8PK4M9xCC0lPJEO1G8ZIq+6JZajQA==
+endif
+
+## Relay routing keys are used to ENCRYPT route tokens for the client, server, and all relays in between
+ifndef RELAY_ROUTER_PUBLIC_KEY
 export RELAY_ROUTER_PUBLIC_KEY = SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
+endif
+
+ifndef RELAY_ROUTER_PRIVATE_KEY
+export RELAY_ROUTER_PRIVATE_KEY = ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
+endif
+
 export RELAY_DEBUG = 0
 
 .PHONY: help
@@ -44,7 +74,7 @@ clean: ## cleans the dist directory of all builds
 
 .PHONY: lint
 lint: ## runs go vet
-	@$(GO) vet ./core/...
+	@printf "Skipping vet/staticcheck for now...\n"
 
 .PHONY: format
 format: ## runs gofmt on all go source code
@@ -90,7 +120,7 @@ test-func: clean build-sdk build-relay build-functional-server build-functional-
 	@$(GO) run ./cmd/tools/functional/tests/func_tests.go
 	@printf "\ndone\n\n"
 
-.PHONY: build-sdk-test 
+.PHONY: build-sdk-test
 build-sdk-test: build-sdk ## builds the sdk test binary
 	@printf "Building sdk test... "
 	@$(CXX) -Isdk -o $(DIST_DIR)/$(SDKNAME)_test ./sdk/next_test.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
@@ -133,9 +163,21 @@ dev-debug: ## debugs relay in route matrix
 dev-route: ## prints routes from relay to datacenter in route matrix
 	test -f $(OPTIMIZE_FILE) && cat $(OPTIMIZE_FILE) | $(DIST_DIR)/route -relay=$(relay) -datacenter=$(datacenter)
 
+#######################
+# Relay Build Process #
+#######################
+
+RELAY_DIR	:= ./cmd/relay
+RELAY_EXE	:= relay
+
+.PHONY: $(DIST_DIR)/$(RELAY_EXE)
+$(DIST_DIR)/$(RELAY_EXE):
+
 .PHONY: dev-relay
-dev-relay: build-relay
-	@./dist/relay
+dev-relay: $(DIST_DIR)/$(RELAY_EXE) build-relay
+	@$<
+
+#######################
 
 .PHONY: dev-optimizer
 dev-optimizer: ## runs a local optimizer
@@ -147,7 +189,8 @@ dev-relay-backend: ## runs a local relay backend
 
 .PHONY: dev-server-backend
 dev-server-backend: ## runs a local server backend
-	@export IPSTACK_ACCESS_KEY=2a3640e34301da9ab257c59243b0d7c6 ; \
+	@export MAXMIND_DB_URI=./GeoLite2-City.mmdb ; \
+	export ROUTE_MATRIX_URI=http://localhost:30000/route_matrix ; \
 	$(GO) run cmd/server_backend/server_backend.go
 
 .PHONY: dev-backend
@@ -173,7 +216,7 @@ dev-client: build-client  ## runs a local client
 .PHONY: build-relay
 build-relay: ## builds the relay
 	@printf "Building relay... "
-	@$(CXX) -o $(DIST_DIR)/relay ./cmd/relay/*.cpp $(LDFLAGS)
+	@cd $(RELAY_DIR) && make
 	@printf "done\n"
 
 .PHONY: build-sdk
