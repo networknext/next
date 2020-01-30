@@ -34,28 +34,45 @@ func main() {
 
 	var relayPublicKey []byte
 	var routerPrivateKey []byte
+	{
+		if key := os.Getenv("RELAY_PUBLIC_KEY"); len(key) != 0 {
+			relayPublicKey, _ = base64.StdEncoding.DecodeString(key)
+		} else {
+			log.Fatal("env var 'RELAY_PUBLIC_KEY' is not set")
+		}
 
-	if key := os.Getenv("RELAY_PUBLIC_KEY"); len(key) != 0 {
-		relayPublicKey, _ = base64.StdEncoding.DecodeString(key)
-	} else {
-		log.Fatal("env var 'RELAY_PUBLIC_KEY' is not set")
+		if key := os.Getenv("RELAY_ROUTER_PRIVATE_KEY"); len(key) != 0 {
+			routerPrivateKey, _ = base64.StdEncoding.DecodeString(key)
+		} else {
+			log.Fatal("env var 'RELAY_ROUTER_PRIVATE_KEY' is not set")
+		}
 	}
 
-	if key := os.Getenv("RELAY_ROUTER_PRIVATE_KEY"); len(key) != 0 {
-		routerPrivateKey, _ = base64.StdEncoding.DecodeString(key)
-	} else {
-		log.Fatal("env var 'RELAY_ROUTER_PRIVATE_KEY' is not set")
-	}
+	// Attempt to connect to REDIS_HOST
+	// If it fails to connect then start a local in memory instance and connect to that instead
+	redisClient := redis.NewClient(&redis.Options{Addr: os.Getenv("REDIS_HOST")})
+	if err := redisClient.Ping().Err(); err != nil {
+		redisServer, err := miniredis.Run()
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	// Create an in-memory relay & datacenter store
-	inMemory := storage.NewInMemory()
-	var relayProvider transport.RelayProvider = &inMemory
-	var datacenterProvider transport.DatacenterProvider = &inMemory
+		redisClient = redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+		if err := redisClient.Ping().Err(); err != nil {
+			log.Fatal(err)
+		}
+
+		log.Printf("unable to connect to REDIS_HOST '%s', connected to in-memory redis %s\n", os.Getenv("REDIS_HOST"), redisServer.Addr())
+	}
 
 	// Set the default IPLocator to resolve all lookups to 0/0 aka Null Island
 	var ipLocator routing.IPLocator = routing.NullIsland
 
-	if filename, ok := os.LookupEnv("RELAY_STUBBED_DATA_FILENAME"); ok {
+	// Create an in-memory relay & datacenter store
+	// that doesn't require talking to configstore
+	inMemory := storage.NewInMemory()
+
+	if filename, ok := os.LookupEnv("RELAYS_STUBBED_DATA_FILENAME"); ok {
 		type relays struct {
 			routing.Location
 			DatacenterName string
@@ -102,6 +119,13 @@ func main() {
 		defer mmreader.Close()
 	}
 
+	geoClient := routing.GeoClient{
+		RedisClient: redisClient,
+		Namespace:   "RELAY_LOCATIONS",
+	}
+
+	var relayProvider transport.RelayProvider = &inMemory
+	var datacenterProvider transport.DatacenterProvider = &inMemory
 	if os.Getenv("CONFIGSTORE_HOST") != "" {
 		grpcconn, err := grpc.Dial(os.Getenv("CONFIGSTORE_HOST"), grpc.WithInsecure())
 		if err != nil {
@@ -116,28 +140,6 @@ func main() {
 		// then replace the in-memory with the gRPC one
 		relayProvider = configstore.Relays
 		datacenterProvider = configstore.Datacenters
-	}
-
-	// Attempt to connect to REDIS_HOST
-	// If it fails to connect then start a local in memory instance and connect to that instead
-	redisClient := redis.NewClient(&redis.Options{Addr: os.Getenv("REDIS_HOST")})
-	if err := redisClient.Ping().Err(); err != nil {
-		redisServer, err := miniredis.Run()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		redisClient = redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
-		if err := redisClient.Ping().Err(); err != nil {
-			log.Fatal(err)
-		}
-
-		log.Printf("unable to connect to REDIS_HOST '%s', connected to in-memory redis %s\n", os.Getenv("REDIS_HOST"), redisServer.Addr())
-	}
-
-	geoClient := routing.GeoClient{
-		RedisClient: redisClient,
-		Namespace:   "RELAY_LOCATIONS",
 	}
 
 	statsdb := routing.NewStatsDatabase()
