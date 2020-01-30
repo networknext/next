@@ -63,7 +63,7 @@ namespace relay
         }
 
         // 2. otherwise try to parse as a raw IPv6 address using inet_pton
-        LogDebug("addr: ", bare_address);
+
         uint16_t addr6[8];
         if (relay_platform_inet_pton6(bare_address.data(), addr6) == RELAY_OK) {
             this->mType = RELAY_ADDRESS_IPV6;
@@ -225,7 +225,6 @@ namespace relay
             address_string += 1;
         }
         uint16_t addr6[8];
-        LogDebug("Address string: ", address_string, " port: ", address->port);
         if (relay_platform_inet_pton6(address_string, addr6) == RELAY_OK) {
             address->type = RELAY_ADDRESS_IPV6;
             for (int i = 0; i < 8; ++i) {

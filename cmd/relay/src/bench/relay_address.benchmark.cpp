@@ -3,7 +3,6 @@
 
 Bench(RelayAddress_vs_relay_address_t_address_parsing)
 {
-    Skip();
     relay::RelayAddress object;
     relay::relay_address_t structure;
 
@@ -35,7 +34,7 @@ Bench(Relay_vs_relay_address_t_stringify)
     relay::relay_address_parse(&structure, addr);
 
     std::string str;
-    Do(1)
+    Do(10000)
     {
         object.toString(str);
     }
@@ -43,7 +42,7 @@ Bench(Relay_vs_relay_address_t_stringify)
     std::cout << "toString() microseconds: " << object_elapsed << '\n';
 
     char buffer[64];
-    Do(1)
+    Do(10000)
     {
         relay::relay_address_to_string(&structure, buffer);
     }
@@ -51,6 +50,6 @@ Bench(Relay_vs_relay_address_t_stringify)
     auto structure_elapsed = Timer.elapsed<benchmarking::Microsecond>() / 10000;
     std::cout << "relay_address_to_string() microseconds: " << structure_elapsed << '\n';
 
-    std::cout << "class: " << str << '\n';
+    std::cout << "\nclass: " << str << '\n';
     std::cout << "struct: " << buffer << '\n';
 }
