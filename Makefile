@@ -163,43 +163,21 @@ dev-debug: ## debugs relay in route matrix
 dev-route: ## prints routes from relay to datacenter in route matrix
 	test -f $(OPTIMIZE_FILE) && cat $(OPTIMIZE_FILE) | $(DIST_DIR)/route -relay=$(relay) -datacenter=$(datacenter)
 
-.PHONY: dev-relay
-dev-relay: build-relay
-	@./dist/relay
-
 #######################
 # Relay Build Process #
 #######################
 
-rwildcard=$(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))
+RELAY_DIR	:= ./cmd/relay
+RELAY_EXE	:= relay
 
-RELAY_BIN			:= $(DIST_DIR)
-RELAY_OBJ			:= obj
-RELAY_SRC			:= cmd/relay
+.PHONY: $(DIST_DIR)/$(RELAY_EXE)
+$(DIST_DIR)/$(RELAY_EXE):
 
-RELAY_SRC_FILES		:= $(call rwildcard,$(RELAY_SRC),*.cpp)
-RELAY_OBJ_FILES		:= $(patsubst $(RELAY_SRC)/%.cpp, $(RELAY_OBJ)/%.o, $(RELAY_SRC_FILES))
-RELAY_SUB_DIRS		:= $(shell find $(RELAY_SRC)/* -type d -print)
-RELAY_OBJ_DIRS		:= $(patsubst $(RELAY_SRC)/%, $(RELAY_OBJ)/%, $(RELAY_SUB_DIRS))
-
-RELAY_EXE			:= relay
-
-relay_mkdirs:
-	@mkdir -p $(RELAY_OBJ) $(RELAY_OBJ_DIRS)
-
-$(RELAY_BIN)/$(RELAY_EXE): $(RELAY_OBJ_FILES)
-	@printf "Building relay... "
-	@$(CXX) $(CXX_FLAGS) $^ -o $@ $(LDFLAGS)
-
-dev-relay-v2: relay_mkdirs dev-run-relay
-
-dev-run-relay: $(RELAY_BIN)/$(RELAY_EXE)
+.PHONY: dev-relay
+dev-relay: $(DIST_DIR)/$(RELAY_EXE) build-relay
 	@$<
 
-$(RELAY_OBJ)/%.o: $(RELAY_SRC)/%.cpp
-	$(CXX) $(CXX_FLAGS) -c $< -o $@
-
-######################
+#######################
 
 .PHONY: dev-optimizer
 dev-optimizer: ## runs a local optimizer
@@ -238,7 +216,7 @@ dev-client: build-client  ## runs a local client
 .PHONY: build-relay
 build-relay: ## builds the relay
 	@printf "Building relay... "
-	@$(CXX) -o $(DIST_DIR)/relay ./cmd/relay/*.cpp $(LDFLAGS)
+	@cd $(RELAY_DIR) && make
 	@printf "done\n"
 
 .PHONY: build-sdk
