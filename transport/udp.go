@@ -76,7 +76,7 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 		var buf bytes.Buffer
 		packet := UDPPacket{
 			SourceAddr: addr,
-			Data:       data[1:],
+			Data:       data,
 		}
 
 		switch data[0] {
