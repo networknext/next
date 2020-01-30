@@ -3,6 +3,7 @@
 
 Bench(RelayAddress_vs_relay_address_t_address_parsing)
 {
+    Skip();
     relay::RelayAddress object;
     relay::relay_address_t structure;
 
@@ -34,7 +35,7 @@ Bench(Relay_vs_relay_address_t_stringify)
     relay::relay_address_parse(&structure, addr);
 
     std::string str;
-    Do(10000)
+    Do(1)
     {
         object.toString(str);
     }
@@ -42,7 +43,7 @@ Bench(Relay_vs_relay_address_t_stringify)
     std::cout << "toString() microseconds: " << object_elapsed << '\n';
 
     char buffer[64];
-    Do(10000)
+    Do(1)
     {
         relay::relay_address_to_string(&structure, buffer);
     }

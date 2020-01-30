@@ -29,7 +29,7 @@ namespace benchmarking
 
         /* Check if a time duration has passed */
         template <typename UnitOfTime>
-        bool elapsed(double value)
+        inline bool elapsed(double value)
         {
             return std::chrono::duration_cast<UnitOfTime>(InternalClock::now() - mNow).count() >= value;
         }
@@ -39,7 +39,7 @@ namespace benchmarking
         size_t mDelta;
 
         template <typename T>
-        double diff()
+        inline double diff()
         {
             return std::chrono::duration<double, T>(InternalClock::now() - mNow).count();
         }
