@@ -167,8 +167,12 @@ namespace relay
         }
 
         // method 1 - 1st fastest
-        output.resize(total);  // resize because std::copy doesn't do that for strings
-        std::copy(buff.begin(), buff.begin() + total, output.begin()); // can't use end() because end() doesn't point to the end of the string
+
+        // resize because std::copy doesn't do that for strings
+        output.resize(total);
+
+        // can't use end() because end() doesn't point to the end of the string
+        std::copy(buff.begin(), buff.begin() + total, output.begin());
 
         // method 2 - slow
         // output = std::move(std::string(buff.begin(), buff.begin() + total));
@@ -186,9 +190,25 @@ namespace relay
 
         switch (this->mType) {
             case RELAY_ADDRESS_IPV4:
-                return this->mIPv4 == other.mIPv4;
+                for (unsigned int i = 0; i < mIPv4.size(); i++) {
+                    if (mIPv4[i] != other.mIPv4[i]) {
+                        return false;
+                    }
+                }
+                return true;
+                // these two are for some reason 400x slower
+                // return std::equal(this->mIPv4.begin(), this->mIPv4.end(), other.mIPv4.begin());
+                // return this->mIPv4 == other.mIPv4;
             case RELAY_ADDRESS_IPV6:
-                return this->mIPv6 == other.mIPv6;
+                for (unsigned int i = 0; i < mIPv6.size(); i++) {
+                    if (mIPv6[i] != other.mIPv6[i]) {
+                        return false;
+                    }
+                }
+                return true;
+                // same for these, perhaps the compiler isn't inlining the comparisons under the hood and they're function
+                // calls? return std::equal(this->mIPv6.begin(), this->mIPv6.end(), other.mIPv6.begin()); return this->mIPv6 ==
+                // other.mIPv6;
             default:
                 return false;
         }
