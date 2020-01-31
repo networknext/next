@@ -140,23 +140,33 @@ namespace relay
 
             std::array<char, RELAY_MAX_ADDRESS_STRING_LENGTH> address_string;
             relay_platform_inet_ntop6(ipv6_network_order, address_string.data(), address_string.size() * sizeof(char));
-            total += snprintf(buff.data(), RELAY_MAX_ADDRESS_STRING_LENGTH, "[%s]", address_string.data());
             if (mPort != 0) {
-                total += snprintf(&buff[total], RELAY_MAX_ADDRESS_STRING_LENGTH - total, ":%hu", mPort);
+                total += snprintf(buff.data(), RELAY_MAX_ADDRESS_STRING_LENGTH, "[%s]", address_string.data());
+            } else {
+                total +=
+                    snprintf(&buff[total], RELAY_MAX_ADDRESS_STRING_LENGTH - total, "[%s]:%hu", address_string.data(), mPort);
             }
 #endif
         } else if (mType == RELAY_ADDRESS_IPV4) {
-            total +=
-                snprintf(buff.data(), RELAY_MAX_ADDRESS_STRING_LENGTH, "%d.%d.%d.%d", mIPv4[0], mIPv4[1], mIPv4[2], mIPv4[3]);
-            if (mPort != 0) {
-                total += snprintf(&buff[total], RELAY_MAX_ADDRESS_STRING_LENGTH - total, ":%hu", mPort);
+            if (mPort == 0) {
+                total += snprintf(
+                    buff.data(), RELAY_MAX_ADDRESS_STRING_LENGTH, "%d.%d.%d.%d", mIPv4[0], mIPv4[1], mIPv4[2], mIPv4[3]);
+            } else {
+                total += snprintf(&buff[total],
+                    RELAY_MAX_ADDRESS_STRING_LENGTH - total,
+                    "%d.%d.%d.%d:%hu",
+                    mIPv4[0],
+                    mIPv4[1],
+                    mIPv4[2],
+                    mIPv4[3],
+                    mPort);
             }
         } else {
             total += snprintf(buff.data(), sizeof("NONE"), "NONE");
         }
 
         // method 1 - 1st fastest
-        output.resize(total);
+        output.resize(total);  // resize because std::copy doesn't do that for strings
         std::copy(buff.begin(), buff.begin() + total, output.begin());
 
         // method 2 - slow
