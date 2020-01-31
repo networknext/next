@@ -7,7 +7,7 @@
 #include <cinttypes>
 #include <map>  // TODO replace with unordered_map, map is not constant lookup
 
-#include "relay_address.hpp"
+#include "net/address.hpp"
 #include "relay_manager.hpp"
 #include "relay_replay_protection.hpp"
 #include "relay_platform.hpp"

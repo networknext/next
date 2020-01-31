@@ -17,7 +17,7 @@
 #include "encoding/read_stream.hpp"
 
 #include "relay/relay.hpp"
-#include "relay/relay_address.hpp"
+#include "net/address.hpp"
 #include "relay/relay_bandwidth_limiter.hpp"
 #include "relay/relay_continue_token.hpp"
 #include "relay/relay_platform.hpp"

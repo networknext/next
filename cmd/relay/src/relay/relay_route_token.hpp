@@ -5,7 +5,7 @@
 
 #include <sodium.h>
 
-#include "relay_address.hpp"
+#include "net/address.hpp"
 
 namespace relay
 {

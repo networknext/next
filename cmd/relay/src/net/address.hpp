@@ -5,20 +5,19 @@
 #include <string>
 #include <cinttypes>
 
-namespace relay
+namespace net
 {
-    // NEW
-    class RelayAddress
+    class Address
     {
        public:
-        RelayAddress();
-        ~RelayAddress() = default;
+        Address();
+        ~Address() = default;
 
         bool parse(const std::string& address_string_in);
 
         void toString(std::string& buffer);
 
-        bool operator==(const RelayAddress& other);
+        bool operator==(const Address& other);
 
        private:
         uint8_t mType;

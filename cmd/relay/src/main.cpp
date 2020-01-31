@@ -33,10 +33,8 @@
 #include "relay/relay_replay_protection.hpp"
 #include "relay/relay_route_token.hpp"
 
-
 namespace
 {
-    // TODO why volitile? this is only affected by interupt which is within this program
     volatile uint64_t quit = 0;
 
     void interrupt_handler(int signal)
@@ -51,7 +49,7 @@ namespace
         uint8_t packet_data[RELAY_MAX_PACKET_BYTES];
 
         while (!quit) {
-            legacy::relay_address_t from;
+            relay::RelayAddress from;
             const int packet_bytes =
                 relay_platform_socket_receive_packet(relay->socket, &from, packet_data, sizeof(packet_data));
             if (packet_bytes == 0)
@@ -134,8 +132,8 @@ namespace
                     continue;
                 }
                 session->server_to_client_sequence = clean_sequence;
-                if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data, packet_bytes) !=
-                    RELAY_OK) {
+                if (relay::relay_verify_header(
+                        RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data, packet_bytes) != RELAY_OK) {
                     continue;
                 }
                 relay_platform_socket_send_packet(relay->socket, &session->prev_address, packet_data, packet_bytes);
@@ -201,8 +199,8 @@ namespace
                     continue;
                 }
                 session->server_to_client_sequence = clean_sequence;
-                if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data, packet_bytes) !=
-                    RELAY_OK) {
+                if (relay::relay_verify_header(
+                        RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data, packet_bytes) != RELAY_OK) {
                     continue;
                 }
                 relay_platform_socket_send_packet(relay->socket, &session->prev_address, packet_data, packet_bytes);
@@ -236,8 +234,8 @@ namespace
                     continue;
                 }
                 relay_replay_protection_advance_sequence(&session->replay_protection_client_to_server, clean_sequence);
-                if (relay::relay_verify_header(RELAY_DIRECTION_CLIENT_TO_SERVER, session->private_key, packet_data, packet_bytes) !=
-                    RELAY_OK) {
+                if (relay::relay_verify_header(
+                        RELAY_DIRECTION_CLIENT_TO_SERVER, session->private_key, packet_data, packet_bytes) != RELAY_OK) {
                     continue;
                 }
                 relay_platform_socket_send_packet(relay->socket, &session->next_address, packet_data, packet_bytes);
@@ -271,8 +269,8 @@ namespace
                     continue;
                 }
                 relay_replay_protection_advance_sequence(&session->replay_protection_server_to_client, clean_sequence);
-                if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data, packet_bytes) !=
-                    RELAY_OK) {
+                if (relay::relay_verify_header(
+                        RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data, packet_bytes) != RELAY_OK) {
                     continue;
                 }
                 relay_platform_socket_send_packet(relay->socket, &session->prev_address, packet_data, packet_bytes);
@@ -306,8 +304,8 @@ namespace
                     continue;
                 }
                 session->client_to_server_sequence = clean_sequence;
-                if (relay::relay_verify_header(RELAY_DIRECTION_CLIENT_TO_SERVER, session->private_key, packet_data, packet_bytes) !=
-                    RELAY_OK) {
+                if (relay::relay_verify_header(
+                        RELAY_DIRECTION_CLIENT_TO_SERVER, session->private_key, packet_data, packet_bytes) != RELAY_OK) {
                     continue;
                 }
                 relay_platform_socket_send_packet(relay->socket, &session->next_address, packet_data, packet_bytes);
@@ -341,8 +339,8 @@ namespace
                     continue;
                 }
                 session->server_to_client_sequence = clean_sequence;
-                if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data, packet_bytes) !=
-                    RELAY_OK) {
+                if (relay::relay_verify_header(
+                        RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data, packet_bytes) != RELAY_OK) {
                     continue;
                 }
                 relay_platform_socket_send_packet(relay->socket, &session->prev_address, packet_data, packet_bytes);
@@ -635,7 +633,8 @@ int main(int argc, const char** argv)
 
     free(update_response_memory);
 
-    for (std::map<uint64_t, relay::relay_session_t*>::iterator itor = relay.sessions->begin(); itor != relay.sessions->end(); ++itor) {
+    for (std::map<uint64_t, relay::relay_session_t*>::iterator itor = relay.sessions->begin(); itor != relay.sessions->end();
+         ++itor) {
         delete itor->second;
     }
 

@@ -4,7 +4,7 @@
 #include <cinttypes>
 
 #include "config.hpp"
-#include "relay_address.hpp"
+#include "net/address.hpp"
 #include "relay_ping_history.hpp"
 
 namespace relay

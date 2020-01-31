@@ -14,7 +14,6 @@
 #include <netinet/in.h>
 #include <ifaddrs.h>
 #include <fcntl.h>
-#include <netdb.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <errno.h>

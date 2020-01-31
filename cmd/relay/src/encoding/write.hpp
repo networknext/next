@@ -9,7 +9,7 @@
 
 #include "net/net.hpp"
 
-#include "relay/relay_address.hpp"
+#include "net/address.hpp"
 
 namespace encoding
 {

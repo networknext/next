@@ -1,5 +1,5 @@
 #include "bench.hpp"
-#include "relay/relay_address.hpp"
+#include "net/address.hpp"
 
 #include <algorithm>
 #include <cstring>
@@ -12,7 +12,7 @@ Bench(RelayAddress_vs_relay_address_t_address_parsing)
     Skip();
     // parse()
     {
-        relay::RelayAddress object;
+        net::Address object;
         std::string straddr = "127.0.0.1:20000";
         Do(REPS)
         {
@@ -43,7 +43,7 @@ Bench(Relay_vs_relay_address_t_stringify_ipv4)
 
     // toString(string)
     {
-        relay::RelayAddress object;
+        net::Address object;
         object.parse(addr);
         std::string str;
         Do(REPS)
@@ -76,7 +76,7 @@ Bench(Relay_vs_relay_address_t_stringify_ipv6_with_braces)
     auto addr = "[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:20000";
 
     {
-        relay::RelayAddress object;
+        net::Address object;
         object.parse(addr);
         std::string str;
         Do(REPS)
@@ -109,7 +109,7 @@ Bench(Relay_vs_relay_address_t_stringify_ipv6_without_braces)
     auto addr = "2001:0db8:85a3:0000:0000:8a2e:0370:7334";
 
     {
-        relay::RelayAddress object;
+        net::Address object;
         object.parse(addr);
         std::string str;
         Do(REPS)
@@ -142,7 +142,7 @@ Bench(Relay_vs_relay_address_t_stringify_invalid)
     auto addr = "invalid-ip";
 
     {
-        relay::RelayAddress object;
+        net::Address object;
         object.parse(addr);
         std::string str;
         Do(REPS)
@@ -174,7 +174,7 @@ Bench(Relay_vs_relay_address_t_equal_ipv4)
     auto addr = "127.0.0.1:20000";
 
     {
-        relay::RelayAddress a, b;
+        net::Address a, b;
         a.parse(addr);
         b.parse(addr);
         bool result;
@@ -208,7 +208,7 @@ Bench(Relay_vs_relay_address_t_equal_ipv6_with_braces)
     auto addr = "[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:20000";
 
     {
-        relay::RelayAddress a, b;
+        net::Address a, b;
         a.parse(addr);
         b.parse(addr);
         bool result;
@@ -242,7 +242,7 @@ Bench(Relay_vs_relay_address_t_equal_ipv6_without_braces)
     auto addr = "2001:0db8:85a3:0000:0000:8a2e:0370:7334";
 
     {
-        relay::RelayAddress a, b;
+        net::Address a, b;
         a.parse(addr);
         b.parse(addr);
         bool result;

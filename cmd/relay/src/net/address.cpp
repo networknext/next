@@ -1,4 +1,4 @@
-#include "relay_address.hpp"
+#include "address.hpp"
 
 #include <algorithm>
 #include <sstream>
@@ -13,16 +13,17 @@
 
 #include "util/logger.hpp"
 
-#include "relay_platform.hpp"
+#include "relay/relay_platform.hpp"
 
-#include "net/net.hpp"
+#include "net.hpp"
+#include "platform.hpp"
 
-namespace relay
+namespace net
 {
-    RelayAddress::RelayAddress() : mType(0), mPort(0)
+    Address::RelayAddress() : mType(0), mPort(0)
     {}
 
-    bool RelayAddress::parse(const std::string& address)
+    bool Address::parse(const std::string& address)
     {
 #ifdef __GNUC__
         __builtin_prefetch(address.c_str());
@@ -124,7 +125,7 @@ namespace relay
 
     // TODO consider making this a bool retval. Since some windows versions can't do ipv6 then that would be the only case it
     // returns false
-    void RelayAddress::toString(std::string& output)
+    void Address::toString(std::string& output)
     {
         std::array<char, RELAY_MAX_ADDRESS_STRING_LENGTH> buff;
         unsigned int total = 0;
@@ -183,7 +184,7 @@ namespace relay
     }
 
     // TODO consider making this inline
-    bool RelayAddress::operator==(const RelayAddress& other)
+    bool Address::operator==(const RelayAddress& other)
     {
         if (this->mType != other.mType || this->mPort != other.mPort) {
             return false;
@@ -216,6 +217,8 @@ namespace relay
     }
 
 }  // namespace relay
+
+/******************************************************************************************************************************/
 
 namespace legacy
 {
