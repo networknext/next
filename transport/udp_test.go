@@ -400,7 +400,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 		ClientAddress:        *addr,
 		ClientRoutePublicKey: TestPublicKey,
 	}
-	packet.Signature = ed25519.Sign(buyersServerPrivKey, packet.GetSignData(serverentry.SDKVersion))
+	packet.Signature = crypto.Sign(packet.GetSignData(serverentry.SDKVersion), buyersServerPrivKey)
 
 	data, err := packet.MarshalBinary()
 	assert.NoError(t, err)
@@ -429,7 +429,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 			NearRelayIds:         make([]uint64, 0),
 			NearRelayAddresses:   make([]net.UDPAddr, 0),
 		}
-		expected.Signature = ed25519.Sign(crypto.BackendPrivateKey, expected.GetSignData())
+		expected.Signature = crypto.Sign(expected.GetSignData(), crypto.BackendPrivateKey)
 
 		data := resbuf.Bytes()
 		var actual transport.SessionResponsePacket

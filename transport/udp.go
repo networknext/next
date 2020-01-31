@@ -3,7 +3,6 @@ package transport
 import (
 	"bytes"
 	"context"
-	"crypto/ed25519"
 	"errors"
 	"fmt"
 	"io"
@@ -185,7 +184,7 @@ func ServerUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider) UDPHan
 			return
 		}
 
-		log.Printf("cached server '%s' for sequence '%d'\n", incoming.SourceAddr.String(), packet.Sequence)
+		log.Printf("added server to redis: %+v\n", serverentry)
 	}
 }
 
@@ -264,18 +263,20 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp Ro
 			log.Fatalf("failed to unmarshal server entry from redis for '%s': %v", incoming.SourceAddr.String(), err)
 			return
 		}
+		log.Printf("loaded server from redis: %+v\n", serverentry)
 
 		buyer, ok := bp.GetAndCheckBySdkVersion3PublicKeyId(packet.CustomerId)
 		if !ok {
 			log.Printf("failed to get buyer '%d'", packet.CustomerId)
 			return
 		}
-		buyerServerPublicKey := buyer.GetSdkVersion3PublicKeyData()
+		buyerServerPublicKey := buyer.SdkVersion3PublicKeyData
+		log.Printf("loaded customer '%d' public key: %02x", packet.CustomerId, buyerServerPublicKey)
 
-		// if !ed25519.Verify(buyerServerPublicKey, packet.GetSignData(serverentry.SDKVersion), packet.Signature) {
-		// 	log.Printf("failed to verify session update signature")
-		// 	return
-		// }
+		if !crypto.Verify(packet.GetSignData(serverentry.SDKVersion), packet.Signature, buyerServerPublicKey) {
+			log.Printf("failed to verify session update signature")
+			return
+		}
 
 		// if packet.Sequence < serverentry.Sequence {
 		// 	log.Printf("packet too old: (packet) %d < %d (Redis)", packet.Sequence, serverentry.Sequence)
@@ -287,12 +288,14 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp Ro
 			log.Printf("failed to lookup client ip '%s': %v", packet.ClientAddress.IP.String(), err)
 			return
 		}
+		log.Printf("found client '%s' location: %+v\n", packet.ClientAddress.String(), location)
 
 		clientrelays, err := geoClient.RelaysWithin(location.Latitude, location.Longitude, 500, "mi")
 		if err != nil {
 			log.Printf("failed to lookup client ip '%s': %v", packet.ClientAddress.IP.String(), err)
 			return
 		}
+		log.Printf("found client relays: %+v\n", clientrelays)
 
 		// Get a set of possible routes from the RouteProvider an on error ensure it falls back to direct
 		routes := rp.AllRoutes(serverentry.Datacenter, clientrelays)
@@ -323,6 +326,7 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp Ro
 
 			Relays: chosenRoute.Relays,
 		}
+		log.Printf("constructed next route: %+v\n", nextRoute)
 
 		// Encrypt the next route with the our private key
 		routeTokens, err := nextRoute.Encrypt(encryptionPrivateKey)
@@ -352,7 +356,7 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp Ro
 		}
 
 		// Sign the response
-		response.Signature = ed25519.Sign(signingPrivateKey, response.GetSignData())
+		response.Signature = crypto.Sign(response.GetSignData(), signingPrivateKey)
 
 		// Send the Session Response back to the server
 		res, err := response.MarshalBinary()
