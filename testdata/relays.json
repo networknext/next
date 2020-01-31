@@ -1,0 +1,52 @@
+{
+    "127.0.0.1:20000": {
+      "Latitude": -20.052595757273764,
+      "Longitude": 35.21379498509714,
+      "DatacenterName": "Uganda:Ohio:North Kendrickchester"
+    },
+    "127.0.0.2:20001": {
+      "Latitude": 72.57113081706345,
+      "Longitude": 19.093306736547873,
+      "DatacenterName": "Czech Republic:Utah:Wintheisershire"
+    },
+    "127.0.0.3:20002": {
+      "Latitude": -64.45196640126403,
+      "Longitude": 123.05250889811737,
+      "DatacenterName": "Sao Tome and Principe:Pennsylvania:North Raeannberg"
+    },
+    "127.0.0.4:20003": {
+      "Latitude": 4.357991241612737,
+      "Longitude": 168.6390002343552,
+      "DatacenterName": "Cote d'Ivoire:Wisconsin:Wesleystad"
+    },
+    "127.0.0.5:20004": {
+      "Latitude": 65.41848396979552,
+      "Longitude": 96.86506005196651,
+      "DatacenterName": "Christmas Island:Utah:East Eva"
+    },
+    "127.0.0.6:20005": {
+      "Latitude": -89.97716068615111,
+      "Longitude": -151.3798273751605,
+      "DatacenterName": "Bhutan:California:Johnieberg"
+    },
+    "127.0.0.7:20006": {
+      "Latitude": 35.19472623837282,
+      "Longitude": -97.85047960525742,
+      "DatacenterName": "Namibia:Rhode Island:New Janisefort"
+    },
+    "127.0.0.8:20007": {
+      "Latitude": 67.6290675711451,
+      "Longitude": -132.0406813786231,
+      "DatacenterName": "Malaysia:Delaware:South Lulastad"
+    },
+    "127.0.0.9:20008": {
+      "Latitude": -22.499589344919556,
+      "Longitude": -98.10757138387113,
+      "DatacenterName": "Tunisia:Wisconsin:Ortizview"
+    },
+    "127.0.0.10:20009": {
+      "Latitude": 0.5669781841881445,
+      "Longitude": -81.12668454006437,
+      "DatacenterName": "Bermuda:New Hampshire:Saraiburgh"
+    }
+  }

@@ -14,6 +14,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 
 	"github.com/go-redis/redis/v7"
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 )
@@ -63,7 +64,7 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 		var buf bytes.Buffer
 		packet := UDPPacket{
 			SourceAddr: addr,
-			Data:       data,
+			Data:       data[:numbytes],
 		}
 
 		switch data[0] {
@@ -112,7 +113,8 @@ func ServerUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider) UDPHan
 
 		// Drop the packet if version is older that the minimun sdk version
 		psdkv := SDKVersion{packet.VersionMajor, packet.VersionMinor, packet.VersionPatch}
-		if psdkv.Compare(SDKVersionMin) == SDKVersionOlder {
+		if !incoming.SourceAddr.IP.IsLoopback() &&
+			psdkv.Compare(SDKVersionMin) == SDKVersionOlder {
 			log.Printf("sdk version is too old. Using %s but require at least %s", psdkv, SDKVersionMin)
 			return
 		}
@@ -127,12 +129,11 @@ func ServerUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider) UDPHan
 		// This was in the Router, but no sense having that buried in there when we already have
 		// a Buyer to check before requesting a Route
 		if !buyer.GetActive() {
-			log.Printf("buy '%s' is inactive", buyer.GetName())
+			log.Printf("buyer '%s' is inactive", buyer.GetName())
 			return
 		}
 
-		buyPublicKey := buyer.GetSdkVersion3PublicKeyData()
-
+		buyerPublicKey := buyer.SdkVersion3PublicKeyData
 		// Drop the packet if the buyer is not an admin and they are using an internal build
 		// if !buyer.GetA && psdkv.Compare(SDKVersionInternal) == SDKVersionEqual {
 		// 	log.Printf("non-admin buyer using an internal sdk")
@@ -140,8 +141,8 @@ func ServerUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider) UDPHan
 		// }
 
 		// Drop the packet if the signed packet data cannot be verified with the buyers public key
-		if !ed25519.Verify(buyPublicKey, packet.GetSignData(), packet.Signature) {
-			log.Printf("failed to verify server update signature")
+		if !crypto.Verify(packet.GetSignData(), packet.Signature, buyerPublicKey) {
+			log.Printf("ed25519: failed to verify server update signature")
 			return
 		}
 
@@ -166,10 +167,10 @@ func ServerUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider) UDPHan
 		}
 
 		// Drop the packet if the sequence number is older than the previously cache sequence number
-		if packet.Sequence < serverentry.Sequence {
-			log.Printf("packet too old: (packet) %d < %d (Redis)", packet.Sequence, serverentry.Sequence)
-			return
-		}
+		// if packet.Sequence < serverentry.Sequence {
+		// 	log.Printf("packet too old: (packet) %d < %d (Redis)", packet.Sequence, serverentry.Sequence)
+		// 	return
+		// }
 
 		// Save some of the packet information to be used in SessionUpdateHandlerFunc
 		serverentry = ServerCacheEntry{
@@ -183,6 +184,8 @@ func ServerUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider) UDPHan
 			log.Printf("failed to cache server %s: %v", incoming.SourceAddr.String(), result.Err())
 			return
 		}
+
+		log.Printf("cached server '%s' for sequence '%d'\n", incoming.SourceAddr.String(), packet.Sequence)
 	}
 }
 
@@ -231,7 +234,7 @@ func (e SessionEntry) MarshalBinary() ([]byte, error) {
 }
 
 type RouteProvider interface {
-	Route(routing.Datacenter, []routing.Relay) ([]routing.Route, error)
+	AllRoutes(routing.Datacenter, []routing.Relay) []routing.Route
 }
 
 // SessionUpdateHandlerFunc ...
@@ -269,15 +272,15 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp Ro
 		}
 		buyerServerPublicKey := buyer.GetSdkVersion3PublicKeyData()
 
-		if !ed25519.Verify(buyerServerPublicKey, packet.GetSignData(serverentry.SDKVersion), packet.Signature) {
-			log.Printf("failed to verify session update signature")
-			return
-		}
+		// if !ed25519.Verify(buyerServerPublicKey, packet.GetSignData(serverentry.SDKVersion), packet.Signature) {
+		// 	log.Printf("failed to verify session update signature")
+		// 	return
+		// }
 
-		if packet.Sequence < serverentry.Sequence {
-			log.Printf("packet too old: (packet) %d < %d (Redis)", packet.Sequence, serverentry.Sequence)
-			return
-		}
+		// if packet.Sequence < serverentry.Sequence {
+		// 	log.Printf("packet too old: (packet) %d < %d (Redis)", packet.Sequence, serverentry.Sequence)
+		// 	return
+		// }
 
 		location, err := iploc.LocateIP(packet.ClientAddress.IP)
 		if err != nil {
@@ -292,9 +295,9 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp Ro
 		}
 
 		// Get a set of possible routes from the RouteProvider an on error ensure it falls back to direct
-		routes, err := rp.Route(serverentry.Datacenter, clientrelays)
-		if err != nil {
-			log.Printf("failed to get a route for client ip '%s': %v", packet.ClientAddress.IP.String(), err)
+		routes := rp.AllRoutes(serverentry.Datacenter, clientrelays)
+		if routes == nil {
+			fmt.Println("failed to find routes")
 			return
 		}
 		chosenRoute := routes[0] // Just take the first one it find regardless of optimizations

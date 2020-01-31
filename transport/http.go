@@ -114,14 +114,14 @@ func RelayInitHandlerFunc(redisClient *redis.Client, geoClient *routing.GeoClien
 		}
 		rdbEntry, ok := relayProvider.GetAndCheckByRelayCoreId(uint32(relay.ID))
 		if !ok {
-			log.Printf("coult not get relay with address '%s' from configstore database", relay.Addr.String())
+			log.Printf("failed to get relay with address '%s' from configstore database", relay.Addr.String())
 			writer.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		dcdbEntry, ok := datacenterProvider.GetAndCheck(rdbEntry.Datacenter)
 		if !ok {
-			log.Printf("coult not get datacenter for relay with address '%s' from configstore database", relay.Addr.String())
+			log.Printf("failed to get datacenter for relay with address '%s' from configstore database", relay.Addr.String())
 			writer.WriteHeader(http.StatusInternalServerError)
 			return
 		}
