@@ -218,17 +218,6 @@ namespace relay
 
 namespace legacy
 {
-    struct relay_address_t
-    {
-        union
-        {
-            uint8_t ipv4[4];
-            uint16_t ipv6[8];
-        } data;
-        uint16_t port;
-        uint8_t type;
-    };
-
     int relay_address_parse(relay_address_t* address, const char* address_string_in)
     {
         assert(address);

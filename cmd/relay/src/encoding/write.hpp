@@ -85,7 +85,7 @@ namespace encoding
         }
     }
 
-    inline void write_address(uint8_t** buffer, const relay::relay_address_t* address)
+    inline void write_address(uint8_t** buffer, const legacy::relay_address_t* address)
     {
         assert(buffer);
         assert(*buffer);

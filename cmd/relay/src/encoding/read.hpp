@@ -94,7 +94,7 @@ namespace encoding
         string_data[i] = 0;
     }
 
-    inline void read_address(const uint8_t** buffer, relay::relay_address_t* address)
+    inline void read_address(const uint8_t** buffer, legacy::relay_address_t* address)
     {
         const uint8_t* start = *buffer;
 

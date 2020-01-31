@@ -541,7 +541,7 @@ namespace encoding
     } while (0)
 
     template <typename Stream>
-    bool serialize_address_internal(Stream& stream, relay::relay_address_t& address)
+    bool serialize_address_internal(Stream& stream, legacy::relay_address_t& address)
     {
         serialize_bits(stream, address.type, 2);
         if (address.type == RELAY_ADDRESS_IPV4) {
@@ -554,7 +554,7 @@ namespace encoding
             serialize_bits(stream, address.port, 16);
         } else {
             if (Stream::IsReading) {
-                memset(&address, 0, sizeof(relay::relay_address_t));
+                memset(&address, 0, sizeof(legacy::relay_address_t));
             }
         }
         return true;

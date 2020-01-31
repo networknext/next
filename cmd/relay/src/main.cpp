@@ -51,7 +51,7 @@ namespace
         uint8_t packet_data[RELAY_MAX_PACKET_BYTES];
 
         while (!quit) {
-            relay::relay_address_t from;
+            legacy::relay_address_t from;
             const int packet_bytes =
                 relay_platform_socket_receive_packet(relay->socket, &from, packet_data, sizeof(packet_data));
             if (packet_bytes == 0)
@@ -375,7 +375,7 @@ namespace
             struct ping_data_t
             {
                 uint64_t sequence;
-                relay::relay_address_t address;
+                legacy::relay_address_t address;
             };
 
             int num_pings = 0;
@@ -430,17 +430,17 @@ int main(int argc, const char** argv)
         return 1;
     }
 
-    relay::relay_address_t relay_address;
+    legacy::relay_address_t relay_address;
     if (relay_address_parse(&relay_address, relay_address_env) != RELAY_OK) {
         printf("\nerror: invalid relay address '%s'\n\n", relay_address_env);
         return 1;
     }
 
     {
-        relay::relay_address_t address_without_port = relay_address;
+        legacy::relay_address_t address_without_port = relay_address;
         address_without_port.port = 0;
         char address_buffer[RELAY_MAX_ADDRESS_STRING_LENGTH];
-        printf("    relay address is '%s'\n", relay::relay_address_to_string(&address_without_port, address_buffer));
+        printf("    relay address is '%s'\n", legacy::relay_address_to_string(&address_without_port, address_buffer));
     }
 
     uint16_t relay_bind_port = relay_address.port;
@@ -506,7 +506,7 @@ int main(int argc, const char** argv)
     }
 
     relay::relay_platform_socket_t* socket =
-        relay_platform_socket_create(&relay_address, RELAY_PLATFORM_SOCKET_BLOCKING, 0.1f, 100 * 1024, 100 * 1024);
+        relay::relay_platform_socket_create(&relay_address, RELAY_PLATFORM_SOCKET_BLOCKING, 0.1f, 100 * 1024, 100 * 1024);
     if (socket == NULL) {
         printf("\ncould not create socket\n\n");
         relay::relay_term();

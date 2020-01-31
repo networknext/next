@@ -248,7 +248,7 @@ namespace relay
         struct relay_ping_data_t
         {
             uint64_t id;
-            relay_address_t address;
+            legacy::relay_address_t address;
         };
 
         relay_ping_data_t relay_ping_data[MAX_RELAYS];
@@ -257,7 +257,7 @@ namespace relay
             char address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
             relay_ping_data[i].id = encoding::read_uint64(&q);
             encoding::read_string(&q, address_string, RELAY_MAX_ADDRESS_STRING_LENGTH);
-            if (relay_address_parse(&relay_ping_data[i].address, address_string) != RELAY_OK) {
+            if (legacy::relay_address_parse(&relay_ping_data[i].address, address_string) != RELAY_OK) {
                 error = true;
                 break;
             }

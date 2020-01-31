@@ -25,10 +25,10 @@ Bench(RelayAddress_vs_relay_address_t_address_parsing)
 
     // relay_address_parse()
     {
-        relay::relay_address_t structure;
+        legacy::relay_address_t structure;
         Do(REPS)
         {
-            relay::relay_address_parse(&structure, "127.0.0.1:20000");
+            legacy::relay_address_parse(&structure, "127.0.0.1:20000");
         }
 
         auto elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
@@ -57,12 +57,12 @@ Bench(Relay_vs_relay_address_t_stringify_ipv4)
 
     // relay_address_to_string()
     {
-        relay::relay_address_t structure;
-        relay::relay_address_parse(&structure, addr);
+        legacy::relay_address_t structure;
+        legacy::relay_address_parse(&structure, addr);
         char buffer[64];
         Do(REPS)
         {
-            relay::relay_address_to_string(&structure, buffer);
+            legacy::relay_address_to_string(&structure, buffer);
         }
         auto structure_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
         std::cout << "relay_address_to_string() nanoseconds: " << structure_elapsed << '\n';
@@ -89,12 +89,12 @@ Bench(Relay_vs_relay_address_t_stringify_ipv6_with_braces)
     }
 
     {
-        relay::relay_address_t structure;
-        relay::relay_address_parse(&structure, addr);
+        legacy::relay_address_t structure;
+        legacy::relay_address_parse(&structure, addr);
         char buffer[128];
         Do(REPS)
         {
-            relay::relay_address_to_string(&structure, buffer);
+            legacy::relay_address_to_string(&structure, buffer);
         }
 
         auto structure_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
@@ -122,12 +122,12 @@ Bench(Relay_vs_relay_address_t_stringify_ipv6_without_braces)
     }
 
     {
-        relay::relay_address_t structure;
-        relay::relay_address_parse(&structure, addr);
+        legacy::relay_address_t structure;
+        legacy::relay_address_parse(&structure, addr);
         char buffer[368];
         Do(REPS)
         {
-            relay::relay_address_to_string(&structure, buffer);
+            legacy::relay_address_to_string(&structure, buffer);
         }
 
         auto structure_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
@@ -155,12 +155,12 @@ Bench(Relay_vs_relay_address_t_stringify_invalid)
     }
 
     {
-        relay::relay_address_t structure;
-        relay::relay_address_parse(&structure, addr);
+        legacy::relay_address_t structure;
+        legacy::relay_address_parse(&structure, addr);
         char buffer[368];
         Do(REPS)
         {
-            relay::relay_address_to_string(&structure, buffer);
+            legacy::relay_address_to_string(&structure, buffer);
         }
 
         auto structure_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
@@ -188,13 +188,13 @@ Bench(Relay_vs_relay_address_t_equal_ipv4)
     }
 
     {
-        relay::relay_address_t a, b;
-        relay::relay_address_parse(&a, addr);
-        relay::relay_address_parse(&b, addr);
+        legacy::relay_address_t a, b;
+        legacy::relay_address_parse(&a, addr);
+        legacy::relay_address_parse(&b, addr);
         int result;
         Do(REPS)
         {
-            result = relay::relay_address_equal(&a, &b);
+            result = legacy::relay_address_equal(&a, &b);
         }
 
         auto structure_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
@@ -222,13 +222,13 @@ Bench(Relay_vs_relay_address_t_equal_ipv6_with_braces)
     }
 
     {
-        relay::relay_address_t a, b;
-        relay::relay_address_parse(&a, addr);
-        relay::relay_address_parse(&b, addr);
+        legacy::relay_address_t a, b;
+        legacy::relay_address_parse(&a, addr);
+        legacy::relay_address_parse(&b, addr);
         int result;
         Do(REPS)
         {
-            result = relay::relay_address_equal(&a, &b);
+            result = legacy::relay_address_equal(&a, &b);
         }
 
         auto structure_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
@@ -256,13 +256,13 @@ Bench(Relay_vs_relay_address_t_equal_ipv6_without_braces)
     }
 
     {
-        relay::relay_address_t a, b;
-        relay::relay_address_parse(&a, addr);
-        relay::relay_address_parse(&b, addr);
+        legacy::relay_address_t a, b;
+        legacy::relay_address_parse(&a, addr);
+        legacy::relay_address_parse(&b, addr);
         int result;
         Do(REPS)
         {
-            result = relay::relay_address_equal(&a, &b);
+            result = legacy::relay_address_equal(&a, &b);
         }
 
         auto structure_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
