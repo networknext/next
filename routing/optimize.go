@@ -264,7 +264,7 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 }
 
 // MarshalBinary ...
-func (m *CostMatrix) MarshalBinary() ([]byte, error) {
+func (m CostMatrix) MarshalBinary() ([]byte, error) {
 	index := 0
 	data := make([]byte, m.Size())
 
