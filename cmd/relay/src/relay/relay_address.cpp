@@ -69,8 +69,8 @@ namespace relay
 
         // 2. otherwise try to parse as a raw IPv6 address using inet_pton
 
-        uint16_t addr6[8];
-        if (relay_platform_inet_pton6(ptr, addr6) == RELAY_OK) {
+        std::array<uint16_t, 8> addr6;
+        if (relay_platform_inet_pton6(ptr, addr6.data()) == RELAY_OK) {
             this->mType = RELAY_ADDRESS_IPV6;
             for (int i = 0; i < 8; ++i) {
                 this->mIPv6[i] = relay_platform_ntohs(addr6[i]);
@@ -140,8 +140,9 @@ namespace relay
 
             std::array<char, RELAY_MAX_ADDRESS_STRING_LENGTH> address_string;
             relay_platform_inet_ntop6(ipv6_network_order.data(), address_string.data(), address_string.size() * sizeof(char));
-            if (mPort != 0) {
-                total += snprintf(buff.data(), RELAY_MAX_ADDRESS_STRING_LENGTH, "[%s]", address_string.data());
+            if (mPort == 0) {
+                std::copy(address_string.begin(), address_string.end(), buff.begin());
+                total += strlen(address_string.data());
             } else {
                 total +=
                     snprintf(&buff[total], RELAY_MAX_ADDRESS_STRING_LENGTH - total, "[%s]:%hu", address_string.data(), mPort);
@@ -167,7 +168,7 @@ namespace relay
 
         // method 1 - 1st fastest
         output.resize(total);  // resize because std::copy doesn't do that for strings
-        std::copy(buff.begin(), buff.begin() + total, output.begin());
+        std::copy(buff.begin(), buff.begin() + total, output.begin()); // can't use end() because end() doesn't point to the end of the string
 
         // method 2 - slow
         // output = std::move(std::string(buff.begin(), buff.begin() + total));
