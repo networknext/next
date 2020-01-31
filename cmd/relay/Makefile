@@ -9,7 +9,7 @@ rwildcard=$(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(su
 #################
 
 CXX			:= g++
-CXX_FLAGS 		:= -Wall -Wextra -std=c++14 -O3 -march=native -frename-registers -funroll-loops -fopenmp -D_GLIBCXX_PARALLEL
+CXX_FLAGS 		:= -Wall -Wextra -std=c++17 -O3 -march=native -frename-registers -funroll-loops -fopenmp -D_GLIBCXX_PARALLEL
 
 SRC			:= src
 INCLUDE			:= $(SRC) # include path is the same as the src dir
