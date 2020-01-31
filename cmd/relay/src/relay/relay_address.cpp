@@ -130,7 +130,6 @@ namespace relay
         unsigned int total = 0;
 
         if (mType == RELAY_ADDRESS_IPV6) {
-            // TODO check if c++17 is ok, can replace this with "if constexpr" for less preprocessor littered code
 #if defined(WINVER) && WINVER <= 0x0502
             // ipv6 not supported
             return;
