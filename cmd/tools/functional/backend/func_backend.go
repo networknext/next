@@ -495,8 +495,8 @@ func main() {
 				fmt.Printf("error: failed to write session response packet: %v\n", err)
 				return
 			}
-			responsePacketType := uint32(NEXT_BACKEND_SESSION_RESPONSE_PACKET)
-			writeStream.SerializeBits(&responsePacketType, 8)
+			// responsePacketType := uint32(NEXT_BACKEND_SESSION_RESPONSE_PACKET)
+			// writeStream.SerializeBits(&responsePacketType, 8)
 			if err := sessionResponse.Serialize(writeStream, NEXT_VERSION_MAJOR, NEXT_VERSION_MINOR, NEXT_VERSION_PATCH); err != nil {
 				fmt.Printf("error: failed to write session response packet: %v\n", err)
 				return
