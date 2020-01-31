@@ -16,11 +16,10 @@
 #include "relay/relay_platform.hpp"
 
 #include "net.hpp"
-#include "platform.hpp"
 
 namespace net
 {
-    Address::RelayAddress() : mType(0), mPort(0)
+    Address::Address() : mType(0), mPort(0)
     {}
 
     bool Address::parse(const std::string& address)
@@ -73,10 +72,10 @@ namespace net
         // 2. otherwise try to parse as a raw IPv6 address using inet_pton
 
         std::array<uint16_t, 8> addr6;
-        if (relay_platform_inet_pton6(ptr, addr6.data()) == RELAY_OK) {
+        if (relay::relay_platform_inet_pton6(ptr, addr6.data()) == RELAY_OK) {
             this->mType = RELAY_ADDRESS_IPV6;
             for (int i = 0; i < 8; ++i) {
-                this->mIPv6[i] = relay_platform_ntohs(addr6[i]);
+                this->mIPv6[i] = relay::relay_platform_ntohs(addr6[i]);
             }
             return true;
         }
@@ -111,7 +110,7 @@ namespace net
         // 2. parse remaining ipv4 address via inet_pton
 
         uint32_t addr4;
-        if (relay_platform_inet_pton4(ptr, &addr4) == RELAY_OK) {
+        if (relay::relay_platform_inet_pton4(ptr, &addr4) == RELAY_OK) {
             this->mType = RELAY_ADDRESS_IPV4;
             this->mIPv4[3] = (uint8_t)((addr4 & 0xFF000000) >> 24);
             this->mIPv4[2] = (uint8_t)((addr4 & 0x00FF0000) >> 16);
@@ -141,7 +140,7 @@ namespace net
             }
 
             std::array<char, RELAY_MAX_ADDRESS_STRING_LENGTH> address_string;
-            relay_platform_inet_ntop6(ipv6_network_order.data(), address_string.data(), address_string.size() * sizeof(char));
+            relay::relay_platform_inet_ntop6(ipv6_network_order.data(), address_string.data(), address_string.size() * sizeof(char));
             if (mPort == 0) {
                 std::copy(address_string.begin(), address_string.end(), buff.begin());
                 total += strlen(address_string.data());
@@ -184,7 +183,7 @@ namespace net
     }
 
     // TODO consider making this inline
-    bool Address::operator==(const RelayAddress& other)
+    bool Address::operator==(const Address& other)
     {
         if (this->mType != other.mType || this->mPort != other.mPort) {
             return false;

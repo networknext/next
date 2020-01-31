@@ -243,7 +243,7 @@ namespace relay
     }
 
     void relay_platform_socket_send_packet(
-        relay_platform_socket_t* socket, const legacy::relay_address_t* to, const void* packet_data, int packet_bytes)
+        relay_platform_socket_t* socket, legacy::relay_address_t* to, const void* packet_data, int packet_bytes)
     {
         assert(socket);
         assert(to);

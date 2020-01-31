@@ -26,7 +26,7 @@
 #include "encoding/write.hpp"
 
 #include "relay/relay.hpp"
-#include "relay/relay_address.hpp"
+#include "net/address.hpp"
 #include "relay/relay_continue_token.hpp"
 #include "relay/relay_ping_history.hpp"
 #include "relay/relay_platform.hpp"
@@ -49,7 +49,7 @@ namespace
         uint8_t packet_data[RELAY_MAX_PACKET_BYTES];
 
         while (!quit) {
-            relay::RelayAddress from;
+            legacy::relay_address_t from;
             const int packet_bytes =
                 relay_platform_socket_receive_packet(relay->socket, &from, packet_data, sizeof(packet_data));
             if (packet_bytes == 0)

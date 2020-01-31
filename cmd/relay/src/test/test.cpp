@@ -772,7 +772,7 @@ namespace testing
             memset(packet, 0, sizeof(packet));
             relay::relay_platform_socket_send_packet(socket, &local_address, packet, sizeof(packet));
             legacy::relay_address_t from;
-            while (relay_platform_socket_receive_packet(socket, &from, packet, sizeof(packet))) {
+            while (relay::relay_platform_socket_receive_packet(socket, &from, packet, sizeof(packet))) {
                 check(relay_address_equal(&from, &local_address));
             }
             relay_platform_socket_destroy(socket);
