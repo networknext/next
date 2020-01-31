@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"math"
 	"net/http"
 	"runtime"
@@ -687,6 +688,11 @@ func (m *RouteMatrix) fillRoutes(routes *[]Route, from Relay, to Relay) {
 
 	reverse := toidx > fromidx
 	fromtoidx := TriMatrixIndex(fromidx, toidx)
+
+	if fromtoidx >= len(m.Entries) {
+		log.Printf("index '%d' out of bound for matrix entries", fromtoidx)
+		return
+	}
 
 	for i := 0; i < int(m.Entries[fromtoidx].NumRoutes); i++ {
 
