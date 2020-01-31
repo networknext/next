@@ -14,7 +14,7 @@ import (
 
 func TestIPLocator(t *testing.T) {
 	t.Run("Maxmind", func(t *testing.T) {
-		mmreader, err := geoip2.Open("./GeoIP2-City-Test.mmdb")
+		mmreader, err := geoip2.Open("../testdata/GeoIP2-City-Test.mmdb")
 		assert.NoError(t, err)
 
 		mmdb := routing.MaxmindDB{

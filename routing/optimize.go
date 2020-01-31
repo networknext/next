@@ -641,6 +641,10 @@ type RouteMatrix struct {
 	Entries          []RouteMatrixEntry
 }
 
+func (m *RouteMatrix) AllRoutes(d Datacenter, rs []Relay) []Route {
+	return m.Routes(m.RelaysIn(d), rs)
+}
+
 // RelaysIn will retern the set of Relays in the provided Datacenter
 func (m *RouteMatrix) RelaysIn(d Datacenter) []Relay {
 	relayIDs, ok := m.DatacenterRelays[d.ID]

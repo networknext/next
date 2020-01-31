@@ -17,7 +17,7 @@ type SDKVersion struct {
 var (
 	SDKVersionInternal = SDKVersion{}
 	SDKVersionMin      = SDKVersion{3, 3, 2}
-	SDKVersionMax      = SDKVersion{254, 254, 254}
+	SDKVersionMax      = SDKVersion{254, 1023, 254}
 )
 
 func (a SDKVersion) Compare(b SDKVersion) int {

@@ -26,7 +26,15 @@ OPTIMIZE_FILE = $(DIST_DIR)/optimize.bin
 ##    SHARED ENV   ##
 #####################
 
-export RELAY_BACKEND_HOSTNAME = http://localhost:30000
+export NEXT_LOG_LEVEL = 4
+export NEXT_DATACENTER = local
+export NEXT_CUSTOMER_PUBLIC_KEY = leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==
+export NEXT_CUSTOMER_PRIVATE_KEY = leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn
+export NEXT_HOSTNAME = 127.0.0.1
+export NEXT_PORT = 30000
+
+export SERVER_BACKEND_HOSTNAME = http://localhost:30000
+export RELAY_BACKEND_HOSTNAME = http://localhost:40000
 export RELAY_ID = local
 
 ifndef RELAY_ADDRESS
@@ -185,12 +193,11 @@ dev-optimizer: ## runs a local optimizer
 
 .PHONY: dev-relay-backend
 dev-relay-backend: ## runs a local relay backend
-	$(GO) run cmd/relay_backend/relay_backend.go
+	@$(GO) run cmd/relay_backend/relay_backend.go
 
 .PHONY: dev-server-backend
 dev-server-backend: ## runs a local server backend
-	@export MAXMIND_DB_URI=./GeoLite2-City.mmdb ; \
-	export ROUTE_MATRIX_URI=http://localhost:30000/route_matrix ; \
+	@export ROUTE_MATRIX_URI=http://localhost:40000/route_matrix ; \
 	$(GO) run cmd/server_backend/server_backend.go
 
 .PHONY: dev-backend
@@ -198,20 +205,12 @@ dev-backend: ## runs a local mock backend
 	$(GO) run cmd/tools/functional/backend/*.go
 
 .PHONY: dev-server
-dev-server: build-server  ## runs a local server
-	@export NEXT_LOG_LEVEL=4 ; \
-	export NEXT_DATACENTER=local ; \
-	export NEXT_CUSTOMER_PRIVATE_KEY=leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn ; \
-	export NEXT_HOSTNAME=127.0.0.1 ; \
-	export NEXT_PORT=30000 ; \
-	./dist/server
+dev-server: build-sdk build-functional-server  ## runs a local server
+	@./dist/func_server
 
 .PHONY: dev-client
-dev-client: build-client  ## runs a local client
-	@export NEXT_LOG_LEVEL=4 ; \
-	export NEXT_DATACENTER=local ; \
-	export NEXT_CUSTOMER_PUBLIC_KEY=leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw== ;\
-	./dist/client
+dev-client: build-functional-client  ## runs a local client
+	@./dist/func_client
 
 .PHONY: build-relay
 build-relay: ## builds the relay
