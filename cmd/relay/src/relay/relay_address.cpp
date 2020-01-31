@@ -24,7 +24,9 @@ namespace relay
 
     bool RelayAddress::parse(const std::string& address)
     {
+#ifdef __GNUC__
         __builtin_prefetch(address.c_str());
+#endif
         // first try to parse the string as an IPv6 address:
 
         std::array<char, RELAY_MAX_ADDRESS_STRING_LENGTH + RELAY_ADDRESS_BUFFER_SAFETY * 2> buff;
