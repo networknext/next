@@ -34,7 +34,7 @@ type Route struct {
 	Stats  Stats
 }
 
-type ContinueRouteDecition struct {
+type ContinueRouteDecision struct {
 	Expires uint64
 
 	SessionId      uint64
@@ -50,7 +50,7 @@ type ContinueRouteDecition struct {
 	offset     int
 }
 
-func (r *ContinueRouteDecition) Encrypt(privateKey []byte) []byte {
+func (r *ContinueRouteDecision) Encrypt(privateKey []byte) []byte {
 	r.privateKey = make([]byte, crypto.KeySize)
 	rand.Read(r.privateKey)
 
@@ -79,7 +79,7 @@ func (r *ContinueRouteDecition) Encrypt(privateKey []byte) []byte {
 	return r.token
 }
 
-func (r *ContinueRouteDecition) encryptToken(addr net.UDPAddr, receiverPublicKey []byte, senderPrivateKey []byte) {
+func (r *ContinueRouteDecision) encryptToken(addr net.UDPAddr, receiverPublicKey []byte, senderPrivateKey []byte) {
 	// Create space for the entire encoded node
 	node := make([]byte, 58)
 

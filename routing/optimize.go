@@ -83,7 +83,7 @@ type CostMatrix struct {
 }
 
 // ReadFrom implements the io.ReadFrom interface
-func (m *CostMatrix) ReadFom(r io.Reader) (int64, error) {
+func (m *CostMatrix) ReadFrom(r io.Reader) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -718,7 +718,7 @@ func (m *RouteMatrix) fillRoutes(routes *[]Route, from Relay, to Relay) {
 }
 
 // ReadFrom implements the io.ReadFrom interface
-func (m *RouteMatrix) ReadFom(r io.Reader) (int64, error) {
+func (m *RouteMatrix) ReadFrom(r io.Reader) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

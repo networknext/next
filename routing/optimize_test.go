@@ -1411,7 +1411,7 @@ func TestRouting(t *testing.T) {
 		assert.NoError(t, err)
 
 		var costMatrix routing.CostMatrix
-		_, err = costMatrix.ReadFom(costfile)
+		_, err = costMatrix.ReadFrom(costfile)
 		assert.NoError(t, err)
 
 		var routeMatrix routing.RouteMatrix
@@ -1486,7 +1486,7 @@ func BenchmarkRouting(b *testing.B) {
 	costfile, _ := os.Open("./test_data/cost.bin")
 
 	var costMatrix routing.CostMatrix
-	costMatrix.ReadFom(costfile)
+	costMatrix.ReadFrom(costfile)
 
 	var routeMatrix routing.RouteMatrix
 	costMatrix.Optimize(&routeMatrix, 1)
