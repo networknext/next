@@ -166,13 +166,7 @@ namespace relay
         // output.assign(buff.begin(), buff.begin() + total);
     }
 
-    std::string RelayAddress::toString()
-    {
-        std::string buffer;
-        toString(buffer);
-        return std::move(buffer);
-    }
-
+    // TODO consider making this inline
     bool RelayAddress::operator==(const RelayAddress& other)
     {
         if (this->mType != other.mType || this->mPort != other.mPort) {
@@ -187,12 +181,6 @@ namespace relay
             default:
                 return false;
         }
-    }
-
-    // TODO make this inline or remove
-    bool RelayAddress::equal(const RelayAddress& other)
-    {
-        return (*this) == other;
     }
 
     int relay_address_parse(relay_address_t* address, const char* address_string_in)
