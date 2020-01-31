@@ -3,7 +3,6 @@ package transport
 import (
 	"bytes"
 	"context"
-	"crypto/ed25519"
 	"errors"
 	"fmt"
 	"io"
@@ -271,7 +270,7 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp Ro
 			log.Printf("failed to get buyer '%d'", packet.CustomerId)
 			return
 		}
-		buyerServerPublicKey := buyer.GetSdkVersion3PublicKeyData()
+		buyerServerPublicKey := buyer.SdkVersion3PublicKeyData
 		log.Printf("loaded customer '%d' public key: %02x", packet.CustomerId, buyerServerPublicKey)
 
 		if !crypto.Verify(packet.GetSignData(serverentry.SDKVersion), packet.Signature, buyerServerPublicKey) {
@@ -357,7 +356,7 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp Ro
 		}
 
 		// Sign the response
-		response.Signature = ed25519.Sign(signingPrivateKey, response.GetSignData())
+		response.Signature = crypto.Sign(response.GetSignData(), signingPrivateKey)
 
 		// Send the Session Response back to the server
 		res, err := response.MarshalBinary()
