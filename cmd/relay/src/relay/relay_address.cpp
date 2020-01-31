@@ -133,13 +133,13 @@ namespace relay
             // ipv6 not supported
             return;
 #else
-            uint16_t ipv6_network_order[8];
+            std::array<uint16_t, 8> ipv6_network_order;
             for (int i = 0; i < 8; ++i) {
                 ipv6_network_order[i] = net::relay_htons(mIPv6[i]);
             }
 
             std::array<char, RELAY_MAX_ADDRESS_STRING_LENGTH> address_string;
-            relay_platform_inet_ntop6(ipv6_network_order, address_string.data(), address_string.size() * sizeof(char));
+            relay_platform_inet_ntop6(ipv6_network_order.data(), address_string.data(), address_string.size() * sizeof(char));
             if (mPort != 0) {
                 total += snprintf(buff.data(), RELAY_MAX_ADDRESS_STRING_LENGTH, "[%s]", address_string.data());
             } else {
