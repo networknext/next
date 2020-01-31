@@ -289,7 +289,8 @@ func (packet *SessionUpdatePacket) GetSignData(version SDKVersion) []byte {
 	binary.Write(buf, binary.LittleEndian, packet.PlatformId)
 	binary.Write(buf, binary.LittleEndian, packet.Tag)
 
-	if version.Compare(SDKVersion{3, 3, 4}) == SDKVersionEqual ||
+	if version.IsInternal() ||
+		version.Compare(SDKVersion{3, 3, 4}) == SDKVersionEqual ||
 		version.Compare(SDKVersion{3, 3, 4}) == SDKVersionNewer {
 		binary.Write(buf, binary.LittleEndian, packet.Flags)
 	}
@@ -340,7 +341,8 @@ func (packet *SessionUpdatePacket) GetSignData(version SDKVersion) []byte {
 	binary.Write(buf, binary.LittleEndian, packet.KbpsUp)
 	binary.Write(buf, binary.LittleEndian, packet.KbpsDown)
 
-	if version.Compare(SDKVersion{3, 3, 4}) == SDKVersionEqual ||
+	if version.IsInternal() ||
+		version.Compare(SDKVersion{3, 3, 4}) == SDKVersionEqual ||
 		version.Compare(SDKVersion{3, 3, 4}) == SDKVersionNewer {
 		binary.Write(buf, binary.LittleEndian, packet.PacketsLostClientToServer)
 		binary.Write(buf, binary.LittleEndian, packet.PacketsLostServerToClient)

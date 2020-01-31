@@ -111,7 +111,7 @@ func main() {
 					}
 
 					if res != nil {
-						n, err := routeMatrix.ReadFom(res.Body)
+						n, err := routeMatrix.ReadFrom(res.Body)
 						if err != nil {
 							log.Printf("failed to read route matrix: %v\n", err)
 						}

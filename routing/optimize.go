@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"math"
 	"net/http"
 	"runtime"
@@ -83,7 +84,7 @@ type CostMatrix struct {
 }
 
 // ReadFrom implements the io.ReadFrom interface
-func (m *CostMatrix) ReadFom(r io.Reader) (int64, error) {
+func (m *CostMatrix) ReadFrom(r io.Reader) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -688,6 +689,11 @@ func (m *RouteMatrix) fillRoutes(routes *[]Route, from Relay, to Relay) {
 	reverse := toidx > fromidx
 	fromtoidx := TriMatrixIndex(fromidx, toidx)
 
+	if fromtoidx >= len(m.Entries) {
+		log.Printf("index '%d' out of bound for matrix entries", fromtoidx)
+		return
+	}
+
 	for i := 0; i < int(m.Entries[fromtoidx].NumRoutes); i++ {
 
 		numRelays := int(m.Entries[fromtoidx].RouteNumRelays[i])
@@ -718,7 +724,7 @@ func (m *RouteMatrix) fillRoutes(routes *[]Route, from Relay, to Relay) {
 }
 
 // ReadFrom implements the io.ReadFrom interface
-func (m *RouteMatrix) ReadFom(r io.Reader) (int64, error) {
+func (m *RouteMatrix) ReadFrom(r io.Reader) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
