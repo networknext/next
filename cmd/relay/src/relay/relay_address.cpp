@@ -214,6 +214,21 @@ namespace relay
         }
     }
 
+}  // namespace relay
+
+namespace legacy
+{
+    struct relay_address_t
+    {
+        union
+        {
+            uint8_t ipv4[4];
+            uint16_t ipv6[8];
+        } data;
+        uint16_t port;
+        uint8_t type;
+    };
+
     int relay_address_parse(relay_address_t* address, const char* address_string_in)
     {
         assert(address);
@@ -225,7 +240,7 @@ namespace relay
         if (!address_string_in)
             return RELAY_ERROR;
 
-        memset(address, 0, sizeof(relay::relay_address_t));
+        memset(address, 0, sizeof(relay_address_t));
 
         // first try to parse the string as an IPv6 address:
         // 1. if the first character is '[' then it's probably an ipv6 in form "[addr6]:portnum"
@@ -273,10 +288,10 @@ namespace relay
             address_string += 1;
         }
         uint16_t addr6[8];
-        if (relay_platform_inet_pton6(address_string, addr6) == RELAY_OK) {
+        if (relay::relay_platform_inet_pton6(address_string, addr6) == RELAY_OK) {
             address->type = RELAY_ADDRESS_IPV6;
             for (int i = 0; i < 8; ++i) {
-                address->data.ipv6[i] = relay_platform_ntohs(addr6[i]);
+                address->data.ipv6[i] = relay::relay_platform_ntohs(addr6[i]);
             }
             return RELAY_OK;
         }
@@ -309,7 +324,7 @@ namespace relay
         }
 
         uint32_t addr4;
-        if (relay_platform_inet_pton4(address_string, &addr4) == RELAY_OK) {
+        if (relay::relay_platform_inet_pton4(address_string, &addr4) == RELAY_OK) {
             address->type = RELAY_ADDRESS_IPV4;
             address->data.ipv4[3] = (uint8_t)((addr4 & 0xFF000000) >> 24);
             address->data.ipv4[2] = (uint8_t)((addr4 & 0x00FF0000) >> 16);
@@ -321,7 +336,7 @@ namespace relay
         return RELAY_ERROR;
     }
 
-    const char* relay_address_to_string(const relay::relay_address_t* address, char* buffer)
+    const char* relay_address_to_string(const relay_address_t* address, char* buffer)
     {
         assert(buffer);
 
@@ -335,7 +350,7 @@ namespace relay
             for (int i = 0; i < 8; ++i)
                 ipv6_network_order[i] = net::relay_htons(address->data.ipv6[i]);
             char address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
-            relay_platform_inet_ntop6(ipv6_network_order, address_string, sizeof(address_string));
+            relay::relay_platform_inet_ntop6(ipv6_network_order, address_string, sizeof(address_string));
             if (address->port == 0) {
                 strncpy(buffer, address_string, RELAY_MAX_ADDRESS_STRING_LENGTH);
                 return buffer;
@@ -372,7 +387,7 @@ namespace relay
         }
     }
 
-    int relay_address_equal(const relay::relay_address_t* a, const relay::relay_address_t* b)
+    int relay_address_equal(const relay_address_t* a, const relay_address_t* b)
     {
         assert(a);
         assert(b);
@@ -400,7 +415,4 @@ namespace relay
 
         return 1;
     }
-}  // namespace relay
-
-namespace legacy
-{}
+}  // namespace legacy
