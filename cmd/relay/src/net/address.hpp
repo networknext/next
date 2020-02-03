@@ -5,6 +5,8 @@
 #include <string>
 #include <cinttypes>
 
+#include "config.hpp"
+
 namespace net
 {
     class Address
@@ -19,17 +21,30 @@ namespace net
 
         bool operator==(const Address& other);
 
-       private:
-        uint8_t mType;
-        uint16_t mPort;
+        void reset();
+
+        uint8_t Type;
+        uint16_t Port;
 
         union
         {
-            std::array<uint8_t, 4> mIPv4;
-            std::array<uint16_t, 8> mIPv6;
+            std::array<uint8_t, 4> IPv4;
+            std::array<uint16_t, 8> IPv6;
         };
     };
-}  // namespace relay
+
+    inline void Address::reset()
+    {
+        if (Type == RELAY_ADDRESS_IPV4) {
+            IPv4.fill(0);
+        } else if (Type == RELAY_ADDRESS_IPV6) {
+            IPv6.fill(0);
+        }
+
+        Type = 0;
+        Port = 0;
+    }
+}  // namespace net
 
 namespace legacy
 {

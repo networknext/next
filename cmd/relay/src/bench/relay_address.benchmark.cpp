@@ -5,11 +5,37 @@
 #include <cstring>
 
 // const auto REPS = 1;
-const auto REPS = 1000000;
+const auto REPS = 10000000;
+
+Bench(RelayAddress_vs_relay_address_t_reset_to_0, true)
+{
+    // reset()
+    {
+        net::Address addr;
+        Do(REPS)
+        {
+            addr.Type = RELAY_ADDRESS_IPV6;
+            addr.reset();
+        }
+
+        auto elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+        std::cout << "reset() nanoseconds: " << elapsed << '\n';
+    }
+
+    // memset()
+    {
+        legacy::relay_address_t addr;
+        Do(REPS)
+        {
+            memset(&addr, 0, sizeof(legacy::relay_address_t));
+        }
+        auto elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+        std::cout << "memset() nanoseconds: " << elapsed << '\n';
+    }
+}
 
 Bench(RelayAddress_vs_relay_address_t_address_parsing)
 {
-    Skip();
     // parse()
     {
         net::Address object;
@@ -38,7 +64,6 @@ Bench(RelayAddress_vs_relay_address_t_address_parsing)
 
 Bench(Relay_vs_relay_address_t_stringify_ipv4)
 {
-    Skip();
     auto addr = "127.0.0.1:20000";
 
     // toString(string)
@@ -72,7 +97,6 @@ Bench(Relay_vs_relay_address_t_stringify_ipv4)
 
 Bench(Relay_vs_relay_address_t_stringify_ipv6_with_braces)
 {
-    Skip();
     auto addr = "[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:20000";
 
     {
@@ -105,7 +129,6 @@ Bench(Relay_vs_relay_address_t_stringify_ipv6_with_braces)
 
 Bench(Relay_vs_relay_address_t_stringify_ipv6_without_braces)
 {
-    Skip();
     auto addr = "2001:0db8:85a3:0000:0000:8a2e:0370:7334";
 
     {
@@ -138,7 +161,6 @@ Bench(Relay_vs_relay_address_t_stringify_ipv6_without_braces)
 
 Bench(Relay_vs_relay_address_t_stringify_invalid)
 {
-    Skip();
     auto addr = "invalid-ip";
 
     {

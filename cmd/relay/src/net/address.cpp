@@ -8,7 +8,6 @@
 #include <cstring>
 #include <cstdio>
 
-#include "config.hpp"
 #include "util.hpp"
 
 #include "util/logger.hpp"
@@ -19,7 +18,7 @@
 
 namespace net
 {
-    Address::Address() : mType(0), mPort(0)
+    Address::Address() : Type(0), Port(0)
     {}
 
     bool Address::parse(const std::string& address)
@@ -45,7 +44,7 @@ namespace net
 
                 if (ptr[index] == ':') {
                     try {
-                        this->mPort = (uint16_t)(atoi(&ptr[index + 1]));  // atoi throws exceptions in c++
+                        this->Port = (uint16_t)(atoi(&ptr[index + 1]));  // atoi throws exceptions in c++
                     } catch (const std::invalid_argument& ia) {
                         LogDebug("Invalid argument except when parsing ipv6: ", ia.what());
                         return false;
@@ -73,9 +72,9 @@ namespace net
 
         std::array<uint16_t, 8> addr6;
         if (relay::relay_platform_inet_pton6(ptr, addr6.data()) == RELAY_OK) {
-            this->mType = RELAY_ADDRESS_IPV6;
+            this->Type = RELAY_ADDRESS_IPV6;
             for (int i = 0; i < 8; ++i) {
-                this->mIPv6[i] = relay::relay_platform_ntohs(addr6[i]);
+                this->IPv6[i] = relay::relay_platform_ntohs(addr6[i]);
             }
             return true;
         }
@@ -91,7 +90,7 @@ namespace net
 
             if (ptr[index] == ':') {
                 try {
-                    this->mPort = (uint16_t)(atoi(&ptr[index + 1]));  // atoi throws exceptions in c++
+                    this->Port = (uint16_t)(atoi(&ptr[index + 1]));  // atoi throws exceptions in c++
                 } catch (const std::invalid_argument& ia) {
                     LogDebug("Invalid argument except when parsing ipv4: ", ia.what());
                     return false;
@@ -111,11 +110,11 @@ namespace net
 
         uint32_t addr4;
         if (relay::relay_platform_inet_pton4(ptr, &addr4) == RELAY_OK) {
-            this->mType = RELAY_ADDRESS_IPV4;
-            this->mIPv4[3] = (uint8_t)((addr4 & 0xFF000000) >> 24);
-            this->mIPv4[2] = (uint8_t)((addr4 & 0x00FF0000) >> 16);
-            this->mIPv4[1] = (uint8_t)((addr4 & 0x0000FF00) >> 8);
-            this->mIPv4[0] = (uint8_t)((addr4 & 0x000000FF));
+            this->Type = RELAY_ADDRESS_IPV4;
+            this->IPv4[3] = (uint8_t)((addr4 & 0xFF000000) >> 24);
+            this->IPv4[2] = (uint8_t)((addr4 & 0x00FF0000) >> 16);
+            this->IPv4[1] = (uint8_t)((addr4 & 0x0000FF00) >> 8);
+            this->IPv4[0] = (uint8_t)((addr4 & 0x000000FF));
             return true;
         }
 
@@ -129,39 +128,39 @@ namespace net
         std::array<char, RELAY_MAX_ADDRESS_STRING_LENGTH> buff;
         unsigned int total = 0;
 
-        if (mType == RELAY_ADDRESS_IPV6) {
+        if (Type == RELAY_ADDRESS_IPV6) {
 #if defined(WINVER) && WINVER <= 0x0502
             // ipv6 not supported
             return;
 #else
             std::array<uint16_t, 8> ipv6_network_order;
             for (int i = 0; i < 8; ++i) {
-                ipv6_network_order[i] = net::relay_htons(mIPv6[i]);
+                ipv6_network_order[i] = net::relay_htons(IPv6[i]);
             }
 
             std::array<char, RELAY_MAX_ADDRESS_STRING_LENGTH> address_string;
             relay::relay_platform_inet_ntop6(ipv6_network_order.data(), address_string.data(), address_string.size() * sizeof(char));
-            if (mPort == 0) {
+            if (Port == 0) {
                 std::copy(address_string.begin(), address_string.end(), buff.begin());
                 total += strlen(address_string.data());
             } else {
                 total +=
-                    snprintf(&buff[total], RELAY_MAX_ADDRESS_STRING_LENGTH - total, "[%s]:%hu", address_string.data(), mPort);
+                    snprintf(&buff[total], RELAY_MAX_ADDRESS_STRING_LENGTH - total, "[%s]:%hu", address_string.data(), Port);
             }
 #endif
-        } else if (mType == RELAY_ADDRESS_IPV4) {
-            if (mPort == 0) {
+        } else if (Type == RELAY_ADDRESS_IPV4) {
+            if (Port == 0) {
                 total += snprintf(
-                    buff.data(), RELAY_MAX_ADDRESS_STRING_LENGTH, "%d.%d.%d.%d", mIPv4[0], mIPv4[1], mIPv4[2], mIPv4[3]);
+                    buff.data(), RELAY_MAX_ADDRESS_STRING_LENGTH, "%d.%d.%d.%d", IPv4[0], IPv4[1], IPv4[2], IPv4[3]);
             } else {
                 total += snprintf(&buff[total],
                     RELAY_MAX_ADDRESS_STRING_LENGTH - total,
                     "%d.%d.%d.%d:%hu",
-                    mIPv4[0],
-                    mIPv4[1],
-                    mIPv4[2],
-                    mIPv4[3],
-                    mPort);
+                    IPv4[0],
+                    IPv4[1],
+                    IPv4[2],
+                    IPv4[3],
+                    Port);
             }
         } else {
             total += snprintf(buff.data(), sizeof("NONE"), "NONE");
@@ -185,31 +184,31 @@ namespace net
     // TODO consider making this inline
     bool Address::operator==(const Address& other)
     {
-        if (this->mType != other.mType || this->mPort != other.mPort) {
+        if (this->Type != other.Type || this->Port != other.Port) {
             return false;
         }
 
-        switch (this->mType) {
+        switch (this->Type) {
             case RELAY_ADDRESS_IPV4:
-                for (unsigned int i = 0; i < mIPv4.size(); i++) {
-                    if (mIPv4[i] != other.mIPv4[i]) {
+                for (unsigned int i = 0; i < IPv4.size(); i++) {
+                    if (IPv4[i] != other.IPv4[i]) {
                         return false;
                     }
                 }
                 return true;
                 // these two are for some reason 400x slower
-                // return std::equal(this->mIPv4.begin(), this->mIPv4.end(), other.mIPv4.begin());
-                // return this->mIPv4 == other.mIPv4;
+                // return std::equal(this->IPv4.begin(), this->IPv4.end(), other.IPv4.begin());
+                // return this->IPv4 == other.IPv4;
             case RELAY_ADDRESS_IPV6:
-                for (unsigned int i = 0; i < mIPv6.size(); i++) {
-                    if (mIPv6[i] != other.mIPv6[i]) {
+                for (unsigned int i = 0; i < IPv6.size(); i++) {
+                    if (IPv6[i] != other.IPv6[i]) {
                         return false;
                     }
                 }
                 return true;
                 // same for these, perhaps the compiler isn't inlining the comparisons under the hood and they're function
-                // calls? return std::equal(this->mIPv6.begin(), this->mIPv6.end(), other.mIPv6.begin()); return this->mIPv6 ==
-                // other.mIPv6;
+                // calls? return std::equal(this->IPv6.begin(), this->IPv6.end(), other.IPv6.begin()); return this->IPv6 ==
+                // other.IPv6;
             default:
                 return false;
         }
