@@ -35,13 +35,13 @@ OBJ_DIRS			:= $(patsubst $(SRC)/%, $(OBJ)/%, $(SUB_DIRS))
 SRC_FILES			:= $(call rwildcard,$(SRC),*.cpp)
 
 SRC_OBJ_FILES		:= $(patsubst $(SRC)/%.cpp, $(OBJ)/%.o, $(SRC_FILES))
-SRC_DEP_FILES		:= $(patsubst $(SRC)/%.cpp, %.d, $(SRC_FILES))
+SRC_DEP_FILES		:= $(patsubst $(SRC)/%.cpp, $(OBJ)/%.d, $(SRC_FILES))
 
 TEST_OBJ_FILES		:= $(patsubst $(SRC)/%.cpp, $(OBJ)/%.test.o, $(SRC_FILES))
-TEST_DEP_FILES		:= $(patsubst $(SRC)/%.cpp, %.test.d, $(SRC_FILES))
+TEST_DEP_FILES		:= $(patsubst $(SRC)/%.cpp, $(OBJ)/%.test.d, $(SRC_FILES))
 
 BENCH_OBJ_FILES		:= $(patsubst $(SRC)/%.cpp, $(OBJ)/%.bench.o, $(SRC_FILES))
-BENCH_DEP_FILES		:= $(patsubst $(SRC)/%.cpp, %.bench.d, $(SRC_FILES))
+BENCH_DEP_FILES		:= $(patsubst $(SRC)/%.cpp, $(OBJ)/%.bench.d, $(SRC_FILES))
 
 DIST_DIR			:= ../../dist
 

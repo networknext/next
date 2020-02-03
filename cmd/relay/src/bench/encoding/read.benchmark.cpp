@@ -3,7 +3,7 @@
 #include "encoding/write.hpp"
 #include "encoding/read.hpp"
 
-const auto REPS = 10000000;
+const auto REPS = 1000000000;
 
 Bench(ReadAddress_vs_read_address_ipv4, true)
 {
