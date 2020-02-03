@@ -17,9 +17,7 @@ extern util::Console _console_;
 #define LogDebug(...)
 #endif
 
-// sometimes it's helpful to log things when testing
-// sometimes we forget to remove the logging
-// this behaves like LogDebug, except it will always be off when not running tests
+// this behaves like LogDebug, except it will always be off when not running tests, safeguard against forgetting to remove something when benchmarking
 
 #if defined TESTING and not defined BENCHMARKING
 #define LogTest(...) _console_.log(__FILE__, " (", __LINE__, "): ", __VA_ARGS__); std::cout << std::flush
