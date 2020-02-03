@@ -7,6 +7,8 @@
 
 #include "clock.hpp"
 
+#define BENCH_BREAK "\n=============================================\n\n"
+
 #define BENCHMARK_CLASS_CREATOR(benchmark_name, enabled)                                 \
     class _bench_##benchmark_name##_ : public benchmarking::Benchmark                    \
     {                                                                                    \
@@ -27,7 +29,8 @@
 /*
     Benchmark macro. Takes two parameters, and with preprocessor magic the second is optional
 
-    The first parameter is the name of the benchmark to run. It must be unique across the codebase since it is transformed into a class.
+    The first parameter is the name of the benchmark to run. It must be unique across the codebase since it is transformed into
+   a class.
 
     The second is wheter to enable it. False by default because there will likely be more benchmarks than desired
 */
@@ -39,8 +42,9 @@
     for (size_t i = 0; i < times; i++)
 
 // Just for readability
-#define Skip()                                            \
-    std::cout << "Skipping the rest of this benchmark\n"; \
+#define Skip()                                                          \
+    std::cout << BENCH_BREAK ; \
+    std::cout << "Skipping the rest of this benchmark\n";               \
     return
 
 extern benchmarking::Clock Timer;

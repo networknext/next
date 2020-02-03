@@ -7,7 +7,7 @@
 // const auto REPS = 1;
 const auto REPS = 10000000;
 
-Bench(RelayAddress_vs_relay_address_t_reset_to_0, true)
+Bench(RelayAddress_vs_relay_address_t_reset_to_0)
 {
     // reset()
     {

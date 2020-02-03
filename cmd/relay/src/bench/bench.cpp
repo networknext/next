@@ -14,14 +14,12 @@ namespace benchmarking
 
     void Benchmark::Run()
     {
-        std::cout << "\n=============================================\n\n";
         for (auto benchmark : mBenchmarks) {
             if (benchmark->Enabled) {
-                std::cout << "\n=============================================\n\n"
-                          << "Running '\x1b[35m" << benchmark->BenchmarkName << "\x1b[m'\n\n";
+                std::cout << BENCH_BREAK << "Running '\x1b[35m" << benchmark->BenchmarkName << "\x1b[m'\n\n";
                 benchmark->body();
             }
         }
-        std::cout << "\n=============================================\n\n";
+        std::cout << BENCH_BREAK;
     }
 }  // namespace benchmarking
