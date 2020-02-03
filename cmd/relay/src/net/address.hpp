@@ -18,8 +18,10 @@ namespace net
         bool parse(const std::string& address_string_in);
 
         void toString(std::string& buffer);
+        std::string toString();  // slow, use only for debugging
 
         bool operator==(const Address& other);
+        bool operator!=(const Address& other);
 
         void reset();
 
@@ -43,6 +45,18 @@ namespace net
 
         Type = 0;
         Port = 0;
+    }
+
+    inline std::string Address::toString()
+    {
+        std::string buff;
+        toString(buff);
+        return buff;
+    }
+
+    inline bool Address::operator!=(const Address& other)
+    {
+        return !(*this == other);
     }
 }  // namespace net
 

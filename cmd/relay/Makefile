@@ -8,12 +8,12 @@ rwildcard=$(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(su
 ### Variables ###
 #################
 
-SHELL		:= /bin/bash
+SHELL			:= /bin/bash
 
-CXX			:= g++
+CXX				:= g++
 CXX_FLAGS 		:= -Wall -Wextra -std=c++17 -O3 -march=native -frename-registers -funroll-loops -fopenmp -D_GLIBCXX_PARALLEL
 
-SRC			:= src
+SRC				:= src
 INCLUDE			:= $(SRC) # include path is the same as the src dir
 SPEC			:= spec
 
@@ -22,18 +22,18 @@ STATIC_LIBS		:=
 LIBRARY_DIRS		:= -L.
 LIBRARIES		:= -lsodium -lcurl -lpthread -lm
 
-EXE			:= relay
+EXE				:= relay
 
-BIN			:= bin
-OBJ			:= obj
+BIN				:= bin
+OBJ				:= obj
 
 SUB_DIRS		:= $(shell find src/* -type d -print)
 OBJ_DIRS		:= $(patsubst $(SRC)/%, $(OBJ)/%, $(SUB_DIRS))
 
-SRC_FILES	:= $(call rwildcard,$(SRC),*.cpp)
+SRC_FILES		:= $(call rwildcard,$(SRC),*.cpp)
 SRC_OBJ_FILES	:= $(patsubst $(SRC)/%.cpp, $(OBJ)/%.o, $(SRC_FILES))
 
-DIST_DIR	:= ../../dist
+DIST_DIR		:= ../../dist
 
 ################
 ### Targets  ###
@@ -45,6 +45,9 @@ clean:
 	-rm -rf $(BIN) $(OBJ) $(DIST_DIR)/$(EXE)
 
 force: clean all
+
+run-tests: all
+	$(BIN)/$(EXE) test
 
 run-benchmarks: all
 	$(BIN)/$(EXE) bench

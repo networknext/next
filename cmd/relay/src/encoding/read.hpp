@@ -4,6 +4,8 @@
 #include <cinttypes>
 #include <cstring>
 #include <cassert>
+#include <cstddef>
+#include <array>
 
 #include "config.hpp"
 
@@ -11,11 +13,26 @@
 
 namespace encoding
 {
+    template <size_t BuffSize>
+    inline uint8_t ReadUint8(std::array<uint8_t, BuffSize>& buff, size_t& index)
+    {
+        return buff[index++];
+    }
+
     inline uint8_t read_uint8(const uint8_t** p)
     {
         uint8_t value = **p;
         ++(*p);
         return value;
+    }
+
+    template <size_t BuffSize>
+    inline uint16_t ReadUint16(std::array<uint8_t, BuffSize>& buff, size_t& index)
+    {
+        uint16_t retval;
+        retval = buff[index++];
+        retval |= (((uint16_t)buff[index++]) << 8);
+        return retval;
     }
 
     inline uint16_t read_uint16(const uint8_t** p)
@@ -92,6 +109,30 @@ namespace encoding
             string_data[i] = read_uint8(p);
         }
         string_data[i] = 0;
+    }
+
+    template <size_t BuffSize>
+    inline void ReadAddress(std::array<uint8_t, BuffSize>& buff, size_t& index, net::Address& addr)
+    {
+#ifndef NDEBUG
+        auto start = index;
+#endif
+        addr.Type = ReadUint8(buff, index);  // read the type
+
+        if (addr.Type == RELAY_ADDRESS_IPV4) {
+            std::copy(buff.begin() + index, buff.begin() + index + 4, addr.IPv4.begin());  // copy the address
+            index += 4;                                                                    // increment the index
+            addr.Port = ReadUint16(buff, index);                                           // read the port
+            index += 12;  // increment the index past the reserved area
+        } else if (addr.Type == RELAY_ADDRESS_IPV6) {
+            std::copy(buff.begin(), buff.begin() + index + 16, addr.IPv6.begin());  // copy the address
+            index += 16;                                                            // increment the pointer
+            addr.Port = ReadUint16(buff, index);                                    // read the port
+        } else {
+            index += RELAY_ADDRESS_BYTES - 1;  // if no type, increment the index past the address area
+        }
+
+        assert(index - start == RELAY_ADDRESS_BYTES);
     }
 
     inline void read_address(const uint8_t** buffer, legacy::relay_address_t* address)

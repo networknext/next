@@ -6,6 +6,8 @@
 #include <sodium.h>
 
 #include "config.hpp"
+#include "macros.hpp"
+#include "net/address.test.hpp"
 
 #include "encoding/base64.hpp"
 #include "encoding/binary.hpp"
@@ -23,34 +25,6 @@
 #include "relay/relay_platform.hpp"
 #include "relay/relay_replay_protection.hpp"
 #include "relay/relay_route_token.hpp"
-
-#define RUN_TEST(test_function)             \
-    do {                                    \
-        printf("    " #test_function "\n"); \
-        fflush(stdout);                     \
-        test_function();                    \
-    } while (0)
-
-static void check_handler(const char* condition, const char* function, const char* file, int line)
-{
-    printf("check failed: ( %s ), function %s, file %s, line %d\n", condition, function, file, line);
-    fflush(stdout);
-#ifndef NDEBUG
-#if defined(__GNUC__)
-    __builtin_trap();
-#elif defined(_MSC_VER)
-    __debugbreak();
-#endif
-#endif
-    exit(1);
-}
-
-#define check(condition)                                                                           \
-    do {                                                                                           \
-        if (!(condition)) {                                                                        \
-            check_handler(#condition, (const char*)__FUNCTION__, (const char*)__FILE__, __LINE__); \
-        }                                                                                          \
-    } while (0)
 
 const int MaxItems = 11;
 
@@ -725,37 +699,6 @@ namespace testing
         check(memcmp(g, "hello", 6) == 0);
     }
 
-    static void test_address_read_and_write()
-    {
-        legacy::relay_address_t a, b, c;
-
-        memset(&a, 0, sizeof(a));
-
-        legacy::relay_address_parse(&b, "127.0.0.1:50000");
-
-        legacy::relay_address_parse(&c, "[::1]:50000");
-
-        uint8_t buffer[1024];
-
-        uint8_t* p = buffer;
-
-        encoding::write_address(&p, &a);
-        encoding::write_address(&p, &b);
-        encoding::write_address(&p, &c);
-
-        struct legacy::relay_address_t read_a, read_b, read_c;
-
-        const uint8_t* q = buffer;
-
-        encoding::read_address(&q, &read_a);
-        encoding::read_address(&q, &read_b);
-        encoding::read_address(&q, &read_c);
-
-        check(legacy::relay_address_equal(&a, &read_a));
-        check(legacy::relay_address_equal(&b, &read_b));
-        check(legacy::relay_address_equal(&c, &read_c));
-    }
-
     static void test_platform_socket()
     {
         // non-blocking socket (ipv4)
@@ -1267,6 +1210,7 @@ namespace testing
 
         check(relay::relay_initialize() == RELAY_OK);
 
+        RUN_TEST(TestAddress);
         RUN_TEST(test_endian);
         RUN_TEST(test_bitpacker);
         RUN_TEST(test_stream);

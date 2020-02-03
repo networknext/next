@@ -18,7 +18,7 @@
 
 namespace net
 {
-    Address::Address() : Type(0), Port(0)
+    Address::Address() : Type(RELAY_ADDRESS_NONE), Port(0)
     {}
 
     bool Address::parse(const std::string& address)
@@ -29,6 +29,7 @@ namespace net
         // first try to parse the string as an IPv6 address:
 
         std::array<char, RELAY_MAX_ADDRESS_STRING_LENGTH + RELAY_ADDRESS_BUFFER_SAFETY * 2> buff;
+        buff.fill(0);
         std::copy(address.begin(), address.end(), buff.begin());  // this is supposed to take advantage of MMX registers
         auto ptr = &buff[0];
 
@@ -139,7 +140,8 @@ namespace net
             }
 
             std::array<char, RELAY_MAX_ADDRESS_STRING_LENGTH> address_string;
-            relay::relay_platform_inet_ntop6(ipv6_network_order.data(), address_string.data(), address_string.size() * sizeof(char));
+            relay::relay_platform_inet_ntop6(
+                ipv6_network_order.data(), address_string.data(), address_string.size() * sizeof(char));
             if (Port == 0) {
                 std::copy(address_string.begin(), address_string.end(), buff.begin());
                 total += strlen(address_string.data());
@@ -150,8 +152,8 @@ namespace net
 #endif
         } else if (Type == RELAY_ADDRESS_IPV4) {
             if (Port == 0) {
-                total += snprintf(
-                    buff.data(), RELAY_MAX_ADDRESS_STRING_LENGTH, "%d.%d.%d.%d", IPv4[0], IPv4[1], IPv4[2], IPv4[3]);
+                total +=
+                    snprintf(buff.data(), RELAY_MAX_ADDRESS_STRING_LENGTH, "%d.%d.%d.%d", IPv4[0], IPv4[1], IPv4[2], IPv4[3]);
             } else {
                 total += snprintf(&buff[total],
                     RELAY_MAX_ADDRESS_STRING_LENGTH - total,
@@ -209,12 +211,15 @@ namespace net
                 // same for these, perhaps the compiler isn't inlining the comparisons under the hood and they're function
                 // calls? return std::equal(this->IPv6.begin(), this->IPv6.end(), other.IPv6.begin()); return this->IPv6 ==
                 // other.IPv6;
+
+            case RELAY_ADDRESS_NONE:
+                return true;  // if the above tests passed, then the address doesn't matter
             default:
                 return false;
         }
     }
 
-}  // namespace relay
+}  // namespace net
 
 /******************************************************************************************************************************/
 

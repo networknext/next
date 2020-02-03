@@ -4,6 +4,8 @@
 #include <cinttypes>
 #include <cassert>
 #include <cstdio>
+#include <cstddef>
+#include <array>
 
 #include "config.hpp"
 
@@ -13,10 +15,23 @@
 
 namespace encoding
 {
+    template <size_t BuffSize>
+    inline void WriteUint8(std::array<uint8_t, BuffSize>& buff, size_t& index, uint8_t value)
+    {
+        buff[index++] = value;
+    }
+
     inline void write_uint8(uint8_t** p, uint8_t value)
     {
         **p = value;
         ++(*p);
+    }
+
+    template <size_t BuffSize>
+    inline void WriteUint16(std::array<uint8_t, BuffSize>& buff, size_t& index, uint16_t value)
+    {
+        buff[index++] = value & 0xFF;
+        buff[index++] = value >> 8;
     }
 
     inline void write_uint16(uint8_t** p, uint16_t value)
@@ -83,6 +98,31 @@ namespace encoding
         for (uint32_t i = 0; i < length; ++i) {
             write_uint8(p, string_data[i]);
         }
+    }
+
+    template <size_t BufferSize>
+    inline void WriteAddress(std::array<uint8_t, BufferSize>& buff, size_t& index, net::Address& addr)
+    {
+#ifndef NDEBUG
+        auto start = index;
+#endif
+
+        if (addr.Type == RELAY_ADDRESS_IPV4) {
+            WriteUint8(buff, index, RELAY_ADDRESS_IPV4);                          // write the type
+            std::copy(addr.IPv4.begin(), addr.IPv4.end(), buff.begin() + index);  // copy the address
+            index += addr.IPv4.size() * sizeof(uint8_t);                          // increment the index
+            WriteUint16(buff, index, addr.Port);                                  // write the port
+            index += 12;  // increment the index past the address section
+        } else if (addr.Type == RELAY_ADDRESS_IPV6) {
+            WriteUint8(buff, index, RELAY_ADDRESS_IPV6);                         // write the type
+            std::copy(addr.IPv6.begin(), addr.IPv6.end(), buff.data() + index);  // copy the address
+            index += addr.IPv6.size() * sizeof(uint16_t);                        // increment the index
+            WriteUint16(buff, index, addr.Port);                                 // write the port
+        } else {
+            index += RELAY_ADDRESS_BYTES;  // std array's start zeroed out, so just incremetn the index
+        }
+
+        assert(index - start == RELAY_ADDRESS_BYTES);
     }
 
     inline void write_address(uint8_t** buffer, const legacy::relay_address_t* address)
