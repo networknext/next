@@ -237,7 +237,7 @@ type RouteProvider interface {
 }
 
 // SessionUpdateHandlerFunc ...
-func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, encryptionPrivateKey []byte, signingPrivateKey []byte) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		// Deserialize the Session packet
 		var packet SessionUpdatePacket
@@ -329,7 +329,7 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp Ro
 		log.Printf("constructed next route: %+v\n", nextRoute)
 
 		// Encrypt the next route with the our private key
-		routeTokens, err := nextRoute.Encrypt(encryptionPrivateKey)
+		routeTokens, err := nextRoute.Encrypt(routerPrivateKey)
 		if err != nil {
 			log.Fatalf("failed to encrypt route token: %v", err)
 			return
@@ -356,7 +356,7 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp Ro
 		}
 
 		// Sign the response
-		response.Signature = crypto.Sign(response.GetSignData(), signingPrivateKey)
+		response.Signature = crypto.Sign(response.GetSignData(), serverPrivateKey)
 
 		// Send the Session Response back to the server
 		res, err := response.MarshalBinary()

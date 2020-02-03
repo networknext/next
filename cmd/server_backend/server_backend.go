@@ -31,17 +31,27 @@ func main() {
 
 	ctx := context.Background()
 
+	// var serverPublicKey []byte
 	var serverPrivateKey []byte
 	var routerPrivateKey []byte
 	{
+		if key := os.Getenv("SERVER_BACKEND_PUBLIC_KEY"); len(key) != 0 {
+			// serverPublicKey, _ = base64.StdEncoding.DecodeString(key)
+			log.Printf("using SERVER_BACKEND_PUBLIC_KEY '%s'\n", key)
+		} else {
+			log.Fatal("env var 'SERVER_BACKEND_PUBLIC_KEY' is not set")
+		}
+
 		if key := os.Getenv("SERVER_BACKEND_PRIVATE_KEY"); len(key) != 0 {
 			serverPrivateKey, _ = base64.StdEncoding.DecodeString(key)
+			log.Printf("using SERVER_BACKEND_PRIVATE_KEY '%s'\n", key)
 		} else {
 			log.Fatal("env var 'SERVER_BACKEND_PRIVATE_KEY' is not set")
 		}
 
 		if key := os.Getenv("RELAY_ROUTER_PRIVATE_KEY"); len(key) != 0 {
 			routerPrivateKey, _ = base64.StdEncoding.DecodeString(key)
+			log.Printf("using RELAY_ROUTER_PRIVATE_KEY '%s'\n", key)
 		} else {
 			log.Fatal("env var 'RELAY_ROUTER_PRIVATE_KEY' is not set")
 		}
