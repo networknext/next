@@ -29,6 +29,9 @@ Bench(ReadAddress_vs_read_address_ipv4, true)
     {
         legacy::relay_address_t addr;
         uint8_t buff[RELAY_ADDRESS_BYTES];
+        legacy::relay_address_parse(&addr, "127.0.0.1:51034");
+        auto p = &buff[0];
+        encoding::write_address(&p, &addr);
 
         Do(REPS)
         {

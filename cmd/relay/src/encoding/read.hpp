@@ -75,8 +75,6 @@ namespace encoding
             for (int i = 0; i < 8; i++) {
                 addr.IPv6[i] = ReadUint16(buff, index);
             }
-            // std::copy(buff.begin(), buff.begin() + index + 16, addr.IPv6.data());  // copy the address
-            // index += 16;                                                            // increment the pointer
             addr.Port = ReadUint16(buff, index);  // read the port
         } else {
             index += RELAY_ADDRESS_BYTES - 1;  // if no type, increment the index past the address area
