@@ -145,57 +145,34 @@ namespace testing
         check(addr.IPv6[7] == 0);
     }
 
-    // Type == none
-    void TestAddressReadAndWrite1()
+    void Test_Address_toString()
     {
-        net::Address a, read_a;
-        std::array<uint8_t, 1024> buffer;
+        net::Address addr;
+        std::string base, output, expected;
 
-        buffer.fill(0);
-        size_t index = 0;
-        encoding::WriteAddress(buffer, index, a);
-        check(index == RELAY_ADDRESS_BYTES);
-        index = 0;
-        encoding::ReadAddress(buffer, index, read_a);
-        check(index == RELAY_ADDRESS_BYTES);
-        check(a == read_a);
-    }
+        base = "127.0.0.1:51034";
+        expected = base;
+        check(addr.parse(base) == true);
+        addr.toString(output);
+        check(output == expected);
 
-    // Type == ipv4
-    void TestAddressReadAndWrite2()
-    {
-        net::Address b, read_b;
-        std::array<uint8_t, 1024> buffer;
+        base = "[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:20000";
+        expected = "[2001:db8:85a3::8a2e:370:7334]:20000";
+        check(addr.parse(base) == true);
+        addr.toString(output);
+        check(output == expected);
 
-        buffer.fill(0);
-        b.parse("127.0.0.1:50000");
-        size_t index = 0;
-        encoding::WriteAddress(buffer, index, b);
-        check(index == RELAY_ADDRESS_BYTES);
-        index = 0;
-        encoding::ReadAddress(buffer, index, read_b);
-        check(index == RELAY_ADDRESS_BYTES);
-        check(b == read_b);
-    }
+        base = "2001:0db8:85a3:0000:0000:8a2e:0370:7334";
+        expected = "2001:db8:85a3::8a2e:370:7334";
+        check(addr.parse(base) == true);
+        addr.toString(output);
+        check(output == expected);
 
-    // Type == ipv6
-    void TestAddressReadAndWrite3()
-    {
-        net::Address c, read_c;
-        std::array<uint8_t, 1024> buffer;
-        buffer.fill(0);
-
-        c.parse("[::1]:50000");
-
-        size_t index = 0;
-        encoding::WriteAddress(buffer, index, c);
-        check(index == RELAY_ADDRESS_BYTES);
-
-        index = 0;
-        encoding::ReadAddress(buffer, index, read_c);
-        check(index == RELAY_ADDRESS_BYTES);
-
-        check(c == read_c);
+        base = "127.0djaid?.0.sad1:5as1034";
+        expected = "NONE";
+        check(addr.parse(base) == false);
+        addr.toString(output);
+        check(output == expected);
     }
 
     void TestAddress()
@@ -207,40 +184,6 @@ namespace testing
         Test_Address_parse_ipv6_with_braces();
         Test_Address_parse_ipv6_without_braces();
         Test_Address_parse_invalid_ips();
-
-        TestAddressReadAndWrite1();
-        TestAddressReadAndWrite2();
-        TestAddressReadAndWrite3();
-    }
-
-    void test_address_read_and_write()
-    {
-        legacy::relay_address_t a, b, c;
-
-        memset(&a, 0, sizeof(a));
-
-        legacy::relay_address_parse(&b, "127.0.0.1:50000");
-
-        legacy::relay_address_parse(&c, "[::1]:50000");
-
-        uint8_t buffer[1024];
-
-        uint8_t* p = buffer;
-
-        encoding::write_address(&p, &a);
-        encoding::write_address(&p, &b);
-        encoding::write_address(&p, &c);
-
-        struct legacy::relay_address_t read_a, read_b, read_c;
-
-        const uint8_t* q = buffer;
-
-        encoding::read_address(&q, &read_a);
-        encoding::read_address(&q, &read_b);
-        encoding::read_address(&q, &read_c);
-
-        check(legacy::relay_address_equal(&a, &read_a));
-        check(legacy::relay_address_equal(&b, &read_b));
-        check(legacy::relay_address_equal(&c, &read_c));
+        Test_Address_toString();
     }
 }  // namespace testing

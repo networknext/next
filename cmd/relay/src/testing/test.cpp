@@ -1206,15 +1206,49 @@ namespace testing
         relay_manager_destroy(manager);
     }
 
+    void test_address_read_and_write()
+    {
+        legacy::relay_address_t a, b, c;
+
+        memset(&a, 0, sizeof(a));
+
+        legacy::relay_address_parse(&b, "127.0.0.1:50000");
+
+        legacy::relay_address_parse(&c, "[::1]:50000");
+
+        uint8_t buffer[1024];
+
+        uint8_t* p = buffer;
+
+        encoding::write_address(&p, &a);
+        encoding::write_address(&p, &b);
+        encoding::write_address(&p, &c);
+
+        struct legacy::relay_address_t read_a, read_b, read_c;
+
+        const uint8_t* q = buffer;
+
+        encoding::read_address(&q, &read_a);
+        encoding::read_address(&q, &read_b);
+        encoding::read_address(&q, &read_c);
+
+        check(legacy::relay_address_equal(&a, &read_a));
+        check(legacy::relay_address_equal(&b, &read_b));
+        check(legacy::relay_address_equal(&c, &read_c));
+    }
+
     void relay_test()
     {
         printf("\nRunning relay tests:\n\n");
 
         check(relay::relay_initialize() == RELAY_OK);
 
+        // Current
         RUN_TEST(TestRead);
         RUN_TEST(TestWrite);
         RUN_TEST(TestAddress);
+
+        // Legacy
         RUN_TEST(test_endian);
         RUN_TEST(test_bitpacker);
         RUN_TEST(test_stream);

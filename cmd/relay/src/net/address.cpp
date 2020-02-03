@@ -25,6 +25,7 @@ namespace net
 
     bool Address::parse(const std::string& address)
     {
+        reset();
 #ifdef __GNUC__
         __builtin_prefetch(address.c_str());
 #endif
