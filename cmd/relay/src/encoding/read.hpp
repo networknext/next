@@ -55,7 +55,7 @@ namespace encoding
     uint16_t ReadUint16(std::array<uint8_t, BuffSize>& buff, size_t& index)
     {
         asm("");
-        auto retval = bswap(*reinterpret_cast<uint16_t*>(&buff[index]));
+        auto retval = *reinterpret_cast<uint16_t*>(&buff[index]);
         index += 2;
         return retval;
     }
