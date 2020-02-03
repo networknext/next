@@ -12,6 +12,8 @@
 
 #include "util/logger.hpp"
 
+#include "binary.hpp"
+
 namespace encoding
 {
     // Prototypes
@@ -53,9 +55,8 @@ namespace encoding
     uint16_t ReadUint16(std::array<uint8_t, BuffSize>& buff, size_t& index)
     {
         asm("");
-        uint16_t retval;
-        retval = buff[index++];
-        retval |= (((uint16_t)buff[index++]) << 8);
+        auto retval = bswap(*reinterpret_cast<uint16_t*>(&buff[index]));
+        index += 2;
         return retval;
     }
 

@@ -8,7 +8,7 @@
 
 const auto REPS = 10000000000;
 
-Bench(ReadUint16_vs_read_uint16)
+Bench(ReadUint16_vs_read_uint16, true)
 {
     std::default_random_engine gen;
     std::uniform_int_distribution<uint8_t> dist;
@@ -30,15 +30,22 @@ Bench(ReadUint16_vs_read_uint16)
     }
 
     {
+        uint8_t buff[2];
+        buff[0] = rand();
+        buff[1] = rand();
+
         Do(REPS)
-        {}
+        {
+            const uint8_t* ptr = &buff[0];
+            encoding::read_uint16(&ptr);
+        }
 
         auto elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
         std::cout << "read_uint16() nanoseconds: " << elapsed << '\n';
     }
 }
 
-Bench(ReadAddress_vs_read_address_ipv4, true)
+Bench(ReadAddress_vs_read_address_ipv4)
 {
     // ReadAddress()
     {
