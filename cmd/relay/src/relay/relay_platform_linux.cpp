@@ -109,7 +109,7 @@ namespace relay
     }
 
     relay_platform_socket_t* relay_platform_socket_create(
-        relay_address_t* address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size)
+        legacy::relay_address_t* address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size)
     {
         assert(address);
         assert(address->type != RELAY_ADDRESS_NONE);
@@ -244,7 +244,7 @@ namespace relay
     }
 
     void relay_platform_socket_send_packet(
-        relay_platform_socket_t* socket, const relay_address_t* to, const void* packet_data, int packet_bytes)
+        relay_platform_socket_t* socket, const legacy::relay_address_t* to, const void* packet_data, int packet_bytes)
     {
         assert(socket);
         assert(to);
@@ -291,7 +291,7 @@ namespace relay
     }
 
     int relay_platform_socket_receive_packet(
-        relay_platform_socket_t* socket, relay_address_t* from, void* packet_data, int max_packet_size)
+        relay_platform_socket_t* socket, legacy::relay_address_t* from, void* packet_data, int max_packet_size)
     {
         assert(socket);
         assert(from);

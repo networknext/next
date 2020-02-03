@@ -9,7 +9,7 @@ rwildcard=$(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(su
 #################
 
 CXX			:= g++
-CXX_FLAGS 		:= -Wall -Wextra -std=c++17
+CXX_FLAGS 		:= -Wall -Wextra -std=c++17 -O3 -march=native -frename-registers -funroll-loops -fopenmp -D_GLIBCXX_PARALLEL
 
 SRC			:= src
 INCLUDE			:= $(SRC) # include path is the same as the src dir
@@ -42,6 +42,11 @@ all: $(BIN) $(OBJ) $(OBJ_DIRS) $(BIN)/$(EXE) $(DIST_DIR)/$(EXE)
 clean:
 	-rm -rf $(BIN) $(OBJ) $(DIST_DIR)/$(EXE)
 
+force: clean all
+
+run-benchmarks: all
+	$(BIN)/$(EXE) bench
+
 $(BIN)/$(EXE): $(SRC_OBJ_FILES)
 	$(CXX) $(CXX_FLAGS) $(INCLUDE_DIRS) $(LIBRARY_DIRS) $^ $(STATIC_LIBS) -o $@ $(LIBRARIES)
 
@@ -50,16 +55,15 @@ $(OBJ)/%.o: $(SRC)/%.cpp
 
 $(BIN):
 	@echo "Creating bin directory"
-	@mkdir $@ 
+	-@mkdir $@
 
 $(OBJ):
 	@echo "Creating obj directory"
-	@mkdir $@
+	-@mkdir $@
 
 $(OBJ_DIRS):
 	@echo "creating obj directory: $@"
-	@mkdir -p $@
+	-@mkdir -p $@
 
 $(DIST_DIR)/$(EXE): $(BIN)/$(EXE)
 	@cp $< $@
-

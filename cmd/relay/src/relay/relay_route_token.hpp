@@ -17,7 +17,7 @@ namespace relay
         uint8_t session_flags;
         int kbps_up;
         int kbps_down;
-        relay::relay_address_t next_address;
+        legacy::relay_address_t next_address;
         uint8_t private_key[crypto_box_SECRETKEYBYTES];
     };
 

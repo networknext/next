@@ -44,7 +44,8 @@ namespace net
 #endif  // #if RELAY_BIG_ENDIAN
     }
 
-    // TODO same as the funcs in net, which were previously relay_platform_...()
+    // TODO same as the funcs in relay_platform_*.hpp/cpp, which were previously relay_platform_ntohs/htons()
+    // figure out if these are needed
     inline uint16_t relay_ntohs(uint16_t in)
     {
         return (uint16_t)(((in << 8) & 0xFF00) | ((in >> 8) & 0x00FF));

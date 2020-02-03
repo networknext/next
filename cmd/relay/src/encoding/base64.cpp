@@ -23,7 +23,7 @@ namespace
 
 namespace encoding
 {
-    int relay_base64_encode_data(const uint8_t* input, size_t input_length, char* output, size_t output_size)
+    int base64_encode_data(const uint8_t* input, size_t input_length, char* output, size_t output_size)
     {
         assert(input);
         assert(output);
@@ -71,7 +71,7 @@ namespace encoding
         return int(output_length);
     }
 
-    int relay_base64_decode_data(const char* input, uint8_t* output, size_t output_size)
+    int base64_decode_data(const char* input, uint8_t* output, size_t output_size)
     {
         assert(input);
         assert(output);
@@ -111,22 +111,22 @@ namespace encoding
         return int(output_length);
     }
 
-    int relay_base64_encode_string(const char* input, char* output, size_t output_size)
+    int base64_encode_string(const char* input, char* output, size_t output_size)
     {
         assert(input);
         assert(output);
         assert(output_size > 0);
 
-        return relay_base64_encode_data((const uint8_t*)(input), strlen(input), output, output_size);
+        return base64_encode_data((const uint8_t*)(input), strlen(input), output, output_size);
     }
 
-    int relay_base64_decode_string(const char* input, char* output, size_t output_size)
+    int base64_decode_string(const char* input, char* output, size_t output_size)
     {
         assert(input);
         assert(output);
         assert(output_size > 0);
 
-        int output_length = relay_base64_decode_data(input, (uint8_t*)(output), output_size - 1);
+        int output_length = base64_decode_data(input, (uint8_t*)(output), output_size - 1);
         if (output_length < 0) {
             return 0;
         }

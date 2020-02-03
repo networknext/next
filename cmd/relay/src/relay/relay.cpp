@@ -59,14 +59,14 @@ namespace relay
 
         uint8_t* p = init_data;
 
-        encoding::relay_write_uint32(&p, init_request_magic);
-        encoding::relay_write_uint32(&p, init_request_version);
-        encoding::relay_write_bytes(&p, nonce, crypto_box_NONCEBYTES);
-        encoding::relay_write_string(&p, relay_address, RELAY_MAX_ADDRESS_STRING_LENGTH);
+        encoding::write_uint32(&p, init_request_magic);
+        encoding::write_uint32(&p, init_request_version);
+        encoding::write_bytes(&p, nonce, crypto_box_NONCEBYTES);
+        encoding::write_string(&p, relay_address, RELAY_MAX_ADDRESS_STRING_LENGTH);
 
         uint8_t* q = p;
 
-        encoding::relay_write_bytes(&p, relay_token, RELAY_TOKEN_BYTES);
+        encoding::write_bytes(&p, relay_token, RELAY_TOKEN_BYTES);
 
         int encrypt_length = int(p - q);
 
@@ -123,7 +123,7 @@ namespace relay
 
         const uint8_t* r = init_response_buffer.data;
 
-        uint32_t version = encoding::relay_read_uint32(&r);
+        uint32_t version = encoding::read_uint32(&r);
 
         const uint32_t init_response_version = 0;
 
@@ -139,7 +139,7 @@ namespace relay
             return RELAY_ERROR;
         }
 
-        *router_timestamp = encoding::relay_read_uint64(&r);
+        *router_timestamp = encoding::read_uint64(&r);
 
         memcpy(relay_token, init_response_buffer.data + 4 + 8, RELAY_TOKEN_BYTES);
 
@@ -160,21 +160,21 @@ namespace relay
         uint8_t update_data[10 * 1024];
 
         uint8_t* p = update_data;
-        encoding::relay_write_uint32(&p, update_version);
-        encoding::relay_write_string(&p, relay_address, 256);
-        encoding::relay_write_bytes(&p, relay_token, RELAY_TOKEN_BYTES);
+        encoding::write_uint32(&p, update_version);
+        encoding::write_string(&p, relay_address, 256);
+        encoding::write_bytes(&p, relay_token, RELAY_TOKEN_BYTES);
 
         relay_platform_mutex_acquire(relay->mutex);
         relay_stats_t stats;
         relay_manager_get_stats(relay->relay_manager, &stats);
         relay_platform_mutex_release(relay->mutex);
 
-        encoding::relay_write_uint32(&p, stats.num_relays);
+        encoding::write_uint32(&p, stats.num_relays);
         for (int i = 0; i < stats.num_relays; ++i) {
-            encoding::relay_write_uint64(&p, stats.relay_ids[i]);
-            encoding::relay_write_float32(&p, stats.relay_rtt[i]);
-            encoding::relay_write_float32(&p, stats.relay_jitter[i]);
-            encoding::relay_write_float32(&p, stats.relay_packet_loss[i]);
+            encoding::write_uint64(&p, stats.relay_ids[i]);
+            encoding::write_float32(&p, stats.relay_rtt[i]);
+            encoding::write_float32(&p, stats.relay_jitter[i]);
+            encoding::write_float32(&p, stats.relay_packet_loss[i]);
         }
 
         int update_data_length = (int)(p - update_data);
@@ -226,7 +226,7 @@ namespace relay
 
         const uint8_t* q = update_response_buffer.data;
 
-        uint32_t version = encoding::relay_read_uint32(&q);
+        uint32_t version = encoding::read_uint32(&q);
 
         const uint32_t update_response_version = 0;
 
@@ -236,7 +236,7 @@ namespace relay
             return RELAY_ERROR;
         }
 
-        uint32_t num_relays = encoding::relay_read_uint32(&q);
+        uint32_t num_relays = encoding::read_uint32(&q);
 
         if (num_relays > MAX_RELAYS) {
             relay_printf("\nerror: too many relays to ping. max is %d, got %d\n\n", MAX_RELAYS, version);
@@ -248,16 +248,16 @@ namespace relay
         struct relay_ping_data_t
         {
             uint64_t id;
-            relay_address_t address;
+            legacy::relay_address_t address;
         };
 
         relay_ping_data_t relay_ping_data[MAX_RELAYS];
 
         for (uint32_t i = 0; i < num_relays; ++i) {
             char address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
-            relay_ping_data[i].id = encoding::relay_read_uint64(&q);
-            encoding::relay_read_string(&q, address_string, RELAY_MAX_ADDRESS_STRING_LENGTH);
-            if (relay_address_parse(&relay_ping_data[i].address, address_string) != RELAY_OK) {
+            relay_ping_data[i].id = encoding::read_uint64(&q);
+            encoding::read_string(&q, address_string, RELAY_MAX_ADDRESS_STRING_LENGTH);
+            if (legacy::relay_address_parse(&relay_ping_data[i].address, address_string) != RELAY_OK) {
                 error = true;
                 break;
             }
@@ -316,22 +316,22 @@ namespace relay
             assert((sequence & (1ULL << 62)) == 0);
         }
 
-        encoding::relay_write_uint8(&buffer, type);
+        encoding::write_uint8(&buffer, type);
 
-        encoding::relay_write_uint64(&buffer, sequence);
+        encoding::write_uint64(&buffer, sequence);
 
         uint8_t* additional = buffer;
         const int additional_length = 8 + 2;
 
-        encoding::relay_write_uint64(&buffer, session_id);
-        encoding::relay_write_uint8(&buffer, session_version);
-        encoding::relay_write_uint8(&buffer, 0);  // todo: remove this once we fully switch to new relay
+        encoding::write_uint64(&buffer, session_id);
+        encoding::write_uint8(&buffer, session_version);
+        encoding::write_uint8(&buffer, 0);  // todo: remove this once we fully switch to new relay
 
         uint8_t nonce[12];
         {
             uint8_t* p = nonce;
-            encoding::relay_write_uint32(&p, 0);
-            encoding::relay_write_uint64(&p, sequence);
+            encoding::write_uint32(&p, 0);
+            encoding::write_uint64(&p, sequence);
         }
 
         unsigned long long encrypted_length = 0;
@@ -365,9 +365,9 @@ namespace relay
         if (buffer_length < RELAY_HEADER_BYTES)
             return RELAY_ERROR;
 
-        packet_type = encoding::relay_read_uint8(&buffer);
+        packet_type = encoding::read_uint8(&buffer);
 
-        packet_sequence = encoding::relay_read_uint64(&buffer);
+        packet_sequence = encoding::read_uint64(&buffer);
 
         if (direction == RELAY_DIRECTION_SERVER_TO_CLIENT) {
             // high bit must be set
@@ -391,8 +391,8 @@ namespace relay
         }
 
         *sequence = packet_sequence;
-        *session_id = encoding::relay_read_uint64(&buffer);
-        *session_version = encoding::relay_read_uint8(&buffer);
+        *session_id = encoding::read_uint64(&buffer);
+        *session_version = encoding::read_uint8(&buffer);
 
         return RELAY_OK;
     }
@@ -408,9 +408,9 @@ namespace relay
 
         const uint8_t* p = buffer;
 
-        uint8_t packet_type = encoding::relay_read_uint8(&p);
+        uint8_t packet_type = encoding::read_uint8(&p);
 
-        uint64_t packet_sequence = encoding::relay_read_uint64(&p);
+        uint64_t packet_sequence = encoding::read_uint64(&p);
 
         if (direction == RELAY_DIRECTION_SERVER_TO_CLIENT) {
             // high bit must be set
@@ -437,9 +437,9 @@ namespace relay
 
         const int additional_length = 8 + 2;
 
-        uint64_t packet_session_id = encoding::relay_read_uint64(&p);
-        uint8_t packet_session_version = encoding::relay_read_uint8(&p);
-        uint8_t packet_session_flags = encoding::relay_read_uint8(&p);  // todo: remove once we fully switch over to new relay
+        uint64_t packet_session_id = encoding::read_uint64(&p);
+        uint8_t packet_session_version = encoding::read_uint8(&p);
+        uint8_t packet_session_flags = encoding::read_uint8(&p);  // todo: remove once we fully switch over to new relay
 
         (void)packet_session_id;
         (void)packet_session_version;
@@ -448,8 +448,8 @@ namespace relay
         uint8_t nonce[12];
         {
             uint8_t* q = nonce;
-            encoding::relay_write_uint32(&q, 0);
-            encoding::relay_write_uint64(&q, packet_sequence);
+            encoding::write_uint32(&q, 0);
+            encoding::write_uint64(&q, packet_sequence);
         }
 
         unsigned long long decrypted_length;

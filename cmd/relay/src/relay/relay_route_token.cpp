@@ -18,14 +18,14 @@ namespace relay
 
         (void)start;
 
-        encoding::relay_write_uint64(&buffer, token->expire_timestamp);
-        encoding::relay_write_uint64(&buffer, token->session_id);
-        encoding::relay_write_uint8(&buffer, token->session_version);
-        encoding::relay_write_uint8(&buffer, token->session_flags);
-        encoding::relay_write_uint32(&buffer, token->kbps_up);
-        encoding::relay_write_uint32(&buffer, token->kbps_down);
-        encoding::relay_write_address(&buffer, &token->next_address);
-        encoding::relay_write_bytes(&buffer, token->private_key, crypto_box_SECRETKEYBYTES);
+        encoding::write_uint64(&buffer, token->expire_timestamp);
+        encoding::write_uint64(&buffer, token->session_id);
+        encoding::write_uint8(&buffer, token->session_version);
+        encoding::write_uint8(&buffer, token->session_flags);
+        encoding::write_uint32(&buffer, token->kbps_up);
+        encoding::write_uint32(&buffer, token->kbps_down);
+        encoding::write_address(&buffer, &token->next_address);
+        encoding::write_bytes(&buffer, token->private_key, crypto_box_SECRETKEYBYTES);
 
         assert(buffer - start == RELAY_ROUTE_TOKEN_BYTES);
     }
@@ -39,14 +39,14 @@ namespace relay
 
         (void)start;
 
-        token->expire_timestamp = encoding::relay_read_uint64(&buffer);
-        token->session_id = encoding::relay_read_uint64(&buffer);
-        token->session_version = encoding::relay_read_uint8(&buffer);
-        token->session_flags = encoding::relay_read_uint8(&buffer);
-        token->kbps_up = encoding::relay_read_uint32(&buffer);
-        token->kbps_down = encoding::relay_read_uint32(&buffer);
-        encoding::relay_read_address(&buffer, &token->next_address);
-        encoding::relay_read_bytes(&buffer, token->private_key, crypto_box_SECRETKEYBYTES);
+        token->expire_timestamp = encoding::read_uint64(&buffer);
+        token->session_id = encoding::read_uint64(&buffer);
+        token->session_version = encoding::read_uint8(&buffer);
+        token->session_flags = encoding::read_uint8(&buffer);
+        token->kbps_up = encoding::read_uint32(&buffer);
+        token->kbps_down = encoding::read_uint32(&buffer);
+        encoding::read_address(&buffer, &token->next_address);
+        encoding::read_bytes(&buffer, token->private_key, crypto_box_SECRETKEYBYTES);
         assert(buffer - start == RELAY_ROUTE_TOKEN_BYTES);
     }
 
@@ -101,7 +101,7 @@ namespace relay
 
         (void)start;
 
-        encoding::relay_write_bytes(buffer, nonce, crypto_box_NONCEBYTES);
+        encoding::write_bytes(buffer, nonce, crypto_box_NONCEBYTES);
 
         relay_write_route_token(token, *buffer, RELAY_ROUTE_TOKEN_BYTES);
 

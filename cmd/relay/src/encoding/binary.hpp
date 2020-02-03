@@ -26,16 +26,6 @@ namespace encoding
     }
 
     /**
-        Reverse the order of bytes in a 16 bit integer.
-        @param value The input value.
-        @returns The input value with the byte order reversed.
-     */
-
-    inline uint16_t bswap(uint16_t value)
-    {
-        return (value & 0x00ff) << 8 | (value & 0xff00) >> 8;
-    }
-    /**
         Reverse the order of bytes in a 32 bit integer.
         @param value The input value.
         @returns The input value with the byte order reversed.
@@ -48,6 +38,21 @@ namespace encoding
 #else   // #ifdef __GNUC__
         return (value & 0x000000ff) << 24 | (value & 0x0000ff00) << 8 | (value & 0x00ff0000) >> 8 | (value & 0xff000000) >> 24;
 #endif  // #ifdef __GNUC__
+    }
+
+    /**
+        Reverse the order of bytes in a 16 bit integer.
+        @param value The input value.
+        @returns The input value with the byte order reversed.
+     */
+
+    inline uint16_t bswap(uint16_t value)
+    {
+#ifdef __GNUC__
+        return __builtin_bswap16(value);
+#else
+        return (value & 0x00ff) << 8 | (value & 0xff00) >> 8;
+#endif
     }
 
     /**
@@ -128,6 +133,8 @@ namespace encoding
         @returns The log base 2 of the input.
      */
 
+    // TODO test if using __builtin_log2(x) works here
+    // takes a double so it may be slower
     inline uint32_t log2(uint32_t x)
     {
         const uint32_t a = x | (x >> 1);
