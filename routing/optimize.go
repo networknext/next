@@ -272,6 +272,10 @@ func (m CostMatrix) MarshalBinary() ([]byte, error) {
 
 	numRelays := len(m.RelayIds)
 
+	if numRelays != len(m.RelayNames) {
+		return nil, fmt.Errorf("Length of Relay IDs not equal to length of Relay Names: %d != %d", numRelays, len(m.RelayNames))
+	}
+
 	encoding.WriteUint32(data, &index, uint32(numRelays))
 
 	for _, id := range m.RelayIds {
@@ -949,6 +953,10 @@ func (m RouteMatrix) MarshalBinary() ([]byte, error) {
 	encoding.WriteUint32(data, &index, RouteMatrixVersion)
 
 	numRelays := len(m.RelayIds)
+
+	if numRelays != len(m.RelayNames) {
+		return nil, fmt.Errorf("Length of Relay IDs not equal to length of Relay Names: %d != %d", numRelays, len(m.RelayNames))
+	}
 
 	encoding.WriteUint32(data, &index, uint32(numRelays))
 

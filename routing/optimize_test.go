@@ -732,6 +732,36 @@ func TestOptimize(t *testing.T) {
 
 				assert.Equal(t, matrix, other)
 			})
+
+			t.Run("Relay ID and name buffers different sizes", func(t *testing.T) {
+				var matrix routing.CostMatrix
+
+				matrix.RelayIds = make([]uint64, 2)
+				matrix.RelayIds[0] = 123
+				matrix.RelayIds[1] = 456
+
+				matrix.RelayNames = make([]string, 1) // Only 1 name but 2 IDs
+				matrix.RelayNames[0] = "first"
+
+				_, err := matrix.MarshalBinary()
+				errorString := fmt.Errorf("Length of Relay IDs not equal to length of Relay Names: %d != %d", len(matrix.RelayIds), len(matrix.RelayNames))
+				assert.EqualError(t, err, errorString.Error())
+			})
+
+			t.Run("Datacenter ID and name buffers different sizes", func(t *testing.T) {
+				var matrix routing.CostMatrix
+
+				matrix.DatacenterIds = make([]uint64, 2)
+				matrix.DatacenterIds[0] = 999
+				matrix.DatacenterIds[1] = 111
+
+				matrix.DatacenterNames = make([]string, 1) // Only 1 name but 2 IDs
+				matrix.DatacenterNames[0] = "a name"
+
+				_, err := matrix.MarshalBinary()
+				errorString := fmt.Errorf("Length of Datacenter IDs not equal to length of Datacenter Names: %d != %d", len(matrix.DatacenterIds), len(matrix.DatacenterNames))
+				assert.EqualError(t, err, errorString.Error())
+			})
 		})
 
 		t.Run("Optimize()", func(t *testing.T) {
@@ -789,6 +819,7 @@ func TestOptimize(t *testing.T) {
 
 			unmarshalAssertionsVer1 := func(t *testing.T, matrix *routing.RouteMatrix, relayNames []string) {
 				assert.Len(t, matrix.RelayNames, len(relayNames))
+				assert.Len(t, matrix.RelayIds, len(relayNames))
 				for _, name := range relayNames {
 					assert.Contains(t, matrix.RelayNames, name)
 				}
@@ -797,6 +828,7 @@ func TestOptimize(t *testing.T) {
 			unmarshalAssertionsVer2 := func(t *testing.T, matrix *routing.RouteMatrix, datacenterIDs []uint64, datacenterNames []string) {
 				assert.Len(t, matrix.DatacenterIds, len(datacenterIDs))
 				assert.Len(t, matrix.DatacenterNames, len(datacenterNames))
+				assert.Len(t, matrix.DatacenterIds, len(matrix.DatacenterNames))
 
 				for _, id := range datacenterIDs {
 					assert.Contains(t, matrix.DatacenterIds, id&0xFFFFFFFF)
@@ -1159,6 +1191,36 @@ func TestOptimize(t *testing.T) {
 
 				assert.Nil(t, err)
 				assert.Equal(t, matrix, other)
+			})
+
+			t.Run("Relay ID and name buffers different sizes", func(t *testing.T) {
+				var matrix routing.RouteMatrix
+
+				matrix.RelayIds = make([]uint64, 2)
+				matrix.RelayIds[0] = 123
+				matrix.RelayIds[1] = 456
+
+				matrix.RelayNames = make([]string, 1) // Only 1 name but 2 IDs
+				matrix.RelayNames[0] = "first"
+
+				_, err := matrix.MarshalBinary()
+				errorString := fmt.Errorf("Length of Relay IDs not equal to length of Relay Names: %d != %d", len(matrix.RelayIds), len(matrix.RelayNames))
+				assert.EqualError(t, err, errorString.Error())
+			})
+
+			t.Run("Datacenter ID and name buffers different sizes", func(t *testing.T) {
+				var matrix routing.RouteMatrix
+
+				matrix.DatacenterIds = make([]uint64, 2)
+				matrix.DatacenterIds[0] = 999
+				matrix.DatacenterIds[1] = 111
+
+				matrix.DatacenterNames = make([]string, 1) // Only 1 name but 2 IDs
+				matrix.DatacenterNames[0] = "a name"
+
+				_, err := matrix.MarshalBinary()
+				errorString := fmt.Errorf("Length of Datacenter IDs not equal to length of Datacenter Names: %d != %d", len(matrix.DatacenterIds), len(matrix.DatacenterNames))
+				assert.EqualError(t, err, errorString.Error())
 			})
 		})
 	})
