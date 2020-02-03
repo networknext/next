@@ -646,50 +646,88 @@ func (m *RouteMatrix) AllRoutes(d Datacenter, rs []Relay) []Route {
 	return m.Routes(m.RelaysIn(d), rs)
 }
 
-// RelaysIn will retern the set of Relays in the provided Datacenter
+// RelaysIn will return the set of Relays in the provided Datacenter
 func (m *RouteMatrix) RelaysIn(d Datacenter) []Relay {
 	relayIDs, ok := m.DatacenterRelays[d.ID]
 	if !ok {
 		return nil
 	}
 
-	var relays []Relay
-	for i := 0; i < len(relayIDs); i++ {
-		relays = append(relays, Relay{ID: relayIDs[i]})
+	relayLength := len(relayIDs)
+
+	if relayLength <= 0 {
+		return nil
+	}
+
+	relays := make([]Relay, relayLength)
+	for i := 0; i < relayLength; i++ {
+		relays[i] = Relay{ID: relayIDs[i]}
 	}
 
 	return relays
 }
 
-// Routes will return all routes for each from and to Relay sets
+// Routes will return all routes for each from and to Relay set
 func (m *RouteMatrix) Routes(from []Relay, to []Relay) []Route {
-	var routes []Route
+	type RelayPairResult struct {
+		fromtoidx int  // The index in the route matrix entry
+		reverse   bool // Whether or not to reverse the relays to stay on the same side of the diagnol in the triangular matrix
+	}
 
-	for _, fromrelay := range from {
-		for _, torelay := range to {
-			m.fillRoutes(&routes, fromrelay, torelay)
+	relayPairLength := len(from) * len(to)
+	relayPairResults := make([]RelayPairResult, relayPairLength)
+
+	// Do a "first pass" to determine the size of the Route buffer
+	var routeTotal int
+	for i, fromrelay := range from {
+		for j, torelay := range to {
+			fromtoidx, reverse := m.getFromToRelayIndex(fromrelay, torelay)
+			if fromtoidx == -1 {
+				relayPairResults[i+j*len(from)] = RelayPairResult{-1, false}
+				continue
+			}
+
+			relayPairResults[i+j*len(from)] = RelayPairResult{fromtoidx, reverse}
+			routeTotal += int(m.Entries[fromtoidx].NumRoutes)
 		}
+	}
+
+	// Now that we have the route total, make the Route buffer and fill it
+	var routeIndex int
+	routes := make([]Route, routeTotal)
+	for i := 0; i < relayPairLength; i++ {
+		if relayPairResults[i].fromtoidx >= 0 {
+			m.fillRoutes(routes, &routeIndex, relayPairResults[i].fromtoidx, relayPairResults[i].reverse)
+		}
+	}
+
+	if len(routes) == 0 {
+		return nil
 	}
 
 	return routes
 }
 
-// route is just the internal function to get all routes from one relay to another
-func (m *RouteMatrix) fillRoutes(routes *[]Route, from Relay, to Relay) {
+// Returns the index in the route matrix representing the route between the from Relay and to Relay and whether or not to reverse them
+func (m *RouteMatrix) getFromToRelayIndex(from Relay, to Relay) (int, bool) {
 	toidx, ok := m.RelayIndicies[to.ID]
 	if !ok {
-		return
+		return -1, false
 	}
 
 	fromidx, ok := m.RelayIndicies[from.ID]
 	if !ok {
-		return
+		return -1, false
 	}
 
-	reverse := toidx > fromidx
-	fromtoidx := TriMatrixIndex(fromidx, toidx)
+	return TriMatrixIndex(fromidx, toidx), toidx > fromidx
+}
 
-	if fromtoidx >= len(m.Entries) {
+// fillRoutes is just the internal function to populate the given route buffer.
+// It takes the fromtoidx and reverse data and fills the given route buffer, incrementing the routeIndex after
+// each route it adds.
+func (m *RouteMatrix) fillRoutes(routes []Route, routeIndex *int, fromtoidx int, reverse bool) {
+	if fromtoidx < 0 || fromtoidx >= len(m.Entries) {
 		log.Printf("index '%d' out of bound for matrix entries", fromtoidx)
 		return
 	}
@@ -719,7 +757,8 @@ func (m *RouteMatrix) fillRoutes(routes *[]Route, from Relay, to Relay) {
 			},
 		}
 
-		*routes = append(*routes, route)
+		routes[*routeIndex] = route
+		*routeIndex++
 	}
 }
 
