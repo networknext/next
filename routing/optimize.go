@@ -7,9 +7,11 @@ import (
 	"io/ioutil"
 	"log"
 	"math"
+	"net"
 	"net/http"
 	"runtime"
 	"sort"
+	"strconv"
 	"sync"
 
 	"github.com/networknext/backend/crypto"
@@ -703,12 +705,30 @@ func (m *RouteMatrix) fillRoutes(routes *[]Route, from Relay, to Relay) {
 		if !reverse {
 			for j := 0; j < numRelays; j++ {
 				relayIndex := m.Entries[fromtoidx].RouteRelays[i][j]
-				routeRelays[j] = Relay{ID: m.RelayIds[relayIndex]}
+				host, port, _ := net.SplitHostPort(string(m.RelayAddresses[relayIndex]))
+				iport, _ := strconv.ParseInt(port, 10, 64)
+				routeRelays[j] = Relay{
+					ID: m.RelayIds[relayIndex],
+					Addr: net.UDPAddr{
+						IP:   net.ParseIP(host),
+						Port: int(iport),
+					},
+					PublicKey: m.RelayPublicKeys[relayIndex],
+				}
 			}
 		} else {
 			for j := 0; j < numRelays; j++ {
 				relayIndex := m.Entries[fromtoidx].RouteRelays[i][j]
-				routeRelays[numRelays-1-j] = Relay{ID: m.RelayIds[relayIndex]}
+				host, port, _ := net.SplitHostPort(string(m.RelayAddresses[relayIndex]))
+				iport, _ := strconv.ParseInt(port, 10, 64)
+				routeRelays[numRelays-1-j] = Relay{
+					ID: m.RelayIds[relayIndex],
+					Addr: net.UDPAddr{
+						IP:   net.ParseIP(host),
+						Port: int(iport),
+					},
+					PublicKey: m.RelayPublicKeys[relayIndex],
+				}
 			}
 		}
 

@@ -8,6 +8,7 @@ package main
 import (
 	"context"
 	"encoding/base64"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -31,17 +32,27 @@ func main() {
 
 	ctx := context.Background()
 
+	// var serverPublicKey []byte
 	var serverPrivateKey []byte
 	var routerPrivateKey []byte
 	{
+		if key := os.Getenv("SERVER_BACKEND_PUBLIC_KEY"); len(key) != 0 {
+			// serverPublicKey, _ = base64.StdEncoding.DecodeString(key)
+			log.Printf("using SERVER_BACKEND_PUBLIC_KEY '%s'\n", key)
+		} else {
+			log.Fatal("env var 'SERVER_BACKEND_PUBLIC_KEY' is not set")
+		}
+
 		if key := os.Getenv("SERVER_BACKEND_PRIVATE_KEY"); len(key) != 0 {
 			serverPrivateKey, _ = base64.StdEncoding.DecodeString(key)
+			log.Printf("using SERVER_BACKEND_PRIVATE_KEY '%s'\n", key)
 		} else {
 			log.Fatal("env var 'SERVER_BACKEND_PRIVATE_KEY' is not set")
 		}
 
 		if key := os.Getenv("RELAY_ROUTER_PRIVATE_KEY"); len(key) != 0 {
 			routerPrivateKey, _ = base64.StdEncoding.DecodeString(key)
+			log.Printf("using RELAY_ROUTER_PRIVATE_KEY '%s'\n", key)
 		} else {
 			log.Fatal("env var 'RELAY_ROUTER_PRIVATE_KEY' is not set")
 		}
@@ -102,21 +113,26 @@ func main() {
 
 	var routeMatrix routing.RouteMatrix
 	{
-		if os.Getenv("ROUTE_MATRIX_URI") != "" {
+		if uri, ok := os.LookupEnv("ROUTE_MATRIX_URI"); ok {
 			go func() {
 				for {
-					res, err := http.Get(os.Getenv("ROUTE_MATRIX_URI"))
-					if err != nil {
-						log.Printf("failed to get route matrix: %v\n", err)
+					var matrixReader io.Reader
+
+					if f, err := os.Open(uri); err == nil {
+						matrixReader = f
 					}
 
-					if res != nil {
-						n, err := routeMatrix.ReadFrom(res.Body)
+					if r, err := http.Get(uri); err == nil {
+						matrixReader = r.Body
+					}
+
+					if matrixReader != nil {
+						n, err := routeMatrix.ReadFrom(matrixReader)
 						if err != nil {
 							log.Printf("failed to read route matrix: %v\n", err)
 						}
 
-						log.Printf("read %d bytes into route matrix for %d entries\n", n, len(routeMatrix.Entries))
+						log.Printf("read %d bytes from %s into route matrix for %d entries\n", n, uri, len(routeMatrix.Entries))
 					}
 
 					time.Sleep(10 * time.Second)
