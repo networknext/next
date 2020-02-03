@@ -60,9 +60,22 @@ func TestIPLocator(t *testing.T) {
 
 		{
 			mmdb := routing.MaxmindDB{}
-
 			actual, err := mmdb.LocateIP(net.ParseIP("0.0.0.0"))
 			assert.EqualError(t, err, "not configured with a Maxmind DB")
+
+			assert.Equal(t, routing.Location{}, actual)
+		}
+
+		// Fail to locate IP because the database cannot be read from
+		{
+			mmdb := routing.MaxmindDB{
+				Reader: mmreader,
+			}
+
+			mmdb.Close()
+
+			actual, err := mmdb.LocateIP(net.ParseIP("0.0.0.0"))
+			assert.Error(t, err)
 
 			assert.Equal(t, routing.Location{}, actual)
 		}
@@ -119,5 +132,8 @@ func TestGeoClient(t *testing.T) {
 		assert.Equal(t, 2, len(relays))
 		assert.Equal(t, r2.ID, relays[0].ID)
 		assert.Equal(t, r1.ID, relays[1].ID)
+
+		_, err = geoclient.RelaysWithin(37, 15, 200, "invalid")
+		assert.Error(t, err)
 	})
 }
