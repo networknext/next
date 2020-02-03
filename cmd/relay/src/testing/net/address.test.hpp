@@ -3,6 +3,5 @@
 namespace testing
 {
     void TestAddress();
-    void test_address_read_and_write();
 }  // namespace testing
 #endif
