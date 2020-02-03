@@ -19,7 +19,9 @@
 namespace net
 {
     Address::Address() : Type(RELAY_ADDRESS_NONE), Port(0)
-    {}
+    {
+        IPv6.fill(0);
+    }
 
     bool Address::parse(const std::string& address)
     {
@@ -47,13 +49,16 @@ namespace net
                     try {
                         this->Port = (uint16_t)(atoi(&ptr[index + 1]));  // atoi throws exceptions in c++
                     } catch (const std::invalid_argument& ia) {
-                        LogDebug("Invalid argument except when parsing ipv6: ", ia.what());
+                        LogRelease("Invalid argument except when parsing ipv6: ", ia.what());
+                        std::cout << std::flush;
                         return false;
                     } catch (const std::out_of_range& oor) {
-                        LogDebug("Out of range except when parsing ipv6: ", oor.what());
+                        LogRelease("Out of range except when parsing ipv6: ", oor.what());
+                        std::cout << std::flush;
                         return false;
                     } catch (const std::exception& e) {
-                        LogDebug("Generic except when parsing ipv6: ", e.what());
+                        LogRelease("Generic except when parsing ipv6: ", e.what());
+                        std::cout << std::flush;
                         return false;
                     }
                     ptr[index - 1] = '\0';
@@ -93,13 +98,16 @@ namespace net
                 try {
                     this->Port = (uint16_t)(atoi(&ptr[index + 1]));  // atoi throws exceptions in c++
                 } catch (const std::invalid_argument& ia) {
-                    LogDebug("Invalid argument except when parsing ipv4: ", ia.what());
+                    LogRelease("Invalid argument except when parsing ipv4: ", ia.what());
+                    std::cout << std::flush;
                     return false;
                 } catch (const std::out_of_range& oor) {
-                    LogDebug("Out of range except when parsing ipv4: ", oor.what());
+                    LogRelease("Out of range except when parsing ipv4: ", oor.what());
+                    std::cout << std::flush;
                     return false;
                 } catch (const std::exception& e) {
-                    LogDebug("Generic except when parsing ipv4: ", e.what());
+                    LogRelease("Generic except when parsing ipv4: ", e.what());
+                    std::cout << std::flush;
                     return false;
                 }
                 ptr[index] = '\0';
@@ -119,6 +127,7 @@ namespace net
             return true;
         }
 
+        reset();  // if invalid, reset to 0
         return false;
     }
 
@@ -263,13 +272,13 @@ namespace legacy
                     try {
                         address->port = (uint16_t)(atoi(&address_string[index + 1]));  // atoi throws exceptions in c++
                     } catch (const std::invalid_argument& ia) {
-                        LogDebug("Invalid argument except when parsing ipv6: ", ia.what());
+                        LogRelease("Invalid argument except when parsing ipv6: ", ia.what());
                         return RELAY_ERROR;
                     } catch (const std::out_of_range& oor) {
-                        LogDebug("Out of range except when parsing ipv6: ", oor.what());
+                        LogRelease("Out of range except when parsing ipv6: ", oor.what());
                         return RELAY_ERROR;
                     } catch (const std::exception& e) {
-                        LogDebug("Generic except when parsing ipv6: ", e.what());
+                        LogRelease("Generic except when parsing ipv6: ", e.what());
                         return RELAY_ERROR;
                     }
                     address_string[index - 1] = '\0';
@@ -306,13 +315,13 @@ namespace legacy
                 try {
                     address->port = (uint16_t)(atoi(&address_string[index + 1]));  // for same reason as above
                 } catch (const std::invalid_argument& ia) {
-                    LogDebug("Invalid argument except when parsing ipv4: ", ia.what());
+                    LogRelease("Invalid argument except when parsing ipv4: ", ia.what());
                     return RELAY_ERROR;
                 } catch (const std::out_of_range& oor) {
-                    LogDebug("Out of range except when parsing ipv4: ", oor.what());
+                    LogRelease("Out of range except when parsing ipv4: ", oor.what());
                     return RELAY_ERROR;
                 } catch (const std::exception& e) {
-                    LogDebug("Generic except when parsing ipv4: ", e.what());
+                    LogRelease("Generic except when parsing ipv4: ", e.what());
                     return RELAY_ERROR;
                 }
                 address_string[index] = '\0';

@@ -114,10 +114,13 @@ namespace encoding
             WriteUint16(buff, index, addr.Port);                                  // write the port
             index += 12;  // increment the index past the address section
         } else if (addr.Type == RELAY_ADDRESS_IPV6) {
-            WriteUint8(buff, index, RELAY_ADDRESS_IPV6);                         // write the type
-            std::copy(addr.IPv6.begin(), addr.IPv6.end(), buff.data() + index);  // copy the address
-            index += addr.IPv6.size() * sizeof(uint16_t);                        // increment the index
-            WriteUint16(buff, index, addr.Port);                                 // write the port
+            WriteUint8(buff, index, RELAY_ADDRESS_IPV6);  // write the type
+            for (int i = 0; i < 8; i++) {
+                WriteUint16(buff, index, addr.IPv6[i]);
+            }
+            // std::copy(addr.IPv6.begin(), addr.IPv6.end(), buff.data() + index);  // copy the address
+            //index += addr.IPv6.size() * sizeof(uint16_t);  // increment the index
+            WriteUint16(buff, index, addr.Port);           // write the port
         } else {
             index += RELAY_ADDRESS_BYTES;  // std array's start zeroed out, so just incremetn the index
         }

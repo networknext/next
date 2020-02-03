@@ -27,13 +27,17 @@ namespace testing
         check(a != b);
         a.Port = 0;
 
+        a.Type = RELAY_ADDRESS_IPV4;
+
         a.IPv4[0] = 1;
         check(a != b);
-        a.IPv4[0] = 1;
+        a.IPv4[0] = 0;
 
         *a.IPv4.end() = 1;
         check(a != b);
         *a.IPv4.end() = 0;
+
+        a.Type = RELAY_ADDRESS_IPV6;
 
         a.IPv6[0] = 1;
         check(a != b);
@@ -42,6 +46,8 @@ namespace testing
         *a.IPv6.end() = 1;
         check(a != b);
         *a.IPv6.end() = 0;
+
+        a.Type = RELAY_ADDRESS_NONE;
 
         check(a == b);
     }
@@ -63,7 +69,7 @@ namespace testing
     void Test_Address_parse_ipv4()
     {
         net::Address addr;
-        addr.parse("127.0.0.1:51034");
+        check(addr.parse("127.0.0.1:51034") == true);
         check(addr.Type == RELAY_ADDRESS_IPV4);
         check(addr.Port == 51034);
         check(addr.IPv4[0] == 127);
@@ -75,20 +81,20 @@ namespace testing
     void Test_Address_parse_ipv6_with_braces()
     {
         net::Address addr;
-        addr.parse("[::1]:51034");
+        check(addr.parse("[::1]:51034") == true);
         check(addr.Type = RELAY_ADDRESS_IPV6);
         check(addr.Port == 51034);
-        check(addr.IPv6[0] == 1);
+        check(addr.IPv6[0] == 0);
         check(addr.IPv6[1] == 0);
         check(addr.IPv6[2] == 0);
         check(addr.IPv6[3] == 0);
         check(addr.IPv6[4] == 0);
         check(addr.IPv6[5] == 0);
         check(addr.IPv6[6] == 0);
-        check(addr.IPv6[7] == 0);
+        check(addr.IPv6[7] == 1);
 
         addr.reset();
-        addr.parse("[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:20000");
+        check(addr.parse("[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:20000") == true);
         check(addr.Type = RELAY_ADDRESS_IPV6);
         check(addr.Port == 20000);
         check(addr.IPv6[0] == 0x2001);
@@ -104,7 +110,7 @@ namespace testing
     void Test_Address_parse_ipv6_without_braces()
     {
         net::Address addr;
-        addr.parse("2001:0db8:85a3:0000:0000:8a2e:0370:7334");
+        check(addr.parse("2001:0db8:85a3:0000:0000:8a2e:0370:7334") == true);
         check(addr.Type = RELAY_ADDRESS_IPV6);
         check(addr.Port == 0);
         check(addr.IPv6[0] == 0x2001);
@@ -120,7 +126,7 @@ namespace testing
     void Test_Address_parse_invalid_ips()
     {
         net::Address addr;
-        addr.parse("127.0.:182a");
+        check(addr.parse("127.0.:182a") == false);
         check(addr.Type == RELAY_ADDRESS_NONE);
         check(addr.Port == 0);
 
@@ -177,15 +183,18 @@ namespace testing
     {
         net::Address c, read_c;
         std::array<uint8_t, 1024> buffer;
-
         buffer.fill(0);
+
         c.parse("[::1]:50000");
+
         size_t index = 0;
         encoding::WriteAddress(buffer, index, c);
         check(index == RELAY_ADDRESS_BYTES);
+
         index = 0;
         encoding::ReadAddress(buffer, index, read_c);
         check(index == RELAY_ADDRESS_BYTES);
+
         check(c == read_c);
     }
 
