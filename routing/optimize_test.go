@@ -1480,7 +1480,11 @@ func TestRouting(t *testing.T) {
 					for relayidx := range route.Relays {
 						assert.Equal(t, test.expected[routeidx].Relays[relayidx].ID, actual[routeidx].Relays[relayidx].ID)
 						assert.NotNil(t, actual[routeidx].Relays[relayidx].Addr.IP)
+						assert.False(t, actual[routeidx].Relays[relayidx].Addr.IP.IsLoopback())
+						assert.Greater(t, actual[routeidx].Relays[relayidx].Addr.Port, 0)
+						assert.Equal(t, test.expected[routeidx].Relays[relayidx].ID, crypto.HashID(actual[routeidx].Relays[relayidx].Addr.String()))
 						assert.NotNil(t, actual[routeidx].Relays[relayidx].PublicKey)
+						assert.Equal(t, crypto.KeySize, len(actual[routeidx].Relays[relayidx].PublicKey))
 					}
 
 					assert.Equal(t, test.expected[routeidx].Stats, actual[routeidx].Stats)
