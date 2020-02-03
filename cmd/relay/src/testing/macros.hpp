@@ -1,5 +1,5 @@
-#ifndef TEST_MACROS_HPP
-#define TEST_MACROS_HPP
+#ifndef TESTING_MACROS_HPP
+#define TESTING_MACROS_HPP
 #include <cstdio>
 #include <cstdlib>
 

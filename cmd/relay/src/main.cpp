@@ -17,7 +17,7 @@
 
 #include "sysinfo.hpp"
 #include "config.hpp"
-#include "test/test.hpp"
+#include "testing/test.hpp"
 #include "bench/bench.hpp"
 #include "util.hpp"
 

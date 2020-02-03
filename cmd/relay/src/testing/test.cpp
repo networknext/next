@@ -7,6 +7,7 @@
 
 #include "config.hpp"
 #include "macros.hpp"
+#include "encoding/read.test.hpp"
 #include "net/address.test.hpp"
 
 #include "encoding/base64.hpp"
@@ -1210,6 +1211,7 @@ namespace testing
 
         check(relay::relay_initialize() == RELAY_OK);
 
+        RUN_TEST(TestRead);
         RUN_TEST(TestAddress);
         RUN_TEST(test_endian);
         RUN_TEST(test_bitpacker);
