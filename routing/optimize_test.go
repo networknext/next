@@ -1411,7 +1411,7 @@ func TestRouting(t *testing.T) {
 		assert.NoError(t, err)
 
 		var costMatrix routing.CostMatrix
-		_, err = costMatrix.ReadFom(costfile)
+		_, err = costMatrix.ReadFrom(costfile)
 		assert.NoError(t, err)
 
 		var routeMatrix routing.RouteMatrix
@@ -1476,7 +1476,18 @@ func TestRouting(t *testing.T) {
 			t.Run(test.name, func(t *testing.T) {
 				actual := routeMatrix.Routes(test.from, test.to)
 				fmt.Printf("%+v\n", actual)
-				assert.Equal(t, test.expected, actual)
+				for routeidx, route := range actual {
+					for relayidx := range route.Relays {
+						assert.Equal(t, test.expected[routeidx].Relays[relayidx].ID, actual[routeidx].Relays[relayidx].ID)
+						assert.NotNil(t, actual[routeidx].Relays[relayidx].Addr.IP)
+						assert.False(t, actual[routeidx].Relays[relayidx].Addr.IP.IsLoopback())
+						assert.Greater(t, actual[routeidx].Relays[relayidx].Addr.Port, 0)
+						assert.NotNil(t, actual[routeidx].Relays[relayidx].PublicKey)
+						assert.Equal(t, crypto.KeySize, len(actual[routeidx].Relays[relayidx].PublicKey))
+					}
+
+					assert.Equal(t, test.expected[routeidx].Stats, actual[routeidx].Stats)
+				}
 			})
 		}
 	})
@@ -1486,7 +1497,7 @@ func BenchmarkRouting(b *testing.B) {
 	costfile, _ := os.Open("./test_data/cost.bin")
 
 	var costMatrix routing.CostMatrix
-	costMatrix.ReadFom(costfile)
+	costMatrix.ReadFrom(costfile)
 
 	var routeMatrix routing.RouteMatrix
 	costMatrix.Optimize(&routeMatrix, 1)

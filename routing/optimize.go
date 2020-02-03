@@ -5,10 +5,13 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"math"
+	"net"
 	"net/http"
 	"runtime"
 	"sort"
+	"strconv"
 	"sync"
 
 	"github.com/networknext/backend/crypto"
@@ -83,7 +86,7 @@ type CostMatrix struct {
 }
 
 // ReadFrom implements the io.ReadFrom interface
-func (m *CostMatrix) ReadFom(r io.Reader) (int64, error) {
+func (m *CostMatrix) ReadFrom(r io.Reader) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -688,6 +691,11 @@ func (m *RouteMatrix) fillRoutes(routes *[]Route, from Relay, to Relay) {
 	reverse := toidx > fromidx
 	fromtoidx := TriMatrixIndex(fromidx, toidx)
 
+	if fromtoidx >= len(m.Entries) {
+		log.Printf("index '%d' out of bound for matrix entries", fromtoidx)
+		return
+	}
+
 	for i := 0; i < int(m.Entries[fromtoidx].NumRoutes); i++ {
 
 		numRelays := int(m.Entries[fromtoidx].RouteNumRelays[i])
@@ -697,12 +705,30 @@ func (m *RouteMatrix) fillRoutes(routes *[]Route, from Relay, to Relay) {
 		if !reverse {
 			for j := 0; j < numRelays; j++ {
 				relayIndex := m.Entries[fromtoidx].RouteRelays[i][j]
-				routeRelays[j] = Relay{ID: m.RelayIds[relayIndex]}
+				host, port, _ := net.SplitHostPort(string(m.RelayAddresses[relayIndex]))
+				iport, _ := strconv.ParseInt(port, 10, 64)
+				routeRelays[j] = Relay{
+					ID: m.RelayIds[relayIndex],
+					Addr: net.UDPAddr{
+						IP:   net.ParseIP(host),
+						Port: int(iport),
+					},
+					PublicKey: m.RelayPublicKeys[relayIndex],
+				}
 			}
 		} else {
 			for j := 0; j < numRelays; j++ {
 				relayIndex := m.Entries[fromtoidx].RouteRelays[i][j]
-				routeRelays[numRelays-1-j] = Relay{ID: m.RelayIds[relayIndex]}
+				host, port, _ := net.SplitHostPort(string(m.RelayAddresses[relayIndex]))
+				iport, _ := strconv.ParseInt(port, 10, 64)
+				routeRelays[numRelays-1-j] = Relay{
+					ID: m.RelayIds[relayIndex],
+					Addr: net.UDPAddr{
+						IP:   net.ParseIP(host),
+						Port: int(iport),
+					},
+					PublicKey: m.RelayPublicKeys[relayIndex],
+				}
 			}
 		}
 
@@ -718,7 +744,7 @@ func (m *RouteMatrix) fillRoutes(routes *[]Route, from Relay, to Relay) {
 }
 
 // ReadFrom implements the io.ReadFrom interface
-func (m *RouteMatrix) ReadFom(r io.Reader) (int64, error) {
+func (m *RouteMatrix) ReadFrom(r io.Reader) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

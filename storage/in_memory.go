@@ -36,10 +36,9 @@ func (m *InMemory) GetAndCheck(key *Key) (*Datacenter, bool) {
 func (m *InMemory) GetAndCheckByRelayCoreId(key uint32) (*Relay, bool) {
 	name, ok := m.RelayDatacenterNames[key]
 	if !ok {
-		name = "local"
+		return nil, false
 	}
 
-	// return the value of 'ok' to simulate a failed lookup
 	return &Relay{
 		Datacenter: &Key{
 			PartitionId: &PartitionId{

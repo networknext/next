@@ -13,6 +13,14 @@ import (
 )
 
 func TestRelay(t *testing.T) {
+	t.Run("NewRelay()", func(t *testing.T) {
+		relay := routing.Relay{
+			PublicKey: make([]byte, crypto.KeySize),
+		}
+
+		assert.Equal(t, relay, routing.NewRelay())
+	})
+
 	t.Run("UnmarshalBinary()", func(t *testing.T) {
 		const (
 			relayname = "relay name"

@@ -15,9 +15,8 @@ type SDKVersion struct {
 }
 
 var (
-	SDKVersionInternal = SDKVersion{}
-	SDKVersionMin      = SDKVersion{3, 3, 2}
-	SDKVersionMax      = SDKVersion{254, 1023, 254}
+	SDKVersionMin = SDKVersion{3, 3, 2}
+	SDKVersionMax = SDKVersion{254, 1023, 254}
 )
 
 func (a SDKVersion) Compare(b SDKVersion) int {
@@ -39,6 +38,13 @@ func (a SDKVersion) Compare(b SDKVersion) int {
 	}
 
 	return SDKVersionOlder
+}
+
+func (v SDKVersion) IsInternal() bool {
+	if v.Major == 0 && v.Minor == 0 && v.Patch == 0 {
+		return true
+	}
+	return false
 }
 
 func (v SDKVersion) String() string {

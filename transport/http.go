@@ -174,6 +174,8 @@ func RelayInitHandlerFunc(redisClient *redis.Client, geoClient *routing.GeoClien
 			return
 		}
 
+		log.Printf("added relay to redis: %+v", relay)
+
 		writer.Header().Set("Content-Type", "application/octet-stream")
 
 		index = 0
