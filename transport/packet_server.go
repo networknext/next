@@ -409,24 +409,15 @@ func (packet *SessionResponsePacket) Serialize(stream encoding.Stream, version S
 		stream.SerializeBool(&packet.Multipath)
 		stream.SerializeInteger(&packet.NumTokens, 0, MaxTokens)
 	}
+	if stream.IsReading() {
+		packet.Tokens = make([]byte, packet.NumTokens*routing.EncryptedNextRouteTokenSize)
+	}
 	if packet.RouteType == routing.DecisionTypeNew {
 		stream.SerializeBytes(packet.Tokens)
 	}
 	if packet.RouteType == routing.DecisionTypeContinue {
 		stream.SerializeBytes(packet.Tokens)
 	}
-
-	//stream.SerializeInteger(&packet.NumTokens, 0, MaxTokens)
-
-	// if stream.IsReading() {
-	// 	packet.Tokens = make([]byte, packet.NumTokens*routing.EncryptedNextRouteTokenSize)
-	// }
-	// switch packet.RouteType {
-	// case routing.DecisionTypeNew, routing.DecisionTypeContinue:
-	// 	stream.SerializeBool(&packet.Multipath)
-	// 	stream.SerializeBytes(packet.Tokens)
-	// }
-
 	if stream.IsReading() {
 		packet.ServerRoutePublicKey = make([]byte, ed25519.PublicKeySize)
 		packet.Signature = make([]byte, ed25519.SignatureSize)
