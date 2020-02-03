@@ -7,9 +7,11 @@ import (
 	"io/ioutil"
 	"log"
 	"math"
+	"net"
 	"net/http"
 	"runtime"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/networknext/backend/crypto"
@@ -703,12 +705,22 @@ func (m *RouteMatrix) fillRoutes(routes *[]Route, from Relay, to Relay) {
 		if !reverse {
 			for j := 0; j < numRelays; j++ {
 				relayIndex := m.Entries[fromtoidx].RouteRelays[i][j]
-				routeRelays[j] = Relay{ID: m.RelayIds[relayIndex]}
+				addr, _ := net.ResolveUDPAddr("udp", strings.TrimSpace(string(m.RelayAddresses[relayIndex])))
+				routeRelays[j] = Relay{
+					ID:        m.RelayIds[relayIndex],
+					Addr:      *addr,
+					PublicKey: m.RelayPublicKeys[relayIndex],
+				}
 			}
 		} else {
 			for j := 0; j < numRelays; j++ {
 				relayIndex := m.Entries[fromtoidx].RouteRelays[i][j]
-				routeRelays[numRelays-1-j] = Relay{ID: m.RelayIds[relayIndex]}
+				addr, _ := net.ResolveUDPAddr("udp", strings.TrimSpace(string(m.RelayAddresses[relayIndex])))
+				routeRelays[numRelays-1-j] = Relay{
+					ID:        m.RelayIds[relayIndex],
+					Addr:      *addr,
+					PublicKey: m.RelayPublicKeys[relayIndex],
+				}
 			}
 		}
 
