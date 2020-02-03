@@ -33,11 +33,23 @@ SUB_DIRS			:= $(shell find src/* -type d -print)
 OBJ_DIRS			:= $(patsubst $(SRC)/%, $(OBJ)/%, $(SUB_DIRS))
 
 SRC_FILES			:= $(call rwildcard,$(SRC),*.cpp)
+
 SRC_OBJ_FILES		:= $(patsubst $(SRC)/%.cpp, $(OBJ)/%.o, $(SRC_FILES))
-SRC_TEST_OBJ_FILES	:= $(patsubst $(SRC)/%.cpp, $(OBJ)/%.test.o, $(SRC_FILES))
-SRC_BENCH_OBJ_FILES	:= $(patsubst $(SRC)/%.cpp, $(OBJ)/%.bench.o, $(SRC_FILES))
+SRC_DEP_FILES		:= $(patsubst $(SRC)/%.cpp, %.d, $(SRC_FILES))
+
+TEST_OBJ_FILES		:= $(patsubst $(SRC)/%.cpp, $(OBJ)/%.test.o, $(SRC_FILES))
+TEST_DEP_FILES		:= $(patsubst $(SRC)/%.cpp, %.test.d, $(SRC_FILES))
+
+BENCH_OBJ_FILES		:= $(patsubst $(SRC)/%.cpp, $(OBJ)/%.bench.o, $(SRC_FILES))
+BENCH_DEP_FILES		:= $(patsubst $(SRC)/%.cpp, %.bench.d, $(SRC_FILES))
 
 DIST_DIR			:= ../../dist
+
+OBJECTS				:= $(SRC_OBJ_FILES) $(TEST_OBJ_FILES) $(BENCH_OBJ_FILES)
+DEPENDENCIES		:= $(SRC_DEP_FILES) $(TEST_DEP_FILES) $(BENCH_DEP_FILES)
+EXECUTABLES			:= $(BIN)/$(EXE) $(BIN)/$(EXE_TEST) $(BIN)/$(EXE_BENCH) $(DIST_DIR)/$(EXE)
+
+-include $(DEPENDENCIES)
 
 ################
 ### Targets  ###
@@ -54,7 +66,7 @@ all-bench: $(BIN) $(OBJ) $(OBJ_DIRS) $(BIN)/$(EXE_BENCH)
 
 .PHONY: clean
 clean:
-	-rm -rf $(BIN) $(OBJ) $(DIST_DIR)/$(EXE)
+	-rm -f $(OBJECTS) $(DEPENDENCIES) $(EXECUTABLES)
 
 .PHONY: force
 force: clean all all-test all-bench
@@ -70,20 +82,20 @@ run-benchmarks: all-bench
 $(BIN)/$(EXE): $(SRC_OBJ_FILES)
 	$(CXX) $(CXX_FLAGS) $(INCLUDE_DIRS) $(LIBRARY_DIRS) $^ $(STATIC_LIBS) -o $@ $(LIBRARIES)
 
-$(BIN)/$(EXE_TEST): $(SRC_TEST_OBJ_FILES)
+$(BIN)/$(EXE_TEST): $(TEST_OBJ_FILES)
 	$(CXX) $(CXX_FLAGS) $(INCLUDE_DIRS) $(LIBRARY_DIRS) $^ $(STATIC_LIBS) -o $@ $(LIBRARIES)
 
-$(BIN)/$(EXE_BENCH): $(SRC_BENCH_OBJ_FILES)
+$(BIN)/$(EXE_BENCH): $(BENCH_OBJ_FILES)
 	$(CXX) $(CXX_FLAGS) $(INCLUDE_DIRS) $(LIBRARY_DIRS) $^ $(STATIC_LIBS) -o $@ $(LIBRARIES)
 
-$(OBJ)/%.o: $(SRC)/%.cpp
-	$(CXX) $(CXX_FLAGS) -c $(INCLUDE_DIRS) $(LIBRARY_DIRS) $< -o $@ $(LIBRARIES)
+$(OBJ)/%.o: $(SRC)/%.cpp Makefile
+	$(CXX) $(CXX_FLAGS) -c -MMD -MP $(INCLUDE_DIRS) $(LIBRARY_DIRS) $< -o $@ $(LIBRARIES)
 
-$(OBJ)/%.test.o: $(SRC)/%.cpp
-	$(CXX) $(CXX_FLAGS) -c -DTESTING $(INCLUDE_DIRS) $(LIBRARY_DIRS) $< -o $@ $(LIBRARIES)
+$(OBJ)/%.test.o: $(SRC)/%.cpp Makefile
+	$(CXX) $(CXX_FLAGS) -c -MMD -MP -DTESTING $(INCLUDE_DIRS) $(LIBRARY_DIRS) $< -o $@ $(LIBRARIES)
 
-$(OBJ)/%.bench.o: $(SRC)/%.cpp
-	$(CXX) $(CXX_FLAGS) -c -DBENCHMARKING $(INCLUDE_DIRS) $(LIBRARY_DIRS) $< -o $@ $(LIBRARIES)
+$(OBJ)/%.bench.o: $(SRC)/%.cpp Makefile
+	$(CXX) $(CXX_FLAGS) -c -MMD -MP -DBENCHMARKING $(INCLUDE_DIRS) $(LIBRARY_DIRS) $< -o $@ $(LIBRARIES)
 
 $(BIN):
 	@echo "Creating bin directory"
