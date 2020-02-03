@@ -3,7 +3,40 @@
 #include "encoding/write.hpp"
 #include "encoding/read.hpp"
 
-const auto REPS = 1000000000;
+#include <random>
+#include <functional>
+
+const auto REPS = 10000000000;
+
+Bench(ReadUint16_vs_read_uint16)
+{
+    std::default_random_engine gen;
+    std::uniform_int_distribution<uint8_t> dist;
+    auto rand = std::bind(dist, gen);
+
+    {
+        std::array<uint8_t, 2> buff;
+        buff[0] = rand();
+        buff[1] = rand();
+
+        Do(REPS)
+        {
+            size_t index = 0;
+            encoding::ReadUint16(buff, index);
+        }
+
+        auto elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+        std::cout << "ReadUint16() nanoseconds: " << elapsed << '\n';
+    }
+
+    {
+        Do(REPS)
+        {}
+
+        auto elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+        std::cout << "read_uint16() nanoseconds: " << elapsed << '\n';
+    }
+}
 
 Bench(ReadAddress_vs_read_address_ipv4, true)
 {
