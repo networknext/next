@@ -18,13 +18,13 @@ namespace testing
         bin[2] = 0;
         bin[3] = 0;
         bin[4] = 1;
-        bin[5] = 0xFF;
-        bin[6] = 0xFF;
+        bin[5] = 0x5A;
+        bin[6] = 0xC7;
 
         size_t index = 0;
         encoding::ReadAddress(bin, index, addr);
         check(index == RELAY_ADDRESS_BYTES);
-        check(addr.toString() == "127.0.0.1:65535");
+        check(addr.toString() == "127.0.0.1:51034");
     }
 
     void Test_ReadAddress_ipv6()
@@ -49,14 +49,14 @@ namespace testing
         bin[14] = 0xFF;
         bin[15] = 0xFF;
         bin[16] = 0xFF;
-        bin[17] = 0xFF;
-        bin[18] = 0xFF;
-        bin[19] = 0xFF;
+        bin[17] = 0x5A;
+        bin[18] = 0xC7;
+        bin[19] = 0x00;
 
         size_t index = 0;
         encoding::ReadAddress(bin, index, addr);
         check(index == RELAY_ADDRESS_BYTES);
-        check(addr.toString() == "[3b1f:3c33:9928:ffff:ffff:ffff:ffff:ffff]:65535");
+        check(addr.toString() == "[3b1f:3c33:9928:ffff:ffff:ffff:ffff:ffff]:51034");
     }
 
     void Test_ReadAddress_none()

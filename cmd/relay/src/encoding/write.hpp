@@ -5,6 +5,7 @@
 #include <cassert>
 #include <cstdio>
 #include <cstddef>
+#include <cstring>
 #include <array>
 
 #include "config.hpp"
