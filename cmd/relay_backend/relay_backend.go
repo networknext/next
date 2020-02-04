@@ -70,7 +70,9 @@ func main() {
 
 	// Create an in-memory relay & datacenter store
 	// that doesn't require talking to configstore
-	inMemory := storage.NewInMemory()
+	inMemory := storage.InMemory{
+		LocalDatacenter: true,
+	}
 
 	if filename, ok := os.LookupEnv("RELAYS_STUBBED_DATA_FILENAME"); ok {
 		type relays struct {
@@ -88,6 +90,7 @@ func main() {
 			log.Fatal(err)
 		}
 
+		inMemory.RelayDatacenterNames = make(map[uint32]string)
 		for ip, relay := range relaydata {
 			inMemory.RelayDatacenterNames[uint32(crypto.HashID(ip))] = relay.DatacenterName
 		}
