@@ -1,7 +1,9 @@
 package routing_test
 
 import (
+	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -15,6 +17,132 @@ import (
 	"github.com/networknext/backend/routing"
 	"github.com/stretchr/testify/assert"
 )
+
+// A buffer type that implements io.Write and io.Read but always returns an error for testing
+type ErrorBuffer struct {
+	buffer [0]byte
+}
+
+func (*ErrorBuffer) Write(p []byte) (int, error) {
+	return 0, errors.New("descriptive error")
+}
+
+func (*ErrorBuffer) Read(p []byte) (int, error) {
+	return 0, errors.New("descriptive error")
+}
+
+func getPopulatedCostMatrix(malformed bool) *routing.CostMatrix {
+	var matrix routing.CostMatrix
+
+	matrix.RelayIndicies = make(map[uint64]int)
+	matrix.RelayIndicies[123] = 0
+	matrix.RelayIndicies[456] = 1
+
+	matrix.RelayIds = make([]uint64, 2)
+	matrix.RelayIds[0] = 123
+	matrix.RelayIds[1] = 456
+
+	if !malformed {
+		matrix.RelayNames = make([]string, 2)
+		matrix.RelayNames[0] = "first"
+		matrix.RelayNames[1] = "second"
+	} else {
+		matrix.RelayNames = make([]string, 1)
+		matrix.RelayNames[0] = "first"
+	}
+
+	tmpAddr1 := make([]byte, routing.MaxRelayAddressLength)
+	tmpAddr2 := make([]byte, routing.MaxRelayAddressLength)
+
+	matrix.RelayAddresses = make([][]byte, 2)
+	rand.Read(tmpAddr1)
+	matrix.RelayAddresses[0] = tmpAddr1
+	rand.Read(tmpAddr2)
+	matrix.RelayAddresses[1] = tmpAddr2
+
+	matrix.RelayPublicKeys = make([][]byte, 2)
+	matrix.RelayPublicKeys[0] = RandomPublicKey()
+	matrix.RelayPublicKeys[1] = RandomPublicKey()
+
+	matrix.DatacenterIds = make([]uint64, 2)
+	matrix.DatacenterIds[0] = 999
+	matrix.DatacenterIds[1] = 111
+
+	matrix.DatacenterNames = make([]string, 2)
+	matrix.DatacenterNames[0] = "a name"
+	matrix.DatacenterNames[1] = "another name"
+
+	matrix.DatacenterRelays = make(map[uint64][]uint64)
+	matrix.DatacenterRelays[999] = make([]uint64, 1)
+	matrix.DatacenterRelays[999][0] = 123
+	matrix.DatacenterRelays[111] = make([]uint64, 1)
+	matrix.DatacenterRelays[111][0] = 456
+
+	matrix.RTT = make([]int32, 1)
+	matrix.RTT[0] = 7
+
+	return &matrix
+}
+
+func getPopulatedRouteMatrix(malformed bool) *routing.RouteMatrix {
+	var matrix routing.RouteMatrix
+
+	matrix.RelayIndicies = make(map[uint64]int)
+	matrix.RelayIndicies[123] = 0
+	matrix.RelayIndicies[456] = 1
+
+	matrix.RelayIds = make([]uint64, 2)
+	matrix.RelayIds[0] = 123
+	matrix.RelayIds[1] = 456
+
+	if !malformed {
+		matrix.RelayNames = make([]string, 2)
+		matrix.RelayNames[0] = "first"
+		matrix.RelayNames[1] = "second"
+	} else {
+		matrix.RelayNames = make([]string, 1)
+		matrix.RelayNames[0] = "first"
+	}
+
+	tmpAddr1 := make([]byte, routing.MaxRelayAddressLength)
+	tmpAddr2 := make([]byte, routing.MaxRelayAddressLength)
+
+	matrix.RelayAddresses = make([][]byte, 2)
+	rand.Read(tmpAddr1)
+	matrix.RelayAddresses[0] = tmpAddr1
+	rand.Read(tmpAddr2)
+	matrix.RelayAddresses[1] = tmpAddr2
+
+	matrix.RelayPublicKeys = make([][]byte, 2)
+	matrix.RelayPublicKeys[0] = RandomPublicKey()
+	matrix.RelayPublicKeys[1] = RandomPublicKey()
+
+	matrix.DatacenterIds = make([]uint64, 2)
+	matrix.DatacenterIds[0] = 999
+	matrix.DatacenterIds[1] = 111
+
+	matrix.DatacenterNames = make([]string, 2)
+	matrix.DatacenterNames[0] = "a name"
+	matrix.DatacenterNames[1] = "another name"
+
+	matrix.DatacenterRelays = make(map[uint64][]uint64)
+	matrix.DatacenterRelays[999] = make([]uint64, 1)
+	matrix.DatacenterRelays[999][0] = 123
+	matrix.DatacenterRelays[111] = make([]uint64, 1)
+	matrix.DatacenterRelays[111][0] = 456
+
+	matrix.Entries = []routing.RouteMatrixEntry{
+		routing.RouteMatrixEntry{
+			DirectRTT:      123,
+			NumRoutes:      1,
+			RouteRTT:       [8]int32{1},
+			RouteNumRelays: [8]int32{2},
+			RouteRelays:    [8][5]uint64{{123, 456}},
+		},
+	}
+
+	return &matrix
+}
 
 func addrsToIDs(addrs []string) []uint64 {
 	retval := make([]uint64, len(addrs))
@@ -678,49 +806,7 @@ func TestOptimize(t *testing.T) {
 
 		t.Run("MarshalBinary()", func(t *testing.T) {
 			t.Run("MarshalBinary -> UnmarshalBinary equality", func(t *testing.T) {
-				var matrix routing.CostMatrix
-				matrix.RelayIndicies = make(map[uint64]int)
-				matrix.RelayIndicies[123] = 0
-				matrix.RelayIndicies[456] = 1
-
-				matrix.RelayIds = make([]uint64, 2)
-				matrix.RelayIds[0] = 123
-				matrix.RelayIds[1] = 456
-
-				matrix.RelayNames = make([]string, 2)
-				matrix.RelayNames[0] = "first"
-				matrix.RelayNames[1] = "second"
-
-				tmpAddr1 := make([]byte, routing.MaxRelayAddressLength)
-				tmpAddr2 := make([]byte, routing.MaxRelayAddressLength)
-
-				matrix.RelayAddresses = make([][]byte, 2)
-				rand.Read(tmpAddr1)
-				matrix.RelayAddresses[0] = tmpAddr1
-				rand.Read(tmpAddr2)
-				matrix.RelayAddresses[1] = tmpAddr2
-
-				matrix.RelayPublicKeys = make([][]byte, 2)
-				matrix.RelayPublicKeys[0] = RandomPublicKey()
-				matrix.RelayPublicKeys[1] = RandomPublicKey()
-
-				matrix.DatacenterIds = make([]uint64, 2)
-				matrix.DatacenterIds[0] = 999
-				matrix.DatacenterIds[1] = 111
-
-				matrix.DatacenterNames = make([]string, 2)
-				matrix.DatacenterNames[0] = "a name"
-				matrix.DatacenterNames[1] = "another name"
-
-				matrix.DatacenterRelays = make(map[uint64][]uint64)
-				matrix.DatacenterRelays[999] = make([]uint64, 1)
-				matrix.DatacenterRelays[999][0] = 123
-				matrix.DatacenterRelays[111] = make([]uint64, 1)
-				matrix.DatacenterRelays[111][0] = 456
-
-				matrix.RTT = make([]int32, 1)
-				matrix.RTT[0] = 7
-
+				matrix := getPopulatedCostMatrix(false)
 				var other routing.CostMatrix
 
 				bin, err := matrix.MarshalBinary()
@@ -732,7 +818,7 @@ func TestOptimize(t *testing.T) {
 				err = other.UnmarshalBinary(bin)
 				assert.NoError(t, err)
 
-				assert.Equal(t, matrix, other)
+				assert.Equal(t, matrix, &other)
 			})
 
 			t.Run("Relay ID and name buffers different sizes", func(t *testing.T) {
@@ -768,49 +854,8 @@ func TestOptimize(t *testing.T) {
 
 		t.Run("ServeHTTP()", func(t *testing.T) {
 			t.Run("Failure to serve HTTP", func(t *testing.T) {
-				// Create and populate a cost matrix
-				var matrix routing.CostMatrix
-
-				matrix.RelayIndicies = make(map[uint64]int)
-				matrix.RelayIndicies[123] = 0
-				matrix.RelayIndicies[456] = 1
-
-				matrix.RelayIds = make([]uint64, 2)
-				matrix.RelayIds[0] = 123
-				matrix.RelayIds[1] = 456
-
-				matrix.RelayNames = make([]string, 1) // Malform the matrix to simulate an internal server error
-				matrix.RelayNames[0] = "first"
-
-				tmpAddr1 := make([]byte, routing.MaxRelayAddressLength)
-				tmpAddr2 := make([]byte, routing.MaxRelayAddressLength)
-
-				matrix.RelayAddresses = make([][]byte, 2)
-				rand.Read(tmpAddr1)
-				matrix.RelayAddresses[0] = tmpAddr1
-				rand.Read(tmpAddr2)
-				matrix.RelayAddresses[1] = tmpAddr2
-
-				matrix.RelayPublicKeys = make([][]byte, 2)
-				matrix.RelayPublicKeys[0] = RandomPublicKey()
-				matrix.RelayPublicKeys[1] = RandomPublicKey()
-
-				matrix.DatacenterIds = make([]uint64, 2)
-				matrix.DatacenterIds[0] = 999
-				matrix.DatacenterIds[1] = 111
-
-				matrix.DatacenterNames = make([]string, 2)
-				matrix.DatacenterNames[0] = "a name"
-				matrix.DatacenterNames[1] = "another name"
-
-				matrix.DatacenterRelays = make(map[uint64][]uint64)
-				matrix.DatacenterRelays[999] = make([]uint64, 1)
-				matrix.DatacenterRelays[999][0] = 123
-				matrix.DatacenterRelays[111] = make([]uint64, 1)
-				matrix.DatacenterRelays[111][0] = 456
-
-				matrix.RTT = make([]int32, 1)
-				matrix.RTT[0] = 7
+				// Create and populate a malformed cost matrix
+				matrix := getPopulatedCostMatrix(true)
 
 				// Create a dummy http request to test ServeHTTP
 				recorder := httptest.NewRecorder()
@@ -827,49 +872,7 @@ func TestOptimize(t *testing.T) {
 
 			t.Run("Successful Serve", func(t *testing.T) {
 				// Create and populate a cost matrix
-				var matrix routing.CostMatrix
-
-				matrix.RelayIndicies = make(map[uint64]int)
-				matrix.RelayIndicies[123] = 0
-				matrix.RelayIndicies[456] = 1
-
-				matrix.RelayIds = make([]uint64, 2)
-				matrix.RelayIds[0] = 123
-				matrix.RelayIds[1] = 456
-
-				matrix.RelayNames = make([]string, 2)
-				matrix.RelayNames[0] = "first"
-				matrix.RelayNames[1] = "second"
-
-				tmpAddr1 := make([]byte, routing.MaxRelayAddressLength)
-				tmpAddr2 := make([]byte, routing.MaxRelayAddressLength)
-
-				matrix.RelayAddresses = make([][]byte, 2)
-				rand.Read(tmpAddr1)
-				matrix.RelayAddresses[0] = tmpAddr1
-				rand.Read(tmpAddr2)
-				matrix.RelayAddresses[1] = tmpAddr2
-
-				matrix.RelayPublicKeys = make([][]byte, 2)
-				matrix.RelayPublicKeys[0] = RandomPublicKey()
-				matrix.RelayPublicKeys[1] = RandomPublicKey()
-
-				matrix.DatacenterIds = make([]uint64, 2)
-				matrix.DatacenterIds[0] = 999
-				matrix.DatacenterIds[1] = 111
-
-				matrix.DatacenterNames = make([]string, 2)
-				matrix.DatacenterNames[0] = "a name"
-				matrix.DatacenterNames[1] = "another name"
-
-				matrix.DatacenterRelays = make(map[uint64][]uint64)
-				matrix.DatacenterRelays[999] = make([]uint64, 1)
-				matrix.DatacenterRelays[999][0] = 123
-				matrix.DatacenterRelays[111] = make([]uint64, 1)
-				matrix.DatacenterRelays[111][0] = 456
-
-				matrix.RTT = make([]int32, 1)
-				matrix.RTT[0] = 7
+				matrix := getPopulatedCostMatrix(false)
 
 				// Create a dummy http request to test ServeHTTP
 				recorder := httptest.NewRecorder()
@@ -881,45 +884,86 @@ func TestOptimize(t *testing.T) {
 				// Get the response
 				response := recorder.Result()
 
-				// Create a serialzied matrix to compare the response to
-				matrixData, err := matrix.MarshalBinary()
-				assert.NoError(t, err)
-
 				// Read the response body
 				body, err := ioutil.ReadAll(response.Body)
 				response.Body.Close()
 
+				// Create a new matrix to store the response
+				var receivedMatrix routing.CostMatrix
+				err = receivedMatrix.UnmarshalBinary(body)
+				assert.NoError(t, err)
+
 				// Validate the response
 				assert.Equal(t, "application/octet-stream", response.Header.Get("Content-Type"))
-				assert.Equal(t, matrixData, body)
+				assert.Equal(t, matrix, &receivedMatrix)
 			})
 		})
 
 		t.Run("WriteTo()", func(t *testing.T) {
 			t.Run("Error during MarshalBinary()", func(t *testing.T) {
+				// Create and populate a malformed cost matrix
+				matrix := getPopulatedCostMatrix(true)
 
+				var buff bytes.Buffer
+				_, err := matrix.WriteTo(&buff)
+				assert.EqualError(t, err, fmt.Sprintf("Length of Relay IDs not equal to length of Relay Names: %v != %v", len(matrix.RelayIds), len(matrix.RelayNames)))
 			})
 
 			t.Run("Error during write", func(t *testing.T) {
+				// Create and populate a cost matrix
+				matrix := getPopulatedCostMatrix(false)
 
+				var buff ErrorBuffer
+				_, err := matrix.WriteTo(&buff)
+				assert.Error(t, err)
 			})
 
 			t.Run("Success", func(t *testing.T) {
+				// Create and populate a cost matrix
+				matrix := getPopulatedCostMatrix(false)
 
+				var buff bytes.Buffer
+				_, err := matrix.WriteTo(&buff)
+				assert.NoError(t, err)
 			})
 		})
 
 		t.Run("ReadFrom()", func(t *testing.T) {
 			t.Run("Error during read", func(t *testing.T) {
+				// Create and populate a cost matrix
+				matrix := getPopulatedCostMatrix(false)
 
+				// Try to read into the ErrorBuffer
+				var buff ErrorBuffer
+				_, err := matrix.ReadFrom(&buff)
+				assert.Error(t, err)
 			})
 
 			t.Run("Error during UnmarshalBinary()", func(t *testing.T) {
+				// Create and populate a cost matrix
+				matrix := getPopulatedCostMatrix(false)
 
+				// Marshal the cost matrix, modify it, then attempt to unmarshal it
+				buff, err := matrix.MarshalBinary()
+				assert.NoError(t, err)
+
+				buffSlice := buff[:3] // Only send the first 3 bytes so that the version read fails and throws an error
+
+				_, err = matrix.ReadFrom(bytes.NewBuffer(buffSlice))
+				assert.Error(t, err)
 			})
 
 			t.Run("Success", func(t *testing.T) {
+				// Create and populate a cost matrix
+				matrix := getPopulatedCostMatrix(false)
 
+				// Marshal the cost matrix so we can read it in
+				buff, err := matrix.MarshalBinary()
+				assert.NoError(t, err)
+
+				// Read into a byte buffer
+				_, err = matrix.ReadFrom(bytes.NewBuffer(buff))
+				assert.NoError(t, err)
 			})
 		})
 
@@ -1289,55 +1333,7 @@ func TestOptimize(t *testing.T) {
 
 		t.Run("MarshalBinary()", func(t *testing.T) {
 			t.Run("MarshalBinary -> UnmarshalBinary equality", func(t *testing.T) {
-				var matrix routing.RouteMatrix
-				matrix.RelayIndicies = make(map[uint64]int)
-				matrix.RelayIndicies[123] = 0
-				matrix.RelayIndicies[456] = 1
-
-				matrix.RelayIds = make([]uint64, 2)
-				matrix.RelayIds[0] = 123
-				matrix.RelayIds[1] = 456
-
-				matrix.RelayNames = make([]string, 2)
-				matrix.RelayNames[0] = "first"
-				matrix.RelayNames[1] = "second"
-
-				tmpAddr1 := make([]byte, routing.MaxRelayAddressLength)
-				tmpAddr2 := make([]byte, routing.MaxRelayAddressLength)
-
-				matrix.RelayAddresses = make([][]byte, 2)
-				rand.Read(tmpAddr1)
-				matrix.RelayAddresses[0] = tmpAddr1
-				rand.Read(tmpAddr2)
-				matrix.RelayAddresses[1] = tmpAddr2
-
-				matrix.RelayPublicKeys = make([][]byte, 2)
-				matrix.RelayPublicKeys[0] = RandomPublicKey()
-				matrix.RelayPublicKeys[1] = RandomPublicKey()
-
-				matrix.DatacenterIds = make([]uint64, 2)
-				matrix.DatacenterIds[0] = 999
-				matrix.DatacenterIds[1] = 111
-
-				matrix.DatacenterNames = make([]string, 2)
-				matrix.DatacenterNames[0] = "a name"
-				matrix.DatacenterNames[1] = "another name"
-
-				matrix.DatacenterRelays = make(map[uint64][]uint64)
-				matrix.DatacenterRelays[999] = make([]uint64, 1)
-				matrix.DatacenterRelays[999][0] = 123
-				matrix.DatacenterRelays[111] = make([]uint64, 1)
-				matrix.DatacenterRelays[111][0] = 456
-
-				matrix.Entries = []routing.RouteMatrixEntry{
-					routing.RouteMatrixEntry{
-						DirectRTT:      123,
-						NumRoutes:      1,
-						RouteRTT:       [8]int32{1},
-						RouteNumRelays: [8]int32{2},
-						RouteRelays:    [8][5]uint64{{123, 456}},
-					},
-				}
+				matrix := getPopulatedRouteMatrix(false)
 
 				var other routing.RouteMatrix
 
@@ -1349,7 +1345,7 @@ func TestOptimize(t *testing.T) {
 				other.UnmarshalBinary(bin)
 
 				assert.Nil(t, err)
-				assert.Equal(t, matrix, other)
+				assert.Equal(t, matrix, &other)
 			})
 
 			t.Run("Relay ID and name buffers different sizes", func(t *testing.T) {
@@ -1385,56 +1381,8 @@ func TestOptimize(t *testing.T) {
 
 		t.Run("ServeHTTP()", func(t *testing.T) {
 			t.Run("Failure to serve HTTP", func(t *testing.T) {
-				// Create and populate a route matrix
-				var matrix routing.RouteMatrix
-
-				matrix.RelayIndicies = make(map[uint64]int)
-				matrix.RelayIndicies[123] = 0
-				matrix.RelayIndicies[456] = 1
-
-				matrix.RelayIds = make([]uint64, 2)
-				matrix.RelayIds[0] = 123
-				matrix.RelayIds[1] = 456
-
-				matrix.RelayNames = make([]string, 1) // Malform the matrix to simulate an internal server error
-				matrix.RelayNames[0] = "first"
-
-				tmpAddr1 := make([]byte, routing.MaxRelayAddressLength)
-				tmpAddr2 := make([]byte, routing.MaxRelayAddressLength)
-
-				matrix.RelayAddresses = make([][]byte, 2)
-				rand.Read(tmpAddr1)
-				matrix.RelayAddresses[0] = tmpAddr1
-				rand.Read(tmpAddr2)
-				matrix.RelayAddresses[1] = tmpAddr2
-
-				matrix.RelayPublicKeys = make([][]byte, 2)
-				matrix.RelayPublicKeys[0] = RandomPublicKey()
-				matrix.RelayPublicKeys[1] = RandomPublicKey()
-
-				matrix.DatacenterIds = make([]uint64, 2)
-				matrix.DatacenterIds[0] = 999
-				matrix.DatacenterIds[1] = 111
-
-				matrix.DatacenterNames = make([]string, 2)
-				matrix.DatacenterNames[0] = "a name"
-				matrix.DatacenterNames[1] = "another name"
-
-				matrix.DatacenterRelays = make(map[uint64][]uint64)
-				matrix.DatacenterRelays[999] = make([]uint64, 1)
-				matrix.DatacenterRelays[999][0] = 123
-				matrix.DatacenterRelays[111] = make([]uint64, 1)
-				matrix.DatacenterRelays[111][0] = 456
-
-				matrix.Entries = []routing.RouteMatrixEntry{
-					routing.RouteMatrixEntry{
-						DirectRTT:      123,
-						NumRoutes:      1,
-						RouteRTT:       [8]int32{1},
-						RouteNumRelays: [8]int32{2},
-						RouteRelays:    [8][5]uint64{{123, 456}},
-					},
-				}
+				// Create and populate a malformed route matrix
+				matrix := getPopulatedRouteMatrix(true)
 
 				// Create a dummy http request to test ServeHTTP
 				recorder := httptest.NewRecorder()
@@ -1451,56 +1399,7 @@ func TestOptimize(t *testing.T) {
 
 			t.Run("Successful Serve", func(t *testing.T) {
 				// Create and populate a route matrix
-				var matrix routing.RouteMatrix
-
-				matrix.RelayIndicies = make(map[uint64]int)
-				matrix.RelayIndicies[123] = 0
-				matrix.RelayIndicies[456] = 1
-
-				matrix.RelayIds = make([]uint64, 2)
-				matrix.RelayIds[0] = 123
-				matrix.RelayIds[1] = 456
-
-				matrix.RelayNames = make([]string, 2)
-				matrix.RelayNames[0] = "first"
-				matrix.RelayNames[1] = "second"
-
-				tmpAddr1 := make([]byte, routing.MaxRelayAddressLength)
-				tmpAddr2 := make([]byte, routing.MaxRelayAddressLength)
-
-				matrix.RelayAddresses = make([][]byte, 2)
-				rand.Read(tmpAddr1)
-				matrix.RelayAddresses[0] = tmpAddr1
-				rand.Read(tmpAddr2)
-				matrix.RelayAddresses[1] = tmpAddr2
-
-				matrix.RelayPublicKeys = make([][]byte, 2)
-				matrix.RelayPublicKeys[0] = RandomPublicKey()
-				matrix.RelayPublicKeys[1] = RandomPublicKey()
-
-				matrix.DatacenterIds = make([]uint64, 2)
-				matrix.DatacenterIds[0] = 999
-				matrix.DatacenterIds[1] = 111
-
-				matrix.DatacenterNames = make([]string, 2)
-				matrix.DatacenterNames[0] = "a name"
-				matrix.DatacenterNames[1] = "another name"
-
-				matrix.DatacenterRelays = make(map[uint64][]uint64)
-				matrix.DatacenterRelays[999] = make([]uint64, 1)
-				matrix.DatacenterRelays[999][0] = 123
-				matrix.DatacenterRelays[111] = make([]uint64, 1)
-				matrix.DatacenterRelays[111][0] = 456
-
-				matrix.Entries = []routing.RouteMatrixEntry{
-					routing.RouteMatrixEntry{
-						DirectRTT:      123,
-						NumRoutes:      1,
-						RouteRTT:       [8]int32{1},
-						RouteNumRelays: [8]int32{2},
-						RouteRelays:    [8][5]uint64{{123, 456}},
-					},
-				}
+				matrix := getPopulatedRouteMatrix(false)
 
 				// Create a dummy http request to test ServeHTTP
 				recorder := httptest.NewRecorder()
@@ -1512,17 +1411,86 @@ func TestOptimize(t *testing.T) {
 				// Get the response
 				response := recorder.Result()
 
-				// Create a serialzied matrix to compare the response to
-				matrixData, err := matrix.MarshalBinary()
-				assert.NoError(t, err)
-
 				// Read the response body
 				body, err := ioutil.ReadAll(response.Body)
 				response.Body.Close()
 
+				// Create a new matrix to store the response
+				var receivedMatrix routing.RouteMatrix
+				err = receivedMatrix.UnmarshalBinary(body)
+				assert.NoError(t, err)
+
 				// Validate the response
 				assert.Equal(t, "application/octet-stream", response.Header.Get("Content-Type"))
-				assert.Equal(t, matrixData, body)
+				assert.Equal(t, matrix, &receivedMatrix)
+			})
+		})
+
+		t.Run("WriteTo()", func(t *testing.T) {
+			t.Run("Error during MarshalBinary()", func(t *testing.T) {
+				// Create and populate a malformed route matrix
+				matrix := getPopulatedRouteMatrix(true)
+
+				var buff bytes.Buffer
+				_, err := matrix.WriteTo(&buff)
+				assert.EqualError(t, err, fmt.Sprintf("Length of Relay IDs not equal to length of Relay Names: %v != %v", len(matrix.RelayIds), len(matrix.RelayNames)))
+			})
+
+			t.Run("Error during write", func(t *testing.T) {
+				// Create and populate a route matrix
+				matrix := getPopulatedRouteMatrix(false)
+
+				var buff ErrorBuffer
+				_, err := matrix.WriteTo(&buff)
+				assert.Error(t, err)
+			})
+
+			t.Run("Success", func(t *testing.T) {
+				// Create and populate a route matrix
+				matrix := getPopulatedRouteMatrix(false)
+
+				var buff bytes.Buffer
+				_, err := matrix.WriteTo(&buff)
+				assert.NoError(t, err)
+			})
+		})
+
+		t.Run("ReadFrom()", func(t *testing.T) {
+			t.Run("Error during read", func(t *testing.T) {
+				// Create and populate a route matrix
+				matrix := getPopulatedRouteMatrix(false)
+
+				// Try to read into the ErrorBuffer
+				var buff ErrorBuffer
+				_, err := matrix.ReadFrom(&buff)
+				assert.Error(t, err)
+			})
+
+			t.Run("Error during UnmarshalBinary()", func(t *testing.T) {
+				// Create and populate a route matrix
+				matrix := getPopulatedRouteMatrix(false)
+
+				// Marshal the route matrix, modify it, then attempt to unmarshal it
+				buff, err := matrix.MarshalBinary()
+				assert.NoError(t, err)
+
+				buffSlice := buff[:3] // Only send the first 3 bytes so that the version read fails and throws an error
+
+				_, err = matrix.ReadFrom(bytes.NewBuffer(buffSlice))
+				assert.Error(t, err)
+			})
+
+			t.Run("Success", func(t *testing.T) {
+				// Create and populate a route matrix
+				matrix := getPopulatedRouteMatrix(false)
+
+				// Marshal the route matrix so we can read it in
+				buff, err := matrix.MarshalBinary()
+				assert.NoError(t, err)
+
+				// Read into a byte buffer
+				_, err = matrix.ReadFrom(bytes.NewBuffer(buff))
+				assert.NoError(t, err)
 			})
 		})
 	})
