@@ -16,7 +16,6 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/alicebob/miniredis"
 	"github.com/go-redis/redis/v7"
 	"github.com/oschwald/geoip2-golang"
 	"google.golang.org/grpc"
@@ -48,21 +47,16 @@ func main() {
 		}
 	}
 
-	// Attempt to connect to REDIS_HOST
-	// If it fails to connect then start a local in memory instance and connect to that instead
-	redisClient := redis.NewClient(&redis.Options{Addr: os.Getenv("REDIS_HOST")})
+	// Attempt to connect to REDIS_HOST, falling back to local instance if not explicitly specified
+	var redisHost string
+	if redisHost = os.Getenv("REDIS_HOST"); len(redisHost) == 0 {
+		redisHost = "localhost:6379"
+		log.Printf("env var 'REDIS_HOST' is not set, falling back to default value of '%s'\n", redisHost)
+	}
+
+	redisClient := redis.NewClient(&redis.Options{Addr: redisHost})
 	if err := redisClient.Ping().Err(); err != nil {
-		redisServer, err := miniredis.Run()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		redisClient = redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
-		if err := redisClient.Ping().Err(); err != nil {
-			log.Fatal(err)
-		}
-
-		log.Printf("unable to connect to REDIS_HOST '%s', connected to in-memory redis %s\n", os.Getenv("REDIS_HOST"), redisServer.Addr())
+		log.Fatalf("unable to connect to REDIS_HOST '%s'", redisHost)
 	}
 
 	// Set the default IPLocator to resolve all lookups to 0/0 aka Null Island
