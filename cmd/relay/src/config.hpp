@@ -1,6 +1,8 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
 
+#include <cinttypes>
+
 #define RELAY_OK 0
 #define RELAY_ERROR -1
 
@@ -46,10 +48,6 @@
 #define RELAY_PUBLIC_KEY_BYTES 32
 #define RELAY_PRIVATE_KEY_BYTES 32
 
-#define RELAY_ADDRESS_NONE 0
-#define RELAY_ADDRESS_IPV4 1
-#define RELAY_ADDRESS_IPV6 2
-
 #define RELAY_MAX_ADDRESS_STRING_LENGTH 256
 
 #define MAX_RELAYS 1024
@@ -61,6 +59,9 @@
 #define NEAR_PONG_PACKET 74
 #define RELAY_PING_PACKET 75
 #define RELAY_PONG_PACKET 76
+
+#define RELAY_SOCKET_NON_BLOCKING 0
+#define RELAY_SOCKET_BLOCKING 1
 
 /* This will prevent GCC from optimizing out useless function calls, mainly for benchmarking */
 #ifdef BENCHMARKING

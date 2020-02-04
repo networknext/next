@@ -544,10 +544,10 @@ namespace encoding
     bool serialize_address_internal(Stream& stream, legacy::relay_address_t& address)
     {
         serialize_bits(stream, address.type, 2);
-        if (address.type == RELAY_ADDRESS_IPV4) {
+        if (address.type == net::AddressType::IPv4) {
             serialize_bytes(stream, address.data.ipv4, 4);
             serialize_bits(stream, address.port, 16);
-        } else if (address.type == RELAY_ADDRESS_IPV6) {
+        } else if (address.type == net::AddressType::IPv6) {
             for (int i = 0; i < 8; ++i) {
                 serialize_bits(stream, address.data.ipv6[i], 16);
             }

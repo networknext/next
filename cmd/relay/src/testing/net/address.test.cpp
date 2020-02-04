@@ -19,15 +19,15 @@ namespace testing
 
         check(a == b);
 
-        a.Type = 1;
+        a.Type = net::AddressType::IPv4;
         check(a != b);
-        a.Type = 0;
+        a.Type = net::AddressType::None;
 
         a.Port = 1;
         check(a != b);
         a.Port = 0;
 
-        a.Type = RELAY_ADDRESS_IPV4;
+        a.Type = net::AddressType::IPv4;
 
         a.IPv4[0] = 1;
         check(a != b);
@@ -37,7 +37,7 @@ namespace testing
         check(a != b);
         *a.IPv4.end() = 0;
 
-        a.Type = RELAY_ADDRESS_IPV6;
+        a.Type = net::AddressType::IPv6;
 
         a.IPv6[0] = 1;
         check(a != b);
@@ -47,7 +47,7 @@ namespace testing
         check(a != b);
         *a.IPv6.end() = 0;
 
-        a.Type = RELAY_ADDRESS_NONE;
+        a.Type = net::AddressType::None;
 
         check(a == b);
     }
@@ -55,7 +55,7 @@ namespace testing
     void Test_Address_reset()
     {
         net::Address addr, base;
-        addr.Type = 77;
+        addr.Type = static_cast<net::AddressType>(77);
         addr.Port = 123;
         addr.IPv4[0] = 18;
         addr.IPv4[1] = 82;
@@ -70,7 +70,7 @@ namespace testing
     {
         net::Address addr;
         check(addr.parse("127.0.0.1:51034") == true);
-        check(addr.Type == RELAY_ADDRESS_IPV4);
+        check(addr.Type == net::AddressType::IPv4);
         check(addr.Port == 51034);
         check(addr.IPv4[0] == 127);
         check(addr.IPv4[1] == 0);
@@ -82,7 +82,7 @@ namespace testing
     {
         net::Address addr;
         check(addr.parse("[::1]:51034") == true);
-        check(addr.Type = RELAY_ADDRESS_IPV6);
+        check(addr.Type == net::AddressType::IPv6);
         check(addr.Port == 51034);
         check(addr.IPv6[0] == 0);
         check(addr.IPv6[1] == 0);
@@ -95,7 +95,7 @@ namespace testing
 
         addr.reset();
         check(addr.parse("[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:20000") == true);
-        check(addr.Type = RELAY_ADDRESS_IPV6);
+        check(addr.Type == net::AddressType::IPv6);
         check(addr.Port == 20000);
         check(addr.IPv6[0] == 0x2001);
         check(addr.IPv6[1] == 0x0db8);
@@ -111,7 +111,7 @@ namespace testing
     {
         net::Address addr;
         check(addr.parse("2001:0db8:85a3:0000:0000:8a2e:0370:7334") == true);
-        check(addr.Type = RELAY_ADDRESS_IPV6);
+        check(addr.Type == net::AddressType::IPv6);
         check(addr.Port == 0);
         check(addr.IPv6[0] == 0x2001);
         check(addr.IPv6[1] == 0x0db8);
@@ -127,7 +127,7 @@ namespace testing
     {
         net::Address addr;
         check(addr.parse("127.0.:182a") == false);
-        check(addr.Type == RELAY_ADDRESS_NONE);
+        check(addr.Type == net::AddressType::None);
         check(addr.Port == 0);
 
         check(addr.IPv4[0] == 0);

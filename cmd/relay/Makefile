@@ -59,35 +59,48 @@ EXECUTABLES			:= $(BIN)/$(EXE) $(BIN)/$(EXE_DBG) $(BIN)/$(EXE_TEST) $(BIN)/$(EXE
 ### Targets  ###
 ################
 
-.PHONY: all
-all: $(BIN) $(OBJ) $(OBJ_DIRS) $(BIN)/$(EXE) $(DIST_DIR)/$(EXE)
+.PHONY: relay 
+relay: $(BIN) $(OBJ) $(OBJ_DIRS) $(BIN)/$(EXE) $(DIST_DIR)/$(EXE)
 
-.PHONY: all-dbg
-all-dbg: $(BIN) $(OBJ) $(OBJ_DIRS) $(BIN)/$(EXE_DBG)
+.PHONY: relay-dbg
+relay-dbg: $(BIN) $(OBJ) $(OBJ_DIRS) $(BIN)/$(EXE_DBG)
 
-.PHONY: all-test
-all-test: $(BIN) $(OBJ) $(OBJ_DIRS) $(BIN)/$(EXE_TEST)
+.PHONY: relay-test
+relay-test: $(BIN) $(OBJ) $(OBJ_DIRS) $(BIN)/$(EXE_TEST)
 
-.PHONY: all-bench
-all-bench: $(BIN) $(OBJ) $(OBJ_DIRS) $(BIN)/$(EXE_BENCH)
+.PHONY: relay-bench
+relay-bench: $(BIN) $(OBJ) $(OBJ_DIRS) $(BIN)/$(EXE_BENCH)
 
-# This must be after "all" otherwise the first target that comes out of this will be the one make defaults to
--include $(DEPENDENCIES)
+.PHONY: make-dbg
+make-dbg: relay-dbg
+
+.PHONY:
+run-dbg: make-dbg
+	@$(BIN)/$(EXE_DBG)
+
+.PHONY: make-test
+make-test: relay-test
+
+.PHONY: run-tests
+run-tests: make-test
+	@$(BIN)/$(EXE_TEST) test
+
+.PHONY: make-benchmarks
+make-benchmarks: relay-benchmarks
+
+.PHONY: run-benchmarks
+run-benchmarks: make-benchmarks
+	@$(BIN)/$(EXE_BENCH) bench
 
 .PHONY: clean
 clean:
 	-rm -f $(OBJECTS) $(DEPENDENCIES) $(EXECUTABLES)
 
 .PHONY: force
-force: clean all all-test all-bench
+force: clean relay relay-test relay-benchmarks
 
-.PHONY: run-tests
-run-tests: all-test
-	@$(BIN)/$(EXE_TEST) test
-
-.PHONY: run-benchmarks
-run-benchmarks: all-bench
-	@$(BIN)/$(EXE_BENCH) bench
+# This must be after "relay" otherwise the first target that comes out of this will be the one make defaults to
+-include $(DEPENDENCIES)
 
 ##############
 ### Builds ###

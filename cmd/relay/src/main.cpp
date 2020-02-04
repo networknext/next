@@ -503,8 +503,8 @@ int main(int argc, const char** argv)
         return 1;
     }
 
-    relay::relay_platform_socket_t* socket =
-        relay::relay_platform_socket_create(&relay_address, RELAY_PLATFORM_SOCKET_BLOCKING, 0.1f, 100 * 1024, 100 * 1024);
+    legacy::relay_platform_socket_t* socket =
+        legacy::relay_platform_socket_create(&relay_address, RELAY_PLATFORM_SOCKET_BLOCKING, 0.1f, 100 * 1024, 100 * 1024);
     if (socket == NULL) {
         printf("\ncould not create socket\n\n");
         relay::relay_term();

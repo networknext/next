@@ -5,7 +5,7 @@
 #include <iostream>
 #include <cstddef>
 
-#include "clock.hpp"
+#include "util/clock.hpp"
 
 #define BENCH_BREAK "\n=============================================\n\n"
 

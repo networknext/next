@@ -34,7 +34,7 @@ namespace util
 	inline void Console::write(Args&&... args)
 	{
 		mLock.lock();
-		((mStream << std::forward<Args>(args)), ...) << Opt<M::FullReset>();
+		((mStream << std::forward<Args>(args)), ...);
 		mLock.unlock();
 	}
 
@@ -58,4 +58,4 @@ namespace util
 		auto count = std::strftime(timebuff.data(), timebuff.size() * sizeof(char) - 1, "%I:%M:%S %P", timestruct);
 		return std::string(timebuff.begin(), timebuff.begin() + count);
 	}
-}  // namespace dash
+}  // namespace util

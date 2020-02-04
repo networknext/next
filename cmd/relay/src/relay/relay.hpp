@@ -12,6 +12,8 @@
 #include "relay_replay_protection.hpp"
 #include "relay_platform.hpp"
 
+#include "os/platform.hpp"
+
 namespace relay
 {
     struct relay_session_t
@@ -33,7 +35,7 @@ namespace relay
     struct relay_t
     {
         relay_manager_t* relay_manager;
-        relay_platform_socket_t* socket;
+        legacy::relay_platform_socket_t* socket;
         relay_platform_mutex_t* mutex;
         double initialize_time;
         uint64_t initialize_router_timestamp;

@@ -284,7 +284,7 @@ namespace testing
         {
             legacy::relay_address_t address;
             check(legacy::relay_address_parse(&address, "107.77.207.77") == RELAY_OK);
-            check(address.type == RELAY_ADDRESS_IPV4);
+            check(address.type == net::AddressType::IPv4);
             check(address.port == 0);
             check(address.data.ipv4[0] == 107);
             check(address.data.ipv4[1] == 77);
@@ -295,7 +295,7 @@ namespace testing
         {
             legacy::relay_address_t address;
             check(legacy::relay_address_parse(&address, "127.0.0.1") == RELAY_OK);
-            check(address.type == RELAY_ADDRESS_IPV4);
+            check(address.type == net::AddressType::IPv4);
             check(address.port == 0);
             check(address.data.ipv4[0] == 127);
             check(address.data.ipv4[1] == 0);
@@ -306,7 +306,7 @@ namespace testing
         {
             legacy::relay_address_t address;
             check(legacy::relay_address_parse(&address, "107.77.207.77:40000") == RELAY_OK);
-            check(address.type == RELAY_ADDRESS_IPV4);
+            check(address.type == net::AddressType::IPv4);
             check(address.port == 40000);
             check(address.data.ipv4[0] == 107);
             check(address.data.ipv4[1] == 77);
@@ -317,7 +317,7 @@ namespace testing
         {
             legacy::relay_address_t address;
             check(legacy::relay_address_parse(&address, "127.0.0.1:40000") == RELAY_OK);
-            check(address.type == RELAY_ADDRESS_IPV4);
+            check(address.type == net::AddressType::IPv4);
             check(address.port == 40000);
             check(address.data.ipv4[0] == 127);
             check(address.data.ipv4[1] == 0);
@@ -328,7 +328,7 @@ namespace testing
         {
             legacy::relay_address_t address;
             check(legacy::relay_address_parse(&address, "fe80::202:b3ff:fe1e:8329") == RELAY_OK);
-            check(address.type == RELAY_ADDRESS_IPV6);
+            check(address.type == net::AddressType::IPv6);
             check(address.port == 0);
             check(address.data.ipv6[0] == 0xfe80);
             check(address.data.ipv6[1] == 0x0000);
@@ -343,7 +343,7 @@ namespace testing
         {
             legacy::relay_address_t address;
             check(legacy::relay_address_parse(&address, "::") == RELAY_OK);
-            check(address.type == RELAY_ADDRESS_IPV6);
+            check(address.type == net::AddressType::IPv6);
             check(address.port == 0);
             check(address.data.ipv6[0] == 0x0000);
             check(address.data.ipv6[1] == 0x0000);
@@ -358,7 +358,7 @@ namespace testing
         {
             legacy::relay_address_t address;
             check(legacy::relay_address_parse(&address, "::1") == RELAY_OK);
-            check(address.type == RELAY_ADDRESS_IPV6);
+            check(address.type == net::AddressType::IPv6);
             check(address.port == 0);
             check(address.data.ipv6[0] == 0x0000);
             check(address.data.ipv6[1] == 0x0000);
@@ -373,7 +373,7 @@ namespace testing
         {
             legacy::relay_address_t address;
             check(legacy::relay_address_parse(&address, "[fe80::202:b3ff:fe1e:8329]:40000") == RELAY_OK);
-            check(address.type == RELAY_ADDRESS_IPV6);
+            check(address.type == net::AddressType::IPv6);
             check(address.port == 40000);
             check(address.data.ipv6[0] == 0xfe80);
             check(address.data.ipv6[1] == 0x0000);
@@ -388,7 +388,7 @@ namespace testing
         {
             legacy::relay_address_t address;
             check(legacy::relay_address_parse(&address, "[::]:40000") == RELAY_OK);
-            check(address.type == RELAY_ADDRESS_IPV6);
+            check(address.type == net::AddressType::IPv6);
             check(address.port == 40000);
             check(address.data.ipv6[0] == 0x0000);
             check(address.data.ipv6[1] == 0x0000);
@@ -403,7 +403,7 @@ namespace testing
         {
             legacy::relay_address_t address;
             check(legacy::relay_address_parse(&address, "[::1]:40000") == RELAY_OK);
-            check(address.type == RELAY_ADDRESS_IPV6);
+            check(address.type == net::AddressType::IPv6);
             check(address.port == 40000);
             check(address.data.ipv6[0] == 0x0000);
             check(address.data.ipv6[1] == 0x0000);
@@ -740,15 +740,15 @@ namespace testing
             legacy::relay_address_t local_address;
             legacy::relay_address_parse(&bind_address, "0.0.0.0");
             legacy::relay_address_parse(&local_address, "127.0.0.1");
-            relay::relay_platform_socket_t* socket = relay::relay_platform_socket_create(
+            legacy::relay_platform_socket_t* socket = legacy::relay_platform_socket_create(
                 &bind_address, RELAY_PLATFORM_SOCKET_NON_BLOCKING, 1.0, 64 * 1024, 64 * 1024);
             local_address.port = bind_address.port;
             check(socket);
             uint8_t packet[256];
             memset(packet, 0, sizeof(packet));
-            relay::relay_platform_socket_send_packet(socket, &local_address, packet, sizeof(packet));
+            legacy::relay_platform_socket_send_packet(socket, &local_address, packet, sizeof(packet));
             legacy::relay_address_t from;
-            while (relay::relay_platform_socket_receive_packet(socket, &from, packet, sizeof(packet))) {
+            while (legacy::relay_platform_socket_receive_packet(socket, &from, packet, sizeof(packet))) {
                 check(relay_address_equal(&from, &local_address));
             }
             relay_platform_socket_destroy(socket);
@@ -760,18 +760,18 @@ namespace testing
             legacy::relay_address_t local_address;
             legacy::relay_address_parse(&bind_address, "0.0.0.0");
             legacy::relay_address_parse(&local_address, "127.0.0.1");
-            relay::relay_platform_socket_t* socket =
-                relay::relay_platform_socket_create(&bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, 0.01f, 64 * 1024, 64 * 1024);
+            legacy::relay_platform_socket_t* socket =
+                legacy::relay_platform_socket_create(&bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, 0.01f, 64 * 1024, 64 * 1024);
             local_address.port = bind_address.port;
             check(socket);
             uint8_t packet[256];
             memset(packet, 0, sizeof(packet));
-            relay::relay_platform_socket_send_packet(socket, &local_address, packet, sizeof(packet));
+            legacy::relay_platform_socket_send_packet(socket, &local_address, packet, sizeof(packet));
             legacy::relay_address_t from;
-            while (relay::relay_platform_socket_receive_packet(socket, &from, packet, sizeof(packet))) {
+            while (legacy::relay_platform_socket_receive_packet(socket, &from, packet, sizeof(packet))) {
                 check(legacy::relay_address_equal(&from, &local_address));
             }
-            relay::relay_platform_socket_destroy(socket);
+            legacy::relay_platform_socket_destroy(socket);
         }
 
         // blocking socket with no timeout (ipv4)
@@ -780,17 +780,17 @@ namespace testing
             legacy::relay_address_t local_address;
             legacy::relay_address_parse(&bind_address, "0.0.0.0");
             legacy::relay_address_parse(&local_address, "127.0.0.1");
-            relay::relay_platform_socket_t* socket =
-                relay::relay_platform_socket_create(&bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, -1.0f, 64 * 1024, 64 * 1024);
+            legacy::relay_platform_socket_t* socket =
+                legacy::relay_platform_socket_create(&bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, -1.0f, 64 * 1024, 64 * 1024);
             local_address.port = bind_address.port;
             check(socket);
             uint8_t packet[256];
             memset(packet, 0, sizeof(packet));
-            relay::relay_platform_socket_send_packet(socket, &local_address, packet, sizeof(packet));
+            legacy::relay_platform_socket_send_packet(socket, &local_address, packet, sizeof(packet));
             legacy::relay_address_t from;
-            relay::relay_platform_socket_receive_packet(socket, &from, packet, sizeof(packet));
+            legacy::relay_platform_socket_receive_packet(socket, &from, packet, sizeof(packet));
             check(legacy::relay_address_equal(&from, &local_address));
-            relay::relay_platform_socket_destroy(socket);
+            legacy::relay_platform_socket_destroy(socket);
         }
 
         // non-blocking socket (ipv6)
@@ -800,18 +800,18 @@ namespace testing
             legacy::relay_address_t local_address;
             legacy::relay_address_parse(&bind_address, "[::]");
             legacy::relay_address_parse(&local_address, "[::1]");
-            relay::relay_platform_socket_t* socket =
-                relay::relay_platform_socket_create(&bind_address, RELAY_PLATFORM_SOCKET_NON_BLOCKING, 0, 64 * 1024, 64 * 1024);
+            legacy::relay_platform_socket_t* socket =
+                legacy::relay_platform_socket_create(&bind_address, RELAY_PLATFORM_SOCKET_NON_BLOCKING, 0, 64 * 1024, 64 * 1024);
             local_address.port = bind_address.port;
             check(socket);
             uint8_t packet[256];
             memset(packet, 0, sizeof(packet));
-            relay::relay_platform_socket_send_packet(socket, &local_address, packet, sizeof(packet));
+            legacy::relay_platform_socket_send_packet(socket, &local_address, packet, sizeof(packet));
             legacy::relay_address_t from;
-            while (relay::relay_platform_socket_receive_packet(socket, &from, packet, sizeof(packet))) {
+            while (legacy::relay_platform_socket_receive_packet(socket, &from, packet, sizeof(packet))) {
                 check(legacy::relay_address_equal(&from, &local_address));
             }
-            relay::relay_platform_socket_destroy(socket);
+            legacy::relay_platform_socket_destroy(socket);
         }
 
         // blocking socket with timeout (ipv6)
@@ -820,18 +820,18 @@ namespace testing
             legacy::relay_address_t local_address;
             legacy::relay_address_parse(&bind_address, "[::]");
             legacy::relay_address_parse(&local_address, "[::1]");
-            relay::relay_platform_socket_t* socket =
-                relay::relay_platform_socket_create(&bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, 0.01f, 64 * 1024, 64 * 1024);
+            legacy::relay_platform_socket_t* socket =
+                legacy::relay_platform_socket_create(&bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, 0.01f, 64 * 1024, 64 * 1024);
             local_address.port = bind_address.port;
             check(socket);
             uint8_t packet[256];
             memset(packet, 0, sizeof(packet));
-            relay::relay_platform_socket_send_packet(socket, &local_address, packet, sizeof(packet));
+            legacy::relay_platform_socket_send_packet(socket, &local_address, packet, sizeof(packet));
             legacy::relay_address_t from;
-            while (relay::relay_platform_socket_receive_packet(socket, &from, packet, sizeof(packet))) {
+            while (legacy::relay_platform_socket_receive_packet(socket, &from, packet, sizeof(packet))) {
                 check(legacy::relay_address_equal(&from, &local_address));
             }
-            relay::relay_platform_socket_destroy(socket);
+            legacy::relay_platform_socket_destroy(socket);
         }
 
         // blocking socket with no timeout (ipv6)
@@ -840,17 +840,17 @@ namespace testing
             legacy::relay_address_t local_address;
             legacy::relay_address_parse(&bind_address, "[::]");
             legacy::relay_address_parse(&local_address, "[::1]");
-            relay::relay_platform_socket_t* socket =
-                relay::relay_platform_socket_create(&bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, -1.0f, 64 * 1024, 64 * 1024);
+            legacy::relay_platform_socket_t* socket =
+                legacy::relay_platform_socket_create(&bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, -1.0f, 64 * 1024, 64 * 1024);
             local_address.port = bind_address.port;
             check(socket);
             uint8_t packet[256];
             memset(packet, 0, sizeof(packet));
-            relay::relay_platform_socket_send_packet(socket, &local_address, packet, sizeof(packet));
+            legacy::relay_platform_socket_send_packet(socket, &local_address, packet, sizeof(packet));
             legacy::relay_address_t from;
-            relay::relay_platform_socket_receive_packet(socket, &from, packet, sizeof(packet));
+            legacy::relay_platform_socket_receive_packet(socket, &from, packet, sizeof(packet));
             check(legacy::relay_address_equal(&from, &local_address));
-            relay::relay_platform_socket_destroy(socket);
+            legacy::relay_platform_socket_destroy(socket);
         }
 #endif
     }
@@ -959,7 +959,7 @@ namespace testing
         input_token.session_id = 1234241431241LL;
         input_token.session_version = 5;
         input_token.session_flags = 1;
-        input_token.next_address.type = RELAY_ADDRESS_IPV4;
+        input_token.next_address.type = static_cast<uint8_t>(net::AddressType::IPv4);
         input_token.next_address.data.ipv4[0] = 127;
         input_token.next_address.data.ipv4[1] = 0;
         input_token.next_address.data.ipv4[2] = 0;
