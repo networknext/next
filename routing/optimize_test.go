@@ -1493,6 +1493,21 @@ func TestRouting(t *testing.T) {
 	})
 }
 
+func BenchmarkOptimize(b *testing.B) {
+	costfile, _ := os.Open("./test_data/cost.bin")
+
+	var costMatrix routing.CostMatrix
+	costMatrix.ReadFrom(costfile)
+
+	var routeMatrix routing.RouteMatrix
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		costMatrix.Optimize(&routeMatrix, 1)
+	}
+}
+
 func BenchmarkRouting(b *testing.B) {
 	costfile, _ := os.Open("./test_data/cost.bin")
 
@@ -1507,7 +1522,54 @@ func BenchmarkRouting(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		routeMatrix.Routes(from, to)
+	}
+}
+
+// Benchmarks fetching all relays in the given datacenter for the first data center in the file
+func BenchmarkRelaysIn(b *testing.B) {
+	costfile, _ := os.Open("./test_data/cost-for-sanity-check.bin") // This file actually has datacenters in it
+
+	var costMatrix routing.CostMatrix
+	costMatrix.ReadFrom(costfile)
+
+	var routeMatrix routing.RouteMatrix
+	costMatrix.Optimize(&routeMatrix, 1)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		routeMatrix.RelaysIn(routing.Datacenter{ID: routeMatrix.DatacenterIds[0], Name: routeMatrix.DatacenterNames[0]})
+	}
+}
+
+// Benchmarks all routes from the first datacenter in the file to every other relay in the route matrix
+func BenchmarkAllRoutes(b *testing.B) {
+	costfile, _ := os.Open("./test_data/cost-for-sanity-check.bin") // This file actually has datacenters in it
+
+	var costMatrix routing.CostMatrix
+	costMatrix.ReadFrom(costfile)
+
+	var routeMatrix routing.RouteMatrix
+	costMatrix.Optimize(&routeMatrix, 1)
+
+	if len(routeMatrix.DatacenterIds) == 0 {
+		b.FailNow()
+		return
+	}
+
+	relays := make([]routing.Relay, len(routeMatrix.RelayIds))
+	for i := 0; i < len(relays); i++ {
+		relays[i] = routing.Relay{ID: routeMatrix.RelayIds[i], Name: routeMatrix.RelayNames[i]}
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		routeMatrix.AllRoutes(routing.Datacenter{ID: routeMatrix.DatacenterIds[0], Name: routeMatrix.DatacenterNames[0]}, relays)
 	}
 }
