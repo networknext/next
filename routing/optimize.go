@@ -119,7 +119,10 @@ func (m *CostMatrix) WriteTo(w io.Writer) (int64, error) {
 
 func (m *CostMatrix) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/octet-stream")
-	m.WriteTo(w)
+	_, err := m.WriteTo(w)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
 }
 
 /* Binary data outline for CostMatrix v2: "->" means seqential elements in memory and not another section
@@ -758,7 +761,10 @@ func (m *RouteMatrix) WriteTo(w io.Writer) (int64, error) {
 
 func (m *RouteMatrix) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/octet-stream")
-	m.WriteTo(w)
+	_, err := m.WriteTo(w)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
 }
 
 /* Binary data outline for RouteMatrix v2: "->" means seqential elements in memory and not another section, "(...)" mean that section sequentially repeats for however many
