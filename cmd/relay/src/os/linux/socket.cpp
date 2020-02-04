@@ -110,7 +110,7 @@ namespace legacy
 
 		// set non-blocking io and receive timeout
 
-		if (socket_type == RELAY_SOCKET_NON_BLOCKING) {
+		if (socket_type == os::SocketType::NonBlocking) {
 			if (fcntl(socket->handle, F_SETFL, O_NONBLOCK, 1) == -1) {
 				relay_printf("failed to set socket to non-blocking");
 				relay_platform_socket_destroy(socket);

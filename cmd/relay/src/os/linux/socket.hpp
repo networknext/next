@@ -25,10 +25,10 @@
 
 namespace os
 {
-	enum class SocketType
+	enum class SocketType : uint8_t
 	{
-		NonBlocking = RELAY_SOCKET_NON_BLOCKING,
-		Blocking = RELAY_SOCKET_BLOCKING
+		NonBlocking,
+		Blocking
 	};
 
 	// SBS = Send Buffer Size
@@ -298,6 +298,14 @@ namespace os
 	{
 		::close(mHandle);
 	}
+
+    inline bool operator==(SocketType st, int i) {
+        return static_cast<int>(st) == i;
+    }
+
+    inline bool operator==(int i, SocketType st) {
+        return static_cast<int>(st) == i;
+    }
 }  // namespace os
 
 namespace legacy
