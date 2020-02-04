@@ -8,7 +8,7 @@
 
 const auto REPS = 10000000000;
 
-Bench(ReadUint16_vs_read_uint16, true)
+Bench(ReadUint16_vs_read_uint16)
 {
     std::default_random_engine gen;
     std::uniform_int_distribution<uint8_t> dist;

@@ -62,4 +62,11 @@
 #define RELAY_PING_PACKET 75
 #define RELAY_PONG_PACKET 76
 
+/* This will prevent GCC from optimizing out useless function calls, mainly for benchmarking */
+#ifdef BENCHMARKING
+#define GCC_NO_OPT_OUT asm("")
+#else
+#define GCC_NO_OPT_OUT
+#endif
+
 #endif

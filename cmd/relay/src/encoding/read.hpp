@@ -54,7 +54,7 @@ namespace encoding
     template <size_t BuffSize>
     uint16_t ReadUint16(std::array<uint8_t, BuffSize>& buff, size_t& index)
     {
-        asm("");
+        GCC_NO_OPT_OUT;
         auto retval = *reinterpret_cast<uint16_t*>(&buff[index]);
         index += 2;
         return retval;
@@ -63,7 +63,7 @@ namespace encoding
     template <size_t BuffSize>
     void ReadAddress(std::array<uint8_t, BuffSize>& buff, size_t& index, net::Address& addr)
     {
-        asm("");
+        GCC_NO_OPT_OUT;
 #ifndef NDEBUG
         auto start = index;
 #endif

@@ -37,6 +37,7 @@ namespace net
 
     inline void Address::reset()
     {
+        GCC_NO_OPT_OUT;
         if (Type == RELAY_ADDRESS_IPV4) {
             IPv4.fill(0);
         } else if (Type == RELAY_ADDRESS_IPV6) {
