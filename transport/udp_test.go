@@ -29,6 +29,10 @@ func (bp *mockBuyerProvider) GetAndCheckBySdkVersion3PublicKeyId(id uint64) (*st
 
 type mockRouteProvider struct{}
 
+func (rp *mockRouteProvider) ResolveRelay(id uint64) (routing.Relay, error) {
+	return routing.Relay{}, nil
+}
+
 func (rp *mockRouteProvider) AllRoutes(d routing.Datacenter, rs []routing.Relay) []routing.Route {
 	return []routing.Route{
 		{
