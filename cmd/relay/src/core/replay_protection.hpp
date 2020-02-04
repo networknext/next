@@ -18,10 +18,17 @@ namespace core
 		bool alreadyReceived(uint64_t seq);
 		void advanceSeq(uint64_t seq);
 
+		const uint64_t& mostRecentSeq();
+
 	private:
 		uint64_t mRecentSeq;
 		std::array<uint64_t, RELAY_REPLAY_PROTECTION_BUFFER_SIZE> mReceivedPacket;
 	};
+
+	inline const uint64_t& ReplayProtection::mostRecentSeq()
+	{
+		return mRecentSeq;
+	}
 }  // namespace core
 
 namespace legacy

@@ -3,12 +3,16 @@
 #include <cassert>
 #include <cstring>
 
+namespace {
+    const uint64_t InitialValue = 0xFFFFFFFFFFFFFFFFLL;
+}
+
 namespace core
 {
 	void ReplayProtection::reset()
 	{
 		mRecentSeq = 0;
-		mReceivedPacket.fill(0);
+		mReceivedPacket.fill(InitialValue);
 	}
 
 	bool ReplayProtection::alreadyReceived(uint64_t seq)
@@ -19,7 +23,7 @@ namespace core
 
 		auto index = seq % RELAY_REPLAY_PROTECTION_BUFFER_SIZE;
 
-		if (mReceivedPacket[index] == 0xFFFFFFFFFFFFFFFFLL) {
+		if (mReceivedPacket[index] == InitialValue) {
 			return false;
 		}
 
