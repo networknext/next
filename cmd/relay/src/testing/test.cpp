@@ -5,6 +5,7 @@
 #include "encoding/read.test.hpp"
 #include "encoding/write.test.hpp"
 #include "net/address.test.hpp"
+#include "core/replay_protection.test.hpp"
 #include "legacy.hpp"
 
 #include "relay/relay.hpp"
@@ -20,7 +21,8 @@ namespace testing
         RUN_TEST(TestRead);
         RUN_TEST(TestWrite);
         RUN_TEST(TestAddress);
-        RUN_TEST(TestLegacy);
+        RUN_TEST(TestReplayProtection);
+        RUN_TEST(legacy_testing::TestLegacy);
         printf("\n");
 
         fflush(stdout);
