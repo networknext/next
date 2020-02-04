@@ -48,8 +48,8 @@ func main() {
 	}
 
 	// Attempt to connect to REDIS_HOST, falling back to local instance if not explicitly specified
-	var redisHost string
-	if redisHost = os.Getenv("REDIS_HOST"); len(redisHost) == 0 {
+	redisHost := os.Getenv("REDIS_HOST")
+	if len(redisHost) == 0 {
 		redisHost = "localhost:6379"
 		log.Printf("env var 'REDIS_HOST' is not set, falling back to default value of '%s'\n", redisHost)
 	}
