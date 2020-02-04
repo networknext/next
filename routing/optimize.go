@@ -847,7 +847,7 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 		m.DatacenterIds = make([]uint64, datacenterCount)
 		m.DatacenterNames = make([]string, datacenterCount)
 		for i := 0; i < int(datacenterCount); i++ {
-			if err := idReadFunc(data, &index, &m.DatacenterIds[i], "[CostMatrix] invalid read at datacenter ids"); err != nil {
+			if err := idReadFunc(data, &index, &m.DatacenterIds[i], "[RouteMatrix] invalid read at datacenter ids"); err != nil {
 				return err
 			}
 
