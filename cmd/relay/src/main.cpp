@@ -30,7 +30,7 @@
 #include "relay/relay_continue_token.hpp"
 #include "relay/relay_ping_history.hpp"
 #include "relay/relay_platform.hpp"
-#include "relay/relay_replay_protection.hpp"
+#include "core/replay_protection.hpp"
 #include "relay/relay_route_token.hpp"
 
 namespace
