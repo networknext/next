@@ -28,8 +28,6 @@ namespace relay
         relay_ping_history_t ping_history_array[MAX_RELAYS];
     };
 
-    void relay_manager_reset(relay_manager_t* manager);
-
     relay_manager_t* relay_manager_create();
 
     void relay_manager_reset(relay_manager_t* manager);

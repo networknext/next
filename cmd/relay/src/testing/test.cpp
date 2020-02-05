@@ -12,21 +12,21 @@
 
 namespace testing
 {
-    void relay_test()
-    {
-        printf("\nRunning relay tests:\n\n");
+  void relay_test()
+  {
+    printf("\nRunning relay tests:\n\n");
 
-        check(relay::relay_initialize() == RELAY_OK);
+    check(relay::relay_initialize() == RELAY_OK);
 
-        RUN_TEST(TestRead);
-        RUN_TEST(TestWrite);
-        RUN_TEST(TestAddress);
-        RUN_TEST(TestReplayProtection);
-        RUN_TEST(legacy_testing::TestLegacy);
-        printf("\n");
+    RUN_TEST(TestRead);
+    RUN_TEST(TestWrite);
+    RUN_TEST(TestAddress);
+    RUN_TEST(TestReplayProtection);
+    RUN_TEST(legacy_testing::TestLegacy);
+    printf("\n");
 
-        fflush(stdout);
+    fflush(stdout);
 
-        relay::relay_term();
-    }
+    relay::relay_term();
+  }
 }  // namespace testing

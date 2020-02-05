@@ -3,6 +3,7 @@
 
 #include <cinttypes>
 
+// Legacy, use bools instead, eventually delete and replace these
 #define RELAY_OK 0
 #define RELAY_ERROR -1
 
@@ -59,6 +60,8 @@
 #define NEAR_PONG_PACKET 74
 #define RELAY_PING_PACKET 75
 #define RELAY_PONG_PACKET 76
+
+#define INVALID_SEQUENCE_NUMBER 0xFFFFFFFFFFFFFFFFULL
 
 /* This will prevent GCC from optimizing out useless function calls, for benchmarking */
 #ifdef BENCH_BUILD

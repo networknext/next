@@ -1,5 +1,4 @@
 #include "relay.hpp"
 
-namespace core {
-
-}
+namespace core
+{}

@@ -9,16 +9,15 @@
 
 #define BENCH_BREAK "\n=============================================\n\n"
 
-#define BENCHMARK_CLASS_CREATOR(benchmark_name, enabled)                                 \
-    class _bench_##benchmark_name##_ : public benchmarking::Benchmark                    \
-    {                                                                                    \
-       public:                                                                           \
-        _bench_##benchmark_name##_() : benchmarking::Benchmark(#benchmark_name, enabled) \
-        {}                                                                               \
-        void body() override;                                                            \
-    };                                                                                   \
-    _bench_##benchmark_name##_ _var_##benchmark_name##_;                                 \
-    void _bench_##benchmark_name##_::body()
+#define BENCHMARK_CLASS_CREATOR(benchmark_name, enabled)                               \
+  class _bench_##benchmark_name##_: public benchmarking::Benchmark                     \
+  {                                                                                    \
+   public:                                                                             \
+    _bench_##benchmark_name##_(): benchmarking::Benchmark(#benchmark_name, enabled) {} \
+    void body() override;                                                              \
+  };                                                                                   \
+  _bench_##benchmark_name##_ _var_##benchmark_name##_;                                 \
+  void _bench_##benchmark_name##_::body()
 
 #define BENCHMARK_CLASS_CREATOR_1_ARG(benchmark_name) BENCHMARK_CLASS_CREATOR(benchmark_name, false)
 #define BENCHMARK_CLASS_CREATOR_2_ARG(benchmark_name, enabled) BENCHMARK_CLASS_CREATOR(benchmark_name, enabled)
@@ -37,35 +36,35 @@
 
 #define Bench(...) BENCHMARK_MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__)
 
-#define Do(times)  \
-    Timer.reset(); \
-    for (size_t i = 0; i < times; i++)
+#define Do(times) \
+  Timer.reset();  \
+  for (size_t i = 0; i < times; i++)
 
 // Just for readability
-#define Skip()                                                          \
-    std::cout << BENCH_BREAK ; \
-    std::cout << "Skipping the rest of this benchmark\n";               \
-    return
+#define Skip()                                          \
+  std::cout << BENCH_BREAK;                             \
+  std::cout << "Skipping the rest of this benchmark\n"; \
+  return
 
 extern benchmarking::Clock Timer;
 
 namespace benchmarking
 {
-    class Benchmark
-    {
-       public:
-        static void Run();
+  class Benchmark
+  {
+   public:
+    static void Run();
 
-        const char* BenchmarkName;
-        const bool Enabled;
+    const char* BenchmarkName;
+    const bool Enabled;
 
-       protected:
-        Benchmark(const char* name, bool enabled);
+   protected:
+    Benchmark(const char* name, bool enabled);
 
-        virtual void body() = 0;
+    virtual void body() = 0;
 
-       private:
-        static std::deque<Benchmark*> mBenchmarks;
-    };
+   private:
+    static std::deque<Benchmark*> mBenchmarks;
+  };
 }  // namespace benchmarking
 #endif
