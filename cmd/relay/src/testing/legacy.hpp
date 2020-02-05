@@ -2,6 +2,6 @@
 #define TESTING_LEGACY_HPP
 namespace legacy_testing
 {
-    void TestLegacy();
+  void TestLegacy();
 }
 #endif

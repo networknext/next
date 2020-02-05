@@ -2,11 +2,11 @@
 #define TESTING_NET_ADDRESS_TEST_HPP
 namespace testing
 {
-	void TestAddress();
+  void TestAddress();
 }  // namespace testing
 
 namespace legacy_testing
 {
-	void test_address();
+  void test_address();
 }
 #endif

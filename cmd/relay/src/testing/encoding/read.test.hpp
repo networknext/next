@@ -2,6 +2,6 @@
 #define TESTING_READ_TEST_HPP
 namespace testing
 {
-    void TestRead();
+  void TestRead();
 }
 #endif

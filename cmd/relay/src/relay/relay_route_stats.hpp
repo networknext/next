@@ -5,14 +5,14 @@
 
 namespace relay
 {
-    struct relay_route_stats_t
-    {
-        float rtt;
-        float jitter;
-        float packet_loss;
-    };
+  struct relay_route_stats_t
+  {
+    float rtt;
+    float jitter;
+    float packet_loss;
+  };
 
-    void relay_route_stats_from_ping_history(
-        const relay_ping_history_t* history, double start, double end, relay_route_stats_t* stats, double ping_safety);
+  void relay_route_stats_from_ping_history(
+   const relay_ping_history_t* history, double start, double end, relay_route_stats_t* stats, double ping_safety);
 }  // namespace relay
 #endif

@@ -12,10 +12,10 @@ extern util::Console _console_;
 // unlike the debug version of Log(), the release does not record the file and line as to not expose that
 
 #if not defined NDEBUG and not defined BENCH_BUILD
-#define LogDebug(...)                                         \
-	_console_.log(__FILE__, " (", __LINE__, "): ", __VA_ARGS__); \
-	std::cout << std::flush
-    // Define regular logging
+#define LogDebug(...)                                          \
+  _console_.log(__FILE__, " (", __LINE__, "): ", __VA_ARGS__); \
+  std::cout << std::flush
+// Define regular logging
 #define Log(...) LogDebug(__VA_ARGS__)
 #else
 #define LogDebug(...)

@@ -9,20 +9,20 @@
 
 namespace core
 {
-	struct Session
-	{
-		uint64_t ExpireTimestamp;
-		uint64_t SessionID;
-		uint8_t SessionVersion;
-		uint64_t ClientToServerSeq;
-		uint64_t ServerToClientSeq;
-		int KbpsUp;
-		int KbpsDown;
-		net::Address PrevAddr;
-		net::Address NextAddr;
-		uint8_t private_key[crypto_box_SECRETKEYBYTES];
-		ReplayProtection ServerToClientProtection;
-		ReplayProtection ClientToServerProtection;
-	};
+  struct Session
+  {
+    uint64_t ExpireTimestamp;
+    uint64_t SessionID;
+    uint8_t SessionVersion;
+    uint64_t ClientToServerSeq;
+    uint64_t ServerToClientSeq;
+    int KbpsUp;
+    int KbpsDown;
+    net::Address PrevAddr;
+    net::Address NextAddr;
+    uint8_t private_key[crypto_box_SECRETKEYBYTES];
+    ReplayProtection ServerToClientProtection;
+    ReplayProtection ClientToServerProtection;
+  };
 }  // namespace core
 #endif

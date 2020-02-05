@@ -5,22 +5,22 @@
 
 namespace core
 {
-	class PingHistory
-	{
-	public:
-		PingHistory() = default;
-		~PingHistory() = default;
+  class PingHistory
+  {
+   public:
+    PingHistory() = default;
+    ~PingHistory() = default;
 
-        void clear();
+    void clear();
 
-        uint64_t pingSent(double time);
+    uint64_t pingSent(double time);
 
-        void pongReceived(uint64_t seq, double time);
+    void pongReceived(uint64_t seq, double time);
 
-	private:
-        uint64_t mSeq;
-        double mTimePingSent;
-        double mTimePongRecieved;
-	};
+   private:
+    uint64_t mSeq;
+    double mTimePingSent;
+    double mTimePongRecieved;
+  };
 }  // namespace core
 #endif
