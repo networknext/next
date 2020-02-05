@@ -600,7 +600,7 @@ namespace
       legacy::relay_platform_socket_send_packet(socket, &local_address, packet, sizeof(packet));
       legacy::relay_address_t from;
       while (legacy::relay_platform_socket_receive_packet(socket, &from, packet, sizeof(packet))) {
-        check(legacy::relay_address_equal(&from, &local_address));
+        check(legacy::relay_address_equal(&from, &local_address) != 0);
       }
       legacy::relay_platform_socket_destroy(socket);
     }
@@ -614,13 +614,13 @@ namespace
       legacy::relay_platform_socket_t* socket =
        legacy::relay_platform_socket_create(&bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, 0.01f, 64 * 1024, 64 * 1024);
       local_address.port = bind_address.port;
-      check(socket);
+      check(socket != 0);
       uint8_t packet[256];
       memset(packet, 0, sizeof(packet));
       legacy::relay_platform_socket_send_packet(socket, &local_address, packet, sizeof(packet));
       legacy::relay_address_t from;
       while (legacy::relay_platform_socket_receive_packet(socket, &from, packet, sizeof(packet))) {
-        check(legacy::relay_address_equal(&from, &local_address));
+        check(legacy::relay_address_equal(&from, &local_address) != 0);
       }
       legacy::relay_platform_socket_destroy(socket);
     }
@@ -634,13 +634,13 @@ namespace
       legacy::relay_platform_socket_t* socket =
        legacy::relay_platform_socket_create(&bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, -1.0f, 64 * 1024, 64 * 1024);
       local_address.port = bind_address.port;
-      check(socket);
+      check(socket != 0);
       uint8_t packet[256];
       memset(packet, 0, sizeof(packet));
       legacy::relay_platform_socket_send_packet(socket, &local_address, packet, sizeof(packet));
       legacy::relay_address_t from;
       legacy::relay_platform_socket_receive_packet(socket, &from, packet, sizeof(packet));
-      check(legacy::relay_address_equal(&from, &local_address));
+      check(legacy::relay_address_equal(&from, &local_address) != 0);
       legacy::relay_platform_socket_destroy(socket);
     }
 #endif
@@ -657,7 +657,7 @@ namespace
   static void test_platform_thread()
   {
     relay::relay_platform_thread_t* thread = relay::relay_platform_thread_create(test_thread_function, NULL);
-    check(thread);
+    check(thread != 0);
     relay::relay_platform_thread_join(thread);
     relay::relay_platform_thread_destroy(thread);
     check(threads_work);
@@ -666,7 +666,7 @@ namespace
   static void test_platform_mutex()
   {
     relay::relay_platform_mutex_t* mutex = relay::relay_platform_mutex_create();
-    check(mutex);
+    check(mutex != 0);
     relay_platform_mutex_acquire(mutex);
     relay_platform_mutex_release(mutex);
     {
