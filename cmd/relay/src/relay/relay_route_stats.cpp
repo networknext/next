@@ -6,7 +6,7 @@
 namespace relay
 {
   void relay_route_stats_from_ping_history(
-   const relay_ping_history_t* history, double start, double end, relay_route_stats_t* stats, double ping_safety)
+   const legacy::relay_ping_history_t* history, double start, double end, relay_route_stats_t* stats, double ping_safety)
   {
     assert(history);
     assert(stats);
@@ -22,7 +22,7 @@ namespace relay
     int num_pongs_received = 0;
 
     for (int i = 0; i < RELAY_PING_HISTORY_ENTRY_COUNT; i++) {
-      const relay::relay_ping_history_entry_t* entry = &history->entries[i];
+      const legacy::relay_ping_history_entry_t* entry = &history->entries[i];
 
       if (entry->time_ping_sent >= start && entry->time_ping_sent <= end - ping_safety) {
         num_pings_sent++;
@@ -43,7 +43,7 @@ namespace relay
     int num_pongs = 0;
 
     for (int i = 0; i < RELAY_PING_HISTORY_ENTRY_COUNT; i++) {
-      const relay::relay_ping_history_entry_t* entry = &history->entries[i];
+      const legacy::relay_ping_history_entry_t* entry = &history->entries[i];
 
       if (entry->time_ping_sent >= start && entry->time_ping_sent <= end) {
         if (entry->time_pong_received > entry->time_ping_sent) {
@@ -67,7 +67,7 @@ namespace relay
     double stddev_rtt = 0.0;
 
     for (int i = 0; i < RELAY_PING_HISTORY_ENTRY_COUNT; i++) {
-      const relay::relay_ping_history_entry_t* entry = &history->entries[i];
+      const legacy::relay_ping_history_entry_t* entry = &history->entries[i];
 
       if (entry->time_ping_sent >= start && entry->time_ping_sent <= end) {
         if (entry->time_pong_received > entry->time_ping_sent) {

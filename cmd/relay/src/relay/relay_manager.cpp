@@ -51,7 +51,7 @@ namespace relay
     uint64_t new_relay_ids[MAX_RELAYS];
     double new_relay_last_ping_time[MAX_RELAYS];
     legacy::relay_address_t new_relay_addresses[MAX_RELAYS];
-    relay_ping_history_t* new_relay_ping_history[MAX_RELAYS];
+    legacy::relay_ping_history_t* new_relay_ping_history[MAX_RELAYS];
 
     int index = 0;
 
@@ -100,7 +100,7 @@ namespace relay
     memcpy(manager->relay_ids, new_relay_ids, 8 * index);
     memcpy(manager->relay_last_ping_time, new_relay_last_ping_time, 8 * index);
     memcpy(manager->relay_addresses, new_relay_addresses, sizeof(legacy::relay_address_t) * index);
-    memcpy(manager->relay_ping_history, new_relay_ping_history, sizeof(relay_ping_history_t*) * index);
+    memcpy(manager->relay_ping_history, new_relay_ping_history, sizeof(legacy::relay_ping_history_t*) * index);
 
     // make sure all ping times are evenly distributed to avoid clusters of ping packets
 

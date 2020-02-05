@@ -5,7 +5,7 @@
 
 #include "config.hpp"
 #include "net/address.hpp"
-#include "relay_ping_history.hpp"
+#include "core/ping_history.hpp"
 
 namespace relay
 {
@@ -24,8 +24,8 @@ namespace relay
     uint64_t relay_ids[MAX_RELAYS];
     double relay_last_ping_time[MAX_RELAYS];
     legacy::relay_address_t relay_addresses[MAX_RELAYS];
-    relay_ping_history_t* relay_ping_history[MAX_RELAYS];
-    relay_ping_history_t ping_history_array[MAX_RELAYS];
+    legacy::relay_ping_history_t* relay_ping_history[MAX_RELAYS];
+    legacy::relay_ping_history_t ping_history_array[MAX_RELAYS];
   };
 
   relay_manager_t* relay_manager_create();

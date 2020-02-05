@@ -15,7 +15,7 @@
     _test_##test_name##_(): testing::SpecTest(#test_name, disabled) {} \
     void body() override;                                              \
   };                                                                   \
-  _test_##test_name##_ _var_##test_name##_;                            \
+  _test_##test_name##_ _test_var_##test_name##_;                            \
   void _test_##test_name##_::body()
 
 #define TEST_CLASS_CREATOR_1_ARG(test_name) TEST_CLASS_CREATOR(test_name, false)

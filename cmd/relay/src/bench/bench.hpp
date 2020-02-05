@@ -16,7 +16,7 @@
     _bench_##benchmark_name##_(): benchmarking::Benchmark(#benchmark_name, enabled) {} \
     void body() override;                                                              \
   };                                                                                   \
-  _bench_##benchmark_name##_ _var_##benchmark_name##_;                                 \
+  _bench_##benchmark_name##_ _bench_var_##benchmark_name##_;                                 \
   void _bench_##benchmark_name##_::body()
 
 #define BENCHMARK_CLASS_CREATOR_1_ARG(benchmark_name) BENCHMARK_CLASS_CREATOR(benchmark_name, false)

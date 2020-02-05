@@ -17,20 +17,23 @@
 
 #include "sysinfo.hpp"
 #include "config.hpp"
-#include "testing/test.hpp"
-#include "bench/bench.hpp"
 #include "util.hpp"
 
 #include "encoding/base64.hpp"
 #include "encoding/read.hpp"
 #include "encoding/write.hpp"
 
-#include "relay/relay.hpp"
-#include "net/address.hpp"
-#include "relay/relay_continue_token.hpp"
-#include "relay/relay_ping_history.hpp"
-#include "relay/relay_platform.hpp"
+#include "core/ping_history.hpp"
 #include "core/replay_protection.hpp"
+
+#include "net/address.hpp"
+
+#include "bench/bench.hpp"
+#include "testing/test.hpp"
+
+#include "relay/relay.hpp"
+#include "relay/relay_continue_token.hpp"
+#include "relay/relay_platform.hpp"
 #include "relay/relay_route_token.hpp"
 
 namespace
