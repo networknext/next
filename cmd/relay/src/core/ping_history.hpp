@@ -10,7 +10,7 @@ namespace core
 {
   struct HistoryEntry
   {
-    uint64_t Seq = INVALID_SEQUENCE_NUMBER;
+    uint64_t Sequence = INVALID_SEQUENCE_NUMBER;
     double TimePingSent = -1.0;
     double TimePongRecieved = -1.0;
   };
@@ -27,18 +27,22 @@ namespace core
 
     void pongReceived(uint64_t seq, double time);
 
-    std::array<HistoryEntry, RELAY_PING_HISTORY_ENTRY_COUNT> Entries;
-
     // helper for testing only
     uint64_t seq();
+    const HistoryEntry& operator[](size_t i);
 
    private:
     uint64_t mSeq = 0;
+    std::array<HistoryEntry, RELAY_PING_HISTORY_ENTRY_COUNT> mEntries;
   };
 
   inline uint64_t PingHistory::seq()
   {
     return mSeq;
+  }
+
+  inline const HistoryEntry& PingHistory::operator[](size_t i) {
+      return mEntries[i % mEntries.size()];
   }
 }  // namespace core
 

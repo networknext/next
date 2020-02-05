@@ -8,25 +8,25 @@ namespace core
   {
     GCC_NO_OPT_OUT;
     mSeq = 0;
-    Entries.fill(HistoryEntry());
+    mEntries.fill(HistoryEntry());
   }
 
   uint64_t PingHistory::pingSent(double time)
   {
     const auto index = mSeq % RELAY_PING_HISTORY_ENTRY_COUNT;
-    auto& entry = Entries[index];
-    entry.Seq = mSeq;
+    auto& entry = mEntries[index];
+    entry.Sequence = mSeq;
     entry.TimePingSent = time;
     entry.TimePongRecieved = -1.0;
     mSeq++;
-    return entry.Seq;
+    return entry.Sequence;
   }
 
   void PingHistory::pongReceived(uint64_t seq, double time)
   {
     const auto index = seq % RELAY_PING_HISTORY_ENTRY_COUNT;
-    auto& entry = Entries[index];
-    if (entry.Seq == seq) {
+    auto& entry = mEntries[index];
+    if (entry.Sequence == seq) {
       entry.TimePongRecieved = time;
     }
   }
