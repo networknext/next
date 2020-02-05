@@ -518,9 +518,9 @@ namespace
     encoding::read_address(&q, &read_b);
     encoding::read_address(&q, &read_c);
 
-    check(legacy::relay_address_equal(&a, &read_a));
-    check(legacy::relay_address_equal(&b, &read_b));
-    check(legacy::relay_address_equal(&c, &read_c));
+    check(legacy::relay_address_equal(&a, &read_a) != 0);
+    check(legacy::relay_address_equal(&b, &read_b) != 0);
+    check(legacy::relay_address_equal(&c, &read_c) != 0);
   }
 
   static void test_platform_socket()
@@ -534,13 +534,13 @@ namespace
       legacy::relay_platform_socket_t* socket =
        legacy::relay_platform_socket_create(&bind_address, RELAY_PLATFORM_SOCKET_NON_BLOCKING, 1.0, 64 * 1024, 64 * 1024);
       local_address.port = bind_address.port;
-      check(socket);
+      check(socket != 0);
       uint8_t packet[256];
       memset(packet, 0, sizeof(packet));
       legacy::relay_platform_socket_send_packet(socket, &local_address, packet, sizeof(packet));
       legacy::relay_address_t from;
       while (legacy::relay_platform_socket_receive_packet(socket, &from, packet, sizeof(packet))) {
-        check(relay_address_equal(&from, &local_address));
+        check(relay_address_equal(&from, &local_address) != 0);
       }
       relay_platform_socket_destroy(socket);
     }
@@ -554,13 +554,13 @@ namespace
       legacy::relay_platform_socket_t* socket =
        legacy::relay_platform_socket_create(&bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, 0.01f, 64 * 1024, 64 * 1024);
       local_address.port = bind_address.port;
-      check(socket);
+      check(socket != 0);
       uint8_t packet[256];
       memset(packet, 0, sizeof(packet));
       legacy::relay_platform_socket_send_packet(socket, &local_address, packet, sizeof(packet));
       legacy::relay_address_t from;
       while (legacy::relay_platform_socket_receive_packet(socket, &from, packet, sizeof(packet))) {
-        check(legacy::relay_address_equal(&from, &local_address));
+        check(legacy::relay_address_equal(&from, &local_address) != 0);
       }
       legacy::relay_platform_socket_destroy(socket);
     }
@@ -574,13 +574,13 @@ namespace
       legacy::relay_platform_socket_t* socket =
        legacy::relay_platform_socket_create(&bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, -1.0f, 64 * 1024, 64 * 1024);
       local_address.port = bind_address.port;
-      check(socket);
+      check(socket != 0);
       uint8_t packet[256];
       memset(packet, 0, sizeof(packet));
       legacy::relay_platform_socket_send_packet(socket, &local_address, packet, sizeof(packet));
       legacy::relay_address_t from;
       legacy::relay_platform_socket_receive_packet(socket, &from, packet, sizeof(packet));
-      check(legacy::relay_address_equal(&from, &local_address));
+      check(legacy::relay_address_equal(&from, &local_address) != 0);
       legacy::relay_platform_socket_destroy(socket);
     }
 
@@ -594,7 +594,7 @@ namespace
       legacy::relay_platform_socket_t* socket =
        legacy::relay_platform_socket_create(&bind_address, RELAY_PLATFORM_SOCKET_NON_BLOCKING, 0, 64 * 1024, 64 * 1024);
       local_address.port = bind_address.port;
-      check(socket);
+      check(socket != 0);
       uint8_t packet[256];
       memset(packet, 0, sizeof(packet));
       legacy::relay_platform_socket_send_packet(socket, &local_address, packet, sizeof(packet));

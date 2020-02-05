@@ -1,6 +1,8 @@
 #ifndef TESTING_TEST_HPP
 #define TESTING_TEST_HPP
 
+#include <type_traits>
+
 #include <deque>
 #include <cstdio>
 #include <cstdlib>
@@ -15,7 +17,7 @@
     _test_##test_name##_(): testing::SpecTest(#test_name, disabled) {} \
     void body() override;                                              \
   };                                                                   \
-  _test_##test_name##_ _test_var_##test_name##_;                            \
+  _test_##test_name##_ _test_var_##test_name##_;                       \
   void _test_##test_name##_::body()
 
 #define TEST_CLASS_CREATOR_1_ARG(test_name) TEST_CLASS_CREATOR(test_name, false)
@@ -36,12 +38,8 @@
 
 #define Test(...) TEST_MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__)
 
-#define check(condition)                                                                              \
-  do {                                                                                                \
-    if (!(condition)) {                                                                               \
-      testing::check_handler(#condition, (const char*)__FUNCTION__, (const char*)__FILE__, __LINE__); \
-    }                                                                                                 \
-  } while (0)
+#define check(condition) \
+  testing::check_handler((condition), #condition, (const char*)__FUNCTION__, (const char*)__FILE__, __LINE__);
 
 namespace testing
 {
@@ -59,18 +57,24 @@ namespace testing
     virtual void body() = 0;
   };
 
-  inline void check_handler(const char* condition, const char* function, const char* file, int line)
+  template <typename T>
+  void check_handler(T result, const char* condition, const char* function, const char* file, int line);
+
+  template <>
+  inline void check_handler(bool result, const char* condition, const char* function, const char* file, int line)
   {
-    printf("check failed: ( %s ), function %s, file %s, line %d\n", condition, function, file, line);
-    fflush(stdout);
+    if (!result) {
+      printf("check failed: ( %s ), function %s, file %s, line %d\n", condition, function, file, line);
+      fflush(stdout);
 #ifndef NDEBUG
 #if defined(__GNUC__)
-    __builtin_trap();
+      __builtin_trap();
 #elif defined(_MSC_VER)
-    __debugbreak();
+      __debugbreak();
 #endif
 #endif
-    exit(1);
+      exit(1);
+    }
   }
 }  // namespace testing
 #endif
