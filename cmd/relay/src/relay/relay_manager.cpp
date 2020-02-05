@@ -32,7 +32,7 @@ namespace relay
     }
 
     void relay_manager_update(
-        relay_manager_t* manager, int num_relays, const uint64_t* relay_ids, const relay_address_t* relay_addresses)
+        relay_manager_t* manager, int num_relays, const uint64_t* relay_ids, const legacy::relay_address_t* relay_addresses)
     {
         assert(manager);
         assert(num_relays >= 0);
@@ -50,7 +50,7 @@ namespace relay
 
         uint64_t new_relay_ids[MAX_RELAYS];
         double new_relay_last_ping_time[MAX_RELAYS];
-        relay_address_t new_relay_addresses[MAX_RELAYS];
+        legacy::relay_address_t new_relay_addresses[MAX_RELAYS];
         relay_ping_history_t* new_relay_ping_history[MAX_RELAYS];
 
         int index = 0;
@@ -99,7 +99,7 @@ namespace relay
         manager->num_relays = index;
         memcpy(manager->relay_ids, new_relay_ids, 8 * index);
         memcpy(manager->relay_last_ping_time, new_relay_last_ping_time, 8 * index);
-        memcpy(manager->relay_addresses, new_relay_addresses, sizeof(relay_address_t) * index);
+        memcpy(manager->relay_addresses, new_relay_addresses, sizeof(legacy::relay_address_t) * index);
         memcpy(manager->relay_ping_history, new_relay_ping_history, sizeof(relay_ping_history_t*) * index);
 
         // make sure all ping times are evenly distributed to avoid clusters of ping packets
@@ -141,7 +141,7 @@ namespace relay
 #endif  // #ifndef DEBUG
     }
 
-    bool relay_manager_process_pong(relay_manager_t* manager, const relay_address_t* from, uint64_t sequence)
+    bool relay_manager_process_pong(relay_manager_t* manager, const legacy::relay_address_t* from, uint64_t sequence)
     {
         assert(manager);
         assert(from);

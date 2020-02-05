@@ -6,7 +6,7 @@
 
 #include "config.hpp"
 
-#include "relay/relay_address.hpp"
+#include "net/address.hpp"
 
 namespace encoding
 {
@@ -156,11 +156,11 @@ namespace encoding
         @param value The float value to serialize.
      */
 
-#define serialize_float(stream, value)                         \
-    do {                                                       \
+#define serialize_float(stream, value)                  \
+    do {                                                \
         if (!serialize_float_internal(stream, value)) { \
-            return false;                                      \
-        }                                                      \
+            return false;                               \
+        }                                               \
     } while (0)
 
     /**
@@ -203,10 +203,10 @@ namespace encoding
         @param value The unsigned 64 bit integer value to serialize.
      */
 
-#define serialize_uint64(stream, value)                       \
-    do {                                                      \
+#define serialize_uint64(stream, value)                \
+    do {                                               \
         if (!serialize_uint64_internal(stream, value)) \
-            return false;                                     \
+            return false;                              \
     } while (0)
 
     template <typename Stream>
@@ -239,11 +239,11 @@ namespace encoding
         @param value The double precision floating point value to serialize.
      */
 
-#define serialize_double(stream, value)                         \
-    do {                                                        \
+#define serialize_double(stream, value)                  \
+    do {                                                 \
         if (!serialize_double_internal(stream, value)) { \
-            return false;                                       \
-        }                                                       \
+            return false;                                \
+        }                                                \
     } while (0)
 
     template <typename Stream>
@@ -264,11 +264,11 @@ namespace encoding
         @param bytes The number of bytes to serialize.
      */
 
-#define serialize_bytes(stream, data, bytes)                         \
-    do {                                                             \
+#define serialize_bytes(stream, data, bytes)                  \
+    do {                                                      \
         if (!serialize_bytes_internal(stream, data, bytes)) { \
-            return false;                                            \
-        }                                                            \
+            return false;                                     \
+        }                                                     \
     } while (0)
 
     template <typename Stream>
@@ -299,11 +299,11 @@ namespace encoding
         @param buffer_size The size of the string buffer. String with terminating null character must fit into this buffer.
      */
 
-#define serialize_string(stream, string, buffer_size)                         \
-    do {                                                                      \
+#define serialize_string(stream, string, buffer_size)                  \
+    do {                                                               \
         if (!serialize_string_internal(stream, string, buffer_size)) { \
-            return false;                                                     \
-        }                                                                     \
+            return false;                                              \
+        }                                                              \
     } while (0)
 
     /**
@@ -448,11 +448,11 @@ namespace encoding
         @param current The current integer value.
      */
 
-#define serialize_int_relative(stream, previous, current)                         \
-    do {                                                                          \
+#define serialize_int_relative(stream, previous, current)                  \
+    do {                                                                   \
         if (!serialize_int_relative_internal(stream, previous, current)) { \
-            return false;                                                         \
-        }                                                                         \
+            return false;                                                  \
+        }                                                                  \
     } while (0)
 
     template <typename Stream>
@@ -494,11 +494,11 @@ namespace encoding
         @param ack The ack sequence number, which is typically near the current sequence number.
      */
 
-#define serialize_ack_relative(stream, sequence, ack)                         \
-    do {                                                                      \
+#define serialize_ack_relative(stream, sequence, ack)                  \
+    do {                                                               \
         if (!serialize_ack_relative_internal(stream, sequence, ack)) { \
-            return false;                                                     \
-        }                                                                     \
+            return false;                                              \
+        }                                                              \
     } while (0)
 
     template <typename Stream>
@@ -533,15 +533,15 @@ namespace encoding
         @param sequence2 The second sequence number to be encoded relative to the first.
      */
 
-#define serialize_sequence_relative(stream, sequence1, sequence2)                         \
-    do {                                                                                  \
+#define serialize_sequence_relative(stream, sequence1, sequence2)                  \
+    do {                                                                           \
         if (!serialize_sequence_relative_internal(stream, sequence1, sequence2)) { \
-            return false;                                                                 \
-        }                                                                                 \
+            return false;                                                          \
+        }                                                                          \
     } while (0)
 
     template <typename Stream>
-    bool serialize_address_internal(Stream& stream, relay::relay_address_t& address)
+    bool serialize_address_internal(Stream& stream, legacy::relay_address_t& address)
     {
         serialize_bits(stream, address.type, 2);
         if (address.type == RELAY_ADDRESS_IPV4) {
@@ -554,17 +554,17 @@ namespace encoding
             serialize_bits(stream, address.port, 16);
         } else {
             if (Stream::IsReading) {
-                memset(&address, 0, sizeof(relay::relay_address_t));
+                memset(&address, 0, sizeof(legacy::relay_address_t));
             }
         }
         return true;
     }
 
-#define serialize_address(stream, address)                         \
-    do {                                                           \
+#define serialize_address(stream, address)                  \
+    do {                                                    \
         if (!serialize_address_internal(stream, address)) { \
-            return false;                                          \
-        }                                                          \
+            return false;                                   \
+        }                                                   \
     } while (0)
 
 }  // namespace encoding

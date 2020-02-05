@@ -7,7 +7,7 @@
 #include <cinttypes>
 #include <map>  // TODO replace with unordered_map, map is not constant lookup
 
-#include "relay_address.hpp"
+#include "net/address.hpp"
 #include "relay_manager.hpp"
 #include "relay_replay_protection.hpp"
 #include "relay_platform.hpp"
@@ -23,8 +23,8 @@ namespace relay
         uint64_t server_to_client_sequence;
         int kbps_up;
         int kbps_down;
-        relay_address_t prev_address;
-        relay_address_t next_address;
+        legacy::relay_address_t prev_address;
+        legacy::relay_address_t next_address;
         uint8_t private_key[crypto_box_SECRETKEYBYTES];
         relay_replay_protection_t replay_protection_server_to_client;
         relay_replay_protection_t replay_protection_client_to_server;
@@ -45,7 +45,7 @@ namespace relay
         bool relays_dirty;
         int num_relays;
         uint64_t relay_ids[MAX_RELAYS];
-        relay::relay_address_t relay_addresses[MAX_RELAYS];
+        legacy::relay_address_t relay_addresses[MAX_RELAYS];
     };
 
     int relay_initialize();

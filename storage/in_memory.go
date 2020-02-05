@@ -6,13 +6,9 @@ import (
 )
 
 type InMemory struct {
-	RelayDatacenterNames map[uint32]string
-}
+	LocalDatacenter bool
 
-func NewInMemory() InMemory {
-	return InMemory{
-		RelayDatacenterNames: make(map[uint32]string),
-	}
+	RelayDatacenterNames map[uint32]string
 }
 
 func (m *InMemory) GetAndCheckBySdkVersion3PublicKeyId(key uint64) (*Buyer, bool) {
@@ -33,13 +29,30 @@ func (m *InMemory) GetAndCheck(key *Key) (*Datacenter, bool) {
 	}, true
 }
 
+// GetAndCheckByRelayCoreId gets the Relay from Configstore based on the hash
+// of the Relay's address. The in memory implementation can be seeded with
+// predetermined Relay address and IDs, but when running a relay to randomize
+// a port this is imposible to guess. If the relay is not found in the seeded
+// map we assume it is running locally.
+//
+// This is ONLY used in testing and local dev and in memory will NEVER run in
+// production.
 func (m *InMemory) GetAndCheckByRelayCoreId(key uint32) (*Relay, bool) {
-	name, ok := m.RelayDatacenterNames[key]
-	if !ok {
-		name = "local"
+	if m.LocalDatacenter {
+		return &Relay{
+			Datacenter: &Key{
+				PartitionId: &PartitionId{
+					Namespace: "local",
+				},
+			},
+		}, true
 	}
 
-	// return the value of 'ok' to simulate a failed lookup
+	name, ok := m.RelayDatacenterNames[key]
+	if !ok {
+		return nil, false
+	}
+
 	return &Relay{
 		Datacenter: &Key{
 			PartitionId: &PartitionId{

@@ -12,6 +12,7 @@ require (
 	github.com/gorilla/context v1.1.1
 	github.com/gorilla/mux v1.7.3
 	github.com/json-iterator/go v1.1.9
+	github.com/onsi/gomega v1.7.0
 	github.com/oschwald/geoip2-golang v1.4.0
 	github.com/stretchr/testify v1.4.0
 	golang.org/x/crypto v0.0.0-20200115085410-6d4e4cb37c7d

@@ -22,10 +22,10 @@ namespace relay
 
         (void)start;
 
-        encoding::relay_write_uint64(&buffer, token->expire_timestamp);
-        encoding::relay_write_uint64(&buffer, token->session_id);
-        encoding::relay_write_uint8(&buffer, token->session_version);
-        encoding::relay_write_uint8(&buffer, token->session_flags);
+        encoding::write_uint64(&buffer, token->expire_timestamp);
+        encoding::write_uint64(&buffer, token->session_id);
+        encoding::write_uint8(&buffer, token->session_version);
+        encoding::write_uint8(&buffer, token->session_flags);
 
         assert(buffer - start == RELAY_CONTINUE_TOKEN_BYTES);
     }
@@ -39,10 +39,10 @@ namespace relay
 
         (void)start;
 
-        token->expire_timestamp = encoding::relay_read_uint64(&buffer);
-        token->session_id = encoding::relay_read_uint64(&buffer);
-        token->session_version = encoding::relay_read_uint8(&buffer);
-        token->session_flags = encoding::relay_read_uint8(&buffer);
+        token->expire_timestamp = encoding::read_uint64(&buffer);
+        token->session_id = encoding::read_uint64(&buffer);
+        token->session_version = encoding::read_uint8(&buffer);
+        token->session_flags = encoding::read_uint8(&buffer);
 
         assert(buffer - start == RELAY_CONTINUE_TOKEN_BYTES);
     }
@@ -96,7 +96,7 @@ namespace relay
 
         uint8_t* start = *buffer;
 
-        encoding::relay_write_bytes(buffer, nonce, crypto_box_NONCEBYTES);
+        encoding::write_bytes(buffer, nonce, crypto_box_NONCEBYTES);
 
         relay_write_continue_token(token, *buffer, RELAY_CONTINUE_TOKEN_BYTES);
 

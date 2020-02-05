@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -3001,14 +3002,82 @@ func TestOptimize(t *testing.T) {
 }
 
 func TestRouting(t *testing.T) {
+	t.Run("ResolveRelay", func(t *testing.T) {
+		t.Run("Success", func(t *testing.T) {
+			costfile, err := os.Open("./test_data/cost.bin")
+			assert.NoError(t, err)
+
+			var costMatrix routing.CostMatrix
+			_, err = costMatrix.ReadFrom(costfile)
+			assert.NoError(t, err)
+
+			var routeMatrix routing.RouteMatrix
+			err = costMatrix.Optimize(&routeMatrix, 1)
+			assert.NoError(t, err)
+
+			expected := routing.Relay{
+				ID: 2836356269,
+				Addr: net.UDPAddr{
+					IP:   net.ParseIP("13.238.77.175"),
+					Port: 40000,
+				},
+				PublicKey: []byte{0x58, 0xaf, 0x19, 0x5, 0xf7, 0xa8, 0xae, 0x73, 0xc6, 0xd3, 0xec, 0x85, 0x2f, 0xd8, 0x9b, 0x5a, 0xce, 0x0, 0x38, 0xca, 0x26, 0x39, 0xa4, 0x5d, 0x82, 0x3c, 0x71, 0xa8, 0x4, 0x11, 0xfb, 0x32},
+			}
+
+			actual, err := routeMatrix.ResolveRelay(2836356269)
+			assert.NoError(t, err)
+			assert.Equal(t, expected, actual)
+		})
+
+		t.Run("Relay ID not found", func(t *testing.T) {
+			routeMatrix := routing.RouteMatrix{
+				RelayIndicies: map[uint64]int{},
+			}
+			_, err := routeMatrix.ResolveRelay(0)
+			assert.EqualError(t, err, "relay 0 not in matrix")
+		})
+
+		t.Run("Invalid relay index", func(t *testing.T) {
+			routeMatrix := routing.RouteMatrix{
+				RelayIndicies:  map[uint64]int{0: 10},
+				RelayAddresses: [][]byte{},
+			}
+			_, err := routeMatrix.ResolveRelay(0)
+			assert.EqualError(t, err, "relay 0 has an invalid index 10")
+		})
+
+		t.Run("Invalid relay address", func(t *testing.T) {
+			routeMatrix := routing.RouteMatrix{
+				RelayIndicies:   map[uint64]int{0: 0},
+				RelayAddresses:  [][]byte{[]byte("Invalid")},
+				RelayPublicKeys: [][]byte{{0x58, 0xaf, 0x19, 0x5, 0xf7, 0xa8, 0xae, 0x73, 0xc6, 0xd3, 0xec, 0x85, 0x2f, 0xd8, 0x9b, 0x5a, 0xce, 0x0, 0x38, 0xca, 0x26, 0x39, 0xa4, 0x5d, 0x82, 0x3c, 0x71, 0xa8, 0x4, 0x11, 0xfb, 0x32}},
+			}
+			_, err := routeMatrix.ResolveRelay(0)
+			assert.Error(t, err)
+		})
+
+		t.Run("Failed to parse port", func(t *testing.T) {
+			routeMatrix := routing.RouteMatrix{
+				RelayIndicies:   map[uint64]int{0: 0},
+				RelayAddresses:  [][]byte{[]byte("127.0.0.1:abcde")},
+				RelayPublicKeys: [][]byte{{0x58, 0xaf, 0x19, 0x5, 0xf7, 0xa8, 0xae, 0x73, 0xc6, 0xd3, 0xec, 0x85, 0x2f, 0xd8, 0x9b, 0x5a, 0xce, 0x0, 0x38, 0xca, 0x26, 0x39, 0xa4, 0x5d, 0x82, 0x3c, 0x71, 0xa8, 0x4, 0x11, 0xfb, 0x32}},
+			}
+			_, err := routeMatrix.ResolveRelay(0)
+			assert.Error(t, err)
+		})
+	})
+
 	t.Run("RelaysIn", func(t *testing.T) {
-		matrix := routing.RouteMatrix{
-			DatacenterRelays: map[uint64][]uint64{
-				1: []uint64{1, 2, 3},
-				2: []uint64{4, 5, 6},
-				3: []uint64{},
-			},
-		}
+		costfile, err := os.Open("./test_data/cost.bin")
+		assert.NoError(t, err)
+
+		var costMatrix routing.CostMatrix
+		_, err = costMatrix.ReadFrom(costfile)
+		assert.NoError(t, err)
+
+		var routeMatrix routing.RouteMatrix
+		err = costMatrix.Optimize(&routeMatrix, 1)
+		assert.NoError(t, err)
 
 		tests := []struct {
 			name     string
@@ -3016,16 +3085,37 @@ func TestRouting(t *testing.T) {
 			expected []routing.Relay
 		}{
 			{"datacenter not found", routing.Datacenter{ID: 0}, nil},
-			{"datacenter with no relays", routing.Datacenter{ID: 3}, nil},
-			{"datacenter with relays", routing.Datacenter{ID: 1}, []routing.Relay{{ID: 1}, {ID: 2}, {ID: 3}}},
+			{
+				"datacenter with relays",
+				routing.Datacenter{ID: 69517923},
+				[]routing.Relay{
+					{ID: 3407334631, Addr: net.UDPAddr{IP: net.ParseIP("162.253.71.170"), Port: 40000}, PublicKey: []byte{0x87, 0xde, 0x7, 0x9, 0x35, 0xee, 0xdd, 0xb0, 0xf0, 0xfe, 0xfe, 0xa7, 0xa5, 0x4e, 0x14, 0xd1, 0x2d, 0x3b, 0xd9, 0x8c, 0x0, 0x49, 0xcd, 0xf0, 0x14, 0x7e, 0xa5, 0xe0, 0x52, 0xb4, 0xe6, 0x76}},
+					{ID: 1447163127, Addr: net.UDPAddr{IP: net.ParseIP("172.98.66.170"), Port: 40000}, PublicKey: []byte{0x1e, 0x80, 0x89, 0x6a, 0x46, 0xa9, 0xb4, 0x6d, 0x27, 0x54, 0x28, 0x16, 0x56, 0xe, 0x1f, 0x6f, 0xee, 0xee, 0x6a, 0x98, 0x5a, 0xbb, 0x8b, 0x83, 0x96, 0xcb, 0x13, 0xc5, 0x66, 0x8, 0x92, 0x31}},
+				},
+			},
 		}
 
 		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
-				actual := matrix.RelaysIn(test.input)
+				actual := routeMatrix.RelaysIn(test.input)
 				assert.Equal(t, test.expected, actual)
 			})
 		}
+
+		// relay length is 0
+		routeMatrix.DatacenterRelays[0] = []uint64{}
+		relays := routeMatrix.RelaysIn(routing.Datacenter{ID: 0})
+		assert.Nil(t, relays)
+
+		// error while resolving at least one relay
+		routeMatrix = routing.RouteMatrix{
+			RelayIndicies:    map[uint64]int{0: 0},
+			RelayAddresses:   [][]byte{[]byte("127.0.0.1:abcde")},
+			RelayPublicKeys:  [][]byte{{0x58, 0xaf, 0x19, 0x5, 0xf7, 0xa8, 0xae, 0x73, 0xc6, 0xd3, 0xec, 0x85, 0x2f, 0xd8, 0x9b, 0x5a, 0xce, 0x0, 0x38, 0xca, 0x26, 0x39, 0xa4, 0x5d, 0x82, 0x3c, 0x71, 0xa8, 0x4, 0x11, 0xfb, 0x32}},
+			DatacenterRelays: map[uint64][]uint64{0: []uint64{0, 1}},
+		}
+		relays = routeMatrix.RelaysIn(routing.Datacenter{ID: 0})
+		assert.NotNil(t, relays)
 	})
 
 	t.Run("Routes", func(t *testing.T) {
@@ -3097,8 +3187,18 @@ func TestRouting(t *testing.T) {
 		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
 				actual := routeMatrix.Routes(test.from, test.to)
-				fmt.Printf("%+v\n", actual)
-				assert.Equal(t, test.expected, actual)
+				for routeidx, route := range actual {
+					for relayidx := range route.Relays {
+						assert.Equal(t, test.expected[routeidx].Relays[relayidx].ID, actual[routeidx].Relays[relayidx].ID)
+						assert.NotNil(t, actual[routeidx].Relays[relayidx].Addr.IP)
+						assert.False(t, actual[routeidx].Relays[relayidx].Addr.IP.IsLoopback())
+						assert.Greater(t, actual[routeidx].Relays[relayidx].Addr.Port, 0)
+						assert.NotNil(t, actual[routeidx].Relays[relayidx].PublicKey)
+						assert.Equal(t, crypto.KeySize, len(actual[routeidx].Relays[relayidx].PublicKey))
+					}
+
+					assert.Equal(t, test.expected[routeidx].Stats, actual[routeidx].Stats)
+				}
 			})
 		}
 	})
@@ -3125,6 +3225,21 @@ func TestRouting(t *testing.T) {
 	// })
 }
 
+func BenchmarkOptimize(b *testing.B) {
+	costfile, _ := os.Open("./test_data/cost.bin")
+
+	var costMatrix routing.CostMatrix
+	costMatrix.ReadFrom(costfile)
+
+	var routeMatrix routing.RouteMatrix
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		costMatrix.Optimize(&routeMatrix, 1)
+	}
+}
+
 func BenchmarkRouting(b *testing.B) {
 	costfile, _ := os.Open("./test_data/cost.bin")
 
@@ -3139,7 +3254,71 @@ func BenchmarkRouting(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		routeMatrix.Routes(from, to)
+	}
+}
+
+func BenchmarkResolveRelay(b *testing.B) {
+	costfile, _ := os.Open("./test_data/cost.bin")
+
+	var costMatrix routing.CostMatrix
+	costMatrix.ReadFrom(costfile)
+
+	var routeMatrix routing.RouteMatrix
+	costMatrix.Optimize(&routeMatrix, 1)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		routeMatrix.ResolveRelay(2836356269)
+	}
+}
+
+// Benchmarks fetching all relays in the given datacenter for the first data center in the file
+func BenchmarkRelaysIn(b *testing.B) {
+	costfile, _ := os.Open("./test_data/cost-for-sanity-check.bin") // This file actually has datacenters in it
+
+	var costMatrix routing.CostMatrix
+	costMatrix.ReadFrom(costfile)
+
+	var routeMatrix routing.RouteMatrix
+	costMatrix.Optimize(&routeMatrix, 1)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		routeMatrix.RelaysIn(routing.Datacenter{ID: routeMatrix.DatacenterIds[0], Name: routeMatrix.DatacenterNames[0]})
+	}
+}
+
+// Benchmarks all routes from the first datacenter in the file to every other relay in the route matrix
+func BenchmarkAllRoutes(b *testing.B) {
+	costfile, _ := os.Open("./test_data/cost-for-sanity-check.bin") // This file actually has datacenters in it
+
+	var costMatrix routing.CostMatrix
+	costMatrix.ReadFrom(costfile)
+
+	var routeMatrix routing.RouteMatrix
+	costMatrix.Optimize(&routeMatrix, 1)
+
+	if len(routeMatrix.DatacenterIds) == 0 {
+		b.FailNow()
+		return
+	}
+
+	relays := make([]routing.Relay, len(routeMatrix.RelayIds))
+	for i := 0; i < len(relays); i++ {
+		relays[i] = routing.Relay{ID: routeMatrix.RelayIds[i], Name: routeMatrix.RelayNames[i]}
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		routeMatrix.AllRoutes(routing.Datacenter{ID: routeMatrix.DatacenterIds[0], Name: routeMatrix.DatacenterNames[0]}, relays)
 	}
 }

@@ -1,5 +1,5 @@
-#ifndef RELAY_TEST_HPP
-#define RELAY_TEST_HPP
+#ifndef TESTING_TEST_HPP
+#define TESTING_TEST_HPP
 namespace testing
 {
     void relay_test();
