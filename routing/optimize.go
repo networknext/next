@@ -1,11 +1,11 @@
 package routing
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"math"
 	"net"
 	"net/http"
@@ -644,6 +644,37 @@ type RouteMatrix struct {
 	Entries          []RouteMatrixEntry
 }
 
+func (m *RouteMatrix) ResolveRelay(id uint64) (Relay, error) {
+	relayIndex, ok := m.RelayIndicies[id]
+	if !ok {
+		return Relay{}, fmt.Errorf("relay %d not in matrix", id)
+	}
+
+	if relayIndex >= len(m.RelayAddresses) ||
+		relayIndex >= len(m.RelayPublicKeys) {
+		return Relay{}, fmt.Errorf("relay %d has an invalid index %d", id, relayIndex)
+	}
+
+	host, port, err := net.SplitHostPort(string(bytes.Trim(m.RelayAddresses[relayIndex], string([]byte{0x00}))))
+	if err != nil {
+		return Relay{}, err
+	}
+
+	iport, err := strconv.ParseInt(port, 10, 64)
+	if err != nil {
+		return Relay{}, err
+	}
+
+	return Relay{
+		ID: m.RelayIds[relayIndex],
+		Addr: net.UDPAddr{
+			IP:   net.ParseIP(host),
+			Port: int(iport),
+		},
+		PublicKey: m.RelayPublicKeys[relayIndex],
+	}, nil
+}
+
 func (m *RouteMatrix) AllRoutes(d Datacenter, rs []Relay) []Route {
 	return m.Routes(m.RelaysIn(d), rs)
 }
@@ -655,6 +686,7 @@ func (m *RouteMatrix) RelaysIn(d Datacenter) []Relay {
 		return nil
 	}
 
+	var err error
 	relayLength := len(relayIDs)
 
 	if relayLength <= 0 {
@@ -663,7 +695,10 @@ func (m *RouteMatrix) RelaysIn(d Datacenter) []Relay {
 
 	relays := make([]Relay, relayLength)
 	for i := 0; i < relayLength; i++ {
-		relays[i] = Relay{ID: relayIDs[i]}
+		relays[i], err = m.ResolveRelay(relayIDs[i])
+		if err != nil {
+			continue
+		}
 	}
 
 	return relays
@@ -728,11 +763,12 @@ func (m *RouteMatrix) getFromToRelayIndex(from Relay, to Relay) (int, bool) {
 // fillRoutes is just the internal function to populate the given route buffer.
 // It takes the fromtoidx and reverse data and fills the given route buffer, incrementing the routeIndex after
 // each route it adds.
-func (m *RouteMatrix) fillRoutes(routes []Route, routeIndex *int, fromtoidx int, reverse bool) {
+func (m *RouteMatrix) fillRoutes(routes []Route, routeIndex *int, fromtoidx int, reverse bool) error {
 	if fromtoidx < 0 || fromtoidx >= len(m.Entries) {
-		log.Printf("index '%d' out of bound for matrix entries", fromtoidx)
-		return
+		return fmt.Errorf("index '%d' out of bound for matrix entries", fromtoidx)
 	}
+
+	var err error
 
 	for i := 0; i < int(m.Entries[fromtoidx].NumRoutes); i++ {
 
@@ -743,29 +779,17 @@ func (m *RouteMatrix) fillRoutes(routes []Route, routeIndex *int, fromtoidx int,
 		if !reverse {
 			for j := 0; j < numRelays; j++ {
 				relayIndex := m.Entries[fromtoidx].RouteRelays[i][j]
-				host, port, _ := net.SplitHostPort(string(m.RelayAddresses[relayIndex]))
-				iport, _ := strconv.ParseInt(port, 10, 64)
-				routeRelays[j] = Relay{
-					ID: m.RelayIds[relayIndex],
-					Addr: net.UDPAddr{
-						IP:   net.ParseIP(host),
-						Port: int(iport),
-					},
-					PublicKey: m.RelayPublicKeys[relayIndex],
+				routeRelays[j], err = m.ResolveRelay(m.RelayIds[relayIndex])
+				if err != nil {
+					return err
 				}
 			}
 		} else {
 			for j := 0; j < numRelays; j++ {
 				relayIndex := m.Entries[fromtoidx].RouteRelays[i][j]
-				host, port, _ := net.SplitHostPort(string(m.RelayAddresses[relayIndex]))
-				iport, _ := strconv.ParseInt(port, 10, 64)
-				routeRelays[numRelays-1-j] = Relay{
-					ID: m.RelayIds[relayIndex],
-					Addr: net.UDPAddr{
-						IP:   net.ParseIP(host),
-						Port: int(iport),
-					},
-					PublicKey: m.RelayPublicKeys[relayIndex],
+				routeRelays[numRelays-1-j], err = m.ResolveRelay(m.RelayIds[relayIndex])
+				if err != nil {
+					return err
 				}
 			}
 		}
@@ -780,6 +804,8 @@ func (m *RouteMatrix) fillRoutes(routes []Route, routeIndex *int, fromtoidx int,
 		routes[*routeIndex] = route
 		*routeIndex++
 	}
+
+	return nil
 }
 
 // ReadFrom implements the io.ReadFrom interface

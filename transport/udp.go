@@ -233,6 +233,7 @@ func (e SessionEntry) MarshalBinary() ([]byte, error) {
 }
 
 type RouteProvider interface {
+	ResolveRelay(uint64) (routing.Relay, error)
 	AllRoutes(routing.Datacenter, []routing.Relay) []routing.Route
 }
 
@@ -295,6 +296,13 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp Ro
 			log.Printf("failed to lookup client ip '%s': %v", packet.ClientAddress.IP.String(), err)
 			return
 		}
+
+		// We need to do this because RelaysWithin only has the ID of the relay and we need the Addr and PublicKey too
+		// Maybe we consider a nicer way to do this in the future
+		for idx := range clientrelays {
+			clientrelays[idx], _ = rp.ResolveRelay(clientrelays[idx].ID)
+		}
+
 		log.Printf("found client relays: %+v\n", clientrelays)
 
 		// Get a set of possible routes from the RouteProvider an on error ensure it falls back to direct
