@@ -27,7 +27,6 @@ Test(ReadAddress_ipv6)
 {
   net::Address addr;
   std::array<uint8_t, RELAY_ADDRESS_BYTES> bin;
-  bin.fill(0);
   bin[0] = static_cast<uint8_t>(net::AddressType::IPv6);
   bin[1] = 0x1F;
   bin[2] = 0x3B;
@@ -47,7 +46,6 @@ Test(ReadAddress_ipv6)
   bin[16] = 0xFF;
   bin[17] = 0x5A;
   bin[18] = 0xC7;
-  bin[19] = 0x00;
 
   size_t index = 0;
   encoding::ReadAddress(bin, index, addr);
@@ -79,7 +77,6 @@ Test(ReadAddress_none)
   bin[16] = 0xFF;
   bin[17] = 0xFF;
   bin[18] = 0xFF;
-  bin[19] = 0xFF;
 
   size_t index = 0;
   encoding::ReadAddress(bin, index, after);

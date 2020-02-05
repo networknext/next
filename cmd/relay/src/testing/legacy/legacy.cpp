@@ -454,75 +454,6 @@ namespace
     check(memcmp(server_send_key, client_receive_key, crypto_kx_SESSIONKEYBYTES) == 0);
   }
 
-  static void test_basic_read_and_write()
-  {
-    uint8_t buffer[1024];
-
-    uint8_t* p = buffer;
-    encoding::write_uint8(&p, 105);
-    encoding::write_uint16(&p, 10512);
-    encoding::write_uint32(&p, 105120000);
-    encoding::write_uint64(&p, 105120000000000000LL);
-    encoding::write_float32(&p, 100.0f);
-    encoding::write_float64(&p, 100000000000000.0);
-    encoding::write_bytes(&p, (uint8_t*)"hello", 6);
-    encoding::write_string(&p, "hey ho, let's go!", 32);
-
-    const uint8_t* q = buffer;
-
-    uint8_t a = encoding::read_uint8(&q);
-    uint16_t b = encoding::read_uint16(&q);
-    uint32_t c = encoding::read_uint32(&q);
-    uint64_t d = encoding::read_uint64(&q);
-    float e = encoding::read_float32(&q);
-    double f = encoding::read_float64(&q);
-    uint8_t g[6];
-    encoding::read_bytes(&q, g, 6);
-    char string_buffer[32 + 1];
-    memset(string_buffer, 0xFF, sizeof(string_buffer));
-    encoding::read_string(&q, string_buffer, 32);
-    check(strcmp(string_buffer, "hey ho, let's go!") == 0);
-
-    check(a == 105);
-    check(b == 10512);
-    check(c == 105120000);
-    check(d == 105120000000000000LL);
-    check(e == 100.0f);
-    check(f == 100000000000000.0);
-    check(memcmp(g, "hello", 6) == 0);
-  }
-
-  void test_address_read_and_write()
-  {
-    legacy::relay_address_t a, b, c;
-
-    memset(&a, 0, sizeof(a));
-
-    legacy::relay_address_parse(&b, "127.0.0.1:50000");
-
-    legacy::relay_address_parse(&c, "[::1]:50000");
-
-    uint8_t buffer[1024];
-
-    uint8_t* p = buffer;
-
-    encoding::write_address(&p, &a);
-    encoding::write_address(&p, &b);
-    encoding::write_address(&p, &c);
-
-    struct legacy::relay_address_t read_a, read_b, read_c;
-
-    const uint8_t* q = buffer;
-
-    encoding::read_address(&q, &read_a);
-    encoding::read_address(&q, &read_b);
-    encoding::read_address(&q, &read_c);
-
-    check(legacy::relay_address_equal(&a, &read_a) != 0);
-    check(legacy::relay_address_equal(&b, &read_b) != 0);
-    check(legacy::relay_address_equal(&c, &read_c) != 0);
-  }
-
   static void test_platform_socket()
   {
     // non-blocking socket (ipv4)
@@ -1040,8 +971,6 @@ Test(Legacy)
   test_crypto_sign();
   test_crypto_sign_detached();
   test_crypto_key_exchange();
-  test_basic_read_and_write();
-  test_address_read_and_write();
   test_platform_socket();
   test_platform_thread();
   test_platform_mutex();

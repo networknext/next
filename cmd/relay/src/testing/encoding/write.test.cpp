@@ -53,7 +53,6 @@ Test(WriteAddress_ipv6)
   check(bin[16] == 0xFF);
   check(bin[17] == 0x5A);
   check(bin[18] == 0xC7);
-  check(bin[19] == 0x00);
 }
 
 Test(WriteAddress_none)
