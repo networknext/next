@@ -60,6 +60,7 @@ namespace encoding
   template <size_t BufferSize>
   void WriteAddress(std::array<uint8_t, BufferSize>& buff, size_t& index, net::Address& addr)
   {
+    GCC_NO_OPT_OUT;
 #ifndef NDEBUG
     auto start = index;
 #endif

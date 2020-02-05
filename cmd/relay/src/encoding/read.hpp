@@ -18,13 +18,7 @@ namespace encoding
 {
   // Prototypes
 
-  template <size_t BuffSize>
-  uint8_t ReadUint8(std::array<uint8_t, BuffSize>& buff, size_t& index);
-
   uint8_t read_uint8(const uint8_t** p);
-
-  template <size_t BuffSize>
-  uint16_t ReadUint16(std::array<uint8_t, BuffSize>& buff, size_t& index);
 
   uint16_t read_uint16(const uint8_t** p);
 
@@ -40,28 +34,34 @@ namespace encoding
 
   void read_string(const uint8_t** p, char* string_data, uint32_t max_length);
 
-  template <size_t BuffSize>
-  void ReadAddress(std::array<uint8_t, BuffSize>& buff, size_t& index, net::Address& addr);
-
   void read_address(const uint8_t** buffer, legacy::relay_address_t* address);
 
   template <size_t BuffSize>
-  uint8_t ReadUint8(std::array<uint8_t, BuffSize>& buff, size_t& index)
+  uint8_t ReadUint8(const std::array<uint8_t, BuffSize>& buff, size_t& index);
+
+  template <size_t BuffSize>
+  uint16_t ReadUint16(const std::array<uint8_t, BuffSize>& buff, size_t& index);
+
+  template <size_t BuffSize>
+  void ReadAddress(const std::array<uint8_t, BuffSize>& buff, size_t& index, net::Address& addr);
+
+  template <size_t BuffSize>
+  uint8_t ReadUint8(const std::array<uint8_t, BuffSize>& buff, size_t& index)
   {
     return buff[index++];
   }
 
   template <size_t BuffSize>
-  uint16_t ReadUint16(std::array<uint8_t, BuffSize>& buff, size_t& index)
+  uint16_t ReadUint16(const std::array<uint8_t, BuffSize>& buff, size_t& index)
   {
     GCC_NO_OPT_OUT;
-    auto retval = *reinterpret_cast<uint16_t*>(&buff[index]);
+    auto retval = *reinterpret_cast<const uint16_t*>(&buff[index]);
     index += 2;
     return retval;
   }
 
   template <size_t BuffSize>
-  void ReadAddress(std::array<uint8_t, BuffSize>& buff, size_t& index, net::Address& addr)
+  void ReadAddress(const std::array<uint8_t, BuffSize>& buff, size_t& index, net::Address& addr)
   {
     GCC_NO_OPT_OUT;
 #ifndef NDEBUG
