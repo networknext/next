@@ -52,11 +52,17 @@ func readIDNew(data []byte, index *int, storage *uint64, errmsg string) error {
 	return nil
 }
 
-func readBytesOld(data []byte, index *int, storage *[]byte, length uint32, errmsg string) error {
+func readBytesOld(data []byte, index *int, storage *[]byte, length uint32, errmsg string) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = errors.New(errmsg + " - ver < 3")
+		}
+	}()
+
 	var bytesRead int
 	*storage, bytesRead = encoding.ReadBytesOld(data[*index:])
 	*index += bytesRead
-	return nil
+	return err
 }
 
 func readBytesNew(data []byte, index *int, storage *[]byte, length uint32, errmsg string) error {
@@ -125,7 +131,7 @@ func (m *CostMatrix) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-/* Binary data outline for CostMatrix v2: "->" means seqential elements in memory and not another section
+/* Binary data outline for CostMatrix v3: "->" means seqential elements in memory and not another section
  * Version number { uint32 }
  * Number of relays { uint32 }
  * Relay IDs { [NumberOfRelays]uint64 }
@@ -767,7 +773,7 @@ func (m *RouteMatrix) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-/* Binary data outline for RouteMatrix v2: "->" means seqential elements in memory and not another section, "(...)" mean that section sequentially repeats for however many
+/* Binary data outline for RouteMatrix v3: "->" means seqential elements in memory and not another section, "(...)" mean that section sequentially repeats for however many
  * Version number { uint32 }
  * Number of relays { uint32 }
  * Relay IDs { [NumberOfRelays]uint64 }
@@ -778,7 +784,6 @@ func (m *RouteMatrix) ServeHTTP(w http.ResponseWriter, r *http.Request) {
  * Relay Public Keys { [NumberOfRelays][crypto.KeySize]byte }
  * Number of Datacenters { uint32 }
  * Datacenter ID { uint64 } -> Number of Relays in Datacenter { uint32 } -> Relay IDs in Datacenter { [NumberOfRelaysInDatacenter]uint64 }
- * RTT Info { []uint32 }
  * Entries { []RouteMatrixEntry } (
  * 	Direct RTT { uint32 }
  *	Number of routes { uint32 }
