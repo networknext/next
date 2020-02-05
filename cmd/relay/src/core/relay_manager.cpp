@@ -3,6 +3,7 @@
 #include <cstring>
 #include <cassert>
 
+#include "core/route_stats.hpp"
 #include "relay/relay_platform.hpp"
 
 namespace core
@@ -171,8 +172,8 @@ namespace legacy
     stats->num_relays = manager->num_relays;
 
     for (int i = 0; i < stats->num_relays; ++i) {
-      relay::relay_route_stats_t route_stats;
-      relay::relay_route_stats_from_ping_history(
+      legacy::relay_route_stats_t route_stats;
+      legacy::relay_route_stats_from_ping_history(
        manager->relay_ping_history[i], current_time - RELAY_STATS_WINDOW, current_time, &route_stats, RELAY_PING_SAFETY);
       stats->relay_ids[i] = manager->relay_ids[i];
       stats->relay_rtt[i] = route_stats.rtt;

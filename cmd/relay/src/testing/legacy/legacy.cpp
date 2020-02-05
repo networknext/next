@@ -897,11 +897,11 @@ namespace
       legacy::relay_address_parse(&relay_addresses[i], address_string);
     }
 
-    relay::relay_manager_t* manager = relay::relay_manager_create();
+    legacy::relay_manager_t* manager = legacy::relay_manager_create();
 
     // should be no relays when manager is first created
     {
-      relay::relay_stats_t stats;
+      legacy::relay_stats_t stats;
       relay_manager_get_stats(manager, &stats);
       check(stats.num_relays == 0);
     }
@@ -910,7 +910,7 @@ namespace
 
     relay_manager_update(manager, NumRelays, relay_ids, relay_addresses);
     {
-      relay::relay_stats_t stats;
+      legacy::relay_stats_t stats;
       relay_manager_get_stats(manager, &stats);
       check(stats.num_relays == NumRelays);
       for (int i = 0; i < NumRelays; ++i) {
@@ -922,7 +922,7 @@ namespace
 
     relay_manager_update(manager, 0, relay_ids, relay_addresses);
     {
-      relay::relay_stats_t stats;
+      legacy::relay_stats_t stats;
       relay_manager_get_stats(manager, &stats);
       check(stats.num_relays == 0);
     }
@@ -932,7 +932,7 @@ namespace
     for (int j = 0; j < 2; ++j) {
       relay_manager_update(manager, NumRelays, relay_ids, relay_addresses);
       {
-        relay::relay_stats_t stats;
+        legacy::relay_stats_t stats;
         relay_manager_get_stats(manager, &stats);
         check(stats.num_relays == NumRelays);
         for (int i = 0; i < NumRelays; ++i) {
@@ -945,7 +945,7 @@ namespace
 
     relay_manager_update(manager, NumRelays, relay_ids + 4, relay_addresses + 4);
     {
-      relay::relay_stats_t stats;
+      legacy::relay_stats_t stats;
       relay_manager_get_stats(manager, &stats);
       check(stats.num_relays == NumRelays);
       for (int i = 0; i < NumRelays; ++i) {
