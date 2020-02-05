@@ -3,9 +3,9 @@
 #include "encoding/read.hpp"
 #include "encoding/write.hpp"
 
-const auto REPS = 10000000000;
+const auto REPS = 100000000000;
 
-Bench(WriteUint16_vs_read_uint16, true)
+Bench(WriteUint16_vs_read_uint16)
 {
   {
     std::array<uint8_t, 2> buff;
@@ -34,7 +34,7 @@ Bench(WriteUint16_vs_read_uint16, true)
   }
 }
 
-Bench(WriteAddress_vs_read_address_ipv4, true)
+Bench(WriteAddress_vs_read_address_ipv4)
 {
   // ReadAddress()
   {

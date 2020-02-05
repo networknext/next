@@ -4,15 +4,9 @@
 
 namespace core
 {
-  void PingHistory::clear()
-  {
-    GCC_NO_OPT_OUT;
-    mSeq = 0;
-    mEntries.fill(HistoryEntry());
-  }
-
   uint64_t PingHistory::pingSent(double time)
   {
+    GCC_NO_OPT_OUT;
     const auto index = mSeq % RELAY_PING_HISTORY_ENTRY_COUNT;
     auto& entry = mEntries[index];
     entry.Sequence = mSeq;
@@ -24,6 +18,7 @@ namespace core
 
   void PingHistory::pongReceived(uint64_t seq, double time)
   {
+    GCC_NO_OPT_OUT;
     const auto index = seq % RELAY_PING_HISTORY_ENTRY_COUNT;
     auto& entry = mEntries[index];
     if (entry.Sequence == seq) {
