@@ -22,14 +22,14 @@
 #define BENCHMARK_CLASS_CREATOR_1_ARG(benchmark_name) BENCHMARK_CLASS_CREATOR(benchmark_name, false)
 #define BENCHMARK_CLASS_CREATOR_2_ARG(benchmark_name, enabled) BENCHMARK_CLASS_CREATOR(benchmark_name, enabled)
 
-#define GET_3RD_ARG(arg1, arg2, arg3, ...) arg3
-#define BENCHMARK_MACRO_CHOOSER(...) GET_3RD_ARG(__VA_ARGS__, BENCHMARK_CLASS_CREATOR_2_ARG, BENCHMARK_CLASS_CREATOR_1_ARG)
+#define GET_3RD_BENCH_ARG(arg1, arg2, arg3, ...) arg3
+#define BENCHMARK_MACRO_CHOOSER(...) GET_3RD_BENCH_ARG(__VA_ARGS__, BENCHMARK_CLASS_CREATOR_2_ARG, BENCHMARK_CLASS_CREATOR_1_ARG)
 
 /*
     Benchmark macro. Takes two parameters, and with preprocessor magic the second is optional
 
     The first parameter is the name of the benchmark to run. It must be unique across the codebase since it is transformed into
-   a class.
+    a class. However it can be the same name as a test.
 
     The second is wheter to enable it. False by default because there will likely be more benchmarks than desired
 */
@@ -62,9 +62,6 @@ namespace benchmarking
     Benchmark(const char* name, bool enabled);
 
     virtual void body() = 0;
-
-   private:
-    static std::deque<Benchmark*> mBenchmarks;
   };
 }  // namespace benchmarking
 #endif

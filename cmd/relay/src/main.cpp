@@ -382,8 +382,7 @@ namespace
 int main(int argc, const char** argv)
 {
   if (argc == 2 && strcmp(argv[1], "test") == 0) {
-    testing::relay_test();
-    return 0;
+    return testing::SpecTest::Run() ? 0 : 1;
   }
 
   if (argc == 2 && strcmp(argv[1], "bench") == 0) {

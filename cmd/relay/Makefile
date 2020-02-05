@@ -68,8 +68,8 @@ relay-dbg: $(BIN) $(OBJ) $(OBJ_DIRS) $(BIN)/$(EXE_DBG)
 .PHONY: relay-test
 relay-test: $(BIN) $(OBJ) $(OBJ_DIRS) $(BIN)/$(EXE_TEST)
 
-.PHONY: relay-bench
-relay-bench: $(BIN) $(OBJ) $(OBJ_DIRS) $(BIN)/$(EXE_BENCH)
+.PHONY: relay-benchmarks
+relay-benchmarks: $(BIN) $(OBJ) $(OBJ_DIRS) $(BIN)/$(EXE_BENCH)
 
 .PHONY: make-dbg
 make-dbg: relay-dbg

@@ -1,32 +1,41 @@
 #include "test.hpp"
+#include <iostream>
+#include <memory>
 
-#include "config.hpp"
-#include "macros.hpp"
-#include "encoding/read.test.hpp"
-#include "encoding/write.test.hpp"
-#include "net/address.test.hpp"
-#include "core/replay_protection.test.hpp"
-#include "legacy.hpp"
-
-#include "relay/relay.hpp"
+namespace
+{
+  bool gTestInit = false;
+  std::unique_ptr<std::deque<testing::SpecTest*>> gTests;
+  ;
+}  // namespace
 
 namespace testing
 {
-  void relay_test()
+  SpecTest::SpecTest(const char* name, bool disabled): TestName(name), Disabled(disabled)
   {
-    printf("\nRunning relay tests:\n\n");
+    if (!gTestInit) {
+      gTests = std::make_unique<std::deque<testing::SpecTest*>>();
+      gTestInit = true;
+    }
 
-    check(relay::relay_initialize() == RELAY_OK);
+    gTests->push_back(this);
+  }
 
-    RUN_TEST(TestRead);
-    RUN_TEST(TestWrite);
-    RUN_TEST(TestAddress);
-    RUN_TEST(TestReplayProtection);
-    RUN_TEST(legacy_testing::TestLegacy);
-    printf("\n");
+  bool SpecTest::Run()
+  {
+    std::cout << "Test count: " << gTests->size() << '\n';
 
-    fflush(stdout);
-
-    relay::relay_term();
+    bool noTestsSkipped = true;
+    for (auto test : *gTests) {
+      if (!test->Disabled) {
+        std::cout << TEST_BREAK << "Running test '\x1b[35m" << test->TestName << "\x1b[m'\n";
+        test->body();
+      } else {
+        std::cout << TEST_BREAK_WARNING << "Skipping test '\x1b[36m" << test->TestName << "\x1b[m'\n";
+        noTestsSkipped = false;
+      }
+    }
+    std::cout << TEST_BREAK;
+    return noTestsSkipped;
   }
 }  // namespace testing

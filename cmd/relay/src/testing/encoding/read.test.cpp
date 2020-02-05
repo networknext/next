@@ -1,100 +1,89 @@
-#include "read.test.hpp"
-
 #include <array>
 
-#include "testing/macros.hpp"
+#include "testing/test.hpp"
+
 #include "net/address.hpp"
 #include "encoding/read.hpp"
 
-namespace testing
+Test(ReadAddress_ipv4)
 {
-  void Test_ReadAddress_ipv4()
-  {
-    net::Address addr;
-    std::array<uint8_t, RELAY_ADDRESS_BYTES> bin;
-    bin.fill(0);
-    bin[0] = static_cast<uint8_t>(net::AddressType::IPv4);
-    bin[1] = 127;
-    bin[2] = 0;
-    bin[3] = 0;
-    bin[4] = 1;
-    bin[5] = 0x5A;
-    bin[6] = 0xC7;
+  net::Address addr;
+  std::array<uint8_t, RELAY_ADDRESS_BYTES> bin;
+  bin.fill(0);
+  bin[0] = static_cast<uint8_t>(net::AddressType::IPv4);
+  bin[1] = 127;
+  bin[2] = 0;
+  bin[3] = 0;
+  bin[4] = 1;
+  bin[5] = 0x5A;
+  bin[6] = 0xC7;
 
-    size_t index = 0;
-    encoding::ReadAddress(bin, index, addr);
-    check(index == RELAY_ADDRESS_BYTES);
-  }
+  size_t index = 0;
+  encoding::ReadAddress(bin, index, addr);
+  check(index == RELAY_ADDRESS_BYTES);
+}
 
-  void Test_ReadAddress_ipv6()
-  {
-    net::Address addr;
-    std::array<uint8_t, RELAY_ADDRESS_BYTES> bin;
-    bin.fill(0);
-    bin[0] = static_cast<uint8_t>(net::AddressType::IPv6);
-    bin[1] = 0x1F;
-    bin[2] = 0x3B;
-    bin[3] = 0x33;
-    bin[4] = 0x3C;
-    bin[5] = 0x28;
-    bin[6] = 0x99;
-    bin[7] = 0xFF;
-    bin[8] = 0xFF;
-    bin[9] = 0xFF;
-    bin[10] = 0xFF;
-    bin[11] = 0xFF;
-    bin[12] = 0xFF;
-    bin[13] = 0xFF;
-    bin[14] = 0xFF;
-    bin[15] = 0xFF;
-    bin[16] = 0xFF;
-    bin[17] = 0x5A;
-    bin[18] = 0xC7;
-    bin[19] = 0x00;
+Test(ReadAddress_ipv6)
+{
+  net::Address addr;
+  std::array<uint8_t, RELAY_ADDRESS_BYTES> bin;
+  bin.fill(0);
+  bin[0] = static_cast<uint8_t>(net::AddressType::IPv6);
+  bin[1] = 0x1F;
+  bin[2] = 0x3B;
+  bin[3] = 0x33;
+  bin[4] = 0x3C;
+  bin[5] = 0x28;
+  bin[6] = 0x99;
+  bin[7] = 0xFF;
+  bin[8] = 0xFF;
+  bin[9] = 0xFF;
+  bin[10] = 0xFF;
+  bin[11] = 0xFF;
+  bin[12] = 0xFF;
+  bin[13] = 0xFF;
+  bin[14] = 0xFF;
+  bin[15] = 0xFF;
+  bin[16] = 0xFF;
+  bin[17] = 0x5A;
+  bin[18] = 0xC7;
+  bin[19] = 0x00;
 
-    size_t index = 0;
-    encoding::ReadAddress(bin, index, addr);
-    check(index == RELAY_ADDRESS_BYTES);
-    check(addr.toString() == "[3b1f:3c33:9928:ffff:ffff:ffff:ffff:ffff]:51034");
-  }
+  size_t index = 0;
+  encoding::ReadAddress(bin, index, addr);
+  check(index == RELAY_ADDRESS_BYTES);
+  check(addr.toString() == "[3b1f:3c33:9928:ffff:ffff:ffff:ffff:ffff]:51034");
+}
 
-  void Test_ReadAddress_none()
-  {
-    net::Address before, after;
-    std::array<uint8_t, RELAY_ADDRESS_BYTES> bin;
-    bin.fill(0);
-    bin[0] = static_cast<uint8_t>(net::AddressType::None);
-    bin[1] = 0x1F;
-    bin[2] = 0x3B;
-    bin[3] = 0x33;
-    bin[4] = 0x3C;
-    bin[5] = 0x28;
-    bin[6] = 0x99;
-    bin[7] = 0xFF;
-    bin[8] = 0xFF;
-    bin[9] = 0xFF;
-    bin[10] = 0xFF;
-    bin[11] = 0xFF;
-    bin[12] = 0xFF;
-    bin[13] = 0xFF;
-    bin[14] = 0xFF;
-    bin[15] = 0xFF;
-    bin[16] = 0xFF;
-    bin[17] = 0xFF;
-    bin[18] = 0xFF;
-    bin[19] = 0xFF;
+Test(ReadAddress_none)
+{
+  net::Address before, after;
+  std::array<uint8_t, RELAY_ADDRESS_BYTES> bin;
+  bin.fill(0);
+  bin[0] = static_cast<uint8_t>(net::AddressType::None);
+  bin[1] = 0x1F;
+  bin[2] = 0x3B;
+  bin[3] = 0x33;
+  bin[4] = 0x3C;
+  bin[5] = 0x28;
+  bin[6] = 0x99;
+  bin[7] = 0xFF;
+  bin[8] = 0xFF;
+  bin[9] = 0xFF;
+  bin[10] = 0xFF;
+  bin[11] = 0xFF;
+  bin[12] = 0xFF;
+  bin[13] = 0xFF;
+  bin[14] = 0xFF;
+  bin[15] = 0xFF;
+  bin[16] = 0xFF;
+  bin[17] = 0xFF;
+  bin[18] = 0xFF;
+  bin[19] = 0xFF;
 
-    size_t index = 0;
-    encoding::ReadAddress(bin, index, after);
-    check(index == RELAY_ADDRESS_BYTES);
-    check(after.toString() == "NONE");
-    check(before == after);
-  }
-
-  void TestRead()
-  {
-    Test_ReadAddress_ipv4();
-    Test_ReadAddress_ipv6();
-    Test_ReadAddress_none();
-  }
-}  // namespace testing
+  size_t index = 0;
+  encoding::ReadAddress(bin, index, after);
+  check(index == RELAY_ADDRESS_BYTES);
+  check(after.toString() == "NONE");
+  check(before == after);
+}

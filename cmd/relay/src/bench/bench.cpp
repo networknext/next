@@ -1,24 +1,33 @@
 #include "bench.hpp"
+#include <memory>
 
 benchmarking::Clock Timer;
 
+namespace
+{
+  bool gBenchmarkInit = false;
+  std::unique_ptr<std::deque<benchmarking::Benchmark*>> gBenchmarks;
+}  // namespace
+
 namespace benchmarking
 {
-  // to help prevent static initialization fiasco
-  std::deque<Benchmark*> Benchmark::mBenchmarks = []() -> std::deque<Benchmark*> {
-    return std::deque<Benchmark*>();
-  }();
-
   Benchmark::Benchmark(const char* name, bool enabled): BenchmarkName(name), Enabled(enabled)
   {
-    mBenchmarks.push_back(this);
+    // to prevent static initialization fiasco
+    if (!gBenchmarkInit) {
+      gBenchmarks = std::make_unique<std::deque<Benchmark*>>();
+      gBenchmarkInit = true;
+    }
+    gBenchmarks->push_back(this);
   }
 
   void Benchmark::Run()
   {
-    for (auto benchmark : mBenchmarks) {
+    std::cout << "Benchmark Count: " << gBenchmarks->size() << '\n';
+
+    for (auto benchmark : *gBenchmarks) {
       if (benchmark->Enabled) {
-        std::cout << BENCH_BREAK << "Running '\x1b[35m" << benchmark->BenchmarkName << "\x1b[m'\n\n";
+        std::cout << BENCH_BREAK << "Running '\x1b[35m" << benchmark->BenchmarkName << "\x1b[m'\n";
         benchmark->body();
       }
     }

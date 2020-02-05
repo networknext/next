@@ -1,12 +1,11 @@
-#include "legacy.hpp"
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <sodium.h>
 
+#include "testing/test.hpp"
+
 #include "config.hpp"
-#include "macros.hpp"
 
 #include "encoding/base64.hpp"
 #include "encoding/binary.hpp"
@@ -24,16 +23,9 @@
 #include "relay/relay_platform.hpp"
 #include "relay/relay_route_token.hpp"
 
-#include "net/address.test.hpp"
-#include "core/replay_protection.test.hpp"
-
 namespace
 {
   const int MaxItems = 11;
-}  // namespace
-
-namespace legacy_testing
-{
   struct TestData
   {
     TestData()
@@ -1032,32 +1024,33 @@ namespace legacy_testing
 
     relay_manager_destroy(manager);
   }
+}  // namespace
 
-  void TestLegacy()
-  {
-    test_endian();
-    test_bitpacker();
-    test_stream();
-    test_address();
-    test_replay_protection();
-    test_random_bytes();
-    test_crypto_box();
-    test_crypto_secret_box();
-    test_crypto_aead();
-    test_crypto_aead_ietf();
-    test_crypto_sign();
-    test_crypto_sign_detached();
-    test_crypto_key_exchange();
-    test_basic_read_and_write();
-    test_address_read_and_write();
-    test_platform_socket();
-    test_platform_thread();
-    test_platform_mutex();
-    test_bandwidth_limiter();
-    test_route_token();
-    test_continue_token();
-    test_header();
-    test_base64();
-    test_relay_manager();
-  }
-}  // namespace legacy_testing
+Test(Legacy)
+{
+  check(relay::relay_initialize() == RELAY_OK);
+  test_endian();
+  test_bitpacker();
+  test_stream();
+  test_random_bytes();
+  test_crypto_box();
+  test_crypto_secret_box();
+  test_crypto_aead();
+  test_crypto_aead_ietf();
+  test_crypto_sign();
+  test_crypto_sign_detached();
+  test_crypto_key_exchange();
+  test_basic_read_and_write();
+  test_address_read_and_write();
+  test_platform_socket();
+  test_platform_thread();
+  test_platform_mutex();
+  test_bandwidth_limiter();
+  test_route_token();
+  test_continue_token();
+  test_header();
+  test_base64();
+  test_relay_manager();
+
+  relay::relay_term();
+}
