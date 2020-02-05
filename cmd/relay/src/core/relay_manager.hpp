@@ -4,6 +4,8 @@
 #include <vector>
 
 #include "relay_stats.hpp"
+#include "ping_history.hpp"
+
 #include "net/address.hpp"
 
 namespace core
@@ -27,6 +29,8 @@ namespace core
     std::array<uint64_t, MAX_RELAYS> mRelayIDs;
     std::array<double, MAX_RELAYS> mLastRelayPingTime;
     std::array<net::Address, MAX_RELAYS> mRelayAddresses;
+    std::array<PingHistory*, MAX_RELAYS> mRelayPingHistory;
+    std::array<PingHistory, MAX_RELAYS> mPingHistoryArray;
   };
 }  // namespace core
 #endif
