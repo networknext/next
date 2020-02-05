@@ -13,7 +13,7 @@
 #include <pthread.h>
 #include <unistd.h>
 
-#include "relay/relay_address.hpp"
+#include "net/address.hpp"
 
 #define RELAY_PLATFORM_HAS_IPV6 1
 #define RELAY_PLATFORM_SOCKET_NON_BLOCKING 0
@@ -73,12 +73,13 @@ namespace relay
 
     void relay_platform_sleep(double time);
 
-    relay_platform_socket_t* relay_platform_socket_create(legacy::relay_address_t* address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size);
+    relay_platform_socket_t* relay_platform_socket_create(
+        legacy::relay_address_t* address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size);
 
     void relay_platform_socket_destroy(relay_platform_socket_t* socket);
 
     void relay_platform_socket_send_packet(
-        relay_platform_socket_t* socket, const legacy::relay_address_t* to, const void* packet_data, int packet_bytes);
+        relay_platform_socket_t* socket, legacy::relay_address_t* to, const void* packet_data, int packet_bytes);
 
     int relay_platform_socket_receive_packet(
         relay_platform_socket_t* socket, legacy::relay_address_t* from, void* packet_data, int max_packet_size);

@@ -1,4 +1,4 @@
-#include "test.hpp"
+#include "legacy.hpp"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -6,6 +6,7 @@
 #include <sodium.h>
 
 #include "config.hpp"
+#include "macros.hpp"
 
 #include "encoding/base64.hpp"
 #include "encoding/binary.hpp"
@@ -17,42 +18,17 @@
 #include "encoding/read_stream.hpp"
 
 #include "relay/relay.hpp"
-#include "relay/relay_address.hpp"
+#include "net/address.hpp"
 #include "relay/relay_bandwidth_limiter.hpp"
 #include "relay/relay_continue_token.hpp"
 #include "relay/relay_platform.hpp"
 #include "relay/relay_replay_protection.hpp"
 #include "relay/relay_route_token.hpp"
 
-#define RUN_TEST(test_function)             \
-    do {                                    \
-        printf("    " #test_function "\n"); \
-        fflush(stdout);                     \
-        test_function();                    \
-    } while (0)
-
-static void check_handler(const char* condition, const char* function, const char* file, int line)
+namespace
 {
-    printf("check failed: ( %s ), function %s, file %s, line %d\n", condition, function, file, line);
-    fflush(stdout);
-#ifndef NDEBUG
-#if defined(__GNUC__)
-    __builtin_trap();
-#elif defined(_MSC_VER)
-    __debugbreak();
-#endif
-#endif
-    exit(1);
-}
-
-#define check(condition)                                                                           \
-    do {                                                                                           \
-        if (!(condition)) {                                                                        \
-            check_handler(#condition, (const char*)__FUNCTION__, (const char*)__FILE__, __LINE__); \
-        }                                                                                          \
-    } while (0)
-
-const int MaxItems = 11;
+    const int MaxItems = 11;
+}  // namespace
 
 namespace testing
 {
@@ -725,7 +701,7 @@ namespace testing
         check(memcmp(g, "hello", 6) == 0);
     }
 
-    static void test_address_read_and_write()
+    void test_address_read_and_write()
     {
         legacy::relay_address_t a, b, c;
 
@@ -772,7 +748,7 @@ namespace testing
             memset(packet, 0, sizeof(packet));
             relay::relay_platform_socket_send_packet(socket, &local_address, packet, sizeof(packet));
             legacy::relay_address_t from;
-            while (relay_platform_socket_receive_packet(socket, &from, packet, sizeof(packet))) {
+            while (relay::relay_platform_socket_receive_packet(socket, &from, packet, sizeof(packet))) {
                 check(relay_address_equal(&from, &local_address));
             }
             relay_platform_socket_destroy(socket);
@@ -1261,41 +1237,31 @@ namespace testing
         relay_manager_destroy(manager);
     }
 
-    void relay_test()
+    void TestLegacy()
     {
-        printf("\nRunning relay tests:\n\n");
-
-        check(relay::relay_initialize() == RELAY_OK);
-
-        RUN_TEST(test_endian);
-        RUN_TEST(test_bitpacker);
-        RUN_TEST(test_stream);
-        RUN_TEST(test_address);
-        RUN_TEST(test_replay_protection);
-        RUN_TEST(test_random_bytes);
-        RUN_TEST(test_crypto_box);
-        RUN_TEST(test_crypto_secret_box);
-        RUN_TEST(test_crypto_aead);
-        RUN_TEST(test_crypto_aead_ietf);
-        RUN_TEST(test_crypto_sign);
-        RUN_TEST(test_crypto_sign_detached);
-        RUN_TEST(test_crypto_key_exchange);
-        RUN_TEST(test_basic_read_and_write);
-        RUN_TEST(test_address_read_and_write);
-        RUN_TEST(test_platform_socket);
-        RUN_TEST(test_platform_thread);
-        RUN_TEST(test_platform_mutex);
-        RUN_TEST(test_bandwidth_limiter);
-        RUN_TEST(test_route_token);
-        RUN_TEST(test_continue_token);
-        RUN_TEST(test_header);
-        RUN_TEST(test_base64);
-        RUN_TEST(test_relay_manager);
-
-        printf("\n");
-
-        fflush(stdout);
-
-        relay::relay_term();
+        test_endian();
+        test_bitpacker();
+        test_stream();
+        test_address();
+        test_replay_protection();
+        test_random_bytes();
+        test_crypto_box();
+        test_crypto_secret_box();
+        test_crypto_aead();
+        test_crypto_aead_ietf();
+        test_crypto_sign();
+        test_crypto_sign_detached();
+        test_crypto_key_exchange();
+        test_basic_read_and_write();
+        test_address_read_and_write();
+        test_platform_socket();
+        test_platform_thread();
+        test_platform_mutex();
+        test_bandwidth_limiter();
+        test_route_token();
+        test_continue_token();
+        test_header();
+        test_base64();
+        test_relay_manager();
     }
 }  // namespace testing
