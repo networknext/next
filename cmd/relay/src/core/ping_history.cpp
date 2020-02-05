@@ -18,7 +18,8 @@ namespace core
     entry.Seq = mSeq;
     entry.TimePingSent = time;
     entry.TimePongRecieved = -1.0;
-    return ++mSeq;
+    mSeq++;
+    return entry.Seq;
   }
 
   void PingHistory::pongReceived(uint64_t seq, double time)

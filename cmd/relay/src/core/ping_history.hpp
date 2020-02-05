@@ -33,7 +33,7 @@ namespace core
     uint64_t seq();
 
    private:
-    uint64_t mSeq;
+    uint64_t mSeq = 0;
   };
 
   inline uint64_t PingHistory::seq()

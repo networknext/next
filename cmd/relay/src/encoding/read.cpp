@@ -2,6 +2,8 @@
 
 #include <cstring>
 
+#include "config.hpp"
+
 namespace encoding
 {
   uint8_t read_uint8(const uint8_t** p)
@@ -13,6 +15,7 @@ namespace encoding
 
   uint16_t read_uint16(const uint8_t** p)
   {
+    GCC_NO_OPT_OUT;
     uint16_t value;
     value = (*p)[0];
     value |= (((uint16_t)((*p)[1])) << 8);
