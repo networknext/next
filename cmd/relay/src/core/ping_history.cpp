@@ -11,7 +11,7 @@ namespace core
     auto& entry = mEntries[index];
     entry.Sequence = mSeq;
     entry.TimePingSent = time;
-    entry.TimePongRecieved = -1.0;
+    entry.TimePongReceived = -1.0;
     mSeq++;
     return entry.Sequence;
   }
@@ -22,7 +22,7 @@ namespace core
     const auto index = seq % RELAY_PING_HISTORY_ENTRY_COUNT;
     auto& entry = mEntries[index];
     if (entry.Sequence == seq) {
-      entry.TimePongRecieved = time;
+      entry.TimePongReceived = time;
     }
   }
 }  // namespace core

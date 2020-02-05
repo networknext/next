@@ -12,7 +12,7 @@ namespace core
   {
     uint64_t Sequence = INVALID_SEQUENCE_NUMBER;
     double TimePingSent = -1.0;
-    double TimePongRecieved = -1.0;
+    double TimePongReceived = -1.0;
   };
 
   class PingHistory
@@ -34,6 +34,8 @@ namespace core
    private:
     uint64_t mSeq = 0;
     std::array<HistoryEntry, RELAY_PING_HISTORY_ENTRY_COUNT> mEntries;
+
+    friend class RouteStats;
   };
 
   inline void PingHistory::clear()
