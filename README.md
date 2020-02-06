@@ -57,6 +57,16 @@ Some instances you only want to run some instances at a time and you would use `
 $ docker-compose -f ./cmd/docker-compose.yaml run relay_backend
 ```
 
+### Scaling a Service
+
+Docker Compose makes is very trivial to scale up the number of instances of a service. Currently we can only scale the `relay` service because port numbers will not conflict. Scaling any other service will not work since port numbers are hard coded. For our purposes this is fine. To develop locally we really want to specify any number of relays to run.
+
+Here we can run everything again, but this time it will run 10 instances of the relay service.
+
+```bash
+$ docker-compose -f ./cmd/docker-compose.yaml up --scale relay=10
+```
+
 ## Components
 
 ```
