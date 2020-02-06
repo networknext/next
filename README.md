@@ -9,7 +9,8 @@ This is a monorepo that contains a WIP migration/refactor of the Network Next ba
 The toolchain used for development is kept simple to make it easy for any operating system to install and use and work out of the box for POSIX Linux distributions.
 
 - [Redis](https://redis.io)
-- [Docker](https://www.docker.com)
+- [Docker](https://docs.docker.com/install/)
+- [Docker Compose](https://docs.docker.com/compose/install/)
 - [make](http://man7.org/linux/man-pages/man1/make.1.html)
 - [sh](https://linux.die.net/man/1/sh)
 - [Go](https://golang.org/dl/#stable) (at least Go 1.13)
@@ -19,6 +20,42 @@ The toolchain used for development is kept simple to make it easy for any operat
     - [libpthread](https://www.gnu.org/software/hurd/libpthread.html)
 
 Developers should install these requirements however they need to be installed based on your operating system. Windows users can leverage WSL to get all of these.
+
+## Docker and Docker Compose
+
+While all of the components can be run locally either independantly or collectively it can be tedious to run multiple relays to get a true test of everything. We can leverage Docker and Docker Compose to easily stand everything up as a system. There is a [`./cmd/docker-compose.yaml`](./cmd/docker-compose.yaml) along with all required `Dockerfile`s in each of the binary directories to create the system of backend services (`relay`, `relay_backend`, and `server_backend`). 
+
+### First Time
+
+The first time you run the system with Docker Compose it will build all the required `Dockerfile`s and run them.
+
+From the root of the project you can run `docker-compose` and specify the configuration file to stand everything up.
+
+```bash
+$ docker-compose -f ./cmd/docker-compose.yaml up
+```
+
+### Second, Third, Forth, and N Times
+
+After all of the `Dockerfile`s have been built subsequent runs of `docker-compose up` will ONLY run them. If you make changes to any of the code you need to rebuild all of the services.
+
+```bash
+$ docker-compose -f ./cmd/docker-compose.yaml build
+```
+
+Once everything is rebuilt you can run everything again to see your changes.
+
+```bash
+$ docker-compose -f ./cmd/docker-compose.yaml up
+```
+
+### One Service at a Time
+
+Some instances you only want to run some instances at a time and you would use `docker-compose run SERVICE_NAME`. Read the `./cmd/docker-compose.yaml` for all the service names.
+
+```bash
+$ docker-compose -f ./cmd/docker-compose.yaml run relay_backend
+```
 
 ## Components
 
