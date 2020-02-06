@@ -67,15 +67,25 @@ namespace encoding
 
     if (addr.Type == net::AddressType::IPv4) {
       WriteUint8(buff, index, static_cast<uint8_t>(net::AddressType::IPv4));  // write the type
+
       std::copy(addr.IPv4.begin(), addr.IPv4.end(), buff.begin() + index);    // copy the address
       index += addr.IPv4.size() * sizeof(uint8_t);                            // increment the index
+
       WriteUint16(buff, index, addr.Port);                                    // write the port
+
       index += 12;                                                            // increment the index past the address section
     } else if (addr.Type == net::AddressType::IPv6) {
-      WriteUint8(buff, index, static_cast<uint8_t>(net::AddressType::IPv6));                            // write the type
-      std::copy(addr.IPv6.begin(), addr.IPv6.end(), reinterpret_cast<uint16_t*>(buff.data() + index));  // copy the address
-      index += addr.IPv6.size() * sizeof(uint16_t);                                                     // increment the index
-      WriteUint16(buff, index, addr.Port);                                                              // write the port
+      WriteUint8(buff, index, static_cast<uint8_t>(net::AddressType::IPv6));  // write the type
+
+      for (const auto& ip : addr.IPv6) {
+        WriteUint16(buff, index, ip);
+      }
+
+      /* hack to write the data faster, only use if we're getting desperate for performance */
+      // std::copy(addr.IPv6.begin(), addr.IPv6.end(), reinterpret_cast<uint16_t*>(buff.data() + index));
+      // index += addr.IPv6.size() * sizeof(uint16_t);
+
+      WriteUint16(buff, index, addr.Port);
     } else {
       std::fill(buff.begin() + index, buff.begin() + index + RELAY_ADDRESS_BYTES, 0);
       index += RELAY_ADDRESS_BYTES;
