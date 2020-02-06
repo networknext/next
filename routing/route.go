@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"net"
 
 	"github.com/networknext/backend/crypto"
@@ -16,9 +17,14 @@ const (
 	DecisionTypeNew      = 1
 	DecisionTypeContinue = 2
 
-	EncryptedNextRouteTokenSize        = 117 // Need to find out how this size is made
-	EncryptedContinueRouteDecisionSize = 58
+	EncryptedNextRouteTokenSize     = 117
+	EncryptedContinueRouteTokenSize = 58
 )
+
+type Token interface {
+	Type() int
+	Encrypt([]byte) ([]byte, int, error)
+}
 
 type Client struct {
 	Addr      net.UDPAddr
@@ -35,7 +41,31 @@ type Route struct {
 	Stats  Stats
 }
 
-type ContinueRouteDecision struct {
+func (r *Route) Hash() []byte {
+	fnv64 := fnv.New64()
+	id := make([]byte, 8)
+
+	for _, relay := range r.Relays {
+		binary.LittleEndian.PutUint64(id, relay.ID)
+		fnv64.Write(id)
+	}
+
+	return fnv64.Sum(nil)
+}
+
+func (r *Route) Hash64() uint64 {
+	fnv64 := fnv.New64()
+	id := make([]byte, 8)
+
+	for _, relay := range r.Relays {
+		binary.LittleEndian.PutUint64(id, relay.ID)
+		fnv64.Write(id)
+	}
+
+	return fnv64.Sum64()
+}
+
+type ContinueRouteToken struct {
 	Expires uint64
 
 	SessionId      uint64
@@ -51,11 +81,15 @@ type ContinueRouteDecision struct {
 	offset     int
 }
 
-func (r *ContinueRouteDecision) Encrypt(privateKey []byte) []byte {
+func (r *ContinueRouteToken) Type() int {
+	return DecisionTypeContinue
+}
+
+func (r *ContinueRouteToken) Encrypt(privateKey []byte) ([]byte, int, error) {
 	r.privateKey = make([]byte, crypto.KeySize)
 	rand.Read(r.privateKey)
 
-	r.tokens = make([]byte, EncryptedContinueRouteDecisionSize*(len(r.Relays)+2))
+	r.tokens = make([]byte, EncryptedContinueRouteTokenSize*(len(r.Relays)+2))
 
 	// Encrypt the first node with the client public key
 	// and point it to the FIRST relay in the route
@@ -79,10 +113,10 @@ func (r *ContinueRouteDecision) Encrypt(privateKey []byte) []byte {
 	// and point it to the server itself signifying the end
 	r.encryptToken(r.Server.Addr, r.Server.PublicKey, privateKey)
 
-	return r.tokens
+	return r.tokens, len(r.Relays) + 2, nil
 }
 
-func (r *ContinueRouteDecision) encryptToken(addr net.UDPAddr, receiverPublicKey []byte, senderPrivateKey []byte) {
+func (r *ContinueRouteToken) encryptToken(addr net.UDPAddr, receiverPublicKey []byte, senderPrivateKey []byte) {
 	// Create space for the entire encoded node
 	node := make([]byte, 58)
 
@@ -99,7 +133,7 @@ func (r *ContinueRouteDecision) encryptToken(addr net.UDPAddr, receiverPublicKey
 
 	copy(r.tokens[r.offset:], crypto.Seal(node[crypto.NonceSize:], nonce, receiverPublicKey, senderPrivateKey))
 
-	r.offset += EncryptedContinueRouteDecisionSize
+	r.offset += EncryptedContinueRouteTokenSize
 }
 
 type NextRouteToken struct {
@@ -121,9 +155,13 @@ type NextRouteToken struct {
 	offset     int
 }
 
-func (r *NextRouteToken) Encrypt(privateKey []byte) ([]byte, error) {
+func (r *NextRouteToken) Type() int {
+	return DecisionTypeNew
+}
+
+func (r *NextRouteToken) Encrypt(privateKey []byte) ([]byte, int, error) {
 	if len(r.Relays) <= 0 {
-		return nil, errors.New("at least 1 relay is required")
+		return nil, 0, errors.New("at least 1 relay is required")
 	}
 
 	r.privateKey = make([]byte, crypto.KeySize)
@@ -134,13 +172,13 @@ func (r *NextRouteToken) Encrypt(privateKey []byte) ([]byte, error) {
 	// Encrypt the first node with the client public key
 	// and point it to the FIRST relay in the route
 	if r.Client.PublicKey == nil {
-		return nil, errors.New("client public key cannot be nil")
+		return nil, 0, errors.New("client public key cannot be nil")
 	}
 	r.encryptToken(r.Relays[0].Addr, r.Client.PublicKey, privateKey)
 
 	for i := range r.Relays {
 		if r.Relays[i].PublicKey == nil {
-			return nil, fmt.Errorf("relay public key at index %d cannot be nil", i)
+			return nil, 0, fmt.Errorf("relay public key at index %d cannot be nil", i)
 		}
 
 		// If this is the last relay in the route
@@ -159,11 +197,11 @@ func (r *NextRouteToken) Encrypt(privateKey []byte) ([]byte, error) {
 	// Encrypt the last node with the server public key
 	// and point it to the server itself signifying the end
 	if r.Server.PublicKey == nil {
-		return nil, errors.New("server public key cannot be nil")
+		return nil, 0, errors.New("server public key cannot be nil")
 	}
 	r.encryptToken(r.Server.Addr, r.Server.PublicKey, privateKey)
 
-	return r.tokens, nil
+	return r.tokens, len(r.Relays) + 2, nil
 }
 
 // encryptToken works on each token in the chain of tokens

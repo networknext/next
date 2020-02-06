@@ -34,7 +34,11 @@ func (rp *mockRouteProvider) ResolveRelay(id uint64) (routing.Relay, error) {
 	return routing.Relay{}, nil
 }
 
-func (rp *mockRouteProvider) AllRoutes(d routing.Datacenter, rs []routing.Relay) []routing.Route {
+func (rp *mockRouteProvider) RelaysIn(ds routing.Datacenter) []routing.Relay {
+	return nil
+}
+
+func (rp *mockRouteProvider) Routes(from []routing.Relay, to []routing.Relay) []routing.Route {
 	return []routing.Route{
 		{
 			Relays: []routing.Relay{

@@ -29,7 +29,7 @@ func TestEncryptNextRouteToken(t *testing.T) {
 				},
 			},
 		}
-		enc, err := token.Encrypt(crypto.RouterPrivateKey)
+		enc, _, err := token.Encrypt(crypto.RouterPrivateKey)
 		assert.Nil(t, enc)
 		assert.EqualError(t, err, "client public key cannot be nil")
 
@@ -46,7 +46,7 @@ func TestEncryptNextRouteToken(t *testing.T) {
 				},
 			},
 		}
-		enc, err = token.Encrypt(crypto.RouterPrivateKey)
+		enc, _, err = token.Encrypt(crypto.RouterPrivateKey)
 		assert.Nil(t, enc)
 		assert.EqualError(t, err, "server public key cannot be nil")
 
@@ -71,7 +71,7 @@ func TestEncryptNextRouteToken(t *testing.T) {
 				},
 			},
 		}
-		enc, err = token.Encrypt(crypto.RouterPrivateKey)
+		enc, _, err = token.Encrypt(crypto.RouterPrivateKey)
 		assert.Nil(t, enc)
 		assert.EqualError(t, err, "relay public key at index 0 cannot be nil")
 
@@ -85,7 +85,7 @@ func TestEncryptNextRouteToken(t *testing.T) {
 				PublicKey: nodepublickey[:],
 			},
 		}
-		enc, err = token.Encrypt(crypto.RouterPrivateKey)
+		enc, _, err = token.Encrypt(crypto.RouterPrivateKey)
 		assert.Nil(t, enc)
 		assert.EqualError(t, err, "at least 1 relay is required")
 	})
@@ -129,7 +129,7 @@ func TestEncryptNextRouteToken(t *testing.T) {
 			},
 		}
 
-		enctoken, err := token.Encrypt(crypto.RouterPrivateKey)
+		enctoken, _, err := token.Encrypt(crypto.RouterPrivateKey)
 		assert.NoError(t, err)
 		assert.Equal(t, 585, len(enctoken))
 	})
@@ -140,7 +140,7 @@ func TestEncryptContinueRouteDecision(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Run("success", func(t *testing.T) {
-		token := routing.ContinueRouteDecision{
+		token := routing.ContinueRouteToken{
 			Expires:        1,
 			SessionId:      2,
 			SessionVersion: 3,
@@ -173,7 +173,8 @@ func TestEncryptContinueRouteDecision(t *testing.T) {
 			},
 		}
 
-		enctoken := token.Encrypt(crypto.RouterPrivateKey)
+		enctoken, _, err := token.Encrypt(crypto.RouterPrivateKey)
+		assert.NoError(t, err)
 		assert.Equal(t, 290, len(enctoken))
 	})
 }
