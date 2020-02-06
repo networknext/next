@@ -18,8 +18,8 @@ func TestSignVerify(t *testing.T) {
 	msg := []byte("just some data to sign")
 
 	// We need to offset the keys by 8 bytes since the first 8 bytes is the CustomerID
-	sig := ed25519.Sign(privateKey[8:], msg)
-	assert.True(t, ed25519.Verify(publicKey[8:], msg, sig))
+	sig := crypto.Sign(privateKey[8:], msg)
+	assert.True(t, crypto.Verify(publicKey[8:], msg, sig))
 }
 
 func TestOpenSeal(t *testing.T) {
