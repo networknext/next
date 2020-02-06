@@ -3,7 +3,7 @@
 The Relay Backend is responsible for:
 
 1. Listening for new relays that come online and initialize them to be apart of set of available relays for routing
-2. Accpeting stat updates (RTT, Jitter, Packet Loss) from all relays and store their stats
+2. Accepting stat updates (RTT, Jitter, Packet Loss) from all relays and store their stats
 3. Generate a cost then route matrix of optimized routes that are available which the Server Backend pulls a copy of
 4. Keeps an updated relay location list using Redis to find nearby relays so the Server Backend can find relays near game clients
 
