@@ -1,7 +1,12 @@
 package routing_test
 
 import (
+	"fmt"
+	"math"
+	"math/rand"
+	"net"
 	"testing"
+	"time"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/go-redis/redis/v7"
@@ -392,6 +397,49 @@ func TestStatsDatabase(t *testing.T) {
 			assert.Equal(t, int32(-1), costMatrix.RTT[getAddressIndex("127.0.0.1:40000", "127.0.0.3:40000")])
 			assert.Equal(t, int32(-1), costMatrix.RTT[getAddressIndex("127.0.0.1:40000", "654.0.0.4:40000")])
 			assert.Equal(t, int32(-1), costMatrix.RTT[getAddressIndex("127.0.0.1:40000", "000.0.0.5:40000")])
+		})
+
+		t.Run("Failed to get relays from redis", func(t *testing.T) {
+			// Do not establish a redis server to simulate a failed relay request
+			redisClient := redis.NewClient(&redis.Options{Addr: "0.0.0.0:9999"})
+
+			var costMatrix routing.CostMatrix
+			statsdb := routing.NewStatsDatabase()
+			err := statsdb.GetCostMatrix(&costMatrix, redisClient)
+			assert.EqualError(t, err, fmt.Sprintf("failed to get all relays from redis: dial tcp %v: connect: connection refused", redisClient.Options().Addr))
+		})
+
+		t.Run("Failed to unmarshal cost matrix", func(t *testing.T) {
+			redisServer, _ := miniredis.Run()
+			redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+			// Relay data
+			addr := "127.0.0.1:40000"
+			id := crypto.HashID(addr)
+			udp, _ := net.ResolveUDPAddr("udp", addr)
+			relay := routing.Relay{
+				ID:             id,
+				Name:           addr,
+				Addr:           *udp,
+				Datacenter:     uint64(rand.Uint64()%(math.MaxUint64-1) + 1), // non-zero random number
+				DatacenterName: RandomString(5),
+				PublicKey:      RandomPublicKey(),
+				LastUpdateTime: uint64(time.Now().Unix()),
+			}
+
+			buff, err := relay.MarshalBinary()
+			assert.NoError(t, err)
+
+			// Malform the relay data
+			buff = buff[:len(buff)-1]
+
+			redisClient.HSet(routing.HashKeyAllRelays, relay.Key(), buff)
+
+			statsdb := routing.NewStatsDatabase()
+
+			var costMatrix routing.CostMatrix
+			err = statsdb.GetCostMatrix(&costMatrix, redisClient)
+			assert.EqualError(t, err, fmt.Sprint("failed to unmarshal relay when creating cost matrix: Invalid Relay"))
 		})
 	})
 }
