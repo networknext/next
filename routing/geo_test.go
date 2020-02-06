@@ -133,7 +133,21 @@ func TestGeoClient(t *testing.T) {
 		assert.Equal(t, r2.ID, relays[0].ID)
 		assert.Equal(t, r1.ID, relays[1].ID)
 
+		// Bad georadius call to redis
 		_, err = geoclient.RelaysWithin(37, 15, 200, "invalid")
+		assert.Error(t, err)
+
+		// Unable to parse name from redis
+		geoloc := redis.GeoLocation{
+			Name:      "bad data",
+			Latitude:  37.502669,
+			Longitude: 15.087269,
+		}
+
+		err = geoclient.RedisClient.GeoAdd(geoclient.Namespace, &geoloc).Err()
+		assert.NoError(t, err)
+
+		_, err = geoclient.RelaysWithin(37, 15, 200, "km")
 		assert.Error(t, err)
 	})
 }
