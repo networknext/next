@@ -49,8 +49,6 @@ OBJECTS				:= $(SRC_OBJ_FILES) $(TEST_OBJ_FILES) $(BENCH_OBJ_FILES)
 DEPENDENCIES		:= $(SRC_DEP_FILES) $(TEST_DEP_FILES) $(BENCH_DEP_FILES)
 EXECUTABLES			:= $(BIN)/$(EXE) $(BIN)/$(EXE_TEST) $(BIN)/$(EXE_BENCH) $(DIST_DIR)/$(EXE)
 
--include $(DEPENDENCIES)
-
 ################
 ### Targets  ###
 ################
@@ -78,6 +76,8 @@ run-tests: all-test
 .PHONY: run-benchmarks
 run-benchmarks: all-bench
 	@$(BIN)/$(EXE_BENCH) bench
+
+-include $(DEPENDENCIES)
 
 $(BIN)/$(EXE): $(SRC_OBJ_FILES)
 	$(CXX) $(CXX_FLAGS) $(INCLUDE_DIRS) $(LIBRARY_DIRS) $^ $(STATIC_LIBS) -o $@ $(LIBRARIES)
