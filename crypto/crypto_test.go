@@ -12,13 +12,33 @@ import (
 )
 
 func TestSignVerify(t *testing.T) {
+	// Note: when using these we need to offset the keys by 8 bytes since the first 8 bytes is the CustomerID
 	publicKey, _ := base64.StdEncoding.DecodeString("leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==")
 	privateKey, _ := base64.StdEncoding.DecodeString("leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn")
 
 	msg := []byte("just some data to sign")
 
-	// We need to offset the keys by 8 bytes since the first 8 bytes is the CustomerID
-	sig := crypto.Sign(privateKey[8:], msg)
+	// Generate some valid, but wrong keys
+	wrongPublicKey, wrongPrivateKey, _ := crypto.GenerateCustomerKeyPair()
+	wrongSig := crypto.Sign(wrongPrivateKey, msg)
+
+	// Verify Signing fails when key length is wrong
+	sig := crypto.Sign(privateKey[7:], msg)
+	assert.Nil(t, sig)
+
+	// Verify Signing successful when a valid key provided
+	sig = crypto.Sign(privateKey[8:], msg)
+	assert.NotNil(t, sig)
+	assert.Len(t, sig, ed25519.SignatureSize)
+
+	// Verification should fail when wrong key provided
+	assert.False(t, crypto.Verify(wrongPublicKey, msg, sig))
+
+	// Verification should fail when wrong signature provided
+	assert.False(t, crypto.Verify(publicKey, msg, wrongSig))
+
+	// If the right public key + signature are provided, should succeed
+	sig = crypto.Sign(privateKey[8:], msg)
 	assert.True(t, crypto.Verify(publicKey[8:], msg, sig))
 }
 
