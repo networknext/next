@@ -32,6 +32,7 @@ export NEXT_CUSTOMER_PUBLIC_KEY = 'leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsV
 export NEXT_CUSTOMER_PRIVATE_KEY = 'leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn'
 export NEXT_HOSTNAME = 127.0.0.1
 export NEXT_PORT = 30000
+
 export RELAY_BACKEND_HOSTNAME = http://localhost:30000
 export RELAY_ID = local
 
@@ -195,8 +196,8 @@ dev-relay-backend: ## runs a local relay backend
 
 .PHONY: dev-server-backend
 dev-server-backend: ## runs a local server backend
-	@export MAXMIND_DB_URI=./GeoLite2-City.mmdb ; \
-	export ROUTE_MATRIX_URI=http://localhost:30000/route_matrix ; \
+	@export ROUTE_MATRIX_URI=http://localhost:30000/route_matrix ; \
+	export MAXMIND_DB_URI=./GeoLite2-City.mmdb ; \
 	$(GO) run cmd/server_backend/server_backend.go
 
 .PHONY: dev-backend
