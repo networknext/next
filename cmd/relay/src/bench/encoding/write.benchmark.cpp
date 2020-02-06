@@ -5,36 +5,7 @@
 
 const auto REPS = 100000000000;
 
-Bench(WriteUint16_vs_read_uint16)
-{
-  {
-    std::array<uint8_t, 2> buff;
-
-    Do(REPS)
-    {
-      size_t index = 0;
-      encoding::WriteUint16(buff, index, 533);
-    }
-
-    auto elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
-    std::cout << "WriteUint16() nanoseconds: " << elapsed << '\n';
-  }
-
-  {
-    uint8_t buff[2];
-
-    Do(REPS)
-    {
-      uint8_t* ptr = &buff[0];
-      encoding::write_uint16(&ptr, 533);
-    }
-
-    auto elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
-    std::cout << "write_uint16() nanoseconds: " << elapsed << '\n';
-  }
-}
-
-Bench(WriteAddress_vs_read_address_ipv4)
+Bench(WriteAddress_vs_write_address_ipv4)
 {
   // ReadAddress()
   {
