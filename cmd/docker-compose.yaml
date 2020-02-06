@@ -45,6 +45,7 @@ services:
             - "0.0.0.0:30000:30000/udp"
         depends_on:
             - redis
+            - relay_backend
         networks:
             - nn-net
         environment:
