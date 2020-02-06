@@ -3203,26 +3203,40 @@ func TestRouting(t *testing.T) {
 		}
 	})
 
-	// t.Run("AllRoutes", func(t *testing.T) {
-	// 	costfile, err := os.Open("./test_data/cost.bin")
-	// 	assert.NoError(t, err)
+	t.Run("AllRoutes", func(t *testing.T) {
+		costMatrix := getPopulatedCostMatrix(false)
 
-	// 	var costMatrix routing.CostMatrix
-	// 	_, err = costMatrix.ReadFrom(costfile)
-	// 	assert.NoError(t, err)
+		// Fix relay addresses
+		costMatrix.RelayAddresses[0] = []byte("127.0.0.1:40000")
+		costMatrix.RelayAddresses[1] = []byte("127.0.0.2:40000")
 
-	// 	var routeMatrix routing.RouteMatrix
-	// 	err = costMatrix.Optimize(&routeMatrix, 1)
-	// 	assert.NoError(t, err)
+		var routeMatrix routing.RouteMatrix
+		err := costMatrix.Optimize(&routeMatrix, 1)
+		assert.NoError(t, err)
 
-	// 	DatacenterRelays: map[uint64][]uint64{
-	// 		1: []uint64{1, 2, 3},
-	// 		2: []uint64{4, 5, 6},
-	// 		3: []uint64{},
-	// 	},
+		relayFrom, err := routeMatrix.ResolveRelay(routeMatrix.RelayIds[0])
+		assert.NoError(t, err)
 
-	// 	relays := routeMatrix.AllRoutes()
-	// })
+		relayTo, err := routeMatrix.ResolveRelay(routeMatrix.RelayIds[1])
+		assert.NoError(t, err)
+
+		expected := []routing.Route{
+			routing.Route{
+				Relays: []routing.Relay{
+					relayFrom,
+					relayTo,
+				},
+				Stats: routing.Stats{RTT: 7},
+			},
+		}
+
+		datacenter := routing.Datacenter{ID: routeMatrix.DatacenterIds[0]}
+		assert.NoError(t, err)
+
+		actual := routeMatrix.AllRoutes(datacenter, []routing.Relay{relayTo})
+
+		assert.Equal(t, expected, actual)
+	})
 }
 
 func BenchmarkOptimize(b *testing.B) {
