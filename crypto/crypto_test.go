@@ -64,3 +64,9 @@ func TestGenerate(t *testing.T) {
 		assert.Equal(t, ed25519.PrivateKeySize+8, len(priv))
 	})
 }
+
+func TestHashID(t *testing.T) {
+	testString := "testString"
+	expectedHash := uint64(886614244633029176)
+	assert.Equal(t, expectedHash, crypto.HashID(testString))
+}
