@@ -140,7 +140,7 @@ func ServerUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider) UDPHan
 		// }
 
 		// Drop the packet if the signed packet data cannot be verified with the buyers public key
-		if !crypto.Verify(packet.GetSignData(), packet.Signature, buyerPublicKey) {
+		if !crypto.Verify(buyerPublicKey, packet.GetSignData(), packet.Signature) {
 			log.Printf("ed25519: failed to verify server update signature")
 			return
 		}
@@ -274,7 +274,7 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp Ro
 		buyerServerPublicKey := buyer.SdkVersion3PublicKeyData
 		log.Printf("loaded customer '%d' public key: %02x", packet.CustomerId, buyerServerPublicKey)
 
-		if !crypto.Verify(packet.GetSignData(serverentry.SDKVersion), packet.Signature, buyerServerPublicKey) {
+		if !crypto.Verify(buyerServerPublicKey, packet.GetSignData(serverentry.SDKVersion), packet.Signature) {
 			log.Printf("failed to verify session update signature")
 			return
 		}
@@ -364,7 +364,7 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp Ro
 		}
 
 		// Sign the response
-		response.Signature = crypto.Sign(response.GetSignData(), serverPrivateKey)
+		response.Signature = crypto.Sign(serverPrivateKey, response.GetSignData())
 
 		// Send the Session Response back to the server
 		res, err := response.MarshalBinary()
