@@ -8,24 +8,27 @@
 
 #include "net/address.hpp"
 
+#include "util/clock.hpp"
+
 namespace core
 {
   class RelayManager
   {
    public:
-    RelayManager();
-    ~RelayManager();
+    RelayManager(const util::Clock& clock);
+    ~RelayManager() = default;
 
     void reset();
 
-    void update(const std::vector<uint64_t>& relayIDs, const net::Address& relayAddr);
+    void update(const std::vector<uint64_t>& relayIDs, const std::vector<net::Address>& relayAddrs);
 
     void processPong(const net::Address& from, uint64_t seq);
 
     void getStats(RelayStats& stats);
 
    private:
-    int mNumRelays;
+    const util::Clock mClock;
+    unsigned int mNumRelays;
     std::array<uint64_t, MAX_RELAYS> mRelayIDs;
     std::array<double, MAX_RELAYS> mLastRelayPingTime;
     std::array<net::Address, MAX_RELAYS> mRelayAddresses;

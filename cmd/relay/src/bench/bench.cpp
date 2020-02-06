@@ -1,7 +1,7 @@
 #include "bench.hpp"
 #include <memory>
 
-benchmarking::Clock Timer;
+util::Clock Timer;
 
 namespace
 {

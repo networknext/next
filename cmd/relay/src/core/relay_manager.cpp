@@ -6,11 +6,122 @@
 #include "core/route_stats.hpp"
 #include "relay/relay_platform.hpp"
 
+namespace
+{
+  const auto INVALID_PING_TIME = -10000.0;
+}
+
 namespace core
 {
-  RelayManager::RelayManager() {}
+  RelayManager::RelayManager(const util::Clock& clock): mClock(clock) {}
 
-  RelayManager::~RelayManager() {}
+  void RelayManager::reset()
+  {
+    mNumRelays = 0;
+    mRelayIDs.fill(0);
+    mLastRelayPingTime.fill(0);
+    mRelayAddresses.fill(net::Address());
+    mRelayPingHistory.fill(nullptr);
+    mPingHistoryArray.fill(PingHistory());
+  }
+
+  void RelayManager::update(const std::vector<uint64_t>& relayIDs, const std::vector<net::Address>& relayAddrs)
+  {
+    assert(relayIDs.size() <= MAX_RELAYS);
+    assert(relayAddrs.size() <= MAX_RELAYS);
+    assert(relayIDs.size() == relayAddrs.size());
+
+    // first copy all current relays that are also in the update lists
+
+    std::array<bool, MAX_RELAYS> historySlotToken;
+    historySlotToken.fill(false);
+
+    std::array<bool, MAX_RELAYS> found;
+    found.fill(false);
+
+    std::array<uint64_t, MAX_RELAYS> newRelayIDs;
+    std::array<double, MAX_RELAYS> newRelayLastPingTime;
+    std::array<net::Address, MAX_RELAYS> newRelayAddresses;
+    std::array<PingHistory*, MAX_RELAYS> newRelayPingHistory;
+
+    unsigned int index = 0;
+
+    for (unsigned int i = 0, j = 0; i < mNumRelays; i++, j = 0) {
+      for (const auto& id : relayIDs) {
+        if (mRelayIDs[i] == id) {
+          found[j] = true;
+        }
+
+        newRelayIDs[index] = mRelayIDs[i];
+        newRelayLastPingTime[index] = mLastRelayPingTime[i];
+        newRelayAddresses[index] = mRelayAddresses[i];
+        newRelayPingHistory[index] = mRelayPingHistory[i];
+
+        const auto slot = mRelayPingHistory[i] - mPingHistoryArray.data();  // TODO make this more readable
+        assert(slot >= 0);
+        assert(slot < MAX_RELAYS);
+        historySlotToken[slot] = true;
+        index++;
+        j++;
+      }
+    }
+
+    // copy all near relays not found in the current relay list
+
+    for (unsigned int i = 0; i < relayIDs.size(); i++) {
+      if (!found[i]) {
+        newRelayIDs[index] = relayIDs[i];
+        newRelayLastPingTime[index] = INVALID_PING_TIME;
+        newRelayAddresses[index] = relayAddrs[i];
+        newRelayPingHistory[index] = nullptr;
+        for (int j = 0; j < MAX_RELAYS; j++) {
+          if (!historySlotToken[i]) {
+            newRelayPingHistory[index] = &mPingHistoryArray[j];
+            newRelayPingHistory[index]->clear();
+            historySlotToken[j] = true;
+            break;
+          }
+        }
+      }
+      assert(newRelayPingHistory[index]);
+      index++;
+    }
+
+    // commit the updated relay array
+
+    mNumRelays = index;
+    std::copy(newRelayIDs.begin(), newRelayIDs.end(), mRelayIDs.begin());
+    std::copy(newRelayLastPingTime.begin(), newRelayLastPingTime.end(), mLastRelayPingTime.begin());
+    std::copy(newRelayAddresses.begin(), newRelayAddresses.end(), mRelayAddresses.begin());
+    std::copy(newRelayPingHistory.begin(), newRelayPingHistory.end(), mRelayPingHistory.begin());
+
+    // make sure all the ping times are evenly distributed to avoid clusters of ping packets
+
+    auto currentTime = mClock.elapsed<util::Second>();
+
+    if (mNumRelays > 0) {
+      unsigned int i = 0;
+      for (auto& pingTime : mLastRelayPingTime) {
+        pingTime = currentTime - RELAY_PING_TIME + i++ * RELAY_PING_TIME / mNumRelays;
+      }
+    }
+
+    // make sure everything is correct
+
+#ifndef NDEBUG
+    assert(mNumRelays == index);
+
+    int numFound = 0;
+    for (int i = 0; i < relayIDs.size(); i++) {
+      for (int j = 0; j < mNumRelays; j++) {
+        if (relayIDs[i] == mRelayIDs[j] && relayAddrs[i] == mRelayAddresses[j]) {
+          numFound++;
+          break;
+        }
+      }
+    }
+#endif
+  }
 }  // namespace core
 
 namespace legacy

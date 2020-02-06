@@ -16,7 +16,7 @@ Bench(WriteUint16_vs_read_uint16)
       encoding::WriteUint16(buff, index, 533);
     }
 
-    auto elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+    auto elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
     std::cout << "WriteUint16() nanoseconds: " << elapsed << '\n';
   }
 
@@ -29,7 +29,7 @@ Bench(WriteUint16_vs_read_uint16)
       encoding::write_uint16(&ptr, 533);
     }
 
-    auto elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+    auto elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
     std::cout << "write_uint16() nanoseconds: " << elapsed << '\n';
   }
 }
@@ -48,7 +48,7 @@ Bench(WriteAddress_vs_read_address_ipv4)
       encoding::WriteAddress(buff, index, addr);
     }
 
-    auto elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+    auto elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
     std::cout << "WriteAddress() nanoseconds: " << elapsed << '\n';
   }
 
@@ -64,7 +64,7 @@ Bench(WriteAddress_vs_read_address_ipv4)
       encoding::write_address(&ptr, &addr);
     }
 
-    auto elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+    auto elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
     std::cout << "read_address() nanoseconds: " << elapsed << '\n';
   }
 }

@@ -4,7 +4,7 @@
 
 namespace core
 {
-  uint64_t PingHistory::pingSent(double time)
+  auto PingHistory::pingSent(double time) -> uint64_t
   {
     GCC_NO_OPT_OUT;
     const auto index = mSeq % RELAY_PING_HISTORY_ENTRY_COUNT;

@@ -23,13 +23,13 @@ namespace core
 
     void clear();
 
-    uint64_t pingSent(double time);
+    auto pingSent(double time) -> uint64_t;
 
     void pongReceived(uint64_t seq, double time);
 
     // helper for testing only
-    uint64_t seq();
-    const HistoryEntry& operator[](size_t i);
+    auto seq() -> uint64_t;
+    auto operator[](size_t i) -> const HistoryEntry&;
 
    private:
     uint64_t mSeq = 0;
@@ -58,12 +58,12 @@ namespace core
     // mEntries.fill(base);
   }
 
-  inline uint64_t PingHistory::seq()
+  inline auto PingHistory::seq() -> uint64_t
   {
     return mSeq;
   }
 
-  inline const HistoryEntry& PingHistory::operator[](size_t i)
+  inline auto PingHistory::operator[](size_t i) -> const HistoryEntry&
   {
     return mEntries[i % mEntries.size()];
   }
