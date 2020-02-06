@@ -120,6 +120,17 @@ namespace core
         }
       }
     }
+
+    assert(numFound == mNumRelays);
+
+    for (int i = 0; i < relayIDs.size(); i++) {
+      for (int j = 0; j < relayIDs.size(); j++) {
+        if (i == j) {
+          continue;
+        }
+        assert(mRelayPingHistory[i] != mRelayPingHistory[j]);
+      }
+    }
 #endif
   }
 }  // namespace core
