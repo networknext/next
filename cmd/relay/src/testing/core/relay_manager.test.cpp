@@ -33,7 +33,7 @@ Test(RelayManager)
   }
 
   // add max relays
-  manager.update(NumRelays, relayIDs, addrs);
+  manager.update(NumRelays, relayIDs.data(), addrs.data());
   {
     core::RelayStats stats;
     manager.getStats(stats);
@@ -45,7 +45,7 @@ Test(RelayManager)
 
   // remove all relays
 
-  manager.update(0, relayIDs, addrs);
+  manager.update(0, relayIDs.data(), addrs.data());
   {
     core::RelayStats stats;
     manager.getStats(stats);
@@ -55,7 +55,7 @@ Test(RelayManager)
   // add same relay set repeatedly
 
   for (int j = 0; j < 2; ++j) {
-    manager.update(NumRelays, relayIDs, addrs);
+    manager.update(NumRelays, relayIDs.data(), addrs.data());
     {
       core::RelayStats stats;
       manager.getStats(stats);
@@ -72,7 +72,7 @@ Test(RelayManager)
   std::copy(relayIDs.begin() + 4, relayIDs.end(), diffIDs.begin());
   std::array<net::Address, MAX_RELAYS> diffAddrs;
   std::copy(addrs.begin() + 4, addrs.end(), diffAddrs.begin());
-  manager.update(NumRelays, diffIDs, diffAddrs);
+  manager.update(NumRelays, diffIDs.data(), diffAddrs.data());
   {
     core::RelayStats stats;
     manager.getStats(stats);

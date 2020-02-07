@@ -28,9 +28,11 @@ namespace core
     mPingHistoryArray.fill(PingHistory());
   }
 
-  void RelayManager::update(unsigned int numRelays,
-   const std::array<uint64_t, MAX_RELAYS>& relayIDs,
-   const std::array<net::Address, MAX_RELAYS>& relayAddrs)
+  // void RelayManager::update(unsigned int numRelays,
+  // const std::array<uint64_t, MAX_RELAYS>& relayIDs,
+  // const std::array<net::Address, MAX_RELAYS>& relayAddrs)
+
+  void RelayManager::update(unsigned int numRelays, const uint64_t* relayIDs, const net::Address* relayAddrs)
   {
     assert(numRelays <= MAX_RELAYS);
     assert(numRelays <= MAX_RELAYS);
@@ -115,7 +117,8 @@ namespace core
 
     // make sure all the ping times are evenly distributed to avoid clusters of ping packets
 
-    auto currentTime = mClock.elapsed<util::Second>();
+    // clock is faster
+    auto currentTime = relay::relay_platform_time();  // mClock.elapsed<util::Second>();
 
     for (unsigned int i = 0; i < mNumRelays; i++) {
       mLastRelayPingTime[i] = currentTime - RELAY_PING_TIME + i * RELAY_PING_TIME / mNumRelays;

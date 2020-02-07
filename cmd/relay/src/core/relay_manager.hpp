@@ -20,7 +20,9 @@ namespace core
 
     void reset();
 
-    void update(unsigned int numRelays, const std::array<uint64_t, MAX_RELAYS>& relayIDs, const std::array<net::Address, MAX_RELAYS>& relayAddrs);
+    // void update(unsigned int numRelays, const std::array<uint64_t, MAX_RELAYS>& relayIDs, const std::array<net::Address,
+    // MAX_RELAYS>& relayAddrs);
+    void update(unsigned int numRelays, const uint64_t* relayIDs, const net::Address* relayAddrs);
 
     auto processPong(const net::Address& from, uint64_t seq) -> bool;
 

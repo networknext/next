@@ -28,7 +28,7 @@ Bench(RelayManager_update, true)
 
     Do(REPS)
     {
-      manager.update(MaxRelays, ids, addrs);
+      manager.update(MaxRelays, ids.data(), addrs.data());
     }
 
     auto elapsed = Timer.elapsed<util::Microsecond>() / REPS;
