@@ -46,16 +46,15 @@ namespace core
    const std::array<net::Address, MAX_RELAYS>& relayAddrs)
   {
     assert(numRelays <= MAX_RELAYS);
-    assert(numRelays <= MAX_RELAYS);
 
     // first copy all current relays that are also in the update lists
 
     std::array<bool, MAX_RELAYS> historySlotToken{false};
     std::array<bool, MAX_RELAYS> found{false};
-    std::array<uint64_t, MAX_RELAYS> newRelayIDs;
-    std::array<double, MAX_RELAYS> newRelayLastPingTime;
+    std::array<uint64_t, MAX_RELAYS> newRelayIDs{0};
+    std::array<double, MAX_RELAYS> newRelayLastPingTime{0};
     std::array<net::Address, MAX_RELAYS> newRelayAddresses;
-    std::array<PingHistory*, MAX_RELAYS> newRelayPingHistory;
+    std::array<PingHistory*, MAX_RELAYS> newRelayPingHistory{nullptr};
 
     unsigned int index = 0;
 
