@@ -13,20 +13,17 @@ namespace core
 
   void RelayManager::reset()
   {
-    mNumRelays = 0;
     // TODO could probably put all these in a loop, maybe the compiler is already doing that but better to be explicit
-    mRelayIDs.fill(0);
-    mLastRelayPingTime.fill(0);
-    mRelayAddresses.fill(net::Address());
-    mRelayPingHistory.fill(nullptr);
-    mPingHistoryArray.fill(PingHistory());
+    mRelayData.clear();
   }
 
   auto RelayManager::processPong(const net::Address& from, uint64_t seq) -> bool
   {
-    for (unsigned int i = 0; i < mNumRelays; i++) {
-      if (&from == &mRelayAddresses[i]) {
-        mRelayPingHistory[i]->pongReceived(seq, mClock.elapsed<util::Second>());
+    for (auto& pair : mRelayData) {
+      auto& data = pair.second;
+
+      if (from == data.Addr) {
+        data.History.pongReceived(seq, mClock.elapsed<util::Second>());
         return true;
       }
     }
@@ -37,14 +34,18 @@ namespace core
   void RelayManager::getStats(RelayStats& stats)
   {
     auto currentTime = mClock.elapsed<util::Second>();
-    stats.NumRelays = mNumRelays;
+    stats.NumRelays = mRelayData.size();
 
-    for (unsigned int i = 0; i < mNumRelays; i++) {
-      RouteStats rs(*mRelayPingHistory[i], currentTime - RELAY_STATS_WINDOW, currentTime, RELAY_PING_SAFETY);
-      stats.IDs[i] = mRelayIDs[i];
+    unsigned int i = 0;
+    for (const auto& pair : mRelayData) {
+      const auto& data = pair.second;
+
+      RouteStats rs(data.History, currentTime - RELAY_STATS_WINDOW, currentTime, RELAY_PING_SAFETY);
+      stats.IDs[i] = pair.first;
       stats.RTT[i] = rs.RTT;
       stats.Jitter[i] = rs.Jitter;
       stats.PacketLoss[i] = rs.PacketLoss;
+      i++;
     }
   }
 }  // namespace core
