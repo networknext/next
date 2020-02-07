@@ -3,7 +3,7 @@
 
 const auto REPS = 10000000;
 
-Bench(PingHistory_sent, true)
+Bench(PingHistory_sent)
 {
   // new
   {
