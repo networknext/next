@@ -114,7 +114,7 @@ Run `make dev-relay`
 
 #### Required
 
-- `RELAY_ADDRESS`: The address of this relay, defualts to "127.0.0.1" when run using make.
+- `RELAY_ADDRESS`: The address of this relay, defaults to "127.0.0.1" when run using make.
 - `RELAY_BACKEND_HOSTNAME`: The address of the relay backend, defaults to "http://localhost:40000" when run using make.
 
 #### To get values for the following three variables, see [Generating Key Pairs](#generating-key-pairs)
