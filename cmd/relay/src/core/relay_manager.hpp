@@ -2,6 +2,7 @@
 #define CORE_RELAY_MANAGER_HPP
 
 #include <array>
+#include <cassert>
 
 #include "relay_stats.hpp"
 #include "ping_history.hpp"
@@ -12,6 +13,7 @@
 
 namespace core
 {
+  const auto INVALID_PING_TIME = -10000.0;
   class RelayManager
   {
    public:
@@ -20,9 +22,9 @@ namespace core
 
     void reset();
 
-    // void update(unsigned int numRelays, const std::array<uint64_t, MAX_RELAYS>& relayIDs, const std::array<net::Address,
-    // MAX_RELAYS>& relayAddrs);
-    void update(unsigned int numRelays, const uint64_t* relayIDs, const net::Address* relayAddrs);
+    void update(unsigned int numRelays,
+     const std::array<uint64_t, MAX_RELAYS>& relayIDs,
+     const std::array<net::Address, MAX_RELAYS>& relayAddrs);
 
     auto processPong(const net::Address& from, uint64_t seq) -> bool;
 
@@ -37,6 +39,110 @@ namespace core
     std::array<PingHistory*, MAX_RELAYS> mRelayPingHistory;
     std::array<PingHistory, MAX_RELAYS> mPingHistoryArray;
   };
+
+  // it is used in one place throughout the codebase, so always inline it, no sense in doing a function call
+  [[gnu::always_inline]] inline void RelayManager::update(unsigned int numRelays,
+   const std::array<uint64_t, MAX_RELAYS>& relayIDs,
+   const std::array<net::Address, MAX_RELAYS>& relayAddrs)
+  {
+    assert(numRelays <= MAX_RELAYS);
+    assert(numRelays <= MAX_RELAYS);
+
+    // first copy all current relays that are also in the update lists
+
+    std::array<bool, MAX_RELAYS> historySlotToken{false};
+    std::array<bool, MAX_RELAYS> found{false};
+    std::array<uint64_t, MAX_RELAYS> newRelayIDs;
+    std::array<double, MAX_RELAYS> newRelayLastPingTime;
+    std::array<net::Address, MAX_RELAYS> newRelayAddresses;
+    std::array<PingHistory*, MAX_RELAYS> newRelayPingHistory;
+
+    unsigned int index = 0;
+
+    for (unsigned int i = 0; i < mNumRelays; i++) {
+      for (unsigned int j = 0; j < numRelays; j++) {
+        if (mRelayIDs[i] == relayIDs[j]) {
+          found[j] = true;
+
+          newRelayIDs[index] = mRelayIDs[i];
+          newRelayLastPingTime[index] = mLastRelayPingTime[i];
+          newRelayAddresses[index] = mRelayAddresses[i];
+          newRelayPingHistory[index] = mRelayPingHistory[i];
+
+          const auto slot = mRelayPingHistory[i] - mPingHistoryArray.data();  // TODO make this more readable
+          assert(slot >= 0);
+          assert(slot < MAX_RELAYS);
+          historySlotToken[slot] = true;
+          index++;
+        }
+      }
+    }
+
+    // copy all near relays not found in the current relay list
+
+    for (unsigned int i = 0; i < numRelays; i++) {
+      if (!found[i]) {
+        newRelayIDs[index] = relayIDs[i];
+        newRelayLastPingTime[index] = INVALID_PING_TIME;
+        newRelayAddresses[index] = relayAddrs[i];
+        newRelayPingHistory[index] = nullptr;
+        for (int j = 0; j < MAX_RELAYS; j++) {
+          if (!historySlotToken[j]) {
+            newRelayPingHistory[index] = &mPingHistoryArray[j];
+            newRelayPingHistory[index]->clear();
+            historySlotToken[j] = true;
+            break;
+          }
+        }
+        assert(newRelayPingHistory[index] != nullptr);
+        index++;
+      }
+    }
+
+    // commit the updated relay array
+    mNumRelays = index;
+    // fastest
+    std::copy(newRelayIDs.begin(), newRelayIDs.begin() + index, mRelayIDs.begin());
+    std::copy(newRelayLastPingTime.begin(), newRelayLastPingTime.begin() + index, mLastRelayPingTime.begin());
+    std::copy(newRelayAddresses.begin(), newRelayAddresses.begin() + index, mRelayAddresses.begin());
+    std::copy(newRelayPingHistory.begin(), newRelayPingHistory.begin() + index, mRelayPingHistory.begin());
+
+    // make sure all the ping times are evenly distributed to avoid clusters of ping packets
+
+    auto currentTime = mClock.elapsed<util::Second>();
+
+    for (unsigned int i = 0; i < mNumRelays; i++) {
+      mLastRelayPingTime[i] = currentTime - RELAY_PING_TIME + i * RELAY_PING_TIME / mNumRelays;
+    }
+
+#ifndef NDEBUG
+
+    // make sure everything is correct
+
+    assert(mNumRelays == index);
+
+    unsigned int numFound = 0;
+    for (unsigned int i = 0; i < numRelays; i++) {
+      for (unsigned int j = 0; j < mNumRelays; j++) {
+        if (relayIDs[i] == mRelayIDs[j] && relayAddrs[i] == mRelayAddresses[j]) {
+          numFound++;
+          break;
+        }
+      }
+    }
+
+    assert(numFound == mNumRelays);
+
+    for (unsigned int i = 0; i < numRelays; i++) {
+      for (unsigned int j = 0; j < numRelays; j++) {
+        if (i == j) {
+          continue;
+        }
+        assert(mRelayPingHistory[i] != mRelayPingHistory[j]);
+      }
+    }
+#endif
+  }
 }  // namespace core
 
 namespace legacy
