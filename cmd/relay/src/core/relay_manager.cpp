@@ -37,12 +37,19 @@ namespace core
 
     // first copy all current relays that are also in the update lists
 
-    std::array<bool, MAX_RELAYS> historySlotToken{false};
-    std::array<bool, MAX_RELAYS> found{false};
-    std::array<uint64_t, MAX_RELAYS> newRelayIDs;
-    std::array<double, MAX_RELAYS> newRelayLastPingTime;
-    std::array<net::Address, MAX_RELAYS> newRelayAddresses;
-    std::array<PingHistory*, MAX_RELAYS> newRelayPingHistory;
+    // std::array<bool, MAX_RELAYS> historySlotToken{false};
+    // std::array<bool, MAX_RELAYS> found{false};
+    // std::array<uint64_t, MAX_RELAYS> newRelayIDs;
+    // std::array<double, MAX_RELAYS> newRelayLastPingTime;
+    // std::array<net::Address, MAX_RELAYS> newRelayAddresses;
+    // std::array<PingHistory*, MAX_RELAYS> newRelayPingHistory;
+
+    bool historySlotToken[MAX_RELAYS] = {false};
+    bool found[MAX_RELAYS] = {false};
+    uint64_t newRelayIDs[MAX_RELAYS];
+    double newRelayLastPingTime[MAX_RELAYS];
+    net::Address newRelayAddresses[MAX_RELAYS];
+    PingHistory* newRelayPingHistory[MAX_RELAYS];
 
     unsigned int index = 0;
 
@@ -88,10 +95,23 @@ namespace core
 
     // commit the updated relay array
     mNumRelays = index;
-    std::copy(newRelayIDs.begin(), newRelayIDs.begin() + index, mRelayIDs.begin());
-    std::copy(newRelayLastPingTime.begin(), newRelayLastPingTime.begin() + index, mLastRelayPingTime.begin());
-    std::copy(newRelayAddresses.begin(), newRelayAddresses.begin() + index, mRelayAddresses.begin());
-    std::copy(newRelayPingHistory.begin(), newRelayPingHistory.begin() + index, mRelayPingHistory.begin());
+    // fastest
+    // std::copy(newRelayIDs.begin(), newRelayIDs.begin() + index, mRelayIDs.begin());
+    // std::copy(newRelayLastPingTime.begin(), newRelayLastPingTime.begin() + index, mLastRelayPingTime.begin());
+    // std::copy(newRelayAddresses.begin(), newRelayAddresses.begin() + index, mRelayAddresses.begin());
+    // std::copy(newRelayPingHistory.begin(), newRelayPingHistory.begin() + index, mRelayPingHistory.begin());
+
+    // slower
+    // std::copy(newRelayIDs, newRelayIDs + index, mRelayIDs.begin());
+    // std::copy(newRelayLastPingTime, newRelayLastPingTime + index, mLastRelayPingTime.begin());
+    // std::copy(newRelayAddresses, newRelayAddresses + index, mRelayAddresses.begin());
+    // std::copy(newRelayPingHistory, newRelayPingHistory + index, mRelayPingHistory.begin());
+
+    // between the two above methods
+    memcpy(mRelayIDs.begin(), newRelayIDs, sizeof(newRelayIDs));
+    memcpy(mLastRelayPingTime.begin(), newRelayLastPingTime, sizeof(newRelayLastPingTime));
+    memcpy(mRelayAddresses.begin(), newRelayAddresses, sizeof(newRelayAddresses));
+    memcpy(mRelayPingHistory.begin(), newRelayPingHistory, sizeof(newRelayPingHistory));
 
     // make sure all the ping times are evenly distributed to avoid clusters of ping packets
 
