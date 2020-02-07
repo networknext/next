@@ -140,7 +140,7 @@ func ServerUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider) UDPHan
 		// }
 
 		// Drop the packet if the signed packet data cannot be verified with the buyers public key
-		if !crypto.Verify(packet.GetSignData(), packet.Signature, buyerPublicKey) {
+		if !crypto.Verify(buyerPublicKey, packet.GetSignData(), packet.Signature) {
 			log.Printf("ed25519: failed to verify server update signature")
 			return
 		}
@@ -233,6 +233,7 @@ func (e SessionEntry) MarshalBinary() ([]byte, error) {
 }
 
 type RouteProvider interface {
+	ResolveRelay(uint64) (routing.Relay, error)
 	AllRoutes(routing.Datacenter, []routing.Relay) []routing.Route
 }
 
@@ -273,7 +274,7 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp Ro
 		buyerServerPublicKey := buyer.SdkVersion3PublicKeyData
 		log.Printf("loaded customer '%d' public key: %02x", packet.CustomerId, buyerServerPublicKey)
 
-		if !crypto.Verify(packet.GetSignData(serverentry.SDKVersion), packet.Signature, buyerServerPublicKey) {
+		if !crypto.Verify(buyerServerPublicKey, packet.GetSignData(serverentry.SDKVersion), packet.Signature) {
 			log.Printf("failed to verify session update signature")
 			return
 		}
@@ -295,6 +296,13 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp Ro
 			log.Printf("failed to lookup client ip '%s': %v", packet.ClientAddress.IP.String(), err)
 			return
 		}
+
+		// We need to do this because RelaysWithin only has the ID of the relay and we need the Addr and PublicKey too
+		// Maybe we consider a nicer way to do this in the future
+		for idx := range clientrelays {
+			clientrelays[idx], _ = rp.ResolveRelay(clientrelays[idx].ID)
+		}
+
 		log.Printf("found client relays: %+v\n", clientrelays)
 
 		// Get a set of possible routes from the RouteProvider an on error ensure it falls back to direct
@@ -356,7 +364,7 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp Ro
 		}
 
 		// Sign the response
-		response.Signature = crypto.Sign(response.GetSignData(), serverPrivateKey)
+		response.Signature = crypto.Sign(serverPrivateKey, response.GetSignData())
 
 		// Send the Session Response back to the server
 		res, err := response.MarshalBinary()

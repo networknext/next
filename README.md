@@ -6,38 +6,99 @@ This is a monorepo that contains a WIP migration/refactor of the Network Next ba
 
 ## Development
 
-The toolchain used for development is kept simple to make it easy for any operating system to install and use and work out of the box for POSIX Linux distributions.
+The tool chain used for development is kept simple to make it easy for any operating system to install and use and work out of the box for POSIX Linux distributions.
 
-- [Docker](https://www.docker.com)
+- [Redis](https://redis.io)
+- [Docker](https://docs.docker.com/install/)
+- [Docker Compose](https://docs.docker.com/compose/install/)
 - [make](http://man7.org/linux/man-pages/man1/make.1.html)
 - [sh](https://linux.die.net/man/1/sh)
-- [Go](https://golang.org/dl/#stable)
+- [Go](https://golang.org/dl/#stable) (at least Go 1.13)
 - [g++](http://man7.org/linux/man-pages/man1/g++.1.html)
     - [libcurl](https://curl.haxx.se/libcurl/)
     - [libsodium](https://libsodium.gitbook.io)
     - [libpthread](https://www.gnu.org/software/hurd/libpthread.html)
 
-### Linux
+Developers should install these requirements however they need to be installed based on your operating system. Windows users can leverage WSL to get all of these.
 
-```sh
-$ sudo apt install golang libsodium libcurl4-openssl-dev
+## Docker and Docker Compose
+
+While all of the components can be run locally either independently or collectively it can be tedious to run multiple relays to get a true test of everything. We can leverage Docker and Docker Compose to easily stand everything up as a system. There is a [`./cmd/docker-compose.yaml`](./cmd/docker-compose.yaml) along with all required `Dockerfile`s in each of the binary directories to create the system of backend services (`relay`, `relay_backend`, and `server_backend`). 
+
+### First Time
+
+The first time you run the system with Docker Compose it will build all the required `Dockerfile`s and run them.
+
+From the root of the project you can run `docker-compose` and specify the configuration file to stand everything up.
+
+```bash
+$ docker-compose -f ./cmd/docker-compose.yaml up
 ```
 
-### macOS
+### Second, Third, Forth, and N Times
 
-Install [brew](https://brew.sh)
+After all of the `Dockerfile`s have been built subsequent runs of `docker-compose up` will ONLY run them. If you make changes to any of the code you need to rebuild all of the services.
 
-Then:
-
-```sh
-brew install golang libsodium
+```bash
+$ docker-compose -f ./cmd/docker-compose.yaml build
 ```
 
-### Windows
+Once everything is rebuilt you can run everything again to see your changes.
 
-Using the Windows Subsystem for Linux (WSL) with Ubuntu makes it easy to work with this repo provided all the tools are installed above.
+```bash
+$ docker-compose -f ./cmd/docker-compose.yaml up
+```
+
+### One Service at a Time
+
+Some instances you only want to run some instances at a time and you would use `docker-compose run SERVICE_NAME`. Read the `./cmd/docker-compose.yaml` for all the service names.
+
+```bash
+$ docker-compose -f ./cmd/docker-compose.yaml run relay_backend
+```
+
+### Scaling a Service
+
+Docker Compose makes is very trivial to scale up the number of instances of a service. Currently we can only scale the `relay` service because port numbers will not conflict. Scaling any other service will not work since port numbers are hard coded. For our purposes this is fine. To develop locally we really want to specify any number of relays to run.
+
+Here we can run everything again, but this time it will run 10 instances of the relay service.
+
+```bash
+$ docker-compose -f ./cmd/docker-compose.yaml up --scale relay=10
+```
 
 ## Components
+
+```
+                       Relays init and update
+        +---------------------------------------------------+   Relay Backend
+        |                                                   |   builds Cost &
+        |        +----------------------------------------+ |   Route Matrices
+        |        |                                        | |
+        |   +----+----+       +---------+                +V-V-----------------+
+        |   | Relay 2 |       | Relay 4 +----------------> Relay Backend (Go) |
+        |   +---------+       +---------+                +^-------+---+---+---+
+        |   ||       ||                                   |       |   |   |
+   +----+----+       +---------+                          |       |   |   |
+   | Relay 1 |       | Relay 3 +--------------------------+       |   |   |
+   +---------+       +---------+                                  |   |   |
+        ||                ||                  +-------------------V-+ |   |
+        ||                ||                +-> Server Backend (Go) | |   |
+        ||                ||                | +---------------------+ |   |
+        ||          +-------------------+   |     +-------------------V-+ |
+        ||          | Game Server (SDK) <---------> Server Backend (Go) | |
+        ||          +----------^--------+   |     +---------------------+ |
+        ||                     |            |         +-------------------V-+
+        ||                     |            +---------> Server Backend (Go) |
++-------------------+          |                      +---------------------+
+| Game Client (SDK) <----------+
++-------------------+                                  Server Backends pull
+                         Game Server gets              copy of Route Matrix
+                         routes  and tells
+                         Game Client
+```
+
+Made with [asciiflow](http://asciiflow.com/). This text can be imported, changed, and exported to update if needed.
 
 ## Relay (C++)
 
@@ -53,7 +114,7 @@ Run `make dev-relay`
 
 #### Required
 
-- `RELAY_ADDRESS`: The address of this relay, defualts to "127.0.0.1" when run using make.
+- `RELAY_ADDRESS`: The address of this relay, defaults to "127.0.0.1" when run using make.
 - `RELAY_BACKEND_HOSTNAME`: The address of the relay backend, defaults to "http://localhost:30000" when run using make.
 
 #### To get values for the following three variables, see [Generating Key Pairs](#generating-key-pairs)
@@ -64,86 +125,22 @@ Run `make dev-relay`
 
 ## Relay Backend (Go)
 
-Manages the database (Redis) of connected relays and tells them which other relays to ping. Collates ping statistics received from relays into a cost matrix. Collates data in the cost matrix into a route matrix for the server backend
-
-- Command: [`cmd/relay_backend`](./cmd/relay_backend)
-
-### To Run
-
-Run `make dev-relay-backend`
-
-### Environment Variables
-
-#### Required
-
-To get values for the following two variables, see [Generating Key Pairs](#generating-key-pairs)
-
-- `RELAY_KEY_PUBLIC`: The public key of each relay.
-- `ROUTER_KEY_PRIVATE`: The private key of the router.
-
-#### Optional
-
-- `RELAY_PORT`: The port the relay backend will use.
-- `REDIS_HOST`: The address of the Redis server you want to connect to.
-- `CONFIGSTORE_HOST`: The address to configstore, uses the in-memory version if not supplied.
-- `RELAY_MAXMIND_DB_URI`: local path to a `.mmdb` file for IP lookups. See [server backend](#server-backend-(go)) for more info.
-- `RELAY_DEV`: If set, this will enable development features, like what is listed below in the [important](#important) section
-- `RELAY_STUBBED_DATA_FILENAME`: Points to a json file that will be used to stub datacenter names and lat/long coords
-
-#### IMPORTANT
-
-If you do not set the `RELAY_MAXMIND_DB_URI` env var, you must have `RELAY_DEV` set (just exported or with a value, doesn't matter)
-
-If you do have `RELAY_DEV` set, the backend will use a local json file to stub relay datacenter names & their latitude longitude coords.
-
-The backend will parse the file `RELAY_STUBBED_DATA_FILENAME` points to. If the var is unset or empty, it will default to `tools/stubbed-relay-data.json`.
-
-When using the default json file, only spawn relays with addresses & ports between the range 127.0.0.1:20000 & 127.0.0.10:20009, incrementing both the address and port at the same time, as those are the entries that exist in the file.
-
-- Side note, the datacenter names & lat long coords were all autogenerated and thus the country state city matchup will not be accurate, nor will the lat long coords either for any of those fields.
-
-### What it does
-
-- Opens a couple endpoints for communication with the relays and server backend
-- Takes data from the in memory StatsDatabase and generates a CostMatrix, then takes the CostMatrix and generates a RouteMatrix for the server backend once every 10 seconds
-
-### Endpoints
-
-- `/relay_init`: When a relay starts up, the first thing it will do is call this endpoint with its information
-  - Gathers geolocation information
-  - Generates the relay public keys, which is sent back in the body of the response
-  - Stores the relay in redis in binary format
-- `/relay_update`: After a relay has confirmation of successful initialization, it will keep sending this endpoint stats about its network timings
-  - Within the response body will be a list of all other relays to ping and gather stats on
+See [cmd/relay_backend](cmd/relay_backend)
 
 ## Server (C++)
 
-Reference implentation of a server using the Network Next SDK.
+Reference implementation of a server using the Network Next SDK.
 
 - Command: [`cmd/server`](./cmd/server)
 - Dependencies: [`sdk`](./sdk)
 
 ## Server Backend (Go)
 
-Pulls the route matrix from the relay backend once every 10 seconds and uses it to serve up routes across the relay network.
-
-- Command: [`cmd/server_backend`](./cmd/server_backend)
-
-### Environment Variables
-
-#### Required
-
-- `MAXMIND_DB_URI`: local path to a `.mmdb` file for IP lookups. Defaults to `./GeoLite2-City.mmdb`. You can ask a dev for a copy of one or register and download one from https://www.maxmind.com.
-
-#### Optional
-
-- `REDIS_HOST`: The address of the Redis server you want to connect to, uses the in-memory version if not supplied or invalid
-- `CONFIGSTORE_HOST`: The address to configstore, uses the in-memory version if not supplied
-- `ROUTE_MATRIX_URI`: The address of the Relay Backend, if empty the server backend will not pull the Route Matrix
+See [cmd/server_backend](cmd/server_backend)
 
 ## Client (C++)
 
-Reference implentation of a client using the Network Next SDK.
+Reference implementation of a client using the Network Next SDK.
 
 - Command: [`cmd/client`](./cmd/client)
 - Dependencies: [`sdk`](./sdk)
@@ -179,9 +176,9 @@ Generate two sets. One for relays, and one for the router. Set the following env
 
 ### Relay Backend Environment Variables
 
-- `RELAY_KEY_PUBLIC`
-- `RELAY_KEY_PRIVATE`
-- `ROUTER_KEY_PUBLIC`
-- `ROUTER_KEY_PRIVATE`
+- `RELAY_PUBLIC_KEY`
+- `RELAY_PRIVATE_KEY`
+- `ROUTER_PUBLIC_KEY`
+- `ROUTER_PRIVATE_KEY`
 
 Likely the values for the three relay environment variables will be reused for the relay backend.

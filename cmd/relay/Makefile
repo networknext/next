@@ -11,7 +11,7 @@ rwildcard=$(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(su
 SHELL				:= /bin/bash
 
 CXX					:= g++
-CXX_FLAGS 			:= -Wall -Wextra -std=c++17 
+CXX_FLAGS 			:= -Wall -Wextra -std=c++17
 CXX_DBG_FLAGS		:= -g -O0
 CXX_PERF_FLAGS		:= -O3 -march=native -frename-registers -funroll-loops -fopenmp -D_GLIBCXX_PARALLEL
 
@@ -59,7 +59,9 @@ EXECUTABLES			:= $(BIN)/$(EXE) $(BIN)/$(EXE_DBG) $(BIN)/$(EXE_TEST) $(BIN)/$(EXE
 ### Targets  ###
 ################
 
-.PHONY: relay 
+# TODO add a 'help' target
+
+.PHONY: relay
 relay: $(BIN) $(OBJ) $(OBJ_DIRS) $(BIN)/$(EXE) $(DIST_DIR)/$(EXE)
 
 .PHONY: relay-dbg

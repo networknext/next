@@ -1,0 +1,62 @@
+version: '3'
+
+services:
+    redis:
+        image: "redis:alpine"
+        networks:
+            - nn-net
+    
+    relay:
+        build:
+            context: ../
+            dockerfile: ./cmd/relay/Dockerfile
+        depends_on:
+            - relay_backend
+        networks:
+            - nn-net
+        environment:
+            RELAY_ADDRESS: 127.0.0.1
+            RELAY_PUBLIC_KEY: 9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=
+            RELAY_PRIVATE_KEY: lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=
+            RELAY_ROUTER_PUBLIC_KEY: SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
+            RELAY_BACKEND_HOSTNAME: http://relay_backend:40000
+    
+    relay_backend:
+        build:
+            context: ../
+            dockerfile: ./cmd/relay_backend/Dockerfile
+        ports:
+            - "40000:40000"
+        depends_on:
+            - redis
+        networks:
+            - nn-net
+        environment:
+            REDIS_HOST: redis:6379
+            RELAY_PUBLIC_KEY: 9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=
+            RELAY_ROUTER_PRIVATE_KEY: ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
+
+    server_backend:
+        build:
+            context: ../
+            dockerfile: ./cmd/server_backend/Dockerfile
+        ports:
+            - "0.0.0.0:30000:30000"
+            - "0.0.0.0:30000:30000/udp"
+        depends_on:
+            - redis
+            - relay_backend
+        networks:
+            - nn-net
+        environment:
+            REDIS_HOST: redis:6379
+            RELAY_PUBLIC_KEY: 9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=
+            RELAY_ROUTER_PRIVATE_KEY: ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
+            SERVER_BACKEND_PUBLIC_KEY: TGHKjEeHPtSgtZfDyuDPcQgtJTyRDtRvGSKvuiWWo0A=
+            SERVER_BACKEND_PRIVATE_KEY: FXwFqzjGlIwUDwiq1N5Um5VUesdr4fP2hVV2cnJ+yARMYcqMR4c+1KC1l8PK4M9xCC0lPJEO1G8ZIq+6JZajQA==
+            ROUTE_MATRIX_URI: http://relay_backend:40000/route_matrix
+            MAXMIND_DB_URI: /app/testdata/GeoIP2-City-Test.mmdb
+
+networks:
+    nn-net:
+        

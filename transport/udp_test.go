@@ -29,6 +29,10 @@ func (bp *mockBuyerProvider) GetAndCheckBySdkVersion3PublicKeyId(id uint64) (*st
 
 type mockRouteProvider struct{}
 
+func (rp *mockRouteProvider) ResolveRelay(id uint64) (routing.Relay, error) {
+	return routing.Relay{}, nil
+}
+
 func (rp *mockRouteProvider) AllRoutes(d routing.Datacenter, rs []routing.Relay) []routing.Route {
 	return []routing.Route{
 		{
@@ -155,7 +159,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 
 			Signature: make([]byte, ed25519.SignatureSize),
 		}
-		packet.Signature = crypto.Sign(packet.GetSignData(), buyersServerPrivKey)
+		packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData())
 
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
@@ -196,7 +200,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 			VersionMinor: transport.SDKVersionMin.Minor,
 			VersionPatch: transport.SDKVersionMin.Patch,
 		}
-		packet.Signature = crypto.Sign(packet.GetSignData(), buyersServerPrivKey)
+		packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData())
 
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
@@ -252,7 +256,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 			VersionMinor: transport.SDKVersionMin.Minor,
 			VersionPatch: transport.SDKVersionMin.Patch,
 		}
-		packet.Signature = crypto.Sign(packet.GetSignData(), buyersServerPrivKey)
+		packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData())
 
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
@@ -400,7 +404,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 		ClientAddress:        *addr,
 		ClientRoutePublicKey: TestPublicKey,
 	}
-	packet.Signature = crypto.Sign(packet.GetSignData(serverentry.SDKVersion), buyersServerPrivKey)
+	packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData(serverentry.SDKVersion))
 
 	data, err := packet.MarshalBinary()
 	assert.NoError(t, err)
@@ -429,7 +433,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 			NearRelayIds:         make([]uint64, 0),
 			NearRelayAddresses:   make([]net.UDPAddr, 0),
 		}
-		expected.Signature = crypto.Sign(expected.GetSignData(), serverBackendPrivKey)
+		expected.Signature = crypto.Sign(serverBackendPrivKey, expected.GetSignData())
 
 		data := resbuf.Bytes()
 		var actual transport.SessionResponsePacket
