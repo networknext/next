@@ -37,12 +37,8 @@ namespace core
 
     // first copy all current relays that are also in the update lists
 
-    std::array<bool, MAX_RELAYS> historySlotToken;
-    historySlotToken.fill(false);
-
-    std::array<bool, MAX_RELAYS> found;
-    found.fill(false);
-
+    std::array<bool, MAX_RELAYS> historySlotToken{false};
+    std::array<bool, MAX_RELAYS> found{false};
     std::array<uint64_t, MAX_RELAYS> newRelayIDs;
     std::array<double, MAX_RELAYS> newRelayLastPingTime;
     std::array<net::Address, MAX_RELAYS> newRelayAddresses;
