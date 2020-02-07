@@ -151,16 +151,10 @@ This is the SDK we ship to customers.
 
 ## Tools
 
-## relay-spawner.sh
+Each tool should provide a `-h` or `--help` flag to explain it usage. Refer to the usage docs for each tool on how to use it.
 
-Uses the env var `RUNNING_RELAYS` to keep track of spawned relays
-- Because of that, the script must be sourced to work properly
-- It will exit if you try to run the script directly
-
-Usage: `source relay-spawner.sh` [`options`] [`starting port number`] [`ending port number`]
-- Spawns relays with the port numbers between the given arguments, inclusively
-- If the ending port number is not specified, one relay with the starting port number will be spawned
-- `-h` to display all options
+**`./cmd/tools/scripts/relay-spawner.sh`**  
+Spawns multiple relays providing a number and starting port
 
 ## Generating Key Pairs
 
