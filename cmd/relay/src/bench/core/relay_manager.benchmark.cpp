@@ -4,16 +4,18 @@
 
 #include "core/relay_manager.hpp"
 
-const auto REPS = 1000000U;
+const auto REPS = 10000U;
 
 Bench(RelayManager_update, true)
 {
-  const auto MaxRelays = 128U;
+  const auto MaxRelays = MAX_RELAYS;
 
   // new
   {
-    std::vector<uint64_t> ids(MaxRelays, 0);
-    std::vector<net::Address> addrs(MaxRelays, net::Address());
+    std::array<uint64_t, MAX_RELAYS> ids;
+    ids.fill(0);
+    std::array<net::Address, MAX_RELAYS> addrs;
+    addrs.fill(net::Address());
     util::Clock clock;  // satisfy the constructor dependency
     core::RelayManager manager(clock);
 

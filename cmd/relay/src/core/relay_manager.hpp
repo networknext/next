@@ -1,7 +1,7 @@
 #ifndef CORE_RELAY_MANAGER_HPP
 #define CORE_RELAY_MANAGER_HPP
 
-#include <vector>
+#include <array>
 
 #include "relay_stats.hpp"
 #include "ping_history.hpp"
@@ -20,7 +20,7 @@ namespace core
 
     void reset();
 
-    void update(unsigned int numRelays, const std::vector<uint64_t>& relayIDs, const std::vector<net::Address>& relayAddrs);
+    void update(unsigned int numRelays, const std::array<uint64_t, MAX_RELAYS>& relayIDs, const std::array<net::Address, MAX_RELAYS>& relayAddrs);
 
     auto processPong(const net::Address& from, uint64_t seq) -> bool;
 

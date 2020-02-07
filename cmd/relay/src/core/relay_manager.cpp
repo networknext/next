@@ -28,8 +28,9 @@ namespace core
     mPingHistoryArray.fill(PingHistory());
   }
 
-  void RelayManager::update(
-   unsigned int numRelays, const std::vector<uint64_t>& relayIDs, const std::vector<net::Address>& relayAddrs)
+  void RelayManager::update(unsigned int numRelays,
+   const std::array<uint64_t, MAX_RELAYS>& relayIDs,
+   const std::array<net::Address, MAX_RELAYS>& relayAddrs)
   {
     assert(numRelays <= MAX_RELAYS);
     assert(numRelays <= MAX_RELAYS);
@@ -90,7 +91,6 @@ namespace core
     }
 
     // commit the updated relay array
-
     mNumRelays = index;
     std::copy(newRelayIDs.begin(), newRelayIDs.begin() + index, mRelayIDs.begin());
     std::copy(newRelayLastPingTime.begin(), newRelayLastPingTime.begin() + index, mLastRelayPingTime.begin());
