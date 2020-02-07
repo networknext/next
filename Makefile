@@ -33,6 +33,7 @@ export NEXT_CUSTOMER_PRIVATE_KEY = 'leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4
 export NEXT_HOSTNAME = 127.0.0.1
 export NEXT_PORT = 30000
 
+export SERVER_BACKEND_HOSTNAME = http://localhost:30000
 export RELAY_BACKEND_HOSTNAME = http://localhost:30000
 export RELAY_ID = local
 
@@ -192,12 +193,11 @@ dev-optimizer: ## runs a local optimizer
 
 .PHONY: dev-relay-backend
 dev-relay-backend: ## runs a local relay backend
-	$(GO) run cmd/relay_backend/relay_backend.go
+	@$(GO) run cmd/relay_backend/relay_backend.go
 
 .PHONY: dev-server-backend
 dev-server-backend: ## runs a local server backend
-	@export ROUTE_MATRIX_URI=http://localhost:30000/route_matrix ; \
-	export MAXMIND_DB_URI=./GeoLite2-City.mmdb ; \
+	@export ROUTE_MATRIX_URI=./testdata/route_matrix.bin ; \
 	$(GO) run cmd/server_backend/server_backend.go
 
 .PHONY: dev-backend
@@ -205,12 +205,12 @@ dev-backend: ## runs a local mock backend
 	$(GO) run cmd/tools/functional/backend/*.go
 
 .PHONY: dev-server
-dev-server: build-server  ## runs a local server
-	@./dist/server
+dev-server: build-sdk build-functional-server  ## runs a local server
+	@./dist/func_server
 
 .PHONY: dev-client
-dev-client: build-client  ## runs a local client
-	@./dist/client
+dev-client: build-functional-client  ## runs a local client
+	@./dist/func_client
 
 .PHONY: build-relay
 build-relay: ## builds the relay
@@ -219,7 +219,7 @@ build-relay: ## builds the relay
 	@printf "done\n"
 
 .PHONY: build-sdk
-build-sdk: clean ## builds the sdk into a shared object for linking
+build-sdk: ## builds the sdk into a shared object for linking
 	@printf "Building sdk... "
 	@$(CXX) -fPIC -shared -o $(DIST_DIR)/$(SDKNAME).so ./sdk/next.cpp ./sdk/next_ios.cpp ./sdk/next_linux.cpp ./sdk/next_mac.cpp ./sdk/next_ps4.cpp ./sdk/next_switch.cpp ./sdk/next_windows.cpp ./sdk/next_xboxone.cpp $(LDFLAGS)
 	@printf "done\n"
@@ -254,6 +254,9 @@ build-functional-client:
 	@$(CXX) -Isdk -o $(DIST_DIR)/func_client ./cmd/tools/functional/client/func_client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
+.PHONY: build-functional
+build-functional: build-functional-client build-functional-server
+
 .PHONY: build-client
 build-client: build-sdk ## builds the game client linking in the sdk shared library
 	@printf "Building client... "
@@ -262,3 +265,6 @@ build-client: build-sdk ## builds the game client linking in the sdk shared libr
 
 .PHONY: build-all
 build-all: build-relay-backend build-server-backend build-relay build-client build-server build-functional build-sdk-test build-soak-test build-tools ## builds everything
+
+.PHONY: rebuild-all
+rebuild-all: clean build-all
