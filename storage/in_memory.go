@@ -3,23 +3,30 @@ package storage
 import (
 	"encoding/base64"
 	"encoding/binary"
+	"log"
+	"os"
 )
 
 type InMemory struct {
 	LocalDatacenter bool
 
 	RelayDatacenterNames map[uint32]string
+	RelayPublicKeys      map[uint32][]byte
 }
 
 func (m *InMemory) GetAndCheckBySdkVersion3PublicKeyId(key uint64) (*Buyer, bool) {
-	publicKey, _ := base64.StdEncoding.DecodeString("leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==")
+	if k := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(k) != 0 {
+		publicKey, _ := base64.StdEncoding.DecodeString(k)
 
-	return &Buyer{
-		Name:                     "Network Next",
-		SdkVersion3PublicKeyId:   binary.LittleEndian.Uint64(publicKey[:8]),
-		SdkVersion3PublicKeyData: publicKey[8:],
-		Active:                   true,
-	}, true
+		return &Buyer{
+			Name:                     "Network Next",
+			SdkVersion3PublicKeyId:   binary.LittleEndian.Uint64(publicKey[:8]),
+			SdkVersion3PublicKeyData: publicKey[8:],
+			Active:                   true,
+		}, true
+	}
+
+	return nil, false
 }
 
 func (m *InMemory) GetAndCheck(key *Key) (*Datacenter, bool) {
@@ -38,6 +45,15 @@ func (m *InMemory) GetAndCheck(key *Key) (*Datacenter, bool) {
 // This is ONLY used in testing and local dev and in memory will NEVER run in
 // production.
 func (m *InMemory) GetAndCheckByRelayCoreId(key uint32) (*Relay, bool) {
+	var localRelayPublicKey []byte
+	{
+		if key := os.Getenv("RELAY_PUBLIC_KEY"); len(key) != 0 {
+			localRelayPublicKey, _ = base64.StdEncoding.DecodeString(key)
+		} else {
+			log.Fatal("env var 'RELAY_PUBLIC_KEY' is not set")
+		}
+	}
+
 	if m.LocalDatacenter {
 		return &Relay{
 			Datacenter: &Key{
@@ -45,10 +61,16 @@ func (m *InMemory) GetAndCheckByRelayCoreId(key uint32) (*Relay, bool) {
 					Namespace: "local",
 				},
 			},
+			UpdateKey: localRelayPublicKey,
 		}, true
 	}
 
 	name, ok := m.RelayDatacenterNames[key]
+	if !ok {
+		return nil, false
+	}
+
+	relayPublicKey, ok := m.RelayPublicKeys[key]
 	if !ok {
 		return nil, false
 	}
@@ -59,5 +81,6 @@ func (m *InMemory) GetAndCheckByRelayCoreId(key uint32) (*Relay, bool) {
 				Namespace: name,
 			},
 		},
+		UpdateKey: relayPublicKey,
 	}, true
 }

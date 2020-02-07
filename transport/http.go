@@ -30,13 +30,6 @@ const (
 	VersionNumberUpdateResponse = 0
 )
 
-var gRelayPublicKey = []byte{
-	0xf5, 0x22, 0xad, 0xc1, 0xee, 0x04, 0x6a, 0xbe,
-	0x7d, 0x89, 0x0c, 0x81, 0x3a, 0x08, 0x31, 0xba,
-	0xdc, 0xdd, 0xb5, 0x52, 0xcb, 0x73, 0x56, 0x10,
-	0xda, 0xa9, 0xc0, 0xae, 0x08, 0xa2, 0xcf, 0x5e,
-}
-
 type RelayProvider interface {
 	GetAndCheckByRelayCoreId(key uint32) (*storage.Relay, bool)
 }
@@ -66,7 +59,7 @@ func HTTPStart(port string, router *mux.Router) {
 }
 
 // RelayInitHandlerFunc returns the function for the relay init endpoint
-func RelayInitHandlerFunc(redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, relayProvider RelayProvider, datacenterProvider DatacenterProvider, relayPublicKey []byte, routerPrivateKey []byte) func(writer http.ResponseWriter, request *http.Request) {
+func RelayInitHandlerFunc(redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, relayProvider RelayProvider, datacenterProvider DatacenterProvider, relayPublicKeyTestOnly []byte, routerPrivateKey []byte) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		log.Println("Received Relay Init Packet")
 		body, err := ioutil.ReadAll(request.Body)
@@ -76,8 +69,6 @@ func RelayInitHandlerFunc(redisClient *redis.Client, geoClient *routing.GeoClien
 			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
-
-		index := 0
 
 		relayInitPacket := RelayInitPacket{}
 
@@ -101,17 +92,12 @@ func RelayInitHandlerFunc(redisClient *redis.Client, geoClient *routing.GeoClien
 			return
 		}
 
-		if _, ok := crypto.Open(relayInitPacket.EncryptedToken, relayInitPacket.Nonce, relayPublicKey, routerPrivateKey); !ok {
-			log.Printf("unauthorized relay packet detected from ip %s", relayInitPacket.Address.String())
-			writer.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-
 		relay := routing.Relay{
 			ID:             crypto.HashID(relayInitPacket.Address.String()),
 			Addr:           relayInitPacket.Address,
 			LastUpdateTime: uint64(time.Now().Unix()),
 		}
+
 		rdbEntry, ok := relayProvider.GetAndCheckByRelayCoreId(uint32(relay.ID))
 		if !ok {
 			log.Printf("failed to get relay with address '%s' from configstore database", relay.Addr.String())
@@ -123,6 +109,19 @@ func RelayInitHandlerFunc(redisClient *redis.Client, geoClient *routing.GeoClien
 		if !ok {
 			log.Printf("failed to get datacenter for relay with address '%s' from configstore database", relay.Addr.String())
 			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		// Use the relay public key from the relay provider's database normally, or if the test public key is set use that.
+		// The relayPublicKeyTestOnly should only be non nil when unit testing with a different public/private key pair.
+		relayPublicKey := rdbEntry.GetUpdateKey()
+		if relayPublicKeyTestOnly != nil {
+			relayPublicKey = relayPublicKeyTestOnly
+		}
+
+		if _, ok := crypto.Open(relayInitPacket.EncryptedToken, relayInitPacket.Nonce, relayPublicKey, routerPrivateKey); !ok {
+			log.Printf("unauthorized relay packet detected from ip %s", relayInitPacket.Address.String())
+			writer.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 
@@ -149,8 +148,6 @@ func RelayInitHandlerFunc(redisClient *redis.Client, geoClient *routing.GeoClien
 		}
 
 		relay.LastUpdateTime = uint64(time.Now().Unix())
-		relay.PublicKey = make([]byte, crypto.KeySize)
-		rand.Read(relay.PublicKey)
 
 		loc, err := ipLocator.LocateIP(relay.Addr.IP)
 		if err != nil {
@@ -178,10 +175,10 @@ func RelayInitHandlerFunc(redisClient *redis.Client, geoClient *routing.GeoClien
 
 		writer.Header().Set("Content-Type", "application/octet-stream")
 
-		index = 0
+		index := 0
 		responseData := make([]byte, 64)
 		encoding.WriteUint32(responseData, &index, VersionNumberInitResponse)
-		encoding.WriteUint64(responseData, &index, uint64(time.Now().Unix()))
+		encoding.WriteUint64(responseData, &index, relay.LastUpdateTime)
 		encoding.WriteBytes(responseData, &index, relay.PublicKey, crypto.KeySize)
 
 		writer.Write(responseData[:index])

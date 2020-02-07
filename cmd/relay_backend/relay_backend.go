@@ -31,15 +31,8 @@ func main() {
 
 	ctx := context.Background()
 
-	var relayPublicKey []byte
 	var routerPrivateKey []byte
 	{
-		if key := os.Getenv("RELAY_PUBLIC_KEY"); len(key) != 0 {
-			relayPublicKey, _ = base64.StdEncoding.DecodeString(key)
-		} else {
-			log.Fatal("env var 'RELAY_PUBLIC_KEY' is not set")
-		}
-
 		if key := os.Getenv("RELAY_ROUTER_PRIVATE_KEY"); len(key) != 0 {
 			routerPrivateKey, _ = base64.StdEncoding.DecodeString(key)
 		} else {
@@ -72,6 +65,7 @@ func main() {
 		type relays struct {
 			routing.Location
 			DatacenterName string
+			PublicKey      []byte
 		}
 		relaydata := make(map[string]relays)
 
@@ -85,8 +79,10 @@ func main() {
 		}
 
 		inMemory.RelayDatacenterNames = make(map[uint32]string)
+		inMemory.RelayPublicKeys = make(map[uint32][]byte)
 		for ip, relay := range relaydata {
 			inMemory.RelayDatacenterNames[uint32(crypto.HashID(ip))] = relay.DatacenterName
+			inMemory.RelayPublicKeys[uint32(crypto.HashID(ip))] = relay.PublicKey
 		}
 
 		ipLocator = routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
@@ -166,7 +162,7 @@ func main() {
 		fmt.Printf("RELAY_PORT env var is unset, setting port as %s\n", port)
 	}
 
-	router := transport.NewRouter(redisClient, &geoClient, ipLocator, relayProvider, datacenterProvider, statsdb, &costmatrix, &routematrix, relayPublicKey, routerPrivateKey)
+	router := transport.NewRouter(redisClient, &geoClient, ipLocator, relayProvider, datacenterProvider, statsdb, &costmatrix, &routematrix, nil, routerPrivateKey)
 
 	go transport.HTTPStart(port, router)
 

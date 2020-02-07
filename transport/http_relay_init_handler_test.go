@@ -2,6 +2,7 @@ package transport_test
 
 import (
 	"bytes"
+	"crypto/rand"
 	crand "crypto/rand"
 	"errors"
 	"log"
@@ -58,8 +59,11 @@ func relayInitAssertions(t *testing.T, relay routing.Relay, body []byte, expecte
 	if inMemory == nil {
 		rtodcnameMap := make(map[uint32]string)
 		rtodcnameMap[uint32(relay.ID)] = relay.DatacenterName
+		rpubkeyMap := make(map[uint32][]byte)
+		rpubkeyMap[uint32(relay.ID)] = relay.PublicKey
 		inMemory = &storage.InMemory{
 			RelayDatacenterNames: rtodcnameMap,
+			RelayPublicKeys:      rpubkeyMap,
 		}
 	}
 
@@ -112,8 +116,10 @@ func TestRelayInitHandler(t *testing.T) {
 
 	t.Run("address is invalid", func(t *testing.T) {
 		// generate keys
-		relayPublicKey, relayPrivateKey, _ := box.GenerateKey(crand.Reader)
-		routerPublicKey, routerPrivateKey, _ := box.GenerateKey(crand.Reader)
+		relayPublicKey, relayPrivateKey, err := box.GenerateKey(rand.Reader)
+		assert.NoError(t, err)
+		routerPublicKey, routerPrivateKey, err := box.GenerateKey(rand.Reader)
+		assert.NoError(t, err)
 
 		// generate nonce
 		nonce := make([]byte, crypto.NonceSize)
@@ -145,8 +151,10 @@ func TestRelayInitHandler(t *testing.T) {
 
 	t.Run("encryption token is 0'ed", func(t *testing.T) {
 		// generate keys
-		relayPublicKey, _, _ := box.GenerateKey(crand.Reader)
-		_, routerPrivateKey, _ := box.GenerateKey(crand.Reader)
+		relayPublicKey, _, err := box.GenerateKey(rand.Reader)
+		assert.NoError(t, err)
+		_, routerPrivateKey, err := box.GenerateKey(rand.Reader)
+		assert.NoError(t, err)
 
 		// generate nonce
 		nonce := make([]byte, crypto.NonceSize)
@@ -173,8 +181,10 @@ func TestRelayInitHandler(t *testing.T) {
 
 	t.Run("nonce bytes are 0'ed", func(t *testing.T) {
 		// generate keys
-		relayPublicKey, relayPrivateKey, _ := box.GenerateKey(crand.Reader)
-		routerPublicKey, routerPrivateKey, _ := box.GenerateKey(crand.Reader)
+		relayPublicKey, relayPrivateKey, err := box.GenerateKey(rand.Reader)
+		assert.NoError(t, err)
+		routerPublicKey, routerPrivateKey, err := box.GenerateKey(rand.Reader)
+		assert.NoError(t, err)
 
 		// generate nonce but leave it as 0's
 		nonce := make([]byte, crypto.NonceSize)
@@ -208,8 +218,10 @@ func TestRelayInitHandler(t *testing.T) {
 		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
 		// generate keys
-		relayPublicKey, relayPrivateKey, _ := box.GenerateKey(crand.Reader)
-		routerPublicKey, routerPrivateKey, _ := box.GenerateKey(crand.Reader)
+		relayPublicKey, relayPrivateKey, err := box.GenerateKey(rand.Reader)
+		assert.NoError(t, err)
+		routerPublicKey, routerPrivateKey, err := box.GenerateKey(rand.Reader)
+		assert.NoError(t, err)
 
 		// generate nonce
 		nonce := make([]byte, crypto.NonceSize)
@@ -263,8 +275,11 @@ func TestRelayInitHandler(t *testing.T) {
 		redisServer, _ := miniredis.Run()
 		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-		relayPublicKey, relayPrivateKey, _ := box.GenerateKey(crand.Reader)
-		routerPublicKey, routerPrivateKey, _ := box.GenerateKey(crand.Reader)
+		// generate keys
+		relayPublicKey, relayPrivateKey, err := box.GenerateKey(rand.Reader)
+		assert.NoError(t, err)
+		routerPublicKey, routerPrivateKey, err := box.GenerateKey(rand.Reader)
+		assert.NoError(t, err)
 
 		ipfunc := func(ip net.IP) (routing.Location, error) {
 			return routing.Location{}, errors.New("descriptive error")
@@ -300,8 +315,11 @@ func TestRelayInitHandler(t *testing.T) {
 		redisServer, _ := miniredis.Run()
 		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-		relayPublicKey, relayPrivateKey, _ := box.GenerateKey(crand.Reader)
-		routerPublicKey, routerPrivateKey, _ := box.GenerateKey(crand.Reader)
+		// generate keys
+		relayPublicKey, relayPrivateKey, err := box.GenerateKey(rand.Reader)
+		assert.NoError(t, err)
+		routerPublicKey, routerPrivateKey, err := box.GenerateKey(rand.Reader)
+		assert.NoError(t, err)
 
 		nonce := make([]byte, crypto.NonceSize)
 		crand.Read(nonce)
@@ -329,7 +347,6 @@ func TestRelayInitHandler(t *testing.T) {
 
 		inMemory := &storage.InMemory{} // Have empty storage to fail lookup
 
-		log.Println(inMemory)
 		relayInitAssertions(t, relay, buff, http.StatusInternalServerError, nil, nil, inMemory, redisClient, relayPublicKey[:], routerPrivateKey[:])
 	})
 
@@ -337,8 +354,11 @@ func TestRelayInitHandler(t *testing.T) {
 		// Don't establish a redis server to simulate the client being unable to find the relay
 		redisClient := redis.NewClient(&redis.Options{Addr: "0.0.0.0"})
 
-		relayPublicKey, relayPrivateKey, _ := box.GenerateKey(crand.Reader)
-		routerPublicKey, routerPrivateKey, _ := box.GenerateKey(crand.Reader)
+		// generate keys
+		relayPublicKey, relayPrivateKey, err := box.GenerateKey(rand.Reader)
+		assert.NoError(t, err)
+		routerPublicKey, routerPrivateKey, err := box.GenerateKey(rand.Reader)
+		assert.NoError(t, err)
 
 		nonce := make([]byte, crypto.NonceSize)
 		crand.Read(nonce)
@@ -370,8 +390,11 @@ func TestRelayInitHandler(t *testing.T) {
 		redisServer, _ := miniredis.Run()
 		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-		relayPublicKey, relayPrivateKey, _ := box.GenerateKey(crand.Reader)
-		routerPublicKey, routerPrivateKey, _ := box.GenerateKey(crand.Reader)
+		// generate keys
+		relayPublicKey, relayPrivateKey, err := box.GenerateKey(rand.Reader)
+		assert.NoError(t, err)
+		routerPublicKey, routerPrivateKey, err := box.GenerateKey(rand.Reader)
+		assert.NoError(t, err)
 
 		var geoClient routing.GeoClient
 		{
@@ -416,11 +439,14 @@ func TestRelayInitHandler(t *testing.T) {
 		relay := routing.Relay{
 			ID:             crypto.HashID(addr),
 			DatacenterName: "some datacenter",
+			PublicKey:      relayPublicKey[:],
 		}
+
 		recorder := relayInitAssertions(t, relay, buff, http.StatusOK, &geoClient, ipfunc, nil, redisClient, relayPublicKey[:], routerPrivateKey[:])
 
 		header := recorder.Header()
 		contentType, _ := header["Content-Type"]
+
 		expected := routing.Relay{
 			ID:   crypto.HashID(addr),
 			Addr: *udpAddr,
