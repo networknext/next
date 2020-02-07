@@ -34,7 +34,7 @@ export NEXT_HOSTNAME = 127.0.0.1
 export NEXT_PORT = 30000
 
 export SERVER_BACKEND_HOSTNAME = http://localhost:30000
-export RELAY_BACKEND_HOSTNAME = http://localhost:30000
+export RELAY_BACKEND_HOSTNAME = http://localhost:40000
 export RELAY_ID = local
 
 ifndef RELAY_ADDRESS
@@ -120,13 +120,14 @@ endif
 
 .PHONY: test-func
 test-func: clean build-sdk build-relay build-functional-server build-functional-client ## runs functional tests
-	@printf "Building functional backend... "
-	@go build -o ./dist/func_backend ./cmd/tools/functional/backend/*.go
-	@printf "done\n"
-
-	@printf "\nRunning functional tests...\n\n"
-	@$(GO) run ./cmd/tools/functional/tests/func_tests.go
-	@printf "\ndone\n\n"
+	@printf "Building functional backend... " ; \
+	go build -o ./dist/func_backend ./cmd/tools/functional/backend/*.go ; \
+	printf "done\n" ; \
+	printf "overriding RELAY_BACKEND_HOSTNAME\n" ; \
+	export RELAY_BACKEND_HOSTNAME='http://localhost:30000' ; \
+	printf "\nRunning functional tests...\n\n" ; \
+	$(GO) run ./cmd/tools/functional/tests/func_tests.go ; \
+	printf "\ndone\n\n"
 
 .PHONY: build-sdk-test
 build-sdk-test: build-sdk ## builds the sdk test binary
