@@ -111,9 +111,9 @@ namespace core
 #ifndef NDEBUG
     assert(mNumRelays == index);
 
-    int numFound = 0;
-    for (int i = 0; i < relayIDs.size(); i++) {
-      for (int j = 0; j < mNumRelays; j++) {
+    unsigned int numFound = 0;
+    for (unsigned int i = 0; i < relayIDs.size(); i++) {
+      for (unsigned int j = 0; j < mNumRelays; j++) {
         if (relayIDs[i] == mRelayIDs[j] && relayAddrs[i] == mRelayAddresses[j]) {
           numFound++;
           break;
@@ -123,8 +123,8 @@ namespace core
 
     assert(numFound == mNumRelays);
 
-    for (int i = 0; i < relayIDs.size(); i++) {
-      for (int j = 0; j < relayIDs.size(); j++) {
+    for (unsigned int i = 0; i < relayIDs.size(); i++) {
+      for (unsigned int j = 0; j < relayIDs.size(); j++) {
         if (i == j) {
           continue;
         }
@@ -132,6 +132,30 @@ namespace core
       }
     }
 #endif
+  }
+
+  auto RelayManager::processPong(const net::Address& from, uint64_t seq) -> bool {
+      for (unsigned int i = 0; i < mNumRelays; i++) {
+          if (&from == &mRelayAddresses[i]) {
+            mRelayPingHistory[i]->pongReceived(seq, mClock.elapsed<util::Second>());
+            return true;
+          }
+      }
+
+      return false;
+  }
+
+  void RelayManager::getStats(RelayStats& stats) {
+    auto currentTime = mClock.elapsed<util::Second>();
+    stats.NumRelays = mNumRelays;
+
+    for (unsigned int i = 0; i < mNumRelays; i++) {
+      RouteStats rs(*mRelayPingHistory[i], currentTime - RELAY_STATS_WINDOW, currentTime, RELAY_PING_SAFETY);
+      stats.IDs[i] = mRelayIDs[i];
+      stats.RTT[i] = rs.RTT;
+      stats.Jitter[i] = rs.Jitter;
+      stats.PacketLoss[i] = rs.PacketLoss;
+    }
   }
 }  // namespace core
 

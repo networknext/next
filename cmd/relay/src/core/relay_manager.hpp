@@ -22,7 +22,7 @@ namespace core
 
     void update(const std::vector<uint64_t>& relayIDs, const std::vector<net::Address>& relayAddrs);
 
-    void processPong(const net::Address& from, uint64_t seq);
+    auto processPong(const net::Address& from, uint64_t seq) -> bool;
 
     void getStats(RelayStats& stats);
 
