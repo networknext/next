@@ -1,6 +1,9 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
 
+#include <cinttypes>
+
+// Legacy, use bools instead, eventually delete and replace these
 #define RELAY_OK 0
 #define RELAY_ERROR -1
 
@@ -11,7 +14,7 @@
 #define RELAY_ADDRESS_BYTES 19
 #define RELAY_ADDRESS_BUFFER_SAFETY 32
 
-#define RELAY_REPLAY_PROTECTION_BUFFER_SIZE 256
+#define RELAY_REPLAY_PROTECTION_BUFFER_SIZE 256UL
 
 #define RELAY_BANDWIDTH_LIMITER_INTERVAL 1.0
 
@@ -46,10 +49,6 @@
 #define RELAY_PUBLIC_KEY_BYTES 32
 #define RELAY_PRIVATE_KEY_BYTES 32
 
-#define RELAY_ADDRESS_NONE 0
-#define RELAY_ADDRESS_IPV4 1
-#define RELAY_ADDRESS_IPV6 2
-
 #define RELAY_MAX_ADDRESS_STRING_LENGTH 256
 
 #define MAX_RELAYS 1024
@@ -61,5 +60,14 @@
 #define NEAR_PONG_PACKET 74
 #define RELAY_PING_PACKET 75
 #define RELAY_PONG_PACKET 76
+
+#define INVALID_SEQUENCE_NUMBER 0xFFFFFFFFFFFFFFFFULL
+
+/* This will prevent GCC from optimizing out useless function calls, for benchmarking */
+#ifdef BENCH_BUILD
+#define GCC_NO_OPT_OUT asm("")
+#else
+#define GCC_NO_OPT_OUT
+#endif
 
 #endif

@@ -5,24 +5,21 @@
 
 extern util::Console _console_;
 
-// always on
+// LogDebug() is for debug logging, be as verbose as you'd like, it's turned off for release builds
+// so there's no performance impact
 
-#define LogRelease(...) _console_.log(__FILE__, " (", __LINE__, "): ", __VA_ARGS__)
+// Log() is for things you always want logged, like setup or error handling, enabled for release builds
+// unlike the debug version of Log(), the release does not record the file and line as to not expose that
 
-// a macro to disable any debug logging done for development purposes
-
-#ifndef NDEBUG
-#define LogDebug(...) _console_.log(__FILE__, " (", __LINE__, "): ", __VA_ARGS__); std::cout << std::flush
+#if not defined NDEBUG and not defined BENCH_BUILD
+#define LogDebug(...)                                          \
+  _console_.log(__FILE__, " (", __LINE__, "): ", __VA_ARGS__); \
+  std::cout << std::flush
+// Define regular logging
+#define Log(...) LogDebug(__VA_ARGS__)
 #else
 #define LogDebug(...)
-#endif
-
-// this behaves like LogDebug, except it will always be off when not running tests, safeguard against forgetting to remove something when benchmarking
-
-#if defined TESTING and not defined BENCHMARKING
-#define LogTest(...) _console_.log(__FILE__, " (", __LINE__, "): ", __VA_ARGS__); std::cout << std::flush
-#else
-#define LogTest(...)
+#define Log(...) _console_.log(__VA_ARGS__)
 #endif
 
 #endif
