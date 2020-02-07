@@ -24,7 +24,6 @@ namespace testing
         size_t index = 0;
         encoding::ReadAddress(bin, index, addr);
         check(index == RELAY_ADDRESS_BYTES);
-        std::cout << addr.toString() << std::endl;
     }
 
     void Test_ReadAddress_ipv6()
