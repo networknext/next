@@ -33,7 +33,8 @@ import (
 	"github.com/networknext/backend/transport"
 )
 
-const NEXT_BACKEND_PORT = 30000
+const NEXT_RELAY_BACKEND_PORT = 30000
+const NEXT_SERVER_BACKEND_PORT = 40000
 const NEXT_BACKEND_SERVER_UPDATE_PACKET = 200
 const NEXT_BACKEND_SESSION_UPDATE_PACKET = 201
 const NEXT_BACKEND_SESSION_RESPONSE_PACKET = 202
@@ -272,9 +273,11 @@ func main() {
 	go WebServer()
 
 	listenAddress := net.UDPAddr{
-		Port: NEXT_BACKEND_PORT,
+		Port: NEXT_RELAY_BACKEND_PORT,
 		IP:   net.ParseIP("0.0.0.0"),
 	}
+
+	fmt.Printf("started relay backend on port %d\n", NEXT_RELAY_BACKEND_PORT)
 
 	connection, err := net.ListenUDP("udp", &listenAddress)
 	if err != nil {
@@ -284,7 +287,7 @@ func main() {
 
 	defer connection.Close()
 
-	fmt.Printf("started local backend on port %d\n", NEXT_BACKEND_PORT)
+	fmt.Printf("started server backend on port %d\n", NEXT_SERVER_BACKEND_PORT)
 
 	mux := transport.UDPServerMux{
 		Conn:          connection,
@@ -328,8 +331,6 @@ func main() {
 				fmt.Printf("error: fallback to direct %s\n", incoming.SourceAddr)
 				return
 			}
-
-			fmt.Printf("Backend PL: %d, %d\n", sessionUpdate.PacketsLostClientToServer, sessionUpdate.PacketsLostServerToClient)
 
 			backend.mutex.RLock()
 			serverEntry, ok := backend.serverDatabase[string(incoming.SourceAddr.String())]
