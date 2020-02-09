@@ -16,7 +16,8 @@ const (
 	DecisionTypeNew      = 1
 	DecisionTypeContinue = 2
 
-	EncryptedNextRouteTokenSize = 117 // Need to find out how this size is made
+	EncryptedNextRouteTokenSize        = 117 // Need to find out how this size is made
+	EncryptedContinueRouteDecisionSize = 58
 )
 
 type Client struct {
@@ -46,13 +47,15 @@ type ContinueRouteDecision struct {
 	Relays []Relay
 
 	privateKey []byte
-	token      []byte
+	tokens     []byte
 	offset     int
 }
 
 func (r *ContinueRouteDecision) Encrypt(privateKey []byte) []byte {
 	r.privateKey = make([]byte, crypto.KeySize)
 	rand.Read(r.privateKey)
+
+	r.tokens = make([]byte, EncryptedContinueRouteDecisionSize*(len(r.Relays)+2))
 
 	// Encrypt the first node with the client public key
 	// and point it to the FIRST relay in the route
@@ -76,7 +79,7 @@ func (r *ContinueRouteDecision) Encrypt(privateKey []byte) []byte {
 	// and point it to the server itself signifying the end
 	r.encryptToken(r.Server.Addr, r.Server.PublicKey, privateKey)
 
-	return r.token
+	return r.tokens
 }
 
 func (r *ContinueRouteDecision) encryptToken(addr net.UDPAddr, receiverPublicKey []byte, senderPrivateKey []byte) {
@@ -94,9 +97,9 @@ func (r *ContinueRouteDecision) encryptToken(addr net.UDPAddr, receiverPublicKey
 	node[crypto.NonceSize+8+8] = r.SessionVersion
 	node[crypto.NonceSize+8+8+1] = r.SessionFlags
 
-	copy(r.token[r.offset:], crypto.Seal(node[crypto.NonceSize:], nonce, receiverPublicKey, senderPrivateKey))
+	copy(r.tokens[r.offset:], crypto.Seal(node[crypto.NonceSize:], nonce, receiverPublicKey, senderPrivateKey))
 
-	r.offset += 58
+	r.offset += EncryptedContinueRouteDecisionSize
 }
 
 type NextRouteToken struct {
