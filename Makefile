@@ -216,7 +216,7 @@ dev-client: build-functional-client  ## runs a local client
 .PHONY: build-relay
 build-relay: ## builds the relay
 	@printf "Building relay... "
-	@cd $(RELAY_DIR) && make
+	@g++ -o dist/relay cmd/relay/*.cpp -lcurl -lpthread -lsodium
 	@printf "done\n"
 
 .PHONY: build-sdk
