@@ -273,11 +273,11 @@ func main() {
 	go WebServer()
 
 	listenAddress := net.UDPAddr{
-		Port: NEXT_RELAY_BACKEND_PORT,
+		Port: NEXT_SERVER_BACKEND_PORT,
 		IP:   net.ParseIP("0.0.0.0"),
 	}
 
-	fmt.Printf("started relay backend on port %d\n", NEXT_RELAY_BACKEND_PORT)
+	fmt.Printf("started server backend on port %d\n", NEXT_SERVER_BACKEND_PORT)
 
 	connection, err := net.ListenUDP("udp", &listenAddress)
 	if err != nil {
@@ -286,8 +286,6 @@ func main() {
 	}
 
 	defer connection.Close()
-
-	fmt.Printf("started server backend on port %d\n", NEXT_SERVER_BACKEND_PORT)
 
 	mux := transport.UDPServerMux{
 		Conn:          connection,
@@ -867,11 +865,12 @@ func NearHandler(writer http.ResponseWriter, request *http.Request) {
 }
 
 func WebServer() {
+	fmt.Printf("started relay backend on port %d\n", NEXT_RELAY_BACKEND_PORT)
 	router := mux.NewRouter()
 	router.HandleFunc("/relay_init", RelayInitHandler).Methods("POST")
 	router.HandleFunc("/relay_update", RelayUpdateHandler).Methods("POST")
 	router.HandleFunc("/cost_matrix", CostMatrixHandler).Methods("GET")
 	router.HandleFunc("/route_matrix", RouteMatrixHandler).Methods("GET")
 	router.HandleFunc("/near", NearHandler).Methods("GET")
-	http.ListenAndServe(":30000", router)
+	http.ListenAndServe(fmt.Sprintf(":%d", NEXT_RELAY_BACKEND_PORT), router)
 }
