@@ -205,12 +205,12 @@ dev-backend: ## runs a local mock backend
 	$(GO) run cmd/tools/functional/backend/*.go
 
 .PHONY: dev-server
-dev-server: build-sdk build-functional-server  ## runs a local server
-	@./dist/func_server
+dev-server: build-sdk build-server  ## runs a local server
+	@./dist/server
 
 .PHONY: dev-client
-dev-client: build-functional-client  ## runs a local client
-	@./dist/func_client
+dev-client: build-client  ## runs a local client
+	@./dist/client
 
 .PHONY: build-relay
 build-relay: ## builds the relay

@@ -329,6 +329,8 @@ func main() {
 				return
 			}
 
+			fmt.Printf("Backend PL: %d, %d\n", sessionUpdate.PacketsLostClientToServer, sessionUpdate.PacketsLostServerToClient)
+
 			backend.mutex.RLock()
 			serverEntry, ok := backend.serverDatabase[string(incoming.SourceAddr.String())]
 			backend.mutex.RUnlock()
@@ -495,8 +497,6 @@ func main() {
 				fmt.Printf("error: failed to write session response packet: %v\n", err)
 				return
 			}
-			// responsePacketType := uint32(NEXT_BACKEND_SESSION_RESPONSE_PACKET)
-			// writeStream.SerializeBits(&responsePacketType, 8)
 			if err := sessionResponse.Serialize(writeStream, NEXT_VERSION_MAJOR, NEXT_VERSION_MINOR, NEXT_VERSION_PATCH); err != nil {
 				fmt.Printf("error: failed to write session response packet: %v\n", err)
 				return
