@@ -3,5 +3,6 @@ dist
 .vscode
 cover.out
 *.swp
-obj/*
+*.o
+*.d
 
