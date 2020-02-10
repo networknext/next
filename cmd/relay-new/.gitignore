@@ -1,0 +1,4 @@
+bin/*
+obj/*
+tags
+.clang_complete

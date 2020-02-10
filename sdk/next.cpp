@@ -5430,6 +5430,8 @@ next_client_internal_t * next_client_internal_create( void * context, next_stats
         return NULL;
     }
 
+    next_printf( NEXT_LOG_LEVEL_INFO, "client bound to port %d", bind_address.port );
+
     client->command_mutex = next_platform_mutex_create( client->context );
     if ( client->command_mutex == NULL )
     {
@@ -8634,6 +8636,8 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         server_address.port = bind_address.port;
     }
 
+    next_printf( NEXT_LOG_LEVEL_INFO, "server bound to port %d", bind_address.port );
+
     server->bind_address = bind_address;
     server->server_address = server_address;
     server->server_address_internal = server_address;
@@ -9874,6 +9878,15 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     next_printf( NEXT_LOG_LEVEL_INFO, "server resolving hostname %s", hostname );
 
     next_address_t address;
+
+    if ( next_address_parse( &address, hostname ) == NEXT_OK )
+    {
+        address.port = atoi( port );
+        next_mutex_guard( server->resolve_hostname_mutex );
+        server->resolve_hostname_finished = true;
+        server->resolve_hostname_result = address;
+        NEXT_PLATFORM_THREAD_RETURN();
+    }
 
     for ( int i = 0; i < 10; ++i )
     {

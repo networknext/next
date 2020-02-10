@@ -58,7 +58,7 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 		if numbytes <= 0 {
 			continue
 		}
-		log.Println("handler", id, "addr", addr.String(), "bytes", numbytes)
+		// log.Println("handler", id, "addr", addr.String(), "bytes", numbytes)
 
 		var buf bytes.Buffer
 		packet := UDPPacket{
@@ -76,7 +76,7 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 		if buf.Len() > 0 {
 			_, err := m.Conn.WriteToUDP(buf.Bytes(), addr)
 			if err != nil {
-				log.Println("addr", addr.String(), "msg", err.Error())
+				// log.Println("addr", addr.String(), "msg", err.Error())
 			}
 		}
 	}
