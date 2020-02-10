@@ -31,6 +31,24 @@ func main() {
 
 	ctx := context.Background()
 
+	var customerPublicKey []byte
+	{
+		if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
+			customerPublicKey, _ = base64.StdEncoding.DecodeString(key)
+		} else {
+			log.Fatal("env var 'NEXT_CUSTOMER_PUBLIC_KEY' is not set")
+		}
+	}
+
+	var relayPublicKey []byte
+	{
+		if key := os.Getenv("RELAY_PUBLIC_KEY"); len(key) != 0 {
+			relayPublicKey, _ = base64.StdEncoding.DecodeString(key)
+		} else {
+			log.Fatal("env var 'RELAY_PUBLIC_KEY' is not set")
+		}
+	}
+
 	var routerPrivateKey []byte
 	{
 		if key := os.Getenv("RELAY_ROUTER_PRIVATE_KEY"); len(key) != 0 {
@@ -58,7 +76,9 @@ func main() {
 	// Create an in-memory relay & datacenter store
 	// that doesn't require talking to configstore
 	inMemory := storage.InMemory{
-		LocalDatacenter: true,
+		LocalCustomerPublicKey: customerPublicKey,
+		LocalRelayPublicKey:    relayPublicKey,
+		LocalDatacenter:        true,
 	}
 
 	if filename, ok := os.LookupEnv("RELAYS_STUBBED_DATA_FILENAME"); ok {
@@ -162,7 +182,7 @@ func main() {
 		fmt.Printf("RELAY_PORT env var is unset, setting port as %s\n", port)
 	}
 
-	router := transport.NewRouter(redisClient, &geoClient, ipLocator, relayProvider, datacenterProvider, statsdb, &costmatrix, &routematrix, nil, routerPrivateKey)
+	router := transport.NewRouter(redisClient, &geoClient, ipLocator, relayProvider, datacenterProvider, statsdb, &costmatrix, &routematrix, routerPrivateKey)
 
 	go transport.HTTPStart(port, router)
 
