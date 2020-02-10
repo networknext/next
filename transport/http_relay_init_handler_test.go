@@ -47,8 +47,6 @@ func relayInitAssertions(t *testing.T, relay routing.Relay, body []byte, expecte
 	{
 		if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
 			customerPublicKey, _ = base64.StdEncoding.DecodeString(key)
-		} else {
-			log.Fatal("env var 'NEXT_CUSTOMER_PUBLIC_KEY' is not set")
 		}
 	}
 
@@ -56,8 +54,6 @@ func relayInitAssertions(t *testing.T, relay routing.Relay, body []byte, expecte
 	{
 		if key := os.Getenv("RELAY_PUBLIC_KEY"); len(key) != 0 {
 			relayPublicKey, _ = base64.StdEncoding.DecodeString(key)
-		} else {
-			log.Fatal("env var 'RELAY_PUBLIC_KEY' is not set")
 		}
 	}
 
@@ -310,7 +306,7 @@ func TestRelayInitHandler(t *testing.T) {
 			DatacenterName: "some datacenter",
 			PublicKey:      relayPublicKey,
 		}
-		relayInitAssertions(t, relay, buff, http.StatusNotFound, nil, nil, nil, redisClient, routerPrivateKey[:])
+		relayInitAssertions(t, relay, buff, http.StatusConflict, nil, nil, nil, redisClient, routerPrivateKey[:])
 	})
 
 	t.Run("could not lookup relay location", func(t *testing.T) {

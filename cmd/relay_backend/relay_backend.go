@@ -194,7 +194,7 @@ func main() {
 		}
 	}()
 
-	router := transport.NewRouter(logger, redisClient, &geoClient, ipLocator, relayProvider, datacenterProvider, statsdb, &costmatrix, &routematrix, relayPublicKey, routerPrivateKey)
+	router := transport.NewRouter(logger, redisClient, &geoClient, ipLocator, relayProvider, datacenterProvider, statsdb, &costmatrix, &routematrix, routerPrivateKey)
 
 	go func() {
 		level.Info(logger).Log("addr", ":30000")
