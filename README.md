@@ -21,6 +21,54 @@ The tool chain used for development is kept simple to make it easy for any opera
 
 Developers should install these requirements however they need to be installed based on your operating system. Windows users can leverage WSL to get all of these.
 
+## Backend
+
+All of these services are controlled and deployed by us.
+
+- [`cmd/relay`](cmd/relay)
+- [`cmd/relay_backend`](cmd/relay_backend)
+- [`cmd/server_backend`](cmd/server_backend)
+
+## SDK
+
+The [`SDK`](./sdk) is shipped to customers to use in their game client and server implementations. The client and server here are slim reference implementations so we can use the SDK locally.
+
+- [`cmd/server`](./cmd/server)
+- [`cmd/client`](./cmd/client)
+
+## High-Level Flow Diagram
+
+```
+                       Relays init and update
+        +---------------------------------------------------+   Relay Backend
+        |                                                   |   builds Cost &
+        |        +----------------------------------------+ |   Route Matrices
+        |        |                                        | |
+        |   +----+----+       +---------+                +V-V-----------------+
+        |   | Relay 2 |       | Relay 4 +----------------> Relay Backend (Go) |
+        |   +---------+       +---------+                +^-------+---+---+---+
+        |   ||       ||                                   |       |   |   |
+   +----+----+       +---------+                          |       |   |   |
+   | Relay 1 |       | Relay 3 +--------------------------+       |   |   |
+   +---------+       +---------+                                  |   |   |
+        ||                ||                  +-------------------V-+ |   |
+        ||                ||                +-> Server Backend (Go) | |   |
+        ||                ||                | +---------------------+ |   |
+        ||          +-------------------+   |     +-------------------V-+ |
+        ||          | Game Server (SDK) <---------> Server Backend (Go) | |
+        ||          +----------^--------+   |     +---------------------+ |
+        ||                     |            |         +-------------------V-+
+        ||                     |            +---------> Server Backend (Go) |
++-------------------+          |                      +---------------------+
+| Game Client (SDK) <----------+
++-------------------+                                  Server Backends pull
+                         Game Server gets              copy of Route Matrix
+                         routes  and tells
+                         Game Client
+```
+
+Made with [asciiflow](http://asciiflow.com/). This text can be imported, changed, and exported to update if needed.
+
 ## Docker and Docker Compose
 
 While all of the components can be run locally either independently or collectively it can be tedious to run multiple relays to get a true test of everything. We can leverage Docker and Docker Compose to easily stand everything up as a system. There is a [`./cmd/docker-compose.yaml`](./cmd/docker-compose.yaml) along with all required `Dockerfile`s in each of the binary directories to create the system of backend services (`relay_backend` and `server_backend`).
@@ -56,141 +104,3 @@ Some instances you only want to run some instances at a time and you would use `
 ```bash
 $ docker-compose -f ./cmd/docker-compose.yaml run relay_backend
 ```
-
-## Components
-
-```
-                       Relays init and update
-        +---------------------------------------------------+   Relay Backend
-        |                                                   |   builds Cost &
-        |        +----------------------------------------+ |   Route Matrices
-        |        |                                        | |
-        |   +----+----+       +---------+                +V-V-----------------+
-        |   | Relay 2 |       | Relay 4 +----------------> Relay Backend (Go) |
-        |   +---------+       +---------+                +^-------+---+---+---+
-        |   ||       ||                                   |       |   |   |
-   +----+----+       +---------+                          |       |   |   |
-   | Relay 1 |       | Relay 3 +--------------------------+       |   |   |
-   +---------+       +---------+                                  |   |   |
-        ||                ||                  +-------------------V-+ |   |
-        ||                ||                +-> Server Backend (Go) | |   |
-        ||                ||                | +---------------------+ |   |
-        ||          +-------------------+   |     +-------------------V-+ |
-        ||          | Game Server (SDK) <---------> Server Backend (Go) | |
-        ||          +----------^--------+   |     +---------------------+ |
-        ||                     |            |         +-------------------V-+
-        ||                     |            +---------> Server Backend (Go) |
-+-------------------+          |                      +---------------------+
-| Game Client (SDK) <----------+
-+-------------------+                                  Server Backends pull
-                         Game Server gets              copy of Route Matrix
-                         routes  and tells
-                         Game Client
-```
-
-Made with [asciiflow](http://asciiflow.com/). This text can be imported, changed, and exported to update if needed.
-
-## Relay (C++)
-
-This is the service that suppliers run on their hardware to become part of Network Next.
-
-- Command: `dist/relay` or `make dev-relay`
-
-### To Run
-
-Run `make dev-relay`
-
-### Environment Variables
-
-#### Required
-
-- `RELAY_ADDRESS`: The address of this relay, defaults to "127.0.0.1" when run using make.
-- `RELAY_BACKEND_HOSTNAME`: The address of the relay backend, defaults to "http://localhost:40000" when run using make.
-
-#### To get values for the following three variables, see [Generating Key Pairs](#generating-key-pairs)
-
-- `RELAY_PRIVATE_KEY`: The private key of each relay.
-- `RELAY_PUBLIC_KEY`: The public key of each relay generated with the private key.
-- `RELAY_ROUTER_PUBLIC_KEY`: The public key of the router.
-
-## Relay Backend (Go)
-
-See [cmd/relay_backend](cmd/relay_backend)
-
-## Server (C++)
-
-Reference implementation of a server using the Network Next SDK.
-
-- Command: [`cmd/server`](./cmd/server)
-- Dependencies: [`sdk`](./sdk)
-
-## Server Backend (Go)
-
-See [cmd/server_backend](cmd/server_backend)
-
-## Client (C++)
-
-Reference implementation of a client using the Network Next SDK.
-
-- Command: [`cmd/client`](./cmd/client)
-- Dependencies: [`sdk`](./sdk)
-
-## SDK (C++)
-
-This is the SDK we ship to customers.
-
-## Leveled Logging
-
-The SDK and Backend services use leveled logging, but honor different environment variable flags so than can be set separately.
-
-### SDK
-
-Set the `NEXT_LOG_LEVEL` environment variable to one of the following values:
-
-- `0`: None
-- `1`: Error
-- `2`: Info
-- `3`: Warn
-- `4`: Debug
-
-### Backend
-
-Set the `BACKEND_LOG_LEVEL` environment variable to one of the following values:
-
-- `none`
-- `error`
-- `warn`
-- `info`
-- `debug`
-
-These levels are cumulative so if you set `BACKEND_LOG_LEVEL=info` you will get `error` and `warn` too.
-
-The default setting is `warn` when running `make dev-relay-backend` and `make dev-server-backend`. To override this you can set your own value by doing `make BACKEND_LOG_LEVEL=debug dev-relay-backend` and `make BACKEND_LOG_LEVEL=debug dev-server-backend`.
-
-## Tools
-
-Each tool should provide a `-h` or `--help` flag to explain it usage. Refer to the usage docs for each tool on how to use it.
-
-**`./cmd/tools/scripts/relay-spawner.sh`**  
-Spawns multiple relays providing a number and starting port
-
-## Generating Key Pairs
-
-Keys must be generated with Go's `box.GenerateKey()` function call. The parameter to pass is `rand.Reader`.
-
-Generate two sets. One for relays, and one for the router. Set the following environment variables appropriately:
-
-### Relay Environment Variables
-
-- `RELAY_PRIVATE_KEY`
-- `RELAY_PUBLIC_KEY`
-- `RELAY_ROUTER_PUBLIC_KEY`
-
-### Relay Backend Environment Variables
-
-- `RELAY_PUBLIC_KEY`
-- `RELAY_PRIVATE_KEY`
-- `ROUTER_PUBLIC_KEY`
-- `ROUTER_PRIVATE_KEY`
-
-Likely the values for the three relay environment variables will be reused for the relay backend.

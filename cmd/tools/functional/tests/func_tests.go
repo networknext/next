@@ -155,7 +155,9 @@ func server(config *ServerConfig) (*exec.Cmd, *bytes.Buffer) {
 
 	cmd.Env = append(cmd.Env, "NEXT_DATACENTER=local")
 	cmd.Env = append(cmd.Env, "NEXT_HOSTNAME=127.0.0.1")
-	cmd.Env = append(cmd.Env, "NEXT_PORT=30000")
+	cmd.Env = append(cmd.Env, "NEXT_PORT=40000")
+	cmd.Env = append(cmd.Env, "NEXT_CUSTOMER_PRIVATE_KEY=no")
+	cmd.Env = append(cmd.Env, "NEXT_CUSTOMER_PUBLIC_KEY=no")
 
 	if config.duration != 0 {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("SERVER_DURATION=%d", config.duration))
