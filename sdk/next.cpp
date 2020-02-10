@@ -9897,6 +9897,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     if ( next_address_parse( &address, hostname ) == NEXT_OK )
     {
+        address.port = atoi( port );
         next_mutex_guard( server->resolve_hostname_mutex );
         server->resolve_hostname_finished = true;
         server->resolve_hostname_result = address;

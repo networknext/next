@@ -273,7 +273,7 @@ void relay_platform_socket_send_packet( relay_platform_socket_t * socket, const 
         {
             char address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
             relay_address_to_string( to, address_string );
-            relay_printf( "sendto (%s) failed: %s", address_string, strerror( errno ) );
+            relay_printf( "sendto (%s) failed: %s [ipv6]", address_string, strerror( errno ) );
         }
     }
     else if ( to->type == RELAY_ADDRESS_IPV4 )
@@ -291,7 +291,7 @@ void relay_platform_socket_send_packet( relay_platform_socket_t * socket, const 
         {
             char address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
             relay_address_to_string( to, address_string );
-            relay_printf( "sendto (%s) failed: %s", address_string, strerror( errno ) );
+            relay_printf( "sendto (%s) failed: %s [ipv4]", address_string, strerror( errno ) );
         }
     }
     else
