@@ -39,7 +39,7 @@
 namespace
 {
   volatile uint64_t quit = 0;
-
+	
   void interrupt_handler(int signal)
   {
     (void)signal;

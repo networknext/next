@@ -19,6 +19,7 @@ namespace core
   {
    public:
     PingHistory() = default;
+    PingHistory(const PingHistory& other);
     ~PingHistory() = default;
 
     void clear();
@@ -29,7 +30,9 @@ namespace core
 
     // helper for testing only
     auto seq() -> uint64_t;
+
     auto operator[](size_t i) -> const HistoryEntry&;
+    auto operator=(const PingHistory& other) -> PingHistory&;
 
    private:
     uint64_t mSeq = 0;
@@ -37,6 +40,11 @@ namespace core
 
     friend class RouteStats;
   };
+
+  [[gnu::always_inline]] inline PingHistory::PingHistory(const PingHistory& other)
+  {
+    *this = other;
+  }
 
   inline void PingHistory::clear()
   {
@@ -66,6 +74,13 @@ namespace core
   inline auto PingHistory::operator[](size_t i) -> const HistoryEntry&
   {
     return mEntries[i % mEntries.size()];
+  }
+
+  [[gnu::always_inline]] inline auto PingHistory::operator=(const PingHistory& other) -> PingHistory&
+  {
+    this->mSeq = other.mSeq;
+    std::copy(other.mEntries.begin(), other.mEntries.end(), this->mEntries.begin());
+    return *this;
   }
 }  // namespace core
 

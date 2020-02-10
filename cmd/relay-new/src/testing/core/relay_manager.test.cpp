@@ -2,6 +2,7 @@
 
 #include <sstream>
 #include <iostream>
+#include <algorithm>
 
 #include "core/relay_manager.hpp"
 
@@ -39,7 +40,7 @@ Test(RelayManager)
     manager.getStats(stats);
     check(stats.NumRelays == NumRelays);
     for (int i = 0; i < NumRelays; ++i) {
-      check(relayIDs[i] == stats.IDs[i]);
+      check(std::find(relayIDs.begin(), relayIDs.end(), stats.IDs[i]) != std::end(relayIDs));
     }
   }
 
