@@ -188,7 +188,7 @@ func main() {
 		port = "40000"
 	}
 
-	router := transport.NewRouter(redisClient, &geoClient, ipLocator, relayProvider, datacenterProvider, statsdb, &costmatrix, &routematrix, relayPublicKey, routerPrivateKey)
+	router := transport.NewRouter(logger, redisClient, &geoClient, ipLocator, relayProvider, datacenterProvider, statsdb, &costmatrix, &routematrix, relayPublicKey, routerPrivateKey)
 
 	go func() {
 		level.Info(logger).Log("envvar", "RELAY_PORT", "value", port)
