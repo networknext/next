@@ -23,7 +23,7 @@ Developers should install these requirements however they need to be installed b
 
 ## Docker and Docker Compose
 
-While all of the components can be run locally either independently or collectively it can be tedious to run multiple relays to get a true test of everything. We can leverage Docker and Docker Compose to easily stand everything up as a system. There is a [`./cmd/docker-compose.yaml`](./cmd/docker-compose.yaml) along with all required `Dockerfile`s in each of the binary directories to create the system of backend services (`relay`, `relay_backend`, and `server_backend`). 
+While all of the components can be run locally either independently or collectively it can be tedious to run multiple relays to get a true test of everything. We can leverage Docker and Docker Compose to easily stand everything up as a system. There is a [`./cmd/docker-compose.yaml`](./cmd/docker-compose.yaml) along with all required `Dockerfile`s in each of the binary directories to create the system of backend services (`relay`, `relay_backend`, and `server_backend`).
 
 ### First Time
 
@@ -115,7 +115,7 @@ Run `make dev-relay`
 #### Required
 
 - `RELAY_ADDRESS`: The address of this relay, defaults to "127.0.0.1" when run using make.
-- `RELAY_BACKEND_HOSTNAME`: The address of the relay backend, defaults to "http://localhost:30000" when run using make.
+- `RELAY_BACKEND_HOSTNAME`: The address of the relay backend, defaults to "http://localhost:40000" when run using make.
 
 #### To get values for the following three variables, see [Generating Key Pairs](#generating-key-pairs)
 
