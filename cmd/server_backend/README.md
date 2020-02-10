@@ -11,14 +11,25 @@ The Server Backend is responsible for:
 
 Run `make dev-server-backend`
 
+### Logging
+
+Levels are cumulative so if you set `BACKEND_LOG_LEVEL=info` you will get `error` and `warn` too.
+
+The default setting is `warn` when running `make dev-relay-backend` and `make dev-server-backend`. To override this you can set your own value by doing `make BACKEND_LOG_LEVEL=debug dev-relay-backend` and `make BACKEND_LOG_LEVEL=debug dev-server-backend`.
+
 ### Environment Variables
 
 #### Required
 
+- `BACKEND_LOG_LEVEL`: one of `none`, `error`, `warn`, `info`, `debug` 
+- `SERVER_BACKEND_PUBLIC_KEY`: the public key of the server_backend
+- `SERVER_BACKEND_PRIVATE_KEY`: the private key of the server_backend to sign responses
+- `RELAY_ROUTER_PUBLIC_KEY`: the public key of the router
+- `RELAY_ROUTER_PRIVATE_KEY`: the private key of the router used to encrypt routes
 - `ROUTE_MATRIX_URI`: a URL or local file path to a route matrix binary
 - `MAXMIND_DB_URI`: local path to a `.mmdb` file for IP lookups
+- `REDIS_HOST`: address of the Redis server you want to connect to, uses the in-memory version if not supplied or invalid
 
 #### Optional
 
-- `REDIS_HOST`: address of the Redis server you want to connect to, uses the in-memory version if not supplied or invalid
 - `CONFIGSTORE_HOST`: address to configstore, uses the in-memory version if not supplied

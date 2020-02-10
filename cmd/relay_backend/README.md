@@ -11,19 +11,25 @@ The Relay Backend is responsible for:
 
 Run `make dev-relay-backend`
 
+### Logging
+
+Levels are cumulative so if you set `BACKEND_LOG_LEVEL=info` you will get `error` and `warn` too.
+
+The default setting is `warn` when running `make dev-relay-backend` and `make dev-server-backend`. To override this you can set your own value by doing `make BACKEND_LOG_LEVEL=debug dev-relay-backend` and `make BACKEND_LOG_LEVEL=debug dev-server-backend`.
+
 ### Environment Variables
 
 #### Required
 
-- `RELAY_PUBLIC_KEY`: The public key of each relay.
-- `RELAY_ROUTER_PRIVATE_KEY`: The private key of the router.
+- `BACKEND_LOG_LEVEL`: one of `none`, `error`, `warn`, `info`, `debug` 
+- `REDIS_HOST`: address of the Redis server you want to connect to.
+- `RELAY_ROUTER_PUBLIC_KEY`: the public key of the router.
+- `RELAY_ROUTER_PRIVATE_KEY`: the private key of the router.
+- `RELAY_MAXMIND_DB_URI`: local path to a `.mmdb` file for IP lookups
 
 #### Optional
 
-- `RELAY_PORT`: port the relay backend will use if undefined a random port will be chosen
-- `REDIS_HOST`: address of the Redis server you want to connect to.
 - `CONFIGSTORE_HOST`: address to configstore, uses the in-memory version if not supplied.
-- `RELAY_MAXMIND_DB_URI`: local path to a `.mmdb` file for IP lookups
 - `RELAY_DEV`: enable development features, like what is listed below in the [important](#important) section
 - `RELAY_STUBBED_DATA_FILENAME`: points to a json file that will be used to stub datacenter names and lat/long coords
 
