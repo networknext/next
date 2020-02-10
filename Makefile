@@ -70,6 +70,11 @@ ifndef RELAY_ROUTER_PRIVATE_KEY
 export RELAY_ROUTER_PRIVATE_KEY = ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
 endif
 
+## By default we set only error and warning logs for server_backend and relay_backend 
+ifndef BACKEND_LOG_LEVEL
+export BACKEND_LOG_LEVEL = warn
+endif
+
 export RELAY_DEBUG = 0
 
 .PHONY: help
