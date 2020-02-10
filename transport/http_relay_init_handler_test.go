@@ -6,7 +6,6 @@ import (
 	crand "crypto/rand"
 	"encoding/base64"
 	"errors"
-	"log"
 	"math"
 	mrand "math/rand"
 	"net"
@@ -15,6 +14,8 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"github.com/go-kit/kit/log"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/go-redis/redis/v7"
@@ -89,7 +90,7 @@ func relayInitAssertions(t *testing.T, relay routing.Relay, body []byte, expecte
 		}
 	}
 
-	handler := transport.RelayInitHandlerFunc(redisClient, geoClient, ipfunc, inMemory, inMemory, routerPrivateKey)
+	handler := transport.RelayInitHandlerFunc(log.NewNopLogger(), redisClient, geoClient, ipfunc, inMemory, inMemory, routerPrivateKey)
 
 	handler(recorder, request)
 
@@ -99,8 +100,6 @@ func relayInitAssertions(t *testing.T, relay routing.Relay, body []byte, expecte
 }
 
 func TestRelayInitHandler(t *testing.T) {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
-
 	const addr = "127.0.0.1:40000"
 	t.Run("magic is invalid", func(t *testing.T) {
 		udp, _ := net.ResolveUDPAddr("udp", addr)
