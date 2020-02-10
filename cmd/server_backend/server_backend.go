@@ -173,8 +173,8 @@ func main() {
 			Conn:          conn,
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
-			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(redisClient, buyerProvider),
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(redisClient, buyerProvider, &routeMatrix, ipLocator, &geoClient, serverPrivateKey, routerPrivateKey),
+			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClient, buyerProvider),
+			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClient, buyerProvider, &routeMatrix, ipLocator, &geoClient, serverPrivateKey, routerPrivateKey),
 		}
 
 		go func() {
