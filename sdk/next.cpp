@@ -5798,8 +5798,6 @@ int next_client_internal_process_packet_from_server( next_client_internal_t * cl
                     next_stats( client->stats, "%" PRIu64 " client -> server packets lost", packets_lost );
                 }
 
-                printf( "client received route update: %d client to server PL\n", (int)packet.packets_lost_client_to_server );
-
                 client->fallback_to_direct = fallback_to_direct;
                 client->route_update_sequence = packet.sequence;
                 client->client_stats.packets_lost_client_to_server = packet.packets_lost_client_to_server;
@@ -6004,12 +6002,6 @@ void next_client_internal_block_and_receive_packet( next_client_internal_t * cli
     int packet_bytes = next_platform_socket_receive_packet( client->socket, &from, packet_data, sizeof(packet_data) );
     if ( packet_bytes == 0 )
         return;
-
-    // todo: randomly drop packet
-    if ( ( rand() % 10 ) == 0 )
-    {
-        return;
-    }
 
     const bool from_server_address = client->server_address.type != 0 && next_address_equal( &from, &client->server_address );
 
@@ -6807,8 +6799,6 @@ void next_client_update( next_client_t * client )
                     client->upgraded = false;
                     client->session_id = 0;
                 }
-
-                printf( "client PL: %d, %d\n", (int)client->client_stats.packets_lost_client_to_server, (int)client->client_stats.packets_lost_server_to_client );
             }
             break;
 
@@ -9711,12 +9701,6 @@ void next_server_internal_block_and_receive_packet( next_server_internal_t * ser
     if ( packet_bytes == 0 )
         return;
 
-    // todo: randomly drop packet
-    if ( ( rand() % 10 ) == 0 )
-    {
-        return;
-    }
-
     if ( packet_data[0] == 0 && packet_bytes >= 2 && packet_bytes <= NEXT_MTU + 1 )
     {
         next_server_notify_packet_received_t * notify = (next_server_notify_packet_received_t*) next_malloc( server->context, sizeof( next_server_notify_packet_received_t ) );
@@ -10064,9 +10048,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.kbps_down = session->stats_kbps_down;
             packet.packets_lost_client_to_server = session->stats_packets_lost_client_to_server;
             packet.packets_lost_server_to_client = session->stats_packets_lost_server_to_client;
-
-            printf( "server PL: %d, %d\n", (int)packet.packets_lost_client_to_server, (int)packet.packets_lost_server_to_client );
-
             packet.next = session->stats_next;
             packet.next_min_rtt = session->stats_next_min_rtt;
             packet.next_max_rtt = session->stats_next_max_rtt;
