@@ -208,7 +208,7 @@ dev-relay-backend: ## runs a local relay backend
 
 .PHONY: dev-server-backend
 dev-server-backend: ## runs a local server backend
-	@export ROUTE_MATRIX_URI=./testdata/route_matrix.bin ; \
+	@export ROUTE_MATRIX_URI=http://localhost:30000/route_matrix ; \
 	$(GO) run cmd/server_backend/server_backend.go
 
 .PHONY: dev-backend

@@ -183,17 +183,12 @@ func main() {
 		}
 	}()
 
-	port, ok := os.LookupEnv("RELAY_PORT")
-	if !ok {
-		port = "40000"
-	}
-
 	router := transport.NewRouter(logger, redisClient, &geoClient, ipLocator, relayProvider, datacenterProvider, statsdb, &costmatrix, &routematrix, relayPublicKey, routerPrivateKey)
 
 	go func() {
-		level.Info(logger).Log("envvar", "RELAY_PORT", "value", port)
+		level.Info(logger).Log("addr", ":30000")
 
-		err := http.ListenAndServe(fmt.Sprintf(":%s", port), router)
+		err := http.ListenAndServe(":30000", router)
 		if err != nil {
 			level.Error(logger).Log("err", err)
 		}

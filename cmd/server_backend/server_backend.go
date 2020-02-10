@@ -159,7 +159,7 @@ func main() {
 
 	{
 		addr := net.UDPAddr{
-			Port: 30000,
+			Port: 40000,
 			IP:   net.ParseIP("0.0.0.0"),
 		}
 
