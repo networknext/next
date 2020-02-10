@@ -3,7 +3,6 @@ package transport
 import (
 	"bytes"
 	"crypto/rand"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -54,15 +53,6 @@ func NewRouter(redisClient *redis.Client, geoClient *routing.GeoClient, ipLocato
 	router.Handle("/route_matrix", routematrix).Methods("GET")
 	router.HandleFunc("/near", NearHandlerFunc(nil)).Methods("GET")
 	return router
-}
-
-// HTTPStart starts a http server on the supplied port with the supplied router
-func HTTPStart(port string, router *mux.Router) {
-	log.Printf("Starting server with port %s\n", port) // log
-	err := http.ListenAndServe(fmt.Sprintf(":%s", port), router)
-	if err != nil {
-		log.Println(err)
-	}
 }
 
 // RelayInitHandlerFunc returns the function for the relay init endpoint

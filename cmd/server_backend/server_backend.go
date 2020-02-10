@@ -9,7 +9,6 @@ import (
 	"context"
 	"encoding/base64"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -17,9 +16,12 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
+	"google.golang.org/grpc"
+
 	"github.com/go-redis/redis/v7"
 	"github.com/oschwald/geoip2-golang"
-	"google.golang.org/grpc"
 
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
@@ -27,9 +29,26 @@ import (
 )
 
 func main() {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
-
 	ctx := context.Background()
+
+	// Configure logging
+	logger := log.NewLogfmtLogger(os.Stdout)
+	{
+		switch os.Getenv("BACKEND_LOG_LEVEL") {
+		case level.ErrorValue().String():
+			logger = level.NewFilter(logger, level.AllowError())
+		case level.WarnValue().String():
+			logger = level.NewFilter(logger, level.AllowWarn())
+		case level.InfoValue().String():
+			logger = level.NewFilter(logger, level.AllowInfo())
+		case level.DebugValue().String():
+			logger = level.NewFilter(logger, level.AllowDebug())
+		default:
+			logger = level.NewFilter(logger, level.AllowNone())
+		}
+
+		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
+	}
 
 	// var serverPublicKey []byte
 	var serverPrivateKey []byte
@@ -37,23 +56,23 @@ func main() {
 	{
 		if key := os.Getenv("SERVER_BACKEND_PUBLIC_KEY"); len(key) != 0 {
 			// serverPublicKey, _ = base64.StdEncoding.DecodeString(key)
-			log.Printf("using SERVER_BACKEND_PUBLIC_KEY '%s'\n", key)
 		} else {
-			log.Fatal("env var 'SERVER_BACKEND_PUBLIC_KEY' is not set")
+			level.Error(logger).Log("err", "SERVER_BACKEND_PUBLIC_KEY not set")
+			os.Exit(1)
 		}
 
 		if key := os.Getenv("SERVER_BACKEND_PRIVATE_KEY"); len(key) != 0 {
 			serverPrivateKey, _ = base64.StdEncoding.DecodeString(key)
-			log.Printf("using SERVER_BACKEND_PRIVATE_KEY '%s'\n", key)
 		} else {
-			log.Fatal("env var 'SERVER_BACKEND_PRIVATE_KEY' is not set")
+			level.Error(logger).Log("err", "SERVER_BACKEND_PRIVATE_KEY not set")
+			os.Exit(1)
 		}
 
 		if key := os.Getenv("RELAY_ROUTER_PRIVATE_KEY"); len(key) != 0 {
 			routerPrivateKey, _ = base64.StdEncoding.DecodeString(key)
-			log.Printf("using RELAY_ROUTER_PRIVATE_KEY '%s'\n", key)
 		} else {
-			log.Fatal("env var 'RELAY_ROUTER_PRIVATE_KEY' is not set")
+			level.Error(logger).Log("err", "RELAY_ROUTER_PRIVATE_KEY not set")
+			os.Exit(1)
 		}
 	}
 
@@ -61,12 +80,13 @@ func main() {
 	redisHost, ok := os.LookupEnv("REDIS_HOST")
 	if !ok {
 		redisHost = "localhost:6379"
-		log.Printf("env var 'REDIS_HOST' is not set, falling back to default value of '%s'\n", redisHost)
+		level.Warn(logger).Log("envvar", "REDIS_HOST", "value", redisHost)
 	}
 
 	redisClient := redis.NewClient(&redis.Options{Addr: redisHost})
 	if err := redisClient.Ping().Err(); err != nil {
-		log.Fatalf("unable to connect to REDIS_HOST '%s'", redisHost)
+		level.Error(logger).Log("envvar", "REDIS_HOST", "value", redisHost, "err", err)
+		os.Exit(1)
 	}
 
 	// Open the Maxmind DB and create a routing.MaxmindDB from it
@@ -74,7 +94,7 @@ func main() {
 	if filename, ok := os.LookupEnv("MAXMIND_DB_URI"); ok {
 		if mmreader, err := geoip2.Open(filename); err != nil {
 			if err != nil {
-				log.Fatalf("failed to open Maxmind GeoIP2 database: %v", err)
+				level.Error(logger).Log("envvar", "RELAY_MAXMIND_DB_URI", "value", filename, "err", err)
 			}
 			ipLocator = &routing.MaxmindDB{
 				Reader: mmreader,
@@ -90,14 +110,14 @@ func main() {
 
 	// Create an in-memory buyer provider
 	var buyerProvider transport.BuyerProvider = &storage.InMemory{}
-	if os.Getenv("CONFIGSTORE_HOST") != "" {
-		grpcconn, err := grpc.Dial(os.Getenv("CONFIGSTORE_HOST"), grpc.WithInsecure())
+	if host, ok := os.LookupEnv("CONFIGSTORE_HOST"); ok {
+		grpcconn, err := grpc.Dial(host, grpc.WithInsecure())
 		if err != nil {
-			log.Fatalf("could not dial configstore: %v", err)
+			level.Error(logger).Log("envvar", "CONFIGSTORE_HOST", "value", host, "err", err)
 		}
 		configstore, err := storage.ConnectToConfigstore(ctx, grpcconn)
 		if err != nil {
-			log.Fatalf("could not dial configstore: %v", err)
+			level.Error(logger).Log("envvar", "CONFIGSTORE_HOST", "value", host, "err", err)
 		}
 
 		// If CONFIGSTORE_HOST exists and a successful connection was made
@@ -121,12 +141,12 @@ func main() {
 					}
 
 					if matrixReader != nil {
-						n, err := routeMatrix.ReadFrom(matrixReader)
+						_, err := routeMatrix.ReadFrom(matrixReader)
 						if err != nil {
-							log.Printf("failed to read route matrix: %v\n", err)
+							level.Error(logger).Log("matrix", "route", "op", "read", "envvar", "ROUTE_MATRIX_URI", "value", uri, "err", err)
 						}
 
-						log.Printf("read %d bytes from %s into route matrix for %d entries\n", n, uri, len(routeMatrix.Entries))
+						level.Info(logger).Log("matrix", "route", "entries", len(routeMatrix.Entries))
 					}
 
 					time.Sleep(10 * time.Second)
@@ -143,7 +163,8 @@ func main() {
 
 		conn, err := net.ListenUDP("udp", &addr)
 		if err != nil {
-			log.Printf("error: could not listen on %s\n", addr.String())
+			level.Error(logger).Log("addr", conn.LocalAddr().String(), "err", err)
+			os.Exit(1)
 		}
 
 		mux := transport.UDPServerMux{
@@ -155,9 +176,10 @@ func main() {
 		}
 
 		go func() {
-			log.Printf("started on %s\n", addr.String())
+			level.Info(logger).Log("addr", conn.LocalAddr().String())
 			if err := mux.Start(ctx, runtime.NumCPU()); err != nil {
-				log.Println(err)
+				level.Error(logger).Log("addr", conn.LocalAddr().String(), "err", err)
+				os.Exit(1)
 			}
 		}()
 	}
