@@ -1,99 +1,60 @@
 #!/bin/bash
 
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    echo "Script must be sourced"
-    exit 1
-fi
+export RELAY_PUBLIC_KEY=9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=
+export RELAY_PRIVATE_KEY=lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=
+export RELAY_ROUTER_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
+export RELAY_BACKEND_HOSTNAME=http://127.0.0.1:40000
 
-kill_relays=0
-flush_redis=0
-use_relay_count=0
+num_relays=1
+start_port=10000
 
-# because it must be sourced, reset OPTIND to 1 everywhere the program can exit, or in this case return
-# so that other scripts that use getopts don't break
-while getopts ":n:khr" opt; do
-    case "$opt" in
-	(n)
-	    use_relay_count=1
-	    relay_count="$OPTARG"
-	    ;;
-	(k)
-	    kill_relays=1
-	    ;;
-	(h)
-	    OPTIND=1
-	    printf "Usage: relay-spawner.sh [-r] [-k] [-n relay_count] [starting port] [ending port]\n\n"
-	    printf "n\t\tCreate n relays with ports incrementing from the given port number\n"
-	    printf "k\t\tKill all relays that were spawned using this script\n"
-	    printf "h\t\tPrint this help menu\n"
-	    printf "r [relay_count]\tReset Redis before any other operation\n"
-	    return 0
-	    ;;
-	(r)
-	    flush_redis=1
-	    ;;
-	(\?)
-	    OPTIND=1
-	    echo "Bad option '$OPTARG'" && return 1
-	    ;;
-	(:)
-	    OPTIND=1
-	    echo "Bad param: '$OPTARG'" && return 1
-	    ;;
-    esac
+print_usage() {
+    printf "Usage: relay-spawner.sh -n number -p port\n\n"
+    printf "n [number]\tNumber of relays to spawn\n"
+    printf "p [port]\tStarting port\n\n"
+
+    printf "Example:\n\n"
+    printf "> relay-spawner.sh -n 5 -p 20000\n"
+    printf "PID 23665: Relay socket opened on port 20000\n"
+    printf "PID 23666: Relay socket opened on port 20001\n"
+    printf "PID 23667: Relay socket opened on port 20002\n"
+    printf "PID 23668: Relay socket opened on port 20003\n"
+    printf "PID 23669: Relay socket opened on port 20004\n"
+
+    print_env
+}
+
+print_env() {
+  printf "\nShared environment\n"
+  printf -- "------------------\n"
+  printf "RELAY_PUBLIC_KEY: ${RELAY_PUBLIC_KEY}\n"
+  printf "RELAY_PRIVATE_KEY: ${RELAY_PRIVATE_KEY}\n"
+  printf "RELAY_ROUTER_PUBLIC_KEY: ${RELAY_ROUTER_PUBLIC_KEY}\n"
+  printf "RELAY_BACKEND_HOSTNAME: ${RELAY_BACKEND_HOSTNAME}\n"
+}
+
+while getopts 'n:p:h' flag; do
+  case "${flag}" in
+    n) num_relays="${OPTARG}" ;;
+    p) start_port="${OPTARG}" ;;
+    h) print_usage
+       exit 1 ;;
+    *) print_usage
+       exit 1 ;;
+  esac
 done
 
-shift $(( OPTIND - 1 ))
+trap "kill 0" EXIT
 
-if [[ "$flush_redis" -eq 1 ]]; then
-    echo "Clearing Redis: $(redis-cli FLUSHALL)"
-fi
+for ((r=0 ; r<${num_relays} ; r++)); do
+port=$((start_port+r))
+RELAY_ADDRESS=127.0.0.1:${port} ./dist/relay > /dev/null &
+pid="$!"
+printf "PID ${pid}: Relay socket opened on port ${port}\n"
+done
 
-if [[ "$kill_relays" == 1 ]]; then
-    IFS=':' read -ra RELAYS <<< "$RUNNING_RELAYS"
-    for relay in ${RELAYS[@]}; do
-	kill "$relay" > /dev/null
-	echo "killed $relay"
-    done
+print_env
 
-    export RUNNING_RELAYS=""
-else
-    if [[ "$#" == 0 ]]; then
-	if [[ "$flush_redis" == 0 ]]; then
-	    echo "You must supply a port number"
-	    OPTIND=1
-	    return 1
-	else
-	    OPTIND=1
-	    return 0
-	fi
-    fi
+printf "\nHit CTRL-C to exit and kill all spawned relays\n"
 
-    begin_port="$1"
-    end_port="$2"
-
-    if [[ "$use_relay_count" == 1 ]]; then
-	end_port="$((begin_port + relay_count - 1))"
-    elif [ -z "$end_port" ]; then
-	# enable the option to just spawn a single relay
-	end_port="$begin_port"
-    fi
-
-    if [[ "$(( end_port - begin_port ))" -lt 0 ]]; then
-	echo "The lesser port must be first followed by the greater port"
-	OPTIND=1
-	return 1
-    fi
-
-    echo "Spawning $(( end_port - begin_port + 1 )) relays between $begin_port and $end_port"
-
-    for ((port=${begin_port}, addr_suffix=1 ; port<=${end_port} ; port++, addr_suffix++)); do
-	addr="127.0.0.$addr_suffix:$port"
-	RELAY_ADDRESS="$addr" make dev-relay > /dev/null &
-	pid="$!"
-	export RUNNING_RELAYS="$RUNNING_RELAYS:$pid"
-	echo "Started Relay using address $addr with pid: $pid"
-    done
-fi
-
-OPTIND=1
+wait

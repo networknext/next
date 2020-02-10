@@ -23,7 +23,7 @@ Developers should install these requirements however they need to be installed b
 
 ## Docker and Docker Compose
 
-While all of the components can be run locally either independently or collectively it can be tedious to run multiple relays to get a true test of everything. We can leverage Docker and Docker Compose to easily stand everything up as a system. There is a [`./cmd/docker-compose.yaml`](./cmd/docker-compose.yaml) along with all required `Dockerfile`s in each of the binary directories to create the system of backend services (`relay`, `relay_backend`, and `server_backend`).
+While all of the components can be run locally either independently or collectively it can be tedious to run multiple relays to get a true test of everything. We can leverage Docker and Docker Compose to easily stand everything up as a system. There is a [`./cmd/docker-compose.yaml`](./cmd/docker-compose.yaml) along with all required `Dockerfile`s in each of the binary directories to create the system of backend services (`relay_backend` and `server_backend`).
 
 ### First Time
 
@@ -55,16 +55,6 @@ Some instances you only want to run some instances at a time and you would use `
 
 ```bash
 $ docker-compose -f ./cmd/docker-compose.yaml run relay_backend
-```
-
-### Scaling a Service
-
-Docker Compose makes is very trivial to scale up the number of instances of a service. Currently we can only scale the `relay` service because port numbers will not conflict. Scaling any other service will not work since port numbers are hard coded. For our purposes this is fine. To develop locally we really want to specify any number of relays to run.
-
-Here we can run everything again, but this time it will run 10 instances of the relay service.
-
-```bash
-$ docker-compose -f ./cmd/docker-compose.yaml up --scale relay=10
 ```
 
 ## Components
@@ -151,16 +141,10 @@ This is the SDK we ship to customers.
 
 ## Tools
 
-## relay-spawner.sh
+Each tool should provide a `-h` or `--help` flag to explain it usage. Refer to the usage docs for each tool on how to use it.
 
-Uses the env var `RUNNING_RELAYS` to keep track of spawned relays
-- Because of that, the script must be sourced to work properly
-- It will exit if you try to run the script directly
-
-Usage: `source relay-spawner.sh` [`options`] [`starting port number`] [`ending port number`]
-- Spawns relays with the port numbers between the given arguments, inclusively
-- If the ending port number is not specified, one relay with the starting port number will be spawned
-- `-h` to display all options
+**`./cmd/tools/scripts/relay-spawner.sh`**  
+Spawns multiple relays providing a number and starting port
 
 ## Generating Key Pairs
 

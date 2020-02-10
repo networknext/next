@@ -184,8 +184,12 @@ RELAY_EXE	:= relay
 $(DIST_DIR)/$(RELAY_EXE):
 
 .PHONY: dev-relay
-dev-relay: $(DIST_DIR)/$(RELAY_EXE) build-relay
+dev-relay: $(DIST_DIR)/$(RELAY_EXE) build-relay ## runs a SINGLE relay
 	@$<
+
+.PHONY: dev-multi-relays
+dev-multi-relays: $(DIST_DIR)/$(RELAY_EXE) build-relay ## runs 10 relays, use ./relay-spawner.sh directly for more options
+	./cmd/tools/scripts/relay-spawner.sh -n 10 -p 10000
 
 #######################
 
