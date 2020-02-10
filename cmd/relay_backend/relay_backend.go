@@ -36,6 +36,8 @@ func main() {
 	logger := log.NewLogfmtLogger(os.Stdout)
 	{
 		switch os.Getenv("BACKEND_LOG_LEVEL") {
+		case "none":
+			logger = level.NewFilter(logger, level.AllowNone())
 		case level.ErrorValue().String():
 			logger = level.NewFilter(logger, level.AllowError())
 		case level.WarnValue().String():
@@ -45,7 +47,7 @@ func main() {
 		case level.DebugValue().String():
 			logger = level.NewFilter(logger, level.AllowDebug())
 		default:
-			logger = level.NewFilter(logger, level.AllowNone())
+			logger = level.NewFilter(logger, level.AllowWarn())
 		}
 
 		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
