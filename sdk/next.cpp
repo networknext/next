@@ -9895,6 +9895,14 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     next_address_t address;
 
+    if ( next_address_parse( &address, hostname ) == NEXT_OK )
+    {
+        next_mutex_guard( server->resolve_hostname_mutex );
+        server->resolve_hostname_finished = true;
+        server->resolve_hostname_result = address;
+        NEXT_PLATFORM_THREAD_RETURN();
+    }
+
     for ( int i = 0; i < 10; ++i )
     {
         if ( next_platform_hostname_resolve( hostname, port, &address ) == NEXT_OK )
