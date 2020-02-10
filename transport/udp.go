@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"io"
-	"log"
 	"net"
 	"time"
 
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 	jsoniter "github.com/json-iterator/go"
 
 	"github.com/go-redis/redis/v7"
@@ -58,7 +58,6 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 		if numbytes <= 0 {
 			continue
 		}
-		// log.Println("handler", id, "addr", addr.String(), "bytes", numbytes)
 
 		var buf bytes.Buffer
 		packet := UDPPacket{
@@ -74,10 +73,7 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 		}
 
 		if buf.Len() > 0 {
-			_, err := m.Conn.WriteToUDP(buf.Bytes(), addr)
-			if err != nil {
-				// log.Println("addr", addr.String(), "msg", err.Error())
-			}
+			m.Conn.WriteToUDP(buf.Bytes(), addr)
 		}
 	}
 }
@@ -102,33 +98,41 @@ type BuyerProvider interface {
 }
 
 // ServerUpdateHandlerFunc ...
-func ServerUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider) UDPHandlerFunc {
+func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, bp BuyerProvider) UDPHandlerFunc {
+	logger = log.With(logger, "handler", "server")
+
 	return func(w io.Writer, incoming *UDPPacket) {
 		var packet ServerUpdatePacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
-			log.Printf("failed to read server update packet: %v\n", err)
+			level.Error(logger).Log("msg", "could not read packet", "err", err)
 			return
 		}
+
+		locallogger := log.With(logger, "src_addr", incoming.SourceAddr.String(), "server_addr", packet.ServerAddress.String())
 
 		// Drop the packet if version is older that the minimun sdk version
 		psdkv := SDKVersion{packet.VersionMajor, packet.VersionMinor, packet.VersionPatch}
 		if !incoming.SourceAddr.IP.IsLoopback() &&
 			psdkv.Compare(SDKVersionMin) == SDKVersionOlder {
-			log.Printf("sdk version is too old. Using %s but require at least %s", psdkv, SDKVersionMin)
+			level.Error(locallogger).Log("msg", "sdk version is too old", "sdk", psdkv.String())
 			return
 		}
+
+		locallogger = log.With(locallogger, "sdk", psdkv.String())
 
 		// Get the buyer information for the id in the packet
 		buyer, ok := bp.GetAndCheckBySdkVersion3PublicKeyId(packet.CustomerId)
 		if !ok {
-			log.Printf("failed to get buyer '%d'", packet.CustomerId)
+			level.Error(locallogger).Log("msg", "failed to get buyer", "customer_id", packet.CustomerId)
 			return
 		}
+
+		locallogger = log.With(locallogger, "customer_id", packet.CustomerId)
 
 		// This was in the Router, but no sense having that buried in there when we already have
 		// a Buyer to check before requesting a Route
 		if !buyer.GetActive() {
-			log.Printf("buyer '%s' is inactive", buyer.GetName())
+			level.Warn(locallogger).Log("msg", "buyer is inactive")
 			return
 		}
 
@@ -141,7 +145,7 @@ func ServerUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider) UDPHan
 
 		// Drop the packet if the signed packet data cannot be verified with the buyers public key
 		if !crypto.Verify(buyerPublicKey, packet.GetSignData(), packet.Signature) {
-			log.Printf("ed25519: failed to verify server update signature")
+			level.Error(locallogger).Log("msg", "signature verification failed")
 			return
 		}
 
@@ -150,17 +154,17 @@ func ServerUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider) UDPHan
 		{
 			result := redisClient.Get("SERVER-" + incoming.SourceAddr.String())
 			if result.Err() != nil && result.Err() != redis.Nil {
-				log.Printf("failed to load server %s from cache: %v", incoming.SourceAddr.String(), result.Err())
+				level.Error(locallogger).Log("msg", "failed to get server", "err", result.Err())
 				return
 			}
 			serverdata, err := result.Bytes()
 			if err != nil && result.Err() != redis.Nil {
-				log.Printf("failed to get bytes from cache: %v", result.Err())
+				level.Error(locallogger).Log("msg", "failed to get server bytes", "err", err)
 				return
 			}
 			if serverdata != nil {
 				if err := serverentry.UnmarshalBinary(serverdata); err != nil {
-					fmt.Printf("failed to unmarshal server cache entry: %v\n", err)
+					level.Error(locallogger).Log("msg", "failed to unmarshal server bytes", "err", err)
 				}
 			}
 		}
@@ -180,11 +184,11 @@ func ServerUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider) UDPHan
 		}
 		result := redisClient.Set("SERVER-"+incoming.SourceAddr.String(), serverentry, 5*time.Minute)
 		if result.Err() != nil {
-			log.Printf("failed to cache server %s: %v", incoming.SourceAddr.String(), result.Err())
+			level.Error(locallogger).Log("msg", "failed to update server", "err", result.Err())
 			return
 		}
 
-		log.Printf("added server to redis: %+v\n", serverentry)
+		level.Debug(locallogger).Log("msg", "updated server")
 	}
 }
 
@@ -238,44 +242,51 @@ type RouteProvider interface {
 }
 
 // SessionUpdateHandlerFunc ...
-func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, bp BuyerProvider, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
+	logger = log.With(logger, "handler", "session")
+
 	return func(w io.Writer, incoming *UDPPacket) {
 		// Deserialize the Session packet
 		var packet SessionUpdatePacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
-			log.Printf("failed to read server update packet: %v\n", err)
+			level.Error(logger).Log("msg", "could not read packet", "err", err)
 			return
 		}
 
+		locallogger := log.With(logger, "src_addr", incoming.SourceAddr.String(), "server_addr", packet.ServerAddress.String(), "client_addr", packet.ClientAddress.String(), "session_id", packet.SessionId)
+
 		result := redisClient.Get("SERVER-" + incoming.SourceAddr.String())
 		if result.Err() != nil {
-			log.Fatalf("failed to get server entry from redis for '%s': %v", incoming.SourceAddr.String(), result.Err())
+			level.Error(locallogger).Log("msg", "failed to get server", "err", result.Err())
 			return
 		}
 
 		serverdata, err := result.Bytes()
 		if err != nil {
-			log.Fatalf("failed to get server entry from redis for '%s': %v", incoming.SourceAddr.String(), err)
+			level.Error(locallogger).Log("msg", "failed to get server bytes", "err", result.Err())
 			return
 		}
 
 		var serverentry ServerCacheEntry
 		if err := serverentry.UnmarshalBinary(serverdata); err != nil {
-			log.Fatalf("failed to unmarshal server entry from redis for '%s': %v", incoming.SourceAddr.String(), err)
+			level.Error(locallogger).Log("msg", "failed to unmarshal server bytes", "err", result.Err())
 			return
 		}
-		log.Printf("loaded server from redis: %+v\n", serverentry)
+
+		locallogger = log.With(locallogger, "datacenter_id", serverentry.Datacenter.ID)
 
 		buyer, ok := bp.GetAndCheckBySdkVersion3PublicKeyId(packet.CustomerId)
 		if !ok {
-			log.Printf("failed to get buyer '%d'", packet.CustomerId)
+			level.Error(locallogger).Log("msg", "failed to get buyer", "customer_id", packet.CustomerId)
 			return
 		}
+
+		locallogger = log.With(locallogger, "customer_id", packet.CustomerId)
+
 		buyerServerPublicKey := buyer.SdkVersion3PublicKeyData
-		log.Printf("loaded customer '%d' public key: %02x", packet.CustomerId, buyerServerPublicKey)
 
 		if !crypto.Verify(buyerServerPublicKey, packet.GetSignData(serverentry.SDKVersion), packet.Signature) {
-			log.Printf("failed to verify session update signature")
+			level.Error(locallogger).Log("msg", "signature verification failed")
 			return
 		}
 
@@ -286,14 +297,14 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp Ro
 
 		location, err := iploc.LocateIP(packet.ClientAddress.IP)
 		if err != nil {
-			log.Printf("failed to lookup client ip '%s': %v", packet.ClientAddress.IP.String(), err)
+			level.Error(locallogger).Log("msg", "failed to locate client")
 			return
 		}
-		log.Printf("found client '%s' location: %+v\n", packet.ClientAddress.String(), location)
+		level.Debug(locallogger).Log("lat", location.Latitude, "long", location.Longitude)
 
 		clientrelays, err := geoClient.RelaysWithin(location.Latitude, location.Longitude, 500, "mi")
 		if err != nil {
-			log.Printf("failed to lookup client ip '%s': %v", packet.ClientAddress.IP.String(), err)
+			level.Error(locallogger).Log("msg", "failed to locate relays near client")
 			return
 		}
 
@@ -302,13 +313,12 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp Ro
 		for idx := range clientrelays {
 			clientrelays[idx], _ = rp.ResolveRelay(clientrelays[idx].ID)
 		}
-
-		log.Printf("found client relays: %+v\n", clientrelays)
+		level.Debug(locallogger).Log("num_relays", len(clientrelays))
 
 		// Get a set of possible routes from the RouteProvider an on error ensure it falls back to direct
 		routes := rp.AllRoutes(serverentry.Datacenter, clientrelays)
 		if routes == nil {
-			fmt.Println("failed to find routes")
+			level.Error(locallogger).Log("msg", "failed to find routes")
 			return
 		}
 		chosenRoute := routes[0] // Just take the first one it find regardless of optimizations
@@ -334,12 +344,11 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp Ro
 
 			Relays: chosenRoute.Relays,
 		}
-		log.Printf("constructed next route: %+v\n", nextRoute)
 
 		// Encrypt the next route with the our private key
 		routeTokens, err := nextRoute.Encrypt(routerPrivateKey)
 		if err != nil {
-			log.Fatalf("failed to encrypt route token: %v", err)
+			level.Error(locallogger).Log("msg", "failed to encrypt route token")
 			return
 		}
 
@@ -369,12 +378,12 @@ func SessionUpdateHandlerFunc(redisClient redis.Cmdable, bp BuyerProvider, rp Ro
 		// Send the Session Response back to the server
 		res, err := response.MarshalBinary()
 		if err != nil {
-			log.Printf("failed to marshal session response to '%s': %v", incoming.SourceAddr.String(), err)
+			level.Error(locallogger).Log("msg", "failed to marshal session response", "err", err)
 			return
 		}
 
 		if _, err := w.Write(res); err != nil {
-			log.Printf("failed to write session response to '%s': %v", incoming.SourceAddr.String(), err)
+			level.Error(locallogger).Log("msg", "failed to write session response", "err", err)
 		}
 	}
 }

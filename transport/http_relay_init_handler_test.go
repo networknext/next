@@ -4,7 +4,6 @@ import (
 	"bytes"
 	crand "crypto/rand"
 	"errors"
-	"log"
 	"math"
 	mrand "math/rand"
 	"net"
@@ -12,6 +11,8 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/go-kit/kit/log"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/go-redis/redis/v7"
@@ -63,7 +64,7 @@ func relayInitAssertions(t *testing.T, relay routing.Relay, body []byte, expecte
 		}
 	}
 
-	handler := transport.RelayInitHandlerFunc(redisClient, geoClient, ipfunc, inMemory, inMemory, relayPublicKey, routerPrivateKey)
+	handler := transport.RelayInitHandlerFunc(log.NewNopLogger(), redisClient, geoClient, ipfunc, inMemory, inMemory, relayPublicKey, routerPrivateKey)
 
 	handler(recorder, request)
 
@@ -73,8 +74,6 @@ func relayInitAssertions(t *testing.T, relay routing.Relay, body []byte, expecte
 }
 
 func TestRelayInitHandler(t *testing.T) {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
-
 	const addr = "127.0.0.1:40000"
 	t.Run("magic is invalid", func(t *testing.T) {
 		udp, _ := net.ResolveUDPAddr("udp", addr)
@@ -256,7 +255,7 @@ func TestRelayInitHandler(t *testing.T) {
 			ID:             crypto.HashID(addr),
 			DatacenterName: "some datacenter",
 		}
-		relayInitAssertions(t, relay, buff, http.StatusNotFound, nil, nil, nil, redisClient, relayPublicKey[:], routerPrivateKey[:])
+		relayInitAssertions(t, relay, buff, http.StatusConflict, nil, nil, nil, redisClient, relayPublicKey[:], routerPrivateKey[:])
 	})
 
 	t.Run("could not lookup relay location", func(t *testing.T) {
@@ -329,7 +328,6 @@ func TestRelayInitHandler(t *testing.T) {
 
 		inMemory := &storage.InMemory{} // Have empty storage to fail lookup
 
-		log.Println(inMemory)
 		relayInitAssertions(t, relay, buff, http.StatusInternalServerError, nil, nil, inMemory, redisClient, relayPublicKey[:], routerPrivateKey[:])
 	})
 

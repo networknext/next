@@ -6,7 +6,10 @@ require (
 	github.com/alicebob/miniredis v2.5.0+incompatible
 	github.com/alicebob/miniredis/v2 v2.11.1
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+	github.com/go-kit/kit v0.9.0
+	github.com/go-logfmt/logfmt v0.5.0 // indirect
 	github.com/go-redis/redis/v7 v7.0.0-beta.5
+	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/golang/protobuf v1.3.2
 	github.com/gomodule/redigo v1.7.1-0.20190322064113-39e2c31b7ca3
 	github.com/gorilla/context v1.1.1

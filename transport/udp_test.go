@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/alicebob/miniredis/v2"
+	"github.com/go-kit/kit/log"
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
@@ -53,7 +54,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 		assert.NoError(t, err)
 
-		handler := transport.ServerUpdateHandlerFunc(redisClient, nil)
+		handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, nil)
 		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: []byte("this is not a proper packet")})
 
 		_, err = redisServer.Get("SERVER-0.0.0.0:13")
@@ -85,7 +86,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
 
-		handler := transport.ServerUpdateHandlerFunc(redisClient, nil)
+		handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, nil)
 		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		_, err = redisServer.Get("SERVER-0.0.0.0:13")
@@ -121,7 +122,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
 
-		handler := transport.ServerUpdateHandlerFunc(redisClient, &bp)
+		handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &bp)
 		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		_, err = redisServer.Get("SERVER-0.0.0.0:13")
@@ -164,7 +165,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
 
-		handler := transport.ServerUpdateHandlerFunc(redisClient, &bp)
+		handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &bp)
 		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		_, err = redisServer.Get("SERVER-0.0.0.0:13")
@@ -214,7 +215,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 		err = redisServer.Set("SERVER-0.0.0.0:13", string(se))
 		assert.NoError(t, err)
 
-		handler := transport.ServerUpdateHandlerFunc(redisClient, &bp)
+		handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &bp)
 		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		ds, err := redisServer.Get("SERVER-0.0.0.0:13")
@@ -274,7 +275,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 		}
 
 		// Initialize the UDP handler with the required redis client
-		handler := transport.ServerUpdateHandlerFunc(redisClient, &bp)
+		handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &bp)
 
 		// Invoke the handler with the data packet and address it is coming from
 		handler(&buf, &incoming)
@@ -416,7 +417,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 	}
 
 	// Create and invoke the handler with the packet and from addr
-	handler := transport.SessionUpdateHandlerFunc(redisClient, &bp, &rp, iploc, &geoClient, serverBackendPrivKey, routerServerPrivKey[:])
+	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &bp, &rp, iploc, &geoClient, serverBackendPrivKey, routerServerPrivKey[:])
 	handler(&resbuf, &incoming)
 
 	{

@@ -139,6 +139,34 @@ Reference implementation of a client using the Network Next SDK.
 
 This is the SDK we ship to customers.
 
+## Leveled Logging
+
+The SDK and Backend services use leveled logging, but honor different environment variable flags so than can be set separately.
+
+### SDK
+
+Set the `NEXT_LOG_LEVEL` environment variable to one of the following values:
+
+- `0`: None
+- `1`: Error
+- `2`: Info
+- `3`: Warn
+- `4`: Debug
+
+### Backend
+
+Set the `BACKEND_LOG_LEVEL` environment variable to one of the following values:
+
+- `none`
+- `error`
+- `warn`
+- `info`
+- `debug`
+
+These levels are cumulative so if you set `BACKEND_LOG_LEVEL=info` you will get `error` and `warn` too.
+
+The default setting is `warn` when running `make dev-relay-backend` and `make dev-server-backend`. To override this you can set your own value by doing `make BACKEND_LOG_LEVEL=debug dev-relay-backend` and `make BACKEND_LOG_LEVEL=debug dev-server-backend`.
+
 ## Tools
 
 Each tool should provide a `-h` or `--help` flag to explain it usage. Refer to the usage docs for each tool on how to use it.
