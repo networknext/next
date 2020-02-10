@@ -150,8 +150,6 @@ test-func: clean build-sdk build-relay build-functional-server build-functional-
 	@printf "Building functional backend... " ; \
 	go build -o ./dist/func_backend ./cmd/tools/functional/backend/*.go ; \
 	printf "done\n" ; \
-	printf "overriding RELAY_BACKEND_HOSTNAME\n" ; \
-	export RELAY_BACKEND_HOSTNAME='http://localhost:30000' ; \
 	printf "\nRunning functional tests...\n\n" ; \
 	$(GO) run ./cmd/tools/functional/tests/func_tests.go ; \
 	printf "\ndone\n\n"
