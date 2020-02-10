@@ -35,8 +35,6 @@ func main() {
 	{
 		if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
 			customerPublicKey, _ = base64.StdEncoding.DecodeString(key)
-		} else {
-			log.Fatal("env var 'NEXT_CUSTOMER_PUBLIC_KEY' is not set")
 		}
 	}
 
@@ -44,8 +42,6 @@ func main() {
 	{
 		if key := os.Getenv("RELAY_PUBLIC_KEY"); len(key) != 0 {
 			relayPublicKey, _ = base64.StdEncoding.DecodeString(key)
-		} else {
-			log.Fatal("env var 'RELAY_PUBLIC_KEY' is not set")
 		}
 	}
 
