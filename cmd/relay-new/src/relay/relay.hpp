@@ -2,7 +2,7 @@
 #define RELAY_RELAY_HPP
 
 #include "net/address.hpp"
-#include "relay_manager.hpp"
+#include "core/relay_manager.hpp"
 #include "relay_platform.hpp"
 
 #include "os/platform.hpp"
@@ -28,7 +28,7 @@ namespace relay
 
   struct relay_t
   {
-    relay_manager_t* relay_manager;
+    legacy::relay_manager_t* relay_manager;
     legacy::relay_platform_socket_t* socket;
     relay_platform_mutex_t* mutex;
     double initialize_time;

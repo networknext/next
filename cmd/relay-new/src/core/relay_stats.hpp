@@ -7,11 +7,11 @@ namespace core
 {
   struct RelayStats
   {
-    int NumRelays;
-    std::array<uint64_t, MAX_RELAYS> RelayIDs;
-    std::array<float, MAX_RELAYS> RelayRTT;
-    std::array<float, MAX_RELAYS> RelayJitter;
-    std::array<float, MAX_RELAYS> RelayPacketLoss;
+    unsigned int NumRelays;
+    std::array<uint64_t, MAX_RELAYS> IDs;
+    std::array<float, MAX_RELAYS> RTT;
+    std::array<float, MAX_RELAYS> Jitter;
+    std::array<float, MAX_RELAYS> PacketLoss;
   };
 }  // namespace core
 #endif

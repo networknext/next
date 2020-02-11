@@ -9,29 +9,39 @@ namespace core
   {
     uint64_t Sequence = INVALID_SEQUENCE_NUMBER;
     double TimePingSent = -1.0;
-    double TimePongRecieved = -1.0;
+    double TimePongReceived = -1.0;
   };
 
   class PingHistory
   {
    public:
     PingHistory() = default;
+    PingHistory(const PingHistory& other);
     ~PingHistory() = default;
 
     void clear();
 
-    uint64_t pingSent(double time);
+    auto pingSent(double time) -> uint64_t;
 
     void pongReceived(uint64_t seq, double time);
 
     // helper for testing only
-    uint64_t seq();
-    const HistoryEntry& operator[](size_t i);
+    auto seq() -> uint64_t;
+
+    auto operator[](size_t i) -> const HistoryEntry&;
+    auto operator=(const PingHistory& other) -> PingHistory&;
 
    private:
     uint64_t mSeq = 0;
     std::array<HistoryEntry, RELAY_PING_HISTORY_ENTRY_COUNT> mEntries;
+
+    friend class RouteStats;
   };
+
+  [[gnu::always_inline]] inline PingHistory::PingHistory(const PingHistory& other)
+  {
+    *this = other;
+  }
 
   inline void PingHistory::clear()
   {
@@ -53,14 +63,21 @@ namespace core
     // mEntries.fill(base);
   }
 
-  inline uint64_t PingHistory::seq()
+  inline auto PingHistory::seq() -> uint64_t
   {
     return mSeq;
   }
 
-  inline const HistoryEntry& PingHistory::operator[](size_t i)
+  inline auto PingHistory::operator[](size_t i) -> const HistoryEntry&
   {
     return mEntries[i % mEntries.size()];
+  }
+
+  [[gnu::always_inline]] inline auto PingHistory::operator=(const PingHistory& other) -> PingHistory&
+  {
+    this->mSeq = other.mSeq;
+    std::copy(other.mEntries.begin(), other.mEntries.end(), this->mEntries.begin());
+    return *this;
   }
 }  // namespace core
 

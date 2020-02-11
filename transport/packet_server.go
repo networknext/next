@@ -215,8 +215,7 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream, version SDK
 	stream.SerializeUint64(&packet.UserHash)
 	stream.SerializeUint64(&packet.PlatformId)
 	stream.SerializeUint64(&packet.Tag)
-	if version.Compare(SDKVersion{3, 3, 4}) == SDKVersionEqual ||
-		version.Compare(SDKVersion{3, 3, 4}) == SDKVersionNewer {
+	if version.AtLeast(SDKVersion{3, 3, 4}) {
 		stream.SerializeBits(&packet.Flags, FlagTotalCount)
 	}
 	stream.SerializeBool(&packet.Flagged)
@@ -262,8 +261,7 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream, version SDK
 	stream.SerializeBytes(packet.ClientRoutePublicKey)
 	stream.SerializeUint32(&packet.KbpsUp)
 	stream.SerializeUint32(&packet.KbpsDown)
-	if version.Compare(SDKVersionMin) == SDKVersionEqual ||
-		version.Compare(SDKVersionMin) == SDKVersionNewer {
+	if version.AtLeast(SDKVersionMin) {
 		stream.SerializeUint64(&packet.PacketsLostClientToServer)
 		stream.SerializeUint64(&packet.PacketsLostServerToClient)
 	}
@@ -289,9 +287,7 @@ func (packet *SessionUpdatePacket) GetSignData(version SDKVersion) []byte {
 	binary.Write(buf, binary.LittleEndian, packet.PlatformId)
 	binary.Write(buf, binary.LittleEndian, packet.Tag)
 
-	if version.IsInternal() ||
-		version.Compare(SDKVersion{3, 3, 4}) == SDKVersionEqual ||
-		version.Compare(SDKVersion{3, 3, 4}) == SDKVersionNewer {
+	if version.IsInternal() || version.AtLeast(SDKVersion{3, 3, 4}) {
 		binary.Write(buf, binary.LittleEndian, packet.Flags)
 	}
 	binary.Write(buf, binary.LittleEndian, packet.Flagged)
@@ -341,9 +337,7 @@ func (packet *SessionUpdatePacket) GetSignData(version SDKVersion) []byte {
 	binary.Write(buf, binary.LittleEndian, packet.KbpsUp)
 	binary.Write(buf, binary.LittleEndian, packet.KbpsDown)
 
-	if version.IsInternal() ||
-		version.Compare(SDKVersion{3, 3, 4}) == SDKVersionEqual ||
-		version.Compare(SDKVersion{3, 3, 4}) == SDKVersionNewer {
+	if version.IsInternal() || version.AtLeast(SDKVersion{3, 3, 4}) {
 		binary.Write(buf, binary.LittleEndian, packet.PacketsLostClientToServer)
 		binary.Write(buf, binary.LittleEndian, packet.PacketsLostServerToClient)
 	}

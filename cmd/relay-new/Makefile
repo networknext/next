@@ -21,7 +21,7 @@ test: $(BIN) $(OBJ) $(OBJ_DIRS)
 	$(MAKE) -f $(TEST_MAKEFILE)
 
 .PHONY: benchmark
-benchmark: $(BIN) $(OBJ) $(OBJ_DIRS) 
+benchmark: $(BIN) $(OBJ) $(OBJ_DIRS)
 	$(MAKE) -f $(BENCHMARK_MAKEFILE)
 
 .PHONY: run-release
@@ -61,9 +61,8 @@ $(BIN):
 
 $(OBJ):
 	@echo "Creating obj directory"
-	-@mkdir $@ 
+	-@mkdir $@
 
 $(OBJ_DIRS):
 	@echo "creating obj directory: $@"
 	-@mkdir -p $@
-

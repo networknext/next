@@ -50,3 +50,7 @@ func (v SDKVersion) IsInternal() bool {
 func (v SDKVersion) String() string {
 	return fmt.Sprintf("%d.%d.%d", v.Major, v.Minor, v.Patch)
 }
+
+func (a SDKVersion) AtLeast(b SDKVersion) bool {
+	return a.Compare(b) != SDKVersionOlder
+}

@@ -112,8 +112,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, bp Bu
 
 		// Drop the packet if version is older that the minimun sdk version
 		psdkv := SDKVersion{packet.VersionMajor, packet.VersionMinor, packet.VersionPatch}
-		if !incoming.SourceAddr.IP.IsLoopback() &&
-			psdkv.Compare(SDKVersionMin) == SDKVersionOlder {
+		if !incoming.SourceAddr.IP.IsLoopback() && !psdkv.AtLeast(SDKVersionMin) {
 			level.Error(locallogger).Log("msg", "sdk version is too old", "sdk", psdkv.String())
 			return
 		}

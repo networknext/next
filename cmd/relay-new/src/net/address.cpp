@@ -16,7 +16,7 @@ namespace net
     IPv6.fill(0);
   }
 
-  bool Address::parse(const std::string& address)
+  auto Address::parse(const std::string& address) -> bool
   {
     reset();
 #ifdef __GNUC__
@@ -178,7 +178,7 @@ namespace net
   }
 
   // TODO consider making this inline
-  bool Address::operator==(const Address& other) const
+  auto Address::operator==(const Address& other) const -> bool
   {
     if (this->Type != other.Type || this->Port != other.Port) {
       return false;

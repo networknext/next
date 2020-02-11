@@ -17,11 +17,11 @@ Test(PingHistory_general)
     if (i < RELAY_PING_HISTORY_ENTRY_COUNT) {
       check(entry.Sequence == INVALID_SEQUENCE_NUMBER);
       check(entry.TimePingSent == -1.0);
-      check(entry.TimePongRecieved == -1.0);
+      check(entry.TimePongReceived == -1.0);
     } else {
       check(entry.Sequence != INVALID_SEQUENCE_NUMBER);
       check(entry.TimePingSent != -1.0);
-      check(entry.TimePongRecieved != -1.0);
+      check(entry.TimePongReceived != -1.0);
     }
 
     auto lastSeq = ph.seq();
@@ -33,12 +33,12 @@ Test(PingHistory_general)
     check(ph.seq() == lastSeq + 1);
     check(entry.Sequence == lastSeq);
     check(entry.TimePingSent == pingTime);
-    check(entry.TimePongRecieved == -1.0);
+    check(entry.TimePongReceived == -1.0);
 
     // record the pong data
     ph.pongReceived(lastSeq, pongTime);
 
-    check(entry.TimePongRecieved == pongTime);
+    check(entry.TimePongReceived == pongTime);
   }
 }
 

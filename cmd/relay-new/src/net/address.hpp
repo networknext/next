@@ -16,17 +16,20 @@ namespace net
   {
    public:
     Address();
+    Address(const Address& other);
     ~Address() = default;
 
     bool parse(const std::string& address_string_in);
 
     void toString(std::string& buffer) const;
-    std::string toString();  // slow, use only for debugging
-
-    bool operator==(const Address& other) const;
-    bool operator!=(const Address& other) const;
+    auto toString() -> std::string;  // slow, use only for debugging
 
     void reset();
+
+    auto operator==(const Address& other) const -> bool;
+    auto operator!=(const Address& other) const -> bool;
+
+    auto operator=(const Address& other) -> Address&;
 
     AddressType Type;
     uint16_t Port;
@@ -37,6 +40,11 @@ namespace net
       std::array<uint16_t, 8> IPv6;
     };
   };
+
+  [[gnu::always_inline]] inline Address::Address(const Address& other)
+  {
+    *this = other;
+  }
 
   inline void Address::reset()
   {
@@ -51,36 +59,50 @@ namespace net
     Port = 0;
   }
 
-  inline std::string Address::toString()
+  inline auto Address::toString() -> std::string
   {
     std::string buff;
     toString(buff);
     return buff;
   }
 
-  inline bool Address::operator!=(const Address& other) const
+  inline auto Address::operator!=(const Address& other) const -> bool
   {
     return !(*this == other);
   }
 
+  [[gnu::always_inline]] inline auto Address::operator=(const Address& other) -> Address&
+  {
+    this->Type = other.Type;
+    this->Port = other.Port;
+
+    if (this->Type == AddressType::IPv4) {
+      std::copy(other.IPv4.begin(), other.IPv4.end(), this->IPv4.begin());
+    } else if (this->Type == AddressType::IPv6) {
+      std::copy(other.IPv6.begin(), other.IPv6.end(), this->IPv6.begin());
+    }
+
+    return *this;
+  }
+
   /* Helpers to reduce the amount of times static_cast has to be written */
 
-  inline bool operator==(const AddressType at, uint8_t t)
+  inline auto operator==(const AddressType at, uint8_t t) -> bool
   {
     return static_cast<uint8_t>(at) == t;
   }
 
-  inline bool operator==(const uint8_t t, const AddressType at)
+  inline auto operator==(const uint8_t t, const AddressType at) -> bool
   {
     return static_cast<uint8_t>(at) == t;
   }
 
-  inline bool operator!=(const AddressType at, uint8_t t)
+  inline auto operator!=(const AddressType at, uint8_t t) -> bool
   {
     return static_cast<uint8_t>(at) != t;
   }
 
-  inline bool operator!=(const uint8_t t, const AddressType at)
+  inline auto operator!=(const uint8_t t, const AddressType at) -> bool
   {
     return static_cast<uint8_t>(at) != t;
   }
