@@ -272,7 +272,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, bp B
 		locallogger = log.With(locallogger, "customer_id", packet.CustomerId)
 
 		buyerServerPublicKey := buyer.SdkVersion3PublicKeyData
-
 		if !crypto.Verify(buyerServerPublicKey, packet.GetSignData(serverCacheEntry.SDKVersion), packet.Signature) {
 			level.Error(locallogger).Log("msg", "signature verification failed")
 			return
@@ -335,7 +334,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, bp B
 
 					Server: routing.Server{
 						Addr:      packet.ServerAddress,
-						PublicKey: buyerServerPublicKey,
+						PublicKey: serverCacheEntry.Server.PublicKey,
 					},
 
 					Relays: chosenRoute.Relays,
@@ -356,7 +355,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, bp B
 
 					Server: routing.Server{
 						Addr:      packet.ServerAddress,
-						PublicKey: buyerServerPublicKey,
+						PublicKey: serverCacheEntry.Server.PublicKey,
 					},
 
 					Relays: chosenRoute.Relays,
