@@ -140,8 +140,6 @@ struct next_config_t
     int socket_send_buffer_size;
     int socket_receive_buffer_size;
     bool disable_network_next;
-    bool try_before_you_buy;
-    bool high_priority_server_thread;
 };
 
 NEXT_EXPORT_FUNC void next_default_config( next_config_t * config );
@@ -205,7 +203,6 @@ struct next_client_stats_t
     uint64_t flags;
     uint64_t platform_id;
     int connection_type;
-    bool try_before_you_buy;
     bool multipath;
     bool flagged;
     bool next;

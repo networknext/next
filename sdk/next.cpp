@@ -77,8 +77,6 @@
 #define NEXT_VERSION_MINOR_MAX                                       1023
 #define NEXT_VERSION_PATCH_MAX                                        254
 #define NEXT_BANDWIDTH_LIMITER_INTERVAL                               1.0
-#define NEXT_TRY_BEFORE_YOU_BUY_MIN_EVAL_TIME                         5.0
-#define NEXT_TRY_BEFORE_YOU_BUY_ABORT_TIME                           25.0
 #define NEXT_DIRECT_ROUTE_EXPIRE_TIME                                30.0
 
 #ifdef NEXT_VERSION_IS_PRESENT
@@ -101,11 +99,9 @@
 #define NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT                      5
 #define NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT                            6
 #define NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT                        7
-#define NEXT_CLIENT_COUNTER_TRY_BEFORE_YOU_BUY_COMPLETED                8
-#define NEXT_CLIENT_COUNTER_TRY_BEFORE_YOU_BUY_ABORT                    9
-#define NEXT_CLIENT_COUNTER_MULTIPATH                                  10
-#define NEXT_CLIENT_COUNTER_PACKETS_LOST_CLIENT_TO_SERVER              11
-#define NEXT_CLIENT_COUNTER_PACKETS_LOST_SERVER_TO_CLIENT              12
+#define NEXT_CLIENT_COUNTER_MULTIPATH                                   8
+#define NEXT_CLIENT_COUNTER_PACKETS_LOST_CLIENT_TO_SERVER               9
+#define NEXT_CLIENT_COUNTER_PACKETS_LOST_SERVER_TO_CLIENT              10
 
 #define NEXT_CLIENT_COUNTER_MAX                                        64
 
@@ -2949,7 +2945,6 @@ struct NextClientStatsPacket
 {
     bool flagged;
     bool fallback_to_direct;
-    bool try_before_you_buy;
     bool multipath;
     uint64_t flags;
     uint64_t platform_id;
@@ -2985,7 +2980,6 @@ struct NextClientStatsPacket
     {
         serialize_bool( stream, flagged );
         serialize_bool( stream, fallback_to_direct );
-        serialize_bool( stream, try_before_you_buy );
         serialize_bool( stream, multipath );
         serialize_bits( stream, flags, NEXT_FLAGS_COUNT );
         serialize_uint64( stream, platform_id );
@@ -3503,8 +3497,6 @@ struct next_config_internal_t
     int socket_send_buffer_size;
     int socket_receive_buffer_size;
     bool disable_network_next;
-    bool try_before_you_buy;
-    bool high_priority_server_thread;
 };
 
 static next_config_internal_t next_global_config;
@@ -3516,8 +3508,6 @@ void next_default_config( next_config_t * config )
     config->socket_send_buffer_size = NEXT_DEFAULT_SOCKET_SEND_BUFFER_SIZE;
     config->socket_receive_buffer_size = NEXT_DEFAULT_SOCKET_RECEIVE_BUFFER_SIZE;
     config->disable_network_next = false;
-    config->try_before_you_buy = true;
-    config->high_priority_server_thread = true;
 }
 
 int next_init( void * context, next_config_t * config_in )
@@ -3614,14 +3604,10 @@ int next_init( void * context, next_config_t * config_in )
     if ( config_in )
     {
         config.disable_network_next = config_in->disable_network_next;
-        config.try_before_you_buy = config_in->try_before_you_buy;
-        config.high_priority_server_thread = config_in->high_priority_server_thread;
     }
     else
     {
         config.disable_network_next = false;
-        config.try_before_you_buy = !next_platform_getenv_bool("NEXT_DISABLE_TRY_BEFORE_YOU_BUY");
-        config.high_priority_server_thread = true;
     }
 
     next_global_config = config;
@@ -5338,7 +5324,6 @@ struct next_client_internal_t
     bool upgraded;
     bool flagged;
     bool fallback_to_direct;
-    bool try_before_you_buy;
     bool multipath;
     uint8_t open_session_sequence;
     uint64_t upgrade_sequence;
@@ -6084,7 +6069,6 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
             case NEXT_CLIENT_COMMAND_OPEN_SESSION:
             {
                 next_client_command_open_session_t * open_session_command = (next_client_command_open_session_t*) entry;
-                client->try_before_you_buy = next_global_config.try_before_you_buy;
                 client->server_address = open_session_command->server_address;
                 client->session_open = true;
                 client->open_session_sequence++;
@@ -6116,7 +6100,6 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 client->upgraded = false;
                 client->flagged = false;
                 client->fallback_to_direct = false;
-                client->try_before_you_buy = false;
                 client->multipath = false;
                 client->upgrade_sequence = 0;
                 client->session_id = 0;
@@ -6218,7 +6201,6 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         client->client_stats.flags = flags;
         client->client_stats.next = network_next;
         client->client_stats.flagged = client->flagged;
-        client->client_stats.try_before_you_buy = client->try_before_you_buy;
         client->client_stats.multipath = client->multipath;
         client->client_stats.platform_id = next_platform_id();
         client->client_stats.connection_type = next_platform_connection_type();
@@ -6291,7 +6273,6 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         packet.flags = client->client_stats.flags;
         packet.flagged = client->flagged;
         packet.fallback_to_direct = client->fallback_to_direct;
-        packet.try_before_you_buy = client->try_before_you_buy;
         packet.multipath = client->multipath;
         packet.platform_id = client->client_stats.platform_id;
         packet.connection_type = client->client_stats.connection_type;
@@ -6490,45 +6471,6 @@ void next_client_internal_update_route_manager( next_client_internal_t * client 
     }
 }
 
-void next_client_internal_update_try_before_you_buy( next_client_internal_t * client )
-{
-    if ( client->multipath )
-        return;
-
-    if ( client->fallback_to_direct )
-        return;
-    
-    if ( !client->try_before_you_buy )
-        return;
-
-    if ( client->first_next_ping_time == 0.0 )
-        return;
-
-    double current_time = next_time();
-
-    if ( current_time - client->first_next_ping_time < NEXT_TRY_BEFORE_YOU_BUY_MIN_EVAL_TIME )
-        return;
-
-    if ( client->client_stats.next && client->client_stats.next_min_rtt <= client->client_stats.direct_min_rtt && client->client_stats.next_packet_loss <= client->client_stats.direct_packet_loss )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "client try before you buy completed" );
-        client->try_before_you_buy = false;
-        client->counters[NEXT_CLIENT_COUNTER_TRY_BEFORE_YOU_BUY_COMPLETED]++;
-    }
-
-    if ( current_time - client->first_next_ping_time > NEXT_TRY_BEFORE_YOU_BUY_ABORT_TIME )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "client try before you buy abort" );
-        next_platform_mutex_acquire( client->route_manager_mutex );
-        next_route_manager_fallback_to_direct( client->route_manager, NEXT_FLAGS_TRY_BEFORE_YOU_BUY_ABORT );
-        next_platform_mutex_release( client->route_manager_mutex );
-        client->fallback_to_direct = true;
-        client->counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT]++;
-        client->counters[NEXT_CLIENT_COUNTER_TRY_BEFORE_YOU_BUY_ABORT]++;
-        return;
-    }
-}
-
 static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_client_internal_thread_function( void * context )
 {
     next_client_internal_t * client = (next_client_internal_t*) context;
@@ -6556,8 +6498,6 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_client_inter
             next_client_internal_update_stats( client );
 
             next_client_internal_update_route_manager( client );
-
-            next_client_internal_update_try_before_you_buy( client );
 
             quit = next_client_internal_pump_commands( client );
 
@@ -6845,14 +6785,16 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
         next_platform_mutex_release( client->internal->route_manager_mutex );
 
         bool multipath = client->client_stats.multipath;
-        bool try_before_you_buy = client->client_stats.try_before_you_buy;
+
+        // todo: we need to pass this down from the backend and get this from the route manager
+        bool committed = true;  
 
         if ( send_over_network_next && multipath )
         {
             send_direct = true;
         }
 
-        if ( try_before_you_buy && !multipath )
+        if ( !committed && !multipath )
         {
             send_over_network_next = false;
             send_direct = true;
@@ -7637,7 +7579,6 @@ struct next_session_entry_t
     bool stats_flagged;
     bool stats_multipath;
     bool stats_fallback_to_direct;
-    bool stats_try_before_you_buy;
     uint64_t stats_platform_id;
     int stats_connection_type;
     float stats_kbps_up;
@@ -7835,7 +7776,6 @@ void next_clear_session_entry( next_session_entry_t * entry, const next_address_
     next_replay_protection_reset( &entry->special_replay_protection );
     next_replay_protection_reset( &entry->internal_replay_protection );
     next_packet_loss_tracker_reset( &entry->packet_loss_tracker );
-    entry->stats_try_before_you_buy = true;
 }
 
 next_session_entry_t * next_session_manager_add( next_session_manager_t * session_manager, const next_address_t * address, uint64_t session_id, const uint8_t * ephemeral_private_key, const uint8_t * upgrade_token )
@@ -8069,7 +8009,6 @@ struct NextBackendSessionUpdatePacket
     uint64_t flags;
     bool flagged;
     bool fallback_to_direct;
-    bool try_before_you_buy;
     int connection_type;
     float direct_min_rtt;
     float direct_max_rtt;
@@ -8114,7 +8053,6 @@ struct NextBackendSessionUpdatePacket
         serialize_bits( stream, flags, NEXT_FLAGS_COUNT );
         serialize_bool( stream, flagged );
         serialize_bool( stream, fallback_to_direct );
-        serialize_bool( stream, try_before_you_buy );
         serialize_int( stream, connection_type, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_CELLULAR );
         serialize_float( stream, direct_min_rtt );
         serialize_float( stream, direct_max_rtt );
@@ -8162,7 +8100,6 @@ struct NextBackendSessionUpdatePacket
         next_write_uint32( &p, flags );
         next_write_uint8( &p, (uint8_t) flagged );
         next_write_uint8( &p, (uint8_t) fallback_to_direct );
-        next_write_uint8( &p, (uint8_t) try_before_you_buy );
         next_write_uint8( &p, connection_type );
         next_write_uint8( &p, (uint8_t) next );
         next_write_float32( &p, direct_min_rtt );
@@ -9156,12 +9093,6 @@ int next_server_internal_process_packet( next_server_internal_t * server, const 
             {
                 session->stats_sequence = packet_sequence;
 
-                if ( !packet.try_before_you_buy && session->stats_try_before_you_buy )
-                {
-                    next_printf( NEXT_LOG_LEVEL_INFO, "server try before you buy completed for %" PRIx64, session->session_id );
-                    session->stats_try_before_you_buy = false;
-                }
-
                 session->stats_flags |= packet.flags;
                 session->stats_flagged = packet.flagged;
                 session->stats_multipath = packet.multipath;
@@ -10042,7 +9973,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.flags = session->stats_flags;
             packet.flagged = session->stats_flagged;
             packet.fallback_to_direct = session->stats_fallback_to_direct;
-            packet.try_before_you_buy = session->stats_try_before_you_buy;
             packet.connection_type = session->stats_connection_type;
             packet.kbps_up = session->stats_kbps_up;
             packet.kbps_down = session->stats_kbps_down;
@@ -10223,11 +10153,7 @@ next_server_t * next_server_create( void * context, const char * server_address,
         return NULL;
     }
 
-    if ( next_global_config.high_priority_server_thread )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server thread set to high priority" );
-        next_platform_thread_set_sched_max( server->thread );
-    }
+    next_platform_thread_set_sched_max( server->thread );
 
     server->pending_session_manager = next_proxy_session_manager_create( context, NEXT_INITIAL_PENDING_SESSION_SIZE );
     if ( server->pending_session_manager == NULL )
@@ -10560,10 +10486,13 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
         next_session_entry_t * internal_entry = next_session_manager_find_by_address( server->internal->session_manager, to_address );
         if ( internal_entry )
         {
+            // todo: we need to get committed flag from the slice
+            bool committed = true;
+
             multipath = internal_entry->mutex_multipath;
             envelope_kbps_down = internal_entry->mutex_envelope_kbps_down;
             send_zero_byte_direct = false;
-            send_over_network_next = internal_entry->mutex_send_over_network_next && ( !internal_entry->stats_try_before_you_buy || multipath );
+            send_over_network_next = internal_entry->mutex_send_over_network_next && ( committed || multipath );
             send_upgraded_direct = !send_over_network_next || multipath;
             send_sequence = internal_entry->mutex_payload_send_sequence++;
             send_sequence |= uint64_t(1) << 63;
@@ -12054,7 +11983,6 @@ static void test_packets()
     // client stats packet
     {
         NextClientStatsPacket in, out;
-        in.try_before_you_buy = true;
         in.flags = NEXT_FLAGS_BAD_ROUTE_TOKEN | NEXT_FLAGS_DIRECT_ROUTE_EXPIRED;
         in.flagged = true;
         in.fallback_to_direct = true;
@@ -12090,7 +12018,6 @@ static void test_packets()
         check( next_write_packet( NEXT_CLIENT_STATS_PACKET, &in, buffer, &packet_bytes, next_encrypted_packets, &in_sequence, private_key ) == NEXT_OK );
         check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection ) == NEXT_CLIENT_STATS_PACKET );
         check( in_sequence == out_sequence + 1 );
-        check( in.try_before_you_buy == out.try_before_you_buy );
         check( in.flags == out.flags );
         check( in.flagged == out.flagged );
         check( in.fallback_to_direct == out.fallback_to_direct );
@@ -12668,7 +12595,6 @@ static void test_backend_packets()
         in.flags = NEXT_FLAGS_BAD_ROUTE_TOKEN | NEXT_FLAGS_ROUTE_REQUEST_TIMED_OUT | NEXT_FLAGS_DIRECT_ROUTE_EXPIRED;
         in.flagged = true;
         in.fallback_to_direct = true;
-        in.try_before_you_buy = true;
         in.connection_type = NEXT_CONNECTION_TYPE_WIRED;
         in.direct_min_rtt = 10.1f;
         in.direct_max_rtt = 100.1f;
@@ -12709,7 +12635,6 @@ static void test_backend_packets()
         check( in.flags == out.flags );
         check( in.flagged == out.flagged );
         check( in.fallback_to_direct == out.fallback_to_direct );
-        check( in.try_before_you_buy == out.try_before_you_buy );
         check( in.connection_type == out.connection_type );
         check( in.direct_min_rtt == out.direct_min_rtt );
         check( in.direct_max_rtt == out.direct_max_rtt );
