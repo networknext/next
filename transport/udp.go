@@ -313,12 +313,13 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, bp B
 			return
 		}
 		chosenRoute := routes[0] // Just take the first one it find regardless of optimization
+		routeHash := chosenRoute.Hash64()
 
 		// Check if the chosen route is the same one as we previously sent
 
 		var token routing.Token
 		{
-			if chosenRoute.Hash64() == sessionCacheEntry.RouteHash {
+			if routeHash == sessionCacheEntry.RouteHash {
 				token = &routing.ContinueRouteToken{
 					Expires: uint64(time.Now().Add(10 * time.Second).Unix()),
 
@@ -369,6 +370,8 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, bp B
 			return
 		}
 
+		level.Debug(locallogger).Log("token_type", token.Type(), "current_route_hash", routeHash, "previous_route_hash", sessionCacheEntry.RouteHash)
+
 		// Create the Session Response for the server
 		response := SessionResponsePacket{
 			Sequence:             packet.Sequence,
@@ -396,6 +399,18 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, bp B
 		res, err := response.MarshalBinary()
 		if err != nil {
 			level.Error(locallogger).Log("msg", "failed to marshal session response", "err", err)
+			return
+		}
+
+		// Save some of the packet information to be used in SessionUpdateHandlerFunc
+		sessionCacheEntry = SessionCacheEntry{
+			SessionID: packet.SessionId,
+			Sequence:  packet.Sequence,
+			RouteHash: routeHash,
+		}
+		result := redisClient.Set(fmt.Sprintf("SESSION-%d", packet.SessionId), sessionCacheEntry, 5*time.Minute)
+		if result.Err() != nil {
+			level.Error(locallogger).Log("msg", "failed to update session", "err", result.Err())
 			return
 		}
 
