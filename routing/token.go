@@ -116,6 +116,8 @@ func (r *ContinueRouteToken) Encrypt(privateKey []byte) ([]byte, int, error) {
 	// and point it to the server itself signifying the end
 	r.encryptToken(r.Server.Addr, r.Server.PublicKey, privateKey)
 
+	// We add 2 to the number of tokens to account for the client and the server of route
+	// tokens with a client, server, and 5 relays is a total of 7 tokens generated
 	return r.tokens, len(r.Relays) + 2, nil
 }
 
@@ -204,6 +206,8 @@ func (r *NextRouteToken) Encrypt(privateKey []byte) ([]byte, int, error) {
 	}
 	r.encryptToken(nil, r.Server.PublicKey, privateKey)
 
+	// We add 2 to the number of tokens to account for the client and the server of route
+	// tokens with a client, server, and 5 relays is a total of 7 tokens generated
 	return r.tokens, len(r.Relays) + 2, nil
 }
 
