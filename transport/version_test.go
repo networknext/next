@@ -53,3 +53,20 @@ func TestSDKVersion(t *testing.T) {
 		assert.Equal(t, "3.3.2", a.String())
 	})
 }
+
+func TestSDKVersionAtLeast(t *testing.T) {
+	a := transport.SDKVersionMin
+	b := transport.SDKVersionMin
+
+	assert.True(t, a.AtLeast(b))
+
+	a = transport.SDKVersionMax
+	b = transport.SDKVersionMin
+
+	assert.True(t, a.AtLeast(b))
+
+	a = transport.SDKVersionMin
+	b = transport.SDKVersionMax
+
+	assert.False(t, a.AtLeast(b))
+}
