@@ -8164,6 +8164,7 @@ struct NextBackendSessionResponsePacket
     next_address_t near_relay_addresses[NEXT_MAX_NEAR_RELAYS];
     uint8_t response_type;
     bool multipath;
+    bool committed;
     int num_tokens;
     uint8_t tokens[NEXT_MAX_TOKENS*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES];
     uint8_t server_route_public_key[crypto_box_PUBLICKEYBYTES];
@@ -8188,6 +8189,7 @@ struct NextBackendSessionResponsePacket
         if ( response_type != NEXT_UPDATE_TYPE_DIRECT )
         {
             serialize_bool( stream, multipath );
+            serialize_bool( stream, committed );
             serialize_int( stream, num_tokens, 0, NEXT_MAX_TOKENS );
         }
         if ( response_type == NEXT_UPDATE_TYPE_ROUTE )
@@ -8218,6 +8220,7 @@ struct NextBackendSessionResponsePacket
         if ( response_type != NEXT_UPDATE_TYPE_DIRECT )
         {
             next_write_uint8( &p, multipath );
+            next_write_uint8( &p, committed );
             next_write_uint8( &p, num_tokens );
         }
         if ( response_type == NEXT_UPDATE_TYPE_ROUTE )
@@ -12724,6 +12727,7 @@ static void test_backend_packets()
         }
         in.response_type = NEXT_UPDATE_TYPE_ROUTE;
         in.multipath = true;
+        in.committed = true;
         in.num_tokens = NEXT_MAX_TOKENS;
         next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES );
         next_random_bytes( in.server_route_public_key, sizeof(in.server_route_public_key) );
@@ -12743,6 +12747,7 @@ static void test_backend_packets()
         }
         check( in.response_type == out.response_type );
         check( in.multipath == out.multipath );
+        check( in.committed == out.committed );
         check( in.num_tokens == out.num_tokens );
         check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES ) == 0 );
         check( memcmp( in.server_route_public_key, out.server_route_public_key, sizeof(in.server_route_public_key) ) == 0 );
@@ -12770,6 +12775,7 @@ static void test_backend_packets()
         }
         in.response_type = NEXT_UPDATE_TYPE_CONTINUE;
         in.multipath = true;
+        in.committed = true;
         in.num_tokens = NEXT_MAX_TOKENS;
         next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
         next_random_bytes( in.server_route_public_key, sizeof(in.server_route_public_key) );
@@ -12782,6 +12788,7 @@ static void test_backend_packets()
         check( in.sequence == out.sequence );
         check( in.session_id == out.session_id );
         check( in.multipath == out.multipath );
+        check( in.committed == out.committed );
         check( in.num_near_relays == out.num_near_relays );
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
