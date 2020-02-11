@@ -10,6 +10,8 @@
 
 #include "net/curl.hpp"
 
+#include "core/relay_stats.hpp"
+
 int relay_debug = 0;
 namespace relay
 {
@@ -163,7 +165,7 @@ namespace relay
     encoding::write_bytes(&p, relay_token, RELAY_TOKEN_BYTES);
 
     relay_platform_mutex_acquire(relay->mutex);
-    relay_stats_t stats;
+    legacy::relay_stats_t stats;
     relay_manager_get_stats(relay->relay_manager, &stats);
     relay_platform_mutex_release(relay->mutex);
 

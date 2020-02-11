@@ -3,7 +3,7 @@
 
 const auto REPS = 10000000;
 
-Bench(PingHistory_sent, true)
+Bench(PingHistory_sent)
 {
   // new
   {
@@ -14,7 +14,7 @@ Bench(PingHistory_sent, true)
       ph.pingSent(123.456);
     }
 
-    auto elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+    auto elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
     std::cout << "new: " << elapsed << '\n';
   }
 
@@ -27,7 +27,7 @@ Bench(PingHistory_sent, true)
       legacy::relay_ping_history_ping_sent(&ph, 123.456);
     }
 
-    auto elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+    auto elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
     std::cout << "legacy: " << elapsed << '\n';
   }
 }
@@ -43,7 +43,7 @@ Bench(PingHistory_clear)
       ph.clear();
     }
 
-    auto elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+    auto elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
     std::cout << "new: " << elapsed << '\n';
   }
 
@@ -56,7 +56,7 @@ Bench(PingHistory_clear)
       legacy::relay_ping_history_clear(&ph);
     }
 
-    auto elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+    auto elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
     std::cout << "legacy: " << elapsed << '\n';
   }
 }

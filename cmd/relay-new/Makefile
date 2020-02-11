@@ -8,40 +8,39 @@ rwildcard=$(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(su
 ### Variables ###
 #################
 
-SHELL				:= /bin/bash
+SHELL							:= /bin/bash
 
-CXX					:= g++
-CXX_FLAGS 			:= -Wall -Wextra -std=c++17
-CXX_DBG_FLAGS		:= -g -O0
+CXX								:= g++
+CXX_FLAGS 				:= -Wall -Wextra -std=c++17
+CXX_DBG_FLAGS			:= -g -O0
 CXX_PERF_FLAGS		:= -O3 -march=native -frename-registers -funroll-loops -fopenmp -D_GLIBCXX_PARALLEL
 
-SRC					:= src
-INCLUDE				:= $(SRC) # include path is the same as the src dir
-SPEC				:= spec
+SRC								:= src
+INCLUDE						:= $(SRC) # include path is the same as the src dir
 
-INCLUDE_DIRS		:= -I$(INCLUDE)
-STATIC_LIBS			:=
-LIBRARY_DIRS		:= -L.
-LIBRARIES			:= -lsodium -lcurl -lpthread -lm
+INCLUDE_DIRS			:= -I$(INCLUDE)
+STATIC_LIBS				:=
+LIBRARY_DIRS			:= 
+LIBRARIES					:= -lsodium -lcurl -lpthread -lm
 
-EXE					:= relay
-EXE_DBG				:= relay.dbg
-EXE_TEST			:= relay.test
-EXE_BENCH			:= relay.bench
+EXE								:= relay
+EXE_DBG						:= relay.dbg
+EXE_TEST					:= relay.test
+EXE_BENCH					:= relay.bench
 
-BIN					:= bin
-OBJ					:= obj
+BIN								:= bin
+OBJ								:= obj
 
-SUB_DIRS			:= $(shell find src/* -type d -print)
-OBJ_DIRS			:= $(patsubst $(SRC)/%, $(OBJ)/%, $(SUB_DIRS))
+SUB_DIRS					:= $(shell find src/* -type d -print)
+OBJ_DIRS					:= $(patsubst $(SRC)/%, $(OBJ)/%, $(SUB_DIRS))
 
-SRC_FILES			:= $(call rwildcard,$(SRC),*.cpp)
+SRC_FILES					:= $(call rwildcard,$(SRC),*.cpp)
 
-SRC_OBJ_FILES		:= $(patsubst $(SRC)/%.cpp, $(OBJ)/%.o, $(SRC_FILES))
-SRC_DEP_FILES		:= $(patsubst $(SRC)/%.cpp, $(OBJ)/%.d, $(SRC_FILES))
+SRC_OBJ_FILES			:= $(patsubst $(SRC)/%.cpp, $(OBJ)/%.o, $(SRC_FILES))
+SRC_DEP_FILES			:= $(patsubst $(SRC)/%.cpp, $(OBJ)/%.d, $(SRC_FILES))
 
-DBG_OBJ_FILES		:= $(patsubst $(SRC)/%.cpp, $(OBJ)/%.dbg.o, $(SRC_FILES))
-DBG_DEP_FILES		:= $(patsubst $(SRC)/%.cpp, $(OBJ)/%.dbg.d, $(SRC_FILES))
+DBG_OBJ_FILES			:= $(patsubst $(SRC)/%.cpp, $(OBJ)/%.dbg.o, $(SRC_FILES))
+DBG_DEP_FILES			:= $(patsubst $(SRC)/%.cpp, $(OBJ)/%.dbg.d, $(SRC_FILES))
 
 TEST_OBJ_FILES		:= $(patsubst $(SRC)/%.cpp, $(OBJ)/%.test.o, $(SRC_FILES))
 TEST_DEP_FILES		:= $(patsubst $(SRC)/%.cpp, $(OBJ)/%.test.d, $(SRC_FILES))
@@ -49,11 +48,11 @@ TEST_DEP_FILES		:= $(patsubst $(SRC)/%.cpp, $(OBJ)/%.test.d, $(SRC_FILES))
 BENCH_OBJ_FILES		:= $(patsubst $(SRC)/%.cpp, $(OBJ)/%.bench.o, $(SRC_FILES))
 BENCH_DEP_FILES		:= $(patsubst $(SRC)/%.cpp, $(OBJ)/%.bench.d, $(SRC_FILES))
 
-DIST_DIR			:= ../../dist
+DIST_DIR					:= ../../dist
 
-OBJECTS				:= $(SRC_OBJ_FILES) $(DBG_OBJ_FILES) $(TEST_OBJ_FILES) $(BENCH_OBJ_FILES)
-DEPENDENCIES		:= $(SRC_DEP_FILES) $(DBG_DEP_FILES) $(TEST_DEP_FILES) $(BENCH_DEP_FILES)
-EXECUTABLES			:= $(BIN)/$(EXE) $(BIN)/$(EXE_DBG) $(BIN)/$(EXE_TEST) $(BIN)/$(EXE_BENCH) $(DIST_DIR)/$(EXE)
+OBJECTS						:= $(SRC_OBJ_FILES) $(DBG_OBJ_FILES) $(TEST_OBJ_FILES) $(BENCH_OBJ_FILES)
+DEPENDENCIES			:= $(SRC_DEP_FILES) $(DBG_DEP_FILES) $(TEST_DEP_FILES) $(BENCH_DEP_FILES)
+EXECUTABLES				:= $(BIN)/$(EXE) $(BIN)/$(EXE_DBG) $(BIN)/$(EXE_TEST) $(BIN)/$(EXE_BENCH) $(DIST_DIR)/$(EXE)
 
 ################
 ### Targets  ###
