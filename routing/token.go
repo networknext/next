@@ -122,21 +122,26 @@ func (r *ContinueRouteToken) Encrypt(privateKey []byte) ([]byte, int, error) {
 }
 
 func (r *ContinueRouteToken) encryptToken(addr net.UDPAddr, receiverPublicKey []byte, senderPrivateKey []byte) {
-	// Create space for the entire encoded node
-	node := make([]byte, EncryptedContinueRouteTokenSize)
+	tokenstart := r.offset
+	tokenend := r.offset + ContinueRouteTokenSize
 
-	// Create an copy a nonce to the start of the node
-	nonce := make([]byte, crypto.NonceSize)
-	rand.Read(nonce)
-	copy(node[0:], nonce)
+	noncestart := tokenstart
+	nonceend := noncestart + crypto.NonceSize
+
+	datastart := nonceend
+	dataend := tokenend
+
+	rand.Read(r.tokens[noncestart:nonceend])
 
 	// Encode the data into the rest of the node
-	binary.LittleEndian.PutUint64(node[crypto.NonceSize:], r.Expires)
-	binary.LittleEndian.PutUint64(node[crypto.NonceSize+8:], r.SessionId)
-	node[crypto.NonceSize+8+8] = r.SessionVersion
-	node[crypto.NonceSize+8+8+1] = r.SessionFlags
+	var index int
+	encoding.WriteUint64(r.tokens[nonceend:], &index, r.Expires)
+	encoding.WriteUint64(r.tokens[nonceend:], &index, r.SessionId)
+	encoding.WriteUint8(r.tokens[nonceend:], &index, r.SessionVersion)
+	encoding.WriteUint8(r.tokens[nonceend:], &index, r.SessionFlags)
 
-	copy(r.tokens[r.offset:], crypto.Seal(node[crypto.NonceSize:], nonce, receiverPublicKey, senderPrivateKey))
+	enc := crypto.Seal(r.tokens[datastart:dataend], r.tokens[noncestart:nonceend], receiverPublicKey, senderPrivateKey)
+	copy(r.tokens[datastart:], enc)
 
 	r.offset += EncryptedContinueRouteTokenSize
 }
