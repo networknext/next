@@ -2,7 +2,6 @@ package transport
 
 import (
 	"bytes"
-	"crypto/rand"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -96,6 +95,7 @@ func RelayInitHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClien
 			writer.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+		relay.PublicKey = rdbEntry.UpdateKey
 
 		dcdbEntry, ok := datacenterProvider.GetAndCheck(rdbEntry.Datacenter)
 		if !ok {
@@ -124,13 +124,6 @@ func RelayInitHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClien
 		if exists.Val() {
 			level.Warn(locallogger).Log("msg", "relay already initialized")
 			writer.WriteHeader(http.StatusConflict)
-			return
-		}
-
-		relay.PublicKey = make([]byte, crypto.KeySize)
-		if _, err := rand.Read(relay.PublicKey); err != nil {
-			level.Error(locallogger).Log("msg", "failed to generate public key")
-			writer.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
