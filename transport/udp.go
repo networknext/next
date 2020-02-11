@@ -197,6 +197,7 @@ type SessionCacheEntry struct {
 	SessionID uint64
 	Sequence  uint64
 	RouteHash uint64
+	Version   uint8
 }
 
 func (e *SessionCacheEntry) UnmarshalBinary(data []byte) error {
@@ -314,7 +315,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, bp B
 		chosenRoute := routes[0] // Just take the first one it find regardless of optimization
 		routeHash := chosenRoute.Hash64()
 
-		// Check if the chosen route is the same one as we previously sent
+		sessionCacheEntry.Version++
 
 		var token routing.Token
 		{
@@ -324,7 +325,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, bp B
 
 					SessionId: packet.SessionId,
 
-					SessionVersion: 0, // Haven't figured out what this is for
+					SessionVersion: sessionCacheEntry.Version,
 					SessionFlags:   0, // Haven't figured out what this is for
 
 					Client: routing.Client{
@@ -345,7 +346,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, bp B
 
 					SessionId: packet.SessionId,
 
-					SessionVersion: 0, // Haven't figured out what this is for
+					SessionVersion: sessionCacheEntry.Version,
 					SessionFlags:   0, // Haven't figured out what this is for
 
 					Client: routing.Client{
@@ -406,6 +407,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, bp B
 			SessionID: packet.SessionId,
 			Sequence:  packet.Sequence,
 			RouteHash: routeHash,
+			Version:   sessionCacheEntry.Version, //This was already incremented above for the route tokens
 		}
 		result := redisClient.Set(fmt.Sprintf("SESSION-%d", packet.SessionId), sessionCacheEntry, 5*time.Minute)
 		if result.Err() != nil {
