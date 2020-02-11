@@ -315,8 +315,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, bp B
 		chosenRoute := routes[0] // Just take the first one it find regardless of optimization
 		routeHash := chosenRoute.Hash64()
 
-		sessionCacheEntry.Version++
-
 		var token routing.Token
 		{
 			if routeHash == sessionCacheEntry.RouteHash {
@@ -341,6 +339,8 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, bp B
 					Relays: chosenRoute.Relays,
 				}
 			} else {
+				sessionCacheEntry.Version++
+
 				token = &routing.NextRouteToken{
 					Expires: uint64(time.Now().Add(10 * time.Second).Unix()),
 
