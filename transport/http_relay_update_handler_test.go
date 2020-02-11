@@ -2,7 +2,6 @@ package transport_test
 
 import (
 	"bytes"
-	"log"
 	"math/rand"
 	"net"
 	"net/http"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
+	"github.com/go-kit/kit/log"
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
@@ -49,7 +49,7 @@ func relayUpdateAssertions(t *testing.T, body []byte, expectedCode int, redisCli
 	recorder := httptest.NewRecorder()
 	request, _ := http.NewRequest("POST", "/relay_update", bytes.NewBuffer(body))
 
-	handler := transport.RelayUpdateHandlerFunc(redisClient, statsdb)
+	handler := transport.RelayUpdateHandlerFunc(log.NewNopLogger(), redisClient, statsdb)
 
 	handler(recorder, request)
 
@@ -59,8 +59,6 @@ func relayUpdateAssertions(t *testing.T, body []byte, expectedCode int, redisCli
 }
 
 func TestRelayUpdateHandler(t *testing.T) {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
-
 	t.Run("relay data is invalid", func(t *testing.T) {
 		buff := make([]byte, 10) // invalid relay packet size
 		relayUpdateAssertions(t, buff, http.StatusBadRequest, nil, nil)

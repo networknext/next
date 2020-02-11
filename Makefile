@@ -22,9 +22,9 @@ DIST_DIR = ./dist
 COST_FILE = $(DIST_DIR)/cost.bin
 OPTIMIZE_FILE = $(DIST_DIR)/optimize.bin
 
-#####################
-##    SHARED ENV   ##
-#####################
+##################
+##    SDK ENV   ##
+##################
 
 export NEXT_LOG_LEVEL = 4
 export NEXT_DATACENTER = local
@@ -33,13 +33,20 @@ export NEXT_CUSTOMER_PRIVATE_KEY = leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4Z
 export NEXT_HOSTNAME = 127.0.0.1
 export NEXT_PORT = 40000    # Do not change. This must stay at 40000. The shipped SDK relies on this!
 
-export SERVER_BACKEND_HOSTNAME = http://localhost:40000
-export RELAY_BACKEND_HOSTNAME = http://localhost:30000
+####################
+##    RELAY ENV   ##
+####################
 
-export RELAY_ID = local
+ifndef RELAY_ADDRESS
+export RELAY_BACKEND_HOSTNAME = http://127.0.0.1:30000
+endif
 
 ifndef RELAY_ADDRESS
 export RELAY_ADDRESS = 127.0.0.1
+endif
+
+ifndef RELAY_ADDRESS
+export RELAY_DEBUG = 0
 endif
 
 ## Relay keys are unique to each relay and used to DECRYPT only the segment in the route token indended for itself
@@ -51,6 +58,10 @@ endif
 ifndef RELAY_PRIVATE_KEY
 export RELAY_PRIVATE_KEY = lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=
 endif
+
+######################
+##    BACKEND ENV   ##
+######################
 
 ## Server backend keys are used for SIGNING data so game servers can verify response data's authenticity 
 ifndef SERVER_BACKEND_PUBLIC_KEY
@@ -70,7 +81,22 @@ ifndef RELAY_ROUTER_PRIVATE_KEY
 export RELAY_ROUTER_PRIVATE_KEY = ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
 endif
 
-export RELAY_DEBUG = 0
+## By default we set only error and warning logs for server_backend and relay_backend 
+ifndef BACKEND_LOG_LEVEL
+export BACKEND_LOG_LEVEL = warn
+endif
+
+ifndef ROUTE_MATRIX_URI
+export ROUTE_MATRIX_URI = http://127.0.0.1:30000/route_matrix
+endif
+
+ifndef MAXMIND_DB_URI
+export MAXMIND_DB_URI = ./testdata/GeoIP2-City-Test.mmdb
+endif
+
+ifndef REDIS_HOST
+export REDIS_HOST = 127.0.0.1:6379
+endif
 
 .PHONY: help
 help: ## this list
@@ -124,8 +150,6 @@ test-func: clean build-sdk build-relay build-functional-server build-functional-
 	@printf "Building functional backend... " ; \
 	go build -o ./dist/func_backend ./cmd/tools/functional/backend/*.go ; \
 	printf "done\n" ; \
-	printf "overriding RELAY_BACKEND_HOSTNAME\n" ; \
-	export RELAY_BACKEND_HOSTNAME='http://localhost:30000' ; \
 	printf "\nRunning functional tests...\n\n" ; \
 	$(GO) run ./cmd/tools/functional/tests/func_tests.go ; \
 	printf "\ndone\n\n"
@@ -184,8 +208,12 @@ RELAY_EXE	:= relay
 $(DIST_DIR)/$(RELAY_EXE):
 
 .PHONY: dev-relay
-dev-relay: $(DIST_DIR)/$(RELAY_EXE) build-relay
+dev-relay: $(DIST_DIR)/$(RELAY_EXE) build-relay ## runs a SINGLE relay
 	@$<
+
+.PHONY: dev-multi-relays
+dev-multi-relays: $(DIST_DIR)/$(RELAY_EXE) build-relay ## runs 10 relays, use ./relay-spawner.sh directly for more options
+	./cmd/tools/scripts/relay-spawner.sh -n 10 -p 10000
 
 #######################
 
@@ -199,8 +227,7 @@ dev-relay-backend: ## runs a local relay backend
 
 .PHONY: dev-server-backend
 dev-server-backend: ## runs a local server backend
-	@export ROUTE_MATRIX_URI=./testdata/route_matrix.bin ; \
-	$(GO) run cmd/server_backend/server_backend.go
+	@$(GO) run cmd/server_backend/server_backend.go
 
 .PHONY: dev-backend
 dev-backend: ## runs a local mock backend
