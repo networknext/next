@@ -40,6 +40,20 @@ namespace core
     std::array<PingHistory, MAX_RELAYS> mPingHistoryArray;
   };
 
+  /*
+    things attempted to make faster:
+
+    - using an unordered_map encapsulating the 5 arrays, and also reducing the n^2 loop to just n, reducing the 5 copy() calls to just a single map.insert(begin, end) call, and combining the 3'rd for loop into the first to reduce overall complexity from O(n^2 + 7n) to just O(3n).
+    -- results: the maps iteration at the end took far longer than the amount of time saved by the other optimizations (which would cause getStats() to become much, much slower even if that last loop was brought into the main), if the max relay size ever exceeds a million then maybe the map solution will be more beneficial, but anything under arrays seem to win, even with the bad time complexity
+
+    - using an unordered_set as a relay id cache, reducing the n^2 loop to just n and combinging
+    -- results: doing so meant the PingHistory pointer array coudn't be used, and instead the constructor or clear() had to be used to reset the index, and that was slower than the n^2 loop iteration with the pointers
+
+    - End result, this is as fast as it's gonna get until there's spare time for someone to really rework it
+
+    - One last idea, maybe go back to the unordered map concept, and since iterating the first loop is blazingly fast bring the last loop (the one with the time stuff) into the first. And use an array of struct pointers where the struct is the encapsulated info currently in the 5 arrays. So getStats() can be iterated just as fast while the relay data can be updated in just O(2n) time. Doing so would require the relay array to have it's internal's shifted a lot during the function, which may be more expensive than the time saved by reducing all the loops again.
+  */
+
   // it is used in one place throughout the codebase, so always inline it, no sense in doing a function call
   [[gnu::always_inline]] inline void RelayManager::update(unsigned int numRelays,
    const std::array<uint64_t, MAX_RELAYS>& relayIDs,
@@ -100,7 +114,7 @@ namespace core
 
     // commit the updated relay array
     mNumRelays = index;
-    // fastest
+
     std::copy(newRelayIDs.begin(), newRelayIDs.begin() + index, mRelayIDs.begin());
     std::copy(newRelayLastPingTime.begin(), newRelayLastPingTime.begin() + index, mLastRelayPingTime.begin());
     std::copy(newRelayAddresses.begin(), newRelayAddresses.begin() + index, mRelayAddresses.begin());

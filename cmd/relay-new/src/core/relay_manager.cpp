@@ -14,7 +14,6 @@ namespace core
   void RelayManager::reset()
   {
     mNumRelays = 0;
-    // TODO could probably put all these in a loop, maybe the compiler is already doing that but better to be explicit
     mRelayIDs.fill(0);
     mLastRelayPingTime.fill(0);
     mRelayAddresses.fill(net::Address());
