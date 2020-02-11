@@ -1,8 +1,6 @@
 #ifndef ENCODING_BIT_READER_HPP
 #define ENCODING_BIT_READER_HPP
 
-#include <cinttypes>
-
 namespace encoding
 {
   class BitReader

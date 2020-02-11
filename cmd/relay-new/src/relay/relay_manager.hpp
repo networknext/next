@@ -1,8 +1,6 @@
 #ifndef RELAY_RELAY_MANAGER_HPP
 #define RELAY_RELAY_MANAGER_HPP
 
-#include <cinttypes>
-
 #include "config.hpp"
 #include "net/address.hpp"
 #include "core/ping_history.hpp"

@@ -1,4 +1,6 @@
+#include "includes.h"
 #include "bench/bench.hpp"
+
 #include "core/ping_history.hpp"
 
 const auto REPS = 10000000;

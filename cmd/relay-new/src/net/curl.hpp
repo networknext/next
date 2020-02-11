@@ -1,9 +1,6 @@
 #ifndef NET_CURL_HPP
 #define NET_CURL_HPP
 
-#include <cstddef>
-#include <cinttypes>
-
 namespace net
 {
   struct curl_buffer_t

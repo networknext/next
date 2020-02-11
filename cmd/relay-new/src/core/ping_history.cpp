@@ -1,6 +1,5 @@
+#include "includes.h"
 #include "ping_history.hpp"
-
-#include <cassert>
 
 namespace core
 {

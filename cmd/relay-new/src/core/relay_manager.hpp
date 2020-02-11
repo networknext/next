@@ -1,8 +1,6 @@
 #ifndef CORE_RELAY_MANAGER_HPP
 #define CORE_RELAY_MANAGER_HPP
 
-#include <vector>
-
 #include "relay_stats.hpp"
 #include "ping_history.hpp"
 

@@ -1,8 +1,5 @@
+#include "includes.h"
 #include "relay_continue_token.hpp"
-
-#include <sodium.h>
-
-#include <cassert>
 
 #include "encoding/binary.hpp"
 #include "encoding/read.hpp"

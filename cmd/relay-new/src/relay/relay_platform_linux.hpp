@@ -10,9 +10,6 @@
 
 #if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
 
-#include <pthread.h>
-#include <unistd.h>
-
 #include "net/address.hpp"
 
 #define RELAY_PLATFORM_HAS_IPV6 1

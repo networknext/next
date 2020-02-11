@@ -1,9 +1,6 @@
 #ifndef ENCODING_BASE_STREAM_HPP
 #define ENCODING_BASE_STREAM_HPP
 
-#include <cstring>
-#include <cassert>
-
 #include "config.hpp"
 
 #include "net/address.hpp"

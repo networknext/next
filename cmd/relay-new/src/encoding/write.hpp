@@ -1,13 +1,6 @@
 #ifndef ENCODING_WRITE_HPP
 #define ENCODING_WRITE_HPP
 
-#include <cinttypes>
-#include <cassert>
-#include <cstdio>
-#include <cstddef>
-#include <cstring>
-#include <array>
-
 #include "config.hpp"
 
 #include "net/net.hpp"

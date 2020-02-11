@@ -3,17 +3,7 @@
  * Copyright © 2017 - 2020 Network Next, Inc. All rights reserved.
  */
 
-#include <cassert>
-#include <string.h>
-#include <stdio.h>
-#include <cinttypes>
-#include <stdarg.h>
-#include <sodium.h>
-#include <math.h>
-#include <map>
-#include <float.h>
-#include <signal.h>
-#include <curl/curl.h>
+#include "includes.h"
 
 #include "sysinfo.hpp"
 #include "config.hpp"

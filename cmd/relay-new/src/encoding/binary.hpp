@@ -1,10 +1,6 @@
 #ifndef ENCODING_BINARY_HPP
 #define ENCODING_BINARY_HPP
 
-#include <cinttypes>
-
-#include <sodium.h>
-
 namespace encoding
 {
   /**

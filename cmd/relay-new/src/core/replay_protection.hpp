@@ -1,9 +1,6 @@
 #ifndef CORE_REPLAY_PROTECTION_HPP
 #define CORE_REPLAY_PROTECTION_HPP
 
-#include <array>
-#include <cinttypes>
-
 #include "config.hpp"
 
 namespace core

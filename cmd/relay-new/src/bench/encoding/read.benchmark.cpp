@@ -1,3 +1,4 @@
+#include "includes.h"
 #include "bench/bench.hpp"
 
 #include "encoding/write.hpp"

@@ -1,9 +1,6 @@
 #ifndef CORE_RELAY_STATS_HPP
 #define CORE_RELAY_STATS_HPP
 
-#include <array>
-#include <cinttypes>
-
 #include "config.hpp"
 
 namespace core
