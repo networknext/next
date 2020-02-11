@@ -17,8 +17,11 @@ const (
 	DecisionTypeNew      = 1
 	DecisionTypeContinue = 2
 
-	EncryptedNextRouteTokenSize     = 117
-	EncryptedContinueRouteTokenSize = 58
+	NextRouteTokenSize          = 101
+	EncryptedNextRouteTokenSize = NextRouteTokenSize + crypto.MACSize
+
+	ContinueRouteTokenSize          = 42
+	EncryptedContinueRouteTokenSize = ContinueRouteTokenSize + crypto.MACSize
 )
 
 type Token interface {
@@ -118,7 +121,7 @@ func (r *ContinueRouteToken) Encrypt(privateKey []byte) ([]byte, int, error) {
 
 func (r *ContinueRouteToken) encryptToken(addr net.UDPAddr, receiverPublicKey []byte, senderPrivateKey []byte) {
 	// Create space for the entire encoded node
-	node := make([]byte, 58)
+	node := make([]byte, EncryptedContinueRouteTokenSize)
 
 	// Create an copy a nonce to the start of the node
 	nonce := make([]byte, crypto.NonceSize)
@@ -174,7 +177,7 @@ func (r *NextRouteToken) Encrypt(privateKey []byte) ([]byte, int, error) {
 	if r.Client.PublicKey == nil {
 		return nil, 0, errors.New("client public key cannot be nil")
 	}
-	r.encryptToken(r.Relays[0].Addr, r.Client.PublicKey, privateKey)
+	r.encryptToken(&r.Relays[0].Addr, r.Client.PublicKey, privateKey)
 
 	for i := range r.Relays {
 		if r.Relays[i].PublicKey == nil {
@@ -185,13 +188,13 @@ func (r *NextRouteToken) Encrypt(privateKey []byte) ([]byte, int, error) {
 		// encrypt it with its public key, but point
 		// it to the server
 		if i == len(r.Relays)-1 {
-			r.encryptToken(r.Server.Addr, r.Relays[i].PublicKey, privateKey)
+			r.encryptToken(&r.Server.Addr, r.Relays[i].PublicKey, privateKey)
 			break
 		}
 
 		// All internal relay node get encrypted with their own
 		// public keys and point to the next relay in the route
-		r.encryptToken(r.Relays[i+1].Addr, r.Relays[i].PublicKey, privateKey)
+		r.encryptToken(&r.Relays[i+1].Addr, r.Relays[i].PublicKey, privateKey)
 	}
 
 	// Encrypt the last node with the server public key
@@ -199,7 +202,7 @@ func (r *NextRouteToken) Encrypt(privateKey []byte) ([]byte, int, error) {
 	if r.Server.PublicKey == nil {
 		return nil, 0, errors.New("server public key cannot be nil")
 	}
-	r.encryptToken(r.Server.Addr, r.Server.PublicKey, privateKey)
+	r.encryptToken(nil, r.Server.PublicKey, privateKey)
 
 	return r.tokens, len(r.Relays) + 2, nil
 }
@@ -207,9 +210,9 @@ func (r *NextRouteToken) Encrypt(privateKey []byte) ([]byte, int, error) {
 // encryptToken works on each token in the chain of tokens
 // and increments the overall offset to move across and ecrypt
 // each token of the tokens slice to avoid a lot of copy ops
-func (r *NextRouteToken) encryptToken(addr net.UDPAddr, receiverPublicKey []byte, senderPrivateKey []byte) {
+func (r *NextRouteToken) encryptToken(addr *net.UDPAddr, receiverPublicKey []byte, senderPrivateKey []byte) {
 	tokenstart := r.offset
-	tokenend := r.offset + EncryptedNextRouteTokenSize
+	tokenend := r.offset + NextRouteTokenSize
 
 	noncestart := tokenstart
 	nonceend := noncestart + crypto.NonceSize
@@ -227,12 +230,12 @@ func (r *NextRouteToken) encryptToken(addr net.UDPAddr, receiverPublicKey []byte
 	encoding.WriteUint32(r.tokens[nonceend:], &index, r.KbpsUp)
 	encoding.WriteUint32(r.tokens[nonceend:], &index, r.KbpsDown)
 	byteaddr := make([]byte, encoding.AddressSize)
-	encoding.WriteAddress(byteaddr, &r.Client.Addr)
+	encoding.WriteAddress(byteaddr, addr)
 	encoding.WriteBytes(r.tokens[nonceend:], &index, byteaddr, encoding.AddressSize)
 	encoding.WriteBytes(r.tokens[nonceend:], &index, r.privateKey, crypto.KeySize)
 
 	enc := crypto.Seal(r.tokens[datastart:dataend], r.tokens[noncestart:nonceend], receiverPublicKey, senderPrivateKey)
-	copy(r.tokens[datastart:dataend], enc)
+	copy(r.tokens[datastart:], enc)
 
 	r.offset += EncryptedNextRouteTokenSize
 }
