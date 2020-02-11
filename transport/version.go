@@ -52,5 +52,5 @@ func (v SDKVersion) String() string {
 }
 
 func (a SDKVersion) AtLeast(b SDKVersion) bool {
-	return a.Compare(b) == SDKVersionNewer || a.Compare(b) == SDKVersionEqual
+	return a.Compare(b) != SDKVersionOlder
 }
