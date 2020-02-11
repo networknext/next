@@ -402,5 +402,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, bp B
 		if _, err := w.Write(res); err != nil {
 			level.Error(locallogger).Log("msg", "failed to write session response", "err", err)
 		}
+
+		level.Debug(locallogger).Log("msg", "updated session")
 	}
 }
