@@ -7,51 +7,47 @@ namespace core
 {
   RouteStats::RouteStats(const core::PingHistory& ph, double start, double end, double safety): RTT(0), Jitter(0), PacketLoss(0)
   {
+    // Packet loss calc
+    // and RTT calc
+
     auto numPingsSent = 0u;
     auto numPongsReceived = 0u;
-
-    // Packet loss calc
-
-    for (const auto& entry : ph.mEntries) {
-      if (entry.TimePingSent >= start && entry.TimePingSent <= end - safety) {
-        numPingsSent++;
-
-        if (entry.TimePongReceived >= entry.TimePingSent) {
-          numPongsReceived++;
-        }
-      }
-    }
-
-    if (numPingsSent > 0) {
-      const_cast<float&>(PacketLoss) = (float)(100.0 * (1.0 - (double(numPongsReceived) / double(numPingsSent))));
-    }
-
-    // RTT calc
-    // TODO combine this with the loop above
 
     auto meanRTT = 0.0;
     auto numPings = 0;
     auto numPongs = 0;
 
     for (const auto& entry : ph.mEntries) {
-      if (entry.TimePingSent >= start && entry.TimePingSent <= end) {
-        numPings++;
+      if (entry.TimePingSent >= start) {
+        if (entry.TimePingSent <= end - safety) {
+          numPingsSent++;
 
-        if (entry.TimePongReceived > entry.TimePingSent) {
-          meanRTT += 1000.0 * (entry.TimePongReceived - entry.TimePingSent);
-          numPongs++;
+          if (entry.TimePongReceived >= entry.TimePingSent) {
+            numPongsReceived++;
+          }
+        }
+
+        if (entry.TimePingSent <= end) {
+          numPings++;
+
+          if (entry.TimePongReceived > entry.TimePingSent) {
+            meanRTT += 1000.0 * (entry.TimePongReceived - entry.TimePingSent);
+            numPongs++;
+          }
         }
       }
     }
 
     meanRTT = (numPongs > 0) ? (meanRTT / numPongs) : 10000.0;
-
     assert(meanRTT >= 0.0);
+
+    if (numPingsSent > 0) {
+      const_cast<float&>(PacketLoss) = (float)(100.0 * (1.0 - (double(numPongsReceived) / double(numPingsSent))));
+    }
 
     const_cast<float&>(RTT) = static_cast<float>(meanRTT);
 
     // Jitter calc
-    // TODO and this
 
     auto numJitterSamples = 0u;
     auto stdDevRTT = 0.0;
