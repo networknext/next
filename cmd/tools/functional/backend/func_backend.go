@@ -382,6 +382,8 @@ func main() {
 
 			multipath := len(nearRelayIds) > 0 && backend.mode == BACKEND_MODE_MULTIPATH
 
+			committed := true
+
 			if !takeNetworkNext {
 
 				// direct route
@@ -466,8 +468,9 @@ func main() {
 					NumNearRelays:        int32(len(nearRelayIds)),
 					NearRelayIds:         nearRelayIds,
 					NearRelayAddresses:   nearRelayAddresses,
-					RouteType:         responseType,
+					RouteType:            responseType,
 					Multipath:            multipath,
+					Committed:            committed,
 					NumTokens:            int32(numNodes),
 					Tokens:               tokens,
 					ServerRoutePublicKey: serverEntry.publicKey,

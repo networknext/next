@@ -2957,6 +2957,7 @@ struct NextClientStatsPacket
     float direct_jitter;
     float direct_packet_loss;
     bool next;
+    bool committed;
     float next_min_rtt;
     float next_max_rtt;
     float next_mean_rtt;
@@ -2992,6 +2993,7 @@ struct NextClientStatsPacket
         serialize_float( stream, direct_jitter );
         serialize_float( stream, direct_packet_loss );
         serialize_bool( stream, next );
+        serialize_bool( stream, committed );
         if ( next )
         {
             serialize_float( stream, next_min_rtt );
@@ -3019,6 +3021,7 @@ struct NextRouteUpdatePacket
 {
     uint64_t sequence;
     bool multipath;
+    bool committed;
     int num_near_relays;
     uint64_t near_relay_ids[NEXT_MAX_NEAR_RELAYS];
     next_address_t near_relay_addresses[NEXT_MAX_NEAR_RELAYS];
@@ -3046,6 +3049,7 @@ struct NextRouteUpdatePacket
         {
             serialize_int( stream, num_tokens, 0, NEXT_MAX_TOKENS );
             serialize_bool( stream, multipath );
+            serialize_bool( stream, committed );
         }
         if ( update_type == NEXT_UPDATE_TYPE_ROUTE )
         {
@@ -4626,6 +4630,7 @@ struct next_route_data_t
     double direct_route_expire_time;
 
     bool current_route;
+    bool current_route_committed;
     double current_route_expire_time;
     uint64_t current_route_session_id;
     uint8_t current_route_session_version;
@@ -4640,6 +4645,7 @@ struct next_route_data_t
     uint8_t previous_route_private_key[crypto_box_SECRETKEYBYTES];
 
     bool pending_route;
+    bool pending_route_committed;
     double pending_route_start_time;
     double pending_route_last_send_time;
     uint64_t pending_route_session_id;
@@ -4653,6 +4659,7 @@ struct next_route_data_t
     uint8_t pending_route_private_key[crypto_box_SECRETKEYBYTES];
     
     bool pending_continue;
+    bool pending_continue_committed;
     double pending_continue_start_time;
     double pending_continue_last_send_time;
     int pending_continue_request_packet_bytes;
@@ -4741,7 +4748,7 @@ void next_route_manager_direct_route( next_route_manager_t * route_manager, bool
     route_manager->route_data.direct_route_expire_time = next_time() + NEXT_DIRECT_ROUTE_EXPIRE_TIME;
 }
 
-void next_route_manager_begin_next_route( next_route_manager_t * route_manager, int num_tokens, uint8_t * tokens, const uint8_t * public_key, const uint8_t * private_key )
+void next_route_manager_begin_next_route( next_route_manager_t * route_manager, bool committed, int num_tokens, uint8_t * tokens, const uint8_t * public_key, const uint8_t * private_key )
 {
     next_assert( route_manager );
     next_assert( tokens );
@@ -4765,6 +4772,7 @@ void next_route_manager_begin_next_route( next_route_manager_t * route_manager, 
     next_printf( NEXT_LOG_LEVEL_DEBUG, "client next route" );
 
     route_manager->route_data.pending_route = true;
+    route_manager->route_data.pending_route_committed = committed;
     route_manager->route_data.pending_route_start_time = next_time();
     route_manager->route_data.pending_route_last_send_time = -1000.0;
     route_manager->route_data.pending_route_next_address = route_token.next_address;
@@ -4781,7 +4789,7 @@ void next_route_manager_begin_next_route( next_route_manager_t * route_manager, 
     route_manager->route_data.direct_route_expire_time = -1.0;
 }
 
-void next_route_manager_continue_next_route( next_route_manager_t * route_manager, int num_tokens, uint8_t * tokens, const uint8_t * public_key, const uint8_t * private_key )
+void next_route_manager_continue_next_route( next_route_manager_t * route_manager, bool committed, int num_tokens, uint8_t * tokens, const uint8_t * public_key, const uint8_t * private_key )
 {
     next_assert( route_manager );
     next_assert( tokens );
@@ -4822,6 +4830,7 @@ void next_route_manager_continue_next_route( next_route_manager_t * route_manage
     }
 
     route_manager->route_data.pending_continue = true;
+    route_manager->route_data.pending_continue_committed = committed;
     route_manager->route_data.pending_continue_start_time = next_time();
     route_manager->route_data.pending_continue_last_send_time = -1000.0;
     route_manager->route_data.pending_continue_request_packet_bytes = 1 + ( num_tokens - 1 ) * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES;
@@ -4831,7 +4840,7 @@ void next_route_manager_continue_next_route( next_route_manager_t * route_manage
     route_manager->route_data.direct_route_expire_time = -1.0;
 }
 
-void next_route_manager_update( next_route_manager_t * route_manager, int update_type, int num_tokens, uint8_t * tokens, const uint8_t * public_key, const uint8_t * private_key )
+void next_route_manager_update( next_route_manager_t * route_manager, int update_type, bool committed, int num_tokens, uint8_t * tokens, const uint8_t * public_key, const uint8_t * private_key )
 {
     next_assert( route_manager );
     next_assert( public_key );
@@ -4843,11 +4852,11 @@ void next_route_manager_update( next_route_manager_t * route_manager, int update
     }
     else if ( update_type == NEXT_UPDATE_TYPE_ROUTE )
     {
-        next_route_manager_begin_next_route( route_manager, num_tokens, tokens, public_key, private_key );
+        next_route_manager_begin_next_route( route_manager, committed, num_tokens, tokens, public_key, private_key );
     }
     else if ( update_type == NEXT_UPDATE_TYPE_CONTINUE )
     {
-        next_route_manager_continue_next_route( route_manager, num_tokens, tokens, public_key, private_key );
+        next_route_manager_continue_next_route( route_manager, committed, num_tokens, tokens, public_key, private_key );
     }
 }
 
@@ -4861,6 +4870,12 @@ uint64_t next_route_manager_next_send_sequence( next_route_manager_t * route_man
 {
     next_assert( route_manager );
     return route_manager->send_sequence++;
+}
+
+bool next_route_manager_committed( next_route_manager_t * route_manager )
+{
+    next_assert( route_manager );
+    return route_manager->route_data.current_route && route_manager->route_data.current_route_committed;
 }
 
 void next_route_manager_prepare_send_packet( next_route_manager_t * route_manager, uint64_t sequence, next_address_t * to, const uint8_t * payload_data, int payload_bytes, uint8_t * packet_data, int * packet_bytes )
@@ -5147,6 +5162,7 @@ void next_route_manager_process_route_response_packet( next_route_manager_t * ro
         memcpy( route_manager->route_data.previous_route_private_key, route_manager->route_data.current_route_private_key, crypto_box_SECRETKEYBYTES );
     }
 
+    route_manager->route_data.current_route_committed = route_manager->route_data.pending_route_committed;
     route_manager->route_data.current_route_session_id = route_manager->route_data.pending_route_session_id;
     route_manager->route_data.current_route_session_version = route_manager->route_data.pending_route_session_version;
     route_manager->route_data.current_route_kbps_up = route_manager->route_data.pending_route_kbps_up;
@@ -5231,6 +5247,8 @@ void next_route_manager_process_continue_response_packet( next_route_manager_t *
     next_replay_protection_advance_sequence( replay_protection, clean_sequence );
 
     next_printf( NEXT_LOG_LEVEL_DEBUG, "client received continue response" );
+
+    route_manager->route_data.current_route_committed = route_manager->route_data.pending_route_committed;
 
     route_manager->route_data.current_route_expire_time += NEXT_SLICE_SECONDS;
 
@@ -5761,7 +5779,7 @@ int next_client_internal_process_packet_from_server( next_client_internal_t * cl
                 next_relay_manager_update( client->near_relay_manager, packet.num_near_relays, packet.near_relay_ids, packet.near_relay_addresses );
 
                 next_platform_mutex_acquire( client->route_manager_mutex );
-                next_route_manager_update( client->route_manager, packet.update_type, packet.num_tokens, packet.tokens, next_router_public_key, client->client_route_private_key );
+                next_route_manager_update( client->route_manager, packet.update_type, packet.committed, packet.num_tokens, packet.tokens, next_router_public_key, client->client_route_private_key );
                 fallback_to_direct = client->route_manager->fallback_to_direct;
                 next_platform_mutex_release( client->route_manager_mutex );
 
@@ -6195,6 +6213,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         next_platform_mutex_acquire( client->route_manager_mutex );
         const bool network_next = client->route_manager->route_data.current_route;
         const bool fallback_to_direct = client->route_manager->fallback_to_direct;
+        const bool committed = network_next && client->route_manager->route_data.current_route_committed;
         const uint64_t flags = client->route_manager->flags;
         next_platform_mutex_release( client->route_manager_mutex );
 
@@ -6202,6 +6221,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         client->client_stats.next = network_next;
         client->client_stats.flagged = client->flagged;
         client->client_stats.multipath = client->multipath;
+        client->client_stats.committed = committed;
         client->client_stats.platform_id = next_platform_id();
         client->client_stats.connection_type = next_platform_connection_type();
 
@@ -6274,6 +6294,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         packet.flagged = client->flagged;
         packet.fallback_to_direct = client->fallback_to_direct;
         packet.multipath = client->multipath;
+        packet.committed = client->client_stats.committed;
         packet.platform_id = client->client_stats.platform_id;
         packet.connection_type = client->client_stats.connection_type;
 
@@ -6283,6 +6304,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         next_platform_mutex_release( client->bandwidth_mutex );
 
         packet.next = client->client_stats.next;
+        packet.committed = client->client_stats.committed;
         packet.next_min_rtt = client->client_stats.next_min_rtt;
         packet.next_max_rtt = client->client_stats.next_max_rtt;
         packet.next_mean_rtt = client->client_stats.next_mean_rtt;
@@ -6781,13 +6803,11 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
         next_platform_mutex_acquire( client->internal->route_manager_mutex );
         const uint64_t send_sequence = next_route_manager_next_send_sequence( client->internal->route_manager );
         bool send_over_network_next = next_route_manager_has_network_next_route( client->internal->route_manager );
+        bool committed = next_route_manager_committed( client->internal->route_manager );
         bool send_direct = !send_over_network_next;
         next_platform_mutex_release( client->internal->route_manager_mutex );
 
         bool multipath = client->client_stats.multipath;
-
-        // todo: we need to pass this down from the backend and get this from the route manager
-        bool committed = true;  
 
         if ( send_over_network_next && multipath )
         {
@@ -7578,6 +7598,7 @@ struct next_session_entry_t
     uint64_t stats_flags;
     bool stats_flagged;
     bool stats_multipath;
+    bool stats_committed;
     bool stats_fallback_to_direct;
     uint64_t stats_platform_id;
     int stats_connection_type;
@@ -7613,6 +7634,7 @@ struct next_session_entry_t
     bool update_dirty;
     bool waiting_for_update_response;
     bool multipath;
+    bool committed;
     double update_last_send_time;
     uint8_t update_type;
     int update_num_tokens;
@@ -7624,6 +7646,7 @@ struct next_session_entry_t
     int update_packet_bytes;
 
     bool has_pending_route;
+    bool pending_route_committed;
     uint8_t pending_route_session_version;
     uint64_t pending_route_expire_timestamp;
     double pending_route_expire_time;
@@ -7633,6 +7656,7 @@ struct next_session_entry_t
     uint8_t pending_route_private_key[crypto_box_SECRETKEYBYTES];
 
     bool has_current_route;
+    bool current_route_committed;
     uint8_t current_route_session_version;
     uint64_t current_route_expire_timestamp;
     double current_route_expire_time;
@@ -7658,6 +7682,7 @@ struct next_session_entry_t
     next_packet_loss_tracker_t packet_loss_tracker;
 
     bool mutex_multipath;
+    bool mutex_committed;
     int mutex_envelope_kbps_up;
     int mutex_envelope_kbps_down;
     uint64_t mutex_payload_send_sequence;
@@ -8016,6 +8041,7 @@ struct NextBackendSessionUpdatePacket
     float direct_jitter;
     float direct_packet_loss;
     bool next;
+    bool committed;
     float next_min_rtt;
     float next_max_rtt;
     float next_mean_rtt;
@@ -8060,6 +8086,7 @@ struct NextBackendSessionUpdatePacket
         serialize_float( stream, direct_jitter );
         serialize_float( stream, direct_packet_loss );
         serialize_bool( stream, next );
+        serialize_bool( stream, committed );
         if ( next )
         {
             serialize_float( stream, next_min_rtt );
@@ -8102,6 +8129,7 @@ struct NextBackendSessionUpdatePacket
         next_write_uint8( &p, (uint8_t) fallback_to_direct );
         next_write_uint8( &p, connection_type );
         next_write_uint8( &p, (uint8_t) next );
+        next_write_uint8( &p, (uint8_t) committed );
         next_write_float32( &p, direct_min_rtt );
         next_write_float32( &p, direct_max_rtt );
         next_write_float32( &p, direct_mean_rtt );
@@ -9111,6 +9139,7 @@ int next_server_internal_process_packet( next_server_internal_t * server, const 
                 session->stats_direct_jitter = packet.direct_jitter;
                 session->stats_direct_packet_loss = packet.direct_packet_loss;
                 session->stats_next = packet.next;
+                session->stats_committed = packet.committed;
                 session->stats_next_min_rtt = packet.next_min_rtt;
                 session->stats_next_max_rtt = packet.next_max_rtt;
                 session->stats_next_mean_rtt = packet.next_mean_rtt;
@@ -9230,6 +9259,11 @@ int next_server_internal_process_packet( next_server_internal_t * server, const 
                 entry->mutex_multipath = true;
                 next_platform_mutex_release( server->session_mutex );
             }
+
+            entry->committed = packet.committed;
+            next_platform_mutex_acquire( server->session_mutex );
+            entry->mutex_committed = packet.committed;
+            next_platform_mutex_release( server->session_mutex );
 
             entry->update_dirty = true;
             entry->update_type = (uint8_t) packet.response_type;
@@ -9495,6 +9529,7 @@ void next_server_internal_update_route( next_server_internal_t * server )
             memcpy( packet.near_relay_addresses, entry->update_near_relay_addresses, sizeof(next_address_t) * entry->update_num_near_relays );
             packet.update_type = entry->update_type;
             packet.multipath = entry->multipath;
+            packet.committed = entry->committed;
             packet.num_tokens = entry->update_num_tokens;
             if ( entry->update_type == NEXT_UPDATE_TYPE_ROUTE )
             {
@@ -9982,6 +10017,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.packets_lost_client_to_server = session->stats_packets_lost_client_to_server;
             packet.packets_lost_server_to_client = session->stats_packets_lost_server_to_client;
             packet.next = session->stats_next;
+            packet.committed = session->stats_committed;
             packet.next_min_rtt = session->stats_next_min_rtt;
             packet.next_max_rtt = session->stats_next_max_rtt;
             packet.next_mean_rtt = session->stats_next_mean_rtt;
@@ -10477,6 +10513,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
     if ( entry )
     {
         bool multipath = false;
+        bool committed = false;
         int envelope_kbps_down = 0;
         uint8_t open_session_sequence = 0;
         uint64_t send_sequence = 0;
@@ -10489,10 +10526,8 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
         next_session_entry_t * internal_entry = next_session_manager_find_by_address( server->internal->session_manager, to_address );
         if ( internal_entry )
         {
-            // todo: we need to get committed flag from the slice
-            bool committed = true;
-
             multipath = internal_entry->mutex_multipath;
+            committed = internal_entry->mutex_committed;
             envelope_kbps_down = internal_entry->mutex_envelope_kbps_down;
             send_zero_byte_direct = false;
             send_over_network_next = internal_entry->mutex_send_over_network_next && ( committed || multipath );
@@ -11997,6 +12032,7 @@ static void test_packets()
         in.direct_jitter = 10.0f;
         in.direct_packet_loss = 0.1f;
         in.next = true;
+        in.committed = true;
         in.next_min_rtt = 50.0f;
         in.next_max_rtt = 100.0f;
         in.next_mean_rtt = 55.0f;
@@ -12032,6 +12068,7 @@ static void test_packets()
         check( in.direct_jitter == out.direct_jitter );
         check( in.direct_packet_loss == out.direct_packet_loss );
         check( in.next == out.next );
+        check( in.committed == out.committed );
         check( in.next_min_rtt == out.next_min_rtt );
         check( in.next_max_rtt == out.next_max_rtt );
         check( in.next_mean_rtt == out.next_mean_rtt );
@@ -12100,6 +12137,8 @@ static void test_packets()
             next_address_parse( &in.near_relay_addresses[i], relay_address );
         }
         in.update_type = NEXT_UPDATE_TYPE_ROUTE;
+        in.multipath = true;
+        in.committed = true;
         in.num_tokens = NEXT_MAX_TOKENS;
         next_random_bytes( in.tokens, NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES * NEXT_MAX_TOKENS );
         in.packets_lost_client_to_server = 10000;
@@ -12119,6 +12158,8 @@ static void test_packets()
             check( next_address_equal( &in.near_relay_addresses[i], &out.near_relay_addresses[i] ) );
         }
         check( in.update_type == out.update_type );
+        check( in.multipath == out.multipath );
+        check( in.committed == out.committed );
         check( in.num_tokens == out.num_tokens );
         check( memcmp( in.tokens, out.tokens, NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES * NEXT_MAX_TOKENS ) == 0 );
         check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
@@ -12139,6 +12180,8 @@ static void test_packets()
             next_address_parse( &in.near_relay_addresses[i], relay_address );
         }
         in.update_type = NEXT_UPDATE_TYPE_CONTINUE;
+        in.multipath = true;
+        in.committed = true;
         in.num_tokens = NEXT_MAX_TOKENS;
         next_random_bytes( in.tokens, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES * NEXT_MAX_TOKENS );
         in.packets_lost_client_to_server = 10000;
@@ -12158,6 +12201,8 @@ static void test_packets()
             check( next_address_equal( &in.near_relay_addresses[i], &out.near_relay_addresses[i] ) );
         }
         check( in.update_type == out.update_type );
+        check( in.multipath == out.multipath );
+        check( in.committed == out.committed );
         check( in.num_tokens == out.num_tokens );
         check( memcmp( in.tokens, out.tokens, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES * NEXT_MAX_TOKENS ) == 0 );
         check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
@@ -12605,6 +12650,7 @@ static void test_backend_packets()
         in.direct_jitter = 5.2f;
         in.direct_packet_loss = 0.1f;
         in.next = true;
+        in.committed = true;
         in.next_min_rtt = 5.0f;
         in.next_max_rtt = 20.0f;
         in.next_mean_rtt = 10.0f;
@@ -12645,6 +12691,7 @@ static void test_backend_packets()
         check( in.direct_jitter == out.direct_jitter );
         check( in.direct_packet_loss == out.direct_packet_loss );
         check( in.next == out.next );
+        check( in.committed == out.committed );
         check( in.next_min_rtt == out.next_min_rtt );
         check( in.next_max_rtt == out.next_max_rtt );
         check( in.next_mean_rtt == out.next_mean_rtt );

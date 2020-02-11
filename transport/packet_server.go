@@ -153,7 +153,7 @@ type SessionUpdatePacket struct {
 	Flags                     uint32
 	Flagged                   bool
 	FallbackToDirect          bool
-	TryBeforeYouBuy           bool     	// removed in SDK 3.3.5
+	TryBeforeYouBuy           bool
 	ConnectionType            int32
 	OnNetworkNext             bool
 	DirectMinRtt              float32
@@ -221,9 +221,7 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream, version SDK
 	}
 	stream.SerializeBool(&packet.Flagged)
 	stream.SerializeBool(&packet.FallbackToDirect)
-	if version.Compare(SDKVersion{3, 3, 5}) == SDKVersionOlder {
-		stream.SerializeBool(&packet.TryBeforeYouBuy)
-	}
+	stream.SerializeBool(&packet.TryBeforeYouBuy)
 	stream.SerializeInteger(&packet.ConnectionType, ConnectionTypeUnknown, ConnectionTypeCellular)
 	stream.SerializeFloat32(&packet.DirectMinRtt)
 	stream.SerializeFloat32(&packet.DirectMaxRtt)
@@ -298,9 +296,7 @@ func (packet *SessionUpdatePacket) GetSignData(version SDKVersion) []byte {
 	}
 	binary.Write(buf, binary.LittleEndian, packet.Flagged)
 	binary.Write(buf, binary.LittleEndian, packet.FallbackToDirect)
-	if version.Compare(SDKVersion{3, 3, 5}) == SDKVersionOlder {
-		binary.Write(buf, binary.LittleEndian, packet.TryBeforeYouBuy)
-	}
+	binary.Write(buf, binary.LittleEndian, packet.TryBeforeYouBuy)
 	binary.Write(buf, binary.LittleEndian, uint8(packet.ConnectionType))
 
 	var onNetworkNext uint8
