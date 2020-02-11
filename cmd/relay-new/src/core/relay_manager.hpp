@@ -42,11 +42,15 @@ namespace core
 
   // it is used in one place throughout the codebase, so always inline it, no sense in doing a function call
   [[gnu::always_inline]] inline void RelayManager::update(unsigned int numRelays,
-   const std::array<uint64_t, MAX_RELAYS>& incommingIDs,
+   const std::array<uint64_t, MAX_RELAYS>& relayIDs,
    const std::array<net::Address, MAX_RELAYS>& relayAddrs)
   {
     assert(numRelays <= MAX_RELAYS);
 
+    // first copy all current relays that are also in the update lists
+
+    std::array<bool, MAX_RELAYS> historySlotToken{false};
+    std::array<bool, MAX_RELAYS> found{false};
     std::array<uint64_t, MAX_RELAYS> newRelayIDs{0};
     std::array<double, MAX_RELAYS> newRelayLastPingTime{0};
     std::array<net::Address, MAX_RELAYS> newRelayAddresses;
@@ -56,33 +60,51 @@ namespace core
 
     for (unsigned int i = 0; i < mNumRelays; i++) {
       for (unsigned int j = 0; j < numRelays; j++) {
-        // if the entry already exists
-        if (mRelayIDs[i] == incommingIDs[j]) {
-          // copy all current relays that are also in the update lists
+        if (mRelayIDs[i] == relayIDs[j]) {
+          found[j] = true;
+
           newRelayIDs[index] = mRelayIDs[i];
           newRelayLastPingTime[index] = mLastRelayPingTime[i];
           newRelayAddresses[index] = mRelayAddresses[i];
           newRelayPingHistory[index] = mRelayPingHistory[i];
-        } else {
-          // copy all near relays not found in the current relay list
-          newRelayIDs[index] = incommingIDs[j];
-          newRelayLastPingTime[index] = INVALID_PING_TIME;
-          newRelayAddresses[index] = relayAddrs[j];
-          mPingHistoryArray[j].clear();
-          newRelayPingHistory[index] = &mPingHistoryArray[j];
-          assert(newRelayPingHistory[index] != nullptr);
+
+          const auto slot = mRelayPingHistory[i] - mPingHistoryArray.data();  // TODO make this more readable
+          assert(slot >= 0);
+          assert(slot < MAX_RELAYS);
+          historySlotToken[slot] = true;
+          index++;
         }
+      }
+    }
+
+    // copy all near relays not found in the current relay list
+
+    for (unsigned int i = 0; i < numRelays; i++) {
+      if (!found[i]) {
+        newRelayIDs[index] = relayIDs[i];
+        newRelayLastPingTime[index] = INVALID_PING_TIME;
+        newRelayAddresses[index] = relayAddrs[i];
+        newRelayPingHistory[index] = nullptr;
+        for (int j = 0; j < MAX_RELAYS; j++) {
+          if (!historySlotToken[j]) {
+            newRelayPingHistory[index] = &mPingHistoryArray[j];
+            newRelayPingHistory[index]->clear();
+            historySlotToken[j] = true;
+            break;
+          }
+        }
+        assert(newRelayPingHistory[index] != nullptr);
         index++;
       }
     }
 
     // commit the updated relay array
     mNumRelays = index;
-
-    std::swap(mRelayIDs, newRelayIDs);
-    std::swap(mLastRelayPingTime, newRelayLastPingTime);
-    std::swap(mRelayAddresses, newRelayAddresses);
-    std::swap(mRelayPingHistory, newRelayPingHistory);
+    // fastest
+    std::copy(newRelayIDs.begin(), newRelayIDs.begin() + index, mRelayIDs.begin());
+    std::copy(newRelayLastPingTime.begin(), newRelayLastPingTime.begin() + index, mLastRelayPingTime.begin());
+    std::copy(newRelayAddresses.begin(), newRelayAddresses.begin() + index, mRelayAddresses.begin());
+    std::copy(newRelayPingHistory.begin(), newRelayPingHistory.begin() + index, mRelayPingHistory.begin());
 
     // make sure all the ping times are evenly distributed to avoid clusters of ping packets
 
@@ -101,7 +123,7 @@ namespace core
     unsigned int numFound = 0;
     for (unsigned int i = 0; i < numRelays; i++) {
       for (unsigned int j = 0; j < mNumRelays; j++) {
-        if (incommingIDs[i] == mRelayIDs[j] && relayAddrs[i] == mRelayAddresses[j]) {
+        if (relayIDs[i] == mRelayIDs[j] && relayAddrs[i] == mRelayAddresses[j]) {
           numFound++;
           break;
         }
@@ -119,7 +141,7 @@ namespace core
       }
     }
 #endif
-  }  // namespace core
+  }
 }  // namespace core
 
 namespace legacy
