@@ -3,9 +3,12 @@
 #include <arpa/inet.h>
 #include <array>
 #include <cassert>
+#include <cerrno>
+#include <cfloat>
 #include <chrono>
 #include <cinttypes>
 #include <cmath>
+#include <csignal>
 #include <cstdarg>
 #include <cstddef>
 #include <cstdio>
@@ -14,9 +17,7 @@
 #include <ctime>
 #include <curl/curl.h>
 #include <deque>
-#include <errno.h>
 #include <fcntl.h>
-#include <float.h>
 #include <functional>
 #include <ifaddrs.h>
 #include <iostream>
@@ -24,8 +25,6 @@
 #include <linux/rtnetlink.h>
 #include <linux/wireless.h>
 #include <map>
-#include <map> 
-#include <math.h>
 #include <memory>
 #include <mutex>
 #include <netdb.h>
@@ -33,13 +32,8 @@
 #include <pthread.h>
 #include <random>
 #include <sched.h>
-#include <signal.h>
 #include <sodium.h>
 #include <sstream>
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <string>
 #include <strings.h>
 #include <sys/ioctl.h>
