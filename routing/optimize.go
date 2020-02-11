@@ -737,6 +737,10 @@ func (m *RouteMatrix) Routes(from []Relay, to []Relay) []Route {
 				continue
 			}
 
+			if fromtoidx >= len(m.Entries) {
+				continue
+			}
+
 			relayPairResults[i+j*len(from)] = RelayPairResult{fromtoidx, reverse}
 			routeTotal += int(m.Entries[fromtoidx].NumRoutes)
 		}
@@ -806,6 +810,10 @@ func (m *RouteMatrix) fillRoutes(routes []Route, routeIndex *int, fromtoidx int,
 			Stats: Stats{
 				RTT: float64(m.Entries[fromtoidx].RouteRTT[i]),
 			},
+		}
+
+		if *routeIndex >= len(routes) {
+			continue
 		}
 
 		routes[*routeIndex] = route
