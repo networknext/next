@@ -156,6 +156,7 @@ type SessionUpdatePacket struct {
 	TryBeforeYouBuy           bool
 	ConnectionType            int32
 	OnNetworkNext             bool
+	Committed                 bool
 	DirectMinRtt              float32
 	DirectMaxRtt              float32
 	DirectMeanRtt             float32
@@ -215,12 +216,18 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream, version SDK
 	stream.SerializeUint64(&packet.UserHash)
 	stream.SerializeUint64(&packet.PlatformId)
 	stream.SerializeUint64(&packet.Tag)
+
 	if version.AtLeast(SDKVersion{3, 3, 4}) {
 		stream.SerializeBits(&packet.Flags, FlagTotalCount)
 	}
+
 	stream.SerializeBool(&packet.Flagged)
 	stream.SerializeBool(&packet.FallbackToDirect)
-	stream.SerializeBool(&packet.TryBeforeYouBuy)
+
+	if !version.AtLeast(SDKVersion{3, 4, 0}) {
+		stream.SerializeBool(&packet.TryBeforeYouBuy)
+	}
+
 	stream.SerializeInteger(&packet.ConnectionType, ConnectionTypeUnknown, ConnectionTypeCellular)
 	stream.SerializeFloat32(&packet.DirectMinRtt)
 	stream.SerializeFloat32(&packet.DirectMaxRtt)
@@ -228,6 +235,9 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream, version SDK
 	stream.SerializeFloat32(&packet.DirectJitter)
 	stream.SerializeFloat32(&packet.DirectPacketLoss)
 	stream.SerializeBool(&packet.OnNetworkNext)
+	if version.AtLeast(SDKVersion{3, 4, 0}) {
+		stream.SerializeBool(&packet.Committed)
+	}
 	if packet.OnNetworkNext {
 		stream.SerializeFloat32(&packet.NextMinRtt)
 		stream.SerializeFloat32(&packet.NextMaxRtt)
@@ -355,6 +365,7 @@ type SessionResponsePacket struct {
 	NearRelayAddresses   []net.UDPAddr
 	RouteType            int32
 	Multipath            bool
+	Committed            bool
 	NumTokens            int32
 	Tokens               []byte
 	ServerRoutePublicKey []byte
@@ -401,6 +412,9 @@ func (packet *SessionResponsePacket) Serialize(stream encoding.Stream, version S
 	stream.SerializeInteger(&packet.RouteType, 0, routing.RouteTypeContinue)
 	if packet.RouteType != routing.RouteTypeDirect {
 		stream.SerializeBool(&packet.Multipath)
+		if version.AtLeast(SDKVersion{3, 4, 0}) {
+			stream.SerializeBool(&packet.Committed)
+		}
 		stream.SerializeInteger(&packet.NumTokens, 0, MaxTokens)
 	}
 	if packet.RouteType == routing.RouteTypeNew {
