@@ -1,8 +1,4 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <sodium.h>
-
+#include "includes.h"
 #include "testing/test.hpp"
 
 #include "config.hpp"

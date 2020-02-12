@@ -1,12 +1,11 @@
+#include "includes.h"
 #include "bench/bench.hpp"
-
-#include <sstream>
 
 #include "core/relay_manager.hpp"
 
 const auto REPS = 10000U;
 
-Bench(RelayManager_update, true)
+Bench(RelayManager_update)
 {
   const auto MaxRelays = MAX_RELAYS;
 

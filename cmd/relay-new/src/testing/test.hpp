@@ -1,12 +1,6 @@
 #ifndef TESTING_TEST_HPP
 #define TESTING_TEST_HPP
 
-#include <type_traits>
-
-#include <deque>
-#include <cstdio>
-#include <cstdlib>
-
 #define TEST_BREAK "\n=============================================\n\n"
 #define TEST_BREAK_WARNING "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n"
 

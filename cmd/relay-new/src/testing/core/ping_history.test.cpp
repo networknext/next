@@ -1,8 +1,5 @@
+#include "includes.h"
 #include "testing/test.hpp"
-
-#include <random>
-#include <functional>
-#include <iostream>
 
 #include "core/ping_history.hpp"
 

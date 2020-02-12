@@ -1,12 +1,6 @@
 #ifndef RELAY_RELAY_HPP
 #define RELAY_RELAY_HPP
 
-#include <sodium.h>
-#include <curl/curl.h>
-
-#include <cinttypes>
-#include <map>  // TODO replace with unordered_map, map is not constant lookup
-
 #include "net/address.hpp"
 #include "core/relay_manager.hpp"
 #include "relay_platform.hpp"

@@ -1,9 +1,6 @@
 #ifndef CORE_PING_HISTORY_HPP
 #define CORE_PING_HISTORY_HPP
 
-#include <cinttypes>
-#include <array>
-
 #include "config.hpp"
 
 namespace core

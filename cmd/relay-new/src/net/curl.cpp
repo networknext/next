@@ -1,7 +1,5 @@
+#include "includes.h"
 #include "curl.hpp"
-
-#include <cassert>
-#include <cstring>
 
 namespace net
 {

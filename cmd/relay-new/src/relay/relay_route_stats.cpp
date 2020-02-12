@@ -1,7 +1,5 @@
+#include "includes.h"
 #include "relay_route_stats.hpp"
-
-#include <cassert>
-#include <cmath>
 
 namespace relay
 {

@@ -1,10 +1,6 @@
 #ifndef BENCH_BENCH_HPP
 #define BENCH_BENCH_HPP
 
-#include <deque>
-#include <iostream>
-#include <cstddef>
-
 #include "util/clock.hpp"
 
 #define BENCH_BREAK "\n=============================================\n\n"

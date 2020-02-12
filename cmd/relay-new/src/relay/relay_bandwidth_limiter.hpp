@@ -1,8 +1,6 @@
 #ifndef RELAY_RELAY_BANDWIDTH_LIMITER_HPP
 #define RELAY_RELAY_BANDWIDTH_LIMITER_HPP
 
-#include <cinttypes>
-
 namespace relay
 {
   struct relay_bandwidth_limiter_t
