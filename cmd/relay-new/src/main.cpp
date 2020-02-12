@@ -10,365 +10,23 @@
 #include "util.hpp"
 
 #include "encoding/base64.hpp"
-#include "encoding/read.hpp"
-#include "encoding/write.hpp"
-
-#include "core/ping_history.hpp"
-#include "core/replay_protection.hpp"
-
-#include "net/address.hpp"
 
 #include "bench/bench.hpp"
 #include "testing/test.hpp"
 
 #include "relay/relay.hpp"
-#include "relay/relay_continue_token.hpp"
 #include "relay/relay_platform.hpp"
-#include "relay/relay_route_token.hpp"
+
+#include "net/communicator.hpp"
 
 namespace
 {
-  volatile uint64_t quit = 0;
-	
+  volatile bool gAlive = true;
+
   void interrupt_handler(int signal)
   {
     (void)signal;
-    quit = 1;
-  }
-  static relay::relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_function(void* context)
-  {
-    relay::relay_t* relay = (relay::relay_t*)context;
-
-    uint8_t packet_data[RELAY_MAX_PACKET_BYTES];
-
-    while (!quit) {
-      legacy::relay_address_t from;
-      const int packet_bytes = relay_platform_socket_receive_packet(relay->socket, &from, packet_data, sizeof(packet_data));
-      if (packet_bytes == 0)
-        continue;
-      if (packet_data[0] == RELAY_PING_PACKET && packet_bytes == 9) {
-        packet_data[0] = RELAY_PONG_PACKET;
-        relay_platform_socket_send_packet(relay->socket, &from, packet_data, 9);
-      } else if (packet_data[0] == RELAY_PONG_PACKET && packet_bytes == 9) {
-        relay_platform_mutex_acquire(relay->mutex);
-        const uint8_t* p = packet_data + 1;
-        uint64_t sequence = encoding::read_uint64(&p);
-        relay_manager_process_pong(relay->relay_manager, &from, sequence);
-        relay_platform_mutex_release(relay->mutex);
-      } else if (packet_data[0] == RELAY_ROUTE_REQUEST_PACKET) {
-        if (packet_bytes < int(1 + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES * 2)) {
-          relay_printf("ignoring route request. bad packet size (%d)", packet_bytes);
-          continue;
-        }
-        uint8_t* p = &packet_data[1];
-        relay::relay_route_token_t token;
-        if (relay::relay_read_encrypted_route_token(&p, &token, relay->router_public_key, relay->relay_private_key) !=
-            RELAY_OK) {
-          relay_printf("ignoring route request. could not read route token");
-          continue;
-        }
-        if (token.expire_timestamp < relay_timestamp(relay)) {
-          continue;
-        }
-        uint64_t hash = token.session_id ^ token.session_version;
-        if (relay->sessions->find(hash) == relay->sessions->end()) {
-          relay::relay_session_t* session = (relay::relay_session_t*)malloc(sizeof(relay::relay_session_t));
-          assert(session);
-          session->expire_timestamp = token.expire_timestamp;
-          session->session_id = token.session_id;
-          session->session_version = token.session_version;
-          session->client_to_server_sequence = 0;
-          session->server_to_client_sequence = 0;
-          session->kbps_up = token.kbps_up;
-          session->kbps_down = token.kbps_down;
-          session->prev_address = from;
-          session->next_address = token.next_address;
-          memcpy(session->private_key, token.private_key, crypto_box_SECRETKEYBYTES);
-          relay_replay_protection_reset(&session->replay_protection_client_to_server);
-          relay_replay_protection_reset(&session->replay_protection_server_to_client);
-          relay->sessions->insert(std::make_pair(hash, session));
-          printf("session created: %" PRIx64 ".%d\n", token.session_id, token.session_version);
-        }
-        packet_data[RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES] = RELAY_ROUTE_REQUEST_PACKET;
-        relay_platform_socket_send_packet(relay->socket,
-         &token.next_address,
-         packet_data + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES,
-         packet_bytes - RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES);
-      } else if (packet_data[0] == RELAY_ROUTE_RESPONSE_PACKET) {
-        if (packet_bytes != RELAY_HEADER_BYTES) {
-          continue;
-        }
-        uint8_t type;
-        uint64_t sequence;
-        uint64_t session_id;
-        uint8_t session_version;
-        if (relay::relay_peek_header(
-             RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, packet_data, packet_bytes) !=
-            RELAY_OK) {
-          continue;
-        }
-        uint64_t hash = session_id ^ session_version;
-        relay::relay_session_t* session = (*(relay->sessions))[hash];
-        if (!session) {
-          continue;
-        }
-        if (session->expire_timestamp < relay_timestamp(relay)) {
-          continue;
-        }
-        uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
-        if (clean_sequence <= session->server_to_client_sequence) {
-          continue;
-        }
-        session->server_to_client_sequence = clean_sequence;
-        if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data, packet_bytes) !=
-            RELAY_OK) {
-          continue;
-        }
-        relay_platform_socket_send_packet(relay->socket, &session->prev_address, packet_data, packet_bytes);
-      } else if (packet_data[0] == RELAY_CONTINUE_REQUEST_PACKET) {
-        if (packet_bytes < int(1 + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES * 2)) {
-          relay_printf("ignoring continue request. bad packet size (%d)", packet_bytes);
-          continue;
-        }
-        uint8_t* p = &packet_data[1];
-        relay::relay_continue_token_t token;
-        if (relay_read_encrypted_continue_token(&p, &token, relay->router_public_key, relay->relay_private_key) != RELAY_OK) {
-          relay_printf("ignoring continue request. could not read continue token");
-          continue;
-        }
-        if (token.expire_timestamp < relay_timestamp(relay)) {
-          continue;
-        }
-        uint64_t hash = token.session_id ^ token.session_version;
-        relay::relay_session_t* session = (*(relay->sessions))[hash];
-        if (!session) {
-          continue;
-        }
-        if (session->expire_timestamp < relay_timestamp(relay)) {
-          continue;
-        }
-        if (session->expire_timestamp != token.expire_timestamp) {
-          printf("session continued: %" PRIx64 ".%d\n", token.session_id, token.session_version);
-        }
-        session->expire_timestamp = token.expire_timestamp;
-        packet_data[RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES] = RELAY_CONTINUE_REQUEST_PACKET;
-        relay_platform_socket_send_packet(relay->socket,
-         &session->next_address,
-         packet_data + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES,
-         packet_bytes - RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES);
-      } else if (packet_data[0] == RELAY_CONTINUE_RESPONSE_PACKET) {
-        if (packet_bytes != RELAY_HEADER_BYTES) {
-          continue;
-        }
-        uint8_t type;
-        uint64_t sequence;
-        uint64_t session_id;
-        uint8_t session_version;
-        if (relay::relay_peek_header(
-             RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, packet_data, packet_bytes) !=
-            RELAY_OK) {
-          continue;
-        }
-        uint64_t hash = session_id ^ session_version;
-        relay::relay_session_t* session = (*(relay->sessions))[hash];
-        if (!session) {
-          continue;
-        }
-        if (session->expire_timestamp < relay_timestamp(relay)) {
-          continue;
-        }
-        uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
-        if (clean_sequence <= session->server_to_client_sequence) {
-          continue;
-        }
-        session->server_to_client_sequence = clean_sequence;
-        if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data, packet_bytes) !=
-            RELAY_OK) {
-          continue;
-        }
-        relay_platform_socket_send_packet(relay->socket, &session->prev_address, packet_data, packet_bytes);
-      } else if (packet_data[0] == RELAY_CLIENT_TO_SERVER_PACKET) {
-        if (packet_bytes <= RELAY_HEADER_BYTES || packet_bytes > RELAY_HEADER_BYTES + RELAY_MTU) {
-          continue;
-        }
-        uint8_t type;
-        uint64_t sequence;
-        uint64_t session_id;
-        uint8_t session_version;
-        if (relay::relay_peek_header(
-             RELAY_DIRECTION_CLIENT_TO_SERVER, &type, &sequence, &session_id, &session_version, packet_data, packet_bytes) !=
-            RELAY_OK) {
-          continue;
-        }
-        uint64_t hash = session_id ^ session_version;
-        relay::relay_session_t* session = (*(relay->sessions))[hash];
-        if (!session) {
-          continue;
-        }
-        if (session->expire_timestamp < relay_timestamp(relay)) {
-          continue;
-        }
-        uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
-        if (relay_replay_protection_already_received(&session->replay_protection_client_to_server, clean_sequence)) {
-          continue;
-        }
-        relay_replay_protection_advance_sequence(&session->replay_protection_client_to_server, clean_sequence);
-        if (relay::relay_verify_header(RELAY_DIRECTION_CLIENT_TO_SERVER, session->private_key, packet_data, packet_bytes) !=
-            RELAY_OK) {
-          continue;
-        }
-        relay_platform_socket_send_packet(relay->socket, &session->next_address, packet_data, packet_bytes);
-      } else if (packet_data[0] == RELAY_SERVER_TO_CLIENT_PACKET) {
-        if (packet_bytes <= RELAY_HEADER_BYTES || packet_bytes > RELAY_HEADER_BYTES + RELAY_MTU) {
-          continue;
-        }
-        uint8_t type;
-        uint64_t sequence;
-        uint64_t session_id;
-        uint8_t session_version;
-        if (relay::relay_peek_header(
-             RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, packet_data, packet_bytes) !=
-            RELAY_OK) {
-          continue;
-        }
-        uint64_t hash = session_id ^ session_version;
-        relay::relay_session_t* session = (*(relay->sessions))[hash];
-        if (!session) {
-          continue;
-        }
-        if (session->expire_timestamp < relay_timestamp(relay)) {
-          continue;
-        }
-        uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
-        if (relay_replay_protection_already_received(&session->replay_protection_server_to_client, clean_sequence)) {
-          continue;
-        }
-        relay_replay_protection_advance_sequence(&session->replay_protection_server_to_client, clean_sequence);
-        if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data, packet_bytes) !=
-            RELAY_OK) {
-          continue;
-        }
-        relay_platform_socket_send_packet(relay->socket, &session->prev_address, packet_data, packet_bytes);
-      } else if (packet_data[0] == RELAY_SESSION_PING_PACKET) {
-        if (packet_bytes > RELAY_HEADER_BYTES + 32) {
-          continue;
-        }
-        uint8_t type;
-        uint64_t sequence;
-        uint64_t session_id;
-        uint8_t session_version;
-        if (relay::relay_peek_header(
-             RELAY_DIRECTION_CLIENT_TO_SERVER, &type, &sequence, &session_id, &session_version, packet_data, packet_bytes) !=
-            RELAY_OK) {
-          continue;
-        }
-        uint64_t hash = session_id ^ session_version;
-        relay::relay_session_t* session = (*(relay->sessions))[hash];
-        if (!session) {
-          continue;
-        }
-        if (session->expire_timestamp < relay_timestamp(relay)) {
-          continue;
-        }
-        uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
-        if (clean_sequence <= session->client_to_server_sequence) {
-          continue;
-        }
-        session->client_to_server_sequence = clean_sequence;
-        if (relay::relay_verify_header(RELAY_DIRECTION_CLIENT_TO_SERVER, session->private_key, packet_data, packet_bytes) !=
-            RELAY_OK) {
-          continue;
-        }
-        relay_platform_socket_send_packet(relay->socket, &session->next_address, packet_data, packet_bytes);
-      } else if (packet_data[0] == RELAY_SESSION_PONG_PACKET) {
-        if (packet_bytes > RELAY_HEADER_BYTES + 32) {
-          continue;
-        }
-        uint8_t type;
-        uint64_t sequence;
-        uint64_t session_id;
-        uint8_t session_version;
-        if (relay::relay_peek_header(
-             RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, packet_data, packet_bytes) !=
-            RELAY_OK) {
-          continue;
-        }
-        uint64_t hash = session_id ^ session_version;
-        relay::relay_session_t* session = (*(relay->sessions))[hash];
-        if (!session) {
-          continue;
-        }
-        if (session->expire_timestamp < relay_timestamp(relay)) {
-          continue;
-        }
-        uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
-        if (clean_sequence <= session->server_to_client_sequence) {
-          continue;
-        }
-        session->server_to_client_sequence = clean_sequence;
-        if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data, packet_bytes) !=
-            RELAY_OK) {
-          continue;
-        }
-        relay_platform_socket_send_packet(relay->socket, &session->prev_address, packet_data, packet_bytes);
-      } else if (packet_data[0] == RELAY_NEAR_PING_PACKET) {
-        if (packet_bytes != 1 + 8 + 8 + 8 + 8) {
-          continue;
-        }
-        packet_data[0] = RELAY_NEAR_PONG_PACKET;
-        relay_platform_socket_send_packet(relay->socket, &from, packet_data, packet_bytes - 16);
-      }
-    }
-
-    RELAY_PLATFORM_THREAD_RETURN();
-  }
-
-  static relay::relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_function(void* context)
-  {
-    relay::relay_t* relay = (relay::relay_t*)context;
-
-    while (!quit) {
-      relay::relay_platform_mutex_acquire(relay->mutex);
-
-      if (relay->relays_dirty) {
-        legacy::relay_manager_update(relay->relay_manager, relay->num_relays, relay->relay_ids, relay->relay_addresses);
-        relay->relays_dirty = false;
-      }
-
-      double current_time = relay::relay_platform_time();
-
-      struct ping_data_t
-      {
-        uint64_t sequence;
-        legacy::relay_address_t address;
-      };
-
-      int num_pings = 0;
-      ping_data_t pings[MAX_RELAYS];
-
-      for (int i = 0; i < relay->relay_manager->num_relays; ++i) {
-        if (relay->relay_manager->relay_last_ping_time[i] + RELAY_PING_TIME <= current_time) {
-          pings[num_pings].sequence = relay_ping_history_ping_sent(relay->relay_manager->relay_ping_history[i], current_time);
-          pings[num_pings].address = relay->relay_manager->relay_addresses[i];
-          relay->relay_manager->relay_last_ping_time[i] = current_time;
-          num_pings++;
-        }
-      }
-
-      relay_platform_mutex_release(relay->mutex);
-
-      for (int i = 0; i < num_pings; ++i) {
-        uint8_t packet_data[9];
-        packet_data[0] = RELAY_PING_PACKET;
-        uint8_t* p = packet_data + 1;
-        encoding::write_uint64(&p, pings[i].sequence);
-        relay_platform_socket_send_packet(relay->socket, &pings[i].address, packet_data, 9);
-      }
-
-      relay::relay_platform_sleep(1.0 / 100.0);
-    }
-
-    RELAY_PLATFORM_THREAD_RETURN();
+    gAlive = false;
   }
 }  // namespace
 
@@ -532,25 +190,21 @@ int main(int argc, const char** argv)
   relay.mutex = relay::relay_platform_mutex_create();
   if (!relay.mutex) {
     printf("\nerror: could not create ping thread\n\n");
-    quit = 1;
+    gAlive = false;
   }
 
   relay.relay_manager = legacy::relay_manager_create();
   if (!relay.relay_manager) {
     printf("\nerror: could not create relay manager\n\n");
-    quit = 1;
+    gAlive = false;
   }
 
-  relay::relay_platform_thread_t* receive_thread = relay_platform_thread_create(receive_thread_function, &relay);
-  if (!receive_thread) {
-    printf("\nerror: could not create receive thread\n\n");
-    quit = 1;
-  }
-
-  relay::relay_platform_thread_t* ping_thread = relay_platform_thread_create(ping_thread_function, &relay);
-  if (!ping_thread) {
-    printf("\nerror: could not create ping thread\n\n");
-    quit = 1;
+  std::unique_ptr<net::Communicator> communicator;
+  try {
+    communicator = std::make_unique<net::Communicator>(relay, gAlive);
+  } catch (std::exception& e) {
+    printf("\nerror: could not create update & ping threads: %s", e.what());
+    gAlive = false;
   }
 
   printf("Relay initialized\n\n");
@@ -559,7 +213,7 @@ int main(int argc, const char** argv)
 
   uint8_t* update_response_memory = (uint8_t*)malloc(RESPONSE_MAX_BYTES);
 
-  while (!quit) {
+  while (gAlive) {
     bool updated = false;
 
     for (int i = 0; i < 10; ++i) {
@@ -571,7 +225,7 @@ int main(int argc, const char** argv)
 
     if (!updated) {
       printf("error: could not update relay\n\n");
-      quit = 1;
+      gAlive = false;
       break;
     }
 
@@ -580,21 +234,12 @@ int main(int argc, const char** argv)
 
   printf("Cleaning up\n");
 
-  if (receive_thread) {
-    relay_platform_thread_join(receive_thread);
-    relay_platform_thread_destroy(receive_thread);
-  }
-
-  if (ping_thread) {
-    relay_platform_thread_join(ping_thread);
-    relay_platform_thread_destroy(ping_thread);
-  }
+  communicator.reset();
 
   free(update_response_memory);
 
-  for (std::map<uint64_t, relay::relay_session_t*>::iterator itor = relay.sessions->begin(); itor != relay.sessions->end();
-       ++itor) {
-    delete itor->second;
+  for (auto& pair : *relay.sessions) {
+    delete pair.second;
   }
 
   delete relay.sessions;

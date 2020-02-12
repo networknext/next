@@ -2,12 +2,14 @@
 #include <alloca.h>
 #include <arpa/inet.h>
 #include <array>
+#include <atomic>
 #include <cassert>
 #include <cerrno>
 #include <cfloat>
 #include <chrono>
 #include <cinttypes>
 #include <cmath>
+#include <condition_variable>
 #include <csignal>
 #include <cstdarg>
 #include <cstddef>
@@ -27,9 +29,11 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <mutex>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <pthread.h>
+#include <queue>
 #include <random>
 #include <sched.h>
 #include <sodium.h>
@@ -39,6 +43,9 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <thread>
 #include <type_traits>
 #include <unistd.h>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
