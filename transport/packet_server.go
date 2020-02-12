@@ -398,18 +398,17 @@ func (packet *SessionResponsePacket) Serialize(stream encoding.Stream, version S
 		stream.SerializeUint64(&packet.NearRelayIds[i])
 		stream.SerializeAddress(&packet.NearRelayAddresses[i])
 	}
-	stream.SerializeInteger(&packet.RouteType, 0, routing.DecisionTypeContinue)
-	if packet.RouteType != routing.DecisionTypeDirect {
+	stream.SerializeInteger(&packet.RouteType, 0, routing.RouteTypeContinue)
+	if packet.RouteType != routing.RouteTypeDirect {
 		stream.SerializeBool(&packet.Multipath)
 		stream.SerializeInteger(&packet.NumTokens, 0, MaxTokens)
 	}
-	if stream.IsReading() {
+	if packet.RouteType == routing.RouteTypeNew {
 		packet.Tokens = make([]byte, packet.NumTokens*routing.EncryptedNextRouteTokenSize)
-	}
-	if packet.RouteType == routing.DecisionTypeNew {
 		stream.SerializeBytes(packet.Tokens)
 	}
-	if packet.RouteType == routing.DecisionTypeContinue {
+	if packet.RouteType == routing.RouteTypeContinue {
+		packet.Tokens = make([]byte, packet.NumTokens*routing.EncryptedContinueRouteTokenSize)
 		stream.SerializeBytes(packet.Tokens)
 	}
 	if stream.IsReading() {
@@ -435,7 +434,7 @@ func (packet *SessionResponsePacket) GetSignData() []byte {
 		binary.Write(buf, binary.LittleEndian, address)
 	}
 	binary.Write(buf, binary.LittleEndian, uint8(packet.RouteType))
-	if packet.RouteType != routing.DecisionTypeDirect {
+	if packet.RouteType != routing.RouteTypeDirect {
 		if packet.Multipath {
 			binary.Write(buf, binary.LittleEndian, uint8(1))
 		} else {
@@ -443,10 +442,10 @@ func (packet *SessionResponsePacket) GetSignData() []byte {
 		}
 		binary.Write(buf, binary.LittleEndian, uint8(packet.NumTokens))
 	}
-	if packet.RouteType == routing.DecisionTypeNew {
+	if packet.RouteType == routing.RouteTypeNew {
 		binary.Write(buf, binary.LittleEndian, packet.Tokens)
 	}
-	if packet.RouteType == routing.DecisionTypeContinue {
+	if packet.RouteType == routing.RouteTypeContinue {
 		binary.Write(buf, binary.LittleEndian, packet.Tokens)
 	}
 	binary.Write(buf, binary.LittleEndian, packet.ServerRoutePublicKey)

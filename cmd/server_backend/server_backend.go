@@ -53,6 +53,8 @@ func main() {
 	}
 
 	// var serverPublicKey []byte
+	var relayPublicKey []byte
+	var customerPublicKey []byte
 	var serverPrivateKey []byte
 	var routerPrivateKey []byte
 	{
@@ -75,6 +77,14 @@ func main() {
 		} else {
 			level.Error(logger).Log("err", "RELAY_ROUTER_PRIVATE_KEY not set")
 			os.Exit(1)
+		}
+
+		if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
+			customerPublicKey, _ = base64.StdEncoding.DecodeString(key)
+		}
+
+		if key := os.Getenv("RELAY_PUBLIC_KEY"); len(key) != 0 {
+			relayPublicKey, _ = base64.StdEncoding.DecodeString(key)
 		}
 	}
 
@@ -111,7 +121,11 @@ func main() {
 	}
 
 	// Create an in-memory buyer provider
-	var buyerProvider transport.BuyerProvider = &storage.InMemory{}
+	var buyerProvider transport.BuyerProvider = &storage.InMemory{
+		LocalCustomerPublicKey: customerPublicKey,
+		LocalRelayPublicKey:    relayPublicKey,
+		LocalDatacenter:        true,
+	}
 	if host, ok := os.LookupEnv("CONFIGSTORE_HOST"); ok {
 		grpcconn, err := grpc.Dial(host, grpc.WithInsecure())
 		if err != nil {
