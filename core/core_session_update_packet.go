@@ -55,7 +55,7 @@ func (packet *SessionUpdatePacket) UnmarshalBinary(data []byte) error {
 }
 
 func (packet *SessionUpdatePacket) MarshalBinary() ([]byte, error) {
-	ws, err := CreateWriteStream(1500)
+	ws, err := CreateWriteStream(1500)	// todo: magic number here!
 	if err != nil {
 		return nil, err
 	}

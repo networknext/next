@@ -5248,7 +5248,7 @@ void next_route_manager_process_continue_response_packet( next_route_manager_t *
 
     next_printf( NEXT_LOG_LEVEL_DEBUG, "client received continue response" );
 
-    route_manager->route_data.current_route_committed = route_manager->route_data.pending_route_committed;
+    route_manager->route_data.current_route_committed = route_manager->route_data.pending_continue_committed;
 
     route_manager->route_data.current_route_expire_time += NEXT_SLICE_SECONDS;
 
