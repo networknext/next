@@ -51,6 +51,7 @@ func (v SDKVersion) String() string {
 	return fmt.Sprintf("%d.%d.%d", v.Major, v.Minor, v.Patch)
 }
 
+// SDK sends 0.0.0 (internal version) in development, so we count that as being "at least" required since it's the latest version
 func (a SDKVersion) AtLeast(b SDKVersion) bool {
-	return a.Compare(b) != SDKVersionOlder
+	return a.IsInternal() || a.Compare(b) != SDKVersionOlder
 }
