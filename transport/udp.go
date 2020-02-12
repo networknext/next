@@ -308,7 +308,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, bp B
 
 		// Get a set of possible routes from the RouteProvider an on error ensure it falls back to direct
 		routes := rp.Routes(dsrelays, clientrelays)
-		if routes == nil {
+		if routes == nil || len(routes) <= 0 {
 			level.Error(locallogger).Log("msg", "failed to find routes")
 			return
 		}
