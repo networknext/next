@@ -302,13 +302,24 @@ func (packet *SessionUpdatePacket) GetSignData(version SDKVersion) []byte {
 	}
 	binary.Write(buf, binary.LittleEndian, packet.Flagged)
 	binary.Write(buf, binary.LittleEndian, packet.FallbackToDirect)
-	binary.Write(buf, binary.LittleEndian, packet.TryBeforeYouBuy)
+	if !version.AtLeast(SDKVersion{3, 4, 0}) {
+		binary.Write(buf, binary.LittleEndian, packet.TryBeforeYouBuy)
+	}
 	binary.Write(buf, binary.LittleEndian, uint8(packet.ConnectionType))
 
 	var onNetworkNext uint8
 	onNetworkNext = 0
 	if packet.OnNetworkNext {
 		onNetworkNext = 1
+	}
+
+	if version.AtLeast(SDKVersion{3, 4, 0}) {
+		var committed uint8
+		committed = 0
+		if packet.Committed {
+			committed = 1
+		}
+		binary.Write(buf, binary.LittleEndian, committed)
 	}
 
 	binary.Write(buf, binary.LittleEndian, onNetworkNext)
