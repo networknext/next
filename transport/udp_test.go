@@ -826,7 +826,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 			},
 			ClientRoutePublicKey: clientPubKey[:],
 		}
-		packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData(transport.SDKVersionMin))
+		packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData(transport.SDKVersion{}))
 
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
@@ -845,6 +845,6 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 		assert.Equal(t, int32(routing.RouteTypeContinue), actual.RouteType)
 		assert.Equal(t, int32(5), actual.NumTokens)
 		assert.Equal(t, serverPubKey[:], actual.ServerRoutePublicKey)
-		assert.True(t, crypto.Verify(buyersServerPubKey, packet.GetSignData(transport.SDKVersionMin), packet.Signature))
+		assert.True(t, crypto.Verify(buyersServerPubKey, packet.GetSignData(transport.SDKVersion{}), packet.Signature))
 	})
 }
