@@ -16,10 +16,10 @@ type SessionUpdatePacket struct {
 	Flags                     uint32
 	Flagged                   bool
 	FallbackToDirect          bool
-	TryBeforeYouBuy           bool 		// IMPORTANT: removed in SDK 3.3.5
+	TryBeforeYouBuy           bool 		// IMPORTANT: removed in SDK 3.4.0
 	ConnectionType            int32
 	OnNetworkNext             bool
-	Committed                 bool      // IMPORTANT: added in SDK 3.3.5
+	Committed                 bool      // IMPORTANT: added in SDK 3.4.0
 	DirectMinRtt              float32
 	DirectMaxRtt              float32
 	DirectMeanRtt             float32
@@ -84,7 +84,7 @@ func (packet *SessionUpdatePacket) Serialize(stream Stream, versionMajor int32, 
 	}
 	stream.SerializeBool(&packet.Flagged)
 	stream.SerializeBool(&packet.FallbackToDirect)
-	if !ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 3, 3, 5) {
+	if !ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 3, 4, 0) {
 		stream.SerializeBool(&packet.TryBeforeYouBuy)
 	}
 	stream.SerializeInteger(&packet.ConnectionType, ConnectionTypeUnknown, ConnectionTypeCellular)
@@ -94,7 +94,7 @@ func (packet *SessionUpdatePacket) Serialize(stream Stream, versionMajor int32, 
 	stream.SerializeFloat32(&packet.DirectJitter)
 	stream.SerializeFloat32(&packet.DirectPacketLoss)
 	stream.SerializeBool(&packet.OnNetworkNext)
-	if ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 3, 3, 5) {
+	if ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 3, 4, 0) {
 		stream.SerializeBool(&packet.Committed)
 	}
 	if packet.OnNetworkNext {
@@ -161,7 +161,7 @@ func (packet *SessionUpdatePacket) GetSignData(versionMajor int32, versionMinor 
 	}
 	binary.Write(buf, binary.LittleEndian, packet.Flagged)
 	binary.Write(buf, binary.LittleEndian, packet.FallbackToDirect)
-	if !ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 3, 3, 5) {
+	if !ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 3, 4, 0) {
 		binary.Write(buf, binary.LittleEndian, packet.TryBeforeYouBuy)
 	}
 	binary.Write(buf, binary.LittleEndian, uint8(packet.ConnectionType))
@@ -173,7 +173,7 @@ func (packet *SessionUpdatePacket) GetSignData(versionMajor int32, versionMinor 
 	}
 	binary.Write(buf, binary.LittleEndian, onNetworkNext)
 
-	if ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 3, 3, 5) {
+	if ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 3, 4, 0) {
 		var committed uint8
 		committed = 0
 		if packet.Committed {
