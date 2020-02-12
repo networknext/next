@@ -271,7 +271,7 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream, version SDK
 	stream.SerializeBytes(packet.ClientRoutePublicKey)
 	stream.SerializeUint32(&packet.KbpsUp)
 	stream.SerializeUint32(&packet.KbpsDown)
-	if version.AtLeast(SDKVersionMin) {
+	if version.AtLeast(SDKVersion{3, 3, 2}) {
 		stream.SerializeUint64(&packet.PacketsLostClientToServer)
 		stream.SerializeUint64(&packet.PacketsLostServerToClient)
 	}
