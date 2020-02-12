@@ -131,48 +131,6 @@ func TestServerUpdatePacket(t *testing.T) {
 	})
 }
 
-func GetTestSessionUpdatePacket() transport.SessionUpdatePacket {
-	return transport.SessionUpdatePacket{
-		Sequence:                  1,
-		CustomerId:                2,
-		SessionId:                 3,
-		UserHash:                  4,
-		PlatformId:                5,
-		Tag:                       6,
-		Flags:                     7,
-		Flagged:                   true,
-		FallbackToDirect:          true,
-		TryBeforeYouBuy:           true,
-		ConnectionType:            1,
-		OnNetworkNext:             true,
-		Committed:                 true,
-		DirectMinRtt:              1.5,
-		DirectMaxRtt:              2.5,
-		DirectMeanRtt:             3.5,
-		DirectJitter:              4.5,
-		DirectPacketLoss:          5.5,
-		NextMinRtt:                6.5,
-		NextMaxRtt:                7.5,
-		NextMeanRtt:               8.5,
-		NextJitter:                9.5,
-		NextPacketLoss:            10.5,
-		NumNearRelays:             3,
-		NearRelayIds:              []uint64{1, 2, 3},
-		NearRelayMinRtt:           []float32{1.5, 2.5, 3.5},
-		NearRelayMaxRtt:           []float32{1.5, 2.5, 3.5},
-		NearRelayMeanRtt:          []float32{1.5, 2.5, 3.5},
-		NearRelayJitter:           []float32{1.5, 2.5, 3.5},
-		NearRelayPacketLoss:       []float32{1.5, 2.5, 3.5},
-		ClientAddress:             net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 2323},
-		ServerAddress:             net.UDPAddr{IP: net.ParseIP("10.0.0.1"), Port: 2323},
-		ClientRoutePublicKey:      make([]byte, crypto.KeySize),
-		KbpsUp:                    10,
-		KbpsDown:                  11,
-		PacketsLostClientToServer: 12,
-		PacketsLostServerToClient: 13,
-	}
-}
-
 // Added as temp solution to test since "func (packet *SessionUpdatePacket) MarshalBinary()" currently forces MinSDKVersion
 // Will need to figure out how we want to determine SDK version of session update packets properly and replace this with regular Marshal call
 func MarshalSessionUpdatePacket(packet *transport.SessionUpdatePacket, version transport.SDKVersion) ([]byte, error) {
@@ -203,6 +161,129 @@ var SessionUpdatePackets = []struct {
 	version transport.SDKVersion
 	packet  transport.SessionUpdatePacket
 }{
+	{
+		transport.SDKVersion{3, 3, 2}, transport.SessionUpdatePacket{
+			Sequence:   1,
+			CustomerId: 2,
+			SessionId:  3,
+			UserHash:   4,
+			PlatformId: 5,
+			Tag:        6,
+			//Flags:            7,
+			Flagged:          true,
+			FallbackToDirect: true,
+			TryBeforeYouBuy:  true,
+			ConnectionType:   1,
+			OnNetworkNext:    true,
+			//Committed:                 true,
+			DirectMinRtt:              1.5,
+			DirectMaxRtt:              2.5,
+			DirectMeanRtt:             3.5,
+			DirectJitter:              4.5,
+			DirectPacketLoss:          5.5,
+			NextMinRtt:                6.5,
+			NextMaxRtt:                7.5,
+			NextMeanRtt:               8.5,
+			NextJitter:                9.5,
+			NextPacketLoss:            10.5,
+			NumNearRelays:             3,
+			NearRelayIds:              []uint64{1, 2, 3},
+			NearRelayMinRtt:           []float32{1.5, 2.5, 3.5},
+			NearRelayMaxRtt:           []float32{1.5, 2.5, 3.5},
+			NearRelayMeanRtt:          []float32{1.5, 2.5, 3.5},
+			NearRelayJitter:           []float32{1.5, 2.5, 3.5},
+			NearRelayPacketLoss:       []float32{1.5, 2.5, 3.5},
+			ClientAddress:             net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 2323},
+			ServerAddress:             net.UDPAddr{IP: net.ParseIP("10.0.0.1"), Port: 2323},
+			ClientRoutePublicKey:      make([]byte, crypto.KeySize),
+			KbpsUp:                    10,
+			KbpsDown:                  11,
+			PacketsLostClientToServer: 12,
+			PacketsLostServerToClient: 13,
+		},
+	},
+	{
+		transport.SDKVersion{3, 3, 3}, transport.SessionUpdatePacket{
+			Sequence:   1,
+			CustomerId: 2,
+			SessionId:  3,
+			UserHash:   4,
+			PlatformId: 5,
+			Tag:        6,
+			//Flags:            7,
+			Flagged:          true,
+			FallbackToDirect: true,
+			TryBeforeYouBuy:  true,
+			ConnectionType:   1,
+			OnNetworkNext:    true,
+			//Committed:                 true,
+			DirectMinRtt:              1.5,
+			DirectMaxRtt:              2.5,
+			DirectMeanRtt:             3.5,
+			DirectJitter:              4.5,
+			DirectPacketLoss:          5.5,
+			NextMinRtt:                6.5,
+			NextMaxRtt:                7.5,
+			NextMeanRtt:               8.5,
+			NextJitter:                9.5,
+			NextPacketLoss:            10.5,
+			NumNearRelays:             3,
+			NearRelayIds:              []uint64{1, 2, 3},
+			NearRelayMinRtt:           []float32{1.5, 2.5, 3.5},
+			NearRelayMaxRtt:           []float32{1.5, 2.5, 3.5},
+			NearRelayMeanRtt:          []float32{1.5, 2.5, 3.5},
+			NearRelayJitter:           []float32{1.5, 2.5, 3.5},
+			NearRelayPacketLoss:       []float32{1.5, 2.5, 3.5},
+			ClientAddress:             net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 2323},
+			ServerAddress:             net.UDPAddr{IP: net.ParseIP("10.0.0.1"), Port: 2323},
+			ClientRoutePublicKey:      make([]byte, crypto.KeySize),
+			KbpsUp:                    10,
+			KbpsDown:                  11,
+			PacketsLostClientToServer: 12,
+			PacketsLostServerToClient: 13,
+		},
+	},
+	{
+		transport.SDKVersion{3, 3, 4}, transport.SessionUpdatePacket{
+			Sequence:         1,
+			CustomerId:       2,
+			SessionId:        3,
+			UserHash:         4,
+			PlatformId:       5,
+			Tag:              6,
+			Flags:            7,
+			Flagged:          true,
+			FallbackToDirect: true,
+			TryBeforeYouBuy:  true,
+			ConnectionType:   1,
+			OnNetworkNext:    true,
+			//Committed:                 true,
+			DirectMinRtt:              1.5,
+			DirectMaxRtt:              2.5,
+			DirectMeanRtt:             3.5,
+			DirectJitter:              4.5,
+			DirectPacketLoss:          5.5,
+			NextMinRtt:                6.5,
+			NextMaxRtt:                7.5,
+			NextMeanRtt:               8.5,
+			NextJitter:                9.5,
+			NextPacketLoss:            10.5,
+			NumNearRelays:             3,
+			NearRelayIds:              []uint64{1, 2, 3},
+			NearRelayMinRtt:           []float32{1.5, 2.5, 3.5},
+			NearRelayMaxRtt:           []float32{1.5, 2.5, 3.5},
+			NearRelayMeanRtt:          []float32{1.5, 2.5, 3.5},
+			NearRelayJitter:           []float32{1.5, 2.5, 3.5},
+			NearRelayPacketLoss:       []float32{1.5, 2.5, 3.5},
+			ClientAddress:             net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 2323},
+			ServerAddress:             net.UDPAddr{IP: net.ParseIP("10.0.0.1"), Port: 2323},
+			ClientRoutePublicKey:      make([]byte, crypto.KeySize),
+			KbpsUp:                    10,
+			KbpsDown:                  11,
+			PacketsLostClientToServer: 12,
+			PacketsLostServerToClient: 13,
+		},
+	},
 	{
 		transport.SDKVersion{3, 4, 0}, transport.SessionUpdatePacket{
 			Sequence:         1,
@@ -253,7 +334,6 @@ func TestSessionUpdatePacket(t *testing.T) {
 
 	for _, test := range SessionUpdatePackets {
 		t.Run(test.version.String(), func(t *testing.T) {
-
 			// Create a SessionUpdatePacket like the game server does
 			outgoing := test.packet
 
@@ -273,6 +353,7 @@ func TestSessionUpdatePacket(t *testing.T) {
 			verified := crypto.Verify(customerPublicKey[8:], incoming.GetSignData(test.version), incoming.Signature)
 			assert.True(t, verified)
 
+			// Make sure the data was preserved during serialization and deserialization
 			assert.EqualValues(t, outgoing, *incoming)
 		})
 	}
