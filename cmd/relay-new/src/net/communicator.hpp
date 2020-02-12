@@ -3,6 +3,7 @@
 
 #include "relay/relay.hpp"
 #include "util/throughput_logger.hpp"
+#include "util/thread_pool.hpp"
 
 namespace net
 {
@@ -20,6 +21,7 @@ namespace net
 
     std::unique_ptr<std::thread> mPingThread;
     std::unique_ptr<std::thread> mRecvThread;
+    std::unique_ptr<util::ThreadPool> mThreadPool;
 
     util::ThroughputLogger mLogger;
 

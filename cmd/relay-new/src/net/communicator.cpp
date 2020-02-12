@@ -18,15 +18,23 @@ namespace net
 {
   Communicator::Communicator(relay::relay_t& relay, volatile bool& handle): mRelay(relay), mHandle(handle)
   {
+    // TODO make this env var controlled maybe?
+    int numThreads = std::thread::hardware_concurrency();  // returns 0 if unable to detect
+    unsigned int numAvailableThreads =
+     (numThreads - THREADS_IN_USE > 0) ? numThreads : 1;  // at the very least, give one thread to the pool
+    mThreadPool = std::make_unique<util::ThreadPool>(numAvailableThreads);
     initPingThread();
     initRecvThread();
   }
 
-  Communicator::~Communicator() {
+  Communicator::~Communicator()
+  {
     mHandle = false;
     mPingThread->join();
     mRecvThread->join();
     mLogger.stop();
+    mThreadPool->terminate();
+    mThreadPool.reset();
   }
 
   void Communicator::initPingThread()

@@ -63,6 +63,8 @@
 
 #define INVALID_SEQUENCE_NUMBER 0xFFFFFFFFFFFFFFFFULL
 
+#define THREADS_IN_USE 3 // main thread, ping, & receive
+
 /* This will prevent GCC from optimizing out useless function calls, for benchmarking */
 #ifdef BENCH_BUILD
 #define GCC_NO_OPT_OUT asm("")
