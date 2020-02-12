@@ -29,11 +29,17 @@ func (a SDKVersion) Compare(b SDKVersion) int {
 		}
 
 		if a.Minor == b.Minor {
+			if a.Patch == b.Patch {
+				return SDKVersionEqual
+			}
+
 			if a.Patch > b.Patch {
 				return SDKVersionNewer
 			}
 
-			return SDKVersionEqual
+			if a.Patch < b.Patch {
+				return SDKVersionOlder
+			}
 		}
 	}
 
