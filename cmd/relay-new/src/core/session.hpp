@@ -1,9 +1,6 @@
 #ifndef CORE_SESSION_HPP
 #define CORE_SESSION_HPP
 
-#include <sodium.h>
-#include <cinttypes>
-
 #include "replay_protection.hpp"
 #include "net/address.hpp"
 

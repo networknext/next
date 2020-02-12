@@ -1,8 +1,6 @@
 #ifndef ENCODING_BIT_WRITER_HPP
 #define ENCODING_BIT_WRITER_HPP
 
-#include <cinttypes>
-
 namespace encoding
 {
   /**

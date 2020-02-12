@@ -1,7 +1,76 @@
 #include "includes.h"
-#include "relay_route_stats.hpp"
+#include "route_stats.hpp"
 
-namespace relay
+namespace core
+{
+  RouteStats::RouteStats(const core::PingHistory& ph, double start, double end, double safety): RTT(0), Jitter(0), PacketLoss(0)
+  {
+    // Packet loss calc
+    // and RTT calc
+
+    auto numPingsSent = 0u;
+    auto numPongsReceived = 0u;
+
+    auto meanRTT = 0.0;
+    auto numPings = 0;
+    auto numPongs = 0;
+
+    for (const auto& entry : ph.mEntries) {
+      if (entry.TimePingSent >= start) {
+        if (entry.TimePingSent <= end - safety) {
+          numPingsSent++;
+
+          if (entry.TimePongReceived >= entry.TimePingSent) {
+            numPongsReceived++;
+          }
+        }
+
+        if (entry.TimePingSent <= end) {
+          numPings++;
+
+          if (entry.TimePongReceived > entry.TimePingSent) {
+            meanRTT += 1000.0 * (entry.TimePongReceived - entry.TimePingSent);
+            numPongs++;
+          }
+        }
+      }
+    }
+
+    meanRTT = (numPongs > 0) ? (meanRTT / numPongs) : 10000.0;
+    assert(meanRTT >= 0.0);
+
+    if (numPingsSent > 0) {
+      const_cast<float&>(PacketLoss) = (float)(100.0 * (1.0 - (double(numPongsReceived) / double(numPingsSent))));
+    }
+
+    const_cast<float&>(RTT) = static_cast<float>(meanRTT);
+
+    // Jitter calc
+
+    auto numJitterSamples = 0u;
+    auto stdDevRTT = 0.0;
+
+    for (const auto& entry : ph.mEntries) {
+      if (entry.TimePingSent >= start && entry.TimePingSent <= end) {
+        if (entry.TimePongReceived > entry.TimePingSent) {
+          // pong received
+          double rtt = 1000.0 * (entry.TimePongReceived - entry.TimePingSent);
+          if (rtt >= meanRTT) {
+            double error = rtt - meanRTT;
+            stdDevRTT += error * error;
+            numJitterSamples++;
+          }
+        }
+      }
+    }
+
+    if (numJitterSamples > 0) {
+      const_cast<float&>(Jitter) = 3.0f * static_cast<float>(std::sqrt(stdDevRTT / numJitterSamples));
+    }
+  }
+}  // namespace core
+
+namespace legacy
 {
   void relay_route_stats_from_ping_history(
    const legacy::relay_ping_history_t* history, double start, double end, relay_route_stats_t* stats, double ping_safety)
@@ -84,4 +153,4 @@ namespace relay
       stats->jitter = 3.0f * (float)sqrt(stddev_rtt / num_jitter_samples);
     }
   }
-}  // namespace relay
+}  // namespace legacy

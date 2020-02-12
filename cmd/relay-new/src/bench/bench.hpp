@@ -1,10 +1,6 @@
 #ifndef BENCH_BENCH_HPP
 #define BENCH_BENCH_HPP
 
-#include <deque>
-#include <iostream>
-#include <cstddef>
-
 #include "util/clock.hpp"
 
 #define BENCH_BREAK "\n=============================================\n\n"
@@ -38,7 +34,7 @@
 
 #define Do(times) \
   Timer.reset();  \
-  for (size_t i = 0; i < times; i++)
+  for (size_t i = 0; i < (times); i++)
 
 // Just for readability
 #define Skip()                                          \
@@ -46,7 +42,7 @@
   std::cout << "Skipping the rest of this benchmark\n"; \
   return
 
-extern benchmarking::Clock Timer;
+extern util::Clock Timer;
 
 namespace benchmarking
 {

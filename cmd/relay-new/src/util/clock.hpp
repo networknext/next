@@ -1,7 +1,6 @@
 #pragma once
-#include <chrono>
 
-namespace benchmarking
+namespace util
 {
 #if defined _WIN32
   using Instant = std::chrono::steady_clock::time_point;
@@ -25,46 +24,40 @@ namespace benchmarking
 
     /* Get how much time as elasped since starting */
     template <typename UnitOfTime>
-    double elapsed();
+    auto elapsed() const -> double;
 
     /* Check if a time duration has passed */
     template <typename UnitOfTime>
-    inline bool elapsed(double value)
-    {
-      return std::chrono::duration_cast<UnitOfTime>(InternalClock::now() - mNow).count() >= value;
-    }
+    inline auto elapsed(double value) const -> bool;
 
    private:
     Instant mNow;
     size_t mDelta;
 
     template <typename T>
-    inline double diff()
-    {
-      return std::chrono::duration<double, T>(InternalClock::now() - mNow).count();
-    }
+    inline auto diff() const -> double;
   };
 
   template <>
-  inline double Clock::elapsed<Nanosecond>()
+  inline auto Clock::elapsed<Nanosecond>() const -> double
   {
     return diff<std::nano>();
   }
 
   template <>
-  inline double Clock::elapsed<Microsecond>()
+  inline auto Clock::elapsed<Microsecond>() const -> double
   {
     return diff<std::micro>();
   }
 
   template <>
-  inline double Clock::elapsed<Millisecond>()
+  inline auto Clock::elapsed<Millisecond>() const -> double
   {
     return diff<std::milli>();
   }
 
   template <>
-  inline double Clock::elapsed<Second>()
+  inline auto Clock::elapsed<Second>() const -> double
   {
     return diff<std::ratio<1>>();
   }
@@ -73,4 +66,16 @@ namespace benchmarking
   {
     mNow = InternalClock::now();
   }
-}  // namespace benchmarking
+
+  template <typename UnitOfTime>
+  inline auto Clock::elapsed(double value) const -> bool
+  {
+    return std::chrono::duration_cast<UnitOfTime>(InternalClock::now() - mNow).count() >= value;
+  }
+
+  template <typename T>
+  inline auto Clock::diff() const -> double
+  {
+    return std::chrono::duration<double, T>(InternalClock::now() - mNow).count();
+  }
+}  // namespace util

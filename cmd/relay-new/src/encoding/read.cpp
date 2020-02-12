@@ -1,6 +1,5 @@
+#include "includes.h"
 #include "read.hpp"
-
-#include <cstring>
 
 #include "config.hpp"
 

@@ -1,11 +1,6 @@
 #ifndef ENCODING_READ_HPP
 #define ENCODING_READ_HPP
 
-#include <cinttypes>
-#include <cstddef>
-#include <array>
-#include <cassert>
-
 #include "net/address.hpp"
 
 #include "config.hpp"

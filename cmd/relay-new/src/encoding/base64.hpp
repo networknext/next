@@ -1,9 +1,6 @@
 #ifndef ENCODING_BASE64_HPP
 #define ENCODING_BASE64_HPP
 
-#include <cstddef>
-#include <cinttypes>
-
 namespace encoding
 {
   int base64_encode_data(const uint8_t* input, size_t input_length, char* output, size_t output_size);

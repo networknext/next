@@ -1,8 +1,6 @@
+#include "includes.h"
 #include "bench/bench.hpp"
 #include "net/address.hpp"
-
-#include <algorithm>
-#include <cstring>
 
 // const auto REPS = 1;
 const auto REPS = 10000000;
@@ -19,7 +17,7 @@ Bench(RelayAddress_vs_relay_address_t_reset_to_0)
       addr.reset();
     }
 
-    auto elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+    auto elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
     std::cout << "reset() nanoseconds: " << elapsed << '\n';
   }
 
@@ -32,7 +30,7 @@ Bench(RelayAddress_vs_relay_address_t_reset_to_0)
       memset(&addr, 0, sizeof(legacy::relay_address_t));
     }
 
-    auto elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+    auto elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
     std::cout << "memset() nanoseconds: " << elapsed << '\n';
   }
 }
@@ -49,7 +47,7 @@ Bench(RelayAddress_vs_relay_address_t_address_parsing)
       object.parse(straddr);
     }
 
-    auto elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+    auto elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
     std::cout << "parse() nanoseconds: " << elapsed << '\n';
   }
 
@@ -62,7 +60,7 @@ Bench(RelayAddress_vs_relay_address_t_address_parsing)
       legacy::relay_address_parse(&structure, "127.0.0.1:20000");
     }
 
-    auto elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+    auto elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
     std::cout << "relay_address_parse() nanoseconds: " << elapsed << '\n';
   }
 }
@@ -82,7 +80,7 @@ Bench(Relay_vs_relay_address_t_stringify_ipv4)
       object.toString(str);
     }
 
-    auto object_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+    auto object_elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
     std::cout << "toString(string) nanoseconds: " << object_elapsed << '\n';
     std::cout << "Address: " << str << '\n';
   }
@@ -98,7 +96,7 @@ Bench(Relay_vs_relay_address_t_stringify_ipv4)
       legacy::relay_address_to_string(&structure, buffer);
     }
 
-    auto structure_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+    auto structure_elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
     std::cout << "relay_address_to_string() nanoseconds: " << structure_elapsed << '\n';
   }
 }
@@ -116,7 +114,7 @@ Bench(Relay_vs_relay_address_t_stringify_ipv6_with_braces)
     {
       object.toString(str);
     }
-    auto object_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+    auto object_elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
     std::cout << "toString() nanoseconds: " << object_elapsed << '\n';
   }
 
@@ -130,7 +128,7 @@ Bench(Relay_vs_relay_address_t_stringify_ipv6_with_braces)
       legacy::relay_address_to_string(&structure, buffer);
     }
 
-    auto structure_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+    auto structure_elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
     std::cout << "relay_address_to_string() nanoseconds: " << structure_elapsed << '\n';
   }
 }
@@ -149,7 +147,7 @@ Bench(Relay_vs_relay_address_t_stringify_ipv6_without_braces)
       object.toString(str);
     }
 
-    auto object_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+    auto object_elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
     std::cout << "toString() nanoseconds: " << object_elapsed << '\n';
   }
 
@@ -163,7 +161,7 @@ Bench(Relay_vs_relay_address_t_stringify_ipv6_without_braces)
       legacy::relay_address_to_string(&structure, buffer);
     }
 
-    auto structure_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+    auto structure_elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
     std::cout << "relay_address_to_string() nanoseconds: " << structure_elapsed << '\n';
   }
 }
@@ -182,7 +180,7 @@ Bench(Relay_vs_relay_address_t_stringify_invalid)
       object.toString(str);
     }
 
-    auto object_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+    auto object_elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
     std::cout << "toString() nanoseconds: " << object_elapsed << '\n';
   }
 
@@ -196,7 +194,7 @@ Bench(Relay_vs_relay_address_t_stringify_invalid)
       legacy::relay_address_to_string(&structure, buffer);
     }
 
-    auto structure_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+    auto structure_elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
     std::cout << "relay_address_to_string() nanoseconds: " << structure_elapsed << '\n';
   }
 }
@@ -215,7 +213,7 @@ Bench(Relay_vs_relay_address_t_equal_ipv4)
       a == b;
     }
 
-    auto object_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+    auto object_elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
     std::cout << "operator==() nanoseconds: " << object_elapsed << '\n';
   }
 
@@ -229,7 +227,7 @@ Bench(Relay_vs_relay_address_t_equal_ipv4)
       legacy::relay_address_equal(&a, &b);
     }
 
-    auto structure_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+    auto structure_elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
     std::cout << "relay_address_equal() nanoseconds: " << structure_elapsed << '\n';
   }
 }
@@ -248,7 +246,7 @@ Bench(Relay_vs_relay_address_t_equal_ipv6_with_braces)
       a == b;
     }
 
-    auto object_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+    auto object_elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
     std::cout << "operator==() nanoseconds: " << object_elapsed << '\n';
   }
 
@@ -262,7 +260,7 @@ Bench(Relay_vs_relay_address_t_equal_ipv6_with_braces)
       legacy::relay_address_equal(&a, &b);
     }
 
-    auto structure_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+    auto structure_elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
     std::cout << "relay_address_equal() nanoseconds: " << structure_elapsed << '\n';
   }
 }
@@ -281,7 +279,7 @@ Bench(Relay_vs_relay_address_t_equal_ipv6_without_braces)
       a == b;
     }
 
-    auto object_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+    auto object_elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
     std::cout << "operator==() nanoseconds: " << object_elapsed << '\n';
   }
 
@@ -295,7 +293,7 @@ Bench(Relay_vs_relay_address_t_equal_ipv6_without_braces)
       legacy::relay_address_equal(&a, &b);
     }
 
-    auto structure_elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+    auto structure_elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
     std::cout << "relay_address_equal() nanoseconds: " << structure_elapsed << '\n';
   }
 }

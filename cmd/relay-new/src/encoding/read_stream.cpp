@@ -1,6 +1,5 @@
+#include "includes.h"
 #include "read_stream.hpp"
-
-#include <cassert>
 
 #include "encoding/binary.hpp"
 

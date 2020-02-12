@@ -1,3 +1,4 @@
+#include "includes.h"
 #include "base_stream.hpp"
 
 namespace encoding

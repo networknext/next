@@ -1,8 +1,6 @@
 #ifndef ENCODING_WRITE_STREAM_HPP
 #define ENCODING_WRITE_STREAM_HPP
 
-#include <cinttypes>
-
 #include "base_stream.hpp"
 #include "bit_writer.hpp"
 

@@ -215,8 +215,7 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream, version SDK
 	stream.SerializeUint64(&packet.UserHash)
 	stream.SerializeUint64(&packet.PlatformId)
 	stream.SerializeUint64(&packet.Tag)
-	if version.Compare(SDKVersion{3, 3, 4}) == SDKVersionEqual ||
-		version.Compare(SDKVersion{3, 3, 4}) == SDKVersionNewer {
+	if version.AtLeast(SDKVersion{3, 3, 4}) {
 		stream.SerializeBits(&packet.Flags, FlagTotalCount)
 	}
 	stream.SerializeBool(&packet.Flagged)
@@ -262,8 +261,7 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream, version SDK
 	stream.SerializeBytes(packet.ClientRoutePublicKey)
 	stream.SerializeUint32(&packet.KbpsUp)
 	stream.SerializeUint32(&packet.KbpsDown)
-	if version.Compare(SDKVersionMin) == SDKVersionEqual ||
-		version.Compare(SDKVersionMin) == SDKVersionNewer {
+	if version.AtLeast(SDKVersionMin) {
 		stream.SerializeUint64(&packet.PacketsLostClientToServer)
 		stream.SerializeUint64(&packet.PacketsLostServerToClient)
 	}
@@ -289,9 +287,7 @@ func (packet *SessionUpdatePacket) GetSignData(version SDKVersion) []byte {
 	binary.Write(buf, binary.LittleEndian, packet.PlatformId)
 	binary.Write(buf, binary.LittleEndian, packet.Tag)
 
-	if version.IsInternal() ||
-		version.Compare(SDKVersion{3, 3, 4}) == SDKVersionEqual ||
-		version.Compare(SDKVersion{3, 3, 4}) == SDKVersionNewer {
+	if version.IsInternal() || version.AtLeast(SDKVersion{3, 3, 4}) {
 		binary.Write(buf, binary.LittleEndian, packet.Flags)
 	}
 	binary.Write(buf, binary.LittleEndian, packet.Flagged)
@@ -341,9 +337,7 @@ func (packet *SessionUpdatePacket) GetSignData(version SDKVersion) []byte {
 	binary.Write(buf, binary.LittleEndian, packet.KbpsUp)
 	binary.Write(buf, binary.LittleEndian, packet.KbpsDown)
 
-	if version.IsInternal() ||
-		version.Compare(SDKVersion{3, 3, 4}) == SDKVersionEqual ||
-		version.Compare(SDKVersion{3, 3, 4}) == SDKVersionNewer {
+	if version.IsInternal() || version.AtLeast(SDKVersion{3, 3, 4}) {
 		binary.Write(buf, binary.LittleEndian, packet.PacketsLostClientToServer)
 		binary.Write(buf, binary.LittleEndian, packet.PacketsLostServerToClient)
 	}
@@ -404,18 +398,17 @@ func (packet *SessionResponsePacket) Serialize(stream encoding.Stream, version S
 		stream.SerializeUint64(&packet.NearRelayIds[i])
 		stream.SerializeAddress(&packet.NearRelayAddresses[i])
 	}
-	stream.SerializeInteger(&packet.RouteType, 0, routing.DecisionTypeContinue)
-	if packet.RouteType != routing.DecisionTypeDirect {
+	stream.SerializeInteger(&packet.RouteType, 0, routing.RouteTypeContinue)
+	if packet.RouteType != routing.RouteTypeDirect {
 		stream.SerializeBool(&packet.Multipath)
 		stream.SerializeInteger(&packet.NumTokens, 0, MaxTokens)
 	}
-	if stream.IsReading() {
+	if packet.RouteType == routing.RouteTypeNew {
 		packet.Tokens = make([]byte, packet.NumTokens*routing.EncryptedNextRouteTokenSize)
-	}
-	if packet.RouteType == routing.DecisionTypeNew {
 		stream.SerializeBytes(packet.Tokens)
 	}
-	if packet.RouteType == routing.DecisionTypeContinue {
+	if packet.RouteType == routing.RouteTypeContinue {
+		packet.Tokens = make([]byte, packet.NumTokens*routing.EncryptedContinueRouteTokenSize)
 		stream.SerializeBytes(packet.Tokens)
 	}
 	if stream.IsReading() {
@@ -441,7 +434,7 @@ func (packet *SessionResponsePacket) GetSignData() []byte {
 		binary.Write(buf, binary.LittleEndian, address)
 	}
 	binary.Write(buf, binary.LittleEndian, uint8(packet.RouteType))
-	if packet.RouteType != routing.DecisionTypeDirect {
+	if packet.RouteType != routing.RouteTypeDirect {
 		if packet.Multipath {
 			binary.Write(buf, binary.LittleEndian, uint8(1))
 		} else {
@@ -449,10 +442,10 @@ func (packet *SessionResponsePacket) GetSignData() []byte {
 		}
 		binary.Write(buf, binary.LittleEndian, uint8(packet.NumTokens))
 	}
-	if packet.RouteType == routing.DecisionTypeNew {
+	if packet.RouteType == routing.RouteTypeNew {
 		binary.Write(buf, binary.LittleEndian, packet.Tokens)
 	}
-	if packet.RouteType == routing.DecisionTypeContinue {
+	if packet.RouteType == routing.RouteTypeContinue {
 		binary.Write(buf, binary.LittleEndian, packet.Tokens)
 	}
 	binary.Write(buf, binary.LittleEndian, packet.ServerRoutePublicKey)
