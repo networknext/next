@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	DecisionTypeDirect   = 0
-	DecisionTypeNew      = 1
-	DecisionTypeContinue = 2
+	RouteTypeDirect   = 0
+	RouteTypeNew      = 1
+	RouteTypeContinue = 2
 
 	NextRouteTokenSize          = 101
 	EncryptedNextRouteTokenSize = NextRouteTokenSize + crypto.MACSize
@@ -85,7 +85,7 @@ type ContinueRouteToken struct {
 }
 
 func (r *ContinueRouteToken) Type() int {
-	return DecisionTypeContinue
+	return RouteTypeContinue
 }
 
 func (r *ContinueRouteToken) Encrypt(privateKey []byte) ([]byte, int, error) {
@@ -166,7 +166,7 @@ type NextRouteToken struct {
 }
 
 func (r *NextRouteToken) Type() int {
-	return DecisionTypeNew
+	return RouteTypeNew
 }
 
 func (r *NextRouteToken) Encrypt(privateKey []byte) ([]byte, int, error) {
