@@ -1,8 +1,6 @@
 #ifndef UTIL_NET_H
 #define UTIL_NET_H
 
-#include <cinttypes>
-
 #include "sysinfo.hpp"
 #include "encoding/binary.hpp"
 

@@ -3,17 +3,7 @@
  * Copyright © 2017 - 2020 Network Next, Inc. All rights reserved.
  */
 
-#include <cassert>
-#include <string.h>
-#include <stdio.h>
-#include <cinttypes>
-#include <stdarg.h>
-#include <sodium.h>
-#include <math.h>
-#include <map>
-#include <float.h>
-#include <signal.h>
-#include <curl/curl.h>
+#include "includes.h"
 
 #include "sysinfo.hpp"
 #include "config.hpp"
@@ -39,7 +29,7 @@
 namespace
 {
   volatile uint64_t quit = 0;
-
+	
   void interrupt_handler(int signal)
   {
     (void)signal;
@@ -341,7 +331,7 @@ namespace
       relay::relay_platform_mutex_acquire(relay->mutex);
 
       if (relay->relays_dirty) {
-        relay::relay_manager_update(relay->relay_manager, relay->num_relays, relay->relay_ids, relay->relay_addresses);
+        legacy::relay_manager_update(relay->relay_manager, relay->num_relays, relay->relay_ids, relay->relay_addresses);
         relay->relays_dirty = false;
       }
 
@@ -545,7 +535,7 @@ int main(int argc, const char** argv)
     quit = 1;
   }
 
-  relay.relay_manager = relay::relay_manager_create();
+  relay.relay_manager = legacy::relay_manager_create();
   if (!relay.relay_manager) {
     printf("\nerror: could not create relay manager\n\n");
     quit = 1;

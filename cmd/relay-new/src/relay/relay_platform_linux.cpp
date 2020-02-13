@@ -2,31 +2,10 @@
     Network Next Relay.
     Copyright © 2017 - 2020 Network Next, Inc. All rights reserved.
 */
-
+#include "includes.h"
 #include "relay_platform_linux.hpp"
 
 #if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
-
-#include <cassert>
-#include <netdb.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <ifaddrs.h>
-#include <fcntl.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <errno.h>
-#include <unistd.h>
-#include <linux/netlink.h>
-#include <linux/rtnetlink.h>
-#include <sys/ioctl.h>
-#include <linux/wireless.h>
-#include <string.h>
-#include <stdlib.h>
-#include <math.h>
-#include <alloca.h>
-#include <sched.h>
 
 #include "config.hpp"
 #include "util.hpp"

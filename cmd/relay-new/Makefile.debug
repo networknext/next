@@ -1,0 +1,47 @@
+include Makefile.common
+
+############
+### Vars ###
+############
+
+EXE										:= relay.debug
+
+SRC_OBJ_FILES					:= $(patsubst $(SRC)/%.cpp, $(OBJ)/%.dbg.o, $(SRC_FILES))
+SRC_DEP_FILES					:= $(patsubst $(SRC)/%.cpp, $(OBJ)/%.dbg.d, $(SRC_FILES))
+
+COMMON_FLAGS 					:= $(CXX) $(CXX_FLAGS) $(CXX_DBG_FLAGS)
+COMMON_COMPILE_FLAGS 	:= $(COMMON_FLAGS) -c
+
+################
+### Targets  ###
+################
+
+.PHONY: all
+all:  $(BIN)/$(EXE)
+
+.PHONY: run
+run: $(BIN)/$(EXE)
+	@$<
+
+.PHONY: clean
+clean: 
+	@rm -f $(BIN)/$(EXE) $(SRC_OBJ_FILES) $(SRC_DEP_FILES) $(GCH)
+
+##############
+### Builds ###
+##############
+
+# precompiled header
+$(GCH): $(PCH) Makefile
+	$(COMMON_COMPILE_FLAGS) -o $@ -x c++-header $<
+
+# all object files
+$(OBJ)/%.dbg.o: $(SRC)/%.cpp $(GCH)
+	$(COMMON_COMPILE_FLAGS) -o $@ $(INCLUDE_DIRS) -MMD -MP $<
+
+# the executable
+$(BIN)/$(EXE): $(SRC_OBJ_FILES)
+	$(COMMON_FLAGS) -o $@ $^ $(LIBRARIES)
+
+-include $(SRC_DEP_FILES)
+

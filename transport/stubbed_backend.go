@@ -12,7 +12,7 @@ type StubbedBackend struct {
 	mode            int
 	relayDatabase   map[string]routing.Relay
 	serverDatabase  map[string]ServerCacheEntry
-	sessionDatabase map[uint64]SessionEntry
+	sessionDatabase map[uint64]SessionCacheEntry
 	statsDatabase   *routing.StatsDatabase
 	costMatrix      *routing.CostMatrix
 	costMatrixData  []byte
@@ -25,7 +25,7 @@ func NewStubbedBackend() *StubbedBackend {
 	backend := new(StubbedBackend)
 	backend.relayDatabase = make(map[string]routing.Relay)
 	backend.serverDatabase = make(map[string]ServerCacheEntry)
-	backend.sessionDatabase = make(map[uint64]SessionEntry)
+	backend.sessionDatabase = make(map[uint64]SessionCacheEntry)
 	backend.statsDatabase = new(routing.StatsDatabase)
 	backend.costMatrix = new(routing.CostMatrix)
 	backend.routeMatrix = new(routing.RouteMatrix)

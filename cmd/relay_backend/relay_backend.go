@@ -53,16 +53,22 @@ func main() {
 		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
 	}
 
+	var customerPublicKey []byte
+	{
+		if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
+			customerPublicKey, _ = base64.StdEncoding.DecodeString(key)
+		}
+	}
+
 	var relayPublicKey []byte
-	var routerPrivateKey []byte
 	{
 		if key := os.Getenv("RELAY_PUBLIC_KEY"); len(key) != 0 {
 			relayPublicKey, _ = base64.StdEncoding.DecodeString(key)
-		} else {
-			level.Error(logger).Log("err", "RELAY_PUBLIC_KEY not set")
-			os.Exit(1)
 		}
+	}
 
+	var routerPrivateKey []byte
+	{
 		if key := os.Getenv("RELAY_ROUTER_PRIVATE_KEY"); len(key) != 0 {
 			routerPrivateKey, _ = base64.StdEncoding.DecodeString(key)
 		} else {
@@ -90,13 +96,16 @@ func main() {
 	// Create an in-memory relay & datacenter store
 	// that doesn't require talking to configstore
 	inMemory := storage.InMemory{
-		LocalDatacenter: true,
+		LocalCustomerPublicKey: customerPublicKey,
+		LocalRelayPublicKey:    relayPublicKey,
+		LocalDatacenter:        true,
 	}
 
 	if filename, ok := os.LookupEnv("RELAYS_STUBBED_DATA_FILENAME"); ok {
 		type relays struct {
 			routing.Location
 			DatacenterName string
+			PublicKey      []byte
 		}
 		relaydata := make(map[string]relays)
 
@@ -110,8 +119,10 @@ func main() {
 		}
 
 		inMemory.RelayDatacenterNames = make(map[uint32]string)
+		inMemory.RelayPublicKeys = make(map[uint32][]byte)
 		for ip, relay := range relaydata {
 			inMemory.RelayDatacenterNames[uint32(crypto.HashID(ip))] = relay.DatacenterName
+			inMemory.RelayPublicKeys[uint32(crypto.HashID(ip))] = relay.PublicKey
 		}
 
 		ipLocator = routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
@@ -183,7 +194,7 @@ func main() {
 		}
 	}()
 
-	router := transport.NewRouter(logger, redisClient, &geoClient, ipLocator, relayProvider, datacenterProvider, statsdb, &costmatrix, &routematrix, relayPublicKey, routerPrivateKey)
+	router := transport.NewRouter(logger, redisClient, &geoClient, ipLocator, relayProvider, datacenterProvider, statsdb, &costmatrix, &routematrix, routerPrivateKey)
 
 	go func() {
 		level.Info(logger).Log("addr", ":30000")

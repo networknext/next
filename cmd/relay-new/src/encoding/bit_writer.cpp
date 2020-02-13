@@ -1,7 +1,5 @@
+#include "includes.h"
 #include "bit_writer.hpp"
-
-#include <cassert>
-#include <string.h>
 
 #include "net/net.hpp"
 
