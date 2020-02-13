@@ -303,12 +303,8 @@ func main() {
 		MaxPacketSize: transport.DefaultMaxPacketSize,
 
 		ServerUpdateHandlerFunc: func(w io.Writer, incoming *transport.UDPPacket) {
-
-			readStream := core.CreateReadStream(incoming.Data)
-
 			serverUpdate := &transport.ServerUpdatePacket{}
-
-			if err := serverUpdate.Serialize(readStream); err != nil {
+			if err = serverUpdate.UnmarshalBinary(incoming.Data); err != nil {
 				fmt.Printf("error: failed to read server update packet: %v\n", err)
 				return
 			}
@@ -330,10 +326,8 @@ func main() {
 		},
 
 		SessionUpdateHandlerFunc: func(w io.Writer, incoming *transport.UDPPacket) {
-
-			readStream := core.CreateReadStream(incoming.Data)
 			sessionUpdate := &transport.SessionUpdatePacket{}
-			if err := sessionUpdate.Serialize(readStream); err != nil {
+			if err = sessionUpdate.UnmarshalBinary(incoming.Data); err != nil {
 				fmt.Printf("error: failed to read server session update packet: %v\n", err)
 				return
 			}
@@ -524,19 +518,11 @@ func main() {
 
 			sessionResponse.Signature = crypto.Sign(core.BackendPrivateKey, sessionResponse.GetSignData())
 
-			writeStream, err := core.CreateWriteStream(NEXT_MAX_PACKET_BYTES)
+			responsePacketData, err := sessionResponse.MarshalBinary()
 			if err != nil {
 				fmt.Printf("error: failed to write session response packet: %v\n", err)
 				return
 			}
-
-			if err := sessionResponse.Serialize(writeStream); err != nil {
-				fmt.Printf("error: failed to write session response packet: %v\n", err)
-				return
-			}
-			writeStream.Flush()
-
-			responsePacketData := writeStream.GetData()[0:writeStream.GetBytesProcessed()]
 
 			_, err = w.Write(responsePacketData)
 			if err != nil {
