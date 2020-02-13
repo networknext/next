@@ -6,7 +6,6 @@ import (
 	"net"
 	"testing"
 
-	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/transport"
@@ -74,7 +73,7 @@ func TestServerUpdatePacket(t *testing.T) {
 		// Sign the packet and set it to the signature
 		// using the customer's private key that is on
 		// their game server
-		outgoing.Signature = core.CryptoSignCreate(outgoing.GetSignData(), customerPrivateKey[8:])
+		outgoing.Signature = crypto.Sign(customerPrivateKey[8:], outgoing.GetSignData())
 
 		// Marshal the whole packet to binary to send it over the network
 		data, err := outgoing.MarshalBinary()
@@ -87,7 +86,7 @@ func TestServerUpdatePacket(t *testing.T) {
 
 		// Verify the incoming packet's signed data with the signature
 		// with the customer's public key we would get from configstore
-		verified := core.CryptoSignVerify(incoming.GetSignData(), incoming.Signature, customerPublicKey[8:])
+		verified := crypto.Verify(customerPublicKey[8:], incoming.GetSignData(), incoming.Signature)
 		assert.True(t, verified)
 	})
 
