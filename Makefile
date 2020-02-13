@@ -126,7 +126,7 @@ export GOOGLE_CLOUD_METRICS_PROJECT = network-next-local
 endif
 
 ifndef GOOGLE_APPLICATION_CREDENTIALS
-export GOOGLE_APPLICATION_CREDENTIALS = testdata/network-next-local.json
+export GOOGLE_APPLICATION_CREDENTIALS = ./../testdata/network-next-local.json
 endif
 
 .PHONY: help

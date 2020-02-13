@@ -13,7 +13,6 @@ import (
 	metadataapi "cloud.google.com/go/compute/metadata"
 	monitoring "cloud.google.com/go/monitoring/apiv3"
 	googlepb "github.com/golang/protobuf/ptypes/timestamp"
-	"google.golang.org/api/option"
 	"google.golang.org/genproto/googleapis/api/metric"
 	metricpb "google.golang.org/genproto/googleapis/api/metric"
 	monitoredrespb "google.golang.org/genproto/googleapis/api/monitoredres"
@@ -80,7 +79,7 @@ func NewStackDriverMetricHandler() (*StackDriverMetricHandler, error) {
 
 	// Create a Stackdriver metrics client
 	var err error
-	metricHandler.client, err = monitoring.NewMetricClient(ctx, option.WithCredentialsFile("/home/ryanj/backend/testdata/network-next-local.json"))
+	metricHandler.client, err = monitoring.NewMetricClient(ctx)
 	if err != nil {
 		return nil, err
 	}
