@@ -14,6 +14,7 @@ type SessionResponsePacket struct {
 	NearRelayAddresses   []net.UDPAddr
 	RouteType            int32
 	Multipath            bool
+	Committed            bool   // IMPORTANT: Added in SDK 3.4.0
 	NumTokens            int32
 	Tokens               []byte
 	ServerRoutePublicKey []byte
@@ -60,6 +61,9 @@ func (packet *SessionResponsePacket) Serialize(stream Stream, versionMajor int32
 	stream.SerializeInteger(&packet.RouteType, 0, NEXT_UPDATE_TYPE_CONTINUE)
 	if packet.RouteType != NEXT_UPDATE_TYPE_DIRECT {
 		stream.SerializeBool(&packet.Multipath)
+		if ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 3, 4, 0) {
+			stream.SerializeBool(&packet.Committed)
+		}
 		stream.SerializeInteger(&packet.NumTokens, 0, NEXT_MAX_TOKENS)
 	}
 	if packet.RouteType == NEXT_UPDATE_TYPE_ROUTE {
@@ -95,6 +99,13 @@ func (packet *SessionResponsePacket) Sign(versionMajor int32, versionMinor int32
 			binary.Write(buf, binary.LittleEndian, uint8(1))
 		} else {
 			binary.Write(buf, binary.LittleEndian, uint8(0))
+		}
+		if ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 3, 4, 0) {
+			if packet.Committed {
+				binary.Write(buf, binary.LittleEndian, uint8(1))
+			} else {
+				binary.Write(buf, binary.LittleEndian, uint8(0))
+			}
 		}
 		binary.Write(buf, binary.LittleEndian, uint8(packet.NumTokens))
 	}

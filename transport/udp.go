@@ -112,13 +112,12 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, bp Bu
 		locallogger := log.With(logger, "src_addr", incoming.SourceAddr.String(), "server_addr", packet.ServerAddress.String())
 
 		// Drop the packet if version is older that the minimun sdk version
-		psdkv := SDKVersion{packet.VersionMajor, packet.VersionMinor, packet.VersionPatch}
-		if !incoming.SourceAddr.IP.IsLoopback() && !psdkv.AtLeast(SDKVersionMin) {
-			level.Error(locallogger).Log("msg", "sdk version is too old", "sdk", psdkv.String())
+		if !incoming.SourceAddr.IP.IsLoopback() && !packet.Version.AtLeast(SDKVersionMin) {
+			level.Error(locallogger).Log("msg", "sdk version is too old", "sdk", packet.Version.String())
 			return
 		}
 
-		locallogger = log.With(locallogger, "sdk", psdkv.String())
+		locallogger = log.With(locallogger, "sdk", packet.Version.String())
 
 		// Get the buyer information for the id in the packet
 		buyer, ok := bp.GetAndCheckBySdkVersion3PublicKeyId(packet.CustomerId)
@@ -180,7 +179,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, bp Bu
 			Sequence:   packet.Sequence,
 			Server:     routing.Server{Addr: packet.ServerPrivateAddress, PublicKey: packet.ServerRoutePublicKey},
 			Datacenter: routing.Datacenter{ID: packet.DatacenterId},
-			SDKVersion: SDKVersion{packet.VersionMajor, packet.VersionMinor, packet.VersionPatch},
+			SDKVersion: packet.Version,
 		}
 		result := redisClient.Set("SERVER-"+incoming.SourceAddr.String(), serverentry, 5*time.Minute)
 		if result.Err() != nil {
@@ -272,7 +271,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, bp B
 		locallogger = log.With(locallogger, "customer_id", packet.CustomerId)
 
 		buyerServerPublicKey := buyer.SdkVersion3PublicKeyData
-		if !crypto.Verify(buyerServerPublicKey, packet.GetSignData(serverCacheEntry.SDKVersion), packet.Signature) {
+		if !crypto.Verify(buyerServerPublicKey, packet.GetSignData(), packet.Signature) {
 			level.Error(locallogger).Log("msg", "signature verification failed")
 			return
 		}
