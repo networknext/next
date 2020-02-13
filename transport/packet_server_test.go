@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/transport"
 	"github.com/stretchr/testify/assert"
 )
@@ -309,6 +310,94 @@ func TestSessionUpdatePacket(t *testing.T) {
 
 			// Unmarshal the data from binary like the server backend receives it
 			var newpacket transport.SessionUpdatePacket
+			newpacket.Version = packet.Version
+
+			err = newpacket.UnmarshalBinary(data)
+			assert.NoError(t, err)
+
+			// Verify the incoming packet's signed data with the signature
+			// with the customer's public key we would get from configstore
+			verified := crypto.Verify(customerPublicKey[8:], newpacket.GetSignData(), newpacket.Signature)
+			assert.True(t, verified)
+
+			// Make sure the data was preserved during serialization and deserialization
+			assert.EqualValues(t, packet, newpacket)
+		})
+	}
+}
+
+func TestSessionResponsePacket(t *testing.T) {
+
+	customerPublicKey, _ := base64.StdEncoding.DecodeString("leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==")
+	customerPrivateKey, _ := base64.StdEncoding.DecodeString("leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn")
+
+	SessionResponsePackets := []transport.SessionResponsePacket{
+		{
+			Version:       transport.SDKVersion{3, 4, 0},
+			Sequence:      1,
+			SessionId:     2,
+			NumNearRelays: 3,
+			NearRelayIds:  []uint64{1, 2, 3},
+			NearRelayAddresses: []net.UDPAddr{
+				net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 1000},
+				net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 2000},
+				net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 3000},
+			},
+			RouteType:            routing.RouteTypeDirect,
+			Multipath:            false,
+			Committed:            false,
+			NumTokens:            0,
+			Tokens:               nil,
+			ServerRoutePublicKey: make([]byte, ed25519.PublicKeySize),
+		},
+		{
+			Version:       transport.SDKVersion{3, 4, 0},
+			Sequence:      1,
+			SessionId:     2,
+			NumNearRelays: 3,
+			NearRelayIds:  []uint64{1, 2, 3},
+			NearRelayAddresses: []net.UDPAddr{
+				net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 1000},
+				net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 2000},
+				net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 3000},
+			},
+			RouteType:            routing.RouteTypeNew,
+			Multipath:            true,
+			Committed:            true,
+			NumTokens:            3,
+			Tokens:               make([]byte, routing.EncryptedNextRouteTokenSize*3),
+			ServerRoutePublicKey: make([]byte, ed25519.PublicKeySize),
+		},
+		{
+			Version:       transport.SDKVersion{3, 4, 0},
+			Sequence:      1,
+			SessionId:     2,
+			NumNearRelays: 3,
+			NearRelayIds:  []uint64{1, 2, 3},
+			NearRelayAddresses: []net.UDPAddr{
+				net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 1000},
+				net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 2000},
+				net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 3000},
+			},
+			RouteType:            routing.RouteTypeContinue,
+			Multipath:            true,
+			Committed:            true,
+			NumTokens:            3,
+			Tokens:               make([]byte, routing.EncryptedContinueRouteTokenSize*3),
+			ServerRoutePublicKey: make([]byte, ed25519.PublicKeySize),
+		}}
+
+	for _, packet := range SessionResponsePackets {
+		t.Run(packet.Version.String(), func(t *testing.T) {
+			// Sign the packet
+			packet.Signature = crypto.Sign(customerPrivateKey[8:], packet.GetSignData())
+
+			// Marshal the whole packet to binary to send it over the network
+			data, err := packet.MarshalBinary()
+			assert.NoError(t, err)
+
+			// Unmarshal the data from binary like the server backend receives it
+			var newpacket transport.SessionResponsePacket
 			newpacket.Version = packet.Version
 
 			err = newpacket.UnmarshalBinary(data)
