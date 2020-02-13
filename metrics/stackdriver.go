@@ -173,7 +173,7 @@ func NewStackDriverMetricHandler() (*StackDriverMetricHandler, error) {
 	return metricHandler, nil
 }
 
-// CreateMetric creates the metric on StackDriver using the given metric descriptor. If the metric descriptor already exists, overwrite it.
+// CreateMetric creates the metric on StackDriver using the given metric descriptor.
 func (metricHandler *StackDriverMetricHandler) CreateMetric(metricDescriptor *MetricDescriptor, gauge *generic.Gauge) (Metric, error) {
 	_, err := metricHandler.client.CreateMetricDescriptor(context.Background(), &monitoringpb.CreateMetricDescriptorRequest{
 		Name: monitoring.MetricProjectPath(metricHandler.projectID),
