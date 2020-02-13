@@ -1,5 +1,11 @@
 #ifndef UTIL_THROUGHPUT_LOGGER_HPP
 #define UTIL_THROUGHPUT_LOGGER_HPP
+#include <chrono>
+#include <atomic>
+#include <thread>
+#include <mutex>
+#include <iostream>
+#include <memory>
 
 using namespace std::chrono_literals;
 

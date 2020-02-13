@@ -15,6 +15,7 @@
 #include <float.h>
 #include <signal.h>
 #include "curl/curl.h"
+#include "throughput_logger.hpp"
 
 #define RELAY_MTU                                               1300
 
@@ -124,6 +125,10 @@ relay_mutex_helper_t::~relay_mutex_helper_t()
     assert( mutex );
     relay_platform_mutex_release( mutex );
     mutex = NULL;
+}
+
+namespace {
+	std::unique_ptr<util::ThroughputLogger> gLogger;
 }
 
 // -----------------------------------------------------------------------------
@@ -4768,6 +4773,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
         const int packet_bytes = relay_platform_socket_receive_packet( relay->socket, &from, packet_data, sizeof(packet_data) );
         if ( packet_bytes == 0 )
             continue;
+				gLogger->addToTotal(packet_bytes);
         if ( packet_data[0] == RELAY_PING_PACKET && packet_bytes == 9 )
         {
             packet_data[0] = RELAY_PONG_PACKET;
@@ -5143,6 +5149,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
 
 int main( int argc, const char ** argv )
 {
+		gLogger = std::make_unique<util::ThroughputLogger>();
+
     if ( argc == 2 && strcmp( argv[1], "test" ) == 0 )
     {
         relay_test();
