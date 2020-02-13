@@ -76,9 +76,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 
 			DatacenterId: 13,
 
-			VersionMajor: 1,
-			VersionMinor: 2,
-			VersionPatch: 3,
+			Version: transport.SDKVersion{1, 2, 3},
 
 			Signature: make([]byte, ed25519.SignatureSize),
 		}
@@ -112,9 +110,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 
 			DatacenterId: 13,
 
-			VersionMajor: transport.SDKVersionMin.Major,
-			VersionMinor: transport.SDKVersionMin.Minor,
-			VersionPatch: transport.SDKVersionMin.Patch,
+			Version: transport.SDKVersionMin,
 
 			Signature: make([]byte, ed25519.SignatureSize),
 		}
@@ -154,9 +150,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 
 			DatacenterId: 13,
 
-			VersionMajor: transport.SDKVersionMin.Major,
-			VersionMinor: transport.SDKVersionMin.Minor,
-			VersionPatch: transport.SDKVersionMin.Patch,
+			Version: transport.SDKVersionMin,
 
 			Signature: make([]byte, ed25519.SignatureSize),
 		}
@@ -197,9 +191,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 
 			DatacenterId: 13,
 
-			VersionMajor: transport.SDKVersionMin.Major,
-			VersionMinor: transport.SDKVersionMin.Minor,
-			VersionPatch: transport.SDKVersionMin.Patch,
+			Version: transport.SDKVersionMin,
 		}
 		packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData())
 
@@ -253,9 +245,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 
 			DatacenterId: 13,
 
-			VersionMajor: transport.SDKVersionMin.Major,
-			VersionMinor: transport.SDKVersionMin.Minor,
-			VersionPatch: transport.SDKVersionMin.Patch,
+			Version: transport.SDKVersionMin,
 		}
 		packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData())
 
@@ -289,7 +279,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 			Sequence:   13,
 			Server:     routing.Server{Addr: *addr, PublicKey: packet.ServerRoutePublicKey},
 			Datacenter: routing.Datacenter{ID: packet.DatacenterId},
-			SDKVersion: transport.SDKVersion{packet.VersionMajor, packet.VersionMinor, packet.VersionPatch},
+			SDKVersion: packet.Version,
 		}
 
 		// Unmarshal the data in redis to the actual ServerEntry saved
@@ -399,7 +389,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 
 			Signature: make([]byte, ed25519.SignatureSize),
 		}
-		packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData(transport.SDKVersionMin))
+		packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData())
 
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
@@ -459,7 +449,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 
 			Signature: make([]byte, ed25519.SignatureSize),
 		}
-		packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData(transport.SDKVersionMin))
+		packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData())
 
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
@@ -523,7 +513,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 
 			Signature: make([]byte, ed25519.SignatureSize),
 		}
-		packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData(transport.SDKVersionMin))
+		packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData())
 
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
@@ -601,7 +591,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 
 			Signature: make([]byte, ed25519.SignatureSize),
 		}
-		packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData(transport.SDKVersionMin))
+		packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData())
 
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
@@ -710,7 +700,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 			},
 			ClientRoutePublicKey: clientPubKey[:],
 		}
-		packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData(transport.SDKVersionMin))
+		packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData())
 
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
@@ -826,7 +816,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 			},
 			ClientRoutePublicKey: clientPubKey[:],
 		}
-		packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData(transport.SDKVersionMin))
+		packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData())
 
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
@@ -845,6 +835,6 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 		assert.Equal(t, int32(routing.RouteTypeContinue), actual.RouteType)
 		assert.Equal(t, int32(5), actual.NumTokens)
 		assert.Equal(t, serverPubKey[:], actual.ServerRoutePublicKey)
-		assert.True(t, crypto.Verify(buyersServerPubKey, packet.GetSignData(transport.SDKVersionMin), packet.Signature))
+		assert.True(t, crypto.Verify(buyersServerPubKey, packet.GetSignData(), packet.Signature))
 	})
 }

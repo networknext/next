@@ -16,9 +16,10 @@ type SessionUpdatePacket struct {
 	Flags                     uint32
 	Flagged                   bool
 	FallbackToDirect          bool
-	TryBeforeYouBuy           bool
+	TryBeforeYouBuy           bool 		// IMPORTANT: removed in SDK 3.4.0
 	ConnectionType            int32
 	OnNetworkNext             bool
+	Committed                 bool      // IMPORTANT: added in SDK 3.4.0
 	DirectMinRtt              float32
 	DirectMaxRtt              float32
 	DirectMeanRtt             float32
@@ -54,7 +55,7 @@ func (packet *SessionUpdatePacket) UnmarshalBinary(data []byte) error {
 }
 
 func (packet *SessionUpdatePacket) MarshalBinary() ([]byte, error) {
-	ws, err := CreateWriteStream(1500)
+	ws, err := CreateWriteStream(1500)	// todo: magic number here!
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +69,7 @@ func (packet *SessionUpdatePacket) MarshalBinary() ([]byte, error) {
 }
 
 func (packet *SessionUpdatePacket) Serialize(stream Stream, versionMajor int32, versionMinor int32, versionPatch int32) error {
-	packetType := uint32(201)
+	packetType := uint32(201)		// todo: magic number here?! that's not good....
 	stream.SerializeBits(&packetType, 8)
 
 	stream.SerializeUint64(&packet.Sequence)
@@ -83,7 +84,9 @@ func (packet *SessionUpdatePacket) Serialize(stream Stream, versionMajor int32, 
 	}
 	stream.SerializeBool(&packet.Flagged)
 	stream.SerializeBool(&packet.FallbackToDirect)
-	stream.SerializeBool(&packet.TryBeforeYouBuy)
+	if !ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 3, 4, 0) {
+		stream.SerializeBool(&packet.TryBeforeYouBuy)
+	}
 	stream.SerializeInteger(&packet.ConnectionType, ConnectionTypeUnknown, ConnectionTypeCellular)
 	stream.SerializeFloat32(&packet.DirectMinRtt)
 	stream.SerializeFloat32(&packet.DirectMaxRtt)
@@ -91,6 +94,9 @@ func (packet *SessionUpdatePacket) Serialize(stream Stream, versionMajor int32, 
 	stream.SerializeFloat32(&packet.DirectJitter)
 	stream.SerializeFloat32(&packet.DirectPacketLoss)
 	stream.SerializeBool(&packet.OnNetworkNext)
+	if ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 3, 4, 0) {
+		stream.SerializeBool(&packet.Committed)
+	}
 	if packet.OnNetworkNext {
 		stream.SerializeFloat32(&packet.NextMinRtt)
 		stream.SerializeFloat32(&packet.NextMaxRtt)
@@ -155,7 +161,9 @@ func (packet *SessionUpdatePacket) GetSignData(versionMajor int32, versionMinor 
 	}
 	binary.Write(buf, binary.LittleEndian, packet.Flagged)
 	binary.Write(buf, binary.LittleEndian, packet.FallbackToDirect)
-	binary.Write(buf, binary.LittleEndian, packet.TryBeforeYouBuy)
+	if !ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 3, 4, 0) {
+		binary.Write(buf, binary.LittleEndian, packet.TryBeforeYouBuy)
+	}
 	binary.Write(buf, binary.LittleEndian, uint8(packet.ConnectionType))
 
 	var onNetworkNext uint8
@@ -163,8 +171,16 @@ func (packet *SessionUpdatePacket) GetSignData(versionMajor int32, versionMinor 
 	if packet.OnNetworkNext {
 		onNetworkNext = 1
 	}
-
 	binary.Write(buf, binary.LittleEndian, onNetworkNext)
+
+	if ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 3, 4, 0) {
+		var committed uint8
+		committed = 0
+		if packet.Committed {
+			committed = 1
+		}
+		binary.Write(buf, binary.LittleEndian, committed)
+	}
 
 	binary.Write(buf, binary.LittleEndian, packet.DirectMinRtt)
 	binary.Write(buf, binary.LittleEndian, packet.DirectMaxRtt)

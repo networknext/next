@@ -63,12 +63,6 @@ int main()
         strcpy( config.customer_public_key, customer_public_key_env );
     }
 
-    const char * disable_try_before_you_buy_env = getenv( "CLIENT_DISABLE_TRY_BEFORE_YOU_BUY" );
-    if ( disable_try_before_you_buy_env )
-    {
-        config.try_before_you_buy = false;
-    }
-
     const char * disable_network_next_env = getenv( "CLIENT_DISABLE_NETWORK_NEXT" );
     if ( disable_network_next_env )
     {

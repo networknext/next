@@ -56,6 +56,8 @@ const BACKEND_MODE_RANDOM = 2
 const BACKEND_MODE_MULTIPATH = 3
 const BACKEND_MODE_ON_OFF = 4
 const BACKEND_MODE_ROUTE_SWITCHING = 5
+const BACKEND_MODE_UNCOMMITTED = 6
+const BACKEND_MODE_UNCOMMITTED_TO_COMMITTED = 7
 
 type Backend struct {
 	mutex           sync.RWMutex
@@ -266,6 +268,14 @@ func main() {
 		backend.mode = BACKEND_MODE_ROUTE_SWITCHING
 	}
 
+	if os.Getenv("BACKEND_MODE") == "UNCOMMITTED" {
+		backend.mode = BACKEND_MODE_UNCOMMITTED
+	}
+
+	if os.Getenv("BACKEND_MODE") == "UNCOMMITTED_TO_COMMITTED" {
+		backend.mode = BACKEND_MODE_UNCOMMITTED_TO_COMMITTED
+	}
+
 	go OptimizeThread()
 
 	go TimeoutThread()
@@ -292,6 +302,7 @@ func main() {
 		MaxPacketSize: transport.DefaultMaxPacketSize,
 
 		ServerUpdateHandlerFunc: func(w io.Writer, incoming *transport.UDPPacket) {
+
 			readStream := core.CreateReadStream(incoming.Data)
 
 			serverUpdate := &core.ServerUpdatePacket{}
@@ -318,6 +329,7 @@ func main() {
 		},
 
 		SessionUpdateHandlerFunc: func(w io.Writer, incoming *transport.UDPPacket) {
+
 			readStream := core.CreateReadStream(incoming.Data)
 			sessionUpdate := &core.SessionUpdatePacket{}
 			if err := sessionUpdate.Serialize(readStream, NEXT_VERSION_MAJOR, NEXT_VERSION_MINOR, NEXT_VERSION_PATCH); err != nil {
@@ -381,6 +393,25 @@ func main() {
 			}
 
 			multipath := len(nearRelayIds) > 0 && backend.mode == BACKEND_MODE_MULTIPATH
+
+			committed := true
+
+			if backend.mode == BACKEND_MODE_UNCOMMITTED {
+				committed = false
+				if sessionUpdate.Committed {
+					panic("slices must not be committed in this mode")
+				}
+			}
+
+			if backend.mode == BACKEND_MODE_UNCOMMITTED_TO_COMMITTED {
+				committed = sessionUpdate.Sequence > 2
+				if sessionUpdate.Sequence <= 2 && sessionUpdate.Committed == true {
+					panic("slices 0,1,2,3 should not be committed")
+				}
+				if sessionUpdate.Sequence >= 4 && sessionUpdate.Committed == false {
+					panic("slices 4 and greater should be committed")
+				}
+			}
 
 			if !takeNetworkNext {
 
@@ -466,8 +497,9 @@ func main() {
 					NumNearRelays:        int32(len(nearRelayIds)),
 					NearRelayIds:         nearRelayIds,
 					NearRelayAddresses:   nearRelayAddresses,
-					RouteType:         responseType,
+					RouteType:            responseType,
 					Multipath:            multipath,
+					Committed:            committed,
 					NumTokens:            int32(numNodes),
 					Tokens:               tokens,
 					ServerRoutePublicKey: serverEntry.publicKey,
