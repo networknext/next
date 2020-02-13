@@ -10,19 +10,19 @@ package main
 import "C"
 
 import (
-	"runtime"
-	"io"
+	"context"
 	"encoding/binary"
 	"fmt"
-	"log"
-	"context"
 	"hash/fnv"
+	"io"
 	"io/ioutil"
+	"log"
 	"math"
 	"math/rand"
 	"net"
 	"net/http"
 	"os"
+	"runtime"
 	"sort"
 	"sync"
 	"time"
@@ -30,6 +30,7 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/networknext/backend/core"
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/transport"
 )
 
@@ -305,7 +306,7 @@ func main() {
 
 			readStream := core.CreateReadStream(incoming.Data)
 
-			serverUpdate := &core.ServerUpdatePacket{}
+			serverUpdate := &transport.ServerUpdatePacket{}
 
 			if err := serverUpdate.Serialize(readStream); err != nil {
 				fmt.Printf("error: failed to read server update packet: %v\n", err)
@@ -331,8 +332,8 @@ func main() {
 		SessionUpdateHandlerFunc: func(w io.Writer, incoming *transport.UDPPacket) {
 
 			readStream := core.CreateReadStream(incoming.Data)
-			sessionUpdate := &core.SessionUpdatePacket{}
-			if err := sessionUpdate.Serialize(readStream, NEXT_VERSION_MAJOR, NEXT_VERSION_MINOR, NEXT_VERSION_PATCH); err != nil {
+			sessionUpdate := &transport.SessionUpdatePacket{}
+			if err := sessionUpdate.Serialize(readStream); err != nil {
 				fmt.Printf("error: failed to read server session update packet: %v\n", err)
 				return
 			}
@@ -352,7 +353,7 @@ func main() {
 
 			nearRelayIds, nearRelayAddresses := GetNearRelays()
 
-			var sessionResponse *core.SessionResponsePacket
+			var sessionResponse *transport.SessionResponsePacket
 
 			backend.mutex.RLock()
 			sessionEntry, ok := backend.sessionDatabase[sessionUpdate.SessionId]
@@ -417,13 +418,13 @@ func main() {
 
 				// direct route
 
-				sessionResponse = &core.SessionResponsePacket{
+				sessionResponse = &transport.SessionResponsePacket{
 					Sequence:             sessionUpdate.Sequence,
 					SessionId:            sessionUpdate.SessionId,
 					NumNearRelays:        int32(len(nearRelayIds)),
 					NearRelayIds:         nearRelayIds,
 					NearRelayAddresses:   nearRelayAddresses,
-					RouteType:         int32(core.NEXT_UPDATE_TYPE_DIRECT),
+					RouteType:            int32(core.NEXT_UPDATE_TYPE_DIRECT),
 					NumTokens:            0,
 					Tokens:               nil,
 					ServerRoutePublicKey: serverEntry.publicKey,
@@ -491,7 +492,7 @@ func main() {
 
 				}
 
-				sessionResponse = &core.SessionResponsePacket{
+				sessionResponse = &transport.SessionResponsePacket{
 					Sequence:             sessionUpdate.Sequence,
 					SessionId:            sessionUpdate.SessionId,
 					NumNearRelays:        int32(len(nearRelayIds)),
@@ -521,14 +522,15 @@ func main() {
 			backend.sessionDatabase[sessionUpdate.SessionId] = sessionEntry
 			backend.mutex.Unlock()
 
-			sessionResponse.Sign(NEXT_VERSION_MAJOR, NEXT_VERSION_MINOR, NEXT_VERSION_PATCH)
+			sessionResponse.Signature = crypto.Sign(core.BackendPrivateKey, sessionResponse.GetSignData())
 
 			writeStream, err := core.CreateWriteStream(NEXT_MAX_PACKET_BYTES)
 			if err != nil {
 				fmt.Printf("error: failed to write session response packet: %v\n", err)
 				return
 			}
-			if err := sessionResponse.Serialize(writeStream, NEXT_VERSION_MAJOR, NEXT_VERSION_MINOR, NEXT_VERSION_PATCH); err != nil {
+
+			if err := sessionResponse.Serialize(writeStream); err != nil {
 				fmt.Printf("error: failed to write session response packet: %v\n", err)
 				return
 			}
