@@ -20,6 +20,7 @@
 #include <curl/curl.h>
 #include <deque>
 #include <fcntl.h>
+#include <fstream>
 #include <functional>
 #include <ifaddrs.h>
 #include <iostream>

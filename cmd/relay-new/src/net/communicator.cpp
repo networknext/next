@@ -91,7 +91,7 @@ namespace net
       while (this->mHandle) {
         legacy::relay_address_t from;
         const int packet_bytes = relay_platform_socket_receive_packet(mRelay.socket, &from, packet_data, sizeof(packet_data));
-        mLogger.addToTotal(packet_bytes);
+        mLogger.addToRecvTotal(packet_bytes);
         if (packet_bytes == 0)
           continue;
         if (packet_data[0] == RELAY_PING_PACKET && packet_bytes == 9) {
