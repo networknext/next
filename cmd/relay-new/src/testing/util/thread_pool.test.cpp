@@ -7,9 +7,9 @@ using namespace std::chrono_literals;
 
 Test(ThreadPool_basic)
 {
-  const int jobs = 6;
+  const int jobs = 100;
 
-  util::ThreadPool tp(jobs - 3);
+  util::ThreadPool tp(3);
   util::WaitGroup wg(jobs);
   int inc = 0;
 
@@ -24,5 +24,5 @@ Test(ThreadPool_basic)
 
   tp.terminate();
 
-  check(inc == 6);
+  check(inc == jobs);
 }

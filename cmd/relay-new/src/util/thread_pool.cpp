@@ -9,12 +9,12 @@ namespace util
     for (unsigned int i = 0; i < count; i++) {
       auto worker = std::make_shared<WaiterThread>();
       worker->onFinish([this, worker] {
-        mWorkerLock.lock();
+        mGeneralLock.lock();
         {
           mFreeWorkers.push(worker);
           mWaitVar.notify_one();
         }
-        mWorkerLock.unlock();
+        mGeneralLock.unlock();
       });
       mWorkers[i] = worker;
       mFreeWorkers.push(worker);
@@ -33,8 +33,7 @@ namespace util
           return;
         }
 
-        mWorkerLock.lock();
-        mJobLock.lock();
+        mGeneralLock.lock();
         {
           const auto count = mFreeWorkers.size();
           for (size_t i = 0; i < count; i++) {
@@ -49,8 +48,7 @@ namespace util
             }
           }
         }
-        mJobLock.unlock();
-        mWorkerLock.unlock();
+        mGeneralLock.unlock();
       }
     });
   }
@@ -62,12 +60,12 @@ namespace util
 
   void ThreadPool::push(ThreadFunc job)
   {
-    mJobLock.lock();
+    mGeneralLock.lock();
     {
       mJobs.push(job);
       mWaitVar.notify_one();
     }
-    mJobLock.unlock();
+    mGeneralLock.unlock();
   }
 
   void ThreadPool::terminate()

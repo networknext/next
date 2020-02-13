@@ -24,8 +24,7 @@ namespace util
     std::queue<ThreadPtr> mFreeWorkers;
     std::queue<ThreadFunc> mJobs;
 
-    std::mutex mJobLock;
-    std::mutex mWorkerLock;
+    std::mutex mGeneralLock;
     std::mutex mWaitLock;
     std::condition_variable mWaitVar;
   };
