@@ -468,6 +468,15 @@ func (packet *SessionResponsePacket) GetSignData() []byte {
 		} else {
 			binary.Write(buf, binary.LittleEndian, uint8(0))
 		}
+
+		if packet.Version.AtLeast(SDKVersion{3, 4, 0}) {
+			if packet.Committed {
+				binary.Write(buf, binary.LittleEndian, uint8(1))
+			} else {
+				binary.Write(buf, binary.LittleEndian, uint8(0))
+			}
+		}
+
 		binary.Write(buf, binary.LittleEndian, uint8(packet.NumTokens))
 	}
 	if packet.RouteType == routing.RouteTypeNew {
