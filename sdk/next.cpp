@@ -5269,6 +5269,7 @@ void next_route_manager_destroy( next_route_manager_t * route_manager )
 #define NEXT_CLIENT_COMMAND_CLOSE_SESSION           1
 #define NEXT_CLIENT_COMMAND_DESTROY                 2
 #define NEXT_CLIENT_COMMAND_FLAG_SESSION            3
+#define NEXT_CLIENT_COMMAND_USER_FLAGS              4
 
 struct next_client_command_t
 {
@@ -5293,6 +5294,11 @@ struct next_client_command_destroy_t : public next_client_command_t
 struct next_client_command_flag_session_t : public next_client_command_t
 {
     // ...
+};
+
+struct next_client_command_user_flags_t : public next_client_command_t
+{
+    uint64_t user_flags;
 };
 
 // ---------------------------------------------------------------
@@ -5345,6 +5351,7 @@ struct next_client_internal_t
     bool flagged;
     bool fallback_to_direct;
     bool multipath;
+    uint64_t user_flags;
     uint8_t open_session_sequence;
     uint64_t upgrade_sequence;
     uint64_t session_id;
@@ -6120,6 +6127,7 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 client->flagged = false;
                 client->fallback_to_direct = false;
                 client->multipath = false;
+                client->user_flags = 0;
                 client->upgrade_sequence = 0;
                 client->session_id = 0;
                 client->internal_send_sequence = 0;
@@ -6181,6 +6189,12 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                     next_printf( NEXT_LOG_LEVEL_INFO, "client flagged session %" PRIx64, client->session_id );
                     client->flagged = true;
                 }
+            }
+            break;
+
+            case NEXT_CLIENT_COMMAND_USER_FLAGS:
+            {
+                client->user_flags = ((next_client_command_user_flags_t*)command)->user_flags;
             }
             break;
 
@@ -6334,7 +6348,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
         packet.packets_lost_server_to_client = client->client_stats.packets_lost_server_to_client;
 
-        packet.user_flags = client->client_stats.user_flags;
+        packet.user_flags = client->user_flags;
 
         if ( next_client_internal_send_packet_to_server( client, NEXT_CLIENT_STATS_PACKET, &packet ) != NEXT_OK )
         {
@@ -6954,16 +6968,13 @@ void next_client_send_packet_direct( next_client_t * client, const uint8_t * pac
 void next_client_flag_session( next_client_t * client )
 {
     next_assert( client );
-
     next_client_command_flag_session_t * command = (next_client_command_flag_session_t*) next_malloc( client->context, sizeof( next_client_command_flag_session_t ) );
     if ( !command )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "flag session failed. could not create flag session command" );
         return;
     }
-
     command->type = NEXT_CLIENT_COMMAND_FLAG_SESSION;
-
     {    
         next_mutex_guard( client->internal->command_mutex );
         next_queue_push( client->internal->command_queue, command );
@@ -6985,7 +6996,18 @@ const next_client_stats_t * next_client_stats( next_client_t * client )
 void next_client_set_user_flags( next_client_t * client, uint64_t user_flags )
 {
     next_assert( client );
-    client->client_stats.user_flags = user_flags;
+    next_client_command_user_flags_t * command = (next_client_command_user_flags_t*) next_malloc( client->context, sizeof( next_client_command_user_flags_t ) );
+    if ( !command )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "set user flags failed. could not create user flags command" );
+        return;
+    }
+    command->type = NEXT_CLIENT_COMMAND_USER_FLAGS;
+    command->user_flags = user_flags;
+    {    
+        next_mutex_guard( client->internal->command_mutex );
+        next_queue_push( client->internal->command_queue, command );
+    }
 }
 
 void next_client_counters( next_client_t * client, uint64_t * counters )
@@ -9169,6 +9191,7 @@ int next_server_internal_process_packet( next_server_internal_t * server, const 
                     session->stats_near_relay_packet_loss[i] = packet.near_relay_packet_loss[i];
                 }
                 session->stats_packets_lost_server_to_client = packet.packets_lost_server_to_client;
+                printf( "packet user flags = %" PRIx64 "\n", packet.user_flags );
                 session->stats_user_flags |= packet.user_flags;
                 session->last_client_stats_update = next_time();
             }
