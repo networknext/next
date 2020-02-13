@@ -8835,7 +8835,7 @@ next_session_entry_t * next_server_internal_check_client_to_server_packet( next_
     next_session_entry_t * entry = next_session_manager_find_by_session_id( server->session_manager, packet_session_id );
     if ( !entry )
     {
-        next_printf( NEXT_LOG_LEVEL_WARN, "server ignored client to server packet. could not find session %" PRIx64 );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client to server packet. could not find session %" PRIx64, packet_session_id );
         return NULL;
     }
 
@@ -9191,7 +9191,6 @@ int next_server_internal_process_packet( next_server_internal_t * server, const 
                     session->stats_near_relay_packet_loss[i] = packet.near_relay_packet_loss[i];
                 }
                 session->stats_packets_lost_server_to_client = packet.packets_lost_server_to_client;
-                printf( "packet user flags = %" PRIx64 "\n", packet.user_flags );
                 session->stats_user_flags |= packet.user_flags;
                 session->last_client_stats_update = next_time();
             }
