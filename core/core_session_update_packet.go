@@ -44,6 +44,7 @@ type SessionUpdatePacket struct {
 	KbpsDown                  uint32
 	PacketsLostClientToServer uint64
 	PacketsLostServerToClient uint64
+	UserFlags                 uint64    // IMPORTANT: Added in SDK 3.4.0
 	Signature                 []byte
 }
 
@@ -134,6 +135,9 @@ func (packet *SessionUpdatePacket) Serialize(stream Stream, versionMajor int32, 
 		stream.SerializeUint64(&packet.PacketsLostClientToServer)
 		stream.SerializeUint64(&packet.PacketsLostServerToClient)
 	}
+	if ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 3, 4, 0) {
+		stream.SerializeUint64(&packet.UserFlags)
+	}
 	stream.SerializeBytes(packet.Signature)
 	return stream.Error()
 }
@@ -167,7 +171,6 @@ func (packet *SessionUpdatePacket) GetSignData(versionMajor int32, versionMinor 
 	binary.Write(buf, binary.LittleEndian, uint8(packet.ConnectionType))
 
 	var onNetworkNext uint8
-	onNetworkNext = 0
 	if packet.OnNetworkNext {
 		onNetworkNext = 1
 	}
@@ -175,7 +178,6 @@ func (packet *SessionUpdatePacket) GetSignData(versionMajor int32, versionMinor 
 
 	if ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 3, 4, 0) {
 		var committed uint8
-		committed = 0
 		if packet.Committed {
 			committed = 1
 		}
@@ -219,6 +221,10 @@ func (packet *SessionUpdatePacket) GetSignData(versionMajor int32, versionMinor 
 	if ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 3, 3, 2) {
 		binary.Write(buf, binary.LittleEndian, packet.PacketsLostClientToServer)
 		binary.Write(buf, binary.LittleEndian, packet.PacketsLostServerToClient)
+	}
+
+	if ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 3, 4, 0) {
+		binary.Write(buf, binary.LittleEndian, packet.UserFlags)
 	}
 
 	binary.Write(buf, binary.LittleEndian, packet.ClientRoutePublicKey)
