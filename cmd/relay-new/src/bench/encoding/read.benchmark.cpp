@@ -1,3 +1,4 @@
+#include "includes.h"
 #include "bench/bench.hpp"
 
 #include "encoding/write.hpp"
@@ -16,7 +17,7 @@ Bench(ReadUint16_vs_read_uint16)
       encoding::ReadUint16(buff, index);
     }
 
-    auto elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+    auto elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
     std::cout << "ReadUint16() nanoseconds: " << elapsed << '\n';
   }
 
@@ -29,7 +30,7 @@ Bench(ReadUint16_vs_read_uint16)
       encoding::read_uint16(&ptr);
     }
 
-    auto elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+    auto elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
     std::cout << "read_uint16() nanoseconds: " << elapsed << '\n';
   }
 }
@@ -50,7 +51,7 @@ Bench(ReadAddress_vs_read_address_ipv4)
       encoding::ReadAddress(buff, index, addr);
     }
 
-    auto elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+    auto elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
     std::cout << "ReadAddress() nanoseconds: " << elapsed << '\n';
   }
 
@@ -68,7 +69,7 @@ Bench(ReadAddress_vs_read_address_ipv4)
       encoding::read_address(&ptr, &addr);
     }
 
-    auto elapsed = Timer.elapsed<benchmarking::Nanosecond>() / REPS;
+    auto elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
     std::cout << "read_address() nanoseconds: " << elapsed << '\n';
   }
 }

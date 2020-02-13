@@ -3,22 +3,14 @@
     Copyright © 2017 - 2020 Network Next, Inc. All rights reserved.
 */
 
+#include "includes.h"
 #include "relay_platform_mac.hpp"
 
+// TODO 
 #if RELAY_PLATFORM == RELAY_PLATFORM_MAC
 
-#include <string.h>
 #include <netdb.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <ifaddrs.h>
-#include <fcntl.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <errno.h>
-#include <unistd.h>
 #include <mach/mach.h>
 #include <mach/mach_time.h>
 #include <SystemConfiguration/SystemConfiguration.h>

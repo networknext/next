@@ -1,23 +1,24 @@
 package storage
 
 import (
-	"encoding/base64"
 	"encoding/binary"
 )
 
 type InMemory struct {
 	LocalDatacenter bool
 
+	LocalCustomerPublicKey []byte
+	LocalRelayPublicKey    []byte
+
 	RelayDatacenterNames map[uint32]string
+	RelayPublicKeys      map[uint32][]byte
 }
 
 func (m *InMemory) GetAndCheckBySdkVersion3PublicKeyId(key uint64) (*Buyer, bool) {
-	publicKey, _ := base64.StdEncoding.DecodeString("leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==")
-
 	return &Buyer{
 		Name:                     "Network Next",
-		SdkVersion3PublicKeyId:   binary.LittleEndian.Uint64(publicKey[:8]),
-		SdkVersion3PublicKeyData: publicKey[8:],
+		SdkVersion3PublicKeyId:   binary.LittleEndian.Uint64(m.LocalCustomerPublicKey[:8]),
+		SdkVersion3PublicKeyData: m.LocalCustomerPublicKey[8:],
 		Active:                   true,
 	}, true
 }
@@ -45,10 +46,16 @@ func (m *InMemory) GetAndCheckByRelayCoreId(key uint32) (*Relay, bool) {
 					Namespace: "local",
 				},
 			},
+			UpdateKey: m.LocalRelayPublicKey,
 		}, true
 	}
 
 	name, ok := m.RelayDatacenterNames[key]
+	if !ok {
+		return nil, false
+	}
+
+	relayPublicKey, ok := m.RelayPublicKeys[key]
 	if !ok {
 		return nil, false
 	}
@@ -59,5 +66,6 @@ func (m *InMemory) GetAndCheckByRelayCoreId(key uint32) (*Relay, bool) {
 				Namespace: name,
 			},
 		},
+		UpdateKey: relayPublicKey,
 	}, true
 }

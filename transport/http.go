@@ -2,7 +2,6 @@ package transport
 
 import (
 	"bytes"
-	"crypto/rand"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -31,13 +30,6 @@ const (
 	VersionNumberUpdateResponse = 0
 )
 
-var gRelayPublicKey = []byte{
-	0xf5, 0x22, 0xad, 0xc1, 0xee, 0x04, 0x6a, 0xbe,
-	0x7d, 0x89, 0x0c, 0x81, 0x3a, 0x08, 0x31, 0xba,
-	0xdc, 0xdd, 0xb5, 0x52, 0xcb, 0x73, 0x56, 0x10,
-	0xda, 0xa9, 0xc0, 0xae, 0x08, 0xa2, 0xcf, 0x5e,
-}
-
 type RelayProvider interface {
 	GetAndCheckByRelayCoreId(key uint32) (*storage.Relay, bool)
 }
@@ -47,9 +39,9 @@ type DatacenterProvider interface {
 }
 
 // NewRouter creates a router with the specified endpoints
-func NewRouter(logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, relayProvider RelayProvider, datacenterProvider DatacenterProvider, statsdb *routing.StatsDatabase, costmatrix *routing.CostMatrix, routematrix *routing.RouteMatrix, relayPublicKey []byte, routerPrivateKey []byte) *mux.Router {
+func NewRouter(logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, relayProvider RelayProvider, datacenterProvider DatacenterProvider, statsdb *routing.StatsDatabase, costmatrix *routing.CostMatrix, routematrix *routing.RouteMatrix, routerPrivateKey []byte) *mux.Router {
 	router := mux.NewRouter()
-	router.HandleFunc("/relay_init", RelayInitHandlerFunc(logger, redisClient, geoClient, ipLocator, relayProvider, datacenterProvider, relayPublicKey, routerPrivateKey)).Methods("POST")
+	router.HandleFunc("/relay_init", RelayInitHandlerFunc(logger, redisClient, geoClient, ipLocator, relayProvider, datacenterProvider, routerPrivateKey)).Methods("POST")
 	router.HandleFunc("/relay_update", RelayUpdateHandlerFunc(logger, redisClient, statsdb)).Methods("POST")
 	router.Handle("/cost_matrix", costmatrix).Methods("GET")
 	router.Handle("/route_matrix", routematrix).Methods("GET")
@@ -58,7 +50,7 @@ func NewRouter(logger log.Logger, redisClient *redis.Client, geoClient *routing.
 }
 
 // RelayInitHandlerFunc returns the function for the relay init endpoint
-func RelayInitHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, relayProvider RelayProvider, datacenterProvider DatacenterProvider, relayPublicKey []byte, routerPrivateKey []byte) func(writer http.ResponseWriter, request *http.Request) {
+func RelayInitHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, relayProvider RelayProvider, datacenterProvider DatacenterProvider, routerPrivateKey []byte) func(writer http.ResponseWriter, request *http.Request) {
 	logger = log.With(logger, "handler", "init")
 
 	return func(writer http.ResponseWriter, request *http.Request) {
@@ -68,8 +60,6 @@ func RelayInitHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClien
 			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
-
-		index := 0
 
 		relayInitPacket := RelayInitPacket{}
 
@@ -93,28 +83,30 @@ func RelayInitHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClien
 			return
 		}
 
-		if _, ok := crypto.Open(relayInitPacket.EncryptedToken, relayInitPacket.Nonce, relayPublicKey, routerPrivateKey); !ok {
-			level.Error(locallogger).Log("msg", "crypto open failed")
-			writer.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-
 		relay := routing.Relay{
 			ID:             crypto.HashID(relayInitPacket.Address.String()),
 			Addr:           relayInitPacket.Address,
 			LastUpdateTime: uint64(time.Now().Unix()),
 		}
+
 		rdbEntry, ok := relayProvider.GetAndCheckByRelayCoreId(uint32(relay.ID))
 		if !ok {
 			level.Error(locallogger).Log("msg", "relay not in configstore")
 			writer.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+		relay.PublicKey = rdbEntry.UpdateKey
 
 		dcdbEntry, ok := datacenterProvider.GetAndCheck(rdbEntry.Datacenter)
 		if !ok {
 			level.Error(locallogger).Log("msg", "relay has no datacenter")
 			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		if _, ok := crypto.Open(relayInitPacket.EncryptedToken, relayInitPacket.Nonce, rdbEntry.GetUpdateKey(), routerPrivateKey); !ok {
+			level.Error(locallogger).Log("msg", "crypto open failed")
+			writer.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 
@@ -135,16 +127,7 @@ func RelayInitHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClien
 			return
 		}
 
-		relay.PublicKey = make([]byte, crypto.KeySize)
-		if _, err := rand.Read(relay.PublicKey); err != nil {
-			level.Error(locallogger).Log("msg", "failed to generate public key")
-			writer.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
 		relay.LastUpdateTime = uint64(time.Now().Unix())
-		relay.PublicKey = make([]byte, crypto.KeySize)
-		rand.Read(relay.PublicKey)
 
 		loc, err := ipLocator.LocateIP(relay.Addr.IP)
 		if err != nil {
@@ -172,10 +155,10 @@ func RelayInitHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClien
 
 		writer.Header().Set("Content-Type", "application/octet-stream")
 
-		index = 0
+		index := 0
 		responseData := make([]byte, 64)
 		encoding.WriteUint32(responseData, &index, VersionNumberInitResponse)
-		encoding.WriteUint64(responseData, &index, uint64(time.Now().Unix()))
+		encoding.WriteUint64(responseData, &index, relay.LastUpdateTime)
 		encoding.WriteBytes(responseData, &index, relay.PublicKey, crypto.KeySize)
 
 		writer.Write(responseData[:index])

@@ -10,9 +10,6 @@
 
 #if RELAY_PLATFORM == RELAY_PLATFORM_MAC
 
-#include <pthread.h>
-#include <unistd.h>
-
 #include "relay/relay_address.hpp"
 
 #define RELAY_PLATFORM_HAS_IPV6 1

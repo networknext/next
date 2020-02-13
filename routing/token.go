@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"net"
 
 	"github.com/networknext/backend/crypto"
@@ -12,13 +13,21 @@ import (
 )
 
 const (
-	DecisionTypeDirect   = 0
-	DecisionTypeNew      = 1
-	DecisionTypeContinue = 2
+	RouteTypeDirect   = 0
+	RouteTypeNew      = 1
+	RouteTypeContinue = 2
 
-	EncryptedNextRouteTokenSize        = 117 // Need to find out how this size is made
-	EncryptedContinueRouteDecisionSize = 58
+	NextRouteTokenSize          = 101
+	EncryptedNextRouteTokenSize = NextRouteTokenSize + crypto.MACSize
+
+	ContinueRouteTokenSize          = 42
+	EncryptedContinueRouteTokenSize = ContinueRouteTokenSize + crypto.MACSize
 )
+
+type Token interface {
+	Type() int
+	Encrypt([]byte) ([]byte, int, error)
+}
 
 type Client struct {
 	Addr      net.UDPAddr
@@ -35,7 +44,31 @@ type Route struct {
 	Stats  Stats
 }
 
-type ContinueRouteDecision struct {
+func (r *Route) Hash() []byte {
+	fnv64 := fnv.New64()
+	id := make([]byte, 8)
+
+	for _, relay := range r.Relays {
+		binary.LittleEndian.PutUint64(id, relay.ID)
+		fnv64.Write(id)
+	}
+
+	return fnv64.Sum(nil)
+}
+
+func (r *Route) Hash64() uint64 {
+	fnv64 := fnv.New64()
+	id := make([]byte, 8)
+
+	for _, relay := range r.Relays {
+		binary.LittleEndian.PutUint64(id, relay.ID)
+		fnv64.Write(id)
+	}
+
+	return fnv64.Sum64()
+}
+
+type ContinueRouteToken struct {
 	Expires uint64
 
 	SessionId      uint64
@@ -51,11 +84,15 @@ type ContinueRouteDecision struct {
 	offset     int
 }
 
-func (r *ContinueRouteDecision) Encrypt(privateKey []byte) []byte {
+func (r *ContinueRouteToken) Type() int {
+	return RouteTypeContinue
+}
+
+func (r *ContinueRouteToken) Encrypt(privateKey []byte) ([]byte, int, error) {
 	r.privateKey = make([]byte, crypto.KeySize)
 	rand.Read(r.privateKey)
 
-	r.tokens = make([]byte, EncryptedContinueRouteDecisionSize*(len(r.Relays)+2))
+	r.tokens = make([]byte, EncryptedContinueRouteTokenSize*(len(r.Relays)+2))
 
 	// Encrypt the first node with the client public key
 	// and point it to the FIRST relay in the route
@@ -79,27 +116,34 @@ func (r *ContinueRouteDecision) Encrypt(privateKey []byte) []byte {
 	// and point it to the server itself signifying the end
 	r.encryptToken(r.Server.Addr, r.Server.PublicKey, privateKey)
 
-	return r.tokens
+	// We add 2 to the number of tokens to account for the client and the server of route
+	// tokens with a client, server, and 5 relays is a total of 7 tokens generated
+	return r.tokens, len(r.Relays) + 2, nil
 }
 
-func (r *ContinueRouteDecision) encryptToken(addr net.UDPAddr, receiverPublicKey []byte, senderPrivateKey []byte) {
-	// Create space for the entire encoded node
-	node := make([]byte, 58)
+func (r *ContinueRouteToken) encryptToken(addr net.UDPAddr, receiverPublicKey []byte, senderPrivateKey []byte) {
+	tokenstart := r.offset
+	tokenend := r.offset + ContinueRouteTokenSize
 
-	// Create an copy a nonce to the start of the node
-	nonce := make([]byte, crypto.NonceSize)
-	rand.Read(nonce)
-	copy(node[0:], nonce)
+	noncestart := tokenstart
+	nonceend := noncestart + crypto.NonceSize
+
+	datastart := nonceend
+	dataend := tokenend
+
+	rand.Read(r.tokens[noncestart:nonceend])
 
 	// Encode the data into the rest of the node
-	binary.LittleEndian.PutUint64(node[crypto.NonceSize:], r.Expires)
-	binary.LittleEndian.PutUint64(node[crypto.NonceSize+8:], r.SessionId)
-	node[crypto.NonceSize+8+8] = r.SessionVersion
-	node[crypto.NonceSize+8+8+1] = r.SessionFlags
+	var index int
+	encoding.WriteUint64(r.tokens[nonceend:], &index, r.Expires)
+	encoding.WriteUint64(r.tokens[nonceend:], &index, r.SessionId)
+	encoding.WriteUint8(r.tokens[nonceend:], &index, r.SessionVersion)
+	encoding.WriteUint8(r.tokens[nonceend:], &index, r.SessionFlags)
 
-	copy(r.tokens[r.offset:], crypto.Seal(node[crypto.NonceSize:], nonce, receiverPublicKey, senderPrivateKey))
+	enc := crypto.Seal(r.tokens[datastart:dataend], r.tokens[noncestart:nonceend], receiverPublicKey, senderPrivateKey)
+	copy(r.tokens[datastart:], enc)
 
-	r.offset += EncryptedContinueRouteDecisionSize
+	r.offset += EncryptedContinueRouteTokenSize
 }
 
 type NextRouteToken struct {
@@ -121,9 +165,13 @@ type NextRouteToken struct {
 	offset     int
 }
 
-func (r *NextRouteToken) Encrypt(privateKey []byte) ([]byte, error) {
+func (r *NextRouteToken) Type() int {
+	return RouteTypeNew
+}
+
+func (r *NextRouteToken) Encrypt(privateKey []byte) ([]byte, int, error) {
 	if len(r.Relays) <= 0 {
-		return nil, errors.New("at least 1 relay is required")
+		return nil, 0, errors.New("at least 1 relay is required")
 	}
 
 	r.privateKey = make([]byte, crypto.KeySize)
@@ -134,44 +182,46 @@ func (r *NextRouteToken) Encrypt(privateKey []byte) ([]byte, error) {
 	// Encrypt the first node with the client public key
 	// and point it to the FIRST relay in the route
 	if r.Client.PublicKey == nil {
-		return nil, errors.New("client public key cannot be nil")
+		return nil, 0, errors.New("client public key cannot be nil")
 	}
-	r.encryptToken(r.Relays[0].Addr, r.Client.PublicKey, privateKey)
+	r.encryptToken(&r.Relays[0].Addr, r.Client.PublicKey, privateKey)
 
 	for i := range r.Relays {
 		if r.Relays[i].PublicKey == nil {
-			return nil, fmt.Errorf("relay public key at index %d cannot be nil", i)
+			return nil, 0, fmt.Errorf("relay public key at index %d cannot be nil", i)
 		}
 
 		// If this is the last relay in the route
 		// encrypt it with its public key, but point
 		// it to the server
 		if i == len(r.Relays)-1 {
-			r.encryptToken(r.Server.Addr, r.Relays[i].PublicKey, privateKey)
+			r.encryptToken(&r.Server.Addr, r.Relays[i].PublicKey, privateKey)
 			break
 		}
 
 		// All internal relay node get encrypted with their own
 		// public keys and point to the next relay in the route
-		r.encryptToken(r.Relays[i+1].Addr, r.Relays[i].PublicKey, privateKey)
+		r.encryptToken(&r.Relays[i+1].Addr, r.Relays[i].PublicKey, privateKey)
 	}
 
 	// Encrypt the last node with the server public key
 	// and point it to the server itself signifying the end
 	if r.Server.PublicKey == nil {
-		return nil, errors.New("server public key cannot be nil")
+		return nil, 0, errors.New("server public key cannot be nil")
 	}
-	r.encryptToken(r.Server.Addr, r.Server.PublicKey, privateKey)
+	r.encryptToken(nil, r.Server.PublicKey, privateKey)
 
-	return r.tokens, nil
+	// We add 2 to the number of tokens to account for the client and the server of route
+	// tokens with a client, server, and 5 relays is a total of 7 tokens generated
+	return r.tokens, len(r.Relays) + 2, nil
 }
 
 // encryptToken works on each token in the chain of tokens
 // and increments the overall offset to move across and ecrypt
 // each token of the tokens slice to avoid a lot of copy ops
-func (r *NextRouteToken) encryptToken(addr net.UDPAddr, receiverPublicKey []byte, senderPrivateKey []byte) {
+func (r *NextRouteToken) encryptToken(addr *net.UDPAddr, receiverPublicKey []byte, senderPrivateKey []byte) {
 	tokenstart := r.offset
-	tokenend := r.offset + EncryptedNextRouteTokenSize
+	tokenend := r.offset + NextRouteTokenSize
 
 	noncestart := tokenstart
 	nonceend := noncestart + crypto.NonceSize
@@ -189,12 +239,12 @@ func (r *NextRouteToken) encryptToken(addr net.UDPAddr, receiverPublicKey []byte
 	encoding.WriteUint32(r.tokens[nonceend:], &index, r.KbpsUp)
 	encoding.WriteUint32(r.tokens[nonceend:], &index, r.KbpsDown)
 	byteaddr := make([]byte, encoding.AddressSize)
-	encoding.WriteAddress(byteaddr, &r.Client.Addr)
+	encoding.WriteAddress(byteaddr, addr)
 	encoding.WriteBytes(r.tokens[nonceend:], &index, byteaddr, encoding.AddressSize)
 	encoding.WriteBytes(r.tokens[nonceend:], &index, r.privateKey, crypto.KeySize)
 
 	enc := crypto.Seal(r.tokens[datastart:dataend], r.tokens[noncestart:nonceend], receiverPublicKey, senderPrivateKey)
-	copy(r.tokens[datastart:dataend], enc)
+	copy(r.tokens[datastart:], enc)
 
 	r.offset += EncryptedNextRouteTokenSize
 }

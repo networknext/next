@@ -1,8 +1,6 @@
 #ifndef ENCODING_READ_STREAM
 #define ENCODING_READ_STREAM
 
-#include <cinttypes>
-
 #include "base_stream.hpp"
 #include "bit_reader.hpp"
 

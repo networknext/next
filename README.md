@@ -21,6 +21,20 @@ The tool chain used for development is kept simple to make it easy for any opera
 
 Developers should install these requirements however they need to be installed based on your operating system. Windows users can leverage WSL to get all of these.
 
+## Running the "Happy Path"
+
+A good test to see if everything works and is installed is to run the "Happy Path". For this you will need to run the following commands **in separate terminal sessions**.
+
+1. `redis-cli flushall && make BACKEND_LOG_LEVEL=info dev-relay-backend`: this will clear your local redis completely to start fresh and then run the relay backend
+2. `make dev-multi-relays`: this will run 10 instances of a relay and each will register themselves with the relay backend
+3. `make BACKEND_LOG_LEVEL=info dev-server-backend`: this will run the server backend and start pulling route information from the relay backend every 10 seconds
+4. `make dev-server`: this will run a fake game server and register itself with the server backend
+5. `make dev-client`: this will run a fake game client and request a route from the server which will ask the server backend for a new route for the game client
+
+You should see the fake game server upgrade the clients session and get `(next route)` and `(continue route)` from the server backend which it sends to the fake game client.
+
+Simultaneously you will see the terminal with the relays logging `session created` indicating traffic is passing through relays.
+
 ## Backend
 
 All of these services are controlled and deployed by us.

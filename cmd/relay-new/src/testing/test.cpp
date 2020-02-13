@@ -1,6 +1,5 @@
+#include "includes.h"
 #include "test.hpp"
-#include <iostream>
-#include <memory>
 
 namespace
 {
