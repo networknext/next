@@ -277,6 +277,11 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 		stream.SerializeUint64(&packet.PacketsLostClientToServer)
 		stream.SerializeUint64(&packet.PacketsLostServerToClient)
 	}
+
+	if packet.Version.AtLeast(SDKVersion{3, 4, 0}) {
+		stream.SerializeUint64(&packet.UserFlags)
+	}
+
 	stream.SerializeBytes(packet.Signature)
 	return stream.Error()
 }
