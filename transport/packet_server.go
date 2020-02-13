@@ -180,6 +180,7 @@ type SessionUpdatePacket struct {
 	KbpsDown                  uint32
 	PacketsLostClientToServer uint64
 	PacketsLostServerToClient uint64
+	UserFlags                 uint64
 	Signature                 []byte
 
 	Version SDKVersion

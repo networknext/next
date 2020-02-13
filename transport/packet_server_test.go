@@ -296,6 +296,7 @@ func TestSessionUpdatePacket(t *testing.T) {
 			KbpsDown:                  11,
 			PacketsLostClientToServer: 12,
 			PacketsLostServerToClient: 13,
+			UserFlags:                 14,
 		},
 	}
 
