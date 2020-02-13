@@ -2,7 +2,6 @@ package metrics
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -14,6 +13,7 @@ import (
 	metadataapi "cloud.google.com/go/compute/metadata"
 	monitoring "cloud.google.com/go/monitoring/apiv3"
 	googlepb "github.com/golang/protobuf/ptypes/timestamp"
+	"google.golang.org/api/option"
 	"google.golang.org/genproto/googleapis/api/metric"
 	metricpb "google.golang.org/genproto/googleapis/api/metric"
 	monitoredrespb "google.golang.org/genproto/googleapis/api/monitoredres"
@@ -21,6 +21,13 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+// ValueTypeMap is a map from the value's named type to an integer reprentation for use with the StackDriver API
+var ValueTypeMap = map[string]int32{
+	"bool":   1,
+	"int64":  2,
+	"double": 3,
+}
 
 // StackDriverMetricHandler is an implementation of the MetricHandler interface that handles metrics for StackDriver
 type StackDriverMetricHandler struct {
@@ -36,30 +43,17 @@ type StackDriverMetricHandler struct {
 	pushMetricsChan chan []Metric
 }
 
-// MetricDescriptor describes a custom Stackdriver metric
-type MetricDescriptor struct {
-	packageName string
-	metricType  string
-	valueType   metricpb.MetricDescriptor_ValueType
-	unit        string
-	description string
-}
-
-// Metric is just a wrapper of a Stackdriver TimeSeries
-type Metric struct {
-	timeSeries *monitoringpb.TimeSeries
-}
-
-// Init sets up the metric handler
-func (metricHandler *StackDriverMetricHandler) Init() error {
-	metricHandler.clusterLocation = os.Getenv("GOOGLE_CLOUD_METRICS_CLUSTER_LOCATION")
-	metricHandler.clusterName = os.Getenv("GOOGLE_CLOUD_METRICS_CLUSTER_NAME")
-	metricHandler.podName = os.Getenv("GOOGLE_CLOUD_METRICS_POD_NAME")
-	metricHandler.containerName = os.Getenv("GOOGLE_CLOUD_METRICS_CONTAINER_NAME")
-	metricHandler.namespaceName = os.Getenv("GOOGLE_CLOUD_METRICS_NAMESPACE_NAME")
-	metricHandler.projectID = os.Getenv("GOOGLE_CLOUD_METRICS_PROJECT")
-
-	metricHandler.pushMetricsChan = make(chan []Metric)
+// NewStackDriverMetricHandler sets up a new stackdriver metric handler
+func NewStackDriverMetricHandler() (*StackDriverMetricHandler, error) {
+	metricHandler := &StackDriverMetricHandler{
+		clusterLocation: os.Getenv("GOOGLE_CLOUD_METRICS_CLUSTER_LOCATION"),
+		clusterName:     os.Getenv("GOOGLE_CLOUD_METRICS_CLUSTER_NAME"),
+		podName:         os.Getenv("GOOGLE_CLOUD_METRICS_POD_NAME"),
+		containerName:   os.Getenv("GOOGLE_CLOUD_METRICS_CONTAINER_NAME"),
+		namespaceName:   os.Getenv("GOOGLE_CLOUD_METRICS_NAMESPACE_NAME"),
+		projectID:       os.Getenv("GOOGLE_CLOUD_METRICS_PROJECT"),
+		pushMetricsChan: make(chan []Metric),
+	}
 
 	// Configure logging
 	logger := log.NewLogfmtLogger(os.Stdout)
@@ -86,94 +80,126 @@ func (metricHandler *StackDriverMetricHandler) Init() error {
 
 	// Create a Stackdriver metrics client
 	var err error
-	metricHandler.client, err = monitoring.NewMetricClient(ctx)
+	metricHandler.client, err = monitoring.NewMetricClient(ctx, option.WithCredentialsFile("/home/ryanj/backend/testdata/network-next-local.json"))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// Sends the metrics to StackDriver
+	// Sends the metrics to StackDriver in a separate goroutine
 	go func() {
-		for metric := range metricHandler.pushMetricsChan {
-			for i := 0; i < len(metric); i += 200 {
-				e := i + 200
-				if e > len(metric) {
-					e = len(metric)
+		// The maximum number of metrics to send up to StackDriver in one push
+		metricsMaxProcessCount := 200
+
+		for metrics := range metricHandler.pushMetricsChan {
+			metricsCount := len(metrics)
+			timeSeries := make([]*monitoringpb.TimeSeries, metricsCount)
+			labels := make(map[string]string)
+
+			// Preprocess all metrics in the slice to create time series objects
+			for metricIndex := 0; metricIndex < metricsCount; metricIndex++ {
+				// Convert the labels from a 1D string slice to a map
+				labelValues := metrics[metricIndex].Gauge.LabelValues()
+				for labelIndex := 0; labelIndex < len(labelValues); labelIndex++ {
+					labels[labelValues[labelIndex]] = labelValues[labelIndex+1]
 				}
 
-				// Since each metric only holds one timeseries and the create time series requests expects a slice of timeseries,
-				// copy the timeseries into their own slice
-				length := e - i
-				timeSeries := make([]*monitoringpb.TimeSeries, length)
-				for n := 0; n < length; n++ {
-					timeSeries[n] = metric[n].timeSeries
+				// Gets the metric value from the metric descriptor type
+				var value *monitoringpb.TypedValue
+				switch metrics[metricIndex].MetricDescriptor.ValueType.ValueType.(type) {
+				case *MetricTypeBool:
+					var b bool
+					if metrics[metricIndex].Gauge.Value() != 0 {
+						b = true
+					} else {
+						b = false
+					}
+
+					value = &monitoringpb.TypedValue{
+						Value: &monitoringpb.TypedValue_BoolValue{
+							BoolValue: b,
+						},
+					}
+				case *MetricTypeInt64:
+					value = &monitoringpb.TypedValue{
+						Value: &monitoringpb.TypedValue_Int64Value{
+							Int64Value: int64(metrics[metricIndex].Gauge.Value()),
+						},
+					}
+				case *MetricTypeDouble:
+					value = &monitoringpb.TypedValue{
+						Value: &monitoringpb.TypedValue_DoubleValue{
+							DoubleValue: metrics[metricIndex].Gauge.Value(),
+						},
+					}
+				}
+
+				// Create a time series object for each metric
+				timeSeries[metricIndex] = &monitoringpb.TimeSeries{
+					Metric: &metricpb.Metric{
+						Type:   fmt.Sprintf("custom.googleapis.com/%s/%s", metrics[metricIndex].MetricDescriptor.PackageName, metrics[metricIndex].MetricDescriptor.MetricID),
+						Labels: labels,
+					},
+					Resource: metricHandler.getMonitoredResource(),
+					Points: []*monitoringpb.Point{
+						&monitoringpb.Point{
+							Interval: &monitoringpb.TimeInterval{
+								EndTime: &googlepb.Timestamp{
+									Seconds: time.Now().Unix(),
+								},
+							},
+							Value: value,
+						},
+					},
+				}
+			}
+
+			// Send the time series objects to StackDriver with a maximum send size to avoid overloading
+			for i := 0; i < metricsCount; i += metricsMaxProcessCount {
+				// Calculate the number of metrics to process this iteration
+				e := i + metricsMaxProcessCount
+				if e > metricsCount {
+					e = metricsCount
 				}
 
 				if err = metricHandler.client.CreateTimeSeries(ctx, &monitoringpb.CreateTimeSeriesRequest{
 					Name:       monitoring.MetricProjectPath(metricHandler.projectID),
-					TimeSeries: timeSeries,
+					TimeSeries: timeSeries[i:e],
 				}); err != nil {
 					level.Error(logger).Log("msg", "Failed to write time series data", "err", err)
-					os.Exit(1)
 				}
 			}
 		}
 	}()
 
-	return nil
+	return metricHandler, nil
 }
 
-// CreateMetric creates the metric on StackDriver using the given metric descriptor
-func (metricHandler *StackDriverMetricHandler) CreateMetric(metricDescriptor *MetricDescriptor, counter *generic.Counter) (Metric, error) {
-	_, err := metricHandler.client.GetMetricDescriptor(context.Background(), &monitoringpb.GetMetricDescriptorRequest{
-		Name: fmt.Sprintf("projects/%s/metricDescriptors/custom.googleapis.com/%s/%s", metricHandler.projectID, metricDescriptor.packageName, metricDescriptor.metricType),
+// CreateMetric creates the metric on StackDriver using the given metric descriptor. If the metric descriptor already exists, overwrite it.
+func (metricHandler *StackDriverMetricHandler) CreateMetric(metricDescriptor *MetricDescriptor, gauge *generic.Gauge) (Metric, error) {
+	_, err := metricHandler.client.CreateMetricDescriptor(context.Background(), &monitoringpb.CreateMetricDescriptorRequest{
+		Name: monitoring.MetricProjectPath(metricHandler.projectID),
+		MetricDescriptor: &metricpb.MetricDescriptor{
+			Name:        gauge.Name,
+			Type:        fmt.Sprintf("custom.googleapis.com/%s/%s", metricDescriptor.PackageName, metricDescriptor.MetricID),
+			MetricKind:  metric.MetricDescriptor_GAUGE,
+			ValueType:   metricpb.MetricDescriptor_ValueType(ValueTypeMap[metricDescriptor.ValueType.ValueType.getTypeName()]),
+			Unit:        metricDescriptor.Unit,
+			Description: metricDescriptor.Description,
+			DisplayName: gauge.Name,
+		},
 	})
 
-	if err != nil && status.Code(err) == codes.NotFound {
-		_, err = metricHandler.client.CreateMetricDescriptor(context.Background(), &monitoringpb.CreateMetricDescriptorRequest{
-			Name: monitoring.MetricProjectPath(metricHandler.projectID),
-			MetricDescriptor: &metricpb.MetricDescriptor{
-				Name:        counter.Name,
-				Type:        fmt.Sprintf("custom.googleapis.com/%s/%s", metricDescriptor.packageName, metricDescriptor.metricType),
-				MetricKind:  metric.MetricDescriptor_GAUGE,
-				ValueType:   metricDescriptor.valueType,
-				Unit:        metricDescriptor.unit,
-				Description: metricDescriptor.description,
-				DisplayName: counter.Name,
-			},
-		})
-	} else {
-		return Metric{}, errors.New("Attempted to create metric descriptor '%s' of type %s when that descriptor already exists")
-	}
+	if err != nil {
+		if status.Code(err) == codes.AlreadyExists {
+			return Metric{}, fmt.Errorf("Attempted to create metric with name '%s' but a metric with that name already exists in StackDriver", gauge.Name)
+		}
 
-	// Since the label values are stored as an array, convert them to a map
-	var labels map[string]string
-	labelValues := counter.LabelValues()
-	for i := 0; i < len(labelValues); i += 2 {
-		labels[labelValues[i]] = labelValues[i+1]
+		return Metric{}, err
 	}
 
 	return Metric{
-		&monitoringpb.TimeSeries{
-			Metric: &metricpb.Metric{
-				Type:   fmt.Sprintf("custom.googleapis.com/%s/%s", metricDescriptor.packageName, metricDescriptor.metricType),
-				Labels: labels,
-			},
-			Resource: metricHandler.getMonitoredResource(),
-			Points: []*monitoringpb.Point{
-				&monitoringpb.Point{
-					Interval: &monitoringpb.TimeInterval{
-						EndTime: &googlepb.Timestamp{
-							Seconds: time.Now().Unix(),
-						},
-					},
-					Value: &monitoringpb.TypedValue{
-						Value: &monitoringpb.TypedValue_Int64Value{
-							Int64Value: int64(counter.Value()),
-						},
-					},
-				},
-			},
-		},
+		MetricDescriptor: metricDescriptor,
+		Gauge:            gauge,
 	}, nil
 }
 
@@ -185,6 +211,15 @@ func (metricHandler *StackDriverMetricHandler) SubmitMetric(metric Metric) {
 // SubmitMetrics updates a list of metrics on StackDriver
 func (metricHandler *StackDriverMetricHandler) SubmitMetrics(metrics []Metric) {
 	metricHandler.pushMetricsChan <- metrics
+}
+
+// DeleteMetric deletes the metric represented by the given metric descriptor.
+// Only the MetricDescriptor's PackageName and MetricID need to be filled in for the delete to work.
+// This shouldn't ever be called in production because metrics shouldn't ever be deleted.
+func (metricHandler *StackDriverMetricHandler) DeleteMetric(metricDescriptor *MetricDescriptor) error {
+	return metricHandler.client.DeleteMetricDescriptor(context.Background(), &monitoringpb.DeleteMetricDescriptorRequest{
+		Name: fmt.Sprintf("%s/metricDescriptors/custom.googleapis.com/%s/%s", monitoring.MetricProjectPath(metricHandler.projectID), metricDescriptor.PackageName, metricDescriptor.MetricID),
+	})
 }
 
 // Close closes the client connection to StackDriver

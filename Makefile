@@ -98,6 +98,37 @@ ifndef REDIS_HOST
 export REDIS_HOST = 127.0.0.1:6379
 endif
 
+##################################
+##    STACKDRIVER METRICS ENV   ##
+##################################
+ifndef GOOGLE_CLOUD_METRICS_CLUSTER_LOCATION
+export GOOGLE_CLOUD_METRICS_CLUSTER_LOCATION = us-central1-f
+endif
+
+ifndef GOOGLE_CLOUD_METRICS_CLUSTER_NAME
+export GOOGLE_CLOUD_METRICS_CLUSTER_NAME = local
+endif
+
+ifndef GOOGLE_CLOUD_METRICS_POD_NAME
+export GOOGLE_CLOUD_METRICS_POD_NAME = metrics
+endif
+
+ifndef GOOGLE_CLOUD_METRICS_CONTAINER_NAME
+export GOOGLE_CLOUD_METRICS_CONTAINER_NAME = metrics
+endif
+
+ifndef GOOGLE_CLOUD_METRICS_NAMESPACE_NAME
+export GOOGLE_CLOUD_METRICS_NAMESPACE_NAME = default
+endif
+
+ifndef GOOGLE_CLOUD_METRICS_PROJECT
+export GOOGLE_CLOUD_METRICS_PROJECT = network-next-local
+endif
+
+ifndef GOOGLE_APPLICATION_CREDENTIALS
+export GOOGLE_APPLICATION_CREDENTIALS = testdata/network-next-local.json
+endif
+
 .PHONY: help
 help: ## this list
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
