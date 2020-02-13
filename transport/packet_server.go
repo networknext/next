@@ -370,6 +370,10 @@ func (packet *SessionUpdatePacket) GetSignData() []byte {
 		binary.Write(buf, binary.LittleEndian, packet.PacketsLostServerToClient)
 	}
 
+	if packet.Version.AtLeast(SDKVersion{3, 4, 0}) {
+		binary.Write(buf, binary.LittleEndian, packet.UserFlags)
+	}
+
 	binary.Write(buf, binary.LittleEndian, packet.ClientRoutePublicKey)
 
 	return buf.Bytes()
