@@ -432,11 +432,15 @@ func (packet *SessionResponsePacket) Serialize(stream encoding.Stream) error {
 		stream.SerializeInteger(&packet.NumTokens, 0, MaxTokens)
 	}
 	if packet.RouteType == routing.RouteTypeNew {
-		packet.Tokens = make([]byte, packet.NumTokens*routing.EncryptedNextRouteTokenSize)
+		if stream.IsReading() {
+			packet.Tokens = make([]byte, packet.NumTokens*routing.EncryptedNextRouteTokenSize)
+		}
 		stream.SerializeBytes(packet.Tokens)
 	}
 	if packet.RouteType == routing.RouteTypeContinue {
-		packet.Tokens = make([]byte, packet.NumTokens*routing.EncryptedContinueRouteTokenSize)
+		if stream.IsReading() {
+			packet.Tokens = make([]byte, packet.NumTokens*routing.EncryptedContinueRouteTokenSize)
+		}
 		stream.SerializeBytes(packet.Tokens)
 	}
 	if stream.IsReading() {
