@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/rand"
 	"encoding/base64"
 	"flag"
 	"fmt"
@@ -11,7 +10,6 @@ import (
 	"time"
 
 	"github.com/networknext/backend/routing"
-	"golang.org/x/crypto/nacl/box"
 )
 
 type relayaddrFlags []string
@@ -37,7 +35,7 @@ func (i *relaypubkeyFlags) Set(value string) error {
 }
 
 func main() {
-	_, privkey, _ := box.GenerateKey(rand.Reader)
+	privkey := flag.String("privatekey", "", "the private key to encrypt each node")
 
 	token := flag.String("token", "new", "the type of token (new, continue)")
 
@@ -57,6 +55,14 @@ func main() {
 	serveraddr := flag.String("serveraddr", "127.0.0.1:10002", "the servers's IP")
 	serverkey := flag.String("serverpublickey", "", "the servers's public key")
 	flag.Parse()
+
+	if *privkey == "" {
+		log.Fatal("privatekey is required")
+	}
+	privatekey, err := base64.StdEncoding.DecodeString(*privkey)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	client, err := net.ResolveUDPAddr("udp", *clientaddr)
 	if err != nil {
@@ -148,7 +154,7 @@ func main() {
 		log.Fatalf("%s is not a valid token type", *token)
 	}
 
-	enc, _, err := routeToken.Encrypt(privkey[:])
+	enc, _, err := routeToken.Encrypt(privatekey)
 	if err != nil {
 		log.Fatalf("failed to encrypt token: %v", err)
 	}
