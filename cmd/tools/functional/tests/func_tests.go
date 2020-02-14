@@ -1347,7 +1347,6 @@ type test_function func()
 func main() {
 
 	tests := []test_function{
-		/*
 		test_direct_default,
 		test_direct_upgrade,
 		test_direct_no_upgrade,
@@ -1369,13 +1368,10 @@ func main() {
 		test_uncommitted,
 		test_uncommitted_to_committed,
 		test_user_flags,
-		*/
 		test_packet_loss_direct,
 	}
 
-	for {
-		for i := range tests {
-			tests[i]()
-		}
+	for i := range tests {
+		tests[i]()
 	}
 }
