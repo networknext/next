@@ -1295,9 +1295,9 @@ func test_user_flags() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
 }
 
-func test_packet_loss() {
+func test_packet_loss_direct() {
 
-	fmt.Printf("test_packet_loss\n")
+	fmt.Printf("test_packet_loss_direct\n")
 
 	clientConfig := &ClientConfig{}
 	clientConfig.duration = 60.0
@@ -1313,25 +1313,15 @@ func test_packet_loss() {
 
 	server_cmd, server_stdout := server(serverConfig)
 
-	relay_1_cmd, _ := relay()
-	relay_2_cmd, _ := relay()
-	relay_3_cmd, _ := relay()
-
 	backend_cmd, backend_stdout := backend("DEFAULT")
 
 	client_cmd.Wait()
 
 	server_cmd.Process.Signal(os.Interrupt)
 	backend_cmd.Process.Signal(os.Interrupt)
-	relay_1_cmd.Process.Signal(os.Interrupt)
-	relay_2_cmd.Process.Signal(os.Interrupt)
-	relay_3_cmd.Process.Signal(os.Interrupt)
 
 	server_cmd.Wait()
 	backend_cmd.Wait()
-	relay_1_cmd.Wait()
-	relay_2_cmd.Wait()
-	relay_3_cmd.Wait()
 
 	client_counters := read_client_counters(client_stderr.String())
 
@@ -1341,14 +1331,16 @@ func test_packet_loss() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] > 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] > 0)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] > 0)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] > 0)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] + client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] + client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] > 3000)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] + client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] + client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] > 3000)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] + client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] > 3000)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] + client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] > 3000)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] > 250)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] > 250)
 }
+
+// todo: test_packet_loss_next, but func backend needs to be idempotent first...
 
 type test_function func()
 
@@ -1378,7 +1370,7 @@ func main() {
 		test_uncommitted_to_committed,
 		test_user_flags,
 		*/
-		test_packet_loss,
+		test_packet_loss_direct,
 	}
 
 	for {

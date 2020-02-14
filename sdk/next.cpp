@@ -1,4 +1,4 @@
-/*
+;/*
     Network Next SDK $(NEXT_VERSION_FULL)
 
     Copyright © 2017 - 2020 Network Next, Inc.
@@ -5392,6 +5392,10 @@ struct next_client_internal_t
     float bandwidth_usage_kbps_down;
     float bandwidth_envelope_kbps_up;
     float bandwidth_envelope_kbps_down;
+    bool sending_upgrade_response;
+    NextUpgradeResponsePacket upgrade_response;
+    double upgrade_response_start_time;
+    double last_upgrade_response_send_time;
     uint64_t counters[NEXT_CLIENT_COUNTER_MAX];
 };
 
@@ -5580,7 +5584,7 @@ int next_client_internal_process_packet_from_server( next_client_internal_t * cl
 
     if ( next_encrypted_packets[packet_id] && !client->upgraded )
     {
-        next_printf( NEXT_LOG_LEVEL_WARN, "client can't decrypt packet. not upgraded yet" );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client can't decrypt packet. not upgraded yet" );
         return NEXT_ERROR;
     }
 
@@ -5648,11 +5652,16 @@ int next_client_internal_process_packet_from_server( next_client_internal_t * cl
                 return NEXT_ERROR;
             }
 
-            // todo: we need to cache this upgrade response and keep sending it 10 times a second to the server.
-            // otherwise with packet loss, it is possible for the client to miss the upgrade confirm packet back
-            // from the server and get stuck in a limbo state.
-
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent upgrade response packet" );
+
+            // IMPORTANT: Cache upgrade response and keep sending it until we get an upgrade confirm.
+            // Without this, under very rare packet loss conditions it's possible for the client to get
+            // stuck in an undefined state.
+
+            client->sending_upgrade_response = true;
+            client->upgrade_response = response;
+            client->upgrade_response_start_time = next_time();
+            client->last_upgrade_response_send_time = next_time();
 
             return NEXT_OK;
         }
@@ -5660,6 +5669,12 @@ int next_client_internal_process_packet_from_server( next_client_internal_t * cl
 
         case NEXT_UPGRADE_CONFIRM_PACKET:
         {
+            if ( !client->sending_upgrade_response )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade confirm packet. unexpected" );
+                return NEXT_ERROR;
+            }
+
             NextUpgradeConfirmPacket packet;
 
             if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL ) != packet_id )
@@ -5725,6 +5740,8 @@ int next_client_internal_process_packet_from_server( next_client_internal_t * cl
             }
 
             client->counters[NEXT_CLIENT_COUNTER_UPGRADE_SESSION]++;
+
+            client->sending_upgrade_response = false;
 
             return NEXT_OK;
         }
@@ -6046,7 +6063,7 @@ void next_client_internal_block_and_receive_packet( next_client_internal_t * cli
         }
         client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT]++;
     }
-    else if ( packet_data[0] == 255 && packet_bytes <= NEXT_MTU + 10 && from_server_address )
+    else if ( client->upgraded && packet_data[0] == 255 && packet_bytes <= NEXT_MTU + 10 && from_server_address )
     {
         const uint8_t * p = packet_data + 1;
         uint8_t packet_session_sequence = next_read_uint8( &p );
@@ -6075,6 +6092,7 @@ void next_client_internal_block_and_receive_packet( next_client_internal_t * cli
             next_queue_push( client->notify_queue, notify );            
         }
         client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT]++;
+
         next_replay_protection_advance_sequence( &client->payload_replay_protection, clean_sequence );
         next_packet_loss_tracker_packet_received( &client->packet_loss_tracker, clean_sequence );
     }
@@ -6156,6 +6174,10 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 client->last_stats_update_time = 0.0;
                 client->last_stats_report_time = 0.0;
                 client->route_update_sequence = 0;
+                client->sending_upgrade_response = false;
+                client->upgrade_response = NextUpgradeResponsePacket();
+                client->upgrade_response_start_time = 0.0;
+                client->last_upgrade_response_send_time = 0.0;
                 memset( &client->near_relay_stats, 0, sizeof(next_relay_stats_t ) );
                 next_relay_manager_reset( client->near_relay_manager );
                 memset( client->client_kx_public_key, 0, crypto_kx_PUBLICKEYBYTES );
@@ -6408,6 +6430,7 @@ void next_client_internal_update_direct_pings( next_client_internal_t * client )
         next_platform_mutex_acquire( client->route_manager_mutex );
         next_route_manager_fallback_to_direct( client->route_manager, NEXT_FLAGS_CLIENT_TIMED_OUT );
         next_platform_mutex_release( client->route_manager_mutex );
+        client->fallback_to_direct = true;
     }
 }
 
@@ -6528,6 +6551,40 @@ void next_client_internal_update_route_manager( next_client_internal_t * client 
     }
 }
 
+void next_client_internal_update_upgrade_response( next_client_internal_t * client )
+{
+    if ( client->fallback_to_direct )
+        return;
+
+    if ( !client->sending_upgrade_response )
+        return;
+
+    const double current_time = next_time();
+
+    if ( client->last_upgrade_response_send_time + 0.1 > current_time )
+        return;
+
+    if ( next_client_internal_send_packet_to_server( client, NEXT_UPGRADE_RESPONSE_PACKET, &client->upgrade_response ) != NEXT_OK )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "client failed to send upgrade response packet to server" );
+        return;
+    }
+
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent upgrade response packet" );
+
+    client->last_upgrade_response_send_time = current_time;
+
+    if ( client->upgrade_response_start_time + 5.0 <= current_time )
+    {
+        next_stats( client->route_manager->stats, "upgrade response timeout" );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "upgrade response timed out" );
+        next_platform_mutex_acquire( client->route_manager_mutex );
+        next_route_manager_fallback_to_direct( client->route_manager, NEXT_FLAGS_UPGRADE_RESPONSE_TIMED_OUT );
+        next_platform_mutex_release( client->route_manager_mutex );
+        client->fallback_to_direct = true;
+    }
+}
+
 static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_client_internal_thread_function( void * context )
 {
     next_client_internal_t * client = (next_client_internal_t*) context;
@@ -6555,6 +6612,8 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_client_inter
             next_client_internal_update_stats( client );
 
             next_client_internal_update_route_manager( client );
+
+            next_client_internal_update_upgrade_response( client );
 
             quit = next_client_internal_pump_commands( client );
 
@@ -8963,10 +9022,6 @@ int next_server_internal_process_packet( next_server_internal_t * server, const 
                 return NEXT_ERROR;
             }
 
-            // todo
-            char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server received upgrade response packet from %s", next_address_to_string( from, address_buffer ) );
-
             NextUpgradeToken upgrade_token;
 
             // does the session already exist? if so we still need to reply with upgrade commit in case of server -> client packet loss
@@ -9098,7 +9153,8 @@ int next_server_internal_process_packet( next_server_internal_t * server, const 
 
             next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL );
 
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server received upgrade response packet" );
+            char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server received upgrade response packet from %s", next_address_to_string( from, address_buffer ) );
 
             // reply with upgrade confirm
 
