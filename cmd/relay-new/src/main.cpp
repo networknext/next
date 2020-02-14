@@ -120,6 +120,26 @@ int main(int argc, const char** argv)
 
   printf("    backend hostname is '%s'\n", backend_hostname);
 
+  std::ostream* output;
+  bool should_delete_output = false;
+  const char* relay_log_file = relay::relay_platform_getenv("RELAY_LOG_FILE");
+  if (relay_log_file == nullptr) {
+    printf("Logging to stdout\n");
+    output = &std::cout;
+  } else {
+    auto file = new std::ofstream;
+    file->open(relay_log_file);
+
+    if (!(*file)) {
+      printf("Could not open %s, defaulting to stdout\n", relay_log_file);
+      output = &std::cout;
+    } else {
+      printf("Using %s to log packet stats\n", relay_log_file);
+      output = file;
+      should_delete_output = true;
+    }
+  }
+
   if (relay::relay_initialize() != RELAY_OK) {
     printf("\nerror: failed to initialize relay\n\n");
     return 1;
@@ -199,13 +219,7 @@ int main(int argc, const char** argv)
     gAlive = false;
   }
 
-  std::unique_ptr<net::Communicator> communicator;
-  try {
-    communicator = std::make_unique<net::Communicator>(relay, gAlive);
-  } catch (std::exception& e) {
-    printf("\nerror: could not create update & ping threads: %s", e.what());
-    gAlive = false;
-  }
+  net::Communicator communicator(relay, gAlive, *output);
 
   printf("Relay initialized\n\n");
 
@@ -234,7 +248,10 @@ int main(int argc, const char** argv)
 
   printf("Cleaning up\n");
 
-  communicator.reset();
+  communicator.stop();
+  if (should_delete_output) {
+    delete output;
+  }
 
   free(update_response_memory);
 

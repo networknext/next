@@ -16,6 +16,8 @@ namespace util
     template <typename... Args>
     void log(Args&&... args);
 
+    void flush();
+
    private:
     std::ostream& mStream;
     std::mutex mLock;
@@ -43,6 +45,11 @@ namespace util
   inline void Console::log(Args&&... args)
   {
     writeLine('[', StrTime(), "] ", args...);
+  }
+
+  inline void Console::flush()
+  {
+    mStream.flush();
   }
 
   inline std::string Console::StrTime()

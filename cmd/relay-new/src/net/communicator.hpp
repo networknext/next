@@ -10,7 +10,7 @@ namespace net
   class Communicator
   {
    public:
-    Communicator(relay::relay_t& relay, volatile bool& handle);
+    Communicator(relay::relay_t& relay, volatile bool& handle, std::ostream& ouptut = std::cout);
     ~Communicator();
 
     void stop();
@@ -27,6 +27,32 @@ namespace net
 
     void initPingThread();
     void initRecvThread();
+
+    void handleRelayPingPacket(
+     std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, legacy::relay_address_t& from);
+
+    void handleRelayPongPacket(
+     std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, legacy::relay_address_t& from);
+
+    void handleRouteRequestPacket(
+     std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, legacy::relay_address_t& from);
+
+    void handleRouteResponsePacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
+
+    void handleContinueRequestPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
+
+    void handleContinueResponsePacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
+
+    void handleClientToServerPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
+
+    void handleServerToClientPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
+
+    void handleSessionPingPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
+
+    void handleSessionPongPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
+
+    void handleNearPingPacket(
+     std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, legacy::relay_address_t& from);
   };
 }  // namespace net
 #endif
