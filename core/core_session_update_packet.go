@@ -81,7 +81,11 @@ func (packet *SessionUpdatePacket) Serialize(stream Stream, versionMajor int32, 
 	stream.SerializeUint64(&packet.PlatformId)
 	stream.SerializeUint64(&packet.Tag)
 	if ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 3, 3, 4) {
-		stream.SerializeBits(&packet.Flags, FlagTotalCount)
+		if ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 3, 4, 0) {
+			stream.SerializeBits(&packet.Flags, FlagTotalCount)
+		} else {
+			stream.SerializeBits(&packet.Flags, FlagTotalCount_Pre_3_4_0)
+		}
 	}
 	stream.SerializeBool(&packet.Flagged)
 	stream.SerializeBool(&packet.FallbackToDirect)

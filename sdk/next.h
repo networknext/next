@@ -80,9 +80,8 @@
 #define NEXT_FLAGS_CLIENT_TIMED_OUT                          (1<<7)
 #define NEXT_FLAGS_TRY_BEFORE_YOU_BUY_ABORT                  (1<<8)
 #define NEXT_FLAGS_DIRECT_ROUTE_EXPIRED                      (1<<9)
-#define NEXT_FLAGS_UPGRADE_RESPONSE_TIMED_OUT                (1<<9)      // todo: (1<<10)
-// todo: need to bump flags count up to 11
-#define NEXT_FLAGS_COUNT                                         10
+#define NEXT_FLAGS_UPGRADE_RESPONSE_TIMED_OUT               (1<<10)
+#define NEXT_FLAGS_COUNT                                         11
 
 #if defined(_WIN32)
 #define NOMINMAX
