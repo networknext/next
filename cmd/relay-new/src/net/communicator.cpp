@@ -35,8 +35,6 @@ namespace net
     mPingThread->join();
     mRecvThread->join();
     mLogger.stop();
-    mThreadPool->terminate();
-    mThreadPool.reset();
   }
 
   void Communicator::initPingThread()
@@ -120,6 +118,8 @@ namespace net
           this->handleSessionPongPacket(packetData, packet_bytes);
         } else if (packetData[0] == RELAY_NEAR_PING_PACKET) {
           this->handleNearPingPacket(packetData, packet_bytes, from);
+        } else {
+          mLogger.addToUnknown(packet_bytes);
         }
       }
     });

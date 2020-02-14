@@ -1,8 +1,6 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
 
-#include <cinttypes>
-
 // Legacy, use bools instead, eventually delete and replace these
 #define RELAY_OK 0
 #define RELAY_ERROR -1
