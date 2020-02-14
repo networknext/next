@@ -11,13 +11,18 @@ extern util::Console _console_;
 // Log() is for things you always want logged, like setup or error handling, enabled for release builds
 // unlike the debug version of Log(), the release does not record the file and line as to not expose that
 
-#if not defined NDEBUG and not defined BENCH_BUILD
+#ifndef NDEBUG
 #define LogDebug(...)                                          \
   _console_.log(__FILE__, " (", __LINE__, "): ", __VA_ARGS__); \
   std::cout << std::flush
 // Define regular logging
 #define Log(...) LogDebug(__VA_ARGS__)
+#elif defined BENCH_BUILD
+// disable all logging to not clutter output
+#define LogDebug(...)
+#define Log(...)
 #else
+// only disable debug logging
 #define LogDebug(...)
 #define Log(...) _console_.log(__VA_ARGS__)
 #endif

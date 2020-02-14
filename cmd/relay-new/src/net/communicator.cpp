@@ -15,6 +15,8 @@
 #include "relay/relay_platform.hpp"
 #include "relay/relay_route_token.hpp"
 
+#include "net/packets/realy_ping_packet.hpp"
+
 namespace net
 {
   Communicator::Communicator(relay::relay_t& relay, volatile bool& handle, std::ostream& output)
@@ -119,6 +121,7 @@ namespace net
         } else if (packetData[0] == RELAY_NEAR_PING_PACKET) {
           this->handleNearPingPacket(packetData, packet_bytes, from);
         } else {
+          LogDebug("Received unknown packet type: ", std::hex, (int)packetData[0]);
           mLogger.addToUnknown(packet_bytes);
         }
       }
@@ -129,6 +132,8 @@ namespace net
    std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, legacy::relay_address_t& from)
   {
     mLogger.addToRelayPingPacket(size);
+
+    // mark the 0'th index as a pong and send it back from where it came
     packet[0] = RELAY_PONG_PACKET;
     relay_platform_socket_send_packet(mRelay.socket, &from, packet.data(), 9);
   }
@@ -138,8 +143,12 @@ namespace net
   {
     mLogger.addToRelayPongPacket(size);
     relay_platform_mutex_acquire(mRelay.mutex);
+
+    // read the uint from the packet - this could be brought out of the mutex
     const uint8_t* p = packet.data() + 1;
     uint64_t sequence = encoding::read_uint64(&p);
+
+    // process the pong time
     relay_manager_process_pong(mRelay.relay_manager, &from, sequence);
     relay_platform_mutex_release(mRelay.mutex);
   }
@@ -148,11 +157,13 @@ namespace net
    std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, legacy::relay_address_t& from)
   {
     mLogger.addToRouteReq(size);
+
     if (size < int(1 + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES * 2)) {
       relay_printf("ignoring route request. bad packet size (%d)", size);
       return;
     }
 
+    // ignore the header byte of the packet
     uint8_t* p = &packet[1];
     relay::relay_route_token_t token;
 
@@ -161,14 +172,19 @@ namespace net
       return;
     }
 
+    // don't do anything if the token is expired - probably should log something here
     if (token.expire_timestamp < relay::relay_timestamp(&mRelay)) {
       return;
     }
 
+    // create a new session and add it to the session map
     uint64_t hash = token.session_id ^ token.session_version;
     if (mRelay.sessions->find(hash) == mRelay.sessions->end()) {
+      // create the session
       relay::relay_session_t* session = (relay::relay_session_t*)malloc(sizeof(relay::relay_session_t));
       assert(session);
+
+      // fill it with data in the token
       session->expire_timestamp = token.expire_timestamp;
       session->session_id = token.session_id;
       session->session_version = token.session_version;
@@ -178,13 +194,17 @@ namespace net
       session->kbps_down = token.kbps_down;
       session->prev_address = from;
       session->next_address = token.next_address;
+
+      // store it
       memcpy(session->private_key, token.private_key, crypto_box_SECRETKEYBYTES);
       relay_replay_protection_reset(&session->replay_protection_client_to_server);
       relay_replay_protection_reset(&session->replay_protection_server_to_client);
-      mRelay.sessions->insert(std::make_pair(hash, session));
+      mRelay.sessions->insert(std::make_pair(hash, session)); // TODO dear god why
+
       printf("session created: %" PRIx64 ".%d\n", token.session_id, token.session_version);
     }
 
+    // remove this part of the token by offseting it the request packet bytes
     packet[RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES] = RELAY_ROUTE_REQUEST_PACKET;
     relay_platform_socket_send_packet(mRelay.socket,
      &token.next_address,
@@ -209,8 +229,8 @@ namespace net
     }
 
     uint64_t hash = session_id ^ session_version;
-    relay::relay_session_t* session = (*(mRelay.sessions))[hash];
-    if (!session) {
+    relay::relay_session_t* session = (*(mRelay.sessions))[hash]; // TODO just use a reference for this
+    if (!session) { // TODO and use find() for this
       return;
     }
 

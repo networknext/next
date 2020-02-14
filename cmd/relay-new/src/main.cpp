@@ -250,7 +250,9 @@ int main(int argc, const char** argv)
 
   communicator.stop();
   if (should_delete_output) {
-    delete output;
+    auto file = dynamic_cast<std::ofstream*>(output);
+    file->close();
+    delete file;
   }
 
   free(update_response_memory);

@@ -309,6 +309,7 @@ namespace util
     mAlive = false;
     if (mPrintThread && mPrintThread->joinable()) {
       mPrintThread->join();
+      mPrintThread = nullptr;
     }
   }
 

@@ -3,7 +3,6 @@
 
 #include "relay/relay.hpp"
 #include "util/throughput_logger.hpp"
-#include "util/thread_pool.hpp"
 
 namespace net
 {
@@ -27,9 +26,11 @@ namespace net
     void initPingThread();
     void initRecvThread();
 
+    // Marks the first byte as a pong packet and sends it back
     void handleRelayPingPacket(
      std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, legacy::relay_address_t& from);
 
+    // Processes the pong packet by increasing the sequence number and getting the time diff
     void handleRelayPongPacket(
      std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, legacy::relay_address_t& from);
 
