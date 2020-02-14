@@ -1,4 +1,4 @@
-;/*
+/*
     Network Next SDK $(NEXT_VERSION_FULL)
 
     Copyright © 2017 - 2020 Network Next, Inc.
