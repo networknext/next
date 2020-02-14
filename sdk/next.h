@@ -221,6 +221,7 @@ struct next_client_stats_t
     float kbps_down;
     uint64_t packets_lost_client_to_server;
     uint64_t packets_lost_server_to_client;
+    uint64_t user_flags;
 };
 
 // -----------------------------------------
@@ -244,6 +245,8 @@ NEXT_EXPORT_FUNC void next_client_flag_session( next_client_t * client );
 NEXT_EXPORT_FUNC uint64_t next_client_session_id( next_client_t * client );
 
 NEXT_EXPORT_FUNC const next_client_stats_t * next_client_stats( next_client_t * client );
+
+NEXT_EXPORT_FUNC void next_client_set_user_flags( next_client_t * client, uint64_t user_flags );
 
 NEXT_EXPORT_FUNC void next_client_destroy( next_client_t * client );
 

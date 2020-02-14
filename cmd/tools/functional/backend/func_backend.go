@@ -58,6 +58,7 @@ const BACKEND_MODE_ON_OFF = 4
 const BACKEND_MODE_ROUTE_SWITCHING = 5
 const BACKEND_MODE_UNCOMMITTED = 6
 const BACKEND_MODE_UNCOMMITTED_TO_COMMITTED = 7
+const BACKEND_MODE_USER_FLAGS = 8
 
 type Backend struct {
 	mutex           sync.RWMutex
@@ -276,6 +277,10 @@ func main() {
 		backend.mode = BACKEND_MODE_UNCOMMITTED_TO_COMMITTED
 	}
 
+	if os.Getenv("BACKEND_MODE") == "USER_FLAGS" {
+		backend.mode = BACKEND_MODE_USER_FLAGS
+	}
+
 	go OptimizeThread()
 
 	go TimeoutThread()
@@ -410,6 +415,12 @@ func main() {
 				}
 				if sessionUpdate.Sequence >= 4 && sessionUpdate.Committed == false {
 					panic("slices 4 and greater should be committed")
+				}
+			}
+
+			if backend.mode == BACKEND_MODE_USER_FLAGS {
+				if sessionUpdate.Sequence >= 2 && sessionUpdate.UserFlags != 0x123 {
+					panic("user flags not set on session update")
 				}
 			}
 

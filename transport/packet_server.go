@@ -180,6 +180,7 @@ type SessionUpdatePacket struct {
 	KbpsDown                  uint32
 	PacketsLostClientToServer uint64
 	PacketsLostServerToClient uint64
+	UserFlags                 uint64
 	Signature                 []byte
 
 	Version SDKVersion
@@ -276,6 +277,11 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 		stream.SerializeUint64(&packet.PacketsLostClientToServer)
 		stream.SerializeUint64(&packet.PacketsLostServerToClient)
 	}
+
+	if packet.Version.AtLeast(SDKVersion{3, 4, 0}) {
+		stream.SerializeUint64(&packet.UserFlags)
+	}
+
 	stream.SerializeBytes(packet.Signature)
 	return stream.Error()
 }
@@ -362,6 +368,10 @@ func (packet *SessionUpdatePacket) GetSignData() []byte {
 	if packet.Version.AtLeast(SDKVersion{3, 3, 4}) {
 		binary.Write(buf, binary.LittleEndian, packet.PacketsLostClientToServer)
 		binary.Write(buf, binary.LittleEndian, packet.PacketsLostServerToClient)
+	}
+
+	if packet.Version.AtLeast(SDKVersion{3, 4, 0}) {
+		binary.Write(buf, binary.LittleEndian, packet.UserFlags)
 	}
 
 	binary.Write(buf, binary.LittleEndian, packet.ClientRoutePublicKey)

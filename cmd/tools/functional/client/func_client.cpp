@@ -118,6 +118,12 @@ int main()
 
     next_client_open_session( client, "127.0.0.1:32202" );
 
+    const char * client_user_flags_env = getenv( "CLIENT_USER_FLAGS" );
+    if ( client_user_flags_env )
+    {
+        next_client_set_user_flags( client, 0x123 );
+    }
+
     uint8_t packet_data[32];
     memset( packet_data, 0, sizeof( packet_data ) );
 

@@ -107,7 +107,7 @@
 
 #define NEXT_PACKET_LOSS_TRACKER_HISTORY                             1024
 #define NEXT_PACKET_LOSS_TRACKER_SAFETY                                30
-#define NEXT_SECONDS_BETWEEN_PACKET_LOSS_UPDATES                      1.0
+#define NEXT_SECONDS_BETWEEN_PACKET_LOSS_UPDATES                      0.1
 
 static const uint8_t next_backend_public_key[] = 
 { 
@@ -2971,6 +2971,7 @@ struct NextClientStatsPacket
     float near_relay_jitter[NEXT_MAX_NEAR_RELAYS];
     float near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
     uint64_t packets_lost_server_to_client;
+    uint64_t user_flags;
 
     NextClientStatsPacket()
     {
@@ -3013,6 +3014,7 @@ struct NextClientStatsPacket
             serialize_float( stream, near_relay_packet_loss[i] );
         }
         serialize_uint64( stream, packets_lost_server_to_client );
+        serialize_uint64( stream, user_flags );
         return true;
     }
 };
@@ -5267,6 +5269,7 @@ void next_route_manager_destroy( next_route_manager_t * route_manager )
 #define NEXT_CLIENT_COMMAND_CLOSE_SESSION           1
 #define NEXT_CLIENT_COMMAND_DESTROY                 2
 #define NEXT_CLIENT_COMMAND_FLAG_SESSION            3
+#define NEXT_CLIENT_COMMAND_USER_FLAGS              4
 
 struct next_client_command_t
 {
@@ -5291,6 +5294,11 @@ struct next_client_command_destroy_t : public next_client_command_t
 struct next_client_command_flag_session_t : public next_client_command_t
 {
     // ...
+};
+
+struct next_client_command_user_flags_t : public next_client_command_t
+{
+    uint64_t user_flags;
 };
 
 // ---------------------------------------------------------------
@@ -5343,6 +5351,7 @@ struct next_client_internal_t
     bool flagged;
     bool fallback_to_direct;
     bool multipath;
+    uint64_t user_flags;
     uint8_t open_session_sequence;
     uint64_t upgrade_sequence;
     uint64_t session_id;
@@ -5575,6 +5584,11 @@ int next_client_internal_process_packet_from_server( next_client_internal_t * cl
     {
         case NEXT_UPGRADE_REQUEST_PACKET:
         {
+            if ( client->fallback_to_direct )
+            {
+                return NEXT_ERROR;
+            }
+
             NextUpgradeRequestPacket packet;
 
             if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL ) != packet_id )
@@ -5610,12 +5624,6 @@ int next_client_internal_process_packet_from_server( next_client_internal_t * cl
             if ( next_global_config.disable_network_next )
             {
                 next_printf( NEXT_LOG_LEVEL_WARN, "client ignored upgrade request packet. network next is disabled" );
-                return NEXT_ERROR;
-            }
-
-            if ( client->fallback_to_direct )
-            {
-                next_printf( NEXT_LOG_LEVEL_WARN, "client ignored upgrade request packet. fallback to direct" );
                 return NEXT_ERROR;
             }
 
@@ -6119,6 +6127,7 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 client->flagged = false;
                 client->fallback_to_direct = false;
                 client->multipath = false;
+                client->user_flags = 0;
                 client->upgrade_sequence = 0;
                 client->session_id = 0;
                 client->internal_send_sequence = 0;
@@ -6180,6 +6189,12 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                     next_printf( NEXT_LOG_LEVEL_INFO, "client flagged session %" PRIx64, client->session_id );
                     client->flagged = true;
                 }
+            }
+            break;
+
+            case NEXT_CLIENT_COMMAND_USER_FLAGS:
+            {
+                client->user_flags = ((next_client_command_user_flags_t*)command)->user_flags;
             }
             break;
 
@@ -6332,6 +6347,8 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         }
 
         packet.packets_lost_server_to_client = client->client_stats.packets_lost_server_to_client;
+
+        packet.user_flags = client->user_flags;
 
         if ( next_client_internal_send_packet_to_server( client, NEXT_CLIENT_STATS_PACKET, &packet ) != NEXT_OK )
         {
@@ -6951,16 +6968,13 @@ void next_client_send_packet_direct( next_client_t * client, const uint8_t * pac
 void next_client_flag_session( next_client_t * client )
 {
     next_assert( client );
-
     next_client_command_flag_session_t * command = (next_client_command_flag_session_t*) next_malloc( client->context, sizeof( next_client_command_flag_session_t ) );
     if ( !command )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "flag session failed. could not create flag session command" );
         return;
     }
-
     command->type = NEXT_CLIENT_COMMAND_FLAG_SESSION;
-
     {    
         next_mutex_guard( client->internal->command_mutex );
         next_queue_push( client->internal->command_queue, command );
@@ -6977,6 +6991,23 @@ const next_client_stats_t * next_client_stats( next_client_t * client )
 {
     next_assert( client );
     return &client->client_stats;
+}
+
+void next_client_set_user_flags( next_client_t * client, uint64_t user_flags )
+{
+    next_assert( client );
+    next_client_command_user_flags_t * command = (next_client_command_user_flags_t*) next_malloc( client->context, sizeof( next_client_command_user_flags_t ) );
+    if ( !command )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "set user flags failed. could not create user flags command" );
+        return;
+    }
+    command->type = NEXT_CLIENT_COMMAND_USER_FLAGS;
+    command->user_flags = user_flags;
+    {    
+        next_mutex_guard( client->internal->command_mutex );
+        next_queue_push( client->internal->command_queue, command );
+    }
 }
 
 void next_client_counters( next_client_t * client, uint64_t * counters )
@@ -7624,6 +7655,7 @@ struct next_session_entry_t
     float stats_near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
     uint64_t stats_packets_lost_client_to_server;
     uint64_t stats_packets_lost_server_to_client;
+    uint64_t stats_user_flags;
     
     double next_packet_loss_update_time;
     double next_session_update_time;
@@ -8060,6 +8092,7 @@ struct NextBackendSessionUpdatePacket
     uint32_t kbps_down;
     uint64_t packets_lost_client_to_server;
     uint64_t packets_lost_server_to_client;
+    uint64_t user_flags;
     uint8_t signature[crypto_sign_BYTES];
 
     NextBackendSessionUpdatePacket()
@@ -8111,6 +8144,7 @@ struct NextBackendSessionUpdatePacket
         serialize_uint32( stream, kbps_down );
         serialize_uint64( stream, packets_lost_client_to_server );
         serialize_uint64( stream, packets_lost_server_to_client );
+        serialize_uint64( stream, user_flags );
         serialize_bytes( stream, signature, crypto_sign_BYTES );
         return true;
     }
@@ -8156,6 +8190,7 @@ struct NextBackendSessionUpdatePacket
         next_write_uint32( &p, kbps_down );
         next_write_uint64( &p, packets_lost_client_to_server );
         next_write_uint64( &p, packets_lost_server_to_client );
+        next_write_uint64( &p, user_flags );
         next_write_bytes( &p, client_route_public_key, crypto_box_PUBLICKEYBYTES );
         next_assert( p - buffer <= buffer_size );
         (void) buffer_size;
@@ -8800,7 +8835,7 @@ next_session_entry_t * next_server_internal_check_client_to_server_packet( next_
     next_session_entry_t * entry = next_session_manager_find_by_session_id( server->session_manager, packet_session_id );
     if ( !entry )
     {
-        next_printf( NEXT_LOG_LEVEL_WARN, "server ignored client to server packet. could not find session %" PRIx64 );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client to server packet. could not find session %" PRIx64, packet_session_id );
         return NULL;
     }
 
@@ -8893,7 +8928,7 @@ int next_server_internal_process_packet( next_server_internal_t * server, const 
         session = next_session_manager_find_by_address( server->session_manager, from );
         if ( !session )
         {
-            next_printf( NEXT_LOG_LEVEL_WARN, "server ignored encrypted packet. no session for address" );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored encrypted packet. no session for address" );
             return NEXT_ERROR;
         }
     }
@@ -9156,6 +9191,7 @@ int next_server_internal_process_packet( next_server_internal_t * server, const 
                     session->stats_near_relay_packet_loss[i] = packet.near_relay_packet_loss[i];
                 }
                 session->stats_packets_lost_server_to_client = packet.packets_lost_server_to_client;
+                session->stats_user_flags |= packet.user_flags;
                 session->last_client_stats_update = next_time();
             }
 
@@ -9303,6 +9339,11 @@ int next_server_internal_process_packet( next_server_internal_t * server, const 
                     memcpy( entry->previous_route_private_key, entry->current_route_private_key, crypto_box_SECRETKEYBYTES );
                 }
             }
+
+            // IMPORTANT: clear user flags after we get an response/ack for the last session update.
+            // This lets us accumulate user flags between each session update packet via session_flags |= packet.session_flags
+            // so we pick up on flags that were only set for a few seconds, inside a 10 second long slice.
+            entry->stats_user_flags = 0;
 
             return NEXT_OK;
         }   
@@ -9570,7 +9611,7 @@ void next_server_internal_update_pending_upgrades( next_server_internal_t * serv
         if ( entry->upgrade_time + NEXT_UPGRADE_TIMEOUT <= current_time )
         {
             char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-            next_printf( NEXT_LOG_LEVEL_ERROR, "server upgrade request timed out for client %s", next_address_to_string( &entry->address, address_buffer ) );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server upgrade request timed out for client %s", next_address_to_string( &entry->address, address_buffer ) );
             next_pending_session_manager_remove_at_index( server->pending_session_manager, i );
             next_server_notify_pending_session_timed_out_t * notify = (next_server_notify_pending_session_timed_out_t*) next_malloc( server->context, sizeof( next_server_notify_pending_session_timed_out_t ) );
             notify->type = NEXT_SERVER_NOTIFY_PENDING_SESSION_TIMED_OUT;
@@ -9622,9 +9663,6 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
 
         if ( entry->last_client_stats_update + NEXT_SESSION_TIMEOUT <= current_time )
         {
-            char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-            next_printf( NEXT_LOG_LEVEL_INFO, "server session timed out for client %s", next_address_to_string( &entry->address, address_buffer ) );
-
             next_server_notify_session_timed_out_t * notify = (next_server_notify_session_timed_out_t*) next_malloc( server->context, sizeof( next_server_notify_session_timed_out_t ) );
             notify->type = NEXT_SERVER_NOTIFY_SESSION_TIMED_OUT;
             notify->address = entry->address;
@@ -10016,6 +10054,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.kbps_down = session->stats_kbps_down;
             packet.packets_lost_client_to_server = session->stats_packets_lost_client_to_server;
             packet.packets_lost_server_to_client = session->stats_packets_lost_server_to_client;
+            packet.user_flags = session->stats_user_flags;
             packet.next = session->stats_next;
             packet.committed = session->stats_committed;
             packet.next_min_rtt = session->stats_next_min_rtt;
@@ -10078,7 +10117,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
         if ( session->waiting_for_update_response && session->next_session_update_time - NEXT_SECONDS_BETWEEN_SESSION_UPDATES + NEXT_SESSION_UPDATE_TIMEOUT <= current_time )
         {
-            next_printf( NEXT_LOG_LEVEL_ERROR, "server timed out waiting for backend session response for %" PRIx64, session->session_id );
+            next_printf( NEXT_LOG_LEVEL_ERROR, "server timed out waiting for backend response for session %" PRIx64, session->session_id );
             session->waiting_for_update_response = false;
             session->next_session_update_time = -1.0;
         }
@@ -10308,7 +10347,7 @@ void next_server_update( next_server_t * server )
             {
                 next_server_notify_pending_session_timed_out_t * pending_session_timed_out = (next_server_notify_pending_session_timed_out_t*) notify;
                 char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-                next_printf( NEXT_LOG_LEVEL_WARN, "server timed out pending upgrade of client %s to session %" PRIx64, next_address_to_string( &pending_session_timed_out->address, address_buffer ), pending_session_timed_out->session_id );
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server timed out pending upgrade of client %s to session %" PRIx64, next_address_to_string( &pending_session_timed_out->address, address_buffer ), pending_session_timed_out->session_id );
                 next_proxy_session_entry_t * pending_entry = next_proxy_session_manager_find( server->pending_session_manager, &pending_session_timed_out->address );
                 if ( pending_entry && pending_entry->session_id == pending_session_timed_out->session_id )
                 {
@@ -12049,6 +12088,7 @@ static void test_packets()
             in.near_relay_packet_loss[i] = i;
         }
         in.packets_lost_server_to_client = 1000;
+        in.user_flags = 123;
         uint64_t in_sequence = 1000;
         uint64_t out_sequence = 0;
         int packet_bytes = 0;
@@ -12085,6 +12125,7 @@ static void test_packets()
             check( in.near_relay_packet_loss[i] == out.near_relay_packet_loss[i] );
         }
         check( in.packets_lost_server_to_client == out.packets_lost_server_to_client );
+        check( in.user_flags == out.user_flags );
     }
 
     // route update packet (direct)
@@ -12669,6 +12710,11 @@ static void test_backend_packets()
         next_address_parse( &in.client_address, "127.0.0.1:40000" );
         next_address_parse( &in.server_address, "127.0.0.1:12345" );
         next_random_bytes( in.client_route_public_key, crypto_box_PUBLICKEYBYTES );
+        in.kbps_up = 100.0f;
+        in.kbps_down = 200.0f;
+        in.packets_lost_client_to_server = 100;
+        in.packets_lost_server_to_client = 200;
+        in.user_flags = 123;
         in.Sign( private_key );
 
         int packet_bytes = 0;
@@ -12710,6 +12756,11 @@ static void test_backend_packets()
         check( next_address_equal( &in.client_address, &out.client_address ) );
         check( next_address_equal( &in.server_address, &out.server_address ) );
         check( memcmp( in.client_route_public_key, out.client_route_public_key, crypto_box_PUBLICKEYBYTES ) == 0 );
+        check( in.kbps_up == out.kbps_up );
+        check( in.kbps_down == out.kbps_down );
+        check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
+        check( in.packets_lost_server_to_client == out.packets_lost_server_to_client );
+        check( in.user_flags == out.user_flags );
         check( out.Verify( public_key ) );
     }
 
