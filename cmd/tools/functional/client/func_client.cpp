@@ -47,12 +47,11 @@ extern float next_fake_direct_packet_loss;
 extern float next_fake_direct_rtt;
 extern float next_fake_next_packet_loss;
 extern float next_fake_next_rtt;
+extern bool next_packet_loss;
 
 int main()
 {
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
-
-    next_log_level( NEXT_LOG_LEVEL_DEBUG );
 
     next_config_t config;
     next_default_config( &config );
@@ -109,8 +108,12 @@ int main()
         }
     }
 
+    next_log_level( NEXT_LOG_LEVEL_DEBUG );
+
     if ( next_init( NULL, &config ) != NEXT_OK )
         return 1;
+
+    next_log_level( NEXT_LOG_LEVEL_DEBUG );
 
     next_client_t * client = next_client_create( NULL, client_packet_received );
     if ( client == NULL )
@@ -122,6 +125,12 @@ int main()
     if ( client_user_flags_env )
     {
         next_client_set_user_flags( client, 0x123 );
+    }
+
+    const char * client_packet_loss_env = getenv( "CLIENT_PACKET_LOSS" );
+    if ( client_packet_loss_env )
+    {
+        next_packet_loss = true;
     }
 
     uint8_t packet_data[32];

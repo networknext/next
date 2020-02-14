@@ -2717,7 +2717,12 @@ struct next_packet_loss_tracker_t
 void next_packet_loss_tracker_reset( next_packet_loss_tracker_t * tracker )
 {
     next_assert( tracker );
-    memset( tracker, 0, sizeof(next_packet_loss_tracker_t) );
+    tracker->last_packet_processed = 0;
+    tracker->most_recent_packet_received = 0;
+    for ( int i = 0; i < NEXT_PACKET_LOSS_TRACKER_HISTORY; ++i )
+    {
+        tracker->received_packets[i] = 0xFFFFFFFFFFFFFFFFUL;        
+    }
 }
 
 void next_packet_loss_tracker_packet_received( next_packet_loss_tracker_t * tracker, uint64_t sequence )
@@ -2745,7 +2750,6 @@ int next_packet_loss_tracker_update( next_packet_loss_tracker_t * tracker, next_
         const int index = int( sequence % NEXT_PACKET_LOSS_TRACKER_HISTORY );
         if ( tracker->received_packets[index] != sequence )
         {
-            next_stats( stats, "server -> client packet lost %" PRIu64, sequence - 1 );
             lost_packets++;
         }
     }
@@ -5586,6 +5590,7 @@ int next_client_internal_process_packet_from_server( next_client_internal_t * cl
         {
             if ( client->fallback_to_direct )
             {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet. fallback to direct" );
                 return NEXT_ERROR;
             }
 
@@ -5629,7 +5634,7 @@ int next_client_internal_process_packet_from_server( next_client_internal_t * cl
 
             next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL );
 
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "client received upgrade request packet" );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client received upgrade request packet from server" );
 
             NextUpgradeResponsePacket response;
             response.client_open_session_sequence = client->open_session_sequence;
@@ -5642,6 +5647,10 @@ int next_client_internal_process_packet_from_server( next_client_internal_t * cl
                 next_printf( NEXT_LOG_LEVEL_WARN, "client failed to send upgrade response packet to server" );
                 return NEXT_ERROR;
             }
+
+            // todo: we need to cache this upgrade response and keep sending it 10 times a second to the server.
+            // otherwise with packet loss, it is possible for the client to miss the upgrade confirm packet back
+            // from the server and get stuck in a limbo state.
 
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent upgrade response packet" );
 
@@ -6004,6 +6013,10 @@ int next_client_internal_process_network_next_packet( next_client_internal_t * c
     return NEXT_ERROR;
 }
 
+#if !NEXT_VERSION_IS_PRESENT
+bool next_packet_loss = false;
+#endif // #if !NEXT_VERSION_IS_PRESENT
+
 void next_client_internal_block_and_receive_packet( next_client_internal_t * client )
 {
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
@@ -6013,6 +6026,11 @@ void next_client_internal_block_and_receive_packet( next_client_internal_t * cli
     int packet_bytes = next_platform_socket_receive_packet( client->socket, &from, packet_data, sizeof(packet_data) );
     if ( packet_bytes == 0 )
         return;
+
+#if !NEXT_VERSION_IS_PRESENT
+    if ( next_packet_loss && ( rand() % 10 ) == 0 )
+        return;
+#endif // #if !NEXT_VERSION_IS_PRESENT
 
     const bool from_server_address = client->server_address.type != 0 && next_address_equal( &from, &client->server_address );
 
@@ -8945,6 +8963,10 @@ int next_server_internal_process_packet( next_server_internal_t * server, const 
                 return NEXT_ERROR;
             }
 
+            // todo
+            char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server received upgrade response packet from %s", next_address_to_string( from, address_buffer ) );
+
             NextUpgradeToken upgrade_token;
 
             // does the session already exist? if so we still need to reply with upgrade commit in case of server -> client packet loss
@@ -9707,6 +9729,11 @@ void next_server_internal_block_and_receive_packet( next_server_internal_t * ser
     
     if ( packet_bytes == 0 )
         return;
+
+#if !NEXT_VERSION_IS_PRESENT
+    if ( next_packet_loss && ( rand() % 10 ) == 0 )
+        return;
+#endif // #if !NEXT_VERSION_IS_PRESENT
 
     if ( packet_data[0] == 0 && packet_bytes >= 2 && packet_bytes <= NEXT_MTU + 1 )
     {
@@ -13286,7 +13313,6 @@ static void test_free_retains_context()
 static void test_packet_loss_tracker()
 {
     next_packet_loss_tracker_t tracker;
-    memset( &tracker, 0, sizeof(tracker) );
     next_packet_loss_tracker_reset( &tracker );
 
     check( next_packet_loss_tracker_update( &tracker, NULL ) == 0 );

@@ -72,6 +72,7 @@ type ClientConfig struct {
 	customer_public_key        string
 	disable_network_next       bool
 	user_flags                 bool
+	packet_loss                bool
 	fake_direct_packet_loss    float32
 	fake_direct_rtt            float32
 	fake_next_packet_loss      float32
@@ -126,6 +127,10 @@ func client(config *ClientConfig) (*exec.Cmd, *bytes.Buffer, *bytes.Buffer) {
 		cmd.Env = append(cmd.Env, "CLIENT_USER_FLAGS=1")
 	}
 
+	if config.packet_loss {
+		cmd.Env = append(cmd.Env, "CLIENT_PACKET_LOSS=1")
+	}
+
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -138,6 +143,7 @@ func client(config *ClientConfig) (*exec.Cmd, *bytes.Buffer, *bytes.Buffer) {
 type ServerConfig struct {
 	duration             int
 	no_upgrade           bool
+	packet_loss          bool
 	customer_private_key string
 	disable_network_next bool
 	server_address       string
@@ -178,6 +184,10 @@ func server(config *ServerConfig) (*exec.Cmd, *bytes.Buffer) {
 	if config.server_address != "" {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("NEXT_SERVER_ADDRESS=%s:%d", config.server_address, config.server_port))
 		cmd.Env = append(cmd.Env, fmt.Sprintf("NEXT_BIND_ADDRESS=0.0.0.0:%d", config.server_port))
+	}
+
+	if config.packet_loss {
+		cmd.Env = append(cmd.Env, "SERVER_PACKET_LOSS=1")
 	}
 
 	var output bytes.Buffer
@@ -1285,11 +1295,67 @@ func test_user_flags() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
 }
 
+func test_packet_loss() {
+
+	fmt.Printf("test_packet_loss\n")
+
+	clientConfig := &ClientConfig{}
+	clientConfig.duration = 60.0
+	clientConfig.user_flags = true
+	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.packet_loss = true
+
+	client_cmd, client_stdout, client_stderr := client(clientConfig)
+
+	serverConfig := &ServerConfig{}
+	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.packet_loss = true
+
+	server_cmd, server_stdout := server(serverConfig)
+
+	relay_1_cmd, _ := relay()
+	relay_2_cmd, _ := relay()
+	relay_3_cmd, _ := relay()
+
+	backend_cmd, backend_stdout := backend("DEFAULT")
+
+	client_cmd.Wait()
+
+	server_cmd.Process.Signal(os.Interrupt)
+	backend_cmd.Process.Signal(os.Interrupt)
+	relay_1_cmd.Process.Signal(os.Interrupt)
+	relay_2_cmd.Process.Signal(os.Interrupt)
+	relay_3_cmd.Process.Signal(os.Interrupt)
+
+	server_cmd.Wait()
+	backend_cmd.Wait()
+	relay_1_cmd.Wait()
+	relay_2_cmd.Wait()
+	relay_3_cmd.Wait()
+
+	client_counters := read_client_counters(client_stderr.String())
+
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_OPEN_SESSION] == 1)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION] == 1)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_UPGRADE_SESSION] == 1)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] > 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] > 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] > 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] > 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] + client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] + client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] > 3000)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] + client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] + client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] > 3000)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] > 250)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] > 250)
+}
+
 type test_function func()
 
 func main() {
 
 	tests := []test_function{
+		/*
 		test_direct_default,
 		test_direct_upgrade,
 		test_direct_no_upgrade,
@@ -1311,9 +1377,13 @@ func main() {
 		test_uncommitted,
 		test_uncommitted_to_committed,
 		test_user_flags,
+		*/
+		test_packet_loss,
 	}
 
-	for i := range tests {
-		tests[i]()
+	for {
+		for i := range tests {
+			tests[i]()
+		}
 	}
 }

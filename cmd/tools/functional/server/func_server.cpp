@@ -37,6 +37,8 @@ void interrupt_handler( int signal )
 
 bool no_upgrade = false;
 
+extern bool next_packet_loss;
+
 void server_packet_received( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
 {
     (void) context;
@@ -53,8 +55,6 @@ int main()
 {
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
 
-    next_log_level( NEXT_LOG_LEVEL_DEBUG );
-
     next_config_t config;
     next_default_config( &config );
 
@@ -70,9 +70,19 @@ int main()
         config.disable_network_next = true;
     }
     
+    next_log_level( NEXT_LOG_LEVEL_DEBUG );
+
     if ( next_init( NULL, &config ) != NEXT_OK )
         return 1;
     
+    next_log_level( NEXT_LOG_LEVEL_DEBUG );
+
+    const char * server_packet_loss_env = getenv( "SERVER_PACKET_LOSS" );
+    if ( server_packet_loss_env )
+    {
+        next_packet_loss = true;
+    }
+
     next_server_t * server = NULL;
 
     server = next_server_create( NULL, "127.0.0.1:32202", "0.0.0.0:32202", "local", server_packet_received );
