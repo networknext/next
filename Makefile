@@ -161,7 +161,7 @@ build-sdk-test: build-sdk ## builds the sdk test binary
 	@printf "done\n"
 
 .PHONY: build-soak-test
-build-soak-test: build-sdk ## builds the sdk test binary
+build-soak-test: build-sdk ## builds the soak test binary
 	@printf "Building soak test... "
 	@$(CXX) -Isdk -o $(DIST_DIR)/$(SDKNAME)_soak_test ./sdk/next_soak.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
