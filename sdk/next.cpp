@@ -5897,7 +5897,10 @@ void next_client_internal_block_and_receive_packet( next_client_internal_t * cli
     next_address_t from;
     
     int packet_bytes = next_platform_socket_receive_packet( client->socket, &from, packet_data, sizeof(packet_data) );
-    if ( packet_bytes == 0 )
+
+    next_assert( packet_bytes >= 0 );
+
+    if ( packet_bytes <= 0 )
         return;
 
 #if !NEXT_VERSION_IS_PRESENT
@@ -9622,7 +9625,9 @@ void next_server_internal_block_and_receive_packet( next_server_internal_t * ser
     
     const int packet_bytes = next_platform_socket_receive_packet( server->socket, &from, packet_data, sizeof(packet_data) );
     
-    if ( packet_bytes == 0 )
+    next_assert( packet_bytes >= 0 );
+
+    if ( packet_bytes <= 0 )
         return;
 
 #if !NEXT_VERSION_IS_PRESENT

@@ -67,6 +67,8 @@ int main( int argc, char ** argv )
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
     
     next_init( NULL, NULL );
+
+    next_log_level( NEXT_LOG_LEVEL_INFO );
     
     uint8_t packet_data[NEXT_MTU];
     memset( packet_data, 0, sizeof( packet_data ) );
