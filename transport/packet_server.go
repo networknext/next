@@ -56,8 +56,6 @@ const (
 	FlagClientTimedOut          = uint32(1 << 7)
 	FlagTryBeforeYouBuyAbort    = uint32(1 << 8)
 	FlagDirectRouteExpired      = uint32(1 << 9)
-	FlagTotalCount_3_4_0        = 11
-	FlagTotalCount_Pre_3_4_0    = 10
 
 	AddressSize = 19
 )
@@ -222,9 +220,9 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 
 	if packet.Version.AtLeast(SDKVersion{3, 3, 4}) {
 		if packet.Version.AtLeast(SDKVersion{3, 4, 0}) {
-			stream.SerializeBits(&packet.Flags, FlagTotalCount_3_4_0)
+			stream.SerializeBits(&packet.Flags, 11)
 		} else {
-			stream.SerializeBits(&packet.Flags, FlagTotalCount_Pre_3_4_0)
+			stream.SerializeBits(&packet.Flags, 10)
 		}
 	}
 
