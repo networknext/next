@@ -17,11 +17,12 @@
 #include "relay/relay.hpp"
 #include "relay/relay_platform.hpp"
 
-#include "net/communicator.hpp"
+#include "core/packet_processor.hpp"
+#include "core/ping_processor.hpp"
 
 namespace
 {
-  volatile bool gAlive = true;
+  volatile bool gAlive = true;  // TODO make atomic
 
   void interrupt_handler(int signal)
   {
@@ -120,6 +121,18 @@ int main(int argc, const char** argv)
 
   printf("    backend hostname is '%s'\n", backend_hostname);
 
+  unsigned int numProcessors = 0;
+  const char* nproc = relay::relay_platform_getenv("RELAY_PROCESSOR_COUNT");
+  if (nproc == nullptr) {
+    numProcessors = std::thread::hardware_concurrency();
+    if (numProcessors > 0) {
+      printf("\nRELAY_PROCESSOR_COUNT not set, autodetected number of processors available: %u\n\n", numProcessors);
+    } else {
+      printf("\nerror: RELAY_PROCESSOR_COUNT not set\n\n");
+      return 1;
+    }
+  }
+
   std::ostream* output;
   bool should_delete_output = false;
   const char* relay_log_file = relay::relay_platform_getenv("RELAY_LOG_FILE");
@@ -217,7 +230,25 @@ int main(int argc, const char** argv)
     gAlive = false;
   }
 
-  net::Communicator communicator(socket, relay, gAlive, *output);
+  core::PingProcessor pingProc(socket, relay, gAlive);
+  std::unique_ptr<std::thread> pingThread = std::make_unique<std::thread>([&pingProc] {
+    pingProc.listen();
+  });
+
+  std::vector<std::shared_ptr<core::PacketProcessor>> packetProcessors;
+  packetProcessors.resize(numProcessors);
+  std::vector<std::unique_ptr<std::thread>> packetThreads;
+  packetThreads.resize(numProcessors);
+
+  util::ThroughputLogger logger(*output);
+
+  for (unsigned int i = 0; i < numProcessors; i++) {
+    auto processor = std::make_shared<core::PacketProcessor>(socket, relay, gAlive, logger);
+    packetProcessors[i] = processor;
+    packetThreads[i] = std::make_unique<std::thread>([processor] {
+      processor->listen();
+    });
+  }
 
   printf("Relay initialized\n\n");
 
@@ -246,7 +277,16 @@ int main(int argc, const char** argv)
 
   printf("Cleaning up\n");
 
-  communicator.stop();
+  logger.stop();
+
+  pingProc.stop();
+  pingThread->join();
+
+  for (unsigned int i = 0; i < numProcessors; i++) {
+    packetProcessors[i]->stop();
+    packetThreads[i]->join();
+  }
+
   if (should_delete_output) {
     auto file = dynamic_cast<std::ofstream*>(output);
     file->close();

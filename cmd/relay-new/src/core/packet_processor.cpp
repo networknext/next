@@ -1,131 +1,70 @@
 #include "includes.h"
-#include "communicator.hpp"
-
-#include "util.hpp"
-#include "util/logger.hpp"
-#include "util/throughput_logger.hpp"
-
-#include "core/ping_history.hpp"
-#include "core/replay_protection.hpp"
+#include "packet_processor.hpp"
 
 #include "encoding/read.hpp"
-#include "encoding/write.hpp"
 
 #include "relay/relay_continue_token.hpp"
 #include "relay/relay_platform.hpp"
 #include "relay/relay_route_token.hpp"
 
-namespace net
+namespace core
 {
-  Communicator::Communicator(os::Socket& socket, relay::relay_t& relay, volatile bool& handle, std::ostream& output)
-   : mSocket(socket), mRelay(relay), mHandle(handle), mLogger(output)
-  {
-    initPingThread();
-    initRecvThread();
-  }
+  PacketProcessor::PacketProcessor(
+   os::Socket& socket, relay::relay_t& relay, volatile bool& handle, util::ThroughputLogger& logger)
+   : mSocket(socket), mRelay(relay), mHandle(handle), mLogger(logger)
+  {}
 
-  Communicator::~Communicator()
+  PacketProcessor::~PacketProcessor()
   {
     stop();
   }
 
-  void Communicator::stop()
+  void PacketProcessor::listen()
+  {
+    std::array<uint8_t, RELAY_MAX_PACKET_BYTES> packetData;
+
+    while (this->mHandle) {
+      legacy::relay_address_t from;
+      const int packet_bytes = mSocket.recv(from, packetData.data(), sizeof(uint8_t) * packetData.size());
+
+      if (packet_bytes == 0) {
+        mLogger.addToPkt0();
+        continue;
+      } else if (packetData[0] == RELAY_PING_PACKET && packet_bytes == 9) {
+        this->handleRelayPingPacket(packetData, packet_bytes, from);
+      } else if (packetData[0] == RELAY_PONG_PACKET && packet_bytes == 9) {
+        this->handleRelayPongPacket(packetData, packet_bytes, from);
+      } else if (packetData[0] == RELAY_ROUTE_REQUEST_PACKET) {
+        this->handleRouteRequestPacket(packetData, packet_bytes, from);
+      } else if (packetData[0] == RELAY_ROUTE_RESPONSE_PACKET) {
+        this->handleRouteResponsePacket(packetData, packet_bytes);
+      } else if (packetData[0] == RELAY_CONTINUE_REQUEST_PACKET) {
+        this->handleContinueRequestPacket(packetData, packet_bytes);
+      } else if (packetData[0] == RELAY_CONTINUE_RESPONSE_PACKET) {
+        this->handleContinueResponsePacket(packetData, packet_bytes);
+      } else if (packetData[0] == RELAY_CLIENT_TO_SERVER_PACKET) {
+        this->handleClientToServerPacket(packetData, packet_bytes);
+      } else if (packetData[0] == RELAY_SERVER_TO_CLIENT_PACKET) {
+        this->handleServerToClientPacket(packetData, packet_bytes);
+      } else if (packetData[0] == RELAY_SESSION_PING_PACKET) {
+        this->handleSessionPingPacket(packetData, packet_bytes);
+      } else if (packetData[0] == RELAY_SESSION_PONG_PACKET) {
+        this->handleSessionPongPacket(packetData, packet_bytes);
+      } else if (packetData[0] == RELAY_NEAR_PING_PACKET) {
+        this->handleNearPingPacket(packetData, packet_bytes, from);
+      } else {
+        LogDebug("Received unknown packet type: ", std::hex, (int)packetData[0]);
+        mLogger.addToUnknown(packet_bytes);
+      }
+    }
+  }
+
+  void PacketProcessor::stop()
   {
     mHandle = false;
-    mPingThread->join();
-    mRecvThread->join();
-    mLogger.stop();
   }
 
-  void Communicator::initPingThread()
-  {
-    mPingThread = std::make_unique<std::thread>([this] {
-      while (this->mHandle) {
-        relay::relay_platform_mutex_acquire(mRelay.mutex);
-
-        if (mRelay.relays_dirty) {
-          legacy::relay_manager_update(mRelay.relay_manager, mRelay.num_relays, mRelay.relay_ids, mRelay.relay_addresses);
-          mRelay.relays_dirty = false;
-        }
-
-        double current_time = relay::relay_platform_time();
-
-        struct ping_data_t
-        {
-          uint64_t sequence;
-          legacy::relay_address_t address;
-        };
-
-        int num_pings = 0;
-        ping_data_t pings[MAX_RELAYS];
-
-        for (int i = 0; i < mRelay.relay_manager->num_relays; ++i) {
-          if (mRelay.relay_manager->relay_last_ping_time[i] + RELAY_PING_TIME <= current_time) {
-            pings[num_pings].sequence = relay_ping_history_ping_sent(mRelay.relay_manager->relay_ping_history[i], current_time);
-            pings[num_pings].address = mRelay.relay_manager->relay_addresses[i];
-            mRelay.relay_manager->relay_last_ping_time[i] = current_time;
-            num_pings++;
-          }
-        }
-
-        relay_platform_mutex_release(mRelay.mutex);
-
-        for (int i = 0; i < num_pings; ++i) {
-          uint8_t packet_data[9];
-          packet_data[0] = RELAY_PING_PACKET;
-          uint8_t* p = packet_data + 1;
-          encoding::write_uint64(&p, pings[i].sequence);
-          mSocket.send(pings[i].address, packet_data, 9);
-        }
-
-        relay::relay_platform_sleep(1.0 / 100.0);
-      }
-    });
-  }
-
-  void Communicator::initRecvThread()
-  {
-    mRecvThread = std::make_unique<std::thread>([this] {
-      std::array<uint8_t, RELAY_MAX_PACKET_BYTES> packetData;
-
-      while (this->mHandle) {
-        legacy::relay_address_t from;
-        const int packet_bytes = mSocket.recv(from, packetData.data(), sizeof(uint8_t) * packetData.size());
-
-        if (packet_bytes == 0) {
-          mLogger.addToPkt0();
-          continue;
-        } else if (packetData[0] == RELAY_PING_PACKET && packet_bytes == 9) {
-          this->handleRelayPingPacket(packetData, packet_bytes, from);
-        } else if (packetData[0] == RELAY_PONG_PACKET && packet_bytes == 9) {
-          this->handleRelayPongPacket(packetData, packet_bytes, from);
-        } else if (packetData[0] == RELAY_ROUTE_REQUEST_PACKET) {
-          this->handleRouteRequestPacket(packetData, packet_bytes, from);
-        } else if (packetData[0] == RELAY_ROUTE_RESPONSE_PACKET) {
-          this->handleRouteResponsePacket(packetData, packet_bytes);
-        } else if (packetData[0] == RELAY_CONTINUE_REQUEST_PACKET) {
-          this->handleContinueRequestPacket(packetData, packet_bytes);
-        } else if (packetData[0] == RELAY_CONTINUE_RESPONSE_PACKET) {
-          this->handleContinueResponsePacket(packetData, packet_bytes);
-        } else if (packetData[0] == RELAY_CLIENT_TO_SERVER_PACKET) {
-          this->handleClientToServerPacket(packetData, packet_bytes);
-        } else if (packetData[0] == RELAY_SERVER_TO_CLIENT_PACKET) {
-          this->handleServerToClientPacket(packetData, packet_bytes);
-        } else if (packetData[0] == RELAY_SESSION_PING_PACKET) {
-          this->handleSessionPingPacket(packetData, packet_bytes);
-        } else if (packetData[0] == RELAY_SESSION_PONG_PACKET) {
-          this->handleSessionPongPacket(packetData, packet_bytes);
-        } else if (packetData[0] == RELAY_NEAR_PING_PACKET) {
-          this->handleNearPingPacket(packetData, packet_bytes, from);
-        } else {
-          LogDebug("Received unknown packet type: ", std::hex, (int)packetData[0]);
-          mLogger.addToUnknown(packet_bytes);
-        }
-      }
-    });
-  }
-
-  void Communicator::handleRelayPingPacket(
+  void PacketProcessor::handleRelayPingPacket(
    std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, legacy::relay_address_t& from)
   {
     mLogger.addToRelayPingPacket(size);
@@ -137,7 +76,7 @@ namespace net
     }
   }
 
-  void Communicator::handleRelayPongPacket(
+  void PacketProcessor::handleRelayPongPacket(
    std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, legacy::relay_address_t& from)
   {
     mLogger.addToRelayPongPacket(size);
@@ -152,13 +91,13 @@ namespace net
     relay_platform_mutex_release(mRelay.mutex);
   }
 
-  void Communicator::handleRouteRequestPacket(
+  void PacketProcessor::handleRouteRequestPacket(
    std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, legacy::relay_address_t& from)
   {
     mLogger.addToRouteReq(size);
 
     if (size < int(1 + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES * 2)) {
-      relay_printf("ignoring route request. bad packet size (%d)", size);
+      Log("ignoring route request. bad packet size (", size, ")");
       return;
     }
 
@@ -167,7 +106,7 @@ namespace net
     relay::relay_route_token_t token;
 
     if (relay::relay_read_encrypted_route_token(&p, &token, mRelay.router_public_key, mRelay.relay_private_key) != RELAY_OK) {
-      relay_printf("ignoring route request. could not read route token");
+      Log("ignoring route request. could not read route token");
       return;
     }
 
@@ -209,7 +148,7 @@ namespace net
      token.next_address, packet.data() + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES, size - RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES);
   }
 
-  void Communicator::handleRouteResponsePacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
+  void PacketProcessor::handleRouteResponsePacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
   {
     mLogger.addToRouteResp(size);
     if (size != RELAY_HEADER_BYTES) {
@@ -248,17 +187,17 @@ namespace net
     mSocket.send(session->prev_address, packet.data(), size);
   }
 
-  void Communicator::handleContinueRequestPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
+  void PacketProcessor::handleContinueRequestPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
   {
     mLogger.addToContReq(size);
     if (size < int(1 + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES * 2)) {
-      relay_printf("ignoring continue request. bad packet size (%d)", size);
+      Log("ignoring continue request. bad packet size (", size, ")");
       return;
     }
     uint8_t* p = &packet[1];
     relay::relay_continue_token_t token;
     if (relay_read_encrypted_continue_token(&p, &token, mRelay.router_public_key, mRelay.relay_private_key) != RELAY_OK) {
-      relay_printf("ignoring continue request. could not read continue token");
+      Log("ignoring continue request. could not read continue token");
       return;
     }
     if (token.expire_timestamp < relay::relay_timestamp(&mRelay)) {
@@ -281,7 +220,7 @@ namespace net
      session->next_address, packet.data() + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES, size - RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES);
   }
 
-  void Communicator::handleContinueResponsePacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
+  void PacketProcessor::handleContinueResponsePacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
   {
     mLogger.addToContResp(size);
     if (size != RELAY_HEADER_BYTES) {
@@ -314,7 +253,7 @@ namespace net
     mSocket.send(session->prev_address, packet.data(), size);
   }
 
-  void Communicator::handleClientToServerPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
+  void PacketProcessor::handleClientToServerPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
   {
     mLogger.addToCliToServ(size);
 
@@ -354,7 +293,7 @@ namespace net
     mSocket.send(session->next_address, packet.data(), size);
   }
 
-  void Communicator::handleServerToClientPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
+  void PacketProcessor::handleServerToClientPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
   {
     mLogger.addToServToCli(size);
     if (size <= RELAY_HEADER_BYTES || size > RELAY_HEADER_BYTES + RELAY_MTU) {
@@ -393,7 +332,7 @@ namespace net
     mSocket.send(session->prev_address, packet.data(), size);
   }
 
-  void Communicator::handleSessionPingPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
+  void PacketProcessor::handleSessionPingPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
   {
     mLogger.addToSessionPing(size);
 
@@ -433,7 +372,7 @@ namespace net
     mSocket.send(session->next_address, packet.data(), size);
   }
 
-  void Communicator::handleSessionPongPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
+  void PacketProcessor::handleSessionPongPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
   {
     mLogger.addToSessionPong(size);
     if (size > RELAY_HEADER_BYTES + 32) {
@@ -472,7 +411,7 @@ namespace net
     mSocket.send(session->prev_address, packet.data(), size);
   }
 
-  void Communicator::handleNearPingPacket(
+  void PacketProcessor::handleNearPingPacket(
    std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, legacy::relay_address_t& from)
   {
     mLogger.addToNearPing(size);
@@ -482,6 +421,6 @@ namespace net
     }
 
     packet[0] = RELAY_NEAR_PONG_PACKET;
-    mSocket.send(from, packet.data(), size - 16); // TODO why 16?
+    mSocket.send(from, packet.data(), size - 16);  // TODO why 16?
   }
-}  // namespace net
+}  // namespace core

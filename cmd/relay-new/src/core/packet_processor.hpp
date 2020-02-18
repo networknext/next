@@ -1,27 +1,21 @@
-#ifndef NET_COMMUNICATOR_HPP
-#define NET_COMMUNICATOR_HPP
+#ifndef CORE_PACKET_PROCESSOR_HPP
+#define CORE_PACKET_PROCESSOR_HPP
 
-#include "relay/relay.hpp"
+#include "os/platform.hpp"
+
 #include "util/throughput_logger.hpp"
 
-/*
-  Two types of packets can be received.
+#include "relay/relay.hpp"
 
-  Route Req & Continue Req both follow the format
-  - [packety type] [relay dest]... [server]
-  where the packet type is prepended to the next packet
-
-  Every other packet follows
-  [packet type] [sequency #] [session #] [session version] [hmac (hash of previous 4 sections)] [payload]
- */
-
-namespace net
+namespace core
 {
-  class Communicator
+  class PacketProcessor
   {
    public:
-    Communicator(os::Socket& socket, relay::relay_t& relay, volatile bool& handle, std::ostream& ouptut = std::cout);
-    ~Communicator();
+    PacketProcessor(os::Socket& socket, relay::relay_t& relay, volatile bool& handle, util::ThroughputLogger& logger);
+    ~PacketProcessor();
+
+    void listen();
 
     void stop();
 
@@ -30,13 +24,7 @@ namespace net
     relay::relay_t& mRelay;
     volatile bool& mHandle;
 
-    std::unique_ptr<std::thread> mPingThread;
-    std::unique_ptr<std::thread> mRecvThread;
-
-    util::ThroughputLogger mLogger;
-
-    void initPingThread();
-    void initRecvThread();
+    util::ThroughputLogger& mLogger;
 
     // Marks the first byte as a pong packet and sends it back
     void handleRelayPingPacket(
@@ -66,5 +54,5 @@ namespace net
     void handleNearPingPacket(
      std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, legacy::relay_address_t& from);
   };
-}  // namespace net
+}  // namespace core
 #endif
