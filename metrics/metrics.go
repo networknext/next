@@ -1,6 +1,12 @@
 package metrics
 
-import "github.com/go-kit/kit/metrics/generic"
+import (
+	"context"
+	"time"
+
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/metrics/generic"
+)
 
 // ValueType represents the type of the metric's value
 type ValueType struct {
@@ -27,31 +33,31 @@ type TypeDouble struct {
 	Value float64
 }
 
-func (mv *TypeBool) getTypeName() string   { return "bool" }
-func (mv *TypeInt64) getTypeName() string  { return "int64" }
-func (mv *TypeDouble) getTypeName() string { return "double" }
+func (mv TypeBool) getTypeName() string   { return "BOOL" }
+func (mv TypeInt64) getTypeName() string  { return "INT64" }
+func (mv TypeDouble) getTypeName() string { return "DOUBLE" }
 
 // Descriptor describes metric metadata
 type Descriptor struct {
-	PackageName string
+	ServiceName string
 	ID          string
 	ValueType   ValueType
 	Unit        string
 	Description string
 }
 
-// Handle is a handle that is passed to the Handler to publish the metric
-type Handle struct {
-	MetricDescriptor *Descriptor
-	Gauge            *generic.Gauge
-}
-
 // Handler handles creating and update metrics
 type Handler interface {
-	MetricSubmitRoutine(maxMetricsCount int)
-	CreateMetric(*Descriptor, *generic.Gauge) Handle
-	SubmitMetric(Handle)
-	SubmitMetrics([]Handle)
-	DeleteMetric(*Descriptor) error
+	Open(ctx context.Context) error
+	MetricSubmitRoutine(ctx context.Context, logger log.Logger, c <-chan time.Time, maxMetricsCount int)
+	CreateMetric(ctx context.Context, descriptor *Descriptor, gauge *generic.Gauge) (Handle, error)
+	GetMetric(id string) (Handle, bool)
+	DeleteMetric(ctx context.Context, descriptor *Descriptor) error
 	Close() error
+}
+
+// Handle is the return result of creating or fetching a metric. It allows access to the metric's descriptor and gauge.
+type Handle struct {
+	Descriptor *Descriptor
+	Gauge      *generic.Gauge
 }
