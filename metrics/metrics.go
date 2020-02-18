@@ -49,7 +49,7 @@ type Descriptor struct {
 // Handler handles creating and update metrics
 type Handler interface {
 	Open(ctx context.Context) error
-	MetricSubmitRoutine(ctx context.Context, logger log.Logger, c <-chan time.Time, maxMetricsCount int)
+	MetricSubmitRoutine(ctx context.Context, logger log.Logger, c <-chan time.Time, maxMetricsIncrement int)
 	CreateMetric(ctx context.Context, descriptor *Descriptor, gauge *generic.Gauge) (Handle, error)
 	GetMetric(id string) (Handle, bool)
 	DeleteMetric(ctx context.Context, descriptor *Descriptor) error

@@ -63,7 +63,7 @@ func (handler *StackDriverHandler) Open(ctx context.Context) error {
 // MetricSubmitRoutine is responsible for sending the metrics up to StackDriver. Call in a separate goroutine.
 // Pass timer.NewTicker(duration).C to have the routine send metrics up to StackDriver periodically.
 // maxMetricsCount is the maximum number of metrics to send in one push to StackDriver. If you're unsure, 200 is a good number.
-func (handler *StackDriverHandler) MetricSubmitRoutine(ctx context.Context, logger log.Logger, c <-chan time.Time, maxMetricsCount int) {
+func (handler *StackDriverHandler) MetricSubmitRoutine(ctx context.Context, logger log.Logger, c <-chan time.Time, maxMetricsIncrement int) {
 	for {
 		select {
 		case <-c:
@@ -135,9 +135,9 @@ func (handler *StackDriverHandler) MetricSubmitRoutine(ctx context.Context, logg
 			handler.metricsMapMutex.Unlock()
 
 			// Send the time series objects to StackDriver with a maximum send size to avoid overloading
-			for i := 0; i < metricsCount; i += maxMetricsCount {
+			for i := 0; i < metricsCount; i += maxMetricsIncrement {
 				// Calculate the number of metrics to process this iteration
-				e := i + maxMetricsCount
+				e := i + maxMetricsIncrement
 				if e > metricsCount {
 					e = metricsCount
 				}
