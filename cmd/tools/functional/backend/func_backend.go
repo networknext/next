@@ -119,7 +119,7 @@ func OptimizeThread() {
 			relayData.Address = v.address.String()
 			relayData.Datacenter = core.DatacenterId(0)
 			relayData.DatacenterName = "local"
-			relayData.PublicKey = GetRelayPublicKey(v.address.String())
+			relayData.PublicKey = GetRelayPublicKey(v.address.String()) //TODO: see if this works with crypto.RelayPublicKey
 			relayDatabase.Relays[relayData.ID] = relayData
 		}
 		backend.mutex.RUnlock()
@@ -458,7 +458,7 @@ func main() {
 
 				for i := 0; i < numRelays; i++ {
 					addresses[1+i] = &nearRelayAddresses[i]
-					publicKeys[1+i] = relayPublicKey
+					publicKeys[1+i] = crypto.RelayPublicKey[:]
 				}
 
 				addresses[numNodes-1] = incoming.SourceAddr
@@ -473,7 +473,7 @@ func main() {
 					// new route
 
 					sessionEntry.version++
-					tokens, err = core.WriteRouteTokens(sessionEntry.expireTimestamp, sessionEntry.id, sessionEntry.version, 0, 256, 256, numNodes, addresses, publicKeys, core.RouterPrivateKey)
+					tokens, err = core.WriteRouteTokens(sessionEntry.expireTimestamp, sessionEntry.id, sessionEntry.version, 0, 256, 256, numNodes, addresses, publicKeys, crypto.RouterPrivateKey)
 					if err != nil {
 						fmt.Printf("error: could not write route tokens: %v\n", err)
 						return
@@ -484,7 +484,7 @@ func main() {
 
 					// continue route
 
-					tokens, err = core.WriteContinueTokens(sessionEntry.expireTimestamp, sessionEntry.id, sessionEntry.version, 0, numNodes, publicKeys, core.RouterPrivateKey)
+					tokens, err = core.WriteContinueTokens(sessionEntry.expireTimestamp, sessionEntry.id, sessionEntry.version, 0, numNodes, publicKeys, crypto.RouterPrivateKey)
 					if err != nil {
 						fmt.Printf("error: could not write continue tokens: %v\n", err)
 						return
@@ -523,7 +523,7 @@ func main() {
 			backend.sessionDatabase[sessionUpdate.SessionId] = sessionEntry
 			backend.mutex.Unlock()
 
-			sessionResponse.Signature = crypto.Sign(core.BackendPrivateKey, sessionResponse.GetSignData())
+			sessionResponse.Signature = crypto.Sign(crypto.BackendPrivateKey, sessionResponse.GetSignData())
 
 			responsePacketData, err := sessionResponse.MarshalBinary()
 			if err != nil {
@@ -683,7 +683,7 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	if _, success := crypto.Open(encrypted_token, nonce, relayPublicKey[:], core.RouterPrivateKey[:]); !success {
+	if _, success := crypto.Open(encrypted_token, nonce, crypto.RelayPublicKey[:], crypto.RouterPrivateKey[:]); !success {
 		return
 	}
 
