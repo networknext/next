@@ -106,6 +106,13 @@ namespace net
   {
     return static_cast<uint8_t>(at) != t;
   }
+
+  inline std::ostream& operator<<(std::ostream& os, const Address& addr)
+  {
+    std::string str;
+    addr.toString(str);
+    return os << str;
+  }
 }  // namespace net
 
 namespace legacy

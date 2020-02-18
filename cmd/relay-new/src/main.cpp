@@ -145,10 +145,9 @@ int main(int argc, const char** argv)
     return 1;
   }
 
-  legacy::relay_platform_socket_t* socket =
-   legacy::relay_platform_socket_create(&relay_address, RELAY_PLATFORM_SOCKET_BLOCKING, 0.1f, 100 * 1024, 100 * 1024);
-  if (socket == NULL) {
-    printf("\ncould not create socket\n\n");
+  os::Socket socket(os::SocketType::Blocking, 0.1f);
+  if (!socket.create(relay_address, 100 * 1024, 100 * 1024, true)) {
+    Log("could not create socket");
     relay::relay_term();
     return 1;
   }
@@ -160,7 +159,7 @@ int main(int argc, const char** argv)
   CURL* curl = curl_easy_init();
   if (!curl) {
     printf("\nerror: could not initialize curl\n\n");
-    relay_platform_socket_destroy(socket);
+    socket.close();
     curl_easy_cleanup(curl);
     relay::relay_term();
     return 1;
@@ -191,7 +190,7 @@ int main(int argc, const char** argv)
 
   if (!relay_initialized) {
     printf("\nerror: could not initialize relay\n\n");
-    relay_platform_socket_destroy(socket);
+    socket.close();
     curl_easy_cleanup(curl);
     relay::relay_term();
     return 1;
@@ -206,7 +205,6 @@ int main(int argc, const char** argv)
   memcpy(relay.relay_private_key, relay_private_key, RELAY_PRIVATE_KEY_BYTES);
   memcpy(relay.router_public_key, router_public_key, crypto_sign_PUBLICKEYBYTES);
 
-  relay.socket = socket;
   relay.mutex = relay::relay_platform_mutex_create();
   if (!relay.mutex) {
     printf("\nerror: could not create ping thread\n\n");
@@ -219,7 +217,7 @@ int main(int argc, const char** argv)
     gAlive = false;
   }
 
-  net::Communicator communicator(relay, gAlive, *output);
+  net::Communicator communicator(socket, relay, gAlive, *output);
 
   printf("Relay initialized\n\n");
 
@@ -267,7 +265,7 @@ int main(int argc, const char** argv)
 
   relay_platform_mutex_destroy(relay.mutex);
 
-  relay_platform_socket_destroy(socket);
+  socket.close();
 
   curl_easy_cleanup(curl);
 

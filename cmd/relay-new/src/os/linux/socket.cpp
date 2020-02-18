@@ -6,6 +6,346 @@
 #include "relay/relay_platform_linux.hpp"
 #include "util.hpp"
 
+namespace os
+{
+  Socket::Socket(SocketType type, float timeout): mType(type), mTimeout(timeout) {}
+
+  Socket::~Socket()
+  {
+    if (mHandle) {
+      close();
+    }
+  }
+
+  bool Socket::create(net::Address& addr, size_t sendBuffSize, size_t recvBuffSize, bool reuse)
+  {
+    assert(addr.Type != net::AddressType::None);
+
+    // create socket
+    {
+      mHandle = ::socket((addr.Type == net::AddressType::IPv6) ? AF_INET6 : AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+
+      if (mHandle < 0) {
+        LogError("failed to create socket");
+        return false;
+      }
+    }
+
+    // force IPv6 only if necessary
+    {
+      if (addr.Type == net::AddressType::IPv6) {
+        int yes = 1;
+        if (setsockopt(mHandle, IPPROTO_IPV6, IPV6_V6ONLY, &yes, sizeof(yes)) != 0) {
+          LogError("failed to set socket ipv6 only");
+          close();
+          return false;
+        }
+      }
+    }
+
+    // increase socket send and receive buffer sizes
+    {
+      if (setsockopt(mHandle, SOL_SOCKET, SO_SNDBUF, &sendBuffSize, sizeof(sendBuffSize)) != 0) {
+        LogError("failed to set socket send buffer size");
+        close();
+        return false;
+      }
+
+      if (setsockopt(mHandle, SOL_SOCKET, SO_RCVBUF, &recvBuffSize, sizeof(recvBuffSize)) != 0) {
+        LogError("failed to set socket receive buffer size");
+        close();
+        return false;
+      }
+
+      mSendBuffer.resize(sendBuffSize);
+      mReceiveBuffer.resize(recvBuffSize);
+    }
+
+    // enable socket address & port reuse
+    {
+      if (reuse) {
+        int one = 1;
+        int r = setsockopt(mHandle, SOL_SOCKET, SO_REUSEADDR, (char*)&one, sizeof(one));
+        if (r < 0) {
+          LogError("could not set address reuse");
+          close();
+          return false;
+        }
+
+        one = 1;
+        r = setsockopt(mHandle, SOL_SOCKET, SO_REUSEPORT, (char*)&one, sizeof(one));
+        if (r < 0) {
+          LogError("could not set port reuse");
+          close();
+          return false;
+        }
+      }
+    }
+
+    // bind to port
+    {
+      if (addr.Type == net::AddressType::IPv6) {
+        sockaddr_in6 socket_address;
+        bzero(&socket_address, sizeof(socket_address));
+
+        // TODO test if this works, it'll be faster than memset
+        // std::fill(static_cast<uint8_t*>(&socket_address), static_cast<uint8_t*>(&socket_address) +
+        // sizeof(socket_address));
+
+        socket_address.sin6_family = AF_INET6;
+        for (int i = 0; i < 8; i++) {
+          reinterpret_cast<uint16_t*>(&socket_address.sin6_addr)[i] = net::relay_htons(addr.IPv6[i]);
+        }
+
+        socket_address.sin6_port = net::relay_htons(addr.Port);
+
+        if (bind(mHandle, reinterpret_cast<sockaddr*>(&socket_address), sizeof(socket_address)) < 0) {
+          LogError("failed to bind socket (ipv6)");
+          close();
+          return false;
+        }
+      } else {
+        sockaddr_in socket_address;
+        bzero(&socket_address, sizeof(socket_address));
+        socket_address.sin_family = AF_INET;
+        socket_address.sin_addr.s_addr = (((uint32_t)addr.IPv4[0])) | (((uint32_t)addr.IPv4[1]) << 8) |
+                                         (((uint32_t)addr.IPv4[2]) << 16) | (((uint32_t)addr.IPv4[3]) << 24);
+        socket_address.sin_port = net::relay_htons(addr.Port);
+
+        if (bind(mHandle, reinterpret_cast<sockaddr*>(&socket_address), sizeof(socket_address)) < 0) {
+          LogError("failed to bind socket (ipv4)");
+          close();
+          return false;
+        }
+      }
+    }
+
+    // if bound to port 0, find the actual port we got
+    {
+      if (addr.Port == 0) {
+        if (addr.Type == net::AddressType::IPv6) {
+          sockaddr_in6 sin;
+          socklen_t len = sizeof(sin);
+          if (getsockname(mHandle, reinterpret_cast<sockaddr*>(&sin), &len) < 0) {
+            LogError("failed to get socket port (ipv6)");
+            close();
+            return false;
+          }
+          addr.Port = relay::relay_platform_ntohs(sin.sin6_port);
+        } else {
+          sockaddr_in sin;
+          socklen_t len = sizeof(len);
+          if (getsockname(mHandle, reinterpret_cast<sockaddr*>(&sin), &len) < 0) {
+            LogError("failed to get socket port (ipv4)");
+            close();
+            return false;
+          }
+          addr.Port = relay::relay_platform_ntohs(sin.sin_port);
+        }
+      }
+    }
+
+    // set non-blocking io or receive timeout, or if neither then just blocking with no timeout
+    {
+      if (mType == SocketType::NonBlocking) {
+        if (fcntl(mHandle, F_SETFL, O_NONBLOCK, 1) < 0) {
+          LogError("failed to set socket to non blocking");
+          close();
+          return false;
+        }
+      } else if (mTimeout > 0.0f) {
+        timeval tv;
+        tv.tv_sec = 0;
+        tv.tv_usec = (int)(mTimeout * 1000000.0f);
+        if (setsockopt(mHandle, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+          LogError("failed to set socket receive timeout");
+          close();
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
+  bool Socket::create(legacy::relay_address_t& legacyAddr, size_t sendBuffSize, size_t recvBuffSize, bool reuse)
+  {
+    net::Address addr;
+    addr.Type = static_cast<net::AddressType>(legacyAddr.type);
+    addr.Port = legacyAddr.port;
+    switch (addr.Type) {
+      case net::AddressType::IPv4: {
+        for (uint i = 0; i < 4; i++) {
+          addr.IPv4[i] = legacyAddr.data.ipv4[i];
+        }
+        break;
+      }
+      case net::AddressType::IPv6: {
+        for (uint i = 0; i < 8; i++) {
+          addr.IPv6[i] = legacyAddr.data.ipv6[i];
+        }
+        break;
+      }
+      case net::AddressType::None:
+        break;
+    }
+
+    return create(addr, sendBuffSize, recvBuffSize, reuse);
+  }
+
+  bool Socket::send(const net::Address& to, const void* data, size_t size)
+  {
+    assert(to.Type == net::AddressType::IPv4 || to.Type == net::AddressType::IPv6);
+    assert(data != nullptr);
+    assert(size > 0);
+
+    if (to.Type == net::AddressType::IPv6) {
+      sockaddr_in6 socket_address;
+      bzero(&socket_address, sizeof(socket_address));
+      socket_address.sin6_family = AF_INET6;
+
+      for (int i = 0; i < 8; i++) {
+        reinterpret_cast<uint16_t*>(&socket_address.sin6_addr)[i] = relay::relay_platform_htons(to.IPv6[i]);
+      }
+
+      socket_address.sin6_port = relay::relay_platform_htons(to.Port);
+
+      auto res = sendto(mHandle, data, size, 0, reinterpret_cast<sockaddr*>(&socket_address), sizeof(sockaddr_in6));
+      if (res < 0) {
+        std::string addr;
+        to.toString(addr);
+        LogError("sendto (", addr, ") failed: ", strerror(errno));
+        return false;
+      }
+    } else if (to.Type == net::AddressType::IPv4) {
+      sockaddr_in socket_address;
+      bzero(&socket_address, sizeof(socket_address));
+      socket_address.sin_family = AF_INET;
+      socket_address.sin_addr.s_addr = (((uint32_t)to.IPv4[0])) | (((uint32_t)to.IPv4[1]) << 8) |
+                                       (((uint32_t)to.IPv4[2]) << 16) | (((uint32_t)to.IPv4[3]) << 24);
+
+      socket_address.sin_port = relay::relay_platform_htons(to.Port);
+
+      auto res = sendto(mHandle, data, size, 0, reinterpret_cast<sockaddr*>(&socket_address), sizeof(sockaddr_in6));
+      if (res < 0) {
+        std::string addr;
+        to.toString(addr);
+        LogError("sendto (", addr, ") failed: ", strerror(errno));
+        return false;
+      }
+    } else {
+      Log("invalid address type, could not send packet");
+      return false;
+    }
+
+    return true;
+  }
+
+  bool Socket::send(const legacy::relay_address_t& to, const void* data, size_t size)
+  {
+    net::Address addr;
+    addr.Type = static_cast<net::AddressType>(to.type);
+    addr.Port = to.port;
+    switch (addr.Type) {
+      case net::AddressType::IPv4: {
+        for (uint i = 0; i < 4; i++) {
+          addr.IPv4[i] = to.data.ipv4[i];
+        }
+        break;
+      }
+      case net::AddressType::IPv6: {
+        for (uint i = 0; i < 8; i++) {
+          addr.IPv6[i] = to.data.ipv6[i];
+        }
+        break;
+      }
+      case net::AddressType::None:
+        break;
+    }
+    return send(addr, data, size);
+  }
+
+  size_t Socket::recv(net::Address& from, void* data, size_t maxSize)
+  {
+    assert(data != nullptr);
+    assert(maxSize > 0);
+
+    sockaddr_storage sockaddr_from;
+
+    socklen_t len = sizeof(sockaddr_from);
+    auto res = recvfrom(mHandle,
+     data,
+     maxSize,
+     mType == SocketType::NonBlocking ? MSG_DONTWAIT : 0,
+     reinterpret_cast<sockaddr*>(&sockaddr_from),
+     &len);
+
+    if (res <= 0) {
+      // if not a timeout, log the error
+      if (errno != EAGAIN && errno != EINTR) {
+        LogError("recvfrom failed with error: ", strerror(errno));
+      }
+
+      return 0;
+    }
+
+    if (sockaddr_from.ss_family == AF_INET6) {
+      sockaddr_in6* addr_ipv6 = reinterpret_cast<sockaddr_in6*>(&sockaddr_from);
+      from.Type = net::AddressType::IPv6;
+      for (int i = 0; i < 8; i++) {
+        from.IPv6[i] = relay::relay_platform_ntohs(reinterpret_cast<uint16_t*>(&addr_ipv6->sin6_addr)[i]);
+      }
+      from.Port = relay::relay_platform_ntohs(addr_ipv6->sin6_port);
+    } else if (sockaddr_from.ss_family == AF_INET) {
+      sockaddr_in* addr_ipv4 = reinterpret_cast<sockaddr_in*>(&sockaddr_from);
+      from.Type = net::AddressType::IPv4;
+      from.IPv4[0] = static_cast<uint8_t>((addr_ipv4->sin_addr.s_addr & 0x000000FF));
+      from.IPv4[1] = static_cast<uint8_t>((addr_ipv4->sin_addr.s_addr & 0x0000FF00) >> 8);
+      from.IPv4[2] = static_cast<uint8_t>((addr_ipv4->sin_addr.s_addr & 0x00FF0000) >> 16);
+      from.IPv4[3] = static_cast<uint8_t>((addr_ipv4->sin_addr.s_addr & 0xFF000000) >> 24);
+      from.Port = relay::relay_platform_ntohs(addr_ipv4->sin_port);
+    } else {
+      Log("received packet with invalid ss family: ", sockaddr_from.ss_family);
+      return 0;
+    }
+
+    assert(res >= 0);
+
+    return res;
+  }
+
+  size_t Socket::recv(legacy::relay_address_t& from, void* data, size_t maxSize)
+  {
+    net::Address addr;
+    auto len = recv(addr, data, maxSize);
+    from.type = static_cast<uint8_t>(addr.Type);
+    from.port = addr.Port;
+    switch (addr.Type) {
+      case net::AddressType::IPv4: {
+        for (uint i = 0; i < 4; i++) {
+          from.data.ipv4[i] = addr.IPv4[i];
+        }
+        break;
+      }
+      case net::AddressType::IPv6: {
+        for (uint i = 0; i < 8; i++) {
+          from.data.ipv6[i] = addr.IPv6[i];
+        }
+        break;
+      }
+      case net::AddressType::None:
+        break;
+    }
+    return len;
+  }
+
+  void Socket::close()
+  {
+    ::close(mHandle);
+  }
+
+}  // namespace os
+
 namespace legacy
 {
   relay_platform_socket_t* relay_platform_socket_create(

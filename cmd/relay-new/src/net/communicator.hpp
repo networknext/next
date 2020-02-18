@@ -20,12 +20,13 @@ namespace net
   class Communicator
   {
    public:
-    Communicator(relay::relay_t& relay, volatile bool& handle, std::ostream& ouptut = std::cout);
+    Communicator(os::Socket& socket, relay::relay_t& relay, volatile bool& handle, std::ostream& ouptut = std::cout);
     ~Communicator();
 
     void stop();
 
    private:
+    os::Socket& mSocket;
     relay::relay_t& mRelay;
     volatile bool& mHandle;
 

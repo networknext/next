@@ -17,8 +17,8 @@
 
 namespace net
 {
-  Communicator::Communicator(relay::relay_t& relay, volatile bool& handle, std::ostream& output)
-   : mRelay(relay), mHandle(handle), mLogger(output)
+  Communicator::Communicator(os::Socket& socket, relay::relay_t& relay, volatile bool& handle, std::ostream& output)
+   : mSocket(socket), mRelay(relay), mHandle(handle), mLogger(output)
   {
     initPingThread();
     initRecvThread();
@@ -75,7 +75,7 @@ namespace net
           packet_data[0] = RELAY_PING_PACKET;
           uint8_t* p = packet_data + 1;
           encoding::write_uint64(&p, pings[i].sequence);
-          relay_platform_socket_send_packet(mRelay.socket, &pings[i].address, packet_data, 9);
+          mSocket.send(pings[i].address, packet_data, 9);
         }
 
         relay::relay_platform_sleep(1.0 / 100.0);
@@ -90,8 +90,7 @@ namespace net
 
       while (this->mHandle) {
         legacy::relay_address_t from;
-        const int packet_bytes =
-         relay_platform_socket_receive_packet(mRelay.socket, &from, packetData.data(), sizeof(uint8_t) * packetData.size());
+        const int packet_bytes = mSocket.recv(from, packetData.data(), sizeof(uint8_t) * packetData.size());
 
         if (packet_bytes == 0) {
           mLogger.addToPkt0();
@@ -133,7 +132,9 @@ namespace net
 
     // mark the 0'th index as a pong and send it back from where it came
     packet[0] = RELAY_PONG_PACKET;
-    relay_platform_socket_send_packet(mRelay.socket, &from, packet.data(), 9);
+    if (!mSocket.send(from, packet.data(), 9)) {
+      Log("Failed to send data");
+    }
   }
 
   void Communicator::handleRelayPongPacket(
@@ -197,17 +198,15 @@ namespace net
       memcpy(session->private_key, token.private_key, crypto_box_SECRETKEYBYTES);
       relay_replay_protection_reset(&session->replay_protection_client_to_server);
       relay_replay_protection_reset(&session->replay_protection_server_to_client);
-      mRelay.sessions->insert(std::make_pair(hash, session)); // TODO dear god why
+      mRelay.sessions->insert(std::make_pair(hash, session));  // TODO dear god why
 
       printf("session created: %" PRIx64 ".%d\n", token.session_id, token.session_version);
     }
 
     // remove this part of the token by offseting it the request packet bytes
     packet[RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES] = RELAY_ROUTE_REQUEST_PACKET;
-    relay_platform_socket_send_packet(mRelay.socket,
-     &token.next_address,
-     packet.data() + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES,
-     size - RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES);
+    mSocket.send(
+     token.next_address, packet.data() + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES, size - RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES);
   }
 
   void Communicator::handleRouteResponsePacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
@@ -227,8 +226,8 @@ namespace net
     }
 
     uint64_t hash = session_id ^ session_version;
-    relay::relay_session_t* session = (*(mRelay.sessions))[hash]; // TODO just use a reference for this
-    if (!session) { // TODO and use find() for this
+    relay::relay_session_t* session = (*(mRelay.sessions))[hash];  // TODO just use a reference for this
+    if (!session) {                                                // TODO and use find() for this
       return;
     }
 
@@ -246,7 +245,7 @@ namespace net
       return;
     }
 
-    relay_platform_socket_send_packet(mRelay.socket, &session->prev_address, packet.data(), size);
+    mSocket.send(session->prev_address, packet.data(), size);
   }
 
   void Communicator::handleContinueRequestPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
@@ -278,10 +277,8 @@ namespace net
     }
     session->expire_timestamp = token.expire_timestamp;
     packet[RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES] = RELAY_CONTINUE_REQUEST_PACKET;
-    relay_platform_socket_send_packet(mRelay.socket,
-     &session->next_address,
-     packet.data() + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES,
-     size - RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES);
+    mSocket.send(
+     session->next_address, packet.data() + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES, size - RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES);
   }
 
   void Communicator::handleContinueResponsePacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
@@ -314,7 +311,7 @@ namespace net
     if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet.data(), size) != RELAY_OK) {
       return;
     }
-    relay_platform_socket_send_packet(mRelay.socket, &session->prev_address, packet.data(), size);
+    mSocket.send(session->prev_address, packet.data(), size);
   }
 
   void Communicator::handleClientToServerPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
@@ -354,7 +351,7 @@ namespace net
       return;
     }
 
-    relay_platform_socket_send_packet(mRelay.socket, &session->next_address, packet.data(), size);
+    mSocket.send(session->next_address, packet.data(), size);
   }
 
   void Communicator::handleServerToClientPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
@@ -393,7 +390,7 @@ namespace net
       return;
     }
 
-    relay_platform_socket_send_packet(mRelay.socket, &session->prev_address, packet.data(), size);
+    mSocket.send(session->prev_address, packet.data(), size);
   }
 
   void Communicator::handleSessionPingPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
@@ -433,7 +430,7 @@ namespace net
       return;
     }
 
-    relay_platform_socket_send_packet(mRelay.socket, &session->next_address, packet.data(), size);
+    mSocket.send(session->next_address, packet.data(), size);
   }
 
   void Communicator::handleSessionPongPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
@@ -472,7 +469,7 @@ namespace net
       return;
     }
 
-    relay_platform_socket_send_packet(mRelay.socket, &session->prev_address, packet.data(), size);
+    mSocket.send(session->prev_address, packet.data(), size);
   }
 
   void Communicator::handleNearPingPacket(
@@ -485,6 +482,6 @@ namespace net
     }
 
     packet[0] = RELAY_NEAR_PONG_PACKET;
-    relay_platform_socket_send_packet(mRelay.socket, &from, packet.data(), size - 16);
+    mSocket.send(from, packet.data(), size - 16); // TODO why 16?
   }
 }  // namespace net

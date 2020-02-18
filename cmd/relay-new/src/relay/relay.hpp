@@ -29,7 +29,6 @@ namespace relay
   struct relay_t
   {
     legacy::relay_manager_t* relay_manager;
-    legacy::relay_platform_socket_t* socket;
     relay_platform_mutex_t* mutex;
     double initialize_time;
     uint64_t initialize_router_timestamp;
