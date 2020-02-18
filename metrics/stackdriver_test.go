@@ -109,7 +109,7 @@ func TestStackDriverMetrics(t *testing.T) {
 	assert.Equal(t, 4.0, gauge.Value())
 
 	// Start the submit routine
-	go handler.MetricSubmitRoutine(ctx, logger, time.NewTicker(1*time.Second).C, 200)
+	go handler.MetricSubmitRoutine(ctx, logger, 1, 200)
 
 	// Sleep for 2 seconds to allow the metric to be pushed to StackDriver
 	time.Sleep(2 * time.Second)

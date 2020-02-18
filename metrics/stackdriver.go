@@ -45,6 +45,7 @@ type StackDriverHandler struct {
 	ContainerName   string
 	NamespaceName   string
 	ProjectID       string
+	SubmitFrequency float64
 
 	metricsMap      map[string]Handle
 	metricsMapMutex sync.Mutex
@@ -61,12 +62,20 @@ func (handler *StackDriverHandler) Open(ctx context.Context) error {
 }
 
 // MetricSubmitRoutine is responsible for sending the metrics up to StackDriver. Call in a separate goroutine.
-// Pass timer.NewTicker(duration).C to have the routine send metrics up to StackDriver periodically.
+// Pass a duration in seconds to have the routine send metrics up to StackDriver periodically.
+// If the period is less than or equal to 0, a default of 10 is used.
 // maxMetricsCount is the maximum number of metrics to send in one push to StackDriver. If you're unsure, 200 is a good number.
-func (handler *StackDriverHandler) MetricSubmitRoutine(ctx context.Context, logger log.Logger, c <-chan time.Time, maxMetricsIncrement int) {
+func (handler *StackDriverHandler) MetricSubmitRoutine(ctx context.Context, logger log.Logger, period int64, maxMetricsIncrement int) {
+	if period <= 0 {
+		period = 10
+	}
+
+	ticker := time.NewTicker(time.Duration(period) * time.Second)
+	handler.SubmitFrequency = 1.0 / float64(period)
+
 	for {
 		select {
-		case <-c:
+		case <-ticker.C:
 			labels := make(map[string]string)
 
 			// Preprocess all metrics in the map to create time series objects
@@ -150,9 +159,16 @@ func (handler *StackDriverHandler) MetricSubmitRoutine(ctx context.Context, logg
 				}
 			}
 		case <-ctx.Done():
+			handler.SubmitFrequency = 0
 			return
 		}
 	}
+}
+
+// GetSubmitFrequency returns the frequency of how often the submit routine submits metrics.
+// This will return 0 if the submit routine hasn't been started yet.
+func (handler *StackDriverHandler) GetSubmitFrequency() float64 {
+	return handler.SubmitFrequency
 }
 
 // CreateMetric creates the metric on StackDriver using the given metric descriptor.

@@ -2,7 +2,6 @@ package metrics
 
 import (
 	"context"
-	"time"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/metrics/generic"
@@ -49,7 +48,8 @@ type Descriptor struct {
 // Handler handles creating and update metrics
 type Handler interface {
 	Open(ctx context.Context) error
-	MetricSubmitRoutine(ctx context.Context, logger log.Logger, c <-chan time.Time, maxMetricsIncrement int)
+	MetricSubmitRoutine(ctx context.Context, logger log.Logger, period int64, maxMetricsIncrement int)
+	GetSubmitFrequency() float64
 	CreateMetric(ctx context.Context, descriptor *Descriptor, gauge *generic.Gauge) (Handle, error)
 	GetMetric(id string) (Handle, bool)
 	DeleteMetric(ctx context.Context, descriptor *Descriptor) error
