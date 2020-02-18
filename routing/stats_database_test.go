@@ -296,13 +296,13 @@ func TestStatsDatabase(t *testing.T) {
 				var r routing.Relay
 				r.UnmarshalBinary([]byte(raw))
 				if i == 0 {
-					r.Datacenter = 0
+					r.Datacenter.ID = 0
 					redisClient.HSet(routing.HashKeyAllRelays, r.Key(), r)
 				} else {
-					r.Datacenter = uint64(i)
+					r.Datacenter.ID = uint64(i)
 					redisClient.HSet(routing.HashKeyAllRelays, r.Key(), r)
-					validDcIDs = append(validDcIDs, r.Datacenter)
-					validDcNames = append(validDcNames, r.DatacenterName)
+					validDcIDs = append(validDcIDs, r.Datacenter.ID)
+					validDcNames = append(validDcNames, r.Datacenter.Name)
 				}
 				i++
 			}
@@ -353,7 +353,7 @@ func TestStatsDatabase(t *testing.T) {
 				for _, raw := range hgetallResult.Val() {
 					var relay routing.Relay
 					relay.UnmarshalBinary([]byte(raw))
-					if relay.Datacenter == id {
+					if relay.Datacenter.ID == id {
 						validRelayIDs = append(validRelayIDs, relay.ID)
 						break
 					}
@@ -418,11 +418,13 @@ func TestStatsDatabase(t *testing.T) {
 			id := crypto.HashID(addr)
 			udp, _ := net.ResolveUDPAddr("udp", addr)
 			relay := routing.Relay{
-				ID:             id,
-				Name:           addr,
-				Addr:           *udp,
-				Datacenter:     uint64(rand.Uint64()%(math.MaxUint64-1) + 1), // non-zero random number
-				DatacenterName: RandomString(5),
+				ID:   id,
+				Name: addr,
+				Addr: *udp,
+				Datacenter: routing.Datacenter{
+					ID:   uint64(rand.Uint64()%(math.MaxUint64-1) + 1), // non-zero random number
+					Name: RandomString(5),
+				},
 				PublicKey:      RandomPublicKey(),
 				LastUpdateTime: uint64(time.Now().Unix()),
 			}

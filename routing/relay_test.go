@@ -148,12 +148,14 @@ func TestRelay(t *testing.T) {
 		rand.Read(pk)
 
 		expected := routing.Relay{
-			ID:             123,
-			Name:           "relay name",
-			Addr:           *udp,
-			PublicKey:      pk,
-			Datacenter:     321,
-			DatacenterName: "datacenter name",
+			ID:        123,
+			Name:      "relay name",
+			Addr:      *udp,
+			PublicKey: pk,
+			Datacenter: routing.Datacenter{
+				ID:   321,
+				Name: "datacenter name",
+			},
 			Latitude:       123.456,
 			Longitude:      654.321,
 			LastUpdateTime: 999,
