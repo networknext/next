@@ -1,5 +1,7 @@
 package transport
 
+const BillingSliceSeconds = 10
+
 type BillingEntry struct {
 	Request             *RouteRequest
 	Route               []*BillingRouteHop

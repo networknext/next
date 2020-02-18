@@ -418,5 +418,13 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, bp B
 		}
 
 		level.Debug(locallogger).Log("msg", "updated session")
+
+		var duration time.Duration
+		switch token.Type() {
+		case routing.RouteTypeNew:
+			duration = BillingSliceSeconds * 2 // Double check why this is
+		case routing.RouteTypeContinue:
+			duration = BillingSliceSeconds
+		}
 	}
 }
