@@ -75,8 +75,6 @@ int main()
     if ( next_init( NULL, &config ) != NEXT_OK )
         return 1;
     
-    next_log_level( NEXT_LOG_LEVEL_DEBUG );
-
     const char * server_packet_loss_env = getenv( "SERVER_PACKET_LOSS" );
     if ( server_packet_loss_env )
     {

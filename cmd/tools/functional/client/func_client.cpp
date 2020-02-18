@@ -113,8 +113,6 @@ int main()
     if ( next_init( NULL, &config ) != NEXT_OK )
         return 1;
 
-    next_log_level( NEXT_LOG_LEVEL_DEBUG );
-
     next_client_t * client = next_client_create( NULL, client_packet_received );
     if ( client == NULL )
         return 1;
