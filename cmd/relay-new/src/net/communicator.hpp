@@ -4,6 +4,17 @@
 #include "relay/relay.hpp"
 #include "util/throughput_logger.hpp"
 
+/*
+  Two types of packets can be received.
+
+  Route Req & Continue Req both follow the format
+  - [packety type] [relay dest]... [server]
+  where the packet type is prepended to the next packet
+
+  Every other packet follows
+  [packet type] [sequency #] [session #] [session version] [hmac (hash of previous 4 sections)] [payload]
+ */
+
 namespace net
 {
   class Communicator
