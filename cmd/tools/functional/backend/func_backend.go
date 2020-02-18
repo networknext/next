@@ -9,7 +9,6 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"hash/fnv"
 	"io"
 	"io/ioutil"
 	"log"
@@ -198,9 +197,7 @@ func TimeoutThread() {
 }
 
 func GetRelayId(name string) uint64 {
-	hash := fnv.New64a()
-	hash.Write([]byte(name))
-	return hash.Sum64()
+	return crypto.HashID(name)
 }
 
 func GetNearRelays() ([]uint64, []net.UDPAddr) {
