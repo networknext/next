@@ -79,14 +79,17 @@ func relayInitAssertions(t *testing.T, relay routing.Relay, body []byte, expecte
 		rpubkeyMap := make(map[uint32][]byte)
 		rpubkeyMap[uint32(relay.ID)] = relay.PublicKey
 		inMemory = &storage.InMemory{
-			LocalCustomerPublicKey: customerPublicKey,
-			LocalRelayPublicKey:    relayPublicKey,
-			RelayDatacenterNames:   rtodcnameMap,
-			RelayPublicKeys:        rpubkeyMap,
+			LocalBuyer: &routing.Buyer{
+				PublicKey: customerPublicKey[8:],
+			},
+
+			LocalRelay: &routing.Relay{
+				PublicKey: relayPublicKey,
+			},
 		}
 	}
 
-	handler := transport.RelayInitHandlerFunc(log.NewNopLogger(), redisClient, geoClient, ipfunc, inMemory, inMemory, routerPrivateKey)
+	handler := transport.RelayInitHandlerFunc(log.NewNopLogger(), redisClient, geoClient, ipfunc, inMemory, routerPrivateKey)
 
 	handler(recorder, request)
 

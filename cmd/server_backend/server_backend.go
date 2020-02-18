@@ -18,7 +18,6 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"google.golang.org/grpc"
 
 	"github.com/go-redis/redis/v7"
 	"github.com/oschwald/geoip2-golang"
@@ -53,7 +52,6 @@ func main() {
 	}
 
 	// var serverPublicKey []byte
-	var relayPublicKey []byte
 	var customerPublicKey []byte
 	var serverPrivateKey []byte
 	var routerPrivateKey []byte
@@ -81,10 +79,7 @@ func main() {
 
 		if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
 			customerPublicKey, _ = base64.StdEncoding.DecodeString(key)
-		}
-
-		if key := os.Getenv("RELAY_PUBLIC_KEY"); len(key) != 0 {
-			relayPublicKey, _ = base64.StdEncoding.DecodeString(key)
+			customerPublicKey = customerPublicKey[8:]
 		}
 	}
 
@@ -120,25 +115,14 @@ func main() {
 		Namespace:   "RELAY_LOCATIONS",
 	}
 
-	// Create an in-memory buyer provider
-	var buyerProvider transport.BuyerProvider = &storage.InMemory{
-		LocalCustomerPublicKey: customerPublicKey,
-		LocalRelayPublicKey:    relayPublicKey,
-		LocalDatacenter:        true,
+	// Create an in-memory db
+	var db storage.Storer = &storage.InMemory{
+		LocalBuyer: &routing.Buyer{PublicKey: customerPublicKey},
 	}
-	if host, ok := os.LookupEnv("CONFIGSTORE_HOST"); ok {
-		grpcconn, err := grpc.Dial(host, grpc.WithInsecure())
-		if err != nil {
-			level.Error(logger).Log("envvar", "CONFIGSTORE_HOST", "value", host, "err", err)
-		}
-		configstore, err := storage.ConnectToConfigstore(ctx, grpcconn)
-		if err != nil {
-			level.Error(logger).Log("envvar", "CONFIGSTORE_HOST", "value", host, "err", err)
-		}
+	if _, ok := os.LookupEnv("GOOGLE_APPLICATION_CREDENTIALS"); ok {
+		// Connect to Firestore
 
-		// If CONFIGSTORE_HOST exists and a successful connection was made
-		// then replace the in-memory with the gRPC one
-		buyerProvider = configstore.Buyers
+		db = &storage.Firestore{}
 	}
 
 	var routeMatrix routing.RouteMatrix
@@ -187,8 +171,8 @@ func main() {
 			Conn:          conn,
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
-			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClient, buyerProvider),
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClient, buyerProvider, &routeMatrix, ipLocator, &geoClient, serverPrivateKey, routerPrivateKey),
+			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClient, db),
+			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClient, db, &routeMatrix, ipLocator, &geoClient, serverPrivateKey, routerPrivateKey),
 		}
 
 		go func() {
