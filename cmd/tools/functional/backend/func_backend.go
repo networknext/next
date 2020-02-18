@@ -5,10 +5,6 @@
 
 package main
 
-// #cgo pkg-config: libsodium
-// #include <sodium.h>
-import "C"
-
 import (
 	"context"
 	"encoding/binary"
@@ -653,10 +649,6 @@ func GetRelayPublicKey(relay_address string) []byte {
 	return []byte{0x06, 0xb0, 0x4d, 0x9e, 0xa6, 0xf5, 0x7c, 0x0b, 0x3c, 0x6a, 0x2d, 0x9d, 0xbf, 0x34, 0x32, 0xb6, 0x66, 0x00, 0xa0, 0x3b, 0x2b, 0x5b, 0x5d, 0x00, 0x91, 0x4a, 0x32, 0xee, 0xf2, 0x36, 0xc2, 0x9c}
 }
 
-func CryptoCheck(data []byte, nonce []byte, publicKey []byte, privateKey []byte) bool {
-	return C.crypto_box_open((*C.uchar)(&data[0]), (*C.uchar)(&data[0]), C.ulonglong(len(data)), (*C.uchar)(&nonce[0]), (*C.uchar)(&publicKey[0]), (*C.uchar)(&privateKey[0])) != 0
-}
-
 func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 
 	body, err := ioutil.ReadAll(request.Body)
@@ -677,7 +669,7 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	var nonce []byte
-	if !ReadBytes(body, &index, &nonce, C.crypto_box_NONCEBYTES) {
+	if !ReadBytes(body, &index, &nonce, crypto.NonceSize) {
 		return
 	}
 
@@ -687,11 +679,11 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	var encrypted_token []byte
-	if !ReadBytes(body, &index, &encrypted_token, RelayTokenBytes+C.crypto_box_MACBYTES) {
+	if !ReadBytes(body, &index, &encrypted_token, RelayTokenBytes+crypto.MACSize) {
 		return
 	}
 
-	if !CryptoCheck(encrypted_token, nonce, relayPublicKey[:], core.RouterPrivateKey[:]) {
+	if _, success := crypto.Open(encrypted_token, nonce, relayPublicKey[:], core.RouterPrivateKey[:]); !success {
 		return
 	}
 
