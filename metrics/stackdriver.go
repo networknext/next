@@ -45,7 +45,8 @@ type StackDriverHandler struct {
 	ContainerName   string
 	NamespaceName   string
 	ProjectID       string
-	SubmitFrequency float64
+
+	submitFrequency float64
 
 	metricsMap      map[string]Handle
 	metricsMapMutex sync.Mutex
@@ -63,15 +64,15 @@ func (handler *StackDriverHandler) Open(ctx context.Context) error {
 
 // MetricSubmitRoutine is responsible for sending the metrics up to StackDriver. Call in a separate goroutine.
 // Pass a duration in seconds to have the routine send metrics up to StackDriver periodically.
-// If the period is less than or equal to 0, a default of 10 is used.
+// If the duration is less than or equal to 0, a default of 1 minute is used.
 // maxMetricsCount is the maximum number of metrics to send in one push to StackDriver. If you're unsure, 200 is a good number.
-func (handler *StackDriverHandler) MetricSubmitRoutine(ctx context.Context, logger log.Logger, period int64, maxMetricsIncrement int) {
-	if period <= 0 {
-		period = 10
+func (handler *StackDriverHandler) MetricSubmitRoutine(ctx context.Context, logger log.Logger, duration time.Duration, maxMetricsIncrement int) {
+	if duration <= 0 {
+		duration = time.Minute
 	}
 
-	ticker := time.NewTicker(time.Duration(period) * time.Second)
-	handler.SubmitFrequency = 1.0 / float64(period)
+	ticker := time.NewTicker(duration)
+	handler.submitFrequency = 1.0 / duration.Seconds()
 
 	for {
 		select {
@@ -159,16 +160,16 @@ func (handler *StackDriverHandler) MetricSubmitRoutine(ctx context.Context, logg
 				}
 			}
 		case <-ctx.Done():
-			handler.SubmitFrequency = 0
+			handler.submitFrequency = 0
 			return
 		}
 	}
 }
 
-// GetSubmitFrequency returns the frequency of how often the submit routine submits metrics.
+// GetSubmitFrequency returns the frequency of how often the submit routine submits metrics in seconds.
 // This will return 0 if the submit routine hasn't been started yet.
 func (handler *StackDriverHandler) GetSubmitFrequency() float64 {
-	return handler.SubmitFrequency
+	return handler.submitFrequency
 }
 
 // CreateMetric creates the metric on StackDriver using the given metric descriptor.
