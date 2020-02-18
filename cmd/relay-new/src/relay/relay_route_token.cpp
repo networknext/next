@@ -5,6 +5,8 @@
 #include "encoding/read.hpp"
 #include "encoding/write.hpp"
 
+#include "util/dump.hpp"
+
 namespace relay
 {
   void relay_write_route_token(relay_route_token_t* token, uint8_t* buffer, int buffer_length)

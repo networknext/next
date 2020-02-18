@@ -43,7 +43,7 @@ func main() {
 	sessionID := flag.Int64("sessionid", 1, "the SessionID to set in the token")
 	sessionversion := flag.Int("sessionversion", 1, "the Session Version to set in the token")
 
-	clientaddr := flag.String("clientaddr", "127.0.0.1:10001", "the client's IP")
+	clientaddr := flag.String("clientaddr", "0.0.0.0:00000", "the client's IP")
 	clientkey := flag.String("clientpublickey", "", "the client's public key")
 
 	var relayaddrs relayaddrFlags
@@ -70,7 +70,7 @@ func main() {
 	}
 
 	if *clientkey == "" {
-		log.Fatal("clientpublickey is required")
+		log.Println("clientpublickey empty, removing client segment at the end of the process")
 	}
 	clientpubkey, err := base64.StdEncoding.DecodeString(*clientkey)
 	if err != nil {
@@ -82,8 +82,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if *clientkey == "" {
-		log.Fatal("serverpubkey is required")
+	if *serverkey == "" {
+		log.Fatal("serverpublickey is required")
 	}
 	serverpubkey, err := base64.StdEncoding.DecodeString(*serverkey)
 	if err != nil {
@@ -95,8 +95,10 @@ func main() {
 	}
 
 	var routeToken routing.Token
+	magicByte := make([]byte, 1)
 	switch *token {
 	case "new":
+		magicByte[0] = 0x01
 		nextRouteToken := routing.NextRouteToken{
 			Expires: uint64(time.Now().Add(*expires).Unix()),
 
@@ -124,6 +126,7 @@ func main() {
 
 		routeToken = &nextRouteToken
 	case "continue":
+		magicByte[0] = 0x0D
 		continueRouteToken := routing.ContinueRouteToken{
 			Expires: uint64(time.Now().Add(*expires).Unix()),
 
@@ -157,6 +160,10 @@ func main() {
 	enc, _, err := routeToken.Encrypt(privatekey)
 	if err != nil {
 		log.Fatalf("failed to encrypt token: %v", err)
+	}
+
+	if *clientkey == "" {
+		enc = append(magicByte, enc[117:]...)
 	}
 
 	_, err = os.Stdout.Write(enc)

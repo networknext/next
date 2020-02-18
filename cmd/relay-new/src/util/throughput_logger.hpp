@@ -153,7 +153,7 @@ namespace util
                 sessionPong + nearPing;
         total.PacketCount += emptyPacketsTotal;
 
-        mConsole.log("\n------------------------------------------------\n\n");
+        mConsole.write("\n------------------------------------------------\n\n");
 
         // Total
         mConsole.log("Total Bytes received: ", total.ByteCount, "/s");

@@ -15,8 +15,6 @@
 #include "relay/relay_platform.hpp"
 #include "relay/relay_route_token.hpp"
 
-#include "net/packets/realy_ping_packet.hpp"
-
 namespace net
 {
   Communicator::Communicator(relay::relay_t& relay, volatile bool& handle, std::ostream& output)
