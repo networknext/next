@@ -118,7 +118,7 @@ func OptimizeThread() {
 			relayData.Address = v.address.String()
 			relayData.Datacenter = core.DatacenterId(0)
 			relayData.DatacenterName = "local"
-			relayData.PublicKey = GetRelayPublicKey(v.address.String()) //TODO: see if this works with crypto.RelayPublicKey
+			relayData.PublicKey = crypto.RelayPublicKey[:]
 			relayDatabase.Relays[relayData.ID] = relayData
 		}
 		backend.mutex.RUnlock()
@@ -640,10 +640,6 @@ func WriteBytes(data []byte, index *int, value []byte, numBytes int) {
 		data[*index] = value[i]
 		*index++
 	}
-}
-
-func GetRelayPublicKey(relay_address string) []byte {
-	return []byte{0x06, 0xb0, 0x4d, 0x9e, 0xa6, 0xf5, 0x7c, 0x0b, 0x3c, 0x6a, 0x2d, 0x9d, 0xbf, 0x34, 0x32, 0xb6, 0x66, 0x00, 0xa0, 0x3b, 0x2b, 0x5b, 0x5d, 0x00, 0x91, 0x4a, 0x32, 0xee, 0xf2, 0x36, 0xc2, 0x9c}
 }
 
 func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
