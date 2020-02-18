@@ -21,15 +21,15 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// ValueTypeMap is a map from the value's named type to StackDriver's MetricDescriptor value type
-var ValueTypeMap = map[string]metricpb.MetricDescriptor_ValueType{
+// valueTypeMap is a map from the value's named type to StackDriver's MetricDescriptor value type
+var valueTypeMap = map[string]metricpb.MetricDescriptor_ValueType{
 	"BOOL":   metricpb.MetricDescriptor_BOOL,
 	"INT64":  metricpb.MetricDescriptor_INT64,
 	"DOUBLE": metricpb.MetricDescriptor_DOUBLE,
 }
 
-// ValueTypeMapReverse is a reverse map to convert from StackDriver's MetricDescriptor value type to the metric package's value type
-var ValueTypeMapReverse = map[metricpb.MetricDescriptor_ValueType]Type{
+// valueTypeMapReverse is a reverse map to convert from StackDriver's MetricDescriptor value type to the metric package's value type
+var valueTypeMapReverse = map[metricpb.MetricDescriptor_ValueType]Type{
 	metricpb.MetricDescriptor_BOOL:   TypeBool{},
 	metricpb.MetricDescriptor_INT64:  TypeInt64{},
 	metricpb.MetricDescriptor_DOUBLE: TypeDouble{},
@@ -164,7 +164,7 @@ func (handler *StackDriverHandler) CreateMetric(ctx context.Context, descriptor 
 			Name:        gauge.Name,
 			Type:        fmt.Sprintf("custom.googleapis.com/%s/%s", descriptor.ServiceName, descriptor.ID),
 			MetricKind:  metric.MetricDescriptor_GAUGE,
-			ValueType:   ValueTypeMap[descriptor.ValueType.ValueType.getTypeName()],
+			ValueType:   valueTypeMap[descriptor.ValueType.ValueType.getTypeName()],
 			Unit:        descriptor.Unit,
 			Description: descriptor.Description,
 			DisplayName: gauge.Name,
@@ -175,7 +175,7 @@ func (handler *StackDriverHandler) CreateMetric(ctx context.Context, descriptor 
 	// If the metric doesn't exist yet, then it will use these values that we passed in.
 	// If the metric already exists, then these will be overwritten with the values already in StackDriver.
 	stackdriverDescriptor := &metricpb.MetricDescriptor{
-		ValueType:   ValueTypeMap[descriptor.ValueType.ValueType.getTypeName()],
+		ValueType:   valueTypeMap[descriptor.ValueType.ValueType.getTypeName()],
 		Unit:        descriptor.Unit,
 		Description: descriptor.Description,
 	}
@@ -200,7 +200,7 @@ func (handler *StackDriverHandler) CreateMetric(ctx context.Context, descriptor 
 		Descriptor: &Descriptor{
 			ServiceName: descriptor.ServiceName,
 			ID:          descriptor.ID,
-			ValueType:   ValueType{ValueType: ValueTypeMapReverse[stackdriverDescriptor.ValueType]},
+			ValueType:   ValueType{ValueType: valueTypeMapReverse[stackdriverDescriptor.ValueType]},
 			Unit:        stackdriverDescriptor.Unit,
 			Description: stackdriverDescriptor.Description,
 		},
