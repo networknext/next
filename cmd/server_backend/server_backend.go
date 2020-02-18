@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/base64"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -16,8 +17,10 @@ import (
 	"runtime"
 	"time"
 
+	"cloud.google.com/go/firestore"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
+	"google.golang.org/api/option"
 
 	"github.com/go-redis/redis/v7"
 	"github.com/oschwald/geoip2-golang"
@@ -119,10 +122,37 @@ func main() {
 	var db storage.Storer = &storage.InMemory{
 		LocalBuyer: &routing.Buyer{PublicKey: customerPublicKey},
 	}
-	if _, ok := os.LookupEnv("GOOGLE_APPLICATION_CREDENTIALS"); ok {
-		// Connect to Firestore
 
-		db = &storage.Firestore{}
+	// If GCP_CREDENTIALS are set then override the local in memory
+	// and connect to Firestore
+	if gcpcreds, ok := os.LookupEnv("GCP_CREDENTIALS"); ok {
+		var gcpcredsjson []byte
+
+		_, err := os.Stat(gcpcreds)
+		switch err := err.(type) {
+		case *os.PathError:
+			gcpcredsjson = []byte(gcpcreds)
+			level.Info(logger).Log("envvar", "GCP_CREDENTIALS", "value", "<JSON>")
+		case nil:
+			gcpcredsjson, err = ioutil.ReadFile(gcpcreds)
+			if err != nil {
+				level.Error(logger).Log("envvar", "GCP_CREDENTIALS", "value", gcpcreds, "err", err)
+				os.Exit(1)
+			}
+			level.Info(logger).Log("envvar", "GCP_CREDENTIALS", "value", gcpcreds)
+		default:
+			//log.Fatalf("unable to load GCP_CREDENTIALS: %v\n", err)
+		}
+
+		client, err := firestore.NewClient(context.Background(), firestore.DetectProjectID, option.WithCredentialsJSON(gcpcredsjson))
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
+
+		db = &storage.Firestore{
+			Client: client,
+		}
 	}
 
 	var routeMatrix routing.RouteMatrix
