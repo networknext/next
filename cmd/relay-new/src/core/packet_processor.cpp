@@ -30,7 +30,9 @@ namespace core
       if (packet_bytes == 0) {
         mLogger.addToPkt0();
         continue;
-      } else if (packetData[0] == RELAY_PING_PACKET && packet_bytes == 9) {
+      }
+
+      if (packetData[0] == RELAY_PING_PACKET && packet_bytes == 9) {
         this->handleRelayPingPacket(packetData, packet_bytes, from);
       } else if (packetData[0] == RELAY_PONG_PACKET && packet_bytes == 9) {
         this->handleRelayPongPacket(packetData, packet_bytes, from);

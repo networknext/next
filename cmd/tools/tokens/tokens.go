@@ -43,7 +43,7 @@ func main() {
 	sessionID := flag.Int64("sessionid", 1, "the SessionID to set in the token")
 	sessionversion := flag.Int("sessionversion", 1, "the Session Version to set in the token")
 
-	clientaddr := flag.String("clientaddr", "0.0.0.0:00000", "the client's IP")
+	clientaddr := flag.String("clientaddr", "127.0.0.1:10001", "the client's IP")
 	clientkey := flag.String("clientpublickey", "", "the client's public key")
 
 	var relayaddrs relayaddrFlags
