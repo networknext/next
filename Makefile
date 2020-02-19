@@ -98,6 +98,18 @@ ifndef REDIS_HOST
 export REDIS_HOST = 127.0.0.1:6379
 endif
 
+##################################
+##  GOOGLE PUBSUB BILLING ENV   ##
+##################################
+
+ifndef GOOGLE_CLOUD_BILLING_PROJECT
+export GOOGLE_CLOUD_BILLING_PROJECT = network-next-local
+endif
+
+ifndef BILLING_PUBSUB_TOPIC
+export BILLING_PUBSUB_TOPIC = billing-local
+endif
+
 .PHONY: help
 help: ## this list
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
