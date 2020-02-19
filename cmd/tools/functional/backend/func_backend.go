@@ -196,10 +196,6 @@ func TimeoutThread() {
 	}
 }
 
-func GetRelayId(name string) uint64 {
-	return crypto.HashID(name)
-}
-
 func GetNearRelays() ([]uint64, []net.UDPAddr) {
 	nearRelays := make([]RelayEntry, 0)
 	backend.mutex.RLock()
@@ -693,7 +689,7 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 
 	relayEntry := RelayEntry{}
 	relayEntry.name = relay_address
-	relayEntry.id = GetRelayId(relay_address)
+	relayEntry.id = crypto.HashID(relay_address)
 	relayEntry.address = core.ParseAddress(relay_address)
 	relayEntry.lastUpdate = time.Now().Unix()
 	relayEntry.token = core.RandomBytes(RelayTokenBytes)
@@ -808,7 +804,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
 	relayEntry = RelayEntry{}
 	relayEntry.name = relay_address
-	relayEntry.id = GetRelayId(relay_address)
+	relayEntry.id = crypto.HashID(relay_address)
 	relayEntry.address = core.ParseAddress(relay_address)
 	relayEntry.lastUpdate = time.Now().Unix()
 	relayEntry.token = token
