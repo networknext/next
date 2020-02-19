@@ -81,10 +81,12 @@ func TestRelayUpdateHandler(t *testing.T) {
 		}
 
 		entry := routing.Relay{
-			ID:             crypto.HashID(addr),
-			Addr:           *udp,
-			Datacenter:     1,
-			DatacenterName: "some name",
+			ID:   crypto.HashID(addr),
+			Addr: *udp,
+			Datacenter: routing.Datacenter{
+				ID:   1,
+				Name: "some name",
+			},
 			PublicKey:      token2,
 			LastUpdateTime: uint64(time.Now().Unix() - 1),
 		}
@@ -156,10 +158,12 @@ func TestRelayUpdateHandler(t *testing.T) {
 		seedRedis(t, redisServer, statIps)
 
 		entry := routing.Relay{
-			ID:             crypto.HashID(addr),
-			Addr:           *udp,
-			Datacenter:     1,
-			DatacenterName: "some name",
+			ID:   crypto.HashID(addr),
+			Addr: *udp,
+			Datacenter: routing.Datacenter{
+				ID:   1,
+				Name: "some name",
+			},
 			PublicKey:      make([]byte, crypto.KeySize),
 			LastUpdateTime: uint64(time.Now().Unix() - 1),
 		}
@@ -179,8 +183,8 @@ func TestRelayUpdateHandler(t *testing.T) {
 		assert.Equal(t, entry.ID, actual.ID)
 		assert.Equal(t, entry.Name, actual.Name)
 		assert.Equal(t, entry.Addr, actual.Addr)
-		assert.Equal(t, entry.Datacenter, actual.Datacenter)
-		assert.Equal(t, entry.DatacenterName, actual.DatacenterName)
+		assert.Equal(t, entry.Datacenter.ID, actual.Datacenter.ID)
+		assert.Equal(t, entry.Datacenter.Name, actual.Datacenter.Name)
 		assert.Equal(t, entry.PublicKey, actual.PublicKey)
 		assert.NotEqual(t, entry.LastUpdateTime, actual.LastUpdateTime)
 

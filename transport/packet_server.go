@@ -56,7 +56,6 @@ const (
 	FlagClientTimedOut          = uint32(1 << 7)
 	FlagTryBeforeYouBuyAbort    = uint32(1 << 8)
 	FlagDirectRouteExpired      = uint32(1 << 9)
-	FlagTotalCount              = 10
 
 	AddressSize = 19
 )
@@ -220,7 +219,11 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint64(&packet.Tag)
 
 	if packet.Version.AtLeast(SDKVersion{3, 3, 4}) {
-		stream.SerializeBits(&packet.Flags, FlagTotalCount)
+		if packet.Version.AtLeast(SDKVersion{3, 4, 0}) {
+			stream.SerializeBits(&packet.Flags, 11)
+		} else {
+			stream.SerializeBits(&packet.Flags, 10)
+		}
 	}
 
 	stream.SerializeBool(&packet.Flagged)
@@ -307,6 +310,7 @@ func (packet *SessionUpdatePacket) GetSignData() []byte {
 	if packet.Version.AtLeast(SDKVersion{3, 3, 4}) {
 		binary.Write(buf, binary.LittleEndian, packet.Flags)
 	}
+
 	binary.Write(buf, binary.LittleEndian, packet.Flagged)
 	binary.Write(buf, binary.LittleEndian, packet.FallbackToDirect)
 	if !packet.Version.AtLeast(SDKVersion{3, 4, 0}) {
