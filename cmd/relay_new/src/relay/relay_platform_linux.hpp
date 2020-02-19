@@ -6,11 +6,7 @@
 #ifndef RELAY_RELAY_PLATFORM_LINUX_HPP
 #define RELAY_RELAY_PLATFORM_LINUX_HPP
 
-#include "sysinfo.hpp"
-
 #if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
-
-#include "net/address.hpp"
 
 #define RELAY_PLATFORM_HAS_IPV6 1
 #define RELAY_PLATFORM_SOCKET_NON_BLOCKING 0

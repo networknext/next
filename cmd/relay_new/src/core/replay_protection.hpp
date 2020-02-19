@@ -1,8 +1,6 @@
 #ifndef CORE_REPLAY_PROTECTION_HPP
 #define CORE_REPLAY_PROTECTION_HPP
 
-#include "config.hpp"
-
 namespace core
 {
   class ReplayProtection

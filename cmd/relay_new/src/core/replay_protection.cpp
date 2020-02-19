@@ -1,8 +1,6 @@
 #include "includes.h"
 #include "replay_protection.hpp"
 
-#include "config.hpp"
-
 namespace core
 {
   void ReplayProtection::reset()

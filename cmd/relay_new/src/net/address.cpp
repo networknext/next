@@ -5,8 +5,6 @@
 
 #include "util/logger.hpp"
 
-#include "relay/relay_platform.hpp"
-
 #include "net.hpp"
 
 namespace net

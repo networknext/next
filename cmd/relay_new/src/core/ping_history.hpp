@@ -1,8 +1,6 @@
 #ifndef CORE_PING_HISTORY_HPP
 #define CORE_PING_HISTORY_HPP
 
-#include "config.hpp"
-
 namespace core
 {
   struct HistoryEntry

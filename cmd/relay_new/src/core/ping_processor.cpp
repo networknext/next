@@ -5,18 +5,11 @@
 
 namespace core
 {
-  PingProcessor::PingProcessor(os::Socket& socket, relay::relay_t& relay, volatile bool& handle)
-   : mSocket(socket), mRelay(relay), mHandle(handle)
-  {}
+  PingProcessor::PingProcessor(relay::relay_t& relay, volatile bool& handle): mRelay(relay), mShouldProcess(handle) {}
 
-  PingProcessor::~PingProcessor()
+  void PingProcessor::listen(os::Socket& socket)
   {
-    stop();
-  }
-
-  void PingProcessor::listen()
-  {
-    while (this->mHandle) {
+    while (this->mShouldProcess) {
       relay::relay_platform_mutex_acquire(mRelay.mutex);
 
       if (mRelay.relays_dirty) {
@@ -51,15 +44,10 @@ namespace core
         packet_data[0] = RELAY_PING_PACKET;
         uint8_t* p = packet_data + 1;
         encoding::write_uint64(&p, pings[i].sequence);
-        mSocket.send(pings[i].address, packet_data, 9);
+        socket.send(pings[i].address, packet_data, 9);
       }
 
       relay::relay_platform_sleep(1.0 / 100.0);
     }
-  }
-
-  void PingProcessor::stop()
-  {
-    mHandle = false;
   }
 }  // namespace core

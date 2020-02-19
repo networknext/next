@@ -6,8 +6,6 @@
 #ifndef RELAY_RELAY_PLATFORM_MAC_HPP
 #define RELAY_RELAY_PLATFORM_MAC_HPP
 
-#include "sysinfo.hpp"
-
 #if RELAY_PLATFORM == RELAY_PLATFORM_MAC
 
 #include "relay/relay_address.hpp"

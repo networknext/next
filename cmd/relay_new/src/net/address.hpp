@@ -1,7 +1,7 @@
 #ifndef RELAY_RELAY_ADDRESS
 #define RELAY_RELAY_ADDRESS
 
-#include "config.hpp"
+#include "relay/relay_platform.hpp"
 
 namespace net
 {
@@ -30,6 +30,8 @@ namespace net
     auto operator!=(const Address& other) const -> bool;
 
     auto operator=(const Address& other) -> Address&;
+    auto operator=(const sockaddr_in& addr) -> Address&;
+    auto operator=(const sockaddr_in6& addr) -> Address&;
 
     AddressType Type;
     uint16_t Port;
@@ -107,6 +109,27 @@ namespace net
     return static_cast<uint8_t>(at) != t;
   }
 
+  inline auto Address::operator=(const sockaddr_in& addr) -> Address&
+  {
+    this->Type = net::AddressType::IPv4;
+    this->IPv4[0] = static_cast<uint8_t>((addr.sin_addr.s_addr & 0x000000FF));
+    this->IPv4[1] = static_cast<uint8_t>((addr.sin_addr.s_addr & 0x0000FF00) >> 8);
+    this->IPv4[2] = static_cast<uint8_t>((addr.sin_addr.s_addr & 0x00FF0000) >> 16);
+    this->IPv4[3] = static_cast<uint8_t>((addr.sin_addr.s_addr & 0xFF000000) >> 24);
+    this->Port = relay::relay_platform_ntohs(addr.sin_port);
+    return *this;
+  }
+
+  inline auto Address::operator=(const sockaddr_in6& addr) -> Address&
+  {
+    this->Type = net::AddressType::IPv6;
+    for (int i = 0; i < 8; i++) {
+      this->IPv6[i] = relay::relay_platform_ntohs(reinterpret_cast<const uint16_t*>(&addr.sin6_addr)[i]);
+    }
+    this->Port = relay::relay_platform_ntohs(addr.sin6_port);
+    return *this;
+  }
+
   inline std::ostream& operator<<(std::ostream& os, const Address& addr)
   {
     std::string str;
@@ -131,5 +154,12 @@ namespace legacy
   int relay_address_parse(relay_address_t* address, const char* address_string_in);
   const char* relay_address_to_string(const relay_address_t* address, char* buffer);
   int relay_address_equal(const relay_address_t* a, const relay_address_t* b);
+
+  inline std::ostream& operator<<(std::ostream& os, const relay_address_t& addr) {
+    char buff[128];
+    memset(buff, 0, sizeof(buff));
+    relay_address_to_string(&addr, buff);
+    return os << buff;
+  }
 }  // namespace legacy
 #endif

@@ -1,8 +1,6 @@
 #ifndef CORE_RELAY_STATS_HPP
 #define CORE_RELAY_STATS_HPP
 
-#include "config.hpp"
-
 namespace core
 {
   struct RelayStats

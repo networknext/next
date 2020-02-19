@@ -1,6 +1,5 @@
 #ifndef OS_PLATFORM_HPP
 #define OS_PLATFORM_HPP
-#include "sysinfo.hpp"
 #if RELAY_PLATFORM == RELAY_PLATFORM_WINDOWS
 #include "platform_windows.hpp"
 #elif RELAY_PLATFORM == RELAY_PLATFORM_MAC

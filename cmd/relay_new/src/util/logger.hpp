@@ -27,6 +27,6 @@ extern util::Console _console_;
 #define Log(...) _console_.log(__VA_ARGS__)
 #endif
 
-#define LogError(...) Log(__VA_ARGS__); perror("OS Msg: ")
+#define LogError(...) Log(__VA_ARGS__); perror("\tOS Msg")
 
 #endif

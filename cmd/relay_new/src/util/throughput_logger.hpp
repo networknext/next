@@ -27,7 +27,6 @@ namespace util
     ThroughputLogger(std::ostream& output);
     ~ThroughputLogger();
 
-    void addToPkt0();
     void addToRelayPingPacket(size_t count);
     void addToRelayPongPacket(size_t count);
     void addToRouteReq(size_t count);
@@ -101,8 +100,6 @@ namespace util
       while (this->mAlive) {
         std::this_thread::sleep_for(1s);
 
-        std::size_t emptyPacketsTotal;
-
         ThroughputStats relayPing;
         ThroughputStats relayPong;
 
@@ -125,8 +122,6 @@ namespace util
 
         mLock.lock();
         {
-          emptyPacketsTotal = mEmptyPacketsTotal;
-
           relayPing = mRelayPing;
           relayPong = mRelayPong;
 
@@ -151,7 +146,6 @@ namespace util
 
         total = relayPing + relayPong + routeReq + routeResp + contReq + contResp + cliToServ + servToCli + sessionPing +
                 sessionPong + nearPing;
-        total.PacketCount += emptyPacketsTotal;
 
         mConsole.write("\n------------------------------------------------\n\n");
 
@@ -161,9 +155,6 @@ namespace util
 
         mConsole.log("Total Unknown Bytes received: ", unknown.ByteCount, "/s");
         mConsole.log("Total Unknown Packets received: ", unknown.PacketCount, "/s\n");
-
-        // empty packets
-        mConsole.log("Empty Packts received: ", emptyPacketsTotal, "/s\n");
 
         // relay
         mConsole.log("Relay Ping Bytes received: ", relayPing.ByteCount, "/s");
@@ -212,13 +203,6 @@ namespace util
   inline ThroughputLogger::~ThroughputLogger()
   {
     stop();
-  }
-
-  inline void ThroughputLogger::addToPkt0()
-  {
-    mLock.lock();
-    mEmptyPacketsTotal++;
-    mLock.unlock();
   }
 
   inline void ThroughputLogger::addToRelayPingPacket(size_t count)

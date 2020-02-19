@@ -6,7 +6,7 @@
 #include "includes.h"
 #include "relay_platform_mac.hpp"
 
-// TODO 
+// TODO
 #if RELAY_PLATFORM == RELAY_PLATFORM_MAC
 
 #include <netdb.h>
@@ -16,7 +16,6 @@
 #include <SystemConfiguration/SystemConfiguration.h>
 #include <CoreFoundation/CoreFoundation.h>
 
-#include "config.hpp"
 #include "util.hpp"
 
 namespace

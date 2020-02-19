@@ -1,8 +1,6 @@
 #include "includes.h"
 #include "read.hpp"
 
-#include "config.hpp"
-
 namespace encoding
 {
   uint8_t read_uint8(const uint8_t** p)

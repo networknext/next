@@ -3,8 +3,6 @@
 
 #include "net/address.hpp"
 
-#include "config.hpp"
-
 #include "util/logger.hpp"
 
 #include "binary.hpp"

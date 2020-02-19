@@ -5,8 +5,6 @@
 
 #include "includes.h"
 
-#include "sysinfo.hpp"
-#include "config.hpp"
 #include "util.hpp"
 
 #include "encoding/base64.hpp"
@@ -34,14 +32,15 @@ namespace
    CURL* curl,
    const char* backend_hostname,
    const uint8_t* relay_token,
-   const char* relay_address_string,
-   uint8_t* update_response_memory)
+   const char* relay_address_string)
   {
+    std::vector<uint8_t> update_response_memory;
+    update_response_memory.resize(RESPONSE_MAX_BYTES);
     while (gAlive) {
       bool updated = false;
 
       for (int i = 0; i < 10; ++i) {
-        if (relay_update(curl, backend_hostname, relay_token, relay_address_string, update_response_memory, &relay) ==
+        if (relay_update(curl, backend_hostname, relay_token, relay_address_string, update_response_memory.data(), &relay) ==
             RELAY_OK) {
           updated = true;
           break;
@@ -154,9 +153,9 @@ int main(int argc, const char** argv)
   if (nproc == nullptr) {
     numProcessors = std::thread::hardware_concurrency();
     if (numProcessors > 0) {
-      printf("\nRELAY_PROCESSOR_COUNT not set, autodetected number of processors available: %u\n\n", numProcessors);
+      Log("RELAY_PROCESSOR_COUNT not set, autodetected number of processors available: ", numProcessors, "\n\n");
     } else {
-      printf("\nerror: RELAY_PROCESSOR_COUNT not set\n\n");
+      Log("error: RELAY_PROCESSOR_COUNT not set\n\n");
       return 1;
     }
   } else {
@@ -164,6 +163,8 @@ int main(int argc, const char** argv)
   }
 
   std::ofstream* output = nullptr;
+  util::ThroughputLogger* logger = nullptr;
+
   const char* relayThroughputLog = relay::relay_platform_getenv("RELAY_LOG_FILE");
   if (relayThroughputLog != nullptr) {
     auto file = new std::ofstream;
@@ -176,26 +177,22 @@ int main(int argc, const char** argv)
     }
   }
 
+  if (output != nullptr) {
+    logger = new util::ThroughputLogger(*output);
+  }
+
   if (relay::relay_initialize() != RELAY_OK) {
-    printf("\nerror: failed to initialize relay\n\n");
+    Log("error: failed to initialize relay\n\n");
     return 1;
   }
 
-  os::Socket socket(os::SocketType::Blocking, 0.1f);
-  if (!socket.create(relay_address, 100 * 1024, 100 * 1024, true)) {
-    Log("could not create socket");
-    relay::relay_term();
-    return 1;
-  }
-
-  printf("\nRelay socket opened on port %d\n", relay_address.port);
+  Log("Relay socket opened on port ", relay_address.port);
   char relay_address_buffer[RELAY_MAX_ADDRESS_STRING_LENGTH];
   const char* relay_address_string = relay_address_to_string(&relay_address, relay_address_buffer);
 
   CURL* curl = curl_easy_init();
   if (!curl) {
-    printf("\nerror: could not initialize curl\n\n");
-    socket.close();
+    Log("error: could not initialize curl\n\n");
     curl_easy_cleanup(curl);
     relay::relay_term();
     return 1;
@@ -203,7 +200,7 @@ int main(int argc, const char** argv)
 
   uint8_t relay_token[RELAY_TOKEN_BYTES];
 
-  printf("\nInitializing relay\n");
+  Log("Initializing relay\n");
 
   bool relay_initialized = false;
 
@@ -225,8 +222,7 @@ int main(int argc, const char** argv)
   }
 
   if (!relay_initialized) {
-    printf("\nerror: could not initialize relay\n\n");
-    socket.close();
+    Log("error: could not initialize relay\n\n");
     curl_easy_cleanup(curl);
     relay::relay_term();
     return 1;
@@ -236,61 +232,72 @@ int main(int argc, const char** argv)
 
   relay.mutex = relay::relay_platform_mutex_create();
   if (!relay.mutex) {
-    printf("\nerror: could not create ping thread\n\n");
+    Log("error: could not create ping thread\n\n");
     gAlive = false;
   }
 
   relay.relay_manager = legacy::relay_manager_create();
   if (!relay.relay_manager) {
-    printf("\nerror: could not create relay manager\n\n");
+    Log("error: could not create relay manager\n\n");
     gAlive = false;
   }
 
-  core::PingProcessor pingProc(socket, relay, gAlive);
-  std::unique_ptr<std::thread> pingThread = std::make_unique<std::thread>([&pingProc] {
-    pingProc.listen();
-  });
+  std::vector<os::SocketPtr> sockets;
 
-  std::vector<std::shared_ptr<core::PacketProcessor>> packetProcessors;
-  packetProcessors.resize(numProcessors);
-  std::vector<std::unique_ptr<std::thread>> packetThreads;
-  packetThreads.resize(numProcessors);
-
-  util::ThroughputLogger* logger = nullptr;
-
-  if (output != nullptr) {
-    logger = new util::ThroughputLogger(*output);
+  auto pingSocket = std::make_shared<os::Socket>(os::SocketType::Blocking);
+  if (!pingSocket->create(relay_address, 100 * 1024, 100 * 1024, 0.0f, true)) {
+    Log("could not create pingSocket");
+    relay::relay_term();
+    return 1;
   }
 
+  sockets.push_back(pingSocket);
+
+  std::unique_ptr<std::thread> pingThread = std::make_unique<std::thread>([pingSocket, &relay] {
+    core::PingProcessor processor(relay, gAlive);
+    processor.listen(*pingSocket);
+  });
+
+  std::vector<std::unique_ptr<std::thread>> packetThreads;
+  packetThreads.resize(numProcessors);
+  core::SessionMap sessions;
   for (unsigned int i = 0; i < numProcessors; i++) {
-    auto processor = std::make_shared<core::PacketProcessor>(socket, relay, gAlive, logger);
-    packetProcessors[i] = processor;
-    packetThreads[i] = std::make_unique<std::thread>([processor] {
-      processor->listen();
+    auto packetSocket = std::make_shared<os::Socket>(os::SocketType::Blocking);
+    if (!packetSocket->create(relay_address, 100 * 1024, 100 * 1024, 0.0f, true)) {
+      Log("could not create socket");
+      relay::relay_term();
+      return 1;
+    }
+
+    sockets.push_back(packetSocket);
+
+    packetThreads[i] = std::make_unique<std::thread>([packetSocket, &sessions, &relay, &logger] {
+      core::PacketProcessor processor(sessions, relay, gAlive, logger);
+      processor.listen(*packetSocket);
     });
   }
 
-  printf("Relay initialized\n\n");
+  Log("Relay initialized\n\n");
 
   signal(SIGINT, interrupt_handler);
 
-  uint8_t* update_response_memory = (uint8_t*)malloc(RESPONSE_MAX_BYTES);
+  ::update_loop(relay, curl, backend_hostname, relay_token, relay_address_string);
 
-  update_loop(relay, curl, backend_hostname, relay_token, relay_address_string, update_response_memory);
+  Log("Cleaning up\n");
 
-  printf("Cleaning up\n");
+  for (auto socket : sockets) {
+    socket->close();
+  }
+
+  pingThread->join();
+
+  for (unsigned int i = 0; i < numProcessors; i++) {
+    packetThreads[i]->join();
+  }
 
   if (logger != nullptr) {
     logger->stop();
     delete logger;
-  }
-
-  pingProc.stop();
-  pingThread->join();
-
-  for (unsigned int i = 0; i < numProcessors; i++) {
-    packetProcessors[i]->stop();
-    packetThreads[i]->join();
   }
 
   if (output != nullptr) {
@@ -298,13 +305,9 @@ int main(int argc, const char** argv)
     delete output;
   }
 
-  free(update_response_memory);
-
   relay_manager_destroy(relay.relay_manager);
 
   relay_platform_mutex_destroy(relay.mutex);
-
-  socket.close();
 
   curl_easy_cleanup(curl);
 

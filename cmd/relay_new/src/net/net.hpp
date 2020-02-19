@@ -1,7 +1,6 @@
 #ifndef UTIL_NET_H
 #define UTIL_NET_H
 
-#include "sysinfo.hpp"
 #include "encoding/binary.hpp"
 
 namespace net

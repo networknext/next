@@ -10,17 +10,14 @@ namespace core
   class PingProcessor
   {
    public:
-    PingProcessor(os::Socket& socket, relay::relay_t& relay, volatile bool& handle);
-    ~PingProcessor();
+    PingProcessor(relay::relay_t& relay, volatile bool& handle);
+    ~PingProcessor() = default;
 
-    void listen();
-
-    void stop();
+    void listen(os::Socket& socket);
 
    private:
-    os::Socket& mSocket;
-    relay::relay_t mRelay;
-    volatile bool& mHandle;
+    relay::relay_t& mRelay;
+    volatile bool& mShouldProcess;
   };
 }  // namespace core
 #endif

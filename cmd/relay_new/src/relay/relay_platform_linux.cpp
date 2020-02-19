@@ -7,7 +7,6 @@
 
 #if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
 
-#include "config.hpp"
 #include "util.hpp"
 
 #include "net/net.hpp"
@@ -20,6 +19,8 @@ namespace
 namespace relay
 {
   // TODO doesn't this depend on processor arch and not platform (Linux, Mac, Windows)?
+  // even if not it's hardcoded so the bytes are always swapped regardless of if they're
+  // already in the proper endianess
 
   uint16_t relay_platform_ntohs(uint16_t in)
   {

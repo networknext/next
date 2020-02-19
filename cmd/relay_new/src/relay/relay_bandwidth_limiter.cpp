@@ -1,8 +1,6 @@
 #include "includes.h"
 #include "relay_bandwidth_limiter.hpp"
 
-#include "config.hpp"
-
 namespace relay
 {
   void relay_bandwidth_limiter_reset(relay_bandwidth_limiter_t* bandwidth_limiter)

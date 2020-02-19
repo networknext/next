@@ -1,8 +1,6 @@
 #include "includes.h"
 #include "testing/test.hpp"
 
-#include "config.hpp"
-
 #include "encoding/base64.hpp"
 #include "encoding/binary.hpp"
 #include "encoding/read.hpp"

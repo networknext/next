@@ -14,49 +14,45 @@ namespace core
   class PacketProcessor
   {
    public:
-    PacketProcessor(os::Socket& socket, relay::relay_t& relay, volatile bool& handle, util::ThroughputLogger* logger);
-    ~PacketProcessor();
+    PacketProcessor(core::SessionMap& sessions, relay::relay_t& relay, volatile bool& handle, util::ThroughputLogger* logger);
+    ~PacketProcessor() = default;
 
-    void listen();
-
-    void stop();
+    void listen(os::Socket& socket);
 
    private:
-    os::Socket& mSocket;
+    core::SessionMap& mSessionMap;
     relay::relay_t& mRelay;
-    volatile bool& mHandle;
+    volatile bool& mShouldProcess;
 
     util::ThroughputLogger* mLogger;
 
-    core::SessionMap mSessionMap;
-
     // Marks the first byte as a pong packet and sends it back
     void handleRelayPingPacket(
-     std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, legacy::relay_address_t& from);
+     os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, legacy::relay_address_t& from);
 
     // Processes the pong packet by increasing the sequence number and getting the time diff
     void handleRelayPongPacket(
      std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, legacy::relay_address_t& from);
 
     void handleRouteRequestPacket(
-     std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, legacy::relay_address_t& from);
+     os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, legacy::relay_address_t& from);
 
-    void handleRouteResponsePacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
+    void handleRouteResponsePacket(os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, legacy::relay_address_t& from);
 
-    void handleContinueRequestPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
+    void handleContinueRequestPacket(os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
 
-    void handleContinueResponsePacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
+    void handleContinueResponsePacket(os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
 
-    void handleClientToServerPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
+    void handleClientToServerPacket(os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
 
-    void handleServerToClientPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
+    void handleServerToClientPacket(os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
 
-    void handleSessionPingPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
+    void handleSessionPingPacket(os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
 
-    void handleSessionPongPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
+    void handleSessionPongPacket(os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
 
     void handleNearPingPacket(
-     std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, legacy::relay_address_t& from);
+     os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, legacy::relay_address_t& from);
   };
 }  // namespace core
 #endif
