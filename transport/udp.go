@@ -195,7 +195,7 @@ type RouteProvider interface {
 }
 
 // SessionUpdateHandlerFunc ...
-func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, billingClient routing.BillingClient, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
 	logger = log.With(logger, "handler", "session")
 
 	return func(w io.Writer, incoming *UDPPacket) {
@@ -400,14 +400,34 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 
 		level.Debug(locallogger).Log("msg", "updated session")
 
-		// var duration time.Duration
-		// switch token.Type() {
-		// case routing.RouteTypeNew:
-		// 	duration = BillingSliceSeconds * 2 // Double check why this is
-		// case routing.RouteTypeContinue:
-		// 	duration = BillingSliceSeconds
-		// }
+		if billingClient != nil {
+			billingEntry := &routing.BillingEntry{
+				Request:              nil,
+				Route:                nil,
+				RouteDecision:        0,
+				Duration:             10, // Make one entry non-zero so that the entry isn't marshalled to nil
+				UsageBytesUp:         0,
+				UsageBytesDown:       0,
+				Timestamp:            0,
+				TimestampStart:       0,
+				PredictedRtt:         0,
+				PredictedJitter:      0,
+				PredictedPacketLoss:  0,
+				RouteChanged:         false,
+				NetworkNextAvailable: false,
+				Initial:              false,
+				EnvelopeBytesUp:      0,
+				EnvelopeBytesDown:    0,
+				ConsideredRoutes:     nil,
+				AcceptableRoutes:     nil,
+				SameRoute:            false,
+				OnNetworkNext:        false,
+				SliceFlags:           0,
+			}
 
-		// billingEntry := &BillingEntry{}
+			if err := billingClient.Send(context.Background(), packet.SessionId, billingEntry); err != nil {
+				level.Error(locallogger).Log("msg", "billing failed", "err", err)
+			}
+		}
 	}
 }

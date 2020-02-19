@@ -2,6 +2,7 @@ package transport_test
 
 import (
 	"bytes"
+	"context"
 	"crypto/ed25519"
 	"crypto/rand"
 	"errors"
@@ -277,8 +278,6 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 
 func TestSessionUpdateHandlerFunc(t *testing.T) {
 	t.Run("failed to unmarshal packet", func(t *testing.T) {
-		t.Skip()
-
 		redisServer, _ := miniredis.Run()
 		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
@@ -287,14 +286,13 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 
 		var resbuf bytes.Buffer
 
-		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, nil, nil, nil, nil, nil, nil)
+		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, nil, nil, nil, nil, nil, nil, nil)
 		handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: []byte("this is not a proper packet")})
 
 		assert.Equal(t, 0, resbuf.Len())
 	})
 
 	t.Run("did not get a buyer", func(t *testing.T) {
-		t.Skip()
 		redisServer, _ := miniredis.Run()
 		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
@@ -326,7 +324,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 
 		var resbuf bytes.Buffer
 
-		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, nil, nil, nil, nil)
+		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, nil, nil, nil, nil, nil)
 		handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		assert.Equal(t, 0, resbuf.Len())
@@ -368,15 +366,13 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 
 		var resbuf bytes.Buffer
 
-		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, nil, nil, nil, nil)
+		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, nil, nil, nil, nil, nil)
 		handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		assert.Equal(t, 0, resbuf.Len())
 	})
 
 	t.Run("packet sequence too old", func(t *testing.T) {
-		t.Skip()
-
 		buyersServerPubKey, buyersServerPrivKey, err := ed25519.GenerateKey(nil)
 		assert.NoError(t, err)
 
@@ -427,7 +423,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 
 		var resbuf bytes.Buffer
 
-		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, nil, nil, nil, nil)
+		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, nil, nil, nil, nil, nil)
 		handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		assert.Equal(t, 0, resbuf.Len())
@@ -488,7 +484,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 
 		var resbuf bytes.Buffer
 
-		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, &iploc, nil, nil, nil)
+		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, &iploc, nil, nil, nil, nil)
 		handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		assert.Equal(t, 0, resbuf.Len())
@@ -563,7 +559,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 
 		var resbuf bytes.Buffer
 
-		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &rp, &iploc, &geoClient, nil, nil)
+		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &rp, &iploc, &geoClient, nil, nil, nil)
 		handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		assert.Equal(t, 0, resbuf.Len())
@@ -667,9 +663,15 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
 
+		logger := log.NewNopLogger()
+
+		// Create the billing client
+		billingClient := routing.GooglePubSubClient{}
+		billingClient.Init(context.Background(), logger)
+
 		var resbuf bytes.Buffer
 
-		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &rp, &iploc, &geoClient, serverBackendPrivKey[:], routerPrivKey[:])
+		handler := transport.SessionUpdateHandlerFunc(logger, redisClient, &db, &rp, &iploc, &geoClient, &billingClient, serverBackendPrivKey[:], routerPrivKey[:])
 		handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		var actual transport.SessionResponsePacket
@@ -782,9 +784,15 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
 
+		logger := log.NewNopLogger()
+
+		// Create the billing client
+		billingClient := routing.GooglePubSubClient{}
+		billingClient.Init(context.Background(), logger)
+
 		var resbuf bytes.Buffer
 
-		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &rp, &iploc, &geoClient, serverBackendPrivKey[:], routerPrivKey[:])
+		handler := transport.SessionUpdateHandlerFunc(logger, redisClient, &db, &rp, &iploc, &geoClient, &billingClient, serverBackendPrivKey[:], routerPrivKey[:])
 		handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		var actual transport.SessionResponsePacket

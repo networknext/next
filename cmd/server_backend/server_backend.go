@@ -167,6 +167,10 @@ func main() {
 		db = &fs
 	}
 
+	// Create the billing client
+	billingClient := routing.GooglePubSubClient{}
+	billingClient.Init(ctx, logger)
+
 	var routeMatrix routing.RouteMatrix
 	{
 		if uri, ok := os.LookupEnv("ROUTE_MATRIX_URI"); ok {
@@ -214,7 +218,7 @@ func main() {
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
 			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClient, db),
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClient, db, &routeMatrix, ipLocator, &geoClient, serverPrivateKey, routerPrivateKey),
+			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClient, db, &routeMatrix, ipLocator, &geoClient, &billingClient, serverPrivateKey, routerPrivateKey),
 		}
 
 		go func() {
