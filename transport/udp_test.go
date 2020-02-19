@@ -277,7 +277,6 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 
 func TestSessionUpdateHandlerFunc(t *testing.T) {
 	t.Run("failed to unmarshal packet", func(t *testing.T) {
-		t.Skip()
 
 		redisServer, _ := miniredis.Run()
 		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
@@ -294,7 +293,6 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 	})
 
 	t.Run("did not get a buyer", func(t *testing.T) {
-		t.Skip()
 		redisServer, _ := miniredis.Run()
 		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
@@ -375,7 +373,6 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 	})
 
 	t.Run("packet sequence too old", func(t *testing.T) {
-		t.Skip()
 
 		buyersServerPubKey, buyersServerPrivKey, err := ed25519.GenerateKey(nil)
 		assert.NoError(t, err)
