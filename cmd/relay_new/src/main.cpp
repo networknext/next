@@ -29,6 +29,34 @@ namespace
     (void)signal;
     gAlive = false;
   }
+
+  inline void update_loop(relay::relay_t& relay,
+   CURL* curl,
+   const char* backend_hostname,
+   const uint8_t* relay_token,
+   const char* relay_address_string,
+   uint8_t* update_response_memory)
+  {
+    while (gAlive) {
+      bool updated = false;
+
+      for (int i = 0; i < 10; ++i) {
+        if (relay_update(curl, backend_hostname, relay_token, relay_address_string, update_response_memory, &relay) ==
+            RELAY_OK) {
+          updated = true;
+          break;
+        }
+      }
+
+      if (!updated) {
+        printf("error: could not update relay\n\n");
+        gAlive = false;
+        break;
+      }
+
+      relay::relay_platform_sleep(1.0);
+    }
+  }
 }  // namespace
 
 int main(int argc, const char** argv)
@@ -248,24 +276,7 @@ int main(int argc, const char** argv)
 
   uint8_t* update_response_memory = (uint8_t*)malloc(RESPONSE_MAX_BYTES);
 
-  while (gAlive) {
-    bool updated = false;
-
-    for (int i = 0; i < 10; ++i) {
-      if (relay_update(curl, backend_hostname, relay_token, relay_address_string, update_response_memory, &relay) == RELAY_OK) {
-        updated = true;
-        break;
-      }
-    }
-
-    if (!updated) {
-      printf("error: could not update relay\n\n");
-      gAlive = false;
-      break;
-    }
-
-    relay::relay_platform_sleep(1.0);
-  }
+  update_loop(relay, curl, backend_hostname, relay_token, relay_address_string, update_response_memory);
 
   printf("Cleaning up\n");
 
