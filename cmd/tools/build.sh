@@ -20,6 +20,10 @@ printf "Building route tool... "
 go build -o ./dist/route ./cmd/tools/route/route.go
 printf "done\n"
 
+printf "Building tokens tool... "
+go build -o ./dist/tokens ./cmd/tools/tokens/tokens.go
+printf "done\n"
+
 printf "Building functional backend... "
 go build -o ./dist/func_backend ./cmd/tools/functional/backend/*.go
 printf "done\n"

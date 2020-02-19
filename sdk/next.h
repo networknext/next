@@ -80,7 +80,8 @@
 #define NEXT_FLAGS_CLIENT_TIMED_OUT                          (1<<7)
 #define NEXT_FLAGS_TRY_BEFORE_YOU_BUY_ABORT                  (1<<8)
 #define NEXT_FLAGS_DIRECT_ROUTE_EXPIRED                      (1<<9)
-#define NEXT_FLAGS_COUNT                                         10
+#define NEXT_FLAGS_UPGRADE_RESPONSE_TIMED_OUT               (1<<10)
+#define NEXT_FLAGS_COUNT                                         11
 
 #if defined(_WIN32)
 #define NOMINMAX
@@ -140,8 +141,6 @@ struct next_config_t
     int socket_send_buffer_size;
     int socket_receive_buffer_size;
     bool disable_network_next;
-    bool try_before_you_buy;
-    bool high_priority_server_thread;
 };
 
 NEXT_EXPORT_FUNC void next_default_config( next_config_t * config );
@@ -205,8 +204,8 @@ struct next_client_stats_t
     uint64_t flags;
     uint64_t platform_id;
     int connection_type;
-    bool try_before_you_buy;
     bool multipath;
+    bool committed;
     bool flagged;
     bool next;
     float next_min_rtt;
@@ -223,6 +222,7 @@ struct next_client_stats_t
     float kbps_down;
     uint64_t packets_lost_client_to_server;
     uint64_t packets_lost_server_to_client;
+    uint64_t user_flags;
 };
 
 // -----------------------------------------
@@ -246,6 +246,8 @@ NEXT_EXPORT_FUNC void next_client_flag_session( next_client_t * client );
 NEXT_EXPORT_FUNC uint64_t next_client_session_id( next_client_t * client );
 
 NEXT_EXPORT_FUNC const next_client_stats_t * next_client_stats( next_client_t * client );
+
+NEXT_EXPORT_FUNC void next_client_set_user_flags( next_client_t * client, uint64_t user_flags );
 
 NEXT_EXPORT_FUNC void next_client_destroy( next_client_t * client );
 

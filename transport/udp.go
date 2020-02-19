@@ -94,12 +94,8 @@ func (e ServerCacheEntry) MarshalBinary() ([]byte, error) {
 	return jsoniter.Marshal(e)
 }
 
-type BuyerProvider interface {
-	GetAndCheckBySdkVersion3PublicKeyId(key uint64) (*storage.Buyer, bool)
-}
-
 // ServerUpdateHandlerFunc ...
-func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, bp BuyerProvider) UDPHandlerFunc {
+func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer) UDPHandlerFunc {
 	logger = log.With(logger, "handler", "server")
 
 	return func(w io.Writer, incoming *UDPPacket) {
@@ -112,16 +108,15 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, bp Bu
 		locallogger := log.With(logger, "src_addr", incoming.SourceAddr.String(), "server_addr", packet.ServerAddress.String())
 
 		// Drop the packet if version is older that the minimun sdk version
-		psdkv := SDKVersion{packet.VersionMajor, packet.VersionMinor, packet.VersionPatch}
-		if !incoming.SourceAddr.IP.IsLoopback() && !psdkv.AtLeast(SDKVersionMin) {
-			level.Error(locallogger).Log("msg", "sdk version is too old", "sdk", psdkv.String())
+		if !incoming.SourceAddr.IP.IsLoopback() && !packet.Version.AtLeast(SDKVersionMin) {
+			level.Error(locallogger).Log("msg", "sdk version is too old", "sdk", packet.Version.String())
 			return
 		}
 
-		locallogger = log.With(locallogger, "sdk", psdkv.String())
+		locallogger = log.With(locallogger, "sdk", packet.Version.String())
 
 		// Get the buyer information for the id in the packet
-		buyer, ok := bp.GetAndCheckBySdkVersion3PublicKeyId(packet.CustomerId)
+		buyer, ok := storer.Buyer(packet.CustomerId)
 		if !ok {
 			level.Error(locallogger).Log("msg", "failed to get buyer", "customer_id", packet.CustomerId)
 			return
@@ -129,22 +124,8 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, bp Bu
 
 		locallogger = log.With(locallogger, "customer_id", packet.CustomerId)
 
-		// This was in the Router, but no sense having that buried in there when we already have
-		// a Buyer to check before requesting a Route
-		if !buyer.GetActive() {
-			level.Warn(locallogger).Log("msg", "buyer is inactive")
-			return
-		}
-
-		buyerPublicKey := buyer.SdkVersion3PublicKeyData
-		// Drop the packet if the buyer is not an admin and they are using an internal build
-		// if !buyer.GetA && psdkv.Compare(SDKVersionInternal) == SDKVersionEqual {
-		// 	log.Printf("non-admin buyer using an internal sdk")
-		// 	return
-		// }
-
 		// Drop the packet if the signed packet data cannot be verified with the buyers public key
-		if !crypto.Verify(buyerPublicKey, packet.GetSignData(), packet.Signature) {
+		if !crypto.Verify(buyer.PublicKey, packet.GetSignData(), packet.Signature) {
 			level.Error(locallogger).Log("msg", "signature verification failed")
 			return
 		}
@@ -180,7 +161,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, bp Bu
 			Sequence:   packet.Sequence,
 			Server:     routing.Server{Addr: packet.ServerPrivateAddress, PublicKey: packet.ServerRoutePublicKey},
 			Datacenter: routing.Datacenter{ID: packet.DatacenterId},
-			SDKVersion: SDKVersion{packet.VersionMajor, packet.VersionMinor, packet.VersionPatch},
+			SDKVersion: packet.Version,
 		}
 		result := redisClient.Set("SERVER-"+incoming.SourceAddr.String(), serverentry, 5*time.Minute)
 		if result.Err() != nil {
@@ -214,7 +195,7 @@ type RouteProvider interface {
 }
 
 // SessionUpdateHandlerFunc ...
-func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, bp BuyerProvider, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
 	logger = log.With(logger, "handler", "session")
 
 	return func(w io.Writer, incoming *UDPPacket) {
@@ -263,7 +244,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, bp B
 
 		locallogger = log.With(locallogger, "datacenter_id", serverCacheEntry.Datacenter.ID)
 
-		buyer, ok := bp.GetAndCheckBySdkVersion3PublicKeyId(packet.CustomerId)
+		buyer, ok := storer.Buyer(packet.CustomerId)
 		if !ok {
 			level.Error(locallogger).Log("msg", "failed to get buyer", "customer_id", packet.CustomerId)
 			return
@@ -271,8 +252,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, bp B
 
 		locallogger = log.With(locallogger, "customer_id", packet.CustomerId)
 
-		buyerServerPublicKey := buyer.SdkVersion3PublicKeyData
-		if !crypto.Verify(buyerServerPublicKey, packet.GetSignData(serverCacheEntry.SDKVersion), packet.Signature) {
+		if !crypto.Verify(buyer.PublicKey, packet.GetSignData(), packet.Signature) {
 			level.Error(locallogger).Log("msg", "signature verification failed")
 			return
 		}

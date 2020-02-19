@@ -248,11 +248,11 @@ func (database *StatsDatabase) GetCostMatrix(costMatrix *CostMatrix, redisClient
 		copy(costMatrix.RelayAddresses[i], []byte(relayData.Addr.String()))
 
 		costMatrix.RelayPublicKeys[i] = relayData.PublicKey
-		if relayData.Datacenter != 0 {
-			datacenter := costMatrix.DatacenterRelays[relayData.Datacenter]
+		if relayData.Datacenter.ID != 0 {
+			datacenter := costMatrix.DatacenterRelays[relayData.Datacenter.ID]
 			datacenter = append(datacenter, relayData.ID)
-			costMatrix.DatacenterRelays[relayData.Datacenter] = datacenter
-			datacenterNameMap[relayData.Datacenter] = relayData.DatacenterName
+			costMatrix.DatacenterRelays[relayData.Datacenter.ID] = datacenter
+			datacenterNameMap[relayData.Datacenter.ID] = relayData.Datacenter.Name
 		}
 	}
 
