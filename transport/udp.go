@@ -203,7 +203,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		var packet SessionUpdatePacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
 			level.Error(logger).Log("msg", "could not read packet", "err", err)
-			return
+			return // TODO: direct here?
 		}
 
 		locallogger := log.With(logger, "src_addr", incoming.SourceAddr.String(), "server_addr", packet.ServerAddress.String(), "client_addr", packet.ClientAddress.String(), "session_id", packet.SessionId)
@@ -221,32 +221,41 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			serverCacheData, err := serverCacheCmd.Bytes()
 			if err != nil {
 				level.Error(locallogger).Log("msg", "failed to get server bytes", "err", err)
-				return
+				return // TODO: direct here?
 			}
 			if err := serverCacheEntry.UnmarshalBinary(serverCacheData); err != nil {
 				level.Error(locallogger).Log("msg", "failed to unmarshal server bytes", "err", err)
-				return
+				return // TODO: direct here?
 			}
 
 			if sessionCacheCmd.Err() != redis.Nil {
 				sessionCacheData, err := sessionCacheCmd.Bytes()
 				if err != nil {
 					level.Error(locallogger).Log("msg", "failed to get session bytes", "err", err)
-					return
+					return // TODO: direct here?
 				}
 
 				if err := sessionCacheEntry.UnmarshalBinary(sessionCacheData); err != nil {
 					level.Error(locallogger).Log("msg", "failed to unmarshal session bytes", "err", err)
-					return
+					return // TODO: direct here?
 				}
 			}
 		}
 
 		locallogger = log.With(locallogger, "datacenter_id", serverCacheEntry.Datacenter.ID)
 
+		// Start building session response packet, defaulting to a direct route
+		response := SessionResponsePacket{
+			Sequence:             packet.Sequence,
+			SessionId:            packet.SessionId,
+			RouteType:            int32(routing.RouteTypeDirect),
+			ServerRoutePublicKey: serverCacheEntry.Server.PublicKey,
+		}
+
 		buyer, ok := storer.Buyer(packet.CustomerId)
 		if !ok {
 			level.Error(locallogger).Log("msg", "failed to get buyer", "customer_id", packet.CustomerId)
+			sendResponse(response, serverPrivateKey, w, locallogger)
 			return
 		}
 
@@ -254,17 +263,20 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 
 		if !crypto.Verify(buyer.PublicKey, packet.GetSignData(), packet.Signature) {
 			level.Error(locallogger).Log("msg", "signature verification failed")
+			sendResponse(response, serverPrivateKey, w, locallogger)
 			return
 		}
 
 		if packet.Sequence < sessionCacheEntry.Sequence {
 			level.Warn(locallogger).Log("msg", "packet sequency too old", "current_sequence", packet.Sequence, "previous_sequence", sessionCacheEntry.Sequence)
+			sendResponse(response, serverPrivateKey, w, locallogger)
 			return
 		}
 
 		location, err := iploc.LocateIP(packet.ClientAddress.IP)
 		if err != nil {
 			level.Error(locallogger).Log("msg", "failed to locate client")
+			sendResponse(response, serverPrivateKey, w, locallogger)
 			return
 		}
 		level.Debug(locallogger).Log("lat", location.Latitude, "long", location.Longitude)
@@ -272,6 +284,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		clientrelays, err := geoClient.RelaysWithin(location.Latitude, location.Longitude, 500, "mi")
 		if err != nil {
 			level.Error(locallogger).Log("msg", "failed to locate relays near client")
+			sendResponse(response, serverPrivateKey, w, locallogger)
 			return
 		}
 
@@ -351,16 +364,10 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 
 		level.Debug(locallogger).Log("token_type", token.Type(), "current_route_hash", routeHash, "previous_route_hash", sessionCacheEntry.RouteHash)
 
-		// Create the Session Response for the server
-		response := SessionResponsePacket{
-			Sequence:             packet.Sequence,
-			SessionId:            packet.SessionId,
-			RouteType:            int32(token.Type()),
-			NumTokens:            int32(numtokens), // Num of relays + client + server
-			Tokens:               tokens,
-			Multipath:            false, // Haven't figured out what this is for
-			ServerRoutePublicKey: serverCacheEntry.Server.PublicKey,
-		}
+		// Add token info to the Session Response
+		response.RouteType = int32(token.Type())
+		response.NumTokens = int32(numtokens) // Num of relays + client + server
+		response.Tokens = tokens
 
 		// Fill in the near relays
 		response.NumNearRelays = int32(len(clientrelays))
@@ -371,58 +378,40 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			response.NearRelayAddresses[idx] = relay.Addr
 		}
 
-		// Sign the response
-		response.Signature = crypto.Sign(serverPrivateKey, response.GetSignData())
-
-		// Send the Session Response back to the server
-		res, err := response.MarshalBinary()
+		err = sendResponse(response, serverPrivateKey, w, locallogger)
 		if err != nil {
-			level.Error(locallogger).Log("msg", "failed to marshal session response", "err", err)
-			return
-		}
+			level.Debug(locallogger).Log("msg", "caching session data")
 
-		// Save some of the packet information to be used in SessionUpdateHandlerFunc
-		sessionCacheEntry = SessionCacheEntry{
-			SessionID: packet.SessionId,
-			Sequence:  packet.Sequence,
-			RouteHash: routeHash,
-			Version:   sessionCacheEntry.Version, //This was already incremented above for the route tokens
+			// Save some of the packet information to be used in SessionUpdateHandlerFunc
+			sessionCacheEntry = SessionCacheEntry{
+				SessionID: packet.SessionId,
+				Sequence:  packet.Sequence,
+				RouteHash: routeHash,
+				Version:   sessionCacheEntry.Version, //This was already incremented above for the route tokens
+			}
+			result := redisClient.Set(fmt.Sprintf("SESSION-%d", packet.SessionId), sessionCacheEntry, 5*time.Minute)
+			if result.Err() != nil {
+				level.Error(locallogger).Log("msg", "failed to update session", "err", result.Err())
+				return
+			}
 		}
-		result := redisClient.Set(fmt.Sprintf("SESSION-%d", packet.SessionId), sessionCacheEntry, 5*time.Minute)
-		if result.Err() != nil {
-			level.Error(locallogger).Log("msg", "failed to update session", "err", result.Err())
-			return
-		}
-
-		if _, err := w.Write(res); err != nil {
-			level.Error(locallogger).Log("msg", "failed to write session response", "err", err)
-		}
-
-		level.Debug(locallogger).Log("msg", "updated session")
 	}
 }
 
-func writeDirectRouteResponse(packet SessionUpdatePacket, serverPrivateKey []byte, w io.Writer, locallogger log.Logger) error {
-	level.Debug(locallogger).Log("msg", "sending back direct route")
-
-	// Generate a response packet telling client to go direct
-	response := SessionResponsePacket{
-		Sequence:  packet.Sequence,
-		SessionId: packet.SessionId,
-		RouteType: int32(routing.RouteTypeDirect),
-	}
+func sendResponse(response SessionResponsePacket, serverPrivateKey []byte, w io.Writer, locallogger log.Logger) error {
+	level.Debug(locallogger).Log("msg", "sending back response")
 
 	// Sign the response
 	response.Signature = crypto.Sign(serverPrivateKey, response.GetSignData())
 
 	// Send the Session Response back to the server
-	res, err := response.MarshalBinary()
+	responseData, err := response.MarshalBinary()
 	if err != nil {
 		level.Error(locallogger).Log("msg", "failed to marshal session response", "err", err)
 		return err
 	}
 
-	if _, err := w.Write(res); err != nil {
+	if _, err := w.Write(responseData); err != nil {
 		level.Error(locallogger).Log("msg", "failed to write session response", "err", err)
 		return err
 	}
