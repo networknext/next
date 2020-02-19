@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
-	"errors"
 	"net"
 	"testing"
 
@@ -276,68 +275,6 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 }
 
 func TestSessionUpdateHandlerFunc(t *testing.T) {
-
-	t.Run("client ip lookup failed", func(t *testing.T) {
-		buyersServerPubKey, buyersServerPrivKey, err := ed25519.GenerateKey(nil)
-		assert.NoError(t, err)
-
-		redisServer, _ := miniredis.Run()
-		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
-
-		db := storage.InMemory{
-			LocalBuyer: &routing.Buyer{
-				PublicKey: buyersServerPubKey,
-			},
-		}
-
-		iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
-			return routing.Location{}, errors.New("nope")
-		})
-
-		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
-		assert.NoError(t, err)
-
-		expected := transport.ServerCacheEntry{
-			Sequence: 13,
-		}
-		se, err := expected.MarshalBinary()
-		assert.NoError(t, err)
-
-		err = redisServer.Set("SERVER-0.0.0.0:13", string(se))
-		assert.NoError(t, err)
-
-		expectedsession := transport.SessionCacheEntry{
-			SessionID: 9999,
-			Sequence:  13,
-		}
-		sce, err := expectedsession.MarshalBinary()
-		assert.NoError(t, err)
-
-		err = redisServer.Set("SESSION-9999", string(sce))
-		assert.NoError(t, err)
-
-		packet := transport.SessionUpdatePacket{
-			SessionId:     9999,
-			Sequence:      14,
-			ServerAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
-
-			ClientRoutePublicKey: make([]byte, crypto.KeySize),
-
-			Signature: make([]byte, ed25519.SignatureSize),
-		}
-		packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData())
-
-		data, err := packet.MarshalBinary()
-		assert.NoError(t, err)
-
-		var resbuf bytes.Buffer
-
-		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, &iploc, nil, nil, nil)
-		handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
-
-		assert.Equal(t, 0, resbuf.Len())
-	})
-
 	t.Run("no routes found", func(t *testing.T) {
 		buyersServerPubKey, buyersServerPrivKey, err := ed25519.GenerateKey(nil)
 		assert.NoError(t, err)
