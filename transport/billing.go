@@ -11,8 +11,6 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/golang/protobuf/proto"
-	"github.com/networknext/backend/encoding"
-	"github.com/networknext/backend/routing"
 )
 
 const BillingSliceSeconds = 10
@@ -126,32 +124,13 @@ type Address struct {
 	Formatted string
 }
 
-func (addr Address) MarshalBinary() ([]byte, error) {
-	length := len(addr.Ip) + 4 + 4 + len(addr.Formatted)
-	data := make([]byte, length)
-
-	index := 0
-	encoding.WriteBytes(data, &index, addr.Ip, len(addr.Ip))
-	encoding.WriteUint32(data, &index, uint32(addr.Type))
-	encoding.WriteUint32(data, &index, addr.Port)
-	encoding.WriteString(data, &index, addr.Formatted, Address_FORMATTED_MAX_LENGTH)
-
-	return data, nil
+func (addr *Address) Reset() {
+	*addr = Address{}
 }
-
-func (addr *Address) UnmarshalBinary(data []byte) error {
-	index := 0
-	if !(encoding.ReadBytes(data, &index, &addr.Ip, len) &&
-		encoding.ReadString(data, &index, &loc.Country, math.MaxInt32) && // TODO define an actual limit on this
-		encoding.ReadString(data, &index, &loc.Region, math.MaxInt32) &&
-		encoding.ReadString(data, &index, &loc.City) &&
-		encoding.ReadFloat32(data, &index, &loc.Latitude) &&
-		encoding.ReadFloat32(data, &index, &loc.Longitude) {
-		return errors.New("Invalid Location")
-	}
-
-	return nil
+func (addr *Address) String() string {
+	return proto.CompactTextString(addr)
 }
+func (addr *Address) ProtoMessage() {}
 
 func udpAddrToAddress(addr net.UDPAddr) *Address {
 	if addr.IP == nil {
@@ -173,21 +152,21 @@ func udpAddrToAddress(addr net.UDPAddr) *Address {
 				Port:      0,
 				Formatted: "",
 			}
-		} else {
-			return &Address{
-				Ip:        []byte(ipv6),
-				Type:      Address_IPV6,
-				Port:      uint32(addr.Port),
-				Formatted: addr.String(),
-			}
 		}
-	} else {
+
 		return &Address{
-			Ip:        []byte(ipv4),
-			Type:      Address_IPV4,
+			Ip:        []byte(ipv6),
+			Type:      Address_IPV6,
 			Port:      uint32(addr.Port),
 			Formatted: addr.String(),
 		}
+	}
+
+	return &Address{
+		Ip:        []byte(ipv4),
+		Type:      Address_IPV4,
+		Port:      uint32(addr.Port),
+		Formatted: addr.String(),
 	}
 }
 
@@ -197,6 +176,14 @@ type NearRelay struct {
 	Jitter     float64
 	PacketLoss float64
 }
+
+func (near *NearRelay) Reset() {
+	*near = NearRelay{}
+}
+func (near *NearRelay) String() string {
+	return proto.CompactTextString(near)
+}
+func (near *NearRelay) ProtoMessage() {}
 
 // This mirrors next_internal.h
 type SessionConnectionType int32
@@ -214,13 +201,21 @@ type Location struct {
 	City      string
 	Latitude  float64
 	Longitude float64
-	Isp 	  string
-	Asn 	  int64
+	Isp       string
+	Asn       int64
 	Continent string
 }
 
+func (loc *Location) Reset() {
+	*loc = Location{}
+}
+func (loc *Location) String() string {
+	return proto.CompactTextString(loc)
+}
+func (loc *Location) ProtoMessage() {}
+
 type BillingClient interface {
-	Init()
+	Init(ctx context.Context, logger log.Logger)
 	Send(ctx context.Context, sessionID uint64, entry *BillingEntry) error
 }
 
@@ -229,7 +224,7 @@ type GooglePubSubClient struct {
 	results []chan *pubsub.PublishResult
 }
 
-func (billing *GooglePubSubClient) Init(logger log.Logger) {
+func (billing *GooglePubSubClient) Init(ctx context.Context, logger log.Logger) {
 	projectID, ok := os.LookupEnv("GOOGLE_CLOUD_BILLING_PROJECT")
 	if !ok {
 		level.Warn(logger).Log("msg", "billing GCP project env var not set, billing will not be processed.")
@@ -247,7 +242,7 @@ func (billing *GooglePubSubClient) Init(logger log.Logger) {
 	}
 
 	for i := 0; i < pubsubClients; i++ {
-		client, err := pubsub.NewClient(context.Background(), projectID)
+		client, err := pubsub.NewClient(ctx, projectID)
 		if err != nil {
 			level.Error(logger).Log("msg", "could not create pubsub client", "index", i, "err", err)
 			continue
@@ -256,7 +251,7 @@ func (billing *GooglePubSubClient) Init(logger log.Logger) {
 		billing.topics[i] = client.Topic(billingTopicID)
 		billing.topics[i].PublishSettings.NumGoroutines = (25 * runtime.GOMAXPROCS(0)) / pubsubClients
 		billing.results[i] = make(chan *pubsub.PublishResult, 10000*60*10) // 10,000 messages per second for 10 minutes
-		go printPubSubErrors(logger, billing.results[i])
+		go printPubSubErrors(ctx, logger, billing.results[i])
 	}
 }
 
@@ -282,9 +277,9 @@ func (billing *GooglePubSubClient) Send(ctx context.Context, sessionID uint64, e
 	return nil
 }
 
-func printPubSubErrors(logger log.Logger, results chan *pubsub.PublishResult) {
+func printPubSubErrors(ctx context.Context, logger log.Logger, results chan *pubsub.PublishResult) {
 	for result := range results {
-		_, err := result.Get(context.Background())
+		_, err := result.Get(ctx)
 		if err != nil {
 			level.Error(logger).Log("billing", "failed to publish to pub/sub", "err", err)
 		}

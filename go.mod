@@ -5,6 +5,7 @@ go 1.13
 require (
 	cloud.google.com/go v0.53.0
 	cloud.google.com/go/firestore v1.1.1
+	cloud.google.com/go/pubsub v1.1.0
 	github.com/VividCortex/gohistogram v1.0.0 // indirect
 	github.com/alicebob/miniredis v2.5.0+incompatible
 	github.com/alicebob/miniredis/v2 v2.11.1
@@ -22,7 +23,6 @@ require (
 	github.com/json-iterator/go v1.1.9
 	github.com/oschwald/geoip2-golang v1.4.0
 	github.com/stretchr/testify v1.4.0
-	go.opencensus.io v0.22.3 // indirect
 	golang.org/x/crypto v0.0.0-20200115085410-6d4e4cb37c7d
 	golang.org/x/exp v0.0.0-20200213203834-85f925bdd4d0 // indirect
 	golang.org/x/net v0.0.0-20200202094626-16171245cfb2
