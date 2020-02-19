@@ -16,6 +16,19 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func ValidateDirectResponsePacket(resbuf bytes.Buffer, t *testing.T) {
+	assert.Greater(t, resbuf.Len(), 0)
+
+	var actual transport.SessionResponsePacket
+	err := actual.UnmarshalBinary(resbuf.Bytes())
+	assert.NoError(t, err)
+
+	verified := crypto.Verify(TestServerPublicKey, actual.GetSignData(), actual.Signature)
+	assert.True(t, verified)
+
+	assert.Equal(t, int(actual.RouteType), routing.RouteTypeDirect)
+}
+
 func TestFailToUnmarshal(t *testing.T) {
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
@@ -44,7 +57,7 @@ func TestNoBuyerFound(t *testing.T) {
 		Sequence: 13,
 		Server: routing.Server{
 			Addr:      *addr,
-			PublicKey: TestPublicKey,
+			PublicKey: TestServerPublicKey,
 		},
 	}
 	sceData, err := serverCacheEntry.MarshalBinary()
@@ -54,41 +67,31 @@ func TestNoBuyerFound(t *testing.T) {
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
-		Sequence:      13,
-		ServerAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
-
+		Sequence:             13,
+		ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
 		ClientRoutePublicKey: make([]byte, crypto.KeySize),
-
-		Signature: make([]byte, ed25519.SignatureSize),
 	}
+
+	packet.Signature = crypto.Sign(TestBuyerPrivateKey, packet.GetSignData())
 
 	data, err := packet.MarshalBinary()
 	assert.NoError(t, err)
 
 	var resbuf bytes.Buffer
 
-	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, nil, nil, TestPrivateKey, nil)
+	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, nil, nil, TestServerPrivateKey, nil)
 	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
-	assert.Greater(t, resbuf.Len(), 0)
-
-	var actual transport.SessionResponsePacket
-	err = actual.UnmarshalBinary(resbuf.Bytes())
-	assert.NoError(t, err)
-
-	assert.Equal(t, int(actual.RouteType), routing.RouteTypeDirect)
+	ValidateDirectResponsePacket(resbuf, t)
 }
 
 func TestVerificationFailed(t *testing.T) {
-	_, buyersServerPrivKey, err := ed25519.GenerateKey(nil)
-	assert.NoError(t, err)
-
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
 	db := storage.InMemory{
 		LocalBuyer: &routing.Buyer{
-			PublicKey: TestPublicKey, // intentionally different public key to private key generated above to cause error
+			PublicKey: TestServerPublicKey, // normally would be buyers public key, intentionally using servers to cause error
 		},
 	}
 
@@ -99,7 +102,7 @@ func TestVerificationFailed(t *testing.T) {
 		Sequence: 13,
 		Server: routing.Server{
 			Addr:      *addr,
-			PublicKey: TestPublicKey,
+			PublicKey: TestServerPublicKey,
 		},
 	}
 	sceData, err := serverCacheEntry.MarshalBinary()
@@ -109,28 +112,77 @@ func TestVerificationFailed(t *testing.T) {
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
-		Sequence:      13,
-		ServerAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
-
+		Sequence:             13,
+		ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
 		ClientRoutePublicKey: make([]byte, crypto.KeySize),
-
-		Signature: make([]byte, ed25519.SignatureSize),
 	}
-	packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData())
+	packet.Signature = crypto.Sign(TestBuyerPrivateKey, packet.GetSignData())
 
 	data, err := packet.MarshalBinary()
 	assert.NoError(t, err)
 
 	var resbuf bytes.Buffer
 
-	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, nil, nil, TestPrivateKey, nil)
+	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, nil, nil, TestServerPrivateKey, nil)
 	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
-	assert.Greater(t, resbuf.Len(), 0)
+	ValidateDirectResponsePacket(resbuf, t)
+}
 
-	var actual transport.SessionResponsePacket
-	err = actual.UnmarshalBinary(resbuf.Bytes())
+func TestPacketSequenceTooOld(t *testing.T) {
+	redisServer, _ := miniredis.Run()
+	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+	db := storage.InMemory{
+		LocalBuyer: &routing.Buyer{
+			PublicKey: TestBuyerPublicKey,
+		},
+	}
+
+	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 	assert.NoError(t, err)
 
-	assert.Equal(t, int(actual.RouteType), routing.RouteTypeDirect)
+	serverCacheEntry := transport.ServerCacheEntry{
+		Sequence: 13,
+		Server: routing.Server{
+			Addr:      *addr,
+			PublicKey: TestServerPublicKey,
+		},
+	}
+	sceData, err := serverCacheEntry.MarshalBinary()
+	assert.NoError(t, err)
+
+	err = redisServer.Set("SERVER-0.0.0.0:13", string(sceData))
+	assert.NoError(t, err)
+
+	expectedsession := transport.SessionCacheEntry{
+		SessionID: 9999,
+		Sequence:  13,
+	}
+	sce, err := expectedsession.MarshalBinary()
+	assert.NoError(t, err)
+
+	err = redisServer.Set("SESSION-9999", string(sce))
+	assert.NoError(t, err)
+
+	packet := transport.SessionUpdatePacket{
+		SessionId:     9999,
+		Sequence:      1,
+		ServerAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
+
+		ClientRoutePublicKey: make([]byte, crypto.KeySize),
+
+		Signature: make([]byte, ed25519.SignatureSize),
+	}
+	packet.Signature = crypto.Sign(TestBuyerPrivateKey, packet.GetSignData())
+
+	data, err := packet.MarshalBinary()
+	assert.NoError(t, err)
+
+	var resbuf bytes.Buffer
+
+	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, nil, nil, TestServerPrivateKey, nil)
+	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
+
+	ValidateDirectResponsePacket(resbuf, t)
 }

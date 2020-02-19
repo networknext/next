@@ -268,7 +268,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		}
 
 		if packet.Sequence < sessionCacheEntry.Sequence {
-			level.Warn(locallogger).Log("msg", "packet sequency too old", "current_sequence", packet.Sequence, "previous_sequence", sessionCacheEntry.Sequence)
+			level.Warn(locallogger).Log("msg", "packet sequence too old", "current_sequence", packet.Sequence, "previous_sequence", sessionCacheEntry.Sequence)
 			sendResponse(response, serverPrivateKey, w, locallogger)
 			return
 		}
