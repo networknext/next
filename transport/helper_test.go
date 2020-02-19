@@ -2,6 +2,8 @@ package transport_test
 
 import (
 	"net/http"
+
+	"github.com/networknext/backend/routing"
 )
 
 var TestBuyersServerPublicKey = []byte{
@@ -67,6 +69,24 @@ var TestRelayPrivateKey = []byte{
 	0x43, 0xee, 0x50, 0x5a, 0xed, 0x9b, 0x09, 0x69, 0x0f, 0x0e, 0x4d, 0x74, 0xe2, 0x52, 0x26, 0x08,
 	0xe2, 0xf1, 0xcb, 0x51, 0x69, 0x3e, 0x61, 0x2b, 0x14, 0xb9, 0x17, 0xcd, 0x6a, 0x4e, 0xa3, 0x33,
 	0x38, 0x9c, 0x21, 0x7c, 0xcc, 0xc5, 0x2e, 0x3b, 0x89, 0xb2, 0x2c, 0x0a, 0xcb, 0xd1, 0x56, 0x7a,
+}
+
+type mockRouteProvider struct {
+	relay            routing.Relay
+	datacenterRelays []routing.Relay
+	routes           []routing.Route
+}
+
+func (rp *mockRouteProvider) ResolveRelay(id uint64) (routing.Relay, error) {
+	return rp.relay, nil
+}
+
+func (rp *mockRouteProvider) RelaysIn(ds routing.Datacenter) []routing.Relay {
+	return rp.datacenterRelays
+}
+
+func (rp *mockRouteProvider) Routes(from []routing.Relay, to []routing.Relay) []routing.Route {
+	return rp.routes
 }
 
 type RoundTripFunc func(req *http.Request) *http.Response
