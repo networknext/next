@@ -10,7 +10,7 @@
 namespace core
 {
   PacketProcessor::PacketProcessor(
-   os::Socket& socket, relay::relay_t& relay, volatile bool& handle, util::ThroughputLogger& logger)
+   os::Socket& socket, relay::relay_t& relay, volatile bool& handle, util::ThroughputLogger* logger)
    : mSocket(socket), mRelay(relay), mHandle(handle), mLogger(logger)
   {}
 
@@ -28,7 +28,9 @@ namespace core
       const int packet_bytes = mSocket.recv(from, packetData.data(), sizeof(uint8_t) * packetData.size());
 
       if (packet_bytes == 0) {
-        mLogger.addToPkt0();
+        if (mLogger != nullptr) {
+          mLogger->addToPkt0();
+        }
         continue;
       }
 
@@ -56,7 +58,9 @@ namespace core
         this->handleNearPingPacket(packetData, packet_bytes, from);
       } else {
         LogDebug("Received unknown packet type: ", std::hex, (int)packetData[0]);
-        mLogger.addToUnknown(packet_bytes);
+        if (mLogger != nullptr) {
+          mLogger->addToUnknown(packet_bytes);
+        }
       }
     }
   }
@@ -69,7 +73,9 @@ namespace core
   void PacketProcessor::handleRelayPingPacket(
    std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, legacy::relay_address_t& from)
   {
-    mLogger.addToRelayPingPacket(size);
+    if (mLogger != nullptr) {
+      mLogger->addToRelayPingPacket(size);
+    }
 
     // mark the 0'th index as a pong and send it back from where it came
     packet[0] = RELAY_PONG_PACKET;
@@ -81,7 +87,10 @@ namespace core
   void PacketProcessor::handleRelayPongPacket(
    std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, legacy::relay_address_t& from)
   {
-    mLogger.addToRelayPongPacket(size);
+    if (mLogger != nullptr) {
+      mLogger->addToRelayPongPacket(size);
+    }
+
     relay_platform_mutex_acquire(mRelay.mutex);
 
     // read the uint from the packet - this could be brought out of the mutex
@@ -96,7 +105,9 @@ namespace core
   void PacketProcessor::handleRouteRequestPacket(
    std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, legacy::relay_address_t& from)
   {
-    mLogger.addToRouteReq(size);
+    if (mLogger != nullptr) {
+      mLogger->addToRouteReq(size);
+    }
 
     if (size < int(1 + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES * 2)) {
       Log("ignoring route request. bad packet size (", size, ")");
@@ -119,27 +130,33 @@ namespace core
 
     // create a new session and add it to the session map
     uint64_t hash = token.session_id ^ token.session_version;
-    if (mRelay.sessions->find(hash) == mRelay.sessions->end()) {
+    mSessionMap.Lock.lock();
+    auto iter = mSessionMap.find(hash);
+    auto end = mSessionMap.end();
+    mSessionMap.Lock.unlock();
+    if (iter == end) {
       // create the session
-      relay::relay_session_t* session = (relay::relay_session_t*)malloc(sizeof(relay::relay_session_t));
+      auto session = std::make_shared<Session>();
       assert(session);
 
       // fill it with data in the token
-      session->expire_timestamp = token.expire_timestamp;
-      session->session_id = token.session_id;
-      session->session_version = token.session_version;
-      session->client_to_server_sequence = 0;
-      session->server_to_client_sequence = 0;
-      session->kbps_up = token.kbps_up;
-      session->kbps_down = token.kbps_down;
-      session->prev_address = from;
-      session->next_address = token.next_address;
+      session->ExpireTimestamp = token.expire_timestamp;
+      session->SessionID = token.session_id;
+      session->SessionVersion = token.session_version;
+      session->ClientToServerSeq = 0;
+      session->ServerToClientSeq = 0;
+      session->KbpsUp = token.kbps_up;
+      session->KbpsDown = token.kbps_down;
+      session->PrevAddr = from;
+      session->NextAddr = token.next_address;
 
       // store it
       memcpy(session->private_key, token.private_key, crypto_box_SECRETKEYBYTES);
-      relay_replay_protection_reset(&session->replay_protection_client_to_server);
-      relay_replay_protection_reset(&session->replay_protection_server_to_client);
-      mRelay.sessions->insert(std::make_pair(hash, session));  // TODO dear god why
+      relay_replay_protection_reset(&session->ClientToServerProtection);
+      relay_replay_protection_reset(&session->ServerToClientProtection);
+      mSessionMap.Lock.lock();
+      mSessionMap[hash] = session;
+      mSessionMap.Lock.unlock();
 
       printf("session created: %" PRIx64 ".%d\n", token.session_id, token.session_version);
     }
@@ -152,7 +169,10 @@ namespace core
 
   void PacketProcessor::handleRouteResponsePacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
   {
-    mLogger.addToRouteResp(size);
+    if (mLogger != nullptr) {
+      mLogger->addToRouteResp(size);
+    }
+
     if (size != RELAY_HEADER_BYTES) {
       return;
     }
@@ -167,31 +187,42 @@ namespace core
     }
 
     uint64_t hash = session_id ^ session_version;
-    relay::relay_session_t* session = (*(mRelay.sessions))[hash];  // TODO just use a reference for this
-    if (!session) {                                                // TODO and use find() for this
+
+    mSessionMap.Lock.lock();
+    auto iter = mSessionMap.find(hash);
+    auto end = mSessionMap.end();
+    mSessionMap.Lock.unlock();
+    if (iter == end) {
       return;
     }
 
-    if (session->expire_timestamp < relay::relay_timestamp(&mRelay)) {
+    mSessionMap.Lock.lock();
+    auto session = mSessionMap[hash];
+    mSessionMap.Lock.unlock();
+
+    if (session->ExpireTimestamp < relay::relay_timestamp(&mRelay)) {
       return;
     }
 
     uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
-    if (clean_sequence <= session->server_to_client_sequence) {
+    if (clean_sequence <= session->ServerToClientSeq) {
       return;
     }
 
-    session->server_to_client_sequence = clean_sequence;
+    session->ServerToClientSeq = clean_sequence;
     if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet.data(), size) != RELAY_OK) {
       return;
     }
 
-    mSocket.send(session->prev_address, packet.data(), size);
+    mSocket.send(session->PrevAddr, packet.data(), size);
   }
 
   void PacketProcessor::handleContinueRequestPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
   {
-    mLogger.addToContReq(size);
+    if (mLogger != nullptr) {
+      mLogger->addToContReq(size);
+    }
+
     if (size < int(1 + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES * 2)) {
       Log("ignoring continue request. bad packet size (", size, ")");
       return;
@@ -206,28 +237,40 @@ namespace core
       return;
     }
     uint64_t hash = token.session_id ^ token.session_version;
-    relay::relay_session_t* session = (*(mRelay.sessions))[hash];
-    if (!session) {
+    mSessionMap.Lock.lock();
+    auto iter = mSessionMap.find(hash);
+    auto end = mSessionMap.end();
+    mSessionMap.Lock.unlock();
+    if (iter == end) {
       return;
     }
-    if (session->expire_timestamp < relay::relay_timestamp(&mRelay)) {
+
+    mSessionMap.Lock.lock();
+    auto session = mSessionMap[hash];
+    mSessionMap.Lock.unlock();
+
+    if (session->ExpireTimestamp < relay::relay_timestamp(&mRelay)) {
       return;
     }
-    if (session->expire_timestamp != token.expire_timestamp) {
+    if (session->ExpireTimestamp != token.expire_timestamp) {
       printf("session continued: %" PRIx64 ".%d\n", token.session_id, token.session_version);
     }
-    session->expire_timestamp = token.expire_timestamp;
+    session->ExpireTimestamp = token.expire_timestamp;
     packet[RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES] = RELAY_CONTINUE_REQUEST_PACKET;
     mSocket.send(
-     session->next_address, packet.data() + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES, size - RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES);
+     session->NextAddr, packet.data() + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES, size - RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES);
   }
 
   void PacketProcessor::handleContinueResponsePacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
   {
-    mLogger.addToContResp(size);
+    if (mLogger != nullptr) {
+      mLogger->addToContResp(size);
+    }
+
     if (size != RELAY_HEADER_BYTES) {
       return;
     }
+
     uint8_t type;
     uint64_t sequence;
     uint64_t session_id;
@@ -236,28 +279,39 @@ namespace core
          RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, packet.data(), size) != RELAY_OK) {
       return;
     }
+
     uint64_t hash = session_id ^ session_version;
-    relay::relay_session_t* session = (*(mRelay.sessions))[hash];
-    if (!session) {
+    mSessionMap.Lock.lock();
+    auto iter = mSessionMap.find(hash);
+    auto end = mSessionMap.end();
+    mSessionMap.Lock.unlock();
+    if (iter == end) {
       return;
     }
-    if (session->expire_timestamp < relay::relay_timestamp(&mRelay)) {
+
+    mSessionMap.Lock.lock();
+    auto session = mSessionMap[hash];
+    mSessionMap.Lock.unlock();
+
+    if (session->ExpireTimestamp < relay::relay_timestamp(&mRelay)) {
       return;
     }
     uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
-    if (clean_sequence <= session->server_to_client_sequence) {
+    if (clean_sequence <= session->ServerToClientSeq) {
       return;
     }
-    session->server_to_client_sequence = clean_sequence;
+    session->ServerToClientSeq = clean_sequence;
     if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet.data(), size) != RELAY_OK) {
       return;
     }
-    mSocket.send(session->prev_address, packet.data(), size);
+    mSocket.send(session->PrevAddr, packet.data(), size);
   }
 
   void PacketProcessor::handleClientToServerPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
   {
-    mLogger.addToCliToServ(size);
+    if (mLogger != nullptr) {
+      mLogger->addToCliToServ(size);
+    }
 
     if (size <= RELAY_HEADER_BYTES || size > RELAY_HEADER_BYTES + RELAY_MTU) {
       return;
@@ -273,31 +327,41 @@ namespace core
     }
 
     uint64_t hash = session_id ^ session_version;
-    relay::relay_session_t* session = (*(mRelay.sessions))[hash];
-    if (!session) {
+    mSessionMap.Lock.lock();
+    auto iter = mSessionMap.find(hash);
+    auto end = mSessionMap.end();
+    mSessionMap.Lock.unlock();
+    if (iter == end) {
       return;
     }
 
-    if (session->expire_timestamp < relay::relay_timestamp(&mRelay)) {
+    mSessionMap.Lock.lock();
+    auto session = mSessionMap[hash];
+    mSessionMap.Lock.unlock();
+
+    if (session->ExpireTimestamp < relay::relay_timestamp(&mRelay)) {
       return;
     }
 
     uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
-    if (relay_replay_protection_already_received(&session->replay_protection_client_to_server, clean_sequence)) {
+    if (relay_replay_protection_already_received(&session->ClientToServerProtection, clean_sequence)) {
       return;
     }
 
-    relay_replay_protection_advance_sequence(&session->replay_protection_client_to_server, clean_sequence);
+    relay_replay_protection_advance_sequence(&session->ClientToServerProtection, clean_sequence);
     if (relay::relay_verify_header(RELAY_DIRECTION_CLIENT_TO_SERVER, session->private_key, packet.data(), size) != RELAY_OK) {
       return;
     }
 
-    mSocket.send(session->next_address, packet.data(), size);
+    mSocket.send(session->NextAddr, packet.data(), size);
   }
 
   void PacketProcessor::handleServerToClientPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
   {
-    mLogger.addToServToCli(size);
+    if (mLogger != nullptr) {
+      mLogger->addToServToCli(size);
+    }
+
     if (size <= RELAY_HEADER_BYTES || size > RELAY_HEADER_BYTES + RELAY_MTU) {
       return;
     }
@@ -312,31 +376,40 @@ namespace core
     }
 
     uint64_t hash = session_id ^ session_version;
-    relay::relay_session_t* session = (*(mRelay.sessions))[hash];
-    if (!session) {
+    mSessionMap.Lock.lock();
+    auto iter = mSessionMap.find(hash);
+    auto end = mSessionMap.end();
+    mSessionMap.Lock.unlock();
+    if (iter == end) {
       return;
     }
 
-    if (session->expire_timestamp < relay::relay_timestamp(&mRelay)) {
+    mSessionMap.Lock.lock();
+    auto session = mSessionMap[hash];
+    mSessionMap.Lock.unlock();
+
+    if (session->ExpireTimestamp < relay::relay_timestamp(&mRelay)) {
       return;
     }
 
     uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
-    if (relay_replay_protection_already_received(&session->replay_protection_server_to_client, clean_sequence)) {
+    if (relay_replay_protection_already_received(&session->ServerToClientProtection, clean_sequence)) {
       return;
     }
 
-    relay_replay_protection_advance_sequence(&session->replay_protection_server_to_client, clean_sequence);
+    relay_replay_protection_advance_sequence(&session->ServerToClientProtection, clean_sequence);
     if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet.data(), size) != RELAY_OK) {
       return;
     }
 
-    mSocket.send(session->prev_address, packet.data(), size);
+    mSocket.send(session->PrevAddr, packet.data(), size);
   }
 
   void PacketProcessor::handleSessionPingPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
   {
-    mLogger.addToSessionPing(size);
+    if (mLogger != nullptr) {
+      mLogger->addToSessionPing(size);
+    }
 
     if (size > RELAY_HEADER_BYTES + 32) {
       return;
@@ -352,31 +425,41 @@ namespace core
     }
 
     uint64_t hash = session_id ^ session_version;
-    relay::relay_session_t* session = (*(mRelay.sessions))[hash];
-    if (!session) {
+    mSessionMap.Lock.lock();
+    auto iter = mSessionMap.find(hash);
+    auto end = mSessionMap.end();
+    mSessionMap.Lock.unlock();
+    if (iter == end) {
       return;
     }
 
-    if (session->expire_timestamp < relay::relay_timestamp(&mRelay)) {
+    mSessionMap.Lock.lock();
+    auto session = mSessionMap[hash];
+    mSessionMap.Lock.unlock();
+
+    if (session->ExpireTimestamp < relay::relay_timestamp(&mRelay)) {
       return;
     }
 
     uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
-    if (clean_sequence <= session->client_to_server_sequence) {
+    if (clean_sequence <= session->ClientToServerSeq) {
       return;
     }
 
-    session->client_to_server_sequence = clean_sequence;
+    session->ClientToServerSeq = clean_sequence;
     if (relay::relay_verify_header(RELAY_DIRECTION_CLIENT_TO_SERVER, session->private_key, packet.data(), size) != RELAY_OK) {
       return;
     }
 
-    mSocket.send(session->next_address, packet.data(), size);
+    mSocket.send(session->NextAddr, packet.data(), size);
   }
 
   void PacketProcessor::handleSessionPongPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
   {
-    mLogger.addToSessionPong(size);
+    if (mLogger != nullptr) {
+      mLogger->addToSessionPong(size);
+    }
+
     if (size > RELAY_HEADER_BYTES + 32) {
       return;
     }
@@ -391,32 +474,41 @@ namespace core
     }
 
     uint64_t hash = session_id ^ session_version;
-    relay::relay_session_t* session = (*(mRelay.sessions))[hash];
-    if (!session) {
+    mSessionMap.Lock.lock();
+    auto iter = mSessionMap.find(hash);
+    auto end = mSessionMap.end();
+    mSessionMap.Lock.unlock();
+    if (iter == end) {
       return;
     }
 
-    if (session->expire_timestamp < relay::relay_timestamp(&mRelay)) {
+    mSessionMap.Lock.lock();
+    auto session = mSessionMap[hash];
+    mSessionMap.Lock.unlock();
+
+    if (session->ExpireTimestamp < relay::relay_timestamp(&mRelay)) {
       return;
     }
 
     uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
-    if (clean_sequence <= session->server_to_client_sequence) {
+    if (clean_sequence <= session->ServerToClientSeq) {
       return;
     }
 
-    session->server_to_client_sequence = clean_sequence;
+    session->ServerToClientSeq = clean_sequence;
     if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet.data(), size) != RELAY_OK) {
       return;
     }
 
-    mSocket.send(session->prev_address, packet.data(), size);
+    mSocket.send(session->PrevAddr, packet.data(), size);
   }
 
   void PacketProcessor::handleNearPingPacket(
    std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, legacy::relay_address_t& from)
   {
-    mLogger.addToNearPing(size);
+    if (mLogger != nullptr) {
+      mLogger->addToNearPing(size);
+    }
 
     if (size != 1 + 8 + 8 + 8 + 8) {
       return;

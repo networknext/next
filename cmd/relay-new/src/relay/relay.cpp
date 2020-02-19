@@ -14,6 +14,15 @@
 int relay_debug = 0;
 namespace relay
 {
+  relay_t::relay_t(uint64_t routerTimestamp, uint8_t* relayPublicKey, uint8_t* relayPrivateKey, uint8_t* routerPublicKey)
+  {
+    initialize_time = relay::relay_platform_time();
+    initialize_router_timestamp = routerTimestamp;
+    memcpy(relay_public_key, relayPublicKey, RELAY_PUBLIC_KEY_BYTES);
+    memcpy(relay_private_key, relayPrivateKey, RELAY_PRIVATE_KEY_BYTES);
+    memcpy(router_public_key, routerPublicKey, crypto_sign_PUBLICKEYBYTES);
+  }
+
   int relay_initialize()
   {
     if (relay::relay_platform_init() != RELAY_OK) {

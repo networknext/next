@@ -28,6 +28,8 @@ namespace relay
 
   struct relay_t
   {
+    relay_t(uint64_t routerTimestamp, uint8_t* relayPublicKey, uint8_t* relayPrivateKey, uint8_t* routerPublicKey);
+
     legacy::relay_manager_t* relay_manager;
     relay_platform_mutex_t* mutex;
     double initialize_time;
@@ -36,7 +38,6 @@ namespace relay
     uint8_t relay_private_key[RELAY_PRIVATE_KEY_BYTES];
 
     uint8_t router_public_key[RELAY_PUBLIC_KEY_BYTES];
-    std::map<uint64_t, relay_session_t*>* sessions;
     bool relays_dirty;
     int num_relays;
     uint64_t relay_ids[MAX_RELAYS];

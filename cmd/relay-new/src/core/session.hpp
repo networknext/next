@@ -15,11 +15,22 @@ namespace core
     uint64_t ServerToClientSeq;
     int KbpsUp;
     int KbpsDown;
-    net::Address PrevAddr;
-    net::Address NextAddr;
+    // net::Address PrevAddr;
+    // net::Address NextAddr;
+    legacy::relay_address_t PrevAddr;
+    legacy::relay_address_t NextAddr;
     uint8_t private_key[crypto_box_SECRETKEYBYTES];
-    ReplayProtection ServerToClientProtection;
-    ReplayProtection ClientToServerProtection;
+    // ReplayProtection ServerToClientProtection;
+    // ReplayProtection ClientToServerProtection;
+    legacy::relay_replay_protection_t ServerToClientProtection;
+    legacy::relay_replay_protection_t ClientToServerProtection;
+  };
+
+  using SessionPtr = std::shared_ptr<Session>;
+  class SessionMap: public std::unordered_map<uint64_t, SessionPtr>
+  {
+   public:
+    std::mutex Lock;
   };
 }  // namespace core
 #endif

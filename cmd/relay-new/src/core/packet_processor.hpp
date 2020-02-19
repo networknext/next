@@ -1,6 +1,8 @@
 #ifndef CORE_PACKET_PROCESSOR_HPP
 #define CORE_PACKET_PROCESSOR_HPP
 
+#include "session.hpp"
+
 #include "os/platform.hpp"
 
 #include "util/throughput_logger.hpp"
@@ -12,7 +14,7 @@ namespace core
   class PacketProcessor
   {
    public:
-    PacketProcessor(os::Socket& socket, relay::relay_t& relay, volatile bool& handle, util::ThroughputLogger& logger);
+    PacketProcessor(os::Socket& socket, relay::relay_t& relay, volatile bool& handle, util::ThroughputLogger* logger);
     ~PacketProcessor();
 
     void listen();
@@ -24,7 +26,9 @@ namespace core
     relay::relay_t& mRelay;
     volatile bool& mHandle;
 
-    util::ThroughputLogger& mLogger;
+    util::ThroughputLogger* mLogger;
+
+    core::SessionMap mSessionMap;
 
     // Marks the first byte as a pong packet and sends it back
     void handleRelayPingPacket(

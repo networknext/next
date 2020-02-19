@@ -131,25 +131,20 @@ int main(int argc, const char** argv)
       printf("\nerror: RELAY_PROCESSOR_COUNT not set\n\n");
       return 1;
     }
+  } else {
+    numProcessors = std::atoi(nproc);
   }
 
-  std::ostream* output;
-  bool should_delete_output = false;
-  const char* relay_log_file = relay::relay_platform_getenv("RELAY_LOG_FILE");
-  if (relay_log_file == nullptr) {
-    printf("Logging to stdout\n");
-    output = &std::cout;
-  } else {
+  std::ofstream* output = nullptr;
+  const char* relayThroughputLog = relay::relay_platform_getenv("RELAY_LOG_FILE");
+  if (relayThroughputLog != nullptr) {
     auto file = new std::ofstream;
-    file->open(relay_log_file);
+    file->open(relayThroughputLog);
 
-    if (!(*file)) {
-      printf("Could not open %s, defaulting to stdout\n", relay_log_file);
-      output = &std::cout;
-    } else {
-      printf("Using %s to log packet stats\n", relay_log_file);
+    if (*file) {
       output = file;
-      should_delete_output = true;
+    } else {
+      delete file;
     }
   }
 
@@ -209,14 +204,7 @@ int main(int argc, const char** argv)
     return 1;
   }
 
-  relay::relay_t relay;
-  memset(&relay, 0, sizeof(relay));
-  relay.initialize_time = relay::relay_platform_time();
-  relay.initialize_router_timestamp = router_timestamp;
-  relay.sessions = new std::map<uint64_t, relay::relay_session_t*>();
-  memcpy(relay.relay_public_key, relay_public_key, RELAY_PUBLIC_KEY_BYTES);
-  memcpy(relay.relay_private_key, relay_private_key, RELAY_PRIVATE_KEY_BYTES);
-  memcpy(relay.router_public_key, router_public_key, crypto_sign_PUBLICKEYBYTES);
+  relay::relay_t relay(router_timestamp, relay_public_key, relay_private_key, router_public_key);
 
   relay.mutex = relay::relay_platform_mutex_create();
   if (!relay.mutex) {
@@ -240,7 +228,11 @@ int main(int argc, const char** argv)
   std::vector<std::unique_ptr<std::thread>> packetThreads;
   packetThreads.resize(numProcessors);
 
-  util::ThroughputLogger logger(*output);
+  util::ThroughputLogger* logger = nullptr;
+
+  if (output != nullptr) {
+    logger = new util::ThroughputLogger(*output);
+  }
 
   for (unsigned int i = 0; i < numProcessors; i++) {
     auto processor = std::make_shared<core::PacketProcessor>(socket, relay, gAlive, logger);
@@ -277,7 +269,10 @@ int main(int argc, const char** argv)
 
   printf("Cleaning up\n");
 
-  logger.stop();
+  if (logger != nullptr) {
+    logger->stop();
+    delete logger;
+  }
 
   pingProc.stop();
   pingThread->join();
@@ -287,19 +282,12 @@ int main(int argc, const char** argv)
     packetThreads[i]->join();
   }
 
-  if (should_delete_output) {
-    auto file = dynamic_cast<std::ofstream*>(output);
-    file->close();
-    delete file;
+  if (output != nullptr) {
+    output->close();
+    delete output;
   }
 
   free(update_response_memory);
-
-  for (auto& pair : *relay.sessions) {
-    delete pair.second;
-  }
-
-  delete relay.sessions;
 
   relay_manager_destroy(relay.relay_manager);
 
