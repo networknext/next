@@ -302,6 +302,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		routes := rp.Routes(dsrelays, clientrelays)
 		if routes == nil || len(routes) <= 0 {
 			level.Error(locallogger).Log("msg", "failed to find routes")
+			sendResponse(response, serverPrivateKey, w, locallogger)
 			return
 		}
 		chosenRoute := routes[0] // Just take the first one it find regardless of optimization
@@ -359,6 +360,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		tokens, numtokens, err := token.Encrypt(routerPrivateKey)
 		if err != nil {
 			level.Error(locallogger).Log("msg", "failed to encrypt route token")
+			sendResponse(response, serverPrivateKey, w, locallogger)
 			return
 		}
 
@@ -379,7 +381,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		}
 
 		err = sendResponse(response, serverPrivateKey, w, locallogger)
-		if err != nil {
+		if err == nil {
 			level.Debug(locallogger).Log("msg", "caching session data")
 
 			// Save some of the packet information to be used in SessionUpdateHandlerFunc
