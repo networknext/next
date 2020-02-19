@@ -144,15 +144,27 @@ func main() {
 			//log.Fatalf("unable to load GCP_CREDENTIALS: %v\n", err)
 		}
 
+		// Create a Firestore client
 		client, err := firestore.NewClient(context.Background(), firestore.DetectProjectID, option.WithCredentialsJSON(gcpcredsjson))
 		if err != nil {
 			level.Error(logger).Log("err", err)
 			os.Exit(1)
 		}
 
-		db = &storage.Firestore{
+		// Create a Firestore Storer
+		fs := storage.Firestore{
 			Client: client,
+			Logger: logger,
 		}
+
+		// Start a goroutine to sync from Firestore
+		go func() {
+			ticker := time.NewTicker(10 * time.Second)
+			fs.SyncLoop(ctx, ticker.C)
+		}()
+
+		// Set the Firestore Storer to give to handlers
+		db = &fs
 	}
 
 	var routeMatrix routing.RouteMatrix
