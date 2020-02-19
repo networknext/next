@@ -293,9 +293,6 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 	})
 
 	t.Run("did not get a buyer", func(t *testing.T) {
-		_, serverBackendPrivKey, err := ed25519.GenerateKey(nil)
-		assert.NoError(t, err)
-
 		redisServer, _ := miniredis.Run()
 		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
@@ -331,7 +328,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 
 		var resbuf bytes.Buffer
 
-		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, nil, nil, serverBackendPrivKey, nil)
+		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, nil, nil, TestPrivateKey, nil)
 		handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		assert.Greater(t, resbuf.Len(), 0)
