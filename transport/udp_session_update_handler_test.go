@@ -30,7 +30,7 @@ func ValidateDirectResponsePacket(resbuf bytes.Buffer, t *testing.T) {
 	assert.Equal(t, int(actual.RouteType), routing.RouteTypeDirect)
 }
 
-func TestFailToUnmarshal(t *testing.T) {
+func TestFailToUnmarshalSessionUpdate(t *testing.T) {
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
@@ -130,7 +130,7 @@ func TestVerificationFailed(t *testing.T) {
 	ValidateDirectResponsePacket(resbuf, t)
 }
 
-func TestPacketSequenceTooOld(t *testing.T) {
+func TestSessionPacketSequenceTooOld(t *testing.T) {
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
