@@ -401,3 +401,31 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		level.Debug(locallogger).Log("msg", "updated session")
 	}
 }
+
+func writeDirectRouteResponse(packet SessionUpdatePacket, serverPrivateKey []byte, w io.Writer, locallogger log.Logger) error {
+	level.Debug(locallogger).Log("msg", "sending back direct route")
+
+	// Generate a response packet telling client to go direct
+	response := SessionResponsePacket{
+		Sequence:  packet.Sequence,
+		SessionId: packet.SessionId,
+		RouteType: int32(routing.RouteTypeDirect),
+	}
+
+	// Sign the response
+	response.Signature = crypto.Sign(serverPrivateKey, response.GetSignData())
+
+	// Send the Session Response back to the server
+	res, err := response.MarshalBinary()
+	if err != nil {
+		level.Error(locallogger).Log("msg", "failed to marshal session response", "err", err)
+		return err
+	}
+
+	if _, err := w.Write(res); err != nil {
+		level.Error(locallogger).Log("msg", "failed to write session response", "err", err)
+		return err
+	}
+
+	return nil
+}
