@@ -29,7 +29,7 @@ The default setting is `warn` when running `make dev-relay-backend` and `make de
 
 #### Optional
 
-- `CONFIGSTORE_HOST`: address to configstore, uses the in-memory version if not supplied.
+- `GCP_CREDENTIALS`: JSON blob or path to a .json file for the GCP credentials needed
 - `RELAY_DEV`: enable development features, like what is listed below in the [important](#important) section
 - `RELAY_STUBBED_DATA_FILENAME`: points to a json file that will be used to stub datacenter names and lat/long coords
 

@@ -19,15 +19,6 @@ import (
 	"golang.org/x/crypto/nacl/box"
 )
 
-type mockBuyerProvider struct {
-	buyer *storage.Buyer
-	ok    bool
-}
-
-func (bp *mockBuyerProvider) GetAndCheckBySdkVersion3PublicKeyId(id uint64) (*storage.Buyer, bool) {
-	return bp.buyer, bp.ok
-}
-
 type mockRouteProvider struct {
 	relay            routing.Relay
 	datacenterRelays []routing.Relay
@@ -95,9 +86,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 		redisServer, _ := miniredis.Run()
 		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-		bp := mockBuyerProvider{
-			ok: false,
-		}
+		db := storage.InMemory{}
 
 		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 		assert.NoError(t, err)
@@ -118,7 +107,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
 
-		handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &bp)
+		handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db)
 		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		_, err = redisServer.Get("SERVER-0.0.0.0:13")
@@ -132,12 +121,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 		redisServer, _ := miniredis.Run()
 		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-		bp := mockBuyerProvider{
-			buyer: &storage.Buyer{
-				SdkVersion3PublicKeyData: make([]byte, ed25519.PublicKeySize),
-			},
-			ok: true,
-		}
+		db := storage.InMemory{}
 
 		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 		assert.NoError(t, err)
@@ -159,7 +143,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
 
-		handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &bp)
+		handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db)
 		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		_, err = redisServer.Get("SERVER-0.0.0.0:13")
@@ -173,11 +157,10 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 		redisServer, _ := miniredis.Run()
 		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-		bp := mockBuyerProvider{
-			buyer: &storage.Buyer{
-				SdkVersion3PublicKeyData: buyersServerPubKey,
+		db := storage.InMemory{
+			LocalBuyer: &routing.Buyer{
+				PublicKey: buyersServerPubKey,
 			},
-			ok: true,
 		}
 
 		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
@@ -199,7 +182,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 		assert.NoError(t, err)
 
 		expected := transport.ServerCacheEntry{
-			Sequence: 13,
+			Sequence: 1,
 		}
 		se, err := expected.MarshalBinary()
 		assert.NoError(t, err)
@@ -207,7 +190,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 		err = redisServer.Set("SERVER-0.0.0.0:13", string(se))
 		assert.NoError(t, err)
 
-		handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &bp)
+		handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db)
 		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		ds, err := redisServer.Get("SERVER-0.0.0.0:13")
@@ -228,12 +211,10 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 		redisServer, _ := miniredis.Run()
 		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-		bp := mockBuyerProvider{
-			buyer: &storage.Buyer{
-				SdkVersion3PublicKeyData: buyersServerPubKey,
-				Active:                   true,
+		db := storage.InMemory{
+			LocalBuyer: &routing.Buyer{
+				PublicKey: buyersServerPubKey,
 			},
-			ok: true,
 		}
 
 		// Create a ServerUpdatePacket and marshal it to binary so sent it into the UDP handler
@@ -265,7 +246,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 		}
 
 		// Initialize the UDP handler with the required redis client
-		handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &bp)
+		handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db)
 
 		// Invoke the handler with the data packet and address it is coming from
 		handler(&buf, &incoming)
@@ -317,9 +298,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 		redisServer, _ := miniredis.Run()
 		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-		bp := mockBuyerProvider{
-			ok: false,
-		}
+		db := storage.InMemory{}
 
 		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 		assert.NoError(t, err)
@@ -347,27 +326,20 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 
 		var resbuf bytes.Buffer
 
-		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &bp, nil, nil, nil, nil, nil)
+		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, nil, nil, nil, nil)
 		handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		assert.Equal(t, 0, resbuf.Len())
 	})
 
 	t.Run("buyer's public key failed verification", func(t *testing.T) {
-		t.Skip()
-
 		_, buyersServerPrivKey, err := ed25519.GenerateKey(nil)
 		assert.NoError(t, err)
 
 		redisServer, _ := miniredis.Run()
 		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-		bp := mockBuyerProvider{
-			buyer: &storage.Buyer{
-				SdkVersion3PublicKeyData: make([]byte, crypto.KeySize),
-			},
-			ok: true,
-		}
+		db := storage.InMemory{}
 
 		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 		assert.NoError(t, err)
@@ -396,7 +368,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 
 		var resbuf bytes.Buffer
 
-		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &bp, nil, nil, nil, nil, nil)
+		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, nil, nil, nil, nil)
 		handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		assert.Equal(t, 0, resbuf.Len())
@@ -411,11 +383,10 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 		redisServer, _ := miniredis.Run()
 		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-		bp := mockBuyerProvider{
-			buyer: &storage.Buyer{
-				SdkVersion3PublicKeyData: buyersServerPubKey,
+		db := storage.InMemory{
+			LocalBuyer: &routing.Buyer{
+				PublicKey: buyersServerPubKey,
 			},
-			ok: true,
 		}
 
 		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
@@ -456,26 +427,23 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 
 		var resbuf bytes.Buffer
 
-		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &bp, nil, nil, nil, nil, nil)
+		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, nil, nil, nil, nil)
 		handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		assert.Equal(t, 0, resbuf.Len())
 	})
 
 	t.Run("client ip lookup failed", func(t *testing.T) {
-		t.Skip()
-
 		buyersServerPubKey, buyersServerPrivKey, err := ed25519.GenerateKey(nil)
 		assert.NoError(t, err)
 
 		redisServer, _ := miniredis.Run()
 		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-		bp := mockBuyerProvider{
-			buyer: &storage.Buyer{
-				SdkVersion3PublicKeyData: buyersServerPubKey,
+		db := storage.InMemory{
+			LocalBuyer: &routing.Buyer{
+				PublicKey: buyersServerPubKey,
 			},
-			ok: true,
 		}
 
 		iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
@@ -520,26 +488,23 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 
 		var resbuf bytes.Buffer
 
-		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &bp, nil, &iploc, nil, nil, nil)
+		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, &iploc, nil, nil, nil)
 		handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		assert.Equal(t, 0, resbuf.Len())
 	})
 
 	t.Run("no routes found", func(t *testing.T) {
-		t.Skip()
-
 		buyersServerPubKey, buyersServerPrivKey, err := ed25519.GenerateKey(nil)
 		assert.NoError(t, err)
 
 		redisServer, _ := miniredis.Run()
 		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-		bp := mockBuyerProvider{
-			buyer: &storage.Buyer{
-				SdkVersion3PublicKeyData: buyersServerPubKey,
+		db := storage.InMemory{
+			LocalBuyer: &routing.Buyer{
+				PublicKey: buyersServerPubKey,
 			},
-			ok: true,
 		}
 
 		iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
@@ -598,15 +563,13 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 
 		var resbuf bytes.Buffer
 
-		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &bp, &rp, &iploc, &geoClient, nil, nil)
+		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &rp, &iploc, &geoClient, nil, nil)
 		handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		assert.Equal(t, 0, resbuf.Len())
 	})
 
 	t.Run("next route response", func(t *testing.T) {
-		t.Skip()
-
 		_, routerPrivKey, err := box.GenerateKey(rand.Reader)
 		assert.NoError(t, err)
 
@@ -628,11 +591,10 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 		redisServer, _ := miniredis.Run()
 		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-		bp := mockBuyerProvider{
-			buyer: &storage.Buyer{
-				SdkVersion3PublicKeyData: buyersServerPubKey,
+		db := storage.InMemory{
+			LocalBuyer: &routing.Buyer{
+				PublicKey: buyersServerPubKey,
 			},
-			ok: true,
 		}
 
 		iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
@@ -707,7 +669,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 
 		var resbuf bytes.Buffer
 
-		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &bp, &rp, &iploc, &geoClient, serverBackendPrivKey[:], routerPrivKey[:])
+		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &rp, &iploc, &geoClient, serverBackendPrivKey[:], routerPrivKey[:])
 		handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		var actual transport.SessionResponsePacket
@@ -743,11 +705,10 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 		redisServer, _ := miniredis.Run()
 		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-		bp := mockBuyerProvider{
-			buyer: &storage.Buyer{
-				SdkVersion3PublicKeyData: buyersServerPubKey,
+		db := storage.InMemory{
+			LocalBuyer: &routing.Buyer{
+				PublicKey: buyersServerPubKey,
 			},
-			ok: true,
 		}
 
 		iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
@@ -823,7 +784,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 
 		var resbuf bytes.Buffer
 
-		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &bp, &rp, &iploc, &geoClient, serverBackendPrivKey[:], routerPrivKey[:])
+		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &rp, &iploc, &geoClient, serverBackendPrivKey[:], routerPrivKey[:])
 		handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		var actual transport.SessionResponsePacket

@@ -8,20 +8,19 @@ package main
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
-	"fmt"
-	"net"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
 	"time"
 
+	"cloud.google.com/go/firestore"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
+	"google.golang.org/api/option"
 
 	"github.com/go-redis/redis/v7"
 	"github.com/oschwald/geoip2-golang"
-	"google.golang.org/grpc"
 
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
@@ -57,6 +56,7 @@ func main() {
 	{
 		if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
 			customerPublicKey, _ = base64.StdEncoding.DecodeString(key)
+			customerPublicKey = customerPublicKey[8:]
 		}
 	}
 
@@ -90,56 +90,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Set the default IPLocator to resolve all lookups to 0/0 aka Null Island
 	var ipLocator routing.IPLocator = routing.NullIsland
-
-	// Create an in-memory relay & datacenter store
-	// that doesn't require talking to configstore
-	inMemory := storage.InMemory{
-		LocalCustomerPublicKey: customerPublicKey,
-		LocalRelayPublicKey:    relayPublicKey,
-		LocalDatacenter:        true,
-	}
-
-	if filename, ok := os.LookupEnv("RELAYS_STUBBED_DATA_FILENAME"); ok {
-		type relays struct {
-			routing.Location
-			DatacenterName string
-			PublicKey      []byte
-		}
-		relaydata := make(map[string]relays)
-
-		f, err := os.Open(filename)
-		if err != nil {
-			level.Error(logger).Log(err)
-		}
-
-		if err := json.NewDecoder(f).Decode(&relaydata); err != nil {
-			level.Error(logger).Log(err)
-		}
-
-		inMemory.RelayDatacenterNames = make(map[uint32]string)
-		inMemory.RelayPublicKeys = make(map[uint32][]byte)
-		for ip, relay := range relaydata {
-			inMemory.RelayDatacenterNames[uint32(crypto.HashID(ip))] = relay.DatacenterName
-			inMemory.RelayPublicKeys[uint32(crypto.HashID(ip))] = relay.PublicKey
-		}
-
-		ipLocator = routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
-			if relay, ok := relaydata[ip.String()]; ok {
-				return routing.Location{
-					Latitude:  relay.Latitude,
-					Longitude: relay.Longitude,
-				}, nil
-			}
-
-			return routing.Location{}, fmt.Errorf("relay address '%s' could not be found", ip.String())
-		})
-
-		level.Info(logger).Log("envvar", "RELAYS_STUBBED_DATA_FILENAME", "value", filename)
-	}
-
-	// Set the IPLocator to use Maxmind if set
 	if uri, ok := os.LookupEnv("RELAY_MAXMIND_DB_URI"); ok {
 		mmreader, err := geoip2.Open(uri)
 		if err != nil {
@@ -156,22 +107,60 @@ func main() {
 		Namespace:   "RELAY_LOCATIONS",
 	}
 
-	var relayProvider transport.RelayProvider = &inMemory
-	var datacenterProvider transport.DatacenterProvider = &inMemory
-	if host, ok := os.LookupEnv("CONFIGSTORE_HOST"); ok {
-		grpcconn, err := grpc.Dial(host, grpc.WithInsecure())
-		if err != nil {
-			level.Error(logger).Log("envvar", "CONFIGSTORE_HOST", "value", host, "err", err)
-		}
-		configstore, err := storage.ConnectToConfigstore(ctx, grpcconn)
-		if err != nil {
-			level.Error(logger).Log("envvar", "CONFIGSTORE_HOST", "value", host, "err", err)
+	// Create an in-memory relay & datacenter store
+	// that doesn't require talking to configstore
+	var db storage.Storer = &storage.InMemory{
+		LocalRelay: &routing.Relay{
+			PublicKey: relayPublicKey,
+			Datacenter: routing.Datacenter{
+				ID:   crypto.HashID("local"),
+				Name: "local",
+			},
+		},
+	}
+
+	// If GCP_CREDENTIALS are set then override the local in memory
+	// and connect to Firestore
+	if gcpcreds, ok := os.LookupEnv("GCP_CREDENTIALS"); ok {
+		var gcpcredsjson []byte
+
+		_, err := os.Stat(gcpcreds)
+		switch err := err.(type) {
+		case *os.PathError:
+			gcpcredsjson = []byte(gcpcreds)
+			level.Info(logger).Log("envvar", "GCP_CREDENTIALS", "value", "<JSON>")
+		case nil:
+			gcpcredsjson, err = ioutil.ReadFile(gcpcreds)
+			if err != nil {
+				level.Error(logger).Log("envvar", "GCP_CREDENTIALS", "value", gcpcreds, "err", err)
+				os.Exit(1)
+			}
+			level.Info(logger).Log("envvar", "GCP_CREDENTIALS", "value", gcpcreds)
+		default:
+			//log.Fatalf("unable to load GCP_CREDENTIALS: %v\n", err)
 		}
 
-		// If CONFIGSTORE_HOST exists and a successful connection was made
-		// then replace the in-memory with the gRPC one
-		relayProvider = configstore.Relays
-		datacenterProvider = configstore.Datacenters
+		// Create a Firestore client
+		client, err := firestore.NewClient(context.Background(), firestore.DetectProjectID, option.WithCredentialsJSON(gcpcredsjson))
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
+
+		// Create a Firestore Storer
+		fs := storage.Firestore{
+			Client: client,
+			Logger: logger,
+		}
+
+		// Start a goroutine to sync from Firestore
+		go func() {
+			ticker := time.NewTicker(10 * time.Second)
+			fs.SyncLoop(ctx, ticker.C)
+		}()
+
+		// Set the Firestore Storer to give to handlers
+		db = &fs
 	}
 
 	statsdb := routing.NewStatsDatabase()
@@ -194,7 +183,7 @@ func main() {
 		}
 	}()
 
-	router := transport.NewRouter(logger, redisClient, &geoClient, ipLocator, relayProvider, datacenterProvider, statsdb, &costmatrix, &routematrix, routerPrivateKey)
+	router := transport.NewRouter(logger, redisClient, &geoClient, ipLocator, db, statsdb, &costmatrix, &routematrix, routerPrivateKey)
 
 	go func() {
 		level.Info(logger).Log("addr", ":30000")
