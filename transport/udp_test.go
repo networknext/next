@@ -293,6 +293,9 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 	})
 
 	t.Run("did not get a buyer", func(t *testing.T) {
+		_, serverBackendPrivKey, err := ed25519.GenerateKey(nil)
+		assert.NoError(t, err)
+
 		redisServer, _ := miniredis.Run()
 		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
@@ -301,13 +304,17 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 		assert.NoError(t, err)
 
-		expected := transport.ServerCacheEntry{
+		serverCacheEntry := transport.ServerCacheEntry{
 			Sequence: 13,
+			Server: routing.Server{
+				Addr:      *addr,
+				PublicKey: TestPublicKey,
+			},
 		}
-		se, err := expected.MarshalBinary()
+		sceData, err := serverCacheEntry.MarshalBinary()
 		assert.NoError(t, err)
 
-		err = redisServer.Set("SERVER-0.0.0.0:13", string(se))
+		err = redisServer.Set("SERVER-0.0.0.0:13", string(sceData))
 		assert.NoError(t, err)
 
 		packet := transport.SessionUpdatePacket{
@@ -324,10 +331,16 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 
 		var resbuf bytes.Buffer
 
-		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, nil, nil, nil, nil)
+		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, nil, nil, serverBackendPrivKey, nil)
 		handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
-		assert.Equal(t, 0, resbuf.Len())
+		assert.Greater(t, resbuf.Len(), 0)
+
+		var actual transport.SessionResponsePacket
+		err = actual.UnmarshalBinary(resbuf.Bytes())
+		assert.NoError(t, err)
+
+		assert.Equal(t, int(actual.RouteType), routing.RouteTypeDirect)
 	})
 
 	t.Run("buyer's public key failed verification", func(t *testing.T) {
