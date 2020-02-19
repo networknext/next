@@ -62,7 +62,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 			Sequence:             13,
 			ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
 			ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
-			ServerRoutePublicKey: TestServerPublicKey,
+			ServerRoutePublicKey: TestServerBackendPublicKey,
 
 			DatacenterId: 13,
 
@@ -94,7 +94,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 			Sequence:             13,
 			ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
 			ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
-			ServerRoutePublicKey: TestServerPublicKey,
+			ServerRoutePublicKey: TestServerBackendPublicKey,
 
 			DatacenterId: 13,
 
@@ -129,7 +129,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 			Sequence:             13,
 			ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
 			ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
-			ServerRoutePublicKey: TestServerPublicKey,
+			ServerRoutePublicKey: TestServerBackendPublicKey,
 
 			DatacenterId: 13,
 
@@ -169,7 +169,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 			Sequence:             1,
 			ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
 			ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
-			ServerRoutePublicKey: TestServerPublicKey,
+			ServerRoutePublicKey: TestServerBackendPublicKey,
 
 			DatacenterId: 13,
 
@@ -275,120 +275,6 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 }
 
 func TestSessionUpdateHandlerFunc(t *testing.T) {
-	t.Run("next route response", func(t *testing.T) {
-		_, routerPrivKey, err := box.GenerateKey(rand.Reader)
-		assert.NoError(t, err)
-
-		clientPubKey, _, err := box.GenerateKey(rand.Reader)
-		assert.NoError(t, err)
-
-		serverPubKey, _, err := box.GenerateKey(rand.Reader)
-		assert.NoError(t, err)
-
-		relayPubKey, _, err := box.GenerateKey(rand.Reader)
-		assert.NoError(t, err)
-
-		buyersServerPubKey, buyersServerPrivKey, err := ed25519.GenerateKey(nil)
-		assert.NoError(t, err)
-
-		_, serverBackendPrivKey, err := ed25519.GenerateKey(nil)
-		assert.NoError(t, err)
-
-		redisServer, _ := miniredis.Run()
-		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
-
-		db := storage.InMemory{
-			LocalBuyer: &routing.Buyer{
-				PublicKey: buyersServerPubKey,
-			},
-		}
-
-		iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
-			return routing.Location{
-				Continent: "NA",
-				Country:   "US",
-				Region:    "NY",
-				City:      "Troy",
-				Latitude:  0,
-				Longitude: 0,
-			}, nil
-		})
-
-		geoClient := routing.GeoClient{
-			RedisClient: redisClient,
-			Namespace:   "GEO_TEST",
-		}
-
-		rp := mockRouteProvider{
-			routes: []routing.Route{
-				{
-					Relays: []routing.Relay{
-						{ID: 1, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 123}, PublicKey: relayPubKey[:]},
-						{ID: 2, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 123}, PublicKey: relayPubKey[:]},
-						{ID: 3, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 123}, PublicKey: relayPubKey[:]},
-					},
-				},
-			},
-		}
-
-		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
-		assert.NoError(t, err)
-
-		expected := transport.ServerCacheEntry{
-			Sequence: 13,
-			Server: routing.Server{
-				Addr:      *addr,
-				PublicKey: serverPubKey[:],
-			},
-		}
-		se, err := expected.MarshalBinary()
-		assert.NoError(t, err)
-
-		err = redisServer.Set("SERVER-0.0.0.0:13", string(se))
-		assert.NoError(t, err)
-
-		expectedsession := transport.SessionCacheEntry{
-			SessionID: 9999,
-			Sequence:  13,
-		}
-		sce, err := expectedsession.MarshalBinary()
-		assert.NoError(t, err)
-
-		err = redisServer.Set("SESSION-9999", string(sce))
-		assert.NoError(t, err)
-
-		packet := transport.SessionUpdatePacket{
-			SessionId:     9999,
-			Sequence:      14,
-			ServerAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
-
-			ClientAddress: net.UDPAddr{
-				IP:   net.ParseIP("0.0.0.0"),
-				Port: 1234,
-			},
-			ClientRoutePublicKey: clientPubKey[:],
-		}
-		packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData())
-
-		data, err := packet.MarshalBinary()
-		assert.NoError(t, err)
-
-		var resbuf bytes.Buffer
-
-		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &rp, &iploc, &geoClient, serverBackendPrivKey[:], routerPrivKey[:])
-		handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
-
-		var actual transport.SessionResponsePacket
-		err = actual.UnmarshalBinary(resbuf.Bytes())
-		assert.NoError(t, err)
-
-		assert.Equal(t, packet.SessionId, actual.SessionId)
-		assert.Equal(t, packet.Sequence, actual.Sequence)
-		assert.Equal(t, int32(routing.RouteTypeNew), actual.RouteType)
-		assert.Equal(t, int32(5), actual.NumTokens)
-		assert.Equal(t, serverPubKey[:], actual.ServerRoutePublicKey)
-	})
-
 	t.Run("continue route response", func(t *testing.T) {
 		_, routerPrivKey, err := box.GenerateKey(rand.Reader)
 		assert.NoError(t, err)

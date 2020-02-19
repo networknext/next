@@ -24,7 +24,7 @@ func ValidateDirectResponsePacket(resbuf bytes.Buffer, t *testing.T) {
 	err := actual.UnmarshalBinary(resbuf.Bytes())
 	assert.NoError(t, err)
 
-	verified := crypto.Verify(TestServerPublicKey, actual.GetSignData(), actual.Signature)
+	verified := crypto.Verify(TestServerBackendPublicKey, actual.GetSignData(), actual.Signature)
 	assert.True(t, verified)
 
 	assert.Equal(t, int(actual.RouteType), routing.RouteTypeDirect)
@@ -58,7 +58,7 @@ func TestNoBuyerFound(t *testing.T) {
 		Sequence: 13,
 		Server: routing.Server{
 			Addr:      *addr,
-			PublicKey: TestServerPublicKey,
+			PublicKey: TestServerBackendPublicKey,
 		},
 	}
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
@@ -73,14 +73,14 @@ func TestNoBuyerFound(t *testing.T) {
 		ClientRoutePublicKey: make([]byte, crypto.KeySize),
 	}
 
-	packet.Signature = crypto.Sign(TestBuyerPrivateKey, packet.GetSignData())
+	packet.Signature = crypto.Sign(TestBuyersServerPrivateKey, packet.GetSignData())
 
 	data, err := packet.MarshalBinary()
 	assert.NoError(t, err)
 
 	var resbuf bytes.Buffer
 
-	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, nil, nil, TestServerPrivateKey, nil)
+	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, nil, nil, TestServerBackendPrivateKey, nil)
 	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 	ValidateDirectResponsePacket(resbuf, t)
@@ -92,7 +92,7 @@ func TestVerificationFailed(t *testing.T) {
 
 	db := storage.InMemory{
 		LocalBuyer: &routing.Buyer{
-			PublicKey: TestServerPublicKey, // normally would be buyers public key, intentionally using servers to cause error
+			PublicKey: TestServerBackendPublicKey, // normally would be buyers public key, intentionally using servers to cause error
 		},
 	}
 
@@ -103,7 +103,7 @@ func TestVerificationFailed(t *testing.T) {
 		Sequence: 13,
 		Server: routing.Server{
 			Addr:      *addr,
-			PublicKey: TestServerPublicKey,
+			PublicKey: TestServerBackendPublicKey,
 		},
 	}
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
@@ -117,14 +117,14 @@ func TestVerificationFailed(t *testing.T) {
 		ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
 		ClientRoutePublicKey: make([]byte, crypto.KeySize),
 	}
-	packet.Signature = crypto.Sign(TestBuyerPrivateKey, packet.GetSignData())
+	packet.Signature = crypto.Sign(TestBuyersServerPrivateKey, packet.GetSignData())
 
 	data, err := packet.MarshalBinary()
 	assert.NoError(t, err)
 
 	var resbuf bytes.Buffer
 
-	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, nil, nil, TestServerPrivateKey, nil)
+	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, nil, nil, TestServerBackendPrivateKey, nil)
 	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 	ValidateDirectResponsePacket(resbuf, t)
@@ -136,7 +136,7 @@ func TestPacketSequenceTooOld(t *testing.T) {
 
 	db := storage.InMemory{
 		LocalBuyer: &routing.Buyer{
-			PublicKey: TestBuyerPublicKey,
+			PublicKey: TestBuyersServerPublicKey,
 		},
 	}
 
@@ -147,7 +147,7 @@ func TestPacketSequenceTooOld(t *testing.T) {
 		Sequence: 13,
 		Server: routing.Server{
 			Addr:      *addr,
-			PublicKey: TestServerPublicKey,
+			PublicKey: TestServerBackendPublicKey,
 		},
 	}
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
@@ -175,14 +175,14 @@ func TestPacketSequenceTooOld(t *testing.T) {
 
 		Signature: make([]byte, ed25519.SignatureSize),
 	}
-	packet.Signature = crypto.Sign(TestBuyerPrivateKey, packet.GetSignData())
+	packet.Signature = crypto.Sign(TestBuyersServerPrivateKey, packet.GetSignData())
 
 	data, err := packet.MarshalBinary()
 	assert.NoError(t, err)
 
 	var resbuf bytes.Buffer
 
-	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, nil, nil, TestServerPrivateKey, nil)
+	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, nil, nil, TestServerBackendPrivateKey, nil)
 	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 	ValidateDirectResponsePacket(resbuf, t)
@@ -212,7 +212,7 @@ func TestClientIPLookupFail(t *testing.T) {
 		Sequence: 13,
 		Server: routing.Server{
 			Addr:      *addr,
-			PublicKey: TestServerPublicKey,
+			PublicKey: TestServerBackendPublicKey,
 		},
 	}
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
@@ -247,7 +247,7 @@ func TestClientIPLookupFail(t *testing.T) {
 
 	var resbuf bytes.Buffer
 
-	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, &iploc, nil, TestServerPrivateKey, nil)
+	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, &iploc, nil, TestServerBackendPrivateKey, nil)
 	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 	ValidateDirectResponsePacket(resbuf, t)
@@ -261,7 +261,7 @@ func TestNoRoutesFound(t *testing.T) {
 
 	db := storage.InMemory{
 		LocalBuyer: &routing.Buyer{
-			PublicKey: TestBuyerPublicKey,
+			PublicKey: TestBuyersServerPublicKey,
 		},
 	}
 
@@ -290,7 +290,7 @@ func TestNoRoutesFound(t *testing.T) {
 		Sequence: 13,
 		Server: routing.Server{
 			Addr:      *addr,
-			PublicKey: TestServerPublicKey,
+			PublicKey: TestServerBackendPublicKey,
 		},
 	}
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
@@ -318,15 +318,121 @@ func TestNoRoutesFound(t *testing.T) {
 
 		Signature: make([]byte, ed25519.SignatureSize),
 	}
-	packet.Signature = crypto.Sign(TestBuyerPrivateKey, packet.GetSignData())
+	packet.Signature = crypto.Sign(TestBuyersServerPrivateKey, packet.GetSignData())
 
 	data, err := packet.MarshalBinary()
 	assert.NoError(t, err)
 
 	var resbuf bytes.Buffer
 
-	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &rp, &iploc, &geoClient, TestServerPrivateKey, nil)
+	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &rp, &iploc, &geoClient, TestServerBackendPrivateKey, nil)
 	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 	ValidateDirectResponsePacket(resbuf, t)
 }
+func TestNextRouteResponse(t *testing.T) {
+	redisServer, _ := miniredis.Run()
+	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+	db := storage.InMemory{
+		LocalBuyer: &routing.Buyer{
+			PublicKey: TestBuyersServerPublicKey,
+		},
+	}
+
+	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
+		return routing.Location{
+			Continent: "NA",
+			Country:   "US",
+			Region:    "NY",
+			City:      "Troy",
+			Latitude:  0,
+			Longitude: 0,
+		}, nil
+	})
+
+	geoClient := routing.GeoClient{
+		RedisClient: redisClient,
+		Namespace:   "GEO_TEST",
+	}
+
+	rp := mockRouteProvider{
+		routes: []routing.Route{
+			{
+				Relays: []routing.Relay{
+					{ID: 1, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
+					{ID: 2, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
+					{ID: 3, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
+				},
+			},
+		},
+	}
+
+	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
+	assert.NoError(t, err)
+
+	serverCacheEntry := transport.ServerCacheEntry{
+		Sequence: 13,
+		Server: routing.Server{
+			Addr:      *addr,
+			PublicKey: TestBuyersServerPublicKey[:],
+		},
+	}
+	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
+	assert.NoError(t, err)
+
+	err = redisServer.Set("SERVER-0.0.0.0:13", string(serverCacheEntryData))
+	assert.NoError(t, err)
+
+	sessionCacheEntry := transport.SessionCacheEntry{
+		SessionID: 9999,
+		Sequence:  13,
+	}
+	sessionCacheEntryData, err := sessionCacheEntry.MarshalBinary()
+	assert.NoError(t, err)
+
+	err = redisServer.Set("SESSION-9999", string(sessionCacheEntryData))
+	assert.NoError(t, err)
+
+	packet := transport.SessionUpdatePacket{
+		SessionId:     9999,
+		Sequence:      14,
+		ServerAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
+
+		ClientAddress: net.UDPAddr{
+			IP:   net.ParseIP("0.0.0.0"),
+			Port: 1234,
+		},
+		ClientRoutePublicKey: TestBuyersClientPublicKey[:],
+	}
+	packet.Signature = crypto.Sign(TestBuyersServerPrivateKey, packet.GetSignData())
+
+	data, err := packet.MarshalBinary()
+	assert.NoError(t, err)
+
+	var resbuf bytes.Buffer
+
+	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &rp, &iploc, &geoClient, TestServerBackendPrivateKey[:], TestRouterPrivateKey[:])
+	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
+
+	assert.Greater(t, resbuf.Len(), 0)
+
+	var actual transport.SessionResponsePacket
+	err = actual.UnmarshalBinary(resbuf.Bytes())
+	assert.NoError(t, err)
+
+	verified := crypto.Verify(TestServerBackendPublicKey, actual.GetSignData(), actual.Signature)
+	assert.True(t, verified)
+
+	assert.Equal(t, packet.SessionId, actual.SessionId)
+	assert.Equal(t, packet.Sequence, actual.Sequence)
+	assert.Equal(t, int32(routing.RouteTypeNew), actual.RouteType)
+	assert.Equal(t, int32(5), actual.NumTokens)
+	assert.Equal(t, TestBuyersServerPublicKey[:], actual.ServerRoutePublicKey)
+}
+
+//TODO: failed to encrypt route token
+
+//TODO: bad server private key?
+
+//TODO: failed to encrypt route token
