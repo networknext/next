@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"time"
 
 	"cloud.google.com/go/firestore"
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"google.golang.org/api/iterator"
@@ -14,6 +17,7 @@ import (
 
 type Firestore struct {
 	Client *firestore.Client
+	Logger log.Logger
 
 	relays map[uint64]*routing.Relay
 	buyers map[uint64]*routing.Buyer
@@ -48,10 +52,39 @@ func (s *Firestore) Buyer(id uint64) (*routing.Buyer, bool) {
 	return b, found
 }
 
-// Sync pulls only active/enabled Relays, Datacenters, and Buyers from Firestore
+// SyncLoop is a helper method that calls Sync
+func (s *Firestore) SyncLoop(ctx context.Context, c <-chan time.Time) {
+	if err := s.Sync(ctx); err != nil {
+		s.Logger.Log("during", "SyncLoop", "err", err)
+	}
+
+	for {
+		select {
+		case <-c:
+			if err := s.Sync(ctx); err != nil {
+				s.Logger.Log("during", "SyncLoop", "err", err)
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+// Sync fetches relays and buyers from Firestore and places copies into local caches
 func (s *Firestore) Sync(ctx context.Context) error {
+	if err := s.syncRelays(ctx); err != nil {
+		return fmt.Errorf("failed to sync relays: %v", err)
+	}
+
+	if err := s.syncBuyers(ctx); err != nil {
+		return fmt.Errorf("failed to sync buyers: %v", err)
+	}
+
+	return nil
+}
+
+func (s *Firestore) syncRelays(ctx context.Context) error {
 	s.relays = make(map[uint64]*routing.Relay)
-	s.buyers = make(map[uint64]*routing.Buyer)
 
 	rdocs := s.Client.Collection("Relay").Documents(ctx)
 	for {
@@ -113,6 +146,14 @@ func (s *Firestore) Sync(ctx context.Context) error {
 		s.relays[rid] = &relay
 	}
 
+	level.Debug(s.Logger).Log("during", "syncRelays", "num", len(s.relays))
+
+	return nil
+}
+
+func (s *Firestore) syncBuyers(ctx context.Context) error {
+	s.buyers = make(map[uint64]*routing.Buyer)
+
 	bdocs := s.Client.Collection("Buyer").Documents(ctx)
 	for {
 		bdoc, err := bdocs.Next()
@@ -141,6 +182,8 @@ func (s *Firestore) Sync(ctx context.Context) error {
 			PublicKey: b.PublicKey,
 		}
 	}
+
+	level.Debug(s.Logger).Log("during", "syncBuyers", "num", len(s.buyers))
 
 	return nil
 }
