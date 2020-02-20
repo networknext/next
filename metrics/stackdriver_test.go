@@ -90,7 +90,7 @@ func TestStackDriverMetrics(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Wait a second for StackDriver to process the metric creation
-	time.Sleep(1 * time.Second)
+	time.Sleep(2 * time.Second)
 
 	// Attempt to create a metric again with the same ID and gauge
 	// This should just retrive the same metric with the original values
