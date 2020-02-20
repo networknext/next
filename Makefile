@@ -99,6 +99,14 @@ export REDIS_HOST = 127.0.0.1:6379
 endif
 
 ##################################
+##  GOOGLE CLOUD PLATFORM ENV   ##
+##################################
+
+# ifndef GCP_CREDENTIALS
+# export GCP_CREDENTIALS = $(CURRENT_DIR)/testdata/network-next-local.json
+# endif
+
+##################################
 ##    STACKDRIVER METRICS ENV   ##
 ##################################
 ifndef GOOGLE_CLOUD_METRICS_CLUSTER_LOCATION
@@ -124,10 +132,6 @@ endif
 ifndef GOOGLE_CLOUD_METRICS_PROJECT
 export GOOGLE_CLOUD_METRICS_PROJECT = network-next-local
 endif
-
-# ifndef GCP_CREDENTIALS
-# export GCP_CREDENTIALS = $(CURRENT_DIR)/testdata/network-next-local.json
-# endif
 
 .PHONY: help
 help: ## this list
