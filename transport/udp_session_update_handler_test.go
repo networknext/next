@@ -253,7 +253,81 @@ func TestClientIPLookupFail(t *testing.T) {
 	ValidateDirectResponsePacket(resbuf, t)
 }
 
-//TODO: failed to locate relays near client
+func TestNoRelaysNearClient(t *testing.T) {
+	redisServer, _ := miniredis.Run()
+	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+	db := storage.InMemory{
+		LocalBuyer: &routing.Buyer{
+			PublicKey: TestBuyersServerPublicKey,
+		},
+	}
+
+	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
+		return routing.Location{
+			Continent: "NA",
+			Country:   "US",
+			Region:    "NY",
+			City:      "Troy",
+			Latitude:  0,
+			Longitude: 0,
+		}, nil
+	})
+
+	geoClient := routing.GeoClient{
+		RedisClient: redisClient,
+		Namespace:   "GEO_TEST",
+	}
+
+	rp := mockRouteProvider{}
+
+	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
+	assert.NoError(t, err)
+
+	serverCacheEntry := transport.ServerCacheEntry{
+		Sequence: 13,
+		Server: routing.Server{
+			Addr:      *addr,
+			PublicKey: TestServerBackendPublicKey,
+		},
+	}
+	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
+	assert.NoError(t, err)
+
+	err = redisServer.Set("SERVER-0.0.0.0:13", string(serverCacheEntryData))
+	assert.NoError(t, err)
+
+	sessionCacheEntry := transport.SessionCacheEntry{
+		SessionID: 9999,
+		Sequence:  13,
+	}
+	sessionCacheEntryData, err := sessionCacheEntry.MarshalBinary()
+	assert.NoError(t, err)
+
+	err = redisServer.Set("SESSION-9999", string(sessionCacheEntryData))
+	assert.NoError(t, err)
+
+	packet := transport.SessionUpdatePacket{
+		SessionId:     9999,
+		Sequence:      14,
+		ServerAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
+
+		ClientRoutePublicKey: make([]byte, crypto.KeySize),
+
+		Signature: make([]byte, ed25519.SignatureSize),
+	}
+	packet.Signature = crypto.Sign(TestBuyersServerPrivateKey, packet.GetSignData())
+
+	data, err := packet.MarshalBinary()
+	assert.NoError(t, err)
+
+	var resbuf bytes.Buffer
+
+	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &rp, &iploc, &geoClient, TestServerBackendPrivateKey, nil)
+	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
+
+	ValidateDirectResponsePacket(resbuf, t)
+}
 
 func TestNoRoutesFound(t *testing.T) {
 	redisServer, _ := miniredis.Run()
@@ -280,6 +354,13 @@ func TestNoRoutesFound(t *testing.T) {
 		RedisClient: redisClient,
 		Namespace:   "GEO_TEST",
 	}
+
+	nearbyRelay := routing.Relay{
+		ID:        1,
+		Latitude:  0,
+		Longitude: 0,
+	}
+	err := geoClient.Add(nearbyRelay)
 
 	rp := mockRouteProvider{}
 
@@ -355,6 +436,13 @@ func TestNextRouteResponse(t *testing.T) {
 		RedisClient: redisClient,
 		Namespace:   "GEO_TEST",
 	}
+
+	nearbyRelay := routing.Relay{
+		ID:        1,
+		Latitude:  0,
+		Longitude: 0,
+	}
+	err := geoClient.Add(nearbyRelay)
 
 	rp := mockRouteProvider{
 		routes: []routing.Route{
