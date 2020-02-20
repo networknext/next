@@ -2,7 +2,6 @@ package transport_test
 
 import (
 	"bytes"
-	"context"
 	"crypto/ed25519"
 	"crypto/rand"
 	"errors"
@@ -12,6 +11,7 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/go-kit/kit/log"
 	"github.com/go-redis/redis/v7"
+	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
@@ -665,13 +665,12 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 
 		logger := log.NewNopLogger()
 
-		// Create the billing client
-		billingClient := routing.GooglePubSubClient{}
-		billingClient.Init(context.Background(), logger)
+		// Create a no-op biller
+		biller := billing.NoOp{}
 
 		var resbuf bytes.Buffer
 
-		handler := transport.SessionUpdateHandlerFunc(logger, redisClient, &db, &rp, &iploc, &geoClient, &billingClient, serverBackendPrivKey[:], routerPrivKey[:])
+		handler := transport.SessionUpdateHandlerFunc(logger, redisClient, &db, &rp, &iploc, &geoClient, &biller, serverBackendPrivKey[:], routerPrivKey[:])
 		handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		var actual transport.SessionResponsePacket
@@ -786,13 +785,12 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 
 		logger := log.NewNopLogger()
 
-		// Create the billing client
-		billingClient := routing.GooglePubSubClient{}
-		billingClient.Init(context.Background(), logger)
+		// Create a no-op biller
+		biller := billing.NoOp{}
 
 		var resbuf bytes.Buffer
 
-		handler := transport.SessionUpdateHandlerFunc(logger, redisClient, &db, &rp, &iploc, &geoClient, &billingClient, serverBackendPrivKey[:], routerPrivKey[:])
+		handler := transport.SessionUpdateHandlerFunc(logger, redisClient, &db, &rp, &iploc, &geoClient, &biller, serverBackendPrivKey[:], routerPrivKey[:])
 		handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		var actual transport.SessionResponsePacket

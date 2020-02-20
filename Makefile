@@ -102,8 +102,8 @@ endif
 ##  GOOGLE PUBSUB BILLING ENV   ##
 ##################################
 
-ifndef GOOGLE_CLOUD_BILLING_PROJECT
-export GOOGLE_CLOUD_BILLING_PROJECT = network-next-local
+ifndef BILLING_PUBSUB_PROJECT
+export BILLING_PUBSUB_PROJECT = network-next-local
 endif
 
 ifndef BILLING_PUBSUB_TOPIC
