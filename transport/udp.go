@@ -391,7 +391,9 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		}
 
 		err = WriteSessionResponse(w, response, serverPrivateKey)
-		if err == nil {
+		if err != nil {
+			level.Error(locallogger).Log("msg", "failed to write session response", "err", err)
+		} else {
 			level.Debug(locallogger).Log("msg", "caching session data")
 
 			// Save some of the packet information to be used in SessionUpdateHandlerFunc
