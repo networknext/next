@@ -291,7 +291,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		level.Debug(locallogger).Log("lat", location.Latitude, "long", location.Longitude)
 
 		clientrelays, err := geoClient.RelaysWithin(location.Latitude, location.Longitude, 500, "mi")
-		if err != nil {
+		if len(clientrelays) == 0 || err != nil {
 			level.Error(locallogger).Log("msg", "failed to locate relays near client", "err", err)
 			HandleError(w, response, serverPrivateKey, err)
 			return
