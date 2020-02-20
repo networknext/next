@@ -2,6 +2,7 @@ package metrics_test
 
 import (
 	"context"
+	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -16,18 +17,51 @@ import (
 func TestStackDriverMetrics(t *testing.T) {
 	ctx, cancelMetricSubmitRoutine := context.WithCancel(context.Background())
 
-	// Initialize the metric handler
+	gcpcreds, ok := os.LookupEnv("GCP_CREDENTIALS")
+	if !ok {
+		t.Skip() // Skip the test if GCP credentials aren't configured
+	}
+
+	var gcpcredsjson []byte
+	_, err := os.Stat(gcpcreds)
+	assert.NoError(t, err)
+
+	gcpcredsjson, err = ioutil.ReadFile(gcpcreds)
+	assert.NoError(t, err)
+
+	// Get all metric env vars to set up metrics
+	envVars := []string{
+		"GOOGLE_CLOUD_METRICS_CLUSTER_LOCATION",
+		"GOOGLE_CLOUD_METRICS_CLUSTER_LOCATION",
+		"GOOGLE_CLOUD_METRICS_POD_NAME",
+		"GOOGLE_CLOUD_METRICS_CONTAINER_NAME",
+		"GOOGLE_CLOUD_METRICS_NAMESPACE_NAME",
+		"GOOGLE_CLOUD_METRICS_PROJECT",
+	}
+	envVarValues := make([]string, len(envVars))
+	for i := 0; i < len(envVarValues); i++ {
+		envVarValues[i], ok = os.LookupEnv(envVars[i])
+		if !ok {
+			break
+		}
+	}
+
+	if !ok {
+		t.Skip() // Skip the test if metrics env vars aren't configured
+	}
+
+	// Create the metrics handler
 	handler := &metrics.StackDriverHandler{
-		ClusterLocation: os.Getenv("GOOGLE_CLOUD_METRICS_CLUSTER_LOCATION"),
-		ClusterName:     os.Getenv("GOOGLE_CLOUD_METRICS_CLUSTER_NAME"),
-		PodName:         os.Getenv("GOOGLE_CLOUD_METRICS_POD_NAME"),
-		ContainerName:   os.Getenv("GOOGLE_CLOUD_METRICS_CONTAINER_NAME"),
-		NamespaceName:   os.Getenv("GOOGLE_CLOUD_METRICS_NAMESPACE_NAME"),
-		ProjectID:       os.Getenv("GOOGLE_CLOUD_METRICS_PROJECT"),
+		ClusterLocation: envVarValues[0],
+		ClusterName:     envVarValues[1],
+		PodName:         envVarValues[2],
+		ContainerName:   envVarValues[3],
+		NamespaceName:   envVarValues[4],
+		ProjectID:       envVarValues[5],
 	}
 
 	// Open the StackDriver metrics client
-	err := handler.Open(ctx)
+	err = handler.Open(ctx, gcpcredsjson)
 	assert.NoError(t, err)
 
 	// Create a gauge to track a dummy metric

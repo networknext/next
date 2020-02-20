@@ -25,6 +25,7 @@ import (
 	"github.com/go-redis/redis/v7"
 	"github.com/oschwald/geoip2-golang"
 
+	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
@@ -123,6 +124,10 @@ func main() {
 		LocalBuyer: &routing.Buyer{PublicKey: customerPublicKey},
 	}
 
+	// Create a no-op metrics handler in case metrics aren't set up
+	var metricsHandler metrics.Handler
+	metricsHandler = &metrics.NoOpHandler{}
+
 	// If GCP_CREDENTIALS are set then override the local in memory
 	// and connect to Firestore
 	if gcpcreds, ok := os.LookupEnv("GCP_CREDENTIALS"); ok {
@@ -165,6 +170,46 @@ func main() {
 
 		// Set the Firestore Storer to give to handlers
 		db = &fs
+
+		// Get all metric env vars to set up metrics
+		metricEnvVars := []string{
+			"GOOGLE_CLOUD_METRICS_CLUSTER_LOCATION",
+			"GOOGLE_CLOUD_METRICS_CLUSTER_LOCATION",
+			"GOOGLE_CLOUD_METRICS_POD_NAME",
+			"GOOGLE_CLOUD_METRICS_CONTAINER_NAME",
+			"GOOGLE_CLOUD_METRICS_NAMESPACE_NAME",
+			"GOOGLE_CLOUD_METRICS_PROJECT",
+		}
+		metricEnvVarValues := make([]string, len(metricEnvVars))
+		var ok bool
+		for i := 0; i < len(metricEnvVarValues); i++ {
+			metricEnvVarValues[i], ok = os.LookupEnv(metricEnvVars[i])
+			if !ok {
+				level.Warn(logger).Log("msg", "metric env var not set, metrics will not be tracked", "envvar", metricEnvVars[i])
+				break
+			}
+		}
+
+		if ok {
+			// Create the metrics handler
+			metricsHandler = &metrics.StackDriverHandler{
+				ClusterLocation: metricEnvVarValues[0],
+				ClusterName:     metricEnvVarValues[1],
+				PodName:         metricEnvVarValues[2],
+				ContainerName:   metricEnvVarValues[3],
+				NamespaceName:   metricEnvVarValues[4],
+				ProjectID:       metricEnvVarValues[5],
+			}
+
+			// Use a separate context for the metrics so that the metric submit routine can be stopped if need be
+			metricsContext, _ := context.WithCancel(ctx)
+
+			if err := metricsHandler.Open(metricsContext, gcpcredsjson); err == nil {
+				go metricsHandler.MetricSubmitRoutine(metricsContext, logger, time.Minute, 200)
+			} else {
+				level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
+			}
+		}
 	}
 
 	var routeMatrix routing.RouteMatrix
@@ -213,8 +258,8 @@ func main() {
 			Conn:          conn,
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
-			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClient, db),
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClient, db, &routeMatrix, ipLocator, &geoClient, serverPrivateKey, routerPrivateKey),
+			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClient, db, metricsHandler),
+			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClient, db, &routeMatrix, ipLocator, &geoClient, metricsHandler, serverPrivateKey, routerPrivateKey),
 		}
 
 		go func() {

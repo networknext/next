@@ -12,6 +12,7 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
@@ -45,7 +46,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 		assert.NoError(t, err)
 
-		handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, nil)
+		handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, nil, &metrics.NoOpHandler{})
 		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: []byte("this is not a proper packet")})
 
 		_, err = redisServer.Get("SERVER-0.0.0.0:13")
@@ -75,7 +76,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
 
-		handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, nil)
+		handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, nil, &metrics.NoOpHandler{})
 		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		_, err = redisServer.Get("SERVER-0.0.0.0:13")
@@ -107,7 +108,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
 
-		handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db)
+		handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &metrics.NoOpHandler{})
 		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		_, err = redisServer.Get("SERVER-0.0.0.0:13")
@@ -143,7 +144,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
 
-		handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db)
+		handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &metrics.NoOpHandler{})
 		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		_, err = redisServer.Get("SERVER-0.0.0.0:13")
@@ -190,7 +191,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 		err = redisServer.Set("SERVER-0.0.0.0:13", string(se))
 		assert.NoError(t, err)
 
-		handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db)
+		handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &metrics.NoOpHandler{})
 		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		ds, err := redisServer.Get("SERVER-0.0.0.0:13")
@@ -246,7 +247,7 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 		}
 
 		// Initialize the UDP handler with the required redis client
-		handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db)
+		handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &metrics.NoOpHandler{})
 
 		// Invoke the handler with the data packet and address it is coming from
 		handler(&buf, &incoming)
@@ -277,8 +278,6 @@ func TestServerUpdateHandlerFunc(t *testing.T) {
 
 func TestSessionUpdateHandlerFunc(t *testing.T) {
 	t.Run("failed to unmarshal packet", func(t *testing.T) {
-		t.Skip()
-
 		redisServer, _ := miniredis.Run()
 		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
@@ -287,14 +286,13 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 
 		var resbuf bytes.Buffer
 
-		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, nil, nil, nil, nil, nil, nil)
+		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, nil, nil, nil, nil, &metrics.NoOpHandler{}, nil, nil)
 		handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: []byte("this is not a proper packet")})
 
 		assert.Equal(t, 0, resbuf.Len())
 	})
 
 	t.Run("did not get a buyer", func(t *testing.T) {
-		t.Skip()
 		redisServer, _ := miniredis.Run()
 		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
@@ -326,7 +324,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 
 		var resbuf bytes.Buffer
 
-		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, nil, nil, nil, nil)
+		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, nil, nil, &metrics.NoOpHandler{}, nil, nil)
 		handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		assert.Equal(t, 0, resbuf.Len())
@@ -368,15 +366,13 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 
 		var resbuf bytes.Buffer
 
-		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, nil, nil, nil, nil)
+		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, nil, nil, &metrics.NoOpHandler{}, nil, nil)
 		handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		assert.Equal(t, 0, resbuf.Len())
 	})
 
 	t.Run("packet sequence too old", func(t *testing.T) {
-		t.Skip()
-
 		buyersServerPubKey, buyersServerPrivKey, err := ed25519.GenerateKey(nil)
 		assert.NoError(t, err)
 
@@ -427,7 +423,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 
 		var resbuf bytes.Buffer
 
-		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, nil, nil, nil, nil)
+		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, nil, nil, &metrics.NoOpHandler{}, nil, nil)
 		handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		assert.Equal(t, 0, resbuf.Len())
@@ -488,7 +484,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 
 		var resbuf bytes.Buffer
 
-		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, &iploc, nil, nil, nil)
+		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, &iploc, nil, &metrics.NoOpHandler{}, nil, nil)
 		handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		assert.Equal(t, 0, resbuf.Len())
@@ -563,7 +559,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 
 		var resbuf bytes.Buffer
 
-		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &rp, &iploc, &geoClient, nil, nil)
+		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &rp, &iploc, &geoClient, &metrics.NoOpHandler{}, nil, nil)
 		handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		assert.Equal(t, 0, resbuf.Len())
@@ -669,7 +665,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 
 		var resbuf bytes.Buffer
 
-		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &rp, &iploc, &geoClient, serverBackendPrivKey[:], routerPrivKey[:])
+		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &rp, &iploc, &geoClient, &metrics.NoOpHandler{}, serverBackendPrivKey[:], routerPrivKey[:])
 		handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		var actual transport.SessionResponsePacket
@@ -784,7 +780,7 @@ func TestSessionUpdateHandlerFunc(t *testing.T) {
 
 		var resbuf bytes.Buffer
 
-		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &rp, &iploc, &geoClient, serverBackendPrivKey[:], routerPrivKey[:])
+		handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &rp, &iploc, &geoClient, &metrics.NoOpHandler{}, serverBackendPrivKey[:], routerPrivKey[:])
 		handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		var actual transport.SessionResponsePacket
