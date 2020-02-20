@@ -191,6 +191,8 @@ func main() {
 				})
 				if err != nil {
 					level.Error(logger).Log("err", err)
+				} else {
+					level.Debug(logger).Log("msg", "Billing client connected to Google Pub/Sub, ready to publish.")
 				}
 			} else {
 				level.Warn(logger).Log("msg", "BILLING_PUBSUB_TOPIC env var not set, billing data will not be sent")

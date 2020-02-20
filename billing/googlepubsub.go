@@ -89,15 +89,17 @@ func (biller *GooglePubSubBiller) Bill(ctx context.Context, sessionID uint64, en
 }
 
 func printPubSubResults(ctx context.Context, logger log.Logger, results chan *pubsub.PublishResult) {
-	select {
-	case result := <-results:
-		_, err := result.Get(ctx)
-		if err != nil {
-			level.Error(logger).Log("billing", "failed to publish to pub/sub", "err", err)
-		} else {
-			level.Debug(logger).Log("billing", "successfully pushed billing data")
+	for {
+		select {
+		case result := <-results:
+			_, err := result.Get(ctx)
+			if err != nil {
+				level.Error(logger).Log("billing", "failed to publish to pub/sub", "err", err)
+			} else {
+				level.Debug(logger).Log("billing", "successfully published billing data")
+			}
+		case <-ctx.Done():
+			return
 		}
-	case <-ctx.Done():
-		return
 	}
 }

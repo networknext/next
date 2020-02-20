@@ -26,7 +26,11 @@ func TestNewPubSubBiller(t *testing.T) {
 	// Test success case
 
 	// Load the gcp credentials
-	gcpcreds := os.Getenv("GCP_CREDENTIALS")
+	gcpcreds, ok := os.LookupEnv("GCP_CREDENTIALS")
+	if !ok {
+		t.Skip() // Skip the test if GCP credentials aren't defined, since it is optional
+	}
+
 	assert.NotEmpty(t, gcpcreds)
 
 	var gcpcredsjson []byte
@@ -81,7 +85,11 @@ func TestPubSubBill(t *testing.T) {
 	// Success case
 
 	// Load the gcp credentials
-	gcpcreds := os.Getenv("GCP_CREDENTIALS")
+	gcpcreds, ok := os.LookupEnv("GCP_CREDENTIALS")
+	if !ok {
+		t.Skip() // Skip the test if GCP credentials aren't defined, since it is optional
+	}
+
 	assert.NotEmpty(t, gcpcreds)
 
 	var gcpcredsjson []byte
