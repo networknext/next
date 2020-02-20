@@ -21,7 +21,7 @@ namespace os
   {
     assert(addr.Type != net::AddressType::None);
 
-    LogDebug("creating socket");
+    LogDebug("creating socket for address ", addr);
 
     // create socket
     {
@@ -126,7 +126,7 @@ namespace os
       }
     }
 
-    LogDebug("created socket");
+    LogDebug("created socket for ", addr);
     return true;
   }
 
@@ -176,7 +176,7 @@ namespace os
       if (res < 0) {
         std::string addr;
         to.toString(addr);
-        LogError("sendto (", addr, ") failed: ", strerror(errno));
+        LogError("sendto (", addr, ") failed");
         return false;
       }
     } else if (to.Type == net::AddressType::IPv4) {
@@ -192,7 +192,7 @@ namespace os
       if (res < 0) {
         std::string addr;
         to.toString(addr);
-        LogError("sendto (", addr, ") failed: ", strerror(errno));
+        LogError("sendto (", addr, ") failed");
         return false;
       }
     } else {

@@ -9,7 +9,8 @@
 
 namespace core
 {
-  PacketProcessor::PacketProcessor(core::SessionMap& sessions, relay::relay_t& relay, volatile bool& handle, util::ThroughputLogger* logger)
+  PacketProcessor::PacketProcessor(
+   core::SessionMap& sessions, relay::relay_t& relay, volatile bool& handle, util::ThroughputLogger* logger)
    : mSessionMap(sessions), mRelay(relay), mShouldProcess(handle), mLogger(logger)
   {}
 
@@ -30,7 +31,7 @@ namespace core
         continue;
       }
 
-      LogDebug("Got packet on {", listenIndx, '}');
+      // LogDebug("Got packet on {", listenIndx, '}');
 
       if (packetData[0] == RELAY_PING_PACKET && packet_bytes == 9) {
         this->handleRelayPingPacket(socket, packetData, packet_bytes, from);
@@ -153,7 +154,10 @@ namespace core
       mSessionMap[hash] = session;
       mSessionMap.Lock.unlock();
 
-      printf("session created: %" PRIx64 ".%d\n", token.session_id, token.session_version);
+      // printf("session created: %" PRIx64 ".%d\n", token.session_id, token.session_version);
+      std::stringstream ss;
+      ss << std::hex << token.session_id << '.' << std::dec << static_cast<unsigned int>(token.session_version);
+      Log("session created: ", ss.str());
     }
 
     // remove this part of the token by offseting it the request packet bytes
@@ -329,6 +333,7 @@ namespace core
   void PacketProcessor::handleClientToServerPacket(
    os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
   {
+    LogDebug("got client to server packet");
     if (mLogger != nullptr) {
       mLogger->addToCliToServ(size);
     }
@@ -377,11 +382,13 @@ namespace core
     }
 
     socket.send(session->NextAddr, packet.data(), size);
+    LogDebug("sent client packet to ", session->NextAddr);
   }
 
   void PacketProcessor::handleServerToClientPacket(
    os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
   {
+    LogDebug("got server to client packet");
     if (mLogger != nullptr) {
       mLogger->addToServToCli(size);
     }
@@ -429,6 +436,7 @@ namespace core
     }
 
     socket.send(session->PrevAddr, packet.data(), size);
+    LogDebug("sent server packet to ", session->PrevAddr);
   }
 
   void PacketProcessor::handleSessionPingPacket(

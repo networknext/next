@@ -34,10 +34,6 @@ namespace relay
     relay_platform_mutex_t* mutex;
     double initialize_time;
     uint64_t initialize_router_timestamp;
-    uint8_t relay_public_key[RELAY_PUBLIC_KEY_BYTES];
-    uint8_t relay_private_key[RELAY_PRIVATE_KEY_BYTES];
-
-    uint8_t router_public_key[RELAY_PUBLIC_KEY_BYTES];
     bool relays_dirty;
     int num_relays;
     uint64_t relay_ids[MAX_RELAYS];

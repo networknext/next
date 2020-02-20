@@ -58,6 +58,7 @@ namespace util
     auto t = time(nullptr);
     auto timestruct = localtime(&t);
     auto count = std::strftime(timebuff.data(), timebuff.size() * sizeof(char) - 1, "%I:%M:%S %P", timestruct);
+    //auto count = std::strftime(timebuff.data(), timebuff.size() * sizeof(char) - 1, "%s", timestruct);
     return std::string(timebuff.begin(), timebuff.begin() + count);
   }
 }  // namespace util

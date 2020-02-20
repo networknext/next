@@ -18,9 +18,6 @@ namespace relay
   {
     initialize_time = relay::relay_platform_time();
     initialize_router_timestamp = routerTimestamp;
-    memcpy(relay_public_key, relayPublicKey, RELAY_PUBLIC_KEY_BYTES);
-    memcpy(relay_private_key, relayPrivateKey, RELAY_PRIVATE_KEY_BYTES);
-    memcpy(router_public_key, routerPublicKey, crypto_sign_PUBLICKEYBYTES);
   }
 
   int relay_initialize()
@@ -81,6 +78,7 @@ namespace relay
     int encrypt_length = int(p - q);
 
     if (crypto_box_easy(q, q, encrypt_length, nonce, router_public_key, relay_private_key) != 0) {
+      LogDebug("could not encrypt relay token");
       return RELAY_ERROR;
     }
 
@@ -116,12 +114,14 @@ namespace relay
     slist = NULL;
 
     if (ret != 0) {
+      LogDebug("curl error: ", ret);
       return RELAY_ERROR;
     }
 
     long code;
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &code);
     if (code != 200) {
+      LogDebug("http call not success, code: ", code);
       return RELAY_ERROR;
     }
 
@@ -219,14 +219,14 @@ namespace relay
     slist = NULL;
 
     if (ret != 0) {
-      relay_printf("\nerror: could not post relay update\n\n");
+      Log("error: could not post relay update. curl error: ", ret, '\n');
       return RELAY_ERROR;
     }
 
     long code;
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &code);
     if (code != 200) {
-      relay_printf("\nerror: relay update response was %d, expected 200\n\n", int(code));
+      Log("error: relay update response was ", code, ", expected 200\n");
       return RELAY_ERROR;
     }
 
@@ -239,14 +239,14 @@ namespace relay
     const uint32_t update_response_version = 0;
 
     if (version != update_response_version) {
-      relay_printf("\nerror: bad relay update response version. expected %d, got %d\n\n", update_response_version, version);
+      Log("error: bad relay update response version. expected ", update_response_version, ", got ", version, '\n');
       return RELAY_ERROR;
     }
 
     uint32_t num_relays = encoding::read_uint32(&q);
 
     if (num_relays > MAX_RELAYS) {
-      relay_printf("\nerror: too many relays to ping. max is %d, got %d\n\n", MAX_RELAYS, version);
+      Log("error: too many relays to ping. max is ", MAX_RELAYS, ", got ", num_relays, '\n');
       return RELAY_ERROR;
     }
 
@@ -271,7 +271,7 @@ namespace relay
     }
 
     if (error) {
-      relay_printf("\nerror: error while reading set of relays to ping in update response\n\n");
+      Log("error: error while reading set of relays to ping in update response\n");
       return RELAY_ERROR;
     }
 
