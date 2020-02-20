@@ -184,11 +184,11 @@ func main() {
 						matrixReader = r.Body
 					}
 
-					if matrixReader != nil {
-						_, err := routeMatrix.ReadFrom(matrixReader)
-						if err != nil {
-							level.Error(logger).Log("matrix", "route", "op", "read", "envvar", "ROUTE_MATRIX_URI", "value", uri, "err", err)
-						}
+					// Attempt to read, and intentionally force to empty route matrix if any errors are encountered to avoid stale routes
+					_, err := routeMatrix.ReadFrom(matrixReader)
+					if err != nil {
+						routeMatrix = routing.RouteMatrix{}
+						level.Warn(logger).Log("matrix", "route", "op", "read", "envvar", "ROUTE_MATRIX_URI", "value", uri, "err", err, "msg", "forcing empty route matrix to avoid stale routes")
 					}
 
 					level.Info(logger).Log("matrix", "route", "entries", len(routeMatrix.Entries))
