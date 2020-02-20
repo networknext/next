@@ -56,7 +56,6 @@ const (
 	FlagClientTimedOut          = uint32(1 << 7)
 	FlagTryBeforeYouBuyAbort    = uint32(1 << 8)
 	FlagDirectRouteExpired      = uint32(1 << 9)
-	FlagTotalCount              = 10
 
 	AddressSize = 19
 )
@@ -180,6 +179,7 @@ type SessionUpdatePacket struct {
 	KbpsDown                  uint32
 	PacketsLostClientToServer uint64
 	PacketsLostServerToClient uint64
+	UserFlags                 uint64
 	Signature                 []byte
 
 	Version SDKVersion
@@ -219,7 +219,11 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint64(&packet.Tag)
 
 	if packet.Version.AtLeast(SDKVersion{3, 3, 4}) {
-		stream.SerializeBits(&packet.Flags, FlagTotalCount)
+		if packet.Version.AtLeast(SDKVersion{3, 4, 0}) {
+			stream.SerializeBits(&packet.Flags, 11)
+		} else {
+			stream.SerializeBits(&packet.Flags, 10)
+		}
 	}
 
 	stream.SerializeBool(&packet.Flagged)
@@ -276,6 +280,11 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 		stream.SerializeUint64(&packet.PacketsLostClientToServer)
 		stream.SerializeUint64(&packet.PacketsLostServerToClient)
 	}
+
+	if packet.Version.AtLeast(SDKVersion{3, 4, 0}) {
+		stream.SerializeUint64(&packet.UserFlags)
+	}
+
 	stream.SerializeBytes(packet.Signature)
 	return stream.Error()
 }
@@ -301,6 +310,7 @@ func (packet *SessionUpdatePacket) GetSignData() []byte {
 	if packet.Version.AtLeast(SDKVersion{3, 3, 4}) {
 		binary.Write(buf, binary.LittleEndian, packet.Flags)
 	}
+
 	binary.Write(buf, binary.LittleEndian, packet.Flagged)
 	binary.Write(buf, binary.LittleEndian, packet.FallbackToDirect)
 	if !packet.Version.AtLeast(SDKVersion{3, 4, 0}) {
@@ -309,21 +319,18 @@ func (packet *SessionUpdatePacket) GetSignData() []byte {
 	binary.Write(buf, binary.LittleEndian, uint8(packet.ConnectionType))
 
 	var onNetworkNext uint8
-	onNetworkNext = 0
 	if packet.OnNetworkNext {
 		onNetworkNext = 1
 	}
+	binary.Write(buf, binary.LittleEndian, onNetworkNext)
 
 	if packet.Version.AtLeast(SDKVersion{3, 4, 0}) {
 		var committed uint8
-		committed = 0
 		if packet.Committed {
 			committed = 1
 		}
 		binary.Write(buf, binary.LittleEndian, committed)
 	}
-
-	binary.Write(buf, binary.LittleEndian, onNetworkNext)
 
 	binary.Write(buf, binary.LittleEndian, packet.DirectMinRtt)
 	binary.Write(buf, binary.LittleEndian, packet.DirectMaxRtt)
@@ -362,6 +369,10 @@ func (packet *SessionUpdatePacket) GetSignData() []byte {
 	if packet.Version.AtLeast(SDKVersion{3, 3, 4}) {
 		binary.Write(buf, binary.LittleEndian, packet.PacketsLostClientToServer)
 		binary.Write(buf, binary.LittleEndian, packet.PacketsLostServerToClient)
+	}
+
+	if packet.Version.AtLeast(SDKVersion{3, 4, 0}) {
+		binary.Write(buf, binary.LittleEndian, packet.UserFlags)
 	}
 
 	binary.Write(buf, binary.LittleEndian, packet.ClientRoutePublicKey)
@@ -432,11 +443,15 @@ func (packet *SessionResponsePacket) Serialize(stream encoding.Stream) error {
 		stream.SerializeInteger(&packet.NumTokens, 0, MaxTokens)
 	}
 	if packet.RouteType == routing.RouteTypeNew {
-		packet.Tokens = make([]byte, packet.NumTokens*routing.EncryptedNextRouteTokenSize)
+		if stream.IsReading() {
+			packet.Tokens = make([]byte, packet.NumTokens*routing.EncryptedNextRouteTokenSize)
+		}
 		stream.SerializeBytes(packet.Tokens)
 	}
 	if packet.RouteType == routing.RouteTypeContinue {
-		packet.Tokens = make([]byte, packet.NumTokens*routing.EncryptedContinueRouteTokenSize)
+		if stream.IsReading() {
+			packet.Tokens = make([]byte, packet.NumTokens*routing.EncryptedContinueRouteTokenSize)
+		}
 		stream.SerializeBytes(packet.Tokens)
 	}
 	if stream.IsReading() {

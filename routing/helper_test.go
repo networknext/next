@@ -30,11 +30,13 @@ func FillRelayDatabase(redisClient *redis.Client) {
 		id := crypto.HashID(addr)
 		udp, _ := net.ResolveUDPAddr("udp", addr)
 		data := routing.Relay{
-			ID:             id,
-			Name:           addr,
-			Addr:           *udp,
-			Datacenter:     uint64(rand.Uint64()%(math.MaxUint64-1) + 1), // non-zero random number
-			DatacenterName: RandomString(5),
+			ID:   id,
+			Name: addr,
+			Addr: *udp,
+			Datacenter: routing.Datacenter{
+				ID:   uint64(rand.Uint64()%(math.MaxUint64-1) + 1), // non-zero random number
+				Name: RandomString(5),
+			},
 			PublicKey:      RandomPublicKey(),
 			LastUpdateTime: uint64(updateTime),
 		}

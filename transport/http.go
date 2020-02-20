@@ -30,18 +30,10 @@ const (
 	VersionNumberUpdateResponse = 0
 )
 
-type RelayProvider interface {
-	GetAndCheckByRelayCoreId(key uint32) (*storage.Relay, bool)
-}
-
-type DatacenterProvider interface {
-	GetAndCheck(key *storage.Key) (*storage.Datacenter, bool)
-}
-
 // NewRouter creates a router with the specified endpoints
-func NewRouter(logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, relayProvider RelayProvider, datacenterProvider DatacenterProvider, statsdb *routing.StatsDatabase, costmatrix *routing.CostMatrix, routematrix *routing.RouteMatrix, routerPrivateKey []byte) *mux.Router {
+func NewRouter(logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, storer storage.Storer, statsdb *routing.StatsDatabase, costmatrix *routing.CostMatrix, routematrix *routing.RouteMatrix, routerPrivateKey []byte) *mux.Router {
 	router := mux.NewRouter()
-	router.HandleFunc("/relay_init", RelayInitHandlerFunc(logger, redisClient, geoClient, ipLocator, relayProvider, datacenterProvider, routerPrivateKey)).Methods("POST")
+	router.HandleFunc("/relay_init", RelayInitHandlerFunc(logger, redisClient, geoClient, ipLocator, storer, routerPrivateKey)).Methods("POST")
 	router.HandleFunc("/relay_update", RelayUpdateHandlerFunc(logger, redisClient, statsdb)).Methods("POST")
 	router.Handle("/cost_matrix", costmatrix).Methods("GET")
 	router.Handle("/route_matrix", routematrix).Methods("GET")
@@ -50,7 +42,7 @@ func NewRouter(logger log.Logger, redisClient *redis.Client, geoClient *routing.
 }
 
 // RelayInitHandlerFunc returns the function for the relay init endpoint
-func RelayInitHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, relayProvider RelayProvider, datacenterProvider DatacenterProvider, routerPrivateKey []byte) func(writer http.ResponseWriter, request *http.Request) {
+func RelayInitHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, storer storage.Storer, routerPrivateKey []byte) func(writer http.ResponseWriter, request *http.Request) {
 	logger = log.With(logger, "handler", "init")
 
 	return func(writer http.ResponseWriter, request *http.Request) {
@@ -83,35 +75,28 @@ func RelayInitHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClien
 			return
 		}
 
-		relay := routing.Relay{
-			ID:             crypto.HashID(relayInitPacket.Address.String()),
-			Addr:           relayInitPacket.Address,
-			LastUpdateTime: uint64(time.Now().Unix()),
-		}
+		id := crypto.HashID(relayInitPacket.Address.String())
 
-		rdbEntry, ok := relayProvider.GetAndCheckByRelayCoreId(uint32(relay.ID))
+		relayEntry, ok := storer.Relay(id)
 		if !ok {
 			level.Error(locallogger).Log("msg", "relay not in configstore")
 			writer.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		relay.PublicKey = rdbEntry.UpdateKey
 
-		dcdbEntry, ok := datacenterProvider.GetAndCheck(rdbEntry.Datacenter)
-		if !ok {
-			level.Error(locallogger).Log("msg", "relay has no datacenter")
-			writer.WriteHeader(http.StatusInternalServerError)
-			return
+		relay := routing.Relay{
+			ID:             id,
+			Addr:           relayInitPacket.Address,
+			PublicKey:      relayEntry.PublicKey,
+			Datacenter:     relayEntry.Datacenter,
+			LastUpdateTime: uint64(time.Now().Unix()),
 		}
 
-		if _, ok := crypto.Open(relayInitPacket.EncryptedToken, relayInitPacket.Nonce, rdbEntry.GetUpdateKey(), routerPrivateKey); !ok {
+		if _, ok := crypto.Open(relayInitPacket.EncryptedToken, relayInitPacket.Nonce, relay.PublicKey, routerPrivateKey); !ok {
 			level.Error(locallogger).Log("msg", "crypto open failed")
 			writer.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-
-		relay.DatacenterName = dcdbEntry.Name
-		relay.Datacenter = crypto.HashID(relay.DatacenterName)
 
 		exists := redisClient.HExists(routing.HashKeyAllRelays, relay.Key())
 
@@ -126,8 +111,6 @@ func RelayInitHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClien
 			writer.WriteHeader(http.StatusConflict)
 			return
 		}
-
-		relay.LastUpdateTime = uint64(time.Now().Unix())
 
 		loc, err := ipLocator.LocateIP(relay.Addr.IP)
 		if err != nil {

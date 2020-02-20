@@ -72,7 +72,7 @@ ifndef SERVER_BACKEND_PRIVATE_KEY
 export SERVER_BACKEND_PRIVATE_KEY = FXwFqzjGlIwUDwiq1N5Um5VUesdr4fP2hVV2cnJ+yARMYcqMR4c+1KC1l8PK4M9xCC0lPJEO1G8ZIq+6JZajQA==
 endif
 
-## Relay routing keys are used to ENCRYPT route tokens for the client, server, and all relays in between
+## Relay routing keys are used to ENCRYPT and SIGN route tokens sent to a relay
 ifndef RELAY_ROUTER_PUBLIC_KEY
 export RELAY_ROUTER_PUBLIC_KEY = SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
 endif
@@ -96,6 +96,37 @@ endif
 
 ifndef REDIS_HOST
 export REDIS_HOST = 127.0.0.1:6379
+endif
+
+##################################
+##    STACKDRIVER METRICS ENV   ##
+##################################
+ifndef GOOGLE_CLOUD_METRICS_CLUSTER_LOCATION
+export GOOGLE_CLOUD_METRICS_CLUSTER_LOCATION = us-central1-f
+endif
+
+ifndef GOOGLE_CLOUD_METRICS_CLUSTER_NAME
+export GOOGLE_CLOUD_METRICS_CLUSTER_NAME = local
+endif
+
+ifndef GOOGLE_CLOUD_METRICS_POD_NAME
+export GOOGLE_CLOUD_METRICS_POD_NAME = metrics
+endif
+
+ifndef GOOGLE_CLOUD_METRICS_CONTAINER_NAME
+export GOOGLE_CLOUD_METRICS_CONTAINER_NAME = metrics
+endif
+
+ifndef GOOGLE_CLOUD_METRICS_NAMESPACE_NAME
+export GOOGLE_CLOUD_METRICS_NAMESPACE_NAME = default
+endif
+
+ifndef GOOGLE_CLOUD_METRICS_PROJECT
+export GOOGLE_CLOUD_METRICS_PROJECT = network-next-local
+endif
+
+ifndef GOOGLE_APPLICATION_CREDENTIALS
+export GOOGLE_APPLICATION_CREDENTIALS = ./../testdata/network-next-local.json
 endif
 
 .PHONY: help
@@ -214,11 +245,11 @@ RELAY_EXE	:= relay
 $(DIST_DIR)/$(RELAY_EXE):
 
 .PHONY: dev-relay
-dev-relay: $(DIST_DIR)/$(RELAY_EXE) build-relay ## runs a SINGLE relay
+dev-relay: $(DIST_DIR)/$(RELAY_EXE) build-relay ## runs a local relay
 	@$<
 
 .PHONY: dev-multi-relays
-dev-multi-relays: $(DIST_DIR)/$(RELAY_EXE) build-relay ## runs 10 relays, use ./relay-spawner.sh directly for more options
+dev-multi-relays: $(DIST_DIR)/$(RELAY_EXE) build-relay ## runs 10 local relays
 	./cmd/tools/scripts/relay-spawner.sh -n 10 -p 10000
 
 #######################
@@ -236,7 +267,7 @@ dev-server-backend: ## runs a local server backend
 	@$(GO) run cmd/server_backend/server_backend.go
 
 .PHONY: dev-backend
-dev-backend: ## runs a local mock backend
+dev-backend: ## runs a local backend
 	$(GO) run cmd/tools/functional/backend/*.go
 
 .PHONY: dev-server
@@ -254,7 +285,7 @@ build-relay: ## builds the relay
 	@printf "done\n"
 
 .PHONY: build-sdk
-build-sdk: ## builds the sdk into a shared object for linking
+build-sdk: ## builds the sdk
 	@printf "Building sdk... "
 	@$(CXX) -fPIC -shared -o $(DIST_DIR)/$(SDKNAME).so ./sdk/next.cpp ./sdk/next_ios.cpp ./sdk/next_linux.cpp ./sdk/next_mac.cpp ./sdk/next_ps4.cpp ./sdk/next_switch.cpp ./sdk/next_windows.cpp ./sdk/next_xboxone.cpp $(LDFLAGS)
 	@printf "done\n"
@@ -272,7 +303,7 @@ build-server-backend: ## builds the server backend binary
 	@printf "done\n"
 
 .PHONY: build-server
-build-server: build-sdk ## builds the game server linking in the sdk shared library
+build-server: build-sdk ## builds the server
 	@printf "Building server... "
 	@$(CXX) -Isdk -o $(DIST_DIR)/server ./cmd/server/server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
@@ -293,7 +324,7 @@ build-functional-client:
 build-functional: build-functional-client build-functional-server
 
 .PHONY: build-client
-build-client: build-sdk ## builds the game client linking in the sdk shared library
+build-client: build-sdk ## builds the client
 	@printf "Building client... "
 	@$(CXX) -Isdk -o $(DIST_DIR)/client ./cmd/client/client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"

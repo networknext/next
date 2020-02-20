@@ -5,24 +5,19 @@
 
 package main
 
-// #cgo pkg-config: libsodium
-// #include <sodium.h>
-import "C"
-
 import (
-	"runtime"
-	"io"
+	"context"
 	"encoding/binary"
 	"fmt"
-	"log"
-	"context"
-	"hash/fnv"
+	"io"
 	"io/ioutil"
+	"log"
 	"math"
 	"math/rand"
 	"net"
 	"net/http"
 	"os"
+	"runtime"
 	"sort"
 	"sync"
 	"time"
@@ -30,6 +25,7 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/networknext/backend/core"
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/transport"
 )
 
@@ -58,6 +54,7 @@ const BACKEND_MODE_ON_OFF = 4
 const BACKEND_MODE_ROUTE_SWITCHING = 5
 const BACKEND_MODE_UNCOMMITTED = 6
 const BACKEND_MODE_UNCOMMITTED_TO_COMMITTED = 7
+const BACKEND_MODE_USER_FLAGS = 8
 
 type Backend struct {
 	mutex           sync.RWMutex
@@ -121,7 +118,7 @@ func OptimizeThread() {
 			relayData.Address = v.address.String()
 			relayData.Datacenter = core.DatacenterId(0)
 			relayData.DatacenterName = "local"
-			relayData.PublicKey = GetRelayPublicKey(v.address.String())
+			relayData.PublicKey = crypto.RelayPublicKey[:]
 			relayDatabase.Relays[relayData.ID] = relayData
 		}
 		backend.mutex.RUnlock()
@@ -199,12 +196,6 @@ func TimeoutThread() {
 	}
 }
 
-func GetRelayId(name string) uint64 {
-	hash := fnv.New64a()
-	hash.Write([]byte(name))
-	return hash.Sum64()
-}
-
 func GetNearRelays() ([]uint64, []net.UDPAddr) {
 	nearRelays := make([]RelayEntry, 0)
 	backend.mutex.RLock()
@@ -276,6 +267,10 @@ func main() {
 		backend.mode = BACKEND_MODE_UNCOMMITTED_TO_COMMITTED
 	}
 
+	if os.Getenv("BACKEND_MODE") == "USER_FLAGS" {
+		backend.mode = BACKEND_MODE_USER_FLAGS
+	}
+
 	go OptimizeThread()
 
 	go TimeoutThread()
@@ -287,7 +282,7 @@ func main() {
 		IP:   net.ParseIP("0.0.0.0"),
 	}
 
-	fmt.Printf("started server backend on port %d\n", NEXT_SERVER_BACKEND_PORT)
+	fmt.Printf("started functional backend on ports %d and %d\n", NEXT_RELAY_BACKEND_PORT, NEXT_SERVER_BACKEND_PORT)
 
 	connection, err := net.ListenUDP("udp", &listenAddress)
 	if err != nil {
@@ -302,12 +297,8 @@ func main() {
 		MaxPacketSize: transport.DefaultMaxPacketSize,
 
 		ServerUpdateHandlerFunc: func(w io.Writer, incoming *transport.UDPPacket) {
-
-			readStream := core.CreateReadStream(incoming.Data)
-
-			serverUpdate := &core.ServerUpdatePacket{}
-
-			if err := serverUpdate.Serialize(readStream); err != nil {
+			serverUpdate := &transport.ServerUpdatePacket{}
+			if err = serverUpdate.UnmarshalBinary(incoming.Data); err != nil {
 				fmt.Printf("error: failed to read server update packet: %v\n", err)
 				return
 			}
@@ -329,10 +320,8 @@ func main() {
 		},
 
 		SessionUpdateHandlerFunc: func(w io.Writer, incoming *transport.UDPPacket) {
-
-			readStream := core.CreateReadStream(incoming.Data)
-			sessionUpdate := &core.SessionUpdatePacket{}
-			if err := sessionUpdate.Serialize(readStream, NEXT_VERSION_MAJOR, NEXT_VERSION_MINOR, NEXT_VERSION_PATCH); err != nil {
+			sessionUpdate := &transport.SessionUpdatePacket{}
+			if err = sessionUpdate.UnmarshalBinary(incoming.Data); err != nil {
 				fmt.Printf("error: failed to read server session update packet: %v\n", err)
 				return
 			}
@@ -352,7 +341,7 @@ func main() {
 
 			nearRelayIds, nearRelayAddresses := GetNearRelays()
 
-			var sessionResponse *core.SessionResponsePacket
+			var sessionResponse *transport.SessionResponsePacket
 
 			backend.mutex.RLock()
 			sessionEntry, ok := backend.sessionDatabase[sessionUpdate.SessionId]
@@ -413,17 +402,23 @@ func main() {
 				}
 			}
 
+			if backend.mode == BACKEND_MODE_USER_FLAGS {
+				if sessionUpdate.Sequence >= 2 && sessionUpdate.UserFlags != 0x123 {
+					panic("user flags not set on session update")
+				}
+			}
+
 			if !takeNetworkNext {
 
 				// direct route
 
-				sessionResponse = &core.SessionResponsePacket{
+				sessionResponse = &transport.SessionResponsePacket{
 					Sequence:             sessionUpdate.Sequence,
 					SessionId:            sessionUpdate.SessionId,
 					NumNearRelays:        int32(len(nearRelayIds)),
 					NearRelayIds:         nearRelayIds,
 					NearRelayAddresses:   nearRelayAddresses,
-					RouteType:         int32(core.NEXT_UPDATE_TYPE_DIRECT),
+					RouteType:            int32(core.NEXT_UPDATE_TYPE_DIRECT),
 					NumTokens:            0,
 					Tokens:               nil,
 					ServerRoutePublicKey: serverEntry.publicKey,
@@ -456,7 +451,7 @@ func main() {
 
 				for i := 0; i < numRelays; i++ {
 					addresses[1+i] = &nearRelayAddresses[i]
-					publicKeys[1+i] = relayPublicKey
+					publicKeys[1+i] = crypto.RelayPublicKey[:]
 				}
 
 				addresses[numNodes-1] = incoming.SourceAddr
@@ -471,7 +466,7 @@ func main() {
 					// new route
 
 					sessionEntry.version++
-					tokens, err = core.WriteRouteTokens(sessionEntry.expireTimestamp, sessionEntry.id, sessionEntry.version, 0, 256, 256, numNodes, addresses, publicKeys, core.RouterPrivateKey)
+					tokens, err = core.WriteRouteTokens(sessionEntry.expireTimestamp, sessionEntry.id, sessionEntry.version, 0, 256, 256, numNodes, addresses, publicKeys, crypto.RouterPrivateKey)
 					if err != nil {
 						fmt.Printf("error: could not write route tokens: %v\n", err)
 						return
@@ -482,7 +477,7 @@ func main() {
 
 					// continue route
 
-					tokens, err = core.WriteContinueTokens(sessionEntry.expireTimestamp, sessionEntry.id, sessionEntry.version, 0, numNodes, publicKeys, core.RouterPrivateKey)
+					tokens, err = core.WriteContinueTokens(sessionEntry.expireTimestamp, sessionEntry.id, sessionEntry.version, 0, numNodes, publicKeys, crypto.RouterPrivateKey)
 					if err != nil {
 						fmt.Printf("error: could not write continue tokens: %v\n", err)
 						return
@@ -491,7 +486,7 @@ func main() {
 
 				}
 
-				sessionResponse = &core.SessionResponsePacket{
+				sessionResponse = &transport.SessionResponsePacket{
 					Sequence:             sessionUpdate.Sequence,
 					SessionId:            sessionUpdate.SessionId,
 					NumNearRelays:        int32(len(nearRelayIds)),
@@ -521,20 +516,13 @@ func main() {
 			backend.sessionDatabase[sessionUpdate.SessionId] = sessionEntry
 			backend.mutex.Unlock()
 
-			sessionResponse.Sign(NEXT_VERSION_MAJOR, NEXT_VERSION_MINOR, NEXT_VERSION_PATCH)
+			sessionResponse.Signature = crypto.Sign(crypto.BackendPrivateKey, sessionResponse.GetSignData())
 
-			writeStream, err := core.CreateWriteStream(NEXT_MAX_PACKET_BYTES)
+			responsePacketData, err := sessionResponse.MarshalBinary()
 			if err != nil {
 				fmt.Printf("error: failed to write session response packet: %v\n", err)
 				return
 			}
-			if err := sessionResponse.Serialize(writeStream, NEXT_VERSION_MAJOR, NEXT_VERSION_MINOR, NEXT_VERSION_PATCH); err != nil {
-				fmt.Printf("error: failed to write session response packet: %v\n", err)
-				return
-			}
-			writeStream.Flush()
-
-			responsePacketData := writeStream.GetData()[0:writeStream.GetBytesProcessed()]
 
 			_, err = w.Write(responsePacketData)
 			if err != nil {
@@ -650,14 +638,6 @@ func WriteBytes(data []byte, index *int, value []byte, numBytes int) {
 	}
 }
 
-func GetRelayPublicKey(relay_address string) []byte {
-	return []byte{0x06, 0xb0, 0x4d, 0x9e, 0xa6, 0xf5, 0x7c, 0x0b, 0x3c, 0x6a, 0x2d, 0x9d, 0xbf, 0x34, 0x32, 0xb6, 0x66, 0x00, 0xa0, 0x3b, 0x2b, 0x5b, 0x5d, 0x00, 0x91, 0x4a, 0x32, 0xee, 0xf2, 0x36, 0xc2, 0x9c}
-}
-
-func CryptoCheck(data []byte, nonce []byte, publicKey []byte, privateKey []byte) bool {
-	return C.crypto_box_open((*C.uchar)(&data[0]), (*C.uchar)(&data[0]), C.ulonglong(len(data)), (*C.uchar)(&nonce[0]), (*C.uchar)(&publicKey[0]), (*C.uchar)(&privateKey[0])) != 0
-}
-
 func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 
 	body, err := ioutil.ReadAll(request.Body)
@@ -678,7 +658,7 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	var nonce []byte
-	if !ReadBytes(body, &index, &nonce, C.crypto_box_NONCEBYTES) {
+	if !ReadBytes(body, &index, &nonce, crypto.NonceSize) {
 		return
 	}
 
@@ -688,11 +668,11 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	var encrypted_token []byte
-	if !ReadBytes(body, &index, &encrypted_token, RelayTokenBytes+C.crypto_box_MACBYTES) {
+	if !ReadBytes(body, &index, &encrypted_token, RelayTokenBytes+crypto.MACSize) {
 		return
 	}
 
-	if !CryptoCheck(encrypted_token, nonce, relayPublicKey[:], core.RouterPrivateKey[:]) {
+	if _, success := crypto.Open(encrypted_token, nonce, crypto.RelayPublicKey[:], crypto.RouterPrivateKey[:]); !success {
 		return
 	}
 
@@ -709,7 +689,7 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 
 	relayEntry := RelayEntry{}
 	relayEntry.name = relay_address
-	relayEntry.id = GetRelayId(relay_address)
+	relayEntry.id = crypto.HashID(relay_address)
 	relayEntry.address = core.ParseAddress(relay_address)
 	relayEntry.lastUpdate = time.Now().Unix()
 	relayEntry.token = core.RandomBytes(RelayTokenBytes)
@@ -824,7 +804,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
 	relayEntry = RelayEntry{}
 	relayEntry.name = relay_address
-	relayEntry.id = GetRelayId(relay_address)
+	relayEntry.id = crypto.HashID(relay_address)
 	relayEntry.address = core.ParseAddress(relay_address)
 	relayEntry.lastUpdate = time.Now().Unix()
 	relayEntry.token = token
@@ -897,7 +877,6 @@ func NearHandler(writer http.ResponseWriter, request *http.Request) {
 }
 
 func WebServer() {
-	fmt.Printf("started relay backend on port %d\n", NEXT_RELAY_BACKEND_PORT)
 	router := mux.NewRouter()
 	router.HandleFunc("/relay_init", RelayInitHandler).Methods("POST")
 	router.HandleFunc("/relay_update", RelayUpdateHandler).Methods("POST")

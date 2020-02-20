@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/base64"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -16,9 +17,10 @@ import (
 	"runtime"
 	"time"
 
+	"cloud.google.com/go/firestore"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"google.golang.org/grpc"
+	"google.golang.org/api/option"
 
 	"github.com/go-redis/redis/v7"
 	"github.com/oschwald/geoip2-golang"
@@ -53,7 +55,6 @@ func main() {
 	}
 
 	// var serverPublicKey []byte
-	var relayPublicKey []byte
 	var customerPublicKey []byte
 	var serverPrivateKey []byte
 	var routerPrivateKey []byte
@@ -81,10 +82,7 @@ func main() {
 
 		if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
 			customerPublicKey, _ = base64.StdEncoding.DecodeString(key)
-		}
-
-		if key := os.Getenv("RELAY_PUBLIC_KEY"); len(key) != 0 {
-			relayPublicKey, _ = base64.StdEncoding.DecodeString(key)
+			customerPublicKey = customerPublicKey[8:]
 		}
 	}
 
@@ -120,25 +118,53 @@ func main() {
 		Namespace:   "RELAY_LOCATIONS",
 	}
 
-	// Create an in-memory buyer provider
-	var buyerProvider transport.BuyerProvider = &storage.InMemory{
-		LocalCustomerPublicKey: customerPublicKey,
-		LocalRelayPublicKey:    relayPublicKey,
-		LocalDatacenter:        true,
+	// Create an in-memory db
+	var db storage.Storer = &storage.InMemory{
+		LocalBuyer: &routing.Buyer{PublicKey: customerPublicKey},
 	}
-	if host, ok := os.LookupEnv("CONFIGSTORE_HOST"); ok {
-		grpcconn, err := grpc.Dial(host, grpc.WithInsecure())
-		if err != nil {
-			level.Error(logger).Log("envvar", "CONFIGSTORE_HOST", "value", host, "err", err)
-		}
-		configstore, err := storage.ConnectToConfigstore(ctx, grpcconn)
-		if err != nil {
-			level.Error(logger).Log("envvar", "CONFIGSTORE_HOST", "value", host, "err", err)
+
+	// If GCP_CREDENTIALS are set then override the local in memory
+	// and connect to Firestore
+	if gcpcreds, ok := os.LookupEnv("GCP_CREDENTIALS"); ok {
+		var gcpcredsjson []byte
+
+		_, err := os.Stat(gcpcreds)
+		switch err := err.(type) {
+		case *os.PathError:
+			gcpcredsjson = []byte(gcpcreds)
+			level.Info(logger).Log("envvar", "GCP_CREDENTIALS", "value", "<JSON>")
+		case nil:
+			gcpcredsjson, err = ioutil.ReadFile(gcpcreds)
+			if err != nil {
+				level.Error(logger).Log("envvar", "GCP_CREDENTIALS", "value", gcpcreds, "err", err)
+				os.Exit(1)
+			}
+			level.Info(logger).Log("envvar", "GCP_CREDENTIALS", "value", gcpcreds)
+		default:
+			//log.Fatalf("unable to load GCP_CREDENTIALS: %v\n", err)
 		}
 
-		// If CONFIGSTORE_HOST exists and a successful connection was made
-		// then replace the in-memory with the gRPC one
-		buyerProvider = configstore.Buyers
+		// Create a Firestore client
+		client, err := firestore.NewClient(context.Background(), firestore.DetectProjectID, option.WithCredentialsJSON(gcpcredsjson))
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
+
+		// Create a Firestore Storer
+		fs := storage.Firestore{
+			Client: client,
+			Logger: logger,
+		}
+
+		// Start a goroutine to sync from Firestore
+		go func() {
+			ticker := time.NewTicker(10 * time.Second)
+			fs.SyncLoop(ctx, ticker.C)
+		}()
+
+		// Set the Firestore Storer to give to handlers
+		db = &fs
 	}
 
 	var routeMatrix routing.RouteMatrix
@@ -148,22 +174,24 @@ func main() {
 				for {
 					var matrixReader io.Reader
 
+					// Default to reading route matrix from file
 					if f, err := os.Open(uri); err == nil {
 						matrixReader = f
 					}
 
+					// Prefer to get it remotely if possible
 					if r, err := http.Get(uri); err == nil {
 						matrixReader = r.Body
 					}
 
-					if matrixReader != nil {
-						_, err := routeMatrix.ReadFrom(matrixReader)
-						if err != nil {
-							level.Error(logger).Log("matrix", "route", "op", "read", "envvar", "ROUTE_MATRIX_URI", "value", uri, "err", err)
-						}
-
-						level.Info(logger).Log("matrix", "route", "entries", len(routeMatrix.Entries))
+					// Attempt to read, and intentionally force to empty route matrix if any errors are encountered to avoid stale routes
+					_, err := routeMatrix.ReadFrom(matrixReader)
+					if err != nil {
+						routeMatrix = routing.RouteMatrix{}
+						level.Warn(logger).Log("matrix", "route", "op", "read", "envvar", "ROUTE_MATRIX_URI", "value", uri, "err", err, "msg", "forcing empty route matrix to avoid stale routes")
 					}
+
+					level.Info(logger).Log("matrix", "route", "entries", len(routeMatrix.Entries))
 
 					time.Sleep(10 * time.Second)
 				}
@@ -187,8 +215,8 @@ func main() {
 			Conn:          conn,
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
-			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClient, buyerProvider),
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClient, buyerProvider, &routeMatrix, ipLocator, &geoClient, serverPrivateKey, routerPrivateKey),
+			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClient, db),
+			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClient, db, &routeMatrix, ipLocator, &geoClient, serverPrivateKey, routerPrivateKey),
 		}
 
 		go func() {

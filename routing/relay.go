@@ -29,8 +29,7 @@ type Relay struct {
 	Addr      net.UDPAddr
 	PublicKey []byte
 
-	Datacenter     uint64
-	DatacenterName string
+	Datacenter Datacenter
 
 	Latitude  float64
 	Longitude float64
@@ -38,8 +37,6 @@ type Relay struct {
 	Stats Stats
 
 	LastUpdateTime uint64
-
-	cachedKey string
 }
 
 // NewRelay ...
@@ -60,8 +57,8 @@ func (r *Relay) UnmarshalBinary(data []byte) error {
 	if !(encoding.ReadUint64(data, &index, &r.ID) &&
 		encoding.ReadString(data, &index, &r.Name, math.MaxInt32) && // TODO define an actual limit on this
 		encoding.ReadString(data, &index, &addr, MaxRelayAddressLength) &&
-		encoding.ReadUint64(data, &index, &r.Datacenter) &&
-		encoding.ReadString(data, &index, &r.DatacenterName, math.MaxInt32) &&
+		encoding.ReadUint64(data, &index, &r.Datacenter.ID) &&
+		encoding.ReadString(data, &index, &r.Datacenter.Name, math.MaxInt32) &&
 		encoding.ReadBytes(data, &index, &r.PublicKey, crypto.KeySize) &&
 		encoding.ReadFloat64(data, &index, &r.Latitude) &&
 		encoding.ReadFloat64(data, &index, &r.Longitude) &&
@@ -80,7 +77,7 @@ func (r *Relay) UnmarshalBinary(data []byte) error {
 // TODO add other fields to this
 func (r Relay) MarshalBinary() (data []byte, err error) {
 	strAddr := r.Addr.String()
-	length := 8 + 4 + len(r.Name) + 4 + len(strAddr) + 8 + 4 + len(r.DatacenterName) + len(r.PublicKey) + 8 + 8 + 8
+	length := 8 + 4 + len(r.Name) + 4 + len(strAddr) + 8 + 4 + len(r.Datacenter.Name) + len(r.PublicKey) + 8 + 8 + 8
 
 	data = make([]byte, length)
 
@@ -88,8 +85,8 @@ func (r Relay) MarshalBinary() (data []byte, err error) {
 	encoding.WriteUint64(data, &index, r.ID)
 	encoding.WriteString(data, &index, r.Name, uint32(len(r.Name)))
 	encoding.WriteString(data, &index, strAddr, uint32(len(strAddr)))
-	encoding.WriteUint64(data, &index, r.Datacenter)
-	encoding.WriteString(data, &index, r.DatacenterName, uint32(len(r.DatacenterName)))
+	encoding.WriteUint64(data, &index, r.Datacenter.ID)
+	encoding.WriteString(data, &index, r.Datacenter.Name, uint32(len(r.Datacenter.Name)))
 	encoding.WriteBytes(data, &index, r.PublicKey, crypto.KeySize)
 	encoding.WriteFloat64(data, &index, r.Latitude)
 	encoding.WriteFloat64(data, &index, r.Longitude)
@@ -100,11 +97,7 @@ func (r Relay) MarshalBinary() (data []byte, err error) {
 
 // Key returns the key used for Redis
 func (r *Relay) Key() string {
-	if len(r.cachedKey) == 0 {
-		r.cachedKey = HashKeyPrefixRelay + strconv.FormatUint(r.ID, 10)
-	}
-
-	return r.cachedKey
+	return HashKeyPrefixRelay + strconv.FormatUint(r.ID, 10)
 }
 
 type Stats struct {

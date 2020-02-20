@@ -159,7 +159,7 @@ func WriteEncryptedContinueToken(buffer []byte, token *ContinueToken, senderPriv
 	return result
 }
 
-func WriteRouteTokens(expireTimestamp uint64, sessionId uint64, sessionVersion uint8, sessionFlags uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, addresses []*net.UDPAddr, publicKeys [][]byte, masterPrivateKey [KeyBytes]byte) ([]byte, error) {
+func WriteRouteTokens(expireTimestamp uint64, sessionId uint64, sessionVersion uint8, sessionFlags uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, addresses []*net.UDPAddr, publicKeys [][]byte, masterPrivateKey []byte) ([]byte, error) {
 	if numNodes < 1 || numNodes > MaxNodes {
 		return nil, fmt.Errorf("invalid numNodes %d. expected value in range [1,%d]", numNodes, MaxNodes)
 	}
@@ -187,7 +187,7 @@ func WriteRouteTokens(expireTimestamp uint64, sessionId uint64, sessionVersion u
 	return tokenData, nil
 }
 
-func WriteContinueTokens(expireTimestamp uint64, sessionId uint64, sessionVersion uint8, sessionFlags uint8, numNodes int, publicKeys [][]byte, masterPrivateKey [KeyBytes]byte) ([]byte, error) {
+func WriteContinueTokens(expireTimestamp uint64, sessionId uint64, sessionVersion uint8, sessionFlags uint8, numNodes int, publicKeys [][]byte, masterPrivateKey []byte) ([]byte, error) {
 	if numNodes < 1 || numNodes > MaxNodes {
 		return nil, fmt.Errorf("invalid numNodes %d. expected value in range [1,%d]", numNodes, MaxNodes)
 	}

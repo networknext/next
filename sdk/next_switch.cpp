@@ -345,6 +345,7 @@ int next_platform_socket_init( next_platform_socket_t * s, next_address_t * addr
             return NEXT_ERROR;
         }
         address->port = next_platform_ntohs( addr.sin_port );
+        s->address.port = address->port;
     }
 
     // set non-blocking io
@@ -401,6 +402,7 @@ void next_platform_socket_cleanup( next_platform_socket_t * socket )
     if ( socket->handle != nn::socket::InvalidSocket )
     {
         nn::socket::Close( socket->handle );
+        socket->handle = nn::socket::InvalidSocket;
     }
 }
 
@@ -420,6 +422,11 @@ void next_platform_socket_send_packet( next_platform_socket_t * socket, const ne
     next_assert( to->type == NEXT_ADDRESS_IPV4 );
     next_assert( packet_data );
     next_assert( packet_bytes > 0 );
+
+    if ( socket->handle == nn::socket::InvalidSocket )
+    {
+        return;
+    }
 
     if ( to->type == NEXT_ADDRESS_IPV6 )
     {
@@ -453,7 +460,22 @@ int next_platform_socket_receive_packet( next_platform_socket_t * socket, next_a
     next_assert( from );
     next_assert( packet_data );
     next_assert( max_packet_size > 0 );
-    
+
+    if ( socket->handle == nn::socket::InvalidSocket )
+    {
+        next_address_t address = socket->address;
+        int type = socket->type;
+        float timeout_seconds = socket->timeout_seconds;
+        int send_buffer_size = socket->send_buffer_size;
+        int receive_buffer_size = socket->receive_buffer_size;
+
+        if ( next_platform_socket_init( socket, &address, type, timeout_seconds, send_buffer_size, receive_buffer_size ) == NEXT_ERROR )
+        {
+            next_platform_socket_cleanup( socket );
+            return 0;
+        }
+    }
+
     nn::socket::SockAddrStorage sockaddr_from;
     nn::socket::SockLenT from_length = sizeof( sockaddr_from );
 
@@ -467,20 +489,14 @@ int next_platform_socket_receive_packet( next_platform_socket_t * socket, next_a
             return 0;
         }
 
-        if ( err == nn::socket::Errno::ENetDown )
+        if ( err == nn::socket::Errno::ENetDown || err == nn::socket::Errno::EBadf)
         {
-            next_address_t address = socket->address;
-            int type = socket->type;
-            float timeout_seconds = socket->timeout_seconds;
-            int send_buffer_size = socket->send_buffer_size;
-            int receive_buffer_size = socket->receive_buffer_size;
             next_platform_socket_cleanup( socket );
-            next_platform_socket_init( socket, &address, type, timeout_seconds, send_buffer_size, receive_buffer_size );
         }
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "recvfrom failed with error %d", int( err ) );
         
-        return -1;
+        return 0;
     }
 
     nn::socket::SockAddrIn * addr_ipv4 = (nn::socket::SockAddrIn*) &sockaddr_from;
