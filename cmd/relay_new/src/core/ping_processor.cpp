@@ -5,46 +5,23 @@
 
 namespace core
 {
-  PingProcessor::PingProcessor(relay::relay_t& relay, volatile bool& handle): mRelay(relay), mShouldProcess(handle) {}
+  PingProcessor::PingProcessor(core::RelayManager& relayManager, volatile bool& shouldProcess)
+   : mRelayManager(relayManager), mShouldProcess(shouldProcess)
+  {}
 
   void PingProcessor::listen(os::Socket& socket)
   {
-    while (this->mShouldProcess) {
-      relay::relay_platform_mutex_acquire(mRelay.mutex);
+    while (mShouldProcess) {
+      std::array<core::PingData, MAX_RELAYS> pings;
 
-      if (mRelay.relays_dirty) {
-        legacy::relay_manager_update(mRelay.relay_manager, mRelay.num_relays, mRelay.relay_ids, mRelay.relay_addresses);
-        mRelay.relays_dirty = false;
-      }
+      auto numPings = mRelayManager.getPingData(pings);
 
-      double current_time = relay::relay_platform_time();
-
-      struct ping_data_t
-      {
-        uint64_t sequence;
-        legacy::relay_address_t address;
-      };
-
-      int num_pings = 0;
-      ping_data_t pings[MAX_RELAYS];
-
-      for (int i = 0; i < mRelay.relay_manager->num_relays; ++i) {
-        if (mRelay.relay_manager->relay_last_ping_time[i] + RELAY_PING_TIME <= current_time) {
-          pings[num_pings].sequence = relay_ping_history_ping_sent(mRelay.relay_manager->relay_ping_history[i], current_time);
-          pings[num_pings].address = mRelay.relay_manager->relay_addresses[i];
-          mRelay.relay_manager->relay_last_ping_time[i] = current_time;
-          num_pings++;
-        }
-      }
-
-      relay_platform_mutex_release(mRelay.mutex);
-
-      for (int i = 0; i < num_pings; ++i) {
+      for (unsigned int i = 0; i < numPings; ++i) {
         uint8_t packet_data[9];
         packet_data[0] = RELAY_PING_PACKET;
         uint8_t* p = packet_data + 1;
-        encoding::write_uint64(&p, pings[i].sequence);
-        socket.send(pings[i].address, packet_data, 9);
+        encoding::write_uint64(&p, pings[i].Seq);
+        socket.send(pings[i].Addr, packet_data, 9);
       }
 
       relay::relay_platform_sleep(1.0 / 100.0);

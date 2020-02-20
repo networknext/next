@@ -3,15 +3,25 @@
 
 #include "encoding/read.hpp"
 
-#include "relay/relay_continue_token.hpp"
 #include "relay/relay_platform.hpp"
-#include "relay/relay_route_token.hpp"
+#include "relay/relay.hpp"
 
 namespace core
 {
-  PacketProcessor::PacketProcessor(
-   core::SessionMap& sessions, relay::relay_t& relay, volatile bool& handle, util::ThroughputLogger* logger)
-   : mSessionMap(sessions), mRelay(relay), mShouldProcess(handle), mLogger(logger)
+  PacketProcessor::PacketProcessor(const util::Clock& relayClock,
+   const crypto::Keychain& keychain,
+   const core::RouterInfo& routerInfo,
+   core::SessionMap& sessions,
+   core::RelayManager& relayManager,
+   volatile bool& handle,
+   util::ThroughputLogger* logger)
+   : mRelayClock(relayClock),
+     mKeychain(keychain),
+     mRouterInfo(routerInfo),
+     mSessionMap(sessions),
+     mRelayManager(relayManager),
+     mShouldProcess(handle),
+     mLogger(logger)
   {}
 
   void PacketProcessor::listen(os::Socket& socket)
@@ -24,7 +34,7 @@ namespace core
     std::array<uint8_t, RELAY_MAX_PACKET_BYTES> packetData;
 
     while (this->mShouldProcess) {
-      legacy::relay_address_t from;
+      net::Address from;
       const int packet_bytes = socket.recv(from, packetData.data(), sizeof(uint8_t) * packetData.size());
 
       if (packet_bytes == 0) {
@@ -65,7 +75,7 @@ namespace core
   }
 
   void PacketProcessor::handleRelayPingPacket(
-   os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, legacy::relay_address_t& from)
+   os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, net::Address& from)
   {
     if (mLogger != nullptr) {
       mLogger->addToRelayPingPacket(size);
@@ -79,25 +89,22 @@ namespace core
   }
 
   void PacketProcessor::handleRelayPongPacket(
-   std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, legacy::relay_address_t& from)
+   std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, net::Address& from)
   {
     if (mLogger != nullptr) {
       mLogger->addToRelayPongPacket(size);
     }
-
-    relay_platform_mutex_acquire(mRelay.mutex);
 
     // read the uint from the packet - this could be brought out of the mutex
     const uint8_t* p = packet.data() + 1;
     uint64_t sequence = encoding::read_uint64(&p);
 
     // process the pong time
-    relay_manager_process_pong(mRelay.relay_manager, &from, sequence);
-    relay_platform_mutex_release(mRelay.mutex);
+    mRelayManager.processPong(from, sequence);
   }
 
   void PacketProcessor::handleRouteRequestPacket(
-   os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, legacy::relay_address_t& from)
+   os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, net::Address& from)
   {
     LogDebug("got route request from ", from);
     if (mLogger != nullptr) {
@@ -113,13 +120,14 @@ namespace core
     uint8_t* p = &packet[1];
     relay::relay_route_token_t token;
 
-    if (relay::relay_read_encrypted_route_token(&p, &token, mRelay.router_public_key, mRelay.relay_private_key) != RELAY_OK) {
+    if (relay::relay_read_encrypted_route_token(
+         &p, &token, mKeychain.RouterPublicKey.data(), mKeychain.RelayPrivateKey.data()) != RELAY_OK) {
       Log("ignoring route request. could not read route token");
       return;
     }
 
     // don't do anything if the token is expired - probably should log something here
-    if (token.expire_timestamp < relay::relay_timestamp(&mRelay)) {
+    if (tokenIsExpired(token)) {
       Log("ignoring route request. token expired");
       return;
     }
@@ -168,7 +176,7 @@ namespace core
   }
 
   void PacketProcessor::handleRouteResponsePacket(
-   os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, legacy::relay_address_t& from)
+   os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, net::Address& from)
   {
     LogDebug("got route response from ", from);
     if (mLogger != nullptr) {
@@ -206,7 +214,7 @@ namespace core
     auto session = mSessionMap[hash];
     mSessionMap.Lock.unlock();
 
-    if (session->ExpireTimestamp < relay::relay_timestamp(&mRelay)) {
+    if (sessionIsExpired(session)) {
       return;
     }
 
@@ -238,12 +246,13 @@ namespace core
 
     uint8_t* p = &packet[1];
     relay::relay_continue_token_t token;
-    if (relay_read_encrypted_continue_token(&p, &token, mRelay.router_public_key, mRelay.relay_private_key) != RELAY_OK) {
+    if (relay_read_encrypted_continue_token(&p, &token, mKeychain.RouterPublicKey.data(), mKeychain.RelayPrivateKey.data()) !=
+        RELAY_OK) {
       Log("ignoring continue request. could not read continue token");
       return;
     }
 
-    if (token.expire_timestamp < relay::relay_timestamp(&mRelay)) {
+    if (tokenIsExpired(token)) {
       return;
     }
 
@@ -262,7 +271,7 @@ namespace core
     auto session = mSessionMap[hash];
     mSessionMap.Lock.unlock();
 
-    if (session->ExpireTimestamp < relay::relay_timestamp(&mRelay)) {
+    if (sessionIsExpired(session)) {
       return;
     }
 
@@ -312,7 +321,7 @@ namespace core
     auto session = mSessionMap[hash];
     mSessionMap.Lock.unlock();
 
-    if (session->ExpireTimestamp < relay::relay_timestamp(&mRelay)) {
+    if (sessionIsExpired(session)) {
       return;
     }
 
@@ -367,7 +376,7 @@ namespace core
     auto session = mSessionMap[hash];
     mSessionMap.Lock.unlock();
 
-    if (session->ExpireTimestamp < relay::relay_timestamp(&mRelay)) {
+    if (sessionIsExpired(session)) {
       return;
     }
 
@@ -421,7 +430,7 @@ namespace core
     auto session = mSessionMap[hash];
     mSessionMap.Lock.unlock();
 
-    if (session->ExpireTimestamp < relay::relay_timestamp(&mRelay)) {
+    if (sessionIsExpired(session)) {
       return;
     }
 
@@ -475,7 +484,7 @@ namespace core
     auto session = mSessionMap[hash];
     mSessionMap.Lock.unlock();
 
-    if (session->ExpireTimestamp < relay::relay_timestamp(&mRelay)) {
+    if (sessionIsExpired(session)) {
       return;
     }
 
@@ -528,7 +537,7 @@ namespace core
     auto session = mSessionMap[hash];
     mSessionMap.Lock.unlock();
 
-    if (session->ExpireTimestamp < relay::relay_timestamp(&mRelay)) {
+    if (sessionIsExpired(session)) {
       return;
     }
 
@@ -546,7 +555,7 @@ namespace core
   }
 
   void PacketProcessor::handleNearPingPacket(
-   os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, legacy::relay_address_t& from)
+   os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, net::Address& from)
   {
     if (mLogger != nullptr) {
       mLogger->addToNearPing(size);

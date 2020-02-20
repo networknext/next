@@ -70,6 +70,7 @@ namespace relay
     return inet_ntop(AF_INET6, (void*)address, address_string, socklen_t(address_string_size)) == NULL ? RELAY_ERROR : RELAY_OK;
   }
 
+  // time in seconds
   double relay_platform_time()
   {
     timespec ts;

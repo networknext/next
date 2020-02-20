@@ -14,38 +14,73 @@ namespace core
 
   void RelayManager::reset()
   {
-    mNumRelays = 0;
-    mRelayIDs.fill(0);
-    mLastRelayPingTime.fill(0);
-    mRelayAddresses.fill(net::Address());
-    mRelayPingHistory.fill(nullptr);
-    mPingHistoryArray.fill(PingHistory());
+    mLock.lock();
+    {
+      mNumRelays = 0;
+      mRelayIDs.fill(0);
+      mLastRelayPingTime.fill(0);
+      mRelayAddresses.fill(net::Address());
+      mRelayPingHistory.fill(nullptr);
+      mPingHistoryArray.fill(PingHistory());
+    }
+    mLock.unlock();
   }
 
   auto RelayManager::processPong(const net::Address& from, uint64_t seq) -> bool
   {
-    for (unsigned int i = 0; i < mNumRelays; i++) {
-      if (&from == &mRelayAddresses[i]) {
-        mRelayPingHistory[i]->pongReceived(seq, mClock.elapsed<util::Second>());
-        return true;
+    bool retval = false;
+    mLock.lock();
+    {
+      for (unsigned int i = 0; i < mNumRelays; i++) {
+        if (&from == &mRelayAddresses[i]) {
+          mRelayPingHistory[i]->pongReceived(seq, mClock.elapsed<util::Second>());
+          retval = true;
+          break;
+        }
       }
     }
-
-    return false;
+    mLock.unlock();
+    return retval;
   }
 
   void RelayManager::getStats(RelayStats& stats)
   {
     auto currentTime = mClock.elapsed<util::Second>();
-    stats.NumRelays = mNumRelays;
 
-    for (unsigned int i = 0; i < mNumRelays; i++) {
-      RouteStats rs(*mRelayPingHistory[i], currentTime - RELAY_STATS_WINDOW, currentTime, RELAY_PING_SAFETY);
-      stats.IDs[i] = mRelayIDs[i];
-      stats.RTT[i] = rs.RTT;
-      stats.Jitter[i] = rs.Jitter;
-      stats.PacketLoss[i] = rs.PacketLoss;
+    mLock.lock();
+    {
+      stats.NumRelays = mNumRelays;
+
+      for (unsigned int i = 0; i < mNumRelays; i++) {
+        RouteStats rs(*mRelayPingHistory[i], currentTime - RELAY_STATS_WINDOW, currentTime, RELAY_PING_SAFETY);
+        stats.IDs[i] = mRelayIDs[i];
+        stats.RTT[i] = rs.RTT;
+        stats.Jitter[i] = rs.Jitter;
+        stats.PacketLoss[i] = rs.PacketLoss;
+      }
     }
+    mLock.unlock();
+  }
+
+  unsigned int RelayManager::getPingData(std::array<PingData, MAX_RELAYS>& data)
+  {
+    double current_time = relay::relay_platform_time();  // TODO replace with clock
+    unsigned int numPings{0};
+
+    mLock.lock();
+    {
+      for (unsigned int i = 0; i < mNumRelays; ++i) {
+        if (mLastRelayPingTime[i] + RELAY_PING_TIME <= current_time) {
+          data[numPings].Seq = mRelayPingHistory[i]->pingSent(current_time);
+          data[numPings].Addr = mRelayAddresses[i];
+          mLastRelayPingTime[i] = current_time;
+          numPings++;
+        }
+      }
+    }
+    mLock.unlock();
+
+    return numPings;
   }
 }  // namespace core
 

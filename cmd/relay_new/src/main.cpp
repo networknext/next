@@ -17,6 +17,7 @@
 #include "relay/relay.hpp"
 #include "relay/relay_platform.hpp"
 
+#include "core/router_info.hpp"
 #include "core/packet_processor.hpp"
 #include "core/ping_processor.hpp"
 
@@ -30,11 +31,8 @@ namespace
     gAlive = false;
   }
 
-  inline void update_loop(relay::relay_t& relay,
-   CURL* curl,
-   const char* backend_hostname,
-   const uint8_t* relay_token,
-   const char* relay_address_string)
+  inline void update_loop(
+   CURL* curl, const char* backend_hostname, const uint8_t* relay_token, const char* relay_address_string, core::RelayManager& relayManager)
   {
     std::vector<uint8_t> update_response_memory;
     update_response_memory.resize(RESPONSE_MAX_BYTES);
@@ -42,7 +40,7 @@ namespace
       bool updated = false;
 
       for (int i = 0; i < 10; ++i) {
-        if (relay_update(curl, backend_hostname, relay_token, relay_address_string, update_response_memory.data(), &relay) ==
+        if (relay::relay_update(curl, backend_hostname, relay_token, relay_address_string, update_response_memory.data(), relayManager) ==
             RELAY_OK) {
           updated = true;
           break;
@@ -58,10 +56,58 @@ namespace
       relay::relay_platform_sleep(1.0);
     }
   }
+
+  inline bool getCryptoKeys(crypto::Keychain& keychain)
+  {
+    const char* relay_private_key_env = relay::relay_platform_getenv("RELAY_PRIVATE_KEY");
+    if (!relay_private_key_env) {
+      printf("\nerror: RELAY_PRIVATE_KEY not set\n\n");
+      return false;
+    }
+
+    if (encoding::base64_decode_data(relay_private_key_env, keychain.RelayPrivateKey.data(), RELAY_PRIVATE_KEY_BYTES) !=
+        RELAY_PRIVATE_KEY_BYTES) {
+      printf("\nerror: invalid relay private key\n\n");
+      return false;
+    }
+
+    printf("    relay private key is '%s'\n", relay_private_key_env);
+
+    const char* relay_public_key_env = relay::relay_platform_getenv("RELAY_PUBLIC_KEY");
+    if (!relay_public_key_env) {
+      printf("\nerror: RELAY_PUBLIC_KEY not set\n\n");
+      return false;
+    }
+
+    if (encoding::base64_decode_data(relay_public_key_env, keychain.RelayPublicKey.data(), RELAY_PUBLIC_KEY_BYTES) !=
+        RELAY_PUBLIC_KEY_BYTES) {
+      printf("\nerror: invalid relay public key\n\n");
+      return false;
+    }
+
+    printf("    relay public key is '%s'\n", relay_public_key_env);
+
+    const char* router_public_key_env = relay::relay_platform_getenv("RELAY_ROUTER_PUBLIC_KEY");
+    if (!router_public_key_env) {
+      printf("\nerror: RELAY_ROUTER_PUBLIC_KEY not set\n\n");
+      return false;
+    }
+
+    if (encoding::base64_decode_data(router_public_key_env, keychain.RouterPublicKey.data(), crypto_sign_PUBLICKEYBYTES) !=
+        crypto_sign_PUBLICKEYBYTES) {
+      printf("\nerror: invalid router public key\n\n");
+      return false;
+    }
+
+    printf("    router public key is '%s'\n", router_public_key_env);
+
+    return true;
+  }
 }  // namespace
 
 int main(int argc, const char** argv)
 {
+  std::cout << __FILE__ << __LINE__ << std::endl;
   if (argc == 2 && strcmp(argv[1], "test") == 0) {
     return testing::SpecTest::Run() ? 0 : 1;
   }
@@ -70,6 +116,8 @@ int main(int argc, const char** argv)
     benchmarking::Benchmark::Run();
     return 0;
   }
+
+  const util::Clock relayClock;
 
   printf("\nNetwork Next Relay\n");
 
@@ -107,48 +155,8 @@ int main(int argc, const char** argv)
   }
 
   crypto::Keychain keychain;
-  {
-    const char* relay_private_key_env = relay::relay_platform_getenv("RELAY_PRIVATE_KEY");
-    if (!relay_private_key_env) {
-      printf("\nerror: RELAY_PRIVATE_KEY not set\n\n");
-      return 1;
-    }
-
-    if (encoding::base64_decode_data(relay_private_key_env, keychain.RelayPrivateKey.data(), RELAY_PRIVATE_KEY_BYTES) !=
-        RELAY_PRIVATE_KEY_BYTES) {
-      printf("\nerror: invalid relay private key\n\n");
-      return 1;
-    }
-
-    printf("    relay private key is '%s'\n", relay_private_key_env);
-
-    const char* relay_public_key_env = relay::relay_platform_getenv("RELAY_PUBLIC_KEY");
-    if (!relay_public_key_env) {
-      printf("\nerror: RELAY_PUBLIC_KEY not set\n\n");
-      return 1;
-    }
-
-    if (encoding::base64_decode_data(relay_public_key_env, keychain.RelayPublicKey.data(), RELAY_PUBLIC_KEY_BYTES) !=
-        RELAY_PUBLIC_KEY_BYTES) {
-      printf("\nerror: invalid relay public key\n\n");
-      return 1;
-    }
-
-    printf("    relay public key is '%s'\n", relay_public_key_env);
-
-    const char* router_public_key_env = relay::relay_platform_getenv("RELAY_ROUTER_PUBLIC_KEY");
-    if (!router_public_key_env) {
-      printf("\nerror: RELAY_ROUTER_PUBLIC_KEY not set\n\n");
-      return 1;
-    }
-
-    if (encoding::base64_decode_data(router_public_key_env, keychain.RouterPublicKey.data(), crypto_sign_PUBLICKEYBYTES) !=
-        crypto_sign_PUBLICKEYBYTES) {
-      printf("\nerror: invalid router public key\n\n");
-      return 1;
-    }
-
-    printf("    router public key is '%s'\n", router_public_key_env);
+  if (!getCryptoKeys(keychain)) {
+    return 1;
   }
 
   const char* backend_hostname = relay::relay_platform_getenv("RELAY_BACKEND_HOSTNAME");
@@ -212,6 +220,9 @@ int main(int argc, const char** argv)
 
   Log("Initializing relay\n");
 
+  core::RouterInfo routerInfo;
+  core::RelayManager relayManager(relayClock);
+
   std::vector<os::SocketPtr> sockets;
 
   auto pingSocket = std::make_shared<os::Socket>(os::SocketType::Blocking);
@@ -223,8 +234,8 @@ int main(int argc, const char** argv)
 
   sockets.push_back(pingSocket);
 
-  std::unique_ptr<std::thread> pingThread = std::make_unique<std::thread>([pingSocket, &relay] {
-    core::PingProcessor processor(relay, gAlive);
+  std::unique_ptr<std::thread> pingThread = std::make_unique<std::thread>([pingSocket, &relayManager] {
+    core::PingProcessor processor(relayManager, gAlive);
     processor.listen(*pingSocket);
   });
 
@@ -241,15 +252,14 @@ int main(int argc, const char** argv)
 
     sockets.push_back(packetSocket);
 
-    packetThreads[i] = std::make_unique<std::thread>([packetSocket, &sessions, &relay, &logger] {
-      core::PacketProcessor processor(sessions, relay, gAlive, logger);
-      processor.listen(*packetSocket);
-    });
+    packetThreads[i] =
+     std::make_unique<std::thread>([packetSocket, &relayClock, &keychain, &routerInfo, &sessions, &relayManager, &logger] {
+       core::PacketProcessor processor(relayClock, keychain, routerInfo, sessions, relayManager, gAlive, logger);
+       processor.listen(*packetSocket);
+     });
   }
 
   bool relay_initialized = false;
-
-  uint64_t router_timestamp = 0;
 
   for (int i = 0; i < 60; ++i) {
     if (relay::relay_init(curl,
@@ -258,7 +268,7 @@ int main(int argc, const char** argv)
          relay_address_string,
          keychain.RouterPublicKey.data(),
          keychain.RelayPrivateKey.data(),
-         &router_timestamp) == RELAY_OK) {
+         &routerInfo.InitalizeTimeInSeconds) == RELAY_OK) {
       printf("\n");
       relay_initialized = true;
       break;
@@ -277,26 +287,11 @@ int main(int argc, const char** argv)
     return 1;
   }
 
-  relay::relay_t relay(
-   router_timestamp, keychain.RelayPublicKey.data(), keychain.RelayPrivateKey.data(), keychain.RouterPublicKey.data());
-
-  relay.mutex = relay::relay_platform_mutex_create();
-  if (!relay.mutex) {
-    Log("error: could not create ping thread\n\n");
-    gAlive = false;
-  }
-
-  relay.relay_manager = legacy::relay_manager_create();
-  if (!relay.relay_manager) {
-    Log("error: could not create relay manager\n\n");
-    gAlive = false;
-  }
-
   Log("Relay initialized\n\n");
 
   signal(SIGINT, interrupt_handler);
 
-  ::update_loop(relay, curl, backend_hostname, relay_token, relay_address_string);
+  ::update_loop(curl, backend_hostname, relay_token, relay_address_string, relayManager);
 
   Log("Cleaning up\n");
 
@@ -319,10 +314,6 @@ int main(int argc, const char** argv)
     output->close();
     delete output;
   }
-
-  relay_manager_destroy(relay.relay_manager);
-
-  relay_platform_mutex_destroy(relay.mutex);
 
   curl_easy_cleanup(curl);
 

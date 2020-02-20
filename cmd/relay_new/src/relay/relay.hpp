@@ -10,41 +10,9 @@
 
 namespace relay
 {
-  struct relay_session_t
-  {
-    uint64_t expire_timestamp;
-    uint64_t session_id;
-    uint8_t session_version;
-    uint64_t client_to_server_sequence;
-    uint64_t server_to_client_sequence;
-    int kbps_up;
-    int kbps_down;
-    legacy::relay_address_t prev_address;
-    legacy::relay_address_t next_address;
-    uint8_t private_key[crypto_box_SECRETKEYBYTES];
-    legacy::relay_replay_protection_t replay_protection_server_to_client;
-    legacy::relay_replay_protection_t replay_protection_client_to_server;
-  };
-
-  struct relay_t
-  {
-    relay_t(uint64_t routerTimestamp, uint8_t* relayPublicKey, uint8_t* relayPrivateKey, uint8_t* routerPublicKey);
-
-    legacy::relay_manager_t* relay_manager;
-    relay_platform_mutex_t* mutex;
-    double initialize_time;
-    uint64_t initialize_router_timestamp;
-    bool relays_dirty;
-    int num_relays;
-    uint64_t relay_ids[MAX_RELAYS];
-    legacy::relay_address_t relay_addresses[MAX_RELAYS];
-  };
-
   int relay_initialize();
 
-  void relay_term(
-
-  );
+  void relay_term();
 
   int relay_init(CURL* curl,
    const char* hostname,
@@ -59,7 +27,7 @@ namespace relay
    const uint8_t* relay_token,
    const char* relay_address,
    uint8_t* update_response_memory,
-   relay_t* relay);
+   core::RelayManager& manager);
 
   int relay_write_header(int direction,
    uint8_t type,
@@ -79,8 +47,6 @@ namespace relay
    int buffer_length);
 
   int relay_verify_header(int direction, const uint8_t* private_key, uint8_t* buffer, int buffer_length);
-
-  uint64_t relay_timestamp(relay_t* relay);
 
   uint64_t relay_clean_sequence(uint64_t sequence);
 }  // namespace relay

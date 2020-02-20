@@ -3,20 +3,20 @@
 
 #include "os/platform.hpp"
 
-#include "relay/relay.hpp"
+#include "core/relay_manager.hpp"
 
 namespace core
 {
   class PingProcessor
   {
    public:
-    PingProcessor(relay::relay_t& relay, volatile bool& handle);
+    PingProcessor(core::RelayManager& relayManger, volatile bool& shouldProcess);
     ~PingProcessor() = default;
 
     void listen(os::Socket& socket);
 
    private:
-    relay::relay_t& mRelay;
+    core::RelayManager& mRelayManager;
     volatile bool& mShouldProcess;
   };
 }  // namespace core

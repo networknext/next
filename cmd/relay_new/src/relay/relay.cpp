@@ -14,12 +14,6 @@
 int relay_debug = 0;
 namespace relay
 {
-  relay_t::relay_t(uint64_t routerTimestamp, uint8_t* relayPublicKey, uint8_t* relayPrivateKey, uint8_t* routerPublicKey)
-  {
-    initialize_time = relay::relay_platform_time();
-    initialize_router_timestamp = routerTimestamp;
-  }
-
   int relay_initialize()
   {
     if (relay::relay_platform_init() != RELAY_OK) {
@@ -159,7 +153,7 @@ namespace relay
    const uint8_t* relay_token,
    const char* relay_address,
    uint8_t* update_response_memory,
-   relay_t* relay)
+   core::RelayManager& manager)
   {
     // build update data
 
@@ -172,17 +166,15 @@ namespace relay
     encoding::write_string(&p, relay_address, 256);
     encoding::write_bytes(&p, relay_token, RELAY_TOKEN_BYTES);
 
-    relay_platform_mutex_acquire(relay->mutex);
-    legacy::relay_stats_t stats;
-    relay_manager_get_stats(relay->relay_manager, &stats);
-    relay_platform_mutex_release(relay->mutex);
+    core::RelayStats stats;
+    manager.getStats(stats);
 
-    encoding::write_uint32(&p, stats.num_relays);
-    for (int i = 0; i < stats.num_relays; ++i) {
-      encoding::write_uint64(&p, stats.relay_ids[i]);
-      encoding::write_float32(&p, stats.relay_rtt[i]);
-      encoding::write_float32(&p, stats.relay_jitter[i]);
-      encoding::write_float32(&p, stats.relay_packet_loss[i]);
+    encoding::write_uint32(&p, stats.NumRelays);
+    for (unsigned int i = 0; i < stats.NumRelays; ++i) {
+      encoding::write_uint64(&p, stats.IDs[i]);
+      encoding::write_float32(&p, stats.RTT[i]);
+      encoding::write_float32(&p, stats.Jitter[i]);
+      encoding::write_float32(&p, stats.PacketLoss[i]);
     }
 
     int update_data_length = (int)(p - update_data);
@@ -255,7 +247,7 @@ namespace relay
     struct relay_ping_data_t
     {
       uint64_t id;
-      legacy::relay_address_t address;
+      net::Address address;
     };
 
     relay_ping_data_t relay_ping_data[MAX_RELAYS];
@@ -264,7 +256,7 @@ namespace relay
       char address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
       relay_ping_data[i].id = encoding::read_uint64(&q);
       encoding::read_string(&q, address_string, RELAY_MAX_ADDRESS_STRING_LENGTH);
-      if (legacy::relay_address_parse(&relay_ping_data[i].address, address_string) != RELAY_OK) {
+      if (!relay_ping_data[i].address.parse(address_string)) {
         error = true;
         break;
       }
@@ -275,14 +267,14 @@ namespace relay
       return RELAY_ERROR;
     }
 
-    relay_platform_mutex_acquire(relay->mutex);
-    relay->num_relays = num_relays;
-    for (int i = 0; i < int(num_relays); ++i) {
-      relay->relay_ids[i] = relay_ping_data[i].id;
-      relay->relay_addresses[i] = relay_ping_data[i].address;
+    // TODO make more effecient after it's working
+    std::array<uint64_t, MAX_RELAYS> relayIDs;
+    std::array<net::Address, MAX_RELAYS> relayAddresses;
+    for (unsigned int i = 0; i < num_relays; ++i) {
+      relayIDs[i] = relay_ping_data[i].id;
+      relayAddresses[i] = relay_ping_data[i].address;
     }
-    relay->relays_dirty = true;
-    relay_platform_mutex_release(relay->mutex);
+    manager.update(num_relays, relayIDs, relayAddresses);
 
     return RELAY_OK;
   }
@@ -476,14 +468,6 @@ namespace relay
     }
 
     return RELAY_OK;
-  }
-
-  uint64_t relay_timestamp(relay_t* relay)
-  {
-    assert(relay);
-    double current_time = relay_platform_time();
-    uint64_t seconds_since_initialize = uint64_t(current_time - relay->initialize_time);
-    return relay->initialize_router_timestamp + seconds_since_initialize;
   }
 
   uint64_t relay_clean_sequence(uint64_t sequence)

@@ -1,5 +1,10 @@
 #pragma once
 
+/*
+  Uses of this class:
+  - As the relay system clock, defined by the variable in main "relayClock"
+ */
+
 namespace util
 {
 #if defined _WIN32
@@ -17,7 +22,8 @@ namespace util
   class Clock
   {
    public:
-    Clock() = default;
+    Clock();
+    ~Clock() = default;
 
     /* Timestamps the clock */
     void reset();
@@ -26,17 +32,23 @@ namespace util
     template <typename UnitOfTime>
     auto elapsed() const -> double;
 
-    /* Check if a time duration has passed */
-    template <typename UnitOfTime>
-    inline auto elapsed(double value) const -> bool;
-
    private:
-    Instant mNow;
+    Instant mTimestamp;
     size_t mDelta;
 
     template <typename T>
     inline auto diff() const -> double;
   };
+
+  inline Clock::Clock()
+  {
+    reset();
+  }
+
+  inline void Clock::reset()
+  {
+    mTimestamp = InternalClock::now();
+  }
 
   template <>
   inline auto Clock::elapsed<Nanosecond>() const -> double
@@ -62,20 +74,9 @@ namespace util
     return diff<std::ratio<1>>();
   }
 
-  inline void Clock::reset()
-  {
-    mNow = InternalClock::now();
-  }
-
-  template <typename UnitOfTime>
-  inline auto Clock::elapsed(double value) const -> bool
-  {
-    return std::chrono::duration_cast<UnitOfTime>(InternalClock::now() - mNow).count() >= value;
-  }
-
   template <typename T>
   inline auto Clock::diff() const -> double
   {
-    return std::chrono::duration<double, T>(InternalClock::now() - mNow).count();
+    return std::chrono::duration<double, T>(InternalClock::now() - mTimestamp).count();
   }
 }  // namespace util

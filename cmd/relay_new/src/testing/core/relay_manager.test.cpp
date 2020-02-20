@@ -5,13 +5,18 @@
 
 Test(RelayManager)
 {
+  std::cout << __FILE__ << __LINE__ << std::endl;
   const int MaxRelays = MAX_RELAYS;
   const int NumRelays = 32;
 
+  std::cout << __FILE__ << __LINE__ << std::endl;
   std::array<uint64_t, MAX_RELAYS> relayIDs;
   std::array<net::Address, MAX_RELAYS> addrs;
-  util::Clock clock;
-  clock.reset();
+  std::cout << __FILE__ << __LINE__ << std::endl;
+  const util::Clock clock;
+  std::cout << __FILE__ << __LINE__ << std::endl;
+
+  std::cout << __FILE__ << __LINE__ << std::endl;
 
   for (int i = 0; i < MaxRelays; ++i) {
     relayIDs[i] = i;
@@ -30,6 +35,7 @@ Test(RelayManager)
     check(stats.NumRelays == 0);
   }
 
+  std::cout << __FILE__ << __LINE__ << std::endl;
   // add max relays
   manager.update(NumRelays, relayIDs, addrs);
   {
@@ -50,6 +56,7 @@ Test(RelayManager)
     check(stats.NumRelays == 0);
   }
 
+  std::cout << __FILE__ << __LINE__ << std::endl;
   // add same relay set repeatedly
 
   for (int j = 0; j < 2; ++j) {
@@ -66,6 +73,7 @@ Test(RelayManager)
 
   // now add a few new relays, while some relays remain the same
 
+  std::cout << __FILE__ << __LINE__ << std::endl;
   std::array<uint64_t, MAX_RELAYS> diffIDs;
   std::copy(relayIDs.begin() + 4, relayIDs.end(), diffIDs.begin());
   std::array<net::Address, MAX_RELAYS> diffAddrs;
