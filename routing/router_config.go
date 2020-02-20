@@ -1,7 +1,7 @@
 package routing
 
-// Various settings a buyer can tweak to adjust the behaviour of Network Next to their liking
-type BuyerConfig struct {
+// Various settings a buyer can tweak to adjust the behaviour of Network Next route selection to their liking
+type RouterConfig struct {
 	// The maximum upstream bandwidth a customer is willing to pay for per slice
 	EnvelopeKbpsUp int64
 
@@ -65,7 +65,7 @@ type BuyerConfig struct {
 	AbTest bool
 }
 
-const DefaultBuyerConfig = BuyerConfig{
+const DefaultRouterConfig = RouterConfig{
 	MaxCentsPerGB:     25.0,
 	EnvelopeKbpsUp:    256,
 	EnvelopeKbpsDown:  256,

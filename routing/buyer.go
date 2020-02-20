@@ -6,5 +6,5 @@ type Buyer struct {
 	Active    bool
 	Live      bool
 	PublicKey []byte
-	Config    BuyerConfig
+	Config    RouterConfig
 }
