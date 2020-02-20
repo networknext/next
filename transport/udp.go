@@ -196,7 +196,7 @@ type RouteProvider interface {
 }
 
 // SessionUpdateHandlerFunc ...
-func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, billingHandler billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
 	logger = log.With(logger, "handler", "session")
 
 	return func(w io.Writer, incoming *UDPPacket) {
@@ -204,13 +204,20 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		var packet SessionUpdatePacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
 			level.Error(logger).Log("msg", "could not read packet", "err", err)
-			return
+			return // TODO: direct here?
 		}
 
 		locallogger := log.With(logger, "src_addr", incoming.SourceAddr.String(), "server_addr", packet.ServerAddress.String(), "client_addr", packet.ClientAddress.String(), "session_id", packet.SessionId)
 
 		var serverCacheEntry ServerCacheEntry
 		var sessionCacheEntry SessionCacheEntry
+
+		// Start building session response packet, defaulting to a direct route
+		response := SessionResponsePacket{
+			Sequence:  packet.Sequence,
+			SessionId: packet.SessionId,
+			RouteType: int32(routing.RouteTypeDirect),
+		}
 
 		// Build a redis transaction to make a single network call
 		tx := redisClient.TxPipeline()
@@ -219,6 +226,8 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			sessionCacheCmd := tx.Get(fmt.Sprintf("SESSION-%d", packet.SessionId))
 			tx.Exec()
 
+			// Note that if we fail to retrieve the server data, we don't bother responding since server will ignore response without ServerRoutePublicKey set
+			// See next_server_internal_process_packet in next.cpp for full requirements of response packet
 			serverCacheData, err := serverCacheCmd.Bytes()
 			if err != nil {
 				level.Error(locallogger).Log("msg", "failed to get server bytes", "err", err)
@@ -229,15 +238,20 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 				return
 			}
 
+			// Set public key on response as soon as we get it
+			response.ServerRoutePublicKey = serverCacheEntry.Server.PublicKey
+
 			if sessionCacheCmd.Err() != redis.Nil {
 				sessionCacheData, err := sessionCacheCmd.Bytes()
 				if err != nil {
 					level.Error(locallogger).Log("msg", "failed to get session bytes", "err", err)
+					HandleError(w, response, serverPrivateKey, err)
 					return
 				}
 
 				if err := sessionCacheEntry.UnmarshalBinary(sessionCacheData); err != nil {
 					level.Error(locallogger).Log("msg", "failed to unmarshal session bytes", "err", err)
+					HandleError(w, response, serverPrivateKey, err)
 					return
 				}
 			}
@@ -247,32 +261,40 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 
 		buyer, ok := storer.Buyer(packet.CustomerId)
 		if !ok {
-			level.Error(locallogger).Log("msg", "failed to get buyer", "customer_id", packet.CustomerId)
+			err := fmt.Errorf("failed to get buyer with customer ID %v", packet.CustomerId)
+			level.Error(locallogger).Log("err", err)
+			HandleError(w, response, serverPrivateKey, err)
 			return
 		}
 
 		locallogger = log.With(locallogger, "customer_id", packet.CustomerId)
 
 		if !crypto.Verify(buyer.PublicKey, packet.GetSignData(), packet.Signature) {
-			level.Error(locallogger).Log("msg", "signature verification failed")
+			err := errors.New("failed to verify packet signature with buyer public key")
+			level.Error(locallogger).Log("err", err)
+			HandleError(w, response, serverPrivateKey, err)
 			return
 		}
 
 		if packet.Sequence < sessionCacheEntry.Sequence {
-			level.Warn(locallogger).Log("msg", "packet sequency too old", "current_sequence", packet.Sequence, "previous_sequence", sessionCacheEntry.Sequence)
+			err := fmt.Errorf("packet sequence too old. current_sequence %v, previous sequence %v", packet.Sequence, sessionCacheEntry.Sequence)
+			level.Error(locallogger).Log("err", err)
+			HandleError(w, response, serverPrivateKey, err)
 			return
 		}
 
 		location, err := iploc.LocateIP(packet.ClientAddress.IP)
 		if err != nil {
-			level.Error(locallogger).Log("msg", "failed to locate client")
+			level.Error(locallogger).Log("msg", "failed to locate client", "err", err)
+			HandleError(w, response, serverPrivateKey, err)
 			return
 		}
 		level.Debug(locallogger).Log("lat", location.Latitude, "long", location.Longitude)
 
 		clientrelays, err := geoClient.RelaysWithin(location.Latitude, location.Longitude, 500, "mi")
-		if err != nil {
-			level.Error(locallogger).Log("msg", "failed to locate relays near client")
+		if len(clientrelays) == 0 || err != nil {
+			level.Error(locallogger).Log("msg", "failed to locate relays near client", "err", err)
+			HandleError(w, response, serverPrivateKey, err)
 			return
 		}
 
@@ -289,7 +311,9 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		// Get a set of possible routes from the RouteProvider an on error ensure it falls back to direct
 		routes := rp.Routes(dsrelays, clientrelays)
 		if routes == nil || len(routes) <= 0 {
-			level.Error(locallogger).Log("msg", "failed to find routes")
+			err := fmt.Errorf("failed to find routes")
+			level.Error(locallogger).Log("err", err)
+			HandleError(w, response, serverPrivateKey, err)
 			return
 		}
 		chosenRoute := routes[0] // Just take the first one it find regardless of optimization
@@ -346,22 +370,17 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 
 		tokens, numtokens, err := token.Encrypt(routerPrivateKey)
 		if err != nil {
-			level.Error(locallogger).Log("msg", "failed to encrypt route token")
+			level.Error(locallogger).Log("msg", "failed to encrypt route token", "err", err)
+			HandleError(w, response, serverPrivateKey, err)
 			return
 		}
 
 		level.Debug(locallogger).Log("token_type", token.Type(), "current_route_hash", routeHash, "previous_route_hash", sessionCacheEntry.RouteHash)
 
-		// Create the Session Response for the server
-		response := SessionResponsePacket{
-			Sequence:             packet.Sequence,
-			SessionId:            packet.SessionId,
-			RouteType:            int32(token.Type()),
-			NumTokens:            int32(numtokens), // Num of relays + client + server
-			Tokens:               tokens,
-			Multipath:            false, // Haven't figured out what this is for
-			ServerRoutePublicKey: serverCacheEntry.Server.PublicKey,
-		}
+		// Add token info to the Session Response
+		response.RouteType = int32(token.Type())
+		response.NumTokens = int32(numtokens) // Num of relays + client + server
+		response.Tokens = tokens
 
 		// Fill in the near relays
 		response.NumNearRelays = int32(len(clientrelays))
@@ -372,61 +391,80 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			response.NearRelayAddresses[idx] = relay.Addr
 		}
 
-		// Sign the response
-		response.Signature = crypto.Sign(serverPrivateKey, response.GetSignData())
-
-		// Send the Session Response back to the server
-		res, err := response.MarshalBinary()
+		err = WriteSessionResponse(w, response, serverPrivateKey)
 		if err != nil {
-			level.Error(locallogger).Log("msg", "failed to marshal session response", "err", err)
-			return
-		}
-
-		// Save some of the packet information to be used in SessionUpdateHandlerFunc
-		sessionCacheEntry = SessionCacheEntry{
-			SessionID: packet.SessionId,
-			Sequence:  packet.Sequence,
-			RouteHash: routeHash,
-			Version:   sessionCacheEntry.Version, //This was already incremented above for the route tokens
-		}
-		result := redisClient.Set(fmt.Sprintf("SESSION-%d", packet.SessionId), sessionCacheEntry, 5*time.Minute)
-		if result.Err() != nil {
-			level.Error(locallogger).Log("msg", "failed to update session", "err", result.Err())
-			return
-		}
-
-		if _, err := w.Write(res); err != nil {
 			level.Error(locallogger).Log("msg", "failed to write session response", "err", err)
-		}
+		} else {
+			level.Debug(locallogger).Log("msg", "caching session data")
 
-		level.Debug(locallogger).Log("msg", "updated session")
+			// Save some of the packet information to be used in SessionUpdateHandlerFunc
+			sessionCacheEntry = SessionCacheEntry{
+				SessionID: packet.SessionId,
+				Sequence:  packet.Sequence,
+				RouteHash: routeHash,
+				Version:   sessionCacheEntry.Version, //This was already incremented above for the route tokens
+			}
+			result := redisClient.Set(fmt.Sprintf("SESSION-%d", packet.SessionId), sessionCacheEntry, 5*time.Minute)
+			if result.Err() != nil {
+				level.Error(locallogger).Log("msg", "failed to update session", "err", result.Err())
+				return
+			}
 
-		billingEntry := &billing.Entry{
-			Request:              nil,
-			Route:                nil,
-			RouteDecision:        0,
-			Duration:             10, // Make one entry non-zero so that the entry isn't marshalled to nil
-			UsageBytesUp:         0,
-			UsageBytesDown:       0,
-			Timestamp:            0,
-			TimestampStart:       0,
-			PredictedRtt:         0,
-			PredictedJitter:      0,
-			PredictedPacketLoss:  0,
-			RouteChanged:         false,
-			NetworkNextAvailable: false,
-			Initial:              false,
-			EnvelopeBytesUp:      0,
-			EnvelopeBytesDown:    0,
-			ConsideredRoutes:     nil,
-			AcceptableRoutes:     nil,
-			SameRoute:            false,
-			OnNetworkNext:        false,
-			SliceFlags:           0,
-		}
+			// Create a billing entry and send it to the billing service
+			// This billing entry will be populated with actual data once the backend supports all billable features
+			billingEntry := &billing.Entry{
+				Request:              nil,
+				Route:                nil,
+				RouteDecision:        0,
+				Duration:             10, // Make one entry non-zero so that the entry isn't marshalled to nil
+				UsageBytesUp:         0,
+				UsageBytesDown:       0,
+				Timestamp:            0,
+				TimestampStart:       0,
+				PredictedRtt:         0,
+				PredictedJitter:      0,
+				PredictedPacketLoss:  0,
+				RouteChanged:         false,
+				NetworkNextAvailable: false,
+				Initial:              false,
+				EnvelopeBytesUp:      0,
+				EnvelopeBytesDown:    0,
+				ConsideredRoutes:     nil,
+				AcceptableRoutes:     nil,
+				SameRoute:            false,
+				OnNetworkNext:        false,
+				SliceFlags:           0,
+			}
 
-		if err := billingHandler.Bill(context.Background(), packet.SessionId, billingEntry); err != nil {
-			level.Error(locallogger).Log("msg", "billing failed", "err", err)
+			if err := biller.Bill(context.Background(), packet.SessionId, billingEntry); err != nil {
+				level.Error(locallogger).Log("msg", "billing failed", "err", err)
+			}
 		}
 	}
+}
+
+func WriteSessionResponse(w io.Writer, packet SessionResponsePacket, privateKey []byte) error {
+	// Sign the response
+	packet.Signature = crypto.Sign(privateKey, packet.GetSignData())
+
+	// Marshal the packet
+	responseData, err := packet.MarshalBinary()
+	if err != nil {
+		return err
+	}
+
+	// Send the Session Response back to the server
+	if _, err := w.Write(responseData); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func HandleError(w io.Writer, packet SessionResponsePacket, privateKey []byte, err error) {
+	// Force packet to direct route
+	packet.RouteType = routing.RouteTypeDirect
+	WriteSessionResponse(w, packet, privateKey)
+
+	// Eventually we'll also pipe the error passed through to here up to stackdriver and do any cleanup required
 }

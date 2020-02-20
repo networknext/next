@@ -131,6 +131,6 @@ func TestPubSubBill(t *testing.T) {
 }
 
 func TestNoOpBill(t *testing.T) {
-	biller := billing.NoOp{}
+	biller := billing.NoOpBiller{}
 	biller.Bill(context.Background(), 0, nil)
 }

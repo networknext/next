@@ -126,7 +126,7 @@ func main() {
 
 	// Create a no-op biller
 	var biller billing.Biller
-	biller = &billing.NoOp{}
+	biller = &billing.NoOpBiller{}
 
 	// If GCP_CREDENTIALS are set then:
 	// override the local in memory and connect to Firestore,
