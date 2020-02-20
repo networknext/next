@@ -31,8 +31,11 @@ namespace
     gAlive = false;
   }
 
-  inline void update_loop(
-   CURL* curl, const char* backend_hostname, const uint8_t* relay_token, const char* relay_address_string, core::RelayManager& relayManager)
+  inline void update_loop(CURL* curl,
+   const char* backend_hostname,
+   const uint8_t* relay_token,
+   const char* relay_address_string,
+   core::RelayManager& relayManager)
   {
     std::vector<uint8_t> update_response_memory;
     update_response_memory.resize(RESPONSE_MAX_BYTES);
@@ -40,7 +43,8 @@ namespace
       bool updated = false;
 
       for (int i = 0; i < 10; ++i) {
-        if (relay::relay_update(curl, backend_hostname, relay_token, relay_address_string, update_response_memory.data(), relayManager) ==
+        if (relay::relay_update(
+             curl, backend_hostname, relay_token, relay_address_string, update_response_memory.data(), relayManager) ==
             RELAY_OK) {
           updated = true;
           break;
@@ -103,18 +107,39 @@ namespace
 
     return true;
   }
+
+  inline bool getNumProcessors(unsigned int& numProcs)
+  {
+    const char* nproc = relay::relay_platform_getenv("RELAY_PROCESSOR_COUNT");
+    if (nproc == nullptr) {
+      numProcs = std::thread::hardware_concurrency();
+      if (numProcs > 0) {
+        Log("RELAY_PROCESSOR_COUNT not set, autodetected number of processors available: ", numProcs, "\n\n");
+      } else {
+        Log("error: RELAY_PROCESSOR_COUNT not set\n\n");
+        return false;
+      }
+    } else {
+      numProcs = std::atoi(nproc);
+    }
+
+    return true;
+  }
 }  // namespace
 
 int main(int argc, const char** argv)
 {
-  if (argc == 2 && strcmp(argv[1], "test") == 0) {
-    return testing::SpecTest::Run() ? 0 : 1;
-  }
+  (void)argc;
+  (void)argv;
 
-  if (argc == 2 && strcmp(argv[1], "bench") == 0) {
-    benchmarking::Benchmark::Run();
-    return 0;
-  }
+#ifdef TEST_BUILD
+  return testing::SpecTest::Run() ? 0 : 1;
+#endif
+
+#ifdef BENCH_BUILD
+  benchmarking::Benchmark::Run();
+  return 0;
+#endif
 
   const util::Clock relayClock;
 
@@ -167,18 +192,7 @@ int main(int argc, const char** argv)
   printf("    backend hostname is '%s'\n", backend_hostname);
 
   unsigned int numProcessors = 0;
-  const char* nproc = relay::relay_platform_getenv("RELAY_PROCESSOR_COUNT");
-  if (nproc == nullptr) {
-    numProcessors = std::thread::hardware_concurrency();
-    if (numProcessors > 0) {
-      Log("RELAY_PROCESSOR_COUNT not set, autodetected number of processors available: ", numProcessors, "\n\n");
-    } else {
-      Log("error: RELAY_PROCESSOR_COUNT not set\n\n");
-      return 1;
-    }
-  } else {
-    numProcessors = std::atoi(nproc);
-  }
+  getNumProcessors(numProcessors);
 
   std::ofstream* output = nullptr;
   util::ThroughputLogger* logger = nullptr;
@@ -290,7 +304,7 @@ int main(int argc, const char** argv)
 
   signal(SIGINT, interrupt_handler);
 
-  ::update_loop(curl, backend_hostname, relay_token, relay_address_string, relayManager);
+  update_loop(curl, backend_hostname, relay_token, relay_address_string, relayManager);
 
   Log("Cleaning up\n");
 

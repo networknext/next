@@ -69,6 +69,8 @@ namespace core
     encapsulated info currently in the 5 arrays. So getStats() can be iterated just as fast while the relay data can be updated
     in just O(2n) time. Doing so would require the relay array to have it's internal's shifted a lot during the function, which
     may be more expensive than the time saved by reducing all the loops again.
+
+    -- after refactoring, this isn't that concering, previously this was called in the ping thread, but now it is within the update function (main thread) which only executes once a second so it's far less critical
   */
 
   // it is used in one place throughout the codebase, so always inline it, no sense in doing a function call

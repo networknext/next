@@ -159,7 +159,7 @@ namespace relay
 
     uint32_t update_version = 0;
 
-    uint8_t update_data[10 * 1024];
+    uint8_t update_data[10 * 1024]; // TODO pass this in like response memory is
 
     uint8_t* p = update_data;
     encoding::write_uint32(&p, update_version);
@@ -267,7 +267,6 @@ namespace relay
       return RELAY_ERROR;
     }
 
-    // TODO make more effecient after it's working
     std::array<uint64_t, MAX_RELAYS> relayIDs;
     std::array<net::Address, MAX_RELAYS> relayAddresses;
     for (unsigned int i = 0; i < num_relays; ++i) {

@@ -21,7 +21,7 @@ all:  $(BIN)/$(EXE)
 
 .PHONY: run
 run: $(BIN)/$(EXE)
-	@$< bench
+	@$<
 
 .PHONY: clean
 clean: 
