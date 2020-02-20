@@ -9,33 +9,11 @@ import (
 	"github.com/networknext/backend/metrics"
 
 	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
 	"github.com/go-kit/kit/metrics/generic"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestStackDriverMetrics(t *testing.T) {
-	// Configure logging
-	logger := log.NewLogfmtLogger(os.Stdout)
-	{
-		switch os.Getenv("BACKEND_LOG_LEVEL") {
-		case "none":
-			logger = level.NewFilter(logger, level.AllowNone())
-		case level.ErrorValue().String():
-			logger = level.NewFilter(logger, level.AllowError())
-		case level.WarnValue().String():
-			logger = level.NewFilter(logger, level.AllowWarn())
-		case level.InfoValue().String():
-			logger = level.NewFilter(logger, level.AllowInfo())
-		case level.DebugValue().String():
-			logger = level.NewFilter(logger, level.AllowDebug())
-		default:
-			logger = level.NewFilter(logger, level.AllowWarn())
-		}
-
-		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
-	}
-
 	ctx, cancelMetricSubmitRoutine := context.WithCancel(context.Background())
 
 	// Initialize the metric handler
@@ -109,7 +87,7 @@ func TestStackDriverMetrics(t *testing.T) {
 	assert.Equal(t, 4.0, gauge.Value())
 
 	// Start the submit routine
-	go handler.MetricSubmitRoutine(ctx, logger, time.Second, 200)
+	go handler.MetricSubmitRoutine(ctx, log.NewNopLogger(), time.Second, 200)
 
 	// Sleep for 2 seconds to allow the metric to be pushed to StackDriver
 	time.Sleep(2 * time.Second)
