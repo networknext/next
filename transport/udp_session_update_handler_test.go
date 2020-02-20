@@ -546,6 +546,13 @@ func TestContinueRouteResponse(t *testing.T) {
 		Namespace:   "GEO_TEST",
 	}
 
+	nearbyRelay := routing.Relay{
+		ID:        1,
+		Latitude:  0,
+		Longitude: 0,
+	}
+	geoClient.Add(nearbyRelay)
+
 	rp := mockRouteProvider{
 		routes: []routing.Route{
 			{
