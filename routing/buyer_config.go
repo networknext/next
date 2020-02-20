@@ -1,3 +1,5 @@
+package routing
+
 // Various settings a buyer can tweak to adjust the behaviour of Network Next to their liking
 type BuyerConfig struct {
 	// The maximum upstream bandwidth a customer is willing to pay for per slice
@@ -17,14 +19,14 @@ type BuyerConfig struct {
 	MaxCentsPerGB int64
 
 	// The maximum acceptable latency for the game. If we can't reduce the latency to be at least this then don't take network next
-	// Not currently being used in old backend
+	// Note: not currently being used in old backend
 	AcceptableLatency float32
 
 	// How close to the best route in terms of latency routes need to be to be considered acceptable to take.
-	// For example if RttRouteSwitch was set to 20ms the best route in the matrix had an RTT of 60ms, routes with an RTT of more than 80ms would be filtered out. 
+	// For example if RttRouteSwitch was set to 20ms the best route in the matrix had an RTT of 60ms, routes with an RTT of more than 80ms would be filtered out
 	RttRouteSwitch float32
 
-	// How many milliseconds the latency has to be improved by before going from a direct route to a network next route.
+	// How many milliseconds the latency has to be improved by before going from a direct route to a network next route
 	// For example if RttThreshold was set to 20ms and the direct route had an RTT of 80ms, we would only take network next routes that have 60ms or lower latency
 	RttThreshold float32
 
@@ -38,7 +40,7 @@ type BuyerConfig struct {
 	// Not used when multipath enabled!
 	RttVeto float32
 
-	// If true, after being downgraded from a network next route to a direct route, the client will not be put back on a network next route for that session.
+	// If true, after being downgraded from a network next route to a direct route, the client will not be put back on a network next route for that session
 	// Not used when multipath enabled!
 	YouOnlyLiveOnce bool
 
@@ -46,10 +48,9 @@ type BuyerConfig struct {
 	// Not used when multipath enabled!
 	PacketLossSafety bool
 
-
 	/* MULTIPATH */
 	// Multipath means network traffic is sent over multiple network routes (any combination of direct and multiple network next routes)
-	// Once a session has multipath enabled, it will stay on multipath until the session ends. As of such vetos are disabled.
+	// Once a session has multipath enabled, it will stay on multipath until the session ends. As of such vetos are disabled
 
 	// If true, enables multipath when there is 1% or more packet loss on the direct route
 	PacketLossMultipath bool
@@ -60,6 +61,15 @@ type BuyerConfig struct {
 	// If true, enables multipath when there is a next route that beats direct by the value specified in RttThreshold
 	RttMultipath bool
 
-	// If true, the customer is participating in an A/B test. Additional metrics will be recorded and half the sessions that would take network next will take direct instead.
+	// If true, the customer is participating in an A/B test. Additional metrics will be recorded and half the sessions that would take network next will take direct instead
 	AbTest bool
+}
+
+const DefaultBuyerConfig = BuyerConfig{
+	MaxCentsPerGB:     25.0,
+	EnvelopeKbpsUp:    256,
+	EnvelopeKbpsDown:  256,
+	AcceptableLatency: -1.0,
+	RttThreshold:      5.0,
+	RttRouteSwitch:    2.0,
 }
