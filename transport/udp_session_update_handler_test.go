@@ -411,6 +411,7 @@ func TestNoRoutesFound(t *testing.T) {
 
 	ValidateDirectResponsePacket(resbuf, t)
 }
+
 func TestNextRouteResponse(t *testing.T) {
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
@@ -619,8 +620,103 @@ func TestContinueRouteResponse(t *testing.T) {
 	assert.Equal(t, TestBuyersServerPublicKey[:], actual.ServerRoutePublicKey)
 }
 
-//TODO: failed to encrypt route token
+func TestTokenEncryptionFailure(t *testing.T) {
+	redisServer, _ := miniredis.Run()
+	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-//TODO: bad server private key?
+	db := storage.InMemory{
+		LocalBuyer: &routing.Buyer{
+			PublicKey: TestBuyersServerPublicKey,
+		},
+	}
 
-//TODO: failed to encrypt route token
+	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
+		return routing.Location{
+			Continent: "NA",
+			Country:   "US",
+			Region:    "NY",
+			City:      "Troy",
+			Latitude:  0,
+			Longitude: 0,
+		}, nil
+	})
+
+	geoClient := routing.GeoClient{
+		RedisClient: redisClient,
+		Namespace:   "GEO_TEST",
+	}
+
+	nearbyRelay := routing.Relay{
+		ID:        1,
+		Latitude:  0,
+		Longitude: 0,
+	}
+	err := geoClient.Add(nearbyRelay)
+
+	rp := mockRouteProvider{
+		routes: []routing.Route{
+			{
+				Relays: []routing.Relay{
+					{ID: 1, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
+					{ID: 2, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 123}},
+					{ID: 3, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
+				},
+			},
+		},
+	}
+
+	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
+	assert.NoError(t, err)
+
+	serverCacheEntry := transport.ServerCacheEntry{
+		Sequence: 13,
+		Server: routing.Server{
+			Addr:      *addr,
+			PublicKey: TestBuyersServerPublicKey[:],
+		},
+	}
+	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
+	assert.NoError(t, err)
+
+	err = redisServer.Set("SERVER-0.0.0.0:13", string(serverCacheEntryData))
+	assert.NoError(t, err)
+
+	sessionCacheEntry := transport.SessionCacheEntry{
+		SessionID: 9999,
+		Sequence:  13,
+	}
+	sessionCacheEntryData, err := sessionCacheEntry.MarshalBinary()
+	assert.NoError(t, err)
+
+	err = redisServer.Set("SESSION-9999", string(sessionCacheEntryData))
+	assert.NoError(t, err)
+
+	packet := transport.SessionUpdatePacket{
+		SessionId:     9999,
+		Sequence:      14,
+		ServerAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
+
+		ClientAddress: net.UDPAddr{
+			IP:   net.ParseIP("0.0.0.0"),
+			Port: 1234,
+		},
+		ClientRoutePublicKey: TestBuyersClientPublicKey[:],
+	}
+	packet.Signature = crypto.Sign(TestBuyersServerPrivateKey, packet.GetSignData())
+
+	data, err := packet.MarshalBinary()
+	assert.NoError(t, err)
+
+	var resbuf bytes.Buffer
+
+	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &rp, &iploc, &geoClient, TestServerBackendPrivateKey[:], TestRouterPrivateKey[:])
+	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
+
+	assert.Greater(t, resbuf.Len(), 0)
+
+	var actual transport.SessionResponsePacket
+	err = actual.UnmarshalBinary(resbuf.Bytes())
+	assert.NoError(t, err)
+
+	ValidateDirectResponsePacket(resbuf, t)
+}
