@@ -153,8 +153,8 @@ int main(int argc, const char** argv)
     return 1;
   }
 
-  legacy::relay_address_t relay_address;
-  if (relay_address_parse(&relay_address, relay_address_env) != RELAY_OK) {
+  net::Address relayAddress;
+  if (!relayAddress.parse(relay_address_env)) {
     printf("\nerror: invalid relay address '%s'\n\n", relay_address_env);
     return 1;
   }
@@ -162,21 +162,16 @@ int main(int argc, const char** argv)
   printf("\nrelay address env var: %s", relay_address_env);
 
   {
-    legacy::relay_address_t address_without_port = relay_address;
-    address_without_port.port = 0;
-    char address_buffer[RELAY_MAX_ADDRESS_STRING_LENGTH];
-    printf("    relay address is '%s'\n", legacy::relay_address_to_string(&address_without_port, address_buffer));
+    net::Address address_without_port = relayAddress;
+    address_without_port.Port = 0;
+    std::string addr;
+    address_without_port.toString(addr);
+    printf("    relay address is '%s'\n", addr.c_str());
   }
 
-  uint16_t relay_bind_port = relay_address.port;
+  uint16_t relay_bind_port = relayAddress.Port;
 
   printf("    relay bind port is %d\n", relay_bind_port);
-
-  if (relay_bind_port == 0) {
-    // otherwise Linux will reuse the same port across n relay instances, screwing up tests
-    printf("    cannot use port 0 for binding, please set manually, exiting...\n\n");
-    return 1;
-  }
 
   crypto::Keychain keychain;
   if (!getCryptoKeys(keychain)) {
@@ -218,9 +213,6 @@ int main(int argc, const char** argv)
     return 1;
   }
 
-  char relay_address_buffer[RELAY_MAX_ADDRESS_STRING_LENGTH];
-  const char* relay_address_string = relay_address_to_string(&relay_address, relay_address_buffer);
-
   CURL* curl = curl_easy_init();
   if (!curl) {
     Log("error: could not initialize curl\n\n");
@@ -237,48 +229,55 @@ int main(int argc, const char** argv)
   core::RelayManager relayManager(relayClock);
 
   std::vector<os::SocketPtr> sockets;
-
-  auto pingSocket = std::make_shared<os::Socket>(os::SocketType::Blocking);
-  if (!pingSocket->create(relay_address, 100 * 1024, 100 * 1024, 0.0f, true)) {
-    Log("could not create pingSocket");
-    relay::relay_term();
-    return 1;
-  }
-
-  sockets.push_back(pingSocket);
-
-  std::unique_ptr<std::thread> pingThread = std::make_unique<std::thread>([pingSocket, &relayManager] {
-    core::PingProcessor processor(relayManager, gAlive);
-    processor.listen(*pingSocket);
-  });
-
+  std::unique_ptr<std::thread> pingThread;
   std::vector<std::unique_ptr<std::thread>> packetThreads;
-  packetThreads.resize(numProcessors);
-  core::SessionMap sessions;
-  for (unsigned int i = 0; i < numProcessors; i++) {
-    auto packetSocket = std::make_shared<os::Socket>(os::SocketType::Blocking);
-    if (!packetSocket->create(relay_address, 100 * 1024, 100 * 1024, 0.0f, true)) {
-      Log("could not create socket");
+  std::string relay_address_string;
+  {
+    auto pingSocket = std::make_shared<os::Socket>(os::SocketType::Blocking);
+    if (!pingSocket->create(relayAddress, 100 * 1024, 100 * 1024, 0.0f, true)) {
+      Log("could not create pingSocket");
       relay::relay_term();
       return 1;
     }
 
-    sockets.push_back(packetSocket);
+    relayAddress.toString(relay_address_string);
+    LogDebug("Actual address: ", relayAddress);
 
-    packetThreads[i] =
-     std::make_unique<std::thread>([packetSocket, &relayClock, &keychain, &routerInfo, &sessions, &relayManager, &logger] {
-       core::PacketProcessor processor(relayClock, keychain, routerInfo, sessions, relayManager, gAlive, logger);
-       processor.listen(*packetSocket);
-     });
+    sockets.push_back(pingSocket);
+
+    pingThread = std::make_unique<std::thread>([pingSocket, &relayManager] {
+      core::PingProcessor processor(relayManager, gAlive);
+      processor.listen(*pingSocket);
+    });
+
+    packetThreads.resize(numProcessors);
+    core::SessionMap sessions;
+    for (unsigned int i = 0; i < numProcessors; i++) {
+      auto packetSocket = std::make_shared<os::Socket>(os::SocketType::Blocking);
+      if (!packetSocket->create(relayAddress, 100 * 1024, 100 * 1024, 0.0f, true)) {
+        Log("could not create socket");
+        relay::relay_term();
+        return 1;
+      }
+
+      sockets.push_back(packetSocket);
+
+      packetThreads[i] =
+       std::make_unique<std::thread>([packetSocket, &relayClock, &keychain, &routerInfo, &sessions, &relayManager, &logger] {
+         core::PacketProcessor processor(relayClock, keychain, routerInfo, sessions, relayManager, gAlive, logger);
+         processor.listen(*packetSocket);
+       });
+    }
   }
 
+  LogDebug("communicating with backend");
   bool relay_initialized = false;
 
   for (int i = 0; i < 60; ++i) {
     if (relay::relay_init(curl,
          backend_hostname,
          relay_token,
-         relay_address_string,
+         relay_address_string.c_str(),
          keychain.RouterPublicKey.data(),
          keychain.RelayPrivateKey.data(),
          &routerInfo.InitalizeTimeInSeconds) == RELAY_OK) {
@@ -304,7 +303,7 @@ int main(int argc, const char** argv)
 
   signal(SIGINT, interrupt_handler);
 
-  update_loop(curl, backend_hostname, relay_token, relay_address_string, relayManager);
+  update_loop(curl, backend_hostname, relay_token, relay_address_string.c_str(), relayManager);
 
   Log("Cleaning up\n");
 

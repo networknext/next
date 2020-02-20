@@ -172,7 +172,7 @@ namespace core
     packet[RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES] = RELAY_ROUTE_REQUEST_PACKET;
     socket.send(
      token.next_address, packet.data() + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES, size - RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES);
-    LogDebug("sent token to ", token.next_address);
+    LogDebug("sent route request to ", token.next_address);
   }
 
   void PacketProcessor::handleRouteResponsePacket(

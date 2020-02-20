@@ -527,7 +527,6 @@ func test_packets_over_next_with_relay_and_backend() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
 
-	time.Sleep(time.Second * 180)
 }
 
 func test_fallback_to_direct_when_backend_goes_down() {
@@ -1235,12 +1234,12 @@ type test_function func()
 
 func main() {
 	tests := []test_function{
-		test_direct_default,
-		test_direct_upgrade,
-		test_direct_no_upgrade,
-		test_direct_with_backend,
-		test_fallback_to_direct_without_backend,
-		test_fallback_to_direct_is_not_sticky,
+		//test_direct_default,
+		//test_direct_upgrade,
+		//test_direct_no_upgrade,
+		//test_direct_with_backend,
+		//test_fallback_to_direct_without_backend,
+		//test_fallback_to_direct_is_not_sticky,
 		test_packets_over_next_with_relay_and_backend,
 		test_fallback_to_direct_when_backend_goes_down,
 		test_network_next_disabled_server,
