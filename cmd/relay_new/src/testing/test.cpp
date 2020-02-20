@@ -24,12 +24,10 @@ namespace testing
   {
     std::cout << "Test count: " << gTests->size() << '\n';
 
-    std::cout << __FILE__ << __LINE__ << std::endl;
     bool noTestsSkipped = true;
     for (auto test : *gTests) {
       if (!test->Disabled) {
         std::cout << TEST_BREAK << "Running test '\x1b[35m" << test->TestName << "\x1b[m'\n";
-        std::cout << __FILE__ << __LINE__ << std::endl;
         test->body();
       } else {
         std::cout << TEST_BREAK_WARNING << "Skipping test '\x1b[36m" << test->TestName << "\x1b[m'\n";

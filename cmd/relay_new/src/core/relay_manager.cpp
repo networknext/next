@@ -10,18 +10,26 @@
 
 namespace core
 {
-  RelayManager::RelayManager(const util::Clock& clock): mClock(clock) {}
+  RelayManager::RelayManager(const util::Clock& clock): mClock(clock)
+  {
+    mRelayIDs.resize(MAX_RELAYS);
+    mLastRelayPingTime.resize(MAX_RELAYS);
+    mRelayAddresses.resize(MAX_RELAYS);
+    mRelayPingHistory.resize(MAX_RELAYS);
+    mPingHistoryArray.resize(MAX_RELAYS);
+    reset();
+  }
 
   void RelayManager::reset()
   {
     mLock.lock();
     {
       mNumRelays = 0;
-      mRelayIDs.fill(0);
-      mLastRelayPingTime.fill(0);
-      mRelayAddresses.fill(net::Address());
-      mRelayPingHistory.fill(nullptr);
-      mPingHistoryArray.fill(PingHistory());
+      std::fill(mRelayIDs.begin(), mRelayIDs.end(), 0);
+      std::fill(mLastRelayPingTime.begin(), mLastRelayPingTime.end(), 0);
+      std::fill(mRelayAddresses.begin(), mRelayAddresses.end(), net::Address());
+      std::fill(mRelayPingHistory.begin(), mRelayPingHistory.end(), nullptr);
+      std::fill(mPingHistoryArray.begin(), mPingHistoryArray.end(), PingHistory());
     }
     mLock.unlock();
   }

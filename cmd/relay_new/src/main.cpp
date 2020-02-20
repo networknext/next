@@ -107,7 +107,6 @@ namespace
 
 int main(int argc, const char** argv)
 {
-  std::cout << __FILE__ << __LINE__ << std::endl;
   if (argc == 2 && strcmp(argv[1], "test") == 0) {
     return testing::SpecTest::Run() ? 0 : 1;
   }

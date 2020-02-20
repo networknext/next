@@ -40,11 +40,11 @@ namespace core
     std::mutex mLock;
     const util::Clock& mClock;
     unsigned int mNumRelays;
-    std::array<uint64_t, MAX_RELAYS> mRelayIDs;
-    std::array<double, MAX_RELAYS> mLastRelayPingTime;
-    std::array<net::Address, MAX_RELAYS> mRelayAddresses;
-    std::array<PingHistory*, MAX_RELAYS> mRelayPingHistory;
-    std::array<PingHistory, MAX_RELAYS> mPingHistoryArray;
+    std::vector<uint64_t> mRelayIDs;
+    std::vector<double> mLastRelayPingTime;
+    std::vector<net::Address> mRelayAddresses;
+    std::vector<PingHistory*> mRelayPingHistory;
+    std::vector<PingHistory> mPingHistoryArray;
   };
 
   /*
