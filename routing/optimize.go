@@ -825,6 +825,10 @@ func (m *RouteMatrix) fillRoutes(routes []Route, routeIndex *int, fromtoidx int,
 
 // ReadFrom implements the io.ReadFrom interface
 func (m *RouteMatrix) ReadFrom(r io.Reader) (int64, error) {
+	if r == nil {
+		return 0, errors.New("reader is nil")
+	}
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

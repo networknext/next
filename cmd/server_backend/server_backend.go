@@ -174,22 +174,24 @@ func main() {
 				for {
 					var matrixReader io.Reader
 
+					// Default to reading route matrix from file
 					if f, err := os.Open(uri); err == nil {
 						matrixReader = f
 					}
 
+					// Prefer to get it remotely if possible
 					if r, err := http.Get(uri); err == nil {
 						matrixReader = r.Body
 					}
 
-					if matrixReader != nil {
-						_, err := routeMatrix.ReadFrom(matrixReader)
-						if err != nil {
-							level.Error(logger).Log("matrix", "route", "op", "read", "envvar", "ROUTE_MATRIX_URI", "value", uri, "err", err)
-						}
-
-						level.Info(logger).Log("matrix", "route", "entries", len(routeMatrix.Entries))
+					// Attempt to read, and intentionally force to empty route matrix if any errors are encountered to avoid stale routes
+					_, err := routeMatrix.ReadFrom(matrixReader)
+					if err != nil {
+						routeMatrix = routing.RouteMatrix{}
+						level.Warn(logger).Log("matrix", "route", "op", "read", "envvar", "ROUTE_MATRIX_URI", "value", uri, "err", err, "msg", "forcing empty route matrix to avoid stale routes")
 					}
+
+					level.Info(logger).Log("matrix", "route", "entries", len(routeMatrix.Entries))
 
 					time.Sleep(10 * time.Second)
 				}

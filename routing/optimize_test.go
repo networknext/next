@@ -2747,6 +2747,15 @@ func TestOptimize(t *testing.T) {
 		})
 
 		t.Run("ReadFrom()", func(t *testing.T) {
+			t.Run("Nil reader", func(t *testing.T) {
+				// Create and populate a route matrix
+				matrix := getPopulatedRouteMatrix(false)
+
+				// Try to read from nil reader
+				_, err := matrix.ReadFrom(nil)
+				assert.EqualError(t, err, "reader is nil")
+			})
+
 			t.Run("Error during read", func(t *testing.T) {
 				// Create and populate a route matrix
 				matrix := getPopulatedRouteMatrix(false)
