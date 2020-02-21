@@ -756,7 +756,6 @@ func test_server_under_load() {
 		client_cmd[i].Wait()
 
 		client_counters := read_client_counters(client_stderr[i].String())
-		fmt.Printf("------------------------------------- Client %d ----------------------------------------\n", i)
 		client_check(client_counters, client_stdout[i], server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_OPEN_SESSION] == 1)
 		client_check(client_counters, client_stdout[i], server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION] == 1)
 		client_check(client_counters, client_stdout[i], server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_UPGRADE_SESSION] == 1)
@@ -766,8 +765,8 @@ func test_server_under_load() {
 		client_check(client_counters, client_stdout[i], server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] > 0)
 		client_check(client_counters, client_stdout[i], server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] > 0)
 		client_check(client_counters, client_stdout[i], server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
-		client_check(client_counters, client_stdout[i], server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
-		client_check(client_counters, client_stdout[i], server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
+		client_check(client_counters, client_stdout[i], server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0, relay_1_stdout, relay_2_stdout, relay_3_stdout)
+		client_check(client_counters, client_stdout[i], server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0, relay_1_stdout, relay_2_stdout, relay_3_stdout)
 
 	}
 }
@@ -1349,12 +1348,12 @@ type test_function func()
 
 func main() {
 	tests := []test_function{
-		//test_direct_default,
-		//test_direct_upgrade,
-		//test_direct_no_upgrade,
-		//test_direct_with_backend,
-		//test_fallback_to_direct_without_backend,
-		//test_fallback_to_direct_is_not_sticky,
+		test_direct_default,
+		test_direct_upgrade,
+		test_direct_no_upgrade,
+		test_direct_with_backend,
+		test_fallback_to_direct_without_backend,
+		test_fallback_to_direct_is_not_sticky,
 		test_packets_over_next_with_relay_and_backend,
 		test_fallback_to_direct_when_backend_goes_down,
 		test_network_next_disabled_server,
