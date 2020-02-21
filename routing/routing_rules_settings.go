@@ -1,7 +1,7 @@
 package routing
 
 // Various settings a buyer can tweak to adjust the behaviour of Network Next route selection to their liking
-type RouterConfig struct {
+type RoutingRulesSettings struct {
 	// The maximum upstream bandwidth a customer is willing to pay for per slice
 	EnvelopeKbpsUp int64
 
@@ -65,11 +65,14 @@ type RouterConfig struct {
 	AbTest bool
 }
 
-const DefaultRouterConfig = RouterConfig{
-	MaxCentsPerGB:     25.0,
-	EnvelopeKbpsUp:    256,
-	EnvelopeKbpsDown:  256,
-	AcceptableLatency: -1.0,
-	RttThreshold:      5.0,
-	RttRouteSwitch:    2.0,
+func GetDefaultRoutingRulesSettings() RoutingRulesSettings {
+	return RoutingRulesSettings{
+		MaxCentsPerGB:     25.0,
+		EnvelopeKbpsUp:    256,
+		EnvelopeKbpsDown:  256,
+		AcceptableLatency: -1.0,
+		RttThreshold:      5.0,
+		RttRouteSwitch:    2.0,
+	}
+
 }
