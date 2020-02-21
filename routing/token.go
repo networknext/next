@@ -39,11 +39,6 @@ type Server struct {
 	PublicKey []byte
 }
 
-type Route struct {
-	Relays []Relay
-	Stats  Stats
-}
-
 func (r *Route) Hash() []byte {
 	fnv64 := fnv.New64()
 	id := make([]byte, 8)

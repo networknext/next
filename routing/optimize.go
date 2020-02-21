@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"math"
+	"math/rand"
 	"net"
 	"net/http"
 	"runtime"
@@ -718,7 +719,7 @@ func (m *RouteMatrix) RelaysIn(d Datacenter) []Relay {
 }
 
 // Routes will return all routes for each from and to Relay set
-func (m *RouteMatrix) Routes(from []Relay, to []Relay) []Route {
+func (m *RouteMatrix) Routes(from []Relay, to []Relay, routeFilters ...RouteFilter) (Route, error) {
 	type RelayPairResult struct {
 		fromtoidx int  // The index in the route matrix entry
 		reverse   bool // Whether or not to reverse the relays to stay on the same side of the diagnol in the triangular matrix
@@ -732,12 +733,11 @@ func (m *RouteMatrix) Routes(from []Relay, to []Relay) []Route {
 	for i, fromrelay := range from {
 		for j, torelay := range to {
 			fromtoidx, reverse := m.getFromToRelayIndex(fromrelay, torelay)
-			if fromtoidx == -1 {
-				relayPairResults[i+j*len(from)] = RelayPairResult{-1, false}
-				continue
-			}
 
-			if fromtoidx >= len(m.Entries) {
+			// Add a bad pair result so that the second pass will skip over it.
+			// This way we don't have to append only good results to a new list, which is more expensive.
+			if fromtoidx < 0 || fromtoidx >= len(m.Entries) {
+				relayPairResults[i+j*len(from)] = RelayPairResult{-1, false}
 				continue
 			}
 
@@ -747,19 +747,42 @@ func (m *RouteMatrix) Routes(from []Relay, to []Relay) []Route {
 	}
 
 	// Now that we have the route total, make the Route buffer and fill it
-	var routeIndex int
 	routes := make([]Route, routeTotal)
 	for i := 0; i < relayPairLength; i++ {
 		if relayPairResults[i].fromtoidx >= 0 {
-			m.fillRoutes(routes, &routeIndex, relayPairResults[i].fromtoidx, relayPairResults[i].reverse)
+			m.fillRoutes(routes, relayPairResults[i].fromtoidx, relayPairResults[i].reverse)
 		}
 	}
 
-	if len(routes) == 0 {
-		return nil
+	routeLength := len(routes)
+
+	// No routes found
+	if routeLength == 0 {
+		return Route{}, errors.New("No routes found")
 	}
 
-	return routes
+	// Apply filters in order to reduce the set of routes
+	var route Route
+	for _, filter := range routeFilters {
+		routes = filter(routes)
+		routeLength = len(routes)
+		if routeLength == 1 {
+			route = routes[0]
+			break
+		}
+
+		if routeLength == 0 {
+			route = Route{}
+			break
+		}
+	}
+
+	// Filters didn't reduce routes enough, choose a random one
+	if routeLength > 1 {
+		route = routes[rand.Intn(routeLength)]
+	}
+
+	return route, nil
 }
 
 // Returns the index in the route matrix representing the route between the from Relay and to Relay and whether or not to reverse them
@@ -778,10 +801,11 @@ func (m *RouteMatrix) getFromToRelayIndex(from Relay, to Relay) (int, bool) {
 }
 
 // fillRoutes is just the internal function to populate the given route buffer.
-// It takes the fromtoidx and reverse data and fills the given route buffer, incrementing the routeIndex after
-// each route it adds.
-func (m *RouteMatrix) fillRoutes(routes []Route, routeIndex *int, fromtoidx int, reverse bool) error {
+// It takes the fromtoidx and reverse data and fills the given route buffer until it is full.
+// Additional routes won't be stored.
+func (m *RouteMatrix) fillRoutes(routes []Route, fromtoidx int, reverse bool) error {
 	var err error
+	var routeIndex int
 	for i := 0; i < int(m.Entries[fromtoidx].NumRoutes); i++ {
 		numRelays := int(m.Entries[fromtoidx].RouteNumRelays[i])
 
@@ -812,12 +836,12 @@ func (m *RouteMatrix) fillRoutes(routes []Route, routeIndex *int, fromtoidx int,
 			},
 		}
 
-		if *routeIndex >= len(routes) {
+		if routeIndex >= len(routes) {
 			continue
 		}
 
-		routes[*routeIndex] = route
-		*routeIndex++
+		routes[routeIndex] = route
+		routeIndex++
 	}
 
 	return nil
