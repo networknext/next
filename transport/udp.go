@@ -192,7 +192,7 @@ func (e SessionCacheEntry) MarshalBinary() ([]byte, error) {
 type RouteProvider interface {
 	ResolveRelay(uint64) (routing.Relay, error)
 	RelaysIn(routing.Datacenter) []routing.Relay
-	Routes([]routing.Relay, []routing.Relay) []routing.Route
+	Routes([]routing.Relay, []routing.Relay, ...routing.RouteFilter) []routing.Route
 }
 
 // SessionUpdateHandlerFunc ...
@@ -308,8 +308,14 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 
 		level.Debug(locallogger).Log("num_datacenter_relays", len(dsrelays), "num_client_relays", len(clientrelays))
 
+		var rttSwitchThreshold float32 = 10.0 // This will come from the route shader eventually, but hard code it for now
+
 		// Get a set of possible routes from the RouteProvider an on error ensure it falls back to direct
-		routes := rp.Routes(dsrelays, clientrelays)
+		routes := rp.Routes(dsrelays, clientrelays,
+			routing.FilterAcceptableRoutes(rttSwitchThreshold),
+			routing.FilterContainsRoute(sessionCacheEntry.RouteHash),
+			routing.FilterRoutesByRandomDestRelay(),
+			routing.FilterRandomRoute())
 		if routes == nil || len(routes) <= 0 {
 			err := fmt.Errorf("failed to find routes")
 			level.Error(locallogger).Log("err", err)

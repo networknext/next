@@ -764,8 +764,14 @@ func (m *RouteMatrix) Routes(from []Relay, to []Relay, routeFilters ...RouteFilt
 	// Apply filters in order to reduce the set of routes
 	var route Route
 	for _, filter := range routeFilters {
-		routes = filter(routes)
+		filteredRoutes := filter(routes)
+		if filteredRoutes == nil {
+			continue // If the filter returns nil, it means that it couldn't filter the set of routes, so skip it
+		}
+
+		routes = filteredRoutes
 		routeLength = len(routes)
+
 		if routeLength == 1 {
 			route = routes[0]
 			break
