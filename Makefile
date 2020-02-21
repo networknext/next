@@ -99,39 +99,33 @@ export REDIS_HOST = 127.0.0.1:6379
 endif
 
 ##################################
-##  GOOGLE CLOUD PLATFORM ENV   ##
-##################################
-
-# ifndef GCP_CREDENTIALS
-# export GCP_CREDENTIALS = $(CURRENT_DIR)/testdata/network-next-local.json
-# endif
-
-##################################
 ##    STACKDRIVER METRICS ENV   ##
 ##################################
-ifndef GOOGLE_CLOUD_METRICS_CLUSTER_LOCATION
-export GOOGLE_CLOUD_METRICS_CLUSTER_LOCATION = us-central1-f
+ifndef GCP_METRICS_PROJECT
+export GCP_METRICS_PROJECT = network-next-local
 endif
 
-ifndef GOOGLE_CLOUD_METRICS_CLUSTER_NAME
-export GOOGLE_CLOUD_METRICS_CLUSTER_NAME = local
+##### Defines a kubernetes container #####
+ifndef GCP_METRICS_CLUSTER_LOCATION
+export GCP_METRICS_CLUSTER_LOCATION = us-central1-f
 endif
 
-ifndef GOOGLE_CLOUD_METRICS_POD_NAME
-export GOOGLE_CLOUD_METRICS_POD_NAME = metrics
+ifndef GCP_METRICS_CLUSTER_NAME
+export GCP_METRICS_CLUSTER_NAME = local
 endif
 
-ifndef GOOGLE_CLOUD_METRICS_CONTAINER_NAME
-export GOOGLE_CLOUD_METRICS_CONTAINER_NAME = metrics
+ifndef GCP_METRICS_POD_NAME
+export GCP_METRICS_POD_NAME = metrics
 endif
 
-ifndef GOOGLE_CLOUD_METRICS_NAMESPACE_NAME
-export GOOGLE_CLOUD_METRICS_NAMESPACE_NAME = default
+ifndef GCP_METRICS_CONTAINER_NAME
+export GCP_METRICS_CONTAINER_NAME = metrics
 endif
 
-ifndef GOOGLE_CLOUD_METRICS_PROJECT
-export GOOGLE_CLOUD_METRICS_PROJECT = network-next-local
+ifndef GCP_METRICS_NAMESPACE_NAME
+export GCP_METRICS_NAMESPACE_NAME = default
 endif
+#########################################
 
 .PHONY: help
 help: ## this list

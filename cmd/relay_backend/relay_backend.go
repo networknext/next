@@ -146,7 +146,7 @@ func main() {
 		}
 
 		// Create a Firestore client
-		client, err := firestore.NewClient(context.Background(), firestore.DetectProjectID, option.WithCredentialsJSON(gcpcredsjson))
+		client, err := firestore.NewClient(ctx, firestore.DetectProjectID, option.WithCredentialsJSON(gcpcredsjson))
 		if err != nil {
 			level.Error(logger).Log("err", err)
 			os.Exit(1)
@@ -167,41 +167,19 @@ func main() {
 		// Set the Firestore Storer to give to handlers
 		db = &fs
 
-		// Get all metric env vars to set up metrics
-		metricEnvVars := []string{
-			"GOOGLE_CLOUD_METRICS_CLUSTER_LOCATION",
-			"GOOGLE_CLOUD_METRICS_CLUSTER_LOCATION",
-			"GOOGLE_CLOUD_METRICS_POD_NAME",
-			"GOOGLE_CLOUD_METRICS_CONTAINER_NAME",
-			"GOOGLE_CLOUD_METRICS_NAMESPACE_NAME",
-			"GOOGLE_CLOUD_METRICS_PROJECT",
-		}
-		metricEnvVarValues := make([]string, len(metricEnvVars))
-		var ok bool
-		for i := 0; i < len(metricEnvVarValues); i++ {
-			metricEnvVarValues[i], ok = os.LookupEnv(metricEnvVars[i])
-			if !ok {
-				level.Warn(logger).Log("msg", "metric env var not set, metrics will not be tracked", "envvar", metricEnvVars[i])
-				break
-			}
-		}
-
-		if ok {
+		if stackDriverProjectID, ok := os.LookupEnv("GCP_METRICS_PROJECT"); ok {
 			// Create the metrics handler
 			metricsHandler = &metrics.StackDriverHandler{
-				ClusterLocation: metricEnvVarValues[0],
-				ClusterName:     metricEnvVarValues[1],
-				PodName:         metricEnvVarValues[2],
-				ContainerName:   metricEnvVarValues[3],
-				NamespaceName:   metricEnvVarValues[4],
-				ProjectID:       metricEnvVarValues[5],
+				ProjectID:       stackDriverProjectID,
+				ClusterLocation: os.Getenv("GCP_METRICS_CLUSTER_LOCATION"),
+				ClusterName:     os.Getenv("GCP_METRICS_CLUSTER_NAME"),
+				PodName:         os.Getenv("GCP_METRICS_POD_NAME"),
+				ContainerName:   os.Getenv("GCP_METRICS_CONTAINER_NAME"),
+				NamespaceName:   os.Getenv("GCP_METRICS_NAMESPACE_NAME"),
 			}
 
-			// Use a separate context for the metrics so that the metric submit routine can be stopped if need be
-			metricsContext, _ := context.WithCancel(ctx)
-
-			if err := metricsHandler.Open(metricsContext, gcpcredsjson); err == nil {
-				go metricsHandler.MetricSubmitRoutine(metricsContext, logger, time.Minute, 200)
+			if err := metricsHandler.Open(ctx, gcpcredsjson); err == nil {
+				go metricsHandler.MetricSubmitRoutine(ctx, logger, time.Minute, 200)
 			} else {
 				level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
 			}

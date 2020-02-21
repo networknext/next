@@ -33,13 +33,13 @@ The default setting is `warn` when running `make dev-relay-backend` and `make de
 #### Optional
 
 - `GCP_CREDENTIALS`: JSON blob or path to a .json file for the GCP credentials needed
-- `GOOGLE_CLOUD_METRICS_CLUSTER_LOCATION`: The location of the GCP cluster that will receive metrics
-- `GOOGLE_CLOUD_METRICS_CLUSTER_NAME`: The name of the GCP cluster that will receive metrics
-- `GOOGLE_CLOUD_METRICS_POD_NAME`: The name of the pod that will receive metrics
-- `GOOGLE_CLOUD_METRICS_CONTAINER_NAME`: The name of the container that will receive metrics
-- `GOOGLE_CLOUD_METRICS_NAMESPACE_NAME`: The name of the namespace that will receive metrics
-- `GOOGLE_CLOUD_METRICS_PROJECT`: The name of the StackDriver project that will receive metrics
+- `GCP_METRICS_PROJECT`: The name of the StackDriver project that will monitor metrics
+- `GCP_METRICS_CLUSTER_LOCATION`: The location of the kubernetes cluster that will monitor metrics
+- `GCP_METRICS_CLUSTER_NAME`: The name of the kubernetes cluster that will monitor metrics
+- `GCP_METRICS_POD_NAME`: The name of the kubernetes pod that will monitor metrics
+- `GCP_METRICS_CONTAINER_NAME`: The name of the kubernetes container that will monitor metrics
+- `GCP_METRICS_NAMESPACE_NAME`: The name of the kubernetes namespace that will monitor metrics
 
 #### IMPORTANT
 
-You must have all of the GCP metrics vars set along with `GCP_CREDENTIALS` or metrics will not be tracked.
+You must have at least `GCP_CREDENTIALS` and `GCP_METRICS_PROJECT` set to push metrics to StackDriver. Other `GCP_METRICS_` vars define the kubernetes container to monitor them from. If they are not set, it will fallback to GCE, and then to global.

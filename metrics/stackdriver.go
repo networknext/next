@@ -38,14 +38,16 @@ var valueTypeMapReverse = map[metricpb.MetricDescriptor_ValueType]Type{
 
 // StackDriverHandler is an implementation of the Handler interface that handles metrics for StackDriver
 type StackDriverHandler struct {
-	Client *monitoring.MetricClient
+	Client    *monitoring.MetricClient
+	ProjectID string
 
+	// Optional kubernetes container data. If these are set, the client will know that the monitored resource is running in a kubernetes container.
+	// If they are not set, the client will check to see if the monitored resource is running in a GCE instance. If it's not, it will default to global.
 	ClusterLocation string
 	ClusterName     string
 	PodName         string
 	ContainerName   string
-	NamespaceName   string
-	ProjectID       string
+	NamespaceName   string // If this is not set, it will default to "default"
 
 	submitFrequency float64
 
