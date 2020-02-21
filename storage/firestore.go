@@ -42,6 +42,25 @@ type datacenter struct {
 	Enabled bool   `firestore:"enabled"`
 }
 
+type routingRulesSettings struct {
+	DisplayName           string  `firestore:"displayName"`
+	EnvelopeKbpsUp        int64   `firestore:"envelopeKbpsUp"`
+	EnvelopeKbpsDown      int64   `firestore:"envelopeKbpsDown"`
+	Mode                  int64   `firestore:"mode"`
+	MaxPricePerGBNibblins int64   `firestore:"maxPricePerGBNibblins"`
+	AcceptableLatency     float32 `firestore:"acceptableLatency"`
+	RttRouteSwitch        float32 `firestore:"rttRouteSwitch"`
+	RttThreshold          float32 `firestore:"rttThreshold"`
+	RttHysteresis         float32 `firestore:"rttHysteresis"`
+	RttVeto               float32 `firestore:"rttVeto"`
+	YouOnlyLiveOnce       bool    `firestore:"youOnlyLiveOnce"`
+	PacketLossSafety      bool    `firestore:"packetLossSafety"`
+	PacketLossMultipath   bool    `firestore:"packetLossMultipath"`
+	JitterMultipath       bool    `firestore:"jitterMultipath"`
+	RttMultipath          bool    `firestore:"rttMultipath"`
+	AbTest                bool    `firestore:"abTest"`
+}
+
 func (s *Firestore) Relay(id uint64) (*routing.Relay, bool) {
 	b, found := s.relays[id]
 	return b, found
@@ -174,16 +193,65 @@ func (s *Firestore) syncBuyers(ctx context.Context) error {
 			continue
 		}
 
+		// Attempt to get routing rules settings for buyer (acceptable to fallback to default settings if none defined)
+		rrs, err := s.GetRoutingRulesSettingsForBuyerID(ctx, bdoc.Ref.ID)
+		if err != nil {
+			level.Debug(s.Logger).Log("msg", fmt.Sprintf("using default route rules for buyer %v", bdoc.Ref.ID), "err", err)
+		}
+
 		s.buyers[uint64(b.ID)] = &routing.Buyer{
-			ID:        uint64(b.ID),
-			Name:      b.Name,
-			Active:    b.Active,
-			Live:      b.Live,
-			PublicKey: b.PublicKey,
+			ID:                   uint64(b.ID),
+			Name:                 b.Name,
+			Active:               b.Active,
+			Live:                 b.Live,
+			PublicKey:            b.PublicKey,
+			RoutingRulesSettings: rrs,
 		}
 	}
 
 	level.Debug(s.Logger).Log("during", "syncBuyers", "num", len(s.buyers))
 
 	return nil
+}
+
+func (s *Firestore) GetRoutingRulesSettingsForBuyerID(ctx context.Context, ID string) (routing.RoutingRulesSettings, error) {
+	// Comment below taken from old backend, at least attempting to explain why we need to append _0 (no existing entries have suffixes other than _0)
+	// "Must be of the form '<buyer key>_<tag id>'. The buyer key can be found by looking at the ID under Buyer; it should be something like 763IMDH693HLsr2LGTJY. The tag ID should be 0 (for default) or the fnv64a hash of the tag the customer is using. Therefore this value should look something like: 763IMDH693HLsr2LGTJY_0. This value can not be changed after the entity is created."
+	routeShaderID := ID + "_0"
+
+	// Set up our return value with default settings, which will be used if no settings found for buyer or other errors are encountered
+	rrs := routing.GetDefaultRoutingRulesSettings()
+
+	// Attempt to get route shader for buyer (sadly not linked by actual reference in prod so have to fetch it ourselves using buyer ID + "_0" which happens to match)
+	rsDoc, err := s.Client.Collection("RouteShader").Doc(routeShaderID).Get(ctx)
+	if err != nil {
+		return rrs, err
+	}
+
+	// Marshal into our firestore struct
+	var tempRRS routingRulesSettings
+	err = rsDoc.DataTo(&tempRRS)
+	if err != nil {
+		return rrs, err
+	}
+
+	// If successful, convert into routing.Buyer version and return it
+	rrs.DisplayName = tempRRS.DisplayName
+	rrs.EnvelopeKbpsUp = tempRRS.EnvelopeKbpsUp
+	rrs.EnvelopeKbpsDown = tempRRS.EnvelopeKbpsDown
+	rrs.Mode = tempRRS.Mode
+	rrs.MaxCentsPerGB = tempRRS.MaxPricePerGBNibblins / 1e9 // Note: Nibblins is a made up unit in the old backend presumably to deal with floating point issues. 1000000000 Niblins = $0.01 USD
+	rrs.AcceptableLatency = tempRRS.AcceptableLatency
+	rrs.RttRouteSwitch = tempRRS.RttRouteSwitch
+	rrs.RttThreshold = tempRRS.RttThreshold
+	rrs.RttHysteresis = tempRRS.RttHysteresis
+	rrs.RttVeto = tempRRS.RttVeto
+	rrs.YouOnlyLiveOnce = tempRRS.YouOnlyLiveOnce
+	rrs.PacketLossSafety = tempRRS.PacketLossSafety
+	rrs.PacketLossMultipath = tempRRS.PacketLossMultipath
+	rrs.JitterMultipath = tempRRS.JitterMultipath
+	rrs.RttMultipath = tempRRS.RttMultipath
+	rrs.AbTest = tempRRS.AbTest
+
+	return rrs, nil
 }
