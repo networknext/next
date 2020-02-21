@@ -14,6 +14,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 
 	"github.com/go-redis/redis/v7"
+	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
@@ -196,7 +197,7 @@ type RouteProvider interface {
 }
 
 // SessionUpdateHandlerFunc ...
-func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, metricsHandler metrics.Handler, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, metricsHandler metrics.Handler, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
 	logger = log.With(logger, "handler", "session")
 
 	return func(w io.Writer, incoming *UDPPacket) {
@@ -408,6 +409,36 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			if result.Err() != nil {
 				level.Error(locallogger).Log("msg", "failed to update session", "err", result.Err())
 				return
+			}
+
+			// Create a billing entry and send it to the billing service
+			// This billing entry will be populated with actual data once the backend supports all billable features
+			billingEntry := &billing.Entry{
+				Request:              nil,
+				Route:                nil,
+				RouteDecision:        0,
+				Duration:             10, // Make one entry non-zero so that the entry isn't marshalled to nil
+				UsageBytesUp:         0,
+				UsageBytesDown:       0,
+				Timestamp:            0,
+				TimestampStart:       0,
+				PredictedRtt:         0,
+				PredictedJitter:      0,
+				PredictedPacketLoss:  0,
+				RouteChanged:         false,
+				NetworkNextAvailable: false,
+				Initial:              false,
+				EnvelopeBytesUp:      0,
+				EnvelopeBytesDown:    0,
+				ConsideredRoutes:     nil,
+				AcceptableRoutes:     nil,
+				SameRoute:            false,
+				OnNetworkNext:        false,
+				SliceFlags:           0,
+			}
+
+			if err := biller.Bill(context.Background(), packet.SessionId, billingEntry); err != nil {
+				level.Error(locallogger).Log("msg", "billing failed", "err", err)
 			}
 		}
 	}

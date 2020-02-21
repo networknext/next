@@ -99,6 +99,18 @@ export REDIS_HOST = 127.0.0.1:6379
 endif
 
 ##################################
+##  GOOGLE PUBSUB BILLING ENV   ##
+##################################
+
+ifndef BILLING_PUBSUB_PROJECT
+export BILLING_PUBSUB_PROJECT = network-next-local
+endif
+
+ifndef BILLING_PUBSUB_TOPIC
+export BILLING_PUBSUB_TOPIC = billing-local
+endif
+
+##################################
 ##    STACKDRIVER METRICS ENV   ##
 ##################################
 ifndef GCP_METRICS_PROJECT
