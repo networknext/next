@@ -14,6 +14,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 
 	"github.com/go-redis/redis/v7"
+	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
@@ -196,7 +197,7 @@ type RouteProvider interface {
 }
 
 // SessionUpdateHandlerFunc ...
-func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
 	logger = log.With(logger, "handler", "session")
 
 	return func(w io.Writer, incoming *UDPPacket) {
@@ -423,11 +424,38 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			level.Error(locallogger).Log("msg", "failed to update session", "err", result.Err())
 			return
 		}
+    
+    billingEntry := &billing.Entry{
+      Request:              nil,
+      Route:                nil,
+      RouteDecision:        0,
+      Duration:             10, // Make one entry non-zero so that the entry isn't marshalled to nil
+      UsageBytesUp:         0,
+      UsageBytesDown:       0,
+      Timestamp:            0,
+      TimestampStart:       0,
+      PredictedRtt:         0,
+      PredictedJitter:      0,
+      PredictedPacketLoss:  0,
+      RouteChanged:         false,
+      NetworkNextAvailable: false,
+      Initial:              false,
+      EnvelopeBytesUp:      0,
+      EnvelopeBytesDown:    0,
+      ConsideredRoutes:     nil,
+      AcceptableRoutes:     nil,
+      SameRoute:            false,
+      OnNetworkNext:        false,
+      SliceFlags:           0,
+    }
+
+    if err := biller.Bill(context.Background(), packet.SessionId, billingEntry); err != nil {
+      level.Error(locallogger).Log("msg", "billing failed", "err", err)
+    }
 
 		// Send the Session Response back to the server
 		if _, err := w.Write(responseData); err != nil {
 			level.Error(locallogger).Log("msg", "failed to write session response", "err", err)
-			return
 		}
 	}
 }
