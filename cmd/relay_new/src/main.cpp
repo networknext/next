@@ -225,6 +225,20 @@ int main(int argc, const char** argv)
 
   Log("Initializing relay\n");
 
+  LogDebug("creating sockets and threads");
+
+  std::atomic<bool> socketAndThreadReady(false);
+  std::mutex lock;
+  std::unique_lock<std::mutex> waitLock(lock);
+  std::condition_variable waitVar;
+
+  auto wait = [&waitVar, &waitLock, &socketAndThreadReady] {
+    waitVar.wait(waitLock, [&socketAndThreadReady]() -> bool {
+      return socketAndThreadReady;
+    });
+    socketAndThreadReady = false;
+  };
+
   core::RouterInfo routerInfo;
   core::RelayManager relayManager(relayClock);
 
@@ -232,42 +246,45 @@ int main(int argc, const char** argv)
   std::unique_ptr<std::thread> pingThread;
   std::vector<std::unique_ptr<std::thread>> packetThreads;
   std::string relay_address_string;
-  {
-    auto pingSocket = std::make_shared<os::Socket>(os::SocketType::Blocking);
-    if (!pingSocket->create(relayAddress, 100 * 1024, 100 * 1024, 0.0f, true)) {
-      Log("could not create pingSocket");
+
+  auto pingSocket = std::make_shared<os::Socket>(os::SocketType::Blocking);
+  if (!pingSocket->create(relayAddress, 100 * 1024, 100 * 1024, 0.1f, true, 0)) {
+    Log("could not create pingSocket");
+    relay::relay_term();
+    return 1;
+  }
+
+  relayAddress.toString(relay_address_string);
+  LogDebug("Actual address: ", relayAddress); // if using port 0, it is discovered in ping socket's create(). That being said sockets must be created before communicating with the backend otherwise port 0 will be reused
+
+  sockets.push_back(pingSocket);
+
+  pingThread = std::make_unique<std::thread>([&waitVar, &socketAndThreadReady, pingSocket, &relayManager] {
+    core::PingProcessor processor(relayManager, gAlive);
+    processor.listen(*pingSocket, waitVar, socketAndThreadReady);
+  });
+
+  wait();
+
+  packetThreads.resize(numProcessors);
+  core::SessionMap sessions;
+  for (unsigned int i = 0; i < numProcessors; i++) {
+    auto packetSocket = std::make_shared<os::Socket>(os::SocketType::Blocking);
+    if (!packetSocket->create(relayAddress, 100 * 1024, 100 * 1024, 0.1f, true, 0)) {
+      Log("could not create socket");
       relay::relay_term();
       return 1;
     }
 
-    relayAddress.toString(relay_address_string);
-    LogDebug("Actual address: ", relayAddress);
+    sockets.push_back(packetSocket);
 
-    sockets.push_back(pingSocket);
+    packetThreads[i] = std::make_unique<std::thread>(
+     [&waitVar, &socketAndThreadReady, packetSocket, &relayClock, &keychain, &routerInfo, &sessions, &relayManager, &logger] {
+       core::PacketProcessor processor(relayClock, keychain, routerInfo, sessions, relayManager, gAlive, logger);
+       processor.listen(*packetSocket, waitVar, socketAndThreadReady);
+     });
 
-    pingThread = std::make_unique<std::thread>([pingSocket, &relayManager] {
-      core::PingProcessor processor(relayManager, gAlive);
-      processor.listen(*pingSocket);
-    });
-
-    packetThreads.resize(numProcessors);
-    core::SessionMap sessions;
-    for (unsigned int i = 0; i < numProcessors; i++) {
-      auto packetSocket = std::make_shared<os::Socket>(os::SocketType::Blocking);
-      if (!packetSocket->create(relayAddress, 100 * 1024, 100 * 1024, 0.0f, true)) {
-        Log("could not create socket");
-        relay::relay_term();
-        return 1;
-      }
-
-      sockets.push_back(packetSocket);
-
-      packetThreads[i] =
-       std::make_unique<std::thread>([packetSocket, &relayClock, &keychain, &routerInfo, &sessions, &relayManager, &logger] {
-         core::PacketProcessor processor(relayClock, keychain, routerInfo, sessions, relayManager, gAlive, logger);
-         processor.listen(*packetSocket);
-       });
-    }
+    wait();
   }
 
   LogDebug("communicating with backend");
@@ -330,6 +347,8 @@ int main(int argc, const char** argv)
   curl_easy_cleanup(curl);
 
   relay::relay_term();
+
+  LogDebug("Relay terminated. Address: ", relayAddress);
 
   return 0;
 }

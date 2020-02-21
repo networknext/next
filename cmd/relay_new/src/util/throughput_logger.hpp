@@ -120,8 +120,8 @@ namespace util
 
         ThroughputStats total;
 
-        mLock.lock();
         {
+          std::lock_guard<std::mutex> lk(mLock);
           relayPing = mRelayPing;
           relayPong = mRelayPong;
 
@@ -142,7 +142,6 @@ namespace util
 
           this->reset();
         }
-        mLock.unlock();
 
         total = relayPing + relayPong + routeReq + routeResp + contReq + contResp + cliToServ + servToCli + sessionPing +
                 sessionPong + nearPing;
@@ -207,85 +206,74 @@ namespace util
 
   inline void ThroughputLogger::addToRelayPingPacket(size_t count)
   {
-    mLock.lock();
+    std::lock_guard<std::mutex> lk(mLock);
     mRelayPing.add(count);
-    mLock.unlock();
   }
 
   inline void ThroughputLogger::addToRelayPongPacket(size_t count)
   {
-    mLock.lock();
+    std::lock_guard<std::mutex> lk(mLock);
     mRelayPong.add(count);
-    mLock.unlock();
   }
 
   inline void ThroughputLogger::addToRouteReq(size_t count)
   {
-    mLock.lock();
+    std::lock_guard<std::mutex> lk(mLock);
     mRouteReq.add(count);
-    mLock.unlock();
   }
 
   inline void ThroughputLogger::addToRouteResp(size_t count)
   {
-    mLock.lock();
+    std::lock_guard<std::mutex> lk(mLock);
     mRouteResp.add(count);
-    mLock.unlock();
   }
 
   inline void ThroughputLogger::addToContReq(size_t count)
   {
-    mLock.lock();
+    std::lock_guard<std::mutex> lk(mLock);
     mContReq.add(count);
-    mLock.unlock();
   }
 
   inline void ThroughputLogger::addToContResp(size_t count)
   {
-    mLock.lock();
+    std::lock_guard<std::mutex> lk(mLock);
     mContResp.add(count);
-    mLock.unlock();
   }
 
   inline void ThroughputLogger::addToCliToServ(size_t count)
   {
-    mLock.lock();
+    std::lock_guard<std::mutex> lk(mLock);
     mCliToServ.add(count);
-    mLock.unlock();
   }
 
   inline void ThroughputLogger::addToServToCli(size_t count)
   {
-    mLock.lock();
+    std::lock_guard<std::mutex> lk(mLock);
     mServToCli.add(count);
-    mLock.unlock();
   }
 
   inline void ThroughputLogger::addToSessionPing(size_t count)
   {
-    mLock.lock();
+    std::lock_guard<std::mutex> lk(mLock);
     mSessionPing.add(count);
-    mLock.unlock();
   }
 
   inline void ThroughputLogger::addToSessionPong(size_t count)
   {
-    mLock.lock();
+    std::lock_guard<std::mutex> lk(mLock);
     mSessionPong.add(count);
-    mLock.unlock();
   }
 
   inline void ThroughputLogger::addToNearPing(size_t count)
   {
-    mLock.lock();
+    std::lock_guard<std::mutex> lk(mLock);
     mNearPing.add(count);
-    mLock.unlock();
   }
 
-  inline void ThroughputLogger::addToUnknown(size_t count) {
-    mLock.lock();
+  inline void ThroughputLogger::addToUnknown(size_t count)
+  {
+    std::lock_guard<std::mutex> lk(mLock);
     mUnknown.add(count);
-    mLock.unlock();
   }
 
   inline void ThroughputLogger::stop()

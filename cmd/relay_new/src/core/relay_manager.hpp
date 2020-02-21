@@ -70,7 +70,8 @@ namespace core
     in just O(2n) time. Doing so would require the relay array to have it's internal's shifted a lot during the function, which
     may be more expensive than the time saved by reducing all the loops again.
 
-    -- after refactoring, this isn't that concering, previously this was called in the ping thread, but now it is within the update function (main thread) which only executes once a second so it's far less critical
+    -- after refactoring, this isn't that concering, previously this was called in the ping thread, but now it is within the
+    update function (main thread) which only executes once a second so it's far less critical
   */
 
   // it is used in one place throughout the codebase, so always inline it, no sense in doing a function call
@@ -91,91 +92,93 @@ namespace core
 
     unsigned int index = 0;
 
-    mLock.lock();
-    for (unsigned int i = 0; i < mNumRelays; i++) {
-      for (unsigned int j = 0; j < numRelays; j++) {
-        if (mRelayIDs[i] == relayIDs[j]) {
-          found[j] = true;
+    // locked mutex scope
+    {
+      std::lock_guard<std::mutex> lk(mLock);
+      for (unsigned int i = 0; i < mNumRelays; i++) {
+        for (unsigned int j = 0; j < numRelays; j++) {
+          if (mRelayIDs[i] == relayIDs[j]) {
+            found[j] = true;
 
-          newRelayIDs[index] = mRelayIDs[i];
-          newRelayLastPingTime[index] = mLastRelayPingTime[i];
-          newRelayAddresses[index] = mRelayAddresses[i];
-          newRelayPingHistory[index] = mRelayPingHistory[i];
+            newRelayIDs[index] = mRelayIDs[i];
+            newRelayLastPingTime[index] = mLastRelayPingTime[i];
+            newRelayAddresses[index] = mRelayAddresses[i];
+            newRelayPingHistory[index] = mRelayPingHistory[i];
 
-          const auto slot = mRelayPingHistory[i] - mPingHistoryArray.data();  // TODO make this more readable
-          assert(slot >= 0);
-          assert(slot < MAX_RELAYS);
-          historySlotToken[slot] = true;
+            const auto slot = mRelayPingHistory[i] - mPingHistoryArray.data();  // TODO make this more readable
+            assert(slot >= 0);
+            assert(slot < MAX_RELAYS);
+            historySlotToken[slot] = true;
+            index++;
+          }
+        }
+      }
+
+      // copy all near relays not found in the current relay list
+
+      for (unsigned int i = 0; i < numRelays; i++) {
+        if (!found[i]) {
+          newRelayIDs[index] = relayIDs[i];
+          newRelayLastPingTime[index] = INVALID_PING_TIME;
+          newRelayAddresses[index] = relayAddrs[i];
+          newRelayPingHistory[index] = nullptr;
+          for (int j = 0; j < MAX_RELAYS; j++) {
+            if (!historySlotToken[j]) {
+              newRelayPingHistory[index] = &mPingHistoryArray[j];
+              newRelayPingHistory[index]->clear();
+              historySlotToken[j] = true;
+              break;
+            }
+          }
+          assert(newRelayPingHistory[index] != nullptr);
           index++;
         }
       }
-    }
 
-    // copy all near relays not found in the current relay list
+      // commit the updated relay array
+      mNumRelays = index;
 
-    for (unsigned int i = 0; i < numRelays; i++) {
-      if (!found[i]) {
-        newRelayIDs[index] = relayIDs[i];
-        newRelayLastPingTime[index] = INVALID_PING_TIME;
-        newRelayAddresses[index] = relayAddrs[i];
-        newRelayPingHistory[index] = nullptr;
-        for (int j = 0; j < MAX_RELAYS; j++) {
-          if (!historySlotToken[j]) {
-            newRelayPingHistory[index] = &mPingHistoryArray[j];
-            newRelayPingHistory[index]->clear();
-            historySlotToken[j] = true;
-            break;
-          }
-        }
-        assert(newRelayPingHistory[index] != nullptr);
-        index++;
+      std::copy(newRelayIDs.begin(), newRelayIDs.begin() + index, mRelayIDs.begin());
+      std::copy(newRelayLastPingTime.begin(), newRelayLastPingTime.begin() + index, mLastRelayPingTime.begin());
+      std::copy(newRelayAddresses.begin(), newRelayAddresses.begin() + index, mRelayAddresses.begin());
+      std::copy(newRelayPingHistory.begin(), newRelayPingHistory.begin() + index, mRelayPingHistory.begin());
+
+      // make sure all the ping times are evenly distributed to avoid clusters of ping packets
+
+      auto currentTime = mClock.elapsed<util::Second>();
+
+      for (unsigned int i = 0; i < mNumRelays; i++) {
+        mLastRelayPingTime[i] = currentTime - RELAY_PING_TIME + i * RELAY_PING_TIME / mNumRelays;
       }
-    }
-
-    // commit the updated relay array
-    mNumRelays = index;
-
-    std::copy(newRelayIDs.begin(), newRelayIDs.begin() + index, mRelayIDs.begin());
-    std::copy(newRelayLastPingTime.begin(), newRelayLastPingTime.begin() + index, mLastRelayPingTime.begin());
-    std::copy(newRelayAddresses.begin(), newRelayAddresses.begin() + index, mRelayAddresses.begin());
-    std::copy(newRelayPingHistory.begin(), newRelayPingHistory.begin() + index, mRelayPingHistory.begin());
-
-    // make sure all the ping times are evenly distributed to avoid clusters of ping packets
-
-    auto currentTime = mClock.elapsed<util::Second>();
-
-    for (unsigned int i = 0; i < mNumRelays; i++) {
-      mLastRelayPingTime[i] = currentTime - RELAY_PING_TIME + i * RELAY_PING_TIME / mNumRelays;
-    }
 
 #ifndef NDEBUG
 
-    // make sure everything is correct
+      // make sure everything is correct
 
-    assert(mNumRelays == index);
+      assert(mNumRelays == index);
 
-    unsigned int numFound = 0;
-    for (unsigned int i = 0; i < numRelays; i++) {
-      for (unsigned int j = 0; j < mNumRelays; j++) {
-        if (relayIDs[i] == mRelayIDs[j] && relayAddrs[i] == mRelayAddresses[j]) {
-          numFound++;
-          break;
+      unsigned int numFound = 0;
+      for (unsigned int i = 0; i < numRelays; i++) {
+        for (unsigned int j = 0; j < mNumRelays; j++) {
+          if (relayIDs[i] == mRelayIDs[j] && relayAddrs[i] == mRelayAddresses[j]) {
+            numFound++;
+            break;
+          }
         }
       }
-    }
 
-    assert(numFound == mNumRelays);
+      assert(numFound == mNumRelays);
 
-    for (unsigned int i = 0; i < numRelays; i++) {
-      for (unsigned int j = 0; j < numRelays; j++) {
-        if (i == j) {
-          continue;
+      for (unsigned int i = 0; i < numRelays; i++) {
+        for (unsigned int j = 0; j < numRelays; j++) {
+          if (i == j) {
+            continue;
+          }
+          assert(mRelayPingHistory[i] != mRelayPingHistory[j]);
         }
-        assert(mRelayPingHistory[i] != mRelayPingHistory[j]);
       }
-    }
 #endif
-    mLock.unlock();
+    }
   }
 }  // namespace core
 

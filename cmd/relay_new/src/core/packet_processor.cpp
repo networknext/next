@@ -24,24 +24,28 @@ namespace core
      mLogger(logger)
   {}
 
-  void PacketProcessor::listen(os::Socket& socket)
+  void PacketProcessor::listen(os::Socket& socket, std::condition_variable& var, std::atomic<bool>& readyToReceive)
   {
     static std::atomic<int> listenCounter;
     int listenIndx = listenCounter.fetch_add(1);
 
+    std::array<uint8_t, RELAY_MAX_PACKET_BYTES> packetData;
+
     LogDebug("Listening for packets {", listenIndx, '}');
 
-    std::array<uint8_t, RELAY_MAX_PACKET_BYTES> packetData;
+    readyToReceive = true;
+    var.notify_one();
 
     while (this->mShouldProcess) {
       net::Address from;
       const int packet_bytes = socket.recv(from, packetData.data(), sizeof(uint8_t) * packetData.size());
 
+      // timeout
       if (packet_bytes == 0) {
         continue;
       }
 
-      // LogDebug("Got packet on {", listenIndx, '}');
+      LogDebug("Got packet on {", listenIndx, "} / type: ", static_cast<unsigned int>(packetData[0]));
 
       if (packetData[0] == RELAY_PING_PACKET && packet_bytes == 9) {
         this->handleRelayPingPacket(socket, packetData, packet_bytes, from);
@@ -77,10 +81,12 @@ namespace core
   void PacketProcessor::handleRelayPingPacket(
    os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, net::Address& from)
   {
+    LogDebug("got ping packet from ", from);
     if (mLogger != nullptr) {
       mLogger->addToRelayPingPacket(size);
     }
 
+    LogDebug("sending back to ", from);
     // mark the 0'th index as a pong and send it back from where it came
     packet[0] = RELAY_PONG_PACKET;
     if (!socket.send(from, packet.data(), 9)) {
@@ -91,6 +97,7 @@ namespace core
   void PacketProcessor::handleRelayPongPacket(
    std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, net::Address& from)
   {
+    LogDebug("got pong packet from ", from);
     if (mLogger != nullptr) {
       mLogger->addToRelayPongPacket(size);
     }
@@ -134,10 +141,14 @@ namespace core
 
     // create a new session and add it to the session map
     uint64_t hash = token.session_id ^ token.session_version;
-    mSessionMap.Lock.lock();
-    auto iter = mSessionMap.find(hash);
-    auto end = mSessionMap.end();
-    mSessionMap.Lock.unlock();
+
+    core::SessionMap::iterator iter, end;
+    {
+      std::lock_guard<std::mutex> lk(mSessionMap.Lock);
+      iter = mSessionMap.find(hash);
+      end = mSessionMap.end();
+    }
+
     if (iter == end) {
       // create the session
       auto session = std::make_shared<Session>();
@@ -158,15 +169,17 @@ namespace core
       memcpy(session->private_key, token.private_key, crypto_box_SECRETKEYBYTES);
       relay_replay_protection_reset(&session->ClientToServerProtection);
       relay_replay_protection_reset(&session->ServerToClientProtection);
-      mSessionMap.Lock.lock();
-      mSessionMap[hash] = session;
-      mSessionMap.Lock.unlock();
+
+      {
+        std::lock_guard<std::mutex> lk(mSessionMap.Lock);
+        mSessionMap[hash] = session;
+      }
 
       // printf("session created: %" PRIx64 ".%d\n", token.session_id, token.session_version);
       std::stringstream ss;
       ss << std::hex << token.session_id << '.' << std::dec << static_cast<unsigned int>(token.session_version);
       Log("session created: ", ss.str());
-    }
+    }  // TODO else what?
 
     // remove this part of the token by offseting it the request packet bytes
     packet[RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES] = RELAY_ROUTE_REQUEST_PACKET;
@@ -200,19 +213,23 @@ namespace core
 
     uint64_t hash = session_id ^ session_version;
 
-    mSessionMap.Lock.lock();
-    auto iter = mSessionMap.find(hash);
-    auto end = mSessionMap.end();
-    mSessionMap.Lock.unlock();
+    core::SessionMap::iterator iter, end;
+    {
+      std::lock_guard<std::mutex> lk(mSessionMap.Lock);
+      iter = mSessionMap.find(hash);
+      end = mSessionMap.end();
+    }
 
     if (iter == end) {
       Log("ignoring route response, could not find session");
       return;
     }
 
-    mSessionMap.Lock.lock();
-    auto session = mSessionMap[hash];
-    mSessionMap.Lock.unlock();
+    core::SessionPtr session;
+    {
+      std::lock_guard<std::mutex> lk(mSessionMap.Lock);
+      session = mSessionMap[hash];
+    }
 
     if (sessionIsExpired(session)) {
       return;
@@ -258,18 +275,22 @@ namespace core
 
     uint64_t hash = token.session_id ^ token.session_version;
 
-    mSessionMap.Lock.lock();
-    auto iter = mSessionMap.find(hash);
-    auto end = mSessionMap.end();
-    mSessionMap.Lock.unlock();
+    core::SessionMap::iterator iter, end;
+    {
+      std::lock_guard<std::mutex> lk(mSessionMap.Lock);
+      iter = mSessionMap.find(hash);
+      end = mSessionMap.end();
+    }
 
     if (iter == end) {
       return;
     }
 
-    mSessionMap.Lock.lock();
-    auto session = mSessionMap[hash];
-    mSessionMap.Lock.unlock();
+    core::SessionPtr session;
+    {
+      std::lock_guard<std::mutex> lk(mSessionMap.Lock);
+      session = mSessionMap[hash];
+    }
 
     if (sessionIsExpired(session)) {
       return;
@@ -308,18 +329,23 @@ namespace core
     }
 
     uint64_t hash = session_id ^ session_version;
-    mSessionMap.Lock.lock();
-    auto iter = mSessionMap.find(hash);
-    auto end = mSessionMap.end();
-    mSessionMap.Lock.unlock();
+
+    core::SessionMap::iterator iter, end;
+    {
+      std::lock_guard<std::mutex> lk(mSessionMap.Lock);
+      iter = mSessionMap.find(hash);
+      end = mSessionMap.end();
+    }
 
     if (iter == end) {
       return;
     }
 
-    mSessionMap.Lock.lock();
-    auto session = mSessionMap[hash];
-    mSessionMap.Lock.unlock();
+    core::SessionPtr session;
+    {
+      std::lock_guard<std::mutex> lk(mSessionMap.Lock);
+      session = mSessionMap[hash];
+    }
 
     if (sessionIsExpired(session)) {
       return;
@@ -363,18 +389,22 @@ namespace core
 
     uint64_t hash = session_id ^ session_version;
 
-    mSessionMap.Lock.lock();
-    auto iter = mSessionMap.find(hash);
-    auto end = mSessionMap.end();
-    mSessionMap.Lock.unlock();
+    core::SessionMap::iterator iter, end;
+    {
+      std::lock_guard<std::mutex> lk(mSessionMap.Lock);
+      iter = mSessionMap.find(hash);
+      end = mSessionMap.end();
+    }
 
     if (iter == end) {
       return;
     }
 
-    mSessionMap.Lock.lock();
-    auto session = mSessionMap[hash];
-    mSessionMap.Lock.unlock();
+    core::SessionPtr session;
+    {
+      std::lock_guard<std::mutex> lk(mSessionMap.Lock);
+      session = mSessionMap[hash];
+    }
 
     if (sessionIsExpired(session)) {
       return;
@@ -417,18 +447,23 @@ namespace core
     }
 
     uint64_t hash = session_id ^ session_version;
-    mSessionMap.Lock.lock();
-    auto iter = mSessionMap.find(hash);
-    auto end = mSessionMap.end();
-    mSessionMap.Lock.unlock();
+
+    core::SessionMap::iterator iter, end;
+    {
+      std::lock_guard<std::mutex> lk(mSessionMap.Lock);
+      iter = mSessionMap.find(hash);
+      end = mSessionMap.end();
+    }
 
     if (iter == end) {
       return;
     }
 
-    mSessionMap.Lock.lock();
-    auto session = mSessionMap[hash];
-    mSessionMap.Lock.unlock();
+    core::SessionPtr session;
+    {
+      std::lock_guard<std::mutex> lk(mSessionMap.Lock);
+      session = mSessionMap[hash];
+    }
 
     if (sessionIsExpired(session)) {
       return;
@@ -471,18 +506,22 @@ namespace core
 
     uint64_t hash = session_id ^ session_version;
 
-    mSessionMap.Lock.lock();
-    auto iter = mSessionMap.find(hash);
-    auto end = mSessionMap.end();
-    mSessionMap.Lock.unlock();
+    core::SessionMap::iterator iter, end;
+    {
+      std::lock_guard<std::mutex> lk(mSessionMap.Lock);
+      iter = mSessionMap.find(hash);
+      end = mSessionMap.end();
+    }
 
     if (iter == end) {
       return;
     }
 
-    mSessionMap.Lock.lock();
-    auto session = mSessionMap[hash];
-    mSessionMap.Lock.unlock();
+    core::SessionPtr session;
+    {
+      std::lock_guard<std::mutex> lk(mSessionMap.Lock);
+      session = mSessionMap[hash];
+    }
 
     if (sessionIsExpired(session)) {
       return;
@@ -524,18 +563,22 @@ namespace core
 
     uint64_t hash = session_id ^ session_version;
 
-    mSessionMap.Lock.lock();
-    auto iter = mSessionMap.find(hash);
-    auto end = mSessionMap.end();
-    mSessionMap.Lock.unlock();
+    core::SessionMap::iterator iter, end;
+    {
+      std::lock_guard<std::mutex> lk(mSessionMap.Lock);
+      iter = mSessionMap.find(hash);
+      end = mSessionMap.end();
+    }
 
     if (iter == end) {
       return;
     }
 
-    mSessionMap.Lock.lock();
-    auto session = mSessionMap[hash];
-    mSessionMap.Lock.unlock();
+    core::SessionPtr session;
+    {
+      std::lock_guard<std::mutex> lk(mSessionMap.Lock);
+      session = mSessionMap[hash];
+    }
 
     if (sessionIsExpired(session)) {
       return;

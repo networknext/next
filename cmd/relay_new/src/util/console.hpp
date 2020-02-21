@@ -30,9 +30,8 @@ namespace util
   template <typename... Args>
   inline void Console::write(Args&&... args)
   {
-    mLock.lock();
+    std::lock_guard<std::mutex> lk(mLock);
     ((mStream << std::forward<Args>(args)), ...);
-    mLock.unlock();
   }
 
   template <typename... Args>

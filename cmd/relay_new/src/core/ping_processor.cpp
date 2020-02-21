@@ -9,8 +9,10 @@ namespace core
    : mRelayManager(relayManager), mShouldProcess(shouldProcess)
   {}
 
-  void PingProcessor::listen(os::Socket& socket)
+  void PingProcessor::listen(os::Socket& socket, std::condition_variable& var, std::atomic<bool>& readyToSend)
   {
+    readyToSend = true;
+    var.notify_one();
     while (mShouldProcess) {
       std::array<core::PingData, MAX_RELAYS> pings;
 

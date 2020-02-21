@@ -22,23 +22,23 @@ namespace core
 
   void RelayManager::reset()
   {
-    mLock.lock();
-    {
-      mNumRelays = 0;
-      std::fill(mRelayIDs.begin(), mRelayIDs.end(), 0);
-      std::fill(mLastRelayPingTime.begin(), mLastRelayPingTime.end(), 0);
-      std::fill(mRelayAddresses.begin(), mRelayAddresses.end(), net::Address());
-      std::fill(mRelayPingHistory.begin(), mRelayPingHistory.end(), nullptr);
-      std::fill(mPingHistoryArray.begin(), mPingHistoryArray.end(), PingHistory());
-    }
-    mLock.unlock();
+    // locked mutex scope
+    std::lock_guard<std::mutex> lk(mLock);
+    mNumRelays = 0;
+    std::fill(mRelayIDs.begin(), mRelayIDs.end(), 0);
+    std::fill(mLastRelayPingTime.begin(), mLastRelayPingTime.end(), 0);
+    std::fill(mRelayAddresses.begin(), mRelayAddresses.end(), net::Address());
+    std::fill(mRelayPingHistory.begin(), mRelayPingHistory.end(), nullptr);
+    std::fill(mPingHistoryArray.begin(), mPingHistoryArray.end(), PingHistory());
   }
 
   auto RelayManager::processPong(const net::Address& from, uint64_t seq) -> bool
   {
     bool retval = false;
-    mLock.lock();
+
+    // locked mutex scope
     {
+      std::lock_guard<std::mutex> lk(mLock);
       for (unsigned int i = 0; i < mNumRelays; i++) {
         if (&from == &mRelayAddresses[i]) {
           mRelayPingHistory[i]->pongReceived(seq, mClock.elapsed<util::Second>());
@@ -47,7 +47,6 @@ namespace core
         }
       }
     }
-    mLock.unlock();
     return retval;
   }
 
@@ -55,8 +54,9 @@ namespace core
   {
     auto currentTime = mClock.elapsed<util::Second>();
 
-    mLock.lock();
+    // locked mutex scope
     {
+      std::lock_guard<std::mutex> lk(mLock);
       stats.NumRelays = mNumRelays;
 
       for (unsigned int i = 0; i < mNumRelays; i++) {
@@ -67,7 +67,6 @@ namespace core
         stats.PacketLoss[i] = rs.PacketLoss;
       }
     }
-    mLock.unlock();
   }
 
   unsigned int RelayManager::getPingData(std::array<PingData, MAX_RELAYS>& data)
@@ -75,8 +74,9 @@ namespace core
     double current_time = relay::relay_platform_time();  // TODO replace with clock
     unsigned int numPings{0};
 
-    mLock.lock();
+    // locked mutex scope
     {
+      std::lock_guard<std::mutex> lk(mLock);
       for (unsigned int i = 0; i < mNumRelays; ++i) {
         if (mLastRelayPingTime[i] + RELAY_PING_TIME <= current_time) {
           data[numPings].Seq = mRelayPingHistory[i]->pingSent(current_time);
@@ -86,7 +86,6 @@ namespace core
         }
       }
     }
-    mLock.unlock();
 
     return numPings;
   }

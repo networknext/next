@@ -29,7 +29,7 @@ namespace core
      util::ThroughputLogger* logger);
     ~PacketProcessor() = default;
 
-    void listen(os::Socket& socket);
+    void listen(os::Socket& socket, std::condition_variable& var, std::atomic<bool>& readyToReceive);
 
    private:
     const util::Clock& mRelayClock;

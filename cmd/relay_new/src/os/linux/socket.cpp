@@ -17,7 +17,8 @@ namespace os
     }
   }
 
-  bool Socket::create(net::Address& addr, size_t sendBuffSize, size_t recvBuffSize, float timeout, bool reuse)
+  bool Socket::create(
+   net::Address& addr, size_t sendBuffSize, size_t recvBuffSize, float timeout, bool reuse, int lingerTimeInSeconds)
   {
     assert(addr.Type != net::AddressType::None);
 
@@ -45,36 +46,16 @@ namespace os
       }
     }
 
-    // increase socket send and receive buffer sizes
-    {
-      if (setsockopt(mSockFD, SOL_SOCKET, SO_SNDBUF, &sendBuffSize, sizeof(sendBuffSize)) != 0) {
-        LogError("failed to set socket send buffer size");
-        close();
-        return false;
-      }
-
-      if (setsockopt(mSockFD, SOL_SOCKET, SO_RCVBUF, &recvBuffSize, sizeof(recvBuffSize)) != 0) {
-        LogError("failed to set socket receive buffer size");
-        close();
-        return false;
-      }
-
-      mSendBuffer.resize(sendBuffSize);
-      mReceiveBuffer.resize(recvBuffSize);
+    if (!setBufferSizes(sendBuffSize, recvBuffSize)) {
+      return false;
     }
 
-    // enable socket address & port reuse
-    // good read - https://stackoverflow.com/questions/14388706/how-do-so-reuseaddr-and-so-reuseport-differ
-    {
-      if (reuse) {
-        int enable = 1;
-        if (setsockopt(mSockFD, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &enable, sizeof(enable)) < 0) {
-          LogError("could not set address/port reuse");
-          close();
-          return false;
-        }
-        LogDebug("enabled port & address reuse");
-      }
+    if (!setLingerTime(lingerTimeInSeconds)) {
+      return false;
+    }
+
+    if (!setPortReuse(reuse)) {
+      return false;
     }
 
     // bind to port
@@ -106,53 +87,12 @@ namespace os
       }
     }
 
-    // set non-blocking io or receive timeout, or if neither then just blocking with no timeout
-    {
-      if (mType == SocketType::NonBlocking) {
-        if (fcntl(mSockFD, F_SETFL, O_NONBLOCK, 1) < 0) {
-          LogError("failed to set socket to non blocking");
-          close();
-          return false;
-        }
-      } else if (timeout > 0.0f) {
-        timeval tv;
-        tv.tv_sec = 0;
-        tv.tv_usec = (int)(timeout * 1000000.0f);
-        if (setsockopt(mSockFD, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
-          LogError("failed to set socket receive timeout");
-          close();
-          return false;
-        }
-      }
+    if (!setSocketType(timeout)) {
+      return false;
     }
 
     LogDebug("created socket for ", addr);
     return true;
-  }
-
-  bool Socket::create(legacy::relay_address_t& legacyAddr, size_t sendBuffSize, size_t recvBuffSize, float timeout, bool reuse)
-  {
-    net::Address addr;
-    addr.Type = static_cast<net::AddressType>(legacyAddr.type);
-    addr.Port = legacyAddr.port;
-    switch (addr.Type) {
-      case net::AddressType::IPv4: {
-        for (uint i = 0; i < 4; i++) {
-          addr.IPv4[i] = legacyAddr.data.ipv4[i];
-        }
-        break;
-      }
-      case net::AddressType::IPv6: {
-        for (uint i = 0; i < 8; i++) {
-          addr.IPv6[i] = legacyAddr.data.ipv6[i];
-        }
-        break;
-      }
-      case net::AddressType::None:
-        break;
-    }
-
-    return create(addr, sendBuffSize, recvBuffSize, timeout, reuse);
   }
 
   bool Socket::send(const net::Address& to, const void* data, size_t size)
@@ -200,6 +140,7 @@ namespace os
       return false;
     }
 
+    LogDebug("sent to: ", to);
     return true;
   }
 
@@ -262,6 +203,8 @@ namespace os
 
     assert(res >= 0);
 
+    LogDebug("received from ", from);
+
     return res;
   }
 
@@ -295,6 +238,145 @@ namespace os
     shutdown(mSockFD, SHUT_RDWR);
   }
 
+  inline bool Socket::setBufferSizes(size_t sendBuffSize, size_t recvBuffSize)
+  {
+    if (setsockopt(mSockFD, SOL_SOCKET, SO_SNDBUF, &sendBuffSize, sizeof(sendBuffSize)) != 0) {
+      LogError("failed to set socket send buffer size");
+      close();
+      return false;
+    }
+
+    if (setsockopt(mSockFD, SOL_SOCKET, SO_RCVBUF, &recvBuffSize, sizeof(recvBuffSize)) != 0) {
+      LogError("failed to set socket receive buffer size");
+      close();
+      return false;
+    }
+
+    mSendBuffer.resize(sendBuffSize);
+    mReceiveBuffer.resize(recvBuffSize);
+
+    return true;
+  }
+
+  inline bool Socket::setLingerTime(int lingerTime)
+  {
+    linger lingerStruct = {};
+    socklen_t size = sizeof(lingerStruct);
+    if (lingerTime > 0) {
+      lingerStruct.l_onoff = 1;
+      lingerStruct.l_linger = lingerTime;
+    }
+
+    if (setsockopt(mSockFD, SOL_SOCKET, SO_LINGER, &lingerStruct, size) < 0) {
+      LogError("failed to set socket linger time");
+      close();
+      return false;
+    }
+
+    return true;
+  }
+
+  // good read - https://stackoverflow.com/questions/14388706/how-do-so-reuseaddr-and-so-reuseport-differ
+  inline bool Socket::setPortReuse(bool reuse)
+  {
+    if (reuse) {
+      int enable = 1;
+      if (setsockopt(mSockFD, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &enable, sizeof(enable)) < 0) {
+        LogError("could not set address/port reuse");
+        close();
+        return false;
+      }
+      LogDebug("enabled port & address reuse");
+    }
+
+    return true;
+  }
+
+  inline bool Socket::bindIPv4(const net::Address& addr)
+  {
+    sockaddr_in socket_address = {};
+    socket_address.sin_family = AF_INET;
+    socket_address.sin_addr.s_addr = (((uint32_t)addr.IPv4[0])) | (((uint32_t)addr.IPv4[1]) << 8) |
+                                     (((uint32_t)addr.IPv4[2]) << 16) | (((uint32_t)addr.IPv4[3]) << 24);
+    socket_address.sin_port = net::relay_htons(addr.Port);
+
+    if (bind(mSockFD, reinterpret_cast<sockaddr*>(&socket_address), sizeof(socket_address)) < 0) {
+      LogError("failed to bind socket (ipv4)");
+      close();
+      return false;
+    }
+
+    return true;
+  }
+
+  inline bool Socket::bindIPv6(const net::Address& addr)
+  {
+    sockaddr_in6 socket_address = {};
+
+    socket_address.sin6_family = AF_INET6;
+    for (int i = 0; i < 8; i++) {
+      reinterpret_cast<uint16_t*>(&socket_address.sin6_addr)[i] = net::relay_htons(addr.IPv6[i]);
+    }
+
+    socket_address.sin6_port = net::relay_htons(addr.Port);
+
+    if (bind(mSockFD, reinterpret_cast<sockaddr*>(&socket_address), sizeof(socket_address)) < 0) {
+      LogError("failed to bind socket (ipv6)");
+      close();
+      return false;
+    }
+
+    return true;
+  }
+
+  inline bool Socket::getPortIPv4(net::Address& addr)
+  {
+    sockaddr_in sin;
+    socklen_t len = sizeof(len);
+    if (getsockname(mSockFD, reinterpret_cast<sockaddr*>(&sin), &len) < 0) {
+      LogError("failed to get socket port (ipv4)");
+      close();
+      return false;
+    }
+    addr.Port = relay::relay_platform_ntohs(sin.sin_port);
+    return true;
+  }
+
+  inline bool Socket::getPortIPv6(net::Address& addr)
+  {
+    sockaddr_in6 sin;
+    socklen_t len = sizeof(sin);
+    if (getsockname(mSockFD, reinterpret_cast<sockaddr*>(&sin), &len) < 0) {
+      LogError("failed to get socket port (ipv6)");
+      close();
+      return false;
+    }
+    addr.Port = relay::relay_platform_ntohs(sin.sin6_port);
+    return true;
+  }
+
+  inline bool Socket::setSocketType(float timeout)
+  {
+    // set non-blocking io or receive timeout, or if neither then just blocking with no timeout
+    if (mType == SocketType::NonBlocking) {
+      if (fcntl(mSockFD, F_SETFL, O_NONBLOCK, 1) < 0) {
+        LogError("failed to set socket to non blocking");
+        close();
+        return false;
+      }
+    } else if (timeout > 0.0f) {
+      timeval tv;
+      tv.tv_sec = 0;
+      tv.tv_usec = (int)(timeout * 1000000.0f);
+      if (setsockopt(mSockFD, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+        LogError("failed to set socket receive timeout");
+        close();
+        return false;
+      }
+    }
+
+    return true;
+  }
 }  // namespace os
 
 namespace legacy
