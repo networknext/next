@@ -284,11 +284,13 @@ build-relay: ## builds the relay
 	@$(CXX) $(CXX_FLAGS) -o $(DIST_DIR)/$(RELAY_EXE) cmd/relay/*.cpp $(LDFLAGS)
 	@printf "done\n"
 
-.PHONY: build-sdk
-build-sdk: ## builds the sdk
+$(DIST_DIR)/$(SDKNAME).so:
 	@printf "Building sdk... "
 	@$(CXX) -fPIC -shared -o $(DIST_DIR)/$(SDKNAME).so ./sdk/next.cpp ./sdk/next_ios.cpp ./sdk/next_linux.cpp ./sdk/next_mac.cpp ./sdk/next_ps4.cpp ./sdk/next_switch.cpp ./sdk/next_windows.cpp ./sdk/next_xboxone.cpp $(LDFLAGS)
 	@printf "done\n"
+
+.PHONY: build-sdk
+build-sdk: $(DIST_DIR)/$(SDKNAME).so ## builds the sdk
 
 .PHONY: build-relay-backend
 build-relay-backend: ## builds the relay backend binary

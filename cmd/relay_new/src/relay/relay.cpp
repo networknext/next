@@ -267,12 +267,14 @@ namespace relay
       return RELAY_ERROR;
     }
 
+    // TODO can avoid this loop entirely by just moving ping data to it's own file and having manager take it as a param
     std::array<uint64_t, MAX_RELAYS> relayIDs;
     std::array<net::Address, MAX_RELAYS> relayAddresses;
     for (unsigned int i = 0; i < num_relays; ++i) {
       relayIDs[i] = relay_ping_data[i].id;
       relayAddresses[i] = relay_ping_data[i].address;
     }
+
     manager.update(num_relays, relayIDs, relayAddresses);
 
     return RELAY_OK;

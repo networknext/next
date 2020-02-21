@@ -127,11 +127,8 @@ namespace
   }
 }  // namespace
 
-int main(int argc, const char** argv)
+int main()
 {
-  (void)argc;
-  (void)argv;
-
 #ifdef TEST_BUILD
   return testing::SpecTest::Run() ? 0 : 1;
 #endif
@@ -149,17 +146,17 @@ int main(int argc, const char** argv)
 
   const char* relay_address_env = relay::relay_platform_getenv("RELAY_ADDRESS");
   if (!relay_address_env) {
-    printf("\nerror: RELAY_ADDRESS not set\n\n");
+    Log("error: RELAY_ADDRESS not set\n");
     return 1;
   }
 
   net::Address relayAddress;
   if (!relayAddress.parse(relay_address_env)) {
-    printf("\nerror: invalid relay address '%s'\n\n", relay_address_env);
+    Log("error: invalid relay address '", relay_address_env, "'\n");
     return 1;
   }
 
-  printf("\nrelay address env var: %s", relay_address_env);
+  LogDebug("relay address env var: ", relay_address_env);
 
   {
     net::Address address_without_port = relayAddress;
@@ -180,7 +177,7 @@ int main(int argc, const char** argv)
 
   const char* backend_hostname = relay::relay_platform_getenv("RELAY_BACKEND_HOSTNAME");
   if (!backend_hostname) {
-    printf("\nerror: RELAY_BACKEND_HOSTNAME not set\n\n");
+    Log("error: RELAY_BACKEND_HOSTNAME not set\n");
     return 1;
   }
 
@@ -248,14 +245,13 @@ int main(int argc, const char** argv)
   std::string relay_address_string;
 
   auto pingSocket = std::make_shared<os::Socket>(os::SocketType::Blocking);
-  if (!pingSocket->create(relayAddress, 100 * 1024, 100 * 1024, 0.1f, true, 0)) {
+  net::Address pingSockAddr;
+  pingSockAddr.parse("127.0.0.1:0");
+  if (!pingSocket->create(pingSockAddr, 100 * 1024, 100 * 1024, 0.0f, true, 0)) {
     Log("could not create pingSocket");
     relay::relay_term();
     return 1;
   }
-
-  relayAddress.toString(relay_address_string);
-  LogDebug("Actual address: ", relayAddress); // if using port 0, it is discovered in ping socket's create(). That being said sockets must be created before communicating with the backend otherwise port 0 will be reused
 
   sockets.push_back(pingSocket);
 
@@ -270,7 +266,7 @@ int main(int argc, const char** argv)
   core::SessionMap sessions;
   for (unsigned int i = 0; i < numProcessors; i++) {
     auto packetSocket = std::make_shared<os::Socket>(os::SocketType::Blocking);
-    if (!packetSocket->create(relayAddress, 100 * 1024, 100 * 1024, 0.1f, true, 0)) {
+    if (!packetSocket->create(relayAddress, 100 * 1024, 100 * 1024, 0.0f, true, 0)) {
       Log("could not create socket");
       relay::relay_term();
       return 1;
@@ -286,6 +282,11 @@ int main(int argc, const char** argv)
 
     wait();
   }
+
+  relayAddress.toString(relay_address_string);
+  LogDebug(
+   "Actual address: ", relayAddress);  // if using port 0, it is discovered in ping socket's create(). That being said sockets
+                                       // must be created before communicating with the backend otherwise port 0 will be reused
 
   LogDebug("communicating with backend");
   bool relay_initialized = false;

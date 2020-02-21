@@ -26,23 +26,21 @@ namespace os
     bool create(
      net::Address& addr, size_t sendBuffSize, size_t recvBuffSize, float timeout, bool reuse, int lingerTimeInSeconds);
 
-    bool send(const net::Address& to, const void* data, size_t size);
+    bool send(const net::Address& to, const uint8_t* data, size_t size);
 
     // for compat only
-    bool send(const legacy::relay_address_t& to, const void* data, size_t size);
+    bool send(const legacy::relay_address_t& to, const uint8_t* data, size_t size);
 
-    size_t recv(net::Address& from, void* data, size_t maxSize);
+    size_t recv(net::Address& from, uint8_t* data, size_t maxSize);
 
     // for compat only
-    size_t recv(legacy::relay_address_t& from, void* data, size_t maxSize);
+    size_t recv(legacy::relay_address_t& from, uint8_t* data, size_t maxSize);
 
     void close();
 
    private:
     int mSockFD = 0;
     const SocketType mType;
-    std::vector<uint8_t> mSendBuffer;
-    std::vector<uint8_t> mReceiveBuffer;
 
     bool setBufferSizes(size_t sendBufferSize, size_t recvBufferSize);
     bool setLingerTime(int lingerTime);

@@ -26,7 +26,7 @@ namespace os
 
     // create socket
     {
-      mSockFD = ::socket((addr.Type == net::AddressType::IPv6) ? PF_INET6 : PF_INET, SOCK_DGRAM, IPPROTO_UDP);
+      mSockFD = ::socket((addr.Type == net::AddressType::IPv6) ? AF_INET6 : AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
       if (mSockFD < 0) {
         LogError("failed to create socket");
@@ -37,8 +37,8 @@ namespace os
     // force IPv6 only if necessary
     {
       if (addr.Type == net::AddressType::IPv6) {
-        int yes = 1;
-        if (setsockopt(mSockFD, IPPROTO_IPV6, IPV6_V6ONLY, &yes, sizeof(yes)) != 0) {
+        int enable = 1;
+        if (setsockopt(mSockFD, IPPROTO_IPV6, IPV6_V6ONLY, &enable, sizeof(enable)) != 0) {
           LogError("failed to set socket ipv6 only");
           close();
           return false;
@@ -95,7 +95,7 @@ namespace os
     return true;
   }
 
-  bool Socket::send(const net::Address& to, const void* data, size_t size)
+  bool Socket::send(const net::Address& to, const uint8_t* data, size_t size)
   {
     assert(to.Type == net::AddressType::IPv4 || to.Type == net::AddressType::IPv6);
     assert(data != nullptr);
@@ -144,7 +144,7 @@ namespace os
     return true;
   }
 
-  bool Socket::send(const legacy::relay_address_t& to, const void* data, size_t size)
+  bool Socket::send(const legacy::relay_address_t& to, const uint8_t* data, size_t size)
   {
     net::Address addr;
     addr.Type = static_cast<net::AddressType>(to.type);
@@ -168,10 +168,12 @@ namespace os
     return send(addr, data, size);
   }
 
-  size_t Socket::recv(net::Address& from, void* data, size_t maxSize)
+  size_t Socket::recv(net::Address& from, uint8_t* data, size_t maxSize)
   {
     assert(data != nullptr);
     assert(maxSize > 0);
+
+    LogDebug("ready to receive");
 
     sockaddr_storage sockaddr_from;
 
@@ -179,7 +181,7 @@ namespace os
     auto res = recvfrom(mSockFD,
      data,
      maxSize,
-     (mType == SocketType::NonBlocking) ? MSG_DONTWAIT : MSG_WAITFORONE,
+     (mType == SocketType::NonBlocking) ? MSG_DONTWAIT : 0,
      reinterpret_cast<sockaddr*>(&sockaddr_from),
      &len);
 
@@ -203,12 +205,12 @@ namespace os
 
     assert(res >= 0);
 
-    LogDebug("received from ", from);
+    LogDebug("received from ", from, " / type: ", static_cast<int>(data[0]));
 
     return res;
   }
 
-  size_t Socket::recv(legacy::relay_address_t& from, void* data, size_t maxSize)
+  size_t Socket::recv(legacy::relay_address_t& from, uint8_t* data, size_t maxSize)
   {
     net::Address addr;
     auto len = recv(addr, data, maxSize);
@@ -252,9 +254,6 @@ namespace os
       return false;
     }
 
-    mSendBuffer.resize(sendBuffSize);
-    mReceiveBuffer.resize(recvBuffSize);
-
     return true;
   }
 
@@ -281,12 +280,12 @@ namespace os
   {
     if (reuse) {
       int enable = 1;
-      if (setsockopt(mSockFD, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &enable, sizeof(enable)) < 0) {
-        LogError("could not set address/port reuse");
+      if (setsockopt(mSockFD, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(enable)) < 0) {
+        LogError("could not set port reuse");
         close();
         return false;
       }
-      LogDebug("enabled port & address reuse");
+      LogDebug("enabled port reuse");
     }
 
     return true;
@@ -491,7 +490,7 @@ namespace legacy
       }
     } else if (timeout_seconds > 0.0f) {
       // set receive timeout
-      struct timeval tv;
+      timeval tv;
       tv.tv_sec = 0;
       tv.tv_usec = (int)(timeout_seconds * 1000000.0f);
       if (setsockopt(socket->handle, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {

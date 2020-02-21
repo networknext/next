@@ -31,7 +31,7 @@ namespace core
 
     std::array<uint8_t, RELAY_MAX_PACKET_BYTES> packetData;
 
-    LogDebug("Listening for packets {", listenIndx, '}');
+    LogDebug("listening for packets {", listenIndx, '}');
 
     readyToReceive = true;
     var.notify_one();
@@ -42,10 +42,11 @@ namespace core
 
       // timeout
       if (packet_bytes == 0) {
+        LogDebug("receive timeout, from addr: ", from);
         continue;
       }
 
-      LogDebug("Got packet on {", listenIndx, "} / type: ", static_cast<unsigned int>(packetData[0]));
+      LogDebug("got packet on {", listenIndx, "} / type: ", static_cast<unsigned int>(packetData[0]));
 
       if (packetData[0] == RELAY_PING_PACKET && packet_bytes == 9) {
         this->handleRelayPingPacket(socket, packetData, packet_bytes, from);
@@ -70,7 +71,7 @@ namespace core
       } else if (packetData[0] == RELAY_NEAR_PING_PACKET) {
         this->handleNearPingPacket(socket, packetData, packet_bytes, from);
       } else {
-        LogDebug("Received unknown packet type: ", std::hex, (int)packetData[0]);
+        LogDebug("received unknown packet type: ", std::hex, (int)packetData[0]);
         if (mLogger != nullptr) {
           mLogger->addToUnknown(packet_bytes);
         }
@@ -90,7 +91,7 @@ namespace core
     // mark the 0'th index as a pong and send it back from where it came
     packet[0] = RELAY_PONG_PACKET;
     if (!socket.send(from, packet.data(), 9)) {
-      Log("Failed to send data");
+      Log("failed to send data");
     }
   }
 
