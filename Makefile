@@ -117,28 +117,6 @@ ifndef GCP_METRICS_PROJECT
 export GCP_METRICS_PROJECT = network-next-local
 endif
 
-##### Defines a kubernetes container #####
-ifndef GCP_METRICS_CLUSTER_LOCATION
-export GCP_METRICS_CLUSTER_LOCATION = us-central1-f
-endif
-
-ifndef GCP_METRICS_CLUSTER_NAME
-export GCP_METRICS_CLUSTER_NAME = local
-endif
-
-ifndef GCP_METRICS_POD_NAME
-export GCP_METRICS_POD_NAME = metrics
-endif
-
-ifndef GCP_METRICS_CONTAINER_NAME
-export GCP_METRICS_CONTAINER_NAME = metrics
-endif
-
-ifndef GCP_METRICS_NAMESPACE_NAME
-export GCP_METRICS_NAMESPACE_NAME = default
-endif
-#########################################
-
 .PHONY: help
 help: ## this list
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'

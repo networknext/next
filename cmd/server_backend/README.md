@@ -33,19 +33,9 @@ The default setting is `warn` when running `make dev-relay-backend` and `make de
 #### Optional
 
 - `GCP_CREDENTIALS`: JSON blob or path to a .json file for the GCP credentials needed
-
-- `GCP_METRICS_PROJECT`: The name of the StackDriver project that will monitor metrics
-- `GCP_METRICS_CLUSTER_LOCATION`: The location of the kubernetes cluster that will monitor metrics
-- `GCP_METRICS_CLUSTER_NAME`: The name of the kubernetes cluster that will monitor metrics
-- `GCP_METRICS_POD_NAME`: The name of the kubernetes pod that will monitor metrics
-- `GCP_METRICS_CONTAINER_NAME`: The name of the kubernetes container that will monitor metrics
-- `GCP_METRICS_NAMESPACE_NAME`: The name of the kubernetes namespace that will monitor metrics
-
 - `BILLING_PUBSUB_PROJECT`: The project ID to use for billing in Google Pub/Sub
 - `BILLING_PUBSUB_TOPIC`: The topic ID to use for billing in Google Pub/Sub
 
 #### IMPORTANT
-
-You must have at least `GCP_CREDENTIALS` and `GCP_METRICS_PROJECT` set to push metrics to StackDriver. Other `GCP_METRICS_` vars define the kubernetes container to monitor them from. If they are not set, it will fallback to GCE, and then to global.
 
 Both `BILLING_PUBSUB_PROJECT` and `BILLING_PUBSUB_TOPIC` must be set to send billing entries to Google Pub/Sub.
