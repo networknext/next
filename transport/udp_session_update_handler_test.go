@@ -736,7 +736,7 @@ func TestCachedRouteResponse(t *testing.T) {
 
 	var resbuf bytes.Buffer
 
-	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &rp, &iploc, &geoClient, TestServerBackendPrivateKey[:], TestRouterPrivateKey[:])
+	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &rp, &iploc, &geoClient, &billing.NoOpBiller{}, TestServerBackendPrivateKey[:], TestRouterPrivateKey[:])
 	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 	assert.Greater(t, resbuf.Len(), 0)
