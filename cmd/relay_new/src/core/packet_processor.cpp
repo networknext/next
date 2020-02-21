@@ -87,7 +87,6 @@ namespace core
       mLogger->addToRelayPingPacket(size);
     }
 
-    LogDebug("sending back to ", from);
     // mark the 0'th index as a pong and send it back from where it came
     packet[0] = RELAY_PONG_PACKET;
     if (!socket.send(from, packet.data(), 9)) {

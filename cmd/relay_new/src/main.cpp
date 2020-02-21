@@ -156,8 +156,6 @@ int main()
     return 1;
   }
 
-  LogDebug("relay address env var: ", relay_address_env);
-
   {
     net::Address address_without_port = relayAddress;
     address_without_port.Port = 0;
