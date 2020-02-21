@@ -178,6 +178,7 @@ type SessionCacheEntry struct {
 	Sequence  uint64
 	RouteHash uint64
 	Version   uint8
+	Response  []byte
 }
 
 func (e *SessionCacheEntry) UnmarshalBinary(data []byte) error {
@@ -275,10 +276,17 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			return
 		}
 
-		if packet.Sequence < sessionCacheEntry.Sequence {
+		switch seq := packet.Sequence; {
+		case seq < sessionCacheEntry.Sequence:
 			err := fmt.Errorf("packet sequence too old. current_sequence %v, previous sequence %v", packet.Sequence, sessionCacheEntry.Sequence)
 			level.Error(locallogger).Log("err", err)
 			HandleError(w, response, serverPrivateKey, err)
+			return
+		case seq == sessionCacheEntry.Sequence:
+			if _, err := w.Write(sessionCacheEntry.Response); err != nil {
+				level.Error(locallogger).Log("err", err)
+				HandleError(w, response, serverPrivateKey, err)
+			}
 			return
 		}
 
@@ -390,24 +398,36 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			response.NearRelayAddresses[idx] = relay.Addr
 		}
 
-		err = WriteSessionResponse(w, response, serverPrivateKey)
-		if err != nil {
-			level.Error(locallogger).Log("msg", "failed to write session response", "err", err)
-		} else {
-			level.Debug(locallogger).Log("msg", "caching session data")
+		// Sign the response
+		response.Signature = crypto.Sign(serverPrivateKey, response.GetSignData())
 
-			// Save some of the packet information to be used in SessionUpdateHandlerFunc
-			sessionCacheEntry = SessionCacheEntry{
-				SessionID: packet.SessionId,
-				Sequence:  packet.Sequence,
-				RouteHash: routeHash,
-				Version:   sessionCacheEntry.Version, //This was already incremented above for the route tokens
-			}
-			result := redisClient.Set(fmt.Sprintf("SESSION-%d", packet.SessionId), sessionCacheEntry, 5*time.Minute)
-			if result.Err() != nil {
-				level.Error(locallogger).Log("msg", "failed to update session", "err", result.Err())
-				return
-			}
+		// Marshal the packet
+		responseData, err := response.MarshalBinary()
+		if err != nil {
+			level.Error(locallogger).Log("msg", "failed to marshal session response", "err", err)
+			return
+		}
+
+		level.Debug(locallogger).Log("msg", "caching session data")
+
+		// Save some of the packet information to be used in SessionUpdateHandlerFunc
+		sessionCacheEntry = SessionCacheEntry{
+			SessionID: packet.SessionId,
+			Sequence:  packet.Sequence,
+			RouteHash: routeHash,
+			Version:   sessionCacheEntry.Version, //This was already incremented above for the route tokens
+			Response:  responseData,
+		}
+		result := redisClient.Set(fmt.Sprintf("SESSION-%d", packet.SessionId), sessionCacheEntry, 5*time.Minute)
+		if result.Err() != nil {
+			level.Error(locallogger).Log("msg", "failed to update session", "err", result.Err())
+			return
+		}
+
+		// Send the Session Response back to the server
+		if _, err := w.Write(responseData); err != nil {
+			level.Error(locallogger).Log("msg", "failed to write session response", "err", err)
+			return
 		}
 	}
 }
