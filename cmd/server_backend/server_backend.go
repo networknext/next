@@ -25,6 +25,7 @@ import (
 	"github.com/go-redis/redis/v7"
 	"github.com/oschwald/geoip2-golang"
 
+	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
@@ -123,8 +124,13 @@ func main() {
 		LocalBuyer: &routing.Buyer{PublicKey: customerPublicKey},
 	}
 
-	// If GCP_CREDENTIALS are set then override the local in memory
-	// and connect to Firestore
+	// Create a no-op biller
+	var biller billing.Biller
+	biller = &billing.NoOpBiller{}
+
+	// If GCP_CREDENTIALS are set then:
+	// override the local in memory and connect to Firestore,
+	// set up the billing client
 	if gcpcreds, ok := os.LookupEnv("GCP_CREDENTIALS"); ok {
 		var gcpcredsjson []byte
 
@@ -165,6 +171,35 @@ func main() {
 
 		// Set the Firestore Storer to give to handlers
 		db = &fs
+
+		// Get the billing projectID and topicID
+		billingProjectID, ok := os.LookupEnv("BILLING_PUBSUB_PROJECT")
+		if ok {
+			billingTopicID, ok := os.LookupEnv("BILLING_PUBSUB_TOPIC")
+			if ok {
+				// Create the billing client
+				const clientCount int = 4
+				var err error
+				biller, err = billing.NewBiller(ctx, logger, billingProjectID, billingTopicID, gcpcredsjson, &billing.Descriptor{
+					ClientCount:         clientCount,
+					DelayThreshold:      time.Millisecond,
+					CountThreshold:      100,
+					ByteThreshold:       1e6,
+					NumGoroutines:       (25 * runtime.GOMAXPROCS(0)) / clientCount,
+					Timeout:             time.Minute,
+					ResultChannelBuffer: 10000 * 60 * 10, // 10,000 messages per second for 10 minutes
+				})
+				if err != nil {
+					level.Error(logger).Log("err", err)
+				} else {
+					level.Debug(logger).Log("msg", "Billing client connected to Google Pub/Sub, ready to publish.")
+				}
+			} else {
+				level.Warn(logger).Log("msg", "BILLING_PUBSUB_TOPIC env var not set, billing data will not be sent")
+			}
+		} else {
+			level.Warn(logger).Log("msg", "BILLING_PUBSUB_PROJECT env var not set, billing data will not be sent")
+		}
 	}
 
 	var routeMatrix routing.RouteMatrix
@@ -216,7 +251,7 @@ func main() {
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
 			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClient, db),
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClient, db, &routeMatrix, ipLocator, &geoClient, serverPrivateKey, routerPrivateKey),
+			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClient, db, &routeMatrix, ipLocator, &geoClient, biller, serverPrivateKey, routerPrivateKey),
 		}
 
 		go func() {
