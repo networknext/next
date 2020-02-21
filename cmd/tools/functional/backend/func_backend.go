@@ -55,6 +55,7 @@ const BACKEND_MODE_ROUTE_SWITCHING = 5
 const BACKEND_MODE_UNCOMMITTED = 6
 const BACKEND_MODE_UNCOMMITTED_TO_COMMITTED = 7
 const BACKEND_MODE_USER_FLAGS = 8
+const BACKEND_MODE_IDEMPOTENT = 9
 
 type Backend struct {
 	mutex           sync.RWMutex
@@ -269,6 +270,10 @@ func main() {
 
 	if os.Getenv("BACKEND_MODE") == "USER_FLAGS" {
 		backend.mode = BACKEND_MODE_USER_FLAGS
+	}
+
+	if os.Getenv("BACKEND_MODE") == "IDEMPOTENT" {
+		backend.mode = BACKEND_MODE_IDEMPOTENT
 	}
 
 	go OptimizeThread()
