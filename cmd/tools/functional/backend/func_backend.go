@@ -90,11 +90,13 @@ type ServerEntry struct {
 
 type SessionEntry struct {
 	id              uint64
+	sequence        uint64
 	version         uint8
 	expireTimestamp uint64
 	route           []uint64
 	next            bool
 	slice           uint64
+	response        []byte
 }
 
 const RTT_Threshold = 1.0
@@ -363,6 +365,16 @@ func main() {
 				sessionEntry.slice++
 			}
 
+			if backend.mode == BACKEND_MODE_IDEMPOTENT {
+				if sessionUpdate.Sequence == sessionEntry.sequence {
+					_, err = w.Write(sessionEntry.response)
+					if err != nil {
+						fmt.Printf("error: failed to send udp response: %v\n", err)
+					}
+					return
+				}
+			}
+
 			takeNetworkNext := len(nearRelayIds) > 0
 
 			if backend.mode == BACKEND_MODE_FORCE_DIRECT {
@@ -514,13 +526,6 @@ func main() {
 				return
 			}
 
-			backend.mutex.Lock()
-			if newSession {
-				backend.dirty = true
-			}
-			backend.sessionDatabase[sessionUpdate.SessionId] = sessionEntry
-			backend.mutex.Unlock()
-
 			sessionResponse.Signature = crypto.Sign(crypto.BackendPrivateKey, sessionResponse.GetSignData())
 
 			responsePacketData, err := sessionResponse.MarshalBinary()
@@ -528,6 +533,16 @@ func main() {
 				fmt.Printf("error: failed to write session response packet: %v\n", err)
 				return
 			}
+
+			sessionEntry.sequence = sessionResponse.Sequence
+			sessionEntry.response = responsePacketData
+
+			backend.mutex.Lock()
+			if newSession {
+				backend.dirty = true
+			}
+			backend.sessionDatabase[sessionUpdate.SessionId] = sessionEntry
+			backend.mutex.Unlock()
 
 			_, err = w.Write(responsePacketData)
 			if err != nil {
