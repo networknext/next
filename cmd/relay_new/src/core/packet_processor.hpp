@@ -43,10 +43,10 @@ namespace core
 
     // Marks the first byte as a pong packet and sends it back
     void handleRelayPingPacket(
-     os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, net::Address& from);
+     os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
 
     // Processes the pong packet by increasing the sequence number and getting the time diff
-    void handleRelayPongPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, net::Address& from);
+    void handleRelayPongPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
 
     void handleRouteRequestPacket(
      os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, net::Address& from);

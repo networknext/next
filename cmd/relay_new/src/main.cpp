@@ -252,13 +252,7 @@ int main()
   }
 
   sockets.push_back(pingSocket);
-
-  pingThread = std::make_unique<std::thread>([&waitVar, &socketAndThreadReady, pingSocket, &relayManager] {
-    core::PingProcessor processor(relayManager, gAlive);
-    processor.listen(*pingSocket, waitVar, socketAndThreadReady);
-  });
-
-  wait();
+  core::PingProcessor pingProcessor(relayManager, gAlive, relayAddress);
 
   packetThreads.resize(numProcessors);
   core::SessionMap sessions;
@@ -280,6 +274,12 @@ int main()
 
     wait();
   }
+
+  pingThread = std::make_unique<std::thread>([&waitVar, &socketAndThreadReady, pingSocket, &pingProcessor] {
+    pingProcessor.listen(*pingSocket, waitVar, socketAndThreadReady);
+  });
+
+  wait();
 
   relayAddress.toString(relay_address_string);
   LogDebug(

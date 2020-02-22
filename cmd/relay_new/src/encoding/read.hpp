@@ -36,6 +36,9 @@ namespace encoding
   uint16_t ReadUint16(const std::array<uint8_t, BuffSize>& buff, size_t& index);
 
   template <size_t BuffSize>
+  uint64_t ReadUint64(const std::array<uint8_t, BuffSize>& buff, size_t& index);
+
+  template <size_t BuffSize>
   void ReadAddress(const std::array<uint8_t, BuffSize>& buff, size_t& index, net::Address& addr);
 
   template <size_t BuffSize>
@@ -51,6 +54,21 @@ namespace encoding
     auto retval = *reinterpret_cast<const uint16_t*>(&buff[index]);
     index += 2;
     return retval;
+  }
+
+  template <size_t BuffSize>
+  uint64_t ReadUint64(const std::array<uint8_t, BuffSize>& buff, size_t& index)
+  {
+    uint64_t value;
+    value = buff[index++];
+    value |= (static_cast<uint64_t>(buff[index++]) << 8);
+    value |= (static_cast<uint64_t>(buff[index++]) << 16);
+    value |= (static_cast<uint64_t>(buff[index++]) << 24);
+    value |= (static_cast<uint64_t>(buff[index++]) << 32);
+    value |= (static_cast<uint64_t>(buff[index++]) << 40);
+    value |= (static_cast<uint64_t>(buff[index++]) << 48);
+    value |= (static_cast<uint64_t>(buff[index++]) << 56);
+    return value;
   }
 
   template <size_t BuffSize>

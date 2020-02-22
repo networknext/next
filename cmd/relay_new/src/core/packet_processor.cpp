@@ -48,10 +48,10 @@ namespace core
 
       LogDebug("got packet on {", listenIndx, "} / type: ", static_cast<unsigned int>(packetData[0]));
 
-      if (packetData[0] == RELAY_PING_PACKET && packet_bytes == 9) {
-        this->handleRelayPingPacket(socket, packetData, packet_bytes, from);
-      } else if (packetData[0] == RELAY_PONG_PACKET && packet_bytes == 9) {
-        this->handleRelayPongPacket(packetData, packet_bytes, from);
+      if (packetData[0] == RELAY_PING_PACKET && packet_bytes == RELAY_PING_PACKET_BYTES) {
+        this->handleRelayPingPacket(socket, packetData, packet_bytes);
+      } else if (packetData[0] == RELAY_PONG_PACKET && packet_bytes == RELAY_PING_PACKET_BYTES) {
+        this->handleRelayPongPacket(packetData, packet_bytes);
       } else if (packetData[0] == RELAY_ROUTE_REQUEST_PACKET) {
         this->handleRouteRequestPacket(socket, packetData, packet_bytes, from);
       } else if (packetData[0] == RELAY_ROUTE_RESPONSE_PACKET) {
@@ -80,34 +80,44 @@ namespace core
   }
 
   void PacketProcessor::handleRelayPingPacket(
-   os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, net::Address& from)
+   os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
   {
-    LogDebug("got ping packet from ", from);
     if (mLogger != nullptr) {
       mLogger->addToRelayPingPacket(size);
     }
 
+    net::Address addr; // where to send it back
+
     // mark the 0'th index as a pong and send it back from where it came
-    packet[0] = RELAY_PONG_PACKET;
-    if (!socket.send(from, packet.data(), 9)) {
+    packet[0] = RELAY_PONG_PACKET; // set the identifier byte as pong
+    size_t index = 1; // skip the identifier byte
+    uint64_t sequence = encoding::ReadUint64(packet, index);
+    (void)sequence;
+    encoding::ReadAddress(packet, index, addr); // pings are sent on a different port, need to read actual address
+
+    LogDebug("got ping packet from ", addr);
+
+    if (!socket.send(addr, packet.data(), RELAY_PING_PACKET_BYTES)) {
       Log("failed to send data");
     }
   }
 
   void PacketProcessor::handleRelayPongPacket(
-   std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, net::Address& from)
+   std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
   {
-    LogDebug("got pong packet from ", from);
     if (mLogger != nullptr) {
       mLogger->addToRelayPongPacket(size);
     }
 
-    // read the uint from the packet - this could be brought out of the mutex
-    const uint8_t* p = packet.data() + 1;
-    uint64_t sequence = encoding::read_uint64(&p);
+    net::Address addr; // the actual from
+
+    size_t index = 1; // skip the identifier byte
+    uint64_t sequence = encoding::ReadUint64(packet, index);
+    encoding::ReadAddress(packet, index, addr); // pings are sent on a different port, need to read actual address
+    LogDebug("got pong packet from ", addr);
 
     // process the pong time
-    mRelayManager.processPong(from, sequence);
+    mRelayManager.processPong(addr, sequence);
   }
 
   void PacketProcessor::handleRouteRequestPacket(
