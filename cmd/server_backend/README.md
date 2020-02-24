@@ -21,7 +21,7 @@ The default setting is `warn` when running `make dev-relay-backend` and `make de
 
 #### Required
 
-- `BACKEND_LOG_LEVEL`: one of `none`, `error`, `warn`, `info`, `debug` 
+- `BACKEND_LOG_LEVEL`: one of `none`, `error`, `warn`, `info`, `debug`
 - `SERVER_BACKEND_PUBLIC_KEY`: the public key of the server_backend
 - `SERVER_BACKEND_PRIVATE_KEY`: the private key of the server_backend to sign responses
 - `RELAY_ROUTER_PUBLIC_KEY`: the public key of the router
@@ -33,3 +33,5 @@ The default setting is `warn` when running `make dev-relay-backend` and `make de
 #### Optional
 
 - `GCP_CREDENTIALS`: JSON blob or path to a .json file for the GCP credentials needed
+- `BILLING_PUBSUB_PROJECT`: The project ID to use for billing in Google Pub/Sub
+- `BILLING_PUBSUB_TOPIC`: The topic ID to use for billing in Google Pub/Sub
