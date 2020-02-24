@@ -38,9 +38,12 @@ namespace os
 
     void close();
 
+    const net::Address& getAddress() const;
+
    private:
     int mSockFD = 0;
     const SocketType mType;
+    net::Address mAddress;
 
     bool setBufferSizes(size_t sendBufferSize, size_t recvBufferSize);
     bool setLingerTime(int lingerTime);
@@ -54,6 +57,11 @@ namespace os
 
     bool setSocketType(float timeout);
   };
+
+  [[gnu::always_inline]] inline const net::Address& Socket::getAddress() const
+  {
+    return mAddress;
+  }
 
   // helpers to reduce static cast's
 

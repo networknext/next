@@ -91,7 +91,10 @@ namespace os
       return false;
     }
 
+    mAddress = addr;
+
     LogDebug("created socket for ", addr);
+
     return true;
   }
 
@@ -204,8 +207,6 @@ namespace os
     }
 
     assert(res >= 0);
-
-    LogDebug("received from ", from, " / type: ", static_cast<int>(data[0]));
 
     return res;
   }
