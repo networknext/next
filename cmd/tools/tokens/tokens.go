@@ -99,7 +99,7 @@ func main() {
 	packetTypeIdentifyingByte := make([]byte, 1)
 	switch *token {
 	case "new":
-		packetTypeIdentifyingByte[0] = routing.PacketIDRouteRequest
+		packetTypeIdentifyingByte[0] = routing.TokenTypeRouteRequest
 		nextRouteToken := routing.NextRouteToken{
 			Expires: uint64(time.Now().Add(*expires).Unix()),
 
@@ -127,7 +127,7 @@ func main() {
 
 		routeToken = &nextRouteToken
 	case "continue":
-		packetTypeIdentifyingByte[0] = routing.PacketIDContinueRequest
+		packetTypeIdentifyingByte[0] = routing.TokenTypeContinueRequest
 		continueRouteToken := routing.ContinueRouteToken{
 			Expires: uint64(time.Now().Add(*expires).Unix()),
 
