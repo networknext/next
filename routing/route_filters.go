@@ -7,7 +7,7 @@ import (
 
 // RouteFilter reduces a slice of routes according to the filter function.
 // Takes in an array of routes and returns the filtered array of routes.
-// If the filter couldn't find a new list of routes, then it returns nil.
+// If the filter couldn't reduce the list of routes, then it returns nil.
 type RouteFilter func(routes []Route) []Route
 
 // FilterBestRTT returns the best routes based on lowest RTT, or nil if no best route is found.
@@ -62,14 +62,13 @@ func FilterAcceptableRoutes(rttSwitchThreshold float32) RouteFilter {
 	}
 }
 
-// FilterContainsRoute returns the base route if that route is in the list of routes, or nil if it is not.
-func FilterContainsRoute(baseRoute Route) RouteFilter {
+// FilterContainsRouteHash returns the route if its route hash matches a route in the list of routes, or nil if it is not.
+func FilterContainsRouteHash(routeHash uint64) RouteFilter {
 	return func(routes []Route) []Route {
-		baseRouteHash := baseRoute.Hash64()
 		for _, route := range routes {
-			sameRoute := baseRouteHash == route.Hash64()
+			sameRoute := routeHash == route.Hash64()
 			if sameRoute {
-				return []Route{baseRoute}
+				return []Route{route}
 			}
 		}
 

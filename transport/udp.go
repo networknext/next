@@ -192,7 +192,7 @@ func (e SessionCacheEntry) MarshalBinary() ([]byte, error) {
 type RouteProvider interface {
 	ResolveRelay(uint64) (routing.Relay, error)
 	RelaysIn(routing.Datacenter) []routing.Relay
-	Routes([]routing.Relay, []routing.Relay, ...routing.RouteFilter) []routing.Route
+	Routes([]routing.Relay, []routing.Relay, ...routing.RouteFilter) ([]routing.Route, error)
 }
 
 // SessionUpdateHandlerFunc ...
@@ -311,18 +311,18 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		var rttSwitchThreshold float32 = 10.0 // This will come from the route shader eventually, but hard code it for now
 
 		// Get a set of possible routes from the RouteProvider an on error ensure it falls back to direct
-		routes := rp.Routes(dsrelays, clientrelays,
+		routes, err := rp.Routes(dsrelays, clientrelays,
 			routing.FilterAcceptableRoutes(rttSwitchThreshold),
-			routing.FilterContainsRoute(sessionCacheEntry.RouteHash),
+			routing.FilterContainsRouteHash(sessionCacheEntry.RouteHash),
 			routing.FilterRoutesByRandomDestRelay(),
 			routing.FilterRandomRoute())
-		if routes == nil || len(routes) <= 0 {
-			err := fmt.Errorf("failed to find routes")
+		if err != nil {
 			level.Error(locallogger).Log("err", err)
 			HandleError(w, response, serverPrivateKey, err)
 			return
 		}
-		chosenRoute := routes[0] // Just take the first one it find regardless of optimization
+
+		chosenRoute := routes[0] // Just take the first one it finds regardless of optimization
 		routeHash := chosenRoute.Hash64()
 
 		var token routing.Token
