@@ -3258,7 +3258,7 @@ func TestRouting(t *testing.T) {
 				},
 				nil,
 				[]routing.RouteFilter{
-					routing.FilterAcceptableRoutes(10),
+					routing.FilterAcceptableRoutesFromRTT(10),
 				},
 			},
 			{
@@ -3346,7 +3346,8 @@ func TestRouting(t *testing.T) {
 				},
 				nil,
 				[]routing.RouteFilter{
-					routing.FilterAcceptableRoutes(10),
+					routing.FilterBestRTT(),
+					routing.FilterAcceptableRoutesFromRTT(10),
 					routing.FilterContainsRouteHash(14287039991941962633),
 					routing.FilterRoutesByRandomDestRelay(),
 					routing.FilterRandomRoute(),

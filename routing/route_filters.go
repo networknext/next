@@ -33,21 +33,22 @@ func FilterBestRTT() RouteFilter {
 	}
 }
 
-// FilterAcceptableRoutes will return a list of acceptable routes, which is defined as all routes whose RTT is within the given threshold of the best RTT.
-// This filter calls FilterBestRTT to get the best RTT, so that doesn't need to be called before using this filter.
+// FilterAcceptableRoutesFromRTT will return a list of acceptable routes, which is defined as all routes whose RTT is within the given threshold of the base route's RTT.
+// This filter uses the firrt route in the list as the base route.
+// This filter actually grows the list of routes.
 // Returns nil if there are no acceptable routes.
-func FilterAcceptableRoutes(rttSwitchThreshold float32) RouteFilter {
-	bestRoutesFilter := FilterBestRTT()
-
+func FilterAcceptableRoutesFromRTT(rttSwitchThreshold float32) RouteFilter {
 	return func(routes []Route) []Route {
-		bestRoutes := bestRoutesFilter(routes)
-		if bestRoutes == nil {
-			return nil // FilterAcceptableRoutes depends on FilterBestRTT filtering correctly
+		var baseRoute *Route
+		if len(routes) > 0 {
+			baseRoute = &routes[0]
+		} else {
+			return nil // FilterAcceptableRoutesFromRTT needs a base route to filter correctly
 		}
 
 		acceptableRoutes := make([]Route, 0)
 		for _, route := range routes {
-			rttDifference := bestRoutes[0].Stats.RTT - route.Stats.RTT
+			rttDifference := baseRoute.Stats.RTT - route.Stats.RTT
 			if math.Abs(rttDifference) < float64(rttSwitchThreshold) {
 				acceptableRoutes = append(acceptableRoutes, route)
 			}
