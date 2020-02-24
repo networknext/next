@@ -3145,13 +3145,13 @@ func TestRouting(t *testing.T) {
 			to          []routing.Relay
 			expected    []routing.Route
 			expectedErr error
-			filters     []routing.RouteFilter
+			selectors   []routing.RouteSelector
 		}{
 			{"empty from/to sets", []routing.Relay{}, []routing.Relay{}, nil, errors.New("No routes found"), nil},
 			{"relays not found", []routing.Relay{{ID: 1}}, []routing.Relay{{ID: 2}}, nil, errors.New("No routes found"), nil},
 			{"one relay found", []routing.Relay{{ID: 1}}, []routing.Relay{{ID: 1500948990}}, nil, errors.New("No routes found"), nil},
 			{
-				"no filters",
+				"no selectors",
 				[]routing.Relay{{ID: 2836356269}},
 				[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
 				[]routing.Route{
@@ -3214,8 +3214,8 @@ func TestRouting(t *testing.T) {
 					},
 				},
 				nil,
-				[]routing.RouteFilter{
-					routing.FilterBestRTT(),
+				[]routing.RouteSelector{
+					routing.SelectBestRTT(),
 				},
 			},
 			{
@@ -3257,8 +3257,8 @@ func TestRouting(t *testing.T) {
 					},
 				},
 				nil,
-				[]routing.RouteFilter{
-					routing.FilterAcceptableRoutesFromRTT(10),
+				[]routing.RouteSelector{
+					routing.SelectAcceptableRoutesFromRTT(10),
 				},
 			},
 			{
@@ -3272,8 +3272,8 @@ func TestRouting(t *testing.T) {
 					},
 				},
 				nil,
-				[]routing.RouteFilter{
-					routing.FilterContainsRouteHash(14287039991941962633),
+				[]routing.RouteSelector{
+					routing.SelectContainsRouteHash(14287039991941962633),
 				},
 			},
 			{
@@ -3315,8 +3315,8 @@ func TestRouting(t *testing.T) {
 					},
 				},
 				nil,
-				[]routing.RouteFilter{
-					routing.FilterRoutesByRandomDestRelay(),
+				[]routing.RouteSelector{
+					routing.SelectRoutesByRandomDestRelay(),
 				},
 			},
 			{
@@ -3330,12 +3330,12 @@ func TestRouting(t *testing.T) {
 					},
 				},
 				nil,
-				[]routing.RouteFilter{
-					routing.FilterRandomRoute(),
+				[]routing.RouteSelector{
+					routing.SelectRandomRoute(),
 				},
 			},
 			{
-				"current backend filters",
+				"current backend selectors",
 				[]routing.Relay{{ID: 2836356269}},
 				[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
 				[]routing.Route{
@@ -3345,19 +3345,19 @@ func TestRouting(t *testing.T) {
 					},
 				},
 				nil,
-				[]routing.RouteFilter{
-					routing.FilterBestRTT(),
-					routing.FilterAcceptableRoutesFromRTT(10),
-					routing.FilterContainsRouteHash(14287039991941962633),
-					routing.FilterRoutesByRandomDestRelay(),
-					routing.FilterRandomRoute(),
+				[]routing.RouteSelector{
+					routing.SelectBestRTT(),
+					routing.SelectAcceptableRoutesFromRTT(10),
+					routing.SelectContainsRouteHash(14287039991941962633),
+					routing.SelectRoutesByRandomDestRelay(),
+					routing.SelectRandomRoute(),
 				},
 			},
 		}
 
 		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
-				actual, err := routeMatrix.Routes(test.from, test.to, test.filters...)
+				actual, err := routeMatrix.Routes(test.from, test.to, test.selectors...)
 				assert.Equal(t, test.expectedErr, err)
 				assert.Equal(t, len(test.expected), len(actual))
 

@@ -713,8 +713,11 @@ func (m *RouteMatrix) RelaysIn(d Datacenter) []Relay {
 	return relays
 }
 
-// Routes will return a set of routes for each from and to Relay based on the given filters.
-func (m *RouteMatrix) Routes(from []Relay, to []Relay, routeFilters ...RouteFilter) ([]Route, error) {
+// Routes will return a set of routes for each from and to Relay based on the given selectors.
+// The selectors are chained together in order, so the selected routes from the first selector will be passed
+// as the argument to the second selector. If at any point a selector fails to select a new slice of routes,
+// the chain breaks.
+func (m *RouteMatrix) Routes(from []Relay, to []Relay, routeSelectors ...RouteSelector) ([]Route, error) {
 	type RelayPairResult struct {
 		fromtoidx int  // The index in the route matrix entry
 		reverse   bool // Whether or not to reverse the relays to stay on the same side of the diagnol in the triangular matrix
@@ -757,14 +760,14 @@ func (m *RouteMatrix) Routes(from []Relay, to []Relay, routeFilters ...RouteFilt
 		return nil, errors.New("No routes found")
 	}
 
-	// Apply filters in order to reduce the set of routes
-	for _, filter := range routeFilters {
-		filteredRoutes := filter(routes)
-		if filteredRoutes == nil || len(filteredRoutes) == 0 {
-			break // If the list of filtered routes is empty, it means that it couldn't filter the set of routes, so stop filtering
+	// Apply the selectors in order
+	for _, selector := range routeSelectors {
+		selectedRoutes := selector(routes)
+		if selectedRoutes == nil || len(selectedRoutes) == 0 {
+			break // If the list of selected routes is empty, it means that it couldn't select the set of routes, so stop early
 		}
 
-		routes = filteredRoutes
+		routes = selectedRoutes
 		routeLength = len(routes)
 
 		if routeLength <= 1 {
