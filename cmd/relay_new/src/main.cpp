@@ -33,7 +33,7 @@ namespace
     gAlive = false;
   }
 
-  inline void update_loop(CURL* curl,
+  inline void updateLoop(CURL* curl,
    const char* backend_hostname,
    const uint8_t* relay_token,
    const char* relay_address_string,
@@ -244,24 +244,48 @@ int main()
   std::vector<std::unique_ptr<std::thread>> packetThreads;
   std::string relay_address_string;
 
-  auto pingSocket = std::make_shared<os::Socket>(os::SocketType::Blocking);
+  auto closeSockets = [&sockets] {
+    for (auto& socket : sockets) {
+      socket->close();
+    }
+  };
+
+  auto makeSocket = [&sockets](net::Address& addr) -> os::SocketPtr {
+    auto socket = std::make_shared<os::Socket>(os::SocketType::Blocking);
+    if (!socket->create(addr, 100 * 1024, 100 * 1024, 0.0f, true, 0)) {
+      return nullptr;
+    }
+
+    sockets.push_back(socket);
+
+    return socket;
+  };
+
   net::Address pingSockAddr;
   pingSockAddr.parse("127.0.0.1:0");
-  if (!pingSocket->create(pingSockAddr, 100 * 1024, 100 * 1024, 0.0f, true, 0)) {
+  auto pingSocket = makeSocket(pingSockAddr);
+  if (!pingSocket) {
     Log("could not create pingSocket");
     relay::relay_term();
     return 1;
   }
 
   sockets.push_back(pingSocket);
-  core::PingProcessor pingProcessor(relayManager, gAlive, relayAddress);
+
+  pingThread = std::make_unique<std::thread>([&waitVar, &socketAndThreadReady, pingSocket, &relayManager, &pingSockAddr] {
+    core::PingProcessor pingProcessor(relayManager, gAlive, pingSockAddr);
+    pingProcessor.process(*pingSocket, waitVar, socketAndThreadReady);
+  });
+
+  wait();
 
   packetThreads.resize(numProcessors);
   core::SessionMap sessions;
   for (unsigned int i = 0; i < numProcessors; i++) {
-    auto packetSocket = std::make_shared<os::Socket>(os::SocketType::Blocking);
-    if (!packetSocket->create(relayAddress, 100 * 1024, 100 * 1024, 0.0f, true, 0)) {
-      Log("could not create socket");
+    auto packetSocket = makeSocket(relayAddress);
+    if (!packetSocket) {
+      Log("could not create packetSocket");
+      closeSockets();
       relay::relay_term();
       return 1;
     }
@@ -276,12 +300,6 @@ int main()
 
     wait();
   }
-
-  pingThread = std::make_unique<std::thread>([&waitVar, &socketAndThreadReady, pingSocket, &pingProcessor] {
-    pingProcessor.process(*pingSocket, waitVar, socketAndThreadReady);
-  });
-
-  wait();
 
   relayAddress.toString(relay_address_string);
   LogDebug(
@@ -304,8 +322,7 @@ int main()
       break;
     }
 
-    printf(".");
-    fflush(stdout);
+    std::cout << '.' << std::flush;
 
     std::this_thread::sleep_for(1s);
   }
@@ -321,13 +338,11 @@ int main()
 
   signal(SIGINT, interrupt_handler);
 
-  update_loop(curl, backend_hostname, relay_token, relay_address_string.c_str(), relayManager);
+  updateLoop(curl, backend_hostname, relay_token, relay_address_string.c_str(), relayManager);
 
   Log("Cleaning up\n");
 
-  for (auto socket : sockets) {
-    socket->close();
-  }
+  closeSockets();
 
   pingThread->join();
 

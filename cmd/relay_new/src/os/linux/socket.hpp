@@ -4,7 +4,7 @@
 #define OS_LINUX_SOCKET
 
 #include "net/address.hpp"
-#include "net/multi_message.hpp"
+#include "net/message.hpp"
 #include "net/net.hpp"
 
 #include "util/logger.hpp"
@@ -29,7 +29,7 @@ namespace os
      net::Address& addr, size_t sendBuffSize, size_t recvBuffSize, float timeout, bool reuse, int lingerTimeInSeconds);
 
     bool send(const net::Address& to, const uint8_t* data, size_t size);
-    bool multisend(const std::vector<net::MultiMessage>& multiMessages, int& messagesSent);
+    bool multisend(const std::vector<net::Message>& multiMessages, int& messagesSent);
 
     // for compat only
     bool send(const legacy::relay_address_t& to, const uint8_t* data, size_t size);

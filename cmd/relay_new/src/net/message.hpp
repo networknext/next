@@ -1,11 +1,11 @@
-#ifndef NET_MULTI_MESSAGE_HPP
-#define NET_MULTI_MESSAGE_HPP
+#ifndef NET_MESSAGE_HPP
+#define NET_MESSAGE_HPP
 
 #include "address.hpp"
 
 namespace net
 {
-  struct MultiMessage
+  struct Message
   {
     Address Addr;
     std::vector<uint8_t> Msg;

@@ -153,7 +153,7 @@ namespace os
     return send(addr, data, size);
   }
 
-  bool Socket::multisend(const std::vector<net::MultiMessage>& multiMessages, int& messagesSent)
+  bool Socket::multisend(const std::vector<net::Message>& multiMessages, int& messagesSent)
   {
     std::vector<mmsghdr> messages;
     std::vector<iovec> iovecs;

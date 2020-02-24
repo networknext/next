@@ -12,6 +12,8 @@
 
 #include "util/throughput_logger.hpp"
 
+#include "net/buffered_sender.hpp"
+
 #include "relay/relay_route_token.hpp"
 #include "relay/relay_continue_token.hpp"
 
