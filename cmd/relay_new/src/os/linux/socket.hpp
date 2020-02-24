@@ -41,8 +41,7 @@ namespace os
 
     void close();
 
-    // used when sending response messages, this is the address the socket was created with
-    const net::Address& getAddress();
+    const net::Address& getAddress() const;
 
    private:
     int mSockFD = 0;
@@ -62,7 +61,7 @@ namespace os
     bool setSocketType(float timeout);
   };
 
-  inline const net::Address& Socket::getAddress()
+  [[gnu::always_inline]] inline const net::Address& Socket::getAddress() const
   {
     return mAddress;
   }

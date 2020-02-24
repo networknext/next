@@ -86,7 +86,8 @@ namespace core
       mLogger->addToRelayPingPacket(size);
     }
 
-    net::Address addr;  // where to send it back
+    net::Address addr; // where it actually came from
+    (void)addr;
 
     // mark the 0'th index as a pong and send it back from where it came
     packet[0] = RELAY_PONG_PACKET;  // set the identifier byte as pong
@@ -94,8 +95,7 @@ namespace core
     uint64_t sequence = encoding::ReadUint64(packet, index);
     (void)sequence;
     size_t addrIndx = index;
-    encoding::ReadAddress(packet, index, addr);  // pings are sent on a different port, need to read actual address
-    (void)addr;
+    encoding::ReadAddress(packet, index, addr); // pings are sent on a different port, need to read actual address
     LogDebug("got ping packet from ", addr);
 
     encoding::WriteAddress(packet, addrIndx, socket.getAddress());
@@ -115,7 +115,7 @@ namespace core
 
     size_t index = 1;  // skip the identifier byte
     uint64_t sequence = encoding::ReadUint64(packet, index);
-    encoding::ReadAddress(packet, index, addr);  // pings are sent on a different port, need to read actual address
+    encoding::ReadAddress(packet, index, addr); // pings are sent on a different port, need to read actual address to stay consistent
     LogDebug("got pong packet from ", addr);
 
     // process the pong time

@@ -3,6 +3,8 @@
 
 #include "encoding/write.hpp"
 
+#include "net/message.hpp"
+
 using namespace std::chrono_literals;
 
 namespace core
@@ -20,7 +22,7 @@ namespace core
 
       auto numPings = mRelayManager.getPingData(pings);
 
-      std::vector<net::MultiMessage> messages;
+      std::vector<net::Message> messages;
       messages.resize(numPings);
 
       for (unsigned int i = 0; i < messages.size(); i++) {
