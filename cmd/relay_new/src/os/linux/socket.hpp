@@ -28,18 +28,20 @@ namespace os
     bool create(
      net::Address& addr, size_t sendBuffSize, size_t recvBuffSize, float timeout, bool reuse, int lingerTimeInSeconds);
 
-    bool send(const net::Address& to, const uint8_t* data, size_t size);
-    bool multisend(const std::vector<net::Message>& multiMessages, int& messagesSent);
+    bool send(const net::Address& to, const uint8_t* data, size_t size) const;
+    bool multisend(const std::vector<net::Message>& multiMessages, int& messagesSent) const;
 
     // for compat only
-    bool send(const legacy::relay_address_t& to, const uint8_t* data, size_t size);
+    bool send(const legacy::relay_address_t& to, const uint8_t* data, size_t size) const;
 
-    size_t recv(net::Address& from, uint8_t* data, size_t maxSize);
+    size_t recv(net::Address& from, uint8_t* data, size_t maxSize) const;
 
     // for compat only
-    size_t recv(legacy::relay_address_t& from, uint8_t* data, size_t maxSize);
+    size_t recv(legacy::relay_address_t& from, uint8_t* data, size_t maxSize) const;
 
     void close();
+
+    bool isOpen() const;
 
     const net::Address& getAddress() const;
 
@@ -47,6 +49,8 @@ namespace os
     int mSockFD = 0;
     const SocketType mType;
     net::Address mAddress;
+
+    std::atomic<bool> mOpen;
 
     bool setBufferSizes(size_t sendBufferSize, size_t recvBufferSize);
     bool setLingerTime(int lingerTime);
@@ -64,6 +68,11 @@ namespace os
   [[gnu::always_inline]] inline const net::Address& Socket::getAddress() const
   {
     return mAddress;
+  }
+
+  [[gnu::always_inline]] inline bool Socket::isOpen() const
+  {
+    return mOpen;
   }
 
   // helpers to reduce static cast's

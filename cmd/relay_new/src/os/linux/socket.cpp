@@ -8,7 +8,7 @@
 
 namespace os
 {
-  Socket::Socket(SocketType type): mType(type) {}
+  Socket::Socket(SocketType type): mType(type), mOpen(false) {}
 
   Socket::~Socket()
   {
@@ -90,13 +90,14 @@ namespace os
     }
 
     mAddress = addr;
+    mOpen = true;
 
     LogDebug("created socket for ", addr);
 
     return true;
   }
 
-  bool Socket::send(const net::Address& to, const uint8_t* data, size_t size)
+  bool Socket::send(const net::Address& to, const uint8_t* data, size_t size) const
   {
     assert(to.Type == net::AddressType::IPv4 || to.Type == net::AddressType::IPv6);
     assert(data != nullptr);
@@ -129,7 +130,7 @@ namespace os
     return true;
   }
 
-  bool Socket::send(const legacy::relay_address_t& to, const uint8_t* data, size_t size)
+  bool Socket::send(const legacy::relay_address_t& to, const uint8_t* data, size_t size) const
   {
     net::Address addr;
     addr.Type = static_cast<net::AddressType>(to.type);
@@ -153,7 +154,7 @@ namespace os
     return send(addr, data, size);
   }
 
-  bool Socket::multisend(const std::vector<net::Message>& multiMessages, int& messagesSent)
+  bool Socket::multisend(const std::vector<net::Message>& multiMessages, int& messagesSent) const
   {
     std::vector<mmsghdr> messages;
     std::vector<iovec> iovecs;
@@ -214,7 +215,7 @@ namespace os
     return multiMessages.size() == static_cast<size_t>(messagesSent);
   }
 
-  size_t Socket::recv(net::Address& from, uint8_t* data, size_t maxSize)
+  size_t Socket::recv(net::Address& from, uint8_t* data, size_t maxSize) const
   {
     assert(data != nullptr);
     assert(maxSize > 0);
@@ -252,7 +253,7 @@ namespace os
     return res;
   }
 
-  size_t Socket::recv(legacy::relay_address_t& from, uint8_t* data, size_t maxSize)
+  size_t Socket::recv(legacy::relay_address_t& from, uint8_t* data, size_t maxSize) const
   {
     net::Address addr;
     auto len = recv(addr, data, maxSize);
@@ -280,6 +281,7 @@ namespace os
   void Socket::close()
   {
     shutdown(mSockFD, SHUT_RDWR);
+    mOpen = false;
   }
 
   inline bool Socket::setBufferSizes(size_t sendBuffSize, size_t recvBuffSize)

@@ -222,6 +222,9 @@ int main()
 
   Log("Initializing relay\n");
 
+  core::RouterInfo routerInfo;
+  core::RelayManager relayManager(relayClock);
+
   LogDebug("creating sockets and threads");
 
   std::atomic<bool> socketAndThreadReady(false);
@@ -235,9 +238,6 @@ int main()
     });
     socketAndThreadReady = false;
   };
-
-  core::RouterInfo routerInfo;
-  core::RelayManager relayManager(relayClock);
 
   std::vector<os::SocketPtr> sockets;
   std::unique_ptr<std::thread> pingThread;
@@ -273,8 +273,8 @@ int main()
   sockets.push_back(pingSocket);
 
   pingThread = std::make_unique<std::thread>([&waitVar, &socketAndThreadReady, pingSocket, &relayManager, &pingSockAddr] {
-    core::PingProcessor pingProcessor(relayManager, gAlive, pingSockAddr);
-    pingProcessor.process(*pingSocket, waitVar, socketAndThreadReady);
+    core::PingProcessor pingProcessor(*pingSocket, relayManager, gAlive, pingSockAddr);
+    pingProcessor.process(waitVar, socketAndThreadReady);
   });
 
   wait();
@@ -294,8 +294,8 @@ int main()
 
     packetThreads[i] = std::make_unique<std::thread>(
      [&waitVar, &socketAndThreadReady, packetSocket, &relayClock, &keychain, &routerInfo, &sessions, &relayManager, &logger] {
-       core::PacketProcessor processor(relayClock, keychain, routerInfo, sessions, relayManager, gAlive, logger);
-       processor.process(*packetSocket, waitVar, socketAndThreadReady);
+       core::PacketProcessor processor(*packetSocket, relayClock, keychain, routerInfo, sessions, relayManager, gAlive, logger);
+       processor.process(waitVar, socketAndThreadReady);
      });
 
     wait();

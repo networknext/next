@@ -190,9 +190,6 @@ namespace net
           }
         }
         return true;
-        // these two are for some reason 400x slower
-        //// return std::equal(this->IPv4.begin(), this->IPv4.end(), other.IPv4.begin());
-        //// return this->IPv4 == other.IPv4;
       case AddressType::IPv6:
         for (unsigned int i = 0; i < IPv6.size(); i++) {
           if (IPv6[i] != other.IPv6[i]) {
@@ -200,11 +197,6 @@ namespace net
           }
         }
         return true;
-        // same for these, perhaps the compiler isn't inlining the comparisons under the hood and they're function
-        // calls?
-        //// return std::equal(this->IPv6.begin(), this->IPv6.end(), other.IPv6.begin()); return this->IPv6 ==
-        //// other.IPv6;
-
       case AddressType::None:
         return true;  // if the above tests passed, then the address doesn't matter
       default:

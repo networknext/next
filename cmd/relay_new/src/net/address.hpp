@@ -17,9 +17,12 @@ namespace net
    public:
     Address();
     Address(const Address& other);
+
     ~Address() = default;
 
     bool parse(const std::string& address_string_in);
+
+    void swap(Address& other);
 
     void toString(std::string& buffer) const;
     auto toString() const -> std::string;  // slow, use only for debugging or logging
@@ -50,6 +53,18 @@ namespace net
   [[gnu::always_inline]] inline Address::Address(const Address& other)
   {
     *this = other;
+  }
+
+  [[gnu::always_inline]] inline void Address::swap(Address& other)
+  {
+    std::swap(this->Type, other.Type);
+    std::swap(this->Port, other.Port);
+
+    if (this->Type == AddressType::IPv4) {
+      this->IPv4.swap(other.IPv4);
+    } else if (this->Type == AddressType::IPv6) {
+      this->IPv6.swap(other.IPv6);
+    }
   }
 
   inline void Address::reset()

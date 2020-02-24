@@ -9,6 +9,14 @@ namespace net
   {
     Address Addr;
     std::vector<uint8_t> Msg;
+
+    void swap(Message& other);
   };
+
+  [[gnu::always_inline]] inline void Message::swap(Message& other) {
+    this->Addr.swap(other.Addr);
+    this->Msg.swap(other.Msg);
+  }
+
 }  // namespace net
 #endif

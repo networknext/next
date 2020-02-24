@@ -9,11 +9,12 @@ using namespace std::chrono_literals;
 
 namespace core
 {
-  PingProcessor::PingProcessor(core::RelayManager& relayManager, volatile bool& shouldProcess, const net::Address& relayAddress)
-   : mRelayManager(relayManager), mShouldProcess(shouldProcess), mRelayAddress(relayAddress)
+  PingProcessor::PingProcessor(
+   const os::Socket& socket, core::RelayManager& relayManager, volatile bool& shouldProcess, const net::Address& relayAddress)
+   : mSocket(socket), mRelayManager(relayManager), mShouldProcess(shouldProcess), mRelayAddress(relayAddress)
   {}
 
-  void PingProcessor::process(os::Socket& socket, std::condition_variable& var, std::atomic<bool>& readyToSend)
+  void PingProcessor::process(std::condition_variable& var, std::atomic<bool>& readyToSend)
   {
     readyToSend = true;
     var.notify_one();
@@ -39,7 +40,7 @@ namespace core
       }
 
       int sentMessages = 0;
-      if (!socket.multisend(messages, sentMessages)) {
+      if (!mSocket.multisend(messages, sentMessages)) {
         Log("failed to send messages, amount to send: ", numPings, ", actual sent: ", sentMessages);
       }
 
