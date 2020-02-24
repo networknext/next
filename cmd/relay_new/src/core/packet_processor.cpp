@@ -29,6 +29,7 @@ namespace core
   {
     static std::atomic<int> listenCounter;
     int listenIndx = listenCounter.fetch_add(1);
+    (void)listenIndx;
 
     GenericPacket packetData;
 
@@ -200,6 +201,7 @@ namespace core
 
   void PacketProcessor::handleRouteResponsePacket(os::Socket& socket, GenericPacket& packet, const int size, net::Address& from)
   {
+    (void)from;
     LogDebug("got route response from ", from);
     if (mLogger != nullptr) {
       mLogger->addToRouteResp(size);
