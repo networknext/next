@@ -55,6 +55,7 @@ const BACKEND_MODE_ROUTE_SWITCHING = 5
 const BACKEND_MODE_UNCOMMITTED = 6
 const BACKEND_MODE_UNCOMMITTED_TO_COMMITTED = 7
 const BACKEND_MODE_USER_FLAGS = 8
+const BACKEND_MODE_IDEMPOTENT = 9
 
 type Backend struct {
 	mutex           sync.RWMutex
@@ -89,11 +90,13 @@ type ServerEntry struct {
 
 type SessionEntry struct {
 	id              uint64
+	sequence        uint64
 	version         uint8
 	expireTimestamp uint64
 	route           []uint64
 	next            bool
 	slice           uint64
+	response        []byte
 }
 
 const RTT_Threshold = 1.0
@@ -271,6 +274,10 @@ func main() {
 		backend.mode = BACKEND_MODE_USER_FLAGS
 	}
 
+	if os.Getenv("BACKEND_MODE") == "IDEMPOTENT" {
+		backend.mode = BACKEND_MODE_IDEMPOTENT
+	}
+
 	go OptimizeThread()
 
 	go TimeoutThread()
@@ -356,6 +363,16 @@ func main() {
 			} else {
 				sessionEntry.expireTimestamp += 10
 				sessionEntry.slice++
+			}
+
+			if backend.mode == BACKEND_MODE_IDEMPOTENT {
+				if sessionUpdate.Sequence == sessionEntry.sequence {
+					_, err = w.Write(sessionEntry.response)
+					if err != nil {
+						fmt.Printf("error: failed to send udp response: %v\n", err)
+					}
+					return
+				}
 			}
 
 			takeNetworkNext := len(nearRelayIds) > 0
@@ -509,13 +526,6 @@ func main() {
 				return
 			}
 
-			backend.mutex.Lock()
-			if newSession {
-				backend.dirty = true
-			}
-			backend.sessionDatabase[sessionUpdate.SessionId] = sessionEntry
-			backend.mutex.Unlock()
-
 			sessionResponse.Signature = crypto.Sign(crypto.BackendPrivateKey, sessionResponse.GetSignData())
 
 			responsePacketData, err := sessionResponse.MarshalBinary()
@@ -523,6 +533,16 @@ func main() {
 				fmt.Printf("error: failed to write session response packet: %v\n", err)
 				return
 			}
+
+			sessionEntry.sequence = sessionResponse.Sequence
+			sessionEntry.response = responsePacketData
+
+			backend.mutex.Lock()
+			if newSession {
+				backend.dirty = true
+			}
+			backend.sessionDatabase[sessionUpdate.SessionId] = sessionEntry
+			backend.mutex.Unlock()
 
 			_, err = w.Write(responsePacketData)
 			if err != nil {

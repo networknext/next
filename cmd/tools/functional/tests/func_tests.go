@@ -544,6 +544,61 @@ func test_packets_over_next_with_relay_and_backend() {
 
 }
 
+func test_idempotent() {
+
+	fmt.Printf("test_idempotent\n")
+
+	clientConfig := &ClientConfig{}
+	clientConfig.duration = 60.0
+	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+
+	client_cmd, client_stdout, client_stderr := client(clientConfig)
+
+	serverConfig := &ServerConfig{}
+	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+
+	server_cmd, server_stdout := server(serverConfig)
+
+	relay_1_cmd, _ := relay()
+	relay_2_cmd, _ := relay()
+	relay_3_cmd, _ := relay()
+
+	backend_cmd, backend_stdout := backend("IDEMPOTENT")
+
+	client_cmd.Wait()
+
+	server_cmd.Process.Signal(os.Interrupt)
+	backend_cmd.Process.Signal(os.Interrupt)
+	relay_1_cmd.Process.Signal(os.Interrupt)
+	relay_2_cmd.Process.Signal(os.Interrupt)
+	relay_3_cmd.Process.Signal(os.Interrupt)
+
+	server_cmd.Wait()
+	backend_cmd.Wait()
+	relay_1_cmd.Wait()
+	relay_2_cmd.Wait()
+	relay_3_cmd.Wait()
+
+	client_counters := read_client_counters(client_stderr.String())
+
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_OPEN_SESSION] == 1)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION] == 1)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_UPGRADE_SESSION] == 1)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] > 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] > 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] > 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] > 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] > client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT])
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] > client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT])
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]+client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] > 3500)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT]+client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] > 3500)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
+
+}
+
 func test_fallback_to_direct_when_backend_goes_down() {
 
 	fmt.Printf("test_fallback_to_direct_when_backend_goes_down\n")
@@ -1355,6 +1410,7 @@ func main() {
 		test_fallback_to_direct_without_backend,
 		test_fallback_to_direct_is_not_sticky,
 		test_packets_over_next_with_relay_and_backend,
+		test_idempotent,
 		test_fallback_to_direct_when_backend_goes_down,
 		test_network_next_disabled_server,
 		test_network_next_disabled_client,
