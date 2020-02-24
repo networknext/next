@@ -96,10 +96,10 @@ func main() {
 	}
 
 	var routeToken routing.Token
-	packetTypeIdentifyingByte := make([]byte, 1)
+	tokenTypeIdentifyingByte := make([]byte, 1)
 	switch *token {
 	case "new":
-		packetTypeIdentifyingByte[0] = routing.TokenTypeRouteRequest
+		tokenTypeIdentifyingByte[0] = routing.TokenTypeRouteRequest
 		nextRouteToken := routing.NextRouteToken{
 			Expires: uint64(time.Now().Add(*expires).Unix()),
 
@@ -127,7 +127,7 @@ func main() {
 
 		routeToken = &nextRouteToken
 	case "continue":
-		packetTypeIdentifyingByte[0] = routing.TokenTypeContinueRequest
+		tokenTypeIdentifyingByte[0] = routing.TokenTypeContinueRequest
 		continueRouteToken := routing.ContinueRouteToken{
 			Expires: uint64(time.Now().Add(*expires).Unix()),
 
@@ -164,7 +164,7 @@ func main() {
 	}
 
 	if *clientkey == "" {
-		enc = append(packetTypeIdentifyingByte, enc[transport.EncryptedTokenRouteSize:]...)
+		enc = append(tokenTypeIdentifyingByte, enc[transport.EncryptedTokenRouteSize:]...)
 	}
 
 	_, err = os.Stdout.Write(enc)
