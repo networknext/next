@@ -20,13 +20,25 @@ namespace core
 
       auto numPings = mRelayManager.getPingData(pings);
 
-      for (unsigned int i = 0; i < numPings; ++i) {
+      std::vector<net::MultiMessage> messages;
+      messages.resize(numPings);
+
+      for (unsigned int i = 0; i < messages.size(); i++) {
+        auto& msg = messages[i];
+        msg.Addr = pings[i].Addr;  // send to pings addr
+        msg.Msg.resize(RELAY_PING_PACKET_BYTES);
+
         size_t index = 0;
-        std::array<uint8_t, RELAY_PING_PACKET_BYTES> packetData;
-        encoding::WriteUint8(packetData, index, RELAY_PING_PACKET);
-        encoding::WriteUint64(packetData, index, pings[i].Seq);
-        encoding::WriteAddress(packetData, index, mRelayAddress);
-        socket.send(pings[i].Addr, packetData.data(), packetData.size());
+
+        encoding::WriteUint8(msg.Msg, index, RELAY_PING_PACKET);
+        encoding::WriteUint64(msg.Msg, index, pings[i].Seq);
+        encoding::WriteAddress(
+         msg.Msg, index, mRelayAddress);  // use the recv port addr here so the receiving relay knows where to send it back to
+      }
+
+      int sentMessages = 0;
+      if (!socket.multisend(messages, sentMessages)) {
+        Log("failed to send messages, amount to send: ", numPings, ", actual sent: ", sentMessages);
       }
 
       std::this_thread::sleep_for(10ms);

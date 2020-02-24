@@ -28,31 +28,58 @@ namespace encoding
 
   template <size_t BuffSize>
   void WriteUint8(std::array<uint8_t, BuffSize>& buff, size_t& index, uint8_t value);
+  void WriteUint8(std::vector<uint8_t>& buff, size_t& index, uint8_t value);
 
   template <size_t BuffSize>
   void WriteUint16(std::array<uint8_t, BuffSize>& buff, size_t& index, uint16_t value);
+  void WriteUint16(std::vector<uint8_t>& buff, size_t& index, uint16_t value);
 
   template <size_t BuffSize>
   void WriteUint64(std::array<uint8_t, BuffSize>& buff, size_t& index, uint64_t value);
+  void WriteUint64(std::vector<uint8_t>& buff, size_t& index, uint64_t value);
 
   template <size_t BufferSize>
   void WriteAddress(std::array<uint8_t, BufferSize>& buff, size_t& index, const net::Address& addr);
+  void WriteAddress(std::vector<uint8_t>& buff, size_t& index, const net::Address& addr);
 
   template <size_t BuffSize>
-  void WriteUint8(std::array<uint8_t, BuffSize>& buff, size_t& index, uint8_t value)
+  [[gnu::always_inline]] inline void WriteUint8(std::array<uint8_t, BuffSize>& buff, size_t& index, uint8_t value)
+  {
+    buff[index++] = value;
+  }
+
+  [[gnu::always_inline]] inline void WriteUint8(std::vector<uint8_t>& buff, size_t& index, uint8_t value)
   {
     buff[index++] = value;
   }
 
   template <size_t BuffSize>
-  void WriteUint16(std::array<uint8_t, BuffSize>& buff, size_t& index, uint16_t value)
+  [[gnu::always_inline]] inline void WriteUint16(std::array<uint8_t, BuffSize>& buff, size_t& index, uint16_t value)
+  {
+    buff[index++] = value & 0xFF;
+    buff[index++] = value >> 8;
+  }
+
+  [[gnu::always_inline]] inline void WriteUint16(std::vector<uint8_t>& buff, size_t& index, uint16_t value)
   {
     buff[index++] = value & 0xFF;
     buff[index++] = value >> 8;
   }
 
   template <size_t BuffSize>
-  void WriteUint64(std::array<uint8_t, BuffSize>& buff, size_t& index, uint64_t value)
+  [[gnu::always_inline]] inline void WriteUint64(std::array<uint8_t, BuffSize>& buff, size_t& index, uint64_t value)
+  {
+    buff[index++] = value & 0xFF;
+    buff[index++] = (value >> 8) & 0xFF;
+    buff[index++] = (value >> 16) & 0xFF;
+    buff[index++] = (value >> 24) & 0xFF;
+    buff[index++] = (value >> 32) & 0xFF;
+    buff[index++] = (value >> 40) & 0xFF;
+    buff[index++] = (value >> 48) & 0xFF;
+    buff[index++] = value >> 56;
+  }
+
+  [[gnu::always_inline]] inline void WriteUint64(std::vector<uint8_t>& buff, size_t& index, uint64_t value)
   {
     buff[index++] = value & 0xFF;
     buff[index++] = (value >> 8) & 0xFF;
@@ -65,7 +92,44 @@ namespace encoding
   }
 
   template <size_t BufferSize>
-  void WriteAddress(std::array<uint8_t, BufferSize>& buff, size_t& index, const net::Address& addr)
+  [[gnu::always_inline]] inline void WriteAddress(
+   std::array<uint8_t, BufferSize>& buff, size_t& index, const net::Address& addr)
+  {
+    GCC_NO_OPT_OUT;
+#ifndef NDEBUG
+    auto start = index;
+#endif
+
+    if (addr.Type == net::AddressType::IPv4) {
+      WriteUint8(buff, index, static_cast<uint8_t>(net::AddressType::IPv4));  // write the type
+
+      std::copy(addr.IPv4.begin(), addr.IPv4.end(), buff.begin() + index);  // copy the address
+      index += addr.IPv4.size() * sizeof(uint8_t);                          // increment the index
+
+      WriteUint16(buff, index, addr.Port);  // write the port
+
+      index += 12;  // increment the index past the address section
+    } else if (addr.Type == net::AddressType::IPv6) {
+      WriteUint8(buff, index, static_cast<uint8_t>(net::AddressType::IPv6));  // write the type
+
+      for (const auto& ip : addr.IPv6) {
+        WriteUint16(buff, index, ip);
+      }
+
+      /* hack to write the data faster, only use if we're getting desperate for performance */
+      // std::copy(addr.IPv6.begin(), addr.IPv6.end(), reinterpret_cast<uint16_t*>(buff.data() + index));
+      // index += addr.IPv6.size() * sizeof(uint16_t);
+
+      WriteUint16(buff, index, addr.Port);
+    } else {
+      std::fill(buff.begin() + index, buff.begin() + index + RELAY_ADDRESS_BYTES, 0);
+      index += RELAY_ADDRESS_BYTES;
+    }
+
+    assert(index - start == RELAY_ADDRESS_BYTES);
+  }
+
+  [[gnu::always_inline]] inline void WriteAddress(std::vector<uint8_t>& buff, size_t& index, const net::Address& addr)
   {
     GCC_NO_OPT_OUT;
 #ifndef NDEBUG

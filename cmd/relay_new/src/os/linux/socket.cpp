@@ -211,7 +211,7 @@ namespace os
       return false;
     }
 
-    return true;
+    return multiMessages.size() == static_cast<size_t>(messagesSent);
   }
 
   size_t Socket::recv(net::Address& from, uint8_t* data, size_t maxSize)
