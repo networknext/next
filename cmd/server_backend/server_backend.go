@@ -8,6 +8,7 @@ package main
 import (
 	"context"
 	"encoding/base64"
+	_ "expvar"
 	"io"
 	"io/ioutil"
 	"net"
@@ -16,6 +17,10 @@ import (
 	"os/signal"
 	"runtime"
 	"time"
+
+	gkmetrics "github.com/go-kit/kit/metrics"
+
+	"github.com/go-kit/kit/metrics/expvar"
 
 	"cloud.google.com/go/firestore"
 	"github.com/go-kit/kit/log"
@@ -258,6 +263,17 @@ func main() {
 		}
 	}
 
+	var serverUpdateDuration gkmetrics.Histogram
+	var serverUpdateCounter gkmetrics.Counter
+	var sessionUpdateDuration gkmetrics.Histogram
+	var sessionUpdateCounter gkmetrics.Counter
+	{
+		serverUpdateDuration = expvar.NewHistogram("server.update.duration", 50)
+		serverUpdateCounter = expvar.NewCounter("server.update.counter")
+		sessionUpdateDuration = expvar.NewHistogram("session.update.duration", 50)
+		sessionUpdateCounter = expvar.NewCounter("session.update.counter")
+	}
+
 	{
 		addr := net.UDPAddr{
 			Port: 40000,
@@ -274,14 +290,22 @@ func main() {
 			Conn:          conn,
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
-			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClient, db, metricsHandler),
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClient, db, &routeMatrix, ipLocator, &geoClient, metricsHandler, biller, serverPrivateKey, routerPrivateKey),
+			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClient, db, serverUpdateDuration, serverUpdateCounter, metricsHandler),
+			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClient, db, sessionUpdateDuration, sessionUpdateCounter, &routeMatrix, ipLocator, &geoClient, metricsHandler, biller, serverPrivateKey, routerPrivateKey),
 		}
 
 		go func() {
-			level.Info(logger).Log("addr", conn.LocalAddr().String())
+			level.Info(logger).Log("protocol", "udp", "addr", conn.LocalAddr().String())
 			if err := mux.Start(ctx, runtime.NumCPU()); err != nil {
-				level.Error(logger).Log("addr", conn.LocalAddr().String(), "err", err)
+				level.Error(logger).Log("protocol", "udp", "addr", conn.LocalAddr().String(), "err", err)
+				os.Exit(1)
+			}
+		}()
+
+		go func() {
+			level.Info(logger).Log("protocol", "http", "addr", conn.LocalAddr().String())
+			if err := http.ListenAndServe(conn.LocalAddr().String(), nil); err != nil {
+				level.Error(logger).Log("protocol", "http", "addr", conn.LocalAddr().String(), "err", err)
 				os.Exit(1)
 			}
 		}()

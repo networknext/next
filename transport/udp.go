@@ -9,6 +9,8 @@ import (
 	"net"
 	"time"
 
+	gkmetrics "github.com/go-kit/kit/metrics"
+
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	jsoniter "github.com/json-iterator/go"
@@ -97,10 +99,16 @@ func (e ServerCacheEntry) MarshalBinary() ([]byte, error) {
 }
 
 // ServerUpdateHandlerFunc ...
-func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, metricsHandler metrics.Handler) UDPHandlerFunc {
+func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, duration gkmetrics.Histogram, counter gkmetrics.Counter, metricsHandler metrics.Handler) UDPHandlerFunc {
 	logger = log.With(logger, "handler", "server")
 
 	return func(w io.Writer, incoming *UDPPacket) {
+		timer := gkmetrics.NewTimer(duration.With("method", "ServerUpdateHandlerFunc"))
+		timer.Unit(time.Millisecond)
+		defer func() {
+			timer.ObserveDuration()
+		}()
+
 		var packet ServerUpdatePacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
 			level.Error(logger).Log("msg", "could not read packet", "err", err)
@@ -172,6 +180,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 		}
 
 		level.Debug(locallogger).Log("msg", "updated server")
+		counter.Add(1)
 	}
 }
 
@@ -180,6 +189,7 @@ type SessionCacheEntry struct {
 	Sequence  uint64
 	RouteHash uint64
 	Version   uint8
+	Response  []byte
 }
 
 func (e *SessionCacheEntry) UnmarshalBinary(data []byte) error {
@@ -197,10 +207,16 @@ type RouteProvider interface {
 }
 
 // SessionUpdateHandlerFunc ...
-func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, metricsHandler metrics.Handler, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, duration gkmetrics.Histogram, counter gkmetrics.Counter, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, metricsHandler metrics.Handler, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
 	logger = log.With(logger, "handler", "session")
 
 	return func(w io.Writer, incoming *UDPPacket) {
+		timer := gkmetrics.NewTimer(duration.With("method", "SessionUpdateHandlerFunc"))
+		timer.Unit(time.Millisecond)
+		defer func() {
+			timer.ObserveDuration()
+		}()
+
 		// Deserialize the Session packet
 		var packet SessionUpdatePacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
@@ -277,10 +293,17 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			return
 		}
 
-		if packet.Sequence < sessionCacheEntry.Sequence {
+		switch seq := packet.Sequence; {
+		case seq < sessionCacheEntry.Sequence:
 			err := fmt.Errorf("packet sequence too old. current_sequence %v, previous sequence %v", packet.Sequence, sessionCacheEntry.Sequence)
 			level.Error(locallogger).Log("err", err)
 			HandleError(w, response, serverPrivateKey, err)
+			return
+		case seq == sessionCacheEntry.Sequence:
+			if _, err := w.Write(sessionCacheEntry.Response); err != nil {
+				level.Error(locallogger).Log("err", err)
+				HandleError(w, response, serverPrivateKey, err)
+			}
 			return
 		}
 
@@ -392,55 +415,66 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			response.NearRelayAddresses[idx] = relay.Addr
 		}
 
-		err = WriteSessionResponse(w, response, serverPrivateKey)
+		// Sign the response
+		response.Signature = crypto.Sign(serverPrivateKey, response.GetSignData())
+
+		// Marshal the packet
+		responseData, err := response.MarshalBinary()
 		if err != nil {
-			level.Error(locallogger).Log("msg", "failed to write session response", "err", err)
-		} else {
-			level.Debug(locallogger).Log("msg", "caching session data")
-
-			// Save some of the packet information to be used in SessionUpdateHandlerFunc
-			sessionCacheEntry = SessionCacheEntry{
-				SessionID: packet.SessionId,
-				Sequence:  packet.Sequence,
-				RouteHash: routeHash,
-				Version:   sessionCacheEntry.Version, //This was already incremented above for the route tokens
-			}
-			result := redisClient.Set(fmt.Sprintf("SESSION-%d", packet.SessionId), sessionCacheEntry, 5*time.Minute)
-			if result.Err() != nil {
-				level.Error(locallogger).Log("msg", "failed to update session", "err", result.Err())
-				return
-			}
-
-			// Create a billing entry and send it to the billing service
-			// This billing entry will be populated with actual data once the backend supports all billable features
-			billingEntry := &billing.Entry{
-				Request:              nil,
-				Route:                nil,
-				RouteDecision:        0,
-				Duration:             10, // Make one entry non-zero so that the entry isn't marshalled to nil
-				UsageBytesUp:         0,
-				UsageBytesDown:       0,
-				Timestamp:            0,
-				TimestampStart:       0,
-				PredictedRtt:         0,
-				PredictedJitter:      0,
-				PredictedPacketLoss:  0,
-				RouteChanged:         false,
-				NetworkNextAvailable: false,
-				Initial:              false,
-				EnvelopeBytesUp:      0,
-				EnvelopeBytesDown:    0,
-				ConsideredRoutes:     nil,
-				AcceptableRoutes:     nil,
-				SameRoute:            false,
-				OnNetworkNext:        false,
-				SliceFlags:           0,
-			}
-
-			if err := biller.Bill(context.Background(), packet.SessionId, billingEntry); err != nil {
-				level.Error(locallogger).Log("msg", "billing failed", "err", err)
-			}
+			level.Error(locallogger).Log("msg", "failed to marshal session response", "err", err)
+			return
 		}
+
+		level.Debug(locallogger).Log("msg", "caching session data")
+
+		// Save some of the packet information to be used in SessionUpdateHandlerFunc
+		sessionCacheEntry = SessionCacheEntry{
+			SessionID: packet.SessionId,
+			Sequence:  packet.Sequence,
+			RouteHash: routeHash,
+			Version:   sessionCacheEntry.Version, //This was already incremented above for the route tokens
+			Response:  responseData,
+		}
+		result := redisClient.Set(fmt.Sprintf("SESSION-%d", packet.SessionId), sessionCacheEntry, 5*time.Minute)
+		if result.Err() != nil {
+			level.Error(locallogger).Log("msg", "failed to update session", "err", result.Err())
+			return
+		}
+
+		billingEntry := &billing.Entry{
+			Request:              nil,
+			Route:                nil,
+			RouteDecision:        0,
+			Duration:             10, // Make one entry non-zero so that the entry isn't marshalled to nil
+			UsageBytesUp:         0,
+			UsageBytesDown:       0,
+			Timestamp:            0,
+			TimestampStart:       0,
+			PredictedRtt:         0,
+			PredictedJitter:      0,
+			PredictedPacketLoss:  0,
+			RouteChanged:         false,
+			NetworkNextAvailable: false,
+			Initial:              false,
+			EnvelopeBytesUp:      0,
+			EnvelopeBytesDown:    0,
+			ConsideredRoutes:     nil,
+			AcceptableRoutes:     nil,
+			SameRoute:            false,
+			OnNetworkNext:        false,
+			SliceFlags:           0,
+		}
+
+		if err := biller.Bill(context.Background(), packet.SessionId, billingEntry); err != nil {
+			level.Error(locallogger).Log("msg", "billing failed", "err", err)
+		}
+
+		// Send the Session Response back to the server
+		if _, err := w.Write(responseData); err != nil {
+			level.Error(locallogger).Log("msg", "failed to write session response", "err", err)
+		}
+
+		counter.Add(1)
 	}
 }
 
