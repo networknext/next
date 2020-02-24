@@ -172,6 +172,7 @@ namespace os
       if (mmsg.Addr.Type == net::AddressType::IPv4) {
         auto sin = reinterpret_cast<sockaddr_in*>(malloc(sizeof(sockaddr_in)));
         if (sin == nullptr) {
+          Log("malloc failed multisend()");
           return false;
         }
         addr.to(*sin);
@@ -180,6 +181,7 @@ namespace os
       } else if (mmsg.Addr.Type == net::AddressType::IPv6) {
         auto sin = reinterpret_cast<sockaddr_in6*>(malloc(sizeof(sockaddr_in6)));
         if (sin == nullptr) {
+          Log("malloc failed multisend()");
           return false;
         }
         addr.to(*sin);
@@ -190,8 +192,6 @@ namespace os
         free(header.msg_name);
         return false;
       }
-
-      // TODO mmsg.msg_len = ?;
 
       header.msg_iov = &vec;
       header.msg_iovlen = 1;
