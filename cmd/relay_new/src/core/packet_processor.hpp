@@ -17,6 +17,8 @@
 
 namespace core
 {
+  using GenericPacket = std::array<uint8_t, RELAY_MAX_PACKET_BYTES>;
+
   class PacketProcessor
   {
    public:
@@ -29,7 +31,7 @@ namespace core
      util::ThroughputLogger* logger);
     ~PacketProcessor() = default;
 
-    void listen(os::Socket& socket, std::condition_variable& var, std::atomic<bool>& readyToReceive);
+    void process(os::Socket& socket, std::condition_variable& var, std::atomic<bool>& readyToReceive);
 
    private:
     const util::Clock& mRelayClock;
@@ -43,31 +45,31 @@ namespace core
 
     // Marks the first byte as a pong packet and sends it back
     void handleRelayPingPacket(
-     os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
+     os::Socket& socket, GenericPacket& packet, const int size);
 
     // Processes the pong packet by increasing the sequence number and getting the time diff
-    void handleRelayPongPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
+    void handleRelayPongPacket(GenericPacket& packet, const int size);
 
     void handleRouteRequestPacket(
-     os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, net::Address& from);
+     os::Socket& socket, GenericPacket& packet, const int size, net::Address& from);
 
     void handleRouteResponsePacket(
-     os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, net::Address& from);
+     os::Socket& socket, GenericPacket& packet, const int size, net::Address& from);
 
-    void handleContinueRequestPacket(os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
+    void handleContinueRequestPacket(os::Socket& socket, GenericPacket& packet, const int size);
 
-    void handleContinueResponsePacket(os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
+    void handleContinueResponsePacket(os::Socket& socket, GenericPacket& packet, const int size);
 
-    void handleClientToServerPacket(os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
+    void handleClientToServerPacket(os::Socket& socket, GenericPacket& packet, const int size);
 
-    void handleServerToClientPacket(os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
+    void handleServerToClientPacket(os::Socket& socket, GenericPacket& packet, const int size);
 
-    void handleSessionPingPacket(os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
+    void handleSessionPingPacket(os::Socket& socket, GenericPacket& packet, const int size);
 
-    void handleSessionPongPacket(os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
+    void handleSessionPongPacket(os::Socket& socket, GenericPacket& packet, const int size);
 
     void handleNearPingPacket(
-     os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, net::Address& from);
+     os::Socket& socket, GenericPacket& packet, const int size, net::Address& from);
 
     auto timestamp() -> uint64_t;
     auto tokenIsExpired(relay::relay_route_token_t& token) -> bool;

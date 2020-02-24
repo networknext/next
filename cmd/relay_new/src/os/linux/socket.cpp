@@ -22,8 +22,6 @@ namespace os
   {
     assert(addr.Type != net::AddressType::None);
 
-    LogDebug("creating socket for address ", addr);
-
     // create socket
     {
       mSockFD = ::socket((addr.Type == net::AddressType::IPv6) ? AF_INET6 : AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -91,7 +89,10 @@ namespace os
       return false;
     }
 
+    mAddress = addr;
+
     LogDebug("created socket for ", addr);
+
     return true;
   }
 
@@ -103,36 +104,20 @@ namespace os
 
     if (to.Type == net::AddressType::IPv6) {
       sockaddr_in6 socket_address;
-      bzero(&socket_address, sizeof(socket_address));
-      socket_address.sin6_family = AF_INET6;
-
-      for (int i = 0; i < 8; i++) {
-        reinterpret_cast<uint16_t*>(&socket_address.sin6_addr)[i] = relay::relay_platform_htons(to.IPv6[i]);
-      }
-
-      socket_address.sin6_port = relay::relay_platform_htons(to.Port);
+      to.to(socket_address);
 
       auto res = sendto(mSockFD, data, size, 0, reinterpret_cast<sockaddr*>(&socket_address), sizeof(sockaddr_in6));
       if (res < 0) {
-        std::string addr;
-        to.toString(addr);
-        LogError("sendto (", addr, ") failed");
+        LogError("sendto (", to.toString(), ") failed");
         return false;
       }
     } else if (to.Type == net::AddressType::IPv4) {
       sockaddr_in socket_address;
-      bzero(&socket_address, sizeof(socket_address));
-      socket_address.sin_family = AF_INET;
-      socket_address.sin_addr.s_addr = (((uint32_t)to.IPv4[0])) | (((uint32_t)to.IPv4[1]) << 8) |
-                                       (((uint32_t)to.IPv4[2]) << 16) | (((uint32_t)to.IPv4[3]) << 24);
-
-      socket_address.sin_port = relay::relay_platform_htons(to.Port);
+      to.to(socket_address);
 
       auto res = sendto(mSockFD, data, size, 0, reinterpret_cast<sockaddr*>(&socket_address), sizeof(sockaddr_in6));
       if (res < 0) {
-        std::string addr;
-        to.toString(addr);
-        LogError("sendto (", addr, ") failed");
+        LogError("sendto (", to.toString(), ") failed");
         return false;
       }
     } else {
@@ -140,7 +125,7 @@ namespace os
       return false;
     }
 
-    LogDebug("sent to: ", to);
+    LogDebug("[*] sent to: ", to);
     return true;
   }
 
@@ -168,12 +153,71 @@ namespace os
     return send(addr, data, size);
   }
 
+  bool Socket::multisend(const std::vector<net::MultiMessage>& multiMessages, int& messagesSent)
+  {
+    std::vector<mmsghdr> messages;
+    std::vector<iovec> iovecs;
+    messages.resize(multiMessages.size());
+    iovecs.resize(messages.size());
+
+    for (size_t i = 0; i < messages.size(); i++) {
+      auto& mmsg = multiMessages[i];
+      auto& addr = mmsg.Addr;
+
+      auto& msg = messages[i];
+      auto& header = msg.msg_hdr;
+
+      auto& vec = iovecs[i];
+
+      if (mmsg.Addr.Type == net::AddressType::IPv4) {
+        auto sin = reinterpret_cast<sockaddr_in*>(malloc(sizeof(sockaddr_in)));
+        if (sin == nullptr) {
+          return false;
+        }
+        addr.to(*sin);
+        header.msg_name = sin;
+        header.msg_namelen = sizeof(*sin);
+      } else if (mmsg.Addr.Type == net::AddressType::IPv6) {
+        auto sin = reinterpret_cast<sockaddr_in6*>(malloc(sizeof(sockaddr_in6)));
+        if (sin == nullptr) {
+          return false;
+        }
+        addr.to(*sin);
+        header.msg_name = sin;
+        header.msg_namelen = sizeof(*sin);
+      } else {
+        Log("can't send, invalid address type");
+        free(header.msg_name);
+        return false;
+      }
+
+      // TODO mmsg.msg_len = ?;
+
+      header.msg_iov = &vec;
+      header.msg_iovlen = 1;
+
+      vec.iov_base = reinterpret_cast<void*>(const_cast<uint8_t*>(mmsg.Msg.data()));  // safe
+      vec.iov_len = mmsg.Msg.size();
+    }
+
+    messagesSent = sendmmsg(mSockFD, messages.data(), multiMessages.size(), 0);
+
+    for (auto& msg : messages) {
+      free(msg.msg_hdr.msg_name);
+    }
+
+    if (messagesSent < 0) {
+      LogError("sendmmsg() failed");
+      return false;
+    }
+
+    return true;
+  }
+
   size_t Socket::recv(net::Address& from, uint8_t* data, size_t maxSize)
   {
     assert(data != nullptr);
     assert(maxSize > 0);
-
-    LogDebug("ready to receive");
 
     sockaddr_storage sockaddr_from;
 
@@ -204,8 +248,6 @@ namespace os
     }
 
     assert(res >= 0);
-
-    LogDebug("received from ", from, " / type: ", static_cast<int>(data[0]));
 
     return res;
   }
@@ -285,7 +327,6 @@ namespace os
         close();
         return false;
       }
-      LogDebug("enabled port reuse");
     }
 
     return true;

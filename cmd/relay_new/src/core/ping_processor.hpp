@@ -13,7 +13,7 @@ namespace core
     PingProcessor(core::RelayManager& relayManger, volatile bool& shouldProcess, const net::Address& relayAddr);
     ~PingProcessor() = default;
 
-    void listen(os::Socket& socket, std::condition_variable& var, std::atomic<bool>& readyToSend);
+    void process(os::Socket& socket, std::condition_variable& var, std::atomic<bool>& readyToSend);
 
    private:
     core::RelayManager& mRelayManager;

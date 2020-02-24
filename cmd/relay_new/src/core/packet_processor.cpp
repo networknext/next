@@ -2,6 +2,7 @@
 #include "packet_processor.hpp"
 
 #include "encoding/read.hpp"
+#include "encoding/write.hpp"
 
 #include "relay/relay_platform.hpp"
 #include "relay/relay.hpp"
@@ -24,12 +25,12 @@ namespace core
      mLogger(logger)
   {}
 
-  void PacketProcessor::listen(os::Socket& socket, std::condition_variable& var, std::atomic<bool>& readyToReceive)
+  void PacketProcessor::process(os::Socket& socket, std::condition_variable& var, std::atomic<bool>& readyToReceive)
   {
     static std::atomic<int> listenCounter;
     int listenIndx = listenCounter.fetch_add(1);
 
-    std::array<uint8_t, RELAY_MAX_PACKET_BYTES> packetData;
+    GenericPacket packetData;
 
     LogDebug("listening for packets {", listenIndx, '}');
 
@@ -42,7 +43,6 @@ namespace core
 
       // timeout
       if (packet_bytes == 0) {
-        LogDebug("receive timeout, from addr: ", from);
         continue;
       }
 
@@ -79,49 +79,49 @@ namespace core
     }
   }
 
-  void PacketProcessor::handleRelayPingPacket(
-   os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
+  void PacketProcessor::handleRelayPingPacket(os::Socket& socket, GenericPacket& packet, const int size)
   {
     if (mLogger != nullptr) {
       mLogger->addToRelayPingPacket(size);
     }
 
-    net::Address addr; // where to send it back
+    net::Address addr;  // where to send it back
 
     // mark the 0'th index as a pong and send it back from where it came
-    packet[0] = RELAY_PONG_PACKET; // set the identifier byte as pong
-    size_t index = 1; // skip the identifier byte
+    packet[0] = RELAY_PONG_PACKET;  // set the identifier byte as pong
+    size_t index = 1;               // skip the identifier byte
     uint64_t sequence = encoding::ReadUint64(packet, index);
     (void)sequence;
-    encoding::ReadAddress(packet, index, addr); // pings are sent on a different port, need to read actual address
-
+    size_t addrIndx = index;
+    encoding::ReadAddress(packet, index, addr);  // pings are sent on a different port, need to read actual address
+    (void)addr;
     LogDebug("got ping packet from ", addr);
+
+    encoding::WriteAddress(packet, addrIndx, socket.getAddress());
 
     if (!socket.send(addr, packet.data(), RELAY_PING_PACKET_BYTES)) {
       Log("failed to send data");
     }
   }
 
-  void PacketProcessor::handleRelayPongPacket(
-   std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
+  void PacketProcessor::handleRelayPongPacket(GenericPacket& packet, const int size)
   {
     if (mLogger != nullptr) {
       mLogger->addToRelayPongPacket(size);
     }
 
-    net::Address addr; // the actual from
+    net::Address addr;  // the actual from
 
-    size_t index = 1; // skip the identifier byte
+    size_t index = 1;  // skip the identifier byte
     uint64_t sequence = encoding::ReadUint64(packet, index);
-    encoding::ReadAddress(packet, index, addr); // pings are sent on a different port, need to read actual address
+    encoding::ReadAddress(packet, index, addr);  // pings are sent on a different port, need to read actual address
     LogDebug("got pong packet from ", addr);
 
     // process the pong time
     mRelayManager.processPong(addr, sequence);
   }
 
-  void PacketProcessor::handleRouteRequestPacket(
-   os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, net::Address& from)
+  void PacketProcessor::handleRouteRequestPacket(os::Socket& socket, GenericPacket& packet, const int size, net::Address& from)
   {
     LogDebug("got route request from ", from);
     if (mLogger != nullptr) {
@@ -198,8 +198,7 @@ namespace core
     LogDebug("sent route request to ", token.next_address);
   }
 
-  void PacketProcessor::handleRouteResponsePacket(
-   os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, net::Address& from)
+  void PacketProcessor::handleRouteResponsePacket(os::Socket& socket, GenericPacket& packet, const int size, net::Address& from)
   {
     LogDebug("got route response from ", from);
     if (mLogger != nullptr) {
@@ -259,8 +258,7 @@ namespace core
     LogDebug("sent response to ", session->PrevAddr);
   }
 
-  void PacketProcessor::handleContinueRequestPacket(
-   os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
+  void PacketProcessor::handleContinueRequestPacket(os::Socket& socket, GenericPacket& packet, const int size)
   {
     if (mLogger != nullptr) {
       mLogger->addToContReq(size);
@@ -317,8 +315,7 @@ namespace core
      session->NextAddr, packet.data() + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES, size - RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES);
   }
 
-  void PacketProcessor::handleContinueResponsePacket(
-   os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
+  void PacketProcessor::handleContinueResponsePacket(os::Socket& socket, GenericPacket& packet, const int size)
   {
     if (mLogger != nullptr) {
       mLogger->addToContResp(size);
@@ -375,8 +372,7 @@ namespace core
     socket.send(session->PrevAddr, packet.data(), size);
   }
 
-  void PacketProcessor::handleClientToServerPacket(
-   os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
+  void PacketProcessor::handleClientToServerPacket(os::Socket& socket, GenericPacket& packet, const int size)
   {
     LogDebug("got client to server packet");
     if (mLogger != nullptr) {
@@ -434,8 +430,7 @@ namespace core
     LogDebug("sent client packet to ", session->NextAddr);
   }
 
-  void PacketProcessor::handleServerToClientPacket(
-   os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
+  void PacketProcessor::handleServerToClientPacket(os::Socket& socket, GenericPacket& packet, const int size)
   {
     LogDebug("got server to client packet");
     if (mLogger != nullptr) {
@@ -493,8 +488,7 @@ namespace core
     LogDebug("sent server packet to ", session->PrevAddr);
   }
 
-  void PacketProcessor::handleSessionPingPacket(
-   os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
+  void PacketProcessor::handleSessionPingPacket(os::Socket& socket, GenericPacket& packet, const int size)
   {
     if (mLogger != nullptr) {
       mLogger->addToSessionPing(size);
@@ -550,8 +544,7 @@ namespace core
     socket.send(session->NextAddr, packet.data(), size);
   }
 
-  void PacketProcessor::handleSessionPongPacket(
-   os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size)
+  void PacketProcessor::handleSessionPongPacket(os::Socket& socket, GenericPacket& packet, const int size)
   {
     if (mLogger != nullptr) {
       mLogger->addToSessionPong(size);
@@ -607,8 +600,7 @@ namespace core
     socket.send(session->PrevAddr, packet.data(), size);
   }
 
-  void PacketProcessor::handleNearPingPacket(
-   os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, net::Address& from)
+  void PacketProcessor::handleNearPingPacket(os::Socket& socket, GenericPacket& packet, const int size, net::Address& from)
   {
     if (mLogger != nullptr) {
       mLogger->addToNearPing(size);

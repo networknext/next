@@ -21,6 +21,8 @@
 #include "core/packet_processor.hpp"
 #include "core/ping_processor.hpp"
 
+using namespace std::chrono_literals;
+
 namespace
 {
   volatile bool gAlive = true;  // TODO make atomic
@@ -57,7 +59,7 @@ namespace
         break;
       }
 
-      relay::relay_platform_sleep(1.0);
+      std::this_thread::sleep_for(1s);
     }
   }
 
@@ -269,14 +271,14 @@ int main()
     packetThreads[i] = std::make_unique<std::thread>(
      [&waitVar, &socketAndThreadReady, packetSocket, &relayClock, &keychain, &routerInfo, &sessions, &relayManager, &logger] {
        core::PacketProcessor processor(relayClock, keychain, routerInfo, sessions, relayManager, gAlive, logger);
-       processor.listen(*packetSocket, waitVar, socketAndThreadReady);
+       processor.process(*packetSocket, waitVar, socketAndThreadReady);
      });
 
     wait();
   }
 
   pingThread = std::make_unique<std::thread>([&waitVar, &socketAndThreadReady, pingSocket, &pingProcessor] {
-    pingProcessor.listen(*pingSocket, waitVar, socketAndThreadReady);
+    pingProcessor.process(*pingSocket, waitVar, socketAndThreadReady);
   });
 
   wait();
@@ -305,7 +307,7 @@ int main()
     printf(".");
     fflush(stdout);
 
-    relay::relay_platform_sleep(1.0);
+    std::this_thread::sleep_for(1s);
   }
 
   if (!relay_initialized) {

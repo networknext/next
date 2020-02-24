@@ -22,7 +22,11 @@ namespace net
     bool parse(const std::string& address_string_in);
 
     void toString(std::string& buffer) const;
-    auto toString() -> std::string;  // slow, use only for debugging
+    auto toString() const -> std::string;  // slow, use only for debugging or logging
+
+    // generic conversion function with specializations, looks better this way
+    template <typename T>
+    void to(T& thing) const;
 
     void reset();
 
@@ -61,11 +65,36 @@ namespace net
     Port = 0;
   }
 
-  inline auto Address::toString() -> std::string
+  inline auto Address::toString() const -> std::string
   {
     std::string buff;
     toString(buff);
     return buff;
+  }
+
+  // TODO cache this, likely these won't change
+  template <>
+  inline void Address::to(sockaddr_in& sin) const
+  {
+    sin = {};
+    sin.sin_family = AF_INET;
+    sin.sin_addr.s_addr =
+     (((uint32_t)IPv4[0])) | (((uint32_t)IPv4[1]) << 8) | (((uint32_t)IPv4[2]) << 16) | (((uint32_t)IPv4[3]) << 24);
+
+    sin.sin_port = htons(Port);
+  }
+
+  template <>
+  inline void Address::to(sockaddr_in6& sin) const
+  {
+    sin = {};
+    sin.sin6_family = AF_INET6;
+
+    for (int i = 0; i < 8; i++) {
+      reinterpret_cast<uint16_t*>(&sin.sin6_addr)[i] = htons(IPv6[i]);
+    }
+
+    sin.sin6_port = htons(Port);
   }
 
   inline auto Address::operator!=(const Address& other) const -> bool
@@ -155,7 +184,8 @@ namespace legacy
   const char* relay_address_to_string(const relay_address_t* address, char* buffer);
   int relay_address_equal(const relay_address_t* a, const relay_address_t* b);
 
-  inline std::ostream& operator<<(std::ostream& os, const relay_address_t& addr) {
+  inline std::ostream& operator<<(std::ostream& os, const relay_address_t& addr)
+  {
     char buff[128];
     memset(buff, 0, sizeof(buff));
     relay_address_to_string(&addr, buff);
