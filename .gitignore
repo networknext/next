@@ -1,8 +1,10 @@
 .DS_Store
 dist
+.idea
 .vscode
 cover.out
 *.swp
 *.o
 *.d
 
+.env
