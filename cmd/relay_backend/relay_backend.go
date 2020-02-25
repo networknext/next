@@ -166,8 +166,28 @@ func main() {
 
 		// Set the Firestore Storer to give to handlers
 		db = &fs
+	}
 
+	// If GCP_CREDENTIALS_METRICS are set then override the no-op metric handler and connect to StackDriver
+	// This has its own credentials because the StackDriver metrics are in a separate workspace
+	if stackdrivercreds, ok := os.LookupEnv("GCP_CREDENTIALS_METRICS"); ok {
 		if stackDriverProjectID, ok := os.LookupEnv("GCP_METRICS_PROJECT"); ok {
+			var stackdrivercredsjson []byte
+
+			_, err := os.Stat(stackdrivercreds)
+			switch err := err.(type) {
+			case *os.PathError:
+				stackdrivercredsjson = []byte(stackdrivercreds)
+				level.Info(logger).Log("envvar", "GCP_CREDENTIALS_METRICS", "value", "<JSON>")
+			case nil:
+				stackdrivercredsjson, err = ioutil.ReadFile(stackdrivercreds)
+				if err != nil {
+					level.Error(logger).Log("envvar", "GCP_CREDENTIALS_METRICS", "value", stackdrivercreds, "err", err)
+					os.Exit(1)
+				}
+				level.Info(logger).Log("envvar", "GCP_CREDENTIALS_METRICS", "value", stackdrivercreds)
+			}
+
 			// Create the metrics handler
 			metricsHandler = &metrics.StackDriverHandler{
 				ProjectID:       stackDriverProjectID,
@@ -178,7 +198,7 @@ func main() {
 				NamespaceName:   os.Getenv("GCP_METRICS_NAMESPACE_NAME"),
 			}
 
-			if err := metricsHandler.Open(ctx, gcpcredsjson); err == nil {
+			if err := metricsHandler.Open(ctx, stackdrivercredsjson); err == nil {
 				go metricsHandler.MetricSubmitRoutine(ctx, logger, time.Minute, 200)
 			} else {
 				level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)

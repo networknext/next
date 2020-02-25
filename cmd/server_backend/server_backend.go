@@ -140,7 +140,6 @@ func main() {
 
 	// If GCP_CREDENTIALS are set then:
 	// override the local in memory and connect to Firestore,
-	// set up the metrics client,
 	// set up the billing client
 	if gcpcreds, ok := os.LookupEnv("GCP_CREDENTIALS"); ok {
 		var gcpcredsjson []byte
@@ -183,24 +182,6 @@ func main() {
 		// Set the Firestore Storer to give to handlers
 		db = &fs
 
-		if stackDriverProjectID, ok := os.LookupEnv("GCP_METRICS_PROJECT"); ok {
-			// Create the metrics handler
-			metricsHandler = &metrics.StackDriverHandler{
-				ProjectID:       stackDriverProjectID,
-				ClusterLocation: os.Getenv("GCP_METRICS_CLUSTER_LOCATION"),
-				ClusterName:     os.Getenv("GCP_METRICS_CLUSTER_NAME"),
-				PodName:         os.Getenv("GCP_METRICS_POD_NAME"),
-				ContainerName:   os.Getenv("GCP_METRICS_CONTAINER_NAME"),
-				NamespaceName:   os.Getenv("GCP_METRICS_NAMESPACE_NAME"),
-			}
-
-			if err := metricsHandler.Open(ctx, gcpcredsjson); err == nil {
-				go metricsHandler.MetricSubmitRoutine(ctx, logger, time.Minute, 200)
-			} else {
-				level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
-			}
-		}
-
 		// Get the billing projectID and topicID
 		billingProjectID, ok := os.LookupEnv("BILLING_PUBSUB_PROJECT")
 		if ok {
@@ -228,6 +209,44 @@ func main() {
 			}
 		} else {
 			level.Warn(logger).Log("msg", "BILLING_PUBSUB_PROJECT env var not set, billing data will not be sent")
+		}
+	}
+
+	// If GCP_CREDENTIALS_METRICS are set then override the no-op metric handler and connect to StackDriver
+	// This has its own credentials because the StackDriver metrics are in a separate workspace
+	if stackdrivercreds, ok := os.LookupEnv("GCP_CREDENTIALS_METRICS"); ok {
+		if stackDriverProjectID, ok := os.LookupEnv("GCP_METRICS_PROJECT"); ok {
+			var stackdrivercredsjson []byte
+
+			_, err := os.Stat(stackdrivercreds)
+			switch err := err.(type) {
+			case *os.PathError:
+				stackdrivercredsjson = []byte(stackdrivercreds)
+				level.Info(logger).Log("envvar", "GCP_CREDENTIALS_METRICS", "value", "<JSON>")
+			case nil:
+				stackdrivercredsjson, err = ioutil.ReadFile(stackdrivercreds)
+				if err != nil {
+					level.Error(logger).Log("envvar", "GCP_CREDENTIALS_METRICS", "value", stackdrivercreds, "err", err)
+					os.Exit(1)
+				}
+				level.Info(logger).Log("envvar", "GCP_CREDENTIALS_METRICS", "value", stackdrivercreds)
+			}
+
+			// Create the metrics handler
+			metricsHandler = &metrics.StackDriverHandler{
+				ProjectID:       stackDriverProjectID,
+				ClusterLocation: os.Getenv("GCP_METRICS_CLUSTER_LOCATION"),
+				ClusterName:     os.Getenv("GCP_METRICS_CLUSTER_NAME"),
+				PodName:         os.Getenv("GCP_METRICS_POD_NAME"),
+				ContainerName:   os.Getenv("GCP_METRICS_CONTAINER_NAME"),
+				NamespaceName:   os.Getenv("GCP_METRICS_NAMESPACE_NAME"),
+			}
+
+			if err := metricsHandler.Open(ctx, stackdrivercredsjson); err == nil {
+				go metricsHandler.MetricSubmitRoutine(ctx, logger, time.Minute, 200)
+			} else {
+				level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
+			}
 		}
 	}
 

@@ -17,7 +17,7 @@ import (
 func TestStackDriverMetrics(t *testing.T) {
 	ctx, cancelMetricSubmitRoutine := context.WithCancel(context.Background())
 
-	gcpcreds, ok := os.LookupEnv("GCP_CREDENTIALS")
+	stackdrivercreds, ok := os.LookupEnv("GCP_CREDENTIALS_METRICS")
 	if !ok {
 		t.Skip() // Skip the test if GCP credentials aren't configured
 	}
@@ -27,11 +27,11 @@ func TestStackDriverMetrics(t *testing.T) {
 		t.Skip() // Skip the test if GCP metrics project ID isn't set
 	}
 
-	var gcpcredsjson []byte
-	_, err := os.Stat(gcpcreds)
+	var stackdrivercredsjson []byte
+	_, err := os.Stat(stackdrivercreds)
 	assert.NoError(t, err)
 
-	gcpcredsjson, err = ioutil.ReadFile(gcpcreds)
+	stackdrivercredsjson, err = ioutil.ReadFile(stackdrivercreds)
 	assert.NoError(t, err)
 
 	// Create the metrics handler
@@ -40,7 +40,7 @@ func TestStackDriverMetrics(t *testing.T) {
 	}
 
 	// Open the StackDriver metrics client
-	err = handler.Open(ctx, gcpcredsjson)
+	err = handler.Open(ctx, stackdrivercredsjson)
 	assert.NoError(t, err)
 
 	// Create a gauge to track a dummy metric

@@ -117,10 +117,6 @@ ifndef GCP_METRICS_PROJECT
 export GCP_METRICS_PROJECT = network-next-local
 endif
 
-ifndef GCP_CREDENTIALS
-export GCP_CREDENTIALS = $(CURRENT_DIR)/testdata/v3-dev-creds.json
-endif
-
 .PHONY: help
 help: ## this list
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
