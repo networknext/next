@@ -308,6 +308,10 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 
 		level.Debug(locallogger).Log("num_datacenter_relays", len(dsrelays), "num_client_relays", len(clientrelays))
 
+		const RTT_Threshold float64 = 20
+		const RTT_Hysteresis float64 = 10
+		const RTT_Veto float64 = 30
+
 		// Get a set of possible routes from the RouteProvider an on error ensure it falls back to direct
 		routes := rp.Routes(dsrelays, clientrelays)
 		if routes == nil || len(routes) <= 0 {
@@ -318,6 +322,24 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		}
 		chosenRoute := routes[0] // Just take the first one it find regardless of optimization
 		routeHash := chosenRoute.Hash64()
+
+		if !packet.OnNetworkNext && packet.DirectMeanRtt-chosenRoute.Stats.RTT > RTT_Threshold {
+			// Go on nextwork next
+		}
+
+		if packet.OnNetworkNext && chosenRoute.Stats.RTT-packet.DirectMeanRtt > RTT_Hysteresis {
+			// Go back to direct
+		}
+
+		if packet.OnNetworkNext && packet.NextMeanRtt-packet.DirectMeanRtt > RTT_Veto {
+			// Veto
+		}
+
+		if !packet.OnNetworkNext && packet.Committed && packet.NextMeanRtt-packet.DirectMeanRtt > RTT_Veto {
+			// Committed, go on network next
+		} else {
+			// Veto
+		}
 
 		var token routing.Token
 		{
