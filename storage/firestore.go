@@ -194,7 +194,7 @@ func (s *Firestore) syncBuyers(ctx context.Context) error {
 		}
 
 		// Attempt to get routing rules settings for buyer (acceptable to fallback to default settings if none defined)
-		rrs, err := s.GetRoutingRulesSettingsForBuyerID(ctx, bdoc.Ref.ID)
+		rrs, err := s.getRoutingRulesSettingsForBuyerID(ctx, bdoc.Ref.ID)
 		if err != nil {
 			level.Debug(s.Logger).Log("msg", fmt.Sprintf("using default route rules for buyer %v", bdoc.Ref.ID), "err", err)
 		}
@@ -214,7 +214,7 @@ func (s *Firestore) syncBuyers(ctx context.Context) error {
 	return nil
 }
 
-func (s *Firestore) GetRoutingRulesSettingsForBuyerID(ctx context.Context, ID string) (routing.RoutingRulesSettings, error) {
+func (s *Firestore) getRoutingRulesSettingsForBuyerID(ctx context.Context, ID string) (routing.RoutingRulesSettings, error) {
 	// Comment below taken from old backend, at least attempting to explain why we need to append _0 (no existing entries have suffixes other than _0)
 	// "Must be of the form '<buyer key>_<tag id>'. The buyer key can be found by looking at the ID under Buyer; it should be something like 763IMDH693HLsr2LGTJY. The tag ID should be 0 (for default) or the fnv64a hash of the tag the customer is using. Therefore this value should look something like: 763IMDH693HLsr2LGTJY_0. This value can not be changed after the entity is created."
 	routeShaderID := ID + "_0"
