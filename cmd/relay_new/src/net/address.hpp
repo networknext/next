@@ -15,6 +15,11 @@ namespace net
   class Address
   {
    public:
+   // Type (1) +
+   // Port (2) +
+   // IP (16) (regardless of v4 or v6) =
+   static const size_t ByteSize = 19;
+
     Address();
     Address(const Address& other);
 

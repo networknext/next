@@ -3,8 +3,10 @@
 
 #include "session.hpp"
 
+#include "core/packet.hpp"
 #include "core/relay_manager.hpp"
 #include "core/router_info.hpp"
+#include "core/token.hpp"
 
 #include "crypto/keychain.hpp"
 
@@ -14,13 +16,8 @@
 
 #include "net/buffered_sender.hpp"
 
-#include "relay/relay_route_token.hpp"
-#include "relay/relay_continue_token.hpp"
-
 namespace core
 {
-  using GenericPacket = std::array<uint8_t, RELAY_MAX_PACKET_BYTES>;
-
   class PacketProcessor
   {
    public:
@@ -36,6 +33,8 @@ namespace core
 
     void process(std::condition_variable& var, std::atomic<bool>& readyToReceive);
 
+    void flushResponses();
+
    private:
     const os::Socket& mSocket;
     const util::Clock& mRelayClock;
@@ -46,6 +45,8 @@ namespace core
     volatile bool& mShouldProcess;
 
     util::ThroughputLogger* mLogger;
+
+    net::BufferedSender<5, 3> mSender;
 
     // Marks the first byte as a pong packet and sends it back
     void handleRelayPingPacket(GenericPacket& packet, const int size);
@@ -72,10 +73,16 @@ namespace core
     void handleNearPingPacket(GenericPacket& packet, const int size, net::Address& from);
 
     auto timestamp() -> uint64_t;
-    auto tokenIsExpired(relay::relay_route_token_t& token) -> bool;
-    auto tokenIsExpired(relay::relay_continue_token_t& token) -> bool;
+
+    auto tokenIsExpired(core::Token& token) -> bool;
+
     auto sessionIsExpired(core::SessionPtr session) -> bool;
   };
+
+  inline void PacketProcessor::flushResponses()
+  {
+    mSender.autoSend();
+  }
 
   inline auto PacketProcessor::timestamp() -> uint64_t
   {
@@ -83,14 +90,9 @@ namespace core
     return mRouterInfo.InitalizeTimeInSeconds + seconds_since_initialize;
   }
 
-  inline auto PacketProcessor::tokenIsExpired(relay::relay_route_token_t& token) -> bool
+  inline auto PacketProcessor::tokenIsExpired(core::Token& token) -> bool
   {
-    return token.expire_timestamp < timestamp();
-  }
-
-  inline auto PacketProcessor::tokenIsExpired(relay::relay_continue_token_t& token) -> bool
-  {
-    return token.expire_timestamp < timestamp();
+    return token.ExpireTimestamp < timestamp();
   }
 
   inline auto PacketProcessor::sessionIsExpired(core::SessionPtr session) -> bool

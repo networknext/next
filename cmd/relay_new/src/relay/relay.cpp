@@ -56,7 +56,7 @@ namespace relay
     memset(init_data, 0, sizeof(init_data));
 
     unsigned char nonce[crypto_box_NONCEBYTES];
-    encoding::relay_random_bytes(nonce, crypto_box_NONCEBYTES);
+    legacy::relay_random_bytes(nonce, crypto_box_NONCEBYTES);
 
     uint8_t* p = init_data;
 

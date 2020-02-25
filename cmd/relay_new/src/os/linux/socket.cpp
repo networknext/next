@@ -197,8 +197,8 @@ namespace os
       header.msg_iov = &vec;
       header.msg_iovlen = 1;
 
-      vec.iov_base = reinterpret_cast<void*>(const_cast<uint8_t*>(mmsg.Msg.data()));  // safe
-      vec.iov_len = mmsg.Msg.size();
+      vec.iov_base = reinterpret_cast<void*>(const_cast<uint8_t*>(mmsg.Data.data()));  // safe
+      vec.iov_len = mmsg.Len;
     }
 
     messagesSent = sendmmsg(mSockFD, messages.data(), multiMessages.size(), 0);

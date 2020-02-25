@@ -29,14 +29,15 @@ namespace core
       for (unsigned int i = 0; i < messages.size(); i++) {
         auto& msg = messages[i];
         msg.Addr = pings[i].Addr;  // send to pings addr
-        msg.Msg.resize(RELAY_PING_PACKET_BYTES);
+        msg.Len = RELAY_PING_PACKET_BYTES;
 
         size_t index = 0;
 
-        encoding::WriteUint8(msg.Msg, index, RELAY_PING_PACKET);
-        encoding::WriteUint64(msg.Msg, index, pings[i].Seq);
-        encoding::WriteAddress(
-         msg.Msg, index, mRelayAddress);  // use the recv port addr here so the receiving relay knows where to send it back to
+        encoding::WriteUint8(msg.Data, index, RELAY_PING_PACKET);
+        encoding::WriteUint64(msg.Data, index, pings[i].Seq);
+
+        // use the recv port addr here so the receiving relay knows where to send it back to
+        encoding::WriteAddress(msg.Data, index, mRelayAddress);
       }
 
       int sentMessages = 0;

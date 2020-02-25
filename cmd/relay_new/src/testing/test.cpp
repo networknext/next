@@ -5,7 +5,6 @@ namespace
 {
   bool gTestInit = false;
   std::unique_ptr<std::deque<testing::SpecTest*>> gTests;
-  ;
 }  // namespace
 
 namespace testing

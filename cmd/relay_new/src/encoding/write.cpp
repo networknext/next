@@ -101,11 +101,11 @@ namespace encoding
       }
       write_uint16(buffer, address->port);
     } else {
-      for (int i = 0; i < RELAY_ADDRESS_BYTES; ++i) {
+      for (size_t i = 0; i < net::Address::ByteSize; ++i) {
         write_uint8(buffer, 0);
       }
     }
 
-    assert(*buffer - start == RELAY_ADDRESS_BYTES);
+    assert(*buffer - start == net::Address::ByteSize);
   }
 }  // namespace encoding

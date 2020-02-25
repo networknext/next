@@ -16,10 +16,8 @@ namespace core
     int KbpsUp;
     int KbpsDown;
     net::Address PrevAddr;
-    // net::Address NextAddr;
-    // legacy::relay_address_t PrevAddr;
-    legacy::relay_address_t NextAddr;
-    uint8_t private_key[crypto_box_SECRETKEYBYTES];
+    net::Address NextAddr;
+    std::array<uint8_t,crypto_box_SECRETKEYBYTES> PrivateKey;
     // ReplayProtection ServerToClientProtection;
     // ReplayProtection ClientToServerProtection;
     legacy::relay_replay_protection_t ServerToClientProtection;

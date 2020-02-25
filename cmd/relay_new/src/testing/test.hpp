@@ -70,5 +70,19 @@ namespace testing
       exit(1);
     }
   }
+
+  template <typename T>
+  std::enable_if_t<std::is_unsigned<T>::value, T> Random()
+  {
+    static auto rand = std::bind(std::uniform_int_distribution<T>(), std::default_random_engine());
+    return static_cast<T>(rand());
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_floating_point<T>::value, T> RandomDecimal()
+  {
+    static auto rand = std::bind(std::uniform_real_distribution<T>(), std::default_random_engine());
+    return static_cast<T>(rand());
+  }
 }  // namespace testing
 #endif

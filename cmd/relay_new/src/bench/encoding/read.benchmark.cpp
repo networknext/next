@@ -40,7 +40,7 @@ Bench(ReadAddress_vs_read_address_ipv4)
   // ReadAddress()
   {
     net::Address addr;
-    std::array<uint8_t, RELAY_ADDRESS_BYTES> buff;
+    std::array<uint8_t, net::Address::ByteSize> buff;
     addr.parse("127.0.0.1:51034");
     size_t i = 0;
     encoding::WriteAddress(buff, i, addr);
@@ -58,7 +58,7 @@ Bench(ReadAddress_vs_read_address_ipv4)
   // read_address()
   {
     legacy::relay_address_t addr;
-    uint8_t buff[RELAY_ADDRESS_BYTES];
+    uint8_t buff[net::Address::ByteSize];
     legacy::relay_address_parse(&addr, "127.0.0.1:51034");
     auto p = &buff[0];
     encoding::write_address(&p, &addr);

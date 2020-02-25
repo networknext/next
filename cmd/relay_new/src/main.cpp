@@ -301,6 +301,10 @@ int main()
     wait();
   }
 
+  auto bufferedSenderAlert = std::make_unique<std::thread>([] {
+
+  });
+
   relayAddress.toString(relay_address_string);
   LogDebug(
    "Actual address: ", relayAddress);  // if using port 0, it is discovered in ping socket's create(). That being said sockets

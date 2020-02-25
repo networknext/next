@@ -7,6 +7,9 @@
 #include "relay/relay_platform.hpp"
 #include "relay/relay.hpp"
 
+#include "core/route_token.hpp"
+#include "core/continue_token.hpp"
+
 namespace core
 {
   PacketProcessor::PacketProcessor(os::Socket& socket,
@@ -24,7 +27,8 @@ namespace core
      mSessionMap(sessions),
      mRelayManager(relayManager),
      mShouldProcess(handle),
-     mLogger(logger)
+     mLogger(logger),
+     mSender(socket)
   {}
 
   void PacketProcessor::process(std::condition_variable& var, std::atomic<bool>& readyToReceive)
@@ -117,8 +121,8 @@ namespace core
 
     size_t index = 1;  // skip the identifier byte
     uint64_t sequence = encoding::ReadUint64(packet, index);
-    encoding::ReadAddress(
-     packet, index, addr);  // pings are sent on a different port, need to read actual address to stay consistent
+    // pings are sent on a different port, need to read actual address to stay consistent
+    encoding::ReadAddress(packet, index, addr);
     LogDebug("got pong packet from ", addr);
 
     // process the pong time
@@ -132,17 +136,16 @@ namespace core
       mLogger->addToRouteReq(size);
     }
 
-    if (size < int(1 + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES * 2)) {
+    if (size < int(1 + RouteToken::EncryptedByteSize * 2)) {
       Log("ignoring route request. bad packet size (", size, ")");
       return;
     }
 
     // ignore the header byte of the packet
-    uint8_t* p = &packet[1];
-    relay::relay_route_token_t token;
+    size_t index = 1;
+    core::RouteToken token;
 
-    if (relay::relay_read_encrypted_route_token(
-         &p, &token, mKeychain.RouterPublicKey.data(), mKeychain.RelayPrivateKey.data()) != RELAY_OK) {
+    if (!token.readEncrypted(packet, index, mKeychain.RouterPublicKey, mKeychain.RelayPrivateKey)) {
       Log("ignoring route request. could not read route token");
       return;
     }
@@ -154,7 +157,7 @@ namespace core
     }
 
     // create a new session and add it to the session map
-    uint64_t hash = token.session_id ^ token.session_version;
+    uint64_t hash = token.key();
 
     core::SessionMap::iterator iter, end;
     {
@@ -169,18 +172,18 @@ namespace core
       assert(session);
 
       // fill it with data in the token
-      session->ExpireTimestamp = token.expire_timestamp;
-      session->SessionID = token.session_id;
-      session->SessionVersion = token.session_version;
+      session->ExpireTimestamp = token.ExpireTimestamp;
+      session->SessionID = token.SessionID;
+      session->SessionVersion = token.SessionVersion;
       session->ClientToServerSeq = 0;
       session->ServerToClientSeq = 0;
-      session->KbpsUp = token.kbps_up;
-      session->KbpsDown = token.kbps_down;
+      session->KbpsUp = token.KbpsUp;
+      session->KbpsDown = token.KbpsDown;
       session->PrevAddr = from;
-      session->NextAddr = token.next_address;
+      session->NextAddr = token.NextAddr;
 
       // store it
-      memcpy(session->private_key, token.private_key, crypto_box_SECRETKEYBYTES);
+      std::copy(token.PrivateKey.begin(), token.PrivateKey.end(), session->PrivateKey.begin());
       relay_replay_protection_reset(&session->ClientToServerProtection);
       relay_replay_protection_reset(&session->ServerToClientProtection);
 
@@ -189,17 +192,15 @@ namespace core
         mSessionMap[hash] = session;
       }
 
-      // printf("session created: %" PRIx64 ".%d\n", token.session_id, token.session_version);
       std::stringstream ss;
-      ss << std::hex << token.session_id << '.' << std::dec << static_cast<unsigned int>(token.session_version);
+      ss << std::hex << token.SessionID << '.' << std::dec << static_cast<unsigned int>(token.SessionVersion);
       Log("session created: ", ss.str());
     }  // TODO else what?
 
     // remove this part of the token by offseting it the request packet bytes
-    packet[RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES] = RELAY_ROUTE_REQUEST_PACKET;
-    mSocket.send(
-     token.next_address, packet.data() + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES, size - RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES);
-    LogDebug("sent route request to ", token.next_address);
+    packet[RouteToken::EncryptedByteSize] = RELAY_ROUTE_REQUEST_PACKET;
+    mSocket.send(token.NextAddr, packet.data() + RouteToken::EncryptedByteSize, size - RouteToken::EncryptedByteSize);
+    LogDebug("sent route request to ", token.NextAddr);
   }
 
   void PacketProcessor::handleRouteResponsePacket(GenericPacket& packet, const int size, net::Address& from)
@@ -255,7 +256,8 @@ namespace core
     }
 
     session->ServerToClientSeq = clean_sequence;
-    if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet.data(), size) != RELAY_OK) {
+    if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->PrivateKey.data(), packet.data(), size) !=
+        RELAY_OK) {
       return;
     }
 
@@ -269,15 +271,14 @@ namespace core
       mLogger->addToContReq(size);
     }
 
-    if (size < int(1 + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES * 2)) {
+    if (size < int(1 + ContinueToken::EncryptedByteSize * 2)) {
       Log("ignoring continue request. bad packet size (", size, ")");
       return;
     }
 
-    uint8_t* p = &packet[1];
-    relay::relay_continue_token_t token;
-    if (relay_read_encrypted_continue_token(&p, &token, mKeychain.RouterPublicKey.data(), mKeychain.RelayPrivateKey.data()) !=
-        RELAY_OK) {
+    size_t index = 1;
+    core::ContinueToken token;
+    if (!token.readEncrypted(packet, index, mKeychain.RouterPublicKey, mKeychain.RelayPrivateKey)) {
       Log("ignoring continue request. could not read continue token");
       return;
     }
@@ -286,7 +287,7 @@ namespace core
       return;
     }
 
-    uint64_t hash = token.session_id ^ token.session_version;
+    uint64_t hash = token.key();
 
     core::SessionMap::iterator iter, end;
     {
@@ -309,15 +310,16 @@ namespace core
       return;
     }
 
-    if (session->ExpireTimestamp != token.expire_timestamp) {
-      printf("session continued: %" PRIx64 ".%d\n", token.session_id, token.session_version);
+    if (session->ExpireTimestamp != token.ExpireTimestamp) {
+      std::stringstream ss;
+      ss << std::hex << token.SessionID << '.' << std::dec << static_cast<unsigned int>(token.SessionVersion);
+      Log("session continued: ", ss.str());
     }
 
-    session->ExpireTimestamp = token.expire_timestamp;
-    packet[RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES] = RELAY_CONTINUE_REQUEST_PACKET;
+    session->ExpireTimestamp = token.ExpireTimestamp;
+    packet[ContinueToken::EncryptedByteSize] = RELAY_CONTINUE_REQUEST_PACKET;
 
-    mSocket.send(
-     session->NextAddr, packet.data() + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES, size - RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES);
+    mSocket.send(session->NextAddr, packet.data() + ContinueToken::EncryptedByteSize, size - ContinueToken::EncryptedByteSize);
   }
 
   void PacketProcessor::handleContinueResponsePacket(GenericPacket& packet, const int size)
@@ -371,7 +373,8 @@ namespace core
 
     session->ServerToClientSeq = clean_sequence;
 
-    if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet.data(), size) != RELAY_OK) {
+    if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->PrivateKey.data(), packet.data(), size) !=
+        RELAY_OK) {
       return;
     }
 
@@ -428,7 +431,8 @@ namespace core
     }
 
     relay_replay_protection_advance_sequence(&session->ClientToServerProtection, clean_sequence);
-    if (relay::relay_verify_header(RELAY_DIRECTION_CLIENT_TO_SERVER, session->private_key, packet.data(), size) != RELAY_OK) {
+    if (relay::relay_verify_header(RELAY_DIRECTION_CLIENT_TO_SERVER, session->PrivateKey.data(), packet.data(), size) !=
+        RELAY_OK) {
       return;
     }
 
@@ -486,7 +490,8 @@ namespace core
     }
 
     relay_replay_protection_advance_sequence(&session->ServerToClientProtection, clean_sequence);
-    if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet.data(), size) != RELAY_OK) {
+    if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->PrivateKey.data(), packet.data(), size) !=
+        RELAY_OK) {
       return;
     }
 
@@ -543,7 +548,8 @@ namespace core
     }
 
     session->ClientToServerSeq = clean_sequence;
-    if (relay::relay_verify_header(RELAY_DIRECTION_CLIENT_TO_SERVER, session->private_key, packet.data(), size) != RELAY_OK) {
+    if (relay::relay_verify_header(RELAY_DIRECTION_CLIENT_TO_SERVER, session->PrivateKey.data(), packet.data(), size) !=
+        RELAY_OK) {
       return;
     }
 
@@ -599,7 +605,8 @@ namespace core
     }
 
     session->ServerToClientSeq = clean_sequence;
-    if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet.data(), size) != RELAY_OK) {
+    if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->PrivateKey.data(), packet.data(), size) !=
+        RELAY_OK) {
       return;
     }
 
