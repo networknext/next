@@ -332,10 +332,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 
 		level.Debug(locallogger).Log("num_datacenter_relays", len(dsrelays), "num_client_relays", len(clientrelays))
 
-		const RTT_Threshold float64 = 20
-		const RTT_Hysteresis float64 = 10
-		const RTT_Veto float64 = 30
-
 		// Get a set of possible routes from the RouteProvider an on error ensure it falls back to direct
 		routes, err := rp.Routes(dsrelays, clientrelays,
 			routing.SelectAcceptableRoutesFromBestRTT(float64(buyer.RoutingRulesSettings.RTTRouteSwitch)),
@@ -349,26 +345,48 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		}
 
 		// There should only ever be one route when all selectors have been applied, but just in case, choose a random one
-		chosenRoute := routes[rand.Intn(len(routes))]
-		routeHash := chosenRoute.Hash64()
+		nextRoute := routes[rand.Intn(len(routes))]
+		routeHash := nextRoute.Hash64()
 
-		if !packet.OnNetworkNext && packet.DirectMeanRtt-chosenRoute.Stats.RTT > RTT_Threshold {
-			// Go on nextwork next
+		routeDecisions := []routing.RouteDecision{
+			routing.RouteDecisionRTTThreshold(),
+			routing.RouteDecisionRTTHysteresis(),
+			routing.RouteDecisionVeto(),
+			routing.RouteDecisionCommitted(),
 		}
 
-		if packet.OnNetworkNext && chosenRoute.Stats.RTT-packet.DirectMeanRtt > RTT_Hysteresis {
-			// Go back to direct
+		var keepNextRoute bool = true
+		var decisionMsg string
+		for _, routeDecision := range routeDecisions {
+			if keepNextRoute, decisionMsg = routeDecision(nextRoute, directRoute); !keepNextRoute {
+				break
+			}
 		}
 
-		if packet.OnNetworkNext && packet.NextMeanRtt-packet.DirectMeanRtt > RTT_Veto {
-			// Veto
+		if !keepNextRoute {
+			level.Info(locallogger).Log("session", packet.SessionId, "msg", decisionMsg)
+			response.RouteType = routing.RouteTypeDirect
+			WriteSessionResponse(w, response, serverPrivateKey)
+			return
 		}
 
-		if !packet.OnNetworkNext && packet.Committed && packet.NextMeanRtt-packet.DirectMeanRtt > RTT_Veto {
-			// Committed, go on network next
-		} else {
-			// Veto
-		}
+		// if !packet.OnNetworkNext && packet.DirectMeanRtt-chosenRoute.Stats.RTT > RTT_Threshold {
+		// 	// Go on nextwork next
+		// }
+
+		// if packet.OnNetworkNext && chosenRoute.Stats.RTT-packet.DirectMeanRtt > RTT_Hysteresis {
+		// 	// Go back to direct
+		// }
+
+		// if packet.OnNetworkNext && packet.NextMeanRtt-packet.DirectMeanRtt > RTT_Veto {
+		// 	// Veto
+		// }
+
+		// if !packet.OnNetworkNext && packet.Committed && packet.NextMeanRtt-packet.DirectMeanRtt > RTT_Veto {
+		// 	// Committed, go on network next
+		// } else {
+		// 	// Veto
+		// }
 
 		var token routing.Token
 		{
@@ -391,7 +409,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 						PublicKey: serverCacheEntry.Server.PublicKey,
 					},
 
-					Relays: chosenRoute.Relays,
+					Relays: nextRoute.Relays,
 				}
 			} else {
 				sessionCacheEntry.Version++
@@ -414,7 +432,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 						PublicKey: serverCacheEntry.Server.PublicKey,
 					},
 
-					Relays: chosenRoute.Relays,
+					Relays: nextRoute.Relays,
 				}
 			}
 		}
@@ -440,16 +458,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		for idx, relay := range clientrelays {
 			response.NearRelayIds[idx] = relay.ID
 			response.NearRelayAddresses[idx] = relay.Addr
-		}
-
-		// Sign the response
-		response.Signature = crypto.Sign(serverPrivateKey, response.GetSignData())
-
-		// Marshal the packet
-		responseData, err := response.MarshalBinary()
-		if err != nil {
-			level.Error(locallogger).Log("msg", "failed to marshal session response", "err", err)
-			return
 		}
 
 		level.Debug(locallogger).Log("msg", "caching session data")
@@ -497,8 +505,9 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		}
 
 		// Send the Session Response back to the server
-		if _, err := w.Write(responseData); err != nil {
+		if err := WriteSessionResponse(w, response, serverPrivateKey); err != nil {
 			level.Error(locallogger).Log("msg", "failed to write session response", "err", err)
+			return
 		}
 
 		counter.Add(1)
