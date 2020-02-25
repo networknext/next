@@ -1,5 +1,11 @@
 package routing
 
+const (
+	ModeDefault     = 0 // Default behaviour - try to pick the best route
+	ModeForceDirect = 1 // Force direct route (even if there is potential improvement)
+	ModeForceNext   = 2 // Force a network next route (even if there is a degradement)
+)
+
 // Various settings a buyer can tweak to adjust the behaviour of Network Next route selection to their liking
 type RoutingRulesSettings struct {
 	// The maximum upstream bandwidth a customer is willing to pay for per slice
@@ -8,10 +14,7 @@ type RoutingRulesSettings struct {
 	// The maximum downstream bandwidth a customer is willing to pay for per slice
 	EnvelopeKbpsDown int64
 
-	// The router mode
-	// 0 = auto (try to pick the best route)
-	// 1 = force direct (even if there is potential improvement)
-	// 2 = force next (even if there is a degradement)
+	// The router mode (see "mode" constants defined above)
 	Mode int64
 
 	// The maximum bid price in USD cents (¢) a customer is willing to pay per GB of traffic sent over network next
