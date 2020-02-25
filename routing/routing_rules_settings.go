@@ -45,27 +45,27 @@ type RoutingRulesSettings struct {
 
 	// If true, after being downgraded from a network next route to a direct route, the client will not be put back on a network next route for that session
 	// Not used when multipath enabled!
-	YouOnlyLiveOnce bool
+	EnableYouOnlyLiveOnce bool
 
 	// If true, causes sessions to be "vetoed" if network next packet loss is greater than direct packet loss
 	// Not used when multipath enabled!
-	PacketLossSafety bool
+	EnablePacketLossSafety bool
 
 	/* MULTIPATH */
 	// Multipath means network traffic is sent over multiple network routes (any combination of direct and multiple network next routes)
 	// Once a session has multipath enabled, it will stay on multipath until the session ends. As of such vetos are disabled
 
 	// If true, enables multipath when there is 1% or more packet loss on the direct route
-	PacketLossMultipath bool
+	EnableMultipathForPacketLoss bool
 
 	// If true, enables multipath when there is 50ms or more jitter on the direct route
-	JitterMultipath bool
+	EnableMultipathForJitter bool
 
 	// If true, enables multipath when there is a next route that beats direct by the value specified in RTTThreshold
-	RTTMultipath bool
+	EnableMultipathForRTT bool
 
 	// If true, the customer is participating in an A/B test. Additional metrics will be recorded and half the sessions that would take network next will take direct instead
-	ABTest bool
+	EnableABTest bool
 }
 
 var DefaultRoutingRulesSettings = RoutingRulesSettings{

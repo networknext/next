@@ -43,22 +43,22 @@ type datacenter struct {
 }
 
 type routingRulesSettings struct {
-	DisplayName           string  `firestore:"displayName"`
-	EnvelopeKbpsUp        int64   `firestore:"envelopeKbpsUp"`
-	EnvelopeKbpsDown      int64   `firestore:"envelopeKbpsDown"`
-	Mode                  int64   `firestore:"mode"`
-	MaxPricePerGBNibblins int64   `firestore:"maxPricePerGBNibblins"`
-	AcceptableLatency     float32 `firestore:"acceptableLatency"`
-	RTTRouteSwitch        float32 `firestore:"rttRouteSwitch"`
-	RTTThreshold          float32 `firestore:"rttThreshold"`
-	RTTHysteresis         float32 `firestore:"rttHysteresis"`
-	RTTVeto               float32 `firestore:"rttVeto"`
-	YouOnlyLiveOnce       bool    `firestore:"youOnlyLiveOnce"`
-	PacketLossSafety      bool    `firestore:"packetLossSafety"`
-	PacketLossMultipath   bool    `firestore:"packetLossMultipath"`
-	JitterMultipath       bool    `firestore:"jitterMultipath"`
-	RTTMultipath          bool    `firestore:"rttMultipath"`
-	ABTest                bool    `firestore:"abTest"`
+	DisplayName                  string  `firestore:"displayName"`
+	EnvelopeKbpsUp               int64   `firestore:"envelopeKbpsUp"`
+	EnvelopeKbpsDown             int64   `firestore:"envelopeKbpsDown"`
+	Mode                         int64   `firestore:"mode"`
+	MaxPricePerGBNibblins        int64   `firestore:"maxPricePerGBNibblins"`
+	AcceptableLatency            float32 `firestore:"acceptableLatency"`
+	RTTRouteSwitch               float32 `firestore:"rttRouteSwitch"`
+	RTTThreshold                 float32 `firestore:"rttThreshold"`
+	RTTHysteresis                float32 `firestore:"rttHysteresis"`
+	RTTVeto                      float32 `firestore:"rttVeto"`
+	EnableYouOnlyLiveOnce        bool    `firestore:"youOnlyLiveOnce"`
+	EnablePacketLossSafety       bool    `firestore:"packetLossSafety"`
+	EnableMultipathForPacketLoss bool    `firestore:"packetLossMultipath"`
+	EnableMultipathForJitter     bool    `firestore:"jitterMultipath"`
+	EnableMultipathForRTT        bool    `firestore:"rttMultipath"`
+	EnableABTest                 bool    `firestore:"abTest"`
 }
 
 func (s *Firestore) Relay(id uint64) (*routing.Relay, bool) {
@@ -245,12 +245,12 @@ func (s *Firestore) GetRoutingRulesSettingsForBuyerID(ctx context.Context, ID st
 	rrs.RTTThreshold = tempRRS.RTTThreshold
 	rrs.RTTHysteresis = tempRRS.RTTHysteresis
 	rrs.RTTVeto = tempRRS.RTTVeto
-	rrs.YouOnlyLiveOnce = tempRRS.YouOnlyLiveOnce
-	rrs.PacketLossSafety = tempRRS.PacketLossSafety
-	rrs.PacketLossMultipath = tempRRS.PacketLossMultipath
-	rrs.JitterMultipath = tempRRS.JitterMultipath
-	rrs.RTTMultipath = tempRRS.RTTMultipath
-	rrs.ABTest = tempRRS.ABTest
+	rrs.EnableYouOnlyLiveOnce = tempRRS.EnableYouOnlyLiveOnce
+	rrs.EnablePacketLossSafety = tempRRS.EnablePacketLossSafety
+	rrs.EnableMultipathForPacketLoss = tempRRS.EnableMultipathForPacketLoss
+	rrs.EnableMultipathForJitter = tempRRS.EnableMultipathForJitter
+	rrs.EnableMultipathForRTT = tempRRS.EnableMultipathForRTT
+	rrs.EnableABTest = tempRRS.EnableABTest
 
 	return rrs, nil
 }
