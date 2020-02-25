@@ -3140,16 +3140,18 @@ func TestRouting(t *testing.T) {
 		assert.NoError(t, err)
 
 		tests := []struct {
-			name     string
-			from     []routing.Relay
-			to       []routing.Relay
-			expected []routing.Route
+			name        string
+			from        []routing.Relay
+			to          []routing.Relay
+			expected    []routing.Route
+			expectedErr error
+			selectors   []routing.RouteSelector
 		}{
-			{"empty from/to sets", []routing.Relay{}, []routing.Relay{}, nil},
-			{"relays not found", []routing.Relay{{ID: 1}}, []routing.Relay{{ID: 2}}, nil},
-			{"one relay found", []routing.Relay{{ID: 1}}, []routing.Relay{{ID: 1500948990}}, nil},
+			{"empty from/to sets", []routing.Relay{}, []routing.Relay{}, nil, errors.New("No routes found"), nil},
+			{"relays not found", []routing.Relay{{ID: 1}}, []routing.Relay{{ID: 2}}, nil, errors.New("No routes found"), nil},
+			{"one relay found", []routing.Relay{{ID: 1}}, []routing.Relay{{ID: 1500948990}}, nil, errors.New("No routes found"), nil},
 			{
-				"routes found",
+				"no selectors",
 				[]routing.Relay{{ID: 2836356269}},
 				[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
 				[]routing.Route{
@@ -3190,13 +3192,131 @@ func TestRouting(t *testing.T) {
 						Stats:  routing.Stats{RTT: 311},
 					},
 				},
+				nil,
+				nil,
+			},
+			{
+				"best RTT",
+				[]routing.Relay{{ID: 2836356269}},
+				[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
+				[]routing.Route{
+					routing.Route{
+						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2923051732}, {ID: 1884974764}, {ID: 3263834878}},
+						Stats:  routing.Stats{RTT: 182},
+					},
+					routing.Route{
+						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2641807504}, {ID: 3263834878}},
+						Stats:  routing.Stats{RTT: 182},
+					},
+					routing.Route{
+						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
+						Stats:  routing.Stats{RTT: 182},
+					},
+				},
+				nil,
+				[]routing.RouteSelector{
+					routing.SelectBestRTT(),
+				},
+			},
+			{
+				"acceptable routes",
+				[]routing.Relay{{ID: 2836356269}},
+				[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
+				[]routing.Route{
+					routing.Route{
+						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2923051732}, {ID: 1884974764}, {ID: 3263834878}},
+						Stats:  routing.Stats{RTT: 182},
+					},
+					routing.Route{
+						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2641807504}, {ID: 3263834878}},
+						Stats:  routing.Stats{RTT: 182},
+					},
+					routing.Route{
+						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
+						Stats:  routing.Stats{RTT: 182},
+					},
+					routing.Route{
+						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2576485547}, {ID: 1835585494}, {ID: 3263834878}},
+						Stats:  routing.Stats{RTT: 183},
+					},
+					routing.Route{
+						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
+						Stats:  routing.Stats{RTT: 183},
+					},
+					routing.Route{
+						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2663193268}, {ID: 2504465311}, {ID: 3263834878}},
+						Stats:  routing.Stats{RTT: 184},
+					},
+					routing.Route{
+						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 427962386}, {ID: 2504465311}, {ID: 3263834878}},
+						Stats:  routing.Stats{RTT: 184},
+					},
+					routing.Route{
+						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 4058587524}, {ID: 1350942731}, {ID: 3263834878}},
+						Stats:  routing.Stats{RTT: 184},
+					},
+				},
+				nil,
+				[]routing.RouteSelector{
+					routing.SelectAcceptableRoutesFromBestRTT(10),
+				},
+			},
+			{
+				"contains route",
+				[]routing.Relay{{ID: 2836356269}},
+				[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
+				[]routing.Route{
+					routing.Route{
+						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2923051732}, {ID: 1884974764}, {ID: 3263834878}},
+						Stats:  routing.Stats{RTT: 182},
+					},
+				},
+				nil,
+				[]routing.RouteSelector{
+					routing.SelectContainsRouteHash(14287039991941962633),
+				},
+			},
+			{
+				"routes by random dest relay",
+				[]routing.Relay{{ID: 2836356269}},
+				[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
+				[]routing.Route{
+					routing.Route{
+						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1500948990}},
+						Stats:  routing.Stats{RTT: 311},
+					},
+				},
+				nil,
+				[]routing.RouteSelector{
+					routing.SelectRoutesByRandomDestRelay(),
+				},
+			},
+			{
+				"random route",
+				[]routing.Relay{{ID: 2836356269}},
+				[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
+				[]routing.Route{
+					routing.Route{
+						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2641807504}, {ID: 3263834878}},
+						Stats:  routing.Stats{RTT: 182},
+					},
+				},
+				nil,
+				[]routing.RouteSelector{
+					routing.SelectRandomRoute(),
+				},
 			},
 		}
 
 		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
-				actual := routeMatrix.Routes(test.from, test.to)
+				actual, err := routeMatrix.Routes(test.from, test.to, test.selectors...)
+				assert.Equal(t, test.expectedErr, err)
+				assert.Equal(t, len(test.expected), len(actual))
+
 				for routeidx, route := range actual {
+					assert.Equal(t, len(test.expected[routeidx].Relays), len(route.Relays))
+
 					for relayidx := range route.Relays {
 						assert.Equal(t, test.expected[routeidx].Relays[relayidx].ID, actual[routeidx].Relays[relayidx].ID)
 						assert.NotNil(t, actual[routeidx].Relays[relayidx].Addr.IP)
@@ -3210,41 +3330,6 @@ func TestRouting(t *testing.T) {
 				}
 			})
 		}
-	})
-
-	t.Run("AllRoutes", func(t *testing.T) {
-		costMatrix := getPopulatedCostMatrix(false)
-
-		// Fix relay addresses
-		costMatrix.RelayAddresses[0] = []byte("127.0.0.1:40000")
-		costMatrix.RelayAddresses[1] = []byte("127.0.0.2:40000")
-
-		var routeMatrix routing.RouteMatrix
-		err := costMatrix.Optimize(&routeMatrix, 1)
-		assert.NoError(t, err)
-
-		relayFrom, err := routeMatrix.ResolveRelay(routeMatrix.RelayIds[0])
-		assert.NoError(t, err)
-
-		relayTo, err := routeMatrix.ResolveRelay(routeMatrix.RelayIds[1])
-		assert.NoError(t, err)
-
-		expected := []routing.Route{
-			routing.Route{
-				Relays: []routing.Relay{
-					relayFrom,
-					relayTo,
-				},
-				Stats: routing.Stats{RTT: 7},
-			},
-		}
-
-		datacenter := routing.Datacenter{ID: routeMatrix.DatacenterIds[0]}
-		assert.NoError(t, err)
-
-		actual := routeMatrix.AllRoutes(datacenter, []routing.Relay{relayTo})
-
-		assert.Equal(t, expected, actual)
 	})
 }
 
@@ -3315,33 +3400,5 @@ func BenchmarkRelaysIn(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		routeMatrix.RelaysIn(routing.Datacenter{ID: routeMatrix.DatacenterIds[0], Name: routeMatrix.DatacenterNames[0]})
-	}
-}
-
-// Benchmarks all routes from the first datacenter in the file to every other relay in the route matrix
-func BenchmarkAllRoutes(b *testing.B) {
-	costfile, _ := os.Open("./test_data/cost-for-sanity-check.bin") // This file actually has datacenters in it
-
-	var costMatrix routing.CostMatrix
-	costMatrix.ReadFrom(costfile)
-
-	var routeMatrix routing.RouteMatrix
-	costMatrix.Optimize(&routeMatrix, 1)
-
-	if len(routeMatrix.DatacenterIds) == 0 {
-		b.FailNow()
-		return
-	}
-
-	relays := make([]routing.Relay, len(routeMatrix.RelayIds))
-	for i := 0; i < len(relays); i++ {
-		relays[i] = routing.Relay{ID: routeMatrix.RelayIds[i], Name: routeMatrix.RelayNames[i]}
-	}
-
-	b.ReportAllocs()
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		routeMatrix.AllRoutes(routing.Datacenter{ID: routeMatrix.DatacenterIds[0], Name: routeMatrix.DatacenterNames[0]}, relays)
 	}
 }
