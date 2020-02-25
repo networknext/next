@@ -6,14 +6,18 @@ import (
 )
 
 // RouteSelector reduces a slice of routes according to the selector function.
-// Takes in an array of routes and returns the selected slice of routes.
+// Takes in a slice of initial routes and a slice of current routes as input and returns the selected slice of routes.
+// RouteSelector uses both the original set of routes and the current working set of routes so that the selector can reference
+// the initial slice of routes and potentially grow the list. Therefore, make sure the original slice of routes and the current working
+// slice of routes don't point to the same underlying array.
+// A RouteSelector never modifies the input.
 // If the selector couldn't product a non-empty list of routes, then it returns nil.
-type RouteSelector func(routes []Route) []Route
+type RouteSelector func(originalRoutes []Route, routes []Route) []Route
 
 // SelectBestRTT returns the best routes based on lowest RTT, or nil if no best route is found.
 // This will return multiple routes if the routes have the same RTT.
 func SelectBestRTT() RouteSelector {
-	return func(routes []Route) []Route {
+	return func(originalRoutes []Route, routes []Route) []Route {
 		bestRoutes := make([]Route, 0)
 		for _, route := range routes {
 			if len(bestRoutes) == 0 || route.Stats.RTT < bestRoutes[0].Stats.RTT {
@@ -34,10 +38,11 @@ func SelectBestRTT() RouteSelector {
 }
 
 // SelectAcceptableRoutesFromRTT will return a list of acceptable routes, which is defined as all routes whose RTT is within the given threshold of the base route's RTT.
-// This selector uses the first route in the list as the base route.
+// This selector uses the first route in the list of current routes as the base route.
+// Therefore, this selector is intended to grow the list of current routes.
 // Returns nil if there are no acceptable routes.
-func SelectAcceptableRoutesFromRTT(rttSwitchThreshold float32) RouteSelector {
-	return func(routes []Route) []Route {
+func SelectAcceptableRoutesFromRTT(rttSwitchThreshold float64) RouteSelector {
+	return func(originalRoutes []Route, routes []Route) []Route {
 		var baseRoute *Route
 		if len(routes) > 0 {
 			baseRoute = &routes[0]
@@ -46,9 +51,9 @@ func SelectAcceptableRoutesFromRTT(rttSwitchThreshold float32) RouteSelector {
 		}
 
 		acceptableRoutes := make([]Route, 0)
-		for _, route := range routes {
+		for _, route := range originalRoutes {
 			rttDifference := baseRoute.Stats.RTT - route.Stats.RTT
-			if math.Abs(rttDifference) < float64(rttSwitchThreshold) {
+			if math.Abs(rttDifference) <= rttSwitchThreshold {
 				acceptableRoutes = append(acceptableRoutes, route)
 			}
 		}
@@ -62,9 +67,9 @@ func SelectAcceptableRoutesFromRTT(rttSwitchThreshold float32) RouteSelector {
 	}
 }
 
-// SelectContainsRouteHash returns the route if its route hash matches a route in the list of routes, or nil if it is not.
+// SelectContainsRouteHash returns the route if its route hash matches a route in the current list of routes, or nil if it is not.
 func SelectContainsRouteHash(routeHash uint64) RouteSelector {
-	return func(routes []Route) []Route {
+	return func(originalRoutes []Route, routes []Route) []Route {
 		for _, route := range routes {
 			sameRoute := routeHash == route.Hash64()
 			if sameRoute {
@@ -76,9 +81,9 @@ func SelectContainsRouteHash(routeHash uint64) RouteSelector {
 	}
 }
 
-// SelectRoutesByRandomDestRelay will group the routes by their destination relays, then choose a random relay to return routes from.
+// SelectRoutesByRandomDestRelay will group the current routes by their destination relays, then choose a random relay to return routes from.
 func SelectRoutesByRandomDestRelay() RouteSelector {
-	return func(routes []Route) []Route {
+	return func(originalRoutes []Route, routes []Route) []Route {
 		// Group routes by destination relay
 		destRelayRouteMap := make(map[uint64][]Route)
 		for _, route := range routes {
@@ -116,9 +121,9 @@ func SelectRoutesByRandomDestRelay() RouteSelector {
 	}
 }
 
-// SelectRandomRoute returns a random route from the list of routes.
+// SelectRandomRoute returns a random route from the current list of routes.
 func SelectRandomRoute() RouteSelector {
-	return func(routes []Route) []Route {
+	return func(originalRoutes []Route, routes []Route) []Route {
 		return []Route{routes[rand.Intn(len(routes))]}
 	}
 }

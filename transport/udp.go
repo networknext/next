@@ -331,7 +331,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 
 		level.Debug(locallogger).Log("num_datacenter_relays", len(dsrelays), "num_client_relays", len(clientrelays))
 
-		var rttSwitchThreshold float32 = 10.0 // This will come from the route shader eventually, but hard code it for now
+		var rttSwitchThreshold float64 = 10.0 // This will come from the route shader eventually, but hard code it for now
 
 		// Get a set of possible routes from the RouteProvider an on error ensure it falls back to direct
 		routes, err := rp.Routes(dsrelays, clientrelays,

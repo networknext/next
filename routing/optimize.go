@@ -746,36 +746,40 @@ func (m *RouteMatrix) Routes(from []Relay, to []Relay, routeSelectors ...RouteSe
 
 	// Now that we have the route total, make the Route buffer and fill it
 	var routeIndex int
-	routes := make([]Route, routeTotal)
+	allRoutes := make([]Route, routeTotal)
 	for i := 0; i < relayPairLength; i++ {
 		if relayPairResults[i].fromtoidx >= 0 {
-			m.fillRoutes(routes, &routeIndex, relayPairResults[i].fromtoidx, relayPairResults[i].reverse)
+			m.fillRoutes(allRoutes, &routeIndex, relayPairResults[i].fromtoidx, relayPairResults[i].reverse)
 		}
 	}
 
-	routeLength := len(routes)
+	routeLength := len(allRoutes)
 
 	// No routes found
 	if routeLength == 0 {
 		return nil, errors.New("No routes found")
 	}
 
+	// Make a copy of the routes to apply selectors to
+	workingRoutes := make([]Route, routeLength)
+	copy(workingRoutes, allRoutes)
+
 	// Apply the selectors in order
 	for _, selector := range routeSelectors {
-		selectedRoutes := selector(routes)
+		selectedRoutes := selector(allRoutes, workingRoutes)
 		if selectedRoutes == nil || len(selectedRoutes) == 0 {
 			break // If the list of selected routes is empty, it means that it couldn't select the set of routes, so stop early
 		}
 
-		routes = selectedRoutes
-		routeLength = len(routes)
+		workingRoutes = selectedRoutes
+		routeLength = len(workingRoutes)
 
 		if routeLength <= 1 {
 			break
 		}
 	}
 
-	return routes, nil
+	return workingRoutes, nil
 }
 
 // Returns the index in the route matrix representing the route between the from Relay and to Relay and whether or not to reverse them
