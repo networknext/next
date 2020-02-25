@@ -220,7 +220,7 @@ func (s *Firestore) GetRoutingRulesSettingsForBuyerID(ctx context.Context, ID st
 	routeShaderID := ID + "_0"
 
 	// Set up our return value with default settings, which will be used if no settings found for buyer or other errors are encountered
-	rrs := routing.GetDefaultRoutingRulesSettings()
+	rrs := routing.DefaultRoutingRulesSettings
 
 	// Attempt to get route shader for buyer (sadly not linked by actual reference in prod so have to fetch it ourselves using buyer ID + "_0" which happens to match)
 	rsDoc, err := s.Client.Collection("RouteShader").Doc(routeShaderID).Get(ctx)

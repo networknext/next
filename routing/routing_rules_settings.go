@@ -68,15 +68,12 @@ type RoutingRulesSettings struct {
 	AbTest bool
 }
 
-func GetDefaultRoutingRulesSettings() RoutingRulesSettings {
-	return RoutingRulesSettings{
-		DisplayName:       "Default",
-		MaxCentsPerGB:     25.0,
-		EnvelopeKbpsUp:    256,
-		EnvelopeKbpsDown:  256,
-		AcceptableLatency: -1.0,
-		RttThreshold:      5.0,
-		RttRouteSwitch:    2.0,
-	}
-
+var DefaultRoutingRulesSettings = RoutingRulesSettings{
+	DisplayName:       "Default",
+	MaxCentsPerGB:     25.0,
+	EnvelopeKbpsUp:    256,
+	EnvelopeKbpsDown:  256,
+	AcceptableLatency: -1.0,
+	RttThreshold:      5.0,
+	RttRouteSwitch:    2.0,
 }
