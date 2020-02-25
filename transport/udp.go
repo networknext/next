@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"net"
 	"time"
 
@@ -331,11 +332,9 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 
 		level.Debug(locallogger).Log("num_datacenter_relays", len(dsrelays), "num_client_relays", len(clientrelays))
 
-		var rttSwitchThreshold float64 = 10.0 // This will come from the route shader eventually, but hard code it for now
-
 		// Get a set of possible routes from the RouteProvider an on error ensure it falls back to direct
 		routes, err := rp.Routes(dsrelays, clientrelays,
-			routing.SelectAcceptableRoutesFromBestRTT(rttSwitchThreshold),
+			routing.SelectAcceptableRoutesFromBestRTT(float64(buyer.RoutingRulesSettings.RTTRouteSwitch)),
 			routing.SelectContainsRouteHash(sessionCacheEntry.RouteHash),
 			routing.SelectRoutesByRandomDestRelay(),
 			routing.SelectRandomRoute())
@@ -345,7 +344,8 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			return
 		}
 
-		chosenRoute := routes[0] // Just take the first one it finds regardless of optimization
+		// There should only ever be one route when all selectors have been applied, but just in case, choose a random one
+		chosenRoute := routes[rand.Intn(len(routes))]
 		routeHash := chosenRoute.Hash64()
 
 		var token routing.Token
