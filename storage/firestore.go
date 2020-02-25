@@ -49,16 +49,16 @@ type routingRulesSettings struct {
 	Mode                  int64   `firestore:"mode"`
 	MaxPricePerGBNibblins int64   `firestore:"maxPricePerGBNibblins"`
 	AcceptableLatency     float32 `firestore:"acceptableLatency"`
-	RttRouteSwitch        float32 `firestore:"rttRouteSwitch"`
-	RttThreshold          float32 `firestore:"rttThreshold"`
-	RttHysteresis         float32 `firestore:"rttHysteresis"`
-	RttVeto               float32 `firestore:"rttVeto"`
+	RTTRouteSwitch        float32 `firestore:"rttRouteSwitch"`
+	RTTThreshold          float32 `firestore:"rttThreshold"`
+	RTTHysteresis         float32 `firestore:"rttHysteresis"`
+	RTTVeto               float32 `firestore:"rttVeto"`
 	YouOnlyLiveOnce       bool    `firestore:"youOnlyLiveOnce"`
 	PacketLossSafety      bool    `firestore:"packetLossSafety"`
 	PacketLossMultipath   bool    `firestore:"packetLossMultipath"`
 	JitterMultipath       bool    `firestore:"jitterMultipath"`
-	RttMultipath          bool    `firestore:"rttMultipath"`
-	AbTest                bool    `firestore:"abTest"`
+	RTTMultipath          bool    `firestore:"rttMultipath"`
+	ABTest                bool    `firestore:"abTest"`
 }
 
 func (s *Firestore) Relay(id uint64) (*routing.Relay, bool) {
@@ -241,16 +241,16 @@ func (s *Firestore) GetRoutingRulesSettingsForBuyerID(ctx context.Context, ID st
 	rrs.Mode = tempRRS.Mode
 	rrs.MaxCentsPerGB = tempRRS.MaxPricePerGBNibblins / 1e9 // Note: Nibblins is a made up unit in the old backend presumably to deal with floating point issues. 1000000000 Niblins = $0.01 USD
 	rrs.AcceptableLatency = tempRRS.AcceptableLatency
-	rrs.RttRouteSwitch = tempRRS.RttRouteSwitch
-	rrs.RttThreshold = tempRRS.RttThreshold
-	rrs.RttHysteresis = tempRRS.RttHysteresis
-	rrs.RttVeto = tempRRS.RttVeto
+	rrs.RTTRouteSwitch = tempRRS.RTTRouteSwitch
+	rrs.RTTThreshold = tempRRS.RTTThreshold
+	rrs.RTTHysteresis = tempRRS.RTTHysteresis
+	rrs.RTTVeto = tempRRS.RTTVeto
 	rrs.YouOnlyLiveOnce = tempRRS.YouOnlyLiveOnce
 	rrs.PacketLossSafety = tempRRS.PacketLossSafety
 	rrs.PacketLossMultipath = tempRRS.PacketLossMultipath
 	rrs.JitterMultipath = tempRRS.JitterMultipath
-	rrs.RttMultipath = tempRRS.RttMultipath
-	rrs.AbTest = tempRRS.AbTest
+	rrs.RTTMultipath = tempRRS.RTTMultipath
+	rrs.ABTest = tempRRS.ABTest
 
 	return rrs, nil
 }
