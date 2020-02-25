@@ -236,7 +236,6 @@ func (s *Firestore) GetRoutingRulesSettingsForBuyerID(ctx context.Context, ID st
 	}
 
 	// If successful, convert into routing.Buyer version and return it
-	rrs.DisplayName = tempRRS.DisplayName
 	rrs.EnvelopeKbpsUp = tempRRS.EnvelopeKbpsUp
 	rrs.EnvelopeKbpsDown = tempRRS.EnvelopeKbpsDown
 	rrs.Mode = tempRRS.Mode

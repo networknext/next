@@ -2,9 +2,6 @@ package routing
 
 // Various settings a buyer can tweak to adjust the behaviour of Network Next route selection to their liking
 type RoutingRulesSettings struct {
-	// The name of the settings config (generally just the buyers name since not actually linked properly in old backend)
-	DisplayName string
-
 	// The maximum upstream bandwidth a customer is willing to pay for per slice
 	EnvelopeKbpsUp int64
 
@@ -69,7 +66,6 @@ type RoutingRulesSettings struct {
 }
 
 var DefaultRoutingRulesSettings = RoutingRulesSettings{
-	DisplayName:       "Default",
 	MaxCentsPerGB:     25.0,
 	EnvelopeKbpsUp:    256,
 	EnvelopeKbpsDown:  256,
