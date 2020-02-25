@@ -1,23 +1,20 @@
 package routing
 
 import (
-	"math"
 	"math/rand"
+	"sort"
 )
 
 // RouteSelector reduces a slice of routes according to the selector function.
-// Takes in a slice of initial routes and a slice of current routes as input and returns the selected slice of routes.
-// RouteSelector uses both the original set of routes and the current working set of routes so that the selector can reference
-// the initial slice of routes and potentially grow the list. Therefore, make sure the original slice of routes and the current working
-// slice of routes don't point to the same underlying array.
+// Takes in a slice of routes as input and returns a new slice of selected routes.
 // A RouteSelector never modifies the input.
-// If the selector couldn't product a non-empty list of routes, then it returns nil.
-type RouteSelector func(originalRoutes []Route, routes []Route) []Route
+// If the selector couldn't product a non-empty slic of routes, then it returns nil.
+type RouteSelector func(routes []Route) []Route
 
 // SelectBestRTT returns the best routes based on lowest RTT, or nil if no best route is found.
 // This will return multiple routes if the routes have the same RTT.
 func SelectBestRTT() RouteSelector {
-	return func(originalRoutes []Route, routes []Route) []Route {
+	return func(routes []Route) []Route {
 		bestRoutes := make([]Route, 0)
 		for _, route := range routes {
 			if len(bestRoutes) == 0 || route.Stats.RTT < bestRoutes[0].Stats.RTT {
@@ -37,23 +34,22 @@ func SelectBestRTT() RouteSelector {
 	}
 }
 
-// SelectAcceptableRoutesFromRTT will return a list of acceptable routes, which is defined as all routes whose RTT is within the given threshold of the base route's RTT.
-// This selector uses the first route in the list of current routes as the base route.
-// Therefore, this selector is intended to grow the list of current routes.
+// SelectAcceptableRoutesFromBestRTT will return a slice of acceptable routes, which is defined as all routes whose RTT is within the given threshold of the best RTT.
 // Returns nil if there are no acceptable routes.
-func SelectAcceptableRoutesFromRTT(rttSwitchThreshold float64) RouteSelector {
-	return func(originalRoutes []Route, routes []Route) []Route {
-		var baseRoute *Route
-		if len(routes) > 0 {
-			baseRoute = &routes[0]
-		} else {
-			return nil // SelectAcceptableRoutesFromRTT needs a base route to work correctly
+func SelectAcceptableRoutesFromBestRTT(rttSwitchThreshold float64) RouteSelector {
+	// Use SelectBestRTT() to get the best RTT
+	bestRTTSelector := SelectBestRTT()
+	return func(routes []Route) []Route {
+		bestRoutes := bestRTTSelector(routes)
+		if bestRoutes == nil {
+			return nil // This selector needs the best RTT to work correctly
 		}
 
+		bestRTT := bestRoutes[0].Stats.RTT
 		acceptableRoutes := make([]Route, 0)
-		for _, route := range originalRoutes {
-			rttDifference := baseRoute.Stats.RTT - route.Stats.RTT
-			if math.Abs(rttDifference) <= rttSwitchThreshold {
+		for _, route := range routes {
+			rttDifference := route.Stats.RTT - bestRTT
+			if rttDifference <= rttSwitchThreshold {
 				acceptableRoutes = append(acceptableRoutes, route)
 			}
 		}
@@ -69,7 +65,7 @@ func SelectAcceptableRoutesFromRTT(rttSwitchThreshold float64) RouteSelector {
 
 // SelectContainsRouteHash returns the route if its route hash matches a route in the current list of routes, or nil if it is not.
 func SelectContainsRouteHash(routeHash uint64) RouteSelector {
-	return func(originalRoutes []Route, routes []Route) []Route {
+	return func(routes []Route) []Route {
 		for _, route := range routes {
 			sameRoute := routeHash == route.Hash64()
 			if sameRoute {
@@ -83,7 +79,7 @@ func SelectContainsRouteHash(routeHash uint64) RouteSelector {
 
 // SelectRoutesByRandomDestRelay will group the current routes by their destination relays, then choose a random relay to return routes from.
 func SelectRoutesByRandomDestRelay() RouteSelector {
-	return func(originalRoutes []Route, routes []Route) []Route {
+	return func(routes []Route) []Route {
 		// Group routes by destination relay
 		destRelayRouteMap := make(map[uint64][]Route)
 		for _, route := range routes {
@@ -111,9 +107,9 @@ func SelectRoutesByRandomDestRelay() RouteSelector {
 		}
 
 		// NOTE - Why does this need to be sorted if a random destination relay is chosen anyway?
-		// sort.Slice(destinationRelayIDs, func(i, j int) bool {
-		// 	return destinationRelayIDs[i] < destinationRelayIDs[j]
-		// })
+		sort.Slice(destinationRelayIDs, func(i, j int) bool {
+			return destinationRelayIDs[i] < destinationRelayIDs[j]
+		})
 
 		// choose a random destination relay, and use the routes from that
 		relayRoutes := destRelayRouteMap[destinationRelayIDs[rand.Intn(len(destinationRelayIDs))]]
@@ -123,7 +119,7 @@ func SelectRoutesByRandomDestRelay() RouteSelector {
 
 // SelectRandomRoute returns a random route from the current list of routes.
 func SelectRandomRoute() RouteSelector {
-	return func(originalRoutes []Route, routes []Route) []Route {
+	return func(routes []Route) []Route {
 		return []Route{routes[rand.Intn(len(routes))]}
 	}
 }

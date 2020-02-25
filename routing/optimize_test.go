@@ -3258,51 +3258,7 @@ func TestRouting(t *testing.T) {
 				},
 				nil,
 				[]routing.RouteSelector{
-					routing.SelectAcceptableRoutesFromRTT(10),
-				},
-			},
-			{
-				"acceptable routes - growing selection",
-				[]routing.Relay{{ID: 2836356269}},
-				[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
-				[]routing.Route{
-					routing.Route{
-						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2923051732}, {ID: 1884974764}, {ID: 3263834878}},
-						Stats:  routing.Stats{RTT: 182},
-					},
-					routing.Route{
-						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2641807504}, {ID: 3263834878}},
-						Stats:  routing.Stats{RTT: 182},
-					},
-					routing.Route{
-						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
-						Stats:  routing.Stats{RTT: 182},
-					},
-					routing.Route{
-						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2576485547}, {ID: 1835585494}, {ID: 3263834878}},
-						Stats:  routing.Stats{RTT: 183},
-					},
-					routing.Route{
-						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
-						Stats:  routing.Stats{RTT: 183},
-					},
-					routing.Route{
-						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2663193268}, {ID: 2504465311}, {ID: 3263834878}},
-						Stats:  routing.Stats{RTT: 184},
-					},
-					routing.Route{
-						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 427962386}, {ID: 2504465311}, {ID: 3263834878}},
-						Stats:  routing.Stats{RTT: 184},
-					},
-					routing.Route{
-						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 4058587524}, {ID: 1350942731}, {ID: 3263834878}},
-						Stats:  routing.Stats{RTT: 184},
-					},
-				},
-				nil,
-				[]routing.RouteSelector{
-					routing.SelectBestRTT(), // Ensure that SelectAcceptableRoutesFromRTT() can grow the list of selected routes
-					routing.SelectAcceptableRoutesFromRTT(10),
+					routing.SelectAcceptableRoutesFromBestRTT(10),
 				},
 			},
 			{
@@ -3326,36 +3282,8 @@ func TestRouting(t *testing.T) {
 				[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
 				[]routing.Route{
 					routing.Route{
-						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2923051732}, {ID: 1884974764}, {ID: 3263834878}},
-						Stats:  routing.Stats{RTT: 182},
-					},
-					routing.Route{
-						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2641807504}, {ID: 3263834878}},
-						Stats:  routing.Stats{RTT: 182},
-					},
-					routing.Route{
-						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
-						Stats:  routing.Stats{RTT: 182},
-					},
-					routing.Route{
-						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2576485547}, {ID: 1835585494}, {ID: 3263834878}},
-						Stats:  routing.Stats{RTT: 183},
-					},
-					routing.Route{
-						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
-						Stats:  routing.Stats{RTT: 183},
-					},
-					routing.Route{
-						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2663193268}, {ID: 2504465311}, {ID: 3263834878}},
-						Stats:  routing.Stats{RTT: 184},
-					},
-					routing.Route{
-						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 427962386}, {ID: 2504465311}, {ID: 3263834878}},
-						Stats:  routing.Stats{RTT: 184},
-					},
-					routing.Route{
-						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 4058587524}, {ID: 1350942731}, {ID: 3263834878}},
-						Stats:  routing.Stats{RTT: 184},
+						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1500948990}},
+						Stats:  routing.Stats{RTT: 311},
 					},
 				},
 				nil,
@@ -3375,25 +3303,6 @@ func TestRouting(t *testing.T) {
 				},
 				nil,
 				[]routing.RouteSelector{
-					routing.SelectRandomRoute(),
-				},
-			},
-			{
-				"current backend selectors",
-				[]routing.Relay{{ID: 2836356269}},
-				[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
-				[]routing.Route{
-					routing.Route{
-						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2923051732}, {ID: 1884974764}, {ID: 3263834878}},
-						Stats:  routing.Stats{RTT: 182},
-					},
-				},
-				nil,
-				[]routing.RouteSelector{
-					routing.SelectBestRTT(),
-					routing.SelectAcceptableRoutesFromRTT(10),
-					routing.SelectContainsRouteHash(14287039991941962633),
-					routing.SelectRoutesByRandomDestRelay(),
 					routing.SelectRandomRoute(),
 				},
 			},

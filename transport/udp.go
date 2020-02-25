@@ -335,8 +335,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 
 		// Get a set of possible routes from the RouteProvider an on error ensure it falls back to direct
 		routes, err := rp.Routes(dsrelays, clientrelays,
-			routing.SelectBestRTT(),
-			routing.SelectAcceptableRoutesFromRTT(rttSwitchThreshold),
+			routing.SelectAcceptableRoutesFromBestRTT(rttSwitchThreshold),
 			routing.SelectContainsRouteHash(sessionCacheEntry.RouteHash),
 			routing.SelectRoutesByRandomDestRelay(),
 			routing.SelectRandomRoute())
