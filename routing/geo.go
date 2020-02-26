@@ -95,6 +95,10 @@ func (c *GeoClient) Add(r Relay) error {
 	return c.RedisClient.GeoAdd(c.Namespace, &geoloc).Err()
 }
 
+func (c *GeoClient) Remove(r Relay) error {
+	return c.RedisClient.ZRem(strconv.FormatUint(r.ID, 10)).Err()
+}
+
 // uom can be one of the following: "m", "km", "mi", "ft"
 func (c *GeoClient) RelaysWithin(lat float64, long float64, radius float64, uom string) ([]Relay, error) {
 	geoquery := redis.GeoRadiusQuery{

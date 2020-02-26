@@ -5,6 +5,7 @@ import (
 	"math"
 	"net"
 	"strconv"
+	"time"
 
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
@@ -19,6 +20,9 @@ const (
 
 	// HashKeyAllRelays ...
 	HashKeyAllRelays = "ALL_RELAYS"
+
+	// How frequently we need to recieve updates from relays to keep them in redis
+	RelayTimeout = 10 * time.Second
 )
 
 // Relay ...

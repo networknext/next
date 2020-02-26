@@ -8,6 +8,7 @@ package main
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -90,6 +91,24 @@ func main() {
 		level.Error(logger).Log("envvar", "REDIS_HOST", "value", redisHost, "err", err)
 		os.Exit(1)
 	}
+
+	// Sub to keyspace events
+	redisClient.ConfigSet("notify-keyspace-events", "KEA")
+	go func() {
+		ps := redisClient.PSubscribe("__key*__:*")
+
+		for {
+			msg, err := ps.ReceiveMessage()
+			if msg != nil && err == nil {
+				fmt.Printf("Channel[%v] Pattern[%v] Payload[%v]\n", msg.Channel, msg.Pattern, msg.Payload)
+			}
+
+			switch msg.Channel {
+			case "__keyspace@0__:ALL_RELAYS":
+				// listen for relay delete events here and delete geo?
+			}
+		}
+	}()
 
 	var ipLocator routing.IPLocator = routing.NullIsland
 	if uri, ok := os.LookupEnv("MAXMIND_DB_URI"); ok {
@@ -210,6 +229,7 @@ func main() {
 	var costmatrix routing.CostMatrix
 	var routematrix routing.RouteMatrix
 
+	// Periodically generate cost matrix from stats db
 	go func() {
 		for {
 			if err := statsdb.GetCostMatrix(&costmatrix, redisClient); err != nil {
@@ -223,6 +243,27 @@ func main() {
 			level.Info(logger).Log("matrix", "route", "entries", len(routematrix.Entries))
 
 			time.Sleep(10 * time.Second)
+		}
+	}()
+
+	// Periodically expire old relay entries (including removal from statsDB, hashmap and geo)
+	go func() {
+		for {
+			hgetallResult := redisClient.HGetAll(routing.HashKeyAllRelays)
+			for _, raw := range hgetallResult.Val() {
+				var r routing.Relay
+				r.UnmarshalBinary([]byte(raw))
+
+				expiryTime := time.Unix(int64(r.LastUpdateTime), 0).Add(routing.RelayTimeout)
+				if expiryTime.Before(time.Now()) {
+					fmt.Println("deleting!")
+					statsdb.DeleteEntry(r.ID)
+					redisClient.HDel(routing.HashKeyAllRelays, r.Key())
+					geoClient.Remove(r)
+				}
+			}
+
+			time.Sleep(routing.RelayTimeout * 0.5)
 		}
 	}()
 
