@@ -110,8 +110,8 @@ func main() {
 	// Create an in-memory relay & datacenter store
 	// that doesn't require talking to configstore
 	var db storage.Storer = &storage.InMemory{
-		LocalRelays: []*routing.Relay{
-			&routing.Relay{
+		LocalRelays: []routing.Relay{
+			routing.Relay{
 				PublicKey: relayPublicKey,
 				Datacenter: routing.Datacenter{
 					ID:   crypto.HashID("local"),
