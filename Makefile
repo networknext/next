@@ -188,14 +188,20 @@ test-soak-valgrind: clean build-sdk-test build-soak-test
 	@printf "\n"
 endif
 
-.PHONY: test-func
-test-func: clean build-sdk build-relay build-functional-server build-functional-client ## runs functional tests
+.PHONY: build-functional-backend
+build-functional-backend:
 	@printf "Building functional backend... " ; \
 	go build -o ./dist/func_backend ./cmd/tools/functional/backend/*.go ; \
 	printf "done\n" ; \
-	printf "\nRunning functional tests...\n\n" ; \
+
+.PHONY: run-test-func
+run-test-func:
+	@printf "\nRunning functional tests...\n\n" ; \
 	$(GO) run ./cmd/tools/functional/tests/func_tests.go ; \
 	printf "\ndone\n\n"
+
+.PHONY: test-func
+test-func: clean build-sdk build-relay build-functional-server build-functional-client build-functional-backend run-test-func ## runs functional tests
 
 .PHONY: build-sdk-test
 build-sdk-test: build-sdk ## builds the sdk test binary
@@ -294,11 +300,13 @@ build-relay: ## builds the relay
 	@$(CXX) $(CXX_FLAGS) -o $(DIST_DIR)/$(RELAY_EXE) cmd/relay/*.cpp $(LDFLAGS)
 	@printf "done\n"
 
-.PHONY: build-sdk
-build-sdk: ## builds the sdk
+$(DIST_DIR)/$(SDKNAME).so:
 	@printf "Building sdk... "
 	@$(CXX) -fPIC -shared -o $(DIST_DIR)/$(SDKNAME).so ./sdk/next.cpp ./sdk/next_ios.cpp ./sdk/next_linux.cpp ./sdk/next_mac.cpp ./sdk/next_ps4.cpp ./sdk/next_switch.cpp ./sdk/next_windows.cpp ./sdk/next_xboxone.cpp $(LDFLAGS)
 	@printf "done\n"
+
+.PHONY: build-sdk
+build-sdk: $(DIST_DIR)/$(SDKNAME).so ## builds the sdk
 
 .PHONY: build-relay-backend
 build-relay-backend: ## builds the relay backend binary
