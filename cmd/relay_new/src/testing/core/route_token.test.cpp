@@ -80,7 +80,7 @@ Test(core_RouteToken_general)
 
 Test(legacy_relay_route_token_t_general)
 {
-  uint8_t buffer[core::RouteToken::ByteSize];
+  uint8_t buffer[core::RouteToken::EncryptedByteSize];
 
   legacy::relay_route_token_t input_token;
   memset(&input_token, 0, sizeof(input_token));
