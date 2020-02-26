@@ -8,7 +8,6 @@ import (
 
 // Convert new representation of data into old for billing entry
 func BuildRouteRequest(updatePacket SessionUpdatePacket, buyer routing.Buyer, serverData ServerCacheEntry, location routing.Location, storer storage.Storer, clientRelays []*routing.Relay) billing.RouteRequest {
-
 	return billing.RouteRequest{
 		BuyerId:                billing.MakeEntityID("Buyer", buyer.ID),
 		SessionId:              updatePacket.SessionId,
@@ -35,6 +34,8 @@ func BuildRouteRequest(updatePacket SessionUpdatePacket, buyer routing.Buyer, se
 		VersionMajor:           serverData.SDKVersion.Major,
 		VersionMinor:           serverData.SDKVersion.Minor,
 		VersionPatch:           serverData.SDKVersion.Patch,
+		// Can't get commented out fields unless we pay for MaxMind Pro, see Monday task for more details:
+		// https://network-next.monday.com/boards/359802870/pulses/474491141
 		Location: &billing.Location{
 			// CountryCode: location.CountryCode,
 			Country:   location.Country,

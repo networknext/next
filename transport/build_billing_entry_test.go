@@ -85,9 +85,6 @@ func TestBuildRouteRequest(t *testing.T) {
 		},
 		ConnectionType: billing.SessionConnectionType_SESSION_CONNECTION_TYPE_WIFI,
 		Location: &billing.Location{
-			// Isp: TODO,
-			// Asn: TODO,
-			// CountryCode: TODO,
 			Continent: "NA",
 			Country:   "US",
 			Region:    "NY",
@@ -171,9 +168,6 @@ func TestBuildRouteRequest(t *testing.T) {
 	}
 
 	location := routing.Location{
-		// Isp: TODO,
-		// Asn: TODO,
-		// CountryCode: TODO,
 		Continent: "NA",
 		Country:   "US",
 		Region:    "NY",
