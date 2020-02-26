@@ -14,6 +14,7 @@ import (
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
+	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 
 	"github.com/networknext/backend/transport"
@@ -49,7 +50,7 @@ func relayUpdateAssertions(t *testing.T, body []byte, expectedCode int, redisCli
 	recorder := httptest.NewRecorder()
 	request, _ := http.NewRequest("POST", "/relay_update", bytes.NewBuffer(body))
 
-	handler := transport.RelayUpdateHandlerFunc(log.NewNopLogger(), redisClient, statsdb)
+	handler := transport.RelayUpdateHandlerFunc(log.NewNopLogger(), redisClient, statsdb, &metrics.NoOpHandler{})
 
 	handler(recorder, request)
 

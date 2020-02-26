@@ -21,7 +21,7 @@ The default setting is `warn` when running `make dev-relay-backend` and `make de
 
 #### Required
 
-- `BACKEND_LOG_LEVEL`: one of `none`, `error`, `warn`, `info`, `debug` 
+- `BACKEND_LOG_LEVEL`: one of `none`, `error`, `warn`, `info`, `debug`
 - `REDIS_HOST`: address of the Redis server you want to connect to.
 - `RELAY_ROUTER_PUBLIC_KEY`: the public key of the router.
 - `RELAY_ROUTER_PRIVATE_KEY`: the private key of the router.
@@ -30,6 +30,7 @@ The default setting is `warn` when running `make dev-relay-backend` and `make de
 #### Optional
 
 - `GCP_CREDENTIALS`: JSON blob or path to a .json file for the GCP credentials needed
+- `GCP_METRICS_PROJECT`: The name of the StackDriver project that will monitor metrics
 - `RELAY_DEV`: enable development features, like what is listed below in the [important](#important) section
 - `RELAY_STUBBED_DATA_FILENAME`: points to a json file that will be used to stub datacenter names and lat/long coords
 

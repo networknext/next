@@ -35,3 +35,7 @@ The default setting is `warn` when running `make dev-relay-backend` and `make de
 - `GCP_CREDENTIALS`: JSON blob or path to a .json file for the GCP credentials needed
 - `BILLING_PUBSUB_PROJECT`: The project ID to use for billing in Google Pub/Sub
 - `BILLING_PUBSUB_TOPIC`: The topic ID to use for billing in Google Pub/Sub
+
+#### IMPORTANT
+
+Both `BILLING_PUBSUB_PROJECT` and `BILLING_PUBSUB_TOPIC` must be set to send billing entries to Google Pub/Sub.
