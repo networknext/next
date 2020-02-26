@@ -12,7 +12,7 @@ import (
 )
 
 func TestBuildRouteRequest(t *testing.T) {
-	expected := billing.RouteRequest{
+	expected := &billing.RouteRequest{
 		BuyerId:          billing.MakeEntityID("Buyer", 1),
 		SessionId:        2,
 		UserHash:         3,
@@ -109,7 +109,7 @@ func TestBuildRouteRequest(t *testing.T) {
 		Committed:                 true,
 	}
 
-	buyer := routing.Buyer{
+	buyer := &routing.Buyer{
 		ID: 1,
 	}
 
@@ -176,22 +176,22 @@ func TestBuildRouteRequest(t *testing.T) {
 		Longitude: -73.6835691,
 	}
 
-	clientRelays := []*routing.Relay{
-		&routing.Relay{
+	clientRelays := []routing.Relay{
+		routing.Relay{
 			ID: 100,
 			Addr: net.UDPAddr{
 				IP:   net.ParseIP("127.0.0.1"),
 				Port: 1000,
 			},
 		},
-		&routing.Relay{
+		routing.Relay{
 			ID: 200,
 			Addr: net.UDPAddr{
 				IP:   net.ParseIP("127.0.0.2"),
 				Port: 2000,
 			},
 		},
-		&routing.Relay{
+		routing.Relay{
 			ID: 300,
 			Addr: net.UDPAddr{
 				IP:   net.ParseIP("127.0.0.3"),

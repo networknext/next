@@ -7,8 +7,8 @@ import (
 )
 
 // Convert new representation of data into old for billing entry
-func BuildRouteRequest(updatePacket SessionUpdatePacket, buyer routing.Buyer, serverData ServerCacheEntry, location routing.Location, storer storage.Storer, clientRelays []*routing.Relay) billing.RouteRequest {
-	return billing.RouteRequest{
+func BuildRouteRequest(updatePacket SessionUpdatePacket, buyer *routing.Buyer, serverData ServerCacheEntry, location routing.Location, storer storage.Storer, clientRelays []routing.Relay) *billing.RouteRequest {
+	return &billing.RouteRequest{
 		BuyerId:                billing.MakeEntityID("Buyer", buyer.ID),
 		SessionId:              updatePacket.SessionId,
 		UserHash:               updatePacket.UserHash,
@@ -84,7 +84,7 @@ func buildNearRelayList(updatePacket SessionUpdatePacket, storer storage.Storer)
 }
 
 // The list of relays we are telling the client is close to
-func buildIssuedNearRelayList(nearRelays []*routing.Relay) []*billing.IssuedNearRelay {
+func buildIssuedNearRelayList(nearRelays []routing.Relay) []*billing.IssuedNearRelay {
 	var issuedNearRelays []*billing.IssuedNearRelay
 	for idx, nearRelay := range nearRelays {
 		issuedNearRelays = append(issuedNearRelays, &billing.IssuedNearRelay{
