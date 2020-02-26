@@ -447,7 +447,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		}
 
 		billingEntry := &billing.Entry{
-			Request:              nil,
+			Request:              BuildRouteRequest(packet, buyer, serverCacheEntry, location, storer, clientrelays),
 			Route:                nil,
 			RouteDecision:        0,
 			Duration:             10, // Make one entry non-zero so that the entry isn't marshalled to nil
