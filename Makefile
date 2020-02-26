@@ -290,6 +290,10 @@ dev-server: build-sdk build-server  ## runs a local server
 dev-client: build-client  ## runs a local client
 	@./dist/client
 
+.PHONY: dev-multi-clients
+dev-multi-clients: build-client ## runs 20 local clients
+	./cmd/tools/scripts/client-spawner.sh -n 20
+
 .PHONY: build-relay
 build-relay: ## builds the relay
 	@printf "Building relay... "
