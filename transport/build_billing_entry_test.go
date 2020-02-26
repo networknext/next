@@ -38,8 +38,51 @@ func TestBuildRouteRequest(t *testing.T) {
 		ClientRoutePublicKey: TestBuyersClientPublicKey[:],
 		ServerRoutePublicKey: TestBuyersServerPublicKey[:],
 		Tag:                  14,
-		//NearRelays:           make([]*billing.NearRelay, 0),       TODO: come back and populate these
-		//IssuedNearRelays:     make([]*billing.IssuedNearRelay, 0), TODO: come back and populate these
+		NearRelays: []*billing.NearRelay{
+			&billing.NearRelay{
+				RelayId:    billing.MakeEntityID("Relay", 100),
+				Rtt:        1,
+				Jitter:     2,
+				PacketLoss: 3,
+			},
+			&billing.NearRelay{
+				RelayId:    billing.MakeEntityID("Relay", 200),
+				Rtt:        4,
+				Jitter:     5,
+				PacketLoss: 6,
+			}, &billing.NearRelay{
+				RelayId:    billing.MakeEntityID("Relay", 300),
+				Rtt:        7,
+				Jitter:     8,
+				PacketLoss: 9,
+			},
+		},
+		IssuedNearRelays: []*billing.IssuedNearRelay{
+			&billing.IssuedNearRelay{
+				Index:   0,
+				RelayId: billing.MakeEntityID("Relay", 100),
+				RelayIpAddress: billing.UdpAddrToAddress(net.UDPAddr{
+					IP:   net.ParseIP("127.0.0.1"),
+					Port: 1000,
+				}),
+			},
+			&billing.IssuedNearRelay{
+				Index:   1,
+				RelayId: billing.MakeEntityID("Relay", 200),
+				RelayIpAddress: billing.UdpAddrToAddress(net.UDPAddr{
+					IP:   net.ParseIP("127.0.0.2"),
+					Port: 2000,
+				}),
+			},
+			&billing.IssuedNearRelay{
+				Index:   2,
+				RelayId: billing.MakeEntityID("Relay", 300),
+				RelayIpAddress: billing.UdpAddrToAddress(net.UDPAddr{
+					IP:   net.ParseIP("127.0.0.3"),
+					Port: 3000,
+				}),
+			},
+		},
 		ConnectionType: billing.SessionConnectionType_SESSION_CONNECTION_TYPE_WIFI,
 		Location: &billing.Location{
 			// Isp: TODO,
@@ -93,6 +136,11 @@ func TestBuildRouteRequest(t *testing.T) {
 		},
 		ClientRoutePublicKey: TestBuyersClientPublicKey[:],
 		Tag:                  14,
+		NumNearRelays:        3,
+		NearRelayIds:         []uint64{100, 200, 300},
+		NearRelayMinRtt:      []float32{1, 4, 7},
+		NearRelayJitter:      []float32{2, 5, 8},
+		NearRelayPacketLoss:  []float32{3, 6, 9},
 		ConnectionType:       2, // billing.SessionConnectionType_SESSION_CONNECTION_TYPE_WIFI
 		Sequence:             16,
 		FallbackToDirect:     true,
@@ -134,9 +182,33 @@ func TestBuildRouteRequest(t *testing.T) {
 		Longitude: -73.6835691,
 	}
 
-	storer := storage.InMemory{}
+	clientRelays := []*routing.Relay{
+		&routing.Relay{
+			ID: 100,
+			Addr: net.UDPAddr{
+				IP:   net.ParseIP("127.0.0.1"),
+				Port: 1000,
+			},
+		},
+		&routing.Relay{
+			ID: 200,
+			Addr: net.UDPAddr{
+				IP:   net.ParseIP("127.0.0.2"),
+				Port: 2000,
+			},
+		},
+		&routing.Relay{
+			ID: 300,
+			Addr: net.UDPAddr{
+				IP:   net.ParseIP("127.0.0.3"),
+				Port: 3000,
+			},
+		},
+	}
 
-	clientRelays := []routing.Relay{}
+	storer := storage.InMemory{
+		LocalRelays: clientRelays,
+	}
 
 	actual := transport.BuildRouteRequest(updatePacket, buyer, serverData, location, &storer, clientRelays)
 
