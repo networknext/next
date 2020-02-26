@@ -60,7 +60,7 @@ namespace core
         return;
       }
 
-      uint64_t hash = token.key();
+      auto hash = token.key();
 
       core::SessionMap::iterator iter, end;
       {
@@ -84,9 +84,7 @@ namespace core
       }
 
       if (session->ExpireTimestamp != token.ExpireTimestamp) {
-        std::stringstream ss;
-        ss << std::hex << token.SessionID << '.' << std::dec << static_cast<unsigned int>(token.SessionVersion);
-        Log("session continued: ", ss.str());
+        Log("session continued: ", std::hex, token.SessionID, '.', std::dec, static_cast<unsigned int>(token.SessionVersion));
       }
 
       session->ExpireTimestamp = token.ExpireTimestamp;
