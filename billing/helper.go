@@ -2,9 +2,7 @@ package billing
 
 import (
 	"net"
-
-	"github.com/networknext/backend/routing"
-	"github.com/networknext/backend/transport"
+	"strconv"
 )
 
 func udpAddrToAddress(addr net.UDPAddr) *Address {
@@ -45,9 +43,9 @@ func udpAddrToAddress(addr net.UDPAddr) *Address {
 	}
 }
 
-func makeEntityID(kind string, ID uint64) EntityId{
-	return EntityId{
+func makeEntityID(kind string, ID uint64) *EntityId {
+	return &EntityId{
 		Kind: kind,
-		Name: strconv.Itoa(ID)
+		Name: strconv.FormatUint(ID, 10),
 	}
 }

@@ -1,23 +1,16 @@
 package billing
 
 import (
-	"net"
-	"strconv"
-
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 )
 
 // Convert new representation of data into old for billing entry
-func BuildRouteRequest(updatePacket transport.SessionUpdatePacket, buyer routing.Buyer, serverData transport.ServerCacheEntry, location routing.Location, storer storage.Storer, nearRelays []routing.Relay) (RouteRequest, error) {
-	issuedNearRelays, err := buildIssuedNearRelayList(nearRelays)
-	if err != nil {
-		return RouteRequest{}, err
-	}
+func BuildRouteRequest(updatePacket transport.SessionUpdatePacket, buyer routing.Buyer, serverData transport.ServerCacheEntry, location routing.Location, storer storage.Storer, clientRelays []routing.Relay) RouteRequest {
 
 	return RouteRequest{
-		BuyerId:                makeEntityID("Buyer", buyer.Key),
+		BuyerId:                makeEntityID("Buyer", buyer.ID),
 		SessionId:              updatePacket.SessionId,
 		UserHash:               updatePacket.UserHash,
 		PlatformId:             updatePacket.PlatformId,
@@ -34,7 +27,7 @@ func BuildRouteRequest(updatePacket transport.SessionUpdatePacket, buyer routing
 		ServerRoutePublicKey:   serverData.Server.PublicKey,
 		Tag:                    updatePacket.Tag,
 		NearRelays:             buildNearRelayList(updatePacket, storer),
-		IssuedNearRelays:       issuedNearRelays,
+		IssuedNearRelays:       buildIssuedNearRelayList(clientRelays),
 		ConnectionType:         SessionConnectionType(updatePacket.ConnectionType),
 		DatacenterId:           makeEntityID("Datacenter", serverData.Datacenter.ID),
 		SequenceNumber:         updatePacket.Sequence,
@@ -42,13 +35,13 @@ func BuildRouteRequest(updatePacket transport.SessionUpdatePacket, buyer routing
 		VersionMajor:           serverData.VersionMajor,
 		VersionMinor:           serverData.VersionMinor,
 		VersionPatch:           serverData.VersionPatch,
-		Location: Location{
+		Location: &Location{
 			// CountryCode: location.CountryCode,
 			Country:   location.Country,
 			Region:    location.Region,
 			City:      location.City,
-			Latitude:  location.Latitude,
-			Longitude: location.Longitude,
+			Latitude:  float32(location.Latitude),
+			Longitude: float32(location.Longitude),
 			// Isp: location.ISP,
 			// Asn: location.Asn,
 			Continent: location.Continent,
@@ -62,9 +55,10 @@ func BuildRouteRequest(updatePacket transport.SessionUpdatePacket, buyer routing
 		PacketsLostServerToClient: updatePacket.PacketsLostServerToClient,
 		FallbackFlags:             updatePacket.Flags,
 		Committed:                 updatePacket.Committed,
-	}, nil
+	}
 }
 
+// The list of relays the client actually believes it is close to / is using (should match issued near relays)
 func buildNearRelayList(updatePacket transport.SessionUpdatePacket, storer storage.Storer) []*NearRelay {
 	var nearRelays []*NearRelay
 	var i int32
@@ -88,35 +82,16 @@ func buildNearRelayList(updatePacket transport.SessionUpdatePacket, storer stora
 	return nearRelays
 }
 
-func buildIssuedNearRelayList(nearRelays []routing.Relay) ([]*IssuedNearRelay, error) {
+// The list of relays we are telling the client is close to
+func buildIssuedNearRelayList(nearRelays []routing.Relay) []*IssuedNearRelay {
 	var issuedNearRelays []*IssuedNearRelay
 	for idx, nearRelay := range nearRelays {
-		var address *Address
-		ipStr, portStr, err := net.SplitHostPort(string(nearRelay.Addr))
-		if err == nil {
-			ip := net.ParseIP(ipStr)
-			port, err := strconv.Atoi(portStr)
-			if ip != nil && err == nil {
-				address = udpAddrToAddress(net.UDPAddr{
-					IP:   ip,
-					Port: port,
-				})
-			} else {
-				if err != nil {
-					common.Error(ctx, "ServerIngress", "near relay is missing port, addr '%s', err: %v", string(nearRelay.Address), err)
-				}
-				if ip == nil {
-					common.Error(ctx, "ServerIngress", "near relay is missing IP, addr '%s'", string(nearRelay.Address))
-				}
-			}
-		} else {
-			common.Error(ctx, "ServerIngress", "near relay address is not parsable, addr '%s', err: %v", string(nearRelay.Address), err)
-		}
-
 		issuedNearRelays = append(issuedNearRelays, &IssuedNearRelay{
 			Index:          int32(idx),
-			RelayId:        nearRelay.RelayId,
-			RelayIpAddress: address,
+			RelayId:        makeEntityID("Relay", nearRelay.ID),
+			RelayIpAddress: udpAddrToAddress(nearRelay.Addr),
 		})
 	}
+
+	return issuedNearRelays
 }
