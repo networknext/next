@@ -5,8 +5,8 @@ import (
 )
 
 type InMemory struct {
-	LocalBuyer *routing.Buyer
-	LocalRelay *routing.Relay
+	LocalBuyer  *routing.Buyer
+	LocalRelays []*routing.Relay
 }
 
 func (m *InMemory) Buyer(id uint64) (*routing.Buyer, bool) {
@@ -18,8 +18,10 @@ func (m *InMemory) Buyer(id uint64) (*routing.Buyer, bool) {
 }
 
 func (m *InMemory) Relay(id uint64) (*routing.Relay, bool) {
-	if m.LocalRelay != nil {
-		return m.LocalRelay, true
+	for _, relay := range m.LocalRelays {
+		if relay.ID == id {
+			return relay, true
+		}
 	}
 
 	return nil, false
