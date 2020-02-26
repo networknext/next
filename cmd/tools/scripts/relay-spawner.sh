@@ -47,7 +47,10 @@ done
 trap "kill 0" EXIT
 
 for ((r=0 ; r<${num_relays} ; r++)); do
-port=$((start_port+r))
+port="$start_port"
+if [[ ! "$start_port" -eq 0 ]]; then
+	port=$((start_port+r))
+fi
 RELAY_ADDRESS=127.0.0.1:${port} ./dist/relay &
 pid="$!"
 printf "PID ${pid}: Relay socket opened on port ${port}\n"

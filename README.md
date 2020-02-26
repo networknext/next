@@ -8,6 +8,7 @@ This is a monorepo that contains a WIP migration/refactor of the Network Next ba
 
 The tool chain used for development is kept simple to make it easy for any operating system to install and use and work out of the box for POSIX Linux distributions.
 
+- [GCP Cloud SDK](https://cloud.google.com/sdk/docs/quickstarts): needed for the `gsutil` command to publish artifacts
 - [Redis](https://redis.io)
 - [Docker](https://docs.docker.com/install/)
 - [Docker Compose](https://docs.docker.com/compose/install/)

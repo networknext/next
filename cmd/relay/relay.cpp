@@ -130,7 +130,7 @@ relay_mutex_helper_t::~relay_mutex_helper_t()
 
 static int relay_debug = 0;
 
-void relay_printf( const char * format, ... ) 
+void relay_printf( const char * format, ... )
 {
     if ( relay_debug )
         return;
@@ -568,23 +568,23 @@ const char * relay_address_to_string( const relay_address_t * address, char * bu
     {
         if ( address->port != 0 )
         {
-            snprintf( buffer, 
-                      RELAY_MAX_ADDRESS_STRING_LENGTH, 
-                      "%d.%d.%d.%d:%d", 
-                      address->data.ipv4[0], 
-                      address->data.ipv4[1], 
-                      address->data.ipv4[2], 
-                      address->data.ipv4[3], 
+            snprintf( buffer,
+                      RELAY_MAX_ADDRESS_STRING_LENGTH,
+                      "%d.%d.%d.%d:%d",
+                      address->data.ipv4[0],
+                      address->data.ipv4[1],
+                      address->data.ipv4[2],
+                      address->data.ipv4[3],
                       address->port );
         }
         else
         {
-            snprintf( buffer, 
-                      RELAY_MAX_ADDRESS_STRING_LENGTH, 
-                      "%d.%d.%d.%d", 
-                      address->data.ipv4[0], 
-                      address->data.ipv4[1], 
-                      address->data.ipv4[2], 
+            snprintf( buffer,
+                      RELAY_MAX_ADDRESS_STRING_LENGTH,
+                      "%d.%d.%d.%d",
+                      address->data.ipv4[0],
+                      address->data.ipv4[1],
+                      address->data.ipv4[2],
                       address->data.ipv4[3] );
         }
         return buffer;
@@ -651,7 +651,7 @@ int relay_replay_protection_already_received( relay_replay_protection_t * replay
 
     if ( sequence + RELAY_REPLAY_PROTECTION_BUFFER_SIZE <= replay_protection->most_recent_sequence )
         return 1;
-    
+
     int index = (int) ( sequence % RELAY_REPLAY_PROTECTION_BUFFER_SIZE );
 
     if ( replay_protection->received_packet[index] == 0xFFFFFFFFFFFFFFFFLL )
@@ -694,7 +694,7 @@ namespace relay
                  d =   c + ( c >> 8 ),
                  e =   d + ( d >> 16 ),
 
-            result = e & 0x0000003f 
+            result = e & 0x0000003f
         };
     };
 
@@ -855,10 +855,10 @@ namespace relay
     #endif // #if RELAY_BIG_ENDIAN
     }
 
-    /** 
+    /**
         Compares two 16 bit sequence numbers and returns true if the first one is greater than the second (considering wrapping).
         IMPORTANT: This is not the same as s1 > s2!
-        Greater than is defined specially to handle wrapping sequence numbers. 
+        Greater than is defined specially to handle wrapping sequence numbers.
         If the two sequence numbers are close together, it is as normal, but they are far apart, it is assumed that they have wrapped around.
         Thus, sequence_greater_than( 1, 0 ) returns true, and so does sequence_greater_than( 0, 65535 )!
         @param s1 The first sequence number.
@@ -868,14 +868,14 @@ namespace relay
 
     inline bool sequence_greater_than( uint16_t s1, uint16_t s2 )
     {
-        return ( ( s1 > s2 ) && ( s1 - s2 <= 32768 ) ) || 
+        return ( ( s1 > s2 ) && ( s1 - s2 <= 32768 ) ) ||
                ( ( s1 < s2 ) && ( s2 - s1  > 32768 ) );
     }
 
-    /** 
+    /**
         Compares two 16 bit sequence numbers and returns true if the first one is less than the second (considering wrapping).
         IMPORTANT: This is not the same as s1 < s2!
-        Greater than is defined specially to handle wrapping sequence numbers. 
+        Greater than is defined specially to handle wrapping sequence numbers.
         If the two sequence numbers are close together, it is as normal, but they are far apart, it is assumed that they have wrapped around.
         Thus, sequence_less_than( 0, 1 ) returns true, and so does sequence_greater_than( 65535, 0 )!
         @param s1 The first sequence number.
@@ -901,7 +901,7 @@ namespace relay
 
         /**
             Bit writer constructor.
-            Creates a bit writer object to write to the specified buffer. 
+            Creates a bit writer object to write to the specified buffer.
             @param data The pointer to the buffer to fill with bitpacked data.
             @param bytes The size of the buffer in bytes. Must be a multiple of 4, because the bitpacker reads and writes memory as dwords, not bytes.
          */
@@ -1030,7 +1030,7 @@ namespace relay
                 m_data[m_wordIndex] = host_to_network( uint32_t( m_scratch & 0xFFFFFFFF ) );
                 m_scratch >>= 32;
                 m_scratchBits = 0;
-                m_wordIndex++;                
+                m_wordIndex++;
             }
         }
 
@@ -1044,7 +1044,7 @@ namespace relay
             return ( 8 - ( m_bitsWritten % 8 ) ) % 8;
         }
 
-        /** 
+        /**
             How many bits have we written so far?
             @returns The number of bits written to the bit buffer.
          */
@@ -1064,7 +1064,7 @@ namespace relay
         {
             return m_numBits - m_bitsWritten;
         }
-        
+
         /**
             Get a pointer to the data written by the bit writer.
             Corresponds to the data block passed in to the constructor.
@@ -1180,8 +1180,8 @@ namespace relay
 
         /**
             Read an align.
-            Call this on read to correspond to a WriteAlign call when the bitpacked buffer was written. 
-            This makes sure we skip ahead to the next aligned byte index. As a safety check, we verify that the padding to next byte is zero bits and return false if that's not the case. 
+            Call this on read to correspond to a WriteAlign call when the bitpacked buffer was written.
+            This makes sure we skip ahead to the next aligned byte index. As a safety check, we verify that the padding to next byte is zero bits and return false if that's not the case.
             This will typically abort packet read. Just another safety measure...
             @returns True if we successfully read an align and skipped ahead past zero pad, false otherwise (probably means, no align was written to the stream).
          */
@@ -1252,7 +1252,7 @@ namespace relay
             return ( 8 - m_bitsRead % 8 ) % 8;
         }
 
-        /** 
+        /**
             How many bits have we read so far?
             @returns The number of bits read from the bit buffer so far.
          */
@@ -1287,7 +1287,7 @@ namespace relay
         int m_wordIndex;                    ///< Index of the next word to read from memory.
     };
 
-    /** 
+    /**
         Functionality common to all stream classes.
      */
 
@@ -1410,7 +1410,7 @@ namespace relay
             return true;
         }
 
-        /** 
+        /**
             If we were to write an align right now, how many bits would be required?
             @returns The number of zero pad bits required to achieve byte alignment in [0,7].
          */
@@ -1559,7 +1559,7 @@ namespace relay
             return true;
         }
 
-        /** 
+        /**
             If we were to read an align right now, how many bits would we need to read?
             @returns The number of zero pad bits required to achieve byte alignment in [0,7].
          */
@@ -1919,7 +1919,7 @@ namespace relay
             }
             return true;
         }
-        
+
         bool twoBits = false;
         if ( Stream::IsWriting )
         {
@@ -1935,7 +1935,7 @@ namespace relay
             }
             return true;
         }
-        
+
         bool fourBits = false;
         if ( Stream::IsWriting )
         {
@@ -2140,7 +2140,7 @@ namespace relay
             }
             serialize_bits( stream, address.port, 16 );
         }
-        else 
+        else
         {
             if ( Stream::IsReading )
             {
@@ -2281,7 +2281,7 @@ void relay_read_route_token( relay_route_token_t * token, const uint8_t * buffer
 
     const uint8_t * start = buffer;
 
-    (void) start;   
+    (void) start;
 
     token->expire_timestamp = relay_read_uint64( &buffer );
     token->session_id = relay_read_uint64( &buffer );
@@ -2675,7 +2675,7 @@ int relay_verify_header( int direction, const uint8_t * private_key, uint8_t * b
     uint64_t packet_session_id = relay_read_uint64( &p );
     uint8_t packet_session_version = relay_read_uint8( &p );
     uint8_t packet_session_flags = relay_read_uint8( &p );      // todo: remove once we fully switch over to new relay
-    
+
     (void) packet_session_id;
     (void) packet_session_version;
     (void) packet_session_flags;
@@ -2961,7 +2961,7 @@ void relay_route_stats_from_ping_history( const relay_ping_history_t * history, 
     // calculate jitter
 
     int num_jitter_samples = 0;
-  
+
     double stddev_rtt = 0.0;
 
     for ( int i = 0; i < RELAY_PING_HISTORY_ENTRY_COUNT; i++ )
@@ -3018,7 +3018,7 @@ void relay_manager_reset( relay_manager_t * manager );
 relay_manager_t * relay_manager_create()
 {
     relay_manager_t * manager = (relay_manager_t*) malloc( sizeof(relay_manager_t) );
-    if ( !manager ) 
+    if ( !manager )
         return NULL;
     relay_manager_reset( manager );
     return manager;
@@ -3035,7 +3035,7 @@ void relay_manager_reset( relay_manager_t * manager )
     for ( int i = 0; i < MAX_RELAYS; ++i )
     {
         relay_ping_history_clear( &manager->ping_history_array[i] );
-    }    
+    }
 }
 
 void relay_manager_update( relay_manager_t * manager, int num_relays, const uint64_t * relay_ids, const relay_address_t * relay_addresses )
@@ -3104,7 +3104,7 @@ void relay_manager_update( relay_manager_t * manager, int num_relays, const uint
             }
             assert( new_relay_ping_history[index] );
             index++;
-        }                
+        }
     }
 
     // commit the updated relay array
@@ -3183,11 +3183,11 @@ void relay_manager_get_stats( relay_manager_t * manager, relay_stats_t * stats )
     assert( stats );
 
     double current_time = relay_platform_time();
-    
+
     stats->num_relays = manager->num_relays;
 
     for ( int i = 0; i < stats->num_relays; ++i )
-    {        
+    {
         relay_route_stats_t route_stats;
         relay_route_stats_from_ping_history( manager->relay_ping_history[i], current_time - RELAY_STATS_WINDOW, current_time, &route_stats, RELAY_PING_SAFETY );
         stats->relay_ids[i] = manager->relay_ids[i];
@@ -3413,7 +3413,7 @@ static void test_bitpacker()
 
     check( reader.GetBitsRead() == 0 );
     check( reader.GetBitsRemaining() == bytesWritten * 8 );
-  
+
     uint32_t a = reader.ReadBits( 1 );
     uint32_t b = reader.ReadBits( 1 );
     uint32_t c = reader.ReadBits( 8 );
@@ -4087,7 +4087,7 @@ static void test_bandwidth_limiter()
 
     // get really close
     {
-        relay_bandwidth_limiter_reset( &bandwidth_limiter );        
+        relay_bandwidth_limiter_reset( &bandwidth_limiter );
 
         const int kbps_allowed = 1000;
         const int packet_bits = kbps_allowed / 10 * 1000;
@@ -4096,11 +4096,11 @@ static void test_bandwidth_limiter()
         {
             check( !relay_bandwidth_limiter_add_packet( &bandwidth_limiter, i * ( RELAY_BANDWIDTH_LIMITER_INTERVAL / 10.0 ), kbps_allowed, packet_bits ) );
         }
-    }    
+    }
 
     // really close for several intervals
     {
-        relay_bandwidth_limiter_reset( &bandwidth_limiter );        
+        relay_bandwidth_limiter_reset( &bandwidth_limiter );
 
         const int kbps_allowed = 1000;
         const int packet_bits = kbps_allowed / 10 * 1000;
@@ -4109,11 +4109,11 @@ static void test_bandwidth_limiter()
         {
             check( !relay_bandwidth_limiter_add_packet( &bandwidth_limiter, i * ( RELAY_BANDWIDTH_LIMITER_INTERVAL / 10.0 ), kbps_allowed, packet_bits ) );
         }
-    } 
+    }
 
     // go over budget
     {
-        relay_bandwidth_limiter_reset( &bandwidth_limiter );        
+        relay_bandwidth_limiter_reset( &bandwidth_limiter );
 
         const int kbps_allowed = 1000;
         const int packet_bits = kbps_allowed / 10 * 1000 * 1.01f;
@@ -4340,7 +4340,7 @@ static void test_relay_manager()
     }
 
     // add max relays
-    
+
     relay_manager_update( manager, NumRelays, relay_ids, relay_addresses );
     {
         relay_stats_t stats;
@@ -4360,7 +4360,7 @@ static void test_relay_manager()
         relay_manager_get_stats( manager, &stats );
         check( stats.num_relays == 0 );
     }
-    
+
     // add same relay set repeatedly
 
     for ( int j = 0; j < 2; ++j )
@@ -4376,7 +4376,7 @@ static void test_relay_manager()
             }
         }
     }
-    
+
     // now add a few new relays, while some relays remain the same
 
     relay_manager_update( manager, NumRelays, relay_ids + 4, relay_addresses + 4);
@@ -4423,7 +4423,7 @@ void relay_test()
     RUN_TEST( test_header );
     RUN_TEST( test_base64 );
     RUN_TEST( test_relay_manager );
-    
+
     printf( "\n" );
 
     fflush( stdout );
@@ -4568,7 +4568,7 @@ int relay_init( CURL * curl, const char * hostname, uint8_t * relay_token, const
 
     if ( init_response_buffer.size < 4 )
     {
-        relay_printf( "\nerror: bad relay init response size. too small to have valid data (%d)\n\n", init_response_buffer.size ); 
+        relay_printf( "\nerror: bad relay init response size. too small to have valid data (%d)\n\n", init_response_buffer.size );
         return RELAY_ERROR;
     }
 
@@ -4586,7 +4586,7 @@ int relay_init( CURL * curl, const char * hostname, uint8_t * relay_token, const
 
     if ( init_response_buffer.size != 4 + 8 + RELAY_TOKEN_BYTES )
     {
-        relay_printf( "\nerror: bad relay init response size. expected %d bytes, got %d\n\n", RELAY_TOKEN_BYTES, init_response_buffer.size );        
+        relay_printf( "\nerror: bad relay init response size. expected %d bytes, got %d\n\n", RELAY_TOKEN_BYTES, init_response_buffer.size );
         return RELAY_ERROR;
     }
 
@@ -4694,10 +4694,10 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
     }
 
     bool error = false;
-    
+
     struct relay_ping_data_t
     {
-        
+
         uint64_t id;
         relay_address_t address;
     };
@@ -5128,7 +5128,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
 
         for ( int i = 0; i < num_pings; ++i )
         {
-            uint8_t packet_data[9];            
+            uint8_t packet_data[9];
             packet_data[0] = RELAY_PING_PACKET;
             uint8_t * p = packet_data + 1;
             relay_write_uint64( &p, pings[i].sequence );
@@ -5278,7 +5278,7 @@ int main( int argc, const char ** argv )
             printf( "\n" );
             relay_initialized = true;
             break;
-        }    
+        }
 
         printf( "." );
         fflush( stdout );
@@ -5334,7 +5334,7 @@ int main( int argc, const char ** argv )
     }
 
     printf( "Relay initialized\n\n" );
-        
+
     signal( SIGINT, interrupt_handler );
 
     uint8_t * update_response_memory = (uint8_t*) malloc( RESPONSE_MAX_BYTES );

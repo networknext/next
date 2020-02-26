@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/networknext/backend/routing"
+	"github.com/networknext/backend/transport"
 )
 
 type relayaddrFlags []string
@@ -70,7 +71,7 @@ func main() {
 	}
 
 	if *clientkey == "" {
-		log.Fatal("clientpublickey is required")
+		log.Println("clientpublickey empty, removing client segment at the end of the process")
 	}
 	clientpubkey, err := base64.StdEncoding.DecodeString(*clientkey)
 	if err != nil {
@@ -82,8 +83,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if *clientkey == "" {
-		log.Fatal("serverpubkey is required")
+	if *serverkey == "" {
+		log.Fatal("serverpublickey is required")
 	}
 	serverpubkey, err := base64.StdEncoding.DecodeString(*serverkey)
 	if err != nil {
@@ -95,8 +96,10 @@ func main() {
 	}
 
 	var routeToken routing.Token
+	tokenTypeIdentifyingByte := make([]byte, 1)
 	switch *token {
 	case "new":
+		tokenTypeIdentifyingByte[0] = routing.TokenTypeRouteRequest
 		nextRouteToken := routing.NextRouteToken{
 			Expires: uint64(time.Now().Add(*expires).Unix()),
 
@@ -124,6 +127,7 @@ func main() {
 
 		routeToken = &nextRouteToken
 	case "continue":
+		tokenTypeIdentifyingByte[0] = routing.TokenTypeContinueRequest
 		continueRouteToken := routing.ContinueRouteToken{
 			Expires: uint64(time.Now().Add(*expires).Unix()),
 
@@ -157,6 +161,10 @@ func main() {
 	enc, _, err := routeToken.Encrypt(privatekey)
 	if err != nil {
 		log.Fatalf("failed to encrypt token: %v", err)
+	}
+
+	if *clientkey == "" {
+		enc = append(tokenTypeIdentifyingByte, enc[transport.EncryptedTokenRouteSize:]...)
 	}
 
 	_, err = os.Stdout.Write(enc)
