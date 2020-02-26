@@ -263,7 +263,7 @@ func main() {
 				}
 			}
 
-			time.Sleep(routing.RelayTimeout * 0.5)
+			time.Sleep(routing.RelayTimeout / 2)
 		}
 	}()
 
