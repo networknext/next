@@ -329,7 +329,7 @@ build-server-backend: ## builds the server backend binary
 	@printf "done\n"
 
 .PHONY: build-server-backend-artifact
-build-server-backend-artifact: build-server-backend ## builds the relay backend with the right env vars and creates a .tar.gz
+build-server-backend-artifact: build-server-backend ## builds the server backend with the right env vars and creates a .tar.gz
 	@printf "Building server backend artifact..."
 	@mkdir -p $(DIST_DIR)/artifact/server_backend
 	@cp $(DIST_DIR)/server_backend $(DIST_DIR)/artifact/server_backend/app
