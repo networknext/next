@@ -17,7 +17,7 @@ namespace core
     int KbpsDown;
     net::Address PrevAddr;
     net::Address NextAddr;
-    std::array<uint8_t,crypto_box_SECRETKEYBYTES> PrivateKey;
+    std::array<uint8_t, crypto_box_SECRETKEYBYTES> PrivateKey;
     // ReplayProtection ServerToClientProtection;
     // ReplayProtection ClientToServerProtection;
     legacy::relay_replay_protection_t ServerToClientProtection;
@@ -25,7 +25,7 @@ namespace core
   };
 
   using SessionPtr = std::shared_ptr<Session>;
-  class SessionMap: public std::unordered_map<uint64_t, SessionPtr>
+  class SessionMap: public std::map<uint64_t, SessionPtr>
   {
    public:
     std::mutex Lock;

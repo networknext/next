@@ -30,6 +30,7 @@ namespace core
         auto& msg = messages[i];
         msg.Addr = pings[i].Addr;  // send to pings addr
         msg.Len = RELAY_PING_PACKET_BYTES;
+        msg.Data.resize(msg.Len);
 
         size_t index = 0;
 
@@ -41,7 +42,7 @@ namespace core
       }
 
       int sentMessages = 0;
-      if (!mSocket.multisend(messages, sentMessages)) {
+      if (!mSocket.multisend(messages, numPings, sentMessages)) {
         Log("failed to send messages, amount to send: ", numPings, ", actual sent: ", sentMessages);
       }
 

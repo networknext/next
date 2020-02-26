@@ -106,6 +106,7 @@ namespace core
 
     encoding::WriteAddress(packet, addrIndx, mSocket.getAddress());
 
+    // TODO probably want to send immediately than use sendmmsg here?
     if (!mSocket.send(addr, packet.data(), RELAY_PING_PACKET_BYTES)) {
       Log("failed to send data");
     }
@@ -192,15 +193,18 @@ namespace core
         mSessionMap[hash] = session;
       }
 
-      std::stringstream ss;
-      ss << std::hex << token.SessionID << '.' << std::dec << static_cast<unsigned int>(token.SessionVersion);
-      Log("session created: ", ss.str());
+      Log("session created: ", std::hex, token.SessionID, '.', std::dec, static_cast<unsigned int>(token.SessionVersion));
     }  // TODO else what?
 
     // remove this part of the token by offseting it the request packet bytes
     packet[RouteToken::EncryptedByteSize] = RELAY_ROUTE_REQUEST_PACKET;
+
+    LogDebug("sending route request to ", token.NextAddr);
+
     mSocket.send(token.NextAddr, packet.data() + RouteToken::EncryptedByteSize, size - RouteToken::EncryptedByteSize);
-    LogDebug("sent route request to ", token.NextAddr);
+
+    // net::Message msg(token.NextAddr, packet, RouteToken::EncryptedByteSize, size - RouteToken::EncryptedByteSize);
+    // mSender.queue(msg); // after this, token & packet are invalid
   }
 
   void PacketProcessor::handleRouteResponsePacket(GenericPacket& packet, const int size, net::Address& from)

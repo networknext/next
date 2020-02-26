@@ -29,7 +29,7 @@ namespace os
      net::Address& addr, size_t sendBuffSize, size_t recvBuffSize, float timeout, bool reuse, int lingerTimeInSeconds);
 
     bool send(const net::Address& to, const uint8_t* data, size_t size) const;
-    bool multisend(const std::vector<net::Message>& multiMessages, int& messagesSent) const;
+    bool multisend(const std::vector<net::Message>& multiMessages, size_t count, int& messagesSent) const;
 
     // for compat only
     bool send(const legacy::relay_address_t& to, const uint8_t* data, size_t size) const;
@@ -43,6 +43,8 @@ namespace os
 
     bool isOpen() const;
 
+    void setBusy(bool val);
+
     const net::Address& getAddress() const;
 
    private:
@@ -51,6 +53,9 @@ namespace os
     net::Address mAddress;
 
     std::atomic<bool> mOpen;
+    std::atomic<bool> mIsBusy;
+    std::mutex mWaitLock;
+    std::condition_variable mWaitVar;
 
     bool setBufferSizes(size_t sendBufferSize, size_t recvBufferSize);
     bool setLingerTime(int lingerTime);
@@ -73,6 +78,25 @@ namespace os
   [[gnu::always_inline]] inline bool Socket::isOpen() const
   {
     return mOpen;
+  }
+
+  [[gnu::always_inline]] inline void Socket::close()
+  {
+    std::unique_lock<std::mutex> lk(mWaitLock);
+    mWaitVar.wait(lk, [this]() -> bool {
+      return !mIsBusy;
+    });
+
+    shutdown(mSockFD, SHUT_RDWR);
+    mOpen = false;
+  }
+
+  [[gnu::always_inline]] inline void Socket::setBusy(bool val)
+  {
+    mIsBusy = val;
+    if (!mIsBusy) {
+      mWaitVar.notify_one();
+    }
   }
 
   // helpers to reduce static cast's

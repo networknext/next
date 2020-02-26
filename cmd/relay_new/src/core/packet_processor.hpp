@@ -46,7 +46,7 @@ namespace core
 
     util::ThroughputLogger* mLogger;
 
-    net::BufferedSender<5, 3> mSender;
+    net::BufferedSender<1, 1> mSender;
 
     // Marks the first byte as a pong packet and sends it back
     void handleRelayPingPacket(GenericPacket& packet, const int size);

@@ -9,7 +9,7 @@ namespace net
   template <size_t MaxCapacity, size_t TimeoutInMilliseconds>
   class BufferedSender
   {
-    static_assert(MaxCapacity > 0 && MaxCapacity <= 1024);
+    static_assert(MaxCapacity > 0 && MaxCapacity <= 1024);  // 1024 is the hard limit for sendmmsg()
 
    public:
     BufferedSender(const os::Socket& socket);
@@ -17,10 +17,6 @@ namespace net
 
     /* Calls swap() on the msg, such that the passed in value should not be used after this */
     void queue(net::Message& msg);
-    void queue(const net::Address& addr, std::vector<uint8_t>& data);
-    template <size_t DataBuffSize>
-    void queue(const net::Address& addr, std::array<uint8_t, DataBuffSize>& data, size_t len);
-    void queue(const net::Address& addr, uint8_t* data, size_t len);
 
     void autoSend();
 
@@ -42,19 +38,25 @@ namespace net
    : mSocket(socket), mNextIndex(0), mShouldAutoSend(true)
   {
     mBuffer.resize(MaxCapacity);
-    mSendThread = std::make_unique<std::thread>([this] {
-      while (mSocket.isOpen()) {
-        std::this_thread::sleep_for(1ms * TimeoutInMilliseconds);
-        autoSend();
-        mShouldAutoSend = true;
-      }
-    });
+
+    // for dev purposes, if max is 1 then it's the same as sending immediately
+    if (MaxCapacity > 1) {
+      mSendThread = std::make_unique<std::thread>([this] {
+        while (mSocket.isOpen()) {
+          std::this_thread::sleep_for(1ms * TimeoutInMilliseconds);
+          autoSend();
+          mShouldAutoSend = true;
+        }
+      });
+    }
   }
 
   template <size_t MaxCapacity, size_t TimeoutInMilliseconds>
   BufferedSender<MaxCapacity, TimeoutInMilliseconds>::~BufferedSender()
   {
-    mSendThread->join();
+    if (mSendThread) {
+      mSendThread->join();
+    }
   }
 
   template <size_t MaxCapacity, size_t TimeoutInMilliseconds>
@@ -71,29 +73,6 @@ namespace net
   }
 
   template <size_t MaxCapacity, size_t TimeoutInMilliseconds>
-  inline void BufferedSender<MaxCapacity, TimeoutInMilliseconds>::queue(const net::Address& addr, std::vector<uint8_t>& data)
-  {
-    net::Message msg(addr, data);
-    queue(msg);
-  }
-
-  template <size_t MaxCapacity, size_t TimeoutInMilliseconds>
-  template <size_t DataBuffSize>
-  inline void BufferedSender<MaxCapacity, TimeoutInMilliseconds>::queue(
-   const net::Address& addr, std::array<uint8_t, DataBuffSize>& data, size_t len)
-  {
-    net::Message msg(addr, data, len);
-    queue(msg);
-  }
-
-  template <size_t MaxCapacity, size_t TimeoutInMilliseconds>
-  inline void BufferedSender<MaxCapacity, TimeoutInMilliseconds>::queue(const net::Address& addr, uint8_t* data, size_t len)
-  {
-    net::Message msg(addr, data, len);
-    queue(msg);
-  }
-
-  template <size_t MaxCapacity, size_t TimeoutInMilliseconds>
   void BufferedSender<MaxCapacity, TimeoutInMilliseconds>::autoSend()
   {
     std::lock_guard<std::mutex> lk(mLock);
@@ -106,12 +85,16 @@ namespace net
   template <size_t MaxCapacity, size_t TimeoutInMilliseconds>
   void BufferedSender<MaxCapacity, TimeoutInMilliseconds>::sendAll()
   {
-    int messagesSent = 0;
-    if (!mSocket.multisend(mBuffer, messagesSent)) {
-      Log("failed to send buffered messages");
-    }
+    if (mNextIndex > 0) {
+      int messagesSent = 0;
 
-    mNextIndex = 0;
+      // mNextIndex also keeps track of how many messages are to be sent
+      if (!mSocket.multisend(mBuffer, mNextIndex, messagesSent)) {
+        Log("failed to send buffered messages, sent ", messagesSent, " messages");
+      }
+
+      mNextIndex = 0;
+    }
   }
 }  // namespace net
 #endif

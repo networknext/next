@@ -8,7 +8,7 @@
 
 namespace os
 {
-  Socket::Socket(SocketType type): mType(type), mOpen(false) {}
+  Socket::Socket(SocketType type): mType(type), mOpen(false), mIsBusy(false) {}
 
   Socket::~Socket()
   {
@@ -154,14 +154,14 @@ namespace os
     return send(addr, data, size);
   }
 
-  bool Socket::multisend(const std::vector<net::Message>& multiMessages, int& messagesSent) const
+  bool Socket::multisend(const std::vector<net::Message>& multiMessages, size_t count, int& messagesSent) const
   {
     std::vector<mmsghdr> messages;
     std::vector<iovec> iovecs;
-    messages.resize(multiMessages.size());
-    iovecs.resize(messages.size());
+    messages.resize(count);
+    iovecs.resize(count);
 
-    for (size_t i = 0; i < messages.size(); i++) {
+    for (size_t i = 0; i < count; i++) {
       auto& mmsg = multiMessages[i];
       auto& addr = mmsg.Addr;
 
@@ -194,6 +194,7 @@ namespace os
         return false;
       }
 
+      // ? is there an effecient way to order the message vector to group by address and then have each iovec contain more than one entry?
       header.msg_iov = &vec;
       header.msg_iovlen = 1;
 
@@ -212,7 +213,7 @@ namespace os
       return false;
     }
 
-    return multiMessages.size() == static_cast<size_t>(messagesSent);
+    return count == static_cast<size_t>(messagesSent);
   }
 
   size_t Socket::recv(net::Address& from, uint8_t* data, size_t maxSize) const
@@ -276,12 +277,6 @@ namespace os
         break;
     }
     return len;
-  }
-
-  void Socket::close()
-  {
-    shutdown(mSockFD, SHUT_RDWR);
-    mOpen = false;
   }
 
   inline bool Socket::setBufferSizes(size_t sendBuffSize, size_t recvBuffSize)
