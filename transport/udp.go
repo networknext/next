@@ -6,8 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"net"
 	"time"
+
+	"github.com/go-kit/kit/metrics"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -96,10 +99,16 @@ func (e ServerCacheEntry) MarshalBinary() ([]byte, error) {
 }
 
 // ServerUpdateHandlerFunc ...
-func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer) UDPHandlerFunc {
+func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, duration metrics.Histogram, counter metrics.Counter) UDPHandlerFunc {
 	logger = log.With(logger, "handler", "server")
 
 	return func(w io.Writer, incoming *UDPPacket) {
+		timer := metrics.NewTimer(duration.With("method", "ServerUpdateHandlerFunc"))
+		timer.Unit(time.Millisecond)
+		defer func() {
+			timer.ObserveDuration()
+		}()
+
 		var packet ServerUpdatePacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
 			level.Error(logger).Log("msg", "could not read packet", "err", err)
@@ -171,6 +180,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 		}
 
 		level.Debug(locallogger).Log("msg", "updated server")
+		counter.Add(1)
 	}
 }
 
@@ -193,14 +203,20 @@ func (e SessionCacheEntry) MarshalBinary() ([]byte, error) {
 type RouteProvider interface {
 	ResolveRelay(uint64) (routing.Relay, error)
 	RelaysIn(routing.Datacenter) []routing.Relay
-	Routes([]routing.Relay, []routing.Relay) []routing.Route
+	Routes([]routing.Relay, []routing.Relay, ...routing.RouteSelector) ([]routing.Route, error)
 }
 
 // SessionUpdateHandlerFunc ...
-func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, duration metrics.Histogram, counter metrics.Counter, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
 	logger = log.With(logger, "handler", "session")
 
 	return func(w io.Writer, incoming *UDPPacket) {
+		timer := metrics.NewTimer(duration.With("method", "SessionUpdateHandlerFunc"))
+		timer.Unit(time.Millisecond)
+		defer func() {
+			timer.ObserveDuration()
+		}()
+
 		// Deserialize the Session packet
 		var packet SessionUpdatePacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
@@ -317,14 +333,19 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		level.Debug(locallogger).Log("num_datacenter_relays", len(dsrelays), "num_client_relays", len(clientrelays))
 
 		// Get a set of possible routes from the RouteProvider an on error ensure it falls back to direct
-		routes := rp.Routes(dsrelays, clientrelays)
-		if routes == nil || len(routes) <= 0 {
-			err := fmt.Errorf("failed to find routes")
+		routes, err := rp.Routes(dsrelays, clientrelays,
+			routing.SelectAcceptableRoutesFromBestRTT(float64(buyer.RoutingRulesSettings.RTTRouteSwitch)),
+			routing.SelectContainsRouteHash(sessionCacheEntry.RouteHash),
+			routing.SelectRoutesByRandomDestRelay(),
+			routing.SelectRandomRoute())
+		if err != nil {
 			level.Error(locallogger).Log("err", err)
 			HandleError(w, response, serverPrivateKey, err)
 			return
 		}
-		chosenRoute := routes[0] // Just take the first one it find regardless of optimization
+
+		// There should only ever be one route when all selectors have been applied, but just in case, choose a random one
+		chosenRoute := routes[rand.Intn(len(routes))]
 		routeHash := chosenRoute.Hash64()
 
 		var token routing.Token
@@ -424,39 +445,41 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			level.Error(locallogger).Log("msg", "failed to update session", "err", result.Err())
 			return
 		}
-    
-    billingEntry := &billing.Entry{
-      Request:              nil,
-      Route:                nil,
-      RouteDecision:        0,
-      Duration:             10, // Make one entry non-zero so that the entry isn't marshalled to nil
-      UsageBytesUp:         0,
-      UsageBytesDown:       0,
-      Timestamp:            0,
-      TimestampStart:       0,
-      PredictedRtt:         0,
-      PredictedJitter:      0,
-      PredictedPacketLoss:  0,
-      RouteChanged:         false,
-      NetworkNextAvailable: false,
-      Initial:              false,
-      EnvelopeBytesUp:      0,
-      EnvelopeBytesDown:    0,
-      ConsideredRoutes:     nil,
-      AcceptableRoutes:     nil,
-      SameRoute:            false,
-      OnNetworkNext:        false,
-      SliceFlags:           0,
-    }
 
-    if err := biller.Bill(context.Background(), packet.SessionId, billingEntry); err != nil {
-      level.Error(locallogger).Log("msg", "billing failed", "err", err)
-    }
+		billingEntry := &billing.Entry{
+			Request:              nil,
+			Route:                nil,
+			RouteDecision:        0,
+			Duration:             10, // Make one entry non-zero so that the entry isn't marshalled to nil
+			UsageBytesUp:         0,
+			UsageBytesDown:       0,
+			Timestamp:            0,
+			TimestampStart:       0,
+			PredictedRtt:         0,
+			PredictedJitter:      0,
+			PredictedPacketLoss:  0,
+			RouteChanged:         false,
+			NetworkNextAvailable: false,
+			Initial:              false,
+			EnvelopeBytesUp:      0,
+			EnvelopeBytesDown:    0,
+			ConsideredRoutes:     nil,
+			AcceptableRoutes:     nil,
+			SameRoute:            false,
+			OnNetworkNext:        false,
+			SliceFlags:           0,
+		}
+
+		if err := biller.Bill(context.Background(), packet.SessionId, billingEntry); err != nil {
+			level.Error(locallogger).Log("msg", "billing failed", "err", err)
+		}
 
 		// Send the Session Response back to the server
 		if _, err := w.Write(responseData); err != nil {
 			level.Error(locallogger).Log("msg", "failed to write session response", "err", err)
 		}
+
+		counter.Add(1)
 	}
 }
 

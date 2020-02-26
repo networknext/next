@@ -1,6 +1,7 @@
 package transport_test
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/networknext/backend/routing"
@@ -85,8 +86,13 @@ func (rp *mockRouteProvider) RelaysIn(ds routing.Datacenter) []routing.Relay {
 	return rp.datacenterRelays
 }
 
-func (rp *mockRouteProvider) Routes(from []routing.Relay, to []routing.Relay) []routing.Route {
-	return rp.routes
+func (rp *mockRouteProvider) Routes(from []routing.Relay, to []routing.Relay, selectors ...routing.RouteSelector) ([]routing.Route, error) {
+	// Routes() will never return a nil or empty slice with no error, so recreate that logic here.
+	if rp.routes == nil || len(rp.routes) == 0 {
+		return nil, errors.New("No routes found")
+	}
+
+	return rp.routes, nil
 }
 
 type RoundTripFunc func(req *http.Request) *http.Response

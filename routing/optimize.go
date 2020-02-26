@@ -688,10 +688,6 @@ func (m *RouteMatrix) ResolveRelay(id uint64) (Relay, error) {
 	}, nil
 }
 
-func (m *RouteMatrix) AllRoutes(d Datacenter, rs []Relay) []Route {
-	return m.Routes(m.RelaysIn(d), rs)
-}
-
 // RelaysIn will return the set of Relays in the provided Datacenter
 func (m *RouteMatrix) RelaysIn(d Datacenter) []Relay {
 	relayIDs, ok := m.DatacenterRelays[d.ID]
@@ -717,8 +713,11 @@ func (m *RouteMatrix) RelaysIn(d Datacenter) []Relay {
 	return relays
 }
 
-// Routes will return all routes for each from and to Relay set
-func (m *RouteMatrix) Routes(from []Relay, to []Relay) []Route {
+// Routes will return a set of routes for each from and to Relay based on the given selectors.
+// The selectors are chained together in order, so the selected routes from the first selector will be passed
+// as the argument to the second selector. If at any point a selector fails to select a new slice of routes,
+// the chain breaks.
+func (m *RouteMatrix) Routes(from []Relay, to []Relay, routeSelectors ...RouteSelector) ([]Route, error) {
 	type RelayPairResult struct {
 		fromtoidx int  // The index in the route matrix entry
 		reverse   bool // Whether or not to reverse the relays to stay on the same side of the diagnol in the triangular matrix
@@ -732,12 +731,11 @@ func (m *RouteMatrix) Routes(from []Relay, to []Relay) []Route {
 	for i, fromrelay := range from {
 		for j, torelay := range to {
 			fromtoidx, reverse := m.getFromToRelayIndex(fromrelay, torelay)
-			if fromtoidx == -1 {
-				relayPairResults[i+j*len(from)] = RelayPairResult{-1, false}
-				continue
-			}
 
-			if fromtoidx >= len(m.Entries) {
+			// Add a bad pair result so that the second pass will skip over it.
+			// This way we don't have to append only good results to a new list, which is more expensive.
+			if fromtoidx < 0 || fromtoidx >= len(m.Entries) {
+				relayPairResults[i+j*len(from)] = RelayPairResult{-1, false}
 				continue
 			}
 
@@ -755,11 +753,29 @@ func (m *RouteMatrix) Routes(from []Relay, to []Relay) []Route {
 		}
 	}
 
-	if len(routes) == 0 {
-		return nil
+	routeLength := len(routes)
+
+	// No routes found
+	if routeLength == 0 {
+		return nil, errors.New("No routes found")
 	}
 
-	return routes
+	// Apply the selectors in order
+	for _, selector := range routeSelectors {
+		selectedRoutes := selector(routes)
+		if selectedRoutes == nil || len(selectedRoutes) == 0 {
+			break // If the list of selected routes is empty, it means that it couldn't select the set of routes, so stop early
+		}
+
+		routes = selectedRoutes
+		routeLength = len(routes)
+
+		if routeLength <= 1 {
+			break
+		}
+	}
+
+	return routes, nil
 }
 
 // Returns the index in the route matrix representing the route between the from Relay and to Relay and whether or not to reverse them
