@@ -6,6 +6,14 @@ import (
 
 const BillingSliceSeconds = 10
 
+const RouteSliceFlagNext = (uint64(1) << 1)
+const RouteSliceFlagReported = (uint64(1) << 2)
+const RouteSliceFlagVetoed = (uint64(1) << 3)
+const RouteSliceFlagFallbackToDirect = (uint64(1) << 4)
+const RouteSliceFlagPacketLossMultipath = (uint64(1) << 5)
+const RouteSliceFlagJitterMultipath = (uint64(1) << 6)
+const RouteSliceFlagRTTMultipath = (uint64(1) << 7)
+
 type RouteState struct {
 	SessionId       uint64 `protobuf:"fixed64,1,opt,name=sessionId,proto3" json:"sessionId,omitempty"`
 	SessionVersion  uint32 `protobuf:"varint,2,opt,name=sessionVersion,proto3" json:"sessionVersion,omitempty"`
