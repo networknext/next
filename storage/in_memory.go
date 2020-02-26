@@ -18,11 +18,18 @@ func (m *InMemory) Buyer(id uint64) (*routing.Buyer, bool) {
 }
 
 func (m *InMemory) Relay(id uint64) (*routing.Relay, bool) {
+	// Fail if literally nothing is set
+	if len(m.LocalRelays) == 0 {
+		return nil, false
+	}
+
+	// Do attempt to get appropriate relay if it exists
 	for _, relay := range m.LocalRelays {
 		if relay.ID == id {
 			return &relay, true
 		}
 	}
 
-	return nil, false
+	// Failing this, just return first one since we need something for local dev
+	return &m.LocalRelays[0], true
 }
