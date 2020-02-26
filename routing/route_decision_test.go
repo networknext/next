@@ -22,7 +22,7 @@ func TestDecideUpgradeRTT(t *testing.T) {
 	}
 
 	stayOnNN := false
-	decisionReason := routing.DecisionNone
+	decisionReason := routing.DecisionNoChange
 	rttThreshold := float64(routing.DefaultRoutingRulesSettings.RTTThreshold)
 
 	routeDecision := routing.DecideUpgradeRTT(rttThreshold)
@@ -38,7 +38,7 @@ func TestDecideUpgradeRTT(t *testing.T) {
 	stayOnNN, decisionReason = routeDecision(stayOnNN, predictedStats, nil, directStats)
 
 	assert.False(t, stayOnNN)
-	assert.Equal(t, routing.DecisionNone, decisionReason)
+	assert.Equal(t, routing.DecisionNoChange, decisionReason)
 }
 
 func TestDecideDowngradeRTT(t *testing.T) {
@@ -56,7 +56,7 @@ func TestDecideDowngradeRTT(t *testing.T) {
 	}
 
 	stayOnNN := true
-	decisionReason := routing.DecisionNone
+	decisionReason := routing.DecisionNoChange
 	rttHyteresis := float64(routing.DefaultRoutingRulesSettings.RTTHysteresis)
 
 	routeDecision := routing.DecideDowngradeRTT(rttHyteresis)
@@ -71,13 +71,13 @@ func TestDecideDowngradeRTT(t *testing.T) {
 	stayOnNN, decisionReason = routeDecision(stayOnNN, predictedStats, nil, directStats)
 
 	assert.False(t, stayOnNN)
-	assert.Equal(t, routing.DecisionNone, decisionReason)
+	assert.Equal(t, routing.DecisionVetoRTT, decisionReason) // Wrong reason, but there isn't a reason for this situation
 
 	// Now test if a direct route is given
 	stayOnNN, decisionReason = routeDecision(stayOnNN, predictedStats, nil, directStats)
 
 	assert.False(t, stayOnNN)
-	assert.Equal(t, routing.DecisionNone, decisionReason)
+	assert.Equal(t, routing.DecisionNoChange, decisionReason)
 }
 
 func TestDecideVeto(t *testing.T) {
@@ -95,7 +95,7 @@ func TestDecideVeto(t *testing.T) {
 	}
 
 	stayOnNN := true
-	decisionReason := routing.DecisionNone
+	decisionReason := routing.DecisionNoChange
 	rttVeto := float64(routing.DefaultRoutingRulesSettings.RTTVeto)
 
 	routeDecision := routing.DecideVeto(rttVeto, false, false)
@@ -141,7 +141,7 @@ func TestDecideVeto(t *testing.T) {
 	stayOnNN, decisionReason = routeDecision(stayOnNN, nil, lastNextStats, directStats)
 
 	assert.True(t, stayOnNN)
-	assert.Equal(t, routing.DecisionNone, decisionReason)
+	assert.Equal(t, routing.DecisionNoChange, decisionReason)
 
 	// Test if direct route isn't changed
 	stayOnNN = false
@@ -149,5 +149,5 @@ func TestDecideVeto(t *testing.T) {
 	stayOnNN, decisionReason = routeDecision(stayOnNN, nil, lastNextStats, directStats)
 
 	assert.False(t, stayOnNN)
-	assert.Equal(t, routing.DecisionNone, decisionReason)
+	assert.Equal(t, routing.DecisionNoChange, decisionReason)
 }
