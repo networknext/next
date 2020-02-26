@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strconv"
 	"time"
 
 	"github.com/go-kit/kit/metrics"
@@ -251,9 +252,19 @@ func main() {
 	}
 
 	{
+		port, ok := os.LookupEnv("PORT")
+		if !ok {
+			level.Error(logger).Log("err", "env var PORT must be set")
+			os.Exit(1)
+		}
+		iport, err := strconv.ParseInt(port, 10, 64)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
+
 		addr := net.UDPAddr{
-			Port: 40000,
-			IP:   net.ParseIP("0.0.0.0"),
+			Port: int(iport),
 		}
 
 		conn, err := net.ListenUDP("udp", &addr)
