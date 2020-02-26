@@ -92,7 +92,7 @@ func main() {
 	}
 
 	var ipLocator routing.IPLocator = routing.NullIsland
-	if uri, ok := os.LookupEnv("RELAY_MAXMIND_DB_URI"); ok {
+	if uri, ok := os.LookupEnv("MAXMIND_DB_URI"); ok {
 		mmreader, err := geoip2.Open(uri)
 		if err != nil {
 			level.Error(logger).Log("envvar", "RELAY_MAXMIND_DB_URI", "value", uri, "err", err)
@@ -229,11 +229,18 @@ func main() {
 	router := transport.NewRouter(logger, redisClient, &geoClient, ipLocator, db, statsdb, metricsHandler, &costmatrix, &routematrix, routerPrivateKey)
 
 	go func() {
-		level.Info(logger).Log("addr", ":30000")
+		port, ok := os.LookupEnv("PORT")
+		if !ok {
+			level.Error(logger).Log("err", "env var PORT must be set")
+			os.Exit(1)
+		}
 
-		err := http.ListenAndServe(":30000", router)
+		level.Info(logger).Log("addr", ":"+port)
+
+		err := http.ListenAndServe(":"+port, router)
 		if err != nil {
 			level.Error(logger).Log("err", err)
+			os.Exit(1)
 		}
 	}()
 
