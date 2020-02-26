@@ -250,6 +250,13 @@ int main()
     }
   };
 
+  auto joinThreads = [&pingThread, &packetThreads] {
+    pingThread->join();
+    for (auto& thread : packetThreads) {
+      thread->join();
+    }
+  };
+
   auto makeSocket = [&sockets](net::Address& addr) -> os::SocketPtr {
     auto socket = std::make_shared<os::Socket>(os::SocketType::Blocking);
     if (!socket->create(addr, 100 * 1024, 100 * 1024, 0.0f, true, 0)) {
@@ -285,7 +292,9 @@ int main()
     auto packetSocket = makeSocket(relayAddress);
     if (!packetSocket) {
       Log("could not create packetSocket");
+      gAlive = false;
       closeSockets();
+      joinThreads();
       relay::relay_term();
       return 1;
     }
@@ -300,10 +309,6 @@ int main()
 
     wait();
   }
-
-  auto bufferedSenderAlert = std::make_unique<std::thread>([] {
-
-  });
 
   relayAddress.toString(relay_address_string);
   LogDebug(
@@ -334,6 +339,9 @@ int main()
   if (!relay_initialized) {
     Log("error: could not initialize relay\n\n");
     curl_easy_cleanup(curl);
+    gAlive = false;
+    joinThreads();
+    closeSockets();
     relay::relay_term();
     return 1;
   }
@@ -346,26 +354,34 @@ int main()
 
   Log("Cleaning up\n");
 
+  LogDebug("Closing sockets");
+  std::cout.flush();
   closeSockets();
 
-  pingThread->join();
+  LogDebug("Joining threads");
+  std::cout.flush();
+  joinThreads();
 
-  for (unsigned int i = 0; i < numProcessors; i++) {
-    packetThreads[i]->join();
-  }
-
+  LogDebug("Stopping throughput logger");
+  std::cout.flush();
   if (logger != nullptr) {
     logger->stop();
     delete logger;
   }
 
+  LogDebug("Closing log file");
+  std::cout.flush();
   if (output != nullptr) {
     output->close();
     delete output;
   }
 
+  LogDebug("Cleaning up curl");
+  std::cout.flush();
   curl_easy_cleanup(curl);
 
+  LogDebug("Terminating relay");
+  std::cout.flush();
   relay::relay_term();
 
   LogDebug("Relay terminated. Address: ", relayAddress);
