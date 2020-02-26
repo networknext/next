@@ -102,7 +102,7 @@ type RouteRequest struct {
 	VersionPatch              int32                 `protobuf:"varint,24,opt,name=versionPatch,proto3" json:"versionPatch,omitempty"`
 	UsageKbpsUp               uint32                `protobuf:"varint,25,opt,name=usageKbpsUp,proto3" json:"usageKbpsUp,omitempty"`
 	UsageKbpsDown             uint32                `protobuf:"varint,26,opt,name=usageKbpsDown,proto3" json:"usageKbpsDown,omitempty"`
-	BillingLocation           *Location             `protobuf:"bytes,27,opt,name=BillingLocation,proto3" json:"BillingLocation,omitempty"`
+	Location                  *Location             `protobuf:"bytes,27,opt,name=location,proto3" json:"location,omitempty"`
 	OnNetworkNext             bool                  `protobuf:"varint,29,opt,name=onNetworkNext,proto3" json:"onNetworkNext,omitempty"`
 	Flagged                   bool                  `protobuf:"varint,30,opt,name=flagged,proto3" json:"flagged,omitempty"`
 	TryBeforeYouBuy           bool                  `protobuf:"varint,31,opt,name=tryBeforeYouBuy,proto3" json:"tryBeforeYouBuy,omitempty"`
@@ -110,6 +110,7 @@ type RouteRequest struct {
 	PacketsLostServerToClient uint64                `protobuf:"varint,33,opt,name=packetsLostServerToClient,proto3" json:"packetsLostServerToClient,omitempty"`
 	FallbackFlags             uint32                `protobuf:"varint,34,opt,name=fallbackFlags,proto3" json:"fallbackFlags,omitempty"`
 	IssuedNearRelays          []*IssuedNearRelay    `protobuf:"bytes,35,rep,name=issuedNearRelays,proto3" json:"issuedNearRelays,omitempty"`
+	Committed                 bool                  `protobuf:"varint,36,opt,name=committed,proto3" json:"committed,omitempty"`
 }
 
 func (req *RouteRequest) Reset() {
