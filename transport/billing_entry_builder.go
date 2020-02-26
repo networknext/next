@@ -1,9 +1,6 @@
 package transport
 
 import (
-	"net"
-	"strconv"
-
 	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
@@ -13,7 +10,7 @@ import (
 func BuildRouteRequest(updatePacket SessionUpdatePacket, buyer routing.Buyer, serverData ServerCacheEntry, location routing.Location, storer storage.Storer, clientRelays []routing.Relay) billing.RouteRequest {
 
 	return billing.RouteRequest{
-		BuyerId:                makeEntityID("Buyer", buyer.ID),
+		BuyerId:                billing.MakeEntityID("Buyer", buyer.ID),
 		SessionId:              updatePacket.SessionId,
 		UserHash:               updatePacket.UserHash,
 		PlatformId:             updatePacket.PlatformId,
@@ -23,16 +20,16 @@ func BuildRouteRequest(updatePacket SessionUpdatePacket, buyer routing.Buyer, se
 		NextRtt:                updatePacket.NextMinRtt,
 		NextJitter:             updatePacket.NextJitter,
 		NextPacketLoss:         updatePacket.NextPacketLoss,
-		ClientIpAddress:        udpAddrToAddress(updatePacket.ClientAddress),
-		ServerIpAddress:        udpAddrToAddress(updatePacket.ServerAddress),
-		ServerPrivateIpAddress: udpAddrToAddress(serverData.Server.Addr),
+		ClientIpAddress:        billing.UdpAddrToAddress(updatePacket.ClientAddress),
+		ServerIpAddress:        billing.UdpAddrToAddress(updatePacket.ServerAddress),
+		ServerPrivateIpAddress: billing.UdpAddrToAddress(serverData.Server.Addr),
 		ClientRoutePublicKey:   updatePacket.ClientRoutePublicKey,
 		ServerRoutePublicKey:   serverData.Server.PublicKey,
 		Tag:                    updatePacket.Tag,
 		NearRelays:             buildNearRelayList(updatePacket, storer),
 		IssuedNearRelays:       buildIssuedNearRelayList(clientRelays),
 		ConnectionType:         billing.SessionConnectionType(updatePacket.ConnectionType),
-		DatacenterId:           makeEntityID("Datacenter", serverData.Datacenter.ID),
+		DatacenterId:           billing.MakeEntityID("Datacenter", serverData.Datacenter.ID),
 		SequenceNumber:         updatePacket.Sequence,
 		FallbackToDirect:       updatePacket.FallbackToDirect,
 		VersionMajor:           serverData.SDKVersion.Major,
@@ -74,7 +71,7 @@ func buildNearRelayList(updatePacket SessionUpdatePacket, storer storage.Storer)
 		nearRelays = append(
 			nearRelays,
 			&billing.NearRelay{
-				RelayId:    makeEntityID("Relay", relay.ID),
+				RelayId:    billing.MakeEntityID("Relay", relay.ID),
 				Rtt:        float64(updatePacket.NearRelayMinRtt[i]),
 				Jitter:     float64(updatePacket.NearRelayJitter[i]),
 				PacketLoss: float64(updatePacket.NearRelayPacketLoss[i]),
@@ -91,55 +88,10 @@ func buildIssuedNearRelayList(nearRelays []routing.Relay) []*billing.IssuedNearR
 	for idx, nearRelay := range nearRelays {
 		issuedNearRelays = append(issuedNearRelays, &billing.IssuedNearRelay{
 			Index:          int32(idx),
-			RelayId:        makeEntityID("Relay", nearRelay.ID),
-			RelayIpAddress: udpAddrToAddress(nearRelay.Addr),
+			RelayId:        billing.MakeEntityID("Relay", nearRelay.ID),
+			RelayIpAddress: billing.UdpAddrToAddress(nearRelay.Addr),
 		})
 	}
 
 	return issuedNearRelays
-}
-
-func udpAddrToAddress(addr net.UDPAddr) *billing.Address {
-	if addr.IP == nil {
-		return &billing.Address{
-			Ip:        nil,
-			Type:      billing.Address_NONE,
-			Port:      0,
-			Formatted: "",
-		}
-	}
-
-	ipv4 := addr.IP.To4()
-	if ipv4 == nil {
-		ipv6 := addr.IP.To16()
-		if ipv6 == nil {
-			return &billing.Address{
-				Ip:        nil,
-				Type:      billing.Address_NONE,
-				Port:      0,
-				Formatted: "",
-			}
-		}
-
-		return &billing.Address{
-			Ip:        []byte(ipv6),
-			Type:      billing.Address_IPV6,
-			Port:      uint32(addr.Port),
-			Formatted: addr.String(),
-		}
-	}
-
-	return &billing.Address{
-		Ip:        []byte(ipv4),
-		Type:      billing.Address_IPV4,
-		Port:      uint32(addr.Port),
-		Formatted: addr.String(),
-	}
-}
-
-func makeEntityID(kind string, ID uint64) *billing.EntityId {
-	return &billing.EntityId{
-		Kind: kind,
-		Name: strconv.FormatUint(ID, 10),
-	}
 }
