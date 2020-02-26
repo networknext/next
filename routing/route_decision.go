@@ -1,7 +1,5 @@
 package routing
 
-import "fmt"
-
 // RouteDecision takes in whether or not the logic is currently considering staying on network next,
 // the stats of the predicted network next route,
 // the stats of the last network next route,
@@ -55,10 +53,6 @@ func DecideDowngradeRTT(rttHysteresis float64) RouteDecision {
 			if predictedNextStats.RTT-directStats.RTT <= rttHysteresis {
 				return true, DecisionRTTReduction
 			}
-
-			fmt.Println(predictedNextStats.RTT)
-			fmt.Println(directStats.RTT)
-			fmt.Println(rttHysteresis)
 
 			// network next route increases RTT too much, switch back to direct
 			return false, DecisionVetoRTT // Wrong reason, but there isn't a reason for this situation
