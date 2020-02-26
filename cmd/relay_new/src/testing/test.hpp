@@ -1,6 +1,8 @@
 #ifndef TESTING_TEST_HPP
 #define TESTING_TEST_HPP
 
+#include "net/address.hpp"
+
 #define TEST_BREAK "\n=============================================\n\n"
 #define TEST_BREAK_WARNING "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n"
 
@@ -76,6 +78,8 @@ namespace testing
 
   template <typename T>
   std::enable_if_t<std::is_floating_point<T>::value, T> RandomDecimal();
+
+  net::Address RandomAddress();
 
   // slow but easy to write, use for tests only
   // valid return types are std string/vector

@@ -9,6 +9,8 @@
 
 #include "os/platform.hpp"
 
+#include "core/packets/relay_ping_packet.hpp"
+
 namespace core
 {
   namespace handlers
@@ -40,17 +42,16 @@ namespace core
     {
       net::Address sendingAddr;                   // where it actually came from
       auto& recevingAddr = mSocket.getAddress();  // where the sender should talk to this relay
+      packets::RelayPingPacket packet(mPacket, mPacketSize);
 
-      mPacket[0] = RELAY_PONG_PACKET;                      // set the identifier byte as pong
-      size_t index = 1 + 8;                                // skip the identifier byte & the sequence number
-      size_t addrIndx = index;                             // keep track of the index where the address is
-      encoding::ReadAddress(mPacket, index, sendingAddr);  // pings are sent on a different port, need to read actual address
-      encoding::WriteAddress(mPacket, addrIndx, recevingAddr);  // write this relay's receving address here
+      packet.Data[0] = RELAY_PONG_PACKET;
+      sendingAddr = packet.getFromAddr();
+      packet.writeFromAddr(recevingAddr);
 
       LogDebug("got ping packet from ", sendingAddr);
 
       // TODO probably want to send immediately than use sendmmsg here?
-      if (!mSocket.send(sendingAddr, mPacket.data(), RELAY_PING_PACKET_BYTES)) {
+      if (!mSocket.send(sendingAddr, packet.Data.data(), RELAY_PING_PACKET_BYTES)) {
         Log("failed to send data");
       }
     }

@@ -1,3 +1,5 @@
+#include "config.hpp"
+#include "sysinfo.hpp"
 #include <algorithm>
 #include <alloca.h>
 #include <arpa/inet.h>
@@ -33,6 +35,7 @@
 #include <mutex>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <optional>
 #include <pthread.h>
 #include <queue>
 #include <random>
@@ -50,6 +53,3 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-
-#include "sysinfo.hpp"
-#include "config.hpp"

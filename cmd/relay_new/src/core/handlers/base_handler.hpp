@@ -3,6 +3,8 @@
 
 #include "core/packet.hpp"
 #include "core/router_info.hpp"
+#include "core/session.hpp"
+#include "core/token.hpp"
 
 #include "util/clock.hpp"
 
@@ -18,14 +20,14 @@ namespace core
       GenericPacket& mPacket;
       const int mPacketSize;
 
-      inline auto tokenIsExpired(core::Token& token) -> bool;
-      inline auto sessionIsExpired(core::SessionPtr session) -> bool;
+      auto tokenIsExpired(core::Token& token) -> bool;
+      auto sessionIsExpired(core::SessionPtr session) -> bool;
 
      private:
       const util::Clock& mRelayClock;
       const RouterInfo& mRouterInfo;
 
-      inline auto timestamp() -> uint64_t;
+      auto timestamp() -> uint64_t;
     };
 
     inline BaseHandler::BaseHandler(

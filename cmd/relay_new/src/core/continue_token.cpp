@@ -87,11 +87,6 @@ namespace core
   {
     assert(packet.size() >= ContinueToken::EncryptionLength);
 
-    LogDebug("Encrypting packet starting at: ", std::hex, (void*)(packet.data() + index), std::dec);
-
-    LogDebug("With nonce:");
-    util::DumpHex(nonce.data(), nonce.size());
-
     if (crypto_box_easy(packet.data() + index,
          packet.data() + index,
          ContinueToken::ByteSize,
@@ -111,11 +106,6 @@ namespace core
    const size_t nonceIndex)
   {
     assert(packet.size() >= ContinueToken::EncryptionLength);
-
-    LogDebug("Decrypting packet starting at (index: ", index, "): ", std::hex, (void*)(packet.data() + index), std::dec);
-
-    LogDebug("With nonce (index: ", nonceIndex, "): ", std::hex, (void*)(packet.data() + nonceIndex), std::dec);
-    util::DumpHex(packet.data() + nonceIndex, crypto_box_NONCEBYTES);
 
     if (crypto_box_open_easy(packet.data() + index,
          packet.data() + index,
@@ -179,11 +169,6 @@ namespace legacy
 
     (void)buffer_length;
 
-    LogDebug("Encrypting packet starting at: ", std::hex, (void*)(buffer), std::dec);
-
-    LogDebug("With nonce: ", std::hex, (void*)(nonce), std::dec);
-    util::DumpHex(nonce, crypto_box_NONCEBYTES);
-
     if (crypto_box_easy(buffer, buffer, core::ContinueToken::ByteSize, nonce, receiver_public_key, sender_private_key) != 0) {
       return RELAY_ERROR;
     }
@@ -197,11 +182,6 @@ namespace legacy
     assert(sender_public_key);
     assert(receiver_private_key);
     assert(buffer);
-
-    LogDebug("Decrypting packet starting at: ", std::hex, (void*)(buffer), std::dec);
-
-    LogDebug("With nonce: ", std::hex, (void*)(nonce), std::dec);
-    util::DumpHex(nonce, crypto_box_NONCEBYTES);
 
     if (crypto_box_open_easy(
          buffer, buffer, core::ContinueToken::ByteSize + crypto_box_MACBYTES, nonce, sender_public_key, receiver_private_key) !=
