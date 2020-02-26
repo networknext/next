@@ -5,8 +5,6 @@
 1. `make publish-backend-artifacts`
 2. Restart the `relay-backend-dev-1` and `server-backend-dev-1` VMs in the **Compute Engine** -> **VM Instances** console
 
-
-
 ## Building and Publishing Artifacts
 
 The relay and server backend artifacts just have 2 files to make deployment easy. These 2 files are compressed into a single `.tar.gz` for publishing.
@@ -45,3 +43,23 @@ When each of the instances starts up or reboots it will perform the follow steps
 4. Extracts the `app` binary and the `app.env` environment variables file into `/app`
 5. Loads the environment variables with `source app.env`
 6. Starts the app as a background process with `./app&`
+
+## Restarting Instances
+
+In order for new artifacts to get loaded into the VM you need to basically reboot the VM. You need the `gcloud` tool available from the GCP Cloud SDK.
+
+Since these commands are specific to specific instances they are not available as `Makefile` targets. Just use `gcloud` directly.
+
+```
+> gcloud compute instances stop relay-backend-dev-1
+No zone specified. Using zone [us-central1-a] for instance: [relay-backend-dev-1].
+Stopping instance(s) relay-backend-dev-1...done.
+Updated [https://compute.googleapis.com/compute/v1/projects/network-next-v3-dev/zones/us-central1-a/instances/relay-backend-dev-1].
+
+> gcloud compute instances start relay-backend-dev-1
+No zone specified. Using zone [us-central1-a] for instance: [relay-backend-dev-1].
+Starting instance(s) relay-backend-dev-1...done.
+Updated [https://compute.googleapis.com/compute/v1/projects/network-next-v3-dev/zones/us-central1-a/instances/relay-backend-dev-1].
+Instance internal IP is 10.128.0.25
+Instance external IP is 35.222.99.199
+```
