@@ -83,21 +83,5 @@ namespace core
   {
     mSender.autoSend();
   }
-
-  inline auto PacketProcessor::timestamp() -> uint64_t
-  {
-    auto seconds_since_initialize = mRelayClock.elapsed<util::Second>();
-    return mRouterInfo.InitalizeTimeInSeconds + seconds_since_initialize;
-  }
-
-  inline auto PacketProcessor::tokenIsExpired(core::Token& token) -> bool
-  {
-    return token.ExpireTimestamp < timestamp();
-  }
-
-  inline auto PacketProcessor::sessionIsExpired(core::SessionPtr session) -> bool
-  {
-    return session->ExpireTimestamp < timestamp();
-  }
 }  // namespace core
 #endif

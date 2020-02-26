@@ -26,7 +26,7 @@ namespace net
   inline Message::Message(const Address& addr, std::array<uint8_t, DataBuffSize>& msg, size_t index, size_t len)
   {
     Addr = addr;
-    Data.resize(msg.size());
+    Data.resize(len);
     std::copy(msg.begin() + index, msg.begin() + index + len, Data.begin());
   }
 

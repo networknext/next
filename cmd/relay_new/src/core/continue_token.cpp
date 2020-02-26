@@ -13,7 +13,8 @@ namespace core
    const crypto::GenericKey& senderPrivateKey,
    const crypto::GenericKey& receiverPublicKey)
   {
-    const size_t start = index;  // keep track of the start of the token
+    const size_t start = index;
+    (void)start;
 
     std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
     encoding::RandomBytes(nonce, nonce.size());  // fill nonce

@@ -272,8 +272,8 @@ int main()
 
   sockets.push_back(pingSocket);
 
-  pingThread = std::make_unique<std::thread>([&waitVar, &socketAndThreadReady, pingSocket, &relayManager, &pingSockAddr] {
-    core::PingProcessor pingProcessor(*pingSocket, relayManager, gAlive, pingSockAddr);
+  pingThread = std::make_unique<std::thread>([&waitVar, &socketAndThreadReady, pingSocket, &relayManager, &relayAddress] {
+    core::PingProcessor pingProcessor(*pingSocket, relayManager, gAlive, relayAddress);
     pingProcessor.process(waitVar, socketAndThreadReady);
   });
 
