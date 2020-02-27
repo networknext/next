@@ -38,14 +38,6 @@ const (
 	PlatformIOS     = 6
 	PlatformXboxOne = 7
 
-	RouteSliceFlagNext                = (uint64(1) << 1)
-	RouteSliceFlagReported            = (uint64(1) << 2)
-	RouteSliceFlagVetoed              = (uint64(1) << 3)
-	RouteSliceFlagFallbackToDirect    = (uint64(1) << 4)
-	RouteSliceFlagPacketLossMultipath = (uint64(1) << 5)
-	RouteSliceFlagJitterMultipath     = (uint64(1) << 6)
-	RouteSliceFlagRTTMultipath        = (uint64(1) << 7)
-
 	FlagBadRouteToken           = uint32(1 << 0)
 	FlagNoRouteToContinue       = uint32(1 << 1)
 	FlagPreviousUpdatePending   = uint32(1 << 2)

@@ -11,24 +11,26 @@ type RouteDecision func(onNextworkNext bool, predictedNextStats *Stats, lastNext
 type RouteDecisionReason uint64
 
 // Route decision flags are required for billing, so this has to work the same for the billing entry to be correct
-const DecisionNoChange = RouteDecisionReason(0)
-const DecisionForceDirect = RouteDecisionReason(uint64(1) << 1)
-const DecisionForceNext = RouteDecisionReason(uint64(1) << 2)
-const DecisionNoNextRoute = RouteDecisionReason(uint64(1) << 3)
-const DecisionABTestDirect = RouteDecisionReason(uint64(1) << 4)
-const DecisionRTTReduction = RouteDecisionReason(uint64(1) << 5)
-const DecisionPacketLossMultipath = RouteDecisionReason(uint64(1) << 6)
-const DecisionJitterMultipath = RouteDecisionReason(uint64(1) << 7)
-const DecisionVetoRTT = RouteDecisionReason(uint64(1) << 8)
-const DecisionRTTMultipath = RouteDecisionReason(uint64(1) << 9)
-const DecisionVetoPacketLoss = RouteDecisionReason(uint64(1) << 10)
-const DecisionFallbackToDirect = RouteDecisionReason(uint64(1) << 11)
-const DecisionUnused = RouteDecisionReason(uint64(1) << 12)
-const DecisionVetoYOLO = RouteDecisionReason(uint64(1) << 13)
-const DecisionVetoNoRoute = RouteDecisionReason(uint64(1) << 14)
-const DecisionDatacenterHasNoRelays = RouteDecisionReason(uint64(1) << 15)
-const DecisionInitialSlice = RouteDecisionReason(uint64(1) << 16)
-const DecisionNoNearRelays = RouteDecisionReason(uint64(1) << 17)
+const (
+	DecisionNoChange              RouteDecisionReason = 0
+	DecisionForceDirect           RouteDecisionReason = 1 << 1
+	DecisionForceNext             RouteDecisionReason = 1 << 2
+	DecisionNoNextRoute           RouteDecisionReason = 1 << 3
+	DecisionABTestDirect          RouteDecisionReason = 1 << 4
+	DecisionRTTReduction          RouteDecisionReason = 1 << 5
+	DecisionPacketLossMultipath   RouteDecisionReason = 1 << 6
+	DecisionJitterMultipath       RouteDecisionReason = 1 << 7
+	DecisionVetoRTT               RouteDecisionReason = 1 << 8
+	DecisionRTTMultipath          RouteDecisionReason = 1 << 9
+	DecisionVetoPacketLoss        RouteDecisionReason = 1 << 10
+	DecisionFallbackToDirect      RouteDecisionReason = 1 << 11
+	DecisionUnused                RouteDecisionReason = 1 << 12
+	DecisionVetoYOLO              RouteDecisionReason = 1 << 13
+	DecisionVetoNoRoute           RouteDecisionReason = 1 << 14
+	DecisionDatacenterHasNoRelays RouteDecisionReason = 1 << 15
+	DecisionInitialSlice          RouteDecisionReason = 1 << 16
+	DecisionNoNearRelays          RouteDecisionReason = 1 << 17
+)
 
 // DecideUpgradeRTT will decide if the client should use the network next route if the RTT reduction is greater than the given threshold.
 // This decision only upgrades direct routes, so network next routes aren't considered.

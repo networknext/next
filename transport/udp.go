@@ -577,36 +577,36 @@ func newBillingEntry(
 	timestampStart uint64,
 	timestampNow uint64) *billing.Entry {
 	// Create billing slice flags
-	sliceFlags := uint64(0)
+	sliceFlags := billing.RouteSliceFlagNone
 	if routeType == routing.RouteTypeNew || routeType == routing.RouteTypeContinue {
-		sliceFlags |= RouteSliceFlagNext
+		sliceFlags |= billing.RouteSliceFlagNext
 	}
 
 	if (decisionReason&routing.DecisionVetoRTT) != 0 ||
 		(decisionReason&routing.DecisionVetoPacketLoss) != 0 ||
 		(decisionReason&routing.DecisionVetoYOLO) != 0 ||
 		(decisionReason&routing.DecisionVetoNoRoute) != 0 {
-		sliceFlags |= RouteSliceFlagVetoed
+		sliceFlags |= billing.RouteSliceFlagVetoed
 	}
 
 	if packet.Flagged {
-		sliceFlags |= RouteSliceFlagReported
+		sliceFlags |= billing.RouteSliceFlagReported
 	}
 
 	if packet.FallbackToDirect {
-		sliceFlags |= RouteSliceFlagFallbackToDirect
+		sliceFlags |= billing.RouteSliceFlagFallbackToDirect
 	}
 
 	if (decisionReason & routing.DecisionPacketLossMultipath) != 0 {
-		sliceFlags |= RouteSliceFlagPacketLossMultipath
+		sliceFlags |= billing.RouteSliceFlagPacketLossMultipath
 	}
 
 	if (decisionReason & routing.DecisionJitterMultipath) != 0 {
-		sliceFlags |= RouteSliceFlagJitterMultipath
+		sliceFlags |= billing.RouteSliceFlagJitterMultipath
 	}
 
 	if (decisionReason & routing.DecisionRTTMultipath) != 0 {
-		sliceFlags |= RouteSliceFlagRTTMultipath
+		sliceFlags |= billing.RouteSliceFlagRTTMultipath
 	}
 
 	// Create slice duration
@@ -638,6 +638,6 @@ func newBillingEntry(
 		AcceptableRoutes:     nil,
 		SameRoute:            routeType == routing.RouteTypeContinue,
 		OnNetworkNext:        packet.OnNetworkNext,
-		SliceFlags:           sliceFlags,
+		SliceFlags:           uint64(sliceFlags),
 	}
 }
