@@ -13,6 +13,7 @@ import (
 	metadataapi "cloud.google.com/go/compute/metadata"
 	monitoring "cloud.google.com/go/monitoring/apiv3"
 	googlepb "github.com/golang/protobuf/ptypes/timestamp"
+	"google.golang.org/api/option"
 	"google.golang.org/genproto/googleapis/api/metric"
 	metricpb "google.golang.org/genproto/googleapis/api/metric"
 	monitoredrespb "google.golang.org/genproto/googleapis/api/monitoredres"
@@ -37,14 +38,16 @@ var valueTypeMapReverse = map[metricpb.MetricDescriptor_ValueType]Type{
 
 // StackDriverHandler is an implementation of the Handler interface that handles metrics for StackDriver
 type StackDriverHandler struct {
-	Client *monitoring.MetricClient
+	Client    *monitoring.MetricClient
+	ProjectID string
 
+	// Optional kubernetes container data. If these are set, the client will know that the monitored resource is running in a kubernetes container.
+	// If they are not set, the client will check to see if the monitored resource is running in a GCE instance. If it's not, it will default to global.
 	ClusterLocation string
 	ClusterName     string
 	PodName         string
 	ContainerName   string
-	NamespaceName   string
-	ProjectID       string
+	NamespaceName   string // If this is not set, it will default to "default"
 
 	submitFrequency float64
 
@@ -53,19 +56,19 @@ type StackDriverHandler struct {
 }
 
 // Open opens the client connection to StackDriver. This must be done before any metrics are created, deleted, or fetched.
-func (handler *StackDriverHandler) Open(ctx context.Context) error {
+func (handler *StackDriverHandler) Open(ctx context.Context, credentials []byte) error {
 	handler.metricsMap = make(map[string]Handle)
 
 	// Create a Stackdriver metrics client
 	var err error
-	handler.Client, err = monitoring.NewMetricClient(ctx)
+	handler.Client, err = monitoring.NewMetricClient(ctx, option.WithCredentialsJSON(credentials))
 	return err
 }
 
 // MetricSubmitRoutine is responsible for sending the metrics up to StackDriver. Call in a separate goroutine.
 // Pass a duration in seconds to have the routine send metrics up to StackDriver periodically.
 // If the duration is less than or equal to 0, a default of 1 minute is used.
-// maxMetricsCount is the maximum number of metrics to send in one push to StackDriver. If you're unsure, 200 is a good number.
+// maxMetricsCount is the maximum number of metrics to send in one push to StackDriver. 200 is the maximum number of time series allowed in a single request.
 func (handler *StackDriverHandler) MetricSubmitRoutine(ctx context.Context, logger log.Logger, duration time.Duration, maxMetricsIncrement int) {
 	if duration <= 0 {
 		duration = time.Minute

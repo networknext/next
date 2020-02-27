@@ -23,6 +23,7 @@ import (
 	"github.com/oschwald/geoip2-golang"
 
 	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
@@ -91,7 +92,7 @@ func main() {
 	}
 
 	var ipLocator routing.IPLocator = routing.NullIsland
-	if uri, ok := os.LookupEnv("RELAY_MAXMIND_DB_URI"); ok {
+	if uri, ok := os.LookupEnv("MAXMIND_DB_URI"); ok {
 		mmreader, err := geoip2.Open(uri)
 		if err != nil {
 			level.Error(logger).Log("envvar", "RELAY_MAXMIND_DB_URI", "value", uri, "err", err)
@@ -119,6 +120,10 @@ func main() {
 		},
 	}
 
+	// Create a no-op metrics handler in case metrics aren't set up
+	var metricsHandler metrics.Handler
+	metricsHandler = &metrics.NoOpHandler{}
+
 	// If GCP_CREDENTIALS are set then override the local in memory
 	// and connect to Firestore
 	if gcpcreds, ok := os.LookupEnv("GCP_CREDENTIALS"); ok {
@@ -141,7 +146,7 @@ func main() {
 		}
 
 		// Create a Firestore client
-		client, err := firestore.NewClient(context.Background(), firestore.DetectProjectID, option.WithCredentialsJSON(gcpcredsjson))
+		client, err := firestore.NewClient(ctx, firestore.DetectProjectID, option.WithCredentialsJSON(gcpcredsjson))
 		if err != nil {
 			level.Error(logger).Log("err", err)
 			os.Exit(1)
@@ -161,6 +166,44 @@ func main() {
 
 		// Set the Firestore Storer to give to handlers
 		db = &fs
+	}
+
+	// If GCP_CREDENTIALS_METRICS are set then override the no-op metric handler and connect to StackDriver
+	// This has its own credentials because the StackDriver metrics are in a separate workspace
+	if stackdrivercreds, ok := os.LookupEnv("GCP_CREDENTIALS_METRICS"); ok {
+		if stackDriverProjectID, ok := os.LookupEnv("GCP_METRICS_PROJECT"); ok {
+			var stackdrivercredsjson []byte
+
+			_, err := os.Stat(stackdrivercreds)
+			switch err := err.(type) {
+			case *os.PathError:
+				stackdrivercredsjson = []byte(stackdrivercreds)
+				level.Info(logger).Log("envvar", "GCP_CREDENTIALS_METRICS", "value", "<JSON>")
+			case nil:
+				stackdrivercredsjson, err = ioutil.ReadFile(stackdrivercreds)
+				if err != nil {
+					level.Error(logger).Log("envvar", "GCP_CREDENTIALS_METRICS", "value", stackdrivercreds, "err", err)
+					os.Exit(1)
+				}
+				level.Info(logger).Log("envvar", "GCP_CREDENTIALS_METRICS", "value", stackdrivercreds)
+			}
+
+			// Create the metrics handler
+			metricsHandler = &metrics.StackDriverHandler{
+				ProjectID:       stackDriverProjectID,
+				ClusterLocation: os.Getenv("GCP_METRICS_CLUSTER_LOCATION"),
+				ClusterName:     os.Getenv("GCP_METRICS_CLUSTER_NAME"),
+				PodName:         os.Getenv("GCP_METRICS_POD_NAME"),
+				ContainerName:   os.Getenv("GCP_METRICS_CONTAINER_NAME"),
+				NamespaceName:   os.Getenv("GCP_METRICS_NAMESPACE_NAME"),
+			}
+
+			if err := metricsHandler.Open(ctx, stackdrivercredsjson); err == nil {
+				go metricsHandler.MetricSubmitRoutine(ctx, logger, time.Minute, 200)
+			} else {
+				level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
+			}
+		}
 	}
 
 	statsdb := routing.NewStatsDatabase()
@@ -183,14 +226,21 @@ func main() {
 		}
 	}()
 
-	router := transport.NewRouter(logger, redisClient, &geoClient, ipLocator, db, statsdb, &costmatrix, &routematrix, routerPrivateKey)
+	router := transport.NewRouter(logger, redisClient, &geoClient, ipLocator, db, statsdb, metricsHandler, &costmatrix, &routematrix, routerPrivateKey)
 
 	go func() {
-		level.Info(logger).Log("addr", ":30000")
+		port, ok := os.LookupEnv("PORT")
+		if !ok {
+			level.Error(logger).Log("err", "env var PORT must be set")
+			os.Exit(1)
+		}
 
-		err := http.ListenAndServe(":30000", router)
+		level.Info(logger).Log("addr", ":"+port)
+
+		err := http.ListenAndServe(":"+port, router)
 		if err != nil {
 			level.Error(logger).Log("err", err)
+			os.Exit(1)
 		}
 	}()
 

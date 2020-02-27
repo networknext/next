@@ -10,7 +10,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/go-kit/kit/metrics"
+	gkmetrics "github.com/go-kit/kit/metrics"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -19,6 +19,7 @@ import (
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 )
@@ -99,11 +100,11 @@ func (e ServerCacheEntry) MarshalBinary() ([]byte, error) {
 }
 
 // ServerUpdateHandlerFunc ...
-func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, duration metrics.Histogram, counter metrics.Counter) UDPHandlerFunc {
+func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, duration gkmetrics.Histogram, counter gkmetrics.Counter, metricsHandler metrics.Handler) UDPHandlerFunc {
 	logger = log.With(logger, "handler", "server")
 
 	return func(w io.Writer, incoming *UDPPacket) {
-		timer := metrics.NewTimer(duration.With("method", "ServerUpdateHandlerFunc"))
+		timer := gkmetrics.NewTimer(duration.With("method", "ServerUpdateHandlerFunc"))
 		timer.Unit(time.Millisecond)
 		defer func() {
 			timer.ObserveDuration()
@@ -207,11 +208,11 @@ type RouteProvider interface {
 }
 
 // SessionUpdateHandlerFunc ...
-func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, duration metrics.Histogram, counter metrics.Counter, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, duration gkmetrics.Histogram, counter gkmetrics.Counter, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, metricsHandler metrics.Handler, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
 	logger = log.With(logger, "handler", "session")
 
 	return func(w io.Writer, incoming *UDPPacket) {
-		timer := metrics.NewTimer(duration.With("method", "SessionUpdateHandlerFunc"))
+		timer := gkmetrics.NewTimer(duration.With("method", "SessionUpdateHandlerFunc"))
 		timer.Unit(time.Millisecond)
 		defer func() {
 			timer.ObserveDuration()

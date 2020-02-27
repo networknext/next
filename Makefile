@@ -18,6 +18,7 @@ TAG ?= $(shell git describe --tags 2> /dev/null)
 
 CURRENT_DIR = $(shell pwd -P)
 DIST_DIR = ./dist
+ARTIFACT_BUCKET = gs://artifacts.network-next-v3-dev.appspot.com
 
 COST_FILE = $(DIST_DIR)/cost.bin
 OPTIMIZE_FILE = $(DIST_DIR)/optimize.bin
@@ -113,32 +114,8 @@ endif
 ##################################
 ##    STACKDRIVER METRICS ENV   ##
 ##################################
-ifndef GOOGLE_CLOUD_METRICS_CLUSTER_LOCATION
-export GOOGLE_CLOUD_METRICS_CLUSTER_LOCATION = us-central1-f
-endif
-
-ifndef GOOGLE_CLOUD_METRICS_CLUSTER_NAME
-export GOOGLE_CLOUD_METRICS_CLUSTER_NAME = local
-endif
-
-ifndef GOOGLE_CLOUD_METRICS_POD_NAME
-export GOOGLE_CLOUD_METRICS_POD_NAME = metrics
-endif
-
-ifndef GOOGLE_CLOUD_METRICS_CONTAINER_NAME
-export GOOGLE_CLOUD_METRICS_CONTAINER_NAME = metrics
-endif
-
-ifndef GOOGLE_CLOUD_METRICS_NAMESPACE_NAME
-export GOOGLE_CLOUD_METRICS_NAMESPACE_NAME = default
-endif
-
-ifndef GOOGLE_CLOUD_METRICS_PROJECT
-export GOOGLE_CLOUD_METRICS_PROJECT = network-next-local
-endif
-
-ifndef GOOGLE_APPLICATION_CREDENTIALS
-export GOOGLE_APPLICATION_CREDENTIALS = $(CURRENT_DIR)/testdata/network-next-local.json
+ifndef GCP_METRICS_PROJECT
+export GCP_METRICS_PROJECT = network-next-local
 endif
 
 .PHONY: help
@@ -272,11 +249,11 @@ dev-optimizer: ## runs a local optimizer
 
 .PHONY: dev-relay-backend
 dev-relay-backend: ## runs a local relay backend
-	@$(GO) run cmd/relay_backend/relay_backend.go
+	@PORT=30000 $(GO) run cmd/relay_backend/relay_backend.go
 
 .PHONY: dev-server-backend
 dev-server-backend: ## runs a local server backend
-	@$(GO) run cmd/server_backend/server_backend.go
+	@PORT=40000 $(GO) run cmd/server_backend/server_backend.go
 
 .PHONY: dev-backend
 dev-backend: ## runs a local backend
@@ -314,11 +291,47 @@ build-relay-backend: ## builds the relay backend binary
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/relay_backend ./cmd/relay_backend/relay_backend.go
 	@printf "done\n"
 
+.PHONY: build-relay-backend-artifact
+build-relay-backend-artifact: build-relay-backend ## builds the relay backend with the right env vars and creates a .tar.gz
+	@printf "Building relay backend artifact... "
+	@mkdir -p $(DIST_DIR)/artifact/relay_backend
+	@cp $(DIST_DIR)/relay_backend $(DIST_DIR)/artifact/relay_backend/app
+	@cp ./cmd/relay_backend/dev.env $(DIST_DIR)/artifact/relay_backend/app.env
+	@cd $(DIST_DIR)/artifact/relay_backend && tar -zcf ../../relay_backend.dev.tar.gz app app.env && cd ../..
+	@printf "$(DIST_DIR)/relay_backend.dev.tar.gz\n"
+
+.PHONY: publish-relay-backend-artifact
+publish-relay-backend-artifact: ## publishes the relay backend artifact to GCP Storage with gsutil
+	@printf "Publishing relay backend artifact... \n\n"
+	@gsutil cp $(DIST_DIR)/relay_backend.dev.tar.gz $(ARTIFACT_BUCKET)/relay_backend.dev.tar.gz
+	@printf "done\n"
+
 .PHONY: build-server-backend
 build-server-backend: ## builds the server backend binary
 	@printf "Building server backend... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/server_backend ./cmd/server_backend/server_backend.go
 	@printf "done\n"
+
+.PHONY: build-server-backend-artifact
+build-server-backend-artifact: build-server-backend ## builds the server backend with the right env vars and creates a .tar.gz
+	@printf "Building server backend artifact..."
+	@mkdir -p $(DIST_DIR)/artifact/server_backend
+	@cp $(DIST_DIR)/server_backend $(DIST_DIR)/artifact/server_backend/app
+	@cp ./cmd/server_backend/dev.env $(DIST_DIR)/artifact/server_backend/app.env
+	@cd $(DIST_DIR)/artifact/server_backend && tar -zcf ../../server_backend.dev.tar.gz app app.env && cd ../..
+	@printf "$(DIST_DIR)/server_backend.dev.tar.gz\n"
+
+.PHONY: publish-server-backend-artifact
+publish-server-backend-artifact: ## publishes the server backend artifact to GCP Storage with gsutil
+	@printf "Publishing server backend artifact... \n\n"
+	@gsutil cp $(DIST_DIR)/server_backend.dev.tar.gz $(ARTIFACT_BUCKET)/server_backend.dev.tar.gz
+	@printf "done\n"
+
+.PHONY: build-backend-artifacts
+build-backend-artifacts: build-relay-backend-artifact build-server-backend-artifact ## builds the backend artifacts
+
+.PHONY: publish-backend-artifacts
+publish-backend-artifacts: publish-relay-backend-artifact publish-server-backend-artifact ## publishes the backend artifacts to GCP Storage with gsutil
 
 .PHONY: build-server
 build-server: build-sdk ## builds the server

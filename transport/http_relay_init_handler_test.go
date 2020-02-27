@@ -21,6 +21,7 @@ import (
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
+	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
@@ -89,7 +90,7 @@ func relayInitAssertions(t *testing.T, relay routing.Relay, body []byte, expecte
 		}
 	}
 
-	handler := transport.RelayInitHandlerFunc(log.NewNopLogger(), redisClient, geoClient, ipfunc, inMemory, routerPrivateKey)
+	handler := transport.RelayInitHandlerFunc(log.NewNopLogger(), redisClient, geoClient, ipfunc, inMemory, &metrics.NoOpHandler{}, routerPrivateKey)
 
 	handler(recorder, request)
 
