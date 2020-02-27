@@ -16,7 +16,8 @@ import (
 // LocalHandler handles metrics for local development by using gokit's metrics expvar package,
 // creating a local endpoint to view all metrics as JSON in the browser.
 type LocalHandler struct {
-	metrics map[string]Handle
+	metrics          map[string]Handle
+	customMetricsMap *expvar.Map
 }
 
 // Open is a no-op.
@@ -36,18 +37,37 @@ func (local *LocalHandler) GetSubmitFrequency() float64 {
 // If the metric already exists, CreateMetric will return it. The error is not used.
 func (local *LocalHandler) CreateMetric(ctx context.Context, descriptor *Descriptor) (Handle, error) {
 	if local.metrics == nil {
-		local.metrics = map[string]Handle{}
+		local.init()
 	}
 
 	if handle, contains := local.metrics[descriptor.ID]; contains {
 		return handle, nil
 	}
 
+	value := new(expvar.Float)
+	p50 := new(expvar.Float)
+	p90 := new(expvar.Float)
+	p95 := new(expvar.Float)
+	p99 := new(expvar.Float)
+
+	local.customMetricsMap.Set(descriptor.ID, value)
+	local.customMetricsMap.Set(descriptor.ID+".p50", p50)
+	local.customMetricsMap.Set(descriptor.ID+".p90", p90)
+	local.customMetricsMap.Set(descriptor.ID+".p95", p95)
+	local.customMetricsMap.Set(descriptor.ID+".p99", p99)
+
 	handle := Handle{
 		Descriptor: descriptor,
-		Histogram:  NewLocalHistogram(descriptor.DisplayName, 50),
+		Histogram: &LocalHistogram{
+			h:       generic.NewHistogram(descriptor.ID, 50),
+			buckets: 50,
+			p50:     p50,
+			p90:     p90,
+			p95:     p95,
+			p99:     p99,
+		},
 		Gauge: &LocalGauge{
-			f: expvar.NewFloat(descriptor.DisplayName),
+			f: value,
 		},
 	}
 	local.metrics[descriptor.ID] = handle
@@ -58,7 +78,7 @@ func (local *LocalHandler) CreateMetric(ctx context.Context, descriptor *Descrip
 // GetMetric returns the metric handle by the given ID.
 func (local *LocalHandler) GetMetric(id string) (Handle, bool) {
 	if local.metrics == nil {
-		local.metrics = map[string]Handle{}
+		local.init()
 	}
 
 	handle, contains := local.metrics[id]
@@ -68,7 +88,7 @@ func (local *LocalHandler) GetMetric(id string) (Handle, bool) {
 // DeleteMetric removes the metric from the map of tracked metrics.
 func (local *LocalHandler) DeleteMetric(ctx context.Context, descriptor *Descriptor) error {
 	if local.metrics == nil {
-		local.metrics = map[string]Handle{}
+		local.init()
 	}
 
 	if _, contains := local.metrics[descriptor.ID]; contains {
@@ -81,6 +101,16 @@ func (local *LocalHandler) DeleteMetric(ctx context.Context, descriptor *Descrip
 
 // Close is a no-op.
 func (local *LocalHandler) Close() error { return nil }
+
+func (local *LocalHandler) init() {
+	local.metrics = map[string]Handle{}
+	result := expvar.Get("Local Metrics")
+	if result != nil {
+		local.customMetricsMap = result.(*expvar.Map)
+	} else {
+		local.customMetricsMap = expvar.NewMap("Local Metrics")
+	}
+}
 
 // LocalGauge mimics go-kit's expvar.Gauge, but adds methods to satisfy this package's Gauge.
 // Label values aren't supported.
@@ -113,20 +143,6 @@ type LocalHistogram struct {
 	p90     *expvar.Float
 	p95     *expvar.Float
 	p99     *expvar.Float
-}
-
-// NewLocalHistogram returns a Histogram object with the given name and number of
-// buckets in the underlying histogram object. 50 is a good default number of
-// buckets.
-func NewLocalHistogram(name string, buckets int) Histogram {
-	return &LocalHistogram{
-		h:       generic.NewHistogram(name, buckets),
-		buckets: buckets,
-		p50:     expvar.NewFloat(name + ".p50"),
-		p90:     expvar.NewFloat(name + ".p90"),
-		p95:     expvar.NewFloat(name + ".p95"),
-		p99:     expvar.NewFloat(name + ".p99"),
-	}
 }
 
 // With is a no-op.
