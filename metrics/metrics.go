@@ -39,6 +39,7 @@ func (mv TypeDouble) getTypeName() string { return "DOUBLE" }
 
 // Descriptor describes metric metadata
 type Descriptor struct {
+	DisplayName string
 	ServiceName string
 	ID          string
 	ValueType   ValueType
@@ -51,7 +52,7 @@ type Handler interface {
 	Open(ctx context.Context, credentials []byte) error
 	MetricSubmitRoutine(ctx context.Context, logger log.Logger, duration time.Duration, maxMetricsIncrement int)
 	GetSubmitFrequency() float64
-	CreateMetric(ctx context.Context, descriptor *Descriptor, gauge *generic.Gauge) (Handle, error)
+	CreateMetric(ctx context.Context, descriptor *Descriptor) (Handle, error)
 	GetMetric(id string) (Handle, bool)
 	DeleteMetric(ctx context.Context, descriptor *Descriptor) error
 	Close() error

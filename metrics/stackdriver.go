@@ -177,17 +177,17 @@ func (handler *StackDriverHandler) GetSubmitFrequency() float64 {
 
 // CreateMetric creates the metric on StackDriver using the given metric descriptor.
 // If the metric already exists on StackDriver, it will return a handle to it.
-func (handler *StackDriverHandler) CreateMetric(ctx context.Context, descriptor *Descriptor, gauge *generic.Gauge) (Handle, error) {
+func (handler *StackDriverHandler) CreateMetric(ctx context.Context, descriptor *Descriptor) (Handle, error) {
 	_, err := handler.Client.CreateMetricDescriptor(ctx, &monitoringpb.CreateMetricDescriptorRequest{
 		Name: monitoring.MetricProjectPath(handler.ProjectID),
 		MetricDescriptor: &metricpb.MetricDescriptor{
-			Name:        gauge.Name,
+			Name:        descriptor.ID,
 			Type:        fmt.Sprintf("custom.googleapis.com/%s/%s", descriptor.ServiceName, descriptor.ID),
 			MetricKind:  metric.MetricDescriptor_GAUGE,
 			ValueType:   valueTypeMap[descriptor.ValueType.ValueType.getTypeName()],
 			Unit:        descriptor.Unit,
 			Description: descriptor.Description,
-			DisplayName: gauge.Name,
+			DisplayName: descriptor.DisplayName,
 		},
 	})
 
@@ -224,7 +224,7 @@ func (handler *StackDriverHandler) CreateMetric(ctx context.Context, descriptor 
 			Unit:        stackdriverDescriptor.Unit,
 			Description: stackdriverDescriptor.Description,
 		},
-		Gauge: gauge,
+		Gauge: generic.NewGauge(descriptor.DisplayName),
 	}
 
 	handler.metricsMapMutex.Lock()
