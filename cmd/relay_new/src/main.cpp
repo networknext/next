@@ -300,7 +300,7 @@ int main()
       pingProcessor.process(waitVar, socketAndThreadReady);
     });
 
-    wait();
+    // wait();
   }
 
   // packet processing setup
