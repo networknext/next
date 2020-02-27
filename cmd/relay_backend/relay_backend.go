@@ -13,6 +13,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -91,24 +93,6 @@ func main() {
 		level.Error(logger).Log("envvar", "REDIS_HOST", "value", redisHost, "err", err)
 		os.Exit(1)
 	}
-
-	// Sub to keyspace events
-	redisClient.ConfigSet("notify-keyspace-events", "KEA")
-	go func() {
-		ps := redisClient.PSubscribe("__key*__:*")
-
-		for {
-			msg, err := ps.ReceiveMessage()
-			if msg != nil && err == nil {
-				fmt.Printf("Channel[%v] Pattern[%v] Payload[%v]\n", msg.Channel, msg.Pattern, msg.Payload)
-			}
-
-			switch msg.Channel {
-			case "__keyspace@0__:ALL_RELAYS":
-				// listen for relay delete events here and delete geo?
-			}
-		}
-	}()
 
 	var ipLocator routing.IPLocator = routing.NullIsland
 	if uri, ok := os.LookupEnv("MAXMIND_DB_URI"); ok {
@@ -246,24 +230,19 @@ func main() {
 		}
 	}()
 
-	// Periodically expire old relay entries (including removal from statsDB, hashmap and geo)
+	// Sub to expiry events for cleanup
+	redisClient.ConfigSet("notify-keyspace-events", "Ex")
 	go func() {
+		ps := redisClient.Subscribe("__keyevent@0__:expired")
 		for {
-			hgetallResult := redisClient.HGetAll(routing.HashKeyAllRelays)
-			for _, raw := range hgetallResult.Val() {
-				var r routing.Relay
-				r.UnmarshalBinary([]byte(raw))
-
-				expiryTime := time.Unix(int64(r.LastUpdateTime), 0).Add(routing.RelayTimeout)
-				if expiryTime.Before(time.Now()) {
-					fmt.Println("deleting!")
-					statsdb.DeleteEntry(r.ID)
-					redisClient.HDel(routing.HashKeyAllRelays, r.Key())
-					geoClient.Remove(r)
-				}
+			msg, _ := ps.ReceiveMessage()
+			if strings.HasPrefix(msg.Payload, routing.HashKeyPrefixRelay) {
+				rawID, _ := strconv.ParseUint(strings.TrimPrefix(msg.Payload, routing.HashKeyPrefixRelay), 10, 64)
+				level.Warn(logger).Log("msg", fmt.Sprintf("relay with id %v has disconnected.", rawID))
+				statsdb.DeleteEntry(rawID)
+				geoClient.Remove(rawID)
+				redisClient.HDel(routing.HashKeyAllRelays, msg.Payload)
 			}
-
-			time.Sleep(routing.RelayTimeout / 2)
 		}
 	}()
 

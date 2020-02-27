@@ -123,6 +123,14 @@ func RelayInitHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClien
 		relay.Latitude = loc.Latitude
 		relay.Longitude = loc.Longitude
 
+		// Regular set for expiry
+		if res := redisClient.Set(relay.Key(), relay.ID, routing.RelayTimeout); res.Err() != nil && res.Err() != redis.Nil {
+			level.Error(locallogger).Log("msg", "failed to initialize relay", "err", res.Err())
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		// HSet for full relay data
 		if res := redisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay); res.Err() != nil && res.Err() != redis.Nil {
 			level.Error(locallogger).Log("msg", "failed to initialize relay", "err", res.Err())
 			writer.WriteHeader(http.StatusInternalServerError)
@@ -236,6 +244,10 @@ func RelayUpdateHandlerFunc(logger log.Logger, redisClient *redis.Client, statsd
 
 		relaysToPing := make([]RelayPingData, 0)
 
+		// Regular set for expiry
+		redisClient.Set(relay.Key(), 0, routing.RelayTimeout)
+
+		// HSet for full relay data
 		redisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay)
 
 		hgetallResult := redisClient.HGetAll(routing.HashKeyAllRelays)

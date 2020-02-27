@@ -95,8 +95,8 @@ func (c *GeoClient) Add(r Relay) error {
 	return c.RedisClient.GeoAdd(c.Namespace, &geoloc).Err()
 }
 
-func (c *GeoClient) Remove(r Relay) error {
-	return c.RedisClient.ZRem(strconv.FormatUint(r.ID, 10)).Err()
+func (c *GeoClient) Remove(relayID uint64) error {
+	return c.RedisClient.ZRem(c.Namespace, strconv.FormatUint(relayID, 10)).Err()
 }
 
 // uom can be one of the following: "m", "km", "mi", "ft"
