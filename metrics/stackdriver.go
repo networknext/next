@@ -146,6 +146,7 @@ func (handler *StackDriverHandler) MetricSubmitRoutine(ctx context.Context, logg
 
 				// Reset metric data
 				handle.Gauge.Set(0.0)
+				handle.Histogram.Reset()
 
 				index++
 			}
