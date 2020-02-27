@@ -304,10 +304,16 @@ int main()
 
   // packet processing setup
   {
+    net::Address bindAddr;
+    {
+      bindAddr.parse("127.0.0.1");
+      bindAddr.Port = relayAddr.Port;
+    }
+
     packetThreads.resize(numProcessors);
     core::SessionMap sessions;
     for (unsigned int i = 0; i < numProcessors; i++) {
-      auto packetSocket = makeSocket(relayAddr);
+      auto packetSocket = makeSocket(bindAddr);
       if (!packetSocket) {
         Log("could not create packetSocket");
         gAlive = false;
@@ -328,6 +334,8 @@ int main()
 
       wait();
     }
+
+    relayAddr.Port = bindAddr.Port;
   }
 
   relayAddr.toString(relayAddrString);
