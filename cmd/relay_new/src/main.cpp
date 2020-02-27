@@ -152,20 +152,20 @@ int main()
     return 1;
   }
 
-  net::Address relayAddress;
-  if (!relayAddress.parse(relayAddrEnv)) {
+  net::Address relayAddr;
+  if (!relayAddr.parse(relayAddrEnv)) {
     Log("error: invalid relay address '", relayAddrEnv, "'\n");
     return 1;
   }
 
   // lazy way to print addr w/o port
   {
-    net::Address addrWithoutPort = relayAddress;
+    net::Address addrWithoutPort = relayAddr;
     addrWithoutPort.Port = 0;
     std::cout << "    relay address is '" << addrWithoutPort.toString() << "'\n";
   }
 
-  std::cout << "    relay bind port is " << static_cast<uint32_t>(relayAddress.Port) << "\n";
+  std::cout << "    relay bind port is " << static_cast<uint32_t>(relayAddr.Port) << "\n";
 
   crypto::Keychain keychain;
   if (!getCryptoKeys(keychain)) {
@@ -293,9 +293,9 @@ int main()
 
     sockets.push_back(pingSocket);
 
-    pingThread = std::make_unique<std::thread>([&waitVar, &socketAndThreadReady, pingSocket, &relayManager, &relayAddress] {
+    pingThread = std::make_unique<std::thread>([&waitVar, &socketAndThreadReady, pingSocket, &relayManager, &relayAddr] {
       // setup the ping processor to use the exposed relay address
-      core::PingProcessor pingProcessor(*pingSocket, relayManager, gAlive, relayAddress);
+      core::PingProcessor pingProcessor(*pingSocket, relayManager, gAlive, relayAddr);
       pingProcessor.process(waitVar, socketAndThreadReady);
     });
 
@@ -304,18 +304,10 @@ int main()
 
   // packet processing setup
   {
-    // relayAddress is the exposed addr, we need to bind to a local one
-    // hence this variable, it will need to bind to the same port as relayAddress
-    net::Address bindAddr;
-    {
-      bindAddr.parse("127.0.0.1");
-      bindAddr.Port = relayAddress.Port;
-    }
-
     packetThreads.resize(numProcessors);
     core::SessionMap sessions;
     for (unsigned int i = 0; i < numProcessors; i++) {
-      auto packetSocket = makeSocket(bindAddr);
+      auto packetSocket = makeSocket(relayAddr);
       if (!packetSocket) {
         Log("could not create packetSocket");
         gAlive = false;
@@ -336,15 +328,11 @@ int main()
 
       wait();
     }
-
-    // if the port was 0, this syncs both
-    // bindAddr's port will have been discovered when making sockets
-    relayAddress.Port = bindAddr.Port;
   }
 
-  relayAddress.toString(relayAddrString);
+  relayAddr.toString(relayAddrString);
   LogDebug(
-   "Actual address: ", relayAddress);  // if using port 0, it is discovered in ping socket's create(). That being said sockets
+   "Actual address: ", relayAddr);  // if using port 0, it is discovered in ping socket's create(). That being said sockets
                                        // must be created before communicating with the backend otherwise port 0 will be reused
 
   LogDebug("communicating with backend");
@@ -416,7 +404,7 @@ int main()
   std::cout.flush();
   relay::relay_term();
 
-  LogDebug("Relay terminated. Address: ", relayAddress);
+  LogDebug("Relay terminated. Address: ", relayAddr);
 
   return 0;
 }
