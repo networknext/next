@@ -194,7 +194,8 @@ namespace os
         return false;
       }
 
-      // ? is there an effecient way to order the message vector to group by address and then have each iovec contain more than one entry?
+      // ? is there an effecient way to order the message vector to group by address and then have each iovec contain more than
+      // one entry?
       header.msg_iov = &vec;
       header.msg_iovlen = 1;
 
@@ -254,29 +255,33 @@ namespace os
     return res;
   }
 
-  size_t Socket::recv(legacy::relay_address_t& from, uint8_t* data, size_t maxSize) const
+  size_t Socket::multirecv(std::vector<net::Message>& messages)
   {
-    net::Address addr;
-    auto len = recv(addr, data, maxSize);
-    from.type = static_cast<uint8_t>(addr.Type);
-    from.port = addr.Port;
-    switch (addr.Type) {
-      case net::AddressType::IPv4: {
-        for (uint i = 0; i < 4; i++) {
-          from.data.ipv4[i] = addr.IPv4[i];
-        }
-        break;
-      }
-      case net::AddressType::IPv6: {
-        for (uint i = 0; i < 8; i++) {
-          from.data.ipv6[i] = addr.IPv6[i];
-        }
-        break;
-      }
-      case net::AddressType::None:
-        break;
+    std::vector<mmsghdr> incomming;
+    incomming.resize(messages.size());
+
+    auto received = recvmmsg(mSockFD,
+     incomming.data(),
+     incomming.size(),
+     MSG_WAITFORONE,
+     nullptr);  // DON'T EVER USE TIMEOUT, linux man pages say it is broken
+
+    if (received < 0) {
+      LogError("recvmmsg failed");
+      return received;
     }
-    return len;
+
+    for (int i = 0; i < received; i++) {
+      auto& header = incomming[i];
+
+      for (int j = 0; j < header.msg_hdr.msg_iovlen; j++) {
+        auto& message = messages[i];
+      }
+    }
+
+    assert(received >= 0);
+
+    return received;
   }
 
   inline bool Socket::setBufferSizes(size_t sendBuffSize, size_t recvBuffSize)

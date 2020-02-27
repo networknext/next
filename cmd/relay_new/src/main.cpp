@@ -275,6 +275,9 @@ int main()
   std::vector<std::unique_ptr<std::thread>> packetThreads;
   std::string relayAddrString;
 
+  // session map to be shared across packet processors
+  core::SessionMap sessions;
+
   // helpful lambdas
 
   // wait until a processor is set, serializes the blocking io
@@ -320,9 +323,6 @@ int main()
    * odds are slim but it may happen
    */
   {
-    // session map to be shared across packet processors
-    core::SessionMap sessions;
-
     packetThreads.resize(numProcessors);
 
     for (unsigned int i = 0; i < numProcessors; i++) {
@@ -387,12 +387,11 @@ int main()
     // setup the ping processor to use the external address
     // relays use it to know where the receving port of other relays are
     pingThread = std::make_unique<std::thread>([&waitVar, &socketAndThreadReady, pingSocket, &relayManager, &externalAddr] {
-      return;  // DELETE - disabling for the purpose of benchmarking
       core::PingProcessor pingProcessor(*pingSocket, relayManager, gAlive, externalAddr);
       pingProcessor.process(waitVar, socketAndThreadReady);
     });
 
-    // wait();
+    wait();
   }
 
   LogDebug("communicating with backend");
