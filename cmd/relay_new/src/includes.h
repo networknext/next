@@ -21,6 +21,7 @@
 #include <ctime>
 #include <curl/curl.h>
 #include <deque>
+#include <execinfo.h>
 #include <fcntl.h>
 #include <fstream>
 #include <functional>
