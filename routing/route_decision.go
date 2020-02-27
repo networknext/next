@@ -98,8 +98,9 @@ func DecideVeto(rttVeto float64, packetLossSafety bool, yolo bool) RouteDecision
 	}
 }
 
-func RouteDecisionCommitted() RouteDecision {
+// DecideCommitted is not yet implemented
+func DecideCommitted() RouteDecision {
 	return func(onNetworkNext bool, predictedNextStats *Stats, lastNextStats *Stats, directStats *Stats) (bool, RouteDecisionReason) {
-		return false, DecisionNoChange // Not yet implemented
+		return onNetworkNext, DecisionNoChange
 	}
 }

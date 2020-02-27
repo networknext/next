@@ -361,7 +361,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			routing.DecideUpgradeRTT(float64(buyer.RoutingRulesSettings.RTTThreshold)),
 			routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis)),
 			routing.DecideVeto(float64(buyer.RoutingRulesSettings.RTTVeto), buyer.RoutingRulesSettings.EnablePacketLossSafety, buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
-			// routing.RouteDecisionCommitted(),
 		}
 
 		predictedNextStats := &nextRoute.Stats
