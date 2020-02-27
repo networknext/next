@@ -294,6 +294,7 @@ int main()
     sockets.push_back(pingSocket);
 
     pingThread = std::make_unique<std::thread>([&waitVar, &socketAndThreadReady, pingSocket, &relayManager, &relayAddr] {
+      return; // TODO delete this - disabling for the purpose of benchmarking
       // setup the ping processor to use the exposed relay address
       core::PingProcessor pingProcessor(*pingSocket, relayManager, gAlive, relayAddr);
       pingProcessor.process(waitVar, socketAndThreadReady);
