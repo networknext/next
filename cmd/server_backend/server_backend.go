@@ -8,7 +8,6 @@ package main
 import (
 	"context"
 	"encoding/base64"
-	_ "expvar"
 	"io"
 	"io/ioutil"
 	"net"
@@ -18,10 +17,6 @@ import (
 	"runtime"
 	"strconv"
 	"time"
-
-	gkmetrics "github.com/go-kit/kit/metrics"
-
-	"github.com/go-kit/kit/metrics/expvar"
 
 	"cloud.google.com/go/firestore"
 	"github.com/go-kit/kit/log"
@@ -131,9 +126,9 @@ func main() {
 		LocalBuyer: &routing.Buyer{PublicKey: customerPublicKey},
 	}
 
-	// Create a no-op metrics handler
+	// Create a local metrics handler
 	var metricsHandler metrics.Handler
-	metricsHandler = &metrics.NoOpHandler{}
+	metricsHandler = &metrics.LocalHandler{}
 
 	// Create a no-op biller
 	var biller billing.Biller
@@ -283,15 +278,26 @@ func main() {
 		}
 	}
 
-	var serverUpdateDuration gkmetrics.Histogram
-	var serverUpdateCounter gkmetrics.Counter
-	var sessionUpdateDuration gkmetrics.Histogram
-	var sessionUpdateCounter gkmetrics.Counter
-	{
-		serverUpdateDuration = expvar.NewHistogram("server.update.duration", 50)
-		serverUpdateCounter = expvar.NewCounter("server.update.counter")
-		sessionUpdateDuration = expvar.NewHistogram("session.update.duration", 50)
-		sessionUpdateCounter = expvar.NewCounter("session.update.counter")
+	if _, err := metricsHandler.CreateMetric(ctx, &metrics.Descriptor{
+		DisplayName: "Total server count",
+		ServiceName: "server_backend",
+		ID:          "total_server_count",
+		ValueType:   metrics.ValueType{ValueType: metrics.TypeInt64{}},
+		Unit:        "servers",
+		Description: "The total number of concurrent servers",
+	}); err != nil {
+		level.Error(logger).Log("msg", "Failed to create metric", "metric", "total_server_count", "err", err)
+	}
+
+	if _, err := metricsHandler.CreateMetric(ctx, &metrics.Descriptor{
+		DisplayName: "Total session count",
+		ServiceName: "server_backend",
+		ID:          "total_session_count",
+		ValueType:   metrics.ValueType{ValueType: metrics.TypeInt64{}},
+		Unit:        "sessions",
+		Description: "The total number of concurrent sessions",
+	}); err != nil {
+		level.Error(logger).Log("msg", "Failed to create metric", "metric", "total_session_count", "err", err)
 	}
 
 	{
@@ -320,8 +326,8 @@ func main() {
 			Conn:          conn,
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
-			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClient, db, serverUpdateDuration, serverUpdateCounter, metricsHandler),
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClient, db, sessionUpdateDuration, sessionUpdateCounter, &routeMatrix, ipLocator, &geoClient, metricsHandler, biller, serverPrivateKey, routerPrivateKey),
+			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClient, db, metricsHandler),
+			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClient, db, &routeMatrix, ipLocator, &geoClient, metricsHandler, biller, serverPrivateKey, routerPrivateKey),
 		}
 
 		go func() {

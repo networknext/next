@@ -2,10 +2,11 @@ package metrics
 
 import (
 	"context"
+	"io"
 	"time"
 
 	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/metrics/generic"
+	"github.com/go-kit/kit/metrics"
 )
 
 // ValueType represents the type of the metric's value
@@ -61,5 +62,32 @@ type Handler interface {
 // Handle is the return result of creating or fetching a metric. It allows access to the metric's descriptor and gauge.
 type Handle struct {
 	Descriptor *Descriptor
-	Gauge      *generic.Gauge
+	Histogram  Histogram
+	Gauge      Gauge
+}
+
+// EmptyHandle is a metric handle with no data. Useful for testing and error handling.
+var EmptyHandle = Handle{
+	Descriptor: &Descriptor{},
+	Histogram:  &EmptyHistogram{},
+	Gauge:      &EmptyGauge{},
+}
+
+// Gauge is an interface that represents a metric gauge, based on go-kit's generic gauge.
+type Gauge interface {
+	With(labelValues ...string) metrics.Gauge
+	Set(value float64)
+	Add(delta float64)
+	Value() float64
+	LabelValues() []string
+}
+
+// Histogram is an interface that represents a metric histogram, based on go-kit's generic histogram.
+type Histogram interface {
+	With(labelValues ...string) metrics.Histogram
+	Observe(value float64)
+	Quantile(q float64) float64
+	LabelValues() []string
+	Print(w io.Writer)
+	Reset()
 }

@@ -3,6 +3,7 @@ package metrics
 import (
 	"context"
 	"fmt"
+	"math"
 	"sync"
 	"time"
 
@@ -89,15 +90,15 @@ func (handler *StackDriverHandler) MetricSubmitRoutine(ctx context.Context, logg
 			timeSeries := make([]*monitoringpb.TimeSeries, metricsCount)
 			for _, handle := range handler.metricsMap {
 				// Convert the labels from a 1D string slice to a map
-				labelValues := handle.Gauge.LabelValues()
-				for i := 0; i < len(labelValues); i++ {
+				labelValues := handle.Gauge.LabelValues() // LabelValues guarantees that there is an even number of label values
+				for i := 0; i < len(labelValues); i += 2 {
 					labels[labelValues[i]] = labelValues[i+1]
 				}
 
 				// Gets the metric value from the metric descriptor type
 				var value *monitoringpb.TypedValue
 				switch handle.Descriptor.ValueType.ValueType.(type) {
-				case *TypeBool:
+				case TypeBool:
 					var b bool
 					if handle.Gauge.Value() != 0 {
 						b = true
@@ -110,13 +111,13 @@ func (handler *StackDriverHandler) MetricSubmitRoutine(ctx context.Context, logg
 							BoolValue: b,
 						},
 					}
-				case *TypeInt64:
+				case TypeInt64:
 					value = &monitoringpb.TypedValue{
 						Value: &monitoringpb.TypedValue_Int64Value{
-							Int64Value: int64(handle.Gauge.Value()),
+							Int64Value: int64(math.Round(handle.Gauge.Value())),
 						},
 					}
-				case *TypeDouble:
+				case TypeDouble:
 					value = &monitoringpb.TypedValue{
 						Value: &monitoringpb.TypedValue_DoubleValue{
 							DoubleValue: handle.Gauge.Value(),
@@ -143,8 +144,12 @@ func (handler *StackDriverHandler) MetricSubmitRoutine(ctx context.Context, logg
 					},
 				}
 
+				// Reset metric data
+				handle.Gauge.Set(0.0)
+
 				index++
 			}
+
 			handler.metricsMapMutex.Unlock()
 
 			// Send the time series objects to StackDriver with a maximum send size to avoid overloading
@@ -160,6 +165,8 @@ func (handler *StackDriverHandler) MetricSubmitRoutine(ctx context.Context, logg
 					TimeSeries: timeSeries[i:e],
 				}); err != nil {
 					level.Error(logger).Log("msg", "Failed to write time series data", "err", err)
+				} else {
+					level.Debug(logger).Log("msg", "Metrics pushed to StackDriver")
 				}
 			}
 		case <-ctx.Done():
@@ -224,7 +231,8 @@ func (handler *StackDriverHandler) CreateMetric(ctx context.Context, descriptor 
 			Unit:        stackdriverDescriptor.Unit,
 			Description: stackdriverDescriptor.Description,
 		},
-		Gauge: generic.NewGauge(descriptor.DisplayName),
+		Histogram: &EmptyHistogram{}, // StackDriver doesn't need histograms
+		Gauge:     generic.NewGauge(descriptor.ID),
 	}
 
 	handler.metricsMapMutex.Lock()

@@ -10,7 +10,6 @@ import (
 	"github.com/networknext/backend/metrics"
 
 	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/metrics/generic"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -86,7 +85,7 @@ func TestStackDriverMetrics(t *testing.T) {
 	// Test gauge functions
 	gauge := handle.Gauge
 	labels := []string{"label1", "value1", "label2", "value2"}
-	gauge = gauge.With(labels...).(*generic.Gauge)
+	gauge = gauge.With(labels...).(metrics.Gauge)
 	labelsResult := gauge.LabelValues()
 	assert.Equal(t, labels, labelsResult)
 
