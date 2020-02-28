@@ -235,13 +235,39 @@ func main() {
 	go func() {
 		ps := redisClient.Subscribe("__keyevent@0__:expired")
 		for {
-			msg, _ := ps.ReceiveMessage()
+			// Recieve expiry event message
+			msg, err := ps.ReceiveMessage()
+			if err != nil {
+				level.Error(logger).Log("msg", "Error recieving expired message from pubsub", "err", err)
+				os.Exit(1)
+			}
+
+			// If it is a relay that is expiring...
 			if strings.HasPrefix(msg.Payload, routing.HashKeyPrefixRelay) {
-				rawID, _ := strconv.ParseUint(strings.TrimPrefix(msg.Payload, routing.HashKeyPrefixRelay), 10, 64)
+
+				// Retrieve the ID of the relay that has expired
+				rawID, err := strconv.ParseUint(strings.TrimPrefix(msg.Payload, routing.HashKeyPrefixRelay), 10, 64)
+				if err != nil {
+					level.Error(logger).Log("msg", "Failed to parse expired Relay ID from payload", "payload", msg.Payload, "err", err)
+					os.Exit(1)
+				}
+
+				// Log the ID
 				level.Warn(logger).Log("msg", fmt.Sprintf("relay with id %v has disconnected.", rawID))
+
+				// Remove geo location data associated with this relay
+				if err := geoClient.Remove(rawID); err != nil {
+					level.Error(logger).Log("msg", fmt.Sprintf("Failed to remove geoClient entry for relay with ID %v", rawID), "err", err)
+					os.Exit(1)
+				}
+
+				// Remove relay entry from Hashmap
+				if err := redisClient.HDel(routing.HashKeyAllRelays, msg.Payload).Err(); err != nil {
+					level.Error(logger).Log("msg", fmt.Sprintf("Failed to remove hashmap entry for relay with ID %v", rawID), "err", err)
+				}
+
+				// Remove relay entry from statsDB (which in turn means it won't appear in cost matrix)
 				statsdb.DeleteEntry(rawID)
-				geoClient.Remove(rawID)
-				redisClient.HDel(routing.HashKeyAllRelays, msg.Payload)
 			}
 		}
 	}()

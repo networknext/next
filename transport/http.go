@@ -245,10 +245,18 @@ func RelayUpdateHandlerFunc(logger log.Logger, redisClient *redis.Client, statsd
 		relaysToPing := make([]RelayPingData, 0)
 
 		// Regular set for expiry
-		redisClient.Set(relay.Key(), 0, routing.RelayTimeout)
+		if res := redisClient.Set(relay.Key(), 0, routing.RelayTimeout); res.Err() != nil {
+			level.Error(locallogger).Log("msg", "failed to store relay update expiry", "err", res.Err())
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 
 		// HSet for full relay data
-		redisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay)
+		if res := redisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay); res.Err() != nil {
+			level.Error(locallogger).Log("msg", "failed to store relay update", "err", res.Err())
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 
 		hgetallResult := redisClient.HGetAll(routing.HashKeyAllRelays)
 		if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
