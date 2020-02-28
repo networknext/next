@@ -102,8 +102,6 @@ namespace os
   template <size_t BuffSize>
   bool Socket::multirecv(core::GenericPacketBuffer<BuffSize>& packetBuff) const
   {
-    static_assert(BuffSize <= 1024);  // max recvmmsg will allow
-
     packetBuff.Count = recvmmsg(mSockFD,
      packetBuff.Headers.data(),
      BuffSize,

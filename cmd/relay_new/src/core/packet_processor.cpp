@@ -41,7 +41,7 @@ namespace
     NearPong = RELAY_NEAR_PONG_PACKET
   };
 
-  const size_t MaxPacketsToReceive = 100;
+  const size_t MaxPacketsToReceive = 1024 * 2;
 }  // namespace
 
 namespace core
