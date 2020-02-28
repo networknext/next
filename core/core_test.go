@@ -27,8 +27,8 @@ func CompareContinueTokens(a *ContinueToken, b *ContinueToken, t *testing.T) {
 		t.Errorf("expire timestamp mismatch: got %x, expected %x", a.expireTimestamp, b.expireTimestamp)
 	}
 
-	if a.sessionId != b.sessionId {
-		t.Errorf("session id mismatch: got %x, expected %x", a.sessionId, b.sessionId)
+	if a.sessionID != b.sessionID {
+		t.Errorf("session id mismatch: got %x, expected %x", a.sessionID, b.sessionID)
 	}
 
 	if a.sessionVersion != b.sessionVersion {
@@ -51,7 +51,7 @@ func TestContinueToken(t *testing.T) {
 
 	continueToken := &ContinueToken{}
 	continueToken.expireTimestamp = uint64(time.Now().Unix() + 10)
-	continueToken.sessionId = 0x123131231313131
+	continueToken.sessionID = 0x123131231313131
 	continueToken.sessionVersion = 100
 	continueToken.sessionFlags = 1
 
@@ -598,7 +598,7 @@ func TestCostMatrix(t *testing.T) {
 		return
 	}
 
-	assert.Equal(t, costMatrix.RelayIds, readCostMatrix.RelayIds, "relay id mismatch")
+	assert.Equal(t, costMatrix.RelayIDs, readCostMatrix.RelayIDs, "relay id mismatch")
 	// todo: costMatrix.RelayNames once the version is updated
 	assert.Equal(t, costMatrix.RelayAddresses, readCostMatrix.RelayAddresses, "relay address mismatch")
 	assert.Equal(t, costMatrix.RelayPublicKeys, readCostMatrix.RelayPublicKeys, "relay public key mismatch")
@@ -616,8 +616,8 @@ func TestRouteMatrixSanity(t *testing.T) {
 
 	routeMatrix := Optimize(costMatrix, 1.0)
 
-	src := routeMatrix.RelayIds
-	dest := routeMatrix.RelayIds
+	src := routeMatrix.RelayIDs
+	dest := routeMatrix.RelayIDs
 
 	for i := range src {
 		for j := range dest {
@@ -661,7 +661,7 @@ func TestRouteMatrix(t *testing.T) {
 
 	routeMatrix := Optimize(costMatrix, 5)
 	assert.NotNil(t, routeMatrix)
-	assert.Equal(t, costMatrix.RelayIds, routeMatrix.RelayIds, "relay id mismatch")
+	assert.Equal(t, costMatrix.RelayIDs, routeMatrix.RelayIDs, "relay id mismatch")
 	assert.Equal(t, costMatrix.RelayAddresses, routeMatrix.RelayAddresses, "relay address mismatch")
 	assert.Equal(t, costMatrix.RelayPublicKeys, routeMatrix.RelayPublicKeys, "relay public key mismatch")
 
@@ -675,7 +675,7 @@ func TestRouteMatrix(t *testing.T) {
 		return
 	}
 
-	assert.Equal(t, routeMatrix.RelayIds, readRouteMatrix.RelayIds, "relay id mismatch")
+	assert.Equal(t, routeMatrix.RelayIDs, readRouteMatrix.RelayIDs, "relay id mismatch")
 	// todo: relay names soon
 	assert.Equal(t, routeMatrix.RelayAddresses, readRouteMatrix.RelayAddresses, "relay address mismatch")
 	assert.Equal(t, routeMatrix.RelayPublicKeys, readRouteMatrix.RelayPublicKeys, "relay public key mismatch")
@@ -713,7 +713,7 @@ func TestRouteMatrix(t *testing.T) {
 
 			for k := 0; k < int(routeMatrix.Entries[i].RouteNumRelays[j]); k++ {
 				if routeMatrix.Entries[i].RouteRelays[j][k] != readRouteMatrix.Entries[i].RouteRelays[j][k] {
-					fmt.Printf("RouteRelayId mismatch\n")
+					fmt.Printf("RouteRelayID mismatch\n")
 					equal = false
 					break
 				}
@@ -728,8 +728,8 @@ func TestRouteMatrix(t *testing.T) {
 
 func Analyze(t *testing.T, route_matrix *RouteMatrix) {
 
-	src := route_matrix.RelayIds
-	dest := route_matrix.RelayIds
+	src := route_matrix.RelayIDs
+	dest := route_matrix.RelayIDs
 
 	entries := make([]int32, 0, len(src)*len(dest))
 
@@ -789,14 +789,14 @@ func Analyze(t *testing.T, route_matrix *RouteMatrix) {
 
 // -----------------------------------------------------
 
-func GetTestRelayId(name string) RelayId {
+func GetTestRelayID(name string) RelayID {
 	hash := fnv.New32a()
 	hash.Write([]byte(name))
-	return RelayId(hash.Sum32())
+	return RelayID(hash.Sum32())
 }
 
 type TestRelayData struct {
-	id         RelayId
+	id         RelayID
 	name       string
 	address    *net.UDPAddr
 	publicKey  []byte
@@ -829,7 +829,7 @@ func (env *TestEnvironment) Clear() {
 
 func (env *TestEnvironment) AddRelay(relayName string, relayAddress string) {
 	relay := &TestRelayData{}
-	relay.id = GetTestRelayId(relayName)
+	relay.id = GetTestRelayID(relayName)
 	relay.name = relayName
 	relay.address = ParseAddress(relayAddress)
 	relay.publicKey, relay.privateKey, _ = GenerateRelayKeyPair()
@@ -855,12 +855,12 @@ func (env *TestEnvironment) GetRelayData(relayName string) *TestRelayData {
 func (env *TestEnvironment) GetCostMatrix() *CostMatrix {
 	costMatrix := &CostMatrix{}
 	numRelays := len(env.relays)
-	costMatrix.RelayIds = make([]RelayId, numRelays)
+	costMatrix.RelayIDs = make([]RelayID, numRelays)
 	costMatrix.RelayNames = make([]string, numRelays)
 	costMatrix.RelayAddresses = make([][]byte, numRelays)
 	costMatrix.RelayPublicKeys = make([][]byte, numRelays)
 	for i := range env.relayArray {
-		costMatrix.RelayIds[i] = env.relayArray[i].id
+		costMatrix.RelayIDs[i] = env.relayArray[i].id
 		costMatrix.RelayNames[i] = env.relayArray[i].name
 		costMatrix.RelayAddresses[i] = []byte(env.relayArray[i].address.String())
 		costMatrix.RelayPublicKeys[i] = env.relayArray[i].publicKey
@@ -873,7 +873,7 @@ func (env *TestEnvironment) GetCostMatrix() *CostMatrix {
 			costMatrix.RTT[index] = env.rtt[i][j]
 		}
 	}
-	costMatrix.DatacenterRelays = make(map[DatacenterId][]RelayId)
+	costMatrix.DatacenterRelays = make(map[DatacenterID][]RelayID)
 	return costMatrix
 }
 
@@ -976,10 +976,10 @@ func TestCostMatrixReadAndWrite(t *testing.T) {
 	env.SetRTT("a", "chicago", 10)
 
 	costMatrix := env.GetCostMatrix()
-	costMatrix.DatacenterIds = []DatacenterId{
-		DatacenterId(0),
-		DatacenterId(1),
-		DatacenterId(2),
+	costMatrix.DatacenterIDs = []DatacenterID{
+		DatacenterID(0),
+		DatacenterID(1),
+		DatacenterID(2),
 	}
 	costMatrix.DatacenterNames = []string{
 		"a",
@@ -998,11 +998,11 @@ func TestCostMatrixReadAndWrite(t *testing.T) {
 		return
 	}
 
-	assert.Equal(t, costMatrix.RelayIds, readCostMatrix.RelayIds, "relay id mismatch")
+	assert.Equal(t, costMatrix.RelayIDs, readCostMatrix.RelayIDs, "relay id mismatch")
 	assert.Equal(t, costMatrix.RelayNames, readCostMatrix.RelayNames, "relay name mismatch")
 	assert.Equal(t, costMatrix.RelayAddresses, readCostMatrix.RelayAddresses, "relay address mismatch")
 	assert.Equal(t, costMatrix.RelayPublicKeys, readCostMatrix.RelayPublicKeys, "relay public key mismatch")
-	assert.Equal(t, costMatrix.DatacenterIds, readCostMatrix.DatacenterIds, "datacenter id mismatch")
+	assert.Equal(t, costMatrix.DatacenterIDs, readCostMatrix.DatacenterIDs, "datacenter id mismatch")
 	assert.Equal(t, costMatrix.DatacenterNames, readCostMatrix.DatacenterNames, "datacenter names mismatch")
 	assert.Equal(t, costMatrix.DatacenterRelays, readCostMatrix.DatacenterRelays, "datacenter relays mismatch")
 	assert.Equal(t, costMatrix.RTT, readCostMatrix.RTT, "relay rtt mismatch")
@@ -1040,7 +1040,7 @@ func TestRouteMatrixReadAndWrite(t *testing.T) {
 		return
 	}
 
-	assert.Equal(t, routeMatrix.RelayIds, readRouteMatrix.RelayIds, "relay id mismatch")
+	assert.Equal(t, routeMatrix.RelayIDs, readRouteMatrix.RelayIDs, "relay id mismatch")
 	assert.Equal(t, routeMatrix.RelayNames, readRouteMatrix.RelayNames, "relay name mismatch")
 	assert.Equal(t, routeMatrix.RelayAddresses, readRouteMatrix.RelayAddresses, "relay address mismatch")
 	assert.Equal(t, routeMatrix.RelayPublicKeys, readRouteMatrix.RelayPublicKeys, "relay public key mismatch")
@@ -1078,7 +1078,7 @@ func TestRouteMatrixReadAndWrite(t *testing.T) {
 
 			for k := 0; k < int(routeMatrix.Entries[i].RouteNumRelays[j]); k++ {
 				if routeMatrix.Entries[i].RouteRelays[j][k] != readRouteMatrix.Entries[i].RouteRelays[j][k] {
-					fmt.Printf("RouteRelayId mismatch\n")
+					fmt.Printf("RouteRelayID mismatch\n")
 					equal = false
 					break
 				}
@@ -1383,12 +1383,12 @@ func TestRouteSlice(t *testing.T) {
 
 	slice.RouteSample.NearRelays = make([]RelayStats, 2)
 
-	slice.RouteSample.NearRelays[0].Id = 10
+	slice.RouteSample.NearRelays[0].ID = 10
 	slice.RouteSample.NearRelays[0].RTT = 5.0
 	slice.RouteSample.NearRelays[0].Jitter = 1.0
 	slice.RouteSample.NearRelays[0].PacketLoss = 0.1
 
-	slice.RouteSample.NearRelays[1].Id = 11
+	slice.RouteSample.NearRelays[1].ID = 11
 	slice.RouteSample.NearRelays[1].RTT = 2.0
 	slice.RouteSample.NearRelays[1].Jitter = 0.1
 	slice.RouteSample.NearRelays[1].PacketLoss = 0.5
@@ -1397,7 +1397,7 @@ func TestRouteSlice(t *testing.T) {
 	slice.PredictedRoute.RTT = 50.0
 	slice.PredictedRoute.Jitter = 10.0
 	slice.PredictedRoute.PacketLoss = 0.01
-	slice.PredictedRoute.RelayIds = []RelayId{1, 2, 3, 4}
+	slice.PredictedRoute.RelayIDs = []RelayID{1, 2, 3, 4}
 
 	const BufferSize = 1024
 

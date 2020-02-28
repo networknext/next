@@ -86,11 +86,11 @@ type RelayStatsUpdate struct {
 
 // StatsEntryRelay is an entry for relay stats in the stats db
 type StatsEntryRelay struct {
-	Rtt               float32
+	RTT               float32
 	Jitter            float32
 	PacketLoss        float32
 	Index             int
-	RttHistory        [HistorySize]float32
+	RTTHistory        [HistorySize]float32
 	JitterHistory     [HistorySize]float32
 	PacketLossHistory [HistorySize]float32
 }
@@ -125,7 +125,7 @@ func NewStatsEntry() *StatsEntry {
 // NewStatsEntryRelay creates a new stats entry relay
 func NewStatsEntryRelay() *StatsEntryRelay {
 	entry := new(StatsEntryRelay)
-	entry.RttHistory = HistoryNotSet()
+	entry.RTTHistory = HistoryNotSet()
 	entry.JitterHistory = HistoryNotSet()
 	entry.PacketLossHistory = HistoryNotSet()
 	return entry
@@ -156,11 +156,11 @@ func (database *StatsDatabase) ProcessStats(statsUpdate *RelayStatsUpdate) {
 			relay = NewStatsEntryRelay()
 		}
 
-		relay.RttHistory[relay.Index] = stats.RTT
+		relay.RTTHistory[relay.Index] = stats.RTT
 		relay.JitterHistory[relay.Index] = stats.Jitter
 		relay.PacketLossHistory[relay.Index] = stats.PacketLoss
 		relay.Index = (relay.Index + 1) % HistorySize
-		relay.Rtt = HistoryMean(relay.RttHistory[:])
+		relay.RTT = HistoryMean(relay.RTTHistory[:])
 		relay.Jitter = HistoryMean(relay.JitterHistory[:])
 		relay.PacketLoss = HistoryMean(relay.PacketLossHistory[:])
 
@@ -203,7 +203,7 @@ func (database *StatsDatabase) GetSample(relay1, relay2 uint64) (float32, float3
 	b := database.GetEntry(relay2, relay1)
 	if a != nil && b != nil {
 		// math.Max requires float64 but we're returning float32's hence... whatever this is
-		return float32(math.Max(float64(a.Rtt), float64(b.Rtt))),
+		return float32(math.Max(float64(a.RTT), float64(b.RTT))),
 			float32(math.Max(float64(a.Jitter), float64(b.Jitter))),
 			float32(math.Max(float64(a.PacketLoss), float64(b.PacketLoss)))
 	}
@@ -218,7 +218,7 @@ func (database *StatsDatabase) GetCostMatrix(costMatrix *CostMatrix, redisClient
 	}
 	numRelays := len(hgetallResult.Val())
 
-	costMatrix.RelayIds = make([]uint64, numRelays)
+	costMatrix.RelayIDs = make([]uint64, numRelays)
 	costMatrix.RelayNames = make([]string, numRelays)
 	costMatrix.RelayAddresses = make([][]byte, numRelays)
 	costMatrix.RelayPublicKeys = make([][]byte, numRelays)
@@ -241,7 +241,7 @@ func (database *StatsDatabase) GetCostMatrix(costMatrix *CostMatrix, redisClient
 	})
 
 	for i, relayData := range stableRelays {
-		costMatrix.RelayIds[i] = relayData.ID
+		costMatrix.RelayIDs[i] = relayData.ID
 		costMatrix.RelayNames[i] = relayData.Name
 
 		costMatrix.RelayAddresses[i] = make([]byte, MaxRelayAddressLength)
@@ -257,14 +257,14 @@ func (database *StatsDatabase) GetCostMatrix(costMatrix *CostMatrix, redisClient
 	}
 
 	for id, name := range datacenterNameMap {
-		costMatrix.DatacenterIds = append(costMatrix.DatacenterIds, id)
+		costMatrix.DatacenterIDs = append(costMatrix.DatacenterIDs, id)
 		costMatrix.DatacenterNames = append(costMatrix.DatacenterNames, name)
 	}
 
 	for i := 0; i < numRelays; i++ {
 		for j := 0; j < i; j++ {
-			idI := uint64(costMatrix.RelayIds[i])
-			idJ := uint64(costMatrix.RelayIds[j])
+			idI := uint64(costMatrix.RelayIDs[i])
+			idJ := uint64(costMatrix.RelayIDs[j])
 			rtt, jitter, packetLoss := database.GetSample(idI, idJ)
 			ijIndex := TriMatrixIndex(i, j)
 			if rtt != InvalidRouteValue && jitter <= MaxJitter && packetLoss <= MaxPacketLoss {

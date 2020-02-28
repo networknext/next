@@ -55,7 +55,7 @@ func TestRelayDatabase(t *testing.T) {
 				ID:             id,
 				Name:           "Some Name",
 				Address:        addr,
-				Datacenter:     core.DatacenterId(rand.Int()%math.MaxInt32 + 1),
+				Datacenter:     core.DatacenterID(rand.Int()%math.MaxInt32 + 1),
 				DatacenterName: "Some Datacenter",
 				PublicKey:      RandomPublicKey(),
 				Shutdown:       false,
@@ -111,7 +111,7 @@ func TestRelayDatabase(t *testing.T) {
 	})
 }
 
-func TestGetRelayId(t *testing.T) {
+func TestGetRelayID(t *testing.T) {
 	t.Run("returns the hash of the supplied value", func(t *testing.T) {
 		duplicateFunction := func(value string) uint64 {
 			hash := fnv.New64a()

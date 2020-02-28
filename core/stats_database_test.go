@@ -8,17 +8,17 @@ import (
 )
 
 func TestStatsDatabase(t *testing.T) {
-	sourceId := core.GetRelayID("127.0.0.1")
-	relay1Id := core.GetRelayID("127.9.9.9")
-	relay2Id := core.GetRelayID("999.999.9.9")
+	sourceID := core.GetRelayID("127.0.0.1")
+	relay1ID := core.GetRelayID("127.9.9.9")
+	relay2ID := core.GetRelayID("999.999.9.9")
 
 	makeBasicStats := func() *core.StatsEntryRelay {
 		entry := core.NewStatsEntryRelay()
 		entry.Index = 1
-		entry.Rtt = 1
+		entry.RTT = 1
 		entry.Jitter = 1
 		entry.PacketLoss = 1
-		entry.RttHistory[0] = 1
+		entry.RTTHistory[0] = 1
 		entry.JitterHistory[0] = 1
 		entry.PacketLossHistory[0] = 1
 		return entry
@@ -26,16 +26,16 @@ func TestStatsDatabase(t *testing.T) {
 
 	t.Run("ProcessStats()", func(t *testing.T) {
 		update := core.RelayStatsUpdate{
-			ID: sourceId,
+			ID: sourceID,
 			PingStats: []core.RelayStatsPing{
 				core.RelayStatsPing{
-					RelayID:    relay1Id,
+					RelayID:    relay1ID,
 					RTT:        0.5,
 					Jitter:     0.7,
 					PacketLoss: 0.9,
 				},
 				core.RelayStatsPing{
-					RelayID:    relay2Id,
+					RelayID:    relay2ID,
 					RTT:        0,
 					Jitter:     0,
 					PacketLoss: 0,
@@ -56,7 +56,7 @@ func TestStatsDatabase(t *testing.T) {
 			statsdb.ProcessStats(&update)
 			entry, _ := statsdb.Entries[update.ID]
 			for _, r := range entry.Relays {
-				assert.NotNil(t, r.RttHistory)
+				assert.NotNil(t, r.RTTHistory)
 				assert.NotNil(t, r.JitterHistory)
 				assert.NotNil(t, r.PacketLossHistory)
 			}
@@ -69,10 +69,10 @@ func TestStatsDatabase(t *testing.T) {
 			assert.Equal(t, len(entry.Relays), len(update.PingStats))
 			for _, stats := range update.PingStats {
 				destRelay, _ := entry.Relays[stats.RelayID]
-				assert.Equal(t, stats.RTT, destRelay.Rtt)
+				assert.Equal(t, stats.RTT, destRelay.RTT)
 				assert.Equal(t, stats.Jitter, destRelay.Jitter)
 				assert.Equal(t, stats.PacketLoss, destRelay.PacketLoss)
-				assert.Equal(t, stats.RTT, destRelay.RttHistory[0])
+				assert.Equal(t, stats.RTT, destRelay.RTTHistory[0])
 				assert.Equal(t, stats.Jitter, destRelay.JitterHistory[0])
 				assert.Equal(t, stats.PacketLoss, destRelay.PacketLossHistory[0])
 			}
@@ -82,13 +82,13 @@ func TestStatsDatabase(t *testing.T) {
 			statsdb := core.NewStatsDatabase()
 			entry := core.NewStatsEntry()
 			statsEntry1 := makeBasicStats()
-			entry.Relays[relay1Id] = statsEntry1
+			entry.Relays[relay1ID] = statsEntry1
 			statsdb.Entries[update.ID] = *entry
 
 			statsdb.ProcessStats(&update)
 
 			assert.Equal(t, 2, statsEntry1.Index)
-			assert.Equal(t, float32(0.75), statsEntry1.Rtt)
+			assert.Equal(t, float32(0.75), statsEntry1.RTT)
 			assert.Equal(t, float32(0.85), statsEntry1.Jitter)
 			assert.Equal(t, float32(0.95), statsEntry1.PacketLoss)
 		})
@@ -99,8 +99,8 @@ func TestStatsDatabase(t *testing.T) {
 			statsdb := core.NewStatsDatabase()
 			entry := core.NewStatsEntry()
 			statsEntry1 := makeBasicStats()
-			entry.Relays[relay1Id] = statsEntry1
-			statsdb.Entries[sourceId] = *entry
+			entry.Relays[relay1ID] = statsEntry1
+			statsdb.Entries[sourceID] = *entry
 
 			cpy := statsdb.MakeCopy()
 
@@ -112,7 +112,7 @@ func TestStatsDatabase(t *testing.T) {
 		t.Run("entry does not exist", func(t *testing.T) {
 			statsdb := core.NewStatsDatabase()
 
-			stats := statsdb.GetEntry(sourceId, relay1Id)
+			stats := statsdb.GetEntry(sourceID, relay1ID)
 
 			assert.Nil(t, stats)
 		})
@@ -120,9 +120,9 @@ func TestStatsDatabase(t *testing.T) {
 		t.Run("entry exists but stats for the internal entry does not", func(t *testing.T) {
 			statsdb := core.NewStatsDatabase()
 			entry := core.NewStatsEntry()
-			statsdb.Entries[sourceId] = *entry
+			statsdb.Entries[sourceID] = *entry
 
-			stats := statsdb.GetEntry(sourceId, relay1Id)
+			stats := statsdb.GetEntry(sourceID, relay1ID)
 
 			assert.Nil(t, stats)
 		})
@@ -132,18 +132,18 @@ func TestStatsDatabase(t *testing.T) {
 			entry := core.NewStatsEntry()
 			// this entry makes no sense, test puposes only
 			statsEntry1 := makeBasicStats()
-			entry.Relays[relay1Id] = statsEntry1
-			statsdb.Entries[sourceId] = *entry
+			entry.Relays[relay1ID] = statsEntry1
+			statsdb.Entries[sourceID] = *entry
 
-			stats := statsdb.GetEntry(sourceId, relay1Id)
+			stats := statsdb.GetEntry(sourceID, relay1ID)
 
 			assert.Equal(t, statsEntry1, stats)
 		})
 	})
 
 	t.Run("GetSample()", func(t *testing.T) {
-		id1 := sourceId
-		id2 := relay1Id
+		id1 := sourceID
+		id2 := relay1ID
 
 		makeBasicConnection := func(statsdb *core.StatsDatabase, id1, id2 uint64) {
 			stats := core.NewStatsEntryRelay()
@@ -178,24 +178,24 @@ func TestStatsDatabase(t *testing.T) {
 
 		t.Run("both relays are valid", func(t *testing.T) {
 			statsdb := core.NewStatsDatabase()
-			entryForId1 := core.NewStatsEntry()
-			entryForId2 := core.NewStatsEntry()
-			statsForId1 := core.NewStatsEntryRelay()
-			statsForId2 := core.NewStatsEntryRelay()
+			entryForID1 := core.NewStatsEntry()
+			entryForID2 := core.NewStatsEntry()
+			statsForID1 := core.NewStatsEntryRelay()
+			statsForID2 := core.NewStatsEntryRelay()
 
-			statsForId1.Rtt = 1000.0
-			statsForId1.Jitter = 12.345
-			statsForId1.PacketLoss = 987.654
+			statsForID1.RTT = 1000.0
+			statsForID1.Jitter = 12.345
+			statsForID1.PacketLoss = 987.654
 
-			statsForId2.Rtt = 999.99
-			statsForId2.Jitter = 13.0
-			statsForId2.PacketLoss = 989.0
+			statsForID2.RTT = 999.99
+			statsForID2.Jitter = 13.0
+			statsForID2.PacketLoss = 989.0
 
-			entryForId1.Relays[id2] = statsForId2
-			entryForId2.Relays[id1] = statsForId1
+			entryForID1.Relays[id2] = statsForID2
+			entryForID2.Relays[id1] = statsForID1
 
-			statsdb.Entries[id1] = *entryForId1
-			statsdb.Entries[id2] = *entryForId2
+			statsdb.Entries[id1] = *entryForID1
+			statsdb.Entries[id2] = *entryForID2
 
 			rtt, jitter, packetLoss := statsdb.GetSample(id1, id2)
 
@@ -218,16 +218,16 @@ func TestStatsDatabase(t *testing.T) {
 			// make the datacenter of the first relay 0
 			// otherwise push the rest into the validDcIDs array
 			// same with Dc names
-			validDcIDs := make([]core.DatacenterId, 0)
+			validDcIDs := make([]core.DatacenterID, 0)
 			validDcNames := make([]string, 0)
 
 			i := 0
 			for _, r := range relaydb.Relays {
 				if i == 0 {
-					r.Datacenter = core.DatacenterId(0)
+					r.Datacenter = core.DatacenterID(0)
 					relaydb.Relays[core.GetRelayID(r.Address)] = r
 				} else {
-					r.Datacenter = core.DatacenterId(i)
+					r.Datacenter = core.DatacenterID(i)
 					relaydb.Relays[core.GetRelayID(r.Address)] = r
 					validDcIDs = append(validDcIDs, r.Datacenter)
 					validDcNames = append(validDcNames, r.DatacenterName)
@@ -237,7 +237,7 @@ func TestStatsDatabase(t *testing.T) {
 
 			modifyEntry := func(addr1, addr2 string, rtt, jitter, packetloss float32) {
 				entry := statsdb.GetEntry(core.GetRelayID(addr1), core.GetRelayID(addr2))
-				entry.Rtt = rtt
+				entry.RTT = rtt
 				entry.Jitter = jitter
 				entry.PacketLoss = packetloss
 			}
@@ -260,17 +260,17 @@ func TestStatsDatabase(t *testing.T) {
 
 			// assert each entry in the relay db is present in the cost matrix
 			for _, relay := range relaydb.Relays {
-				assert.Contains(t, costMatrix.RelayIds, core.RelayId(relay.ID))
+				assert.Contains(t, costMatrix.RelayIDs, core.RelayID(relay.ID))
 				assert.Contains(t, costMatrix.RelayNames, relay.Name)
 				assert.Contains(t, costMatrix.RelayPublicKeys, relay.PublicKey)
 			}
 
 			// assert the length of the valid ids equals the length of all the datacenter ids in the matrix
-			assert.Equal(t, len(validDcIDs), len(costMatrix.DatacenterIds))
+			assert.Equal(t, len(validDcIDs), len(costMatrix.DatacenterIDs))
 			assert.Equal(t, len(validDcNames), len(costMatrix.DatacenterNames))
 			for i, id := range validDcIDs {
 				// assert all valid ids are present in the matrix
-				assert.Contains(t, costMatrix.DatacenterIds, id)
+				assert.Contains(t, costMatrix.DatacenterIDs, id)
 
 				// find the relays whose datacenter id matches this one
 				validRelayIDs := make([]uint64, 0)
@@ -284,7 +284,7 @@ func TestStatsDatabase(t *testing.T) {
 				// assert the datacenter id -> relay ids mapping contains the actual ids
 				// i + 1 because in the first for loop each datacenter id is reset as i which is > 0
 				for _, relayID := range validRelayIDs {
-					assert.Contains(t, costMatrix.DatacenterRelays[core.DatacenterId(i+1)], core.RelayId(relayID))
+					assert.Contains(t, costMatrix.DatacenterRelays[core.DatacenterID(i+1)], core.RelayID(relayID))
 				}
 			}
 
@@ -300,7 +300,7 @@ func TestStatsDatabase(t *testing.T) {
 				indxOfI := -1
 				indxOfJ := -1
 
-				for i, id := range costMatrix.RelayIds {
+				for i, id := range costMatrix.RelayIDs {
 					if uint64(id) == addr1ID {
 						indxOfI = i
 					} else if uint64(id) == addr2ID {
