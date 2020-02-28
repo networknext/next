@@ -168,6 +168,12 @@ func (database *StatsDatabase) ProcessStats(statsUpdate *RelayStatsUpdate) {
 	}
 }
 
+func (database *StatsDatabase) DeleteEntry(relayID uint64) {
+	database.mu.Lock()
+	delete(database.Entries, relayID)
+	database.mu.Unlock()
+}
+
 // MakeCopy makes a exact copy of the stats db
 func (database *StatsDatabase) MakeCopy() *StatsDatabase {
 	databaseCopy := NewStatsDatabase()
