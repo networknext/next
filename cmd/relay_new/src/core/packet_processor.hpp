@@ -48,12 +48,35 @@ namespace core
 
     net::BufferedSender<1, 1> mSender;
 
-    void processPacket(GenericPacket& packet);
+    void processPacket(GenericPacket& packet, mmsghdr& header);
+
+    bool getAddrFromMsgHdr(net::Address& addr, const msghdr& hdr) const;
   };
 
   inline void PacketProcessor::flushResponses()
   {
     mSender.autoSend();
+  }
+
+  [[gnu::always_inline]] inline bool PacketProcessor::getAddrFromMsgHdr(net::Address& addr, const msghdr& hdr) const
+  {
+    bool retval = false;
+    auto sockad = reinterpret_cast<sockaddr*>(hdr.msg_name);
+
+    switch (sockad->sa_family) {
+      case AF_INET: {
+        auto sin = reinterpret_cast<sockaddr_in*>(sockad);
+        addr = *sin;
+        retval = true;
+      } break;
+      case AF_INET6: {
+        auto sin = reinterpret_cast<sockaddr_in6*>(sockad);
+        addr = *sin;
+        retval = true;
+      } break;
+    }
+
+    return retval;
   }
 }  // namespace core
 #endif

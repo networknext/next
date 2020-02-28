@@ -63,8 +63,6 @@ namespace os
     bool getPortIPv6(net::Address& addr);
 
     bool setSocketType(float timeout);
-
-    bool getAddrFromMsgHdr(net::Address& addr, const msghdr& hdr) const;
   };
 
   [[gnu::always_inline]] inline const net::Address& Socket::getAddress() const
@@ -81,27 +79,6 @@ namespace os
   {
     mOpen = false;
     shutdown(mSockFD, SHUT_RDWR);
-  }
-
-  [[gnu::always_inline]] inline bool Socket::getAddrFromMsgHdr(net::Address& addr, const msghdr& hdr) const
-  {
-    bool retval = false;
-    auto sockad = reinterpret_cast<sockaddr*>(hdr.msg_name);
-
-    switch (sockad->sa_family) {
-      case AF_INET: {
-        auto sin = reinterpret_cast<sockaddr_in*>(sockad);
-        addr = *sin;
-        retval = true;
-      } break;
-      case AF_INET6: {
-        auto sin = reinterpret_cast<sockaddr_in6*>(sockad);
-        addr = *sin;
-        retval = true;
-      } break;
-    }
-
-    return retval;
   }
 
   template <size_t BuffSize>
@@ -125,7 +102,7 @@ namespace os
   template <size_t BuffSize>
   bool Socket::multirecv(core::GenericPacketBuffer<BuffSize>& packetBuff) const
   {
-    static_assert(BuffSize <= 1024); // max recvmmsg will allow
+    static_assert(BuffSize <= 1024);  // max recvmmsg will allow
 
     packetBuff.Count = recvmmsg(mSockFD,
      packetBuff.Headers.data(),
@@ -136,18 +113,6 @@ namespace os
     if (packetBuff.Count < 0) {
       LogError("recvmmsg failed");
       return false;
-    }
-
-    for (int i = 0; i < packetBuff.Count; i++) {
-      auto& packet = packetBuff.Packets[i];
-      auto& header = packetBuff.Headers[i];
-
-      packet.Len = header.msg_len;
-
-      // convert the received addr to something understandable
-      if (!getAddrFromMsgHdr(packet.Addr, header.msg_hdr)) {
-        Log("could not get msg address");
-      }
     }
 
     return true;

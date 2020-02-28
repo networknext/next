@@ -84,14 +84,17 @@ namespace core
       LogDebug("got packets on {", listenIndx, "}, / count: ", count);
 
       for (size_t i = 0; i < count; i++) {
-        processPacket(buffer.Packets[i]);
+        processPacket(buffer.Packets[i], buffer.Headers[i]);
       }
     }
   }
 
-  inline void PacketProcessor::processPacket(GenericPacket& packet)
+  inline void PacketProcessor::processPacket(GenericPacket& packet, mmsghdr& header)
   {
     LogDebug("packet type: ", static_cast<unsigned int>(packet.Buffer[0]));
+
+    packet.Len = header.msg_len;
+
     switch (packet.Buffer[0]) {
       case RELAY_PING_PACKET: {
         if (packet.Len == RELAY_PING_PACKET_BYTES) {
@@ -122,6 +125,7 @@ namespace core
           mLogger->addToRouteReq(packet.Len);
         }
 
+        getAddrFromMsgHdr(packet.Addr, header.msg_hdr);
         handlers::RouteRequestHandler handler(
          mRelayClock, mRouterInfo, packet, packet.Len, packet.Addr, mKeychain, mSessionMap, mSocket);
 
@@ -132,6 +136,7 @@ namespace core
           mLogger->addToRouteResp(packet.Len);
         }
 
+        getAddrFromMsgHdr(packet.Addr, header.msg_hdr);
         LogDebug("got route response from ", packet.Addr);
 
         handlers::RouteResponseHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap, mSocket);
@@ -199,6 +204,7 @@ namespace core
           mLogger->addToNearPing(packet.Len);
         }
 
+        getAddrFromMsgHdr(packet.Addr, header.msg_hdr);
         handlers::NearPingHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, packet.Addr, mSocket);
 
         handler.handle();
