@@ -5,7 +5,7 @@
 
 namespace net
 {
-  template <size_t MaxCapacity, size_t TimeoutInMilliseconds>
+  template <size_t MaxCapacity, size_t TimeoutInMicroseconds>
   class BufferedSender
   {
     static_assert(MaxCapacity > 0 && MaxCapacity <= 1024);  // 1024 is the hard limit for sendmmsg()
@@ -37,8 +37,8 @@ namespace net
     void sendAll();
   };
 
-  template <size_t MaxCapacity, size_t TimeoutInMilliseconds>
-  BufferedSender<MaxCapacity, TimeoutInMilliseconds>::BufferedSender(const os::Socket& socket)
+  template <size_t MaxCapacity, size_t TimeoutInMicroseconds>
+  BufferedSender<MaxCapacity, TimeoutInMicroseconds>::BufferedSender(const os::Socket& socket)
    : mSocket(socket), mNextIndex(0), mShouldAutoSend(true)
   {
     mIOVecBuff.resize(MaxCapacity);
@@ -68,7 +68,7 @@ namespace net
     if (MaxCapacity > 1) {
       mSendThread = std::make_unique<std::thread>([this] {
         while (mSocket.isOpen()) {
-          std::this_thread::sleep_for(1ms * TimeoutInMilliseconds);
+          std::this_thread::sleep_for(1us * TimeoutInMicroseconds);
           autoSend();
           mShouldAutoSend = true;
         }
@@ -76,16 +76,16 @@ namespace net
     }
   }
 
-  template <size_t MaxCapacity, size_t TimeoutInMilliseconds>
-  BufferedSender<MaxCapacity, TimeoutInMilliseconds>::~BufferedSender()
+  template <size_t MaxCapacity, size_t TimeoutInMicroseconds>
+  BufferedSender<MaxCapacity, TimeoutInMicroseconds>::~BufferedSender()
   {
     if (mSendThread) {
       mSendThread->join();
     }
   }
 
-  template <size_t MaxCapacity, size_t TimeoutInMilliseconds>
-  void BufferedSender<MaxCapacity, TimeoutInMilliseconds>::queue(const net::Address& addr, const uint8_t* data, size_t len)
+  template <size_t MaxCapacity, size_t TimeoutInMicroseconds>
+  void BufferedSender<MaxCapacity, TimeoutInMicroseconds>::queue(const net::Address& addr, const uint8_t* data, size_t len)
   {
     assert(len <= RELAY_MAX_PACKET_BYTES);
     std::lock_guard<std::mutex> lk(mLock);
@@ -103,8 +103,8 @@ namespace net
     }
   }
 
-  template <size_t MaxCapacity, size_t TimeoutInMilliseconds>
-  void BufferedSender<MaxCapacity, TimeoutInMilliseconds>::autoSend()
+  template <size_t MaxCapacity, size_t TimeoutInMicroseconds>
+  void BufferedSender<MaxCapacity, TimeoutInMicroseconds>::autoSend()
   {
     std::lock_guard<std::mutex> lk(mLock);
     if (mShouldAutoSend) {
@@ -113,8 +113,8 @@ namespace net
     }
   }
 
-  template <size_t MaxCapacity, size_t TimeoutInMilliseconds>
-  void BufferedSender<MaxCapacity, TimeoutInMilliseconds>::sendAll()
+  template <size_t MaxCapacity, size_t TimeoutInMicroseconds>
+  void BufferedSender<MaxCapacity, TimeoutInMicroseconds>::sendAll()
   {
     if (mNextIndex > 0) {
       // mNextIndex also keeps track of how many messages are to be sent

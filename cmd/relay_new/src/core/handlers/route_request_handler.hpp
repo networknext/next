@@ -125,8 +125,6 @@ namespace core
 
       LogDebug("sending route request to ", token.NextAddr);
 
-      //mSocket.send(token.NextAddr, &mPacket.Buffer[RouteToken::EncryptedByteSize], mPacketSize - RouteToken::EncryptedByteSize);
-
       mSender.queue(token.NextAddr,
        &mPacket.Buffer[RouteToken::EncryptedByteSize],
        mPacketSize - RouteToken::EncryptedByteSize);  // after this, token & packet are invalid

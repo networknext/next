@@ -46,7 +46,7 @@ namespace core
 
     util::ThroughputLogger* mLogger;
 
-    net::BufferedSender<1, 1> mSender;
+    net::BufferedSender<10, 50000> mSender;
 
     void processPacket(GenericPacket& packet, mmsghdr& header);
 
