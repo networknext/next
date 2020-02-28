@@ -67,10 +67,10 @@ type Backend struct {
 	relayDatabase   map[string]RelayEntry
 	serverDatabase  map[string]ServerEntry
 	sessionDatabase map[uint64]SessionEntry
-	statsDatabase   *core.StatsDatabase
-	costMatrix      *core.CostMatrix
+	statsDatabase   *routing.StatsDatabase
+	costMatrix      *routing.CostMatrix
 	costMatrixData  []byte
-	routeMatrix     *core.RouteMatrix
+	routeMatrix     *routing.RouteMatrix
 	routeMatrixData []byte
 	nearData        []byte
 
@@ -110,51 +110,15 @@ const RouteMatrixBytes = 32 * 1024 * 1024
 
 func OptimizeThread() {
 	for {
-		time.Sleep(time.Second * 1)
-
-		backend.mutex.RLock()
-		statsDatabase := backend.statsDatabase.MakeCopy()
-		backend.mutex.RUnlock()
-
-		relayDatabase := &core.RelayDatabase{}
-		backend.mutex.RLock()
-		relayDatabase.Relays = make(map[uint64]core.RelayData)
-		for _, v := range backend.relayDatabase {
-			relayData := core.RelayData{}
-			relayData.ID = v.id
-			relayData.Name = v.name
-			relayData.Address = v.address.String()
-			relayData.Datacenter = core.DatacenterID(0)
-			relayData.DatacenterName = "local"
-			relayData.PublicKey = crypto.RelayPublicKey[:]
-			relayDatabase.Relays[relayData.ID] = relayData
-		}
-		backend.mutex.RUnlock()
-
-		costMatrix := statsDatabase.GetCostMatrix(relayDatabase)
-		costMatrixData := make([]byte, CostMatrixBytes)
-		costMatrixData = core.WriteCostMatrix(costMatrixData, costMatrix)
-
-		costMatrix, err := core.ReadCostMatrix(costMatrixData)
-		if err != nil {
-			panic("could not read cost matrix")
+		if err := backend.statsDatabase.GetCostMatrix(backend.costMatrix, backend.redisClient); err != nil {
+			fmt.Printf("error generating cost matrix: %v\n", err)
 		}
 
-		routeMatrix := core.Optimize(costMatrix, RTT_Threshold)
-
-		routeMatrixData := core.WriteRouteMatrix(make([]byte, RouteMatrixBytes), routeMatrix)
-
-		routeMatrix, err = core.ReadRouteMatrix(routeMatrixData)
-		if err != nil {
-			panic("could not read route matrix")
+		if err := backend.costMatrix.Optimize(backend.routeMatrix, RTT_Threshold); err != nil {
+			fmt.Printf("error generating route matrix: %v\n", err)
 		}
 
-		backend.mutex.Lock()
-		backend.costMatrix = costMatrix
-		backend.costMatrixData = costMatrixData
-		backend.routeMatrix = routeMatrix
-		backend.routeMatrixData = routeMatrixData
-		backend.mutex.Unlock()
+		time.Sleep(1 * time.Second)
 	}
 }
 
@@ -264,9 +228,9 @@ func main() {
 	backend.relayDatabase = make(map[string]RelayEntry)
 	backend.serverDatabase = make(map[string]ServerEntry)
 	backend.sessionDatabase = make(map[uint64]SessionEntry)
-	backend.statsDatabase = core.NewStatsDatabase()
-	backend.costMatrix = &core.CostMatrix{}
-	backend.routeMatrix = &core.RouteMatrix{}
+	backend.statsDatabase = routing.NewStatsDatabase()
+	backend.costMatrix = &routing.CostMatrix{}
+	backend.routeMatrix = &routing.RouteMatrix{}
 
 	redisServer, err := miniredis.Run()
 	if err != nil {
@@ -846,7 +810,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	statsUpdate := &core.RelayStatsUpdate{}
+	statsUpdate := &routing.RelayStatsUpdate{}
 	statsUpdate.ID = relayEntry.id
 
 	for i := 0; i < int(num_relays); i++ {
@@ -864,7 +828,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		if !ReadFloat32(body, &index, &packet_loss) {
 			return
 		}
-		ping := core.RelayStatsPing{}
+		ping := routing.RelayStatsPing{}
 		ping.RelayID = id
 		ping.RTT = rtt
 		ping.Jitter = jitter
@@ -956,8 +920,8 @@ func WebServer() {
 	router := mux.NewRouter()
 	router.HandleFunc("/relay_init", RelayInitHandler).Methods("POST")
 	router.HandleFunc("/relay_update", RelayUpdateHandler).Methods("POST")
-	router.HandleFunc("/cost_matrix", CostMatrixHandler).Methods("GET")
-	router.HandleFunc("/route_matrix", RouteMatrixHandler).Methods("GET")
+	router.Handle("/cost_matrix", backend.costMatrix).Methods("GET")
+	router.Handle("/route_matrix", backend.routeMatrix).Methods("GET")
 	router.HandleFunc("/near", NearHandler).Methods("GET")
 	http.ListenAndServe(fmt.Sprintf(":%d", NEXT_RELAY_BACKEND_PORT), router)
 }
