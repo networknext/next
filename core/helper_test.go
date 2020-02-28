@@ -31,7 +31,7 @@ func FillRelayDatabase(relaydb *core.RelayDatabase) {
 			ID:             id,
 			Name:           addr,
 			Address:        addr,
-			Datacenter:     core.DatacenterId(rand.Int()%(math.MaxInt32-1) + 1), // non-zero random number
+			Datacenter:     core.DatacenterID(rand.Int()%(math.MaxInt32-1) + 1), // non-zero random number
 			DatacenterName: RandomString(5),
 			PublicKey:      RandomPublicKey(),
 			LastUpdateTime: uint64(updateTime),

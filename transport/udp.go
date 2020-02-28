@@ -127,13 +127,13 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 		locallogger = log.With(locallogger, "sdk", packet.Version.String())
 
 		// Get the buyer information for the id in the packet
-		buyer, ok := storer.Buyer(packet.CustomerId)
+		buyer, ok := storer.Buyer(packet.CustomerID)
 		if !ok {
-			level.Error(locallogger).Log("msg", "failed to get buyer", "customer_id", packet.CustomerId)
+			level.Error(locallogger).Log("msg", "failed to get buyer", "customer_id", packet.CustomerID)
 			return
 		}
 
-		locallogger = log.With(locallogger, "customer_id", packet.CustomerId)
+		locallogger = log.With(locallogger, "customer_id", packet.CustomerID)
 
 		// Drop the packet if the signed packet data cannot be verified with the buyers public key
 		if !crypto.Verify(buyer.PublicKey, packet.GetSignData(), packet.Signature) {
@@ -171,7 +171,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 		serverentry = ServerCacheEntry{
 			Sequence:   packet.Sequence,
 			Server:     routing.Server{Addr: packet.ServerPrivateAddress, PublicKey: packet.ServerRoutePublicKey},
-			Datacenter: routing.Datacenter{ID: packet.DatacenterId},
+			Datacenter: routing.Datacenter{ID: packet.DatacenterID},
 			SDKVersion: packet.Version,
 		}
 		result := redisClient.Set("SERVER-"+incoming.SourceAddr.String(), serverentry, 5*time.Minute)
@@ -229,7 +229,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			return // TODO: direct here?
 		}
 
-		locallogger := log.With(logger, "src_addr", incoming.SourceAddr.String(), "server_addr", packet.ServerAddress.String(), "client_addr", packet.ClientAddress.String(), "session_id", packet.SessionId)
+		locallogger := log.With(logger, "src_addr", incoming.SourceAddr.String(), "server_addr", packet.ServerAddress.String(), "client_addr", packet.ClientAddress.String(), "session_id", packet.SessionID)
 
 		var serverCacheEntry ServerCacheEntry
 		var sessionCacheEntry SessionCacheEntry
@@ -237,7 +237,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		// Start building session response packet, defaulting to a direct route
 		response := SessionResponsePacket{
 			Sequence:  packet.Sequence,
-			SessionId: packet.SessionId,
+			SessionID: packet.SessionID,
 			RouteType: int32(routing.RouteTypeDirect),
 		}
 
@@ -245,7 +245,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		tx := redisClient.TxPipeline()
 		{
 			serverCacheCmd := tx.Get("SERVER-" + incoming.SourceAddr.String())
-			sessionCacheCmd := tx.Get(fmt.Sprintf("SESSION-%d", packet.SessionId))
+			sessionCacheCmd := tx.Get(fmt.Sprintf("SESSION-%d", packet.SessionID))
 			tx.Exec()
 
 			// Note that if we fail to retrieve the server data, we don't bother responding since server will ignore response without ServerRoutePublicKey set
@@ -286,15 +286,15 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 
 		locallogger = log.With(locallogger, "datacenter_id", serverCacheEntry.Datacenter.ID)
 
-		buyer, ok := storer.Buyer(packet.CustomerId)
+		buyer, ok := storer.Buyer(packet.CustomerID)
 		if !ok {
-			err := fmt.Errorf("failed to get buyer with customer ID %v", packet.CustomerId)
+			err := fmt.Errorf("failed to get buyer with customer ID %v", packet.CustomerID)
 			level.Error(locallogger).Log("err", err)
 			handleError(w, response, serverPrivateKey, err)
 			return
 		}
 
-		locallogger = log.With(locallogger, "customer_id", packet.CustomerId)
+		locallogger = log.With(locallogger, "customer_id", packet.CustomerID)
 
 		if !crypto.Verify(buyer.PublicKey, packet.GetSignData(), packet.Signature) {
 			err := errors.New("failed to verify packet signature with buyer public key")
@@ -366,13 +366,13 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		predictedNextStats := &nextRoute.Stats
 
 		lastNextStats := &routing.Stats{
-			RTT:        float64(packet.NextMinRtt),
+			RTT:        float64(packet.NextMinRTT),
 			Jitter:     float64(packet.NextJitter),
 			PacketLoss: float64(packet.NextPacketLoss),
 		}
 
 		directRouteStats := &routing.Stats{
-			RTT:        float64(packet.DirectMinRtt),
+			RTT:        float64(packet.DirectMinRTT),
 			Jitter:     float64(packet.DirectJitter),
 			PacketLoss: float64(packet.DirectPacketLoss),
 		}
@@ -428,7 +428,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 					token = &routing.ContinueRouteToken{
 						Expires: timestampExpire,
 
-						SessionId: packet.SessionId,
+						SessionID: packet.SessionID,
 
 						SessionVersion: sessionCacheEntry.Version,
 						SessionFlags:   0, // Haven't figured out what this is for
@@ -453,7 +453,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 					token = &routing.NextRouteToken{
 						Expires: uint64(timestampExpire),
 
-						SessionId: packet.SessionId,
+						SessionID: packet.SessionID,
 
 						SessionVersion: sessionCacheEntry.Version,
 						SessionFlags:   0, // Haven't figured out what this is for
@@ -489,10 +489,10 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 
 			// Fill in the near relays
 			response.NumNearRelays = int32(len(clientrelays))
-			response.NearRelayIds = make([]uint64, len(clientrelays))
+			response.NearRelayIDs = make([]uint64, len(clientrelays))
 			response.NearRelayAddresses = make([]net.UDPAddr, len(clientrelays))
 			for idx, relay := range clientrelays {
-				response.NearRelayIds[idx] = relay.ID
+				response.NearRelayIDs[idx] = relay.ID
 				response.NearRelayAddresses[idx] = relay.Addr
 			}
 
@@ -513,7 +513,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		}
 
 		billingEntry := newBillingEntry(chosenRoute, routeType, &buyer.RoutingRulesSettings, decisionReason, &packet, sessionCacheEntry.TimestampStart, timestampNow)
-		if err := biller.Bill(context.Background(), packet.SessionId, billingEntry); err != nil {
+		if err := biller.Bill(context.Background(), packet.SessionID, billingEntry); err != nil {
 			level.Error(locallogger).Log("msg", "billing failed", "err", err)
 		}
 
@@ -552,7 +552,7 @@ func handleError(w io.Writer, packet SessionResponsePacket, privateKey []byte, e
 func cacheSessionData(redisClient redis.Cmdable, prevCacheEntry *SessionCacheEntry, packet *SessionUpdatePacket, routeHash uint64, timestampExpire uint64, responseData []byte) (SessionCacheEntry, error) {
 	// Save some of the packet information to be used in SessionUpdateHandlerFunc
 	sessionCacheEntry := SessionCacheEntry{
-		SessionID:       packet.SessionId,
+		SessionID:       packet.SessionID,
 		Sequence:        packet.Sequence,
 		RouteHash:       routeHash,
 		TimestampStart:  prevCacheEntry.TimestampStart,
@@ -560,7 +560,7 @@ func cacheSessionData(redisClient redis.Cmdable, prevCacheEntry *SessionCacheEnt
 		Version:         prevCacheEntry.Version, //This was already incremented for the route tokens
 		Response:        responseData,
 	}
-	result := redisClient.Set(fmt.Sprintf("SESSION-%d", packet.SessionId), sessionCacheEntry, 5*time.Minute)
+	result := redisClient.Set(fmt.Sprintf("SESSION-%d", packet.SessionID), sessionCacheEntry, 5*time.Minute)
 	if result.Err() != nil {
 		return SessionCacheEntry{}, result.Err()
 	}
@@ -626,7 +626,7 @@ func newBillingEntry(
 		UsageBytesDown:       (1000 * uint64(packet.KbpsDown)) / 8 * sliceDuration, // Converts Kbps to bytes
 		Timestamp:            timestampNow,
 		TimestampStart:       timestampStart,
-		PredictedRtt:         float32(route.Stats.RTT),
+		PredictedRTT:         float32(route.Stats.RTT),
 		PredictedJitter:      float32(route.Stats.Jitter),
 		PredictedPacketLoss:  float32(route.Stats.PacketLoss),
 		RouteChanged:         routeType != routing.RouteTypeContinue,

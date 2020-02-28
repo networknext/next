@@ -24,11 +24,11 @@ type RelayStatsUpdate struct {
 
 // StatsEntryRelay is an entry for relay stats in the stats db
 type StatsEntryRelay struct {
-	Rtt               float32
+	RTT               float32
 	Jitter            float32
 	PacketLoss        float32
 	Index             int
-	RttHistory        [HistorySize]float32
+	RTTHistory        [HistorySize]float32
 	JitterHistory     [HistorySize]float32
 	PacketLossHistory [HistorySize]float32
 }
@@ -61,7 +61,7 @@ func NewStatsEntry() *StatsEntry {
 // NewStatsEntryRelay creates a new stats entry relay
 func NewStatsEntryRelay() *StatsEntryRelay {
 	entry := new(StatsEntryRelay)
-	entry.RttHistory = HistoryNotSet()
+	entry.RTTHistory = HistoryNotSet()
 	entry.JitterHistory = HistoryNotSet()
 	entry.PacketLossHistory = HistoryNotSet()
 	return entry
@@ -87,11 +87,11 @@ func (database *StatsDatabase) ProcessStats(statsUpdate *RelayStatsUpdate) {
 			relay = NewStatsEntryRelay()
 		}
 
-		relay.RttHistory[relay.Index] = stats.RTT
+		relay.RTTHistory[relay.Index] = stats.RTT
 		relay.JitterHistory[relay.Index] = stats.Jitter
 		relay.PacketLossHistory[relay.Index] = stats.PacketLoss
 		relay.Index = (relay.Index + 1) % HistorySize
-		relay.Rtt = HistoryMean(relay.RttHistory[:])
+		relay.RTT = HistoryMean(relay.RTTHistory[:])
 		relay.Jitter = HistoryMean(relay.JitterHistory[:])
 		relay.PacketLoss = HistoryMean(relay.PacketLossHistory[:])
 
@@ -130,7 +130,7 @@ func (database *StatsDatabase) GetSample(relay1, relay2 uint64) (float32, float3
 	b := database.GetEntry(relay2, relay1)
 	if a != nil && b != nil {
 		// math.Max requires float64 but we're returning float32's hence... whatever this is
-		return float32(math.Max(float64(a.Rtt), float64(b.Rtt))),
+		return float32(math.Max(float64(a.RTT), float64(b.RTT))),
 			float32(math.Max(float64(a.Jitter), float64(b.Jitter))),
 			float32(math.Max(float64(a.PacketLoss), float64(b.PacketLoss)))
 	}
@@ -143,14 +143,14 @@ func (database *StatsDatabase) GetCostMatrix(relaydb *RelayDatabase) *CostMatrix
 	numRelays := len(relaydb.Relays)
 
 	costMatrix := &CostMatrix{}
-	costMatrix.RelayIds = make([]RelayId, numRelays)
+	costMatrix.RelayIDs = make([]RelayID, numRelays)
 	costMatrix.RelayNames = make([]string, numRelays)
 	costMatrix.RelayAddresses = make([][]byte, numRelays)
 	costMatrix.RelayPublicKeys = make([][]byte, numRelays)
-	costMatrix.DatacenterRelays = make(map[DatacenterId][]RelayId)
+	costMatrix.DatacenterRelays = make(map[DatacenterID][]RelayID)
 	costMatrix.RTT = make([]int32, TriMatrixLength(numRelays))
 
-	datacenterNameMap := make(map[DatacenterId]string)
+	datacenterNameMap := make(map[DatacenterID]string)
 
 	var stableRelays []RelayData
 	for _, relayData := range relaydb.Relays {
@@ -162,26 +162,26 @@ func (database *StatsDatabase) GetCostMatrix(relaydb *RelayDatabase) *CostMatrix
 	})
 
 	for i, relayData := range stableRelays {
-		costMatrix.RelayIds[i] = RelayId(relayData.ID)
+		costMatrix.RelayIDs[i] = RelayID(relayData.ID)
 		costMatrix.RelayNames[i] = relayData.Name
 		costMatrix.RelayPublicKeys[i] = relayData.PublicKey
-		if relayData.Datacenter != DatacenterId(0) {
+		if relayData.Datacenter != DatacenterID(0) {
 			datacenter := costMatrix.DatacenterRelays[relayData.Datacenter]
-			datacenter = append(datacenter, RelayId(relayData.ID))
+			datacenter = append(datacenter, RelayID(relayData.ID))
 			costMatrix.DatacenterRelays[relayData.Datacenter] = datacenter
 			datacenterNameMap[relayData.Datacenter] = relayData.DatacenterName
 		}
 	}
 
 	for id, name := range datacenterNameMap {
-		costMatrix.DatacenterIds = append(costMatrix.DatacenterIds, id)
+		costMatrix.DatacenterIDs = append(costMatrix.DatacenterIDs, id)
 		costMatrix.DatacenterNames = append(costMatrix.DatacenterNames, name)
 	}
 
 	for i := 0; i < numRelays; i++ {
 		for j := 0; j < i; j++ {
-			idI := uint64(costMatrix.RelayIds[i])
-			idJ := uint64(costMatrix.RelayIds[j])
+			idI := uint64(costMatrix.RelayIDs[i])
+			idJ := uint64(costMatrix.RelayIDs[j])
 			rtt, jitter, packetLoss := database.GetSample(idI, idJ)
 			ijIndex := TriMatrixIndex(i, j)
 			if rtt != InvalidRouteValue && jitter <= MaxJitter && packetLoss <= MaxPacketLoss {

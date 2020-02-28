@@ -147,16 +147,16 @@ func (manager *RouteManager) AddRoute(rtt int32, relays ...uint32) {
 
 func Optimize(costMatrix *CostMatrix, thresholdRTT int32) *RouteMatrix {
 
-	numRelays := len(costMatrix.RelayIds)
+	numRelays := len(costMatrix.RelayIDs)
 
 	entryCount := TriMatrixLength(numRelays)
 
 	result := &RouteMatrix{}
-	result.RelayIds = costMatrix.RelayIds
+	result.RelayIDs = costMatrix.RelayIDs
 	result.RelayNames = costMatrix.RelayNames
 	result.RelayAddresses = costMatrix.RelayAddresses
 	result.RelayPublicKeys = costMatrix.RelayPublicKeys
-	result.DatacenterIds = costMatrix.DatacenterIds
+	result.DatacenterIDs = costMatrix.DatacenterIDs
 	result.DatacenterNames = costMatrix.DatacenterNames
 	result.DatacenterRelays = costMatrix.DatacenterRelays
 	result.Entries = make([]RouteMatrixEntry, entryCount)
