@@ -21,7 +21,7 @@ namespace core
 
       void writeFromAddr(const net::Address& addr);
 
-      GenericPacket& Data;
+      GenericPacket& Internal;
       const int Size;
 
      private:
@@ -29,13 +29,13 @@ namespace core
       std::optional<net::Address> mFrom;
     };
 
-    inline RelayPingPacket::RelayPingPacket(GenericPacket& packet, int size): Data(packet), Size(size) {}
+    inline RelayPingPacket::RelayPingPacket(GenericPacket& packet, int size): Internal(packet), Size(size) {}
 
     inline const uint64_t& RelayPingPacket::getSeqNum()
     {
       if (!mSequenceNumber.has_value()) {
         size_t index = 1;
-        mSequenceNumber = encoding::ReadUint64(Data, index);
+        mSequenceNumber = encoding::ReadUint64(Internal.Buffer, index);
       }
 
       return mSequenceNumber.value();
@@ -46,7 +46,7 @@ namespace core
       if (!mFrom.has_value()) {
         size_t index = 9;
         net::Address addr;
-        encoding::ReadAddress(Data, index, addr);
+        encoding::ReadAddress(Internal.Buffer, index, addr);
         mFrom = addr;
       }
 
@@ -56,7 +56,7 @@ namespace core
     inline void RelayPingPacket::writeFromAddr(const net::Address& addr)
     {
       size_t index = 9;
-      encoding::WriteAddress(Data, index, addr);
+      encoding::WriteAddress(Internal.Buffer, index, addr);
     }
   }  // namespace packets
 }  // namespace core

@@ -40,6 +40,8 @@ namespace
     NearPing = RELAY_NEAR_PING_PACKET,
     NearPong = RELAY_NEAR_PONG_PACKET
   };
+
+  const size_t MaxPacketsToReceive = 100;
 }  // namespace
 
 namespace core
@@ -69,10 +71,7 @@ namespace core
     int listenIndx = listenCounter.fetch_add(1);
     (void)listenIndx;
 
-    GenericPacket rawPacket;
-
-    std::vector<net::Message> messages;
-    messages.resize(100);
+    GenericPacketBuffer<MaxPacketsToReceive> buffer;
 
     LogDebug("listening for packets {", listenIndx, '}');
 
@@ -80,151 +79,134 @@ namespace core
     var.notify_one();
 
     while (this->mShouldProcess) {
-      if (false) {
-        net::Address from;
-        const int packetSize = mSocket.recv(from, rawPacket.data(), sizeof(uint8_t) * rawPacket.size());
+      auto count = mSocket.multirecv(buffer);
 
-        LogDebug("got packet on {", listenIndx, "} / type: ", static_cast<unsigned int>(rawPacket[0]));
+      LogDebug("got packets on {", listenIndx, "}, / count: ", count);
 
-        processPacket(rawPacket, packetSize, from);
-
-      } else {
-        auto count = mSocket.multirecv(messages);
-
-        LogDebug("got packets on {", listenIndx, "}, / count: ", count);
-
-        for (size_t i = 0; i < count; i++) {
-          auto& msg = messages[i];
-          if (msg.Len > rawPacket.size()) {
-            continue;
-          }
-
-          std::copy(msg.Data.begin(), msg.Data.begin() + msg.Len, rawPacket.begin());
-          processPacket(rawPacket, msg.Len, msg.Addr);
-        }
+      for (size_t i = 0; i < count; i++) {
+        processPacket(buffer.Packets[i]);
       }
     }
   }
 
-  inline void PacketProcessor::processPacket(GenericPacket& rawPacket, int packetSize, const net::Address& from)
+  inline void PacketProcessor::processPacket(GenericPacket& packet)
   {
-    LogDebug("packet type: ", static_cast<unsigned int>(rawPacket[0]));
-    switch (rawPacket[0]) {
+    LogDebug("packet type: ", static_cast<unsigned int>(packet.Buffer[0]));
+    switch (packet.Buffer[0]) {
       case RELAY_PING_PACKET: {
-        if (packetSize == RELAY_PING_PACKET_BYTES) {
+        if (packet.Len == RELAY_PING_PACKET_BYTES) {
           LogDebug("got relay ping packet");
           if (mLogger != nullptr) {
-            mLogger->addToRelayPingPacket(packetSize);
+            mLogger->addToRelayPingPacket(packet.Len);
           }
 
-          handlers::RelayPingHandler handler(mRelayClock, mRouterInfo, rawPacket, packetSize, mSocket);
+          handlers::RelayPingHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSocket);
 
           handler.handle();
         }
       } break;
       case RELAY_PONG_PACKET: {
-        if (packetSize == RELAY_PING_PACKET_BYTES) {
+        if (packet.Len == RELAY_PING_PACKET_BYTES) {
           LogDebug("got relay pong packet");
           if (mLogger != nullptr) {
-            mLogger->addToRelayPongPacket(packetSize);
+            mLogger->addToRelayPongPacket(packet.Len);
           }
 
-          handlers::RelayPongHandler handler(mRelayClock, mRouterInfo, rawPacket, packetSize, mRelayManager);
+          handlers::RelayPongHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mRelayManager);
 
           handler.handle();
         }
       } break;
       case RELAY_ROUTE_REQUEST_PACKET: {
         if (mLogger != nullptr) {
-          mLogger->addToRouteReq(packetSize);
+          mLogger->addToRouteReq(packet.Len);
         }
 
         handlers::RouteRequestHandler handler(
-         mRelayClock, mRouterInfo, rawPacket, packetSize, from, mKeychain, mSessionMap, mSocket);
+         mRelayClock, mRouterInfo, packet, packet.Len, packet.Addr, mKeychain, mSessionMap, mSocket);
 
         handler.handle();
       } break;
       case RELAY_ROUTE_RESPONSE_PACKET: {
         if (mLogger != nullptr) {
-          mLogger->addToRouteResp(packetSize);
+          mLogger->addToRouteResp(packet.Len);
         }
 
-        LogDebug("got route response from ", from);
+        LogDebug("got route response from ", packet.Addr);
 
-        handlers::RouteResponseHandler handler(mRelayClock, mRouterInfo, rawPacket, packetSize, mSessionMap, mSocket);
+        handlers::RouteResponseHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap, mSocket);
 
         handler.handle();
       } break;
       case RELAY_CONTINUE_REQUEST_PACKET: {
         if (mLogger != nullptr) {
-          mLogger->addToContReq(packetSize);
+          mLogger->addToContReq(packet.Len);
         }
 
-        handlers::ContinueRequestHandler handler(
-         mRelayClock, mRouterInfo, rawPacket, packetSize, mSessionMap, mSocket, mKeychain);
+        handlers::ContinueRequestHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap, mSocket, mKeychain);
 
         handler.handle();
       } break;
       case RELAY_CONTINUE_RESPONSE_PACKET: {
         if (mLogger != nullptr) {
-          mLogger->addToContResp(packetSize);
+          mLogger->addToContResp(packet.Len);
         }
 
-        handlers::ContinueResponseHandler handler(mRelayClock, mRouterInfo, rawPacket, packetSize, mSessionMap, mSocket);
+        handlers::ContinueResponseHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap, mSocket);
 
         handler.handle();
       } break;
       case RELAY_CLIENT_TO_SERVER_PACKET: {
         LogDebug("got client to server packet");
         if (mLogger != nullptr) {
-          mLogger->addToCliToServ(packetSize);
+          mLogger->addToCliToServ(packet.Len);
         }
 
-        handlers::ClientToServerHandler handler(mRelayClock, mRouterInfo, rawPacket, packetSize, mSessionMap, mSocket);
+        handlers::ClientToServerHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap, mSocket);
 
         handler.handle();
       } break;
       case RELAY_SERVER_TO_CLIENT_PACKET: {
         LogDebug("got server to client packet");
         if (mLogger != nullptr) {
-          mLogger->addToServToCli(packetSize);
+          mLogger->addToServToCli(packet.Len);
         }
 
-        handlers::ServerToClientHandler handler(mRelayClock, mRouterInfo, rawPacket, packetSize, mSessionMap, mSocket);
+        handlers::ServerToClientHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap, mSocket);
 
         handler.handle();
       } break;
       case RELAY_SESSION_PING_PACKET: {
         if (mLogger != nullptr) {
-          mLogger->addToSessionPing(packetSize);
+          mLogger->addToSessionPing(packet.Len);
         }
 
-        handlers::SessionPingHandler handler(mRelayClock, mRouterInfo, rawPacket, packetSize, mSessionMap, mSocket);
+        handlers::SessionPingHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap, mSocket);
 
         handler.handle();
       } break;
       case RELAY_SESSION_PONG_PACKET: {
         if (mLogger != nullptr) {
-          mLogger->addToSessionPong(packetSize);
+          mLogger->addToSessionPong(packet.Len);
         }
 
-        handlers::SessionPongHandler handler(mRelayClock, mRouterInfo, rawPacket, packetSize, mSessionMap, mSocket);
+        handlers::SessionPongHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap, mSocket);
 
         handler.handle();
       } break;
       case RELAY_NEAR_PING_PACKET: {
         if (mLogger != nullptr) {
-          mLogger->addToNearPing(packetSize);
+          mLogger->addToNearPing(packet.Len);
         }
 
-        handlers::NearPingHandler handler(mRelayClock, mRouterInfo, rawPacket, packetSize, from, mSocket);
+        handlers::NearPingHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, packet.Addr, mSocket);
 
         handler.handle();
       } break;
       default: {
-        LogDebug("received unknown packet type: ", std::hex, (int)rawPacket[0]);
+        LogDebug("received unknown packet type: ", std::hex, (int)packet.Buffer[0], std::dec);
         if (mLogger != nullptr) {
-          mLogger->addToUnknown(packetSize);
+          mLogger->addToUnknown(packet.Len);
         }
       } break;
     }

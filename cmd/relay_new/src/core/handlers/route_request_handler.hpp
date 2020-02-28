@@ -114,11 +114,11 @@ namespace core
       }  // TODO else what?
 
       // remove this part of the token by offseting it the request packet bytes
-      mPacket[RouteToken::EncryptedByteSize] = RELAY_ROUTE_REQUEST_PACKET;
+      mPacket.Buffer[RouteToken::EncryptedByteSize] = RELAY_ROUTE_REQUEST_PACKET;
 
       LogDebug("sending route request to ", token.NextAddr);
 
-      mSocket.send(token.NextAddr, mPacket.data() + RouteToken::EncryptedByteSize, mPacketSize - RouteToken::EncryptedByteSize);
+      mSocket.send(token.NextAddr, mPacket.Buffer.data() + RouteToken::EncryptedByteSize, mPacketSize - RouteToken::EncryptedByteSize);
 
       // net::Message msg(token.NextAddr, mPacket, RouteToken::EncryptedByteSize, mPacketSize - RouteToken::EncryptedByteSize);
       // mSender.queue(msg);  // after this, token & packet are invalid

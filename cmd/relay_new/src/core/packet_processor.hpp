@@ -48,7 +48,7 @@ namespace core
 
     net::BufferedSender<1, 1> mSender;
 
-    void processPacket(GenericPacket& rawPacket, int packetSize, const net::Address& from);
+    void processPacket(GenericPacket& packet);
   };
 
   inline void PacketProcessor::flushResponses()

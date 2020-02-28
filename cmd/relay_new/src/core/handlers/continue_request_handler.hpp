@@ -88,10 +88,10 @@ namespace core
       }
 
       session->ExpireTimestamp = token.ExpireTimestamp;
-      mPacket[ContinueToken::EncryptedByteSize] = RELAY_CONTINUE_REQUEST_PACKET;
+      mPacket.Buffer[ContinueToken::EncryptedByteSize] = RELAY_CONTINUE_REQUEST_PACKET;
 
       mSocket.send(
-       session->NextAddr, mPacket.data() + ContinueToken::EncryptedByteSize, mPacketSize - ContinueToken::EncryptedByteSize);
+       session->NextAddr, mPacket.Buffer.data() + ContinueToken::EncryptedByteSize, mPacketSize - ContinueToken::EncryptedByteSize);
     }
   }  // namespace handlers
 }  // namespace core

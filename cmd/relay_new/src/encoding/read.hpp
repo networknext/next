@@ -41,20 +41,21 @@ namespace encoding
   template <size_t BuffSize>
   uint64_t ReadUint64(const std::array<uint8_t, BuffSize>& buff, size_t& index);
 
-  template <size_t BuffSize, size_t StorageSize>
-  void ReadBytes(const std::array<uint8_t, BuffSize>& buff, size_t& index, std::array<uint8_t, StorageSize>& storage, size_t len);
+  template <size_t BuffSize, size_t StorageBufferSize>
+  void ReadBytes(
+   const std::array<uint8_t, BuffSize>& buff, size_t& index, std::array<uint8_t, StorageBufferSize>& storage, size_t len);
 
   template <size_t BuffSize>
   void ReadAddress(const std::array<uint8_t, BuffSize>& buff, size_t& index, net::Address& addr);
 
   template <size_t BuffSize>
-  inline uint8_t ReadUint8(const std::array<uint8_t, BuffSize>& buff, size_t& index)
+  [[gnu::always_inline]] inline uint8_t ReadUint8(const std::array<uint8_t, BuffSize>& buff, size_t& index)
   {
     return buff[index++];
   }
 
   template <size_t BuffSize>
-  inline uint16_t ReadUint16(const std::array<uint8_t, BuffSize>& buff, size_t& index)
+  [[gnu::always_inline]] inline uint16_t ReadUint16(const std::array<uint8_t, BuffSize>& buff, size_t& index)
   {
     GCC_NO_OPT_OUT;
     uint16_t retval;
@@ -64,7 +65,7 @@ namespace encoding
   }
 
   template <size_t BuffSize>
-  inline uint32_t ReadUint32(const std::array<uint8_t, BuffSize>& buff, size_t& index)
+  [[gnu::always_inline]] inline uint32_t ReadUint32(const std::array<uint8_t, BuffSize>& buff, size_t& index)
   {
     uint32_t retval;
     retval = buff[index++];
@@ -75,7 +76,7 @@ namespace encoding
   }
 
   template <size_t BuffSize>
-  inline uint64_t ReadUint64(const std::array<uint8_t, BuffSize>& buff, size_t& index)
+  [[gnu::always_inline]] inline uint64_t ReadUint64(const std::array<uint8_t, BuffSize>& buff, size_t& index)
   {
     uint64_t retval;
     retval = buff[index++];
@@ -89,18 +90,18 @@ namespace encoding
     return retval;
   }
 
-  template <size_t BuffSize, size_t StorageSize>
+  template <size_t BuffSize, size_t StorageBufferSize>
   [[gnu::always_inline]] inline void ReadBytes(
-   const std::array<uint8_t, BuffSize>& buff, size_t& index, std::array<uint8_t, StorageSize>& storage, size_t len)
+   const std::array<uint8_t, BuffSize>& buff, size_t& index, std::array<uint8_t, StorageBufferSize>& storage, size_t len)
   {
-    assert(len <= StorageSize);
+    assert(len <= StorageBufferSize);
     assert(index + len <= BuffSize);
     std::copy(buff.begin() + index, buff.begin() + index + len, storage.begin());
     index += len;
   }
 
   template <size_t BuffSize>
-  inline void ReadAddress(const std::array<uint8_t, BuffSize>& buff, size_t& index, net::Address& addr)
+  [[gnu::always_inline]] inline void ReadAddress(const std::array<uint8_t, BuffSize>& buff, size_t& index, net::Address& addr)
   {
     GCC_NO_OPT_OUT;
 #ifndef NDEBUG

@@ -3,9 +3,11 @@
 
 #include "encoding/write.hpp"
 
-#include "net/message.hpp"
-
 using namespace std::chrono_literals;
+namespace
+{
+  const size_t MaxPacketsToSend = MAX_RELAYS;
+}
 
 namespace core
 {
@@ -18,35 +20,67 @@ namespace core
   {
     readyToSend = true;
     var.notify_one();
+
+    GenericPacketBuffer<MaxPacketsToSend> buffer;
+
     while (mShouldProcess) {
+      std::this_thread::sleep_for(10ms);
+
       std::array<core::PingData, MAX_RELAYS> pings;
 
-      auto numPings = mRelayManager.getPingData(pings);
+      auto numberOfRelaysToPing = mRelayManager.getPingData(pings);
 
-      std::vector<net::Message> messages;
-      messages.resize(numPings);
+      if (numberOfRelaysToPing == 0) {
+        continue;
+      }
 
-      for (unsigned int i = 0; i < messages.size(); i++) {
-        auto& msg = messages[i];
-        msg.Addr = pings[i].Addr;  // send to pings addr
-        msg.Len = RELAY_PING_PACKET_BYTES;
-        msg.Data.resize(msg.Len);
+      for (unsigned int i = 0; i < numberOfRelaysToPing; i++) {
+        auto& pkt = buffer.Packets[i];
+
+        auto& mhdr = buffer.Headers[i];
+        auto& hdr = mhdr.msg_hdr;
+
+        auto& addr = pings[i].Addr;
+
+        auto& iov = buffer.IOVecBuff[i];
+
+        LogDebug("[*] Processing ping for ", addr);
+
+        fillMsgHdrWithAddr(hdr, addr);
+
+        iov.iov_len = RELAY_PING_PACKET_BYTES;
 
         size_t index = 0;
 
-        encoding::WriteUint8(msg.Data, index, RELAY_PING_PACKET);
-        encoding::WriteUint64(msg.Data, index, pings[i].Seq);
+        // write data to the buffer
+        {
+          encoding::WriteUint8(pkt.Buffer, index, RELAY_PING_PACKET);
+          encoding::WriteUint64(pkt.Buffer, index, pings[i].Seq);
 
-        // use the recv port addr here so the receiving relay knows where to send it back to
-        encoding::WriteAddress(msg.Data, index, mRelayAddress);
+          // use the recv port addr here so the receiving relay knows where to send it back to
+          encoding::WriteAddress(pkt.Buffer, index, mRelayAddress);
+        }
       }
 
-      int sentMessages = 0;
-      if (!mSocket.multisend(messages, numPings, sentMessages)) {
-        Log("failed to send messages, amount to send: ", numPings, ", actual sent: ", sentMessages);
-      }
+      buffer.Count = numberOfRelaysToPing;
 
-      std::this_thread::sleep_for(10ms);
+      if (!mSocket.multisend(buffer)) {
+        Log("failed to send messages, amount to send: ", numberOfRelaysToPing, ", actual sent: ", buffer.Count);
+      }
+    }
+  }
+
+  inline void PingProcessor::fillMsgHdrWithAddr(msghdr& hdr, const net::Address& addr)
+  {
+    // TODO need error handling here
+    if (addr.Type == net::AddressType::IPv4) {
+      auto sin = reinterpret_cast<sockaddr_in*>(hdr.msg_name);
+      addr.to(*sin);
+      hdr.msg_namelen = sizeof(*sin);
+    } else if (addr.Type == net::AddressType::IPv6) {
+      auto sin = reinterpret_cast<sockaddr_in6*>(hdr.msg_name);
+      addr.to(*sin);
+      hdr.msg_namelen = sizeof(*sin);
     }
   }
 }  // namespace core

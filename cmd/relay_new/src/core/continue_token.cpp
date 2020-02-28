@@ -19,7 +19,7 @@ namespace core
     std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
     encoding::RandomBytes(nonce, nonce.size());  // fill nonce
 
-    encoding::WriteBytes(packet, index, nonce, nonce.size());  // write nonce to the buffer
+    encoding::WriteBytes(packet.Buffer, index, nonce, nonce.size());  // write nonce to the buffer
 
     const size_t afterNonce = index;
 
@@ -59,7 +59,7 @@ namespace core
 
   void ContinueToken::write(GenericPacket& packet, size_t& index)
   {
-    assert(index + ContinueToken::ByteSize < packet.size());
+    assert(index + ContinueToken::ByteSize < packet.Buffer.size());
 
     const size_t start = index;
     (void)start;
@@ -85,10 +85,10 @@ namespace core
    const crypto::GenericKey& receiverPublicKey,
    const std::array<uint8_t, crypto_box_NONCEBYTES>& nonce)
   {
-    assert(packet.size() >= ContinueToken::EncryptionLength);
+    assert(packet.Buffer.size() >= ContinueToken::EncryptionLength);
 
-    if (crypto_box_easy(packet.data() + index,
-         packet.data() + index,
+    if (crypto_box_easy(packet.Buffer.data() + index,
+         packet.Buffer.data() + index,
          ContinueToken::ByteSize,
          nonce.data(),
          receiverPublicKey.data(),
@@ -105,12 +105,12 @@ namespace core
    const crypto::GenericKey& receiverPrivateKey,
    const size_t nonceIndex)
   {
-    assert(packet.size() >= ContinueToken::EncryptionLength);
+    assert(packet.Buffer.size() >= ContinueToken::EncryptionLength);
 
-    if (crypto_box_open_easy(packet.data() + index,
-         packet.data() + index,
+    if (crypto_box_open_easy(packet.Buffer.data() + index,
+         packet.Buffer.data() + index,
          ContinueToken::EncryptionLength,
-         packet.data() + nonceIndex,
+         packet.Buffer.data() + nonceIndex,
          senderPublicKey.data(),
          receiverPrivateKey.data()) != 0) {
       return false;

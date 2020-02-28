@@ -34,9 +34,9 @@ namespace core
       net::Address addr;  // the actual from
 
       size_t index = 1;  // skip the identifier byte
-      uint64_t sequence = encoding::ReadUint64(mPacket, index);
+      uint64_t sequence = encoding::ReadUint64(mPacket.Buffer, index);
       // pings are sent on a different port, need to read actual address to stay consistent
-      encoding::ReadAddress(mPacket, index, addr);
+      encoding::ReadAddress(mPacket.Buffer, index, addr);
       LogDebug("got pong packet from ", addr);
 
       // process the pong time

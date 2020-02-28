@@ -21,6 +21,8 @@ namespace core
     core::RelayManager& mRelayManager;
     volatile bool& mShouldProcess;
     const net::Address& mRelayAddress;
+
+    void fillMsgHdrWithAddr(msghdr& hdr, const net::Address& addr);
   };
 }  // namespace core
 #endif

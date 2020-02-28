@@ -43,8 +43,8 @@ namespace core
         return;
       }
 
-      mPacket[0] = RELAY_NEAR_PONG_PACKET;
-      mSocket.send(mFrom, mPacket.data(), mPacketSize - 16);  // ? why 16?
+      mPacket.Buffer[0] = RELAY_NEAR_PONG_PACKET;
+      mSocket.send(mFrom, mPacket.Buffer.data(), mPacketSize - 16);  // ? why 16?
     }
   }  // namespace handlers
 }  // namespace core

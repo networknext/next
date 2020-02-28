@@ -44,14 +44,14 @@ namespace core
       auto& recevingAddr = mSocket.getAddress();  // where the sender should talk to this relay
       packets::RelayPingPacket packet(mPacket, mPacketSize);
 
-      packet.Data[0] = RELAY_PONG_PACKET;
+      packet.Internal.Buffer[0] = RELAY_PONG_PACKET;
       sendingAddr = packet.getFromAddr();
       packet.writeFromAddr(recevingAddr);
 
       LogDebug("got ping packet from ", sendingAddr);
 
       // TODO probably want to send immediately than use sendmmsg here?
-      if (!mSocket.send(sendingAddr, packet.Data.data(), RELAY_PING_PACKET_BYTES)) {
+      if (!mSocket.send(sendingAddr, packet.Internal.Buffer.data(), RELAY_PING_PACKET_BYTES)) {
         Log("failed to send data");
       }
     }

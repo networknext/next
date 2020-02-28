@@ -26,44 +26,39 @@ namespace encoding
 
   void write_address(uint8_t** buffer, const legacy::relay_address_t* address);
 
-  /* StorageBuffer & DataBuffer can be anything that has operator[], begin(), and end(), so array, vector, etc...
-   *
-   * technically even maps work here though it's not recomended because what would be the point
-   */
+  template <size_t StorageBufferSize>
+  void WriteUint8(std::array<uint8_t, StorageBufferSize>& buff, size_t& index, uint8_t value);
 
-  template <class StorageBuffer>
-  void WriteUint8(StorageBuffer& buff, size_t& index, uint8_t value);
+  template <size_t StorageBufferSize>
+  void WriteUint16(std::array<uint8_t, StorageBufferSize>& buff, size_t& index, uint16_t value);
 
-  template <class StorageBuffer>
-  void WriteUint16(StorageBuffer& buff, size_t& index, uint16_t value);
+  template <size_t StorageBufferSize>
+  void WriteUint32(std::array<uint8_t, StorageBufferSize>& buff, size_t& index, uint32_t value);
 
-  template <class StorageBuffer>
-  void WriteUint32(StorageBuffer& buff, size_t& index, uint32_t value);
+  template <size_t StorageBufferSize>
+  void WriteUint64(std::array<uint8_t, StorageBufferSize>& buff, size_t& index, uint64_t value);
 
-  template <class StorageBuffer>
-  void WriteUint64(StorageBuffer& buff, size_t& index, uint64_t value);
+  template <size_t StorageBufferSize, size_t DataBufferSize>
+  void WriteBytes(std::array<uint8_t, StorageBufferSize>& buff, size_t& index, const std::array<uint8_t, DataBufferSize>& data, size_t len);
 
-  template <class StorageBuffer, class DataBuffer>
-  void WriteBytes(StorageBuffer& buff, size_t& index, const DataBuffer& data, size_t len);
+  template <size_t StorageBufferSize>
+  void WriteAddress(std::array<uint8_t, StorageBufferSize>& buff, size_t& index, const net::Address& addr);
 
-  template <class StorageBuffer>
-  void WriteAddress(StorageBuffer& buff, size_t& index, const net::Address& addr);
-
-  template <class StorageBuffer>
-  [[gnu::always_inline]] inline void WriteUint8(StorageBuffer& buff, size_t& index, uint8_t value)
+  template <size_t StorageBufferSize>
+  [[gnu::always_inline]] inline void WriteUint8(std::array<uint8_t, StorageBufferSize>& buff, size_t& index, uint8_t value)
   {
     buff[index++] = value;
   }
 
-  template <class StorageBuffer>
-  [[gnu::always_inline]] inline void WriteUint16(StorageBuffer& buff, size_t& index, uint16_t value)
+  template <size_t StorageBufferSize>
+  [[gnu::always_inline]] inline void WriteUint16(std::array<uint8_t, StorageBufferSize>& buff, size_t& index, uint16_t value)
   {
     buff[index++] = value & 0xFF;
     buff[index++] = value >> 8;
   }
 
-  template <class StorageBuffer>
-  void WriteUint32(StorageBuffer& buff, size_t& index, uint32_t value)
+  template <size_t StorageBufferSize>
+  [[gnu::always_inline]] inline void WriteUint32(std::array<uint8_t, StorageBufferSize>& buff, size_t& index, uint32_t value)
   {
     buff[index++] = value & 0xFF;
     buff[index++] = (value >> 8) & 0xFF;
@@ -73,8 +68,8 @@ namespace encoding
 
   // TODO consider #pragma GCC unroll n, cleaner code same perf
 
-  template <class StorageBuffer>
-  [[gnu::always_inline]] inline void WriteUint64(StorageBuffer& buff, size_t& index, uint64_t value)
+  template <size_t StorageBufferSize>
+  [[gnu::always_inline]] inline void WriteUint64(std::array<uint8_t, StorageBufferSize>& buff, size_t& index, uint64_t value)
   {
     buff[index++] = value & 0xFF;
     buff[index++] = (value >> 8) & 0xFF;
@@ -86,16 +81,16 @@ namespace encoding
     buff[index++] = value >> 56;
   }
 
-  template <class StorageBuffer, class DataBuffer>
-  [[gnu::always_inline]] inline void WriteBytes(StorageBuffer& buff, size_t& index, const DataBuffer& data, size_t len)
+  template <size_t StorageBufferSize, size_t DataBufferSize>
+  [[gnu::always_inline]] inline void WriteBytes(std::array<uint8_t, StorageBufferSize>& buff, size_t& index, const std::array<uint8_t, DataBufferSize>& data, size_t len)
   {
     assert(index + len < buff.size());
     std::copy(data.begin(), data.begin() + len, buff.begin() + index);
     index += len;
   }
 
-  template <class StorageBuffer>
-  [[gnu::always_inline]] inline void WriteAddress(StorageBuffer& buff, size_t& index, const net::Address& addr)
+  template <size_t StorageBufferSize>
+  [[gnu::always_inline]] inline void WriteAddress(std::array<uint8_t, StorageBufferSize>& buff, size_t& index, const net::Address& addr)
   {
     GCC_NO_OPT_OUT;
 #ifndef NDEBUG

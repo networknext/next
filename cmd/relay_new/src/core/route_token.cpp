@@ -18,7 +18,7 @@ namespace core
     std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
     encoding::RandomBytes(nonce, nonce.size());  // fill nonce
 
-    encoding::WriteBytes(packet, index, nonce, nonce.size());
+    encoding::WriteBytes(packet.Buffer, index, nonce, nonce.size());
 
     const size_t afterNonce = index;
 
@@ -57,17 +57,17 @@ namespace core
 
   void RouteToken::write(GenericPacket& packet, size_t& index)
   {
-    assert(packet.size() >= RouteToken::ByteSize);
+    assert(packet.Buffer.size() >= RouteToken::ByteSize);
 
     const auto start = index;
 
     (void)start;
 
     Token::write(packet, index);
-    encoding::WriteUint32(packet, index, KbpsUp);
-    encoding::WriteUint32(packet, index, KbpsDown);
-    encoding::WriteAddress(packet, index, NextAddr);
-    encoding::WriteBytes(packet, index, PrivateKey, crypto_box_SECRETKEYBYTES);
+    encoding::WriteUint32(packet.Buffer, index, KbpsUp);
+    encoding::WriteUint32(packet.Buffer, index, KbpsDown);
+    encoding::WriteAddress(packet.Buffer, index, NextAddr);
+    encoding::WriteBytes(packet.Buffer, index, PrivateKey, crypto_box_SECRETKEYBYTES);
 
     assert(index - start == RouteToken::ByteSize);
   }
@@ -79,10 +79,10 @@ namespace core
     (void)start;
 
     Token::read(packet, index);
-    KbpsUp = encoding::ReadUint32(packet, index);
-    KbpsDown = encoding::ReadUint32(packet, index);
-    encoding::ReadAddress(packet, index, NextAddr);
-    encoding::ReadBytes(packet, index, PrivateKey, crypto_box_SECRETKEYBYTES);
+    KbpsUp = encoding::ReadUint32(packet.Buffer, index);
+    KbpsDown = encoding::ReadUint32(packet.Buffer, index);
+    encoding::ReadAddress(packet.Buffer, index, NextAddr);
+    encoding::ReadBytes(packet.Buffer, index, PrivateKey, crypto_box_SECRETKEYBYTES);
 
     assert(index - start == RouteToken::ByteSize);
   }
@@ -93,10 +93,10 @@ namespace core
    const crypto::GenericKey& receiverPublicKey,
    const std::array<uint8_t, crypto_box_NONCEBYTES>& nonce)
   {
-    assert(packet.size() >= RouteToken::EncryptionLength);
+    assert(packet.Buffer.size() >= RouteToken::EncryptionLength);
 
-    if (crypto_box_easy(packet.data() + index,
-         packet.data() + index,
+    if (crypto_box_easy(packet.Buffer.data() + index,
+         packet.Buffer.data() + index,
          RouteToken::ByteSize,
          nonce.data(),
          receiverPublicKey.data(),
@@ -113,10 +113,10 @@ namespace core
    const crypto::GenericKey& receiverPrivateKey,
    const size_t nonceIndex)
   {
-    if (crypto_box_open_easy(packet.data() + index,
-         packet.data() + index,
+    if (crypto_box_open_easy(packet.Buffer.data() + index,
+         packet.Buffer.data() + index,
          RouteToken::EncryptionLength,
-         packet.data() + nonceIndex,
+         packet.Buffer.data() + nonceIndex,
          senderPublicKey.data(),
          receiverPrivateKey.data()) != 0) {
       return false;

@@ -3,8 +3,9 @@
 #ifndef OS_LINUX_SOCKET
 #define OS_LINUX_SOCKET
 
+#include "core/packet.hpp"
+
 #include "net/address.hpp"
-#include "net/message.hpp"
 #include "net/net.hpp"
 
 #include "util/logger.hpp"
@@ -29,13 +30,14 @@ namespace os
      net::Address& addr, size_t sendBuffSize, size_t recvBuffSize, float timeout, bool reuse, int lingerTimeInSeconds);
 
     bool send(const net::Address& to, const uint8_t* data, size_t size) const;
-    bool multisend(const std::vector<net::Message>& multiMessages, size_t count, int& messagesSent) const;
 
-    // for compat only
-    bool send(const legacy::relay_address_t& to, const uint8_t* data, size_t size) const;
+    template <size_t BuffSize>
+    bool multisend(core::GenericPacketBuffer<BuffSize>& packetBuff) const;
 
     size_t recv(net::Address& from, uint8_t* data, size_t maxSize) const;
-    size_t multirecv(std::vector<net::Message>& messages) const;
+
+    template <size_t BuffSize>
+    bool multirecv(core::GenericPacketBuffer<BuffSize>& packetBuff) const;
 
     void close();
 
@@ -88,22 +90,67 @@ namespace os
 
     switch (sockad->sa_family) {
       case AF_INET: {
-        if (hdr.msg_namelen == sizeof(sockaddr_in)) {
-          auto sin = reinterpret_cast<sockaddr_in*>(sockad);
-          addr = *sin;
-          retval = true;
-        }
+        auto sin = reinterpret_cast<sockaddr_in*>(sockad);
+        addr = *sin;
+        retval = true;
       } break;
       case AF_INET6: {
-        if (hdr.msg_namelen == sizeof(sockaddr_in6)) {
-          auto sin = reinterpret_cast<sockaddr_in6*>(sockad);
-          addr = *sin;
-          retval = true;
-        }
+        auto sin = reinterpret_cast<sockaddr_in6*>(sockad);
+        addr = *sin;
+        retval = true;
       } break;
     }
 
     return retval;
+  }
+
+  template <size_t BuffSize>
+  bool Socket::multisend(core::GenericPacketBuffer<BuffSize>& packetBuff) const
+  {
+    static_assert(BuffSize <= 1024);  // max sendmmsg will allow
+    assert(packetBuff.Count > 0);
+    assert(packetBuff.Count <= 1024);
+
+    auto toSend = packetBuff.Count;
+    packetBuff.Count = sendmmsg(mSockFD, packetBuff.Headers.data(), toSend, 0);
+
+    if (packetBuff.Count < 0) {
+      LogError("sendmmsg() failed");
+      return false;
+    }
+
+    return toSend == packetBuff.Count;
+  }
+
+  template <size_t BuffSize>
+  bool Socket::multirecv(core::GenericPacketBuffer<BuffSize>& packetBuff) const
+  {
+    static_assert(BuffSize <= 1024); // max recvmmsg will allow
+
+    packetBuff.Count = recvmmsg(mSockFD,
+     packetBuff.Headers.data(),
+     BuffSize,
+     MSG_WAITFORONE,
+     nullptr);  // DON'T EVER USE TIMEOUT, linux man pages state it is broken
+
+    if (packetBuff.Count < 0) {
+      LogError("recvmmsg failed");
+      return false;
+    }
+
+    for (int i = 0; i < packetBuff.Count; i++) {
+      auto& packet = packetBuff.Packets[i];
+      auto& header = packetBuff.Headers[i];
+
+      packet.Len = header.msg_len;
+
+      // convert the received addr to something understandable
+      if (!getAddrFromMsgHdr(packet.Addr, header.msg_hdr)) {
+        Log("could not get msg address");
+      }
+    }
+
+    return true;
   }
 
   // helpers to reduce static cast's

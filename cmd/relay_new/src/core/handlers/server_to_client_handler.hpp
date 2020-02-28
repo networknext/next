@@ -48,7 +48,7 @@ namespace core
       uint8_t session_version;
 
       if (relay::relay_peek_header(
-           RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, mPacket.data(), mPacketSize) !=
+           RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, mPacket.Buffer.data(), mPacketSize) !=
           RELAY_OK) {
         return;
       }
@@ -82,12 +82,12 @@ namespace core
       }
 
       relay_replay_protection_advance_sequence(&session->ServerToClientProtection, clean_sequence);
-      if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->PrivateKey.data(), mPacket.data(), mPacketSize) !=
+      if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->PrivateKey.data(), mPacket.Buffer.data(), mPacketSize) !=
           RELAY_OK) {
         return;
       }
 
-      mSocket.send(session->PrevAddr, mPacket.data(), mPacketSize);
+      mSocket.send(session->PrevAddr, mPacket.Buffer.data(), mPacketSize);
       LogDebug("sent server packet to ", session->PrevAddr);
     }
   }  // namespace handlers

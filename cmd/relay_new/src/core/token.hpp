@@ -24,8 +24,8 @@ namespace core
     uint64_t key();
 
    protected:
-    void write(GenericPacket& buffer, size_t& index);
-    void read(GenericPacket& buffer, size_t& index);
+    void write(GenericPacket& packet, size_t& index);
+    void read(GenericPacket& packet, size_t& index);
   };
 
   [[gnu::always_inline]] inline uint64_t Token::key()
@@ -35,20 +35,20 @@ namespace core
 
   [[gnu::always_inline]] inline void Token::write(GenericPacket& packet, size_t& index)
   {
-    assert(index + Token::ByteSize < packet.size());
-    encoding::WriteUint64(packet, index, ExpireTimestamp);
-    encoding::WriteUint64(packet, index, SessionID);
-    encoding::WriteUint8(packet, index, SessionVersion);
-    encoding::WriteUint8(packet, index, SessionFlags);
+    assert(index + Token::ByteSize < packet.Buffer.size());
+    encoding::WriteUint64(packet.Buffer, index, ExpireTimestamp);
+    encoding::WriteUint64(packet.Buffer, index, SessionID);
+    encoding::WriteUint8(packet.Buffer, index, SessionVersion);
+    encoding::WriteUint8(packet.Buffer, index, SessionFlags);
   }
 
   [[gnu::always_inline]] inline void Token::read(GenericPacket& packet, size_t& index)
   {
-    assert(index + Token::ByteSize < packet.size());
-    ExpireTimestamp = encoding::ReadUint64(packet, index);
-    SessionID = encoding::ReadUint64(packet, index);
-    SessionVersion = encoding::ReadUint8(packet, index);
-    SessionFlags = encoding::ReadUint8(packet, index);
+    assert(index + Token::ByteSize < packet.Buffer.size());
+    ExpireTimestamp = encoding::ReadUint64(packet.Buffer, index);
+    SessionID = encoding::ReadUint64(packet.Buffer, index);
+    SessionVersion = encoding::ReadUint8(packet.Buffer, index);
+    SessionFlags = encoding::ReadUint8(packet.Buffer, index);
   }
 }  // namespace core
 #endif
