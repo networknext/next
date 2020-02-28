@@ -22,10 +22,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/alicebob/miniredis/v2"
+	"github.com/go-redis/redis/v7"
 	"github.com/gorilla/mux"
 
 	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/transport"
 )
 
@@ -70,6 +73,8 @@ type Backend struct {
 	routeMatrix     *core.RouteMatrix
 	routeMatrixData []byte
 	nearData        []byte
+
+	redisClient *redis.Client
 }
 
 var backend Backend
@@ -158,15 +163,17 @@ func TimeoutThread() {
 		time.Sleep(time.Second * 1)
 		backend.mutex.Lock()
 		currentTimestamp := time.Now().Unix()
+		unixTimeout := int64(routing.RelayTimeout.Seconds())
 		for k, v := range backend.relayDatabase {
-			if currentTimestamp-v.lastUpdate > 15 {
+			if currentTimestamp-v.lastUpdate > unixTimeout {
 				backend.dirty = true
+				fmt.Println("Deleting relaydb relay")
 				delete(backend.relayDatabase, k)
 				continue
 			}
 		}
 		for k, v := range backend.serverDatabase {
-			if currentTimestamp-v.lastUpdate > 15 {
+			if currentTimestamp-v.lastUpdate > unixTimeout {
 				delete(backend.serverDatabase, k)
 				backend.dirty = true
 				continue
@@ -179,6 +186,18 @@ func TimeoutThread() {
 				continue
 			}
 		}
+		hgetallResult := backend.redisClient.HGetAll(routing.HashKeyAllRelays)
+		for _, raw := range hgetallResult.Val() {
+			var r routing.Relay
+			r.UnmarshalBinary([]byte(raw))
+			if currentTimestamp-int64(r.LastUpdateTime) > unixTimeout {
+				fmt.Println("Deleting redis relay")
+				backend.redisClient.HDel(routing.HashKeyAllRelays, r.Key())
+				backend.dirty = true
+				continue
+			}
+		}
+
 		if backend.dirty {
 			fmt.Printf("-----------------------------\n")
 			for _, v := range backend.relayDatabase {
@@ -192,6 +211,13 @@ func TimeoutThread() {
 			}
 			if len(backend.relayDatabase) == 0 && len(backend.serverDatabase) == 0 {
 				fmt.Printf("(nil)\n")
+			}
+
+			hgetallResult := backend.redisClient.HGetAll(routing.HashKeyAllRelays)
+			for _, raw := range hgetallResult.Val() {
+				var r routing.Relay
+				r.UnmarshalBinary([]byte(raw))
+				fmt.Printf("redis relay: %v\n", &r.Addr)
 			}
 			backend.dirty = false
 		}
@@ -241,6 +267,13 @@ func main() {
 	backend.statsDatabase = core.NewStatsDatabase()
 	backend.costMatrix = &core.CostMatrix{}
 	backend.routeMatrix = &core.RouteMatrix{}
+
+	redisServer, err := miniredis.Run()
+	if err != nil {
+		fmt.Printf("failed to run redis, err: %v", err)
+		return
+	}
+	backend.redisClient = redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
 	if os.Getenv("BACKEND_MODE") == "FORCE_DIRECT" {
 		backend.mode = BACKEND_MODE_FORCE_DIRECT
@@ -719,6 +752,27 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 	backend.dirty = true
 	backend.mutex.Unlock()
 
+	// New redis entry (later will remove core equivalent above)
+	backend.mutex.Lock()
+	relay := routing.Relay{
+		ID:             relayEntry.id,
+		Addr:           *relayEntry.address,
+		PublicKey:      relayEntry.token,
+		LastUpdateTime: uint64(relayEntry.lastUpdate),
+	}
+
+	exists := backend.redisClient.HExists(routing.HashKeyAllRelays, relay.Key())
+	if exists.Err() != nil && exists.Err() != redis.Nil || exists.Val() {
+		writer.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	backend.redisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay)
+	backend.dirty = true
+	backend.mutex.Unlock()
+
+	// Back to old code
+
 	writer.Header().Set("Content-Type", "application/octet-stream")
 
 	responseData := make([]byte, 64)
@@ -828,6 +882,8 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	relayEntry.address = core.ParseAddress(relay_address)
 	relayEntry.lastUpdate = time.Now().Unix()
 	relayEntry.token = token
+
+	// TODO: update redis entry
 
 	type RelayPingData struct {
 		id      uint64
