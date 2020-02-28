@@ -47,6 +47,8 @@ namespace core
     util::ThroughputLogger* mLogger;
 
     net::BufferedSender<1, 1> mSender;
+
+    void processPacket(GenericPacket& rawPacket, int packetSize, const net::Address& from);
   };
 
   inline void PacketProcessor::flushResponses()

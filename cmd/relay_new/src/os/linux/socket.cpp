@@ -255,16 +255,39 @@ namespace os
     return res;
   }
 
-  size_t Socket::multirecv(std::vector<net::Message>& messages)
+  // TODO this is gonna need a ton of optimization
+  size_t Socket::multirecv(std::vector<net::Message>& messages) const
   {
     std::vector<mmsghdr> incomming;
     incomming.resize(messages.size());
 
+    // TODO pull this out and just use the strucs normally, no wrappers
+    for (auto& incommingMsg : incomming) {
+      auto& header = incommingMsg.msg_hdr;
+
+      // make a buffer for the from address
+      {
+        header.msg_namelen = std::max(sizeof(sockaddr_in), sizeof(sockaddr_in6));
+        header.msg_name = new uint8_t[header.msg_namelen];
+      }
+
+      // make a buffer for the data
+      {
+        header.msg_iovlen = 1;  // Don't change, needs to be 1 to accurately deterimine amount of bytes received
+        header.msg_iov = new iovec[header.msg_iovlen];
+
+        auto& vec = header.msg_iov[0];
+        vec.iov_len = RELAY_MAX_PACKET_BYTES;
+        vec.iov_base = new uint8_t[vec.iov_len];
+      }
+    }
+
+    LogDebug("receiving");
     auto received = recvmmsg(mSockFD,
      incomming.data(),
      incomming.size(),
      MSG_WAITFORONE,
-     nullptr);  // DON'T EVER USE TIMEOUT, linux man pages say it is broken
+     nullptr);  // DON'T EVER USE TIMEOUT, linux man pages state it is broken
 
     if (received < 0) {
       LogError("recvmmsg failed");
@@ -272,10 +295,45 @@ namespace os
     }
 
     for (int i = 0; i < received; i++) {
-      auto& header = incomming[i];
+      auto& message = messages[i];
 
-      for (int j = 0; j < header.msg_hdr.msg_iovlen; j++) {
-        auto& message = messages[i];
+      auto& incommingMsg = incomming[i];
+      auto& header = incommingMsg.msg_hdr;
+
+      auto sockad = reinterpret_cast<sockaddr*>(header.msg_name);
+      if (sockad->sa_family == AF_INET && header.msg_namelen == sizeof(sockaddr_in)) {
+        auto sin = reinterpret_cast<sockaddr_in*>(sockad);
+        message.Addr = *sin;
+      } else if (sockad->sa_family == AF_INET6 && header.msg_namelen == sizeof(sockaddr_in6)) {
+        auto sin = reinterpret_cast<sockaddr_in6*>(sockad);
+        message.Addr = *sin;
+      } else {
+        Log("invalid message in recvmmsg");
+        continue;
+      }
+
+      auto vec = header.msg_iov;
+
+      message.Len = incommingMsg.msg_len;
+      message.Data.resize(message.Len);
+
+      auto data = reinterpret_cast<uint8_t*>(vec->iov_base);
+      std::copy(data, data + message.Len, message.Data.begin());
+    }
+
+    for (auto& incommingMsg : incomming) {
+      auto& header = incommingMsg.msg_hdr;
+      auto& vec = header.msg_iov[0];
+
+      // delete the data buffers
+      {
+        delete[] reinterpret_cast<uint8_t*>(vec.iov_base);
+        delete[] header.msg_iov;
+      }
+
+      // delete the storage space for the from addr
+      {
+        delete[] reinterpret_cast<uint8_t*>(header.msg_name);
       }
     }
 

@@ -35,7 +35,7 @@ namespace os
     bool send(const legacy::relay_address_t& to, const uint8_t* data, size_t size) const;
 
     size_t recv(net::Address& from, uint8_t* data, size_t maxSize) const;
-    size_t multirecv(std::vector<net::Message>& messages);
+    size_t multirecv(std::vector<net::Message>& messages) const;
 
     void close();
 
