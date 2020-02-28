@@ -123,7 +123,10 @@ func main() {
 
 	// Create an in-memory db
 	var db storage.Storer = &storage.InMemory{
-		LocalBuyer: &routing.Buyer{PublicKey: customerPublicKey},
+		LocalBuyer: &routing.Buyer{
+			PublicKey:            customerPublicKey,
+			RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
+		},
 	}
 
 	// Create a local metrics handler
