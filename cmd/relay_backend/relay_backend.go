@@ -264,6 +264,7 @@ func main() {
 				// Remove relay entry from Hashmap
 				if err := redisClient.HDel(routing.HashKeyAllRelays, msg.Payload).Err(); err != nil {
 					level.Error(logger).Log("msg", fmt.Sprintf("Failed to remove hashmap entry for relay with ID %v", rawID), "err", err)
+					os.Exit(1)
 				}
 
 				// Remove relay entry from statsDB (which in turn means it won't appear in cost matrix)
