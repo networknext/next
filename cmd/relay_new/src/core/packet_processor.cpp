@@ -79,11 +79,13 @@ namespace core
     var.notify_one();
 
     while (this->mShouldProcess) {
-      auto count = mSocket.multirecv(buffer);
+      if (!mSocket.multirecv(buffer)) {
+        Log("failed to recv packets");
+      }
 
-      LogDebug("got packets on {", listenIndx, "}, / count: ", count);
+      LogDebug("got packets on {", listenIndx, "}, / count: ", buffer.Count);
 
-      for (size_t i = 0; i < count; i++) {
+      for (int i = 0; i < buffer.Count; i++) {
         processPacket(buffer.Packets[i], buffer.Headers[i]);
       }
     }
