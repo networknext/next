@@ -14,7 +14,7 @@ import (
 )
 
 func TestStackDriverMetrics(t *testing.T) {
-	ctx, cancelMetricSubmitRoutine := context.WithCancel(context.Background())
+	ctx, cancelWriteLoop := context.WithCancel(context.Background())
 
 	stackdrivercreds, ok := os.LookupEnv("GCP_CREDENTIALS_METRICS")
 	if !ok {
@@ -98,7 +98,7 @@ func TestStackDriverMetrics(t *testing.T) {
 	assert.Equal(t, 4.0, gauge.Value())
 
 	// Start the submit routine
-	go handler.MetricSubmitRoutine(ctx, log.NewNopLogger(), time.Second, 200)
+	go handler.WriteLoop(ctx, log.NewNopLogger(), time.Second, 200)
 
 	// Sleep for 2 seconds to allow the metric to be pushed to StackDriver
 	time.Sleep(2 * time.Second)
@@ -111,7 +111,7 @@ func TestStackDriverMetrics(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Stop the submit routine
-	cancelMetricSubmitRoutine()
+	cancelWriteLoop()
 
 	// Close the metric client
 	err = handler.Close()

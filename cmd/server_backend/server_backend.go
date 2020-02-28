@@ -239,7 +239,7 @@ func main() {
 			}
 
 			if err := metricsHandler.Open(ctx, stackdrivercredsjson); err == nil {
-				go metricsHandler.MetricSubmitRoutine(ctx, logger, time.Minute, 200)
+				go metricsHandler.WriteLoop(ctx, logger, time.Minute, 200)
 			} else {
 				level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
 			}

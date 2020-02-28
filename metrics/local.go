@@ -23,17 +23,17 @@ type LocalHandler struct {
 // Open is a no-op.
 func (local *LocalHandler) Open(ctx context.Context, credentials []byte) error { return nil }
 
-// MetricSubmitRoutine is a no-op.
-func (local *LocalHandler) MetricSubmitRoutine(ctx context.Context, logger log.Logger, duration time.Duration, maxMetricsIncrement int) {
+// WriteLoop is a no-op, since writing is handled by expvar.
+func (local *LocalHandler) WriteLoop(ctx context.Context, logger log.Logger, duration time.Duration, maxMetricsIncrement int) {
 }
 
-// GetSubmitFrequency is a no-op.
-func (local *LocalHandler) GetSubmitFrequency() float64 {
+// GetWriteFrequency returns a frequency of one write per minute.
+func (local *LocalHandler) GetWriteFrequency() float64 {
 	return 1 / 60.0 // Simulate publishing every minute
 }
 
 // CreateMetric creates a local metric that is visible as JSON in the browser.
-// It is automatically updated by the expvar package so calling MetricSubmitRoutine() is unnecessary.
+// It is automatically updated by the expvar package so calling WriteLoop() is unnecessary.
 // If the metric already exists, CreateMetric will return it. The error is not used.
 func (local *LocalHandler) CreateMetric(ctx context.Context, descriptor *Descriptor) (Handle, error) {
 	if local.metrics == nil {

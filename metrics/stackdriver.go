@@ -50,7 +50,7 @@ type StackDriverHandler struct {
 	ContainerName   string
 	NamespaceName   string // If this is not set, it will default to "default"
 
-	submitFrequency float64
+	writeFrequency float64
 
 	metricsMap      map[string]Handle
 	metricsMapMutex sync.Mutex
@@ -66,17 +66,17 @@ func (handler *StackDriverHandler) Open(ctx context.Context, credentials []byte)
 	return err
 }
 
-// MetricSubmitRoutine is responsible for sending the metrics up to StackDriver. Call in a separate goroutine.
+// WriteLoop is responsible for sending the metrics up to StackDriver. Call in a separate goroutine.
 // Pass a duration in seconds to have the routine send metrics up to StackDriver periodically.
 // If the duration is less than or equal to 0, a default of 1 minute is used.
 // maxMetricsCount is the maximum number of metrics to send in one push to StackDriver. 200 is the maximum number of time series allowed in a single request.
-func (handler *StackDriverHandler) MetricSubmitRoutine(ctx context.Context, logger log.Logger, duration time.Duration, maxMetricsIncrement int) {
+func (handler *StackDriverHandler) WriteLoop(ctx context.Context, logger log.Logger, duration time.Duration, maxMetricsIncrement int) {
 	if duration <= 0 {
 		duration = time.Minute
 	}
 
 	ticker := time.NewTicker(duration)
-	handler.submitFrequency = 1.0 / duration.Seconds()
+	handler.writeFrequency = 1.0 / duration.Seconds()
 
 	for {
 		select {
@@ -171,16 +171,16 @@ func (handler *StackDriverHandler) MetricSubmitRoutine(ctx context.Context, logg
 				}
 			}
 		case <-ctx.Done():
-			handler.submitFrequency = 0
+			handler.writeFrequency = 0
 			return
 		}
 	}
 }
 
-// GetSubmitFrequency returns the frequency of how often the submit routine submits metrics in seconds.
+// GetWriteFrequency returns the frequency of how often the submit routine submits metrics in seconds.
 // This will return 0 if the submit routine hasn't been started yet.
-func (handler *StackDriverHandler) GetSubmitFrequency() float64 {
-	return handler.submitFrequency
+func (handler *StackDriverHandler) GetWriteFrequency() float64 {
+	return handler.writeFrequency
 }
 
 // CreateMetric creates the metric on StackDriver using the given metric descriptor.

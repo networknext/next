@@ -51,8 +51,8 @@ type Descriptor struct {
 // Handler handles creating and update metrics
 type Handler interface {
 	Open(ctx context.Context, credentials []byte) error
-	MetricSubmitRoutine(ctx context.Context, logger log.Logger, duration time.Duration, maxMetricsIncrement int)
-	GetSubmitFrequency() float64
+	WriteLoop(ctx context.Context, logger log.Logger, duration time.Duration, maxMetricsIncrement int)
+	GetWriteFrequency() float64
 	CreateMetric(ctx context.Context, descriptor *Descriptor) (Handle, error)
 	GetMetric(id string) (Handle, bool)
 	DeleteMetric(ctx context.Context, descriptor *Descriptor) error

@@ -189,7 +189,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 		level.Debug(locallogger).Log("msg", "updated server")
 
 		// 10 * (1 / 60) - adds 1/6 every call, which adds to 1 before metric is published.
-		serverCountMetric.Gauge.Add(billing.BillingSliceSeconds * metricsHandler.GetSubmitFrequency())
+		serverCountMetric.Gauge.Add(billing.BillingSliceSeconds * metricsHandler.GetWriteFrequency())
 	}
 }
 
@@ -495,7 +495,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		}
 
 		// 10 * (1 / 60) - adds 1/6 every call, which adds to 1 before metric is published.
-		sessionCountMetric.Gauge.Add(billing.BillingSliceSeconds * metricsHandler.GetSubmitFrequency())
+		sessionCountMetric.Gauge.Add(billing.BillingSliceSeconds * metricsHandler.GetWriteFrequency())
 	}
 }
 
