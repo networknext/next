@@ -2,7 +2,6 @@ package billing_test
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -14,11 +13,11 @@ import (
 
 func TestNewPubSubBiller(t *testing.T) {
 	// Test base case
-	_, err := billing.NewBiller(context.Background(), log.NewNopLogger(), "", "", nil, nil)
+	_, err := billing.NewBiller(context.Background(), log.NewNopLogger(), "", "", nil)
 	assert.NoError(t, err)
 
 	// Test new client error case
-	_, err = billing.NewBiller(context.Background(), log.NewNopLogger(), "", "", nil, &billing.Descriptor{
+	_, err = billing.NewBiller(context.Background(), log.NewNopLogger(), "", "", &billing.Descriptor{
 		ClientCount: 1,
 	})
 	assert.Error(t, err)
@@ -33,12 +32,7 @@ func TestNewPubSubBiller(t *testing.T) {
 
 	assert.NotEmpty(t, gcpcreds)
 
-	var gcpcredsjson []byte
-
 	_, err = os.Stat(gcpcreds)
-	assert.NoError(t, err)
-
-	gcpcredsjson, err = ioutil.ReadFile(gcpcreds)
 	assert.NoError(t, err)
 
 	projectID := os.Getenv("BILLING_PUBSUB_PROJECT")
@@ -56,7 +50,7 @@ func TestNewPubSubBiller(t *testing.T) {
 		Timeout:             time.Minute,
 		ResultChannelBuffer: 10000 * 60 * 10,
 	}
-	_, err = billing.NewBiller(context.Background(), log.NewNopLogger(), projectID, topicID, gcpcredsjson, descriptor)
+	_, err = billing.NewBiller(context.Background(), log.NewNopLogger(), projectID, topicID, descriptor)
 	assert.NoError(t, err)
 	assert.Equal(t, billing.Descriptor{
 		ClientCount:         1,
@@ -92,12 +86,7 @@ func TestPubSubBill(t *testing.T) {
 
 	assert.NotEmpty(t, gcpcreds)
 
-	var gcpcredsjson []byte
-
 	_, err = os.Stat(gcpcreds)
-	assert.NoError(t, err)
-
-	gcpcredsjson, err = ioutil.ReadFile(gcpcreds)
 	assert.NoError(t, err)
 
 	projectID := os.Getenv("BILLING_PUBSUB_PROJECT")
@@ -115,7 +104,7 @@ func TestPubSubBill(t *testing.T) {
 		Timeout:             time.Minute,
 		ResultChannelBuffer: 10000 * 60 * 10,
 	}
-	biller, err = billing.NewBiller(context.Background(), log.NewNopLogger(), projectID, topicID, gcpcredsjson, descriptor)
+	biller, err = billing.NewBiller(context.Background(), log.NewNopLogger(), projectID, topicID, descriptor)
 	assert.NoError(t, err)
 	assert.Equal(t, billing.Descriptor{
 		ClientCount:         1,
