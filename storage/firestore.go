@@ -49,7 +49,7 @@ type routingRulesSettings struct {
 	Mode                         int64   `firestore:"mode"`
 	MaxPricePerGBNibblins        int64   `firestore:"maxPricePerGBNibblins"`
 	AcceptableLatency            float32 `firestore:"acceptableLatency"`
-	RTTRouteSwitch               float32 `firestore:"rttRouteSwitch"`
+	RTTEpsilon                   float32 `firestore:"rttRouteSwitch"`
 	RTTThreshold                 float32 `firestore:"rttThreshold"`
 	RTTHysteresis                float32 `firestore:"rttHysteresis"`
 	RTTVeto                      float32 `firestore:"rttVeto"`
@@ -241,7 +241,7 @@ func (s *Firestore) getRoutingRulesSettingsForBuyerID(ctx context.Context, ID st
 	rrs.Mode = tempRRS.Mode
 	rrs.MaxCentsPerGB = tempRRS.MaxPricePerGBNibblins / 1e9 // Note: Nibblins is a made up unit in the old backend presumably to deal with floating point issues. 1000000000 Niblins = $0.01 USD
 	rrs.AcceptableLatency = tempRRS.AcceptableLatency
-	rrs.RTTRouteSwitch = tempRRS.RTTRouteSwitch
+	rrs.RTTEpsilon = tempRRS.RTTEpsilon
 	rrs.RTTThreshold = tempRRS.RTTThreshold
 	rrs.RTTHysteresis = tempRRS.RTTHysteresis
 	rrs.RTTVeto = tempRRS.RTTVeto

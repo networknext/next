@@ -26,8 +26,8 @@ type RoutingRulesSettings struct {
 	AcceptableLatency float32
 
 	// How close to the best route in terms of latency routes need to be to be considered acceptable to take.
-	// For example if RTTRouteSwitch was set to 20ms the best route in the matrix had an RTT of 60ms, routes with an RTT of more than 80ms would be filtered out
-	RTTRouteSwitch float32
+	// For example if RTTEpsilon was set to 20ms the best route in the matrix had an RTT of 60ms, routes with an RTT of more than 80ms would be filtered out
+	RTTEpsilon float32
 
 	// How many milliseconds the latency has to be improved by before going from a direct route to a network next route
 	// For example if RTTThreshold was set to 20ms and the direct route had an RTT of 80ms, we would only take network next routes that have 60ms or lower latency
@@ -74,5 +74,7 @@ var DefaultRoutingRulesSettings = RoutingRulesSettings{
 	EnvelopeKbpsDown:  256,
 	AcceptableLatency: -1.0,
 	RTTThreshold:      5.0,
-	RTTRouteSwitch:    2.0,
+	RTTEpsilon:        2.0,
+	RTTHysteresis:     5.0,
+	RTTVeto:           20.0,
 }
