@@ -69,9 +69,7 @@ type Backend struct {
 	sessionDatabase map[uint64]SessionEntry
 	statsDatabase   *routing.StatsDatabase
 	costMatrix      *routing.CostMatrix
-	costMatrixData  []byte
 	routeMatrix     *routing.RouteMatrix
-	routeMatrixData []byte
 	nearData        []byte
 
 	redisClient *redis.Client
@@ -717,6 +715,7 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 	backend.mutex.Unlock()
 
 	// New redis entry (later will remove core equivalent above)
+
 	backend.mutex.Lock()
 	relay := routing.Relay{
 		ID:             relayEntry.id,
@@ -725,9 +724,8 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 		LastUpdateTime: uint64(relayEntry.lastUpdate),
 	}
 
-	exists := backend.redisClient.HExists(routing.HashKeyAllRelays, relay.Key())
-	if exists.Err() != nil && exists.Err() != redis.Nil || exists.Val() {
-		writer.WriteHeader(http.StatusNotFound)
+	if backend.redisClient.HExists(routing.HashKeyAllRelays, relay.Key()).Val() {
+		writer.WriteHeader(http.StatusConflict)
 		return
 	}
 
@@ -847,8 +845,6 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	relayEntry.lastUpdate = time.Now().Unix()
 	relayEntry.token = token
 
-	// TODO: update redis entry
-
 	type RelayPingData struct {
 		id      uint64
 		address string
@@ -866,6 +862,26 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		}
 	}
 	backend.mutex.Unlock()
+
+	// New redis entry (later will remove core equivalent above)
+
+	relay := routing.Relay{
+		ID:             relayEntry.id,
+		Addr:           *relayEntry.address,
+		PublicKey:      relayEntry.token,
+		LastUpdateTime: uint64(relayEntry.lastUpdate),
+	}
+
+	backend.mutex.Lock()
+	if !backend.redisClient.HExists(routing.HashKeyAllRelays, relay.Key()).Val() {
+		writer.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	backend.redisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay)
+	backend.mutex.Unlock()
+
+	// Back to old code
 
 	responseData := make([]byte, 10*1024)
 
@@ -887,24 +903,6 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("Content-Type", "application/octet-stream")
 
 	writer.Write(responseData)
-}
-
-func CostMatrixHandler(writer http.ResponseWriter, request *http.Request) {
-	backend.mutex.RLock()
-	costMatrixData := backend.costMatrixData
-	backend.mutex.RUnlock()
-	writer.WriteHeader(http.StatusOK)
-	writer.Header().Set("Content-Type", "application/octet-stream")
-	writer.Write(costMatrixData)
-}
-
-func RouteMatrixHandler(writer http.ResponseWriter, request *http.Request) {
-	backend.mutex.RLock()
-	routeMatrixData := backend.routeMatrixData
-	backend.mutex.RUnlock()
-	writer.WriteHeader(http.StatusOK)
-	writer.Header().Set("Content-Type", "application/octet-stream")
-	writer.Write(routeMatrixData)
 }
 
 func NearHandler(writer http.ResponseWriter, request *http.Request) {
