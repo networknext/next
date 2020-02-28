@@ -1405,12 +1405,12 @@ type test_function func()
 
 func main() {
 	tests := []test_function{
-		//test_direct_default,
-		//test_direct_upgrade,
-		//test_direct_no_upgrade,
-		//test_direct_with_backend,
-		//test_fallback_to_direct_without_backend,
-		//test_fallback_to_direct_is_not_sticky,
+		test_direct_default,
+		test_direct_upgrade,
+		test_direct_no_upgrade,
+		test_direct_with_backend,
+		test_fallback_to_direct_without_backend,
+		test_fallback_to_direct_is_not_sticky,
 		test_packets_over_next_with_relay_and_backend,
 		test_idempotent,
 		test_fallback_to_direct_when_backend_goes_down,

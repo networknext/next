@@ -32,6 +32,9 @@ namespace os
     bool send(const net::Address& to, const uint8_t* data, size_t size) const;
 
     template <size_t BuffSize>
+    bool multisend(std::array<mmsghdr, BuffSize>& packetBuff, int count) const;
+
+    template <size_t BuffSize>
     bool multisend(core::GenericPacketBuffer<BuffSize>& packetBuff) const;
 
     size_t recv(net::Address& from, uint8_t* data, size_t maxSize) const;
@@ -82,21 +85,27 @@ namespace os
   }
 
   template <size_t BuffSize>
-  bool Socket::multisend(core::GenericPacketBuffer<BuffSize>& packetBuff) const
+  bool Socket::multisend(std::array<mmsghdr, BuffSize>& headers, int count) const
   {
     static_assert(BuffSize <= 1024);  // max sendmmsg will allow
-    assert(packetBuff.Count > 0);
-    assert(packetBuff.Count <= 1024);
+    assert(count > 0);
+    assert(count <= 1024);
 
-    auto toSend = packetBuff.Count;
-    packetBuff.Count = sendmmsg(mSockFD, packetBuff.Headers.data(), toSend, 0);
+    auto toSend = count;
+    count = sendmmsg(mSockFD, headers.data(), toSend, 0);
 
-    if (packetBuff.Count < 0) {
+    if (count < 0) {
       LogError("sendmmsg() failed");
       return false;
     }
 
-    return toSend == packetBuff.Count;
+    return toSend == count;
+  }
+
+  template <size_t BuffSize>
+  bool Socket::multisend(core::GenericPacketBuffer<BuffSize>& packetBuff) const
+  {
+    return multisend(packetBuff.Headers, packetBuff.Count);
   }
 
   template <size_t BuffSize>

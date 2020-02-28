@@ -15,10 +15,10 @@ namespace net
   class Address
   {
    public:
-   // Type (1) +
-   // Port (2) +
-   // IP (16) (regardless of v4 or v6) =
-   static const size_t ByteSize = 19;
+    // Type (1) +
+    // Port (2) +
+    // IP (16) (regardless of v4 or v6) =
+    static const size_t ByteSize = 19;
 
     Address();
     Address(const Address& other);
@@ -115,6 +115,26 @@ namespace net
     }
 
     sin.sin6_port = htons(Port);
+  }
+
+  template <>
+  inline void Address::to(mmsghdr& hdr) const
+  {
+    assert(hdr.msg_hdr.msg_name != nullptr);
+
+    switch (Type) {
+      case AddressType::IPv4: {
+        this->to(*reinterpret_cast<sockaddr_in*>(hdr.msg_hdr.msg_name));
+        hdr.msg_hdr.msg_namelen = sizeof(sockaddr_in);
+      } break;
+      case AddressType::IPv6: {
+        this->to(*reinterpret_cast<sockaddr_in6*>(hdr.msg_hdr.msg_name));
+        hdr.msg_hdr.msg_namelen = sizeof(sockaddr_in6);
+      } break;
+      case AddressType::None: {
+        // TODO log something?
+      } break;
+    }
   }
 
   inline auto Address::operator!=(const Address& other) const -> bool

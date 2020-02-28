@@ -15,6 +15,7 @@ namespace core
 {
   namespace handlers
   {
+    template <size_t SenderMaxCap, size_t SenderTimeout>
     class RouteRequestHandler: public BaseHandler
     {
      public:
@@ -25,7 +26,8 @@ namespace core
        const net::Address& from,
        const crypto::Keychain& keychain,
        core::SessionMap& sessions,
-       const os::Socket& socket);
+       const os::Socket& socket,
+       net::BufferedSender<SenderMaxCap, SenderTimeout>& sender);
       void handle();
 
      private:
@@ -33,24 +35,29 @@ namespace core
       const crypto::Keychain& mKeychain;
       core::SessionMap& mSessionMap;
       const os::Socket& mSocket;
+      net::BufferedSender<SenderMaxCap, SenderTimeout>& mSender;
     };
 
-    inline RouteRequestHandler::RouteRequestHandler(const util::Clock& relayClock,
+    template <size_t SenderMaxCap, size_t SenderTimeout>
+    inline RouteRequestHandler<SenderMaxCap, SenderTimeout>::RouteRequestHandler(const util::Clock& relayClock,
      const RouterInfo& routerInfo,
      GenericPacket& packet,
      const int size,
      const net::Address& from,
      const crypto::Keychain& keychain,
      core::SessionMap& sessions,
-     const os::Socket& socket)
+     const os::Socket& socket,
+     net::BufferedSender<SenderMaxCap, SenderTimeout>& sender)
      : BaseHandler(relayClock, routerInfo, packet, size),
        mFrom(from),
        mKeychain(keychain),
        mSessionMap(sessions),
-       mSocket(socket)
+       mSocket(socket),
+       mSender(sender)
     {}
 
-    inline void RouteRequestHandler::handle()
+    template <size_t SenderMaxCap, size_t SenderTimeout>
+    inline void RouteRequestHandler<SenderMaxCap, SenderTimeout>::handle()
     {
       LogDebug("got route request from ", mFrom);
 
@@ -118,10 +125,11 @@ namespace core
 
       LogDebug("sending route request to ", token.NextAddr);
 
-      mSocket.send(token.NextAddr, mPacket.Buffer.data() + RouteToken::EncryptedByteSize, mPacketSize - RouteToken::EncryptedByteSize);
+      //mSocket.send(token.NextAddr, &mPacket.Buffer[RouteToken::EncryptedByteSize], mPacketSize - RouteToken::EncryptedByteSize);
 
-      // net::Message msg(token.NextAddr, mPacket, RouteToken::EncryptedByteSize, mPacketSize - RouteToken::EncryptedByteSize);
-      // mSender.queue(msg);  // after this, token & packet are invalid
+      mSender.queue(token.NextAddr,
+       &mPacket.Buffer[RouteToken::EncryptedByteSize],
+       mPacketSize - RouteToken::EncryptedByteSize);  // after this, token & packet are invalid
     }
   }  // namespace handlers
 }  // namespace core

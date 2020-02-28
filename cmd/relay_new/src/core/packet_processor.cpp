@@ -129,7 +129,7 @@ namespace core
 
         getAddrFromMsgHdr(packet.Addr, header.msg_hdr);
         handlers::RouteRequestHandler handler(
-         mRelayClock, mRouterInfo, packet, packet.Len, packet.Addr, mKeychain, mSessionMap, mSocket);
+         mRelayClock, mRouterInfo, packet, packet.Len, packet.Addr, mKeychain, mSessionMap, mSocket, mSender);
 
         handler.handle();
       } break;
