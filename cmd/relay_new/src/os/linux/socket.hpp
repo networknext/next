@@ -41,8 +41,6 @@ namespace os
 
     bool isOpen() const;
 
-    void setBusy(bool val);
-
     const net::Address& getAddress() const;
 
    private:
@@ -51,9 +49,6 @@ namespace os
     net::Address mAddress;
 
     std::atomic<bool> mOpen;
-    std::atomic<bool> mIsBusy;
-    std::mutex mWaitLock;
-    std::condition_variable mWaitVar;
 
     bool setBufferSizes(size_t sendBufferSize, size_t recvBufferSize);
     bool setLingerTime(int lingerTime);
@@ -66,6 +61,8 @@ namespace os
     bool getPortIPv6(net::Address& addr);
 
     bool setSocketType(float timeout);
+
+    bool getAddrFromMsgHdr(net::Address& addr, const msghdr& hdr) const;
   };
 
   [[gnu::always_inline]] inline const net::Address& Socket::getAddress() const
@@ -80,21 +77,33 @@ namespace os
 
   [[gnu::always_inline]] inline void Socket::close()
   {
-    std::unique_lock<std::mutex> lk(mWaitLock);
-    mWaitVar.wait(lk, [this]() -> bool {
-      return !mIsBusy;
-    });
-
-    shutdown(mSockFD, SHUT_RDWR);
     mOpen = false;
+    shutdown(mSockFD, SHUT_RDWR);
   }
 
-  [[gnu::always_inline]] inline void Socket::setBusy(bool val)
+  [[gnu::always_inline]] inline bool Socket::getAddrFromMsgHdr(net::Address& addr, const msghdr& hdr) const
   {
-    mIsBusy = val;
-    if (!mIsBusy) {
-      mWaitVar.notify_one();
+    bool retval = false;
+    auto sockad = reinterpret_cast<sockaddr*>(hdr.msg_name);
+
+    switch (sockad->sa_family) {
+      case AF_INET: {
+        if (hdr.msg_namelen == sizeof(sockaddr_in)) {
+          auto sin = reinterpret_cast<sockaddr_in*>(sockad);
+          addr = *sin;
+          retval = true;
+        }
+      } break;
+      case AF_INET6: {
+        if (hdr.msg_namelen == sizeof(sockaddr_in6)) {
+          auto sin = reinterpret_cast<sockaddr_in6*>(sockad);
+          addr = *sin;
+          retval = true;
+        }
+      } break;
     }
+
+    return retval;
   }
 
   // helpers to reduce static cast's

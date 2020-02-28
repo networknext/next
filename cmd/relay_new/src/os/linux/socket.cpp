@@ -8,7 +8,7 @@
 
 namespace os
 {
-  Socket::Socket(SocketType type): mType(type), mOpen(false), mIsBusy(false) {}
+  Socket::Socket(SocketType type): mType(type), mOpen(false) {}
 
   Socket::~Socket()
   {
@@ -282,7 +282,6 @@ namespace os
       }
     }
 
-    LogDebug("receiving");
     auto received = recvmmsg(mSockFD,
      incomming.data(),
      incomming.size(),
@@ -300,15 +299,8 @@ namespace os
       auto& incommingMsg = incomming[i];
       auto& header = incommingMsg.msg_hdr;
 
-      auto sockad = reinterpret_cast<sockaddr*>(header.msg_name);
-      if (sockad->sa_family == AF_INET && header.msg_namelen == sizeof(sockaddr_in)) {
-        auto sin = reinterpret_cast<sockaddr_in*>(sockad);
-        message.Addr = *sin;
-      } else if (sockad->sa_family == AF_INET6 && header.msg_namelen == sizeof(sockaddr_in6)) {
-        auto sin = reinterpret_cast<sockaddr_in6*>(sockad);
-        message.Addr = *sin;
-      } else {
-        Log("invalid message in recvmmsg");
+      if (!getAddrFromMsgHdr(message.Addr, header)) {
+        Log("could not get msg address");
         continue;
       }
 
