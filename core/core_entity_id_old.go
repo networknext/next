@@ -7,29 +7,29 @@ import (
 
 // todo: this whole old entity id / relay id etc. is incompatible with how the new backend should work. talk to me to learn more. -- glenn
 
-type EntityId struct {
+type EntityID struct {
 	Kind string
 	Name string
 }
 
-type RelayId uint64
+type RelayID uint64
 
-func GetRelayId(id *EntityId) (RelayId, error) {
+func GetRelayIDFromEntityID(id *EntityID) (RelayID, error) {
 	if id.Kind != "Relay" {
-		return RelayId(0), fmt.Errorf("not a valid relay: %+v", id)
+		return RelayID(0), fmt.Errorf("not a valid relay: %+v", id)
 	}
 	hash := fnv.New64a()
 	hash.Write([]byte(id.Name))
-	return RelayId(hash.Sum64()), nil
+	return RelayID(hash.Sum64()), nil
 }
 
-type DatacenterId uint64
+type DatacenterID uint64
 
-func GetDatacenterId(id *EntityId) (DatacenterId, error) {
+func GetDatacenterID(id *EntityID) (DatacenterID, error) {
 	if id.Kind != "Datacenter" {
-		return DatacenterId(0), fmt.Errorf("not a valid datacenter: %+v", id)
+		return DatacenterID(0), fmt.Errorf("not a valid datacenter: %+v", id)
 	}
 	hash := fnv.New64a()
 	hash.Write([]byte(id.Name))
-	return DatacenterId(hash.Sum64()), nil
+	return DatacenterID(hash.Sum64()), nil
 }

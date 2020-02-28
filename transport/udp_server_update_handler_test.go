@@ -46,7 +46,7 @@ func TestSDKVersionTooOld(t *testing.T) {
 		ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
 		ServerRoutePublicKey: TestServerBackendPublicKey,
 
-		DatacenterId: 13,
+		DatacenterID: 13,
 
 		Version: transport.SDKVersion{1, 2, 3},
 
@@ -78,7 +78,7 @@ func TestBuyerNotFound(t *testing.T) {
 		ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
 		ServerRoutePublicKey: TestServerBackendPublicKey,
 
-		DatacenterId: 13,
+		DatacenterID: 13,
 
 		Version: transport.SDKVersionMin,
 
@@ -113,7 +113,7 @@ func TestWrongBuyerPublicKey(t *testing.T) {
 		ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
 		ServerRoutePublicKey: TestServerBackendPublicKey,
 
-		DatacenterId: 13,
+		DatacenterID: 13,
 
 		Version: transport.SDKVersionMin,
 
@@ -153,7 +153,7 @@ func TestServerPacketSequenceTooOld(t *testing.T) {
 		ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
 		ServerRoutePublicKey: TestServerBackendPublicKey,
 
-		DatacenterId: 13,
+		DatacenterID: 13,
 
 		Version: transport.SDKVersionMin,
 	}
@@ -205,7 +205,7 @@ func TestSuccessfulUpdate(t *testing.T) {
 		ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
 		ServerRoutePublicKey: make([]byte, 32),
 
-		DatacenterId: 13,
+		DatacenterID: 13,
 
 		Version: transport.SDKVersionMin,
 	}
@@ -240,7 +240,7 @@ func TestSuccessfulUpdate(t *testing.T) {
 	expected := transport.ServerCacheEntry{
 		Sequence:   13,
 		Server:     routing.Server{Addr: *addr, PublicKey: packet.ServerRoutePublicKey},
-		Datacenter: routing.Datacenter{ID: packet.DatacenterId},
+		Datacenter: routing.Datacenter{ID: packet.DatacenterID},
 		SDKVersion: packet.Version,
 	}
 

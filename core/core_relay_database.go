@@ -9,7 +9,7 @@ type RelayUpdate struct {
 	ID             uint64
 	Name           string
 	Address        string
-	Datacenter     DatacenterId
+	Datacenter     DatacenterID
 	DatacenterName string
 	PublicKey      []byte
 	Shutdown       bool
@@ -19,7 +19,7 @@ type RelayData struct {
 	ID             uint64
 	Name           string
 	Address        string
-	Datacenter     DatacenterId
+	Datacenter     DatacenterID
 	DatacenterName string
 	PublicKey      []byte
 	LastUpdateTime uint64
@@ -76,7 +76,7 @@ func (database *RelayDatabase) MakeCopy() *RelayDatabase {
 	return databaseCopy
 }
 
-// GetRelayId hashes the name of the relay and returns the result. Typically name is the address of the relay
+// GetRelayID hashes the name of the relay and returns the result. Typically name is the address of the relay
 func GetRelayID(addr string) uint64 {
 	hash := fnv.New64a()
 	hash.Write([]byte(addr))

@@ -119,7 +119,7 @@ func OptimizeThread() {
 			relayData.ID = v.id
 			relayData.Name = v.name
 			relayData.Address = v.address.String()
-			relayData.Datacenter = core.DatacenterId(0)
+			relayData.Datacenter = core.DatacenterID(0)
 			relayData.DatacenterName = "local"
 			relayData.PublicKey = crypto.RelayPublicKey[:]
 			relayDatabase.Relays[relayData.ID] = relayData
@@ -210,13 +210,13 @@ func GetNearRelays() ([]uint64, []net.UDPAddr) {
 	if len(nearRelays) > int(core.MaxNearRelays) {
 		nearRelays = nearRelays[:core.MaxNearRelays]
 	}
-	nearRelayIds := make([]uint64, len(nearRelays))
+	nearRelayIDs := make([]uint64, len(nearRelays))
 	nearRelayAddresses := make([]net.UDPAddr, len(nearRelays))
 	for i := range nearRelays {
-		nearRelayIds[i] = nearRelays[i].id
+		nearRelayIDs[i] = nearRelays[i].id
 		nearRelayAddresses[i] = *nearRelays[i].address
 	}
-	return nearRelayIds, nearRelayAddresses
+	return nearRelayIDs, nearRelayAddresses
 }
 
 func RouteChanged(previous []uint64, current []uint64) bool {
@@ -346,18 +346,18 @@ func main() {
 				return
 			}
 
-			nearRelayIds, nearRelayAddresses := GetNearRelays()
+			nearRelayIDs, nearRelayAddresses := GetNearRelays()
 
 			var sessionResponse *transport.SessionResponsePacket
 
 			backend.mutex.RLock()
-			sessionEntry, ok := backend.sessionDatabase[sessionUpdate.SessionId]
+			sessionEntry, ok := backend.sessionDatabase[sessionUpdate.SessionID]
 			backend.mutex.RUnlock()
 
 			newSession := !ok
 
 			if newSession {
-				sessionEntry.id = sessionUpdate.SessionId
+				sessionEntry.id = sessionUpdate.SessionID
 				sessionEntry.version = 0
 				sessionEntry.expireTimestamp = uint64(time.Now().Unix()) + 20
 			} else {
@@ -375,7 +375,7 @@ func main() {
 				}
 			}
 
-			takeNetworkNext := len(nearRelayIds) > 0
+			takeNetworkNext := len(nearRelayIDs) > 0
 
 			if backend.mode == BACKEND_MODE_FORCE_DIRECT {
 				takeNetworkNext = false
@@ -392,13 +392,13 @@ func main() {
 			}
 
 			if backend.mode == BACKEND_MODE_ROUTE_SWITCHING {
-				rand.Shuffle(len(nearRelayIds), func(i, j int) {
-					nearRelayIds[i], nearRelayIds[j] = nearRelayIds[j], nearRelayIds[i]
+				rand.Shuffle(len(nearRelayIDs), func(i, j int) {
+					nearRelayIDs[i], nearRelayIDs[j] = nearRelayIDs[j], nearRelayIDs[i]
 					nearRelayAddresses[i], nearRelayAddresses[j] = nearRelayAddresses[j], nearRelayAddresses[i]
 				})
 			}
 
-			multipath := len(nearRelayIds) > 0 && backend.mode == BACKEND_MODE_MULTIPATH
+			multipath := len(nearRelayIDs) > 0 && backend.mode == BACKEND_MODE_MULTIPATH
 
 			committed := true
 
@@ -431,9 +431,9 @@ func main() {
 
 				sessionResponse = &transport.SessionResponsePacket{
 					Sequence:             sessionUpdate.Sequence,
-					SessionId:            sessionUpdate.SessionId,
-					NumNearRelays:        int32(len(nearRelayIds)),
-					NearRelayIds:         nearRelayIds,
+					SessionID:            sessionUpdate.SessionID,
+					NumNearRelays:        int32(len(nearRelayIDs)),
+					NearRelayIDs:         nearRelayIDs,
 					NearRelayAddresses:   nearRelayAddresses,
 					RouteType:            int32(core.NEXT_UPDATE_TYPE_DIRECT),
 					NumTokens:            0,
@@ -448,14 +448,14 @@ func main() {
 
 				// next route
 
-				numRelays := len(nearRelayIds)
+				numRelays := len(nearRelayIDs)
 				if numRelays > 5 {
 					numRelays = 5
 				}
 
 				route := make([]uint64, numRelays)
 				for i := 0; i < numRelays; i++ {
-					route[i] = nearRelayIds[i]
+					route[i] = nearRelayIDs[i]
 				}
 
 				routeChanged := RouteChanged(sessionEntry.route, route)
@@ -505,9 +505,9 @@ func main() {
 
 				sessionResponse = &transport.SessionResponsePacket{
 					Sequence:             sessionUpdate.Sequence,
-					SessionId:            sessionUpdate.SessionId,
-					NumNearRelays:        int32(len(nearRelayIds)),
-					NearRelayIds:         nearRelayIds,
+					SessionID:            sessionUpdate.SessionID,
+					NumNearRelays:        int32(len(nearRelayIDs)),
+					NearRelayIDs:         nearRelayIDs,
 					NearRelayAddresses:   nearRelayAddresses,
 					RouteType:            responseType,
 					Multipath:            multipath,
@@ -541,7 +541,7 @@ func main() {
 			if newSession {
 				backend.dirty = true
 			}
-			backend.sessionDatabase[sessionUpdate.SessionId] = sessionEntry
+			backend.sessionDatabase[sessionUpdate.SessionID] = sessionEntry
 			backend.mutex.Unlock()
 
 			_, err = w.Write(responsePacketData)
@@ -564,7 +564,7 @@ const InitRequestVersion = 0
 const InitResponseVersion = 0
 const UpdateRequestVersion = 0
 const UpdateResponseVersion = 0
-const MaxRelayIdLength = 256
+const MaxRelayIDLength = 256
 const MaxRelayAddressLength = 256
 const RelayTokenBytes = 32
 const MaxRelays = 1024

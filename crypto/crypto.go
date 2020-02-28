@@ -57,8 +57,8 @@ func GenerateSessionID() uint64 {
 
 // GenerateRelayKeyPair creates a public and private keypair using crypto/ed25519 and prepends a random 8 byte customer ID
 func GenerateCustomerKeyPair() ([]byte, []byte, error) {
-	customerId := make([]byte, 8)
-	rand.Read(customerId)
+	customerID := make([]byte, 8)
+	rand.Read(customerID)
 
 	publicKey, privateKey, err := ed25519.GenerateKey(nil)
 	if err != nil {
@@ -66,10 +66,10 @@ func GenerateCustomerKeyPair() ([]byte, []byte, error) {
 	}
 
 	customerPublicKey := make([]byte, 0)
-	customerPublicKey = append(customerPublicKey, customerId...)
+	customerPublicKey = append(customerPublicKey, customerID...)
 	customerPublicKey = append(customerPublicKey, publicKey...)
 	customerPrivateKey := make([]byte, 0)
-	customerPrivateKey = append(customerPrivateKey, customerId...)
+	customerPrivateKey = append(customerPrivateKey, customerID...)
 	customerPrivateKey = append(customerPrivateKey, privateKey...)
 
 	return customerPublicKey, customerPrivateKey, nil

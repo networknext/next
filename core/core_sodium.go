@@ -5,11 +5,11 @@ package core
 import "C"
 
 import (
+	"crypto/ed25519"
 	"encoding/binary"
 	"fmt"
 	"net"
 	"unsafe"
-	"crypto/ed25519"
 )
 
 const Crypto_kx_PUBLICKEYBYTES = C.crypto_kx_PUBLICKEYBYTES
@@ -86,11 +86,11 @@ func Decrypt_ChaCha20(encrypted []byte, additional []byte, nonce []byte, private
 	}
 }
 
-func GenerateSessionId() uint64 {
-	var sessionId uint64
-	C.randombytes_buf(unsafe.Pointer(&sessionId), 8)
-	sessionId &= ^((uint64(1)) << 63)
-	return sessionId
+func GenerateSessionID() uint64 {
+	var sessionID uint64
+	C.randombytes_buf(unsafe.Pointer(&sessionID), 8)
+	sessionID &= ^((uint64(1)) << 63)
+	return sessionID
 }
 
 func RandomBytes(bytes int) []byte {
@@ -123,7 +123,7 @@ func CryptoSignCreate(sign_data []byte, private_key []byte) []byte {
 
 func WriteSessionToken(token *SessionToken, buffer []byte) {
 	binary.LittleEndian.PutUint64(buffer[0:], token.expireTimestamp)
-	binary.LittleEndian.PutUint64(buffer[8:], token.sessionId)
+	binary.LittleEndian.PutUint64(buffer[8:], token.sessionID)
 	buffer[8+8] = token.sessionVersion
 	buffer[8+8+1] = token.sessionFlags
 	binary.LittleEndian.PutUint32(buffer[8+8+2:], token.kbpsUp)
@@ -134,7 +134,7 @@ func WriteSessionToken(token *SessionToken, buffer []byte) {
 
 func WriteContinueToken(token *ContinueToken, buffer []byte) {
 	binary.LittleEndian.PutUint64(buffer[0:], token.expireTimestamp)
-	binary.LittleEndian.PutUint64(buffer[8:], token.sessionId)
+	binary.LittleEndian.PutUint64(buffer[8:], token.sessionID)
 	buffer[8+8] = token.sessionVersion
 	buffer[8+8+1] = token.sessionFlags
 }
@@ -145,7 +145,7 @@ func ReadContinueToken(buffer []byte) (*ContinueToken, error) {
 	}
 	token := &ContinueToken{}
 	token.expireTimestamp = binary.LittleEndian.Uint64(buffer[0:])
-	token.sessionId = binary.LittleEndian.Uint64(buffer[8:])
+	token.sessionID = binary.LittleEndian.Uint64(buffer[8:])
 	token.sessionVersion = buffer[8+8]
 	token.sessionFlags = buffer[8+8+1]
 	return token, nil
@@ -159,7 +159,7 @@ func WriteEncryptedContinueToken(buffer []byte, token *ContinueToken, senderPriv
 	return result
 }
 
-func WriteRouteTokens(expireTimestamp uint64, sessionId uint64, sessionVersion uint8, sessionFlags uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, addresses []*net.UDPAddr, publicKeys [][]byte, masterPrivateKey []byte) ([]byte, error) {
+func WriteRouteTokens(expireTimestamp uint64, sessionID uint64, sessionVersion uint8, sessionFlags uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, addresses []*net.UDPAddr, publicKeys [][]byte, masterPrivateKey []byte) ([]byte, error) {
 	if numNodes < 1 || numNodes > MaxNodes {
 		return nil, fmt.Errorf("invalid numNodes %d. expected value in range [1,%d]", numNodes, MaxNodes)
 	}
@@ -169,7 +169,7 @@ func WriteRouteTokens(expireTimestamp uint64, sessionId uint64, sessionVersion u
 		nonce := RandomBytes(NonceBytes)
 		token := &SessionToken{}
 		token.expireTimestamp = expireTimestamp
-		token.sessionId = sessionId
+		token.sessionID = sessionID
 		token.sessionVersion = sessionVersion
 		token.sessionFlags = sessionFlags
 		// todo: bandwidth limits are temporarily disabled
@@ -187,7 +187,7 @@ func WriteRouteTokens(expireTimestamp uint64, sessionId uint64, sessionVersion u
 	return tokenData, nil
 }
 
-func WriteContinueTokens(expireTimestamp uint64, sessionId uint64, sessionVersion uint8, sessionFlags uint8, numNodes int, publicKeys [][]byte, masterPrivateKey []byte) ([]byte, error) {
+func WriteContinueTokens(expireTimestamp uint64, sessionID uint64, sessionVersion uint8, sessionFlags uint8, numNodes int, publicKeys [][]byte, masterPrivateKey []byte) ([]byte, error) {
 	if numNodes < 1 || numNodes > MaxNodes {
 		return nil, fmt.Errorf("invalid numNodes %d. expected value in range [1,%d]", numNodes, MaxNodes)
 	}
@@ -195,7 +195,7 @@ func WriteContinueTokens(expireTimestamp uint64, sessionId uint64, sessionVersio
 	for i := 0; i < numNodes; i++ {
 		token := &ContinueToken{}
 		token.expireTimestamp = expireTimestamp
-		token.sessionId = sessionId
+		token.sessionID = sessionID
 		token.sessionVersion = sessionVersion
 		token.sessionFlags = sessionFlags
 		err := WriteEncryptedContinueToken(tokenData[i*EncryptedContinueTokenBytes:], token, masterPrivateKey[:], publicKeys[i])

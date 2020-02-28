@@ -103,7 +103,7 @@ func main() {
 		nextRouteToken := routing.NextRouteToken{
 			Expires: uint64(time.Now().Add(*expires).Unix()),
 
-			SessionId:      uint64(*sessionID),
+			SessionID:      uint64(*sessionID),
 			SessionVersion: uint8(*sessionversion),
 
 			Client: routing.Client{Addr: *client, PublicKey: clientpubkey},
@@ -131,7 +131,7 @@ func main() {
 		continueRouteToken := routing.ContinueRouteToken{
 			Expires: uint64(time.Now().Add(*expires).Unix()),
 
-			SessionId:      uint64(*sessionID),
+			SessionID:      uint64(*sessionID),
 			SessionVersion: uint8(*sessionversion),
 
 			Client: routing.Client{Addr: *client, PublicKey: clientpubkey},

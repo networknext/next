@@ -6,12 +6,12 @@ import (
 )
 
 type RouteMatrix struct {
-	RelayIds         []RelayId
+	RelayIDs         []RelayID
 	RelayNames       []string
 	RelayAddresses   [][]byte
 	RelayPublicKeys  [][]byte
-	DatacenterRelays map[DatacenterId][]RelayId
-	DatacenterIds    []DatacenterId
+	DatacenterRelays map[DatacenterID][]RelayID
+	DatacenterIDs    []DatacenterID
 	DatacenterNames  []string
 	Entries          []RouteMatrixEntry
 }
@@ -36,12 +36,12 @@ func WriteRouteMatrix(buffer []byte, routeMatrix *RouteMatrix) []byte {
 	binary.LittleEndian.PutUint32(buffer[index:], RouteMatrixVersion)
 	index += 4
 
-	numRelays := len(routeMatrix.RelayIds)
+	numRelays := len(routeMatrix.RelayIDs)
 	binary.LittleEndian.PutUint32(buffer[index:], uint32(numRelays))
 	index += 4
 
-	for i := range routeMatrix.RelayIds {
-		binary.LittleEndian.PutUint32(buffer[index:], uint32(routeMatrix.RelayIds[i]))
+	for i := range routeMatrix.RelayIDs {
+		binary.LittleEndian.PutUint32(buffer[index:], uint32(routeMatrix.RelayIDs[i]))
 		index += 4
 	}
 
@@ -49,15 +49,15 @@ func WriteRouteMatrix(buffer []byte, routeMatrix *RouteMatrix) []byte {
 		index += WriteString(buffer[index:], routeMatrix.RelayNames[i])
 	}
 
-	if len(routeMatrix.DatacenterIds) != len(routeMatrix.DatacenterNames) {
+	if len(routeMatrix.DatacenterIDs) != len(routeMatrix.DatacenterNames) {
 		panic("datacenter ids length does not match datacenter names length")
 	}
 
-	binary.LittleEndian.PutUint32(buffer[index:], uint32(len(routeMatrix.DatacenterIds)))
+	binary.LittleEndian.PutUint32(buffer[index:], uint32(len(routeMatrix.DatacenterIDs)))
 	index += 4
 
-	for i := 0; i < len(routeMatrix.DatacenterIds); i++ {
-		binary.LittleEndian.PutUint32(buffer[index:], uint32(routeMatrix.DatacenterIds[i]))
+	for i := 0; i < len(routeMatrix.DatacenterIDs); i++ {
+		binary.LittleEndian.PutUint32(buffer[index:], uint32(routeMatrix.DatacenterIDs[i]))
 		index += 4
 		index += WriteString(buffer[index:], routeMatrix.DatacenterNames[i])
 	}
@@ -134,9 +134,9 @@ func ReadRouteMatrix(buffer []byte) (*RouteMatrix, error) {
 	numRelays = int32(binary.LittleEndian.Uint32(buffer[index:]))
 	index += 4
 
-	routeMatrix.RelayIds = make([]RelayId, numRelays)
+	routeMatrix.RelayIDs = make([]RelayID, numRelays)
 	for i := 0; i < int(numRelays); i++ {
-		routeMatrix.RelayIds[i] = RelayId(binary.LittleEndian.Uint32(buffer[index:]))
+		routeMatrix.RelayIDs[i] = RelayID(binary.LittleEndian.Uint32(buffer[index:]))
 		index += 4
 	}
 
@@ -154,10 +154,10 @@ func ReadRouteMatrix(buffer []byte) (*RouteMatrix, error) {
 		datacenterCount := binary.LittleEndian.Uint32(buffer[index:])
 		index += 4
 
-		routeMatrix.DatacenterIds = make([]DatacenterId, datacenterCount)
+		routeMatrix.DatacenterIDs = make([]DatacenterID, datacenterCount)
 		routeMatrix.DatacenterNames = make([]string, datacenterCount)
 		for i := 0; i < int(datacenterCount); i++ {
-			routeMatrix.DatacenterIds[i] = DatacenterId(binary.LittleEndian.Uint32(buffer[index:]))
+			routeMatrix.DatacenterIDs[i] = DatacenterID(binary.LittleEndian.Uint32(buffer[index:]))
 			index += 4
 			routeMatrix.DatacenterNames[i], bytes_read = ReadString(buffer[index:])
 			index += bytes_read
@@ -179,20 +179,20 @@ func ReadRouteMatrix(buffer []byte) (*RouteMatrix, error) {
 	numDatacenters := int32(binary.LittleEndian.Uint32(buffer[index:]))
 	index += 4
 
-	routeMatrix.DatacenterRelays = make(map[DatacenterId][]RelayId)
+	routeMatrix.DatacenterRelays = make(map[DatacenterID][]RelayID)
 
 	for i := 0; i < int(numDatacenters); i++ {
 
-		datacenterId := DatacenterId(binary.LittleEndian.Uint32(buffer[index:]))
+		datacenterID := DatacenterID(binary.LittleEndian.Uint32(buffer[index:]))
 		index += 4
 
 		numRelaysInDatacenter := int32(binary.LittleEndian.Uint32(buffer[index:]))
 		index += 4
 
-		routeMatrix.DatacenterRelays[datacenterId] = make([]RelayId, numRelaysInDatacenter)
+		routeMatrix.DatacenterRelays[datacenterID] = make([]RelayID, numRelaysInDatacenter)
 
 		for j := 0; j < int(numRelaysInDatacenter); j++ {
-			routeMatrix.DatacenterRelays[datacenterId][j] = RelayId(binary.LittleEndian.Uint32(buffer[index:]))
+			routeMatrix.DatacenterRelays[datacenterID][j] = RelayID(binary.LittleEndian.Uint32(buffer[index:]))
 			index += 4
 		}
 	}

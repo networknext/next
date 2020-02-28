@@ -8,9 +8,12 @@ package main
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/networknext/backend/logging"
@@ -182,6 +185,7 @@ func main() {
 	var costmatrix routing.CostMatrix
 	var routematrix routing.RouteMatrix
 
+	// Periodically generate cost matrix from stats db
 	go func() {
 		for {
 			if err := statsdb.GetCostMatrix(&costmatrix, redisClient); err != nil {
@@ -195,6 +199,49 @@ func main() {
 			level.Info(logger).Log("matrix", "route", "entries", len(routematrix.Entries))
 
 			time.Sleep(10 * time.Second)
+		}
+	}()
+
+	// Sub to expiry events for cleanup
+	redisClient.ConfigSet("notify-keyspace-events", "Ex")
+	go func() {
+		ps := redisClient.Subscribe("__keyevent@0__:expired")
+		for {
+			// Recieve expiry event message
+			msg, err := ps.ReceiveMessage()
+			if err != nil {
+				level.Error(logger).Log("msg", "Error recieving expired message from pubsub", "err", err)
+				os.Exit(1)
+			}
+
+			// If it is a relay that is expiring...
+			if strings.HasPrefix(msg.Payload, routing.HashKeyPrefixRelay) {
+
+				// Retrieve the ID of the relay that has expired
+				rawID, err := strconv.ParseUint(strings.TrimPrefix(msg.Payload, routing.HashKeyPrefixRelay), 10, 64)
+				if err != nil {
+					level.Error(logger).Log("msg", "Failed to parse expired Relay ID from payload", "payload", msg.Payload, "err", err)
+					os.Exit(1)
+				}
+
+				// Log the ID
+				level.Warn(logger).Log("msg", fmt.Sprintf("relay with id %v has disconnected.", rawID))
+
+				// Remove geo location data associated with this relay
+				if err := geoClient.Remove(rawID); err != nil {
+					level.Error(logger).Log("msg", fmt.Sprintf("Failed to remove geoClient entry for relay with ID %v", rawID), "err", err)
+					os.Exit(1)
+				}
+
+				// Remove relay entry from Hashmap
+				if err := redisClient.HDel(routing.HashKeyAllRelays, msg.Payload).Err(); err != nil {
+					level.Error(logger).Log("msg", fmt.Sprintf("Failed to remove hashmap entry for relay with ID %v", rawID), "err", err)
+					os.Exit(1)
+				}
+
+				// Remove relay entry from statsDB (which in turn means it won't appear in cost matrix)
+				statsdb.DeleteEntry(rawID)
+			}
 		}
 	}()
 
