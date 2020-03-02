@@ -42,45 +42,44 @@ type UDPServerMux struct {
 }
 
 // Start begins accepting UDP packets from the UDP connection and will block
-func (m *UDPServerMux) Start(ctx context.Context, handlers int) error {
+func (m *UDPServerMux) Start(ctx context.Context) error {
 	if m.Conn == nil {
 		return errors.New("relay server cannot be nil")
 	}
 
-	for i := 0; i < handlers; i++ {
-		go m.handler(ctx, i)
+	data := make([]byte, m.MaxPacketSize)
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			numbytes, addr, _ := m.Conn.ReadFromUDP(data)
+			if numbytes <= 0 {
+				continue
+			}
+
+			packet := UDPPacket{
+				SourceAddr: addr,
+				Data:       data[:numbytes],
+			}
+
+			go m.processPacket(ctx, packet)
+		}
 	}
-
-	<-ctx.Done()
-
-	return nil
 }
 
-func (m *UDPServerMux) handler(ctx context.Context, id int) {
-	data := make([]byte, m.MaxPacketSize)
+func (m *UDPServerMux) processPacket(ctx context.Context, packet UDPPacket) {
+	var buf bytes.Buffer
 
-	for {
-		numbytes, addr, _ := m.Conn.ReadFromUDP(data)
-		if numbytes <= 0 {
-			continue
-		}
+	switch packet.Data[0] {
+	case PacketTypeServerUpdate:
+		m.ServerUpdateHandlerFunc(&buf, &packet)
+	case PacketTypeSessionUpdate:
+		m.SessionUpdateHandlerFunc(&buf, &packet)
+	}
 
-		var buf bytes.Buffer
-		packet := UDPPacket{
-			SourceAddr: addr,
-			Data:       data[:numbytes],
-		}
-
-		switch data[0] {
-		case PacketTypeServerUpdate:
-			m.ServerUpdateHandlerFunc(&buf, &packet)
-		case PacketTypeSessionUpdate:
-			m.SessionUpdateHandlerFunc(&buf, &packet)
-		}
-
-		if buf.Len() > 0 {
-			m.Conn.WriteToUDP(buf.Bytes(), addr)
-		}
+	if buf.Len() > 0 {
+		m.Conn.WriteToUDP(buf.Bytes(), packet.SourceAddr)
 	}
 }
 
