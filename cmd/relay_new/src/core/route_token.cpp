@@ -7,7 +7,7 @@
 
 namespace core
 {
-  bool RouteToken::writeEncrypted(GenericPacket& packet,
+  bool RouteToken::writeEncrypted(GenericPacket<>& packet,
    size_t& index,
    const crypto::GenericKey& senderPrivateKey,
    const crypto::GenericKey& receiverPublicKey)
@@ -36,7 +36,7 @@ namespace core
     return true;
   }
 
-  bool RouteToken::readEncrypted(GenericPacket& packet,
+  bool RouteToken::readEncrypted(GenericPacket<>& packet,
    size_t& index,
    const crypto::GenericKey& senderPublicKey,
    const crypto::GenericKey& receiverPrivateKey)
@@ -55,7 +55,7 @@ namespace core
     return true;
   }
 
-  void RouteToken::write(GenericPacket& packet, size_t& index)
+  void RouteToken::write(GenericPacket<>& packet, size_t& index)
   {
     assert(packet.Buffer.size() >= RouteToken::ByteSize);
 
@@ -72,7 +72,7 @@ namespace core
     assert(index - start == RouteToken::ByteSize);
   }
 
-  void RouteToken::read(GenericPacket& packet, size_t& index)
+  void RouteToken::read(GenericPacket<>& packet, size_t& index)
   {
     const size_t start = index;
 
@@ -87,7 +87,7 @@ namespace core
     assert(index - start == RouteToken::ByteSize);
   }
 
-  bool RouteToken::encrypt(GenericPacket& packet,
+  bool RouteToken::encrypt(GenericPacket<>& packet,
    const size_t& index,
    const crypto::GenericKey& senderPrivateKey,
    const crypto::GenericKey& receiverPublicKey,
@@ -107,7 +107,7 @@ namespace core
     return true;
   }
 
-  bool RouteToken::decrypt(GenericPacket& packet,
+  bool RouteToken::decrypt(GenericPacket<>& packet,
    const size_t& index,
    const crypto::GenericKey& senderPublicKey,
    const crypto::GenericKey& receiverPrivateKey,

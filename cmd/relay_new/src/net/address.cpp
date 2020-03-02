@@ -174,36 +174,6 @@ namespace net
     // method 3 - almost tied with method 1
     // output.assign(buff.begin(), buff.begin() + total);
   }
-
-  // TODO consider making this inline
-  auto Address::operator==(const Address& other) const -> bool
-  {
-    if (this->Type != other.Type || this->Port != other.Port) {
-      return false;
-    }
-
-    switch (this->Type) {
-      case AddressType::IPv4:
-        for (unsigned int i = 0; i < IPv4.size(); i++) {
-          if (IPv4[i] != other.IPv4[i]) {
-            return false;
-          }
-        }
-        return true;
-      case AddressType::IPv6:
-        for (unsigned int i = 0; i < IPv6.size(); i++) {
-          if (IPv6[i] != other.IPv6[i]) {
-            return false;
-          }
-        }
-        return true;
-      case AddressType::None:
-        return true;  // if the above tests passed, then the address doesn't matter
-      default:
-        return false;
-    }
-  }
-
 }  // namespace net
 
 /******************************************************************************************************************************/

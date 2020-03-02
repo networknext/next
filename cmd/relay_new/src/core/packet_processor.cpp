@@ -24,23 +24,6 @@
 
 namespace
 {
-  // TODO finish implementing this
-  enum class PacketType
-  {
-    RelayPing = RELAY_PING_PACKET,
-    RelayPong = RELAY_PONG_PACKET,
-    RouteRequest = RELAY_ROUTE_REQUEST_PACKET,
-    RouteResponse = RELAY_ROUTE_RESPONSE_PACKET,
-    ContinueRequest = RELAY_CONTINUE_REQUEST_PACKET,
-    ContinueResponse = RELAY_CONTINUE_RESPONSE_PACKET,
-    ClientToServer = RELAY_CLIENT_TO_SERVER_PACKET,
-    ServerToClient = RELAY_SERVER_TO_CLIENT_PACKET,
-    SessionPing = RELAY_SESSION_PING_PACKET,
-    SessionPong = RELAY_SESSION_PONG_PACKET,
-    NearPing = RELAY_NEAR_PING_PACKET,
-    NearPong = RELAY_NEAR_PONG_PACKET
-  };
-
   const size_t MaxPacketsToReceive = 1024 * 2;
 }  // namespace
 
@@ -52,7 +35,7 @@ namespace core
    const core::RouterInfo& routerInfo,
    core::SessionMap& sessions,
    core::RelayManager& relayManager,
-   volatile bool& handle,
+   const volatile bool& handle,
    util::ThroughputLogger* logger)
    : mSocket(socket),
      mRelayClock(relayClock),
@@ -78,7 +61,7 @@ namespace core
     readyToReceive = true;
     var.notify_one();
 
-    while (this->mShouldProcess) {
+    while (mShouldProcess) {
       if (!mSocket.multirecv(buffer)) {
         Log("failed to recv packets");
       }
@@ -91,7 +74,7 @@ namespace core
     }
   }
 
-  inline void PacketProcessor::processPacket(GenericPacket& packet, mmsghdr& header)
+  inline void PacketProcessor::processPacket(GenericPacket<>& packet, mmsghdr& header)
   {
     LogDebug("packet type: ", static_cast<unsigned int>(packet.Buffer[0]));
 
@@ -169,7 +152,7 @@ namespace core
           mLogger->addToCliToServ(packet.Len);
         }
 
-        handlers::ClientToServerHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap, mSocket);
+        handlers::ClientToServerHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap, mSocket, mSender);
 
         handler.handle();
       } break;

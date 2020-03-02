@@ -21,13 +21,14 @@ namespace core
      public:
       RouteRequestHandler(const util::Clock& relayClock,
        const RouterInfo& routerInfo,
-       GenericPacket& packet,
+       GenericPacket<>& packet,
        const int size,
        const net::Address& from,
        const crypto::Keychain& keychain,
        core::SessionMap& sessions,
        const os::Socket& socket,
        net::BufferedSender<SenderMaxCap, SenderTimeout>& sender);
+
       void handle();
 
      private:
@@ -41,7 +42,7 @@ namespace core
     template <size_t SenderMaxCap, size_t SenderTimeout>
     inline RouteRequestHandler<SenderMaxCap, SenderTimeout>::RouteRequestHandler(const util::Clock& relayClock,
      const RouterInfo& routerInfo,
-     GenericPacket& packet,
+     GenericPacket<>& packet,
      const int size,
      const net::Address& from,
      const crypto::Keychain& keychain,

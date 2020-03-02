@@ -66,6 +66,7 @@ namespace net
 
     // for dev purposes, if max is 1 then it's the same as sending immediately, or if timeout is 0 always wait
     if (MaxCapacity > 1 && TimeoutInMicroseconds > 1) {
+      // can eventually bring this to be a single thread in main, but for now the impact is so little that this doen't matter
       mSendThread = std::make_unique<std::thread>([this] {
         while (mSocket.isOpen()) {
           std::this_thread::sleep_for(1us * TimeoutInMicroseconds);

@@ -11,8 +11,10 @@ namespace
 
 namespace core
 {
-  PingProcessor::PingProcessor(
-   const os::Socket& socket, core::RelayManager& relayManager, volatile bool& shouldProcess, const net::Address& relayAddress)
+  PingProcessor::PingProcessor(const os::Socket& socket,
+   core::RelayManager& relayManager,
+   const volatile bool& shouldProcess,
+   const net::Address& relayAddress)
    : mSocket(socket), mRelayManager(relayManager), mShouldProcess(shouldProcess), mRelayAddress(relayAddress)
   {}
 
@@ -21,7 +23,7 @@ namespace core
     readyToSend = true;
     var.notify_one();
 
-    GenericPacketBuffer<MaxPacketsToSend> buffer;
+    GenericPacketBuffer<MaxPacketsToSend, RELAY_PING_PACKET_BYTES> buffer;
 
     while (mShouldProcess) {
       std::this_thread::sleep_for(10ms);
@@ -42,13 +44,9 @@ namespace core
 
         auto& addr = pings[i].Addr;
 
-        auto& iov = buffer.IOVecBuff[i];
-
         LogDebug("[*] Processing ping for ", addr);
 
         fillMsgHdrWithAddr(hdr, addr);
-
-        iov.iov_len = RELAY_PING_PACKET_BYTES;
 
         size_t index = 0;
 

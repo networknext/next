@@ -11,33 +11,39 @@ namespace core
 {
   namespace handlers
   {
+    template <size_t SenderMaxCap, size_t SenderTimeout>
     class ClientToServerHandler: public BaseHandler
     {
      public:
       ClientToServerHandler(const util::Clock& relayClock,
        const RouterInfo& routerInfo,
-       GenericPacket& packet,
+       GenericPacket<>& packet,
        const int packetSize,
        core::SessionMap& sessions,
-       const os::Socket& socket);
+       const os::Socket& socket,
+       net::BufferedSender<SenderMaxCap, SenderTimeout>& sender);
 
       void handle();
 
      private:
       core::SessionMap& mSessionMap;
       const os::Socket& mSocket;
+      net::BufferedSender<SenderMaxCap, SenderTimeout>& mSender;
     };
 
-    inline ClientToServerHandler::ClientToServerHandler(const util::Clock& relayClock,
+    template <size_t SenderMaxCap, size_t SenderTimeout>
+    inline ClientToServerHandler<SenderMaxCap, SenderTimeout>::ClientToServerHandler(const util::Clock& relayClock,
      const RouterInfo& routerInfo,
-     GenericPacket& packet,
+     GenericPacket<>& packet,
      const int packetSize,
      core::SessionMap& sessions,
-     const os::Socket& socket)
-     : BaseHandler(relayClock, routerInfo, packet, packetSize), mSessionMap(sessions), mSocket(socket)
+     const os::Socket& socket,
+     net::BufferedSender<SenderMaxCap, SenderTimeout>& sender)
+     : BaseHandler(relayClock, routerInfo, packet, packetSize), mSessionMap(sessions), mSocket(socket), mSender(sender)
     {}
 
-    inline void ClientToServerHandler::handle()
+    template <size_t SenderMaxCap, size_t SenderTimeout>
+    inline void ClientToServerHandler<SenderMaxCap, SenderTimeout>::handle()
     {
       if (mPacketSize <= RELAY_HEADER_BYTES || mPacketSize > RELAY_HEADER_BYTES + RELAY_MTU) {
         return;
@@ -48,23 +54,24 @@ namespace core
       uint64_t session_id;
       uint8_t session_version;
 
-      if (relay::relay_peek_header(
-           RELAY_DIRECTION_CLIENT_TO_SERVER, &type, &sequence, &session_id, &session_version, mPacket.Buffer.data(), mPacketSize) !=
-          RELAY_OK) {
+      if (relay::relay_peek_header(RELAY_DIRECTION_CLIENT_TO_SERVER,
+           &type,
+           &sequence,
+           &session_id,
+           &session_version,
+           mPacket.Buffer.data(),
+           mPacketSize) != RELAY_OK) {
         return;
       }
 
       uint64_t hash = session_id ^ session_version;
 
-      core::SessionMap::iterator iter, end;
+      // check if the session is registered
       {
         std::lock_guard<std::mutex> lk(mSessionMap.Lock);
-        iter = mSessionMap.find(hash);
-        end = mSessionMap.end();
-      }
-
-      if (iter == end) {
-        return;
+        if (mSessionMap.find(hash) == mSessionMap.end()) {
+          return;
+        }
       }
 
       core::SessionPtr session;
@@ -88,7 +95,7 @@ namespace core
         return;
       }
 
-      mSocket.send(session->NextAddr, mPacket.Buffer.data(), mPacketSize);
+      mSender.queue(session->NextAddr, mPacket.Buffer.data(), mPacketSize);
       LogDebug("sent client packet to ", session->NextAddr);
     }
   }  // namespace handlers

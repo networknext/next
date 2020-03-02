@@ -34,13 +34,13 @@ namespace os
     template <size_t BuffSize>
     bool multisend(std::array<mmsghdr, BuffSize>& packetBuff, int count) const;
 
-    template <size_t BuffSize>
-    bool multisend(core::GenericPacketBuffer<BuffSize>& packetBuff) const;
+    template <size_t BuffSize, size_t PacketSize>
+    bool multisend(core::GenericPacketBuffer<BuffSize, PacketSize>& packetBuff) const;
 
     size_t recv(net::Address& from, uint8_t* data, size_t maxSize) const;
 
-    template <size_t BuffSize>
-    bool multirecv(core::GenericPacketBuffer<BuffSize>& packetBuff) const;
+    template <size_t BuffSize, size_t PacketSize>
+    bool multirecv(core::GenericPacketBuffer<BuffSize, PacketSize>& packetBuff) const;
 
     void close();
 
@@ -102,14 +102,14 @@ namespace os
     return toSend == count;
   }
 
-  template <size_t BuffSize>
-  bool Socket::multisend(core::GenericPacketBuffer<BuffSize>& packetBuff) const
+  template <size_t BuffSize, size_t PacketSize>
+  bool Socket::multisend(core::GenericPacketBuffer<BuffSize, PacketSize>& packetBuff) const
   {
     return multisend(packetBuff.Headers, packetBuff.Count);
   }
 
-  template <size_t BuffSize>
-  bool Socket::multirecv(core::GenericPacketBuffer<BuffSize>& packetBuff) const
+  template <size_t BuffSize, size_t PacketSize>
+  bool Socket::multirecv(core::GenericPacketBuffer<BuffSize, PacketSize>& packetBuff) const
   {
     packetBuff.Count = recvmmsg(mSockFD,
      packetBuff.Headers.data(),

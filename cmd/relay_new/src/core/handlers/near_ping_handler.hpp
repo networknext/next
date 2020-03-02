@@ -16,7 +16,7 @@ namespace core
      public:
       NearPingHandler(const util::Clock& relayClock,
        const RouterInfo& routerInfo,
-       GenericPacket& packet,
+       GenericPacket<>& packet,
        const int packetSize,
        const net::Address& from,
        const os::Socket& socket);
@@ -30,7 +30,7 @@ namespace core
 
     inline NearPingHandler::NearPingHandler(const util::Clock& relayClock,
      const RouterInfo& routerInfo,
-     GenericPacket& packet,
+     GenericPacket<>& packet,
      const int packetSize,
      const net::Address& from,
      const os::Socket& socket)

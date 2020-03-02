@@ -16,7 +16,7 @@ namespace core
      public:
       RouteResponseHandler(const util::Clock& relayClock,
        const RouterInfo& routerInfo,
-       GenericPacket& packet,
+       GenericPacket<>& packet,
        const int packetSize,
        core::SessionMap& sessions,
        const os::Socket& socket);
@@ -30,7 +30,7 @@ namespace core
 
     inline RouteResponseHandler::RouteResponseHandler(const util::Clock& relayClock,
      const RouterInfo& routerInfo,
-     GenericPacket& packet,
+     GenericPacket<>& packet,
      const int packetSize,
      core::SessionMap& sessions,
      const os::Socket& socket)

@@ -20,7 +20,7 @@ namespace core
      public:
       RelayPingHandler(const util::Clock& relayClock,
        const RouterInfo& routerInfo,
-       GenericPacket& packet,
+       GenericPacket<>& packet,
        const int size,
        const os::Socket& socket);
 
@@ -32,7 +32,7 @@ namespace core
 
     inline RelayPingHandler::RelayPingHandler(const util::Clock& relayClock,
      const RouterInfo& routerInfo,
-     GenericPacket& packet,
+     GenericPacket<>& packet,
      const int size,
      const os::Socket& socket)
      : BaseHandler(relayClock, routerInfo, packet, size), mSocket(socket)

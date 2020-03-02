@@ -16,7 +16,7 @@ namespace core
      public:
       SessionPingHandler(const util::Clock& relayClock,
        const RouterInfo& routerInfo,
-       GenericPacket& packet,
+       GenericPacket<>& packet,
        const int packetSize,
        core::SessionMap& sessions,
        const os::Socket& socket);
@@ -30,7 +30,7 @@ namespace core
 
     inline SessionPingHandler::SessionPingHandler(const util::Clock& relayClock,
      const RouterInfo& routerInfo,
-     GenericPacket& packet,
+     GenericPacket<>& packet,
      const int packetSize,
      core::SessionMap& sessions,
      const os::Socket& socket)

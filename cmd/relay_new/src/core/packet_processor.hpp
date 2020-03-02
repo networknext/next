@@ -27,7 +27,7 @@ namespace core
      const core::RouterInfo& routerInfo,
      core::SessionMap& sessions,
      core::RelayManager& relayManager,
-     volatile bool& handle,
+     const volatile bool& handle,
      util::ThroughputLogger* logger);
     ~PacketProcessor() = default;
 
@@ -42,7 +42,7 @@ namespace core
     const core::RouterInfo mRouterInfo;
     core::SessionMap& mSessionMap;
     core::RelayManager& mRelayManager;
-    volatile bool& mShouldProcess;
+    const volatile bool& mShouldProcess;
 
     util::ThroughputLogger* mLogger;
 
@@ -54,8 +54,9 @@ namespace core
     // caused a decrease in perf, probably timing out too often, down to 56 Mb/s
     // net::BufferedSender<60, 40> mSender;
 
-    // caused a gain, but only because the timeout wasn't present, further adds to the timeout being responsable for the perf
-    // decrease, about 80-83 Mb/s net::BufferedSender<40, 0> mSender;
+    // caused a gain, but only because the timeout wasn't present,
+    // further adds to the timeout being responsable for the perf decrease, about 80-83 Mb/s
+    // net::BufferedSender<40, 0> mSender;
 
     // similar gain, but ranges from 56 Mb/s to 84 Mb/s
     // net::BufferedSender<400, 0> mSender;
@@ -63,10 +64,12 @@ namespace core
     // massive decrease, don't even bother
     // net::BufferedSender<100, 100> mSender;
 
-    // Stable gain to 84 Mb/s, most ideal for now
-    net::BufferedSender<10, 1000> mSender;
+    // Stable gain to 84 Mb/s, ideal but test func fails due to receiving ~80 less packets than expected
+    // net::BufferedSender<10, 1000> mSender;
 
-    void processPacket(GenericPacket& packet, mmsghdr& header);
+    net::BufferedSender<3, 750> mSender;
+
+    void processPacket(GenericPacket<>& packet, mmsghdr& header);
 
     bool getAddrFromMsgHdr(net::Address& addr, const msghdr& hdr) const;
   };

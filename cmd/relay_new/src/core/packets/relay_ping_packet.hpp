@@ -14,14 +14,14 @@ namespace core
     class RelayPingPacket
     {
      public:
-      RelayPingPacket(GenericPacket& packet, int size);
+      RelayPingPacket(GenericPacket<>& packet, int size);
 
       const uint64_t& getSeqNum();
       const net::Address& getFromAddr();
 
       void writeFromAddr(const net::Address& addr);
 
-      GenericPacket& Internal;
+      GenericPacket<>& Internal;
       const int Size;
 
      private:
@@ -29,7 +29,7 @@ namespace core
       std::optional<net::Address> mFrom;
     };
 
-    inline RelayPingPacket::RelayPingPacket(GenericPacket& packet, int size): Internal(packet), Size(size) {}
+    inline RelayPingPacket::RelayPingPacket(GenericPacket<>& packet, int size): Internal(packet), Size(size) {}
 
     inline const uint64_t& RelayPingPacket::getSeqNum()
     {

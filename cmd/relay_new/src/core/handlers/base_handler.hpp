@@ -15,9 +15,9 @@ namespace core
     class BaseHandler
     {
      protected:
-      BaseHandler(const util::Clock& relayClock, const RouterInfo& routerInfo, GenericPacket& packet, const int packetSize);
+      BaseHandler(const util::Clock& relayClock, const RouterInfo& routerInfo, GenericPacket<>& packet, const int packetSize);
 
-      GenericPacket& mPacket;
+      GenericPacket<>& mPacket;
       const int mPacketSize;
 
       auto tokenIsExpired(core::Token& token) -> bool;
@@ -31,7 +31,7 @@ namespace core
     };
 
     inline BaseHandler::BaseHandler(
-     const util::Clock& relayClock, const RouterInfo& routerInfo, GenericPacket& packet, const int packetSize)
+     const util::Clock& relayClock, const RouterInfo& routerInfo, GenericPacket<>& packet, const int packetSize)
      : mPacket(packet), mPacketSize(packetSize), mRelayClock(relayClock), mRouterInfo(routerInfo)
     {}
 

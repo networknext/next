@@ -14,7 +14,7 @@ namespace core
      public:
       RelayPongHandler(const util::Clock& relayClock,
        const RouterInfo& routerInfo,
-       GenericPacket& packet,
+       GenericPacket<>& packet,
        int packetSize,
        RelayManager& manager);
 
@@ -25,7 +25,7 @@ namespace core
     };
 
     inline RelayPongHandler::RelayPongHandler(
-     const util::Clock& relayClock, const RouterInfo& routerInfo, GenericPacket& packet, int packetSize, RelayManager& manager)
+     const util::Clock& relayClock, const RouterInfo& routerInfo, GenericPacket<>& packet, int packetSize, RelayManager& manager)
      : BaseHandler(relayClock, routerInfo, packet, packetSize), mRelayManager(manager)
     {}
 

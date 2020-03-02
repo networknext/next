@@ -18,7 +18,7 @@ namespace core
      public:
       ContinueRequestHandler(const util::Clock& relayClock,
        const RouterInfo& routerInfo,
-       GenericPacket& packet,
+       GenericPacket<>& packet,
        const int packetSize,
        core::SessionMap& sessions,
        const os::Socket& socket,
@@ -34,7 +34,7 @@ namespace core
 
     inline ContinueRequestHandler::ContinueRequestHandler(const util::Clock& relayClock,
      const RouterInfo& routerInfo,
-     GenericPacket& packet,
+     GenericPacket<>& packet,
      const int packetSize,
      core::SessionMap& sessions,
      const os::Socket& socket,

@@ -10,39 +10,47 @@
 namespace core
 {
   const size_t GenericPacketMaxSize = RELAY_MAX_PACKET_BYTES;
+
+  template <size_t BuffSize = GenericPacketMaxSize>
   struct GenericPacket
   {
     net::Address Addr;
-    std::array<uint8_t, GenericPacketMaxSize> Buffer;
+    std::array<uint8_t, BuffSize> Buffer;
     size_t Len;
   };
 
-  template <size_t BuffSize>
+
+  // holds BuffSize packets and shares memory between the header and the packet, packet interface is meant to be easy to use
+  template <size_t BuffSize, size_t PacketSize = GenericPacketMaxSize>
   class GenericPacketBuffer
   {
    public:
     GenericPacketBuffer();
 
-    void print();  // for debugging
+    // for debugging
+    void print();
 
     // # to send & # sent, or # received
     int Count;
 
     // wrapper array for received packets
-    std::array<GenericPacket, BuffSize> Packets;
+    std::array<GenericPacket<PacketSize>, BuffSize> Packets;
 
-    // c struct needed for recvmmsg
+    // c struct needed for sendmmsg & recvmmsg
     std::array<mmsghdr, BuffSize> Headers;
 
+   private:
+    // using vectors here to reduce stack memory
+
     // buffer for sockaddr's
-    std::array<std::array<uint8_t, sizeof(sockaddr_in6)>, BuffSize> RawAddrBuff;
+    std::vector<std::array<uint8_t, sizeof(sockaddr_in6)>> mRawAddrBuff;
 
     // buffer for iovec structs
-    std::array<iovec, BuffSize> IOVecBuff;
+    std::vector<iovec> IOVecBuff;
   };
 
-  template <size_t BuffSize>
-  GenericPacketBuffer<BuffSize>::GenericPacketBuffer()
+  template <size_t BuffSize, size_t PacketSize>
+  GenericPacketBuffer<BuffSize, PacketSize>::GenericPacketBuffer(): mRawAddrBuff(BuffSize), IOVecBuff(BuffSize)
   {
     for (size_t i = 0; i < BuffSize; i++) {
       auto& pkt = Packets[i];
@@ -51,7 +59,7 @@ namespace core
       auto& hdr = mhdr.msg_hdr;
 
       // assign the address buffered area to the header
-      auto& addr = RawAddrBuff[i];
+      auto& addr = mRawAddrBuff[i];
       {
         hdr.msg_namelen = addr.size();
         hdr.msg_name = addr.data();
@@ -66,14 +74,14 @@ namespace core
 
       // assign the packet buffered area to the header
       {
-        hdr.msg_iovlen = 1;  // Don't change, needs to be 1 to accurately deterimine amount of bytes received
+        hdr.msg_iovlen = 1;  // Don't change, needs to be 1 to accurately deterimine amount of bytes received afaik
         hdr.msg_iov = iov;
       }
     }
   }
 
-  template <size_t BuffSize>
-  void GenericPacketBuffer<BuffSize>::print()
+  template <size_t BuffSize, size_t PacketSize>
+  void GenericPacketBuffer<BuffSize, PacketSize>::print()
   {
     LogDebug("Number of packets in buffer: ", Count);
     for (int i = 0; i < Count; i++) {

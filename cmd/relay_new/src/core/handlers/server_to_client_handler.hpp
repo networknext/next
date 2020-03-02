@@ -15,7 +15,7 @@ namespace core
      public:
       ServerToClientHandler(const util::Clock& relayClock,
        const RouterInfo& routerInfo,
-       GenericPacket& packet,
+       GenericPacket<>& packet,
        const int packetSize,
        core::SessionMap& sessions,
        const os::Socket& socket);
@@ -29,7 +29,7 @@ namespace core
 
     inline ServerToClientHandler::ServerToClientHandler(const util::Clock& relayClock,
      const RouterInfo& routerInfo,
-     GenericPacket& packet,
+     GenericPacket<>& packet,
      const int packetSize,
      core::SessionMap& sessions,
      const os::Socket& socket)

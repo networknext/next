@@ -8,7 +8,7 @@
 
 namespace core
 {
-  bool ContinueToken::writeEncrypted(GenericPacket& packet,
+  bool ContinueToken::writeEncrypted(GenericPacket<>& packet,
    size_t& index,
    const crypto::GenericKey& senderPrivateKey,
    const crypto::GenericKey& receiverPublicKey)
@@ -37,7 +37,7 @@ namespace core
     return true;
   }
 
-  bool ContinueToken::readEncrypted(GenericPacket& packet,
+  bool ContinueToken::readEncrypted(GenericPacket<>& packet,
    size_t& index,
    const crypto::GenericKey& senderPublicKey,
    const crypto::GenericKey& receiverPrivateKey)
@@ -57,7 +57,7 @@ namespace core
     return true;
   }
 
-  void ContinueToken::write(GenericPacket& packet, size_t& index)
+  void ContinueToken::write(GenericPacket<>& packet, size_t& index)
   {
     assert(index + ContinueToken::ByteSize < packet.Buffer.size());
 
@@ -69,7 +69,7 @@ namespace core
     assert(index - start == ContinueToken::ByteSize);
   }
 
-  void ContinueToken::read(GenericPacket& packet, size_t& index)
+  void ContinueToken::read(GenericPacket<>& packet, size_t& index)
   {
     const size_t start = index;
     (void)start;
@@ -79,7 +79,7 @@ namespace core
     assert(index - start == ContinueToken::ByteSize);
   }
 
-  bool ContinueToken::encrypt(GenericPacket& packet,
+  bool ContinueToken::encrypt(GenericPacket<>& packet,
    const size_t& index,
    const crypto::GenericKey& senderPrivateKey,
    const crypto::GenericKey& receiverPublicKey,
@@ -99,7 +99,7 @@ namespace core
     return true;
   }
 
-  bool ContinueToken::decrypt(GenericPacket& packet,
+  bool ContinueToken::decrypt(GenericPacket<>& packet,
    const size_t& index,
    const crypto::GenericKey& senderPublicKey,
    const crypto::GenericKey& receiverPrivateKey,

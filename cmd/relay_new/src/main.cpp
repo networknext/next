@@ -25,7 +25,7 @@ using namespace std::chrono_literals;
 
 namespace
 {
-  volatile bool gAlive = true;  // TODO make atomic
+  volatile bool gAlive;
 
   void interrupt_handler(int signal)
   {
@@ -35,6 +35,7 @@ namespace
 
   void segfaultHandler(int sig)
   {
+    gAlive = false;
     const auto StacktraceDepth = 13;
     void* arr[StacktraceDepth];
 
@@ -145,6 +146,7 @@ namespace
 
 int main()
 {
+  gAlive = true;
   signal(SIGSEGV, segfaultHandler);
 
 #ifdef TEST_BUILD

@@ -10,8 +10,10 @@ namespace core
   class PingProcessor
   {
    public:
-    PingProcessor(
-     const os::Socket& socket, core::RelayManager& relayManger, volatile bool& shouldProcess, const net::Address& relayAddr);
+    PingProcessor(const os::Socket& socket,
+     core::RelayManager& relayManger,
+     const volatile bool& shouldProcess,
+     const net::Address& relayAddr);
     ~PingProcessor() = default;
 
     void process(std::condition_variable& var, std::atomic<bool>& readyToSend);
@@ -19,7 +21,7 @@ namespace core
    private:
     const os::Socket& mSocket;
     core::RelayManager& mRelayManager;
-    volatile bool& mShouldProcess;
+    const volatile bool& mShouldProcess;
     const net::Address& mRelayAddress;
 
     void fillMsgHdrWithAddr(msghdr& hdr, const net::Address& addr);
