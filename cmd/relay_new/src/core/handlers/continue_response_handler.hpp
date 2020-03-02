@@ -13,6 +13,7 @@ namespace core
 {
   namespace handlers
   {
+    template <size_t SenderMaxCap, size_t SenderTimeout>
     class ContinueResponseHandler: public BaseHandler
     {
      public:
@@ -21,25 +22,30 @@ namespace core
        GenericPacket<>& packet,
        const int packetSize,
        core::SessionMap& sessions,
-       const os::Socket& socket);
+       const os::Socket& socket,
+       net::BufferedSender<SenderMaxCap, SenderTimeout>& sender);
 
       void handle();
 
      private:
       core::SessionMap& mSessionMap;
       const os::Socket& mSocket;
+      net::BufferedSender<SenderMaxCap, SenderTimeout>& mSender;
     };
 
-    inline ContinueResponseHandler::ContinueResponseHandler(const util::Clock& relayClock,
+    template <size_t SenderMaxCap, size_t SenderTimeout>
+    inline ContinueResponseHandler<SenderMaxCap, SenderTimeout>::ContinueResponseHandler(const util::Clock& relayClock,
      const RouterInfo& routerInfo,
      GenericPacket<>& packet,
      const int packetSize,
      core::SessionMap& sessions,
-     const os::Socket& socket)
-     : BaseHandler(relayClock, routerInfo, packet, packetSize), mSessionMap(sessions), mSocket(socket)
+     const os::Socket& socket,
+     net::BufferedSender<SenderMaxCap, SenderTimeout>& sender)
+     : BaseHandler(relayClock, routerInfo, packet, packetSize), mSessionMap(sessions), mSocket(socket), mSender(sender)
     {}
 
-    inline void ContinueResponseHandler::handle()
+    template <size_t SenderMaxCap, size_t SenderTimeout>
+    inline void ContinueResponseHandler<SenderMaxCap, SenderTimeout>::handle()
     {
       if (mPacketSize != RELAY_HEADER_BYTES) {
         return;
@@ -50,9 +56,13 @@ namespace core
       uint64_t session_id;
       uint8_t session_version;
 
-      if (relay::relay_peek_header(
-           RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, mPacket.Buffer.data(), mPacketSize) !=
-          RELAY_OK) {
+      if (relay::relay_peek_header(RELAY_DIRECTION_SERVER_TO_CLIENT,
+           &type,
+           &sequence,
+           &session_id,
+           &session_version,
+           mPacket.Buffer.data(),
+           mPacketSize) != RELAY_OK) {
         return;
       }
 
@@ -92,7 +102,7 @@ namespace core
         return;
       }
 
-      mSocket.send(session->PrevAddr, mPacket.Buffer.data(), mPacketSize);
+      mSender.queue(session->PrevAddr, mPacket.Buffer.data(), mPacketSize);
     }
   }  // namespace handlers
 }  // namespace core

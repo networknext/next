@@ -143,7 +143,7 @@ namespace core
           mLogger->addToContResp(packet.Len);
         }
 
-        handlers::ContinueResponseHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap, mSocket);
+        handlers::ContinueResponseHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap, mSocket, mSender);
 
         handler.handle();
       } break;
