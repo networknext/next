@@ -16,12 +16,6 @@ func TestNewPubSubBiller(t *testing.T) {
 	_, err := billing.NewBiller(context.Background(), log.NewNopLogger(), "", "", nil)
 	assert.NoError(t, err)
 
-	// Test new client error case
-	_, err = billing.NewBiller(context.Background(), log.NewNopLogger(), "", "", &billing.Descriptor{
-		ClientCount: 1,
-	})
-	assert.Error(t, err)
-
 	// Test success case
 	projectID := os.Getenv("GOOGLE_PROJECT_ID")
 	if projectID == "" {

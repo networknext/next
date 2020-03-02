@@ -212,7 +212,7 @@ func (handler *StackDriverHandler) WriteLoop(ctx context.Context, logger log.Log
 				}); err != nil {
 					level.Error(logger).Log("msg", "Failed to write time series data", "err", err)
 				} else {
-					level.Info(logger).Log("msg", "Metrics pushed to StackDriver")
+					level.Debug(logger).Log("msg", "Metrics pushed to StackDriver")
 				}
 			}
 		case <-ctx.Done():
