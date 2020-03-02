@@ -133,7 +133,8 @@ namespace core
           mLogger->addToContReq(packet.Len);
         }
 
-        handlers::ContinueRequestHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap, mSocket, mKeychain);
+        handlers::ContinueRequestHandler handler(
+         mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap, mSocket, mSender, mKeychain);
 
         handler.handle();
       } break;

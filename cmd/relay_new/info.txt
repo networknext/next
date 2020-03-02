@@ -1,0 +1,10 @@
+https://events.static.linuxfound.org/sites/events/files/slides/LinuxConJapan2016_makita_160712.pdf
+
+Smallest packet size is 84 bytes = 672 bits
+On a 10g nic the most throughput we could have is 14,880,952 packets/second using a "empty" packet
+
+With a max packet size of 1,500 bytes = 12,000 bits () the min desirable throughput is 789,141 packets/second (floor of 10,000,000,000 / (672 + 12,000))
+
+For a 1g nic processing 78914 packets/second is the min desirable throughput
+
+3/2: currently have 40k packets/second throughput using route request packets, 2 threads w/ packet size of 1880 bits
