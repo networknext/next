@@ -46,7 +46,25 @@ namespace core
 
     util::ThroughputLogger* mLogger;
 
-    net::BufferedSender<10, 50000> mSender;
+    // perf based on using 2 packet processors, original benchmark (using sendto()) is 72 Mb/s
+
+    // basicaly a slightly less effecient sento(), no noticable Mb/s diff
+    // net::BufferedSender<1, 0> mSender;
+
+    // caused a decrease in perf, probably timing out too often, down to 56 Mb/s
+    // net::BufferedSender<60, 40> mSender;
+
+    // caused a gain, but only because the timeout wasn't present, further adds to the timeout being responsable for the perf
+    // decrease, about 80-83 Mb/s net::BufferedSender<40, 0> mSender;
+
+    // similar gain, but ranges from 56 Mb/s to 84 Mb/s
+    // net::BufferedSender<400, 0> mSender;
+
+    // massive decrease, don't even bother
+    // net::BufferedSender<100, 100> mSender;
+
+    // Stable gain to 84 Mb/s, most ideal for now
+    net::BufferedSender<10, 1000> mSender;
 
     void processPacket(GenericPacket& packet, mmsghdr& header);
 
