@@ -237,12 +237,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, redisClient *redis.Client, statsd
 
 		relay.LastUpdateTime = uint64(time.Now().Unix())
 
-		type RelayPingData struct {
-			id      uint64
-			address string
-		}
-
-		relaysToPing := make([]RelayPingData, 0)
+		relaysToPing := make([]routing.RelayPingData, 0)
 
 		// Regular set for expiry
 		if res := redisClient.Set(relay.Key(), 0, routing.RelayTimeout); res.Err() != nil {
@@ -272,7 +267,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, redisClient *redis.Client, statsd
 					level.Error(locallogger).Log("msg", "failed to get other relay", "err", err)
 					continue
 				}
-				relaysToPing = append(relaysToPing, RelayPingData{id: uint64(unmarshaledValue.ID), address: unmarshaledValue.Addr.String()})
+				relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(unmarshaledValue.ID), Address: unmarshaledValue.Addr.String()})
 			}
 		}
 
@@ -284,8 +279,8 @@ func RelayUpdateHandlerFunc(logger log.Logger, redisClient *redis.Client, statsd
 		encoding.WriteUint32(responseData, &index, uint32(len(relaysToPing)))
 
 		for i := range relaysToPing {
-			encoding.WriteUint64(responseData, &index, relaysToPing[i].id)
-			encoding.WriteString(responseData, &index, relaysToPing[i].address, MaxRelayAddressLength)
+			encoding.WriteUint64(responseData, &index, relaysToPing[i].ID)
+			encoding.WriteString(responseData, &index, relaysToPing[i].Address, MaxRelayAddressLength)
 		}
 
 		level.Debug(locallogger).Log("msg", "relay updated")
