@@ -190,6 +190,7 @@ func main() {
 
 			// Create the metrics handler
 			metricsHandler = &metrics.StackDriverHandler{
+				Credentials:     stackdrivercredsjson,
 				ProjectID:       stackDriverProjectID,
 				ClusterLocation: os.Getenv("GCP_METRICS_CLUSTER_LOCATION"),
 				ClusterName:     os.Getenv("GCP_METRICS_CLUSTER_NAME"),
@@ -198,7 +199,7 @@ func main() {
 				NamespaceName:   os.Getenv("GCP_METRICS_NAMESPACE_NAME"),
 			}
 
-			if err := metricsHandler.Open(ctx, stackdrivercredsjson); err == nil {
+			if err := metricsHandler.Open(ctx); err == nil {
 				go metricsHandler.WriteLoop(ctx, logger, time.Minute, 200)
 			} else {
 				level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)

@@ -2,7 +2,6 @@ package metrics
 
 import (
 	"context"
-	"io"
 	"time"
 
 	"github.com/go-kit/kit/log"
@@ -50,27 +49,21 @@ type Descriptor struct {
 
 // Handler handles creating and update metrics
 type Handler interface {
-	Open(ctx context.Context, credentials []byte) error
+	Open(ctx context.Context) error
 	WriteLoop(ctx context.Context, logger log.Logger, duration time.Duration, maxMetricsIncrement int)
-	GetWriteFrequency() float64
-	CreateMetric(ctx context.Context, descriptor *Descriptor) (Handle, error)
-	GetMetric(id string) (Handle, bool)
-	DeleteMetric(ctx context.Context, descriptor *Descriptor) error
+	NewCounter(ctx context.Context, descriptor *Descriptor) (Counter, error)
+	NewGauge(ctx context.Context, descriptor *Descriptor) (Gauge, error)
+	NewHistogram(ctx context.Context, descriptor *Descriptor, buckets int) (Histogram, error)
 	Close() error
 }
 
-// Handle is the return result of creating or fetching a metric. It allows access to the metric's descriptor and gauge.
-type Handle struct {
-	Descriptor *Descriptor
-	Histogram  Histogram
-	Gauge      Gauge
-}
-
-// EmptyHandle is a metric handle with no data. Useful for testing and error handling.
-var EmptyHandle = Handle{
-	Descriptor: &Descriptor{},
-	Histogram:  &EmptyHistogram{},
-	Gauge:      &EmptyGauge{},
+// Counter is an interface that represents a metric counter, based on go-kit's generic counter.
+type Counter interface {
+	With(labelValues ...string) metrics.Counter
+	Add(delta float64)
+	Value() float64
+	ValueReset() float64
+	LabelValues() []string
 }
 
 // Gauge is an interface that represents a metric gauge, based on go-kit's generic gauge.
@@ -88,6 +81,4 @@ type Histogram interface {
 	Observe(value float64)
 	Quantile(q float64) float64
 	LabelValues() []string
-	Print(w io.Writer)
-	Reset()
 }

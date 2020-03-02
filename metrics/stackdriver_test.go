@@ -35,58 +35,64 @@ func TestStackDriverMetrics(t *testing.T) {
 
 	// Create the metrics handler
 	handler := &metrics.StackDriverHandler{
-		ProjectID: projectID,
+		ProjectID:   projectID,
+		Credentials: stackdrivercredsjson,
 	}
 
 	// Open the StackDriver metrics client
-	err = handler.Open(ctx, stackdrivercredsjson)
+	err = handler.Open(ctx)
 	assert.NoError(t, err)
 
-	// Attempt to delete the metric before creating it, since it may still exist from
-	// the last time the test was run
-	handler.DeleteMetric(ctx, &metrics.Descriptor{
-		DisplayName: "Test Metric",
+	// Test metric creation
+	counter, err := handler.NewCounter(ctx, &metrics.Descriptor{
+		DisplayName: "Test Metric Counter",
 		ServiceName: "service",
-		ID:          "test-metric",
-	})
-
-	// Test handle creation
-	var handle metrics.Handle
-	handle, err = handler.CreateMetric(ctx, &metrics.Descriptor{
-		DisplayName: "Test Metric",
-		ServiceName: "service",
-		ID:          "test-metric",
-		ValueType:   metrics.ValueType{ValueType: metrics.TypeDouble{}},
-		Unit:        "{units}",
-		Description: "A dummy metric to test the new metrics package.",
-	})
-
-	assert.NotEmpty(t, handle)
-	assert.NoError(t, err)
-
-	// Wait a second for StackDriver to process the metric creation
-	time.Sleep(2 * time.Second)
-
-	// Attempt to create a metric again with the same ID
-	// This should just retrive the same metric with the original values
-	var handle2 metrics.Handle
-	handle2, err = handler.CreateMetric(ctx, &metrics.Descriptor{
-		DisplayName: "Test Metric",
-		ServiceName: "service",
-		ID:          "test-metric",
+		ID:          "test-metric-counter",
 		ValueType:   metrics.ValueType{ValueType: metrics.TypeInt64{}},
 		Unit:        "{units}",
-		Description: "A second dummy metric to test metric creation.",
+		Description: "A dummy metric to test the metrics package.",
 	})
 
-	assert.Equal(t, handle, handle2)
 	assert.NoError(t, err)
 
-	// Test gauge functions
-	gauge := handle.Gauge
+	gauge, err := handler.NewGauge(ctx, &metrics.Descriptor{
+		DisplayName: "Test Metric Gauge",
+		ServiceName: "service",
+		ID:          "test-metric-gauge",
+		ValueType:   metrics.ValueType{ValueType: metrics.TypeInt64{}},
+		Unit:        "{units}",
+		Description: "A dummy metric to test the metrics package.",
+	})
+
+	assert.NoError(t, err)
+
+	histogram, err := handler.NewHistogram(ctx, &metrics.Descriptor{
+		DisplayName: "Test Metric Histogram",
+		ServiceName: "service",
+		ID:          "test-metric-histogram",
+		ValueType:   metrics.ValueType{ValueType: metrics.TypeInt64{}},
+		Unit:        "{units}",
+		Description: "A dummy metric to test the metrics package.",
+	}, 50)
+
+	assert.NoError(t, err)
+
+	// Test counter functions
 	labels := []string{"label1", "value1", "label2", "value2"}
+	counter = counter.With(labels...).(metrics.Counter)
+	labelsResult := counter.LabelValues()
+	assert.Equal(t, labels, labelsResult)
+
+	assert.Equal(t, 0.0, counter.Value())
+	counter.Add(5)
+	assert.Equal(t, 5.0, counter.Value())
+	counter.Add(1.112)
+	assert.Equal(t, 6.112, counter.Value())
+
+	// Test gauge functions
+	labels = []string{"label1", "value1", "label2", "value2"}
 	gauge = gauge.With(labels...).(metrics.Gauge)
-	labelsResult := gauge.LabelValues()
+	labelsResult = gauge.LabelValues()
 	assert.Equal(t, labels, labelsResult)
 
 	assert.Equal(t, 0.0, gauge.Value())
@@ -97,18 +103,25 @@ func TestStackDriverMetrics(t *testing.T) {
 	gauge.Set(4)
 	assert.Equal(t, 4.0, gauge.Value())
 
+	// Test histogram functions
+	labels = []string{"label1", "value1", "label2", "value2"}
+	histogram = histogram.With(labels...).(metrics.Histogram)
+	labelsResult = histogram.LabelValues()
+	assert.Equal(t, labels, labelsResult)
+
+	assert.Equal(t, -1.0, histogram.Quantile(0.5))
+	histogram.Observe(5)
+	assert.Equal(t, 5.0, histogram.Quantile(0.5))
+	histogram.Observe(1.112)
+	assert.Equal(t, 1.112, histogram.Quantile(0.5))
+	histogram.Observe(5)
+	assert.Equal(t, 5.0, histogram.Quantile(0.5))
+
 	// Start the submit routine
 	go handler.WriteLoop(ctx, log.NewNopLogger(), time.Second, 200)
 
 	// Sleep for 2 seconds to allow the metric to be pushed to StackDriver
 	time.Sleep(2 * time.Second)
-
-	// Delete the test metric
-	err = handler.DeleteMetric(ctx, &metrics.Descriptor{
-		ServiceName: "service",
-		ID:          "test-metric",
-	})
-	assert.NoError(t, err)
 
 	// Stop the submit routine
 	cancelWriteLoop()

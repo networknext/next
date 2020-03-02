@@ -100,17 +100,11 @@ func (e ServerCacheEntry) MarshalBinary() ([]byte, error) {
 }
 
 // ServerUpdateHandlerFunc ...
-func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, metricsHandler metrics.Handler) UDPHandlerFunc {
+func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, duration metrics.Histogram, counter metrics.Counter) UDPHandlerFunc {
 	logger = log.With(logger, "handler", "server")
 
-	serverCountMetric, ok := metricsHandler.GetMetric("total_server_count")
-	if !ok {
-		level.Error(logger).Log("err", "Failed to get metric from handler", "metric", "total_server_count")
-		serverCountMetric = metrics.EmptyHandle
-	}
-
 	return func(w io.Writer, incoming *UDPPacket) {
-		timer := gkmetrics.NewTimer(serverCountMetric.Histogram.With("method", "ServerUpdateHandlerFunc"))
+		timer := gkmetrics.NewTimer(duration.With("method", "ServerUpdateHandlerFunc"))
 		timer.Unit(time.Millisecond)
 		defer func() {
 			timer.ObserveDuration()
@@ -188,8 +182,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 
 		level.Debug(locallogger).Log("msg", "updated server")
 
-		// 10 * (1 / 60) - adds 1/6 every call, which adds to 1 before metric is published.
-		serverCountMetric.Gauge.Add(billing.BillingSliceSeconds * metricsHandler.GetWriteFrequency())
+		counter.Add(1)
 	}
 }
 
@@ -218,17 +211,11 @@ type RouteProvider interface {
 }
 
 // SessionUpdateHandlerFunc ...
-func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, metricsHandler metrics.Handler, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, duration metrics.Histogram, counter metrics.Counter, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
 	logger = log.With(logger, "handler", "session")
 
-	sessionCountMetric, ok := metricsHandler.GetMetric("total_session_count")
-	if !ok {
-		level.Error(logger).Log("err", "Failed to get metric", "metric", "total_session_count")
-		sessionCountMetric = metrics.EmptyHandle
-	}
-
 	return func(w io.Writer, incoming *UDPPacket) {
-		timer := gkmetrics.NewTimer(sessionCountMetric.Histogram.With("method", "SessionUpdateHandlerFunc"))
+		timer := gkmetrics.NewTimer(duration.With("method", "SessionUpdateHandlerFunc"))
 		timer.Unit(time.Millisecond)
 		defer func() {
 			timer.ObserveDuration()
@@ -536,8 +523,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			level.Error(locallogger).Log("msg", "failed to write session response", "err", err)
 		}
 
-		// 10 * (1 / 60) - adds 1/6 every call, which adds to 1 before metric is published.
-		sessionCountMetric.Gauge.Add(billing.BillingSliceSeconds * metricsHandler.GetWriteFrequency())
+		counter.Add(1)
 	}
 }
 

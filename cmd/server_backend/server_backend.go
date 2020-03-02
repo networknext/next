@@ -233,6 +233,7 @@ func main() {
 
 			// Create the metrics handler
 			metricsHandler = &metrics.StackDriverHandler{
+				Credentials:     stackdrivercredsjson,
 				ProjectID:       stackDriverProjectID,
 				ClusterLocation: os.Getenv("GCP_METRICS_CLUSTER_LOCATION"),
 				ClusterName:     os.Getenv("GCP_METRICS_CLUSTER_NAME"),
@@ -241,7 +242,7 @@ func main() {
 				NamespaceName:   os.Getenv("GCP_METRICS_NAMESPACE_NAME"),
 			}
 
-			if err := metricsHandler.Open(ctx, stackdrivercredsjson); err == nil {
+			if err := metricsHandler.Open(ctx); err == nil {
 				go metricsHandler.WriteLoop(ctx, logger, time.Minute, 200)
 			} else {
 				level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
@@ -281,26 +282,56 @@ func main() {
 		}
 	}
 
-	if _, err := metricsHandler.CreateMetric(ctx, &metrics.Descriptor{
+	updateDuration, err := metricsHandler.NewHistogram(ctx, &metrics.Descriptor{
+		DisplayName: "Server update duration",
+		ServiceName: "server_backend",
+		ID:          "update.duration",
+		ValueType:   metrics.ValueType{ValueType: metrics.TypeDouble{}},
+		Unit:        "milliseconds",
+		Description: "How long it takes to process a server update request.",
+	}, 50)
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "update.duration", "err", err)
+		updateDuration = &metrics.EmptyHistogram{}
+	}
+
+	sessionDuration, err := metricsHandler.NewHistogram(ctx, &metrics.Descriptor{
+		DisplayName: "Session update duration",
+		ServiceName: "server_backend",
+		ID:          "session.duration",
+		ValueType:   metrics.ValueType{ValueType: metrics.TypeDouble{}},
+		Unit:        "milliseconds",
+		Description: "How long it takes to process a session update request",
+	}, 50)
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "session.duration", "err", err)
+		sessionDuration = &metrics.EmptyHistogram{}
+	}
+
+	updateCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
 		DisplayName: "Total server count",
 		ServiceName: "server_backend",
-		ID:          "total_server_count",
+		ID:          "server.count",
 		ValueType:   metrics.ValueType{ValueType: metrics.TypeInt64{}},
 		Unit:        "servers",
 		Description: "The total number of concurrent servers",
-	}); err != nil {
-		level.Error(logger).Log("msg", "Failed to create metric", "metric", "total_server_count", "err", err)
+	})
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "server.count", "err", err)
+		updateCount = &metrics.EmptyCounter{}
 	}
 
-	if _, err := metricsHandler.CreateMetric(ctx, &metrics.Descriptor{
+	sessionCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
 		DisplayName: "Total session count",
 		ServiceName: "server_backend",
-		ID:          "total_session_count",
+		ID:          "session.count",
 		ValueType:   metrics.ValueType{ValueType: metrics.TypeInt64{}},
 		Unit:        "sessions",
 		Description: "The total number of concurrent sessions",
-	}); err != nil {
-		level.Error(logger).Log("msg", "Failed to create metric", "metric", "total_session_count", "err", err)
+	})
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "session.count", "err", err)
+		sessionCount = &metrics.EmptyCounter{}
 	}
 
 	{
@@ -329,8 +360,8 @@ func main() {
 			Conn:          conn,
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
-			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClient, db, metricsHandler),
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClient, db, &routeMatrix, ipLocator, &geoClient, metricsHandler, biller, serverPrivateKey, routerPrivateKey),
+			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClient, db, updateDuration, updateCount),
+			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClient, db, &routeMatrix, ipLocator, &geoClient, sessionDuration, sessionCount, biller, serverPrivateKey, routerPrivateKey),
 		}
 
 		go func() {
