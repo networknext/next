@@ -384,81 +384,59 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 
 		locallogger = log.With(locallogger, "on_network_next", routeDecision.OnNetworkNext, "decision_reason", routeDecision.Reason)
 
-		var chosenRoute *routing.Route
-		var routeType int
-		var routeHash uint64
-		var timestampExpire uint64
-		if !routeDecision.OnNetworkNext {
-			// Route decision logic decided to serve a direct route
+		chosenRoute := routing.Route{
+			Stats: directStats,
+		}
 
-			directRoute := routing.Route{
-				Relays: nil,
-				Stats:  directStats,
-			}
-			routeHash = directRoute.Hash64()
-			chosenRoute = &directRoute
-			routeType = routing.RouteTypeDirect
-
-			response.RouteType = routing.RouteTypeDirect
-
-			level.Debug(locallogger).Log("msg", "session served direct route")
-		} else {
+		var token routing.Token
+		if routeDecision.OnNetworkNext {
 			// Route decision logic decided to serve a next route
 
-			routeHash = nextRoute.Hash64()
-			chosenRoute = &nextRoute
+			chosenRoute = nextRoute
 
-			var token routing.Token
-			{
-				if routeHash == sessionCacheEntry.RouteHash {
-					routeType = routing.RouteTypeContinue
-					timestampExpire = uint64(time.Now().Add(billing.BillingSliceSeconds * time.Second).Unix())
+			if nextRoute.Hash64() == sessionCacheEntry.RouteHash {
+				token = &routing.ContinueRouteToken{
+					Expires: uint64(time.Now().Add(billing.BillingSliceSeconds * time.Second).Unix()),
 
-					token = &routing.ContinueRouteToken{
-						Expires: timestampExpire,
+					SessionID: packet.SessionID,
 
-						SessionID: packet.SessionID,
+					SessionVersion: sessionCacheEntry.Version,
+					SessionFlags:   0, // Haven't figured out what this is for
 
-						SessionVersion: sessionCacheEntry.Version,
-						SessionFlags:   0, // Haven't figured out what this is for
+					Client: routing.Client{
+						Addr:      packet.ClientAddress,
+						PublicKey: packet.ClientRoutePublicKey,
+					},
 
-						Client: routing.Client{
-							Addr:      packet.ClientAddress,
-							PublicKey: packet.ClientRoutePublicKey,
-						},
+					Server: routing.Server{
+						Addr:      packet.ServerAddress,
+						PublicKey: serverCacheEntry.Server.PublicKey,
+					},
 
-						Server: routing.Server{
-							Addr:      packet.ServerAddress,
-							PublicKey: serverCacheEntry.Server.PublicKey,
-						},
+					Relays: nextRoute.Relays,
+				}
+			} else {
+				sessionCacheEntry.Version++
 
-						Relays: nextRoute.Relays,
-					}
-				} else {
-					routeType = routing.RouteTypeNew
-					timestampExpire = uint64(time.Now().Add(billing.BillingSliceSeconds * 2 * time.Second).Unix())
-					sessionCacheEntry.Version++
+				token = &routing.NextRouteToken{
+					Expires: uint64(time.Now().Add(billing.BillingSliceSeconds * 2 * time.Second).Unix()),
 
-					token = &routing.NextRouteToken{
-						Expires: uint64(timestampExpire),
+					SessionID: packet.SessionID,
 
-						SessionID: packet.SessionID,
+					SessionVersion: sessionCacheEntry.Version,
+					SessionFlags:   0, // Haven't figured out what this is for
 
-						SessionVersion: sessionCacheEntry.Version,
-						SessionFlags:   0, // Haven't figured out what this is for
+					Client: routing.Client{
+						Addr:      packet.ClientAddress,
+						PublicKey: packet.ClientRoutePublicKey,
+					},
 
-						Client: routing.Client{
-							Addr:      packet.ClientAddress,
-							PublicKey: packet.ClientRoutePublicKey,
-						},
+					Server: routing.Server{
+						Addr:      packet.ServerAddress,
+						PublicKey: serverCacheEntry.Server.PublicKey,
+					},
 
-						Server: routing.Server{
-							Addr:      packet.ServerAddress,
-							PublicKey: serverCacheEntry.Server.PublicKey,
-						},
-
-						Relays: nextRoute.Relays,
-					}
+					Relays: nextRoute.Relays,
 				}
 			}
 
@@ -469,7 +447,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 				return
 			}
 
-			level.Debug(locallogger).Log("token_type", token.Type(), "current_route_hash", routeHash, "previous_route_hash", sessionCacheEntry.RouteHash)
+			level.Debug(locallogger).Log("token_type", token.Type(), "current_route_hash", chosenRoute.Hash64(), "previous_route_hash", sessionCacheEntry.RouteHash)
 
 			// Add token info to the Session Response
 			response.RouteType = int32(token.Type())
@@ -496,12 +474,12 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		}
 
 		level.Debug(locallogger).Log("msg", "caching session data")
-		if sessionCacheEntry, err = cacheSessionData(redisClient, &sessionCacheEntry, &packet, routeHash, time.Now(), responseData); err != nil {
+		if sessionCacheEntry, err = cacheSessionData(redisClient, &sessionCacheEntry, &packet, chosenRoute.Hash64(), time.Now(), responseData); err != nil {
 			level.Error(locallogger).Log("msg", "failed to update session", "err", err)
 			return
 		}
 
-		billingEntry := newBillingEntry(chosenRoute, routeType, &buyer.RoutingRulesSettings, routeDecision.Reason, &packet, sessionCacheEntry.TimestampStart, timestampNow)
+		billingEntry := newBillingEntry(&chosenRoute, int(response.RouteType), &buyer.RoutingRulesSettings, routeDecision.Reason, &packet, sessionCacheEntry.TimestampStart, timestampNow)
 		if err := biller.Bill(context.Background(), packet.SessionID, billingEntry); err != nil {
 			level.Error(locallogger).Log("msg", "billing failed", "err", err)
 		}
