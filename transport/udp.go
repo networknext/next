@@ -206,7 +206,7 @@ func (e SessionCacheEntry) MarshalBinary() ([]byte, error) {
 type RouteProvider interface {
 	ResolveRelay(uint64) (routing.Relay, error)
 	RelaysIn(routing.Datacenter) []routing.Relay
-	Routes([]routing.Relay, []routing.Relay, ...routing.RouteSelector) ([]routing.Route, error)
+	Routes([]routing.Relay, []routing.Relay, ...routing.SelectorFunc) ([]routing.Route, error)
 }
 
 // SessionUpdateHandlerFunc ...
