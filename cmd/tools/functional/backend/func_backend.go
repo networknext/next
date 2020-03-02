@@ -17,7 +17,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"runtime"
 	"sort"
 	"sync"
 	"time"
@@ -552,7 +551,7 @@ func main() {
 		},
 	}
 
-	if err := mux.Start(context.Background(), runtime.NumCPU()); err != nil {
+	if err := mux.Start(context.Background()); err != nil {
 		log.Fatalf("failed to start udp server: %v", err)
 	}
 }

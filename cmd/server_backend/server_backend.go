@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"runtime"
@@ -329,7 +330,7 @@ func main() {
 
 		go func() {
 			level.Info(logger).Log("protocol", "udp", "addr", conn.LocalAddr().String())
-			if err := mux.Start(ctx, runtime.NumCPU()); err != nil {
+			if err := mux.Start(ctx); err != nil {
 				level.Error(logger).Log("protocol", "udp", "addr", conn.LocalAddr().String(), "err", err)
 				os.Exit(1)
 			}
