@@ -188,8 +188,8 @@ type SessionCacheEntry struct {
 	SessionID       uint64
 	Sequence        uint64
 	RouteHash       uint64
-	TimestampStart  uint64
-	TimestampExpire uint64
+	TimestampStart  time.Time
+	TimestampExpire time.Time
 	Version         uint8
 	Response        []byte
 }
@@ -219,7 +219,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			timer.ObserveDuration()
 		}()
 
-		timestampNow := uint64(time.Now().Unix())
+		timestampNow := time.Now()
 
 		// Deserialize the Session packet
 		var packet SessionUpdatePacket
@@ -231,7 +231,9 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		locallogger := log.With(logger, "src_addr", incoming.SourceAddr.String(), "server_addr", packet.ServerAddress.String(), "client_addr", packet.ClientAddress.String(), "session_id", packet.SessionID)
 
 		var serverCacheEntry ServerCacheEntry
-		var sessionCacheEntry SessionCacheEntry
+		sessionCacheEntry := SessionCacheEntry{
+			TimestampStart: timestampNow,
+		}
 
 		// Start building session response packet, defaulting to a direct route
 		response := SessionResponsePacket{
@@ -277,9 +279,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 					handleError(w, response, serverPrivateKey, err)
 					return
 				}
-			} else {
-				// New cache entry
-				sessionCacheEntry.TimestampStart = timestampNow
 			}
 		}
 
@@ -375,7 +374,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		routeDecision := routing.Decision{
 			Reason: routing.DecisionInitialSlice,
 		}
-		if sessionCacheEntry.TimestampStart > timestampNow && packet.NumNearRelays > 0 {
+		if sessionCacheEntry.TimestampStart.Before(timestampNow) && packet.NumNearRelays > 0 {
 			routeDecision = nextRoute.Decide(routeDecision, nnStats, directStats,
 				routing.DecideUpgradeRTT(float64(buyer.RoutingRulesSettings.RTTThreshold)),
 				routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis)),
@@ -399,9 +398,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			routeHash = directRoute.Hash64()
 			chosenRoute = &directRoute
 			routeType = routing.RouteTypeDirect
-
-			// timestamps don't apply for direct routes
-			sessionCacheEntry.TimestampStart = 0
 
 			response.RouteType = routing.RouteTypeDirect
 
@@ -500,7 +496,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		}
 
 		level.Debug(locallogger).Log("msg", "caching session data")
-		if sessionCacheEntry, err = cacheSessionData(redisClient, &sessionCacheEntry, &packet, routeHash, timestampExpire, responseData); err != nil {
+		if sessionCacheEntry, err = cacheSessionData(redisClient, &sessionCacheEntry, &packet, routeHash, time.Now(), responseData); err != nil {
 			level.Error(locallogger).Log("msg", "failed to update session", "err", err)
 			return
 		}
@@ -542,7 +538,7 @@ func handleError(w io.Writer, packet SessionResponsePacket, privateKey []byte, e
 	// Eventually we'll also pipe the error passed through to here up to stackdriver and do any cleanup required
 }
 
-func cacheSessionData(redisClient redis.Cmdable, prevCacheEntry *SessionCacheEntry, packet *SessionUpdatePacket, routeHash uint64, timestampExpire uint64, responseData []byte) (SessionCacheEntry, error) {
+func cacheSessionData(redisClient redis.Cmdable, prevCacheEntry *SessionCacheEntry, packet *SessionUpdatePacket, routeHash uint64, timestampExpire time.Time, responseData []byte) (SessionCacheEntry, error) {
 	// Save some of the packet information to be used in SessionUpdateHandlerFunc
 	sessionCacheEntry := SessionCacheEntry{
 		SessionID:       packet.SessionID,
@@ -567,8 +563,8 @@ func newBillingEntry(
 	routingRulesSettings *routing.RoutingRulesSettings,
 	decisionReason routing.DecisionReason,
 	packet *SessionUpdatePacket,
-	timestampStart uint64,
-	timestampNow uint64) *billing.Entry {
+	timestampStart time.Time,
+	timestampNow time.Time) *billing.Entry {
 	// Create billing slice flags
 	sliceFlags := billing.RouteSliceFlagNone
 	if routeType == routing.RouteTypeNew || routeType == routing.RouteTypeContinue {
@@ -617,8 +613,8 @@ func newBillingEntry(
 		Duration:             sliceDuration,
 		UsageBytesUp:         (1000 * uint64(packet.KbpsUp)) / 8 * sliceDuration,   // Converts Kbps to bytes
 		UsageBytesDown:       (1000 * uint64(packet.KbpsDown)) / 8 * sliceDuration, // Converts Kbps to bytes
-		Timestamp:            timestampNow,
-		TimestampStart:       timestampStart,
+		Timestamp:            uint64(timestampNow.Unix()),
+		TimestampStart:       uint64(timestampStart.Unix()),
 		PredictedRTT:         float32(route.Stats.RTT),
 		PredictedJitter:      float32(route.Stats.Jitter),
 		PredictedPacketLoss:  float32(route.Stats.PacketLoss),
