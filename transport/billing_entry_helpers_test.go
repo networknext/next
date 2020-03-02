@@ -13,14 +13,14 @@ import (
 
 func TestBuildRouteRequest(t *testing.T) {
 	expected := &billing.RouteRequest{
-		BuyerId:          billing.MakeEntityID("Buyer", 1),
-		SessionId:        2,
+		BuyerID:          billing.MakeEntityID("Buyer", 1),
+		SessionID:        2,
 		UserHash:         3,
-		PlatformId:       4,
-		DirectRtt:        5,
+		PlatformID:       4,
+		DirectRTT:        5,
 		DirectJitter:     6,
 		DirectPacketLoss: 7,
-		NextRtt:          8,
+		NextRTT:          8,
 		NextJitter:       9,
 		NextPacketLoss:   10,
 		ClientIpAddress: billing.UdpAddrToAddress(net.UDPAddr{
@@ -40,19 +40,19 @@ func TestBuildRouteRequest(t *testing.T) {
 		Tag:                  14,
 		NearRelays: []*billing.NearRelay{
 			&billing.NearRelay{
-				RelayId:    billing.MakeEntityID("Relay", 100),
-				Rtt:        1,
+				RelayID:    billing.MakeEntityID("Relay", 100),
+				RTT:        1,
 				Jitter:     2,
 				PacketLoss: 3,
 			},
 			&billing.NearRelay{
-				RelayId:    billing.MakeEntityID("Relay", 200),
-				Rtt:        4,
+				RelayID:    billing.MakeEntityID("Relay", 200),
+				RTT:        4,
 				Jitter:     5,
 				PacketLoss: 6,
 			}, &billing.NearRelay{
-				RelayId:    billing.MakeEntityID("Relay", 300),
-				Rtt:        7,
+				RelayID:    billing.MakeEntityID("Relay", 300),
+				RTT:        7,
 				Jitter:     8,
 				PacketLoss: 9,
 			},
@@ -60,7 +60,7 @@ func TestBuildRouteRequest(t *testing.T) {
 		IssuedNearRelays: []*billing.IssuedNearRelay{
 			&billing.IssuedNearRelay{
 				Index:   0,
-				RelayId: billing.MakeEntityID("Relay", 100),
+				RelayID: billing.MakeEntityID("Relay", 100),
 				RelayIpAddress: billing.UdpAddrToAddress(net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.1"),
 					Port: 1000,
@@ -68,7 +68,7 @@ func TestBuildRouteRequest(t *testing.T) {
 			},
 			&billing.IssuedNearRelay{
 				Index:   1,
-				RelayId: billing.MakeEntityID("Relay", 200),
+				RelayID: billing.MakeEntityID("Relay", 200),
 				RelayIpAddress: billing.UdpAddrToAddress(net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.2"),
 					Port: 2000,
@@ -76,7 +76,7 @@ func TestBuildRouteRequest(t *testing.T) {
 			},
 			&billing.IssuedNearRelay{
 				Index:   2,
-				RelayId: billing.MakeEntityID("Relay", 300),
+				RelayID: billing.MakeEntityID("Relay", 300),
 				RelayIpAddress: billing.UdpAddrToAddress(net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.3"),
 					Port: 3000,
@@ -92,7 +92,7 @@ func TestBuildRouteRequest(t *testing.T) {
 			Latitude:  42.7328415,
 			Longitude: -73.6835691,
 		},
-		DatacenterId:              billing.MakeEntityID("Datacenter", 15),
+		DatacenterID:              billing.MakeEntityID("Datacenter", 15),
 		SequenceNumber:            16,
 		FallbackToDirect:          true,
 		VersionMajor:              17,
@@ -114,13 +114,13 @@ func TestBuildRouteRequest(t *testing.T) {
 	}
 
 	updatePacket := transport.SessionUpdatePacket{
-		SessionId:        2,
+		SessionID:        2,
 		UserHash:         3,
-		PlatformId:       4,
-		DirectMinRtt:     5,
+		PlatformID:       4,
+		DirectMinRTT:     5,
 		DirectJitter:     6,
 		DirectPacketLoss: 7,
-		NextMinRtt:       8,
+		NextMinRTT:       8,
 		NextJitter:       9,
 		NextPacketLoss:   10,
 		ClientAddress: net.UDPAddr{
@@ -134,8 +134,8 @@ func TestBuildRouteRequest(t *testing.T) {
 		ClientRoutePublicKey: TestBuyersClientPublicKey[:],
 		Tag:                  14,
 		NumNearRelays:        3,
-		NearRelayIds:         []uint64{100, 200, 300},
-		NearRelayMinRtt:      []float32{1, 4, 7},
+		NearRelayIDs:         []uint64{100, 200, 300},
+		NearRelayMinRTT:      []float32{1, 4, 7},
 		NearRelayJitter:      []float32{2, 5, 8},
 		NearRelayPacketLoss:  []float32{3, 6, 9},
 		ConnectionType:       2, // billing.SessionConnectionType_SESSION_CONNECTION_TYPE_WIFI
@@ -204,7 +204,7 @@ func TestBuildRouteRequest(t *testing.T) {
 		LocalRelays: clientRelays,
 	}
 
-	actual := transport.BuildRouteRequest(updatePacket, buyer, serverData, location, &storer, clientRelays)
+	actual := transport.NewRouteRequest(updatePacket, buyer, serverData, location, &storer, clientRelays)
 
 	assert.Equal(t, expected, actual)
 }

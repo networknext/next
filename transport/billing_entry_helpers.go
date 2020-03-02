@@ -7,16 +7,16 @@ import (
 )
 
 // Convert new representation of data into old for billing entry
-func BuildRouteRequest(updatePacket SessionUpdatePacket, buyer *routing.Buyer, serverData ServerCacheEntry, location routing.Location, storer storage.Storer, clientRelays []routing.Relay) *billing.RouteRequest {
+func NewRouteRequest(updatePacket SessionUpdatePacket, buyer *routing.Buyer, serverData ServerCacheEntry, location routing.Location, storer storage.Storer, clientRelays []routing.Relay) *billing.RouteRequest {
 	return &billing.RouteRequest{
-		BuyerId:                billing.MakeEntityID("Buyer", buyer.ID),
-		SessionId:              updatePacket.SessionId,
+		BuyerID:                billing.MakeEntityID("Buyer", buyer.ID),
+		SessionID:              updatePacket.SessionID,
 		UserHash:               updatePacket.UserHash,
-		PlatformId:             updatePacket.PlatformId,
-		DirectRtt:              updatePacket.DirectMinRtt,
+		PlatformID:             updatePacket.PlatformID,
+		DirectRTT:              updatePacket.DirectMinRTT,
 		DirectJitter:           updatePacket.DirectJitter,
 		DirectPacketLoss:       updatePacket.DirectPacketLoss,
-		NextRtt:                updatePacket.NextMinRtt,
+		NextRTT:                updatePacket.NextMinRTT,
 		NextJitter:             updatePacket.NextJitter,
 		NextPacketLoss:         updatePacket.NextPacketLoss,
 		ClientIpAddress:        billing.UdpAddrToAddress(updatePacket.ClientAddress),
@@ -25,10 +25,10 @@ func BuildRouteRequest(updatePacket SessionUpdatePacket, buyer *routing.Buyer, s
 		ClientRoutePublicKey:   updatePacket.ClientRoutePublicKey,
 		ServerRoutePublicKey:   serverData.Server.PublicKey,
 		Tag:                    updatePacket.Tag,
-		NearRelays:             buildNearRelayList(updatePacket, storer),
-		IssuedNearRelays:       buildIssuedNearRelayList(clientRelays),
+		NearRelays:             newNearRelayList(updatePacket, storer),
+		IssuedNearRelays:       newIssuedNearRelayList(clientRelays),
 		ConnectionType:         billing.SessionConnectionType(updatePacket.ConnectionType),
-		DatacenterId:           billing.MakeEntityID("Datacenter", serverData.Datacenter.ID),
+		DatacenterID:           billing.MakeEntityID("Datacenter", serverData.Datacenter.ID),
 		SequenceNumber:         updatePacket.Sequence,
 		FallbackToDirect:       updatePacket.FallbackToDirect,
 		VersionMajor:           serverData.SDKVersion.Major,
@@ -60,11 +60,11 @@ func BuildRouteRequest(updatePacket SessionUpdatePacket, buyer *routing.Buyer, s
 }
 
 // The list of relays the client actually believes it is close to / is using (should match issued near relays)
-func buildNearRelayList(updatePacket SessionUpdatePacket, storer storage.Storer) []*billing.NearRelay {
+func newNearRelayList(updatePacket SessionUpdatePacket, storer storage.Storer) []*billing.NearRelay {
 	var nearRelays []*billing.NearRelay
 	var i int32
 	for i = 0; i < updatePacket.NumNearRelays; i++ {
-		relay, ok := storer.Relay(updatePacket.NearRelayIds[i])
+		relay, ok := storer.Relay(updatePacket.NearRelayIDs[i])
 		if !ok {
 			continue
 		}
@@ -72,8 +72,8 @@ func buildNearRelayList(updatePacket SessionUpdatePacket, storer storage.Storer)
 		nearRelays = append(
 			nearRelays,
 			&billing.NearRelay{
-				RelayId:    billing.MakeEntityID("Relay", relay.ID),
-				Rtt:        float64(updatePacket.NearRelayMinRtt[i]),
+				RelayID:    billing.MakeEntityID("Relay", relay.ID),
+				RTT:        float64(updatePacket.NearRelayMinRTT[i]),
 				Jitter:     float64(updatePacket.NearRelayJitter[i]),
 				PacketLoss: float64(updatePacket.NearRelayPacketLoss[i]),
 			},
@@ -84,12 +84,12 @@ func buildNearRelayList(updatePacket SessionUpdatePacket, storer storage.Storer)
 }
 
 // The list of relays we are telling the client is close to
-func buildIssuedNearRelayList(nearRelays []routing.Relay) []*billing.IssuedNearRelay {
+func newIssuedNearRelayList(nearRelays []routing.Relay) []*billing.IssuedNearRelay {
 	var issuedNearRelays []*billing.IssuedNearRelay
 	for idx, nearRelay := range nearRelays {
 		issuedNearRelays = append(issuedNearRelays, &billing.IssuedNearRelay{
 			Index:          int32(idx),
-			RelayId:        billing.MakeEntityID("Relay", nearRelay.ID),
+			RelayID:        billing.MakeEntityID("Relay", nearRelay.ID),
 			RelayIpAddress: billing.UdpAddrToAddress(nearRelay.Addr),
 		})
 	}

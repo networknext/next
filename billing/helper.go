@@ -43,8 +43,8 @@ func UdpAddrToAddress(addr net.UDPAddr) *Address {
 	}
 }
 
-func MakeEntityID(kind string, ID uint64) *EntityId {
-	return &EntityId{
+func MakeEntityID(kind string, ID uint64) *EntityID {
+	return &EntityID{
 		Kind: kind,
 		Name: strconv.FormatUint(ID, 10),
 	}
