@@ -64,7 +64,6 @@ type Backend struct {
 	mutex           sync.RWMutex
 	dirty           bool
 	mode            int
-	relayDatabase   map[string]RelayEntry
 	serverDatabase  map[string]ServerEntry
 	sessionDatabase map[uint64]SessionEntry
 	statsDatabase   *routing.StatsDatabase
@@ -76,14 +75,6 @@ type Backend struct {
 }
 
 var backend Backend
-
-type RelayEntry struct {
-	id         uint64
-	name       string
-	address    *net.UDPAddr
-	lastUpdate int64
-	token      []byte
-}
 
 type ServerEntry struct {
 	address    *net.UDPAddr
@@ -126,14 +117,6 @@ func TimeoutThread() {
 		backend.mutex.Lock()
 		currentTimestamp := time.Now().Unix()
 		unixTimeout := int64(routing.RelayTimeout.Seconds())
-		for k, v := range backend.relayDatabase {
-			if currentTimestamp-v.lastUpdate > unixTimeout {
-				backend.dirty = true
-				fmt.Println("Deleting relaydb relay")
-				delete(backend.relayDatabase, k)
-				continue
-			}
-		}
 		for k, v := range backend.serverDatabase {
 			if currentTimestamp-v.lastUpdate > unixTimeout {
 				delete(backend.serverDatabase, k)
@@ -162,24 +145,21 @@ func TimeoutThread() {
 
 		if backend.dirty {
 			fmt.Printf("-----------------------------\n")
-			for _, v := range backend.relayDatabase {
-				fmt.Printf("relay: %s\n", v.address)
+			hgetallResult := backend.redisClient.HGetAll(routing.HashKeyAllRelays)
+			for _, raw := range hgetallResult.Val() {
+				var r routing.Relay
+				r.UnmarshalBinary([]byte(raw))
+				fmt.Printf("relay: %v\n", &r.Addr)
 			}
+
 			for _, v := range backend.serverDatabase {
 				fmt.Printf("server: %s\n", v.address)
 			}
 			for k := range backend.sessionDatabase {
 				fmt.Printf("session: %x\n", k)
 			}
-			if len(backend.relayDatabase) == 0 && len(backend.serverDatabase) == 0 {
-				fmt.Printf("(nil)\n")
-			}
-
-			hgetallResult := backend.redisClient.HGetAll(routing.HashKeyAllRelays)
-			for _, raw := range hgetallResult.Val() {
-				var r routing.Relay
-				r.UnmarshalBinary([]byte(raw))
-				fmt.Printf("redis relay: %v\n", &r.Addr)
+			if len(hgetallResult.Val()) == 0 && len(backend.serverDatabase) == 0 {
+				fmt.Printf("No relay or server entries\n")
 			}
 			backend.dirty = false
 		}
@@ -187,24 +167,26 @@ func TimeoutThread() {
 	}
 }
 
-func GetNearRelays() ([]uint64, []net.UDPAddr) {
-	nearRelays := make([]RelayEntry, 0)
-	backend.mutex.RLock()
-	for _, v := range backend.relayDatabase {
-		nearRelays = append(nearRelays, v)
+func (backend *Backend) GetNearRelays() []routing.Relay {
+	var nearRelays = make([]routing.Relay, 0)
+
+	// Get relays
+	hgetallResult := backend.redisClient.HGetAll(routing.HashKeyAllRelays)
+	for _, raw := range hgetallResult.Val() {
+		var r routing.Relay
+		r.UnmarshalBinary([]byte(raw))
+		nearRelays = append(nearRelays, r)
 	}
-	backend.mutex.RUnlock()
-	sort.SliceStable(nearRelays[:], func(i, j int) bool { return nearRelays[i].id < nearRelays[j].id })
+
+	// sort them by ID for consistency
+	sort.SliceStable(nearRelays[:], func(i, j int) bool { return nearRelays[i].ID < nearRelays[j].ID })
+
+	// Clamp relay count to max // TODO: actually do this in real backend?
 	if len(nearRelays) > int(core.MaxNearRelays) {
 		nearRelays = nearRelays[:core.MaxNearRelays]
 	}
-	nearRelayIDs := make([]uint64, len(nearRelays))
-	nearRelayAddresses := make([]net.UDPAddr, len(nearRelays))
-	for i := range nearRelays {
-		nearRelayIDs[i] = nearRelays[i].id
-		nearRelayAddresses[i] = *nearRelays[i].address
-	}
-	return nearRelayIDs, nearRelayAddresses
+
+	return nearRelays
 }
 
 func RouteChanged(previous []uint64, current []uint64) bool {
@@ -223,7 +205,6 @@ func main() {
 
 	rand.Seed(time.Now().UnixNano())
 
-	backend.relayDatabase = make(map[string]RelayEntry)
 	backend.serverDatabase = make(map[string]ServerEntry)
 	backend.sessionDatabase = make(map[uint64]SessionEntry)
 	backend.statsDatabase = routing.NewStatsDatabase()
@@ -341,7 +322,7 @@ func main() {
 				return
 			}
 
-			nearRelayIDs, nearRelayAddresses := GetNearRelays()
+			nearRelays := backend.GetNearRelays()
 
 			var sessionResponse *transport.SessionResponsePacket
 
@@ -370,7 +351,7 @@ func main() {
 				}
 			}
 
-			takeNetworkNext := len(nearRelayIDs) > 0
+			takeNetworkNext := len(nearRelays) > 0
 
 			if backend.mode == BACKEND_MODE_FORCE_DIRECT {
 				takeNetworkNext = false
@@ -387,13 +368,12 @@ func main() {
 			}
 
 			if backend.mode == BACKEND_MODE_ROUTE_SWITCHING {
-				rand.Shuffle(len(nearRelayIDs), func(i, j int) {
-					nearRelayIDs[i], nearRelayIDs[j] = nearRelayIDs[j], nearRelayIDs[i]
-					nearRelayAddresses[i], nearRelayAddresses[j] = nearRelayAddresses[j], nearRelayAddresses[i]
+				rand.Shuffle(len(nearRelays), func(i, j int) {
+					nearRelays[i], nearRelays[j] = nearRelays[j], nearRelays[i]
 				})
 			}
 
-			multipath := len(nearRelayIDs) > 0 && backend.mode == BACKEND_MODE_MULTIPATH
+			multipath := len(nearRelays) > 0 && backend.mode == BACKEND_MODE_MULTIPATH
 
 			committed := true
 
@@ -420,14 +400,21 @@ func main() {
 				}
 			}
 
+			// Extract ids and addresses into own list to make response
+			var nearRelayIDs = make([]uint64, 0)
+			var nearRelayAddresses = make([]net.UDPAddr, 0)
+			for _, relay := range nearRelays {
+				nearRelayIDs = append(nearRelayIDs, relay.ID)
+				nearRelayAddresses = append(nearRelayAddresses, relay.Addr)
+			}
+
 			if !takeNetworkNext {
 
 				// direct route
-
 				sessionResponse = &transport.SessionResponsePacket{
 					Sequence:             sessionUpdate.Sequence,
 					SessionID:            sessionUpdate.SessionID,
-					NumNearRelays:        int32(len(nearRelayIDs)),
+					NumNearRelays:        int32(len(nearRelays)),
 					NearRelayIDs:         nearRelayIDs,
 					NearRelayAddresses:   nearRelayAddresses,
 					RouteType:            int32(core.NEXT_UPDATE_TYPE_DIRECT),
@@ -691,37 +678,13 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	key := relay_address
-
-	backend.mutex.RLock()
-	_, relayAlreadyExists := backend.relayDatabase[key]
-	backend.mutex.RUnlock()
-
-	if relayAlreadyExists {
-		writer.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	relayEntry := RelayEntry{}
-	relayEntry.name = relay_address
-	relayEntry.id = crypto.HashID(relay_address)
-	relayEntry.address = core.ParseAddress(relay_address)
-	relayEntry.lastUpdate = time.Now().Unix()
-	relayEntry.token = core.RandomBytes(RelayTokenBytes)
-
-	backend.mutex.Lock()
-	backend.relayDatabase[key] = relayEntry
-	backend.dirty = true
-	backend.mutex.Unlock()
-
-	// New redis entry (later will remove core equivalent above)
-
-	backend.mutex.Lock()
+	// New redis entry
+	udpAddr, err := net.ResolveUDPAddr("udp", relay_address)
 	relay := routing.Relay{
-		ID:             relayEntry.id,
-		Addr:           *relayEntry.address,
-		PublicKey:      relayEntry.token,
-		LastUpdateTime: uint64(relayEntry.lastUpdate),
+		ID:             crypto.HashID(relay_address),
+		Addr:           *udpAddr,
+		PublicKey:      core.RandomBytes(RelayTokenBytes),
+		LastUpdateTime: uint64(time.Now().Unix()),
 	}
 
 	if backend.redisClient.HExists(routing.HashKeyAllRelays, relay.Key()).Val() {
@@ -731,9 +694,6 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 
 	backend.redisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay)
 	backend.dirty = true
-	backend.mutex.Unlock()
-
-	// Back to old code
 
 	writer.Header().Set("Content-Type", "application/octet-stream")
 
@@ -741,7 +701,7 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 	index = 0
 	WriteUint32(responseData, &index, InitResponseVersion)
 	WriteUint64(responseData, &index, uint64(time.Now().Unix()))
-	WriteBytes(responseData, &index, relayEntry.token, RelayTokenBytes)
+	WriteBytes(responseData, &index, relay.PublicKey, RelayTokenBytes)
 	responseData = responseData[:index]
 	writer.Write(responseData)
 }
@@ -761,7 +721,6 @@ func CompareTokens(a []byte, b []byte) bool {
 }
 
 func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
-
 	body, err := ioutil.ReadAll(request.Body)
 	if err != nil {
 		return
@@ -784,36 +743,29 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	key := relay_address
-
-	backend.mutex.RLock()
-	relayEntry, ok := backend.relayDatabase[key]
-	found := false
-	if ok && CompareTokens(token, relayEntry.token) {
-		found = true
+	udpAddr, err := net.ResolveUDPAddr("udp", relay_address)
+	relay := routing.Relay{
+		ID:             crypto.HashID(relay_address),
+		Addr:           *udpAddr,
+		PublicKey:      token,
+		LastUpdateTime: uint64(time.Now().Unix()),
 	}
-	backend.mutex.RUnlock()
 
-	if !found {
-		writer.WriteHeader(http.StatusNotFound)
+	var numRelays uint32
+	if !ReadUint32(body, &index, &numRelays) {
 		return
 	}
 
-	var num_relays uint32
-	if !ReadUint32(body, &index, &num_relays) {
-		return
-	}
-
-	if num_relays > MaxRelays {
+	if numRelays > MaxRelays {
 		return
 	}
 
 	statsUpdate := &routing.RelayStatsUpdate{}
-	statsUpdate.ID = relayEntry.id
+	statsUpdate.ID = relay.ID
 
-	for i := 0; i < int(num_relays); i++ {
+	for i := 0; i < int(numRelays); i++ {
 		var id uint64
-		var rtt, jitter, packet_loss float32
+		var rtt, jitter, packetLoss float32
 		if !ReadUint64(body, &index, &id) {
 			return
 		}
@@ -823,66 +775,37 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		if !ReadFloat32(body, &index, &jitter) {
 			return
 		}
-		if !ReadFloat32(body, &index, &packet_loss) {
+		if !ReadFloat32(body, &index, &packetLoss) {
 			return
 		}
 		ping := routing.RelayStatsPing{}
 		ping.RelayID = id
 		ping.RTT = rtt
 		ping.Jitter = jitter
-		ping.PacketLoss = packet_loss
+		ping.PacketLoss = packetLoss
 		statsUpdate.PingStats = append(statsUpdate.PingStats, ping)
 	}
 
-	backend.mutex.Lock()
 	backend.statsDatabase.ProcessStats(statsUpdate)
-	backend.mutex.Unlock()
+	relaysToPing := make([]routing.RelayPingData, 0)
 
-	relayEntry = RelayEntry{}
-	relayEntry.name = relay_address
-	relayEntry.id = crypto.HashID(relay_address)
-	relayEntry.address = core.ParseAddress(relay_address)
-	relayEntry.lastUpdate = time.Now().Unix()
-	relayEntry.token = token
-
-	type RelayPingData struct {
-		id      uint64
-		address string
-	}
-
-	relaysToPing := make([]RelayPingData, 0)
-
-	backend.mutex.Lock()
-	backend.relayDatabase[key] = relayEntry
-	for k, v := range backend.relayDatabase {
-		if k != relay_address {
-			if k != relay_address {
-				relaysToPing = append(relaysToPing, RelayPingData{id: v.id, address: k})
-			}
+	hgetallResult := backend.redisClient.HGetAll(routing.HashKeyAllRelays)
+	for k, v := range hgetallResult.Val() {
+		if k != relay.Key() {
+			var unmarshaledValue routing.Relay
+			unmarshaledValue.UnmarshalBinary([]byte(v))
+			relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(unmarshaledValue.ID), Address: unmarshaledValue.Addr.String()})
 		}
 	}
-	backend.mutex.Unlock()
 
-	// New redis entry (later will remove core equivalent above)
-
-	relay := routing.Relay{
-		ID:             relayEntry.id,
-		Addr:           *relayEntry.address,
-		PublicKey:      relayEntry.token,
-		LastUpdateTime: uint64(relayEntry.lastUpdate),
-	}
-
-	backend.mutex.Lock()
 	if !backend.redisClient.HExists(routing.HashKeyAllRelays, relay.Key()).Val() {
 		writer.WriteHeader(http.StatusNotFound)
 		return
 	}
 
 	backend.redisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay)
-	backend.mutex.Unlock()
 
 	// Back to old code
-
 	responseData := make([]byte, 10*1024)
 
 	index = 0
@@ -892,8 +815,8 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	WriteUint32(responseData, &index, uint32(len(relaysToPing)))
 
 	for i := range relaysToPing {
-		WriteUint64(responseData, &index, relaysToPing[i].id)
-		WriteString(responseData, &index, relaysToPing[i].address, MaxRelayAddressLength)
+		WriteUint64(responseData, &index, relaysToPing[i].ID)
+		WriteString(responseData, &index, relaysToPing[i].Address, MaxRelayAddressLength)
 	}
 
 	responseLength := index
