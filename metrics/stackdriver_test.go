@@ -2,6 +2,7 @@ package metrics_test
 
 import (
 	"context"
+	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -9,47 +10,37 @@ import (
 	"github.com/networknext/backend/metrics"
 
 	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
 	"github.com/go-kit/kit/metrics/generic"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestStackDriverMetrics(t *testing.T) {
-	// Configure logging
-	logger := log.NewLogfmtLogger(os.Stdout)
-	{
-		switch os.Getenv("BACKEND_LOG_LEVEL") {
-		case "none":
-			logger = level.NewFilter(logger, level.AllowNone())
-		case level.ErrorValue().String():
-			logger = level.NewFilter(logger, level.AllowError())
-		case level.WarnValue().String():
-			logger = level.NewFilter(logger, level.AllowWarn())
-		case level.InfoValue().String():
-			logger = level.NewFilter(logger, level.AllowInfo())
-		case level.DebugValue().String():
-			logger = level.NewFilter(logger, level.AllowDebug())
-		default:
-			logger = level.NewFilter(logger, level.AllowWarn())
-		}
-
-		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
-	}
-
 	ctx, cancelMetricSubmitRoutine := context.WithCancel(context.Background())
 
-	// Initialize the metric handler
+	stackdrivercreds, ok := os.LookupEnv("GCP_CREDENTIALS_METRICS")
+	if !ok {
+		t.Skip() // Skip the test if GCP credentials aren't configured
+	}
+
+	projectID, ok := os.LookupEnv("GCP_METRICS_PROJECT")
+	if !ok {
+		t.Skip() // Skip the test if GCP metrics project ID isn't set
+	}
+
+	var stackdrivercredsjson []byte
+	_, err := os.Stat(stackdrivercreds)
+	assert.NoError(t, err)
+
+	stackdrivercredsjson, err = ioutil.ReadFile(stackdrivercreds)
+	assert.NoError(t, err)
+
+	// Create the metrics handler
 	handler := &metrics.StackDriverHandler{
-		ClusterLocation: os.Getenv("GOOGLE_CLOUD_METRICS_CLUSTER_LOCATION"),
-		ClusterName:     os.Getenv("GOOGLE_CLOUD_METRICS_CLUSTER_NAME"),
-		PodName:         os.Getenv("GOOGLE_CLOUD_METRICS_POD_NAME"),
-		ContainerName:   os.Getenv("GOOGLE_CLOUD_METRICS_CONTAINER_NAME"),
-		NamespaceName:   os.Getenv("GOOGLE_CLOUD_METRICS_NAMESPACE_NAME"),
-		ProjectID:       os.Getenv("GOOGLE_CLOUD_METRICS_PROJECT"),
+		ProjectID: projectID,
 	}
 
 	// Open the StackDriver metrics client
-	err := handler.Open(ctx)
+	err = handler.Open(ctx, stackdrivercredsjson)
 	assert.NoError(t, err)
 
 	// Create a gauge to track a dummy metric
@@ -78,7 +69,7 @@ func TestStackDriverMetrics(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Wait a second for StackDriver to process the metric creation
-	time.Sleep(1 * time.Second)
+	time.Sleep(2 * time.Second)
 
 	// Attempt to create a metric again with the same ID and gauge
 	// This should just retrive the same metric with the original values
@@ -109,7 +100,7 @@ func TestStackDriverMetrics(t *testing.T) {
 	assert.Equal(t, 4.0, gauge.Value())
 
 	// Start the submit routine
-	go handler.MetricSubmitRoutine(ctx, logger, time.Second, 200)
+	go handler.MetricSubmitRoutine(ctx, log.NewNopLogger(), time.Second, 200)
 
 	// Sleep for 2 seconds to allow the metric to be pushed to StackDriver
 	time.Sleep(2 * time.Second)

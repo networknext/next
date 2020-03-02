@@ -8,7 +8,6 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/golang/protobuf/proto"
-	"google.golang.org/api/option"
 )
 
 // GooglePubSubBiller is an implementation of a billing handler that sends billing data to Google Pub/Sub through multiple clients
@@ -25,7 +24,7 @@ type GooglePubSubClient struct {
 
 // NewBiller creates a new GooglePubSubBiller, sets up the pubsub clients, and starts goroutines to listen for publish results.
 // To clean up the results goroutine, use ctx.Done().
-func NewBiller(ctx context.Context, resultLogger log.Logger, projectID string, billingTopicID string, credentials []byte, descriptor *Descriptor) (Biller, error) {
+func NewBiller(ctx context.Context, resultLogger log.Logger, projectID string, billingTopicID string, descriptor *Descriptor) (Biller, error) {
 	var clientCount int
 	if descriptor != nil {
 		clientCount = descriptor.ClientCount
@@ -38,7 +37,7 @@ func NewBiller(ctx context.Context, resultLogger log.Logger, projectID string, b
 	for i := 0; i < clientCount; i++ {
 		var err error
 		biller.clients[i] = &GooglePubSubClient{}
-		biller.clients[i].pubsubClient, err = pubsub.NewClient(ctx, projectID, option.WithCredentialsJSON(credentials))
+		biller.clients[i].pubsubClient, err = pubsub.NewClient(ctx, projectID)
 		if err != nil {
 			return nil, fmt.Errorf("could not create pubsub client %v: %v", i, err)
 		}

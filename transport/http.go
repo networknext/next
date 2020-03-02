@@ -14,6 +14,7 @@ import (
 
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
+	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 )
@@ -31,10 +32,10 @@ const (
 )
 
 // NewRouter creates a router with the specified endpoints
-func NewRouter(logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, storer storage.Storer, statsdb *routing.StatsDatabase, costmatrix *routing.CostMatrix, routematrix *routing.RouteMatrix, routerPrivateKey []byte) *mux.Router {
+func NewRouter(logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, storer storage.Storer, statsdb *routing.StatsDatabase, metricsHandler metrics.Handler, costmatrix *routing.CostMatrix, routematrix *routing.RouteMatrix, routerPrivateKey []byte) *mux.Router {
 	router := mux.NewRouter()
-	router.HandleFunc("/relay_init", RelayInitHandlerFunc(logger, redisClient, geoClient, ipLocator, storer, routerPrivateKey)).Methods("POST")
-	router.HandleFunc("/relay_update", RelayUpdateHandlerFunc(logger, redisClient, statsdb)).Methods("POST")
+	router.HandleFunc("/relay_init", RelayInitHandlerFunc(logger, redisClient, geoClient, ipLocator, storer, metricsHandler, routerPrivateKey)).Methods("POST")
+	router.HandleFunc("/relay_update", RelayUpdateHandlerFunc(logger, redisClient, statsdb, metricsHandler)).Methods("POST")
 	router.Handle("/cost_matrix", costmatrix).Methods("GET")
 	router.Handle("/route_matrix", routematrix).Methods("GET")
 	router.HandleFunc("/near", NearHandlerFunc(nil)).Methods("GET")
@@ -42,7 +43,7 @@ func NewRouter(logger log.Logger, redisClient *redis.Client, geoClient *routing.
 }
 
 // RelayInitHandlerFunc returns the function for the relay init endpoint
-func RelayInitHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, storer storage.Storer, routerPrivateKey []byte) func(writer http.ResponseWriter, request *http.Request) {
+func RelayInitHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, storer storage.Storer, metricsHandler metrics.Handler, routerPrivateKey []byte) func(writer http.ResponseWriter, request *http.Request) {
 	logger = log.With(logger, "handler", "init")
 
 	return func(writer http.ResponseWriter, request *http.Request) {
@@ -122,6 +123,14 @@ func RelayInitHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClien
 		relay.Latitude = loc.Latitude
 		relay.Longitude = loc.Longitude
 
+		// Regular set for expiry
+		if res := redisClient.Set(relay.Key(), relay.ID, routing.RelayTimeout); res.Err() != nil && res.Err() != redis.Nil {
+			level.Error(locallogger).Log("msg", "failed to initialize relay", "err", res.Err())
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		// HSet for full relay data
 		if res := redisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay); res.Err() != nil && res.Err() != redis.Nil {
 			level.Error(locallogger).Log("msg", "failed to initialize relay", "err", res.Err())
 			writer.WriteHeader(http.StatusInternalServerError)
@@ -149,7 +158,7 @@ func RelayInitHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClien
 }
 
 // RelayUpdateHandlerFunc returns the function for the relay update endpoint
-func RelayUpdateHandlerFunc(logger log.Logger, redisClient *redis.Client, statsdb *routing.StatsDatabase) func(writer http.ResponseWriter, request *http.Request) {
+func RelayUpdateHandlerFunc(logger log.Logger, redisClient *redis.Client, statsdb *routing.StatsDatabase, metricsHandler metrics.Handler) func(writer http.ResponseWriter, request *http.Request) {
 	logger = log.With(logger, "handler", "update")
 
 	return func(writer http.ResponseWriter, request *http.Request) {
@@ -235,7 +244,19 @@ func RelayUpdateHandlerFunc(logger log.Logger, redisClient *redis.Client, statsd
 
 		relaysToPing := make([]RelayPingData, 0)
 
-		redisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay)
+		// Regular set for expiry
+		if res := redisClient.Set(relay.Key(), 0, routing.RelayTimeout); res.Err() != nil {
+			level.Error(locallogger).Log("msg", "failed to store relay update expiry", "err", res.Err())
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		// HSet for full relay data
+		if res := redisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay); res.Err() != nil {
+			level.Error(locallogger).Log("msg", "failed to store relay update", "err", res.Err())
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 
 		hgetallResult := redisClient.HGetAll(routing.HashKeyAllRelays)
 		if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {

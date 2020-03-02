@@ -6,8 +6,21 @@ import (
 
 const BillingSliceSeconds = 10
 
+type RouteSliceFlag uint64
+
+const (
+	RouteSliceFlagNone                RouteSliceFlag = 0
+	RouteSliceFlagNext                RouteSliceFlag = 1 << 1
+	RouteSliceFlagReported            RouteSliceFlag = 1 << 2
+	RouteSliceFlagVetoed              RouteSliceFlag = 1 << 3
+	RouteSliceFlagFallbackToDirect    RouteSliceFlag = 1 << 4
+	RouteSliceFlagPacketLossMultipath RouteSliceFlag = 1 << 5
+	RouteSliceFlagJitterMultipath     RouteSliceFlag = 1 << 6
+	RouteSliceFlagRTTMultipath        RouteSliceFlag = 1 << 7
+)
+
 type RouteState struct {
-	SessionId       uint64 `protobuf:"fixed64,1,opt,name=sessionId,proto3" json:"sessionId,omitempty"`
+	SessionID       uint64 `protobuf:"fixed64,1,opt,name=sessionId,proto3" json:"sessionId,omitempty"`
 	SessionVersion  uint32 `protobuf:"varint,2,opt,name=sessionVersion,proto3" json:"sessionVersion,omitempty"`
 	SessionFlags    uint32 `protobuf:"varint,3,opt,name=sessionFlags,proto3" json:"sessionFlags,omitempty"`
 	RouteHash       uint64 `protobuf:"fixed64,4,opt,name=routeHash,proto3" json:"routeHash,omitempty"`
@@ -25,7 +38,7 @@ type Entry struct {
 	UsageBytesDown       uint64        `protobuf:"varint,6,opt,name=usageBytesDown,proto3" json:"usageBytesDown,omitempty"`
 	Timestamp            uint64        `protobuf:"varint,7,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	TimestampStart       uint64        `protobuf:"varint,8,opt,name=timestampStart,proto3" json:"timestampStart,omitempty"`
-	PredictedRtt         float32       `protobuf:"fixed32,9,opt,name=predictedRtt,proto3" json:"predictedRtt,omitempty"`
+	PredictedRTT         float32       `protobuf:"fixed32,9,opt,name=predictedRtt,proto3" json:"predictedRtt,omitempty"`
 	PredictedJitter      float32       `protobuf:"fixed32,10,opt,name=predictedJitter,proto3" json:"predictedJitter,omitempty"`
 	PredictedPacketLoss  float32       `protobuf:"fixed32,11,opt,name=predictedPacketLoss,proto3" json:"predictedPacketLoss,omitempty"`
 	RouteChanged         bool          `protobuf:"varint,12,opt,name=routeChanged,proto3" json:"routeChanged,omitempty"`
@@ -61,8 +74,8 @@ func (route *Route) String() string {
 func (route *Route) ProtoMessage() {}
 
 type RouteHop struct {
-	RelayId      *EntityId `protobuf:"bytes,1,opt,name=relayId,proto3" json:"relayId,omitempty"`
-	SellerId     *EntityId `protobuf:"bytes,2,opt,name=sellerId,proto3" json:"sellerId,omitempty"`
+	RelayID      *EntityID `protobuf:"bytes,1,opt,name=relayId,proto3" json:"relayId,omitempty"`
+	SellerID     *EntityID `protobuf:"bytes,2,opt,name=sellerId,proto3" json:"sellerId,omitempty"`
 	PriceIngress int64     `protobuf:"varint,3,opt,name=priceIngress,proto3" json:"priceIngress,omitempty"`
 	PriceEgress  int64     `protobuf:"varint,4,opt,name=priceEgress,proto3" json:"priceEgress,omitempty"`
 }
@@ -76,14 +89,14 @@ func (hop *RouteHop) String() string {
 func (hop *RouteHop) ProtoMessage() {}
 
 type RouteRequest struct {
-	BuyerId                   *EntityId             `protobuf:"bytes,1,opt,name=buyerId,proto3" json:"buyerId,omitempty"`
-	SessionId                 uint64                `protobuf:"varint,2,opt,name=sessionId,proto3" json:"sessionId,omitempty"`
+	BuyerID                   *EntityID             `protobuf:"bytes,1,opt,name=buyerId,proto3" json:"buyerId,omitempty"`
+	SessionID                 uint64                `protobuf:"varint,2,opt,name=sessionId,proto3" json:"sessionId,omitempty"`
 	UserHash                  uint64                `protobuf:"varint,3,opt,name=userHash,proto3" json:"userHash,omitempty"`
-	PlatformId                uint64                `protobuf:"varint,4,opt,name=platformId,proto3" json:"platformId,omitempty"`
-	DirectRtt                 float32               `protobuf:"fixed32,5,opt,name=directRtt,proto3" json:"directRtt,omitempty"`
+	PlatformID                uint64                `protobuf:"varint,4,opt,name=platformId,proto3" json:"platformId,omitempty"`
+	DirectRTT                 float32               `protobuf:"fixed32,5,opt,name=directRtt,proto3" json:"directRtt,omitempty"`
 	DirectJitter              float32               `protobuf:"fixed32,6,opt,name=directJitter,proto3" json:"directJitter,omitempty"`
 	DirectPacketLoss          float32               `protobuf:"fixed32,7,opt,name=directPacketLoss,proto3" json:"directPacketLoss,omitempty"`
-	NextRtt                   float32               `protobuf:"fixed32,8,opt,name=nextRtt,proto3" json:"nextRtt,omitempty"`
+	NextRTT                   float32               `protobuf:"fixed32,8,opt,name=nextRtt,proto3" json:"nextRtt,omitempty"`
 	NextJitter                float32               `protobuf:"fixed32,9,opt,name=nextJitter,proto3" json:"nextJitter,omitempty"`
 	NextPacketLoss            float32               `protobuf:"fixed32,10,opt,name=nextPacketLoss,proto3" json:"nextPacketLoss,omitempty"`
 	ClientIpAddress           *Address              `protobuf:"bytes,11,opt,name=clientIpAddress,proto3" json:"clientIpAddress,omitempty"`
@@ -93,7 +106,7 @@ type RouteRequest struct {
 	NearRelays                []*NearRelay          `protobuf:"bytes,15,rep,name=nearRelays,proto3" json:"nearRelays,omitempty"`
 	ConnectionType            SessionConnectionType `protobuf:"varint,16,opt,name=connectionType,proto3,enum=session.SessionConnectionType" json:"connectionType,omitempty"`
 	ServerRoutePublicKey      []byte                `protobuf:"bytes,17,opt,name=serverRoutePublicKey,proto3" json:"serverRoutePublicKey,omitempty"`
-	DatacenterId              *EntityId             `protobuf:"bytes,18,opt,name=datacenterId,proto3" json:"datacenterId,omitempty"`
+	DatacenterID              *EntityID             `protobuf:"bytes,18,opt,name=datacenterId,proto3" json:"datacenterId,omitempty"`
 	ServerPrivateIpAddress    *Address              `protobuf:"bytes,19,opt,name=serverPrivateIpAddress,proto3" json:"serverPrivateIpAddress,omitempty"`
 	SequenceNumber            uint64                `protobuf:"varint,20,opt,name=sequenceNumber,proto3" json:"sequenceNumber,omitempty"`
 	FallbackToDirect          bool                  `protobuf:"varint,21,opt,name=fallbackToDirect,proto3" json:"fallbackToDirect,omitempty"`
@@ -121,18 +134,18 @@ func (req *RouteRequest) String() string {
 }
 func (req *RouteRequest) ProtoMessage() {}
 
-type EntityId struct {
+type EntityID struct {
 	Kind string `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
 	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 }
 
-func (id *EntityId) Reset() {
-	*id = EntityId{}
+func (id *EntityID) Reset() {
+	*id = EntityID{}
 }
-func (id *EntityId) String() string {
+func (id *EntityID) String() string {
 	return proto.CompactTextString(id)
 }
-func (id *EntityId) ProtoMessage() {}
+func (id *EntityID) ProtoMessage() {}
 
 type Address_Type uint32
 
@@ -161,15 +174,15 @@ func (addr *Address) String() string {
 func (addr *Address) ProtoMessage() {}
 
 type NearRelay struct {
-	RelayId    *EntityId `protobuf:"bytes,1,opt,name=relayId,proto3" json:"relayId,omitempty"`
-	Rtt        float64   `protobuf:"fixed64,2,opt,name=rtt,proto3" json:"rtt,omitempty"`
+	RelayID    *EntityID `protobuf:"bytes,1,opt,name=relayId,proto3" json:"relayId,omitempty"`
+	RTT        float64   `protobuf:"fixed64,2,opt,name=rtt,proto3" json:"rtt,omitempty"`
 	Jitter     float64   `protobuf:"fixed64,3,opt,name=jitter,proto3" json:"jitter,omitempty"`
 	PacketLoss float64   `protobuf:"fixed64,4,opt,name=packetLoss,proto3" json:"packetLoss,omitempty"`
 }
 
 type IssuedNearRelay struct {
 	Index          int32     `protobuf:"varint,1,opt,name=index,proto3" json:"index,omitempty"`
-	RelayId        *EntityId `protobuf:"bytes,2,opt,name=relayId,proto3" json:"relayId,omitempty"`
+	RelayID        *EntityID `protobuf:"bytes,2,opt,name=relayId,proto3" json:"relayId,omitempty"`
 	RelayIpAddress *Address  `protobuf:"bytes,3,opt,name=relayIpAddress,proto3" json:"relayIpAddress,omitempty"`
 }
 

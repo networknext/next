@@ -15,8 +15,8 @@ import (
 
 func main() {
 
-	customerId := make([]byte, 8)
-	rand.Read(customerId)
+	customerID := make([]byte, 8)
+	rand.Read(customerID)
 
 	publicKey, privateKey, err := ed25519.GenerateKey(nil)
 	if err != nil {
@@ -24,11 +24,11 @@ func main() {
 	}
 
 	customerPublicKey := make([]byte, 0)
-	customerPublicKey = append(customerPublicKey, customerId...)
+	customerPublicKey = append(customerPublicKey, customerID...)
 	customerPublicKey = append(customerPublicKey, publicKey...)
 
 	customerPrivateKey := make([]byte, 0)
-	customerPrivateKey = append(customerPrivateKey, customerId...)
+	customerPrivateKey = append(customerPrivateKey, customerID...)
 	customerPrivateKey = append(customerPrivateKey, privateKey...)
 
 	fmt.Printf("\nWelcome to Network Next!\n\n")

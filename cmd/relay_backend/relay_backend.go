@@ -8,21 +8,28 @@ package main
 import (
 	"context"
 	"encoding/base64"
-	"io/ioutil"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"time"
+
+	"github.com/networknext/backend/logging"
+
+	gcplogging "cloud.google.com/go/logging"
+	monitoring "cloud.google.com/go/monitoring/apiv3"
 
 	"cloud.google.com/go/firestore"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"google.golang.org/api/option"
 
 	"github.com/go-redis/redis/v7"
 	"github.com/oschwald/geoip2-golang"
 
 	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
@@ -50,6 +57,15 @@ func main() {
 		}
 
 		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
+	}
+	if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+		loggingClient, err := gcplogging.NewClient(ctx, projectID)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
+
+		logger = logging.NewStackdriverLogger(loggingClient, "relay-backend")
 	}
 
 	var customerPublicKey []byte
@@ -91,7 +107,7 @@ func main() {
 	}
 
 	var ipLocator routing.IPLocator = routing.NullIsland
-	if uri, ok := os.LookupEnv("RELAY_MAXMIND_DB_URI"); ok {
+	if uri, ok := os.LookupEnv("MAXMIND_DB_URI"); ok {
 		mmreader, err := geoip2.Open(uri)
 		if err != nil {
 			level.Error(logger).Log("envvar", "RELAY_MAXMIND_DB_URI", "value", uri, "err", err)
@@ -120,29 +136,14 @@ func main() {
 		},
 	}
 
-	// If GCP_CREDENTIALS are set then override the local in memory
-	// and connect to Firestore
-	if gcpcreds, ok := os.LookupEnv("GCP_CREDENTIALS"); ok {
-		var gcpcredsjson []byte
+	// Create a no-op metrics handler in case metrics aren't set up
+	var metricsHandler metrics.Handler = &metrics.NoOpHandler{}
 
-		_, err := os.Stat(gcpcreds)
-		switch err := err.(type) {
-		case *os.PathError:
-			gcpcredsjson = []byte(gcpcreds)
-			level.Info(logger).Log("envvar", "GCP_CREDENTIALS", "value", "<JSON>")
-		case nil:
-			gcpcredsjson, err = ioutil.ReadFile(gcpcreds)
-			if err != nil {
-				level.Error(logger).Log("envvar", "GCP_CREDENTIALS", "value", gcpcreds, "err", err)
-				os.Exit(1)
-			}
-			level.Info(logger).Log("envvar", "GCP_CREDENTIALS", "value", gcpcreds)
-		default:
-			//log.Fatalf("unable to load GCP_CREDENTIALS: %v\n", err)
-		}
-
-		// Create a Firestore client
-		client, err := firestore.NewClient(context.Background(), firestore.DetectProjectID, option.WithCredentialsJSON(gcpcredsjson))
+	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
+	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
+	// on creation so we can use that for the default then
+	if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+		firestoreClient, err := firestore.NewClient(ctx, gcpProjectID)
 		if err != nil {
 			level.Error(logger).Log("err", err)
 			os.Exit(1)
@@ -150,7 +151,7 @@ func main() {
 
 		// Create a Firestore Storer
 		fs := storage.Firestore{
-			Client: client,
+			Client: firestoreClient,
 			Logger: logger,
 		}
 
@@ -162,12 +163,30 @@ func main() {
 
 		// Set the Firestore Storer to give to handlers
 		db = &fs
+
+		stackdriverClient, err := monitoring.NewMetricClient(ctx)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
+
+		sd := metrics.StackDriverHandler{
+			Client:    stackdriverClient,
+			ProjectID: gcpProjectID,
+		}
+
+		go func() {
+			metricsHandler.MetricSubmitRoutine(ctx, logger, time.Minute, 200)
+		}()
+
+		metricsHandler = &sd
 	}
 
 	statsdb := routing.NewStatsDatabase()
 	var costmatrix routing.CostMatrix
 	var routematrix routing.RouteMatrix
 
+	// Periodically generate cost matrix from stats db
 	go func() {
 		for {
 			if err := statsdb.GetCostMatrix(&costmatrix, redisClient); err != nil {
@@ -184,14 +203,64 @@ func main() {
 		}
 	}()
 
-	router := transport.NewRouter(logger, redisClient, &geoClient, ipLocator, db, statsdb, &costmatrix, &routematrix, routerPrivateKey)
+	// Sub to expiry events for cleanup
+	redisClient.ConfigSet("notify-keyspace-events", "Ex")
+	go func() {
+		ps := redisClient.Subscribe("__keyevent@0__:expired")
+		for {
+			// Recieve expiry event message
+			msg, err := ps.ReceiveMessage()
+			if err != nil {
+				level.Error(logger).Log("msg", "Error recieving expired message from pubsub", "err", err)
+				os.Exit(1)
+			}
+
+			// If it is a relay that is expiring...
+			if strings.HasPrefix(msg.Payload, routing.HashKeyPrefixRelay) {
+
+				// Retrieve the ID of the relay that has expired
+				rawID, err := strconv.ParseUint(strings.TrimPrefix(msg.Payload, routing.HashKeyPrefixRelay), 10, 64)
+				if err != nil {
+					level.Error(logger).Log("msg", "Failed to parse expired Relay ID from payload", "payload", msg.Payload, "err", err)
+					os.Exit(1)
+				}
+
+				// Log the ID
+				level.Warn(logger).Log("msg", fmt.Sprintf("relay with id %v has disconnected.", rawID))
+
+				// Remove geo location data associated with this relay
+				if err := geoClient.Remove(rawID); err != nil {
+					level.Error(logger).Log("msg", fmt.Sprintf("Failed to remove geoClient entry for relay with ID %v", rawID), "err", err)
+					os.Exit(1)
+				}
+
+				// Remove relay entry from Hashmap
+				if err := redisClient.HDel(routing.HashKeyAllRelays, msg.Payload).Err(); err != nil {
+					level.Error(logger).Log("msg", fmt.Sprintf("Failed to remove hashmap entry for relay with ID %v", rawID), "err", err)
+					os.Exit(1)
+				}
+
+				// Remove relay entry from statsDB (which in turn means it won't appear in cost matrix)
+				statsdb.DeleteEntry(rawID)
+			}
+		}
+	}()
+
+	router := transport.NewRouter(logger, redisClient, &geoClient, ipLocator, db, statsdb, metricsHandler, &costmatrix, &routematrix, routerPrivateKey)
 
 	go func() {
-		level.Info(logger).Log("addr", ":30000")
+		port, ok := os.LookupEnv("PORT")
+		if !ok {
+			level.Error(logger).Log("err", "env var PORT must be set")
+			os.Exit(1)
+		}
 
-		err := http.ListenAndServe(":30000", router)
+		level.Info(logger).Log("addr", ":"+port)
+
+		err := http.ListenAndServe(":"+port, router)
 		if err != nil {
 			level.Error(logger).Log("err", err)
+			os.Exit(1)
 		}
 	}()
 

@@ -12,6 +12,7 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
@@ -25,7 +26,7 @@ func TestFailToUnmarshalServerUpdate(t *testing.T) {
 	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 	assert.NoError(t, err)
 
-	handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, nil, discard.NewHistogram(), discard.NewCounter())
+	handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, nil, discard.NewHistogram(), discard.NewCounter(), &metrics.NoOpHandler{})
 	handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: []byte("this is not a proper packet")})
 
 	_, err = redisServer.Get("SERVER-0.0.0.0:13")
@@ -45,7 +46,7 @@ func TestSDKVersionTooOld(t *testing.T) {
 		ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
 		ServerRoutePublicKey: TestServerBackendPublicKey,
 
-		DatacenterId: 13,
+		DatacenterID: 13,
 
 		Version: transport.SDKVersion{1, 2, 3},
 
@@ -55,7 +56,7 @@ func TestSDKVersionTooOld(t *testing.T) {
 	data, err := packet.MarshalBinary()
 	assert.NoError(t, err)
 
-	handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, nil, discard.NewHistogram(), discard.NewCounter())
+	handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, nil, discard.NewHistogram(), discard.NewCounter(), &metrics.NoOpHandler{})
 	handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 	_, err = redisServer.Get("SERVER-0.0.0.0:13")
@@ -77,7 +78,7 @@ func TestBuyerNotFound(t *testing.T) {
 		ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
 		ServerRoutePublicKey: TestServerBackendPublicKey,
 
-		DatacenterId: 13,
+		DatacenterID: 13,
 
 		Version: transport.SDKVersionMin,
 
@@ -87,7 +88,7 @@ func TestBuyerNotFound(t *testing.T) {
 	data, err := packet.MarshalBinary()
 	assert.NoError(t, err)
 
-	handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, discard.NewHistogram(), discard.NewCounter())
+	handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, discard.NewHistogram(), discard.NewCounter(), &metrics.NoOpHandler{})
 	handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 	_, err = redisServer.Get("SERVER-0.0.0.0:13")
@@ -112,7 +113,7 @@ func TestWrongBuyerPublicKey(t *testing.T) {
 		ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
 		ServerRoutePublicKey: TestServerBackendPublicKey,
 
-		DatacenterId: 13,
+		DatacenterID: 13,
 
 		Version: transport.SDKVersionMin,
 
@@ -123,7 +124,7 @@ func TestWrongBuyerPublicKey(t *testing.T) {
 	data, err := packet.MarshalBinary()
 	assert.NoError(t, err)
 
-	handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, discard.NewHistogram(), discard.NewCounter())
+	handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, discard.NewHistogram(), discard.NewCounter(), &metrics.NoOpHandler{})
 	handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 	_, err = redisServer.Get("SERVER-0.0.0.0:13")
@@ -152,7 +153,7 @@ func TestServerPacketSequenceTooOld(t *testing.T) {
 		ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
 		ServerRoutePublicKey: TestServerBackendPublicKey,
 
-		DatacenterId: 13,
+		DatacenterID: 13,
 
 		Version: transport.SDKVersionMin,
 	}
@@ -170,7 +171,7 @@ func TestServerPacketSequenceTooOld(t *testing.T) {
 	err = redisServer.Set("SERVER-0.0.0.0:13", string(se))
 	assert.NoError(t, err)
 
-	handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, discard.NewHistogram(), discard.NewCounter())
+	handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, discard.NewHistogram(), discard.NewCounter(), &metrics.NoOpHandler{})
 	handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 	ds, err := redisServer.Get("SERVER-0.0.0.0:13")
@@ -204,7 +205,7 @@ func TestSuccessfulUpdate(t *testing.T) {
 		ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
 		ServerRoutePublicKey: make([]byte, 32),
 
-		DatacenterId: 13,
+		DatacenterID: 13,
 
 		Version: transport.SDKVersionMin,
 	}
@@ -226,7 +227,7 @@ func TestSuccessfulUpdate(t *testing.T) {
 	}
 
 	// Initialize the UDP handler with the required redis client
-	handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, discard.NewHistogram(), discard.NewCounter())
+	handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, discard.NewHistogram(), discard.NewCounter(), &metrics.NoOpHandler{})
 
 	// Invoke the handler with the data packet and address it is coming from
 	handler(&buf, &incoming)
@@ -239,7 +240,7 @@ func TestSuccessfulUpdate(t *testing.T) {
 	expected := transport.ServerCacheEntry{
 		Sequence:   13,
 		Server:     routing.Server{Addr: *addr, PublicKey: packet.ServerRoutePublicKey},
-		Datacenter: routing.Datacenter{ID: packet.DatacenterId},
+		Datacenter: routing.Datacenter{ID: packet.DatacenterID},
 		SDKVersion: packet.Version,
 	}
 
