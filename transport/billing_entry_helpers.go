@@ -1,6 +1,9 @@
 package transport
 
 import (
+	"net"
+	"strconv"
+
 	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
@@ -9,7 +12,7 @@ import (
 // Convert new representation of data into old for billing entry
 func NewRouteRequest(updatePacket SessionUpdatePacket, buyer *routing.Buyer, serverData ServerCacheEntry, location routing.Location, storer storage.Storer, clientRelays []routing.Relay) *billing.RouteRequest {
 	return &billing.RouteRequest{
-		BuyerID:                billing.MakeEntityID("Buyer", buyer.ID),
+		BuyerID:                NewEntityID("Buyer", buyer.ID),
 		SessionID:              updatePacket.SessionID,
 		UserHash:               updatePacket.UserHash,
 		PlatformID:             updatePacket.PlatformID,
@@ -19,16 +22,16 @@ func NewRouteRequest(updatePacket SessionUpdatePacket, buyer *routing.Buyer, ser
 		NextRTT:                updatePacket.NextMinRTT,
 		NextJitter:             updatePacket.NextJitter,
 		NextPacketLoss:         updatePacket.NextPacketLoss,
-		ClientIpAddress:        billing.UdpAddrToAddress(updatePacket.ClientAddress),
-		ServerIpAddress:        billing.UdpAddrToAddress(updatePacket.ServerAddress),
-		ServerPrivateIpAddress: billing.UdpAddrToAddress(serverData.Server.Addr),
+		ClientIpAddress:        NewBillingAddress(updatePacket.ClientAddress),
+		ServerIpAddress:        NewBillingAddress(updatePacket.ServerAddress),
+		ServerPrivateIpAddress: NewBillingAddress(serverData.Server.Addr),
 		ClientRoutePublicKey:   updatePacket.ClientRoutePublicKey,
 		ServerRoutePublicKey:   serverData.Server.PublicKey,
 		Tag:                    updatePacket.Tag,
 		NearRelays:             newNearRelayList(updatePacket, storer),
 		IssuedNearRelays:       newIssuedNearRelayList(clientRelays),
 		ConnectionType:         billing.SessionConnectionType(updatePacket.ConnectionType),
-		DatacenterID:           billing.MakeEntityID("Datacenter", serverData.Datacenter.ID),
+		DatacenterID:           NewEntityID("Datacenter", serverData.Datacenter.ID),
 		SequenceNumber:         updatePacket.Sequence,
 		FallbackToDirect:       updatePacket.FallbackToDirect,
 		VersionMajor:           serverData.SDKVersion.Major,
@@ -72,7 +75,7 @@ func newNearRelayList(updatePacket SessionUpdatePacket, storer storage.Storer) [
 		nearRelays = append(
 			nearRelays,
 			&billing.NearRelay{
-				RelayID:    billing.MakeEntityID("Relay", relay.ID),
+				RelayID:    NewEntityID("Relay", relay.ID),
 				RTT:        float64(updatePacket.NearRelayMinRTT[i]),
 				Jitter:     float64(updatePacket.NearRelayJitter[i]),
 				PacketLoss: float64(updatePacket.NearRelayPacketLoss[i]),
@@ -89,10 +92,55 @@ func newIssuedNearRelayList(nearRelays []routing.Relay) []*billing.IssuedNearRel
 	for idx, nearRelay := range nearRelays {
 		issuedNearRelays = append(issuedNearRelays, &billing.IssuedNearRelay{
 			Index:          int32(idx),
-			RelayID:        billing.MakeEntityID("Relay", nearRelay.ID),
-			RelayIpAddress: billing.UdpAddrToAddress(nearRelay.Addr),
+			RelayID:        NewEntityID("Relay", nearRelay.ID),
+			RelayIpAddress: NewBillingAddress(nearRelay.Addr),
 		})
 	}
 
 	return issuedNearRelays
+}
+
+func NewBillingAddress(addr net.UDPAddr) *billing.Address {
+	if addr.IP == nil {
+		return &billing.Address{
+			Ip:        nil,
+			Type:      billing.Address_NONE,
+			Port:      0,
+			Formatted: "",
+		}
+	}
+
+	ipv4 := addr.IP.To4()
+	if ipv4 == nil {
+		ipv6 := addr.IP.To16()
+		if ipv6 == nil {
+			return &billing.Address{
+				Ip:        nil,
+				Type:      billing.Address_NONE,
+				Port:      0,
+				Formatted: "",
+			}
+		}
+
+		return &billing.Address{
+			Ip:        []byte(ipv6),
+			Type:      billing.Address_IPV6,
+			Port:      uint32(addr.Port),
+			Formatted: addr.String(),
+		}
+	}
+
+	return &billing.Address{
+		Ip:        []byte(ipv4),
+		Type:      billing.Address_IPV4,
+		Port:      uint32(addr.Port),
+		Formatted: addr.String(),
+	}
+}
+
+func NewEntityID(kind string, ID uint64) *billing.EntityID {
+	return &billing.EntityID{
+		Kind: kind,
+		Name: strconv.FormatUint(ID, 10),
+	}
 }

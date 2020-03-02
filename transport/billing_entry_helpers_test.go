@@ -13,7 +13,7 @@ import (
 
 func TestBuildRouteRequest(t *testing.T) {
 	expected := &billing.RouteRequest{
-		BuyerID:          billing.MakeEntityID("Buyer", 1),
+		BuyerID:          transport.NewEntityID("Buyer", 1),
 		SessionID:        2,
 		UserHash:         3,
 		PlatformID:       4,
@@ -23,15 +23,15 @@ func TestBuildRouteRequest(t *testing.T) {
 		NextRTT:          8,
 		NextJitter:       9,
 		NextPacketLoss:   10,
-		ClientIpAddress: billing.UdpAddrToAddress(net.UDPAddr{
+		ClientIpAddress: transport.NewBillingAddress(net.UDPAddr{
 			IP:   net.ParseIP("127.0.0.1"),
 			Port: 11,
 		}),
-		ServerIpAddress: billing.UdpAddrToAddress(net.UDPAddr{
+		ServerIpAddress: transport.NewBillingAddress(net.UDPAddr{
 			IP:   net.ParseIP("127.0.0.2"),
 			Port: 12,
 		}),
-		ServerPrivateIpAddress: billing.UdpAddrToAddress(net.UDPAddr{
+		ServerPrivateIpAddress: transport.NewBillingAddress(net.UDPAddr{
 			IP:   net.ParseIP("127.0.0.3"),
 			Port: 13,
 		}),
@@ -40,18 +40,18 @@ func TestBuildRouteRequest(t *testing.T) {
 		Tag:                  14,
 		NearRelays: []*billing.NearRelay{
 			&billing.NearRelay{
-				RelayID:    billing.MakeEntityID("Relay", 100),
+				RelayID:    transport.NewEntityID("Relay", 100),
 				RTT:        1,
 				Jitter:     2,
 				PacketLoss: 3,
 			},
 			&billing.NearRelay{
-				RelayID:    billing.MakeEntityID("Relay", 200),
+				RelayID:    transport.NewEntityID("Relay", 200),
 				RTT:        4,
 				Jitter:     5,
 				PacketLoss: 6,
 			}, &billing.NearRelay{
-				RelayID:    billing.MakeEntityID("Relay", 300),
+				RelayID:    transport.NewEntityID("Relay", 300),
 				RTT:        7,
 				Jitter:     8,
 				PacketLoss: 9,
@@ -60,24 +60,24 @@ func TestBuildRouteRequest(t *testing.T) {
 		IssuedNearRelays: []*billing.IssuedNearRelay{
 			&billing.IssuedNearRelay{
 				Index:   0,
-				RelayID: billing.MakeEntityID("Relay", 100),
-				RelayIpAddress: billing.UdpAddrToAddress(net.UDPAddr{
+				RelayID: transport.NewEntityID("Relay", 100),
+				RelayIpAddress: transport.NewBillingAddress(net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.1"),
 					Port: 1000,
 				}),
 			},
 			&billing.IssuedNearRelay{
 				Index:   1,
-				RelayID: billing.MakeEntityID("Relay", 200),
-				RelayIpAddress: billing.UdpAddrToAddress(net.UDPAddr{
+				RelayID: transport.NewEntityID("Relay", 200),
+				RelayIpAddress: transport.NewBillingAddress(net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.2"),
 					Port: 2000,
 				}),
 			},
 			&billing.IssuedNearRelay{
 				Index:   2,
-				RelayID: billing.MakeEntityID("Relay", 300),
-				RelayIpAddress: billing.UdpAddrToAddress(net.UDPAddr{
+				RelayID: transport.NewEntityID("Relay", 300),
+				RelayIpAddress: transport.NewBillingAddress(net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.3"),
 					Port: 3000,
 				}),
@@ -92,7 +92,7 @@ func TestBuildRouteRequest(t *testing.T) {
 			Latitude:  42.7328415,
 			Longitude: -73.6835691,
 		},
-		DatacenterID:              billing.MakeEntityID("Datacenter", 15),
+		DatacenterID:              transport.NewEntityID("Datacenter", 15),
 		SequenceNumber:            16,
 		FallbackToDirect:          true,
 		VersionMajor:              17,
