@@ -124,7 +124,7 @@ namespace core
         getAddrFromMsgHdr(packet.Addr, header.msg_hdr);
         LogDebug("got route response from ", packet.Addr);
 
-        handlers::RouteResponseHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap, mSocket);
+        handlers::RouteResponseHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap, mSocket, mSender);
 
         handler.handle();
       } break;
@@ -163,7 +163,7 @@ namespace core
           mLogger->addToServToCli(packet.Len);
         }
 
-        handlers::ServerToClientHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap, mSocket);
+        handlers::ServerToClientHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap, mSocket, mSender);
 
         handler.handle();
       } break;

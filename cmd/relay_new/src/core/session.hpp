@@ -25,6 +25,8 @@ namespace core
   };
 
   using SessionPtr = std::shared_ptr<Session>;
+
+  // Using a map for now, it's a int key so an unordered map might not be any better considering the memory footprint
   class SessionMap: public std::map<uint64_t, SessionPtr>
   {
    public:

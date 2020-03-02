@@ -11,6 +11,7 @@ namespace core
 {
   namespace handlers
   {
+    template <size_t SenderMaxCap, size_t SenderTimeout>
     class RouteResponseHandler: public BaseHandler
     {
      public:
@@ -19,25 +20,30 @@ namespace core
        GenericPacket<>& packet,
        const int packetSize,
        core::SessionMap& sessions,
-       const os::Socket& socket);
+       const os::Socket& socket,
+       net::BufferedSender<SenderMaxCap, SenderTimeout>& sender);
 
       void handle();
 
      private:
       core::SessionMap& mSessionMap;
       const os::Socket& mSocket;
+      net::BufferedSender<SenderMaxCap, SenderTimeout>& mSender;
     };
 
-    inline RouteResponseHandler::RouteResponseHandler(const util::Clock& relayClock,
+    template <size_t SenderMaxCap, size_t SenderTimeout>
+    inline RouteResponseHandler<SenderMaxCap, SenderTimeout>::RouteResponseHandler(const util::Clock& relayClock,
      const RouterInfo& routerInfo,
      GenericPacket<>& packet,
      const int packetSize,
      core::SessionMap& sessions,
-     const os::Socket& socket)
-     : BaseHandler(relayClock, routerInfo, packet, packetSize), mSessionMap(sessions), mSocket(socket)
+     const os::Socket& socket,
+     net::BufferedSender<SenderMaxCap, SenderTimeout>& sender)
+     : BaseHandler(relayClock, routerInfo, packet, packetSize), mSessionMap(sessions), mSocket(socket), mSender(sender)
     {}
 
-    inline void RouteResponseHandler::handle()
+    template <size_t SenderMaxCap, size_t SenderTimeout>
+    inline void RouteResponseHandler<SenderMaxCap, SenderTimeout>::handle()
     {
       if (mPacketSize != RELAY_HEADER_BYTES) {
         Log("ignoring route response, header byte count invalid: ", mPacketSize, " != ", RELAY_HEADER_BYTES);
@@ -48,9 +54,13 @@ namespace core
       uint64_t sequence;
       uint64_t session_id;
       uint8_t session_version;
-      if (relay::relay_peek_header(
-           RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, mPacket.Buffer.data(), mPacketSize) !=
-          RELAY_OK) {
+      if (relay::relay_peek_header(RELAY_DIRECTION_SERVER_TO_CLIENT,
+           &type,
+           &sequence,
+           &session_id,
+           &session_version,
+           mPacket.Buffer.data(),
+           mPacketSize) != RELAY_OK) {
         Log("ignoring route response, relay header could not be read");
         return;
       }
@@ -90,7 +100,7 @@ namespace core
         return;
       }
 
-      mSocket.send(session->PrevAddr, mPacket.Buffer.data(), mPacketSize);
+      mSender.queue(session->PrevAddr, mPacket.Buffer.data(), mPacketSize);
       LogDebug("sent response to ", session->PrevAddr);
     }
   }  // namespace handlers

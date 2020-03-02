@@ -8,3 +8,5 @@ With a max packet size of 1,500 bytes = 12,000 bits () the min desirable through
 For a 1g nic processing 78914 packets/second is the min desirable throughput
 
 3/2: currently have 40k packets/second throughput using route request packets, 2 threads w/ packet size of 1880 bits
+
+irq nums 122-130? I have 8 processors but there are 9 numbers. Probably 122 isn't valid
