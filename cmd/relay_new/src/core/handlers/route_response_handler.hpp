@@ -67,19 +67,12 @@ namespace core
 
       uint64_t hash = session_id ^ session_version;
 
-      {
-        std::lock_guard<std::mutex> lk(mSessionMap.Lock);
-        if (mSessionMap.find(hash) == mSessionMap.end()) {
-          Log("ignoring route response, could not find session");
-          return;
-        }
+      if (!mSessionMap.exists(hash)) {
+        Log("ignoring route response, could not find session");
+        return;
       }
 
-      core::SessionPtr session;
-      {
-        std::lock_guard<std::mutex> lk(mSessionMap.Lock);
-        session = mSessionMap[hash];
-      }
+      auto session = mSessionMap[hash];
 
       if (sessionIsExpired(session)) {
         return;

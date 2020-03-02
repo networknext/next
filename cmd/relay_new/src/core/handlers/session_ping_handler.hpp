@@ -60,18 +60,11 @@ namespace core
 
       uint64_t hash = session_id ^ session_version;
 
-      {
-        std::lock_guard<std::mutex> lk(mSessionMap.Lock);
-        if (mSessionMap.find(hash) == mSessionMap.end()) {
-          return;
-        }
+      if (!mSessionMap.exists(hash)) {
+        return;
       }
 
-      core::SessionPtr session;
-      {
-        std::lock_guard<std::mutex> lk(mSessionMap.Lock);
-        session = mSessionMap[hash];
-      }
+      auto session = mSessionMap[hash];
 
       if (sessionIsExpired(session)) {
         return;

@@ -85,14 +85,7 @@ namespace core
       // create a new session and add it to the session map
       uint64_t hash = token.key();
 
-      core::SessionMap::iterator iter, end;
-      {
-        std::lock_guard<std::mutex> lk(mSessionMap.Lock);
-        iter = mSessionMap.find(hash);
-        end = mSessionMap.end();
-      }
-
-      if (iter == end) {
+      if (!mSessionMap.exists(hash)) {
         // create the session
         auto session = std::make_shared<Session>();
         assert(session);
@@ -113,10 +106,7 @@ namespace core
         relay_replay_protection_reset(&session->ClientToServerProtection);
         relay_replay_protection_reset(&session->ServerToClientProtection);
 
-        {
-          std::lock_guard<std::mutex> lk(mSessionMap.Lock);
-          mSessionMap[hash] = session;
-        }
+        mSessionMap[hash] = session;
 
         Log("session created: ", std::hex, token.SessionID, '.', std::dec, static_cast<unsigned int>(token.SessionVersion));
       }  // TODO else what?
@@ -126,9 +116,8 @@ namespace core
 
       LogDebug("sending route request to ", token.NextAddr);
 
-      mSender.queue(token.NextAddr,
-       &mPacket.Buffer[RouteToken::EncryptedByteSize],
-       mPacketSize - RouteToken::EncryptedByteSize);  // after this, token & packet are invalid
+      mSender.queue(
+       token.NextAddr, &mPacket.Buffer[RouteToken::EncryptedByteSize], mPacketSize - RouteToken::EncryptedByteSize);
     }
   }  // namespace handlers
 }  // namespace core

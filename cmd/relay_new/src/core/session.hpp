@@ -26,11 +26,26 @@ namespace core
 
   using SessionPtr = std::shared_ptr<Session>;
 
-  // Using a map for now, it's a int key so an unordered map might not be any better considering the memory footprint
-  class SessionMap: public std::map<uint64_t, SessionPtr>
+  // Thread safe
+  class SessionMap
   {
    public:
-    std::mutex Lock;
+    inline auto exists(uint64_t key)
+    {
+      std::lock_guard<std::mutex> lk(mLock);
+      return mInternal.find(key) != mInternal.end();
+    }
+
+    inline auto operator[](uint64_t key)
+    {
+      std::lock_guard<std::mutex> lk(mLock);
+      return mInternal[key];
+    }
+
+   private:
+    // Using a map for now, it's a int key so an unordered map might not be any better considering the memory footprint
+    std::map<uint64_t, SessionPtr> mInternal;
+    std::mutex mLock;
   };
 }  // namespace core
 #endif
