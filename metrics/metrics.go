@@ -8,41 +8,11 @@ import (
 	"github.com/go-kit/kit/metrics"
 )
 
-// ValueType represents the type of the metric's value
-type ValueType struct {
-	ValueType Type
-}
-
-// Type is an interface to support multiple types for the metric
-type Type interface {
-	getTypeName() string
-}
-
-// TypeBool represents a boolean type value
-type TypeBool struct {
-	Value bool
-}
-
-// TypeInt64 represents an 8 byte integer type value
-type TypeInt64 struct {
-	Value int64
-}
-
-// TypeDouble represents a double precision floating point type value
-type TypeDouble struct {
-	Value float64
-}
-
-func (mv TypeBool) getTypeName() string   { return "BOOL" }
-func (mv TypeInt64) getTypeName() string  { return "INT64" }
-func (mv TypeDouble) getTypeName() string { return "DOUBLE" }
-
 // Descriptor describes metric metadata
 type Descriptor struct {
 	DisplayName string
 	ServiceName string
 	ID          string
-	ValueType   ValueType
 	Unit        string
 	Description string
 }

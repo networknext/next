@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"sync"
@@ -22,17 +23,16 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// valueTypeMap is a map from the value's named type to StackDriver's MetricDescriptor value type
-var valueTypeMap = map[string]metricpb.MetricDescriptor_ValueType{
-	"BOOL":   metricpb.MetricDescriptor_BOOL,
-	"INT64":  metricpb.MetricDescriptor_INT64,
-	"DOUBLE": metricpb.MetricDescriptor_DOUBLE,
-}
-
-// StackDriverHandler is an implementation of the Handler interface that handles metrics for StackDriver
+// StackDriverHandler is an implementation of the Handler interface that handles metrics for StackDriver.
 type StackDriverHandler struct {
 	ProjectID   string
 	Credentials []byte
+
+	// When creating metrics, if these overwrite values are greater than zero, then the created metric will overwrite any existing metric with the same service/ID combination.
+	// If these values are both <= 0, then the metric won't be overwritten and the descriptor will be updated to match the version in StackDriver.
+
+	OverwriteFrequency time.Duration // The frequency at which to attempt to overwrite metrics.
+	OverwriteTimeout   time.Duration // The max amount of time to spend attempting to overwrite a metric before returning an error.
 
 	// Optional kubernetes container data. If these are set, the client will know that the monitored resource is running in a kubernetes container.
 	// If they are not set, the client will check to see if the monitored resource is running in a GCE instance. If it's not, it will default to global.
@@ -116,8 +116,28 @@ func (handler *StackDriverHandler) WriteLoop(ctx context.Context, logger log.Log
 
 			for _, mapData := range handler.counters {
 				labels := convertLabelValues(mapData.counter.LabelValues())
-				value := convertValue(mapData.descriptor, mapData.counter.Value())
-				timeSeries[index] = handler.newTimeSeries(mapData.descriptor, labels, value)
+
+				timeSeries[index] = &monitoringpb.TimeSeries{
+					Metric: &metricpb.Metric{
+						Type:   fmt.Sprintf("custom.googleapis.com/%s/%s", mapData.descriptor.ServiceName, mapData.descriptor.ID),
+						Labels: labels,
+					},
+					Resource: handler.getMonitoredResource(),
+					Points: []*monitoringpb.Point{
+						&monitoringpb.Point{
+							Interval: &monitoringpb.TimeInterval{
+								EndTime: &googlepb.Timestamp{
+									Seconds: time.Now().Unix(),
+								},
+							},
+							Value: &monitoringpb.TypedValue{
+								Value: &monitoringpb.TypedValue_Int64Value{
+									Int64Value: int64(math.Round(mapData.counter.Value())),
+								},
+							},
+						},
+					},
+				}
 
 				mapData.counter.ValueReset()
 				index++
@@ -125,8 +145,28 @@ func (handler *StackDriverHandler) WriteLoop(ctx context.Context, logger log.Log
 
 			for _, mapData := range handler.gauges {
 				labels := convertLabelValues(mapData.gauge.LabelValues())
-				value := convertValue(mapData.descriptor, mapData.gauge.Value())
-				timeSeries[index] = handler.newTimeSeries(mapData.descriptor, labels, value)
+
+				timeSeries[index] = &monitoringpb.TimeSeries{
+					Metric: &metricpb.Metric{
+						Type:   fmt.Sprintf("custom.googleapis.com/%s/%s", mapData.descriptor.ServiceName, mapData.descriptor.ID),
+						Labels: labels,
+					},
+					Resource: handler.getMonitoredResource(),
+					Points: []*monitoringpb.Point{
+						&monitoringpb.Point{
+							Interval: &monitoringpb.TimeInterval{
+								EndTime: &googlepb.Timestamp{
+									Seconds: time.Now().Unix(),
+								},
+							},
+							Value: &monitoringpb.TypedValue{
+								Value: &monitoringpb.TypedValue_DoubleValue{
+									DoubleValue: mapData.gauge.Value(),
+								},
+							},
+						},
+					},
+				}
 
 				mapData.gauge.Set(0)
 				index++
@@ -134,8 +174,32 @@ func (handler *StackDriverHandler) WriteLoop(ctx context.Context, logger log.Log
 
 			for _, mapData := range handler.histograms {
 				labels := convertLabelValues(mapData.histogram.LabelValues())
-				value := convertValue(mapData.descriptor, mapData.histogram.Quantile(0.5))
-				timeSeries[index] = handler.newTimeSeries(mapData.descriptor, labels, value)
+				labels["p50"] = fmt.Sprintf("%f", mapData.histogram.Quantile(0.5))
+				labels["p90"] = fmt.Sprintf("%f", mapData.histogram.Quantile(0.9))
+				labels["p95"] = fmt.Sprintf("%f", mapData.histogram.Quantile(0.95))
+				labels["p99"] = fmt.Sprintf("%f", mapData.histogram.Quantile(0.99))
+
+				timeSeries[index] = &monitoringpb.TimeSeries{
+					Metric: &metricpb.Metric{
+						Type:   fmt.Sprintf("custom.googleapis.com/%s/%s", mapData.descriptor.ServiceName, mapData.descriptor.ID),
+						Labels: labels,
+					},
+					Resource: handler.getMonitoredResource(),
+					Points: []*monitoringpb.Point{
+						&monitoringpb.Point{
+							Interval: &monitoringpb.TimeInterval{
+								EndTime: &googlepb.Timestamp{
+									Seconds: time.Now().Unix(),
+								},
+							},
+							Value: &monitoringpb.TypedValue{
+								Value: &monitoringpb.TypedValue_DoubleValue{
+									DoubleValue: mapData.histogram.Quantile(0.5),
+								},
+							},
+						},
+					},
+				}
 
 				// Don't reset the histogram
 				index++
@@ -159,7 +223,7 @@ func (handler *StackDriverHandler) WriteLoop(ctx context.Context, logger log.Log
 				}); err != nil {
 					level.Error(logger).Log("msg", "Failed to write time series data", "err", err)
 				} else {
-					level.Debug(logger).Log("msg", "Metrics pushed to StackDriver")
+					level.Info(logger).Log("msg", "Metrics pushed to StackDriver")
 				}
 			}
 		case <-ctx.Done():
@@ -172,7 +236,7 @@ func (handler *StackDriverHandler) WriteLoop(ctx context.Context, logger log.Log
 // If the metric already exists, then the returned new counter updates the metric instead of any other existing counter.
 func (handler *StackDriverHandler) NewCounter(ctx context.Context, descriptor *Descriptor) (Counter, error) {
 	// Create the metric in StackDriver
-	if err := handler.createMetric(ctx, descriptor, metricpb.MetricDescriptor_CUMULATIVE); err != nil {
+	if err := handler.createMetric(ctx, descriptor, metricpb.MetricDescriptor_INT64, metricpb.MetricDescriptor_GAUGE); err != nil {
 		return nil, err
 	}
 
@@ -194,7 +258,7 @@ func (handler *StackDriverHandler) NewCounter(ctx context.Context, descriptor *D
 // If the metric already exists, then the returned new gauge updates the metric instead of any other existing gauge.
 func (handler *StackDriverHandler) NewGauge(ctx context.Context, descriptor *Descriptor) (Gauge, error) {
 	// Create the metric in StackDriver
-	if err := handler.createMetric(ctx, descriptor, metricpb.MetricDescriptor_GAUGE); err != nil {
+	if err := handler.createMetric(ctx, descriptor, metricpb.MetricDescriptor_DOUBLE, metricpb.MetricDescriptor_GAUGE); err != nil {
 		return nil, err
 	}
 
@@ -216,11 +280,11 @@ func (handler *StackDriverHandler) NewGauge(ctx context.Context, descriptor *Des
 // If the metric already exists, then the returned new histogram observes the metric instead of any other existing histogram.
 func (handler *StackDriverHandler) NewHistogram(ctx context.Context, descriptor *Descriptor, buckets int) (Histogram, error) {
 	// Create the metric in StackDriver
-	if err := handler.createMetric(ctx, descriptor, metricpb.MetricDescriptor_DELTA); err != nil {
+	if err := handler.createMetric(ctx, descriptor, metricpb.MetricDescriptor_DOUBLE, metricpb.MetricDescriptor_GAUGE); err != nil {
 		return nil, err
 	}
 
-	// Create the gauge for updating the metric
+	// Create the histogram for updating the metric
 	histogram := generic.NewHistogram(descriptor.ID, buckets)
 
 	// Add the metric to the map data
@@ -237,14 +301,28 @@ func (handler *StackDriverHandler) NewHistogram(ctx context.Context, descriptor 
 
 // createMetric creates the metric on StackDriver using the given metric descriptor.
 // If the metric already exists on StackDriver, it will overwrite it.
-func (handler *StackDriverHandler) createMetric(ctx context.Context, descriptor *Descriptor, kind metricpb.MetricDescriptor_MetricKind) error {
-	stackdriverDescriptor, err := handler.client.CreateMetricDescriptor(ctx, &monitoringpb.CreateMetricDescriptorRequest{
+func (handler *StackDriverHandler) createMetric(ctx context.Context, descriptor *Descriptor, valueType metricpb.MetricDescriptor_ValueType, kind metricpb.MetricDescriptor_MetricKind) error {
+	// Check if the metric ID already exists in the local set of metrics
+	if _, contains := handler.counters[descriptor.ID]; contains {
+		return errors.New("Metric " + descriptor.ID + " already created")
+	}
+
+	if _, contains := handler.gauges[descriptor.ID]; contains {
+		return errors.New("Metric " + descriptor.ID + " already created")
+	}
+
+	if _, contains := handler.histograms[descriptor.ID]; contains {
+		return errors.New("Metric " + descriptor.ID + " already created")
+	}
+
+	// Create the metric in StackDriver
+	_, err := handler.client.CreateMetricDescriptor(ctx, &monitoringpb.CreateMetricDescriptorRequest{
 		Name: monitoring.MetricProjectPath(handler.ProjectID),
 		MetricDescriptor: &metricpb.MetricDescriptor{
 			Name:        descriptor.ID,
 			Type:        fmt.Sprintf("custom.googleapis.com/%s/%s", descriptor.ServiceName, descriptor.ID),
 			MetricKind:  kind,
-			ValueType:   valueTypeMap[descriptor.ValueType.ValueType.getTypeName()],
+			ValueType:   valueType,
 			Unit:        descriptor.Unit,
 			Description: descriptor.Description,
 			DisplayName: descriptor.DisplayName,
@@ -256,48 +334,89 @@ func (handler *StackDriverHandler) createMetric(ctx context.Context, descriptor 
 			return err
 		}
 
-		// The metric already exists, check if it needs to be overwritten
+		// The metric already exists in StackDriver (from a previous run), check if it needs to be overwritten
+		var stackdriverDescriptor *metricpb.MetricDescriptor
+		if stackdriverDescriptor, err = handler.client.GetMetricDescriptor(ctx, &monitoringpb.GetMetricDescriptorRequest{
+			Name: fmt.Sprintf("projects/%s/metricDescriptors/custom.googleapis.com/%s/%s", handler.ProjectID, descriptor.ServiceName, descriptor.ID),
+		}); err != nil {
+			return err
+		}
+
 		if kind != stackdriverDescriptor.MetricKind ||
-			valueTypeMap[descriptor.ValueType.ValueType.getTypeName()] != stackdriverDescriptor.ValueType ||
+			valueType != stackdriverDescriptor.ValueType ||
 			descriptor.Unit != stackdriverDescriptor.Unit ||
 			descriptor.Description != stackdriverDescriptor.Description ||
 			descriptor.DisplayName != stackdriverDescriptor.DisplayName {
-			// The given descriptor differs from stackdriver, so overwrite the metric
-			if err = handler.client.DeleteMetricDescriptor(ctx, &monitoringpb.DeleteMetricDescriptorRequest{
-				Name: fmt.Sprintf("projects/%s/metricDescriptors/custom.googleapis.com/%s/%s", handler.ProjectID, descriptor.ServiceName, descriptor.ID),
-			}); err != nil {
-				return err
-			}
+			// The given descriptor differs from StackDriver, so overwrite the metric
+			if err := handler.overwriteMetric(ctx, descriptor, valueType, kind); err != nil {
+				if err.Error() == "Overwrite not set" {
+					// User doesn't want to overwrite metrics, so update the descriptor with the version from StackDriver
+					descriptor.Unit = stackdriverDescriptor.Unit
+					descriptor.Description = stackdriverDescriptor.Description
+					descriptor.DisplayName = stackdriverDescriptor.DisplayName
 
-			// Check if the metric has been deleted, and when it has, create it again
-			timer := time.Now().Unix()
-			timeout := timer + 1
-			for timeout <= timer {
-				if _, err = handler.client.GetMetricDescriptor(ctx, &monitoringpb.GetMetricDescriptorRequest{
-					Name: fmt.Sprintf("projects/%s/metricDescriptors/custom.googleapis.com/%s/%s", handler.ProjectID, descriptor.ServiceName, descriptor.ID),
-				}); err == nil {
-					break
+					return nil
 				}
 
-				timer = time.Now().Unix()
+				return err
 			}
-
-			_, err = handler.client.CreateMetricDescriptor(ctx, &monitoringpb.CreateMetricDescriptorRequest{
-				Name: monitoring.MetricProjectPath(handler.ProjectID),
-				MetricDescriptor: &metricpb.MetricDescriptor{
-					Name:        descriptor.ID,
-					Type:        fmt.Sprintf("custom.googleapis.com/%s/%s", descriptor.ServiceName, descriptor.ID),
-					MetricKind:  kind,
-					ValueType:   valueTypeMap[descriptor.ValueType.ValueType.getTypeName()],
-					Unit:        descriptor.Unit,
-					Description: descriptor.Description,
-					DisplayName: descriptor.DisplayName,
-				},
-			})
 		}
 	}
 
 	return nil
+}
+
+func (handler *StackDriverHandler) overwriteMetric(ctx context.Context, descriptor *Descriptor, valueType metricpb.MetricDescriptor_ValueType, kind metricpb.MetricDescriptor_MetricKind) error {
+	if handler.OverwriteFrequency <= 0 || handler.OverwriteTimeout <= 0 {
+		return errors.New("Overwrite not set") // Overwriting values not set, user doesn't want to overwrite metrics.
+	}
+
+	// Start by deleting the existing metric
+	if err := handler.client.DeleteMetricDescriptor(ctx, &monitoringpb.DeleteMetricDescriptorRequest{
+		Name: fmt.Sprintf("projects/%s/metricDescriptors/custom.googleapis.com/%s/%s", handler.ProjectID, descriptor.ServiceName, descriptor.ID),
+	}); err != nil {
+		return err
+	}
+
+	// Periodically check if the metric has been deleted, and when it has, create it again
+	ticker := time.NewTicker(handler.OverwriteFrequency)
+	timer := time.NewTimer(handler.OverwriteTimeout)
+
+	loop := true
+	for loop {
+		select {
+		case <-ticker.C:
+			if _, err := handler.client.GetMetricDescriptor(ctx, &monitoringpb.GetMetricDescriptorRequest{
+				Name: fmt.Sprintf("projects/%s/metricDescriptors/custom.googleapis.com/%s/%s", handler.ProjectID, descriptor.ServiceName, descriptor.ID),
+			}); err != nil {
+				if status.Code(err) == codes.NotFound {
+					// Metric has been deleted
+					ticker.Stop()
+					timer.Stop()
+					loop = false
+				}
+			}
+
+		case <-timer.C:
+			return errors.New("Failed to create metric: overwrite timeout exceeded")
+		}
+	}
+
+	// Recreate the metric
+	_, err := handler.client.CreateMetricDescriptor(ctx, &monitoringpb.CreateMetricDescriptorRequest{
+		Name: monitoring.MetricProjectPath(handler.ProjectID),
+		MetricDescriptor: &metricpb.MetricDescriptor{
+			Name:        descriptor.ID,
+			Type:        fmt.Sprintf("custom.googleapis.com/%s/%s", descriptor.ServiceName, descriptor.ID),
+			MetricKind:  kind,
+			ValueType:   valueType,
+			Unit:        descriptor.Unit,
+			Description: descriptor.Description,
+			DisplayName: descriptor.DisplayName,
+		},
+	})
+
+	return err
 }
 
 // Close closes the client connection to StackDriver
@@ -378,58 +497,4 @@ func convertLabelValues(labelValues []string) map[string]string {
 	}
 
 	return labels
-}
-
-// Converts the descriptor value type to stackdriver's metric value type
-func convertValue(descriptor *Descriptor, value float64) *monitoringpb.TypedValue {
-	var valueType *monitoringpb.TypedValue
-	switch descriptor.ValueType.ValueType.(type) {
-	case TypeBool:
-		var b bool
-		if value != 0.0 {
-			b = true
-		} else {
-			b = false
-		}
-
-		valueType = &monitoringpb.TypedValue{
-			Value: &monitoringpb.TypedValue_BoolValue{
-				BoolValue: b,
-			},
-		}
-	case TypeInt64:
-		valueType = &monitoringpb.TypedValue{
-			Value: &monitoringpb.TypedValue_Int64Value{
-				Int64Value: int64(math.Round(value)),
-			},
-		}
-	case TypeDouble:
-		valueType = &monitoringpb.TypedValue{
-			Value: &monitoringpb.TypedValue_DoubleValue{
-				DoubleValue: value,
-			},
-		}
-	}
-
-	return valueType
-}
-
-func (handler *StackDriverHandler) newTimeSeries(descriptor *Descriptor, labels map[string]string, value *monitoringpb.TypedValue) *monitoringpb.TimeSeries {
-	return &monitoringpb.TimeSeries{
-		Metric: &metricpb.Metric{
-			Type:   fmt.Sprintf("custom.googleapis.com/%s/%s", descriptor.ServiceName, descriptor.ID),
-			Labels: labels,
-		},
-		Resource: handler.getMonitoredResource(),
-		Points: []*monitoringpb.Point{
-			&monitoringpb.Point{
-				Interval: &monitoringpb.TimeInterval{
-					EndTime: &googlepb.Timestamp{
-						Seconds: time.Now().Unix(),
-					},
-				},
-				Value: value,
-			},
-		},
-	}
 }

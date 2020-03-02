@@ -35,8 +35,10 @@ func TestStackDriverMetrics(t *testing.T) {
 
 	// Create the metrics handler
 	handler := &metrics.StackDriverHandler{
-		ProjectID:   projectID,
-		Credentials: stackdrivercredsjson,
+		ProjectID:          projectID,
+		Credentials:        stackdrivercredsjson,
+		OverwriteFrequency: time.Second,
+		OverwriteTimeout:   10 * time.Second,
 	}
 
 	// Open the StackDriver metrics client
@@ -48,7 +50,6 @@ func TestStackDriverMetrics(t *testing.T) {
 		DisplayName: "Test Metric Counter",
 		ServiceName: "service",
 		ID:          "test-metric-counter",
-		ValueType:   metrics.ValueType{ValueType: metrics.TypeInt64{}},
 		Unit:        "{units}",
 		Description: "A dummy metric to test the metrics package.",
 	})
@@ -59,7 +60,6 @@ func TestStackDriverMetrics(t *testing.T) {
 		DisplayName: "Test Metric Gauge",
 		ServiceName: "service",
 		ID:          "test-metric-gauge",
-		ValueType:   metrics.ValueType{ValueType: metrics.TypeInt64{}},
 		Unit:        "{units}",
 		Description: "A dummy metric to test the metrics package.",
 	})
@@ -70,12 +70,22 @@ func TestStackDriverMetrics(t *testing.T) {
 		DisplayName: "Test Metric Histogram",
 		ServiceName: "service",
 		ID:          "test-metric-histogram",
-		ValueType:   metrics.ValueType{ValueType: metrics.TypeInt64{}},
 		Unit:        "{units}",
 		Description: "A dummy metric to test the metrics package.",
 	}, 50)
 
 	assert.NoError(t, err)
+
+	// Test duplicate metric
+	_, err = handler.NewHistogram(ctx, &metrics.Descriptor{
+		DisplayName: "Test Metric Histogram Duplicate",
+		ServiceName: "service",
+		ID:          "test-metric-histogram",
+		Unit:        "{units}",
+		Description: "A dummy metric to test the metrics package.",
+	}, 50)
+
+	assert.EqualError(t, err, "Metric test-metric-histogram already created")
 
 	// Test counter functions
 	labels := []string{"label1", "value1", "label2", "value2"}

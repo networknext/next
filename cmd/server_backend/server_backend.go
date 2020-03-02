@@ -233,13 +233,10 @@ func main() {
 
 			// Create the metrics handler
 			metricsHandler = &metrics.StackDriverHandler{
-				Credentials:     stackdrivercredsjson,
-				ProjectID:       stackDriverProjectID,
-				ClusterLocation: os.Getenv("GCP_METRICS_CLUSTER_LOCATION"),
-				ClusterName:     os.Getenv("GCP_METRICS_CLUSTER_NAME"),
-				PodName:         os.Getenv("GCP_METRICS_POD_NAME"),
-				ContainerName:   os.Getenv("GCP_METRICS_CONTAINER_NAME"),
-				NamespaceName:   os.Getenv("GCP_METRICS_NAMESPACE_NAME"),
+				Credentials:        stackdrivercredsjson,
+				ProjectID:          stackDriverProjectID,
+				OverwriteFrequency: time.Second,
+				OverwriteTimeout:   10 * time.Second,
 			}
 
 			if err := metricsHandler.Open(ctx); err == nil {
@@ -286,7 +283,6 @@ func main() {
 		DisplayName: "Server update duration",
 		ServiceName: "server_backend",
 		ID:          "update.duration",
-		ValueType:   metrics.ValueType{ValueType: metrics.TypeDouble{}},
 		Unit:        "milliseconds",
 		Description: "How long it takes to process a server update request.",
 	}, 50)
@@ -299,7 +295,6 @@ func main() {
 		DisplayName: "Session update duration",
 		ServiceName: "server_backend",
 		ID:          "session.duration",
-		ValueType:   metrics.ValueType{ValueType: metrics.TypeDouble{}},
 		Unit:        "milliseconds",
 		Description: "How long it takes to process a session update request",
 	}, 50)
@@ -312,7 +307,6 @@ func main() {
 		DisplayName: "Total server count",
 		ServiceName: "server_backend",
 		ID:          "server.count",
-		ValueType:   metrics.ValueType{ValueType: metrics.TypeInt64{}},
 		Unit:        "servers",
 		Description: "The total number of concurrent servers",
 	})
@@ -325,7 +319,6 @@ func main() {
 		DisplayName: "Total session count",
 		ServiceName: "server_backend",
 		ID:          "session.count",
-		ValueType:   metrics.ValueType{ValueType: metrics.TypeInt64{}},
 		Unit:        "sessions",
 		Description: "The total number of concurrent sessions",
 	})

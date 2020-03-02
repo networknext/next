@@ -217,9 +217,10 @@ func (h *LocalHistogram) With(labelValues ...string) metrics.Histogram { return 
 
 // Observe adds the given value to the histogram.
 func (h *LocalHistogram) Observe(value float64) {
+	h.h.Observe(value)
+
 	h.mtx.Lock()
 	defer h.mtx.Unlock()
-	h.h.Observe(value)
 	h.p50.Set(h.Quantile(0.50))
 	h.p90.Set(h.Quantile(0.90))
 	h.p95.Set(h.Quantile(0.95))
@@ -233,12 +234,3 @@ func (h *LocalHistogram) Quantile(q float64) float64 {
 
 // LabelValues is a no-op.
 func (h *LocalHistogram) LabelValues() []string { return nil }
-
-// Reset sets the histogram's values to 0.
-func (h *LocalHistogram) Reset() {
-	h.h = generic.NewHistogram(h.h.Name, h.buckets)
-	h.p50.Set(0)
-	h.p50.Set(0)
-	h.p50.Set(0)
-	h.p50.Set(0)
-}

@@ -190,13 +190,10 @@ func main() {
 
 			// Create the metrics handler
 			metricsHandler = &metrics.StackDriverHandler{
-				Credentials:     stackdrivercredsjson,
-				ProjectID:       stackDriverProjectID,
-				ClusterLocation: os.Getenv("GCP_METRICS_CLUSTER_LOCATION"),
-				ClusterName:     os.Getenv("GCP_METRICS_CLUSTER_NAME"),
-				PodName:         os.Getenv("GCP_METRICS_POD_NAME"),
-				ContainerName:   os.Getenv("GCP_METRICS_CONTAINER_NAME"),
-				NamespaceName:   os.Getenv("GCP_METRICS_NAMESPACE_NAME"),
+				Credentials:        stackdrivercredsjson,
+				ProjectID:          stackDriverProjectID,
+				OverwriteFrequency: time.Second,
+				OverwriteTimeout:   10 * time.Second,
 			}
 
 			if err := metricsHandler.Open(ctx); err == nil {
