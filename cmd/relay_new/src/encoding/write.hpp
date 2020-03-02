@@ -113,10 +113,6 @@ namespace encoding
         WriteUint16(buff, index, ip);
       }
 
-      /* hack to write the data faster, only use if we're getting desperate for performance */
-      // std::copy(addr.IPv6.begin(), addr.IPv6.end(), reinterpret_cast<uint16_t*>(buff.data() + index));
-      // index += addr.IPv6.size() * sizeof(uint16_t);
-
       WriteUint16(buff, index, addr.Port);
     } else {
       std::fill(buff.begin() + index, buff.begin() + index + net::Address::ByteSize, 0);

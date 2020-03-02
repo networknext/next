@@ -48,23 +48,23 @@ namespace core
       uint64_t session_id;
       uint8_t session_version;
 
-      if (relay::relay_peek_header(
-           RELAY_DIRECTION_CLIENT_TO_SERVER, &type, &sequence, &session_id, &session_version, mPacket.Buffer.data(), mPacketSize) !=
-          RELAY_OK) {
+      if (relay::relay_peek_header(RELAY_DIRECTION_CLIENT_TO_SERVER,
+           &type,
+           &sequence,
+           &session_id,
+           &session_version,
+           mPacket.Buffer.data(),
+           mPacketSize) != RELAY_OK) {
         return;
       }
 
       uint64_t hash = session_id ^ session_version;
 
-      core::SessionMap::iterator iter, end;
       {
         std::lock_guard<std::mutex> lk(mSessionMap.Lock);
-        iter = mSessionMap.find(hash);
-        end = mSessionMap.end();
-      }
-
-      if (iter == end) {
-        return;
+        if (mSessionMap.find(hash) == mSessionMap.end()) {
+          return;
+        }
       }
 
       core::SessionPtr session;

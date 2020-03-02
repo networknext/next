@@ -95,8 +95,8 @@ namespace core
   {
     assert(packet.Buffer.size() >= RouteToken::EncryptionLength);
 
-    if (crypto_box_easy(packet.Buffer.data() + index,
-         packet.Buffer.data() + index,
+    if (crypto_box_easy(&packet.Buffer[index],
+         &packet.Buffer[index],
          RouteToken::ByteSize,
          nonce.data(),
          receiverPublicKey.data(),
@@ -113,10 +113,10 @@ namespace core
    const crypto::GenericKey& receiverPrivateKey,
    const size_t nonceIndex)
   {
-    if (crypto_box_open_easy(packet.Buffer.data() + index,
-         packet.Buffer.data() + index,
+    if (crypto_box_open_easy(&packet.Buffer[index],
+         &packet.Buffer[index],
          RouteToken::EncryptionLength,
-         packet.Buffer.data() + nonceIndex,
+         &packet.Buffer[nonceIndex],
          senderPublicKey.data(),
          receiverPrivateKey.data()) != 0) {
       return false;

@@ -50,7 +50,7 @@ namespace core
 
       LogDebug("got ping packet from ", sendingAddr);
 
-      // TODO probably want to send immediately than use sendmmsg here?
+      // ? probably want to send immediately than use sendmmsg here?
       if (!mSocket.send(sendingAddr, packet.Internal.Buffer.data(), RELAY_PING_PACKET_BYTES)) {
         Log("failed to send data");
       }

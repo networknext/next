@@ -87,8 +87,8 @@ namespace core
   {
     assert(packet.Buffer.size() >= ContinueToken::EncryptionLength);
 
-    if (crypto_box_easy(packet.Buffer.data() + index,
-         packet.Buffer.data() + index,
+    if (crypto_box_easy(&packet.Buffer[index],
+         &packet.Buffer[index],
          ContinueToken::ByteSize,
          nonce.data(),
          receiverPublicKey.data(),
@@ -107,10 +107,10 @@ namespace core
   {
     assert(packet.Buffer.size() >= ContinueToken::EncryptionLength);
 
-    if (crypto_box_open_easy(packet.Buffer.data() + index,
-         packet.Buffer.data() + index,
+    if (crypto_box_open_easy(&packet.Buffer[index],
+         &packet.Buffer[index],
          ContinueToken::EncryptionLength,
-         packet.Buffer.data() + nonceIndex,
+         &packet.Buffer[nonceIndex],
          senderPublicKey.data(),
          receiverPrivateKey.data()) != 0) {
       return false;
