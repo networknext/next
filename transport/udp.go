@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
 	"net"
 	"time"
 
@@ -354,54 +353,48 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			return
 		}
 
-		// There should only ever be one route when all selectors have been applied, but just in case, choose a random one
-		nextRoute := routes[rand.Intn(len(routes))]
-
-		routeDecisions := []routing.RouteDecision{
-			routing.DecideUpgradeRTT(float64(buyer.RoutingRulesSettings.RTTThreshold)),
-			routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis)),
-			routing.DecideVeto(float64(buyer.RoutingRulesSettings.RTTVeto), buyer.RoutingRulesSettings.EnablePacketLossSafety, buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
+		if len(routes) <= 0 {
+			level.Warn(locallogger).Log("msg", "no acceptable route available")
 		}
 
-		predictedNextStats := &nextRoute.Stats
+		nextRoute := routes[0]
 
-		lastNextStats := &routing.Stats{
+		nnStats := routing.Stats{
 			RTT:        float64(packet.NextMinRTT),
 			Jitter:     float64(packet.NextJitter),
 			PacketLoss: float64(packet.NextPacketLoss),
 		}
 
-		directRouteStats := &routing.Stats{
+		directStats := routing.Stats{
 			RTT:        float64(packet.DirectMinRTT),
 			Jitter:     float64(packet.DirectJitter),
 			PacketLoss: float64(packet.DirectPacketLoss),
 		}
 
-		var keepNextRoute bool = false // Start by assuming we do not want to use the network next route
-		var decisionReason routing.RouteDecisionReason
-
 		// If this is the initial slice, always serve a direct route first
-		if sessionCacheEntry.TimestampStart == timestampNow && packet.NumNearRelays == 0 {
-			keepNextRoute = false
-			decisionReason = routing.DecisionInitialSlice
-		} else {
-			for _, routeDecision := range routeDecisions {
-				keepNextRoute, decisionReason = routeDecision(keepNextRoute, predictedNextStats, lastNextStats, directRouteStats)
-			}
+		routeDecision := routing.Decision{
+			Reason: routing.DecisionInitialSlice,
+		}
+		if sessionCacheEntry.TimestampStart > timestampNow && packet.NumNearRelays > 0 {
+			routeDecision = nextRoute.Decide(routeDecision, nnStats, directStats,
+				routing.DecideUpgradeRTT(float64(buyer.RoutingRulesSettings.RTTThreshold)),
+				routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis)),
+				routing.DecideVeto(float64(buyer.RoutingRulesSettings.RTTVeto), buyer.RoutingRulesSettings.EnablePacketLossSafety, buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
+			)
 		}
 
-		locallogger = log.With(locallogger, "on_network_next", keepNextRoute, "decision_reason", decisionReason)
+		locallogger = log.With(locallogger, "on_network_next", routeDecision.OnNetworkNext, "decision_reason", routeDecision.Reason)
 
 		var chosenRoute *routing.Route
 		var routeType int
 		var routeHash uint64
 		var timestampExpire uint64
-		if !keepNextRoute {
+		if !routeDecision.OnNetworkNext {
 			// Route decision logic decided to serve a direct route
 
 			directRoute := routing.Route{
 				Relays: nil,
-				Stats:  *directRouteStats,
+				Stats:  directStats,
 			}
 			routeHash = directRoute.Hash64()
 			chosenRoute = &directRoute
@@ -512,7 +505,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			return
 		}
 
-		billingEntry := newBillingEntry(chosenRoute, routeType, &buyer.RoutingRulesSettings, decisionReason, &packet, sessionCacheEntry.TimestampStart, timestampNow)
+		billingEntry := newBillingEntry(chosenRoute, routeType, &buyer.RoutingRulesSettings, routeDecision.Reason, &packet, sessionCacheEntry.TimestampStart, timestampNow)
 		if err := biller.Bill(context.Background(), packet.SessionID, billingEntry); err != nil {
 			level.Error(locallogger).Log("msg", "billing failed", "err", err)
 		}
@@ -572,7 +565,7 @@ func newBillingEntry(
 	route *routing.Route,
 	routeType int,
 	routingRulesSettings *routing.RoutingRulesSettings,
-	decisionReason routing.RouteDecisionReason,
+	decisionReason routing.DecisionReason,
 	packet *SessionUpdatePacket,
 	timestampStart uint64,
 	timestampNow uint64) *billing.Entry {
