@@ -36,7 +36,7 @@ func SelectBestRTT() RouteSelector {
 
 // SelectAcceptableRoutesFromBestRTT will return a slice of acceptable routes, which is defined as all routes whose RTT is within the given threshold of the best RTT.
 // Returns nil if there are no acceptable routes.
-func SelectAcceptableRoutesFromBestRTT(rttSwitchThreshold float64) RouteSelector {
+func SelectAcceptableRoutesFromBestRTT(rttEpsilon float64) RouteSelector {
 	// Use SelectBestRTT() to get the best RTT
 	bestRTTSelector := SelectBestRTT()
 	return func(routes []Route) []Route {
@@ -49,7 +49,7 @@ func SelectAcceptableRoutesFromBestRTT(rttSwitchThreshold float64) RouteSelector
 		acceptableRoutes := make([]Route, 0)
 		for _, route := range routes {
 			rttDifference := route.Stats.RTT - bestRTT
-			if rttDifference <= rttSwitchThreshold {
+			if rttDifference <= rttEpsilon {
 				acceptableRoutes = append(acceptableRoutes, route)
 			}
 		}

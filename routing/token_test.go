@@ -96,7 +96,7 @@ func TestEncryptNextRouteToken(t *testing.T) {
 
 		token := routing.NextRouteToken{
 			Expires:        1,
-			SessionId:      2,
+			SessionID:      2,
 			SessionVersion: 3,
 			SessionFlags:   4,
 			KbpsUp:         5,
@@ -142,7 +142,7 @@ func TestEncryptContinueRouteDecision(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		token := routing.ContinueRouteToken{
 			Expires:        1,
-			SessionId:      2,
+			SessionID:      2,
 			SessionVersion: 3,
 			SessionFlags:   4,
 
@@ -183,7 +183,7 @@ func BenchmarkEncryptNextRouteToken(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		token := routing.NextRouteToken{
 			Expires:        1,
-			SessionId:      2,
+			SessionID:      2,
 			SessionVersion: 3,
 			SessionFlags:   4,
 			KbpsUp:         5,

@@ -11,19 +11,19 @@ type RouteContext struct {
 	RelayAddresses  []*net.UDPAddr
 	RelayPublicKeys [][]byte
 	RouteMatrix     *RouteMatrix
-	RelayIdToIndex  map[RelayId]int
+	RelayIDToIndex  map[RelayID]int
 }
 
 type Route struct {
 	RTT        float32
 	Jitter     float32
 	PacketLoss float32
-	RelayIds   []RelayId
+	RelayIDs   []RelayID
 }
 
-func GetRouteHash(relayIds []RelayId) uint64 {
+func GetRouteHash(relayIDs []RelayID) uint64 {
 	hash := fnv.New64a()
-	for _, v := range relayIds {
+	for _, v := range relayIDs {
 		a := make([]byte, 4)
 		binary.LittleEndian.PutUint32(a, uint32(v))
 		hash.Write(a)
@@ -38,7 +38,7 @@ type RouteStats struct {
 }
 
 type RelayStats struct {
-	Id RelayId
+	ID RelayID
 	RouteStats
 }
 
@@ -97,19 +97,19 @@ func (slice *RouteSlice) Serialize(stream Stream) error {
 		stream.SerializeFloat32(&slice.PredictedRoute.RTT)
 		stream.SerializeFloat32(&slice.PredictedRoute.Jitter)
 		stream.SerializeFloat32(&slice.PredictedRoute.PacketLoss)
-		numRelayIds := uint32(len(slice.PredictedRoute.RelayIds))
-		stream.SerializeUint32(&numRelayIds)
+		numRelayIDs := uint32(len(slice.PredictedRoute.RelayIDs))
+		stream.SerializeUint32(&numRelayIDs)
 		if stream.IsReading() {
-			if numRelayIds > MaxRelays {
-				return fmt.Errorf("too many relays in route: %d", numRelayIds)
+			if numRelayIDs > MaxRelays {
+				return fmt.Errorf("too many relays in route: %d", numRelayIDs)
 			}
-			slice.PredictedRoute.RelayIds = make([]RelayId, numRelayIds)
+			slice.PredictedRoute.RelayIDs = make([]RelayID, numRelayIDs)
 		}
-		for i := range slice.PredictedRoute.RelayIds {
-			relayId := uint64(slice.PredictedRoute.RelayIds[i])
-			stream.SerializeUint64(&relayId)
+		for i := range slice.PredictedRoute.RelayIDs {
+			relayID := uint64(slice.PredictedRoute.RelayIDs[i])
+			stream.SerializeUint64(&relayID)
 			if stream.IsReading() {
-				slice.PredictedRoute.RelayIds[i] = RelayId(relayId)
+				slice.PredictedRoute.RelayIDs[i] = RelayID(relayID)
 			}
 		}
 
@@ -122,10 +122,10 @@ func (slice *RouteSlice) Serialize(stream Stream) error {
 			slice.RouteSample.NearRelays = make([]RelayStats, numNearRelays)
 		}
 		for i := 0; i < int(numNearRelays); i++ {
-			relayId := uint64(slice.RouteSample.NearRelays[i].Id)
-			stream.SerializeUint64(&relayId)
+			relayID := uint64(slice.RouteSample.NearRelays[i].ID)
+			stream.SerializeUint64(&relayID)
 			if stream.IsReading() {
-				slice.RouteSample.NearRelays[i].Id = RelayId(relayId)
+				slice.RouteSample.NearRelays[i].ID = RelayID(relayID)
 			}
 			stream.SerializeFloat32(&slice.RouteSample.NearRelays[i].RTT)
 			stream.SerializeFloat32(&slice.RouteSample.NearRelays[i].Jitter)
