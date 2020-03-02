@@ -15,7 +15,6 @@ import (
 	metadataapi "cloud.google.com/go/compute/metadata"
 	monitoring "cloud.google.com/go/monitoring/apiv3"
 	googlepb "github.com/golang/protobuf/ptypes/timestamp"
-	"google.golang.org/api/option"
 	metricpb "google.golang.org/genproto/googleapis/api/metric"
 	monitoredrespb "google.golang.org/genproto/googleapis/api/monitoredres"
 	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
@@ -25,8 +24,7 @@ import (
 
 // StackDriverHandler is an implementation of the Handler interface that handles metrics for StackDriver.
 type StackDriverHandler struct {
-	ProjectID   string
-	Credentials []byte
+	ProjectID string
 
 	// When creating metrics, if these overwrite values are greater than zero, then the created metric will overwrite any existing metric with the same service/ID combination.
 	// If these values are both <= 0, then the metric won't be overwritten and the descriptor will be updated to match the version in StackDriver.
@@ -71,22 +69,13 @@ type histogramMapData struct {
 
 // Open opens the client connection to StackDriver. This must be done before any metrics are created, deleted, or fetched.
 func (handler *StackDriverHandler) Open(ctx context.Context) error {
-	// Lock the map mutexes just in case Open is called more than once
-	handler.counterMapMutex.Lock()
-	handler.gaugeMapMutex.Lock()
-	handler.histogramMapMutex.Lock()
-
 	handler.counters = make(map[string]counterMapData)
 	handler.gauges = make(map[string]gaugeMapData)
 	handler.histograms = make(map[string]histogramMapData)
 
-	handler.counterMapMutex.Unlock()
-	handler.gaugeMapMutex.Unlock()
-	handler.histogramMapMutex.Unlock()
-
 	// Create a Stackdriver metrics client
 	var err error
-	handler.client, err = monitoring.NewMetricClient(ctx, option.WithCredentialsJSON(handler.Credentials))
+	handler.client, err = monitoring.NewMetricClient(ctx)
 	return err
 }
 

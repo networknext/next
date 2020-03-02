@@ -8,10 +8,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/networknext/backend/core"
 	"io/ioutil"
 	"log"
 	"os"
+
+	"github.com/networknext/backend/core"
 )
 
 func FindRelayByName(routeMatrix *core.RouteMatrix, relayName string) int {
@@ -23,9 +24,9 @@ func FindRelayByName(routeMatrix *core.RouteMatrix, relayName string) int {
 	return -1
 }
 
-func FindRelayById(routeMatrix *core.RouteMatrix, relayId core.RelayId) int {
-	for i := range routeMatrix.RelayIds {
-		if routeMatrix.RelayIds[i] == relayId {
+func FindRelayByID(routeMatrix *core.RouteMatrix, relayID core.RelayID) int {
+	for i := range routeMatrix.RelayIDs {
+		if routeMatrix.RelayIDs[i] == relayID {
 			return i
 		}
 	}
@@ -42,14 +43,14 @@ func GetDatacenterIndex(routeMatrix *core.RouteMatrix, datacenterName string) in
 }
 
 /*
-func RelayNamesString(relayIds []uint64, relayIdToIndex map[uint64]int, relayNames []string) string {
-	if len(relayIds) == 0 {
+func RelayNamesString(relayIDs []uint64, relayIDToIndex map[uint64]int, relayNames []string) string {
+	if len(relayIDs) == 0 {
 		panic("must have at least one entry in relay ids")
 	}
 
-	relays := make([]string, len(relayIds))
-	for i, v := range relayIds {
-		index := relayIdToIndex[v]
+	relays := make([]string, len(relayIDs))
+	for i, v := range relayIDs {
+		index := relayIDToIndex[v]
 		relays[i] = relayNames[index]
 	}
 
@@ -87,17 +88,17 @@ func main() {
 		log.Fatalf("\nerror: can't find datacenter called '%s'\n\n", datacenterName)
 	}
 
-	datacenterId := routeMatrix.DatacenterIds[datacenterIndex]
+	datacenterID := routeMatrix.DatacenterIDs[datacenterIndex]
 
-	datacenterRelays := routeMatrix.DatacenterRelays[datacenterId]
+	datacenterRelays := routeMatrix.DatacenterRelays[datacenterID]
 
 	fmt.Printf("%d relays in datacenter\n", len(datacenterRelays))
 
 	for i := range datacenterRelays {
 
-		destRelayId := datacenterRelays[i]
+		destRelayID := datacenterRelays[i]
 
-		destRelayIndex := FindRelayById(routeMatrix, core.RelayId(destRelayId))
+		destRelayIndex := FindRelayByID(routeMatrix, core.RelayID(destRelayID))
 
 		if destRelayIndex == -1 {
 			log.Fatalln("WTF!")
@@ -109,8 +110,8 @@ func main() {
 	}
 
 	/*
-		a_id := core.RelayId(a)
-		b_id := core.RelayId(b)
+		a_id := core.RelayID(a)
+		b_id := core.RelayID(b)
 
 		abFlatIndex := core.TriMatrixIndex(a_index, b_index)
 
@@ -135,24 +136,24 @@ func main() {
 		fmt.Printf("Direct Jitter = %.2f\n", entry.DirectJitter)
 		fmt.Printf("Direct Packet Loss = %.2f\n\n", entry.DirectPacketLoss)
 
-		numRelays := len(route_matrix_rtt.RelayIds)
-		relayIdToIndex := make(map[uint64]int)
+		numRelays := len(route_matrix_rtt.RelayIDs)
+		relayIDToIndex := make(map[uint64]int)
 		for i := 0; i < numRelays; i++ {
-			id := route_matrix_rtt.RelayIds[i]
-			relayIdToIndex[id] = i
+			id := route_matrix_rtt.RelayIDs[i]
+			relayIDToIndex[id] = i
 		}
 
 		relayNames := route_matrix_rtt.RelayNames
 
-		routes_rtt := core.GetRoutesBetweenRelays(a_id, b_id, route_matrix_rtt, relayIdToIndex)
-		routes_jitter := core.GetRoutesBetweenRelays(a_id, b_id, route_matrix_jitter, relayIdToIndex)
-		routes_packet_loss := core.GetRoutesBetweenRelays(a_id, b_id, route_matrix_packet_loss, relayIdToIndex)
+		routes_rtt := core.GetRoutesBetweenRelays(a_id, b_id, route_matrix_rtt, relayIDToIndex)
+		routes_jitter := core.GetRoutesBetweenRelays(a_id, b_id, route_matrix_jitter, relayIDToIndex)
+		routes_packet_loss := core.GetRoutesBetweenRelays(a_id, b_id, route_matrix_packet_loss, relayIDToIndex)
 
 		if len(routes_rtt) > 1 {
 			fmt.Printf("RTT Reducing Routes:\n\n")
 			for i := range routes_rtt {
 				route := routes_rtt[i]
-				fmt.Printf("    %s (%.2fms)\n", RelayNamesString(route.RelayIds, relayIdToIndex, relayNames), entry.DirectRTT-route.RTT)
+				fmt.Printf("    %s (%.2fms)\n", RelayNamesString(route.RelayIDs, relayIDToIndex, relayNames), entry.DirectRTT-route.RTT)
 			}
 			fmt.Printf("\n")
 		}
@@ -161,7 +162,7 @@ func main() {
 			fmt.Printf("Jitter Reducing Routes:\n\n")
 			for i := range routes_jitter {
 				route := routes_jitter[i]
-				fmt.Printf("    %s (%.2fms)\n", RelayNamesString(route.RelayIds, relayIdToIndex, relayNames), entry.DirectJitter-route.Jitter)
+				fmt.Printf("    %s (%.2fms)\n", RelayNamesString(route.RelayIDs, relayIDToIndex, relayNames), entry.DirectJitter-route.Jitter)
 			}
 			fmt.Printf("\n")
 		}
@@ -170,7 +171,7 @@ func main() {
 			fmt.Printf("Packet Loss Reducing Routes:\n\n")
 			for i := range routes_packet_loss {
 				route := routes_packet_loss[i]
-				fmt.Printf("    %s (%.2f%%)\n", RelayNamesString(route.RelayIds, relayIdToIndex, relayNames), entry.DirectPacketLoss-route.PacketLoss)
+				fmt.Printf("    %s (%.2f%%)\n", RelayNamesString(route.RelayIDs, relayIDToIndex, relayNames), entry.DirectPacketLoss-route.PacketLoss)
 			}
 			fmt.Printf("\n")
 		}

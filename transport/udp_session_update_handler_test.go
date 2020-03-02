@@ -169,7 +169,7 @@ func TestSessionPacketSequenceTooOld(t *testing.T) {
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
-		SessionId:     9999,
+		SessionID:     9999,
 		Sequence:      1,
 		ServerAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
 
@@ -234,7 +234,7 @@ func TestClientIPLookupFail(t *testing.T) {
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
-		SessionId:     9999,
+		SessionID:     9999,
 		Sequence:      14,
 		ServerAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
 
@@ -310,7 +310,7 @@ func TestNoRelaysNearClient(t *testing.T) {
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
-		SessionId:     9999,
+		SessionID:     9999,
 		Sequence:      14,
 		ServerAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
 
@@ -393,7 +393,7 @@ func TestNoRoutesFound(t *testing.T) {
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
-		SessionId:     9999,
+		SessionID:     9999,
 		Sequence:      14,
 		ServerAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
 
@@ -486,7 +486,7 @@ func TestNextRouteResponse(t *testing.T) {
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
-		SessionId:     9999,
+		SessionID:     9999,
 		Sequence:      14,
 		ServerAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
 
@@ -515,7 +515,7 @@ func TestNextRouteResponse(t *testing.T) {
 	verified := crypto.Verify(TestServerBackendPublicKey, actual.GetSignData(), actual.Signature)
 	assert.True(t, verified)
 
-	assert.Equal(t, packet.SessionId, actual.SessionId)
+	assert.Equal(t, packet.SessionID, actual.SessionID)
 	assert.Equal(t, packet.Sequence, actual.Sequence)
 	assert.Equal(t, int32(routing.RouteTypeNew), actual.RouteType)
 	assert.Equal(t, int32(5), actual.NumTokens)
@@ -595,7 +595,7 @@ func TestContinueRouteResponse(t *testing.T) {
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
-		SessionId:     9999,
+		SessionID:     9999,
 		Sequence:      14,
 		ServerAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
 
@@ -622,7 +622,7 @@ func TestContinueRouteResponse(t *testing.T) {
 	verified := crypto.Verify(TestServerBackendPublicKey, actual.GetSignData(), actual.Signature)
 	assert.True(t, verified)
 
-	assert.Equal(t, packet.SessionId, actual.SessionId)
+	assert.Equal(t, packet.SessionID, actual.SessionID)
 	assert.Equal(t, packet.Sequence, actual.Sequence)
 	assert.Equal(t, int32(routing.RouteTypeContinue), actual.RouteType)
 	assert.Equal(t, int32(5), actual.NumTokens)
@@ -694,10 +694,10 @@ func TestCachedRouteResponse(t *testing.T) {
 	copy(tokens, []byte("TEST TOKENS"))
 
 	cachedRouteResponse := transport.SessionResponsePacket{
-		SessionId:            9999,
+		SessionID:            9999,
 		Sequence:             13,
 		NumNearRelays:        0,
-		NearRelayIds:         make([]uint64, 0),
+		NearRelayIDs:         make([]uint64, 0),
 		NearRelayAddresses:   make([]net.UDPAddr, 0),
 		RouteType:            int32(routing.RouteTypeNew),
 		NumTokens:            1,
@@ -720,7 +720,7 @@ func TestCachedRouteResponse(t *testing.T) {
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
-		SessionId:     9999,
+		SessionID:     9999,
 		Sequence:      13,
 		ServerAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
 
@@ -749,7 +749,7 @@ func TestCachedRouteResponse(t *testing.T) {
 	verified := crypto.Verify(TestServerBackendPublicKey, actual.GetSignData(), actual.Signature)
 	assert.True(t, verified)
 
-	assert.Equal(t, packet.SessionId, actual.SessionId)
+	assert.Equal(t, packet.SessionID, actual.SessionID)
 	assert.Equal(t, packet.Sequence, actual.Sequence)
 	assert.Equal(t, int32(routing.RouteTypeNew), actual.RouteType)
 	assert.Equal(t, int32(1), actual.NumTokens)
@@ -829,7 +829,7 @@ func TestTokenEncryptionFailure(t *testing.T) {
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
-		SessionId:     9999,
+		SessionID:     9999,
 		Sequence:      14,
 		ServerAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
 

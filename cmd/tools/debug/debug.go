@@ -48,7 +48,7 @@ func main() {
 
 	fmt.Printf("Debug %s:\n", relayName)
 
-	numRelays := len(routeMatrix.RelayIds)
+	numRelays := len(routeMatrix.RelayIDs)
 
 	a := relayIndex
 	for b := 0; b < numRelays; b++ {

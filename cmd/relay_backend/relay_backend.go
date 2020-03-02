@@ -8,16 +8,21 @@ package main
 import (
 	"context"
 	"encoding/base64"
-	"io/ioutil"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"time"
+
+	"github.com/networknext/backend/logging"
+
+	gcplogging "cloud.google.com/go/logging"
 
 	"cloud.google.com/go/firestore"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"google.golang.org/api/option"
 
 	"github.com/go-redis/redis/v7"
 	"github.com/oschwald/geoip2-golang"
@@ -51,6 +56,15 @@ func main() {
 		}
 
 		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
+	}
+	if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+		loggingClient, err := gcplogging.NewClient(ctx, projectID)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
+
+		logger = logging.NewStackdriverLogger(loggingClient, "relay-backend")
 	}
 
 	var customerPublicKey []byte
@@ -121,32 +135,13 @@ func main() {
 	}
 
 	// Create a no-op metrics handler in case metrics aren't set up
-	var metricsHandler metrics.Handler
-	metricsHandler = &metrics.NoOpHandler{}
+	var metricsHandler metrics.Handler = &metrics.NoOpHandler{}
 
-	// If GCP_CREDENTIALS are set then override the local in memory
-	// and connect to Firestore
-	if gcpcreds, ok := os.LookupEnv("GCP_CREDENTIALS"); ok {
-		var gcpcredsjson []byte
-
-		_, err := os.Stat(gcpcreds)
-		switch err := err.(type) {
-		case *os.PathError:
-			gcpcredsjson = []byte(gcpcreds)
-			level.Info(logger).Log("envvar", "GCP_CREDENTIALS", "value", "<JSON>")
-		case nil:
-			gcpcredsjson, err = ioutil.ReadFile(gcpcreds)
-			if err != nil {
-				level.Error(logger).Log("envvar", "GCP_CREDENTIALS", "value", gcpcreds, "err", err)
-				os.Exit(1)
-			}
-			level.Info(logger).Log("envvar", "GCP_CREDENTIALS", "value", gcpcreds)
-		default:
-			//log.Fatalf("unable to load GCP_CREDENTIALS: %v\n", err)
-		}
-
-		// Create a Firestore client
-		client, err := firestore.NewClient(ctx, firestore.DetectProjectID, option.WithCredentialsJSON(gcpcredsjson))
+	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
+	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
+	// on creation so we can use that for the default then
+	if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+		firestoreClient, err := firestore.NewClient(ctx, gcpProjectID)
 		if err != nil {
 			level.Error(logger).Log("err", err)
 			os.Exit(1)
@@ -154,7 +149,7 @@ func main() {
 
 		// Create a Firestore Storer
 		fs := storage.Firestore{
-			Client: client,
+			Client: firestoreClient,
 			Logger: logger,
 		}
 
@@ -166,48 +161,31 @@ func main() {
 
 		// Set the Firestore Storer to give to handlers
 		db = &fs
-	}
 
-	// If GCP_CREDENTIALS_METRICS are set then override the no-op metric handler and connect to StackDriver
-	// This has its own credentials because the StackDriver metrics are in a separate workspace
-	if stackdrivercreds, ok := os.LookupEnv("GCP_CREDENTIALS_METRICS"); ok {
-		if stackDriverProjectID, ok := os.LookupEnv("GCP_METRICS_PROJECT"); ok {
-			var stackdrivercredsjson []byte
-
-			_, err := os.Stat(stackdrivercreds)
-			switch err := err.(type) {
-			case *os.PathError:
-				stackdrivercredsjson = []byte(stackdrivercreds)
-				level.Info(logger).Log("envvar", "GCP_CREDENTIALS_METRICS", "value", "<JSON>")
-			case nil:
-				stackdrivercredsjson, err = ioutil.ReadFile(stackdrivercreds)
-				if err != nil {
-					level.Error(logger).Log("envvar", "GCP_CREDENTIALS_METRICS", "value", stackdrivercreds, "err", err)
-					os.Exit(1)
-				}
-				level.Info(logger).Log("envvar", "GCP_CREDENTIALS_METRICS", "value", stackdrivercreds)
-			}
-
-			// Create the metrics handler
-			metricsHandler = &metrics.StackDriverHandler{
-				Credentials:        stackdrivercredsjson,
-				ProjectID:          stackDriverProjectID,
-				OverwriteFrequency: time.Second,
-				OverwriteTimeout:   10 * time.Second,
-			}
-
-			if err := metricsHandler.Open(ctx); err == nil {
-				go metricsHandler.WriteLoop(ctx, logger, time.Minute, 200)
-			} else {
-				level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
-			}
+		// Set up StackDriver metrics
+		sd := metrics.StackDriverHandler{
+			ProjectID:          gcpProjectID,
+			OverwriteFrequency: time.Second,
+			OverwriteTimeout:   10 * time.Second,
 		}
+
+		if err := sd.Open(ctx); err != nil {
+			level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
+			os.Exit(1)
+		}
+
+		metricsHandler = &sd
+
+		go func() {
+			metricsHandler.WriteLoop(ctx, logger, time.Minute, 200)
+		}()
 	}
 
 	statsdb := routing.NewStatsDatabase()
 	var costmatrix routing.CostMatrix
 	var routematrix routing.RouteMatrix
 
+	// Periodically generate cost matrix from stats db
 	go func() {
 		for {
 			if err := statsdb.GetCostMatrix(&costmatrix, redisClient); err != nil {
@@ -221,6 +199,49 @@ func main() {
 			level.Info(logger).Log("matrix", "route", "entries", len(routematrix.Entries))
 
 			time.Sleep(10 * time.Second)
+		}
+	}()
+
+	// Sub to expiry events for cleanup
+	redisClient.ConfigSet("notify-keyspace-events", "Ex")
+	go func() {
+		ps := redisClient.Subscribe("__keyevent@0__:expired")
+		for {
+			// Recieve expiry event message
+			msg, err := ps.ReceiveMessage()
+			if err != nil {
+				level.Error(logger).Log("msg", "Error recieving expired message from pubsub", "err", err)
+				os.Exit(1)
+			}
+
+			// If it is a relay that is expiring...
+			if strings.HasPrefix(msg.Payload, routing.HashKeyPrefixRelay) {
+
+				// Retrieve the ID of the relay that has expired
+				rawID, err := strconv.ParseUint(strings.TrimPrefix(msg.Payload, routing.HashKeyPrefixRelay), 10, 64)
+				if err != nil {
+					level.Error(logger).Log("msg", "Failed to parse expired Relay ID from payload", "payload", msg.Payload, "err", err)
+					os.Exit(1)
+				}
+
+				// Log the ID
+				level.Warn(logger).Log("msg", fmt.Sprintf("relay with id %v has disconnected.", rawID))
+
+				// Remove geo location data associated with this relay
+				if err := geoClient.Remove(rawID); err != nil {
+					level.Error(logger).Log("msg", fmt.Sprintf("Failed to remove geoClient entry for relay with ID %v", rawID), "err", err)
+					os.Exit(1)
+				}
+
+				// Remove relay entry from Hashmap
+				if err := redisClient.HDel(routing.HashKeyAllRelays, msg.Payload).Err(); err != nil {
+					level.Error(logger).Log("msg", fmt.Sprintf("Failed to remove hashmap entry for relay with ID %v", rawID), "err", err)
+					os.Exit(1)
+				}
+
+				// Remove relay entry from statsDB (which in turn means it won't appear in cost matrix)
+				statsdb.DeleteEntry(rawID)
+			}
 		}
 	}()
 

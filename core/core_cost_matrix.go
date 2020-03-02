@@ -6,13 +6,13 @@ import (
 )
 
 type CostMatrix struct {
-	RelayIds         []RelayId
+	RelayIDs         []RelayID
 	RelayNames       []string
 	RelayAddresses   [][]byte
 	RelayPublicKeys  [][]byte
-	DatacenterIds    []DatacenterId
+	DatacenterIDs    []DatacenterID
 	DatacenterNames  []string
-	DatacenterRelays map[DatacenterId][]RelayId
+	DatacenterRelays map[DatacenterID][]RelayID
 	RTT              []int32
 }
 
@@ -28,12 +28,12 @@ func WriteCostMatrix(buffer []byte, costMatrix *CostMatrix) []byte {
 	binary.LittleEndian.PutUint32(buffer[index:], CostMatrixVersion)
 	index += 4
 
-	numRelays := len(costMatrix.RelayIds)
+	numRelays := len(costMatrix.RelayIDs)
 	binary.LittleEndian.PutUint32(buffer[index:], uint32(numRelays))
 	index += 4
 
-	for i := range costMatrix.RelayIds {
-		binary.LittleEndian.PutUint32(buffer[index:], uint32(costMatrix.RelayIds[i]))
+	for i := range costMatrix.RelayIDs {
+		binary.LittleEndian.PutUint32(buffer[index:], uint32(costMatrix.RelayIDs[i]))
 		index += 4
 	}
 
@@ -41,15 +41,15 @@ func WriteCostMatrix(buffer []byte, costMatrix *CostMatrix) []byte {
 		index += WriteString(buffer[index:], costMatrix.RelayNames[i])
 	}
 
-	if len(costMatrix.DatacenterIds) != len(costMatrix.DatacenterNames) {
+	if len(costMatrix.DatacenterIDs) != len(costMatrix.DatacenterNames) {
 		panic("datacenter ids length does not match datacenter names length")
 	}
 
-	binary.LittleEndian.PutUint32(buffer[index:], uint32(len(costMatrix.DatacenterIds)))
+	binary.LittleEndian.PutUint32(buffer[index:], uint32(len(costMatrix.DatacenterIDs)))
 	index += 4
 
-	for i := 0; i < len(costMatrix.DatacenterIds); i++ {
-		binary.LittleEndian.PutUint32(buffer[index:], uint32(costMatrix.DatacenterIds[i]))
+	for i := 0; i < len(costMatrix.DatacenterIDs); i++ {
+		binary.LittleEndian.PutUint32(buffer[index:], uint32(costMatrix.DatacenterIDs[i]))
 		index += 4
 		index += WriteString(buffer[index:], costMatrix.DatacenterNames[i])
 	}
@@ -107,9 +107,9 @@ func ReadCostMatrix(buffer []byte) (*CostMatrix, error) {
 	numRelays := int32(binary.LittleEndian.Uint32(buffer[index:]))
 	index += 4
 
-	costMatrix.RelayIds = make([]RelayId, numRelays)
+	costMatrix.RelayIDs = make([]RelayID, numRelays)
 	for i := 0; i < int(numRelays); i++ {
-		costMatrix.RelayIds[i] = RelayId(binary.LittleEndian.Uint32(buffer[index:]))
+		costMatrix.RelayIDs[i] = RelayID(binary.LittleEndian.Uint32(buffer[index:]))
 		index += 4
 	}
 
@@ -127,10 +127,10 @@ func ReadCostMatrix(buffer []byte) (*CostMatrix, error) {
 		datacenterCount := binary.LittleEndian.Uint32(buffer[index:])
 		index += 4
 
-		costMatrix.DatacenterIds = make([]DatacenterId, datacenterCount)
+		costMatrix.DatacenterIDs = make([]DatacenterID, datacenterCount)
 		costMatrix.DatacenterNames = make([]string, datacenterCount)
 		for i := 0; i < int(datacenterCount); i++ {
-			costMatrix.DatacenterIds[i] = DatacenterId(binary.LittleEndian.Uint32(buffer[index:]))
+			costMatrix.DatacenterIDs[i] = DatacenterID(binary.LittleEndian.Uint32(buffer[index:]))
 			index += 4
 			costMatrix.DatacenterNames[i], bytes_read = ReadString(buffer[index:])
 			index += bytes_read
@@ -152,20 +152,20 @@ func ReadCostMatrix(buffer []byte) (*CostMatrix, error) {
 	numDatacenters := int32(binary.LittleEndian.Uint32(buffer[index:]))
 	index += 4
 
-	costMatrix.DatacenterRelays = make(map[DatacenterId][]RelayId)
+	costMatrix.DatacenterRelays = make(map[DatacenterID][]RelayID)
 
 	for i := 0; i < int(numDatacenters); i++ {
 
-		datacenterId := DatacenterId(binary.LittleEndian.Uint32(buffer[index:]))
+		datacenterID := DatacenterID(binary.LittleEndian.Uint32(buffer[index:]))
 		index += 4
 
 		numRelaysInDatacenter := int32(binary.LittleEndian.Uint32(buffer[index:]))
 		index += 4
 
-		costMatrix.DatacenterRelays[datacenterId] = make([]RelayId, numRelaysInDatacenter)
+		costMatrix.DatacenterRelays[datacenterID] = make([]RelayID, numRelaysInDatacenter)
 
 		for j := 0; j < int(numRelaysInDatacenter); j++ {
-			costMatrix.DatacenterRelays[datacenterId][j] = RelayId(binary.LittleEndian.Uint32(buffer[index:]))
+			costMatrix.DatacenterRelays[datacenterID][j] = RelayID(binary.LittleEndian.Uint32(buffer[index:]))
 			index += 4
 		}
 	}

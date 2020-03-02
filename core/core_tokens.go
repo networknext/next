@@ -6,7 +6,7 @@ import (
 
 type SessionToken struct {
 	expireTimestamp uint64
-	sessionId       uint64
+	sessionID       uint64
 	sessionVersion  uint8
 	sessionFlags    uint8
 	kbpsUp          uint32
@@ -17,7 +17,7 @@ type SessionToken struct {
 
 type ContinueToken struct {
 	expireTimestamp uint64
-	sessionId       uint64
+	sessionID       uint64
 	sessionVersion  uint8
 	sessionFlags    uint8
 }

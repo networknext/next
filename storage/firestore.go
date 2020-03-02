@@ -74,14 +74,14 @@ func (s *Firestore) Buyer(id uint64) (*routing.Buyer, bool) {
 // SyncLoop is a helper method that calls Sync
 func (s *Firestore) SyncLoop(ctx context.Context, c <-chan time.Time) {
 	if err := s.Sync(ctx); err != nil {
-		s.Logger.Log("during", "SyncLoop", "err", err)
+		level.Error(s.Logger).Log("during", "SyncLoop", "err", err)
 	}
 
 	for {
 		select {
 		case <-c:
 			if err := s.Sync(ctx); err != nil {
-				s.Logger.Log("during", "SyncLoop", "err", err)
+				level.Error(s.Logger).Log("during", "SyncLoop", "err", err)
 			}
 		case <-ctx.Done():
 			return
@@ -165,7 +165,7 @@ func (s *Firestore) syncRelays(ctx context.Context) error {
 		s.relays[rid] = &relay
 	}
 
-	level.Debug(s.Logger).Log("during", "syncRelays", "num", len(s.relays))
+	level.Info(s.Logger).Log("during", "syncRelays", "num", len(s.relays))
 
 	return nil
 }
@@ -209,7 +209,7 @@ func (s *Firestore) syncBuyers(ctx context.Context) error {
 		}
 	}
 
-	level.Debug(s.Logger).Log("during", "syncBuyers", "num", len(s.buyers))
+	level.Info(s.Logger).Log("during", "syncBuyers", "num", len(s.buyers))
 
 	return nil
 }

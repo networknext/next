@@ -74,7 +74,7 @@ func (r *Route) Hash64() uint64 {
 type ContinueRouteToken struct {
 	Expires uint64
 
-	SessionId      uint64
+	SessionID      uint64
 	SessionVersion uint8
 	SessionFlags   uint8
 
@@ -139,7 +139,7 @@ func (r *ContinueRouteToken) encryptToken(addr net.UDPAddr, receiverPublicKey []
 	// Encode the data into the rest of the node
 	var index int
 	encoding.WriteUint64(r.tokens[nonceend:], &index, r.Expires)
-	encoding.WriteUint64(r.tokens[nonceend:], &index, r.SessionId)
+	encoding.WriteUint64(r.tokens[nonceend:], &index, r.SessionID)
 	encoding.WriteUint8(r.tokens[nonceend:], &index, r.SessionVersion)
 	encoding.WriteUint8(r.tokens[nonceend:], &index, r.SessionFlags)
 
@@ -152,7 +152,7 @@ func (r *ContinueRouteToken) encryptToken(addr net.UDPAddr, receiverPublicKey []
 type NextRouteToken struct {
 	Expires uint64
 
-	SessionId      uint64
+	SessionID      uint64
 	SessionVersion uint8
 	SessionFlags   uint8
 
@@ -236,7 +236,7 @@ func (r *NextRouteToken) encryptToken(addr *net.UDPAddr, receiverPublicKey []byt
 
 	var index int
 	encoding.WriteUint64(r.tokens[nonceend:], &index, r.Expires)
-	encoding.WriteUint64(r.tokens[nonceend:], &index, r.SessionId)
+	encoding.WriteUint64(r.tokens[nonceend:], &index, r.SessionID)
 	encoding.WriteUint8(r.tokens[nonceend:], &index, r.SessionVersion)
 	encoding.WriteUint8(r.tokens[nonceend:], &index, r.SessionFlags)
 	encoding.WriteUint32(r.tokens[nonceend:], &index, r.KbpsUp)

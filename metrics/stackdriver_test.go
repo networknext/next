@@ -2,7 +2,6 @@ package metrics_test
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -16,33 +15,20 @@ import (
 func TestStackDriverMetrics(t *testing.T) {
 	ctx, cancelWriteLoop := context.WithCancel(context.Background())
 
-	stackdrivercreds, ok := os.LookupEnv("GCP_CREDENTIALS_METRICS")
+	projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID")
 	if !ok {
-		t.Skip() // Skip the test if GCP credentials aren't configured
+		t.Skip() // Skip the test if GCP project ID isn't set
 	}
-
-	projectID, ok := os.LookupEnv("GCP_METRICS_PROJECT")
-	if !ok {
-		t.Skip() // Skip the test if GCP metrics project ID isn't set
-	}
-
-	var stackdrivercredsjson []byte
-	_, err := os.Stat(stackdrivercreds)
-	assert.NoError(t, err)
-
-	stackdrivercredsjson, err = ioutil.ReadFile(stackdrivercreds)
-	assert.NoError(t, err)
 
 	// Create the metrics handler
 	handler := &metrics.StackDriverHandler{
 		ProjectID:          projectID,
-		Credentials:        stackdrivercredsjson,
 		OverwriteFrequency: time.Second,
 		OverwriteTimeout:   10 * time.Second,
 	}
 
 	// Open the StackDriver metrics client
-	err = handler.Open(ctx)
+	err := handler.Open(ctx)
 	assert.NoError(t, err)
 
 	// Test metric creation

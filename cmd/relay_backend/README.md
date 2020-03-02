@@ -29,8 +29,8 @@ The default setting is `warn` when running `make dev-relay-backend` and `make de
 
 #### Optional
 
-- `GCP_CREDENTIALS`: JSON blob or path to a .json file for the GCP credentials needed
-- `GCP_METRICS_PROJECT`: The name of the StackDriver project that will monitor metrics
+- `GOOGLE_APPLICATION_CREDENTIALS`: Path to a .json file for the GCP credentials needed
+- `GOOGLE_PROJECT_ID`: The Google project ID
 - `RELAY_DEV`: enable development features, like what is listed below in the [important](#important) section
 - `RELAY_STUBBED_DATA_FILENAME`: points to a json file that will be used to stub datacenter names and lat/long coords
 

@@ -20,8 +20,8 @@ type routeData struct {
 
 func Analyze(name string, unit string, route_matrix *core.RouteMatrix) {
 
-	src := route_matrix.RelayIds
-	dest := route_matrix.RelayIds
+	src := route_matrix.RelayIDs
+	dest := route_matrix.RelayIDs
 
 	entries := make([]*routeData, 0, len(src)*len(dest))
 
