@@ -6,9 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"net"
 	"time"
-	"math/rand"
 
 	gkmetrics "github.com/go-kit/kit/metrics"
 
@@ -325,10 +325,16 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		level.Debug(locallogger).Log("lat", location.Latitude, "long", location.Longitude)
 
 		clientrelays, err := geoClient.RelaysWithin(location.Latitude, location.Longitude, 500, "mi")
+
 		if len(clientrelays) == 0 || err != nil {
 			level.Error(locallogger).Log("msg", "failed to locate relays near client", "err", err)
 			handleError(w, response, serverPrivateKey, err)
 			return
+		}
+
+		// Clamp relay count to max
+		if len(clientrelays) > int(routing.MaxClientRelays) {
+			clientrelays = clientrelays[:routing.MaxClientRelays]
 		}
 
 		// We need to do this because RelaysWithin only has the ID of the relay and we need the Addr and PublicKey too

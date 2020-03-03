@@ -180,7 +180,7 @@ func (backend *Backend) GetNearRelays() []routing.Relay {
 	// sort them by ID for consistency
 	sort.SliceStable(nearRelays[:], func(i, j int) bool { return nearRelays[i].ID < nearRelays[j].ID })
 
-	// Clamp relay count to max // TODO: actually do this in real backend?
+	// Clamp relay count to max
 	if len(nearRelays) > int(core.MaxNearRelays) {
 		nearRelays = nearRelays[:core.MaxNearRelays]
 	}
