@@ -39,8 +39,7 @@ namespace core
      mSessionMap(sessions),
      mRelayManager(relayManager),
      mShouldProcess(handle),
-     mLogger(logger),
-     mSender(socket)
+     mLogger(logger)
   {}
 
   void PacketProcessor::process(std::condition_variable& var, std::atomic<bool>& readyToReceive)
