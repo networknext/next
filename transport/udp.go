@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"time"
+	"math/rand"
 
 	gkmetrics "github.com/go-kit/kit/metrics"
 
