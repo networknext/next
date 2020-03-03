@@ -337,15 +337,17 @@ func main() {
 				sessionEntry.Version = 0
 				sessionEntry.TimestampExpire = time.Now().Add(time.Second * 20)
 			} else {
-				if backend.mode == BACKEND_MODE_IDEMPOTENT {
-					if sessionUpdate.Sequence == sessionEntry.Sequence {
-						_, err = w.Write(sessionEntry.Response)
-						if err != nil {
-							fmt.Printf("error: failed to send udp response: %v\n", err)
-						}
-						return
+				switch seq := sessionUpdate.Sequence; {
+				case seq < sessionEntry.Sequence:
+					fmt.Printf("error: session sequence number (%v) is older than sequence number in cache (%v), ignoring...\n", seq, sessionEntry.Sequence)
+					return
+				case seq == sessionEntry.Sequence:
+					_, err = w.Write(sessionEntry.Response)
+					if err != nil {
+						fmt.Printf("error: failed to respond with session entry cache: %v\n", err)
 					}
-				} else {
+					return
+				default:
 					sessionEntry.TimestampExpire = sessionEntry.TimestampExpire.Add(time.Second * 10)
 				}
 			}
