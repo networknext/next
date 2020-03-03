@@ -181,8 +181,8 @@ func (backend *Backend) GetNearRelays() []routing.Relay {
 	sort.SliceStable(nearRelays[:], func(i, j int) bool { return nearRelays[i].ID < nearRelays[j].ID })
 
 	// Clamp relay count to max
-	if len(nearRelays) > int(core.MaxNearRelays) {
-		nearRelays = nearRelays[:core.MaxNearRelays]
+	if len(nearRelays) > int(routing.MaxClientRelays) {
+		nearRelays = nearRelays[:routing.MaxClientRelays]
 	}
 
 	return nearRelays
@@ -416,7 +416,7 @@ func main() {
 					NumNearRelays:        int32(len(nearRelays)),
 					NearRelayIDs:         nearRelayIDs,
 					NearRelayAddresses:   nearRelayAddresses,
-					RouteType:            int32(core.NEXT_UPDATE_TYPE_DIRECT),
+					RouteType:            int32(routing.RouteTypeDirect),
 					NumTokens:            0,
 					Tokens:               nil,
 					ServerRoutePublicKey: serverEntry.publicKey,
@@ -469,7 +469,7 @@ func main() {
 						fmt.Printf("error: could not write route tokens: %v\n", err)
 						return
 					}
-					responseType = core.NEXT_UPDATE_TYPE_ROUTE
+					responseType = routing.RouteTypeNew
 
 				} else {
 
@@ -480,7 +480,7 @@ func main() {
 						fmt.Printf("error: could not write continue tokens: %v\n", err)
 						return
 					}
-					responseType = core.NEXT_UPDATE_TYPE_CONTINUE
+					responseType = routing.RouteTypeContinue
 
 				}
 
@@ -682,7 +682,7 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 	relay := routing.Relay{
 		ID:             crypto.HashID(relay_address),
 		Addr:           *udpAddr,
-		PublicKey:      core.RandomBytes(RelayTokenBytes),
+		PublicKey:      crypto.RelayPublicKey[:],
 		LastUpdateTime: uint64(time.Now().Unix()),
 	}
 
