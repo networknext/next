@@ -142,6 +142,15 @@ namespace
 
     return true;
   }
+
+  inline bool getPingProcNum(unsigned int numProcs)
+  {
+    auto actualProcCount = std::thread::hardware_concurrency();
+
+    // if already using all available procs, just use the first
+    // else use the next one
+    return actualProcCount > 0 && numProcs == actualProcCount ? 0 : numProcs + 1;
+  }
 }  // namespace
 
 int main()
@@ -310,7 +319,7 @@ int main()
   // makes a shared ptr to a socket object
   auto makeSocket = [&sockets](net::Address& addr) -> os::SocketPtr {
     auto socket = std::make_shared<os::Socket>(os::SocketType::Blocking);
-    if (!socket->create(addr, 100 * 1024, 100 * 1024, 0.0f, true, 0)) {
+    if (!socket->create(addr, 4194304, 4194304, 0.0f, true, 0)) {
       return nullptr;
     }
 
@@ -350,6 +359,11 @@ int main()
        });
 
       wait();  // wait the the processor is ready to receive
+
+      int error;
+      if (!os::SetThreadAffinity(*packetThreads[i], i, error)) {
+        Log("Error setting thread affinity: ", error);
+      }
     }
   }
 
@@ -394,6 +408,11 @@ int main()
     });
 
     wait();
+
+    int error;
+    if (!os::SetThreadAffinity(*pingThread, getPingProcNum(numProcessors), error)) {
+      Log("Error setting thread affinity: ", error);
+    }
   }
 
   LogDebug("communicating with backend");
