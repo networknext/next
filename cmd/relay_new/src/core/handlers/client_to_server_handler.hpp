@@ -11,7 +11,6 @@ namespace core
 {
   namespace handlers
   {
-    template <size_t SenderMaxCap, size_t SenderTimeout>
     class ClientToServerHandler: public BaseHandler
     {
      public:
@@ -19,31 +18,25 @@ namespace core
        const RouterInfo& routerInfo,
        GenericPacket<>& packet,
        const int packetSize,
-       core::SessionMap& sessions,
-       const os::Socket& socket,
-       net::BufferedSender<SenderMaxCap, SenderTimeout>& sender);
+       core::SessionMap& sessions);
 
-      void handle();
+      template <typename T, typename F>
+      void handle(T& sender, F funcptr);
 
      private:
       core::SessionMap& mSessionMap;
-      const os::Socket& mSocket;
-      net::BufferedSender<SenderMaxCap, SenderTimeout>& mSender;
     };
 
-    template <size_t SenderMaxCap, size_t SenderTimeout>
-    inline ClientToServerHandler<SenderMaxCap, SenderTimeout>::ClientToServerHandler(const util::Clock& relayClock,
+    inline ClientToServerHandler::ClientToServerHandler(const util::Clock& relayClock,
      const RouterInfo& routerInfo,
      GenericPacket<>& packet,
      const int packetSize,
-     core::SessionMap& sessions,
-     const os::Socket& socket,
-     net::BufferedSender<SenderMaxCap, SenderTimeout>& sender)
-     : BaseHandler(relayClock, routerInfo, packet, packetSize), mSessionMap(sessions), mSocket(socket), mSender(sender)
+     core::SessionMap& sessions)
+     : BaseHandler(relayClock, routerInfo, packet, packetSize), mSessionMap(sessions)
     {}
 
-    template <size_t SenderMaxCap, size_t SenderTimeout>
-    inline void ClientToServerHandler<SenderMaxCap, SenderTimeout>::handle()
+    template <typename T, typename F>
+    inline void ClientToServerHandler::handle(T& sender, F funcptr)
     {
       if (mPacketSize <= RELAY_HEADER_BYTES || mPacketSize > RELAY_HEADER_BYTES + RELAY_MTU) {
         return;
@@ -71,7 +64,7 @@ namespace core
         return;
       }
 
-      session = mSessionMap[hash];
+      auto session = mSessionMap[hash];
 
       if (sessionIsExpired(session)) {
         return;
@@ -88,8 +81,8 @@ namespace core
         return;
       }
 
-      mSender.queue(session->NextAddr, mPacket.Buffer.data(), mPacketSize);
-      LogDebug("sent client packet to ", session->NextAddr);
+      LogDebug("sending client packet to ", session->NextAddr);
+      (sender.*funcptr)(session->NextAddr, mPacket.Buffer.data(), mPacketSize);
     }
   }  // namespace handlers
 }  // namespace core

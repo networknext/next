@@ -18,6 +18,11 @@
 
 namespace core
 {
+  const size_t MaxPacketsToReceive = 1024;
+
+  // same as receive, the amount of output depends on the input
+  const size_t MaxPacketsToSend = MaxPacketsToReceive;
+
   class PacketProcessor
   {
    public:
@@ -49,7 +54,7 @@ namespace core
     // perf based on using 2 packet processors, original benchmark (using sendto()) is 72 Mb/s
 
     // basicaly a slightly less effecient sento(), no noticable Mb/s diff
-    // net::BufferedSender<1, 0> mSender;
+    net::BufferedSender<1, 0> mSender;
 
     // caused a decrease in perf, probably timing out too often, down to 56 Mb/s
     // net::BufferedSender<60, 40> mSender;
@@ -67,9 +72,9 @@ namespace core
     // Stable gain to 84 Mb/s, ideal but test func fails due to receiving ~80 less packets than expected
     // net::BufferedSender<10, 1000> mSender;
 
-    net::BufferedSender<3, 750> mSender;
+    // net::BufferedSender<3, 750> mSender;
 
-    void processPacket(GenericPacket<>& packet, mmsghdr& header);
+    void processPacket(GenericPacket<>& packet, mmsghdr& header, GenericPacketBuffer<MaxPacketsToSend>& outputBuff);
 
     bool getAddrFromMsgHdr(net::Address& addr, const msghdr& hdr) const;
   };

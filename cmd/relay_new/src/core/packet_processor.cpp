@@ -22,11 +22,6 @@
 #include "handlers/session_pong_handler.hpp"
 #include "handlers/near_ping_handler.hpp"
 
-namespace
-{
-  const size_t MaxPacketsToReceive = 1024 * 2;
-}  // namespace
-
 namespace core
 {
   PacketProcessor::PacketProcessor(os::Socket& socket,
@@ -54,7 +49,8 @@ namespace core
     int listenIndx = listenCounter.fetch_add(1);
     (void)listenIndx;
 
-    GenericPacketBuffer<MaxPacketsToReceive> buffer;
+    GenericPacketBuffer<MaxPacketsToReceive> inputBuffer;
+    GenericPacketBuffer<MaxPacketsToReceive> outputBuffer;
 
     LogDebug("listening for packets {", listenIndx, '}');
 
@@ -62,19 +58,25 @@ namespace core
     var.notify_one();
 
     while (mShouldProcess) {
-      if (!mSocket.multirecv(buffer)) {
+      if (!mSocket.multirecv(inputBuffer)) {
         Log("failed to recv packets");
       }
 
-      LogDebug("got packets on {", listenIndx, "}, / count: ", buffer.Count);
+      LogDebug("got packets on {", listenIndx, "}, / count: ", inputBuffer.Count);
 
-      for (int i = 0; i < buffer.Count; i++) {
-        processPacket(buffer.Packets[i], buffer.Headers[i]);
+      for (int i = 0; i < inputBuffer.Count; i++) {
+        processPacket(inputBuffer.Packets[i], inputBuffer.Headers[i], outputBuffer);
+      }
+
+      if (outputBuffer.Count > 0) {
+        mSocket.multisend(outputBuffer);
+        outputBuffer.Count = 0;
       }
     }
   }
 
-  inline void PacketProcessor::processPacket(GenericPacket<>& packet, mmsghdr& header)
+  inline void PacketProcessor::processPacket(
+   GenericPacket<>& packet, mmsghdr& header, GenericPacketBuffer<MaxPacketsToSend>& outputBuff)
   {
     LogDebug("packet type: ", static_cast<unsigned int>(packet.Buffer[0]));
 
@@ -112,9 +114,9 @@ namespace core
 
         getAddrFromMsgHdr(packet.Addr, header.msg_hdr);
         handlers::RouteRequestHandler handler(
-         mRelayClock, mRouterInfo, packet, packet.Len, packet.Addr, mKeychain, mSessionMap, mSocket, mSender);
+         mRelayClock, mRouterInfo, packet, packet.Len, packet.Addr, mKeychain, mSessionMap);
 
-        handler.handle();
+        handler.handle(outputBuff, &core::GenericPacketBuffer<1024UL>::push);
       } break;
       case RELAY_ROUTE_RESPONSE_PACKET: {
         if (mLogger != nullptr) {
@@ -124,28 +126,27 @@ namespace core
         getAddrFromMsgHdr(packet.Addr, header.msg_hdr);
         LogDebug("got route response from ", packet.Addr);
 
-        handlers::RouteResponseHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap, mSocket, mSender);
+        handlers::RouteResponseHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap);
 
-        handler.handle();
+        handler.handle(outputBuff, &core::GenericPacketBuffer<1024UL>::push);
       } break;
       case RELAY_CONTINUE_REQUEST_PACKET: {
         if (mLogger != nullptr) {
           mLogger->addToContReq(packet.Len);
         }
 
-        handlers::ContinueRequestHandler handler(
-         mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap, mSocket, mSender, mKeychain);
+        handlers::ContinueRequestHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap, mKeychain);
 
-        handler.handle();
+        handler.handle(outputBuff, &core::GenericPacketBuffer<1024UL>::push);
       } break;
       case RELAY_CONTINUE_RESPONSE_PACKET: {
         if (mLogger != nullptr) {
           mLogger->addToContResp(packet.Len);
         }
 
-        handlers::ContinueResponseHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap, mSocket, mSender);
+        handlers::ContinueResponseHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap);
 
-        handler.handle();
+        handler.handle(outputBuff, &core::GenericPacketBuffer<1024UL>::push);
       } break;
       case RELAY_CLIENT_TO_SERVER_PACKET: {
         LogDebug("got client to server packet");
@@ -153,9 +154,9 @@ namespace core
           mLogger->addToCliToServ(packet.Len);
         }
 
-        handlers::ClientToServerHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap, mSocket, mSender);
+        handlers::ClientToServerHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap);
 
-        handler.handle();
+        handler.handle(outputBuff, &core::GenericPacketBuffer<1024UL>::push);
       } break;
       case RELAY_SERVER_TO_CLIENT_PACKET: {
         LogDebug("got server to client packet");
@@ -163,9 +164,9 @@ namespace core
           mLogger->addToServToCli(packet.Len);
         }
 
-        handlers::ServerToClientHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap, mSocket, mSender);
+        handlers::ServerToClientHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap);
 
-        handler.handle();
+        handler.handle(outputBuff, &core::GenericPacketBuffer<1024UL>::push);
       } break;
       case RELAY_SESSION_PING_PACKET: {
         if (mLogger != nullptr) {

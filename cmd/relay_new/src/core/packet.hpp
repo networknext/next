@@ -19,13 +19,15 @@ namespace core
     size_t Len;
   };
 
-
   // holds BuffSize packets and shares memory between the header and the packet, packet interface is meant to be easy to use
   template <size_t BuffSize, size_t PacketSize = GenericPacketMaxSize>
   class GenericPacketBuffer
   {
    public:
     GenericPacketBuffer();
+
+    // for sending packets
+    void push(const net::Address& dest, const uint8_t* data, size_t length);
 
     // for debugging
     void print();
@@ -46,11 +48,11 @@ namespace core
     std::vector<std::array<uint8_t, sizeof(sockaddr_in6)>> mRawAddrBuff;
 
     // buffer for iovec structs
-    std::vector<iovec> IOVecBuff;
+    std::vector<iovec> mIOVecBuff;
   };
 
   template <size_t BuffSize, size_t PacketSize>
-  GenericPacketBuffer<BuffSize, PacketSize>::GenericPacketBuffer(): mRawAddrBuff(BuffSize), IOVecBuff(BuffSize)
+  GenericPacketBuffer<BuffSize, PacketSize>::GenericPacketBuffer(): mRawAddrBuff(BuffSize), mIOVecBuff(BuffSize)
   {
     for (size_t i = 0; i < BuffSize; i++) {
       auto& pkt = Packets[i];
@@ -66,7 +68,7 @@ namespace core
       }
 
       // assign the iovec to the packet buffer
-      auto iov = &IOVecBuff[i];
+      auto iov = &mIOVecBuff[i];
       {
         iov->iov_len = pkt.Buffer.size();
         iov->iov_base = pkt.Buffer.data();
@@ -78,6 +80,21 @@ namespace core
         hdr.msg_iov = iov;
       }
     }
+  }
+
+  // TODO make thread safe
+  template <size_t BuffSize, size_t PacketSize>
+  void GenericPacketBuffer<BuffSize, PacketSize>::push(const net::Address& dest, const uint8_t* data, size_t len)
+  {
+    assert(len <= PacketSize);
+
+    auto& iov = mIOVecBuff[Count];
+    iov.iov_len = len;
+    std::copy(data, data + iov.iov_len, reinterpret_cast<uint8_t*>(iov.iov_base));
+
+    dest.to(Headers[Count]);
+
+    Count++;
   }
 
   template <size_t BuffSize, size_t PacketSize>

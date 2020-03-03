@@ -13,7 +13,6 @@ namespace core
 {
   namespace handlers
   {
-    template <size_t SenderMaxCap, size_t SenderTimeout>
     class ContinueResponseHandler: public BaseHandler
     {
      public:
@@ -21,31 +20,25 @@ namespace core
        const RouterInfo& routerInfo,
        GenericPacket<>& packet,
        const int packetSize,
-       core::SessionMap& sessions,
-       const os::Socket& socket,
-       net::BufferedSender<SenderMaxCap, SenderTimeout>& sender);
+       core::SessionMap& sessions);
 
-      void handle();
+      template <typename T, typename F>
+      void handle(T& sender, F funcptr);
 
      private:
       core::SessionMap& mSessionMap;
-      const os::Socket& mSocket;
-      net::BufferedSender<SenderMaxCap, SenderTimeout>& mSender;
     };
 
-    template <size_t SenderMaxCap, size_t SenderTimeout>
-    inline ContinueResponseHandler<SenderMaxCap, SenderTimeout>::ContinueResponseHandler(const util::Clock& relayClock,
+    inline ContinueResponseHandler::ContinueResponseHandler(const util::Clock& relayClock,
      const RouterInfo& routerInfo,
      GenericPacket<>& packet,
      const int packetSize,
-     core::SessionMap& sessions,
-     const os::Socket& socket,
-     net::BufferedSender<SenderMaxCap, SenderTimeout>& sender)
-     : BaseHandler(relayClock, routerInfo, packet, packetSize), mSessionMap(sessions), mSocket(socket), mSender(sender)
+     core::SessionMap& sessions)
+     : BaseHandler(relayClock, routerInfo, packet, packetSize), mSessionMap(sessions)
     {}
 
-    template <size_t SenderMaxCap, size_t SenderTimeout>
-    inline void ContinueResponseHandler<SenderMaxCap, SenderTimeout>::handle()
+    template <typename T, typename F>
+    inline void ContinueResponseHandler::handle(T& sender, F funcptr)
     {
       if (mPacketSize != RELAY_HEADER_BYTES) {
         return;
@@ -91,7 +84,7 @@ namespace core
         return;
       }
 
-      mSender.queue(session->PrevAddr, mPacket.Buffer.data(), mPacketSize);
+      (sender.*funcptr)(session->PrevAddr, mPacket.Buffer.data(), mPacketSize);
     }
   }  // namespace handlers
 }  // namespace core

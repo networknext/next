@@ -13,7 +13,6 @@ namespace core
 {
   namespace handlers
   {
-    template <size_t SenderMaxCap, size_t SenderTimeout>
     class ContinueRequestHandler: public BaseHandler
     {
      public:
@@ -22,37 +21,27 @@ namespace core
        GenericPacket<>& packet,
        const int packetSize,
        core::SessionMap& sessions,
-       const os::Socket& socket,
-       net::BufferedSender<SenderMaxCap, SenderTimeout>& sender,
        const crypto::Keychain& keychain);
 
-      void handle();
+      template <typename T, typename F>
+      void handle(T& sender, F funcptr);
 
      private:
       core::SessionMap& mSessionMap;
-      const os::Socket& mSocket;
-      net::BufferedSender<SenderMaxCap, SenderTimeout>& mSender;
       const crypto::Keychain& mKeychain;
     };
 
-    template <size_t SenderMaxCap, size_t SenderTimeout>
-    inline ContinueRequestHandler<SenderMaxCap, SenderTimeout>::ContinueRequestHandler(const util::Clock& relayClock,
+    inline ContinueRequestHandler::ContinueRequestHandler(const util::Clock& relayClock,
      const RouterInfo& routerInfo,
      GenericPacket<>& packet,
      const int packetSize,
      core::SessionMap& sessions,
-     const os::Socket& socket,
-     net::BufferedSender<SenderMaxCap, SenderTimeout>& sender,
      const crypto::Keychain& keychain)
-     : BaseHandler(relayClock, routerInfo, packet, packetSize),
-       mSessionMap(sessions),
-       mSocket(socket),
-       mSender(sender),
-       mKeychain(keychain)
+     : BaseHandler(relayClock, routerInfo, packet, packetSize), mSessionMap(sessions), mKeychain(keychain)
     {}
 
-    template <size_t SenderMaxCap, size_t SenderTimeout>
-    inline void ContinueRequestHandler<SenderMaxCap, SenderTimeout>::handle()
+    template <typename T, typename F>
+    inline void ContinueRequestHandler::handle(T& sender, F funcptr)
     {
       if (mPacketSize < int(1 + ContinueToken::EncryptedByteSize * 2)) {
         Log("ignoring continue request. bad packet size (", mPacketSize, ")");
@@ -89,7 +78,7 @@ namespace core
       session->ExpireTimestamp = token.ExpireTimestamp;
       mPacket.Buffer[ContinueToken::EncryptedByteSize] = RELAY_CONTINUE_REQUEST_PACKET;
 
-      mSender.queue(
+      (sender.*funcptr)(
        session->NextAddr, &mPacket.Buffer[ContinueToken::EncryptedByteSize], mPacketSize - ContinueToken::EncryptedByteSize);
     }
   }  // namespace handlers

@@ -11,7 +11,6 @@ namespace core
 {
   namespace handlers
   {
-    template <size_t SenderMaxCap, size_t SenderTimeout>
     class RouteResponseHandler: public BaseHandler
     {
      public:
@@ -19,37 +18,32 @@ namespace core
        const RouterInfo& routerInfo,
        GenericPacket<>& packet,
        const int packetSize,
-       core::SessionMap& sessions,
-       const os::Socket& socket,
-       net::BufferedSender<SenderMaxCap, SenderTimeout>& sender);
+       core::SessionMap& sessions);
 
-      void handle();
+      template <typename T, typename F>
+      void handle(T& sender, F funcptr);
 
      private:
       core::SessionMap& mSessionMap;
-      const os::Socket& mSocket;
-      net::BufferedSender<SenderMaxCap, SenderTimeout>& mSender;
     };
 
-    template <size_t SenderMaxCap, size_t SenderTimeout>
-    inline RouteResponseHandler<SenderMaxCap, SenderTimeout>::RouteResponseHandler(const util::Clock& relayClock,
+    inline RouteResponseHandler::RouteResponseHandler(const util::Clock& relayClock,
      const RouterInfo& routerInfo,
      GenericPacket<>& packet,
      const int packetSize,
-     core::SessionMap& sessions,
-     const os::Socket& socket,
-     net::BufferedSender<SenderMaxCap, SenderTimeout>& sender)
-     : BaseHandler(relayClock, routerInfo, packet, packetSize), mSessionMap(sessions), mSocket(socket), mSender(sender)
+     core::SessionMap& sessions)
+     : BaseHandler(relayClock, routerInfo, packet, packetSize), mSessionMap(sessions)
     {}
 
-    template <size_t SenderMaxCap, size_t SenderTimeout>
-    inline void RouteResponseHandler<SenderMaxCap, SenderTimeout>::handle()
+    template <typename T, typename F>
+    inline void RouteResponseHandler::handle(T& sender, F funcptr)
     {
       if (mPacketSize != RELAY_HEADER_BYTES) {
         Log("ignoring route response, header byte count invalid: ", mPacketSize, " != ", RELAY_HEADER_BYTES);
         return;
       }
 
+      LogDebug(__FILE__, __LINE__);
       uint8_t type;
       uint64_t sequence;
       uint64_t session_id;
@@ -65,6 +59,7 @@ namespace core
         return;
       }
 
+      LogDebug(__FILE__, __LINE__);
       uint64_t hash = session_id ^ session_version;
 
       if (!mSessionMap.exists(hash)) {
@@ -72,12 +67,19 @@ namespace core
         return;
       }
 
+      LogDebug(__FILE__, __LINE__);
       auto session = mSessionMap[hash];
+      LogDebug(__FILE__, __LINE__);
+
+      if (!session) {
+        LogDebug("session is nullptr! crashing!");
+      }
 
       if (sessionIsExpired(session)) {
         return;
       }
 
+      LogDebug(__FILE__, __LINE__);
       uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
       if (clean_sequence <= session->ServerToClientSeq) {
         return;
@@ -89,8 +91,9 @@ namespace core
         return;
       }
 
-      mSender.queue(session->PrevAddr, mPacket.Buffer.data(), mPacketSize);
-      LogDebug("sent response to ", session->PrevAddr);
+      LogDebug(__FILE__, __LINE__);
+      LogDebug("sending response to ", session->PrevAddr);
+      (sender.*funcptr)(session->PrevAddr, mPacket.Buffer.data(), mPacketSize);
     }
   }  // namespace handlers
 }  // namespace core

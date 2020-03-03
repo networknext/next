@@ -15,7 +15,6 @@ namespace core
 {
   namespace handlers
   {
-    template <size_t SenderMaxCap, size_t SenderTimeout>
     class RouteRequestHandler: public BaseHandler
     {
      public:
@@ -25,40 +24,29 @@ namespace core
        const int size,
        const net::Address& from,
        const crypto::Keychain& keychain,
-       core::SessionMap& sessions,
-       const os::Socket& socket,
-       net::BufferedSender<SenderMaxCap, SenderTimeout>& sender);
+       core::SessionMap& sessions);
 
-      void handle();
+      template <typename T, typename F>
+      void handle(T& sender, F funcptr);
 
      private:
       const net::Address& mFrom;
       const crypto::Keychain& mKeychain;
       core::SessionMap& mSessionMap;
-      const os::Socket& mSocket;
-      net::BufferedSender<SenderMaxCap, SenderTimeout>& mSender;
     };
 
-    template <size_t SenderMaxCap, size_t SenderTimeout>
-    inline RouteRequestHandler<SenderMaxCap, SenderTimeout>::RouteRequestHandler(const util::Clock& relayClock,
+    inline RouteRequestHandler::RouteRequestHandler(const util::Clock& relayClock,
      const RouterInfo& routerInfo,
      GenericPacket<>& packet,
      const int size,
      const net::Address& from,
      const crypto::Keychain& keychain,
-     core::SessionMap& sessions,
-     const os::Socket& socket,
-     net::BufferedSender<SenderMaxCap, SenderTimeout>& sender)
-     : BaseHandler(relayClock, routerInfo, packet, size),
-       mFrom(from),
-       mKeychain(keychain),
-       mSessionMap(sessions),
-       mSocket(socket),
-       mSender(sender)
+     core::SessionMap& sessions)
+     : BaseHandler(relayClock, routerInfo, packet, size), mFrom(from), mKeychain(keychain), mSessionMap(sessions)
     {}
 
-    template <size_t SenderMaxCap, size_t SenderTimeout>
-    inline void RouteRequestHandler<SenderMaxCap, SenderTimeout>::handle()
+    template <typename T, typename F>
+    inline void RouteRequestHandler::handle(T& sender, F funcptr)
     {
       LogDebug("got route request from ", mFrom);
 
@@ -116,7 +104,7 @@ namespace core
 
       LogDebug("sending route request to ", token.NextAddr);
 
-      mSender.queue(
+      (sender.*funcptr)(
        token.NextAddr, &mPacket.Buffer[RouteToken::EncryptedByteSize], mPacketSize - RouteToken::EncryptedByteSize);
     }
   }  // namespace handlers
