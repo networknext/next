@@ -9,7 +9,7 @@ require (
 	cloud.google.com/go/pubsub v1.1.0
 	github.com/VividCortex/gohistogram v1.0.0 // indirect
 	github.com/alicebob/miniredis v2.5.0+incompatible
-	github.com/alicebob/miniredis/v2 v2.11.1
+	github.com/alicebob/miniredis/v2 v2.11.2
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/go-kit/kit v0.9.0
 	github.com/go-logfmt/logfmt v0.5.0
