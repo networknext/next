@@ -1,0 +1,86 @@
+version: "3"
+
+services:
+  test_network_next_disabled_server:
+    build:
+      context: ../../../../
+      dockerfile: ./cmd/tools/functional/tests/Dockerfile
+    environment:
+      test: test_network_next_disabled_server
+    networks:
+      - nn-net
+
+  test_network_next_disabled_client:
+    build:
+      context: ../../../../
+      dockerfile: ./cmd/tools/functional/tests/Dockerfile
+    environment:
+      test: test_network_next_disabled_client
+    networks:
+      - nn-net
+
+  test_server_under_load:
+    build:
+      context: ../../../../
+      dockerfile: ./cmd/tools/functional/tests/Dockerfile
+    environment:
+      test: test_server_under_load
+    networks:
+      - nn-net
+
+  test_reconnect_direct:
+    build:
+      context: ../../../../
+      dockerfile: ./cmd/tools/functional/tests/Dockerfile
+    environment:
+      test: test_reconnect_direct
+    networks:
+      - nn-net
+
+  test_reconnect_next:
+    build:
+      context: ../../../../
+      dockerfile: ./cmd/tools/functional/tests/Dockerfile
+    environment:
+      test: test_reconnect_next
+    networks:
+      - nn-net
+
+  test_connect_to_another_server_direct:
+    build:
+      context: ../../../../
+      dockerfile: ./cmd/tools/functional/tests/Dockerfile
+    environment:
+      test: test_connect_to_another_server_direct
+    networks:
+      - nn-net
+
+  test_connect_to_another_server_next:
+    build:
+      context: ../../../../
+      dockerfile: ./cmd/tools/functional/tests/Dockerfile
+    environment:
+      test: test_connect_to_another_server_next
+    networks:
+      - nn-net
+
+  test_route_switching:
+    build:
+      context: ../../../../
+      dockerfile: ./cmd/tools/functional/tests/Dockerfile
+    environment:
+      test: test_route_switching
+    networks:
+      - nn-net
+
+  test_on_off:
+    build:
+      context: ../../../../
+      dockerfile: ./cmd/tools/functional/tests/Dockerfile
+    environment:
+      test: test_on_off
+    networks:
+      - nn-net
+
+networks:
+  nn-net:

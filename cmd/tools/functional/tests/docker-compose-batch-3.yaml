@@ -1,0 +1,50 @@
+version: "3"
+
+services:
+  test_multipath:
+    build:
+      context: ../../../../
+      dockerfile: ./cmd/tools/functional/tests/Dockerfile
+    environment:
+      test: test_multipath
+    networks:
+      - nn-net
+
+  test_uncommitted:
+    build:
+      context: ../../../../
+      dockerfile: ./cmd/tools/functional/tests/Dockerfile
+    environment:
+      test: test_uncommitted
+    networks:
+      - nn-net
+
+  test_uncommitted_to_committed:
+    build:
+      context: ../../../../
+      dockerfile: ./cmd/tools/functional/tests/Dockerfile
+    environment:
+      test: test_uncommitted_to_committed
+    networks:
+      - nn-net
+
+  test_user_flags:
+    build:
+      context: ../../../../
+      dockerfile: ./cmd/tools/functional/tests/Dockerfile
+    environment:
+      test: test_user_flags
+    networks:
+      - nn-net
+
+  test_packet_loss_direct:
+    build:
+      context: ../../../../
+      dockerfile: ./cmd/tools/functional/tests/Dockerfile
+    environment:
+      test: test_packet_loss_direct
+    networks:
+      - nn-net
+
+networks:
+  nn-net:

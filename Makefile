@@ -149,8 +149,11 @@ endif
 .PHONY: build-functional-backend
 build-functional-backend:
 	@printf "Building functional backend... " ; \
-	go build -o ./dist/func_backend ./cmd/tools/functional/backend/*.go ; \
+	$(GO) build -o ./dist/func_backend ./cmd/tools/functional/backend/*.go ; \
 	printf "done\n" ; \
+
+.PHONY: build-test-func
+build-test-func: clean build-sdk build-relay build-functional-server build-functional-client build-functional-backend
 
 .PHONY: run-test-func
 run-test-func:
@@ -159,7 +162,19 @@ run-test-func:
 	printf "\ndone\n\n"
 
 .PHONY: test-func
-test-func: clean build-sdk build-relay build-functional-server build-functional-client build-functional-backend run-test-func ## runs functional tests
+test-func: build-test-func run-test-func ## runs functional tests
+
+.PHONY: test-func-parallel ## runs functional tests in parallel batches
+test-func-parallel: 
+	@printf "\nRunning functional tests...\n\n" ; \
+	COMPOSE_IGNORE_ORPHANS=true docker-compose -f ./cmd/tools/functional/tests/docker-compose-batch-1.yaml -p func_tests up ; \
+	COMPOSE_IGNORE_ORPHANS=true docker-compose -f ./cmd/tools/functional/tests/docker-compose-batch-2.yaml -p func_tests up ; \
+	COMPOSE_IGNORE_ORPHANS=true docker-compose -f ./cmd/tools/functional/tests/docker-compose-batch-3.yaml -p func_tests up ; \
+	printf "\ndone\n\n"
+
+.PHONY: build-test-func-parallel
+build-test-func-parallel:
+	@docker-compose -f ./cmd/tools/functional/tests/docker-compose-batch-1.yaml -f ./cmd/tools/functional/tests/docker-compose-batch-2.yaml -f ./cmd/tools/functional/tests/docker-compose-batch-3.yaml -p func_tests build
 
 .PHONY: build-sdk-test
 build-sdk-test: build-sdk ## builds the sdk test binary
