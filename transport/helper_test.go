@@ -86,7 +86,7 @@ func (rp *mockRouteProvider) RelaysIn(ds routing.Datacenter) []routing.Relay {
 	return rp.datacenterRelays
 }
 
-func (rp *mockRouteProvider) Routes(from []routing.Relay, to []routing.Relay, selectors ...routing.RouteSelector) ([]routing.Route, error) {
+func (rp *mockRouteProvider) Routes(from []routing.Relay, to []routing.Relay, selectors ...routing.SelectorFunc) ([]routing.Route, error) {
 	// Routes() will never return a nil or empty slice with no error, so recreate that logic here.
 	if rp.routes == nil || len(rp.routes) == 0 {
 		return nil, errors.New("No routes found")
