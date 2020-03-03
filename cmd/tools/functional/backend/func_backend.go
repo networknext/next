@@ -25,7 +25,6 @@ import (
 	"github.com/go-redis/redis/v7"
 	"github.com/gorilla/mux"
 
-	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/transport"
@@ -426,9 +425,6 @@ func main() {
 				}
 
 			} else {
-
-				// new stuff (no route stats, only care about relays)
-
 				// Make next route from near relays (but respect hop limit)
 				numRelays := len(nearRelays)
 				if numRelays > routing.MaxRelays {
@@ -443,7 +439,7 @@ func main() {
 				var token routing.Token
 				if nextRoute.Hash64() != sessionEntry.RouteHash {
 					token = &routing.NextRouteToken{
-						Expires: uint64(time.Now().Add(billing.BillingSliceSeconds * 2 * time.Second).Unix()),
+						Expires: uint64(sessionEntry.TimestampExpire.Unix()),
 
 						SessionID: sessionUpdate.SessionID,
 
@@ -466,7 +462,7 @@ func main() {
 					sessionEntry.Version++
 
 					token = &routing.NextRouteToken{
-						Expires: uint64(time.Now().Add(billing.BillingSliceSeconds * 2 * time.Second).Unix()),
+						Expires: uint64(sessionEntry.TimestampExpire.Unix()),
 
 						SessionID: sessionUpdate.SessionID,
 
