@@ -98,7 +98,7 @@ func (e ServerCacheEntry) MarshalBinary() ([]byte, error) {
 }
 
 // ServerUpdateHandlerFunc ...
-func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, duration gkmetrics.Histogram, counter gkmetrics.Counter, metricsHandler metrics.Handler) UDPHandlerFunc {
+func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, duration metrics.Histogram, counter metrics.Counter) UDPHandlerFunc {
 	logger = log.With(logger, "handler", "server")
 
 	return func(w io.Writer, incoming *UDPPacket) {
@@ -179,6 +179,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 		}
 
 		level.Debug(locallogger).Log("msg", "updated server")
+
 		counter.Add(1)
 	}
 }
@@ -208,7 +209,7 @@ type RouteProvider interface {
 }
 
 // SessionUpdateHandlerFunc ...
-func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, duration gkmetrics.Histogram, counter gkmetrics.Counter, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, metricsHandler metrics.Handler, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, duration metrics.Histogram, counter metrics.Counter, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
 	logger = log.With(logger, "handler", "session")
 
 	return func(w io.Writer, incoming *UDPPacket) {
@@ -481,6 +482,11 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		billingEntry := newBillingEntry(&chosenRoute, int(response.RouteType), &buyer.RoutingRulesSettings, routeDecision.Reason, &packet, sessionCacheEntry.TimestampStart, timestampNow)
 		if err := biller.Bill(context.Background(), packet.SessionID, billingEntry); err != nil {
 			level.Error(locallogger).Log("msg", "billing failed", "err", err)
+		}
+
+		// Send the Session Response back to the server
+		if _, err := w.Write(responseData); err != nil {
+			level.Error(locallogger).Log("msg", "failed to write session response", "err", err)
 		}
 
 		counter.Add(1)

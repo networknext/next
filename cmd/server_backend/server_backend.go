@@ -8,7 +8,6 @@ package main
 import (
 	"context"
 	"encoding/base64"
-	_ "expvar"
 	"io"
 	"net"
 	"net/http"
@@ -19,14 +18,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/networknext/backend/logging"
-
 	gcplogging "cloud.google.com/go/logging"
-	monitoring "cloud.google.com/go/monitoring/apiv3"
-
-	gkmetrics "github.com/go-kit/kit/metrics"
-
-	"github.com/go-kit/kit/metrics/expvar"
 
 	"cloud.google.com/go/firestore"
 	"github.com/go-kit/kit/log"
@@ -35,6 +27,7 @@ import (
 	"github.com/oschwald/geoip2-golang"
 
 	"github.com/networknext/backend/billing"
+	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
@@ -196,22 +189,23 @@ func main() {
 			biller = b
 		}
 
-		stackdriverClient, err := monitoring.NewMetricClient(ctx)
-		if err != nil {
-			level.Error(logger).Log("err", err)
+		// Set up StackDriver metrics
+		sd := metrics.StackDriverHandler{
+			ProjectID:          gcpProjectID,
+			OverwriteFrequency: time.Second,
+			OverwriteTimeout:   10 * time.Second,
+		}
+
+		if err := sd.Open(ctx); err != nil {
+			level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
 			os.Exit(1)
 		}
 
-		sd := metrics.StackDriverHandler{
-			Client:    stackdriverClient,
-			ProjectID: gcpProjectID,
-		}
+		metricsHandler = &sd
 
 		go func() {
-			metricsHandler.MetricSubmitRoutine(ctx, logger, time.Minute, 200)
+			metricsHandler.WriteLoop(ctx, logger, time.Minute, 200)
 		}()
-
-		metricsHandler = &sd
 	}
 
 	var routeMatrix routing.RouteMatrix
@@ -246,15 +240,52 @@ func main() {
 		}
 	}
 
-	var serverUpdateDuration gkmetrics.Histogram
-	var serverUpdateCounter gkmetrics.Counter
-	var sessionUpdateDuration gkmetrics.Histogram
-	var sessionUpdateCounter gkmetrics.Counter
-	{
-		serverUpdateDuration = expvar.NewHistogram("server.update.duration", 50)
-		serverUpdateCounter = expvar.NewCounter("server.update.counter")
-		sessionUpdateDuration = expvar.NewHistogram("session.update.duration", 50)
-		sessionUpdateCounter = expvar.NewCounter("session.update.counter")
+	updateDuration, err := metricsHandler.NewHistogram(ctx, &metrics.Descriptor{
+		DisplayName: "Server update duration",
+		ServiceName: "server_backend",
+		ID:          "update.duration",
+		Unit:        "milliseconds",
+		Description: "How long it takes to process a server update request.",
+	}, 50)
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "update.duration", "err", err)
+		updateDuration = &metrics.EmptyHistogram{}
+	}
+
+	sessionDuration, err := metricsHandler.NewHistogram(ctx, &metrics.Descriptor{
+		DisplayName: "Session update duration",
+		ServiceName: "server_backend",
+		ID:          "session.duration",
+		Unit:        "milliseconds",
+		Description: "How long it takes to process a session update request",
+	}, 50)
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "session.duration", "err", err)
+		sessionDuration = &metrics.EmptyHistogram{}
+	}
+
+	updateCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
+		DisplayName: "Total server count",
+		ServiceName: "server_backend",
+		ID:          "server.count",
+		Unit:        "servers",
+		Description: "The total number of concurrent servers",
+	})
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "server.count", "err", err)
+		updateCount = &metrics.EmptyCounter{}
+	}
+
+	sessionCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
+		DisplayName: "Total session count",
+		ServiceName: "server_backend",
+		ID:          "session.count",
+		Unit:        "sessions",
+		Description: "The total number of concurrent sessions",
+	})
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "session.count", "err", err)
+		sessionCount = &metrics.EmptyCounter{}
 	}
 
 	{
@@ -283,8 +314,8 @@ func main() {
 			Conn:          conn,
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
-			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClient, db, serverUpdateDuration, serverUpdateCounter, metricsHandler),
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClient, db, sessionUpdateDuration, sessionUpdateCounter, &routeMatrix, ipLocator, &geoClient, metricsHandler, biller, serverPrivateKey, routerPrivateKey),
+			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClient, db, updateDuration, updateCount),
+			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClient, db, &routeMatrix, ipLocator, &geoClient, sessionDuration, sessionCount, biller, serverPrivateKey, routerPrivateKey),
 		}
 
 		go func() {
