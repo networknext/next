@@ -333,8 +333,8 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		}
 
 		// Clamp relay count to max
-		if len(clientrelays) > int(routing.MaxClientRelays) {
-			clientrelays = clientrelays[:routing.MaxClientRelays]
+		if len(clientrelays) > int(MaxNearRelays) {
+			clientrelays = clientrelays[:MaxNearRelays]
 		}
 
 		// We need to do this because RelaysWithin only has the ID of the relay and we need the Addr and PublicKey too

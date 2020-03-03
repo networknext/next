@@ -23,9 +23,6 @@ const (
 
 	// How frequently we need to recieve updates from relays to keep them in redis
 	RelayTimeout = 10 * time.Second
-
-	// The maximum amount of relays to consider that are near enough to the client to use
-	MaxClientRelays = 10
 )
 
 // Relay ...
