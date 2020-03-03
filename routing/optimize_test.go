@@ -3145,7 +3145,7 @@ func TestRouting(t *testing.T) {
 			to          []routing.Relay
 			expected    []routing.Route
 			expectedErr error
-			selectors   []routing.RouteSelector
+			selectors   []routing.SelectorFunc
 		}{
 			{"empty from/to sets", []routing.Relay{}, []routing.Relay{}, nil, errors.New("No routes found"), nil},
 			{"relays not found", []routing.Relay{{ID: 1}}, []routing.Relay{{ID: 2}}, nil, errors.New("No routes found"), nil},
@@ -3214,7 +3214,7 @@ func TestRouting(t *testing.T) {
 					},
 				},
 				nil,
-				[]routing.RouteSelector{
+				[]routing.SelectorFunc{
 					routing.SelectBestRTT(),
 				},
 			},
@@ -3257,7 +3257,7 @@ func TestRouting(t *testing.T) {
 					},
 				},
 				nil,
-				[]routing.RouteSelector{
+				[]routing.SelectorFunc{
 					routing.SelectAcceptableRoutesFromBestRTT(10),
 				},
 			},
@@ -3272,7 +3272,7 @@ func TestRouting(t *testing.T) {
 					},
 				},
 				nil,
-				[]routing.RouteSelector{
+				[]routing.SelectorFunc{
 					routing.SelectContainsRouteHash(14287039991941962633),
 				},
 			},
@@ -3287,8 +3287,8 @@ func TestRouting(t *testing.T) {
 					},
 				},
 				nil,
-				[]routing.RouteSelector{
-					routing.SelectRoutesByRandomDestRelay(),
+				[]routing.SelectorFunc{
+					routing.SelectRoutesByRandomDestRelay(rand.NewSource(0)),
 				},
 			},
 			{
@@ -3297,13 +3297,13 @@ func TestRouting(t *testing.T) {
 				[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
 				[]routing.Route{
 					routing.Route{
-						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2641807504}, {ID: 3263834878}},
+						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2923051732}, {ID: 1884974764}},
 						Stats:  routing.Stats{RTT: 182},
 					},
 				},
 				nil,
-				[]routing.RouteSelector{
-					routing.SelectRandomRoute(),
+				[]routing.SelectorFunc{
+					routing.SelectRandomRoute(rand.NewSource(0)),
 				},
 			},
 		}
@@ -3314,7 +3314,7 @@ func TestRouting(t *testing.T) {
 				assert.Equal(t, test.expectedErr, err)
 				assert.Equal(t, len(test.expected), len(actual))
 
-				for routeidx, route := range actual {
+				for routeidx, route := range test.expected {
 					assert.Equal(t, len(test.expected[routeidx].Relays), len(route.Relays))
 
 					for relayidx := range route.Relays {

@@ -5,15 +5,15 @@ import (
 	"sort"
 )
 
-// RouteSelector reduces a slice of routes according to the selector function.
+// SelectorFunc reduces a slice of routes according to the selector function.
 // Takes in a slice of routes as input and returns a new slice of selected routes.
 // A RouteSelector never modifies the input.
-// If the selector couldn't product a non-empty slic of routes, then it returns nil.
-type RouteSelector func(routes []Route) []Route
+// If the selector couldn't product a non-empty slice of routes, then it returns nil.
+type SelectorFunc func(routes []Route) []Route
 
 // SelectBestRTT returns the best routes based on lowest RTT, or nil if no best route is found.
 // This will return multiple routes if the routes have the same RTT.
-func SelectBestRTT() RouteSelector {
+func SelectBestRTT() SelectorFunc {
 	return func(routes []Route) []Route {
 		bestRoutes := make([]Route, 0)
 		for _, route := range routes {
@@ -36,7 +36,7 @@ func SelectBestRTT() RouteSelector {
 
 // SelectAcceptableRoutesFromBestRTT will return a slice of acceptable routes, which is defined as all routes whose RTT is within the given threshold of the best RTT.
 // Returns nil if there are no acceptable routes.
-func SelectAcceptableRoutesFromBestRTT(rttEpsilon float64) RouteSelector {
+func SelectAcceptableRoutesFromBestRTT(rttEpsilon float64) SelectorFunc {
 	// Use SelectBestRTT() to get the best RTT
 	bestRTTSelector := SelectBestRTT()
 	return func(routes []Route) []Route {
@@ -64,7 +64,7 @@ func SelectAcceptableRoutesFromBestRTT(rttEpsilon float64) RouteSelector {
 }
 
 // SelectContainsRouteHash returns the route if its route hash matches a route in the current list of routes, or nil if it is not.
-func SelectContainsRouteHash(routeHash uint64) RouteSelector {
+func SelectContainsRouteHash(routeHash uint64) SelectorFunc {
 	return func(routes []Route) []Route {
 		for _, route := range routes {
 			sameRoute := routeHash == route.Hash64()
@@ -78,7 +78,9 @@ func SelectContainsRouteHash(routeHash uint64) RouteSelector {
 }
 
 // SelectRoutesByRandomDestRelay will group the current routes by their destination relays, then choose a random relay to return routes from.
-func SelectRoutesByRandomDestRelay() RouteSelector {
+func SelectRoutesByRandomDestRelay(source rand.Source) SelectorFunc {
+	randgen := rand.New(source)
+
 	return func(routes []Route) []Route {
 		// Group routes by destination relay
 		destRelayRouteMap := make(map[uint64][]Route)
@@ -112,14 +114,16 @@ func SelectRoutesByRandomDestRelay() RouteSelector {
 		})
 
 		// choose a random destination relay, and use the routes from that
-		relayRoutes := destRelayRouteMap[destinationRelayIDs[rand.Intn(len(destinationRelayIDs))]]
+		relayRoutes := destRelayRouteMap[destinationRelayIDs[randgen.Intn(len(destinationRelayIDs))]]
 		return relayRoutes
 	}
 }
 
 // SelectRandomRoute returns a random route from the current list of routes.
-func SelectRandomRoute() RouteSelector {
+func SelectRandomRoute(source rand.Source) SelectorFunc {
+	randgen := rand.New(source)
+
 	return func(routes []Route) []Route {
-		return []Route{routes[rand.Intn(len(routes))]}
+		return []Route{routes[randgen.Intn(len(routes))]}
 	}
 }

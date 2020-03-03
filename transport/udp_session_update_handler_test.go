@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net"
 	"testing"
+	"time"
 
 	"github.com/go-kit/kit/metrics/discard"
 
@@ -478,8 +479,9 @@ func TestNextRouteResponse(t *testing.T) {
 	assert.NoError(t, err)
 
 	sessionCacheEntry := transport.SessionCacheEntry{
-		SessionID: 9999,
-		Sequence:  13,
+		SessionID:      9999,
+		Sequence:       13,
+		TimestampStart: time.Now().Add(-5 * time.Second),
 	}
 	sessionCacheEntryData, err := sessionCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
@@ -491,6 +493,14 @@ func TestNextRouteResponse(t *testing.T) {
 		SessionID:     9999,
 		Sequence:      14,
 		ServerAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
+
+		NumNearRelays:       1,
+		NearRelayIDs:        []uint64{1},
+		NearRelayMinRTT:     []float32{1},
+		NearRelayMaxRTT:     []float32{1},
+		NearRelayMeanRTT:    []float32{1},
+		NearRelayJitter:     []float32{1},
+		NearRelayPacketLoss: []float32{1},
 
 		ClientAddress: net.UDPAddr{
 			IP:   net.ParseIP("0.0.0.0"),
@@ -586,9 +596,10 @@ func TestContinueRouteResponse(t *testing.T) {
 	assert.NoError(t, err)
 
 	expectedsession := transport.SessionCacheEntry{
-		SessionID: 9999,
-		Sequence:  13,
-		RouteHash: 1511739644222804357,
+		SessionID:      9999,
+		Sequence:       13,
+		RouteHash:      1511739644222804357,
+		TimestampStart: time.Now().Add(-5 * time.Second),
 	}
 	sce, err := expectedsession.MarshalBinary()
 	assert.NoError(t, err)
@@ -600,6 +611,14 @@ func TestContinueRouteResponse(t *testing.T) {
 		SessionID:     9999,
 		Sequence:      14,
 		ServerAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
+
+		NumNearRelays:       1,
+		NearRelayIDs:        []uint64{1},
+		NearRelayMinRTT:     []float32{1},
+		NearRelayMaxRTT:     []float32{1},
+		NearRelayMeanRTT:    []float32{1},
+		NearRelayJitter:     []float32{1},
+		NearRelayPacketLoss: []float32{1},
 
 		ClientAddress: net.UDPAddr{
 			IP:   net.ParseIP("0.0.0.0"),
