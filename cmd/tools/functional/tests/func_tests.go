@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"reflect"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -1525,7 +1527,7 @@ func test_packet_loss_direct() {
 type test_function func()
 
 func main() {
-	tests := []test_function{
+	allTests := []test_function{
 		test_direct_default,
 		test_direct_upgrade,
 		test_direct_no_upgrade,
@@ -1549,6 +1551,23 @@ func main() {
 		test_uncommitted_to_committed,
 		test_user_flags,
 		test_packet_loss_direct,
+	}
+
+	// If there are command line arguments, use reflection to see what tests to run
+	var tests []test_function
+	prefix := "main."
+	if len(os.Args) > 1 {
+		for _, funcName := range os.Args[1:] {
+			for _, test := range allTests {
+				name := runtime.FuncForPC(reflect.ValueOf(test).Pointer()).Name()
+				name = name[len(prefix):]
+				if funcName == name {
+					tests = append(tests, test)
+				}
+			}
+		}
+	} else {
+		tests = allTests // No command line args, run all tests
 	}
 
 	for i := range tests {
