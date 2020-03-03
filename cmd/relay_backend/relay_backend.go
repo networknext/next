@@ -19,7 +19,6 @@ import (
 	"github.com/networknext/backend/logging"
 
 	gcplogging "cloud.google.com/go/logging"
-	monitoring "cloud.google.com/go/monitoring/apiv3"
 
 	"cloud.google.com/go/firestore"
 	"github.com/go-kit/kit/log"
@@ -163,22 +162,23 @@ func main() {
 		// Set the Firestore Storer to give to handlers
 		db = &fs
 
-		stackdriverClient, err := monitoring.NewMetricClient(ctx)
-		if err != nil {
-			level.Error(logger).Log("err", err)
+		// Set up StackDriver metrics
+		sd := metrics.StackDriverHandler{
+			ProjectID:          gcpProjectID,
+			OverwriteFrequency: time.Second,
+			OverwriteTimeout:   10 * time.Second,
+		}
+
+		if err := sd.Open(ctx); err != nil {
+			level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
 			os.Exit(1)
 		}
 
-		sd := metrics.StackDriverHandler{
-			Client:    stackdriverClient,
-			ProjectID: gcpProjectID,
-		}
+		metricsHandler = &sd
 
 		go func() {
-			metricsHandler.MetricSubmitRoutine(ctx, logger, time.Minute, 200)
+			metricsHandler.WriteLoop(ctx, logger, time.Minute, 200)
 		}()
-
-		metricsHandler = &sd
 	}
 
 	statsdb := routing.NewStatsDatabase()

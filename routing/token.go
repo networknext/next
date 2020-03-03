@@ -2,10 +2,8 @@ package routing
 
 import (
 	"crypto/rand"
-	"encoding/binary"
 	"errors"
 	"fmt"
-	"hash/fnv"
 	"net"
 
 	"github.com/networknext/backend/crypto"
@@ -40,35 +38,6 @@ type Client struct {
 type Server struct {
 	Addr      net.UDPAddr
 	PublicKey []byte
-}
-
-type Route struct {
-	Relays []Relay
-	Stats  Stats
-}
-
-func (r *Route) Hash() []byte {
-	fnv64 := fnv.New64()
-	id := make([]byte, 8)
-
-	for _, relay := range r.Relays {
-		binary.LittleEndian.PutUint64(id, relay.ID)
-		fnv64.Write(id)
-	}
-
-	return fnv64.Sum(nil)
-}
-
-func (r *Route) Hash64() uint64 {
-	fnv64 := fnv.New64()
-	id := make([]byte, 8)
-
-	for _, relay := range r.Relays {
-		binary.LittleEndian.PutUint64(id, relay.ID)
-		fnv64.Write(id)
-	}
-
-	return fnv64.Sum64()
 }
 
 type ContinueRouteToken struct {

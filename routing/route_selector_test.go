@@ -1,0 +1,161 @@
+package routing_test
+
+import (
+	"math/rand"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/networknext/backend/routing"
+)
+
+func TestSelectBestRTT(t *testing.T) {
+	routes := []routing.Route{
+		{
+			Stats: routing.Stats{
+				RTT:        5,
+				Jitter:     0,
+				PacketLoss: 0,
+			},
+		},
+		{
+			Stats: routing.Stats{
+				RTT:        1,
+				Jitter:     0,
+				PacketLoss: 0,
+			},
+		},
+		{
+			Stats: routing.Stats{
+				RTT:        3,
+				Jitter:     0,
+				PacketLoss: 0,
+			},
+		},
+	}
+
+	selectedRoutes := routing.SelectBestRTT()(routes)
+
+	assert.Equal(t, 1, len(selectedRoutes))
+	assert.Equal(t, float64(1), selectedRoutes[0].Stats.RTT)
+}
+
+func TestSelectAcceptableRoutesFromBestRTT(t *testing.T) {
+	routes := []routing.Route{
+		{
+			Stats: routing.Stats{
+				RTT:        5,
+				Jitter:     0,
+				PacketLoss: 0,
+			},
+		},
+		{
+			Stats: routing.Stats{
+				RTT:        4.7,
+				Jitter:     0,
+				PacketLoss: 0,
+			},
+		},
+		{
+			Stats: routing.Stats{
+				RTT:        5.2,
+				Jitter:     0,
+				PacketLoss: 0,
+			},
+		},
+		{
+			Stats: routing.Stats{
+				RTT:        8,
+				Jitter:     0,
+				PacketLoss: 0,
+			},
+		},
+	}
+
+	selectedRoutes := routing.SelectAcceptableRoutesFromBestRTT(.5)(routes)
+
+	assert.Equal(t, 3, len(selectedRoutes))
+	assert.Equal(t, float64(5), selectedRoutes[0].Stats.RTT)
+	assert.Equal(t, float64(4.7), selectedRoutes[1].Stats.RTT)
+	assert.Equal(t, float64(5.2), selectedRoutes[2].Stats.RTT)
+}
+
+func TestSelectRoutesByRandomDestRelay(t *testing.T) {
+	routes := []routing.Route{
+		{
+			Relays: []routing.Relay{
+				{ID: 1}, {ID: 2}, {ID: 3},
+			},
+			Stats: routing.Stats{
+				RTT:        5,
+				Jitter:     0,
+				PacketLoss: 0,
+			},
+		},
+		{
+			Relays: []routing.Relay{
+				{ID: 4}, {ID: 2}, {ID: 5}, {ID: 3},
+			},
+			Stats: routing.Stats{
+				RTT:        4.7,
+				Jitter:     0,
+				PacketLoss: 0,
+			},
+		},
+		{
+			Relays: []routing.Relay{
+				{ID: 1}, {ID: 3},
+			},
+			Stats: routing.Stats{
+				RTT:        5.2,
+				Jitter:     0,
+				PacketLoss: 0,
+			},
+		},
+	}
+
+	randsrc := rand.NewSource(0)
+	selectedRoutes := routing.SelectRandomRoute(randsrc)(routes)
+
+	assert.Equal(t, 1, len(selectedRoutes))
+	assert.Equal(t, float64(5), selectedRoutes[0].Stats.RTT)
+}
+
+func TestSelectRandomRoute(t *testing.T) {
+	routes := []routing.Route{
+		{
+			Stats: routing.Stats{
+				RTT:        5,
+				Jitter:     0,
+				PacketLoss: 0,
+			},
+		},
+		{
+			Stats: routing.Stats{
+				RTT:        4.7,
+				Jitter:     0,
+				PacketLoss: 0,
+			},
+		},
+		{
+			Stats: routing.Stats{
+				RTT:        5.2,
+				Jitter:     0,
+				PacketLoss: 0,
+			},
+		},
+		{
+			Stats: routing.Stats{
+				RTT:        8,
+				Jitter:     0,
+				PacketLoss: 0,
+			},
+		},
+	}
+
+	randsrc := rand.NewSource(0)
+	selectedRoutes := routing.SelectRandomRoute(randsrc)(routes)
+
+	assert.Equal(t, 1, len(selectedRoutes))
+	assert.Equal(t, float64(5.2), selectedRoutes[0].Stats.RTT)
+}

@@ -717,7 +717,7 @@ func (m *RouteMatrix) RelaysIn(d Datacenter) []Relay {
 // The selectors are chained together in order, so the selected routes from the first selector will be passed
 // as the argument to the second selector. If at any point a selector fails to select a new slice of routes,
 // the chain breaks.
-func (m *RouteMatrix) Routes(from []Relay, to []Relay, routeSelectors ...RouteSelector) ([]Route, error) {
+func (m *RouteMatrix) Routes(from []Relay, to []Relay, routeSelectors ...SelectorFunc) ([]Route, error) {
 	type RelayPairResult struct {
 		fromtoidx int  // The index in the route matrix entry
 		reverse   bool // Whether or not to reverse the relays to stay on the same side of the diagnol in the triangular matrix

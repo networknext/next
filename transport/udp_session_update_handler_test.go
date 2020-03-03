@@ -6,8 +6,7 @@ import (
 	"errors"
 	"net"
 	"testing"
-
-	"github.com/go-kit/kit/metrics/discard"
+	"time"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/go-kit/kit/log"
@@ -43,7 +42,7 @@ func TestFailToUnmarshalSessionUpdate(t *testing.T) {
 
 	var resbuf bytes.Buffer
 
-	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, nil, discard.NewHistogram(), discard.NewCounter(), nil, nil, nil, &metrics.NoOpHandler{}, nil, nil, nil)
+	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, nil, nil, nil, nil, &metrics.EmptyHistogram{}, &metrics.EmptyCounter{}, nil, nil, nil)
 	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: []byte("this is not a proper packet")})
 
 	assert.Equal(t, 0, resbuf.Len())
@@ -84,7 +83,7 @@ func TestNoBuyerFound(t *testing.T) {
 
 	var resbuf bytes.Buffer
 
-	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, discard.NewHistogram(), discard.NewCounter(), nil, nil, nil, &metrics.NoOpHandler{}, nil, TestServerBackendPrivateKey, nil)
+	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, nil, nil, &metrics.EmptyHistogram{}, &metrics.EmptyCounter{}, nil, TestServerBackendPrivateKey, nil)
 	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 	ValidateDirectResponsePacket(resbuf, t)
@@ -128,7 +127,7 @@ func TestVerificationFailed(t *testing.T) {
 
 	var resbuf bytes.Buffer
 
-	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, discard.NewHistogram(), discard.NewCounter(), nil, nil, nil, &metrics.NoOpHandler{}, nil, TestServerBackendPrivateKey, nil)
+	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, nil, nil, &metrics.EmptyHistogram{}, &metrics.EmptyCounter{}, nil, TestServerBackendPrivateKey, nil)
 	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 	ValidateDirectResponsePacket(resbuf, t)
@@ -186,7 +185,7 @@ func TestSessionPacketSequenceTooOld(t *testing.T) {
 
 	var resbuf bytes.Buffer
 
-	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, discard.NewHistogram(), discard.NewCounter(), nil, nil, nil, &metrics.NoOpHandler{}, nil, TestServerBackendPrivateKey, nil)
+	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, nil, nil, &metrics.EmptyHistogram{}, &metrics.EmptyCounter{}, nil, TestServerBackendPrivateKey, nil)
 	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 	ValidateDirectResponsePacket(resbuf, t)
@@ -251,7 +250,7 @@ func TestClientIPLookupFail(t *testing.T) {
 
 	var resbuf bytes.Buffer
 
-	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, discard.NewHistogram(), discard.NewCounter(), nil, &iploc, nil, &metrics.NoOpHandler{}, nil, TestServerBackendPrivateKey, nil)
+	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, nil, &iploc, nil, &metrics.EmptyHistogram{}, &metrics.EmptyCounter{}, nil, TestServerBackendPrivateKey, nil)
 	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 	ValidateDirectResponsePacket(resbuf, t)
@@ -327,7 +326,7 @@ func TestNoRelaysNearClient(t *testing.T) {
 
 	var resbuf bytes.Buffer
 
-	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, discard.NewHistogram(), discard.NewCounter(), &rp, &iploc, &geoClient, &metrics.NoOpHandler{}, &billing.NoOpBiller{}, TestServerBackendPrivateKey, nil)
+	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &rp, &iploc, &geoClient, &metrics.EmptyHistogram{}, &metrics.EmptyCounter{}, &billing.NoOpBiller{}, TestServerBackendPrivateKey, nil)
 	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 	ValidateDirectResponsePacket(resbuf, t)
@@ -410,7 +409,7 @@ func TestNoRoutesFound(t *testing.T) {
 
 	var resbuf bytes.Buffer
 
-	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, discard.NewHistogram(), discard.NewCounter(), &rp, &iploc, &geoClient, &metrics.NoOpHandler{}, &billing.NoOpBiller{}, TestServerBackendPrivateKey, nil)
+	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &rp, &iploc, &geoClient, &metrics.EmptyHistogram{}, &metrics.EmptyCounter{}, &billing.NoOpBiller{}, TestServerBackendPrivateKey, nil)
 	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 	ValidateDirectResponsePacket(resbuf, t)
@@ -478,8 +477,9 @@ func TestNextRouteResponse(t *testing.T) {
 	assert.NoError(t, err)
 
 	sessionCacheEntry := transport.SessionCacheEntry{
-		SessionID: 9999,
-		Sequence:  13,
+		SessionID:      9999,
+		Sequence:       13,
+		TimestampStart: time.Now().Add(-5 * time.Second),
 	}
 	sessionCacheEntryData, err := sessionCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
@@ -491,6 +491,14 @@ func TestNextRouteResponse(t *testing.T) {
 		SessionID:     9999,
 		Sequence:      14,
 		ServerAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
+
+		NumNearRelays:       1,
+		NearRelayIDs:        []uint64{1},
+		NearRelayMinRTT:     []float32{1},
+		NearRelayMaxRTT:     []float32{1},
+		NearRelayMeanRTT:    []float32{1},
+		NearRelayJitter:     []float32{1},
+		NearRelayPacketLoss: []float32{1},
 
 		ClientAddress: net.UDPAddr{
 			IP:   net.ParseIP("0.0.0.0"),
@@ -505,7 +513,7 @@ func TestNextRouteResponse(t *testing.T) {
 
 	var resbuf bytes.Buffer
 
-	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, discard.NewHistogram(), discard.NewCounter(), &rp, &iploc, &geoClient, &metrics.NoOpHandler{}, &billing.NoOpBiller{}, TestServerBackendPrivateKey[:], TestRouterPrivateKey[:])
+	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &rp, &iploc, &geoClient, &metrics.EmptyHistogram{}, &metrics.EmptyCounter{}, &billing.NoOpBiller{}, TestServerBackendPrivateKey[:], TestRouterPrivateKey[:])
 	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 	assert.Greater(t, resbuf.Len(), 0)
@@ -586,9 +594,10 @@ func TestContinueRouteResponse(t *testing.T) {
 	assert.NoError(t, err)
 
 	expectedsession := transport.SessionCacheEntry{
-		SessionID: 9999,
-		Sequence:  13,
-		RouteHash: 1511739644222804357,
+		SessionID:      9999,
+		Sequence:       13,
+		RouteHash:      1511739644222804357,
+		TimestampStart: time.Now().Add(-5 * time.Second),
 	}
 	sce, err := expectedsession.MarshalBinary()
 	assert.NoError(t, err)
@@ -600,6 +609,14 @@ func TestContinueRouteResponse(t *testing.T) {
 		SessionID:     9999,
 		Sequence:      14,
 		ServerAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
+
+		NumNearRelays:       1,
+		NearRelayIDs:        []uint64{1},
+		NearRelayMinRTT:     []float32{1},
+		NearRelayMaxRTT:     []float32{1},
+		NearRelayMeanRTT:    []float32{1},
+		NearRelayJitter:     []float32{1},
+		NearRelayPacketLoss: []float32{1},
 
 		ClientAddress: net.UDPAddr{
 			IP:   net.ParseIP("0.0.0.0"),
@@ -614,7 +631,7 @@ func TestContinueRouteResponse(t *testing.T) {
 
 	var resbuf bytes.Buffer
 
-	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, discard.NewHistogram(), discard.NewCounter(), &rp, &iploc, &geoClient, &metrics.NoOpHandler{}, &billing.NoOpBiller{}, TestServerBackendPrivateKey[:], TestRouterPrivateKey[:])
+	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &rp, &iploc, &geoClient, &metrics.EmptyHistogram{}, &metrics.EmptyCounter{}, &billing.NoOpBiller{}, TestServerBackendPrivateKey[:], TestRouterPrivateKey[:])
 	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 	var actual transport.SessionResponsePacket
@@ -739,7 +756,7 @@ func TestCachedRouteResponse(t *testing.T) {
 
 	var resbuf bytes.Buffer
 
-	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, discard.NewHistogram(), discard.NewCounter(), &rp, &iploc, &geoClient, &metrics.NoOpHandler{}, &billing.NoOpBiller{}, TestServerBackendPrivateKey[:], TestRouterPrivateKey[:])
+	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &rp, &iploc, &geoClient, &metrics.EmptyHistogram{}, &metrics.EmptyCounter{}, &billing.NoOpBiller{}, TestServerBackendPrivateKey[:], TestRouterPrivateKey[:])
 	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 	assert.Greater(t, resbuf.Len(), 0)
@@ -848,7 +865,7 @@ func TestTokenEncryptionFailure(t *testing.T) {
 
 	var resbuf bytes.Buffer
 
-	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, discard.NewHistogram(), discard.NewCounter(), &rp, &iploc, &geoClient, &metrics.NoOpHandler{}, &billing.NoOpBiller{}, TestServerBackendPrivateKey[:], TestRouterPrivateKey[:])
+	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &rp, &iploc, &geoClient, &metrics.EmptyHistogram{}, &metrics.EmptyCounter{}, &billing.NoOpBiller{}, TestServerBackendPrivateKey[:], TestRouterPrivateKey[:])
 	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 	assert.Greater(t, resbuf.Len(), 0)

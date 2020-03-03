@@ -120,3 +120,8 @@ type RelayUpdate struct {
 	PublicKey      []byte
 	Shutdown       bool
 }
+
+type RelayPingData struct {
+	ID      uint64
+	Address string
+}
