@@ -13,7 +13,7 @@ type Route struct {
 func (r *Route) Decide(prevDecision Decision, nnStats Stats, directStats Stats, routeDecisions ...DecisionFunc) Decision {
 	nextDecision := prevDecision
 	for _, routeDecision := range routeDecisions {
-		nextDecision = routeDecision(nextDecision, nnStats, directStats, r.Stats)
+		nextDecision = routeDecision(nextDecision, r.Stats, nnStats, directStats)
 	}
 	return nextDecision
 }
