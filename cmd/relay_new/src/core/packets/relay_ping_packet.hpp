@@ -16,41 +16,31 @@ namespace core
      public:
       RelayPingPacket(GenericPacket<>& packet, int size);
 
-      const uint64_t& getSeqNum();
-      const net::Address& getFromAddr();
+      // getters do no cache, just make the indexes of the packet clearer
+      auto getSeqNum() -> uint64_t;
+      auto getFromAddr() -> net::Address;
 
+      // write the addr to the buffer
       void writeFromAddr(const net::Address& addr);
 
       GenericPacket<>& Internal;
       const int Size;
-
-     private:
-      std::optional<uint64_t> mSequenceNumber;
-      std::optional<net::Address> mFrom;
     };
 
     inline RelayPingPacket::RelayPingPacket(GenericPacket<>& packet, int size): Internal(packet), Size(size) {}
 
-    inline const uint64_t& RelayPingPacket::getSeqNum()
+    inline auto RelayPingPacket::getSeqNum() -> uint64_t
     {
-      if (!mSequenceNumber.has_value()) {
-        size_t index = 1;
-        mSequenceNumber = encoding::ReadUint64(Internal.Buffer, index);
-      }
-
-      return mSequenceNumber.value();
+      size_t index = 1;
+      return encoding::ReadUint64(Internal.Buffer, index);
     }
 
-    inline const net::Address& RelayPingPacket::getFromAddr()
+    inline auto RelayPingPacket::getFromAddr() -> net::Address
     {
-      if (!mFrom.has_value()) {
-        size_t index = 9;
-        net::Address addr;
-        encoding::ReadAddress(Internal.Buffer, index, addr);
-        mFrom = addr;
-      }
-
-      return mFrom.value();
+      size_t index = 9;
+      net::Address addr;
+      encoding::ReadAddress(Internal.Buffer, index, addr);
+      return addr;
     }
 
     inline void RelayPingPacket::writeFromAddr(const net::Address& addr)

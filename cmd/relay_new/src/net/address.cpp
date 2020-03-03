@@ -176,8 +176,6 @@ namespace net
   }
 }  // namespace net
 
-/******************************************************************************************************************************/
-
 namespace legacy
 {
   int relay_address_parse(relay_address_t* address, const char* address_string_in)

@@ -17,7 +17,7 @@ namespace net
    public:
     // Type (1) +
     // Port (2) +
-    // IP (16) (regardless of v4 or v6) =
+    // IP (16) =
     static const size_t ByteSize = 19;
 
     Address();

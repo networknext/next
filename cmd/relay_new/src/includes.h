@@ -36,6 +36,7 @@
 #include <mutex>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <numeric>
 #include <optional>
 #include <pthread.h>
 #include <queue>

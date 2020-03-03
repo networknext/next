@@ -74,6 +74,13 @@ namespace core
     }
   }
 
+  /*
+   * Some handlers in here take a object and a function pointer of that object as an argument
+   * the only purpose to that was so that different objects that are responsable for sending packets
+   * can be easilly swapped out for benchmarking purposes, once there is a definite solution to the
+   * throughput problem the function params will be written strictly
+   */
+
   inline void PacketProcessor::processPacket(
    GenericPacket<>& packet, mmsghdr& header, GenericPacketBuffer<MaxPacketsToSend>& outputBuff)
   {
@@ -127,6 +134,7 @@ namespace core
 
         handlers::RouteResponseHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap);
 
+        //handler.handle(mSender, &decltype(mSender)::queue);
         handler.handle(outputBuff, &core::GenericPacketBuffer<1024UL>::push);
       } break;
       case RELAY_CONTINUE_REQUEST_PACKET: {

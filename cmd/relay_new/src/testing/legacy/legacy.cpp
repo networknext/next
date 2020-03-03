@@ -13,9 +13,7 @@
 #include "relay/relay.hpp"
 #include "net/address.hpp"
 #include "relay/relay_bandwidth_limiter.hpp"
-#include "relay/relay_continue_token.hpp"
 #include "relay/relay_platform.hpp"
-#include "relay/relay_route_token.hpp"
 
 namespace
 {
