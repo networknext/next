@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"net"
 	"time"
 	"math/rand"
@@ -480,7 +481,8 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			return
 		}
 
-		billingEntry := newBillingEntry(&chosenRoute, int(response.RouteType), &buyer.RoutingRulesSettings, routeDecision.Reason, &packet, sessionCacheEntry.TimestampStart, timestampNow)
+		routeRequest := NewRouteRequest(packet, buyer, serverCacheEntry, location, storer, clientrelays)
+		billingEntry := newBillingEntry(routeRequest, &chosenRoute, int(response.RouteType), &buyer.RoutingRulesSettings, routeDecision.Reason, &packet, sessionCacheEntry.TimestampStart, timestampNow)
 		if err := biller.Bill(context.Background(), packet.SessionID, billingEntry); err != nil {
 			level.Error(locallogger).Log("msg", "billing failed", "err", err)
 		}
@@ -542,6 +544,7 @@ func cacheSessionData(redisClient redis.Cmdable, prevCacheEntry *SessionCacheEnt
 }
 
 func newBillingEntry(
+	routeRequest *billing.RouteRequest,
 	route *routing.Route,
 	routeType int,
 	routingRulesSettings *routing.RoutingRulesSettings,
@@ -591,7 +594,7 @@ func newBillingEntry(
 	}
 
 	return &billing.Entry{
-		Request:              nil,
+		Request:              routeRequest,
 		Route:                nil,
 		RouteDecision:        uint64(decisionReason),
 		Duration:             sliceDuration,
