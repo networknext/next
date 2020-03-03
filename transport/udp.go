@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
 	"net"
 	"time"
 
@@ -188,8 +187,8 @@ type SessionCacheEntry struct {
 	SessionID       uint64
 	Sequence        uint64
 	RouteHash       uint64
-	TimestampStart  uint64
-	TimestampExpire uint64
+	TimestampStart  time.Time
+	TimestampExpire time.Time
 	Version         uint8
 	Response        []byte
 }
@@ -219,7 +218,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			timer.ObserveDuration()
 		}()
 
-		timestampNow := uint64(time.Now().Unix())
+		timestampNow := time.Now()
 
 		// Deserialize the Session packet
 		var packet SessionUpdatePacket
@@ -231,7 +230,9 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		locallogger := log.With(logger, "src_addr", incoming.SourceAddr.String(), "server_addr", packet.ServerAddress.String(), "client_addr", packet.ClientAddress.String(), "session_id", packet.SessionID)
 
 		var serverCacheEntry ServerCacheEntry
-		var sessionCacheEntry SessionCacheEntry
+		sessionCacheEntry := SessionCacheEntry{
+			TimestampStart: timestampNow,
+		}
 
 		// Start building session response packet, defaulting to a direct route
 		response := SessionResponsePacket{
@@ -277,9 +278,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 					handleError(w, response, serverPrivateKey, err)
 					return
 				}
-			} else {
-				// New cache entry
-				sessionCacheEntry.TimestampStart = timestampNow
 			}
 		}
 
@@ -353,122 +351,91 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			return
 		}
 
-		// There should only ever be one route when all selectors have been applied, but just in case, choose a random one
-		nextRoute := routes[rand.Intn(len(routes))]
-
-		routeDecisions := []routing.RouteDecision{
-			routing.DecideUpgradeRTT(float64(buyer.RoutingRulesSettings.RTTThreshold)),
-			routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis)),
-			routing.DecideVeto(float64(buyer.RoutingRulesSettings.RTTVeto), buyer.RoutingRulesSettings.EnablePacketLossSafety, buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
+		if len(routes) <= 0 {
+			level.Warn(locallogger).Log("msg", "no acceptable route available")
 		}
 
-		predictedNextStats := &nextRoute.Stats
+		nextRoute := routes[0]
 
-		lastNextStats := &routing.Stats{
+		nnStats := routing.Stats{
 			RTT:        float64(packet.NextMinRTT),
 			Jitter:     float64(packet.NextJitter),
 			PacketLoss: float64(packet.NextPacketLoss),
 		}
 
-		directRouteStats := &routing.Stats{
+		directStats := routing.Stats{
 			RTT:        float64(packet.DirectMinRTT),
 			Jitter:     float64(packet.DirectJitter),
 			PacketLoss: float64(packet.DirectPacketLoss),
 		}
 
-		var keepNextRoute bool = false // Start by assuming we do not want to use the network next route
-		var decisionReason routing.RouteDecisionReason
-
 		// If this is the initial slice, always serve a direct route first
-		if sessionCacheEntry.TimestampStart == timestampNow && packet.NumNearRelays == 0 {
-			keepNextRoute = false
-			decisionReason = routing.DecisionInitialSlice
-		} else {
-			for _, routeDecision := range routeDecisions {
-				keepNextRoute, decisionReason = routeDecision(keepNextRoute, predictedNextStats, lastNextStats, directRouteStats)
-			}
+		routeDecision := routing.Decision{
+			Reason: routing.DecisionInitialSlice,
+		}
+		if sessionCacheEntry.TimestampStart.Before(timestampNow) && packet.NumNearRelays > 0 {
+			routeDecision = nextRoute.Decide(routeDecision, nnStats, directStats,
+				routing.DecideUpgradeRTT(float64(buyer.RoutingRulesSettings.RTTThreshold)),
+				routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis)),
+				routing.DecideVeto(float64(buyer.RoutingRulesSettings.RTTVeto), buyer.RoutingRulesSettings.EnablePacketLossSafety, buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
+			)
 		}
 
-		locallogger = log.With(locallogger, "on_network_next", keepNextRoute, "decision_reason", decisionReason)
+		locallogger = log.With(locallogger, "on_network_next", routeDecision.OnNetworkNext, "decision_reason", routeDecision.Reason)
 
-		var chosenRoute *routing.Route
-		var routeType int
-		var routeHash uint64
-		var timestampExpire uint64
-		if !keepNextRoute {
-			// Route decision logic decided to serve a direct route
+		chosenRoute := routing.Route{
+			Stats: directStats,
+		}
 
-			directRoute := routing.Route{
-				Relays: nil,
-				Stats:  *directRouteStats,
-			}
-			routeHash = directRoute.Hash64()
-			chosenRoute = &directRoute
-			routeType = routing.RouteTypeDirect
-
-			// timestamps don't apply for direct routes
-			sessionCacheEntry.TimestampStart = 0
-
-			response.RouteType = routing.RouteTypeDirect
-
-			level.Debug(locallogger).Log("msg", "session served direct route")
-		} else {
+		var token routing.Token
+		if routeDecision.OnNetworkNext {
 			// Route decision logic decided to serve a next route
 
-			routeHash = nextRoute.Hash64()
-			chosenRoute = &nextRoute
+			chosenRoute = nextRoute
 
-			var token routing.Token
-			{
-				if routeHash == sessionCacheEntry.RouteHash {
-					routeType = routing.RouteTypeContinue
-					timestampExpire = uint64(time.Now().Add(billing.BillingSliceSeconds * time.Second).Unix())
+			if nextRoute.Hash64() == sessionCacheEntry.RouteHash {
+				token = &routing.ContinueRouteToken{
+					Expires: uint64(time.Now().Add(billing.BillingSliceSeconds * time.Second).Unix()),
 
-					token = &routing.ContinueRouteToken{
-						Expires: timestampExpire,
+					SessionID: packet.SessionID,
 
-						SessionID: packet.SessionID,
+					SessionVersion: sessionCacheEntry.Version,
+					SessionFlags:   0, // Haven't figured out what this is for
 
-						SessionVersion: sessionCacheEntry.Version,
-						SessionFlags:   0, // Haven't figured out what this is for
+					Client: routing.Client{
+						Addr:      packet.ClientAddress,
+						PublicKey: packet.ClientRoutePublicKey,
+					},
 
-						Client: routing.Client{
-							Addr:      packet.ClientAddress,
-							PublicKey: packet.ClientRoutePublicKey,
-						},
+					Server: routing.Server{
+						Addr:      packet.ServerAddress,
+						PublicKey: serverCacheEntry.Server.PublicKey,
+					},
 
-						Server: routing.Server{
-							Addr:      packet.ServerAddress,
-							PublicKey: serverCacheEntry.Server.PublicKey,
-						},
+					Relays: nextRoute.Relays,
+				}
+			} else {
+				sessionCacheEntry.Version++
 
-						Relays: nextRoute.Relays,
-					}
-				} else {
-					routeType = routing.RouteTypeNew
-					timestampExpire = uint64(time.Now().Add(billing.BillingSliceSeconds * 2 * time.Second).Unix())
-					sessionCacheEntry.Version++
+				token = &routing.NextRouteToken{
+					Expires: uint64(time.Now().Add(billing.BillingSliceSeconds * 2 * time.Second).Unix()),
 
-					token = &routing.NextRouteToken{
-						Expires: uint64(timestampExpire),
+					SessionID: packet.SessionID,
 
-						SessionID: packet.SessionID,
+					SessionVersion: sessionCacheEntry.Version,
+					SessionFlags:   0, // Haven't figured out what this is for
 
-						SessionVersion: sessionCacheEntry.Version,
-						SessionFlags:   0, // Haven't figured out what this is for
+					Client: routing.Client{
+						Addr:      packet.ClientAddress,
+						PublicKey: packet.ClientRoutePublicKey,
+					},
 
-						Client: routing.Client{
-							Addr:      packet.ClientAddress,
-							PublicKey: packet.ClientRoutePublicKey,
-						},
+					Server: routing.Server{
+						Addr:      packet.ServerAddress,
+						PublicKey: serverCacheEntry.Server.PublicKey,
+					},
 
-						Server: routing.Server{
-							Addr:      packet.ServerAddress,
-							PublicKey: serverCacheEntry.Server.PublicKey,
-						},
-
-						Relays: nextRoute.Relays,
-					}
+					Relays: nextRoute.Relays,
 				}
 			}
 
@@ -479,7 +446,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 				return
 			}
 
-			level.Debug(locallogger).Log("token_type", token.Type(), "current_route_hash", routeHash, "previous_route_hash", sessionCacheEntry.RouteHash)
+			level.Debug(locallogger).Log("token_type", token.Type(), "current_route_hash", chosenRoute.Hash64(), "previous_route_hash", sessionCacheEntry.RouteHash)
 
 			// Add token info to the Session Response
 			response.RouteType = int32(token.Type())
@@ -506,12 +473,12 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		}
 
 		level.Debug(locallogger).Log("msg", "caching session data")
-		if sessionCacheEntry, err = cacheSessionData(redisClient, &sessionCacheEntry, &packet, routeHash, timestampExpire, responseData); err != nil {
+		if sessionCacheEntry, err = cacheSessionData(redisClient, &sessionCacheEntry, &packet, chosenRoute.Hash64(), time.Now(), responseData); err != nil {
 			level.Error(locallogger).Log("msg", "failed to update session", "err", err)
 			return
 		}
 
-		billingEntry := newBillingEntry(chosenRoute, routeType, &buyer.RoutingRulesSettings, decisionReason, &packet, sessionCacheEntry.TimestampStart, timestampNow)
+		billingEntry := newBillingEntry(&chosenRoute, int(response.RouteType), &buyer.RoutingRulesSettings, routeDecision.Reason, &packet, sessionCacheEntry.TimestampStart, timestampNow)
 		if err := biller.Bill(context.Background(), packet.SessionID, billingEntry); err != nil {
 			level.Error(locallogger).Log("msg", "billing failed", "err", err)
 		}
@@ -548,7 +515,7 @@ func handleError(w io.Writer, packet SessionResponsePacket, privateKey []byte, e
 	// Eventually we'll also pipe the error passed through to here up to stackdriver and do any cleanup required
 }
 
-func cacheSessionData(redisClient redis.Cmdable, prevCacheEntry *SessionCacheEntry, packet *SessionUpdatePacket, routeHash uint64, timestampExpire uint64, responseData []byte) (SessionCacheEntry, error) {
+func cacheSessionData(redisClient redis.Cmdable, prevCacheEntry *SessionCacheEntry, packet *SessionUpdatePacket, routeHash uint64, timestampExpire time.Time, responseData []byte) (SessionCacheEntry, error) {
 	// Save some of the packet information to be used in SessionUpdateHandlerFunc
 	sessionCacheEntry := SessionCacheEntry{
 		SessionID:       packet.SessionID,
@@ -571,10 +538,10 @@ func newBillingEntry(
 	route *routing.Route,
 	routeType int,
 	routingRulesSettings *routing.RoutingRulesSettings,
-	decisionReason routing.RouteDecisionReason,
+	decisionReason routing.DecisionReason,
 	packet *SessionUpdatePacket,
-	timestampStart uint64,
-	timestampNow uint64) *billing.Entry {
+	timestampStart time.Time,
+	timestampNow time.Time) *billing.Entry {
 	// Create billing slice flags
 	sliceFlags := billing.RouteSliceFlagNone
 	if routeType == routing.RouteTypeNew || routeType == routing.RouteTypeContinue {
@@ -623,8 +590,8 @@ func newBillingEntry(
 		Duration:             sliceDuration,
 		UsageBytesUp:         (1000 * uint64(packet.KbpsUp)) / 8 * sliceDuration,   // Converts Kbps to bytes
 		UsageBytesDown:       (1000 * uint64(packet.KbpsDown)) / 8 * sliceDuration, // Converts Kbps to bytes
-		Timestamp:            timestampNow,
-		TimestampStart:       timestampStart,
+		Timestamp:            uint64(timestampNow.Unix()),
+		TimestampStart:       uint64(timestampStart.Unix()),
 		PredictedRTT:         float32(route.Stats.RTT),
 		PredictedJitter:      float32(route.Stats.Jitter),
 		PredictedPacketLoss:  float32(route.Stats.PacketLoss),
