@@ -13,10 +13,12 @@ blocks:
             - make test-unit-sdk
         - name: Relay
           commands:
-            - make test-unit-sdk
+            - make test-unit-relay
         - name: Backend
           commands:
             - make test-unit-backend
       prologue:
         commands:
+          - sudo apt-get update && sudo apt-get install libsodium-dev libcurl4-gnutls-dev
           - checkout
+          - sem-version go 1.13
