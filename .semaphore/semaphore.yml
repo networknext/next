@@ -10,6 +10,7 @@ global_job_config:
       - sudo apt-get update && sudo apt-get -y install libsodium-dev libcurl4-gnutls-dev
       - checkout
       - sem-version go 1.13
+      - make clean
 blocks:
   - name: Test (Unit)
     task:
