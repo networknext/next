@@ -123,6 +123,7 @@ type RouteRequest struct {
 	PacketsLostServerToClient uint64                `protobuf:"varint,33,opt,name=packetsLostServerToClient,proto3" json:"packetsLostServerToClient,omitempty"`
 	FallbackFlags             uint32                `protobuf:"varint,34,opt,name=fallbackFlags,proto3" json:"fallbackFlags,omitempty"`
 	IssuedNearRelays          []*IssuedNearRelay    `protobuf:"bytes,35,rep,name=issuedNearRelays,proto3" json:"issuedNearRelays,omitempty"`
+	Committed                 bool                  `protobuf:"varint,36,opt,name=committed,proto3" json:"committed,omitempty"`
 }
 
 func (req *RouteRequest) Reset() {

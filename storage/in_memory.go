@@ -5,8 +5,8 @@ import (
 )
 
 type InMemory struct {
-	LocalBuyer *routing.Buyer
-	LocalRelay *routing.Relay
+	LocalBuyer  *routing.Buyer
+	LocalRelays []routing.Relay
 }
 
 func (m *InMemory) Buyer(id uint64) (*routing.Buyer, bool) {
@@ -18,9 +18,18 @@ func (m *InMemory) Buyer(id uint64) (*routing.Buyer, bool) {
 }
 
 func (m *InMemory) Relay(id uint64) (*routing.Relay, bool) {
-	if m.LocalRelay != nil {
-		return m.LocalRelay, true
+	// Fail if literally nothing is set
+	if len(m.LocalRelays) == 0 {
+		return nil, false
 	}
 
-	return nil, false
+	// Do attempt to get appropriate relay if it exists
+	for _, relay := range m.LocalRelays {
+		if relay.ID == id {
+			return &relay, true
+		}
+	}
+
+	// Failing this, just return first one since we need something for local dev
+	return &m.LocalRelays[0], true
 }

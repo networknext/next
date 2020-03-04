@@ -155,7 +155,7 @@ build-functional-backend:
 .PHONY: run-test-func
 run-test-func:
 	@printf "\nRunning functional tests...\n\n" ; \
-	$(GO) run ./cmd/tools/functional/tests/func_tests.go ; \
+	$(GO) run ./cmd/tools/functional/tests/func_tests.go $(tests) ; \
 	printf "\ndone\n\n"
 
 .PHONY: test-func

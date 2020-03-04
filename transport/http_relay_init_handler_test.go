@@ -84,9 +84,11 @@ func relayInitAssertions(t *testing.T, relay routing.Relay, body []byte, expecte
 				PublicKey: customerPublicKey[8:],
 			},
 
-			LocalRelay: &routing.Relay{
-				PublicKey: relayPublicKey,
-			},
+			LocalRelays: []routing.Relay{
+				routing.Relay{
+					ID:        crypto.HashID("127.0.0.1:40000"),
+					PublicKey: relayPublicKey,
+				}},
 		}
 	}
 
