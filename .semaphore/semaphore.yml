@@ -1,0 +1,22 @@
+version: v1.0
+name: Parallel
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+blocks:
+  - name: Unit Tests
+    task:
+      jobs:
+        - name: SDK
+          commands:
+            - make test-unit-sdk
+        - name: Relay
+          commands:
+            - make test-unit-sdk
+        - name: Backend
+          commands:
+            - make test-unit-backend
+      prologue:
+        commands:
+          - checkout
