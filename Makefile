@@ -164,17 +164,16 @@ run-test-func:
 .PHONY: test-func
 test-func: build-test-func run-test-func ## runs functional tests
 
-.PHONY: test-func-parallel ## runs functional tests in parallel batches
-test-func-parallel: 
-	@printf "\nRunning functional tests...\n\n" ; \
-	COMPOSE_IGNORE_ORPHANS=true docker-compose -f ./cmd/tools/functional/tests/docker-compose-batch-1.yaml -p func_tests up ; \
-	COMPOSE_IGNORE_ORPHANS=true docker-compose -f ./cmd/tools/functional/tests/docker-compose-batch-2.yaml -p func_tests up ; \
-	COMPOSE_IGNORE_ORPHANS=true docker-compose -f ./cmd/tools/functional/tests/docker-compose-batch-3.yaml -p func_tests up ; \
-	printf "\ndone\n\n"
-
 .PHONY: build-test-func-parallel
 build-test-func-parallel:
-	@docker-compose -f ./cmd/tools/functional/tests/docker-compose-batch-1.yaml -f ./cmd/tools/functional/tests/docker-compose-batch-2.yaml -f ./cmd/tools/functional/tests/docker-compose-batch-3.yaml -p func_tests build
+	@docker build -t func_tests -f ./cmd/tools/functional/tests/Dockerfile .
+
+.PHONY: run-test-func-parallel
+run-test-func-parallel:
+	@./cmd/tools/scripts/test-func-parallel.sh
+
+.PHONY: test-func-parallel
+test-func-parallel: build-test-func-parallel run-test-func-parallel ## runs functional tests in parallel
 
 .PHONY: build-sdk-test
 build-sdk-test: build-sdk ## builds the sdk test binary
@@ -229,6 +228,12 @@ RELAY_EXE	:= relay
 .PHONY: $(DIST_DIR)/$(RELAY_EXE)
 $(DIST_DIR)/$(RELAY_EXE):
 
+.PHONY: build-relay
+build-relay: ## builds the relay
+	@printf "Building relay... "
+	@$(CXX) $(CXX_FLAGS) -o $(DIST_DIR)/$(RELAY_EXE) cmd/relay/*.cpp $(LDFLAGS)
+	@printf "done\n"
+
 .PHONY: dev-relay
 dev-relay: $(DIST_DIR)/$(RELAY_EXE) build-relay ## runs a local relay
 	@$<
@@ -266,12 +271,6 @@ dev-client: build-client  ## runs a local client
 .PHONY: dev-multi-clients
 dev-multi-clients: build-client ## runs 20 local clients
 	./cmd/tools/scripts/client-spawner.sh -n 20
-
-.PHONY: build-relay
-build-relay: ## builds the relay
-	@printf "Building relay... "
-	@$(CXX) $(CXX_FLAGS) -o $(DIST_DIR)/$(RELAY_EXE) cmd/relay/*.cpp $(LDFLAGS)
-	@printf "done\n"
 
 $(DIST_DIR)/$(SDKNAME).so:
 	@printf "Building sdk... "
