@@ -8,6 +8,7 @@ import (
 	"io"
 	"math/rand"
 	"net"
+	"runtime"
 	"time"
 
 	gkmetrics "github.com/go-kit/kit/metrics"
@@ -47,39 +48,38 @@ func (m *UDPServerMux) Start(ctx context.Context) error {
 		return errors.New("relay server cannot be nil")
 	}
 
-	data := make([]byte, m.MaxPacketSize)
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		default:
-			numbytes, addr, _ := m.Conn.ReadFromUDP(data)
-			if numbytes <= 0 {
-				continue
-			}
-
-			packet := UDPPacket{
-				SourceAddr: addr,
-				Data:       data[:numbytes],
-			}
-
-			go m.processPacket(ctx, packet)
-		}
+	for i := 0; i < runtime.NumCPU(); i++ {
+		go m.handler(ctx, i)
 	}
+
+	<-ctx.Done()
+
+	return nil
 }
 
-func (m *UDPServerMux) processPacket(ctx context.Context, packet UDPPacket) {
-	var buf bytes.Buffer
+func (m *UDPServerMux) handler(ctx context.Context, id int) {
+	data := make([]byte, m.MaxPacketSize)
 
-	switch packet.Data[0] {
-	case PacketTypeServerUpdate:
-		m.ServerUpdateHandlerFunc(&buf, &packet)
-	case PacketTypeSessionUpdate:
-		m.SessionUpdateHandlerFunc(&buf, &packet)
-	}
+	for {
+		numbytes, addr, _ := m.Conn.ReadFromUDP(data)
+		if numbytes <= 0 {
+			continue
+		}
 
-	if buf.Len() > 0 {
-		m.Conn.WriteToUDP(buf.Bytes(), packet.SourceAddr)
+		packet := UDPPacket{SourceAddr: addr, Data: data[:numbytes]}
+
+		var buf bytes.Buffer
+
+		switch packet.Data[0] {
+		case PacketTypeServerUpdate:
+			m.ServerUpdateHandlerFunc(&buf, &packet)
+		case PacketTypeSessionUpdate:
+			m.SessionUpdateHandlerFunc(&buf, &packet)
+		}
+
+		if buf.Len() > 0 {
+			m.Conn.WriteToUDP(buf.Bytes(), packet.SourceAddr)
+		}
 	}
 }
 
