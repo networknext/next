@@ -41,11 +41,11 @@ namespace relay
   }
 
   int relay_init(CURL* curl,
-   const char* hostname,
-   uint8_t* relay_token,
-   const char* relay_address,
-   const uint8_t* router_public_key,
-   const uint8_t* relay_private_key,
+   const char* hostname, // env var
+   uint8_t* relay_token, // from backend
+   const char* relay_address, // env var
+   const uint8_t* router_public_key, // env var
+   const uint8_t* relay_private_key, // env var
    uint64_t* router_timestamp)
   {
     const uint32_t init_request_magic = 0x9083708f;

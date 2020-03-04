@@ -22,7 +22,7 @@ const (
 	HashKeyAllRelays = "ALL_RELAYS"
 
 	// How frequently we need to recieve updates from relays to keep them in redis
-	RelayTimeout = 10 * time.Second
+	RelayTimeout = 11 * time.Second
 )
 
 // Relay ...
@@ -122,6 +122,6 @@ type RelayUpdate struct {
 }
 
 type RelayPingData struct {
-	ID      uint64
-	Address string
+	ID      uint64 `json:"relay_id"`
+	Address string `json:"relay_address"`
 }

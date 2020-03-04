@@ -72,10 +72,10 @@ const InvalidRouteValue = 10000.0
 
 // RelayStatsPing is the ping stats for a relay
 type RelayStatsPing struct {
-	RelayID    uint64
-	RTT        float32
-	Jitter     float32
-	PacketLoss float32
+	RelayID    uint64  `json:"RelayId"`
+	RTT        float32 `json:"RTT"`
+	Jitter     float32 `json:"Jitter"`
+	PacketLoss float32 `json:"PacketLoss"`
 }
 
 // RelayStatsUpdate is a struct for updating relay stats

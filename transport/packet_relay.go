@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"math"
@@ -18,6 +19,43 @@ type RelayInitPacket struct {
 	Nonce          []byte
 	Address        net.UDPAddr
 	EncryptedToken []byte
+}
+
+type RelayInitRequestJSON struct {
+	Magic                uint32 `json:"magic_request_protection"`
+	Version              uint32 `json:"version"`
+	StringAddr           string `json:"relay_address"`
+	PortNum              int    `json:"relay_port"`
+	NonceBase64          string `json:"nonce"`
+	EncryptedTokenBase64 string `json:"encrypted_token"`
+}
+
+// RelayInitResponseJSON ...
+type RelayInitResponseJSON struct {
+	Timestamp uint64 `json:"Timestamp"`
+}
+
+func (j *RelayInitRequestJSON) ToInitPacket() *RelayInitPacket {
+	var packet RelayInitPacket
+	packet.Magic = j.Magic
+	packet.Version = 0
+
+	if dat, err := base64.RawStdEncoding.DecodeString(j.NonceBase64); err == nil {
+		packet.Nonce = make([]byte, len(dat))
+		copy(packet.Nonce, dat)
+	}
+
+	completeAddr := fmt.Sprintf("%s:%d", j.StringAddr, j.PortNum)
+	if addr, err := net.ResolveUDPAddr("udp", completeAddr); err == nil {
+		packet.Address = *addr
+	}
+
+	if dat, err := base64.RawStdEncoding.DecodeString(j.EncryptedTokenBase64); err == nil {
+		packet.EncryptedToken = make([]byte, len(dat))
+		copy(packet.EncryptedToken, dat)
+	}
+
+	return &packet
 }
 
 // UnmarshalBinary decodes binary data into a RelayInitPacket struct
@@ -62,6 +100,43 @@ type RelayUpdatePacket struct {
 	NumRelays uint32
 
 	PingStats []routing.RelayStatsPing
+}
+
+type packetMetadata struct {
+	TokenBase64 string `json:"PublicKey"`
+}
+
+type RelayUpdateRequestJSON struct {
+	StringAddr string                   `json:"relay_address"`
+	PortNum    int                      `json:"relay_port"`
+	Metadata   packetMetadata           `json:"Metadata"`
+	PingStats  []routing.RelayStatsPing `json:"PingStats"`
+}
+
+type RelayUpdateResponseJSON struct {
+	RelaysToPing []routing.RelayPingData `json:"ping_data"`
+}
+
+func (j *RelayUpdateRequestJSON) ToUpdatePacket() *RelayUpdatePacket {
+	var packet RelayUpdatePacket
+
+	packet.Version = 0 // don't care
+
+	completeAddr := fmt.Sprintf("%s:%d", j.StringAddr, j.PortNum)
+	if addr, err := net.ResolveUDPAddr("udp", completeAddr); err == nil {
+		packet.Address = *addr
+	}
+
+	if dat, err := base64.StdEncoding.DecodeString(j.Metadata.TokenBase64); err == nil {
+		packet.Token = make([]byte, len(dat))
+		copy(packet.Token, dat)
+	}
+
+	packet.NumRelays = uint32(len(j.PingStats))
+	packet.PingStats = make([]routing.RelayStatsPing, packet.NumRelays)
+	copy(packet.PingStats, j.PingStats)
+
+	return &packet
 }
 
 // UnmarshalBinary decodes the binary data into a RelayUpdatePacket struct
