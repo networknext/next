@@ -33,22 +33,7 @@ import (
 
 const NEXT_RELAY_BACKEND_PORT = 30000
 const NEXT_SERVER_BACKEND_PORT = 40000
-const NEXT_BACKEND_SERVER_UPDATE_PACKET = 200
-const NEXT_BACKEND_SESSION_UPDATE_PACKET = 201
-const NEXT_BACKEND_SESSION_RESPONSE_PACKET = 202
-const NEXT_VERSION_MAJOR = 0
-const NEXT_VERSION_MINOR = 0
-const NEXT_VERSION_PATCH = 0
-const NEXT_MAX_PACKET_BYTES = 1500
 
-var relayPublicKey = []byte{
-	0xf5, 0x22, 0xad, 0xc1, 0xee, 0x04, 0x6a, 0xbe,
-	0x7d, 0x89, 0x0c, 0x81, 0x3a, 0x08, 0x31, 0xba,
-	0xdc, 0xdd, 0xb5, 0x52, 0xcb, 0x73, 0x56, 0x10,
-	0xda, 0xa9, 0xc0, 0xae, 0x08, 0xa2, 0xcf, 0x5e,
-}
-
-const BACKEND_MODE_DEFAULT = 0
 const BACKEND_MODE_FORCE_DIRECT = 1
 const BACKEND_MODE_RANDOM = 2
 const BACKEND_MODE_MULTIPATH = 3
@@ -81,20 +66,7 @@ type ServerEntry struct {
 	lastUpdate int64
 }
 
-// type SessionEntry struct {
-// 	id              uint64
-// 	sequence        uint64
-// 	version         uint8
-// 	expireTimestamp uint64
-// 	route           []uint64
-// 	next            bool
-// 	slice           uint64
-// 	response        []byte
-// }
-
 const RTT_Threshold = 1.0
-const CostMatrixBytes = 10 * 1024 * 1024
-const RouteMatrixBytes = 32 * 1024 * 1024
 
 func OptimizeThread() {
 	for {
@@ -187,18 +159,6 @@ func (backend *Backend) GetNearRelays() []routing.Relay {
 	}
 
 	return nearRelays
-}
-
-func RouteChanged(previous []uint64, current []uint64) bool {
-	if len(previous) != len(current) {
-		return true
-	}
-	for i := range current {
-		if current[i] != previous[i] {
-			return true
-		}
-	}
-	return false
 }
 
 func main() {
@@ -386,10 +346,10 @@ func main() {
 
 			if backend.mode == BACKEND_MODE_UNCOMMITTED_TO_COMMITTED {
 				committed = sessionUpdate.Sequence > 2
-				if sessionUpdate.Sequence <= 2 && sessionUpdate.Committed == true {
+				if sessionUpdate.Sequence <= 2 && sessionUpdate.Committed {
 					panic("slices 0,1,2,3 should not be committed")
 				}
-				if sessionUpdate.Sequence >= 4 && sessionUpdate.Committed == false {
+				if sessionUpdate.Sequence >= 4 && !sessionUpdate.Committed {
 					panic("slices 4 and greater should be committed")
 				}
 			}
@@ -549,7 +509,6 @@ const InitRequestVersion = 0
 const InitResponseVersion = 0
 const UpdateRequestVersion = 0
 const UpdateResponseVersion = 0
-const MaxRelayIDLength = 256
 const MaxRelayAddressLength = 256
 const RelayTokenBytes = 32
 const MaxRelays = 1024
@@ -683,6 +642,10 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 
 	// New redis entry
 	udpAddr, err := net.ResolveUDPAddr("udp", relay_address)
+	if err != nil {
+		return
+	}
+
 	relay := routing.Relay{
 		ID:             crypto.HashID(relay_address),
 		Addr:           *udpAddr,
@@ -709,20 +672,6 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 	writer.Write(responseData)
 }
 
-func CompareTokens(a []byte, b []byte) bool {
-	if len(a) != len(b) {
-		fmt.Printf("token length is wrong\n")
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			fmt.Printf("token value is wrong: %d vs. %d\n", a[i], b[i])
-			return false
-		}
-	}
-	return true
-}
-
 func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	body, err := ioutil.ReadAll(request.Body)
 	if err != nil {
@@ -747,6 +696,10 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	udpAddr, err := net.ResolveUDPAddr("udp", relay_address)
+	if err != nil {
+		return
+	}
+
 	relay := routing.Relay{
 		ID:             crypto.HashID(relay_address),
 		Addr:           *udpAddr,
