@@ -308,7 +308,7 @@ func test_direct_default() {
 	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
 	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
 
-	fmt.Printf("\tFinished test_direct_default\n")
+	fmt.Printf("Finished test_direct_default\n")
 
 }
 
@@ -351,7 +351,7 @@ func test_direct_upgrade() {
 	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
 	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
 
-	fmt.Printf("\tFinished test_direct_upgrade\n")
+	fmt.Printf("Finished test_direct_upgrade\n")
 
 }
 
@@ -395,7 +395,7 @@ func test_direct_no_upgrade() {
 	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
 	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
 
-	fmt.Printf("\tFinished test_direct_no_upgrade\n")
+	fmt.Printf("Finished test_direct_no_upgrade\n")
 
 }
 
@@ -442,7 +442,7 @@ func test_direct_with_backend() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
 
-	fmt.Printf("\tFinished test_direct_with_backend\n")
+	fmt.Printf("Finished test_direct_with_backend\n")
 
 }
 
@@ -485,7 +485,7 @@ func test_fallback_to_direct_without_backend() {
 	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
 	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
 
-	fmt.Printf("\tFinished test_fallback_to_direct_without_backend\n")
+	fmt.Printf("Finished test_fallback_to_direct_without_backend\n")
 
 }
 
@@ -531,7 +531,7 @@ func test_fallback_to_direct_is_not_sticky() {
 	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
 	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
 
-	fmt.Printf("\tFinished test_fallback_to_direct_is_not_sticky\n")
+	fmt.Printf("Finished test_fallback_to_direct_is_not_sticky\n")
 
 }
 
@@ -594,7 +594,7 @@ func test_packets_over_next_with_relay_and_backend() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
 
-	fmt.Printf("\tFinished test_packets_over_next_with_relay_and_backend\n")
+	fmt.Printf("Finished test_packets_over_next_with_relay_and_backend\n")
 
 }
 
@@ -656,7 +656,7 @@ func test_idempotent() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
 
-	fmt.Printf("\tFinished test_idempotent\n")
+	fmt.Printf("Finished test_idempotent\n")
 
 }
 
@@ -721,7 +721,7 @@ func test_fallback_to_direct_when_backend_goes_down() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
 
-	fmt.Printf("\tFinished test_fallback_to_direct_when_backend_goes_down\n")
+	fmt.Printf("Finished test_fallback_to_direct_when_backend_goes_down\n")
 
 }
 
@@ -781,7 +781,7 @@ func test_network_next_disabled_server() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
 
-	fmt.Printf("\tFinished test_network_next_disabled_server\n")
+	fmt.Printf("Finished test_network_next_disabled_server\n")
 
 }
 
@@ -840,7 +840,7 @@ func test_network_next_disabled_client() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
 
-	fmt.Printf("\tFinished test_network_next_disabled_client\n")
+	fmt.Printf("Finished test_network_next_disabled_client\n")
 
 }
 
@@ -915,7 +915,7 @@ func test_server_under_load() {
 
 	}
 
-	fmt.Printf("\tFinished test_server_under_load\n")
+	fmt.Printf("Finished test_server_under_load\n")
 }
 
 /*
@@ -965,7 +965,7 @@ func test_reconnect_direct() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
 
-	fmt.Printf("\tFinished test_reconnect_direct\n")
+	fmt.Printf("Finished test_reconnect_direct\n")
 
 }
 
@@ -1030,7 +1030,7 @@ func test_reconnect_next() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
 
-	fmt.Printf("\tFinished test_reconnect_next\n")
+	fmt.Printf("Finished test_reconnect_next\n")
 
 }
 
@@ -1086,7 +1086,7 @@ func test_connect_to_another_server_direct() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
 
-	fmt.Printf("\tFinished test_connect_to_another_server_direct\n")
+	fmt.Printf("Finished test_connect_to_another_server_direct\n")
 
 }
 
@@ -1156,7 +1156,7 @@ func test_connect_to_another_server_next() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
 
-	fmt.Printf("\tFinished test_connect_to_another_server_next\n")
+	fmt.Printf("Finished test_connect_to_another_server_next\n")
 
 }
 
@@ -1214,7 +1214,7 @@ func test_route_switching() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
 
-	fmt.Printf("\tFinished test_route_switching\n")
+	fmt.Printf("Finished test_route_switching\n")
 
 }
 
@@ -1274,7 +1274,7 @@ func test_on_off() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
 
-	fmt.Printf("\tFinished test_on_off\n")
+	fmt.Printf("Finished test_on_off\n")
 
 }
 
@@ -1332,7 +1332,7 @@ func test_multipath() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
 
-	fmt.Printf("\tFinished test_multipath\n")
+	fmt.Printf("Finished test_multipath\n")
 
 }
 
@@ -1392,7 +1392,7 @@ func test_uncommitted() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
 
-	fmt.Printf("\tFinished test_uncommitted\n")
+	fmt.Printf("Finished test_uncommitted\n")
 }
 
 /*
@@ -1453,7 +1453,7 @@ func test_uncommitted_to_committed() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
 
-	fmt.Printf("\tFinished test_uncommitted_to_committed\n")
+	fmt.Printf("Finished test_uncommitted_to_committed\n")
 }
 
 /*
@@ -1513,7 +1513,7 @@ func test_user_flags() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
 
-	fmt.Printf("\tFinished test_user_flags\n")
+	fmt.Printf("Finished test_user_flags\n")
 }
 
 /*
@@ -1565,7 +1565,7 @@ func test_packet_loss_direct() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] > 250)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] > 250)
 
-	fmt.Printf("\tFinished test_packet_loss_direct\n")
+	fmt.Printf("Finished test_packet_loss_direct\n")
 }
 
 // todo: test_packet_loss_next, but func backend needs to be idempotent first...
