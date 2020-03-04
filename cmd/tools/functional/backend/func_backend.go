@@ -423,6 +423,9 @@ func main() {
 					ServerRoutePublicKey: serverEntry.publicKey,
 				}
 
+				directRoute := &routing.Route{}
+				sessionEntry.RouteHash = directRoute.Hash64()
+
 			} else {
 				// Make next route from near relays (but respect hop limit)
 				numRelays := len(nearRelays)
