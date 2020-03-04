@@ -4,8 +4,14 @@ agent:
   machine:
     type: e1-standard-2
     os_image: ubuntu1804
+global_job_config:
+  prologue:
+    commands:
+      - sudo apt-get update && sudo apt-get -y install libsodium-dev libcurl4-gnutls-dev
+      - checkout
+      - sem-version go 1.13
 blocks:
-  - name: Unit Tests
+  - name: Test (Unit)
     task:
       jobs:
         - name: SDK
@@ -17,8 +23,3 @@ blocks:
         - name: Backend
           commands:
             - make test-unit-backend
-      prologue:
-        commands:
-          - sudo apt-get update && sudo apt-get install libsodium-dev libcurl4-gnutls-dev
-          - checkout
-          - sem-version go 1.13
