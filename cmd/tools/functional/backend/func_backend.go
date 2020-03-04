@@ -25,6 +25,7 @@ import (
 	"github.com/go-redis/redis/v7"
 	"github.com/gorilla/mux"
 
+	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/transport"
@@ -334,7 +335,6 @@ func main() {
 			if newSession {
 				sessionEntry.SessionID = sessionUpdate.SessionID
 				sessionEntry.Version = 0
-				sessionEntry.TimestampExpire = time.Now().Add(time.Second * 20)
 			} else {
 				switch seq := sessionUpdate.Sequence; {
 				case seq < sessionEntry.Sequence:
@@ -346,11 +346,10 @@ func main() {
 						fmt.Printf("error: failed to respond with session entry cache: %v\n", err)
 					}
 					return
-				default:
-					sessionEntry.TimestampExpire = sessionEntry.TimestampExpire.Add(time.Second * 10)
 				}
 			}
 
+			sessionEntry.TimestampExpire = time.Now().Add(time.Minute * 5)
 			takeNetworkNext := len(nearRelays) > 0
 
 			if backend.mode == BACKEND_MODE_FORCE_DIRECT {
@@ -434,12 +433,10 @@ func main() {
 					Relays: nearRelays[:numRelays],
 				}
 
-				sessionEntry.RouteHash = nextRoute.Hash64()
-
 				var token routing.Token
-				if nextRoute.Hash64() != sessionEntry.RouteHash {
-					token = &routing.NextRouteToken{
-						Expires: uint64(sessionEntry.TimestampExpire.Unix()),
+				if nextRoute.Hash64() == sessionEntry.RouteHash {
+					token = &routing.ContinueRouteToken{
+						Expires: uint64(time.Now().Add(billing.BillingSliceSeconds * time.Second).Unix()),
 
 						SessionID: sessionUpdate.SessionID,
 
@@ -462,7 +459,7 @@ func main() {
 					sessionEntry.Version++
 
 					token = &routing.NextRouteToken{
-						Expires: uint64(sessionEntry.TimestampExpire.Unix()),
+						Expires: uint64(time.Now().Add(billing.BillingSliceSeconds * 2 * time.Second).Unix()),
 
 						SessionID: sessionUpdate.SessionID,
 
@@ -489,6 +486,7 @@ func main() {
 				}
 
 				tokens, numtokens, _ := token.Encrypt(crypto.RouterPrivateKey)
+				sessionEntry.RouteHash = nextRoute.Hash64()
 
 				sessionResponse = &transport.SessionResponsePacket{
 					Sequence:             sessionUpdate.Sequence,
