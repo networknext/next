@@ -10,7 +10,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/routing"
 )
 
@@ -35,7 +34,7 @@ func Analyze(name string, unit string, routeMatrix *routing.RouteMatrix) {
 		for j := range dest {
 			if j < i {
 				numRelayPairs++
-				abFlatIndex := core.TriMatrixIndex(i, j)
+				abFlatIndex := routing.TriMatrixIndex(i, j)
 				if len(routeMatrix.Entries[abFlatIndex].RouteRTT) > 0 {
 					numValidRelayPairs++
 					improvement := routeMatrix.Entries[abFlatIndex].DirectRTT - routeMatrix.Entries[abFlatIndex].RouteRTT[0]
@@ -96,7 +95,7 @@ func Analyze(name string, unit string, routeMatrix *routing.RouteMatrix) {
 	for i := range src {
 		for j := range dest {
 			if j < i {
-				ijFlatIndex := core.TriMatrixIndex(i, j)
+				ijFlatIndex := routing.TriMatrixIndex(i, j)
 				n := routeMatrix.Entries[ijFlatIndex].NumRoutes
 				if n > maxRoutesPerRelayPair {
 					maxRoutesPerRelayPair = n
