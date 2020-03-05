@@ -8,14 +8,13 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 
-	"github.com/networknext/backend/core"
+	"github.com/networknext/backend/routing"
 )
 
-func GetRelayIndex(routeMatrix *core.RouteMatrix, relayName string) int {
+func GetRelayIndex(routeMatrix *routing.RouteMatrix, relayName string) int {
 	for i := range routeMatrix.RelayNames {
 		if routeMatrix.RelayNames[i] == relayName {
 			return i
@@ -28,19 +27,15 @@ func main() {
 	relay := flag.String("relay", "", "name of the relay")
 	flag.Parse()
 
-	data, err := ioutil.ReadAll(os.Stdin)
+	var routeMatrix routing.RouteMatrix
+	_, err := routeMatrix.ReadFrom(os.Stdin)
 	if err != nil {
-		log.Fatal("error reading from stdin")
-	}
-
-	routeMatrix, err := core.ReadRouteMatrix(data)
-	if err != nil {
-		log.Fatalln("error reading route matrix")
+		log.Fatalln(fmt.Errorf("error reading route matrix from stdin: %w", err))
 	}
 
 	relayName := *relay
 
-	relayIndex := GetRelayIndex(routeMatrix, relayName)
+	relayIndex := GetRelayIndex(&routeMatrix, relayName)
 
 	if relayIndex == -1 {
 		log.Fatalf("error: can't find relay called '%s'\n", relayName)
@@ -55,7 +50,7 @@ func main() {
 		if a == b {
 			continue
 		}
-		index := core.TriMatrixIndex(a, b)
+		index := routing.TriMatrixIndex(a, b)
 		if routeMatrix.Entries[index].NumRoutes != 0 {
 			fmt.Printf("    %*dms (%d) %s\n", 5, routeMatrix.Entries[index].RouteRTT[0], routeMatrix.Entries[index].NumRoutes, routeMatrix.RelayNames[b])
 		} else {
