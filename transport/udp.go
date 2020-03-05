@@ -9,7 +9,6 @@ import (
 	"math/rand"
 	"net"
 	"time"
-	"math/rand"
 
 	gkmetrics "github.com/go-kit/kit/metrics"
 
