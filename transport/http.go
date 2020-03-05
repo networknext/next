@@ -56,6 +56,7 @@ func RelayInitHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClien
 		timer.Unit(time.Millisecond)
 		defer func() {
 			timer.ObserveDuration()
+			counter.Add(1)
 		}()
 
 		body, err := ioutil.ReadAll(request.Body)
@@ -165,8 +166,6 @@ func RelayInitHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClien
 		encoding.WriteBytes(responseData, &index, relay.PublicKey, crypto.KeySize)
 
 		writer.Write(responseData[:index])
-
-		counter.Add(1)
 	}
 }
 
@@ -179,6 +178,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, redisClient *redis.Client, statsd
 		timer.Unit(time.Millisecond)
 		defer func() {
 			timer.ObserveDuration()
+			counter.Add(1)
 		}()
 
 		body, err := ioutil.ReadAll(request.Body)
@@ -309,8 +309,6 @@ func RelayUpdateHandlerFunc(logger log.Logger, redisClient *redis.Client, statsd
 		writer.Header().Set("Content-Type", "application/octet-stream")
 
 		writer.Write(responseData[:responseLength])
-
-		counter.Add(1)
 	}
 }
 

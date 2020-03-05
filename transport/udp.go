@@ -107,6 +107,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 		timer.Unit(time.Millisecond)
 		defer func() {
 			timer.ObserveDuration()
+			counter.Add(1)
 		}()
 
 		var packet ServerUpdatePacket
@@ -180,8 +181,6 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 		}
 
 		level.Debug(locallogger).Log("msg", "updated server")
-
-		counter.Add(1)
 	}
 }
 
@@ -218,6 +217,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		timer.Unit(time.Millisecond)
 		defer func() {
 			timer.ObserveDuration()
+			counter.Add(1)
 		}()
 
 		timestampNow := time.Now()
@@ -490,8 +490,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		if _, err := w.Write(responseData); err != nil {
 			level.Error(locallogger).Log("msg", "failed to write session response", "err", err)
 		}
-
-		counter.Add(1)
 	}
 }
 
