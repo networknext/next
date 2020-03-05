@@ -24,3 +24,9 @@ blocks:
         - name: Backend
           commands:
             - make test-unit-backend
+  - name: Func
+    task:
+      jobs:
+        - name: Parallel Func Tests
+          commands:
+            - make test-func-parallel
