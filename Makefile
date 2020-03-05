@@ -226,6 +226,7 @@ dev-debug: ## debugs relay in route matrix
 
 .PHONY: dev-route
 dev-route: ## prints routes from relay to datacenter in route matrix
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/route ./cmd/tools/route/route.go
 	test -f $(OPTIMIZE_FILE) && cat $(OPTIMIZE_FILE) | $(DIST_DIR)/route -relay=$(relay) -datacenter=$(datacenter)
 
 #######################
