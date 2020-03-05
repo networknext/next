@@ -50,7 +50,7 @@ func relayUpdateAssertions(t *testing.T, body []byte, expectedCode int, redisCli
 	recorder := httptest.NewRecorder()
 	request, _ := http.NewRequest("POST", "/relay_update", bytes.NewBuffer(body))
 
-	handler := transport.RelayUpdateHandlerFunc(log.NewNopLogger(), redisClient, statsdb, &metrics.NoOpHandler{})
+	handler := transport.RelayUpdateHandlerFunc(log.NewNopLogger(), redisClient, statsdb, &metrics.EmptyHistogram{}, &metrics.EmptyCounter{})
 
 	handler(recorder, request)
 
