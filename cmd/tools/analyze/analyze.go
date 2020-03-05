@@ -7,21 +7,20 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 
-	"github.com/networknext/backend/core"
+	"github.com/networknext/backend/routing"
 )
 
 type routeData struct {
 	Improvement int32
 }
 
-func Analyze(name string, unit string, route_matrix *core.RouteMatrix) {
+func Analyze(name string, unit string, routeMatrix *routing.RouteMatrix) {
 
-	src := route_matrix.RelayIDs
-	dest := route_matrix.RelayIDs
+	src := routeMatrix.RelayIDs
+	dest := routeMatrix.RelayIDs
 
 	entries := make([]*routeData, 0, len(src)*len(dest))
 
@@ -35,10 +34,10 @@ func Analyze(name string, unit string, route_matrix *core.RouteMatrix) {
 		for j := range dest {
 			if j < i {
 				numRelayPairs++
-				abFlatIndex := core.TriMatrixIndex(i, j)
-				if len(route_matrix.Entries[abFlatIndex].RouteRTT) > 0 {
+				abFlatIndex := routing.TriMatrixIndex(i, j)
+				if len(routeMatrix.Entries[abFlatIndex].RouteRTT) > 0 {
 					numValidRelayPairs++
-					improvement := route_matrix.Entries[abFlatIndex].DirectRTT - route_matrix.Entries[abFlatIndex].RouteRTT[0]
+					improvement := routeMatrix.Entries[abFlatIndex].DirectRTT - routeMatrix.Entries[abFlatIndex].RouteRTT[0]
 					if improvement > 0.0 {
 						entry := &routeData{}
 						entry.Improvement = improvement
@@ -96,8 +95,8 @@ func Analyze(name string, unit string, route_matrix *core.RouteMatrix) {
 	for i := range src {
 		for j := range dest {
 			if j < i {
-				ijFlatIndex := core.TriMatrixIndex(i, j)
-				n := route_matrix.Entries[ijFlatIndex].NumRoutes
+				ijFlatIndex := routing.TriMatrixIndex(i, j)
+				n := routeMatrix.Entries[ijFlatIndex].NumRoutes
 				if n > maxRoutesPerRelayPair {
 					maxRoutesPerRelayPair = n
 				}
@@ -108,8 +107,8 @@ func Analyze(name string, unit string, route_matrix *core.RouteMatrix) {
 				if n == 1 {
 					relayPairsWithOneRoute++
 				}
-				for k := 0; k < int(route_matrix.Entries[ijFlatIndex].NumRoutes); k++ {
-					numRelays := route_matrix.Entries[ijFlatIndex].RouteNumRelays[k]
+				for k := 0; k < int(routeMatrix.Entries[ijFlatIndex].NumRoutes); k++ {
+					numRelays := routeMatrix.Entries[ijFlatIndex].RouteNumRelays[k]
 					averageRouteLength += float64(numRelays)
 					if numRelays > maxRouteLength {
 						maxRouteLength = numRelays
@@ -131,16 +130,11 @@ func Analyze(name string, unit string, route_matrix *core.RouteMatrix) {
 }
 
 func main() {
-	optimizeraw, err := ioutil.ReadAll(os.Stdin)
+	var routeMatrix routing.RouteMatrix
+	_, err := routeMatrix.ReadFrom(os.Stdin)
 	if err != nil {
-		log.Fatalln(fmt.Errorf("error reading from stdin: %w", err))
+		log.Fatalln(fmt.Errorf("error reading route matrix from stdin: %w", err))
 	}
 
-	routeMatrix, err := core.ReadRouteMatrix(optimizeraw)
-	if err != nil {
-		fmt.Printf("error: could not read route matrix\n")
-		os.Exit(1)
-	}
-
-	Analyze("RTT", "ms", routeMatrix)
+	Analyze("RTT", "ms", &routeMatrix)
 }
