@@ -1,7 +1,5 @@
 #!/bin/bash
 
-trap "kill 0" EXIT
-
 docker run --env test=test_direct_default func_tests:latest &
 docker run --env test=test_direct_upgrade func_tests:latest &
 docker run --env test=test_direct_no_upgrade func_tests:latest &
