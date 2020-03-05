@@ -25,7 +25,7 @@ import (
 	"github.com/go-redis/redis/v7"
 	"github.com/gorilla/mux"
 
-	"github.com/networknext/backend/core"
+	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/transport"
@@ -33,22 +33,7 @@ import (
 
 const NEXT_RELAY_BACKEND_PORT = 30000
 const NEXT_SERVER_BACKEND_PORT = 40000
-const NEXT_BACKEND_SERVER_UPDATE_PACKET = 200
-const NEXT_BACKEND_SESSION_UPDATE_PACKET = 201
-const NEXT_BACKEND_SESSION_RESPONSE_PACKET = 202
-const NEXT_VERSION_MAJOR = 0
-const NEXT_VERSION_MINOR = 0
-const NEXT_VERSION_PATCH = 0
-const NEXT_MAX_PACKET_BYTES = 1500
 
-var relayPublicKey = []byte{
-	0xf5, 0x22, 0xad, 0xc1, 0xee, 0x04, 0x6a, 0xbe,
-	0x7d, 0x89, 0x0c, 0x81, 0x3a, 0x08, 0x31, 0xba,
-	0xdc, 0xdd, 0xb5, 0x52, 0xcb, 0x73, 0x56, 0x10,
-	0xda, 0xa9, 0xc0, 0xae, 0x08, 0xa2, 0xcf, 0x5e,
-}
-
-const BACKEND_MODE_DEFAULT = 0
 const BACKEND_MODE_FORCE_DIRECT = 1
 const BACKEND_MODE_RANDOM = 2
 const BACKEND_MODE_MULTIPATH = 3
@@ -64,7 +49,7 @@ type Backend struct {
 	dirty           bool
 	mode            int
 	serverDatabase  map[string]ServerEntry
-	sessionDatabase map[uint64]SessionEntry
+	sessionDatabase map[uint64]transport.SessionCacheEntry
 	statsDatabase   *routing.StatsDatabase
 	costMatrix      *routing.CostMatrix
 	routeMatrix     *routing.RouteMatrix
@@ -81,20 +66,7 @@ type ServerEntry struct {
 	lastUpdate int64
 }
 
-type SessionEntry struct {
-	id              uint64
-	sequence        uint64
-	version         uint8
-	expireTimestamp uint64
-	route           []uint64
-	next            bool
-	slice           uint64
-	response        []byte
-}
-
 const RTT_Threshold = 1.0
-const CostMatrixBytes = 10 * 1024 * 1024
-const RouteMatrixBytes = 32 * 1024 * 1024
 
 func OptimizeThread() {
 	for {
@@ -114,7 +86,8 @@ func TimeoutThread() {
 	for {
 		time.Sleep(time.Second * 1)
 		backend.mutex.Lock()
-		currentTimestamp := time.Now().Unix()
+		currentTime := time.Now()
+		currentTimestamp := currentTime.Unix()
 		unixTimeout := int64(routing.RelayTimeout.Seconds())
 		for k, v := range backend.serverDatabase {
 			if currentTimestamp-v.lastUpdate > unixTimeout {
@@ -124,7 +97,7 @@ func TimeoutThread() {
 			}
 		}
 		for k, v := range backend.sessionDatabase {
-			if uint64(currentTimestamp) >= v.expireTimestamp {
+			if v.TimestampExpire.Before(currentTime) {
 				delete(backend.sessionDatabase, k)
 				backend.dirty = true
 				continue
@@ -180,24 +153,12 @@ func (backend *Backend) GetNearRelays() []routing.Relay {
 	// sort them by ID for consistency
 	sort.SliceStable(nearRelays[:], func(i, j int) bool { return nearRelays[i].ID < nearRelays[j].ID })
 
-	// Clamp relay count to max // TODO: actually do this in real backend?
-	if len(nearRelays) > int(core.MaxNearRelays) {
-		nearRelays = nearRelays[:core.MaxNearRelays]
+	// Clamp relay count to max
+	if len(nearRelays) > int(transport.MaxNearRelays) {
+		nearRelays = nearRelays[:transport.MaxNearRelays]
 	}
 
 	return nearRelays
-}
-
-func RouteChanged(previous []uint64, current []uint64) bool {
-	if len(previous) != len(current) {
-		return true
-	}
-	for i := range current {
-		if current[i] != previous[i] {
-			return true
-		}
-	}
-	return false
 }
 
 func main() {
@@ -205,7 +166,7 @@ func main() {
 	rand.Seed(time.Now().UnixNano())
 
 	backend.serverDatabase = make(map[string]ServerEntry)
-	backend.sessionDatabase = make(map[uint64]SessionEntry)
+	backend.sessionDatabase = make(map[uint64]transport.SessionCacheEntry)
 	backend.statsDatabase = routing.NewStatsDatabase()
 	backend.costMatrix = &routing.CostMatrix{}
 	backend.routeMatrix = &routing.RouteMatrix{}
@@ -332,24 +293,23 @@ func main() {
 			newSession := !ok
 
 			if newSession {
-				sessionEntry.id = sessionUpdate.SessionID
-				sessionEntry.version = 0
-				sessionEntry.expireTimestamp = uint64(time.Now().Unix()) + 20
+				sessionEntry.SessionID = sessionUpdate.SessionID
+				sessionEntry.Version = 0
 			} else {
-				sessionEntry.expireTimestamp += 10
-				sessionEntry.slice++
-			}
-
-			if backend.mode == BACKEND_MODE_IDEMPOTENT {
-				if sessionUpdate.Sequence == sessionEntry.sequence {
-					_, err = w.Write(sessionEntry.response)
+				switch seq := sessionUpdate.Sequence; {
+				case seq < sessionEntry.Sequence:
+					fmt.Printf("error: session sequence number (%v) is older than sequence number in cache (%v), ignoring...\n", seq, sessionEntry.Sequence)
+					return
+				case seq == sessionEntry.Sequence:
+					_, err = w.Write(sessionEntry.Response)
 					if err != nil {
-						fmt.Printf("error: failed to send udp response: %v\n", err)
+						fmt.Printf("error: failed to respond with session entry cache: %v\n", err)
 					}
 					return
 				}
 			}
 
+			sessionEntry.TimestampExpire = time.Now().Add(time.Minute * 5)
 			takeNetworkNext := len(nearRelays) > 0
 
 			if backend.mode == BACKEND_MODE_FORCE_DIRECT {
@@ -361,7 +321,8 @@ func main() {
 			}
 
 			if backend.mode == BACKEND_MODE_ON_OFF {
-				if (sessionEntry.slice & 1) == 0 {
+				// Alternate between direct and next routes for each slice
+				if (sessionUpdate.Sequence & 1) == 0 {
 					takeNetworkNext = false
 				}
 			}
@@ -385,10 +346,10 @@ func main() {
 
 			if backend.mode == BACKEND_MODE_UNCOMMITTED_TO_COMMITTED {
 				committed = sessionUpdate.Sequence > 2
-				if sessionUpdate.Sequence <= 2 && sessionUpdate.Committed == true {
+				if sessionUpdate.Sequence <= 2 && sessionUpdate.Committed {
 					panic("slices 0,1,2,3 should not be committed")
 				}
-				if sessionUpdate.Sequence >= 4 && sessionUpdate.Committed == false {
+				if sessionUpdate.Sequence >= 4 && !sessionUpdate.Committed {
 					panic("slices 4 and greater should be committed")
 				}
 			}
@@ -416,90 +377,93 @@ func main() {
 					NumNearRelays:        int32(len(nearRelays)),
 					NearRelayIDs:         nearRelayIDs,
 					NearRelayAddresses:   nearRelayAddresses,
-					RouteType:            int32(core.NEXT_UPDATE_TYPE_DIRECT),
+					RouteType:            int32(routing.RouteTypeDirect),
 					NumTokens:            0,
 					Tokens:               nil,
 					ServerRoutePublicKey: serverEntry.publicKey,
 				}
 
-				sessionEntry.route = nil
-				sessionEntry.next = false
+				directRoute := &routing.Route{}
+				sessionEntry.RouteHash = directRoute.Hash64()
 
 			} else {
-
-				// next route
-
-				numRelays := len(nearRelayIDs)
-				if numRelays > 5 {
-					numRelays = 5
+				// Make next route from near relays (but respect hop limit)
+				numRelays := len(nearRelays)
+				if numRelays > routing.MaxRelays {
+					numRelays = routing.MaxRelays
+				}
+				nextRoute := routing.Route{
+					Relays: nearRelays[:numRelays],
 				}
 
-				route := make([]uint64, numRelays)
-				for i := 0; i < numRelays; i++ {
-					route[i] = nearRelayIDs[i]
-				}
+				var token routing.Token
+				if nextRoute.Hash64() == sessionEntry.RouteHash {
+					token = &routing.ContinueRouteToken{
+						Expires: uint64(time.Now().Add(billing.BillingSliceSeconds * time.Second).Unix()),
 
-				routeChanged := RouteChanged(sessionEntry.route, route)
+						SessionID: sessionUpdate.SessionID,
 
-				numNodes := numRelays + 2
+						SessionVersion: sessionEntry.Version,
+						SessionFlags:   0,
 
-				addresses := make([]*net.UDPAddr, numNodes)
-				publicKeys := make([][]byte, numNodes)
-				publicKeys[0] = sessionUpdate.ClientRoutePublicKey[:]
+						Client: routing.Client{
+							Addr:      sessionUpdate.ClientAddress,
+							PublicKey: sessionUpdate.ClientRoutePublicKey,
+						},
 
-				for i := 0; i < numRelays; i++ {
-					addresses[1+i] = &nearRelayAddresses[i]
-					publicKeys[1+i] = crypto.RelayPublicKey[:]
-				}
+						Server: routing.Server{
+							Addr:      sessionUpdate.ServerAddress,
+							PublicKey: serverEntry.publicKey,
+						},
 
-				addresses[numNodes-1] = incoming.SourceAddr
-				publicKeys[numNodes-1] = serverEntry.publicKey
-
-				var tokens []byte
-
-				var responseType int32
-
-				if !sessionEntry.next || routeChanged {
-
-					// new route
-
-					sessionEntry.version++
-					tokens, err = core.WriteRouteTokens(sessionEntry.expireTimestamp, sessionEntry.id, sessionEntry.version, 0, 256, 256, numNodes, addresses, publicKeys, crypto.RouterPrivateKey)
-					if err != nil {
-						fmt.Printf("error: could not write route tokens: %v\n", err)
-						return
+						Relays: nextRoute.Relays,
 					}
-					responseType = core.NEXT_UPDATE_TYPE_ROUTE
-
 				} else {
+					sessionEntry.Version++
 
-					// continue route
+					token = &routing.NextRouteToken{
+						Expires: uint64(time.Now().Add(billing.BillingSliceSeconds * 2 * time.Second).Unix()),
 
-					tokens, err = core.WriteContinueTokens(sessionEntry.expireTimestamp, sessionEntry.id, sessionEntry.version, 0, numNodes, publicKeys, crypto.RouterPrivateKey)
-					if err != nil {
-						fmt.Printf("error: could not write continue tokens: %v\n", err)
-						return
+						SessionID: sessionUpdate.SessionID,
+
+						SessionVersion: sessionEntry.Version,
+						SessionFlags:   0, // Haven't figured out what this is for
+
+						Client: routing.Client{
+							Addr:      sessionUpdate.ClientAddress,
+							PublicKey: sessionUpdate.ClientRoutePublicKey,
+						},
+
+						Server: routing.Server{
+							Addr:      sessionUpdate.ServerAddress,
+							PublicKey: serverEntry.publicKey,
+						},
+
+						Relays: nextRoute.Relays,
+
+						// Seems we have to do this as bandwidth limits are disabled according to comment in core_sodium.go
+						// Not sure how real backend gets away without setting this...
+						KbpsUp:   256 * 100,
+						KbpsDown: 256 * 100,
 					}
-					responseType = core.NEXT_UPDATE_TYPE_CONTINUE
-
 				}
+
+				tokens, numtokens, _ := token.Encrypt(crypto.RouterPrivateKey)
+				sessionEntry.RouteHash = nextRoute.Hash64()
 
 				sessionResponse = &transport.SessionResponsePacket{
 					Sequence:             sessionUpdate.Sequence,
 					SessionID:            sessionUpdate.SessionID,
-					NumNearRelays:        int32(len(nearRelayIDs)),
+					NumNearRelays:        int32(len(nearRelays)),
 					NearRelayIDs:         nearRelayIDs,
 					NearRelayAddresses:   nearRelayAddresses,
-					RouteType:            responseType,
+					RouteType:            int32(token.Type()),
 					Multipath:            multipath,
 					Committed:            committed,
-					NumTokens:            int32(numNodes),
+					NumTokens:            int32(numtokens),
 					Tokens:               tokens,
 					ServerRoutePublicKey: serverEntry.publicKey,
 				}
-
-				sessionEntry.route = route
-				sessionEntry.next = true
 			}
 
 			if sessionResponse == nil {
@@ -515,8 +479,8 @@ func main() {
 				return
 			}
 
-			sessionEntry.sequence = sessionResponse.Sequence
-			sessionEntry.response = responsePacketData
+			sessionEntry.Sequence = sessionResponse.Sequence
+			sessionEntry.Response = responsePacketData
 
 			backend.mutex.Lock()
 			if newSession {
@@ -545,7 +509,6 @@ const InitRequestVersion = 0
 const InitResponseVersion = 0
 const UpdateRequestVersion = 0
 const UpdateResponseVersion = 0
-const MaxRelayIDLength = 256
 const MaxRelayAddressLength = 256
 const RelayTokenBytes = 32
 const MaxRelays = 1024
@@ -679,10 +642,14 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 
 	// New redis entry
 	udpAddr, err := net.ResolveUDPAddr("udp", relay_address)
+	if err != nil {
+		return
+	}
+
 	relay := routing.Relay{
 		ID:             crypto.HashID(relay_address),
 		Addr:           *udpAddr,
-		PublicKey:      core.RandomBytes(RelayTokenBytes),
+		PublicKey:      crypto.RelayPublicKey[:],
 		LastUpdateTime: uint64(time.Now().Unix()),
 	}
 
@@ -703,20 +670,6 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 	WriteBytes(responseData, &index, relay.PublicKey, RelayTokenBytes)
 	responseData = responseData[:index]
 	writer.Write(responseData)
-}
-
-func CompareTokens(a []byte, b []byte) bool {
-	if len(a) != len(b) {
-		fmt.Printf("token length is wrong\n")
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			fmt.Printf("token value is wrong: %d vs. %d\n", a[i], b[i])
-			return false
-		}
-	}
-	return true
 }
 
 func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
@@ -743,6 +696,10 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	udpAddr, err := net.ResolveUDPAddr("udp", relay_address)
+	if err != nil {
+		return
+	}
+
 	relay := routing.Relay{
 		ID:             crypto.HashID(relay_address),
 		Addr:           *udpAddr,
