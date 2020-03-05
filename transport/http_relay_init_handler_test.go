@@ -92,7 +92,7 @@ func relayInitAssertions(t *testing.T, relay routing.Relay, body []byte, expecte
 		}
 	}
 
-	handler := transport.RelayInitHandlerFunc(log.NewNopLogger(), redisClient, geoClient, ipfunc, inMemory, &metrics.NoOpHandler{}, routerPrivateKey)
+	handler := transport.RelayInitHandlerFunc(log.NewNopLogger(), redisClient, geoClient, ipfunc, inMemory, &metrics.EmptyHistogram{}, &metrics.EmptyCounter{}, routerPrivateKey)
 
 	handler(recorder, request)
 
