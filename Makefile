@@ -124,15 +124,23 @@ format: ## runs gofmt on all go source code
 .PHONY: test
 test: test-unit
 
-.PHONY: test-unit
-test-unit: clean lint build-sdk-test build-relay ## runs unit tests
+.PHONY: test-unit-sdk ## runs sdk unit tests
+test-unit-sdk: build-sdk-test
 	@$(DIST_DIR)/$(SDKNAME)_test
+
+.PHONY: test-unit-relay ## runs relay unit tests
+test-unit-relay: build-relay
 	@$(DIST_DIR)/relay test
+
+.PHONY: test-unit-backend
+test-unit-backend: lint ## runs backend unit tests
 	@printf "Running go tests:\n\n"
 	@$(GO) test  ./... -coverprofile ./cover.out
 	@printf "\n\nCoverage results of go tests:\n\n"
 	@$(GO) tool cover -func ./cover.out
-	@printf "\n"
+
+.PHONY: test-unit
+test-unit: clean test-unit-sdk test-unit-relay test-unit-backend ## runs all unit tests
 
 .PHONY: test-soak
 test-soak: clean build-sdk-test build-soak-test ## runs soak test
