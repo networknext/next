@@ -24,10 +24,10 @@ func main() {
 		log.Fatalln(fmt.Errorf("error reading cost matrix from stdin: %w", err))
 	}
 
-	fmt.Println("Analyzing route matrix")
-
 	var routeMatrix routing.RouteMatrix
-	err = costMatrix.Optimize(&routeMatrix, int32(*rtt))
+	if err := costMatrix.Optimize(&routeMatrix, int32(*rtt)); err != nil {
+		log.Fatalln(fmt.Errorf("error optimizing cost matrix: %w", err))
+	}
 
 	if _, err := routeMatrix.WriteTo(os.Stdout); err != nil {
 		log.Fatalln(fmt.Errorf("error writing route matrix to stdout: %w", err))
