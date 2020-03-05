@@ -11,7 +11,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"runtime"
@@ -135,7 +134,7 @@ func main() {
 	var db storage.Storer = &storage.InMemory{
 		LocalBuyer: &routing.Buyer{
 			PublicKey:            customerPublicKey,
-			RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
+			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
 		},
 	}
 

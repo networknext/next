@@ -107,6 +107,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 		timer.Unit(time.Millisecond)
 		defer func() {
 			timer.ObserveDuration()
+			counter.Add(1)
 		}()
 
 		var packet ServerUpdatePacket
@@ -180,8 +181,6 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 		}
 
 		level.Debug(locallogger).Log("msg", "updated server")
-
-		counter.Add(1)
 	}
 }
 
@@ -189,6 +188,7 @@ type SessionCacheEntry struct {
 	SessionID       uint64
 	Sequence        uint64
 	RouteHash       uint64
+	RouteDecision   routing.Decision
 	TimestampStart  time.Time
 	TimestampExpire time.Time
 	Version         uint8
@@ -218,6 +218,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		timer.Unit(time.Millisecond)
 		defer func() {
 			timer.ObserveDuration()
+			counter.Add(1)
 		}()
 
 		timestampNow := time.Now()
@@ -232,9 +233,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		locallogger := log.With(logger, "src_addr", incoming.SourceAddr.String(), "server_addr", packet.ServerAddress.String(), "client_addr", packet.ClientAddress.String(), "session_id", packet.SessionID)
 
 		var serverCacheEntry ServerCacheEntry
-		sessionCacheEntry := SessionCacheEntry{
-			TimestampStart: timestampNow,
-		}
+		var sessionCacheEntry SessionCacheEntry
 
 		// Start building session response packet, defaulting to a direct route
 		response := SessionResponsePacket{
@@ -279,6 +278,12 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 					level.Error(locallogger).Log("msg", "failed to unmarshal session bytes", "err", err)
 					handleError(w, response, serverPrivateKey, err)
 					return
+				}
+			} else {
+				sessionCacheEntry.TimestampStart = timestampNow
+				sessionCacheEntry.RouteDecision = routing.Decision{
+					OnNetworkNext: false,
+					Reason:        routing.DecisionInitialSlice,
 				}
 			}
 		}
@@ -341,6 +346,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 
 		level.Debug(locallogger).Log("num_datacenter_relays", len(dsrelays), "num_client_relays", len(clientrelays))
 
+		level.Debug(locallogger).Log("buyer_rtt_epsilon", buyer.RoutingRulesSettings.RTTEpsilon, "cached_route_hash", sessionCacheEntry.RouteHash)
 		// Get a set of possible routes from the RouteProvider and on error ensure it falls back to direct
 		routes, err := rp.Routes(dsrelays, clientrelays,
 			routing.SelectAcceptableRoutesFromBestRTT(float64(buyer.RoutingRulesSettings.RTTEpsilon)),
@@ -371,19 +377,29 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			PacketLoss: float64(packet.DirectPacketLoss),
 		}
 
-		// If this is the initial slice, always serve a direct route first
-		routeDecision := routing.Decision{
-			Reason: routing.DecisionInitialSlice,
-		}
-		if sessionCacheEntry.TimestampStart.Before(timestampNow) && packet.NumNearRelays > 0 {
-			routeDecision = nextRoute.Decide(routeDecision, nnStats, directStats,
-				routing.DecideUpgradeRTT(float64(buyer.RoutingRulesSettings.RTTThreshold)),
-				routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis)),
-				routing.DecideVeto(float64(buyer.RoutingRulesSettings.RTTVeto), buyer.RoutingRulesSettings.EnablePacketLossSafety, buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
-			)
-		}
+		level.Debug(locallogger).Log(
+			"selected_next_route_stats", nextRoute.Stats.String(),
+			"packet_next_stats", nnStats.String(),
+			"packet_direct_stats", directStats.String(),
+			"buyer_rtt_threshold", buyer.RoutingRulesSettings.RTTThreshold,
+			"buyer_rtt_hysteresis", buyer.RoutingRulesSettings.RTTHysteresis,
+			"buyer_rtt_veto", buyer.RoutingRulesSettings.RTTVeto,
+			"buyer_packet_loss_safety", buyer.RoutingRulesSettings.EnablePacketLossSafety,
+			"buyer_yolo", buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce,
+		)
 
-		locallogger = log.With(locallogger, "on_network_next", routeDecision.OnNetworkNext, "decision_reason", routeDecision.Reason)
+		routeDecision := nextRoute.Decide(sessionCacheEntry.RouteDecision, nnStats, directStats,
+			routing.DecideUpgradeRTT(float64(buyer.RoutingRulesSettings.RTTThreshold)),
+			routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis)),
+			routing.DecideVeto(float64(buyer.RoutingRulesSettings.RTTVeto), buyer.RoutingRulesSettings.EnablePacketLossSafety, buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
+		)
+
+		level.Debug(locallogger).Log(
+			"prev_on_network_next", sessionCacheEntry.RouteDecision.OnNetworkNext,
+			"prev_decision_reason", sessionCacheEntry.RouteDecision.Reason.String(),
+			"on_network_next", routeDecision.OnNetworkNext,
+			"decision_reason", routeDecision.Reason.String(),
+		)
 
 		chosenRoute := routing.Route{
 			Stats: directStats,
@@ -474,24 +490,32 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			return
 		}
 
-		level.Debug(locallogger).Log("msg", "caching session data")
-		if sessionCacheEntry, err = cacheSessionData(redisClient, &sessionCacheEntry, &packet, chosenRoute.Hash64(), time.Now(), responseData); err != nil {
-			level.Error(locallogger).Log("msg", "failed to update session", "err", err)
-			return
+		// Cache the needed information for the next session update
+		{
+			level.Debug(locallogger).Log("msg", "caching session data")
+			updatedSessionCacheEntry := SessionCacheEntry{
+				SessionID:      packet.SessionID,
+				Sequence:       packet.Sequence,
+				RouteHash:      chosenRoute.Hash64(),
+				RouteDecision:  routeDecision,
+				TimestampStart: sessionCacheEntry.TimestampStart,
+				Version:        sessionCacheEntry.Version, //This was already incremented for the route tokens
+				Response:       responseData,
+			}
+			result := redisClient.Set(fmt.Sprintf("SESSION-%d", updatedSessionCacheEntry.SessionID), updatedSessionCacheEntry, 5*time.Minute)
+			if result.Err() != nil {
+				level.Error(locallogger).Log("msg", "failed to update session", "err", err)
+			}
 		}
 
-		routeRequest := NewRouteRequest(packet, buyer, serverCacheEntry, location, storer, clientrelays)
-		billingEntry := newBillingEntry(routeRequest, &chosenRoute, int(response.RouteType), &buyer.RoutingRulesSettings, routeDecision.Reason, &packet, sessionCacheEntry.TimestampStart, timestampNow)
-		if err := biller.Bill(context.Background(), packet.SessionID, billingEntry); err != nil {
-			level.Error(locallogger).Log("msg", "billing failed", "err", err)
+		// Submit a new billing entry
+		{
+			routeRequest := NewRouteRequest(packet, buyer, serverCacheEntry, location, storer, clientrelays)
+			billingEntry := newBillingEntry(routeRequest, &chosenRoute, int(response.RouteType), &buyer.RoutingRulesSettings, routeDecision.Reason, &packet, sessionCacheEntry.TimestampStart, timestampNow)
+			if err := biller.Bill(context.Background(), packet.SessionID, billingEntry); err != nil {
+				level.Error(locallogger).Log("msg", "billing failed", "err", err)
+			}
 		}
-
-		// Send the Session Response back to the server
-		if _, err := w.Write(responseData); err != nil {
-			level.Error(locallogger).Log("msg", "failed to write session response", "err", err)
-		}
-
-		counter.Add(1)
 	}
 }
 
@@ -521,25 +545,6 @@ func handleError(w io.Writer, packet SessionResponsePacket, privateKey []byte, e
 	writeSessionResponse(w, packet, privateKey)
 
 	// Eventually we'll also pipe the error passed through to here up to stackdriver and do any cleanup required
-}
-
-func cacheSessionData(redisClient redis.Cmdable, prevCacheEntry *SessionCacheEntry, packet *SessionUpdatePacket, routeHash uint64, timestampExpire time.Time, responseData []byte) (SessionCacheEntry, error) {
-	// Save some of the packet information to be used in SessionUpdateHandlerFunc
-	sessionCacheEntry := SessionCacheEntry{
-		SessionID:       packet.SessionID,
-		Sequence:        packet.Sequence,
-		RouteHash:       routeHash,
-		TimestampStart:  prevCacheEntry.TimestampStart,
-		TimestampExpire: timestampExpire,
-		Version:         prevCacheEntry.Version, //This was already incremented for the route tokens
-		Response:        responseData,
-	}
-	result := redisClient.Set(fmt.Sprintf("SESSION-%d", packet.SessionID), sessionCacheEntry, 5*time.Minute)
-	if result.Err() != nil {
-		return SessionCacheEntry{}, result.Err()
-	}
-
-	return sessionCacheEntry, nil
 }
 
 func newBillingEntry(

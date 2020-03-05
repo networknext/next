@@ -2,6 +2,7 @@ package routing
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"net"
 	"strconv"
@@ -108,6 +109,10 @@ type Stats struct {
 	RTT        float64
 	Jitter     float64
 	PacketLoss float64
+}
+
+func (s Stats) String() string {
+	return fmt.Sprintf("RTT(%f) J(%f) PL(%f)", s.RTT, s.Jitter, s.PacketLoss)
 }
 
 // RelayUpdate ...

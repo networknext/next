@@ -1,5 +1,7 @@
 package routing
 
+import "fmt"
+
 type Decision struct {
 	OnNetworkNext bool
 	Reason        DecisionReason
@@ -14,6 +16,55 @@ type DecisionFunc func(prevDecision Decision, predictedNextStats Stats, lastNext
 
 // DecisionReason is the reason why a Decision was made.
 type DecisionReason uint64
+
+func (dr DecisionReason) String() string {
+	var reason string
+
+	switch dr {
+	case DecisionNoChange:
+		reason = "No Change"
+	case DecisionForceDirect:
+		reason = "Force Direct"
+	case DecisionForceNext:
+		reason = "Force Next"
+	case DecisionNoNextRoute:
+		reason = "No Next Route"
+	case DecisionABTestDirect:
+		reason = "AB Test Direct"
+	case DecisionRTTReduction:
+		reason = "RTT Reduction"
+	case DecisionPacketLossMultipath:
+		reason = "Packet Loss Multipath"
+	case DecisionJitterMultipath:
+		reason = "Jitter Multipath"
+	case DecisionVetoRTT:
+		reason = "Veto RTT"
+	case DecisionRTTMultipath:
+		reason = "RTT Multipath"
+	case DecisionVetoPacketLoss:
+		reason = "Veto Packet Loss"
+	case DecisionFallbackToDirect:
+		reason = "Fallback to Direct"
+	case DecisionUnused:
+		reason = "Unused"
+	case DecisionVetoYOLO:
+		reason = "Veto YOLO"
+	case DecisionVetoNoRoute:
+		reason = "Veto No Route"
+	case DecisionDatacenterHasNoRelays:
+		reason = "Datacenter Has No Relays"
+	case DecisionInitialSlice:
+		reason = "Initial Slice"
+	case DecisionNoNearRelays:
+		reason = "No Near Relays"
+	case DecisionVetoRTT | DecisionVetoYOLO:
+		reason = "Veto RTT YOLO"
+	case DecisionVetoPacketLoss | DecisionVetoYOLO:
+		reason = "Veto Packet Loss YOLO"
+	}
+
+	return fmt.Sprintf("%s (%d)", reason, dr)
+}
 
 // Route decision flags are required for billing, so this has to work the same for the billing entry to be correct
 const (
