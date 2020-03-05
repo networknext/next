@@ -8,14 +8,13 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 
-	"github.com/networknext/backend/core"
+	"github.com/networknext/backend/routing"
 )
 
-func FindRelayByName(routeMatrix *core.RouteMatrix, relayName string) int {
+func FindRelayByName(routeMatrix *routing.RouteMatrix, relayName string) int {
 	for i := range routeMatrix.RelayNames {
 		if routeMatrix.RelayNames[i] == relayName {
 			return i
@@ -24,7 +23,7 @@ func FindRelayByName(routeMatrix *core.RouteMatrix, relayName string) int {
 	return -1
 }
 
-func FindRelayByID(routeMatrix *core.RouteMatrix, relayID core.RelayID) int {
+func FindRelayByID(routeMatrix *routing.RouteMatrix, relayID uint64) int {
 	for i := range routeMatrix.RelayIDs {
 		if routeMatrix.RelayIDs[i] == relayID {
 			return i
@@ -33,7 +32,7 @@ func FindRelayByID(routeMatrix *core.RouteMatrix, relayID core.RelayID) int {
 	return -1
 }
 
-func GetDatacenterIndex(routeMatrix *core.RouteMatrix, datacenterName string) int {
+func GetDatacenterIndex(routeMatrix *routing.RouteMatrix, datacenterName string) int {
 	for i := range routeMatrix.DatacenterNames {
 		if routeMatrix.DatacenterNames[i] == datacenterName {
 			return i
@@ -63,26 +62,22 @@ func main() {
 	datacenter := flag.String("datacenter", "", "name of the relay")
 	flag.Parse()
 
-	data, err := ioutil.ReadAll(os.Stdin)
+	var routeMatrix routing.RouteMatrix
+	_, err := routeMatrix.ReadFrom(os.Stdin)
 	if err != nil {
-		log.Fatal("error reading from stdin")
-	}
-
-	routeMatrix, err := core.ReadRouteMatrix(data)
-	if err != nil {
-		log.Fatalln("error reading route matrix")
+		log.Fatalln(fmt.Errorf("error reading route matrix from stdin: %w", err))
 	}
 
 	relayName := *relay
 	datacenterName := *datacenter
 
-	relayIndex := FindRelayByName(routeMatrix, relayName)
+	relayIndex := FindRelayByName(&routeMatrix, relayName)
 
 	if relayIndex == -1 {
 		log.Fatalf("error: can't find relay called '%s'\n", relayName)
 	}
 
-	datacenterIndex := GetDatacenterIndex(routeMatrix, datacenterName)
+	datacenterIndex := GetDatacenterIndex(&routeMatrix, datacenterName)
 
 	if datacenterIndex == -1 {
 		log.Fatalf("\nerror: can't find datacenter called '%s'\n\n", datacenterName)
@@ -98,7 +93,7 @@ func main() {
 
 		destRelayID := datacenterRelays[i]
 
-		destRelayIndex := FindRelayByID(routeMatrix, core.RelayID(destRelayID))
+		destRelayIndex := FindRelayByID(&routeMatrix, destRelayID)
 
 		if destRelayIndex == -1 {
 			log.Fatalln("WTF!")
