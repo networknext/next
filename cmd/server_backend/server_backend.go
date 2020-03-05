@@ -141,8 +141,8 @@ func main() {
 	// Create a no-op biller
 	var biller billing.Biller = &billing.NoOpBiller{}
 
-	// Create a no-op metrics handler
-	var metricsHandler metrics.Handler = &metrics.NoOpHandler{}
+	// Create a local metrics handler
+	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
 
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
@@ -207,6 +207,54 @@ func main() {
 		}()
 	}
 
+	updateDuration, err := metricsHandler.NewHistogram(ctx, &metrics.Descriptor{
+		DisplayName: "Server update duration",
+		ServiceName: "server_backend",
+		ID:          "server.update.duration",
+		Unit:        "milliseconds",
+		Description: "How long it takes to process a server update request.",
+	}, 50)
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create metric histogram", "metric", "server.update.duration", "err", err)
+		updateDuration = &metrics.EmptyHistogram{}
+	}
+
+	sessionDuration, err := metricsHandler.NewHistogram(ctx, &metrics.Descriptor{
+		DisplayName: "Session update duration",
+		ServiceName: "server_backend",
+		ID:          "session.duration",
+		Unit:        "milliseconds",
+		Description: "How long it takes to process a session update request",
+	}, 50)
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create metric histogram", "metric", "session.duration", "err", err)
+		sessionDuration = &metrics.EmptyHistogram{}
+	}
+
+	updateCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
+		DisplayName: "Total server count",
+		ServiceName: "server_backend",
+		ID:          "server.count",
+		Unit:        "servers",
+		Description: "The total number of concurrent servers",
+	})
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "server.count", "err", err)
+		updateCount = &metrics.EmptyCounter{}
+	}
+
+	sessionCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
+		DisplayName: "Total session count",
+		ServiceName: "server_backend",
+		ID:          "session.count",
+		Unit:        "sessions",
+		Description: "The total number of concurrent sessions",
+	})
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "session.count", "err", err)
+		sessionCount = &metrics.EmptyCounter{}
+	}
+
 	var routeMatrix routing.RouteMatrix
 	{
 		if uri, ok := os.LookupEnv("ROUTE_MATRIX_URI"); ok {
@@ -237,54 +285,6 @@ func main() {
 				}
 			}()
 		}
-	}
-
-	updateDuration, err := metricsHandler.NewHistogram(ctx, &metrics.Descriptor{
-		DisplayName: "Server update duration",
-		ServiceName: "server_backend",
-		ID:          "update.duration",
-		Unit:        "milliseconds",
-		Description: "How long it takes to process a server update request.",
-	}, 50)
-	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "update.duration", "err", err)
-		updateDuration = &metrics.EmptyHistogram{}
-	}
-
-	sessionDuration, err := metricsHandler.NewHistogram(ctx, &metrics.Descriptor{
-		DisplayName: "Session update duration",
-		ServiceName: "server_backend",
-		ID:          "session.duration",
-		Unit:        "milliseconds",
-		Description: "How long it takes to process a session update request",
-	}, 50)
-	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "session.duration", "err", err)
-		sessionDuration = &metrics.EmptyHistogram{}
-	}
-
-	updateCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
-		DisplayName: "Total server count",
-		ServiceName: "server_backend",
-		ID:          "server.count",
-		Unit:        "servers",
-		Description: "The total number of concurrent servers",
-	})
-	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "server.count", "err", err)
-		updateCount = &metrics.EmptyCounter{}
-	}
-
-	sessionCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
-		DisplayName: "Total session count",
-		ServiceName: "server_backend",
-		ID:          "session.count",
-		Unit:        "sessions",
-		Description: "The total number of concurrent sessions",
-	})
-	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "session.count", "err", err)
-		sessionCount = &metrics.EmptyCounter{}
 	}
 
 	{
