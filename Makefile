@@ -110,7 +110,7 @@ clean: ## cleans the dist directory of all builds
 
 .PHONY: lint
 lint: ## runs go vet
-	@printf "Skipping vet/staticcheck for now...\n"
+	@printf "Skipping vet/staticcheck for now...\n\n"
 
 .PHONY: format
 format: ## runs gofmt on all go source code
@@ -138,6 +138,7 @@ test-unit-backend: lint ## runs backend unit tests
 	@$(GO) test  ./... -coverprofile ./cover.out
 	@printf "\n\nCoverage results of go tests:\n\n"
 	@$(GO) tool cover -func ./cover.out
+	@printf "\n"
 
 .PHONY: test-unit
 test-unit: clean test-unit-sdk test-unit-relay test-unit-backend ## runs all unit tests
@@ -262,7 +263,7 @@ dev-multi-clients: build-client ## runs 20 local clients
 
 .PHONY: build-relay
 build-relay: ## builds the relay
-	@printf "Building relay... "
+	@printf "\nBuilding relay... "
 	@$(CXX) $(CXX_FLAGS) -o $(DIST_DIR)/$(RELAY_EXE) cmd/relay/*.cpp $(LDFLAGS)
 	@printf "done\n"
 
