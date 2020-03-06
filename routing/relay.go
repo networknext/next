@@ -34,6 +34,7 @@ type Relay struct {
 	Addr      net.UDPAddr
 	PublicKey []byte
 
+	Seller     Seller
 	Datacenter Datacenter
 
 	Latitude  float64
