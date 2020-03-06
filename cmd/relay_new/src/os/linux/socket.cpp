@@ -4,7 +4,7 @@
 #if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
 
 #include "relay/relay_platform_linux.hpp"
-#include "util.hpp"
+#include "util/logger.hpp"
 
 namespace os
 {

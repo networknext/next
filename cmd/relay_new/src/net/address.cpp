@@ -1,8 +1,6 @@
 #include "includes.h"
 #include "address.hpp"
 
-#include "util.hpp"
-
 #include "util/logger.hpp"
 
 #include "net.hpp"

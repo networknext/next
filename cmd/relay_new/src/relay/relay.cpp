@@ -5,11 +5,11 @@
 #include "encoding/read.hpp"
 #include "encoding/write.hpp"
 
-#include "util.hpp"
-
 #include "net/curl.hpp"
 
 #include "core/relay_stats.hpp"
+
+#include "util/logger.hpp"
 
 int relay_debug = 0;
 namespace relay

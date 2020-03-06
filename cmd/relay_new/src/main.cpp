@@ -5,8 +5,6 @@
 
 #include "includes.h"
 
-#include "util.hpp"
-
 #include "crypto/keychain.hpp"
 
 #include "encoding/base64.hpp"
