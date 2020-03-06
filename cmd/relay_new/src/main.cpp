@@ -243,7 +243,7 @@ int main()
   auto pingSocket = std::make_shared<os::Socket>(os::SocketType::Blocking);
   net::Address pingSockAddr;
   pingSockAddr.parse("127.0.0.1:0");
-  if (!pingSocket->create(pingSockAddr, 100 * 1024, 100 * 1024, 0.0f, true, 0)) {
+  if (!pingSocket->create(pingSockAddr, 4000000, 4000000, 0.0f, true, 0)) {
     Log("could not create pingSocket");
     relay::relay_term();
     return 1;
@@ -256,7 +256,7 @@ int main()
   core::SessionMap sessions;
   for (unsigned int i = 0; i < numProcessors; i++) {
     auto packetSocket = std::make_shared<os::Socket>(os::SocketType::Blocking);
-    if (!packetSocket->create(relayAddress, 100 * 1024, 100 * 1024, 0.0f, true, 0)) {
+    if (!packetSocket->create(relayAddress, 4000000, 4000000, 0.0f, true, 0)) {
       Log("could not create socket");
       relay::relay_term();
       return 1;
