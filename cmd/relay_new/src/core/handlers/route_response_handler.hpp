@@ -43,7 +43,6 @@ namespace core
         return;
       }
 
-      LogDebug(__FILE__, __LINE__);
       uint8_t type;
       uint64_t sequence;
       uint64_t session_id;
@@ -59,7 +58,6 @@ namespace core
         return;
       }
 
-      LogDebug(__FILE__, __LINE__);
       uint64_t hash = session_id ^ session_version;
 
       if (!mSessionMap.exists(hash)) {
@@ -67,9 +65,7 @@ namespace core
         return;
       }
 
-      LogDebug(__FILE__, __LINE__);
       auto session = mSessionMap[hash];
-      LogDebug(__FILE__, __LINE__);
 
       if (!session) {
         LogDebug("session is nullptr! crashing!");
@@ -79,7 +75,6 @@ namespace core
         return;
       }
 
-      LogDebug(__FILE__, __LINE__);
       uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
       if (clean_sequence <= session->ServerToClientSeq) {
         return;
@@ -91,7 +86,6 @@ namespace core
         return;
       }
 
-      LogDebug(__FILE__, __LINE__);
       LogDebug("sending response to ", session->PrevAddr);
       (sender.*funcptr)(session->PrevAddr, mPacket.Buffer.data(), mPacketSize);
     }
