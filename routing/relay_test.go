@@ -22,7 +22,7 @@ func TestRelay(t *testing.T) {
 
 	t.Run("UnmarshalBinary()", func(t *testing.T) {
 		const (
-			sellername = "seller name"
+			sellerName = "seller name"
 			relayname  = "relay name"
 			addr       = "127.0.0.1:40000"
 			dcname     = "datacenter name"
@@ -49,13 +49,49 @@ func TestRelay(t *testing.T) {
 			assert.EqualError(t, subject.UnmarshalBinary(buff), "failed to unmarshal relay address")
 		})
 
-		t.Run("missing datacenter ID", func(t *testing.T) {
+		t.Run("missing seller name", func(t *testing.T) {
 			size += 4 + len(addr)
 			buff := make([]byte, size)
 			binary.LittleEndian.PutUint32(buff[8:], uint32(len(relayname)))
 			binary.LittleEndian.PutUint32(buff[12+len(relayname):], uint32(len(addr)))
 			copy(buff[12:], relayname)
 			copy(buff[16+len(relayname):], addr)
+			assert.EqualError(t, subject.UnmarshalBinary(buff), "failed to unmarshal relay seller name")
+		})
+
+		t.Run("missing seller ingress price", func(t *testing.T) {
+			size += 4 + len(sellerName)
+			buff := make([]byte, size)
+			binary.LittleEndian.PutUint32(buff[8:], uint32(len(relayname)))
+			binary.LittleEndian.PutUint32(buff[12+len(relayname):], uint32(len(addr)))
+			binary.LittleEndian.PutUint32(buff[16+len(relayname)+len(addr):], uint32(len(sellerName)))
+			copy(buff[12:], relayname)
+			copy(buff[16+len(relayname):], addr)
+			copy(buff[24+len(relayname)+len(addr):], sellerName)
+			assert.EqualError(t, subject.UnmarshalBinary(buff), "failed to unmarshal relay seller ingress price")
+		})
+
+		t.Run("missing seller egress price", func(t *testing.T) {
+			size += 8
+			buff := make([]byte, size)
+			binary.LittleEndian.PutUint32(buff[8:], uint32(len(relayname)))
+			binary.LittleEndian.PutUint32(buff[12+len(relayname):], uint32(len(addr)))
+			binary.LittleEndian.PutUint32(buff[16+len(relayname)+len(addr):], uint32(len(sellerName)))
+			copy(buff[12:], relayname)
+			copy(buff[16+len(relayname):], addr)
+			copy(buff[24+len(relayname)+len(addr):], sellerName)
+			assert.EqualError(t, subject.UnmarshalBinary(buff), "failed to unmarshal relay seller egress price")
+		})
+
+		t.Run("missing datacenter ID", func(t *testing.T) {
+			size += 8
+			buff := make([]byte, size)
+			binary.LittleEndian.PutUint32(buff[8:], uint32(len(relayname)))
+			binary.LittleEndian.PutUint32(buff[12+len(relayname):], uint32(len(addr)))
+			binary.LittleEndian.PutUint32(buff[16+len(relayname)+len(addr):], uint32(len(sellerName)))
+			copy(buff[12:], relayname)
+			copy(buff[16+len(relayname):], addr)
+			copy(buff[24+len(relayname)+len(addr):], sellerName)
 			assert.EqualError(t, subject.UnmarshalBinary(buff), "failed to unmarshal relay datacenter id")
 		})
 
@@ -64,20 +100,26 @@ func TestRelay(t *testing.T) {
 			buff := make([]byte, size)
 			binary.LittleEndian.PutUint32(buff[8:], uint32(len(relayname)))
 			binary.LittleEndian.PutUint32(buff[12+len(relayname):], uint32(len(addr)))
+			binary.LittleEndian.PutUint32(buff[16+len(relayname)+len(addr):], uint32(len(sellerName)))
 			copy(buff[12:], relayname)
 			copy(buff[16+len(relayname):], addr)
+			copy(buff[24+len(relayname)+len(addr):], sellerName)
 			assert.EqualError(t, subject.UnmarshalBinary(buff), "failed to unmarshal relay datacenter name")
 		})
 
 		t.Run("missing public key", func(t *testing.T) {
 			size += 4 + len(dcname)
+
 			buff := make([]byte, size)
 			binary.LittleEndian.PutUint32(buff[8:], uint32(len(relayname)))
 			binary.LittleEndian.PutUint32(buff[12+len(relayname):], uint32(len(addr)))
-			binary.LittleEndian.PutUint32(buff[24+len(relayname)+len(addr):], uint32(len(dcname)))
+			binary.LittleEndian.PutUint32(buff[16+len(relayname)+len(addr):], uint32(len(sellerName)))
+			binary.LittleEndian.PutUint32(buff[44+len(relayname)+len(addr)+len(sellerName):], uint32(len(dcname)))
+
 			copy(buff[12:], relayname)
 			copy(buff[16+len(relayname):], addr)
-			copy(buff[28+len(relayname)+len(addr):], dcname)
+			copy(buff[24+len(relayname)+len(addr):], sellerName)
+			copy(buff[48+len(relayname)+len(addr)+len(sellerName):], dcname)
 			assert.EqualError(t, subject.UnmarshalBinary(buff), "failed to unmarshal relay public key")
 		})
 
@@ -86,10 +128,13 @@ func TestRelay(t *testing.T) {
 			buff := make([]byte, size)
 			binary.LittleEndian.PutUint32(buff[8:], uint32(len(relayname)))
 			binary.LittleEndian.PutUint32(buff[12+len(relayname):], uint32(len(addr)))
-			binary.LittleEndian.PutUint32(buff[24+len(relayname)+len(addr):], uint32(len(dcname)))
+			binary.LittleEndian.PutUint32(buff[16+len(relayname)+len(addr):], uint32(len(sellerName)))
+			binary.LittleEndian.PutUint32(buff[44+len(relayname)+len(addr)+len(sellerName):], uint32(len(dcname)))
+
 			copy(buff[12:], relayname)
 			copy(buff[16+len(relayname):], addr)
-			copy(buff[28+len(relayname)+len(addr):], dcname)
+			copy(buff[24+len(relayname)+len(addr):], sellerName)
+			copy(buff[48+len(relayname)+len(addr)+len(sellerName):], dcname)
 			assert.EqualError(t, subject.UnmarshalBinary(buff), "failed to unmarshal relay latitude")
 		})
 
@@ -98,10 +143,13 @@ func TestRelay(t *testing.T) {
 			buff := make([]byte, size)
 			binary.LittleEndian.PutUint32(buff[8:], uint32(len(relayname)))
 			binary.LittleEndian.PutUint32(buff[12+len(relayname):], uint32(len(addr)))
-			binary.LittleEndian.PutUint32(buff[24+len(relayname)+len(addr):], uint32(len(dcname)))
+			binary.LittleEndian.PutUint32(buff[16+len(relayname)+len(addr):], uint32(len(sellerName)))
+			binary.LittleEndian.PutUint32(buff[44+len(relayname)+len(addr)+len(sellerName):], uint32(len(dcname)))
+
 			copy(buff[12:], relayname)
 			copy(buff[16+len(relayname):], addr)
-			copy(buff[28+len(relayname)+len(addr):], dcname)
+			copy(buff[24+len(relayname)+len(addr):], sellerName)
+			copy(buff[48+len(relayname)+len(addr)+len(sellerName):], dcname)
 			assert.EqualError(t, subject.UnmarshalBinary(buff), "failed to unmarshal relay longitude")
 		})
 
@@ -110,10 +158,13 @@ func TestRelay(t *testing.T) {
 			buff := make([]byte, size)
 			binary.LittleEndian.PutUint32(buff[8:], uint32(len(relayname)))
 			binary.LittleEndian.PutUint32(buff[12+len(relayname):], uint32(len(addr)))
-			binary.LittleEndian.PutUint32(buff[24+len(relayname)+len(addr):], uint32(len(dcname)))
+			binary.LittleEndian.PutUint32(buff[16+len(relayname)+len(addr):], uint32(len(sellerName)))
+			binary.LittleEndian.PutUint32(buff[44+len(relayname)+len(addr)+len(sellerName):], uint32(len(dcname)))
+
 			copy(buff[12:], relayname)
 			copy(buff[16+len(relayname):], addr)
-			copy(buff[28+len(relayname)+len(addr):], dcname)
+			copy(buff[24+len(relayname)+len(addr):], sellerName)
+			copy(buff[48+len(relayname)+len(addr)+len(sellerName):], dcname)
 			assert.EqualError(t, subject.UnmarshalBinary(buff), "failed to unmarshal relay last update time")
 		})
 
@@ -123,10 +174,13 @@ func TestRelay(t *testing.T) {
 			buff := make([]byte, size)
 			binary.LittleEndian.PutUint32(buff[8:], uint32(len(relayname)))
 			binary.LittleEndian.PutUint32(buff[12+len(relayname):], uint32(len(addr)))
-			binary.LittleEndian.PutUint32(buff[24+len(relayname)+len(addr):], uint32(len(dcname)))
+			binary.LittleEndian.PutUint32(buff[16+len(relayname)+len(addr):], uint32(len(sellerName)))
+			binary.LittleEndian.PutUint32(buff[44+len(relayname)+len(addr)+len(sellerName):], uint32(len(dcname)))
+
 			copy(buff[12:], relayname)
 			copy(buff[16+len(relayname):], addr)
-			copy(buff[28+len(relayname)+len(addr):], dcname)
+			copy(buff[24+len(relayname)+len(addr):], sellerName)
+			copy(buff[48+len(relayname)+len(addr)+len(sellerName):], dcname)
 			assert.EqualError(t, subject.UnmarshalBinary(buff), "invalid relay address")
 		})
 
@@ -134,10 +188,13 @@ func TestRelay(t *testing.T) {
 			buff := make([]byte, size)
 			binary.LittleEndian.PutUint32(buff[8:], uint32(len(relayname)))
 			binary.LittleEndian.PutUint32(buff[12+len(relayname):], uint32(len(addr)))
-			binary.LittleEndian.PutUint32(buff[24+len(relayname)+len(addr):], uint32(len(dcname)))
+			binary.LittleEndian.PutUint32(buff[16+len(relayname)+len(addr):], uint32(len(sellerName)))
+			binary.LittleEndian.PutUint32(buff[44+len(relayname)+len(addr)+len(sellerName):], uint32(len(dcname)))
+
 			copy(buff[12:], relayname)
 			copy(buff[16+len(relayname):], addr)
-			copy(buff[28+len(relayname)+len(addr):], dcname)
+			copy(buff[24+len(relayname)+len(addr):], sellerName)
+			copy(buff[48+len(relayname)+len(addr)+len(sellerName):], dcname)
 			assert.NoError(t, subject.UnmarshalBinary(buff))
 		})
 	})

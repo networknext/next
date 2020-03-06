@@ -73,6 +73,18 @@ func (r *Relay) UnmarshalBinary(data []byte) error {
 		return errors.New("failed to unmarshal relay address")
 	}
 
+	if !encoding.ReadString(data, &index, &r.Seller.Name, math.MaxInt32) {
+		return errors.New("failed to unmarshal relay seller name")
+	}
+
+	if !encoding.ReadUint64(data, &index, &r.Seller.IngressPriceCents) {
+		return errors.New("failed to unmarshal relay seller ingress price")
+	}
+
+	if !encoding.ReadUint64(data, &index, &r.Seller.EgressPriceCents) {
+		return errors.New("failed to unmarshal relay seller egress price")
+	}
+
 	if !encoding.ReadUint64(data, &index, &r.Datacenter.ID) {
 		return errors.New("failed to unmarshal relay datacenter id")
 	}
