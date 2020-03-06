@@ -121,7 +121,7 @@ func (r *Relay) UnmarshalBinary(data []byte) error {
 // TODO add other fields to this
 func (r Relay) MarshalBinary() (data []byte, err error) {
 	strAddr := r.Addr.String()
-	length := 8 + 4 + len(r.Name) + 4 + len(strAddr) + 8 + 4 + len(r.Datacenter.Name) + len(r.PublicKey) + 8 + 8 + 8
+	length := 8 + 4 + len(r.Name) + 4 + len(strAddr) + 4 + len(r.Seller.Name) + 8 + 8 + 8 + 4 + len(r.Datacenter.Name) + len(r.PublicKey) + 8 + 8 + 8
 
 	data = make([]byte, length)
 
@@ -129,6 +129,9 @@ func (r Relay) MarshalBinary() (data []byte, err error) {
 	encoding.WriteUint64(data, &index, r.ID)
 	encoding.WriteString(data, &index, r.Name, uint32(len(r.Name)))
 	encoding.WriteString(data, &index, strAddr, uint32(len(strAddr)))
+	encoding.WriteString(data, &index, r.Seller.Name, uint32(len(r.Seller.Name)))
+	encoding.WriteUint64(data, &index, r.Seller.IngressPriceCents)
+	encoding.WriteUint64(data, &index, r.Seller.EgressPriceCents)
 	encoding.WriteUint64(data, &index, r.Datacenter.ID)
 	encoding.WriteString(data, &index, r.Datacenter.Name, uint32(len(r.Datacenter.Name)))
 	encoding.WriteBytes(data, &index, r.PublicKey, crypto.KeySize)

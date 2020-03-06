@@ -209,6 +209,11 @@ func TestRelay(t *testing.T) {
 			Name:      "relay name",
 			Addr:      *udp,
 			PublicKey: pk,
+			Seller: routing.Seller{
+				Name:              "seller name",
+				IngressPriceCents: 456,
+				EgressPriceCents:  789,
+			},
 			Datacenter: routing.Datacenter{
 				ID:   321,
 				Name: "datacenter name",
