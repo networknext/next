@@ -62,8 +62,8 @@ func relay() (*exec.Cmd, *bytes.Buffer) {
 	cmd.Env = append(cmd.Env, "RELAY_ADDRESS=127.0.0.1")
 	cmd.Env = append(cmd.Env, "RELAY_BACKEND_HOSTNAME=http://127.0.0.1:30000")
 	cmd.Env = append(cmd.Env, "RELAY_ROUTER_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=")
-	cmd.Env = append(cmd.Env, "INTERNAL_RELAY_ADDRESS=127.0.0.1")
-	cmd.Env = append(cmd.Env, "EXTERNAL_RELAY_ADDRESS=127.0.0.1")
+	cmd.Env = append(cmd.Env, "RELAY_BIND_ADDRESS=127.0.0.1")
+	cmd.Env = append(cmd.Env, "RELAY_PUBLIC_ADDRESS=127.0.0.1")
 
 	var output bytes.Buffer
 	cmd.Stdout = &output

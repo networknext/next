@@ -168,9 +168,9 @@ int main()
   // sent to the relay backend and is the addr everything communicates with
   net::Address externalAddr;
   {
-    auto env = std::getenv("EXTERNAL_RELAY_ADDRESS");
+    auto env = std::getenv("RELAY_PUBLIC_ADDRESS");
     if (env == nullptr) {
-      Log("error: EXTERNAL_RELAY_ADDRESS not set\n");
+      Log("error: RELAY_PUBLIC_ADDRESS not set\n");
       return 1;
     }
 
@@ -186,9 +186,9 @@ int main()
   // used to bind and allow the external address to work
   net::Address internalAddr;
   {
-    auto env = std::getenv("INTERNAL_RELAY_ADDRESS");
+    auto env = std::getenv("RELAY_BIND_ADDRESS");
     if (env == nullptr) {
-      Log("error: INTERNAL_RELAY_ADDRESS not set, set it to your internal ip\n");
+      Log("error: RELAY_BIND_ADDRESS not set, set it to your internal ip\n");
       return 1;
     }
 
@@ -201,7 +201,7 @@ int main()
   }
 
   if (externalAddr.Port != internalAddr.Port) {
-    Log("warning: external and internal ip ports not equal, make sure you have port forwarding setup");
+    Log("warning: bind & public ports are not the same, this may cause issues on some providers (ex. google cloud)");
   }
 
   crypto::Keychain keychain;
