@@ -9,6 +9,30 @@ import (
 	"github.com/networknext/backend/storage"
 )
 
+func NewBillingRoute(route *routing.Route, bytesUp uint64, bytesDown uint64) []*billing.RouteHop {
+	// To calculate price per hop, need the route, and to fetch seller + relay for each hop in that route
+	var hops []*billing.RouteHop
+
+	for _, relay := range route.Relays {
+		// Get seller from relay
+		seller := relay.Seller
+
+		upIngress := seller.IngressPriceCents * bytesUp
+		upEgress := seller.EgressPriceCents * bytesUp
+		downIngress := seller.IngressPriceCents * bytesDown
+		downEgress := seller.EgressPriceCents * bytesDown
+
+		hops = append(hops, &billing.RouteHop{
+			PriceIngress: int64(upIngress + downIngress),
+			PriceEgress:  int64(upEgress + downEgress),
+			//SellerID:     NewEntityID("Seller", seller.ID),
+			RelayID: NewEntityID("Relay", relay.ID),
+		})
+	}
+
+	return hops
+}
+
 // Convert new representation of data into old for billing entry
 func NewRouteRequest(updatePacket SessionUpdatePacket, buyer *routing.Buyer, serverData ServerCacheEntry, location routing.Location, storer storage.Storer, clientRelays []routing.Relay) *billing.RouteRequest {
 	return &billing.RouteRequest{
