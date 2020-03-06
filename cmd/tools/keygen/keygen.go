@@ -41,7 +41,7 @@ func main() {
 	fmt.Printf("    byte data: %v\n\n", encryptionPublicKey[:])
 
 	fmt.Printf("This is your private key for token encryption:\n\n")
-	fmt.Printf("    bas64: %s\n", base64.StdEncoding.EncodeToString(encryptionPrivateKey[:]))
+	fmt.Printf("    base64: %s\n", base64.StdEncoding.EncodeToString(encryptionPrivateKey[:]))
 	fmt.Printf("    byte data: %v\n\n", encryptionPrivateKey[:])
 
 	fmt.Printf("IMPORTANT: Save your private keys in a secure place and don't share them with anybody, not even us!\n\n")
