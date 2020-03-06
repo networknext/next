@@ -6,38 +6,31 @@
 package main
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"log"
 	"os"
 
-	"github.com/networknext/backend/core"
+	"github.com/networknext/backend/routing"
 )
 
 func main() {
 	rtt := flag.Int64("threshold-rtt", 1.0, "set the threshold RTT")
 	flag.Parse()
 
-	costraw, err := ioutil.ReadAll(os.Stdin)
+	var costMatrix routing.CostMatrix
+	_, err := costMatrix.ReadFrom(os.Stdin)
 	if err != nil {
-		log.Fatalln(fmt.Errorf("error reading from stdin: %w", err))
+		log.Fatalln(fmt.Errorf("error reading cost matrix from stdin: %w", err))
 	}
 
-	costmatrix, err := core.ReadCostMatrix(costraw)
-	if err != nil {
-		log.Fatalln(fmt.Errorf("error reading cost matrix: %w", err))
+	var routeMatrix routing.RouteMatrix
+	if err := costMatrix.Optimize(&routeMatrix, int32(*rtt)); err != nil {
+		log.Fatalln(fmt.Errorf("error optimizing cost matrix: %w", err))
 	}
 
-	routeMatrix := core.Optimize(costmatrix, int32(*rtt))
-
-	buffer := make([]byte, 20*1024*1024)
-	buffer = core.WriteRouteMatrix(buffer, routeMatrix)
-
-	buf := bytes.NewBuffer(buffer)
-	if _, err := io.Copy(os.Stdout, buf); err != nil {
-		log.Fatalln(fmt.Errorf("error writing optimize matrix to stdout: %w", err))
+	if _, err := routeMatrix.WriteTo(os.Stdout); err != nil {
+		log.Fatalln(fmt.Errorf("error writing route matrix to stdout: %w", err))
 	}
+
 }
