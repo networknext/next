@@ -60,21 +60,47 @@ func (r *Relay) UnmarshalBinary(data []byte) error {
 	index := 0
 
 	var addr string
-	if !(encoding.ReadUint64(data, &index, &r.ID) &&
-		encoding.ReadString(data, &index, &r.Name, math.MaxInt32) && // TODO define an actual limit on this
-		encoding.ReadString(data, &index, &addr, MaxRelayAddressLength) &&
-		encoding.ReadUint64(data, &index, &r.Datacenter.ID) &&
-		encoding.ReadString(data, &index, &r.Datacenter.Name, math.MaxInt32) &&
-		encoding.ReadBytes(data, &index, &r.PublicKey, crypto.KeySize) &&
-		encoding.ReadFloat64(data, &index, &r.Latitude) &&
-		encoding.ReadFloat64(data, &index, &r.Longitude) &&
-		encoding.ReadUint64(data, &index, &r.LastUpdateTime)) {
-		return errors.New("Invalid Relay")
+	if !encoding.ReadUint64(data, &index, &r.ID) {
+		return errors.New("failed to unmarshal relay ID")
 	}
+
+	// TODO define an actual limit on this
+	if !encoding.ReadString(data, &index, &r.Name, math.MaxInt32) {
+		return errors.New("failed to unmarshal relay name")
+	}
+
+	if !encoding.ReadString(data, &index, &addr, MaxRelayAddressLength) {
+		return errors.New("failed to unmarshal relay address")
+	}
+
+	if !encoding.ReadUint64(data, &index, &r.Datacenter.ID) {
+		return errors.New("failed to unmarshal relay datacenter id")
+	}
+
+	if !encoding.ReadString(data, &index, &r.Datacenter.Name, math.MaxInt32) {
+		return errors.New("failed to unmarshal relay datacenter name")
+	}
+
+	if !encoding.ReadBytes(data, &index, &r.PublicKey, crypto.KeySize) {
+		return errors.New("failed to unmarshal relay public key")
+	}
+
+	if !encoding.ReadFloat64(data, &index, &r.Latitude) {
+		return errors.New("failed to unmarshal relay latitude")
+	}
+
+	if !encoding.ReadFloat64(data, &index, &r.Longitude) {
+		return errors.New("failed to unmarshal relay longitude")
+	}
+
+	if !encoding.ReadUint64(data, &index, &r.LastUpdateTime) {
+		return errors.New("failed to unmarshal relay last update time")
+	}
+
 	if udp, err := net.ResolveUDPAddr("udp", addr); udp != nil && err == nil {
 		r.Addr = *udp
 	} else {
-		return errors.New("Invalid relay address")
+		return errors.New("invalid relay address")
 	}
 	return nil
 }

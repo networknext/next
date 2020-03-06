@@ -3,7 +3,6 @@ package routing_test
 import (
 	"crypto/rand"
 	"encoding/binary"
-	"errors"
 	"net"
 	"testing"
 
@@ -23,22 +22,23 @@ func TestRelay(t *testing.T) {
 
 	t.Run("UnmarshalBinary()", func(t *testing.T) {
 		const (
-			relayname = "relay name"
-			addr      = "127.0.0.1:40000"
-			dcname    = "datacenter name"
+			sellername = "seller name"
+			relayname  = "relay name"
+			addr       = "127.0.0.1:40000"
+			dcname     = "datacenter name"
 		)
 
 		var subject routing.Relay
 		size := 0
 		t.Run("missing ID", func(t *testing.T) {
 			buff := make([]byte, size)
-			assert.Equal(t, errors.New("Invalid Relay"), subject.UnmarshalBinary(buff))
+			assert.EqualError(t, subject.UnmarshalBinary(buff), "failed to unmarshal relay ID")
 		})
 
 		t.Run("missing name", func(t *testing.T) {
 			size += 8
 			buff := make([]byte, size)
-			assert.Equal(t, errors.New("Invalid Relay"), subject.UnmarshalBinary(buff))
+			assert.EqualError(t, subject.UnmarshalBinary(buff), "failed to unmarshal relay name")
 		})
 
 		t.Run("missing address", func(t *testing.T) {
@@ -46,7 +46,7 @@ func TestRelay(t *testing.T) {
 			buff := make([]byte, size)
 			binary.LittleEndian.PutUint32(buff[8:], uint32(len(relayname)))
 			copy(buff[12:], relayname)
-			assert.Equal(t, errors.New("Invalid Relay"), subject.UnmarshalBinary(buff))
+			assert.EqualError(t, subject.UnmarshalBinary(buff), "failed to unmarshal relay address")
 		})
 
 		t.Run("missing datacenter ID", func(t *testing.T) {
@@ -56,7 +56,7 @@ func TestRelay(t *testing.T) {
 			binary.LittleEndian.PutUint32(buff[12+len(relayname):], uint32(len(addr)))
 			copy(buff[12:], relayname)
 			copy(buff[16+len(relayname):], addr)
-			assert.Equal(t, errors.New("Invalid Relay"), subject.UnmarshalBinary(buff))
+			assert.EqualError(t, subject.UnmarshalBinary(buff), "failed to unmarshal relay datacenter id")
 		})
 
 		t.Run("missing datacenter name", func(t *testing.T) {
@@ -66,7 +66,7 @@ func TestRelay(t *testing.T) {
 			binary.LittleEndian.PutUint32(buff[12+len(relayname):], uint32(len(addr)))
 			copy(buff[12:], relayname)
 			copy(buff[16+len(relayname):], addr)
-			assert.Equal(t, errors.New("Invalid Relay"), subject.UnmarshalBinary(buff))
+			assert.EqualError(t, subject.UnmarshalBinary(buff), "failed to unmarshal relay datacenter name")
 		})
 
 		t.Run("missing public key", func(t *testing.T) {
@@ -78,7 +78,7 @@ func TestRelay(t *testing.T) {
 			copy(buff[12:], relayname)
 			copy(buff[16+len(relayname):], addr)
 			copy(buff[28+len(relayname)+len(addr):], dcname)
-			assert.Equal(t, errors.New("Invalid Relay"), subject.UnmarshalBinary(buff))
+			assert.EqualError(t, subject.UnmarshalBinary(buff), "failed to unmarshal relay public key")
 		})
 
 		t.Run("missing latitude", func(t *testing.T) {
@@ -90,7 +90,7 @@ func TestRelay(t *testing.T) {
 			copy(buff[12:], relayname)
 			copy(buff[16+len(relayname):], addr)
 			copy(buff[28+len(relayname)+len(addr):], dcname)
-			assert.Equal(t, errors.New("Invalid Relay"), subject.UnmarshalBinary(buff))
+			assert.EqualError(t, subject.UnmarshalBinary(buff), "failed to unmarshal relay latitude")
 		})
 
 		t.Run("missing longitude", func(t *testing.T) {
@@ -102,7 +102,7 @@ func TestRelay(t *testing.T) {
 			copy(buff[12:], relayname)
 			copy(buff[16+len(relayname):], addr)
 			copy(buff[28+len(relayname)+len(addr):], dcname)
-			assert.Equal(t, errors.New("Invalid Relay"), subject.UnmarshalBinary(buff))
+			assert.EqualError(t, subject.UnmarshalBinary(buff), "failed to unmarshal relay longitude")
 		})
 
 		t.Run("missing last update time", func(t *testing.T) {
@@ -114,7 +114,7 @@ func TestRelay(t *testing.T) {
 			copy(buff[12:], relayname)
 			copy(buff[16+len(relayname):], addr)
 			copy(buff[28+len(relayname)+len(addr):], dcname)
-			assert.Equal(t, errors.New("Invalid Relay"), subject.UnmarshalBinary(buff))
+			assert.EqualError(t, subject.UnmarshalBinary(buff), "failed to unmarshal relay last update time")
 		})
 
 		t.Run("invalid address", func(t *testing.T) {
@@ -127,7 +127,7 @@ func TestRelay(t *testing.T) {
 			copy(buff[12:], relayname)
 			copy(buff[16+len(relayname):], addr)
 			copy(buff[28+len(relayname)+len(addr):], dcname)
-			assert.Equal(t, errors.New("Invalid relay address"), subject.UnmarshalBinary(buff))
+			assert.EqualError(t, subject.UnmarshalBinary(buff), "invalid relay address")
 		})
 
 		t.Run("valid", func(t *testing.T) {
