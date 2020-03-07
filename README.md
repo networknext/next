@@ -2,6 +2,13 @@
 
 <br>
 
-## Console Version of Network Next SDK
+## Network Next SDK for Consoles
 
+This is the console version of the SDK for consoles.
 
+Supported platforms:
+
+* Windows
+* XBox One
+* PS4
+* Switch
