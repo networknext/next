@@ -46,12 +46,13 @@ solution "next"
 		defines { "NEXT_SHARED" }
 
 project "next"
-	includedirs { "include" }
 	defines { "NEXT_EXPORT", "SODIUM_STATIC" }
 	links { "sodium" }
 	files {
-		"src/*.h",
-		"src/*.cpp",
+		"next.h",
+		"next.cpp",
+		"next_*.h",
+		"next_*.cpp",
 	}
 	filter "system:not windows"
 		links { "pthread" }
@@ -74,8 +75,8 @@ project "sodium"
 	includedirs { "src/sodium/src/libsodium/include/sodium/" }
 	linkoptions { "/ignore:4221" }
 	files {
-		"src/sodium/src/libsodium/**.c",
-		"src/sodium/src/libsodium/**.h"
+		"sodium/src/libsodium/**.c",
+		"sodium/src/libsodium/**.h"
 	}
 	disablewarnings { "4244", "4715", "4197", "4146", "4324", "4456", "4100", "4459", "4245" }
 	linkoptions { "/ignore:4221" }
@@ -88,11 +89,9 @@ project "sodium"
 end
 
 project "client"
-	includedirs { "include" }
 	kind "ConsoleApp"
 	links { "next", "sodium" }
 	files { "client.cpp" }
-	includedirs { "src/" }
 	defines { "SODIUM_STATIC" }
 	filter "system:windows"
 		disablewarnings { "4324" }
@@ -103,11 +102,9 @@ project "client"
 		linkoptions { "-framework SystemConfiguration -framework CoreFoundation" }
 
 project "server"
-	includedirs { "include" }
 	kind "ConsoleApp"
 	links { "next", "sodium" }
 	files { "server.cpp" }
-	includedirs { "src/" }
 	defines { "SODIUM_STATIC" }
 	filter "system:windows"
 		disablewarnings { "4324" }
@@ -118,11 +115,9 @@ project "server"
 		linkoptions { "-framework SystemConfiguration -framework CoreFoundation" }
 
 project "test"
-	includedirs { "include" }
 	kind "ConsoleApp"
 	links { "next", "sodium" }
 	files { "test.cpp" }
-	includedirs { "src/" }
 	defines { "SODIUM_STATIC" }
 	filter "system:windows"
 		disablewarnings { "4324" }
