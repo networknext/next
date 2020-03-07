@@ -4,8 +4,6 @@
 
 ## Network Next SDK for Consoles
 
-This is the console version of the SDK for consoles.
-
 Supported platforms:
 
 * Windows
