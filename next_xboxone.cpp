@@ -155,7 +155,7 @@ static const char * next_randombytes_implementation_name()
 
 static uint32_t next_randombytes_random()
 {
-    uint32_t random;
+	uint32_t random = 0;
     bool success = BCRYPT_SUCCESS( BCryptGenRandom( bcrypt_algorithm_provider, (uint8_t *)( &random ), ULONG( sizeof( random ) ), 0 ) );
     (void) success;
     next_assert( success );
