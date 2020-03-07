@@ -10,6 +10,6 @@ Supported platforms:
 * XBox One
 * PS4
 * Switch
-* MacOS
 * Linux
+* MacOS
 * iOS
