@@ -2,7 +2,7 @@
 
 <br>
 
-## Console SDK
+## SDK for Consoles
 
 Supported platforms:
 
