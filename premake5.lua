@@ -75,8 +75,8 @@ project "sodium"
 	includedirs { "src/sodium/src/libsodium/include/sodium/" }
 	linkoptions { "/ignore:4221" }
 	files {
-		"sodium/src/libsodium/**.c",
-		"sodium/src/libsodium/**.h"
+		"sodium/**.c",
+		"sodium/**.h"
 	}
 	disablewarnings { "4244", "4715", "4197", "4146", "4324", "4456", "4100", "4459", "4245" }
 	linkoptions { "/ignore:4221" }
@@ -95,7 +95,7 @@ project "client"
 	defines { "SODIUM_STATIC" }
 	filter "system:windows"
 		disablewarnings { "4324" }
-		includedirs { "deps/sodium/src/libsodium/include/" }
+		includedirs { "sodium/include/" }
 	filter "system:not windows"
 		links { "pthread" }
 	filter "system:macosx"
@@ -108,7 +108,7 @@ project "server"
 	defines { "SODIUM_STATIC" }
 	filter "system:windows"
 		disablewarnings { "4324" }
-		includedirs { "deps/sodium/src/libsodium/include/" }
+		includedirs { "sodium/include/" }
 	filter "system:not windows"
 		links { "pthread" }
 	filter "system:macosx"
@@ -121,7 +121,7 @@ project "test"
 	defines { "SODIUM_STATIC" }
 	filter "system:windows"
 		disablewarnings { "4324" }
-		includedirs { "deps/sodium/src/libsodium/include/" }
+		includedirs { "sodium/include/" }
 	filter "system:not windows"
 		links { "pthread" }
 	filter "system:macosx"
