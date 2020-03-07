@@ -94,8 +94,8 @@ Global
 		{7EFBF022-3F30-4987-B559-CD3157277029}.Dynamic-Debug|NX64.Build.0 = Static-Release|NX64
 		{7EFBF022-3F30-4987-B559-CD3157277029}.Dynamic-Debug|ORBIS.ActiveCfg = Static-Release|ORBIS
 		{7EFBF022-3F30-4987-B559-CD3157277029}.Dynamic-Debug|ORBIS.Build.0 = Static-Release|ORBIS
-		{7EFBF022-3F30-4987-B559-CD3157277029}.Dynamic-Debug|x64.ActiveCfg = Static-Release|x64
-		{7EFBF022-3F30-4987-B559-CD3157277029}.Dynamic-Debug|x64.Build.0 = Static-Release|x64
+		{7EFBF022-3F30-4987-B559-CD3157277029}.Dynamic-Debug|x64.ActiveCfg = Static-Debug|x64
+		{7EFBF022-3F30-4987-B559-CD3157277029}.Dynamic-Debug|x64.Build.0 = Static-Debug|x64
 		{7EFBF022-3F30-4987-B559-CD3157277029}.Dynamic-Debug|x86.ActiveCfg = Static-Release|Win32
 		{7EFBF022-3F30-4987-B559-CD3157277029}.Dynamic-Debug|x86.Build.0 = Static-Release|Win32
 		{7EFBF022-3F30-4987-B559-CD3157277029}.Dynamic-Release|durango.ActiveCfg = Static-Release|durango

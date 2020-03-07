@@ -52,8 +52,8 @@
 #define NEXT_COMMAND_QUEUE_LENGTH                                    1024
 #define NEXT_NOTIFY_QUEUE_LENGTH                                     1024
 #define NEXT_CLIENT_STATS_UPDATES_PER_SECOND                           10
-#define NEXT_SECONDS_BETWEEN_SERVER_UPDATES                            10
-#define NEXT_SECONDS_BETWEEN_SESSION_UPDATES                           10
+#define NEXT_SECONDS_BETWEEN_SERVER_UPDATES                          10.0
+#define NEXT_SECONDS_BETWEEN_SESSION_UPDATES                         10.0
 #define NEXT_UPGRADE_TOKEN_BYTES                                      128
 #define NEXT_MAX_NEAR_RELAYS                                           32
 #define NEXT_RELAY_PING_TIME                                          1.0
@@ -68,7 +68,7 @@
 #define NEXT_UPDATE_SEND_TIME                                        0.25
 #define NEXT_ROUTE_REQUEST_SEND_TIME                                 0.25
 #define NEXT_CONTINUE_REQUEST_SEND_TIME                              0.25
-#define NEXT_SLICE_SECONDS                                             10
+#define NEXT_SLICE_SECONDS                                           10.0
 #define NEXT_ROUTE_REQUEST_TIMEOUT                                      5
 #define NEXT_CONTINUE_REQUEST_TIMEOUT                                   5
 #define NEXT_SESSION_UPDATE_RESEND_TIME                               1.0
@@ -1200,7 +1200,7 @@ namespace next
             if ( numWords > 0 )
             {
                 next_assert( ( m_bitsWritten % 32 ) == 0 );
-                memcpy( &m_data[m_wordIndex], data + headBytes, numWords * 4 );
+                memcpy( &m_data[m_wordIndex], data + headBytes, size_t(numWords) * 4 );
                 m_bitsWritten += numWords * 32;
                 m_wordIndex += numWords;
                 m_scratch = 0;
@@ -1426,7 +1426,7 @@ namespace next
             if ( numWords > 0 )
             {
                 next_assert( ( m_bitsRead % 32 ) == 0 );
-                memcpy( data + headBytes, &m_data[m_wordIndex], numWords * 4 );
+                memcpy( data + headBytes, &m_data[m_wordIndex], size_t(numWords) * 4 );
                 m_bitsRead += numWords * 32;
                 m_wordIndex += numWords;
                 m_scratchBits = 0;
@@ -2035,7 +2035,7 @@ namespace next
             length = (int) strlen( string );
             next_assert( length < buffer_size );
         }
-        serialize_int( stream, length, 0, buffer_size - 1 );
+        serialize_int( stream, length, 0, uint64_t(buffer_size) - 1 );
         serialize_bytes( stream, (uint8_t*)string, length );
         if ( Stream::IsReading )
         {
@@ -2542,7 +2542,7 @@ bool next_bandwidth_limiter_add_packet( next_bandwidth_limiter_t * bandwidth_lim
         bandwidth_limiter->last_check_time = current_time;
     }
     bandwidth_limiter->bits_sent += packet_bits;
-    return bandwidth_limiter->bits_sent > (uint64_t) ( kbps_allowed * 1000 * NEXT_BANDWIDTH_LIMITER_INTERVAL );
+	return bandwidth_limiter->bits_sent > uint64_t(kbps_allowed) * 1000 * NEXT_BANDWIDTH_LIMITER_INTERVAL;
 }
 
 void next_bandwidth_limiter_add_sample( next_bandwidth_limiter_t * bandwidth_limiter, double kbps )
@@ -3170,7 +3170,7 @@ int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet
                                               additional, 1,
                                               NULL, nonce, private_key );
 
-        next_assert( encrypted_bytes == message_length + crypto_aead_chacha20poly1305_ABYTES );
+        next_assert( encrypted_bytes == uint64_t(message_length) + crypto_aead_chacha20poly1305_ABYTES );
 
         *packet_bytes = 1 + 8 + encrypted_bytes;
 
@@ -3243,7 +3243,7 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
             return NEXT_ERROR;
         }
 
-        next_assert( decrypted_bytes == message_length - crypto_aead_chacha20poly1305_ABYTES );
+        next_assert( decrypted_bytes == uint64_t(message_length) - crypto_aead_chacha20poly1305_ABYTES );
 
         packet_data += 1 + 8;
         packet_bytes -= 1 + 8;
@@ -3904,8 +3904,8 @@ void next_relay_manager_update( next_relay_manager_t * manager, int num_relays, 
     // commit the updated relay array
 
     manager->num_relays = index;
-    memcpy( manager->relay_ids, new_relay_ids, 8 * index );
-    memcpy( manager->relay_last_ping_time, new_relay_last_ping_time, 8 * index );
+    memcpy( manager->relay_ids, new_relay_ids, size_t(8) * index );
+    memcpy( manager->relay_last_ping_time, new_relay_last_ping_time, size_t(8) * index );
     memcpy( manager->relay_addresses, new_relay_addresses, sizeof(next_address_t) * index );
     memcpy( manager->relay_ping_history, new_relay_ping_history, sizeof(next_ping_history_t*) * index );
 
@@ -4654,7 +4654,7 @@ void next_route_manager_begin_next_route( next_route_manager_t * route_manager, 
     route_manager->route_data.pending_route_kbps_down = route_token.kbps_down;
     route_manager->route_data.pending_route_request_packet_bytes = 1 + ( num_tokens - 1 ) * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES;
     route_manager->route_data.pending_route_request_packet_data[0] = NEXT_ROUTE_REQUEST_PACKET;
-    memcpy( route_manager->route_data.pending_route_request_packet_data + 1, tokens + NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES, ( num_tokens - 1 ) * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES );
+    memcpy( route_manager->route_data.pending_route_request_packet_data + 1, tokens + NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES, ( size_t(num_tokens) - 1 ) * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES );
     memcpy( route_manager->route_data.pending_route_private_key, route_token.private_key, crypto_box_SECRETKEYBYTES );
     next_assert( route_manager->route_data.pending_route_request_packet_bytes <= NEXT_MAX_PACKET_BYTES );
     route_manager->route_data.direct_route_expire_time = -1.0;
@@ -4701,7 +4701,7 @@ void next_route_manager_continue_next_route( next_route_manager_t * route_manage
     route_manager->route_data.pending_continue_last_send_time = -1000.0;
     route_manager->route_data.pending_continue_request_packet_bytes = 1 + ( num_tokens - 1 ) * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES;
     route_manager->route_data.pending_continue_request_packet_data[0] = NEXT_CONTINUE_REQUEST_PACKET;
-    memcpy( route_manager->route_data.pending_continue_request_packet_data + 1, tokens + NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES, ( num_tokens - 1 ) * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
+    memcpy( route_manager->route_data.pending_continue_request_packet_data + 1, tokens + NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES, ( size_t(num_tokens) - 1 ) * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
     next_assert( route_manager->route_data.pending_continue_request_packet_bytes <= NEXT_MAX_PACKET_BYTES );
     route_manager->route_data.direct_route_expire_time = -1.0;
 }
@@ -5026,11 +5026,11 @@ void next_route_manager_process_route_response_packet( next_route_manager_t * ro
 
     if ( !route_manager->route_data.current_route )
     {
-        route_manager->route_data.current_route_expire_time = route_manager->route_data.pending_route_start_time + 2 * NEXT_SLICE_SECONDS;
+        route_manager->route_data.current_route_expire_time = route_manager->route_data.pending_route_start_time + 2.0 * NEXT_SLICE_SECONDS;
     }
     else
     {
-        route_manager->route_data.current_route_expire_time += 2 * NEXT_SLICE_SECONDS;
+        route_manager->route_data.current_route_expire_time += 2.0 * NEXT_SLICE_SECONDS;
     }
 
     route_manager->route_data.current_route = true;    
@@ -5887,7 +5887,7 @@ void next_client_internal_block_and_receive_packet( next_client_internal_t * cli
         next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
         notify->packet_bytes = packet_bytes - 1;
-        memcpy( notify->packet_data, packet_data + 1, packet_bytes - 1 );
+        memcpy( notify->packet_data, packet_data + 1, size_t(packet_bytes) - 1 );
         {
             next_mutex_guard( client->notify_mutex );
             next_queue_push( client->notify_queue, notify );            
@@ -5916,7 +5916,7 @@ void next_client_internal_block_and_receive_packet( next_client_internal_t * cli
         next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
         notify->packet_bytes = packet_bytes - 10;
-        memcpy( notify->packet_data, packet_data + 10, packet_bytes - 10 );
+        memcpy( notify->packet_data, packet_data + 10, size_t(packet_bytes) - 10 );
         {
             next_mutex_guard( client->notify_mutex );
             next_queue_push( client->notify_queue, notify );            
@@ -7602,9 +7602,9 @@ next_session_manager_t * next_session_manager_create( void * context, int initia
     memset( session_manager, 0, sizeof(next_session_manager_t) );
     session_manager->context = context;
     session_manager->size = initial_size;
-    session_manager->session_ids = (uint64_t*) next_malloc( context, initial_size * 8 );
-    session_manager->addresses = (next_address_t*) next_malloc( context, initial_size * sizeof(next_address_t) );
-    session_manager->entries = (next_session_entry_t*) next_malloc( context, initial_size * sizeof(next_session_entry_t) );
+    session_manager->session_ids = (uint64_t*) next_malloc( context, size_t(initial_size) * 8 );
+    session_manager->addresses = (next_address_t*) next_malloc( context, size_t(initial_size) * sizeof(next_address_t) );
+    session_manager->entries = (next_session_entry_t*) next_malloc( context, size_t(initial_size) * sizeof(next_session_entry_t) );
     next_assert( session_manager->session_ids );
     next_assert( session_manager->addresses );
     next_assert( session_manager->entries );
@@ -7613,9 +7613,9 @@ next_session_manager_t * next_session_manager_create( void * context, int initia
         next_session_manager_destroy( session_manager );
         return NULL;
     }
-    memset( session_manager->session_ids, 0, initial_size * 8 );
-    memset( session_manager->addresses, 0, initial_size * sizeof(next_address_t) );
-    memset( session_manager->entries, 0, initial_size * sizeof(next_session_entry_t) );
+    memset( session_manager->session_ids, 0, size_t(initial_size) * 8 );
+    memset( session_manager->addresses, 0, size_t(initial_size) * sizeof(next_address_t) );
+    memset( session_manager->entries, 0, size_t(initial_size) * sizeof(next_session_entry_t) );
     return session_manager;
 }
 
@@ -7634,9 +7634,9 @@ bool next_session_manager_expand( next_session_manager_t * session_manager )
 
     int new_size = session_manager->size * 2;
 
-    uint64_t * new_session_ids = (uint64_t*) next_malloc( session_manager->context, new_size * 8 );
-    next_address_t * new_addresses = (next_address_t*) next_malloc( session_manager->context, new_size * sizeof(next_address_t) );
-    next_session_entry_t * new_entries = (next_session_entry_t*) next_malloc( session_manager->context, new_size * sizeof(next_session_entry_t) );
+    uint64_t * new_session_ids = (uint64_t*) next_malloc( session_manager->context, size_t(new_size) * 8 );
+    next_address_t * new_addresses = (next_address_t*) next_malloc( session_manager->context, size_t(new_size) * sizeof(next_address_t) );
+    next_session_entry_t * new_entries = (next_session_entry_t*) next_malloc( session_manager->context, size_t(new_size) * sizeof(next_session_entry_t) );
 
     next_assert( session_manager->session_ids );
     next_assert( session_manager->addresses );
@@ -7650,9 +7650,9 @@ bool next_session_manager_expand( next_session_manager_t * session_manager )
         return false;
     }
 
-    memset( new_session_ids, 0, new_size * 8 );
-    memset( new_addresses, 0, new_size * sizeof(next_address_t) );
-    memset( new_entries, 0, new_size * sizeof(next_session_entry_t) );
+    memset( new_session_ids, 0, size_t(new_size) * 8 );
+    memset( new_addresses, 0, size_t(new_size) * sizeof(next_address_t) );
+    memset( new_entries, 0, size_t(new_size) * sizeof(next_session_entry_t) );
 
     int index = 0;
     const int current_size = session_manager->size;
@@ -9177,15 +9177,15 @@ int next_server_internal_process_packet( next_server_internal_t * server, const 
             entry->update_num_tokens = packet.num_tokens;
             if ( packet.response_type == NEXT_UPDATE_TYPE_ROUTE )
             {
-                memcpy( entry->update_tokens, packet.tokens, NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES * packet.num_tokens );
+                memcpy( entry->update_tokens, packet.tokens, NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES * size_t(packet.num_tokens) );
             }
             else if ( packet.response_type == NEXT_UPDATE_TYPE_CONTINUE )
             {
-                memcpy( entry->update_tokens, packet.tokens, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES * packet.num_tokens );
+                memcpy( entry->update_tokens, packet.tokens, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES * size_t(packet.num_tokens) );
             }
             entry->update_num_near_relays = packet.num_near_relays;
-            memcpy( entry->update_near_relay_ids, packet.near_relay_ids, 8 * packet.num_near_relays );
-            memcpy( entry->update_near_relay_addresses, packet.near_relay_addresses, sizeof(next_address_t) * packet.num_near_relays );
+            memcpy( entry->update_near_relay_ids, packet.near_relay_ids, 8 * size_t(packet.num_near_relays) );
+            memcpy( entry->update_near_relay_addresses, packet.near_relay_addresses, sizeof(next_address_t) * size_t(packet.num_near_relays) );
             entry->update_last_send_time = -1000.0;
 
             entry->waiting_for_update_response = false;
@@ -9373,7 +9373,7 @@ int next_server_internal_process_packet( next_server_internal_t * server, const 
             notify->from = entry->address;
             notify->packet_bytes = packet_bytes - NEXT_HEADER_BYTES;
             next_assert( packet_bytes > NEXT_HEADER_BYTES );
-            memcpy( notify->packet_data, packet_data + NEXT_HEADER_BYTES, packet_bytes - NEXT_HEADER_BYTES );
+            memcpy( notify->packet_data, packet_data + NEXT_HEADER_BYTES, size_t(packet_bytes) - NEXT_HEADER_BYTES );
             {
                 next_mutex_guard( server->notify_mutex );
                 next_queue_push( server->notify_queue, notify );
@@ -9437,7 +9437,7 @@ void next_server_internal_update_route( next_server_internal_t * server )
             NextRouteUpdatePacket packet;
             packet.sequence = entry->update_sequence;
             packet.num_near_relays = entry->update_num_near_relays;
-            memcpy( packet.near_relay_ids, entry->update_near_relay_ids, 8 * entry->update_num_near_relays );
+            memcpy( packet.near_relay_ids, entry->update_near_relay_ids, size_t(8) * entry->update_num_near_relays );
             memcpy( packet.near_relay_addresses, entry->update_near_relay_addresses, sizeof(next_address_t) * entry->update_num_near_relays );
             packet.update_type = entry->update_type;
             packet.multipath = entry->multipath;
@@ -9445,11 +9445,11 @@ void next_server_internal_update_route( next_server_internal_t * server )
             packet.num_tokens = entry->update_num_tokens;
             if ( entry->update_type == NEXT_UPDATE_TYPE_ROUTE )
             {
-                memcpy( packet.tokens, entry->update_tokens, NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES * entry->update_num_tokens );
+                memcpy( packet.tokens, entry->update_tokens, NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES * size_t(entry->update_num_tokens) );
             }
             else if ( entry->update_type == NEXT_UPDATE_TYPE_CONTINUE )
             {
-                memcpy( packet.tokens, entry->update_tokens, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES * entry->update_num_tokens );
+                memcpy( packet.tokens, entry->update_tokens, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES * size_t(entry->update_num_tokens) );
             }
             packet.packets_lost_client_to_server = entry->stats_packets_lost_client_to_server;
 
@@ -9586,7 +9586,7 @@ void next_server_internal_block_and_receive_packet( next_server_internal_t * ser
         notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
         notify->from = from;
         notify->packet_bytes = packet_bytes - 1;
-        memcpy( notify->packet_data, packet_data + 1, packet_bytes - 1 );
+        memcpy( notify->packet_data, packet_data + 1, size_t(packet_bytes) - 1 );
         {
             next_mutex_guard( server->notify_mutex );
             next_queue_push( server->notify_queue, notify );            
@@ -9623,7 +9623,7 @@ void next_server_internal_block_and_receive_packet( next_server_internal_t * ser
         notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
         notify->from = from;
         notify->packet_bytes = packet_bytes - 10;
-        memcpy( notify->packet_data, packet_data + 10, packet_bytes - 10 );
+        memcpy( notify->packet_data, packet_data + 10, size_t(packet_bytes) - 10 );
         {
             next_mutex_guard( server->notify_mutex );
             next_queue_push( server->notify_queue, notify );            
@@ -9667,6 +9667,7 @@ void next_server_internal_upgrade_session( next_server_internal_t * server, cons
     if ( entry == NULL )
     {
         next_assert( !"could not add pending session entry. this should never happen!" );
+		return;
     }
 
     entry->user_hash = user_hash;
@@ -10751,7 +10752,7 @@ static void test_bitpacker()
 
     check( bytesWritten == 10 );
 
-    memset( buffer + bytesWritten, 0, BufferSize - bytesWritten );
+    memset( buffer + bytesWritten, 0, size_t(BufferSize) - bytesWritten );
 
     BitReader reader( buffer, bytesWritten );
 
@@ -10911,7 +10912,7 @@ static void test_stream()
 
     const int bytesWritten = writeStream.GetBytesProcessed();
 
-    memset( buffer + bytesWritten, 0, BufferSize - bytesWritten );
+    memset( buffer + bytesWritten, 0, size_t(BufferSize) - bytesWritten );
 
     TestObject readObject;
     ReadStream readStream( buffer, bytesWritten );
@@ -10923,7 +10924,7 @@ static void test_stream()
 
 static bool equal_within_tolerance( float a, float b, float tolerance = 0.0001f )
 {
-    return fabs(a-b) <= tolerance;
+    return fabs(double(a)-double(b)) <= tolerance;
 }
 
 static void test_bits_required()
@@ -11156,7 +11157,7 @@ static void test_ping_stats()
     {
         const double ping_safety = 1.0;
 
-        next_ping_history_t history;
+        static next_ping_history_t history;
         next_ping_history_clear( &history );
         
         next_route_stats_t route_stats;
@@ -11173,7 +11174,7 @@ static void test_ping_stats()
     {
         const double ping_safety = 1.0;
 
-        next_ping_history_t history;
+        static next_ping_history_t history;
         next_ping_history_clear( &history );
 
         for ( int i = 0; i < NEXT_PING_HISTORY_ENTRY_COUNT; ++i )
@@ -11195,7 +11196,7 @@ static void test_ping_stats()
     {
         const double ping_safety = 1.0;
 
-        next_ping_history_t history;
+        static next_ping_history_t history;
         next_ping_history_clear( &history );
 
         const double expected_rtt = 0.1;
@@ -11220,7 +11221,7 @@ static void test_ping_stats()
     {
         const double ping_safety = 1.0;
 
-        next_ping_history_t history;
+        static next_ping_history_t history;
         next_ping_history_clear( &history );
 
         const double expected_rtt = 0.1;
@@ -11253,7 +11254,7 @@ static void test_ping_stats()
     {
         const double ping_safety = 1.0;
 
-        next_ping_history_t history;
+        static next_ping_history_t history;
         next_ping_history_clear( &history );
 
         const double expected_rtt = 0.1;
@@ -11279,7 +11280,7 @@ static void test_ping_stats()
     {
         const double ping_safety = 1.0;
 
-        next_ping_history_t history;
+        static next_ping_history_t history;
         next_ping_history_clear( &history );
 
         const double expected_rtt = 0.1;
@@ -11305,7 +11306,7 @@ static void test_ping_stats()
     {
         const double ping_safety = 1.0;
 
-        next_ping_history_t history;
+        static next_ping_history_t history;
         next_ping_history_clear( &history );
 
         const double expected_rtt = 0.1;
@@ -11837,7 +11838,7 @@ static void test_packets()
         unsigned char private_key[crypto_sign_SECRETKEYBYTES];
         crypto_sign_keypair( public_key, private_key );
 
-        NextUpgradeRequestPacket in, out;
+        static NextUpgradeRequestPacket in, out;
         in.protocol_version = next_protocol_version();
         in.session_id = 1231234127431LL;
         next_address_parse( &in.server_address, "127.0.0.1:12345" );
@@ -11859,7 +11860,7 @@ static void test_packets()
 
     // upgrade response
     {
-        NextUpgradeResponsePacket in, out;
+        static NextUpgradeResponsePacket in, out;
         next_random_bytes( in.client_kx_public_key, crypto_kx_PUBLICKEYBYTES );
         next_random_bytes( in.client_route_public_key, crypto_box_PUBLICKEYBYTES );
         next_random_bytes( in.upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
@@ -11879,7 +11880,7 @@ static void test_packets()
         unsigned char private_key[crypto_sign_SECRETKEYBYTES];
         crypto_sign_keypair( public_key, private_key );
 
-        NextUpgradeConfirmPacket in, out;
+        static NextUpgradeConfirmPacket in, out;
         in.upgrade_sequence = 1000;
         in.session_id = 1231234127431LL;
         next_address_parse( &in.server_address, "127.0.0.1:12345" );
@@ -11904,12 +11905,12 @@ static void test_packets()
 
     // direct ping packet
     {
-        NextDirectPingPacket in, out;
+        static NextDirectPingPacket in, out;
         in.ping_sequence = 0xFFFFFFFFFFFFFFFFULL;
         uint64_t in_sequence = 1000;
         uint64_t out_sequence = 0;
         int packet_bytes = 0;
-        next_replay_protection_t replay_protection;
+        static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
         check( next_write_packet( NEXT_DIRECT_PING_PACKET, &in, buffer, &packet_bytes, next_encrypted_packets, &in_sequence, private_key ) == NEXT_OK );
         check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection ) == NEXT_DIRECT_PING_PACKET );
@@ -11919,12 +11920,12 @@ static void test_packets()
 
     // direct pong packet
     {
-        NextDirectPongPacket in, out;
+        static NextDirectPongPacket in, out;
         in.ping_sequence = 10000000;
         uint64_t in_sequence = 1000;
         uint64_t out_sequence = 0;
         int packet_bytes = 0;
-        next_replay_protection_t replay_protection;
+        static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
         check( next_write_packet( NEXT_DIRECT_PONG_PACKET, &in, buffer, &packet_bytes, next_encrypted_packets, &in_sequence, private_key ) == NEXT_OK );
         check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection ) == NEXT_DIRECT_PONG_PACKET );
@@ -11934,7 +11935,7 @@ static void test_packets()
 
     // client stats packet
     {
-        NextClientStatsPacket in, out;
+        static NextClientStatsPacket in, out;
         in.flags = NEXT_FLAGS_BAD_ROUTE_TOKEN | NEXT_FLAGS_DIRECT_ROUTE_EXPIRED;
         in.flagged = true;
         in.fallback_to_direct = true;
@@ -11955,7 +11956,7 @@ static void test_packets()
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
-            in.near_relay_ids[i] = 10000000 + i;
+            in.near_relay_ids[i] = uint64_t(10000000) + i;
             in.near_relay_min_rtt[i] = 5 * i;
             in.near_relay_max_rtt[i] = 5 * i + 50;
             in.near_relay_mean_rtt[i] = 5 * i + 10;
@@ -11967,7 +11968,7 @@ static void test_packets()
         uint64_t in_sequence = 1000;
         uint64_t out_sequence = 0;
         int packet_bytes = 0;
-        next_replay_protection_t replay_protection;
+        static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
         check( next_write_packet( NEXT_CLIENT_STATS_PACKET, &in, buffer, &packet_bytes, next_encrypted_packets, &in_sequence, private_key ) == NEXT_OK );
         check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection ) == NEXT_CLIENT_STATS_PACKET );
@@ -12005,7 +12006,7 @@ static void test_packets()
 
     // route update packet (direct)
     {
-        NextRouteUpdatePacket in, out;
+        static NextRouteUpdatePacket in, out;
         in.sequence = 100000;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
@@ -12022,7 +12023,7 @@ static void test_packets()
         uint64_t in_sequence = 1000;
         uint64_t out_sequence = 0;
         int packet_bytes = 0;
-        next_replay_protection_t replay_protection;
+        static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
         check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, buffer, &packet_bytes, next_encrypted_packets, &in_sequence, private_key ) == NEXT_OK );
         check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
@@ -12040,7 +12041,7 @@ static void test_packets()
 
     // route update packet (route)
     {
-        NextRouteUpdatePacket in, out;
+        static NextRouteUpdatePacket in, out;
         in.sequence = 100000;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
@@ -12061,7 +12062,7 @@ static void test_packets()
         uint64_t in_sequence = 1000;
         uint64_t out_sequence = 0;
         int packet_bytes = 0;
-        next_replay_protection_t replay_protection;
+        static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
         check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, buffer, &packet_bytes, next_encrypted_packets, &in_sequence, private_key ) == NEXT_OK );
         check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
@@ -12083,7 +12084,7 @@ static void test_packets()
 
     // route update packet (update)
     {
-        NextRouteUpdatePacket in, out;
+        static NextRouteUpdatePacket in, out;
         in.sequence = 100000;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
@@ -12104,7 +12105,7 @@ static void test_packets()
         uint64_t in_sequence = 1000;
         uint64_t out_sequence = 0;
         int packet_bytes = 0;
-        next_replay_protection_t replay_protection;
+        static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
         check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, buffer, &packet_bytes, next_encrypted_packets, &in_sequence, private_key ) == NEXT_OK );
         check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
@@ -12126,12 +12127,12 @@ static void test_packets()
 
     // route update ack packet
     {
-        NextRouteUpdateAckPacket in, out;
+        static NextRouteUpdateAckPacket in, out;
         in.sequence = 100000;
         uint64_t in_sequence = 1000;
         uint64_t out_sequence = 0;
         int packet_bytes = 0;
-        next_replay_protection_t replay_protection;
+        static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
         check( next_write_packet( NEXT_ROUTE_UPDATE_ACK_PACKET, &in, buffer, &packet_bytes, next_encrypted_packets, &in_sequence, private_key ) == NEXT_OK );
         check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_ACK_PACKET );
@@ -12141,7 +12142,7 @@ static void test_packets()
 
     // relay ping packet
     {
-        NextRelayPingPacket in, out;
+        static NextRelayPingPacket in, out;
         in.ping_sequence = 0xFFFFFFFFFFFFFFFFULL;
         in.session_id = 1000000;
         int packet_bytes = 0;
@@ -12155,7 +12156,7 @@ static void test_packets()
 
     // relay pong packet
     {
-        NextRelayPongPacket in, out;
+        static NextRelayPongPacket in, out;
         in.ping_sequence = 0xFFFFFFFFFFFFFFFFULL;
         in.session_id = 1000000;
         int packet_bytes = 0;
@@ -12193,7 +12194,7 @@ static void test_pending_session_manager()
 
     for ( int i = 0; i < InitialSize*3; ++i )
     {
-        next_pending_session_entry_t * entry = next_pending_session_manager_add( pending_session_manager, &address, i+1000, &private_keys[i*crypto_secretbox_KEYBYTES], &upgrade_tokens[i*NEXT_UPGRADE_TOKEN_BYTES], time );
+        next_pending_session_entry_t * entry = next_pending_session_manager_add( pending_session_manager, &address, uint64_t(i)+1000, &private_keys[i*crypto_secretbox_KEYBYTES], &upgrade_tokens[i*NEXT_UPGRADE_TOKEN_BYTES], time );
         check( entry );
         check( entry->session_id == uint64_t(i) + 1000 );
         check( entry->upgrade_time == time );
@@ -12262,7 +12263,7 @@ static void test_pending_session_manager()
         {
             check( next_address_equal( &address, &pending_session_manager->addresses[i] ) == 1 );
             next_pending_session_entry_t * entry = &pending_session_manager->entries[i];
-            check( entry->session_id == uint64_t(i*2)+1001 );
+            check( entry->session_id == uint64_t(i)*2+1001 );
             check( entry->upgrade_time == time );
             check( entry->last_packet_send_time < 0.0 );
             check( next_address_equal( &address, &entry->address ) == 1 );
@@ -12312,7 +12313,7 @@ static void test_proxy_session_manager()
 
     for ( int i = 0; i < InitialSize*3; ++i )
     {
-        next_proxy_session_entry_t * entry = next_proxy_session_manager_add( proxy_session_manager, &address, i+1000 );
+        next_proxy_session_entry_t * entry = next_proxy_session_manager_add( proxy_session_manager, &address, uint64_t(i)+1000 );
         check( entry );
         check( entry->session_id == uint64_t(i) + 1000 );
         check( next_address_equal( &address, &entry->address ) == 1 );        
@@ -12373,7 +12374,7 @@ static void test_proxy_session_manager()
         {
             check( next_address_equal( &address, &proxy_session_manager->addresses[i] ) == 1 );
             next_proxy_session_entry_t * entry = &proxy_session_manager->entries[i];
-            check( entry->session_id == uint64_t(i*2)+1001 );
+            check( entry->session_id == uint64_t(i)*2+1001 );
             check( next_address_equal( &address, &entry->address ) == 1 );
         }
         address.port += 2;
@@ -12421,7 +12422,7 @@ static void test_session_manager()
 
     for ( int i = 0; i < InitialSize*3; ++i )
     {
-        next_session_entry_t * entry = next_session_manager_add( session_manager, &address, i+1000, &private_keys[i*crypto_secretbox_KEYBYTES], &upgrade_tokens[i*NEXT_UPGRADE_TOKEN_BYTES] );
+        next_session_entry_t * entry = next_session_manager_add( session_manager, &address, uint64_t(i)+1000, &private_keys[i*crypto_secretbox_KEYBYTES], &upgrade_tokens[i*NEXT_UPGRADE_TOKEN_BYTES] );
         check( entry );
         check( entry->session_id == uint64_t(i) + 1000 );
         check( next_address_equal( &address, &entry->address ) == 1 );
@@ -12484,7 +12485,7 @@ static void test_session_manager()
         {
             check( next_address_equal( &address, &session_manager->addresses[i] ) == 1 );
             next_session_entry_t * entry = &session_manager->entries[i];
-            check( entry->session_id == uint64_t(i*2)+1001 );
+            check( entry->session_id == uint64_t(i)*2+1001 );
             check( next_address_equal( &address, &entry->address ) == 1 );
         }
         address.port += 2;
@@ -12517,7 +12518,7 @@ static void test_backend_packets()
         unsigned char private_key[crypto_sign_SECRETKEYBYTES];
         crypto_sign_keypair( public_key, private_key );
 
-        NextBackendServerUpdatePacket in, out;
+        static NextBackendServerUpdatePacket in, out;
         in.sequence = 10000;
         in.customer_id = 1231234127431LL;
         in.datacenter_id = next_datacenter_id( "local" );
@@ -12549,7 +12550,7 @@ static void test_backend_packets()
         unsigned char private_key[crypto_sign_SECRETKEYBYTES];
         crypto_sign_keypair( public_key, private_key );
 
-        NextBackendSessionUpdatePacket in, out;
+        static NextBackendSessionUpdatePacket in, out;
         in.sequence = 10000;
         in.customer_id = 1231234127431LL;
         in.session_id = 1234342431431LL;
@@ -12645,7 +12646,7 @@ static void test_backend_packets()
         unsigned char private_key[crypto_sign_SECRETKEYBYTES];
         crypto_sign_keypair( public_key, private_key );
 
-        NextBackendSessionResponsePacket in, out;
+        static NextBackendSessionResponsePacket in, out;
         in.sequence = 10000;
         in.session_id = 1234342431431LL;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
@@ -12685,7 +12686,7 @@ static void test_backend_packets()
         unsigned char private_key[crypto_sign_SECRETKEYBYTES];
         crypto_sign_keypair( public_key, private_key );
 
-        NextBackendSessionResponsePacket in, out;
+        static NextBackendSessionResponsePacket in, out;
         in.sequence = 10000;
         in.session_id = 1234342431431LL;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
@@ -12733,7 +12734,7 @@ static void test_backend_packets()
         unsigned char private_key[crypto_sign_SECRETKEYBYTES];
         crypto_sign_keypair( public_key, private_key );
 
-        NextBackendSessionResponsePacket in, out;
+        static NextBackendSessionResponsePacket in, out;
         in.sequence = 10000;
         in.session_id = 1234342431431LL;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
