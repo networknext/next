@@ -1,7 +1,7 @@
 {
   "FileVersion": 3,
   "Version": 1,
-  "VersionName": "$(NEXT_VERSION_MAJOR).$(NEXT_VERSION_MINOR).$(NEXT_VERSION_PATCH)",
+  "VersionName": "3.4.0",
   "FriendlyName": "Network Next",
   "Description": "",
   "Category": "Other",

@@ -1,7 +1,7 @@
 /*
-    Network Next SDK 3.1.3
+    Network Next SDK 3.4.0
 
-    Copyright © 2017 - 2019 Network Next, Inc.
+    Copyright © 2017 - 2020 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
@@ -74,33 +74,5 @@ public class NetworkNextLibrary : ModuleRules
             PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "next", "lib", "Linux-x86_64", "Release", "libnext-Shared64-Release.so"));
             RuntimeDependencies.Add("$(TargetOutputDir)/libnext-Shared64-Release.so", Path.Combine(ModuleDirectory, "next", "lib", "Linux-x86_64", "Release", "libnext-Shared64-Release.so"));
         }
-
-        /*
-         * 
-        if (Target.Platform == UnrealTargetPlatform.Win32)
-        {
-            PublicLibraryPaths.Add(Path.Combine(ModuleDirectory, "next", "lib", "Windows-x86", "Release"));
-            PublicAdditionalLibraries.Add("next.lib");
-            RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "next", "lib", "Windows-x86", "Release", "next.dll"));
-        }
-        else if (Target.Platform == UnrealTargetPlatform.Win64)
-		{
-			PublicLibraryPaths.Add(Path.Combine(ModuleDirectory, "next", "lib", "Windows-x86_64", "Release"));
-			PublicAdditionalLibraries.Add("next.lib");
-            RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "next", "lib", "Windows-x86_64", "Release", "next.dll"));
-        }
-        else if (Target.Platform == UnrealTargetPlatform.Mac)
-        {
-            PublicDelayLoadDLLs.Add(Path.Combine(ModuleDirectory, "next", "lib", "macOS-x86_64", "Release", "libnext.dylib"));
-            RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "next", "lib", "Windows-x86", "Release", "libnext.dylib"));
-        }
-        else if (Target.Platform == UnrealTargetPlatform.Linux)
-        {
-            PrivateRuntimeLibraryPaths.Add(Path.Combine(ModuleDirectory, "next", "lib", "Linux-x86_64", "Release"));
-            PublicDelayLoadDLLs.Add(Path.Combine(ModuleDirectory, "next", "lib", "Linux-x86_64", "Release", "libnext.so"));
-            PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "next", "lib", "Linux-x86_64", "Release", "libnext.so"));
-            RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "next", "lib", "Linux-x86_64", "Release", "libnext.so"));
-        }
-        */
     }
 }
