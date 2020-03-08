@@ -1,0 +1,33 @@
+{
+  "FileVersion": 3,
+  "Version": 1,
+  "VersionName": "$(NEXT_VERSION_MAJOR).$(NEXT_VERSION_MINOR).$(NEXT_VERSION_PATCH)",
+  "FriendlyName": "Network Next",
+  "Description": "",
+  "Category": "Other",
+  "CreatedBy": "Network Next, Inc.",
+  "CreatedByURL": "",
+  "DocsURL": "",
+  "MarketplaceURL": "",
+  "SupportURL": "",
+  "CanContainContent": true,
+  "IsBetaVersion": false,
+  "Installed": false,
+  "Modules": [
+    {
+      "Name": "NetworkNext",
+      "Type": "Runtime",
+      "LoadingPhase": "Default"
+    }
+  ],
+  "Plugins": [
+    {
+      "Name": "OnlineSubsystem",
+      "Enabled": true
+    },
+    {
+      "Name": "OnlineSubsystemUtils",
+      "Enabled": true
+    }
+  ]
+}

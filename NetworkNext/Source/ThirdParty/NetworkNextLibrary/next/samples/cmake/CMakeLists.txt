@@ -1,0 +1,35 @@
+﻿# CMakeList.txt : Top-level CMake project file, do global configuration
+# and include sub-projects here.
+#
+cmake_minimum_required (VERSION 3.13)
+
+project ("cmake")
+
+if(WIN32)
+	set(NEXT_LIBRARY_PREFIX "")
+	set(NEXT_LIBRARY_LINK_EXT "")
+	set(NEXT_LIBRARY_EXT ".dll")
+	if("${CMAKE_SIZEOF_VOID_P}" STREQUAL "4")
+		set(NEXT_LIBRARY_ARCH "Windows-x86")
+	else()
+		set(NEXT_LIBRARY_ARCH "Windows-x86_64")
+	endif()
+elseif(APPLE)
+	set(NEXT_LIBRARY_PREFIX "lib")
+	set(NEXT_LIBRARY_LINK_EXT "")
+	set(NEXT_LIBRARY_EXT ".dylib")
+	set(NEXT_LIBRARY_ARCH "macOS-x86_64")
+elseif(UNIX)
+	set(NEXT_LIBRARY_PREFIX "lib")
+	set(NEXT_LIBRARY_EXT ".so")
+	if("${CMAKE_SIZEOF_VOID_P}" STREQUAL "4")
+		set(NEXT_LIBRARY_LINK_EXT "-Shared32-${CMAKE_BUILD_TYPE}")
+		set(NEXT_LIBRARY_ARCH "Linux-x86")
+	else()
+		set(NEXT_LIBRARY_LINK_EXT "-Shared64-${CMAKE_BUILD_TYPE}")
+		set(NEXT_LIBRARY_ARCH "Linux-x86_64")
+	endif()
+endif()
+
+add_subdirectory ("client")
+add_subdirectory ("server")
