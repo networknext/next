@@ -54,6 +54,10 @@ func NewRelay() Relay {
 	return relay
 }
 
+func (r *Relay) Size() uint64 {
+	return uint64(8 + 4 + len(r.Name) + 4 + len(r.Addr.String()) + 4 + len(r.Seller.ID) + 4 + len(r.Seller.Name) + 8 + 8 + 8 + 4 + len(r.Datacenter.Name) + len(r.PublicKey) + 8 + 8 + 8)
+}
+
 // UnmarshalBinary ...
 // TODO add other fields to this
 func (r *Relay) UnmarshalBinary(data []byte) error {
@@ -124,12 +128,10 @@ func (r *Relay) UnmarshalBinary(data []byte) error {
 // MarshalBinary ...
 // TODO add other fields to this
 func (r Relay) MarshalBinary() (data []byte, err error) {
+	data = make([]byte, r.Size())
 	strAddr := r.Addr.String()
-	length := 8 + 4 + len(r.Name) + 4 + len(strAddr) + 4 + len(r.Seller.ID) + 4 + len(r.Seller.Name) + 8 + 8 + 8 + 4 + len(r.Datacenter.Name) + len(r.PublicKey) + 8 + 8 + 8
-
-	data = make([]byte, length)
-
 	index := 0
+
 	encoding.WriteUint64(data, &index, r.ID)
 	encoding.WriteString(data, &index, r.Name, uint32(len(r.Name)))
 	encoding.WriteString(data, &index, strAddr, uint32(len(strAddr)))
