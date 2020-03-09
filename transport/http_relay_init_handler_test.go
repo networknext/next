@@ -6,6 +6,7 @@ import (
 	crand "crypto/rand"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"math"
 	mrand "math/rand"
 	"net"
@@ -183,7 +184,7 @@ func TestRelayInitHandler(t *testing.T) {
 			},
 			PublicKey: relayPublicKey,
 		}
-		relayInitAssertions(t, relay, buff, http.StatusBadRequest, nil, nil, nil, nil, routerPrivateKey[:])
+		relayInitAssertions(t, "/relay_init", relay, buff, http.StatusBadRequest, nil, nil, nil, nil, routerPrivateKey[:])
 	})
 
 	t.Run("encryption token is 0'ed", func(t *testing.T) {
@@ -212,7 +213,7 @@ func TestRelayInitHandler(t *testing.T) {
 				Name: "some datacenter",
 			},
 		}
-		relayInitAssertions(t, relay, buff, http.StatusUnauthorized, nil, nil, nil, nil, routerPrivateKey[:])
+		relayInitAssertions(t, "/relay_init", relay, buff, http.StatusUnauthorized, nil, nil, nil, nil, routerPrivateKey[:])
 	})
 
 	t.Run("nonce bytes are 0'ed", func(t *testing.T) {
@@ -256,7 +257,7 @@ func TestRelayInitHandler(t *testing.T) {
 			},
 			PublicKey: relayPublicKey,
 		}
-		relayInitAssertions(t, relay, buff, http.StatusOK, nil, nil, nil, nil, routerPrivateKey[:])
+		relayInitAssertions(t, "/relay_init", relay, buff, http.StatusOK, nil, nil, nil, nil, routerPrivateKey[:])
 	})
 
 	t.Run("relay already exists", func(t *testing.T) {
@@ -326,7 +327,7 @@ func TestRelayInitHandler(t *testing.T) {
 			},
 			PublicKey: relayPublicKey,
 		}
-		relayInitAssertions(t, relay, buff, http.StatusConflict, nil, nil, nil, redisClient, routerPrivateKey[:])
+		relayInitAssertions(t, "/relay_init", relay, buff, http.StatusConflict, nil, nil, nil, redisClient, routerPrivateKey[:])
 	})
 
 	t.Run("could not lookup relay location", func(t *testing.T) {
@@ -376,7 +377,7 @@ func TestRelayInitHandler(t *testing.T) {
 			},
 			PublicKey: relayPublicKey,
 		}
-		relayInitAssertions(t, relay, buff, http.StatusInternalServerError, nil, ipfunc, nil, redisClient, routerPrivateKey[:])
+		relayInitAssertions(t, "/relay_init", relay, buff, http.StatusInternalServerError, nil, ipfunc, nil, redisClient, routerPrivateKey[:])
 	})
 
 	t.Run("failed to get relay from configstore", func(t *testing.T) {
@@ -425,7 +426,7 @@ func TestRelayInitHandler(t *testing.T) {
 
 		inMemory := &storage.InMemory{} // Have empty storage to fail lookup
 
-		relayInitAssertions(t, relay, buff, http.StatusInternalServerError, nil, nil, inMemory, redisClient, routerPrivateKey[:])
+		relayInitAssertions(t, "/relay_init", relay, buff, http.StatusInternalServerError, nil, nil, inMemory, redisClient, routerPrivateKey[:])
 	})
 
 	t.Run("Failed to get relay from redis", func(t *testing.T) {
@@ -471,7 +472,7 @@ func TestRelayInitHandler(t *testing.T) {
 			},
 			PublicKey: relayPublicKey,
 		}
-		relayInitAssertions(t, relay, buff, http.StatusNotFound, nil, nil, nil, redisClient, routerPrivateKey[:])
+		relayInitAssertions(t, "/relay_init", relay, buff, http.StatusNotFound, nil, nil, nil, redisClient, routerPrivateKey[:])
 	})
 
 	t.Run("valid", func(t *testing.T) {
@@ -539,7 +540,7 @@ func TestRelayInitHandler(t *testing.T) {
 			PublicKey: relayPublicKey,
 		}
 
-		recorder := relayInitAssertions(t, relay, buff, http.StatusOK, &geoClient, ipfunc, nil, redisClient, routerPrivateKey[:])
+		recorder := relayInitAssertions(t, "/relay_init", relay, buff, http.StatusOK, &geoClient, ipfunc, nil, redisClient, routerPrivateKey[:])
 
 		header := recorder.Header()
 		contentType, _ := header["Content-Type"]
@@ -593,6 +594,14 @@ func TestRelayInitHandler(t *testing.T) {
 	t.Run("json version", func(t *testing.T) {
 		t.Run("unparsable json", func(t *testing.T) {
 			JSONData := "{" // basic but gets the job done
+			buff := []byte(JSONData)
+			relay := routing.Relay{
+				ID: crypto.HashID(addr),
+				Datacenter: routing.Datacenter{
+					Name: "some datacenter",
+				},
+			}
+			relayInitAssertions(t, "/relay_init_json", relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
 		})
 
 		t.Run("nonce is not valid base64", func(t *testing.T) {
@@ -656,13 +665,18 @@ func TestRelayInitHandler(t *testing.T) {
 
 			before := uint64(time.Now().Unix())
 
-			packet := transport.RelayInitPacket{
-				Magic:          transport.InitRequestMagic,
-				Nonce:          nonce,
-				Address:        *udpAddr,
-				EncryptedToken: encryptedToken,
+			b64Nonce := base64.StdEncoding.EncodeToString(nonce)
+			b64EncToken := base64.StdEncoding.EncodeToString(encryptedToken)
+
+			buff := []byte(fmt.Sprintf(`
+			{
+				"magic_request_protection": %d,
+				"relay_address": "%s",
+				"relay_port": %d,
+				"nonce": "%s",
+				"encrypted_token": "%s"
 			}
-			buff, _ := packet.MarshalBinary()
+			`, transport.InitRequestMagic, udpAddr.IP.String(), udpAddr.Port, b64Nonce, b64EncToken))
 
 			relay := routing.Relay{
 				ID: crypto.HashID(addr),
@@ -672,7 +686,7 @@ func TestRelayInitHandler(t *testing.T) {
 				PublicKey: relayPublicKey,
 			}
 
-			recorder := relayInitAssertions(t, relay, buff, http.StatusOK, &geoClient, ipfunc, nil, redisClient, routerPrivateKey[:])
+			recorder := relayInitAssertions(t, "/relay_init_json", relay, buff, http.StatusOK, &geoClient, ipfunc, nil, redisClient, routerPrivateKey[:])
 
 			header := recorder.Header()
 			contentType, _ := header["Content-Type"]
