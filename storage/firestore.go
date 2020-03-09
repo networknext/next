@@ -183,6 +183,7 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 		}
 
 		seller := routing.Seller{
+			ID:                sdoc.Ref.ID,
 			Name:              s.Name,
 			IngressPriceCents: convertNibblinsToCents(s.PricePublicIngressNibblins),
 			EgressPriceCents:  convertNibblinsToCents(s.PricePublicEgressNibblins),
