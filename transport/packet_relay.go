@@ -35,27 +35,43 @@ type RelayInitResponseJSON struct {
 	Timestamp uint64 `json:"Timestamp"`
 }
 
-func (j *RelayInitRequestJSON) ToInitPacket() *RelayInitPacket {
-	var packet RelayInitPacket
+func (j *RelayInitRequestJSON) ToInitPacket(packet *RelayInitPacket) error {
+	var err error
+
 	packet.Magic = j.Magic
 	packet.Version = 0
 
-	if dat, err := base64.RawStdEncoding.DecodeString(j.NonceBase64); err == nil {
-		packet.Nonce = make([]byte, len(dat))
-		copy(packet.Nonce, dat)
+	var nonce []byte
+	{
+		if nonce, err = base64.RawStdEncoding.DecodeString(j.NonceBase64); err != nil {
+			return err
+		}
 	}
 
-	completeAddr := fmt.Sprintf("%s:%d", j.StringAddr, j.PortNum)
-	if addr, err := net.ResolveUDPAddr("udp", completeAddr); err == nil {
-		packet.Address = *addr
+	packet.Nonce = make([]byte, len(nonce))
+	copy(packet.Nonce, nonce)
+
+	var addr *net.UDPAddr
+	{
+		completeAddr := fmt.Sprintf("%s:%d", j.StringAddr, j.PortNum)
+		if addr, err = net.ResolveUDPAddr("udp", completeAddr); err != nil {
+			return err
+		}
 	}
 
-	if dat, err := base64.RawStdEncoding.DecodeString(j.EncryptedTokenBase64); err == nil {
-		packet.EncryptedToken = make([]byte, len(dat))
-		copy(packet.EncryptedToken, dat)
+	packet.Address = *addr
+
+	var token []byte
+	{
+		if token, err = base64.RawStdEncoding.DecodeString(j.EncryptedTokenBase64); err != nil {
+			return err
+		}
 	}
 
-	return &packet
+	packet.EncryptedToken = make([]byte, len(token))
+	copy(packet.EncryptedToken, token)
+
+	return nil
 }
 
 // UnmarshalBinary decodes binary data into a RelayInitPacket struct

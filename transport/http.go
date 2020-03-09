@@ -201,22 +201,24 @@ func RelayInitJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, geoC
 			return
 		}
 
-		fmt.Printf("magic num %d, sent magic %d\n", InitRequestMagic, jsonData.Magic)
-		fmt.Printf("received base64 nonce: %s\n", string(jsonData.NonceBase64))
-		addr := fmt.Sprintf("%s:%d", jsonData.StringAddr, jsonData.PortNum)
-		fmt.Printf("received address: %s\n", addr)
-		fmt.Printf("received base64 token: %s\n", string(jsonData.EncryptedTokenBase64))
+		var packet RelayInitPacket
 
-		packet := jsonData.ToInitPacket()
+		if err := jsonData.ToInitPacket(&packet); err != nil {
+			level.Error(logger).Log("msg", "could not convert json data to binary packet", "err", err)
+			writer.WriteHeader(http.StatusBadRequest)
+			return
+		}
 
-		relay := relayInitPacketHandler(packet, writer, request, logger, redisClient, geoClient, ipLocator, storer, metricsHandler, routerPrivateKey)
+		relay := relayInitPacketHandler(&packet, writer, request, logger, redisClient, geoClient, ipLocator, storer, metricsHandler, routerPrivateKey)
 
 		if relay == nil {
+			// the packet handler func will have set the writer's status and logged something, so just log it was json and return
+			level.Error(logger).Log("msg", "could not process relay data from json handler")
 			return
 		}
 
 		var response RelayInitResponseJSON
-		response.Timestamp = relay.LastUpdateTime * 1000 // convert to millis, this is what the curr prod relay uses, will have to change when using new relay
+		response.Timestamp = relay.LastUpdateTime * 1000 // convert to millis, this is what the curr prod relay expects, will have to change when using new relay, new relay just uses seconds
 
 		var dat []byte
 		if dat, err = json.Marshal(response); err != nil {

@@ -29,7 +29,7 @@ import (
 	"golang.org/x/crypto/nacl/box"
 )
 
-func relayInitAssertions(t *testing.T, relay routing.Relay, body []byte, expectedCode int, geoClient *routing.GeoClient, ipfunc routing.LocateIPFunc, inMemory *storage.InMemory, redisClient *redis.Client, routerPrivateKey []byte) *httptest.ResponseRecorder {
+func relayInitAssertions(t *testing.T, endpoint string, relay routing.Relay, body []byte, expectedCode int, geoClient *routing.GeoClient, ipfunc routing.LocateIPFunc, inMemory *storage.InMemory, redisClient *redis.Client, routerPrivateKey []byte) *httptest.ResponseRecorder {
 	if redisClient == nil {
 		redisServer, _ := miniredis.Run()
 		redisClient = redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
@@ -72,7 +72,7 @@ func relayInitAssertions(t *testing.T, relay routing.Relay, body []byte, expecte
 	}
 
 	recorder := httptest.NewRecorder()
-	request, _ := http.NewRequest("POST", "/relay_init", bytes.NewBuffer(body))
+	request, _ := http.NewRequest("POST", endpoint, bytes.NewBuffer(body))
 
 	if inMemory == nil {
 		rtodcnameMap := make(map[uint32]string)
@@ -119,7 +119,7 @@ func TestRelayInitHandler(t *testing.T) {
 				Name: "some datacenter",
 			},
 		}
-		relayInitAssertions(t, relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
+		relayInitAssertions(t, "/relay_init", relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
 	})
 
 	t.Run("version is invalid", func(t *testing.T) {
@@ -138,7 +138,7 @@ func TestRelayInitHandler(t *testing.T) {
 				Name: "some datacenter",
 			},
 		}
-		relayInitAssertions(t, relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
+		relayInitAssertions(t, "/relay_init", relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
 	})
 
 	t.Run("address is invalid", func(t *testing.T) {
@@ -588,5 +588,139 @@ func TestRelayInitHandler(t *testing.T) {
 			assert.Equal(t, location.Latitude, math.Round(relay.Latitude*1000)/1000)
 			assert.Equal(t, location.Longitude, math.Round(relay.Longitude*1000)/1000)
 		}
+	})
+
+	t.Run("json version", func(t *testing.T) {
+		t.Run("unparsable json", func(t *testing.T) {
+			JSONData := "{" // basic but gets the job done
+		})
+
+		t.Run("nonce is not valid base64", func(t *testing.T) {
+
+		})
+
+		t.Run("udp address is not valid", func(t *testing.T) {
+
+		})
+
+		t.Run("encrypted token is not valid base64", func(t *testing.t) {
+
+		})
+
+		t.Run("valid", func(t *testing.T) {
+			redisServer, _ := miniredis.Run()
+			redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+			key := os.Getenv("RELAY_PUBLIC_KEY")
+			assert.NotEqual(t, 0, len(key))
+			relayPublicKey, err := base64.StdEncoding.DecodeString(key)
+			assert.NoError(t, err)
+
+			key = os.Getenv("RELAY_PRIVATE_KEY")
+			assert.NotEqual(t, 0, len(key))
+			relayPrivateKey, err := base64.StdEncoding.DecodeString(key)
+			assert.NoError(t, err)
+
+			routerPublicKey, routerPrivateKey, err := box.GenerateKey(rand.Reader)
+			assert.NoError(t, err)
+
+			var geoClient routing.GeoClient
+			{
+				redisServer, _ := miniredis.Run()
+				redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+				geoClient = routing.GeoClient{
+					RedisClient: redisClient,
+					Namespace:   "RELAY_LOCATIONS",
+				}
+			}
+
+			location := routing.Location{
+				Latitude:  math.Round(mrand.Float64()*1000) / 1000,
+				Longitude: math.Round(mrand.Float64()*1000) / 1000,
+			}
+
+			ipfunc := func(ip net.IP) (routing.Location, error) {
+				return location, nil
+			}
+
+			nonce := make([]byte, crypto.NonceSize)
+			crand.Read(nonce)
+
+			addr := "127.0.0.1:40000"
+			udpAddr, _ := net.ResolveUDPAddr("udp", addr)
+
+			token := make([]byte, crypto.KeySize)
+			crand.Read(token)
+
+			encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
+
+			before := uint64(time.Now().Unix())
+
+			packet := transport.RelayInitPacket{
+				Magic:          transport.InitRequestMagic,
+				Nonce:          nonce,
+				Address:        *udpAddr,
+				EncryptedToken: encryptedToken,
+			}
+			buff, _ := packet.MarshalBinary()
+
+			relay := routing.Relay{
+				ID: crypto.HashID(addr),
+				Datacenter: routing.Datacenter{
+					Name: "some datacenter",
+				},
+				PublicKey: relayPublicKey,
+			}
+
+			recorder := relayInitAssertions(t, relay, buff, http.StatusOK, &geoClient, ipfunc, nil, redisClient, routerPrivateKey[:])
+
+			header := recorder.Header()
+			contentType, _ := header["Content-Type"]
+
+			expected := routing.Relay{
+				ID:   crypto.HashID(addr),
+				Addr: *udpAddr,
+			}
+
+			resp := redisClient.HGet(routing.HashKeyAllRelays, expected.Key())
+
+			var actual routing.Relay
+			bin, _ := resp.Bytes()
+			assert.Nil(t, actual.UnmarshalBinary(bin))
+
+			indx := 0
+			body := recorder.Body.Bytes()
+
+			var version uint32
+			encoding.ReadUint32(body, &indx, &version)
+
+			var timestamp uint64
+			encoding.ReadUint64(body, &indx, &timestamp)
+
+			var publicKey []byte
+			encoding.ReadBytes(body, &indx, &publicKey, crypto.KeySize)
+
+			assert.Equal(t, "application/octet-stream", contentType[0])
+			assert.Equal(t, transport.VersionNumberInitResponse, int(version))
+			assert.LessOrEqual(t, before, timestamp)
+			assert.GreaterOrEqual(t, uint64(time.Now().Unix()), timestamp)
+			assert.Equal(t, actual.PublicKey, publicKey) // entry gets a public key assigned at init which is returned in the response
+
+			assert.Equal(t, expected.ID, actual.ID)
+			assert.Equal(t, expected.Name, actual.Name)
+			assert.Equal(t, expected.Addr, actual.Addr)
+			assert.NotZero(t, actual.LastUpdateTime)
+			assert.Len(t, actual.PublicKey, 32)
+
+			// only added one relay so it should be the only one returned by this
+			relaysInLocation, _ := geoClient.RelaysWithin(location.Latitude, location.Longitude, 1, "km")
+			if assert.Len(t, relaysInLocation, 1) {
+				relay := relaysInLocation[0]
+
+				assert.Equal(t, crypto.HashID(addr), relay.ID)
+				assert.Equal(t, location.Latitude, math.Round(relay.Latitude*1000)/1000)
+				assert.Equal(t, location.Longitude, math.Round(relay.Longitude*1000)/1000)
+			}
+		})
 	})
 }
