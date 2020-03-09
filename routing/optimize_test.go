@@ -83,7 +83,8 @@ func getPopulatedCostMatrix(malformed bool) *routing.CostMatrix {
 	matrix.RTT[0] = 7
 
 	matrix.RelaySellers = []routing.Seller{
-		{Name: "Seller One"}, {Name: "Seller Two"},
+		{ID: "1234", Name: "Seller One", IngressPriceCents: 10, EgressPriceCents: 20},
+		{ID: "5678", Name: "Seller Two", IngressPriceCents: 30, EgressPriceCents: 40},
 	}
 
 	return &matrix

@@ -276,6 +276,9 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 	m.RelaySellers = make([]Seller, numRelays)
 	if version >= 4 {
 		for i := range m.RelaySellers {
+			if !encoding.ReadString(data, &index, &m.RelaySellers[i].ID, math.MaxInt32) {
+				return errors.New("[CostMatrix] invalid read on relay seller ID")
+			}
 			if !encoding.ReadString(data, &index, &m.RelaySellers[i].Name, math.MaxInt32) {
 				return errors.New("[CostMatrix] invalid read on relay seller name")
 			}
@@ -361,6 +364,7 @@ func (m CostMatrix) MarshalBinary() ([]byte, error) {
 	}
 
 	for _, seller := range m.RelaySellers {
+		encoding.WriteString(data, &index, seller.ID, uint32(len(seller.ID)))
 		encoding.WriteString(data, &index, seller.Name, uint32(len(seller.Name)))
 		encoding.WriteUint64(data, &index, seller.IngressPriceCents)
 		encoding.WriteUint64(data, &index, seller.EgressPriceCents)
@@ -656,7 +660,7 @@ func (m *CostMatrix) Size() uint64 {
 
 	// Add length of relay sellers
 	for _, seller := range m.RelaySellers {
-		length += uint64(4 + len(seller.Name) + 8 + 8)
+		length += uint64(4 + len(seller.ID) + 4 + len(seller.Name) + 8 + 8)
 	}
 
 	return length
@@ -1101,6 +1105,9 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 	m.RelaySellers = make([]Seller, numRelays)
 	if version >= 4 {
 		for i := range m.RelaySellers {
+			if !encoding.ReadString(data, &index, &m.RelaySellers[i].ID, math.MaxInt32) {
+				return errors.New("[CostMatrix] invalid read on relay seller ID")
+			}
 			if !encoding.ReadString(data, &index, &m.RelaySellers[i].Name, math.MaxInt32) {
 				return errors.New("[CostMatrix] invalid read on relay seller name")
 			}
@@ -1204,6 +1211,7 @@ func (m RouteMatrix) MarshalBinary() ([]byte, error) {
 	}
 
 	for _, seller := range m.RelaySellers {
+		encoding.WriteString(data, &index, seller.ID, uint32(len(seller.ID)))
 		encoding.WriteString(data, &index, seller.Name, uint32(len(seller.Name)))
 		encoding.WriteUint64(data, &index, seller.IngressPriceCents)
 		encoding.WriteUint64(data, &index, seller.EgressPriceCents)
@@ -1252,7 +1260,7 @@ func (m *RouteMatrix) Size() uint64 {
 
 	// Add length of relay sellers
 	for _, seller := range m.RelaySellers {
-		length += uint64(4 + len(seller.Name) + 8 + 8)
+		length += uint64(4 + len(seller.ID) + 4 + len(seller.Name) + 8 + 8)
 	}
 
 	return length
