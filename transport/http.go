@@ -171,6 +171,52 @@ func RelayInitHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClien
 	}
 }
 
+// RelayInitJSONHandlerFunc handles relay init data in json form
+// currently it just converts the json struct into a packet struct and processes that
+func RelayInitJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, storer storage.Storer, metricsHandler metrics.Handler, routerPrivateKey []byte) func(writer http.ResponseWriter, request *http.Request) {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		fmt.Println("INIT JSON")
+		body, err := ioutil.ReadAll(request.Body)
+		if err != nil {
+			level.Error(logger).Log("msg", "could not read packet", "err", err)
+			return
+		}
+
+		var jsonData RelayInitRequestJSON
+		if err := json.Unmarshal(body, &jsonData); err != nil {
+			level.Error(logger).Log("msg", "could not parse init json", "err", err)
+			writer.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		fmt.Printf("magic num %d, sent magic %d\n", InitRequestMagic, jsonData.Magic)
+		fmt.Printf("received base64 nonce: %s\n", string(jsonData.NonceBase64))
+		addr := fmt.Sprintf("%s:%d", jsonData.StringAddr, jsonData.PortNum)
+		fmt.Printf("received address: %s\n", addr)
+		fmt.Printf("received base64 token: %s\n", string(jsonData.EncryptedTokenBase64))
+
+		packet := jsonData.ToInitPacket()
+
+		relay := relayInitPacketHandler(packet, writer, request, logger, redisClient, geoClient, ipLocator, storer, metricsHandler, routerPrivateKey)
+
+		if relay == nil {
+			return
+		}
+
+		var response RelayInitResponseJSON
+		response.Timestamp = relay.LastUpdateTime * 1000 // convert to millis, this is what the curr prod relay uses, will have to change when using new relay
+
+		var dat []byte
+		if dat, err = json.Marshal(response); err != nil {
+			level.Error(logger).Log("msg", "could not marshal init json response", "err", err)
+			writer.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		writer.Write(dat)
+	}
+}
+
 func relayUpdatePacketHandler(relayUpdatePacket *RelayUpdatePacket, writer http.ResponseWriter, request *http.Request, logger log.Logger, redisClient *redis.Client, statsdb *routing.StatsDatabase, metricsHandler metrics.Handler) []routing.RelayPingData {
 	locallogger := log.With(logger, "req_addr", request.RemoteAddr, "relay_addr", relayUpdatePacket.Address.String())
 
@@ -313,64 +359,8 @@ func RelayUpdateHandlerFunc(logger log.Logger, redisClient *redis.Client, statsd
 	}
 }
 
-// NearHandlerFunc returns the function for the near endpoint
-func NearHandlerFunc(backend *StubbedBackend) func(writer http.ResponseWriter, request *http.Request) {
-	return func(writer http.ResponseWriter, request *http.Request) {
-		backend.mutex.RLock()
-		nearData := backend.nearData
-		backend.mutex.RUnlock()
-		writer.WriteHeader(http.StatusOK)
-		writer.Header().Set("Content-Type", "application/octet-stream")
-		writer.Write(nearData)
-	}
-}
-
-// RelayInitJSONHandlerFunc ...
-func RelayInitJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, storer storage.Storer, metricsHandler metrics.Handler, routerPrivateKey []byte) func(writer http.ResponseWriter, request *http.Request) {
-	return func(writer http.ResponseWriter, request *http.Request) {
-		fmt.Println("INIT JSON")
-		body, err := ioutil.ReadAll(request.Body)
-		if err != nil {
-			level.Error(logger).Log("msg", "could not read packet", "err", err)
-			return
-		}
-
-		var jsonData RelayInitRequestJSON
-		if err := json.Unmarshal(body, &jsonData); err != nil {
-			level.Error(logger).Log("msg", "could not parse init json", "err", err)
-			writer.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		fmt.Printf("magic num %d, sent magic %d\n", InitRequestMagic, jsonData.Magic)
-		fmt.Printf("received base64 nonce: %s\n", string(jsonData.NonceBase64))
-		addr := fmt.Sprintf("%s:%d", jsonData.StringAddr, jsonData.PortNum)
-		fmt.Printf("received address: %s\n", addr)
-		fmt.Printf("received base64 token: %s\n", string(jsonData.EncryptedTokenBase64))
-
-		packet := jsonData.ToInitPacket()
-
-		relay := relayInitPacketHandler(packet, writer, request, logger, redisClient, geoClient, ipLocator, storer, metricsHandler, routerPrivateKey)
-
-		if relay == nil {
-			return
-		}
-
-		var response RelayInitResponseJSON
-		response.Timestamp = relay.LastUpdateTime * 1000 // convert to millis, this is what the curr prod relay uses, will have to change when using new relay
-
-		var dat []byte
-		if dat, err = json.Marshal(response); err != nil {
-			level.Error(logger).Log("msg", "could not marshal init json response", "err", err)
-			writer.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		writer.Write(dat)
-	}
-}
-
-// RelayUpdateJSONHandlerFunc ...
+// RelayUpdateJSONHandlerFunc handles processing json from the relays
+// currently it just converts the json into a packet and passes it to a common function
 func RelayUpdateJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, statsdb *routing.StatsDatabase, metricsHandler metrics.Handler) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		fmt.Println("UPDATE JSON")
@@ -413,5 +403,17 @@ func RelayUpdateJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, st
 		}
 
 		writer.Write(dat)
+	}
+}
+
+// NearHandlerFunc returns the function for the near endpoint
+func NearHandlerFunc(backend *StubbedBackend) func(writer http.ResponseWriter, request *http.Request) {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		backend.mutex.RLock()
+		nearData := backend.nearData
+		backend.mutex.RUnlock()
+		writer.WriteHeader(http.StatusOK)
+		writer.Header().Set("Content-Type", "application/octet-stream")
+		writer.Write(nearData)
 	}
 }

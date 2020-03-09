@@ -12,7 +12,7 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
-#include "curl.hpp"
+#include "compat.hpp"
 
 // -------------------------------------------------------------
 
@@ -3270,7 +3270,7 @@ next_thread_return_t NEXT_THREAD_FUNC manage_thread( void * )
                 std::string resp;
                 char addr_buff[NEXT_ADDRESS_BYTES + NEXT_ADDRESS_BUFFER_SAFETY] = {};
                 next_address_to_string(&env->relay.address, addr_buff);
-                auto request_success = next_curl_init(global.backend_hostname, addr_buff, global.bind_port, global.router_public_key, global.relay_private_key, resp);
+                auto request_success = compat::next_curl_init(global.backend_hostname, addr_buff, global.bind_port, global.router_public_key, global.relay_private_key, resp);
                 env->init_data.received = relay_time();
 
                 json::JSON doc;
@@ -3946,7 +3946,7 @@ next_thread_return_t NEXT_THREAD_FUNC manage_thread( void * )
                 json::JSON respDoc;
                 char addr_buff[NEXT_ADDRESS_BYTES + NEXT_ADDRESS_BUFFER_SAFETY] = {};
                 next_address_to_string( &env->relay.address, addr_buff);
-                if (next_curl_update(global.backend_hostname, request_buffer.GetString(), addr_buff, global.bind_port, respDoc)) {
+                if (compat::next_curl_update(global.backend_hostname, request_buffer.GetString(), addr_buff, global.bind_port, respDoc)) {
                     next_printf( NEXT_LOG_LEVEL_INFO, "curl updated" );
                     if (respDoc.memberExists("ping_data")) {
                         next_printf( NEXT_LOG_LEVEL_INFO, "have ping data" );
