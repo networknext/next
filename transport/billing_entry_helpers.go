@@ -23,10 +23,10 @@ func NewBillingRoute(route *routing.Route, bytesUp uint64, bytesDown uint64) []*
 		downEgress := seller.EgressPriceCents * bytesDown
 
 		hops = append(hops, &billing.RouteHop{
+			RelayID:      NewEntityID("Relay", relay.ID),
+			SellerID:     &billing.EntityID{Kind: "Seller", Name: seller.ID},
 			PriceIngress: int64(upIngress + downIngress),
 			PriceEgress:  int64(upEgress + downEgress),
-			//SellerID:     NewEntityID("Seller", seller.ID),
-			RelayID: NewEntityID("Relay", relay.ID),
 		})
 	}
 
