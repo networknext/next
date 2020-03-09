@@ -369,7 +369,6 @@ void next_socket_destroy( next_socket_t * socket )
 
 void next_socket_send_packet( next_socket_t * socket, const next_address_t * to, void * packet_data, int packet_bytes )
 {
-    printf("sending a packet\n");
     next_assert( socket );
     next_assert( to );
     next_assert( to->type == NEXT_ADDRESS_IPV6 || to->type == NEXT_ADDRESS_IPV4 );
@@ -387,13 +386,11 @@ void next_socket_send_packet( next_socket_t * socket, const next_address_t * to,
         }
         socket_address.sin6_port = next_htons( to->port );
         int result = int( sendto( socket->handle, (char*)( packet_data ), packet_bytes, 0, (sockaddr*)( &socket_address ), sizeof(sockaddr_in6) ) );
-        printf("sent a packet\n");
         if ( result < 0 )
         {
             char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
             next_address_to_string( to, address_string );
             next_printf( NEXT_LOG_LEVEL_ERROR, "sendto (%s) failed: %s", address_string, strerror( errno ) );
-            printf("sendto (%s) failed: %s\n", address_string, strerror( errno ) );
         }
     }
     else if ( to->type == NEXT_ADDRESS_IPV4 )
@@ -407,19 +404,16 @@ void next_socket_send_packet( next_socket_t * socket, const next_address_t * to,
                                          ( ( (uint32_t) to->data.ipv4[3] ) << 24 );
         socket_address.sin_port = next_htons( to->port );
         int result = int( sendto( socket->handle, (const char*)( packet_data ), packet_bytes, 0, (sockaddr*)( &socket_address ), sizeof(sockaddr_in) ) );
-        printf("sent a packet\n");
         if ( result < 0 )
         {
             char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
             next_address_to_string( to, address_string );
             next_printf( NEXT_LOG_LEVEL_ERROR, "sendto (%s) failed: %s", address_string, strerror( errno ) );
-            printf("sendto (%s) failed: %s\n", address_string, strerror( errno ) );
         }
     }
     else
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "invalid address type. could not send packet" );
-        printf("invalid address type. could not send packet");
     }
 }
 

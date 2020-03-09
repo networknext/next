@@ -1371,7 +1371,6 @@ int relay_receive_packet( next_socket_t * socket, next_address_t * from, uint8_t
 
 void relay_send_packet( next_socket_t * socket, next_address_t * to, uint8_t * packet_data, int packet_bytes )
 {
-    relay_printf(NEXT_LOG_LEVEL_DEBUG, "sending a relay packet");
     uint8_t packet_type = packet_data[0];
     if ( packet_type == NEXT_PACKET_TYPE_V2_CLIENT_TO_SERVER
         || packet_type == NEXT_PACKET_TYPE_V3_CLIENT_TO_SERVER
@@ -1404,7 +1403,6 @@ void relay_send_packet( next_socket_t * socket, next_address_t * to, uint8_t * p
         global.bytes_per_sec_measurement_tx += NEXT_LOW_LEVEL_HEADER_BYTES + packet_bytes;
     }
 
-    relay_printf(NEXT_LOG_LEVEL_DEBUG, "should send using next socket now");
     next_socket_send_packet( socket, to, packet_data, packet_bytes );
 }
 
@@ -1693,7 +1691,6 @@ next_thread_return_t NEXT_THREAD_FUNC flow_thread( void * param )
 
                     case NEXT_PACKET_TYPE_V3_RELAY_PING:
                     {
-                        next_printf(NEXT_LOG_LEVEL_DEBUG, "got ping packet");
                         uint64_t relay_id;
                         uint64_t sequence;
                         if ( flow_ping_read( packet_data, packet_bytes, timestamp, &relay_id, &sequence ) == NEXT_OK )
@@ -2246,9 +2243,6 @@ next_thread_return_t NEXT_THREAD_FUNC flow_thread( void * param )
                 {
                     case MSG_MANAGE_RELAY_PING_OUTGOING:
                     {
-                        const char addr[128] = {};
-                        next_address_to_string(&msg->relay_ping_outgoing.address, addr);
-                        relay_printf(NEXT_LOG_LEVEL_DEBUG, "sending a ping to relay with addr %s", addr);
                         flow_relay_ping_send( &socket, &msg->relay_ping_outgoing.address, msg->relay_ping_outgoing.token, msg->relay_ping_outgoing.sequence );
                         break;
                     }
@@ -4043,7 +4037,6 @@ next_thread_return_t NEXT_THREAD_FUNC manage_thread( void * )
             for ( int i = 0; i < manage.env_count; i++ )
             {
                 manage_environment_t * env = &manage.envs[i];
-                relay_printf(NEXT_LOG_LEVEL_DEBUG, "Handling %lu pings", env->peers.size());
                 for ( manage_peer_map_t::iterator j = env->peers.begin(); j != env->peers.end(); j++ )
                 {
                     if ( ping_index == PING_BULK )
@@ -4054,12 +4047,8 @@ next_thread_return_t NEXT_THREAD_FUNC manage_thread( void * )
 
                     manage_peer_t * peer = &j->second;
 
-                    relay_printf(NEXT_LOG_LEVEL_DEBUG, "handling relay ping for relay %lu", peer->relay_id);
-
                     if ( manage_should_ping( env, peer ) && ping_map.find( peer->address ) == ping_map.end() )
                     {
-                        relay_printf(NEXT_LOG_LEVEL_DEBUG, "will be pinging this relay");
-
                         // ping only in the first environment that has this relay
                         uint64_t sequence = manage_peer_history_insert( &peer->history, time );
 
@@ -4076,7 +4065,6 @@ next_thread_return_t NEXT_THREAD_FUNC manage_thread( void * )
                 }
             }
 
-            relay_printf(NEXT_LOG_LEVEL_DEBUG, "enqueing %d pings", ping_index);
             global.manage_queue_out.enqueue_bulk( producer_token, pings, ping_index );
         }
 
