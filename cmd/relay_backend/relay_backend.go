@@ -135,8 +135,8 @@ func main() {
 		},
 	}
 
-	// Create a no-op metrics handler in case metrics aren't set up
-	var metricsHandler metrics.Handler = &metrics.NoOpHandler{}
+	// Create a local metrics handler
+	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
 
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
@@ -180,6 +180,54 @@ func main() {
 		go func() {
 			metricsHandler.WriteLoop(ctx, logger, time.Minute, 200)
 		}()
+	}
+
+	initDuration, err := metricsHandler.NewHistogram(ctx, &metrics.Descriptor{
+		DisplayName: "Relay init duration",
+		ServiceName: "relay_backend",
+		ID:          "relay.init.duration",
+		Unit:        "milliseconds",
+		Description: "How long it takes to process a relay init request",
+	}, 50)
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create metric histogram", "metric", "relay.init.duration", "err", err)
+		initDuration = &metrics.EmptyHistogram{}
+	}
+
+	updateDuration, err := metricsHandler.NewHistogram(ctx, &metrics.Descriptor{
+		DisplayName: "Relay update duration",
+		ServiceName: "relay_backend",
+		ID:          "relay-update-duration",
+		Unit:        "milliseconds",
+		Description: "How long it takes to process a relay update request.",
+	}, 50)
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create metric histogram", "metric", "relay.update.duration", "err", err)
+		updateDuration = &metrics.EmptyHistogram{}
+	}
+
+	initCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
+		DisplayName: "Total relay init count",
+		ServiceName: "relay_backend",
+		ID:          "relay.init.count",
+		Unit:        "requests",
+		Description: "The total number of received relay init requests",
+	})
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "relay.init.count", "err", err)
+		initCount = &metrics.EmptyCounter{}
+	}
+
+	updateCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
+		DisplayName: "Total relay update count",
+		ServiceName: "relay_backend",
+		ID:          "relay.update.count",
+		Unit:        "requests",
+		Description: "The total number of received relay update requests",
+	})
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "relay.update.count", "err", err)
+		updateCount = &metrics.EmptyCounter{}
 	}
 
 	statsdb := routing.NewStatsDatabase()
@@ -246,7 +294,7 @@ func main() {
 		}
 	}()
 
-	router := transport.NewRouter(logger, redisClient, &geoClient, ipLocator, db, statsdb, metricsHandler, &costmatrix, &routematrix, routerPrivateKey)
+	router := transport.NewRouter(logger, redisClient, &geoClient, ipLocator, db, statsdb, initDuration, updateDuration, initCount, updateCount, &costmatrix, &routematrix, routerPrivateKey)
 
 	go func() {
 		port, ok := os.LookupEnv("PORT")

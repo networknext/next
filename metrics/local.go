@@ -41,6 +41,7 @@ func (local *LocalHandler) NewCounter(ctx context.Context, descriptor *Descripto
 	}
 
 	local.counterMapMutex.Lock()
+	defer local.counterMapMutex.Unlock()
 
 	if mapData, contains := local.counters[descriptor.ID]; contains {
 		return mapData.counter, nil
@@ -55,8 +56,6 @@ func (local *LocalHandler) NewCounter(ctx context.Context, descriptor *Descripto
 		counter:    counter,
 	}
 
-	local.counterMapMutex.Unlock()
-
 	return counter, nil
 }
 
@@ -69,6 +68,7 @@ func (local *LocalHandler) NewGauge(ctx context.Context, descriptor *Descriptor)
 	}
 
 	local.gaugeMapMutex.Lock()
+	defer local.gaugeMapMutex.Unlock()
 
 	if mapData, contains := local.gauges[descriptor.ID]; contains {
 		return mapData.gauge, nil
@@ -83,8 +83,6 @@ func (local *LocalHandler) NewGauge(ctx context.Context, descriptor *Descriptor)
 		gauge:      gauge,
 	}
 
-	local.gaugeMapMutex.Unlock()
-
 	return gauge, nil
 }
 
@@ -97,6 +95,7 @@ func (local *LocalHandler) NewHistogram(ctx context.Context, descriptor *Descrip
 	}
 
 	local.histogramMapMutex.Lock()
+	defer local.histogramMapMutex.Unlock()
 
 	if mapData, contains := local.histograms[descriptor.ID]; contains {
 		return mapData.histogram, nil
@@ -113,8 +112,8 @@ func (local *LocalHandler) NewHistogram(ctx context.Context, descriptor *Descrip
 	local.customMetricsMap.Set(descriptor.ID+".p99", p99)
 
 	histogram := &LocalHistogram{
-		h:       generic.NewHistogram(descriptor.ID, 50),
-		buckets: 50,
+		h:       generic.NewHistogram(descriptor.ID, buckets),
+		buckets: buckets,
 		p50:     p50,
 		p90:     p90,
 		p95:     p95,
@@ -126,8 +125,6 @@ func (local *LocalHandler) NewHistogram(ctx context.Context, descriptor *Descrip
 		histogram:  histogram,
 		buckets:    buckets,
 	}
-
-	local.histogramMapMutex.Unlock()
 
 	return histogram, nil
 }

@@ -78,3 +78,14 @@ var DefaultRoutingRulesSettings = RoutingRulesSettings{
 	RTTHysteresis:     5.0,
 	RTTVeto:           20.0,
 }
+
+var LocalRoutingRulesSettings = RoutingRulesSettings{
+	MaxCentsPerGB:     25.0,
+	EnvelopeKbpsUp:    256,
+	EnvelopeKbpsDown:  256,
+	AcceptableLatency: -1.0,
+	RTTThreshold:      0.05,
+	RTTEpsilon:        0.1,
+	RTTHysteresis:     0.05,
+	RTTVeto:           1.0,
+}

@@ -3,6 +3,7 @@ package transport
 import (
 	"bytes"
 	"encoding/json"
+	"expvar"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
+	gkmetrics "github.com/go-kit/kit/metrics"
 
 	"github.com/go-redis/redis/v7"
 	"github.com/gorilla/mux"
@@ -34,15 +36,18 @@ const (
 )
 
 // NewRouter creates a router with the specified endpoints
-func NewRouter(logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, storer storage.Storer, statsdb *routing.StatsDatabase, metricsHandler metrics.Handler, costmatrix *routing.CostMatrix, routematrix *routing.RouteMatrix, routerPrivateKey []byte) *mux.Router {
+func NewRouter(logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, storer storage.Storer,
+	statsdb *routing.StatsDatabase, initDuration metrics.Histogram, updateDuration metrics.Histogram, initCounter metrics.Counter,
+	updateCounter metrics.Counter, costmatrix *routing.CostMatrix, routematrix *routing.RouteMatrix, routerPrivateKey []byte) *mux.Router {
 	router := mux.NewRouter()
-	router.HandleFunc("/relay_init", RelayInitHandlerFunc(logger, redisClient, geoClient, ipLocator, storer, metricsHandler, routerPrivateKey)).Methods("POST")
-	router.HandleFunc("/relay_update", RelayUpdateHandlerFunc(logger, redisClient, statsdb, metricsHandler)).Methods("POST")
+	router.HandleFunc("/relay_init", RelayInitHandlerFunc(logger, redisClient, geoClient, ipLocator, storer, initDuration, initCounter, routerPrivateKey)).Methods("POST")
+	router.HandleFunc("/relay_update", RelayUpdateHandlerFunc(logger, redisClient, statsdb, updateDuration, updateCounter)).Methods("POST")
 	router.Handle("/cost_matrix", costmatrix).Methods("GET")
 	router.Handle("/route_matrix", routematrix).Methods("GET")
 	router.HandleFunc("/near", NearHandlerFunc(nil)).Methods("GET")
 	router.HandleFunc("/relay_init_json", RelayInitJSONHandlerFunc(logger, redisClient, geoClient, ipLocator, storer, metricsHandler, routerPrivateKey)).Methods("POST")
 	router.HandleFunc("/relay_update_json", RelayUpdateJSONHandlerFunc(logger, redisClient, statsdb, metricsHandler)).Methods("POST")
+	router.Handle("/debug/vars", expvar.Handler())
 	return router
 }
 
@@ -136,10 +141,17 @@ func relayInitPacketHandler(relayInitPacket *RelayInitPacket, writer http.Respon
 }
 
 // RelayInitHandlerFunc returns the function for the relay init endpoint
-func RelayInitHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, storer storage.Storer, metricsHandler metrics.Handler, routerPrivateKey []byte) func(writer http.ResponseWriter, request *http.Request) {
+func RelayInitHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, storer storage.Storer, duration metrics.Histogram, counter metrics.Counter, routerPrivateKey []byte) func(writer http.ResponseWriter, request *http.Request) {
 	logger = log.With(logger, "handler", "init")
 
 	return func(writer http.ResponseWriter, request *http.Request) {
+		timer := gkmetrics.NewTimer(duration.With("method", "RelayInitHandlerFunc"))
+		timer.Unit(time.Millisecond)
+		defer func() {
+			timer.ObserveDuration()
+			counter.Add(1)
+		}()
+
 		body, err := ioutil.ReadAll(request.Body)
 		if err != nil {
 			level.Error(logger).Log("msg", "could not read packet", "err", err)
@@ -318,10 +330,17 @@ func relayUpdatePacketHandler(relayUpdatePacket *RelayUpdatePacket, writer http.
 }
 
 // RelayUpdateHandlerFunc returns the function for the relay update endpoint
-func RelayUpdateHandlerFunc(logger log.Logger, redisClient *redis.Client, statsdb *routing.StatsDatabase, metricsHandler metrics.Handler) func(writer http.ResponseWriter, request *http.Request) {
+func RelayUpdateHandlerFunc(logger log.Logger, redisClient *redis.Client, statsdb *routing.StatsDatabase, duration metrics.Histogram, counter metrics.Counter) func(writer http.ResponseWriter, request *http.Request) {
 	logger = log.With(logger, "handler", "update")
 
 	return func(writer http.ResponseWriter, request *http.Request) {
+		timer := gkmetrics.NewTimer(duration.With("method", "RelayInitHandlerFunc"))
+		timer.Unit(time.Millisecond)
+		defer func() {
+			timer.ObserveDuration()
+			counter.Add(1)
+		}()
+
 		body, err := ioutil.ReadAll(request.Body)
 		if err != nil {
 			level.Error(logger).Log("msg", "could not read packet", "err", err)
