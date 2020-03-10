@@ -209,16 +209,21 @@ type RouteProvider interface {
 	Routes([]routing.Relay, []routing.Relay, ...routing.SelectorFunc) ([]routing.Route, error)
 }
 
+type SessionMetrics struct {
+	InvocationCount metrics.Counter
+	UpdateDuration  metrics.Histogram
+}
+
 // SessionUpdateHandlerFunc ...
-func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, duration metrics.Histogram, counter metrics.Counter, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, metrics *SessionMetrics, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
 	logger = log.With(logger, "handler", "session")
 
 	return func(w io.Writer, incoming *UDPPacket) {
-		timer := gkmetrics.NewTimer(duration.With("method", "SessionUpdateHandlerFunc"))
+		timer := gkmetrics.NewTimer(metrics.UpdateDuration.With("method", "SessionUpdateHandlerFunc"))
 		timer.Unit(time.Millisecond)
 		defer func() {
 			timer.ObserveDuration()
-			counter.Add(1)
+			metrics.InvocationCount.Add(1)
 		}()
 
 		timestampNow := time.Now()

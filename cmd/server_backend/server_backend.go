@@ -207,6 +207,7 @@ func main() {
 		}()
 	}
 
+	// Create server update metrics
 	updateDuration, err := metricsHandler.NewHistogram(ctx, &metrics.Descriptor{
 		DisplayName: "Server update duration",
 		ServiceName: "server_backend",
@@ -217,18 +218,6 @@ func main() {
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create metric histogram", "metric", "server.update.duration", "err", err)
 		updateDuration = &metrics.EmptyHistogram{}
-	}
-
-	sessionDuration, err := metricsHandler.NewHistogram(ctx, &metrics.Descriptor{
-		DisplayName: "Session update duration",
-		ServiceName: "server_backend",
-		ID:          "session.duration",
-		Unit:        "milliseconds",
-		Description: "How long it takes to process a session update request",
-	}, 50)
-	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create metric histogram", "metric", "session.duration", "err", err)
-		sessionDuration = &metrics.EmptyHistogram{}
 	}
 
 	updateCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
@@ -243,16 +232,34 @@ func main() {
 		updateCount = &metrics.EmptyCounter{}
 	}
 
-	sessionCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
-		DisplayName: "Total session count",
+	// Create session update metrics
+	sessionUpdateInvocationCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
+		DisplayName: "Total session update invocations",
 		ServiceName: "server_backend",
-		ID:          "session.count",
+		ID:          "session.update.invocations",
 		Unit:        "sessions",
-		Description: "The total number of concurrent sessions",
+		Description: "The total number of session update handlers we are attempting to run",
 	})
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "session.count", "err", err)
-		sessionCount = &metrics.EmptyCounter{}
+		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "session.update.invocations", "err", err)
+		sessionUpdateInvocationCount = &metrics.EmptyCounter{}
+	}
+
+	sessionDuration, err := metricsHandler.NewHistogram(ctx, &metrics.Descriptor{
+		DisplayName: "Session update duration",
+		ServiceName: "server_backend",
+		ID:          "session.duration",
+		Unit:        "milliseconds",
+		Description: "How long it takes to process a session update request",
+	}, 50)
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create metric histogram", "metric", "session.duration", "err", err)
+		sessionDuration = &metrics.EmptyHistogram{}
+	}
+
+	sessionMetrics := transport.SessionMetrics{
+		InvocationCount: sessionUpdateInvocationCount,
+		UpdateDuration:  sessionDuration,
 	}
 
 	var routeMatrix routing.RouteMatrix
@@ -314,7 +321,7 @@ func main() {
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
 			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClient, db, updateDuration, updateCount),
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClient, db, &routeMatrix, ipLocator, &geoClient, sessionDuration, sessionCount, biller, serverPrivateKey, routerPrivateKey),
+			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClient, db, &routeMatrix, ipLocator, &geoClient, &sessionMetrics, biller, serverPrivateKey, routerPrivateKey),
 		}
 
 		go func() {
