@@ -207,28 +207,28 @@ func main() {
 		}()
 	}
 
-	updateDuration, err := metricsHandler.NewHistogram(ctx, &metrics.Descriptor{
+	updateDuration, err := metricsHandler.NewGauge(ctx, &metrics.Descriptor{
 		DisplayName: "Server update duration",
 		ServiceName: "server_backend",
-		ID:          "server.update.duration",
+		ID:          "server.duration",
 		Unit:        "milliseconds",
 		Description: "How long it takes to process a server update request.",
-	}, 50)
+	})
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create metric histogram", "metric", "server.update.duration", "err", err)
-		updateDuration = &metrics.EmptyHistogram{}
+		level.Error(logger).Log("msg", "Failed to create metric histogram", "metric", "server.duration", "err", err)
+		updateDuration = &metrics.EmptyGauge{}
 	}
 
-	sessionDuration, err := metricsHandler.NewHistogram(ctx, &metrics.Descriptor{
+	sessionDuration, err := metricsHandler.NewGauge(ctx, &metrics.Descriptor{
 		DisplayName: "Session update duration",
 		ServiceName: "server_backend",
 		ID:          "session.duration",
 		Unit:        "milliseconds",
 		Description: "How long it takes to process a session update request",
-	}, 50)
+	})
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create metric histogram", "metric", "session.duration", "err", err)
-		sessionDuration = &metrics.EmptyHistogram{}
+		sessionDuration = &metrics.EmptyGauge{}
 	}
 
 	updateCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
