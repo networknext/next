@@ -15,7 +15,7 @@ solution "next"
 
 project "relay"
     defines { "_GNU_SOURCE" }
-    links { "sodium", "pthread" }
+    links { "sodium", "pthread", "curl" }
     includedirs { "deps" }
     files {
         "deps/miniz.cpp",

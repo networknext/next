@@ -12,6 +12,7 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include "compat.hpp"
 
 // -------------------------------------------------------------
 
@@ -771,6 +772,9 @@ struct global_t
     uint8_t relay_private_key[NEXT_PRIVATE_KEY_BYTES];
     uint8_t relay_public_key[NEXT_PUBLIC_KEY_BYTES];
     uint8_t relay_ping_key[NEXT_PING_KEY_BYTES];
+    uint8_t router_public_key[NEXT_PUBLIC_KEY_BYTES];
+
+    const char * backend_hostname;
 };
 global_t global;
 
@@ -869,6 +873,7 @@ struct manage_environment_t
     next_json_document_t relay_data_json;
     bool valid;
     int idx;
+    bool http_success;
 };
 
 struct manage_t
@@ -883,7 +888,7 @@ struct metrics_t
 };
 metrics_t metrics;
 
-void relay_printf( int level, const char * format, ... ) 
+void relay_printf( int level, const char * format, ... )
 {
     va_list args;
     va_start( args, format );
@@ -1591,7 +1596,7 @@ int flow_near_bandwidth_check( bandwidth_map_t * near_bandwidth, next_vector_t<b
 next_thread_return_t NEXT_THREAD_FUNC flow_thread( void * param )
 {
     flow_thread_context_t * context = (flow_thread_context_t *)( param );
-    
+
     uint8_t thread_id = flow_thread_id( context );
 
     next_socket_t socket;
@@ -2455,7 +2460,7 @@ void manage_peer_history_stats( const manage_peer_history_t * history, int64_t s
     // calculate jitter
 
     int num_jitter_samples = 0;
-  
+
     double stddev_rtt = 0.0;
 
     for ( int i = 0; i < MANAGE_PEER_HISTORY_ENTRY_COUNT; i++ )
@@ -2672,7 +2677,7 @@ static int manage_master_packet_read_complete( uint8_t * packet_data, int packet
         next_free( buffer );
         return NEXT_ERROR;
     }
-    
+
     result = inflate( &z, Z_NO_FLUSH );
     if ( result != Z_STREAM_END )
     {
@@ -2866,7 +2871,7 @@ static int manage_master_packet_send_fragment( uint8_t packet_type,
     // 64 byte MAC (handled automatically by sodium)
 
     int header_bytes = 1 + MASTER_TOKEN_BYTES + sizeof( uint64_t ) + 2;
-    
+
     int total_bytes = header_bytes + packet_bytes + crypto_box_SEALBYTES;
 
     uint8_t * buffer = (uint8_t *)( alloca( total_bytes - 1 ) );
@@ -3032,7 +3037,7 @@ int manage_init_callback( next_json_document_t * document, master_init_data_t * 
     uint8_t * p = master_token_bytes;
     next_read_address( &p, &init_data->token.address );
     next_read_bytes( &p, init_data->token.hmac, sizeof( init_data->token.hmac ) );
-    
+
     init_data->received = now;
 
     // timestamp from master is millisecond resolution; convert it to nanoseconds and compensate for RTT
@@ -3239,13 +3244,62 @@ next_thread_return_t NEXT_THREAD_FUNC manage_thread( void * )
     int64_t metrics_post_last = update_last;
     bool run = true;
 
-    // get master init data
     for ( int i = 0; i < manage.env_count; i++ )
     {
-        if ( quit ) 
+        if ( quit )
             break;
 
         manage_environment_t * env = &manage.envs[i];
+
+        relay_printf( NEXT_LOG_LEVEL_INFO, "http requesting init data (env %d)...", i );
+
+        int64_t init_request_first = relay_time();
+
+        while (!quit)
+        {
+            int64_t now = relay_time();
+            if ( now - init_request_first > 60 * NEXT_ONE_SECOND_NS )
+            {
+                relay_printf( NEXT_LOG_LEVEL_ERROR, "failed to post init data (env %d)...", i );
+                exit( 1 );
+            }
+
+            if ( now - env->init_data.requested > 1 * NEXT_ONE_SECOND_NS )
+            {
+                env->init_data.requested = now;
+                std::string resp;
+                char addr_buff[NEXT_ADDRESS_BYTES + NEXT_ADDRESS_BUFFER_SAFETY] = {};
+                next_address_to_string(&env->relay.address, addr_buff);
+                auto request_success = compat::next_curl_init(global.backend_hostname, addr_buff, global.bind_port, global.router_public_key, global.relay_private_key, resp);
+                env->init_data.received = relay_time();
+
+                json::JSON doc;
+                if (doc.parse(resp)) {
+                    if (!doc.memberExists("Timestamp")) {
+                      printf("timestamp not sent from relay backend\n");
+                    } else {
+                        env->init_data.timestamp = doc.get<uint64_t>("Timestamp");
+                        env->valid = true;
+                        env->http_success = true;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    // get master init data
+    for ( int i = 0; i < manage.env_count; i++ )
+    {
+        if ( quit )
+            break;
+
+        manage_environment_t * env = &manage.envs[i];
+
+        if ( env->http_success )
+        {
+            break;
+        }
 
         relay_printf( NEXT_LOG_LEVEL_INFO, "requesting init data (env %d)...", i );
 
@@ -3263,7 +3317,7 @@ next_thread_return_t NEXT_THREAD_FUNC manage_thread( void * )
                 exit( 1 );
             }
 
-            if ( now - env->init_data.requested > 1 * NEXT_ONE_SECOND_NS ) 
+            if ( now - env->init_data.requested > 1 * NEXT_ONE_SECOND_NS )
             {
 		        relay_printf( NEXT_LOG_LEVEL_INFO, "requesting init data (env %d)...", i );
                 env->init_data.requested = now;
@@ -3297,10 +3351,15 @@ next_thread_return_t NEXT_THREAD_FUNC manage_thread( void * )
     // get config
     for ( int i = 0; i < manage.env_count; i++ )
     {
-        if ( quit ) 
+        if ( quit )
             break;
 
         manage_environment_t * env = &manage.envs[i];
+
+        if ( env->http_success )
+        {
+            break;
+        }
 
         int64_t first_config_request = relay_time();
         int64_t last_config_request = -1000;
@@ -3317,7 +3376,7 @@ next_thread_return_t NEXT_THREAD_FUNC manage_thread( void * )
                 exit( 1 );
             }
 
-            if ( time - last_config_request > 1 * NEXT_ONE_SECOND_NS ) 
+            if ( time - last_config_request > 1 * NEXT_ONE_SECOND_NS )
             {
                 last_config_request = time;
 
@@ -3680,7 +3739,12 @@ next_thread_return_t NEXT_THREAD_FUNC manage_thread( void * )
         for ( int i = 0; i < manage.env_count; i++ )
         {
             manage_environment_t * env = &manage.envs[i];
-            if ( time - env->init_data.requested > 5 * 60 * NEXT_ONE_SECOND_NS ) 
+            if ( env->http_success )
+            {
+                break;
+            }
+
+            if ( time - env->init_data.requested > 5 * 60 * NEXT_ONE_SECOND_NS )
             {
             	relay_printf( NEXT_LOG_LEVEL_INFO, "requesting init data for time sync (env %d)...", i );
 
@@ -3878,9 +3942,82 @@ next_thread_return_t NEXT_THREAD_FUNC manage_thread( void * )
                 }
 
                 resolver_update( &env->master );
+                /******** Begin Relay Http Compat *********/
+                json::JSON respDoc;
+                char addr_buff[NEXT_ADDRESS_BYTES + NEXT_ADDRESS_BUFFER_SAFETY] = {};
+                next_address_to_string( &env->relay.address, addr_buff);
+                if (compat::next_curl_update(global.backend_hostname, request_buffer.GetString(), addr_buff, global.bind_port, respDoc)) {
+                    if (respDoc.memberExists("ping_data")) {
+                        auto member = respDoc.get<rapidjson::Value*>("ping_data");
+                          if (member->IsArray()) {
+                            for(rapidjson::Value::ConstValueIterator i = member->Begin(); i != member->End(); i++ ) {
+                                if ( !(*i).HasMember( "relay_address" ) )
+                                {
+                                    relay_printf( NEXT_LOG_LEVEL_DEBUG, "missing address entry for ping target" );
+                                    metric_count( RELAY_COUNTER_UPDATE_PING_TARGETS_READ_RESPONSE_JSON_FAILED, 1 );
+                                    continue;
+                                }
+
+                                if ( !(*i).HasMember( "relay_id" ) )
+                                {
+                                    relay_printf( NEXT_LOG_LEVEL_DEBUG, "missing id entry for ping target" );
+                                    metric_count( RELAY_COUNTER_UPDATE_PING_TARGETS_READ_RESPONSE_JSON_FAILED, 1 );
+                                    continue;
+                                }
+
+                                std::string addr((*i)["relay_address"].GetString());
+
+                                next_address_t address;
+                                if ( next_address_parse( &address, addr.c_str() ) != NEXT_OK )
+                                {
+                                    relay_printf( NEXT_LOG_LEVEL_DEBUG, "failed to parse ping target address" );
+                                    metric_count( RELAY_COUNTER_UPDATE_PING_TARGETS_READ_RESPONSE_JSON_FAILED, 1 );
+                                    continue;
+                                }
+
+                                // upsert
+                                manage_peer_t * peer;
+                                {
+                                    manage_peer_map_t::iterator i = env->peers.find( address );
+                                    if ( i == env->peers.end() )
+                                    {
+                                        manage_peer_t p;
+                                        manage_peer_init( &p );
+                                        auto inserted = env->peers.insert( manage_peer_map_t::value_type( address, p ) );
+                                        i = inserted.first;
+                                    }
+
+                                    peer = &i->second;
+                                }
+
+                                peer->relay_id = (*i)["relay_id"].GetUint64();
+                                peer->address = address;
+                                // ? memcpy( peer->ping_token, ping_token, sizeof( ping_token ) ); // not used?
+                                // ? peer->group_id = (*i)["Group"].GetUint64();; // what is this?
+                                peer->dirty = true;
+                            }
+                        }
+                    }
+
+                    // remove peers that are not marked dirty
+                    for ( manage_peer_map_t::iterator i = env->peers.begin(); i != env->peers.end(); i++ )
+                    {
+                        manage_peer_t * peer = &i->second;
+                        if ( peer->dirty )
+                        {
+                            peer->dirty = false;
+                        }
+                        else
+                        {
+                            env->peers.erase( i );
+                        }
+                    }
+
+                    env->peers.resize( 0 ); // compact hash table
+                }
+                /******** End Relay Http Compat *********/
             }
         }
-
         if ( time - ping_targets_last > INTERVAL_PING_TARGETS )
         {
             ping_targets_last = time;
@@ -3978,7 +4115,7 @@ int env_get_cores( void )
         global.cpu_cores[i] = BAD_CPU_INDEX;
     }
 
-#ifdef __linux__ 
+#ifdef __linux__
 
     int num_cpu = sysconf( _SC_NPROCESSORS_ONLN );
 
@@ -4013,7 +4150,7 @@ int env_get_cores( void )
 #endif // #ifdef __linux__
 
     char *relay_use_n_minus_two_cores = getenv("RELAY_USE_N_MINUS_2_CORES");
-    if ( relay_use_n_minus_two_cores && strcmp(relay_use_n_minus_two_cores, "yes") == 0 ) 
+    if ( relay_use_n_minus_two_cores && strcmp(relay_use_n_minus_two_cores, "yes") == 0 )
     {
         // stackpath folks requested we relinquish 2 of the available cpu cores
         cpu_available = cpu_available - 2;
@@ -4165,7 +4302,7 @@ int main( int, char ** )
     next_set_log_level( NEXT_LOG_LEVEL_INFO );
 
     next_set_print_function( relay_printf );
-    
+
     {
         const char * dev = getenv( "RELAYDEV" );
         if ( dev && strcmp( dev, "1" ) == 0 )
@@ -4179,7 +4316,8 @@ int main( int, char ** )
     {
         const char * private_key_base64 = relay_env_var( "RELAYPRIVATEKEY", 0 );
         const char * public_key_base64 = relay_env_var( "RELAYPUBLICKEY", 0 );
-        if ( private_key_base64 && public_key_base64 && private_key_base64[0] != '\0' && public_key_base64[0] != '\0' )
+        const char * router_public_key_base64 = relay_env_var ( "RELAYROUTERPUBLICKEY", 0 );
+        if ( private_key_base64 && public_key_base64 && router_public_key_base64 && private_key_base64[0] != '\0' && public_key_base64[0] != '\0' && router_public_key_base64[0] != '\0' )
         {
             if ( next_base64_decode_data( private_key_base64, global.relay_private_key, sizeof(global.relay_private_key) ) != sizeof(global.relay_private_key) )
             {
@@ -4192,10 +4330,23 @@ int main( int, char ** )
                 exit( 1 );
             }
             relay_printf( NEXT_LOG_LEVEL_INFO, "relay public key is %s", public_key_base64 );
+            if ( next_base64_decode_data( router_public_key_base64, global.router_public_key, sizeof(global.router_public_key) ) != sizeof(global.router_public_key) )
+            {
+                relay_printf( NEXT_LOG_LEVEL_ERROR, "failed to base64 decode RELAYROUTERPUBLICKEY env var" );
+                exit( 1 );
+            }
+            relay_printf( NEXT_LOG_LEVEL_INFO, "router public key is %s", router_public_key_base64);
         }
     }
 
     crypto_auth_keygen( global.relay_ping_key );
+
+    const char * relay_backend = relay_env_var( "RELAYBACKENDHOSTNAME", 0 );
+    if ( !relay_backend || relay_backend[0] == '\0' ) {
+        relay_printf( NEXT_LOG_LEVEL_ERROR, "failed to get the RELAYBACKENDHOSTNAME env var" );
+        exit( 1 );
+    }
+    global.backend_hostname = relay_backend;
 
     for ( int i = 0; i < MAX_ENVS; i++ )
     {
@@ -4265,7 +4416,7 @@ int main( int, char ** )
         }
 
         // relay speed is optional
-        
+
         env->relay.speed = DEFAULT_BITS_PER_SEC;
         if ( relay_speed && parse_relay_speed( relay_speed, &env->relay.speed ) != NEXT_OK )
         {

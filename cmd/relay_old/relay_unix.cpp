@@ -284,9 +284,9 @@ int next_socket_create( next_socket_t * s, const next_address_t * address, int t
         sockaddr_in socket_address;
         memset( &socket_address, 0, sizeof( socket_address ) );
         socket_address.sin_family = AF_INET;
-        socket_address.sin_addr.s_addr = ( ( (uint32_t) address->data.ipv4[0] ) )      | 
-                                         ( ( (uint32_t) address->data.ipv4[1] ) << 8 )  | 
-                                         ( ( (uint32_t) address->data.ipv4[2] ) << 16 ) | 
+        socket_address.sin_addr.s_addr = ( ( (uint32_t) address->data.ipv4[0] ) )      |
+                                         ( ( (uint32_t) address->data.ipv4[1] ) << 8 )  |
+                                         ( ( (uint32_t) address->data.ipv4[2] ) << 16 ) |
                                          ( ( (uint32_t) address->data.ipv4[3] ) << 24 );
         socket_address.sin_port = next_htons( address->port );
 
@@ -398,9 +398,9 @@ void next_socket_send_packet( next_socket_t * socket, const next_address_t * to,
         sockaddr_in socket_address;
         memset( &socket_address, 0, sizeof( socket_address ) );
         socket_address.sin_family = AF_INET;
-        socket_address.sin_addr.s_addr = ( ( (uint32_t) to->data.ipv4[0] ) )        | 
-                                         ( ( (uint32_t) to->data.ipv4[1] ) << 8 )   | 
-                                         ( ( (uint32_t) to->data.ipv4[2] ) << 16 )  | 
+        socket_address.sin_addr.s_addr = ( ( (uint32_t) to->data.ipv4[0] ) )        |
+                                         ( ( (uint32_t) to->data.ipv4[1] ) << 8 )   |
+                                         ( ( (uint32_t) to->data.ipv4[2] ) << 16 )  |
                                          ( ( (uint32_t) to->data.ipv4[3] ) << 24 );
         socket_address.sin_port = next_htons( to->port );
         int result = int( sendto( socket->handle, (const char*)( packet_data ), packet_bytes, 0, (sockaddr*)( &socket_address ), sizeof(sockaddr_in) ) );
@@ -437,7 +437,7 @@ int next_socket_receive_packet( next_socket_t * socket, next_address_t * from, v
         }
 
         next_printf( NEXT_LOG_LEVEL_ERROR, "recvfrom failed with error %d", errno );
-        
+
         return 0;
     }
 
@@ -466,7 +466,7 @@ int next_socket_receive_packet( next_socket_t * socket, next_address_t * from, v
         next_assert( 0 );
         return 0;
     }
-  
+
     next_assert( result >= 0 );
 
     return result;
