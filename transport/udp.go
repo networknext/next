@@ -603,13 +603,16 @@ func newBillingEntry(
 		sliceDuration = billing.BillingSliceSeconds * 2
 	}
 
+	usageBytesUp := (1000 * uint64(packet.KbpsUp)) / 8 * sliceDuration     // Converts Kbps to bytes
+	usageBytesDown := (1000 * uint64(packet.KbpsDown)) / 8 * sliceDuration // Converts Kbps to bytes
+
 	return &billing.Entry{
 		Request:              routeRequest,
-		Route:                nil,
+		Route:                NewBillingRoute(route, usageBytesUp, usageBytesDown),
 		RouteDecision:        uint64(decisionReason),
 		Duration:             sliceDuration,
-		UsageBytesUp:         (1000 * uint64(packet.KbpsUp)) / 8 * sliceDuration,   // Converts Kbps to bytes
-		UsageBytesDown:       (1000 * uint64(packet.KbpsDown)) / 8 * sliceDuration, // Converts Kbps to bytes
+		UsageBytesUp:         usageBytesUp,
+		UsageBytesDown:       usageBytesDown,
 		Timestamp:            uint64(timestampNow.Unix()),
 		TimestampStart:       uint64(timestampStart.Unix()),
 		PredictedRTT:         float32(route.Stats.RTT),
