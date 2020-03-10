@@ -3947,12 +3947,9 @@ next_thread_return_t NEXT_THREAD_FUNC manage_thread( void * )
                 char addr_buff[NEXT_ADDRESS_BYTES + NEXT_ADDRESS_BUFFER_SAFETY] = {};
                 next_address_to_string( &env->relay.address, addr_buff);
                 if (compat::next_curl_update(global.backend_hostname, request_buffer.GetString(), addr_buff, global.bind_port, respDoc)) {
-                    next_printf( NEXT_LOG_LEVEL_INFO, "curl updated" );
                     if (respDoc.memberExists("ping_data")) {
-                        next_printf( NEXT_LOG_LEVEL_INFO, "have ping data" );
                         auto member = respDoc.get<rapidjson::Value*>("ping_data");
                           if (member->IsArray()) {
-                            next_printf( NEXT_LOG_LEVEL_INFO, "ping data is array" );
                             for(rapidjson::Value::ConstValueIterator i = member->Begin(); i != member->End(); i++ ) {
                                 if ( !(*i).HasMember( "relay_address" ) )
                                 {
@@ -3969,8 +3966,6 @@ next_thread_return_t NEXT_THREAD_FUNC manage_thread( void * )
                                 }
 
                                 std::string addr((*i)["relay_address"].GetString());
-
-                                next_printf( NEXT_LOG_LEVEL_INFO, "got address '%s'", addr.c_str() );
 
                                 next_address_t address;
                                 if ( next_address_parse( &address, addr.c_str() ) != NEXT_OK )
@@ -4000,7 +3995,6 @@ next_thread_return_t NEXT_THREAD_FUNC manage_thread( void * )
                                 // ? memcpy( peer->ping_token, ping_token, sizeof( ping_token ) ); // not used?
                                 // ? peer->group_id = (*i)["Group"].GetUint64();; // what is this?
                                 peer->dirty = true;
-                                next_printf( NEXT_LOG_LEVEL_INFO, "storing ping data with id %lu and address '%s'", peer->relay_id, addr.c_str() );
                             }
                         }
                     }
