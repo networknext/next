@@ -2,6 +2,7 @@ package transport_test
 
 import (
 	"bytes"
+	crand "crypto/rand"
 	"encoding/base64"
 	"encoding/binary"
 	"errors"
@@ -9,12 +10,14 @@ import (
 	"math"
 	"math/rand"
 	"net"
+	"os"
 	"testing"
 
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/transport"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/crypto/nacl/box"
 )
 
 func TestRelayInitPacket(t *testing.T) {
@@ -102,6 +105,81 @@ func TestRelayInitPacket(t *testing.T) {
 
 		assert.Nil(t, actual.UnmarshalBinary(data))
 		assert.Equal(t, expected, actual)
+	})
+}
+
+func TestRelayInitRequestJSON(t *testing.T) {
+	t.Run("ToInitPacket()", func(t *testing.T) {
+		t.Run("nonce is invalid base64", func(t *testing.T) {
+			var jsonRequest transport.RelayInitRequestJSON
+			jsonRequest.NonceBase64 = "\n\ninvalid\t\t"
+			var packet transport.RelayInitPacket
+
+			assert.IsType(t, base64.CorruptInputError(9), jsonRequest.ToInitPacket(&packet)) // (9) because the first invalid char is at position 9, print out the error message for more details
+		})
+
+		t.Run("address is invalid", func(t *testing.T) {
+			var jsonRequest transport.RelayInitRequestJSON
+			nonce := make([]byte, crypto.NonceSize)
+			crand.Read(nonce)
+			b64Nonce := base64.StdEncoding.EncodeToString(nonce)
+			jsonRequest.NonceBase64 = b64Nonce
+			jsonRequest.StringAddr = "invalid"
+			jsonRequest.PortNum = 0
+			var packet transport.RelayInitPacket
+
+			assert.IsType(t, &net.DNSError{}, jsonRequest.ToInitPacket(&packet))
+		})
+
+		t.Run("token is invalid base64", func(t *testing.T) {
+			var jsonRequest transport.RelayInitRequestJSON
+			nonce := make([]byte, crypto.NonceSize)
+			crand.Read(nonce)
+			b64Nonce := base64.StdEncoding.EncodeToString(nonce)
+			jsonRequest.NonceBase64 = b64Nonce
+			jsonRequest.StringAddr = "127.0.0.1"
+			jsonRequest.PortNum = 20000
+			jsonRequest.EncryptedTokenBase64 = "\n\ninvalid\t\t"
+			var packet transport.RelayInitPacket
+
+			assert.Equal(t, base64.CorruptInputError(9), jsonRequest.ToInitPacket(&packet))
+		})
+
+		t.Run("valid", func(t *testing.T) {
+			var jsonRequest transport.RelayInitRequestJSON
+
+			nonce := make([]byte, crypto.NonceSize)
+			crand.Read(nonce)
+			b64Nonce := base64.StdEncoding.EncodeToString(nonce)
+
+			routerPublicKey, _, err := box.GenerateKey(crand.Reader)
+			assert.NoError(t, err)
+
+			key := os.Getenv("RELAY_PRIVATE_KEY")
+			assert.NotEqual(t, 0, len(key))
+			relayPrivateKey, err := base64.StdEncoding.DecodeString(key)
+			assert.NoError(t, err)
+
+			token := make([]byte, crypto.KeySize)
+			crand.Read(token)
+			encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
+			b64EncToken := base64.StdEncoding.EncodeToString(encryptedToken)
+
+			jsonRequest.Magic = transport.InitRequestMagic
+			jsonRequest.Version = transport.VersionNumberInitRequest
+			jsonRequest.NonceBase64 = b64Nonce
+			jsonRequest.StringAddr = "127.0.0.1"
+			jsonRequest.PortNum = 20000
+			jsonRequest.EncryptedTokenBase64 = b64EncToken
+			var packet transport.RelayInitPacket
+
+			assert.Nil(t, jsonRequest.ToInitPacket(&packet))
+			assert.Equal(t, jsonRequest.Magic, packet.Magic)
+			assert.Equal(t, jsonRequest.Version, packet.Version)
+			assert.Equal(t, fmt.Sprintf("%s:%d", jsonRequest.StringAddr, jsonRequest.PortNum), packet.Address.String())
+			assert.True(t, bytes.Equal(packet.Nonce, nonce))
+			assert.True(t, bytes.Equal(packet.EncryptedToken, encryptedToken))
+		})
 	})
 }
 
@@ -253,7 +331,7 @@ func TestRelayUpdateRequestJSON(t *testing.T) {
 			jsonRequest.PortNum = 0
 			var packet transport.RelayUpdatePacket
 
-			assert.Equal(t, errors.New("lookup invalid on 127.0.0.53:53: server misbehaving").Error(), jsonRequest.ToUpdatePacket(&packet).Error())
+			assert.IsType(t, &net.DNSError{}, jsonRequest.ToUpdatePacket(&packet))
 		})
 
 		t.Run("token is invalid base64", func(t *testing.T) {
@@ -261,7 +339,7 @@ func TestRelayUpdateRequestJSON(t *testing.T) {
 			jsonRequest.Metadata.TokenBase64 = "\t\ninvalid\n\n\t"
 			var packet transport.RelayUpdatePacket
 
-			assert.Equal(t, errors.New("illegal base64 data at input byte 0").Error(), jsonRequest.ToUpdatePacket(&packet).Error())
+			assert.IsType(t, base64.CorruptInputError(0), jsonRequest.ToUpdatePacket(&packet))
 		})
 
 		t.Run("valid", func(t *testing.T) {

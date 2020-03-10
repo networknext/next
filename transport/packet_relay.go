@@ -46,7 +46,7 @@ func (j *RelayInitRequestJSON) ToInitPacket(packet *RelayInitPacket) error {
 	var err error
 
 	packet.Magic = j.Magic
-	packet.Version = VersionNumberInitRequest
+	packet.Version = j.Version
 
 	var nonce []byte
 	{
@@ -130,6 +130,7 @@ type packetMetadata struct {
 }
 
 type RelayUpdateRequestJSON struct {
+	Version    uint32                   `json:"version"`
 	StringAddr string                   `json:"relay_address"`
 	PortNum    int                      `json:"relay_port"`
 	Metadata   packetMetadata           `json:"Metadata"`
@@ -143,7 +144,7 @@ type RelayUpdateResponseJSON struct {
 func (j *RelayUpdateRequestJSON) ToUpdatePacket(packet *RelayUpdatePacket) error {
 	var err error
 
-	packet.Version = VersionNumberUpdateRequest
+	packet.Version = j.Version
 
 	var addr *net.UDPAddr
 	{
