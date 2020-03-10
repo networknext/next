@@ -31,6 +31,20 @@ import (
 	"golang.org/x/crypto/nacl/box"
 )
 
+func getRelayKeyPair(t *testing.T) (pubKey []byte, privKey []byte) {
+	key := os.Getenv("RELAY_PUBLIC_KEY")
+	assert.NotEqual(t, 0, len(key))
+	pubKey, err := base64.StdEncoding.DecodeString(key)
+	assert.NoError(t, err)
+
+	key = os.Getenv("RELAY_PRIVATE_KEY")
+	assert.NotEqual(t, 0, len(key))
+	privKey, err = base64.StdEncoding.DecodeString(key)
+	assert.NoError(t, err)
+
+	return pubKey, privKey
+}
+
 func relayInitAssertions(t *testing.T, endpoint string, relay routing.Relay, body []byte, expectedCode int, geoClient *routing.GeoClient, ipfunc routing.LocateIPFunc, inMemory *storage.InMemory, redisClient *redis.Client, routerPrivateKey []byte) *httptest.ResponseRecorder {
 	if redisClient == nil {
 		redisServer, _ := miniredis.Run()
@@ -612,15 +626,97 @@ func TestRelayInitHandler(t *testing.T) {
 		})
 
 		t.Run("nonce is not valid base64", func(t *testing.T) {
+			routerPublicKey, _, err := box.GenerateKey(rand.Reader)
+			assert.NoError(t, err)
 
+			_, relayPrivateKey := getRelayKeyPair(t)
+
+			addr := "127.0.0.1:40000"
+			udpAddr, _ := net.ResolveUDPAddr("udp", addr)
+
+			nonce := make([]byte, crypto.NonceSize)
+			crand.Read(nonce)
+
+			token := make([]byte, crypto.KeySize)
+			crand.Read(token)
+			encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
+			b64EncToken := base64.StdEncoding.EncodeToString(encryptedToken)
+
+			buff := []byte(fmt.Sprintf(`
+			{
+				"magic_request_protection": %d,
+				"relay_address": "%s",
+				"relay_port": %d,
+				"nonce": "%s",
+				"encrypted_token": "%s"
+			}
+			`, transport.InitRequestMagic, udpAddr.IP.String(), udpAddr.Port, "\n\t\n\t?ih8h9q8qhhaq", b64EncToken))
+			relay := routing.Relay{
+				ID: crypto.HashID(addr),
+				Datacenter: routing.Datacenter{
+					Name: "some datacenter",
+				},
+			}
+			relayInitAssertions(t, "/relay_init_json", relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
 		})
 
 		t.Run("udp address is not valid", func(t *testing.T) {
+			routerPublicKey, _, err := box.GenerateKey(rand.Reader)
+			assert.NoError(t, err)
 
+			_, relayPrivateKey := getRelayKeyPair(t)
+
+			nonce := make([]byte, crypto.NonceSize)
+			crand.Read(nonce)
+			b64Nonce := base64.StdEncoding.EncodeToString(nonce)
+
+			token := make([]byte, crypto.KeySize)
+			crand.Read(token)
+			encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
+			b64EncToken := base64.StdEncoding.EncodeToString(encryptedToken)
+
+			buff := []byte(fmt.Sprintf(`
+			{
+				"magic_request_protection": %d,
+				"relay_address": "%s",
+				"relay_port": %d,
+				"nonce": "%s",
+				"encrypted_token": "%s"
+			}
+			`, transport.InitRequestMagic, "invalid address", 0, b64Nonce, b64EncToken))
+			relay := routing.Relay{
+				ID: crypto.HashID(addr),
+				Datacenter: routing.Datacenter{
+					Name: "some datacenter",
+				},
+			}
+			relayInitAssertions(t, "/relay_init_json", relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
 		})
 
 		t.Run("encrypted token is not valid base64", func(t *testing.T) {
+			addr := "127.0.0.1:40000"
+			udpAddr, _ := net.ResolveUDPAddr("udp", addr)
 
+			nonce := make([]byte, crypto.NonceSize)
+			crand.Read(nonce)
+			b64Nonce := base64.StdEncoding.EncodeToString(nonce)
+
+			buff := []byte(fmt.Sprintf(`
+			{
+				"magic_request_protection": %d,
+				"relay_address": "%s",
+				"relay_port": %d,
+				"nonce": "%s",
+				"encrypted_token": "%s"
+			}
+			`, transport.InitRequestMagic, udpAddr.IP.String(), udpAddr.Port, b64Nonce, "\n\t\n\t?ih8h9q8qhhaq"))
+			relay := routing.Relay{
+				ID: crypto.HashID(addr),
+				Datacenter: routing.Datacenter{
+					Name: "some datacenter",
+				},
+			}
+			relayInitAssertions(t, "/relay_init_json", relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
 		})
 
 		t.Run("valid", func(t *testing.T) {
