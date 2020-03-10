@@ -19,7 +19,7 @@ type RoutingRulesSettings struct {
 
 	// The maximum bid price in USD cents (¢) a customer is willing to pay per GB of traffic sent over network next
 	// For example a value of 100 here would mean the customer is willing to pay $1.00 USD per GB of network next accelerated traffic
-	MaxCentsPerGB int64
+	MaxCentsPerGB uint64
 
 	// The maximum acceptable latency for the game. If we can't reduce the latency to be at least this then don't take network next
 	// Note: not currently being used in old backend

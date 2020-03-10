@@ -21,11 +21,11 @@ import (
 const (
 	// CostMatrixVersion ...
 	// IMPORTANT: Bump this version whenever you change the binary format
-	CostMatrixVersion = 3
+	CostMatrixVersion = 4
 
 	// RouteMatrixVersion ...
 	// IMPORTANT: Increment this when you change the binary format
-	RouteMatrixVersion = 3
+	RouteMatrixVersion = 4
 
 	// MaxRelays ...
 	MaxRelays = 5
@@ -89,6 +89,7 @@ type CostMatrix struct {
 	DatacenterNames  []string
 	DatacenterRelays map[uint64][]uint64
 	RTT              []int32
+	RelaySellers     []Seller
 }
 
 // ReadFrom implements the io.ReadFrom interface
@@ -272,6 +273,24 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 		m.RTT[i] = int32(tmp)
 	}
 
+	m.RelaySellers = make([]Seller, numRelays)
+	if version >= 4 {
+		for i := range m.RelaySellers {
+			if !encoding.ReadString(data, &index, &m.RelaySellers[i].ID, math.MaxInt32) {
+				return errors.New("[CostMatrix] invalid read on relay seller ID")
+			}
+			if !encoding.ReadString(data, &index, &m.RelaySellers[i].Name, math.MaxInt32) {
+				return errors.New("[CostMatrix] invalid read on relay seller name")
+			}
+			if !encoding.ReadUint64(data, &index, &m.RelaySellers[i].IngressPriceCents) {
+				return errors.New("[CostMatrix] invalid read on relay seller ingress price")
+			}
+			if !encoding.ReadUint64(data, &index, &m.RelaySellers[i].EgressPriceCents) {
+				return errors.New("[CostMatrix] invalid read on relay seller egress price")
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -344,6 +363,13 @@ func (m CostMatrix) MarshalBinary() ([]byte, error) {
 		encoding.WriteUint32(data, &index, uint32(m.RTT[i]))
 	}
 
+	for _, seller := range m.RelaySellers {
+		encoding.WriteString(data, &index, seller.ID, uint32(len(seller.ID)))
+		encoding.WriteString(data, &index, seller.Name, uint32(len(seller.Name)))
+		encoding.WriteUint64(data, &index, seller.IngressPriceCents)
+		encoding.WriteUint64(data, &index, seller.EgressPriceCents)
+	}
+
 	return data, nil
 }
 
@@ -369,6 +395,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 	routes.DatacenterNames = m.DatacenterNames
 	routes.DatacenterRelays = m.DatacenterRelays
 	routes.Entries = make([]RouteMatrixEntry, entryCount)
+	routes.RelaySellers = m.RelaySellers
 
 	type Indirect struct {
 		relay uint64
@@ -629,7 +656,14 @@ func (m *CostMatrix) Size() uint64 {
 	}
 
 	// length so far + number of rtt entries
-	return length + uint64(4*len(m.RTT))
+	length += uint64(4 * len(m.RTT))
+
+	// Add length of relay sellers
+	for _, seller := range m.RelaySellers {
+		length += uint64(4 + len(seller.ID) + 4 + len(seller.Name) + 8 + 8)
+	}
+
+	return length
 }
 
 // RouteMatrixEntry ...
@@ -655,6 +689,7 @@ type RouteMatrix struct {
 	DatacenterIDs    []uint64
 	DatacenterNames  []string
 	Entries          []RouteMatrixEntry
+	RelaySellers     []Seller
 }
 
 func (m *RouteMatrix) ResolveRelay(id uint64) (Relay, error) {
@@ -685,6 +720,7 @@ func (m *RouteMatrix) ResolveRelay(id uint64) (Relay, error) {
 			Port: int(iport),
 		},
 		PublicKey: m.RelayPublicKeys[relayIndex],
+		Seller:    m.RelaySellers[relayIndex],
 	}, nil
 }
 
@@ -1066,6 +1102,24 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 		}
 	}
 
+	m.RelaySellers = make([]Seller, numRelays)
+	if version >= 4 {
+		for i := range m.RelaySellers {
+			if !encoding.ReadString(data, &index, &m.RelaySellers[i].ID, math.MaxInt32) {
+				return errors.New("[CostMatrix] invalid read on relay seller ID")
+			}
+			if !encoding.ReadString(data, &index, &m.RelaySellers[i].Name, math.MaxInt32) {
+				return errors.New("[CostMatrix] invalid read on relay seller name")
+			}
+			if !encoding.ReadUint64(data, &index, &m.RelaySellers[i].IngressPriceCents) {
+				return errors.New("[CostMatrix] invalid read on relay seller ingress price")
+			}
+			if !encoding.ReadUint64(data, &index, &m.RelaySellers[i].EgressPriceCents) {
+				return errors.New("[CostMatrix] invalid read on relay seller egress price")
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -1156,6 +1210,13 @@ func (m RouteMatrix) MarshalBinary() ([]byte, error) {
 		}
 	}
 
+	for _, seller := range m.RelaySellers {
+		encoding.WriteString(data, &index, seller.ID, uint32(len(seller.ID)))
+		encoding.WriteString(data, &index, seller.Name, uint32(len(seller.Name)))
+		encoding.WriteUint64(data, &index, seller.IngressPriceCents)
+		encoding.WriteUint64(data, &index, seller.EgressPriceCents)
+	}
+
 	return data, nil
 }
 
@@ -1195,6 +1256,11 @@ func (m *RouteMatrix) Size() uint64 {
 			// allocation for relay ids
 			length += uint64(8 * len(relays))
 		}
+	}
+
+	// Add length of relay sellers
+	for _, seller := range m.RelaySellers {
+		length += uint64(4 + len(seller.ID) + 4 + len(seller.Name) + 8 + 8)
 	}
 
 	return length

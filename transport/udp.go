@@ -516,8 +516,9 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 
 		// Submit a new billing entry
 		{
+			sameRoute := chosenRoute.Hash64() == sessionCacheEntry.RouteHash
 			routeRequest := NewRouteRequest(packet, buyer, serverCacheEntry, location, storer, clientrelays)
-			billingEntry := newBillingEntry(routeRequest, &chosenRoute, int(response.RouteType), &buyer.RoutingRulesSettings, routeDecision.Reason, &packet, sessionCacheEntry.TimestampStart, timestampNow)
+			billingEntry := newBillingEntry(routeRequest, &chosenRoute, int(response.RouteType), sameRoute, &buyer.RoutingRulesSettings, routeDecision.Reason, &packet, sessionCacheEntry.TimestampStart, timestampNow)
 			if err := biller.Bill(context.Background(), packet.SessionID, billingEntry); err != nil {
 				level.Error(locallogger).Log("msg", "billing failed", "err", err)
 			}
@@ -557,6 +558,7 @@ func newBillingEntry(
 	routeRequest *billing.RouteRequest,
 	route *routing.Route,
 	routeType int,
+	sameRoute bool,
 	routingRulesSettings *routing.RoutingRulesSettings,
 	decisionReason routing.DecisionReason,
 	packet *SessionUpdatePacket,
@@ -603,13 +605,16 @@ func newBillingEntry(
 		sliceDuration = billing.BillingSliceSeconds * 2
 	}
 
+	usageBytesUp := (1000 * uint64(packet.KbpsUp)) / 8 * sliceDuration     // Converts Kbps to bytes
+	usageBytesDown := (1000 * uint64(packet.KbpsDown)) / 8 * sliceDuration // Converts Kbps to bytes
+
 	return &billing.Entry{
 		Request:              routeRequest,
-		Route:                nil,
+		Route:                NewBillingRoute(route, usageBytesUp, usageBytesDown),
 		RouteDecision:        uint64(decisionReason),
 		Duration:             sliceDuration,
-		UsageBytesUp:         (1000 * uint64(packet.KbpsUp)) / 8 * sliceDuration,   // Converts Kbps to bytes
-		UsageBytesDown:       (1000 * uint64(packet.KbpsDown)) / 8 * sliceDuration, // Converts Kbps to bytes
+		UsageBytesUp:         usageBytesUp,
+		UsageBytesDown:       usageBytesDown,
 		Timestamp:            uint64(timestampNow.Unix()),
 		TimestampStart:       uint64(timestampStart.Unix()),
 		PredictedRTT:         float32(route.Stats.RTT),
@@ -620,9 +625,9 @@ func newBillingEntry(
 		Initial:              routeType == routing.RouteTypeNew,
 		EnvelopeBytesUp:      (1000 * uint64(routingRulesSettings.EnvelopeKbpsUp)) / 8 * sliceDuration,   // Converts Kbps to bytes
 		EnvelopeBytesDown:    (1000 * uint64(routingRulesSettings.EnvelopeKbpsDown)) / 8 * sliceDuration, // Converts Kbps to bytes
-		ConsideredRoutes:     nil,
-		AcceptableRoutes:     nil,
-		SameRoute:            routeType == routing.RouteTypeContinue,
+		ConsideredRoutes:     []*billing.Route{},                                                         // Empty since not how new backend works and driven by disabled feature flag in old backend
+		AcceptableRoutes:     []*billing.Route{},                                                         // Empty since not how new backend works and driven by disabled feature flag in old backend
+		SameRoute:            sameRoute,
 		OnNetworkNext:        packet.OnNetworkNext,
 		SliceFlags:           uint64(sliceFlags),
 	}
