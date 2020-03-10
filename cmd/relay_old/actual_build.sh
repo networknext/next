@@ -12,10 +12,10 @@ elif [[ "$1" == "run" ]]; then
 	export RELAYADDRESS="127.0.0.1" # must not have port
 	export RELAYPUBLICKEY="$RELAY_PUBLIC_KEY" # actual relay public key
 	export RELAYPRIVATEKEY="$RELAY_PRIVATE_KEY" # actual relay private key
-	export RELAYROUTERPUBLICKEY="$RELAY_ROUTER_PUBLIC_KEY" # new to the codebase, made the var similar to the others for the sake of consitency
+	export RELAYROUTERPUBLICKEY="$RELAY_ROUTER_PUBLIC_KEY" # new to the codebase, made the var similar to the others for the sake of consitency, original router key is hardcoded at top of relay_internal.cpp
 	export RELAYBACKENDHOSTNAME="$RELAY_BACKEND_HOSTNAME" # ditto, except 
 
-	# quick n' dirty way to just spawn 2 relays on different ports
+	# quick & lazy way to just spawn 2 relays on different ports
 	if [[ "$2" == "one" ]]; then
 		export RELAYPORT="20000"
 	elif [[ "$2" == "two" ]]; then
