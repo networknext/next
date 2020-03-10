@@ -1,8 +1,11 @@
 package transport_test
 
 import (
+	"bytes"
+	"encoding/base64"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"math"
 	"math/rand"
 	"net"
@@ -239,5 +242,52 @@ func TestRelayUpdatePacket(t *testing.T) {
 		var actual transport.RelayUpdatePacket
 		assert.Nil(t, actual.UnmarshalBinary(data))
 		assert.Equal(t, expected, actual)
+	})
+}
+
+func TestRelayUpdateRequestJSON(t *testing.T) {
+	t.Run("ToUpdatePacket()", func(t *testing.T) {
+		t.Run("invalid address", func(t *testing.T) {
+			var jsonRequest transport.RelayUpdateRequestJSON
+			jsonRequest.StringAddr = "invalid"
+			jsonRequest.PortNum = 0
+			var packet transport.RelayUpdatePacket
+
+			assert.Equal(t, errors.New("lookup invalid on 127.0.0.53:53: server misbehaving").Error(), jsonRequest.ToUpdatePacket(&packet).Error())
+		})
+
+		t.Run("token is invalid base64", func(t *testing.T) {
+			var jsonRequest transport.RelayUpdateRequestJSON
+			jsonRequest.Metadata.TokenBase64 = "\t\ninvalid\n\n\t"
+			var packet transport.RelayUpdatePacket
+
+			assert.Equal(t, errors.New("illegal base64 data at input byte 0").Error(), jsonRequest.ToUpdatePacket(&packet).Error())
+		})
+
+		t.Run("valid", func(t *testing.T) {
+			statIps := []string{"127.0.0.2:40000", "127.0.0.3:40000", "127.0.0.4:40000", "127.0.0.5:40000"}
+			token := make([]byte, crypto.KeySize)
+			b64Token := base64.StdEncoding.EncodeToString(token)
+			var request transport.RelayUpdateRequestJSON
+			request.StringAddr = "127.0.0.1"
+			request.PortNum = 40000
+			request.Metadata.TokenBase64 = b64Token
+			request.PingStats = make([]routing.RelayStatsPing, uint32(len(statIps)))
+
+			for i, addr := range statIps {
+				stats := &request.PingStats[i]
+				stats.RelayID = crypto.HashID(addr)
+				stats.RTT = rand.Float32()
+				stats.Jitter = rand.Float32()
+				stats.PacketLoss = rand.Float32()
+			}
+
+			var packet transport.RelayUpdatePacket
+			assert.Nil(t, request.ToUpdatePacket(&packet))
+
+			assert.Equal(t, fmt.Sprintf("%s:%d", request.StringAddr, request.PortNum), packet.Address.String())
+			assert.True(t, bytes.Equal(packet.Token, token))
+			assert.Equal(t, request.PingStats, packet.PingStats)
+		})
 	})
 }
