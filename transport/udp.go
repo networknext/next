@@ -516,8 +516,9 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 
 		// Submit a new billing entry
 		{
+			sameRoute := chosenRoute.Hash64() == sessionCacheEntry.RouteHash
 			routeRequest := NewRouteRequest(packet, buyer, serverCacheEntry, location, storer, clientrelays)
-			billingEntry := newBillingEntry(routeRequest, &chosenRoute, int(response.RouteType), &buyer.RoutingRulesSettings, routeDecision.Reason, &packet, sessionCacheEntry.TimestampStart, timestampNow)
+			billingEntry := newBillingEntry(routeRequest, &chosenRoute, int(response.RouteType), sameRoute, &buyer.RoutingRulesSettings, routeDecision.Reason, &packet, sessionCacheEntry.TimestampStart, timestampNow)
 			if err := biller.Bill(context.Background(), packet.SessionID, billingEntry); err != nil {
 				level.Error(locallogger).Log("msg", "billing failed", "err", err)
 			}
@@ -557,6 +558,7 @@ func newBillingEntry(
 	routeRequest *billing.RouteRequest,
 	route *routing.Route,
 	routeType int,
+	sameRoute bool,
 	routingRulesSettings *routing.RoutingRulesSettings,
 	decisionReason routing.DecisionReason,
 	packet *SessionUpdatePacket,
@@ -625,7 +627,7 @@ func newBillingEntry(
 		EnvelopeBytesDown:    (1000 * uint64(routingRulesSettings.EnvelopeKbpsDown)) / 8 * sliceDuration, // Converts Kbps to bytes
 		ConsideredRoutes:     []*billing.Route{},                                                         // Empty since not how new backend works and driven by disabled feature flag in old backend
 		AcceptableRoutes:     []*billing.Route{},                                                         // Empty since not how new backend works and driven by disabled feature flag in old backend
-		SameRoute:            routeType == routing.RouteTypeContinue,
+		SameRoute:            sameRoute,
 		OnNetworkNext:        packet.OnNetworkNext,
 		SliceFlags:           uint64(sliceFlags),
 	}
