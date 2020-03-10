@@ -435,7 +435,7 @@ func RelayUpdateJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, st
 			var token routing.LegacyPingToken
 			token.Timeout = uint64(time.Now().Unix() * 100000) // some arbitrarily large number just to make things compatable for the moment
 			token.RelayID = crypto.HashID(jsonPacket.StringAddr)
-			bin := token.ToBin()
+			bin, _ := token.MarshalBinary()
 			var legacy routing.LegacyPingData
 			legacy.ID = pingData.ID
 			legacy.Address = pingData.Address

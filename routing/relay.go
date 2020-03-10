@@ -187,13 +187,13 @@ type LegacyPingToken struct {
 	HMac    [32]byte
 }
 
-func (l *LegacyPingToken) ToBin() (out []byte) {
-	out = make([]byte, 48) // ping token binary is 57 bytes
+func (l LegacyPingToken) MarshalBinary() (data []byte, err error) {
+	data = make([]byte, 48) // ping token binary is 57 bytes
 	index := 0
-	encoding.WriteUint64(out, &index, l.Timeout)
-	encoding.WriteUint64(out, &index, l.RelayID)
-	encoding.WriteBytes(out, &index, l.HMac[:], len(l.HMac))
-	return out
+	encoding.WriteUint64(data, &index, l.Timeout)
+	encoding.WriteUint64(data, &index, l.RelayID)
+	encoding.WriteBytes(data, &index, l.HMac[:], len(l.HMac))
+	return data, nil
 }
 
 type LegacyPingData struct {
