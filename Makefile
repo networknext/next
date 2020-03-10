@@ -17,8 +17,10 @@ SHA ?= $(shell git rev-parse --short HEAD)
 TAG ?= $(shell git describe --tags 2> /dev/null)
 
 CURRENT_DIR = $(shell pwd -P)
+DEPLOY_DIR = ./deploy
 DIST_DIR = ./dist
 ARTIFACT_BUCKET = gs://artifacts.network-next-v3-dev.appspot.com
+SYSTEMD_SERVICE_FILE = app.service
 
 COST_FILE = $(DIST_DIR)/cost.bin
 OPTIMIZE_FILE = $(DIST_DIR)/optimize.bin
@@ -303,7 +305,8 @@ build-relay-backend-artifact: build-relay-backend ## builds the relay backend wi
 	@mkdir -p $(DIST_DIR)/artifact/relay_backend
 	@cp $(DIST_DIR)/relay_backend $(DIST_DIR)/artifact/relay_backend/app
 	@cp ./cmd/relay_backend/dev.env $(DIST_DIR)/artifact/relay_backend/app.env
-	@cd $(DIST_DIR)/artifact/relay_backend && tar -zcf ../../relay_backend.dev.tar.gz app app.env && cd ../..
+	@cp $(DEPLOY_DIR)/$(SYSTEMD_SERVICE_FILE) $(DIST_DIR)/artifact/relay_backend/$(SYSTEMD_SERVICE_FILE)
+	@cd $(DIST_DIR)/artifact/relay_backend && tar -zcf ../../relay_backend.dev.tar.gz app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
 	@printf "$(DIST_DIR)/relay_backend.dev.tar.gz\n"
 
 .PHONY: publish-relay-backend-artifact
@@ -324,7 +327,8 @@ build-server-backend-artifact: build-server-backend ## builds the server backend
 	@mkdir -p $(DIST_DIR)/artifact/server_backend
 	@cp $(DIST_DIR)/server_backend $(DIST_DIR)/artifact/server_backend/app
 	@cp ./cmd/server_backend/dev.env $(DIST_DIR)/artifact/server_backend/app.env
-	@cd $(DIST_DIR)/artifact/server_backend && tar -zcf ../../server_backend.dev.tar.gz app app.env && cd ../..
+	@cp $(DEPLOY_DIR)/$(SYSTEMD_SERVICE_FILE) $(DIST_DIR)/artifact/server_backend/$(SYSTEMD_SERVICE_FILE)
+	@cd $(DIST_DIR)/artifact/server_backend && tar -zcf ../../server_backend.dev.tar.gz app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
 	@printf "$(DIST_DIR)/server_backend.dev.tar.gz\n"
 
 .PHONY: publish-server-backend-artifact
