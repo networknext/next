@@ -623,8 +623,8 @@ func newBillingEntry(
 		Initial:              routeType == routing.RouteTypeNew,
 		EnvelopeBytesUp:      (1000 * uint64(routingRulesSettings.EnvelopeKbpsUp)) / 8 * sliceDuration,   // Converts Kbps to bytes
 		EnvelopeBytesDown:    (1000 * uint64(routingRulesSettings.EnvelopeKbpsDown)) / 8 * sliceDuration, // Converts Kbps to bytes
-		ConsideredRoutes:     nil,
-		AcceptableRoutes:     nil,
+		ConsideredRoutes:     []*billing.Route{},                                                         // Empty since not how new backend works and driven by disabled feature flag in old backend
+		AcceptableRoutes:     []*billing.Route{},                                                         // Empty since not how new backend works and driven by disabled feature flag in old backend
 		SameRoute:            routeType == routing.RouteTypeContinue,
 		OnNetworkNext:        packet.OnNetworkNext,
 		SliceFlags:           uint64(sliceFlags),
