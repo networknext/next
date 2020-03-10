@@ -74,6 +74,7 @@ func relayInitPacketHandler(relayInitPacket *RelayInitPacket, writer http.Respon
 		Addr:           relayInitPacket.Address,
 		PublicKey:      relayEntry.PublicKey,
 		Datacenter:     relayEntry.Datacenter,
+		Seller:         relayEntry.Seller,
 		LastUpdateTime: uint64(time.Now().Unix()),
 	}
 

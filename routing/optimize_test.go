@@ -82,6 +82,11 @@ func getPopulatedCostMatrix(malformed bool) *routing.CostMatrix {
 	matrix.RTT = make([]int32, 1)
 	matrix.RTT[0] = 7
 
+	matrix.RelaySellers = []routing.Seller{
+		{ID: "1234", Name: "Seller One", IngressPriceCents: 10, EgressPriceCents: 20},
+		{ID: "5678", Name: "Seller Two", IngressPriceCents: 30, EgressPriceCents: 40},
+	}
+
 	return &matrix
 }
 
@@ -140,6 +145,10 @@ func getPopulatedRouteMatrix(malformed bool) *routing.RouteMatrix {
 			RouteNumRelays: [8]int32{2},
 			RouteRelays:    [8][5]uint64{{123, 456}},
 		},
+	}
+
+	matrix.RelaySellers = []routing.Seller{
+		{Name: "Seller One"}, {Name: "Seller Two"},
 	}
 
 	return &matrix
@@ -853,12 +862,12 @@ func TestOptimize(t *testing.T) {
 				t.Run("version of incoming bin data too high", func(t *testing.T) {
 					buff := make([]byte, 4)
 					offset := 0
-					putVersionNumber(buff, &offset, 4)
+					putVersionNumber(buff, &offset, 5)
 					var matrix routing.CostMatrix
 
 					err := matrix.UnmarshalBinary(buff)
 
-					assert.EqualError(t, err, "unknown cost matrix version 4")
+					assert.EqualError(t, err, "unknown cost matrix version 5")
 				})
 
 				t.Run("Invalid version read", func(t *testing.T) {
@@ -982,12 +991,12 @@ func TestOptimize(t *testing.T) {
 				t.Run("version of incoming bin data too high", func(t *testing.T) {
 					buff := make([]byte, 4)
 					offset := 0
-					putVersionNumber(buff, &offset, 4)
+					putVersionNumber(buff, &offset, 5)
 					var matrix routing.CostMatrix
 
 					err := matrix.UnmarshalBinary(buff)
 
-					assert.EqualError(t, err, "unknown cost matrix version 4")
+					assert.EqualError(t, err, "unknown cost matrix version 5")
 				})
 
 				t.Run("Invalid version read", func(t *testing.T) {
@@ -1127,12 +1136,12 @@ func TestOptimize(t *testing.T) {
 				t.Run("version of incoming bin data too high", func(t *testing.T) {
 					buff := make([]byte, 4)
 					offset := 0
-					putVersionNumber(buff, &offset, 4)
+					putVersionNumber(buff, &offset, 5)
 					var matrix routing.CostMatrix
 
 					err := matrix.UnmarshalBinary(buff)
 
-					assert.EqualError(t, err, "unknown cost matrix version 4")
+					assert.EqualError(t, err, "unknown cost matrix version 5")
 				})
 
 				t.Run("Invalid version read", func(t *testing.T) {
@@ -1290,12 +1299,12 @@ func TestOptimize(t *testing.T) {
 				t.Run("version of incoming bin data too high", func(t *testing.T) {
 					buff := make([]byte, 4)
 					offset := 0
-					putVersionNumber(buff, &offset, 4)
+					putVersionNumber(buff, &offset, 5)
 					var matrix routing.CostMatrix
 
 					err := matrix.UnmarshalBinary(buff)
 
-					assert.EqualError(t, err, "unknown cost matrix version 4")
+					assert.EqualError(t, err, "unknown cost matrix version 5")
 				})
 
 				t.Run("Invalid version read", func(t *testing.T) {
@@ -1962,12 +1971,12 @@ func TestOptimize(t *testing.T) {
 				t.Run("version of incoming bin data too high", func(t *testing.T) {
 					buff := make([]byte, 4)
 					offset := 0
-					putVersionNumber(buff, &offset, 4)
+					putVersionNumber(buff, &offset, 5)
 					var matrix routing.RouteMatrix
 
 					err := matrix.UnmarshalBinary(buff)
 
-					assert.EqualError(t, err, "unknown route matrix version: 4")
+					assert.EqualError(t, err, "unknown route matrix version: 5")
 				})
 
 				t.Run("Invalid version read", func(t *testing.T) {
@@ -2119,12 +2128,12 @@ func TestOptimize(t *testing.T) {
 				t.Run("version of incoming bin data too high", func(t *testing.T) {
 					buff := make([]byte, 4)
 					offset := 0
-					putVersionNumber(buff, &offset, 4)
+					putVersionNumber(buff, &offset, 5)
 					var matrix routing.RouteMatrix
 
 					err := matrix.UnmarshalBinary(buff)
 
-					assert.EqualError(t, err, "unknown route matrix version: 4")
+					assert.EqualError(t, err, "unknown route matrix version: 5")
 				})
 
 				t.Run("Invalid version read", func(t *testing.T) {
@@ -2291,12 +2300,12 @@ func TestOptimize(t *testing.T) {
 				t.Run("version of incoming bin data too high", func(t *testing.T) {
 					buff := make([]byte, 4)
 					offset := 0
-					putVersionNumber(buff, &offset, 4)
+					putVersionNumber(buff, &offset, 5)
 					var matrix routing.RouteMatrix
 
 					err := matrix.UnmarshalBinary(buff)
 
-					assert.EqualError(t, err, "unknown route matrix version: 4")
+					assert.EqualError(t, err, "unknown route matrix version: 5")
 				})
 
 				t.Run("Invalid version read", func(t *testing.T) {
@@ -2484,12 +2493,12 @@ func TestOptimize(t *testing.T) {
 				t.Run("version of incoming bin data too high", func(t *testing.T) {
 					buff := make([]byte, 4)
 					offset := 0
-					putVersionNumber(buff, &offset, 4)
+					putVersionNumber(buff, &offset, 5)
 					var matrix routing.RouteMatrix
 
 					err := matrix.UnmarshalBinary(buff)
 
-					assert.EqualError(t, err, "unknown route matrix version: 4")
+					assert.EqualError(t, err, "unknown route matrix version: 5")
 				})
 
 				t.Run("Invalid version read", func(t *testing.T) {
