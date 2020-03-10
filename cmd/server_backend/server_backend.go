@@ -236,19 +236,55 @@ func main() {
 	sessionUpdateInvocationCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
 		DisplayName: "Total session update invocations",
 		ServiceName: "server_backend",
-		ID:          "session.update.invocations",
-		Unit:        "sessions",
+		ID:          "session.update.invocation.count",
+		Unit:        "invocations",
 		Description: "The total number of session update handlers we are attempting to run",
 	})
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "session.update.invocations", "err", err)
+		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "session.update.invocation.count", "err", err)
 		sessionUpdateInvocationCount = &metrics.EmptyCounter{}
+	}
+
+	directRouteSessionCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
+		DisplayName: "Total direct session count",
+		ServiceName: "server_backend",
+		ID:          "session.route.direct.count",
+		Unit:        "sessions",
+		Description: "The total number of sessions that are currently being served a direct route",
+	})
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "session.route.direct.count", "err", err)
+		directRouteSessionCount = &metrics.EmptyCounter{}
+	}
+
+	newRouteSessionCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
+		DisplayName: "Total new session count",
+		ServiceName: "server_backend",
+		ID:          "session.route.new.count",
+		Unit:        "sessions",
+		Description: "The total number of sessions that are currently being served a new network next route",
+	})
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "session.route.new.count", "err", err)
+		newRouteSessionCount = &metrics.EmptyCounter{}
+	}
+
+	continueRouteSessionCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
+		DisplayName: "Total continue session count",
+		ServiceName: "server_backend",
+		ID:          "session.route.continue.count",
+		Unit:        "sessions",
+		Description: "The total number of sessions that are currently being told to stay on their network next route",
+	})
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "session.route.continue.count", "err", err)
+		continueRouteSessionCount = &metrics.EmptyCounter{}
 	}
 
 	sessionDuration, err := metricsHandler.NewHistogram(ctx, &metrics.Descriptor{
 		DisplayName: "Session update duration",
 		ServiceName: "server_backend",
-		ID:          "session.duration",
+		ID:          "session.update.duration",
 		Unit:        "milliseconds",
 		Description: "How long it takes to process a session update request",
 	}, 50)
@@ -258,8 +294,11 @@ func main() {
 	}
 
 	sessionMetrics := transport.SessionMetrics{
-		InvocationCount: sessionUpdateInvocationCount,
-		UpdateDuration:  sessionDuration,
+		InvocationCount:    sessionUpdateInvocationCount,
+		DirectRouteCount:   directRouteSessionCount,
+		NewRouteCount:      newRouteSessionCount,
+		ContinueRouteCount: continueRouteSessionCount,
+		UpdateDuration:     sessionDuration,
 	}
 
 	var routeMatrix routing.RouteMatrix

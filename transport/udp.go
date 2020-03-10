@@ -210,8 +210,11 @@ type RouteProvider interface {
 }
 
 type SessionMetrics struct {
-	InvocationCount metrics.Counter
-	UpdateDuration  metrics.Histogram
+	InvocationCount    metrics.Counter
+	DirectRouteCount   metrics.Counter
+	NewRouteCount      metrics.Counter
+	ContinueRouteCount metrics.Counter
+	UpdateDuration     metrics.Histogram
 }
 
 // SessionUpdateHandlerFunc ...
