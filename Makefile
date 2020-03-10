@@ -315,6 +315,12 @@ publish-relay-backend-artifact: ## publishes the relay backend artifact to GCP S
 	@gsutil cp $(DIST_DIR)/relay_backend.dev.tar.gz $(ARTIFACT_BUCKET)/relay_backend.dev.tar.gz
 	@printf "done\n"
 
+.PHONY: deploy-relay-backend
+deploy-relay-backend: build-relay-backend ## builds and deploys the relay backend to the dev VM
+	@printf "Deploying relay backend... \n\n"
+	gcloud compute scp ./dist/relay_backend ./cmd/relay_backend/dev.env relay-backend-dev-1:/tmp
+	gcloud compute ssh relay-backend-dev-1 -- 'sudo mv /tmp/relay_backend /app/app && sudo mv /tmp/dev.env /app/app.env && sudo systemctl restart app.service'
+
 .PHONY: build-server-backend
 build-server-backend: ## builds the server backend binary
 	@printf "Building server backend... "
@@ -336,6 +342,12 @@ publish-server-backend-artifact: ## publishes the server backend artifact to GCP
 	@printf "Publishing server backend artifact... \n\n"
 	@gsutil cp $(DIST_DIR)/server_backend.dev.tar.gz $(ARTIFACT_BUCKET)/server_backend.dev.tar.gz
 	@printf "done\n"
+
+.PHONY: deploy-server-backend
+deploy-server-backend: build-server-backend ## builds and deploys the server backend to the dev VM
+	@printf "Deploying server backend... \n\n"
+	gcloud compute scp ./dist/server_backend ./cmd/server_backend/dev.env server-backend-dev-1:/tmp
+	gcloud compute ssh server-backend-dev-1 -- 'sudo mv /tmp/server_backend /app/app && sudo mv /tmp/dev.env /app/app.env && sudo systemctl restart app.service'
 
 .PHONY: build-backend-artifacts
 build-backend-artifacts: build-relay-backend-artifact build-server-backend-artifact ## builds the backend artifacts
