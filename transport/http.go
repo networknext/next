@@ -2,8 +2,10 @@ package transport
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"expvar"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -422,10 +424,23 @@ func RelayUpdateJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, st
 			return
 		}
 
-		var response RelayUpdateResponseJSON
-		if response.RelaysToPing = relayUpdatePacketHandler(&packet, writer, request, logger, redisClient, statsdb); response.RelaysToPing == nil {
+		relaysToPing := relayUpdatePacketHandler(&packet, writer, request, logger, redisClient, statsdb)
+		if relaysToPing == nil {
 			level.Error(logger).Log("msg", "could not process converted packet")
 			return
+		}
+
+		var response RelayUpdateResponseJSON
+		for _, pingData := range relaysToPing {
+			var token routing.LegacyPingToken
+			token.Timeout = uint64(time.Now().Unix() * 100000) // some arbitrarily large number just to make things compatable for the moment
+			token.RelayID = crypto.HashID(jsonPacket.StringAddr)
+			bin := token.ToBin()
+			var legacy routing.LegacyPingData
+			legacy.ID = pingData.ID
+			legacy.Address = pingData.Address
+			legacy.PingToken = base64.StdEncoding.EncodeToString(bin)
+			response.RelaysToPing = append(response.RelaysToPing, legacy)
 		}
 
 		var dat []byte
@@ -438,6 +453,8 @@ func RelayUpdateJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, st
 		writer.Header().Set("Content-Type", "application/json")
 
 		writer.Write(dat)
+
+		fmt.Printf("sending: \n%s\n", string(dat))
 	}
 }
 

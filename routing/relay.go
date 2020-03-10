@@ -180,3 +180,23 @@ type RelayPingData struct {
 	ID      uint64 `json:"relay_id"`
 	Address string `json:"relay_address"`
 }
+
+type LegacyPingToken struct {
+	Timeout uint64
+	RelayID uint64
+	HMac    [32]byte
+}
+
+func (l *LegacyPingToken) ToBin() (out []byte) {
+	out = make([]byte, 48) // ping token binary is 57 bytes
+	index := 0
+	encoding.WriteUint64(out, &index, l.Timeout)
+	encoding.WriteUint64(out, &index, l.RelayID)
+	encoding.WriteBytes(out, &index, l.HMac[:], len(l.HMac))
+	return out
+}
+
+type LegacyPingData struct {
+	RelayPingData
+	PingToken string `json:"ping_info"` // base64 of LegacyPingToken binary form
+}

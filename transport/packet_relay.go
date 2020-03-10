@@ -137,7 +137,7 @@ type RelayUpdateRequestJSON struct {
 }
 
 type RelayUpdateResponseJSON struct {
-	RelaysToPing []routing.RelayPingData `json:"ping_data"`
+	RelaysToPing []routing.LegacyPingData `json:"ping_data"`
 }
 
 func (j *RelayUpdateRequestJSON) ToUpdatePacket(packet *RelayUpdatePacket) error {
