@@ -11,8 +11,6 @@ import (
 	"runtime"
 	"time"
 
-	gkmetrics "github.com/go-kit/kit/metrics"
-
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	jsoniter "github.com/json-iterator/go"
@@ -99,14 +97,14 @@ func (e ServerCacheEntry) MarshalBinary() ([]byte, error) {
 }
 
 // ServerUpdateHandlerFunc ...
-func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, duration metrics.Histogram, counter metrics.Counter) UDPHandlerFunc {
+func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, duration metrics.Gauge, counter metrics.Counter) UDPHandlerFunc {
 	logger = log.With(logger, "handler", "server")
 
 	return func(w io.Writer, incoming *UDPPacket) {
-		timer := gkmetrics.NewTimer(duration.With("method", "ServerUpdateHandlerFunc"))
-		timer.Unit(time.Millisecond)
+		durationStart := time.Now()
 		defer func() {
-			timer.ObserveDuration()
+			durationSince := time.Since(durationStart)
+			duration.Set(float64(durationSince.Milliseconds()))
 			counter.Add(1)
 		}()
 
@@ -210,14 +208,14 @@ type RouteProvider interface {
 }
 
 // SessionUpdateHandlerFunc ...
-func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, duration metrics.Histogram, counter metrics.Counter, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, duration metrics.Gauge, counter metrics.Counter, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
 	logger = log.With(logger, "handler", "session")
 
 	return func(w io.Writer, incoming *UDPPacket) {
-		timer := gkmetrics.NewTimer(duration.With("method", "SessionUpdateHandlerFunc"))
-		timer.Unit(time.Millisecond)
+		durationStart := time.Now()
 		defer func() {
-			timer.ObserveDuration()
+			durationSince := time.Since(durationStart)
+			duration.Set(float64(durationSince.Milliseconds()))
 			counter.Add(1)
 		}()
 
