@@ -212,7 +212,7 @@ type RouteProvider interface {
 type SessionMetrics struct {
 	InvocationCount    metrics.Counter
 	DirectRouteCount   metrics.Counter
-	NewRouteCount      metrics.Counter
+	NextRouteCount     metrics.Counter
 	ContinueRouteCount metrics.Counter
 	UpdateDuration     metrics.Histogram
 }
@@ -502,6 +502,13 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		if responseData, err = writeSessionResponse(w, response, serverPrivateKey); err != nil {
 			level.Error(locallogger).Log("msg", "failed to write session response", "err", err)
 			return
+		}
+
+		// If we managed to send the response, update metrics based on route type
+		if response.RouteType == routing.RouteTypeDirect {
+			metrics.DirectRouteCount.Add(1)
+		} else {
+			metrics.NextRouteCount.Add(1)
 		}
 
 		// Cache the needed information for the next session update

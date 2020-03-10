@@ -257,28 +257,16 @@ func main() {
 		directRouteSessionCount = &metrics.EmptyCounter{}
 	}
 
-	newRouteSessionCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
-		DisplayName: "Total new session count",
+	nextRouteSessionCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
+		DisplayName: "Total next session count",
 		ServiceName: "server_backend",
-		ID:          "session.route.new.count",
+		ID:          "session.route.next.count",
 		Unit:        "sessions",
-		Description: "The total number of sessions that are currently being served a new network next route",
+		Description: "The total number of sessions that are currently being served a network next route",
 	})
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "session.route.new.count", "err", err)
-		newRouteSessionCount = &metrics.EmptyCounter{}
-	}
-
-	continueRouteSessionCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
-		DisplayName: "Total continue session count",
-		ServiceName: "server_backend",
-		ID:          "session.route.continue.count",
-		Unit:        "sessions",
-		Description: "The total number of sessions that are currently being told to stay on their network next route",
-	})
-	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "session.route.continue.count", "err", err)
-		continueRouteSessionCount = &metrics.EmptyCounter{}
+		nextRouteSessionCount = &metrics.EmptyCounter{}
 	}
 
 	sessionDuration, err := metricsHandler.NewHistogram(ctx, &metrics.Descriptor{
@@ -294,11 +282,10 @@ func main() {
 	}
 
 	sessionMetrics := transport.SessionMetrics{
-		InvocationCount:    sessionUpdateInvocationCount,
-		DirectRouteCount:   directRouteSessionCount,
-		NewRouteCount:      newRouteSessionCount,
-		ContinueRouteCount: continueRouteSessionCount,
-		UpdateDuration:     sessionDuration,
+		InvocationCount:  sessionUpdateInvocationCount,
+		DirectRouteCount: directRouteSessionCount,
+		NextRouteCount:   nextRouteSessionCount,
+		UpdateDuration:   sessionDuration,
 	}
 
 	var routeMatrix routing.RouteMatrix

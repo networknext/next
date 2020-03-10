@@ -21,8 +21,11 @@ import (
 )
 
 var emptyMetrics = transport.SessionMetrics{
-	InvocationCount: &metrics.EmptyCounter{},
-	UpdateDuration:  &metrics.EmptyHistogram{},
+	InvocationCount:    &metrics.EmptyCounter{},
+	DirectRouteCount:   &metrics.EmptyCounter{},
+	NextRouteCount:     &metrics.EmptyCounter{},
+	ContinueRouteCount: &metrics.EmptyCounter{},
+	UpdateDuration:     &metrics.EmptyHistogram{},
 }
 
 func ValidateDirectResponsePacket(resbuf bytes.Buffer, t *testing.T) {
