@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"expvar"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -416,19 +415,6 @@ func RelayUpdateJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, st
 			level.Error(logger).Log("msg", "could not parse update json", "err", err)
 			writer.WriteHeader(http.StatusUnprocessableEntity)
 			return
-		}
-
-		addr := fmt.Sprintf("%s:%d", jsonPacket.StringAddr, jsonPacket.PortNum)
-		fmt.Printf("received address: %s\n", addr)
-		fmt.Printf("received public key: %s\n", jsonPacket.Metadata.TokenBase64)
-		fmt.Printf("received %d ping stats\n", len(jsonPacket.PingStats))
-
-		for i, stat := range jsonPacket.PingStats {
-			fmt.Printf("ping stat %d\n", i)
-			fmt.Printf("relay id: %d\n", stat.RelayID)
-			fmt.Printf("rtt: %f\n", stat.RTT)
-			fmt.Printf("jitter: %f\n", stat.Jitter)
-			fmt.Printf("packet loss: %f\n", stat.PacketLoss)
 		}
 
 		packet := jsonPacket.ToUpdatePacket()
