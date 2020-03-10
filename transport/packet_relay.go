@@ -12,6 +12,13 @@ import (
 	"github.com/networknext/backend/routing"
 )
 
+const (
+	VersionNumberInitRequest    = 0
+	VersionNumberInitResponse   = 0
+	VersionNumberUpdateRequest  = 0
+	VersionNumberUpdateResponse = 0
+)
+
 // RelayInitPacket is the struct that describes the packets comming into the relay_init endpoint
 type RelayInitPacket struct {
 	Magic          uint32
@@ -39,7 +46,7 @@ func (j *RelayInitRequestJSON) ToInitPacket(packet *RelayInitPacket) error {
 	var err error
 
 	packet.Magic = j.Magic
-	packet.Version = 0
+	packet.Version = VersionNumberInitRequest
 
 	var nonce []byte
 	{
@@ -133,26 +140,36 @@ type RelayUpdateResponseJSON struct {
 	RelaysToPing []routing.RelayPingData `json:"ping_data"`
 }
 
-func (j *RelayUpdateRequestJSON) ToUpdatePacket() *RelayUpdatePacket {
-	var packet RelayUpdatePacket
+func (j *RelayUpdateRequestJSON) ToUpdatePacket(packet *RelayUpdatePacket) error {
+	var err error
 
-	packet.Version = 0 // don't care
+	packet.Version = VersionNumberUpdateRequest
 
-	completeAddr := fmt.Sprintf("%s:%d", j.StringAddr, j.PortNum)
-	if addr, err := net.ResolveUDPAddr("udp", completeAddr); err == nil {
-		packet.Address = *addr
+	var addr *net.UDPAddr
+	{
+		completeAddr := fmt.Sprintf("%s:%d", j.StringAddr, j.PortNum)
+		if addr, err = net.ResolveUDPAddr("udp", completeAddr); err != nil {
+			return err
+		}
 	}
 
-	if dat, err := base64.StdEncoding.DecodeString(j.Metadata.TokenBase64); err == nil {
-		packet.Token = make([]byte, len(dat))
-		copy(packet.Token, dat)
+	packet.Address = *addr
+
+	var token []byte
+	{
+		if token, err = base64.StdEncoding.DecodeString(j.Metadata.TokenBase64); err != nil {
+			return err
+		}
 	}
+
+	packet.Token = make([]byte, len(token))
+	copy(packet.Token, token)
 
 	packet.NumRelays = uint32(len(j.PingStats))
 	packet.PingStats = make([]routing.RelayStatsPing, packet.NumRelays)
 	copy(packet.PingStats, j.PingStats)
 
-	return &packet
+	return nil
 }
 
 // UnmarshalBinary decodes the binary data into a RelayUpdatePacket struct

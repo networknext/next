@@ -27,11 +27,6 @@ const (
 
 	MaxRelays             = 1024
 	MaxRelayAddressLength = 256
-
-	VersionNumberInitRequest    = 0
-	VersionNumberInitResponse   = 0
-	VersionNumberUpdateRequest  = 0
-	VersionNumberUpdateResponse = 0
 )
 
 // NewRouter creates a router with the specified endpoints
@@ -403,6 +398,8 @@ func RelayUpdateJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, st
 			counter.Add(1)
 		}()
 
+		level.Error(logger).Log("msg", "received json packet")
+
 		body, err := ioutil.ReadAll(request.Body)
 		if err != nil {
 			level.Error(logger).Log("msg", "could not read packet", "err", err)
@@ -417,10 +414,18 @@ func RelayUpdateJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, st
 			return
 		}
 
-		packet := jsonPacket.ToUpdatePacket()
+		var packet RelayUpdatePacket
+		if err := jsonPacket.ToUpdatePacket(&packet); err != nil {
+			level.Error(logger).Log("msg", "could not convert json", "err", err)
+			writer.WriteHeader(http.StatusUnprocessableEntity)
+			return
+		}
 
 		var response RelayUpdateResponseJSON
-		response.RelaysToPing = relayUpdatePacketHandler(packet, writer, request, logger, redisClient, statsdb)
+		if response.RelaysToPing = relayUpdatePacketHandler(&packet, writer, request, logger, redisClient, statsdb); response.RelaysToPing == nil {
+			level.Error(logger).Log("msg", "could not process converted packet")
+			return
+		}
 
 		var dat []byte
 		if dat, err = json.Marshal(response); err != nil {
