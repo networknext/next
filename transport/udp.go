@@ -11,8 +11,6 @@ import (
 	"runtime"
 	"time"
 
-	gkmetrics "github.com/go-kit/kit/metrics"
-
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	jsoniter "github.com/json-iterator/go"
@@ -99,14 +97,14 @@ func (e ServerCacheEntry) MarshalBinary() ([]byte, error) {
 }
 
 // ServerUpdateHandlerFunc ...
-func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, duration metrics.Histogram, counter metrics.Counter) UDPHandlerFunc {
+func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, duration metrics.Gauge, counter metrics.Counter) UDPHandlerFunc {
 	logger = log.With(logger, "handler", "server")
 
 	return func(w io.Writer, incoming *UDPPacket) {
-		timer := gkmetrics.NewTimer(duration.With("method", "ServerUpdateHandlerFunc"))
-		timer.Unit(time.Millisecond)
+		durationStart := time.Now()
 		defer func() {
-			timer.ObserveDuration()
+			durationSince := time.Since(durationStart)
+			duration.Set(float64(durationSince.Milliseconds()))
 			counter.Add(1)
 		}()
 
@@ -210,11 +208,10 @@ type RouteProvider interface {
 }
 
 type SessionMetrics struct {
-	InvocationCount    metrics.Counter
-	DirectRouteCount   metrics.Counter
-	NextRouteCount     metrics.Counter
-	ContinueRouteCount metrics.Counter
-	UpdateDuration     metrics.Histogram
+	Invocations    metrics.Counter
+	DirectSessions metrics.Counter
+	NextSessions   metrics.Counter
+	DurationGauge  metrics.Gauge
 }
 
 // SessionUpdateHandlerFunc ...
@@ -222,11 +219,11 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 	logger = log.With(logger, "handler", "session")
 
 	return func(w io.Writer, incoming *UDPPacket) {
-		timer := gkmetrics.NewTimer(metrics.UpdateDuration.With("method", "SessionUpdateHandlerFunc"))
-		timer.Unit(time.Millisecond)
+		durationStart := time.Now()
 		defer func() {
-			timer.ObserveDuration()
-			metrics.InvocationCount.Add(1)
+			durationSince := time.Since(durationStart)
+			metrics.DurationGauge.Set(float64(durationSince.Milliseconds()))
+			metrics.Invocations.Add(1)
 		}()
 
 		timestampNow := time.Now()
@@ -506,9 +503,9 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 
 		// If we managed to send the response, update metrics based on route type
 		if response.RouteType == routing.RouteTypeDirect {
-			metrics.DirectRouteCount.Add(1)
+			metrics.DirectSessions.Add(1)
 		} else {
-			metrics.NextRouteCount.Add(1)
+			metrics.NextSessions.Add(1)
 		}
 
 		// Cache the needed information for the next session update

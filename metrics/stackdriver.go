@@ -121,14 +121,13 @@ func (handler *StackDriverHandler) WriteLoop(ctx context.Context, logger log.Log
 							},
 							Value: &monitoringpb.TypedValue{
 								Value: &monitoringpb.TypedValue_Int64Value{
-									Int64Value: int64(math.Round(mapData.counter.Value())),
+									Int64Value: int64(math.Round(mapData.counter.ValueReset())),
 								},
 							},
 						},
 					},
 				}
 
-				mapData.counter.ValueReset()
 				index++
 			}
 

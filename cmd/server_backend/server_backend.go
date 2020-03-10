@@ -208,16 +208,16 @@ func main() {
 	}
 
 	// Create server update metrics
-	updateDuration, err := metricsHandler.NewHistogram(ctx, &metrics.Descriptor{
+	updateDuration, err := metricsHandler.NewGauge(ctx, &metrics.Descriptor{
 		DisplayName: "Server update duration",
 		ServiceName: "server_backend",
-		ID:          "server.update.duration",
+		ID:          "server.duration",
 		Unit:        "milliseconds",
 		Description: "How long it takes to process a server update request.",
-	}, 50)
+	})
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create metric histogram", "metric", "server.update.duration", "err", err)
-		updateDuration = &metrics.EmptyHistogram{}
+		level.Error(logger).Log("msg", "Failed to create metric histogram", "metric", "server.duration", "err", err)
+		updateDuration = &metrics.EmptyGauge{}
 	}
 
 	updateCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
@@ -236,56 +236,56 @@ func main() {
 	sessionUpdateInvocationCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
 		DisplayName: "Total session update invocations",
 		ServiceName: "server_backend",
-		ID:          "session.update.invocation.count",
+		ID:          "session.count",
 		Unit:        "invocations",
-		Description: "The total number of session update handlers we are attempting to run",
+		Description: "The total number of concurrent sessions",
 	})
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "session.update.invocation.count", "err", err)
+		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "session.count", "err", err)
 		sessionUpdateInvocationCount = &metrics.EmptyCounter{}
 	}
 
 	directRouteSessionCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
 		DisplayName: "Total direct session count",
 		ServiceName: "server_backend",
-		ID:          "session.route.direct.count",
+		ID:          "session.direct.count",
 		Unit:        "sessions",
 		Description: "The total number of sessions that are currently being served a direct route",
 	})
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "session.route.direct.count", "err", err)
+		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "session.direct.count", "err", err)
 		directRouteSessionCount = &metrics.EmptyCounter{}
 	}
 
 	nextRouteSessionCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
 		DisplayName: "Total next session count",
 		ServiceName: "server_backend",
-		ID:          "session.route.next.count",
+		ID:          "session.next.count",
 		Unit:        "sessions",
 		Description: "The total number of sessions that are currently being served a network next route",
 	})
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "session.route.new.count", "err", err)
+		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "session.next.count", "err", err)
 		nextRouteSessionCount = &metrics.EmptyCounter{}
 	}
 
-	sessionDuration, err := metricsHandler.NewHistogram(ctx, &metrics.Descriptor{
+	sessionDuration, err := metricsHandler.NewGauge(ctx, &metrics.Descriptor{
 		DisplayName: "Session update duration",
 		ServiceName: "server_backend",
-		ID:          "session.update.duration",
+		ID:          "session.duration",
 		Unit:        "milliseconds",
 		Description: "How long it takes to process a session update request",
-	}, 50)
+	})
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create metric histogram", "metric", "session.duration", "err", err)
-		sessionDuration = &metrics.EmptyHistogram{}
+		sessionDuration = &metrics.EmptyGauge{}
 	}
 
 	sessionMetrics := transport.SessionMetrics{
-		InvocationCount:  sessionUpdateInvocationCount,
-		DirectRouteCount: directRouteSessionCount,
-		NextRouteCount:   nextRouteSessionCount,
-		UpdateDuration:   sessionDuration,
+		Invocations:    sessionUpdateInvocationCount,
+		DirectSessions: directRouteSessionCount,
+		NextSessions:   nextRouteSessionCount,
+		DurationGauge:  sessionDuration,
 	}
 
 	var routeMatrix routing.RouteMatrix
