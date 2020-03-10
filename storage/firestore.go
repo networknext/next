@@ -39,7 +39,7 @@ type seller struct {
 
 type relay struct {
 	Address    string                 `firestore:"publicAddress"`
-	PublicKey  []byte                 `firestore:"updateKey"`
+	PublicKey  []byte                 `firestore:"publicKey"`
 	Datacenter *firestore.DocumentRef `firestore:"datacenter"`
 	Seller     *firestore.DocumentRef `firestore:"seller"`
 }
