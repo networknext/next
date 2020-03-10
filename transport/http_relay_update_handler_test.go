@@ -9,7 +9,6 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 
@@ -56,9 +55,9 @@ func relayUpdateAssertions(t *testing.T, endpoint string, body []byte, expectedC
 
 	var handler func(writer http.ResponseWriter, request *http.Request)
 	if endpoint == "/relay_update" {
-		handler = transport.RelayUpdateHandlerFunc(log.NewLogfmtLogger(os.Stdout), redisClient, statsdb, &metrics.EmptyHistogram{}, &metrics.EmptyCounter{})
+		handler = transport.RelayUpdateHandlerFunc(log.NewNopLogger(), redisClient, statsdb, &metrics.EmptyHistogram{}, &metrics.EmptyCounter{})
 	} else if endpoint == "/relay_update_json" {
-		handler = transport.RelayUpdateJSONHandlerFunc(log.NewLogfmtLogger(os.Stdout), redisClient, statsdb, &metrics.EmptyHistogram{}, &metrics.EmptyCounter{})
+		handler = transport.RelayUpdateJSONHandlerFunc(log.NewNopLogger(), redisClient, statsdb, &metrics.EmptyHistogram{}, &metrics.EmptyCounter{})
 	}
 
 	handler(recorder, request)
@@ -254,11 +253,49 @@ func TestRelayUpdateHandler(t *testing.T) {
 		})
 
 		t.Run("invalid address", func(t *testing.T) {
+			statIps := []string{"127.0.0.2:40000", "127.0.0.3:40000", "127.0.0.4:40000", "127.0.0.5:40000"}
+			token := make([]byte, crypto.KeySize)
+			b64Token := base64.StdEncoding.EncodeToString(token)
+			var request transport.RelayUpdateRequestJSON
+			request.StringAddr = "invalid address"
+			request.PortNum = 0
+			request.Metadata.TokenBase64 = b64Token
+			request.PingStats = make([]routing.RelayStatsPing, uint32(len(statIps)))
 
+			for i, addr := range statIps {
+				stats := &request.PingStats[i]
+				stats.RelayID = crypto.HashID(addr)
+				stats.RTT = rand.Float32()
+				stats.Jitter = rand.Float32()
+				stats.PacketLoss = rand.Float32()
+			}
+
+			buff, err := json.Marshal(request)
+			assert.Nil(t, err)
+
+			relayUpdateAssertions(t, endpointJSONUpdate, buff, http.StatusUnprocessableEntity, nil, nil)
 		})
 
 		t.Run("token invalid base64", func(t *testing.T) {
+			statIps := []string{"127.0.0.2:40000", "127.0.0.3:40000", "127.0.0.4:40000", "127.0.0.5:40000"}
+			var request transport.RelayUpdateRequestJSON
+			request.StringAddr = "127.0.0.1"
+			request.PortNum = 40000
+			request.Metadata.TokenBase64 = "invalid\n\t\nbase64"
+			request.PingStats = make([]routing.RelayStatsPing, uint32(len(statIps)))
 
+			for i, addr := range statIps {
+				stats := &request.PingStats[i]
+				stats.RelayID = crypto.HashID(addr)
+				stats.RTT = rand.Float32()
+				stats.Jitter = rand.Float32()
+				stats.PacketLoss = rand.Float32()
+			}
+
+			buff, err := json.Marshal(request)
+			assert.Nil(t, err)
+
+			relayUpdateAssertions(t, endpointJSONUpdate, buff, http.StatusUnprocessableEntity, nil, nil)
 		})
 
 		t.Run("valid", func(t *testing.T) {
