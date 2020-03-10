@@ -216,8 +216,7 @@ const int Base64TableDecode[256] =
       return false;
     }
 
-    doc.set(relayAddress, "relay_address");
-    doc.set(port, "relay_port");
+    doc.set(relayAddress, "relay_address"); // here the relay address contains the port, unlike with init
 
     auto prettyStr = doc.toPrettyString();
     printf("sending this data to the relay backend update endpoint: %s\n", prettyStr.c_str());

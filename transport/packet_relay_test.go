@@ -328,10 +328,9 @@ func TestRelayUpdateRequestJSON(t *testing.T) {
 		t.Run("invalid address", func(t *testing.T) {
 			var jsonRequest transport.RelayUpdateRequestJSON
 			jsonRequest.StringAddr = "invalid"
-			jsonRequest.PortNum = 0
 			var packet transport.RelayUpdatePacket
 
-			assert.IsType(t, &net.DNSError{}, jsonRequest.ToUpdatePacket(&packet))
+			assert.IsType(t, &net.AddrError{}, jsonRequest.ToUpdatePacket(&packet))
 		})
 
 		t.Run("token is invalid base64", func(t *testing.T) {
@@ -347,8 +346,7 @@ func TestRelayUpdateRequestJSON(t *testing.T) {
 			token := make([]byte, crypto.KeySize)
 			b64Token := base64.StdEncoding.EncodeToString(token)
 			var request transport.RelayUpdateRequestJSON
-			request.StringAddr = "127.0.0.1"
-			request.PortNum = 40000
+			request.StringAddr = "127.0.0.1:40000"
 			request.Metadata.TokenBase64 = b64Token
 			request.PingStats = make([]routing.RelayStatsPing, uint32(len(statIps)))
 
@@ -363,7 +361,7 @@ func TestRelayUpdateRequestJSON(t *testing.T) {
 			var packet transport.RelayUpdatePacket
 			assert.Nil(t, request.ToUpdatePacket(&packet))
 
-			assert.Equal(t, fmt.Sprintf("%s:%d", request.StringAddr, request.PortNum), packet.Address.String())
+			assert.Equal(t, request.StringAddr, packet.Address.String())
 			assert.True(t, bytes.Equal(packet.Token, token))
 			assert.Equal(t, request.PingStats, packet.PingStats)
 		})

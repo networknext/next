@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"math/rand"
 	"net"
 	"net/http"
@@ -258,7 +257,6 @@ func TestRelayUpdateHandler(t *testing.T) {
 			b64Token := base64.StdEncoding.EncodeToString(token)
 			var request transport.RelayUpdateRequestJSON
 			request.StringAddr = "invalid address"
-			request.PortNum = 0
 			request.Metadata.TokenBase64 = b64Token
 			request.PingStats = make([]routing.RelayStatsPing, uint32(len(statIps)))
 
@@ -279,8 +277,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 		t.Run("token invalid base64", func(t *testing.T) {
 			statIps := []string{"127.0.0.2:40000", "127.0.0.3:40000", "127.0.0.4:40000", "127.0.0.5:40000"}
 			var request transport.RelayUpdateRequestJSON
-			request.StringAddr = "127.0.0.1"
-			request.PortNum = 40000
+			request.StringAddr = "127.0.0.1:40000"
 			request.Metadata.TokenBase64 = "invalid\n\t\nbase64"
 			request.PingStats = make([]routing.RelayStatsPing, uint32(len(statIps)))
 
@@ -308,8 +305,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 			token := make([]byte, crypto.KeySize)
 			b64Token := base64.StdEncoding.EncodeToString(token)
 			var request transport.RelayUpdateRequestJSON
-			request.StringAddr = "127.0.0.1"
-			request.PortNum = 40000
+			request.StringAddr = "127.0.0.1:40000"
 			request.Metadata.TokenBase64 = b64Token
 			request.PingStats = make([]routing.RelayStatsPing, uint32(len(statIps)))
 
@@ -387,7 +383,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 			}
 
 			assert.NotContains(t, relaysToPingIDs, entry.ID)
-			assert.NotContains(t, relaysToPingAddrs, fmt.Sprintf("%s:%d", request.StringAddr, request.PortNum))
+			assert.NotContains(t, relaysToPingAddrs, request.StringAddr)
 		})
 	})
 }
