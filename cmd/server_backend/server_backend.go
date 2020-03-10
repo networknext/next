@@ -233,7 +233,7 @@ func main() {
 	}
 
 	// Create session update metrics
-	sessionUpdateInvocationCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
+	sessionInvocationsCounter, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
 		DisplayName: "Total session update invocations",
 		ServiceName: "server_backend",
 		ID:          "session.count",
@@ -242,10 +242,10 @@ func main() {
 	})
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "session.count", "err", err)
-		sessionUpdateInvocationCount = &metrics.EmptyCounter{}
+		sessionInvocationsCounter = &metrics.EmptyCounter{}
 	}
 
-	directRouteSessionCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
+	directSessionsCounter, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
 		DisplayName: "Total direct session count",
 		ServiceName: "server_backend",
 		ID:          "session.direct.count",
@@ -254,10 +254,10 @@ func main() {
 	})
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "session.direct.count", "err", err)
-		directRouteSessionCount = &metrics.EmptyCounter{}
+		directSessionsCounter = &metrics.EmptyCounter{}
 	}
 
-	nextRouteSessionCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
+	nextSessionsCounter, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
 		DisplayName: "Total next session count",
 		ServiceName: "server_backend",
 		ID:          "session.next.count",
@@ -266,10 +266,10 @@ func main() {
 	})
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "session.next.count", "err", err)
-		nextRouteSessionCount = &metrics.EmptyCounter{}
+		nextSessionsCounter = &metrics.EmptyCounter{}
 	}
 
-	sessionDuration, err := metricsHandler.NewGauge(ctx, &metrics.Descriptor{
+	sessionDurationGauge, err := metricsHandler.NewGauge(ctx, &metrics.Descriptor{
 		DisplayName: "Session update duration",
 		ServiceName: "server_backend",
 		ID:          "session.duration",
@@ -278,14 +278,14 @@ func main() {
 	})
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create metric histogram", "metric", "session.duration", "err", err)
-		sessionDuration = &metrics.EmptyGauge{}
+		sessionDurationGauge = &metrics.EmptyGauge{}
 	}
 
 	sessionMetrics := transport.SessionMetrics{
-		Invocations:    sessionUpdateInvocationCount,
-		DirectSessions: directRouteSessionCount,
-		NextSessions:   nextRouteSessionCount,
-		DurationGauge:  sessionDuration,
+		Invocations:    sessionInvocationsCounter,
+		DirectSessions: directSessionsCounter,
+		NextSessions:   nextSessionsCounter,
+		DurationGauge:  sessionDurationGauge,
 	}
 
 	var routeMatrix routing.RouteMatrix
