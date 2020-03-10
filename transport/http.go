@@ -45,13 +45,13 @@ func NewRouter(logger log.Logger, redisClient *redis.Client, geoClient *routing.
 	router.Handle("/cost_matrix", costmatrix).Methods("GET")
 	router.Handle("/route_matrix", routematrix).Methods("GET")
 	router.HandleFunc("/near", NearHandlerFunc(nil)).Methods("GET")
-	router.HandleFunc("/relay_init_json", RelayInitJSONHandlerFunc(logger, redisClient, geoClient, ipLocator, storer, metricsHandler, routerPrivateKey)).Methods("POST")
-	router.HandleFunc("/relay_update_json", RelayUpdateJSONHandlerFunc(logger, redisClient, statsdb, metricsHandler)).Methods("POST")
+	router.HandleFunc("/relay_init_json", RelayInitJSONHandlerFunc(logger, redisClient, geoClient, ipLocator, storer, initDuration, initCounter, routerPrivateKey)).Methods("POST")
+	router.HandleFunc("/relay_update_json", RelayUpdateJSONHandlerFunc(logger, redisClient, statsdb, updateDuration, updateCounter)).Methods("POST")
 	router.Handle("/debug/vars", expvar.Handler())
 	return router
 }
 
-func relayInitPacketHandler(relayInitPacket *RelayInitPacket, writer http.ResponseWriter, request *http.Request, logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, storer storage.Storer, metricsHandler metrics.Handler, routerPrivateKey []byte) *routing.Relay {
+func relayInitPacketHandler(relayInitPacket *RelayInitPacket, writer http.ResponseWriter, request *http.Request, logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, storer storage.Storer, routerPrivateKey []byte) *routing.Relay {
 	locallogger := log.With(logger, "req_addr", request.RemoteAddr, "relay_addr", relayInitPacket.Address.String())
 
 	if relayInitPacket.Magic != InitRequestMagic {
@@ -135,8 +135,6 @@ func relayInitPacketHandler(relayInitPacket *RelayInitPacket, writer http.Respon
 
 	level.Debug(locallogger).Log("msg", "relay initialized")
 
-	writer.Header().Set("Content-Type", "application/octet-stream")
-
 	return &relay
 }
 
@@ -167,7 +165,7 @@ func RelayInitHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClien
 			return
 		}
 
-		relay := relayInitPacketHandler(&relayInitPacket, writer, request, logger, redisClient, geoClient, ipLocator, storer, metricsHandler, routerPrivateKey)
+		relay := relayInitPacketHandler(&relayInitPacket, writer, request, logger, redisClient, geoClient, ipLocator, storer, routerPrivateKey)
 
 		if relay == nil {
 			return
@@ -179,15 +177,25 @@ func RelayInitHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClien
 		encoding.WriteUint64(responseData, &index, relay.LastUpdateTime)
 		encoding.WriteBytes(responseData, &index, relay.PublicKey, crypto.KeySize)
 
+		writer.Header().Set("Content-Type", "application/octet-stream")
+
 		writer.Write(responseData[:index])
 	}
 }
 
 // RelayInitJSONHandlerFunc handles relay init data in json form
 // currently it just converts the json struct into a packet struct and processes that
-func RelayInitJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, storer storage.Storer, metricsHandler metrics.Handler, routerPrivateKey []byte) func(writer http.ResponseWriter, request *http.Request) {
+func RelayInitJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, storer storage.Storer, duration metrics.Histogram, counter metrics.Counter, routerPrivateKey []byte) func(writer http.ResponseWriter, request *http.Request) {
+	logger = log.With(logger, "handler", "init_json")
+
 	return func(writer http.ResponseWriter, request *http.Request) {
-		fmt.Println("INIT JSON")
+		timer := gkmetrics.NewTimer(duration.With("method", "RelayInitJSONHandlerFunc"))
+		timer.Unit(time.Millisecond)
+		defer func() {
+			timer.ObserveDuration()
+			counter.Add(1)
+		}()
+
 		body, err := ioutil.ReadAll(request.Body)
 		if err != nil {
 			level.Error(logger).Log("msg", "could not read packet", "err", err)
@@ -209,7 +217,7 @@ func RelayInitJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, geoC
 			return
 		}
 
-		relay := relayInitPacketHandler(&packet, writer, request, logger, redisClient, geoClient, ipLocator, storer, metricsHandler, routerPrivateKey)
+		relay := relayInitPacketHandler(&packet, writer, request, logger, redisClient, geoClient, ipLocator, storer, routerPrivateKey)
 
 		if relay == nil {
 			// the packet handler func will have set the writer's status and logged something, so just log it was json and return
@@ -227,11 +235,13 @@ func RelayInitJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, geoC
 			return
 		}
 
+		writer.Header().Set("Content-Type", "application/json")
+
 		writer.Write(dat)
 	}
 }
 
-func relayUpdatePacketHandler(relayUpdatePacket *RelayUpdatePacket, writer http.ResponseWriter, request *http.Request, logger log.Logger, redisClient *redis.Client, statsdb *routing.StatsDatabase, metricsHandler metrics.Handler) []routing.RelayPingData {
+func relayUpdatePacketHandler(relayUpdatePacket *RelayUpdatePacket, writer http.ResponseWriter, request *http.Request, logger log.Logger, redisClient *redis.Client, statsdb *routing.StatsDatabase) []routing.RelayPingData {
 	locallogger := log.With(logger, "req_addr", request.RemoteAddr, "relay_addr", relayUpdatePacket.Address.String())
 
 	if relayUpdatePacket.Version != VersionNumberUpdateRequest || relayUpdatePacket.NumRelays > MaxRelays {
@@ -336,7 +346,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, redisClient *redis.Client, statsd
 	logger = log.With(logger, "handler", "update")
 
 	return func(writer http.ResponseWriter, request *http.Request) {
-		timer := gkmetrics.NewTimer(duration.With("method", "RelayInitHandlerFunc"))
+		timer := gkmetrics.NewTimer(duration.With("method", "RelayUpdateHandlerFunc"))
 		timer.Unit(time.Millisecond)
 		defer func() {
 			timer.ObserveDuration()
@@ -346,6 +356,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, redisClient *redis.Client, statsd
 		body, err := ioutil.ReadAll(request.Body)
 		if err != nil {
 			level.Error(logger).Log("msg", "could not read packet", "err", err)
+			writer.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
@@ -354,11 +365,11 @@ func RelayUpdateHandlerFunc(logger log.Logger, redisClient *redis.Client, statsd
 		relayUpdatePacket := RelayUpdatePacket{}
 		if err = relayUpdatePacket.UnmarshalBinary(body); err != nil {
 			level.Error(logger).Log("msg", "could not unmarshal packet", "err", err)
-			writer.WriteHeader(http.StatusBadRequest)
+			writer.WriteHeader(http.StatusUnprocessableEntity)
 			return
 		}
 
-		relaysToPing := relayUpdatePacketHandler(&relayUpdatePacket, writer, request, logger, redisClient, statsdb, metricsHandler)
+		relaysToPing := relayUpdatePacketHandler(&relayUpdatePacket, writer, request, logger, redisClient, statsdb)
 
 		responseData := make([]byte, 10*1024)
 
@@ -382,19 +393,28 @@ func RelayUpdateHandlerFunc(logger log.Logger, redisClient *redis.Client, statsd
 
 // RelayUpdateJSONHandlerFunc handles processing json from the relays
 // currently it just converts the json into a packet and passes it to a common function
-func RelayUpdateJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, statsdb *routing.StatsDatabase, metricsHandler metrics.Handler) func(writer http.ResponseWriter, request *http.Request) {
+func RelayUpdateJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, statsdb *routing.StatsDatabase, duration metrics.Histogram, counter metrics.Counter) func(writer http.ResponseWriter, request *http.Request) {
+	logger = log.With(logger, "handler", "update_json")
+
 	return func(writer http.ResponseWriter, request *http.Request) {
-		fmt.Println("UPDATE JSON")
+		timer := gkmetrics.NewTimer(duration.With("method", "RelayUpdateJSONHandlerFunc"))
+		timer.Unit(time.Millisecond)
+		defer func() {
+			timer.ObserveDuration()
+			counter.Add(1)
+		}()
+
 		body, err := ioutil.ReadAll(request.Body)
 		if err != nil {
 			level.Error(logger).Log("msg", "could not read packet", "err", err)
+			writer.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		var jsonPacket RelayUpdateRequestJSON
 		if err := json.Unmarshal(body, &jsonPacket); err != nil {
 			level.Error(logger).Log("msg", "could not parse update json", "err", err)
-			writer.WriteHeader(http.StatusBadRequest)
+			writer.WriteHeader(http.StatusUnprocessableEntity)
 			return
 		}
 
@@ -414,7 +434,7 @@ func RelayUpdateJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, st
 		packet := jsonPacket.ToUpdatePacket()
 
 		var response RelayUpdateResponseJSON
-		response.RelaysToPing = relayUpdatePacketHandler(packet, writer, request, logger, redisClient, statsdb, metricsHandler)
+		response.RelaysToPing = relayUpdatePacketHandler(packet, writer, request, logger, redisClient, statsdb)
 
 		var dat []byte
 		if dat, err = json.Marshal(response); err != nil {
@@ -422,6 +442,8 @@ func RelayUpdateJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, st
 			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
+
+		writer.Header().Set("Content-Type", "application/json")
 
 		writer.Write(dat)
 	}

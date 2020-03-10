@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	crand "crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -93,7 +94,13 @@ func relayInitAssertions(t *testing.T, endpoint string, relay routing.Relay, bod
 		}
 	}
 
-	handler := transport.RelayInitHandlerFunc(log.NewNopLogger(), redisClient, geoClient, ipfunc, inMemory, &metrics.EmptyHistogram{}, &metrics.EmptyCounter{}, routerPrivateKey)
+	var handler func(writer http.ResponseWriter, request *http.Request)
+
+	if endpoint == "/relay_init" {
+		handler = transport.RelayInitHandlerFunc(log.NewNopLogger(), redisClient, geoClient, ipfunc, inMemory, &metrics.EmptyHistogram{}, &metrics.EmptyCounter{}, routerPrivateKey)
+	} else if endpoint == "/relay_init_json" {
+		handler = transport.RelayInitJSONHandlerFunc(log.NewNopLogger(), redisClient, geoClient, ipfunc, inMemory, &metrics.EmptyHistogram{}, &metrics.EmptyCounter{}, routerPrivateKey)
+	}
 
 	handler(recorder, request)
 
@@ -612,7 +619,7 @@ func TestRelayInitHandler(t *testing.T) {
 
 		})
 
-		t.Run("encrypted token is not valid base64", func(t *testing.t) {
+		t.Run("encrypted token is not valid base64", func(t *testing.T) {
 
 		})
 
@@ -663,7 +670,7 @@ func TestRelayInitHandler(t *testing.T) {
 
 			encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
 
-			before := uint64(time.Now().Unix())
+			before := uint64(time.Now().Unix()) * 1000 // convert to millis
 
 			b64Nonce := base64.StdEncoding.EncodeToString(nonce)
 			b64EncToken := base64.StdEncoding.EncodeToString(encryptedToken)
@@ -702,23 +709,16 @@ func TestRelayInitHandler(t *testing.T) {
 			bin, _ := resp.Bytes()
 			assert.Nil(t, actual.UnmarshalBinary(bin))
 
-			indx := 0
 			body := recorder.Body.Bytes()
 
-			var version uint32
-			encoding.ReadUint32(body, &indx, &version)
+			var response transport.RelayInitResponseJSON
+			assert.Nil(t, json.Unmarshal(body, &response))
 
-			var timestamp uint64
-			encoding.ReadUint64(body, &indx, &timestamp)
-
-			var publicKey []byte
-			encoding.ReadBytes(body, &indx, &publicKey, crypto.KeySize)
-
-			assert.Equal(t, "application/octet-stream", contentType[0])
-			assert.Equal(t, transport.VersionNumberInitResponse, int(version))
-			assert.LessOrEqual(t, before, timestamp)
-			assert.GreaterOrEqual(t, uint64(time.Now().Unix()), timestamp)
-			assert.Equal(t, actual.PublicKey, publicKey) // entry gets a public key assigned at init which is returned in the response
+			if assert.GreaterOrEqual(t, len(contentType), 1) {
+				assert.Equal(t, "application/json", contentType[0])
+			}
+			assert.LessOrEqual(t, before, response.Timestamp)
+			assert.GreaterOrEqual(t, uint64(time.Now().Unix()*1000), response.Timestamp)
 
 			assert.Equal(t, expected.ID, actual.ID)
 			assert.Equal(t, expected.Name, actual.Name)
