@@ -74,7 +74,7 @@ func RelayInitHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClien
 			return
 		}
 
-		locallogger := log.With(logger, "req_addr", request.RemoteAddr, "relay_addr", relayInitPacket.Address.String())
+		locallogger := log.With(logger, "req_addr", request.RemoteAddr, "relay_addr", relayInitPacket.Address.String(), "packet_addr", relayInitPacket.Address.String())
 
 		if relayInitPacket.Magic != InitRequestMagic {
 			level.Error(locallogger).Log("msg", "magic number mismatch", "magic_number", relayInitPacket.Magic)
