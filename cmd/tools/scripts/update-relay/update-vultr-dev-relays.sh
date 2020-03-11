@@ -40,6 +40,11 @@ do
     esac
 done
 
+if [ -z $SSH_KEY ]; then
+    echo "No SSH key provided - use -f or --ssh_key to provide a file path to the SSH key"
+    exit
+fi
+
 for i in ${!ips[@]}; do
     echo Updating relay at ip ${ips[$i]}
     ./cmd/tools/scripts/update-relay/update.sh -u root -i ${ips[$i]} -p ${public_keys[$i]} -s ${private_keys[$i]} -f $SSH_KEY
