@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export SSH_KEY
+
 ips=(
     144.202.31.156
     45.76.58.249
@@ -27,7 +29,18 @@ private_keys=(
     J5402JhmRAn/LNiI2ZDgKOY6HWBaQD7/6jascyv7v9Q=
 )
 
+for arg in "$@"
+do
+    case $arg in
+        -f|--ssh-key)
+        SSH_KEY="$2"
+        shift
+        shift
+        ;;
+    esac
+done
+
 for i in ${!ips[@]}; do
     echo Updating relay at ip ${ips[$i]}
-    ./cmd/tools/scripts/update-relay/update.sh -u root -i ${ips[$i]} -p ${public_keys[$i]} -s ${private_keys[$i]}
+    ./cmd/tools/scripts/update-relay/update.sh -u root -i ${ips[$i]} -p ${public_keys[$i]} -s ${private_keys[$i]} -f $SSH_KEY
 done

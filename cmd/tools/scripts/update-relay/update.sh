@@ -4,6 +4,7 @@ export USERNAME
 export IP_ADDRESS
 export PUBLIC_KEY
 export PRIVATE_KEY
+export SSH_KEY
 
 for arg in "$@"
 do
@@ -28,11 +29,16 @@ do
         shift
         shift
         ;;
+        -f|--ssh-key)
+        SSH_KEY="$2"
+        shift
+        shift
+        ;;
     esac
 done
 
 echo Establishing SSH connection to $IP_ADDRESS as $USERNAME
-ssh -t -t -i ~/.ssh/gaffer_rsa $USERNAME@$IP_ADDRESS << EOF
+ssh -t -t -i $SSH_KEY $USERNAME@$IP_ADDRESS << EOF
     echo Stopping the relay
     systemctl stop relay
 
@@ -45,10 +51,10 @@ ssh -t -t -i ~/.ssh/gaffer_rsa $USERNAME@$IP_ADDRESS << EOF
 EOF
 
 echo Copying relay binary to remote relay
-scp -i ~/.ssh/gaffer_rsa ./dist/relay $USERNAME@$IP_ADDRESS:/app
+scp -i $SSH_KEY ./dist/relay $USERNAME@$IP_ADDRESS:/app
 
 echo Pulling down remote relay.service file
-scp -i ~/.ssh/gaffer_rsa $USERNAME@$IP_ADDRESS:/lib/systemd/system/relay.service ~/
+scp -i $SSH_KEY $USERNAME@$IP_ADDRESS:/lib/systemd/system/relay.service ~/
 
 echo Adding or replacing env var values
 PATCH=""
@@ -96,13 +102,13 @@ if [ -n "$PATCH" ]; then
 fi
 
 echo Copying relay.service file back to remote relay
-scp -i ~/.ssh/gaffer_rsa ~/relay.service $USERNAME@$IP_ADDRESS:/lib/systemd/system/
+scp -i $SSH_KEY ~/relay.service $USERNAME@$IP_ADDRESS:/lib/systemd/system/
 
 echo Deleting local relay.service copy
 rm ~/relay.service
 
 echo Reestablishing SSH connection to $IP_ADDRESS as $USERNAME
-ssh -t -t -i ~/.ssh/gaffer_rsa $USERNAME@$IP_ADDRESS << EOF
+ssh -t -t -i $SSH_KEY $USERNAME@$IP_ADDRESS << EOF
     echo Reloading the daemon
     systemctl daemon-reload
 
