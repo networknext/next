@@ -234,23 +234,24 @@ int main()
     return 1;
   }
 
-  std::ofstream* output = nullptr;
-  util::ThroughputLogger* logger = nullptr;
+  std::unique_ptr<std::ofstream> output;
+  std::unique_ptr<util::ThroughputLogger> logger;
   {
-    std::string relayThroughputLog = std::getenv("RELAY_LOG_FILE");
-    if (!relayThroughputLog.empty()) {
-      auto file = new std::ofstream;
-      file->open(relayThroughputLog);
+    auto logFile = std::getenv("RELAY_LOG_FILE");
+    if (logFile != nullptr) {
+      std::string relayThroughputLogFile = logFile;
+      if (!relayThroughputLogFile.empty()) {
+        auto file = std::make_unique<std::ofstream>();
+        file->open(relayThroughputLogFile);
 
-      if (*file) {
-        output = file;
-      } else {
-        delete file;
+        if (*file) {
+          output = std::move(file);
+        }
       }
-    }
 
-    if (output != nullptr) {
-      logger = new util::ThroughputLogger(*output);
+      if (output != nullptr) {
+        logger = std::make_unique<util::ThroughputLogger>(*output);
+      }
     }
   }
 
@@ -333,6 +334,7 @@ int main()
    * otherwise ping may take the port that is reserved for packet processing, usually 40000
    * odds are slim but it may happen
    */
+  Log("creating ", numProcessors, " packet processing threads");
   {
     packetThreads.resize(numProcessors);
 
@@ -354,7 +356,7 @@ int main()
       packetThreads[i] = std::make_unique<std::thread>(
        [&waitVar, &socketAndThreadReady, packetSocket, &relayClock, &keychain, &routerInfo, &sessions, &relayManager, &logger] {
          core::PacketProcessor processor(
-          *packetSocket, relayClock, keychain, routerInfo, sessions, relayManager, gAlive, logger);
+          *packetSocket, relayClock, keychain, routerInfo, sessions, relayManager, gAlive, logger.get());
          processor.process(waitVar, socketAndThreadReady);
        });
 
@@ -464,13 +466,11 @@ int main()
   LogDebug("Stopping throughput logger");
   if (logger != nullptr) {
     logger->stop();
-    delete logger;
   }
 
   LogDebug("Closing log file");
   if (output != nullptr) {
     output->close();
-    delete output;
   }
 
   LogDebug("Cleaning up curl");
