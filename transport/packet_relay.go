@@ -60,8 +60,7 @@ func (j *RelayInitRequestJSON) ToInitPacket(packet *RelayInitPacket) error {
 
 	var addr *net.UDPAddr
 	{
-		completeAddr := fmt.Sprintf("%s:%d", j.StringAddr, j.PortNum)
-		if addr, err = net.ResolveUDPAddr("udp", completeAddr); err != nil {
+		if addr, err = net.ResolveUDPAddr("udp", j.StringAddr); err != nil {
 			return err
 		}
 	}

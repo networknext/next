@@ -81,7 +81,7 @@ func relayInitPacketHandler(relayInitPacket *RelayInitPacket, writer http.Respon
 	}
 
 	if _, ok := crypto.Open(relayInitPacket.EncryptedToken, relayInitPacket.Nonce, relay.PublicKey, routerPrivateKey); !ok {
-		level.Error(locallogger).Log("msg", "crypto open failed")
+		level.Error(locallogger).Log("msg", "crypto open failed", "public_key", base64.StdEncoding.EncodeToString(relay.PublicKey))
 		writer.WriteHeader(http.StatusUnauthorized)
 		return nil
 	}
