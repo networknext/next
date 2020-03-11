@@ -332,7 +332,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			handleError(w, response, serverPrivateKey, err)
 			return
 		}
-		level.Debug(locallogger).Log("lat", location.Latitude, "long", location.Longitude)
+		level.Debug(locallogger).Log("client_ip", packet.ClientAddress.IP.String(), "lat", location.Latitude, "long", location.Longitude)
 
 		clientrelays, err := geoClient.RelaysWithin(location.Latitude, location.Longitude, 500, "mi")
 

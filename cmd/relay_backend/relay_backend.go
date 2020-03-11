@@ -109,7 +109,7 @@ func main() {
 	if uri, ok := os.LookupEnv("MAXMIND_DB_URI"); ok {
 		mmreader, err := geoip2.Open(uri)
 		if err != nil {
-			level.Error(logger).Log("envvar", "RELAY_MAXMIND_DB_URI", "value", uri, "err", err)
+			level.Error(logger).Log("envvar", "MAXMIND_DB_URI", "value", uri, "err", err)
 		}
 		ipLocator = &routing.MaxmindDB{
 			Reader: mmreader,
