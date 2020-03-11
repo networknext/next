@@ -207,6 +207,7 @@ func main() {
 		}()
 	}
 
+	// Create server update metrics
 	updateDuration, err := metricsHandler.NewGauge(ctx, &metrics.Descriptor{
 		DisplayName: "Server update duration",
 		ServiceName: "server_backend",
@@ -217,18 +218,6 @@ func main() {
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create metric histogram", "metric", "server.duration", "err", err)
 		updateDuration = &metrics.EmptyGauge{}
-	}
-
-	sessionDuration, err := metricsHandler.NewGauge(ctx, &metrics.Descriptor{
-		DisplayName: "Session update duration",
-		ServiceName: "server_backend",
-		ID:          "session.duration",
-		Unit:        "milliseconds",
-		Description: "How long it takes to process a session update request",
-	})
-	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create metric histogram", "metric", "session.duration", "err", err)
-		sessionDuration = &metrics.EmptyGauge{}
 	}
 
 	updateCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
@@ -243,16 +232,60 @@ func main() {
 		updateCount = &metrics.EmptyCounter{}
 	}
 
-	sessionCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
-		DisplayName: "Total session count",
+	// Create session update metrics
+	sessionInvocationsCounter, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
+		DisplayName: "Total session update invocations",
 		ServiceName: "server_backend",
 		ID:          "session.count",
-		Unit:        "sessions",
+		Unit:        "invocations",
 		Description: "The total number of concurrent sessions",
 	})
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "session.count", "err", err)
-		sessionCount = &metrics.EmptyCounter{}
+		sessionInvocationsCounter = &metrics.EmptyCounter{}
+	}
+
+	directSessionsCounter, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
+		DisplayName: "Total direct session count",
+		ServiceName: "server_backend",
+		ID:          "session.direct.count",
+		Unit:        "sessions",
+		Description: "The total number of sessions that are currently being served a direct route",
+	})
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "session.direct.count", "err", err)
+		directSessionsCounter = &metrics.EmptyCounter{}
+	}
+
+	nextSessionsCounter, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
+		DisplayName: "Total next session count",
+		ServiceName: "server_backend",
+		ID:          "session.next.count",
+		Unit:        "sessions",
+		Description: "The total number of sessions that are currently being served a network next route",
+	})
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "session.next.count", "err", err)
+		nextSessionsCounter = &metrics.EmptyCounter{}
+	}
+
+	sessionDurationGauge, err := metricsHandler.NewGauge(ctx, &metrics.Descriptor{
+		DisplayName: "Session update duration",
+		ServiceName: "server_backend",
+		ID:          "session.duration",
+		Unit:        "milliseconds",
+		Description: "How long it takes to process a session update request",
+	})
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create metric histogram", "metric", "session.duration", "err", err)
+		sessionDurationGauge = &metrics.EmptyGauge{}
+	}
+
+	sessionMetrics := transport.SessionMetrics{
+		Invocations:    sessionInvocationsCounter,
+		DirectSessions: directSessionsCounter,
+		NextSessions:   nextSessionsCounter,
+		DurationGauge:  sessionDurationGauge,
 	}
 
 	var routeMatrix routing.RouteMatrix
@@ -314,7 +347,7 @@ func main() {
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
 			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClient, db, updateDuration, updateCount),
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClient, db, &routeMatrix, ipLocator, &geoClient, sessionDuration, sessionCount, biller, serverPrivateKey, routerPrivateKey),
+			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClient, db, &routeMatrix, ipLocator, &geoClient, &sessionMetrics, biller, serverPrivateKey, routerPrivateKey),
 		}
 
 		go func() {
