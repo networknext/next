@@ -40,6 +40,7 @@ type seller struct {
 type relay struct {
 	Address    string                 `firestore:"publicAddress"`
 	PublicKey  []byte                 `firestore:"publicKey"`
+	UpdateKey  []byte                 `firestore:"updateKey"`
 	Datacenter *firestore.DocumentRef `firestore:"datacenter"`
 	Seller     *firestore.DocumentRef `firestore:"seller"`
 }
@@ -139,12 +140,19 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 			return fmt.Errorf("failed to convert port to int: %v", err)
 		}
 
+		// Default to the relay public key, but if that isn't in firestore
+		// then use the old update key for compatibility
+		publicKey := r.PublicKey
+		if publicKey == nil {
+			publicKey = r.UpdateKey
+		}
+
 		relay := routing.Relay{
 			Addr: net.UDPAddr{
 				IP:   net.ParseIP(host),
 				Port: int(iport),
 			},
-			PublicKey: []byte(r.PublicKey),
+			PublicKey: publicKey,
 		}
 
 		// Get datacenter
