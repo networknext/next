@@ -162,7 +162,7 @@ func RelayInitHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClien
 			return
 		}
 
-		locallogger := log.With(logger, "req_addr", request.RemoteAddr, "relay_addr", relayInitPacket.Address.String(), "packet_addr", relayInitPacket.Address.String())
+		log.With(logger, "req_addr", request.RemoteAddr, "relay_addr", relayInitPacket.Address.String(), "packet_addr", relayInitPacket.Address.String())
 
 		relay := relayInitPacketHandler(&relayInitPacket, writer, request, logger, redisClient, geoClient, ipLocator, storer, routerPrivateKey)
 		if relay == nil {
