@@ -13,7 +13,12 @@ type Route struct {
 func (r *Route) Decide(prevDecision Decision, nnStats Stats, directStats Stats, routeDecisions ...DecisionFunc) Decision {
 	nextDecision := prevDecision
 	for _, routeDecision := range routeDecisions {
-		nextDecision = routeDecision(nextDecision, r.Stats, nnStats, directStats)
+		decision := routeDecision(nextDecision, r.Stats, nnStats, directStats)
+
+		nextDecision.OnNetworkNext = decision.OnNetworkNext
+		if decision.Reason != DecisionNoChange { // DecisionNoChange signals that the decision function chose not to update the deicision reason
+			nextDecision.Reason = decision.Reason
+		}
 	}
 	return nextDecision
 }
