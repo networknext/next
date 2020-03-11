@@ -650,7 +650,7 @@ func TestRelayInitHandler(t *testing.T) {
 				"nonce": "%s",
 				"encrypted_token": "%s"
 			}
-			`, transport.InitRequestMagic, udpAddr.IP.String(), udpAddr.Port, "\n\t\n\t?ih8h9q8qhhaq", b64EncToken))
+			`, transport.InitRequestMagic, udpAddr.String(), udpAddr.Port, "\n\t\n\t?ih8h9q8qhhaq", b64EncToken))
 			relay := routing.Relay{
 				ID: crypto.HashID(addr),
 				Datacenter: routing.Datacenter{
@@ -709,7 +709,7 @@ func TestRelayInitHandler(t *testing.T) {
 				"nonce": "%s",
 				"encrypted_token": "%s"
 			}
-			`, transport.InitRequestMagic, udpAddr.IP.String(), udpAddr.Port, b64Nonce, "\n\t\n\t?ih8h9q8qhhaq"))
+			`, transport.InitRequestMagic, udpAddr.String(), udpAddr.Port, b64Nonce, "\n\t\n\t?ih8h9q8qhhaq"))
 			relay := routing.Relay{
 				ID: crypto.HashID(addr),
 				Datacenter: routing.Datacenter{
@@ -779,7 +779,7 @@ func TestRelayInitHandler(t *testing.T) {
 				"nonce": "%s",
 				"encrypted_token": "%s"
 			}
-			`, transport.InitRequestMagic, udpAddr.IP.String(), udpAddr.Port, b64Nonce, b64EncToken))
+			`, transport.InitRequestMagic, udpAddr.String(), udpAddr.Port, b64Nonce, b64EncToken))
 
 			relay := routing.Relay{
 				ID: crypto.HashID(addr),
