@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"sync"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -21,6 +22,9 @@ type Firestore struct {
 
 	relays map[uint64]*routing.Relay
 	buyers map[uint64]*routing.Buyer
+
+	relayMutex sync.Mutex
+	buyerMutex sync.Mutex
 }
 
 type buyer struct {
@@ -70,11 +74,17 @@ type routingRulesSettings struct {
 }
 
 func (fs *Firestore) Relay(id uint64) (*routing.Relay, bool) {
+	fs.relayMutex.Lock()
+	defer fs.relayMutex.Unlock()
+
 	b, found := fs.relays[id]
 	return b, found
 }
 
 func (fs *Firestore) Buyer(id uint64) (*routing.Buyer, bool) {
+	fs.buyerMutex.Lock()
+	defer fs.buyerMutex.Unlock()
+
 	b, found := fs.buyers[id]
 	return b, found
 }
@@ -111,7 +121,7 @@ func (fs *Firestore) Sync(ctx context.Context) error {
 }
 
 func (fs *Firestore) syncRelays(ctx context.Context) error {
-	fs.relays = make(map[uint64]*routing.Relay)
+	relays := make(map[uint64]*routing.Relay)
 
 	rdocs := fs.Client.Collection("Relay").Documents(ctx)
 	for {
@@ -200,8 +210,12 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 		relay.Seller = seller
 
 		// add populated relay to list
-		fs.relays[rid] = &relay
+		relays[rid] = &relay
 	}
+
+	fs.relayMutex.Lock()
+	fs.relays = relays
+	fs.relayMutex.Unlock()
 
 	level.Info(fs.Logger).Log("during", "syncRelays", "num", len(fs.relays))
 
@@ -209,7 +223,7 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 }
 
 func (fs *Firestore) syncBuyers(ctx context.Context) error {
-	fs.buyers = make(map[uint64]*routing.Buyer)
+	buyers := make(map[uint64]*routing.Buyer)
 
 	bdocs := fs.Client.Collection("Buyer").Documents(ctx)
 	for {
@@ -237,7 +251,7 @@ func (fs *Firestore) syncBuyers(ctx context.Context) error {
 			level.Debug(fs.Logger).Log("msg", fmt.Sprintf("using default route rules for buyer %v", bdoc.Ref.ID), "err", err)
 		}
 
-		fs.buyers[uint64(b.ID)] = &routing.Buyer{
+		buyers[uint64(b.ID)] = &routing.Buyer{
 			ID:                   uint64(b.ID),
 			Name:                 b.Name,
 			Active:               b.Active,
@@ -246,6 +260,10 @@ func (fs *Firestore) syncBuyers(ctx context.Context) error {
 			RoutingRulesSettings: rrs,
 		}
 	}
+
+	fs.buyerMutex.Lock()
+	fs.buyers = buyers
+	fs.buyerMutex.Unlock()
 
 	level.Info(fs.Logger).Log("during", "syncBuyers", "num", len(fs.buyers))
 
