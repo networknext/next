@@ -206,7 +206,7 @@ int main()
       return 1;
     }
 
-    std::cout << "    internal address is '" << externalAddr << "'\n";
+    std::cout << "    internal address is '" << internalAddr << "'\n";
   }
 
   if (externalAddr.Port != internalAddr.Port) {
