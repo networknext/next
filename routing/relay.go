@@ -23,7 +23,8 @@ const (
 	HashKeyAllRelays = "ALL_RELAYS"
 
 	// How frequently we need to recieve updates from relays to keep them in redis
-	RelayTimeout = 10 * time.Second
+	// 10 seconds + a 1 second grace period
+	RelayTimeout = 11 * time.Second
 )
 
 // Relay ...
@@ -176,6 +177,26 @@ type RelayUpdate struct {
 }
 
 type RelayPingData struct {
-	ID      uint64
-	Address string
+	ID      uint64 `json:"relay_id"`
+	Address string `json:"relay_address"`
+}
+
+type LegacyPingToken struct {
+	Timeout uint64
+	RelayID uint64
+	HMac    [32]byte
+}
+
+func (l LegacyPingToken) MarshalBinary() (data []byte, err error) {
+	data = make([]byte, 48) // ping token binary is 57 bytes
+	index := 0
+	encoding.WriteUint64(data, &index, l.Timeout)
+	encoding.WriteUint64(data, &index, l.RelayID)
+	encoding.WriteBytes(data, &index, l.HMac[:], len(l.HMac))
+	return data, nil
+}
+
+type LegacyPingData struct {
+	RelayPingData
+	PingToken string `json:"ping_info"` // base64 of LegacyPingToken binary form
 }

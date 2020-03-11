@@ -1,0 +1,11 @@
+Hostname: inap.test.a
+User: root
+Password: yiXgdME3hNZ2
+Private IP: 172.27.23.37
+Public IP: 74.217.29.219
+
+Hostname: inap.test.b
+User: root
+Password: 6NHF6DGrH78z 
+Private IP: 172.27.23.45
+Public IP: 74.217.29.213
