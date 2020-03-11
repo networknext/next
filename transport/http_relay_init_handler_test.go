@@ -111,9 +111,9 @@ func relayInitAssertions(t *testing.T, endpoint string, relay routing.Relay, bod
 	var handler func(writer http.ResponseWriter, request *http.Request)
 
 	if endpoint == "/relay_init" {
-		handler = transport.RelayInitHandlerFunc(log.NewNopLogger(), redisClient, geoClient, ipfunc, inMemory, &metrics.EmptyHistogram{}, &metrics.EmptyCounter{}, routerPrivateKey)
+		handler = transport.RelayInitHandlerFunc(log.NewNopLogger(), redisClient, geoClient, ipfunc, inMemory, &metrics.EmptyGauge{}, &metrics.EmptyCounter{}, routerPrivateKey)
 	} else if endpoint == "/relay_init_json" {
-		handler = transport.RelayInitJSONHandlerFunc(log.NewNopLogger(), redisClient, geoClient, ipfunc, inMemory, &metrics.EmptyHistogram{}, &metrics.EmptyCounter{}, routerPrivateKey)
+		handler = transport.RelayInitJSONHandlerFunc(log.NewNopLogger(), redisClient, geoClient, ipfunc, inMemory, &metrics.EmptyGauge{}, &metrics.EmptyCounter{}, routerPrivateKey)
 	}
 
 	handler(recorder, request)
