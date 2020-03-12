@@ -94,7 +94,7 @@ namespace core
         relay_replay_protection_reset(&session->ClientToServerProtection);
         relay_replay_protection_reset(&session->ServerToClientProtection);
 
-        mSessionMap.set(hash, session);
+        mSessionMap[hash] = session;
 
         Log("session created: ", std::hex, token.SessionID, '.', std::dec, static_cast<unsigned int>(token.SessionVersion));
       }  // TODO else what?

@@ -56,21 +56,18 @@ namespace core
       }
 
       if (tokenIsExpired(token)) {
-        Log("ignoring continue request. token is expired");
         return;
       }
 
       auto hash = token.key();
 
       if (!mSessionMap.exists(hash)) {
-        Log("ignoring continue request. session does not exist");
         return;
       }
 
-      auto session = mSessionMap.get(hash);
+      auto session = mSessionMap[hash];
 
       if (sessionIsExpired(session)) {
-        Log("ignoring continue request. session is expired");
         return;
       }
 

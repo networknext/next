@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/networknext/backend/routing"
+	"github.com/networknext/backend/transport"
 )
 
 type relayaddrFlags []string
@@ -96,11 +97,9 @@ func main() {
 
 	var routeToken routing.Token
 	tokenTypeIdentifyingByte := make([]byte, 1)
-	clientCutoffIndex := 0
 	switch *token {
 	case "new":
 		tokenTypeIdentifyingByte[0] = routing.TokenTypeRouteRequest
-		clientCutoffIndex = routing.EncryptedNextRouteTokenSize
 		nextRouteToken := routing.NextRouteToken{
 			Expires: uint64(time.Now().Add(*expires).Unix()),
 
@@ -129,7 +128,6 @@ func main() {
 		routeToken = &nextRouteToken
 	case "continue":
 		tokenTypeIdentifyingByte[0] = routing.TokenTypeContinueRequest
-		clientCutoffIndex = routing.EncryptedContinueRouteTokenSize
 		continueRouteToken := routing.ContinueRouteToken{
 			Expires: uint64(time.Now().Add(*expires).Unix()),
 
@@ -166,7 +164,7 @@ func main() {
 	}
 
 	if *clientkey == "" {
-		enc = append(tokenTypeIdentifyingByte, enc[clientCutoffIndex:]...)
+		enc = append(tokenTypeIdentifyingByte, enc[transport.EncryptedTokenRouteSize:]...)
 	}
 
 	_, err = os.Stdout.Write(enc)
