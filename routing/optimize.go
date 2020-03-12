@@ -677,7 +677,7 @@ type RouteMatrixEntry struct {
 
 // RouteMatrix ...
 type RouteMatrix struct {
-	mu sync.Mutex
+	mu sync.RWMutex
 
 	RelayIndicies map[uint64]int
 
@@ -693,8 +693,8 @@ type RouteMatrix struct {
 }
 
 func (m *RouteMatrix) ResolveRelay(id uint64) (Relay, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 
 	relayIndex, ok := m.RelayIndicies[id]
 	if !ok {
@@ -729,15 +729,15 @@ func (m *RouteMatrix) ResolveRelay(id uint64) (Relay, error) {
 
 // RelaysIn will return the set of Relays in the provided Datacenter
 func (m *RouteMatrix) RelaysIn(d Datacenter) []Relay {
-	m.mu.Lock()
+	m.mu.RLock()
 
 	relayIDs, ok := m.DatacenterRelays[d.ID]
 	if !ok {
-		m.mu.Unlock()
+		m.mu.RUnlock()
 		return nil
 	}
 
-	m.mu.Unlock()
+	m.mu.RUnlock()
 
 	var err error
 	relayLength := len(relayIDs)
@@ -762,7 +762,7 @@ func (m *RouteMatrix) RelaysIn(d Datacenter) []Relay {
 // as the argument to the second selector. If at any point a selector fails to select a new slice of routes,
 // the chain breaks.
 func (m *RouteMatrix) Routes(from []Relay, to []Relay, routeSelectors ...SelectorFunc) ([]Route, error) {
-	m.mu.Lock()
+	m.mu.RLock()
 
 	type RelayPairResult struct {
 		fromtoidx int  // The index in the route matrix entry
@@ -790,7 +790,7 @@ func (m *RouteMatrix) Routes(from []Relay, to []Relay, routeSelectors ...Selecto
 		}
 	}
 
-	m.mu.Unlock()
+	m.mu.RUnlock()
 
 	// Now that we have the route total, make the Route buffer and fill it
 	var routeIndex int
@@ -847,9 +847,9 @@ func (m *RouteMatrix) getFromToRelayIndex(from Relay, to Relay) (int, bool) {
 func (m *RouteMatrix) fillRoutes(routes []Route, routeIndex *int, fromtoidx int, reverse bool) error {
 	var err error
 
-	m.mu.Lock()
+	m.mu.RLock()
 	entry := m.Entries[fromtoidx]
-	m.mu.Unlock()
+	m.mu.RUnlock()
 
 	for i := 0; i < int(entry.NumRoutes); i++ {
 		numRelays := int(entry.RouteNumRelays[i])
@@ -859,9 +859,9 @@ func (m *RouteMatrix) fillRoutes(routes []Route, routeIndex *int, fromtoidx int,
 		for j := 0; j < numRelays; j++ {
 			relayIndex := entry.RouteRelays[i][j]
 
-			m.mu.Lock()
+			m.mu.RLock()
 			id := m.RelayIDs[relayIndex]
-			m.mu.Unlock()
+			m.mu.RUnlock()
 
 			if !reverse {
 				routeRelays[j], err = m.ResolveRelay(id)
@@ -874,30 +874,14 @@ func (m *RouteMatrix) fillRoutes(routes []Route, routeIndex *int, fromtoidx int,
 			}
 		}
 
-		if !reverse {
-			for j := 0; j < numRelays; j++ {
-				relayIndex := entry.RouteRelays[i][j]
-				routeRelays[j], err = m.ResolveRelay(m.RelayIDs[relayIndex])
-				if err != nil {
-					return err
-				}
-			}
-		} else {
-			for j := 0; j < numRelays; j++ {
-				relayIndex := entry.RouteRelays[i][j]
-				routeRelays[numRelays-1-j], err = m.ResolveRelay(m.RelayIDs[relayIndex])
-				if err != nil {
-					return err
-				}
-			}
-		}
-
+		m.mu.RLock()
 		route := Route{
 			Relays: routeRelays,
 			Stats: Stats{
 				RTT: float64(m.Entries[fromtoidx].RouteRTT[i]),
 			},
 		}
+		m.mu.RUnlock()
 
 		if *routeIndex >= len(routes) {
 			continue
@@ -1162,8 +1146,8 @@ func (m RouteMatrix) MarshalBinary() ([]byte, error) {
 
 	encoding.WriteUint32(data, &index, RouteMatrixVersion)
 
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 
 	numRelays := len(m.RelayIDs)
 
@@ -1256,6 +1240,9 @@ func (m RouteMatrix) MarshalBinary() ([]byte, error) {
 }
 
 func (m *RouteMatrix) Size() uint64 {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	var length uint64
 	numRelays := uint64(len(m.RelayIDs))
 	numDatacenters := uint64(len(m.DatacenterIDs))
