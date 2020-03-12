@@ -457,8 +457,6 @@ func RelayUpdateJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, st
 
 		writer.Write(dat)
 
-		fmt.Printf("sending: \n%s\n", string(dat))
-
 		if ts, err := ptypes.TimestampProto(time.Unix(int64(jsonPacket.Timestamp), 0)); err == nil {
 			if relay, ok := storer.Relay(jsonPacket.Metadata.ID); ok {
 				stats := &stats.RelayTrafficStats{

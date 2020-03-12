@@ -23,7 +23,9 @@ func NewTrafficStatsPublisher(ctx context.Context, resultLogger log.Logger, proj
 		clientCount = descriptor.ClientCount
 	}
 
-	publisher := &TrafficStatsPublisher{}
+	publisher := &TrafficStatsPublisher{
+		clients: make([]*billing.GooglePubSubClient, clientCount),
+	}
 
 	for i := 0; i < clientCount; i++ {
 		var err error

@@ -60,7 +60,7 @@ func main() {
 
 		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
 	}
-	if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+	if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok && false {
 		loggingClient, err := gcplogging.NewClient(ctx, projectID)
 		if err != nil {
 			level.Error(logger).Log("err", err)
@@ -167,7 +167,7 @@ func main() {
 		}()
 
 		// Set the Firestore Storer to give to handlers
-		db = &fs
+		// db = &fs
 
 		if trafficStatsTopicID, ok := os.LookupEnv("GOOGLE_PUBSUB_TOPIC_TRAFFIC_STATS"); ok {
 			t, err := stats.NewTrafficStatsPublisher(ctx, logger, gcpProjectID, trafficStatsTopicID, &billing.Descriptor{
