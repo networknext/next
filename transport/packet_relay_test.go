@@ -275,7 +275,7 @@ func TestRelayUpdatePacket(t *testing.T) {
 			})
 		})
 
-		t.Run("valid", func(t *testing.T) {
+		t.Run("missing received stats", func(t *testing.T) {
 			var packet transport.RelayUpdatePacket
 			addr := "127.0.0.1:40000"
 			buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4+8+4+4+4)
@@ -287,6 +287,22 @@ func TestRelayUpdatePacket(t *testing.T) {
 			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+12:], math.Float32bits(rand.Float32()))
 			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+16:], math.Float32bits(rand.Float32()))
 			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+20:], math.Float32bits(rand.Float32())) // packet loss
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet"))
+		})
+
+		t.Run("valid", func(t *testing.T) {
+			var packet transport.RelayUpdatePacket
+			addr := "127.0.0.1:40000"
+			buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4+8+4+4+4+8)
+			binary.LittleEndian.PutUint32(buff, rand.Uint32())
+			binary.LittleEndian.PutUint32(buff[4:], uint32(len(addr)))
+			copy(buff[8:], addr)
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1)
+			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+4:], rand.Uint64())
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+12:], math.Float32bits(rand.Float32()))
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+16:], math.Float32bits(rand.Float32()))
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+20:], math.Float32bits(rand.Float32()))
+			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+24:], rand.Uint64()) // bytes received
 			assert.Nil(t, packet.UnmarshalBinary(buff))
 		})
 	})
@@ -348,6 +364,7 @@ func TestRelayUpdateRequestJSON(t *testing.T) {
 			request.StringAddr = "127.0.0.1:40000"
 			request.Metadata.TokenBase64 = b64Token
 			request.PingStats = make([]routing.RelayStatsPing, uint32(len(statIps)))
+			request.TrafficStats.BytesMeasurementRx = rand.Uint64()
 
 			for i, addr := range statIps {
 				stats := &request.PingStats[i]
@@ -363,6 +380,7 @@ func TestRelayUpdateRequestJSON(t *testing.T) {
 			assert.Equal(t, request.StringAddr, packet.Address.String())
 			assert.True(t, bytes.Equal(packet.Token, token))
 			assert.Equal(t, request.PingStats, packet.PingStats)
+			assert.Equal(t, request.TrafficStats.BytesMeasurementRx, packet.BytesReceived)
 		})
 	})
 }

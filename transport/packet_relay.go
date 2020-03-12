@@ -154,7 +154,7 @@ type RelayUpdateRequestJSON struct {
 	Timestamp    uint64                   `json:"Timestamp"`
 	Signature    []byte                   `json:"Signature"`
 	Usage        float32                  `json:"Usage"`
-	TrafficStats *trafficStats            `json:"TrafficStats"`
+	TrafficStats trafficStats             `json:"TrafficStats"`
 	PingStats    []routing.RelayStatsPing `json:"PingStats"`
 }
 type RelayUpdateResponseJSON struct {
