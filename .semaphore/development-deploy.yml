@@ -1,5 +1,9 @@
 version: v1.0
 name: Development Deploy
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
 blocks:
   - name: Deploy
     task:
@@ -17,10 +21,3 @@ blocks:
       prologue:
         commands:
           - gcloud auth activate-service-account --key-file=/home/runner/gcp-service-account.json
-agent:
-  machine:
-    type: e1-standard-2
-    os_image: ubuntu1804
-  containers:
-    - name: main
-      image: 'semaphoreci/ubuntu:18.04'
