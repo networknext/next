@@ -60,7 +60,7 @@ func main() {
 
 		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
 	}
-	if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok && false {
+	if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
 		loggingClient, err := gcplogging.NewClient(ctx, projectID)
 		if err != nil {
 			level.Error(logger).Log("err", err)
@@ -167,17 +167,17 @@ func main() {
 		}()
 
 		// Set the Firestore Storer to give to handlers
-		// db = &fs
+		db = &fs
 
 		if trafficStatsTopicID, ok := os.LookupEnv("GOOGLE_PUBSUB_TOPIC_TRAFFIC_STATS"); ok {
 			t, err := stats.NewTrafficStatsPublisher(ctx, logger, gcpProjectID, trafficStatsTopicID, &billing.Descriptor{
 				ClientCount:         4,
 				DelayThreshold:      time.Millisecond,
-				CountThreshold:      100,
+				CountThreshold:      1024 / 4, // max relays / number of clients
 				ByteThreshold:       1e6,
 				NumGoroutines:       (25 * runtime.GOMAXPROCS(0)) / 4,
 				Timeout:             time.Minute,
-				ResultChannelBuffer: 10000 * 60 * 10, // 10,000 messages per second for 10 minutes
+				ResultChannelBuffer: 1024 * 60 * 10, // 1,024 messages per second for 10 minutes
 			})
 
 			if err != nil {

@@ -56,7 +56,7 @@ func relayUpdateAssertions(t *testing.T, endpoint string, body []byte, expectedC
 
 	var handler func(writer http.ResponseWriter, request *http.Request)
 	if endpoint == "/relay_update" {
-		handler = transport.RelayUpdateHandlerFunc(log.NewNopLogger(), redisClient, statsdb, &metrics.EmptyGauge{}, &metrics.EmptyCounter{})
+		handler = transport.RelayUpdateHandlerFunc(log.NewNopLogger(), redisClient, statsdb, &metrics.EmptyGauge{}, &metrics.EmptyCounter{}, &stats.NoOpTrafficStatsPublisher{}, &storage.InMemory{})
 	} else if endpoint == "/relay_update_json" {
 		handler = transport.RelayUpdateJSONHandlerFunc(log.NewNopLogger(), redisClient, statsdb, &metrics.EmptyGauge{}, &metrics.EmptyCounter{}, &stats.NoOpTrafficStatsPublisher{}, &storage.InMemory{})
 	}
