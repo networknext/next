@@ -23,9 +23,9 @@ blocks:
             - make build-server-backend-artifact
             - make publish-relay-backend-artifact
             - make publish-server-backend-artifact
-        - name: Deploy to Compute VMs
-          commands:
-            - make deploy-relay-backend
-            - make deploy-server-backend
+        # - name: Deploy to Compute VMs
+        #   commands:
+        #     - make deploy-relay-backend
+        #     - make deploy-server-backend
       secrets:
         - name: google-cloud-platform
