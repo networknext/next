@@ -244,6 +244,8 @@ int main()
     }
   }
 
+  LogDebug("Socket buffer size is ", socketBufferSize, " bytes");
+
   std::ofstream* output = nullptr;
   util::ThroughputLogger* logger = nullptr;
   {
