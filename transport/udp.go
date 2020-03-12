@@ -104,7 +104,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 		durationStart := time.Now()
 		defer func() {
 			durationSince := time.Since(durationStart)
-			duration.Set(float64(durationSince.Milliseconds()))
+			level.Info(logger).Log("duration", durationSince.Milliseconds())
 			counter.Add(1)
 		}()
 
@@ -222,7 +222,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		durationStart := time.Now()
 		defer func() {
 			durationSince := time.Since(durationStart)
-			metrics.DurationGauge.Set(float64(durationSince.Milliseconds()))
+			level.Info(logger).Log("duration", durationSince.Milliseconds())
 			metrics.Invocations.Add(1)
 		}()
 
