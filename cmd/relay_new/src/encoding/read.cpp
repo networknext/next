@@ -108,7 +108,7 @@ namespace encoding
       }
       address->port = read_uint16(buffer);
     } else {
-      for (int i = 0; i < RELAY_ADDRESS_BYTES - 1; ++i) {
+      for (size_t i = 0; i < net::Address::ByteSize - 1; ++i) {
         uint8_t dummy = read_uint8(buffer);
         (void)dummy;
       }
@@ -116,6 +116,6 @@ namespace encoding
 
     (void)start;
 
-    assert(*buffer - start == RELAY_ADDRESS_BYTES);
+    assert(*buffer - start == net::Address::ByteSize);
   }
 }  // namespace encoding

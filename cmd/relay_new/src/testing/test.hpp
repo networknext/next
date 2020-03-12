@@ -1,6 +1,8 @@
 #ifndef TESTING_TEST_HPP
 #define TESTING_TEST_HPP
 
+#include "net/address.hpp"
+
 #define TEST_BREAK "\n=============================================\n\n"
 #define TEST_BREAK_WARNING "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n"
 
@@ -69,6 +71,56 @@ namespace testing
 #endif
       exit(1);
     }
+  }
+
+  template <typename T>
+  std::enable_if_t<std::numeric_limits<T>::is_integer, T> Random();
+
+  template <typename T>
+  std::enable_if_t<std::is_floating_point<T>::value, T> RandomDecimal();
+
+  net::Address RandomAddress();
+
+  // slow but easy to write, use for tests only
+  // valid return types are std string/vector
+  template <class ReturnType>
+  ReturnType ReadFile(std::string filename);
+
+  template <typename T>
+  std::enable_if_t<std::numeric_limits<T>::is_integer, T> Random()
+  {
+    static auto rand = std::bind(std::uniform_int_distribution<T>(), std::default_random_engine());
+    return static_cast<T>(rand());
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_floating_point<T>::value, T> RandomDecimal()
+  {
+    static auto rand = std::bind(std::uniform_real_distribution<T>(), std::default_random_engine());
+    return static_cast<T>(rand());
+  }
+
+  template <class ReturnType>
+  ReturnType ReadFile(std::string filename)
+  {
+    ReturnType retval;
+
+    if (!filename.empty()) {
+      std::ifstream stream;
+
+      stream.open(filename, std::ios::binary);
+
+      if (stream) {
+        std::stringstream data;
+        data << stream.rdbuf();
+        auto str = data.str();
+        retval.assign(str.begin(), str.end());
+      }
+
+      stream.close();
+    }
+
+    return retval;
   }
 }  // namespace testing
 #endif

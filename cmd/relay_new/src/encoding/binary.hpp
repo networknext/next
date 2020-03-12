@@ -189,9 +189,25 @@ namespace encoding
     return sequence_greater_than(s2, s1);
   }
 
+  template <size_t BuffSize>
+  [[gnu::always_inline]] inline void RandomBytes(std::array<uint8_t, BuffSize>& buffer, int bytes)
+  {
+    randombytes_buf(buffer.data(), bytes);
+  }
+
+  template <size_t BuffSize>
+  [[gnu::always_inline]] inline void CreateNonceBytes(std::array<uint8_t, BuffSize>& buffer)
+  {
+    static_assert(BuffSize >= crypto_box_NONCEBYTES);
+    RandomBytes(buffer, crypto_box_NONCEBYTES);
+  }
+}  // namespace encoding
+
+namespace legacy
+{
   inline void relay_random_bytes(uint8_t* buffer, int bytes)
   {
     randombytes_buf(buffer, bytes);
   }
-}  // namespace encoding
+}  // namespace legacy
 #endif

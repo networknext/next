@@ -15,14 +15,26 @@ namespace net
   class Address
   {
    public:
+    // Type (1) +
+    // Port (2) +
+    // IP (16) =
+    static const size_t ByteSize = 19;
+
     Address();
     Address(const Address& other);
+
     ~Address() = default;
 
     bool parse(const std::string& address_string_in);
 
+    void swap(Address& other);
+
     void toString(std::string& buffer) const;
-    auto toString() -> std::string;  // slow, use only for debugging
+    auto toString() const -> std::string;  // slow, use only for debugging or logging
+
+    // generic conversion function with specializations, looks better this way
+    template <typename T>
+    void to(T& thing) const;
 
     void reset();
 
@@ -48,6 +60,18 @@ namespace net
     *this = other;
   }
 
+  [[gnu::always_inline]] inline void Address::swap(Address& other)
+  {
+    std::swap(this->Type, other.Type);
+    std::swap(this->Port, other.Port);
+
+    if (this->Type == AddressType::IPv4) {
+      this->IPv4.swap(other.IPv4);
+    } else if (this->Type == AddressType::IPv6) {
+      this->IPv6.swap(other.IPv6);
+    }
+  }
+
   inline void Address::reset()
   {
     GCC_NO_OPT_OUT;
@@ -61,12 +85,86 @@ namespace net
     Port = 0;
   }
 
-  inline auto Address::toString() -> std::string
+  inline auto Address::toString() const -> std::string
   {
     std::string buff;
     toString(buff);
     return buff;
   }
+
+  // TODO cache this, likely these won't change
+  template <>
+  inline void Address::to(sockaddr_in& sin) const
+  {
+    sin = {};
+    sin.sin_family = AF_INET;
+    sin.sin_addr.s_addr =
+     (((uint32_t)IPv4[0])) | (((uint32_t)IPv4[1]) << 8) | (((uint32_t)IPv4[2]) << 16) | (((uint32_t)IPv4[3]) << 24);
+
+    sin.sin_port = htons(Port);
+  }
+
+  template <>
+  inline void Address::to(sockaddr_in6& sin) const
+  {
+    sin = {};
+    sin.sin6_family = AF_INET6;
+
+    for (int i = 0; i < 8; i++) {
+      reinterpret_cast<uint16_t*>(&sin.sin6_addr)[i] = htons(IPv6[i]);
+    }
+
+    sin.sin6_port = htons(Port);
+  }
+
+  template <>
+  inline void Address::to(mmsghdr& hdr) const
+  {
+    assert(hdr.msg_hdr.msg_name != nullptr);
+
+    switch (Type) {
+      case AddressType::IPv4: {
+        this->to(*reinterpret_cast<sockaddr_in*>(hdr.msg_hdr.msg_name));
+        hdr.msg_hdr.msg_namelen = sizeof(sockaddr_in);
+      } break;
+      case AddressType::IPv6: {
+        this->to(*reinterpret_cast<sockaddr_in6*>(hdr.msg_hdr.msg_name));
+        hdr.msg_hdr.msg_namelen = sizeof(sockaddr_in6);
+      } break;
+      case AddressType::None: {
+        // TODO log something?
+      } break;
+    }
+  }
+
+  inline auto Address::operator==(const Address& other) const -> bool
+  {
+    if (this->Type != other.Type || this->Port != other.Port) {
+      return false;
+    }
+
+    switch (this->Type) {
+      case AddressType::IPv4:
+        for (unsigned int i = 0; i < IPv4.size(); i++) {
+          if (IPv4[i] != other.IPv4[i]) {
+            return false;
+          }
+        }
+        return true;
+      case AddressType::IPv6:
+        for (unsigned int i = 0; i < IPv6.size(); i++) {
+          if (IPv6[i] != other.IPv6[i]) {
+            return false;
+          }
+        }
+        return true;
+      case AddressType::None:
+        return true;  // if the above tests passed, then the address doesn't matter
+      default:
+        return false;
+    }
+  }
+
 
   inline auto Address::operator!=(const Address& other) const -> bool
   {
@@ -155,7 +253,8 @@ namespace legacy
   const char* relay_address_to_string(const relay_address_t* address, char* buffer);
   int relay_address_equal(const relay_address_t* a, const relay_address_t* b);
 
-  inline std::ostream& operator<<(std::ostream& os, const relay_address_t& addr) {
+  inline std::ostream& operator<<(std::ostream& os, const relay_address_t& addr)
+  {
     char buff[128];
     memset(buff, 0, sizeof(buff));
     relay_address_to_string(&addr, buff);

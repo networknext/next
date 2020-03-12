@@ -8,7 +8,7 @@
 
 namespace os
 {
-  Socket::Socket(SocketType type): mType(type) {}
+  Socket::Socket(SocketType type): mType(type), mOpen(false) {}
 
   Socket::~Socket()
   {
@@ -21,8 +21,6 @@ namespace os
    net::Address& addr, size_t sendBuffSize, size_t recvBuffSize, float timeout, bool reuse, int lingerTimeInSeconds)
   {
     assert(addr.Type != net::AddressType::None);
-
-    LogDebug("creating socket for address ", addr);
 
     // create socket
     {
@@ -92,13 +90,14 @@ namespace os
     }
 
     mAddress = addr;
+    mOpen = true;
 
     LogDebug("created socket for ", addr);
 
     return true;
   }
 
-  bool Socket::send(const net::Address& to, const uint8_t* data, size_t size)
+  bool Socket::send(const net::Address& to, const uint8_t* data, size_t size) const
   {
     assert(to.Type == net::AddressType::IPv4 || to.Type == net::AddressType::IPv6);
     assert(data != nullptr);
@@ -106,36 +105,20 @@ namespace os
 
     if (to.Type == net::AddressType::IPv6) {
       sockaddr_in6 socket_address;
-      bzero(&socket_address, sizeof(socket_address));
-      socket_address.sin6_family = AF_INET6;
-
-      for (int i = 0; i < 8; i++) {
-        reinterpret_cast<uint16_t*>(&socket_address.sin6_addr)[i] = relay::relay_platform_htons(to.IPv6[i]);
-      }
-
-      socket_address.sin6_port = relay::relay_platform_htons(to.Port);
+      to.to(socket_address);
 
       auto res = sendto(mSockFD, data, size, 0, reinterpret_cast<sockaddr*>(&socket_address), sizeof(sockaddr_in6));
       if (res < 0) {
-        std::string addr;
-        to.toString(addr);
-        LogError("sendto (", addr, ") failed");
+        LogError("sendto (", to.toString(), ") failed");
         return false;
       }
     } else if (to.Type == net::AddressType::IPv4) {
       sockaddr_in socket_address;
-      bzero(&socket_address, sizeof(socket_address));
-      socket_address.sin_family = AF_INET;
-      socket_address.sin_addr.s_addr = (((uint32_t)to.IPv4[0])) | (((uint32_t)to.IPv4[1]) << 8) |
-                                       (((uint32_t)to.IPv4[2]) << 16) | (((uint32_t)to.IPv4[3]) << 24);
-
-      socket_address.sin_port = relay::relay_platform_htons(to.Port);
+      to.to(socket_address);
 
       auto res = sendto(mSockFD, data, size, 0, reinterpret_cast<sockaddr*>(&socket_address), sizeof(sockaddr_in6));
       if (res < 0) {
-        std::string addr;
-        to.toString(addr);
-        LogError("sendto (", addr, ") failed");
+        LogError("sendto (", to.toString(), ") failed");
         return false;
       }
     } else {
@@ -143,40 +126,14 @@ namespace os
       return false;
     }
 
-    LogDebug("sent to: ", to);
+    LogDebug("[*] sent to: ", to);
     return true;
   }
 
-  bool Socket::send(const legacy::relay_address_t& to, const uint8_t* data, size_t size)
-  {
-    net::Address addr;
-    addr.Type = static_cast<net::AddressType>(to.type);
-    addr.Port = to.port;
-    switch (addr.Type) {
-      case net::AddressType::IPv4: {
-        for (uint i = 0; i < 4; i++) {
-          addr.IPv4[i] = to.data.ipv4[i];
-        }
-        break;
-      }
-      case net::AddressType::IPv6: {
-        for (uint i = 0; i < 8; i++) {
-          addr.IPv6[i] = to.data.ipv6[i];
-        }
-        break;
-      }
-      case net::AddressType::None:
-        break;
-    }
-    return send(addr, data, size);
-  }
-
-  size_t Socket::recv(net::Address& from, uint8_t* data, size_t maxSize)
+  size_t Socket::recv(net::Address& from, uint8_t* data, size_t maxSize) const
   {
     assert(data != nullptr);
     assert(maxSize > 0);
-
-    LogDebug("ready to receive");
 
     sockaddr_storage sockaddr_from;
 
@@ -209,36 +166,6 @@ namespace os
     assert(res >= 0);
 
     return res;
-  }
-
-  size_t Socket::recv(legacy::relay_address_t& from, uint8_t* data, size_t maxSize)
-  {
-    net::Address addr;
-    auto len = recv(addr, data, maxSize);
-    from.type = static_cast<uint8_t>(addr.Type);
-    from.port = addr.Port;
-    switch (addr.Type) {
-      case net::AddressType::IPv4: {
-        for (uint i = 0; i < 4; i++) {
-          from.data.ipv4[i] = addr.IPv4[i];
-        }
-        break;
-      }
-      case net::AddressType::IPv6: {
-        for (uint i = 0; i < 8; i++) {
-          from.data.ipv6[i] = addr.IPv6[i];
-        }
-        break;
-      }
-      case net::AddressType::None:
-        break;
-    }
-    return len;
-  }
-
-  void Socket::close()
-  {
-    shutdown(mSockFD, SHUT_RDWR);
   }
 
   inline bool Socket::setBufferSizes(size_t sendBuffSize, size_t recvBuffSize)
@@ -286,7 +213,6 @@ namespace os
         close();
         return false;
       }
-      LogDebug("enabled port reuse");
     }
 
     return true;

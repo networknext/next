@@ -52,5 +52,5 @@ $(BIN)/$(EXE): $(SRC_OBJ_FILES)
 ####################
 
 $(DIST_DIR)/$(EXE): $(BIN)/$(EXE)
-	@cp $< $@
+	cp $< $@
 
