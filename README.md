@@ -16,7 +16,7 @@ For example, Network Next is used by [Rocket League](https://rocketleague.com) a
 
 This repository contains the UE4 plugin for Network Next. 
 
-It's designed to work with Unreal Engine version 4.22
+It's designed to work with Unreal Engine version 4.16 and 4.22
 
 To install the plugin:
 
@@ -29,8 +29,4 @@ To install the plugin:
 +NetDriverDefinitions=(DefName="GameNetDriver",DriverClassName="/Script/NetworkNext.NetworkNextNetDriver",DriverClassNameFallback="OnlineSubsystemUtils.IpNetDriver")
 ```
 
-3. Welcome to __awesomeness__. Please email sales@networknext.com for next steps.
-
-cheers
-
-_- Glenn Fiedler, CEO, Network Next._
+3. Welcome to __awesometown__. Please email glenn@networknext.com for next steps!
