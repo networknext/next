@@ -109,7 +109,7 @@ func main() {
 	if uri, ok := os.LookupEnv("MAXMIND_DB_URI"); ok {
 		mmreader, err := geoip2.Open(uri)
 		if err != nil {
-			level.Error(logger).Log("envvar", "RELAY_MAXMIND_DB_URI", "value", uri, "err", err)
+			level.Error(logger).Log("envvar", "MAXMIND_DB_URI", "value", uri, "err", err)
 		}
 		ipLocator = &routing.MaxmindDB{
 			Reader: mmreader,
@@ -182,28 +182,52 @@ func main() {
 		}()
 	}
 
-	initDuration, err := metricsHandler.NewHistogram(ctx, &metrics.Descriptor{
+	numRelays, err := metricsHandler.NewGauge(ctx, &metrics.Descriptor{
+		DisplayName: "Relays num relays",
+		ServiceName: "relay_backend",
+		ID:          "relays.num.relays",
+		Unit:        "relays",
+		Description: "How many relays are active",
+	})
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create metric histogram", "metric", "relays.num.relays", "err", err)
+		numRelays = &metrics.EmptyGauge{}
+	}
+
+	numRoutes, err := metricsHandler.NewGauge(ctx, &metrics.Descriptor{
+		DisplayName: "Route Matrix num routes",
+		ServiceName: "relay_backend",
+		ID:          "route.matrix.num.routes",
+		Unit:        "routes",
+		Description: "How many routes are being generated",
+	})
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create metric histogram", "metric", "route.matrix.num.routes", "err", err)
+		numRoutes = &metrics.EmptyGauge{}
+	}
+
+	initDuration, err := metricsHandler.NewGauge(ctx, &metrics.Descriptor{
 		DisplayName: "Relay init duration",
 		ServiceName: "relay_backend",
 		ID:          "relay.init.duration",
 		Unit:        "milliseconds",
 		Description: "How long it takes to process a relay init request",
-	}, 50)
+	})
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create metric histogram", "metric", "relay.init.duration", "err", err)
-		initDuration = &metrics.EmptyHistogram{}
+		initDuration = &metrics.EmptyGauge{}
 	}
 
-	updateDuration, err := metricsHandler.NewHistogram(ctx, &metrics.Descriptor{
+	updateDuration, err := metricsHandler.NewGauge(ctx, &metrics.Descriptor{
 		DisplayName: "Relay update duration",
 		ServiceName: "relay_backend",
-		ID:          "relay-update-duration",
+		ID:          "relay.update.duration",
 		Unit:        "milliseconds",
 		Description: "How long it takes to process a relay update request.",
-	}, 50)
+	})
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create metric histogram", "metric", "relay.update.duration", "err", err)
-		updateDuration = &metrics.EmptyHistogram{}
+		updateDuration = &metrics.EmptyGauge{}
 	}
 
 	initCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
@@ -241,9 +265,13 @@ func main() {
 				level.Warn(logger).Log("matrix", "cost", "op", "generate", "err", err)
 			}
 
+			numRelays.Set(float64(len(statsdb.Entries)))
+
 			if err := costmatrix.Optimize(&routematrix, 1); err != nil {
 				level.Warn(logger).Log("matrix", "cost", "op", "optimize", "err", err)
 			}
+
+			numRoutes.Set(float64(len(routematrix.Entries)))
 
 			level.Info(logger).Log("matrix", "route", "entries", len(routematrix.Entries))
 

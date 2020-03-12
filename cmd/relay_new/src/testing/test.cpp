@@ -5,7 +5,6 @@ namespace
 {
   bool gTestInit = false;
   std::unique_ptr<std::deque<testing::SpecTest*>> gTests;
-  ;
 }  // namespace
 
 namespace testing
@@ -24,6 +23,10 @@ namespace testing
   {
     std::cout << "Test count: " << gTests->size() << '\n';
 
+    std::sort(gTests->begin(), gTests->end(), [](testing::SpecTest* a, testing::SpecTest* b) -> bool {
+      return strcmp(a->TestName, b->TestName) > 0;
+    });
+
     bool noTestsSkipped = true;
     for (auto test : *gTests) {
       if (!test->Disabled) {
@@ -36,5 +39,24 @@ namespace testing
     }
     std::cout << TEST_BREAK;
     return noTestsSkipped;
+  }
+
+  net::Address RandomAddress()
+  {
+    net::Address retval;
+    if (Random<uint8_t>() & 1) {
+      retval.Type = net::AddressType::IPv4;
+      for (auto& ip : retval.IPv4) {
+        ip = Random<uint8_t>();
+      }
+      retval.Port = Random<uint16_t>();
+    } else {
+      retval.Type = net::AddressType::IPv6;
+      for (auto& ip : retval.IPv6) {
+        ip = Random<uint16_t>();
+      }
+      retval.Port = Random<uint16_t>();
+    }
+    return retval;
   }
 }  // namespace testing

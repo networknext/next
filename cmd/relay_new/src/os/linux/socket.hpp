@@ -3,8 +3,11 @@
 #ifndef OS_LINUX_SOCKET
 #define OS_LINUX_SOCKET
 
+#include "core/packet.hpp"
+
 #include "net/address.hpp"
 #include "net/net.hpp"
+
 #include "util/logger.hpp"
 
 #include "relay/relay_platform.hpp"
@@ -26,17 +29,22 @@ namespace os
     bool create(
      net::Address& addr, size_t sendBuffSize, size_t recvBuffSize, float timeout, bool reuse, int lingerTimeInSeconds);
 
-    bool send(const net::Address& to, const uint8_t* data, size_t size);
+    bool send(const net::Address& to, const uint8_t* data, size_t size) const;
 
-    // for compat only
-    bool send(const legacy::relay_address_t& to, const uint8_t* data, size_t size);
+    template <size_t BuffSize>
+    bool multisend(std::array<mmsghdr, BuffSize>& packetBuff, int count) const;
 
-    size_t recv(net::Address& from, uint8_t* data, size_t maxSize);
+    template <size_t BuffSize, size_t PacketSize>
+    bool multisend(core::GenericPacketBuffer<BuffSize, PacketSize>& packetBuff) const;
 
-    // for compat only
-    size_t recv(legacy::relay_address_t& from, uint8_t* data, size_t maxSize);
+    size_t recv(net::Address& from, uint8_t* data, size_t maxSize) const;
+
+    template <size_t BuffSize, size_t PacketSize>
+    bool multirecv(core::GenericPacketBuffer<BuffSize, PacketSize>& packetBuff) const;
 
     void close();
+
+    bool isOpen() const;
 
     const net::Address& getAddress() const;
 
@@ -44,6 +52,8 @@ namespace os
     int mSockFD = 0;
     const SocketType mType;
     net::Address mAddress;
+
+    std::atomic<bool> mOpen;
 
     bool setBufferSizes(size_t sendBufferSize, size_t recvBufferSize);
     bool setLingerTime(int lingerTime);
@@ -61,6 +71,58 @@ namespace os
   [[gnu::always_inline]] inline const net::Address& Socket::getAddress() const
   {
     return mAddress;
+  }
+
+  [[gnu::always_inline]] inline bool Socket::isOpen() const
+  {
+    return mOpen;
+  }
+
+  [[gnu::always_inline]] inline void Socket::close()
+  {
+    mOpen = false;
+    shutdown(mSockFD, SHUT_RDWR);
+  }
+
+  template <size_t BuffSize>
+  bool Socket::multisend(std::array<mmsghdr, BuffSize>& headers, int count) const
+  {
+    static_assert(BuffSize <= 1024);  // max sendmmsg will allow
+    assert(count > 0);
+    assert(count <= 1024);
+
+    auto toSend = count;
+    count = sendmmsg(mSockFD, headers.data(), toSend, 0);
+
+    if (count < 0) {
+      LogError("sendmmsg() failed");
+      return false;
+    }
+
+    return toSend == count;
+  }
+
+  template <size_t BuffSize, size_t PacketSize>
+  bool Socket::multisend(core::GenericPacketBuffer<BuffSize, PacketSize>& packetBuff) const
+  {
+    return multisend(packetBuff.Headers, packetBuff.Count);
+  }
+
+  template <size_t BuffSize, size_t PacketSize>
+  bool Socket::multirecv(core::GenericPacketBuffer<BuffSize, PacketSize>& packetBuff) const
+  {
+    packetBuff.Count = recvmmsg(mSockFD,
+     packetBuff.Headers.data(),
+     BuffSize,
+     MSG_WAITFORONE,
+     nullptr);  // DON'T EVER USE TIMEOUT, linux man pages state it is broken
+
+    if (packetBuff.Count < 0) {
+      LogError("recvmmsg failed");
+      return false;
+    }
+
+    return true;
   }
 
   // helpers to reduce static cast's

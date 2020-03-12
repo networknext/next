@@ -62,6 +62,8 @@ func relay() (*exec.Cmd, *bytes.Buffer) {
 	cmd.Env = append(cmd.Env, "RELAY_ADDRESS=127.0.0.1")
 	cmd.Env = append(cmd.Env, "RELAY_BACKEND_HOSTNAME=http://127.0.0.1:30000")
 	cmd.Env = append(cmd.Env, "RELAY_ROUTER_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=")
+	cmd.Env = append(cmd.Env, "RELAY_BIND_ADDRESS=127.0.0.1")
+	cmd.Env = append(cmd.Env, "RELAY_PUBLIC_ADDRESS=127.0.0.1")
 
 	var output bytes.Buffer
 	cmd.Stdout = &output
@@ -589,9 +591,9 @@ func test_packets_over_next_with_relay_and_backend() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] > client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT])
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] > client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT])
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]+client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] > 3500)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT]+client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] > 3500)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT]+client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] > 3500, relay_1_stdout, relay_2_stdout, relay_3_stdout)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0, relay_1_stdout, relay_2_stdout, relay_3_stdout)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
 
 	fmt.Printf("Finished test_packets_over_next_with_relay_and_backend\n")

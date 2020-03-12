@@ -11,8 +11,6 @@ import (
 	"runtime"
 	"time"
 
-	gkmetrics "github.com/go-kit/kit/metrics"
-
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	jsoniter "github.com/json-iterator/go"
@@ -99,14 +97,14 @@ func (e ServerCacheEntry) MarshalBinary() ([]byte, error) {
 }
 
 // ServerUpdateHandlerFunc ...
-func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, duration metrics.Histogram, counter metrics.Counter) UDPHandlerFunc {
+func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, duration metrics.Gauge, counter metrics.Counter) UDPHandlerFunc {
 	logger = log.With(logger, "handler", "server")
 
 	return func(w io.Writer, incoming *UDPPacket) {
-		timer := gkmetrics.NewTimer(duration.With("method", "ServerUpdateHandlerFunc"))
-		timer.Unit(time.Millisecond)
+		durationStart := time.Now()
 		defer func() {
-			timer.ObserveDuration()
+			durationSince := time.Since(durationStart)
+			duration.Set(float64(durationSince.Milliseconds()))
 			counter.Add(1)
 		}()
 
@@ -209,16 +207,23 @@ type RouteProvider interface {
 	Routes([]routing.Relay, []routing.Relay, ...routing.SelectorFunc) ([]routing.Route, error)
 }
 
+type SessionMetrics struct {
+	Invocations    metrics.Counter
+	DirectSessions metrics.Counter
+	NextSessions   metrics.Counter
+	DurationGauge  metrics.Gauge
+}
+
 // SessionUpdateHandlerFunc ...
-func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, duration metrics.Histogram, counter metrics.Counter, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, metrics *SessionMetrics, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
 	logger = log.With(logger, "handler", "session")
 
 	return func(w io.Writer, incoming *UDPPacket) {
-		timer := gkmetrics.NewTimer(duration.With("method", "SessionUpdateHandlerFunc"))
-		timer.Unit(time.Millisecond)
+		durationStart := time.Now()
 		defer func() {
-			timer.ObserveDuration()
-			counter.Add(1)
+			durationSince := time.Since(durationStart)
+			metrics.DurationGauge.Set(float64(durationSince.Milliseconds()))
+			metrics.Invocations.Add(1)
 		}()
 
 		timestampNow := time.Now()
@@ -327,7 +332,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			handleError(w, response, serverPrivateKey, err)
 			return
 		}
-		level.Debug(locallogger).Log("lat", location.Latitude, "long", location.Longitude)
+		level.Debug(locallogger).Log("client_ip", packet.ClientAddress.IP.String(), "lat", location.Latitude, "long", location.Longitude)
 
 		clientrelays, err := geoClient.RelaysWithin(location.Latitude, location.Longitude, 500, "mi")
 
@@ -496,6 +501,13 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			return
 		}
 
+		// If we managed to send the response, update metrics based on route type
+		if response.RouteType == routing.RouteTypeDirect {
+			metrics.DirectSessions.Add(1)
+		} else {
+			metrics.NextSessions.Add(1)
+		}
+
 		// Cache the needed information for the next session update
 		{
 			level.Debug(locallogger).Log("msg", "caching session data")
@@ -516,8 +528,9 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 
 		// Submit a new billing entry
 		{
+			sameRoute := chosenRoute.Hash64() == sessionCacheEntry.RouteHash
 			routeRequest := NewRouteRequest(packet, buyer, serverCacheEntry, location, storer, clientrelays)
-			billingEntry := newBillingEntry(routeRequest, &chosenRoute, int(response.RouteType), &buyer.RoutingRulesSettings, routeDecision.Reason, &packet, sessionCacheEntry.TimestampStart, timestampNow)
+			billingEntry := newBillingEntry(routeRequest, &chosenRoute, int(response.RouteType), sameRoute, &buyer.RoutingRulesSettings, routeDecision.Reason, &packet, sessionCacheEntry.TimestampStart, timestampNow)
 			if err := biller.Bill(context.Background(), packet.SessionID, billingEntry); err != nil {
 				level.Error(locallogger).Log("msg", "billing failed", "err", err)
 			}
@@ -557,6 +570,7 @@ func newBillingEntry(
 	routeRequest *billing.RouteRequest,
 	route *routing.Route,
 	routeType int,
+	sameRoute bool,
 	routingRulesSettings *routing.RoutingRulesSettings,
 	decisionReason routing.DecisionReason,
 	packet *SessionUpdatePacket,
@@ -603,13 +617,16 @@ func newBillingEntry(
 		sliceDuration = billing.BillingSliceSeconds * 2
 	}
 
+	usageBytesUp := (1000 * uint64(packet.KbpsUp)) / 8 * sliceDuration     // Converts Kbps to bytes
+	usageBytesDown := (1000 * uint64(packet.KbpsDown)) / 8 * sliceDuration // Converts Kbps to bytes
+
 	return &billing.Entry{
 		Request:              routeRequest,
-		Route:                nil,
+		Route:                NewBillingRoute(route, usageBytesUp, usageBytesDown),
 		RouteDecision:        uint64(decisionReason),
 		Duration:             sliceDuration,
-		UsageBytesUp:         (1000 * uint64(packet.KbpsUp)) / 8 * sliceDuration,   // Converts Kbps to bytes
-		UsageBytesDown:       (1000 * uint64(packet.KbpsDown)) / 8 * sliceDuration, // Converts Kbps to bytes
+		UsageBytesUp:         usageBytesUp,
+		UsageBytesDown:       usageBytesDown,
 		Timestamp:            uint64(timestampNow.Unix()),
 		TimestampStart:       uint64(timestampStart.Unix()),
 		PredictedRTT:         float32(route.Stats.RTT),
@@ -620,9 +637,9 @@ func newBillingEntry(
 		Initial:              routeType == routing.RouteTypeNew,
 		EnvelopeBytesUp:      (1000 * uint64(routingRulesSettings.EnvelopeKbpsUp)) / 8 * sliceDuration,   // Converts Kbps to bytes
 		EnvelopeBytesDown:    (1000 * uint64(routingRulesSettings.EnvelopeKbpsDown)) / 8 * sliceDuration, // Converts Kbps to bytes
-		ConsideredRoutes:     nil,
-		AcceptableRoutes:     nil,
-		SameRoute:            routeType == routing.RouteTypeContinue,
+		ConsideredRoutes:     []*billing.Route{},                                                         // Empty since not how new backend works and driven by disabled feature flag in old backend
+		AcceptableRoutes:     []*billing.Route{},                                                         // Empty since not how new backend works and driven by disabled feature flag in old backend
+		SameRoute:            sameRoute,
 		OnNetworkNext:        packet.OnNetworkNext,
 		SliceFlags:           uint64(sliceFlags),
 	}

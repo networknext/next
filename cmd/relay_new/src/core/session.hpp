@@ -16,10 +16,8 @@ namespace core
     int KbpsUp;
     int KbpsDown;
     net::Address PrevAddr;
-    // net::Address NextAddr;
-    // legacy::relay_address_t PrevAddr;
-    legacy::relay_address_t NextAddr;
-    uint8_t private_key[crypto_box_SECRETKEYBYTES];
+    net::Address NextAddr;
+    std::array<uint8_t, crypto_box_SECRETKEYBYTES> PrivateKey;
     // ReplayProtection ServerToClientProtection;
     // ReplayProtection ClientToServerProtection;
     legacy::relay_replay_protection_t ServerToClientProtection;
@@ -27,10 +25,31 @@ namespace core
   };
 
   using SessionPtr = std::shared_ptr<Session>;
-  class SessionMap: public std::unordered_map<uint64_t, SessionPtr>
+
+  // Thread safe
+  class SessionMap
   {
    public:
-    std::mutex Lock;
+    bool exists(uint64_t key);
+
+    SessionPtr& operator[](uint64_t key);
+
+   private:
+    // Using a map for now, it's a int key so an unordered map might not be any better considering the memory footprint
+    std::map<uint64_t, SessionPtr> mInternal;
+    std::mutex mLock;
   };
+
+  inline bool SessionMap::exists(uint64_t key)
+  {
+    std::lock_guard<std::mutex> lk(mLock);
+    return mInternal.find(key) != mInternal.end();
+  }
+
+  inline SessionPtr& SessionMap::operator[](uint64_t key)
+  {
+    std::lock_guard<std::mutex> lk(mLock);
+    return mInternal[key];
+  }
 }  // namespace core
 #endif

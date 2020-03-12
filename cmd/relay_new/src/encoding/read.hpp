@@ -36,43 +36,72 @@ namespace encoding
   uint16_t ReadUint16(const std::array<uint8_t, BuffSize>& buff, size_t& index);
 
   template <size_t BuffSize>
+  uint32_t ReadUint32(const std::array<uint8_t, BuffSize>& buff, size_t& index);
+
+  template <size_t BuffSize>
   uint64_t ReadUint64(const std::array<uint8_t, BuffSize>& buff, size_t& index);
+
+  template <size_t BuffSize, size_t StorageBufferSize>
+  void ReadBytes(
+   const std::array<uint8_t, BuffSize>& buff, size_t& index, std::array<uint8_t, StorageBufferSize>& storage, size_t len);
 
   template <size_t BuffSize>
   void ReadAddress(const std::array<uint8_t, BuffSize>& buff, size_t& index, net::Address& addr);
 
   template <size_t BuffSize>
-  uint8_t ReadUint8(const std::array<uint8_t, BuffSize>& buff, size_t& index)
+  [[gnu::always_inline]] inline uint8_t ReadUint8(const std::array<uint8_t, BuffSize>& buff, size_t& index)
   {
     return buff[index++];
   }
 
   template <size_t BuffSize>
-  uint16_t ReadUint16(const std::array<uint8_t, BuffSize>& buff, size_t& index)
+  [[gnu::always_inline]] inline uint16_t ReadUint16(const std::array<uint8_t, BuffSize>& buff, size_t& index)
   {
     GCC_NO_OPT_OUT;
-    auto retval = *reinterpret_cast<const uint16_t*>(&buff[index]);
-    index += 2;
+    uint16_t retval;
+    retval = (buff)[index++];
+    retval |= (static_cast<uint64_t>(buff[index++]) << 8);
     return retval;
   }
 
   template <size_t BuffSize>
-  uint64_t ReadUint64(const std::array<uint8_t, BuffSize>& buff, size_t& index)
+  [[gnu::always_inline]] inline uint32_t ReadUint32(const std::array<uint8_t, BuffSize>& buff, size_t& index)
   {
-    uint64_t value;
-    value = buff[index++];
-    value |= (static_cast<uint64_t>(buff[index++]) << 8);
-    value |= (static_cast<uint64_t>(buff[index++]) << 16);
-    value |= (static_cast<uint64_t>(buff[index++]) << 24);
-    value |= (static_cast<uint64_t>(buff[index++]) << 32);
-    value |= (static_cast<uint64_t>(buff[index++]) << 40);
-    value |= (static_cast<uint64_t>(buff[index++]) << 48);
-    value |= (static_cast<uint64_t>(buff[index++]) << 56);
-    return value;
+    uint32_t retval;
+    retval = buff[index++];
+    retval |= (static_cast<uint64_t>(buff[index++]) << 8);
+    retval |= (static_cast<uint64_t>(buff[index++]) << 16);
+    retval |= (static_cast<uint64_t>(buff[index++]) << 24);
+    return retval;
   }
 
   template <size_t BuffSize>
-  void ReadAddress(const std::array<uint8_t, BuffSize>& buff, size_t& index, net::Address& addr)
+  [[gnu::always_inline]] inline uint64_t ReadUint64(const std::array<uint8_t, BuffSize>& buff, size_t& index)
+  {
+    uint64_t retval;
+    retval = buff[index++];
+    retval |= (static_cast<uint64_t>(buff[index++]) << 8);
+    retval |= (static_cast<uint64_t>(buff[index++]) << 16);
+    retval |= (static_cast<uint64_t>(buff[index++]) << 24);
+    retval |= (static_cast<uint64_t>(buff[index++]) << 32);
+    retval |= (static_cast<uint64_t>(buff[index++]) << 40);
+    retval |= (static_cast<uint64_t>(buff[index++]) << 48);
+    retval |= (static_cast<uint64_t>(buff[index++]) << 56);
+    return retval;
+  }
+
+  template <size_t BuffSize, size_t StorageBufferSize>
+  [[gnu::always_inline]] inline void ReadBytes(
+   const std::array<uint8_t, BuffSize>& buff, size_t& index, std::array<uint8_t, StorageBufferSize>& storage, size_t len)
+  {
+    assert(len <= StorageBufferSize);
+    assert(index + len <= BuffSize);
+    std::copy(buff.begin() + index, buff.begin() + index + len, storage.begin());
+    index += len;
+  }
+
+  template <size_t BuffSize>
+  [[gnu::always_inline]] inline void ReadAddress(const std::array<uint8_t, BuffSize>& buff, size_t& index, net::Address& addr)
   {
     GCC_NO_OPT_OUT;
 #ifndef NDEBUG
@@ -91,10 +120,11 @@ namespace encoding
       }
       addr.Port = ReadUint16(buff, index);  // read the port
     } else {
-      index += RELAY_ADDRESS_BYTES - 1;  // if no type, increment the index past the address area
+      addr.reset();
+      index += net::Address::ByteSize - 1;  // if no type, increment the index past the address area
     }
 
-    assert(index - start == RELAY_ADDRESS_BYTES);
+    assert(index - start == net::Address::ByteSize);
   }
 }  // namespace encoding
 #endif

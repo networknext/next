@@ -26,33 +26,50 @@ namespace encoding
 
   void write_address(uint8_t** buffer, const legacy::relay_address_t* address);
 
-  template <size_t BuffSize>
-  void WriteUint8(std::array<uint8_t, BuffSize>& buff, size_t& index, uint8_t value);
+  template <size_t StorageBufferSize>
+  void WriteUint8(std::array<uint8_t, StorageBufferSize>& buff, size_t& index, uint8_t value);
 
-  template <size_t BuffSize>
-  void WriteUint16(std::array<uint8_t, BuffSize>& buff, size_t& index, uint16_t value);
+  template <size_t StorageBufferSize>
+  void WriteUint16(std::array<uint8_t, StorageBufferSize>& buff, size_t& index, uint16_t value);
 
-  template <size_t BuffSize>
-  void WriteUint64(std::array<uint8_t, BuffSize>& buff, size_t& index, uint64_t value);
+  template <size_t StorageBufferSize>
+  void WriteUint32(std::array<uint8_t, StorageBufferSize>& buff, size_t& index, uint32_t value);
 
-  template <size_t BufferSize>
-  void WriteAddress(std::array<uint8_t, BufferSize>& buff, size_t& index, const net::Address& addr);
+  template <size_t StorageBufferSize>
+  void WriteUint64(std::array<uint8_t, StorageBufferSize>& buff, size_t& index, uint64_t value);
 
-  template <size_t BuffSize>
-  void WriteUint8(std::array<uint8_t, BuffSize>& buff, size_t& index, uint8_t value)
+  template <size_t StorageBufferSize, size_t DataBufferSize>
+  void WriteBytes(std::array<uint8_t, StorageBufferSize>& buff, size_t& index, const std::array<uint8_t, DataBufferSize>& data, size_t len);
+
+  template <size_t StorageBufferSize>
+  void WriteAddress(std::array<uint8_t, StorageBufferSize>& buff, size_t& index, const net::Address& addr);
+
+  template <size_t StorageBufferSize>
+  [[gnu::always_inline]] inline void WriteUint8(std::array<uint8_t, StorageBufferSize>& buff, size_t& index, uint8_t value)
   {
     buff[index++] = value;
   }
 
-  template <size_t BuffSize>
-  void WriteUint16(std::array<uint8_t, BuffSize>& buff, size_t& index, uint16_t value)
+  template <size_t StorageBufferSize>
+  [[gnu::always_inline]] inline void WriteUint16(std::array<uint8_t, StorageBufferSize>& buff, size_t& index, uint16_t value)
   {
     buff[index++] = value & 0xFF;
     buff[index++] = value >> 8;
   }
 
-  template <size_t BuffSize>
-  void WriteUint64(std::array<uint8_t, BuffSize>& buff, size_t& index, uint64_t value)
+  template <size_t StorageBufferSize>
+  [[gnu::always_inline]] inline void WriteUint32(std::array<uint8_t, StorageBufferSize>& buff, size_t& index, uint32_t value)
+  {
+    buff[index++] = value & 0xFF;
+    buff[index++] = (value >> 8) & 0xFF;
+    buff[index++] = (value >> 16) & 0xFF;
+    buff[index++] = value >> 24;
+  }
+
+  // TODO consider #pragma GCC unroll n, cleaner code same perf
+
+  template <size_t StorageBufferSize>
+  [[gnu::always_inline]] inline void WriteUint64(std::array<uint8_t, StorageBufferSize>& buff, size_t& index, uint64_t value)
   {
     buff[index++] = value & 0xFF;
     buff[index++] = (value >> 8) & 0xFF;
@@ -64,8 +81,16 @@ namespace encoding
     buff[index++] = value >> 56;
   }
 
-  template <size_t BufferSize>
-  void WriteAddress(std::array<uint8_t, BufferSize>& buff, size_t& index, const net::Address& addr)
+  template <size_t StorageBufferSize, size_t DataBufferSize>
+  [[gnu::always_inline]] inline void WriteBytes(std::array<uint8_t, StorageBufferSize>& buff, size_t& index, const std::array<uint8_t, DataBufferSize>& data, size_t len)
+  {
+    assert(index + len < buff.size());
+    std::copy(data.begin(), data.begin() + len, buff.begin() + index);
+    index += len;
+  }
+
+  template <size_t StorageBufferSize>
+  [[gnu::always_inline]] inline void WriteAddress(std::array<uint8_t, StorageBufferSize>& buff, size_t& index, const net::Address& addr)
   {
     GCC_NO_OPT_OUT;
 #ifndef NDEBUG
@@ -88,17 +113,13 @@ namespace encoding
         WriteUint16(buff, index, ip);
       }
 
-      /* hack to write the data faster, only use if we're getting desperate for performance */
-      // std::copy(addr.IPv6.begin(), addr.IPv6.end(), reinterpret_cast<uint16_t*>(buff.data() + index));
-      // index += addr.IPv6.size() * sizeof(uint16_t);
-
       WriteUint16(buff, index, addr.Port);
     } else {
-      std::fill(buff.begin() + index, buff.begin() + index + RELAY_ADDRESS_BYTES, 0);
-      index += RELAY_ADDRESS_BYTES;
+      std::fill(buff.begin() + index, buff.begin() + index + net::Address::ByteSize, 0);
+      index += net::Address::ByteSize;
     }
 
-    assert(index - start == RELAY_ADDRESS_BYTES);
+    assert(index - start == net::Address::ByteSize);
   }
 }  // namespace encoding
 #endif

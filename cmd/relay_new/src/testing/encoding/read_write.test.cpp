@@ -18,21 +18,21 @@ Test(ReadAndWritingAddresses)
 
   size_t index = 0;
   encoding::WriteAddress(buffer, index, a);
-  check(index == RELAY_ADDRESS_BYTES);
+  check(index == net::Address::ByteSize);
   encoding::WriteAddress(buffer, index, b);
-  check(index == RELAY_ADDRESS_BYTES * 2);
+  check(index == net::Address::ByteSize * 2);
   encoding::WriteAddress(buffer, index, c);
-  check(index == RELAY_ADDRESS_BYTES * 3);
+  check(index == net::Address::ByteSize * 3);
 
   net::Address read_a, read_b, read_c;
 
   index = 0;
   encoding::ReadAddress(buffer, index, read_a);
-  check(index == RELAY_ADDRESS_BYTES);
+  check(index == net::Address::ByteSize);
   encoding::ReadAddress(buffer, index, read_b);
-  check(index == RELAY_ADDRESS_BYTES * 2);
+  check(index == net::Address::ByteSize * 2);
   encoding::ReadAddress(buffer, index, read_c);
-  check(index == RELAY_ADDRESS_BYTES * 3);
+  check(index == net::Address::ByteSize * 3);
 
   check(a == read_a);
   check(b == read_b);
