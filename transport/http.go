@@ -39,7 +39,7 @@ func NewRouter(logger log.Logger, redisClient *redis.Client, geoClient *routing.
 	updateCounter metrics.Counter, costmatrix *routing.CostMatrix, routematrix *routing.RouteMatrix, routerPrivateKey []byte, trafficStatsPublisher stats.Publisher) *mux.Router {
 	router := mux.NewRouter()
 	router.HandleFunc("/relay_init", RelayInitHandlerFunc(logger, redisClient, geoClient, ipLocator, storer, initDuration, initCounter, routerPrivateKey)).Methods("POST")
-	router.HandleFunc("/relay_update", RelayUpdateHandlerFunc(logger, redisClient, statsdb, updateDuration, updateCounter)).Methods("POST")
+	router.HandleFunc("/relay_update", RelayUpdateHandlerFunc(logger, redisClient, statsdb, updateDuration, updateCounter, trafficStatsPublisher, storer)).Methods("POST")
 	router.Handle("/cost_matrix", costmatrix).Methods("GET")
 	router.Handle("/route_matrix", routematrix).Methods("GET")
 	router.HandleFunc("/near", NearHandlerFunc(nil)).Methods("GET")
@@ -342,7 +342,7 @@ func relayUpdatePacketHandler(relayUpdatePacket *RelayUpdatePacket, writer http.
 }
 
 // RelayUpdateHandlerFunc returns the function for the relay update endpoint
-func RelayUpdateHandlerFunc(logger log.Logger, redisClient *redis.Client, statsdb *routing.StatsDatabase, duration metrics.Gauge, counter metrics.Counter) func(writer http.ResponseWriter, request *http.Request) {
+func RelayUpdateHandlerFunc(logger log.Logger, redisClient *redis.Client, statsdb *routing.StatsDatabase, duration metrics.Gauge, counter metrics.Counter, trafficStatsPublisher stats.Publisher, storer storage.Storer) func(writer http.ResponseWriter, request *http.Request) {
 	logger = log.With(logger, "handler", "update")
 
 	return func(writer http.ResponseWriter, request *http.Request) {
@@ -388,6 +388,20 @@ func RelayUpdateHandlerFunc(logger log.Logger, redisClient *redis.Client, statsd
 		writer.Header().Set("Content-Type", "application/octet-stream")
 
 		writer.Write(responseData[:responseLength])
+
+		relayID := crypto.HashID(relayUpdatePacket.Address.String())
+		if relay, ok := storer.Relay(relayID); ok {
+			stats := &stats.RelayTrafficStats{
+				RelayId: stats.NewEntityID("Relay", relay.ID),
+			}
+
+			if err := trafficStatsPublisher.Publish(context.Background(), relay.ID, stats); err != nil {
+				level.Error(logger).Log("msg", fmt.Sprintf("Publish error: %v", err))
+			}
+		} else {
+			level.Error(logger).Log("msg", fmt.Sprintf("TrafficStats, cannot lookup relay in firestore, %d", relayID))
+			return
+		}
 	}
 }
 
