@@ -2,6 +2,7 @@ package transport
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"expvar"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
+	"github.com/golang/protobuf/ptypes"
 
 	"github.com/go-redis/redis/v7"
 	"github.com/gorilla/mux"
@@ -20,6 +22,7 @@ import (
 	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
+	"github.com/networknext/backend/stats"
 	"github.com/networknext/backend/storage"
 )
 
@@ -33,15 +36,15 @@ const (
 // NewRouter creates a router with the specified endpoints
 func NewRouter(logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, storer storage.Storer,
 	statsdb *routing.StatsDatabase, initDuration metrics.Gauge, updateDuration metrics.Gauge, initCounter metrics.Counter,
-	updateCounter metrics.Counter, costmatrix *routing.CostMatrix, routematrix *routing.RouteMatrix, routerPrivateKey []byte) *mux.Router {
+	updateCounter metrics.Counter, costmatrix *routing.CostMatrix, routematrix *routing.RouteMatrix, routerPrivateKey []byte, trafficStatsPublisher stats.Publisher) *mux.Router {
 	router := mux.NewRouter()
 	router.HandleFunc("/relay_init", RelayInitHandlerFunc(logger, redisClient, geoClient, ipLocator, storer, initDuration, initCounter, routerPrivateKey)).Methods("POST")
-	router.HandleFunc("/relay_update", RelayUpdateHandlerFunc(logger, redisClient, statsdb, updateDuration, updateCounter)).Methods("POST")
+	router.HandleFunc("/relay_update", RelayUpdateHandlerFunc(logger, redisClient, statsdb, updateDuration, updateCounter, trafficStatsPublisher, storer)).Methods("POST")
 	router.Handle("/cost_matrix", costmatrix).Methods("GET")
 	router.Handle("/route_matrix", routematrix).Methods("GET")
 	router.HandleFunc("/near", NearHandlerFunc(nil)).Methods("GET")
 	router.HandleFunc("/relay_init_json", RelayInitJSONHandlerFunc(logger, redisClient, geoClient, ipLocator, storer, initDuration, initCounter, routerPrivateKey)).Methods("POST")
-	router.HandleFunc("/relay_update_json", RelayUpdateJSONHandlerFunc(logger, redisClient, statsdb, updateDuration, updateCounter)).Methods("POST")
+	router.HandleFunc("/relay_update_json", RelayUpdateJSONHandlerFunc(logger, redisClient, statsdb, updateDuration, updateCounter, trafficStatsPublisher, storer)).Methods("POST")
 	router.Handle("/debug/vars", expvar.Handler())
 	return router
 }
@@ -339,7 +342,7 @@ func relayUpdatePacketHandler(relayUpdatePacket *RelayUpdatePacket, writer http.
 }
 
 // RelayUpdateHandlerFunc returns the function for the relay update endpoint
-func RelayUpdateHandlerFunc(logger log.Logger, redisClient *redis.Client, statsdb *routing.StatsDatabase, duration metrics.Gauge, counter metrics.Counter) func(writer http.ResponseWriter, request *http.Request) {
+func RelayUpdateHandlerFunc(logger log.Logger, redisClient *redis.Client, statsdb *routing.StatsDatabase, duration metrics.Gauge, counter metrics.Counter, trafficStatsPublisher stats.Publisher, storer storage.Storer) func(writer http.ResponseWriter, request *http.Request) {
 	logger = log.With(logger, "handler", "update")
 
 	return func(writer http.ResponseWriter, request *http.Request) {
@@ -385,12 +388,26 @@ func RelayUpdateHandlerFunc(logger log.Logger, redisClient *redis.Client, statsd
 		writer.Header().Set("Content-Type", "application/octet-stream")
 
 		writer.Write(responseData[:responseLength])
+
+		relayID := crypto.HashID(relayUpdatePacket.Address.String())
+		if relay, ok := storer.Relay(relayID); ok {
+			stats := &stats.RelayTrafficStats{
+				RelayId: stats.NewEntityID("Relay", relay.ID),
+			}
+
+			if err := trafficStatsPublisher.Publish(context.Background(), relay.ID, stats); err != nil {
+				level.Error(logger).Log("msg", fmt.Sprintf("Publish error: %v", err))
+			}
+		} else {
+			level.Error(logger).Log("msg", fmt.Sprintf("TrafficStats, cannot lookup relay in firestore, %d", relayID))
+			return
+		}
 	}
 }
 
 // RelayUpdateJSONHandlerFunc handles processing json from the relays
 // currently it just converts the json into a packet and passes it to a common function
-func RelayUpdateJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, statsdb *routing.StatsDatabase, duration metrics.Gauge, counter metrics.Counter) func(writer http.ResponseWriter, request *http.Request) {
+func RelayUpdateJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, statsdb *routing.StatsDatabase, duration metrics.Gauge, counter metrics.Counter, trafficStatsPublisher stats.Publisher, storer storage.Storer) func(writer http.ResponseWriter, request *http.Request) {
 	logger = log.With(logger, "handler", "update_json")
 
 	return func(writer http.ResponseWriter, request *http.Request) {
@@ -454,7 +471,33 @@ func RelayUpdateJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, st
 
 		writer.Write(dat)
 
-		fmt.Printf("sending: \n%s\n", string(dat))
+		if ts, err := ptypes.TimestampProto(time.Unix(int64(jsonPacket.Timestamp), 0)); err == nil {
+			if relay, ok := storer.Relay(jsonPacket.Metadata.ID); ok {
+				stats := &stats.RelayTrafficStats{
+					RelayId:            stats.NewEntityID("Relay", relay.ID),
+					Usage:              jsonPacket.Usage,
+					Timestamp:          ts,
+					BytesPaidTx:        jsonPacket.TrafficStats.BytesPaidTx,
+					BytesPaidRx:        jsonPacket.TrafficStats.BytesPaidRx,
+					BytesManagementTx:  jsonPacket.TrafficStats.BytesManagementTx,
+					BytesManagementRx:  jsonPacket.TrafficStats.BytesManagementRx,
+					BytesMeasurementTx: jsonPacket.TrafficStats.BytesMeasurementTx,
+					BytesMeasurementRx: jsonPacket.TrafficStats.BytesMeasurementRx,
+					BytesInvalidRx:     jsonPacket.TrafficStats.BytesInvalidRx,
+					SessionCount:       jsonPacket.TrafficStats.SessionCount,
+				}
+
+				if err := trafficStatsPublisher.Publish(context.Background(), relay.ID, stats); err != nil {
+					level.Error(logger).Log("msg", fmt.Sprintf("Publish error: %v", err))
+				}
+			} else {
+				level.Error(logger).Log("msg", fmt.Sprintf("TrafficStats, cannot lookup relay in firestore, %d", jsonPacket.Metadata.ID))
+				return
+			}
+		} else {
+			level.Error(logger).Log("msg", fmt.Sprintf("Can't publish to pubsub. Timestamp error: %v", err))
+			return
+		}
 	}
 }
 

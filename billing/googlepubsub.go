@@ -17,9 +17,9 @@ type GooglePubSubBiller struct {
 
 // GooglePubSubClient represents a single client that publishes billing data
 type GooglePubSubClient struct {
-	pubsubClient *pubsub.Client
-	topic        *pubsub.Topic
-	resultChan   chan *pubsub.PublishResult
+	PubsubClient *pubsub.Client
+	Topic        *pubsub.Topic
+	ResultChan   chan *pubsub.PublishResult
 }
 
 // NewBiller creates a new GooglePubSubBiller, sets up the pubsub clients, and starts goroutines to listen for publish results.
@@ -37,12 +37,12 @@ func NewBiller(ctx context.Context, resultLogger log.Logger, projectID string, b
 	for i := 0; i < clientCount; i++ {
 		var err error
 		biller.clients[i] = &GooglePubSubClient{}
-		biller.clients[i].pubsubClient, err = pubsub.NewClient(ctx, projectID)
+		biller.clients[i].PubsubClient, err = pubsub.NewClient(ctx, projectID)
 		if err != nil {
 			return nil, fmt.Errorf("could not create pubsub client %v: %v", i, err)
 		}
 
-		biller.clients[i].topic = biller.clients[i].pubsubClient.Topic(billingTopicID)
+		biller.clients[i].Topic = biller.clients[i].PubsubClient.Topic(billingTopicID)
 
 		if descriptor.CountThreshold > pubsub.MaxPublishRequestCount {
 			descriptor.CountThreshold = pubsub.MaxPublishRequestCount
@@ -52,7 +52,7 @@ func NewBiller(ctx context.Context, resultLogger log.Logger, projectID string, b
 			descriptor.ByteThreshold = pubsub.MaxPublishRequestBytes
 		}
 
-		biller.clients[i].topic.PublishSettings = pubsub.PublishSettings{
+		biller.clients[i].Topic.PublishSettings = pubsub.PublishSettings{
 			DelayThreshold:    descriptor.DelayThreshold,
 			CountThreshold:    descriptor.CountThreshold,
 			ByteThreshold:     descriptor.ByteThreshold,
@@ -60,8 +60,8 @@ func NewBiller(ctx context.Context, resultLogger log.Logger, projectID string, b
 			Timeout:           descriptor.Timeout,
 			BufferedByteLimit: pubsub.DefaultPublishSettings.BufferedByteLimit,
 		}
-		biller.clients[i].resultChan = make(chan *pubsub.PublishResult, descriptor.ResultChannelBuffer)
-		go printPubSubResults(ctx, resultLogger, biller.clients[i].resultChan)
+		biller.clients[i].ResultChan = make(chan *pubsub.PublishResult, descriptor.ResultChannelBuffer)
+		go printPubSubResults(ctx, resultLogger, biller.clients[i].ResultChan)
 	}
 
 	return biller, nil
@@ -79,8 +79,8 @@ func (biller *GooglePubSubBiller) Bill(ctx context.Context, sessionID uint64, en
 	}
 
 	index := sessionID % uint64(len(biller.clients))
-	topic := biller.clients[index].topic
-	resultChan := biller.clients[index].resultChan
+	topic := biller.clients[index].Topic
+	resultChan := biller.clients[index].ResultChan
 
 	result := topic.Publish(ctx, &pubsub.Message{Data: data})
 	resultChan <- result

@@ -125,16 +125,36 @@ type RelayUpdatePacket struct {
 }
 
 type packetMetadata struct {
+	ID          uint64 `json:"Id"`
+	PingKey     []byte `json:"PingKey"`
+	Role        string `json:"Role"`
+	Shutdown    bool   `json:"Shutdown"`
+	Group       string `json:"Group"`
 	TokenBase64 string `json:"PublicKey"`
 }
 
-type RelayUpdateRequestJSON struct {
-	Version    uint32                   `json:"version"`
-	StringAddr string                   `json:"relay_address"`
-	Metadata   packetMetadata           `json:"Metadata"`
-	PingStats  []routing.RelayStatsPing `json:"PingStats"`
+type trafficStats struct {
+	BytesPaidTx        uint64 `json:"BytesPaidTx"`
+	BytesPaidRx        uint64 `json:"BytesPaidRx"`
+	BytesManagementTx  uint64 `json:"BytesManagementTx"`
+	BytesManagementRx  uint64 `json:"BytesManagementRx"`
+	BytesMeasurementTx uint64 `json:"BytesMeasurementTx"`
+	BytesMeasurementRx uint64 `json:"BytesMeasurementRx"`
+	BytesInvalidRx     uint64 `json:"BytesInvalidRx"`
+	SessionCount       uint64 `json:"SessionCount"`
+	FlowCount          uint64 `json:"FlowCount"`
 }
 
+type RelayUpdateRequestJSON struct {
+	Version      uint32                   `json:"version"`
+	StringAddr   string                   `json:"relay_address"`
+	Metadata     packetMetadata           `json:"Metadata"`
+	Timestamp    uint64                   `json:"Timestamp"`
+	Signature    []byte                   `json:"Signature"`
+	Usage        float32                  `json:"Usage"`
+	TrafficStats *trafficStats            `json:"TrafficStats"`
+	PingStats    []routing.RelayStatsPing `json:"PingStats"`
+}
 type RelayUpdateResponseJSON struct {
 	RelaysToPing []routing.LegacyPingData `json:"ping_data"`
 }
