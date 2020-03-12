@@ -1,0 +1,26 @@
+version: v1.0
+name: Development Deploy
+blocks:
+  - name: Deploy
+    task:
+      jobs:
+        - name: Publish Artifacts to Storage
+          commands:
+            - make publish-relay-backend-artifact
+            - make publish-server-backend-artifact
+        - name: Deploy to Compute VMs
+          commands:
+            - make deploy-relay-backend
+            - make deploy-server-backend
+      secrets:
+        - name: Google Cloud Platform
+      prologue:
+        commands:
+          - gcloud auth activate-service-account --key-file=/home/runner/gcp-service-account.json
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+  containers:
+    - name: main
+      image: 'semaphoreci/ubuntu:18.04'
