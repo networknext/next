@@ -1,0 +1,31 @@
+version: v1.0
+name: Development Deploy
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+global_job_config:
+  prologue:
+    commands:
+      - sudo apt-get update && sudo apt-get -y install libsodium-dev libcurl4-gnutls-dev
+      - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
+      - gcloud auth configure-docker -q
+      - checkout
+      - sem-version go 1.13
+      - make clean
+blocks:
+  - name: Deploy
+    task:
+      jobs:
+        - name: Build & Publish Artifacts to Storage
+          commands:
+            - make build-relay-backend-artifact
+            - make build-server-backend-artifact
+            - make publish-relay-backend-artifact
+            - make publish-server-backend-artifact
+        - name: Deploy to Compute VMs
+          commands:
+            - make deploy-relay-backend
+            - make deploy-server-backend
+      secrets:
+        - name: google-cloud-platform
