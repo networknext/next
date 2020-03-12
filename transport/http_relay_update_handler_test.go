@@ -18,6 +18,8 @@ import (
 	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
+	"github.com/networknext/backend/stats"
+	"github.com/networknext/backend/storage"
 
 	"github.com/networknext/backend/transport"
 	"github.com/stretchr/testify/assert"
@@ -56,7 +58,7 @@ func relayUpdateAssertions(t *testing.T, endpoint string, body []byte, expectedC
 	if endpoint == "/relay_update" {
 		handler = transport.RelayUpdateHandlerFunc(log.NewNopLogger(), redisClient, statsdb, &metrics.EmptyGauge{}, &metrics.EmptyCounter{})
 	} else if endpoint == "/relay_update_json" {
-		handler = transport.RelayUpdateJSONHandlerFunc(log.NewNopLogger(), redisClient, statsdb, &metrics.EmptyGauge{}, &metrics.EmptyCounter{})
+		handler = transport.RelayUpdateJSONHandlerFunc(log.NewNopLogger(), redisClient, statsdb, &metrics.EmptyGauge{}, &metrics.EmptyCounter{}, &stats.NoOpTrafficStatsPublisher{}, &storage.InMemory{})
 	}
 
 	handler(recorder, request)
