@@ -4,6 +4,12 @@ agent:
   machine:
     type: e1-standard-2
     os_image: ubuntu1804
+global_job_config:
+  prologue:
+    commands:
+      - gcloud auth activate-service-account --key-file=/home/runner/gcp-service-account.json
+      - gcloud auth configure-docker -q
+      - checkout
 blocks:
   - name: Deploy
     task:
@@ -18,6 +24,3 @@ blocks:
             - make deploy-server-backend
       secrets:
         - name: Google Cloud Platform
-      prologue:
-        commands:
-          - gcloud auth activate-service-account --key-file=/home/runner/gcp-service-account.json
