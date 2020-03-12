@@ -10,10 +10,16 @@ global_job_config:
       - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
       - gcloud auth configure-docker -q
       - checkout
+      - sem-version go 1.13
+      - make clean
 blocks:
   - name: Deploy
     task:
       jobs:
+        - name: Build Artifacts
+          commands:
+            - make build-relay-backend-artifact
+            - make build-server-backend-artifact
         - name: Publish Artifacts to Storage
           commands:
             - make publish-relay-backend-artifact
