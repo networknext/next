@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"math"
 	"math/rand"
 	"net"
@@ -128,7 +127,7 @@ func TestRelayInitRequestJSON(t *testing.T) {
 			jsonRequest.PortNum = 0
 			var packet transport.RelayInitPacket
 
-			assert.IsType(t, &net.DNSError{}, jsonRequest.ToInitPacket(&packet))
+			assert.IsType(t, &net.AddrError{}, jsonRequest.ToInitPacket(&packet))
 		})
 
 		t.Run("token is invalid base64", func(t *testing.T) {
@@ -137,8 +136,8 @@ func TestRelayInitRequestJSON(t *testing.T) {
 			crand.Read(nonce)
 			b64Nonce := base64.StdEncoding.EncodeToString(nonce)
 			jsonRequest.NonceBase64 = b64Nonce
-			jsonRequest.StringAddr = "127.0.0.1"
-			jsonRequest.PortNum = 20000
+			jsonRequest.StringAddr = "127.0.0.1:40000"
+			jsonRequest.PortNum = 40000
 			jsonRequest.EncryptedTokenBase64 = "\n\ninvalid\t\t"
 			var packet transport.RelayInitPacket
 
@@ -168,15 +167,15 @@ func TestRelayInitRequestJSON(t *testing.T) {
 			jsonRequest.Magic = transport.InitRequestMagic
 			jsonRequest.Version = transport.VersionNumberInitRequest
 			jsonRequest.NonceBase64 = b64Nonce
-			jsonRequest.StringAddr = "127.0.0.1"
-			jsonRequest.PortNum = 20000
+			jsonRequest.StringAddr = "127.0.0.1:40000"
+			jsonRequest.PortNum = 40000
 			jsonRequest.EncryptedTokenBase64 = b64EncToken
 			var packet transport.RelayInitPacket
 
 			assert.Nil(t, jsonRequest.ToInitPacket(&packet))
 			assert.Equal(t, jsonRequest.Magic, packet.Magic)
 			assert.Equal(t, jsonRequest.Version, packet.Version)
-			assert.Equal(t, fmt.Sprintf("%s:%d", jsonRequest.StringAddr, jsonRequest.PortNum), packet.Address.String())
+			assert.Equal(t, jsonRequest.StringAddr, packet.Address.String())
 			assert.True(t, bytes.Equal(packet.Nonce, nonce))
 			assert.True(t, bytes.Equal(packet.EncryptedToken, encryptedToken))
 		})

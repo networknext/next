@@ -207,16 +207,23 @@ type RouteProvider interface {
 	Routes([]routing.Relay, []routing.Relay, ...routing.SelectorFunc) ([]routing.Route, error)
 }
 
+type SessionMetrics struct {
+	Invocations    metrics.Counter
+	DirectSessions metrics.Counter
+	NextSessions   metrics.Counter
+	DurationGauge  metrics.Gauge
+}
+
 // SessionUpdateHandlerFunc ...
-func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, duration metrics.Gauge, counter metrics.Counter, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, metrics *SessionMetrics, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
 	logger = log.With(logger, "handler", "session")
 
 	return func(w io.Writer, incoming *UDPPacket) {
 		durationStart := time.Now()
 		defer func() {
 			durationSince := time.Since(durationStart)
-			duration.Set(float64(durationSince.Milliseconds()))
-			counter.Add(1)
+			metrics.DurationGauge.Set(float64(durationSince.Milliseconds()))
+			metrics.Invocations.Add(1)
 		}()
 
 		timestampNow := time.Now()
@@ -325,7 +332,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			handleError(w, response, serverPrivateKey, err)
 			return
 		}
-		level.Debug(locallogger).Log("lat", location.Latitude, "long", location.Longitude)
+		level.Debug(locallogger).Log("client_ip", packet.ClientAddress.IP.String(), "lat", location.Latitude, "long", location.Longitude)
 
 		clientrelays, err := geoClient.RelaysWithin(location.Latitude, location.Longitude, 500, "mi")
 
@@ -492,6 +499,13 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		if responseData, err = writeSessionResponse(w, response, serverPrivateKey); err != nil {
 			level.Error(locallogger).Log("msg", "failed to write session response", "err", err)
 			return
+		}
+
+		// If we managed to send the response, update metrics based on route type
+		if response.RouteType == routing.RouteTypeDirect {
+			metrics.DirectSessions.Add(1)
+		} else {
+			metrics.NextSessions.Add(1)
 		}
 
 		// Cache the needed information for the next session update

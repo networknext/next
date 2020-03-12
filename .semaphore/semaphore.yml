@@ -30,3 +30,8 @@ blocks:
         - name: Parallel Func Tests
           commands:
             - make test-func-parallel
+promotions:
+  - name: Development Deployment
+    pipeline_file: development-deploy.yml
+    auto_promote:
+      when: branch = 'master' AND result = 'passed'

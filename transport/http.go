@@ -12,7 +12,6 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	gkmetrics "github.com/go-kit/kit/metrics"
 
 	"github.com/go-redis/redis/v7"
 	"github.com/gorilla/mux"
@@ -33,7 +32,7 @@ const (
 
 // NewRouter creates a router with the specified endpoints
 func NewRouter(logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, storer storage.Storer,
-	statsdb *routing.StatsDatabase, initDuration metrics.Histogram, updateDuration metrics.Histogram, initCounter metrics.Counter,
+	statsdb *routing.StatsDatabase, initDuration metrics.Gauge, updateDuration metrics.Gauge, initCounter metrics.Counter,
 	updateCounter metrics.Counter, costmatrix *routing.CostMatrix, routematrix *routing.RouteMatrix, routerPrivateKey []byte) *mux.Router {
 	router := mux.NewRouter()
 	router.HandleFunc("/relay_init", RelayInitHandlerFunc(logger, redisClient, geoClient, ipLocator, storer, initDuration, initCounter, routerPrivateKey)).Methods("POST")
@@ -136,14 +135,14 @@ func relayInitPacketHandler(relayInitPacket *RelayInitPacket, writer http.Respon
 }
 
 // RelayInitHandlerFunc returns the function for the relay init endpoint
-func RelayInitHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, storer storage.Storer, duration metrics.Histogram, counter metrics.Counter, routerPrivateKey []byte) func(writer http.ResponseWriter, request *http.Request) {
+func RelayInitHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, storer storage.Storer, duration metrics.Gauge, counter metrics.Counter, routerPrivateKey []byte) func(writer http.ResponseWriter, request *http.Request) {
 	logger = log.With(logger, "handler", "init")
 
 	return func(writer http.ResponseWriter, request *http.Request) {
-		timer := gkmetrics.NewTimer(duration.With("method", "RelayInitHandlerFunc"))
-		timer.Unit(time.Millisecond)
+		durationStart := time.Now()
 		defer func() {
-			timer.ObserveDuration()
+			durationSince := time.Since(durationStart)
+			duration.Set(float64(durationSince.Milliseconds()))
 			counter.Add(1)
 		}()
 
@@ -162,8 +161,9 @@ func RelayInitHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClien
 			return
 		}
 
-		relay := relayInitPacketHandler(&relayInitPacket, writer, request, logger, redisClient, geoClient, ipLocator, storer, routerPrivateKey)
+		log.With(logger, "req_addr", request.RemoteAddr, "relay_addr", relayInitPacket.Address.String(), "packet_addr", relayInitPacket.Address.String())
 
+		relay := relayInitPacketHandler(&relayInitPacket, writer, request, logger, redisClient, geoClient, ipLocator, storer, routerPrivateKey)
 		if relay == nil {
 			return
 		}
@@ -182,14 +182,14 @@ func RelayInitHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClien
 
 // RelayInitJSONHandlerFunc handles relay init data in json form
 // currently it just converts the json struct into a packet struct and processes that
-func RelayInitJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, storer storage.Storer, duration metrics.Histogram, counter metrics.Counter, routerPrivateKey []byte) func(writer http.ResponseWriter, request *http.Request) {
+func RelayInitJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, storer storage.Storer, duration metrics.Gauge, counter metrics.Counter, routerPrivateKey []byte) func(writer http.ResponseWriter, request *http.Request) {
 	logger = log.With(logger, "handler", "init_json")
 
 	return func(writer http.ResponseWriter, request *http.Request) {
-		timer := gkmetrics.NewTimer(duration.With("method", "RelayInitJSONHandlerFunc"))
-		timer.Unit(time.Millisecond)
+		durationStart := time.Now()
 		defer func() {
-			timer.ObserveDuration()
+			durationSince := time.Since(durationStart)
+			duration.Set(float64(durationSince.Milliseconds()))
 			counter.Add(1)
 		}()
 
@@ -339,14 +339,14 @@ func relayUpdatePacketHandler(relayUpdatePacket *RelayUpdatePacket, writer http.
 }
 
 // RelayUpdateHandlerFunc returns the function for the relay update endpoint
-func RelayUpdateHandlerFunc(logger log.Logger, redisClient *redis.Client, statsdb *routing.StatsDatabase, duration metrics.Histogram, counter metrics.Counter) func(writer http.ResponseWriter, request *http.Request) {
+func RelayUpdateHandlerFunc(logger log.Logger, redisClient *redis.Client, statsdb *routing.StatsDatabase, duration metrics.Gauge, counter metrics.Counter) func(writer http.ResponseWriter, request *http.Request) {
 	logger = log.With(logger, "handler", "update")
 
 	return func(writer http.ResponseWriter, request *http.Request) {
-		timer := gkmetrics.NewTimer(duration.With("method", "RelayUpdateHandlerFunc"))
-		timer.Unit(time.Millisecond)
+		durationStart := time.Now()
 		defer func() {
-			timer.ObserveDuration()
+			durationSince := time.Since(durationStart)
+			duration.Set(float64(durationSince.Milliseconds()))
 			counter.Add(1)
 		}()
 
@@ -390,14 +390,14 @@ func RelayUpdateHandlerFunc(logger log.Logger, redisClient *redis.Client, statsd
 
 // RelayUpdateJSONHandlerFunc handles processing json from the relays
 // currently it just converts the json into a packet and passes it to a common function
-func RelayUpdateJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, statsdb *routing.StatsDatabase, duration metrics.Histogram, counter metrics.Counter) func(writer http.ResponseWriter, request *http.Request) {
+func RelayUpdateJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, statsdb *routing.StatsDatabase, duration metrics.Gauge, counter metrics.Counter) func(writer http.ResponseWriter, request *http.Request) {
 	logger = log.With(logger, "handler", "update_json")
 
 	return func(writer http.ResponseWriter, request *http.Request) {
-		timer := gkmetrics.NewTimer(duration.With("method", "RelayUpdateJSONHandlerFunc"))
-		timer.Unit(time.Millisecond)
+		durationStart := time.Now()
 		defer func() {
-			timer.ObserveDuration()
+			durationSince := time.Since(durationStart)
+			duration.Set(float64(durationSince.Milliseconds()))
 			counter.Add(1)
 		}()
 
