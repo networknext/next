@@ -11,12 +11,12 @@ import (
 	"github.com/networknext/backend/billing"
 )
 
-// GooglePubSubTrafficStatsPublisher ...
+// GooglePubSubTrafficStatsPublisher is an implementation of a traffic stats publisher that sends relay traffic stats to Google Pub/Sub through multiple clients
 type GooglePubSubTrafficStatsPublisher struct {
 	clients []*billing.GooglePubSubClient
 }
 
-// NewTrafficStatsPublisher ...
+// NewTrafficStatsPublisher creates a new GooglePubSubTrafficStatsPublisher, sets up the pubsub clients, and starts goroutines to listen for publish results.
 func NewTrafficStatsPublisher(ctx context.Context, resultLogger log.Logger, projectID string, statsTopicID string, descriptor *billing.Descriptor) (*GooglePubSubTrafficStatsPublisher, error) {
 	var clientCount int
 	if descriptor != nil {
@@ -60,6 +60,7 @@ func NewTrafficStatsPublisher(ctx context.Context, resultLogger log.Logger, proj
 	return publisher, nil
 }
 
+// Publish sends the billing entry to Google Pub/Sub
 func (gps *GooglePubSubTrafficStatsPublisher) Publish(ctx context.Context, relayID uint64, entry *RelayTrafficStats) error {
 	data, err := proto.Marshal(entry)
 	if err != nil {
