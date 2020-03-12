@@ -11,19 +11,19 @@ import (
 	"github.com/networknext/backend/billing"
 )
 
-// TrafficStatsPublisher ...
-type TrafficStatsPublisher struct {
+// GooglePubSubTrafficStatsPublisher ...
+type GooglePubSubTrafficStatsPublisher struct {
 	clients []*billing.GooglePubSubClient
 }
 
 // NewTrafficStatsPublisher ...
-func NewTrafficStatsPublisher(ctx context.Context, resultLogger log.Logger, projectID string, statsTopicID string, descriptor *billing.Descriptor) (*TrafficStatsPublisher, error) {
+func NewTrafficStatsPublisher(ctx context.Context, resultLogger log.Logger, projectID string, statsTopicID string, descriptor *billing.Descriptor) (*GooglePubSubTrafficStatsPublisher, error) {
 	var clientCount int
 	if descriptor != nil {
 		clientCount = descriptor.ClientCount
 	}
 
-	publisher := &TrafficStatsPublisher{
+	publisher := &GooglePubSubTrafficStatsPublisher{
 		clients: make([]*billing.GooglePubSubClient, clientCount),
 	}
 
@@ -60,7 +60,7 @@ func NewTrafficStatsPublisher(ctx context.Context, resultLogger log.Logger, proj
 	return publisher, nil
 }
 
-func (gps *TrafficStatsPublisher) Publish(ctx context.Context, relayID uint64, entry *RelayTrafficStats) error {
+func (gps *GooglePubSubTrafficStatsPublisher) Publish(ctx context.Context, relayID uint64, entry *RelayTrafficStats) error {
 	data, err := proto.Marshal(entry)
 	if err != nil {
 		return err
