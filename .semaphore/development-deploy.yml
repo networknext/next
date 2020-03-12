@@ -7,7 +7,7 @@ agent:
 global_job_config:
   prologue:
     commands:
-      - gcloud auth activate-service-account --key-file=/home/runner/gcp-service-account.json
+      - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
       - gcloud auth configure-docker -q
       - checkout
 blocks:
@@ -23,4 +23,4 @@ blocks:
             - make deploy-relay-backend
             - make deploy-server-backend
       secrets:
-        - name: Google Cloud Platform
+        - name: google-cloud-platform
