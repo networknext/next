@@ -223,6 +223,27 @@ int main()
     return 1;
   }
 
+  int socketBufferSize = 1000000;
+  {
+    auto env = std::getenv("RELAY_SOCKET_BUFFER_SIZE");
+    if (env != nullptr) {
+      int num = -1;
+      try {
+        num = std::stoi(std::string(env));  // to cause an exception to be thrown if not a number
+      } catch (std::exception& e) {
+        Log("Could not parse RELAY_SOCKET_BUFFER_SIZE env var to a number: ", e.what());
+        std::exit(1);
+      }
+
+      if (num < 0) {
+        Log("RELAY_SOCKET_BUFFER_SIZE is less than 0");
+        std::exit(1);
+      }
+
+      socketBufferSize = num;
+    }
+  }
+
   std::ofstream* output = nullptr;
   util::ThroughputLogger* logger = nullptr;
   {
@@ -306,9 +327,9 @@ int main()
   };
 
   // makes a shared ptr to a socket object
-  auto makeSocket = [&sockets](net::Address& addr) -> os::SocketPtr {
+  auto makeSocket = [&sockets, &socketBufferSize](net::Address& addr) -> os::SocketPtr {
     auto socket = std::make_shared<os::Socket>(os::SocketType::Blocking);
-    if (!socket->create(addr, 100 * 1024, 100 * 1024, 0.0f, true, 0)) {
+    if (!socket->create(addr, socketBufferSize, socketBufferSize, 0.0f, true, 0)) {
       return nullptr;
     }
 
