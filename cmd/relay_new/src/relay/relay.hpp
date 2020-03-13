@@ -27,7 +27,8 @@ namespace relay
    const uint8_t* relay_token,
    const char* relay_address,
    uint8_t* update_response_memory,
-   core::RelayManager& manager);
+   core::RelayManager& manager,
+   uint64_t bytesReceived);
 
   int relay_write_header(int direction,
    uint8_t type,

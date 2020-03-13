@@ -207,7 +207,7 @@ func main() {
 	}
 
 	// Create server update metrics
-	updateDuration, err := metricsHandler.NewGauge(ctx, &metrics.Descriptor{
+	updateDurationGauge, err := metricsHandler.NewGauge(ctx, &metrics.Descriptor{
 		DisplayName: "Server update duration",
 		ServiceName: "server_backend",
 		ID:          "server.duration",
@@ -215,20 +215,25 @@ func main() {
 		Description: "How long it takes to process a server update request.",
 	})
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create metric histogram", "metric", "server.duration", "err", err)
-		updateDuration = &metrics.EmptyGauge{}
+		level.Error(logger).Log("msg", "Failed to create metric gauge", "metric", "server.duration", "err", err)
+		updateDurationGauge = &metrics.EmptyGauge{}
 	}
 
-	updateCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
-		DisplayName: "Total server count",
+	updateInvocationsCounter, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
+		DisplayName: "Total server update invocations",
 		ServiceName: "server_backend",
 		ID:          "server.count",
-		Unit:        "servers",
+		Unit:        "invocations",
 		Description: "The total number of concurrent servers",
 	})
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "server.count", "err", err)
-		updateCount = &metrics.EmptyCounter{}
+		updateInvocationsCounter = &metrics.EmptyCounter{}
+	}
+
+	updateMetrics := metrics.ServerUpdateMetrics{
+		Invocations:   updateInvocationsCounter,
+		DurationGauge: updateDurationGauge,
 	}
 
 	// Create session update metrics
@@ -276,15 +281,30 @@ func main() {
 		Description: "How long it takes to process a session update request",
 	})
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create metric histogram", "metric", "session.duration", "err", err)
+		level.Error(logger).Log("msg", "Failed to create metric gauge", "metric", "session.duration", "err", err)
 		sessionDurationGauge = &metrics.EmptyGauge{}
 	}
 
-	sessionMetrics := transport.SessionMetrics{
+	vetoSessionsCounter, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
+		DisplayName: "Session veto count",
+		ServiceName: "server_backend",
+		ID:          "session.veto.count",
+		Unit:        "sessions",
+		Description: "How many sessions were vetoed",
+	})
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "session.veto.count", "err", err)
+		vetoSessionsCounter = &metrics.EmptyCounter{}
+	}
+
+	sessionMetrics := metrics.SessionMetrics{
 		Invocations:    sessionInvocationsCounter,
 		DirectSessions: directSessionsCounter,
 		NextSessions:   nextSessionsCounter,
 		DurationGauge:  sessionDurationGauge,
+		DecisionMetrics: metrics.DecisionMetrics{
+			VetoedSessions: vetoSessionsCounter,
+		},
 	}
 
 	var routeMatrix routing.RouteMatrix
@@ -345,7 +365,7 @@ func main() {
 			Conn:          conn,
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
-			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClient, db, updateDuration, updateCount),
+			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClient, db, &updateMetrics),
 			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClient, db, &routeMatrix, ipLocator, &geoClient, &sessionMetrics, biller, serverPrivateKey, routerPrivateKey),
 		}
 

@@ -52,17 +52,23 @@ namespace
    const char* backend_hostname,
    const uint8_t* relay_token,
    const char* relay_address_string,
-   core::RelayManager& relayManager)
+   core::RelayManager& relayManager,
+   util::ThroughputLogger& logger)
   {
     std::vector<uint8_t> update_response_memory;
     update_response_memory.resize(RESPONSE_MAX_BYTES);
     while (gAlive) {
+      auto bytesReceived = logger.print();
       bool updated = false;
 
       for (int i = 0; i < 10; ++i) {
-        if (relay::relay_update(
-             curl, backend_hostname, relay_token, relay_address_string, update_response_memory.data(), relayManager) ==
-            RELAY_OK) {
+        if (relay::relay_update(curl,
+             backend_hostname,
+             relay_token,
+             relay_address_string,
+             update_response_memory.data(),
+             relayManager,
+             bytesReceived) == RELAY_OK) {
           updated = true;
           break;
         }
@@ -173,44 +179,22 @@ int main()
 
   printf("\nEnvironment:\n\n");
 
-  // external relay address - exposed to the internet
+  // relay address - the address other devices should use to talk to this
   // sent to the relay backend and is the addr everything communicates with
-  net::Address externalAddr;
+  net::Address relayAddr;
   {
-    auto env = std::getenv("RELAY_PUBLIC_ADDRESS");
+    auto env = std::getenv("RELAY_ADDRESS");
     if (env == nullptr) {
-      Log("error: RELAY_PUBLIC_ADDRESS not set\n");
+      Log("error: RELAY_ADDRESS not set\n");
       return 1;
     }
 
-    if (!externalAddr.parse(env)) {
+    if (!relayAddr.parse(env)) {
       Log("error: invalid relay address '", env, "'\n");
       return 1;
     }
 
-    std::cout << "    external address is '" << externalAddr << "'\n";
-  }
-
-  // internal relay address - from your router
-  // used to bind and allow the external address to work
-  net::Address internalAddr;
-  {
-    auto env = std::getenv("RELAY_BIND_ADDRESS");
-    if (env == nullptr) {
-      Log("error: RELAY_BIND_ADDRESS not set, set it to your internal ip\n");
-      return 1;
-    }
-
-    if (!internalAddr.parse(env)) {
-      Log("error: invalid relay bind address '", env, "'\n");
-      return 1;
-    }
-
-    std::cout << "    internal address is '" << internalAddr << "'\n";
-  }
-
-  if (externalAddr.Port != internalAddr.Port) {
-    Log("warning: bind & public ports are not the same, this may cause issues on some providers (ex. google cloud)");
+    std::cout << "    relay address is '" << relayAddr << "'\n";
   }
 
   crypto::Keychain keychain;
@@ -237,20 +221,19 @@ int main()
   std::unique_ptr<std::ofstream> output;
   std::unique_ptr<util::ThroughputLogger> logger;
   {
-    auto logFile = std::getenv("RELAY_LOG_FILE");
-    if (logFile != nullptr) {
-      std::string relayThroughputLogFile = logFile;
-      if (!relayThroughputLogFile.empty()) {
-        auto file = std::make_unique<std::ofstream>();
-        file->open(relayThroughputLogFile);
+    auto logfile = std::getenv("RELAY_LOG_FILE");
+    if (logfile != nullptr && strlen(logfile) != 0) {
+      auto file = std::make_unique<std::ofstream>();
+      file->open(logfile);
 
-        if (*file) {
-          output = std::move(file);
-        }
+      if (*file) {
+        output = std::move(file);
       }
 
-      if (output != nullptr) {
-        logger = std::make_unique<util::ThroughputLogger>(*output);
+      if (output) {
+        logger = std::make_unique<util::ThroughputLogger>(*output, true);
+      } else {
+        logger = std::make_unique<util::ThroughputLogger>(std::cout, false);
       }
     }
   }
@@ -318,11 +301,15 @@ int main()
   };
 
   // makes a shared ptr to a socket object
-  auto makeSocket = [&sockets](net::Address& addr) -> os::SocketPtr {
+  auto makeSocket = [&sockets](uint16_t& portNumber) -> os::SocketPtr {
+    net::Address addr;
+    addr.Port = portNumber;
+    addr.Type = net::AddressType::IPv4;
     auto socket = std::make_shared<os::Socket>(os::SocketType::Blocking);
     if (!socket->create(addr, 4194304, 4194304, 0.0f, true, 0)) {
       return nullptr;
     }
+    portNumber = addr.Port;
 
     sockets.push_back(socket);
 
@@ -339,7 +326,7 @@ int main()
     packetThreads.resize(numProcessors);
 
     for (unsigned int i = 0; i < numProcessors; i++) {
-      auto packetSocket = makeSocket(internalAddr);
+      auto packetSocket = makeSocket(relayAddr.Port);
       {
         if (!packetSocket) {
           Log("could not create packetSocket");
@@ -356,7 +343,7 @@ int main()
       packetThreads[i] = std::make_unique<std::thread>(
        [&waitVar, &socketAndThreadReady, packetSocket, &relayClock, &keychain, &routerInfo, &sessions, &relayManager, &logger] {
          core::PacketProcessor processor(
-          *packetSocket, relayClock, keychain, routerInfo, sessions, relayManager, gAlive, logger.get());
+          *packetSocket, relayClock, keychain, routerInfo, sessions, relayManager, gAlive, *logger);
          processor.process(waitVar, socketAndThreadReady);
        });
 
@@ -371,14 +358,9 @@ int main()
 
   // if using port 0, it is discovered in ping socket's create(). That being said sockets
   // must be created before communicating with the backend otherwise port 0 will be reused
-  LogDebug("Actual address: ", internalAddr);
+  LogDebug("Actual address: ", relayAddr);
 
-  if (externalAddr.Port == 0) {
-    Log("external port is 0, setting to same as internal (", internalAddr.Port, ')');
-    externalAddr.Port = internalAddr.Port;
-  }
-
-  externalAddr.toString(relayAddrString);
+  relayAddr.toString(relayAddrString);
 
   /* ping processing setup
    * pings are sent out on a different port number than received
@@ -386,14 +368,15 @@ int main()
    * othertimes it'll just ignore everything coming to it
    */
   {
-    net::Address bindAddr = internalAddr;
+    net::Address bindAddr = bindAddr;
     {
       bindAddr.Port = 0;  // make sure the port is dynamically assigned
     }
 
-    auto pingSocket = makeSocket(bindAddr);
+    auto pingSocket = makeSocket(bindAddr.Port);
     if (!pingSocket) {
       Log("could not create pingSocket");
+      gAlive = false;
       relay::relay_term();
       closeSockets();
       joinThreads();
@@ -404,8 +387,8 @@ int main()
 
     // setup the ping processor to use the external address
     // relays use it to know where the receving port of other relays are
-    pingThread = std::make_unique<std::thread>([&waitVar, &socketAndThreadReady, pingSocket, &relayManager, &externalAddr] {
-      core::PingProcessor pingProcessor(*pingSocket, relayManager, gAlive, externalAddr);
+    pingThread = std::make_unique<std::thread>([&waitVar, &socketAndThreadReady, pingSocket, &relayManager, &relayAddr] {
+      core::PingProcessor pingProcessor(*pingSocket, relayManager, gAlive, relayAddr);
       pingProcessor.process(waitVar, socketAndThreadReady);
     });
 
@@ -453,7 +436,7 @@ int main()
   signal(SIGINT, interrupt_handler);  // ctrl c shuts down gracefully
 
   // g++ complains that updateLoop is ambiguous without the scope resolution op
-  ::updateLoop(curl, backendHostname.c_str(), relay_token, relayAddrString.c_str(), relayManager);
+  ::updateLoop(curl, backendHostname.c_str(), relay_token, relayAddrString.c_str(), relayManager, *logger);
 
   Log("Cleaning up\n");
 
@@ -463,13 +446,8 @@ int main()
   LogDebug("Joining threads");
   joinThreads();
 
-  LogDebug("Stopping throughput logger");
-  if (logger != nullptr) {
-    logger->stop();
-  }
-
   LogDebug("Closing log file");
-  if (output != nullptr) {
+  if (output) {
     output->close();
   }
 
@@ -479,7 +457,7 @@ int main()
   LogDebug("Terminating relay");
   relay::relay_term();
 
-  LogDebug("Relay terminated. Address: ", internalAddr);
+  LogDebug("Relay terminated. Address: ", relayAddr);
 
   return 0;
 }
