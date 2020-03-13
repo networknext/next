@@ -215,7 +215,7 @@ func main() {
 		Description: "How long it takes to process a server update request.",
 	})
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create metric histogram", "metric", "server.duration", "err", err)
+		level.Error(logger).Log("msg", "Failed to create metric gauge", "metric", "server.duration", "err", err)
 		updateDuration = &metrics.EmptyGauge{}
 	}
 
@@ -276,8 +276,20 @@ func main() {
 		Description: "How long it takes to process a session update request",
 	})
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create metric histogram", "metric", "session.duration", "err", err)
+		level.Error(logger).Log("msg", "Failed to create metric gauge", "metric", "session.duration", "err", err)
 		sessionDurationGauge = &metrics.EmptyGauge{}
+	}
+
+	vetoSessionsCounter, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
+		DisplayName: "Session veto count",
+		ServiceName: "server_backend",
+		ID:          "session.veto.count",
+		Unit:        "sessions",
+		Description: "How many sessions were vetoed",
+	})
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "session.veto.count", "err", err)
+		vetoSessionsCounter = &metrics.EmptyCounter{}
 	}
 
 	sessionMetrics := transport.SessionMetrics{
@@ -285,6 +297,9 @@ func main() {
 		DirectSessions: directSessionsCounter,
 		NextSessions:   nextSessionsCounter,
 		DurationGauge:  sessionDurationGauge,
+		DecisionMetrics: routing.DecisionMetrics{
+			VetoedSessions: vetoSessionsCounter,
+		},
 	}
 
 	var routeMatrix routing.RouteMatrix
