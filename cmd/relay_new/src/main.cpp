@@ -62,9 +62,13 @@ namespace
       bool updated = false;
 
       for (int i = 0; i < 10; ++i) {
-        if (relay::relay_update(
-             curl, backend_hostname, relay_token, relay_address_string, update_response_memory.data(), relayManager, bytesReceived) ==
-            RELAY_OK) {
+        if (relay::relay_update(curl,
+             backend_hostname,
+             relay_token,
+             relay_address_string,
+             update_response_memory.data(),
+             relayManager,
+             bytesReceived) == RELAY_OK) {
           updated = true;
           break;
         }
@@ -209,14 +213,12 @@ int main()
   std::unique_ptr<util::ThroughputLogger> logger;
   {
     auto logfile = std::getenv("RELAY_LOG_FILE");
-    if (logfile != nullptr) {
-      if (strlen(logfile) != 0) {
-        auto file = std::make_unique<std::ofstream>();
-        file->open(logfile);
+    if (logfile != nullptr && strlen(logfile) != 0) {
+      auto file = std::make_unique<std::ofstream>();
+      file->open(logfile);
 
-        if (*file) {
-          output = std::move(file);
-        }
+      if (*file) {
+        output = std::move(file);
       }
 
       if (output) {
