@@ -97,7 +97,7 @@ func (e ServerCacheEntry) MarshalBinary() ([]byte, error) {
 }
 
 // ServerUpdateHandlerFunc ...
-func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, duration metrics.Gauge, counter metrics.Counter) UDPHandlerFunc {
+func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, metrics *metrics.ServerUpdateMetrics) UDPHandlerFunc {
 	logger = log.With(logger, "handler", "server")
 
 	return func(w io.Writer, incoming *UDPPacket) {
@@ -105,7 +105,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 		defer func() {
 			durationSince := time.Since(durationStart)
 			level.Info(logger).Log("duration", durationSince.Milliseconds())
-			counter.Add(1)
+			metrics.Invocations.Add(1)
 		}()
 
 		var packet ServerUpdatePacket
@@ -207,24 +207,8 @@ type RouteProvider interface {
 	Routes([]routing.Relay, []routing.Relay, ...routing.SelectorFunc) ([]routing.Route, error)
 }
 
-type SessionMetrics struct {
-	Invocations     metrics.Counter
-	DirectSessions  metrics.Counter
-	NextSessions    metrics.Counter
-	DurationGauge   metrics.Gauge
-	DecisionMetrics routing.DecisionMetrics
-}
-
-var EmptySessionMetrics SessionMetrics = SessionMetrics{
-	Invocations:     &metrics.EmptyCounter{},
-	DirectSessions:  &metrics.EmptyCounter{},
-	NextSessions:    &metrics.EmptyCounter{},
-	DurationGauge:   &metrics.EmptyGauge{},
-	DecisionMetrics: routing.EmptyDecisionMetrics,
-}
-
 // SessionUpdateHandlerFunc ...
-func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, metrics *SessionMetrics, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, metrics *metrics.SessionMetrics, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
 	logger = log.With(logger, "handler", "session")
 
 	return func(w io.Writer, incoming *UDPPacket) {

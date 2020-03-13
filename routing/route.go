@@ -3,6 +3,8 @@ package routing
 import (
 	"encoding/binary"
 	"hash/fnv"
+
+	"github.com/networknext/backend/metrics"
 )
 
 type Route struct {
@@ -10,7 +12,7 @@ type Route struct {
 	Stats  Stats
 }
 
-func (r *Route) Decide(prevDecision Decision, nnStats Stats, directStats Stats, metrics *DecisionMetrics, routeDecisions ...DecisionFunc) Decision {
+func (r *Route) Decide(prevDecision Decision, nnStats Stats, directStats Stats, metrics *metrics.DecisionMetrics, routeDecisions ...DecisionFunc) Decision {
 	nextDecision := prevDecision
 	for _, routeDecision := range routeDecisions {
 		decision := routeDecision(nextDecision, r.Stats, nnStats, directStats, metrics)
