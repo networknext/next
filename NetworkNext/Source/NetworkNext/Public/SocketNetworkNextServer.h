@@ -73,7 +73,7 @@ public:
 
 	virtual ~FSocketNetworkNextServer();
 
-	void UpgradeClient(const TSharedPtr<FInternetAddr>& RemoteAddr, uint64 UserId, ENetworkNextPlatformType Platform, const FString& Tag);
+	void UpgradeClient(const TSharedPtr<FInternetAddr>& RemoteAddr, const FString& UserId, ENetworkNextPlatformType Platform, const FString& Tag);
 
 	virtual void UpdateNetworkNextSocket() override;
 

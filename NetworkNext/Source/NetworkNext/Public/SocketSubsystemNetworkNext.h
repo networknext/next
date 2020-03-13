@@ -36,6 +36,12 @@ class UNetworkNextNetDriver;
 
 class FSocketSubsystemNetworkNext : public ISocketSubsystem, public FTickerObjectBase
 {
+private:
+
+	void InitializeNetworkNextIfRequired();
+
+	bool IsNetworkNextInitializedSuccessfully();
+
 protected:
 
 	/** Single instantiation of this subsystem */
@@ -175,8 +181,9 @@ public:
 	virtual const TCHAR* GetSocketAPIName() const override;
 
 	/**
-	 * Returns the last error that has happened
-	 */
+	* Would usually return the last system error code - but we are doing our own error management in SDK so just return 'no error'
+	* Note that we can't fall back to the default behaviour here because the last error defaults to SE_EINVAL on some platforms
+	*/
 	virtual ESocketErrors GetLastErrorCode() override;
 
 	/**

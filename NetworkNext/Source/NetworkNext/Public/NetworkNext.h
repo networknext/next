@@ -25,6 +25,8 @@
 #pragma once
 
 #include "NetworkNextBuildConfig.h"
+#include "NetworkNextConfig.h"
+#include "NetworkNextServerConfig.h"
 #include "Modules/ModuleManager.h"
 
 DECLARE_LOG_CATEGORY_EXTERN(LogNetworkNext, Display, Display);
@@ -41,8 +43,35 @@ public:
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
 
+	void InitializeNetworkNextIfRequired();
+	bool IsNetworkNextSuccessfullyInitialized();
+	void SetConfig(const FNetworkNextConfig& Config);
+	void SetServerConfig(const FNetworkNextServerConfig& ServerConfig);
+	const FNetworkNextServerConfig* GetServerConfig() const;
+
 private:
+	
+	void ShutdownNetworkNextAfterPIE(bool bIsSimulating);
 
 	/** The static handler for log messages coming from the Network Next library */
 	static void NextLogFunction(int level, const char* format, ...);
+
+	/** Static handlers for memory allocations */
+	static void* Malloc(void* context, size_t size);
+	static void Free(void* context, void* src);
+
+	bool NetworkNextIsInitialized;
+	bool NetworkNextIsSuccessfullyInitialized;
+
+	UPROPERTY()
+	FNetworkNextConfig* NetworkNextConfig;
+
+	UPROPERTY()
+	FNetworkNextServerConfig* NetworkNextServerConfig;
+
+#if defined(NETWORKNEXT_ENABLE_DELAY_LOAD)
+	void* NetworkNextHandle;
+#endif
+
+	FString GetEnvironmentVariable(const FString& EnvName);
 };

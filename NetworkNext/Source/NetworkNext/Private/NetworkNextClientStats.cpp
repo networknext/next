@@ -29,10 +29,14 @@ FNetworkNextClientStats FNetworkNextClientStats::GetDisconnectedStats()
 	FNetworkNextClientStats Stats;
 	Stats.ConnectionType = ENetworkNextConnectionType::ConnectionType_Unknown;
 	Stats.OnNetworkNext = false;
-	Stats.DirectRtt = 0;
+	Stats.DirectMinRtt = 0;
+	Stats.DirectMeanRtt = 0;
+	Stats.DirectMaxRtt = 0;
 	Stats.DirectJitter = 0;
 	Stats.DirectPacketLoss = 0;
-	Stats.NetworkNextRtt = 0;
+	Stats.NetworkNextMinRtt = 0;
+	Stats.NetworkNextMeanRtt = 0;
+	Stats.NetworkNextMaxRtt = 0;
 	Stats.NetworkNextJitter = 0;
 	Stats.NetworkNextPacketLoss = 0;
 	Stats.KbpsUp = 0;

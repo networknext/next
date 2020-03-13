@@ -1,7 +1,7 @@
 /*
-    Network Next SDK 3.4.0
+    Network Next SDK 3.3.3
 
-    Copyright © 2017 - 2020 Network Next, Inc.
+    Copyright © 2017 - 2019 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
@@ -30,19 +30,24 @@ public class NetworkNextLibrary : ModuleRules
 	public NetworkNextLibrary(ReadOnlyTargetRules Target) : base(Target)
 	{
 		Type = ModuleType.External;
-        
+
+        PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "next", "include"));
+
         if (Target.Platform == UnrealTargetPlatform.Win64)
         {
-            PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "next", "lib", "Windows-x86_64", "Release", "next.lib"));
-            RuntimeDependencies.Add("$(TargetOutputDir)/next.dll", Path.Combine(ModuleDirectory, "next", "lib", "Windows-x86_64", "Release", "next.dll"));
+            PublicLibraryPaths.Add(Path.Combine(ModuleDirectory, "next", "lib", "Windows-x86_64", "Dynamic-Release"));
+            PublicAdditionalLibraries.Add("next.lib");
+            PublicDelayLoadDLLs.Add("next.dll");
+
+            RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "next", "lib", "Windows-x86_64", "Dynamic-Release", "next.dll"), StagedFileType.NonUFS);
 
             // This makes the editor work, because RuntimeDependencies do not apply to builds of the editor.
-            Directory.CreateDirectory(Path.Combine(PluginDirectory, "Binaries", "Win64"));
+            Directory.CreateDirectory(Path.Combine(ModuleDirectory, "..", "..", "..", "Binaries", "Win64"));
             try
             {
                 File.Copy(
-                    Path.Combine(ModuleDirectory, "next", "lib", "Windows-x86_64", "Release", "next.dll"),
-                    Path.Combine(PluginDirectory, "Binaries", "Win64", "next.dll"),
+                    Path.Combine(ModuleDirectory, "next", "lib", "Windows-x86_64", "Dynamic-Release", "next.dll"),
+                    Path.Combine(ModuleDirectory, "..", "..", "..", "Binaries", "Win64", "next.dll"),
                     true
                 );
             }
@@ -52,16 +57,19 @@ public class NetworkNextLibrary : ModuleRules
         }
         else if (Target.Platform == UnrealTargetPlatform.Win32)
         {
-            PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "next", "lib", "Windows-x86", "Release", "next.lib"));
-            RuntimeDependencies.Add("$(TargetOutputDir)/next.dll", Path.Combine(ModuleDirectory, "next", "lib", "Windows-x86", "Release", "next.dll"));
+            PublicLibraryPaths.Add(Path.Combine(ModuleDirectory, "next", "lib", "Windows-x86", "Dynamic-Release"));
+            PublicAdditionalLibraries.Add("next.lib");
+            PublicDelayLoadDLLs.Add("next.dll");
+
+            RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "next", "lib", "Windows-x86", "Dynamic-Release", "next.dll"), StagedFileType.NonUFS);
 
             // This makes the editor work, because RuntimeDependencies do not apply to builds of the editor.
-            Directory.CreateDirectory(Path.Combine(PluginDirectory, "Binaries", "Win32"));
+            Directory.CreateDirectory(Path.Combine(ModuleDirectory, "..", "..", "..", "Binaries", "Win32"));
             try
             {
                 File.Copy(
-                    Path.Combine(ModuleDirectory, "next", "lib", "Windows-x86", "Release", "next.dll"),
-                    Path.Combine(PluginDirectory, "Binaries", "Win32", "next.dll"),
+                    Path.Combine(ModuleDirectory, "next", "lib", "Windows-x86", "Dynamic-Release", "next.dll"),
+                    Path.Combine(ModuleDirectory, "..", "..", "..", "Binaries", "Win32", "next.dll"),
                     true
                 );
             }
@@ -69,10 +77,30 @@ public class NetworkNextLibrary : ModuleRules
             {
             }
         }
-        else if (Target.Platform == UnrealTargetPlatform.Linux)
+        //else if (Target.Platform == UnrealTargetPlatform.Linux)
+        //{
+        //    PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "next", "lib", "Linux-x86_64", "Release", "libnext-Shared64-Release.so"));
+        //    RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "next", "lib", "Linux-x86_64", "Release", "libnext-Shared64-Release.so"), StagedFileType.NonUFS);
+        //}
+        // <XBOX
+        else if (Target.Platform == UnrealTargetPlatform.XboxOne)
         {
-            PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "next", "lib", "Linux-x86_64", "Release", "libnext-Shared64-Release.so"));
-            RuntimeDependencies.Add("$(TargetOutputDir)/libnext-Shared64-Release.so", Path.Combine(ModuleDirectory, "next", "lib", "Linux-x86_64", "Release", "libnext-Shared64-Release.so"));
+            PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "next", "lib", "XboxOne", "Debug", "next.lib"));
+            RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "next", "lib", "XboxOne", "Release", "Image", "Loose", "next.dll"), StagedFileType.NonUFS);
         }
+        // XBOX>
+        // <PS4
+        else if (Target.Platform == UnrealTargetPlatform.PS4)
+        {
+            PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "next", "lib", "Playstation4", "Dynamic-Release", "next", "next_stub.a"));
+            RuntimeDependencies.Add(new RuntimeDependency(Path.Combine(ModuleDirectory, "next", "lib", "Playstation4", "Dynamic-Release", "next", "next.prx")));
+        }
+        // PS4>
+        // <SWITCH
+        else if (Target.Platform == UnrealTargetPlatform.Switch)
+        {
+            PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "next", "lib", "NintendoSwitch-NX64", "Dynamic-Release", "next"));
+        }
+        // SWITCH>
     }
 }

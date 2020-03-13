@@ -17,7 +17,12 @@
     {
       "Name": "NetworkNext",
       "Type": "Runtime",
-      "LoadingPhase": "Default"
+      "LoadingPhase": "Default",
+      "WhitelistPlatforms": [
+        "Win64",
+        "XboxOne",
+        "PS4"
+      ]
     }
   ],
   "Plugins": [

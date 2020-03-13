@@ -26,6 +26,8 @@
 #include "NetworkNextNetDriver.h"
 #include "AssertionMacros.h"
 #include "NetworkNext.h"
+#include "IPAddress.h"
+#include "NetworkNextServerConfig.h"
 
 #if defined(NETWORKNEXT_HAS_ESOCKETPROTOCOLFAMILY)
 FSocketNetworkNextServer::FSocketNetworkNextServer(const FString& InSocketDescription, ESocketProtocolFamily InSocketProtocol, const UNetworkNextNetDriver* InNetDriver) :
@@ -56,7 +58,7 @@ void FSocketNetworkNextServer::UpdateNetworkNextSocket()
 	}
 }
 
-void FSocketNetworkNextServer::UpgradeClient(const TSharedPtr<FInternetAddr>& RemoteAddr, uint64 UserId, ENetworkNextPlatformType Platform, const FString& Tag)
+void FSocketNetworkNextServer::UpgradeClient(const TSharedPtr<FInternetAddr>& RemoteAddr, const FString& UserId, ENetworkNextPlatformType Platform, const FString& Tag)
 {
 	if (!this->bBound)
 	{
@@ -112,7 +114,7 @@ void FSocketNetworkNextServer::UpgradeClient(const TSharedPtr<FInternetAddr>& Re
 	next_server_upgrade_session(
 		this->NetworkNextServer,
 		&from,
-		UserId,
+		TCHAR_TO_ANSI(*UserId),
 		next_platform,
 		TCHAR_TO_ANSI(*Tag)
 	);
@@ -150,23 +152,36 @@ bool FSocketNetworkNextServer::Close()
 
 bool FSocketNetworkNextServer::Bind(const FInternetAddr& Addr)
 {
+	FNetworkNextModule& NetworkNextModule = FModuleManager::LoadModuleChecked<FNetworkNextModule>("NetworkNext");
+	const FNetworkNextServerConfig* ServerConfig = NetworkNextModule.GetServerConfig();
+
+	// Setup defaults
 	FString BindAddr = Addr.ToString(true);
 	FString ServerAddr = FString::Printf(TEXT("127.0.0.1:%d"), Addr.GetPort());
+	FString DataCenter = "local";
 
-	// !!! WARNING !!!
-	//
-	// You MUST NOT ship the private key inside your game client. This code loads the private
-	// key (base64) from the configuration files to make local testing easier, but it is recommended
-	// that you leave CustomerPrivateKeyBase64 equal to an empty string in the configuration files, and
-	// instead set the "NEXT_CUSTOMER_PRIVATE_KEY" environment variable when your dedicated servers
-	// are running in production.
+	// Use server config values if set
+	if (ServerConfig != nullptr)
+	{
+		if (ServerConfig->ServerAddress.Len() > 0)
+		{
+			ServerAddr = ServerConfig->ServerAddress;
+		}
+
+		if (ServerConfig->Datacenter.Len() > 0)
+		{
+			DataCenter = ServerConfig->Datacenter;
+		}
+	}
+
 	this->NetworkNextServer = next_server_create(
-		TCHAR_TO_ANSI(*(this->NetDriver->CustomerPrivateKeyBase64)),
+		this,
 		TCHAR_TO_ANSI(*ServerAddr),
 		TCHAR_TO_ANSI(*BindAddr),
-		this,
+		TCHAR_TO_ANSI(*DataCenter),
 		&FSocketNetworkNextServer::OnPacketReceived
 	);
+
 	if (!this->NetworkNextServer)
 	{
 		// We could not create the server, do not set bBound to true and

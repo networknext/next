@@ -36,6 +36,18 @@
 #include "IPAddress.h"
 #endif
 
+void UNetworkNextUtils::SetConfig(const FNetworkNextConfig& Config)
+{
+	FNetworkNextModule& NetworkNextModule = FModuleManager::LoadModuleChecked<FNetworkNextModule>("NetworkNext");
+	return NetworkNextModule.SetConfig(Config);
+}
+
+void UNetworkNextUtils::SetServerConfig(const FNetworkNextServerConfig& ServerConfig)
+{
+	FNetworkNextModule& NetworkNextModule = FModuleManager::LoadModuleChecked<FNetworkNextModule>("NetworkNext");
+	return NetworkNextModule.SetServerConfig(ServerConfig);
+}
+
 FString UNetworkNextUtils::GetClientSessionId(UObject* WorldContextObject)
 {
 	return FString::Printf(TEXT("%016llx"), UNetworkNextUtils::GetClientSessionIdUint64(WorldContextObject));
@@ -105,7 +117,7 @@ FNetworkNextClientStats UNetworkNextUtils::GetClientStats(UObject* WorldContextO
 	return ClientSocket->GetClientStats();
 }
 
-void UNetworkNextUtils::UpgradePlayer(UObject* WorldContextObject, APlayerController* PlayerController, uint64 UserId, ENetworkNextPlatformType Platform, const FString& Tag)
+void UNetworkNextUtils::UpgradePlayer(UObject* WorldContextObject, APlayerController* PlayerController, const FString& UserId, ENetworkNextPlatformType Platform, const FString& Tag)
 {
 	if (PlayerController == nullptr)
 	{
@@ -161,9 +173,4 @@ void UNetworkNextUtils::UpgradePlayer(UObject* WorldContextObject, APlayerContro
 #endif
 
 	ServerSocket->UpgradeClient(RemoteAddr, UserId, Platform, Tag);
-}
-
-void UNetworkNextUtils::UpgradePlayer(UObject* WorldContextObject, APlayerController* PlayerController, const FString& UserId, ENetworkNextPlatformType Platform, const FString& Tag)
-{
-	UNetworkNextUtils::UpgradePlayer(WorldContextObject, PlayerController, FCString::Strtoui64(*UserId, nullptr, 10), Platform, Tag);
 }

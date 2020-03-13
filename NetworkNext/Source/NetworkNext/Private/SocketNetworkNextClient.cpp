@@ -27,6 +27,7 @@
 #include "NetworkNextClientStats.h"
 #include "AssertionMacros.h"
 #include "NetworkNext.h"
+#include "IPAddress.h"
 
 #if defined(NETWORKNEXT_HAS_ESOCKETPROTOCOLFAMILY)
 FSocketNetworkNextClient::FSocketNetworkNextClient(const FString& InSocketDescription, ESocketProtocolFamily InSocketProtocol, const UNetworkNextNetDriver* InNetDriver) :
@@ -39,7 +40,6 @@ FSocketNetworkNextClient::FSocketNetworkNextClient(const FString& InSocketDescri
 	check(InNetDriver);
 
 	this->NetworkNextClient = next_client_create(
-		TCHAR_TO_ANSI(*(InNetDriver->CustomerPublicKeyBase64)),
 		this,
 		&FSocketNetworkNextClient::OnPacketReceived
 	);
@@ -104,10 +104,14 @@ void FSocketNetworkNextClient::UpdateNetworkNextSocket()
 		}
 
 		this->ClientStats.OnNetworkNext = client_stats->next;
-		this->ClientStats.DirectRtt = client_stats->direct_rtt;
+		this->ClientStats.DirectMinRtt = client_stats->direct_min_rtt;
+		this->ClientStats.DirectMeanRtt = client_stats->direct_mean_rtt;
+		this->ClientStats.DirectMaxRtt = client_stats->direct_max_rtt;
 		this->ClientStats.DirectJitter = client_stats->direct_jitter;
 		this->ClientStats.DirectPacketLoss = client_stats->direct_packet_loss;
-		this->ClientStats.NetworkNextRtt = client_stats->next_rtt;
+		this->ClientStats.NetworkNextMinRtt = client_stats->next_min_rtt;
+		this->ClientStats.NetworkNextMeanRtt = client_stats->next_mean_rtt;
+		this->ClientStats.NetworkNextMaxRtt = client_stats->next_max_rtt;
 		this->ClientStats.NetworkNextJitter = client_stats->next_jitter;
 		this->ClientStats.NetworkNextPacketLoss = client_stats->next_packet_loss;
 		this->ClientStats.KbpsUp = client_stats->kbps_up;
@@ -161,6 +165,27 @@ bool FSocketNetworkNextClient::HasPendingData(uint32& PendingDataSize)
 
 bool FSocketNetworkNextClient::SendTo(const uint8* Data, int32 Count, int32& BytesSent, const FInternetAddr& Destination)
 {
+#if PLATFORM_HAS_BSD_IPV6_SOCKETS
+	/*
+	*	When PLATFORM_HAS_BSD_IPV6_SOCKETS is set, Destination is of type FInternetAddrBSDIPv6.
+	*	FInternetAddrBSDIPv6 converts IPv4 addresses to IPv6 causing errors in SDK version 3.3.1, so we convert it back here.
+	*
+	*	FInternetAddrBSDIPv6::SetIp(const in_addr& IPv4Addr) sets the last 4 bytes of the IPv6 address when converting from IPv4.
+	*	FInternetAddrBSDIPv6::GetIp(uint32& OutAddr) returns those 4 bytes, so the conversion back to IPv4 is safe when PLATFORM_HAS_BSD_IPV6_SOCKETS is set.
+	*/
+
+	uint32 ipAddressAsInt = 0;
+	Destination.GetIp(ipAddressAsInt);
+
+	FString serverAddr = IntToIPv4String(ipAddressAsInt);
+	int32 serverPort = Destination.GetPort();
+	FString serverAddrAndPort = FString::Printf(TEXT("%s:%d"), *serverAddr, serverPort);
+#else
+	FString serverAddr = Destination.ToString(false);
+	int32 serverPort = Destination.GetPort();
+	FString serverAddrAndPort = Destination.ToString(true);
+#endif
+
 	if (this->NetworkNextClient == nullptr)
 	{
 		// We could not create the Network Next client, so we can't do anything.
@@ -171,9 +196,9 @@ bool FSocketNetworkNextClient::SendTo(const uint8* Data, int32 Count, int32& Byt
 	// The first send indicates the server that we want to connect to.
 	if (!bConnected)
 	{
-		this->ServerAddrAndPort = Destination.ToString(true);
-		this->ServerAddr = Destination.ToString(false);
-		this->ServerPort = Destination.GetPort();
+		this->ServerAddrAndPort = serverAddrAndPort;
+		this->ServerAddr = serverAddr;
+		this->ServerPort = serverPort;
 
 		next_client_open_session(
 			this->NetworkNextClient,
@@ -183,16 +208,14 @@ bool FSocketNetworkNextClient::SendTo(const uint8* Data, int32 Count, int32& Byt
 		this->bConnected = true;
 	}
 
-	FString Target = Destination.ToString(true);
-
-	if (!Target.Equals(this->ServerAddrAndPort))
+	if (!serverAddrAndPort.Equals(this->ServerAddrAndPort))
 	{
 		// Sockets in Network Next can only ever send to the same destination.
 		UE_LOG(
 			LogNetworkNext, 
 			Error, 
 			TEXT("Attempted to use socket to send data to %s, but it's already been used to send data to %s."), 
-			*Target, 
+			*serverAddrAndPort,
 			*this->ServerAddrAndPort
 		);
 		return false;
@@ -273,4 +296,10 @@ int32 FSocketNetworkNextClient::GetPortNo()
 {
 	// Dummy port for this interface.
 	return 50000;
+}
+
+// Note: this is based on dmadden's function here: https://www.daniweb.com/posts/jump/1294029
+FString FSocketNetworkNextClient::IntToIPv4String(uint32 ipAsInt)
+{
+	return FString::Printf(TEXT("%d.%d.%d.%d"), (ipAsInt >> 24), ((ipAsInt >> 16) & 0xff), ((ipAsInt >> 8) & 0xff), (ipAsInt & 0xff));
 }

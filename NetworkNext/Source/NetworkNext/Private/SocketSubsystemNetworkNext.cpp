@@ -67,6 +67,18 @@ void DestroyNetworkNextSocketSubsystem()
 	FSocketSubsystemNetworkNext::Destroy();
 }
 
+void FSocketSubsystemNetworkNext::InitializeNetworkNextIfRequired()
+{
+	FNetworkNextModule& NetworkNextModule = FModuleManager::LoadModuleChecked<FNetworkNextModule>("NetworkNext");
+	return NetworkNextModule.InitializeNetworkNextIfRequired();
+}
+
+bool FSocketSubsystemNetworkNext::IsNetworkNextInitializedSuccessfully()
+{
+	FNetworkNextModule& NetworkNextModule = FModuleManager::LoadModuleChecked<FNetworkNextModule>("NetworkNext");
+	return NetworkNextModule.IsNetworkNextSuccessfullyInitialized();
+}
+
 /** 
  * Singleton interface for this subsystem 
  * @return the only instance of this subsystem
@@ -82,7 +94,7 @@ FSocketSubsystemNetworkNext* FSocketSubsystemNetworkNext::Create()
 }
 
 /**
- * Performs Steam specific socket clean up
+ * Performs socket clean up
  */
 void FSocketSubsystemNetworkNext::Destroy()
 {
@@ -163,41 +175,47 @@ FSocket* FSocketSubsystemNetworkNext::CreateSocketWithNetDriver(const FName& Soc
 
 	if (SocketType == FName("NetworkNextClientSocket"))
 	{
-		FString ModifiedSocketDescription = SocketDescription;
-		ModifiedSocketDescription.InsertAt(0, TEXT("SOCKET_TYPE_NEXT_CLIENT_"));
+		this->InitializeNetworkNextIfRequired();
+		if (this->IsNetworkNextInitializedSuccessfully())
+		{
+			FString ModifiedSocketDescription = SocketDescription;
+			ModifiedSocketDescription.InsertAt(0, TEXT("SOCKET_TYPE_NEXT_CLIENT_"));
 #if defined(NETWORKNEXT_HAS_ESOCKETPROTOCOLFAMILY)
-		FSocketNetworkNextClient* Socket = new FSocketNetworkNextClient(ModifiedSocketDescription, ProtocolType, InNetDriver);
+			FSocketNetworkNextClient* Socket = new FSocketNetworkNextClient(ModifiedSocketDescription, ProtocolType, InNetDriver);
 #else
-		FSocketNetworkNextClient* Socket = new FSocketNetworkNextClient(ModifiedSocketDescription, InNetDriver);
+			FSocketNetworkNextClient* Socket = new FSocketNetworkNextClient(ModifiedSocketDescription, InNetDriver);
 #endif
-		AddSocket(Socket);
-		return Socket;
+			AddSocket(Socket);
+			return Socket;
+		}
 	}
 	else if (SocketType == FName("NetworkNextServerSocket"))
 	{
-		FString ModifiedSocketDescription = SocketDescription;
-		ModifiedSocketDescription.InsertAt(0, TEXT("SOCKET_TYPE_NEXT_SERVER_"));
+		this->InitializeNetworkNextIfRequired();
+		if (this->IsNetworkNextInitializedSuccessfully())
+		{
+			FString ModifiedSocketDescription = SocketDescription;
+			ModifiedSocketDescription.InsertAt(0, TEXT("SOCKET_TYPE_NEXT_SERVER_"));
 #if defined(NETWORKNEXT_HAS_ESOCKETPROTOCOLFAMILY)
-		FSocketNetworkNextServer* Socket = new FSocketNetworkNextServer(ModifiedSocketDescription, ProtocolType, InNetDriver);
+			FSocketNetworkNextServer* Socket = new FSocketNetworkNextServer(ModifiedSocketDescription, ProtocolType, InNetDriver);
 #else
-		FSocketNetworkNextServer* Socket = new FSocketNetworkNextServer(ModifiedSocketDescription, InNetDriver);
+			FSocketNetworkNextServer* Socket = new FSocketNetworkNextServer(ModifiedSocketDescription, InNetDriver);
 #endif
-		AddSocket(Socket);
-		return Socket;
+			AddSocket(Socket);
+			return Socket;
+		}
 	}
-	else
-	{
-		FString ModifiedSocketDescription = SocketDescription;
-		ModifiedSocketDescription.InsertAt(0, TEXT("SOCKET_TYPE_NATIVE_"));
-		return this->CreateSocket(SocketType, ModifiedSocketDescription
+
+	FString ModifiedSocketDescription = SocketDescription;
+	ModifiedSocketDescription.InsertAt(0, TEXT("SOCKET_TYPE_NATIVE_"));
+	return this->CreateSocket(SocketType, ModifiedSocketDescription
 #if defined(NETWORKNEXT_SOCKETSUBSYSTEM_INTERFACE_HAS_PROTOCOLTYPE)
-	, ProtocolType
+		, ProtocolType
 #endif
 #if defined(NETWORKNEXT_SOCKETSUBSYSTEM_INTERFACE_HAS_FORCEUDP)
-	, bForceUDP
+		, bForceUDP
 #endif
-		);
-	}
+	);
 }
 
 /**
@@ -291,12 +309,12 @@ const TCHAR* FSocketSubsystemNetworkNext::GetSocketAPIName() const
 }
 
 /**
- * Returns the last error that has happened
+ * Would usually return the last system error code - but we are doing our own error management in SDK so just return 'no error'
+ * Note that we can't fall back to the default behaviour here because the last error defaults to SE_EINVAL on some platforms
  */
 ESocketErrors FSocketSubsystemNetworkNext::GetLastErrorCode()
 {
-	ISocketSubsystem* PlatformSubsystem = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM);
-	return PlatformSubsystem->GetLastErrorCode();
+	return ESocketErrors::SE_NO_ERROR;
 }
 
 /**

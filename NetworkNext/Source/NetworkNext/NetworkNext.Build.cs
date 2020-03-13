@@ -26,40 +26,75 @@ using UnrealBuildTool;
 
 public class NetworkNext : ModuleRules
 {
-	public NetworkNext(ReadOnlyTargetRules Target) : base(Target)
-	{
-		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
+    public NetworkNext(ReadOnlyTargetRules Target) : base(Target)
+    {
+        PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 
-        PublicDefinitions.Add("NETWORKNEXT_PACKAGE=1");
-        PublicDefinitions.Add("NETWORKNEXT_UNREAL_ENGINE_422=1");
+        Definitions.Add("NETWORKNEXT_PACKAGE=1");
+        Definitions.Add("NETWORKNEXT_UNREAL_ENGINE_416=1");
+        Definitions.Add("NEXT_SHARED=1");
 
         if (Target.Platform == UnrealTargetPlatform.Win64)
         {
-            PublicDefinitions.Add("NETWORKNEXT_AVAILABLE=1");
+            Definitions.Add("NETWORKNEXT_AVAILABLE=1");
+            Definitions.Add("NETWORKNEXT_ENABLE_DELAY_LOAD=1");
+            Definitions.Add("NETWORKNEXT_ENABLE_DELAY_LOAD_WIN64=1");
+        }
+        else if (Target.Platform == UnrealTargetPlatform.Win32)
+        {
+            Definitions.Add("NETWORKNEXT_AVAILABLE=1");
+            Definitions.Add("NETWORKNEXT_ENABLE_DELAY_LOAD=1");
+            Definitions.Add("NETWORKNEXT_ENABLE_DELAY_LOAD_WIN32=1");
         }
         else if (Target.Platform == UnrealTargetPlatform.Linux)
         {
-            PublicDefinitions.Add("NETWORKNEXT_AVAILABLE=1");
+            Definitions.Add("NETWORKNEXT_AVAILABLE=1");
         }
+        // <XBOX
+        else if (Target.Platform == UnrealTargetPlatform.XboxOne)
+        {
+            Definitions.Add("NETWORKNEXT_AVAILABLE=1");
+        }
+        // XBOX>
+        // <PS4
+        else if (Target.Platform == UnrealTargetPlatform.PS4)
+        {
+            Definitions.Add("NETWORKNEXT_AVAILABLE=1");
+            Definitions.Add("NETWORKNEXT_ENABLE_DELAY_LOAD=1");
+            Definitions.Add("NETWORKNEXT_ENABLE_DELAY_LOAD_PS4=1");
+        }
+        // PS4>
+        // <SWITCH
+        else if (Target.Platform == UnrealTargetPlatform.Switch)
+        {
+            Definitions.Add("NETWORKNEXT_AVAILABLE=1");
+        }
+        // SWITCH>
 
         PublicDependencyModuleNames.AddRange(
             new string[] {
                 "OnlineSubsystemUtils",
+                "NetworkNextLibrary",
             }
         );
 
         PrivateDependencyModuleNames.AddRange(
-			new string[]
-			{
-				"Core",
-				"NetworkNextLibrary",
-				"Projects",
+            new string[]
+            {
+                "Core",
+                "NetworkNextLibrary",
+                "Projects",
                 "CoreUObject",
                 "Engine",
                 "Sockets",
                 "OnlineSubsystem",
                 "PacketHandler",
-			}
-		);
-	}
+            }
+        );
+
+        if (UEBuildConfiguration.bBuildEditor == true)
+        {
+            PrivateDependencyModuleNames.Add("UnrealEd");
+        }
+    }
 }

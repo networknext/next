@@ -30,6 +30,8 @@
 #include "NetworkNextPlatformType.h"
 #include "NetworkNextClientStats.h"
 #include "NetworkNextPlatformType.h"
+#include "NetworkNextConfig.h"
+#include "NetworkNextServerConfig.h"
 #include "NetworkNextUtils.generated.h"
 
 UCLASS()
@@ -39,16 +41,39 @@ class NETWORKNEXT_API UNetworkNextUtils : public UBlueprintFunctionLibrary
 
 public:
 
-	UFUNCTION(BlueprintPure, BlueprintCosmetic, Category = "Network Next", meta = (WorldContext = "WorldContextObject"))
+	/**
+	 * Sets the configuration for Network Next. This function only has an effect if it's called before the first network socket is opened.
+	 * That is, you should call this function during the OnPlay of your game instance, before any networked world is opened.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Network Next", meta = (WorldContext = "WorldContextObject", DisplayName = "Set Network Next Configuration"))
+	static void SetConfig(const FNetworkNextConfig& Config);
+
+	/**
+	 * Sets the server configuration for Network Next. This will be used when server socket is bound.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Network Next", meta = (WorldContext = "WorldContextObject", DisplayName = "Set Network Next Server Configuration"))
+	static void SetServerConfig(const FNetworkNextServerConfig& ServerConfig);
+
+	/**
+	 * Returns the current client session ID.
+	 */
+	UFUNCTION(BlueprintPure, BlueprintCosmetic, Category = "Network Next", meta = (WorldContext = "WorldContextObject", DisplayName = "Get Client Session ID"))
 	static FString GetClientSessionId(UObject* WorldContextObject);
-
-	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = "Network Next", meta = (WorldContext = "WorldContextObject"))
+	
+	/**
+	 * Returns the current client statistics.
+	 */
+	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = "Network Next", meta = (WorldContext = "WorldContextObject", DisplayName = "Get Client Session Statistics"))
 	static FNetworkNextClientStats GetClientStats(UObject* WorldContextObject);
-
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Network Next", meta = (WorldContext = "WorldContextObject"))
+	
+	/**
+	 * Upgrades a player session to Network Next.
+	 */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Network Next", meta = (WorldContext = "WorldContextObject", DisplayName = "Upgrade Player Session"))
 	static void UpgradePlayer(UObject* WorldContextObject, APlayerController* PlayerController, const FString& UserId, ENetworkNextPlatformType Platform, const FString& Tag);
-
+	
+	/**
+	 * Returns the current client session ID.
+	 */
 	static uint64 GetClientSessionIdUint64(UObject* WorldContextObject);
-
-	static void UpgradePlayer(UObject* WorldContextObject, APlayerController* PlayerController, uint64 UserId, ENetworkNextPlatformType Platform, const FString& Tag);
 };

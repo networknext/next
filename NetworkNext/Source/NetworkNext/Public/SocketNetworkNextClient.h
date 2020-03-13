@@ -140,4 +140,12 @@ public:
 	 * Reads the port this socket is bound to.
 	 */ 
 	virtual int32 GetPortNo() override;
+
+	/**
+	 * Converts an ip address stored as a uint32 to a dot separated ipv4 string
+	 * For example: 574878368 would become "34.67.242.160"
+	 *
+	 * @param ipAsInt address the socket is bound to
+	 */
+	FString IntToIPv4String(uint32 ipAsInt);
 };

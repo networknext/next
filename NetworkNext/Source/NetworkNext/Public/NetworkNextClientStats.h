@@ -41,14 +41,22 @@ struct FNetworkNextClientStats
 	bool OnNetworkNext;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float NetworkNextRtt;
+	float NetworkNextMinRtt;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float NetworkNextMeanRtt;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float NetworkNextMaxRtt;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float NetworkNextJitter;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float NetworkNextPacketLoss;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float DirectRtt;
+	float DirectMinRtt;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float DirectMeanRtt;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float DirectMaxRtt;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float DirectJitter;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
