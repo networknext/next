@@ -207,7 +207,7 @@ func main() {
 	}
 
 	// Create server update metrics
-	updateDuration, err := metricsHandler.NewGauge(ctx, &metrics.Descriptor{
+	updateDurationGauge, err := metricsHandler.NewGauge(ctx, &metrics.Descriptor{
 		DisplayName: "Server update duration",
 		ServiceName: "server_backend",
 		ID:          "server.duration",
@@ -216,19 +216,24 @@ func main() {
 	})
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create metric gauge", "metric", "server.duration", "err", err)
-		updateDuration = &metrics.EmptyGauge{}
+		updateDurationGauge = &metrics.EmptyGauge{}
 	}
 
-	updateCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
-		DisplayName: "Total server count",
+	updateInvocationsCounter, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
+		DisplayName: "Total server update invocations",
 		ServiceName: "server_backend",
 		ID:          "server.count",
-		Unit:        "servers",
+		Unit:        "invocations",
 		Description: "The total number of concurrent servers",
 	})
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "server.count", "err", err)
-		updateCount = &metrics.EmptyCounter{}
+		updateInvocationsCounter = &metrics.EmptyCounter{}
+	}
+
+	updateMetrics := metrics.ServerUpdateMetrics{
+		Invocations:   updateInvocationsCounter,
+		DurationGauge: updateDurationGauge,
 	}
 
 	// Create session update metrics
@@ -292,12 +297,12 @@ func main() {
 		vetoSessionsCounter = &metrics.EmptyCounter{}
 	}
 
-	sessionMetrics := transport.SessionMetrics{
+	sessionMetrics := metrics.SessionMetrics{
 		Invocations:    sessionInvocationsCounter,
 		DirectSessions: directSessionsCounter,
 		NextSessions:   nextSessionsCounter,
 		DurationGauge:  sessionDurationGauge,
-		DecisionMetrics: routing.DecisionMetrics{
+		DecisionMetrics: metrics.DecisionMetrics{
 			VetoedSessions: vetoSessionsCounter,
 		},
 	}
@@ -360,7 +365,7 @@ func main() {
 			Conn:          conn,
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
-			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClient, db, updateDuration, updateCount),
+			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClient, db, &updateMetrics),
 			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClient, db, &routeMatrix, ipLocator, &geoClient, &sessionMetrics, biller, serverPrivateKey, routerPrivateKey),
 		}
 
