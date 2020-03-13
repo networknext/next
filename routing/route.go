@@ -10,10 +10,10 @@ type Route struct {
 	Stats  Stats
 }
 
-func (r *Route) Decide(prevDecision Decision, nnStats Stats, directStats Stats, routeDecisions ...DecisionFunc) Decision {
+func (r *Route) Decide(prevDecision Decision, nnStats Stats, directStats Stats, metrics *DecisionMetrics, routeDecisions ...DecisionFunc) Decision {
 	nextDecision := prevDecision
 	for _, routeDecision := range routeDecisions {
-		decision := routeDecision(nextDecision, r.Stats, nnStats, directStats)
+		decision := routeDecision(nextDecision, r.Stats, nnStats, directStats, metrics)
 
 		nextDecision.OnNetworkNext = decision.OnNetworkNext
 		if decision.Reason != DecisionNoChange { // DecisionNoChange signals that the decision function chose not to update the deicision reason

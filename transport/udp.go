@@ -208,10 +208,19 @@ type RouteProvider interface {
 }
 
 type SessionMetrics struct {
-	Invocations    metrics.Counter
-	DirectSessions metrics.Counter
-	NextSessions   metrics.Counter
-	DurationGauge  metrics.Gauge
+	Invocations     metrics.Counter
+	DirectSessions  metrics.Counter
+	NextSessions    metrics.Counter
+	DurationGauge   metrics.Gauge
+	DecisionMetrics routing.DecisionMetrics
+}
+
+var EmptySessionMetrics SessionMetrics = SessionMetrics{
+	Invocations:     &metrics.EmptyCounter{},
+	DirectSessions:  &metrics.EmptyCounter{},
+	NextSessions:    &metrics.EmptyCounter{},
+	DurationGauge:   &metrics.EmptyGauge{},
+	DecisionMetrics: routing.EmptyDecisionMetrics,
 }
 
 // SessionUpdateHandlerFunc ...
@@ -277,12 +286,12 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 					return
 				}
 
-				if sessionCacheData == nil || len(sessionCacheData) == 0 {
-
-				} else if err := sessionCacheEntry.UnmarshalBinary(sessionCacheData); err != nil {
-					level.Error(locallogger).Log("msg", "failed to unmarshal session bytes", "err", err)
-					handleError(w, response, serverPrivateKey, err)
-					return
+				if len(sessionCacheData) != 0 {
+					if err := sessionCacheEntry.UnmarshalBinary(sessionCacheData); err != nil {
+						level.Error(locallogger).Log("msg", "failed to unmarshal session bytes", "err", err)
+						handleError(w, response, serverPrivateKey, err)
+						return
+					}
 				}
 			} else {
 				sessionCacheEntry.TimestampStart = timestampNow
@@ -399,7 +408,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			"buyer_yolo", buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce,
 		)
 
-		routeDecision := nextRoute.Decide(sessionCacheEntry.RouteDecision, nnStats, directStats,
+		routeDecision := nextRoute.Decide(sessionCacheEntry.RouteDecision, nnStats, directStats, &metrics.DecisionMetrics,
 			routing.DecideUpgradeRTT(float64(buyer.RoutingRulesSettings.RTTThreshold)),
 			routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis)),
 			routing.DecideVeto(float64(buyer.RoutingRulesSettings.RTTVeto), buyer.RoutingRulesSettings.EnablePacketLossSafety, buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
