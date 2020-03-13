@@ -166,9 +166,9 @@ int main()
 
   printf("\nEnvironment:\n\n");
 
-  // external relay address - exposed to the internet
+  // relay address - the address other devices should use to talk to this
   // sent to the relay backend and is the addr everything communicates with
-  net::Address externalAddr;
+  net::Address relayAddr;
   {
     auto env = std::getenv("RELAY_ADDRESS");
     if (env == nullptr) {
@@ -176,12 +176,12 @@ int main()
       return 1;
     }
 
-    if (!externalAddr.parse(env)) {
+    if (!relayAddr.parse(env)) {
       Log("error: invalid relay address '", env, "'\n");
       return 1;
     }
 
-    std::cout << "    external address is '" << externalAddr << "'\n";
+    std::cout << "    relay address is '" << relayAddr << "'\n";
   }
 
   crypto::Keychain keychain;
@@ -314,7 +314,7 @@ int main()
     packetThreads.resize(numProcessors);
 
     for (unsigned int i = 0; i < numProcessors; i++) {
-      auto packetSocket = makeSocket(externalAddr.Port);
+      auto packetSocket = makeSocket(relayAddr.Port);
       {
         if (!packetSocket) {
           Log("could not create packetSocket");
@@ -341,9 +341,9 @@ int main()
 
   // if using port 0, it is discovered in ping socket's create(). That being said sockets
   // must be created before communicating with the backend otherwise port 0 will be reused
-  LogDebug("Actual address: ", externalAddr);
+  LogDebug("Actual address: ", relayAddr);
 
-  externalAddr.toString(relayAddrString);
+  relayAddr.toString(relayAddrString);
 
   /* ping processing setup
    * pings are sent out on a different port number than received
@@ -370,8 +370,8 @@ int main()
 
     // setup the ping processor to use the external address
     // relays use it to know where the receving port of other relays are
-    pingThread = std::make_unique<std::thread>([&waitVar, &socketAndThreadReady, pingSocket, &relayManager, &externalAddr] {
-      core::PingProcessor pingProcessor(*pingSocket, relayManager, gAlive, externalAddr);
+    pingThread = std::make_unique<std::thread>([&waitVar, &socketAndThreadReady, pingSocket, &relayManager, &relayAddr] {
+      core::PingProcessor pingProcessor(*pingSocket, relayManager, gAlive, relayAddr);
       pingProcessor.process(waitVar, socketAndThreadReady);
     });
 
@@ -435,7 +435,7 @@ int main()
   LogDebug("Terminating relay");
   relay::relay_term();
 
-  LogDebug("Relay terminated. Address: ", externalAddr);
+  LogDebug("Relay terminated. Address: ", relayAddr);
 
   return 0;
 }
