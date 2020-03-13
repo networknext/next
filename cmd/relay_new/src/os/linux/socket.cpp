@@ -208,7 +208,7 @@ namespace os
   {
     if (reuse) {
       int enable = 1;
-      if (setsockopt(mSockFD, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(enable)) < 0) {
+      if (setsockopt(mSockFD, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &enable, sizeof(enable)) < 0) {
         LogError("could not set port reuse");
         close();
         return false;
@@ -227,7 +227,7 @@ namespace os
     socket_address.sin_port = net::relay_htons(addr.Port);
 
     if (bind(mSockFD, reinterpret_cast<sockaddr*>(&socket_address), sizeof(socket_address)) < 0) {
-      LogError("failed to bind socket (ipv4)");
+      LogError("failed to bind to address ", addr, " (ipv4)");
       close();
       return false;
     }

@@ -33,7 +33,7 @@ namespace core
      core::SessionMap& sessions,
      core::RelayManager& relayManager,
      const volatile bool& handle,
-     util::ThroughputLogger* logger);
+     util::ThroughputLogger& logger);
     ~PacketProcessor() = default;
 
     void process(std::condition_variable& var, std::atomic<bool>& readyToReceive);
@@ -46,8 +46,7 @@ namespace core
     core::SessionMap& mSessionMap;
     core::RelayManager& mRelayManager;
     const volatile bool& mShouldProcess;
-
-    util::ThroughputLogger* mLogger;
+    util::ThroughputLogger& mLogger;
 
     // perf based on using 2 packet processors, original benchmark (using sendto()) is 72 Mb/s
 

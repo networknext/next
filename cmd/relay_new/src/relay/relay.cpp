@@ -153,7 +153,7 @@ namespace relay
    const uint8_t* relay_token,
    const char* relay_address,
    uint8_t* update_response_memory,
-   core::RelayManager& manager)
+   core::RelayManager& manager, uint64_t bytesReceived)
   {
     // build update data
 
