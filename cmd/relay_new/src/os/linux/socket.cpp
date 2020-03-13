@@ -208,7 +208,7 @@ namespace os
   {
     if (reuse) {
       int enable = 1;
-      if (setsockopt(mSockFD, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &enable, sizeof(enable)) < 0) {
+      if (setsockopt(mSockFD, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(enable)) < 0) {
         LogError("could not set port reuse");
         close();
         return false;
