@@ -159,7 +159,7 @@ namespace relay
 
     uint32_t update_version = 0;
 
-    uint8_t update_data[10 * 1024]; // TODO pass this in like response memory is
+    uint8_t update_data[10 * 1024 + 8]; // TODO pass this in like response memory is
 
     uint8_t* p = update_data;
     encoding::write_uint32(&p, update_version);
@@ -176,6 +176,8 @@ namespace relay
       encoding::write_float32(&p, stats.Jitter[i]);
       encoding::write_float32(&p, stats.PacketLoss[i]);
     }
+
+    encoding::write_uint64(&p, bytesReceived);
 
     int update_data_length = (int)(p - update_data);
 
