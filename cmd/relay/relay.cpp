@@ -15,6 +15,8 @@
 #include <float.h>
 #include <signal.h>
 #include "curl/curl.h"
+#include <memory>
+#include <atomic>
 
 #define RELAY_MTU                                               1300
 
@@ -57,6 +59,8 @@
 
 #define RELAY_PUBLIC_KEY_BYTES                                    32
 #define RELAY_PRIVATE_KEY_BYTES                                   32
+
+std::unique_ptr<std::atomic<uint64_t>> gBytesReceived;
 
 // -------------------------------------------------------------------------------------
 
@@ -4603,7 +4607,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
 
     uint32_t update_version = 0;
 
-    uint8_t update_data[10*1024];
+    uint8_t update_data[10*1024 + 8]; // + 8 for the bytes received counter
 
     uint8_t * p = update_data;
     relay_write_uint32( &p, update_version );
@@ -4623,6 +4627,9 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
         relay_write_float32( &p, stats.relay_jitter[i] );
         relay_write_float32( &p, stats.relay_packet_loss[i] );
     }
+
+    relay_write_uint64(&p, gBytesReceived->load());
+    gBytesReceived->store(0);
 
     int update_data_length = (int) ( p - update_data );
 
@@ -4768,6 +4775,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
         const int packet_bytes = relay_platform_socket_receive_packet( relay->socket, &from, packet_data, sizeof(packet_data) );
         if ( packet_bytes == 0 )
             continue;
+
+        (*gBytesReceived) += packet_bytes;
+
         if ( packet_data[0] == RELAY_PING_PACKET && packet_bytes == 9 )
         {
             packet_data[0] = RELAY_PONG_PACKET;
@@ -5143,6 +5153,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
 
 int main( int argc, const char ** argv )
 {
+    gBytesReceived = std::make_unique<std::atomic<uint64_t>>();
+
     if ( argc == 2 && strcmp( argv[1], "test" ) == 0 )
     {
         relay_test();

@@ -392,7 +392,8 @@ func RelayUpdateHandlerFunc(logger log.Logger, redisClient *redis.Client, statsd
 		relayID := crypto.HashID(relayUpdatePacket.Address.String())
 		if relay, ok := storer.Relay(relayID); ok {
 			stats := &stats.RelayTrafficStats{
-				RelayId: stats.NewEntityID("Relay", relay.ID),
+				RelayId:            stats.NewEntityID("Relay", relay.ID),
+				BytesMeasurementRx: relayUpdatePacket.BytesReceived,
 			}
 
 			if err := trafficStatsPublisher.Publish(context.Background(), relay.ID, stats); err != nil {
