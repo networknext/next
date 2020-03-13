@@ -227,7 +227,7 @@ namespace os
     socket_address.sin_port = net::relay_htons(addr.Port);
 
     if (bind(mSockFD, reinterpret_cast<sockaddr*>(&socket_address), sizeof(socket_address)) < 0) {
-      LogError("failed to bind socket (ipv4)");
+      LogError("failed to bind to address ", addr, " (ipv4)");
       close();
       return false;
     }
