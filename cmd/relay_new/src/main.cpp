@@ -425,7 +425,7 @@ int main()
   joinThreads();
 
   LogDebug("Closing log file");
-  if (output != nullptr) {
+  if (output) {
     output->close();
   }
 
