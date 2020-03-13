@@ -1,7 +1,7 @@
 /*
-    Network Next SDK 3.3.3
+    Network Next SDK 3.4.0
 
-    Copyright © 2017 - 2019 Network Next, Inc.
+    Copyright © 2017 - 2020 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
