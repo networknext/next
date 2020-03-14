@@ -2,7 +2,7 @@
 
 <br>
 
-## Network Next SDK for Consoles
+## SDK for Consoles
 
 Supported platforms:
 
@@ -10,3 +10,6 @@ Supported platforms:
 * XBox One
 * PS4
 * Switch
+* Linux
+* MacOS
+* iOS
