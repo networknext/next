@@ -335,6 +335,7 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
 
     if ( socket_type == NEXT_PLATFORM_SOCKET_NON_BLOCKING )
     {
+        // non-blocking
         if ( fcntl( socket->handle, F_SETFL, O_NONBLOCK, 1 ) == -1 )
         {
             next_printf( NEXT_LOG_LEVEL_ERROR, "failed to set socket to non-blocking" );
@@ -344,7 +345,7 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
     }
     else if ( timeout_seconds > 0.0f )
     {
-        // set receive timeout
+        // blocking with receive timeout
         struct timeval tv;
         tv.tv_sec = 0;
         tv.tv_usec = (int) ( timeout_seconds * 1000000.0 );
@@ -357,7 +358,7 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
     }
     else
     {
-        // socket is blocking with no timeout
+        // blocking with no timeout
     }
 
     // set packet type of service to low latency

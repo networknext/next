@@ -311,6 +311,7 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
 
     if ( socket_type == NEXT_PLATFORM_SOCKET_NON_BLOCKING )
     {
+        // non-blocking
         if ( fcntl( socket->handle, F_SETFL, O_NONBLOCK, 1 ) == -1 )
         {
             next_printf( NEXT_LOG_LEVEL_ERROR, "failed to set socket to non-blocking" );
@@ -320,7 +321,7 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
     }
     else if ( timeout_seconds > 0.0f )
     {
-        // set receive timeout
+        // blocking with receive timeout
         struct timeval tv;
         tv.tv_sec = 0;
         tv.tv_usec = (int) ( timeout_seconds * 1000000.0f );
@@ -333,7 +334,32 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
     }
     else
     {
-        // socket is blocking with no timeout
+        // blocking with no timeout
+    }
+
+    if ( address->type == NEXT_ADDRESS_IPV6 )
+    {
+        #if defined(IPV6_TCLASS)
+        int tos = 0xA0;
+        if ( setsockopt( socket->handle, IPPROTO_IPV6, IPV6_TCLASS, (const char *)&tos, sizeof(tos) ) != 0 )
+        {
+            next_printf( NEXT_LOG_LEVEL_ERROR, "failed to set socket tos (ipv6)" );
+            next_platform_socket_destroy( socket );
+            return NULL;
+        }
+        #endif
+    }
+    else
+    {
+        #if defined(IP_TOS)
+        int tos = 0xA0;
+        if ( setsockopt( socket->handle, IPPROTO_IP, IP_TOS, (const char *)&tos, sizeof(tos) ) != 0 )
+        {
+            next_printf( NEXT_LOG_LEVEL_ERROR, "failed to set socket tos (ipv4)" );
+            next_platform_socket_destroy( socket );
+            return NULL;
+        }
+        #endif
     }
 
     return socket;
