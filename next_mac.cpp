@@ -360,6 +360,33 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
         // socket is blocking with no timeout
     }
 
+    // set packet type of service to low latency
+
+    if ( address->type == NEXT_ADDRESS_IPV6 )
+    {
+        #if defined(IPV6_TCLASS)
+        int tos = 0xA0;
+        if ( setsockopt( socket->handle, IPPROTO_IPV6, IPV6_TCLASS, (const char *)&tos, sizeof(tos) ) != 0 )
+        {
+            next_printf( NEXT_LOG_LEVEL_ERROR, "failed to set socket tos (ipv6)" );
+            next_platform_socket_destroy( socket );
+            return NULL;
+        }
+        #endif
+    }
+    else
+    {
+        #if defined(IP_TOS)
+        int tos = 0xA0;
+        if ( setsockopt( socket->handle, IPPROTO_IP, IP_TOS, (const char *)&tos, sizeof(tos) ) != 0 )
+        {
+            next_printf( NEXT_LOG_LEVEL_ERROR, "failed to set socket tos (ipv4)" );
+            next_platform_socket_destroy( socket );
+            return NULL;
+        }
+        #endif
+    }
+
     return socket;
 }
 
