@@ -225,7 +225,8 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		var packet SessionUpdatePacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
 			level.Error(logger).Log("msg", "could not read packet", "err", err)
-			return // TODO: direct here?
+			metrics.SessionErrorMetrics.ReadPacketFailure.Add(1)
+			return
 		}
 
 		locallogger := log.With(logger, "src_addr", incoming.SourceAddr.String(), "server_addr", packet.ServerAddress.String(), "client_addr", packet.ClientAddress.String(), "session_id", packet.SessionID)
@@ -252,10 +253,12 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			serverCacheData, err := serverCacheCmd.Bytes()
 			if err != nil {
 				level.Error(locallogger).Log("msg", "failed to get server bytes", "err", err)
+				metrics.SessionErrorMetrics.GetServerDataFailure.Add(1)
 				return
 			}
 			if err := serverCacheEntry.UnmarshalBinary(serverCacheData); err != nil {
 				level.Error(locallogger).Log("msg", "failed to unmarshal server bytes", "err", err)
+				metrics.SessionErrorMetrics.UnmarshalServerDataFailure.Add(1)
 				return
 			}
 
@@ -266,14 +269,14 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 				sessionCacheData, err := sessionCacheCmd.Bytes()
 				if err != nil {
 					level.Error(locallogger).Log("msg", "failed to get session bytes", "err", err)
-					handleError(w, response, serverPrivateKey, err)
+					writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.SessionErrorMetrics.WriteResponseFailure, metrics.SessionErrorMetrics.GetSessionDataFailure)
 					return
 				}
 
 				if len(sessionCacheData) != 0 {
 					if err := sessionCacheEntry.UnmarshalBinary(sessionCacheData); err != nil {
 						level.Error(locallogger).Log("msg", "failed to unmarshal session bytes", "err", err)
-						handleError(w, response, serverPrivateKey, err)
+						writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.SessionErrorMetrics.WriteResponseFailure, metrics.SessionErrorMetrics.UnmarshalSessionDataFailure)
 						return
 					}
 				}
@@ -292,7 +295,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		if !ok {
 			err := fmt.Errorf("failed to get buyer with customer ID %v", packet.CustomerID)
 			level.Error(locallogger).Log("err", err)
-			handleError(w, response, serverPrivateKey, err)
+			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.SessionErrorMetrics.WriteResponseFailure, metrics.SessionErrorMetrics.BuyerNotFound)
 			return
 		}
 
@@ -301,7 +304,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		if !crypto.Verify(buyer.PublicKey, packet.GetSignData(), packet.Signature) {
 			err := errors.New("failed to verify packet signature with buyer public key")
 			level.Error(locallogger).Log("err", err)
-			handleError(w, response, serverPrivateKey, err)
+			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.SessionErrorMetrics.WriteResponseFailure, metrics.SessionErrorMetrics.VerifyFailure)
 			return
 		}
 
@@ -309,12 +312,12 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		case seq < sessionCacheEntry.Sequence:
 			err := fmt.Errorf("packet sequence too old. current_sequence %v, previous sequence %v", packet.Sequence, sessionCacheEntry.Sequence)
 			level.Error(locallogger).Log("err", err)
-			handleError(w, response, serverPrivateKey, err)
+			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.SessionErrorMetrics.WriteResponseFailure, metrics.SessionErrorMetrics.OldSequence)
 			return
 		case seq == sessionCacheEntry.Sequence:
 			if _, err := w.Write(sessionCacheEntry.Response); err != nil {
 				level.Error(locallogger).Log("err", err)
-				handleError(w, response, serverPrivateKey, err)
+				writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.SessionErrorMetrics.WriteResponseFailure, metrics.SessionErrorMetrics.WriteCachedResponseFailure)
 			}
 			return
 		}
@@ -322,7 +325,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		location, err := iploc.LocateIP(packet.ClientAddress.IP)
 		if err != nil {
 			level.Error(locallogger).Log("msg", "failed to locate client", "err", err)
-			handleError(w, response, serverPrivateKey, err)
+			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.SessionErrorMetrics.WriteResponseFailure, metrics.SessionErrorMetrics.ClientLocateFailure)
 			return
 		}
 		level.Debug(locallogger).Log("client_ip", packet.ClientAddress.IP.String(), "lat", location.Latitude, "long", location.Longitude)
@@ -331,7 +334,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 
 		if len(clientrelays) == 0 || err != nil {
 			level.Error(locallogger).Log("msg", "failed to locate relays near client", "err", err)
-			handleError(w, response, serverPrivateKey, err)
+			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.SessionErrorMetrics.WriteResponseFailure, metrics.SessionErrorMetrics.NearRelaysLocateFailure)
 			return
 		}
 
@@ -359,7 +362,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			routing.SelectRandomRoute(rand.NewSource(rand.Int63())))
 		if err != nil {
 			level.Error(locallogger).Log("err", err)
-			handleError(w, response, serverPrivateKey, err)
+			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.SessionErrorMetrics.WriteResponseFailure, metrics.SessionErrorMetrics.RouteSelectionFailure)
 			return
 		}
 
@@ -466,7 +469,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			tokens, numtokens, err := token.Encrypt(routerPrivateKey)
 			if err != nil {
 				level.Error(locallogger).Log("msg", "failed to encrypt route token", "err", err)
-				handleError(w, response, serverPrivateKey, err)
+				writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.SessionErrorMetrics.WriteResponseFailure, metrics.SessionErrorMetrics.EncryptionFailure)
 				return
 			}
 
@@ -493,6 +496,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		var responseData []byte
 		if responseData, err = writeSessionResponse(w, response, serverPrivateKey); err != nil {
 			level.Error(locallogger).Log("msg", "failed to write session response", "err", err)
+			metrics.SessionErrorMetrics.WriteResponseFailure.Add(1)
 			return
 		}
 
@@ -518,6 +522,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			result := redisClient.Set(fmt.Sprintf("SESSION-%d", updatedSessionCacheEntry.SessionID), updatedSessionCacheEntry, 5*time.Minute)
 			if result.Err() != nil {
 				level.Error(locallogger).Log("msg", "failed to update session", "err", err)
+				metrics.SessionErrorMetrics.UpdateSessionFailure.Add(1)
 			}
 		}
 
@@ -528,6 +533,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			billingEntry := newBillingEntry(routeRequest, &chosenRoute, int(response.RouteType), sameRoute, &buyer.RoutingRulesSettings, routeDecision.Reason, &packet, sessionCacheEntry.TimestampStart, timestampNow)
 			if err := biller.Bill(context.Background(), packet.SessionID, billingEntry); err != nil {
 				level.Error(locallogger).Log("msg", "billing failed", "err", err)
+				metrics.SessionErrorMetrics.BillingFailure.Add(1)
 			}
 		}
 	}
@@ -575,12 +581,12 @@ func addRouteDecisionMetric(d routing.Decision, m *metrics.SessionMetrics) {
 }
 
 // writeSessionResponse encrypts the session response packet and sends it back to the server. Returns the marshaled response and an error.
-func writeSessionResponse(w io.Writer, packet SessionResponsePacket, privateKey []byte) ([]byte, error) {
+func writeSessionResponse(w io.Writer, response SessionResponsePacket, privateKey []byte) ([]byte, error) {
 	// Sign the response
-	packet.Signature = crypto.Sign(privateKey, packet.GetSignData())
+	response.Signature = crypto.Sign(privateKey, response.GetSignData())
 
 	// Marshal the packet
-	responseData, err := packet.MarshalBinary()
+	responseData, err := response.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
@@ -593,13 +599,14 @@ func writeSessionResponse(w io.Writer, packet SessionResponsePacket, privateKey 
 	return responseData, nil
 }
 
-// handleError forces the packet to direct and collects error metrics.
-func handleError(w io.Writer, packet SessionResponsePacket, privateKey []byte, err error) {
-	// Force packet to direct route
-	packet.RouteType = routing.RouteTypeDirect
-	writeSessionResponse(w, packet, privateKey)
+func writeSessionErrorResponse(w io.Writer, response SessionResponsePacket, privateKey []byte, directSessions metrics.Counter, writeResponseFailure metrics.Counter, errCounter metrics.Counter) {
+	if _, err := writeSessionResponse(w, response, privateKey); err != nil {
+		writeResponseFailure.Add(1)
+		return
+	}
 
-	// Eventually we'll also pipe the error passed through to here up to stackdriver and do any cleanup required
+	directSessions.Add(1)
+	errCounter.Add(1)
 }
 
 func newBillingEntry(
