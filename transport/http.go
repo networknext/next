@@ -392,7 +392,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, redisClient *redis.Client, statsd
 		relayID := crypto.HashID(relayUpdatePacket.Address.String())
 		if relay, ok := storer.Relay(relayID); ok {
 			stats := &stats.RelayTrafficStats{
-				RelayId:            stats.NewEntityID("Relay", relay.ID),
+				RelayId:            stats.NewEntityID("Relay", relay.Addr.String()),
 				BytesMeasurementRx: relayUpdatePacket.BytesReceived,
 			}
 
@@ -475,7 +475,7 @@ func RelayUpdateJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, st
 		if ts, err := ptypes.TimestampProto(time.Unix(int64(jsonPacket.Timestamp), 0)); err == nil {
 			if relay, ok := storer.Relay(jsonPacket.Metadata.ID); ok {
 				stats := &stats.RelayTrafficStats{
-					RelayId:            stats.NewEntityID("Relay", relay.ID),
+					RelayId:            stats.NewEntityID("Relay", jsonPacket.RelayName),
 					Usage:              jsonPacket.Usage,
 					Timestamp:          ts,
 					BytesPaidTx:        jsonPacket.TrafficStats.BytesPaidTx,
@@ -488,6 +488,8 @@ func RelayUpdateJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, st
 					SessionCount:       jsonPacket.TrafficStats.SessionCount,
 				}
 
+				str, _ := json.Marshal(stats)
+				level.Info(logger).Log("msg", fmt.Sprintf("Publishing: %s", str))
 				if err := trafficStatsPublisher.Publish(context.Background(), relay.ID, stats); err != nil {
 					level.Error(logger).Log("msg", fmt.Sprintf("Publish error: %v", err))
 				}

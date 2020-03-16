@@ -208,7 +208,7 @@ const int Base64TableDecode[256] =
   }
 
   inline auto next_curl_update(
-   const char* relayBackendAddr, const char* inputJson, const std::string& relayAddress, int port, json::JSON& respDoc) -> bool
+   const char* relayBackendAddr, const char* inputJson, const std::string& relayAddress, int port, const char* relayName, json::JSON& respDoc) -> bool
   {
     json::JSON doc;
     if (!doc.parse(inputJson)) {
@@ -217,6 +217,7 @@ const int Base64TableDecode[256] =
     }
 
     doc.set(relayAddress, "relay_address"); // here the relay address contains the port, unlike with init
+    doc.set(relayName, "relay_name");
 
     auto prettyStr = doc.toPrettyString();
     printf("sending this data to the relay backend update endpoint: %s\n", prettyStr.c_str());
