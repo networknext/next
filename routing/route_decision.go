@@ -2,8 +2,6 @@ package routing
 
 import (
 	"fmt"
-
-	"github.com/networknext/backend/metrics"
 )
 
 type Decision struct {
@@ -16,7 +14,7 @@ type Decision struct {
 // the stats of the last network next route,
 // and the stats of the direct route and decides whether or not to take the predicted network next route.
 // A reason is also provided for billing.
-type DecisionFunc func(prevDecision Decision, predictedNextStats Stats, lastNextStats Stats, directStats Stats, metrics *metrics.DecisionMetrics) Decision
+type DecisionFunc func(prevDecision Decision, predictedNextStats Stats, lastNextStats Stats, directStats Stats) Decision
 
 // DecisionReason is the reason why a Decision was made.
 type DecisionReason uint64
@@ -98,7 +96,7 @@ const (
 // DecideUpgradeRTT will decide if the client should use the network next route if the RTT reduction is greater than the given threshold.
 // This decision only upgrades direct routes, so network next routes aren't considered.
 func DecideUpgradeRTT(rttThreshold float64) DecisionFunc {
-	return func(prevDecision Decision, predictedNextStats Stats, lastNextStats Stats, directStats Stats, metrics *metrics.DecisionMetrics) Decision {
+	return func(prevDecision Decision, predictedNextStats Stats, lastNextStats Stats, directStats Stats) Decision {
 		// If upgrading to a nextwork next route would reduce RTT by at least the given threshold, upgrade
 		if !prevDecision.OnNetworkNext && directStats.RTT-predictedNextStats.RTT >= rttThreshold {
 			return Decision{true, DecisionRTTReduction}
@@ -112,7 +110,7 @@ func DecideUpgradeRTT(rttThreshold float64) DecisionFunc {
 // DecideDowngradeRTT will decide if the client should continue using the network next route if the network next RTT increase doesn't exceed the hysteresis value.
 // This decision only downgrades network next routes, so direct routes aren't considered.
 func DecideDowngradeRTT(rttHysteresis float64) DecisionFunc {
-	return func(prevDecision Decision, predictedNextStats Stats, lastNextStats Stats, directStats Stats, metrics *metrics.DecisionMetrics) Decision {
+	return func(prevDecision Decision, predictedNextStats Stats, lastNextStats Stats, directStats Stats) Decision {
 		// If staying on a nextwork next route doesn't increase RTT by more than the given hysteresis value, stay
 		if prevDecision.OnNetworkNext {
 			if predictedNextStats.RTT-directStats.RTT <= rttHysteresis {
@@ -132,13 +130,10 @@ func DecideDowngradeRTT(rttHysteresis float64) DecisionFunc {
 // RTT by more than the RTT veto value, or increases packet loss if packet loss safety is enabled.
 // This decision only downgrades network next routes, so direct routes aren't considered.
 func DecideVeto(rttVeto float64, packetLossSafety bool, yolo bool) DecisionFunc {
-	return func(prevDecision Decision, predictedNextStats Stats, lastNextStats Stats, directStats Stats, metrics *metrics.DecisionMetrics) Decision {
+	return func(prevDecision Decision, predictedNextStats Stats, lastNextStats Stats, directStats Stats) Decision {
 		if prevDecision.OnNetworkNext {
 			// Whether or not the network next route made the RTT worse than the veto value
 			if lastNextStats.RTT-directStats.RTT > rttVeto {
-				// Update veto metric
-				metrics.VetoedSessions.Add(1)
-
 				// If the buyer has YouOnlyLiveOnce safety setting enabled, add that reason to the DecisionReason
 				if yolo {
 					return Decision{false, DecisionVetoRTT | DecisionVetoYOLO}
@@ -183,7 +178,7 @@ func DecideVeto(rttVeto float64, packetLossSafety bool, yolo bool) DecisionFunc 
 
 // DecideCommitted is not yet implemented
 func DecideCommitted() DecisionFunc {
-	return func(prevDecision Decision, predictedNextStats Stats, lastNextStats Stats, directStats Stats, metrics *metrics.DecisionMetrics) Decision {
+	return func(prevDecision Decision, predictedNextStats Stats, lastNextStats Stats, directStats Stats) Decision {
 		return Decision{prevDecision.OnNetworkNext, DecisionNoChange}
 	}
 }
