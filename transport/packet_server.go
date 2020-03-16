@@ -20,7 +20,6 @@ const (
 	MaxNearRelays = 32
 	MaxTokens     = 7
 
-	EncryptedTokenRouteSize = 117
 	// EncryptedTokenContinueSize = 58
 	MTUSize = 1300
 
