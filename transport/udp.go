@@ -189,6 +189,7 @@ type SessionCacheEntry struct {
 	RouteDecision   routing.Decision
 	TimestampStart  time.Time
 	TimestampExpire time.Time
+	VetoTimestamp   time.Time
 	Version         uint8
 	Response        []byte
 }
@@ -220,6 +221,9 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		}()
 
 		timestampNow := time.Now()
+
+		// Whether or not we should make a route decision on a network next route, or serve a direct route
+		shouldDecide := true
 
 		// Deserialize the Session packet
 		var packet SessionUpdatePacket
@@ -278,11 +282,13 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 					}
 				}
 			} else {
+				// Session not cached yet, set the timestamp and initial route decision to be stored
 				sessionCacheEntry.TimestampStart = timestampNow
 				sessionCacheEntry.RouteDecision = routing.Decision{
 					OnNetworkNext: false,
 					Reason:        routing.DecisionInitialSlice,
 				}
+				shouldDecide = false
 			}
 		}
 
@@ -350,25 +356,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 
 		level.Debug(locallogger).Log("num_datacenter_relays", len(dsrelays), "num_client_relays", len(clientrelays))
 
-		level.Debug(locallogger).Log("buyer_rtt_epsilon", buyer.RoutingRulesSettings.RTTEpsilon, "cached_route_hash", sessionCacheEntry.RouteHash)
-		// Get a set of possible routes from the RouteProvider and on error ensure it falls back to direct
-		routes, err := rp.Routes(dsrelays, clientrelays,
-			routing.SelectAcceptableRoutesFromBestRTT(float64(buyer.RoutingRulesSettings.RTTEpsilon)),
-			routing.SelectContainsRouteHash(sessionCacheEntry.RouteHash),
-			routing.SelectRoutesByRandomDestRelay(rand.NewSource(rand.Int63())),
-			routing.SelectRandomRoute(rand.NewSource(rand.Int63())))
-		if err != nil {
-			level.Error(locallogger).Log("err", err)
-			handleError(w, response, serverPrivateKey, err)
-			return
-		}
-
-		if len(routes) <= 0 {
-			level.Warn(locallogger).Log("msg", "no acceptable route available")
-		}
-
-		nextRoute := routes[0]
-
+		// Set initial route decision values
 		nnStats := routing.Stats{
 			RTT:        float64(packet.NextMinRTT),
 			Jitter:     float64(packet.NextJitter),
@@ -381,110 +369,147 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			PacketLoss: float64(packet.DirectPacketLoss),
 		}
 
-		level.Debug(locallogger).Log(
-			"selected_next_route_stats", nextRoute.Stats.String(),
-			"packet_next_stats", nnStats.String(),
-			"packet_direct_stats", directStats.String(),
-			"buyer_rtt_threshold", buyer.RoutingRulesSettings.RTTThreshold,
-			"buyer_rtt_hysteresis", buyer.RoutingRulesSettings.RTTHysteresis,
-			"buyer_rtt_veto", buyer.RoutingRulesSettings.RTTVeto,
-			"buyer_packet_loss_safety", buyer.RoutingRulesSettings.EnablePacketLossSafety,
-			"buyer_yolo", buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce,
-		)
-
-		routeDecision := nextRoute.Decide(sessionCacheEntry.RouteDecision, nnStats, directStats, &metrics.DecisionMetrics,
-			routing.DecideUpgradeRTT(float64(buyer.RoutingRulesSettings.RTTThreshold)),
-			routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis)),
-			routing.DecideVeto(float64(buyer.RoutingRulesSettings.RTTVeto), buyer.RoutingRulesSettings.EnablePacketLossSafety, buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
-		)
-
-		level.Debug(locallogger).Log(
-			"prev_on_network_next", sessionCacheEntry.RouteDecision.OnNetworkNext,
-			"prev_decision_reason", sessionCacheEntry.RouteDecision.Reason.String(),
-			"on_network_next", routeDecision.OnNetworkNext,
-			"decision_reason", routeDecision.Reason.String(),
-		)
-
 		chosenRoute := routing.Route{
 			Stats: directStats,
 		}
 
-		var token routing.Token
-		if routeDecision.OnNetworkNext {
-			// Route decision logic decided to serve a next route
+		routeDecision := sessionCacheEntry.RouteDecision
 
-			chosenRoute = nextRoute
-
-			if nextRoute.Hash64() == sessionCacheEntry.RouteHash {
-				token = &routing.ContinueRouteToken{
-					Expires: uint64(time.Now().Add(billing.BillingSliceSeconds * time.Second).Unix()),
-
-					SessionID: packet.SessionID,
-
-					SessionVersion: sessionCacheEntry.Version,
-					SessionFlags:   0, // Haven't figured out what this is for
-
-					Client: routing.Client{
-						Addr:      packet.ClientAddress,
-						PublicKey: packet.ClientRoutePublicKey,
-					},
-
-					Server: routing.Server{
-						Addr:      packet.ServerAddress,
-						PublicKey: serverCacheEntry.Server.PublicKey,
-					},
-
-					Relays: nextRoute.Relays,
-				}
-			} else {
-				sessionCacheEntry.Version++
-
-				token = &routing.NextRouteToken{
-					Expires: uint64(time.Now().Add(billing.BillingSliceSeconds * 2 * time.Second).Unix()),
-
-					SessionID: packet.SessionID,
-
-					SessionVersion: sessionCacheEntry.Version,
-					SessionFlags:   0, // Haven't figured out what this is for
-
-					Client: routing.Client{
-						Addr:      packet.ClientAddress,
-						PublicKey: packet.ClientRoutePublicKey,
-					},
-
-					Server: routing.Server{
-						Addr:      packet.ServerAddress,
-						PublicKey: serverCacheEntry.Server.PublicKey,
-					},
-
-					Relays: nextRoute.Relays,
-				}
-			}
-
-			tokens, numtokens, err := token.Encrypt(routerPrivateKey)
+		if shouldDecide { // Only select and decide a route if we should, early out for initial slice
+			level.Debug(locallogger).Log("buyer_rtt_epsilon", buyer.RoutingRulesSettings.RTTEpsilon, "cached_route_hash", sessionCacheEntry.RouteHash)
+			// Get a set of possible routes from the RouteProvider and on error ensure it falls back to direct
+			routes, err := rp.Routes(dsrelays, clientrelays,
+				routing.SelectAcceptableRoutesFromBestRTT(float64(buyer.RoutingRulesSettings.RTTEpsilon)),
+				routing.SelectContainsRouteHash(sessionCacheEntry.RouteHash),
+				routing.SelectRoutesByRandomDestRelay(rand.NewSource(rand.Int63())),
+				routing.SelectRandomRoute(rand.NewSource(rand.Int63())))
 			if err != nil {
-				level.Error(locallogger).Log("msg", "failed to encrypt route token", "err", err)
+				level.Error(locallogger).Log("err", err)
 				handleError(w, response, serverPrivateKey, err)
 				return
 			}
 
-			level.Debug(locallogger).Log("token_type", token.Type(), "current_route_hash", chosenRoute.Hash64(), "previous_route_hash", sessionCacheEntry.RouteHash)
+			nextRoute := routes[0]
 
-			// Add token info to the Session Response
-			response.RouteType = int32(token.Type())
-			response.NumTokens = int32(numtokens) // Num of relays + client + server
-			response.Tokens = tokens
+			level.Debug(locallogger).Log(
+				"selected_next_route_stats", nextRoute.Stats.String(),
+				"packet_next_stats", nnStats.String(),
+				"packet_direct_stats", directStats.String(),
+				"buyer_rtt_threshold", buyer.RoutingRulesSettings.RTTThreshold,
+				"buyer_rtt_hysteresis", buyer.RoutingRulesSettings.RTTHysteresis,
+				"buyer_rtt_veto", buyer.RoutingRulesSettings.RTTVeto,
+				"buyer_packet_loss_safety", buyer.RoutingRulesSettings.EnablePacketLossSafety,
+				"buyer_yolo", buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce,
+			)
 
-			// Fill in the near relays
-			response.NumNearRelays = int32(len(clientrelays))
-			response.NearRelayIDs = make([]uint64, len(clientrelays))
-			response.NearRelayAddresses = make([]net.UDPAddr, len(clientrelays))
-			for idx, relay := range clientrelays {
-				response.NearRelayIDs[idx] = relay.ID
-				response.NearRelayAddresses[idx] = relay.Addr
+			if routeDecision.Reason&routing.DecisionVetoRTT != 0 || routeDecision.Reason&routing.DecisionVetoPacketLoss != 0 || routeDecision.Reason&routing.DecisionVetoYOLO != 0 {
+				// Session has been vetoed
+
+				if sessionCacheEntry.VetoTimestamp.Before(timestampNow) && routeDecision.Reason&routing.DecisionVetoYOLO == 0 {
+					// Veto expired, bring the session back on with an initial slice
+					sessionCacheEntry.TimestampStart = timestampNow
+					routeDecision = routing.Decision{
+						OnNetworkNext: false,
+						Reason:        routing.DecisionInitialSlice,
+					}
+				}
+			} else {
+				// Session hasn't been vetoed, perform route decision as normal
+				routeDecision = nextRoute.Decide(sessionCacheEntry.RouteDecision, nnStats, directStats, &metrics.DecisionMetrics,
+					routing.DecideUpgradeRTT(float64(buyer.RoutingRulesSettings.RTTThreshold)),
+					routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis)),
+					routing.DecideVeto(float64(buyer.RoutingRulesSettings.RTTVeto), buyer.RoutingRulesSettings.EnablePacketLossSafety, buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
+				)
+
+				if routeDecision.Reason&routing.DecisionVetoRTT != 0 || routeDecision.Reason&routing.DecisionVetoPacketLoss != 0 || routeDecision.Reason&routing.DecisionVetoYOLO != 0 {
+					// Session was vetoed this update, so set the veto timeout
+					sessionCacheEntry.VetoTimestamp = timestampNow
+				}
 			}
 
-			level.Debug(locallogger).Log("msg", "session served network next route")
+			level.Debug(locallogger).Log(
+				"prev_on_network_next", sessionCacheEntry.RouteDecision.OnNetworkNext,
+				"prev_decision_reason", sessionCacheEntry.RouteDecision.Reason.String(),
+				"on_network_next", routeDecision.OnNetworkNext,
+				"decision_reason", routeDecision.Reason.String(),
+			)
+
+			if routeDecision.OnNetworkNext {
+				// Route decision logic decided to serve a next route
+
+				chosenRoute = nextRoute
+				var token routing.Token
+				if nextRoute.Hash64() == sessionCacheEntry.RouteHash {
+					token = &routing.ContinueRouteToken{
+						Expires: uint64(time.Now().Add(billing.BillingSliceSeconds * time.Second).Unix()),
+
+						SessionID: packet.SessionID,
+
+						SessionVersion: sessionCacheEntry.Version,
+						SessionFlags:   0, // Haven't figured out what this is for
+
+						Client: routing.Client{
+							Addr:      packet.ClientAddress,
+							PublicKey: packet.ClientRoutePublicKey,
+						},
+
+						Server: routing.Server{
+							Addr:      packet.ServerAddress,
+							PublicKey: serverCacheEntry.Server.PublicKey,
+						},
+
+						Relays: nextRoute.Relays,
+					}
+				} else {
+					sessionCacheEntry.Version++
+
+					token = &routing.NextRouteToken{
+						Expires: uint64(time.Now().Add(billing.BillingSliceSeconds * 2 * time.Second).Unix()),
+
+						SessionID: packet.SessionID,
+
+						SessionVersion: sessionCacheEntry.Version,
+						SessionFlags:   0, // Haven't figured out what this is for
+
+						Client: routing.Client{
+							Addr:      packet.ClientAddress,
+							PublicKey: packet.ClientRoutePublicKey,
+						},
+
+						Server: routing.Server{
+							Addr:      packet.ServerAddress,
+							PublicKey: serverCacheEntry.Server.PublicKey,
+						},
+
+						Relays: nextRoute.Relays,
+					}
+				}
+
+				tokens, numtokens, err := token.Encrypt(routerPrivateKey)
+				if err != nil {
+					level.Error(locallogger).Log("msg", "failed to encrypt route token", "err", err)
+					handleError(w, response, serverPrivateKey, err)
+					return
+				}
+
+				level.Debug(locallogger).Log("token_type", token.Type(), "current_route_hash", chosenRoute.Hash64(), "previous_route_hash", sessionCacheEntry.RouteHash)
+
+				// Add token info to the Session Response
+				response.RouteType = int32(token.Type())
+				response.NumTokens = int32(numtokens) // Num of relays + client + server
+				response.Tokens = tokens
+
+				// Fill in the near relays
+				response.NumNearRelays = int32(len(clientrelays))
+				response.NearRelayIDs = make([]uint64, len(clientrelays))
+				response.NearRelayAddresses = make([]net.UDPAddr, len(clientrelays))
+				for idx, relay := range clientrelays {
+					response.NearRelayIDs[idx] = relay.ID
+					response.NearRelayAddresses[idx] = relay.Addr
+				}
+
+				level.Debug(locallogger).Log("msg", "session served network next route")
+			}
 		}
 
 		// Send the Session Response back to the server
@@ -510,6 +535,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 				RouteHash:      chosenRoute.Hash64(),
 				RouteDecision:  routeDecision,
 				TimestampStart: sessionCacheEntry.TimestampStart,
+				VetoTimestamp:  sessionCacheEntry.VetoTimestamp,
 				Version:        sessionCacheEntry.Version, //This was already incremented for the route tokens
 				Response:       responseData,
 			}
