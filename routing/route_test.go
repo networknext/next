@@ -511,12 +511,12 @@ func TestDecide(t *testing.T) {
 		// the reason isn't changed
 		startingDecision := routing.Decision{
 			OnNetworkNext: false,
-			Reason:        routing.DecisionInitialSlice,
+			Reason:        routing.DecisionUnused,
 		}
 
 		expected := routing.Decision{
 			OnNetworkNext: false,
-			Reason:        routing.DecisionInitialSlice,
+			Reason:        routing.DecisionUnused,
 		}
 
 		// Loop through all permutations and combinations of the decision functions and test that the result is the same
@@ -533,16 +533,67 @@ func TestDecide(t *testing.T) {
 		// Run test again with OnNetworkNext true
 		startingDecision = routing.Decision{
 			OnNetworkNext: true,
-			Reason:        routing.DecisionInitialSlice,
+			Reason:        routing.DecisionUnused,
 		}
 
 		expected = routing.Decision{
 			OnNetworkNext: true,
-			Reason:        routing.DecisionInitialSlice,
+			Reason:        routing.DecisionUnused,
 		}
 
 		// Loop through all permutations and combinations of the decision functions and test that the result is the same
 		combs = combinations(decisionFuncs)
+		for i := 0; i < len(combs); i++ {
+			perms := permutations(combs[i])
+
+			for j := 0; j < len(perms); j++ {
+				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, perms[j]...)
+				assert.Equal(t, expected, decision)
+			}
+		}
+	}
+
+	// Test case to check that DecisionInitialSlice is never the reason twice in a row
+	{
+		decisionFuncs := []routing.DecisionFunc{
+			routing.DecideUpgradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTThreshold)),
+			routing.DecideDowngradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTHysteresis)),
+			routing.DecideVeto(float64(routing.DefaultRoutingRulesSettings.RTTVeto), routing.DefaultRoutingRulesSettings.EnablePacketLossSafety, routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
+			routing.DecideCommitted(),
+		}
+
+		lastNNStats := routing.Stats{
+			RTT:        30,
+			Jitter:     0,
+			PacketLoss: 0,
+		}
+
+		lastDirectStats := routing.Stats{
+			RTT:        30,
+			Jitter:     0,
+			PacketLoss: 0,
+		}
+
+		route := routing.Route{
+			Stats: routing.Stats{
+				RTT:        30,
+				Jitter:     0,
+				PacketLoss: 0,
+			},
+		}
+
+		startingDecision := routing.Decision{
+			OnNetworkNext: false,
+			Reason:        routing.DecisionInitialSlice,
+		}
+
+		expected := routing.Decision{
+			OnNetworkNext: false,
+			Reason:        routing.DecisionNoChange,
+		}
+
+		// Loop through all permutations and combinations of the decision functions and test that the result is the same
+		combs := combinations(decisionFuncs)
 		for i := 0; i < len(combs); i++ {
 			perms := permutations(combs[i])
 
