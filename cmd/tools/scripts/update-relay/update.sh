@@ -5,7 +5,7 @@ export IP_ADDRESS
 export PUBLIC_KEY
 export PRIVATE_KEY
 export SSH_KEY
-export BINARY=./dist/relay
+export BINARY
 
 for arg in "$@"
 do

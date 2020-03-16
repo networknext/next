@@ -1,6 +1,7 @@
 #!/bin/bash
 
 export SSH_KEY
+export BINARY
 
 ips=(
     144.202.31.156
@@ -37,6 +38,11 @@ do
         shift
         shift
         ;;
+        -b|--binary)
+        BINARY="$2"
+        shift
+        shift
+        ;;
     esac
 done
 
@@ -45,7 +51,12 @@ if [ -z $SSH_KEY ]; then
     exit
 fi
 
+if [ -z $BINARY ]; then
+    echo "No relay binary provided - use -b or --binary to provide a file path to the relay binary"
+    exit
+fi
+
 for i in ${!ips[@]}; do
     echo Updating relay at ip ${ips[$i]}
-    ./cmd/tools/scripts/update-relay/update.sh -u root -i ${ips[$i]} -p ${public_keys[$i]} -s ${private_keys[$i]} -f $SSH_KEY
+    ./cmd/tools/scripts/update-relay/update.sh -u root -i ${ips[$i]} -p ${public_keys[$i]} -s ${private_keys[$i]} -f $SSH_KEY -b $BINARY
 done
