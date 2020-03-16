@@ -62,7 +62,7 @@ namespace core
         return;
       }
 
-      auto session = mSessionMap[hash];
+      auto session = mSessionMap.get(hash);
 
       if (sessionIsExpired(session)) {
         return;
