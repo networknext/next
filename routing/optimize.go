@@ -677,7 +677,7 @@ type RouteMatrixEntry struct {
 
 // RouteMatrix ...
 type RouteMatrix struct {
-	mu sync.Mutex
+	mu sync.RWMutex
 
 	RelayIndicies map[uint64]int
 
@@ -693,6 +693,9 @@ type RouteMatrix struct {
 }
 
 func (m *RouteMatrix) ResolveRelay(id uint64) (Relay, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	relayIndex, ok := m.RelayIndicies[id]
 	if !ok {
 		return Relay{}, fmt.Errorf("relay %d not in matrix", id)
@@ -726,10 +729,15 @@ func (m *RouteMatrix) ResolveRelay(id uint64) (Relay, error) {
 
 // RelaysIn will return the set of Relays in the provided Datacenter
 func (m *RouteMatrix) RelaysIn(d Datacenter) []Relay {
+	m.mu.RLock()
+
 	relayIDs, ok := m.DatacenterRelays[d.ID]
 	if !ok {
+		m.mu.RUnlock()
 		return nil
 	}
+
+	m.mu.RUnlock()
 
 	var err error
 	relayLength := len(relayIDs)
@@ -754,6 +762,8 @@ func (m *RouteMatrix) RelaysIn(d Datacenter) []Relay {
 // as the argument to the second selector. If at any point a selector fails to select a new slice of routes,
 // the chain breaks.
 func (m *RouteMatrix) Routes(from []Relay, to []Relay, routeSelectors ...SelectorFunc) ([]Route, error) {
+	m.mu.RLock()
+
 	type RelayPairResult struct {
 		fromtoidx int  // The index in the route matrix entry
 		reverse   bool // Whether or not to reverse the relays to stay on the same side of the diagnol in the triangular matrix
@@ -780,6 +790,8 @@ func (m *RouteMatrix) Routes(from []Relay, to []Relay, routeSelectors ...Selecto
 		}
 	}
 
+	m.mu.RUnlock()
+
 	// Now that we have the route total, make the Route buffer and fill it
 	var routeIndex int
 	routes := make([]Route, routeTotal)
@@ -793,13 +805,13 @@ func (m *RouteMatrix) Routes(from []Relay, to []Relay, routeSelectors ...Selecto
 
 	// No routes found
 	if routeLength == 0 {
-		return nil, errors.New("No routes found")
+		return nil, errors.New("no routes found")
 	}
 
 	// Apply the selectors in order
 	for _, selector := range routeSelectors {
 		selectedRoutes := selector(routes)
-		if selectedRoutes == nil || len(selectedRoutes) == 0 {
+		if len(selectedRoutes) == 0 {
 			break // If the list of selected routes is empty, it means that it couldn't select the set of routes, so stop early
 		}
 
@@ -834,35 +846,42 @@ func (m *RouteMatrix) getFromToRelayIndex(from Relay, to Relay) (int, bool) {
 // each route it adds.
 func (m *RouteMatrix) fillRoutes(routes []Route, routeIndex *int, fromtoidx int, reverse bool) error {
 	var err error
-	for i := 0; i < int(m.Entries[fromtoidx].NumRoutes); i++ {
-		numRelays := int(m.Entries[fromtoidx].RouteNumRelays[i])
+
+	m.mu.RLock()
+	entry := m.Entries[fromtoidx]
+	m.mu.RUnlock()
+
+	for i := 0; i < int(entry.NumRoutes); i++ {
+		numRelays := int(entry.RouteNumRelays[i])
 
 		routeRelays := make([]Relay, numRelays)
 
-		if !reverse {
-			for j := 0; j < numRelays; j++ {
-				relayIndex := m.Entries[fromtoidx].RouteRelays[i][j]
-				routeRelays[j], err = m.ResolveRelay(m.RelayIDs[relayIndex])
-				if err != nil {
-					return err
-				}
+		for j := 0; j < numRelays; j++ {
+			relayIndex := entry.RouteRelays[i][j]
+
+			m.mu.RLock()
+			id := m.RelayIDs[relayIndex]
+			m.mu.RUnlock()
+
+			if !reverse {
+				routeRelays[j], err = m.ResolveRelay(id)
+			} else {
+				routeRelays[numRelays-1-j], err = m.ResolveRelay(id)
 			}
-		} else {
-			for j := 0; j < numRelays; j++ {
-				relayIndex := m.Entries[fromtoidx].RouteRelays[i][j]
-				routeRelays[numRelays-1-j], err = m.ResolveRelay(m.RelayIDs[relayIndex])
-				if err != nil {
-					return err
-				}
+
+			if err != nil {
+				return err
 			}
 		}
 
+		m.mu.RLock()
 		route := Route{
 			Relays: routeRelays,
 			Stats: Stats{
 				RTT: float64(m.Entries[fromtoidx].RouteRTT[i]),
 			},
 		}
+		m.mu.RUnlock()
 
 		if *routeIndex >= len(routes) {
 			continue
@@ -881,9 +900,6 @@ func (m *RouteMatrix) ReadFrom(r io.Reader) (int64, error) {
 		return 0, errors.New("reader is nil")
 	}
 
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	data, err := ioutil.ReadAll(r)
 	if err != nil {
 		return 0, err
@@ -898,9 +914,6 @@ func (m *RouteMatrix) ReadFrom(r io.Reader) (int64, error) {
 
 // WriteTo implements the io.WriteTo interface
 func (m *RouteMatrix) WriteTo(w io.Writer) (int64, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	data, err := m.MarshalBinary()
 	if err != nil {
 		return 0, err
@@ -970,6 +983,9 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 	if !encoding.ReadUint32(data, &index, &numRelays) {
 		return errors.New("[RouteMatrix] invalid read at number of relays")
 	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
 	m.RelayIndicies = make(map[uint64]int)
 	m.RelayIDs = make([]uint64, numRelays)
@@ -1130,6 +1146,9 @@ func (m RouteMatrix) MarshalBinary() ([]byte, error) {
 
 	encoding.WriteUint32(data, &index, RouteMatrixVersion)
 
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	numRelays := len(m.RelayIDs)
 
 	if numRelays != len(m.RelayNames) {
@@ -1221,6 +1240,9 @@ func (m RouteMatrix) MarshalBinary() ([]byte, error) {
 }
 
 func (m *RouteMatrix) Size() uint64 {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	var length uint64
 	numRelays := uint64(len(m.RelayIDs))
 	numDatacenters := uint64(len(m.DatacenterIDs))

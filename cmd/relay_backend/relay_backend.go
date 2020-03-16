@@ -12,11 +12,14 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/logging"
+	"github.com/networknext/backend/stats"
 
 	gcplogging "cloud.google.com/go/logging"
 
@@ -135,6 +138,9 @@ func main() {
 		},
 	}
 
+	// Create a no-op relay traffic stats publisher
+	var trafficStatsPublisher stats.Publisher = &stats.NoOpTrafficStatsPublisher{}
+
 	// Create a local metrics handler
 	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
 
@@ -162,6 +168,26 @@ func main() {
 
 		// Set the Firestore Storer to give to handlers
 		db = &fs
+
+		if trafficStatsTopicID, ok := os.LookupEnv("GOOGLE_PUBSUB_TOPIC_TRAFFIC_STATS"); ok {
+			t, err := stats.NewTrafficStatsPublisher(ctx, logger, gcpProjectID, trafficStatsTopicID, &billing.Descriptor{
+				ClientCount:         4,
+				DelayThreshold:      time.Millisecond,
+				CountThreshold:      1024 / 4, // max relays / number of clients
+				ByteThreshold:       1e6,
+				NumGoroutines:       (25 * runtime.GOMAXPROCS(0)) / 4,
+				Timeout:             time.Minute,
+				ResultChannelBuffer: 1024 * 60 * 10, // 1,024 messages per second for 10 minutes
+			})
+
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				os.Exit(1)
+			}
+
+			// Set the Publisher to the Pub/Sub version
+			trafficStatsPublisher = t
+		}
 
 		// Set up StackDriver metrics
 		sd := metrics.StackDriverHandler{
@@ -322,7 +348,7 @@ func main() {
 		}
 	}()
 
-	router := transport.NewRouter(logger, redisClient, &geoClient, ipLocator, db, statsdb, initDuration, updateDuration, initCount, updateCount, &costmatrix, &routematrix, routerPrivateKey)
+	router := transport.NewRouter(logger, redisClient, &geoClient, ipLocator, db, statsdb, initDuration, updateDuration, initCount, updateCount, &costmatrix, &routematrix, routerPrivateKey, trafficStatsPublisher)
 
 	go func() {
 		port, ok := os.LookupEnv("PORT")

@@ -1,6 +1,8 @@
 package routing
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type Decision struct {
 	OnNetworkNext bool
@@ -61,6 +63,8 @@ func (dr DecisionReason) String() string {
 		reason = "Veto RTT YOLO"
 	case DecisionVetoPacketLoss | DecisionVetoYOLO:
 		reason = "Veto Packet Loss YOLO"
+	case DecisionRTTIncrease:
+		reason = "RTT Increase"
 	}
 
 	return fmt.Sprintf("%s (%d)", reason, dr)
@@ -86,6 +90,7 @@ const (
 	DecisionDatacenterHasNoRelays DecisionReason = 1 << 15
 	DecisionInitialSlice          DecisionReason = 1 << 16
 	DecisionNoNearRelays          DecisionReason = 1 << 17
+	DecisionRTTIncrease           DecisionReason = 1 << 18
 )
 
 // DecideUpgradeRTT will decide if the client should use the network next route if the RTT reduction is greater than the given threshold.
@@ -109,15 +114,15 @@ func DecideDowngradeRTT(rttHysteresis float64) DecisionFunc {
 		// If staying on a nextwork next route doesn't increase RTT by more than the given hysteresis value, stay
 		if prevDecision.OnNetworkNext {
 			if predictedNextStats.RTT-directStats.RTT <= rttHysteresis {
-				return Decision{true, DecisionRTTReduction}
+				return Decision{true, DecisionNoChange}
 			}
 
 			// network next route increases RTT too much, switch back to direct
-			return Decision{false, DecisionVetoRTT} // Wrong reason, but there isn't a reason for this situation
+			return Decision{false, DecisionRTTIncrease}
 		}
 
 		// If the route is already direct, don't touch it
-		return Decision{false, DecisionNoChange}
+		return Decision{prevDecision.OnNetworkNext, DecisionNoChange}
 	}
 }
 
@@ -149,10 +154,25 @@ func DecideVeto(rttVeto float64, packetLossSafety bool, yolo bool) DecisionFunc 
 
 			// If the route isn't vetoed, then it stays on network next
 			return Decision{true, DecisionNoChange}
-		}
+		} else {
+			// Handle the case where another decision function decided to switch back to direct due
+			// to RTT increase, but the increase is so severe it should be vetoed.
+			// If the previous route was direct, then the last next stats should be empty,
+			// so the veto shouldn't affect direct routes
+			if prevDecision.Reason == DecisionRTTIncrease {
+				if lastNextStats.RTT-directStats.RTT > rttVeto {
+					// If the buyer has YouOnlyLiveOnce safety setting enabled, add that reason to the DecisionReason
+					if yolo {
+						return Decision{false, DecisionVetoRTT | DecisionVetoYOLO}
+					}
 
-		// If the route isn't on network next yet, then this decision doesn't apply.
-		return Decision{false, DecisionNoChange}
+					return Decision{false, DecisionVetoRTT}
+				}
+			}
+
+			// If the route isn't on network next yet, then this decision doesn't apply.
+			return Decision{prevDecision.OnNetworkNext, DecisionNoChange}
+		}
 	}
 }
 

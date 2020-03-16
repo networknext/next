@@ -207,7 +207,7 @@ func main() {
 	}
 
 	// Create server update metrics
-	updateDuration, err := metricsHandler.NewGauge(ctx, &metrics.Descriptor{
+	updateDurationGauge, err := metricsHandler.NewGauge(ctx, &metrics.Descriptor{
 		DisplayName: "Server update duration",
 		ServiceName: "server_backend",
 		ID:          "server.duration",
@@ -215,76 +215,31 @@ func main() {
 		Description: "How long it takes to process a server update request.",
 	})
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create metric histogram", "metric", "server.duration", "err", err)
-		updateDuration = &metrics.EmptyGauge{}
+		level.Error(logger).Log("msg", "Failed to create metric gauge", "metric", "server.duration", "err", err)
+		updateDurationGauge = &metrics.EmptyGauge{}
 	}
 
-	updateCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
-		DisplayName: "Total server count",
+	updateInvocationsCounter, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
+		DisplayName: "Total server update invocations",
 		ServiceName: "server_backend",
 		ID:          "server.count",
-		Unit:        "servers",
+		Unit:        "invocations",
 		Description: "The total number of concurrent servers",
 	})
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "server.count", "err", err)
-		updateCount = &metrics.EmptyCounter{}
+		updateInvocationsCounter = &metrics.EmptyCounter{}
+	}
+
+	updateMetrics := metrics.ServerUpdateMetrics{
+		Invocations:   updateInvocationsCounter,
+		DurationGauge: updateDurationGauge,
 	}
 
 	// Create session update metrics
-	sessionInvocationsCounter, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
-		DisplayName: "Total session update invocations",
-		ServiceName: "server_backend",
-		ID:          "session.count",
-		Unit:        "invocations",
-		Description: "The total number of concurrent sessions",
-	})
+	sessionMetrics, err := metrics.NewSessionMetrics(ctx, metricsHandler)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "session.count", "err", err)
-		sessionInvocationsCounter = &metrics.EmptyCounter{}
-	}
-
-	directSessionsCounter, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
-		DisplayName: "Total direct session count",
-		ServiceName: "server_backend",
-		ID:          "session.direct.count",
-		Unit:        "sessions",
-		Description: "The total number of sessions that are currently being served a direct route",
-	})
-	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "session.direct.count", "err", err)
-		directSessionsCounter = &metrics.EmptyCounter{}
-	}
-
-	nextSessionsCounter, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
-		DisplayName: "Total next session count",
-		ServiceName: "server_backend",
-		ID:          "session.next.count",
-		Unit:        "sessions",
-		Description: "The total number of sessions that are currently being served a network next route",
-	})
-	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "session.next.count", "err", err)
-		nextSessionsCounter = &metrics.EmptyCounter{}
-	}
-
-	sessionDurationGauge, err := metricsHandler.NewGauge(ctx, &metrics.Descriptor{
-		DisplayName: "Session update duration",
-		ServiceName: "server_backend",
-		ID:          "session.duration",
-		Unit:        "milliseconds",
-		Description: "How long it takes to process a session update request",
-	})
-	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create metric histogram", "metric", "session.duration", "err", err)
-		sessionDurationGauge = &metrics.EmptyGauge{}
-	}
-
-	sessionMetrics := transport.SessionMetrics{
-		Invocations:    sessionInvocationsCounter,
-		DirectSessions: directSessionsCounter,
-		NextSessions:   nextSessionsCounter,
-		DurationGauge:  sessionDurationGauge,
+		level.Error(logger).Log("msg", "failed to create session metrics", "err", err)
 	}
 
 	var routeMatrix routing.RouteMatrix
@@ -345,8 +300,8 @@ func main() {
 			Conn:          conn,
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
-			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClient, db, updateDuration, updateCount),
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClient, db, &routeMatrix, ipLocator, &geoClient, &sessionMetrics, biller, serverPrivateKey, routerPrivateKey),
+			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClient, db, &updateMetrics),
+			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClient, db, &routeMatrix, ipLocator, &geoClient, sessionMetrics, biller, serverPrivateKey, routerPrivateKey),
 		}
 
 		go func() {
