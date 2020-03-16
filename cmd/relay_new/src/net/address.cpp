@@ -1,8 +1,6 @@
 #include "includes.h"
 #include "address.hpp"
 
-#include "util.hpp"
-
 #include "util/logger.hpp"
 
 #include "net.hpp"
@@ -305,7 +303,7 @@ namespace legacy
         return buffer;
       } else {
         if (snprintf(buffer, RELAY_MAX_ADDRESS_STRING_LENGTH, "[%s]:%hu", address_string, address->port) < 0) {
-          relay_printf("address string truncated: [%s]:%hu", address_string, address->port);
+          Log("address string truncated: [", address_string,"]:", static_cast<uint32_t>(address->port));
         }
         return buffer;
       }

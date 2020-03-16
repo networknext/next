@@ -5,8 +5,6 @@
 
 #include "includes.h"
 
-#include "util.hpp"
-
 #include "crypto/keychain.hpp"
 
 #include "encoding/base64.hpp"
@@ -157,6 +155,31 @@ namespace
     // else use the next one
     return actualProcCount > 0 && numProcs == actualProcCount ? 0 : numProcs + 1;
   }
+
+  inline int getBufferSize(const char* envvar)
+  {
+    int socketBufferSize = 1000000;
+
+    auto env = std::getenv(envvar);
+    if (env != nullptr) {
+      int num = -1;
+      try {
+        num = std::stoi(std::string(env));  // to cause an exception to be thrown if not a number
+      } catch (std::exception& e) {
+        Log("Could not parse ", envvar, " env var to a number: ", e.what());
+        std::exit(1);
+      }
+
+      if (num < 0) {
+        Log("", envvar, " is less than 0");
+        std::exit(1);
+      }
+
+      socketBufferSize = num;
+    }
+
+    return socketBufferSize;
+  }
 }  // namespace
 
 int main()
@@ -217,6 +240,12 @@ int main()
   if (!getNumProcessors(numProcessors)) {
     return 1;
   }
+
+  int socketRecvBuffSize = getBufferSize("RELAY_RECV_BUFFER_SIZE");
+  int socketSendBuffSize = getBufferSize("RELAY_SEND_BUFFER_SIZE");
+
+  LogDebug("Socket recv buffer size is ", socketRecvBuffSize, " bytes");
+  LogDebug("Socket send buffer size is ", socketSendBuffSize, " bytes");
 
   std::unique_ptr<std::ofstream> output;
   std::unique_ptr<util::ThroughputLogger> logger;
@@ -301,12 +330,12 @@ int main()
   };
 
   // makes a shared ptr to a socket object
-  auto makeSocket = [&sockets](uint16_t& portNumber) -> os::SocketPtr {
+  auto makeSocket = [&sockets, socketSendBuffSize, socketRecvBuffSize](uint16_t& portNumber) -> os::SocketPtr {
     net::Address addr;
     addr.Port = portNumber;
     addr.Type = net::AddressType::IPv4;
     auto socket = std::make_shared<os::Socket>(os::SocketType::Blocking);
-    if (!socket->create(addr, 4194304, 4194304, 0.0f, true, 0)) {
+    if (!socket->create(addr, socketSendBuffSize, socketRecvBuffSize, 0.0f, true, 0)) {
       return nullptr;
     }
     portNumber = addr.Port;

@@ -5,11 +5,11 @@
 #include "encoding/read.hpp"
 #include "encoding/write.hpp"
 
-#include "util.hpp"
-
 #include "net/curl.hpp"
 
 #include "core/relay_stats.hpp"
+
+#include "util/logger.hpp"
 
 int relay_debug = 0;
 namespace relay
@@ -17,12 +17,12 @@ namespace relay
   int relay_initialize()
   {
     if (relay::relay_platform_init() != RELAY_OK) {
-      relay_printf("failed to initialize platform");
+      Log("failed to initialize platform");
       return RELAY_ERROR;
     }
 
     if (sodium_init() == -1) {
-      relay_printf("failed to initialize sodium");
+      Log("failed to initialize sodium");
       return RELAY_ERROR;
     }
 
@@ -120,7 +120,7 @@ namespace relay
     }
 
     if (init_response_buffer.size < 4) {
-      relay_printf("\nerror: bad relay init response size. too small to have valid data (%d)\n\n", init_response_buffer.size);
+      Log("error: bad relay init response size. too small to have valid data (", init_response_buffer.size, ")");
       return RELAY_ERROR;
     }
 
@@ -131,13 +131,12 @@ namespace relay
     const uint32_t init_response_version = 0;
 
     if (version != init_response_version) {
-      relay_printf("\nerror: bad relay init response version. expected %d, got %d\n\n", init_response_version, version);
+      Log("error: bad relay init response version. expected ", init_response_version, ", got ", version);
       return RELAY_ERROR;
     }
 
     if (init_response_buffer.size != 4 + 8 + RELAY_TOKEN_BYTES) {
-      relay_printf(
-       "\nerror: bad relay init response size. expected %d bytes, got %d\n\n", RELAY_TOKEN_BYTES, init_response_buffer.size);
+      Log("error: bad relay init response size. expected ", RELAY_TOKEN_BYTES, " bytes, got ", init_response_buffer.size);
       return RELAY_ERROR;
     }
 
