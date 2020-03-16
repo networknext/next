@@ -24,8 +24,8 @@ namespace util
   class ThroughputLogger
   {
    public:
-    ThroughputLogger(std::ostream& output);
-    ~ThroughputLogger();
+    ThroughputLogger(std::ostream& output, bool shouldLog = false);
+    ~ThroughputLogger() = default;
 
     void addToRelayPingPacket(size_t count);
     void addToRelayPongPacket(size_t count);
@@ -40,17 +40,13 @@ namespace util
     void addToNearPing(size_t count);
     void addToUnknown(size_t count);
 
-    void stop();
+    auto print() -> uint64_t;
 
    private:
-    std::atomic<bool> mAlive;
-    std::ostream& mOutput;
+    bool mShouldLog;
     util::Console mConsole;
 
     std::mutex mLock;
-    std::unique_ptr<std::thread> mPrintThread;
-
-    std::size_t mEmptyPacketsTotal = 0;
 
     ThroughputStats mRelayPing;
     ThroughputStats mRelayPong;
@@ -94,114 +90,110 @@ namespace util
     PacketCount = 0;
   }
 
-  inline ThroughputLogger::ThroughputLogger(std::ostream& output): mAlive(true), mOutput(output), mConsole(mOutput)
+  inline ThroughputLogger::ThroughputLogger(std::ostream& output, bool shouldLog): mShouldLog(shouldLog), mConsole(output) {}
+
+  inline auto ThroughputLogger::print() -> uint64_t
   {
-    mPrintThread = std::make_unique<std::thread>([this] {
-      while (this->mAlive) {
-        std::this_thread::sleep_for(1s);
+    ThroughputStats relayPing;
+    ThroughputStats relayPong;
 
-        ThroughputStats relayPing;
-        ThroughputStats relayPong;
+    ThroughputStats routeReq;
+    ThroughputStats routeResp;
 
-        ThroughputStats routeReq;
-        ThroughputStats routeResp;
+    ThroughputStats contReq;
+    ThroughputStats contResp;
 
-        ThroughputStats contReq;
-        ThroughputStats contResp;
+    ThroughputStats cliToServ;
+    ThroughputStats servToCli;
 
-        ThroughputStats cliToServ;
-        ThroughputStats servToCli;
+    ThroughputStats sessionPing;
+    ThroughputStats sessionPong;
 
-        ThroughputStats sessionPing;
-        ThroughputStats sessionPong;
+    ThroughputStats nearPing;
+    ThroughputStats unknown;
 
-        ThroughputStats nearPing;
-        ThroughputStats unknown;
+    ThroughputStats total;
 
-        ThroughputStats total;
+    {
+      std::lock_guard<std::mutex> lk(mLock);
+      relayPing = mRelayPing;
+      relayPong = mRelayPong;
 
-        {
-          std::lock_guard<std::mutex> lk(mLock);
-          relayPing = mRelayPing;
-          relayPong = mRelayPong;
+      routeReq = mRouteReq;
+      routeResp = mRouteResp;
 
-          routeReq = mRouteReq;
-          routeResp = mRouteResp;
+      contReq = mContReq;
+      contResp = mContResp;
 
-          contReq = mContReq;
-          contResp = mContResp;
+      cliToServ = mCliToServ;
+      servToCli = mServToCli;
 
-          cliToServ = mCliToServ;
-          servToCli = mServToCli;
+      sessionPing = mSessionPing;
+      sessionPong = mSessionPong;
 
-          sessionPing = mSessionPing;
-          sessionPong = mSessionPong;
+      nearPing = mNearPing;
+      unknown = mUnknown;
 
-          nearPing = mNearPing;
-          unknown = mUnknown;
+      this->reset();
+    }
 
-          this->reset();
-        }
+    total = relayPing + relayPong + routeReq + routeResp + contReq + contResp + cliToServ + servToCli + sessionPing +
+            sessionPong + nearPing;
 
-        total = relayPing + relayPong + routeReq + routeResp + contReq + contResp + cliToServ + servToCli + sessionPing +
-                sessionPong + nearPing;
+    // no sense consuming cpu if logs not desired
+    if (mShouldLog) {
+      mConsole.write("\n------------------------------------------------\n\n");
 
-        mConsole.write("\n------------------------------------------------\n\n");
+      // Total
+      mConsole.log("Total Bytes received: ", total.ByteCount, "/s");
+      mConsole.log("Total Packets received: ", total.PacketCount, "/s\n");
 
-        // Total
-        mConsole.log("Total Bytes received: ", total.ByteCount, "/s");
-        mConsole.log("Total Packets received: ", total.PacketCount, "/s\n");
+      mConsole.log("Total Unknown Bytes received: ", unknown.ByteCount, "/s");
+      mConsole.log("Total Unknown Packets received: ", unknown.PacketCount, "/s\n");
 
-        mConsole.log("Total Unknown Bytes received: ", unknown.ByteCount, "/s");
-        mConsole.log("Total Unknown Packets received: ", unknown.PacketCount, "/s\n");
+      // relay
+      mConsole.log("Relay Ping Bytes received: ", relayPing.ByteCount, "/s");
+      mConsole.log("Relay Ping Packets received: ", relayPing.PacketCount, "/s\n");
 
-        // relay
-        mConsole.log("Relay Ping Bytes received: ", relayPing.ByteCount, "/s");
-        mConsole.log("Relay Ping Packets received: ", relayPing.PacketCount, "/s\n");
+      mConsole.log("Relay Pong Bytes received: ", relayPong.ByteCount, "/s");
+      mConsole.log("Relay Pong Packets received: ", relayPong.PacketCount, "/s\n");
 
-        mConsole.log("Relay Pong Bytes received: ", relayPong.ByteCount, "/s");
-        mConsole.log("Relay Pong Packets received: ", relayPong.PacketCount, "/s\n");
+      // route
+      mConsole.log("Route Req Bytes received: ", routeReq.ByteCount, "/s");
+      mConsole.log("Route Req Packets received: ", routeReq.PacketCount, "/s\n");
 
-        // route
-        mConsole.log("Route Req Bytes received: ", routeReq.ByteCount, "/s");
-        mConsole.log("Route Req Packets received: ", routeReq.PacketCount, "/s\n");
+      mConsole.log("Route Resp Bytes received: ", routeResp.ByteCount, "/s");
+      mConsole.log("Route Resp Packets received: ", routeResp.PacketCount, "/s\n");
 
-        mConsole.log("Route Resp Bytes received: ", routeResp.ByteCount, "/s");
-        mConsole.log("Route Resp Packets received: ", routeResp.PacketCount, "/s\n");
+      // cont
+      mConsole.log("Cont Req Bytes received: ", contReq.ByteCount, "/s");
+      mConsole.log("Cont Req Packets received: ", contReq.PacketCount, "/s\n");
 
-        // cont
-        mConsole.log("Cont Req Bytes received: ", contReq.ByteCount, "/s");
-        mConsole.log("Cont Req Packets received: ", contReq.PacketCount, "/s\n");
+      mConsole.log("Cont Resp Bytes received: ", contResp.ByteCount, "/s");
+      mConsole.log("Cont Resp Packets received: ", contResp.PacketCount, "/s\n");
 
-        mConsole.log("Cont Resp Bytes received: ", contResp.ByteCount, "/s");
-        mConsole.log("Cont Resp Packets received: ", contResp.PacketCount, "/s\n");
+      // cli to serv | serv to cli
+      mConsole.log("Cli To Serv Bytes received: ", cliToServ.ByteCount, "/s");
+      mConsole.log("Cli To Serv Packets received: ", cliToServ.PacketCount, "/s\n");
 
-        // cli to serv | serv to cli
-        mConsole.log("Cli To Serv Bytes received: ", cliToServ.ByteCount, "/s");
-        mConsole.log("Cli To Serv Packets received: ", cliToServ.PacketCount, "/s\n");
+      mConsole.log("Serv To Cli Bytes received: ", servToCli.ByteCount, "/s");
+      mConsole.log("Serv To Cli Packets received: ", servToCli.PacketCount, "/s\n");
 
-        mConsole.log("Serv To Cli Bytes received: ", servToCli.ByteCount, "/s");
-        mConsole.log("Serv To Cli Packets received: ", servToCli.PacketCount, "/s\n");
+      // session
+      mConsole.log("Session Ping Bytes received: ", sessionPing.ByteCount, "/s");
+      mConsole.log("Session Ping Packets received: ", sessionPing.PacketCount, "/s\n");
 
-        // session
-        mConsole.log("Session Ping Bytes received: ", sessionPing.ByteCount, "/s");
-        mConsole.log("Session Ping Packets received: ", sessionPing.PacketCount, "/s\n");
+      mConsole.log("Session Pong Bytes received: ", sessionPong.ByteCount, "/s");
+      mConsole.log("Session Pong Packets received: ", sessionPong.PacketCount, "/s\n");
 
-        mConsole.log("Session Pong Bytes received: ", sessionPong.ByteCount, "/s");
-        mConsole.log("Session Pong Packets received: ", sessionPong.PacketCount, "/s\n");
+      // near
+      mConsole.log("Near Ping Bytes received: ", nearPing.ByteCount, "/s");
+      mConsole.log("Near Ping Packets received: ", nearPing.PacketCount, "/s\n");
 
-        // near
-        mConsole.log("Near Ping Bytes received: ", nearPing.ByteCount, "/s");
-        mConsole.log("Near Ping Packets received: ", nearPing.PacketCount, "/s\n");
+      mConsole.flush();
+    }
 
-        mConsole.flush();
-      }
-    });
-  }
-
-  inline ThroughputLogger::~ThroughputLogger()
-  {
-    stop();
+    return total.ByteCount;
   }
 
   inline void ThroughputLogger::addToRelayPingPacket(size_t count)
@@ -276,18 +268,8 @@ namespace util
     mUnknown.add(count);
   }
 
-  inline void ThroughputLogger::stop()
-  {
-    mAlive = false;
-    if (mPrintThread && mPrintThread->joinable()) {
-      mPrintThread->join();
-      mPrintThread = nullptr;
-    }
-  }
-
   inline void ThroughputLogger::reset()
   {
-    mEmptyPacketsTotal = 0;
     mRelayPing.reset();
     mRelayPong.reset();
     mRouteReq.reset();

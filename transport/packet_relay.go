@@ -122,19 +122,41 @@ type RelayUpdatePacket struct {
 	NumRelays uint32
 
 	PingStats []routing.RelayStatsPing
+
+	BytesReceived uint64
 }
 
 type packetMetadata struct {
+	ID          uint64 `json:"Id"`
+	PingKey     []byte `json:"PingKey"`
+	Role        string `json:"Role"`
+	Shutdown    bool   `json:"Shutdown"`
+	Group       string `json:"Group"`
 	TokenBase64 string `json:"PublicKey"`
 }
 
-type RelayUpdateRequestJSON struct {
-	Version    uint32                   `json:"version"`
-	StringAddr string                   `json:"relay_address"`
-	Metadata   packetMetadata           `json:"Metadata"`
-	PingStats  []routing.RelayStatsPing `json:"PingStats"`
+type trafficStats struct {
+	BytesPaidTx        uint64 `json:"BytesPaidTx"`
+	BytesPaidRx        uint64 `json:"BytesPaidRx"`
+	BytesManagementTx  uint64 `json:"BytesManagementTx"`
+	BytesManagementRx  uint64 `json:"BytesManagementRx"`
+	BytesMeasurementTx uint64 `json:"BytesMeasurementTx"`
+	BytesMeasurementRx uint64 `json:"BytesMeasurementRx"`
+	BytesInvalidRx     uint64 `json:"BytesInvalidRx"`
+	SessionCount       uint64 `json:"SessionCount"`
+	FlowCount          uint64 `json:"FlowCount"`
 }
 
+type RelayUpdateRequestJSON struct {
+	Version      uint32                   `json:"version"`
+	StringAddr   string                   `json:"relay_address"`
+	Metadata     packetMetadata           `json:"Metadata"`
+	Timestamp    uint64                   `json:"Timestamp"`
+	Signature    []byte                   `json:"Signature"`
+	Usage        float32                  `json:"Usage"`
+	TrafficStats trafficStats             `json:"TrafficStats"`
+	PingStats    []routing.RelayStatsPing `json:"PingStats"`
+}
 type RelayUpdateResponseJSON struct {
 	RelaysToPing []routing.LegacyPingData `json:"ping_data"`
 }
@@ -166,6 +188,8 @@ func (j *RelayUpdateRequestJSON) ToUpdatePacket(packet *RelayUpdatePacket) error
 	packet.NumRelays = uint32(len(j.PingStats))
 	packet.PingStats = make([]routing.RelayStatsPing, packet.NumRelays)
 	copy(packet.PingStats, j.PingStats)
+
+	packet.BytesReceived = j.TrafficStats.BytesMeasurementRx
 
 	return nil
 }
@@ -199,12 +223,16 @@ func (r *RelayUpdatePacket) UnmarshalBinary(buff []byte) error {
 		}
 	}
 
+	if !encoding.ReadUint64(buff, &index, &r.BytesReceived) {
+		return errors.New("invalid packet")
+	}
+
 	return nil
 }
 
 // MarshalBinary ...
 func (r RelayUpdatePacket) MarshalBinary() ([]byte, error) {
-	data := make([]byte, 4+4+len(r.Address.String())+routing.EncryptedTokenSize+4+20*len(r.PingStats))
+	data := make([]byte, r.size())
 
 	index := 0
 	encoding.WriteUint32(data, &index, r.Version)
@@ -221,5 +249,11 @@ func (r RelayUpdatePacket) MarshalBinary() ([]byte, error) {
 		encoding.WriteUint32(data, &index, math.Float32bits(stats.PacketLoss))
 	}
 
+	encoding.WriteUint64(data, &index, r.BytesReceived)
+
 	return data, nil
+}
+
+func (r *RelayUpdatePacket) size() uint {
+	return uint(4 + 4 + len(r.Address.String()) + routing.EncryptedTokenSize + 4 + 20*len(r.PingStats) + 8)
 }

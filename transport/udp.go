@@ -97,15 +97,15 @@ func (e ServerCacheEntry) MarshalBinary() ([]byte, error) {
 }
 
 // ServerUpdateHandlerFunc ...
-func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, duration metrics.Gauge, counter metrics.Counter) UDPHandlerFunc {
+func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, metrics *metrics.ServerUpdateMetrics) UDPHandlerFunc {
 	logger = log.With(logger, "handler", "server")
 
 	return func(w io.Writer, incoming *UDPPacket) {
 		durationStart := time.Now()
 		defer func() {
 			durationSince := time.Since(durationStart)
-			duration.Set(float64(durationSince.Milliseconds()))
-			counter.Add(1)
+			level.Info(logger).Log("duration", durationSince.Milliseconds())
+			metrics.Invocations.Add(1)
 		}()
 
 		var packet ServerUpdatePacket
@@ -207,22 +207,15 @@ type RouteProvider interface {
 	Routes([]routing.Relay, []routing.Relay, ...routing.SelectorFunc) ([]routing.Route, error)
 }
 
-type SessionMetrics struct {
-	Invocations    metrics.Counter
-	DirectSessions metrics.Counter
-	NextSessions   metrics.Counter
-	DurationGauge  metrics.Gauge
-}
-
 // SessionUpdateHandlerFunc ...
-func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, metrics *SessionMetrics, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, metrics *metrics.SessionMetrics, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
 	logger = log.With(logger, "handler", "session")
 
 	return func(w io.Writer, incoming *UDPPacket) {
 		durationStart := time.Now()
 		defer func() {
 			durationSince := time.Since(durationStart)
-			metrics.DurationGauge.Set(float64(durationSince.Milliseconds()))
+			level.Info(logger).Log("duration", durationSince.Milliseconds())
 			metrics.Invocations.Add(1)
 		}()
 
@@ -277,12 +270,12 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 					return
 				}
 
-				if sessionCacheData == nil || len(sessionCacheData) == 0 {
-
-				} else if err := sessionCacheEntry.UnmarshalBinary(sessionCacheData); err != nil {
-					level.Error(locallogger).Log("msg", "failed to unmarshal session bytes", "err", err)
-					handleError(w, response, serverPrivateKey, err)
-					return
+				if len(sessionCacheData) != 0 {
+					if err := sessionCacheEntry.UnmarshalBinary(sessionCacheData); err != nil {
+						level.Error(locallogger).Log("msg", "failed to unmarshal session bytes", "err", err)
+						handleError(w, response, serverPrivateKey, err)
+						return
+					}
 				}
 			} else {
 				sessionCacheEntry.TimestampStart = timestampNow
@@ -399,7 +392,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			"buyer_yolo", buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce,
 		)
 
-		routeDecision := nextRoute.Decide(sessionCacheEntry.RouteDecision, nnStats, directStats,
+		routeDecision := nextRoute.Decide(sessionCacheEntry.RouteDecision, nnStats, directStats, &metrics.DecisionMetrics,
 			routing.DecideUpgradeRTT(float64(buyer.RoutingRulesSettings.RTTThreshold)),
 			routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis)),
 			routing.DecideVeto(float64(buyer.RoutingRulesSettings.RTTVeto), buyer.RoutingRulesSettings.EnablePacketLossSafety, buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),

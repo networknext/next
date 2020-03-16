@@ -3,6 +3,8 @@ package routing
 import (
 	"encoding/binary"
 	"hash/fnv"
+
+	"github.com/networknext/backend/metrics"
 )
 
 type Route struct {
@@ -10,10 +12,15 @@ type Route struct {
 	Stats  Stats
 }
 
-func (r *Route) Decide(prevDecision Decision, nnStats Stats, directStats Stats, routeDecisions ...DecisionFunc) Decision {
+func (r *Route) Decide(prevDecision Decision, nnStats Stats, directStats Stats, metrics *metrics.DecisionMetrics, routeDecisions ...DecisionFunc) Decision {
 	nextDecision := prevDecision
 	for _, routeDecision := range routeDecisions {
-		nextDecision = routeDecision(nextDecision, r.Stats, nnStats, directStats)
+		decision := routeDecision(nextDecision, r.Stats, nnStats, directStats, metrics)
+
+		nextDecision.OnNetworkNext = decision.OnNetworkNext
+		if decision.Reason != DecisionNoChange { // DecisionNoChange signals that the decision function chose not to update the deicision reason
+			nextDecision.Reason = decision.Reason
+		}
 	}
 	return nextDecision
 }
