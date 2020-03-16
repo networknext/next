@@ -1,11 +1,45 @@
 package metrics
 
 type DecisionMetrics struct {
-	VetoedSessions Counter
+	NoChange            Counter
+	ForceDirect         Counter
+	ForceNext           Counter
+	NoNextRoute         Counter
+	ABTestDirect        Counter
+	RTTReduction        Counter
+	PacketLossMultipath Counter
+	JitterMultipath     Counter
+	VetoRTT             Counter
+	RTTMultipath        Counter
+	VetoPacketLoss      Counter
+	FallbackToDirect    Counter
+	VetoYOLO            Counter
+	VetoNoRoute         Counter
+	InitialSlice        Counter
+	VetoRTTYOLO         Counter
+	VetoPacketLossYOLO  Counter
+	RTTIncrease         Counter
 }
 
 var EmptyDecisionMetrics DecisionMetrics = DecisionMetrics{
-	VetoedSessions: &EmptyCounter{},
+	NoChange:            &EmptyCounter{},
+	ForceDirect:         &EmptyCounter{},
+	ForceNext:           &EmptyCounter{},
+	NoNextRoute:         &EmptyCounter{},
+	ABTestDirect:        &EmptyCounter{},
+	RTTReduction:        &EmptyCounter{},
+	PacketLossMultipath: &EmptyCounter{},
+	JitterMultipath:     &EmptyCounter{},
+	VetoRTT:             &EmptyCounter{},
+	RTTMultipath:        &EmptyCounter{},
+	VetoPacketLoss:      &EmptyCounter{},
+	FallbackToDirect:    &EmptyCounter{},
+	VetoYOLO:            &EmptyCounter{},
+	VetoNoRoute:         &EmptyCounter{},
+	InitialSlice:        &EmptyCounter{},
+	VetoRTTYOLO:         &EmptyCounter{},
+	VetoPacketLossYOLO:  &EmptyCounter{},
+	RTTIncrease:         &EmptyCounter{},
 }
 
 type SessionMetrics struct {
