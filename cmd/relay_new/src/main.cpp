@@ -155,6 +155,31 @@ namespace
     // else use the next one
     return actualProcCount > 0 && numProcs == actualProcCount ? 0 : numProcs + 1;
   }
+
+  inline int getBufferSize(const char* envvar)
+  {
+    int socketBufferSize = 1000000;
+
+    auto env = std::getenv(envvar);
+    if (env != nullptr) {
+      int num = -1;
+      try {
+        num = std::stoi(std::string(env));  // to cause an exception to be thrown if not a number
+      } catch (std::exception& e) {
+        Log("Could not parse ", envvar, " env var to a number: ", e.what());
+        std::exit(1);
+      }
+
+      if (num < 0) {
+        Log("", envvar, " is less than 0");
+        std::exit(1);
+      }
+
+      socketBufferSize = num;
+    }
+
+    return socketBufferSize;
+  }
 }  // namespace
 
 int main()
@@ -236,6 +261,9 @@ int main()
       socketBufferSize = num;
     }
   }
+
+  int socketRecvBuffSize = getBufferSize("RELAY_RECV_BUFFER_SIZE");
+  int socketSendBuffSize = getBufferSize("RELAY_SEND_BUFFER_SIZE");
 
   LogDebug("Socket buffer size is ", socketBufferSize, " bytes");
 
