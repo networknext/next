@@ -423,7 +423,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 
 				if routeDecision.Reason&routing.DecisionVetoRTT != 0 || routeDecision.Reason&routing.DecisionVetoPacketLoss != 0 || routeDecision.Reason&routing.DecisionVetoYOLO != 0 {
 					// Session was vetoed this update, so set the veto timeout
-					sessionCacheEntry.VetoTimestamp = timestampNow
+					sessionCacheEntry.VetoTimestamp = timestampNow.Add(time.Hour)
 				}
 			}
 
