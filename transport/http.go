@@ -392,7 +392,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, redisClient *redis.Client, statsd
 		relayID := crypto.HashID(relayUpdatePacket.Address.String())
 		if relay, ok := storer.Relay(relayID); ok {
 			stats := &stats.RelayTrafficStats{
-				RelayId:            stats.NewEntityID("Relay", relay.Addr.String()),
+				RelayId:            stats.NewEntityID("Relay", relay.Addr.String()), // TODO send the name in the update packet, addr string for now because that's what "Name" turned into
 				BytesMeasurementRx: relayUpdatePacket.BytesReceived,
 			}
 
