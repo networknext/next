@@ -415,7 +415,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 				}
 			} else {
 				// Session hasn't been vetoed, perform route decision as normal
-				routeDecision = nextRoute.Decide(sessionCacheEntry.RouteDecision, nnStats, directStats, &metrics.DecisionMetrics,
+				routeDecision = nextRoute.Decide(sessionCacheEntry.RouteDecision, nnStats, directStats,
 					routing.DecideUpgradeRTT(float64(buyer.RoutingRulesSettings.RTTThreshold)),
 					routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis)),
 					routing.DecideVeto(float64(buyer.RoutingRulesSettings.RTTVeto), buyer.RoutingRulesSettings.EnablePacketLossSafety, buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
@@ -512,6 +512,8 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			}
 		}
 
+		addRouteDecisionMetric(routeDecision, metrics)
+
 		// Send the Session Response back to the server
 		var responseData []byte
 		if responseData, err = writeSessionResponse(w, response, serverPrivateKey); err != nil {
@@ -554,6 +556,47 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 				level.Error(locallogger).Log("msg", "billing failed", "err", err)
 			}
 		}
+	}
+}
+
+func addRouteDecisionMetric(d routing.Decision, m *metrics.SessionMetrics) {
+	switch d.Reason {
+	case routing.DecisionNoChange:
+		m.DecisionMetrics.NoChange.Add(1)
+	case routing.DecisionForceDirect:
+		m.DecisionMetrics.ForceDirect.Add(1)
+	case routing.DecisionForceNext:
+		m.DecisionMetrics.ForceNext.Add(1)
+	case routing.DecisionNoNextRoute:
+		m.DecisionMetrics.NoNextRoute.Add(1)
+	case routing.DecisionABTestDirect:
+		m.DecisionMetrics.ABTestDirect.Add(1)
+	case routing.DecisionRTTReduction:
+		m.DecisionMetrics.RTTReduction.Add(1)
+	case routing.DecisionPacketLossMultipath:
+		m.DecisionMetrics.PacketLossMultipath.Add(1)
+	case routing.DecisionJitterMultipath:
+		m.DecisionMetrics.JitterMultipath.Add(1)
+	case routing.DecisionVetoRTT:
+		m.DecisionMetrics.VetoRTT.Add(1)
+	case routing.DecisionRTTMultipath:
+		m.DecisionMetrics.RTTMultipath.Add(1)
+	case routing.DecisionVetoPacketLoss:
+		m.DecisionMetrics.VetoPacketLoss.Add(1)
+	case routing.DecisionFallbackToDirect:
+		m.DecisionMetrics.FallbackToDirect.Add(1)
+	case routing.DecisionVetoYOLO:
+		m.DecisionMetrics.VetoYOLO.Add(1)
+	case routing.DecisionVetoNoRoute:
+		m.DecisionMetrics.VetoNoRoute.Add(1)
+	case routing.DecisionInitialSlice:
+		m.DecisionMetrics.InitialSlice.Add(1)
+	case routing.DecisionVetoRTT | routing.DecisionVetoYOLO:
+		m.DecisionMetrics.VetoRTTYOLO.Add(1)
+	case routing.DecisionVetoPacketLoss | routing.DecisionVetoYOLO:
+		m.DecisionMetrics.VetoPacketLossYOLO.Add(1)
+	case routing.DecisionRTTIncrease:
+		m.DecisionMetrics.RTTIncrease.Add(1)
 	}
 }
 

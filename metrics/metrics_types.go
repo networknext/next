@@ -1,11 +1,49 @@
 package metrics
 
+import (
+	"context"
+)
+
 type DecisionMetrics struct {
-	VetoedSessions Counter
+	NoChange            Counter
+	ForceDirect         Counter
+	ForceNext           Counter
+	NoNextRoute         Counter
+	ABTestDirect        Counter
+	RTTReduction        Counter
+	PacketLossMultipath Counter
+	JitterMultipath     Counter
+	VetoRTT             Counter
+	RTTMultipath        Counter
+	VetoPacketLoss      Counter
+	FallbackToDirect    Counter
+	VetoYOLO            Counter
+	VetoNoRoute         Counter
+	InitialSlice        Counter
+	VetoRTTYOLO         Counter
+	VetoPacketLossYOLO  Counter
+	RTTIncrease         Counter
 }
 
 var EmptyDecisionMetrics DecisionMetrics = DecisionMetrics{
-	VetoedSessions: &EmptyCounter{},
+	NoChange:            &EmptyCounter{},
+	ForceDirect:         &EmptyCounter{},
+	ForceNext:           &EmptyCounter{},
+	NoNextRoute:         &EmptyCounter{},
+	ABTestDirect:        &EmptyCounter{},
+	RTTReduction:        &EmptyCounter{},
+	PacketLossMultipath: &EmptyCounter{},
+	JitterMultipath:     &EmptyCounter{},
+	VetoRTT:             &EmptyCounter{},
+	RTTMultipath:        &EmptyCounter{},
+	VetoPacketLoss:      &EmptyCounter{},
+	FallbackToDirect:    &EmptyCounter{},
+	VetoYOLO:            &EmptyCounter{},
+	VetoNoRoute:         &EmptyCounter{},
+	InitialSlice:        &EmptyCounter{},
+	VetoRTTYOLO:         &EmptyCounter{},
+	VetoPacketLossYOLO:  &EmptyCounter{},
+	RTTIncrease:         &EmptyCounter{},
 }
 
 type SessionMetrics struct {
@@ -32,4 +70,236 @@ type ServerUpdateMetrics struct {
 var EmptyServerUpdateMetrics ServerUpdateMetrics = ServerUpdateMetrics{
 	Invocations:   &EmptyCounter{},
 	DurationGauge: &EmptyGauge{},
+}
+
+func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMetrics, error) {
+	var err error
+
+	sessionMetrics := SessionMetrics{}
+
+	sessionMetrics.Invocations, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Total session update invocations",
+		ServiceName: "server_backend",
+		ID:          "session.count",
+		Unit:        "invocations",
+		Description: "The total number of concurrent sessions",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.DirectSessions, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Total direct session count",
+		ServiceName: "server_backend",
+		ID:          "session.direct.count",
+		Unit:        "sessions",
+		Description: "The total number of sessions that are currently being served a direct route",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.NextSessions, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Total next session count",
+		ServiceName: "server_backend",
+		ID:          "session.next.count",
+		Unit:        "sessions",
+		Description: "The total number of sessions that are currently being served a network next route",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.DurationGauge, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Session update duration",
+		ServiceName: "server_backend",
+		ID:          "session.duration",
+		Unit:        "milliseconds",
+		Description: "How long it takes to process a session update request",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.DecisionMetrics.NoChange, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Decision no change",
+		ServiceName: "server_backend",
+		ID:          "session.route_decision.no_change",
+		Unit:        "decisions",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.DecisionMetrics.ForceDirect, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Decision force direct",
+		ServiceName: "server_backend",
+		ID:          "session.route_decision.force_direct",
+		Unit:        "decisions",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.DecisionMetrics.ForceNext, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Decision force next",
+		ServiceName: "server_backend",
+		ID:          "session.route_decision.force_next",
+		Unit:        "decisions",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.DecisionMetrics.NoNextRoute, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Decision no next route",
+		ServiceName: "server_backend",
+		ID:          "session.route_decision.no_next_route",
+		Unit:        "decisions",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.DecisionMetrics.ABTestDirect, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Decision AB test direct",
+		ServiceName: "server_backend",
+		ID:          "session.route_decision.ab_test_direct",
+		Unit:        "decisions",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.DecisionMetrics.RTTReduction, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Decision RTT reduction",
+		ServiceName: "server_backend",
+		ID:          "session.route_decision.rtt_reduction",
+		Unit:        "decisions",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.DecisionMetrics.PacketLossMultipath, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Decision packet loss multipath",
+		ServiceName: "server_backend",
+		ID:          "session.route_decision.packet_loss_multipath",
+		Unit:        "decisions",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.DecisionMetrics.JitterMultipath, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Decision jitter multipath",
+		ServiceName: "server_backend",
+		ID:          "session.route_decision.jitter_multipath",
+		Unit:        "decisions",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.DecisionMetrics.VetoRTT, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Decision veto RTT",
+		ServiceName: "server_backend",
+		ID:          "session.route_decision.veto_rtt",
+		Unit:        "decisions",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.DecisionMetrics.RTTMultipath, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Decision RTT multipath",
+		ServiceName: "server_backend",
+		ID:          "session.route_decision.rtt_multipath",
+		Unit:        "decisions",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.DecisionMetrics.VetoPacketLoss, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Decision veto packet loss",
+		ServiceName: "server_backend",
+		ID:          "session.route_decision.veto_packet_loss",
+		Unit:        "decisions",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.DecisionMetrics.FallbackToDirect, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Decision fallback to direct",
+		ServiceName: "server_backend",
+		ID:          "session.route_decision.fallback_to_direct",
+		Unit:        "decisions",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.DecisionMetrics.VetoYOLO, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Decision veto YOLO",
+		ServiceName: "server_backend",
+		ID:          "session.route_decision.veto_yolo",
+		Unit:        "decisions",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.DecisionMetrics.VetoNoRoute, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Decision veto no route",
+		ServiceName: "server_backend",
+		ID:          "session.route_decision.veto_no_route",
+		Unit:        "decisions",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.DecisionMetrics.InitialSlice, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Decision initial slice",
+		ServiceName: "server_backend",
+		ID:          "session.route_decision.initial_slice",
+		Unit:        "decisions",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.DecisionMetrics.VetoRTTYOLO, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Decision veto RTT YOLO",
+		ServiceName: "server_backend",
+		ID:          "session.route_decision.veto_rtt_yolo",
+		Unit:        "decisions",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.DecisionMetrics.VetoPacketLossYOLO, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Decision veto packet loss yolo",
+		ServiceName: "server_backend",
+		ID:          "session.route_decision.veto_packet_loss_yolo",
+		Unit:        "decisions",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.DecisionMetrics.RTTIncrease, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Decision RTT increase",
+		ServiceName: "server_backend",
+		ID:          "session.route_decision.rtt_increase",
+		Unit:        "decisions",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &sessionMetrics, nil
 }

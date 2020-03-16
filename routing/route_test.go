@@ -3,7 +3,6 @@ package routing_test
 import (
 	"testing"
 
-	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/stretchr/testify/assert"
 )
@@ -51,7 +50,7 @@ func TestDecide(t *testing.T) {
 		// Loop through all permutations of the decision functions and test that the result is the same
 		perms := permutations(decisionFuncs)
 		for i := 0; i < len(perms); i++ {
-			decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, &metrics.EmptyDecisionMetrics, perms[i]...)
+			decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, perms[i]...)
 			assert.Equal(t, expected, decision)
 		}
 	}
@@ -98,7 +97,7 @@ func TestDecide(t *testing.T) {
 		// Loop through all permutations of the decision functions and test that the result is the same
 		perms := permutations(decisionFuncs)
 		for i := 0; i < len(perms); i++ {
-			decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, &metrics.EmptyDecisionMetrics, perms[i]...)
+			decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, perms[i]...)
 			assert.Equal(t, expected, decision)
 		}
 	}
@@ -145,7 +144,7 @@ func TestDecide(t *testing.T) {
 		// Loop through all permutations of the decision functions and test that the result is the same
 		perms := permutations(decisionFuncs)
 		for i := 0; i < len(perms); i++ {
-			decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, &metrics.EmptyDecisionMetrics, perms[i]...)
+			decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, perms[i]...)
 			assert.Equal(t, expected, decision)
 		}
 	}
@@ -199,7 +198,7 @@ func TestDecide(t *testing.T) {
 
 			for j := 0; j < len(perms); j++ {
 				perms[j] = append(perms[j], routing.DecideVeto(float64(routingRulesSettings.RTTVeto), routingRulesSettings.EnablePacketLossSafety, routingRulesSettings.EnableYouOnlyLiveOnce))
-				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, &metrics.EmptyDecisionMetrics, perms[j]...)
+				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, perms[j]...)
 				assert.Equal(t, expected, decision)
 			}
 		}
@@ -255,7 +254,7 @@ func TestDecide(t *testing.T) {
 
 			for j := 0; j < len(perms); j++ {
 				perms[j] = append(perms[j], routing.DecideVeto(float64(routingRulesSettings.RTTVeto), routingRulesSettings.EnablePacketLossSafety, routingRulesSettings.EnableYouOnlyLiveOnce))
-				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, &metrics.EmptyDecisionMetrics, perms[j]...)
+				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, perms[j]...)
 				assert.Equal(t, expected, decision)
 			}
 		}
@@ -312,7 +311,7 @@ func TestDecide(t *testing.T) {
 
 			for j := 0; j < len(perms); j++ {
 				perms[j] = append(perms[j], routing.DecideVeto(float64(routingRulesSettings.RTTVeto), routingRulesSettings.EnablePacketLossSafety, routingRulesSettings.EnableYouOnlyLiveOnce))
-				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, &metrics.EmptyDecisionMetrics, perms[j]...)
+				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, perms[j]...)
 				assert.Equal(t, expected, decision)
 			}
 		}
@@ -370,7 +369,7 @@ func TestDecide(t *testing.T) {
 
 			for j := 0; j < len(perms); j++ {
 				perms[j] = append(perms[j], routing.DecideVeto(float64(routingRulesSettings.RTTVeto), routingRulesSettings.EnablePacketLossSafety, routingRulesSettings.EnableYouOnlyLiveOnce))
-				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, &metrics.EmptyDecisionMetrics, perms[j]...)
+				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, perms[j]...)
 				assert.Equal(t, expected, decision)
 			}
 		}
@@ -421,7 +420,7 @@ func TestDecide(t *testing.T) {
 			perms := permutations(combs[i])
 
 			for j := 0; j < len(perms); j++ {
-				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, &metrics.EmptyDecisionMetrics, perms[j]...)
+				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, perms[j]...)
 				assert.Equal(t, expected, decision)
 			}
 		}
@@ -472,7 +471,7 @@ func TestDecide(t *testing.T) {
 			perms := permutations(combs[i])
 
 			for j := 0; j < len(perms); j++ {
-				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, &metrics.EmptyDecisionMetrics, perms[j]...)
+				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, perms[j]...)
 				assert.Equal(t, expected, decision)
 			}
 		}
@@ -526,7 +525,7 @@ func TestDecide(t *testing.T) {
 			perms := permutations(combs[i])
 
 			for j := 0; j < len(perms); j++ {
-				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, &metrics.EmptyDecisionMetrics, perms[j]...)
+				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, perms[j]...)
 				assert.Equal(t, expected, decision)
 			}
 		}
@@ -548,7 +547,7 @@ func TestDecide(t *testing.T) {
 			perms := permutations(combs[i])
 
 			for j := 0; j < len(perms); j++ {
-				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, &metrics.EmptyDecisionMetrics, perms[j]...)
+				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, perms[j]...)
 				assert.Equal(t, expected, decision)
 			}
 		}

@@ -4,7 +4,7 @@
 #if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
 
 #include "relay/relay_platform_linux.hpp"
-#include "util.hpp"
+#include "util/logger.hpp"
 
 namespace os
 {
@@ -324,7 +324,7 @@ namespace legacy
     socket->handle = ::socket((address->type == net::AddressType::IPv6) ? AF_INET6 : AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
     if (socket->handle < 0) {
-      relay_printf("failed to create socket");
+      LogError("failed to create socket");
       return NULL;
     }
 
@@ -333,7 +333,7 @@ namespace legacy
     if (address->type == net::AddressType::IPv6) {
       int yes = 1;
       if (setsockopt(socket->handle, IPPROTO_IPV6, IPV6_V6ONLY, (char*)(&yes), sizeof(yes)) != 0) {
-        relay_printf("failed to set socket ipv6 only");
+        LogError("failed to set socket ipv6 only");
         relay_platform_socket_destroy(socket);
         return NULL;
       }
@@ -342,12 +342,12 @@ namespace legacy
     // increase socket send and receive buffer sizes
 
     if (setsockopt(socket->handle, SOL_SOCKET, SO_SNDBUF, (char*)(&send_buffer_size), sizeof(int)) != 0) {
-      relay_printf("failed to set socket send buffer size");
+      LogError("failed to set socket send buffer size");
       return NULL;
     }
 
     if (setsockopt(socket->handle, SOL_SOCKET, SO_RCVBUF, (char*)(&receive_buffer_size), sizeof(int)) != 0) {
-      relay_printf("failed to set socket receive buffer size");
+      LogError("failed to set socket receive buffer size");
       relay_platform_socket_destroy(socket);
       return NULL;
     }
@@ -364,7 +364,7 @@ namespace legacy
       socket_address.sin6_port = net::relay_htons(address->port);
 
       if (bind(socket->handle, (sockaddr*)&socket_address, sizeof(socket_address)) < 0) {
-        relay_printf("failed to bind socket (ipv6)");
+        LogError("failed to bind socket (ipv6)");
         relay_platform_socket_destroy(socket);
         return NULL;
       }
@@ -377,7 +377,7 @@ namespace legacy
       socket_address.sin_port = net::relay_htons(address->port);
 
       if (bind(socket->handle, (sockaddr*)&socket_address, sizeof(socket_address)) < 0) {
-        relay_printf("failed to bind socket (ipv4)");
+        LogError("failed to bind socket (ipv4)");
         relay_platform_socket_destroy(socket);
         return NULL;
       }
@@ -390,7 +390,7 @@ namespace legacy
         sockaddr_in6 sin;
         socklen_t len = sizeof(sin);
         if (getsockname(socket->handle, (sockaddr*)(&sin), &len) == -1) {
-          relay_printf("failed to get socket port (ipv6)");
+          LogError("failed to get socket port (ipv6)");
           relay_platform_socket_destroy(socket);
           return NULL;
         }
@@ -399,7 +399,7 @@ namespace legacy
         sockaddr_in sin;
         socklen_t len = sizeof(sin);
         if (getsockname(socket->handle, (sockaddr*)(&sin), &len) == -1) {
-          relay_printf("failed to get socket port (ipv4)");
+          LogError("failed to get socket port (ipv4)");
           relay_platform_socket_destroy(socket);
           return NULL;
         }
@@ -411,7 +411,7 @@ namespace legacy
 
     if (socket_type == os::SocketType::NonBlocking) {
       if (fcntl(socket->handle, F_SETFL, O_NONBLOCK, 1) == -1) {
-        relay_printf("failed to set socket to non-blocking");
+        LogError("failed to set socket to non-blocking");
         relay_platform_socket_destroy(socket);
         return NULL;
       }
@@ -421,7 +421,7 @@ namespace legacy
       tv.tv_sec = 0;
       tv.tv_usec = (int)(timeout_seconds * 1000000.0f);
       if (setsockopt(socket->handle, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
-        relay_printf("failed to set socket receive timeout");
+        LogError("failed to set socket receive timeout");
         relay_platform_socket_destroy(socket);
         return NULL;
       }
@@ -463,7 +463,7 @@ namespace legacy
       if (result < 0) {
         char address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
         relay_address_to_string(to, address_string);
-        relay_printf("sendto (%s) failed: %s", address_string, strerror(errno));
+        LogError("sendto (", address_string, ") failed");
       }
     } else if (to->type == net::AddressType::IPv4) {
       sockaddr_in socket_address;
@@ -477,10 +477,10 @@ namespace legacy
       if (result < 0) {
         char address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
         relay_address_to_string(to, address_string);
-        relay_printf("sendto (%s) failed: %s", address_string, strerror(errno));
+        LogError("sendto (", address_string, ") failed");
       }
     } else {
-      relay_printf("invalid address type. could not send packet");
+      Log("invalid address type. could not send packet");
     }
   }
 
@@ -507,7 +507,7 @@ namespace legacy
         return 0;
       }
 
-      relay_printf("recvfrom failed with error %d", errno);
+      LogError("recvfrom failed");
 
       return 0;
     }

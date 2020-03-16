@@ -318,7 +318,7 @@ publish-relay-backend-artifact: ## publishes the relay backend artifact to GCP S
 .PHONY: deploy-relay-backend
 deploy-relay-backend: build-relay-backend ## builds and deploys the relay backend to the dev VM
 	@printf "Deploying relay backend... \n\n"
-	gcloud --quiet compute ssh relay-backend-dev-1 -- 'sudo /app/vm-update-app.sh'
+	gcloud compute ssh relay-backend-dev-1 -- 'sudo /app/vm-update-app.sh'
 
 .PHONY: build-server-backend
 build-server-backend: ## builds the server backend binary
@@ -345,7 +345,7 @@ publish-server-backend-artifact: ## publishes the server backend artifact to GCP
 .PHONY: deploy-server-backend
 deploy-server-backend: build-server-backend ## builds and deploys the server backend to the dev VM
 	@printf "Deploying server backend... \n\n"
-	gcloud --quiet compute ssh server-backend-dev-1 -- 'sudo /app/vm-update-app.sh'
+	gcloud compute ssh server-backend-dev-1 -- 'sudo /app/vm-update-app.sh'
 
 .PHONY: build-backend-artifacts
 build-backend-artifacts: build-relay-backend-artifact build-server-backend-artifact ## builds the backend artifacts
