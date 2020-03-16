@@ -99,7 +99,7 @@ namespace core
 
     if (packet.Addr.Type == net::AddressType::IPv4) {
       headerBytes = IPv4UDPHeaderSize;
-    } else if (packet.Addr.Type == net::AddressType::IPv4) {
+    } else if (packet.Addr.Type == net::AddressType::IPv6) {
       headerBytes = IPv6UDPHeaderSize;
     }
 
