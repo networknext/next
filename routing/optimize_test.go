@@ -3156,9 +3156,9 @@ func TestRouting(t *testing.T) {
 			expectedErr error
 			selectors   []routing.SelectorFunc
 		}{
-			{"empty from/to sets", []routing.Relay{}, []routing.Relay{}, nil, errors.New("No routes found"), nil},
-			{"relays not found", []routing.Relay{{ID: 1}}, []routing.Relay{{ID: 2}}, nil, errors.New("No routes found"), nil},
-			{"one relay found", []routing.Relay{{ID: 1}}, []routing.Relay{{ID: 1500948990}}, nil, errors.New("No routes found"), nil},
+			{"empty from/to sets", []routing.Relay{}, []routing.Relay{}, nil, errors.New("no routes found"), nil},
+			{"relays not found", []routing.Relay{{ID: 1}}, []routing.Relay{{ID: 2}}, nil, errors.New("no routes found"), nil},
+			{"one relay found", []routing.Relay{{ID: 1}}, []routing.Relay{{ID: 1500948990}}, nil, errors.New("no routes found"), nil},
 			{
 				"no selectors",
 				[]routing.Relay{{ID: 2836356269}},

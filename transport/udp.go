@@ -97,15 +97,15 @@ func (e ServerCacheEntry) MarshalBinary() ([]byte, error) {
 }
 
 // ServerUpdateHandlerFunc ...
-func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, duration metrics.Gauge, counter metrics.Counter) UDPHandlerFunc {
+func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, metrics *metrics.ServerUpdateMetrics) UDPHandlerFunc {
 	logger = log.With(logger, "handler", "server")
 
 	return func(w io.Writer, incoming *UDPPacket) {
 		durationStart := time.Now()
 		defer func() {
 			durationSince := time.Since(durationStart)
-			duration.Set(float64(durationSince.Milliseconds()))
-			counter.Add(1)
+			level.Info(logger).Log("duration", durationSince.Milliseconds())
+			metrics.Invocations.Add(1)
 		}()
 
 		var packet ServerUpdatePacket
@@ -207,22 +207,15 @@ type RouteProvider interface {
 	Routes([]routing.Relay, []routing.Relay, ...routing.SelectorFunc) ([]routing.Route, error)
 }
 
-type SessionMetrics struct {
-	Invocations    metrics.Counter
-	DirectSessions metrics.Counter
-	NextSessions   metrics.Counter
-	DurationGauge  metrics.Gauge
-}
-
 // SessionUpdateHandlerFunc ...
-func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, metrics *SessionMetrics, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, metrics *metrics.SessionMetrics, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
 	logger = log.With(logger, "handler", "session")
 
 	return func(w io.Writer, incoming *UDPPacket) {
 		durationStart := time.Now()
 		defer func() {
 			durationSince := time.Since(durationStart)
-			metrics.DurationGauge.Set(float64(durationSince.Milliseconds()))
+			level.Info(logger).Log("duration", durationSince.Milliseconds())
 			metrics.Invocations.Add(1)
 		}()
 
@@ -277,12 +270,12 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 					return
 				}
 
-				if sessionCacheData == nil || len(sessionCacheData) == 0 {
-
-				} else if err := sessionCacheEntry.UnmarshalBinary(sessionCacheData); err != nil {
-					level.Error(locallogger).Log("msg", "failed to unmarshal session bytes", "err", err)
-					handleError(w, response, serverPrivateKey, err)
-					return
+				if len(sessionCacheData) != 0 {
+					if err := sessionCacheEntry.UnmarshalBinary(sessionCacheData); err != nil {
+						level.Error(locallogger).Log("msg", "failed to unmarshal session bytes", "err", err)
+						handleError(w, response, serverPrivateKey, err)
+						return
+					}
 				}
 			} else {
 				sessionCacheEntry.TimestampStart = timestampNow
@@ -404,6 +397,8 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis)),
 			routing.DecideVeto(float64(buyer.RoutingRulesSettings.RTTVeto), buyer.RoutingRulesSettings.EnablePacketLossSafety, buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
 		)
+
+		addRouteDecisionMetric(routeDecision, metrics)
 
 		level.Debug(locallogger).Log(
 			"prev_on_network_next", sessionCacheEntry.RouteDecision.OnNetworkNext,
@@ -535,6 +530,47 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 				level.Error(locallogger).Log("msg", "billing failed", "err", err)
 			}
 		}
+	}
+}
+
+func addRouteDecisionMetric(d routing.Decision, m *metrics.SessionMetrics) {
+	switch d.Reason {
+	case routing.DecisionNoChange:
+		m.DecisionMetrics.NoChange.Add(1)
+	case routing.DecisionForceDirect:
+		m.DecisionMetrics.ForceDirect.Add(1)
+	case routing.DecisionForceNext:
+		m.DecisionMetrics.ForceNext.Add(1)
+	case routing.DecisionNoNextRoute:
+		m.DecisionMetrics.NoNextRoute.Add(1)
+	case routing.DecisionABTestDirect:
+		m.DecisionMetrics.ABTestDirect.Add(1)
+	case routing.DecisionRTTReduction:
+		m.DecisionMetrics.RTTReduction.Add(1)
+	case routing.DecisionPacketLossMultipath:
+		m.DecisionMetrics.PacketLossMultipath.Add(1)
+	case routing.DecisionJitterMultipath:
+		m.DecisionMetrics.JitterMultipath.Add(1)
+	case routing.DecisionVetoRTT:
+		m.DecisionMetrics.VetoRTT.Add(1)
+	case routing.DecisionRTTMultipath:
+		m.DecisionMetrics.RTTMultipath.Add(1)
+	case routing.DecisionVetoPacketLoss:
+		m.DecisionMetrics.VetoPacketLoss.Add(1)
+	case routing.DecisionFallbackToDirect:
+		m.DecisionMetrics.FallbackToDirect.Add(1)
+	case routing.DecisionVetoYOLO:
+		m.DecisionMetrics.VetoYOLO.Add(1)
+	case routing.DecisionVetoNoRoute:
+		m.DecisionMetrics.VetoNoRoute.Add(1)
+	case routing.DecisionInitialSlice:
+		m.DecisionMetrics.InitialSlice.Add(1)
+	case routing.DecisionVetoRTT | routing.DecisionVetoYOLO:
+		m.DecisionMetrics.VetoRTTYOLO.Add(1)
+	case routing.DecisionVetoPacketLoss | routing.DecisionVetoYOLO:
+		m.DecisionMetrics.VetoPacketLossYOLO.Add(1)
+	case routing.DecisionRTTIncrease:
+		m.DecisionMetrics.RTTIncrease.Add(1)
 	}
 }
 
