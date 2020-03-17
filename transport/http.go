@@ -473,9 +473,10 @@ func RelayUpdateJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, st
 		writer.Write(dat)
 
 		if ts, err := ptypes.TimestampProto(time.Unix(int64(jsonPacket.Timestamp), 0)); err == nil {
+			// can find the relay based on its address hash in firestore
 			if relay, ok := storer.Relay(crypto.HashID(jsonPacket.StringAddr)); ok {
 				stats := &stats.RelayTrafficStats{
-					RelayId:            stats.NewEntityID("Relay", jsonPacket.RelayName),
+					RelayId:            stats.NewEntityID("Relay", jsonPacket.Metadata.ID), // need to use its name hash here
 					Usage:              jsonPacket.Usage,
 					Timestamp:          ts,
 					BytesPaidTx:        jsonPacket.TrafficStats.BytesPaidTx,

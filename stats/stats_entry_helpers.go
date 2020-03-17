@@ -2,13 +2,11 @@ package stats
 
 import (
 	"strconv"
-
-	"github.com/networknext/backend/crypto"
 )
 
-func NewEntityID(kind string, name string) *EntityId {
+func NewEntityID(kind string, relayID uint64) *EntityId {
 	return &EntityId{
 		Kind: kind,
-		Name: strconv.FormatUint(crypto.HashID(name), 10),
+		Name: strconv.FormatUint(relayID, 10),
 	}
 }
