@@ -392,7 +392,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, redisClient *redis.Client, statsd
 		relayID := crypto.HashID(relayUpdatePacket.Address.String())
 		if relay, ok := storer.Relay(relayID); ok {
 			stats := &stats.RelayTrafficStats{
-				RelayId:            stats.NewEntityID("Relay", relay.Addr.String()), // TODO send the name in the update packet, addr string for now because that's what "Name" turned into
+				RelayId:            stats.NewEntityID("Relay", relay.ID), // TODO Until the db is fixed up, this needs to be the relay's firestore id hash, not it's address hash
 				BytesMeasurementRx: relayUpdatePacket.BytesReceived,
 			}
 
@@ -419,7 +419,7 @@ func RelayUpdateJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, st
 			counter.Add(1)
 		}()
 
-		level.Error(logger).Log("msg", "received json packet")
+		level.Debug(logger).Log("msg", "received json packet")
 
 		body, err := ioutil.ReadAll(request.Body)
 		if err != nil {
@@ -473,9 +473,10 @@ func RelayUpdateJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, st
 		writer.Write(dat)
 
 		if ts, err := ptypes.TimestampProto(time.Unix(int64(jsonPacket.Timestamp), 0)); err == nil {
-			if relay, ok := storer.Relay(jsonPacket.Metadata.ID); ok {
+			// can find the relay based on its address hash in firestore
+			if relay, ok := storer.Relay(crypto.HashID(jsonPacket.StringAddr)); ok {
 				stats := &stats.RelayTrafficStats{
-					RelayId:            stats.NewEntityID("Relay", jsonPacket.RelayName),
+					RelayId:            stats.NewEntityID("Relay", jsonPacket.Metadata.ID), // need to use its name hash here
 					Usage:              jsonPacket.Usage,
 					Timestamp:          ts,
 					BytesPaidTx:        jsonPacket.TrafficStats.BytesPaidTx,
@@ -489,7 +490,7 @@ func RelayUpdateJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, st
 				}
 
 				str, _ := json.Marshal(stats)
-				level.Info(logger).Log("msg", fmt.Sprintf("Publishing: %s", str))
+				level.Debug(logger).Log("msg", fmt.Sprintf("Publishing: %s", str))
 				if err := trafficStatsPublisher.Publish(context.Background(), relay.ID, stats); err != nil {
 					level.Error(logger).Log("msg", fmt.Sprintf("Publish error: %v", err))
 				}

@@ -1,8 +1,12 @@
 package stats
 
-func NewEntityID(kind string, name string) *EntityId {
+import (
+	"strconv"
+)
+
+func NewEntityID(kind string, relayID uint64) *EntityId {
 	return &EntityId{
 		Kind: kind,
-		Name: name,
+		Name: strconv.FormatUint(relayID, 10),
 	}
 }
