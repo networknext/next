@@ -55,7 +55,7 @@ func TestDecideDowngradeRTT(t *testing.T) {
 	}
 
 	rttHyteresis := float64(routing.DefaultRoutingRulesSettings.RTTHysteresis)
-	routeDecisionFunc := routing.DecideDowngradeRTT(rttHyteresis)
+	routeDecisionFunc := routing.DecideDowngradeRTT(rttHyteresis, false)
 
 	decision := routing.Decision{true, routing.DecisionNoChange}
 	decision = routeDecisionFunc(decision, predictedStats, routing.Stats{}, directStats)
@@ -71,6 +71,12 @@ func TestDecideDowngradeRTT(t *testing.T) {
 	// Now test if a direct route is given
 	decision = routeDecisionFunc(decision, predictedStats, routing.Stats{}, directStats)
 	assert.Equal(t, routing.Decision{false, routing.DecisionNoChange}, decision)
+
+	// Now test if the route is vetoed with YOLO enabled
+	decision.OnNetworkNext = true
+	routeDecisionFunc = routing.DecideDowngradeRTT(rttHyteresis, true)
+	decision = routeDecisionFunc(decision, predictedStats, routing.Stats{}, directStats)
+	assert.Equal(t, routing.Decision{false, routing.DecisionVetoRTT | routing.DecisionVetoYOLO}, decision)
 }
 
 func TestDecideVeto(t *testing.T) {

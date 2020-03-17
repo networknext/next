@@ -98,7 +98,7 @@ const (
 func DecideUpgradeRTT(rttThreshold float64) DecisionFunc {
 	return func(prevDecision Decision, predictedNextStats Stats, lastNextStats Stats, directStats Stats) Decision {
 		// If upgrading to a nextwork next route would reduce RTT by at least the given threshold, upgrade
-		if !prevDecision.OnNetworkNext && directStats.RTT-predictedNextStats.RTT >= rttThreshold {
+		if !prevDecision.OnNetworkNext && !IsVetoed(prevDecision) && directStats.RTT-predictedNextStats.RTT >= rttThreshold {
 			return Decision{true, DecisionRTTReduction}
 		}
 
@@ -109,15 +109,20 @@ func DecideUpgradeRTT(rttThreshold float64) DecisionFunc {
 
 // DecideDowngradeRTT will decide if the client should continue using the network next route if the network next RTT increase doesn't exceed the hysteresis value.
 // This decision only downgrades network next routes, so direct routes aren't considered.
-func DecideDowngradeRTT(rttHysteresis float64) DecisionFunc {
+func DecideDowngradeRTT(rttHysteresis float64, yolo bool) DecisionFunc {
 	return func(prevDecision Decision, predictedNextStats Stats, lastNextStats Stats, directStats Stats) Decision {
 		// If staying on a nextwork next route doesn't increase RTT by more than the given hysteresis value, stay
 		if prevDecision.OnNetworkNext {
 			if predictedNextStats.RTT-directStats.RTT <= rttHysteresis {
-				return Decision{true, DecisionNoChange}
+				return Decision{prevDecision.OnNetworkNext, DecisionNoChange}
 			}
 
-			// network next route increases RTT too much, switch back to direct
+			// If the buyer has YouOnlyLiveOnce safety setting enabled, veto them and add that reason to the DecisionReason
+			if yolo {
+				return Decision{false, DecisionVetoRTT | DecisionVetoYOLO}
+			}
+
+			// Network next route increases RTT too much, switch back to direct
 			return Decision{false, DecisionRTTIncrease}
 		}
 
@@ -153,7 +158,7 @@ func DecideVeto(rttVeto float64, packetLossSafety bool, yolo bool) DecisionFunc 
 			}
 
 			// If the route isn't vetoed, then it stays on network next
-			return Decision{true, DecisionNoChange}
+			return Decision{prevDecision.OnNetworkNext, DecisionNoChange}
 		} else {
 			// Handle the case where another decision function decided to switch back to direct due
 			// to RTT increase, but the increase is so severe it should be vetoed.
@@ -181,4 +186,14 @@ func DecideCommitted() DecisionFunc {
 	return func(prevDecision Decision, predictedNextStats Stats, lastNextStats Stats, directStats Stats) Decision {
 		return Decision{prevDecision.OnNetworkNext, DecisionNoChange}
 	}
+}
+
+func IsVetoed(decision Decision) bool {
+	if !decision.OnNetworkNext {
+		if decision.Reason&DecisionVetoNoRoute != 0 || decision.Reason&DecisionVetoPacketLoss != 0 || decision.Reason&DecisionVetoRTT != 0 || decision.Reason&DecisionVetoYOLO != 0 {
+			return true
+		}
+	}
+
+	return false
 }
