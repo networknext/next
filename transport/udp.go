@@ -405,7 +405,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			if routing.IsVetoed(routeDecision) {
 				// Session has been vetoed
 
-				if sessionCacheEntry.VetoTimestamp.Before(timestampNow) && routeDecision.Reason&routing.DecisionVetoYOLO == 0 {
+				if sessionCacheEntry.VetoTimestamp.Before(timestampNow) {
 					// Veto expired, bring the session back on with an initial slice
 					sessionCacheEntry.TimestampStart = timestampNow
 					routeDecision = routing.Decision{
@@ -421,7 +421,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 					routing.DecideVeto(float64(buyer.RoutingRulesSettings.RTTVeto), buyer.RoutingRulesSettings.EnablePacketLossSafety, buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
 				)
 
-				if routeDecision.Reason&routing.DecisionVetoRTT != 0 || routeDecision.Reason&routing.DecisionVetoPacketLoss != 0 || routeDecision.Reason&routing.DecisionVetoYOLO != 0 {
+				if routing.IsVetoed(routeDecision) {
 					// Session was vetoed this update, so set the veto timeout
 					sessionCacheEntry.VetoTimestamp = timestampNow.Add(time.Hour)
 				}
@@ -551,7 +551,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		{
 			sameRoute := chosenRoute.Hash64() == sessionCacheEntry.RouteHash
 			routeRequest := NewRouteRequest(packet, buyer, serverCacheEntry, location, storer, clientrelays)
-			billingEntry := newBillingEntry(routeRequest, &chosenRoute, int(response.RouteType), sameRoute, &buyer.RoutingRulesSettings, routeDecision.Reason, &packet, sessionCacheEntry.TimestampStart, timestampNow)
+			billingEntry := newBillingEntry(routeRequest, &chosenRoute, int(response.RouteType), sameRoute, &buyer.RoutingRulesSettings, routeDecision, &packet, sessionCacheEntry.TimestampStart, timestampNow)
 			if err := biller.Bill(context.Background(), packet.SessionID, billingEntry); err != nil {
 				level.Error(locallogger).Log("msg", "billing failed", "err", err)
 			}
@@ -634,7 +634,7 @@ func newBillingEntry(
 	routeType int,
 	sameRoute bool,
 	routingRulesSettings *routing.RoutingRulesSettings,
-	decisionReason routing.DecisionReason,
+	routeDecision routing.Decision,
 	packet *SessionUpdatePacket,
 	timestampStart time.Time,
 	timestampNow time.Time) *billing.Entry {
@@ -644,10 +644,7 @@ func newBillingEntry(
 		sliceFlags |= billing.RouteSliceFlagNext
 	}
 
-	if (decisionReason&routing.DecisionVetoRTT) != 0 ||
-		(decisionReason&routing.DecisionVetoPacketLoss) != 0 ||
-		(decisionReason&routing.DecisionVetoYOLO) != 0 ||
-		(decisionReason&routing.DecisionVetoNoRoute) != 0 {
+	if routing.IsVetoed(routeDecision) {
 		sliceFlags |= billing.RouteSliceFlagVetoed
 	}
 
@@ -659,15 +656,15 @@ func newBillingEntry(
 		sliceFlags |= billing.RouteSliceFlagFallbackToDirect
 	}
 
-	if (decisionReason & routing.DecisionPacketLossMultipath) != 0 {
+	if (routeDecision.Reason & routing.DecisionPacketLossMultipath) != 0 {
 		sliceFlags |= billing.RouteSliceFlagPacketLossMultipath
 	}
 
-	if (decisionReason & routing.DecisionJitterMultipath) != 0 {
+	if (routeDecision.Reason & routing.DecisionJitterMultipath) != 0 {
 		sliceFlags |= billing.RouteSliceFlagJitterMultipath
 	}
 
-	if (decisionReason & routing.DecisionRTTMultipath) != 0 {
+	if (routeDecision.Reason & routing.DecisionRTTMultipath) != 0 {
 		sliceFlags |= billing.RouteSliceFlagRTTMultipath
 	}
 
@@ -685,7 +682,7 @@ func newBillingEntry(
 	return &billing.Entry{
 		Request:              routeRequest,
 		Route:                NewBillingRoute(route, usageBytesUp, usageBytesDown),
-		RouteDecision:        uint64(decisionReason),
+		RouteDecision:        uint64(routeDecision.Reason),
 		Duration:             sliceDuration,
 		UsageBytesUp:         usageBytesUp,
 		UsageBytesDown:       usageBytesDown,
@@ -702,7 +699,7 @@ func newBillingEntry(
 		ConsideredRoutes:     []*billing.Route{},                                                         // Empty since not how new backend works and driven by disabled feature flag in old backend
 		AcceptableRoutes:     []*billing.Route{},                                                         // Empty since not how new backend works and driven by disabled feature flag in old backend
 		SameRoute:            sameRoute,
-		OnNetworkNext:        packet.OnNetworkNext,
+		OnNetworkNext:        routeDecision.OnNetworkNext,
 		SliceFlags:           uint64(sliceFlags),
 	}
 }
