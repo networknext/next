@@ -127,7 +127,7 @@ type RelayUpdatePacket struct {
 }
 
 type packetMetadata struct {
-	ID          uint64 `json:"Id"`
+	ID          uint64 `json:"Id"` // OLD RELAY ONLY: not the right id for typical use, this is a fnv1a-64 hash of its name (firestore id), not the address which reference/new relays use
 	PingKey     []byte `json:"PingKey"`
 	Role        string `json:"Role"`
 	Shutdown    bool   `json:"Shutdown"`
@@ -156,6 +156,7 @@ type RelayUpdateRequestJSON struct {
 	Usage        float32                  `json:"Usage"`
 	TrafficStats trafficStats             `json:"TrafficStats"`
 	PingStats    []routing.RelayStatsPing `json:"PingStats"`
+	RelayName    string                   `json:"relay_name"`
 }
 type RelayUpdateResponseJSON struct {
 	RelaysToPing []routing.LegacyPingData `json:"ping_data"`

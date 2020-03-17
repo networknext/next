@@ -3947,7 +3947,7 @@ next_thread_return_t NEXT_THREAD_FUNC manage_thread( void * )
                 json::JSON respDoc;
                 char addr_buff[NEXT_ADDRESS_BYTES + NEXT_ADDRESS_BUFFER_SAFETY] = {};
                 next_address_to_string( &env->relay.address, addr_buff);
-                if (compat::next_curl_update(global.backend_hostname, request_buffer.GetString(), addr_buff, global.bind_port, respDoc)) {
+                if (compat::next_curl_update(global.backend_hostname, request_buffer.GetString(), addr_buff, global.bind_port, env->relay.name, respDoc)) {
                     if (respDoc.memberExists("ping_data")) {
                         auto member = respDoc.get<rapidjson::Value*>("ping_data");
                           if (member->IsArray()) {

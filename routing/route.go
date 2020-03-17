@@ -12,6 +12,9 @@ type Route struct {
 
 func (r *Route) Decide(prevDecision Decision, nnStats Stats, directStats Stats, routeDecisions ...DecisionFunc) Decision {
 	nextDecision := prevDecision
+	if prevDecision.Reason == DecisionInitialSlice {
+		nextDecision = Decision{OnNetworkNext: false, Reason: DecisionNoChange}
+	}
 	for _, routeDecision := range routeDecisions {
 		decision := routeDecision(nextDecision, r.Stats, nnStats, directStats)
 
