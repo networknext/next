@@ -38,6 +38,7 @@ func NewRouter(logger log.Logger, redisClient *redis.Client, geoClient *routing.
 	statsdb *routing.StatsDatabase, initDuration metrics.Gauge, updateDuration metrics.Gauge, initCounter metrics.Counter,
 	updateCounter metrics.Counter, costmatrix *routing.CostMatrix, routematrix *routing.RouteMatrix, routerPrivateKey []byte, trafficStatsPublisher stats.Publisher) *mux.Router {
 	router := mux.NewRouter()
+	router.HandleFunc("/healthz", HealthzHandlerFunc())
 	router.HandleFunc("/relay_init", RelayInitHandlerFunc(logger, redisClient, geoClient, ipLocator, storer, initDuration, initCounter, routerPrivateKey)).Methods("POST")
 	router.HandleFunc("/relay_update", RelayUpdateHandlerFunc(logger, redisClient, statsdb, updateDuration, updateCounter, trafficStatsPublisher, storer)).Methods("POST")
 	router.Handle("/cost_matrix", costmatrix).Methods("GET")
@@ -135,6 +136,13 @@ func relayInitPacketHandler(relayInitPacket *RelayInitPacket, writer http.Respon
 	level.Debug(locallogger).Log("msg", "relay initialized")
 
 	return &relay
+}
+
+func HealthzHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(http.StatusText(http.StatusOK)))
+	}
 }
 
 // RelayInitHandlerFunc returns the function for the relay init endpoint
