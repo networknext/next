@@ -12,7 +12,7 @@ func TestDecide(t *testing.T) {
 	{
 		decisionFuncs := []routing.DecisionFunc{
 			routing.DecideUpgradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTThreshold)),
-			routing.DecideDowngradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTHysteresis)),
+			routing.DecideDowngradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
 			routing.DecideVeto(float64(routing.DefaultRoutingRulesSettings.RTTVeto), routing.DefaultRoutingRulesSettings.EnablePacketLossSafety, routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
 			routing.DecideCommitted(),
 		}
@@ -48,9 +48,11 @@ func TestDecide(t *testing.T) {
 		}
 
 		// Loop through all permutations of the decision functions and test that the result is the same
-		perms := permutations(decisionFuncs)
-		for i := 0; i < len(perms); i++ {
-			decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, perms[i]...)
+		decisionFuncIndices := createIndexSlice(decisionFuncs)
+		perms := permutations(decisionFuncIndices)
+		funcs := replaceIndicesWithDecisionFuncs(perms, decisionFuncs)
+		for i := 0; i < len(funcs); i++ {
+			decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, funcs[i]...)
 			assert.Equal(t, expected, decision)
 		}
 	}
@@ -59,7 +61,7 @@ func TestDecide(t *testing.T) {
 	{
 		decisionFuncs := []routing.DecisionFunc{
 			routing.DecideUpgradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTThreshold)),
-			routing.DecideDowngradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTHysteresis)),
+			routing.DecideDowngradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
 			routing.DecideVeto(float64(routing.DefaultRoutingRulesSettings.RTTVeto), routing.DefaultRoutingRulesSettings.EnablePacketLossSafety, routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
 			routing.DecideCommitted(),
 		}
@@ -95,9 +97,11 @@ func TestDecide(t *testing.T) {
 		}
 
 		// Loop through all permutations of the decision functions and test that the result is the same
-		perms := permutations(decisionFuncs)
-		for i := 0; i < len(perms); i++ {
-			decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, perms[i]...)
+		decisionFuncIndices := createIndexSlice(decisionFuncs)
+		perms := permutations(decisionFuncIndices)
+		funcs := replaceIndicesWithDecisionFuncs(perms, decisionFuncs)
+		for i := 0; i < len(funcs); i++ {
+			decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, funcs[i]...)
 			assert.Equal(t, expected, decision)
 		}
 	}
@@ -106,7 +110,7 @@ func TestDecide(t *testing.T) {
 	{
 		decisionFuncs := []routing.DecisionFunc{
 			routing.DecideUpgradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTThreshold)),
-			routing.DecideDowngradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTHysteresis)),
+			routing.DecideDowngradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
 			routing.DecideVeto(float64(routing.DefaultRoutingRulesSettings.RTTVeto), routing.DefaultRoutingRulesSettings.EnablePacketLossSafety, routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
 			routing.DecideCommitted(),
 		}
@@ -142,10 +146,69 @@ func TestDecide(t *testing.T) {
 		}
 
 		// Loop through all permutations of the decision functions and test that the result is the same
-		perms := permutations(decisionFuncs)
-		for i := 0; i < len(perms); i++ {
-			decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, perms[i]...)
+		decisionFuncIndices := createIndexSlice(decisionFuncs)
+		perms := permutations(decisionFuncIndices)
+		funcs := replaceIndicesWithDecisionFuncs(perms, decisionFuncs)
+		for i := 0; i < len(funcs); i++ {
+			decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, funcs[i]...)
 			assert.Equal(t, expected, decision)
+		}
+	}
+
+	// Test case where we should get off a nextwork next route due to hysteresis and YOLO is enabled, vetoing the session
+	{
+		routingRulesSettings := routing.DefaultRoutingRulesSettings
+		routingRulesSettings.EnableYouOnlyLiveOnce = true
+
+		decisionFuncs := []routing.DecisionFunc{
+			routing.DecideUpgradeRTT(float64(routingRulesSettings.RTTThreshold)),
+			routing.DecideDowngradeRTT(float64(routingRulesSettings.RTTHysteresis), routingRulesSettings.EnableYouOnlyLiveOnce),
+			routing.DecideVeto(float64(routingRulesSettings.RTTVeto), routingRulesSettings.EnablePacketLossSafety, routingRulesSettings.EnableYouOnlyLiveOnce),
+			routing.DecideCommitted(),
+		}
+
+		lastNNStats := routing.Stats{
+			RTT:        30,
+			Jitter:     0,
+			PacketLoss: 0,
+		}
+
+		lastDirectStats := routing.Stats{
+			RTT:        30,
+			Jitter:     0,
+			PacketLoss: 0,
+		}
+
+		route := routing.Route{
+			Stats: routing.Stats{
+				RTT:        36,
+				Jitter:     0,
+				PacketLoss: 0,
+			},
+		}
+
+		startingDecision := routing.Decision{
+			OnNetworkNext: true,
+			Reason:        routing.DecisionNoChange,
+		}
+
+		expected := routing.Decision{
+			OnNetworkNext: false,
+			Reason:        routing.DecisionVetoRTT | routing.DecisionVetoYOLO,
+		}
+
+		// Loop through all permutations and combinations of the decision functions and test that the result is the same
+		decisionFuncIndices := createIndexSlice(decisionFuncs)
+		combs := combinations(decisionFuncIndices)
+		for i := 0; i < len(combs); i++ {
+			perms := permutations(combs[i])
+			perms = filterPermutations(perms, 1) // Remove all permutations that don't include DecideDowngradeRTT, since that's the function we're testing for
+			funcs := replaceIndicesWithDecisionFuncs(perms, decisionFuncs)
+
+			for j := 0; j < len(funcs); j++ {
+				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, funcs[j]...)
+				assert.Equal(t, expected, decision)
+			}
 		}
 	}
 
@@ -155,7 +218,8 @@ func TestDecide(t *testing.T) {
 
 		decisionFuncs := []routing.DecisionFunc{
 			routing.DecideUpgradeRTT(float64(routingRulesSettings.RTTThreshold)),
-			routing.DecideDowngradeRTT(float64(routingRulesSettings.RTTHysteresis)),
+			routing.DecideDowngradeRTT(float64(routingRulesSettings.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
+			routing.DecideVeto(float64(routingRulesSettings.RTTVeto), routingRulesSettings.EnablePacketLossSafety, routingRulesSettings.EnableYouOnlyLiveOnce),
 			routing.DecideCommitted(),
 		}
 
@@ -190,15 +254,15 @@ func TestDecide(t *testing.T) {
 		}
 
 		// Loop through all permutations and combinations of the decision functions and test that the result is the same
-		// Veto is taken out of the permutations and inserted at the end because it has the highest priority
-		// and should be at the end to work properly. All functions before it can be in an order though.
-		combs := combinations(decisionFuncs)
+		decisionFuncIndices := createIndexSlice(decisionFuncs)
+		combs := combinations(decisionFuncIndices)
 		for i := 0; i < len(combs); i++ {
 			perms := permutations(combs[i])
+			perms = filterPermutations(perms, 2) // Remove all permutations that don't include DecideVeto, since that's the function we're testing for
+			funcs := replaceIndicesWithDecisionFuncs(perms, decisionFuncs)
 
-			for j := 0; j < len(perms); j++ {
-				perms[j] = append(perms[j], routing.DecideVeto(float64(routingRulesSettings.RTTVeto), routingRulesSettings.EnablePacketLossSafety, routingRulesSettings.EnableYouOnlyLiveOnce))
-				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, perms[j]...)
+			for j := 0; j < len(funcs); j++ {
+				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, funcs[j]...)
 				assert.Equal(t, expected, decision)
 			}
 		}
@@ -211,7 +275,8 @@ func TestDecide(t *testing.T) {
 
 		decisionFuncs := []routing.DecisionFunc{
 			routing.DecideUpgradeRTT(float64(routingRulesSettings.RTTThreshold)),
-			routing.DecideDowngradeRTT(float64(routingRulesSettings.RTTHysteresis)),
+			routing.DecideDowngradeRTT(float64(routingRulesSettings.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
+			routing.DecideVeto(float64(routingRulesSettings.RTTVeto), routingRulesSettings.EnablePacketLossSafety, routingRulesSettings.EnableYouOnlyLiveOnce),
 			routing.DecideCommitted(),
 		}
 
@@ -246,15 +311,15 @@ func TestDecide(t *testing.T) {
 		}
 
 		// Loop through all permutations and combinations of the decision functions and test that the result is the same
-		// Veto is taken out of the permutations and inserted at the end because it has the highest priority
-		// and should be at the end to work properly. All functions before it can be in an order though.
-		combs := combinations(decisionFuncs)
+		decisionFuncIndices := createIndexSlice(decisionFuncs)
+		combs := combinations(decisionFuncIndices)
 		for i := 0; i < len(combs); i++ {
 			perms := permutations(combs[i])
+			perms = filterPermutations(perms, 2) // Remove all permutations that don't include DecideVeto, since that's the function we're testing for
+			funcs := replaceIndicesWithDecisionFuncs(perms, decisionFuncs)
 
-			for j := 0; j < len(perms); j++ {
-				perms[j] = append(perms[j], routing.DecideVeto(float64(routingRulesSettings.RTTVeto), routingRulesSettings.EnablePacketLossSafety, routingRulesSettings.EnableYouOnlyLiveOnce))
-				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, perms[j]...)
+			for j := 0; j < len(funcs); j++ {
+				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, funcs[j]...)
 				assert.Equal(t, expected, decision)
 			}
 		}
@@ -267,7 +332,7 @@ func TestDecide(t *testing.T) {
 
 		decisionFuncs := []routing.DecisionFunc{
 			routing.DecideUpgradeRTT(float64(routingRulesSettings.RTTThreshold)),
-			routing.DecideDowngradeRTT(float64(routingRulesSettings.RTTHysteresis)),
+			routing.DecideDowngradeRTT(float64(routingRulesSettings.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
 			routing.DecideVeto(float64(routingRulesSettings.RTTVeto), routingRulesSettings.EnablePacketLossSafety, routingRulesSettings.EnableYouOnlyLiveOnce),
 			routing.DecideCommitted(),
 		}
@@ -303,15 +368,15 @@ func TestDecide(t *testing.T) {
 		}
 
 		// Loop through all permutations and combinations of the decision functions and test that the result is the same
-		// Veto is taken out of the permutations and inserted at the end because it has the highest priority
-		// and should be at the end to work properly. All functions before it can be in an order though.
-		combs := combinations(decisionFuncs)
+		decisionFuncIndices := createIndexSlice(decisionFuncs)
+		combs := combinations(decisionFuncIndices)
 		for i := 0; i < len(combs); i++ {
 			perms := permutations(combs[i])
+			perms = filterPermutations(perms, 2) // Remove all permutations that don't include DecideVeto, since that's the function we're testing for
+			funcs := replaceIndicesWithDecisionFuncs(perms, decisionFuncs)
 
-			for j := 0; j < len(perms); j++ {
-				perms[j] = append(perms[j], routing.DecideVeto(float64(routingRulesSettings.RTTVeto), routingRulesSettings.EnablePacketLossSafety, routingRulesSettings.EnableYouOnlyLiveOnce))
-				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, perms[j]...)
+			for j := 0; j < len(funcs); j++ {
+				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, funcs[j]...)
 				assert.Equal(t, expected, decision)
 			}
 		}
@@ -325,7 +390,7 @@ func TestDecide(t *testing.T) {
 
 		decisionFuncs := []routing.DecisionFunc{
 			routing.DecideUpgradeRTT(float64(routingRulesSettings.RTTThreshold)),
-			routing.DecideDowngradeRTT(float64(routingRulesSettings.RTTHysteresis)),
+			routing.DecideDowngradeRTT(float64(routingRulesSettings.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
 			routing.DecideVeto(float64(routingRulesSettings.RTTVeto), routingRulesSettings.EnablePacketLossSafety, routingRulesSettings.EnableYouOnlyLiveOnce),
 			routing.DecideCommitted(),
 		}
@@ -361,15 +426,15 @@ func TestDecide(t *testing.T) {
 		}
 
 		// Loop through all permutations and combinations of the decision functions and test that the result is the same
-		// Veto is taken out of the permutations and inserted at the end because it has the highest priority
-		// and should be at the end to work properly. All functions before it can be in an order though.
-		combs := combinations(decisionFuncs)
+		decisionFuncIndices := createIndexSlice(decisionFuncs)
+		combs := combinations(decisionFuncIndices)
 		for i := 0; i < len(combs); i++ {
 			perms := permutations(combs[i])
+			perms = filterPermutations(perms, 2) // Remove all permutations that don't include DecideVeto, since that's the function we're testing for
+			funcs := replaceIndicesWithDecisionFuncs(perms, decisionFuncs)
 
-			for j := 0; j < len(perms); j++ {
-				perms[j] = append(perms[j], routing.DecideVeto(float64(routingRulesSettings.RTTVeto), routingRulesSettings.EnablePacketLossSafety, routingRulesSettings.EnableYouOnlyLiveOnce))
-				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, perms[j]...)
+			for j := 0; j < len(funcs); j++ {
+				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, funcs[j]...)
 				assert.Equal(t, expected, decision)
 			}
 		}
@@ -379,7 +444,7 @@ func TestDecide(t *testing.T) {
 	{
 		decisionFuncs := []routing.DecisionFunc{
 			routing.DecideUpgradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTThreshold)),
-			routing.DecideDowngradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTHysteresis)),
+			routing.DecideDowngradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
 			routing.DecideVeto(float64(routing.DefaultRoutingRulesSettings.RTTVeto), routing.DefaultRoutingRulesSettings.EnablePacketLossSafety, routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
 			routing.DecideCommitted(),
 		}
@@ -415,12 +480,14 @@ func TestDecide(t *testing.T) {
 		}
 
 		// Loop through all permutations and combinations of the decision functions and test that the result is the same
-		combs := combinations(decisionFuncs)
+		decisionFuncIndices := createIndexSlice(decisionFuncs)
+		combs := combinations(decisionFuncIndices)
 		for i := 0; i < len(combs); i++ {
 			perms := permutations(combs[i])
+			funcs := replaceIndicesWithDecisionFuncs(perms, decisionFuncs)
 
-			for j := 0; j < len(perms); j++ {
-				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, perms[j]...)
+			for j := 0; j < len(funcs); j++ {
+				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, funcs[j]...)
 				assert.Equal(t, expected, decision)
 			}
 		}
@@ -430,7 +497,7 @@ func TestDecide(t *testing.T) {
 	{
 		decisionFuncs := []routing.DecisionFunc{
 			routing.DecideUpgradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTThreshold)),
-			routing.DecideDowngradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTHysteresis)),
+			routing.DecideDowngradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
 			routing.DecideVeto(float64(routing.DefaultRoutingRulesSettings.RTTVeto), routing.DefaultRoutingRulesSettings.EnablePacketLossSafety, routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
 			routing.DecideCommitted(),
 		}
@@ -466,12 +533,14 @@ func TestDecide(t *testing.T) {
 		}
 
 		// Loop through all permutations and combinations of the decision functions and test that the result is the same
-		combs := combinations(decisionFuncs)
+		decisionFuncIndices := createIndexSlice(decisionFuncs)
+		combs := combinations(decisionFuncIndices)
 		for i := 0; i < len(combs); i++ {
 			perms := permutations(combs[i])
+			funcs := replaceIndicesWithDecisionFuncs(perms, decisionFuncs)
 
-			for j := 0; j < len(perms); j++ {
-				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, perms[j]...)
+			for j := 0; j < len(funcs); j++ {
+				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, funcs[j]...)
 				assert.Equal(t, expected, decision)
 			}
 		}
@@ -481,7 +550,7 @@ func TestDecide(t *testing.T) {
 	{
 		decisionFuncs := []routing.DecisionFunc{
 			routing.DecideUpgradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTThreshold)),
-			routing.DecideDowngradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTHysteresis)),
+			routing.DecideDowngradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
 			routing.DecideVeto(float64(routing.DefaultRoutingRulesSettings.RTTVeto), routing.DefaultRoutingRulesSettings.EnablePacketLossSafety, routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
 			routing.DecideCommitted(),
 		}
@@ -520,12 +589,14 @@ func TestDecide(t *testing.T) {
 		}
 
 		// Loop through all permutations and combinations of the decision functions and test that the result is the same
-		combs := combinations(decisionFuncs)
+		decisionFuncIndices := createIndexSlice(decisionFuncs)
+		combs := combinations(decisionFuncIndices)
 		for i := 0; i < len(combs); i++ {
 			perms := permutations(combs[i])
+			funcs := replaceIndicesWithDecisionFuncs(perms, decisionFuncs)
 
-			for j := 0; j < len(perms); j++ {
-				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, perms[j]...)
+			for j := 0; j < len(funcs); j++ {
+				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, funcs[j]...)
 				assert.Equal(t, expected, decision)
 			}
 		}
@@ -542,12 +613,14 @@ func TestDecide(t *testing.T) {
 		}
 
 		// Loop through all permutations and combinations of the decision functions and test that the result is the same
-		combs = combinations(decisionFuncs)
+		decisionFuncIndices = createIndexSlice(decisionFuncs)
+		combs = combinations(decisionFuncIndices)
 		for i := 0; i < len(combs); i++ {
 			perms := permutations(combs[i])
+			funcs := replaceIndicesWithDecisionFuncs(perms, decisionFuncs)
 
-			for j := 0; j < len(perms); j++ {
-				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, perms[j]...)
+			for j := 0; j < len(funcs); j++ {
+				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, funcs[j]...)
 				assert.Equal(t, expected, decision)
 			}
 		}
@@ -555,14 +628,14 @@ func TestDecide(t *testing.T) {
 }
 
 // Algorithm adapted from https://stackoverflow.com/questions/45177692/getting-all-possible-combinations-of-an-array-of-objects
-func combinations(decisionFuncs []routing.DecisionFunc) [][]routing.DecisionFunc {
-	combs := make([][]routing.DecisionFunc, 1<<len(decisionFuncs))
+func combinations(decisionFuncIndices []int) [][]int {
+	combs := make([][]int, 1<<len(decisionFuncIndices))
 
-	for i := 0; i < 1<<len(decisionFuncs); i++ {
+	for i := 0; i < 1<<len(decisionFuncIndices); i++ {
 		bits := 1
-		for j := 0; j < len(decisionFuncs); j++ {
+		for j := 0; j < len(decisionFuncIndices); j++ {
 			if bits&i != 0 {
-				combs[i] = append(combs[i], decisionFuncs[j])
+				combs[i] = append(combs[i], decisionFuncIndices[j])
 			}
 
 			bits <<= 1
@@ -573,27 +646,27 @@ func combinations(decisionFuncs []routing.DecisionFunc) [][]routing.DecisionFunc
 }
 
 // Heaps algorithm adapted from https://en.wikipedia.org/wiki/Heap%27s_algorithm
-func permutations(decisionFuncs []routing.DecisionFunc) [][]routing.DecisionFunc {
-	length := len(decisionFuncs)
+func permutations(decisionFuncIndices []int) [][]int {
+	length := len(decisionFuncIndices)
 	c := make([]int, length)
 
-	perms := make([][]routing.DecisionFunc, 0)
+	perms := make([][]int, 0)
 
-	decisionFuncsToAppend := make([]routing.DecisionFunc, len(decisionFuncs))
-	copy(decisionFuncsToAppend, decisionFuncs)
+	decisionFuncsToAppend := make([]int, len(decisionFuncIndices))
+	copy(decisionFuncsToAppend, decisionFuncIndices)
 	perms = append(perms, decisionFuncsToAppend)
 
 	i := 0
 	for i < length {
 		if c[i] < i {
 			if i%2 == 0 {
-				swap(0, i, decisionFuncs)
+				swap(0, i, decisionFuncIndices)
 			} else {
-				swap(c[i], i, decisionFuncs)
+				swap(c[i], i, decisionFuncIndices)
 			}
 
-			decisionFuncsToAppend = make([]routing.DecisionFunc, len(decisionFuncs))
-			copy(decisionFuncsToAppend, decisionFuncs)
+			decisionFuncsToAppend = make([]int, len(decisionFuncIndices))
+			copy(decisionFuncsToAppend, decisionFuncIndices)
 			perms = append(perms, decisionFuncsToAppend)
 
 			c[i]++
@@ -607,8 +680,55 @@ func permutations(decisionFuncs []routing.DecisionFunc) [][]routing.DecisionFunc
 	return perms
 }
 
-func swap(i int, j int, decisionFuncs []routing.DecisionFunc) {
-	temp := decisionFuncs[i]
-	decisionFuncs[i] = decisionFuncs[j]
-	decisionFuncs[j] = temp
+func swap(i int, j int, decisionFuncIndices []int) {
+	temp := decisionFuncIndices[i]
+	decisionFuncIndices[i] = decisionFuncIndices[j]
+	decisionFuncIndices[j] = temp
+}
+
+// Creates a slice of decision func indices
+func createIndexSlice(decisionFuncs []routing.DecisionFunc) []int {
+	indices := make([]int, len(decisionFuncs))
+	for i := 0; i < len(indices); i++ {
+		indices[i] = i
+	}
+
+	return indices
+}
+
+// Removes all permutations that do not contain the specified index
+func filterPermutations(perms [][]int, index int) [][]int {
+	permCount := len(perms)
+	filtered := make([][]int, 0)
+
+	for i := 0; i < permCount; i++ {
+		addToFilter := false
+		for j := 0; j < len(perms[i]); j++ {
+			if perms[i][j] == index {
+				addToFilter = true
+				break
+			}
+		}
+
+		if addToFilter {
+			filtered = append(filtered, perms[i])
+		}
+	}
+
+	return filtered
+}
+
+// Replaces index permutations with the corresponding decision funcs
+func replaceIndicesWithDecisionFuncs(indices [][]int, key []routing.DecisionFunc) [][]routing.DecisionFunc {
+	decisionFuncs := make([][]routing.DecisionFunc, 0)
+
+	for i := 0; i < len(indices); i++ {
+		decisionFuncs = append(decisionFuncs, make([]routing.DecisionFunc, len(indices[i])))
+		for j := 0; j < len(indices[i]); j++ {
+			index := indices[i][j]
+			decisionFuncs[i][j] = key[index]
+		}
+	}
+
+	return decisionFuncs
 }
