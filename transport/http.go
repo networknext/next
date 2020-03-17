@@ -419,7 +419,7 @@ func RelayUpdateJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, st
 			counter.Add(1)
 		}()
 
-		level.Error(logger).Log("msg", "received json packet")
+		level.Debug(logger).Log("msg", "received json packet")
 
 		body, err := ioutil.ReadAll(request.Body)
 		if err != nil {
@@ -489,7 +489,7 @@ func RelayUpdateJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, st
 				}
 
 				str, _ := json.Marshal(stats)
-				level.Info(logger).Log("msg", fmt.Sprintf("Publishing: %s", str))
+				level.Debug(logger).Log("msg", fmt.Sprintf("Publishing: %s", str))
 				if err := trafficStatsPublisher.Publish(context.Background(), relay.ID, stats); err != nil {
 					level.Error(logger).Log("msg", fmt.Sprintf("Publish error: %v", err))
 				}
