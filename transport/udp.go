@@ -246,7 +246,11 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		{
 			serverCacheCmd := tx.Get("SERVER-" + incoming.SourceAddr.String())
 			sessionCacheCmd := tx.Get(fmt.Sprintf("SESSION-%d", packet.SessionID))
-			tx.Exec()
+			if _, err := tx.Exec(); err != nil && err != redis.Nil {
+				level.Error(locallogger).Log("msg", "failed to execute redis pipeline", "err", err)
+				metrics.SessionErrorMetrics.PipelineExecFailure.Add(1)
+				return
+			}
 
 			// Note that if we fail to retrieve the server data, we don't bother responding since server will ignore response without ServerRoutePublicKey set
 			// See next_server_internal_process_packet in next.cpp for full requirements of response packet
@@ -268,6 +272,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			if sessionCacheCmd.Err() != redis.Nil {
 				sessionCacheData, err := sessionCacheCmd.Bytes()
 				if err != nil {
+					// This error case should never happen, can't produce it in test cases, but leaving it in anyway
 					level.Error(locallogger).Log("msg", "failed to get session bytes", "err", err)
 					writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.SessionErrorMetrics.WriteResponseFailure, metrics.SessionErrorMetrics.GetSessionDataFailure)
 					return
@@ -317,7 +322,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		case seq == sessionCacheEntry.Sequence:
 			if _, err := w.Write(sessionCacheEntry.Response); err != nil {
 				level.Error(locallogger).Log("err", err)
-				writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.SessionErrorMetrics.WriteResponseFailure, metrics.SessionErrorMetrics.WriteCachedResponseFailure)
+				metrics.SessionErrorMetrics.WriteCachedResponseFailure.Add(1)
 			}
 			return
 		}
@@ -521,6 +526,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			}
 			result := redisClient.Set(fmt.Sprintf("SESSION-%d", updatedSessionCacheEntry.SessionID), updatedSessionCacheEntry, 5*time.Minute)
 			if result.Err() != nil {
+				// This error case should never happen, can't produce it in test cases, but leaving it in anyway
 				level.Error(locallogger).Log("msg", "failed to update session", "err", err)
 				metrics.SessionErrorMetrics.UpdateSessionFailure.Add(1)
 			}

@@ -48,6 +48,7 @@ var EmptyDecisionMetrics DecisionMetrics = DecisionMetrics{
 
 type SessionErrorMetrics struct {
 	ReadPacketFailure           Counter
+	PipelineExecFailure         Counter
 	GetServerDataFailure        Counter
 	UnmarshalServerDataFailure  Counter
 	GetSessionDataFailure       Counter
@@ -67,6 +68,7 @@ type SessionErrorMetrics struct {
 
 var EmptySessionErrorMetrics SessionErrorMetrics = SessionErrorMetrics{
 	ReadPacketFailure:           &EmptyCounter{},
+	PipelineExecFailure:         &EmptyCounter{},
 	GetServerDataFailure:        &EmptyCounter{},
 	UnmarshalServerDataFailure:  &EmptyCounter{},
 	GetSessionDataFailure:       &EmptyCounter{},
