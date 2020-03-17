@@ -189,6 +189,7 @@ type SessionCacheEntry struct {
 	RouteDecision   routing.Decision
 	TimestampStart  time.Time
 	TimestampExpire time.Time
+	VetoTimestamp   time.Time
 	Version         uint8
 	Response        []byte
 }
@@ -220,6 +221,9 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		}()
 
 		timestampNow := time.Now()
+
+		// Whether or not we should make a route decision on a network next route, or serve a direct route
+		shouldDecide := true
 
 		// Deserialize the Session packet
 		var packet SessionUpdatePacket
@@ -286,11 +290,13 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 					}
 				}
 			} else {
+				// Session not cached yet, set the timestamp and initial route decision to be stored
 				sessionCacheEntry.TimestampStart = timestampNow
 				sessionCacheEntry.RouteDecision = routing.Decision{
 					OnNetworkNext: false,
 					Reason:        routing.DecisionInitialSlice,
 				}
+				shouldDecide = false
 			}
 		}
 
@@ -358,25 +364,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 
 		level.Debug(locallogger).Log("num_datacenter_relays", len(dsrelays), "num_client_relays", len(clientrelays))
 
-		level.Debug(locallogger).Log("buyer_rtt_epsilon", buyer.RoutingRulesSettings.RTTEpsilon, "cached_route_hash", sessionCacheEntry.RouteHash)
-		// Get a set of possible routes from the RouteProvider and on error ensure it falls back to direct
-		routes, err := rp.Routes(dsrelays, clientrelays,
-			routing.SelectAcceptableRoutesFromBestRTT(float64(buyer.RoutingRulesSettings.RTTEpsilon)),
-			routing.SelectContainsRouteHash(sessionCacheEntry.RouteHash),
-			routing.SelectRoutesByRandomDestRelay(rand.NewSource(rand.Int63())),
-			routing.SelectRandomRoute(rand.NewSource(rand.Int63())))
-		if err != nil {
-			level.Error(locallogger).Log("err", err)
-			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.SessionErrorMetrics.WriteResponseFailure, metrics.SessionErrorMetrics.RouteSelectionFailure)
-			return
-		}
-
-		if len(routes) <= 0 {
-			level.Warn(locallogger).Log("msg", "no acceptable route available")
-		}
-
-		nextRoute := routes[0]
-
+		// Set initial route decision values
 		nnStats := routing.Stats{
 			RTT:        float64(packet.NextMinRTT),
 			Jitter:     float64(packet.NextJitter),
@@ -389,113 +377,150 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			PacketLoss: float64(packet.DirectPacketLoss),
 		}
 
-		level.Debug(locallogger).Log(
-			"selected_next_route_stats", nextRoute.Stats.String(),
-			"packet_next_stats", nnStats.String(),
-			"packet_direct_stats", directStats.String(),
-			"buyer_rtt_threshold", buyer.RoutingRulesSettings.RTTThreshold,
-			"buyer_rtt_hysteresis", buyer.RoutingRulesSettings.RTTHysteresis,
-			"buyer_rtt_veto", buyer.RoutingRulesSettings.RTTVeto,
-			"buyer_packet_loss_safety", buyer.RoutingRulesSettings.EnablePacketLossSafety,
-			"buyer_yolo", buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce,
-		)
-
-		routeDecision := nextRoute.Decide(sessionCacheEntry.RouteDecision, nnStats, directStats,
-			routing.DecideUpgradeRTT(float64(buyer.RoutingRulesSettings.RTTThreshold)),
-			routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis)),
-			routing.DecideVeto(float64(buyer.RoutingRulesSettings.RTTVeto), buyer.RoutingRulesSettings.EnablePacketLossSafety, buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
-		)
-
-		addRouteDecisionMetric(routeDecision, metrics)
-
-		level.Debug(locallogger).Log(
-			"prev_on_network_next", sessionCacheEntry.RouteDecision.OnNetworkNext,
-			"prev_decision_reason", sessionCacheEntry.RouteDecision.Reason.String(),
-			"on_network_next", routeDecision.OnNetworkNext,
-			"decision_reason", routeDecision.Reason.String(),
-		)
-
 		chosenRoute := routing.Route{
 			Stats: directStats,
 		}
 
-		var token routing.Token
-		if routeDecision.OnNetworkNext {
-			// Route decision logic decided to serve a next route
+		routeDecision := sessionCacheEntry.RouteDecision
 
-			chosenRoute = nextRoute
-
-			if nextRoute.Hash64() == sessionCacheEntry.RouteHash {
-				token = &routing.ContinueRouteToken{
-					Expires: uint64(time.Now().Add(billing.BillingSliceSeconds * time.Second).Unix()),
-
-					SessionID: packet.SessionID,
-
-					SessionVersion: sessionCacheEntry.Version,
-					SessionFlags:   0, // Haven't figured out what this is for
-
-					Client: routing.Client{
-						Addr:      packet.ClientAddress,
-						PublicKey: packet.ClientRoutePublicKey,
-					},
-
-					Server: routing.Server{
-						Addr:      packet.ServerAddress,
-						PublicKey: serverCacheEntry.Server.PublicKey,
-					},
-
-					Relays: nextRoute.Relays,
-				}
-			} else {
-				sessionCacheEntry.Version++
-
-				token = &routing.NextRouteToken{
-					Expires: uint64(time.Now().Add(billing.BillingSliceSeconds * 2 * time.Second).Unix()),
-
-					SessionID: packet.SessionID,
-
-					SessionVersion: sessionCacheEntry.Version,
-					SessionFlags:   0, // Haven't figured out what this is for
-
-					Client: routing.Client{
-						Addr:      packet.ClientAddress,
-						PublicKey: packet.ClientRoutePublicKey,
-					},
-
-					Server: routing.Server{
-						Addr:      packet.ServerAddress,
-						PublicKey: serverCacheEntry.Server.PublicKey,
-					},
-
-					Relays: nextRoute.Relays,
-				}
-			}
-
-			tokens, numtokens, err := token.Encrypt(routerPrivateKey)
+		if shouldDecide { // Only select and decide a route if we should, early out for initial slice
+			level.Debug(locallogger).Log("buyer_rtt_epsilon", buyer.RoutingRulesSettings.RTTEpsilon, "cached_route_hash", sessionCacheEntry.RouteHash)
+			// Get a set of possible routes from the RouteProvider and on error ensure it falls back to direct
+			routes, err := rp.Routes(dsrelays, clientrelays,
+				routing.SelectAcceptableRoutesFromBestRTT(float64(buyer.RoutingRulesSettings.RTTEpsilon)),
+				routing.SelectContainsRouteHash(sessionCacheEntry.RouteHash),
+				routing.SelectRoutesByRandomDestRelay(rand.NewSource(rand.Int63())),
+				routing.SelectRandomRoute(rand.NewSource(rand.Int63())))
 			if err != nil {
-				level.Error(locallogger).Log("msg", "failed to encrypt route token", "err", err)
-				writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.SessionErrorMetrics.WriteResponseFailure, metrics.SessionErrorMetrics.EncryptionFailure)
+				level.Error(locallogger).Log("err", err)
+				writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.SessionErrorMetrics.WriteResponseFailure, metrics.SessionErrorMetrics.RouteSelectionFailure)
 				return
 			}
 
-			level.Debug(locallogger).Log("token_type", token.Type(), "current_route_hash", chosenRoute.Hash64(), "previous_route_hash", sessionCacheEntry.RouteHash)
+			nextRoute := routes[0]
 
-			// Add token info to the Session Response
-			response.RouteType = int32(token.Type())
-			response.NumTokens = int32(numtokens) // Num of relays + client + server
-			response.Tokens = tokens
+			level.Debug(locallogger).Log(
+				"selected_next_route_stats", nextRoute.Stats.String(),
+				"packet_next_stats", nnStats.String(),
+				"packet_direct_stats", directStats.String(),
+				"buyer_rtt_threshold", buyer.RoutingRulesSettings.RTTThreshold,
+				"buyer_rtt_hysteresis", buyer.RoutingRulesSettings.RTTHysteresis,
+				"buyer_rtt_veto", buyer.RoutingRulesSettings.RTTVeto,
+				"buyer_packet_loss_safety", buyer.RoutingRulesSettings.EnablePacketLossSafety,
+				"buyer_yolo", buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce,
+			)
 
-			// Fill in the near relays
-			response.NumNearRelays = int32(len(clientrelays))
-			response.NearRelayIDs = make([]uint64, len(clientrelays))
-			response.NearRelayAddresses = make([]net.UDPAddr, len(clientrelays))
-			for idx, relay := range clientrelays {
-				response.NearRelayIDs[idx] = relay.ID
-				response.NearRelayAddresses[idx] = relay.Addr
+			if routing.IsVetoed(routeDecision) {
+				// Session has been vetoed
+
+				if sessionCacheEntry.VetoTimestamp.Before(timestampNow) {
+					// Veto expired, bring the session back on with an initial slice
+					sessionCacheEntry.TimestampStart = timestampNow
+					routeDecision = routing.Decision{
+						OnNetworkNext: false,
+						Reason:        routing.DecisionInitialSlice,
+					}
+				}
+			} else {
+				// Session hasn't been vetoed, perform route decision as normal
+				routeDecision = nextRoute.Decide(sessionCacheEntry.RouteDecision, nnStats, directStats,
+					routing.DecideUpgradeRTT(float64(buyer.RoutingRulesSettings.RTTThreshold)),
+					routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis), buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
+					routing.DecideVeto(float64(buyer.RoutingRulesSettings.RTTVeto), buyer.RoutingRulesSettings.EnablePacketLossSafety, buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
+				)
+
+				if routing.IsVetoed(routeDecision) {
+					// Session was vetoed this update, so set the veto timeout
+					sessionCacheEntry.VetoTimestamp = timestampNow.Add(time.Hour)
+				}
 			}
 
-			level.Debug(locallogger).Log("msg", "session served network next route")
+			level.Debug(locallogger).Log(
+				"prev_on_network_next", sessionCacheEntry.RouteDecision.OnNetworkNext,
+				"prev_decision_reason", sessionCacheEntry.RouteDecision.Reason.String(),
+				"on_network_next", routeDecision.OnNetworkNext,
+				"decision_reason", routeDecision.Reason.String(),
+			)
+
+			if routeDecision.OnNetworkNext {
+				// Route decision logic decided to serve a next route
+
+				chosenRoute = nextRoute
+				var token routing.Token
+				if nextRoute.Hash64() == sessionCacheEntry.RouteHash {
+					token = &routing.ContinueRouteToken{
+						Expires: uint64(time.Now().Add(billing.BillingSliceSeconds * time.Second).Unix()),
+
+						SessionID: packet.SessionID,
+
+						SessionVersion: sessionCacheEntry.Version,
+						SessionFlags:   0, // Haven't figured out what this is for
+
+						Client: routing.Client{
+							Addr:      packet.ClientAddress,
+							PublicKey: packet.ClientRoutePublicKey,
+						},
+
+						Server: routing.Server{
+							Addr:      packet.ServerAddress,
+							PublicKey: serverCacheEntry.Server.PublicKey,
+						},
+
+						Relays: nextRoute.Relays,
+					}
+				} else {
+					sessionCacheEntry.Version++
+
+					token = &routing.NextRouteToken{
+						Expires: uint64(time.Now().Add(billing.BillingSliceSeconds * 2 * time.Second).Unix()),
+
+						SessionID: packet.SessionID,
+
+						SessionVersion: sessionCacheEntry.Version,
+						SessionFlags:   0, // Haven't figured out what this is for
+
+						Client: routing.Client{
+							Addr:      packet.ClientAddress,
+							PublicKey: packet.ClientRoutePublicKey,
+						},
+
+						Server: routing.Server{
+							Addr:      packet.ServerAddress,
+							PublicKey: serverCacheEntry.Server.PublicKey,
+						},
+
+						Relays: nextRoute.Relays,
+					}
+				}
+
+				tokens, numtokens, err := token.Encrypt(routerPrivateKey)
+				if err != nil {
+					level.Error(locallogger).Log("msg", "failed to encrypt route token", "err", err)
+					writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.SessionErrorMetrics.WriteResponseFailure, metrics.SessionErrorMetrics.EncryptionFailure)
+					return
+				}
+
+				level.Debug(locallogger).Log("token_type", token.Type(), "current_route_hash", chosenRoute.Hash64(), "previous_route_hash", sessionCacheEntry.RouteHash)
+
+				// Add token info to the Session Response
+				response.RouteType = int32(token.Type())
+				response.NumTokens = int32(numtokens) // Num of relays + client + server
+				response.Tokens = tokens
+
+				// Fill in the near relays
+				response.NumNearRelays = int32(len(clientrelays))
+				response.NearRelayIDs = make([]uint64, len(clientrelays))
+				response.NearRelayAddresses = make([]net.UDPAddr, len(clientrelays))
+				for idx, relay := range clientrelays {
+					response.NearRelayIDs[idx] = relay.ID
+					response.NearRelayAddresses[idx] = relay.Addr
+				}
+
+				level.Debug(locallogger).Log("msg", "session served network next route")
+			}
 		}
+
+		addRouteDecisionMetric(routeDecision, metrics)
 
 		// Send the Session Response back to the server
 		var responseData []byte
@@ -521,6 +546,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 				RouteHash:      chosenRoute.Hash64(),
 				RouteDecision:  routeDecision,
 				TimestampStart: sessionCacheEntry.TimestampStart,
+				VetoTimestamp:  sessionCacheEntry.VetoTimestamp,
 				Version:        sessionCacheEntry.Version, //This was already incremented for the route tokens
 				Response:       responseData,
 			}
@@ -536,7 +562,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		{
 			sameRoute := chosenRoute.Hash64() == sessionCacheEntry.RouteHash
 			routeRequest := NewRouteRequest(packet, buyer, serverCacheEntry, location, storer, clientrelays)
-			billingEntry := newBillingEntry(routeRequest, &chosenRoute, int(response.RouteType), sameRoute, &buyer.RoutingRulesSettings, routeDecision.Reason, &packet, sessionCacheEntry.TimestampStart, timestampNow)
+			billingEntry := newBillingEntry(routeRequest, &chosenRoute, int(response.RouteType), sameRoute, &buyer.RoutingRulesSettings, routeDecision, &packet, sessionCacheEntry.TimestampStart, timestampNow)
 			if err := biller.Bill(context.Background(), packet.SessionID, billingEntry); err != nil {
 				level.Error(locallogger).Log("msg", "billing failed", "err", err)
 				metrics.SessionErrorMetrics.BillingFailure.Add(1)
@@ -621,7 +647,7 @@ func newBillingEntry(
 	routeType int,
 	sameRoute bool,
 	routingRulesSettings *routing.RoutingRulesSettings,
-	decisionReason routing.DecisionReason,
+	routeDecision routing.Decision,
 	packet *SessionUpdatePacket,
 	timestampStart time.Time,
 	timestampNow time.Time) *billing.Entry {
@@ -631,10 +657,7 @@ func newBillingEntry(
 		sliceFlags |= billing.RouteSliceFlagNext
 	}
 
-	if (decisionReason&routing.DecisionVetoRTT) != 0 ||
-		(decisionReason&routing.DecisionVetoPacketLoss) != 0 ||
-		(decisionReason&routing.DecisionVetoYOLO) != 0 ||
-		(decisionReason&routing.DecisionVetoNoRoute) != 0 {
+	if routing.IsVetoed(routeDecision) {
 		sliceFlags |= billing.RouteSliceFlagVetoed
 	}
 
@@ -646,15 +669,15 @@ func newBillingEntry(
 		sliceFlags |= billing.RouteSliceFlagFallbackToDirect
 	}
 
-	if (decisionReason & routing.DecisionPacketLossMultipath) != 0 {
+	if (routeDecision.Reason & routing.DecisionPacketLossMultipath) != 0 {
 		sliceFlags |= billing.RouteSliceFlagPacketLossMultipath
 	}
 
-	if (decisionReason & routing.DecisionJitterMultipath) != 0 {
+	if (routeDecision.Reason & routing.DecisionJitterMultipath) != 0 {
 		sliceFlags |= billing.RouteSliceFlagJitterMultipath
 	}
 
-	if (decisionReason & routing.DecisionRTTMultipath) != 0 {
+	if (routeDecision.Reason & routing.DecisionRTTMultipath) != 0 {
 		sliceFlags |= billing.RouteSliceFlagRTTMultipath
 	}
 
@@ -672,7 +695,7 @@ func newBillingEntry(
 	return &billing.Entry{
 		Request:              routeRequest,
 		Route:                NewBillingRoute(route, usageBytesUp, usageBytesDown),
-		RouteDecision:        uint64(decisionReason),
+		RouteDecision:        uint64(routeDecision.Reason),
 		Duration:             sliceDuration,
 		UsageBytesUp:         usageBytesUp,
 		UsageBytesDown:       usageBytesDown,
@@ -689,7 +712,7 @@ func newBillingEntry(
 		ConsideredRoutes:     []*billing.Route{},                                                         // Empty since not how new backend works and driven by disabled feature flag in old backend
 		AcceptableRoutes:     []*billing.Route{},                                                         // Empty since not how new backend works and driven by disabled feature flag in old backend
 		SameRoute:            sameRoute,
-		OnNetworkNext:        packet.OnNetworkNext,
+		OnNetworkNext:        routeDecision.OnNetworkNext,
 		SliceFlags:           uint64(sliceFlags),
 	}
 }

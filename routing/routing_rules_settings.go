@@ -43,7 +43,7 @@ type RoutingRulesSettings struct {
 	// Not used when multipath enabled!
 	RTTVeto float32
 
-	// If true, after being downgraded from a network next route to a direct route, the client will not be put back on a network next route for that session
+	// If true, the session will be vetoed after switching from a network next route to a direct route regardless of the RTTVeto value
 	// Not used when multipath enabled!
 	EnableYouOnlyLiveOnce bool
 
