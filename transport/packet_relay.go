@@ -156,6 +156,7 @@ type RelayUpdateRequestJSON struct {
 	Usage        float32                  `json:"Usage"`
 	TrafficStats trafficStats             `json:"TrafficStats"`
 	PingStats    []routing.RelayStatsPing `json:"PingStats"`
+	RelayName    string                   `json:"relay_name"`
 }
 type RelayUpdateResponseJSON struct {
 	RelaysToPing []routing.LegacyPingData `json:"ping_data"`
