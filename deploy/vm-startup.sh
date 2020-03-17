@@ -1,5 +1,7 @@
 #!/bin/bash
 
+apt-get install libsodium23
+
 mkdir -p /app
 cd /app
 gsutil cp gs://artifacts.network-next-v3-dev.appspot.com/vm-update-app.sh .
