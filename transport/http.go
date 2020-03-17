@@ -473,7 +473,7 @@ func RelayUpdateJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, st
 		writer.Write(dat)
 
 		if ts, err := ptypes.TimestampProto(time.Unix(int64(jsonPacket.Timestamp), 0)); err == nil {
-			if relay, ok := storer.Relay(jsonPacket.Metadata.ID); ok {
+			if relay, ok := storer.Relay(crypto.HashID(jsonPacket.StringAddr)); ok {
 				stats := &stats.RelayTrafficStats{
 					RelayId:            stats.NewEntityID("Relay", jsonPacket.RelayName),
 					Usage:              jsonPacket.Usage,
