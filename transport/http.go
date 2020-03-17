@@ -392,7 +392,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, redisClient *redis.Client, statsd
 		relayID := crypto.HashID(relayUpdatePacket.Address.String())
 		if relay, ok := storer.Relay(relayID); ok {
 			stats := &stats.RelayTrafficStats{
-				RelayId:            stats.NewEntityID("Relay", relay.ID), // TODO Until the db is fixed up, this needs to be the relay's firestore id hash, not it's address hash
+				RelayId:            stats.NewEntityID("Relay", relay.Addr.String()), // TODO Until the db is fixed up, this needs to be the relay's firestore id, not its address
 				BytesMeasurementRx: relayUpdatePacket.BytesReceived,
 			}
 
@@ -476,7 +476,7 @@ func RelayUpdateJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, st
 			// can find the relay based on its address hash in firestore
 			if relay, ok := storer.Relay(crypto.HashID(jsonPacket.StringAddr)); ok {
 				stats := &stats.RelayTrafficStats{
-					RelayId:            stats.NewEntityID("Relay", jsonPacket.Metadata.ID), // need to use its name hash here
+					RelayId:            stats.NewEntityID("Relay", jsonPacket.RelayName), // need to use its name hash here
 					Usage:              jsonPacket.Usage,
 					Timestamp:          ts,
 					BytesPaidTx:        jsonPacket.TrafficStats.BytesPaidTx,
