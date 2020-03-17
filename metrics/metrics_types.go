@@ -46,20 +46,62 @@ var EmptyDecisionMetrics DecisionMetrics = DecisionMetrics{
 	RTTIncrease:         &EmptyCounter{},
 }
 
+type SessionErrorMetrics struct {
+	ReadPacketFailure           Counter
+	PipelineExecFailure         Counter
+	GetServerDataFailure        Counter
+	UnmarshalServerDataFailure  Counter
+	GetSessionDataFailure       Counter
+	UnmarshalSessionDataFailure Counter
+	BuyerNotFound               Counter
+	VerifyFailure               Counter
+	OldSequence                 Counter
+	WriteCachedResponseFailure  Counter
+	ClientLocateFailure         Counter
+	NearRelaysLocateFailure     Counter
+	RouteSelectionFailure       Counter
+	EncryptionFailure           Counter
+	WriteResponseFailure        Counter
+	UpdateSessionFailure        Counter
+	BillingFailure              Counter
+}
+
+var EmptySessionErrorMetrics SessionErrorMetrics = SessionErrorMetrics{
+	ReadPacketFailure:           &EmptyCounter{},
+	PipelineExecFailure:         &EmptyCounter{},
+	GetServerDataFailure:        &EmptyCounter{},
+	UnmarshalServerDataFailure:  &EmptyCounter{},
+	GetSessionDataFailure:       &EmptyCounter{},
+	UnmarshalSessionDataFailure: &EmptyCounter{},
+	BuyerNotFound:               &EmptyCounter{},
+	VerifyFailure:               &EmptyCounter{},
+	OldSequence:                 &EmptyCounter{},
+	WriteCachedResponseFailure:  &EmptyCounter{},
+	ClientLocateFailure:         &EmptyCounter{},
+	NearRelaysLocateFailure:     &EmptyCounter{},
+	RouteSelectionFailure:       &EmptyCounter{},
+	EncryptionFailure:           &EmptyCounter{},
+	WriteResponseFailure:        &EmptyCounter{},
+	UpdateSessionFailure:        &EmptyCounter{},
+	BillingFailure:              &EmptyCounter{},
+}
+
 type SessionMetrics struct {
-	Invocations     Counter
-	DirectSessions  Counter
-	NextSessions    Counter
-	DurationGauge   Gauge
-	DecisionMetrics DecisionMetrics
+	Invocations         Counter
+	DirectSessions      Counter
+	NextSessions        Counter
+	DurationGauge       Gauge
+	DecisionMetrics     DecisionMetrics
+	SessionErrorMetrics SessionErrorMetrics
 }
 
 var EmptySessionMetrics SessionMetrics = SessionMetrics{
-	Invocations:     &EmptyCounter{},
-	DirectSessions:  &EmptyCounter{},
-	NextSessions:    &EmptyCounter{},
-	DurationGauge:   &EmptyGauge{},
-	DecisionMetrics: EmptyDecisionMetrics,
+	Invocations:         &EmptyCounter{},
+	DirectSessions:      &EmptyCounter{},
+	NextSessions:        &EmptyCounter{},
+	DurationGauge:       &EmptyGauge{},
+	DecisionMetrics:     EmptyDecisionMetrics,
+	SessionErrorMetrics: EmptySessionErrorMetrics,
 }
 
 type ServerUpdateMetrics struct {

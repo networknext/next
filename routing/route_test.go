@@ -630,7 +630,7 @@ func TestDecide(t *testing.T) {
 	{
 		decisionFuncs := []routing.DecisionFunc{
 			routing.DecideUpgradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTThreshold)),
-			routing.DecideDowngradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTHysteresis)),
+			routing.DecideDowngradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
 			routing.DecideVeto(float64(routing.DefaultRoutingRulesSettings.RTTVeto), routing.DefaultRoutingRulesSettings.EnablePacketLossSafety, routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
 			routing.DecideCommitted(),
 		}
@@ -666,12 +666,14 @@ func TestDecide(t *testing.T) {
 		}
 
 		// Loop through all permutations and combinations of the decision functions and test that the result is the same
-		combs := combinations(decisionFuncs)
+		decisionFuncIndices := createIndexSlice(decisionFuncs)
+		combs := combinations(decisionFuncIndices)
 		for i := 0; i < len(combs); i++ {
 			perms := permutations(combs[i])
+			funcs := replaceIndicesWithDecisionFuncs(perms, decisionFuncs)
 
 			for j := 0; j < len(perms); j++ {
-				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, perms[j]...)
+				decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, funcs[j]...)
 				assert.Equal(t, expected, decision)
 			}
 		}
