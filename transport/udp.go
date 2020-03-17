@@ -402,7 +402,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 				"buyer_yolo", buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce,
 			)
 
-			if routeDecision.Reason&routing.DecisionVetoRTT != 0 || routeDecision.Reason&routing.DecisionVetoPacketLoss != 0 || routeDecision.Reason&routing.DecisionVetoYOLO != 0 {
+			if routing.IsVetoed(routeDecision) {
 				// Session has been vetoed
 
 				if sessionCacheEntry.VetoTimestamp.Before(timestampNow) && routeDecision.Reason&routing.DecisionVetoYOLO == 0 {
@@ -417,7 +417,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 				// Session hasn't been vetoed, perform route decision as normal
 				routeDecision = nextRoute.Decide(sessionCacheEntry.RouteDecision, nnStats, directStats,
 					routing.DecideUpgradeRTT(float64(buyer.RoutingRulesSettings.RTTThreshold)),
-					routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis)),
+					routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis), buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
 					routing.DecideVeto(float64(buyer.RoutingRulesSettings.RTTVeto), buyer.RoutingRulesSettings.EnablePacketLossSafety, buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
 				)
 
