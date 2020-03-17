@@ -35,7 +35,19 @@ tests=(
 )
 
 for test in "${tests[@]}"; do
-  docker run --name "$test" --env test="$test" func_tests:latest &
+    docker run --name "$test" --env test="$test" func_tests:latest &
 done
 
+exitCode="0"
+processes="$(ps --ppid $$ | grep 'docker' | awk '{print $1}')"
+
+while read process; do
+    wait $process
+    processExitCode=$?
+    if [ "$processExitCode" != "0" ]; then
+        exitCode=$processExitCode
+    fi
+done <<< "$processes"
+
 wait
+exit $exitCode
