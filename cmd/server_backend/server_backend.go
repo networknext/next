@@ -313,10 +313,7 @@ func main() {
 		}()
 
 		go func() {
-			http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(http.StatusOK)
-				w.Write([]byte(http.StatusText(http.StatusOK)))
-			})
+			http.HandleFunc("/healthz", transport.HealthzHandlerFunc())
 
 			level.Info(logger).Log("protocol", "http", "addr", conn.LocalAddr().String())
 			if err := http.ListenAndServe(conn.LocalAddr().String(), nil); err != nil {

@@ -20,6 +20,7 @@ CURRENT_DIR = $(shell pwd -P)
 DEPLOY_DIR = ./deploy
 DIST_DIR = ./dist
 ARTIFACT_BUCKET = gs://artifacts.network-next-v3-dev.appspot.com
+ARTIFACT_BUCKET_PROD = gs://us.artifacts.network-next-v3-prod.appspot.com
 SYSTEMD_SERVICE_FILE = app.service
 
 COST_FILE = $(DIST_DIR)/cost.bin
@@ -309,10 +310,26 @@ build-relay-backend-artifact: build-relay-backend ## builds the relay backend wi
 	@cd $(DIST_DIR)/artifact/relay_backend && tar -zcf ../../relay_backend.dev.tar.gz app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
 	@printf "$(DIST_DIR)/relay_backend.dev.tar.gz\n"
 
+.PHONY: build-relay-backend-artifact
+build-relay-backend-prod-artifact: build-relay-backend ## builds the relay backend with the right env vars and creates a .tar.gz
+	@printf "Building relay backend artifact... "
+	@mkdir -p $(DIST_DIR)/artifact/relay_backend
+	@cp $(DIST_DIR)/relay_backend $(DIST_DIR)/artifact/relay_backend/app
+	@cp ./cmd/relay_backend/prod.env $(DIST_DIR)/artifact/relay_backend/app.env
+	@cp $(DEPLOY_DIR)/$(SYSTEMD_SERVICE_FILE) $(DIST_DIR)/artifact/relay_backend/$(SYSTEMD_SERVICE_FILE)
+	@cd $(DIST_DIR)/artifact/relay_backend && tar -zcf ../../relay_backend.prod.tar.gz app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
+	@printf "$(DIST_DIR)/relay_backend.prod.tar.gz\n"
+
 .PHONY: publish-relay-backend-artifact
 publish-relay-backend-artifact: ## publishes the relay backend artifact to GCP Storage with gsutil
 	@printf "Publishing relay backend artifact... \n\n"
 	@gsutil cp $(DIST_DIR)/relay_backend.dev.tar.gz $(ARTIFACT_BUCKET)/relay_backend.dev.tar.gz
+	@printf "done\n"
+
+.PHONY: publish-relay-backend-artifact
+publish-relay-backend-prod-artifact: ## publishes the relay backend artifact to GCP Storage with gsutil
+	@printf "Publishing relay backend artifact... \n\n"
+	@gsutil cp $(DIST_DIR)/relay_backend.prod.tar.gz $(ARTIFACT_BUCKET_PROD)/relay_backend.prod.tar.gz
 	@printf "done\n"
 
 .PHONY: deploy-relay-backend
@@ -336,10 +353,26 @@ build-server-backend-artifact: build-server-backend ## builds the server backend
 	@cd $(DIST_DIR)/artifact/server_backend && tar -zcf ../../server_backend.dev.tar.gz app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
 	@printf "$(DIST_DIR)/server_backend.dev.tar.gz\n"
 
+.PHONY: build-server-backend-artifact
+build-server-backend-prod-artifact: build-server-backend ## builds the server backend with the right env vars and creates a .tar.gz
+	@printf "Building server backend artifact... "
+	@mkdir -p $(DIST_DIR)/artifact/server_backend
+	@cp $(DIST_DIR)/server_backend $(DIST_DIR)/artifact/server_backend/app
+	@cp ./cmd/server_backend/prod.env $(DIST_DIR)/artifact/server_backend/app.env
+	@cp $(DEPLOY_DIR)/$(SYSTEMD_SERVICE_FILE) $(DIST_DIR)/artifact/server_backend/$(SYSTEMD_SERVICE_FILE)
+	@cd $(DIST_DIR)/artifact/server_backend && tar -zcf ../../server_backend.prod.tar.gz app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
+	@printf "$(DIST_DIR)/server_backend.prod.tar.gz\n"
+
 .PHONY: publish-server-backend-artifact
 publish-server-backend-artifact: ## publishes the server backend artifact to GCP Storage with gsutil
 	@printf "Publishing server backend artifact... \n\n"
 	@gsutil cp $(DIST_DIR)/server_backend.dev.tar.gz $(ARTIFACT_BUCKET)/server_backend.dev.tar.gz
+	@printf "done\n"
+
+.PHONY: publish-server-backend-artifact
+publish-server-backend-prod-artifact: ## publishes the server backend artifact to GCP Storage with gsutil
+	@printf "Publishing server backend artifact... \n\n"
+	@gsutil cp $(DIST_DIR)/server_backend.prod.tar.gz $(ARTIFACT_BUCKET_PROD)/server_backend.prod.tar.gz
 	@printf "done\n"
 
 .PHONY: deploy-server-backend
@@ -350,8 +383,14 @@ deploy-server-backend: build-server-backend ## builds and deploys the server bac
 .PHONY: build-backend-artifacts
 build-backend-artifacts: build-relay-backend-artifact build-server-backend-artifact ## builds the backend artifacts
 
+.PHONY: build-backend-prod-artifacts
+build-backend-prod-artifacts: build-relay-backend-prod-artifact build-server-backend-prod-artifact ## builds the backend artifacts
+
 .PHONY: publish-backend-artifacts
 publish-backend-artifacts: publish-relay-backend-artifact publish-server-backend-artifact ## publishes the backend artifacts to GCP Storage with gsutil
+
+.PHONY: publish-backend-prod-artifacts
+publish-backend-prod-artifacts: publish-relay-backend-prod-artifact publish-server-backend-prod-artifact ## publishes the backend artifacts to GCP Storage with gsutil
 
 .PHONY: build-server
 build-server: build-sdk ## builds the server
