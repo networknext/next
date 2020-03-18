@@ -335,7 +335,7 @@ publish-relay-backend-prod-artifact: ## publishes the relay backend artifact to 
 .PHONY: deploy-relay-backend
 deploy-relay-backend: build-relay-backend ## builds and deploys the relay backend to the dev VM
 	@printf "Deploying relay backend... \n\n"
-	gcloud compute ssh relay-backend-dev-1 -- 'sudo /app/vm-update-app.sh -a gs://artifacts.network-next-v3-dev.appspot.com/relay_backend.dev.tar.gz'
+	gcloud compute ssh relay-backend-dev-1 -- 'cd /app && sudo ./vm-update-app.sh -a gs://artifacts.network-next-v3-dev.appspot.com/relay_backend.dev.tar.gz'
 
 .PHONY: build-server-backend
 build-server-backend: ## builds the server backend binary
@@ -378,7 +378,7 @@ publish-server-backend-prod-artifact: ## publishes the server backend artifact t
 .PHONY: deploy-server-backend
 deploy-server-backend: build-server-backend ## builds and deploys the server backend to the dev VM
 	@printf "Deploying server backend... \n\n"
-	gcloud compute ssh server-backend-dev-1 -- 'sudo /app/vm-update-app.sh -a gs://artifacts.network-next-v3-dev.appspot.com/server_backend.dev.tar.gz'
+	gcloud compute ssh server-backend-dev-1 -- 'cd /app && sudo ./vm-update-app.sh -a gs://artifacts.network-next-v3-dev.appspot.com/server_backend.dev.tar.gz'
 
 .PHONY: build-backend-artifacts
 build-backend-artifacts: build-relay-backend-artifact build-server-backend-artifact ## builds the backend artifacts
