@@ -81,6 +81,8 @@ func relayInitPacketHandler(relayInitPacket *RelayInitPacket, writer http.Respon
 		Datacenter:     relayEntry.Datacenter,
 		Seller:         relayEntry.Seller,
 		LastUpdateTime: uint64(time.Now().Unix()),
+		Latitude:       relayEntry.Latitude,
+		Longitude:      relayEntry.Longitude,
 	}
 
 	if _, ok := crypto.Open(relayInitPacket.EncryptedToken, relayInitPacket.Nonce, relay.PublicKey, routerPrivateKey); !ok {
@@ -103,15 +105,17 @@ func relayInitPacketHandler(relayInitPacket *RelayInitPacket, writer http.Respon
 		return nil
 	}
 
-	loc, err := ipLocator.LocateIP(relay.Addr.IP)
-	if err != nil {
-		level.Error(locallogger).Log("msg", "failed to locate relay")
-		writer.WriteHeader(http.StatusInternalServerError)
-		return nil
+	if loc, err := ipLocator.LocateIP(relay.Addr.IP); err == nil {
+		relay.Latitude = loc.Latitude
+		relay.Longitude = loc.Longitude
+	} else {
+		level.Warn(locallogger).Log("msg", "using default geolocation from storage for relay")
 	}
 
-	relay.Latitude = loc.Latitude
-	relay.Longitude = loc.Longitude
+	if relay.Latitude == 0 && relay.Longitude == 0 {
+		level.Warn(locallogger).Log("msg", "relay geolocation is 0,0")
+		writer.WriteHeader(http.StatusInternalServerError)
+	}
 
 	// Regular set for expiry
 	if res := redisClient.Set(relay.Key(), relay.ID, routing.RelayTimeout); res.Err() != nil && res.Err() != redis.Nil {

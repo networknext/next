@@ -50,8 +50,10 @@ type relay struct {
 }
 
 type datacenter struct {
-	Name    string `firestore:"name"`
-	Enabled bool   `firestore:"enabled"`
+	Name      string  `firestore:"name"`
+	Enabled   bool    `firestore:"enabled"`
+	Latitude  float32 `firestore:"latitude"`
+	Longitude float32 `firestore:"longitude"`
 }
 
 type routingRulesSettings struct {
@@ -187,6 +189,8 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 		}
 
 		relay.Datacenter = datacenter
+		relay.Latitude = float64(d.Latitude)
+		relay.Longitude = float64(d.Longitude)
 
 		// Get seller
 		sdoc, err := r.Seller.Get(ctx)
