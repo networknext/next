@@ -62,8 +62,8 @@ binary="./cmd/relay_old/bin/relay"
 proceed=''
 while getopts 'i:b:yh' flag; do
 	case "${flag}" in
-		i) 
-			ssh_key="${OPTARG}" 
+		i)
+			ssh_key="${OPTARG}"
 			;;
 		b)
 			binary="${OPTARG}"
@@ -71,7 +71,7 @@ while getopts 'i:b:yh' flag; do
 		y)
 			proceed='y'
 			;;
-		h) 
+		h)
 			print_usage
 			exit 1
 			;;
@@ -85,8 +85,8 @@ done
 echo "Using relay key located at $ssh_key"
 echo "Sending the file $binary"
 
-# in case the wrong binary was specified 
-# or this was executed by accident 
+# in case the wrong binary was specified
+# or this was executed by accident
 # or you're just not feeling like it
 
 if [ -z "$proceed" ]; then
@@ -102,7 +102,7 @@ if [ -z "$proceed" ]; then
 	fi
 fi
 
-# most of the updates occure in this loop
+# most of the updates occur in this loop
 
 for target in "${ssh_targets[@]}"; do
 	echo "Stopping the relay service on $target"
@@ -139,4 +139,3 @@ ssh -i "$ssh_key" "$target" '$(which bash)' << EOF
 EOF
 
 done
-
