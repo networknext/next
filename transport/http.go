@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"expvar"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -36,14 +37,15 @@ const (
 // NewRouter creates a router with the specified endpoints
 func NewRouter(logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, storer storage.Storer,
 	statsdb *routing.StatsDatabase, initDuration metrics.Gauge, updateDuration metrics.Gauge, initCounter metrics.Counter,
-	updateCounter metrics.Counter, costmatrix *routing.CostMatrix, routematrix *routing.RouteMatrix, routerPrivateKey []byte, trafficStatsPublisher stats.Publisher) *mux.Router {
+	updateCounter metrics.Counter, costmatrix *routing.CostMatrix, routematrix *routing.RouteMatrix, routerPrivateKey []byte, trafficStatsPublisher stats.Publisher,
+	username string, password string) *mux.Router {
 	router := mux.NewRouter()
 	router.HandleFunc("/healthz", HealthzHandlerFunc())
 	router.HandleFunc("/relay_init", RelayInitHandlerFunc(logger, redisClient, geoClient, ipLocator, storer, initDuration, initCounter, routerPrivateKey)).Methods("POST")
 	router.HandleFunc("/relay_update", RelayUpdateHandlerFunc(logger, redisClient, statsdb, updateDuration, updateCounter, trafficStatsPublisher, storer)).Methods("POST")
 	router.Handle("/cost_matrix", costmatrix).Methods("GET")
 	router.Handle("/route_matrix", routematrix).Methods("GET")
-	router.HandleFunc("/near", NearHandlerFunc(nil)).Methods("GET")
+	router.HandleFunc("/", RelayDashboardHandlerFunc(redisClient, routematrix, username, password)).Methods("GET")
 	router.HandleFunc("/relay_init_json", RelayInitJSONHandlerFunc(logger, redisClient, geoClient, ipLocator, storer, initDuration, initCounter, routerPrivateKey)).Methods("POST")
 	router.HandleFunc("/relay_update_json", RelayUpdateJSONHandlerFunc(logger, redisClient, statsdb, updateDuration, updateCounter, trafficStatsPublisher, storer)).Methods("POST")
 	router.Handle("/debug/vars", expvar.Handler())
@@ -110,11 +112,6 @@ func relayInitPacketHandler(relayInitPacket *RelayInitPacket, writer http.Respon
 		relay.Longitude = loc.Longitude
 	} else {
 		level.Warn(locallogger).Log("msg", "using default geolocation from storage for relay")
-	}
-
-	if relay.Latitude == 0 && relay.Longitude == 0 {
-		level.Warn(locallogger).Log("msg", "relay geolocation is 0,0")
-		writer.WriteHeader(http.StatusInternalServerError)
 	}
 
 	// Regular set for expiry
@@ -518,13 +515,88 @@ func RelayUpdateJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, st
 }
 
 // NearHandlerFunc returns the function for the near endpoint
-func NearHandlerFunc(backend *StubbedBackend) func(writer http.ResponseWriter, request *http.Request) {
+func RelayDashboardHandlerFunc(redisClient *redis.Client, routeMatrix *routing.RouteMatrix, username string, password string) func(writer http.ResponseWriter, request *http.Request) {
+	type response struct {
+		Analysis string
+		Relays   []routing.Relay
+	}
+
+	tmpl := template.Must(template.New("dashboard").Parse(`
+		<html>
+			<head>
+				<title>Relay Dashboard</title>
+				<style>
+					body { font-family: monospace; }
+					table { width: 100%; border-collapse: collapse; }
+					table, th, td { padding: 3px; border: 1px solid black; }
+					td { text-align: center; }
+				</style>
+			</head>
+			<body>
+				<h1>Relay Dashboard</h1>
+
+				<h2>Route Matrix Analysis</h2>
+				<pre>{{ .Analysis }}</pre>
+
+				<h2>Relays</h2>
+				<table>
+					<tr>
+						<th>Address</th>
+						<th>Datacenter</th>
+						<th>Lat / Long</th>
+						<th>RTT / Jitter / PL</th>
+						<th>Seller</th>
+						<th>Ingress / Egress</th>
+					</tr>
+					{{ range .Relays }}
+					<tr>
+						<td>{{ .Addr }}</td>
+						<td>{{ .Datacenter.Name }}</td>
+						<td>{{ .Latitude }} / {{ .Longitude }}</td>
+						<td>{{ .Stats.RTT }} / {{ .Stats.Jitter }} / {{ .Stats.PacketLoss }}</td>
+						<td>{{ .Seller.Name }}</td>
+						<td>{{ .Seller.IngressPriceCents }} / {{ .Seller.EgressPriceCents }}</td>
+					</tr>
+					{{ end }}
+				</table>
+			</body>
+		</html>
+	`))
+
 	return func(writer http.ResponseWriter, request *http.Request) {
-		backend.mutex.RLock()
-		nearData := backend.nearData
-		backend.mutex.RUnlock()
-		writer.WriteHeader(http.StatusOK)
-		writer.Header().Set("Content-Type", "application/octet-stream")
-		writer.Write(nearData)
+		writer.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+
+		u, p, _ := request.BasicAuth()
+		if u != username && p != password {
+			writer.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+			writer.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		var res response
+
+		buf := bytes.Buffer{}
+
+		routeMatrix.WriteAnalysisTo(&buf)
+		res.Analysis = buf.String()
+
+		hgetallResult := redisClient.HGetAll(routing.HashKeyAllRelays)
+		if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
+			fmt.Println(hgetallResult.Err())
+			return
+		}
+
+		for _, rawRelay := range hgetallResult.Val() {
+			var relay routing.Relay
+			if err := relay.UnmarshalBinary([]byte(rawRelay)); err != nil {
+				fmt.Println(err)
+				return
+			}
+			res.Relays = append(res.Relays, relay)
+		}
+
+		if err := tmpl.Execute(writer, res); err != nil {
+			fmt.Println(err)
+		}
 	}
 }

@@ -104,6 +104,8 @@ func relayInitAssertions(t *testing.T, endpoint string, relay routing.Relay, bod
 				routing.Relay{
 					ID:        crypto.HashID("127.0.0.1:40000"),
 					PublicKey: relayPublicKey,
+					Latitude:  13,
+					Longitude: 13,
 				}},
 		}
 	}
@@ -397,8 +399,10 @@ func TestRelayInitHandler(t *testing.T) {
 				Name: "some datacenter",
 			},
 			PublicKey: relayPublicKey,
+			Latitude:  13,
+			Longitude: 13,
 		}
-		relayInitAssertions(t, "/relay_init", relay, buff, http.StatusInternalServerError, nil, ipfunc, nil, redisClient, routerPrivateKey[:])
+		relayInitAssertions(t, "/relay_init", relay, buff, http.StatusOK, nil, ipfunc, nil, redisClient, routerPrivateKey[:])
 	})
 
 	t.Run("failed to get relay from configstore", func(t *testing.T) {

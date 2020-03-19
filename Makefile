@@ -264,7 +264,7 @@ dev-optimizer: ## runs a local optimizer
 
 .PHONY: dev-relay-backend
 dev-relay-backend: ## runs a local relay backend
-	@PORT=30000 $(GO) run cmd/relay_backend/relay_backend.go
+	@PORT=30000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local $(GO) run cmd/relay_backend/relay_backend.go
 
 .PHONY: dev-server-backend
 dev-server-backend: ## runs a local server backend
