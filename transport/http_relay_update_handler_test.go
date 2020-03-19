@@ -41,7 +41,15 @@ func seedRedis(t *testing.T, redisServer *miniredis.Miniredis, addressesToAdd []
 
 }
 
-func relayUpdateAssertions(t *testing.T, endpoint string, body []byte, expectedCode int, redisClient *redis.Client, statsdb *routing.StatsDatabase) *httptest.ResponseRecorder {
+func updateJSONAssertions(t *testing.T, body []byte, expectedCode int, redisClient *redis.Client, statsdb *routing.StatsDatabase) *httptest.ResponseRecorder {
+	return relayUpdateAssertions(t, "application/json", body, expectedCode, redisClient, statsdb)
+}
+
+func updateOctetStreamAssertions(t *testing.T, body []byte, expectedCode int, redisClient *redis.Client, statsdb *routing.StatsDatabase) *httptest.ResponseRecorder {
+	return relayUpdateAssertions(t, "application/octet-stream", body, expectedCode, redisClient, statsdb)
+}
+
+func relayUpdateAssertions(t *testing.T, contentType string, body []byte, expectedCode int, redisClient *redis.Client, statsdb *routing.StatsDatabase) *httptest.ResponseRecorder {
 	if redisClient == nil {
 		redisServer, _ := miniredis.Run()
 		redisClient = redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
@@ -52,14 +60,17 @@ func relayUpdateAssertions(t *testing.T, endpoint string, body []byte, expectedC
 	}
 
 	recorder := httptest.NewRecorder()
-	request, _ := http.NewRequest("POST", endpoint, bytes.NewBuffer(body))
+	request, _ := http.NewRequest("POST", "/relay_update", bytes.NewBuffer(body))
+	request.Header.Add("Content-Type", contentType)
 
-	var handler func(writer http.ResponseWriter, request *http.Request)
-	if endpoint == "/relay_update" {
-		handler = transport.RelayUpdateHandlerFunc(log.NewNopLogger(), redisClient, statsdb, &metrics.EmptyGauge{}, &metrics.EmptyCounter{}, &stats.NoOpTrafficStatsPublisher{}, &storage.InMemory{})
-	} else if endpoint == "/relay_update_json" {
-		handler = transport.RelayUpdateJSONHandlerFunc(log.NewNopLogger(), redisClient, statsdb, &metrics.EmptyGauge{}, &metrics.EmptyCounter{}, &stats.NoOpTrafficStatsPublisher{}, &storage.InMemory{})
-	}
+	handler := transport.RelayUpdateHandlerFunc(log.NewNopLogger(), &transport.CommonRelayUpdateFuncParams{
+		RedisClient:           redisClient,
+		StatsDb:               statsdb,
+		Duration:              &metrics.EmptyGauge{},
+		Counter:               &metrics.EmptyCounter{},
+		TrafficStatsPublisher: &stats.NoOpTrafficStatsPublisher{},
+		Storer:                &storage.InMemory{},
+	})
 
 	handler(recorder, request)
 
@@ -69,14 +80,9 @@ func relayUpdateAssertions(t *testing.T, endpoint string, body []byte, expectedC
 }
 
 func TestRelayUpdateHandler(t *testing.T) {
-	const (
-		endpointPacketUpdate = "/relay_update"
-		endpointJSONUpdate   = "/relay_update_json"
-	)
-
 	t.Run("relay data is invalid", func(t *testing.T) {
 		buff := make([]byte, 10) // invalid relay packet size
-		relayUpdateAssertions(t, endpointPacketUpdate, buff, http.StatusUnprocessableEntity, nil, nil)
+		updateOctetStreamAssertions(t, buff, http.StatusUnprocessableEntity, nil, nil)
 	})
 
 	t.Run("relay public token bytes not equal", func(t *testing.T) {
@@ -110,7 +116,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 		redisServer.HSet(routing.HashKeyAllRelays, entry.Key(), string(raw))
 
 		buff, _ := packet.MarshalBinary()
-		relayUpdateAssertions(t, endpointPacketUpdate, buff, http.StatusBadRequest, redisClient, nil)
+		updateOctetStreamAssertions(t, buff, http.StatusBadRequest, redisClient, nil)
 	})
 
 	t.Run("address is invalid", func(t *testing.T) {
@@ -121,7 +127,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 		}
 		buff, _ := packet.MarshalBinary()
 		buff[10] = 'x' // assign this index (which should be the first item in the address) as the letter 'x' making it invalid
-		relayUpdateAssertions(t, endpointPacketUpdate, buff, http.StatusUnprocessableEntity, nil, nil)
+		updateOctetStreamAssertions(t, buff, http.StatusUnprocessableEntity, nil, nil)
 	})
 
 	t.Run("number of relays exceeds max", func(t *testing.T) {
@@ -133,7 +139,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 			PingStats: make([]routing.RelayStatsPing, 1025),
 		}
 		buff, _ := packet.MarshalBinary()
-		relayUpdateAssertions(t, endpointPacketUpdate, buff, http.StatusBadRequest, nil, nil)
+		updateOctetStreamAssertions(t, buff, http.StatusBadRequest, nil, nil)
 	})
 
 	t.Run("relay not found", func(t *testing.T) {
@@ -145,7 +151,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 			PingStats: make([]routing.RelayStatsPing, 3),
 		}
 		buff, _ := packet.MarshalBinary()
-		relayUpdateAssertions(t, endpointPacketUpdate, buff, http.StatusNotFound, nil, nil)
+		updateOctetStreamAssertions(t, buff, http.StatusNotFound, nil, nil)
 	})
 
 	t.Run("valid", func(t *testing.T) {
@@ -188,7 +194,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 
 		buff, _ := packet.MarshalBinary()
 
-		recorder := relayUpdateAssertions(t, endpointPacketUpdate, buff, http.StatusOK, redisClient, statsdb)
+		recorder := updateOctetStreamAssertions(t, buff, http.StatusOK, redisClient, statsdb)
 
 		res := redisClient.HGet(routing.HashKeyAllRelays, entry.Key())
 		var actual routing.Relay
@@ -206,7 +212,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 		// response assertions
 		header := recorder.Header()
 		contentType, _ := header["Content-Type"]
-		if recorder.Code == 200 {
+		if assert.NotNil(t, contentType) && assert.Len(t, contentType, 1) {
 			assert.Equal(t, "application/octet-stream", contentType[0])
 		}
 
@@ -250,7 +256,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 		t.Run("unparsable json", func(t *testing.T) {
 			JSONData := "{" // basic but gets the job done
 			buff := []byte(JSONData)
-			relayUpdateAssertions(t, endpointJSONUpdate, buff, http.StatusUnprocessableEntity, nil, nil)
+			updateJSONAssertions(t, buff, http.StatusUnprocessableEntity, nil, nil)
 		})
 
 		t.Run("invalid address", func(t *testing.T) {
@@ -273,7 +279,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 			buff, err := json.Marshal(request)
 			assert.Nil(t, err)
 
-			relayUpdateAssertions(t, endpointJSONUpdate, buff, http.StatusUnprocessableEntity, nil, nil)
+			updateJSONAssertions(t, buff, http.StatusUnprocessableEntity, nil, nil)
 		})
 
 		t.Run("token invalid base64", func(t *testing.T) {
@@ -294,7 +300,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 			buff, err := json.Marshal(request)
 			assert.Nil(t, err)
 
-			relayUpdateAssertions(t, endpointJSONUpdate, buff, http.StatusUnprocessableEntity, nil, nil)
+			updateJSONAssertions(t, buff, http.StatusUnprocessableEntity, nil, nil)
 		})
 
 		t.Run("valid", func(t *testing.T) {
@@ -338,7 +344,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 			buff, err := json.Marshal(request)
 			assert.Nil(t, err)
 
-			recorder := relayUpdateAssertions(t, endpointJSONUpdate, buff, http.StatusOK, redisClient, statsdb)
+			recorder := updateJSONAssertions(t, buff, http.StatusOK, redisClient, statsdb)
 
 			res := redisClient.HGet(routing.HashKeyAllRelays, entry.Key())
 			var actual routing.Relay
@@ -356,7 +362,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 			// response assertions
 			header := recorder.Header()
 			contentType, _ := header["Content-Type"]
-			if recorder.Code == http.StatusOK {
+			if assert.NotNil(t, contentType) && assert.Len(t, contentType, 1) {
 				assert.Equal(t, "application/json", contentType[0])
 			}
 

@@ -45,11 +45,11 @@ func getRelayKeyPair(t *testing.T) (pubKey []byte, privKey []byte) {
 	return pubKey, privKey
 }
 
-func octetStreamAssertions(t *testing.T, relay routing.Relay, body []byte, expectedCode int, geoClient *routing.GeoClient, ipfunc routing.LocateIPFunc, inMemory *storage.InMemory, redisClient *redis.Client, routerPrivateKey []byte) *httptest.ResponseRecorder {
+func initOctetStreamAssertions(t *testing.T, relay routing.Relay, body []byte, expectedCode int, geoClient *routing.GeoClient, ipfunc routing.LocateIPFunc, inMemory *storage.InMemory, redisClient *redis.Client, routerPrivateKey []byte) *httptest.ResponseRecorder {
 	return relayInitAssertions(t, "application/octet-stream", relay, body, expectedCode, geoClient, ipfunc, inMemory, redisClient, routerPrivateKey)
 }
 
-func jsonAssertions(t *testing.T, relay routing.Relay, body []byte, expectedCode int, geoClient *routing.GeoClient, ipfunc routing.LocateIPFunc, inMemory *storage.InMemory, redisClient *redis.Client, routerPrivateKey []byte) *httptest.ResponseRecorder {
+func initJSONAssertions(t *testing.T, relay routing.Relay, body []byte, expectedCode int, geoClient *routing.GeoClient, ipfunc routing.LocateIPFunc, inMemory *storage.InMemory, redisClient *redis.Client, routerPrivateKey []byte) *httptest.ResponseRecorder {
 	return relayInitAssertions(t, "application/json", relay, body, expectedCode, geoClient, ipfunc, inMemory, redisClient, routerPrivateKey)
 }
 
@@ -97,7 +97,7 @@ func relayInitAssertions(t *testing.T, contentType string, relay routing.Relay, 
 
 	recorder := httptest.NewRecorder()
 	request, _ := http.NewRequest("POST", "/relay_init", bytes.NewBuffer(body))
-	request.Header["Content-Type"] = append(request.Header["Content-Type"], contentType)
+	request.Header.Add("Content-Type", contentType)
 
 	if inMemory == nil {
 		rtodcnameMap := make(map[uint32]string)
@@ -154,7 +154,7 @@ func TestRelayInitHandler(t *testing.T) {
 				Name: "some datacenter",
 			},
 		}
-		octetStreamAssertions(t, relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
+		initOctetStreamAssertions(t, relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
 	})
 
 	t.Run("version is invalid", func(t *testing.T) {
@@ -173,7 +173,7 @@ func TestRelayInitHandler(t *testing.T) {
 				Name: "some datacenter",
 			},
 		}
-		octetStreamAssertions(t, relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
+		initOctetStreamAssertions(t, relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
 	})
 
 	t.Run("address is invalid", func(t *testing.T) {
@@ -218,7 +218,7 @@ func TestRelayInitHandler(t *testing.T) {
 			},
 			PublicKey: relayPublicKey,
 		}
-		octetStreamAssertions(t, relay, buff, http.StatusBadRequest, nil, nil, nil, nil, routerPrivateKey[:])
+		initOctetStreamAssertions(t, relay, buff, http.StatusUnprocessableEntity, nil, nil, nil, nil, routerPrivateKey[:])
 	})
 
 	t.Run("encryption token is 0'ed", func(t *testing.T) {
@@ -247,7 +247,7 @@ func TestRelayInitHandler(t *testing.T) {
 				Name: "some datacenter",
 			},
 		}
-		octetStreamAssertions(t, relay, buff, http.StatusUnauthorized, nil, nil, nil, nil, routerPrivateKey[:])
+		initOctetStreamAssertions(t, relay, buff, http.StatusUnauthorized, nil, nil, nil, nil, routerPrivateKey[:])
 	})
 
 	t.Run("nonce bytes are 0'ed", func(t *testing.T) {
@@ -291,7 +291,7 @@ func TestRelayInitHandler(t *testing.T) {
 			},
 			PublicKey: relayPublicKey,
 		}
-		octetStreamAssertions(t, relay, buff, http.StatusOK, nil, nil, nil, nil, routerPrivateKey[:])
+		initOctetStreamAssertions(t, relay, buff, http.StatusOK, nil, nil, nil, nil, routerPrivateKey[:])
 	})
 
 	t.Run("relay already exists", func(t *testing.T) {
@@ -361,7 +361,7 @@ func TestRelayInitHandler(t *testing.T) {
 			},
 			PublicKey: relayPublicKey,
 		}
-		octetStreamAssertions(t, relay, buff, http.StatusConflict, nil, nil, nil, redisClient, routerPrivateKey[:])
+		initOctetStreamAssertions(t, relay, buff, http.StatusConflict, nil, nil, nil, redisClient, routerPrivateKey[:])
 	})
 
 	t.Run("could not lookup relay location", func(t *testing.T) {
@@ -413,7 +413,7 @@ func TestRelayInitHandler(t *testing.T) {
 			Latitude:  13,
 			Longitude: 13,
 		}
-		octetStreamAssertions(t, relay, buff, http.StatusOK, nil, ipfunc, nil, redisClient, routerPrivateKey[:])
+		initOctetStreamAssertions(t, relay, buff, http.StatusOK, nil, ipfunc, nil, redisClient, routerPrivateKey[:])
 	})
 
 	t.Run("failed to get relay from configstore", func(t *testing.T) {
@@ -462,7 +462,7 @@ func TestRelayInitHandler(t *testing.T) {
 
 		inMemory := &storage.InMemory{} // Have empty storage to fail lookup
 
-		octetStreamAssertions(t, relay, buff, http.StatusInternalServerError, nil, nil, inMemory, redisClient, routerPrivateKey[:])
+		initOctetStreamAssertions(t, relay, buff, http.StatusInternalServerError, nil, nil, inMemory, redisClient, routerPrivateKey[:])
 	})
 
 	t.Run("Failed to get relay from redis", func(t *testing.T) {
@@ -508,7 +508,7 @@ func TestRelayInitHandler(t *testing.T) {
 			},
 			PublicKey: relayPublicKey,
 		}
-		octetStreamAssertions(t, relay, buff, http.StatusNotFound, nil, nil, nil, redisClient, routerPrivateKey[:])
+		initOctetStreamAssertions(t, relay, buff, http.StatusNotFound, nil, nil, nil, redisClient, routerPrivateKey[:])
 	})
 
 	t.Run("valid", func(t *testing.T) {
@@ -576,7 +576,7 @@ func TestRelayInitHandler(t *testing.T) {
 			PublicKey: relayPublicKey,
 		}
 
-		recorder := octetStreamAssertions(t, relay, buff, http.StatusOK, &geoClient, ipfunc, nil, redisClient, routerPrivateKey[:])
+		recorder := initOctetStreamAssertions(t, relay, buff, http.StatusOK, &geoClient, ipfunc, nil, redisClient, routerPrivateKey[:])
 
 		header := recorder.Header()
 		contentType, _ := header["Content-Type"]
@@ -637,7 +637,7 @@ func TestRelayInitHandler(t *testing.T) {
 					Name: "some datacenter",
 				},
 			}
-			jsonAssertions(t, relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
+			initJSONAssertions(t, relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
 		})
 
 		t.Run("nonce is not valid base64", func(t *testing.T) {
@@ -672,7 +672,7 @@ func TestRelayInitHandler(t *testing.T) {
 					Name: "some datacenter",
 				},
 			}
-			jsonAssertions(t, relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
+			initJSONAssertions(t, relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
 		})
 
 		t.Run("udp address is not valid", func(t *testing.T) {
@@ -705,7 +705,7 @@ func TestRelayInitHandler(t *testing.T) {
 					Name: "some datacenter",
 				},
 			}
-			jsonAssertions(t, relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
+			initJSONAssertions(t, relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
 		})
 
 		t.Run("encrypted token is not valid base64", func(t *testing.T) {
@@ -731,7 +731,7 @@ func TestRelayInitHandler(t *testing.T) {
 					Name: "some datacenter",
 				},
 			}
-			jsonAssertions(t, relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
+			initJSONAssertions(t, relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
 		})
 
 		t.Run("valid", func(t *testing.T) {
@@ -804,7 +804,7 @@ func TestRelayInitHandler(t *testing.T) {
 				PublicKey: relayPublicKey,
 			}
 
-			recorder := jsonAssertions(t, relay, buff, http.StatusOK, &geoClient, ipfunc, nil, redisClient, routerPrivateKey[:])
+			recorder := initJSONAssertions(t, relay, buff, http.StatusOK, &geoClient, ipfunc, nil, redisClient, routerPrivateKey[:])
 
 			header := recorder.Header()
 			contentType, _ := header["Content-Type"]
