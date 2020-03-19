@@ -535,34 +535,30 @@ func RelayDashboardHandlerFunc(redisClient *redis.Client, routeMatrix *routing.R
 			<body>
 				<h1>Relay Dashboard</h1>
 
-				<details>
-					<summary>Route Matrix Analysis</summary>
-					<pre>{{ .Analysis }}</pre>
-				</details>
+				<h2>Route Matrix Analysis</h2>
+				<pre>{{ .Analysis }}</pre>
 
-				<details>
-					<summary>Relays</summary>
-					<table>
-						<tr>
-							<th>Address</th>
-							<th>Datacenter</th>
-							<th>Lat / Long</th>
-							<th>RTT / Jitter / PL</th>
-							<th>Seller</th>
-							<th>Ingress / Egress</th>
-						</tr>
-						{{ range .Relays }}
-						<tr>
-							<td>{{ .Addr }}</td>
-							<td>{{ .Datacenter.Name }}</td>
-							<td>{{ .Latitude }} / {{ .Longitude }}</td>
-							<td>{{ .Stats.RTT }} / {{ .Stats.Jitter }} / {{ .Stats.PacketLoss }}</td>
-							<td>{{ .Seller.Name }}</td>
-							<td>{{ .Seller.IngressPriceCents }} / {{ .Seller.EgressPriceCents }}</td>
-						</tr>
-						{{ end }}
-					</table>
-				</details>
+				<h2>Relays</h2>
+				<table>
+					<tr>
+						<th>Address</th>
+						<th>Datacenter</th>
+						<th>Lat / Long</th>
+						<th>RTT / Jitter / PL</th>
+						<th>Seller</th>
+						<th>Ingress / Egress</th>
+					</tr>
+					{{ range .Relays }}
+					<tr>
+						<td>{{ .Addr }}</td>
+						<td>{{ .Datacenter.Name }}</td>
+						<td>{{ .Latitude }} / {{ .Longitude }}</td>
+						<td>{{ .Stats.RTT }} / {{ .Stats.Jitter }} / {{ .Stats.PacketLoss }}</td>
+						<td>{{ .Seller.Name }}</td>
+						<td>{{ .Seller.IngressPriceCents }} / {{ .Seller.EgressPriceCents }}</td>
+					</tr>
+					{{ end }}
+				</table>
 			</body>
 		</html>
 	`))
@@ -581,7 +577,7 @@ func RelayDashboardHandlerFunc(redisClient *redis.Client, routeMatrix *routing.R
 
 		buf := bytes.Buffer{}
 
-		routing.Analyze(&buf, routeMatrix)
+		routeMatrix.WriteAnalysisTo(&buf)
 		res.Analysis = buf.String()
 
 		hgetallResult := redisClient.HGetAll(routing.HashKeyAllRelays)
