@@ -10,6 +10,7 @@ import (
 	"html/template"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-kit/kit/log"
@@ -45,7 +46,7 @@ func NewRouter(logger log.Logger, redisClient *redis.Client, geoClient *routing.
 	router.HandleFunc("/relay_update", RelayUpdateHandlerFunc(logger, redisClient, statsdb, updateDuration, updateCounter, trafficStatsPublisher, storer)).Methods("POST")
 	router.Handle("/cost_matrix", costmatrix).Methods("GET")
 	router.Handle("/route_matrix", routematrix).Methods("GET")
-	router.HandleFunc("/", RelayDashboardHandlerFunc(redisClient, routematrix, username, password)).Methods("GET")
+	router.HandleFunc("/", RelayDashboardHandlerFunc(redisClient, routematrix, statsdb, username, password)).Methods("GET")
 	router.HandleFunc("/relay_init_json", RelayInitJSONHandlerFunc(logger, redisClient, geoClient, ipLocator, storer, initDuration, initCounter, routerPrivateKey)).Methods("POST")
 	router.HandleFunc("/relay_update_json", RelayUpdateJSONHandlerFunc(logger, redisClient, statsdb, updateDuration, updateCounter, trafficStatsPublisher, storer)).Methods("POST")
 	router.Handle("/debug/vars", expvar.Handler())
@@ -514,14 +515,56 @@ func RelayUpdateJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, st
 	}
 }
 
+func statsTable(stats map[string]map[string]routing.Stats) template.HTML {
+	html := strings.Builder{}
+	html.WriteString("<table>")
+
+	addrs := make([]string, 0)
+	for addr := range stats {
+		addrs = append(addrs, addr)
+	}
+
+	html.WriteString("<tr>")
+	html.WriteString("<th>Address</th>")
+	for _, addr := range addrs {
+		html.WriteString("<th>" + addr + "</th>")
+	}
+	html.WriteString("</tr>")
+
+	for _, a := range addrs {
+		html.WriteString("<tr>")
+		html.WriteString("<th>" + a + "</th>")
+
+		for _, b := range addrs {
+			if a == b {
+				html.WriteString("<td>&nbsp;</td>")
+				continue
+			}
+
+			html.WriteString("<td>" + stats[a][b].String() + "</td>")
+		}
+
+		html.WriteString("</tr>")
+	}
+
+	html.WriteString("</table>")
+
+	return template.HTML(html.String())
+}
+
 // NearHandlerFunc returns the function for the near endpoint
-func RelayDashboardHandlerFunc(redisClient *redis.Client, routeMatrix *routing.RouteMatrix, username string, password string) func(writer http.ResponseWriter, request *http.Request) {
+func RelayDashboardHandlerFunc(redisClient *redis.Client, routeMatrix *routing.RouteMatrix, statsdb *routing.StatsDatabase, username string, password string) func(writer http.ResponseWriter, request *http.Request) {
 	type response struct {
 		Analysis string
 		Relays   []routing.Relay
+		Stats    map[string]map[string]routing.Stats
 	}
 
-	tmpl := template.Must(template.New("dashboard").Parse(`
+	funcmap := template.FuncMap{
+		"statsTable": statsTable,
+	}
+
+	tmpl := template.Must(template.New("dashboard").Funcs(funcmap).Parse(`
 		<html>
 			<head>
 				<title>Relay Dashboard</title>
@@ -544,7 +587,6 @@ func RelayDashboardHandlerFunc(redisClient *redis.Client, routeMatrix *routing.R
 						<th>Address</th>
 						<th>Datacenter</th>
 						<th>Lat / Long</th>
-						<th>RTT / Jitter / PL</th>
 						<th>Seller</th>
 						<th>Ingress / Egress</th>
 					</tr>
@@ -553,12 +595,14 @@ func RelayDashboardHandlerFunc(redisClient *redis.Client, routeMatrix *routing.R
 						<td>{{ .Addr }}</td>
 						<td>{{ .Datacenter.Name }}</td>
 						<td>{{ .Latitude }} / {{ .Longitude }}</td>
-						<td>{{ .Stats.RTT }} / {{ .Stats.Jitter }} / {{ .Stats.PacketLoss }}</td>
 						<td>{{ .Seller.Name }}</td>
 						<td>{{ .Seller.IngressPriceCents }} / {{ .Seller.EgressPriceCents }}</td>
 					</tr>
 					{{ end }}
 				</table>
+
+				<h2>Stats</h2>
+				{{ .Stats | statsTable }}
 			</body>
 		</html>
 	`))
@@ -593,6 +637,16 @@ func RelayDashboardHandlerFunc(redisClient *redis.Client, routeMatrix *routing.R
 				return
 			}
 			res.Relays = append(res.Relays, relay)
+		}
+
+		res.Stats = make(map[string]map[string]routing.Stats)
+		for _, a := range res.Relays {
+			res.Stats[a.Addr.String()] = make(map[string]routing.Stats)
+
+			for _, b := range res.Relays {
+				rtt, jitter, packetloss := statsdb.GetSample(a.ID, b.ID)
+				res.Stats[a.Addr.String()][b.Addr.String()] = routing.Stats{RTT: float64(rtt), Jitter: float64(jitter), PacketLoss: float64(packetloss)}
+			}
 		}
 
 		if err := tmpl.Execute(writer, res); err != nil {
