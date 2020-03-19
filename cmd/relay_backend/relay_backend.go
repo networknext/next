@@ -134,7 +134,13 @@ func main() {
 				Datacenter: routing.Datacenter{
 					ID:   crypto.HashID("local"),
 					Name: "local",
-				}},
+				},
+				Seller: routing.Seller{
+					Name:              "local",
+					IngressPriceCents: 10,
+					EgressPriceCents:  20,
+				},
+			},
 		},
 	}
 
