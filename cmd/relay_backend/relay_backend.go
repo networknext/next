@@ -354,7 +354,12 @@ func main() {
 		}
 	}()
 
-	router := transport.NewRouter(logger, redisClient, &geoClient, ipLocator, db, statsdb, initDuration, updateDuration, initCount, updateCount, &costmatrix, &routematrix, routerPrivateKey, trafficStatsPublisher)
+	router := transport.NewRouter(
+		logger, redisClient, &geoClient, ipLocator, db, statsdb,
+		initDuration, updateDuration, initCount, updateCount,
+		&costmatrix, &routematrix, routerPrivateKey, trafficStatsPublisher,
+		os.Getenv("BASIC_AUTH_USERNAME"), os.Getenv("BASIC_AUTH_PASSWORD"),
+	)
 
 	go func() {
 		port, ok := os.LookupEnv("PORT")
