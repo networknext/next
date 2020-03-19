@@ -142,9 +142,9 @@ const int Base64TableDecode[256] =
 
     long code;
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &code);
-    if (code != HttpSuccess) {
+    if (code < HttpSuccess || code >= 300) {
       printf("curl response not success: %ld\n", code);
-      return false;
+      std::exit(1);
     }
 
     curl_slist_free_all(slist);
