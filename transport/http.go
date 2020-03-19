@@ -34,46 +34,165 @@ const (
 	MaxRelayAddressLength = 256
 )
 
+type CommonRelayInitFuncParams struct {
+	RedisClient      *redis.Client
+	GeoClient        *routing.GeoClient
+	IpLocator        routing.IPLocator
+	Storer           storage.Storer
+	Duration         metrics.Gauge
+	Counter          metrics.Counter
+	RouterPrivateKey []byte
+}
+
 // NewRouter creates a router with the specified endpoints
 func NewRouter(logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, storer storage.Storer,
 	statsdb *routing.StatsDatabase, initDuration metrics.Gauge, updateDuration metrics.Gauge, initCounter metrics.Counter,
 	updateCounter metrics.Counter, costmatrix *routing.CostMatrix, routematrix *routing.RouteMatrix, routerPrivateKey []byte, trafficStatsPublisher stats.Publisher,
 	username string, password string) *mux.Router {
+
+	commonInitParams := CommonRelayInitFuncParams{
+		RedisClient:      redisClient,
+		GeoClient:        geoClient,
+		IpLocator:        ipLocator,
+		Storer:           storer,
+		Duration:         initDuration,
+		Counter:          initCounter,
+		RouterPrivateKey: routerPrivateKey,
+	}
+
 	router := mux.NewRouter()
 	router.HandleFunc("/healthz", HealthzHandlerFunc())
-	router.HandleFunc("/relay_init", RelayInitHandlerFunc(logger, redisClient, geoClient, ipLocator, storer, initDuration, initCounter, routerPrivateKey)).Methods("POST")
+	router.HandleFunc("/relay_init", RelayInitHandlerFunc(logger, &commonInitParams)).Methods("POST")
 	router.HandleFunc("/relay_update", RelayUpdateHandlerFunc(logger, redisClient, statsdb, updateDuration, updateCounter, trafficStatsPublisher, storer)).Methods("POST")
 	router.Handle("/cost_matrix", costmatrix).Methods("GET")
 	router.Handle("/route_matrix", routematrix).Methods("GET")
 	router.HandleFunc("/", RelayDashboardHandlerFunc(redisClient, routematrix, username, password)).Methods("GET")
-	router.HandleFunc("/relay_init_json", RelayInitJSONHandlerFunc(logger, redisClient, geoClient, ipLocator, storer, initDuration, initCounter, routerPrivateKey)).Methods("POST")
 	router.HandleFunc("/relay_update_json", RelayUpdateJSONHandlerFunc(logger, redisClient, statsdb, updateDuration, updateCounter, trafficStatsPublisher, storer)).Methods("POST")
 	router.Handle("/debug/vars", expvar.Handler())
 	return router
 }
 
-func relayInitPacketHandler(relayInitPacket *RelayInitPacket, writer http.ResponseWriter, request *http.Request, logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, storer storage.Storer, routerPrivateKey []byte) *routing.Relay {
-	locallogger := log.With(logger, "req_addr", request.RemoteAddr, "relay_addr", relayInitPacket.Address.String())
+// RelayInitHandlerFunc returns the function for the relay init endpoint
+func RelayInitHandlerFunc(logger log.Logger, params *CommonRelayInitFuncParams) func(writer http.ResponseWriter, request *http.Request) {
+	handlerLogger := log.With(logger, "handler", "init")
+
+	return func(writer http.ResponseWriter, request *http.Request) {
+		durationStart := time.Now()
+		defer func() {
+			durationSince := time.Since(durationStart)
+			params.Duration.Set(float64(durationSince.Milliseconds()))
+			params.Counter.Add(1)
+		}()
+
+		body, err := ioutil.ReadAll(request.Body)
+		if err != nil {
+			level.Error(handlerLogger).Log("msg", "could not read packet", "err", err)
+			writer.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		requestLogger := log.With(handlerLogger, "req_addr", request.RemoteAddr)
+
+		contentTypes := request.Header["Content-Type"]
+		if contentTypes != nil && len(contentTypes) > 0 {
+			switch contentTypes[0] {
+			case "application/json":
+				relayInitJSON(requestLogger, writer, body, params)
+			case "application/octet-stream":
+				relayInitOctetStream(requestLogger, writer, body, params)
+			}
+		}
+
+	}
+}
+
+func relayInitJSON(logger log.Logger, writer http.ResponseWriter, body []byte, params *CommonRelayInitFuncParams) {
+	var jsonData RelayInitRequestJSON
+	if err := json.Unmarshal(body, &jsonData); err != nil {
+		level.Error(logger).Log("msg", "could not parse init json", "err", err)
+		writer.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	var packet RelayInitPacket
+
+	if err := jsonData.ToInitPacket(&packet); err != nil {
+		level.Error(logger).Log("msg", "could not convert json data to binary packet", "err", err)
+		writer.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	relay, statusCode := relayInitHandler(logger, &packet, params)
+
+	writer.WriteHeader(statusCode)
+
+	if relay == nil || statusCode != http.StatusOK {
+		level.Error(logger).Log("msg", "could not process relay data from json handler")
+		return
+	}
+
+	var response RelayInitResponseJSON
+	response.Timestamp = relay.LastUpdateTime * 1000 // convert to millis, this is what the curr prod relay expects, the new relay uses seconds so it convertes back
+
+	if responseData, err := json.Marshal(response); err != nil {
+		level.Error(logger).Log("msg", "could not marshal init json response", "err", err)
+		writer.WriteHeader(http.StatusBadRequest)
+	} else {
+		writer.Header().Set("Content-Type", "application/json")
+		writer.Write(responseData)
+	}
+}
+
+func relayInitOctetStream(logger log.Logger, writer http.ResponseWriter, body []byte, params *CommonRelayInitFuncParams) {
+	relayInitPacket := RelayInitPacket{}
+
+	if err := relayInitPacket.UnmarshalBinary(body); err != nil {
+		level.Error(logger).Log("msg", "could not unmarshal packet", "err", err)
+		writer.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	relay, statusCode := relayInitHandler(logger, &relayInitPacket, params)
+
+	writer.WriteHeader(statusCode)
+
+	if relay == nil || statusCode != http.StatusOK {
+		level.Error(logger).Log("msg", "could not process relay data from octet-stream handler")
+		return
+	}
+
+	var responseData [PacketSizeRelayInitResponse]byte
+	{
+		index := 0
+		encoding.WriteUint32(responseData[:], &index, VersionNumberInitResponse)
+		encoding.WriteUint64(responseData[:], &index, relay.LastUpdateTime)
+		encoding.WriteBytes(responseData[:], &index, relay.PublicKey, crypto.KeySize)
+	}
+
+	writer.Header().Set("Content-Type", "application/octet-stream")
+
+	writer.Write(responseData[:])
+}
+
+func relayInitHandler(logger log.Logger, relayInitPacket *RelayInitPacket, params *CommonRelayInitFuncParams) (*routing.Relay, int) {
+	locallogger := log.With(logger, "relay_addr", relayInitPacket.Address.String())
 
 	if relayInitPacket.Magic != InitRequestMagic {
 		level.Error(locallogger).Log("msg", "magic number mismatch", "magic_number", relayInitPacket.Magic)
-		writer.WriteHeader(http.StatusBadRequest)
-		return nil
+		return nil, http.StatusBadRequest
 	}
 
 	if relayInitPacket.Version != VersionNumberInitRequest {
 		level.Error(locallogger).Log("msg", "version mismatch", "version", relayInitPacket.Version)
-		writer.WriteHeader(http.StatusBadRequest)
-		return nil
+		return nil, http.StatusBadRequest
 	}
 
 	id := crypto.HashID(relayInitPacket.Address.String())
 
-	relayEntry, ok := storer.Relay(id)
+	relayEntry, ok := params.Storer.Relay(id)
 	if !ok {
 		level.Error(locallogger).Log("msg", "relay not in configstore")
-		writer.WriteHeader(http.StatusInternalServerError)
-		return nil
+		return nil, http.StatusInternalServerError
 	}
 
 	relay := routing.Relay{
@@ -87,27 +206,24 @@ func relayInitPacketHandler(relayInitPacket *RelayInitPacket, writer http.Respon
 		Longitude:      relayEntry.Longitude,
 	}
 
-	if _, ok := crypto.Open(relayInitPacket.EncryptedToken, relayInitPacket.Nonce, relay.PublicKey, routerPrivateKey); !ok {
+	if _, ok := crypto.Open(relayInitPacket.EncryptedToken, relayInitPacket.Nonce, relay.PublicKey, params.RouterPrivateKey); !ok {
 		level.Error(locallogger).Log("msg", "crypto open failed")
-		writer.WriteHeader(http.StatusUnauthorized)
-		return nil
+		return nil, http.StatusUnauthorized
 	}
 
-	exists := redisClient.HExists(routing.HashKeyAllRelays, relay.Key())
+	exists := params.RedisClient.HExists(routing.HashKeyAllRelays, relay.Key())
 
 	if exists.Err() != nil && exists.Err() != redis.Nil {
 		level.Error(locallogger).Log("msg", "failed to check if relay is registered", "err", exists.Err())
-		writer.WriteHeader(http.StatusNotFound)
-		return nil
+		return nil, http.StatusNotFound
 	}
 
 	if exists.Val() {
 		level.Warn(locallogger).Log("msg", "relay already initialized")
-		writer.WriteHeader(http.StatusConflict)
-		return nil
+		return nil, http.StatusConflict
 	}
 
-	if loc, err := ipLocator.LocateIP(relay.Addr.IP); err == nil {
+	if loc, err := params.IpLocator.LocateIP(relay.Addr.IP); err == nil {
 		relay.Latitude = loc.Latitude
 		relay.Longitude = loc.Longitude
 	} else {
@@ -115,138 +231,31 @@ func relayInitPacketHandler(relayInitPacket *RelayInitPacket, writer http.Respon
 	}
 
 	// Regular set for expiry
-	if res := redisClient.Set(relay.Key(), relay.ID, routing.RelayTimeout); res.Err() != nil && res.Err() != redis.Nil {
+	if res := params.RedisClient.Set(relay.Key(), relay.ID, routing.RelayTimeout); res.Err() != nil && res.Err() != redis.Nil {
 		level.Error(locallogger).Log("msg", "failed to initialize relay", "err", res.Err())
-		writer.WriteHeader(http.StatusInternalServerError)
-		return nil
+		return nil, http.StatusInternalServerError
 	}
 
 	// HSet for full relay data
-	if res := redisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay); res.Err() != nil && res.Err() != redis.Nil {
+	if res := params.RedisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay); res.Err() != nil && res.Err() != redis.Nil {
 		level.Error(locallogger).Log("msg", "failed to initialize relay", "err", res.Err())
-		writer.WriteHeader(http.StatusInternalServerError)
-		return nil
+		return nil, http.StatusInternalServerError
 	}
 
-	if err := geoClient.Add(relay); err != nil {
+	if err := params.GeoClient.Add(relay); err != nil {
 		level.Error(locallogger).Log("msg", "failed to initialize relay", "err", err)
-		writer.WriteHeader(http.StatusInternalServerError)
-		return nil
+		return nil, http.StatusInternalServerError
 	}
 
 	level.Debug(locallogger).Log("msg", "relay initialized")
 
-	return &relay
+	return &relay, http.StatusOK
 }
 
 func HealthzHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(http.StatusText(http.StatusOK)))
-	}
-}
-
-// RelayInitHandlerFunc returns the function for the relay init endpoint
-func RelayInitHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, storer storage.Storer, duration metrics.Gauge, counter metrics.Counter, routerPrivateKey []byte) func(writer http.ResponseWriter, request *http.Request) {
-	logger = log.With(logger, "handler", "init")
-
-	return func(writer http.ResponseWriter, request *http.Request) {
-		durationStart := time.Now()
-		defer func() {
-			durationSince := time.Since(durationStart)
-			duration.Set(float64(durationSince.Milliseconds()))
-			counter.Add(1)
-		}()
-
-		body, err := ioutil.ReadAll(request.Body)
-		if err != nil {
-			level.Error(logger).Log("msg", "could not read packet", "err", err)
-			writer.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		relayInitPacket := RelayInitPacket{}
-
-		if err = relayInitPacket.UnmarshalBinary(body); err != nil {
-			level.Error(logger).Log("msg", "could not unmarshal packet", "err", err)
-			writer.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		log.With(logger, "req_addr", request.RemoteAddr, "relay_addr", relayInitPacket.Address.String(), "packet_addr", relayInitPacket.Address.String())
-
-		relay := relayInitPacketHandler(&relayInitPacket, writer, request, logger, redisClient, geoClient, ipLocator, storer, routerPrivateKey)
-		if relay == nil {
-			return
-		}
-
-		index := 0
-		responseData := make([]byte, 64)
-		encoding.WriteUint32(responseData, &index, VersionNumberInitResponse)
-		encoding.WriteUint64(responseData, &index, relay.LastUpdateTime)
-		encoding.WriteBytes(responseData, &index, relay.PublicKey, crypto.KeySize)
-
-		writer.Header().Set("Content-Type", "application/octet-stream")
-
-		writer.Write(responseData[:index])
-	}
-}
-
-// RelayInitJSONHandlerFunc handles relay init data in json form
-// currently it just converts the json struct into a packet struct and processes that
-func RelayInitJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, storer storage.Storer, duration metrics.Gauge, counter metrics.Counter, routerPrivateKey []byte) func(writer http.ResponseWriter, request *http.Request) {
-	logger = log.With(logger, "handler", "init_json")
-
-	return func(writer http.ResponseWriter, request *http.Request) {
-		durationStart := time.Now()
-		defer func() {
-			durationSince := time.Since(durationStart)
-			duration.Set(float64(durationSince.Milliseconds()))
-			counter.Add(1)
-		}()
-
-		body, err := ioutil.ReadAll(request.Body)
-		if err != nil {
-			level.Error(logger).Log("msg", "could not read packet", "err", err)
-			return
-		}
-
-		var jsonData RelayInitRequestJSON
-		if err := json.Unmarshal(body, &jsonData); err != nil {
-			level.Error(logger).Log("msg", "could not parse init json", "err", err)
-			writer.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		var packet RelayInitPacket
-
-		if err := jsonData.ToInitPacket(&packet); err != nil {
-			level.Error(logger).Log("msg", "could not convert json data to binary packet", "err", err)
-			writer.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		relay := relayInitPacketHandler(&packet, writer, request, logger, redisClient, geoClient, ipLocator, storer, routerPrivateKey)
-
-		if relay == nil {
-			// the packet handler func will have set the writer's status and logged something, so just log it was json and return
-			level.Error(logger).Log("msg", "could not process relay data from json handler")
-			return
-		}
-
-		var response RelayInitResponseJSON
-		response.Timestamp = relay.LastUpdateTime * 1000 // convert to millis, this is what the curr prod relay expects, will have to change when using new relay, new relay just uses seconds
-
-		var dat []byte
-		if dat, err = json.Marshal(response); err != nil {
-			level.Error(logger).Log("msg", "could not marshal init json response", "err", err)
-			writer.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		writer.Header().Set("Content-Type", "application/json")
-
-		writer.Write(dat)
 	}
 }
 

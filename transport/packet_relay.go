@@ -17,6 +17,8 @@ const (
 	VersionNumberInitResponse   = 0
 	VersionNumberUpdateRequest  = 0
 	VersionNumberUpdateResponse = 0
+
+	PacketSizeRelayInitResponse = 44
 )
 
 // RelayInitPacket is the struct that describes the packets comming into the relay_init endpoint
