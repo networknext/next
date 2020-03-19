@@ -40,16 +40,10 @@ ssh_targets=(
 "$SSH_RELAY_MAXIHOST_CHICAGO"
 )
 
-ssh_targets=(
-"$SSH_RELAY_LINODE_FREMONT"
-)
-
 troublesome_amazon_targets=(
 "$SSH_RELAY_AMAZON_OHIO"
 "$SSH_RELAY_AMAZON_VIRGINIA"
 )
-
-troublesome_amazon_targets=()
 
 print_usage() {
 	printf "i [identiy file]\tSame as ssh's -i flag\n\n"
