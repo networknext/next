@@ -622,7 +622,7 @@ func RelayDashboardHandlerFunc(redisClient *redis.Client, routeMatrix *routing.R
 		writer.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
 
 		u, p, _ := request.BasicAuth()
-		if u != username && p != password {
+		if u != username || p != password {
 			writer.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
 			writer.WriteHeader(http.StatusUnauthorized)
 			return
