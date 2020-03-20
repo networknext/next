@@ -405,7 +405,7 @@ func main() {
 				var token routing.Token
 				if nextRoute.Hash64() == sessionEntry.RouteHash {
 					token = &routing.ContinueRouteToken{
-						Expires: uint64(sessionEntry.TimestampExpire).Unix()),
+						Expires: uint64(sessionEntry.TimestampExpire.Unix()),
 
 						SessionID: sessionUpdate.SessionID,
 
@@ -428,7 +428,7 @@ func main() {
 					sessionEntry.Version++
 
 					token = &routing.NextRouteToken{
-						Expires: uint64(sessionEntry.TimestampExpire).Unix()),
+						Expires: uint64(sessionEntry.TimestampExpire.Unix()),
 
 						SessionID: sessionUpdate.SessionID,
 
