@@ -18,7 +18,7 @@ const (
 	VersionNumberUpdateRequest  = 0
 	VersionNumberUpdateResponse = 0
 
-	PacketSizeRelayInitResponse = 4 + 8 + crypto.KeySize
+	PacketSizeRelayInitResponse = 4 + 8
 )
 
 // RelayInitPacket is the struct that describes the packets comming into the relay_init endpoint
@@ -34,14 +34,14 @@ type RelayInitRequestJSON struct {
 	Magic                uint32 `json:"magic_request_protection"`
 	Version              uint32 `json:"version"`
 	StringAddr           string `json:"relay_address"`
-	PortNum              int    `json:"relay_port"`
 	NonceBase64          string `json:"nonce"`
 	EncryptedTokenBase64 string `json:"encrypted_token"`
 }
 
 // RelayInitResponseJSON ...
 type RelayInitResponseJSON struct {
-	Timestamp uint64 `json:"Timestamp"`
+	Version   uint32 `json:"version"`
+	Timestamp uint64 `json:"timestamp"`
 }
 
 func (j *RelayInitRequestJSON) ToInitPacket(packet *RelayInitPacket) error {
@@ -161,6 +161,7 @@ type RelayUpdateRequestJSON struct {
 	RelayName    string                   `json:"relay_name"`
 }
 type RelayUpdateResponseJSON struct {
+	Version      uint32                   `json:"version"`
 	RelaysToPing []routing.LegacyPingData `json:"ping_data"`
 }
 

@@ -14,22 +14,6 @@ namespace relay
 
   void relay_term();
 
-  int relay_init(CURL* curl,
-   const char* hostname,
-   uint8_t* relay_token,
-   const char* relay_address,
-   const uint8_t* router_public_key,
-   const uint8_t* relay_private_key,
-   uint64_t* router_timestamp);
-
-  int relay_update(CURL* curl,
-   const char* hostname,
-   const uint8_t* relay_token,
-   const char* relay_address,
-   uint8_t* update_response_memory,
-   core::RelayManager& manager,
-   uint64_t bytesReceived);
-
   int relay_write_header(int direction,
    uint8_t type,
    uint64_t sequence,

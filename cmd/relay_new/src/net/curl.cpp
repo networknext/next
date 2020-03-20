@@ -28,12 +28,12 @@ namespace net
     curl_global_cleanup();
   }
 
-  bool CurlWrapper::sendTo(
+  bool CurlWrapper::SendTo(
    const std::string hostname, const std::string endpoint, const std::vector<uint8_t>& msg, std::vector<uint8_t>& resp)
   {
     static CurlWrapper wrapper;
 
-    curl_slist* slist = curl_slist_append(nullptr, "Content-Type:application/octet-stream");
+    curl_slist* slist = curl_slist_append(nullptr, "Content-Type:application/json");
 
     std::stringstream ss;
     ss << hostname << endpoint;

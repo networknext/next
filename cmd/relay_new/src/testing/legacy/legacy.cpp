@@ -1,6 +1,7 @@
 #include "includes.h"
 #include "testing/test.hpp"
 
+#include "crypto/bytes.hpp"
 #include "encoding/base64.hpp"
 #include "encoding/binary.hpp"
 #include "encoding/read.hpp"
@@ -748,10 +749,10 @@ namespace
     const char* input = "a test string. let's see if it works properly";
     char encoded[1024];
     char decoded[1024];
-    check(encoding::base64_encode_string(input, encoded, sizeof(encoded)) > 0);
-    check(encoding::base64_decode_string(encoded, decoded, sizeof(decoded)) > 0);
+    check(legacy::base64_encode_string(input, encoded, sizeof(encoded)) > 0);
+    check(legacy::base64_decode_string(encoded, decoded, sizeof(decoded)) > 0);
     check(strcmp(decoded, input) == 0);
-    check(encoding::base64_decode_string(encoded, decoded, 10) == 0);
+    check(legacy::base64_decode_string(encoded, decoded, 10) == 0);
   }
 
 }  // namespace

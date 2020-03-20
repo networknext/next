@@ -184,7 +184,6 @@ func relayInitOctetStream(logger log.Logger, writer http.ResponseWriter, body []
 	{
 		encoding.WriteUint32(responseData[:], &index, VersionNumberInitResponse)
 		encoding.WriteUint64(responseData[:], &index, relay.LastUpdateTime)
-		encoding.WriteBytes(responseData[:], &index, relay.PublicKey, crypto.KeySize)
 	}
 
 	writer.Header().Set("Content-Type", "application/octet-stream")
@@ -330,6 +329,7 @@ func relayUpdateJSON(logger log.Logger, writer http.ResponseWriter, body []byte,
 	}
 
 	var response RelayUpdateResponseJSON
+	response.Version = VersionNumberUpdateResponse
 	for _, pingData := range relaysToPing {
 		var token routing.LegacyPingToken
 		token.Timeout = uint64(time.Now().Unix() * 100000) // some arbitrarily large number just to make things compatable for the moment

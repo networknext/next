@@ -124,7 +124,6 @@ func TestRelayInitRequestJSON(t *testing.T) {
 			b64Nonce := base64.StdEncoding.EncodeToString(nonce)
 			jsonRequest.NonceBase64 = b64Nonce
 			jsonRequest.StringAddr = "invalid"
-			jsonRequest.PortNum = 0
 			var packet transport.RelayInitPacket
 
 			assert.IsType(t, &net.AddrError{}, jsonRequest.ToInitPacket(&packet))
@@ -137,7 +136,6 @@ func TestRelayInitRequestJSON(t *testing.T) {
 			b64Nonce := base64.StdEncoding.EncodeToString(nonce)
 			jsonRequest.NonceBase64 = b64Nonce
 			jsonRequest.StringAddr = "127.0.0.1:40000"
-			jsonRequest.PortNum = 40000
 			jsonRequest.EncryptedTokenBase64 = "\n\ninvalid\t\t"
 			var packet transport.RelayInitPacket
 
@@ -168,7 +166,6 @@ func TestRelayInitRequestJSON(t *testing.T) {
 			jsonRequest.Version = transport.VersionNumberInitRequest
 			jsonRequest.NonceBase64 = b64Nonce
 			jsonRequest.StringAddr = "127.0.0.1:40000"
-			jsonRequest.PortNum = 40000
 			jsonRequest.EncryptedTokenBase64 = b64EncToken
 			var packet transport.RelayInitPacket
 
