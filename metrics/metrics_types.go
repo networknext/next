@@ -59,7 +59,7 @@ type SessionErrorMetrics struct {
 	WriteCachedResponseFailure  Counter
 	ClientLocateFailure         Counter
 	NearRelaysLocateFailure     Counter
-	RouteSelectionFailure       Counter
+	RouteFailure                Counter
 	EncryptionFailure           Counter
 	WriteResponseFailure        Counter
 	UpdateSessionFailure        Counter
@@ -79,7 +79,7 @@ var EmptySessionErrorMetrics SessionErrorMetrics = SessionErrorMetrics{
 	WriteCachedResponseFailure:  &EmptyCounter{},
 	ClientLocateFailure:         &EmptyCounter{},
 	NearRelaysLocateFailure:     &EmptyCounter{},
-	RouteSelectionFailure:       &EmptyCounter{},
+	RouteFailure:                &EmptyCounter{},
 	EncryptionFailure:           &EmptyCounter{},
 	WriteResponseFailure:        &EmptyCounter{},
 	UpdateSessionFailure:        &EmptyCounter{},
@@ -443,10 +443,10 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
-	sessionMetrics.SessionErrorMetrics.RouteSelectionFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Session Route Selection Failure",
+	sessionMetrics.SessionErrorMetrics.RouteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Route Failure",
 		ServiceName: "server_backend",
-		ID:          "session.error.route_selection_failure",
+		ID:          "session.error.route_failure",
 		Unit:        "errors",
 	})
 	if err != nil {

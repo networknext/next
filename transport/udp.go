@@ -43,7 +43,7 @@ type UDPServerMux struct {
 // Start begins accepting UDP packets from the UDP connection and will block
 func (m *UDPServerMux) Start(ctx context.Context) error {
 	if m.Conn == nil {
-		return errors.New("relay server cannot be nil")
+		return errors.New("udp connection cannot be nil")
 	}
 
 	for i := 0; i < runtime.NumCPU(); i++ {
@@ -235,6 +235,11 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 
 		locallogger := log.With(logger, "src_addr", incoming.SourceAddr.String(), "server_addr", packet.ServerAddress.String(), "client_addr", packet.ClientAddress.String(), "session_id", packet.SessionID)
 
+		if packet.FallbackToDirect {
+			level.Error(logger).Log("err", "fallback to direct")
+			return
+		}
+
 		var serverCacheEntry ServerCacheEntry
 		var sessionCacheEntry SessionCacheEntry
 
@@ -393,7 +398,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 				routing.SelectRandomRoute(rand.NewSource(rand.Int63())))
 			if err != nil {
 				level.Error(locallogger).Log("err", err)
-				writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.SessionErrorMetrics.WriteResponseFailure, metrics.SessionErrorMetrics.RouteSelectionFailure)
+				writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.SessionErrorMetrics.WriteResponseFailure, metrics.SessionErrorMetrics.RouteFailure)
 				return
 			}
 
@@ -449,7 +454,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 				var token routing.Token
 				if nextRoute.Hash64() == sessionCacheEntry.RouteHash {
 					token = &routing.ContinueRouteToken{
-						Expires: uint64(time.Now().Add(billing.BillingSliceSeconds * time.Second).Unix()),
+						Expires: uint64(sessionCacheEntry.TimestampExpire.Add(billing.BillingSliceSeconds * time.Second).Unix()),
 
 						SessionID: packet.SessionID,
 
@@ -472,7 +477,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 					sessionCacheEntry.Version++
 
 					token = &routing.NextRouteToken{
-						Expires: uint64(time.Now().Add(billing.BillingSliceSeconds * 2 * time.Second).Unix()),
+						Expires: uint64(sessionCacheEntry.TimestampExpire.Add(billing.BillingSliceSeconds * time.Second).Unix()),
 
 						SessionID: packet.SessionID,
 
@@ -537,18 +542,26 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			metrics.NextSessions.Add(1)
 		}
 
+		var timestampExpire time.Time
+		if routeDecision.Reason == routing.DecisionInitialSlice {
+			timestampExpire = timestampNow.Add(billing.BillingSliceSeconds * 2 * time.Second)
+		} else {
+			timestampExpire = sessionCacheEntry.TimestampExpire.Add(billing.BillingSliceSeconds * time.Second)
+		}
+
 		// Cache the needed information for the next session update
 		{
 			level.Debug(locallogger).Log("msg", "caching session data")
 			updatedSessionCacheEntry := SessionCacheEntry{
-				SessionID:      packet.SessionID,
-				Sequence:       packet.Sequence,
-				RouteHash:      chosenRoute.Hash64(),
-				RouteDecision:  routeDecision,
-				TimestampStart: sessionCacheEntry.TimestampStart,
-				VetoTimestamp:  sessionCacheEntry.VetoTimestamp,
-				Version:        sessionCacheEntry.Version, //This was already incremented for the route tokens
-				Response:       responseData,
+				SessionID:       packet.SessionID,
+				Sequence:        packet.Sequence,
+				RouteHash:       chosenRoute.Hash64(),
+				RouteDecision:   routeDecision,
+				TimestampStart:  sessionCacheEntry.TimestampStart,
+				TimestampExpire: timestampExpire,
+				VetoTimestamp:   sessionCacheEntry.VetoTimestamp,
+				Version:         sessionCacheEntry.Version, //This was already incremented for the route tokens
+				Response:        responseData,
 			}
 			result := redisClient.Set(fmt.Sprintf("SESSION-%d", updatedSessionCacheEntry.SessionID), updatedSessionCacheEntry, 5*time.Minute)
 			if result.Err() != nil {

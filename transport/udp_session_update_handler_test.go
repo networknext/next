@@ -648,7 +648,7 @@ func TestNoRoutesFound(t *testing.T) {
 	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
 	assert.NoError(t, err)
 
-	sessionMetrics.SessionErrorMetrics.RouteSelectionFailure = metric
+	sessionMetrics.SessionErrorMetrics.RouteFailure = metric
 
 	db := storage.InMemory{
 		LocalBuyer: &routing.Buyer{
@@ -727,7 +727,7 @@ func TestNoRoutesFound(t *testing.T) {
 	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &rp, &iploc, &geoClient, &sessionMetrics, &billing.NoOpBiller{}, TestServerBackendPrivateKey, nil)
 	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
-	validateErrorDirectResponsePacket(t, resbuf, sessionMetrics.SessionErrorMetrics.RouteSelectionFailure)
+	validateErrorDirectResponsePacket(t, resbuf, sessionMetrics.SessionErrorMetrics.RouteFailure)
 }
 
 func TestTokenEncryptionFailure(t *testing.T) {
