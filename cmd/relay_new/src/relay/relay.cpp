@@ -11,7 +11,12 @@
 
 #include "util/logger.hpp"
 
-int relay_debug = 0;
+namespace
+{
+  const uint32_t InitRequestMagic = 0x9083708f;
+  const uint32_t InitRequestVersion = 0;
+  const uint32_t InitResponseVersion = 0;
+}
 namespace relay
 {
   int relay_initialize()
@@ -24,12 +29,6 @@ namespace relay
     if (sodium_init() == -1) {
       Log("failed to initialize sodium");
       return RELAY_ERROR;
-    }
-
-    const char* relay_debug_env = relay::relay_platform_getenv("RELAY_DEBUG");
-    if (relay_debug_env) {
-      // TODO replace this flag with a makefile compile-time define
-      relay_debug = atoi(relay_debug_env);
     }
 
     return RELAY_OK;
@@ -48,8 +47,6 @@ namespace relay
    const uint8_t* relay_private_key,
    uint64_t* router_timestamp)
   {
-    const uint32_t init_request_magic = 0x9083708f;
-
     uint32_t init_request_version = 0;
 
     uint8_t init_data[1024];
@@ -60,7 +57,7 @@ namespace relay
 
     uint8_t* p = init_data;
 
-    encoding::write_uint32(&p, init_request_magic);
+    encoding::write_uint32(&p, InitRequestMagic);
     encoding::write_uint32(&p, init_request_version);
     encoding::write_bytes(&p, nonce, crypto_box_NONCEBYTES);
     encoding::write_string(&p, relay_address, RELAY_MAX_ADDRESS_STRING_LENGTH);
@@ -78,46 +75,7 @@ namespace relay
 
     int init_length = (int)(p - init_data) + encrypt_length + crypto_box_MACBYTES;
 
-    struct curl_slist* slist = curl_slist_append(NULL, "Content-Type:application/octet-stream");
-
-    net::curl_buffer_t init_response_buffer;
-    init_response_buffer.size = 0;
-    init_response_buffer.max_size = 1024;
-    init_response_buffer.data = (uint8_t*)alloca(init_response_buffer.max_size);
-
-    char init_url[1024];
-    sprintf(init_url, "%s/relay_init", hostname);
-
-    curl_easy_setopt(curl, CURLOPT_BUFFERSIZE, 102400L);
-    curl_easy_setopt(curl, CURLOPT_URL, init_url);
-    curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, init_data);
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)init_length);
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
-    curl_easy_setopt(curl, CURLOPT_USERAGENT, "network next relay");
-    curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 50L);
-    curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, (long)CURL_HTTP_VERSION_2TLS);
-    curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, 1L);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, long(1000));
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &init_response_buffer);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &net::curl_buffer_write_function);
-
-    CURLcode ret = curl_easy_perform(curl);
-
-    curl_slist_free_all(slist);
-    slist = NULL;
-
-    if (ret != 0) {
-      LogDebug("curl error: ", ret);
-      return RELAY_ERROR;
-    }
-
-    long code;
-    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &code);
-    if (code != 200) {
-      LogDebug("http call not success, code: ", code);
-      return RELAY_ERROR;
-    }
+    // INSERT CURL WRAPPER HERE
 
     if (init_response_buffer.size < 4) {
       Log("error: bad relay init response size. too small to have valid data (", init_response_buffer.size, ")");
@@ -152,13 +110,14 @@ namespace relay
    const uint8_t* relay_token,
    const char* relay_address,
    uint8_t* update_response_memory,
-   core::RelayManager& manager, uint64_t bytesReceived)
+   core::RelayManager& manager,
+   uint64_t bytesReceived)
   {
     // build update data
 
     uint32_t update_version = 0;
 
-    uint8_t update_data[10 * 1024 + 8]; // TODO pass this in like response memory is
+    uint8_t update_data[10 * 1024 + 8];  // TODO pass this in like response memory is
 
     uint8_t* p = update_data;
     encoding::write_uint32(&p, update_version);
@@ -182,46 +141,7 @@ namespace relay
 
     // post it to backend
 
-    struct curl_slist* slist = curl_slist_append(NULL, "Content-Type:application/octet-stream");
-
-    net::curl_buffer_t update_response_buffer;
-    update_response_buffer.size = 0;
-    update_response_buffer.max_size = RESPONSE_MAX_BYTES;
-    update_response_buffer.data = (uint8_t*)update_response_memory;
-
-    char update_url[1024];
-    sprintf(update_url, "%s/relay_update", hostname);
-
-    curl_easy_setopt(curl, CURLOPT_BUFFERSIZE, 102400L);
-    curl_easy_setopt(curl, CURLOPT_URL, update_url);
-    curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, update_data);
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)update_data_length);
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
-    curl_easy_setopt(curl, CURLOPT_USERAGENT, "network next relay");
-    curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 50L);
-    curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, (long)CURL_HTTP_VERSION_2TLS);
-    curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, 1L);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, long(1000));
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &update_response_buffer);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &net::curl_buffer_write_function);
-
-    CURLcode ret = curl_easy_perform(curl);
-
-    curl_slist_free_all(slist);
-    slist = NULL;
-
-    if (ret != 0) {
-      Log("error: could not post relay update. curl error: ", ret, '\n');
-      return RELAY_ERROR;
-    }
-
-    long code;
-    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &code);
-    if (code != 200) {
-      Log("error: relay update response was ", code, ", expected 200\n");
-      return RELAY_ERROR;
-    }
+    // INSERT CURL WRAPPER HERE
 
     // parse update response
 

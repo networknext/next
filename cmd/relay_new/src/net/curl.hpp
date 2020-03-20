@@ -3,13 +3,16 @@
 
 namespace net
 {
-  struct curl_buffer_t
+  class CurlWrapper
   {
-    int size;
-    int max_size;
-    uint8_t* data;
-  };
+    CurlWrapper();
+    ~CurlWrapper();
 
-  size_t curl_buffer_write_function(char* ptr, size_t size, size_t nmemb, void* userdata);
+    CURL* mHandle;
+
+   public:
+    static bool sendTo(
+     const std::string hostname, const std::string endpoint, const std::vector<uint8_t>& msg, std::vector<uint8_t>& resp);
+  };
 }  // namespace net
 #endif
