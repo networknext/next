@@ -7,8 +7,10 @@ import (
 	"encoding/json"
 	"expvar"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-kit/kit/log"
@@ -36,13 +38,15 @@ const (
 // NewRouter creates a router with the specified endpoints
 func NewRouter(logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, storer storage.Storer,
 	statsdb *routing.StatsDatabase, initDuration metrics.Gauge, updateDuration metrics.Gauge, initCounter metrics.Counter,
-	updateCounter metrics.Counter, costmatrix *routing.CostMatrix, routematrix *routing.RouteMatrix, routerPrivateKey []byte, trafficStatsPublisher stats.Publisher) *mux.Router {
+	updateCounter metrics.Counter, costmatrix *routing.CostMatrix, routematrix *routing.RouteMatrix, routerPrivateKey []byte, trafficStatsPublisher stats.Publisher,
+	username string, password string) *mux.Router {
 	router := mux.NewRouter()
+	router.HandleFunc("/healthz", HealthzHandlerFunc())
 	router.HandleFunc("/relay_init", RelayInitHandlerFunc(logger, redisClient, geoClient, ipLocator, storer, initDuration, initCounter, routerPrivateKey)).Methods("POST")
 	router.HandleFunc("/relay_update", RelayUpdateHandlerFunc(logger, redisClient, statsdb, updateDuration, updateCounter, trafficStatsPublisher, storer)).Methods("POST")
 	router.Handle("/cost_matrix", costmatrix).Methods("GET")
 	router.Handle("/route_matrix", routematrix).Methods("GET")
-	router.HandleFunc("/near", NearHandlerFunc(nil)).Methods("GET")
+	router.HandleFunc("/", RelayDashboardHandlerFunc(redisClient, routematrix, statsdb, username, password)).Methods("GET")
 	router.HandleFunc("/relay_init_json", RelayInitJSONHandlerFunc(logger, redisClient, geoClient, ipLocator, storer, initDuration, initCounter, routerPrivateKey)).Methods("POST")
 	router.HandleFunc("/relay_update_json", RelayUpdateJSONHandlerFunc(logger, redisClient, statsdb, updateDuration, updateCounter, trafficStatsPublisher, storer)).Methods("POST")
 	router.Handle("/debug/vars", expvar.Handler())
@@ -80,6 +84,8 @@ func relayInitPacketHandler(relayInitPacket *RelayInitPacket, writer http.Respon
 		Datacenter:     relayEntry.Datacenter,
 		Seller:         relayEntry.Seller,
 		LastUpdateTime: uint64(time.Now().Unix()),
+		Latitude:       relayEntry.Latitude,
+		Longitude:      relayEntry.Longitude,
 	}
 
 	if _, ok := crypto.Open(relayInitPacket.EncryptedToken, relayInitPacket.Nonce, relay.PublicKey, routerPrivateKey); !ok {
@@ -102,15 +108,12 @@ func relayInitPacketHandler(relayInitPacket *RelayInitPacket, writer http.Respon
 		return nil
 	}
 
-	loc, err := ipLocator.LocateIP(relay.Addr.IP)
-	if err != nil {
-		level.Error(locallogger).Log("msg", "failed to locate relay")
-		writer.WriteHeader(http.StatusInternalServerError)
-		return nil
+	if loc, err := ipLocator.LocateIP(relay.Addr.IP); err == nil {
+		relay.Latitude = loc.Latitude
+		relay.Longitude = loc.Longitude
+	} else {
+		level.Warn(locallogger).Log("msg", "using default geolocation from storage for relay")
 	}
-
-	relay.Latitude = loc.Latitude
-	relay.Longitude = loc.Longitude
 
 	// Regular set for expiry
 	if res := redisClient.Set(relay.Key(), relay.ID, routing.RelayTimeout); res.Err() != nil && res.Err() != redis.Nil {
@@ -135,6 +138,13 @@ func relayInitPacketHandler(relayInitPacket *RelayInitPacket, writer http.Respon
 	level.Debug(locallogger).Log("msg", "relay initialized")
 
 	return &relay
+}
+
+func HealthzHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(http.StatusText(http.StatusOK)))
+	}
 }
 
 // RelayInitHandlerFunc returns the function for the relay init endpoint
@@ -505,14 +515,142 @@ func RelayUpdateJSONHandlerFunc(logger log.Logger, redisClient *redis.Client, st
 	}
 }
 
+func statsTable(stats map[string]map[string]routing.Stats) template.HTML {
+	html := strings.Builder{}
+	html.WriteString("<table>")
+
+	addrs := make([]string, 0)
+	for addr := range stats {
+		addrs = append(addrs, addr)
+	}
+
+	html.WriteString("<tr>")
+	html.WriteString("<th>Address</th>")
+	for _, addr := range addrs {
+		html.WriteString("<th>" + addr + "</th>")
+	}
+	html.WriteString("</tr>")
+
+	for _, a := range addrs {
+		html.WriteString("<tr>")
+		html.WriteString("<th>" + a + "</th>")
+
+		for _, b := range addrs {
+			if a == b {
+				html.WriteString("<td>&nbsp;</td>")
+				continue
+			}
+
+			html.WriteString("<td>" + stats[a][b].String() + "</td>")
+		}
+
+		html.WriteString("</tr>")
+	}
+
+	html.WriteString("</table>")
+
+	return template.HTML(html.String())
+}
+
 // NearHandlerFunc returns the function for the near endpoint
-func NearHandlerFunc(backend *StubbedBackend) func(writer http.ResponseWriter, request *http.Request) {
+func RelayDashboardHandlerFunc(redisClient *redis.Client, routeMatrix *routing.RouteMatrix, statsdb *routing.StatsDatabase, username string, password string) func(writer http.ResponseWriter, request *http.Request) {
+	type response struct {
+		Analysis string
+		Relays   []routing.Relay
+		Stats    map[string]map[string]routing.Stats
+	}
+
+	funcmap := template.FuncMap{
+		"statsTable": statsTable,
+	}
+
+	tmpl := template.Must(template.New("dashboard").Funcs(funcmap).Parse(`
+		<html>
+			<head>
+				<title>Relay Dashboard</title>
+				<style>
+					body { font-family: monospace; }
+					table { width: 100%; border-collapse: collapse; }
+					table, th, td { padding: 3px; border: 1px solid black; }
+					td { text-align: center; }
+				</style>
+			</head>
+			<body>
+				<h1>Relay Dashboard</h1>
+
+				<h2>Route Matrix Analysis</h2>
+				<pre>{{ .Analysis }}</pre>
+
+				<h2>Relays</h2>
+				<table>
+					<tr>
+						<th>Address</th>
+						<th>Datacenter</th>
+						<th>Lat / Long</th>
+						<th>Seller</th>
+						<th>Ingress / Egress</th>
+					</tr>
+					{{ range .Relays }}
+					<tr>
+						<td>{{ .Addr }}</td>
+						<td>{{ .Datacenter.Name }}</td>
+						<td>{{ .Latitude }} / {{ .Longitude }}</td>
+						<td>{{ .Seller.Name }}</td>
+						<td>{{ .Seller.IngressPriceCents }} / {{ .Seller.EgressPriceCents }}</td>
+					</tr>
+					{{ end }}
+				</table>
+
+				<h2>Stats</h2>
+				{{ .Stats | statsTable }}
+			</body>
+		</html>
+	`))
+
 	return func(writer http.ResponseWriter, request *http.Request) {
-		backend.mutex.RLock()
-		nearData := backend.nearData
-		backend.mutex.RUnlock()
-		writer.WriteHeader(http.StatusOK)
-		writer.Header().Set("Content-Type", "application/octet-stream")
-		writer.Write(nearData)
+		writer.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+
+		u, p, _ := request.BasicAuth()
+		if u != username && p != password {
+			writer.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+			writer.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		var res response
+
+		buf := bytes.Buffer{}
+
+		routeMatrix.WriteAnalysisTo(&buf)
+		res.Analysis = buf.String()
+
+		hgetallResult := redisClient.HGetAll(routing.HashKeyAllRelays)
+		if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
+			fmt.Println(hgetallResult.Err())
+			return
+		}
+
+		for _, rawRelay := range hgetallResult.Val() {
+			var relay routing.Relay
+			if err := relay.UnmarshalBinary([]byte(rawRelay)); err != nil {
+				fmt.Println(err)
+				return
+			}
+			res.Relays = append(res.Relays, relay)
+		}
+
+		res.Stats = make(map[string]map[string]routing.Stats)
+		for _, a := range res.Relays {
+			res.Stats[a.Addr.String()] = make(map[string]routing.Stats)
+
+			for _, b := range res.Relays {
+				rtt, jitter, packetloss := statsdb.GetSample(a.ID, b.ID)
+				res.Stats[a.Addr.String()][b.Addr.String()] = routing.Stats{RTT: float64(rtt), Jitter: float64(jitter), PacketLoss: float64(packetloss)}
+			}
+		}
+
+		if err := tmpl.Execute(writer, res); err != nil {
+			fmt.Println(err)
+		}
 	}
 }
