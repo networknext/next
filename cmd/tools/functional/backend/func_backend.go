@@ -396,10 +396,16 @@ func main() {
 					Relays: nearRelays[:numRelays],
 				}
 
+				if newSession {
+					sessionEntry.TimestampExpire = time.Now().Add(billing.BillingSliceSeconds * 2 * time.Second)
+				} else {
+					sessionEntry.TimestampExpire = sessionEntry.TimestampExpire.Add(billing.BillingSliceSeconds * time.Second)
+				}
+
 				var token routing.Token
 				if nextRoute.Hash64() == sessionEntry.RouteHash {
 					token = &routing.ContinueRouteToken{
-						Expires: uint64(time.Now().Add(billing.BillingSliceSeconds * time.Second).Unix()),
+						Expires: uint64(sessionEntry.TimestampExpire).Unix()),
 
 						SessionID: sessionUpdate.SessionID,
 
@@ -422,7 +428,7 @@ func main() {
 					sessionEntry.Version++
 
 					token = &routing.NextRouteToken{
-						Expires: uint64(time.Now().Add(billing.BillingSliceSeconds * 2 * time.Second).Unix()),
+						Expires: uint64(sessionEntry.TimestampExpire).Unix()),
 
 						SessionID: sessionUpdate.SessionID,
 

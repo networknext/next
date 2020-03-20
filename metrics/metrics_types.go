@@ -59,7 +59,7 @@ type SessionErrorMetrics struct {
 	WriteCachedResponseFailure  Counter
 	ClientLocateFailure         Counter
 	NearRelaysLocateFailure     Counter
-	RouteSelectionFailure       Counter
+	RouteFailure                Counter
 	EncryptionFailure           Counter
 	WriteResponseFailure        Counter
 	UpdateSessionFailure        Counter
@@ -79,7 +79,7 @@ var EmptySessionErrorMetrics SessionErrorMetrics = SessionErrorMetrics{
 	WriteCachedResponseFailure:  &EmptyCounter{},
 	ClientLocateFailure:         &EmptyCounter{},
 	NearRelaysLocateFailure:     &EmptyCounter{},
-	RouteSelectionFailure:       &EmptyCounter{},
+	RouteFailure:                &EmptyCounter{},
 	EncryptionFailure:           &EmptyCounter{},
 	WriteResponseFailure:        &EmptyCounter{},
 	UpdateSessionFailure:        &EmptyCounter{},
@@ -338,6 +338,176 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		ServiceName: "server_backend",
 		ID:          "session.route_decision.rtt_increase",
 		Unit:        "decisions",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.SessionErrorMetrics.BillingFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Billing Failure",
+		ServiceName: "server_backend",
+		ID:          "session.error.billing_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.SessionErrorMetrics.BuyerNotFound, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Buyer Not Found",
+		ServiceName: "server_backend",
+		ID:          "session.error.buyer_not_found",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.SessionErrorMetrics.ClientLocateFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Client Locate Failure",
+		ServiceName: "server_backend",
+		ID:          "session.error.client_locate_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.SessionErrorMetrics.EncryptionFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Encryption Failure",
+		ServiceName: "server_backend",
+		ID:          "session.error.encryption_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.SessionErrorMetrics.GetServerDataFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Get Server Data Failure",
+		ServiceName: "server_backend",
+		ID:          "session.error.get_server_data_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.SessionErrorMetrics.GetSessionDataFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Get Session Data Failure",
+		ServiceName: "server_backend",
+		ID:          "session.error.get_session_data_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.SessionErrorMetrics.NearRelaysLocateFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Near Relays Locate Failure",
+		ServiceName: "server_backend",
+		ID:          "session.error.near_relays_locate_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.SessionErrorMetrics.OldSequence, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Old Sequence",
+		ServiceName: "server_backend",
+		ID:          "session.error.old_sequence",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.SessionErrorMetrics.PipelineExecFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Redis Pipeline Exec Failure",
+		ServiceName: "server_backend",
+		ID:          "session.error.redis_pipeline_exec_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.SessionErrorMetrics.ReadPacketFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Read Packet Failure",
+		ServiceName: "server_backend",
+		ID:          "session.error.read_packet_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.SessionErrorMetrics.RouteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Route Failure",
+		ServiceName: "server_backend",
+		ID:          "session.error.route_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.SessionErrorMetrics.UnmarshalServerDataFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Unmarshal Server Data Failure",
+		ServiceName: "server_backend",
+		ID:          "session.error.unmarshal_server_data_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.SessionErrorMetrics.UnmarshalSessionDataFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Unmarshal Session Data Failure",
+		ServiceName: "server_backend",
+		ID:          "session.error.unmarshal_session_data_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.SessionErrorMetrics.UpdateSessionFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Update Session Failure",
+		ServiceName: "server_backend",
+		ID:          "session.error.update_session_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.SessionErrorMetrics.VerifyFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Verify Failure",
+		ServiceName: "server_backend",
+		ID:          "session.error.verify_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.SessionErrorMetrics.WriteCachedResponseFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Write Cached Response Failure",
+		ServiceName: "server_backend",
+		ID:          "session.error.write_cached_response_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.SessionErrorMetrics.WriteResponseFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Write Response Failure",
+		ServiceName: "server_backend",
+		ID:          "session.error.write_response_failure",
+		Unit:        "errors",
 	})
 	if err != nil {
 		return nil, err
