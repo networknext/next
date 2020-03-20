@@ -4,16 +4,6 @@
 
 # Unreal Engine 4 Plugin
 
-## Welcome to Network Next!
-
-[Network Next](https://networknext.com) is a marketplace for premium network transit.
-
-It's used by multiplayer games to get better network performance for their players.
-
-For example, Network Next is used by [Rocket League](https://rocketleague.com) and we accelerate millions of sessions per-day.
-
-## Installation
-
 This repository contains the UE4 plugin for Network Next. 
 
 It's designed to work with Unreal Engine version 4.16 and 4.22
