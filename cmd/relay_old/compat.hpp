@@ -195,7 +195,7 @@ const int Base64TableDecode[256] =
 
     auto data = doc.toString();
     std::stringstream ss;
-    ss << relayBackendAddr << "/relay_init_json";
+    ss << relayBackendAddr << "/relay_init";
     auto strurl = ss.str();
     if (!next_curl_send(strurl.c_str(), data.c_str(), data.length(), response)) {
       printf("could not send relay init\n");
@@ -225,7 +225,7 @@ const int Base64TableDecode[256] =
     std::string resp;
     auto data = doc.toString();
     std::stringstream ss;
-    ss << relayBackendAddr << "/relay_update_json";
+    ss << relayBackendAddr << "/relay_update";
     auto strurl = ss.str();
     auto res = next_curl_send(strurl.c_str(), data.c_str(), data.size(), resp);
 

@@ -68,7 +68,7 @@ func (gps *GooglePubSubTrafficStatsPublisher) Publish(ctx context.Context, relay
 	}
 
 	if gps.clients == nil {
-		return fmt.Errorf("billing: clients not initialized")
+		return fmt.Errorf("traffic stats: clients not initialized")
 	}
 
 	index := relayID % uint64(len(gps.clients))
@@ -86,9 +86,9 @@ func printPubSubResults(ctx context.Context, logger log.Logger, results chan *pu
 		case result := <-results:
 			_, err := result.Get(ctx)
 			if err != nil {
-				level.Error(logger).Log("traffic_stats", "failed to publish to pub/sub", "err", err)
+				level.Error(logger).Log("traffic stats", "failed to publish to pub/sub", "err", err)
 			} else {
-				level.Debug(logger).Log("traffic_stats", "successfully published traffic stats data")
+				level.Debug(logger).Log("traffic stats", "successfully published traffic stats data")
 			}
 		case <-ctx.Done():
 			return
