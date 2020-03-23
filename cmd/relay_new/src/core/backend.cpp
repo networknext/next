@@ -100,6 +100,8 @@ namespace core
     std::vector<uint8_t> msg(jsonStr.begin(), jsonStr.end());
     std::vector<uint8_t> resp;
 
+    LogDebug("init request: ", doc.toPrettyString());
+
     if (!net::CurlWrapper::SendTo(mHostname, "/relay_init", msg, resp)) {
       Log("curl request failed in init");
       return false;
@@ -111,7 +113,7 @@ namespace core
       return false;
     }
 
-    LogDebug("init response: \n", doc.toPrettyString());
+    LogDebug("init response: ", doc.toPrettyString());
 
     if (!doc.memberExists("version")) {
       Log("resposne json missing member 'version'");
@@ -123,7 +125,6 @@ namespace core
       return false;
     }
 
-    LogDebug("extracting version");
     uint32_t version;
     if (doc.memberType("version") == rapidjson::Type::kNumberType) {
       version = doc.get<uint32_t>("version");
@@ -137,7 +138,6 @@ namespace core
       return false;
     }
 
-    LogDebug("extracting timestamp");
     if (doc.memberType("timestamp") == rapidjson::Type::kNumberType) {
       // for old relay compat the router sends this back in millis, so turn back to seconds
       mRouterInfo.InitalizeTimeInSeconds = doc.get<uint64_t>("timestamp") / 1000;
@@ -146,16 +146,12 @@ namespace core
       return false;
     }
 
-    LogDebug("timestamp extracted");
-
     return true;
   }
 
   bool Backend::update(uint64_t bytesReceived)
   {
-    LogDebug("updating relay");
     util::JSON doc;
-    LogDebug("current doc: ", doc.toPrettyString());
     {
       doc.set(UpdateRequestVersion, "version");
       doc.set(mAddressStr, "relay_address");
@@ -163,30 +159,38 @@ namespace core
 
       // Traffic stats
       {
-        LogDebug("setting traffic stats");
         util::JSON trafficStats;
         trafficStats.set(bytesReceived, "BytesMeasurementRx");
-        LogDebug("current ts: ", trafficStats.toPrettyString());
 
         doc.set(trafficStats, "TrafficStats");
       }
-      LogDebug("current doc: ", doc.toPrettyString());
 
       // Ping stats
-      LogDebug("setting ping stats");
       {
         core::RelayStats stats;
         mRelayManager.getStats(stats);
         util::JSON pingStats;
         pingStats.setArray();
 
+        auto& allocator = doc.internal().GetAllocator();
         for (unsigned int i = 0; i < stats.NumRelays; ++i) {
-          util::JSON stat;
-          stat.set(stats.IDs[i], "RelayId");
-          stat.set(stats.RTT[i], "RTT");
-          stat.set(stats.Jitter[i], "Jitter");
-          stat.set(stats.PacketLoss[i], "PacketLoss");
-          if (!pingStats.push(stat)) {
+          rapidjson::Value obj;
+          rapidjson::Value stat;
+          obj.SetObject();
+
+          stat.Set(stats.IDs[i]);
+          obj.AddMember("RelayId", stat, allocator);
+
+          stat.Set(stats.RTT[i]);
+          obj.AddMember("RTT", stat, allocator);
+
+          stat.Set(stats.Jitter[i]);
+          obj.AddMember("Jitter", stat, allocator);
+
+          stat.Set(stats.PacketLoss[i]);
+          obj.AddMember("PacketLoss", stat, allocator);
+
+          if (!pingStats.push(obj)) {
             Log("ping stats not array! can't update!");
             return false;
           }
@@ -194,25 +198,18 @@ namespace core
 
         doc.set(pingStats, "PingStats");
       }
-      LogDebug("current doc: ", doc.toPrettyString());
     }
 
-    LogDebug("building msg for backend");
-
     std::string jsonStr = doc.toString();
-
-    LogDebug("to string'ed");
 
     std::vector<uint8_t> msg(jsonStr.begin(), jsonStr.end());
     std::vector<uint8_t> resp;
 
-    LogDebug("sending msg");
+    LogDebug("update request: ", doc.toPrettyString());
     if (!net::CurlWrapper::SendTo(mHostname, "/relay_update", msg, resp)) {
       Log("curl request failed in update");
       return false;
     }
-
-    LogDebug("parsing response");
 
     jsonStr = std::string(resp.begin(), resp.end());
     if (!doc.parse(jsonStr)) {
@@ -220,7 +217,8 @@ namespace core
       return false;
     }
 
-    LogDebug("extracting version");
+    LogDebug("update response: ", doc.toPrettyString());
+
     auto version = doc.get<uint32_t>("version");
     if (doc.memberType("version") == rapidjson::Type::kNumberType) {
       if (version != UpdateResponseVersion) {
@@ -232,7 +230,6 @@ namespace core
       return false;
     }
 
-    LogDebug("extracting ping data");
     bool allValid = true;
     auto relays = doc.get<util::JSON>("ping_data");
     if (relays.isArray()) {
@@ -285,9 +282,7 @@ namespace core
         return RELAY_ERROR;
       }
 
-      LogDebug("Updating relay manager");
       mRelayManager.update(count, relayIDs, relayAddresses);
-      LogDebug("Updated relay manager");
     } else if (relays.memberType() == rapidjson::Type::kNullType) {
       Log("no relays received from backend, ping data is null");
     } else {

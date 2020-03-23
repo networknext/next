@@ -59,7 +59,7 @@ namespace util
 
     /* Iterates over each element if the document is an array and returns true, simply returns false if not an array */
     template <typename Callback>  // template so lambdas are used directly and inlined rather than wrapped in a std::function
-    bool foreach (Callback function);
+    bool foreach(Callback function);
 
     template <typename... Args>
     rapidjson::Type memberType(Args&&... args);
@@ -204,7 +204,7 @@ namespace util
   }
 
   template <typename Callback>
-  inline bool JSON::foreach (Callback function)
+  inline bool JSON::foreach(Callback function)
   {
     if (mDoc.IsArray()) {
       for (auto i = mDoc.Begin(); i != mDoc.End(); i++) {
@@ -533,6 +533,12 @@ namespace util
   }
 
   template <>
+  inline void JSON::pushBack(rapidjson::Value& value)
+  {
+    mDoc.PushBack(value, mDoc.GetAllocator());
+  }
+
+  template <>
   inline void JSON::pushBack(const char*& value)
   {
     rapidjson::Value v;
@@ -547,4 +553,4 @@ namespace util
     v.SetString(rapidjson::StringRef(value, Size), mDoc.GetAllocator());
     mDoc.PushBack(v, mDoc.GetAllocator());
   }
-}  // namespace json
+}  // namespace util
