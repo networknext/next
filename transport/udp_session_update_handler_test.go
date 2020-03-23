@@ -101,6 +101,43 @@ func TestFailToUnmarshalPacket(t *testing.T) {
 	assert.Equal(t, 1.0, sessionMetrics.SessionErrorMetrics.ReadPacketFailure.Value())
 }
 
+func TestFallbackToDirect(t *testing.T) {
+	redisServer, _ := miniredis.Run()
+	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
+	assert.NoError(t, err)
+
+	sessionMetrics := metrics.EmptySessionMetrics
+	localMetrics := metrics.LocalHandler{}
+
+	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
+	assert.NoError(t, err)
+
+	sessionMetrics.SessionErrorMetrics.FallbackToDirect = metric
+
+	packet := transport.SessionUpdatePacket{
+		Sequence:             13,
+		ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
+		ClientRoutePublicKey: make([]byte, crypto.KeySize),
+		FallbackToDirect:     true,
+	}
+
+	packet.Signature = crypto.Sign(TestBuyersServerPrivateKey, packet.GetSignData())
+
+	data, err := packet.MarshalBinary()
+	assert.NoError(t, err)
+
+	var resbuf bytes.Buffer
+
+	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, nil, nil, nil, nil, &sessionMetrics, nil, nil, nil)
+	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
+
+	assert.Equal(t, 0, resbuf.Len())
+
+	assert.Equal(t, 1.0, sessionMetrics.SessionErrorMetrics.FallbackToDirect.Value())
+}
+
 func TestFailToExecPipeline(t *testing.T) {
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})

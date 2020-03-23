@@ -241,6 +241,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 
 		if packet.FallbackToDirect {
 			level.Error(logger).Log("err", "fallback to direct")
+			metrics.SessionErrorMetrics.FallbackToDirect.Add(1)
 			return
 		}
 

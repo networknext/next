@@ -48,6 +48,7 @@ var EmptyDecisionMetrics DecisionMetrics = DecisionMetrics{
 
 type SessionErrorMetrics struct {
 	ReadPacketFailure           Counter
+	FallbackToDirect            Counter
 	PipelineExecFailure         Counter
 	GetServerDataFailure        Counter
 	UnmarshalServerDataFailure  Counter
@@ -68,6 +69,7 @@ type SessionErrorMetrics struct {
 
 var EmptySessionErrorMetrics SessionErrorMetrics = SessionErrorMetrics{
 	ReadPacketFailure:           &EmptyCounter{},
+	FallbackToDirect:            &EmptyCounter{},
 	PipelineExecFailure:         &EmptyCounter{},
 	GetServerDataFailure:        &EmptyCounter{},
 	UnmarshalServerDataFailure:  &EmptyCounter{},
@@ -377,6 +379,16 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		DisplayName: "Session Encryption Failure",
 		ServiceName: "server_backend",
 		ID:          "session.error.encryption_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.SessionErrorMetrics.FallbackToDirect, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Fallback To Direct",
+		ServiceName: "server_backend",
+		ID:          "session.error.fallback_to_direct",
 		Unit:        "errors",
 	})
 	if err != nil {
