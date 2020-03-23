@@ -226,6 +226,9 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		shouldSelect := true
 		shouldDecide := true
 
+		// Flag to check if this session is a new session
+		newSession := false
+
 		// Deserialize the Session packet
 		var packet SessionUpdatePacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
@@ -303,6 +306,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 					Reason:        routing.DecisionInitialSlice,
 				}
 				shouldSelect = false
+				newSession = true
 			}
 		}
 
@@ -443,6 +447,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 							OnNetworkNext: false,
 							Reason:        routing.DecisionInitialSlice,
 						}
+						newSession = true // Bring the session back as a new session
 					}
 				} else {
 					// Session hasn't been vetoed, perform route decision as normal
@@ -561,8 +566,10 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			metrics.NextSessions.Add(1)
 		}
 
+		// Purchase 20 seconds ahead for new sessions and 10 seconds ahead for existing ones
+		// This way we always have a 10 second buffer
 		var timestampExpire time.Time
-		if routeDecision.Reason == routing.DecisionInitialSlice {
+		if newSession {
 			timestampExpire = timestampNow.Add(billing.BillingSliceSeconds * 2 * time.Second)
 		} else {
 			timestampExpire = sessionCacheEntry.TimestampExpire.Add(billing.BillingSliceSeconds * time.Second)
