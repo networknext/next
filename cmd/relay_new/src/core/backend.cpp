@@ -25,24 +25,13 @@ namespace core
    std::string address,
    const crypto::Keychain& keychain,
    RouterInfo& routerInfo,
-   RelayManager& relayManager)
-   : mHostname(hostname), mAddressStr(address), mKeychain(keychain), mRouterInfo(routerInfo), mRelayManager(relayManager)
+   RelayManager& relayManager,
+   std::string base64RelayPublicKey)
+   : mHostname(hostname), mAddressStr(address), mKeychain(keychain), mRouterInfo(routerInfo), mRelayManager(relayManager), mBase64RelayPublicKey(base64RelayPublicKey)
   {}
 
   bool Backend::init()
   {
-    // Cache the base64 version of the relay public key for updating
-    // TODO pass this in instead from the env var after init is verified, here for debugging reasons
-    {
-      std::vector<char> b64RelayPublicKey(mKeychain.RelayPublicKey.size() * 2);
-      auto len = encoding::base64::Encode(mKeychain.RelayPublicKey, b64RelayPublicKey);
-      if (len < mKeychain.RelayPublicKey.size()) {
-        Log("failed to cache relay public key to base64");
-        return false;
-      }
-      mRelayPublicKeyBase64 = std::string(b64RelayPublicKey.begin(), b64RelayPublicKey.begin() + len);
-    }
-
     std::string base64NonceStr;
     std::string base64TokenStr;
     {
@@ -151,11 +140,12 @@ namespace core
 
   bool Backend::update(uint64_t bytesReceived)
   {
+    // TODO once the other stats are finally added, pull out the json parts that are alwasy the same, no sense rebuilding those parts of the document
     util::JSON doc;
     {
       doc.set(UpdateRequestVersion, "version");
       doc.set(mAddressStr, "relay_address");
-      doc.set(mRelayPublicKeyBase64, "Metadata", "PublicKey");
+      doc.set(mBase64RelayPublicKey, "Metadata", "PublicKey");
 
       // Traffic stats
       {

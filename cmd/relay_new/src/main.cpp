@@ -72,7 +72,7 @@ namespace
     }
   }
 
-  inline bool getCryptoKeys(crypto::Keychain& keychain)
+  inline bool getCryptoKeys(crypto::Keychain& keychain, std::string& b64RelayPubKey)
   {
     // relay private key
     {
@@ -99,8 +99,8 @@ namespace
         return false;
       }
 
-      std::string b64RelayPublicKey = relay_public_key_env;
-      auto len = encoding::base64::Decode(b64RelayPublicKey, keychain.RelayPublicKey);
+      b64RelayPubKey = relay_public_key_env;
+      auto len = encoding::base64::Decode(b64RelayPubKey, keychain.RelayPublicKey);
       if (len != crypto::KeySize) {
         std::cout << "error: invalid relay public key\n";
         return false;
@@ -222,7 +222,8 @@ int main()
   }
 
   crypto::Keychain keychain;
-  if (!getCryptoKeys(keychain)) {
+  std::string b64RelayPubKey;
+  if (!getCryptoKeys(keychain, b64RelayPubKey)) {
     return 1;
   }
 
@@ -423,7 +424,7 @@ int main()
   LogDebug("communicating with backend");
   bool relay_initialized = false;
 
-  core::Backend backend(backendHostname, relayAddrString, keychain, routerInfo, relayManager);
+  core::Backend backend(backendHostname, relayAddrString, keychain, routerInfo, relayManager, b64RelayPubKey);
 
   for (int i = 0; i < 60; ++i) {
     if (backend.init()) {

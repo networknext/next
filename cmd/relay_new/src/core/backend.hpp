@@ -11,7 +11,7 @@ namespace core
   class Backend
   {
    public:
-    Backend(std::string hostname, std::string address, const crypto::Keychain& keychain, RouterInfo& routerInfo, RelayManager& relayManager);
+    Backend(std::string hostname, std::string address, const crypto::Keychain& keychain, RouterInfo& routerInfo, RelayManager& relayManager, std::string base64RelayPublicKey);
     ~Backend() = default;
 
     bool init();
@@ -23,8 +23,7 @@ namespace core
     const crypto::Keychain& mKeychain;
     RouterInfo& mRouterInfo;
     RelayManager& mRelayManager;
-
-    std::string mRelayPublicKeyBase64;
+    const std::string mBase64RelayPublicKey;
   };
 }  // namespace core
 #endif
