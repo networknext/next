@@ -19,7 +19,7 @@ namespace core
 
    private:
     const std::string mHostname;
-    const std::string mAddress;
+    const std::string mAddressStr;
     const crypto::Keychain& mKeychain;
     RouterInfo& mRouterInfo;
     RelayManager& mRelayManager;

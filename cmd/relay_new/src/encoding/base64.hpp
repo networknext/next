@@ -13,18 +13,16 @@ namespace encoding
 {
   namespace base64
   {
-    template <typename T>
-    bool EncodeToString(const T& input, std::string& output)
+    template <typename IT, typename OT>
+    size_t Encode(const IT& input, OT& output)
     {
-      // TODO make this retval actually matter
-      return legacy::base64_encode_data(input.data(), input.size(), output.data(), output.size()) > 0;
+      return legacy::base64_encode_data(input.data(), input.size(), output.data(), output.size());
     }
 
-    template <typename T>
-    bool DecodeString(const std::string& input, T& output)
+    template <typename IT, typename OT>
+    size_t Decode(const IT& input, OT& output)
     {
-      // TODO and this
-      return legacy::base64_decode_data(input.data(), output.data(), output.size()) > 0;
+      return legacy::base64_decode_data(input.data(), output.data(), output.size());
     }
   }  // namespace base64
 }  // namespace encoding

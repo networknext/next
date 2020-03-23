@@ -59,7 +59,7 @@ namespace net
     slist = nullptr;
 
     if (ret != 0) {
-      Log("curl request for '", hostname, endpoint, "' had an error error: ", ret);
+      Log("curl request for '", hostname, endpoint, "' had an error: ", ret);
       return false;
     }
 

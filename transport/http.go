@@ -127,6 +127,8 @@ func RelayInitHandlerFunc(logger log.Logger, params *CommonRelayInitFuncParams) 
 }
 
 func relayInitJSON(logger log.Logger, writer http.ResponseWriter, body []byte, params *CommonRelayInitFuncParams) {
+	level.Debug(logger).Log("msg", string(body))
+
 	var jsonPacket RelayInitRequestJSON
 	if err := json.Unmarshal(body, &jsonPacket); err != nil {
 		level.Error(logger).Log("msg", "could not parse init json", "err", err)
@@ -223,6 +225,8 @@ func relayInitHandler(logger log.Logger, relayInitPacket *RelayInitPacket, param
 		Longitude:      relayEntry.Longitude,
 	}
 
+	level.Debug(locallogger).Log("nonce", base64.StdEncoding.EncodeToString(relayInitPacket.Nonce))
+	level.Debug(locallogger).Log("token", base64.StdEncoding.EncodeToString(relayInitPacket.EncryptedToken))
 	if _, ok := crypto.Open(relayInitPacket.EncryptedToken, relayInitPacket.Nonce, relay.PublicKey, params.RouterPrivateKey); !ok {
 		level.Error(locallogger).Log("msg", "crypto open failed")
 		return nil, http.StatusUnauthorized
@@ -305,6 +309,8 @@ func RelayUpdateHandlerFunc(logger log.Logger, params *CommonRelayUpdateFuncPara
 }
 
 func relayUpdateJSON(logger log.Logger, writer http.ResponseWriter, body []byte, params *CommonRelayUpdateFuncParams) {
+	level.Debug(logger).Log("msg", string(body))
+
 	var jsonPacket RelayUpdateRequestJSON
 	if err := json.Unmarshal(body, &jsonPacket); err != nil {
 		level.Error(logger).Log("msg", "could not parse update json", "err", err)

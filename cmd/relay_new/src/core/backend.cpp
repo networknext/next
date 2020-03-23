@@ -20,12 +20,13 @@ namespace
 
 namespace core
 {
-  Backend::Backend(std::string hostname,
+  Backend::Backend(
+   std::string hostname,
    std::string address,
    const crypto::Keychain& keychain,
    RouterInfo& routerInfo,
    RelayManager& relayManager)
-   : mHostname(hostname), mAddress(address), mKeychain(keychain), mRouterInfo(routerInfo), mRelayManager(relayManager)
+   : mHostname(hostname), mAddressStr(address), mKeychain(keychain), mRouterInfo(routerInfo), mRelayManager(relayManager)
   {}
 
   bool Backend::init()
@@ -33,37 +34,58 @@ namespace core
     std::string base64NonceStr;
     std::string base64TokenStr;
     {
+      // Nonce
       std::array<uint8_t, crypto_box_NONCEBYTES> nonce = {};
-      crypto::CreateNonceBytes(nonce);
-      base64NonceStr.resize(nonce.size() * 2);
-      if (!encoding::base64::EncodeToString(nonce, base64NonceStr)) {
-        Log("failed to encode base64 nonce for init");
-        return false;
+      {
+        std::array<uint8_t, crypto_box_NONCEBYTES> nonce = {};
+        crypto::CreateNonceBytes(nonce);
+        std::vector<char> b64Nonce(nonce.size() * 2);
+
+        auto len = encoding::base64::Encode(nonce, b64Nonce);
+        if (len < nonce.size()) {
+          Log("failed to encode base64 nonce for init");
+          return false;
+        }
+        base64NonceStr = std::string(b64Nonce.begin(), b64Nonce.begin() + len);
+        LogDebug("Nonce Raw: '", b64Nonce.data(), '\'');
+        LogDebug("Nonce Str: '", base64NonceStr, '\'');
       }
 
-      std::array<uint8_t, RELAY_TOKEN_BYTES> token = {};
-      std::array<uint8_t, RELAY_TOKEN_BYTES + crypto_box_MACBYTES> encryptedToken = {};
-      if (crypto_box_easy(encryptedToken.data(),
-           token.data(),
-           token.size(),
-           nonce.data(),
-           mKeychain.RouterPublicKey.data(),
-           mKeychain.RelayPrivateKey.data()) != 0) {
-        Log("failed to encrypt init token");
-        return false;
-      }
+      // Token
+      {
+        std::array<uint8_t, RELAY_TOKEN_BYTES> token = {};
+        crypto::RandomBytes(token, token.size());
+        std::array<uint8_t, RELAY_TOKEN_BYTES + crypto_box_MACBYTES> encryptedToken = {};
+        std::vector<char> b64EncryptedToken(encryptedToken.size() * 2);
 
-      base64TokenStr.resize(token.size() * 2);
-      if (!encoding::base64::EncodeToString(encryptedToken, base64TokenStr)) {
-        Log("failed to encode base64 token for init");
-        return false;
+        if (
+         crypto_box_easy(
+          encryptedToken.data(),
+          token.data(),
+          token.size(),
+          nonce.data(),
+          mKeychain.RouterPublicKey.data(),
+          mKeychain.RelayPrivateKey.data()) != 0) {
+          Log("failed to encrypt init token");
+          return false;
+        }
+
+        auto len = encoding::base64::Encode(encryptedToken, b64EncryptedToken);
+        if (len < encryptedToken.size()) {
+          Log("failed to encode base64 token for init");
+          return false;
+        }
+
+        base64TokenStr = std::string(b64EncryptedToken.begin(), b64EncryptedToken.begin() + len);
+        LogDebug("Token Raw: '", b64EncryptedToken.data(), '\'');
+        LogDebug("Token Str: '", base64TokenStr, '\'');
       }
     }
 
     util::JSON doc;
     doc.set(InitRequestMagic, "magic_request_protection");
     doc.set(InitRequestVersion, "version");
-    doc.set(mAddress, "relay_address");
+    doc.set(mAddressStr, "relay_address");
     doc.set(base64NonceStr, "nonce");
     doc.set(base64TokenStr, "encrypted_token");
 
@@ -92,20 +114,37 @@ namespace core
       return false;
     }
 
-    uint32_t version = doc.get<uint32_t>("version");
+    uint32_t version;
+    if (doc.memberType("version") == rapidjson::Type::kNumberType) {
+      version = doc.get<uint32_t>("version");
+    } else {
+      Log("init version response not a number");
+      return false;
+    }
 
     if (version != InitResponseVersion) {
       Log("error: bad relay init response version. expected ", InitResponseVersion, ", got ", version);
       return false;
     }
 
-    // for old relay compat the router sends this back in millis, so turn back to seconds
-    mRouterInfo.InitalizeTimeInSeconds = doc.get<unsigned long>("timestamp") / 1000;
-
-    // TODO for the sake of getting this done, putting it here for now but this should be done elsewhere
-    if (!encoding::base64::EncodeToString(mKeychain.RelayPublicKey, mRelayPublicKeyBase64)) {
-      Log("failed to cache relay public key");
+    if (doc.memberType("timestamp") == rapidjson::Type::kNumberType) {
+      // for old relay compat the router sends this back in millis, so turn back to seconds
+      mRouterInfo.InitalizeTimeInSeconds = doc.get<unsigned long>("timestamp") / 1000;
+    } else {
+      Log("init timestamp not a number");
       return false;
+    }
+
+    // Cache the base64 version of the relay public key for updating
+    // TODO for the sake of getting this done, putting it here for now but this should be done elsewhere
+    {
+      std::vector<char> b64RelayPublicKey(mKeychain.RelayPublicKey.size() * 2);
+      auto len = encoding::base64::Encode(mKeychain.RelayPublicKey, b64RelayPublicKey);
+      if (len < mKeychain.RelayPublicKey.size()) {
+        Log("failed to cache relay public key to base64");
+        return false;
+      }
+      mRelayPublicKeyBase64 = std::string(b64RelayPublicKey.begin(), b64RelayPublicKey.begin() + len);
     }
 
     return true;
@@ -116,7 +155,7 @@ namespace core
     util::JSON doc;
     {
       doc.set(UpdateRequestVersion, "version");
-      doc.set(mAddress, "relay_address");
+      doc.set(mAddressStr, "relay_address");
       doc.set(mRelayPublicKeyBase64, "Metadata", "PublicKey");
 
       // Traffic stats
@@ -163,21 +202,26 @@ namespace core
     }
 
     auto version = doc.get<uint32_t>("version");
-    {
+    if (doc.memberType("version") == rapidjson::Type::kNumberType) {
       if (version != UpdateResponseVersion) {
         Log("error: bad relay version response version. expected ", UpdateResponseVersion, ", got ", version);
         return false;
       }
+    } else {
+      Log("update version not number");
+      return false;
     }
 
+    bool allValid = true;
     auto relays = doc.get<util::JSON>("ping_data");
-    {
+    if (relays.isArray()) {
       size_t count = 0;
       std::array<uint64_t, MAX_RELAYS> relayIDs;
       std::array<net::Address, MAX_RELAYS> relayAddresses;
-      relays.foreach ([&count, &relayIDs, &relayAddresses](rapidjson::Value& relayData) {
+      relays.foreach([&allValid, &count, &relayIDs, &relayAddresses](rapidjson::Value& relayData) {
         if (!relayData.HasMember("relay_id")) {
           Log("ping data missing 'relay_id'");
+          allValid = false;
           return;
         }
 
@@ -185,6 +229,7 @@ namespace core
 
         if (!relayData.HasMember("relay_address")) {
           Log("ping data missing member 'relay_address' for relay id: ", id);
+          allValid = false;
           return;
         }
 
@@ -193,6 +238,7 @@ namespace core
         relayIDs[count] = id;
         if (!relayAddresses[count].parse(address)) {
           Log("failed to parse address for relay '", id, "': ", address);
+          allValid = false;
           return;
         }
 
@@ -205,6 +251,13 @@ namespace core
       }
 
       mRelayManager.update(count, relayIDs, relayAddresses);
+    } else {
+      Log("update ping data not array");
+      return false;
+    }
+
+    if (!allValid) {
+      Log("some or all of the update ping data was invalid");
     }
 
     return true;

@@ -42,7 +42,7 @@ namespace
     size_t size = backtrace(arr, StacktraceDepth);
 
     // print the stack trace
-    fprintf(stderr, "Error: signal %d:\n", sig);
+    std::cerr << "Error: signal " << sig << ":\n";
     backtrace_symbols_fd(arr, size, STDERR_FILENO);
     exit(1);
   }
@@ -63,7 +63,7 @@ namespace
       }
 
       if (!updated) {
-        printf("error: could not update relay\n\n");
+        std::cout << "error: could not update relay\n";
         gAlive = false;
         break;
       }
@@ -74,47 +74,58 @@ namespace
 
   inline bool getCryptoKeys(crypto::Keychain& keychain)
   {
-    const char* relay_private_key_env = relay::relay_platform_getenv("RELAY_PRIVATE_KEY");
-    if (relay_private_key_env == nullptr) {
-      printf("\nerror: RELAY_PRIVATE_KEY not set\n\n");
-      return false;
+    // relay private key
+    {
+      const char* relay_private_key_env = relay::relay_platform_getenv("RELAY_PRIVATE_KEY");
+      if (relay_private_key_env == nullptr) {
+        std::cout << "error: RELAY_PRIVATE_KEY not set\n";
+        return false;
+      }
+
+      std::string b64RelayPrivateKey = relay_private_key_env;
+      auto len = encoding::base64::Decode(b64RelayPrivateKey, keychain.RelayPrivateKey);
+      if (len != crypto::KeySize) {
+        std::cout << "error: invalid relay private key\n";
+        return false;
+      }
+      std::cout << "    relay private key is '" << relay_private_key_env << "'\n";
     }
 
-    std::string b64RelayPrivateKey = relay_private_key_env;
-    if (!encoding::base64::DecodeString(b64RelayPrivateKey, keychain.RelayPrivateKey)) {
-      printf("\nerror: invalid relay private key\n\n");
-      return false;
+    // relay public key
+    {
+      const char* relay_public_key_env = relay::relay_platform_getenv("RELAY_PUBLIC_KEY");
+      if (relay_public_key_env == nullptr) {
+        std::cout << "error: RELAY_PUBLIC_KEY not set\n";
+        return false;
+      }
+
+      std::string b64RelayPublicKey = relay_public_key_env;
+      auto len = encoding::base64::Decode(b64RelayPublicKey, keychain.RelayPublicKey);
+      if (len != crypto::KeySize) {
+        std::cout << "error: invalid relay public key\n";
+        return false;
+      }
+
+      std::cout << "    relay public key is '" << relay_public_key_env << "'\n";
     }
 
-    printf("    relay private key is '%s'\n", relay_private_key_env);
+    // router public key
+    {
+      const char* router_public_key_env = relay::relay_platform_getenv("RELAY_ROUTER_PUBLIC_KEY");
+      if (router_public_key_env == nullptr) {
+        std::cout << "error: RELAY_ROUTER_PUBLIC_KEY not set\n";
+        return false;
+      }
 
-    const char* relay_public_key_env = relay::relay_platform_getenv("RELAY_PUBLIC_KEY");
-    if (relay_public_key_env == nullptr) {
-      printf("\nerror: RELAY_PUBLIC_KEY not set\n\n");
-      return false;
+      std::string b64RouterPublicKey = router_public_key_env;
+      auto len = encoding::base64::Decode(b64RouterPublicKey, keychain.RouterPublicKey);
+      if (len != crypto::KeySize) {
+        std::cout << "error: invalid router public key\n";
+        return false;
+      }
+
+      std::cout << "    router public key is '" << router_public_key_env << "'\n";
     }
-
-    std::string b64RelayPublicKey = relay_public_key_env;
-    if (encoding::base64::DecodeString(b64RelayPublicKey, keychain.RelayPublicKey)) {
-      printf("\nerror: invalid relay public key\n\n");
-      return false;
-    }
-
-    printf("    relay public key is '%s'\n", relay_public_key_env);
-
-    const char* router_public_key_env = relay::relay_platform_getenv("RELAY_ROUTER_PUBLIC_KEY");
-    if (router_public_key_env == nullptr) {
-      printf("\nerror: RELAY_ROUTER_PUBLIC_KEY not set\n\n");
-      return false;
-    }
-
-    std::string b64RouterPublicKey = router_public_key_env;
-    if (encoding::base64::DecodeString(b64RouterPublicKey, keychain.RouterPublicKey)) {
-      printf("\nerror: invalid router public key\n\n");
-      return false;
-    }
-
-    printf("    router public key is '%s'\n", router_public_key_env);
 
     return true;
   }
@@ -188,9 +199,9 @@ int main()
 
   const util::Clock relayClock;
 
-  printf("\nNetwork Next Relay\n");
+  std::cout << "\nNetwork Next Relay\n";
 
-  printf("\nEnvironment:\n\n");
+  std::cout << "\nEnvironment:\n\n";
 
   // relay address - the address other devices should use to talk to this
   // sent to the relay backend and is the addr everything communicates with

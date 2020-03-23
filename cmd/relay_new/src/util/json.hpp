@@ -69,6 +69,9 @@ namespace util
     template <typename Callback>
     bool foreach (Callback function);
 
+    template <typename... Args>
+    rapidjson::Type memberType(Args&&... args);
+
     /* Outputs the document as a compressed string */
     std::string toString();
 
@@ -219,6 +222,26 @@ namespace util
     return false;
   }
 
+  template <typename... Args>
+  rapidjson::Type JSON::memberType(Args&&... args)
+  {
+    const char* path[sizeof...(args)] = {args...};
+    const auto size = sizeof...(args);
+    rapidjson::Value* val = &mDoc;
+
+    for (size_t i = 0; i < size; i++) {
+      auto& str = path[i];
+
+      if (!val->HasMember(str)) {
+        return rapidjson::Type::kNullType;
+      }
+
+      val = &(*val)[str];
+    }
+
+    return val->GetType();
+  }
+
   inline std::string JSON::toString()
   {
     rapidjson::StringBuffer buff;
@@ -264,6 +287,12 @@ namespace util
   }
 
   template <>
+  inline void JSON::setValue(rapidjson::Value* member, const std::string& str)
+  {
+    member->SetString(rapidjson::StringRef(str.c_str()), mDoc.GetAllocator());
+  }
+
+  template <>
   inline void JSON::setValue(rapidjson::Value* member, const char*& str)
   {
     member->SetString(rapidjson::StringRef(str), mDoc.GetAllocator());
@@ -271,6 +300,12 @@ namespace util
 
   template <>
   inline void JSON::setValue(rapidjson::Value* member, int& i)
+  {
+    member->SetInt(i);
+  }
+
+  template <>
+  inline void JSON::setValue(rapidjson::Value* member, const int& i)
   {
     member->SetInt(i);
   }
@@ -322,6 +357,12 @@ namespace util
 
   template <>
   inline void JSON::setValue(rapidjson::Value* member, uint32_t& value)
+  {
+    member->SetUint(value);
+  }
+
+  template <>
+  inline void JSON::setValue(rapidjson::Value* member, const uint32_t& value)
   {
     member->SetUint(value);
   }
@@ -418,7 +459,9 @@ namespace util
     JSON doc;
 
     if (member != nullptr) {
-      member->Swap(doc.mDoc);
+      rapidjson::Value tmp;
+      tmp = std::move(*member);
+      tmp.Swap(doc.mDoc);
     }
 
     return doc;
