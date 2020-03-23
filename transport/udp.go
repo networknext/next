@@ -222,7 +222,8 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 
 		timestampNow := time.Now()
 
-		// Whether or not we should make a route decision on a network next route, or serve a direct route
+		// Whether or not we should make a route selection/decision on a network next route, or serve a direct route
+		shouldSelect := true
 		shouldDecide := true
 
 		// Deserialize the Session packet
@@ -301,7 +302,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 					OnNetworkNext: false,
 					Reason:        routing.DecisionInitialSlice,
 				}
-				shouldDecide = false
+				shouldSelect = false
 			}
 		}
 
@@ -388,7 +389,23 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 
 		routeDecision := sessionCacheEntry.RouteDecision
 
-		if shouldDecide { // Only select and decide a route if we should, early out for initial slice
+		// Check which mode the buyer is in. If it's not the default mode, skip route selection/decision
+		if buyer.RoutingRulesSettings.Mode == routing.ModeForceDirect {
+			shouldSelect = false
+			routeDecision = routing.Decision{
+				OnNetworkNext: false,
+				Reason:        routing.DecisionForceDirect,
+			}
+
+		} else if buyer.RoutingRulesSettings.Mode == routing.ModeForceNext {
+			shouldDecide = false
+			routeDecision = routing.Decision{
+				OnNetworkNext: true,
+				Reason:        routing.DecisionForceNext,
+			}
+		}
+
+		if shouldSelect { // Only select and decide a route if we should, early out for initial slice
 			level.Debug(locallogger).Log("buyer_rtt_epsilon", buyer.RoutingRulesSettings.RTTEpsilon, "cached_route_hash", sessionCacheEntry.RouteHash)
 			// Get a set of possible routes from the RouteProvider and on error ensure it falls back to direct
 			routes, err := rp.Routes(dsrelays, clientrelays,
@@ -415,28 +432,30 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 				"buyer_yolo", buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce,
 			)
 
-			if routing.IsVetoed(routeDecision) {
-				// Session has been vetoed
-
-				if sessionCacheEntry.VetoTimestamp.Before(timestampNow) {
-					// Veto expired, bring the session back on with an initial slice
-					sessionCacheEntry.TimestampStart = timestampNow
-					routeDecision = routing.Decision{
-						OnNetworkNext: false,
-						Reason:        routing.DecisionInitialSlice,
-					}
-				}
-			} else {
-				// Session hasn't been vetoed, perform route decision as normal
-				routeDecision = nextRoute.Decide(sessionCacheEntry.RouteDecision, nnStats, directStats,
-					routing.DecideUpgradeRTT(float64(buyer.RoutingRulesSettings.RTTThreshold)),
-					routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis), buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
-					routing.DecideVeto(float64(buyer.RoutingRulesSettings.RTTVeto), buyer.RoutingRulesSettings.EnablePacketLossSafety, buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
-				)
-
+			if shouldDecide {
 				if routing.IsVetoed(routeDecision) {
-					// Session was vetoed this update, so set the veto timeout
-					sessionCacheEntry.VetoTimestamp = timestampNow.Add(time.Hour)
+					// Session has been vetoed
+
+					if sessionCacheEntry.VetoTimestamp.Before(timestampNow) {
+						// Veto expired, bring the session back on with an initial slice
+						sessionCacheEntry.TimestampStart = timestampNow
+						routeDecision = routing.Decision{
+							OnNetworkNext: false,
+							Reason:        routing.DecisionInitialSlice,
+						}
+					}
+				} else {
+					// Session hasn't been vetoed, perform route decision as normal
+					routeDecision = nextRoute.Decide(sessionCacheEntry.RouteDecision, nnStats, directStats,
+						routing.DecideUpgradeRTT(float64(buyer.RoutingRulesSettings.RTTThreshold)),
+						routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis), buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
+						routing.DecideVeto(float64(buyer.RoutingRulesSettings.RTTVeto), buyer.RoutingRulesSettings.EnablePacketLossSafety, buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
+					)
+
+					if routing.IsVetoed(routeDecision) {
+						// Session was vetoed this update, so set the veto timeout
+						sessionCacheEntry.VetoTimestamp = timestampNow.Add(time.Hour)
+					}
 				}
 			}
 
