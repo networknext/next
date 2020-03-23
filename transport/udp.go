@@ -443,7 +443,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 				"buyer_yolo", buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce,
 			)
 
-			// Session hasn't been vetoed, perform route decision as normal
 			routeDecision = nextRoute.Decide(sessionCacheEntry.RouteDecision, nnStats, directStats,
 				routing.DecideUpgradeRTT(float64(buyer.RoutingRulesSettings.RTTThreshold)),
 				routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis), buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
