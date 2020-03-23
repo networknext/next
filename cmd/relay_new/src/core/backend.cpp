@@ -274,6 +274,9 @@ namespace core
           return;
         }
 
+        LogDebug("got id: ", id);
+        LogDebug("got address ", relayAddresses[count]);
+
         count++;
       });
 

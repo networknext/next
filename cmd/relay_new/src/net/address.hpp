@@ -3,6 +3,8 @@
 
 #include "relay/relay_platform.hpp"
 
+#include "util/logger.hpp"
+
 namespace net
 {
   enum class AddressType : uint8_t
@@ -140,6 +142,7 @@ namespace net
   inline auto Address::operator==(const Address& other) const -> bool
   {
     if (this->Type != other.Type || this->Port != other.Port) {
+      LogDebug("addr different type or port");
       return false;
     }
 
@@ -147,6 +150,7 @@ namespace net
       case AddressType::IPv4:
         for (unsigned int i = 0; i < IPv4.size(); i++) {
           if (IPv4[i] != other.IPv4[i]) {
+            LogDebug("addr ipv4 not =");
             return false;
           }
         }
@@ -154,6 +158,7 @@ namespace net
       case AddressType::IPv6:
         for (unsigned int i = 0; i < IPv6.size(); i++) {
           if (IPv6[i] != other.IPv6[i]) {
+            LogDebug("addr ipv6 not =");
             return false;
           }
         }
