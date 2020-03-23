@@ -155,6 +155,7 @@ namespace core
   {
     LogDebug("updating relay");
     util::JSON doc;
+    LogDebug("current doc: ", doc.toPrettyString());
     {
       doc.set(UpdateRequestVersion, "version");
       doc.set(mAddressStr, "relay_address");
@@ -165,9 +166,11 @@ namespace core
         LogDebug("setting traffic stats");
         util::JSON trafficStats;
         trafficStats.set(bytesReceived, "BytesMeasurementRx");
+        LogDebug("current ts: ", trafficStats.toPrettyString());
 
         doc.set(trafficStats, "TrafficStats");
       }
+      LogDebug("current doc: ", doc.toPrettyString());
 
       // Ping stats
       LogDebug("setting ping stats");
@@ -191,30 +194,8 @@ namespace core
 
         doc.set(pingStats, "PingStats");
       }
+      LogDebug("current doc: ", doc.toPrettyString());
     }
-
-    std::function<void(rapidjson::Value & value, uint depth)> member;
-    member = [&member](rapidjson::Value& value, uint depth) {
-      for (auto i = value.MemberBegin(); i != value.MemberEnd(); i++) {
-
-        for (auto d = 0u; d < depth; d++) {
-          std::cout << ' ';
-        }
-        std::cout << "name type: " << i->name.GetType() << '\n';
-
-        for (auto d = 0u; d < depth; d++) {
-          std::cout << ' ';
-        }
-        std::cout << "name: " << i->name.GetString() << '\n';
-
-        if (i->value.GetType() == rapidjson::kObjectType) {
-          member(i->value, depth + 1);
-        }
-      }
-    };
-
-    auto& json = doc.internal();
-    member(json, 0);
 
     LogDebug("building msg for backend");
 
@@ -307,6 +288,8 @@ namespace core
       LogDebug("Updating relay manager");
       mRelayManager.update(count, relayIDs, relayAddresses);
       LogDebug("Updated relay manager");
+    } else if (relays.memberType() == rapidjson::Type::kNullType) {
+      Log("no relays received from backend, ping data is null");
     } else {
       Log("update ping data not array: rapidjson type value = ", relays.memberType());
       return false;

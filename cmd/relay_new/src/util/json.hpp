@@ -262,14 +262,7 @@ namespace util
 
   inline JSON& JSON::operator=(JSON& other)
   {
-    if (other.isArray()) {
-      mDoc.SetArray();
-    } else {
-      mDoc.SetObject();
-    }
-
-    mDoc.Swap(other.mDoc);
-
+    mDoc = std::move(other.mDoc);
     return *this;
   }
 
@@ -382,11 +375,11 @@ namespace util
       member->SetObject();
     }
 
-    member->Swap(other.mDoc);
+    member->CopyFrom(other.mDoc, mDoc.GetAllocator());
   }
 
   template <size_t Size>
-  void JSON::setValue(rapidjson::Value* member, char const (&value)[Size])
+  inline void JSON::setValue(rapidjson::Value* member, char const (&value)[Size])
   {
     member->SetString(rapidjson::StringRef(value, Size), mDoc.GetAllocator());
   }
@@ -469,7 +462,7 @@ namespace util
     if (member != nullptr) {
       rapidjson::Value tmp;
       tmp = std::move(*member);
-      tmp.Swap(doc.mDoc);
+      doc.mDoc.CopyFrom(tmp, doc.mDoc.GetAllocator());
     }
 
     return doc;
