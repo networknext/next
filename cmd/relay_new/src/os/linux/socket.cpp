@@ -89,7 +89,6 @@ namespace os
       return false;
     }
 
-    mAddress = addr;
     mOpen = true;
 
     LogDebug("created socket for ", addr);

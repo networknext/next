@@ -361,9 +361,9 @@ int main()
       sockets.push_back(packetSocket);
 
       packetThreads[i] = std::make_unique<std::thread>(
-       [&waitVar, &socketAndThreadReady, packetSocket, &relayClock, &keychain, &routerInfo, &sessions, &relayManager, &logger] {
+       [&waitVar, &socketAndThreadReady, packetSocket, &relayClock, &keychain, &routerInfo, &sessions, &relayManager, &logger, &relayAddr] {
          core::PacketProcessor processor(
-          *packetSocket, relayClock, keychain, routerInfo, sessions, relayManager, gAlive, *logger);
+          *packetSocket, relayClock, keychain, routerInfo, sessions, relayManager, gAlive, *logger, relayAddr);
          processor.process(waitVar, socketAndThreadReady);
        });
 
