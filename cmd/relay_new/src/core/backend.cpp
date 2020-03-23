@@ -31,13 +31,25 @@ namespace core
 
   bool Backend::init()
   {
+    // Cache the base64 version of the relay public key for updating
+    // TODO pass this in instead from the env var after init is verified, here for debugging reasons
+    {
+      std::vector<char> b64RelayPublicKey(mKeychain.RelayPublicKey.size() * 2);
+      auto len = encoding::base64::Encode(mKeychain.RelayPublicKey, b64RelayPublicKey);
+      if (len < mKeychain.RelayPublicKey.size()) {
+        Log("failed to cache relay public key to base64");
+        return false;
+      }
+      mRelayPublicKeyBase64 = std::string(b64RelayPublicKey.begin(), b64RelayPublicKey.begin() + len);
+      LogDebug("public key re-encoded: '", mRelayPublicKeyBase64, '\'');
+    }
+
     std::string base64NonceStr;
     std::string base64TokenStr;
     {
       // Nonce
       std::array<uint8_t, crypto_box_NONCEBYTES> nonce = {};
       {
-        std::array<uint8_t, crypto_box_NONCEBYTES> nonce = {};
         crypto::CreateNonceBytes(nonce);
         std::vector<char> b64Nonce(nonce.size() * 2);
 
@@ -133,18 +145,6 @@ namespace core
     } else {
       Log("init timestamp not a number");
       return false;
-    }
-
-    // Cache the base64 version of the relay public key for updating
-    // TODO for the sake of getting this done, putting it here for now but this should be done elsewhere
-    {
-      std::vector<char> b64RelayPublicKey(mKeychain.RelayPublicKey.size() * 2);
-      auto len = encoding::base64::Encode(mKeychain.RelayPublicKey, b64RelayPublicKey);
-      if (len < mKeychain.RelayPublicKey.size()) {
-        Log("failed to cache relay public key to base64");
-        return false;
-      }
-      mRelayPublicKeyBase64 = std::string(b64RelayPublicKey.begin(), b64RelayPublicKey.begin() + len);
     }
 
     return true;
