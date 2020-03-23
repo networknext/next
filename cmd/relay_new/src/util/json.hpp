@@ -1,12 +1,4 @@
 #pragma once
-#include <sstream>
-#include <vector>
-#include <cinttypes>
-#include <rapidjson/rapidjson.h>
-#include <rapidjson/document.h>
-#include <rapidjson/prettywriter.h>
-#include <rapidjson/writer.h>
-
 #define JSON_GET(json, storage, ...) storage = json.get<decltype(storage)>(__VA_ARGS__)
 
 namespace util
@@ -66,7 +58,7 @@ namespace util
     bool isObject();
 
     /* Iterates over each element if the document is an array and returns true, simply returns false if not an array */
-    template <typename Callback>
+    template <typename Callback>  // template so lambdas are used directly and inlined rather than wrapped in a std::function
     bool foreach (Callback function);
 
     template <typename... Args>
@@ -81,6 +73,9 @@ namespace util
     std::string err();
 
     JSON& operator=(JSON& other);
+
+    /* Returns the internal document */
+    rapidjson::Document& internal();
 
    private:
     rapidjson::Document mDoc;
@@ -278,6 +273,11 @@ namespace util
     return *this;
   }
 
+  inline rapidjson::Document& JSON::internal()
+  {
+    return mDoc;
+  }
+
   /* Setters */
 
   template <>
@@ -402,55 +402,63 @@ namespace util
   template <>
   inline std::string JSON::getValue(rapidjson::Value* member)
   {
-    return member && member->IsString() ? std::string(member->GetString()) : std::string();
+    return (member && member->GetType() == rapidjson::Type::kStringType) ? std::string(member->GetString()) : std::string();
   }
 
   template <>
   inline const char* JSON::getValue(rapidjson::Value* member)
   {
-    return member && member->IsString() ? member->GetString() : "";
+    return (member && member->GetType() == rapidjson::Type::kStringType) ? member->GetString() : "";
   }
 
   template <>
   inline int JSON::getValue(rapidjson::Value* member)
   {
-    return member && member->IsInt() ? member->GetInt() : 0;
+    return (member && member->GetType() == rapidjson::Type::kNumberType) ? member->Get<int>() : 0;
   }
 
   template <>
   inline bool JSON::getValue(rapidjson::Value* member)
   {
-    return member && member->IsBool() ? member->GetBool() : false;
+    return (member && (member->GetType() == rapidjson::Type::kTrueType || member->GetType() == rapidjson::Type::kFalseType))
+            ? member->Get<bool>()
+            : false;
   }
 
   template <>
   inline float JSON::getValue(rapidjson::Value* member)
   {
-    return member && member->IsFloat() ? member->GetFloat() : 0.0f;
+    return (member && member->GetType() == rapidjson::Type::kNumberType) ? member->Get<float>() : 0.0f;
+  }
+
+  template <>
+  inline double JSON::getValue(rapidjson::Value* member)
+  {
+    return (member && member->GetType() == rapidjson::Type::kNumberType) ? member->Get<double>() : 0.0;
   }
 
   template <>
   inline uint8_t JSON::getValue(rapidjson::Value* member)
   {
-    return member && member->IsUint() ? member->GetUint() : 0;
+    return (member && member->GetType() == rapidjson::Type::kNumberType) ? member->Get<uint32_t>() : 0;
   }
 
   template <>
   inline uint16_t JSON::getValue(rapidjson::Value* member)
   {
-    return member && member->IsUint() ? member->GetUint() : 0;
+    return (member && member->GetType() == rapidjson::Type::kNumberType) ? member->Get<uint32_t>() : 0;
   }
 
   template <>
   inline uint32_t JSON::getValue(rapidjson::Value* member)
   {
-    return member && member->IsUint() ? member->GetUint() : 0;
+    return (member && member->GetType() == rapidjson::Type::kNumberType) ? member->Get<uint32_t>() : 0;
   }
 
   template <>
   inline uint64_t JSON::getValue(rapidjson::Value* member)
   {
-    return member && member->IsUint64() ? member->GetUint() : 0;
+    return (member && member->GetType() == rapidjson::Type::kNumberType) ? member->Get<uint64_t>() : 0;
   }
 
   template <>

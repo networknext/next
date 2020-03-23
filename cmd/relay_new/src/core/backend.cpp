@@ -41,7 +41,6 @@ namespace core
         return false;
       }
       mRelayPublicKeyBase64 = std::string(b64RelayPublicKey.begin(), b64RelayPublicKey.begin() + len);
-      LogDebug("public key re-encoded: '", mRelayPublicKeyBase64, '\'');
     }
 
     std::string base64NonceStr;
@@ -59,8 +58,6 @@ namespace core
           return false;
         }
         base64NonceStr = std::string(b64Nonce.begin(), b64Nonce.begin() + len);
-        LogDebug("Nonce Raw: '", b64Nonce.data(), '\'');
-        LogDebug("Nonce Str: '", base64NonceStr, '\'');
       }
 
       // Token
@@ -89,8 +86,6 @@ namespace core
         }
 
         base64TokenStr = std::string(b64EncryptedToken.begin(), b64EncryptedToken.begin() + len);
-        LogDebug("Token Raw: '", b64EncryptedToken.data(), '\'');
-        LogDebug("Token Str: '", base64TokenStr, '\'');
       }
     }
 
@@ -116,6 +111,8 @@ namespace core
       return false;
     }
 
+    LogDebug("init response: \n", doc.toPrettyString());
+
     if (!doc.memberExists("version")) {
       Log("resposne json missing member 'version'");
       return false;
@@ -126,6 +123,7 @@ namespace core
       return false;
     }
 
+    LogDebug("extracting version");
     uint32_t version;
     if (doc.memberType("version") == rapidjson::Type::kNumberType) {
       version = doc.get<uint32_t>("version");
@@ -139,19 +137,23 @@ namespace core
       return false;
     }
 
+    LogDebug("extracting timestamp");
     if (doc.memberType("timestamp") == rapidjson::Type::kNumberType) {
       // for old relay compat the router sends this back in millis, so turn back to seconds
-      mRouterInfo.InitalizeTimeInSeconds = doc.get<unsigned long>("timestamp") / 1000;
+      mRouterInfo.InitalizeTimeInSeconds = doc.get<uint64_t>("timestamp") / 1000;
     } else {
       Log("init timestamp not a number");
       return false;
     }
+
+    LogDebug("timestamp extracted");
 
     return true;
   }
 
   bool Backend::update(uint64_t bytesReceived)
   {
+    LogDebug("updating relay");
     util::JSON doc;
     {
       doc.set(UpdateRequestVersion, "version");
@@ -160,6 +162,7 @@ namespace core
 
       // Traffic stats
       {
+        LogDebug("setting traffic stats");
         util::JSON trafficStats;
         trafficStats.set(bytesReceived, "BytesMeasurementRx");
 
@@ -167,6 +170,7 @@ namespace core
       }
 
       // Ping stats
+      LogDebug("setting ping stats");
       {
         core::RelayStats stats;
         mRelayManager.getStats(stats);
@@ -179,21 +183,55 @@ namespace core
           stat.set(stats.RTT[i], "RTT");
           stat.set(stats.Jitter[i], "Jitter");
           stat.set(stats.PacketLoss[i], "PacketLoss");
-          pingStats.push(stat);
+          if (!pingStats.push(stat)) {
+            Log("ping stats not array! can't update!");
+            return false;
+          }
         }
 
         doc.set(pingStats, "PingStats");
       }
     }
 
+    std::function<void(rapidjson::Value & value, uint depth)> member;
+    member = [&member](rapidjson::Value& value, uint depth) {
+      for (auto i = value.MemberBegin(); i != value.MemberEnd(); i++) {
+
+        for (auto d = 0u; d < depth; d++) {
+          std::cout << ' ';
+        }
+        std::cout << "name type: " << i->name.GetType() << '\n';
+
+        for (auto d = 0u; d < depth; d++) {
+          std::cout << ' ';
+        }
+        std::cout << "name: " << i->name.GetString() << '\n';
+
+        if (i->value.GetType() == rapidjson::kObjectType) {
+          member(i->value, depth + 1);
+        }
+      }
+    };
+
+    auto& json = doc.internal();
+    member(json, 0);
+
+    LogDebug("building msg for backend");
+
     std::string jsonStr = doc.toString();
+
+    LogDebug("to string'ed");
+
     std::vector<uint8_t> msg(jsonStr.begin(), jsonStr.end());
     std::vector<uint8_t> resp;
 
+    LogDebug("sending msg");
     if (!net::CurlWrapper::SendTo(mHostname, "/relay_update", msg, resp)) {
       Log("curl request failed in update");
       return false;
     }
+
+    LogDebug("parsing response");
 
     jsonStr = std::string(resp.begin(), resp.end());
     if (!doc.parse(jsonStr)) {
@@ -201,6 +239,7 @@ namespace core
       return false;
     }
 
+    LogDebug("extracting version");
     auto version = doc.get<uint32_t>("version");
     if (doc.memberType("version") == rapidjson::Type::kNumberType) {
       if (version != UpdateResponseVersion) {
@@ -212,6 +251,7 @@ namespace core
       return false;
     }
 
+    LogDebug("extracting ping data");
     bool allValid = true;
     auto relays = doc.get<util::JSON>("ping_data");
     if (relays.isArray()) {
@@ -225,7 +265,14 @@ namespace core
           return;
         }
 
-        auto id = relayData["relay_id"].GetUint64();
+        auto idMember = std::move(relayData["relay_id"]);
+        if (idMember.GetType() != rapidjson::Type::kNumberType) {
+          Log("id from ping not number type");
+          allValid = false;
+          return;
+        }
+
+        auto id = idMember.GetUint64();
 
         if (!relayData.HasMember("relay_address")) {
           Log("ping data missing member 'relay_address' for relay id: ", id);
@@ -233,7 +280,14 @@ namespace core
           return;
         }
 
-        std::string address = relayData["relay_address"].GetString();
+        auto addrMember = std::move(relayData["relay_address"]);
+        if (addrMember.GetType() != rapidjson::Type::kStringType) {
+          Log("relay address is not a string in ping data for relay with id: ", id);
+          allValid = false;
+          return;
+        }
+
+        std::string address = addrMember.GetString();
 
         relayIDs[count] = id;
         if (!relayAddresses[count].parse(address)) {
@@ -250,9 +304,11 @@ namespace core
         return RELAY_ERROR;
       }
 
+      LogDebug("Updating relay manager");
       mRelayManager.update(count, relayIDs, relayAddresses);
+      LogDebug("Updated relay manager");
     } else {
-      Log("update ping data not array");
+      Log("update ping data not array: rapidjson type value = ", relays.memberType());
       return false;
     }
 

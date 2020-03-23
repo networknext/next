@@ -30,7 +30,9 @@ namespace core
 
       std::array<core::PingData, MAX_RELAYS> pings;
 
+      LogDebug("getting ping data from relay manager");
       auto numberOfRelaysToPing = mRelayManager.getPingData(pings);
+      LogDebug("got ping data from relay manager");
 
       if (numberOfRelaysToPing == 0) {
         continue;
