@@ -279,7 +279,7 @@ namespace core
 
       if (count > MAX_RELAYS) {
         Log("error: too many relays to ping. max is ", MAX_RELAYS, ", got ", count, '\n');
-        return RELAY_ERROR;
+        return false;
       }
 
       mRelayManager.update(count, relayIDs, relayAddresses);
@@ -287,7 +287,7 @@ namespace core
       Log("no relays received from backend, ping data is null");
     } else {
       Log("update ping data not array: rapidjson type value = ", relays.memberType());
-      return false;
+      // TODO how to handle
     }
 
     if (!allValid) {

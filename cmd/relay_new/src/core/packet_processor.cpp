@@ -70,7 +70,7 @@ namespace core
         Log("failed to recv packets");
       }
 
-      LogDebug("got packets on {", listenIndx, "}, / count: ", inputBuffer.Count);
+      // LogDebug("got packets on {", listenIndx, "} / count: ", inputBuffer.Count);
 
       for (int i = 0; i < inputBuffer.Count; i++) {
         getAddrFromMsgHdr(inputBuffer.Packets[i].Addr, inputBuffer.Headers[i].msg_hdr);

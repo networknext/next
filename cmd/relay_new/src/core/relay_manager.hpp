@@ -7,6 +7,7 @@
 #include "net/address.hpp"
 
 #include "util/clock.hpp"
+#include "util/logger.hpp"
 
 namespace core
 {
@@ -80,6 +81,8 @@ namespace core
    const std::array<net::Address, MAX_RELAYS>& relayAddrs)
   {
     assert(numRelays <= MAX_RELAYS);
+
+    LogDebug("got ", numRelays, " relays from backend update");
 
     // first copy all current relays that are also in the update lists
 

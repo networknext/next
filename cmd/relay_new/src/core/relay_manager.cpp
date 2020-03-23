@@ -39,8 +39,10 @@ namespace core
     // locked mutex scope
     {
       std::lock_guard<std::mutex> lk(mLock);
+      LogDebug("processing pong for ", from);
       for (unsigned int i = 0; i < mNumRelays; i++) {
         if (&from == &mRelayAddresses[i]) {
+          LogDebug("found address");
           mRelayPingHistory[i]->pongReceived(seq, mClock.elapsed<util::Second>());
           retval = true;
           break;

@@ -378,9 +378,9 @@ int main()
 
   // if using port 0, it is discovered in ping socket's create(). That being said sockets
   // must be created before communicating with the backend otherwise port 0 will be reused
-  LogDebug("Actual address: ", relayAddr);
-
   relayAddr.toString(relayAddrString);
+
+  LogDebug("Actual address: ", relayAddrString);
 
   /* ping processing setup
    * pings are sent out on a different port number than received
