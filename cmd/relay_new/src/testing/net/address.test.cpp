@@ -191,6 +191,7 @@ Test(Address_parse_additional)
     check(addr.parse("...") == false);
     check(addr.parse("....") == false);
     check(addr.parse(".....") == false);
+    check(addr.parse("0.0.0.0") == true);
     check(addr.parse("107.77.207.77") == true);
   }
 

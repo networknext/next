@@ -1,0 +1,38 @@
+version: v1.0
+name: Test
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+global_job_config:
+  prologue:
+    commands:
+      - sudo apt-get update && sudo apt-get -y install libsodium-dev libcurl4-gnutls-dev g++-8
+      - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8
+      - checkout
+      - sem-version go 1.13
+      - make clean
+blocks:
+  - name: Unit
+    task:
+      jobs:
+        - name: SDK
+          commands:
+            - make test-unit-sdk
+        - name: Relay
+          commands:
+            - make test-unit-relay
+        - name: Backend
+          commands:
+            - make test-unit-backend
+  - name: Func
+    task:
+      jobs:
+        - name: Parallel Func Tests
+          commands:
+            - make test-func-parallel
+promotions:
+  - name: Development Deployment
+    pipeline_file: development-deploy.yml
+    auto_promote:
+      when: branch = 'master' AND result = 'passed'

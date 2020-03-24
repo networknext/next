@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"sync"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -21,6 +22,9 @@ type Firestore struct {
 
 	relays map[uint64]*routing.Relay
 	buyers map[uint64]*routing.Buyer
+
+	relayMutex sync.Mutex
+	buyerMutex sync.Mutex
 }
 
 type buyer struct {
@@ -31,15 +35,25 @@ type buyer struct {
 	PublicKey []byte `firestore:"sdkVersion3PublicKeyData"`
 }
 
+type seller struct {
+	Name                       string `firestore:"name"`
+	PricePublicIngressNibblins int64  `firestore:"pricePublicIngressNibblins"`
+	PricePublicEgressNibblins  int64  `firestore:"pricePublicEgressNibblins"`
+}
+
 type relay struct {
 	Address    string                 `firestore:"publicAddress"`
-	PublicKey  []byte                 `firestore:"updateKey"`
+	PublicKey  []byte                 `firestore:"publicKey"`
+	UpdateKey  []byte                 `firestore:"updateKey"`
 	Datacenter *firestore.DocumentRef `firestore:"datacenter"`
+	Seller     *firestore.DocumentRef `firestore:"seller"`
 }
 
 type datacenter struct {
-	Name    string `firestore:"name"`
-	Enabled bool   `firestore:"enabled"`
+	Name      string  `firestore:"name"`
+	Enabled   bool    `firestore:"enabled"`
+	Latitude  float32 `firestore:"latitude"`
+	Longitude float32 `firestore:"longitude"`
 }
 
 type routingRulesSettings struct {
@@ -61,27 +75,33 @@ type routingRulesSettings struct {
 	EnableABTest                 bool    `firestore:"abTest"`
 }
 
-func (s *Firestore) Relay(id uint64) (*routing.Relay, bool) {
-	b, found := s.relays[id]
+func (fs *Firestore) Relay(id uint64) (*routing.Relay, bool) {
+	fs.relayMutex.Lock()
+	defer fs.relayMutex.Unlock()
+
+	b, found := fs.relays[id]
 	return b, found
 }
 
-func (s *Firestore) Buyer(id uint64) (*routing.Buyer, bool) {
-	b, found := s.buyers[id]
+func (fs *Firestore) Buyer(id uint64) (*routing.Buyer, bool) {
+	fs.buyerMutex.Lock()
+	defer fs.buyerMutex.Unlock()
+
+	b, found := fs.buyers[id]
 	return b, found
 }
 
 // SyncLoop is a helper method that calls Sync
-func (s *Firestore) SyncLoop(ctx context.Context, c <-chan time.Time) {
-	if err := s.Sync(ctx); err != nil {
-		s.Logger.Log("during", "SyncLoop", "err", err)
+func (fs *Firestore) SyncLoop(ctx context.Context, c <-chan time.Time) {
+	if err := fs.Sync(ctx); err != nil {
+		level.Error(fs.Logger).Log("during", "SyncLoop", "err", err)
 	}
 
 	for {
 		select {
 		case <-c:
-			if err := s.Sync(ctx); err != nil {
-				s.Logger.Log("during", "SyncLoop", "err", err)
+			if err := fs.Sync(ctx); err != nil {
+				level.Error(fs.Logger).Log("during", "SyncLoop", "err", err)
 			}
 		case <-ctx.Done():
 			return
@@ -90,22 +110,22 @@ func (s *Firestore) SyncLoop(ctx context.Context, c <-chan time.Time) {
 }
 
 // Sync fetches relays and buyers from Firestore and places copies into local caches
-func (s *Firestore) Sync(ctx context.Context) error {
-	if err := s.syncRelays(ctx); err != nil {
+func (fs *Firestore) Sync(ctx context.Context) error {
+	if err := fs.syncRelays(ctx); err != nil {
 		return fmt.Errorf("failed to sync relays: %v", err)
 	}
 
-	if err := s.syncBuyers(ctx); err != nil {
+	if err := fs.syncBuyers(ctx); err != nil {
 		return fmt.Errorf("failed to sync buyers: %v", err)
 	}
 
 	return nil
 }
 
-func (s *Firestore) syncRelays(ctx context.Context) error {
-	s.relays = make(map[uint64]*routing.Relay)
+func (fs *Firestore) syncRelays(ctx context.Context) error {
+	relays := make(map[uint64]*routing.Relay)
 
-	rdocs := s.Client.Collection("Relay").Documents(ctx)
+	rdocs := fs.Client.Collection("Relay").Documents(ctx)
 	for {
 		rdoc, err := rdocs.Next()
 		if err == iterator.Done {
@@ -132,14 +152,22 @@ func (s *Firestore) syncRelays(ctx context.Context) error {
 			return fmt.Errorf("failed to convert port to int: %v", err)
 		}
 
+		// Default to the relay public key, but if that isn't in firestore
+		// then use the old update key for compatibility
+		publicKey := r.PublicKey
+		if publicKey == nil {
+			publicKey = r.UpdateKey
+		}
+
 		relay := routing.Relay{
 			Addr: net.UDPAddr{
 				IP:   net.ParseIP(host),
 				Port: int(iport),
 			},
-			PublicKey: []byte(r.PublicKey),
+			PublicKey: publicKey,
 		}
 
+		// Get datacenter
 		ddoc, err := r.Datacenter.Get(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to get document: %v", err)
@@ -161,19 +189,47 @@ func (s *Firestore) syncRelays(ctx context.Context) error {
 		}
 
 		relay.Datacenter = datacenter
+		relay.Latitude = float64(d.Latitude)
+		relay.Longitude = float64(d.Longitude)
 
-		s.relays[rid] = &relay
+		// Get seller
+		sdoc, err := r.Seller.Get(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to get document: %v", err)
+		}
+
+		var s seller
+		err = sdoc.DataTo(&s)
+		if err != nil {
+			return fmt.Errorf("failed to marshal document: %v", err)
+		}
+
+		seller := routing.Seller{
+			ID:                sdoc.Ref.ID,
+			Name:              s.Name,
+			IngressPriceCents: convertNibblinsToCents(s.PricePublicIngressNibblins),
+			EgressPriceCents:  convertNibblinsToCents(s.PricePublicEgressNibblins),
+		}
+
+		relay.Seller = seller
+
+		// add populated relay to list
+		relays[rid] = &relay
 	}
 
-	level.Debug(s.Logger).Log("during", "syncRelays", "num", len(s.relays))
+	fs.relayMutex.Lock()
+	fs.relays = relays
+	fs.relayMutex.Unlock()
+
+	level.Info(fs.Logger).Log("during", "syncRelays", "num", len(fs.relays))
 
 	return nil
 }
 
-func (s *Firestore) syncBuyers(ctx context.Context) error {
-	s.buyers = make(map[uint64]*routing.Buyer)
+func (fs *Firestore) syncBuyers(ctx context.Context) error {
+	buyers := make(map[uint64]*routing.Buyer)
 
-	bdocs := s.Client.Collection("Buyer").Documents(ctx)
+	bdocs := fs.Client.Collection("Buyer").Documents(ctx)
 	for {
 		bdoc, err := bdocs.Next()
 		if err == iterator.Done {
@@ -194,12 +250,12 @@ func (s *Firestore) syncBuyers(ctx context.Context) error {
 		}
 
 		// Attempt to get routing rules settings for buyer (acceptable to fallback to default settings if none defined)
-		rrs, err := s.getRoutingRulesSettingsForBuyerID(ctx, bdoc.Ref.ID)
+		rrs, err := fs.getRoutingRulesSettingsForBuyerID(ctx, bdoc.Ref.ID)
 		if err != nil {
-			level.Debug(s.Logger).Log("msg", fmt.Sprintf("using default route rules for buyer %v", bdoc.Ref.ID), "err", err)
+			level.Debug(fs.Logger).Log("msg", fmt.Sprintf("using default route rules for buyer %v", bdoc.Ref.ID), "err", err)
 		}
 
-		s.buyers[uint64(b.ID)] = &routing.Buyer{
+		buyers[uint64(b.ID)] = &routing.Buyer{
 			ID:                   uint64(b.ID),
 			Name:                 b.Name,
 			Active:               b.Active,
@@ -209,12 +265,16 @@ func (s *Firestore) syncBuyers(ctx context.Context) error {
 		}
 	}
 
-	level.Debug(s.Logger).Log("during", "syncBuyers", "num", len(s.buyers))
+	fs.buyerMutex.Lock()
+	fs.buyers = buyers
+	fs.buyerMutex.Unlock()
+
+	level.Info(fs.Logger).Log("during", "syncBuyers", "num", len(fs.buyers))
 
 	return nil
 }
 
-func (s *Firestore) getRoutingRulesSettingsForBuyerID(ctx context.Context, ID string) (routing.RoutingRulesSettings, error) {
+func (fs *Firestore) getRoutingRulesSettingsForBuyerID(ctx context.Context, ID string) (routing.RoutingRulesSettings, error) {
 	// Comment below taken from old backend, at least attempting to explain why we need to append _0 (no existing entries have suffixes other than _0)
 	// "Must be of the form '<buyer key>_<tag id>'. The buyer key can be found by looking at the ID under Buyer; it should be something like 763IMDH693HLsr2LGTJY. The tag ID should be 0 (for default) or the fnv64a hash of the tag the customer is using. Therefore this value should look something like: 763IMDH693HLsr2LGTJY_0. This value can not be changed after the entity is created."
 	routeShaderID := ID + "_0"
@@ -223,7 +283,7 @@ func (s *Firestore) getRoutingRulesSettingsForBuyerID(ctx context.Context, ID st
 	rrs := routing.DefaultRoutingRulesSettings
 
 	// Attempt to get route shader for buyer (sadly not linked by actual reference in prod so have to fetch it ourselves using buyer ID + "_0" which happens to match)
-	rsDoc, err := s.Client.Collection("RouteShader").Doc(routeShaderID).Get(ctx)
+	rsDoc, err := fs.Client.Collection("RouteShader").Doc(routeShaderID).Get(ctx)
 	if err != nil {
 		return rrs, err
 	}
@@ -239,7 +299,7 @@ func (s *Firestore) getRoutingRulesSettingsForBuyerID(ctx context.Context, ID st
 	rrs.EnvelopeKbpsUp = tempRRS.EnvelopeKbpsUp
 	rrs.EnvelopeKbpsDown = tempRRS.EnvelopeKbpsDown
 	rrs.Mode = tempRRS.Mode
-	rrs.MaxCentsPerGB = tempRRS.MaxPricePerGBNibblins / 1e9 // Note: Nibblins is a made up unit in the old backend presumably to deal with floating point issues. 1000000000 Niblins = $0.01 USD
+	rrs.MaxCentsPerGB = convertNibblinsToCents(tempRRS.MaxPricePerGBNibblins)
 	rrs.AcceptableLatency = tempRRS.AcceptableLatency
 	rrs.RTTEpsilon = tempRRS.RTTEpsilon
 	rrs.RTTThreshold = tempRRS.RTTThreshold
@@ -253,4 +313,9 @@ func (s *Firestore) getRoutingRulesSettingsForBuyerID(ctx context.Context, ID st
 	rrs.EnableABTest = tempRRS.EnableABTest
 
 	return rrs, nil
+}
+
+// Note: Nibblins is a made up unit in the old backend presumably to deal with floating point issues. 1000000000 Niblins = $0.01 USD
+func convertNibblinsToCents(nibblins int64) uint64 {
+	return uint64(nibblins) / 1e9
 }

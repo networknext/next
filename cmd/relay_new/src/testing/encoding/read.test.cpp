@@ -7,7 +7,7 @@
 Test(ReadAddress_ipv4)
 {
   net::Address addr;
-  std::array<uint8_t, RELAY_ADDRESS_BYTES> bin;
+  std::array<uint8_t, net::Address::ByteSize> bin;
   bin.fill(0);
   bin[0] = static_cast<uint8_t>(net::AddressType::IPv4);
   bin[1] = 127;
@@ -19,13 +19,13 @@ Test(ReadAddress_ipv4)
 
   size_t index = 0;
   encoding::ReadAddress(bin, index, addr);
-  check(index == RELAY_ADDRESS_BYTES);
+  check(index == net::Address::ByteSize);
 }
 
 Test(ReadAddress_ipv6)
 {
   net::Address addr;
-  std::array<uint8_t, RELAY_ADDRESS_BYTES> bin;
+  std::array<uint8_t, net::Address::ByteSize> bin;
   bin[0] = static_cast<uint8_t>(net::AddressType::IPv6);
   bin[1] = 0x1F;
   bin[2] = 0x3B;
@@ -48,14 +48,14 @@ Test(ReadAddress_ipv6)
 
   size_t index = 0;
   encoding::ReadAddress(bin, index, addr);
-  check(index == RELAY_ADDRESS_BYTES);
+  check(index == net::Address::ByteSize);
   check(addr.toString() == "[3b1f:3c33:9928:ffff:ffff:ffff:ffff:ffff]:51034");
 }
 
 Test(ReadAddress_none)
 {
   net::Address before, after;
-  std::array<uint8_t, RELAY_ADDRESS_BYTES> bin;
+  std::array<uint8_t, net::Address::ByteSize> bin;
   bin.fill(0);
   bin[0] = static_cast<uint8_t>(net::AddressType::None);
   bin[1] = 0x1F;
@@ -79,7 +79,7 @@ Test(ReadAddress_none)
 
   size_t index = 0;
   encoding::ReadAddress(bin, index, after);
-  check(index == RELAY_ADDRESS_BYTES);
+  check(index == net::Address::ByteSize);
   check(after.toString() == "NONE");
   check(before == after);
 }

@@ -7,13 +7,13 @@
 Test(WriteAddress_ipv4)
 {
   net::Address addr;
-  std::array<uint8_t, RELAY_ADDRESS_BYTES> bin;
+  std::array<uint8_t, net::Address::ByteSize> bin;
 
   bin.fill(0);
   addr.parse("127.0.0.1:51034");
   size_t index = 0;
   encoding::WriteAddress(bin, index, addr);
-  check(index == RELAY_ADDRESS_BYTES);
+  check(index == net::Address::ByteSize);
   check(bin[0] == net::AddressType::IPv4);
   check(bin[1] == 127);
   check(bin[2] == 0);
@@ -26,13 +26,13 @@ Test(WriteAddress_ipv4)
 Test(WriteAddress_ipv6)
 {
   net::Address addr;
-  std::array<uint8_t, RELAY_ADDRESS_BYTES> bin;
+  std::array<uint8_t, net::Address::ByteSize> bin;
 
   bin.fill(0);
   addr.parse("[3b1f:3c33:9928:ffff:ffff:ffff:ffff:ffff]:51034");
   size_t index = 0;
   encoding::WriteAddress(bin, index, addr);
-  check(index == RELAY_ADDRESS_BYTES);
+  check(index == net::Address::ByteSize);
   check(bin[0] == net::AddressType::IPv6);
   check(bin[1] == 0x1F);
   check(bin[2] == 0x3B);
@@ -57,7 +57,7 @@ Test(WriteAddress_ipv6)
 Test(WriteAddress_none)
 {
   net::Address addr;
-  std::array<uint8_t, RELAY_ADDRESS_BYTES> bin;
+  std::array<uint8_t, net::Address::ByteSize> bin;
 
   bin.fill(0);
   addr.parse("1udai898haidfihe");
@@ -65,5 +65,24 @@ Test(WriteAddress_none)
   encoding::WriteAddress(bin, index, addr);
   for (auto& i : bin) {
     check(i == 0);
+  }
+}
+
+Test(WriteBytes_array)
+{
+  std::array<uint8_t, 32> buff;
+  std::array<uint8_t, 8> data;
+  size_t index = 8;
+
+  for (uint8_t i = 0; i < data.size(); i++) {
+    data[i] = i;
+  }
+
+  encoding::WriteBytes(buff, index, data, 4);
+
+  check(index == 12);
+
+  for (size_t i = 8, j = 0; i < 4; i++) {
+    check(buff[i] == data[j]);
   }
 }

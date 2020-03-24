@@ -19,7 +19,7 @@ type RoutingRulesSettings struct {
 
 	// The maximum bid price in USD cents (¢) a customer is willing to pay per GB of traffic sent over network next
 	// For example a value of 100 here would mean the customer is willing to pay $1.00 USD per GB of network next accelerated traffic
-	MaxCentsPerGB int64
+	MaxCentsPerGB uint64
 
 	// The maximum acceptable latency for the game. If we can't reduce the latency to be at least this then don't take network next
 	// Note: not currently being used in old backend
@@ -43,7 +43,7 @@ type RoutingRulesSettings struct {
 	// Not used when multipath enabled!
 	RTTVeto float32
 
-	// If true, after being downgraded from a network next route to a direct route, the client will not be put back on a network next route for that session
+	// If true, the session will be vetoed after switching from a network next route to a direct route regardless of the RTTVeto value
 	// Not used when multipath enabled!
 	EnableYouOnlyLiveOnce bool
 
@@ -77,4 +77,15 @@ var DefaultRoutingRulesSettings = RoutingRulesSettings{
 	RTTEpsilon:        2.0,
 	RTTHysteresis:     5.0,
 	RTTVeto:           20.0,
+}
+
+var LocalRoutingRulesSettings = RoutingRulesSettings{
+	MaxCentsPerGB:     25.0,
+	EnvelopeKbpsUp:    256,
+	EnvelopeKbpsDown:  256,
+	AcceptableLatency: -1.0,
+	RTTThreshold:      0.05,
+	RTTEpsilon:        0.1,
+	RTTHysteresis:     0.05,
+	RTTVeto:           1.0,
 }

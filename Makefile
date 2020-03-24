@@ -17,8 +17,11 @@ SHA ?= $(shell git rev-parse --short HEAD)
 TAG ?= $(shell git describe --tags 2> /dev/null)
 
 CURRENT_DIR = $(shell pwd -P)
+DEPLOY_DIR = ./deploy
 DIST_DIR = ./dist
 ARTIFACT_BUCKET = gs://artifacts.network-next-v3-dev.appspot.com
+ARTIFACT_BUCKET_PROD = gs://us.artifacts.network-next-v3-prod.appspot.com
+SYSTEMD_SERVICE_FILE = app.service
 
 COST_FILE = $(DIST_DIR)/cost.bin
 OPTIMIZE_FILE = $(DIST_DIR)/optimize.bin
@@ -96,26 +99,11 @@ export MAXMIND_DB_URI = ./testdata/GeoIP2-City-Test.mmdb
 endif
 
 ifndef REDIS_HOST
-export REDIS_HOST = 127.0.0.1:6379
+export REDIS_HOST_RELAYS = 127.0.0.1:6379
 endif
 
-##################################
-##  GOOGLE PUBSUB BILLING ENV   ##
-##################################
-
-ifndef BILLING_PUBSUB_PROJECT
-export BILLING_PUBSUB_PROJECT = network-next-local
-endif
-
-ifndef BILLING_PUBSUB_TOPIC
-export BILLING_PUBSUB_TOPIC = billing-local
-endif
-
-##################################
-##    STACKDRIVER METRICS ENV   ##
-##################################
-ifndef GCP_METRICS_PROJECT
-export GCP_METRICS_PROJECT = network-next-local
+ifndef REDIS_HOST
+export REDIS_HOST_CACHE = 127.0.0.1:6379
 endif
 
 .PHONY: help
@@ -129,7 +117,7 @@ clean: ## cleans the dist directory of all builds
 
 .PHONY: lint
 lint: ## runs go vet
-	@printf "Skipping vet/staticcheck for now...\n"
+	@printf "Skipping vet/staticcheck for now...\n\n"
 
 .PHONY: format
 format: ## runs gofmt on all go source code
@@ -143,15 +131,24 @@ format: ## runs gofmt on all go source code
 .PHONY: test
 test: test-unit
 
-.PHONY: test-unit
-test-unit: clean lint build-sdk-test build-relay ## runs unit tests
+.PHONY: test-unit-sdk ## runs sdk unit tests
+test-unit-sdk: build-sdk-test
 	@$(DIST_DIR)/$(SDKNAME)_test
+
+.PHONY: test-unit-relay ## runs relay unit tests
+test-unit-relay: build-relay
 	@$(DIST_DIR)/relay test
+
+.PHONY: test-unit-backend
+test-unit-backend: lint ## runs backend unit tests
 	@printf "Running go tests:\n\n"
 	@$(GO) test  ./... -coverprofile ./cover.out
 	@printf "\n\nCoverage results of go tests:\n\n"
 	@$(GO) tool cover -func ./cover.out
 	@printf "\n"
+
+.PHONY: test-unit
+test-unit: clean test-unit-sdk test-unit-relay test-unit-backend ## runs all unit tests
 
 .PHONY: test-soak
 test-soak: clean build-sdk-test build-soak-test ## runs soak test
@@ -168,17 +165,31 @@ endif
 .PHONY: build-functional-backend
 build-functional-backend:
 	@printf "Building functional backend... " ; \
-	go build -o ./dist/func_backend ./cmd/tools/functional/backend/*.go ; \
+	$(GO) build -o ./dist/func_backend ./cmd/tools/functional/backend/*.go ; \
 	printf "done\n" ; \
+
+.PHONY: build-test-func
+build-test-func: clean build-sdk build-relay build-functional-server build-functional-client build-functional-backend
 
 .PHONY: run-test-func
 run-test-func:
 	@printf "\nRunning functional tests...\n\n" ; \
-	$(GO) run ./cmd/tools/functional/tests/func_tests.go ; \
+	$(GO) run ./cmd/tools/functional/tests/func_tests.go $(tests) ; \
 	printf "\ndone\n\n"
 
 .PHONY: test-func
-test-func: clean build-sdk build-relay build-functional-server build-functional-client build-functional-backend run-test-func ## runs functional tests
+test-func: build-test-func run-test-func ## runs functional tests
+
+.PHONY: build-test-func-parallel
+build-test-func-parallel:
+	@docker build -t func_tests -f ./cmd/tools/functional/tests/Dockerfile .
+
+.PHONY: run-test-func-parallel
+run-test-func-parallel:
+	@./cmd/tools/scripts/test-func-parallel.sh
+
+.PHONY: test-func-parallel
+test-func-parallel: build-test-func-parallel run-test-func-parallel ## runs functional tests in parallel
 
 .PHONY: build-sdk-test
 build-sdk-test: build-sdk ## builds the sdk test binary
@@ -217,10 +228,12 @@ dev-analyze: ## analyzes the route matrix
 
 .PHONY: debug
 dev-debug: ## debugs relay in route matrix
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/debug ./cmd/tools/debug/debug.go
 	test -f $(OPTIMIZE_FILE) && cat $(OPTIMIZE_FILE) | $(DIST_DIR)/debug -relay=$(relay)
 
 .PHONY: dev-route
 dev-route: ## prints routes from relay to datacenter in route matrix
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/route ./cmd/tools/route/route.go
 	test -f $(OPTIMIZE_FILE) && cat $(OPTIMIZE_FILE) | $(DIST_DIR)/route -relay=$(relay) -datacenter=$(datacenter)
 
 #######################
@@ -232,6 +245,12 @@ RELAY_EXE	:= relay
 
 .PHONY: $(DIST_DIR)/$(RELAY_EXE)
 $(DIST_DIR)/$(RELAY_EXE):
+
+.PHONY: build-relay
+build-relay: ## builds the relay
+	@printf "Building relay... "
+	@$(CXX) $(CXX_FLAGS) -o $(DIST_DIR)/$(RELAY_EXE) cmd/relay/*.cpp $(LDFLAGS)
+	@printf "done\n"
 
 .PHONY: dev-relay
 dev-relay: $(DIST_DIR)/$(RELAY_EXE) build-relay ## runs a local relay
@@ -249,7 +268,7 @@ dev-optimizer: ## runs a local optimizer
 
 .PHONY: dev-relay-backend
 dev-relay-backend: ## runs a local relay backend
-	@PORT=30000 $(GO) run cmd/relay_backend/relay_backend.go
+	@PORT=30000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local $(GO) run cmd/relay_backend/relay_backend.go
 
 .PHONY: dev-server-backend
 dev-server-backend: ## runs a local server backend
@@ -271,12 +290,6 @@ dev-client: build-client  ## runs a local client
 dev-multi-clients: build-client ## runs 20 local clients
 	./cmd/tools/scripts/client-spawner.sh -n 20
 
-.PHONY: build-relay
-build-relay: ## builds the relay
-	@printf "Building relay... "
-	@$(CXX) $(CXX_FLAGS) -o $(DIST_DIR)/$(RELAY_EXE) cmd/relay/*.cpp $(LDFLAGS)
-	@printf "done\n"
-
 $(DIST_DIR)/$(SDKNAME).so:
 	@printf "Building sdk... "
 	@$(CXX) -fPIC -shared -o $(DIST_DIR)/$(SDKNAME).so ./sdk/next.cpp ./sdk/next_ios.cpp ./sdk/next_linux.cpp ./sdk/next_mac.cpp ./sdk/next_ps4.cpp ./sdk/next_switch.cpp ./sdk/next_windows.cpp ./sdk/next_xboxone.cpp $(LDFLAGS)
@@ -297,14 +310,36 @@ build-relay-backend-artifact: build-relay-backend ## builds the relay backend wi
 	@mkdir -p $(DIST_DIR)/artifact/relay_backend
 	@cp $(DIST_DIR)/relay_backend $(DIST_DIR)/artifact/relay_backend/app
 	@cp ./cmd/relay_backend/dev.env $(DIST_DIR)/artifact/relay_backend/app.env
-	@cd $(DIST_DIR)/artifact/relay_backend && tar -zcf ../../relay_backend.dev.tar.gz app app.env && cd ../..
+	@cp $(DEPLOY_DIR)/$(SYSTEMD_SERVICE_FILE) $(DIST_DIR)/artifact/relay_backend/$(SYSTEMD_SERVICE_FILE)
+	@cd $(DIST_DIR)/artifact/relay_backend && tar -zcf ../../relay_backend.dev.tar.gz app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
 	@printf "$(DIST_DIR)/relay_backend.dev.tar.gz\n"
+
+.PHONY: build-relay-backend-artifact
+build-relay-backend-prod-artifact: build-relay-backend ## builds the relay backend with the right env vars and creates a .tar.gz
+	@printf "Building relay backend artifact... "
+	@mkdir -p $(DIST_DIR)/artifact/relay_backend
+	@cp $(DIST_DIR)/relay_backend $(DIST_DIR)/artifact/relay_backend/app
+	@cp ./cmd/relay_backend/prod.env $(DIST_DIR)/artifact/relay_backend/app.env
+	@cp $(DEPLOY_DIR)/$(SYSTEMD_SERVICE_FILE) $(DIST_DIR)/artifact/relay_backend/$(SYSTEMD_SERVICE_FILE)
+	@cd $(DIST_DIR)/artifact/relay_backend && tar -zcf ../../relay_backend.prod.tar.gz app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
+	@printf "$(DIST_DIR)/relay_backend.prod.tar.gz\n"
 
 .PHONY: publish-relay-backend-artifact
 publish-relay-backend-artifact: ## publishes the relay backend artifact to GCP Storage with gsutil
 	@printf "Publishing relay backend artifact... \n\n"
 	@gsutil cp $(DIST_DIR)/relay_backend.dev.tar.gz $(ARTIFACT_BUCKET)/relay_backend.dev.tar.gz
 	@printf "done\n"
+
+.PHONY: publish-relay-backend-artifact
+publish-relay-backend-prod-artifact: ## publishes the relay backend artifact to GCP Storage with gsutil
+	@printf "Publishing relay backend artifact... \n\n"
+	@gsutil cp $(DIST_DIR)/relay_backend.prod.tar.gz $(ARTIFACT_BUCKET_PROD)/relay_backend.prod.tar.gz
+	@printf "done\n"
+
+.PHONY: deploy-relay-backend
+deploy-relay-backend: build-relay-backend ## builds and deploys the relay backend to the dev VM
+	@printf "Deploying relay backend... \n\n"
+	gcloud compute ssh relay-backend-dev-1 -- 'cd /app && sudo ./vm-update-app.sh -a gs://artifacts.network-next-v3-dev.appspot.com/relay_backend.dev.tar.gz'
 
 .PHONY: build-server-backend
 build-server-backend: ## builds the server backend binary
@@ -318,8 +353,19 @@ build-server-backend-artifact: build-server-backend ## builds the server backend
 	@mkdir -p $(DIST_DIR)/artifact/server_backend
 	@cp $(DIST_DIR)/server_backend $(DIST_DIR)/artifact/server_backend/app
 	@cp ./cmd/server_backend/dev.env $(DIST_DIR)/artifact/server_backend/app.env
-	@cd $(DIST_DIR)/artifact/server_backend && tar -zcf ../../server_backend.dev.tar.gz app app.env && cd ../..
+	@cp $(DEPLOY_DIR)/$(SYSTEMD_SERVICE_FILE) $(DIST_DIR)/artifact/server_backend/$(SYSTEMD_SERVICE_FILE)
+	@cd $(DIST_DIR)/artifact/server_backend && tar -zcf ../../server_backend.dev.tar.gz app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
 	@printf "$(DIST_DIR)/server_backend.dev.tar.gz\n"
+
+.PHONY: build-server-backend-artifact
+build-server-backend-prod-artifact: build-server-backend ## builds the server backend with the right env vars and creates a .tar.gz
+	@printf "Building server backend artifact... "
+	@mkdir -p $(DIST_DIR)/artifact/server_backend
+	@cp $(DIST_DIR)/server_backend $(DIST_DIR)/artifact/server_backend/app
+	@cp ./cmd/server_backend/prod.env $(DIST_DIR)/artifact/server_backend/app.env
+	@cp $(DEPLOY_DIR)/$(SYSTEMD_SERVICE_FILE) $(DIST_DIR)/artifact/server_backend/$(SYSTEMD_SERVICE_FILE)
+	@cd $(DIST_DIR)/artifact/server_backend && tar -zcf ../../server_backend.prod.tar.gz app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
+	@printf "$(DIST_DIR)/server_backend.prod.tar.gz\n"
 
 .PHONY: publish-server-backend-artifact
 publish-server-backend-artifact: ## publishes the server backend artifact to GCP Storage with gsutil
@@ -327,11 +373,28 @@ publish-server-backend-artifact: ## publishes the server backend artifact to GCP
 	@gsutil cp $(DIST_DIR)/server_backend.dev.tar.gz $(ARTIFACT_BUCKET)/server_backend.dev.tar.gz
 	@printf "done\n"
 
+.PHONY: publish-server-backend-artifact
+publish-server-backend-prod-artifact: ## publishes the server backend artifact to GCP Storage with gsutil
+	@printf "Publishing server backend artifact... \n\n"
+	@gsutil cp $(DIST_DIR)/server_backend.prod.tar.gz $(ARTIFACT_BUCKET_PROD)/server_backend.prod.tar.gz
+	@printf "done\n"
+
+.PHONY: deploy-server-backend
+deploy-server-backend: build-server-backend ## builds and deploys the server backend to the dev VM
+	@printf "Deploying server backend... \n\n"
+	gcloud compute ssh server-backend-dev-1 -- 'cd /app && sudo ./vm-update-app.sh -a gs://artifacts.network-next-v3-dev.appspot.com/server_backend.dev.tar.gz'
+
 .PHONY: build-backend-artifacts
 build-backend-artifacts: build-relay-backend-artifact build-server-backend-artifact ## builds the backend artifacts
 
+.PHONY: build-backend-prod-artifacts
+build-backend-prod-artifacts: build-relay-backend-prod-artifact build-server-backend-prod-artifact ## builds the backend artifacts
+
 .PHONY: publish-backend-artifacts
 publish-backend-artifacts: publish-relay-backend-artifact publish-server-backend-artifact ## publishes the backend artifacts to GCP Storage with gsutil
+
+.PHONY: publish-backend-prod-artifacts
+publish-backend-prod-artifacts: publish-relay-backend-prod-artifact publish-server-backend-prod-artifact ## publishes the backend artifacts to GCP Storage with gsutil
 
 .PHONY: build-server
 build-server: build-sdk ## builds the server

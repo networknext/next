@@ -3,31 +3,82 @@
 
 #include "encoding/write.hpp"
 
+using namespace std::chrono_literals;
+namespace
+{
+  const size_t MaxPacketsToSend = MAX_RELAYS;
+}
+
 namespace core
 {
-  PingProcessor::PingProcessor(core::RelayManager& relayManager, volatile bool& shouldProcess, const net::Address& relayAddress)
-   : mRelayManager(relayManager), mShouldProcess(shouldProcess), mRelayAddress(relayAddress)
+  PingProcessor::PingProcessor(const os::Socket& socket,
+   core::RelayManager& relayManager,
+   const volatile bool& shouldProcess,
+   const net::Address& relayAddress)
+   : mSocket(socket), mRelayManager(relayManager), mShouldProcess(shouldProcess), mRelayAddress(relayAddress)
   {}
 
-  void PingProcessor::listen(os::Socket& socket, std::condition_variable& var, std::atomic<bool>& readyToSend)
+  void PingProcessor::process(std::condition_variable& var, std::atomic<bool>& readyToSend)
   {
     readyToSend = true;
     var.notify_one();
+
+    GenericPacketBuffer<MaxPacketsToSend, RELAY_PING_PACKET_BYTES> buffer;
+
     while (mShouldProcess) {
+      std::this_thread::sleep_for(10ms);
+
       std::array<core::PingData, MAX_RELAYS> pings;
 
-      auto numPings = mRelayManager.getPingData(pings);
+      auto numberOfRelaysToPing = mRelayManager.getPingData(pings);
 
-      for (unsigned int i = 0; i < numPings; ++i) {
-        size_t index = 0;
-        std::array<uint8_t, RELAY_PING_PACKET_BYTES> packetData;
-        encoding::WriteUint8(packetData, index, RELAY_PING_PACKET);
-        encoding::WriteUint64(packetData, index, pings[i].Seq);
-        encoding::WriteAddress(packetData, index, mRelayAddress);
-        socket.send(pings[i].Addr, packetData.data(), packetData.size());
+      if (numberOfRelaysToPing == 0) {
+        continue;
       }
 
-      relay::relay_platform_sleep(1.0 / 100.0);
+      for (unsigned int i = 0; i < numberOfRelaysToPing; i++) {
+        auto& pkt = buffer.Packets[i];
+
+        auto& mhdr = buffer.Headers[i];
+        auto& hdr = mhdr.msg_hdr;
+
+        auto& addr = pings[i].Addr;
+
+        LogDebug("[*] Processing ping for ", addr);
+
+        fillMsgHdrWithAddr(hdr, addr);
+
+        size_t index = 0;
+
+        // write data to the buffer
+        {
+          encoding::WriteUint8(pkt.Buffer, index, RELAY_PING_PACKET);
+          encoding::WriteUint64(pkt.Buffer, index, pings[i].Seq);
+
+          // use the recv port addr here so the receiving relay knows where to send it back to
+          encoding::WriteAddress(pkt.Buffer, index, mRelayAddress);
+        }
+      }
+
+      buffer.Count = numberOfRelaysToPing;
+
+      if (!mSocket.multisend(buffer)) {
+        Log("failed to send messages, amount to send: ", numberOfRelaysToPing, ", actual sent: ", buffer.Count);
+      }
+    }
+  }
+
+  inline void PingProcessor::fillMsgHdrWithAddr(msghdr& hdr, const net::Address& addr)
+  {
+    // TODO need error handling here
+    if (addr.Type == net::AddressType::IPv4) {
+      auto sin = reinterpret_cast<sockaddr_in*>(hdr.msg_name);
+      addr.to(*sin);
+      hdr.msg_namelen = sizeof(*sin);
+    } else if (addr.Type == net::AddressType::IPv6) {
+      auto sin = reinterpret_cast<sockaddr_in6*>(hdr.msg_name);
+      addr.to(*sin);
+      hdr.msg_namelen = sizeof(*sin);
     }
   }
 }  // namespace core

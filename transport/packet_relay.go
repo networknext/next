@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"math"
@@ -11,6 +12,15 @@ import (
 	"github.com/networknext/backend/routing"
 )
 
+const (
+	VersionNumberInitRequest    = 0
+	VersionNumberInitResponse   = 0
+	VersionNumberUpdateRequest  = 0
+	VersionNumberUpdateResponse = 0
+
+	PacketSizeRelayInitResponse = 4 + 8 + crypto.KeySize
+)
+
 // RelayInitPacket is the struct that describes the packets comming into the relay_init endpoint
 type RelayInitPacket struct {
 	Magic          uint32
@@ -18,6 +28,58 @@ type RelayInitPacket struct {
 	Nonce          []byte
 	Address        net.UDPAddr
 	EncryptedToken []byte
+}
+
+type RelayInitRequestJSON struct {
+	Magic                uint32 `json:"magic_request_protection"`
+	Version              uint32 `json:"version"`
+	StringAddr           string `json:"relay_address"`
+	PortNum              int    `json:"relay_port"`
+	NonceBase64          string `json:"nonce"`
+	EncryptedTokenBase64 string `json:"encrypted_token"`
+}
+
+// RelayInitResponseJSON ...
+type RelayInitResponseJSON struct {
+	Timestamp uint64 `json:"Timestamp"`
+}
+
+func (j *RelayInitRequestJSON) ToInitPacket(packet *RelayInitPacket) error {
+	var err error
+
+	packet.Magic = j.Magic
+	packet.Version = j.Version
+
+	var nonce []byte
+	{
+		if nonce, err = base64.RawStdEncoding.DecodeString(j.NonceBase64); err != nil {
+			return err
+		}
+	}
+
+	packet.Nonce = make([]byte, len(nonce))
+	copy(packet.Nonce, nonce)
+
+	var addr *net.UDPAddr
+	{
+		if addr, err = net.ResolveUDPAddr("udp", j.StringAddr); err != nil {
+			return err
+		}
+	}
+
+	packet.Address = *addr
+
+	var token []byte
+	{
+		if token, err = base64.RawStdEncoding.DecodeString(j.EncryptedTokenBase64); err != nil {
+			return err
+		}
+	}
+
+	packet.EncryptedToken = make([]byte, len(token))
+	copy(packet.EncryptedToken, token)
+
+	return nil
 }
 
 // UnmarshalBinary decodes binary data into a RelayInitPacket struct
@@ -62,6 +124,77 @@ type RelayUpdatePacket struct {
 	NumRelays uint32
 
 	PingStats []routing.RelayStatsPing
+
+	BytesReceived uint64
+}
+
+type packetMetadata struct {
+	ID          uint64 `json:"Id"` // OLD RELAY ONLY: not the right id for typical use, this is a fnv1a-64 hash of its name (firestore id), not the address which reference/new relays use
+	PingKey     []byte `json:"PingKey"`
+	Role        string `json:"Role"`
+	Shutdown    bool   `json:"Shutdown"`
+	Group       string `json:"Group"`
+	TokenBase64 string `json:"PublicKey"`
+}
+
+type trafficStats struct {
+	BytesPaidTx        uint64 `json:"BytesPaidTx"`
+	BytesPaidRx        uint64 `json:"BytesPaidRx"`
+	BytesManagementTx  uint64 `json:"BytesManagementTx"`
+	BytesManagementRx  uint64 `json:"BytesManagementRx"`
+	BytesMeasurementTx uint64 `json:"BytesMeasurementTx"`
+	BytesMeasurementRx uint64 `json:"BytesMeasurementRx"`
+	BytesInvalidRx     uint64 `json:"BytesInvalidRx"`
+	SessionCount       uint64 `json:"SessionCount"`
+	FlowCount          uint64 `json:"FlowCount"`
+}
+
+type RelayUpdateRequestJSON struct {
+	Version      uint32                   `json:"version"`
+	StringAddr   string                   `json:"relay_address"`
+	Metadata     packetMetadata           `json:"Metadata"`
+	Timestamp    uint64                   `json:"Timestamp"`
+	Signature    []byte                   `json:"Signature"`
+	Usage        float32                  `json:"Usage"`
+	TrafficStats trafficStats             `json:"TrafficStats"`
+	PingStats    []routing.RelayStatsPing `json:"PingStats"`
+	RelayName    string                   `json:"relay_name"`
+}
+type RelayUpdateResponseJSON struct {
+	RelaysToPing []routing.LegacyPingData `json:"ping_data"`
+}
+
+func (j *RelayUpdateRequestJSON) ToUpdatePacket(packet *RelayUpdatePacket) error {
+	var err error
+
+	packet.Version = j.Version
+
+	var addr *net.UDPAddr
+	{
+		if addr, err = net.ResolveUDPAddr("udp", j.StringAddr); err != nil {
+			return err
+		}
+	}
+
+	packet.Address = *addr
+
+	var token []byte
+	{
+		if token, err = base64.StdEncoding.DecodeString(j.Metadata.TokenBase64); err != nil {
+			return err
+		}
+	}
+
+	packet.Token = make([]byte, len(token))
+	copy(packet.Token, token)
+
+	packet.NumRelays = uint32(len(j.PingStats))
+	packet.PingStats = make([]routing.RelayStatsPing, packet.NumRelays)
+	copy(packet.PingStats, j.PingStats)
+
+	packet.BytesReceived = j.TrafficStats.BytesMeasurementRx
+
+	return nil
 }
 
 // UnmarshalBinary decodes the binary data into a RelayUpdatePacket struct
@@ -93,12 +226,16 @@ func (r *RelayUpdatePacket) UnmarshalBinary(buff []byte) error {
 		}
 	}
 
+	if !encoding.ReadUint64(buff, &index, &r.BytesReceived) {
+		return errors.New("invalid packet")
+	}
+
 	return nil
 }
 
 // MarshalBinary ...
 func (r RelayUpdatePacket) MarshalBinary() ([]byte, error) {
-	data := make([]byte, 4+4+len(r.Address.String())+routing.EncryptedTokenSize+4+20*len(r.PingStats))
+	data := make([]byte, r.size())
 
 	index := 0
 	encoding.WriteUint32(data, &index, r.Version)
@@ -115,5 +252,11 @@ func (r RelayUpdatePacket) MarshalBinary() ([]byte, error) {
 		encoding.WriteUint32(data, &index, math.Float32bits(stats.PacketLoss))
 	}
 
+	encoding.WriteUint64(data, &index, r.BytesReceived)
+
 	return data, nil
+}
+
+func (r *RelayUpdatePacket) size() uint {
+	return uint(4 + 4 + len(r.Address.String()) + routing.EncryptedTokenSize + 4 + 20*len(r.PingStats) + 8)
 }

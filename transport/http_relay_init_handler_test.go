@@ -5,7 +5,9 @@ import (
 	"crypto/rand"
 	crand "crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	mrand "math/rand"
 	"net"
@@ -29,7 +31,29 @@ import (
 	"golang.org/x/crypto/nacl/box"
 )
 
-func relayInitAssertions(t *testing.T, relay routing.Relay, body []byte, expectedCode int, geoClient *routing.GeoClient, ipfunc routing.LocateIPFunc, inMemory *storage.InMemory, redisClient *redis.Client, routerPrivateKey []byte) *httptest.ResponseRecorder {
+func getRelayKeyPair(t *testing.T) (pubKey []byte, privKey []byte) {
+	key := os.Getenv("RELAY_PUBLIC_KEY")
+	assert.NotEqual(t, 0, len(key))
+	pubKey, err := base64.StdEncoding.DecodeString(key)
+	assert.NoError(t, err)
+
+	key = os.Getenv("RELAY_PRIVATE_KEY")
+	assert.NotEqual(t, 0, len(key))
+	privKey, err = base64.StdEncoding.DecodeString(key)
+	assert.NoError(t, err)
+
+	return pubKey, privKey
+}
+
+func initOctetStreamAssertions(t *testing.T, relay routing.Relay, body []byte, expectedCode int, geoClient *routing.GeoClient, ipfunc routing.LocateIPFunc, inMemory *storage.InMemory, redisClient *redis.Client, routerPrivateKey []byte) *httptest.ResponseRecorder {
+	return relayInitAssertions(t, "application/octet-stream", relay, body, expectedCode, geoClient, ipfunc, inMemory, redisClient, routerPrivateKey)
+}
+
+func initJSONAssertions(t *testing.T, relay routing.Relay, body []byte, expectedCode int, geoClient *routing.GeoClient, ipfunc routing.LocateIPFunc, inMemory *storage.InMemory, redisClient *redis.Client, routerPrivateKey []byte) *httptest.ResponseRecorder {
+	return relayInitAssertions(t, "application/json", relay, body, expectedCode, geoClient, ipfunc, inMemory, redisClient, routerPrivateKey)
+}
+
+func relayInitAssertions(t *testing.T, contentType string, relay routing.Relay, body []byte, expectedCode int, geoClient *routing.GeoClient, ipfunc routing.LocateIPFunc, inMemory *storage.InMemory, redisClient *redis.Client, routerPrivateKey []byte) *httptest.ResponseRecorder {
 	if redisClient == nil {
 		redisServer, _ := miniredis.Run()
 		redisClient = redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
@@ -73,6 +97,7 @@ func relayInitAssertions(t *testing.T, relay routing.Relay, body []byte, expecte
 
 	recorder := httptest.NewRecorder()
 	request, _ := http.NewRequest("POST", "/relay_init", bytes.NewBuffer(body))
+	request.Header.Add("Content-Type", contentType)
 
 	if inMemory == nil {
 		rtodcnameMap := make(map[uint32]string)
@@ -84,13 +109,25 @@ func relayInitAssertions(t *testing.T, relay routing.Relay, body []byte, expecte
 				PublicKey: customerPublicKey[8:],
 			},
 
-			LocalRelay: &routing.Relay{
-				PublicKey: relayPublicKey,
-			},
+			LocalRelays: []routing.Relay{
+				routing.Relay{
+					ID:        crypto.HashID("127.0.0.1:40000"),
+					PublicKey: relayPublicKey,
+					Latitude:  13,
+					Longitude: 13,
+				}},
 		}
 	}
 
-	handler := transport.RelayInitHandlerFunc(log.NewNopLogger(), redisClient, geoClient, ipfunc, inMemory, &metrics.NoOpHandler{}, routerPrivateKey)
+	handler := transport.RelayInitHandlerFunc(log.NewNopLogger(), &transport.CommonRelayInitFuncParams{
+		RedisClient:      redisClient,
+		GeoClient:        geoClient,
+		IpLocator:        ipfunc,
+		Storer:           inMemory,
+		Duration:         &metrics.EmptyGauge{},
+		Counter:          &metrics.EmptyCounter{},
+		RouterPrivateKey: routerPrivateKey,
+	})
 
 	handler(recorder, request)
 
@@ -117,7 +154,7 @@ func TestRelayInitHandler(t *testing.T) {
 				Name: "some datacenter",
 			},
 		}
-		relayInitAssertions(t, relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
+		initOctetStreamAssertions(t, relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
 	})
 
 	t.Run("version is invalid", func(t *testing.T) {
@@ -136,7 +173,7 @@ func TestRelayInitHandler(t *testing.T) {
 				Name: "some datacenter",
 			},
 		}
-		relayInitAssertions(t, relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
+		initOctetStreamAssertions(t, relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
 	})
 
 	t.Run("address is invalid", func(t *testing.T) {
@@ -181,7 +218,7 @@ func TestRelayInitHandler(t *testing.T) {
 			},
 			PublicKey: relayPublicKey,
 		}
-		relayInitAssertions(t, relay, buff, http.StatusBadRequest, nil, nil, nil, nil, routerPrivateKey[:])
+		initOctetStreamAssertions(t, relay, buff, http.StatusUnprocessableEntity, nil, nil, nil, nil, routerPrivateKey[:])
 	})
 
 	t.Run("encryption token is 0'ed", func(t *testing.T) {
@@ -210,7 +247,7 @@ func TestRelayInitHandler(t *testing.T) {
 				Name: "some datacenter",
 			},
 		}
-		relayInitAssertions(t, relay, buff, http.StatusUnauthorized, nil, nil, nil, nil, routerPrivateKey[:])
+		initOctetStreamAssertions(t, relay, buff, http.StatusUnauthorized, nil, nil, nil, nil, routerPrivateKey[:])
 	})
 
 	t.Run("nonce bytes are 0'ed", func(t *testing.T) {
@@ -254,7 +291,7 @@ func TestRelayInitHandler(t *testing.T) {
 			},
 			PublicKey: relayPublicKey,
 		}
-		relayInitAssertions(t, relay, buff, http.StatusOK, nil, nil, nil, nil, routerPrivateKey[:])
+		initOctetStreamAssertions(t, relay, buff, http.StatusOK, nil, nil, nil, nil, routerPrivateKey[:])
 	})
 
 	t.Run("relay already exists", func(t *testing.T) {
@@ -324,7 +361,7 @@ func TestRelayInitHandler(t *testing.T) {
 			},
 			PublicKey: relayPublicKey,
 		}
-		relayInitAssertions(t, relay, buff, http.StatusConflict, nil, nil, nil, redisClient, routerPrivateKey[:])
+		initOctetStreamAssertions(t, relay, buff, http.StatusConflict, nil, nil, nil, redisClient, routerPrivateKey[:])
 	})
 
 	t.Run("could not lookup relay location", func(t *testing.T) {
@@ -373,8 +410,10 @@ func TestRelayInitHandler(t *testing.T) {
 				Name: "some datacenter",
 			},
 			PublicKey: relayPublicKey,
+			Latitude:  13,
+			Longitude: 13,
 		}
-		relayInitAssertions(t, relay, buff, http.StatusInternalServerError, nil, ipfunc, nil, redisClient, routerPrivateKey[:])
+		initOctetStreamAssertions(t, relay, buff, http.StatusOK, nil, ipfunc, nil, redisClient, routerPrivateKey[:])
 	})
 
 	t.Run("failed to get relay from configstore", func(t *testing.T) {
@@ -423,7 +462,7 @@ func TestRelayInitHandler(t *testing.T) {
 
 		inMemory := &storage.InMemory{} // Have empty storage to fail lookup
 
-		relayInitAssertions(t, relay, buff, http.StatusInternalServerError, nil, nil, inMemory, redisClient, routerPrivateKey[:])
+		initOctetStreamAssertions(t, relay, buff, http.StatusInternalServerError, nil, nil, inMemory, redisClient, routerPrivateKey[:])
 	})
 
 	t.Run("Failed to get relay from redis", func(t *testing.T) {
@@ -469,7 +508,7 @@ func TestRelayInitHandler(t *testing.T) {
 			},
 			PublicKey: relayPublicKey,
 		}
-		relayInitAssertions(t, relay, buff, http.StatusNotFound, nil, nil, nil, redisClient, routerPrivateKey[:])
+		initOctetStreamAssertions(t, relay, buff, http.StatusNotFound, nil, nil, nil, redisClient, routerPrivateKey[:])
 	})
 
 	t.Run("valid", func(t *testing.T) {
@@ -537,7 +576,7 @@ func TestRelayInitHandler(t *testing.T) {
 			PublicKey: relayPublicKey,
 		}
 
-		recorder := relayInitAssertions(t, relay, buff, http.StatusOK, &geoClient, ipfunc, nil, redisClient, routerPrivateKey[:])
+		recorder := initOctetStreamAssertions(t, relay, buff, http.StatusOK, &geoClient, ipfunc, nil, redisClient, routerPrivateKey[:])
 
 		header := recorder.Header()
 		contentType, _ := header["Content-Type"]
@@ -586,5 +625,227 @@ func TestRelayInitHandler(t *testing.T) {
 			assert.Equal(t, location.Latitude, math.Round(relay.Latitude*1000)/1000)
 			assert.Equal(t, location.Longitude, math.Round(relay.Longitude*1000)/1000)
 		}
+	})
+
+	t.Run("json version", func(t *testing.T) {
+		t.Run("unparsable json", func(t *testing.T) {
+			JSONData := "{" // basic but gets the job done
+			buff := []byte(JSONData)
+			relay := routing.Relay{
+				ID: crypto.HashID(addr),
+				Datacenter: routing.Datacenter{
+					Name: "some datacenter",
+				},
+			}
+			initJSONAssertions(t, relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
+		})
+
+		t.Run("nonce is not valid base64", func(t *testing.T) {
+			routerPublicKey, _, err := box.GenerateKey(rand.Reader)
+			assert.NoError(t, err)
+
+			_, relayPrivateKey := getRelayKeyPair(t)
+
+			addr := "127.0.0.1:40000"
+			udpAddr, _ := net.ResolveUDPAddr("udp", addr)
+
+			nonce := make([]byte, crypto.NonceSize)
+			crand.Read(nonce)
+
+			token := make([]byte, crypto.KeySize)
+			crand.Read(token)
+			encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
+			b64EncToken := base64.StdEncoding.EncodeToString(encryptedToken)
+
+			buff := []byte(fmt.Sprintf(`
+			{
+				"magic_request_protection": %d,
+				"relay_address": "%s",
+				"relay_port": %d,
+				"nonce": "%s",
+				"encrypted_token": "%s"
+			}
+			`, transport.InitRequestMagic, udpAddr.String(), udpAddr.Port, "\n\t\n\t?ih8h9q8qhhaq", b64EncToken))
+			relay := routing.Relay{
+				ID: crypto.HashID(addr),
+				Datacenter: routing.Datacenter{
+					Name: "some datacenter",
+				},
+			}
+			initJSONAssertions(t, relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
+		})
+
+		t.Run("udp address is not valid", func(t *testing.T) {
+			routerPublicKey, _, err := box.GenerateKey(rand.Reader)
+			assert.NoError(t, err)
+
+			_, relayPrivateKey := getRelayKeyPair(t)
+
+			nonce := make([]byte, crypto.NonceSize)
+			crand.Read(nonce)
+			b64Nonce := base64.StdEncoding.EncodeToString(nonce)
+
+			token := make([]byte, crypto.KeySize)
+			crand.Read(token)
+			encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
+			b64EncToken := base64.StdEncoding.EncodeToString(encryptedToken)
+
+			buff := []byte(fmt.Sprintf(`
+			{
+				"magic_request_protection": %d,
+				"relay_address": "%s",
+				"relay_port": %d,
+				"nonce": "%s",
+				"encrypted_token": "%s"
+			}
+			`, transport.InitRequestMagic, "invalid address", 0, b64Nonce, b64EncToken))
+			relay := routing.Relay{
+				ID: crypto.HashID(addr),
+				Datacenter: routing.Datacenter{
+					Name: "some datacenter",
+				},
+			}
+			initJSONAssertions(t, relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
+		})
+
+		t.Run("encrypted token is not valid base64", func(t *testing.T) {
+			addr := "127.0.0.1:40000"
+			udpAddr, _ := net.ResolveUDPAddr("udp", addr)
+
+			nonce := make([]byte, crypto.NonceSize)
+			crand.Read(nonce)
+			b64Nonce := base64.StdEncoding.EncodeToString(nonce)
+
+			buff := []byte(fmt.Sprintf(`
+			{
+				"magic_request_protection": %d,
+				"relay_address": "%s",
+				"relay_port": %d,
+				"nonce": "%s",
+				"encrypted_token": "%s"
+			}
+			`, transport.InitRequestMagic, udpAddr.String(), udpAddr.Port, b64Nonce, "\n\t\n\t?ih8h9q8qhhaq"))
+			relay := routing.Relay{
+				ID: crypto.HashID(addr),
+				Datacenter: routing.Datacenter{
+					Name: "some datacenter",
+				},
+			}
+			initJSONAssertions(t, relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
+		})
+
+		t.Run("valid", func(t *testing.T) {
+			redisServer, _ := miniredis.Run()
+			redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+			key := os.Getenv("RELAY_PUBLIC_KEY")
+			assert.NotEqual(t, 0, len(key))
+			relayPublicKey, err := base64.StdEncoding.DecodeString(key)
+			assert.NoError(t, err)
+
+			key = os.Getenv("RELAY_PRIVATE_KEY")
+			assert.NotEqual(t, 0, len(key))
+			relayPrivateKey, err := base64.StdEncoding.DecodeString(key)
+			assert.NoError(t, err)
+
+			routerPublicKey, routerPrivateKey, err := box.GenerateKey(rand.Reader)
+			assert.NoError(t, err)
+
+			var geoClient routing.GeoClient
+			{
+				redisServer, _ := miniredis.Run()
+				redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+				geoClient = routing.GeoClient{
+					RedisClient: redisClient,
+					Namespace:   "RELAY_LOCATIONS",
+				}
+			}
+
+			location := routing.Location{
+				Latitude:  math.Round(mrand.Float64()*1000) / 1000,
+				Longitude: math.Round(mrand.Float64()*1000) / 1000,
+			}
+
+			ipfunc := func(ip net.IP) (routing.Location, error) {
+				return location, nil
+			}
+
+			nonce := make([]byte, crypto.NonceSize)
+			crand.Read(nonce)
+
+			addr := "127.0.0.1:40000"
+			udpAddr, _ := net.ResolveUDPAddr("udp", addr)
+
+			token := make([]byte, crypto.KeySize)
+			crand.Read(token)
+
+			encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
+
+			before := uint64(time.Now().Unix()) * 1000 // convert to millis
+
+			b64Nonce := base64.StdEncoding.EncodeToString(nonce)
+			b64EncToken := base64.StdEncoding.EncodeToString(encryptedToken)
+
+			buff := []byte(fmt.Sprintf(`
+			{
+				"magic_request_protection": %d,
+				"relay_address": "%s",
+				"relay_port": %d,
+				"nonce": "%s",
+				"encrypted_token": "%s"
+			}
+			`, transport.InitRequestMagic, udpAddr.String(), udpAddr.Port, b64Nonce, b64EncToken))
+
+			relay := routing.Relay{
+				ID: crypto.HashID(addr),
+				Datacenter: routing.Datacenter{
+					Name: "some datacenter",
+				},
+				PublicKey: relayPublicKey,
+			}
+
+			recorder := initJSONAssertions(t, relay, buff, http.StatusOK, &geoClient, ipfunc, nil, redisClient, routerPrivateKey[:])
+
+			header := recorder.Header()
+			contentType, _ := header["Content-Type"]
+
+			expected := routing.Relay{
+				ID:   crypto.HashID(addr),
+				Addr: *udpAddr,
+			}
+
+			resp := redisClient.HGet(routing.HashKeyAllRelays, expected.Key())
+
+			var actual routing.Relay
+			bin, _ := resp.Bytes()
+			assert.Nil(t, actual.UnmarshalBinary(bin))
+
+			body := recorder.Body.Bytes()
+
+			var response transport.RelayInitResponseJSON
+			assert.Nil(t, json.Unmarshal(body, &response))
+
+			if assert.GreaterOrEqual(t, len(contentType), 1) {
+				assert.Equal(t, "application/json", contentType[0])
+			}
+			assert.LessOrEqual(t, before, response.Timestamp)
+			assert.GreaterOrEqual(t, uint64(time.Now().Unix()*1000), response.Timestamp)
+
+			assert.Equal(t, expected.ID, actual.ID)
+			assert.Equal(t, expected.Name, actual.Name)
+			assert.Equal(t, expected.Addr, actual.Addr)
+			assert.NotZero(t, actual.LastUpdateTime)
+			assert.Len(t, actual.PublicKey, 32)
+
+			// only added one relay so it should be the only one returned by this
+			relaysInLocation, _ := geoClient.RelaysWithin(location.Latitude, location.Longitude, 1, "km")
+			if assert.Len(t, relaysInLocation, 1) {
+				relay := relaysInLocation[0]
+
+				assert.Equal(t, crypto.HashID(addr), relay.ID)
+				assert.Equal(t, location.Latitude, math.Round(relay.Latitude*1000)/1000)
+				assert.Equal(t, location.Longitude, math.Round(relay.Longitude*1000)/1000)
+			}
+		})
 	})
 }

@@ -3,8 +3,10 @@
 
 #include "session.hpp"
 
+#include "core/packet.hpp"
 #include "core/relay_manager.hpp"
 #include "core/router_info.hpp"
+#include "core/token.hpp"
 
 #include "crypto/keychain.hpp"
 
@@ -12,88 +14,88 @@
 
 #include "util/throughput_logger.hpp"
 
-#include "relay/relay_route_token.hpp"
-#include "relay/relay_continue_token.hpp"
+#include "net/buffered_sender.hpp"
 
 namespace core
 {
+  const size_t MaxPacketsToReceive = 1024;
+
+  // same as receive, the amount of output depends on the input
+  const size_t MaxPacketsToSend = MaxPacketsToReceive;
+
   class PacketProcessor
   {
    public:
-    PacketProcessor(const util::Clock& relayClock,
+    PacketProcessor(os::Socket& socket,
+     const util::Clock& relayClock,
      const crypto::Keychain& keychain,
      const core::RouterInfo& routerInfo,
      core::SessionMap& sessions,
      core::RelayManager& relayManager,
-     volatile bool& handle,
-     util::ThroughputLogger* logger);
+     const volatile bool& handle,
+     util::ThroughputLogger& logger);
     ~PacketProcessor() = default;
 
-    void listen(os::Socket& socket, std::condition_variable& var, std::atomic<bool>& readyToReceive);
+    void process(std::condition_variable& var, std::atomic<bool>& readyToReceive);
 
    private:
+    const os::Socket& mSocket;
     const util::Clock& mRelayClock;
     const crypto::Keychain& mKeychain;
     const core::RouterInfo mRouterInfo;
     core::SessionMap& mSessionMap;
     core::RelayManager& mRelayManager;
-    volatile bool& mShouldProcess;
+    const volatile bool& mShouldProcess;
+    util::ThroughputLogger& mLogger;
 
-    util::ThroughputLogger* mLogger;
+    // perf based on using 2 packet processors, original benchmark (using sendto()) is 72 Mb/s
 
-    // Marks the first byte as a pong packet and sends it back
-    void handleRelayPingPacket(
-     os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
+    // basicaly a slightly less effecient sento(), no noticable Mb/s diff
+    // net::BufferedSender<1, 0> mSender;
 
-    // Processes the pong packet by increasing the sequence number and getting the time diff
-    void handleRelayPongPacket(std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
+    // caused a decrease in perf, probably timing out too often, down to 56 Mb/s
+    // net::BufferedSender<60, 40> mSender;
 
-    void handleRouteRequestPacket(
-     os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, net::Address& from);
+    // caused a gain, but only because the timeout wasn't present,
+    // further adds to the timeout being responsable for the perf decrease, about 80-83 Mb/s
+    // net::BufferedSender<40, 0> mSender;
 
-    void handleRouteResponsePacket(
-     os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, net::Address& from);
+    // similar gain, but ranges from 56 Mb/s to 84 Mb/s
+    // net::BufferedSender<400, 0> mSender;
 
-    void handleContinueRequestPacket(os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
+    // massive decrease, don't even bother
+    // net::BufferedSender<100, 100> mSender;
 
-    void handleContinueResponsePacket(os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
+    // Stable gain to 84 Mb/s, ideal but test func fails due to receiving ~80 less packets than expected
+    // net::BufferedSender<10, 1000> mSender;
 
-    void handleClientToServerPacket(os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
+    // gets test func to pass
+    // net::BufferedSender<3, 750> mSender;
 
-    void handleServerToClientPacket(os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
+    void processPacket(GenericPacket<>& packet, mmsghdr& header, GenericPacketBuffer<MaxPacketsToSend>& outputBuff);
 
-    void handleSessionPingPacket(os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
-
-    void handleSessionPongPacket(os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size);
-
-    void handleNearPingPacket(
-     os::Socket& socket, std::array<uint8_t, RELAY_MAX_PACKET_BYTES>& packet, const int size, net::Address& from);
-
-    auto timestamp() -> uint64_t;
-    auto tokenIsExpired(relay::relay_route_token_t& token) -> bool;
-    auto tokenIsExpired(relay::relay_continue_token_t& token) -> bool;
-    auto sessionIsExpired(core::SessionPtr session) -> bool;
+    bool getAddrFromMsgHdr(net::Address& addr, const msghdr& hdr) const;
   };
 
-  inline auto PacketProcessor::timestamp() -> uint64_t
+  [[gnu::always_inline]] inline bool PacketProcessor::getAddrFromMsgHdr(net::Address& addr, const msghdr& hdr) const
   {
-    auto seconds_since_initialize = mRelayClock.elapsed<util::Second>();
-    return mRouterInfo.InitalizeTimeInSeconds + seconds_since_initialize;
-  }
+    bool retval = false;
+    auto sockad = reinterpret_cast<sockaddr*>(hdr.msg_name);
 
-  inline auto PacketProcessor::tokenIsExpired(relay::relay_route_token_t& token) -> bool
-  {
-    return token.expire_timestamp < timestamp();
-  }
+    switch (sockad->sa_family) {
+      case AF_INET: {
+        auto sin = reinterpret_cast<sockaddr_in*>(sockad);
+        addr = *sin;
+        retval = true;
+      } break;
+      case AF_INET6: {
+        auto sin = reinterpret_cast<sockaddr_in6*>(sockad);
+        addr = *sin;
+        retval = true;
+      } break;
+    }
 
-  inline auto PacketProcessor::tokenIsExpired(relay::relay_continue_token_t& token) -> bool
-  {
-    return token.expire_timestamp < timestamp();
-  }
-
-  inline auto PacketProcessor::sessionIsExpired(core::SessionPtr session) -> bool
-  {
-    return session->ExpireTimestamp < timestamp();
+    return retval;
   }
 }  // namespace core
 #endif

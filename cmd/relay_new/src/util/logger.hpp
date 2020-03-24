@@ -14,7 +14,7 @@ extern util::Console _console_;
 #ifndef NDEBUG
 #define LogDebug(...)                                          \
   _console_.log(__FILE__, " (", __LINE__, "): ", __VA_ARGS__); \
-  std::cout << std::flush
+  _console_.flush();
 // Define regular logging
 #define Log(...) LogDebug(__VA_ARGS__)
 #elif defined BENCH_BUILD
@@ -27,6 +27,8 @@ extern util::Console _console_;
 #define Log(...) _console_.log(__VA_ARGS__)
 #endif
 
-#define LogError(...) Log(__VA_ARGS__); perror("\tOS Msg")
+#define LogError(...) \
+  Log(__VA_ARGS__);   \
+  perror("\tOS Msg")
 
 #endif

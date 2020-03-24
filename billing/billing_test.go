@@ -2,7 +2,6 @@ package billing_test
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -14,37 +13,18 @@ import (
 
 func TestNewPubSubBiller(t *testing.T) {
 	// Test base case
-	_, err := billing.NewBiller(context.Background(), log.NewNopLogger(), "", "", nil, nil)
+	_, err := billing.NewBiller(context.Background(), log.NewNopLogger(), "", "", nil)
 	assert.NoError(t, err)
-
-	// Test new client error case
-	_, err = billing.NewBiller(context.Background(), log.NewNopLogger(), "", "", nil, &billing.Descriptor{
-		ClientCount: 1,
-	})
-	assert.Error(t, err)
 
 	// Test success case
-
-	// Load the gcp credentials
-	gcpcreds, ok := os.LookupEnv("GCP_CREDENTIALS")
-	if !ok {
-		t.Skip() // Skip the test if GCP credentials aren't defined, since it is optional
+	projectID := os.Getenv("GOOGLE_PROJECT_ID")
+	if projectID == "" {
+		t.Skip() // Ignore this test if billing isn't configured
 	}
 
-	assert.NotEmpty(t, gcpcreds)
-
-	var gcpcredsjson []byte
-
-	_, err = os.Stat(gcpcreds)
-	assert.NoError(t, err)
-
-	gcpcredsjson, err = ioutil.ReadFile(gcpcreds)
-	assert.NoError(t, err)
-
-	projectID := os.Getenv("BILLING_PUBSUB_PROJECT")
 	assert.NotEmpty(t, projectID)
 
-	topicID := os.Getenv("BILLING_PUBSUB_TOPIC")
+	topicID := os.Getenv("GOOGLE_PUBSUB_TOPIC_BILLING")
 	assert.NotEmpty(t, topicID)
 
 	descriptor := &billing.Descriptor{
@@ -56,7 +36,7 @@ func TestNewPubSubBiller(t *testing.T) {
 		Timeout:             time.Minute,
 		ResultChannelBuffer: 10000 * 60 * 10,
 	}
-	_, err = billing.NewBiller(context.Background(), log.NewNopLogger(), projectID, topicID, gcpcredsjson, descriptor)
+	_, err = billing.NewBiller(context.Background(), log.NewNopLogger(), projectID, topicID, descriptor)
 	assert.NoError(t, err)
 	assert.Equal(t, billing.Descriptor{
 		ClientCount:         1,
@@ -83,27 +63,13 @@ func TestPubSubBill(t *testing.T) {
 	assert.EqualError(t, err, "billing: clients not initialized")
 
 	// Success case
-
-	// Load the gcp credentials
-	gcpcreds, ok := os.LookupEnv("GCP_CREDENTIALS")
-	if !ok {
-		t.Skip() // Skip the test if GCP credentials aren't defined, since it is optional
+	projectID := os.Getenv("GOOGLE_PROJECT_ID")
+	if projectID == "" {
+		t.Skip() // Ignore this test if billing isn't configured
 	}
-
-	assert.NotEmpty(t, gcpcreds)
-
-	var gcpcredsjson []byte
-
-	_, err = os.Stat(gcpcreds)
-	assert.NoError(t, err)
-
-	gcpcredsjson, err = ioutil.ReadFile(gcpcreds)
-	assert.NoError(t, err)
-
-	projectID := os.Getenv("BILLING_PUBSUB_PROJECT")
 	assert.NotEmpty(t, projectID)
 
-	topicID := os.Getenv("BILLING_PUBSUB_TOPIC")
+	topicID := os.Getenv("GOOGLE_PUBSUB_TOPIC_BILLING")
 	assert.NotEmpty(t, topicID)
 
 	descriptor := &billing.Descriptor{
@@ -115,7 +81,7 @@ func TestPubSubBill(t *testing.T) {
 		Timeout:             time.Minute,
 		ResultChannelBuffer: 10000 * 60 * 10,
 	}
-	biller, err = billing.NewBiller(context.Background(), log.NewNopLogger(), projectID, topicID, gcpcredsjson, descriptor)
+	biller, err = billing.NewBiller(context.Background(), log.NewNopLogger(), projectID, topicID, descriptor)
 	assert.NoError(t, err)
 	assert.Equal(t, billing.Descriptor{
 		ClientCount:         1,

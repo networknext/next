@@ -2,6 +2,8 @@ package transport_test
 
 import (
 	"bytes"
+	"encoding/base64"
+	"encoding/json"
 	"math/rand"
 	"net"
 	"net/http"
@@ -16,6 +18,8 @@ import (
 	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
+	"github.com/networknext/backend/stats"
+	"github.com/networknext/backend/storage"
 
 	"github.com/networknext/backend/transport"
 	"github.com/stretchr/testify/assert"
@@ -37,7 +41,15 @@ func seedRedis(t *testing.T, redisServer *miniredis.Miniredis, addressesToAdd []
 
 }
 
-func relayUpdateAssertions(t *testing.T, body []byte, expectedCode int, redisClient *redis.Client, statsdb *routing.StatsDatabase) *httptest.ResponseRecorder {
+func updateJSONAssertions(t *testing.T, body []byte, expectedCode int, redisClient *redis.Client, statsdb *routing.StatsDatabase) *httptest.ResponseRecorder {
+	return relayUpdateAssertions(t, "application/json", body, expectedCode, redisClient, statsdb)
+}
+
+func updateOctetStreamAssertions(t *testing.T, body []byte, expectedCode int, redisClient *redis.Client, statsdb *routing.StatsDatabase) *httptest.ResponseRecorder {
+	return relayUpdateAssertions(t, "application/octet-stream", body, expectedCode, redisClient, statsdb)
+}
+
+func relayUpdateAssertions(t *testing.T, contentType string, body []byte, expectedCode int, redisClient *redis.Client, statsdb *routing.StatsDatabase) *httptest.ResponseRecorder {
 	if redisClient == nil {
 		redisServer, _ := miniredis.Run()
 		redisClient = redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
@@ -49,8 +61,16 @@ func relayUpdateAssertions(t *testing.T, body []byte, expectedCode int, redisCli
 
 	recorder := httptest.NewRecorder()
 	request, _ := http.NewRequest("POST", "/relay_update", bytes.NewBuffer(body))
+	request.Header.Add("Content-Type", contentType)
 
-	handler := transport.RelayUpdateHandlerFunc(log.NewNopLogger(), redisClient, statsdb, &metrics.NoOpHandler{})
+	handler := transport.RelayUpdateHandlerFunc(log.NewNopLogger(), &transport.CommonRelayUpdateFuncParams{
+		RedisClient:           redisClient,
+		StatsDb:               statsdb,
+		Duration:              &metrics.EmptyGauge{},
+		Counter:               &metrics.EmptyCounter{},
+		TrafficStatsPublisher: &stats.NoOpTrafficStatsPublisher{},
+		Storer:                &storage.InMemory{},
+	})
 
 	handler(recorder, request)
 
@@ -62,7 +82,7 @@ func relayUpdateAssertions(t *testing.T, body []byte, expectedCode int, redisCli
 func TestRelayUpdateHandler(t *testing.T) {
 	t.Run("relay data is invalid", func(t *testing.T) {
 		buff := make([]byte, 10) // invalid relay packet size
-		relayUpdateAssertions(t, buff, http.StatusBadRequest, nil, nil)
+		updateOctetStreamAssertions(t, buff, http.StatusUnprocessableEntity, nil, nil)
 	})
 
 	t.Run("relay public token bytes not equal", func(t *testing.T) {
@@ -96,7 +116,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 		redisServer.HSet(routing.HashKeyAllRelays, entry.Key(), string(raw))
 
 		buff, _ := packet.MarshalBinary()
-		relayUpdateAssertions(t, buff, http.StatusBadRequest, redisClient, nil)
+		updateOctetStreamAssertions(t, buff, http.StatusBadRequest, redisClient, nil)
 	})
 
 	t.Run("address is invalid", func(t *testing.T) {
@@ -107,7 +127,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 		}
 		buff, _ := packet.MarshalBinary()
 		buff[10] = 'x' // assign this index (which should be the first item in the address) as the letter 'x' making it invalid
-		relayUpdateAssertions(t, buff, http.StatusBadRequest, nil, nil)
+		updateOctetStreamAssertions(t, buff, http.StatusUnprocessableEntity, nil, nil)
 	})
 
 	t.Run("number of relays exceeds max", func(t *testing.T) {
@@ -119,7 +139,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 			PingStats: make([]routing.RelayStatsPing, 1025),
 		}
 		buff, _ := packet.MarshalBinary()
-		relayUpdateAssertions(t, buff, http.StatusBadRequest, nil, nil)
+		updateOctetStreamAssertions(t, buff, http.StatusBadRequest, nil, nil)
 	})
 
 	t.Run("relay not found", func(t *testing.T) {
@@ -131,7 +151,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 			PingStats: make([]routing.RelayStatsPing, 3),
 		}
 		buff, _ := packet.MarshalBinary()
-		relayUpdateAssertions(t, buff, http.StatusNotFound, nil, nil)
+		updateOctetStreamAssertions(t, buff, http.StatusNotFound, nil, nil)
 	})
 
 	t.Run("valid", func(t *testing.T) {
@@ -144,7 +164,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 		packet := transport.RelayUpdatePacket{
 			NumRelays: uint32(len(statIps)),
 			Address:   *udp,
-			Token:     make([]byte, routing.EncryptedTokenSize),
+			Token:     make([]byte, crypto.KeySize),
 		}
 
 		packet.PingStats = make([]routing.RelayStatsPing, packet.NumRelays)
@@ -174,7 +194,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 
 		buff, _ := packet.MarshalBinary()
 
-		recorder := relayUpdateAssertions(t, buff, http.StatusOK, redisClient, statsdb)
+		recorder := updateOctetStreamAssertions(t, buff, http.StatusOK, redisClient, statsdb)
 
 		res := redisClient.HGet(routing.HashKeyAllRelays, entry.Key())
 		var actual routing.Relay
@@ -192,7 +212,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 		// response assertions
 		header := recorder.Header()
 		contentType, _ := header["Content-Type"]
-		if recorder.Code == 200 {
+		if assert.NotNil(t, contentType) && assert.Len(t, contentType, 1) {
 			assert.Equal(t, "application/octet-stream", contentType[0])
 		}
 
@@ -230,5 +250,148 @@ func TestRelayUpdateHandler(t *testing.T) {
 
 		assert.NotContains(t, relaysToPingIDs, entry.ID)
 		assert.NotContains(t, relaysToPingAddrs, packet.Address)
+	})
+
+	t.Run("json version", func(t *testing.T) {
+		t.Run("unparsable json", func(t *testing.T) {
+			JSONData := "{" // basic but gets the job done
+			buff := []byte(JSONData)
+			updateJSONAssertions(t, buff, http.StatusUnprocessableEntity, nil, nil)
+		})
+
+		t.Run("invalid address", func(t *testing.T) {
+			statIps := []string{"127.0.0.2:40000", "127.0.0.3:40000", "127.0.0.4:40000", "127.0.0.5:40000"}
+			token := make([]byte, crypto.KeySize)
+			b64Token := base64.StdEncoding.EncodeToString(token)
+			var request transport.RelayUpdateRequestJSON
+			request.StringAddr = "invalid address"
+			request.Metadata.TokenBase64 = b64Token
+			request.PingStats = make([]routing.RelayStatsPing, uint32(len(statIps)))
+
+			for i, addr := range statIps {
+				stats := &request.PingStats[i]
+				stats.RelayID = crypto.HashID(addr)
+				stats.RTT = rand.Float32()
+				stats.Jitter = rand.Float32()
+				stats.PacketLoss = rand.Float32()
+			}
+
+			buff, err := json.Marshal(request)
+			assert.Nil(t, err)
+
+			updateJSONAssertions(t, buff, http.StatusUnprocessableEntity, nil, nil)
+		})
+
+		t.Run("token invalid base64", func(t *testing.T) {
+			statIps := []string{"127.0.0.2:40000", "127.0.0.3:40000", "127.0.0.4:40000", "127.0.0.5:40000"}
+			var request transport.RelayUpdateRequestJSON
+			request.StringAddr = "127.0.0.1:40000"
+			request.Metadata.TokenBase64 = "invalid\n\t\nbase64"
+			request.PingStats = make([]routing.RelayStatsPing, uint32(len(statIps)))
+
+			for i, addr := range statIps {
+				stats := &request.PingStats[i]
+				stats.RelayID = crypto.HashID(addr)
+				stats.RTT = rand.Float32()
+				stats.Jitter = rand.Float32()
+				stats.PacketLoss = rand.Float32()
+			}
+
+			buff, err := json.Marshal(request)
+			assert.Nil(t, err)
+
+			updateJSONAssertions(t, buff, http.StatusUnprocessableEntity, nil, nil)
+		})
+
+		t.Run("valid", func(t *testing.T) {
+			redisServer, _ := miniredis.Run()
+			redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+			addr := "127.0.0.1:40000"
+			udp, _ := net.ResolveUDPAddr("udp", addr)
+			statsdb := routing.NewStatsDatabase()
+			statIps := []string{"127.0.0.2:40000", "127.0.0.3:40000", "127.0.0.4:40000", "127.0.0.5:40000"}
+			token := make([]byte, crypto.KeySize)
+			b64Token := base64.StdEncoding.EncodeToString(token)
+			var request transport.RelayUpdateRequestJSON
+			request.StringAddr = "127.0.0.1:40000"
+			request.Metadata.TokenBase64 = b64Token
+			request.PingStats = make([]routing.RelayStatsPing, uint32(len(statIps)))
+
+			for i, addr := range statIps {
+				stats := &request.PingStats[i]
+				stats.RelayID = crypto.HashID(addr)
+				stats.RTT = rand.Float32()
+				stats.Jitter = rand.Float32()
+				stats.PacketLoss = rand.Float32()
+			}
+
+			seedRedis(t, redisServer, statIps)
+
+			entry := routing.Relay{
+				ID:   crypto.HashID(addr),
+				Addr: *udp,
+				Datacenter: routing.Datacenter{
+					ID:   1,
+					Name: "some name",
+				},
+				PublicKey:      make([]byte, crypto.KeySize),
+				LastUpdateTime: uint64(time.Now().Unix() - 1),
+			}
+
+			raw, _ := entry.MarshalBinary()
+			redisServer.HSet(routing.HashKeyAllRelays, entry.Key(), string(raw))
+
+			buff, err := json.Marshal(request)
+			assert.Nil(t, err)
+
+			recorder := updateJSONAssertions(t, buff, http.StatusOK, redisClient, statsdb)
+
+			res := redisClient.HGet(routing.HashKeyAllRelays, entry.Key())
+			var actual routing.Relay
+			raw, _ = res.Bytes()
+			actual.UnmarshalBinary(raw)
+
+			assert.Equal(t, entry.ID, actual.ID)
+			assert.Equal(t, entry.Name, actual.Name)
+			assert.Equal(t, entry.Addr, actual.Addr)
+			assert.Equal(t, entry.Datacenter.ID, actual.Datacenter.ID)
+			assert.Equal(t, entry.Datacenter.Name, actual.Datacenter.Name)
+			assert.Equal(t, entry.PublicKey, actual.PublicKey)
+			assert.NotEqual(t, entry.LastUpdateTime, actual.LastUpdateTime)
+
+			// response assertions
+			header := recorder.Header()
+			contentType, _ := header["Content-Type"]
+			if assert.NotNil(t, contentType) && assert.Len(t, contentType, 1) {
+				assert.Equal(t, "application/json", contentType[0])
+			}
+
+			body := recorder.Body.Bytes()
+
+			var response transport.RelayUpdateResponseJSON
+			json.Unmarshal(body, &response)
+
+			assert.Equal(t, len(statIps), len(response.RelaysToPing))
+
+			relaysToPingIDs := make([]uint64, 0)
+			relaysToPingAddrs := make([]string, 0)
+
+			for _, data := range response.RelaysToPing {
+				relaysToPingIDs = append(relaysToPingIDs, data.ID)
+				relaysToPingAddrs = append(relaysToPingAddrs, data.Address)
+			}
+
+			assert.Contains(t, statsdb.Entries, entry.ID)
+			relations := statsdb.Entries[entry.ID]
+			for _, addr := range statIps {
+				id := crypto.HashID(addr)
+				assert.Contains(t, relaysToPingIDs, id)
+				assert.Contains(t, relaysToPingAddrs, addr)
+				assert.Contains(t, relations.Relays, id)
+			}
+
+			assert.NotContains(t, relaysToPingIDs, entry.ID)
+			assert.NotContains(t, relaysToPingAddrs, request.StringAddr)
+		})
 	})
 }

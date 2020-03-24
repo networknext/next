@@ -2,6 +2,7 @@ package routing
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"net"
 	"strconv"
@@ -22,7 +23,8 @@ const (
 	HashKeyAllRelays = "ALL_RELAYS"
 
 	// How frequently we need to recieve updates from relays to keep them in redis
-	RelayTimeout = 10 * time.Second
+	// 10 seconds + a 1 second grace period
+	RelayTimeout = 11 * time.Second
 )
 
 // Relay ...
@@ -33,6 +35,7 @@ type Relay struct {
 	Addr      net.UDPAddr
 	PublicKey []byte
 
+	Seller     Seller
 	Datacenter Datacenter
 
 	Latitude  float64
@@ -52,27 +55,73 @@ func NewRelay() Relay {
 	return relay
 }
 
+func (r *Relay) Size() uint64 {
+	return uint64(8 + 4 + len(r.Name) + 4 + len(r.Addr.String()) + 4 + len(r.Seller.ID) + 4 + len(r.Seller.Name) + 8 + 8 + 8 + 4 + len(r.Datacenter.Name) + len(r.PublicKey) + 8 + 8 + 8)
+}
+
 // UnmarshalBinary ...
 // TODO add other fields to this
 func (r *Relay) UnmarshalBinary(data []byte) error {
 	index := 0
 
 	var addr string
-	if !(encoding.ReadUint64(data, &index, &r.ID) &&
-		encoding.ReadString(data, &index, &r.Name, math.MaxInt32) && // TODO define an actual limit on this
-		encoding.ReadString(data, &index, &addr, MaxRelayAddressLength) &&
-		encoding.ReadUint64(data, &index, &r.Datacenter.ID) &&
-		encoding.ReadString(data, &index, &r.Datacenter.Name, math.MaxInt32) &&
-		encoding.ReadBytes(data, &index, &r.PublicKey, crypto.KeySize) &&
-		encoding.ReadFloat64(data, &index, &r.Latitude) &&
-		encoding.ReadFloat64(data, &index, &r.Longitude) &&
-		encoding.ReadUint64(data, &index, &r.LastUpdateTime)) {
-		return errors.New("Invalid Relay")
+	if !encoding.ReadUint64(data, &index, &r.ID) {
+		return errors.New("failed to unmarshal relay ID")
 	}
+
+	// TODO define an actual limit on this
+	if !encoding.ReadString(data, &index, &r.Name, math.MaxInt32) {
+		return errors.New("failed to unmarshal relay name")
+	}
+
+	if !encoding.ReadString(data, &index, &addr, MaxRelayAddressLength) {
+		return errors.New("failed to unmarshal relay address")
+	}
+
+	if !encoding.ReadString(data, &index, &r.Seller.ID, math.MaxInt32) {
+		return errors.New("failed to unmarshal relay seller ID")
+	}
+
+	if !encoding.ReadString(data, &index, &r.Seller.Name, math.MaxInt32) {
+		return errors.New("failed to unmarshal relay seller name")
+	}
+
+	if !encoding.ReadUint64(data, &index, &r.Seller.IngressPriceCents) {
+		return errors.New("failed to unmarshal relay seller ingress price")
+	}
+
+	if !encoding.ReadUint64(data, &index, &r.Seller.EgressPriceCents) {
+		return errors.New("failed to unmarshal relay seller egress price")
+	}
+
+	if !encoding.ReadUint64(data, &index, &r.Datacenter.ID) {
+		return errors.New("failed to unmarshal relay datacenter id")
+	}
+
+	if !encoding.ReadString(data, &index, &r.Datacenter.Name, math.MaxInt32) {
+		return errors.New("failed to unmarshal relay datacenter name")
+	}
+
+	if !encoding.ReadBytes(data, &index, &r.PublicKey, crypto.KeySize) {
+		return errors.New("failed to unmarshal relay public key")
+	}
+
+	if !encoding.ReadFloat64(data, &index, &r.Latitude) {
+		return errors.New("failed to unmarshal relay latitude")
+	}
+
+	if !encoding.ReadFloat64(data, &index, &r.Longitude) {
+		return errors.New("failed to unmarshal relay longitude")
+	}
+
+	if !encoding.ReadUint64(data, &index, &r.LastUpdateTime) {
+		return errors.New("failed to unmarshal relay last update time")
+	}
+
 	if udp, err := net.ResolveUDPAddr("udp", addr); udp != nil && err == nil {
 		r.Addr = *udp
 	} else {
-		return errors.New("Invalid relay address")
+		return errors.New("invalid relay address")
 	}
 	return nil
 }
@@ -80,15 +129,17 @@ func (r *Relay) UnmarshalBinary(data []byte) error {
 // MarshalBinary ...
 // TODO add other fields to this
 func (r Relay) MarshalBinary() (data []byte, err error) {
+	data = make([]byte, r.Size())
 	strAddr := r.Addr.String()
-	length := 8 + 4 + len(r.Name) + 4 + len(strAddr) + 8 + 4 + len(r.Datacenter.Name) + len(r.PublicKey) + 8 + 8 + 8
-
-	data = make([]byte, length)
-
 	index := 0
+
 	encoding.WriteUint64(data, &index, r.ID)
 	encoding.WriteString(data, &index, r.Name, uint32(len(r.Name)))
 	encoding.WriteString(data, &index, strAddr, uint32(len(strAddr)))
+	encoding.WriteString(data, &index, r.Seller.ID, uint32(len(r.Seller.ID)))
+	encoding.WriteString(data, &index, r.Seller.Name, uint32(len(r.Seller.Name)))
+	encoding.WriteUint64(data, &index, r.Seller.IngressPriceCents)
+	encoding.WriteUint64(data, &index, r.Seller.EgressPriceCents)
 	encoding.WriteUint64(data, &index, r.Datacenter.ID)
 	encoding.WriteString(data, &index, r.Datacenter.Name, uint32(len(r.Datacenter.Name)))
 	encoding.WriteBytes(data, &index, r.PublicKey, crypto.KeySize)
@@ -110,6 +161,10 @@ type Stats struct {
 	PacketLoss float64
 }
 
+func (s Stats) String() string {
+	return fmt.Sprintf("RTT(%f) J(%f) PL(%f)", s.RTT, s.Jitter, s.PacketLoss)
+}
+
 // RelayUpdate ...
 type RelayUpdate struct {
 	ID             uint64
@@ -119,4 +174,29 @@ type RelayUpdate struct {
 	DatacenterName string
 	PublicKey      []byte
 	Shutdown       bool
+}
+
+type RelayPingData struct {
+	ID      uint64 `json:"relay_id"`
+	Address string `json:"relay_address"`
+}
+
+type LegacyPingToken struct {
+	Timeout uint64
+	RelayID uint64
+	HMac    [32]byte
+}
+
+func (l LegacyPingToken) MarshalBinary() (data []byte, err error) {
+	data = make([]byte, 48) // ping token binary is 57 bytes
+	index := 0
+	encoding.WriteUint64(data, &index, l.Timeout)
+	encoding.WriteUint64(data, &index, l.RelayID)
+	encoding.WriteBytes(data, &index, l.HMac[:], len(l.HMac))
+	return data, nil
+}
+
+type LegacyPingData struct {
+	RelayPingData
+	PingToken string `json:"ping_info"` // base64 of LegacyPingToken binary form
 }

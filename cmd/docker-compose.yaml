@@ -11,7 +11,7 @@ services:
             context: ../
             dockerfile: ./cmd/relay_backend/Dockerfile
         ports:
-            - "40000:40000"
+            - "30000:30000"
         depends_on:
             - redis
         networks:
@@ -20,13 +20,14 @@ services:
             REDIS_HOST: redis:6379
             RELAY_PUBLIC_KEY: 9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=
             RELAY_ROUTER_PRIVATE_KEY: ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
+            PORT: 30000
 
     server_backend:
         build:
             context: ../
             dockerfile: ./cmd/server_backend/Dockerfile
         ports:
-            - "30000:30000/udp"
+            - "40000:40000/udp"
         depends_on:
             - redis
             - relay_backend
@@ -38,8 +39,9 @@ services:
             RELAY_ROUTER_PRIVATE_KEY: ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
             SERVER_BACKEND_PUBLIC_KEY: TGHKjEeHPtSgtZfDyuDPcQgtJTyRDtRvGSKvuiWWo0A=
             SERVER_BACKEND_PRIVATE_KEY: FXwFqzjGlIwUDwiq1N5Um5VUesdr4fP2hVV2cnJ+yARMYcqMR4c+1KC1l8PK4M9xCC0lPJEO1G8ZIq+6JZajQA==
-            ROUTE_MATRIX_URI: http://relay_backend:40000/route_matrix
+            ROUTE_MATRIX_URI: http://relay_backend:30000/route_matrix
             MAXMIND_DB_URI: /app/testdata/GeoIP2-City-Test.mmdb
+            PORT: 40000
 
 networks:
     nn-net:

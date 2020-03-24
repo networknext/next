@@ -28,14 +28,15 @@ The default setting is `warn` when running `make dev-relay-backend` and `make de
 - `RELAY_ROUTER_PRIVATE_KEY`: the private key of the router used to encrypt routes
 - `ROUTE_MATRIX_URI`: a URL or local file path to a route matrix binary
 - `MAXMIND_DB_URI`: local path to a `.mmdb` file for IP lookups
-- `REDIS_HOST`: address of the Redis server you want to connect to, uses the in-memory version if not supplied or invalid
+- `REDIS_HOST_RELAYS`: address of the Redis server that has the lat/long information for the relays
+- `REDIS_HOST_CACHE`: address of the Redis server(s) in comma-separated format to cache server/session data
 
 #### Optional
 
-- `GCP_CREDENTIALS`: JSON blob or path to a .json file for the GCP credentials needed
-- `BILLING_PUBSUB_PROJECT`: The project ID to use for billing in Google Pub/Sub
-- `BILLING_PUBSUB_TOPIC`: The topic ID to use for billing in Google Pub/Sub
+- `GOOGLE_APPLICATION_CREDENTIALS`: Path to a .json file for the GCP credentials needed
+- `GOOGLE_PROJECT_ID`: The Google project ID
+- `GOOGLE_PUBSUB_TOPIC_BILLING`: The topic ID to use for billing in Google Pub/Sub
 
 #### IMPORTANT
 
-Both `BILLING_PUBSUB_PROJECT` and `BILLING_PUBSUB_TOPIC` must be set to send billing entries to Google Pub/Sub.
+Both `GOOGLE_PROJECT_ID` and `GOOGLE_PUBSUB_TOPIC_BILLING` must be set to send billing entries to Google Pub/Sub.

@@ -82,6 +82,11 @@ func getPopulatedCostMatrix(malformed bool) *routing.CostMatrix {
 	matrix.RTT = make([]int32, 1)
 	matrix.RTT[0] = 7
 
+	matrix.RelaySellers = []routing.Seller{
+		{ID: "1234", Name: "Seller One", IngressPriceCents: 10, EgressPriceCents: 20},
+		{ID: "5678", Name: "Seller Two", IngressPriceCents: 30, EgressPriceCents: 40},
+	}
+
 	return &matrix
 }
 
@@ -140,6 +145,10 @@ func getPopulatedRouteMatrix(malformed bool) *routing.RouteMatrix {
 			RouteNumRelays: [8]int32{2},
 			RouteRelays:    [8][5]uint64{{123, 456}},
 		},
+	}
+
+	matrix.RelaySellers = []routing.Seller{
+		{Name: "Seller One"}, {Name: "Seller Two"},
 	}
 
 	return &matrix
@@ -853,12 +862,12 @@ func TestOptimize(t *testing.T) {
 				t.Run("version of incoming bin data too high", func(t *testing.T) {
 					buff := make([]byte, 4)
 					offset := 0
-					putVersionNumber(buff, &offset, 4)
+					putVersionNumber(buff, &offset, 5)
 					var matrix routing.CostMatrix
 
 					err := matrix.UnmarshalBinary(buff)
 
-					assert.EqualError(t, err, "unknown cost matrix version 4")
+					assert.EqualError(t, err, "unknown cost matrix version 5")
 				})
 
 				t.Run("Invalid version read", func(t *testing.T) {
@@ -982,12 +991,12 @@ func TestOptimize(t *testing.T) {
 				t.Run("version of incoming bin data too high", func(t *testing.T) {
 					buff := make([]byte, 4)
 					offset := 0
-					putVersionNumber(buff, &offset, 4)
+					putVersionNumber(buff, &offset, 5)
 					var matrix routing.CostMatrix
 
 					err := matrix.UnmarshalBinary(buff)
 
-					assert.EqualError(t, err, "unknown cost matrix version 4")
+					assert.EqualError(t, err, "unknown cost matrix version 5")
 				})
 
 				t.Run("Invalid version read", func(t *testing.T) {
@@ -1127,12 +1136,12 @@ func TestOptimize(t *testing.T) {
 				t.Run("version of incoming bin data too high", func(t *testing.T) {
 					buff := make([]byte, 4)
 					offset := 0
-					putVersionNumber(buff, &offset, 4)
+					putVersionNumber(buff, &offset, 5)
 					var matrix routing.CostMatrix
 
 					err := matrix.UnmarshalBinary(buff)
 
-					assert.EqualError(t, err, "unknown cost matrix version 4")
+					assert.EqualError(t, err, "unknown cost matrix version 5")
 				})
 
 				t.Run("Invalid version read", func(t *testing.T) {
@@ -1290,12 +1299,12 @@ func TestOptimize(t *testing.T) {
 				t.Run("version of incoming bin data too high", func(t *testing.T) {
 					buff := make([]byte, 4)
 					offset := 0
-					putVersionNumber(buff, &offset, 4)
+					putVersionNumber(buff, &offset, 5)
 					var matrix routing.CostMatrix
 
 					err := matrix.UnmarshalBinary(buff)
 
-					assert.EqualError(t, err, "unknown cost matrix version 4")
+					assert.EqualError(t, err, "unknown cost matrix version 5")
 				})
 
 				t.Run("Invalid version read", func(t *testing.T) {
@@ -1962,12 +1971,12 @@ func TestOptimize(t *testing.T) {
 				t.Run("version of incoming bin data too high", func(t *testing.T) {
 					buff := make([]byte, 4)
 					offset := 0
-					putVersionNumber(buff, &offset, 4)
+					putVersionNumber(buff, &offset, 5)
 					var matrix routing.RouteMatrix
 
 					err := matrix.UnmarshalBinary(buff)
 
-					assert.EqualError(t, err, "unknown route matrix version: 4")
+					assert.EqualError(t, err, "unknown route matrix version: 5")
 				})
 
 				t.Run("Invalid version read", func(t *testing.T) {
@@ -2119,12 +2128,12 @@ func TestOptimize(t *testing.T) {
 				t.Run("version of incoming bin data too high", func(t *testing.T) {
 					buff := make([]byte, 4)
 					offset := 0
-					putVersionNumber(buff, &offset, 4)
+					putVersionNumber(buff, &offset, 5)
 					var matrix routing.RouteMatrix
 
 					err := matrix.UnmarshalBinary(buff)
 
-					assert.EqualError(t, err, "unknown route matrix version: 4")
+					assert.EqualError(t, err, "unknown route matrix version: 5")
 				})
 
 				t.Run("Invalid version read", func(t *testing.T) {
@@ -2291,12 +2300,12 @@ func TestOptimize(t *testing.T) {
 				t.Run("version of incoming bin data too high", func(t *testing.T) {
 					buff := make([]byte, 4)
 					offset := 0
-					putVersionNumber(buff, &offset, 4)
+					putVersionNumber(buff, &offset, 5)
 					var matrix routing.RouteMatrix
 
 					err := matrix.UnmarshalBinary(buff)
 
-					assert.EqualError(t, err, "unknown route matrix version: 4")
+					assert.EqualError(t, err, "unknown route matrix version: 5")
 				})
 
 				t.Run("Invalid version read", func(t *testing.T) {
@@ -2484,12 +2493,12 @@ func TestOptimize(t *testing.T) {
 				t.Run("version of incoming bin data too high", func(t *testing.T) {
 					buff := make([]byte, 4)
 					offset := 0
-					putVersionNumber(buff, &offset, 4)
+					putVersionNumber(buff, &offset, 5)
 					var matrix routing.RouteMatrix
 
 					err := matrix.UnmarshalBinary(buff)
 
-					assert.EqualError(t, err, "unknown route matrix version: 4")
+					assert.EqualError(t, err, "unknown route matrix version: 5")
 				})
 
 				t.Run("Invalid version read", func(t *testing.T) {
@@ -3145,11 +3154,11 @@ func TestRouting(t *testing.T) {
 			to          []routing.Relay
 			expected    []routing.Route
 			expectedErr error
-			selectors   []routing.RouteSelector
+			selectors   []routing.SelectorFunc
 		}{
-			{"empty from/to sets", []routing.Relay{}, []routing.Relay{}, nil, errors.New("No routes found"), nil},
-			{"relays not found", []routing.Relay{{ID: 1}}, []routing.Relay{{ID: 2}}, nil, errors.New("No routes found"), nil},
-			{"one relay found", []routing.Relay{{ID: 1}}, []routing.Relay{{ID: 1500948990}}, nil, errors.New("No routes found"), nil},
+			{"empty from/to sets", []routing.Relay{}, []routing.Relay{}, nil, errors.New("no routes found"), nil},
+			{"relays not found", []routing.Relay{{ID: 1}}, []routing.Relay{{ID: 2}}, nil, errors.New("no routes found"), nil},
+			{"one relay found", []routing.Relay{{ID: 1}}, []routing.Relay{{ID: 1500948990}}, nil, errors.New("no routes found"), nil},
 			{
 				"no selectors",
 				[]routing.Relay{{ID: 2836356269}},
@@ -3214,7 +3223,7 @@ func TestRouting(t *testing.T) {
 					},
 				},
 				nil,
-				[]routing.RouteSelector{
+				[]routing.SelectorFunc{
 					routing.SelectBestRTT(),
 				},
 			},
@@ -3257,7 +3266,7 @@ func TestRouting(t *testing.T) {
 					},
 				},
 				nil,
-				[]routing.RouteSelector{
+				[]routing.SelectorFunc{
 					routing.SelectAcceptableRoutesFromBestRTT(10),
 				},
 			},
@@ -3272,7 +3281,7 @@ func TestRouting(t *testing.T) {
 					},
 				},
 				nil,
-				[]routing.RouteSelector{
+				[]routing.SelectorFunc{
 					routing.SelectContainsRouteHash(14287039991941962633),
 				},
 			},
@@ -3287,8 +3296,8 @@ func TestRouting(t *testing.T) {
 					},
 				},
 				nil,
-				[]routing.RouteSelector{
-					routing.SelectRoutesByRandomDestRelay(),
+				[]routing.SelectorFunc{
+					routing.SelectRoutesByRandomDestRelay(rand.NewSource(0)),
 				},
 			},
 			{
@@ -3297,13 +3306,13 @@ func TestRouting(t *testing.T) {
 				[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
 				[]routing.Route{
 					routing.Route{
-						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2641807504}, {ID: 3263834878}},
+						Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2923051732}, {ID: 1884974764}},
 						Stats:  routing.Stats{RTT: 182},
 					},
 				},
 				nil,
-				[]routing.RouteSelector{
-					routing.SelectRandomRoute(),
+				[]routing.SelectorFunc{
+					routing.SelectRandomRoute(rand.NewSource(0)),
 				},
 			},
 		}
@@ -3314,7 +3323,7 @@ func TestRouting(t *testing.T) {
 				assert.Equal(t, test.expectedErr, err)
 				assert.Equal(t, len(test.expected), len(actual))
 
-				for routeidx, route := range actual {
+				for routeidx, route := range test.expected {
 					assert.Equal(t, len(test.expected[routeidx].Relays), len(route.Relays))
 
 					for relayidx := range route.Relays {

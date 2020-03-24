@@ -8,30 +8,25 @@ package main
 import (
 	"context"
 	"encoding/base64"
-	_ "expvar"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
-	gkmetrics "github.com/go-kit/kit/metrics"
-
-	"github.com/go-kit/kit/metrics/expvar"
+	gcplogging "cloud.google.com/go/logging"
 
 	"cloud.google.com/go/firestore"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"google.golang.org/api/option"
-
-	"github.com/go-redis/redis/v7"
 	"github.com/oschwald/geoip2-golang"
 
 	"github.com/networknext/backend/billing"
+	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
@@ -60,6 +55,15 @@ func main() {
 		}
 
 		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
+	}
+	if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+		loggingClient, err := gcplogging.NewClient(ctx, projectID)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
+
+		logger = logging.NewStackdriverLogger(loggingClient, "server-backend")
 	}
 
 	// var serverPublicKey []byte
@@ -94,35 +98,35 @@ func main() {
 		}
 	}
 
-	// Attempt to connect to REDIS_HOST, falling back to local instance if not explicitly specified
-	redisHost, ok := os.LookupEnv("REDIS_HOST")
-	if !ok {
-		redisHost = "localhost:6379"
-		level.Warn(logger).Log("envvar", "REDIS_HOST", "value", redisHost)
+	redisHost := os.Getenv("REDIS_HOST_RELAYS")
+	redisClientRelays := storage.NewRedisClient(redisHost)
+	if err := redisClientRelays.Ping().Err(); err != nil {
+		level.Error(logger).Log("envvar", "REDIS_HOST_RELAYS", "value", redisHost, "err", err)
+		os.Exit(1)
 	}
 
-	redisClient := redis.NewClient(&redis.Options{Addr: redisHost})
-	if err := redisClient.Ping().Err(); err != nil {
-		level.Error(logger).Log("envvar", "REDIS_HOST", "value", redisHost, "err", err)
+	redisHosts := strings.Split(os.Getenv("REDIS_HOST_CACHE"), ",")
+	redisClientCache := storage.NewRedisClient(redisHosts...)
+	if err := redisClientCache.Ping().Err(); err != nil {
+		level.Error(logger).Log("envvar", "REDIS_HOST_CACHE", "value", redisHosts, "err", err)
 		os.Exit(1)
 	}
 
 	// Open the Maxmind DB and create a routing.MaxmindDB from it
 	var ipLocator routing.IPLocator = routing.NullIsland
-	if filename, ok := os.LookupEnv("MAXMIND_DB_URI"); ok {
-		if mmreader, err := geoip2.Open(filename); err != nil {
-			if err != nil {
-				level.Error(logger).Log("envvar", "RELAY_MAXMIND_DB_URI", "value", filename, "err", err)
-			}
-			ipLocator = &routing.MaxmindDB{
-				Reader: mmreader,
-			}
-			defer mmreader.Close()
+	if uri, ok := os.LookupEnv("MAXMIND_DB_URI"); ok {
+		mmreader, err := geoip2.Open(uri)
+		if err != nil {
+			level.Error(logger).Log("envvar", "MAXMIND_DB_URI", "value", uri, "err", err)
 		}
+		ipLocator = &routing.MaxmindDB{
+			Reader: mmreader,
+		}
+		defer mmreader.Close()
 	}
 
 	geoClient := routing.GeoClient{
-		RedisClient: redisClient,
+		RedisClient: redisClientRelays,
 		Namespace:   "RELAY_LOCATIONS",
 	}
 
@@ -130,42 +134,21 @@ func main() {
 	var db storage.Storer = &storage.InMemory{
 		LocalBuyer: &routing.Buyer{
 			PublicKey:            customerPublicKey,
-			RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
+			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
 		},
 	}
 
-	// Create a no-op metrics handler
-	var metricsHandler metrics.Handler
-	metricsHandler = &metrics.NoOpHandler{}
-
 	// Create a no-op biller
-	var biller billing.Biller
-	biller = &billing.NoOpBiller{}
+	var biller billing.Biller = &billing.NoOpBiller{}
 
-	// If GCP_CREDENTIALS are set then:
-	// override the local in memory and connect to Firestore,
-	// set up the billing client
-	if gcpcreds, ok := os.LookupEnv("GCP_CREDENTIALS"); ok {
-		var gcpcredsjson []byte
+	// Create a local metrics handler
+	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
 
-		_, err := os.Stat(gcpcreds)
-		switch err := err.(type) {
-		case *os.PathError:
-			gcpcredsjson = []byte(gcpcreds)
-			level.Info(logger).Log("envvar", "GCP_CREDENTIALS", "value", "<JSON>")
-		case nil:
-			gcpcredsjson, err = ioutil.ReadFile(gcpcreds)
-			if err != nil {
-				level.Error(logger).Log("envvar", "GCP_CREDENTIALS", "value", gcpcreds, "err", err)
-				os.Exit(1)
-			}
-			level.Info(logger).Log("envvar", "GCP_CREDENTIALS", "value", gcpcreds)
-		default:
-			//log.Fatalf("unable to load GCP_CREDENTIALS: %v\n", err)
-		}
-
-		// Create a Firestore client
-		client, err := firestore.NewClient(ctx, firestore.DetectProjectID, option.WithCredentialsJSON(gcpcredsjson))
+	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
+	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
+	// on creation so we can use that for the default then
+	if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+		firestoreClient, err := firestore.NewClient(ctx, gcpProjectID)
 		if err != nil {
 			level.Error(logger).Log("err", err)
 			os.Exit(1)
@@ -173,7 +156,7 @@ func main() {
 
 		// Create a Firestore Storer
 		fs := storage.Firestore{
-			Client: client,
+			Client: firestoreClient,
 			Logger: logger,
 		}
 
@@ -186,72 +169,78 @@ func main() {
 		// Set the Firestore Storer to give to handlers
 		db = &fs
 
-		// Get the billing projectID and topicID
-		billingProjectID, ok := os.LookupEnv("BILLING_PUBSUB_PROJECT")
-		if ok {
-			billingTopicID, ok := os.LookupEnv("BILLING_PUBSUB_TOPIC")
-			if ok {
-				// Create the billing client
-				const clientCount int = 4
-				var err error
-				biller, err = billing.NewBiller(ctx, logger, billingProjectID, billingTopicID, gcpcredsjson, &billing.Descriptor{
-					ClientCount:         clientCount,
-					DelayThreshold:      time.Millisecond,
-					CountThreshold:      100,
-					ByteThreshold:       1e6,
-					NumGoroutines:       (25 * runtime.GOMAXPROCS(0)) / clientCount,
-					Timeout:             time.Minute,
-					ResultChannelBuffer: 10000 * 60 * 10, // 10,000 messages per second for 10 minutes
-				})
-				if err != nil {
-					level.Error(logger).Log("err", err)
-				} else {
-					level.Debug(logger).Log("msg", "Billing client connected to Google Pub/Sub, ready to publish.")
-				}
-			} else {
-				level.Warn(logger).Log("msg", "BILLING_PUBSUB_TOPIC env var not set, billing data will not be sent")
+		if billingTopicID, ok := os.LookupEnv("GOOGLE_PUBSUB_TOPIC_BILLING"); ok {
+			b, err := billing.NewBiller(ctx, logger, gcpProjectID, billingTopicID, &billing.Descriptor{
+				ClientCount:         4,
+				DelayThreshold:      time.Millisecond,
+				CountThreshold:      100,
+				ByteThreshold:       1e6,
+				NumGoroutines:       (25 * runtime.GOMAXPROCS(0)) / 4,
+				Timeout:             time.Minute,
+				ResultChannelBuffer: 10000 * 60 * 10, // 10,000 messages per second for 10 minutes
+			})
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				os.Exit(1)
 			}
-		} else {
-			level.Warn(logger).Log("msg", "BILLING_PUBSUB_PROJECT env var not set, billing data will not be sent")
+
+			// Set the Biller to the Pub/Sub version
+			biller = b
 		}
+
+		// Set up StackDriver metrics
+		sd := metrics.StackDriverHandler{
+			ProjectID:          gcpProjectID,
+			OverwriteFrequency: time.Second,
+			OverwriteTimeout:   10 * time.Second,
+		}
+
+		if err := sd.Open(ctx); err != nil {
+			level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
+			os.Exit(1)
+		}
+
+		metricsHandler = &sd
+
+		go func() {
+			metricsHandler.WriteLoop(ctx, logger, time.Minute, 200)
+		}()
 	}
 
-	// If GCP_CREDENTIALS_METRICS are set then override the no-op metric handler and connect to StackDriver
-	// This has its own credentials because the StackDriver metrics are in a separate workspace
-	if stackdrivercreds, ok := os.LookupEnv("GCP_CREDENTIALS_METRICS"); ok {
-		if stackDriverProjectID, ok := os.LookupEnv("GCP_METRICS_PROJECT"); ok {
-			var stackdrivercredsjson []byte
+	// Create server update metrics
+	updateDurationGauge, err := metricsHandler.NewGauge(ctx, &metrics.Descriptor{
+		DisplayName: "Server update duration",
+		ServiceName: "server_backend",
+		ID:          "server.duration",
+		Unit:        "milliseconds",
+		Description: "How long it takes to process a server update request.",
+	})
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create metric gauge", "metric", "server.duration", "err", err)
+		updateDurationGauge = &metrics.EmptyGauge{}
+	}
 
-			_, err := os.Stat(stackdrivercreds)
-			switch err := err.(type) {
-			case *os.PathError:
-				stackdrivercredsjson = []byte(stackdrivercreds)
-				level.Info(logger).Log("envvar", "GCP_CREDENTIALS_METRICS", "value", "<JSON>")
-			case nil:
-				stackdrivercredsjson, err = ioutil.ReadFile(stackdrivercreds)
-				if err != nil {
-					level.Error(logger).Log("envvar", "GCP_CREDENTIALS_METRICS", "value", stackdrivercreds, "err", err)
-					os.Exit(1)
-				}
-				level.Info(logger).Log("envvar", "GCP_CREDENTIALS_METRICS", "value", stackdrivercreds)
-			}
+	updateInvocationsCounter, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
+		DisplayName: "Total server update invocations",
+		ServiceName: "server_backend",
+		ID:          "server.count",
+		Unit:        "invocations",
+		Description: "The total number of concurrent servers",
+	})
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "server.count", "err", err)
+		updateInvocationsCounter = &metrics.EmptyCounter{}
+	}
 
-			// Create the metrics handler
-			metricsHandler = &metrics.StackDriverHandler{
-				ProjectID:       stackDriverProjectID,
-				ClusterLocation: os.Getenv("GCP_METRICS_CLUSTER_LOCATION"),
-				ClusterName:     os.Getenv("GCP_METRICS_CLUSTER_NAME"),
-				PodName:         os.Getenv("GCP_METRICS_POD_NAME"),
-				ContainerName:   os.Getenv("GCP_METRICS_CONTAINER_NAME"),
-				NamespaceName:   os.Getenv("GCP_METRICS_NAMESPACE_NAME"),
-			}
+	updateMetrics := metrics.ServerUpdateMetrics{
+		Invocations:   updateInvocationsCounter,
+		DurationGauge: updateDurationGauge,
+	}
 
-			if err := metricsHandler.Open(ctx, stackdrivercredsjson); err == nil {
-				go metricsHandler.MetricSubmitRoutine(ctx, logger, time.Minute, 200)
-			} else {
-				level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
-			}
-		}
+	// Create session update metrics
+	sessionMetrics, err := metrics.NewSessionMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create session metrics", "err", err)
 	}
 
 	var routeMatrix routing.RouteMatrix
@@ -286,17 +275,6 @@ func main() {
 		}
 	}
 
-	var serverUpdateDuration gkmetrics.Histogram
-	var serverUpdateCounter gkmetrics.Counter
-	var sessionUpdateDuration gkmetrics.Histogram
-	var sessionUpdateCounter gkmetrics.Counter
-	{
-		serverUpdateDuration = expvar.NewHistogram("server.update.duration", 50)
-		serverUpdateCounter = expvar.NewCounter("server.update.counter")
-		sessionUpdateDuration = expvar.NewHistogram("session.update.duration", 50)
-		sessionUpdateCounter = expvar.NewCounter("session.update.counter")
-	}
-
 	{
 		port, ok := os.LookupEnv("PORT")
 		if !ok {
@@ -323,19 +301,21 @@ func main() {
 			Conn:          conn,
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
-			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClient, db, serverUpdateDuration, serverUpdateCounter, metricsHandler),
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClient, db, sessionUpdateDuration, sessionUpdateCounter, &routeMatrix, ipLocator, &geoClient, metricsHandler, biller, serverPrivateKey, routerPrivateKey),
+			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClientCache, db, &updateMetrics),
+			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClientCache, db, &routeMatrix, ipLocator, &geoClient, sessionMetrics, biller, serverPrivateKey, routerPrivateKey),
 		}
 
 		go func() {
 			level.Info(logger).Log("protocol", "udp", "addr", conn.LocalAddr().String())
-			if err := mux.Start(ctx, runtime.NumCPU()); err != nil {
+			if err := mux.Start(ctx); err != nil {
 				level.Error(logger).Log("protocol", "udp", "addr", conn.LocalAddr().String(), "err", err)
 				os.Exit(1)
 			}
 		}()
 
 		go func() {
+			http.HandleFunc("/healthz", transport.HealthzHandlerFunc())
+
 			level.Info(logger).Log("protocol", "http", "addr", conn.LocalAddr().String())
 			if err := http.ListenAndServe(conn.LocalAddr().String(), nil); err != nil {
 				level.Error(logger).Log("protocol", "http", "addr", conn.LocalAddr().String(), "err", err)

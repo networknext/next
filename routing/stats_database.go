@@ -72,10 +72,10 @@ const InvalidRouteValue = 10000.0
 
 // RelayStatsPing is the ping stats for a relay
 type RelayStatsPing struct {
-	RelayID    uint64
-	RTT        float32
-	Jitter     float32
-	PacketLoss float32
+	RelayID    uint64  `json:"RelayId"`
+	RTT        float32 `json:"RTT"`
+	Jitter     float32 `json:"Jitter"`
+	PacketLoss float32 `json:"PacketLoss"`
 }
 
 // RelayStatsUpdate is a struct for updating relay stats
@@ -217,7 +217,7 @@ func (database *StatsDatabase) GetSample(relay1, relay2 uint64) (float32, float3
 }
 
 // GetCostMatrix returns the cost matrix composed of all current information
-func (database *StatsDatabase) GetCostMatrix(costMatrix *CostMatrix, redisClient *redis.Client) error {
+func (database *StatsDatabase) GetCostMatrix(costMatrix *CostMatrix, redisClient redis.Cmdable) error {
 	hgetallResult := redisClient.HGetAll(HashKeyAllRelays)
 	if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
 		return fmt.Errorf("failed to get all relays from redis: %v", hgetallResult.Err())
@@ -230,6 +230,7 @@ func (database *StatsDatabase) GetCostMatrix(costMatrix *CostMatrix, redisClient
 	costMatrix.RelayPublicKeys = make([][]byte, numRelays)
 	costMatrix.DatacenterRelays = make(map[uint64][]uint64)
 	costMatrix.RTT = make([]int32, TriMatrixLength(numRelays))
+	costMatrix.RelaySellers = make([]Seller, numRelays)
 
 	datacenterNameMap := make(map[uint64]string)
 
@@ -249,6 +250,7 @@ func (database *StatsDatabase) GetCostMatrix(costMatrix *CostMatrix, redisClient
 	for i, relayData := range stableRelays {
 		costMatrix.RelayIDs[i] = relayData.ID
 		costMatrix.RelayNames[i] = relayData.Name
+		costMatrix.RelaySellers[i] = relayData.Seller
 
 		costMatrix.RelayAddresses[i] = make([]byte, MaxRelayAddressLength)
 		copy(costMatrix.RelayAddresses[i], []byte(relayData.Addr.String()))
