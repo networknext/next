@@ -39,10 +39,11 @@
 #include <ws2tcpip.h>
 #include <ws2ipdef.h>
 #include <malloc.h>
-#pragma comment( lib, "WS2_32.lib" )
 #include <time.h>
 #include <bcrypt.h> // random
 #pragma pack(pop)
+
+#pragma comment( lib, "WS2_32.lib" )
 
 #ifdef SetPort
 #undef SetPort

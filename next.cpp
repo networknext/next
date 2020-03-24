@@ -32,7 +32,7 @@
 #include <string.h>
 #include <inttypes.h>
 
-#define NEXT_HOSTNAME                                "v3.networknext.com"
+#define NEXT_HOSTNAME                              "test.networknext.com"
 #define NEXT_PORT                                                 "40000"
 #define NEXT_MAX_PACKET_BYTES                                        1500
 #define NEXT_ADDRESS_BYTES                                             19
