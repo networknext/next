@@ -28,7 +28,8 @@ The default setting is `warn` when running `make dev-relay-backend` and `make de
 - `RELAY_ROUTER_PRIVATE_KEY`: the private key of the router used to encrypt routes
 - `ROUTE_MATRIX_URI`: a URL or local file path to a route matrix binary
 - `MAXMIND_DB_URI`: local path to a `.mmdb` file for IP lookups
-- `REDIS_HOST`: address of the Redis server you want to connect to, uses the in-memory version if not supplied or invalid
+- `REDIS_HOST_RELAYS`: address of the Redis server that has the lat/long information for the relays
+- `REDIS_HOST_CACHE`: address of the Redis server(s) in comma-separated format to cache server/session data
 
 #### Optional
 

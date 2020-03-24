@@ -27,7 +27,6 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 
-	"github.com/go-redis/redis/v7"
 	"github.com/oschwald/geoip2-golang"
 
 	"github.com/networknext/backend/crypto"
@@ -95,16 +94,10 @@ func main() {
 		}
 	}
 
-	// Attempt to connect to REDIS_HOST, falling back to local instance if not explicitly specified
-	redisHost, ok := os.LookupEnv("REDIS_HOST")
-	if !ok {
-		redisHost = "localhost:6379"
-		level.Warn(logger).Log("envvar", "REDIS_HOST", "value", redisHost)
-	}
-
-	redisClient := redis.NewClient(&redis.Options{Addr: redisHost})
-	if err := redisClient.Ping().Err(); err != nil {
-		level.Error(logger).Log("envvar", "REDIS_HOST", "value", redisHost, "err", err)
+	redisHost := os.Getenv("REDIS_HOST_RELAYS")
+	redisClientRelays := storage.NewRedisClient(redisHost)
+	if err := redisClientRelays.Ping().Err(); err != nil {
+		level.Error(logger).Log("envvar", "REDIS_HOST_RELAYS", "value", redisHost, "err", err)
 		os.Exit(1)
 	}
 
@@ -121,7 +114,7 @@ func main() {
 	}
 
 	geoClient := routing.GeoClient{
-		RedisClient: redisClient,
+		RedisClient: redisClientRelays,
 		Namespace:   "RELAY_LOCATIONS",
 	}
 
@@ -293,7 +286,7 @@ func main() {
 	// Periodically generate cost matrix from stats db
 	go func() {
 		for {
-			if err := statsdb.GetCostMatrix(&costmatrix, redisClient); err != nil {
+			if err := statsdb.GetCostMatrix(&costmatrix, redisClientRelays); err != nil {
 				level.Warn(logger).Log("matrix", "cost", "op", "generate", "err", err)
 			}
 
@@ -312,9 +305,9 @@ func main() {
 	}()
 
 	// Sub to expiry events for cleanup
-	redisClient.ConfigSet("notify-keyspace-events", "Ex")
+	redisClientRelays.ConfigSet("notify-keyspace-events", "Ex")
 	go func() {
-		ps := redisClient.Subscribe("__keyevent@0__:expired")
+		ps := redisClientRelays.Subscribe("__keyevent@0__:expired")
 		for {
 			// Recieve expiry event message
 			msg, err := ps.ReceiveMessage()
@@ -343,7 +336,7 @@ func main() {
 				}
 
 				// Remove relay entry from Hashmap
-				if err := redisClient.HDel(routing.HashKeyAllRelays, msg.Payload).Err(); err != nil {
+				if err := redisClientRelays.HDel(routing.HashKeyAllRelays, msg.Payload).Err(); err != nil {
 					level.Error(logger).Log("msg", fmt.Sprintf("Failed to remove hashmap entry for relay with ID %v", rawID), "err", err)
 					os.Exit(1)
 				}
@@ -355,7 +348,7 @@ func main() {
 	}()
 
 	router := transport.NewRouter(
-		logger, redisClient, &geoClient, ipLocator, db, statsdb,
+		logger, redisClientRelays, &geoClient, ipLocator, db, statsdb,
 		initDuration, updateDuration, initCount, updateCount,
 		&costmatrix, &routematrix, routerPrivateKey, trafficStatsPublisher,
 		os.Getenv("BASIC_AUTH_USERNAME"), os.Getenv("BASIC_AUTH_PASSWORD"),
