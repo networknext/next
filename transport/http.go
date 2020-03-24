@@ -36,7 +36,7 @@ const (
 )
 
 type CommonRelayInitFuncParams struct {
-	RedisClient      *redis.Client
+	RedisClient      redis.Cmdable
 	GeoClient        *routing.GeoClient
 	IpLocator        routing.IPLocator
 	Storer           storage.Storer
@@ -46,7 +46,7 @@ type CommonRelayInitFuncParams struct {
 }
 
 type CommonRelayUpdateFuncParams struct {
-	RedisClient           *redis.Client
+	RedisClient           redis.Cmdable
 	StatsDb               *routing.StatsDatabase
 	Duration              metrics.Gauge
 	Counter               metrics.Counter
@@ -55,7 +55,7 @@ type CommonRelayUpdateFuncParams struct {
 }
 
 // NewRouter creates a router with the specified endpoints
-func NewRouter(logger log.Logger, redisClient *redis.Client, geoClient *routing.GeoClient, ipLocator routing.IPLocator, storer storage.Storer,
+func NewRouter(logger log.Logger, redisClient redis.Cmdable, geoClient *routing.GeoClient, ipLocator routing.IPLocator, storer storage.Storer,
 	statsdb *routing.StatsDatabase, initDuration metrics.Gauge, updateDuration metrics.Gauge, initCounter metrics.Counter,
 	updateCounter metrics.Counter, costmatrix *routing.CostMatrix, routematrix *routing.RouteMatrix, routerPrivateKey []byte, trafficStatsPublisher stats.Publisher,
 	username string, password string) *mux.Router {
@@ -564,7 +564,7 @@ func statsTable(stats map[string]map[string]routing.Stats) template.HTML {
 }
 
 // NearHandlerFunc returns the function for the near endpoint
-func RelayDashboardHandlerFunc(redisClient *redis.Client, routeMatrix *routing.RouteMatrix, statsdb *routing.StatsDatabase, username string, password string) func(writer http.ResponseWriter, request *http.Request) {
+func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.RouteMatrix, statsdb *routing.StatsDatabase, username string, password string) func(writer http.ResponseWriter, request *http.Request) {
 	type response struct {
 		Analysis string
 		Relays   []routing.Relay
