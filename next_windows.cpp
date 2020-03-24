@@ -1,5 +1,5 @@
 /*
-    Network Next SDK 3.4.0
+    Network Next SDK 3.4.1
 
     Copyright © 2017 - 2020 Network Next, Inc.
 
@@ -37,11 +37,12 @@
 #include <malloc.h>
 #include <wininet.h>
 #include <iphlpapi.h>
+#include <qos2.h>
 #pragma pack(pop)
 
 #pragma comment( lib, "WS2_32.lib" )
 #pragma comment( lib, "IPHLPAPI.lib" )
-
+#pragma comment( lib, "Qwave.lib" )
 #ifdef SetPort
 #undef SetPort
 #endif // #ifdef SetPort
@@ -299,6 +300,22 @@ int next_platform_id()
 
 void next_platform_socket_destroy( next_platform_socket_t * );
 
+int next_set_socket_codepoint( SOCKET socket, QOS_TRAFFIC_TYPE trafficType, QOS_FLOWID flowId, PSOCKADDR addr ) 
+{
+	QOS_VERSION QosVersion = { 1 , 0 };
+	HANDLE qosHandle;
+	int sizeofTOS = sizeof(int);
+	if ( QOSCreateHandle( &QosVersion, &qosHandle ) == FALSE )
+	{
+		return GetLastError();
+	}
+	if ( QOSAddSocketToFlow( qosHandle, socket, addr, trafficType, QOS_NON_ADAPTIVE_FLOW, &flowId ) == FALSE )
+	{
+		return GetLastError();
+	}
+	return 0;
+}
+
 next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size )
 {
     next_platform_socket_t * s = (next_platform_socket_t *) next_malloc( context, sizeof( next_platform_socket_t ) );
@@ -391,32 +408,33 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
 
     // if bound to port 0 find the actual port we got
 
-    if ( address->port == 0 )
+	sockaddr_in sin4;
+	sockaddr_in6 sin6;
+	sockaddr * addr = NULL;
+
+    if ( address->type == NEXT_ADDRESS_IPV6 )
     {
-        if ( address->type == NEXT_ADDRESS_IPV6 )
+		addr = (sockaddr*) &sin6;
+		socklen_t len = sizeof( sin6 );
+        if ( getsockname( s->handle, addr, &len ) == -1 )
         {
-            sockaddr_in6 sin;
-            socklen_t len = sizeof( sin );
-            if ( getsockname( s->handle, (sockaddr*)( &sin ), &len ) == -1 )
-            {
-                next_printf( NEXT_LOG_LEVEL_ERROR, "failed to get socket port (ipv6)" );
-                next_platform_socket_destroy( s );
-                return NULL;
-            }
-            address->port = next_platform_ntohs( sin.sin6_port );
+            next_printf( NEXT_LOG_LEVEL_ERROR, "failed to get socket address (ipv6)" );
+            next_platform_socket_destroy( s );
+            return NULL;
         }
-        else
+        address->port = next_platform_ntohs( sin6.sin6_port );
+    }
+    else
+    {
+		addr = (sockaddr*) &sin4;
+        socklen_t len = sizeof( sin4 );
+        if ( getsockname( s->handle, addr, &len ) == -1 )
         {
-            sockaddr_in sin;
-            socklen_t len = sizeof( sin );
-            if ( getsockname( s->handle, (sockaddr*)( &sin ), &len ) == -1 )
-            {
-                next_printf( NEXT_LOG_LEVEL_ERROR, "failed to get socket port (ipv4)" );
-                next_platform_socket_destroy( s );
-                return NULL;
-            }
-            address->port = next_platform_ntohs( sin.sin_port );
+            next_printf( NEXT_LOG_LEVEL_ERROR, "failed to get socket address (ipv4)" );
+            next_platform_socket_destroy( s );
+            return NULL;
         }
+        address->port = next_platform_ntohs( sin4.sin_port );
     }
 
     // set non-blocking io
@@ -445,6 +463,10 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
     {
         // timeout < 0, socket is blocking with no timeout
     }
+
+	// mark packet as real-time qos
+
+	next_set_socket_codepoint( s->handle, QOSTrafficTypeAudioVideo, 0, addr );
 
     return s;
 }

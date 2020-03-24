@@ -1,5 +1,5 @@
 /*
-    Network Next SDK 3.4.0
+    Network Next SDK 3.4.1
 
     Copyright © 2017 - 2020 Network Next, Inc.
 
@@ -30,10 +30,10 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define NEXT_VERSION_FULL                                   "3.4.0"
+#define NEXT_VERSION_FULL                                   "3.4.1"
 #define NEXT_VERSION_MAJOR_INT                                    3
 #define NEXT_VERSION_MINOR_INT                                    4
-#define NEXT_VERSION_PATCH_INT                                    0
+#define NEXT_VERSION_PATCH_INT                                    1
 
 #define NEXT_OK                                                   0
 #define NEXT_ERROR                                               -1
