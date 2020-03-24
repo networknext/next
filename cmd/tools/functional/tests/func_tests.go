@@ -1652,7 +1652,6 @@ func main() {
 		test_uncommitted_to_committed,
 		test_user_flags,
 		test_packet_loss_direct,
-		*/
 		test_packet_loss_next,
 	}
 
