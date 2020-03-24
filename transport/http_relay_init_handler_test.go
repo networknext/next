@@ -601,14 +601,10 @@ func TestRelayInitHandler(t *testing.T) {
 		var timestamp uint64
 		encoding.ReadUint64(body, &indx, &timestamp)
 
-		var publicKey []byte
-		encoding.ReadBytes(body, &indx, &publicKey, crypto.KeySize)
-
 		assert.Equal(t, "application/octet-stream", contentType[0])
 		assert.Equal(t, transport.VersionNumberInitResponse, int(version))
 		assert.LessOrEqual(t, before, timestamp)
 		assert.GreaterOrEqual(t, uint64(time.Now().Unix()), timestamp)
-		assert.Equal(t, actual.PublicKey, publicKey) // entry gets a public key assigned at init which is returned in the response
 
 		assert.Equal(t, expected.ID, actual.ID)
 		assert.Equal(t, expected.Name, actual.Name)

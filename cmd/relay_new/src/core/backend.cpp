@@ -27,7 +27,12 @@ namespace core
    RouterInfo& routerInfo,
    RelayManager& relayManager,
    std::string base64RelayPublicKey)
-   : mHostname(hostname), mAddressStr(address), mKeychain(keychain), mRouterInfo(routerInfo), mRelayManager(relayManager), mBase64RelayPublicKey(base64RelayPublicKey)
+   : mHostname(hostname),
+     mAddressStr(address),
+     mKeychain(keychain),
+     mRouterInfo(routerInfo),
+     mRelayManager(relayManager),
+     mBase64RelayPublicKey(base64RelayPublicKey)
   {}
 
   bool Backend::init()
@@ -46,13 +51,17 @@ namespace core
           Log("failed to encode base64 nonce for init");
           return false;
         }
+
+        // greedy method but gets the job done, plus init is done once so who cares if it's a few nanos slower
         base64NonceStr = std::string(b64Nonce.begin(), b64Nonce.begin() + len);
       }
 
       // Token
       {
+        // just has to be something the backend can decrypt
         std::array<uint8_t, RELAY_TOKEN_BYTES> token = {};
         crypto::RandomBytes(token, token.size());
+
         std::array<uint8_t, RELAY_TOKEN_BYTES + crypto_box_MACBYTES> encryptedToken = {};
         std::vector<char> b64EncryptedToken(encryptedToken.size() * 2);
 
@@ -85,19 +94,17 @@ namespace core
     doc.set(base64NonceStr, "nonce");
     doc.set(base64TokenStr, "encrypted_token");
 
-    std::string jsonStr = doc.toString();
-    std::vector<uint8_t> msg(jsonStr.begin(), jsonStr.end());
-    std::vector<uint8_t> resp;
+    std::string request = doc.toString();
+    std::vector<char> response;
 
     LogDebug("init request: ", doc.toPrettyString());
 
-    if (!net::CurlWrapper::SendTo(mHostname, "/relay_init", msg, resp)) {
+    if (!net::CurlWrapper::SendTo(mHostname, "/relay_init", request, response)) {
       Log("curl request failed in init");
       return false;
     }
 
-    jsonStr = std::string(resp.begin(), resp.end());
-    if (!doc.parse(jsonStr)) {
+    if (!doc.parse(response)) {
       Log("could not parse json response in init");
       return false;
     }
@@ -115,7 +122,7 @@ namespace core
     }
 
     uint32_t version;
-    if (doc.memberType("version") == rapidjson::Type::kNumberType) {
+    if (doc.memberIs(util::JSON::Type::Number, "version")) {
       version = doc.get<uint32_t>("version");
     } else {
       Log("init version response not a number");
@@ -127,7 +134,7 @@ namespace core
       return false;
     }
 
-    if (doc.memberType("timestamp") == rapidjson::Type::kNumberType) {
+    if (doc.memberIs(util::JSON::Type::Number, "timestamp")) {
       // for old relay compat the router sends this back in millis, so turn back to seconds
       mRouterInfo.InitalizeTimeInSeconds = doc.get<uint64_t>("timestamp") / 1000;
     } else {
@@ -140,7 +147,8 @@ namespace core
 
   bool Backend::update(uint64_t bytesReceived)
   {
-    // TODO once the other stats are finally added, pull out the json parts that are alwasy the same, no sense rebuilding those parts of the document
+    // TODO once the other stats are finally added, pull out the json parts that are always the same, no sense rebuilding those
+    // parts of the document
     util::JSON doc;
     {
       doc.set(UpdateRequestVersion, "version");
@@ -162,47 +170,41 @@ namespace core
         util::JSON pingStats;
         pingStats.setArray();
 
-        auto& allocator = doc.internal().GetAllocator();
+        // pushing behaves really weird when the pushed value goes out of scope, must be declared outside of for loop
+        util::JSON pingStat;
+
         for (unsigned int i = 0; i < stats.NumRelays; ++i) {
-          rapidjson::Value obj;
-          rapidjson::Value stat;
-          obj.SetObject();
+          pingStat.set(stats.IDs[i], "RelayId");
 
-          stat.Set(stats.IDs[i]);
-          obj.AddMember("RelayId", stat, allocator);
+          pingStat.set(stats.RTT[i], "RTT");
 
-          stat.Set(stats.RTT[i]);
-          obj.AddMember("RTT", stat, allocator);
+          pingStat.set(stats.Jitter[i], "Jitter");
 
-          stat.Set(stats.Jitter[i]);
-          obj.AddMember("Jitter", stat, allocator);
+          pingStat.set(stats.PacketLoss[i], "PacketLoss");
 
-          stat.Set(stats.PacketLoss[i]);
-          obj.AddMember("PacketLoss", stat, allocator);
-
-          if (!pingStats.push(obj)) {
+          if (!pingStats.push(pingStat)) {
             Log("ping stats not array! can't update!");
             return false;
           }
         }
 
+        // performs a deep copy, so it's ok for things to go out of scope after this, regular move seems to be wierd due to the
+        // allocator concept
         doc.set(pingStats, "PingStats");
       }
     }
 
-    std::string jsonStr = doc.toString();
-
-    std::vector<uint8_t> msg(jsonStr.begin(), jsonStr.end());
-    std::vector<uint8_t> resp;
+    std::string request = doc.toString();
+    std::vector<char> response;
 
     LogDebug("update request: ", doc.toPrettyString());
-    if (!net::CurlWrapper::SendTo(mHostname, "/relay_update", msg, resp)) {
+
+    if (!net::CurlWrapper::SendTo(mHostname, "/relay_update", request, response)) {
       Log("curl request failed in update");
       return false;
     }
 
-    jsonStr = std::string(resp.begin(), resp.end());
-    if (!doc.parse(jsonStr)) {
+    if (!doc.parse(response)) {
       Log("could not parse json response in update");
       return false;
     }
@@ -210,7 +212,7 @@ namespace core
     LogDebug("update response: ", doc.toPrettyString());
 
     auto version = doc.get<uint32_t>("version");
-    if (doc.memberType("version") == rapidjson::Type::kNumberType) {
+    if (doc.memberIs(util::JSON::Type::Number, "version")) {
       if (version != UpdateResponseVersion) {
         Log("error: bad relay version response version. expected ", UpdateResponseVersion, ", got ", version);
         return false;
@@ -276,10 +278,10 @@ namespace core
       }
 
       mRelayManager.update(count, relayIDs, relayAddresses);
-    } else if (relays.memberType() == rapidjson::Type::kNullType) {
+    } else if (relays.memberIs(util::JSON::Type::Null)) {
       Log("no relays received from backend, ping data is null");
     } else {
-      Log("update ping data not array: rapidjson type value = ", relays.memberType());
+      Log("update ping data not array");
       // TODO how to handle
     }
 

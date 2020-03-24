@@ -1,25 +1,38 @@
 #pragma once
-#define JSON_GET(json, storage, ...) storage = json.get<decltype(storage)>(__VA_ARGS__)
 
 namespace util
 {
-  /* Entire purpose is to be able to set a field as an array while keeping the rapidjson abstraction */
-  class Array
-  {};
-
-  /* Entire purpose is to be able to set a field as an object while keeping the rapidjson abstraction */
-  class Object
-  {};
-
   class JSON
   {
    public:
+    /* Entire purpose is to be able to set a field as an array while keeping the rapidjson abstraction */
+    class Array
+    {};
+
+    /* Entire purpose is to be able to set a field as an object while keeping the rapidjson abstraction */
+    class Object
+    {};
+
+    enum class Type : uint8_t
+    {
+      Null = rapidjson::Type::kNullType,
+      Object = rapidjson::Type::kObjectType,
+      Array = rapidjson::Type::kArrayType,
+      Number = rapidjson::Type::kNumberType,
+      String = rapidjson::Type::kStringType,
+      False = rapidjson::Type::kFalseType,
+      True = rapidjson::Type::kTrueType
+    };
+
     JSON();
     JSON(JSON& other);
     ~JSON() = default;
 
-    /* Parses the document. Returns true if no parse errors */
-    bool parse(const std::string& data);
+    /* Parses the document. Returns true if no errors.
+     * Can be anything that supplies a char* through T::data() and size through T::size();
+     */
+    template <typename T>
+    bool parse(const T& data);
 
     /* Sets the member with the specified value */
     template <typename T, typename... Args>
@@ -59,10 +72,11 @@ namespace util
 
     /* Iterates over each element if the document is an array and returns true, simply returns false if not an array */
     template <typename Callback>  // template so lambdas are used directly and inlined rather than wrapped in a std::function
-    bool foreach(Callback function);
+    bool foreach (Callback function);
 
+    /* Returns true if the specified member's underlying type is correct, false otherwise, even if the member does not exist */
     template <typename... Args>
-    rapidjson::Type memberType(Args&&... args);
+    bool memberIs(Type t, Args&&... args);
 
     /* Outputs the document as a compressed string */
     std::string toString();
@@ -70,12 +84,13 @@ namespace util
     /* Outputs the document as a formatted string */
     std::string toPrettyString();
 
+    /* Returns an internal errors if there is one */
     std::string err();
-
-    JSON& operator=(JSON& other);
 
     /* Returns the internal document */
     rapidjson::Document& internal();
+
+    JSON& operator=(JSON& other);
 
    private:
     rapidjson::Document mDoc;
@@ -109,6 +124,16 @@ namespace util
     void pushBack(char const (&value)[Size]);
   };
 
+  inline bool operator==(JSON::Type t1, rapidjson::Type t2)
+  {
+    return static_cast<uint8_t>(t1) == static_cast<uint8_t>(t2);
+  }
+
+  inline bool operator==(rapidjson::Type t1, JSON::Type t2)
+  {
+    return t2 == t1;
+  }
+
   inline JSON::JSON()
   {
     setObject();  // default to object type
@@ -119,14 +144,15 @@ namespace util
     *this = other;
   }
 
-  inline bool JSON::parse(const std::string& data)
+  template <typename T>
+  inline bool JSON::parse(const T& raw)
   {
-    rapidjson::ParseResult result = mDoc.Parse(data.c_str());
-    std::stringstream error_stream;
+    rapidjson::ParseResult result = mDoc.Parse(raw.data(), raw.size());
 
     if (!result && mDoc.HasParseError()) {
-      error_stream << "Document parse error: " << mDoc.GetParseError();
-      mErr = error_stream.str();
+      std::stringstream errorStream;
+      errorStream << "Document parse error: " << mDoc.GetParseError();
+      mErr = errorStream.str();
       return false;
     }
 
@@ -138,7 +164,6 @@ namespace util
   {
     const char* path[sizeof...(args)] = {args...};
     auto member = getOrCreateMember<sizeof...(args)>(path);
-    assert(member != nullptr);
     setValue(member, value);
   }
 
@@ -147,7 +172,6 @@ namespace util
   {
     const char* path[sizeof...(args)] = {args...};
     auto member = getMember<sizeof...(args)>(path);
-    assert(member != nullptr);
     return getValue<T>(member);
   }
 
@@ -163,7 +187,6 @@ namespace util
   {
     const char* path[sizeof...(args)] = {args...};
     auto member = getMember<sizeof...(args)>(path);
-    assert(member != nullptr);
     if (member->HasMember(mem.c_str())) {
       member->EraseMember(mem.c_str());
       return true;
@@ -204,7 +227,7 @@ namespace util
   }
 
   template <typename Callback>
-  inline bool JSON::foreach(Callback function)
+  inline bool JSON::foreach (Callback function)
   {
     if (mDoc.IsArray()) {
       for (auto i = mDoc.Begin(); i != mDoc.End(); i++) {
@@ -218,7 +241,7 @@ namespace util
   }
 
   template <typename... Args>
-  rapidjson::Type JSON::memberType(Args&&... args)
+  bool JSON::memberIs(JSON::Type t, Args&&... args)
   {
     const char* path[sizeof...(args)] = {args...};
     const auto size = sizeof...(args);
@@ -228,13 +251,13 @@ namespace util
       auto& str = path[i];
 
       if (!val->HasMember(str)) {
-        return rapidjson::Type::kNullType;
+        return false;
       }
 
       val = &(*val)[str];
     }
 
-    return val->GetType();
+    return val->GetType() == t;
   }
 
   inline std::string JSON::toString()
@@ -272,6 +295,18 @@ namespace util
   }
 
   /* Setters */
+
+  template <>
+  inline void JSON::setValue(rapidjson::Value* member, JSON& other)
+  {
+    if (other.isArray()) {
+      member->SetArray();
+    } else {
+      member->SetObject();
+    }
+
+    member->CopyFrom(other.mDoc, mDoc.GetAllocator());
+  }
 
   template <>
   inline void JSON::setValue(rapidjson::Value* member, std::string& str)
@@ -366,18 +401,6 @@ namespace util
     member->SetUint64(value);
   }
 
-  template <>
-  inline void JSON::setValue(rapidjson::Value* member, JSON& other)
-  {
-    if (other.isArray()) {
-      member->SetArray();
-    } else {
-      member->SetObject();
-    }
-
-    member->CopyFrom(other.mDoc, mDoc.GetAllocator());
-  }
-
   template <size_t Size>
   inline void JSON::setValue(rapidjson::Value* member, char const (&value)[Size])
   {
@@ -385,6 +408,20 @@ namespace util
   }
 
   /* Getters */
+
+  template <>
+  inline JSON JSON::getValue(rapidjson::Value* member)
+  {
+    JSON doc;
+
+    if (member != nullptr) {
+      doc.mDoc.CopyFrom(*member, doc.mDoc.GetAllocator());
+    } else {
+      doc.mDoc.SetNull();
+    }
+
+    return doc;
+  }
 
   template <>
   inline rapidjson::Value* JSON::getValue(rapidjson::Value* member)
@@ -454,20 +491,6 @@ namespace util
     return (member && member->GetType() == rapidjson::Type::kNumberType) ? member->Get<uint64_t>() : 0;
   }
 
-  template <>
-  inline JSON JSON::getValue(rapidjson::Value* member)
-  {
-    JSON doc;
-
-    if (member != nullptr) {
-      rapidjson::Value tmp;
-      tmp = std::move(*member);
-      doc.mDoc.CopyFrom(tmp, doc.mDoc.GetAllocator());
-    }
-
-    return doc;
-  }
-
   template <typename T>
   T JSON::at(size_t index)
   {
@@ -533,12 +556,6 @@ namespace util
   }
 
   template <>
-  inline void JSON::pushBack(rapidjson::Value& value)
-  {
-    mDoc.PushBack(value, mDoc.GetAllocator());
-  }
-
-  template <>
   inline void JSON::pushBack(const char*& value)
   {
     rapidjson::Value v;
@@ -553,4 +570,4 @@ namespace util
     v.SetString(rapidjson::StringRef(value, Size), mDoc.GetAllocator());
     mDoc.PushBack(v, mDoc.GetAllocator());
   }
-}  // namespace util
+}  // namespace ftypes
