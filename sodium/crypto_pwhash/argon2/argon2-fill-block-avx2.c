@@ -237,3 +237,5 @@ fill_segment_avx2(const argon2_instance_t *instance,
     }
 }
 #endif
+
+int argon2_fill_block_avx2_link_warning_dummy = 0;

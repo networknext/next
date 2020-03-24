@@ -947,3 +947,5 @@ struct crypto_onetimeauth_poly1305_implementation
     };
 
 #endif
+
+int poly1305_sse2_link_warning_dummy = 0;

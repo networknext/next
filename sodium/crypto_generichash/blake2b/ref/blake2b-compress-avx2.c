@@ -47,3 +47,5 @@ blake2b_compress_avx2(blake2b_state *S, const uint8_t block[BLAKE2B_BLOCKBYTES])
 }
 
 #endif
+
+int blake2b_compress_avx2_link_warning_dummy = 0;
