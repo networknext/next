@@ -48,6 +48,7 @@ var EmptyDecisionMetrics DecisionMetrics = DecisionMetrics{
 
 type SessionErrorMetrics struct {
 	ReadPacketFailure           Counter
+	FallbackToDirect            Counter
 	PipelineExecFailure         Counter
 	GetServerDataFailure        Counter
 	UnmarshalServerDataFailure  Counter
@@ -59,7 +60,7 @@ type SessionErrorMetrics struct {
 	WriteCachedResponseFailure  Counter
 	ClientLocateFailure         Counter
 	NearRelaysLocateFailure     Counter
-	RouteSelectionFailure       Counter
+	RouteFailure                Counter
 	EncryptionFailure           Counter
 	WriteResponseFailure        Counter
 	UpdateSessionFailure        Counter
@@ -68,6 +69,7 @@ type SessionErrorMetrics struct {
 
 var EmptySessionErrorMetrics SessionErrorMetrics = SessionErrorMetrics{
 	ReadPacketFailure:           &EmptyCounter{},
+	FallbackToDirect:            &EmptyCounter{},
 	PipelineExecFailure:         &EmptyCounter{},
 	GetServerDataFailure:        &EmptyCounter{},
 	UnmarshalServerDataFailure:  &EmptyCounter{},
@@ -79,7 +81,7 @@ var EmptySessionErrorMetrics SessionErrorMetrics = SessionErrorMetrics{
 	WriteCachedResponseFailure:  &EmptyCounter{},
 	ClientLocateFailure:         &EmptyCounter{},
 	NearRelaysLocateFailure:     &EmptyCounter{},
-	RouteSelectionFailure:       &EmptyCounter{},
+	RouteFailure:                &EmptyCounter{},
 	EncryptionFailure:           &EmptyCounter{},
 	WriteResponseFailure:        &EmptyCounter{},
 	UpdateSessionFailure:        &EmptyCounter{},
@@ -383,6 +385,16 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
+	sessionMetrics.SessionErrorMetrics.FallbackToDirect, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Fallback To Direct",
+		ServiceName: "server_backend",
+		ID:          "session.error.fallback_to_direct",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	sessionMetrics.SessionErrorMetrics.GetServerDataFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Session Get Server Data Failure",
 		ServiceName: "server_backend",
@@ -443,10 +455,10 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
-	sessionMetrics.SessionErrorMetrics.RouteSelectionFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Session Route Selection Failure",
+	sessionMetrics.SessionErrorMetrics.RouteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Route Failure",
 		ServiceName: "server_backend",
-		ID:          "session.error.route_selection_failure",
+		ID:          "session.error.route_failure",
 		Unit:        "errors",
 	})
 	if err != nil {

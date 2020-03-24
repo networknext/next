@@ -2,7 +2,7 @@
 
 <br>
 
-This is a monorepo that contains a WIP migration/refactor of the Network Next backend.
+This is a monorepo that contains the Network Next backend.
 
 ## Development
 
