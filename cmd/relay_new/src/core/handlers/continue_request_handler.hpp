@@ -71,6 +71,7 @@ namespace core
 
       if (sessionIsExpired(session)) {
         Log("ignoring continue request. session is expired");
+        mSessionMap.erase(hash);
         return;
       }
 

@@ -18,6 +18,7 @@ namespace core
     net::Address PrevAddr;
     net::Address NextAddr;
     std::array<uint8_t, crypto_box_SECRETKEYBYTES> PrivateKey;
+    // Not tested or benchmarked yet, don't use
     // ReplayProtection ServerToClientProtection;
     // ReplayProtection ClientToServerProtection;
     legacy::relay_replay_protection_t ServerToClientProtection;
@@ -33,6 +34,7 @@ namespace core
     void set(uint64_t key, SessionPtr val);
     auto get(uint64_t key) -> SessionPtr;
     auto exists(uint64_t key) -> bool;
+    auto erase(uint64_t key) -> bool;
 
    private:
     // Using a map for now, it's a int key so an unordered map might not be any better considering the memory footprint
@@ -56,6 +58,12 @@ namespace core
   {
     std::lock_guard<std::mutex> lk(mLock);
     return mInternal.find(key) != mInternal.end();
+  }
+
+  inline auto SessionMap::erase(uint64_t key) -> bool
+  {
+    std::lock_guard<std::mutex> lk(mLock);
+    return mInternal.erase(key) > 0;
   }
 }  // namespace core
 #endif

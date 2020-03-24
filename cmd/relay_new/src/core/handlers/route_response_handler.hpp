@@ -72,6 +72,7 @@ namespace core
       }
 
       if (sessionIsExpired(session)) {
+        mSessionMap.erase(hash);
         return;
       }
 

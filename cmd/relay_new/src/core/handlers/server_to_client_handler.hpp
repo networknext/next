@@ -65,6 +65,7 @@ namespace core
       auto session = mSessionMap.get(hash);
 
       if (sessionIsExpired(session)) {
+        mSessionMap.erase(hash);
         return;
       }
 
