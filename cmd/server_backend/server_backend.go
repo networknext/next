@@ -15,6 +15,7 @@ import (
 	"os/signal"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
 	gcplogging "cloud.google.com/go/logging"
@@ -22,7 +23,6 @@ import (
 	"cloud.google.com/go/firestore"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/go-redis/redis/v7"
 	"github.com/oschwald/geoip2-golang"
 
 	"github.com/networknext/backend/billing"
@@ -98,16 +98,17 @@ func main() {
 		}
 	}
 
-	// Attempt to connect to REDIS_HOST, falling back to local instance if not explicitly specified
-	redisHost, ok := os.LookupEnv("REDIS_HOST")
-	if !ok {
-		redisHost = "localhost:6379"
-		level.Warn(logger).Log("envvar", "REDIS_HOST", "value", redisHost)
+	redisHost := os.Getenv("REDIS_HOST_RELAYS")
+	redisClientRelays := storage.NewRedisClient(redisHost)
+	if err := redisClientRelays.Ping().Err(); err != nil {
+		level.Error(logger).Log("envvar", "REDIS_HOST_RELAYS", "value", redisHost, "err", err)
+		os.Exit(1)
 	}
 
-	redisClient := redis.NewClient(&redis.Options{Addr: redisHost})
-	if err := redisClient.Ping().Err(); err != nil {
-		level.Error(logger).Log("envvar", "REDIS_HOST", "value", redisHost, "err", err)
+	redisHosts := strings.Split(os.Getenv("REDIS_HOST_CACHE"), ",")
+	redisClientCache := storage.NewRedisClient(redisHosts...)
+	if err := redisClientCache.Ping().Err(); err != nil {
+		level.Error(logger).Log("envvar", "REDIS_HOST_CACHE", "value", redisHosts, "err", err)
 		os.Exit(1)
 	}
 
@@ -125,7 +126,7 @@ func main() {
 	}
 
 	geoClient := routing.GeoClient{
-		RedisClient: redisClient,
+		RedisClient: redisClientRelays,
 		Namespace:   "RELAY_LOCATIONS",
 	}
 
@@ -300,8 +301,8 @@ func main() {
 			Conn:          conn,
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
-			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClient, db, &updateMetrics),
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClient, db, &routeMatrix, ipLocator, &geoClient, sessionMetrics, biller, serverPrivateKey, routerPrivateKey),
+			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClientCache, db, &updateMetrics),
+			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClientCache, db, &routeMatrix, ipLocator, &geoClient, sessionMetrics, biller, serverPrivateKey, routerPrivateKey),
 		}
 
 		go func() {
