@@ -82,8 +82,6 @@ namespace core
   {
     assert(numRelays <= MAX_RELAYS);
 
-    LogDebug("got ", numRelays, " relays from backend update");
-
     // first copy all current relays that are also in the update lists
 
     std::array<bool, MAX_RELAYS> historySlotToken{false};

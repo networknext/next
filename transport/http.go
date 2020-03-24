@@ -186,6 +186,7 @@ func relayInitOctetStream(logger log.Logger, writer http.ResponseWriter, body []
 	{
 		encoding.WriteUint32(responseData[:], &index, VersionNumberInitResponse)
 		encoding.WriteUint64(responseData[:], &index, relay.LastUpdateTime)
+		encoding.WriteBytes(responseData[:], &index, relay.PublicKey, crypto.KeySize)
 	}
 
 	writer.Header().Set("Content-Type", "application/octet-stream")

@@ -5,14 +5,6 @@ namespace util
   class JSON
   {
    public:
-    /* Entire purpose is to be able to set a field as an array while keeping the rapidjson abstraction */
-    class Array
-    {};
-
-    /* Entire purpose is to be able to set a field as an object while keeping the rapidjson abstraction */
-    class Object
-    {};
-
     enum class Type : uint8_t
     {
       Null = rapidjson::Type::kNullType,
@@ -355,20 +347,6 @@ namespace util
   {
     member->SetObject();
     *member = rapidjson::Value(*value, mDoc.GetAllocator());
-  }
-
-  template <>
-  inline void JSON::setValue(rapidjson::Value* member, Object& object)
-  {
-    (void)object;
-    member->SetObject();
-  }
-
-  template <>
-  inline void JSON::setValue(rapidjson::Value* member, Array& array)
-  {
-    (void)array;
-    member->SetArray();
   }
 
   template <>
