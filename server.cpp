@@ -55,6 +55,8 @@ int main()
 
     next_init( NULL, NULL ); 
     
+    next_log_level( NEXT_LOG_LEVEL_INFO );
+
     next_server_t * server = next_server_create( NULL, "127.0.0.1:32202", "0.0.0.0:32202", "local", server_packet_received );
 
     if ( server == NULL )
