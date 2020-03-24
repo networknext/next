@@ -43,6 +43,7 @@
 #pragma comment( lib, "WS2_32.lib" )
 #pragma comment( lib, "IPHLPAPI.lib" )
 #pragma comment( lib, "Qwave.lib" )
+
 #ifdef SetPort
 #undef SetPort
 #endif // #ifdef SetPort
