@@ -134,27 +134,43 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">
     <LinkIncremental>false</LinkIncremental>
+    <IntDir>$(ProjectDir)/int/Windows-x86_64/$(Configuration)/</IntDir>
+    <OutDir>$(SolutionDir)../lib/Windows-x86_64/$(Configuration)/</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Release|x64'">
     <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(SolutionDir)../lib/Windows-x86_64/$(Configuration)/</OutDir>
+    <IntDir>$(ProjectDir)/int/Windows-x86_64/$(Configuration)/</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
+    <OutDir>$(SolutionDir)../lib/Windows-x86/$(Configuration)/</OutDir>
+    <IntDir>$(ProjectDir)/int/Windows-x86/$(Configuration)/</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
+    <OutDir>$(SolutionDir)../lib/Windows-x86/$(Configuration)/</OutDir>
+    <IntDir>$(ProjectDir)/int/Windows-x86/$(Configuration)/</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
+    <OutDir>$(SolutionDir)../lib/Windows-x86_64/$(Configuration)/</OutDir>
+    <IntDir>$(ProjectDir)/int/Windows-x86_64/$(Configuration)/</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
+    <OutDir>$(SolutionDir)../lib/Windows-x86_64/$(Configuration)/</OutDir>
+    <IntDir>$(ProjectDir)/int/Windows-x86_64/$(Configuration)/</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(SolutionDir)../lib/Windows-x86/$(Configuration)/</OutDir>
+    <IntDir>$(ProjectDir)/int/Windows-x86/$(Configuration)/</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(SolutionDir)../lib/Windows-x86/$(Configuration)/</OutDir>
+    <IntDir>$(ProjectDir)/int/Windows-x86/$(Configuration)/</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">
     <ClCompile>
@@ -192,6 +208,7 @@
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
       <PrecompiledHeaderOutputFile />
+      <ProgramDataBaseFileName>$(OutDir)\$(TargetName).pdb</ProgramDataBaseFileName>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
