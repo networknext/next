@@ -337,7 +337,6 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
         // blocking with no timeout
     }
 
-    /*
     if ( address->type == NEXT_ADDRESS_IPV6 )
     {
         #if defined(IPV6_TCLASS)
@@ -362,7 +361,6 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
         }
         #endif
     }
-    */
 
     return socket;
 }
