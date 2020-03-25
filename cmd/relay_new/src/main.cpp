@@ -18,6 +18,7 @@
 #include "core/router_info.hpp"
 #include "core/packet_processor.hpp"
 #include "core/ping_processor.hpp"
+#include "core/backend.hpp"
 
 using namespace std::chrono_literals;
 
@@ -41,17 +42,12 @@ namespace
     size_t size = backtrace(arr, StacktraceDepth);
 
     // print the stack trace
-    fprintf(stderr, "Error: signal %d:\n", sig);
+    std::cerr << "Error: signal " << sig << ":\n";
     backtrace_symbols_fd(arr, size, STDERR_FILENO);
     exit(1);
   }
 
-  inline void updateLoop(CURL* curl,
-   const char* backend_hostname,
-   const uint8_t* relay_token,
-   const char* relay_address_string,
-   core::RelayManager& relayManager,
-   util::ThroughputLogger& logger)
+  inline void updateLoop(core::Backend<net::CurlWrapper>& backend, util::ThroughputLogger& logger)
   {
     std::vector<uint8_t> update_response_memory;
     update_response_memory.resize(RESPONSE_MAX_BYTES);
@@ -59,21 +55,15 @@ namespace
       auto bytesReceived = logger.print();
       bool updated = false;
 
-      for (int i = 0; i < 10; ++i) {
-        if (relay::relay_update(curl,
-             backend_hostname,
-             relay_token,
-             relay_address_string,
-             update_response_memory.data(),
-             relayManager,
-             bytesReceived) == RELAY_OK) {
+      for (int i = 0; i < 10; i++) {
+        if (backend.update(bytesReceived)) {
           updated = true;
           break;
         }
       }
 
       if (!updated) {
-        printf("error: could not update relay\n\n");
+        std::cout << "error: could not update relay\n";
         gAlive = false;
         break;
       }
@@ -82,49 +72,60 @@ namespace
     }
   }
 
-  inline bool getCryptoKeys(crypto::Keychain& keychain)
+  inline bool getCryptoKeys(crypto::Keychain& keychain, std::string& b64RelayPubKey)
   {
-    const char* relay_private_key_env = relay::relay_platform_getenv("RELAY_PRIVATE_KEY");
-    if (!relay_private_key_env) {
-      printf("\nerror: RELAY_PRIVATE_KEY not set\n\n");
-      return false;
+    // relay private key
+    {
+      const char* relay_private_key_env = relay::relay_platform_getenv("RELAY_PRIVATE_KEY");
+      if (relay_private_key_env == nullptr) {
+        std::cout << "error: RELAY_PRIVATE_KEY not set\n";
+        return false;
+      }
+
+      std::string b64RelayPrivateKey = relay_private_key_env;
+      auto len = encoding::base64::Decode(b64RelayPrivateKey, keychain.RelayPrivateKey);
+      if (len != crypto::KeySize) {
+        std::cout << "error: invalid relay private key\n";
+        return false;
+      }
+      std::cout << "    relay private key is '" << relay_private_key_env << "'\n";
     }
 
-    if (encoding::base64_decode_data(relay_private_key_env, keychain.RelayPrivateKey.data(), RELAY_PRIVATE_KEY_BYTES) !=
-        RELAY_PRIVATE_KEY_BYTES) {
-      printf("\nerror: invalid relay private key\n\n");
-      return false;
+    // relay public key
+    {
+      const char* relay_public_key_env = relay::relay_platform_getenv("RELAY_PUBLIC_KEY");
+      if (relay_public_key_env == nullptr) {
+        std::cout << "error: RELAY_PUBLIC_KEY not set\n";
+        return false;
+      }
+
+      b64RelayPubKey = relay_public_key_env;
+      auto len = encoding::base64::Decode(b64RelayPubKey, keychain.RelayPublicKey);
+      if (len != crypto::KeySize) {
+        std::cout << "error: invalid relay public key\n";
+        return false;
+      }
+
+      std::cout << "    relay public key is '" << relay_public_key_env << "'\n";
     }
 
-    printf("    relay private key is '%s'\n", relay_private_key_env);
+    // router public key
+    {
+      const char* router_public_key_env = relay::relay_platform_getenv("RELAY_ROUTER_PUBLIC_KEY");
+      if (router_public_key_env == nullptr) {
+        std::cout << "error: RELAY_ROUTER_PUBLIC_KEY not set\n";
+        return false;
+      }
 
-    const char* relay_public_key_env = relay::relay_platform_getenv("RELAY_PUBLIC_KEY");
-    if (!relay_public_key_env) {
-      printf("\nerror: RELAY_PUBLIC_KEY not set\n\n");
-      return false;
+      std::string b64RouterPublicKey = router_public_key_env;
+      auto len = encoding::base64::Decode(b64RouterPublicKey, keychain.RouterPublicKey);
+      if (len != crypto::KeySize) {
+        std::cout << "error: invalid router public key\n";
+        return false;
+      }
+
+      std::cout << "    router public key is '" << router_public_key_env << "'\n";
     }
-
-    if (encoding::base64_decode_data(relay_public_key_env, keychain.RelayPublicKey.data(), RELAY_PUBLIC_KEY_BYTES) !=
-        RELAY_PUBLIC_KEY_BYTES) {
-      printf("\nerror: invalid relay public key\n\n");
-      return false;
-    }
-
-    printf("    relay public key is '%s'\n", relay_public_key_env);
-
-    const char* router_public_key_env = relay::relay_platform_getenv("RELAY_ROUTER_PUBLIC_KEY");
-    if (!router_public_key_env) {
-      printf("\nerror: RELAY_ROUTER_PUBLIC_KEY not set\n\n");
-      return false;
-    }
-
-    if (encoding::base64_decode_data(router_public_key_env, keychain.RouterPublicKey.data(), crypto_sign_PUBLICKEYBYTES) !=
-        crypto_sign_PUBLICKEYBYTES) {
-      printf("\nerror: invalid router public key\n\n");
-      return false;
-    }
-
-    printf("    router public key is '%s'\n", router_public_key_env);
 
     return true;
   }
@@ -198,9 +199,9 @@ int main()
 
   const util::Clock relayClock;
 
-  printf("\nNetwork Next Relay\n");
+  std::cout << "\nNetwork Next Relay\n";
 
-  printf("\nEnvironment:\n\n");
+  std::cout << "\nEnvironment:\n\n";
 
   // relay address - the address other devices should use to talk to this
   // sent to the relay backend and is the addr everything communicates with
@@ -221,7 +222,8 @@ int main()
   }
 
   crypto::Keychain keychain;
-  if (!getCryptoKeys(keychain)) {
+  std::string b64RelayPubKey;
+  if (!getCryptoKeys(keychain, b64RelayPubKey)) {
     return 1;
   }
 
@@ -271,16 +273,6 @@ int main()
     Log("error: failed to initialize relay\n\n");
     return 1;
   }
-
-  CURL* curl = curl_easy_init();
-  if (!curl) {
-    Log("error: could not initialize curl\n\n");
-    curl_easy_cleanup(curl);
-    relay::relay_term();
-    return 1;
-  }
-
-  uint8_t relay_token[RELAY_TOKEN_BYTES];
 
   Log("Initializing relay\n");
 
@@ -370,9 +362,9 @@ int main()
       sockets.push_back(packetSocket);
 
       packetThreads[i] = std::make_unique<std::thread>(
-       [&waitVar, &socketAndThreadReady, packetSocket, &relayClock, &keychain, &routerInfo, &sessions, &relayManager, &logger] {
+       [&waitVar, &socketAndThreadReady, packetSocket, &relayClock, &keychain, &routerInfo, &sessions, &relayManager, &logger, &relayAddr] {
          core::PacketProcessor processor(
-          *packetSocket, relayClock, keychain, routerInfo, sessions, relayManager, gAlive, *logger);
+          *packetSocket, relayClock, keychain, routerInfo, sessions, relayManager, gAlive, *logger, relayAddr);
          processor.process(waitVar, socketAndThreadReady);
        });
 
@@ -387,9 +379,9 @@ int main()
 
   // if using port 0, it is discovered in ping socket's create(). That being said sockets
   // must be created before communicating with the backend otherwise port 0 will be reused
-  LogDebug("Actual address: ", relayAddr);
-
   relayAddr.toString(relayAddrString);
+
+  LogDebug("Actual address: ", relayAddrString);
 
   /* ping processing setup
    * pings are sent out on a different port number than received
@@ -432,15 +424,11 @@ int main()
   LogDebug("communicating with backend");
   bool relay_initialized = false;
 
+  core::Backend<net::CurlWrapper> backend(backendHostname, relayAddrString, keychain, routerInfo, relayManager, b64RelayPubKey);
+
   for (int i = 0; i < 60; ++i) {
-    if (relay::relay_init(curl,
-         backendHostname.c_str(),
-         relay_token,
-         relayAddrString.c_str(),
-         keychain.RouterPublicKey.data(),
-         keychain.RelayPrivateKey.data(),
-         &routerInfo.InitalizeTimeInSeconds) == RELAY_OK) {
-      printf("\n");
+    if (backend.init()) {
+      std::cout << '\n';
       relay_initialized = true;
       break;
     }
@@ -452,7 +440,6 @@ int main()
 
   if (!relay_initialized) {
     Log("error: could not initialize relay\n\n");
-    curl_easy_cleanup(curl);
     gAlive = false;
     joinThreads();
     closeSockets();
@@ -464,8 +451,7 @@ int main()
 
   signal(SIGINT, interrupt_handler);  // ctrl c shuts down gracefully
 
-  // g++ complains that updateLoop is ambiguous without the scope resolution op
-  ::updateLoop(curl, backendHostname.c_str(), relay_token, relayAddrString.c_str(), relayManager, *logger);
+  updateLoop(backend, *logger);
 
   Log("Cleaning up\n");
 
@@ -479,9 +465,6 @@ int main()
   if (output) {
     output->close();
   }
-
-  LogDebug("Cleaning up curl");
-  curl_easy_cleanup(curl);
 
   LogDebug("Terminating relay");
   relay::relay_term();

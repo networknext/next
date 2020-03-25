@@ -312,6 +312,10 @@ func main() {
 			sessionEntry.TimestampExpire = time.Now().Add(time.Minute * 5)
 			takeNetworkNext := len(nearRelays) > 0
 
+			if backend.mode == BACKEND_MODE_IDEMPOTENT && rand.Intn(10) == 0 {
+				return
+			}
+
 			if backend.mode == BACKEND_MODE_FORCE_DIRECT {
 				takeNetworkNext = false
 			}

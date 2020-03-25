@@ -1,6 +1,8 @@
 #include "includes.h"
 #include "testing/test.hpp"
 
+#include "crypto/bytes.hpp"
+
 #include "core/continue_token.hpp"
 
 Test(core_ContinueToken_general)
@@ -16,7 +18,7 @@ Test(core_ContinueToken_general)
   crypto_box_keypair(receiver_public_key.data(), receiver_private_key.data());
 
   std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
-  encoding::RandomBytes(nonce, crypto_box_NONCEBYTES);
+  crypto::RandomBytes(nonce, crypto_box_NONCEBYTES);
 
   const auto ExpireTimestamp = testing::Random<uint64_t>();
   const auto SessionID = testing::Random<uint64_t>();

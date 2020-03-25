@@ -7,6 +7,7 @@
 #include "net/address.hpp"
 
 #include "util/clock.hpp"
+#include "util/logger.hpp"
 
 namespace core
 {

@@ -37,7 +37,6 @@ namespace core
       uint64_t sequence = encoding::ReadUint64(mPacket.Buffer, index);
       // pings are sent on a different port, need to read actual address to stay consistent
       encoding::ReadAddress(mPacket.Buffer, index, addr);
-      LogDebug("got pong packet from ", addr);
 
       // process the pong time
       mRelayManager.processPong(addr, sequence);

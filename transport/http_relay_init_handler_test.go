@@ -140,7 +140,7 @@ func TestRelayInitHandler(t *testing.T) {
 	const addr = "127.0.0.1:40000"
 	t.Run("magic is invalid", func(t *testing.T) {
 		udp, _ := net.ResolveUDPAddr("udp", addr)
-		packet := transport.RelayInitPacket{
+		packet := transport.RelayInitRequest{
 			Magic:          0xFFFFFFFF,
 			Version:        0,
 			Address:        *udp,
@@ -159,7 +159,7 @@ func TestRelayInitHandler(t *testing.T) {
 
 	t.Run("version is invalid", func(t *testing.T) {
 		udp, _ := net.ResolveUDPAddr("udp", addr)
-		packet := transport.RelayInitPacket{
+		packet := transport.RelayInitRequest{
 			Magic:          transport.InitRequestMagic,
 			Version:        1,
 			Address:        *udp,
@@ -202,7 +202,7 @@ func TestRelayInitHandler(t *testing.T) {
 		encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
 
 		udp, _ := net.ResolveUDPAddr("udp", addr)
-		packet := transport.RelayInitPacket{
+		packet := transport.RelayInitRequest{
 			Magic:          transport.InitRequestMagic,
 			Version:        0,
 			Nonce:          nonce,
@@ -218,7 +218,7 @@ func TestRelayInitHandler(t *testing.T) {
 			},
 			PublicKey: relayPublicKey,
 		}
-		initOctetStreamAssertions(t, relay, buff, http.StatusUnprocessableEntity, nil, nil, nil, nil, routerPrivateKey[:])
+		initOctetStreamAssertions(t, relay, buff, http.StatusBadRequest, nil, nil, nil, nil, routerPrivateKey[:])
 	})
 
 	t.Run("encryption token is 0'ed", func(t *testing.T) {
@@ -233,7 +233,7 @@ func TestRelayInitHandler(t *testing.T) {
 		token := make([]byte, routing.EncryptedTokenSize)
 
 		udp, _ := net.ResolveUDPAddr("udp", addr)
-		packet := transport.RelayInitPacket{
+		packet := transport.RelayInitRequest{
 			Magic:          transport.InitRequestMagic,
 			Version:        0,
 			Nonce:          nonce,
@@ -275,7 +275,7 @@ func TestRelayInitHandler(t *testing.T) {
 		encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
 
 		udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
-		packet := transport.RelayInitPacket{
+		packet := transport.RelayInitRequest{
 			Magic:          transport.InitRequestMagic,
 			Version:        0,
 			Nonce:          nonce,
@@ -327,7 +327,7 @@ func TestRelayInitHandler(t *testing.T) {
 		udpAddr, _ := net.ResolveUDPAddr("udp", addr)
 		dcname := "another name"
 
-		packet := transport.RelayInitPacket{
+		packet := transport.RelayInitRequest{
 			Magic:          transport.InitRequestMagic,
 			Version:        0,
 			Nonce:          nonce,
@@ -396,7 +396,7 @@ func TestRelayInitHandler(t *testing.T) {
 
 		encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
 
-		packet := transport.RelayInitPacket{
+		packet := transport.RelayInitRequest{
 			Magic:          transport.InitRequestMagic,
 			Nonce:          nonce,
 			Address:        *udpAddr,
@@ -444,7 +444,7 @@ func TestRelayInitHandler(t *testing.T) {
 
 		encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
 
-		packet := transport.RelayInitPacket{
+		packet := transport.RelayInitRequest{
 			Magic:          transport.InitRequestMagic,
 			Nonce:          nonce,
 			Address:        *udpAddr,
@@ -493,7 +493,7 @@ func TestRelayInitHandler(t *testing.T) {
 
 		encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
 
-		packet := transport.RelayInitPacket{
+		packet := transport.RelayInitRequest{
 			Magic:          transport.InitRequestMagic,
 			Nonce:          nonce,
 			Address:        *udpAddr,
@@ -560,7 +560,7 @@ func TestRelayInitHandler(t *testing.T) {
 
 		before := uint64(time.Now().Unix())
 
-		packet := transport.RelayInitPacket{
+		packet := transport.RelayInitRequest{
 			Magic:          transport.InitRequestMagic,
 			Nonce:          nonce,
 			Address:        *udpAddr,
@@ -690,15 +690,13 @@ func TestRelayInitHandler(t *testing.T) {
 			encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
 			b64EncToken := base64.StdEncoding.EncodeToString(encryptedToken)
 
-			buff := []byte(fmt.Sprintf(`
-			{
+			buff := []byte(fmt.Sprintf(`{
 				"magic_request_protection": %d,
 				"relay_address": "%s",
 				"relay_port": %d,
 				"nonce": "%s",
 				"encrypted_token": "%s"
-			}
-			`, transport.InitRequestMagic, "invalid address", 0, b64Nonce, b64EncToken))
+			}`, transport.InitRequestMagic, "invalid address", 0, b64Nonce, b64EncToken))
 			relay := routing.Relay{
 				ID: crypto.HashID(addr),
 				Datacenter: routing.Datacenter{
@@ -786,15 +784,13 @@ func TestRelayInitHandler(t *testing.T) {
 			b64Nonce := base64.StdEncoding.EncodeToString(nonce)
 			b64EncToken := base64.StdEncoding.EncodeToString(encryptedToken)
 
-			buff := []byte(fmt.Sprintf(`
-			{
+			buff := []byte(fmt.Sprintf(`{
 				"magic_request_protection": %d,
 				"relay_address": "%s",
 				"relay_port": %d,
 				"nonce": "%s",
 				"encrypted_token": "%s"
-			}
-			`, transport.InitRequestMagic, udpAddr.String(), udpAddr.Port, b64Nonce, b64EncToken))
+			}`, transport.InitRequestMagic, udpAddr.String(), udpAddr.Port, b64Nonce, b64EncToken))
 
 			relay := routing.Relay{
 				ID: crypto.HashID(addr),
@@ -822,7 +818,7 @@ func TestRelayInitHandler(t *testing.T) {
 
 			body := recorder.Body.Bytes()
 
-			var response transport.RelayInitResponseJSON
+			var response transport.RelayInitResponse
 			assert.Nil(t, json.Unmarshal(body, &response))
 
 			if assert.GreaterOrEqual(t, len(contentType), 1) {

@@ -16,7 +16,9 @@ namespace core
    const volatile bool& shouldProcess,
    const net::Address& relayAddress)
    : mSocket(socket), mRelayManager(relayManager), mShouldProcess(shouldProcess), mRelayAddress(relayAddress)
-  {}
+  {
+    LogDebug("sending pings using this addr: ", relayAddress);
+  }
 
   void PingProcessor::process(std::condition_variable& var, std::atomic<bool>& readyToSend)
   {
