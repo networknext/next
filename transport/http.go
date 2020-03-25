@@ -16,7 +16,6 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/golang/protobuf/ptypes"
 
 	"github.com/go-redis/redis/v7"
 	"github.com/gorilla/mux"
@@ -276,16 +275,9 @@ func RelayUpdateHandlerFunc(logger log.Logger, params *CommonRelayUpdateFuncPara
 }
 
 func relayUpdateJSON(logger log.Logger, writer http.ResponseWriter, body []byte, params *CommonRelayUpdateFuncParams) {
-	var jsonPacket RelayUpdateRequestJSON
-	if err := json.Unmarshal(body, &jsonPacket); err != nil {
+	var packet RelayUpdateRequest
+	if err := json.Unmarshal(body, &packet); err != nil {
 		level.Error(logger).Log("msg", "could not parse update json", "err", err)
-		writer.WriteHeader(http.StatusUnprocessableEntity)
-		return
-	}
-
-	var packet RelayUpdatePacket
-	if err := jsonPacket.ToUpdatePacket(&packet); err != nil {
-		level.Error(logger).Log("msg", "could not convert json to update packet", "err", err)
 		writer.WriteHeader(http.StatusUnprocessableEntity)
 		return
 	}
@@ -299,11 +291,11 @@ func relayUpdateJSON(logger log.Logger, writer http.ResponseWriter, body []byte,
 		return
 	}
 
-	var response RelayUpdateResponseJSON
+	var response RelayUpdateResponse
 	for _, pingData := range relaysToPing {
 		var token routing.LegacyPingToken
 		token.Timeout = uint64(time.Now().Unix() * 100000) // some arbitrarily large number just to make things compatable for the moment
-		token.RelayID = crypto.HashID(jsonPacket.StringAddr)
+		token.RelayID = crypto.HashID(packet.Address.String())
 		bin, _ := token.MarshalBinary()
 		var legacy routing.LegacyPingData
 		legacy.ID = pingData.ID
@@ -319,46 +311,17 @@ func relayUpdateJSON(logger log.Logger, writer http.ResponseWriter, body []byte,
 		writer.Header().Set("Content-Type", "application/json")
 		writer.Write(responseData)
 	}
-
-	if ts, err := ptypes.TimestampProto(time.Unix(int64(jsonPacket.Timestamp), 0)); err == nil {
-		// can find the relay based on its address hash in firestore
-		if relay, ok := params.Storer.Relay(crypto.HashID(jsonPacket.StringAddr)); ok {
-			stats := &stats.RelayTrafficStats{
-				RelayId:            stats.NewEntityID("Relay", jsonPacket.RelayName), // use its name here
-				Usage:              jsonPacket.Usage,
-				Timestamp:          ts,
-				BytesPaidTx:        jsonPacket.TrafficStats.BytesPaidTx,
-				BytesPaidRx:        jsonPacket.TrafficStats.BytesPaidRx,
-				BytesManagementTx:  jsonPacket.TrafficStats.BytesManagementTx,
-				BytesManagementRx:  jsonPacket.TrafficStats.BytesManagementRx,
-				BytesMeasurementTx: jsonPacket.TrafficStats.BytesMeasurementTx,
-				BytesMeasurementRx: jsonPacket.TrafficStats.BytesMeasurementRx,
-				BytesInvalidRx:     jsonPacket.TrafficStats.BytesInvalidRx,
-				SessionCount:       jsonPacket.TrafficStats.SessionCount,
-			}
-
-			str, _ := json.Marshal(stats)
-			level.Debug(logger).Log("msg", fmt.Sprintf("Publishing: %s", str))
-			if err := params.TrafficStatsPublisher.Publish(context.Background(), relay.ID, stats); err != nil {
-				level.Error(logger).Log("msg", fmt.Sprintf("Publish error: %v", err))
-			}
-		} else {
-			level.Error(logger).Log("msg", fmt.Sprintf("TrafficStats, cannot lookup relay in firestore, %d", jsonPacket.Metadata.ID))
-		}
-	} else {
-		level.Error(logger).Log("msg", fmt.Sprintf("Can't publish to pubsub. Timestamp error: %v", err))
-	}
 }
 
 func relayUpdateOctetStream(logger log.Logger, writer http.ResponseWriter, body []byte, params *CommonRelayUpdateFuncParams) {
-	relayUpdatePacket := RelayUpdatePacket{}
-	if err := relayUpdatePacket.UnmarshalBinary(body); err != nil {
-		level.Error(logger).Log("msg", "could not unmarshal update packet", "err", err)
+	var request RelayUpdateRequest
+	if err := request.UnmarshalBinary(body); err != nil {
+		level.Error(logger).Log("msg", "could not unmarshal update request", "err", err)
 		writer.WriteHeader(http.StatusUnprocessableEntity)
 		return
 	}
 
-	relaysToPing, statusCode := relayUpdateHandler(logger, &relayUpdatePacket, params)
+	relaysToPing, statusCode := relayUpdateHandler(logger, &request, params)
 
 	writer.WriteHeader(statusCode)
 
@@ -383,11 +346,11 @@ func relayUpdateOctetStream(logger log.Logger, writer http.ResponseWriter, body 
 
 	writer.Write(responseData[:index])
 
-	relayID := crypto.HashID(relayUpdatePacket.Address.String())
+	relayID := crypto.HashID(request.Address.String())
 	if relay, ok := params.Storer.Relay(relayID); ok {
 		stats := &stats.RelayTrafficStats{
 			RelayId:            stats.NewEntityID("Relay", relay.Addr.String()), // TODO Until the db is fixed up, this needs to be the relay's firestore id, not its address
-			BytesMeasurementRx: relayUpdatePacket.BytesReceived,
+			BytesMeasurementRx: request.BytesReceived,
 		}
 
 		if err := params.TrafficStatsPublisher.Publish(context.Background(), relay.ID, stats); err != nil {
@@ -399,16 +362,16 @@ func relayUpdateOctetStream(logger log.Logger, writer http.ResponseWriter, body 
 	}
 }
 
-func relayUpdateHandler(logger log.Logger, relayUpdatePacket *RelayUpdatePacket, params *CommonRelayUpdateFuncParams) ([]routing.RelayPingData, int) {
-	locallogger := log.With(logger, "relay_addr", relayUpdatePacket.Address.String())
+func relayUpdateHandler(logger log.Logger, request *RelayUpdateRequest, params *CommonRelayUpdateFuncParams) ([]routing.RelayPingData, int) {
+	locallogger := log.With(logger, "relay_addr", request.Address.String())
 
-	if relayUpdatePacket.Version != VersionNumberUpdateRequest || relayUpdatePacket.NumRelays > MaxRelays {
-		level.Error(locallogger).Log("msg", "version mismatch", "version", relayUpdatePacket.Version)
+	if request.Version != VersionNumberUpdateRequest || len(request.PingStats) > MaxRelays {
+		level.Error(locallogger).Log("msg", "version mismatch", "version", request.Version)
 		return nil, http.StatusBadRequest
 	}
 
 	relay := routing.Relay{
-		ID: crypto.HashID(relayUpdatePacket.Address.String()),
+		ID: crypto.HashID(request.Address.String()),
 	}
 
 	exists := params.RedisClient.HExists(routing.HashKeyAllRelays, relay.Key())
@@ -420,6 +383,7 @@ func relayUpdateHandler(logger log.Logger, relayUpdatePacket *RelayUpdatePacket,
 
 	if !exists.Val() {
 		level.Warn(locallogger).Log("msg", "relay not initialized")
+		fmt.Println("########### relay not found", request.Address.String())
 		return nil, http.StatusNotFound
 	}
 
@@ -440,14 +404,14 @@ func relayUpdateHandler(logger log.Logger, relayUpdatePacket *RelayUpdatePacket,
 		return nil, http.StatusBadRequest
 	}
 
-	if !bytes.Equal(relayUpdatePacket.Token, relay.PublicKey) {
+	if !bytes.Equal(request.Token, relay.PublicKey) {
 		level.Error(locallogger).Log("msg", "relay public key doesn't match")
 		return nil, http.StatusBadRequest
 	}
 
 	statsUpdate := &routing.RelayStatsUpdate{}
 	statsUpdate.ID = relay.ID
-	statsUpdate.PingStats = append(statsUpdate.PingStats, relayUpdatePacket.PingStats...)
+	statsUpdate.PingStats = append(statsUpdate.PingStats, request.PingStats...)
 
 	params.StatsDb.ProcessStats(statsUpdate)
 
