@@ -30,14 +30,16 @@ namespace
 
 namespace core
 {
-  PacketProcessor::PacketProcessor(os::Socket& socket,
+  PacketProcessor::PacketProcessor(
+   os::Socket& socket,
    const util::Clock& relayClock,
    const crypto::Keychain& keychain,
    const core::RouterInfo& routerInfo,
    core::SessionMap& sessions,
    core::RelayManager& relayManager,
    const volatile bool& handle,
-   util::ThroughputLogger& logger)
+   util::ThroughputLogger& logger,
+   const net::Address& receivingAddr)
    : mSocket(socket),
      mRelayClock(relayClock),
      mKeychain(keychain),
@@ -45,7 +47,8 @@ namespace core
      mSessionMap(sessions),
      mRelayManager(relayManager),
      mShouldProcess(handle),
-     mLogger(logger)
+     mLogger(logger),
+     mRecvAddr(receivingAddr)
   {}
 
   void PacketProcessor::process(std::condition_variable& var, std::atomic<bool>& readyToReceive)
@@ -67,7 +70,7 @@ namespace core
         Log("failed to recv packets");
       }
 
-      LogDebug("got packets on {", listenIndx, "}, / count: ", inputBuffer.Count);
+      // LogDebug("got packets on {", listenIndx, "} / count: ", inputBuffer.Count);
 
       for (int i = 0; i < inputBuffer.Count; i++) {
         getAddrFromMsgHdr(inputBuffer.Packets[i].Addr, inputBuffer.Headers[i].msg_hdr);
@@ -109,7 +112,7 @@ namespace core
           LogDebug("got relay ping packet");
           mLogger.addToRelayPingPacket(packet.Len + headerBytes);
 
-          handlers::RelayPingHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSocket);
+          handlers::RelayPingHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSocket, mRecvAddr);
 
           handler.handle();
         }

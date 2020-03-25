@@ -1,6 +1,8 @@
 #include "includes.h"
 #include "route_token.hpp"
 
+#include "crypto/bytes.hpp"
+
 #include "encoding/binary.hpp"
 #include "encoding/read.hpp"
 #include "encoding/write.hpp"
@@ -16,7 +18,7 @@ namespace core
     (void)start;
 
     std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
-    encoding::RandomBytes(nonce, nonce.size());  // fill nonce
+    crypto::RandomBytes(nonce, nonce.size());  // fill nonce
 
     encoding::WriteBytes(packet.Buffer, index, nonce, nonce.size());
 

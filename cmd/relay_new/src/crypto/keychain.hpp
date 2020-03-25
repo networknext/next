@@ -1,8 +1,12 @@
 #ifndef CRYPTO_KEYCHAIN_HPP
 #define CRYPTO_KEYCHAIN_HPP
+
+#include "encoding/base64.hpp"
 namespace crypto
 {
   const size_t KeySize = 32UL;
+
+  using GenericKey = std::array<uint8_t, KeySize>;
 
   struct Keychain
   {
@@ -14,10 +18,16 @@ namespace crypto
 
     std::array<uint8_t, RELAY_PUBLIC_KEY_BYTES> RelayPublicKey;
     std::array<uint8_t, RELAY_PRIVATE_KEY_BYTES> RelayPrivateKey;
-
     std::array<uint8_t, crypto_sign_PUBLICKEYBYTES> RouterPublicKey;
+
+    auto parse(std::string relayPublicKey, std::string relayPrivateKey, std::string routerPublicKey) -> bool;
   };
 
-  using GenericKey = std::array<uint8_t, KeySize>;
+  inline auto Keychain::parse(std::string relayPublicKey, std::string relayPrivateKey, std::string routerPublicKey) -> bool
+  {
+    return encoding::base64::Decode(relayPublicKey, RelayPublicKey) &&
+           encoding::base64::Decode(relayPrivateKey, RelayPrivateKey) &&
+           encoding::base64::Decode(routerPublicKey, RouterPublicKey);
+  }
 }  // namespace crypto
 #endif

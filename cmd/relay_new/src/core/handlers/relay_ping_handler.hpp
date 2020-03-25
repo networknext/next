@@ -18,35 +18,39 @@ namespace core
     class RelayPingHandler: public BaseHandler
     {
      public:
-      RelayPingHandler(const util::Clock& relayClock,
+      RelayPingHandler(
+       const util::Clock& relayClock,
        const RouterInfo& routerInfo,
        GenericPacket<>& packet,
        const int size,
-       const os::Socket& socket);
+       const os::Socket& socket,
+       const net::Address& mRecvAddr);
 
       void handle();
 
      private:
       const os::Socket& mSocket;
+      const net::Address& mRecvAddr;
     };
 
-    inline RelayPingHandler::RelayPingHandler(const util::Clock& relayClock,
+    inline RelayPingHandler::RelayPingHandler(
+     const util::Clock& relayClock,
      const RouterInfo& routerInfo,
      GenericPacket<>& packet,
      const int size,
-     const os::Socket& socket)
-     : BaseHandler(relayClock, routerInfo, packet, size), mSocket(socket)
+     const os::Socket& socket,
+     const net::Address& receivingAddress)
+     : BaseHandler(relayClock, routerInfo, packet, size), mSocket(socket), mRecvAddr(receivingAddress)
     {}
 
     inline void RelayPingHandler::handle()
     {
-      net::Address sendingAddr;                   // where it actually came from
-      auto& recevingAddr = mSocket.getAddress();  // where the sender should talk to this relay
+      net::Address sendingAddr;  // where it actually came from
       packets::RelayPingPacket packet(mPacket, mPacketSize);
 
       packet.Internal.Buffer[0] = RELAY_PONG_PACKET;
       sendingAddr = packet.getFromAddr();
-      packet.writeFromAddr(recevingAddr);
+      packet.writeFromAddr(mRecvAddr);
 
       LogDebug("got ping packet from ", sendingAddr);
 

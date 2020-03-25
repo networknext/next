@@ -50,18 +50,11 @@ func (r *RelayInitRequest) UnmarshalJSON(buf []byte) error {
 	}
 
 	if addr, ok := data["relay_address"].(string); ok {
-		host, _, err := net.SplitHostPort(addr)
-		if err != nil {
+		if udpAddr, err := net.ResolveUDPAddr("udp", addr); err == nil {
+			r.Address = *udpAddr
+		} else {
 			return err
 		}
-		r.Address.IP = net.ParseIP(host)
-		if r.Address.IP == nil {
-			return errors.New("invalid relay_address")
-		}
-	}
-
-	if port, ok := data["relay_port"].(float64); ok {
-		r.Address.Port = int(port)
 	}
 
 	if nonce, ok := data["nonce"].(string); ok {
@@ -184,6 +177,7 @@ type RelayUpdateRequestJSON struct {
 	RelayName    string                   `json:"relay_name"`
 }
 type RelayUpdateResponseJSON struct {
+	Version      uint32                   `json:"version"`
 	RelaysToPing []routing.LegacyPingData `json:"ping_data"`
 }
 

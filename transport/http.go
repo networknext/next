@@ -276,6 +276,8 @@ func RelayUpdateHandlerFunc(logger log.Logger, params *CommonRelayUpdateFuncPara
 }
 
 func relayUpdateJSON(logger log.Logger, writer http.ResponseWriter, body []byte, params *CommonRelayUpdateFuncParams) {
+	level.Debug(logger).Log("msg", string(body))
+
 	var jsonPacket RelayUpdateRequestJSON
 	if err := json.Unmarshal(body, &jsonPacket); err != nil {
 		level.Error(logger).Log("msg", "could not parse update json", "err", err)
@@ -300,6 +302,7 @@ func relayUpdateJSON(logger log.Logger, writer http.ResponseWriter, body []byte,
 	}
 
 	var response RelayUpdateResponseJSON
+	response.Version = VersionNumberUpdateResponse
 	for _, pingData := range relaysToPing {
 		var token routing.LegacyPingToken
 		token.Timeout = uint64(time.Now().Unix() * 100000) // some arbitrarily large number just to make things compatable for the moment
