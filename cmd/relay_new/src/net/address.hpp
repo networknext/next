@@ -3,6 +3,8 @@
 
 #include "relay/relay_platform.hpp"
 
+#include "util/logger.hpp"
+
 namespace net
 {
   enum class AddressType : uint8_t

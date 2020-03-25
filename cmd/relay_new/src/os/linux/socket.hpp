@@ -51,7 +51,6 @@ namespace os
    private:
     int mSockFD = 0;
     const SocketType mType;
-    net::Address mAddress;
 
     std::atomic<bool> mOpen;
 
@@ -67,11 +66,6 @@ namespace os
 
     bool setSocketType(float timeout);
   };
-
-  [[gnu::always_inline]] inline const net::Address& Socket::getAddress() const
-  {
-    return mAddress;
-  }
 
   [[gnu::always_inline]] inline bool Socket::isOpen() const
   {

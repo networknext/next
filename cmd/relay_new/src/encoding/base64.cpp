@@ -19,7 +19,7 @@ namespace
   // clang-format on
 }  // namespace
 
-namespace encoding
+namespace legacy
 {
   int base64_encode_data(const uint8_t* input, size_t input_length, char* output, size_t output_size)
   {
