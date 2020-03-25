@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"expvar"
 	"fmt"
 	"html/template"
@@ -111,163 +112,132 @@ func RelayInitHandlerFunc(logger log.Logger, params *CommonRelayInitFuncParams) 
 			return
 		}
 
-		requestLogger := log.With(handlerLogger, "req_addr", request.RemoteAddr)
+		handlerLogger = log.With(handlerLogger, "req_addr", request.RemoteAddr)
 
-		contentTypes := request.Header["Content-Type"]
-		if contentTypes != nil && len(contentTypes) > 0 {
-			switch contentTypes[0] {
-			case "application/json":
-				relayInitJSON(requestLogger, writer, body, params)
-			case "application/octet-stream":
-				relayInitOctetStream(requestLogger, writer, body, params)
+		var relayInitRequest RelayInitRequest
+		switch request.Header.Get("Content-Type") {
+		case "application/json":
+			err = relayInitRequest.UnmarshalJSON(body)
+		case "application/octet-stream":
+			err = relayInitRequest.UnmarshalBinary(body)
+		default:
+			err = errors.New("unsupported content type")
+		}
+		if err != nil {
+			http.Error(writer, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		locallogger := log.With(logger, "relay_addr", relayInitRequest.Address.String())
+
+		if relayInitRequest.Magic != InitRequestMagic {
+			level.Error(locallogger).Log("msg", "magic number mismatch", "magic_number", relayInitRequest.Magic)
+			http.Error(writer, "magic number mismatch", http.StatusBadRequest)
+			return
+		}
+
+		if relayInitRequest.Version != VersionNumberInitRequest {
+			level.Error(locallogger).Log("msg", "version mismatch", "version", relayInitRequest.Version)
+			http.Error(writer, "version mismatch", http.StatusBadRequest)
+			return
+		}
+
+		id := crypto.HashID(relayInitRequest.Address.String())
+
+		relayEntry, ok := params.Storer.Relay(id)
+		if !ok {
+			level.Error(locallogger).Log("msg", "relay not in firestore")
+			http.Error(writer, "relay not in firestore", http.StatusInternalServerError)
+			return
+		}
+
+		relay := routing.Relay{
+			ID:             id,
+			Addr:           relayInitRequest.Address,
+			PublicKey:      relayEntry.PublicKey,
+			Datacenter:     relayEntry.Datacenter,
+			Seller:         relayEntry.Seller,
+			LastUpdateTime: uint64(time.Now().Unix()),
+			Latitude:       relayEntry.Latitude,
+			Longitude:      relayEntry.Longitude,
+		}
+
+		if _, ok := crypto.Open(relayInitRequest.EncryptedToken, relayInitRequest.Nonce, relay.PublicKey, params.RouterPrivateKey); !ok {
+			level.Error(locallogger).Log("msg", "crypto open failed")
+			http.Error(writer, "crypto open failed", http.StatusUnauthorized)
+			return
+		}
+
+		exists := params.RedisClient.HExists(routing.HashKeyAllRelays, relay.Key())
+
+		if exists.Err() != nil && exists.Err() != redis.Nil {
+			level.Error(locallogger).Log("msg", "failed to check if relay is registered", "err", exists.Err())
+			http.Error(writer, "failed to check if relay is registered", http.StatusNotFound)
+			return
+		}
+
+		if exists.Val() {
+			level.Warn(locallogger).Log("msg", "relay already initialized")
+			http.Error(writer, "relay already initialized", http.StatusConflict)
+			return
+		}
+
+		if loc, err := params.IpLocator.LocateIP(relay.Addr.IP); err == nil {
+			relay.Latitude = loc.Latitude
+			relay.Longitude = loc.Longitude
+		} else {
+			level.Warn(locallogger).Log("msg", "using default geolocation from storage for relay")
+		}
+
+		// Regular set for expiry
+		if res := params.RedisClient.Set(relay.Key(), relay.ID, routing.RelayTimeout); res.Err() != nil && res.Err() != redis.Nil {
+			level.Error(locallogger).Log("msg", "failed to initialize relay", "err", res.Err())
+			http.Error(writer, "failed to initialize relay", http.StatusInternalServerError)
+			return
+		}
+
+		// HSet for full relay data
+		if res := params.RedisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay); res.Err() != nil && res.Err() != redis.Nil {
+			level.Error(locallogger).Log("msg", "failed to initialize relay", "err", res.Err())
+			http.Error(writer, "failed to initialize relay", http.StatusInternalServerError)
+			return
+		}
+
+		if err := params.GeoClient.Add(relay); err != nil {
+			level.Error(locallogger).Log("msg", "failed to initialize relay", "err", err)
+			http.Error(writer, "failed to initialize relay", http.StatusInternalServerError)
+			return
+		}
+
+		level.Debug(locallogger).Log("msg", "relay initialized")
+
+		var responseData []byte
+		response := RelayInitResponse{
+			Version:   VersionNumberInitResponse,
+			Timestamp: relay.LastUpdateTime,
+			PublicKey: relay.PublicKey,
+		}
+
+		switch request.Header.Get("Content-Type") {
+		case "application/json":
+			response.Timestamp = response.Timestamp * 1000
+
+			responseData, err = response.MarshalJSON()
+			if err != nil {
+				writer.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		case "application/octet-stream":
+			responseData, err = response.MarshalBinary()
+			if err != nil {
+				writer.WriteHeader(http.StatusInternalServerError)
+				return
 			}
 		}
 
-	}
-}
-
-func relayInitJSON(logger log.Logger, writer http.ResponseWriter, body []byte, params *CommonRelayInitFuncParams) {
-	var jsonPacket RelayInitRequestJSON
-	if err := json.Unmarshal(body, &jsonPacket); err != nil {
-		level.Error(logger).Log("msg", "could not parse init json", "err", err)
-		writer.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	var packet RelayInitPacket
-	if err := jsonPacket.ToInitPacket(&packet); err != nil {
-		level.Error(logger).Log("msg", "could not convert json to init packet", "err", err)
-		writer.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	relay, statusCode := relayInitHandler(logger, &packet, params)
-
-	writer.WriteHeader(statusCode)
-
-	if relay == nil || statusCode != http.StatusOK {
-		level.Error(logger).Log("msg", "could not process relay init in json handler")
-		return
-	}
-
-	var response RelayInitResponseJSON
-	response.Timestamp = relay.LastUpdateTime * 1000 // convert to millis, this is what the curr prod relay expects, the new relay uses seconds so it convertes back
-
-	if responseData, err := json.Marshal(response); err != nil {
-		level.Error(logger).Log("msg", "could not marshal init json response", "err", err)
-		writer.WriteHeader(http.StatusBadRequest)
-	} else {
-		writer.Header().Set("Content-Type", "application/json")
+		writer.Header().Set("Content-Type", request.Header.Get("Content-Type"))
 		writer.Write(responseData)
 	}
-}
-
-func relayInitOctetStream(logger log.Logger, writer http.ResponseWriter, body []byte, params *CommonRelayInitFuncParams) {
-	relayInitPacket := RelayInitPacket{}
-	if err := relayInitPacket.UnmarshalBinary(body); err != nil {
-		level.Error(logger).Log("msg", "could not unmarshal init packet", "err", err)
-		writer.WriteHeader(http.StatusUnprocessableEntity)
-		return
-	}
-
-	relay, statusCode := relayInitHandler(logger, &relayInitPacket, params)
-
-	writer.WriteHeader(statusCode)
-
-	if relay == nil || statusCode != http.StatusOK {
-		level.Error(logger).Log("msg", "could not process relay init in octet-stream handler")
-		return
-	}
-
-	index := 0
-	var responseData [PacketSizeRelayInitResponse]byte
-	{
-		encoding.WriteUint32(responseData[:], &index, VersionNumberInitResponse)
-		encoding.WriteUint64(responseData[:], &index, relay.LastUpdateTime)
-		encoding.WriteBytes(responseData[:], &index, relay.PublicKey, crypto.KeySize)
-	}
-
-	writer.Header().Set("Content-Type", "application/octet-stream")
-
-	writer.Write(responseData[:])
-}
-
-func relayInitHandler(logger log.Logger, relayInitPacket *RelayInitPacket, params *CommonRelayInitFuncParams) (*routing.Relay, int) {
-	locallogger := log.With(logger, "relay_addr", relayInitPacket.Address.String())
-
-	if relayInitPacket.Magic != InitRequestMagic {
-		level.Error(locallogger).Log("msg", "magic number mismatch", "magic_number", relayInitPacket.Magic)
-		return nil, http.StatusBadRequest
-	}
-
-	if relayInitPacket.Version != VersionNumberInitRequest {
-		level.Error(locallogger).Log("msg", "version mismatch", "version", relayInitPacket.Version)
-		return nil, http.StatusBadRequest
-	}
-
-	id := crypto.HashID(relayInitPacket.Address.String())
-
-	relayEntry, ok := params.Storer.Relay(id)
-	if !ok {
-		level.Error(locallogger).Log("msg", "relay not in firestore")
-		return nil, http.StatusInternalServerError
-	}
-
-	relay := routing.Relay{
-		ID:             id,
-		Addr:           relayInitPacket.Address,
-		PublicKey:      relayEntry.PublicKey,
-		Datacenter:     relayEntry.Datacenter,
-		Seller:         relayEntry.Seller,
-		LastUpdateTime: uint64(time.Now().Unix()),
-		Latitude:       relayEntry.Latitude,
-		Longitude:      relayEntry.Longitude,
-	}
-
-	if _, ok := crypto.Open(relayInitPacket.EncryptedToken, relayInitPacket.Nonce, relay.PublicKey, params.RouterPrivateKey); !ok {
-		level.Error(locallogger).Log("msg", "crypto open failed")
-		return nil, http.StatusUnauthorized
-	}
-
-	exists := params.RedisClient.HExists(routing.HashKeyAllRelays, relay.Key())
-
-	if exists.Err() != nil && exists.Err() != redis.Nil {
-		level.Error(locallogger).Log("msg", "failed to check if relay is registered", "err", exists.Err())
-		return nil, http.StatusNotFound
-	}
-
-	if exists.Val() {
-		level.Warn(locallogger).Log("msg", "relay already initialized")
-		return nil, http.StatusConflict
-	}
-
-	if loc, err := params.IpLocator.LocateIP(relay.Addr.IP); err == nil {
-		relay.Latitude = loc.Latitude
-		relay.Longitude = loc.Longitude
-	} else {
-		level.Warn(locallogger).Log("msg", "using default geolocation from storage for relay")
-	}
-
-	// Regular set for expiry
-	if res := params.RedisClient.Set(relay.Key(), relay.ID, routing.RelayTimeout); res.Err() != nil && res.Err() != redis.Nil {
-		level.Error(locallogger).Log("msg", "failed to initialize relay", "err", res.Err())
-		return nil, http.StatusInternalServerError
-	}
-
-	// HSet for full relay data
-	if res := params.RedisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay); res.Err() != nil && res.Err() != redis.Nil {
-		level.Error(locallogger).Log("msg", "failed to initialize relay", "err", res.Err())
-		return nil, http.StatusInternalServerError
-	}
-
-	if err := params.GeoClient.Add(relay); err != nil {
-		level.Error(locallogger).Log("msg", "failed to initialize relay", "err", err)
-		return nil, http.StatusInternalServerError
-	}
-
-	level.Debug(locallogger).Log("msg", "relay initialized")
-
-	return &relay, http.StatusOK
 }
 
 /******************************* Update Handler *******************************/
