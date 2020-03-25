@@ -67,10 +67,6 @@ namespace core
 
       auto session = mSessionMap.get(hash);
 
-      if (!session) {
-        LogDebug("session is nullptr! crashing!");
-      }
-
       if (sessionIsExpired(session)) {
         mSessionMap.erase(hash);
         return;

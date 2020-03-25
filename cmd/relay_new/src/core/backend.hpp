@@ -2,13 +2,14 @@
 #define CORE_BACKEND_HPP
 
 #include "crypto/bytes.hpp"
-#include "util/logger.hpp"
-#include "util/json.hpp"
+#include "crypto/keychain.hpp"
 #include "encoding/base64.hpp"
 #include "net/curl.hpp"
-#include "router_info.hpp"
 #include "relay_manager.hpp"
-#include "crypto/keychain.hpp"
+#include "router_info.hpp"
+#include "util/json.hpp"
+#include "util/logger.hpp"
+#include "core/session.hpp"
 
 namespace core
 {
@@ -30,12 +31,13 @@ namespace core
   {
    public:
     Backend(
-     std::string hostname,
-     std::string address,
+     const std::string hostname,
+     const std::string address,
      const crypto::Keychain& keychain,
      RouterInfo& routerInfo,
      RelayManager& relayManager,
-     std::string base64RelayPublicKey);
+     std::string base64RelayPublicKey,
+     const core::SessionMap& sessions);
     ~Backend() = default;
 
     bool init();
@@ -49,6 +51,7 @@ namespace core
     RouterInfo& mRouterInfo;
     RelayManager& mRelayManager;
     const std::string mBase64RelayPublicKey;
+    const core::SessionMap& mSessionMap;
   };
 
   template <typename T>
@@ -58,13 +61,15 @@ namespace core
    const crypto::Keychain& keychain,
    RouterInfo& routerInfo,
    RelayManager& relayManager,
-   std::string base64RelayPublicKey)
+   std::string base64RelayPublicKey,
+   const core::SessionMap& sessions)
    : mHostname(hostname),
      mAddressStr(address),
      mKeychain(keychain),
      mRouterInfo(routerInfo),
      mRelayManager(relayManager),
-     mBase64RelayPublicKey(base64RelayPublicKey)
+     mBase64RelayPublicKey(base64RelayPublicKey),
+     mSessionMap(sessions)
   {}
 
   template <typename T>
@@ -189,6 +194,7 @@ namespace core
       {
         util::JSON trafficStats;
         trafficStats.set(bytesReceived, "BytesMeasurementRx");
+        trafficStats.set(mSessionMap.size(), "SessionCount");
 
         doc.set(trafficStats, "TrafficStats");
       }

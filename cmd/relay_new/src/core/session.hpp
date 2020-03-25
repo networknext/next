@@ -33,13 +33,14 @@ namespace core
    public:
     void set(uint64_t key, SessionPtr val);
     auto get(uint64_t key) -> SessionPtr;
-    auto exists(uint64_t key) -> bool;
+    auto exists(uint64_t key) const -> bool;
     auto erase(uint64_t key) -> bool;
+    auto size() const -> size_t;
 
    private:
     // Using a map for now, it's a int key so an unordered map might not be any better considering the memory footprint
     std::map<uint64_t, SessionPtr> mInternal;
-    std::mutex mLock;
+    mutable std::mutex mLock;
   };
 
   inline void SessionMap::set(uint64_t key, SessionPtr val)
@@ -54,7 +55,7 @@ namespace core
     return mInternal[key];
   }
 
-  inline auto SessionMap::exists(uint64_t key) -> bool
+  inline auto SessionMap::exists(uint64_t key) const -> bool
   {
     std::lock_guard<std::mutex> lk(mLock);
     return mInternal.find(key) != mInternal.end();
@@ -64,6 +65,12 @@ namespace core
   {
     std::lock_guard<std::mutex> lk(mLock);
     return mInternal.erase(key) > 0;
+  }
+
+  inline auto SessionMap::size() const -> size_t
+  {
+    std::lock_guard<std::mutex> lk(mLock);
+    return mInternal.size();
   }
 }  // namespace core
 #endif

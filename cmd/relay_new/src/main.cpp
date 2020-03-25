@@ -424,7 +424,7 @@ int main()
   LogDebug("communicating with backend");
   bool relay_initialized = false;
 
-  core::Backend<net::CurlWrapper> backend(backendHostname, relayAddrString, keychain, routerInfo, relayManager, b64RelayPubKey);
+  core::Backend<net::CurlWrapper> backend(backendHostname, relayAddrString, keychain, routerInfo, relayManager, b64RelayPubKey, sessions);
 
   for (int i = 0; i < 60; ++i) {
     if (backend.init()) {

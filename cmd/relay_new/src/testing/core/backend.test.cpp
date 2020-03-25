@@ -21,11 +21,12 @@ Test(core_backend_init_valid)
   std::string base64RelayPublicKey = "9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=";
   std::string base64RelayPrivateKey = "lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=";
   std::string base64RouterPublicKey = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=";
+  core::SessionMap sessions;
 
   check(keychain.parse(base64RelayPublicKey, base64RelayPrivateKey, base64RouterPublicKey));
 
   core::Backend<testing::StubbedCurlWrapper> backend(
-   backendHostname, relayAddr, keychain, routerInfo, manager, base64RelayPublicKey);
+   backendHostname, relayAddr, keychain, routerInfo, manager, base64RelayPublicKey, sessions);
 
   testing::StubbedCurlWrapper::Response = R"({
     "version": 0,
@@ -62,6 +63,9 @@ Test(core_backend_update_valid)
   std::string base64RelayPublicKey = "9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=";
   std::string base64RelayPrivateKey = "lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=";
   std::string base64RouterPublicKey = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=";
+  core::SessionMap sessions;
+
+  sessions.set(1234, std::make_shared<core::Session>()); // just add one thing to the map to make it non-zero
 
   // seed relay manager
   {
@@ -81,7 +85,7 @@ Test(core_backend_update_valid)
   check(keychain.parse(base64RelayPublicKey, base64RelayPrivateKey, base64RouterPublicKey));
 
   core::Backend<testing::StubbedCurlWrapper> backend(
-   backendHostname, relayAddr, keychain, routerInfo, manager, base64RelayPublicKey);
+   backendHostname, relayAddr, keychain, routerInfo, manager, base64RelayPublicKey, sessions);
 
   testing::StubbedCurlWrapper::Response = R"({
      "version": 0,
@@ -109,6 +113,7 @@ Test(core_backend_update_valid)
   check(doc.get<std::string>("relay_address") == relayAddr);
   check(doc.get<std::string>("Metadata", "PublicKey") == base64RelayPublicKey);
   check(doc.get<uint64_t>("TrafficStats", "BytesMeasurementRx") == bytesReceived);
+  check(doc.get<size_t>("TrafficStats", "SessionCount") == sessions.size());
 
   auto pingStats = doc.get<util::JSON>("PingStats");
 
