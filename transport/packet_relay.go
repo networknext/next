@@ -279,3 +279,29 @@ func (r *RelayUpdateRequest) size() uint {
 type RelayUpdateResponse struct {
 	RelaysToPing []routing.LegacyPingData `json:"ping_data"`
 }
+
+func (r RelayUpdateResponse) MarshalJSON() ([]byte, error) {
+	data := make(map[string]interface{})
+
+	data["ping_data"] = r.RelaysToPing
+
+	return json.Marshal(data)
+}
+
+func (r RelayUpdateResponse) MarshalBinary() ([]byte, error) {
+	index := 0
+	responseData := make([]byte, r.size())
+
+	encoding.WriteUint32(responseData, &index, VersionNumberUpdateResponse)
+	encoding.WriteUint32(responseData, &index, uint32(len(r.RelaysToPing)))
+	for i := range r.RelaysToPing {
+		encoding.WriteUint64(responseData, &index, r.RelaysToPing[i].ID)
+		encoding.WriteString(responseData, &index, r.RelaysToPing[i].Address, MaxRelayAddressLength)
+	}
+
+	return responseData, nil
+}
+
+func (r *RelayUpdateResponse) size() int {
+	return 8 + (8+MaxRelayAddressLength)*len(r.RelaysToPing)
+}

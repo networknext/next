@@ -81,7 +81,7 @@ func relayUpdateAssertions(t *testing.T, contentType string, body []byte, expect
 func TestRelayUpdateHandler(t *testing.T) {
 	t.Run("relay data is invalid", func(t *testing.T) {
 		buff := make([]byte, 10) // invalid relay packet size
-		updateOctetStreamAssertions(t, buff, http.StatusUnprocessableEntity, nil, nil)
+		updateOctetStreamAssertions(t, buff, http.StatusBadRequest, nil, nil)
 	})
 
 	t.Run("relay public token bytes not equal", func(t *testing.T) {
@@ -126,7 +126,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 		}
 		buff, _ := packet.MarshalBinary()
 		buff[10] = 'x' // assign this index (which should be the first item in the address) as the letter 'x' making it invalid
-		updateOctetStreamAssertions(t, buff, http.StatusUnprocessableEntity, nil, nil)
+		updateOctetStreamAssertions(t, buff, http.StatusBadRequest, nil, nil)
 	})
 
 	t.Run("number of relays exceeds max", func(t *testing.T) {
@@ -252,7 +252,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 		t.Run("unparsable json", func(t *testing.T) {
 			JSONData := "{" // basic but gets the job done
 			buff := []byte(JSONData)
-			updateJSONAssertions(t, buff, http.StatusUnprocessableEntity, nil, nil)
+			updateJSONAssertions(t, buff, http.StatusBadRequest, nil, nil)
 		})
 
 		t.Run("invalid address", func(t *testing.T) {
@@ -273,7 +273,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 			buff, err := json.Marshal(request)
 			assert.Nil(t, err)
 
-			updateJSONAssertions(t, buff, http.StatusUnprocessableEntity, nil, nil)
+			updateJSONAssertions(t, buff, http.StatusBadRequest, nil, nil)
 		})
 
 		t.Run("token invalid base64", func(t *testing.T) {
@@ -294,7 +294,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 			buff, err := json.Marshal(request)
 			assert.Nil(t, err)
 
-			updateJSONAssertions(t, buff, http.StatusUnprocessableEntity, nil, nil)
+			updateJSONAssertions(t, buff, http.StatusBadRequest, nil, nil)
 		})
 
 		t.Run("valid", func(t *testing.T) {

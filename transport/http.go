@@ -2,9 +2,7 @@ package transport
 
 import (
 	"bytes"
-	"context"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"expvar"
 	"fmt"
@@ -21,7 +19,6 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/networknext/backend/crypto"
-	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/stats"
@@ -260,197 +257,150 @@ func RelayUpdateHandlerFunc(logger log.Logger, params *CommonRelayUpdateFuncPara
 			return
 		}
 
-		requestLogger := log.With(handlerLogger, "req_addr", request.RemoteAddr)
+		handlerLogger = log.With(handlerLogger, "req_addr", request.RemoteAddr)
 
-		contentTypes := request.Header["Content-Type"]
-		if contentTypes != nil && len(contentTypes) > 0 {
-			switch contentTypes[0] {
-			case "application/json":
-				relayUpdateJSON(requestLogger, writer, body, params)
-			case "application/octet-stream":
-				relayUpdateOctetStream(requestLogger, writer, body, params)
+		var relayUpdateRequest RelayUpdateRequest
+		switch request.Header.Get("Content-Type") {
+		case "application/json":
+			err = relayUpdateRequest.UnmarshalJSON(body)
+		case "application/octet-stream":
+			err = relayUpdateRequest.UnmarshalBinary(body)
+		default:
+			err = errors.New("unsupported content type")
+		}
+		if err != nil {
+			http.Error(writer, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		if relayUpdateRequest.Version != VersionNumberUpdateRequest || len(relayUpdateRequest.PingStats) > MaxRelays {
+			level.Error(handlerLogger).Log("msg", "version mismatch", "version", relayUpdateRequest.Version)
+			http.Error(writer, "version mismatch", http.StatusBadRequest)
+			return
+		}
+
+		relay := routing.Relay{
+			ID: crypto.HashID(relayUpdateRequest.Address.String()),
+		}
+
+		exists := params.RedisClient.HExists(routing.HashKeyAllRelays, relay.Key())
+
+		if exists.Err() != nil && exists.Err() != redis.Nil {
+			level.Error(handlerLogger).Log("msg", "failed to check if relay is registered", "err", exists.Err())
+			http.Error(writer, "failed to check if relay is registered", http.StatusInternalServerError)
+			return
+		}
+
+		if !exists.Val() {
+			level.Warn(handlerLogger).Log("msg", "relay not initialized")
+			http.Error(writer, "relay not initialized", http.StatusNotFound)
+			return
+		}
+
+		hgetResult := params.RedisClient.HGet(routing.HashKeyAllRelays, relay.Key())
+		if hgetResult.Err() != nil && hgetResult.Err() != redis.Nil {
+			level.Error(handlerLogger).Log("msg", "failed to get relays", "err", exists.Err())
+			http.Error(writer, "failed to get relays", http.StatusNotFound)
+			return
+		}
+
+		data, err := hgetResult.Bytes()
+		if err != nil && err != redis.Nil {
+			level.Error(handlerLogger).Log("msg", "failed to get relay data", "err", err)
+			http.Error(writer, "failed to get relay data", http.StatusInternalServerError)
+			return
+		}
+
+		if err = relay.UnmarshalBinary(data); err != nil {
+			level.Error(handlerLogger).Log("msg", "failed to unmarshal relay data", "err", err)
+			http.Error(writer, "failed to unmarshal relay data", http.StatusBadRequest)
+			return
+		}
+
+		if !bytes.Equal(relayUpdateRequest.Token, relay.PublicKey) {
+			level.Error(handlerLogger).Log("msg", "relay public key doesn't match")
+			http.Error(writer, "relay public key doesn't match", http.StatusBadRequest)
+			return
+		}
+
+		statsUpdate := &routing.RelayStatsUpdate{}
+		statsUpdate.ID = relay.ID
+		statsUpdate.PingStats = append(statsUpdate.PingStats, relayUpdateRequest.PingStats...)
+
+		params.StatsDb.ProcessStats(statsUpdate)
+
+		relay.LastUpdateTime = uint64(time.Now().Unix())
+
+		relaysToPing := make([]routing.RelayPingData, 0)
+
+		// Regular set for expiry
+		if res := params.RedisClient.Set(relay.Key(), 0, routing.RelayTimeout); res.Err() != nil {
+			level.Error(handlerLogger).Log("msg", "failed to store relay update expiry", "err", res.Err())
+			http.Error(writer, "failed to store relay update expiry", http.StatusInternalServerError)
+			return
+		}
+
+		// HSet for full relay data
+		if res := params.RedisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay); res.Err() != nil {
+			level.Error(handlerLogger).Log("msg", "failed to store relay update", "err", res.Err())
+			http.Error(writer, "failed to store relay update", http.StatusInternalServerError)
+			return
+		}
+
+		hgetallResult := params.RedisClient.HGetAll(routing.HashKeyAllRelays)
+		if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
+			level.Error(handlerLogger).Log("msg", "failed to get other relays", "err", hgetallResult.Err())
+			http.Error(writer, "failed to get other relays", http.StatusNotFound)
+			return
+		}
+
+		for k, v := range hgetallResult.Val() {
+			if k != relay.Key() {
+				var unmarshaledValue routing.Relay
+				if err := unmarshaledValue.UnmarshalBinary([]byte(v)); err != nil {
+					level.Error(handlerLogger).Log("msg", "failed to get other relay", "err", err)
+					continue
+				}
+				relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(unmarshaledValue.ID), Address: unmarshaledValue.Addr.String()})
 			}
 		}
-	}
-}
 
-func relayUpdateJSON(logger log.Logger, writer http.ResponseWriter, body []byte, params *CommonRelayUpdateFuncParams) {
-	var packet RelayUpdateRequest
-	if err := json.Unmarshal(body, &packet); err != nil {
-		level.Error(logger).Log("msg", "could not parse update json", "err", err)
-		writer.WriteHeader(http.StatusUnprocessableEntity)
-		return
-	}
+		level.Debug(handlerLogger).Log("msg", "relay updated")
 
-	relaysToPing, statusCode := relayUpdateHandler(logger, &packet, params)
+		var responseData []byte
+		response := RelayUpdateResponse{}
+		for _, pingData := range relaysToPing {
+			var token routing.LegacyPingToken
+			token.Timeout = uint64(time.Now().Unix() * 100000) // some arbitrarily large number just to make things compatable for the moment
+			token.RelayID = crypto.HashID(relayUpdateRequest.Address.String())
+			bin, _ := token.MarshalBinary()
 
-	writer.WriteHeader(statusCode)
+			var legacy routing.LegacyPingData
+			legacy.ID = pingData.ID
+			legacy.Address = pingData.Address
+			legacy.PingToken = base64.StdEncoding.EncodeToString(bin)
 
-	if relaysToPing == nil || statusCode != http.StatusOK {
-		level.Error(logger).Log("msg", "could not process relay update in json handler")
-		return
-	}
+			response.RelaysToPing = append(response.RelaysToPing, legacy)
+		}
 
-	var response RelayUpdateResponse
-	for _, pingData := range relaysToPing {
-		var token routing.LegacyPingToken
-		token.Timeout = uint64(time.Now().Unix() * 100000) // some arbitrarily large number just to make things compatable for the moment
-		token.RelayID = crypto.HashID(packet.Address.String())
-		bin, _ := token.MarshalBinary()
-		var legacy routing.LegacyPingData
-		legacy.ID = pingData.ID
-		legacy.Address = pingData.Address
-		legacy.PingToken = base64.StdEncoding.EncodeToString(bin)
-		response.RelaysToPing = append(response.RelaysToPing, legacy)
-	}
+		switch request.Header.Get("Content-Type") {
+		case "application/json":
+			responseData, err = response.MarshalJSON()
+			if err != nil {
+				writer.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		case "application/octet-stream":
+			responseData, err = response.MarshalBinary()
+			if err != nil {
+				writer.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		}
 
-	if responseData, err := json.Marshal(response); err != nil {
-		level.Error(logger).Log("msg", "could not marshal json update response", "err", err)
-		writer.WriteHeader(http.StatusBadRequest)
-	} else {
-		writer.Header().Set("Content-Type", "application/json")
+		writer.Header().Set("Content-Type", request.Header.Get("Content-Type"))
 		writer.Write(responseData)
 	}
-}
-
-func relayUpdateOctetStream(logger log.Logger, writer http.ResponseWriter, body []byte, params *CommonRelayUpdateFuncParams) {
-	var request RelayUpdateRequest
-	if err := request.UnmarshalBinary(body); err != nil {
-		level.Error(logger).Log("msg", "could not unmarshal update request", "err", err)
-		writer.WriteHeader(http.StatusUnprocessableEntity)
-		return
-	}
-
-	relaysToPing, statusCode := relayUpdateHandler(logger, &request, params)
-
-	writer.WriteHeader(statusCode)
-
-	if relaysToPing == nil || statusCode != http.StatusOK {
-		level.Error(logger).Log("msg", "could not process relay update in octet-stream handler")
-		return
-	}
-
-	index := 0
-	responseData := make([]byte, 8+(8+MaxRelayAddressLength)*len(relaysToPing))
-	{
-		encoding.WriteUint32(responseData, &index, VersionNumberUpdateResponse)
-		encoding.WriteUint32(responseData, &index, uint32(len(relaysToPing)))
-
-		for i := range relaysToPing {
-			encoding.WriteUint64(responseData, &index, relaysToPing[i].ID)
-			encoding.WriteString(responseData, &index, relaysToPing[i].Address, MaxRelayAddressLength)
-		}
-	}
-
-	writer.Header().Set("Content-Type", "application/octet-stream")
-
-	writer.Write(responseData[:index])
-
-	relayID := crypto.HashID(request.Address.String())
-	if relay, ok := params.Storer.Relay(relayID); ok {
-		stats := &stats.RelayTrafficStats{
-			RelayId:            stats.NewEntityID("Relay", relay.Addr.String()), // TODO Until the db is fixed up, this needs to be the relay's firestore id, not its address
-			BytesMeasurementRx: request.BytesReceived,
-		}
-
-		if err := params.TrafficStatsPublisher.Publish(context.Background(), relay.ID, stats); err != nil {
-			level.Error(logger).Log("msg", fmt.Sprintf("Publish error: %v", err))
-		}
-	} else {
-		level.Error(logger).Log("msg", fmt.Sprintf("TrafficStats, cannot lookup relay in firestore, %d", relayID))
-		return
-	}
-}
-
-func relayUpdateHandler(logger log.Logger, request *RelayUpdateRequest, params *CommonRelayUpdateFuncParams) ([]routing.RelayPingData, int) {
-	locallogger := log.With(logger, "relay_addr", request.Address.String())
-
-	if request.Version != VersionNumberUpdateRequest || len(request.PingStats) > MaxRelays {
-		level.Error(locallogger).Log("msg", "version mismatch", "version", request.Version)
-		return nil, http.StatusBadRequest
-	}
-
-	relay := routing.Relay{
-		ID: crypto.HashID(request.Address.String()),
-	}
-
-	exists := params.RedisClient.HExists(routing.HashKeyAllRelays, relay.Key())
-
-	if exists.Err() != nil && exists.Err() != redis.Nil {
-		level.Error(locallogger).Log("msg", "failed to check if relay is registered", "err", exists.Err())
-		return nil, http.StatusInternalServerError
-	}
-
-	if !exists.Val() {
-		level.Warn(locallogger).Log("msg", "relay not initialized")
-		fmt.Println("########### relay not found", request.Address.String())
-		return nil, http.StatusNotFound
-	}
-
-	hgetResult := params.RedisClient.HGet(routing.HashKeyAllRelays, relay.Key())
-	if hgetResult.Err() != nil && hgetResult.Err() != redis.Nil {
-		level.Error(locallogger).Log("msg", "failed to get relays", "err", exists.Err())
-		return nil, http.StatusNotFound
-	}
-
-	data, err := hgetResult.Bytes()
-	if err != nil && err != redis.Nil {
-		level.Error(locallogger).Log("msg", "failed to get relay data", "err", err)
-		return nil, http.StatusInternalServerError
-	}
-
-	if err = relay.UnmarshalBinary(data); err != nil {
-		level.Error(locallogger).Log("msg", "failed to unmarshal relay data", "err", err)
-		return nil, http.StatusBadRequest
-	}
-
-	if !bytes.Equal(request.Token, relay.PublicKey) {
-		level.Error(locallogger).Log("msg", "relay public key doesn't match")
-		return nil, http.StatusBadRequest
-	}
-
-	statsUpdate := &routing.RelayStatsUpdate{}
-	statsUpdate.ID = relay.ID
-	statsUpdate.PingStats = append(statsUpdate.PingStats, request.PingStats...)
-
-	params.StatsDb.ProcessStats(statsUpdate)
-
-	relay.LastUpdateTime = uint64(time.Now().Unix())
-
-	relaysToPing := make([]routing.RelayPingData, 0)
-
-	// Regular set for expiry
-	if res := params.RedisClient.Set(relay.Key(), 0, routing.RelayTimeout); res.Err() != nil {
-		level.Error(locallogger).Log("msg", "failed to store relay update expiry", "err", res.Err())
-		return nil, http.StatusInternalServerError
-	}
-
-	// HSet for full relay data
-	if res := params.RedisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay); res.Err() != nil {
-		level.Error(locallogger).Log("msg", "failed to store relay update", "err", res.Err())
-		return nil, http.StatusInternalServerError
-	}
-
-	hgetallResult := params.RedisClient.HGetAll(routing.HashKeyAllRelays)
-	if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
-		level.Error(locallogger).Log("msg", "failed to get other relays", "err", hgetallResult.Err())
-		return nil, http.StatusNotFound
-	}
-
-	for k, v := range hgetallResult.Val() {
-		if k != relay.Key() {
-			var unmarshaledValue routing.Relay
-			if err := unmarshaledValue.UnmarshalBinary([]byte(v)); err != nil {
-				level.Error(locallogger).Log("msg", "failed to get other relay", "err", err)
-				continue
-			}
-			relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(unmarshaledValue.ID), Address: unmarshaledValue.Addr.String()})
-		}
-	}
-
-	level.Debug(locallogger).Log("msg", "relay updated")
-
-	return relaysToPing, http.StatusOK
 }
 
 func HealthzHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
