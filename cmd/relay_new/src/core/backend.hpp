@@ -144,34 +144,30 @@ namespace core
 
     LogDebug("init response: ", doc.toPrettyString());
 
-    if (!doc.memberExists("version")) {
-      Log("resposne json missing member 'version'");
-      return false;
-    }
-
-    if (!doc.memberExists("timestamp")) {
-      Log("response json missing member 'timestamp'");
-      return false;
-    }
-
-    uint32_t version;
-    if (doc.memberIs(util::JSON::Type::Number, "version")) {
-      version = doc.get<uint32_t>("version");
+    if (doc.memberExists("version")) {
+      if (doc.memberIs(util::JSON::Type::Number, "version")) {
+        auto version = doc.get<uint32_t>("version");
+        if (version != InitResponseVersion) {
+          Log("error: bad relay init response version. expected ", InitResponseVersion, ", got ", version);
+          return false;
+        }
+      } else {
+        Log("warning, init version response not a number");
+      }
     } else {
-      Log("init version response not a number");
-      return false;
+      Log("warning, version number missing in init response");
     }
 
-    if (version != InitResponseVersion) {
-      Log("error: bad relay init response version. expected ", InitResponseVersion, ", got ", version);
-      return false;
-    }
-
-    if (doc.memberIs(util::JSON::Type::Number, "timestamp")) {
-      // for old relay compat the router sends this back in millis, so turn back to seconds
-      mRouterInfo.InitalizeTimeInSeconds = doc.get<uint64_t>("timestamp") / 1000;
+    if (doc.memberExists("Timestamp")) {
+      if (doc.memberIs(util::JSON::Type::Number, "Timestamp")) {
+        // for old relay compat the router sends this back in millis, so convert back to seconds
+        mRouterInfo.InitalizeTimeInSeconds = doc.get<uint64_t>("Timestamp") / 1000;
+      } else {
+        Log("init timestamp not a number");
+        return false;
+      }
     } else {
-      Log("init timestamp not a number");
+      Log("response json missing member 'Timestamp'");
       return false;
     }
 
@@ -245,15 +241,18 @@ namespace core
 
     LogDebug("update response: ", doc.toPrettyString());
 
-    auto version = doc.get<uint32_t>("version");
-    if (doc.memberIs(util::JSON::Type::Number, "version")) {
-      if (version != UpdateResponseVersion) {
-        Log("error: bad relay version response version. expected ", UpdateResponseVersion, ", got ", version);
-        return false;
+    if (doc.memberExists("version")) {
+      if (doc.memberIs(util::JSON::Type::Number, "version")) {
+        auto version = doc.get<uint32_t>("version");
+        if (version != UpdateResponseVersion) {
+          Log("error: bad relay version response version. expected ", UpdateResponseVersion, ", got ", version);
+          return false;
+        }
+      } else {
+        Log("warning: update version not number");
       }
     } else {
-      Log("update version not number");
-      return false;
+      Log("warning, version number missing in update response");
     }
 
     bool allValid = true;

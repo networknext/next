@@ -3276,7 +3276,7 @@ next_thread_return_t NEXT_THREAD_FUNC manage_thread( void * )
 
                 json::JSON doc;
                 if (doc.parse(resp)) {
-                    if (!doc.memberExists("timestamp")) {
+                    if (!doc.memberExists("Timestamp")) {
                       printf("timestamp not sent from relay backend\n");
                     } else {
                         env->init_data.timestamp = doc.get<uint64_t>("Timestamp");

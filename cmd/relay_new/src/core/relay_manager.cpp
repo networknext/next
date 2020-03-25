@@ -72,7 +72,7 @@ namespace core
   unsigned int RelayManager::getPingData(std::array<PingData, MAX_RELAYS>& data)
   {
     double current_time = relay::relay_platform_time();  // TODO replace with clock
-    unsigned int numPings{0};
+    unsigned int numPings = 0;
 
     // locked mutex scope
     {
