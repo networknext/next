@@ -5,6 +5,16 @@
 
 #include "core/continue_token.hpp"
 
+namespace
+{
+  core::ContinueToken makeToken()
+  {
+    util::Clock clock;
+    core::RouterInfo info;
+    return core::ContinueToken(clock, info);
+  }
+}  // namespace
+
 Test(core_ContinueToken_general)
 {
   core::GenericPacket packet;
@@ -25,7 +35,7 @@ Test(core_ContinueToken_general)
   const auto SessionVersion = testing::Random<uint8_t>();
   const auto SessionFlags = testing::Random<uint8_t>();
 
-  core::ContinueToken inputToken;
+  core::ContinueToken inputToken = std::move(makeToken());
   {
     inputToken.ExpireTimestamp = ExpireTimestamp;
     inputToken.SessionID = SessionID;
@@ -38,7 +48,7 @@ Test(core_ContinueToken_general)
     check(inputToken.writeEncrypted(packet, index, sender_private_key, receiver_public_key));
   }
 
-  core::ContinueToken outputToken;
+  core::ContinueToken outputToken = std::move(makeToken());
   {
     size_t index = 0;
     check(outputToken.readEncrypted(packet, index, sender_public_key, receiver_private_key));

@@ -18,13 +18,7 @@ namespace core
     class RelayPingHandler: public BaseHandler
     {
      public:
-      RelayPingHandler(
-       const util::Clock& relayClock,
-       const RouterInfo& routerInfo,
-       GenericPacket<>& packet,
-       const int size,
-       const os::Socket& socket,
-       const net::Address& mRecvAddr);
+      RelayPingHandler(GenericPacket<>& packet, const int size, const os::Socket& socket, const net::Address& mRecvAddr);
 
       void handle();
 
@@ -34,13 +28,8 @@ namespace core
     };
 
     inline RelayPingHandler::RelayPingHandler(
-     const util::Clock& relayClock,
-     const RouterInfo& routerInfo,
-     GenericPacket<>& packet,
-     const int size,
-     const os::Socket& socket,
-     const net::Address& receivingAddress)
-     : BaseHandler(relayClock, routerInfo, packet, size), mSocket(socket), mRecvAddr(receivingAddress)
+     GenericPacket<>& packet, const int size, const os::Socket& socket, const net::Address& receivingAddress)
+     : BaseHandler(packet, size), mSocket(socket), mRecvAddr(receivingAddress)
     {}
 
     inline void RelayPingHandler::handle()

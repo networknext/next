@@ -5,6 +5,14 @@
 
 #include "core/route_token.hpp"
 
+namespace {
+  core::RouteToken makeToken() {
+    util::Clock clock;
+    core::RouterInfo info;
+    return core::RouteToken(clock, info);
+  }
+}
+
 Test(core_RouteToken_general)
 {
   core::GenericPacket packet;
@@ -36,7 +44,7 @@ Test(core_RouteToken_general)
   std::array<uint8_t, crypto_box_SECRETKEYBYTES> PrivateKey;
   crypto::RandomBytes(PrivateKey, PrivateKey.size());
 
-  core::RouteToken inputToken;
+  core::RouteToken inputToken = std::move(makeToken());
   {
     inputToken.ExpireTimestamp = ExpireTimestamp;
     inputToken.SessionID = SessionID;
@@ -53,7 +61,7 @@ Test(core_RouteToken_general)
     check(inputToken.writeEncrypted(packet, index, sender_private_key, receiver_public_key));
   }
 
-  core::RouteToken outputToken;
+  core::RouteToken outputToken = std::move(makeToken());
   {
     size_t index = 0;
     check(outputToken.readEncrypted(packet, index, sender_public_key, receiver_private_key));

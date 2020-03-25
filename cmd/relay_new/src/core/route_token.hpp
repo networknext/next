@@ -13,6 +13,8 @@ namespace core
   class RouteToken: public Token
   {
    public:
+    RouteToken(const util::Clock& relayClock, const core::RouterInfo& routerInfo);
+    virtual ~RouteToken() override = default;
     // KbpsUp (4) +
     // KbpsDown (4) +
     // NextAddr (net::Address::size) +
@@ -26,12 +28,14 @@ namespace core
     net::Address NextAddr;
     std::array<uint8_t, crypto_box_SECRETKEYBYTES> PrivateKey;
 
-    bool writeEncrypted(GenericPacket<>& packet,
+    bool writeEncrypted(
+     GenericPacket<>& packet,
      size_t& index,
      const crypto::GenericKey& senderPrivateKey,
      const crypto::GenericKey& receiverPublicKey);
 
-    bool readEncrypted(GenericPacket<>& packet,
+    bool readEncrypted(
+     GenericPacket<>& packet,
      size_t& index,
      const crypto::GenericKey& senderPublicKey,
      const crypto::GenericKey& receiverPrivateKey);
@@ -41,18 +45,22 @@ namespace core
 
     void read(GenericPacket<>& packet, size_t& index);
 
-    bool encrypt(GenericPacket<>& packet,
+    bool encrypt(
+     GenericPacket<>& packet,
      const size_t& index,
      const crypto::GenericKey& senderPrivateKey,
      const crypto::GenericKey& receiverPublicKey,
      const std::array<uint8_t, crypto_box_NONCEBYTES>& nonce);
 
-    bool decrypt(GenericPacket<>& packet,
+    bool decrypt(
+     GenericPacket<>& packet,
      const size_t& index,
      const crypto::GenericKey& senderPublicKey,
      const crypto::GenericKey& receiverPrivateKey,
      const size_t nonceIndex);
   };
+
+  inline RouteToken::RouteToken(const util::Clock& relayClock, const core::RouterInfo& routerInfo): Token(relayClock, routerInfo) {}
 }  // namespace core
 
 namespace legacy

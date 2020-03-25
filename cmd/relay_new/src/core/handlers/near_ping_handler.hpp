@@ -3,7 +3,7 @@
 
 #include "base_handler.hpp"
 
-#include "core/session.hpp"
+#include "core/session_map.hpp"
 
 #include "os/platform.hpp"
 
@@ -14,12 +14,7 @@ namespace core
     class NearPingHandler: public BaseHandler
     {
      public:
-      NearPingHandler(const util::Clock& relayClock,
-       const RouterInfo& routerInfo,
-       GenericPacket<>& packet,
-       const int packetSize,
-       const net::Address& from,
-       const os::Socket& socket);
+      NearPingHandler(GenericPacket<>& packet, const int packetSize, const net::Address& from, const os::Socket& socket);
 
       void handle();
 
@@ -28,13 +23,9 @@ namespace core
       const os::Socket& mSocket;
     };
 
-    inline NearPingHandler::NearPingHandler(const util::Clock& relayClock,
-     const RouterInfo& routerInfo,
-     GenericPacket<>& packet,
-     const int packetSize,
-     const net::Address& from,
-     const os::Socket& socket)
-     : BaseHandler(relayClock, routerInfo, packet, packetSize), mFrom(from), mSocket(socket)
+    inline NearPingHandler::NearPingHandler(
+     GenericPacket<>& packet, const int packetSize, const net::Address& from, const os::Socket& socket)
+     : BaseHandler(packet, packetSize), mFrom(from), mSocket(socket)
     {}
 
     inline void NearPingHandler::handle()

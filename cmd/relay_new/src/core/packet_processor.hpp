@@ -1,20 +1,15 @@
 #ifndef CORE_PACKET_PROCESSOR_HPP
 #define CORE_PACKET_PROCESSOR_HPP
 
-#include "session.hpp"
-
-#include "core/packet.hpp"
-#include "core/relay_manager.hpp"
-#include "core/router_info.hpp"
-#include "core/token.hpp"
-
 #include "crypto/keychain.hpp"
-
-#include "os/platform.hpp"
-
-#include "util/throughput_logger.hpp"
-
 #include "net/buffered_sender.hpp"
+#include "os/platform.hpp"
+#include "packet.hpp"
+#include "relay_manager.hpp"
+#include "router_info.hpp"
+#include "session_map.hpp"
+#include "token.hpp"
+#include "util/throughput_logger.hpp"
 
 namespace core
 {

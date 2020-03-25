@@ -47,7 +47,7 @@ namespace
     exit(1);
   }
 
-  inline void updateLoop(core::Backend<net::CurlWrapper>& backend, util::ThroughputLogger& logger)
+  inline void updateLoop(core::Backend<net::CurlWrapper>& backend, util::ThroughputLogger& logger, core::SessionMap& sessions)
   {
     std::vector<uint8_t> update_response_memory;
     update_response_memory.resize(RESPONSE_MAX_BYTES);
@@ -68,6 +68,7 @@ namespace
         break;
       }
 
+      sessions.purge();
       std::this_thread::sleep_for(1s);
     }
   }
@@ -451,7 +452,7 @@ int main()
 
   signal(SIGINT, interrupt_handler);  // ctrl c shuts down gracefully
 
-  updateLoop(backend, *logger);
+  updateLoop(backend, *logger, sessions);
 
   Log("Cleaning up\n");
 

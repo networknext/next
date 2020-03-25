@@ -9,7 +9,7 @@
 #include "router_info.hpp"
 #include "util/json.hpp"
 #include "util/logger.hpp"
-#include "core/session.hpp"
+#include "session_map.hpp"
 
 namespace core
 {

@@ -3,7 +3,7 @@
 
 #include "base_handler.hpp"
 
-#include "core/session.hpp"
+#include "core/session_map.hpp"
 
 #include "crypto/keychain.hpp"
 
@@ -18,7 +18,8 @@ namespace core
     class RouteRequestHandler: public BaseHandler
     {
      public:
-      RouteRequestHandler(const util::Clock& relayClock,
+      RouteRequestHandler(
+       const util::Clock& relayClock,
        const RouterInfo& routerInfo,
        GenericPacket<>& packet,
        const int size,
@@ -30,19 +31,27 @@ namespace core
       void handle(T& sender, F funcptr);
 
      private:
+      const util::Clock& mRelayClock;
+      const core::RouterInfo& mRouterInfo;
       const net::Address& mFrom;
       const crypto::Keychain& mKeychain;
       core::SessionMap& mSessionMap;
     };
 
-    inline RouteRequestHandler::RouteRequestHandler(const util::Clock& relayClock,
+    inline RouteRequestHandler::RouteRequestHandler(
+     const util::Clock& relayClock,
      const RouterInfo& routerInfo,
      GenericPacket<>& packet,
      const int size,
      const net::Address& from,
      const crypto::Keychain& keychain,
      core::SessionMap& sessions)
-     : BaseHandler(relayClock, routerInfo, packet, size), mFrom(from), mKeychain(keychain), mSessionMap(sessions)
+     : BaseHandler(packet, size),
+       mRelayClock(relayClock),
+       mRouterInfo(routerInfo),
+       mFrom(from),
+       mKeychain(keychain),
+       mSessionMap(sessions)
     {}
 
     template <typename T, typename F>
@@ -57,7 +66,7 @@ namespace core
 
       // ignore the header byte of the packet
       size_t index = 1;
-      core::RouteToken token;
+      core::RouteToken token(mRelayClock, mRouterInfo);
 
       if (!token.readEncrypted(mPacket, index, mKeychain.RouterPublicKey, mKeychain.RelayPrivateKey)) {
         Log("ignoring route request. could not read route token");
@@ -65,7 +74,7 @@ namespace core
       }
 
       // don't do anything if the token is expired - probably should log something here
-      if (tokenIsExpired(token)) {
+      if (token.expired()) {
         Log("ignoring route request. token expired");
         return;
       }
@@ -75,7 +84,7 @@ namespace core
 
       if (!mSessionMap.exists(hash)) {
         // create the session
-        auto session = std::make_shared<Session>();
+        auto session = std::make_shared<Session>(mRelayClock, mRouterInfo);
         assert(session);
 
         // fill it with data in the token
