@@ -2,6 +2,7 @@ package transport
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -21,8 +22,8 @@ const (
 	PacketSizeRelayInitResponse = 4 + 8 + crypto.KeySize
 )
 
-// RelayInitPacket is the struct that describes the packets comming into the relay_init endpoint
-type RelayInitPacket struct {
+// RelayInitRequest is the struct that describes the packets comming into the relay_init endpoint
+type RelayInitRequest struct {
 	Magic          uint32
 	Version        uint32
 	Nonce          []byte
@@ -30,60 +31,56 @@ type RelayInitPacket struct {
 	EncryptedToken []byte
 }
 
-type RelayInitRequestJSON struct {
-	Magic                uint32 `json:"magic_request_protection"`
-	Version              uint32 `json:"version"`
-	StringAddr           string `json:"relay_address"`
-	NonceBase64          string `json:"nonce"`
-	EncryptedTokenBase64 string `json:"encrypted_token"`
-}
-
-// RelayInitResponseJSON ...
-type RelayInitResponseJSON struct {
-	Version   uint32 `json:"version"`
-	Timestamp uint64 `json:"timestamp"`
-}
-
-func (j *RelayInitRequestJSON) ToInitPacket(packet *RelayInitPacket) error {
+func (r *RelayInitRequest) UnmarshalJSON(buf []byte) error {
 	var err error
+	data := make(map[string]interface{})
 
-	packet.Magic = j.Magic
-	packet.Version = j.Version
+	if err := json.Unmarshal(buf, &data); err != nil {
+		return err
+	}
 
-	var nonce []byte
-	{
-		if nonce, err = base64.RawStdEncoding.DecodeString(j.NonceBase64); err != nil {
+	if magic, ok := data["magic_request_protection"].(float64); ok {
+		r.Magic = uint32(magic)
+	}
+
+	if version, ok := data["version"]; ok {
+		if v, ok := version.(float64); ok {
+			r.Version = uint32(v)
+		}
+	}
+
+	if addr, ok := data["relay_address"].(string); ok {
+		host, _, err := net.SplitHostPort(addr)
+		if err != nil {
+			return err
+		}
+		r.Address.IP = net.ParseIP(host)
+		if r.Address.IP == nil {
+			return errors.New("invalid relay_address")
+		}
+	}
+
+	if port, ok := data["relay_port"].(float64); ok {
+		r.Address.Port = int(port)
+	}
+
+	if nonce, ok := data["nonce"].(string); ok {
+		if r.Nonce, err = base64.RawStdEncoding.DecodeString(nonce); err != nil {
 			return err
 		}
 	}
 
-	packet.Nonce = make([]byte, len(nonce))
-	copy(packet.Nonce, nonce)
-
-	var addr *net.UDPAddr
-	{
-		if addr, err = net.ResolveUDPAddr("udp", j.StringAddr); err != nil {
+	if token, ok := data["encrypted_token"].(string); ok {
+		if r.EncryptedToken, err = base64.RawStdEncoding.DecodeString(token); err != nil {
 			return err
 		}
 	}
-
-	packet.Address = *addr
-
-	var token []byte
-	{
-		if token, err = base64.RawStdEncoding.DecodeString(j.EncryptedTokenBase64); err != nil {
-			return err
-		}
-	}
-
-	packet.EncryptedToken = make([]byte, len(token))
-	copy(packet.EncryptedToken, token)
 
 	return nil
 }
 
-// UnmarshalBinary decodes binary data into a RelayInitPacket struct
-func (r *RelayInitPacket) UnmarshalBinary(buf []byte) error {
+// UnmarshalBinary decodes binary data into a RelayInitRequest struct
+func (r *RelayInitRequest) UnmarshalBinary(buf []byte) error {
 	index := 0
 	var addr string
 	if !(encoding.ReadUint32(buf, &index, &r.Magic) &&
@@ -104,7 +101,7 @@ func (r *RelayInitPacket) UnmarshalBinary(buf []byte) error {
 }
 
 // MarshalBinary ...
-func (r RelayInitPacket) MarshalBinary() ([]byte, error) {
+func (r RelayInitRequest) MarshalBinary() ([]byte, error) {
 	data := make([]byte, 4+4+crypto.NonceSize+4+len(r.Address.String())+routing.EncryptedTokenSize)
 	index := 0
 	encoding.WriteUint32(data, &index, r.Magic)
@@ -114,6 +111,32 @@ func (r RelayInitPacket) MarshalBinary() ([]byte, error) {
 	encoding.WriteBytes(data, &index, r.EncryptedToken, routing.EncryptedTokenSize)
 
 	return data, nil
+}
+
+// RelayInitResponse ...
+type RelayInitResponse struct {
+	Version   uint32
+	Timestamp uint64
+	PublicKey []byte
+}
+
+func (r RelayInitResponse) MarshalJSON() ([]byte, error) {
+	data := make(map[string]interface{})
+
+	data["Timestamp"] = r.Timestamp
+
+	return json.Marshal(data)
+}
+
+func (r RelayInitResponse) MarshalBinary() ([]byte, error) {
+	index := 0
+	responseData := make([]byte, PacketSizeRelayInitResponse)
+
+	encoding.WriteUint32(responseData, &index, VersionNumberInitResponse)
+	encoding.WriteUint64(responseData, &index, r.Timestamp)
+	encoding.WriteBytes(responseData, &index, r.PublicKey, crypto.KeySize)
+
+	return responseData, nil
 }
 
 // RelayUpdatePacket is the struct wrapping a update packet

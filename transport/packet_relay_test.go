@@ -9,7 +9,6 @@ import (
 	"math"
 	"math/rand"
 	"net"
-	"os"
 	"testing"
 
 	"github.com/networknext/backend/crypto"
@@ -19,22 +18,114 @@ import (
 	"golang.org/x/crypto/nacl/box"
 )
 
-func TestRelayInitPacket(t *testing.T) {
+func TestRelayInitRequest(t *testing.T) {
+	t.Run("UnmarshalJSON()", func(t *testing.T) {
+		t.Run("nonce is invalid base64", func(t *testing.T) {
+			jsonRequest := []byte(`{
+				"magic_request_protection": 1,
+				"version": 1,
+				"relay_address": "127.0.0.1:1111",
+				"relay_port": 1111,
+				"nonce": "\n\ninvalid\t\t",
+				"encrypted_token": ""
+			}`)
+
+			var packet transport.RelayInitRequest
+
+			assert.Error(t, packet.UnmarshalJSON(jsonRequest))
+		})
+
+		t.Run("address is invalid", func(t *testing.T) {
+			nonce := make([]byte, crypto.NonceSize)
+			crand.Read(nonce)
+
+			jsonRequest := []byte(`{
+				"magic_request_protection": 1,
+				"version": 1,
+				"relay_address": "invalid",
+				"relay_port": 0,
+				"nonce": "` + base64.StdEncoding.EncodeToString(nonce) + `",
+				"encrypted_token": ""
+			}`)
+
+			var packet transport.RelayInitRequest
+
+			assert.Error(t, packet.UnmarshalJSON(jsonRequest))
+		})
+
+		t.Run("token is invalid base64", func(t *testing.T) {
+			nonce := make([]byte, crypto.NonceSize)
+			crand.Read(nonce)
+
+			jsonRequest := []byte(`{
+				"magic_request_protection": 1,
+				"version": 1,
+				"relay_address": "127.0.0.1",
+				"relay_port": 0,
+				"nonce": "` + base64.StdEncoding.EncodeToString(nonce) + `",
+				"encrypted_token": "\n\ninvalid\t\t"
+			}`)
+
+			var packet transport.RelayInitRequest
+
+			assert.Error(t, packet.UnmarshalJSON(jsonRequest))
+		})
+
+		t.Run("valid", func(t *testing.T) {
+			nonce := make([]byte, crypto.NonceSize)
+			crand.Read(nonce)
+			b64Nonce := base64.StdEncoding.EncodeToString(nonce)
+
+			routerPublicKey, _, err := box.GenerateKey(crand.Reader)
+			assert.NoError(t, err)
+
+			_, relayPrivateKey, err := box.GenerateKey(crand.Reader)
+			assert.NoError(t, err)
+
+			token := make([]byte, crypto.KeySize)
+			crand.Read(token)
+			encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
+			b64EncToken := base64.StdEncoding.EncodeToString(encryptedToken)
+
+			expectedPacket := transport.RelayInitRequest{
+				Magic:          1,
+				Version:        1,
+				Address:        net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 1111},
+				Nonce:          nonce,
+				EncryptedToken: encryptedToken,
+			}
+
+			jsonRequest := []byte(`{
+				"magic_request_protection": 1,
+				"version": 1,
+				"relay_address": "127.0.0.1:1111",
+				"relay_port": 1111,
+				"nonce": "` + b64Nonce + `",
+				"encrypted_token": "` + b64EncToken + `"
+			}`)
+
+			var packet transport.RelayInitRequest
+
+			assert.NoError(t, packet.UnmarshalJSON(jsonRequest))
+			assert.Equal(t, expectedPacket, packet)
+		})
+	})
+
 	t.Run("UnmarshalBinary()", func(t *testing.T) {
 		t.Run("returns 'invalid packet' when missing magic number", func(t *testing.T) {
-			var packet transport.RelayInitPacket
+			var packet transport.RelayInitRequest
 			assert.Equal(t, packet.UnmarshalBinary(make([]byte, 0)), errors.New("invalid packet"))
 		})
 
 		t.Run("missing request version", func(t *testing.T) {
-			var packet transport.RelayInitPacket
+			var packet transport.RelayInitRequest
 			buff := make([]byte, 4)
 			binary.LittleEndian.PutUint32(buff, rand.Uint32()) // can be anything for testing purposes
 			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet"))
 		})
 
 		t.Run("missing nonce bytes", func(t *testing.T) {
-			var packet transport.RelayInitPacket
+			var packet transport.RelayInitRequest
 			buff := make([]byte, 8)
 			binary.LittleEndian.PutUint32(buff, rand.Uint32())
 			binary.LittleEndian.PutUint32(buff[4:], rand.Uint32())
@@ -42,7 +133,7 @@ func TestRelayInitPacket(t *testing.T) {
 		})
 
 		t.Run("missing relay address", func(t *testing.T) {
-			var packet transport.RelayInitPacket
+			var packet transport.RelayInitRequest
 			buff := make([]byte, 8+crypto.NonceSize)
 			binary.LittleEndian.PutUint32(buff, rand.Uint32())
 			binary.LittleEndian.PutUint32(buff[4:], rand.Uint32())
@@ -50,7 +141,7 @@ func TestRelayInitPacket(t *testing.T) {
 		})
 
 		t.Run("missing encryption token", func(t *testing.T) {
-			var packet transport.RelayInitPacket
+			var packet transport.RelayInitRequest
 			addr := "127.0.0.1:40000"
 			buff := make([]byte, 8+crypto.NonceSize+4+len(addr)) // 4 is the uint32 for address length
 			binary.LittleEndian.PutUint32(buff, rand.Uint32())
@@ -61,7 +152,7 @@ func TestRelayInitPacket(t *testing.T) {
 		})
 
 		t.Run("address not formatted correctly", func(t *testing.T) {
-			var packet transport.RelayInitPacket
+			var packet transport.RelayInitRequest
 			addr := "invalid"
 			buff := make([]byte, 8+crypto.NonceSize+4+len(addr)+routing.EncryptedTokenSize)
 			binary.LittleEndian.PutUint32(buff, rand.Uint32())
@@ -72,7 +163,7 @@ func TestRelayInitPacket(t *testing.T) {
 		})
 
 		t.Run("valid", func(t *testing.T) {
-			var packet transport.RelayInitPacket
+			var packet transport.RelayInitRequest
 			addr := "127.0.0.1:40000"
 			buff := make([]byte, 8+crypto.NonceSize+4+len(addr)+routing.EncryptedTokenSize)
 			binary.LittleEndian.PutUint32(buff, rand.Uint32())
@@ -90,7 +181,7 @@ func TestRelayInitPacket(t *testing.T) {
 		rand.Read(token)
 
 		udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
-		expected := transport.RelayInitPacket{
+		expected := transport.RelayInitRequest{
 			Magic:          rand.Uint32(),
 			Version:        rand.Uint32(),
 			Nonce:          nonce,
@@ -98,7 +189,7 @@ func TestRelayInitPacket(t *testing.T) {
 			EncryptedToken: token,
 		}
 
-		var actual transport.RelayInitPacket
+		var actual transport.RelayInitRequest
 
 		data, _ := expected.MarshalBinary()
 
@@ -107,75 +198,32 @@ func TestRelayInitPacket(t *testing.T) {
 	})
 }
 
-func TestRelayInitRequestJSON(t *testing.T) {
-	t.Run("ToInitPacket()", func(t *testing.T) {
-		t.Run("nonce is invalid base64", func(t *testing.T) {
-			var jsonRequest transport.RelayInitRequestJSON
-			jsonRequest.NonceBase64 = "\n\ninvalid\t\t"
-			var packet transport.RelayInitPacket
+func TestRelayInitResponse(t *testing.T) {
+	t.Run("MarshalJSON()", func(t *testing.T) {
+		res := transport.RelayInitResponse{
+			Version:   12345,
+			Timestamp: 12345,
+			PublicKey: []byte{0x13, 0x14},
+		}
 
-			assert.IsType(t, base64.CorruptInputError(9), jsonRequest.ToInitPacket(&packet)) // (9) because the first invalid char is at position 9, print out the error message for more details
-		})
+		jsonRes, err := res.MarshalJSON()
+		assert.NoError(t, err)
 
-		t.Run("address is invalid", func(t *testing.T) {
-			var jsonRequest transport.RelayInitRequestJSON
-			nonce := make([]byte, crypto.NonceSize)
-			crand.Read(nonce)
-			b64Nonce := base64.StdEncoding.EncodeToString(nonce)
-			jsonRequest.NonceBase64 = b64Nonce
-			jsonRequest.StringAddr = "invalid"
-			var packet transport.RelayInitPacket
+		assert.JSONEq(t, `{"Timestamp":12345}`, string(jsonRes))
+	})
 
-			assert.IsType(t, &net.AddrError{}, jsonRequest.ToInitPacket(&packet))
-		})
+	t.Run("MarshalBinary()", func(t *testing.T) {
+		res := transport.RelayInitResponse{
+			Version:   12345,
+			Timestamp: 12345,
+			PublicKey: make([]byte, crypto.KeySize),
+		}
 
-		t.Run("token is invalid base64", func(t *testing.T) {
-			var jsonRequest transport.RelayInitRequestJSON
-			nonce := make([]byte, crypto.NonceSize)
-			crand.Read(nonce)
-			b64Nonce := base64.StdEncoding.EncodeToString(nonce)
-			jsonRequest.NonceBase64 = b64Nonce
-			jsonRequest.StringAddr = "127.0.0.1:40000"
-			jsonRequest.EncryptedTokenBase64 = "\n\ninvalid\t\t"
-			var packet transport.RelayInitPacket
+		binaryRes, err := res.MarshalBinary()
+		assert.NoError(t, err)
 
-			assert.Equal(t, base64.CorruptInputError(9), jsonRequest.ToInitPacket(&packet))
-		})
-
-		t.Run("valid", func(t *testing.T) {
-			var jsonRequest transport.RelayInitRequestJSON
-
-			nonce := make([]byte, crypto.NonceSize)
-			crand.Read(nonce)
-			b64Nonce := base64.StdEncoding.EncodeToString(nonce)
-
-			routerPublicKey, _, err := box.GenerateKey(crand.Reader)
-			assert.NoError(t, err)
-
-			key := os.Getenv("RELAY_PRIVATE_KEY")
-			assert.NotEqual(t, 0, len(key))
-			relayPrivateKey, err := base64.StdEncoding.DecodeString(key)
-			assert.NoError(t, err)
-
-			token := make([]byte, crypto.KeySize)
-			crand.Read(token)
-			encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
-			b64EncToken := base64.StdEncoding.EncodeToString(encryptedToken)
-
-			jsonRequest.Magic = transport.InitRequestMagic
-			jsonRequest.Version = transport.VersionNumberInitRequest
-			jsonRequest.NonceBase64 = b64Nonce
-			jsonRequest.StringAddr = "127.0.0.1:40000"
-			jsonRequest.EncryptedTokenBase64 = b64EncToken
-			var packet transport.RelayInitPacket
-
-			assert.Nil(t, jsonRequest.ToInitPacket(&packet))
-			assert.Equal(t, jsonRequest.Magic, packet.Magic)
-			assert.Equal(t, jsonRequest.Version, packet.Version)
-			assert.Equal(t, jsonRequest.StringAddr, packet.Address.String())
-			assert.True(t, bytes.Equal(packet.Nonce, nonce))
-			assert.True(t, bytes.Equal(packet.EncryptedToken, encryptedToken))
-		})
+		expected := []byte{0x0, 0x0, 0x0, 0x0, 0x39, 0x30, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}
+		assert.Equal(t, expected, binaryRes)
 	})
 }
 

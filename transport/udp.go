@@ -222,8 +222,12 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 
 		timestampNow := time.Now()
 
-		// Whether or not we should make a route decision on a network next route, or serve a direct route
+		// Whether or not we should make a route selection/decision on a network next route, or serve a direct route
+		shouldSelect := true
 		shouldDecide := true
+
+		// Flag to check if this session is a new session
+		newSession := false
 
 		// Deserialize the Session packet
 		var packet SessionUpdatePacket
@@ -296,13 +300,13 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 					}
 				}
 			} else {
-				// Session not cached yet, set the timestamp and initial route decision to be stored
-				sessionCacheEntry.TimestampStart = timestampNow
+				// Session not cached yet, mark it as a new session
 				sessionCacheEntry.RouteDecision = routing.Decision{
 					OnNetworkNext: false,
 					Reason:        routing.DecisionInitialSlice,
 				}
-				shouldDecide = false
+				shouldSelect = false
+				newSession = true
 			}
 		}
 
@@ -389,7 +393,46 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 
 		routeDecision := sessionCacheEntry.RouteDecision
 
-		if shouldDecide { // Only select and decide a route if we should, early out for initial slice
+		if routing.IsVetoed(routeDecision) && sessionCacheEntry.VetoTimestamp.Before(timestampNow) {
+			// Veto expired, bring the session back on with an initial slice
+			routeDecision = routing.Decision{
+				OnNetworkNext: false,
+				Reason:        routing.DecisionInitialSlice,
+			}
+			shouldSelect = false
+			newSession = true
+		}
+
+		// Purchase 20 seconds ahead for new sessions and 10 seconds ahead for existing ones
+		// This way we always have a 10 second buffer
+		timestampStart := sessionCacheEntry.TimestampStart
+		timestampExpire := sessionCacheEntry.TimestampExpire
+		var sliceDuration uint64
+		if newSession {
+			sliceDuration = billing.BillingSliceSeconds * 2
+			timestampStart = timestampNow
+			timestampExpire = timestampNow.Add(time.Duration(sliceDuration) * time.Second)
+		} else {
+			sliceDuration = billing.BillingSliceSeconds
+			timestampExpire = timestampExpire.Add(time.Duration(sliceDuration) * time.Second)
+		}
+
+		if buyer.RoutingRulesSettings.Mode == routing.ModeForceDirect {
+			shouldSelect = false
+			routeDecision = routing.Decision{
+				OnNetworkNext: false,
+				Reason:        routing.DecisionForceDirect,
+			}
+
+		} else if buyer.RoutingRulesSettings.Mode == routing.ModeForceNext {
+			shouldDecide = false
+			routeDecision = routing.Decision{
+				OnNetworkNext: true,
+				Reason:        routing.DecisionForceNext,
+			}
+		}
+
+		if shouldSelect { // Only select a route if we should, early out for initial slice and force direct mode
 			level.Debug(locallogger).Log("buyer_rtt_epsilon", buyer.RoutingRulesSettings.RTTEpsilon, "cached_route_hash", sessionCacheEntry.RouteHash)
 			// Get a set of possible routes from the RouteProvider and on error ensure it falls back to direct
 			routes, err := rp.Routes(dsrelays, clientrelays,
@@ -416,19 +459,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 				"buyer_yolo", buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce,
 			)
 
-			if routing.IsVetoed(routeDecision) {
-				// Session has been vetoed
-
-				if sessionCacheEntry.VetoTimestamp.Before(timestampNow) {
-					// Veto expired, bring the session back on with an initial slice
-					sessionCacheEntry.TimestampStart = timestampNow
-					routeDecision = routing.Decision{
-						OnNetworkNext: false,
-						Reason:        routing.DecisionInitialSlice,
-					}
-				}
-			} else {
-				// Session hasn't been vetoed, perform route decision as normal
+			if shouldDecide { // Only decide on a route if we should, early out for force next mode
 				routeDecision = nextRoute.Decide(sessionCacheEntry.RouteDecision, nnStats, directStats,
 					routing.DecideUpgradeRTT(float64(buyer.RoutingRulesSettings.RTTThreshold)),
 					routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis), buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
@@ -455,7 +486,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 				var token routing.Token
 				if nextRoute.Hash64() == sessionCacheEntry.RouteHash {
 					token = &routing.ContinueRouteToken{
-						Expires: uint64(sessionCacheEntry.TimestampExpire.Add(billing.BillingSliceSeconds * time.Second).Unix()),
+						Expires: uint64(timestampExpire.Unix()),
 
 						SessionID: packet.SessionID,
 
@@ -478,7 +509,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 					sessionCacheEntry.Version++
 
 					token = &routing.NextRouteToken{
-						Expires: uint64(sessionCacheEntry.TimestampExpire.Add(billing.BillingSliceSeconds * time.Second).Unix()),
+						Expires: uint64(timestampExpire.Unix()),
 
 						SessionID: packet.SessionID,
 
@@ -543,13 +574,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			metrics.NextSessions.Add(1)
 		}
 
-		var timestampExpire time.Time
-		if routeDecision.Reason == routing.DecisionInitialSlice {
-			timestampExpire = timestampNow.Add(billing.BillingSliceSeconds * 2 * time.Second)
-		} else {
-			timestampExpire = sessionCacheEntry.TimestampExpire.Add(billing.BillingSliceSeconds * time.Second)
-		}
-
 		// Cache the needed information for the next session update
 		{
 			level.Debug(locallogger).Log("msg", "caching session data")
@@ -558,7 +582,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 				Sequence:        packet.Sequence,
 				RouteHash:       chosenRoute.Hash64(),
 				RouteDecision:   routeDecision,
-				TimestampStart:  sessionCacheEntry.TimestampStart,
+				TimestampStart:  timestampStart,
 				TimestampExpire: timestampExpire,
 				VetoTimestamp:   sessionCacheEntry.VetoTimestamp,
 				Version:         sessionCacheEntry.Version, //This was already incremented for the route tokens
@@ -576,7 +600,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		{
 			sameRoute := chosenRoute.Hash64() == sessionCacheEntry.RouteHash
 			routeRequest := NewRouteRequest(packet, buyer, serverCacheEntry, location, storer, clientrelays)
-			billingEntry := newBillingEntry(routeRequest, &chosenRoute, int(response.RouteType), sameRoute, &buyer.RoutingRulesSettings, routeDecision, &packet, sessionCacheEntry.TimestampStart, timestampNow)
+			billingEntry := newBillingEntry(routeRequest, &chosenRoute, int(response.RouteType), sameRoute, &buyer.RoutingRulesSettings, routeDecision, &packet, sliceDuration, timestampStart, timestampNow, newSession)
 			if err := biller.Bill(context.Background(), packet.SessionID, billingEntry); err != nil {
 				level.Error(locallogger).Log("msg", "billing failed", "err", err)
 				metrics.SessionErrorMetrics.BillingFailure.Add(1)
@@ -663,8 +687,10 @@ func newBillingEntry(
 	routingRulesSettings *routing.RoutingRulesSettings,
 	routeDecision routing.Decision,
 	packet *SessionUpdatePacket,
+	sliceDuration uint64,
 	timestampStart time.Time,
-	timestampNow time.Time) *billing.Entry {
+	timestampNow time.Time,
+	initial bool) *billing.Entry {
 	// Create billing slice flags
 	sliceFlags := billing.RouteSliceFlagNone
 	if routeType == routing.RouteTypeNew || routeType == routing.RouteTypeContinue {
@@ -695,14 +721,6 @@ func newBillingEntry(
 		sliceFlags |= billing.RouteSliceFlagRTTMultipath
 	}
 
-	// Create slice duration
-	var sliceDuration uint64
-	if routeType == routing.RouteTypeContinue {
-		sliceDuration = billing.BillingSliceSeconds
-	} else {
-		sliceDuration = billing.BillingSliceSeconds * 2
-	}
-
 	usageBytesUp := (1000 * uint64(packet.KbpsUp)) / 8 * sliceDuration     // Converts Kbps to bytes
 	usageBytesDown := (1000 * uint64(packet.KbpsDown)) / 8 * sliceDuration // Converts Kbps to bytes
 
@@ -720,7 +738,7 @@ func newBillingEntry(
 		PredictedPacketLoss:  float32(route.Stats.PacketLoss),
 		RouteChanged:         routeType != routing.RouteTypeContinue,
 		NetworkNextAvailable: routeType == routing.RouteTypeNew || routeType == routing.RouteTypeContinue,
-		Initial:              routeType == routing.RouteTypeNew,
+		Initial:              initial,
 		EnvelopeBytesUp:      (1000 * uint64(routingRulesSettings.EnvelopeKbpsUp)) / 8 * sliceDuration,   // Converts Kbps to bytes
 		EnvelopeBytesDown:    (1000 * uint64(routingRulesSettings.EnvelopeKbpsDown)) / 8 * sliceDuration, // Converts Kbps to bytes
 		ConsideredRoutes:     []*billing.Route{},                                                         // Empty since not how new backend works and driven by disabled feature flag in old backend
