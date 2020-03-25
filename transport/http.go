@@ -86,7 +86,6 @@ func NewRouter(logger log.Logger, redisClient redis.Cmdable, geoClient *routing.
 	router.HandleFunc("/relay_update", RelayUpdateHandlerFunc(logger, &commonUpdateParams)).Methods("POST")
 	router.Handle("/cost_matrix", costmatrix).Methods("GET")
 	router.Handle("/route_matrix", routematrix).Methods("GET")
-	router.HandleFunc("/", RelayDashboardHandlerFunc(redisClient, routematrix, statsdb, username, password)).Methods("GET")
 	router.Handle("/debug/vars", expvar.Handler())
 	return router
 }
@@ -536,7 +535,6 @@ func statsTable(stats map[string]map[string]routing.Stats) template.HTML {
 	return template.HTML(html.String())
 }
 
-// NearHandlerFunc returns the function for the near endpoint
 func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.RouteMatrix, statsdb *routing.StatsDatabase, username string, password string) func(writer http.ResponseWriter, request *http.Request) {
 	type response struct {
 		Analysis string
