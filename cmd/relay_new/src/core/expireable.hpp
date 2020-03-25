@@ -35,8 +35,8 @@ namespace core
 
   inline auto Expireable::timestamp() -> uint64_t
   {
-    auto seconds_since_initialize = mRelayClock.elapsed<util::Second>();
-    return mRouterInfo.InitalizeTimeInSeconds + seconds_since_initialize;
+    auto secondsSinceInit = mRelayClock.elapsed<util::Second>();
+    return mRouterInfo.InitalizeTimeInSeconds + secondsSinceInit;
   }
 }  // namespace core
 #endif

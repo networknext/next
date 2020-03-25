@@ -75,7 +75,7 @@ namespace core
     std::lock_guard<std::mutex> lk(mLock);
     auto iter = mInternal.begin();
     while (iter != mInternal.end()) {
-      if (iter->second && iter->second->expired()) {
+      if (!iter->second || iter->second->expired()) {
         iter = mInternal.erase(iter);
       } else {
         iter++;
