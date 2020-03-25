@@ -1,7 +1,6 @@
 package transport_test
 
 import (
-	"bytes"
 	crand "crypto/rand"
 	"encoding/base64"
 	"encoding/binary"
@@ -227,22 +226,22 @@ func TestRelayInitResponse(t *testing.T) {
 	})
 }
 
-func TestRelayUpdatePacket(t *testing.T) {
+func TestRelayUpdateRequest(t *testing.T) {
 	t.Run("UnmarshalBinary()", func(t *testing.T) {
 		t.Run("missing request version", func(t *testing.T) {
-			var packet transport.RelayUpdatePacket
+			var packet transport.RelayUpdateRequest
 			assert.Equal(t, packet.UnmarshalBinary(make([]byte, 0)), errors.New("invalid packet"))
 		})
 
 		t.Run("missing relay address", func(t *testing.T) {
-			var packet transport.RelayUpdatePacket
+			var packet transport.RelayUpdateRequest
 			buff := make([]byte, 4)
 			binary.LittleEndian.PutUint32(buff, rand.Uint32()) //version
 			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet"))
 		})
 
 		t.Run("missing relay token", func(t *testing.T) {
-			var packet transport.RelayUpdatePacket
+			var packet transport.RelayUpdateRequest
 			buff := make([]byte, 4+13)
 			binary.LittleEndian.PutUint32(buff, rand.Uint32())
 			binary.LittleEndian.PutUint32(buff[4:], 13) // address length
@@ -250,7 +249,7 @@ func TestRelayUpdatePacket(t *testing.T) {
 		})
 
 		t.Run("missing number of relays", func(t *testing.T) {
-			var packet transport.RelayUpdatePacket
+			var packet transport.RelayUpdateRequest
 			buff := make([]byte, 4+4+13+crypto.KeySize)
 			binary.LittleEndian.PutUint32(buff, rand.Uint32())
 			binary.LittleEndian.PutUint32(buff[4:], 13)
@@ -258,7 +257,7 @@ func TestRelayUpdatePacket(t *testing.T) {
 		})
 
 		t.Run("address is not formatted correctly", func(t *testing.T) {
-			var packet transport.RelayUpdatePacket
+			var packet transport.RelayUpdateRequest
 			addr := "invalid"
 			buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4)
 			binary.LittleEndian.PutUint32(buff, rand.Uint32())
@@ -270,7 +269,7 @@ func TestRelayUpdatePacket(t *testing.T) {
 
 		t.Run("missing various relay ping stats", func(t *testing.T) {
 			t.Run("missing the id", func(t *testing.T) {
-				var packet transport.RelayUpdatePacket
+				var packet transport.RelayUpdateRequest
 				addr := "127.0.0.1:40000"
 				buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4)
 				binary.LittleEndian.PutUint32(buff, rand.Uint32())
@@ -281,7 +280,7 @@ func TestRelayUpdatePacket(t *testing.T) {
 			})
 
 			t.Run("missing the rtt", func(t *testing.T) {
-				var packet transport.RelayUpdatePacket
+				var packet transport.RelayUpdateRequest
 				addr := "127.0.0.1:40000"
 				buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4+8)
 				binary.LittleEndian.PutUint32(buff, rand.Uint32())
@@ -293,7 +292,7 @@ func TestRelayUpdatePacket(t *testing.T) {
 			})
 
 			t.Run("missing the jitter", func(t *testing.T) {
-				var packet transport.RelayUpdatePacket
+				var packet transport.RelayUpdateRequest
 				addr := "127.0.0.1:40000"
 				buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4+8+4)
 				binary.LittleEndian.PutUint32(buff, rand.Uint32())
@@ -306,7 +305,7 @@ func TestRelayUpdatePacket(t *testing.T) {
 			})
 
 			t.Run("missing the packet loss", func(t *testing.T) {
-				var packet transport.RelayUpdatePacket
+				var packet transport.RelayUpdateRequest
 				addr := "127.0.0.1:40000"
 				buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4+8+4+4)
 				binary.LittleEndian.PutUint32(buff, rand.Uint32())
@@ -321,7 +320,7 @@ func TestRelayUpdatePacket(t *testing.T) {
 		})
 
 		t.Run("missing received stats", func(t *testing.T) {
-			var packet transport.RelayUpdatePacket
+			var packet transport.RelayUpdateRequest
 			addr := "127.0.0.1:40000"
 			buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4+8+4+4+4)
 			binary.LittleEndian.PutUint32(buff, rand.Uint32())
@@ -336,7 +335,7 @@ func TestRelayUpdatePacket(t *testing.T) {
 		})
 
 		t.Run("valid", func(t *testing.T) {
-			var packet transport.RelayUpdatePacket
+			var packet transport.RelayUpdateRequest
 			addr := "127.0.0.1:40000"
 			buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4+8+4+4+4+8)
 			binary.LittleEndian.PutUint32(buff, rand.Uint32())
@@ -367,65 +366,64 @@ func TestRelayUpdatePacket(t *testing.T) {
 		rand.Read(token)
 
 		udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
-		expected := transport.RelayUpdatePacket{
+		expected := transport.RelayUpdateRequest{
 			Version:   rand.Uint32(),
 			Address:   *udp,
 			Token:     token,
-			NumRelays: uint32(len(stats)),
 			PingStats: stats,
 		}
 
 		data, _ := expected.MarshalBinary()
 
-		var actual transport.RelayUpdatePacket
+		var actual transport.RelayUpdateRequest
 		assert.Nil(t, actual.UnmarshalBinary(data))
 		assert.Equal(t, expected, actual)
 	})
 }
 
-func TestRelayUpdateRequestJSON(t *testing.T) {
-	t.Run("ToUpdatePacket()", func(t *testing.T) {
-		t.Run("invalid address", func(t *testing.T) {
-			var jsonRequest transport.RelayUpdateRequestJSON
-			jsonRequest.StringAddr = "invalid"
-			var packet transport.RelayUpdatePacket
+// func TestRelayUpdateRequestJSON(t *testing.T) {
+// 	t.Run("ToUpdatePacket()", func(t *testing.T) {
+// 		t.Run("invalid address", func(t *testing.T) {
+// 			var jsonRequest transport.RelayUpdateRequestJSON
+// 			jsonRequest.StringAddr = "invalid"
+// 			var packet transport.RelayUpdateRequest
 
-			assert.IsType(t, &net.AddrError{}, jsonRequest.ToUpdatePacket(&packet))
-		})
+// 			assert.IsType(t, &net.AddrError{}, jsonRequest.ToUpdatePacket(&packet))
+// 		})
 
-		t.Run("token is invalid base64", func(t *testing.T) {
-			var jsonRequest transport.RelayUpdateRequestJSON
-			jsonRequest.Metadata.TokenBase64 = "\t\ninvalid\n\n\t"
-			var packet transport.RelayUpdatePacket
+// 		t.Run("token is invalid base64", func(t *testing.T) {
+// 			var jsonRequest transport.RelayUpdateRequestJSON
+// 			jsonRequest.Metadata.TokenBase64 = "\t\ninvalid\n\n\t"
+// 			var packet transport.RelayUpdateRequest
 
-			assert.IsType(t, base64.CorruptInputError(0), jsonRequest.ToUpdatePacket(&packet))
-		})
+// 			assert.IsType(t, base64.CorruptInputError(0), jsonRequest.ToUpdatePacket(&packet))
+// 		})
 
-		t.Run("valid", func(t *testing.T) {
-			statIps := []string{"127.0.0.2:40000", "127.0.0.3:40000", "127.0.0.4:40000", "127.0.0.5:40000"}
-			token := make([]byte, crypto.KeySize)
-			b64Token := base64.StdEncoding.EncodeToString(token)
-			var request transport.RelayUpdateRequestJSON
-			request.StringAddr = "127.0.0.1:40000"
-			request.Metadata.TokenBase64 = b64Token
-			request.PingStats = make([]routing.RelayStatsPing, uint32(len(statIps)))
-			request.TrafficStats.BytesMeasurementRx = rand.Uint64()
+// 		t.Run("valid", func(t *testing.T) {
+// 			statIps := []string{"127.0.0.2:40000", "127.0.0.3:40000", "127.0.0.4:40000", "127.0.0.5:40000"}
+// 			token := make([]byte, crypto.KeySize)
+// 			b64Token := base64.StdEncoding.EncodeToString(token)
+// 			var request transport.RelayUpdateRequestJSON
+// 			request.StringAddr = "127.0.0.1:40000"
+// 			request.Metadata.TokenBase64 = b64Token
+// 			request.PingStats = make([]routing.RelayStatsPing, uint32(len(statIps)))
+// 			request.TrafficStats.BytesMeasurementRx = rand.Uint64()
 
-			for i, addr := range statIps {
-				stats := &request.PingStats[i]
-				stats.RelayID = crypto.HashID(addr)
-				stats.RTT = rand.Float32()
-				stats.Jitter = rand.Float32()
-				stats.PacketLoss = rand.Float32()
-			}
+// 			for i, addr := range statIps {
+// 				stats := &request.PingStats[i]
+// 				stats.RelayID = crypto.HashID(addr)
+// 				stats.RTT = rand.Float32()
+// 				stats.Jitter = rand.Float32()
+// 				stats.PacketLoss = rand.Float32()
+// 			}
 
-			var packet transport.RelayUpdatePacket
-			assert.Nil(t, request.ToUpdatePacket(&packet))
+// 			var packet transport.RelayUpdateRequest
+// 			assert.Nil(t, request.ToUpdatePacket(&packet))
 
-			assert.Equal(t, request.StringAddr, packet.Address.String())
-			assert.True(t, bytes.Equal(packet.Token, token))
-			assert.Equal(t, request.PingStats, packet.PingStats)
-			assert.Equal(t, request.TrafficStats.BytesMeasurementRx, packet.BytesReceived)
-		})
-	})
-}
+// 			assert.Equal(t, request.StringAddr, packet.Address.String())
+// 			assert.True(t, bytes.Equal(packet.Token, token))
+// 			assert.Equal(t, request.PingStats, packet.PingStats)
+// 			assert.Equal(t, request.TrafficStats.BytesMeasurementRx, packet.BytesReceived)
+// 		})
+// 	})
+// }
