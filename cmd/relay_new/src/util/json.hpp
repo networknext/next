@@ -84,6 +84,9 @@ namespace util
 
     JSON& operator=(JSON& other);
 
+    rapidjson::Value& operator[](size_t index);
+    rapidjson::Value& operator[](std::string member);
+
    private:
     rapidjson::Document mDoc;
     std::string mErr;
@@ -275,15 +278,25 @@ namespace util
     return mErr;
   }
 
+  inline rapidjson::Document& JSON::internal()
+  {
+    return mDoc;
+  }
+
   inline JSON& JSON::operator=(JSON& other)
   {
     mDoc = std::move(other.mDoc);
     return *this;
   }
 
-  inline rapidjson::Document& JSON::internal()
+  inline rapidjson::Value& JSON::operator[](size_t index)
   {
-    return mDoc;
+    return mDoc[index];
+  }
+
+  inline rapidjson::Value& JSON::operator[](std::string member)
+  {
+    return mDoc[member.c_str()];
   }
 
   /* Setters */

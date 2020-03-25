@@ -47,7 +47,7 @@ namespace
     exit(1);
   }
 
-  inline void updateLoop(core::Backend& backend, util::ThroughputLogger& logger)
+  inline void updateLoop(core::Backend<net::CurlWrapper>& backend, util::ThroughputLogger& logger)
   {
     std::vector<uint8_t> update_response_memory;
     update_response_memory.resize(RESPONSE_MAX_BYTES);
@@ -424,7 +424,7 @@ int main()
   LogDebug("communicating with backend");
   bool relay_initialized = false;
 
-  core::Backend backend(backendHostname, relayAddrString, keychain, routerInfo, relayManager, b64RelayPubKey);
+  core::Backend<net::CurlWrapper> backend(backendHostname, relayAddrString, keychain, routerInfo, relayManager, b64RelayPubKey);
 
   for (int i = 0; i < 60; ++i) {
     if (backend.init()) {
