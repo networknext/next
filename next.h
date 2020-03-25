@@ -135,6 +135,7 @@ NEXT_PACK_PUSH()
 
 struct next_config_t
 {
+    char hostname[256];
     char customer_public_key[256];
     char customer_private_key[256];
     int socket_send_buffer_size;

@@ -32,7 +32,7 @@
 #include <string.h>
 #include <inttypes.h>
 
-#define NEXT_HOSTNAME                              "test.networknext.com"
+#define NEXT_HOSTNAME                              "prod.networknext.com"
 #define NEXT_PORT                                                 "40000"
 #define NEXT_MAX_PACKET_BYTES                                        1500
 #define NEXT_ADDRESS_BYTES                                             19
@@ -3382,6 +3382,7 @@ void * next_global_context = NULL;
 
 struct next_config_internal_t
 {
+    char hostname[256];
     uint64_t customer_id;
     uint8_t customer_public_key[32];
     uint8_t customer_private_key[64];
@@ -3396,6 +3397,7 @@ static next_config_internal_t next_global_config;
 void next_default_config( next_config_t * config )
 {
     next_assert( config );
+    strncpy( config->hostname, NEXT_HOSTNAME, sizeof(config->hostname) - 1 );
     memset( config, 0, sizeof(next_config_t) );
     config->socket_send_buffer_size = NEXT_DEFAULT_SOCKET_SEND_BUFFER_SIZE;
     config->socket_receive_buffer_size = NEXT_DEFAULT_SOCKET_RECEIVE_BUFFER_SIZE;
@@ -3466,31 +3468,12 @@ int next_init( void * context, next_config_t * config_in )
         }
     }
 
+    strncpy( config.hostname, config_in ? config_in->hostname : NEXT_HOSTNAME, sizeof(config.hostname) - 1 );
+
     if ( config_in )
     {
         config.socket_send_buffer_size = config_in->socket_send_buffer_size;
         config.socket_receive_buffer_size = config_in->socket_receive_buffer_size;
-    }
-    else
-    {
-        const char * socket_send_buffer_size_env = next_platform_getenv( "NEXT_SOCKET_SEND_BUFFER_SIZE" );
-        const char * socket_receive_buffer_size_env = next_platform_getenv( "NEXT_SOCKET_RECEIVE_BUFFER_SIZE" );
-        if ( socket_send_buffer_size_env != NULL )
-        {
-            int value = atoi( socket_send_buffer_size_env );
-            if ( value > 0 )
-            {
-                config.socket_send_buffer_size = value;
-            }
-        }
-        if ( socket_receive_buffer_size_env != NULL )
-        {
-            int value = atoi( socket_receive_buffer_size_env );
-            if ( value > 0 )
-            {
-                config.socket_receive_buffer_size = value;
-            }
-        }
     }
 
     if ( config_in )
@@ -3500,6 +3483,32 @@ int next_init( void * context, next_config_t * config_in )
     else
     {
         config.disable_network_next = false;
+    }
+
+    const char * socket_send_buffer_size_override = next_platform_getenv( "NEXT_SOCKET_SEND_BUFFER_SIZE" );
+    if ( socket_send_buffer_size_override != NULL )
+    {
+        int value = atoi( socket_send_buffer_size_override );
+        if ( value > 0 )
+        {
+            config.socket_send_buffer_size = value;
+        }
+    }
+
+    const char * socket_receive_buffer_size_override = next_platform_getenv( "NEXT_SOCKET_RECEIVE_BUFFER_SIZE" );
+    if ( socket_receive_buffer_size_override != NULL )
+    {
+        int value = atoi( socket_receive_buffer_size_override );
+        if ( value > 0 )
+        {
+            config.socket_receive_buffer_size = value;
+        }
+    }
+
+    const char * next_hostname_override = next_platform_getenv( "NEXT_HOSTNAME" );
+    if ( next_hostname_override )
+    {
+        strncpy( config.hostname, next_hostname_override, sizeof(config.hostname) - 1 );
     }
 
     next_global_config = config;
@@ -6059,7 +6068,7 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
 
             case NEXT_CLIENT_COMMAND_USER_FLAGS:
             {
-                client->user_flags = ((next_client_command_user_flags_t*)command)->user_flags;
+                client->user_flags |= ((next_client_command_user_flags_t*)command)->user_flags;
             }
             break;
 
@@ -6196,6 +6205,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         packet.packets_lost_server_to_client = client->client_stats.packets_lost_server_to_client;
 
         packet.user_flags = client->user_flags;
+        client->user_flags = 0;
 
         if ( next_client_internal_send_packet_to_server( client, NEXT_CLIENT_STATS_PACKET, &packet ) != NEXT_OK )
         {
@@ -9747,7 +9757,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     next_server_internal_t * server = (next_server_internal_t*) context;
 
-    const char * hostname = NEXT_HOSTNAME;
+    const char * hostname = next_global_config.hostname;
     const char * port = NEXT_PORT;
     const char * override_hostname = next_platform_getenv( "NEXT_HOSTNAME" );
     const char * override_port = next_platform_getenv( "NEXT_PORT" );
