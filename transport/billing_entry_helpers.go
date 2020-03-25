@@ -83,6 +83,7 @@ func NewRouteRequest(updatePacket SessionUpdatePacket, buyer *routing.Buyer, ser
 		PacketsLostServerToClient: updatePacket.PacketsLostServerToClient,
 		FallbackFlags:             updatePacket.Flags,
 		Committed:                 updatePacket.Committed,
+		UserFlags:                 updatePacket.UserFlags,
 	}
 }
 
