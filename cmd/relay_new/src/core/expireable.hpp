@@ -3,6 +3,7 @@
 
 #include "core/router_info.hpp"
 #include "util/clock.hpp"
+#include "util/logger.hpp"
 
 namespace core
 {
@@ -30,13 +31,13 @@ namespace core
 
   inline auto Expireable::expired() -> bool
   {
-    return this->ExpireTimestamp < timestamp();
+    LogDebug(this->ExpireTimestamp, " < ", timestamp());
+    return this->ExpireTimestamp < timestamp() - 1; // one second grace period
   }
 
   inline auto Expireable::timestamp() -> uint64_t
   {
-    auto secondsSinceInit = mRelayClock.elapsed<util::Second>();
-    return mRouterInfo.InitalizeTimeInSeconds + secondsSinceInit;
+    return mRelayClock.unixTime<util::Second>();
   }
 }  // namespace core
 #endif
