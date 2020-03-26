@@ -1,5 +1,5 @@
 CXX = g++
-CXX_FLAGS := -Wall -Wextra
+CXX_FLAGS := -Wall -Wextra -std=c++17
 GO = go
 GOFMT = gofmt
 
