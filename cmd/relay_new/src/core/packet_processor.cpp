@@ -34,7 +34,6 @@ namespace core
    os::Socket& socket,
    const util::Clock& relayClock,
    const crypto::Keychain& keychain,
-   const core::RouterInfo& routerInfo,
    core::SessionMap& sessions,
    core::RelayManager& relayManager,
    const volatile bool& handle,
@@ -43,7 +42,6 @@ namespace core
    : mSocket(socket),
      mRelayClock(relayClock),
      mKeychain(keychain),
-     mRouterInfo(routerInfo),
      mSessionMap(sessions),
      mRelayManager(relayManager),
      mShouldProcess(handle),
@@ -112,7 +110,7 @@ namespace core
           LogDebug("got relay ping packet");
           mLogger.addToRelayPingPacket(packet.Len + headerBytes);
 
-          handlers::RelayPingHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSocket, mRecvAddr);
+          handlers::RelayPingHandler handler(packet, packet.Len, mSocket, mRecvAddr);
 
           handler.handle();
         }
@@ -122,7 +120,7 @@ namespace core
           LogDebug("got relay pong packet");
           mLogger.addToRelayPongPacket(packet.Len + headerBytes);
 
-          handlers::RelayPongHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mRelayManager);
+          handlers::RelayPongHandler handler(packet, packet.Len, mRelayManager);
 
           handler.handle();
         }
@@ -130,8 +128,7 @@ namespace core
       case RELAY_ROUTE_REQUEST_PACKET: {
         mLogger.addToRouteReq(packet.Len + headerBytes);
 
-        handlers::RouteRequestHandler handler(
-         mRelayClock, mRouterInfo, packet, packet.Len, packet.Addr, mKeychain, mSessionMap);
+        handlers::RouteRequestHandler handler(mRelayClock, packet, packet.Len, packet.Addr, mKeychain, mSessionMap);
 
         handler.handle(outputBuff, &core::GenericPacketBuffer<1024UL>::push);
       } break;
@@ -140,7 +137,7 @@ namespace core
 
         LogDebug("got route response from ", packet.Addr);
 
-        handlers::RouteResponseHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap);
+        handlers::RouteResponseHandler handler(packet, packet.Len, mSessionMap);
 
         // handler.handle(mSender, &decltype(mSender)::queue);
         handler.handle(outputBuff, &core::GenericPacketBuffer<1024UL>::push);
@@ -148,14 +145,14 @@ namespace core
       case RELAY_CONTINUE_REQUEST_PACKET: {
         mLogger.addToContReq(packet.Len + headerBytes);
 
-        handlers::ContinueRequestHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap, mKeychain);
+        handlers::ContinueRequestHandler handler(mRelayClock, packet, packet.Len, mSessionMap, mKeychain);
 
         handler.handle(outputBuff, &core::GenericPacketBuffer<1024UL>::push);
       } break;
       case RELAY_CONTINUE_RESPONSE_PACKET: {
         mLogger.addToContResp(packet.Len + headerBytes);
 
-        handlers::ContinueResponseHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap);
+        handlers::ContinueResponseHandler handler(packet, packet.Len, mSessionMap);
 
         handler.handle(outputBuff, &core::GenericPacketBuffer<1024UL>::push);
       } break;
@@ -163,7 +160,7 @@ namespace core
         LogDebug("got client to server packet");
         mLogger.addToCliToServ(packet.Len + headerBytes);
 
-        handlers::ClientToServerHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap);
+        handlers::ClientToServerHandler handler(packet, packet.Len, mSessionMap);
 
         handler.handle(outputBuff, &core::GenericPacketBuffer<1024UL>::push);
       } break;
@@ -171,28 +168,28 @@ namespace core
         LogDebug("got server to client packet");
         mLogger.addToServToCli(packet.Len + headerBytes);
 
-        handlers::ServerToClientHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap);
+        handlers::ServerToClientHandler handler(packet, packet.Len, mSessionMap);
 
         handler.handle(outputBuff, &core::GenericPacketBuffer<1024UL>::push);
       } break;
       case RELAY_SESSION_PING_PACKET: {
         mLogger.addToSessionPing(packet.Len + headerBytes);
 
-        handlers::SessionPingHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap, mSocket);
+        handlers::SessionPingHandler handler(packet, packet.Len, mSessionMap, mSocket);
 
         handler.handle();
       } break;
       case RELAY_SESSION_PONG_PACKET: {
         mLogger.addToSessionPong(packet.Len + headerBytes);
 
-        handlers::SessionPongHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap, mSocket);
+        handlers::SessionPongHandler handler(packet, packet.Len, mSessionMap, mSocket);
 
         handler.handle();
       } break;
       case RELAY_NEAR_PING_PACKET: {
         mLogger.addToNearPing(packet.Len + headerBytes);
 
-        handlers::NearPingHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, packet.Addr, mSocket);
+        handlers::NearPingHandler handler(packet, packet.Len, packet.Addr, mSocket);
 
         handler.handle();
       } break;

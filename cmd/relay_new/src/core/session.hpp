@@ -1,14 +1,18 @@
 #ifndef CORE_SESSION_HPP
 #define CORE_SESSION_HPP
 
-#include "replay_protection.hpp"
+#include "expireable.hpp"
 #include "net/address.hpp"
+#include "replay_protection.hpp"
 
 namespace core
 {
-  struct Session
+  class Session: public Expireable
   {
-    uint64_t ExpireTimestamp;
+   public:
+    Session(const util::Clock& relayClock);
+    virtual ~Session() override = default;
+
     uint64_t SessionID;
     uint8_t SessionVersion;
     uint64_t ClientToServerSeq;
@@ -18,44 +22,15 @@ namespace core
     net::Address PrevAddr;
     net::Address NextAddr;
     std::array<uint8_t, crypto_box_SECRETKEYBYTES> PrivateKey;
+    // Not tested or benchmarked yet, don't use
     // ReplayProtection ServerToClientProtection;
     // ReplayProtection ClientToServerProtection;
     legacy::relay_replay_protection_t ServerToClientProtection;
     legacy::relay_replay_protection_t ClientToServerProtection;
   };
 
+  inline Session::Session(const util::Clock& relayClock): Expireable(relayClock) {}
+
   using SessionPtr = std::shared_ptr<Session>;
-
-  // Thread safe
-  class SessionMap
-  {
-   public:
-    void set(uint64_t key, SessionPtr val);
-    auto get(uint64_t key) -> SessionPtr;
-    auto exists(uint64_t key) -> bool;
-
-   private:
-    // Using a map for now, it's a int key so an unordered map might not be any better considering the memory footprint
-    std::map<uint64_t, SessionPtr> mInternal;
-    std::mutex mLock;
-  };
-
-  inline void SessionMap::set(uint64_t key, SessionPtr val)
-  {
-    std::lock_guard<std::mutex> lk(mLock);
-    mInternal[key] = val;
-  }
-
-  inline auto SessionMap::get(uint64_t key) -> SessionPtr
-  {
-    std::lock_guard<std::mutex> lk(mLock);
-    return mInternal[key];
-  }
-
-  inline auto SessionMap::exists(uint64_t key) -> bool
-  {
-    std::lock_guard<std::mutex> lk(mLock);
-    return mInternal.find(key) != mInternal.end();
-  }
 }  // namespace core
 #endif

@@ -47,7 +47,11 @@ namespace
     exit(1);
   }
 
-  inline void updateLoop(core::Backend<net::CurlWrapper>& backend, util::ThroughputLogger& logger)
+  inline void updateLoop(
+   core::Backend<net::CurlWrapper>& backend,
+   util::ThroughputLogger& logger,
+   core::SessionMap& sessions,
+   const util::Clock& relayClock)
   {
     std::vector<uint8_t> update_response_memory;
     update_response_memory.resize(RESPONSE_MAX_BYTES);
@@ -68,6 +72,7 @@ namespace
         break;
       }
 
+      sessions.purge(relayClock.unixTime<util::Second>());
       std::this_thread::sleep_for(1s);
     }
   }
@@ -362,9 +367,9 @@ int main()
       sockets.push_back(packetSocket);
 
       packetThreads[i] = std::make_unique<std::thread>(
-       [&waitVar, &socketAndThreadReady, packetSocket, &relayClock, &keychain, &routerInfo, &sessions, &relayManager, &logger, &relayAddr] {
+       [&waitVar, &socketAndThreadReady, packetSocket, &relayClock, &keychain, &sessions, &relayManager, &logger, &relayAddr] {
          core::PacketProcessor processor(
-          *packetSocket, relayClock, keychain, routerInfo, sessions, relayManager, gAlive, *logger, relayAddr);
+          *packetSocket, relayClock, keychain, sessions, relayManager, gAlive, *logger, relayAddr);
          processor.process(waitVar, socketAndThreadReady);
        });
 
@@ -424,7 +429,8 @@ int main()
   LogDebug("communicating with backend");
   bool relay_initialized = false;
 
-  core::Backend<net::CurlWrapper> backend(backendHostname, relayAddrString, keychain, routerInfo, relayManager, b64RelayPubKey);
+  core::Backend<net::CurlWrapper> backend(
+   backendHostname, relayAddrString, keychain, routerInfo, relayManager, b64RelayPubKey, sessions);
 
   for (int i = 0; i < 60; ++i) {
     if (backend.init()) {
@@ -451,7 +457,7 @@ int main()
 
   signal(SIGINT, interrupt_handler);  // ctrl c shuts down gracefully
 
-  updateLoop(backend, *logger);
+  updateLoop(backend, *logger, sessions, relayClock);
 
   Log("Cleaning up\n");
 

@@ -2,11 +2,8 @@
 #define CORE_HANDLERS_CONTINUE_REQUEST_HANDLER
 
 #include "base_handler.hpp"
-
-#include "core/session.hpp"
-
+#include "core/session_map.hpp"
 #include "crypto/keychain.hpp"
-
 #include "os/platform.hpp"
 
 namespace core
@@ -16,8 +13,8 @@ namespace core
     class ContinueRequestHandler: public BaseHandler
     {
      public:
-      ContinueRequestHandler(const util::Clock& relayClock,
-       const RouterInfo& routerInfo,
+      ContinueRequestHandler(
+       const util::Clock& relayClock,
        GenericPacket<>& packet,
        const int packetSize,
        core::SessionMap& sessions,
@@ -27,17 +24,21 @@ namespace core
       void handle(T& sender, F funcptr);
 
      private:
+      const util::Clock& mRelayClock;
       core::SessionMap& mSessionMap;
       const crypto::Keychain& mKeychain;
     };
 
-    inline ContinueRequestHandler::ContinueRequestHandler(const util::Clock& relayClock,
-     const RouterInfo& routerInfo,
+    inline ContinueRequestHandler::ContinueRequestHandler(
+     const util::Clock& relayClock,
      GenericPacket<>& packet,
      const int packetSize,
      core::SessionMap& sessions,
      const crypto::Keychain& keychain)
-     : BaseHandler(relayClock, routerInfo, packet, packetSize), mSessionMap(sessions), mKeychain(keychain)
+     : BaseHandler(packet, packetSize),
+       mRelayClock(relayClock),
+       mSessionMap(sessions),
+       mKeychain(keychain)
     {}
 
     template <typename T, typename F>
@@ -49,13 +50,13 @@ namespace core
       }
 
       size_t index = 1;
-      core::ContinueToken token;
+      core::ContinueToken token(mRelayClock);
       if (!token.readEncrypted(mPacket, index, mKeychain.RouterPublicKey, mKeychain.RelayPrivateKey)) {
         Log("ignoring continue request. could not read continue token");
         return;
       }
 
-      if (tokenIsExpired(token)) {
+      if (token.expired()) {
         Log("ignoring continue request. token is expired");
         return;
       }
@@ -69,8 +70,9 @@ namespace core
 
       auto session = mSessionMap.get(hash);
 
-      if (sessionIsExpired(session)) {
+      if (session->expired()) {
         Log("ignoring continue request. session is expired");
+        mSessionMap.erase(hash);
         return;
       }
 

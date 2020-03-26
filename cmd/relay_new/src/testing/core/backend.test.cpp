@@ -8,24 +8,32 @@ namespace
 {
   const unsigned int Base64NonceLength = 32;
   const unsigned int Base64EncryptedTokenLength = 64;
+
+  const auto BackendHostname = "http://totally-real-backend.com";
+  const auto RelayAddr = "127.0.0.1:12345";
+  const auto Base64RelayPublicKey = "9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=";
+  const auto Base64RelayPrivateKey = "lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=";
+  const auto Base64RouterPublicKey = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=";
+
+  core::Backend<testing::StubbedCurlWrapper> makeBackend(
+   core::RouterInfo& info, core::RelayManager& manager, core::SessionMap& sessions)
+  {
+    crypto::Keychain keychain;
+
+    check(keychain.parse(Base64RelayPublicKey, Base64RelayPrivateKey, Base64RouterPublicKey));
+
+    return core::Backend<testing::StubbedCurlWrapper>(
+     BackendHostname, RelayAddr, keychain, info, manager, Base64RelayPublicKey, sessions);
+  }
 }  // namespace
 
 Test(core_backend_init_valid)
 {
-  std::string backendHostname = "http://totally-real-backend.com";
-  std::string relayAddr = "127.0.0.1:12345";
-  crypto::Keychain keychain;
   core::RouterInfo routerInfo;
   util::Clock clock;
   core::RelayManager manager(clock);
-  std::string base64RelayPublicKey = "9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=";
-  std::string base64RelayPrivateKey = "lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=";
-  std::string base64RouterPublicKey = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=";
-
-  check(keychain.parse(base64RelayPublicKey, base64RelayPrivateKey, base64RouterPublicKey));
-
-  core::Backend<testing::StubbedCurlWrapper> backend(
-   backendHostname, relayAddr, keychain, routerInfo, manager, base64RelayPublicKey);
+  core::SessionMap sessions;
+  auto backend = std::move(makeBackend(routerInfo, manager, sessions));
 
   testing::StubbedCurlWrapper::Response = R"({
     "version": 0,
@@ -34,7 +42,7 @@ Test(core_backend_init_valid)
 
   check(backend.init());
 
-  check(testing::StubbedCurlWrapper::Hostname == backendHostname);
+  check(testing::StubbedCurlWrapper::Hostname == BackendHostname);
   check(testing::StubbedCurlWrapper::Endpoint == "/relay_init");
   check(routerInfo.InitalizeTimeInSeconds == 123456789 / 1000);
 
@@ -44,7 +52,7 @@ Test(core_backend_init_valid)
 
   check(doc.get<uint32_t>("magic_request_protection") == core::InitRequestMagic);
   check(doc.get<uint32_t>("version") == core::InitRequestVersion);
-  check(doc.get<std::string>("relay_address") == relayAddr);
+  check(doc.get<std::string>("relay_address") == RelayAddr);
 
   // gonna be random, so all that can be done is asserting the length
   check(doc.get<std::string>("nonce").length() == Base64NonceLength);
@@ -53,15 +61,13 @@ Test(core_backend_init_valid)
 
 Test(core_backend_update_valid)
 {
-  std::string backendHostname = "http://totally-real-backend.com";
-  std::string relayAddr = "127.0.0.1:12345";
-  crypto::Keychain keychain;
   core::RouterInfo routerInfo;
   util::Clock clock;
   core::RelayManager manager(clock);
-  std::string base64RelayPublicKey = "9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=";
-  std::string base64RelayPrivateKey = "lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=";
-  std::string base64RouterPublicKey = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=";
+  core::SessionMap sessions;
+  auto backend = std::move(makeBackend(routerInfo, manager, sessions));
+
+  sessions.set(1234, std::make_shared<core::Session>(clock));  // just add one thing to the map to make it non-zero
 
   // seed relay manager
   {
@@ -77,11 +83,6 @@ Test(core_backend_update_valid)
     check(manager.getPingData(pingData) == 1);
     manager.processPong(pingData[0].Addr, pingData[0].Seq);
   }
-
-  check(keychain.parse(base64RelayPublicKey, base64RelayPrivateKey, base64RouterPublicKey));
-
-  core::Backend<testing::StubbedCurlWrapper> backend(
-   backendHostname, relayAddr, keychain, routerInfo, manager, base64RelayPublicKey);
 
   testing::StubbedCurlWrapper::Response = R"({
      "version": 0,
@@ -106,9 +107,10 @@ Test(core_backend_update_valid)
   check(doc.parse(testing::StubbedCurlWrapper::Request));
 
   check(doc.get<uint32_t>("version") == 0);
-  check(doc.get<std::string>("relay_address") == relayAddr);
-  check(doc.get<std::string>("Metadata", "PublicKey") == base64RelayPublicKey);
+  check(doc.get<std::string>("relay_address") == RelayAddr);
+  check(doc.get<std::string>("Metadata", "PublicKey") == Base64RelayPublicKey);
   check(doc.get<uint64_t>("TrafficStats", "BytesMeasurementRx") == bytesReceived);
+  check(doc.get<size_t>("TrafficStats", "SessionCount") == sessions.size());
 
   auto pingStats = doc.get<util::JSON>("PingStats");
 

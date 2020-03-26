@@ -3,6 +3,8 @@
 
 #include "os/platform.hpp"
 
+using namespace std::chrono_literals;
+
 namespace net
 {
   template <size_t MaxCapacity, size_t TimeoutInMicroseconds>

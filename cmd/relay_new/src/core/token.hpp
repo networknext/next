@@ -1,22 +1,24 @@
 #ifndef CORE_TOKEN_HPP
 #define CORE_TOKEN_HPP
 
-#include "packet.hpp"
-
 #include "encoding/read.hpp"
 #include "encoding/write.hpp"
+#include "expireable.hpp"
+#include "packet.hpp"
 
 namespace core
 {
-  struct Token
+  class Token: public Expireable
   {
-    // timestamp (8) +
+   public:
+    Token(const util::Clock& relayClock);
+    virtual ~Token() override = default;
+    // Expireable (8) +
     // session id (8) +
     // session version (1) +
     // session flags (1) =
     static const size_t ByteSize = 18;
 
-    uint64_t ExpireTimestamp;
     uint64_t SessionID;
     uint8_t SessionVersion;
     uint8_t SessionFlags;
@@ -27,6 +29,8 @@ namespace core
     void write(GenericPacket<>& packet, size_t& index);
     void read(GenericPacket<>& packet, size_t& index);
   };
+
+  inline Token::Token(const util::Clock& relayClock): Expireable(relayClock) {}
 
   [[gnu::always_inline]] inline uint64_t Token::key()
   {

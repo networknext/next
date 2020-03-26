@@ -1,16 +1,11 @@
 #pragma once
 
-/*
-  Uses of this class:
-  - As the relay system clock, defined by the variable in main "relayClock"
- */
-
 namespace util
 {
 #if defined _WIN32
   using Instant = std::chrono::steady_clock::time_point;
 #elif defined __linux__
-  using Instant = std::chrono::system_clock::time_point;
+  using Instant = std::chrono::high_resolution_clock::time_point;
 #endif
 
   using InternalClock = std::chrono::high_resolution_clock;
@@ -23,21 +18,28 @@ namespace util
   {
    public:
     Clock();
-    ~Clock() = default;
 
     /* Timestamps the clock */
     void reset();
 
     /* Get how much time as elasped since starting */
-    template <typename UnitOfTime>
-    auto elapsed() const -> double;
+    template <typename U>
+    double elapsed() const;
+
+    /* Check if a time duration has passed */
+    template <typename U>
+    bool elapsed(double value) const;
+
+    /* Returns the number of seconds since the epoch */
+    template <typename U>
+    double unixTime() const;
 
    private:
-    Instant mTimestamp;
+    Instant mNow;
     size_t mDelta;
 
     template <typename T>
-    inline auto diff() const -> double;
+    double diff() const;
   };
 
   inline Clock::Clock()
@@ -47,36 +49,49 @@ namespace util
 
   inline void Clock::reset()
   {
-    mTimestamp = InternalClock::now();
+    mNow = InternalClock::now();
   }
 
   template <>
-  inline auto Clock::elapsed<Nanosecond>() const -> double
+  inline double Clock::elapsed<Nanosecond>() const
   {
     return diff<std::nano>();
   }
 
   template <>
-  inline auto Clock::elapsed<Microsecond>() const -> double
+  inline double Clock::elapsed<Microsecond>() const
   {
     return diff<std::micro>();
   }
 
   template <>
-  inline auto Clock::elapsed<Millisecond>() const -> double
+  inline double Clock::elapsed<Millisecond>() const
   {
     return diff<std::milli>();
   }
 
   template <>
-  inline auto Clock::elapsed<Second>() const -> double
+  inline double Clock::elapsed<Second>() const
   {
     return diff<std::ratio<1>>();
   }
 
-  template <typename T>
-  inline auto Clock::diff() const -> double
+  template <typename U>
+  inline bool Clock::elapsed(double value) const
   {
-    return std::chrono::duration<double, T>(InternalClock::now() - mTimestamp).count();
+    return std::chrono::duration_cast<U>(InternalClock::now() - mNow).count() >= value;
   }
-}  // namespace util
+
+  template <typename T>
+  inline double Clock::unixTime() const
+  {
+    const auto seconds = std::chrono::duration_cast<T>(InternalClock::now().time_since_epoch());
+    return seconds.count();
+  }
+
+  template <typename T>
+  inline double Clock::diff() const
+  {
+    return std::chrono::duration<double, T>(InternalClock::now() - mNow).count();
+  }
+}  // namespace epoch

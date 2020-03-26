@@ -2,7 +2,7 @@
 #define CORE_HANDLERS_SERVER_TO_CLIENT_HANDLER_HPP
 #include "base_handler.hpp"
 
-#include "core/session.hpp"
+#include "core/session_map.hpp"
 
 #include "os/platform.hpp"
 
@@ -13,11 +13,7 @@ namespace core
     class ServerToClientHandler: public BaseHandler
     {
      public:
-      ServerToClientHandler(const util::Clock& relayClock,
-       const RouterInfo& routerInfo,
-       GenericPacket<>& packet,
-       const int packetSize,
-       core::SessionMap& sessions);
+      ServerToClientHandler(GenericPacket<>& packet, const int packetSize, core::SessionMap& sessions);
 
       template <typename T, typename F>
       void handle(T& sender, F funcptr);
@@ -26,12 +22,9 @@ namespace core
       core::SessionMap& mSessionMap;
     };
 
-    inline ServerToClientHandler::ServerToClientHandler(const util::Clock& relayClock,
-     const RouterInfo& routerInfo,
-     GenericPacket<>& packet,
-     const int packetSize,
-     core::SessionMap& sessions)
-     : BaseHandler(relayClock, routerInfo, packet, packetSize), mSessionMap(sessions)
+    inline ServerToClientHandler::ServerToClientHandler(
+     GenericPacket<>& packet, const int packetSize, core::SessionMap& sessions)
+     : BaseHandler(packet, packetSize), mSessionMap(sessions)
     {}
 
     template <typename T, typename F>
@@ -46,13 +39,15 @@ namespace core
       uint64_t session_id;
       uint8_t session_version;
 
-      if (relay::relay_peek_header(RELAY_DIRECTION_SERVER_TO_CLIENT,
-           &type,
-           &sequence,
-           &session_id,
-           &session_version,
-           mPacket.Buffer.data(),
-           mPacketSize) != RELAY_OK) {
+      if (
+       relay::relay_peek_header(
+        RELAY_DIRECTION_SERVER_TO_CLIENT,
+        &type,
+        &sequence,
+        &session_id,
+        &session_version,
+        mPacket.Buffer.data(),
+        mPacketSize) != RELAY_OK) {
         return;
       }
 
@@ -64,7 +59,8 @@ namespace core
 
       auto session = mSessionMap.get(hash);
 
-      if (sessionIsExpired(session)) {
+      if (session->expired()) {
+        mSessionMap.erase(hash);
         return;
       }
 
@@ -74,8 +70,9 @@ namespace core
       }
 
       relay_replay_protection_advance_sequence(&session->ServerToClientProtection, clean_sequence);
-      if (relay::relay_verify_header(
-           RELAY_DIRECTION_SERVER_TO_CLIENT, session->PrivateKey.data(), mPacket.Buffer.data(), mPacketSize) != RELAY_OK) {
+      if (
+       relay::relay_verify_header(
+        RELAY_DIRECTION_SERVER_TO_CLIENT, session->PrivateKey.data(), mPacket.Buffer.data(), mPacketSize) != RELAY_OK) {
         return;
       }
 
