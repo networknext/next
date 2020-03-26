@@ -82,7 +82,6 @@ func NewRouter(logger log.Logger, redisClient redis.Cmdable, geoClient *routing.
 	router.HandleFunc("/relay_update", RelayUpdateHandlerFunc(logger, &commonUpdateParams)).Methods("POST")
 	router.Handle("/cost_matrix", costmatrix).Methods("GET")
 	router.Handle("/route_matrix", routematrix).Methods("GET")
-	router.HandleFunc("/", RelayDashboardHandlerFunc(redisClient, routematrix, statsdb, username, password)).Methods("GET")
 	router.Handle("/debug/vars", expvar.Handler())
 	return router
 }
@@ -447,12 +446,10 @@ func statsTable(stats map[string]map[string]routing.Stats) template.HTML {
 	return template.HTML(html.String())
 }
 
-// NearHandlerFunc returns the function for the near endpoint
-func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.RouteMatrix, statsdb *routing.StatsDatabase, username string, password string) func(writer http.ResponseWriter, request *http.Request) {
+func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.RouteMatrix, username string, password string) func(writer http.ResponseWriter, request *http.Request) {
 	type response struct {
 		Analysis string
 		Relays   []routing.Relay
-		Stats    map[string]map[string]routing.Stats
 	}
 
 	funcmap := template.FuncMap{
@@ -495,9 +492,6 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.R
 					</tr>
 					{{ end }}
 				</table>
-
-				<h2>Stats</h2>
-				{{ .Stats | statsTable }}
 			</body>
 		</html>
 	`))
@@ -532,16 +526,6 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.R
 				return
 			}
 			res.Relays = append(res.Relays, relay)
-		}
-
-		res.Stats = make(map[string]map[string]routing.Stats)
-		for _, a := range res.Relays {
-			res.Stats[a.Addr.String()] = make(map[string]routing.Stats)
-
-			for _, b := range res.Relays {
-				rtt, jitter, packetloss := statsdb.GetSample(a.ID, b.ID)
-				res.Stats[a.Addr.String()][b.Addr.String()] = routing.Stats{RTT: float64(rtt), Jitter: float64(jitter), PacketLoss: float64(packetloss)}
-			}
 		}
 
 		if err := tmpl.Execute(writer, res); err != nil {
