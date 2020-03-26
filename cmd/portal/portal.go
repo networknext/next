@@ -15,8 +15,6 @@ import (
 	"github.com/networknext/backend/transport"
 )
 
-// router.HandleFunc("/", RelayDashboardHandlerFunc(redisClient, routematrix, statsdb, username, password)).Methods("GET")
-
 func main() {
 	// Configure logging
 	logger := log.NewLogfmtLogger(os.Stdout)
