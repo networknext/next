@@ -1,8 +1,6 @@
 /*
     Network Next SDK. Copyright © 2017 - 2020 Network Next, Inc.
 
-    Copyright © 2017 - 2020 Network Next, Inc.
-
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
 
@@ -3476,13 +3474,18 @@ int next_init( void * context, next_config_t * config_in )
         config.socket_receive_buffer_size = config_in->socket_receive_buffer_size;
     }
 
-    if ( config_in )
+    config.disable_network_next = config_in ? config_in->disable_network_next : false;
+
+    const char * next_disable_override = next_platform_getenv( "NEXT_DISABLE" );
     {
-        config.disable_network_next = config_in->disable_network_next;
-    }
-    else
-    {
-        config.disable_network_next = false;
+        if ( next_disable_override != NULL )
+        {
+            int value = atoi( next_disable_override );
+            if ( value > 0 )
+            {
+                config.disable_network_next = true;
+            }
+        }
     }
 
     const char * socket_send_buffer_size_override = next_platform_getenv( "NEXT_SOCKET_SEND_BUFFER_SIZE" );
