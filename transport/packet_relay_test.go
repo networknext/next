@@ -227,6 +227,108 @@ func TestRelayInitResponse(t *testing.T) {
 }
 
 func TestRelayUpdateRequest(t *testing.T) {
+	t.Run("UnmarshalJSON()", func(t *testing.T) {
+		t.Run("invalid address", func(t *testing.T) {
+			var packet transport.RelayUpdateRequest
+
+			jsonRequest := []byte(`{
+				"version": 1,
+				"relay_address": "127.0"
+			}`)
+			assert.EqualError(t, packet.UnmarshalJSON(jsonRequest), "address 127.0: missing port in address")
+
+			jsonRequest = []byte(`{
+				"version": 1,
+				"relay_address": "127.0:1111"
+			}`)
+			assert.EqualError(t, packet.UnmarshalJSON(jsonRequest), "invalid relay_address")
+
+			jsonRequest = []byte(`{
+				"version": 1,
+				"relay_address": "127.0:port"
+			}`)
+			assert.EqualError(t, packet.UnmarshalJSON(jsonRequest), "invalid relay_address")
+		})
+
+		t.Run("invalid token size", func(t *testing.T) {
+			var packet transport.RelayUpdateRequest
+
+			jsonRequest := []byte(`{
+				"version": 1,
+				"relay_address": "127.0.0.1:40000",
+				"Metadata": {
+					"PublicKey": "this is a test"
+				}
+			}`)
+			assert.EqualError(t, packet.UnmarshalJSON(jsonRequest), "illegal base64 data at input byte 4")
+
+			jsonRequest = []byte(`{
+				"version": 1,
+				"relay_address": "127.0.0.1:40000",
+				"Metadata": {
+					"PublicKey": "AAAA"
+				}
+			}`)
+			assert.EqualError(t, packet.UnmarshalJSON(jsonRequest), "invalid token size")
+		})
+
+		t.Run("invalid ping stats", func(t *testing.T) {
+			var packet transport.RelayUpdateRequest
+
+			jsonRequest := []byte(`{
+				"version": 1,
+				"relay_address": "127.0.0.1:40000",
+				"Metadata": {
+					"PublicKey": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+				}
+			}`)
+			assert.EqualError(t, packet.UnmarshalJSON(jsonRequest), "unexpected end of JSON input")
+
+			jsonRequest = []byte(`{
+				"version": 1,
+				"relay_address": "127.0.0.1:40000",
+				"Metadata": {
+					"PublicKey": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+				}
+				"PingStats": 0
+			}`)
+			assert.EqualError(t, packet.UnmarshalJSON(jsonRequest), "json: cannot unmarshal number into Go value of type []routing.RelayStatsPing")
+		})
+
+		t.Run("valid", func(t *testing.T) {
+			var packet transport.RelayUpdateRequest
+
+			jsonRequest := []byte(`{
+				"version": 1,
+				"relay_address": "127.0.0.1:40000",
+				"Metadata": {
+					"PublicKey": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+				}
+				"TrafficStats": {
+					"BytesMeasurementRx": 100
+				},
+				"PingStats": [{
+					"RelayID": 1,
+					"RTT": 2,
+					"Jitter": 3,
+					"PacketLoss": 4
+				}]
+			}`)
+			assert.NoError(t, packet.UnmarshalJSON(jsonRequest))
+
+			expected := transport.RelayUpdateRequest{
+				Version:       1,
+				Address:       net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 40000},
+				Token:         make([]byte, crypto.KeySize),
+				BytesReceived: 100,
+				PingStats: []routing.RelayStatsPing{
+					{RelayID: 1, RTT: 2, Jitter: 3, PacketLoss: 4},
+				},
+			}
+			assert.Equal(t, expected, packet)
+		})
+	})
+
 	t.Run("UnmarshalBinary()", func(t *testing.T) {
 		t.Run("missing request version", func(t *testing.T) {
 			var packet transport.RelayUpdateRequest
