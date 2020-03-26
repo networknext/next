@@ -87,7 +87,7 @@ func main() {
 
 		level.Info(logger).Log("msg", fmt.Sprintf("Starting portal on port %s", port))
 
-		http.HandleFunc("/", transport.RelayDashboardHandlerFunc(redisClientRelays, &routeMatrix, nil, os.Getenv("BASIC_AUTH_USERNAME"), os.Getenv("BASIC_AUTH_PASSWORD")))
+		http.HandleFunc("/", transport.RelayDashboardHandlerFunc(redisClientRelays, &routeMatrix, os.Getenv("BASIC_AUTH_USERNAME"), os.Getenv("BASIC_AUTH_PASSWORD")))
 		err := http.ListenAndServe(":"+port, nil)
 		if err != nil {
 			level.Error(logger).Log("err", err)
