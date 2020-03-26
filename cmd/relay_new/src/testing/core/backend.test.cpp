@@ -67,7 +67,7 @@ Test(core_backend_update_valid)
   core::SessionMap sessions;
   auto backend = std::move(makeBackend(routerInfo, manager, sessions));
 
-  sessions.set(1234, std::make_shared<core::Session>(clock, routerInfo));  // just add one thing to the map to make it non-zero
+  sessions.set(1234, std::make_shared<core::Session>(clock));  // just add one thing to the map to make it non-zero
 
   // seed relay manager
   {

@@ -11,7 +11,7 @@ namespace core
   class ContinueToken: public Token
   {
    public:
-    ContinueToken(const util::Clock& relayClock, const core::RouterInfo& routerInfo);
+    ContinueToken(const util::Clock& relayClock);
     virtual ~ContinueToken() override = default;
 
     static const size_t ByteSize = Token::ByteSize;
@@ -50,9 +50,7 @@ namespace core
      const size_t nonceIndex);
   };
 
-  inline ContinueToken::ContinueToken(const util::Clock& relayClock, const core::RouterInfo& routerInfo)
-   : Token(relayClock, routerInfo)
-  {}
+  inline ContinueToken::ContinueToken(const util::Clock& relayClock): Token(relayClock) {}
 }  // namespace core
 
 namespace legacy

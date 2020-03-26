@@ -22,18 +22,15 @@ namespace core
     uint64_t ExpireTimestamp;
 
    protected:
-    Expireable(const util::Clock& relayClock, const core::RouterInfo& routerInfo);
+    Expireable(const util::Clock& relayClock);
 
    private:
     const util::Clock& mRelayClock;
-    const core::RouterInfo& mRouterInfo;
 
     inline auto timestamp() -> uint64_t;
   };
 
-  inline Expireable::Expireable(const util::Clock& relayClock, const core::RouterInfo& routerInfo)
-   : mRelayClock(relayClock), mRouterInfo(routerInfo)
-  {}
+  inline Expireable::Expireable(const util::Clock& relayClock): mRelayClock(relayClock) {}
 
   inline auto Expireable::expired() -> bool
   {

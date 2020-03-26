@@ -15,7 +15,6 @@ namespace core
      public:
       ContinueRequestHandler(
        const util::Clock& relayClock,
-       const RouterInfo& routerInfo,
        GenericPacket<>& packet,
        const int packetSize,
        core::SessionMap& sessions,
@@ -26,21 +25,18 @@ namespace core
 
      private:
       const util::Clock& mRelayClock;
-      const core::RouterInfo& mRouterInfo;
       core::SessionMap& mSessionMap;
       const crypto::Keychain& mKeychain;
     };
 
     inline ContinueRequestHandler::ContinueRequestHandler(
      const util::Clock& relayClock,
-     const RouterInfo& routerInfo,
      GenericPacket<>& packet,
      const int packetSize,
      core::SessionMap& sessions,
      const crypto::Keychain& keychain)
      : BaseHandler(packet, packetSize),
        mRelayClock(relayClock),
-       mRouterInfo(routerInfo),
        mSessionMap(sessions),
        mKeychain(keychain)
     {}
@@ -54,7 +50,7 @@ namespace core
       }
 
       size_t index = 1;
-      core::ContinueToken token(mRelayClock, mRouterInfo);
+      core::ContinueToken token(mRelayClock);
       if (!token.readEncrypted(mPacket, index, mKeychain.RouterPublicKey, mKeychain.RelayPrivateKey)) {
         Log("ignoring continue request. could not read continue token");
         return;

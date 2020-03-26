@@ -34,7 +34,6 @@ namespace core
    os::Socket& socket,
    const util::Clock& relayClock,
    const crypto::Keychain& keychain,
-   const core::RouterInfo& routerInfo,
    core::SessionMap& sessions,
    core::RelayManager& relayManager,
    const volatile bool& handle,
@@ -43,7 +42,6 @@ namespace core
    : mSocket(socket),
      mRelayClock(relayClock),
      mKeychain(keychain),
-     mRouterInfo(routerInfo),
      mSessionMap(sessions),
      mRelayManager(relayManager),
      mShouldProcess(handle),
@@ -130,8 +128,7 @@ namespace core
       case RELAY_ROUTE_REQUEST_PACKET: {
         mLogger.addToRouteReq(packet.Len + headerBytes);
 
-        handlers::RouteRequestHandler handler(
-         mRelayClock, mRouterInfo, packet, packet.Len, packet.Addr, mKeychain, mSessionMap);
+        handlers::RouteRequestHandler handler(mRelayClock, packet, packet.Len, packet.Addr, mKeychain, mSessionMap);
 
         handler.handle(outputBuff, &core::GenericPacketBuffer<1024UL>::push);
       } break;
@@ -148,7 +145,7 @@ namespace core
       case RELAY_CONTINUE_REQUEST_PACKET: {
         mLogger.addToContReq(packet.Len + headerBytes);
 
-        handlers::ContinueRequestHandler handler(mRelayClock, mRouterInfo, packet, packet.Len, mSessionMap, mKeychain);
+        handlers::ContinueRequestHandler handler(mRelayClock, packet, packet.Len, mSessionMap, mKeychain);
 
         handler.handle(outputBuff, &core::GenericPacketBuffer<1024UL>::push);
       } break;

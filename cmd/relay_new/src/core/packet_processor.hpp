@@ -24,7 +24,6 @@ namespace core
     PacketProcessor(os::Socket& socket,
      const util::Clock& relayClock,
      const crypto::Keychain& keychain,
-     const core::RouterInfo& routerInfo,
      core::SessionMap& sessions,
      core::RelayManager& relayManager,
      const volatile bool& handle,
@@ -38,7 +37,6 @@ namespace core
     const os::Socket& mSocket;
     const util::Clock& mRelayClock;
     const crypto::Keychain& mKeychain;
-    const core::RouterInfo mRouterInfo;
     core::SessionMap& mSessionMap;
     core::RelayManager& mRelayManager;
     const volatile bool& mShouldProcess;

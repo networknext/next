@@ -10,7 +10,7 @@ namespace core
   class Session: public Expireable
   {
    public:
-    Session(const util::Clock& relayClock, const core::RouterInfo& routerInfo);
+    Session(const util::Clock& relayClock);
     virtual ~Session() override = default;
 
     uint64_t SessionID;
@@ -29,8 +29,7 @@ namespace core
     legacy::relay_replay_protection_t ClientToServerProtection;
   };
 
-  inline Session::Session(const util::Clock& relayClock, const core::RouterInfo& routerInfo): Expireable(relayClock, routerInfo)
-  {}
+  inline Session::Session(const util::Clock& relayClock): Expireable(relayClock) {}
 
   using SessionPtr = std::shared_ptr<Session>;
 }  // namespace core

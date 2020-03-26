@@ -8,8 +8,7 @@
 namespace {
   core::RouteToken makeToken() {
     util::Clock clock;
-    core::RouterInfo info;
-    return core::RouteToken(clock, info);
+    return core::RouteToken(clock);
   }
 }
 
