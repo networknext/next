@@ -2,7 +2,6 @@ package transport_test
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"math/rand"
 	"net"
@@ -82,7 +81,7 @@ func relayUpdateAssertions(t *testing.T, contentType string, body []byte, expect
 func TestRelayUpdateHandler(t *testing.T) {
 	t.Run("relay data is invalid", func(t *testing.T) {
 		buff := make([]byte, 10) // invalid relay packet size
-		updateOctetStreamAssertions(t, buff, http.StatusUnprocessableEntity, nil, nil)
+		updateOctetStreamAssertions(t, buff, http.StatusBadRequest, nil, nil)
 	})
 
 	t.Run("relay public token bytes not equal", func(t *testing.T) {
@@ -95,7 +94,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 		rand.Read(token1)
 		token2 := make([]byte, routing.EncryptedTokenSize)
 		rand.Read(token2)
-		packet := transport.RelayUpdatePacket{
+		packet := transport.RelayUpdateRequest{
 			Address:   *udp,
 			Token:     token1,
 			PingStats: make([]routing.RelayStatsPing, 0),
@@ -121,20 +120,19 @@ func TestRelayUpdateHandler(t *testing.T) {
 
 	t.Run("address is invalid", func(t *testing.T) {
 		udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
-		packet := transport.RelayUpdatePacket{
+		packet := transport.RelayUpdateRequest{
 			Address: *udp,
 			Token:   make([]byte, routing.EncryptedTokenSize),
 		}
 		buff, _ := packet.MarshalBinary()
 		buff[10] = 'x' // assign this index (which should be the first item in the address) as the letter 'x' making it invalid
-		updateOctetStreamAssertions(t, buff, http.StatusUnprocessableEntity, nil, nil)
+		updateOctetStreamAssertions(t, buff, http.StatusBadRequest, nil, nil)
 	})
 
 	t.Run("number of relays exceeds max", func(t *testing.T) {
 		udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
-		packet := transport.RelayUpdatePacket{
+		packet := transport.RelayUpdateRequest{
 			Address:   *udp,
-			NumRelays: 1025,
 			Token:     make([]byte, routing.EncryptedTokenSize),
 			PingStats: make([]routing.RelayStatsPing, 1025),
 		}
@@ -144,8 +142,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 
 	t.Run("relay not found", func(t *testing.T) {
 		udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
-		packet := transport.RelayUpdatePacket{
-			NumRelays: 3,
+		packet := transport.RelayUpdateRequest{
 			Address:   *udp,
 			Token:     make([]byte, crypto.KeySize),
 			PingStats: make([]routing.RelayStatsPing, 3),
@@ -161,13 +158,12 @@ func TestRelayUpdateHandler(t *testing.T) {
 		udp, _ := net.ResolveUDPAddr("udp", addr)
 		statsdb := routing.NewStatsDatabase()
 		statIps := []string{"127.0.0.2:40000", "127.0.0.3:40000", "127.0.0.4:40000", "127.0.0.5:40000"}
-		packet := transport.RelayUpdatePacket{
-			NumRelays: uint32(len(statIps)),
-			Address:   *udp,
-			Token:     make([]byte, crypto.KeySize),
+		packet := transport.RelayUpdateRequest{
+			Address: *udp,
+			Token:   make([]byte, crypto.KeySize),
 		}
 
-		packet.PingStats = make([]routing.RelayStatsPing, packet.NumRelays)
+		packet.PingStats = make([]routing.RelayStatsPing, len(statIps))
 		for i, addr := range statIps {
 			stats := &packet.PingStats[i]
 			stats.RelayID = crypto.HashID(addr)
@@ -256,16 +252,14 @@ func TestRelayUpdateHandler(t *testing.T) {
 		t.Run("unparsable json", func(t *testing.T) {
 			JSONData := "{" // basic but gets the job done
 			buff := []byte(JSONData)
-			updateJSONAssertions(t, buff, http.StatusUnprocessableEntity, nil, nil)
+			updateJSONAssertions(t, buff, http.StatusBadRequest, nil, nil)
 		})
 
 		t.Run("invalid address", func(t *testing.T) {
 			statIps := []string{"127.0.0.2:40000", "127.0.0.3:40000", "127.0.0.4:40000", "127.0.0.5:40000"}
-			token := make([]byte, crypto.KeySize)
-			b64Token := base64.StdEncoding.EncodeToString(token)
-			var request transport.RelayUpdateRequestJSON
-			request.StringAddr = "invalid address"
-			request.Metadata.TokenBase64 = b64Token
+
+			var request transport.RelayUpdateRequest
+			request.Token = make([]byte, crypto.KeySize)
 			request.PingStats = make([]routing.RelayStatsPing, uint32(len(statIps)))
 
 			for i, addr := range statIps {
@@ -279,14 +273,14 @@ func TestRelayUpdateHandler(t *testing.T) {
 			buff, err := json.Marshal(request)
 			assert.Nil(t, err)
 
-			updateJSONAssertions(t, buff, http.StatusUnprocessableEntity, nil, nil)
+			updateJSONAssertions(t, buff, http.StatusBadRequest, nil, nil)
 		})
 
 		t.Run("token invalid base64", func(t *testing.T) {
 			statIps := []string{"127.0.0.2:40000", "127.0.0.3:40000", "127.0.0.4:40000", "127.0.0.5:40000"}
-			var request transport.RelayUpdateRequestJSON
-			request.StringAddr = "127.0.0.1:40000"
-			request.Metadata.TokenBase64 = "invalid\n\t\nbase64"
+			var request transport.RelayUpdateRequest
+			request.Address = net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 40000}
+			request.Token = []byte("invalid\n\t\nbase64")
 			request.PingStats = make([]routing.RelayStatsPing, uint32(len(statIps)))
 
 			for i, addr := range statIps {
@@ -300,7 +294,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 			buff, err := json.Marshal(request)
 			assert.Nil(t, err)
 
-			updateJSONAssertions(t, buff, http.StatusUnprocessableEntity, nil, nil)
+			updateJSONAssertions(t, buff, http.StatusBadRequest, nil, nil)
 		})
 
 		t.Run("valid", func(t *testing.T) {
@@ -310,11 +304,10 @@ func TestRelayUpdateHandler(t *testing.T) {
 			udp, _ := net.ResolveUDPAddr("udp", addr)
 			statsdb := routing.NewStatsDatabase()
 			statIps := []string{"127.0.0.2:40000", "127.0.0.3:40000", "127.0.0.4:40000", "127.0.0.5:40000"}
-			token := make([]byte, crypto.KeySize)
-			b64Token := base64.StdEncoding.EncodeToString(token)
-			var request transport.RelayUpdateRequestJSON
-			request.StringAddr = "127.0.0.1:40000"
-			request.Metadata.TokenBase64 = b64Token
+
+			var request transport.RelayUpdateRequest
+			request.Address = net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 40000}
+			request.Token = make([]byte, crypto.KeySize)
 			request.PingStats = make([]routing.RelayStatsPing, uint32(len(statIps)))
 
 			for i, addr := range statIps {
@@ -368,7 +361,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 
 			body := recorder.Body.Bytes()
 
-			var response transport.RelayUpdateResponseJSON
+			var response transport.RelayUpdateResponse
 			json.Unmarshal(body, &response)
 
 			assert.Equal(t, len(statIps), len(response.RelaysToPing))
@@ -391,7 +384,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 			}
 
 			assert.NotContains(t, relaysToPingIDs, entry.ID)
-			assert.NotContains(t, relaysToPingAddrs, request.StringAddr)
+			assert.NotContains(t, relaysToPingAddrs, request.Address.String())
 		})
 	})
 }

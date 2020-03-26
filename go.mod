@@ -24,6 +24,9 @@ require (
 	github.com/json-iterator/go v1.1.9
 	github.com/oschwald/geoip2-golang v1.4.0
 	github.com/stretchr/testify v1.4.0
+	github.com/tidwall/gjson v1.6.0
+	github.com/tidwall/pretty v1.0.1 // indirect
+	github.com/tidwall/sjson v1.0.4
 	golang.org/x/crypto v0.0.0-20200115085410-6d4e4cb37c7d
 	golang.org/x/exp v0.0.0-20200213203834-85f925bdd4d0 // indirect
 	golang.org/x/tools v0.0.0-20200214144324-88be01311a71 // indirect
