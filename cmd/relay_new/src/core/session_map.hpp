@@ -30,8 +30,8 @@ namespace core
     /* Return the number of elements in the map */
     auto size() const -> size_t;
 
-    /* Remove all expired entries */
-    void purge();
+    /* Remove all entries past the given timestamp */
+    void purge(double seconds);
 
    private:
     // Using a map for now, it's a uint key so an unordered map might
@@ -70,12 +70,12 @@ namespace core
     return mInternal.size();
   }
 
-  inline void SessionMap::purge()
+  inline void SessionMap::purge(double seconds)
   {
     std::lock_guard<std::mutex> lk(mLock);
     auto iter = mInternal.begin();
     while (iter != mInternal.end()) {
-      if (!iter->second || iter->second->expired()) {
+      if (iter->second && iter->second->expired(seconds)) {
         iter = mInternal.erase(iter);
       } else {
         iter++;

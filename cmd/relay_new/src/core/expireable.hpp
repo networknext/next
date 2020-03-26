@@ -11,8 +11,14 @@ namespace core
   {
    public:
     virtual ~Expireable() = default;
+
+    /* Returns true if the expire timestamp is less than the current unix time */
     auto expired() -> bool;
 
+    /* Returns true if the expire timestamp is less than the argument */
+    auto expired(double seconds) -> bool;
+
+    // Time to expire in seconds, unix time
     uint64_t ExpireTimestamp;
 
    protected:
@@ -31,8 +37,12 @@ namespace core
 
   inline auto Expireable::expired() -> bool
   {
-    LogDebug(this->ExpireTimestamp, " < ", timestamp());
-    return this->ExpireTimestamp < timestamp() - 1; // one second grace period
+    return this->ExpireTimestamp < timestamp() + 1;
+  }
+
+  inline auto Expireable::expired(double seconds) -> bool
+  {
+    return this->ExpireTimestamp < seconds;
   }
 
   inline auto Expireable::timestamp() -> uint64_t
