@@ -47,7 +47,7 @@ func readIDOld(data []byte, index *int, storage *uint64, errmsg string) error {
 
 func readIDNew(data []byte, index *int, storage *uint64, errmsg string) error {
 	if !encoding.ReadUint64(data, index, storage) {
-		return errors.New(errmsg + " - v3")
+		return errors.New(errmsg + " - ver >= v3")
 	}
 	return nil
 }
@@ -67,14 +67,14 @@ func readBytesOld(data []byte, index *int, storage *[]byte, length uint32, errms
 
 func readBytesNew(data []byte, index *int, storage *[]byte, length uint32, errmsg string) error {
 	if !encoding.ReadBytes(data, index, storage, length) {
-		return errors.New(errmsg + " - v3")
+		return errors.New(errmsg + " - ver >= v3")
 	}
 	return nil
 }
 
 // CostMatrix ...
 type CostMatrix struct {
-	mu sync.Mutex
+	mu sync.RWMutex
 
 	RelayIndicies map[uint64]int
 
@@ -91,9 +91,6 @@ type CostMatrix struct {
 
 // ReadFrom implements the io.ReadFrom interface
 func (m *CostMatrix) ReadFrom(r io.Reader) (int64, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	data, err := ioutil.ReadAll(r)
 	if err != nil {
 		return 0, err
@@ -108,9 +105,6 @@ func (m *CostMatrix) ReadFrom(r io.Reader) (int64, error) {
 
 // WriteTo implements the io.WriteTo interface
 func (m *CostMatrix) WriteTo(w io.Writer) (int64, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	data, err := m.MarshalBinary()
 	if err != nil {
 		return 0, err
@@ -132,7 +126,7 @@ func (m *CostMatrix) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-/* Binary data outline for CostMatrix v3: "->" means seqential elements in memory and not another section
+/* Binary data outline for CostMatrix v4: "->" means seqential elements in memory and not another section
  * Version number { uint32 }
  * Number of relays { uint32 }
  * Relay IDs { [NumberOfRelays]uint64 }
@@ -144,6 +138,12 @@ func (m *CostMatrix) ServeHTTP(w http.ResponseWriter, r *http.Request) {
  * Number of Datacenters { uint32 }
  * Datacenter ID { uint64 } -> Number of Relays in Datacenter { uint32 } -> Relay IDs in Datacenter { [NumberOfRelaysInDatacenter]uint64 }
  * RTT Info { []uint32 }
+ * Sellers { [NumberOfRelays]Seller } (
+ *	ID { string }
+ *	Name { string }
+ * 	IngressPriceCents { uint64 }
+ *	EgressPriceCents { uint64 }
+ * )
  */
 
 // UnmarshalBinary ...
@@ -174,6 +174,9 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 	if !encoding.ReadUint32(data, &index, &numRelays) {
 		return errors.New("[CostMatrix] invalid read at number of relays")
 	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
 	m.RelayIndicies = make(map[uint64]int)
 	m.RelayIDs = make([]uint64, numRelays)
@@ -292,7 +295,10 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 }
 
 // MarshalBinary ...
-func (m CostMatrix) MarshalBinary() ([]byte, error) {
+func (m *CostMatrix) MarshalBinary() ([]byte, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	index := 0
 	data := make([]byte, m.Size())
 
@@ -301,7 +307,7 @@ func (m CostMatrix) MarshalBinary() ([]byte, error) {
 	numRelays := len(m.RelayIDs)
 
 	if numRelays != len(m.RelayNames) {
-		return nil, fmt.Errorf("Length of Relay IDs not equal to length of Relay Names: %d != %d", numRelays, len(m.RelayNames))
+		return nil, fmt.Errorf("length of Relay IDs not equal to length of Relay Names: %d != %d", numRelays, len(m.RelayNames))
 	}
 
 	encoding.WriteUint32(data, &index, uint32(numRelays))
@@ -317,7 +323,7 @@ func (m CostMatrix) MarshalBinary() ([]byte, error) {
 	numDatacenters := len(m.DatacenterIDs)
 
 	if numDatacenters != len(m.DatacenterNames) {
-		return nil, fmt.Errorf("Length of Datacenter IDs not equal to length of Datacenter Names: %d != %d", numDatacenters, len(m.DatacenterNames))
+		return nil, fmt.Errorf("length of Datacenter IDs not equal to length of Datacenter Names: %d != %d", numDatacenters, len(m.DatacenterNames))
 	}
 
 	encoding.WriteUint32(data, &index, uint32(numDatacenters))
@@ -372,10 +378,10 @@ func (m CostMatrix) MarshalBinary() ([]byte, error) {
 
 // Optimize will fill up a *RouteMatrix with the optimized routes based on cost.
 func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
-	m.mu.Lock()
+	m.mu.RLock()
 	routes.mu.Lock()
 	defer func() {
-		m.mu.Unlock()
+		m.mu.RUnlock()
 		routes.mu.Unlock()
 	}()
 
@@ -624,6 +630,9 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 }
 
 func (m *CostMatrix) Size() uint64 {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	var length uint64
 	numRelays := uint64(len(m.RelayIDs))
 	numDatacenters := uint64(len(m.DatacenterIDs))

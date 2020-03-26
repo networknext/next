@@ -52,7 +52,8 @@ func (m *RouteMatrix) ResolveRelay(id uint64) (Relay, error) {
 	}
 
 	if relayIndex >= len(m.RelayAddresses) ||
-		relayIndex >= len(m.RelayPublicKeys) {
+		relayIndex >= len(m.RelayPublicKeys) ||
+		relayIndex >= len(m.RelaySellers) {
 		return Relay{}, fmt.Errorf("relay %d has an invalid index %d", id, relayIndex)
 	}
 
@@ -285,7 +286,7 @@ func (m *RouteMatrix) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-/* Binary data outline for RouteMatrix v3: "->" means seqential elements in memory and not another section, "(...)" mean that section sequentially repeats for however many
+/* Binary data outline for RouteMatrix v4: "->" means seqential elements in memory and not another section, "(...)" mean that section sequentially repeats for however many
  * Version number { uint32 }
  * Number of relays { uint32 }
  * Relay IDs { [NumberOfRelays]uint64 }
@@ -302,6 +303,12 @@ func (m *RouteMatrix) ServeHTTP(w http.ResponseWriter, r *http.Request) {
  *	Route RTT { [8]uint32 }
  *	Number of relays in the route { [8]uint32 }
  *	Relay IDs in each route { [8][5]uint64 }
+ * )
+ * Sellers { [NumberOfRelays]Seller } (
+ *	ID { string }
+ *	Name { string }
+ * 	IngressPriceCents { uint64 }
+ *	EgressPriceCents { uint64 }
  * )
  */
 
@@ -449,22 +456,11 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 			}
 			entry.RouteNumRelays[j] = int32(routeNumRelays)
 
-			if version >= 3 {
-				for k := 0; k < int(entry.RouteNumRelays[j]); k++ {
-					if !encoding.ReadUint64(data, &index, &entry.RouteRelays[j][k]) {
-						return errors.New("[RouteMatrix] invalid read at relays in route - v3")
-					}
-				}
-			} else {
-				for k := 0; k < int(entry.RouteNumRelays[j]); k++ {
-					var tmp uint32
-					if !encoding.ReadUint32(data, &index, &tmp) {
-						return errors.New("[RouteMatrix] invalid read at relays in route - ver < 3")
-					}
-					entry.RouteRelays[j][k] = uint64(tmp)
+			for k := 0; k < int(entry.RouteNumRelays[j]); k++ {
+				if err := idReadFunc(data, &index, &entry.RouteRelays[j][k], "[RouteMatrix] invalid read at relays in route"); err != nil {
+					return err
 				}
 			}
-
 		}
 	}
 
@@ -472,16 +468,16 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 	if version >= 4 {
 		for i := range m.RelaySellers {
 			if !encoding.ReadString(data, &index, &m.RelaySellers[i].ID, math.MaxInt32) {
-				return errors.New("[CostMatrix] invalid read on relay seller ID")
+				return errors.New("[RouteMatrix] invalid read on relay seller ID")
 			}
 			if !encoding.ReadString(data, &index, &m.RelaySellers[i].Name, math.MaxInt32) {
-				return errors.New("[CostMatrix] invalid read on relay seller name")
+				return errors.New("[RouteMatrix] invalid read on relay seller name")
 			}
 			if !encoding.ReadUint64(data, &index, &m.RelaySellers[i].IngressPriceCents) {
-				return errors.New("[CostMatrix] invalid read on relay seller ingress price")
+				return errors.New("[RouteMatrix] invalid read on relay seller ingress price")
 			}
 			if !encoding.ReadUint64(data, &index, &m.RelaySellers[i].EgressPriceCents) {
-				return errors.New("[CostMatrix] invalid read on relay seller egress price")
+				return errors.New("[RouteMatrix] invalid read on relay seller egress price")
 			}
 		}
 	}
@@ -490,19 +486,19 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 }
 
 // MarshalBinary ...
-func (m RouteMatrix) MarshalBinary() ([]byte, error) {
+func (m *RouteMatrix) MarshalBinary() ([]byte, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	data := make([]byte, m.Size())
 	index := 0
 
 	encoding.WriteUint32(data, &index, RouteMatrixVersion)
 
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
 	numRelays := len(m.RelayIDs)
 
 	if numRelays != len(m.RelayNames) {
-		return nil, fmt.Errorf("Length of Relay IDs not equal to length of Relay Names: %d != %d", numRelays, len(m.RelayNames))
+		return nil, fmt.Errorf("length of Relay IDs not equal to length of Relay Names: %d != %d", numRelays, len(m.RelayNames))
 	}
 
 	encoding.WriteUint32(data, &index, uint32(numRelays))
@@ -518,7 +514,7 @@ func (m RouteMatrix) MarshalBinary() ([]byte, error) {
 	numDatacenters := len(m.DatacenterIDs)
 
 	if numDatacenters != len(m.DatacenterNames) {
-		return nil, fmt.Errorf("Length of Datacenter IDs not equal to length of Datacenter Names: %d != %d", numDatacenters, len(m.DatacenterNames))
+		return nil, fmt.Errorf("length of Datacenter IDs not equal to length of Datacenter Names: %d != %d", numDatacenters, len(m.DatacenterNames))
 	}
 
 	encoding.WriteUint32(data, &index, uint32(numDatacenters))
@@ -621,8 +617,8 @@ func (m *RouteMatrix) Size() uint64 {
 	}
 
 	for _, entry := range m.Entries {
-		// DirectRTT + NumRoutes + allocation for RouteRTTs + allocation for RouteNumRelays
-		length += uint64(4 + 4 + 4*len(entry.RouteRTT) + 4*len(entry.RouteNumRelays))
+		// DirectRTT + DirectJitter + DirectPacketLoss + NumRoutes + allocation for RouteRTTs + allocation for RouteNumRelays
+		length += uint64(4 + 4 + 4 + 4 + 4*len(entry.RouteRTT) + 4*len(entry.RouteNumRelays))
 
 		for _, relays := range entry.RouteRelays {
 			// allocation for relay ids
@@ -642,20 +638,15 @@ func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	type routeData struct {
-		Improvement int32
-	}
-
 	src := m.RelayIDs
 	dest := m.RelayIDs
 
-	entries := make([]*routeData, 0, len(src)*len(dest))
-
 	numRelayPairs := 0.0
 	numValidRelayPairs := 0.0
-	numValidRelayPairsWithoutImprovement := 0.0
 
-	buckets := make([]int, 11)
+	numValidRelayPairsWithoutRTTImprovement := 0.0
+
+	rttBuckets := make([]int, 11)
 
 	for i := range src {
 		for j := range dest {
@@ -664,36 +655,33 @@ func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
 				abFlatIndex := TriMatrixIndex(i, j)
 				if len(m.Entries[abFlatIndex].RouteRTT) > 0 {
 					numValidRelayPairs++
-					improvement := m.Entries[abFlatIndex].DirectRTT - m.Entries[abFlatIndex].RouteRTT[0]
-					if improvement > 0.0 {
-						entry := &routeData{}
-						entry.Improvement = improvement
-						entries = append(entries, entry)
-						if improvement <= 5 {
-							buckets[0]++
-						} else if improvement <= 10 {
-							buckets[1]++
-						} else if improvement <= 15 {
-							buckets[2]++
-						} else if improvement <= 20 {
-							buckets[3]++
-						} else if improvement <= 25 {
-							buckets[4]++
-						} else if improvement <= 30 {
-							buckets[5]++
-						} else if improvement <= 35 {
-							buckets[6]++
-						} else if improvement <= 40 {
-							buckets[7]++
-						} else if improvement <= 45 {
-							buckets[8]++
-						} else if improvement <= 50 {
-							buckets[9]++
+					rttImprovement := m.Entries[abFlatIndex].DirectRTT - m.Entries[abFlatIndex].RouteRTT[0]
+					if rttImprovement > 0.0 {
+						if rttImprovement <= 5 {
+							rttBuckets[0]++
+						} else if rttImprovement <= 10 {
+							rttBuckets[1]++
+						} else if rttImprovement <= 15 {
+							rttBuckets[2]++
+						} else if rttImprovement <= 20 {
+							rttBuckets[3]++
+						} else if rttImprovement <= 25 {
+							rttBuckets[4]++
+						} else if rttImprovement <= 30 {
+							rttBuckets[5]++
+						} else if rttImprovement <= 35 {
+							rttBuckets[6]++
+						} else if rttImprovement <= 40 {
+							rttBuckets[7]++
+						} else if rttImprovement <= 45 {
+							rttBuckets[8]++
+						} else if rttImprovement <= 50 {
+							rttBuckets[9]++
 						} else {
-							buckets[10]++
+							rttBuckets[10]++
 						}
 					} else {
-						numValidRelayPairsWithoutImprovement++
+						numValidRelayPairsWithoutRTTImprovement++
 					}
 				}
 			}
@@ -701,14 +689,13 @@ func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
 	}
 
 	fmt.Fprintf(writer, "\n%s Improvement:\n\n", "RTT")
+	fmt.Fprintf(writer, "    None: %d (%.2f%%)\n", int(numValidRelayPairsWithoutRTTImprovement), numValidRelayPairsWithoutRTTImprovement/numValidRelayPairs*100.0)
 
-	fmt.Fprintf(writer, "    None: %d (%.2f%%)\n", int(numValidRelayPairsWithoutImprovement), numValidRelayPairsWithoutImprovement/numValidRelayPairs*100.0)
-
-	for i := range buckets {
-		if i != len(buckets)-1 {
-			fmt.Fprintf(writer, "    %d-%d%s: %d (%.2f%%)\n", i*5, (i+1)*5, "ms", buckets[i], float64(buckets[i])/numValidRelayPairs*100.0)
+	for i := range rttBuckets {
+		if i != len(rttBuckets)-1 {
+			fmt.Fprintf(writer, "    %d-%d%s: %d (%.2f%%)\n", i*5, (i+1)*5, "ms", rttBuckets[i], float64(rttBuckets[i])/numValidRelayPairs*100.0)
 		} else {
-			fmt.Fprintf(writer, "    %d%s+: %d (%.2f%%)\n", i*5, "ms", buckets[i], float64(buckets[i])/numValidRelayPairs*100.0)
+			fmt.Fprintf(writer, "    %d%s+: %d (%.2f%%)\n", i*5, "ms", rttBuckets[i], float64(rttBuckets[i])/numValidRelayPairs*100.0)
 		}
 	}
 
@@ -748,7 +735,7 @@ func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
 	averageNumRoutes := float64(totalRoutes) / float64(numRelayPairs)
 	averageRouteLength = averageRouteLength / float64(totalRoutes)
 
-	fmt.Fprintf(writer, "\n%s Summary:\n\n", "RTT")
+	fmt.Fprintf(writer, "\n%s Summary:\n\n", "Route")
 	fmt.Fprintf(writer, "    %.1f routes per relay pair on average (%d max)\n", averageNumRoutes, maxRoutesPerRelayPair)
 	fmt.Fprintf(writer, "    %.1f relays per route on average (%d max)\n", averageRouteLength, maxRouteLength)
 	fmt.Fprintf(writer, "    %.1f%% of relay pairs have no route\n", float64(relayPairsWithNoRoutes)/float64(numRelayPairs)*100)
