@@ -2,10 +2,9 @@
 
 The Web Portal is responsible for:
 
-1. Listening for new relays that come online and initialize them to be apart of set of available relays for routing
-2. Accepting stat updates (RTT, Jitter, Packet Loss) from all relays and store their stats
-3. Generate a cost then route matrix of optimized routes that are available which the Server Backend pulls a copy of
-4. Keeps an updated relay location list using Redis to find nearby relays so the Server Backend can find relays near game clients
+1. Displaying game session data for each buyer
+2. Displaying game server data for each buyer
+3. Displaying relay data by pulling the list of relays from Redis
 
 ### To Run
 
@@ -30,8 +29,3 @@ The default setting is `warn` when running `make dev-portal`. To override this y
 #### Optional
 
 - `BACKEND_LOG_LEVEL`: one of `none`, `error`, `warn`, `info`, `debug`
-
-### What it does
-
-- Displays a route matrix analysis by pulling the route matrix from the relay backend
-- Displays a list of relays from the Redis server
