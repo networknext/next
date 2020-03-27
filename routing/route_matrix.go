@@ -623,7 +623,7 @@ func (m *RouteMatrix) Size() uint64 {
 	}
 
 	for _, entry := range m.Entries {
-		// DirectRTT + DirectJitter + DirectPacketLoss + NumRoutes + allocation for RouteRTTs + allocation for RouteNumRelays
+		// DirectRTT + NumRoutes + allocation for RouteRTTs + allocation for RouteNumRelays
 		length += uint64(4 + 4 + 4 + 4 + 4*len(entry.RouteRTT) + 4*len(entry.RouteNumRelays))
 
 		for _, relays := range entry.RouteRelays {
