@@ -62,7 +62,7 @@ func relayUpdateAssertions(t *testing.T, contentType string, body []byte, expect
 	request, _ := http.NewRequest("POST", "/relay_update", bytes.NewBuffer(body))
 	request.Header.Add("Content-Type", contentType)
 
-	handler := transport.RelayUpdateHandlerFunc(log.NewNopLogger(), &transport.CommonRelayUpdateFuncParams{
+	handler := transport.RelayUpdateHandlerFunc(log.NewNopLogger(), &transport.RelayUpdateHandlerConfig{
 		RedisClient:           redisClient,
 		StatsDb:               statsdb,
 		Duration:              &metrics.EmptyGauge{},

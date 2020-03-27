@@ -8,6 +8,7 @@ package main
 import (
 	"context"
 	"encoding/base64"
+	"expvar"
 	"fmt"
 	"net/http"
 	"os"
@@ -17,9 +18,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/stats"
+	"github.com/networknext/backend/transport"
 
 	gcplogging "cloud.google.com/go/logging"
 
@@ -33,7 +36,6 @@ import (
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
-	"github.com/networknext/backend/transport"
 )
 
 func main() {
@@ -347,12 +349,32 @@ func main() {
 		}
 	}()
 
-	router := transport.NewRouter(
-		logger, redisClientRelays, &geoClient, ipLocator, db, statsdb,
-		initDuration, updateDuration, initCount, updateCount,
-		&costmatrix, &routematrix, routerPrivateKey, trafficStatsPublisher,
-		os.Getenv("BASIC_AUTH_USERNAME"), os.Getenv("BASIC_AUTH_PASSWORD"),
-	)
+	commonInitParams := transport.RelayInitHandlerConfig{
+		RedisClient:      redisClientRelays,
+		GeoClient:        &geoClient,
+		IpLocator:        ipLocator,
+		Storer:           db,
+		Duration:         initDuration,
+		Counter:          initCount,
+		RouterPrivateKey: routerPrivateKey,
+	}
+
+	commonUpdateParams := transport.RelayUpdateHandlerConfig{
+		RedisClient:           redisClientRelays,
+		StatsDb:               statsdb,
+		Duration:              updateDuration,
+		Counter:               updateCount,
+		TrafficStatsPublisher: trafficStatsPublisher,
+		Storer:                db,
+	}
+
+	router := mux.NewRouter()
+	router.HandleFunc("/healthz", transport.HealthzHandlerFunc())
+	router.HandleFunc("/relay_init", transport.RelayInitHandlerFunc(logger, &commonInitParams)).Methods("POST")
+	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(logger, &commonUpdateParams)).Methods("POST")
+	router.Handle("/cost_matrix", &costmatrix).Methods("GET")
+	router.Handle("/route_matrix", &routematrix).Methods("GET")
+	router.Handle("/debug/vars", expvar.Handler())
 
 	go func() {
 		port, ok := os.LookupEnv("PORT")

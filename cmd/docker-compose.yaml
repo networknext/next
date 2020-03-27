@@ -5,6 +5,26 @@ services:
         image: "redis:alpine"
         networks:
             - nn-net
+
+    portal:
+        build:
+            context: ../
+            dockerfile: ./cmd/portal/Dockerfile
+        ports:
+            - "20000:20000"
+        depends_on:
+            - redis
+            - relay_backend
+        networks:
+            - nn-net
+        environment:
+            REDIS_HOST_RELAYS: redis:6379
+            RELAY_PUBLIC_KEY: 9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=
+            RELAY_ROUTER_PRIVATE_KEY: ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
+            ROUTE_MATRIX_URI: http://relay_backend:30000/route_matrix
+            BASIC_AUTH_USERNAME: local
+            BASIC_AUTH_PASSWORD: local
+            PORT: 20000
     
     relay_backend:
         build:
@@ -17,7 +37,7 @@ services:
         networks:
             - nn-net
         environment:
-            REDIS_HOST: redis:6379
+            REDIS_HOST_RELAYS: redis:6379
             RELAY_PUBLIC_KEY: 9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=
             RELAY_ROUTER_PRIVATE_KEY: ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
             PORT: 30000
@@ -34,7 +54,8 @@ services:
         networks:
             - nn-net
         environment:
-            REDIS_HOST: redis:6379
+            REDIS_HOST_RELAYS: redis:6379
+            REDIS_HOST_CACHE: redis:6379
             RELAY_PUBLIC_KEY: 9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=
             RELAY_ROUTER_PRIVATE_KEY: ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
             SERVER_BACKEND_PUBLIC_KEY: TGHKjEeHPtSgtZfDyuDPcQgtJTyRDtRvGSKvuiWWo0A=

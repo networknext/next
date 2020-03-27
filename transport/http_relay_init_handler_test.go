@@ -119,7 +119,7 @@ func relayInitAssertions(t *testing.T, contentType string, relay routing.Relay, 
 		}
 	}
 
-	handler := transport.RelayInitHandlerFunc(log.NewNopLogger(), &transport.CommonRelayInitFuncParams{
+	handler := transport.RelayInitHandlerFunc(log.NewNopLogger(), &transport.RelayInitHandlerConfig{
 		RedisClient:      redisClient,
 		GeoClient:        geoClient,
 		IpLocator:        ipfunc,
