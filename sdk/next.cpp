@@ -5903,6 +5903,9 @@ void next_client_internal_block_and_receive_packet( next_client_internal_t * cli
     next_address_t from;
     
     int packet_bytes = next_platform_socket_receive_packet( client->socket, &from, packet_data, sizeof(packet_data) );
+
+    next_assert( packet_bytes >= 0 );
+
     if ( packet_bytes == 0 )
         return;
 
@@ -8454,7 +8457,9 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
 next_server_internal_t * next_server_internal_create( void * context, const char * server_address_string, const char * bind_address_string, const char * datacenter_string )
 {
+#if !NEXT_DEVELOPMENT
     next_printf( NEXT_LOG_LEVEL_INFO, "server sdk version is %s", NEXT_VERSION_FULL );
+#endif // #if !NEXT_DEVELOPMENT
 
     next_assert( server_address_string );
     next_assert( bind_address_string );
@@ -9632,8 +9637,15 @@ void next_server_internal_block_and_receive_packet( next_server_internal_t * ser
     
     const int packet_bytes = next_platform_socket_receive_packet( server->socket, &from, packet_data, sizeof(packet_data) );
     
+    next_assert( packet_bytes >= 0 );
+
     if ( packet_bytes == 0 )
         return;
+
+#if NEXT_DEVELOPMENT
+     if ( next_packet_loss && ( rand() % 10 ) == 0 )
+         return;
+#endif // #if NEXT_DEVELOPMENT
 
     if ( packet_data[0] == 0 && packet_bytes >= 2 && packet_bytes <= NEXT_MTU + 1 )
     {
