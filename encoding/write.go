@@ -10,6 +10,16 @@ const (
 	AddressSize = 19
 )
 
+func WriteBool(data []byte, index *int, value bool) {
+	if value {
+		data[*index] = byte(1)
+	} else {
+		data[*index] = byte(0)
+	}
+
+	*index += 1
+}
+
 func WriteUint8(data []byte, index *int, value uint8) {
 	data[*index] = byte(value)
 	*index += 1

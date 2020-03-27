@@ -26,7 +26,9 @@ import (
 
 func seedRedis(t *testing.T, redisServer *miniredis.Miniredis, addressesToAdd []string) {
 	addEntry := func(addr string) {
-		relay := routing.NewRelay()
+		relay := routing.Relay{
+			PublicKey: make([]byte, crypto.KeySize),
+		}
 		udpAddr, _ := net.ResolveUDPAddr("udp", addr)
 		relay.Addr = *udpAddr
 		relay.ID = crypto.HashID(addr)
@@ -90,9 +92,9 @@ func TestRelayUpdateHandler(t *testing.T) {
 		addr := "127.0.0.1:40000"
 		udp, _ := net.ResolveUDPAddr("udp", addr)
 
-		token1 := make([]byte, routing.EncryptedTokenSize)
+		token1 := make([]byte, routing.EncryptedRelayTokenSize)
 		rand.Read(token1)
-		token2 := make([]byte, routing.EncryptedTokenSize)
+		token2 := make([]byte, routing.EncryptedRelayTokenSize)
 		rand.Read(token2)
 		packet := transport.RelayUpdateRequest{
 			Address:   *udp,
@@ -122,7 +124,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 		udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 		packet := transport.RelayUpdateRequest{
 			Address: *udp,
-			Token:   make([]byte, routing.EncryptedTokenSize),
+			Token:   make([]byte, routing.EncryptedRelayTokenSize),
 		}
 		buff, _ := packet.MarshalBinary()
 		buff[10] = 'x' // assign this index (which should be the first item in the address) as the letter 'x' making it invalid
@@ -133,7 +135,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 		udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 		packet := transport.RelayUpdateRequest{
 			Address:   *udp,
-			Token:     make([]byte, routing.EncryptedTokenSize),
+			Token:     make([]byte, routing.EncryptedRelayTokenSize),
 			PingStats: make([]routing.RelayStatsPing, 1025),
 		}
 		buff, _ := packet.MarshalBinary()

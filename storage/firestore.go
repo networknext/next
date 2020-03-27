@@ -160,6 +160,7 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 		}
 
 		relay := routing.Relay{
+			ID: rid,
 			Addr: net.UDPAddr{
 				IP:   net.ParseIP(host),
 				Port: int(iport),
@@ -184,8 +185,9 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 		}
 
 		datacenter := routing.Datacenter{
-			ID:   crypto.HashID(d.Name),
-			Name: d.Name,
+			ID:      crypto.HashID(d.Name),
+			Name:    d.Name,
+			Enabled: d.Enabled,
 		}
 
 		relay.Datacenter = datacenter

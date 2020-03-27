@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	// EncryptedTokenSize ...
-	EncryptedTokenSize = crypto.KeySize + crypto.MACSize
+	// EncryptedRelayTokenSize ...
+	EncryptedRelayTokenSize = crypto.KeySize + crypto.MACSize
 
 	// HashKeyPrefixRelay ...
 	HashKeyPrefixRelay = "RELAY-"
@@ -41,22 +41,11 @@ type Relay struct {
 	Latitude  float64
 	Longitude float64
 
-	Stats Stats
-
 	LastUpdateTime uint64
 }
 
-// NewRelay ...
-func NewRelay() Relay {
-	relay := Relay{
-		PublicKey: make([]byte, crypto.KeySize),
-	}
-
-	return relay
-}
-
 func (r *Relay) Size() uint64 {
-	return uint64(8 + 4 + len(r.Name) + 4 + len(r.Addr.String()) + 4 + len(r.Seller.ID) + 4 + len(r.Seller.Name) + 8 + 8 + 8 + 4 + len(r.Datacenter.Name) + len(r.PublicKey) + 8 + 8 + 8)
+	return uint64(8 + 4 + len(r.Name) + 4 + len(r.Addr.String()) + len(r.PublicKey) + 4 + len(r.Seller.ID) + 4 + len(r.Seller.Name) + 8 + 8 + 8 + 4 + len(r.Datacenter.Name) + 1 + 8 + 8 + 8)
 }
 
 // UnmarshalBinary ...
@@ -76,6 +65,10 @@ func (r *Relay) UnmarshalBinary(data []byte) error {
 
 	if !encoding.ReadString(data, &index, &addr, MaxRelayAddressLength) {
 		return errors.New("failed to unmarshal relay address")
+	}
+
+	if !encoding.ReadBytes(data, &index, &r.PublicKey, crypto.KeySize) {
+		return errors.New("failed to unmarshal relay public key")
 	}
 
 	if !encoding.ReadString(data, &index, &r.Seller.ID, math.MaxInt32) {
@@ -102,8 +95,8 @@ func (r *Relay) UnmarshalBinary(data []byte) error {
 		return errors.New("failed to unmarshal relay datacenter name")
 	}
 
-	if !encoding.ReadBytes(data, &index, &r.PublicKey, crypto.KeySize) {
-		return errors.New("failed to unmarshal relay public key")
+	if !encoding.ReadBool(data, &index, &r.Datacenter.Enabled) {
+		return errors.New("failed to unmarshal relay datacenter enabled")
 	}
 
 	if !encoding.ReadFloat64(data, &index, &r.Latitude) {
@@ -136,13 +129,14 @@ func (r Relay) MarshalBinary() (data []byte, err error) {
 	encoding.WriteUint64(data, &index, r.ID)
 	encoding.WriteString(data, &index, r.Name, uint32(len(r.Name)))
 	encoding.WriteString(data, &index, strAddr, uint32(len(strAddr)))
+	encoding.WriteBytes(data, &index, r.PublicKey, crypto.KeySize)
 	encoding.WriteString(data, &index, r.Seller.ID, uint32(len(r.Seller.ID)))
 	encoding.WriteString(data, &index, r.Seller.Name, uint32(len(r.Seller.Name)))
 	encoding.WriteUint64(data, &index, r.Seller.IngressPriceCents)
 	encoding.WriteUint64(data, &index, r.Seller.EgressPriceCents)
 	encoding.WriteUint64(data, &index, r.Datacenter.ID)
 	encoding.WriteString(data, &index, r.Datacenter.Name, uint32(len(r.Datacenter.Name)))
-	encoding.WriteBytes(data, &index, r.PublicKey, crypto.KeySize)
+	encoding.WriteBool(data, &index, r.Datacenter.Enabled)
 	encoding.WriteFloat64(data, &index, r.Latitude)
 	encoding.WriteFloat64(data, &index, r.Longitude)
 	encoding.WriteUint64(data, &index, r.LastUpdateTime)
@@ -163,17 +157,6 @@ type Stats struct {
 
 func (s Stats) String() string {
 	return fmt.Sprintf("RTT(%f) J(%f) PL(%f)", s.RTT, s.Jitter, s.PacketLoss)
-}
-
-// RelayUpdate ...
-type RelayUpdate struct {
-	ID             uint64
-	Name           string
-	Address        net.UDPAddr
-	Datacenter     uint64
-	DatacenterName string
-	PublicKey      []byte
-	Shutdown       bool
 }
 
 type RelayPingData struct {
