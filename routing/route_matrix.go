@@ -16,6 +16,12 @@ import (
 	"github.com/networknext/backend/encoding"
 )
 
+const (
+	// RouteMatrixVersion ...
+	// IMPORTANT: Increment this when you change the binary format
+	RouteMatrixVersion = 4
+)
+
 // RouteMatrixEntry ...
 type RouteMatrixEntry struct {
 	DirectRTT      int32
