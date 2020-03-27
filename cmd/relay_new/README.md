@@ -1,8 +1,8 @@
 # General Info
 
-The relay is responsible for forwarding packets between the game client and servers and reporting various statistics to the relay backend.
+The relay is responsible for forwarding packets between the game client and servers and reporting various statistics to the relay backend. This can be thought of as version 2 of the relay. Version 1 being the relay in the `relay_old` directory. This is not currently deployed and is under active development.
 
-# Setup
+# Pre-build setup
 
 ## Dependencies
 
@@ -28,11 +28,11 @@ The relay is responsible for forwarding packets between the game client and serv
 
 ### Optional
 
-- `RELAY_SOCKET_BUFFER_SIZE`: In bytes, lets you set the amount of memory to use for each socket's send & receive buffer.
-  - Example `RELAY_SOCKET_BUFFER_SIZE="4000000"`
-  - Note, Macs apparently have issues with values above a million
 - `RELAY_PROCESSOR_COUNT`: Number of processors to allocate to the relay. Each relay thread is assigned affinity starting at core 0 to n. If unset the relay will attempt to auto detect the number of processors on the system.
   - Example `RELAY_PROCESSOR_COUNT='1'` or `RELAY_PROCESSOR_COUNT="$(( $(nproc) / 4 ))"`
+- `RELAY_SEND_BUFFER_SIZE` & `RELAY_RECV_BUFFER_SIZE`: In bytes, lets you set the amount of memory to use for each socket's send & receive buffers.
+  - Example `RELAY_SOCKET_BUFFER_SIZE="4000000"`
+  - Note, Macs apparently have issues with values above a million, thus "1000000" is the default value if not set
 
 # Building
 
@@ -45,7 +45,7 @@ Several makefiles are available for building. If you are not developing the rela
 - Only enables the Log() macro.
 - Only enables the -O3 flag for optimization, the remaining performance flags are commented out, using them will produce a non-portable binary. Unless the performance gain is necessary, these should remain unused.
 - Defines `NDEBUG` to disable assertions and other debug related things.
-- Use `make run-release` to run the exe. Alternatively execute directly with `bin/relay`
+- Use `make run-release` to run the exe. Alternatively execute directly with `bin/relay` or from the repo root dir `dist/relay`
 
 ## Debug
 
