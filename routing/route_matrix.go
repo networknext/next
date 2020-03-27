@@ -650,9 +650,9 @@ func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
 	numRelayPairs := 0.0
 	numValidRelayPairs := 0.0
 
-	numValidRelayPairsWithoutRTTImprovement := 0.0
+	numValidRelayPairsWithoutImprovement := 0.0
 
-	rttBuckets := make([]int, 11)
+	buckets := make([]int, 11)
 
 	for i := range src {
 		for j := range dest {
@@ -661,33 +661,33 @@ func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
 				abFlatIndex := TriMatrixIndex(i, j)
 				if len(m.Entries[abFlatIndex].RouteRTT) > 0 {
 					numValidRelayPairs++
-					rttImprovement := m.Entries[abFlatIndex].DirectRTT - m.Entries[abFlatIndex].RouteRTT[0]
-					if rttImprovement > 0.0 {
-						if rttImprovement <= 5 {
-							rttBuckets[0]++
-						} else if rttImprovement <= 10 {
-							rttBuckets[1]++
-						} else if rttImprovement <= 15 {
-							rttBuckets[2]++
-						} else if rttImprovement <= 20 {
-							rttBuckets[3]++
-						} else if rttImprovement <= 25 {
-							rttBuckets[4]++
-						} else if rttImprovement <= 30 {
-							rttBuckets[5]++
-						} else if rttImprovement <= 35 {
-							rttBuckets[6]++
-						} else if rttImprovement <= 40 {
-							rttBuckets[7]++
-						} else if rttImprovement <= 45 {
-							rttBuckets[8]++
-						} else if rttImprovement <= 50 {
-							rttBuckets[9]++
+					improvement := m.Entries[abFlatIndex].DirectRTT - m.Entries[abFlatIndex].RouteRTT[0]
+					if improvement > 0.0 {
+						if improvement <= 5 {
+							buckets[0]++
+						} else if improvement <= 10 {
+							buckets[1]++
+						} else if improvement <= 15 {
+							buckets[2]++
+						} else if improvement <= 20 {
+							buckets[3]++
+						} else if improvement <= 25 {
+							buckets[4]++
+						} else if improvement <= 30 {
+							buckets[5]++
+						} else if improvement <= 35 {
+							buckets[6]++
+						} else if improvement <= 40 {
+							buckets[7]++
+						} else if improvement <= 45 {
+							buckets[8]++
+						} else if improvement <= 50 {
+							buckets[9]++
 						} else {
-							rttBuckets[10]++
+							buckets[10]++
 						}
 					} else {
-						numValidRelayPairsWithoutRTTImprovement++
+						numValidRelayPairsWithoutImprovement++
 					}
 				}
 			}
@@ -695,13 +695,13 @@ func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
 	}
 
 	fmt.Fprintf(writer, "\n%s Improvement:\n\n", "RTT")
-	fmt.Fprintf(writer, "    None: %d (%.2f%%)\n", int(numValidRelayPairsWithoutRTTImprovement), numValidRelayPairsWithoutRTTImprovement/numValidRelayPairs*100.0)
+	fmt.Fprintf(writer, "    None: %d (%.2f%%)\n", int(numValidRelayPairsWithoutImprovement), numValidRelayPairsWithoutImprovement/numValidRelayPairs*100.0)
 
-	for i := range rttBuckets {
-		if i != len(rttBuckets)-1 {
-			fmt.Fprintf(writer, "    %d-%d%s: %d (%.2f%%)\n", i*5, (i+1)*5, "ms", rttBuckets[i], float64(rttBuckets[i])/numValidRelayPairs*100.0)
+	for i := range buckets {
+		if i != len(buckets)-1 {
+			fmt.Fprintf(writer, "    %d-%d%s: %d (%.2f%%)\n", i*5, (i+1)*5, "ms", buckets[i], float64(buckets[i])/numValidRelayPairs*100.0)
 		} else {
-			fmt.Fprintf(writer, "    %d%s+: %d (%.2f%%)\n", i*5, "ms", rttBuckets[i], float64(rttBuckets[i])/numValidRelayPairs*100.0)
+			fmt.Fprintf(writer, "    %d%s+: %d (%.2f%%)\n", i*5, "ms", buckets[i], float64(buckets[i])/numValidRelayPairs*100.0)
 		}
 	}
 
