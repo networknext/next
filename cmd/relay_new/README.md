@@ -6,7 +6,7 @@ The relay is responsible for forwarding packets between the game client and serv
 
 ## Dependencies
 
-`sudo apt install rapidjson-dev libcurl4-openssl-dev libsodium23 libsodum-dev`
+`sudo apt install rapidjson-dev libcurl4 libcurl4-openssl-dev libsodium23 libsodum-dev`
 
 - `RapidJSON`: Fast JSON parsing header only library.
 - `cURL`: For HTTP communication.
