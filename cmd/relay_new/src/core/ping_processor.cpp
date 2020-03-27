@@ -11,7 +11,8 @@ namespace
 
 namespace core
 {
-  PingProcessor::PingProcessor(const os::Socket& socket,
+  PingProcessor::PingProcessor(
+   const os::Socket& socket,
    core::RelayManager& relayManager,
    const volatile bool& shouldProcess,
    const net::Address& relayAddress)
@@ -46,7 +47,7 @@ namespace core
 
         auto& addr = pings[i].Addr;
 
-        LogDebug("[*] Processing ping for ", addr);
+        LogDebug("[*] Sending ping to ", addr);
 
         fillMsgHdrWithAddr(hdr, addr);
 

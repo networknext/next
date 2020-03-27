@@ -41,9 +41,12 @@ namespace core
       std::lock_guard<std::mutex> lk(mLock);
       for (unsigned int i = 0; i < mNumRelays; i++) {
         if (from == mRelayAddresses[i]) {
+          LogDebug("pong received from ", from);
           mRelayPingHistory[i]->pongReceived(seq, mClock.elapsed<util::Second>());
           retval = true;
           break;
+        } else {
+          LogDebug("pong received from unknown source: ", from);
         }
       }
     }
