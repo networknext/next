@@ -28,10 +28,17 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#if !NEXT_DEVELOPMENT
 #define NEXT_VERSION_FULL                                   "3.4.1"
 #define NEXT_VERSION_MAJOR_INT                                    3
 #define NEXT_VERSION_MINOR_INT                                    4
 #define NEXT_VERSION_PATCH_INT                                    1
+#else // #if !NEXT_DEVELOPMENT
+#define NEXT_VERSION_FULL                                     "dev"
+#define NEXT_VERSION_MAJOR_INT                                    0
+#define NEXT_VERSION_MINOR_INT                                    0
+#define NEXT_VERSION_PATCH_INT                                    0
+#endif // #if !NEXT_DEVELOPMENT
 
 #define NEXT_OK                                                   0
 #define NEXT_ERROR                                               -1
