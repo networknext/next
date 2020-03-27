@@ -30,7 +30,11 @@
 #include <string.h>
 #include <inttypes.h>
 
+#if !NEXT_DEVELOPMENT
 #define NEXT_HOSTNAME                              "prod.networknext.com"
+#else #if !NEXT_DEVELOPMENT
+#define NEXT_HOSTNAME                               "dev.networknext.com"
+#endif // #if !NEXT_DEVELOPMENT
 #define NEXT_PORT                                                 "40000"
 #define NEXT_MAX_PACKET_BYTES                                        1500
 #define NEXT_ADDRESS_BYTES                                             19
@@ -875,7 +879,11 @@ uint64_t next_datacenter_id( const char * name )
 
 uint64_t next_protocol_version()
 {
+#if !NEXT_DEVELOPMENT
     return next_hash_string( NEXT_VERSION_FULL );
+#else // #if !NEXT_DEVELOPMENT
+    return 0;
+#endif // #if !NEXT_DEVELOPMENT
 }
 
 // -------------------------------------------------------------
@@ -5264,7 +5272,9 @@ void next_client_internal_destroy( next_client_internal_t * client );
 
 next_client_internal_t * next_client_internal_create( void * context )
 {
+#if !NEXT_DEVELOPMENT
     next_printf( NEXT_LOG_LEVEL_INFO, "client sdk version is %s", NEXT_VERSION_FULL );
+#endif // #if !NEXT_DEVELOPMENT
 
     next_client_internal_t * client = (next_client_internal_t*) next_malloc( context, sizeof(next_client_internal_t) );
     if ( !client ) 
@@ -5882,6 +5892,10 @@ int next_client_internal_process_network_next_packet( next_client_internal_t * c
     return NEXT_ERROR;
 }
 
+#if NEXT_DEVELOPMENT
+bool next_packet_loss = false;
+#endif // #if NEXT_DEVELOPMENT
+
 void next_client_internal_block_and_receive_packet( next_client_internal_t * client )
 {
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
@@ -5891,6 +5905,11 @@ void next_client_internal_block_and_receive_packet( next_client_internal_t * cli
     int packet_bytes = next_platform_socket_receive_packet( client->socket, &from, packet_data, sizeof(packet_data) );
     if ( packet_bytes == 0 )
         return;
+
+#if NEXT_DEVELOPMENT
+    if ( next_packet_loss && ( rand() % 10 ) == 0 )
+        return;
+#endif // #if NEXT_DEVELOPMENT
 
     const bool from_server_address = client->server_address.type != 0 && next_address_equal( &from, &client->server_address );
 
@@ -6084,6 +6103,13 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
     return quit;
 }
 
+#if NEXT_DEVELOPMENT
+float next_fake_direct_packet_loss = 0.0f;
+float next_fake_direct_rtt = 0.0f;
+float next_fake_next_packet_loss = 0.0f;
+float next_fake_next_rtt = 0.0f;
+#endif // #if !NEXT_DEVELOPMENT
+
 void next_client_internal_update_stats( next_client_internal_t * client )
 {
     next_assert( client );
@@ -6138,6 +6164,17 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         client->client_stats.direct_mean_rtt = direct_route_stats.mean_rtt;
         client->client_stats.direct_jitter = direct_route_stats.jitter;    
         client->client_stats.direct_packet_loss = direct_route_stats.packet_loss;
+
+#if NEXT_DEVELOPMENT
+        client->client_stats.direct_min_rtt += next_fake_direct_rtt;
+        client->client_stats.direct_max_rtt += next_fake_direct_rtt;
+        client->client_stats.direct_mean_rtt += next_fake_direct_rtt;
+        client->client_stats.direct_packet_loss += next_fake_direct_packet_loss;
+        client->client_stats.next_min_rtt += next_fake_next_rtt;
+        client->client_stats.next_max_rtt += next_fake_next_rtt;
+        client->client_stats.next_mean_rtt += next_fake_next_rtt;
+        client->client_stats.next_packet_loss += next_fake_next_packet_loss;
+ #endif // #if NEXT_DEVELOPMENT
 
         if ( !fallback_to_direct )
         {
@@ -6685,6 +6722,11 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
         next_printf( NEXT_LOG_LEVEL_ERROR, "client can't send packet because it's larger than MTU (%d)", NEXT_MTU );
         return;
     }
+
+#if NEXT_DEVELOPMENT
+    if ( next_packet_loss && ( rand() % 10 ) == 0 )
+        return;
+#endif // #if NEXT_DEVELOPMENT
 
     if ( client->upgraded )
     {

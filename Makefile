@@ -5,9 +5,9 @@ GOFMT = gofmt
 
 OS := $(shell uname -s | tr A-Z a-z)
 ifeq ($(OS),darwin)
-	LDFLAGS = -lsodium -lcurl -lpthread -lm -framework CoreFoundation -framework SystemConfiguration
+	LDFLAGS = -lsodium -lcurl -lpthread -lm -framework CoreFoundation -framework SystemConfiguration -DNEXT_DEVELOPMENT
 else
-	LDFLAGS = -lsodium -lcurl -lpthread -lm
+	LDFLAGS = -lsodium -lcurl -lpthread -lm -DNEXT_DEVELOPMENT
 endif
 
 SDKNAME = libnext
