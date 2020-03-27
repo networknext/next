@@ -32,7 +32,7 @@
 
 #if !NEXT_DEVELOPMENT
 #define NEXT_HOSTNAME                              "prod.networknext.com"
-#else #if !NEXT_DEVELOPMENT
+#else // #if !NEXT_DEVELOPMENT
 #define NEXT_HOSTNAME                               "dev.networknext.com"
 #endif // #if !NEXT_DEVELOPMENT
 #define NEXT_PORT                                                 "40000"
