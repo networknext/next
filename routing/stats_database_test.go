@@ -280,8 +280,8 @@ func TestStatsDatabase(t *testing.T) {
 
 			// Setup
 
-			FillRelayDatabase(redisClient)
-			FillStatsDatabase(statsdb)
+			fillRelayDatabase(redisClient)
+			fillStatsDatabase(statsdb)
 
 			// make the datacenter of the first relay 0
 			// otherwise push the rest into the validDcIDs array
@@ -423,9 +423,9 @@ func TestStatsDatabase(t *testing.T) {
 				Addr: *udp,
 				Datacenter: routing.Datacenter{
 					ID:   uint64(rand.Uint64()%(math.MaxUint64-1) + 1), // non-zero random number
-					Name: RandomString(5),
+					Name: randomString(5),
 				},
-				PublicKey:      RandomPublicKey(),
+				PublicKey:      randomPublicKey(),
 				LastUpdateTime: uint64(time.Now().Unix()),
 			}
 
