@@ -1,7 +1,5 @@
 /*
-    Network Next SDK $(NEXT_VERSION_FULL)
-
-    Copyright © 2017 - 2020 Network Next, Inc.
+    Network Next SDK. Copyright © 2017 - 2020 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
@@ -30,11 +28,17 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define NEXT_VERSION_FULL                    "$(NEXT_VERSION_FULL)"
-#define NEXT_VERSION_MAJOR                  "$(NEXT_VERSION_MAJOR)"
-#define NEXT_VERSION_MINOR                  "$(NEXT_VERSION_MINOR)"
-#define NEXT_VERSION_PATCH                  "$(NEXT_VERSION_PATCH)"
-#define NEXT_VERSION_GITHUB                "$(NEXT_VERSION_GITHUB)"
+#if !NEXT_DEVELOPMENT
+#define NEXT_VERSION_FULL                                   "3.4.1"
+#define NEXT_VERSION_MAJOR_INT                                    3
+#define NEXT_VERSION_MINOR_INT                                    4
+#define NEXT_VERSION_PATCH_INT                                    1
+#else // #if !NEXT_DEVELOPMENT
+#define NEXT_VERSION_FULL                                     "dev"
+#define NEXT_VERSION_MAJOR_INT                                    0
+#define NEXT_VERSION_MINOR_INT                                    0
+#define NEXT_VERSION_PATCH_INT                                    0
+#endif // #if !NEXT_DEVELOPMENT
 
 #define NEXT_OK                                                   0
 #define NEXT_ERROR                                               -1
@@ -136,6 +140,7 @@ NEXT_PACK_PUSH()
 
 struct next_config_t
 {
+    char hostname[256];
     char customer_public_key[256];
     char customer_private_key[256];
     int socket_send_buffer_size;

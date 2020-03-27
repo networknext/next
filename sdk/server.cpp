@@ -1,7 +1,5 @@
 /*
-    Network Next SDK $(NEXT_VERSION_FULL)
-
-    Copyright © 2017 - 2020 Network Next, Inc.
+    Network Next SDK. Copyright © 2017 - 2020 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
@@ -24,23 +22,55 @@
 
 #include "next.h"
 #include <stdio.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <string.h>
+
+static volatile int quit = 0;
+
+void interrupt_handler( int signal )
+{
+    (void) signal; quit = 1;
+}
+
+void server_packet_received( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
+{
+    (void) context;
+
+    next_server_send_packet( server, from, packet_data, packet_bytes );
+
+    if ( !next_server_session_upgraded( server, from ) )
+    {
+        next_server_upgrade_session( server, from, 0, 0, NULL );
+    }
+}
 
 int main()
 {
-    printf( "\nRunning SDK tests:\n\n" );
+    printf( "\nWelcome to Network Next!\n\n" );
 
-    if ( next_init( NULL, NULL ) != NEXT_OK )
+    signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
+
+    next_init( NULL, NULL ); 
+
+    next_server_t * server = next_server_create( NULL, "127.0.0.1:32202", "0.0.0.0:32202", "local", server_packet_received );
+
+    if ( server == NULL )
     {
-        printf( "error: failed to initialize network next\n" );
+        printf( "error: failed to create server\n" );
+        return 1;
     }
+    
+    while ( !quit )
+    {
+        next_server_update( server );
 
-    next_log_level( NEXT_LOG_LEVEL_NONE );
-
-    next_test();
-
+        next_sleep( 1.0 / 60.0 );
+    }
+    
+    next_server_destroy( server );
+    
     next_term();
-
-    fflush( stdout );
 
     return 0;
 }

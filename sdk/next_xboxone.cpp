@@ -1,7 +1,5 @@
 /*
-    Network Next SDK $(NEXT_VERSION_FULL)
-
-    Copyright © 2017 - 2020 Network Next, Inc.
+    Network Next SDK. Copyright © 2017 - 2020 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
@@ -39,10 +37,11 @@
 #include <ws2tcpip.h>
 #include <ws2ipdef.h>
 #include <malloc.h>
-#pragma comment( lib, "WS2_32.lib" )
 #include <time.h>
 #include <bcrypt.h> // random
 #pragma pack(pop)
+
+#pragma comment( lib, "WS2_32.lib" )
 
 #ifdef SetPort
 #undef SetPort
@@ -155,7 +154,7 @@ static const char * next_randombytes_implementation_name()
 
 static uint32_t next_randombytes_random()
 {
-    uint32_t random;
+	uint32_t random = 0;
     bool success = BCRYPT_SUCCESS( BCryptGenRandom( bcrypt_algorithm_provider, (uint8_t *)( &random ), ULONG( sizeof( random ) ), 0 ) );
     (void) success;
     next_assert( success );
