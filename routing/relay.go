@@ -25,6 +25,10 @@ const (
 	// How frequently we need to recieve updates from relays to keep them in redis
 	// 10 seconds + a 1 second grace period
 	RelayTimeout = 11 * time.Second
+
+	/* Duplicated in package: transport */
+	// MaxRelayAddressLength ...
+	MaxRelayAddressLength = 256
 )
 
 // Relay ...
