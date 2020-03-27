@@ -24,7 +24,7 @@ using namespace std::chrono_literals;
 
 namespace
 {
-  volatile bool gAlive;
+  volatile bool gAlive = true;
 
   void interrupt_handler(int signal)
   {
@@ -75,6 +75,11 @@ namespace
       sessions.purge(relayClock.unixTime<util::Second>());
       std::this_thread::sleep_for(1s);
     }
+
+    // keep living for another 30 seconds
+    // no more updates allows the backend to remove
+    // this relay from the route decisions
+    std::this_thread::sleep_for(30s);
   }
 
   inline bool getCryptoKeys(crypto::Keychain& keychain, std::string& b64RelayPubKey)
@@ -190,8 +195,9 @@ namespace
 
 int main()
 {
-  gAlive = true;
+#ifndef NDEBUG
   signal(SIGSEGV, segfaultHandler);
+#endif
 
 #ifdef TEST_BUILD
   return testing::SpecTest::Run() ? 0 : 1;
@@ -286,6 +292,8 @@ int main()
 
   LogDebug("creating sockets and threads");
 
+  // these next four variables are used to force the threads to be
+  // created serially
   std::atomic<bool> socketAndThreadReady(false);
   std::mutex lock;
   std::unique_lock<std::mutex> waitLock(lock);
@@ -294,16 +302,24 @@ int main()
   std::vector<os::SocketPtr> sockets;
   std::unique_ptr<std::thread> pingThread;
   std::vector<std::unique_ptr<std::thread>> packetThreads;
+
+  // the relay address that should be exposed to other relays.
+  // do not set this using the value from the env var.
+  // if using port 0, another port will be selected byt the os
+  // which will cause a mismatch between what this value contains
+  // and the port selected by the os
   std::string relayAddrString;
+
+  // decides if the relay should receive packets
+  std::atomic<bool> shouldReceive = true;
 
   // session map to be shared across packet processors
   core::SessionMap sessions;
 
-  // helpful lambdas
-
-  // wait until a processor is set, serializes the blocking io
-  // so the relay doesn't commuicate with the backend until it
-  // is fully ready to receive packets
+  // wait until a thread is ready to do its job.
+  // serializes the thread spawning so the relay doesn't
+  // communicate with the backend until it is fully ready
+  // to receive packets
   auto wait = [&waitVar, &waitLock, &socketAndThreadReady] {
     waitVar.wait(waitLock, [&socketAndThreadReady]() -> bool {
       return socketAndThreadReady;
@@ -366,14 +382,23 @@ int main()
 
       sockets.push_back(packetSocket);
 
-      packetThreads[i] = std::make_unique<std::thread>(
-       [&waitVar, &socketAndThreadReady, packetSocket, &relayClock, &keychain, &sessions, &relayManager, &logger, &relayAddr] {
-         core::PacketProcessor processor(
-          *packetSocket, relayClock, keychain, sessions, relayManager, gAlive, *logger, relayAddr);
-         processor.process(waitVar, socketAndThreadReady);
-       });
+      // clang-format did this
+      packetThreads[i] = std::make_unique<std::thread>([&waitVar,
+                                                        &socketAndThreadReady,
+                                                        &shouldReceive,
+                                                        packetSocket,
+                                                        &relayClock,
+                                                        &keychain,
+                                                        &sessions,
+                                                        &relayManager,
+                                                        &logger,
+                                                        &relayAddr] {
+        core::PacketProcessor processor(
+         shouldReceive, *packetSocket, relayClock, keychain, sessions, relayManager, gAlive, *logger, relayAddr);
+        processor.process(waitVar, socketAndThreadReady);
+      });
 
-      wait();  // wait the the processor is ready to receive
+      wait();  // wait the the packet processor is ready to receive
 
       int error;
       if (!os::SetThreadAffinity(*packetThreads[i], i, error)) {
@@ -382,17 +407,18 @@ int main()
     }
   }
 
-  // if using port 0, it is discovered in ping socket's create(). That being said sockets
-  // must be created before communicating with the backend otherwise port 0 will be reused
+  // if using port 0, it is discovered in the first socket's create() function.
+  // That being said packet sockets must be created before communicating with the
+  // backend otherwise port 0 will be sent, and this string must be set afterwards
+  // too for that same reason
   relayAddr.toString(relayAddrString);
 
   LogDebug("Actual address: ", relayAddrString);
 
-  /* ping processing setup
-   * pings are sent out on a different port number than received
-   * if they are the same the relay behaves weird, it'll sometimes behave right
-   * othertimes it'll just ignore everything coming to it
-   */
+  // ping processing setup
+  // pings are sent out on a different port number than received
+  // if they are the same the relay behaves weird, it'll sometimes behave right
+  // othertimes it'll just ignore everything coming to it
   {
     net::Address bindAddr = bindAddr;
     {
@@ -412,7 +438,7 @@ int main()
     sockets.push_back(pingSocket);
 
     // setup the ping processor to use the external address
-    // relays use it to know where the receving port of other relays are
+    // relays use it to know where the receiving port of other relays are
     pingThread = std::make_unique<std::thread>([&waitVar, &socketAndThreadReady, pingSocket, &relayManager, &relayAddr] {
       core::PingProcessor pingProcessor(*pingSocket, relayManager, gAlive, relayAddr);
       pingProcessor.process(waitVar, socketAndThreadReady);
@@ -455,11 +481,18 @@ int main()
 
   Log("Relay initialized\n\n");
 
-  signal(SIGINT, interrupt_handler);  // ctrl c shuts down gracefully
+  // ctrl c shuts down gracefully
+  signal(SIGINT, interrupt_handler);
+
+  // and so do these
+  signal(SIGTERM, interrupt_handler);
+  signal(SIGHUP, interrupt_handler);
 
   updateLoop(backend, *logger, sessions, relayClock);
 
   Log("Cleaning up\n");
+
+  shouldReceive = false;
 
   LogDebug("Closing sockets");
   closeSockets();

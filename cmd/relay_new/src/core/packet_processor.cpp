@@ -31,6 +31,7 @@ namespace
 namespace core
 {
   PacketProcessor::PacketProcessor(
+   const std::atomic<bool>& shouldReceive,
    os::Socket& socket,
    const util::Clock& relayClock,
    const crypto::Keychain& keychain,
@@ -39,7 +40,8 @@ namespace core
    const volatile bool& handle,
    util::ThroughputLogger& logger,
    const net::Address& receivingAddr)
-   : mSocket(socket),
+   : mShouldReceive(shouldReceive),
+     mSocket(socket),
      mRelayClock(relayClock),
      mKeychain(keychain),
      mSessionMap(sessions),
@@ -63,7 +65,7 @@ namespace core
     readyToReceive = true;
     var.notify_one();
 
-    while (mShouldProcess) {
+    while (mShouldReceive) {
       if (!mSocket.multirecv(inputBuffer)) {
         Log("failed to recv packets");
       }
@@ -104,8 +106,24 @@ namespace core
       headerBytes = IPv6UDPHeaderSize;
     }
 
+    /*
+     * Switch based on packet type.
+     *
+     * If the relay is shutting down only reject ping packets
+     *
+     * This is so that other relays stop receiving proper stats and this one
+     * is slowly removed from route decisions
+     *
+     * However to not disrupt player experience the remaining packets are still
+     * handled until the global killswitch is flagged
+     */
     switch (packet.Buffer[0]) {
       case RELAY_PING_PACKET: {
+        if (!mShouldProcess) {
+          Log("relay in process of shutting down, rejecting relay ping packet");
+          return;
+        }
+
         if (packet.Len == RELAY_PING_PACKET_BYTES) {
           LogDebug("got relay ping packet");
           mLogger.addToRelayPingPacket(packet.Len + headerBytes);
