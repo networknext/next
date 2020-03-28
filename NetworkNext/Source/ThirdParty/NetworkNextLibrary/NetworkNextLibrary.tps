@@ -1,9 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <TpsData xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 <Notification>
-  Network Next SDK 3.4.0
-
-  Copyright © 2017 - 2020 Network Next, Inc.
+  Network Next SDK. Copyright © 2017 - 2020 Network Next, Inc.
 
   Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
   conditions are met:

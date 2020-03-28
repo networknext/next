@@ -9,6 +9,8 @@
 *.vcxproj.filters
 *.log
 *.tlog
+*.ilk
+*.tmp
 int
 
 # Xcode
@@ -25,3 +27,6 @@ Makefile
 # Sublime text
 *.sublime-project
 *.sublime-workspace
+
+# Annoying
+.DS_Store
