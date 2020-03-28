@@ -29,7 +29,7 @@ public class NetworkNextLibrary : ModuleRules
 	{
 		Type = ModuleType.External;
 
-        PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "next"));
+        PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "next", "include"));
 
         if (Target.Platform == UnrealTargetPlatform.Win64)
         {
