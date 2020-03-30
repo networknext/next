@@ -145,7 +145,7 @@ func TestRelayInitHandler(t *testing.T) {
 			Version:        0,
 			Address:        *udp,
 			Nonce:          make([]byte, crypto.NonceSize),
-			EncryptedToken: make([]byte, routing.EncryptedTokenSize),
+			EncryptedToken: make([]byte, routing.EncryptedRelayTokenSize),
 		}
 		buff, _ := packet.MarshalBinary()
 		relay := routing.Relay{
@@ -164,7 +164,7 @@ func TestRelayInitHandler(t *testing.T) {
 			Version:        1,
 			Address:        *udp,
 			Nonce:          make([]byte, crypto.NonceSize),
-			EncryptedToken: make([]byte, routing.EncryptedTokenSize),
+			EncryptedToken: make([]byte, routing.EncryptedRelayTokenSize),
 		}
 		buff, _ := packet.MarshalBinary()
 		relay := routing.Relay{
@@ -230,7 +230,7 @@ func TestRelayInitHandler(t *testing.T) {
 		crand.Read(nonce)
 
 		// generate token but leave it as 0's
-		token := make([]byte, routing.EncryptedTokenSize)
+		token := make([]byte, routing.EncryptedRelayTokenSize)
 
 		udp, _ := net.ResolveUDPAddr("udp", addr)
 		packet := transport.RelayInitRequest{

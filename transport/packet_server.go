@@ -20,35 +20,10 @@ const (
 	MaxNearRelays = 32
 	MaxTokens     = 7
 
-	// EncryptedTokenContinueSize = 58
-	MTUSize = 1300
-
 	ConnectionTypeUnknown  = 0
 	ConnectionTypeWired    = 1
 	ConnectionTypeWifi     = 2
 	ConnectionTypeCellular = 3
-
-	PlatformUnknown = 0
-	PlatformWindows = 1
-	PlatformMac     = 2
-	PlatformUnix    = 3
-	PlatformSwitch  = 4
-	PlatformPS4     = 5
-	PlatformIOS     = 6
-	PlatformXboxOne = 7
-
-	FlagBadRouteToken           = uint32(1 << 0)
-	FlagNoRouteToContinue       = uint32(1 << 1)
-	FlagPreviousUpdatePending   = uint32(1 << 2)
-	FlagBadContinueToken        = uint32(1 << 3)
-	FlagRouteExpired            = uint32(1 << 4)
-	FlagRouteRequestTimedOut    = uint32(1 << 5)
-	FlagContinueRequestTimedOut = uint32(1 << 6)
-	FlagClientTimedOut          = uint32(1 << 7)
-	FlagTryBeforeYouBuyAbort    = uint32(1 << 8)
-	FlagDirectRouteExpired      = uint32(1 << 9)
-
-	AddressSize = 19
 )
 
 type ServerUpdatePacket struct {
@@ -120,11 +95,11 @@ func (packet *ServerUpdatePacket) GetSignData() []byte {
 	binary.Write(buf, binary.LittleEndian, packet.NumSessionsPending)
 	binary.Write(buf, binary.LittleEndian, packet.NumSessionsUpgraded)
 
-	address := make([]byte, AddressSize)
+	address := make([]byte, encoding.AddressSize)
 	encoding.WriteAddress(address, &packet.ServerAddress)
 	binary.Write(buf, binary.LittleEndian, address)
 
-	privateAddress := make([]byte, AddressSize)
+	privateAddress := make([]byte, encoding.AddressSize)
 	encoding.WriteAddress(privateAddress, &packet.ServerPrivateAddress)
 	binary.Write(buf, binary.LittleEndian, privateAddress)
 
@@ -280,13 +255,6 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 	return stream.Error()
 }
 
-func (packet *SessionUpdatePacket) HeaderSerialize(stream encoding.Stream) error {
-	stream.SerializeUint64(&packet.Sequence)
-	stream.SerializeUint64(&packet.CustomerID)
-	stream.SerializeAddress(&packet.ServerAddress)
-	return stream.Error()
-}
-
 func (packet *SessionUpdatePacket) GetSignData() []byte {
 
 	buf := new(bytes.Buffer)
@@ -346,11 +314,11 @@ func (packet *SessionUpdatePacket) GetSignData() []byte {
 		binary.Write(buf, binary.LittleEndian, packet.NearRelayPacketLoss[i])
 	}
 
-	clientAddress := make([]byte, AddressSize)
+	clientAddress := make([]byte, encoding.AddressSize)
 	encoding.WriteAddress(clientAddress, &packet.ClientAddress)
 	binary.Write(buf, binary.LittleEndian, clientAddress)
 
-	serverAddress := make([]byte, AddressSize)
+	serverAddress := make([]byte, encoding.AddressSize)
 	encoding.WriteAddress(serverAddress, &packet.ServerAddress)
 	binary.Write(buf, binary.LittleEndian, serverAddress)
 
@@ -463,7 +431,7 @@ func (packet *SessionResponsePacket) GetSignData() []byte {
 	var i int32
 	for i = 0; i < packet.NumNearRelays; i++ {
 		binary.Write(buf, binary.LittleEndian, packet.NearRelayIDs[i])
-		address := make([]byte, AddressSize)
+		address := make([]byte, encoding.AddressSize)
 		encoding.WriteAddress(address, &packet.NearRelayAddresses[i])
 		binary.Write(buf, binary.LittleEndian, address)
 	}

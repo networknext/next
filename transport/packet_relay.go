@@ -82,7 +82,7 @@ func (r *RelayInitRequest) UnmarshalBinary(buf []byte) error {
 		encoding.ReadUint32(buf, &index, &r.Version) &&
 		encoding.ReadBytes(buf, &index, &r.Nonce, crypto.NonceSize) &&
 		encoding.ReadString(buf, &index, &addr, MaxRelayAddressLength) &&
-		encoding.ReadBytes(buf, &index, &r.EncryptedToken, routing.EncryptedTokenSize)) {
+		encoding.ReadBytes(buf, &index, &r.EncryptedToken, routing.EncryptedRelayTokenSize)) {
 		return errors.New("invalid packet")
 	}
 
@@ -97,13 +97,13 @@ func (r *RelayInitRequest) UnmarshalBinary(buf []byte) error {
 
 // MarshalBinary ...
 func (r RelayInitRequest) MarshalBinary() ([]byte, error) {
-	data := make([]byte, 4+4+crypto.NonceSize+4+len(r.Address.String())+routing.EncryptedTokenSize)
+	data := make([]byte, 4+4+crypto.NonceSize+4+len(r.Address.String())+routing.EncryptedRelayTokenSize)
 	index := 0
 	encoding.WriteUint32(data, &index, r.Magic)
 	encoding.WriteUint32(data, &index, r.Version)
 	encoding.WriteBytes(data, &index, r.Nonce, crypto.NonceSize)
 	encoding.WriteString(data, &index, r.Address.String(), uint32(len(r.Address.String())))
-	encoding.WriteBytes(data, &index, r.EncryptedToken, routing.EncryptedTokenSize)
+	encoding.WriteBytes(data, &index, r.EncryptedToken, routing.EncryptedRelayTokenSize)
 
 	return data, nil
 }
@@ -266,7 +266,7 @@ func (r RelayUpdateRequest) MarshalBinary() ([]byte, error) {
 }
 
 func (r *RelayUpdateRequest) size() uint {
-	return uint(4 + 4 + len(r.Address.String()) + routing.EncryptedTokenSize + 4 + 20*len(r.PingStats) + 8)
+	return uint(4 + 4 + len(r.Address.String()) + routing.EncryptedRelayTokenSize + 4 + 20*len(r.PingStats) + 8)
 }
 
 type RelayUpdateResponse struct {
