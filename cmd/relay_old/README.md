@@ -47,19 +47,17 @@ This is the current production relay. It is lacking in performance and will even
 
 - `RELAYDEV`: Enable the relay's dev mode. Value should be 0 or 1. 0 == disabled, 1 == enabled.
 
-# Building and running a single relay
+# Building and running a single relay at a time
 
-The build script "actual_build.sh" is what is used to build the old relay. The script titled "build.sh" does nothing. The real build script is located in the ".vscode" directory, ".vscode/build.sh".
-
-To use actual_build.sh,
+To use build.sh,
 
 First, \
-`actual_build.sh build`
+`build.sh build`
 
 Then you can run up to two relays using the script. To run the first relay, \
-`actual_build.sh run one`
+`build.sh run one`
 
 Or to run the second \
-`actual_build.sh run two`
+`build.sh run two`
 
 You can add a third, fourth, ..., Nth, if you'd like, it was done like this just to get it working.
