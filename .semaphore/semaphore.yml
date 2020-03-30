@@ -1,13 +1,23 @@
 version: v1.0
-name: Initial Pipeline
+name: Test
 agent:
   machine:
     type: e1-standard-2
     os_image: ubuntu1804
+global_job_config:
+  prologue:
+    commands:
+      - sudo apt-get update && sudo apt-get -y install libsodium-dev libcurl4-gnutls-dev g++-8
+      - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8
+      - curl -L https://github.com/premake/premake-core/releases/download/v5.0.0-alpha14/premake-5.0.0-alpha14-linux.tar.gz | tar -xvz
+      - chmod +x premake5
+      - checkout
 blocks:
-  - name: 'Block #1'
+  - name: Unit
     task:
       jobs:
-        - name: 'Job #1'
+        - name: SDK
           commands:
-            - checkout
+            - ./premake5 gmake
+            - make test
+            - ./bin/test
