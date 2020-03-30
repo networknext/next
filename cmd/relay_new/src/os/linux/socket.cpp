@@ -8,7 +8,7 @@
 
 namespace os
 {
-  Socket::Socket(SocketType type): mType(type), mOpen(false) {}
+  Socket::Socket(SocketType type): mType(type) {}
 
   Socket::~Socket()
   {
@@ -88,8 +88,6 @@ namespace os
     if (!setSocketType(timeout)) {
       return false;
     }
-
-    mOpen = true;
 
     LogDebug("created socket for ", addr);
 

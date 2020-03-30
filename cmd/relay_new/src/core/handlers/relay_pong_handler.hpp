@@ -2,8 +2,8 @@
 #define CORE_HANDLERS_RELAY_PONG_HANDLER_HPP
 
 #include "base_handler.hpp"
-
 #include "core/relay_manager.hpp"
+#include "util/logger.hpp"
 
 namespace core
 {
@@ -33,6 +33,7 @@ namespace core
       // pings are sent on a different port, need to read actual address to stay consistent
       encoding::ReadAddress(mPacket.Buffer, index, addr);
 
+      LogDebug("got pong packet from ", addr);
       // process the pong time
       mRelayManager.processPong(addr, sequence);
     }

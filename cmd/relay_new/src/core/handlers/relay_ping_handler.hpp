@@ -2,14 +2,10 @@
 #define CORE_HANDLERS_RELAY_PING_HANDLER
 
 #include "base_handler.hpp"
-
-#include "encoding/read.hpp"
-
-#include "net/address.hpp"
-
-#include "os/platform.hpp"
-
 #include "core/packets/relay_ping_packet.hpp"
+#include "encoding/read.hpp"
+#include "net/address.hpp"
+#include "os/platform.hpp"
 
 namespace core
 {

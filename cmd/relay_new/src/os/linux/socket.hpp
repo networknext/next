@@ -44,15 +44,11 @@ namespace os
 
     void close();
 
-    bool isOpen() const;
-
     const net::Address& getAddress() const;
 
    private:
     int mSockFD = 0;
     const SocketType mType;
-
-    std::atomic<bool> mOpen;
 
     bool setBufferSizes(size_t sendBufferSize, size_t recvBufferSize);
     bool setLingerTime(int lingerTime);
@@ -67,14 +63,8 @@ namespace os
     bool setSocketType(float timeout);
   };
 
-  [[gnu::always_inline]] inline bool Socket::isOpen() const
-  {
-    return mOpen;
-  }
-
   [[gnu::always_inline]] inline void Socket::close()
   {
-    mOpen = false;
     shutdown(mSockFD, SHUT_RDWR);
   }
 

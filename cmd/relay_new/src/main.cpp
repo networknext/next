@@ -5,20 +5,17 @@
 
 #include "includes.h"
 
-#include "crypto/keychain.hpp"
-
-#include "encoding/base64.hpp"
-
 #include "bench/bench.hpp"
-#include "testing/test.hpp"
-
-#include "relay/relay.hpp"
-#include "relay/relay_platform.hpp"
-
-#include "core/router_info.hpp"
+#include "core/backend.hpp"
 #include "core/packet_processor.hpp"
 #include "core/ping_processor.hpp"
-#include "core/backend.hpp"
+#include "core/router_info.hpp"
+#include "crypto/keychain.hpp"
+#include "encoding/base64.hpp"
+#include "relay/relay.hpp"
+#include "relay/relay_platform.hpp"
+#include "testing/test.hpp"
+#include "util/env.hpp"
 
 using namespace std::chrono_literals;
 
@@ -82,68 +79,49 @@ namespace
     std::this_thread::sleep_for(30s);
   }
 
-  inline bool getCryptoKeys(crypto::Keychain& keychain, std::string& b64RelayPubKey)
+  inline bool getCryptoKeys(const util::Env& env, crypto::Keychain& keychain, std::string& b64RelayPubKey)
   {
     // relay private key
     {
-      const char* relay_private_key_env = relay::relay_platform_getenv("RELAY_PRIVATE_KEY");
-      if (relay_private_key_env == nullptr) {
-        std::cout << "error: RELAY_PRIVATE_KEY not set\n";
-        return false;
-      }
-
-      std::string b64RelayPrivateKey = relay_private_key_env;
+      std::string b64RelayPrivateKey = env.RelayPrivateKey;
       auto len = encoding::base64::Decode(b64RelayPrivateKey, keychain.RelayPrivateKey);
       if (len != crypto::KeySize) {
         std::cout << "error: invalid relay private key\n";
         return false;
       }
-      std::cout << "    relay private key is '" << relay_private_key_env << "'\n";
+      std::cout << "    relay private key is '" << env.RelayPrivateKey << "'\n";
     }
 
     // relay public key
     {
-      const char* relay_public_key_env = relay::relay_platform_getenv("RELAY_PUBLIC_KEY");
-      if (relay_public_key_env == nullptr) {
-        std::cout << "error: RELAY_PUBLIC_KEY not set\n";
-        return false;
-      }
-
-      b64RelayPubKey = relay_public_key_env;
+      b64RelayPubKey = env.RelayPublicKey;
       auto len = encoding::base64::Decode(b64RelayPubKey, keychain.RelayPublicKey);
       if (len != crypto::KeySize) {
         std::cout << "error: invalid relay public key\n";
         return false;
       }
 
-      std::cout << "    relay public key is '" << relay_public_key_env << "'\n";
+      std::cout << "    relay public key is '" << env.RelayPublicKey << "'\n";
     }
 
     // router public key
     {
-      const char* router_public_key_env = relay::relay_platform_getenv("RELAY_ROUTER_PUBLIC_KEY");
-      if (router_public_key_env == nullptr) {
-        std::cout << "error: RELAY_ROUTER_PUBLIC_KEY not set\n";
-        return false;
-      }
-
-      std::string b64RouterPublicKey = router_public_key_env;
+      std::string b64RouterPublicKey = env.RelayRouterPublicKey;
       auto len = encoding::base64::Decode(b64RouterPublicKey, keychain.RouterPublicKey);
       if (len != crypto::KeySize) {
         std::cout << "error: invalid router public key\n";
         return false;
       }
 
-      std::cout << "    router public key is '" << router_public_key_env << "'\n";
+      std::cout << "    router public key is '" << env.RelayRouterPublicKey << "'\n";
     }
 
     return true;
   }
 
-  inline bool getNumProcessors(unsigned int& numProcs)
+  inline bool getNumProcessors(const util::Env& env, unsigned int& numProcs)
   {
-    const char* nproc = relay::relay_platform_getenv("RELAY_PROCESSOR_COUNT");
-    if (nproc == nullptr) {
+    if (env.ProcessorCount.empty()) {
       numProcs = std::thread::hardware_concurrency();
       if (numProcs > 0) {
         Log("RELAY_PROCESSOR_COUNT not set, autodetected number of processors available: ", numProcs, "\n\n");
@@ -152,7 +130,11 @@ namespace
         return false;
       }
     } else {
-      numProcs = std::atoi(nproc);
+      try {
+        numProcs = std::stoi(env.ProcessorCount);
+      } catch (std::exception& e) {
+        Log("could not parse RELAY_PROCESSOR_COUNT to a number, value: ", env.ProcessorCount);
+      }
     }
 
     return true;
@@ -167,26 +149,16 @@ namespace
     return actualProcCount > 0 && numProcs == actualProcCount ? 0 : numProcs + 1;
   }
 
-  inline int getBufferSize(const char* envvar)
+  inline int getBufferSize(const std::string& envvar)
   {
     int socketBufferSize = 1000000;
 
-    auto env = std::getenv(envvar);
-    if (env != nullptr) {
-      int num = -1;
+    if (!envvar.empty()) {
       try {
-        num = std::stoi(std::string(env));  // to cause an exception to be thrown if not a number
+        socketBufferSize = std::stoi(envvar);
       } catch (std::exception& e) {
         Log("Could not parse ", envvar, " env var to a number: ", e.what());
-        std::exit(1);
       }
-
-      if (num < 0) {
-        Log("", envvar, " is less than 0");
-        std::exit(1);
-      }
-
-      socketBufferSize = num;
     }
 
     return socketBufferSize;
@@ -214,18 +186,14 @@ int main()
 
   std::cout << "\nEnvironment:\n\n";
 
+  util::Env env;
+
   // relay address - the address other devices should use to talk to this
   // sent to the relay backend and is the addr everything communicates with
   net::Address relayAddr;
   {
-    auto env = std::getenv("RELAY_ADDRESS");
-    if (env == nullptr) {
-      Log("error: RELAY_ADDRESS not set\n");
-      return 1;
-    }
-
-    if (!relayAddr.parse(env)) {
-      Log("error: invalid relay address '", env, "'\n");
+    if (!relayAddr.parse(env.RelayAddress)) {
+      Log("error: invalid relay address '", env.RelayAddress, "'\n");
       return 1;
     }
 
@@ -234,28 +202,20 @@ int main()
 
   crypto::Keychain keychain;
   std::string b64RelayPubKey;
-  if (!getCryptoKeys(keychain, b64RelayPubKey)) {
+  if (!getCryptoKeys(env, keychain, b64RelayPubKey)) {
     return 1;
   }
 
-  std::string backendHostname;
-  {
-    backendHostname = std::getenv("RELAY_BACKEND_HOSTNAME");
-    if (backendHostname.empty()) {
-      Log("error: RELAY_BACKEND_HOSTNAME not set\n");
-      return 1;
-    }
-
-    std::cout << "    backend hostname is '" << backendHostname << "'\n";
-  }
+  std::string backendHostname = env.BackendHostname;
+  std::cout << "    backend hostname is '" << backendHostname << "'\n";
 
   unsigned int numProcessors = 0;
-  if (!getNumProcessors(numProcessors)) {
+  if (!getNumProcessors(env, numProcessors)) {
     return 1;
   }
 
-  int socketRecvBuffSize = getBufferSize("RELAY_RECV_BUFFER_SIZE");
-  int socketSendBuffSize = getBufferSize("RELAY_SEND_BUFFER_SIZE");
+  int socketRecvBuffSize = getBufferSize(env.RecvBufferSize);
+  int socketSendBuffSize = getBufferSize(env.SendBufferSize);
 
   LogDebug("Socket recv buffer size is ", socketRecvBuffSize, " bytes");
   LogDebug("Socket send buffer size is ", socketSendBuffSize, " bytes");
@@ -263,10 +223,9 @@ int main()
   std::unique_ptr<std::ofstream> output;
   std::unique_ptr<util::ThroughputLogger> logger;
   {
-    auto logfile = std::getenv("RELAY_LOG_FILE");
-    if (logfile != nullptr && strlen(logfile) != 0) {
+    if (!env.LogFile.empty()) {
       auto file = std::make_unique<std::ofstream>();
-      file->open(logfile);
+      file->open(env.LogFile);
 
       if (*file) {
         output = std::move(file);

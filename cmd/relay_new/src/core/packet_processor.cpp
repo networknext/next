@@ -87,15 +87,13 @@ namespace core
   /*
    * Some handlers in here take a object and a function pointer of that object as an argument
    * the only purpose to that was so that different objects that are responsable for sending packets
-   * can be easilly swapped out for benchmarking purposes, once there is a definite solution to the
+   * can be easily swapped out for benchmarking purposes, once there is a definite solution to the
    * throughput problem the function params will be written strictly
    */
 
   inline void PacketProcessor::processPacket(
    GenericPacket<>& packet, mmsghdr& header, GenericPacketBuffer<MaxPacketsToSend>& outputBuff)
   {
-    LogDebug("packet type: ", static_cast<unsigned int>(packet.Buffer[0]));
-
     packet.Len = header.msg_len;
 
     size_t headerBytes = 0;
@@ -125,7 +123,6 @@ namespace core
         }
 
         if (packet.Len == RELAY_PING_PACKET_BYTES) {
-          LogDebug("got relay ping packet");
           mLogger.addToRelayPingPacket(packet.Len + headerBytes);
 
           handlers::RelayPingHandler handler(packet, packet.Len, mSocket, mRecvAddr);
@@ -135,7 +132,6 @@ namespace core
       } break;
       case RELAY_PONG_PACKET: {
         if (packet.Len == RELAY_PING_PACKET_BYTES) {
-          LogDebug("got relay pong packet");
           mLogger.addToRelayPongPacket(packet.Len + headerBytes);
 
           handlers::RelayPongHandler handler(packet, packet.Len, mRelayManager);
@@ -152,8 +148,6 @@ namespace core
       } break;
       case RELAY_ROUTE_RESPONSE_PACKET: {
         mLogger.addToRouteResp(packet.Len + headerBytes);
-
-        LogDebug("got route response from ", packet.Addr);
 
         handlers::RouteResponseHandler handler(packet, packet.Len, mSessionMap);
 
@@ -175,7 +169,6 @@ namespace core
         handler.handle(outputBuff, &core::GenericPacketBuffer<1024UL>::push);
       } break;
       case RELAY_CLIENT_TO_SERVER_PACKET: {
-        LogDebug("got client to server packet");
         mLogger.addToCliToServ(packet.Len + headerBytes);
 
         handlers::ClientToServerHandler handler(packet, packet.Len, mSessionMap);
@@ -183,7 +176,6 @@ namespace core
         handler.handle(outputBuff, &core::GenericPacketBuffer<1024UL>::push);
       } break;
       case RELAY_SERVER_TO_CLIENT_PACKET: {
-        LogDebug("got server to client packet");
         mLogger.addToServToCli(packet.Len + headerBytes);
 
         handlers::ServerToClientHandler handler(packet, packet.Len, mSessionMap);
