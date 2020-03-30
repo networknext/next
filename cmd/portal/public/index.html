@@ -13,27 +13,7 @@
     <body>
         <h1>Portal</h1>
 
-        <h2>Route Matrix Analysis</h2>
-        <pre>{{ .Analysis }}</pre>
-
         <h2>Relays</h2>
-        <table>
-            <tr>
-                <th>Address</th>
-                <th>Datacenter</th>
-                <th>Lat / Long</th>
-                <th>Seller</th>
-                <th>Ingress / Egress</th>
-            </tr>
-            {{ range .Relays }}
-            <tr>
-                <td>{{ .Addr }}</td>
-                <td>{{ .Datacenter.Name }}</td>
-                <td>{{ .Latitude }} / {{ .Longitude }}</td>
-                <td>{{ .Seller.Name }}</td>
-                <td>{{ .Seller.IngressPriceCents }} / {{ .Seller.EgressPriceCents }}</td>
-            </tr>
-            {{ end }}
-        </table>
+        <pre id="relays"></pre>
     </body>
 </html>

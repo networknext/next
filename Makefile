@@ -267,7 +267,7 @@ dev-optimizer: ## runs a local optimizer
 	$(GO) run cmd/optimizer/optimizer.go
 
 .PHONY: dev-portal
-dev-portal: ## runs a local portal web server
+dev-portal: build-portal ## runs a local portal web server
 	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local $(GO) run cmd/portal/portal.go
 
 .PHONY: dev-relay-backend
@@ -304,8 +304,11 @@ build-sdk: $(DIST_DIR)/$(SDKNAME).so ## builds the sdk
 
 .PHONY: build-portal-rpc
 build-portal-rpc:
-	oto -template ./transport/rpc/templates/server.go.plush -pkg rpc -out ./transport/rpc/oto.gen.go -ignore Ignorer ./transport/rpc/definitions
-	oto -template ./transport/rpc/templates/client.js.plush -pkg rpc -out ./cmd/portal/public/js/oto.gen.js -ignore Ignorer ./transport/rpc/definitions
+	@printf "Building portal RPC definitions... "
+	@oto -template ./transport/rpc/templates/server.go.plush -pkg rpc -out ./transport/rpc/oto.gen.go -ignore Ignorer ./transport/rpc/definitions
+	@oto -template ./transport/rpc/templates/client.js.plush -pkg rpc -out ./cmd/portal/public/js/oto.gen.js -ignore Ignorer ./transport/rpc/definitions
+	@gofmt -w ./transport/rpc/oto.gen.go ./transport/rpc/oto.gen.go
+	@printf "done\n"
 
 .PHONY: build-portal
 build-portal: build-portal-rpc ## builds the portal binary

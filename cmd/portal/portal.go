@@ -86,7 +86,9 @@ func main() {
 
 		level.Info(logger).Log("msg", fmt.Sprintf("Starting portal on port %s", port))
 
-		portal := rpc.Portal{}
+		portal := rpc.Portal{
+			RedisClient: redisClientRelays,
+		}
 
 		server := otohttp.NewServer()
 

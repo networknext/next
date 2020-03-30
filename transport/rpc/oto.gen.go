@@ -8,33 +8,28 @@ import (
 	"net/http"
 
 	"github.com/pacedotdev/oto/otohttp"
-	
+
 	net "net"
-	
+
 	routing "github.com/networknext/backend/routing"
-	
 )
 
-
 type PortalService interface {
-
 	Relays(context.Context, RelaysRequest) (*RelaysResponse, error)
 }
 
-
-
 type portalServiceServer struct {
-	server *otohttp.Server
+	server        *otohttp.Server
 	portalService PortalService
 }
 
 func RegisterPortalService(server *otohttp.Server, portalService PortalService) {
 	handler := &portalServiceServer{
-		server: server,
+		server:        server,
 		portalService: portalService,
 	}
 	server.Register("PortalService", "Relays", handler.handleRelays)
-	}
+}
 
 func (s *portalServiceServer) handleRelays(w http.ResponseWriter, r *http.Request) {
 	var request RelaysRequest
@@ -54,58 +49,41 @@ func (s *portalServiceServer) handleRelays(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-
-
-
 type RelaysRequest struct {
-	
 }
 
 type UDPAddr struct {
-	IP net.IP `json:"iP"`
-Port int `json:"port"`
-Zone string `json:"zone"`
-
+	IP   net.IP `json:"iP"`
+	Port int    `json:"port"`
+	Zone string `json:"zone"`
 }
 
 type Seller struct {
-	ID string `json:"id"`
-Name string `json:"name"`
-IngressPriceCents uint64 `json:"ingressPriceCents"`
-EgressPriceCents uint64 `json:"egressPriceCents"`
-
+	ID                string `json:"id"`
+	Name              string `json:"name"`
+	IngressPriceCents uint64 `json:"ingressPriceCents"`
+	EgressPriceCents  uint64 `json:"egressPriceCents"`
 }
 
 type Datacenter struct {
-	ID uint64 `json:"id"`
-Name string `json:"name"`
-Enabled bool `json:"enabled"`
-
-}
-
-type Stats struct {
-	RTT float64 `json:"rTT"`
-Jitter float64 `json:"jitter"`
-PacketLoss float64 `json:"packetLoss"`
-
+	ID      uint64 `json:"id"`
+	Name    string `json:"name"`
+	Enabled bool   `json:"enabled"`
 }
 
 type Relay struct {
-	ID uint64 `json:"id"`
-Name string `json:"name"`
-Addr net.UDPAddr `json:"addr"`
-PublicKey []byte `json:"publicKey"`
-Seller routing.Seller `json:"seller"`
-Datacenter routing.Datacenter `json:"datacenter"`
-Latitude float64 `json:"latitude"`
-Longitude float64 `json:"longitude"`
-Stats routing.Stats `json:"stats"`
-LastUpdateTime uint64 `json:"lastUpdateTime"`
-
+	ID             uint64             `json:"id"`
+	Name           string             `json:"name"`
+	Addr           net.UDPAddr        `json:"addr"`
+	PublicKey      []byte             `json:"publicKey"`
+	Seller         routing.Seller     `json:"seller"`
+	Datacenter     routing.Datacenter `json:"datacenter"`
+	Latitude       float64            `json:"latitude"`
+	Longitude      float64            `json:"longitude"`
+	LastUpdateTime uint64             `json:"lastUpdateTime"`
 }
 
 type RelaysResponse struct {
 	Relays []routing.Relay `json:"relays"`
-Error string `json:"error,omitempty"`
-
+	Error  string          `json:"error,omitempty"`
 }
