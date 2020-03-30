@@ -10,8 +10,13 @@ global_job_config:
       - sudo apt-get update && sudo apt-get -y install libsodium-dev libcurl4-gnutls-dev g++-8
       - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8
       - checkout
+      - git submodule init
+      - git submodule update
       - sem-version go 1.13
       - make clean
+  epilogue:
+    commands:
+      - git submodule deinit --force .
 blocks:
   - name: Unit
     task:
