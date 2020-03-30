@@ -9,9 +9,9 @@ import (
 
 	"github.com/pacedotdev/oto/otohttp"
 
-	net "net"
-
 	routing "github.com/networknext/backend/routing"
+
+	net "net"
 )
 
 type PortalService interface {

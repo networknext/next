@@ -4,6 +4,11 @@ const portalService = new PortalService()
 
 portalService.relays({})
   .then((response) => {
-    document.getElementById('relays').innerText = JSON.stringify(response.relays)
+    new Vue({
+      el: '#relays',
+      data: {
+        relays: response.relays
+      }
+    })
   })
   .catch((e) => console.log(e))
