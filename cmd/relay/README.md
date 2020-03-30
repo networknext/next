@@ -33,8 +33,8 @@ This is the reference relay implementation. This is what will be handed to other
 
 # Building and running a single relay
 
-From the project root `make dev-relay`. This will spawn a single relay instance. using the environment variables within the makefile.
+From the project root `make dev-relay`. This will spawn a single relay instance using the environment variables within the makefile.
 
 # Building and running multiple relays
 
-To supply an adequate amount of routes multiple relays must be launched. To do so with relative ease use the relay spawning script located in `tools/scripts/relay-spawner.sh`. Use the `-h` flag to show help for how to use it.
+To supply an adequate amount of routes multiple relays must be launched. To do so with relative ease use the relay spawning script located in `tools/scripts/relay-spawner.sh`. Use the `-h` flag to show help for how to use it. Alternatively, the make target `dev-multi-relays` will spawn 10 relays using the script.
