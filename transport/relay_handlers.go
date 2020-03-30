@@ -149,6 +149,8 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			return
 		}
 
+		relay.State = routing.RelayStateInitalized
+
 		// HSet for full relay data
 		if res := params.RedisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay); res.Err() != nil && res.Err() != redis.Nil {
 			level.Error(locallogger).Log("msg", "failed to initialize relay", "err", res.Err())
@@ -295,6 +297,12 @@ func RelayUpdateHandlerFunc(logger log.Logger, params *RelayUpdateHandlerConfig)
 			return
 		}
 
+		if relayUpdateRequest.ShuttingDown {
+			relay.State = routing.RelayStateShuttingDown
+		} else {
+			relay.State = routing.RelayStateOnline
+		}
+
 		// HSet for full relay data
 		if res := params.RedisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay); res.Err() != nil {
 			level.Error(handlerLogger).Log("msg", "failed to store relay update", "err", res.Err())
@@ -316,7 +324,10 @@ func RelayUpdateHandlerFunc(logger log.Logger, params *RelayUpdateHandlerConfig)
 					level.Error(handlerLogger).Log("msg", "failed to get other relay", "err", err)
 					continue
 				}
-				relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(unmarshaledValue.ID), Address: unmarshaledValue.Addr.String()})
+
+				if unmarshaledValue.State == routing.RelayStateOnline {
+					relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(unmarshaledValue.ID), Address: unmarshaledValue.Addr.String()})
+				}
 			}
 		}
 

@@ -29,6 +29,11 @@ const (
 	/* Duplicated in package: transport */
 	// MaxRelayAddressLength ...
 	MaxRelayAddressLength = 256
+
+	RelayStateOffline      = 0
+	RelayStateInitalized   = 1
+	RelayStateOnline       = 2
+	RelayStateShuttingDown = 3
 )
 
 // Relay ...
@@ -46,10 +51,12 @@ type Relay struct {
 	Longitude float64
 
 	LastUpdateTime uint64
+
+	State uint32
 }
 
 func (r *Relay) Size() uint64 {
-	return uint64(8 + 4 + len(r.Name) + 4 + len(r.Addr.String()) + len(r.PublicKey) + 4 + len(r.Seller.ID) + 4 + len(r.Seller.Name) + 8 + 8 + 8 + 4 + len(r.Datacenter.Name) + 1 + 8 + 8 + 8)
+	return uint64(8 + 4 + len(r.Name) + 4 + len(r.Addr.String()) + len(r.PublicKey) + 4 + len(r.Seller.ID) + 4 + len(r.Seller.Name) + 8 + 8 + 8 + 4 + len(r.Datacenter.Name) + 1 + 8 + 8 + 8 + 4)
 }
 
 // UnmarshalBinary ...
@@ -115,6 +122,10 @@ func (r *Relay) UnmarshalBinary(data []byte) error {
 		return errors.New("failed to unmarshal relay last update time")
 	}
 
+	if !encoding.ReadUint32(data, &index, &r.State) {
+		return errors.New("failed to unmarshal relay state")
+	}
+
 	if udp, err := net.ResolveUDPAddr("udp", addr); udp != nil && err == nil {
 		r.Addr = *udp
 	} else {
@@ -144,6 +155,7 @@ func (r Relay) MarshalBinary() (data []byte, err error) {
 	encoding.WriteFloat64(data, &index, r.Latitude)
 	encoding.WriteFloat64(data, &index, r.Longitude)
 	encoding.WriteUint64(data, &index, r.LastUpdateTime)
+	encoding.WriteUint32(data, &index, r.State)
 
 	return data, err
 }

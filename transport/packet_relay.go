@@ -142,6 +142,8 @@ type RelayUpdateRequest struct {
 	PingStats []routing.RelayStatsPing
 
 	BytesReceived uint64
+
+	ShuttingDown bool
 }
 
 func (r RelayUpdateRequest) MarshalJSON() ([]byte, error) {
@@ -159,6 +161,8 @@ func (r RelayUpdateRequest) MarshalJSON() ([]byte, error) {
 	data["TrafficStats"] = stats
 
 	data["PingStats"] = r.PingStats
+
+	data["shutting_down"] = r.ShuttingDown
 
 	return json.Marshal(data)
 }
@@ -200,6 +204,8 @@ func (r *RelayUpdateRequest) UnmarshalJSON(buff []byte) error {
 	if err := json.Unmarshal([]byte(doc.Get("PingStats").Raw), &r.PingStats); err != nil {
 		return err
 	}
+
+	r.ShuttingDown = doc.Get("shutting_down").Bool()
 
 	return nil
 }
