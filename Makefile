@@ -302,8 +302,13 @@ $(DIST_DIR)/$(SDKNAME).so:
 .PHONY: build-sdk
 build-sdk: $(DIST_DIR)/$(SDKNAME).so ## builds the sdk
 
+.PHONY: build-portal-rpc
+build-portal-rpc:
+	oto -template ./transport/rpc/templates/server.go.plush -pkg rpc -out ./transport/rpc/oto.gen.go -ignore Ignorer ./transport/rpc/definitions
+	oto -template ./transport/rpc/templates/client.js.plush -pkg rpc -out ./cmd/portal/public/js/oto.gen.js -ignore Ignorer ./transport/rpc/definitions
+
 .PHONY: build-portal
-build-portal: ## builds the portal binary
+build-portal: build-portal-rpc ## builds the portal binary
 	@printf "Building portal... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/portal ./cmd/portal/portal.go
 	@printf "done\n"

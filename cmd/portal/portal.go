@@ -12,7 +12,8 @@ import (
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
-	"github.com/networknext/backend/transport"
+	"github.com/networknext/backend/transport/rpc"
+	"github.com/pacedotdev/oto/otohttp"
 )
 
 func main() {
@@ -85,7 +86,17 @@ func main() {
 
 		level.Info(logger).Log("msg", fmt.Sprintf("Starting portal on port %s", port))
 
-		http.HandleFunc("/", transport.PortalHandlerFunc(redisClientRelays, &routeMatrix, os.Getenv("BASIC_AUTH_USERNAME"), os.Getenv("BASIC_AUTH_PASSWORD")))
+		portal := rpc.Portal{}
+
+		server := otohttp.NewServer()
+
+		rpc.RegisterPortalService(server, &portal)
+
+		http.Handle("/rpc/", http.StripPrefix("/rpc", server))
+
+		// http.HandleFunc("/", transport.PortalHandlerFunc(redisClientRelays, &routeMatrix, os.Getenv("BASIC_AUTH_USERNAME"), os.Getenv("BASIC_AUTH_PASSWORD")))
+		http.Handle("/", http.FileServer(http.Dir("./cmd/portal/public")))
+
 		err := http.ListenAndServe(":"+port, nil)
 		if err != nil {
 			level.Error(logger).Log("err", err)
