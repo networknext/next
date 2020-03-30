@@ -15,10 +15,10 @@ This is the current production relay. It is lacking in performance and will even
 
 - `cURL`: For HTTP communication.
 - `libsodium`: Encryption/decryption/signature/etc... library.
-- `rapidjson*`: A fast json parsing library.
-- `sparsehash*`: A hashmap library from Google.
-- `concurrentqueue*`: A threadsafe queue implementation.
-- `miniz*`: Lightweight zlib c implementation.
+- `rapidjson`*: A fast json parsing library.
+- `sparsehash`*: A hashmap library from Google.
+- `concurrentqueue`*: A threadsafe queue implementation.
+- `miniz`*: Lightweight zlib c implementation.
 
 \* Already within the repo under the "deps" directory.
 
