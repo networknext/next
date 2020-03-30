@@ -42,7 +42,7 @@ namespace core
 
     bool init();
 
-    bool update(uint64_t bytesReceived);
+    bool update(uint64_t bytesReceived, bool shutdown);
 
    private:
     const std::string mHostname;
@@ -52,6 +52,9 @@ namespace core
     RelayManager& mRelayManager;
     const std::string mBase64RelayPublicKey;
     const core::SessionMap& mSessionMap;
+
+    util::JSON buildInitRequest();
+    util::JSON buildUpdateRequest(uint64_t bytesReceived, bool shutdown);
   };
 
   template <typename T>
@@ -75,63 +78,7 @@ namespace core
   template <typename T>
   bool Backend<T>::init()
   {
-    std::string base64NonceStr;
-    std::string base64TokenStr;
-    {
-      // Nonce
-      std::array<uint8_t, crypto_box_NONCEBYTES> nonce = {};
-      {
-        crypto::CreateNonceBytes(nonce);
-        std::vector<char> b64Nonce(nonce.size() * 2);
-
-        auto len = encoding::base64::Encode(nonce, b64Nonce);
-        if (len < nonce.size()) {
-          Log("failed to encode base64 nonce for init");
-          return false;
-        }
-
-        // greedy method but gets the job done, plus init is done once so who cares if it's a few nanos slower
-        base64NonceStr = std::string(b64Nonce.begin(), b64Nonce.begin() + len);
-      }
-
-      // Token
-      {
-        // just has to be something the backend can decrypt
-        std::array<uint8_t, RELAY_TOKEN_BYTES> token = {};
-        crypto::RandomBytes(token, token.size());
-
-        std::array<uint8_t, RELAY_TOKEN_BYTES + crypto_box_MACBYTES> encryptedToken = {};
-        std::vector<char> b64EncryptedToken(encryptedToken.size() * 2);
-
-        if (
-         crypto_box_easy(
-          encryptedToken.data(),
-          token.data(),
-          token.size(),
-          nonce.data(),
-          mKeychain.RouterPublicKey.data(),
-          mKeychain.RelayPrivateKey.data()) != 0) {
-          Log("failed to encrypt init token");
-          return false;
-        }
-
-        auto len = encoding::base64::Encode(encryptedToken, b64EncryptedToken);
-        if (len < encryptedToken.size()) {
-          Log("failed to encode base64 token for init");
-          return false;
-        }
-
-        base64TokenStr = std::string(b64EncryptedToken.begin(), b64EncryptedToken.begin() + len);
-      }
-    }
-
-    util::JSON doc;
-    doc.set(InitRequestMagic, "magic_request_protection");
-    doc.set(InitRequestVersion, "version");
-    doc.set(mAddressStr, "relay_address");
-    doc.set(base64NonceStr, "nonce");
-    doc.set(base64TokenStr, "encrypted_token");
-
+    auto doc = buildInitRequest();
     std::string request = doc.toString();
     std::vector<char> response;
 
@@ -180,56 +127,9 @@ namespace core
   }
 
   template <typename T>
-  bool Backend<T>::update(uint64_t bytesReceived)
+  bool Backend<T>::update(uint64_t bytesReceived, bool shutdown)
   {
-    // TODO once the other stats are finally added, pull out the json parts that are always the same, no sense rebuilding those
-    // parts of the document
-    util::JSON doc;
-    {
-      doc.set(UpdateRequestVersion, "version");
-      doc.set(mAddressStr, "relay_address");
-      doc.set(mBase64RelayPublicKey, "Metadata", "PublicKey");
-
-      // Traffic stats
-      {
-        util::JSON trafficStats;
-        trafficStats.set(bytesReceived, "BytesMeasurementRx");
-        trafficStats.set(mSessionMap.size(), "SessionCount");
-
-        doc.set(trafficStats, "TrafficStats");
-      }
-
-      // Ping stats
-      {
-        core::RelayStats stats;
-        mRelayManager.getStats(stats);
-        util::JSON pingStats;
-        pingStats.setArray();
-
-        // pushing behaves really weird when the pushed value goes out of scope, must be declared outside of for loop
-        util::JSON pingStat;
-
-        for (unsigned int i = 0; i < stats.NumRelays; ++i) {
-          pingStat.set(stats.IDs[i], "RelayId");
-
-          pingStat.set(stats.RTT[i], "RTT");
-
-          pingStat.set(stats.Jitter[i], "Jitter");
-
-          pingStat.set(stats.PacketLoss[i], "PacketLoss");
-
-          if (!pingStats.push(pingStat)) {
-            Log("ping stats not array! can't update!");
-            return false;
-          }
-        }
-
-        // performs a deep copy, so it's ok for things to go out of scope after this, regular move seems to be weird due to the
-        // allocator concept
-        doc.set(pingStats, "PingStats");
-      }
-    }
-
+    auto doc = buildUpdateRequest(bytesReceived, shutdown);
     std::string request = doc.toString();
     std::vector<char> response;
 
@@ -326,6 +226,104 @@ namespace core
     }
 
     return true;
+  }
+
+  template <typename T>
+  util::JSON Backend<T>::buildInitRequest()
+  {
+    std::string base64NonceStr;
+    std::array<uint8_t, crypto_box_NONCEBYTES> nonce = {};
+    crypto::CreateNonceBytes(nonce);
+    std::vector<char> b64Nonce(nonce.size() * 2);
+
+    auto len = encoding::base64::Encode(nonce, b64Nonce);
+    if (len < nonce.size()) {
+      Log("failed to encode base64 nonce for init");
+      return false;
+    }
+
+    // greedy method but gets the job done, plus init is done once so who cares if it's a few nanos slower
+    base64NonceStr = std::string(b64Nonce.begin(), b64Nonce.begin() + len);
+
+    std::string base64TokenStr;
+    // just has to be something the backend can decrypt
+    std::array<uint8_t, RELAY_TOKEN_BYTES> token = {};
+    crypto::RandomBytes(token, token.size());
+
+    std::array<uint8_t, RELAY_TOKEN_BYTES + crypto_box_MACBYTES> encryptedToken = {};
+    std::vector<char> b64EncryptedToken(encryptedToken.size() * 2);
+
+    if (
+     crypto_box_easy(
+      encryptedToken.data(),
+      token.data(),
+      token.size(),
+      nonce.data(),
+      mKeychain.RouterPublicKey.data(),
+      mKeychain.RelayPrivateKey.data()) != 0) {
+      Log("failed to encrypt init token");
+      return false;
+    }
+
+    auto len = encoding::base64::Encode(encryptedToken, b64EncryptedToken);
+    if (len < encryptedToken.size()) {
+      Log("failed to encode base64 token for init");
+      return false;
+    }
+
+    base64TokenStr = std::string(b64EncryptedToken.begin(), b64EncryptedToken.begin() + len);
+
+    util::JSON doc;
+    doc.set(InitRequestMagic, "magic_request_protection");
+    doc.set(InitRequestVersion, "version");
+    doc.set(mAddressStr, "relay_address");
+    doc.set(base64NonceStr, "nonce");
+    doc.set(base64TokenStr, "encrypted_token");
+
+    return doc;
+  }
+
+  template <typename T>
+  util::JSON Backend<T>::buildUpdateRequest(uint64_t bytesReceived, bool shutdown)
+  {
+    // TODO once the other stats are finally added, pull out the json parts that are always the same, no sense rebuilding those
+    // parts of the document
+    util::JSON doc;
+    doc.set(shutdown, "shutting_down");
+    doc.set(UpdateRequestVersion, "version");
+    doc.set(mAddressStr, "relay_address");
+    doc.set(mBase64RelayPublicKey, "Metadata", "PublicKey");
+
+    util::JSON trafficStats;
+    trafficStats.set(bytesReceived, "BytesMeasurementRx");
+    trafficStats.set(mSessionMap.size(), "SessionCount");
+
+    doc.set(trafficStats, "TrafficStats");
+
+    core::RelayStats stats;
+    mRelayManager.getStats(stats);
+    util::JSON pingStats;
+    pingStats.setArray();
+
+    // pushing behaves really weird when the pushed value goes out of scope, must be declared outside of for loop
+    util::JSON pingStat;
+    for (unsigned int i = 0; i < stats.NumRelays; ++i) {
+      pingStat.set(stats.IDs[i], "RelayId");
+      pingStat.set(stats.RTT[i], "RTT");
+      pingStat.set(stats.Jitter[i], "Jitter");
+      pingStat.set(stats.PacketLoss[i], "PacketLoss");
+
+      if (!pingStats.push(pingStat)) {
+        Log("ping stats not array! can't update!");
+        return false;
+      }
+    }
+
+    // performs a deep copy, so it's ok for things to go out of scope after this, regular move seems to be weird due to the
+    // allocator concept
+    doc.set(pingStats, "PingStats");
+
+    return doc;
   }
 }  // namespace core
 #endif

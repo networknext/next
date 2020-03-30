@@ -44,6 +44,7 @@ namespace
     exit(1);
   }
 
+  // TODO move this out of main and somewhere else to allow for test coverage
   inline void updateLoop(
    core::Backend<net::CurlWrapper>& backend,
    util::ThroughputLogger& logger,
@@ -57,7 +58,7 @@ namespace
       bool updated = false;
 
       for (int i = 0; i < 10; i++) {
-        if (backend.update(bytesReceived)) {
+        if (backend.update(bytesReceived, false)) {
           updated = true;
           break;
         }
@@ -73,10 +74,29 @@ namespace
       std::this_thread::sleep_for(1s);
     }
 
+    bool shouldQuit = true;
+    auto fut = std::async([&shouldQuit] {
+      for (uint seconds = 0; seconds < 60; seconds++) {
+        std::this_thread::sleep_for(1s);
+        if (!shouldQuit) {
+          return;
+        }
+      }
+
+      std::exit(1);
+    });
+
     // keep living for another 30 seconds
     // no more updates allows the backend to remove
     // this relay from the route decisions
+
+    while (!backend.update(0, true)) {
+      std::this_thread::sleep_for(1s);
+    }
+    shouldQuit = false;
     std::this_thread::sleep_for(30s);
+
+    fut.wait();
   }
 
   inline bool getCryptoKeys(const util::Env& env, crypto::Keychain& keychain, std::string& b64RelayPubKey)
