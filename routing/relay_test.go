@@ -28,21 +28,14 @@ func TestRelay(t *testing.T) {
 			EgressPriceCents:  789,
 		},
 		Datacenter: routing.Datacenter{
-			ID:   321,
-			Name: "datacenter name",
+			ID:      321,
+			Name:    "datacenter name",
+			Enabled: true,
 		},
 		Latitude:       123.456,
 		Longitude:      654.321,
 		LastUpdateTime: 999,
 	}
-
-	t.Run("NewRelay()", func(t *testing.T) {
-		relay := routing.Relay{
-			PublicKey: make([]byte, crypto.KeySize),
-		}
-
-		assert.Equal(t, relay, routing.NewRelay())
-	})
 
 	t.Run("MarshalBinary()", func(t *testing.T) {
 		data, _ := expected.MarshalBinary()
@@ -77,11 +70,18 @@ func TestRelay(t *testing.T) {
 			assert.EqualError(t, actual.UnmarshalBinary(buff), "failed to unmarshal relay address")
 		})
 
-		t.Run("missing seller id", func(t *testing.T) {
+		t.Run("missing public key", func(t *testing.T) {
 			addrString := expected.Addr.String()
 			size += 4 + len(addrString)
 			buff = buff[:size]
 			encoding.WriteString(buff, &index, addrString, uint32(len(addrString)))
+			assert.EqualError(t, actual.UnmarshalBinary(buff), "failed to unmarshal relay public key")
+		})
+
+		t.Run("missing seller id", func(t *testing.T) {
+			size += crypto.KeySize
+			buff = buff[:size]
+			encoding.WriteBytes(buff, &index, expected.PublicKey, crypto.KeySize)
 			assert.EqualError(t, actual.UnmarshalBinary(buff), "failed to unmarshal relay seller ID")
 		})
 
@@ -122,18 +122,19 @@ func TestRelay(t *testing.T) {
 			assert.EqualError(t, actual.UnmarshalBinary(buff), "failed to unmarshal relay datacenter name")
 		})
 
-		t.Run("missing public key", func(t *testing.T) {
-			dcName := expected.Datacenter.Name
-			size += 4 + len(dcName)
+		t.Run("missing datacenter enabled", func(t *testing.T) {
+			datacenterName := expected.Datacenter.Name
+			size += 4 + len(datacenterName)
 			buff = buff[:size]
-			encoding.WriteString(buff, &index, dcName, uint32(len(dcName)))
-			assert.EqualError(t, actual.UnmarshalBinary(buff), "failed to unmarshal relay public key")
+			encoding.WriteString(buff, &index, datacenterName, uint32(len(datacenterName)))
+			assert.EqualError(t, actual.UnmarshalBinary(buff), "failed to unmarshal relay datacenter enabled")
 		})
 
 		t.Run("missing latitude", func(t *testing.T) {
-			size += crypto.KeySize
+			datacenterEnabled := expected.Datacenter.Enabled
+			size += 1
 			buff = buff[:size]
-			encoding.WriteBytes(buff, &index, expected.PublicKey, crypto.KeySize)
+			encoding.WriteBool(buff, &index, datacenterEnabled)
 			assert.EqualError(t, actual.UnmarshalBinary(buff), "failed to unmarshal relay latitude")
 		})
 
@@ -147,7 +148,7 @@ func TestRelay(t *testing.T) {
 		t.Run("missing last update time", func(t *testing.T) {
 			size += 8
 			buff = buff[:size]
-			encoding.WriteUint64(buff, &index, uint64(expected.Latitude))
+			encoding.WriteUint64(buff, &index, uint64(expected.Longitude))
 			assert.EqualError(t, actual.UnmarshalBinary(buff), "failed to unmarshal relay last update time")
 		})
 

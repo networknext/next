@@ -3,11 +3,82 @@ package transport
 import (
 	"net"
 	"strconv"
+	"time"
 
 	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 )
+
+func NewBillingEntry(
+	routeRequest *billing.RouteRequest,
+	route *routing.Route,
+	routeType int,
+	sameRoute bool,
+	routingRulesSettings *routing.RoutingRulesSettings,
+	routeDecision routing.Decision,
+	packet *SessionUpdatePacket,
+	sliceDuration uint64,
+	timestampStart time.Time,
+	timestampNow time.Time,
+	initial bool) *billing.Entry {
+	// Create billing slice flags
+	sliceFlags := billing.RouteSliceFlagNone
+	if routeType == routing.RouteTypeNew || routeType == routing.RouteTypeContinue {
+		sliceFlags |= billing.RouteSliceFlagNext
+	}
+
+	if routing.IsVetoed(routeDecision) {
+		sliceFlags |= billing.RouteSliceFlagVetoed
+	}
+
+	if packet.Flagged {
+		sliceFlags |= billing.RouteSliceFlagReported
+	}
+
+	if packet.FallbackToDirect {
+		sliceFlags |= billing.RouteSliceFlagFallbackToDirect
+	}
+
+	if (routeDecision.Reason & routing.DecisionPacketLossMultipath) != 0 {
+		sliceFlags |= billing.RouteSliceFlagPacketLossMultipath
+	}
+
+	if (routeDecision.Reason & routing.DecisionJitterMultipath) != 0 {
+		sliceFlags |= billing.RouteSliceFlagJitterMultipath
+	}
+
+	if (routeDecision.Reason & routing.DecisionRTTMultipath) != 0 {
+		sliceFlags |= billing.RouteSliceFlagRTTMultipath
+	}
+
+	usageBytesUp := (1000 * uint64(packet.KbpsUp)) / 8 * sliceDuration     // Converts Kbps to bytes
+	usageBytesDown := (1000 * uint64(packet.KbpsDown)) / 8 * sliceDuration // Converts Kbps to bytes
+
+	return &billing.Entry{
+		Request:              routeRequest,
+		Route:                NewBillingRoute(route, usageBytesUp, usageBytesDown),
+		RouteDecision:        uint64(routeDecision.Reason),
+		Duration:             sliceDuration,
+		UsageBytesUp:         usageBytesUp,
+		UsageBytesDown:       usageBytesDown,
+		Timestamp:            uint64(timestampNow.Unix()),
+		TimestampStart:       uint64(timestampStart.Unix()),
+		PredictedRTT:         float32(route.Stats.RTT),
+		PredictedJitter:      float32(route.Stats.Jitter),
+		PredictedPacketLoss:  float32(route.Stats.PacketLoss),
+		RouteChanged:         routeType != routing.RouteTypeContinue,
+		NetworkNextAvailable: routeType == routing.RouteTypeNew || routeType == routing.RouteTypeContinue,
+		Initial:              initial,
+		EnvelopeBytesUp:      (1000 * uint64(routingRulesSettings.EnvelopeKbpsUp)) / 8 * sliceDuration,   // Converts Kbps to bytes
+		EnvelopeBytesDown:    (1000 * uint64(routingRulesSettings.EnvelopeKbpsDown)) / 8 * sliceDuration, // Converts Kbps to bytes
+		ConsideredRoutes:     []*billing.Route{},                                                         // Empty since not how new backend works and driven by disabled feature flag in old backend
+		AcceptableRoutes:     []*billing.Route{},                                                         // Empty since not how new backend works and driven by disabled feature flag in old backend
+		SameRoute:            sameRoute,
+		OnNetworkNext:        routeDecision.OnNetworkNext,
+		SliceFlags:           uint64(sliceFlags),
+	}
+}
 
 func NewBillingRoute(route *routing.Route, bytesUp uint64, bytesDown uint64) []*billing.RouteHop {
 	// To calculate price per hop, need the route, and to fetch seller + relay for each hop in that route

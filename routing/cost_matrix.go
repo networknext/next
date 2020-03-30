@@ -19,62 +19,11 @@ const (
 	// CostMatrixVersion ...
 	// IMPORTANT: Bump this version whenever you change the binary format
 	CostMatrixVersion = 4
-
-	// RouteMatrixVersion ...
-	// IMPORTANT: Increment this when you change the binary format
-	RouteMatrixVersion = 4
-
-	// MaxRelays ...
-	MaxRelays = 5
-
-	// MaxRoutesPerRelayPair ...
-	MaxRoutesPerRelayPair = 8
-
-	/* Duplicated in package: transport */
-
-	// MaxRelayAddressLength ...
-	MaxRelayAddressLength = 256
 )
-
-func readIDOld(data []byte, index *int, storage *uint64, errmsg string) error {
-	var tmp uint32
-	if !encoding.ReadUint32(data, index, &tmp) {
-		return errors.New(errmsg + " - ver < 3")
-	}
-	*storage = uint64(tmp)
-	return nil
-}
-
-func readIDNew(data []byte, index *int, storage *uint64, errmsg string) error {
-	if !encoding.ReadUint64(data, index, storage) {
-		return errors.New(errmsg + " - v3")
-	}
-	return nil
-}
-
-func readBytesOld(data []byte, index *int, storage *[]byte, length uint32, errmsg string) (err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = errors.New(errmsg + " - ver < 3")
-		}
-	}()
-
-	var bytesRead int
-	*storage, bytesRead = encoding.ReadBytesOld(data[*index:])
-	*index += bytesRead
-	return err
-}
-
-func readBytesNew(data []byte, index *int, storage *[]byte, length uint32, errmsg string) error {
-	if !encoding.ReadBytes(data, index, storage, length) {
-		return errors.New(errmsg + " - v3")
-	}
-	return nil
-}
 
 // CostMatrix ...
 type CostMatrix struct {
-	mu sync.Mutex
+	mu sync.RWMutex
 
 	RelayIndicies map[uint64]int
 
@@ -91,9 +40,6 @@ type CostMatrix struct {
 
 // ReadFrom implements the io.ReadFrom interface
 func (m *CostMatrix) ReadFrom(r io.Reader) (int64, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	data, err := ioutil.ReadAll(r)
 	if err != nil {
 		return 0, err
@@ -108,9 +54,6 @@ func (m *CostMatrix) ReadFrom(r io.Reader) (int64, error) {
 
 // WriteTo implements the io.WriteTo interface
 func (m *CostMatrix) WriteTo(w io.Writer) (int64, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	data, err := m.MarshalBinary()
 	if err != nil {
 		return 0, err
@@ -132,7 +75,7 @@ func (m *CostMatrix) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-/* Binary data outline for CostMatrix v3: "->" means seqential elements in memory and not another section
+/* Binary data outline for CostMatrix v4: "->" means seqential elements in memory and not another section
  * Version number { uint32 }
  * Number of relays { uint32 }
  * Relay IDs { [NumberOfRelays]uint64 }
@@ -144,6 +87,12 @@ func (m *CostMatrix) ServeHTTP(w http.ResponseWriter, r *http.Request) {
  * Number of Datacenters { uint32 }
  * Datacenter ID { uint64 } -> Number of Relays in Datacenter { uint32 } -> Relay IDs in Datacenter { [NumberOfRelaysInDatacenter]uint64 }
  * RTT Info { []uint32 }
+ * Sellers { [NumberOfRelays]Seller } (
+ *	ID { string }
+ *	Name { string }
+ * 	IngressPriceCents { uint64 }
+ *	EgressPriceCents { uint64 }
+ * )
  */
 
 // UnmarshalBinary ...
@@ -174,6 +123,9 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 	if !encoding.ReadUint32(data, &index, &numRelays) {
 		return errors.New("[CostMatrix] invalid read at number of relays")
 	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
 	m.RelayIndicies = make(map[uint64]int)
 	m.RelayIDs = make([]uint64, numRelays)
@@ -292,7 +244,10 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 }
 
 // MarshalBinary ...
-func (m CostMatrix) MarshalBinary() ([]byte, error) {
+func (m *CostMatrix) MarshalBinary() ([]byte, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	index := 0
 	data := make([]byte, m.Size())
 
@@ -301,7 +256,7 @@ func (m CostMatrix) MarshalBinary() ([]byte, error) {
 	numRelays := len(m.RelayIDs)
 
 	if numRelays != len(m.RelayNames) {
-		return nil, fmt.Errorf("Length of Relay IDs not equal to length of Relay Names: %d != %d", numRelays, len(m.RelayNames))
+		return nil, fmt.Errorf("length of Relay IDs not equal to length of Relay Names: %d != %d", numRelays, len(m.RelayNames))
 	}
 
 	encoding.WriteUint32(data, &index, uint32(numRelays))
@@ -317,7 +272,7 @@ func (m CostMatrix) MarshalBinary() ([]byte, error) {
 	numDatacenters := len(m.DatacenterIDs)
 
 	if numDatacenters != len(m.DatacenterNames) {
-		return nil, fmt.Errorf("Length of Datacenter IDs not equal to length of Datacenter Names: %d != %d", numDatacenters, len(m.DatacenterNames))
+		return nil, fmt.Errorf("length of Datacenter IDs not equal to length of Datacenter Names: %d != %d", numDatacenters, len(m.DatacenterNames))
 	}
 
 	encoding.WriteUint32(data, &index, uint32(numDatacenters))
@@ -372,10 +327,10 @@ func (m CostMatrix) MarshalBinary() ([]byte, error) {
 
 // Optimize will fill up a *RouteMatrix with the optimized routes based on cost.
 func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
-	m.mu.Lock()
+	m.mu.RLock()
 	routes.mu.Lock()
 	defer func() {
-		m.mu.Unlock()
+		m.mu.RUnlock()
 		routes.mu.Unlock()
 	}()
 
@@ -624,6 +579,9 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 }
 
 func (m *CostMatrix) Size() uint64 {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	var length uint64
 	numRelays := uint64(len(m.RelayIDs))
 	numDatacenters := uint64(len(m.DatacenterIDs))
@@ -661,154 +619,4 @@ func (m *CostMatrix) Size() uint64 {
 	}
 
 	return length
-}
-
-// RouteManager ...
-type RouteManager struct {
-	NumRoutes      int
-	RouteRTT       [MaxRoutesPerRelayPair]int32
-	RouteHash      [MaxRoutesPerRelayPair]uint64
-	RouteNumRelays [MaxRoutesPerRelayPair]int32
-	RouteRelays    [MaxRoutesPerRelayPair][MaxRelays]uint64
-}
-
-// fnv64
-func RouteHash(relays ...uint64) uint64 {
-	// http://www.isthe.com/chongo/tech/comp/fnv/
-	const fnv64OffsetBasis = uint64(0xCBF29CE484222325)
-
-	hash := uint64(0)
-	for i := range relays {
-		hash *= fnv64OffsetBasis
-		hash ^= (relays[i] >> 56) & 0xFF
-		hash *= fnv64OffsetBasis
-		hash ^= (relays[i] >> 48) & 0xFF
-		hash *= fnv64OffsetBasis
-		hash ^= (relays[i] >> 40) & 0xFF
-		hash *= fnv64OffsetBasis
-		hash ^= (relays[i] >> 32) & 0xFF
-		hash *= fnv64OffsetBasis
-		hash ^= (relays[i] >> 24) & 0xFF
-		hash *= fnv64OffsetBasis
-		hash ^= (relays[i] >> 16) & 0xFF
-		hash *= fnv64OffsetBasis
-		hash ^= (relays[i] >> 8) & 0xFF
-		hash *= fnv64OffsetBasis
-		hash ^= relays[i] & 0xFF
-	}
-
-	return hash
-}
-
-// AddRoute ...
-func (manager *RouteManager) AddRoute(rtt int32, relays ...uint64) {
-	if rtt < 0 {
-		return
-	}
-
-	if manager.NumRoutes == 0 {
-
-		// no routes yet. add the route
-
-		manager.NumRoutes = 1
-		manager.RouteRTT[0] = rtt
-		manager.RouteHash[0] = RouteHash(relays...)
-		manager.RouteNumRelays[0] = int32(len(relays))
-		for i := range relays {
-			manager.RouteRelays[0][i] = relays[i]
-		}
-
-	} else if manager.NumRoutes < MaxRoutesPerRelayPair {
-
-		// not at max routes yet. insert according RTT sort order
-
-		hash := RouteHash(relays...)
-		for i := 0; i < manager.NumRoutes; i++ {
-			if hash == manager.RouteHash[i] {
-				return
-			}
-		}
-
-		if rtt >= manager.RouteRTT[manager.NumRoutes-1] {
-
-			// RTT is greater than existing entries. append.
-
-			manager.RouteRTT[manager.NumRoutes] = rtt
-			manager.RouteHash[manager.NumRoutes] = hash
-			manager.RouteNumRelays[manager.NumRoutes] = int32(len(relays))
-			for i := range relays {
-				manager.RouteRelays[manager.NumRoutes][i] = relays[i]
-			}
-			manager.NumRoutes++
-
-		} else {
-
-			// RTT is lower than at least one entry. insert.
-
-			insertIndex := manager.NumRoutes - 1
-			for {
-				if insertIndex == 0 || rtt > manager.RouteRTT[insertIndex-1] {
-					break
-				}
-				insertIndex--
-			}
-			manager.NumRoutes++
-			for i := manager.NumRoutes - 1; i > insertIndex; i-- {
-				manager.RouteRTT[i] = manager.RouteRTT[i-1]
-				manager.RouteHash[i] = manager.RouteHash[i-1]
-				manager.RouteNumRelays[i] = manager.RouteNumRelays[i-1]
-				for j := 0; j < int(manager.RouteNumRelays[i]); j++ {
-					manager.RouteRelays[i][j] = manager.RouteRelays[i-1][j]
-				}
-			}
-			manager.RouteRTT[insertIndex] = rtt
-			manager.RouteHash[insertIndex] = hash
-			manager.RouteNumRelays[insertIndex] = int32(len(relays))
-			for i := range relays {
-				manager.RouteRelays[insertIndex][i] = relays[i]
-			}
-
-		}
-
-	} else {
-
-		// route set is full. only insert if lower RTT than at least one current route.
-
-		if rtt >= manager.RouteRTT[manager.NumRoutes-1] {
-			return
-		}
-
-		hash := RouteHash(relays...)
-		for i := 0; i < manager.NumRoutes; i++ {
-			if hash == manager.RouteHash[i] {
-				return
-			}
-		}
-
-		insertIndex := manager.NumRoutes - 1
-		for {
-			if insertIndex == 0 || rtt > manager.RouteRTT[insertIndex-1] {
-				break
-			}
-			insertIndex--
-		}
-
-		for i := manager.NumRoutes - 1; i > insertIndex; i-- {
-			manager.RouteRTT[i] = manager.RouteRTT[i-1]
-			manager.RouteHash[i] = manager.RouteHash[i-1]
-			manager.RouteNumRelays[i] = manager.RouteNumRelays[i-1]
-			for j := 0; j < int(manager.RouteNumRelays[i]); j++ {
-				manager.RouteRelays[i][j] = manager.RouteRelays[i-1][j]
-			}
-		}
-
-		manager.RouteRTT[insertIndex] = rtt
-		manager.RouteHash[insertIndex] = hash
-		manager.RouteNumRelays[insertIndex] = int32(len(relays))
-
-		for i := range relays {
-			manager.RouteRelays[insertIndex][i] = relays[i]
-		}
-
-	}
 }

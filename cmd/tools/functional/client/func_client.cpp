@@ -158,6 +158,11 @@ int main()
             second_connect_completed = true;
         }
 
+        if ( client_user_flags_env )
+        {
+            next_client_set_user_flags( client, 0x123 );
+        }
+
         next_client_update( client );
 
         next_client_send_packet( client, packet_data, sizeof( packet_data ) );

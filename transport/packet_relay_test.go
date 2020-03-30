@@ -153,7 +153,7 @@ func TestRelayInitRequest(t *testing.T) {
 		t.Run("address not formatted correctly", func(t *testing.T) {
 			var packet transport.RelayInitRequest
 			addr := "invalid"
-			buff := make([]byte, 8+crypto.NonceSize+4+len(addr)+routing.EncryptedTokenSize)
+			buff := make([]byte, 8+crypto.NonceSize+4+len(addr)+routing.EncryptedRelayTokenSize)
 			binary.LittleEndian.PutUint32(buff, rand.Uint32())
 			binary.LittleEndian.PutUint32(buff[4:], rand.Uint32())
 			binary.LittleEndian.PutUint32(buff[8+crypto.NonceSize:], uint32(len(addr)))
@@ -164,7 +164,7 @@ func TestRelayInitRequest(t *testing.T) {
 		t.Run("valid", func(t *testing.T) {
 			var packet transport.RelayInitRequest
 			addr := "127.0.0.1:40000"
-			buff := make([]byte, 8+crypto.NonceSize+4+len(addr)+routing.EncryptedTokenSize)
+			buff := make([]byte, 8+crypto.NonceSize+4+len(addr)+routing.EncryptedRelayTokenSize)
 			binary.LittleEndian.PutUint32(buff, rand.Uint32())
 			binary.LittleEndian.PutUint32(buff[4:], rand.Uint32())
 			binary.LittleEndian.PutUint32(buff[8+crypto.NonceSize:], uint32(len(addr)))
@@ -175,7 +175,7 @@ func TestRelayInitRequest(t *testing.T) {
 
 	t.Run("MarshalBinary()", func(t *testing.T) {
 		nonce := make([]byte, crypto.NonceSize)
-		token := make([]byte, routing.EncryptedTokenSize)
+		token := make([]byte, routing.EncryptedRelayTokenSize)
 		rand.Read(nonce)
 		rand.Read(token)
 
