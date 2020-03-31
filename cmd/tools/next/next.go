@@ -222,9 +222,12 @@ type SSHInfo struct {
 }
 
 func sshToRelay(env *EnvironmentData, relayName string) {
-	// todo
 	fmt.Printf("(ssh to relay %s)\n", relayName)
-	secureShell("root", "173.255.241.176", 22)
+	// todo: look up relay by name, get ssh data from relay entry.
+	user := "root"
+	address := "173.255.241.176"
+	port := 22
+	secureShell(user, address, port)
 }
 
 func usage() {
