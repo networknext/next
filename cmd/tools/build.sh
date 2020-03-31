@@ -1,5 +1,9 @@
 #!/bin/sh
 
+printf "Building next tool... "
+go build -o ./dist/next ./cmd/tools/next/*.go
+printf "done\n"
+
 printf "Building analyze tool... "
 go build -o ./dist/analyze ./cmd/tools/analyze/analyze.go
 printf "done\n"
@@ -27,8 +31,6 @@ printf "done\n"
 printf "Building functional backend... "
 go build -o ./dist/func_backend ./cmd/tools/functional/backend/*.go
 printf "done\n"
-
-# todo: build func client and func server?
 
 printf "Building functional tests... "
 go build -o ./dist/func_tests ./cmd/tools/functional/tests/func_tests.go
