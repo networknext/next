@@ -23,7 +23,9 @@
 #ifndef NEXT_H
 #define NEXT_H
 
+#ifndef __STDC_FORMAT_MACROS
 #define __STDC_FORMAT_MACROS
+#endif
 
 #include <stdint.h>
 #include <stddef.h>
