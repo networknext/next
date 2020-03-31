@@ -577,7 +577,8 @@ func TestRelayUpdateRequestMarshalJSON(t *testing.T) {
 		},
 		"Metadata":{
 			"PublicKey":"%s"
-		}
+		},
+		"shutting_down":false
 	}`, stat.RelayID, stat.RTT, stat.Jitter, stat.PacketLoss, req.BytesReceived, base64.StdEncoding.EncodeToString(token)), string(jsonRes))
 }
 
