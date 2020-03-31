@@ -242,6 +242,8 @@ NEXT_EXPORT_FUNC void next_client_open_session( next_client_t * client, const ch
 
 NEXT_EXPORT_FUNC void next_client_close_session( next_client_t * client );
 
+NEXT_EXPORT_FUNC bool next_client_is_session_open( next_client_t * client );
+
 NEXT_EXPORT_FUNC void next_client_update( next_client_t * client );
 
 NEXT_EXPORT_FUNC void next_client_send_packet( next_client_t * client, const uint8_t * packet_data, int packet_bytes );
