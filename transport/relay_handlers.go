@@ -228,9 +228,15 @@ func RelayUpdateHandlerFunc(logger log.Logger, params *RelayUpdateHandlerConfig)
 			return
 		}
 
-		if relayUpdateRequest.Version != VersionNumberUpdateRequest || len(relayUpdateRequest.PingStats) > MaxRelays {
+		if relayUpdateRequest.Version != VersionNumberUpdateRequest {
 			level.Error(handlerLogger).Log("msg", "version mismatch", "version", relayUpdateRequest.Version)
 			http.Error(writer, "version mismatch", http.StatusBadRequest)
+			return
+		}
+
+		if len(relayUpdateRequest.PingStats) > MaxRelays {
+			level.Error(handlerLogger).Log("msg", "max relays exceeded", "relay count", len(relayUpdateRequest.PingStats))
+			http.Error(writer, "max relays exceeded", http.StatusBadRequest)
 			return
 		}
 
