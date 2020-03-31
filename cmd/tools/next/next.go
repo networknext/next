@@ -12,6 +12,8 @@ import (
 	"io"
 	"sync"
 	"bufio"
+	"log"
+	"syscall"
 )
 
 func isWindows() bool {
@@ -196,9 +198,33 @@ func datacenters(env *EnvironmentData, filter string) {
 	
 }
 
+func secureShell(user string, address string, port int) {
+	ssh, err := exec.LookPath("ssh")
+	if err != nil {
+		log.Fatalf("error: could not find ssh")
+	}
+	args := make([]string, 4)
+	args[0] = "ssh"
+	args[1] = "-p"
+	args[2] = fmt.Sprintf("%d", port)
+	args[3] = fmt.Sprintf("%s@%s", user, address)
+	env := os.Environ()
+	err = syscall.Exec(ssh, args, env)
+	if err != nil {
+		log.Fatalf("error: failed to exec ssh")
+	}
+}
+
+type SSHInfo struct {
+	Address string
+	User    string
+	Port    int
+}
+
 func sshToRelay(env *EnvironmentData, relayName string) {
 	// todo
 	fmt.Printf("(ssh to relay %s)\n", relayName)
+	secureShell("root", "173.255.241.176", 22)
 }
 
 func usage() {
