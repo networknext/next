@@ -625,6 +625,8 @@ func TestRelayInitHandler(t *testing.T) {
 			assert.Equal(t, location.Latitude, math.Round(relay.Latitude*1000)/1000)
 			assert.Equal(t, location.Longitude, math.Round(relay.Longitude*1000)/1000)
 		}
+
+		assert.Equal(t, uint32(routing.RelayStateInitalized), actual.State)
 	})
 
 	t.Run("json version", func(t *testing.T) {
@@ -842,6 +844,8 @@ func TestRelayInitHandler(t *testing.T) {
 				assert.Equal(t, location.Latitude, math.Round(relay.Latitude*1000)/1000)
 				assert.Equal(t, location.Longitude, math.Round(relay.Longitude*1000)/1000)
 			}
+
+			assert.Equal(t, uint32(routing.RelayStateInitalized), actual.State)
 		})
 	})
 }
