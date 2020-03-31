@@ -159,7 +159,7 @@ namespace core
       }
 
       if (!updated) {
-        std::cout << "error: could not update relay\n";
+        Log("error: could not update relay");
         break;
       }
 
