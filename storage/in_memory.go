@@ -33,3 +33,7 @@ func (m *InMemory) Relay(id uint64) (*routing.Relay, bool) {
 	// Failing this, just return first one since we need something for local dev
 	return &m.LocalRelays[0], true
 }
+
+func (m *InMemory) Relays() []routing.Relay {
+	return m.LocalRelays
+}
