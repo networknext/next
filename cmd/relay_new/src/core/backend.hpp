@@ -8,11 +8,10 @@
 #include "relay_manager.hpp"
 #include "router_info.hpp"
 #include "session_map.hpp"
+#include "testing/test.hpp"
 #include "util/json.hpp"
 #include "util/logger.hpp"
 #include "util/throughput_logger.hpp"
-
-extern volatile bool gAlive;
 
 namespace core
 {
@@ -45,13 +44,15 @@ namespace core
 
     bool init();
 
-    void updateCycle(util::ThroughputLogger& logger, core::SessionMap& sessions, const util::Clock& relayClock);
+    void updateCycle(
+     volatile bool& loopHandle, util::ThroughputLogger& logger, core::SessionMap& sessions, const util::Clock& relayClock);
 
-    bool update(uint64_t bytesReceived, bool shutdown);
+    // this should be the way to expose private functions to tests
+    // but for some reason the compiler won't let it
+    // friend class _test_core_Backend_update_valid_;
+    test_private bool update(uint64_t bytesReceived, bool shutdown);
 
    private:
-    friend class _test_core_Backend_update_valid_;
-
     const std::string mHostname;
     const std::string mAddressStr;
     const crypto::Keychain& mKeychain;
@@ -137,11 +138,12 @@ namespace core
   }
 
   template <typename T>
-  void Backend<T>::updateCycle(util::ThroughputLogger& logger, core::SessionMap& sessions, const util::Clock& relayClock)
+  void Backend<T>::updateCycle(
+   volatile bool& loopHandle, util::ThroughputLogger& logger, core::SessionMap& sessions, const util::Clock& relayClock)
   {
     std::vector<uint8_t> update_response_memory;
     update_response_memory.resize(RESPONSE_MAX_BYTES);
-    while (gAlive) {
+    while (loopHandle) {
       auto bytesReceived = logger.print();
       bool updated = false;
 
@@ -154,7 +156,6 @@ namespace core
 
       if (!updated) {
         std::cout << "error: could not update relay\n";
-        gAlive = false;
         break;
       }
 
@@ -162,27 +163,29 @@ namespace core
       std::this_thread::sleep_for(1s);
     }
 
-    bool shouldQuit = true;
-    auto fut = std::async([&shouldQuit] {
+    std::atomic<bool> shouldWait60 = true, shouldWait30 = true, waited60 = false;
+    auto fut = std::async([&shouldWait60, &waited60] {
       for (uint seconds = 0; seconds < 60; seconds++) {
         std::this_thread::sleep_for(1s);
-        if (!shouldQuit) {
+        if (!shouldWait60) {
           return;
         }
       }
 
-      std::exit(1);
+      waited60 = true;
     });
+
 
     // keep living for another 30 seconds
     // no more updates allows the backend to remove
     // this relay from the route decisions
-
-    while (!update(0, true)) {
+    while (!update(0, true) && !waited60) {
       std::this_thread::sleep_for(1s);
     }
-    shouldQuit = false;
-    std::this_thread::sleep_for(30s);
+    shouldWait60 = false;
+    if (!waited60) {
+      std::this_thread::sleep_for(30s);
+    }
 
     fut.wait();
   }

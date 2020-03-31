@@ -37,6 +37,12 @@
 #define check(condition) \
   testing::check_handler((condition), #condition, (const char*)__FUNCTION__, (const char*)__FILE__, __LINE__);
 
+#ifdef TEST_BUILD
+#define test_private
+#else
+#define test_private private:
+#endif
+
 namespace testing
 {
   class SpecTest
@@ -47,10 +53,10 @@ namespace testing
     const char* TestName;
     const bool Disabled;
 
+    virtual void body() = 0;
+
    protected:
     SpecTest(const char* name, bool disabled);
-
-    virtual void body() = 0;
   };
 
   template <typename T>

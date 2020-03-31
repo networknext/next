@@ -59,6 +59,88 @@ Test(core_backend_init_valid)
   check(doc.get<std::string>("encrypted_token").length() == Base64EncryptedTokenLength);
 }
 
+template <typename T>
+class Bar
+{
+ private:
+  friend class _test_Bar_test_;
+  void bar() {}
+};
+
+class Spec
+{
+ public:
+  virtual void foo() = 0;
+};
+
+class _test_Bar_test_: public Spec
+{
+ public:
+  void foo() override
+  {
+    Bar<int> bar;
+    bar.bar();
+  }
+};
+
+Test(core_Backend_updateCycle_shutdown_60s)
+{
+  util::Clock testClock;
+
+  core::RouterInfo info;
+  util::Clock backendClock;
+  core::RelayManager manager(backendClock);
+  core::SessionMap sessions;
+  auto backend = std::move(makeBackend(info, manager, sessions));
+
+  testing::StubbedCurlWrapper::Success = false;
+  testing::StubbedCurlWrapper::Response = R"({
+     "version": 0,
+     "ping_data": []
+   })";
+
+  testClock.reset();
+  volatile bool handle = true;
+  std::async([&] {
+    std::this_thread::sleep_for(10s);
+    handle = false;
+  });
+
+  util::ThroughputLogger logger(std::cout);
+  backend.updateCycle(handle, logger, sessions, backendClock);
+  auto elapsed = testClock.elapsed<util::Second>();
+  check(elapsed >= 70.0 && elapsed < 71.0);
+}
+
+Test(core_Backend_updateCycle_ack_and_30s)
+{
+  util::Clock testClock;
+
+  core::RouterInfo info;
+  util::Clock backendClock;
+  core::RelayManager manager(backendClock);
+  core::SessionMap sessions;
+  auto backend = std::move(makeBackend(info, manager, sessions));
+
+  testing::StubbedCurlWrapper::Success = true;
+  testing::StubbedCurlWrapper::Response = R"({
+     "version": 0,
+     "ping_data": []
+   })";
+
+  testClock.reset();
+  volatile bool handle = true;
+  std::async([&] {
+    std::this_thread::sleep_for(10s);
+    handle = false;
+  });
+
+  util::ThroughputLogger logger(std::cout);
+  backend.updateCycle(handle, logger, sessions, backendClock);
+  auto elapsed = testClock.elapsed<util::Second>();
+  check(elapsed >= 40.0 && elapsed < 41.0);
+}
+
 Test(core_Backend_update_valid)
 {
   core::RouterInfo routerInfo;

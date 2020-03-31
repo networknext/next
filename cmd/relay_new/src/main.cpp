@@ -413,7 +413,9 @@ int main()
   signal(SIGTERM, interrupt_handler);
   signal(SIGHUP, interrupt_handler);
 
-  backend.updateCycle(*logger, sessions, relayClock);
+  backend.updateCycle(gAlive, *logger, sessions, relayClock);
+
+  gAlive = false;
 
   Log("Cleaning up\n");
 
