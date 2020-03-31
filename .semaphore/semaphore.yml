@@ -21,9 +21,6 @@ blocks:
   - name: Unit
     task:
       jobs:
-        - name: SDK
-          commands:
-            - make test-unit-sdk
         - name: Relay
           commands:
             - make test-unit-relay
