@@ -311,6 +311,7 @@ func TestRelayUpdateHandler(t *testing.T) {
 			request.Address = net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 40000}
 			request.Token = make([]byte, crypto.KeySize)
 			request.PingStats = make([]routing.RelayStatsPing, uint32(len(statIps)))
+			request.ShuttingDown = true
 
 			for i, addr := range statIps {
 				stats := &request.PingStats[i]
@@ -387,6 +388,8 @@ func TestRelayUpdateHandler(t *testing.T) {
 
 			assert.NotContains(t, relaysToPingIDs, entry.ID)
 			assert.NotContains(t, relaysToPingAddrs, request.Address.String())
+
+			assert.Equal(t, uint32(routing.RelayStateShuttingDown), actual.State)
 		})
 	})
 }

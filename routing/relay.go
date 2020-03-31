@@ -31,9 +31,8 @@ const (
 	MaxRelayAddressLength = 256
 
 	RelayStateOffline      = 0
-	RelayStateInitalized   = 1
-	RelayStateOnline       = 2
-	RelayStateShuttingDown = 3
+	RelayStateOnline       = 1
+	RelayStateShuttingDown = 2
 )
 
 // Relay ...

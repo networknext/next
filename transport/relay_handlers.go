@@ -149,7 +149,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			return
 		}
 
-		relay.State = routing.RelayStateInitalized
+		relay.State = routing.RelayStateOnline
 
 		// HSet for full relay data
 		if res := params.RedisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay); res.Err() != nil && res.Err() != redis.Nil {
@@ -299,8 +299,6 @@ func RelayUpdateHandlerFunc(logger log.Logger, params *RelayUpdateHandlerConfig)
 
 		if relayUpdateRequest.ShuttingDown {
 			relay.State = routing.RelayStateShuttingDown
-		} else {
-			relay.State = routing.RelayStateOnline
 		}
 
 		// HSet for full relay data
