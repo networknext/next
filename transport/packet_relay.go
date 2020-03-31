@@ -236,13 +236,19 @@ func (r *RelayUpdateRequest) UnmarshalBinary(buff []byte) error {
 			encoding.ReadFloat32(buff, &index, &stats.RTT) &&
 			encoding.ReadFloat32(buff, &index, &stats.Jitter) &&
 			encoding.ReadFloat32(buff, &index, &stats.PacketLoss)) {
-			return errors.New("invalid packet")
+			return errors.New("invalid packet, could not read a ping stat")
 		}
 	}
 
 	if !encoding.ReadUint64(buff, &index, &r.BytesReceived) {
-		return errors.New("invalid packet")
+		return errors.New("invalid packet, could not read bytes received")
 	}
+
+	if index+1 > len(buff) {
+		return errors.New("invalid packet, could not read shutdown flag")
+	}
+
+	r.ShuttingDown = buff[index] != 0
 
 	return nil
 }
@@ -267,6 +273,10 @@ func (r RelayUpdateRequest) MarshalBinary() ([]byte, error) {
 	}
 
 	encoding.WriteUint64(data, &index, r.BytesReceived)
+
+	if r.ShuttingDown {
+		data[index] = 1
+	}
 
 	return data, nil
 }
