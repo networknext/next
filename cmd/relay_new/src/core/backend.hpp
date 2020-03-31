@@ -13,6 +13,11 @@
 #include "util/logger.hpp"
 #include "util/throughput_logger.hpp"
 
+namespace testing
+{
+  class _test_core_Backend_update_valid_;
+}
+
 namespace core
 {
   const uint32_t InitRequestMagic = 0x9083708f;
@@ -47,12 +52,8 @@ namespace core
     void updateCycle(
      volatile bool& loopHandle, util::ThroughputLogger& logger, core::SessionMap& sessions, const util::Clock& relayClock);
 
-    // this should be the way to expose private functions to tests
-    // but for some reason the compiler won't let it
-    // friend class _test_core_Backend_update_valid_;
-    test_private bool update(uint64_t bytesReceived, bool shutdown);
-
    private:
+    friend testing::_test_core_Backend_update_valid_;
     const std::string mHostname;
     const std::string mAddressStr;
     const crypto::Keychain& mKeychain;
@@ -61,6 +62,7 @@ namespace core
     const std::string mBase64RelayPublicKey;
     const core::SessionMap& mSessionMap;
 
+    bool update(uint64_t bytesReceived, bool shutdown);
     bool buildInitRequest(util::JSON& doc);
     bool buildUpdateRequest(util::JSON& doc, uint64_t bytesReceived, bool shutdown);
   };
@@ -174,7 +176,6 @@ namespace core
 
       waited60 = true;
     });
-
 
     // keep living for another 30 seconds
     // no more updates allows the backend to remove

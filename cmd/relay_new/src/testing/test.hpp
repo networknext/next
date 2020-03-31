@@ -6,15 +6,18 @@
 #define TEST_BREAK "\n=============================================\n\n"
 #define TEST_BREAK_WARNING "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n"
 
-#define TEST_CLASS_CREATOR(test_name, disabled)                        \
-  class _test_##test_name##_: public testing::SpecTest                 \
-  {                                                                    \
-   public:                                                             \
-    _test_##test_name##_(): testing::SpecTest(#test_name, disabled) {} \
-    void body() override;                                              \
-  };                                                                   \
-  _test_##test_name##_ _test_var_##test_name##_;                       \
-  void _test_##test_name##_::body()
+#define TEST_CLASS_CREATOR(test_name, disabled)                          \
+  namespace testing                                                      \
+  {                                                                      \
+    class _test_##test_name##_: public testing::SpecTest                 \
+    {                                                                    \
+     public:                                                             \
+      _test_##test_name##_(): testing::SpecTest(#test_name, disabled) {} \
+      void body() override;                                              \
+    };                                                                   \
+    _test_##test_name##_ _test_var_##test_name##_;                       \
+  }                                                                      \
+  void testing::_test_##test_name##_::body()
 
 #define TEST_CLASS_CREATOR_1_ARG(test_name) TEST_CLASS_CREATOR(test_name, false)
 #define TEST_CLASS_CREATOR_2_ARG(test_name, disabled) TEST_CLASS_CREATOR(test_name, disabled)
@@ -36,12 +39,6 @@
 
 #define check(condition) \
   testing::check_handler((condition), #condition, (const char*)__FUNCTION__, (const char*)__FILE__, __LINE__);
-
-#ifdef TEST_BUILD
-#define test_private
-#else
-#define test_private private:
-#endif
 
 namespace testing
 {
@@ -132,7 +129,7 @@ namespace testing
   class StubbedCurlWrapper
   {
    public:
-    static bool Success;   // The request was a success
+    static bool Success;          // The request was a success
     static std::string Request;   // The request that was sent
     static std::string Response;  // The Response that should be received
     static std::string Hostname;  // The hostname used
