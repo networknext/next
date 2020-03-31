@@ -303,7 +303,6 @@ int next_set_socket_codepoint( SOCKET socket, QOS_TRAFFIC_TYPE trafficType, QOS_
 {
 	QOS_VERSION QosVersion = { 1 , 0 };
 	HANDLE qosHandle;
-	int sizeofTOS = sizeof(int);
 	if ( QOSCreateHandle( &QosVersion, &qosHandle ) == FALSE )
 	{
 		return GetLastError();
