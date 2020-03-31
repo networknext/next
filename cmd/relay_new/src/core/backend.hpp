@@ -265,7 +265,7 @@ namespace core
     auto relays = doc.get<util::JSON>("ping_data");
     if (relays.isArray()) {
       size_t count = 0;
-      std::array<uint64_t, MAX_RELAYS> relayIDs;
+      std::array<uint64_t, MAX_RELAYS> relayIDs = {};
       std::array<net::Address, MAX_RELAYS> relayAddresses;
       relays.foreach([&allValid, &count, &relayIDs, &relayAddresses](rapidjson::Value& relayData) {
         if (!relayData.HasMember("relay_id")) {
