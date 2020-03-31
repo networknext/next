@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -63,6 +64,7 @@ func main() {
 	var db storage.Storer = &storage.InMemory{
 		LocalRelays: []routing.Relay{
 			routing.Relay{
+				Addr:      net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 40000},
 				PublicKey: relayPublicKey,
 				Datacenter: routing.Datacenter{
 					ID:   crypto.HashID("local"),
