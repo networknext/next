@@ -45,60 +45,6 @@ namespace
   }
 
   // TODO move this out of main and somewhere else to allow for test coverage
-  inline void updateLoop(
-   core::Backend<net::CurlWrapper>& backend,
-   util::ThroughputLogger& logger,
-   core::SessionMap& sessions,
-   const util::Clock& relayClock)
-  {
-    std::vector<uint8_t> update_response_memory;
-    update_response_memory.resize(RESPONSE_MAX_BYTES);
-    while (gAlive) {
-      auto bytesReceived = logger.print();
-      bool updated = false;
-
-      for (int i = 0; i < 10; i++) {
-        if (backend.update(bytesReceived, false)) {
-          updated = true;
-          break;
-        }
-      }
-
-      if (!updated) {
-        std::cout << "error: could not update relay\n";
-        gAlive = false;
-        break;
-      }
-
-      sessions.purge(relayClock.unixTime<util::Second>());
-      std::this_thread::sleep_for(1s);
-    }
-
-    bool shouldQuit = true;
-    auto fut = std::async([&shouldQuit] {
-      for (uint seconds = 0; seconds < 60; seconds++) {
-        std::this_thread::sleep_for(1s);
-        if (!shouldQuit) {
-          return;
-        }
-      }
-
-      std::exit(1);
-    });
-
-    // keep living for another 30 seconds
-    // no more updates allows the backend to remove
-    // this relay from the route decisions
-
-    while (!backend.update(0, true)) {
-      std::this_thread::sleep_for(1s);
-    }
-    shouldQuit = false;
-    std::this_thread::sleep_for(30s);
-
-    fut.wait();
-  }
-
   inline bool getCryptoKeys(const util::Env& env, crypto::Keychain& keychain, std::string& b64RelayPubKey)
   {
     // relay private key
@@ -351,7 +297,7 @@ int main()
       {
         if (!packetSocket) {
           Log("could not create packetSocket");
-          gAlive = false;
+          ::gAlive = false;
           closeSockets();
           joinThreads();
           relay::relay_term();
@@ -373,7 +319,7 @@ int main()
                                                         &logger,
                                                         &relayAddr] {
         core::PacketProcessor processor(
-         shouldReceive, *packetSocket, relayClock, keychain, sessions, relayManager, gAlive, *logger, relayAddr);
+         shouldReceive, *packetSocket, relayClock, keychain, sessions, relayManager, ::gAlive, *logger, relayAddr);
         processor.process(waitVar, socketAndThreadReady);
       });
 
@@ -407,7 +353,7 @@ int main()
     auto pingSocket = makeSocket(bindAddr.Port);
     if (!pingSocket) {
       Log("could not create pingSocket");
-      gAlive = false;
+      ::gAlive = false;
       relay::relay_term();
       closeSockets();
       joinThreads();
@@ -419,7 +365,7 @@ int main()
     // setup the ping processor to use the external address
     // relays use it to know where the receiving port of other relays are
     pingThread = std::make_unique<std::thread>([&waitVar, &socketAndThreadReady, pingSocket, &relayManager, &relayAddr] {
-      core::PingProcessor pingProcessor(*pingSocket, relayManager, gAlive, relayAddr);
+      core::PingProcessor pingProcessor(*pingSocket, relayManager, ::gAlive, relayAddr);
       pingProcessor.process(waitVar, socketAndThreadReady);
     });
 
@@ -451,7 +397,7 @@ int main()
 
   if (!relay_initialized) {
     Log("error: could not initialize relay\n\n");
-    gAlive = false;
+    ::gAlive = false;
     joinThreads();
     closeSockets();
     relay::relay_term();
@@ -467,7 +413,7 @@ int main()
   signal(SIGTERM, interrupt_handler);
   signal(SIGHUP, interrupt_handler);
 
-  updateLoop(backend, *logger, sessions, relayClock);
+  backend.updateCycle(*logger, sessions, relayClock);
 
   Log("Cleaning up\n");
 

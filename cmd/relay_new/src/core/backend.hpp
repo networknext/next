@@ -7,9 +7,12 @@
 #include "net/curl.hpp"
 #include "relay_manager.hpp"
 #include "router_info.hpp"
+#include "session_map.hpp"
 #include "util/json.hpp"
 #include "util/logger.hpp"
-#include "session_map.hpp"
+#include "util/throughput_logger.hpp"
+
+extern volatile bool gAlive;
 
 namespace core
 {
@@ -42,9 +45,13 @@ namespace core
 
     bool init();
 
+    void updateCycle(util::ThroughputLogger& logger, core::SessionMap& sessions, const util::Clock& relayClock);
+
     bool update(uint64_t bytesReceived, bool shutdown);
 
    private:
+    friend class _test_core_Backend_update_valid_;
+
     const std::string mHostname;
     const std::string mAddressStr;
     const crypto::Keychain& mKeychain;
@@ -53,8 +60,8 @@ namespace core
     const std::string mBase64RelayPublicKey;
     const core::SessionMap& mSessionMap;
 
-    util::JSON buildInitRequest();
-    util::JSON buildUpdateRequest(uint64_t bytesReceived, bool shutdown);
+    bool buildInitRequest(util::JSON& doc);
+    bool buildUpdateRequest(util::JSON& doc, uint64_t bytesReceived, bool shutdown);
   };
 
   template <typename T>
@@ -78,7 +85,10 @@ namespace core
   template <typename T>
   bool Backend<T>::init()
   {
-    auto doc = buildInitRequest();
+    util::JSON doc;
+    if (!buildInitRequest(doc)) {
+      return false;
+    }
     std::string request = doc.toString();
     std::vector<char> response;
 
@@ -113,7 +123,7 @@ namespace core
     if (doc.memberExists("Timestamp")) {
       if (doc.memberIs(util::JSON::Type::Number, "Timestamp")) {
         // for old relay compat the router sends this back in millis, so convert back to seconds
-        mRouterInfo.InitalizeTimeInSeconds = doc.get<uint64_t>("Timestamp") / 1000;
+        mRouterInfo.InitializeTimeInSeconds = doc.get<uint64_t>("Timestamp") / 1000;
       } else {
         Log("init timestamp not a number");
         return false;
@@ -127,9 +137,63 @@ namespace core
   }
 
   template <typename T>
+  void Backend<T>::updateCycle(util::ThroughputLogger& logger, core::SessionMap& sessions, const util::Clock& relayClock)
+  {
+    std::vector<uint8_t> update_response_memory;
+    update_response_memory.resize(RESPONSE_MAX_BYTES);
+    while (gAlive) {
+      auto bytesReceived = logger.print();
+      bool updated = false;
+
+      for (int i = 0; i < 10; i++) {
+        if (update(bytesReceived, false)) {
+          updated = true;
+          break;
+        }
+      }
+
+      if (!updated) {
+        std::cout << "error: could not update relay\n";
+        gAlive = false;
+        break;
+      }
+
+      sessions.purge(relayClock.unixTime<util::Second>());
+      std::this_thread::sleep_for(1s);
+    }
+
+    bool shouldQuit = true;
+    auto fut = std::async([&shouldQuit] {
+      for (uint seconds = 0; seconds < 60; seconds++) {
+        std::this_thread::sleep_for(1s);
+        if (!shouldQuit) {
+          return;
+        }
+      }
+
+      std::exit(1);
+    });
+
+    // keep living for another 30 seconds
+    // no more updates allows the backend to remove
+    // this relay from the route decisions
+
+    while (!update(0, true)) {
+      std::this_thread::sleep_for(1s);
+    }
+    shouldQuit = false;
+    std::this_thread::sleep_for(30s);
+
+    fut.wait();
+  }
+
+  template <typename T>
   bool Backend<T>::update(uint64_t bytesReceived, bool shutdown)
   {
-    auto doc = buildUpdateRequest(bytesReceived, shutdown);
+    util::JSON doc;
+    if (!buildUpdateRequest(doc, bytesReceived, shutdown)) {
+      return false;
+    }
     std::string request = doc.toString();
     std::vector<char> response;
 
@@ -229,7 +293,7 @@ namespace core
   }
 
   template <typename T>
-  util::JSON Backend<T>::buildInitRequest()
+  bool Backend<T>::buildInitRequest(util::JSON& doc)
   {
     std::string base64NonceStr;
     std::array<uint8_t, crypto_box_NONCEBYTES> nonce = {};
@@ -265,7 +329,7 @@ namespace core
       return false;
     }
 
-    auto len = encoding::base64::Encode(encryptedToken, b64EncryptedToken);
+    len = encoding::base64::Encode(encryptedToken, b64EncryptedToken);
     if (len < encryptedToken.size()) {
       Log("failed to encode base64 token for init");
       return false;
@@ -273,22 +337,20 @@ namespace core
 
     base64TokenStr = std::string(b64EncryptedToken.begin(), b64EncryptedToken.begin() + len);
 
-    util::JSON doc;
     doc.set(InitRequestMagic, "magic_request_protection");
     doc.set(InitRequestVersion, "version");
     doc.set(mAddressStr, "relay_address");
     doc.set(base64NonceStr, "nonce");
     doc.set(base64TokenStr, "encrypted_token");
 
-    return doc;
+    return true;
   }
 
   template <typename T>
-  util::JSON Backend<T>::buildUpdateRequest(uint64_t bytesReceived, bool shutdown)
+  bool Backend<T>::buildUpdateRequest(util::JSON& doc, uint64_t bytesReceived, bool shutdown)
   {
     // TODO once the other stats are finally added, pull out the json parts that are always the same, no sense rebuilding those
     // parts of the document
-    util::JSON doc;
     doc.set(shutdown, "shutting_down");
     doc.set(UpdateRequestVersion, "version");
     doc.set(mAddressStr, "relay_address");
@@ -323,7 +385,7 @@ namespace core
     // allocator concept
     doc.set(pingStats, "PingStats");
 
-    return doc;
+    return true;
   }
 }  // namespace core
 #endif

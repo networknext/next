@@ -44,7 +44,7 @@ Test(core_backend_init_valid)
 
   check(testing::StubbedCurlWrapper::Hostname == BackendHostname);
   check(testing::StubbedCurlWrapper::Endpoint == "/relay_init");
-  check(routerInfo.InitalizeTimeInSeconds == 123456789 / 1000);
+  check(routerInfo.InitializeTimeInSeconds == 123456789 / 1000);
 
   util::JSON doc;
 
@@ -59,7 +59,7 @@ Test(core_backend_init_valid)
   check(doc.get<std::string>("encrypted_token").length() == Base64EncryptedTokenLength);
 }
 
-Test(core_backend_update_valid)
+Test(core_Backend_update_valid)
 {
   core::RouterInfo routerInfo;
   util::Clock clock;
@@ -100,7 +100,7 @@ Test(core_backend_update_valid)
 
   const uint64_t bytesReceived = 10000000000;
 
-  check(backend.update(bytesReceived));
+  check(backend.update(bytesReceived, false));
 
   util::JSON doc;
 
@@ -124,9 +124,9 @@ Test(core_backend_update_valid)
   check(value.HasMember("PacketLoss"));
 
   auto& relayID = value["RelayId"];
-  auto& rtt = value["RTT"];
-  auto& jitter = value["Jitter"];
-  auto& packetLoss = value["PacketLoss"];
+  // auto& rtt = value["RTT"];
+  // auto& jitter = value["Jitter"];
+  // auto& packetLoss = value["PacketLoss"];
 
   check(relayID.Get<uint64_t>() == 987654321);
 
