@@ -335,22 +335,11 @@ func (r *RelayUpdateResponse) UnmarshalBinary(buff []byte) error {
 			return errors.New("failed to unmarshal relay update response relay address")
 		}
 
-		// Calculate the size of the ping token
-		var legacyPingToken routing.LegacyPingToken
-		legacyPingTokenData, _ := legacyPingToken.MarshalBinary()
-		maxPingTokenLength := len(base64.StdEncoding.EncodeToString(legacyPingTokenData))
-
-		var pingToken string
-		if !encoding.ReadString(buff, &index, &pingToken, uint32(maxPingTokenLength)) {
-			return errors.New("failed to unmarshal relay update response ping token")
-		}
-
 		r.RelaysToPing = append(r.RelaysToPing, routing.LegacyPingData{
 			RelayPingData: routing.RelayPingData{
 				ID:      id,
 				Address: addr,
 			},
-			PingToken: pingToken,
 		})
 	}
 
@@ -370,27 +359,16 @@ func (r RelayUpdateResponse) MarshalBinary() ([]byte, error) {
 	index := 0
 	responseData := make([]byte, r.size())
 
-	// Calculate the size of the ping token
-	var legacyPingToken routing.LegacyPingToken
-	legacyPingTokenData, _ := legacyPingToken.MarshalBinary()
-	maxPingTokenLength := len(base64.StdEncoding.EncodeToString(legacyPingTokenData))
-
 	encoding.WriteUint32(responseData, &index, VersionNumberUpdateResponse)
 	encoding.WriteUint32(responseData, &index, uint32(len(r.RelaysToPing)))
 	for i := range r.RelaysToPing {
 		encoding.WriteUint64(responseData, &index, r.RelaysToPing[i].RelayPingData.ID)
 		encoding.WriteString(responseData, &index, r.RelaysToPing[i].RelayPingData.Address, MaxRelayAddressLength)
-		encoding.WriteString(responseData, &index, r.RelaysToPing[i].PingToken, uint32(maxPingTokenLength))
 	}
 
 	return responseData, nil
 }
 
 func (r *RelayUpdateResponse) size() int {
-	// Calculate the size of the ping token
-	var legacyPingToken routing.LegacyPingToken
-	legacyPingTokenData, _ := legacyPingToken.MarshalBinary()
-	maxPingTokenLength := len(base64.StdEncoding.EncodeToString(legacyPingTokenData))
-
-	return 4 + 4 + (8+MaxRelayAddressLength+maxPingTokenLength)*len(r.RelaysToPing)
+	return 4 + 4 + (4+MaxRelayAddressLength)*len(r.RelaysToPing)
 }

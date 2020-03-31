@@ -646,7 +646,7 @@ func TestRelayUpdateResponseUnmarshalBinary(t *testing.T) {
 		assert.EqualError(t, packet.UnmarshalBinary(buff), "failed to unmarshal relay update response relay address")
 	})
 
-	t.Run("missing response ping token", func(t *testing.T) {
+	t.Run("valid", func(t *testing.T) {
 		var packet transport.RelayUpdateResponse
 		addr := "127.0.0.1:40000"
 		index := 0
@@ -655,21 +655,6 @@ func TestRelayUpdateResponseUnmarshalBinary(t *testing.T) {
 		encoding.WriteUint32(buff, &index, 1)                                     //numRelaysToPing
 		encoding.WriteUint64(buff, &index, rand.Uint64())                         //id
 		encoding.WriteString(buff, &index, addr, transport.MaxRelayAddressLength) //address
-		assert.EqualError(t, packet.UnmarshalBinary(buff), "failed to unmarshal relay update response ping token")
-	})
-
-	t.Run("valid", func(t *testing.T) {
-		var packet transport.RelayUpdateResponse
-		addr := "127.0.0.1:40000"
-		var legacyPingToken routing.LegacyPingToken
-		legacyPingTokenData, _ := legacyPingToken.MarshalBinary()
-		index := 0
-		buff := make([]byte, 4+4+8+(4+len(addr))+(4+len(legacyPingTokenData)))
-		encoding.WriteUint32(buff, &index, rand.Uint32())                                                 //version
-		encoding.WriteUint32(buff, &index, 1)                                                             //numRelaysToPing
-		encoding.WriteUint64(buff, &index, rand.Uint64())                                                 //id
-		encoding.WriteString(buff, &index, addr, transport.MaxRelayAddressLength)                         //address
-		encoding.WriteString(buff, &index, string(legacyPingTokenData), uint32(len(legacyPingTokenData))) //token
 		assert.NoError(t, packet.UnmarshalBinary(buff))
 	})
 }
