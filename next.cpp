@@ -6603,6 +6603,12 @@ void next_client_open_session( next_client_t * client, const char * server_addre
     client->open_session_sequence++;
 }
 
+bool next_client_is_session_open(next_client_t * client)
+{
+	next_assert( client );
+	return client->session_open;
+}
+
 void next_client_close_session( next_client_t * client )
 {
     next_assert( client );
