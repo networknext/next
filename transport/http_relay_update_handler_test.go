@@ -28,6 +28,7 @@ func seedRedis(t *testing.T, redisServer *miniredis.Miniredis, addressesToAdd []
 	addEntry := func(addr string) {
 		relay := routing.Relay{
 			PublicKey: make([]byte, crypto.KeySize),
+			State:     routing.RelayStateOnline,
 		}
 		udpAddr, _ := net.ResolveUDPAddr("udp", addr)
 		relay.Addr = *udpAddr
@@ -39,7 +40,6 @@ func seedRedis(t *testing.T, redisServer *miniredis.Miniredis, addressesToAdd []
 	for _, addr := range addressesToAdd {
 		addEntry(addr)
 	}
-
 }
 
 func updateJSONAssertions(t *testing.T, body []byte, expectedCode int, redisClient *redis.Client, statsdb *routing.StatsDatabase) *httptest.ResponseRecorder {
