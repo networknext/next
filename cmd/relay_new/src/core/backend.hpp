@@ -91,7 +91,7 @@ namespace core
     util::JSON doc;
     auto [ok, err] = buildInitRequest(doc);
     if (!ok) {
-      Log(err);
+      Log("error building init request: ", err);
       return false;
     }
     std::string request = doc.toString();
@@ -199,7 +199,7 @@ namespace core
     util::JSON doc;
     auto [ok, err] = buildUpdateRequest(doc, bytesReceived, shutdown);
     if (!ok) {
-      Log(err);
+      Log("error building update request: ", err);
       return false;
     }
     std::string request = doc.toString();
