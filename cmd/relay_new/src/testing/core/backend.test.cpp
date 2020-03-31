@@ -64,30 +64,6 @@ Test(core_backend_init_valid)
   check(doc.get<std::string>("encrypted_token").length() == Base64EncryptedTokenLength);
 }
 
-template <typename T>
-class Bar
-{
- private:
-  friend class _test_Bar_test_;
-  void bar() {}
-};
-
-class Spec
-{
- public:
-  virtual void foo() = 0;
-};
-
-class _test_Bar_test_: public Spec
-{
- public:
-  void foo() override
-  {
-    Bar<int> bar;
-    bar.bar();
-  }
-};
-
 // Update the backend for 10 seconds, then proceed to switch the handle to false.
 // The relay should then attempt to ack the backend and shutdown for 30 seconds.
 // It won't receive a success response from the backend so instead it will
