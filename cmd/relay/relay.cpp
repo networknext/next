@@ -17,6 +17,11 @@
 #include "curl/curl.h"
 #include <memory>
 #include <atomic>
+#include <future>
+#include <thread>
+#include <chrono>
+
+using namespace std::chrono_literals;
 
 #define RELAY_MTU                                               1300
 
@@ -4601,13 +4606,13 @@ int relay_init( CURL * curl, const char * hostname, uint8_t * relay_token, const
     return RELAY_OK;
 }
 
-int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_token, const char * relay_address, uint8_t * update_response_memory, relay_t * relay )
+int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_token, const char * relay_address, uint8_t * update_response_memory, relay_t * relay, bool shutdown )
 {
     // build update data
 
     uint32_t update_version = 0;
 
-    uint8_t update_data[10*1024 + 8]; // + 8 for the bytes received counter
+    uint8_t update_data[10*1024 + 8 + 1]; // + 8 for the bytes received counter, + 1 for the shutdown flag
 
     uint8_t * p = update_data;
     relay_write_uint32( &p, update_version );
@@ -4630,6 +4635,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
 
     relay_write_uint64(&p, gBytesReceived->load());
     gBytesReceived->store(0);
+    relay_write_uint8(&p, shutdown);
 
     int update_data_length = (int) ( p - update_data );
 
@@ -5357,7 +5363,7 @@ int main( int argc, const char ** argv )
 
         for ( int i = 0; i < 10; ++i )
         {
-            if ( relay_update( curl, backend_hostname, relay_token, relay_address_string, update_response_memory, &relay ) == RELAY_OK )
+            if ( relay_update( curl, backend_hostname, relay_token, relay_address_string, update_response_memory, &relay, false ) == RELAY_OK )
             {
                 updated = true;
                 break;
@@ -5373,6 +5379,31 @@ int main( int argc, const char ** argv )
 
         relay_platform_sleep( 1.0 );
     }
+
+    std::atomic<bool> shouldWait60 = true, shouldWait30 = true, waited60 = false;
+    auto fut = std::async([&shouldWait60, &waited60] {
+      for (uint seconds = 0; seconds < 60; seconds++) {
+        std::this_thread::sleep_for(1s);
+        if (!shouldWait60) {
+          return;
+        }
+      }
+
+      waited60 = true;
+    });
+
+    // keep living for another 30 seconds
+    // no more updates allows the backend to remove
+    // this relay from the route decisions
+    while (relay_update( curl, backend_hostname, relay_token, relay_address_string, update_response_memory, &relay, false ) != RELAY_OK && !waited60) {
+      std::this_thread::sleep_for(1s);
+    }
+    shouldWait60 = false;
+    if (!waited60) {
+      std::this_thread::sleep_for(30s);
+    }
+
+    fut.wait();
 
     printf( "Cleaning up\n" );
 
