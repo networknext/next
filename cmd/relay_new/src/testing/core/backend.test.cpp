@@ -15,6 +15,11 @@ namespace
   const auto Base64RelayPrivateKey = "lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=";
   const auto Base64RouterPublicKey = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=";
 
+  const auto BasicValidUpdateResponse = R"({
+     "version": 0,
+     "ping_data": []
+   })";
+
   core::Backend<testing::StubbedCurlWrapper> makeBackend(
    core::RouterInfo& info, core::RelayManager& manager, core::SessionMap& sessions)
   {
@@ -83,6 +88,10 @@ class _test_Bar_test_: public Spec
   }
 };
 
+// Update the backend for 10 seconds, then proceed to switch the handle to false.
+// The relay should then attempt to ack the backend and shutdown for 30 seconds.
+// It won't receive a success response from the backend so instead it will
+// live for 60 seconds and skip the ack
 Test(core_Backend_updateCycle_shutdown_60s)
 {
   util::Clock testClock;
@@ -93,16 +102,14 @@ Test(core_Backend_updateCycle_shutdown_60s)
   core::SessionMap sessions;
   auto backend = std::move(makeBackend(info, manager, sessions));
 
-  testing::StubbedCurlWrapper::Success = false;
-  testing::StubbedCurlWrapper::Response = R"({
-     "version": 0,
-     "ping_data": []
-   })";
+  testing::StubbedCurlWrapper::Success = true;
+  testing::StubbedCurlWrapper::Response = BasicValidUpdateResponse;
 
   testClock.reset();
   volatile bool handle = true;
   std::async([&] {
     std::this_thread::sleep_for(10s);
+    testing::StubbedCurlWrapper::Success = false;
     handle = false;
   });
 
@@ -112,6 +119,10 @@ Test(core_Backend_updateCycle_shutdown_60s)
   check(elapsed >= 70.0 && elapsed < 71.0);
 }
 
+// Update the backend for 10 seconds, then proceed to switch the handle to false.
+// The relay should then attempt to ack the backend and shutdown for 30 seconds.
+// It will receive a success response and then live for another 30 seconds.
+// The 60 second timeout will not apply here
 Test(core_Backend_updateCycle_ack_and_30s)
 {
   util::Clock testClock;
@@ -123,10 +134,7 @@ Test(core_Backend_updateCycle_ack_and_30s)
   auto backend = std::move(makeBackend(info, manager, sessions));
 
   testing::StubbedCurlWrapper::Success = true;
-  testing::StubbedCurlWrapper::Response = R"({
-     "version": 0,
-     "ping_data": []
-   })";
+  testing::StubbedCurlWrapper::Response = BasicValidUpdateResponse;
 
   testClock.reset();
   volatile bool handle = true;
@@ -139,6 +147,43 @@ Test(core_Backend_updateCycle_ack_and_30s)
   backend.updateCycle(handle, logger, sessions, backendClock);
   auto elapsed = testClock.elapsed<util::Second>();
   check(elapsed >= 40.0 && elapsed < 41.0);
+}
+
+// Update the backend for 10 seconds, then proceed to switch the handle to false.
+// The relay will not get a success response for 40 seconds after the handle is set
+// After which it will get a success and then proceed with the normal routine of waiting 30 seconds
+// The amount of time waited will be greater than 60 seconds
+// This is to assert the updateCycle will ignore the 60 second timeout if the backend gets an update
+Test(core_Backend_updateCycle_no_ack_for_20s_then_ack_then_wait)
+{
+  util::Clock testClock;
+
+  core::RouterInfo info;
+  util::Clock backendClock;
+  core::RelayManager manager(backendClock);
+  core::SessionMap sessions;
+  auto backend = std::move(makeBackend(info, manager, sessions));
+
+  testing::StubbedCurlWrapper::Success = true;
+  testing::StubbedCurlWrapper::Response = BasicValidUpdateResponse;
+
+  testClock.reset();
+  volatile bool handle = true;
+  std::async([&] {
+    std::this_thread::sleep_for(10s);
+    testing::StubbedCurlWrapper::Success = false;
+    handle = false;
+  });
+
+  std::async([&] {
+    std::this_thread::sleep_for(40s);
+    testing::StubbedCurlWrapper::Success = true;
+  });
+
+  util::ThroughputLogger logger(std::cout);
+  backend.updateCycle(handle, logger, sessions, backendClock);
+  auto elapsed = testClock.elapsed<util::Second>();
+  check(elapsed >= 80.0 && elapsed < 81.0);
 }
 
 Test(core_Backend_update_valid)
