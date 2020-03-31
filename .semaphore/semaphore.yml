@@ -16,21 +16,12 @@ blocks:
   - name: Unit
     task:
       jobs:
-        - name: SDK
-          commands:
-            - make test-unit-sdk
         - name: Relay
           commands:
             - make test-unit-relay
         - name: Backend
           commands:
             - make test-unit-backend
-  - name: Func
-    task:
-      jobs:
-        - name: Parallel Func Tests
-          commands:
-            - make test-func-parallel
 promotions:
   - name: Development Deployment
     pipeline_file: development-deploy.yml
