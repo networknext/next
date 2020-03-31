@@ -47,7 +47,7 @@ namespace core
      const core::SessionMap& sessions);
     ~Backend() = default;
 
-    bool init();
+    auto init() -> bool;
 
     void updateCycle(
      volatile bool& loopHandle, util::ThroughputLogger& logger, core::SessionMap& sessions, const util::Clock& relayClock);
@@ -62,9 +62,9 @@ namespace core
     const std::string mBase64RelayPublicKey;
     const core::SessionMap& mSessionMap;
 
-    bool update(uint64_t bytesReceived, bool shutdown);
-    bool buildInitRequest(util::JSON& doc);
-    bool buildUpdateRequest(util::JSON& doc, uint64_t bytesReceived, bool shutdown);
+    auto update(uint64_t bytesReceived, bool shutdown) -> bool;
+    auto buildInitRequest(util::JSON& doc) -> std::tuple<bool, const char*>;
+    auto buildUpdateRequest(util::JSON& doc, uint64_t bytesReceived, bool shutdown) -> std::tuple<bool, const char*>;
   };
 
   template <typename T>
@@ -86,10 +86,12 @@ namespace core
   {}
 
   template <typename T>
-  bool Backend<T>::init()
+  auto Backend<T>::init() -> bool
   {
     util::JSON doc;
-    if (!buildInitRequest(doc)) {
+    auto [ok, err] = buildInitRequest(doc);
+    if (!ok) {
+      Log(err);
       return false;
     }
     std::string request = doc.toString();
@@ -192,10 +194,12 @@ namespace core
   }
 
   template <typename T>
-  bool Backend<T>::update(uint64_t bytesReceived, bool shutdown)
+  auto Backend<T>::update(uint64_t bytesReceived, bool shutdown) -> bool
   {
     util::JSON doc;
-    if (!buildUpdateRequest(doc, bytesReceived, shutdown)) {
+    auto [ok, err] = buildUpdateRequest(doc, bytesReceived, shutdown);
+    if (!ok) {
+      Log(err);
       return false;
     }
     std::string request = doc.toString();
@@ -297,7 +301,7 @@ namespace core
   }
 
   template <typename T>
-  bool Backend<T>::buildInitRequest(util::JSON& doc)
+  auto Backend<T>::buildInitRequest(util::JSON& doc) -> std::tuple<bool, const char*>
   {
     std::string base64NonceStr;
     std::array<uint8_t, crypto_box_NONCEBYTES> nonce = {};
@@ -306,8 +310,7 @@ namespace core
 
     auto len = encoding::base64::Encode(nonce, b64Nonce);
     if (len < nonce.size()) {
-      Log("failed to encode base64 nonce for init");
-      return false;
+      return {false, "failed to encode base64 nonce for init"};
     }
 
     // greedy method but gets the job done, plus init is done once so who cares if it's a few nanos slower
@@ -329,14 +332,12 @@ namespace core
       nonce.data(),
       mKeychain.RouterPublicKey.data(),
       mKeychain.RelayPrivateKey.data()) != 0) {
-      Log("failed to encrypt init token");
-      return false;
+      return {false, "failed to encrypt init token"};
     }
 
     len = encoding::base64::Encode(encryptedToken, b64EncryptedToken);
     if (len < encryptedToken.size()) {
-      Log("failed to encode base64 token for init");
-      return false;
+      return {false, "failed to encode base64 token for init"};
     }
 
     base64TokenStr = std::string(b64EncryptedToken.begin(), b64EncryptedToken.begin() + len);
@@ -347,11 +348,11 @@ namespace core
     doc.set(base64NonceStr, "nonce");
     doc.set(base64TokenStr, "encrypted_token");
 
-    return true;
+    return {true, nullptr};
   }
 
   template <typename T>
-  bool Backend<T>::buildUpdateRequest(util::JSON& doc, uint64_t bytesReceived, bool shutdown)
+  auto Backend<T>::buildUpdateRequest(util::JSON& doc, uint64_t bytesReceived, bool shutdown) -> std::tuple<bool, const char*>
   {
     // TODO once the other stats are finally added, pull out the json parts that are always the same, no sense rebuilding those
     // parts of the document
@@ -380,8 +381,7 @@ namespace core
       pingStat.set(stats.PacketLoss[i], "PacketLoss");
 
       if (!pingStats.push(pingStat)) {
-        Log("ping stats not array! can't update!");
-        return false;
+        return {false, "ping stats not array! can't update!"};
       }
     }
 
@@ -389,7 +389,7 @@ namespace core
     // allocator concept
     doc.set(pingStats, "PingStats");
 
-    return true;
+    return {true, nullptr};
   }
 }  // namespace core
 #endif
