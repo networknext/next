@@ -184,7 +184,6 @@ func relays(env *EnvironmentData, filter string) {
 		// todo
 		fmt.Printf("(print all relay names)\n")
 	}
-	
 }
 
 func datacenters(env *EnvironmentData, filter string) {
@@ -195,7 +194,6 @@ func datacenters(env *EnvironmentData, filter string) {
 		// todo
 		fmt.Printf("(print all datacenter names)\n")
 	}
-	
 }
 
 func secureShell(user string, address string, port int) {
@@ -213,12 +211,6 @@ func secureShell(user string, address string, port int) {
 	if err != nil {
 		log.Fatalf("error: failed to exec ssh")
 	}
-}
-
-type SSHInfo struct {
-	Address string
-	User    string
-	Port    int
 }
 
 func sshToRelay(env *EnvironmentData, relayName string) {
