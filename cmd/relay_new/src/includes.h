@@ -25,6 +25,7 @@
 #include <fcntl.h>
 #include <fstream>
 #include <functional>
+#include <future>
 #include <ifaddrs.h>
 #include <iostream>
 #include <linux/netlink.h>

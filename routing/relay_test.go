@@ -35,6 +35,7 @@ func TestRelay(t *testing.T) {
 		Latitude:       123.456,
 		Longitude:      654.321,
 		LastUpdateTime: 999,
+		State:          routing.RelayStateOnline,
 	}
 
 	t.Run("MarshalBinary()", func(t *testing.T) {
@@ -152,10 +153,17 @@ func TestRelay(t *testing.T) {
 			assert.EqualError(t, actual.UnmarshalBinary(buff), "failed to unmarshal relay last update time")
 		})
 
-		t.Run("valid", func(t *testing.T) {
+		t.Run("missing state", func(t *testing.T) {
 			size += 8
 			buff = buff[:size]
-			encoding.WriteUint64(buff, &index, uint64(expected.LastUpdateTime))
+			encoding.WriteUint64(buff, &index, expected.LastUpdateTime)
+			assert.EqualError(t, actual.UnmarshalBinary(buff), "failed to unmarshal relay state")
+		})
+
+		t.Run("valid", func(t *testing.T) {
+			size += 4
+			buff = buff[:size]
+			encoding.WriteUint32(buff, &index, expected.State)
 			assert.NoError(t, actual.UnmarshalBinary(buff))
 		})
 	})

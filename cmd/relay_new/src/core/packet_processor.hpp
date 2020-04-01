@@ -20,7 +20,9 @@ namespace core
   class PacketProcessor
   {
    public:
-    PacketProcessor(os::Socket& socket,
+    PacketProcessor(
+     const std::atomic<bool>& shouldReceive,
+     os::Socket& socket,
      const util::Clock& relayClock,
      const crypto::Keychain& keychain,
      core::SessionMap& sessions,
@@ -33,6 +35,7 @@ namespace core
     void process(std::condition_variable& var, std::atomic<bool>& readyToReceive);
 
    private:
+    const std::atomic<bool>& mShouldReceive;
     const os::Socket& mSocket;
     const util::Clock& mRelayClock;
     const crypto::Keychain& mKeychain;
