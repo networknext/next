@@ -28,7 +28,6 @@
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 
 #pragma pack(push, 8)
-#include <stdlib.h>
 #include <windows.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>

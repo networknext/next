@@ -30,7 +30,6 @@
 #define _WINSOCKAPI_
 
 #pragma pack(push, 8)
-#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <winsock2.h>
 #pragma pack(pop)
