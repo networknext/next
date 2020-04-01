@@ -26,7 +26,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 #endif
 
-#include "next/next.h"
+#include "next.h"
 #include <stdio.h>
 #include <signal.h>
 #include <stdlib.h>
