@@ -24,6 +24,121 @@ const (
 	PacketSizeRelayInitResponse = 4 + 8 + crypto.KeySize
 )
 
+// RelayTrafficStats describes the measured relay traffic statistics reported from the relay
+type RelayTrafficStats struct {
+	SessionCount  uint64
+	BytesSent     uint64
+	BytesReceived uint64
+}
+
+// RelayRequest describes the packets coming into and going out of the relay endpoint
+type RelayRequest struct {
+	Address      net.UDPAddr
+	PingStats    []routing.RelayPingStats
+	TrafficStats RelayTrafficStats
+}
+
+func (r *RelayRequest) UnmarshalJSON(buf []byte) error {
+	data := make(map[string]interface{})
+
+	// Unmarshal the JSON into map
+	if err := json.Unmarshal(buf, &data); err != nil {
+		return err
+	}
+
+	// Get the address from the map
+	if addr, ok := data["address"].(string); ok {
+		if udpAddr, err := net.ResolveUDPAddr("udp", addr); err == nil {
+			r.Address = *udpAddr
+		} else {
+			return err
+		}
+	}
+
+	// Get the ping stats from the map
+	pingStats := make([]routing.RelayPingStats, 0)
+	if pingStatsArray, ok := data["ping_stats"].([]interface{}); ok {
+		for _, v := range pingStatsArray { // Loop through the array of ping stats
+			if mapStats, ok := v.(map[string]interface{}); ok { // If we find one, then parse each field
+				stats := routing.RelayPingStats{}
+
+				if id, ok := mapStats["id"].(uint64); ok {
+					stats.ID = id
+				}
+
+				if addr, ok := mapStats["address"].(string); ok {
+					if udpAddr, err := net.ResolveUDPAddr("udp", addr); err == nil {
+						stats.Address = *udpAddr
+					} else {
+						return err
+					}
+				}
+
+				if rtt, ok := mapStats["rtt"].(float32); ok {
+					stats.RTT = rtt
+				}
+
+				if jitter, ok := mapStats["jitter"].(float32); ok {
+					stats.Jitter = jitter
+				}
+
+				if packetLoss, ok := mapStats["packet_loss"].(float32); ok {
+					stats.PacketLoss = packetLoss
+				}
+
+				// Add the ping stat to the working list of ping stats
+				pingStats = append(pingStats, stats)
+			}
+		}
+
+		// Finally, save the working list of ping stats to the relay request
+		r.PingStats = pingStats
+	}
+
+	// Get the traffic stats from the map
+	if trafficStatsMap, ok := data["traffic_stats"].(map[string]interface{}); ok {
+		if sessionCount, ok := trafficStatsMap["session_count"].(uint64); ok {
+			r.TrafficStats.SessionCount = sessionCount
+		}
+
+		if bytesTx, ok := trafficStatsMap["bytes_tx"].(uint64); ok {
+			r.TrafficStats.BytesSent = bytesTx
+		}
+
+		if bytesRx, ok := trafficStatsMap["bytes_rx"].(uint64); ok {
+			r.TrafficStats.BytesReceived = bytesRx
+		}
+	}
+
+	return nil
+}
+
+func (r RelayRequest) MarshalJSON() ([]byte, error) {
+	data := make(map[string]interface{})
+
+	data["address"] = r.Address.String()
+
+	pingStats := make([]map[string]interface{}, 0)
+	for _, stat := range r.PingStats {
+		stats := make(map[string]interface{})
+		stats["id"] = stat.ID
+		stats["address"] = stat.Address.String()
+		stats["rtt"] = stat.RTT
+		stats["jitter"] = stat.Jitter
+		stats["packet_loss"] = stat.PacketLoss
+		pingStats = append(pingStats, stats)
+	}
+	data["ping_stats"] = pingStats
+
+	trafficStats := make(map[string]interface{})
+	trafficStats["session_count"] = r.TrafficStats.SessionCount
+	trafficStats["bytes_tx"] = r.TrafficStats.BytesSent
+	trafficStats["bytes_rx"] = r.TrafficStats.BytesReceived
+	data["traffic_stats"] = trafficStats
+
+	return json.Marshal(data)
+}
+
 // RelayInitRequest is the struct that describes the packets comming into the relay_init endpoint
 type RelayInitRequest struct {
 	Magic          uint32
