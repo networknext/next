@@ -36,6 +36,8 @@ namespace core
   template <typename T>
   class Backend
   {
+    friend testing::_test_core_Backend_update_valid_;
+
    public:
     Backend(
      const std::string hostname,
@@ -53,7 +55,6 @@ namespace core
      volatile bool& loopHandle, util::ThroughputLogger& logger, core::SessionMap& sessions, const util::Clock& relayClock);
 
    private:
-    friend testing::_test_core_Backend_update_valid_;
     const std::string mHostname;
     const std::string mAddressStr;
     const crypto::Keychain& mKeychain;

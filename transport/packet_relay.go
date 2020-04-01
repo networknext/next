@@ -74,6 +74,18 @@ func (r *RelayInitRequest) UnmarshalJSON(buf []byte) error {
 	return nil
 }
 
+func (r RelayInitRequest) MarshalJSON() ([]byte, error) {
+	data := make(map[string]interface{})
+
+	data["magic_request_protection"] = r.Magic
+	data["version"] = r.Version
+	data["nonce"] = r.Nonce
+	data["relay_address"] = r.Address.String()
+	data["encrypted_token"] = r.EncryptedToken
+
+	return json.Marshal(data)
+}
+
 // UnmarshalBinary decodes binary data into a RelayInitRequest struct
 func (r *RelayInitRequest) UnmarshalBinary(buf []byte) error {
 	index := 0
@@ -118,7 +130,9 @@ type RelayInitResponse struct {
 func (r RelayInitResponse) MarshalJSON() ([]byte, error) {
 	data := make(map[string]interface{})
 
+	data["Version"] = VersionNumberInitResponse
 	data["Timestamp"] = r.Timestamp
+	data["PublicKey"] = r.PublicKey
 
 	return json.Marshal(data)
 }
@@ -134,6 +148,31 @@ func (r RelayInitResponse) MarshalBinary() ([]byte, error) {
 	return responseData, nil
 }
 
+func (r *RelayInitResponse) UnmarshalBinary(buf []byte) error {
+	indx := 0
+
+	var version uint32
+	if !encoding.ReadUint32(buf, &indx, &version) {
+		return errors.New("failed to unmarshal relay init response version")
+	}
+
+	var timestamp uint64
+	if !encoding.ReadUint64(buf, &indx, &timestamp) {
+		return errors.New("failed to unmarshal relay init response timestamp")
+	}
+
+	var publicKey []byte
+	if !encoding.ReadBytes(buf, &indx, &publicKey, crypto.KeySize) {
+		return errors.New("failed to unmarshal relay init response public key")
+	}
+
+	r.Version = version
+	r.Timestamp = timestamp
+	r.PublicKey = publicKey
+
+	return nil
+}
+
 type RelayUpdateRequest struct {
 	Version uint32
 	Address net.UDPAddr
@@ -144,27 +183,6 @@ type RelayUpdateRequest struct {
 	BytesReceived uint64
 
 	ShuttingDown bool
-}
-
-func (r RelayUpdateRequest) MarshalJSON() ([]byte, error) {
-	data := make(map[string]interface{})
-
-	data["version"] = r.Version
-	data["relay_address"] = r.Address.String()
-
-	meta := make(map[string]interface{})
-	meta["PublicKey"] = base64.StdEncoding.EncodeToString(r.Token)
-	data["Metadata"] = meta
-
-	stats := make(map[string]interface{})
-	stats["BytesMeasurementRx"] = r.BytesReceived
-	data["TrafficStats"] = stats
-
-	data["PingStats"] = r.PingStats
-
-	data["shutting_down"] = r.ShuttingDown
-
-	return json.Marshal(data)
 }
 
 func (r *RelayUpdateRequest) UnmarshalJSON(buff []byte) error {
@@ -253,6 +271,27 @@ func (r *RelayUpdateRequest) UnmarshalBinary(buff []byte) error {
 	return nil
 }
 
+func (r RelayUpdateRequest) MarshalJSON() ([]byte, error) {
+	data := make(map[string]interface{})
+
+	data["version"] = VersionNumberUpdateRequest
+	data["relay_address"] = r.Address.String()
+
+	metadata := make(map[string]interface{})
+	metadata["PublicKey"] = r.Token
+	data["Metadata"] = metadata
+
+	data["PingStats"] = r.PingStats
+
+	trafficStats := make(map[string]interface{})
+	trafficStats["BytesMeasurementRx"] = r.BytesReceived
+	data["TrafficStats"] = trafficStats
+
+	data["shutting_down"] = r.ShuttingDown
+
+	return json.Marshal(data)
+}
+
 // MarshalBinary ...
 func (r RelayUpdateRequest) MarshalBinary() ([]byte, error) {
 	data := make([]byte, r.size())
@@ -282,16 +321,51 @@ func (r RelayUpdateRequest) MarshalBinary() ([]byte, error) {
 }
 
 func (r *RelayUpdateRequest) size() uint {
-	return uint(4 + 4 + len(r.Address.String()) + routing.EncryptedRelayTokenSize + 4 + 20*len(r.PingStats) + 8)
+	return uint(4 + 4 + len(r.Address.String()) + crypto.KeySize + 4 + 20*len(r.PingStats) + 8)
 }
 
 type RelayUpdateResponse struct {
 	RelaysToPing []routing.LegacyPingData `json:"ping_data"`
 }
 
+func (r *RelayUpdateResponse) UnmarshalBinary(buff []byte) error {
+	index := 0
+	var version uint32
+	if !encoding.ReadUint32(buff, &index, &version) {
+		return errors.New("failed to unmarshal relay update response version")
+	}
+
+	var numRelaysToPing uint32
+	if !encoding.ReadUint32(buff, &index, &numRelaysToPing) {
+		return errors.New("failed to unmarshal relay update response number of relays to ping")
+	}
+
+	for i := 0; uint32(i) < numRelaysToPing; i++ {
+		var id uint64
+		if !encoding.ReadUint64(buff, &index, &id) {
+			return errors.New("failed to unmarshal relay update response relay id")
+		}
+
+		var addr string
+		if !encoding.ReadString(buff, &index, &addr, MaxRelayAddressLength) {
+			return errors.New("failed to unmarshal relay update response relay address")
+		}
+
+		r.RelaysToPing = append(r.RelaysToPing, routing.LegacyPingData{
+			RelayPingData: routing.RelayPingData{
+				ID:      id,
+				Address: addr,
+			},
+		})
+	}
+
+	return nil
+}
+
 func (r RelayUpdateResponse) MarshalJSON() ([]byte, error) {
 	data := make(map[string]interface{})
 
+	data["version"] = VersionNumberUpdateResponse
 	data["ping_data"] = r.RelaysToPing
 
 	return json.Marshal(data)
@@ -304,13 +378,13 @@ func (r RelayUpdateResponse) MarshalBinary() ([]byte, error) {
 	encoding.WriteUint32(responseData, &index, VersionNumberUpdateResponse)
 	encoding.WriteUint32(responseData, &index, uint32(len(r.RelaysToPing)))
 	for i := range r.RelaysToPing {
-		encoding.WriteUint64(responseData, &index, r.RelaysToPing[i].ID)
-		encoding.WriteString(responseData, &index, r.RelaysToPing[i].Address, MaxRelayAddressLength)
+		encoding.WriteUint64(responseData, &index, r.RelaysToPing[i].RelayPingData.ID)
+		encoding.WriteString(responseData, &index, r.RelaysToPing[i].RelayPingData.Address, MaxRelayAddressLength)
 	}
 
 	return responseData, nil
 }
 
 func (r *RelayUpdateResponse) size() int {
-	return 8 + (8+MaxRelayAddressLength)*len(r.RelaysToPing)
+	return 4 + 4 + (4+MaxRelayAddressLength)*len(r.RelaysToPing)
 }
