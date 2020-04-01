@@ -7,9 +7,16 @@
 #include "net/curl.hpp"
 #include "relay_manager.hpp"
 #include "router_info.hpp"
+#include "session_map.hpp"
+#include "testing/test.hpp"
 #include "util/json.hpp"
 #include "util/logger.hpp"
-#include "session_map.hpp"
+#include "util/throughput_logger.hpp"
+
+namespace testing
+{
+  class _test_core_Backend_update_valid_;
+}
 
 namespace core
 {
@@ -29,6 +36,8 @@ namespace core
   template <typename T>
   class Backend
   {
+    friend testing::_test_core_Backend_update_valid_;
+
    public:
     Backend(
      const std::string hostname,
@@ -40,9 +49,10 @@ namespace core
      const core::SessionMap& sessions);
     ~Backend() = default;
 
-    bool init();
+    auto init() -> bool;
 
-    bool update(uint64_t bytesReceived);
+    void updateCycle(
+     volatile bool& loopHandle, util::ThroughputLogger& logger, core::SessionMap& sessions, const util::Clock& relayClock);
 
    private:
     const std::string mHostname;
@@ -52,6 +62,10 @@ namespace core
     RelayManager& mRelayManager;
     const std::string mBase64RelayPublicKey;
     const core::SessionMap& mSessionMap;
+
+    auto update(uint64_t bytesReceived, bool shutdown) -> bool;
+    auto buildInitRequest(util::JSON& doc) -> std::tuple<bool, const char*>;
+    auto buildUpdateRequest(util::JSON& doc, uint64_t bytesReceived, bool shutdown) -> std::tuple<bool, const char*>;
   };
 
   template <typename T>
@@ -73,65 +87,14 @@ namespace core
   {}
 
   template <typename T>
-  bool Backend<T>::init()
+  auto Backend<T>::init() -> bool
   {
-    std::string base64NonceStr;
-    std::string base64TokenStr;
-    {
-      // Nonce
-      std::array<uint8_t, crypto_box_NONCEBYTES> nonce = {};
-      {
-        crypto::CreateNonceBytes(nonce);
-        std::vector<char> b64Nonce(nonce.size() * 2);
-
-        auto len = encoding::base64::Encode(nonce, b64Nonce);
-        if (len < nonce.size()) {
-          Log("failed to encode base64 nonce for init");
-          return false;
-        }
-
-        // greedy method but gets the job done, plus init is done once so who cares if it's a few nanos slower
-        base64NonceStr = std::string(b64Nonce.begin(), b64Nonce.begin() + len);
-      }
-
-      // Token
-      {
-        // just has to be something the backend can decrypt
-        std::array<uint8_t, RELAY_TOKEN_BYTES> token = {};
-        crypto::RandomBytes(token, token.size());
-
-        std::array<uint8_t, RELAY_TOKEN_BYTES + crypto_box_MACBYTES> encryptedToken = {};
-        std::vector<char> b64EncryptedToken(encryptedToken.size() * 2);
-
-        if (
-         crypto_box_easy(
-          encryptedToken.data(),
-          token.data(),
-          token.size(),
-          nonce.data(),
-          mKeychain.RouterPublicKey.data(),
-          mKeychain.RelayPrivateKey.data()) != 0) {
-          Log("failed to encrypt init token");
-          return false;
-        }
-
-        auto len = encoding::base64::Encode(encryptedToken, b64EncryptedToken);
-        if (len < encryptedToken.size()) {
-          Log("failed to encode base64 token for init");
-          return false;
-        }
-
-        base64TokenStr = std::string(b64EncryptedToken.begin(), b64EncryptedToken.begin() + len);
-      }
-    }
-
     util::JSON doc;
-    doc.set(InitRequestMagic, "magic_request_protection");
-    doc.set(InitRequestVersion, "version");
-    doc.set(mAddressStr, "relay_address");
-    doc.set(base64NonceStr, "nonce");
-    doc.set(base64TokenStr, "encrypted_token");
-
+    auto [ok, err] = buildInitRequest(doc);
+    if (!ok) {
+      Log("error building init request: ", err);
+      return false;
+    }
     std::string request = doc.toString();
     std::vector<char> response;
 
@@ -166,7 +129,7 @@ namespace core
     if (doc.memberExists("Timestamp")) {
       if (doc.memberIs(util::JSON::Type::Number, "Timestamp")) {
         // for old relay compat the router sends this back in millis, so convert back to seconds
-        mRouterInfo.InitalizeTimeInSeconds = doc.get<uint64_t>("Timestamp") / 1000;
+        mRouterInfo.InitializeTimeInSeconds = doc.get<uint64_t>("Timestamp") / 1000;
       } else {
         Log("init timestamp not a number");
         return false;
@@ -180,56 +143,66 @@ namespace core
   }
 
   template <typename T>
-  bool Backend<T>::update(uint64_t bytesReceived)
+  void Backend<T>::updateCycle(
+   volatile bool& loopHandle, util::ThroughputLogger& logger, core::SessionMap& sessions, const util::Clock& relayClock)
   {
-    // TODO once the other stats are finally added, pull out the json parts that are always the same, no sense rebuilding those
-    // parts of the document
-    util::JSON doc;
-    {
-      doc.set(UpdateRequestVersion, "version");
-      doc.set(mAddressStr, "relay_address");
-      doc.set(mBase64RelayPublicKey, "Metadata", "PublicKey");
+    std::vector<uint8_t> update_response_memory;
+    update_response_memory.resize(RESPONSE_MAX_BYTES);
+    while (loopHandle) {
+      auto bytesReceived = logger.print();
+      bool updated = false;
 
-      // Traffic stats
-      {
-        util::JSON trafficStats;
-        trafficStats.set(bytesReceived, "BytesMeasurementRx");
-        trafficStats.set(mSessionMap.size(), "SessionCount");
-
-        doc.set(trafficStats, "TrafficStats");
-      }
-
-      // Ping stats
-      {
-        core::RelayStats stats;
-        mRelayManager.getStats(stats);
-        util::JSON pingStats;
-        pingStats.setArray();
-
-        // pushing behaves really weird when the pushed value goes out of scope, must be declared outside of for loop
-        util::JSON pingStat;
-
-        for (unsigned int i = 0; i < stats.NumRelays; ++i) {
-          pingStat.set(stats.IDs[i], "RelayId");
-
-          pingStat.set(stats.RTT[i], "RTT");
-
-          pingStat.set(stats.Jitter[i], "Jitter");
-
-          pingStat.set(stats.PacketLoss[i], "PacketLoss");
-
-          if (!pingStats.push(pingStat)) {
-            Log("ping stats not array! can't update!");
-            return false;
-          }
+      for (int i = 0; i < 10; i++) {
+        if (update(bytesReceived, false)) {
+          updated = true;
+          break;
         }
-
-        // performs a deep copy, so it's ok for things to go out of scope after this, regular move seems to be weird due to the
-        // allocator concept
-        doc.set(pingStats, "PingStats");
       }
+
+      if (!updated) {
+        Log("error: could not update relay");
+        break;
+      }
+
+      sessions.purge(relayClock.unixTime<util::Second>());
+      std::this_thread::sleep_for(1s);
     }
 
+    std::atomic<bool> shouldWait60 = true, shouldWait30 = true, waited60 = false;
+    auto fut = std::async([&shouldWait60, &waited60] {
+      for (uint seconds = 0; seconds < 60; seconds++) {
+        std::this_thread::sleep_for(1s);
+        if (!shouldWait60) {
+          return;
+        }
+      }
+
+      waited60 = true;
+    });
+
+    // keep living for another 30 seconds
+    // no more updates allows the backend to remove
+    // this relay from the route decisions
+    while (!update(0, true) && !waited60) {
+      std::this_thread::sleep_for(1s);
+    }
+    shouldWait60 = false;
+    if (!waited60) {
+      std::this_thread::sleep_for(30s);
+    }
+
+    fut.wait();
+  }
+
+  template <typename T>
+  auto Backend<T>::update(uint64_t bytesReceived, bool shutdown) -> bool
+  {
+    util::JSON doc;
+    auto [ok, err] = buildUpdateRequest(doc, bytesReceived, shutdown);
+    if (!ok) {
+      Log("error building update request: ", err);
+      return false;
+    }
     std::string request = doc.toString();
     std::vector<char> response;
 
@@ -326,6 +299,98 @@ namespace core
     }
 
     return true;
+  }
+
+  template <typename T>
+  auto Backend<T>::buildInitRequest(util::JSON& doc) -> std::tuple<bool, const char*>
+  {
+    std::string base64NonceStr;
+    std::array<uint8_t, crypto_box_NONCEBYTES> nonce = {};
+    crypto::CreateNonceBytes(nonce);
+    std::vector<char> b64Nonce(nonce.size() * 2);
+
+    auto len = encoding::base64::Encode(nonce, b64Nonce);
+    if (len < nonce.size()) {
+      return {false, "failed to encode base64 nonce for init"};
+    }
+
+    // greedy method but gets the job done, plus init is done once so who cares if it's a few nanos slower
+    base64NonceStr = std::string(b64Nonce.begin(), b64Nonce.begin() + len);
+
+    std::string base64TokenStr;
+    // just has to be something the backend can decrypt
+    std::array<uint8_t, RELAY_TOKEN_BYTES> token = {};
+    crypto::RandomBytes(token, token.size());
+
+    std::array<uint8_t, RELAY_TOKEN_BYTES + crypto_box_MACBYTES> encryptedToken = {};
+    std::vector<char> b64EncryptedToken(encryptedToken.size() * 2);
+
+    if (
+     crypto_box_easy(
+      encryptedToken.data(),
+      token.data(),
+      token.size(),
+      nonce.data(),
+      mKeychain.RouterPublicKey.data(),
+      mKeychain.RelayPrivateKey.data()) != 0) {
+      return {false, "failed to encrypt init token"};
+    }
+
+    len = encoding::base64::Encode(encryptedToken, b64EncryptedToken);
+    if (len < encryptedToken.size()) {
+      return {false, "failed to encode base64 token for init"};
+    }
+
+    base64TokenStr = std::string(b64EncryptedToken.begin(), b64EncryptedToken.begin() + len);
+
+    doc.set(InitRequestMagic, "magic_request_protection");
+    doc.set(InitRequestVersion, "version");
+    doc.set(mAddressStr, "relay_address");
+    doc.set(base64NonceStr, "nonce");
+    doc.set(base64TokenStr, "encrypted_token");
+
+    return {true, nullptr};
+  }
+
+  template <typename T>
+  auto Backend<T>::buildUpdateRequest(util::JSON& doc, uint64_t bytesReceived, bool shutdown) -> std::tuple<bool, const char*>
+  {
+    // TODO once the other stats are finally added, pull out the json parts that are always the same, no sense rebuilding those
+    // parts of the document
+    doc.set(shutdown, "shutting_down");
+    doc.set(UpdateRequestVersion, "version");
+    doc.set(mAddressStr, "relay_address");
+    doc.set(mBase64RelayPublicKey, "Metadata", "PublicKey");
+
+    util::JSON trafficStats;
+    trafficStats.set(bytesReceived, "BytesMeasurementRx");
+    trafficStats.set(mSessionMap.size(), "SessionCount");
+
+    doc.set(trafficStats, "TrafficStats");
+
+    core::RelayStats stats;
+    mRelayManager.getStats(stats);
+    util::JSON pingStats;
+    pingStats.setArray();
+
+    // pushing behaves really weird when the pushed value goes out of scope, must be declared outside of for loop
+    util::JSON pingStat;
+    for (unsigned int i = 0; i < stats.NumRelays; ++i) {
+      pingStat.set(stats.IDs[i], "RelayId");
+      pingStat.set(stats.RTT[i], "RTT");
+      pingStat.set(stats.Jitter[i], "Jitter");
+      pingStat.set(stats.PacketLoss[i], "PacketLoss");
+
+      if (!pingStats.push(pingStat)) {
+        return {false, "ping stats not array! can't update!"};
+      }
+    }
+
+    // performs a deep copy, so it's ok for things to go out of scope after this, regular move seems to be weird due to the
+    // allocator concept
+    doc.set(pingStats, "PingStats");
+
+    return {true, nullptr};
   }
 }  // namespace core
 #endif
