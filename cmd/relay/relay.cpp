@@ -5395,15 +5395,15 @@ int main( int argc, const char ** argv )
     // keep living for another 30 seconds
     // no more updates allows the backend to remove
     // this relay from the route decisions
-    while (relay_update( curl, backend_hostname, relay_token, relay_address_string, update_response_memory, &relay, false ) != RELAY_OK && !waited60) {
+
+    uint seconds = 0;
+    while ( seconds++ < 60 && relay_update( curl, backend_hostname, relay_token, relay_address_string, update_response_memory, &relay, false ) != RELAY_OK ) {
       std::this_thread::sleep_for(1s);
     }
-    shouldWait60 = false;
-    if (!waited60) {
+
+    if (seconds < 60) {
       std::this_thread::sleep_for(30s);
     }
-
-    fut.wait();
 
     printf( "Cleaning up\n" );
 
