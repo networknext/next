@@ -83,15 +83,15 @@ public class NetworkNextLibrary : ModuleRules
         // <XBOX
         else if (Target.Platform == UnrealTargetPlatform.XboxOne)
         {
-            PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "next", "lib", "XboxOne", "Debug", "next.lib"));
-            RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "next", "lib", "XboxOne", "Release", "Image", "Loose", "next.dll"), StagedFileType.NonUFS);
+            PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "next", "lib", "XboxOne", "Dynamic-Release", "next.lib"));
+            RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "next", "lib", "XboxOne", "Dynamic-Release", "next.dll"), StagedFileType.NonUFS);
         }
         // XBOX>
         // <PS4
         else if (Target.Platform == UnrealTargetPlatform.PS4)
         {
-            PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "next", "lib", "Playstation4", "Dynamic-Release", "next", "next_stub.a"));
-            RuntimeDependencies.Add(new RuntimeDependency(Path.Combine(ModuleDirectory, "next", "lib", "Playstation4", "Dynamic-Release", "next", "next.prx")));
+            PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "next", "lib", "Playstation4", "Dynamic-Release", "next_stub.a"));
+            RuntimeDependencies.Add(new RuntimeDependency(Path.Combine(ModuleDirectory, "next", "lib", "Playstation4", "Dynamic-Release", "next.prx")));
         }
         // PS4>
         // <SWITCH
