@@ -321,7 +321,7 @@ func (r RelayUpdateRequest) MarshalBinary() ([]byte, error) {
 }
 
 func (r *RelayUpdateRequest) size() uint {
-	return uint(4 + 4 + len(r.Address.String()) + crypto.KeySize + 4 + 20*len(r.PingStats) + 8)
+	return uint(4 + 4 + len(r.Address.String()) + crypto.KeySize + 4 + 20*len(r.PingStats) + 8 + 1)
 }
 
 type RelayUpdateResponse struct {
