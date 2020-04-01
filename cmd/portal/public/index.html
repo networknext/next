@@ -1,0 +1,50 @@
+<html>
+    <head>
+        <meta http-equiv='cache-control' content='no-cache'>
+        <meta http-equiv='expires' content='0'>
+        <meta http-equiv='pragma' content='no-cache'>
+
+        <title>Portal</title>
+        <style>
+            body { font-family: monospace; }
+            table { width: 100%; border-collapse: collapse; }
+            table, th, td { padding: 3px; border: 1px solid black; }
+            td { text-align: center; }
+        </style>
+    </head>
+    <body>
+        <h1>Portal</h1>
+
+        <h2>Relays</h2>
+        <table id="relays">
+            <tr>
+                <th>Address</th>
+                <th>Datacenter</th>
+                <th>Lat / Long</th>
+                <th>Seller</th>
+            </tr>
+            <tr v-for="relay in relays">
+                <td>{{ relay.Addr.IP }}:{{ relay.Addr.Port }}</td>
+                <td>{{ relay.Datacenter.Name }}</td>
+                <td>{{ relay.Latitude }} / {{ relay.Longitude }}</td>
+                <td>{{ relay.Seller.Name }}</td>
+            </tr>
+        </table>
+
+        <script src="https://unpkg.com/vue"></script>
+        <script src="./js/portal.js"></script>
+        <script>
+            JSONRPCClient
+                .call('OpsService.Relays', {})
+                .then((response) => {
+                    new Vue({
+                    el: '#relays',
+                    data: {
+                        relays: response.Relays
+                    }
+                    })
+                })
+                .catch((e) => console.log(e))
+        </script>
+    </body>
+</html>

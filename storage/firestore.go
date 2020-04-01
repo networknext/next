@@ -83,6 +83,18 @@ func (fs *Firestore) Relay(id uint64) (*routing.Relay, bool) {
 	return b, found
 }
 
+func (fs *Firestore) Relays() []routing.Relay {
+	fs.relayMutex.Lock()
+	defer fs.relayMutex.Unlock()
+
+	var relays []routing.Relay
+	for _, relay := range fs.relays {
+		relays = append(relays, *relay)
+	}
+
+	return relays
+}
+
 func (fs *Firestore) Buyer(id uint64) (*routing.Buyer, bool) {
 	fs.buyerMutex.Lock()
 	defer fs.buyerMutex.Unlock()
