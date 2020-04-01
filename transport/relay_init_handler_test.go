@@ -6,13 +6,13 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"math"
 	mrand "math/rand"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -337,7 +337,9 @@ func TestRelayInitAddressIsInvalid(t *testing.T) {
 	{
 		buff, err := packet.MarshalJSON()
 		assert.NoError(t, err)
-		offset := len(fmt.Sprintf("{\"encrypted_token\":\"%s\",\"magic_request_protection\":%d,\"nonce\":\"%s\",\"relay_address\":\"", base64.StdEncoding.EncodeToString(packet.EncryptedToken), packet.Magic, base64.StdEncoding.EncodeToString(packet.Nonce)))
+
+		offset := strings.Index(string(buff), "127.0.0.1:40000")
+		assert.GreaterOrEqual(t, offset, 0)
 		buff[offset] = 'x' // first number in ip address is now 'x'
 		relayInitAssertions(t, "application/json", relay, buff, http.StatusBadRequest, nil, nil, nil, nil, routerPrivateKey[:])
 	}
