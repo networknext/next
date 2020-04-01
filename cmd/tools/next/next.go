@@ -18,6 +18,20 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
+var usageText = `
+Network Next Operator Tool
+
+next [command] [options]
+
+env					Prints the current environment
+env clean				Cleans the environment and reset it
+env portal.dev.networknext.com		Sets the environment to use the dev system
+env portal.prod.networknext.com		Sets the environment to use the prod system
+
+relays					List all relays
+relays google				List all relays containing "google" in the datacenter
+`
+
 func isWindows() bool {
 	return runtime.GOOS == "windows"
 }
@@ -180,7 +194,7 @@ func sshToRelay(env Environment, relayName string) {
 }
 
 func usage() {
-	fmt.Printf("\nNetwork Next Operator Tool\n\n")
+	fmt.Println(usageText)
 }
 
 func main() {
