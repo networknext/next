@@ -130,7 +130,7 @@ Test(core_Backend_updateCycle_ack_and_30s)
 // After which it will get a success and then proceed with the normal routine of waiting 30 seconds
 // The amount of time waited will be greater than 60 seconds
 // This is to assert the updateCycle will ignore the 60 second timeout if the backend gets an update
-Test(core_Backend_updateCycle_no_ack_for_20s_then_ack_then_wait)
+Test(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
 {
   util::Clock testClock;
 
@@ -214,6 +214,7 @@ Test(core_Backend_update_valid)
   check(doc.get<std::string>("Metadata", "PublicKey") == Base64RelayPublicKey);
   check(doc.get<uint64_t>("TrafficStats", "BytesMeasurementRx") == bytesReceived);
   check(doc.get<size_t>("TrafficStats", "SessionCount") == sessions.size());
+  check(!doc.get<bool>("shutting_down"));
 
   auto pingStats = doc.get<util::JSON>("PingStats");
 
@@ -248,4 +249,8 @@ Test(core_Backend_update_valid)
   check(count == 2);
   check(pingData[0].Addr.toString() == "127.0.0.1:54321");
   check(pingData[1].Addr.toString() == "127.0.0.1:13524");
+}
+
+Test(core_Backend_update_shutting_down_true) {
+
 }
