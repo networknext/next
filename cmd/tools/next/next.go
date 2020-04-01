@@ -5,15 +5,17 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"io"
+	"log"
 	"os"
 	"os/exec"
 	"runtime"
-	"io"
 	"sync"
-	"bufio"
-	"log"
 	"syscall"
+
+	"github.com/ybbus/jsonrpc"
 )
 
 func isWindows() bool {
@@ -141,52 +143,7 @@ func bashQuiet(command string) (bool, string) {
 	return runCommandQuiet("bash", []string{"-c", command}, false)
 }
 
-func cleanEnvironment() {
-	bashQuiet("rm env.txt")
-	bashQuiet("rm env.json")
-}
-
-func selectEnvironment(hostname string) {
-	fmt.Printf("selected environment: %s\n", hostname)
-	// todo: select environment, eg. "prod.networknext.com". save the current environment string to "env.txt" file
-}
-
-func getEnvironment() string {
-	// todo: read environment name string from "env.txt". if no env.txt file exists, return "localhost"
-	return "localhost"
-}
-
-func authEnvironment(hostname string) {
-	// todo: auth with environment. error if we can't auth. localhost should not perform any auth. should "just work".
-	fmt.Printf("(auth with environment %s)\n", hostname)
-}
-
-func syncEnvironment(hostname string) {
-	// todo: pull all the data for the environment (eg. set of relays, datacenters whatever...) down into a local json file "env.json"
-	fmt.Printf("(sync with environment %s)\n", hostname)
-}
-
-type EnvironmentData struct {
-	// todo
-}
-
-func loadEnvironment() *EnvironmentData {
-	// todo: load environment data from "env.json" into a global var. error if we can't load it.
-	fmt.Printf("(load environment)\n")
-	return &EnvironmentData{}
-}
-
-func relays(env *EnvironmentData, filter string) {
-	if filter != "" {
-		// todo
-		fmt.Printf("(print relay names with substring matching filter: %s)\n", filter)
-	} else {
-		// todo
-		fmt.Printf("(print all relay names)\n")
-	}
-}
-
-func datacenters(env *EnvironmentData, filter string) {
+func datacenters(env Environment, filter string) {
 	if filter != "" {
 		// todo
 		fmt.Printf("(print datacenter names with substring matching filter: %s)\n", filter)
@@ -213,7 +170,7 @@ func secureShell(user string, address string, port int) {
 	}
 }
 
-func sshToRelay(env *EnvironmentData, relayName string) {
+func sshToRelay(env Environment, relayName string) {
 	fmt.Printf("(ssh to relay %s)\n", relayName)
 	// todo: look up relay by name, get ssh data from relay entry.
 	user := "root"
@@ -227,6 +184,13 @@ func usage() {
 }
 
 func main() {
+	var env Environment
+	// var err error
+
+	if !env.Exists() {
+		env.Write()
+	}
+	env.Read()
 
 	cmdArgs := os.Args
 
@@ -239,65 +203,44 @@ func main() {
 
 	args := cmdArgs[2:]
 
-	if action == "select" && len(args) == 1 {
-		hostname := args[0]
-		cleanEnvironment()
-		selectEnvironment(hostname)
-		authEnvironment(hostname)
-		syncEnvironment(hostname)
+	switch action {
+	case "env":
+		if len(args) == 1 {
+			switch args[0] {
+			case "clean":
+				env.Clean()
+
+			default:
+				env.Hostname = args[0]
+				env.Write()
+			}
+		}
+		fmt.Println(env.String())
 		return
+	case "auth":
+		// hostname := getEnvironment()
+		// authEnvironment(hostname)
 	}
 
-	hostname := getEnvironment()
+	rpcClient := jsonrpc.NewClient("http://" + env.Hostname + "/rpc")
 
-	if action == "env" {
-		fmt.Printf("environment is %s\n", hostname)
-		return
-	}
-
-	fmt.Printf("(hostname is \"%s\")\n", hostname)
-
-	authEnvironment(hostname)
-	if action == "auth" {
-		return
-	}
-
-	if action == "sync" {
-		syncEnvironment(hostname)
-		return
-	}
-
-	env := loadEnvironment()
-
-	if action == "relays" {
-
+	switch action {
+	case "relays":
 		filter := ""
 		if len(args) > 0 {
 			filter = args[0]
 		}
-		relays(env, filter)
-
-    } else if action == "datacenters" {
-
+		relays(rpcClient, filter)
+	case "datacenters":
 		filter := ""
 		if len(args) > 0 {
 			filter = args[0]
 		}
 		datacenters(env, filter)
-
-	} else if action == "ssh" && len(args) == 1 {
-
+	case "ssh":
 		relayName := args[0]
 		sshToRelay(env, relayName)
-
-	} else if action == "clean" {
-
-		cleanEnvironment()
-
-	} else {
-
+	default:
 		usage()
-
 	}
-	
 }
