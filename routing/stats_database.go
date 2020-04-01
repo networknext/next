@@ -3,7 +3,6 @@ package routing
 import (
 	"fmt"
 	"math"
-	"net"
 	"sort"
 	"sync"
 
@@ -77,14 +76,6 @@ type RelayStatsPing struct {
 	RTT        float32 `json:"RTT"`
 	Jitter     float32 `json:"Jitter"`
 	PacketLoss float32 `json:"PacketLoss"`
-}
-
-type RelayPingStats struct {
-	ID         uint64      `json:"id"`
-	Address    net.UDPAddr `json:"address"`
-	RTT        float32     `json:"rtt"`
-	Jitter     float32     `json:"jitter"`
-	PacketLoss float32     `json:"packet_loss"`
 }
 
 // RelayStatsUpdate is a struct for updating relay stats

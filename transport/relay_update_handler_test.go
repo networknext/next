@@ -24,24 +24,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func seedRedis(t *testing.T, redisServer *miniredis.Miniredis, addressesToAdd []string) {
-	addEntry := func(addr string) {
-		relay := routing.Relay{
-			PublicKey: make([]byte, crypto.KeySize),
-		}
-		udpAddr, _ := net.ResolveUDPAddr("udp", addr)
-		relay.Addr = *udpAddr
-		relay.ID = crypto.HashID(addr)
-		bin, _ := relay.MarshalBinary()
-		redisServer.HSet(routing.HashKeyAllRelays, relay.Key(), string(bin))
-	}
-
-	for _, addr := range addressesToAdd {
-		addEntry(addr)
-	}
-
-}
-
 func relayUpdateAssertions(t *testing.T, contentType string, body []byte, expectedCode int, redisClient *redis.Client, statsdb *routing.StatsDatabase) *httptest.ResponseRecorder {
 	if redisClient == nil {
 		redisServer, _ := miniredis.Run()

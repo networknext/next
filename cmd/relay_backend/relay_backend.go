@@ -281,6 +281,30 @@ func main() {
 		updateCount = &metrics.EmptyCounter{}
 	}
 
+	handlerDuration, err := metricsHandler.NewGauge(ctx, &metrics.Descriptor{
+		DisplayName: "Relay handler duration",
+		ServiceName: "relay_backend",
+		ID:          "relay.handler.duration",
+		Unit:        "milliseconds",
+		Description: "How long it takes to process a relay request",
+	})
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create metric histogram", "metric", "relay.handler.duration", "err", err)
+		initDuration = &metrics.EmptyGauge{}
+	}
+
+	handlerCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
+		DisplayName: "Total relay handler count",
+		ServiceName: "relay_backend",
+		ID:          "relay.handler.count",
+		Unit:        "requests",
+		Description: "The total number of received relay requests",
+	})
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "relay.handler.count", "err", err)
+		initCount = &metrics.EmptyCounter{}
+	}
+
 	statsdb := routing.NewStatsDatabase()
 	var costmatrix routing.CostMatrix
 	var routematrix routing.RouteMatrix
@@ -368,10 +392,23 @@ func main() {
 		Storer:                db,
 	}
 
+	commonHandlerParams := transport.RelayHandlerConfig{
+		RedisClient:           redisClientRelays,
+		GeoClient:             &geoClient,
+		IpLocator:             ipLocator,
+		Storer:                db,
+		StatsDb:               statsdb,
+		TrafficStatsPublisher: trafficStatsPublisher,
+		Duration:              handlerDuration,
+		Counter:               handlerCount,
+		RouterPrivateKey:      routerPrivateKey,
+	}
+
 	router := mux.NewRouter()
 	router.HandleFunc("/healthz", transport.HealthzHandlerFunc())
 	router.HandleFunc("/relay_init", transport.RelayInitHandlerFunc(logger, &commonInitParams)).Methods("POST")
 	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(logger, &commonUpdateParams)).Methods("POST")
+	router.HandleFunc("/relays", transport.RelayHandlerFunc(logger, &commonHandlerParams)).Methods("POST")
 	router.Handle("/cost_matrix", &costmatrix).Methods("GET")
 	router.Handle("/route_matrix", &routematrix).Methods("GET")
 	router.Handle("/debug/vars", expvar.Handler())

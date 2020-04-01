@@ -24,6 +24,15 @@ const (
 	PacketSizeRelayInitResponse = 4 + 8 + crypto.KeySize
 )
 
+// RelayPingStats describes the measured relay ping statistics to another relay
+type RelayPingStats struct {
+	ID         uint64  `json:"id"`
+	Address    string  `json:"address"`
+	RTT        float32 `json:"rtt"`
+	Jitter     float32 `json:"jitter"`
+	PacketLoss float32 `json:"packet_loss"`
+}
+
 // RelayTrafficStats describes the measured relay traffic statistics reported from the relay
 type RelayTrafficStats struct {
 	SessionCount  uint64
@@ -31,10 +40,10 @@ type RelayTrafficStats struct {
 	BytesReceived uint64
 }
 
-// RelayRequest describes the packets coming into and going out of the relay endpoint
+// RelayRequest describes the packets coming into and going out of the relays endpoint
 type RelayRequest struct {
 	Address      net.UDPAddr
-	PingStats    []routing.RelayPingStats
+	PingStats    []RelayPingStats
 	TrafficStats RelayTrafficStats
 }
 
@@ -56,34 +65,44 @@ func (r *RelayRequest) UnmarshalJSON(buf []byte) error {
 	}
 
 	// Get the ping stats from the map
-	pingStats := make([]routing.RelayPingStats, 0)
+	pingStats := make([]RelayPingStats, 0)
 	if pingStatsArray, ok := data["ping_stats"].([]interface{}); ok {
 		for _, v := range pingStatsArray { // Loop through the array of ping stats
 			if mapStats, ok := v.(map[string]interface{}); ok { // If we find one, then parse each field
-				stats := routing.RelayPingStats{}
+				stats := RelayPingStats{}
 
-				if id, ok := mapStats["id"].(uint64); ok {
+				if id, ok := mapStats["id"].(string); ok {
+					id, err := strconv.ParseUint(id, 10, 64)
+					if err != nil {
+						return err
+					}
+
 					stats.ID = id
 				}
 
 				if addr, ok := mapStats["address"].(string); ok {
+					stats.Address = addr
+				}
+
+				// Validate the address is correctly formatted
+				if addr, ok := mapStats["address"].(string); ok {
 					if udpAddr, err := net.ResolveUDPAddr("udp", addr); err == nil {
-						stats.Address = *udpAddr
+						stats.Address = udpAddr.String()
 					} else {
 						return err
 					}
 				}
 
-				if rtt, ok := mapStats["rtt"].(float32); ok {
-					stats.RTT = rtt
+				if rtt, ok := mapStats["rtt"].(float64); ok {
+					stats.RTT = float32(rtt)
 				}
 
-				if jitter, ok := mapStats["jitter"].(float32); ok {
-					stats.Jitter = jitter
+				if jitter, ok := mapStats["jitter"].(float64); ok {
+					stats.Jitter = float32(jitter)
 				}
 
-				if packetLoss, ok := mapStats["packet_loss"].(float32); ok {
-					stats.PacketLoss = packetLoss
+				if packetLoss, ok := mapStats["packet_loss"].(float64); ok {
+					stats.PacketLoss = float32(packetLoss)
 				}
 
 				// Add the ping stat to the working list of ping stats
@@ -97,16 +116,16 @@ func (r *RelayRequest) UnmarshalJSON(buf []byte) error {
 
 	// Get the traffic stats from the map
 	if trafficStatsMap, ok := data["traffic_stats"].(map[string]interface{}); ok {
-		if sessionCount, ok := trafficStatsMap["session_count"].(uint64); ok {
-			r.TrafficStats.SessionCount = sessionCount
+		if sessionCount, ok := trafficStatsMap["session_count"].(float64); ok {
+			r.TrafficStats.SessionCount = uint64(sessionCount)
 		}
 
-		if bytesTx, ok := trafficStatsMap["bytes_tx"].(uint64); ok {
-			r.TrafficStats.BytesSent = bytesTx
+		if bytesTx, ok := trafficStatsMap["bytes_tx"].(float64); ok {
+			r.TrafficStats.BytesSent = uint64(bytesTx)
 		}
 
-		if bytesRx, ok := trafficStatsMap["bytes_rx"].(uint64); ok {
-			r.TrafficStats.BytesReceived = bytesRx
+		if bytesRx, ok := trafficStatsMap["bytes_rx"].(float64); ok {
+			r.TrafficStats.BytesReceived = uint64(bytesRx)
 		}
 	}
 
@@ -121,8 +140,8 @@ func (r RelayRequest) MarshalJSON() ([]byte, error) {
 	pingStats := make([]map[string]interface{}, 0)
 	for _, stat := range r.PingStats {
 		stats := make(map[string]interface{})
-		stats["id"] = stat.ID
-		stats["address"] = stat.Address.String()
+		stats["id"] = strconv.FormatUint(stat.ID, 10)
+		stats["address"] = stat.Address
 		stats["rtt"] = stat.RTT
 		stats["jitter"] = stat.Jitter
 		stats["packet_loss"] = stat.PacketLoss

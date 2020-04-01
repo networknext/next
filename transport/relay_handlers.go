@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/base64"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -60,7 +59,7 @@ type RelayUpdateHandlerConfig struct {
 	Storer                storage.Storer
 }
 
-// RelayHandlerFunc returns the function for the relay endpoint
+// RelayHandlerFunc returns the function for the relays endpoint
 func RelayHandlerFunc(logger log.Logger, params *RelayHandlerConfig) func(writer http.ResponseWriter, request *http.Request) {
 	handlerLogger := log.With(logger, "handler", "relay")
 
@@ -276,7 +275,7 @@ func RelayHandlerFunc(logger log.Logger, params *RelayHandlerConfig) func(writer
 		level.Debug(handlerLogger).Log("msg", "relay updated")
 
 		// Create the list of relays to ping
-		relaysToPing := make([]routing.RelayPingStats, 0)
+		relaysToPing := make([]RelayPingStats, 0)
 		for k, v := range hgetallResult.Val() {
 			if k != relay.Key() {
 				var unmarshaledValue routing.Relay
@@ -284,9 +283,10 @@ func RelayHandlerFunc(logger log.Logger, params *RelayHandlerConfig) func(writer
 					level.Error(handlerLogger).Log("msg", "failed to get other relay", "err", err)
 					continue
 				}
-				relaysToPing = append(relaysToPing, routing.RelayPingStats{
+
+				relaysToPing = append(relaysToPing, RelayPingStats{
 					ID:      unmarshaledValue.ID,
-					Address: unmarshaledValue.Addr,
+					Address: unmarshaledValue.Addr.String(),
 				})
 			}
 		}
@@ -304,8 +304,7 @@ func RelayHandlerFunc(logger log.Logger, params *RelayHandlerConfig) func(writer
 			return
 		}
 
-		writer.Header().Set("Content-Type", "applcation/json")
-		writer.Header().Set("Content-Length", fmt.Sprintf("%d", len(responseData)))
+		writer.Header().Set("Content-Type", "application/json")
 		writer.Write(responseData)
 	}
 }
