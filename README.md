@@ -6,7 +6,7 @@
 
 This repository contains the UE4 plugin for Network Next. 
 
-It's designed to work with Unreal Engine version 4.16 and 4.22
+It's currently tested to work with Unreal Engine version 4.16. We welcome PRs to upgrade it to more recent versions of UE4.
 
 To install the plugin:
 
