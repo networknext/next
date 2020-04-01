@@ -83,7 +83,7 @@ Test(core_Backend_updateCycle_shutdown_60s)
 
   testClock.reset();
   volatile bool handle = true;
-  std::thread t([&] {
+  std::async(std::launch::async, [&] {
     std::this_thread::sleep_for(10s);
     testing::StubbedCurlWrapper::Success = false;
     handle = false;
@@ -92,7 +92,6 @@ Test(core_Backend_updateCycle_shutdown_60s)
   util::ThroughputLogger logger(std::cout);
   backend.updateCycle(handle, logger, sessions, backendClock);
   auto elapsed = testClock.elapsed<util::Second>();
-  t.join();
   check(elapsed >= 70.0 && elapsed < 71.0);
 }
 
@@ -115,7 +114,7 @@ Test(core_Backend_updateCycle_ack_and_30s)
 
   testClock.reset();
   volatile bool handle = true;
-  std::thread t([&] {
+  std::async(std::launch::async, [&] {
     std::this_thread::sleep_for(10s);
     handle = false;
   });
@@ -123,7 +122,6 @@ Test(core_Backend_updateCycle_ack_and_30s)
   util::ThroughputLogger logger(std::cout);
   backend.updateCycle(handle, logger, sessions, backendClock);
   auto elapsed = testClock.elapsed<util::Second>();
-  t.join();
   check(elapsed >= 40.0 && elapsed < 41.0);
 }
 
@@ -148,7 +146,7 @@ Test(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
   testing::StubbedCurlWrapper::Response = BasicValidUpdateResponse;
 
   testClock.reset();
-  std::thread t([&] {
+  std::async(std::launch::async, [&] {
     std::this_thread::sleep_for(10s);
     testing::StubbedCurlWrapper::Success = false;
     handle = false;
@@ -159,7 +157,6 @@ Test(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
 
   backend.updateCycle(handle, logger, sessions, backendClock);
   auto elapsed = testClock.elapsed<util::Second>();
-  t.join();
   check(elapsed >= 80.0 && elapsed < 81.0);
 }
 
@@ -183,7 +180,7 @@ Test(core_Backend_updateCycle_update_fails_should_not_exit)
   testing::StubbedCurlWrapper::Response = BasicValidUpdateResponse;
 
   testClock.reset();
-  std::thread t([&] {
+  std::async(std::launch::async, [&] {
     std::this_thread::sleep_for(10s);
     testing::StubbedCurlWrapper::Success = false;  // set to false here to trigger failed updates
     std::this_thread::sleep_for(10s);
@@ -193,7 +190,6 @@ Test(core_Backend_updateCycle_update_fails_should_not_exit)
 
   backend.updateCycle(handle, logger, sessions, backendClock);
   auto elapsed = testClock.elapsed<util::Second>();
-  t.join();
   // time will be 10 seconds of good updates, 10 seconds of bad updates, and then 30 seconds for a clean shutdown
   check(elapsed >= 50 && elapsed < 51.0);
 }
