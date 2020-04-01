@@ -42,11 +42,13 @@ type seller struct {
 }
 
 type relay struct {
-	Address    string                 `firestore:"publicAddress"`
-	PublicKey  []byte                 `firestore:"publicKey"`
-	UpdateKey  []byte                 `firestore:"updateKey"`
-	Datacenter *firestore.DocumentRef `firestore:"datacenter"`
-	Seller     *firestore.DocumentRef `firestore:"seller"`
+	Address            string                 `firestore:"publicAddress"`
+	PublicKey          []byte                 `firestore:"publicKey"`
+	UpdateKey          []byte                 `firestore:"updateKey"`
+	NICSpeedMbps       float32                `firestore:"nicSpeedMbps"`
+	IncludedBandwithGB float32                `firestore:"includedBandwidthGB"`
+	Datacenter         *firestore.DocumentRef `firestore:"datacenter"`
+	Seller             *firestore.DocumentRef `firestore:"seller"`
 }
 
 type datacenter struct {
@@ -177,7 +179,9 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 				IP:   net.ParseIP(host),
 				Port: int(iport),
 			},
-			PublicKey: publicKey,
+			PublicKey:           publicKey,
+			NICSpeedMbps:        int(r.NICSpeedMbps),
+			IncludedBandwidthGB: int(r.IncludedBandwithGB),
 		}
 
 		// Get datacenter

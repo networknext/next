@@ -1,6 +1,7 @@
 package routing
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"math"
@@ -45,7 +46,14 @@ type Relay struct {
 	Latitude  float64
 	Longitude float64
 
+	NICSpeedMbps        int
+	IncludedBandwidthGB int
+
 	LastUpdateTime uint64
+}
+
+func (r *Relay) EncodedPublicKey() string {
+	return base64.StdEncoding.EncodeToString(r.PublicKey)
 }
 
 func (r *Relay) Size() uint64 {
