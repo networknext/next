@@ -68,7 +68,6 @@ Global
 		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}.Dynamic-Release|x86.ActiveCfg = Dynamic-Release|Win32
 		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}.Dynamic-Release|x86.Build.0 = Dynamic-Release|Win32
 		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}.Static-Debug|durango.ActiveCfg = Static-Debug|durango
-		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}.Static-Debug|durango.Build.0 = Static-Debug|durango
 		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}.Static-Debug|NX32.ActiveCfg = Static-Debug|NX32
 		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}.Static-Debug|NX32.Build.0 = Static-Debug|NX32
 		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}.Static-Debug|NX64.ActiveCfg = Static-Debug|NX64
@@ -80,7 +79,6 @@ Global
 		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}.Static-Debug|x86.ActiveCfg = Static-Debug|Win32
 		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}.Static-Debug|x86.Build.0 = Static-Debug|Win32
 		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}.Static-Release|durango.ActiveCfg = Static-Release|durango
-		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}.Static-Release|durango.Build.0 = Static-Release|durango
 		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}.Static-Release|NX32.ActiveCfg = Static-Release|NX32
 		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}.Static-Release|NX32.Build.0 = Static-Release|NX32
 		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}.Static-Release|NX64.ActiveCfg = Static-Release|NX64
@@ -116,7 +114,6 @@ Global
 		{7EFBF022-3F30-4987-B559-CD3157277029}.Dynamic-Release|x86.ActiveCfg = Dynamic-Release|Win32
 		{7EFBF022-3F30-4987-B559-CD3157277029}.Dynamic-Release|x86.Build.0 = Dynamic-Release|Win32
 		{7EFBF022-3F30-4987-B559-CD3157277029}.Static-Debug|durango.ActiveCfg = Static-Debug|durango
-		{7EFBF022-3F30-4987-B559-CD3157277029}.Static-Debug|durango.Build.0 = Static-Debug|durango
 		{7EFBF022-3F30-4987-B559-CD3157277029}.Static-Debug|NX32.ActiveCfg = Static-Debug|NX32
 		{7EFBF022-3F30-4987-B559-CD3157277029}.Static-Debug|NX32.Build.0 = Static-Debug|NX32
 		{7EFBF022-3F30-4987-B559-CD3157277029}.Static-Debug|NX64.ActiveCfg = Static-Debug|NX64
@@ -128,7 +125,6 @@ Global
 		{7EFBF022-3F30-4987-B559-CD3157277029}.Static-Debug|x86.ActiveCfg = Static-Debug|Win32
 		{7EFBF022-3F30-4987-B559-CD3157277029}.Static-Debug|x86.Build.0 = Static-Debug|Win32
 		{7EFBF022-3F30-4987-B559-CD3157277029}.Static-Release|durango.ActiveCfg = Static-Release|durango
-		{7EFBF022-3F30-4987-B559-CD3157277029}.Static-Release|durango.Build.0 = Static-Release|durango
 		{7EFBF022-3F30-4987-B559-CD3157277029}.Static-Release|NX32.ActiveCfg = Static-Release|NX32
 		{7EFBF022-3F30-4987-B559-CD3157277029}.Static-Release|NX32.Build.0 = Static-Release|NX32
 		{7EFBF022-3F30-4987-B559-CD3157277029}.Static-Release|NX64.ActiveCfg = Static-Release|NX64
