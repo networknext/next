@@ -19,4 +19,4 @@ To install the plugin:
 +NetDriverDefinitions=(DefName="GameNetDriver",DriverClassName="/Script/NetworkNext.NetworkNextNetDriver",DriverClassNameFallback="OnlineSubsystemUtils.IpNetDriver")
 ```
 
-3. Welcome to __awesometown__. Please email glenn@networknext.com for next steps!
+3. Welcome to __awesometown__.
