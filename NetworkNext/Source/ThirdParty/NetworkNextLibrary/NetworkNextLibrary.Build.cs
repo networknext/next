@@ -75,30 +75,19 @@ public class NetworkNextLibrary : ModuleRules
             {
             }
         }
-        //else if (Target.Platform == UnrealTargetPlatform.Linux)
-        //{
-        //    PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "next", "lib", "Linux-x86_64", "Release", "libnext-Shared64-Release.so"));
-        //    RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "next", "lib", "Linux-x86_64", "Release", "libnext-Shared64-Release.so"), StagedFileType.NonUFS);
-        //}
-        // <XBOX
         else if (Target.Platform == UnrealTargetPlatform.XboxOne)
         {
             PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "next", "lib", "XboxOne", "Dynamic-Release", "next.lib"));
             RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "next", "lib", "XboxOne", "Dynamic-Release", "next.dll"), StagedFileType.NonUFS);
         }
-        // XBOX>
-        // <PS4
         else if (Target.Platform == UnrealTargetPlatform.PS4)
         {
             PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "next", "lib", "Playstation4", "Dynamic-Release", "next_stub.a"));
             RuntimeDependencies.Add(new RuntimeDependency(Path.Combine(ModuleDirectory, "next", "lib", "Playstation4", "Dynamic-Release", "next.prx")));
         }
-        // PS4>
-        // <SWITCH
         else if (Target.Platform == UnrealTargetPlatform.Switch)
         {
             PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "next", "lib", "NintendoSwitch-NX64", "Dynamic-Release", "next"));
         }
-        // SWITCH>
     }
 }

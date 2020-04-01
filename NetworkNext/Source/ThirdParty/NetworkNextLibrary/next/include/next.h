@@ -23,7 +23,9 @@
 #ifndef NEXT_H
 #define NEXT_H
 
+#ifndef __STDC_FORMAT_MACROS
 #define __STDC_FORMAT_MACROS
+#endif
 
 #include <stdint.h>
 #include <stddef.h>
@@ -239,6 +241,8 @@ NEXT_EXPORT_FUNC next_client_t * next_client_create( void * context, void (*pack
 NEXT_EXPORT_FUNC void next_client_open_session( next_client_t * client, const char * server_address );
 
 NEXT_EXPORT_FUNC void next_client_close_session( next_client_t * client );
+
+NEXT_EXPORT_FUNC bool next_client_is_session_open( next_client_t * client );
 
 NEXT_EXPORT_FUNC void next_client_update( next_client_t * client );
 
