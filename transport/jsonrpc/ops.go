@@ -1,13 +1,11 @@
 package jsonrpc
 
 import (
-	"errors"
 	"net/http"
 	"sort"
 	"strings"
 
 	"github.com/go-redis/redis/v7"
-	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/storage"
 )
 
@@ -17,7 +15,6 @@ type OpsService struct {
 }
 
 type RelaysArgs struct {
-	Addr string `json:"addr"`
 	Name string `json:"name"`
 }
 
@@ -36,27 +33,6 @@ type relay struct {
 }
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {
-	if args.Addr != "" {
-		r, ok := s.Storage.Relay(crypto.HashID(args.Addr))
-		if !ok {
-			return errors.New("not found")
-		}
-
-		reply.Relays = []relay{
-			{
-				ID:                  r.ID,
-				Name:                r.Name,
-				Addr:                r.Addr.String(),
-				Latitude:            r.Latitude,
-				Longitude:           r.Longitude,
-				NICSpeedMbps:        r.NICSpeedMbps,
-				IncludedBandwidthGB: r.IncludedBandwidthGB,
-			},
-		}
-
-		return nil
-	}
-
 	for _, r := range s.Storage.Relays() {
 		reply.Relays = append(reply.Relays, relay{
 			ID:                  r.ID,
