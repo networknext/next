@@ -221,34 +221,16 @@ func main() {
 		level.Error(logger).Log("msg", "failed to create relay update metrics", "err", err)
 	}
 
+	// Create relay handler metrics
+	relayHandlerMetrics, err := metrics.NewRelayHandlerMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create relay handler metrics", "err", err)
+	}
+
 	// Create relay stat metrics
 	relayStatMetrics, err := metrics.NewRelayStatMetrics(ctx, metricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create relay stat metrics", "err", err)
-	}
-
-	handlerDuration, err := metricsHandler.NewGauge(ctx, &metrics.Descriptor{
-		DisplayName: "Relay handler duration",
-		ServiceName: "relay_backend",
-		ID:          "relay.handler.duration",
-		Unit:        "milliseconds",
-		Description: "How long it takes to process a relay request",
-	})
-	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create metric histogram", "metric", "relay.handler.duration", "err", err)
-		initDuration = &metrics.EmptyGauge{}
-	}
-
-	handlerCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
-		DisplayName: "Total relay handler count",
-		ServiceName: "relay_backend",
-		ID:          "relay.handler.count",
-		Unit:        "requests",
-		Description: "The total number of received relay requests",
-	})
-	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "relay.handler.count", "err", err)
-		initCount = &metrics.EmptyCounter{}
 	}
 
 	statsdb := routing.NewStatsDatabase()
@@ -343,8 +325,7 @@ func main() {
 		Storer:                db,
 		StatsDb:               statsdb,
 		TrafficStatsPublisher: trafficStatsPublisher,
-		Duration:              handlerDuration,
-		Counter:               handlerCount,
+		Metrics:               relayHandlerMetrics,
 		RouterPrivateKey:      routerPrivateKey,
 	}
 

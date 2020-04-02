@@ -35,8 +35,7 @@ type RelayHandlerConfig struct {
 	Storer                storage.Storer
 	StatsDb               *routing.StatsDatabase
 	TrafficStatsPublisher stats.Publisher
-	Duration              metrics.Gauge
-	Counter               metrics.Counter
+	Metrics               *metrics.RelayHandlerMetrics
 	RouterPrivateKey      []byte
 }
 
@@ -66,8 +65,8 @@ func RelayHandlerFunc(logger log.Logger, params *RelayHandlerConfig) func(writer
 		durationStart := time.Now()
 		defer func() {
 			durationSince := time.Since(durationStart)
-			params.Duration.Set(float64(durationSince.Milliseconds()))
-			params.Counter.Add(1)
+			params.Metrics.DurationGauge.Set(float64(durationSince.Milliseconds()))
+			params.Metrics.Invocations.Add(1)
 		}()
 
 		// Read in the request
