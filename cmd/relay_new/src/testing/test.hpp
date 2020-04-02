@@ -26,14 +26,18 @@
 #define TEST_MACRO_CHOOSER(...) GET_3RD_TEST_ARG(__VA_ARGS__, TEST_CLASS_CREATOR_2_ARG, TEST_CLASS_CREATOR_1_ARG)
 
 /*
-    Test macro. Takes two parameters, the second being optional when developing, required to be false when finishing
-
-    THe first is the name of the test to run. It must be unique across the codebase however it can be the same name as a
-   benchmark.
-
-    The second is whether to disable it. If any one test is disabled regardless of if the others pass, then the program will
-   exit with an error. So all written tests must pass.
-*/
+ * Test macro. Takes two parameters, the second being optional when developing, required to be false when finishing
+ * The first is the name of the test to run. It must be unique across the codebase however it can be the same name as a
+ * benchmark.
+ * The second is whether to disable it. If any one test is disabled regardless of if the others pass, then the program will
+ * exit with an error. So all written tests must pass.
+ *
+ * The above macros result in the creation of a class with the name being the name of the test prefixed by "_test_" and postfixed with a single '_'
+ * Because of that you can test private functions of regular classes in the code base.
+ *
+ * To do so first forward declare the complete name of the test (with the pre & postfix) within the testing namespace.
+ * Then simply use the friend keyword within the class you'd like to test the private functions of.
+ */
 
 #define Test(...) TEST_MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__)
 
