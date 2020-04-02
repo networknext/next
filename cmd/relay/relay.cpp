@@ -17,7 +17,6 @@
 #include "curl/curl.h"
 #include <memory>
 #include <atomic>
-#include <future>
 #include <thread>
 #include <chrono>
 
@@ -4755,13 +4754,13 @@ void interrupt_handler( int signal )
     (void) signal; quit = 1;
 }
 
-static volatile bool should_clean_shutdown = false;
+static volatile bool gShouldCleanShutdown = false;
 
 void clean_shutdown_handler( int signal )
 {
   (void) signal;
 
-  should_clean_shutdown = true;
+  gShouldCleanShutdown = true;
   quit = 1;
 }
 
@@ -5392,22 +5391,7 @@ int main( int argc, const char ** argv )
         relay_platform_sleep( 1.0 );
     }
 
-    std::atomic<bool> shouldWait60 = true, shouldWait30 = true, waited60 = false;
-    auto fut = std::async([&shouldWait60, &waited60] {
-      for (uint seconds = 0; seconds < 60; seconds++) {
-        std::this_thread::sleep_for(1s);
-        if (!shouldWait60) {
-          return;
-        }
-      }
-
-      waited60 = true;
-    });
-
-    // keep living for another 30 seconds
-    // no more updates allows the backend to remove
-    // this relay from the route decisions
-    if ( should_clean_shutdown )
+    if ( gShouldCleanShutdown )
     {
         uint seconds = 0;
         while ( seconds++ < 60 && relay_update( curl, backend_hostname, relay_token, relay_address_string, update_response_memory, &relay, false ) != RELAY_OK )

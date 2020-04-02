@@ -13,6 +13,7 @@
 #include "util/logger.hpp"
 #include "util/throughput_logger.hpp"
 
+// forward declare test names to allow private functions to be visible them
 namespace testing
 {
   class _test_core_Backend_update_valid_;
