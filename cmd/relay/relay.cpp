@@ -4755,6 +4755,16 @@ void interrupt_handler( int signal )
     (void) signal; quit = 1;
 }
 
+static volatile bool should_clean_shutdown = false;
+
+void clean_shutdown_handler( int signal )
+{
+  (void) signal;
+
+  should_clean_shutdown = true;
+  quit = 1;
+}
+
 uint64_t relay_timestamp( relay_t * relay )
 {
     assert( relay );
@@ -5354,6 +5364,8 @@ int main( int argc, const char ** argv )
     printf( "Relay initialized\n\n" );
 
     signal( SIGINT, interrupt_handler );
+    signal( SIGTERM, interrupt_handler );
+    signal( SIGHUP, clean_shutdown_handler );
 
     uint8_t * update_response_memory = (uint8_t*) malloc( RESPONSE_MAX_BYTES );
 
@@ -5395,14 +5407,18 @@ int main( int argc, const char ** argv )
     // keep living for another 30 seconds
     // no more updates allows the backend to remove
     // this relay from the route decisions
+    if ( should_clean_shutdown )
+    {
+        uint seconds = 0;
+        while ( seconds++ < 60 && relay_update( curl, backend_hostname, relay_token, relay_address_string, update_response_memory, &relay, false ) != RELAY_OK )
+        {
+          std::this_thread::sleep_for(1s);
+        }
 
-    uint seconds = 0;
-    while ( seconds++ < 60 && relay_update( curl, backend_hostname, relay_token, relay_address_string, update_response_memory, &relay, false ) != RELAY_OK ) {
-      std::this_thread::sleep_for(1s);
-    }
-
-    if (seconds < 60) {
-      std::this_thread::sleep_for(30s);
+        if (seconds < 60)
+        {
+          std::this_thread::sleep_for(30s);
+        }
     }
 
     printf( "Cleaning up\n" );

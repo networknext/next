@@ -52,7 +52,11 @@ namespace core
     auto init() -> bool;
 
     void updateCycle(
-     volatile bool& loopHandle, util::ThroughputLogger& logger, core::SessionMap& sessions, const util::Clock& relayClock);
+     const volatile bool& loopHandle,
+     const volatile bool& shouldCleanShutdown,
+     util::ThroughputLogger& logger,
+     core::SessionMap& sessions,
+     const util::Clock& relayClock);
 
    private:
     const std::string mHostname;
@@ -144,7 +148,11 @@ namespace core
 
   template <typename T>
   void Backend<T>::updateCycle(
-   volatile bool& loopHandle, util::ThroughputLogger& logger, core::SessionMap& sessions, const util::Clock& relayClock)
+   const volatile bool& loopHandle,
+   const volatile bool& shouldCleanShutdown,
+   util::ThroughputLogger& logger,
+   core::SessionMap& sessions,
+   const util::Clock& relayClock)
   {
     std::vector<uint8_t> update_response_memory;
     update_response_memory.resize(RESPONSE_MAX_BYTES);
@@ -168,30 +176,16 @@ namespace core
       std::this_thread::sleep_for(1s);
     }
 
-    std::atomic<bool> shouldWait60 = true, shouldWait30 = true, waited60 = false;
-    auto fut = std::async([&shouldWait60, &waited60] {
-      for (uint seconds = 0; seconds < 60; seconds++) {
+    if (shouldCleanShutdown) {
+      unsigned int seconds = 0;
+      while (seconds++ < 60 && !update(0, true)) {
         std::this_thread::sleep_for(1s);
-        if (!shouldWait60) {
-          return;
-        }
       }
 
-      waited60 = true;
-    });
-
-    // keep living for another 30 seconds
-    // no more updates allows the backend to remove
-    // this relay from the route decisions
-    while (!update(0, true) && !waited60) {
-      std::this_thread::sleep_for(1s);
+      if (seconds < 60) {
+        std::this_thread::sleep_for(30s);
+      }
     }
-    shouldWait60 = false;
-    if (!waited60) {
-      std::this_thread::sleep_for(30s);
-    }
-
-    fut.wait();
   }
 
   template <typename T>

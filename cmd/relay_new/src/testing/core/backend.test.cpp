@@ -83,14 +83,16 @@ Test(core_Backend_updateCycle_shutdown_60s)
 
   testClock.reset();
   volatile bool handle = true;
+  volatile bool shouldCleanShutdown = false;
   std::async([&] {
     std::this_thread::sleep_for(10s);
     testing::StubbedCurlWrapper::Success = false;
+    shouldCleanShutdown = true;  // just to mimic actual behavior
     handle = false;
   });
 
   util::ThroughputLogger logger(std::cout);
-  backend.updateCycle(handle, logger, sessions, backendClock);
+  backend.updateCycle(handle, shouldCleanShutdown, logger, sessions, backendClock);
   auto elapsed = testClock.elapsed<util::Second>();
   check(elapsed >= 70.0 && elapsed < 71.0);
 }
@@ -114,13 +116,15 @@ Test(core_Backend_updateCycle_ack_and_30s)
 
   testClock.reset();
   volatile bool handle = true;
+  volatile bool shouldCleanShutdown = false;
   std::async([&] {
     std::this_thread::sleep_for(10s);
+    shouldCleanShutdown = true;
     handle = false;
   });
 
   util::ThroughputLogger logger(std::cout);
-  backend.updateCycle(handle, logger, sessions, backendClock);
+  backend.updateCycle(handle, shouldCleanShutdown, logger, sessions, backendClock);
   auto elapsed = testClock.elapsed<util::Second>();
   check(elapsed >= 40.0 && elapsed < 41.0);
 }
@@ -145,10 +149,12 @@ Test(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
 
   testClock.reset();
   volatile bool handle = true;
+  volatile bool shouldCleanShutdown = false;
   std::async([&] {
     std::this_thread::sleep_for(10s);
     testing::StubbedCurlWrapper::Success = false;
     handle = false;
+    shouldCleanShutdown = true;
   });
 
   std::async([&] {
@@ -157,9 +163,38 @@ Test(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
   });
 
   util::ThroughputLogger logger(std::cout);
-  backend.updateCycle(handle, logger, sessions, backendClock);
+  backend.updateCycle(handle, shouldCleanShutdown, logger, sessions, backendClock);
   auto elapsed = testClock.elapsed<util::Second>();
   check(elapsed >= 80.0 && elapsed < 81.0);
+}
+
+// When clean shutdown is not set to true, the function should return immediately
+Test(core_Backend_updateCycle_no_clean_shutdown)
+{
+  util::Clock testClock;
+
+  core::RouterInfo info;
+  util::Clock backendClock;
+  core::RelayManager manager(backendClock);
+  core::SessionMap sessions;
+  auto backend = std::move(makeBackend(info, manager, sessions));
+
+  testing::StubbedCurlWrapper::Success = true;
+  testing::StubbedCurlWrapper::Response = BasicValidUpdateResponse;
+
+  testClock.reset();
+  volatile bool handle = true;
+  volatile bool shouldCleanShutdown = false;
+  std::async(std::launch::async, [&] {
+    std::this_thread::sleep_for(10s);
+    testing::StubbedCurlWrapper::Success = false;
+    handle = false;
+  });
+
+  util::ThroughputLogger logger(std::cout);
+  backend.updateCycle(handle, shouldCleanShutdown, logger, sessions, backendClock);
+  auto elapsed = testClock.elapsed<util::Second>();
+  check(elapsed >= 10.0 && elapsed < 11.0);
 }
 
 Test(core_Backend_update_valid)
@@ -251,6 +286,4 @@ Test(core_Backend_update_valid)
   check(pingData[1].Addr.toString() == "127.0.0.1:13524");
 }
 
-Test(core_Backend_update_shutting_down_true) {
-
-}
+Test(core_Backend_update_shutting_down_true) {}
