@@ -26,6 +26,8 @@ require (
 	github.com/json-iterator/go v1.1.9
 	github.com/modood/table v0.0.0-20200225102042-88de94bb9876
 	github.com/oschwald/geoip2-golang v1.4.0
+	github.com/peterbourgon/ff v1.7.0
+	github.com/peterbourgon/ff/v3 v3.0.0
 	github.com/smartystreets/goconvey v1.6.4 // indirect
 	github.com/stretchr/testify v1.4.0
 	github.com/tidwall/gjson v1.6.0

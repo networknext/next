@@ -6,6 +6,8 @@ package main
 
 import (
 	"bufio"
+	"context"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -15,22 +17,10 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/modood/table"
+	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/ybbus/jsonrpc"
 )
-
-var usageText = `
-Network Next Operator Tool
-
-next [command] [options]
-
-env					Prints the current environment
-env clean				Cleans the environment and reset it
-env portal.dev.networknext.com		Sets the environment to use the dev system
-env portal.prod.networknext.com		Sets the environment to use the prod system
-
-relays					List all relays
-relays google				List all relays containing "google" in the datacenter
-`
 
 func isWindows() bool {
 	return runtime.GOOS == "windows"
@@ -157,16 +147,6 @@ func bashQuiet(command string) (bool, string) {
 	return runCommandQuiet("bash", []string{"-c", command}, false)
 }
 
-func datacenters(env Environment, filter string) {
-	if filter != "" {
-		// todo
-		fmt.Printf("(print datacenter names with substring matching filter: %s)\n", filter)
-	} else {
-		// todo
-		fmt.Printf("(print all datacenter names)\n")
-	}
-}
-
 func secureShell(user string, address string, port int) {
 	ssh, err := exec.LookPath("ssh")
 	if err != nil {
@@ -193,68 +173,77 @@ func sshToRelay(env Environment, relayName string) {
 	secureShell(user, address, port)
 }
 
-func usage() {
-	fmt.Println(usageText)
-}
-
 func main() {
 	var env Environment
-	// var err error
 
 	if !env.Exists() {
 		env.Write()
 	}
 	env.Read()
 
-	cmdArgs := os.Args
-
-	if len(cmdArgs) < 2 {
-		usage()
-		os.Exit(0)
-	}
-
-	action := cmdArgs[1]
-
-	args := cmdArgs[2:]
-
-	switch action {
-	case "env":
-		if len(args) == 1 {
-			switch args[0] {
-			case "clean":
-				env.Clean()
-
-			default:
-				env.Hostname = args[0]
-				env.Write()
-			}
-		}
-		fmt.Println(env.String())
-		return
-	case "auth":
-		// hostname := getEnvironment()
-		// authEnvironment(hostname)
-	}
-
 	rpcClient := jsonrpc.NewClient("http://" + env.Hostname + "/rpc")
+	root := &ffcli.Command{
+		ShortUsage: "next <subcommand>",
+		Subcommands: []*ffcli.Command{
+			{
+				Name:       "env",
+				ShortUsage: "next env <hostname>",
+				ShortHelp:  "Manage environment",
+				Exec: func(_ context.Context, args []string) error {
+					if len(args) > 0 {
+						env.Hostname = args[0]
+						env.Write()
+					}
+					table.Output([]interface{}{env})
+					return nil
+				},
+			},
 
-	switch action {
-	case "relays":
-		filter := ""
-		if len(args) > 0 {
-			filter = args[0]
-		}
-		relays(rpcClient, filter)
-	case "datacenters":
-		filter := ""
-		if len(args) > 0 {
-			filter = args[0]
-		}
-		datacenters(env, filter)
-	case "ssh":
-		relayName := args[0]
-		sshToRelay(env, relayName)
-	default:
-		usage()
+			{
+				Name:       "datacenters",
+				ShortUsage: "next datacenters <name>",
+				ShortHelp:  "Manage datacenters",
+				Exec: func(_ context.Context, args []string) error {
+					if len(args) > 0 {
+						datacenters(rpcClient, args[0])
+						return nil
+					}
+					datacenters(rpcClient, "")
+					return nil
+				},
+			},
+
+			{
+				Name:       "relays",
+				ShortUsage: "next relays <name>",
+				ShortHelp:  "Manage relays",
+				Exec: func(_ context.Context, args []string) error {
+					if len(args) > 0 {
+						relays(rpcClient, args[0])
+						return nil
+					}
+					relays(rpcClient, "")
+					return nil
+				},
+				Subcommands: []*ffcli.Command{
+					{
+						Name:       "ssh",
+						ShortUsage: "next relays ssh <ip>",
+						ShortHelp:  "SSH into a specific relay",
+						Exec: func(_ context.Context, _ []string) error {
+							fmt.Println("To Be Implemented")
+							return nil
+						},
+					},
+				},
+			},
+		},
+		Exec: func(context.Context, []string) error {
+			return flag.ErrHelp
+		},
+	}
+
+	if err := root.ParseAndRun(context.Background(), os.Args[1:]); err != nil {
+		log.Fatal(err)
 	}
 }
