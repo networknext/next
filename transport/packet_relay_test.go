@@ -20,6 +20,152 @@ import (
 	"golang.org/x/crypto/nacl/box"
 )
 
+func TestRelayRequestUnmarshalJSON(t *testing.T) {
+	t.Run("unparsable json", func(t *testing.T) {
+		jsonRequest := []byte("{")
+
+		var packet transport.RelayRequest
+
+		err := packet.UnmarshalJSON(jsonRequest)
+		assert.EqualError(t, err, "unexpected end of JSON input")
+	})
+
+	t.Run("relay address is invalid", func(t *testing.T) {
+		jsonRequest := []byte(`{
+			"address": "invalid"
+		}`)
+
+		var packet transport.RelayRequest
+
+		err := packet.UnmarshalJSON(jsonRequest)
+		assert.EqualError(t, err, "address invalid: missing port in address")
+	})
+
+	t.Run("relay id to ping is invalid", func(t *testing.T) {
+		jsonRequest := []byte(`{
+			"address": "127.0.0.1:40000",
+			"ping_stats": [
+				{
+					"id": xxx,
+					"address": "invalid"
+				}	
+			]
+		}`)
+
+		var packet transport.RelayRequest
+
+		err := packet.UnmarshalJSON(jsonRequest)
+		assert.EqualError(t, err, "invalid character 'x' looking for beginning of value")
+	})
+
+	t.Run("relay address to ping is invalid", func(t *testing.T) {
+		jsonRequest := []byte(`{
+			"address": "127.0.0.1:40000",
+			"ping_stats": [
+				{
+					"id": 999999,
+					"address": "invalid"
+				}	
+			]
+		}`)
+
+		var packet transport.RelayRequest
+
+		err := packet.UnmarshalJSON(jsonRequest)
+		assert.EqualError(t, err, "address invalid: missing port in address")
+	})
+
+	t.Run("valid", func(t *testing.T) {
+		jsonRequest := []byte(`{
+			"address": "127.0.0.1:40000",
+			"ping_stats": [
+				{
+					"id": 999999,
+					"address": "127.0.0.2:40000",
+					"rtt": 1,
+					"jitter": 1,
+					"packet_loss": 1
+				},
+				{
+					"id": 12345,
+					"address": "127.0.0.3:40000",
+					"rtt": 1,
+					"jitter": 1,
+					"packet_loss": 1
+				}
+			],
+			"traffic_stats": {
+				"session_count": 100,
+				"bytes_tx": 200,
+				"bytes_rx": 100
+			}
+		}`)
+
+		var packet transport.RelayRequest
+
+		err := packet.UnmarshalJSON(jsonRequest)
+		assert.NoError(t, err)
+	})
+}
+
+func TestRelayRequestMarshalJSON(t *testing.T) {
+	addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+	assert.NoError(t, err)
+
+	statIps := []string{"127.0.0.2:40000", "127.0.0.3:40000", "127.0.0.4:40000", "127.0.0.5:40000"}
+
+	expected := transport.RelayRequest{
+		Address: *addr,
+		PingStats: []transport.RelayPingStats{
+			transport.RelayPingStats{
+				ID:         1,
+				Address:    statIps[0],
+				RTT:        1,
+				Jitter:     2,
+				PacketLoss: 3,
+			},
+
+			transport.RelayPingStats{
+				ID:         2,
+				Address:    statIps[1],
+				RTT:        4,
+				Jitter:     5,
+				PacketLoss: 6,
+			},
+
+			transport.RelayPingStats{
+				ID:         3,
+				Address:    statIps[2],
+				RTT:        7,
+				Jitter:     8,
+				PacketLoss: 9,
+			},
+
+			transport.RelayPingStats{
+				ID:         4,
+				Address:    statIps[3],
+				RTT:        10,
+				Jitter:     11,
+				PacketLoss: 12,
+			},
+		},
+		TrafficStats: transport.RelayTrafficStats{
+			SessionCount:  10,
+			BytesSent:     1000000,
+			BytesReceived: 1000000,
+		},
+	}
+
+	var actual transport.RelayRequest
+
+	data, err := expected.MarshalJSON()
+	assert.NoError(t, err)
+
+	err = actual.UnmarshalJSON(data)
+	assert.NoError(t, err)
+	assert.Equal(t, expected, actual)
+}
+
 func TestRelayInitRequestUnmarshalJSON(t *testing.T) {
 	t.Run("unparsable json", func(t *testing.T) {
 		jsonRequest := []byte("{")

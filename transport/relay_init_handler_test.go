@@ -29,20 +29,6 @@ import (
 	"golang.org/x/crypto/nacl/box"
 )
 
-func getRelayKeyPair(t *testing.T) (pubKey []byte, privKey []byte) {
-	key := os.Getenv("RELAY_PUBLIC_KEY")
-	assert.NotEqual(t, 0, len(key))
-	pubKey, err := base64.StdEncoding.DecodeString(key)
-	assert.NoError(t, err)
-
-	key = os.Getenv("RELAY_PRIVATE_KEY")
-	assert.NotEqual(t, 0, len(key))
-	privKey, err = base64.StdEncoding.DecodeString(key)
-	assert.NoError(t, err)
-
-	return pubKey, privKey
-}
-
 func relayInitAssertions(t *testing.T, contentType string, relay routing.Relay, body []byte, expectedCode int, geoClient *routing.GeoClient, ipfunc routing.LocateIPFunc, inMemory *storage.InMemory, redisClient *redis.Client, routerPrivateKey []byte) *httptest.ResponseRecorder {
 	if redisClient == nil {
 		redisServer, _ := miniredis.Run()
