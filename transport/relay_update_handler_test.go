@@ -205,7 +205,7 @@ func TestRelayUpdateInvalidAddress(t *testing.T) {
 	{
 		buff, err := packet.MarshalBinary()
 		assert.NoError(t, err)
-		buff[10] = 'x' // assign this index (which should be the first item in the address) as the letter 'x' making it invalid
+		buff[8] = 'x' // assign this index (which should be the first item in the address) as the letter 'x' making it invalid
 		relayUpdateAssertions(t, "application/octet-stream", buff, http.StatusBadRequest, nil, nil)
 	}
 
