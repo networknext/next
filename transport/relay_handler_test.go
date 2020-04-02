@@ -303,4 +303,8 @@ func TestRelayHandlerSuccess(t *testing.T) {
 
 	recorder := relayHandlerAssertions(t, token, relay, buff, http.StatusOK, &geoClient, ipfunc, nil, redisClient, statsdb, routerPrivateKey[:])
 	validateRelayHandlerSuccess(t, recorder, geoClient, redisClient, location, statsdb, addr.String(), expected, statIps)
+
+	// Now make the same request again, with the relay now initialized
+	recorder = relayHandlerAssertions(t, token, relay, buff, http.StatusOK, &geoClient, ipfunc, nil, redisClient, statsdb, routerPrivateKey[:])
+	validateRelayHandlerSuccess(t, recorder, geoClient, redisClient, location, statsdb, addr.String(), expected, statIps)
 }
