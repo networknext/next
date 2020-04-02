@@ -281,6 +281,7 @@ func TestRelayUpdateSuccess(t *testing.T) {
 		},
 		PublicKey:      make([]byte, crypto.KeySize),
 		LastUpdateTime: uint64(time.Now().Unix() - 1),
+		State:          routing.RelayStateOnline,
 	}
 
 	raw, err := entry.MarshalBinary()
