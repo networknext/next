@@ -20,11 +20,13 @@ type Firestore struct {
 	Client *firestore.Client
 	Logger log.Logger
 
-	relays map[uint64]*routing.Relay
-	buyers map[uint64]*routing.Buyer
+	datacenters map[uint64]*routing.Datacenter
+	relays      map[uint64]*routing.Relay
+	buyers      map[uint64]*routing.Buyer
 
-	relayMutex sync.Mutex
-	buyerMutex sync.Mutex
+	datacenterMutex sync.Mutex
+	relayMutex      sync.Mutex
+	buyerMutex      sync.Mutex
 }
 
 type buyer struct {
@@ -42,6 +44,7 @@ type seller struct {
 }
 
 type relay struct {
+	Name               string                 `firestore:"displayName"`
 	Address            string                 `firestore:"publicAddress"`
 	PublicKey          []byte                 `firestore:"publicKey"`
 	UpdateKey          []byte                 `firestore:"updateKey"`
@@ -97,6 +100,18 @@ func (fs *Firestore) Relays() []routing.Relay {
 	return relays
 }
 
+func (fs *Firestore) Datacenters() []routing.Datacenter {
+	fs.datacenterMutex.Lock()
+	defer fs.datacenterMutex.Unlock()
+
+	var datacenters []routing.Datacenter
+	for _, datacenter := range fs.datacenters {
+		datacenters = append(datacenters, *datacenter)
+	}
+
+	return datacenters
+}
+
 func (fs *Firestore) Buyer(id uint64) (*routing.Buyer, bool) {
 	fs.buyerMutex.Lock()
 	defer fs.buyerMutex.Unlock()
@@ -125,13 +140,70 @@ func (fs *Firestore) SyncLoop(ctx context.Context, c <-chan time.Time) {
 
 // Sync fetches relays and buyers from Firestore and places copies into local caches
 func (fs *Firestore) Sync(ctx context.Context) error {
-	if err := fs.syncRelays(ctx); err != nil {
-		return fmt.Errorf("failed to sync relays: %v", err)
+	var outerErr error
+	var wg sync.WaitGroup
+	wg.Add(3)
+
+	go func() {
+		if err := fs.syncRelays(ctx); err != nil {
+			outerErr = fmt.Errorf("failed to sync relays: %v", err)
+		}
+		wg.Done()
+	}()
+
+	go func() {
+		if err := fs.syncBuyers(ctx); err != nil {
+			outerErr = fmt.Errorf("failed to sync buyers: %v", err)
+		}
+		wg.Done()
+	}()
+
+	go func() {
+		if err := fs.syncDatacenters(ctx); err != nil {
+			outerErr = fmt.Errorf("failed to sync buyers: %v", err)
+		}
+		wg.Done()
+	}()
+
+	wg.Wait()
+
+	return outerErr
+}
+
+func (fs *Firestore) syncDatacenters(ctx context.Context) error {
+	datacenters := make(map[uint64]*routing.Datacenter)
+
+	ddocs := fs.Client.Collection("Datacenter").Documents(ctx)
+	for {
+		ddoc, err := ddocs.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("unknown error: %v", err)
+		}
+
+		var d datacenter
+		err = ddoc.DataTo(&d)
+		if err != nil {
+			return fmt.Errorf("failed to marshal document: %v", err)
+		}
+
+		datacenters[crypto.HashID(d.Name)] = &routing.Datacenter{
+			Name:    d.Name,
+			Enabled: d.Enabled,
+			Location: routing.Location{
+				Latitude:  float64(d.Latitude),
+				Longitude: float64(d.Longitude),
+			},
+		}
 	}
 
-	if err := fs.syncBuyers(ctx); err != nil {
-		return fmt.Errorf("failed to sync buyers: %v", err)
-	}
+	fs.datacenterMutex.Lock()
+	fs.datacenters = datacenters
+	fs.datacenterMutex.Unlock()
+
+	level.Info(fs.Logger).Log("during", "syncDatacenters", "num", len(fs.datacenters))
 
 	return nil
 }
@@ -174,7 +246,8 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 		}
 
 		relay := routing.Relay{
-			ID: rid,
+			ID:   rid,
+			Name: r.Name,
 			Addr: net.UDPAddr{
 				IP:   net.ParseIP(host),
 				Port: int(iport),

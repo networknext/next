@@ -10,7 +10,7 @@ import (
 
 func relays(rpcClient jsonrpc.RPCClient, filter string) {
 	args := localjsonrpc.RelaysArgs{
-		Datacenter: filter,
+		Name: filter,
 	}
 
 	var reply localjsonrpc.RelaysReply

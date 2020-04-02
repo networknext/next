@@ -37,3 +37,7 @@ func (m *InMemory) Relay(id uint64) (*routing.Relay, bool) {
 func (m *InMemory) Relays() []routing.Relay {
 	return m.LocalRelays
 }
+
+func (m *InMemory) Datacenters() []routing.Datacenter {
+	return []routing.Datacenter{}
+}
