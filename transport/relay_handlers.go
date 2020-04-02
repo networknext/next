@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -57,6 +58,8 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			params.Duration.Set(float64(durationSince.Milliseconds()))
 			params.Counter.Add(1)
 		}()
+
+		fmt.Println(request)
 
 		body, err := ioutil.ReadAll(request.Body)
 		if err != nil {
