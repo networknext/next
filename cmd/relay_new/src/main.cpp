@@ -420,9 +420,10 @@ int main()
 
   backend.updateCycle(gAlive, gShouldCleanShutdown, *logger, sessions, relayClock);
 
+  // has to be here, updateCycle() may return on failure and this should be marked false here to account for that
   gAlive = false;
 
-  Log("Cleaning up\n");
+  Log("Cleaning up");
 
   shouldReceive = false;
 

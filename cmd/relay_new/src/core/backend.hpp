@@ -30,6 +30,8 @@ namespace core
   const uint32_t UpdateRequestVersion = 0;
   const uint32_t UpdateResponseVersion = 0;
 
+  const uint8_t MaxUpdateAttempts = 6;  // 1 for the initial update, 5 extra
+
   /*
    * A class that's responsible for backend related tasks
    * where T should be anything that defines a static SendTo function
@@ -160,16 +162,28 @@ namespace core
     std::vector<uint8_t> update_response_memory;
     update_response_memory.resize(RESPONSE_MAX_BYTES);
 
+    // update once every 10 seconds
+    // if the update fails, try again, once per second for (MaxUpdateAttempts - 1) seconds
+    // if there's still no update, exit the loop
+    uint8_t updateAttempts = 0;
     while (loopHandle) {
-      if (!update(logger.print(), false)) {
-        Log("error: could not update relay");
+      if (update(logger.print(), false)) {
+        updateAttempts = 0;
+      } else {
+        Log("error: could not update relay, attempts: ", ++updateAttempts);
+
+        if (updateAttempts == MaxUpdateAttempts) {
+          Log("could not update relay, aborting program");
+          break;
+        }
       }
 
       sessions.purge(relayClock.unixTime<util::Second>());
       std::this_thread::sleep_for(1s);
     }
 
-    if (shouldCleanShutdown) {
+    // clean shutdown if the update fails, just to be safe
+    if (shouldCleanShutdown || updateAttempts == MaxUpdateAttempts) {
       unsigned int seconds = 0;
       while (seconds++ < 60 && !update(0, true)) {
         std::this_thread::sleep_for(1s);
