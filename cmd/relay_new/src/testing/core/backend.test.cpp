@@ -144,14 +144,13 @@ Test(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
   core::SessionMap sessions;
   auto backend = std::move(makeBackend(info, manager, sessions));
   volatile bool handle = true;
+  volatile bool shouldCleanShutdown = false;
   util::ThroughputLogger logger(std::cout);
 
   testing::StubbedCurlWrapper::Success = true;
   testing::StubbedCurlWrapper::Response = BasicValidUpdateResponse;
 
   testClock.reset();
-  volatile bool handle = true;
-  volatile bool shouldCleanShutdown = false;
   std::async(std::launch::async, [&] {
     std::this_thread::sleep_for(10s);
     testing::StubbedCurlWrapper::Success = false;
@@ -162,7 +161,6 @@ Test(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
   std::this_thread::sleep_for(40s);
   testing::StubbedCurlWrapper::Success = true;
 
-  util::ThroughputLogger logger(std::cout);
   backend.updateCycle(handle, shouldCleanShutdown, logger, sessions, backendClock);
   auto elapsed = testClock.elapsed<util::Second>();
   check(elapsed >= 80.0 && elapsed < 81.0);
@@ -195,6 +193,7 @@ Test(core_Backend_updateCycle_update_fails_should_not_exit)
     std::this_thread::sleep_for(10s);
     testing::StubbedCurlWrapper::Success = true;  // set back to true to allow for a fast backend ack
     handle = false;                               // exit the loop
+    shouldCleanShutdown = true;
   });
 
   backend.updateCycle(handle, shouldCleanShutdown, logger, sessions, backendClock);
@@ -220,8 +219,7 @@ Test(core_Backend_updateCycle_no_clean_shutdown)
   testing::StubbedCurlWrapper::Success = true;
   testing::StubbedCurlWrapper::Response = BasicValidUpdateResponse;
 
-  volatile bool handle = true;
-  volatile bool shouldCleanShutdown = false;
+  testClock.reset();
   std::async(std::launch::async, [&] {
     std::this_thread::sleep_for(10s);
     testing::StubbedCurlWrapper::Success = false;
