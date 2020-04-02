@@ -5,8 +5,9 @@ import (
 )
 
 type InMemory struct {
-	LocalBuyer  *routing.Buyer
-	LocalRelays []routing.Relay
+	LocalBuyer       *routing.Buyer
+	LocalRelays      []routing.Relay
+	LocalDatacenters []routing.Datacenter
 }
 
 func (m *InMemory) Buyer(id uint64) (*routing.Buyer, bool) {
@@ -39,5 +40,5 @@ func (m *InMemory) Relays() []routing.Relay {
 }
 
 func (m *InMemory) Datacenters() []routing.Datacenter {
-	return []routing.Datacenter{}
+	return m.LocalDatacenters
 }
