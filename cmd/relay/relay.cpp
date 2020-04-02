@@ -4754,13 +4754,13 @@ void interrupt_handler( int signal )
     (void) signal; quit = 1;
 }
 
-static volatile bool should_clean_shutdown = false;
+static volatile bool gShouldCleanShutdown = false;
 
 void clean_shutdown_handler( int signal )
 {
   (void) signal;
 
-  should_clean_shutdown = true;
+  gShouldCleanShutdown = true;
   quit = 1;
 }
 
@@ -5391,7 +5391,7 @@ int main( int argc, const char ** argv )
         relay_platform_sleep( 1.0 );
     }
 
-    if ( should_clean_shutdown )
+    if ( gShouldCleanShutdown )
     {
         uint seconds = 0;
         while ( seconds++ < 60 && relay_update( curl, backend_hostname, relay_token, relay_address_string, update_response_memory, &relay, false ) != RELAY_OK )
