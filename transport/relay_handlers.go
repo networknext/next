@@ -72,7 +72,7 @@ func RelayHandlerFunc(logger log.Logger, params *RelayHandlerConfig) func(writer
 			params.Counter.Add(1)
 		}()
 
-		// Unmarshal the request packet
+		// Read in the request
 		body, err := ioutil.ReadAll(request.Body)
 		if err != nil {
 			level.Error(handlerLogger).Log("msg", "could not read packet", "err", err)
@@ -82,8 +82,8 @@ func RelayHandlerFunc(logger log.Logger, params *RelayHandlerConfig) func(writer
 
 		handlerLogger = log.With(handlerLogger, "req_addr", request.RemoteAddr)
 
+		// Unmarshal the request packet
 		var relayRequest RelayRequest
-
 		if err := relayRequest.UnmarshalJSON(body); err != nil {
 			http.Error(writer, err.Error(), http.StatusBadRequest)
 			return

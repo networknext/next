@@ -133,10 +133,12 @@ func seedRedis(t *testing.T, redisServer *miniredis.Miniredis, addressesToAdd []
 		relay := routing.Relay{
 			PublicKey: make([]byte, crypto.KeySize),
 		}
-		udpAddr, _ := net.ResolveUDPAddr("udp", addr)
+		udpAddr, err := net.ResolveUDPAddr("udp", addr)
+		assert.NoError(t, err)
 		relay.Addr = *udpAddr
 		relay.ID = crypto.HashID(addr)
-		bin, _ := relay.MarshalBinary()
+		bin, err := relay.MarshalBinary()
+		assert.NoError(t, err)
 		redisServer.HSet(routing.HashKeyAllRelays, relay.Key(), string(bin))
 	}
 
