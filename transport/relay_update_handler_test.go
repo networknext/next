@@ -86,6 +86,7 @@ func validateRelayUpdateSuccess(t *testing.T, expectedContentType string, record
 		assert.NoError(t, err)
 	case "application/json":
 		err := json.Unmarshal(body, &response)
+		assert.Equal(t, uint32(routing.RelayStateShuttingDown), actual.State)
 		assert.NoError(t, err)
 	default:
 		assert.FailNow(t, "Invalid expected content type")
@@ -255,8 +256,9 @@ func TestRelayUpdateSuccess(t *testing.T) {
 	statsdb := routing.NewStatsDatabase()
 	statIps := []string{"127.0.0.2:40000", "127.0.0.3:40000", "127.0.0.4:40000", "127.0.0.5:40000"}
 	packet := transport.RelayUpdateRequest{
-		Address: *udp,
-		Token:   make([]byte, crypto.KeySize),
+		Address:      *udp,
+		Token:        make([]byte, crypto.KeySize),
+		ShuttingDown: true,
 	}
 
 	packet.PingStats = make([]routing.RelayStatsPing, len(statIps))

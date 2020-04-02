@@ -152,6 +152,7 @@ func main() {
 			RedisClient: redisClientRelays,
 			Storage:     db,
 		}, "")
+		s.RegisterService(&jsonrpc.BuyersService{}, "")
 		http.Handle("/rpc", s)
 
 		http.Handle("/", http.FileServer(http.Dir("./cmd/portal/public")))

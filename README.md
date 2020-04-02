@@ -9,9 +9,9 @@ This is a monorepo that contains the Network Next backend.
 IMPORTANT: This repo uses [Git Submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules) to link in the [SDK](https://github.com/networknext/console). In order for this to work you need clone and interact with this repo over [SSH](https://help.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh).
 
 ```bash
-> git clone git@github.com:networknext/backend.git
-> git submodule init
-> git submodule update
+git clone git@github.com:networknext/backend.git
+git submodule init
+git submodule update
 ```
 
 The tool chain used for development is kept simple to make it easy for any operating system to install and use and work out of the box for POSIX Linux distributions.

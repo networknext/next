@@ -15,6 +15,11 @@ namespace
   const auto Base64RelayPrivateKey = "lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=";
   const auto Base64RouterPublicKey = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=";
 
+  const auto BasicValidUpdateResponse = R"({
+     "version": 0,
+     "ping_data": []
+   })";
+
   core::Backend<testing::StubbedCurlWrapper> makeBackend(
    core::RouterInfo& info, core::RelayManager& manager, core::SessionMap& sessions)
   {
@@ -44,7 +49,7 @@ Test(core_backend_init_valid)
 
   check(testing::StubbedCurlWrapper::Hostname == BackendHostname);
   check(testing::StubbedCurlWrapper::Endpoint == "/relay_init");
-  check(routerInfo.InitalizeTimeInSeconds == 123456789 / 1000);
+  check(routerInfo.InitializeTimeInSeconds == 123456789 / 1000);
 
   util::JSON doc;
 
@@ -59,7 +64,105 @@ Test(core_backend_init_valid)
   check(doc.get<std::string>("encrypted_token").length() == Base64EncryptedTokenLength);
 }
 
-Test(core_backend_update_valid)
+// Update the backend for 10 seconds, then proceed to switch the handle to false.
+// The relay should then attempt to ack the backend and shutdown for 30 seconds.
+// It won't receive a success response from the backend so instead it will
+// live for 60 seconds and skip the ack
+Test(core_Backend_updateCycle_shutdown_60s)
+{
+  util::Clock testClock;
+
+  core::RouterInfo info;
+  util::Clock backendClock;
+  core::RelayManager manager(backendClock);
+  core::SessionMap sessions;
+  auto backend = std::move(makeBackend(info, manager, sessions));
+
+  testing::StubbedCurlWrapper::Success = true;
+  testing::StubbedCurlWrapper::Response = BasicValidUpdateResponse;
+
+  testClock.reset();
+  volatile bool handle = true;
+  std::async([&] {
+    std::this_thread::sleep_for(10s);
+    testing::StubbedCurlWrapper::Success = false;
+    handle = false;
+  });
+
+  util::ThroughputLogger logger(std::cout);
+  backend.updateCycle(handle, logger, sessions, backendClock);
+  auto elapsed = testClock.elapsed<util::Second>();
+  check(elapsed >= 70.0 && elapsed < 71.0);
+}
+
+// Update the backend for 10 seconds, then proceed to switch the handle to false.
+// The relay should then attempt to ack the backend and shutdown for 30 seconds.
+// It will receive a success response and then live for another 30 seconds.
+// The 60 second timeout will not apply here
+Test(core_Backend_updateCycle_ack_and_30s)
+{
+  util::Clock testClock;
+
+  core::RouterInfo info;
+  util::Clock backendClock;
+  core::RelayManager manager(backendClock);
+  core::SessionMap sessions;
+  auto backend = std::move(makeBackend(info, manager, sessions));
+
+  testing::StubbedCurlWrapper::Success = true;
+  testing::StubbedCurlWrapper::Response = BasicValidUpdateResponse;
+
+  testClock.reset();
+  volatile bool handle = true;
+  std::async([&] {
+    std::this_thread::sleep_for(10s);
+    handle = false;
+  });
+
+  util::ThroughputLogger logger(std::cout);
+  backend.updateCycle(handle, logger, sessions, backendClock);
+  auto elapsed = testClock.elapsed<util::Second>();
+  check(elapsed >= 40.0 && elapsed < 41.0);
+}
+
+// Update the backend for 10 seconds, then proceed to switch the handle to false.
+// The relay will not get a success response for 40 seconds after the handle is set
+// After which it will get a success and then proceed with the normal routine of waiting 30 seconds
+// The amount of time waited will be greater than 60 seconds
+// This is to assert the updateCycle will ignore the 60 second timeout if the backend gets an update
+Test(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
+{
+  util::Clock testClock;
+
+  core::RouterInfo info;
+  util::Clock backendClock;
+  core::RelayManager manager(backendClock);
+  core::SessionMap sessions;
+  auto backend = std::move(makeBackend(info, manager, sessions));
+
+  testing::StubbedCurlWrapper::Success = true;
+  testing::StubbedCurlWrapper::Response = BasicValidUpdateResponse;
+
+  testClock.reset();
+  volatile bool handle = true;
+  std::async([&] {
+    std::this_thread::sleep_for(10s);
+    testing::StubbedCurlWrapper::Success = false;
+    handle = false;
+  });
+
+  std::async([&] {
+    std::this_thread::sleep_for(40s);
+    testing::StubbedCurlWrapper::Success = true;
+  });
+
+  util::ThroughputLogger logger(std::cout);
+  backend.updateCycle(handle, logger, sessions, backendClock);
+  auto elapsed = testClock.elapsed<util::Second>();
+  check(elapsed >= 80.0 && elapsed < 81.0);
+}
+
+Test(core_Backend_update_valid)
 {
   core::RouterInfo routerInfo;
   util::Clock clock;
@@ -100,7 +203,7 @@ Test(core_backend_update_valid)
 
   const uint64_t bytesReceived = 10000000000;
 
-  check(backend.update(bytesReceived));
+  check(backend.update(bytesReceived, false));
 
   util::JSON doc;
 
@@ -111,6 +214,7 @@ Test(core_backend_update_valid)
   check(doc.get<std::string>("Metadata", "PublicKey") == Base64RelayPublicKey);
   check(doc.get<uint64_t>("TrafficStats", "BytesMeasurementRx") == bytesReceived);
   check(doc.get<size_t>("TrafficStats", "SessionCount") == sessions.size());
+  check(!doc.get<bool>("shutting_down"));
 
   auto pingStats = doc.get<util::JSON>("PingStats");
 
@@ -124,9 +228,9 @@ Test(core_backend_update_valid)
   check(value.HasMember("PacketLoss"));
 
   auto& relayID = value["RelayId"];
-  auto& rtt = value["RTT"];
-  auto& jitter = value["Jitter"];
-  auto& packetLoss = value["PacketLoss"];
+  // auto& rtt = value["RTT"];
+  // auto& jitter = value["Jitter"];
+  // auto& packetLoss = value["PacketLoss"];
 
   check(relayID.Get<uint64_t>() == 987654321);
 
@@ -145,4 +249,8 @@ Test(core_backend_update_valid)
   check(count == 2);
   check(pingData[0].Addr.toString() == "127.0.0.1:54321");
   check(pingData[1].Addr.toString() == "127.0.0.1:13524");
+}
+
+Test(core_Backend_update_shutting_down_true) {
+
 }
