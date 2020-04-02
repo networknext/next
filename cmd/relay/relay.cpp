@@ -5391,21 +5391,6 @@ int main( int argc, const char ** argv )
         relay_platform_sleep( 1.0 );
     }
 
-    std::atomic<bool> shouldWait60 = true, shouldWait30 = true, waited60 = false;
-    auto fut = std::async([&shouldWait60, &waited60] {
-      for (uint seconds = 0; seconds < 60; seconds++) {
-        std::this_thread::sleep_for(1s);
-        if (!shouldWait60) {
-          return;
-        }
-      }
-
-      waited60 = true;
-    });
-
-    // keep living for another 30 seconds
-    // no more updates allows the backend to remove
-    // this relay from the route decisions
     if ( should_clean_shutdown )
     {
         uint seconds = 0;
