@@ -54,7 +54,11 @@ namespace core
     auto init() -> bool;
 
     void updateCycle(
-     volatile bool& loopHandle, util::ThroughputLogger& logger, core::SessionMap& sessions, const util::Clock& relayClock);
+     const volatile bool& loopHandle,
+     const volatile bool& shouldCleanShutdown,
+     util::ThroughputLogger& logger,
+     core::SessionMap& sessions,
+     const util::Clock& relayClock);
 
    private:
     const std::string mHostname;
@@ -146,7 +150,11 @@ namespace core
 
   template <typename T>
   void Backend<T>::updateCycle(
-   volatile bool& loopHandle, util::ThroughputLogger& logger, core::SessionMap& sessions, const util::Clock& relayClock)
+   const volatile bool& loopHandle,
+   const volatile bool& shouldCleanShutdown,
+   util::ThroughputLogger& logger,
+   core::SessionMap& sessions,
+   const util::Clock& relayClock)
   {
     std::vector<uint8_t> update_response_memory;
     update_response_memory.resize(RESPONSE_MAX_BYTES);
@@ -160,13 +168,15 @@ namespace core
       std::this_thread::sleep_for(1s);
     }
 
-    uint seconds = 0;
-    while (seconds++ < 60 && !update(0, true)) {
-      std::this_thread::sleep_for(1s);
-    }
+    if (shouldCleanShutdown) {
+      unsigned int seconds = 0;
+      while (seconds++ < 60 && !update(0, true)) {
+        std::this_thread::sleep_for(1s);
+      }
 
-    if (seconds < 60) {
-      std::this_thread::sleep_for(30s);
+      if (seconds < 60) {
+        std::this_thread::sleep_for(30s);
+      }
     }
   }
 

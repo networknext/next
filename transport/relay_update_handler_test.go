@@ -105,7 +105,6 @@ func validateRelayUpdateSuccess(t *testing.T, expectedContentType string, record
 		assert.NoError(t, err)
 	case "application/json":
 		err := json.Unmarshal(body, &response)
-		assert.Equal(t, uint32(routing.RelayStateShuttingDown), actual.State)
 		assert.NoError(t, err)
 	default:
 		assert.FailNow(t, "Invalid expected content type")
@@ -132,6 +131,7 @@ func validateRelayUpdateSuccess(t *testing.T, expectedContentType string, record
 
 	assert.NotContains(t, relaysToPingIDs, entry.ID)
 	assert.NotContains(t, relaysToPingAddrs, addr)
+	assert.Equal(t, uint32(routing.RelayStateShuttingDown), actual.State)
 }
 
 func TestRelayUpdateRelayInvalid(t *testing.T) {

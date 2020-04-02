@@ -17,6 +17,11 @@
 #include "curl/curl.h"
 #include <memory>
 #include <atomic>
+#include <future>
+#include <thread>
+#include <chrono>
+
+using namespace std::chrono_literals;
 
 #define RELAY_MTU                                               1300
 
@@ -4601,13 +4606,13 @@ int relay_init( CURL * curl, const char * hostname, uint8_t * relay_token, const
     return RELAY_OK;
 }
 
-int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_token, const char * relay_address, uint8_t * update_response_memory, relay_t * relay )
+int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_token, const char * relay_address, uint8_t * update_response_memory, relay_t * relay, bool shutdown )
 {
     // build update data
 
     uint32_t update_version = 0;
 
-    uint8_t update_data[10*1024 + 8]; // + 8 for the bytes received counter
+    uint8_t update_data[10*1024 + 8 + 1]; // + 8 for the bytes received counter, + 1 for the shutdown flag
 
     uint8_t * p = update_data;
     relay_write_uint32( &p, update_version );
@@ -4630,6 +4635,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
 
     relay_write_uint64(&p, gBytesReceived->load());
     gBytesReceived->store(0);
+    relay_write_uint8(&p, shutdown);
 
     int update_data_length = (int) ( p - update_data );
 
@@ -4747,6 +4753,16 @@ static volatile uint64_t quit = 0;
 void interrupt_handler( int signal )
 {
     (void) signal; quit = 1;
+}
+
+static volatile bool should_clean_shutdown = false;
+
+void clean_shutdown_handler( int signal )
+{
+  (void) signal;
+
+  should_clean_shutdown = true;
+  quit = 1;
 }
 
 uint64_t relay_timestamp( relay_t * relay )
@@ -5348,6 +5364,8 @@ int main( int argc, const char ** argv )
     printf( "Relay initialized\n\n" );
 
     signal( SIGINT, interrupt_handler );
+    signal( SIGTERM, interrupt_handler );
+    signal( SIGHUP, clean_shutdown_handler );
 
     uint8_t * update_response_memory = (uint8_t*) malloc( RESPONSE_MAX_BYTES );
 
@@ -5357,7 +5375,7 @@ int main( int argc, const char ** argv )
 
         for ( int i = 0; i < 10; ++i )
         {
-            if ( relay_update( curl, backend_hostname, relay_token, relay_address_string, update_response_memory, &relay ) == RELAY_OK )
+            if ( relay_update( curl, backend_hostname, relay_token, relay_address_string, update_response_memory, &relay, false ) == RELAY_OK )
             {
                 updated = true;
                 break;
@@ -5372,6 +5390,35 @@ int main( int argc, const char ** argv )
         }
 
         relay_platform_sleep( 1.0 );
+    }
+
+    std::atomic<bool> shouldWait60 = true, shouldWait30 = true, waited60 = false;
+    auto fut = std::async([&shouldWait60, &waited60] {
+      for (uint seconds = 0; seconds < 60; seconds++) {
+        std::this_thread::sleep_for(1s);
+        if (!shouldWait60) {
+          return;
+        }
+      }
+
+      waited60 = true;
+    });
+
+    // keep living for another 30 seconds
+    // no more updates allows the backend to remove
+    // this relay from the route decisions
+    if ( should_clean_shutdown )
+    {
+        uint seconds = 0;
+        while ( seconds++ < 60 && relay_update( curl, backend_hostname, relay_token, relay_address_string, update_response_memory, &relay, false ) != RELAY_OK )
+        {
+          std::this_thread::sleep_for(1s);
+        }
+
+        if (seconds < 60)
+        {
+          std::this_thread::sleep_for(30s);
+        }
     }
 
     printf( "Cleaning up\n" );
