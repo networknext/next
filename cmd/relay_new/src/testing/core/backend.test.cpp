@@ -83,14 +83,16 @@ Test(core_Backend_updateCycle_shutdown_60s)
 
   testClock.reset();
   volatile bool handle = true;
-  std::async([&] {
+  volatile bool shouldCleanShutdown = false;
+  std::async(std::launch::async, [&] {
     std::this_thread::sleep_for(10s);
     testing::StubbedCurlWrapper::Success = false;
+    shouldCleanShutdown = true;  // just to mimic actual behavior
     handle = false;
   });
 
   util::ThroughputLogger logger(std::cout);
-  backend.updateCycle(handle, logger, sessions, backendClock);
+  backend.updateCycle(handle, shouldCleanShutdown, logger, sessions, backendClock);
   auto elapsed = testClock.elapsed<util::Second>();
   check(elapsed >= 70.0 && elapsed < 71.0);
 }
@@ -114,13 +116,15 @@ Test(core_Backend_updateCycle_ack_and_30s)
 
   testClock.reset();
   volatile bool handle = true;
-  std::async([&] {
+  volatile bool shouldCleanShutdown = false;
+  std::async(std::launch::async, [&] {
     std::this_thread::sleep_for(10s);
+    shouldCleanShutdown = true;
     handle = false;
   });
 
   util::ThroughputLogger logger(std::cout);
-  backend.updateCycle(handle, logger, sessions, backendClock);
+  backend.updateCycle(handle, shouldCleanShutdown, logger, sessions, backendClock);
   auto elapsed = testClock.elapsed<util::Second>();
   check(elapsed >= 40.0 && elapsed < 41.0);
 }
@@ -139,27 +143,56 @@ Test(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
   core::RelayManager manager(backendClock);
   core::SessionMap sessions;
   auto backend = std::move(makeBackend(info, manager, sessions));
+  volatile bool handle = true;
+  volatile bool shouldCleanShutdown = false;
+  util::ThroughputLogger logger(std::cout);
 
   testing::StubbedCurlWrapper::Success = true;
   testing::StubbedCurlWrapper::Response = BasicValidUpdateResponse;
 
   testClock.reset();
+  std::async(std::launch::async, [&] {
+    std::this_thread::sleep_for(10s);
+    testing::StubbedCurlWrapper::Success = false;
+    handle = false;
+    shouldCleanShutdown = true;
+  });
+
+  std::this_thread::sleep_for(40s);
+  testing::StubbedCurlWrapper::Success = true;
+
+  backend.updateCycle(handle, shouldCleanShutdown, logger, sessions, backendClock);
+  auto elapsed = testClock.elapsed<util::Second>();
+  check(elapsed >= 80.0 && elapsed < 81.0);
+}
+
+// When clean shutdown is not set to true, the function should return immediately
+Test(core_Backend_updateCycle_no_clean_shutdown)
+{
+  util::Clock testClock;
+
+  core::RouterInfo info;
+  util::Clock backendClock;
+  core::RelayManager manager(backendClock);
+  core::SessionMap sessions;
+  auto backend = std::move(makeBackend(info, manager, sessions));
   volatile bool handle = true;
-  std::async([&] {
+  volatile bool shouldCleanShutdown = false;
+  util::ThroughputLogger logger(std::cout);
+
+  testing::StubbedCurlWrapper::Success = true;
+  testing::StubbedCurlWrapper::Response = BasicValidUpdateResponse;
+
+  testClock.reset();
+  std::async(std::launch::async, [&] {
     std::this_thread::sleep_for(10s);
     testing::StubbedCurlWrapper::Success = false;
     handle = false;
   });
 
-  std::async([&] {
-    std::this_thread::sleep_for(40s);
-    testing::StubbedCurlWrapper::Success = true;
-  });
-
-  util::ThroughputLogger logger(std::cout);
-  backend.updateCycle(handle, logger, sessions, backendClock);
+  backend.updateCycle(handle, shouldCleanShutdown, logger, sessions, backendClock);
   auto elapsed = testClock.elapsed<util::Second>();
-  check(elapsed >= 80.0 && elapsed < 81.0);
+  check(elapsed >= 10.0 && elapsed < 11.0);
 }
 
 Test(core_Backend_update_valid)
@@ -251,6 +284,24 @@ Test(core_Backend_update_valid)
   check(pingData[1].Addr.toString() == "127.0.0.1:13524");
 }
 
-Test(core_Backend_update_shutting_down_true) {
+Test(core_Backend_update_shutting_down_true)
+{
+  core::RouterInfo routerInfo;
+  util::Clock clock;
+  core::RelayManager manager(clock);
+  core::SessionMap sessions;
+  auto backend = std::move(makeBackend(routerInfo, manager, sessions));
 
+  testing::StubbedCurlWrapper::Response = ::BasicValidUpdateResponse;
+
+  check(backend.update(0, true));
+
+  util::JSON doc;
+  check(doc.parse(testing::StubbedCurlWrapper::Request));
+  check(doc.get<uint32_t>("version") == 0);
+  check(doc.get<std::string>("relay_address") == RelayAddr);
+  check(doc.get<std::string>("Metadata", "PublicKey") == Base64RelayPublicKey);
+  check(doc.get<uint64_t>("TrafficStats", "BytesMeasurementRx") == 0);
+  check(doc.get<size_t>("TrafficStats", "SessionCount") == 0);
+  check(doc.get<bool>("shutting_down"));
 }

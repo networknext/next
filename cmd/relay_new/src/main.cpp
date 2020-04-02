@@ -22,26 +22,17 @@ using namespace std::chrono_literals;
 namespace
 {
   volatile bool gAlive = true;
+  volatile bool gShouldCleanShutdown = false;
 
-  void interrupt_handler(int signal)
+  void gracefulShutdownHandler(int)
   {
-    (void)signal;
     gAlive = false;
   }
 
-  void segfaultHandler(int sig)
+  void cleanShutdownHandler(int)
   {
+    gShouldCleanShutdown = true;
     gAlive = false;
-    const auto StacktraceDepth = 13;
-    void* arr[StacktraceDepth];
-
-    // get stack frames
-    size_t size = backtrace(arr, StacktraceDepth);
-
-    // print the stack trace
-    std::cerr << "Error: signal " << sig << ":\n";
-    backtrace_symbols_fd(arr, size, STDERR_FILENO);
-    exit(1);
   }
 
   // TODO move this out of main and somewhere else to allow for test coverage
@@ -129,13 +120,34 @@ namespace
 
     return socketBufferSize;
   }
+
+  inline void setupSignalHandlers()
+  {
+#ifndef NDEBUG
+    signal(SIGSEGV, [](int) {
+      gAlive = false;
+      const auto StacktraceDepth = 13;
+      void* arr[StacktraceDepth];
+
+      // get stack frames
+      size_t size = backtrace(arr, StacktraceDepth);
+
+      // print the stack trace
+      std::cerr << "stacktrace\n";
+      backtrace_symbols_fd(arr, size, STDERR_FILENO);
+      exit(1);
+    });
+#endif
+
+    signal(SIGINT, gracefulShutdownHandler);
+    signal(SIGTERM, gracefulShutdownHandler);
+    signal(SIGHUP, cleanShutdownHandler);
+  }
 }  // namespace
 
 int main()
 {
-#ifndef NDEBUG
-  signal(SIGSEGV, segfaultHandler);
-#endif
+  setupSignalHandlers();
 
 #ifdef TEST_BUILD
   return testing::SpecTest::Run() ? 0 : 1;
@@ -406,14 +418,7 @@ int main()
 
   Log("Relay initialized\n\n");
 
-  // ctrl c shuts down gracefully
-  signal(SIGINT, interrupt_handler);
-
-  // and so do these
-  signal(SIGTERM, interrupt_handler);
-  signal(SIGHUP, interrupt_handler);
-
-  backend.updateCycle(gAlive, *logger, sessions, relayClock);
+  backend.updateCycle(gAlive, gShouldCleanShutdown, *logger, sessions, relayClock);
 
   gAlive = false;
 
