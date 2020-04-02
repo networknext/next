@@ -60,8 +60,7 @@ func relayUpdateAssertions(t *testing.T, contentType string, body []byte, expect
 	handler := transport.RelayUpdateHandlerFunc(log.NewNopLogger(), &transport.RelayUpdateHandlerConfig{
 		RedisClient:           redisClient,
 		StatsDb:               statsdb,
-		Duration:              &metrics.EmptyGauge{},
-		Counter:               &metrics.EmptyCounter{},
+		Metrics:               &metrics.EmptyRelayUpdateMetrics,
 		TrafficStatsPublisher: &stats.NoOpTrafficStatsPublisher{},
 		Storer:                &storage.InMemory{},
 	})

@@ -32,16 +32,14 @@ type RelayInitHandlerConfig struct {
 	GeoClient        *routing.GeoClient
 	IpLocator        routing.IPLocator
 	Storer           storage.Storer
-	Duration         metrics.Gauge
-	Counter          metrics.Counter
+	Metrics          *metrics.RelayInitMetrics
 	RouterPrivateKey []byte
 }
 
 type RelayUpdateHandlerConfig struct {
 	RedisClient           redis.Cmdable
 	StatsDb               *routing.StatsDatabase
-	Duration              metrics.Gauge
-	Counter               metrics.Counter
+	Metrics               *metrics.RelayUpdateMetrics
 	TrafficStatsPublisher stats.Publisher
 	Storer                storage.Storer
 }
@@ -54,8 +52,8 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 		durationStart := time.Now()
 		defer func() {
 			durationSince := time.Since(durationStart)
-			params.Duration.Set(float64(durationSince.Milliseconds()))
-			params.Counter.Add(1)
+			params.Metrics.DurationGauge.Set(float64(durationSince.Milliseconds()))
+			params.Metrics.Invocations.Add(1)
 		}()
 
 		body, err := ioutil.ReadAll(request.Body)
@@ -203,8 +201,8 @@ func RelayUpdateHandlerFunc(logger log.Logger, params *RelayUpdateHandlerConfig)
 		durationStart := time.Now()
 		defer func() {
 			durationSince := time.Since(durationStart)
-			params.Duration.Set(float64(durationSince.Milliseconds()))
-			params.Counter.Add(1)
+			params.Metrics.DurationGauge.Set(float64(durationSince.Milliseconds()))
+			params.Metrics.Invocations.Add(1)
 		}()
 
 		body, err := ioutil.ReadAll(request.Body)

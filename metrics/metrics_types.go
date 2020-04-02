@@ -116,6 +116,36 @@ var EmptyServerUpdateMetrics ServerUpdateMetrics = ServerUpdateMetrics{
 	DurationGauge: &EmptyGauge{},
 }
 
+type RelayInitMetrics struct {
+	Invocations   Counter
+	DurationGauge Gauge
+}
+
+var EmptyRelayInitMetrics RelayInitMetrics = RelayInitMetrics{
+	Invocations:   &EmptyCounter{},
+	DurationGauge: &EmptyGauge{},
+}
+
+type RelayUpdateMetrics struct {
+	Invocations   Counter
+	DurationGauge Gauge
+}
+
+var EmptyRelayUpdateMetrics RelayUpdateMetrics = RelayUpdateMetrics{
+	Invocations:   &EmptyCounter{},
+	DurationGauge: &EmptyGauge{},
+}
+
+type RelayStatMetrics struct {
+	NumRelays Gauge
+	NumRoutes Gauge
+}
+
+var EmptyRelayStatMetrics RelayStatMetrics = RelayStatMetrics{
+	NumRelays: &EmptyGauge{},
+	NumRoutes: &EmptyGauge{},
+}
+
 func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMetrics, error) {
 	var err error
 
@@ -526,4 +556,128 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 	}
 
 	return &sessionMetrics, nil
+}
+
+func NewServerUpdateMetrics(ctx context.Context, metricsHandler Handler) (*ServerUpdateMetrics, error) {
+	updateDurationGauge, err := metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Server update duration",
+		ServiceName: "server_backend",
+		ID:          "server.duration",
+		Unit:        "milliseconds",
+		Description: "How long it takes to process a server update request.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	updateInvocationsCounter, err := metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Total server update invocations",
+		ServiceName: "server_backend",
+		ID:          "server.count",
+		Unit:        "invocations",
+		Description: "The total number of concurrent servers",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	updateMetrics := ServerUpdateMetrics{
+		Invocations:   updateInvocationsCounter,
+		DurationGauge: updateDurationGauge,
+	}
+
+	return &updateMetrics, nil
+}
+
+func NewRelayInitMetrics(ctx context.Context, metricsHandler Handler) (*RelayInitMetrics, error) {
+	initCount, err := metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Total relay init count",
+		ServiceName: "relay_backend",
+		ID:          "relay.init.count",
+		Unit:        "requests",
+		Description: "The total number of received relay init requests",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	initDuration, err := metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Relay init duration",
+		ServiceName: "relay_backend",
+		ID:          "relay.init.duration",
+		Unit:        "milliseconds",
+		Description: "How long it takes to process a relay init request",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	initMetrics := RelayInitMetrics{
+		Invocations:   initCount,
+		DurationGauge: initDuration,
+	}
+
+	return &initMetrics, nil
+}
+
+func NewRelayUpdateMetrics(ctx context.Context, metricsHandler Handler) (*RelayUpdateMetrics, error) {
+	updateCount, err := metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Total relay update count",
+		ServiceName: "relay_backend",
+		ID:          "relay.update.count",
+		Unit:        "requests",
+		Description: "The total number of received relay update requests",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	updateDuration, err := metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Relay update duration",
+		ServiceName: "relay_backend",
+		ID:          "relay.update.duration",
+		Unit:        "milliseconds",
+		Description: "How long it takes to process a relay update request.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	updateMetrics := RelayUpdateMetrics{
+		Invocations:   updateCount,
+		DurationGauge: updateDuration,
+	}
+
+	return &updateMetrics, nil
+}
+
+func NewRelayStatMetrics(ctx context.Context, metricsHandler Handler) (*RelayStatMetrics, error) {
+	numRelays, err := metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Relays num relays",
+		ServiceName: "relay_backend",
+		ID:          "relays.num.relays",
+		Unit:        "relays",
+		Description: "How many relays are active",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	numRoutes, err := metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Route Matrix num routes",
+		ServiceName: "relay_backend",
+		ID:          "route.matrix.num.routes",
+		Unit:        "routes",
+		Description: "How many routes are being generated",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	statMetrics := RelayStatMetrics{
+		NumRelays: numRelays,
+		NumRoutes: numRoutes,
+	}
+
+	return &statMetrics, nil
 }
