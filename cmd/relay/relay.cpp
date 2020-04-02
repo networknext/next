@@ -17,7 +17,6 @@
 #include "curl/curl.h"
 #include <memory>
 #include <atomic>
-#include <future>
 #include <thread>
 #include <chrono>
 
