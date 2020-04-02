@@ -38,3 +38,28 @@ From the project root `make dev-relay`. This will spawn a single relay instance 
 # Building and running multiple relays
 
 To supply an adequate amount of routes multiple relays must be launched. To do so with relative ease use the relay spawning script located in `tools/scripts/relay-spawner.sh`. Use the `-h` flag to show help for how to use it. Alternatively, the make target `dev-multi-relays` will spawn 10 relays using the script.
+
+## Shutdown procedures
+
+The relay can be shutdown in a few ways depending on the signals you give it.
+
+### Graceful shutdown
+
+Signals: SIGINT, SIGTERM
+
+This is just a standard graceful shutdown. The relay will join threads, clean up memory, and log it's shutting down.
+
+### Clean shutdown
+
+Signal: SIGHUP
+
+This shutdown performs like the graceful shutdown, but additionally it will do one of two things:
+
+  1. Tell the backend it is shutting down, and then upon getting a response wait an additional 30 seconds.
+  2. Wait 60 seconds and then proceed with shutting down if there is no communication with the backend.
+
+This is so the relay can keep serving game clients connected to it until it is removed from any routes.
+
+### Regular process termination
+
+All other signals will result in killing the relay process in the standard way.
