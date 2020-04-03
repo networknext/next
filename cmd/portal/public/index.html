@@ -5,46 +5,165 @@
         <meta http-equiv='pragma' content='no-cache'>
 
         <title>Portal</title>
+        <link href='https://fonts.googleapis.com/css?family=Montserrat:400,700' rel='stylesheet' type='text/css'>
+        <link rel="stylesheet"
+              href="https://use.fontawesome.com/releases/v5.7.0/css/all.css"
+              integrity="sha384-lZN37f5QGtY3VHgisS14W3ExzMWZxybE1SJSEsQp9S+oqd12jhcu+A56Ebc1zFSJ"
+              crossorigin="anonymous">
+        <link rel="stylesheet"
+              href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+              integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+              crossorigin="anonymous">
         <style>
-            body { font-family: monospace; }
+            body { font-family: monospace; padding: 50px; background-color: #343a40;}
             table { width: 100%; border-collapse: collapse; }
             table, th, td { padding: 3px; border: 1px solid black; }
             td { text-align: center; }
+            h1 {color: lightgrey;}
+            .logo-container {
+                width: 100%;
+                height: 24px;
+                margin: 0;
+                padding: 0;
+                display: flex;
+                align-items: center;
+                justify-content: left;
+            }
+            .logo-fit {
+                max-height: 24px;
+                max-width: 100%;
+            }
+            .fill {
+                width: 100%;
+                height: 100%;
+            }
+            .dashboard-title {
+                width: 95%;
+            }
+            .workspace {
+                width: 100%;
+                max-height: 1000px;
+                height: 100%;
+                justify-content: center;
+                background-color: lightgray;
+            }
         </style>
     </head>
     <body>
-        <h1>Portal</h1>
+        <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark p-0 shadow">
+            <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="#">
+                <div class="logo-container">
+                    <img class="logo-fit"
+                         src="logo.png" />
+                </div>
+            </a>
+            <ul class="navbar-nav px-3 w-100 mr-auto">
+                <li class="nav-item active text-nowrap">
+                    <a class="nav-link" href="#">Home</a>
+                </li>
+                <li class="nav-item text-nowrap">
+                    <a class="nav-link" href="#">Sessions</a>
+                </li>
+            </ul>
+            <ul class="navbar-nav px-3">
+                <li class="nav-item text-nowrap">
+                    <a class="nav-link" href="#">
+                        <i class="fas fa-flag fa-2x" data-toggle="tooltip" data-placement="bottom" title="Country Selection"></i>
+                    </a>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <i class="fas fa-user-circle fa-2x" data-toggle="tooltip" data-placement="bottom" title="Account"></i>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
+                        <a class="dropdown-item" href="#">Settings</a>
+                        <div id="adminPanel">
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item" href="#">Admin</a>
+                            <a class="dropdown-item" href="#">Impersonate</a>
+                        </div>
+                    </div>
+                </li>
+                <li class="nav-item text-nowrap">
+                    <a class="nav-link" href="#">
+                    </a>
+                </li>
+                <li class="nav-item text-nowrap">
+                    <a class="nav-link" href="#">
+                        <i class="fas fa-sign-out-alt fa-2x" data-toggle="tooltip" data-placement="bottom" title="Logout"></i>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        <div class="fill container-fluid">
+            <div class="dashboard-title row">
+                <h1 class="h2">Session Map</h1>
+            </div>
+            <div class="workspace row">
+                <canvas class="fill" id="canvas"></canvas>
+            </div>
+        </div>
 
-        <h2>Relays</h2>
-        <table id="relays">
-            <tr>
-                <th>Address</th>
-                <th>Datacenter</th>
-                <th>Lat / Long</th>
-                <th>Seller</th>
-            </tr>
-            <tr v-for="relay in relays">
-                <td>{{ relay.Addr.IP }}:{{ relay.Addr.Port }}</td>
-                <td>{{ relay.Datacenter.Name }}</td>
-                <td>{{ relay.Latitude }} / {{ relay.Longitude }}</td>
-                <td>{{ relay.Seller.Name }}</td>
-            </tr>
-        </table>
+        <!-- Saving this for later -->
+
+            <!-- <h1>Portal</h1>
+
+            <h2>Relays</h2>
+            <table id="relays">
+                <tr>
+                    <th>Address</th>
+                    <th>Datacenter</th>
+                    <th>Lat / Long</th>
+                    <th>Seller</th>
+                </tr>
+                <tr v-for="relay in relays">
+                    <td>{{ relay.Addr.IP }}:{{ relay.Addr.Port }}</td>
+                    <td>{{ relay.Datacenter.Name }}</td>
+                    <td>{{ relay.Latitude }} / {{ relay.Longitude }}</td>
+                    <td>{{ relay.Seller.Name }}</td>
+                </tr>
+            </table> -->
+
+        <!-- /Saving this for later -->
+
 
         <script src="https://unpkg.com/vue"></script>
+        <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js"
+                integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n"
+                crossorigin="anonymous">
+        </script>
+        <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
+                integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"
+                crossorigin="anonymous">
+        </script>
+        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"
+                integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6"
+                crossorigin="anonymous">
+        </script>
         <script src="./js/portal.js"></script>
         <script>
-            JSONRPCClient
-                .call('OpsService.Relays', {})
-                .then((response) => {
-                    new Vue({
-                    el: '#relays',
-                    data: {
-                        relays: response.Relays
-                    }
-                    })
+            MapHandler
+                .initMap()
+                .then(() => {
+                    console.log("Map Initialized");
                 })
-                .catch((e) => console.log(e))
+                .catch((e) => {
+                    console.log("Something went wrong with the map init!");
+                    console.log(e);
+                });
+            /* Saving this for later */
+                /* JSONRPCClient
+                    .call('OpsService.Relays', {})
+                    .then((response) => {
+                        new Vue({
+                        el: '#relays',
+                        data: {
+                            relays: response.Relays
+                        }
+                        });
+                    })
+                    .catch((e) => console.log(e)); */
+            /* Saving this for later */
         </script>
     </body>
 </html>

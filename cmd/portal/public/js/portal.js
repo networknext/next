@@ -1,4 +1,4 @@
-window.JSONRPCClient = {
+JSONRPCClient = {
 
 	async call(method, params) {
 		const headers = {
@@ -27,4 +27,76 @@ window.JSONRPCClient = {
 		})
 	}
 	
+}
+window.MapHandler = {
+
+	async initMap() {
+		console.log("Initializing map");
+		
+		// Grab the canvas element
+		document.getElementById('canvas');
+
+		// Setup the drawing context
+		const ctx = canvas.getContext('2d');
+
+		// Init a new image object
+		const image = new Image();
+		
+		// Tell JS what to do when the image first loads
+		image.onload = setupMapImage;
+
+		// Give the object the image you want to use
+		image.src = './maps-vector-equirectangular.png';
+
+		// Image setup function for first load
+		function setupMapImage() {
+			// Get the height and width of the canvas container
+			canvas.width = this.naturalWidth;
+			canvas.height = this.naturalHeight;
+
+			// Draw the image to screen
+			ctx.drawImage(this, 0, 0, this.width, this.height);
+
+			// Get the correct offset to use going forward for plotting points
+			let offset = {
+				x: (canvas.width / 360),
+				y: (canvas.height / 180)
+			};
+
+			// Translate the coordinate given to you to something that is mappable to the canvas
+			let coord = translateCoord({lat: 42.654110, lng: -73.752650}, offset);
+	
+			// Draw the pixel at that location
+			drawPixelAtLocation(coord);	
+
+			// Make a bunch of random points for testing
+			for (var i = 0; i < 1000; i++) {
+				let coord = translateCoord(
+				{
+					lat: getRandomInRange(-90, 90, 3),
+					lng: getRandomInRange(-180, 180, 3)
+				}, offset)
+
+				drawPixelAtLocation(coord);
+			}
+
+		}
+		
+		function drawPixelAtLocation(coord) {
+			ctx.rect(coord.x, coord.y, 1, 1);
+			ctx.fillStyle = 'red';
+			ctx.fill()
+		}
+
+		function getRandomInRange(from, to, fixed) {
+			return (Math.random() * (to - from) + from).toFixed(fixed) * 1;
+		}
+
+		function translateCoord(coord, offset) {
+			return {
+				x: (coord.lng + 180) * offset.x,
+				y: (90 - coord.lat) * offset.y
+			}
+		}
+	}
 }
