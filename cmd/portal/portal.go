@@ -149,6 +149,12 @@ func main() {
 		}
 	}
 
+	uiDir := os.Getenv("UI_DIR")
+	if uiDir == "" {
+		level.Error(logger).Log("err", "env var UI_DIR must be set")
+		os.Exit(1)
+	}
+
 	go func() {
 		port, ok := os.LookupEnv("PORT")
 		if !ok {
@@ -167,7 +173,7 @@ func main() {
 		s.RegisterService(&jsonrpc.BuyersService{}, "")
 		http.Handle("/rpc", s)
 
-		http.Handle("/", http.FileServer(http.Dir("./cmd/portal/public")))
+		http.Handle("/", http.FileServer(http.Dir(uiDir)))
 
 		// http.HandleFunc("/", transport.PortalHandlerFunc(redisClientRelays, &routeMatrix, os.Getenv("BASIC_AUTH_USERNAME"), os.Getenv("BASIC_AUTH_PASSWORD")))
 		err := http.ListenAndServe(":"+port, nil)
