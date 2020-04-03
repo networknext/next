@@ -1,10 +1,17 @@
 package transport_test
 
 import (
+	"encoding/base64"
 	"errors"
+	"net"
 	"net/http"
+	"os"
+	"testing"
 
+	"github.com/alicebob/miniredis/v2"
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
+	"github.com/stretchr/testify/assert"
 )
 
 var TestBuyersServerPublicKey = []byte{
@@ -104,5 +111,39 @@ func (f RoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 func NewTestHTTPClient(fn RoundTripFunc) *http.Client {
 	return &http.Client{
 		Transport: RoundTripFunc(fn),
+	}
+}
+
+func getRelayKeyPair(t *testing.T) (pubKey []byte, privKey []byte) {
+	key := os.Getenv("RELAY_PUBLIC_KEY")
+	assert.NotEqual(t, 0, len(key))
+	pubKey, err := base64.StdEncoding.DecodeString(key)
+	assert.NoError(t, err)
+
+	key = os.Getenv("RELAY_PRIVATE_KEY")
+	assert.NotEqual(t, 0, len(key))
+	privKey, err = base64.StdEncoding.DecodeString(key)
+	assert.NoError(t, err)
+
+	return pubKey, privKey
+}
+
+func seedRedis(t *testing.T, redisServer *miniredis.Miniredis, addressesToAdd []string) {
+	addEntry := func(addr string) {
+		relay := routing.Relay{
+			PublicKey: make([]byte, crypto.KeySize),
+			State:     routing.RelayStateOnline,
+		}
+		udpAddr, err := net.ResolveUDPAddr("udp", addr)
+		assert.NoError(t, err)
+		relay.Addr = *udpAddr
+		relay.ID = crypto.HashID(addr)
+		bin, err := relay.MarshalBinary()
+		assert.NoError(t, err)
+		redisServer.HSet(routing.HashKeyAllRelays, relay.Key(), string(bin))
+	}
+
+	for _, addr := range addressesToAdd {
+		addEntry(addr)
 	}
 }

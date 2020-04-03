@@ -24,25 +24,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func seedRedis(t *testing.T, redisServer *miniredis.Miniredis, addressesToAdd []string) {
-	addEntry := func(addr string) {
-		relay := routing.Relay{
-			PublicKey: make([]byte, crypto.KeySize),
-			State:     routing.RelayStateOnline,
-		}
-		udpAddr, _ := net.ResolveUDPAddr("udp", addr)
-		relay.Addr = *udpAddr
-		relay.ID = crypto.HashID(addr)
-		bin, _ := relay.MarshalBinary()
-		redisServer.HSet(routing.HashKeyAllRelays, relay.Key(), string(bin))
-	}
-
-	for _, addr := range addressesToAdd {
-		addEntry(addr)
-	}
-
-}
-
 func relayUpdateAssertions(t *testing.T, contentType string, body []byte, expectedCode int, redisClient *redis.Client, statsdb *routing.StatsDatabase) *httptest.ResponseRecorder {
 	if redisClient == nil {
 		redisServer, _ := miniredis.Run()
@@ -60,8 +41,7 @@ func relayUpdateAssertions(t *testing.T, contentType string, body []byte, expect
 	handler := transport.RelayUpdateHandlerFunc(log.NewNopLogger(), &transport.RelayUpdateHandlerConfig{
 		RedisClient:           redisClient,
 		StatsDb:               statsdb,
-		Duration:              &metrics.EmptyGauge{},
-		Counter:               &metrics.EmptyCounter{},
+		Metrics:               &metrics.EmptyRelayUpdateMetrics,
 		TrafficStatsPublisher: &stats.NoOpTrafficStatsPublisher{},
 		Storer:                &storage.InMemory{},
 	})
@@ -105,7 +85,6 @@ func validateRelayUpdateSuccess(t *testing.T, expectedContentType string, record
 		assert.NoError(t, err)
 	case "application/json":
 		err := json.Unmarshal(body, &response)
-		assert.Equal(t, uint32(routing.RelayStateShuttingDown), actual.State)
 		assert.NoError(t, err)
 	default:
 		assert.FailNow(t, "Invalid expected content type")
@@ -132,6 +111,7 @@ func validateRelayUpdateSuccess(t *testing.T, expectedContentType string, record
 
 	assert.NotContains(t, relaysToPingIDs, entry.ID)
 	assert.NotContains(t, relaysToPingAddrs, addr)
+	assert.Equal(t, uint32(routing.RelayStateShuttingDown), actual.State)
 }
 
 func TestRelayUpdateRelayInvalid(t *testing.T) {
@@ -302,6 +282,7 @@ func TestRelayUpdateSuccess(t *testing.T) {
 		},
 		PublicKey:      make([]byte, crypto.KeySize),
 		LastUpdateTime: uint64(time.Now().Unix() - 1),
+		State:          routing.RelayStateOnline,
 	}
 
 	raw, err := entry.MarshalBinary()

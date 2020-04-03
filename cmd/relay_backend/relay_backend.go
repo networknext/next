@@ -209,76 +209,28 @@ func main() {
 		}()
 	}
 
-	numRelays, err := metricsHandler.NewGauge(ctx, &metrics.Descriptor{
-		DisplayName: "Relays num relays",
-		ServiceName: "relay_backend",
-		ID:          "relays.num.relays",
-		Unit:        "relays",
-		Description: "How many relays are active",
-	})
+	// Create relay init metrics
+	relayInitMetrics, err := metrics.NewRelayInitMetrics(ctx, metricsHandler)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create metric histogram", "metric", "relays.num.relays", "err", err)
-		numRelays = &metrics.EmptyGauge{}
+		level.Error(logger).Log("msg", "failed to create relay init metrics", "err", err)
 	}
 
-	numRoutes, err := metricsHandler.NewGauge(ctx, &metrics.Descriptor{
-		DisplayName: "Route Matrix num routes",
-		ServiceName: "relay_backend",
-		ID:          "route.matrix.num.routes",
-		Unit:        "routes",
-		Description: "How many routes are being generated",
-	})
+	// Create relay update metrics
+	relayUpdateMetrics, err := metrics.NewRelayUpdateMetrics(ctx, metricsHandler)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create metric histogram", "metric", "route.matrix.num.routes", "err", err)
-		numRoutes = &metrics.EmptyGauge{}
+		level.Error(logger).Log("msg", "failed to create relay update metrics", "err", err)
 	}
 
-	initDuration, err := metricsHandler.NewGauge(ctx, &metrics.Descriptor{
-		DisplayName: "Relay init duration",
-		ServiceName: "relay_backend",
-		ID:          "relay.init.duration",
-		Unit:        "milliseconds",
-		Description: "How long it takes to process a relay init request",
-	})
+	// Create relay handler metrics
+	relayHandlerMetrics, err := metrics.NewRelayHandlerMetrics(ctx, metricsHandler)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create metric histogram", "metric", "relay.init.duration", "err", err)
-		initDuration = &metrics.EmptyGauge{}
+		level.Error(logger).Log("msg", "failed to create relay handler metrics", "err", err)
 	}
 
-	updateDuration, err := metricsHandler.NewGauge(ctx, &metrics.Descriptor{
-		DisplayName: "Relay update duration",
-		ServiceName: "relay_backend",
-		ID:          "relay.update.duration",
-		Unit:        "milliseconds",
-		Description: "How long it takes to process a relay update request.",
-	})
+	// Create relay stat metrics
+	relayStatMetrics, err := metrics.NewRelayStatMetrics(ctx, metricsHandler)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create metric histogram", "metric", "relay.update.duration", "err", err)
-		updateDuration = &metrics.EmptyGauge{}
-	}
-
-	initCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
-		DisplayName: "Total relay init count",
-		ServiceName: "relay_backend",
-		ID:          "relay.init.count",
-		Unit:        "requests",
-		Description: "The total number of received relay init requests",
-	})
-	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "relay.init.count", "err", err)
-		initCount = &metrics.EmptyCounter{}
-	}
-
-	updateCount, err := metricsHandler.NewCounter(ctx, &metrics.Descriptor{
-		DisplayName: "Total relay update count",
-		ServiceName: "relay_backend",
-		ID:          "relay.update.count",
-		Unit:        "requests",
-		Description: "The total number of received relay update requests",
-	})
-	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create metric counter", "metric", "relay.update.count", "err", err)
-		updateCount = &metrics.EmptyCounter{}
+		level.Error(logger).Log("msg", "failed to create relay stat metrics", "err", err)
 	}
 
 	statsdb := routing.NewStatsDatabase()
@@ -292,13 +244,13 @@ func main() {
 				level.Warn(logger).Log("matrix", "cost", "op", "generate", "err", err)
 			}
 
-			numRelays.Set(float64(len(statsdb.Entries)))
+			relayStatMetrics.NumRelays.Set(float64(len(statsdb.Entries)))
 
 			if err := costmatrix.Optimize(&routematrix, 1); err != nil {
 				level.Warn(logger).Log("matrix", "cost", "op", "optimize", "err", err)
 			}
 
-			numRoutes.Set(float64(len(routematrix.Entries)))
+			relayStatMetrics.NumRoutes.Set(float64(len(routematrix.Entries)))
 
 			level.Info(logger).Log("matrix", "route", "entries", len(routematrix.Entries))
 
@@ -354,24 +306,34 @@ func main() {
 		GeoClient:        &geoClient,
 		IpLocator:        ipLocator,
 		Storer:           db,
-		Duration:         initDuration,
-		Counter:          initCount,
+		Metrics:          relayInitMetrics,
 		RouterPrivateKey: routerPrivateKey,
 	}
 
 	commonUpdateParams := transport.RelayUpdateHandlerConfig{
 		RedisClient:           redisClientRelays,
 		StatsDb:               statsdb,
-		Duration:              updateDuration,
-		Counter:               updateCount,
+		Metrics:               relayUpdateMetrics,
 		TrafficStatsPublisher: trafficStatsPublisher,
 		Storer:                db,
+	}
+
+	commonHandlerParams := transport.RelayHandlerConfig{
+		RedisClient:           redisClientRelays,
+		GeoClient:             &geoClient,
+		IpLocator:             ipLocator,
+		Storer:                db,
+		StatsDb:               statsdb,
+		TrafficStatsPublisher: trafficStatsPublisher,
+		Metrics:               relayHandlerMetrics,
+		RouterPrivateKey:      routerPrivateKey,
 	}
 
 	router := mux.NewRouter()
 	router.HandleFunc("/healthz", transport.HealthzHandlerFunc())
 	router.HandleFunc("/relay_init", transport.RelayInitHandlerFunc(logger, &commonInitParams)).Methods("POST")
 	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(logger, &commonUpdateParams)).Methods("POST")
+	router.HandleFunc("/relays", transport.RelayHandlerFunc(logger, &commonHandlerParams)).Methods("POST")
 	router.Handle("/cost_matrix", &costmatrix).Methods("GET")
 	router.Handle("/route_matrix", &routematrix).Methods("GET")
 	router.Handle("/debug/vars", expvar.Handler())

@@ -15,9 +15,12 @@ import (
 	"github.com/gorilla/rpc/v2"
 	"github.com/gorilla/rpc/v2/json2"
 
+	gcplogging "cloud.google.com/go/logging"
+
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport/jsonrpc"
@@ -45,6 +48,15 @@ func main() {
 		}
 
 		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
+	}
+	if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+		loggingClient, err := gcplogging.NewClient(ctx, projectID)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
+
+		logger = logging.NewStackdriverLogger(loggingClient, "relay-backend")
 	}
 
 	var relayPublicKey []byte
@@ -137,6 +149,12 @@ func main() {
 		}
 	}
 
+	uiDir := os.Getenv("UI_DIR")
+	if uiDir == "" {
+		level.Error(logger).Log("err", "env var UI_DIR must be set")
+		os.Exit(1)
+	}
+
 	go func() {
 		port, ok := os.LookupEnv("PORT")
 		if !ok {
@@ -155,7 +173,7 @@ func main() {
 		s.RegisterService(&jsonrpc.BuyersService{}, "")
 		http.Handle("/rpc", s)
 
-		http.Handle("/", http.FileServer(http.Dir("./cmd/portal/public")))
+		http.Handle("/", http.FileServer(http.Dir(uiDir)))
 
 		// http.HandleFunc("/", transport.PortalHandlerFunc(redisClientRelays, &routeMatrix, os.Getenv("BASIC_AUTH_USERNAME"), os.Getenv("BASIC_AUTH_PASSWORD")))
 		err := http.ListenAndServe(":"+port, nil)
