@@ -2,9 +2,8 @@
 
 The Web Portal is responsible for:
 
-1. Displaying game session data for each buyer
-2. Displaying game server data for each buyer
-3. Displaying relay data by pulling the list of relays from Redis
+1. Providing a single RPC API for data management (Relays, Datacenters, Buyers, etc.)
+2. Serve the static front end JavaScript Portal UI
 
 ### To Run
 

@@ -24,11 +24,16 @@ require (
 	github.com/gorilla/rpc v1.2.0
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/json-iterator/go v1.1.9
+	github.com/modood/table v0.0.0-20200225102042-88de94bb9876
 	github.com/oschwald/geoip2-golang v1.4.0
+	github.com/peterbourgon/ff v1.7.0
+	github.com/peterbourgon/ff/v3 v3.0.0
+	github.com/smartystreets/goconvey v1.6.4 // indirect
 	github.com/stretchr/testify v1.4.0
 	github.com/tidwall/gjson v1.6.0
 	github.com/tidwall/pretty v1.0.1 // indirect
 	github.com/tidwall/sjson v1.0.4 // indirect
+	github.com/ybbus/jsonrpc v2.1.2+incompatible
 	golang.org/x/crypto v0.0.0-20200115085410-6d4e4cb37c7d
 	golang.org/x/exp v0.0.0-20200213203834-85f925bdd4d0 // indirect
 	golang.org/x/tools v0.0.0-20200214144324-88be01311a71 // indirect

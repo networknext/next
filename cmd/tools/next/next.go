@@ -5,15 +5,21 @@
 package main
 
 import (
+	"bufio"
+	"context"
+	"flag"
 	"fmt"
+	"io"
+	"log"
 	"os"
 	"os/exec"
 	"runtime"
-	"io"
 	"sync"
-	"bufio"
-	"log"
 	"syscall"
+
+	"github.com/modood/table"
+	"github.com/peterbourgon/ff/v3/ffcli"
+	"github.com/ybbus/jsonrpc"
 )
 
 func isWindows() bool {
@@ -141,61 +147,6 @@ func bashQuiet(command string) (bool, string) {
 	return runCommandQuiet("bash", []string{"-c", command}, false)
 }
 
-func cleanEnvironment() {
-	bashQuiet("rm env.txt")
-	bashQuiet("rm env.json")
-}
-
-func selectEnvironment(hostname string) {
-	fmt.Printf("selected environment: %s\n", hostname)
-	// todo: select environment, eg. "prod.networknext.com". save the current environment string to "env.txt" file
-}
-
-func getEnvironment() string {
-	// todo: read environment name string from "env.txt". if no env.txt file exists, return "localhost"
-	return "localhost"
-}
-
-func authEnvironment(hostname string) {
-	// todo: auth with environment. error if we can't auth. localhost should not perform any auth. should "just work".
-	fmt.Printf("(auth with environment %s)\n", hostname)
-}
-
-func syncEnvironment(hostname string) {
-	// todo: pull all the data for the environment (eg. set of relays, datacenters whatever...) down into a local json file "env.json"
-	fmt.Printf("(sync with environment %s)\n", hostname)
-}
-
-type EnvironmentData struct {
-	// todo
-}
-
-func loadEnvironment() *EnvironmentData {
-	// todo: load environment data from "env.json" into a global var. error if we can't load it.
-	fmt.Printf("(load environment)\n")
-	return &EnvironmentData{}
-}
-
-func relays(env *EnvironmentData, filter string) {
-	if filter != "" {
-		// todo
-		fmt.Printf("(print relay names with substring matching filter: %s)\n", filter)
-	} else {
-		// todo
-		fmt.Printf("(print all relay names)\n")
-	}
-}
-
-func datacenters(env *EnvironmentData, filter string) {
-	if filter != "" {
-		// todo
-		fmt.Printf("(print datacenter names with substring matching filter: %s)\n", filter)
-	} else {
-		// todo
-		fmt.Printf("(print all datacenter names)\n")
-	}
-}
-
 func secureShell(user string, address string, port int) {
 	ssh, err := exec.LookPath("ssh")
 	if err != nil {
@@ -213,7 +164,7 @@ func secureShell(user string, address string, port int) {
 	}
 }
 
-func sshToRelay(env *EnvironmentData, relayName string) {
+func sshToRelay(env Environment, relayName string) {
 	fmt.Printf("(ssh to relay %s)\n", relayName)
 	// todo: look up relay by name, get ssh data from relay entry.
 	user := "root"
@@ -222,82 +173,77 @@ func sshToRelay(env *EnvironmentData, relayName string) {
 	secureShell(user, address, port)
 }
 
-func usage() {
-	fmt.Printf("\nNetwork Next Operator Tool\n\n")
-}
-
 func main() {
+	var env Environment
 
-	cmdArgs := os.Args
+	if !env.Exists() {
+		env.Write()
+	}
+	env.Read()
 
-	if len(cmdArgs) < 2 {
-		usage()
-		os.Exit(0)
+	rpcClient := jsonrpc.NewClient("http://" + env.Hostname + "/rpc")
+	root := &ffcli.Command{
+		ShortUsage: "next <subcommand>",
+		Subcommands: []*ffcli.Command{
+			{
+				Name:       "env",
+				ShortUsage: "next env <hostname>",
+				ShortHelp:  "Manage environment",
+				Exec: func(_ context.Context, args []string) error {
+					if len(args) > 0 {
+						env.Hostname = args[0]
+						env.Write()
+					}
+					table.Output([]interface{}{env})
+					return nil
+				},
+			},
+
+			{
+				Name:       "datacenters",
+				ShortUsage: "next datacenters <name>",
+				ShortHelp:  "Manage datacenters",
+				Exec: func(_ context.Context, args []string) error {
+					if len(args) > 0 {
+						datacenters(rpcClient, args[0])
+						return nil
+					}
+					datacenters(rpcClient, "")
+					return nil
+				},
+			},
+
+			{
+				Name:       "relays",
+				ShortUsage: "next relays <name>",
+				ShortHelp:  "Manage relays",
+				Exec: func(_ context.Context, args []string) error {
+					if len(args) > 0 {
+						relays(rpcClient, args[0])
+						return nil
+					}
+					relays(rpcClient, "")
+					return nil
+				},
+				Subcommands: []*ffcli.Command{
+					{
+						Name:       "ssh",
+						ShortUsage: "next relays ssh <ip>",
+						ShortHelp:  "SSH into a specific relay",
+						Exec: func(_ context.Context, _ []string) error {
+							fmt.Println("To Be Implemented")
+							return nil
+						},
+					},
+				},
+			},
+		},
+		Exec: func(context.Context, []string) error {
+			return flag.ErrHelp
+		},
 	}
 
-	action := cmdArgs[1]
-
-	args := cmdArgs[2:]
-
-	if action == "select" && len(args) == 1 {
-		hostname := args[0]
-		cleanEnvironment()
-		selectEnvironment(hostname)
-		authEnvironment(hostname)
-		syncEnvironment(hostname)
-		return
+	if err := root.ParseAndRun(context.Background(), os.Args[1:]); err != nil {
+		log.Fatal(err)
 	}
-
-	hostname := getEnvironment()
-
-	if action == "env" {
-		fmt.Printf("environment is %s\n", hostname)
-		return
-	}
-
-	fmt.Printf("(hostname is \"%s\")\n", hostname)
-
-	authEnvironment(hostname)
-	if action == "auth" {
-		return
-	}
-
-	if action == "sync" {
-		syncEnvironment(hostname)
-		return
-	}
-
-	env := loadEnvironment()
-
-	if action == "relays" {
-
-		filter := ""
-		if len(args) > 0 {
-			filter = args[0]
-		}
-		relays(env, filter)
-
-    } else if action == "datacenters" {
-
-		filter := ""
-		if len(args) > 0 {
-			filter = args[0]
-		}
-		datacenters(env, filter)
-
-	} else if action == "ssh" && len(args) == 1 {
-
-		relayName := args[0]
-		sshToRelay(env, relayName)
-
-	} else if action == "clean" {
-
-		cleanEnvironment()
-
-	} else {
-
-		usage()
-
-	}
-	
 }

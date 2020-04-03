@@ -48,6 +48,7 @@ Simultaneously you will see the terminal with the relays logging `session create
 
 All of these services are controlled and deployed by us.
 
+- [`cmd/portal`](cmd/portal)
 - [`cmd/relay`](cmd/relay)
 - [`cmd/relay_backend`](cmd/relay_backend)
 - [`cmd/server_backend`](cmd/server_backend)
