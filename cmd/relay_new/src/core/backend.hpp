@@ -30,7 +30,7 @@ namespace core
   const uint32_t UpdateRequestVersion = 0;
   const uint32_t UpdateResponseVersion = 0;
 
-  const uint8_t MaxUpdateAttempts = 6; // 1 initial + 5 more for failures
+  const uint8_t MaxUpdateAttempts = 11; // 1 initial + 10 more for failures
 
   /*
    * A class that's responsible for backend related tasks
@@ -171,19 +171,18 @@ namespace core
         updateAttempts = 0;
       } else {
         if (++updateAttempts == MaxUpdateAttempts) {
-          Log("could not update relay, aborting program");
+          Log("could not update relay, max attempts reached, aborting program");
           break;
         }
 
-        Log("error: could not update relay, attempts: ", updateAttempts);
+        Log("could not update relay, attempts: ", updateAttempts);
       }
 
       sessions.purge(relayClock.unixTime<util::Second>());
       std::this_thread::sleep_for(1s);
     }
 
-    // clean shutdown if the update fails, just to be safe
-    if (shouldCleanShutdown || updateAttempts == MaxUpdateAttempts) {
+    if (shouldCleanShutdown) {
       unsigned int seconds = 0;
       while (seconds++ < 60 && !update(0, true)) {
         std::this_thread::sleep_for(1s);

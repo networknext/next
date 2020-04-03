@@ -153,15 +153,16 @@ Test(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
   testClock.reset();
   auto fut = std::async(std::launch::async, [&] {
     std::this_thread::sleep_for(10s);
+    shouldCleanShutdown = true;
     testing::StubbedCurlWrapper::Success = false;
+    handle = false;
     std::this_thread::sleep_for(40s);
     testing::StubbedCurlWrapper::Success = true;
-    handle = false;
-    shouldCleanShutdown = true;
   });
 
   backend.updateCycle(handle, shouldCleanShutdown, logger, sessions, backendClock);
   auto elapsed = testClock.elapsed<util::Second>();
+  std::cout << elapsed << std::endl;
   check(elapsed >= 80.0 && elapsed < 81.0);
 }
 
@@ -202,7 +203,7 @@ Test(core_Backend_updateCycle_update_fails_should_not_exit)
   // then the shutdown ack is a success,
   // and finally 60 seconds for a (half failed) clean shutdown
   // totals to ~75 seconds
-  check(elapsed >= 75.0 && elapsed < 76.0);
+  check(elapsed >= 20.0 && elapsed < 21.0);
 }
 
 // When clean shutdown is not set to true, the function should return immediately
