@@ -56,12 +56,16 @@ namespace core
 
     auto init() -> bool;
 
-    void updateCycle(
+    /*
+     * Updates the relay in a loop once per second until loopHandle is false
+     * Returns true as long as the relay doesn't reach the max number of failed update attempts
+     */
+    auto updateCycle(
      const volatile bool& loopHandle,
      const volatile bool& shouldCleanShutdown,
      util::ThroughputLogger& logger,
      core::SessionMap& sessions,
-     const util::Clock& relayClock);
+     const util::Clock& relayClock) -> bool;
 
    private:
     const std::string mHostname;
@@ -152,19 +156,20 @@ namespace core
   }
 
   template <typename T>
-  void Backend<T>::updateCycle(
+  bool Backend<T>::updateCycle(
    const volatile bool& loopHandle,
    const volatile bool& shouldCleanShutdown,
    util::ThroughputLogger& logger,
    core::SessionMap& sessions,
    const util::Clock& relayClock)
   {
+    bool successfulRoutine = true;
     std::vector<uint8_t> update_response_memory;
     update_response_memory.resize(RESPONSE_MAX_BYTES);
 
     // update once every 10 seconds
     // if the update fails, try again, once per second for (MaxUpdateAttempts - 1) seconds
-    // if there's still no update, exit the loop
+    // if there's still no successful update, exit the loop and return false, and skip the clean shutdown
     uint8_t updateAttempts = 0;
     while (loopHandle) {
       if (update(logger.print(), false)) {
@@ -172,6 +177,7 @@ namespace core
       } else {
         if (++updateAttempts == MaxUpdateAttempts) {
           Log("could not update relay, max attempts reached, aborting program");
+          successfulRoutine = false;
           break;
         }
 
@@ -192,6 +198,8 @@ namespace core
         std::this_thread::sleep_for(30s);
       }
     }
+
+    return successfulRoutine;
   }
 
   template <typename T>

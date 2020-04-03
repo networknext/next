@@ -65,7 +65,7 @@ Test(core_backend_init_valid)
 }
 
 // Update the backend for 10 seconds, then proceed to switch the handle to false.
-// The relay should then attempt to ack the backend and shutdown for 30 seconds.
+// The relay should then attempt to ack the backend.
 // It won't receive a success response from the backend so instead it will
 // live for 60 seconds and skip the ack
 Test(core_Backend_updateCycle_shutdown_60s)
@@ -92,7 +92,7 @@ Test(core_Backend_updateCycle_shutdown_60s)
     handle = false;
   });
 
-  backend.updateCycle(handle, shouldCleanShutdown, logger, sessions, backendClock);
+  check(backend.updateCycle(handle, shouldCleanShutdown, logger, sessions, backendClock));
   auto elapsed = testClock.elapsed<util::Second>();
   check(elapsed >= 70.0 && elapsed < 71.0);
 }
@@ -124,7 +124,7 @@ Test(core_Backend_updateCycle_ack_and_30s)
     handle = false;
   });
 
-  backend.updateCycle(handle, shouldCleanShutdown, logger, sessions, backendClock);
+  check(backend.updateCycle(handle, shouldCleanShutdown, logger, sessions, backendClock));
   auto elapsed = testClock.elapsed<util::Second>();
   check(elapsed >= 40.0 && elapsed < 41.0);
 }
@@ -160,7 +160,7 @@ Test(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
     testing::StubbedCurlWrapper::Success = true;
   });
 
-  backend.updateCycle(handle, shouldCleanShutdown, logger, sessions, backendClock);
+  check(backend.updateCycle(handle, shouldCleanShutdown, logger, sessions, backendClock));
   auto elapsed = testClock.elapsed<util::Second>();
   std::cout << elapsed << std::endl;
   check(elapsed >= 80.0 && elapsed < 81.0);
@@ -168,10 +168,10 @@ Test(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
 
 // Update the backend for 10 seconds, then switch the success of the request to false.
 // That will trigger the failure attempts which the number of is controlled by the MaxUpdateAttempts constant.
-// After the max attempts is reached it will attempt a clean shutdown (for safety).
+// After the max attempts is reached it will shutdown.
 // But because the success value is never reset to true, the cleanshutdown ack will never succeed
-// so the final duration should be 10 seconds of success, MaxUpdateAttempts seconds of failure, and 60 seconds of failed backend acks
-Test(core_Backend_updateCycle_update_fails_should_not_exit)
+// so the final duration should be 10 seconds of success and (MaxUpdateAttempts - 1) seconds of failure.
+Test(core_Backend_updateCycle_update_fails_for_max_number_of_attempts)
 {
   util::Clock testClock;
 
@@ -193,16 +193,11 @@ Test(core_Backend_updateCycle_update_fails_should_not_exit)
     testing::StubbedCurlWrapper::Success = false;  // set to false here to trigger failed updates
   });
 
-  backend.updateCycle(handle, shouldCleanShutdown, logger, sessions, backendClock);
+  check(!backend.updateCycle(handle, shouldCleanShutdown, logger, sessions, backendClock));
   auto elapsed = testClock.elapsed<util::Second>();
-  // time will be 10 seconds of good updates,
-  // 5 seconds of bad updates overlapped with
-  // the first 5 seconds of the second sleep callsleep
-  // which breaks out of the loop,
-  // the remaining 5 seconds are bad updates
-  // then the shutdown ack is a success,
-  // and finally 60 seconds for a (half failed) clean shutdown
-  // totals to ~75 seconds
+  // time will be 10 seconds of good updates and
+  // 10 seconds of bad updates, which will cause
+  // the relay to abort with no clean shutdown
   check(elapsed >= 20.0 && elapsed < 21.0);
 }
 
@@ -230,7 +225,7 @@ Test(core_Backend_updateCycle_no_clean_shutdown)
     handle = false;
   });
 
-  backend.updateCycle(handle, shouldCleanShutdown, logger, sessions, backendClock);
+  check(backend.updateCycle(handle, shouldCleanShutdown, logger, sessions, backendClock));
   auto elapsed = testClock.elapsed<util::Second>();
   check(elapsed >= 10.0 && elapsed < 11.0);
 }

@@ -418,7 +418,7 @@ int main()
 
   Log("Relay initialized\n\n");
 
-  backend.updateCycle(gAlive, gShouldCleanShutdown, *logger, sessions, relayClock);
+  bool success = backend.updateCycle(::gAlive, gShouldCleanShutdown, *logger, sessions, relayClock);
 
   // has to be here, updateCycle() may return on failure and this should be marked false here to account for that
   gAlive = false;
@@ -443,5 +443,5 @@ int main()
 
   LogDebug("Relay terminated. Address: ", relayAddr);
 
-  return 0;
+  return success ? 0 : 1;
 }
