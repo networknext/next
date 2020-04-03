@@ -208,7 +208,7 @@ func TestRelayHandlerRelayNotFound(t *testing.T) {
 
 	buff, err := request.MarshalJSON()
 	assert.NoError(t, err)
-	relayHandlerAssertions(t, "", relay, nil, buff, http.StatusInternalServerError, nil, nil, inMemory, nil, nil, nil)
+	relayHandlerAssertions(t, "", relay, nil, buff, http.StatusNotFound, nil, nil, inMemory, nil, nil, nil)
 }
 
 func TestRelayHandlerNoAuthHeader(t *testing.T) {

@@ -4,46 +4,22 @@ import (
 	"context"
 )
 
-type DecisionMetrics struct {
-	NoChange            Counter
-	ForceDirect         Counter
-	ForceNext           Counter
-	NoNextRoute         Counter
-	ABTestDirect        Counter
-	RTTReduction        Counter
-	PacketLossMultipath Counter
-	JitterMultipath     Counter
-	VetoRTT             Counter
-	RTTMultipath        Counter
-	VetoPacketLoss      Counter
-	FallbackToDirect    Counter
-	VetoYOLO            Counter
-	VetoNoRoute         Counter
-	InitialSlice        Counter
-	VetoRTTYOLO         Counter
-	VetoPacketLossYOLO  Counter
-	RTTIncrease         Counter
+type SessionMetrics struct {
+	Invocations     Counter
+	DirectSessions  Counter
+	NextSessions    Counter
+	DurationGauge   Gauge
+	DecisionMetrics DecisionMetrics
+	ErrorMetrics    SessionErrorMetrics
 }
 
-var EmptyDecisionMetrics DecisionMetrics = DecisionMetrics{
-	NoChange:            &EmptyCounter{},
-	ForceDirect:         &EmptyCounter{},
-	ForceNext:           &EmptyCounter{},
-	NoNextRoute:         &EmptyCounter{},
-	ABTestDirect:        &EmptyCounter{},
-	RTTReduction:        &EmptyCounter{},
-	PacketLossMultipath: &EmptyCounter{},
-	JitterMultipath:     &EmptyCounter{},
-	VetoRTT:             &EmptyCounter{},
-	RTTMultipath:        &EmptyCounter{},
-	VetoPacketLoss:      &EmptyCounter{},
-	FallbackToDirect:    &EmptyCounter{},
-	VetoYOLO:            &EmptyCounter{},
-	VetoNoRoute:         &EmptyCounter{},
-	InitialSlice:        &EmptyCounter{},
-	VetoRTTYOLO:         &EmptyCounter{},
-	VetoPacketLossYOLO:  &EmptyCounter{},
-	RTTIncrease:         &EmptyCounter{},
+var EmptySessionMetrics SessionMetrics = SessionMetrics{
+	Invocations:     &EmptyCounter{},
+	DirectSessions:  &EmptyCounter{},
+	NextSessions:    &EmptyCounter{},
+	DurationGauge:   &EmptyGauge{},
+	DecisionMetrics: EmptyDecisionMetrics,
+	ErrorMetrics:    EmptySessionErrorMetrics,
 }
 
 type SessionErrorMetrics struct {
@@ -88,63 +64,145 @@ var EmptySessionErrorMetrics SessionErrorMetrics = SessionErrorMetrics{
 	BillingFailure:              &EmptyCounter{},
 }
 
-type SessionMetrics struct {
-	Invocations         Counter
-	DirectSessions      Counter
-	NextSessions        Counter
-	DurationGauge       Gauge
-	DecisionMetrics     DecisionMetrics
-	SessionErrorMetrics SessionErrorMetrics
+type DecisionMetrics struct {
+	NoChange            Counter
+	ForceDirect         Counter
+	ForceNext           Counter
+	NoNextRoute         Counter
+	ABTestDirect        Counter
+	RTTReduction        Counter
+	PacketLossMultipath Counter
+	JitterMultipath     Counter
+	VetoRTT             Counter
+	RTTMultipath        Counter
+	VetoPacketLoss      Counter
+	FallbackToDirect    Counter
+	VetoYOLO            Counter
+	VetoNoRoute         Counter
+	InitialSlice        Counter
+	VetoRTTYOLO         Counter
+	VetoPacketLossYOLO  Counter
+	RTTIncrease         Counter
 }
 
-var EmptySessionMetrics SessionMetrics = SessionMetrics{
-	Invocations:         &EmptyCounter{},
-	DirectSessions:      &EmptyCounter{},
-	NextSessions:        &EmptyCounter{},
-	DurationGauge:       &EmptyGauge{},
-	DecisionMetrics:     EmptyDecisionMetrics,
-	SessionErrorMetrics: EmptySessionErrorMetrics,
+var EmptyDecisionMetrics DecisionMetrics = DecisionMetrics{
+	NoChange:            &EmptyCounter{},
+	ForceDirect:         &EmptyCounter{},
+	ForceNext:           &EmptyCounter{},
+	NoNextRoute:         &EmptyCounter{},
+	ABTestDirect:        &EmptyCounter{},
+	RTTReduction:        &EmptyCounter{},
+	PacketLossMultipath: &EmptyCounter{},
+	JitterMultipath:     &EmptyCounter{},
+	VetoRTT:             &EmptyCounter{},
+	RTTMultipath:        &EmptyCounter{},
+	VetoPacketLoss:      &EmptyCounter{},
+	FallbackToDirect:    &EmptyCounter{},
+	VetoYOLO:            &EmptyCounter{},
+	VetoNoRoute:         &EmptyCounter{},
+	InitialSlice:        &EmptyCounter{},
+	VetoRTTYOLO:         &EmptyCounter{},
+	VetoPacketLossYOLO:  &EmptyCounter{},
+	RTTIncrease:         &EmptyCounter{},
 }
 
 type ServerUpdateMetrics struct {
 	Invocations   Counter
 	DurationGauge Gauge
+	ErrorMetrics  ServerUpdateErrorMetrics
 }
 
 var EmptyServerUpdateMetrics ServerUpdateMetrics = ServerUpdateMetrics{
 	Invocations:   &EmptyCounter{},
 	DurationGauge: &EmptyGauge{},
+	ErrorMetrics:  EmptyServerUpdateErrorMetrics,
+}
+
+type ServerUpdateErrorMetrics struct {
+	UnmarshalFailure     Counter
+	SDKTooOld            Counter
+	BuyerNotFound        Counter
+	VerificationFailure  Counter
+	PacketSequenceTooOld Counter
+}
+
+var EmptyServerUpdateErrorMetrics ServerUpdateErrorMetrics = ServerUpdateErrorMetrics{
+	UnmarshalFailure:     &EmptyCounter{},
+	SDKTooOld:            &EmptyCounter{},
+	BuyerNotFound:        &EmptyCounter{},
+	VerificationFailure:  &EmptyCounter{},
+	PacketSequenceTooOld: &EmptyCounter{},
 }
 
 type RelayInitMetrics struct {
 	Invocations   Counter
 	DurationGauge Gauge
+	ErrorMetrics  RelayInitErrorMetrics
 }
 
 var EmptyRelayInitMetrics RelayInitMetrics = RelayInitMetrics{
 	Invocations:   &EmptyCounter{},
 	DurationGauge: &EmptyGauge{},
+	ErrorMetrics:  EmptyRelayInitErrorMetrics,
+}
+
+type RelayInitErrorMetrics struct {
+	UnmarshalFailure   Counter
+	InvalidMagic       Counter
+	InvalidVersion     Counter
+	InvalidAddress     Counter
+	DBLookupFailure    Counter
+	DecryptionFailure  Counter
+	RedisFailure       Counter
+	RelayAlreadyExists Counter
+	IPLookupFailure    Counter
+}
+
+var EmptyRelayInitErrorMetrics RelayInitErrorMetrics = RelayInitErrorMetrics{
+	UnmarshalFailure:   &EmptyCounter{},
+	InvalidMagic:       &EmptyCounter{},
+	InvalidVersion:     &EmptyCounter{},
+	InvalidAddress:     &EmptyCounter{},
+	DBLookupFailure:    &EmptyCounter{},
+	DecryptionFailure:  &EmptyCounter{},
+	RedisFailure:       &EmptyCounter{},
+	RelayAlreadyExists: &EmptyCounter{},
+	IPLookupFailure:    &EmptyCounter{},
 }
 
 type RelayUpdateMetrics struct {
 	Invocations   Counter
 	DurationGauge Gauge
+	ErrorMetrics  RelayUpdateErrorMetrics
 }
 
 var EmptyRelayUpdateMetrics RelayUpdateMetrics = RelayUpdateMetrics{
 	Invocations:   &EmptyCounter{},
 	DurationGauge: &EmptyGauge{},
+	ErrorMetrics:  EmptyRelayUpdateErrorMetrics,
 }
+
+type RelayUpdateErrorMetrics struct {
+}
+
+var EmptyRelayUpdateErrorMetrics RelayUpdateErrorMetrics = RelayUpdateErrorMetrics{}
 
 type RelayHandlerMetrics struct {
 	Invocations   Counter
 	DurationGauge Gauge
+	ErrorMetrics  RelayHandlerErrorMetrics
 }
 
 var EmptyRelayHandlerMetrics RelayHandlerMetrics = RelayHandlerMetrics{
 	Invocations:   &EmptyCounter{},
 	DurationGauge: &EmptyGauge{},
+	ErrorMetrics:  EmptyRelayHandlerErrorMetrics,
 }
+
+type RelayHandlerErrorMetrics struct {
+}
+
+var EmptyRelayHandlerErrorMetrics RelayHandlerErrorMetrics = RelayHandlerErrorMetrics{}
 
 type RelayStatMetrics struct {
 	NumRelays Gauge
@@ -385,7 +443,7 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
-	sessionMetrics.SessionErrorMetrics.BillingFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	sessionMetrics.ErrorMetrics.BillingFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Session Billing Failure",
 		ServiceName: "server_backend",
 		ID:          "session.error.billing_failure",
@@ -395,7 +453,7 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
-	sessionMetrics.SessionErrorMetrics.BuyerNotFound, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	sessionMetrics.ErrorMetrics.BuyerNotFound, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Session Buyer Not Found",
 		ServiceName: "server_backend",
 		ID:          "session.error.buyer_not_found",
@@ -405,7 +463,7 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
-	sessionMetrics.SessionErrorMetrics.ClientLocateFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	sessionMetrics.ErrorMetrics.ClientLocateFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Session Client Locate Failure",
 		ServiceName: "server_backend",
 		ID:          "session.error.client_locate_failure",
@@ -415,7 +473,7 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
-	sessionMetrics.SessionErrorMetrics.EncryptionFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	sessionMetrics.ErrorMetrics.EncryptionFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Session Encryption Failure",
 		ServiceName: "server_backend",
 		ID:          "session.error.encryption_failure",
@@ -425,7 +483,7 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
-	sessionMetrics.SessionErrorMetrics.FallbackToDirect, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	sessionMetrics.ErrorMetrics.FallbackToDirect, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Session Fallback To Direct",
 		ServiceName: "server_backend",
 		ID:          "session.error.fallback_to_direct",
@@ -435,7 +493,7 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
-	sessionMetrics.SessionErrorMetrics.GetServerDataFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	sessionMetrics.ErrorMetrics.GetServerDataFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Session Get Server Data Failure",
 		ServiceName: "server_backend",
 		ID:          "session.error.get_server_data_failure",
@@ -445,7 +503,7 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
-	sessionMetrics.SessionErrorMetrics.GetSessionDataFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	sessionMetrics.ErrorMetrics.GetSessionDataFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Session Get Session Data Failure",
 		ServiceName: "server_backend",
 		ID:          "session.error.get_session_data_failure",
@@ -455,7 +513,7 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
-	sessionMetrics.SessionErrorMetrics.NearRelaysLocateFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	sessionMetrics.ErrorMetrics.NearRelaysLocateFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Session Near Relays Locate Failure",
 		ServiceName: "server_backend",
 		ID:          "session.error.near_relays_locate_failure",
@@ -465,7 +523,7 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
-	sessionMetrics.SessionErrorMetrics.OldSequence, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	sessionMetrics.ErrorMetrics.OldSequence, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Session Old Sequence",
 		ServiceName: "server_backend",
 		ID:          "session.error.old_sequence",
@@ -475,7 +533,7 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
-	sessionMetrics.SessionErrorMetrics.PipelineExecFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	sessionMetrics.ErrorMetrics.PipelineExecFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Session Redis Pipeline Exec Failure",
 		ServiceName: "server_backend",
 		ID:          "session.error.redis_pipeline_exec_failure",
@@ -485,7 +543,7 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
-	sessionMetrics.SessionErrorMetrics.ReadPacketFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	sessionMetrics.ErrorMetrics.ReadPacketFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Session Read Packet Failure",
 		ServiceName: "server_backend",
 		ID:          "session.error.read_packet_failure",
@@ -495,7 +553,7 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
-	sessionMetrics.SessionErrorMetrics.RouteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	sessionMetrics.ErrorMetrics.RouteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Session Route Failure",
 		ServiceName: "server_backend",
 		ID:          "session.error.route_failure",
@@ -505,7 +563,7 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
-	sessionMetrics.SessionErrorMetrics.UnmarshalServerDataFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	sessionMetrics.ErrorMetrics.UnmarshalServerDataFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Session Unmarshal Server Data Failure",
 		ServiceName: "server_backend",
 		ID:          "session.error.unmarshal_server_data_failure",
@@ -515,7 +573,7 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
-	sessionMetrics.SessionErrorMetrics.UnmarshalSessionDataFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	sessionMetrics.ErrorMetrics.UnmarshalSessionDataFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Session Unmarshal Session Data Failure",
 		ServiceName: "server_backend",
 		ID:          "session.error.unmarshal_session_data_failure",
@@ -525,7 +583,7 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
-	sessionMetrics.SessionErrorMetrics.UpdateSessionFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	sessionMetrics.ErrorMetrics.UpdateSessionFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Session Update Session Failure",
 		ServiceName: "server_backend",
 		ID:          "session.error.update_session_failure",
@@ -535,7 +593,7 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
-	sessionMetrics.SessionErrorMetrics.VerifyFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	sessionMetrics.ErrorMetrics.VerifyFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Session Verify Failure",
 		ServiceName: "server_backend",
 		ID:          "session.error.verify_failure",
@@ -545,7 +603,7 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
-	sessionMetrics.SessionErrorMetrics.WriteCachedResponseFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	sessionMetrics.ErrorMetrics.WriteCachedResponseFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Session Write Cached Response Failure",
 		ServiceName: "server_backend",
 		ID:          "session.error.write_cached_response_failure",
@@ -555,7 +613,7 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
-	sessionMetrics.SessionErrorMetrics.WriteResponseFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	sessionMetrics.ErrorMetrics.WriteResponseFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Session Write Response Failure",
 		ServiceName: "server_backend",
 		ID:          "session.error.write_response_failure",

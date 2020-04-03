@@ -102,7 +102,7 @@ func RelayHandlerFunc(logger log.Logger, params *RelayHandlerConfig) func(writer
 		relayEntry, ok := params.Storer.Relay(id)
 		if !ok {
 			level.Error(locallogger).Log("msg", "relay not in firestore")
-			http.Error(writer, "relay not in firestore", http.StatusInternalServerError)
+			http.Error(writer, "relay not in firestore", http.StatusNotFound)
 			return
 		}
 
@@ -338,6 +338,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 		}
 		if err != nil {
 			http.Error(writer, err.Error(), http.StatusBadRequest)
+			params.Metrics.ErrorMetrics.UnmarshalFailure.Add(1)
 			return
 		}
 
@@ -346,12 +347,14 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 		if relayInitRequest.Magic != InitRequestMagic {
 			level.Error(locallogger).Log("msg", "magic number mismatch", "magic_number", relayInitRequest.Magic)
 			http.Error(writer, "magic number mismatch", http.StatusBadRequest)
+			params.Metrics.ErrorMetrics.InvalidMagic.Add(1)
 			return
 		}
 
 		if relayInitRequest.Version != VersionNumberInitRequest {
 			level.Error(locallogger).Log("msg", "version mismatch", "version", relayInitRequest.Version)
 			http.Error(writer, "version mismatch", http.StatusBadRequest)
+			params.Metrics.ErrorMetrics.InvalidVersion.Add(1)
 			return
 		}
 
@@ -360,7 +363,8 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 		relayEntry, ok := params.Storer.Relay(id)
 		if !ok {
 			level.Error(locallogger).Log("msg", "relay not in firestore")
-			http.Error(writer, "relay not in firestore", http.StatusInternalServerError)
+			http.Error(writer, "relay not in firestore", http.StatusNotFound)
+			params.Metrics.ErrorMetrics.DBLookupFailure.Add(1)
 			return
 		}
 
@@ -378,6 +382,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 		if _, ok := crypto.Open(relayInitRequest.EncryptedToken, relayInitRequest.Nonce, relay.PublicKey, params.RouterPrivateKey); !ok {
 			level.Error(locallogger).Log("msg", "crypto open failed")
 			http.Error(writer, "crypto open failed", http.StatusUnauthorized)
+			params.Metrics.ErrorMetrics.DecryptionFailure.Add(1)
 			return
 		}
 
@@ -385,13 +390,15 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 
 		if exists.Err() != nil && exists.Err() != redis.Nil {
 			level.Error(locallogger).Log("msg", "failed to check if relay is registered", "err", exists.Err())
-			http.Error(writer, "failed to check if relay is registered", http.StatusNotFound)
+			http.Error(writer, "failed to check if relay is registered", http.StatusInternalServerError)
+			params.Metrics.ErrorMetrics.RedisFailure.Add(1)
 			return
 		}
 
 		if exists.Val() {
 			level.Warn(locallogger).Log("msg", "relay already initialized")
 			http.Error(writer, "relay already initialized", http.StatusConflict)
+			params.Metrics.ErrorMetrics.RelayAlreadyExists.Add(1)
 			return
 		}
 
@@ -400,6 +407,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			relay.Longitude = loc.Longitude
 		} else {
 			level.Warn(locallogger).Log("msg", "using default geolocation from storage for relay")
+			params.Metrics.ErrorMetrics.IPLookupFailure.Add(1)
 		}
 
 		// Regular set for expiry

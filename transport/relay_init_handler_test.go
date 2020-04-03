@@ -2,6 +2,7 @@ package transport_test
 
 import (
 	"bytes"
+	"context"
 	crand "crypto/rand"
 	"encoding/base64"
 	"encoding/json"
@@ -29,14 +30,16 @@ import (
 	"golang.org/x/crypto/nacl/box"
 )
 
-func relayInitAssertions(t *testing.T, contentType string, relay routing.Relay, body []byte, expectedCode int, geoClient *routing.GeoClient, ipfunc routing.LocateIPFunc, inMemory *storage.InMemory, redisClient *redis.Client, routerPrivateKey []byte) *httptest.ResponseRecorder {
+func pingRelayBackendInit(t *testing.T, contentType string, relay routing.Relay, body []byte, initMetrics metrics.RelayInitMetrics, geoClient *routing.GeoClient, ipfunc routing.LocateIPFunc, inMemory *storage.InMemory, redisClient *redis.Client, routerPrivateKey []byte) *httptest.ResponseRecorder {
 	if redisClient == nil {
-		redisServer, _ := miniredis.Run()
+		redisServer, err := miniredis.Run()
+		assert.NoError(t, err)
 		redisClient = redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 	}
 
 	if geoClient == nil {
-		serv, _ := miniredis.Run()
+		serv, err := miniredis.Run()
+		assert.NoError(t, err)
 		cli := redis.NewClient(&redis.Options{Addr: serv.Addr()})
 		geoClient = &routing.GeoClient{
 			RedisClient: cli,
@@ -47,14 +50,18 @@ func relayInitAssertions(t *testing.T, contentType string, relay routing.Relay, 
 	var customerPublicKey []byte
 	{
 		if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
-			customerPublicKey, _ = base64.StdEncoding.DecodeString(key)
+			var err error
+			customerPublicKey, err = base64.StdEncoding.DecodeString(key)
+			assert.NoError(t, err)
 		}
 	}
 
 	var relayPublicKey []byte
 	{
 		if key := os.Getenv("RELAY_PUBLIC_KEY"); len(key) != 0 {
-			relayPublicKey, _ = base64.StdEncoding.DecodeString(key)
+			var err error
+			relayPublicKey, err = base64.StdEncoding.DecodeString(key)
+			assert.NoError(t, err)
 		}
 	}
 
@@ -72,7 +79,8 @@ func relayInitAssertions(t *testing.T, contentType string, relay routing.Relay, 
 	}
 
 	recorder := httptest.NewRecorder()
-	request, _ := http.NewRequest("POST", "/relay_init", bytes.NewBuffer(body))
+	request, err := http.NewRequest("POST", "/relay_init", bytes.NewBuffer(body))
+	assert.NoError(t, err)
 	request.Header.Add("Content-Type", contentType)
 
 	if inMemory == nil {
@@ -100,18 +108,22 @@ func relayInitAssertions(t *testing.T, contentType string, relay routing.Relay, 
 		GeoClient:        geoClient,
 		IpLocator:        ipfunc,
 		Storer:           inMemory,
-		Metrics:          &metrics.EmptyRelayInitMetrics,
+		Metrics:          &initMetrics,
 		RouterPrivateKey: routerPrivateKey,
 	})
 
 	handler(recorder, request)
-
-	assert.Equal(t, expectedCode, recorder.Code)
-
 	return recorder
 }
 
-func validateRelayInitSuccess(t *testing.T, expectedContentType string, recorder *httptest.ResponseRecorder, geoClient routing.GeoClient, redisClient *redis.Client, location routing.Location, addr string, before uint64, expected routing.Relay) {
+func relayInitErrorAssertions(t *testing.T, recorder *httptest.ResponseRecorder, expectedCode int, errMetric metrics.Counter) {
+	assert.Equal(t, expectedCode, recorder.Code)
+	assert.Equal(t, 1.0, errMetric.Value())
+}
+
+func relayInitSuccessAssertions(t *testing.T, recorder *httptest.ResponseRecorder, expectedContentType string, errMetrics metrics.RelayInitErrorMetrics, geoClient *routing.GeoClient, redisClient *redis.Client, location routing.Location, addr string, before uint64, expected routing.Relay) {
+	assert.Equal(t, http.StatusOK, recorder.Code)
+
 	header := recorder.Header()
 
 	contentType, ok := header["Content-Type"]
@@ -153,7 +165,8 @@ func validateRelayInitSuccess(t *testing.T, expectedContentType string, recorder
 	assert.Len(t, actual.PublicKey, 32)
 
 	// only added one relay so it should be the only one returned by this
-	relaysInLocation, _ := geoClient.RelaysWithin(location.Latitude, location.Longitude, 1, "km")
+	relaysInLocation, err := geoClient.RelaysWithin(location.Latitude, location.Longitude, 1, "km")
+	assert.NoError(t, err)
 	if assert.Len(t, relaysInLocation, 1) {
 		relay := relaysInLocation[0]
 
@@ -163,6 +176,8 @@ func validateRelayInitSuccess(t *testing.T, expectedContentType string, recorder
 	}
 
 	assert.Equal(t, uint32(routing.RelayStateOnline), actual.State)
+
+	assert.Equal(t, errMetrics, metrics.EmptyRelayInitErrorMetrics)
 }
 
 func TestRelayInitBadPacket(t *testing.T) {
@@ -174,35 +189,33 @@ func TestRelayInitBadPacket(t *testing.T) {
 		},
 	}
 
+	initMetrics := metrics.EmptyRelayInitMetrics
+	localMetrics := metrics.LocalHandler{}
+
+	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
+	assert.NoError(t, err)
+
+	initMetrics.ErrorMetrics.UnmarshalFailure = metric
+
 	// Binary version
 	{
 		buff := []byte("bad packet")
-		relayInitAssertions(t, "application/octet-stream", relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
+		recorder := pingRelayBackendInit(t, "application/octet-stream", relay, buff, initMetrics, nil, nil, nil, nil, nil)
+		relayInitErrorAssertions(t, recorder, http.StatusBadRequest, metric)
 	}
+
+	// Reset the metric so it's not counted twice
+	metric.ValueReset()
 
 	// JSON version
 	{
 		buff := []byte("{")
-		relayInitAssertions(t, "application/json", relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
+		recorder := pingRelayBackendInit(t, "application/json", relay, buff, initMetrics, nil, nil, nil, nil, nil)
+		relayInitErrorAssertions(t, recorder, http.StatusBadRequest, metric)
 	}
 }
 
 func TestRelayInitMagicIsInvalid(t *testing.T) {
-	_, relayPrivateKey := getRelayKeyPair(t)
-	routerPublicKey, _, err := box.GenerateKey(crand.Reader)
-	assert.NoError(t, err)
-
-	// generate nonce
-	nonce := make([]byte, crypto.NonceSize)
-	crand.Read(nonce)
-
-	// generate token
-	token := make([]byte, crypto.KeySize)
-	crand.Read(token)
-
-	// encrypt token
-	encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
-
 	addr := "127.0.0.1:40000"
 	relay := routing.Relay{
 		ID: crypto.HashID(addr),
@@ -213,41 +226,39 @@ func TestRelayInitMagicIsInvalid(t *testing.T) {
 
 	packet := transport.RelayInitRequest{
 		Magic:          0xFFFFFFFF,
-		Nonce:          nonce, // nonce and token just need to be set to pass marshalling
-		EncryptedToken: encryptedToken,
+		Nonce:          make([]byte, crypto.NonceSize),
+		EncryptedToken: make([]byte, routing.EncryptedRelayTokenSize),
 	}
+
+	initMetrics := metrics.EmptyRelayInitMetrics
+	localMetrics := metrics.LocalHandler{}
+
+	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
+	assert.NoError(t, err)
+
+	initMetrics.ErrorMetrics.InvalidMagic = metric
 
 	// Binary version
 	{
 		buff, err := packet.MarshalBinary()
 		assert.NoError(t, err)
-		relayInitAssertions(t, "application/octet-stream", relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
+		recorder := pingRelayBackendInit(t, "application/octet-stream", relay, buff, initMetrics, nil, nil, nil, nil, nil)
+		relayInitErrorAssertions(t, recorder, http.StatusBadRequest, metric)
 	}
+
+	// Reset the metric so it's not counted twice
+	metric.ValueReset()
 
 	// JSON version
 	{
 		buff, err := packet.MarshalJSON()
 		assert.NoError(t, err)
-		relayInitAssertions(t, "application/json", relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
+		recorder := pingRelayBackendInit(t, "application/json", relay, buff, initMetrics, nil, nil, nil, nil, nil)
+		relayInitErrorAssertions(t, recorder, http.StatusBadRequest, metric)
 	}
 }
 
 func TestRelayInitVersionIsInvalid(t *testing.T) {
-	_, relayPrivateKey := getRelayKeyPair(t)
-	routerPublicKey, _, err := box.GenerateKey(crand.Reader)
-	assert.NoError(t, err)
-
-	// generate nonce
-	nonce := make([]byte, crypto.NonceSize)
-	crand.Read(nonce)
-
-	// generate token
-	token := make([]byte, crypto.KeySize)
-	crand.Read(token)
-
-	// encrypt token
-	encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
-
 	addr := "127.0.0.1:40000"
 	relay := routing.Relay{
 		ID: crypto.HashID(addr),
@@ -258,45 +269,48 @@ func TestRelayInitVersionIsInvalid(t *testing.T) {
 	packet := transport.RelayInitRequest{
 		Magic:          transport.InitRequestMagic,
 		Version:        1,
-		Nonce:          nonce, // nonce and token just need to be set to pass marshalling
-		EncryptedToken: encryptedToken,
+		Nonce:          make([]byte, crypto.NonceSize),
+		EncryptedToken: make([]byte, routing.EncryptedRelayTokenSize),
 	}
+
+	initMetrics := metrics.EmptyRelayInitMetrics
+	localMetrics := metrics.LocalHandler{}
+
+	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
+	assert.NoError(t, err)
+
+	initMetrics.ErrorMetrics.InvalidVersion = metric
 
 	// Binary version
 	{
 		buff, err := packet.MarshalBinary()
 		assert.NoError(t, err)
-		relayInitAssertions(t, "application/octet-stream", relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
+		recorder := pingRelayBackendInit(t, "application/octet-stream", relay, buff, initMetrics, nil, nil, nil, nil, nil)
+		relayInitErrorAssertions(t, recorder, http.StatusBadRequest, metric)
 	}
+
+	// Reset the metric so it's not counted twice
+	metric.ValueReset()
 
 	// JSON version
 	{
 		buff, err := packet.MarshalJSON()
 		assert.NoError(t, err)
-		relayInitAssertions(t, "application/json", relay, buff, http.StatusBadRequest, nil, nil, nil, nil, nil)
+		recorder := pingRelayBackendInit(t, "application/json", relay, buff, initMetrics, nil, nil, nil, nil, nil)
+		relayInitErrorAssertions(t, recorder, http.StatusBadRequest, metric)
 	}
 }
 
 func TestRelayInitAddressIsInvalid(t *testing.T) {
 	t.Skip("Test can fail on certain machines due to relay address being unmarshaled and interpreted as correct. Needs more work to determine the cause.")
 
-	relayPublicKey, relayPrivateKey := getRelayKeyPair(t)
-	routerPublicKey, routerPrivateKey, err := box.GenerateKey(crand.Reader)
+	relayPublicKey, _ := getRelayKeyPair(t)
+	_, routerPrivateKey, err := box.GenerateKey(crand.Reader)
 	assert.NoError(t, err)
 
-	// generate nonce
-	nonce := make([]byte, crypto.NonceSize)
-	crand.Read(nonce)
-
-	// generate token
-	token := make([]byte, crypto.KeySize)
-	crand.Read(token)
-
-	// encrypt token
-	encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
-
 	addr := "127.0.0.1:40000"
-	udp, _ := net.ResolveUDPAddr("udp", addr)
+	udp, err := net.ResolveUDPAddr("udp", addr)
+	assert.NoError(t, err)
 	relay := routing.Relay{
 		ID: crypto.HashID(addr),
 		Datacenter: routing.Datacenter{
@@ -307,18 +321,30 @@ func TestRelayInitAddressIsInvalid(t *testing.T) {
 	packet := transport.RelayInitRequest{
 		Magic:          transport.InitRequestMagic,
 		Version:        0,
-		Nonce:          nonce,
+		Nonce:          make([]byte, crypto.NonceSize),
 		Address:        *udp,
-		EncryptedToken: encryptedToken,
+		EncryptedToken: make([]byte, routing.EncryptedRelayTokenSize),
 	}
+
+	initMetrics := metrics.EmptyRelayInitMetrics
+	localMetrics := metrics.LocalHandler{}
+
+	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
+	assert.NoError(t, err)
+
+	initMetrics.ErrorMetrics.InvalidAddress = metric
 
 	// Binary version
 	{
 		buff, err := packet.MarshalBinary()
 		assert.NoError(t, err)
 		buff[4+4+crypto.NonceSize+4] = 'x' // first number in ip address is now 'x'
-		relayInitAssertions(t, "application/octet-stream", relay, buff, http.StatusBadRequest, nil, nil, nil, nil, routerPrivateKey[:])
+		recorder := pingRelayBackendInit(t, "application/octet-stream", relay, buff, initMetrics, nil, nil, nil, nil, routerPrivateKey[:])
+		relayInitErrorAssertions(t, recorder, http.StatusBadRequest, metric)
 	}
+
+	// Reset the metric so it's not counted twice
+	metric.ValueReset()
 
 	// JSON version
 	{
@@ -328,7 +354,57 @@ func TestRelayInitAddressIsInvalid(t *testing.T) {
 		offset := strings.Index(string(buff), addr)
 		assert.GreaterOrEqual(t, offset, 0)
 		buff[offset] = 'x' // first number in ip address is now 'x'
-		relayInitAssertions(t, "application/json", relay, buff, http.StatusBadRequest, nil, nil, nil, nil, routerPrivateKey[:])
+		recorder := pingRelayBackendInit(t, "application/json", relay, buff, initMetrics, nil, nil, nil, nil, routerPrivateKey[:])
+		relayInitErrorAssertions(t, recorder, http.StatusBadRequest, metric)
+	}
+}
+
+func TestRelayInitRelayDBLookupFailure(t *testing.T) {
+	addr := "127.0.0.1:40000"
+	udpAddr, err := net.ResolveUDPAddr("udp", addr)
+	assert.NoError(t, err)
+
+	inMemory := &storage.InMemory{} // Have empty storage to fail lookup
+
+	relay := routing.Relay{
+		ID: crypto.HashID(addr),
+		Datacenter: routing.Datacenter{
+			Name: "some datacenter",
+		},
+	}
+
+	packet := transport.RelayInitRequest{
+		Magic:          transport.InitRequestMagic,
+		Nonce:          make([]byte, crypto.NonceSize),
+		Address:        *udpAddr,
+		EncryptedToken: make([]byte, routing.EncryptedRelayTokenSize),
+	}
+
+	initMetrics := metrics.EmptyRelayInitMetrics
+	localMetrics := metrics.LocalHandler{}
+
+	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
+	assert.NoError(t, err)
+
+	initMetrics.ErrorMetrics.DBLookupFailure = metric
+
+	// Binary version
+	{
+		buff, err := packet.MarshalBinary()
+		assert.NoError(t, err)
+		recorder := pingRelayBackendInit(t, "application/octet-stream", relay, buff, initMetrics, nil, nil, inMemory, nil, nil)
+		relayInitErrorAssertions(t, recorder, http.StatusNotFound, metric)
+	}
+
+	// Reset the metric so it's not counted twice
+	metric.ValueReset()
+
+	// JSON version
+	{
+		buff, err := packet.MarshalJSON()
+		assert.NoError(t, err)
+		recorder := pingRelayBackendInit(t, "application/json", relay, buff, initMetrics, nil, nil, inMemory, nil, nil)
+		relayInitErrorAssertions(t, recorder, http.StatusNotFound, metric)
 	}
 }
 
@@ -344,7 +420,8 @@ func TestRelayInitInvalidToken(t *testing.T) {
 	token := make([]byte, routing.EncryptedRelayTokenSize)
 
 	addr := "127.0.0.1:40000"
-	udp, _ := net.ResolveUDPAddr("udp", addr)
+	udp, err := net.ResolveUDPAddr("udp", addr)
+	assert.NoError(t, err)
 	relay := routing.Relay{
 		ID: crypto.HashID(addr),
 		Datacenter: routing.Datacenter{
@@ -359,18 +436,31 @@ func TestRelayInitInvalidToken(t *testing.T) {
 		EncryptedToken: token,
 	}
 
+	initMetrics := metrics.EmptyRelayInitMetrics
+	localMetrics := metrics.LocalHandler{}
+
+	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
+	assert.NoError(t, err)
+
+	initMetrics.ErrorMetrics.DecryptionFailure = metric
+
 	// Binary version
 	{
 		buff, err := packet.MarshalBinary()
 		assert.NoError(t, err)
-		relayInitAssertions(t, "application/octet-stream", relay, buff, http.StatusUnauthorized, nil, nil, nil, nil, routerPrivateKey[:])
+		recorder := pingRelayBackendInit(t, "application/octet-stream", relay, buff, initMetrics, nil, nil, nil, nil, routerPrivateKey[:])
+		relayInitErrorAssertions(t, recorder, http.StatusUnauthorized, metric)
 	}
+
+	// Reset the metric so it's not counted twice
+	metric.ValueReset()
 
 	// JSON version
 	{
 		buff, err := packet.MarshalJSON()
 		assert.NoError(t, err)
-		relayInitAssertions(t, "application/json", relay, buff, http.StatusUnauthorized, nil, nil, nil, nil, routerPrivateKey[:])
+		recorder := pingRelayBackendInit(t, "application/json", relay, buff, initMetrics, nil, nil, nil, nil, routerPrivateKey[:])
+		relayInitErrorAssertions(t, recorder, http.StatusUnauthorized, metric)
 	}
 }
 
@@ -379,8 +469,9 @@ func TestRelayInitInvalidNonce(t *testing.T) {
 	routerPublicKey, routerPrivateKey, err := box.GenerateKey(crand.Reader)
 	assert.NoError(t, err)
 
-	// generate nonce but leave it as 0's
+	// generate nonce
 	nonce := make([]byte, crypto.NonceSize)
+	crand.Read(nonce)
 
 	// generate random token
 	token := make([]byte, crypto.KeySize)
@@ -390,7 +481,8 @@ func TestRelayInitInvalidNonce(t *testing.T) {
 	encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
 
 	addr := "127.0.0.1:40000"
-	udp, _ := net.ResolveUDPAddr("udp", addr)
+	udp, err := net.ResolveUDPAddr("udp", addr)
+	assert.NoError(t, err)
 	relay := routing.Relay{
 		ID: crypto.HashID(addr),
 		Datacenter: routing.Datacenter{
@@ -401,29 +493,105 @@ func TestRelayInitInvalidNonce(t *testing.T) {
 	packet := transport.RelayInitRequest{
 		Magic:          transport.InitRequestMagic,
 		Version:        0,
-		Nonce:          nonce,
+		Nonce:          make([]byte, crypto.NonceSize), // Send a different nonce than the one used
 		Address:        *udp,
 		EncryptedToken: encryptedToken,
 	}
+
+	initMetrics := metrics.EmptyRelayInitMetrics
+	localMetrics := metrics.LocalHandler{}
+
+	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
+	assert.NoError(t, err)
+
+	initMetrics.ErrorMetrics.DecryptionFailure = metric
 
 	// Binary version
 	{
 		buff, err := packet.MarshalBinary()
 		assert.NoError(t, err)
-		relayInitAssertions(t, "application/octet-stream", relay, buff, http.StatusOK, nil, nil, nil, nil, routerPrivateKey[:])
+		recorder := pingRelayBackendInit(t, "application/octet-stream", relay, buff, initMetrics, nil, nil, nil, nil, routerPrivateKey[:])
+		relayInitErrorAssertions(t, recorder, http.StatusUnauthorized, metric)
 	}
+
+	// Reset the metric so it's not counted twice
+	metric.ValueReset()
 
 	// JSON version
 	{
 		buff, err := packet.MarshalJSON()
 		assert.NoError(t, err)
-		relayInitAssertions(t, "application/json", relay, buff, http.StatusOK, nil, nil, nil, nil, routerPrivateKey[:])
+		recorder := pingRelayBackendInit(t, "application/json", relay, buff, initMetrics, nil, nil, nil, nil, routerPrivateKey[:])
+		relayInitErrorAssertions(t, recorder, http.StatusUnauthorized, metric)
+	}
+}
+
+func TestRelayInitRelayRedisFailure(t *testing.T) {
+	// Don't establish a redis server so redis calls fail
+	redisClient := redis.NewClient(&redis.Options{Addr: "0.0.0.0"})
+
+	relayPublicKey, relayPrivateKey := getRelayKeyPair(t)
+	routerPublicKey, routerPrivateKey, err := box.GenerateKey(crand.Reader)
+	assert.NoError(t, err)
+
+	nonce := make([]byte, crypto.NonceSize)
+	crand.Read(nonce)
+
+	addr := "127.0.0.1:40000"
+	udpAddr, err := net.ResolveUDPAddr("udp", addr)
+	assert.NoError(t, err)
+
+	token := make([]byte, crypto.KeySize)
+	crand.Read(token)
+
+	encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
+
+	relay := routing.Relay{
+		ID: crypto.HashID(addr),
+		Datacenter: routing.Datacenter{
+			Name: "some datacenter",
+		},
+		PublicKey: relayPublicKey,
 	}
 
+	packet := transport.RelayInitRequest{
+		Magic:          transport.InitRequestMagic,
+		Nonce:          nonce,
+		Address:        *udpAddr,
+		EncryptedToken: encryptedToken,
+	}
+
+	initMetrics := metrics.EmptyRelayInitMetrics
+	localMetrics := metrics.LocalHandler{}
+
+	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
+	assert.NoError(t, err)
+
+	initMetrics.ErrorMetrics.RedisFailure = metric
+
+	// Binary version
+	{
+		buff, err := packet.MarshalBinary()
+		assert.NoError(t, err)
+		recorder := pingRelayBackendInit(t, "application/octet-stream", relay, buff, initMetrics, nil, nil, nil, redisClient, routerPrivateKey[:])
+		relayInitErrorAssertions(t, recorder, http.StatusInternalServerError, metric)
+	}
+
+	// Reset the metric so it's not counted twice
+	metric.ValueReset()
+
+	// JSON version
+	{
+		buff, err := packet.MarshalJSON()
+		assert.NoError(t, err)
+		recorder := pingRelayBackendInit(t, "application/json", relay, buff, initMetrics, nil, nil, nil, redisClient, routerPrivateKey[:])
+		relayInitErrorAssertions(t, recorder, http.StatusInternalServerError, metric)
+	}
 }
 
 func TestRelayInitRelayExists(t *testing.T) {
-	redisServer, _ := miniredis.Run()
+	redisServer, err := miniredis.Run()
+	assert.NoError(t, err)
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
 	relayPublicKey, relayPrivateKey := getRelayKeyPair(t)
@@ -443,7 +611,8 @@ func TestRelayInitRelayExists(t *testing.T) {
 
 	name := "some name"
 	addr := "127.0.0.1:40000"
-	udpAddr, _ := net.ResolveUDPAddr("udp", addr)
+	udpAddr, err := net.ResolveUDPAddr("udp", addr)
+	assert.NoError(t, err)
 	dcname := "another name"
 
 	entry := routing.Relay{
@@ -481,23 +650,37 @@ func TestRelayInitRelayExists(t *testing.T) {
 	// set it in the redis instance
 	redisServer.HSet(routing.HashKeyAllRelays, entry.Key(), string(data))
 
+	initMetrics := metrics.EmptyRelayInitMetrics
+	localMetrics := metrics.LocalHandler{}
+
+	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
+	assert.NoError(t, err)
+
+	initMetrics.ErrorMetrics.RelayAlreadyExists = metric
+
 	// Binary version
 	{
 		buff, err := packet.MarshalBinary()
 		assert.NoError(t, err)
-		relayInitAssertions(t, "application/octet-stream", relay, buff, http.StatusConflict, nil, nil, nil, redisClient, routerPrivateKey[:])
+		recorder := pingRelayBackendInit(t, "application/octet-stream", relay, buff, initMetrics, nil, nil, nil, redisClient, routerPrivateKey[:])
+		relayInitErrorAssertions(t, recorder, http.StatusConflict, metric)
 	}
+
+	// Reset the metric so it's not counted twice
+	metric.ValueReset()
 
 	// JSON version
 	{
 		buff, err := packet.MarshalJSON()
 		assert.NoError(t, err)
-		relayInitAssertions(t, "application/json", relay, buff, http.StatusConflict, nil, nil, nil, redisClient, routerPrivateKey[:])
+		recorder := pingRelayBackendInit(t, "application/json", relay, buff, initMetrics, nil, nil, nil, redisClient, routerPrivateKey[:])
+		relayInitErrorAssertions(t, recorder, http.StatusConflict, metric)
 	}
 }
 
 func TestRelayInitRelayIPLookupFailure(t *testing.T) {
-	redisServer, _ := miniredis.Run()
+	redisServer, err := miniredis.Run()
+	assert.NoError(t, err)
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
 	relayPublicKey, relayPrivateKey := getRelayKeyPair(t)
@@ -512,7 +695,8 @@ func TestRelayInitRelayIPLookupFailure(t *testing.T) {
 	crand.Read(nonce)
 
 	addr := "127.0.0.1:40000"
-	udpAddr, _ := net.ResolveUDPAddr("udp", addr)
+	udpAddr, err := net.ResolveUDPAddr("udp", addr)
+	assert.NoError(t, err)
 
 	token := make([]byte, crypto.KeySize)
 	crand.Read(token)
@@ -536,132 +720,42 @@ func TestRelayInitRelayIPLookupFailure(t *testing.T) {
 		EncryptedToken: encryptedToken,
 	}
 
+	initMetrics := metrics.EmptyRelayInitMetrics
+	localMetrics := metrics.LocalHandler{}
+
+	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
+	assert.NoError(t, err)
+
+	initMetrics.ErrorMetrics.IPLookupFailure = metric
+
 	// Binary version
 	{
 		buff, err := packet.MarshalBinary()
 		assert.NoError(t, err)
-		relayInitAssertions(t, "application/octet-stream", relay, buff, http.StatusOK, nil, ipfunc, nil, redisClient, routerPrivateKey[:])
+		recorder := pingRelayBackendInit(t, "application/octet-stream", relay, buff, initMetrics, nil, ipfunc, nil, redisClient, routerPrivateKey[:])
+		relayInitErrorAssertions(t, recorder, http.StatusOK, metric)
 	}
 
 	// clear redis
-	redisServer, _ = miniredis.Run()
+	redisServer, err = miniredis.Run()
+	assert.NoError(t, err)
 	redisClient = redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-	// JSON version
-	{
-		buff, err := packet.MarshalJSON()
-		assert.NoError(t, err)
-		relayInitAssertions(t, "application/json", relay, buff, http.StatusOK, nil, ipfunc, nil, redisClient, routerPrivateKey[:])
-	}
-}
-
-func TestRelayInitRelayDBLookupFailure(t *testing.T) {
-	redisServer, _ := miniredis.Run()
-	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
-
-	relayPublicKey, relayPrivateKey := getRelayKeyPair(t)
-	routerPublicKey, routerPrivateKey, err := box.GenerateKey(crand.Reader)
-	assert.NoError(t, err)
-
-	nonce := make([]byte, crypto.NonceSize)
-	crand.Read(nonce)
-
-	addr := "127.0.0.1:40000"
-	udpAddr, _ := net.ResolveUDPAddr("udp", addr)
-
-	token := make([]byte, crypto.KeySize)
-	crand.Read(token)
-
-	encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
-
-	inMemory := &storage.InMemory{} // Have empty storage to fail lookup
-
-	relay := routing.Relay{
-		ID: crypto.HashID(addr),
-		Datacenter: routing.Datacenter{
-			Name: "some datacenter",
-		},
-		PublicKey: relayPublicKey,
-	}
-
-	packet := transport.RelayInitRequest{
-		Magic:          transport.InitRequestMagic,
-		Nonce:          nonce,
-		Address:        *udpAddr,
-		EncryptedToken: encryptedToken,
-	}
-
-	// Binary version
-	{
-		buff, err := packet.MarshalBinary()
-		assert.NoError(t, err)
-		relayInitAssertions(t, "application/octet-stream", relay, buff, http.StatusInternalServerError, nil, nil, inMemory, redisClient, routerPrivateKey[:])
-	}
-
-	// clear redis
-	redisServer, _ = miniredis.Run()
-	redisClient = redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+	// Reset the metric so it's not counted twice
+	metric.ValueReset()
 
 	// JSON version
 	{
 		buff, err := packet.MarshalJSON()
 		assert.NoError(t, err)
-		relayInitAssertions(t, "application/json", relay, buff, http.StatusInternalServerError, nil, nil, inMemory, redisClient, routerPrivateKey[:])
+		recorder := pingRelayBackendInit(t, "application/json", relay, buff, initMetrics, nil, ipfunc, nil, redisClient, routerPrivateKey[:])
+		relayInitErrorAssertions(t, recorder, http.StatusOK, metric)
 	}
-}
-
-func TestRelayInitRelayRedisFailure(t *testing.T) {
-	// Don't establish a redis server to simulate the client being unable to find the relay
-	redisClient := redis.NewClient(&redis.Options{Addr: "0.0.0.0"})
-
-	relayPublicKey, relayPrivateKey := getRelayKeyPair(t)
-	routerPublicKey, routerPrivateKey, err := box.GenerateKey(crand.Reader)
-	assert.NoError(t, err)
-
-	nonce := make([]byte, crypto.NonceSize)
-	crand.Read(nonce)
-
-	addr := "127.0.0.1:40000"
-	udpAddr, _ := net.ResolveUDPAddr("udp", addr)
-
-	token := make([]byte, crypto.KeySize)
-	crand.Read(token)
-
-	encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
-
-	relay := routing.Relay{
-		ID: crypto.HashID(addr),
-		Datacenter: routing.Datacenter{
-			Name: "some datacenter",
-		},
-		PublicKey: relayPublicKey,
-	}
-
-	packet := transport.RelayInitRequest{
-		Magic:          transport.InitRequestMagic,
-		Nonce:          nonce,
-		Address:        *udpAddr,
-		EncryptedToken: encryptedToken,
-	}
-
-	// Binary version
-	{
-		buff, err := packet.MarshalBinary()
-		assert.NoError(t, err)
-		relayInitAssertions(t, "application/octet-stream", relay, buff, http.StatusNotFound, nil, nil, nil, redisClient, routerPrivateKey[:])
-	}
-
-	// JSON version
-	{
-		buff, err := packet.MarshalJSON()
-		assert.NoError(t, err)
-		relayInitAssertions(t, "application/json", relay, buff, http.StatusNotFound, nil, nil, nil, redisClient, routerPrivateKey[:])
-	}
-
 }
 
 func TestRelayInitSuccess(t *testing.T) {
-	redisServer, _ := miniredis.Run()
+	redisServer, err := miniredis.Run()
+	assert.NoError(t, err)
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
 	relayPublicKey, relayPrivateKey := getRelayKeyPair(t)
@@ -670,7 +764,8 @@ func TestRelayInitSuccess(t *testing.T) {
 
 	var geoClient routing.GeoClient
 	{
-		redisServer, _ := miniredis.Run()
+		redisServer, err := miniredis.Run()
+		assert.NoError(t, err)
 		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 		geoClient = routing.GeoClient{
 			RedisClient: redisClient,
@@ -691,7 +786,8 @@ func TestRelayInitSuccess(t *testing.T) {
 	crand.Read(nonce)
 
 	addr := "127.0.0.1:40000"
-	udpAddr, _ := net.ResolveUDPAddr("udp", addr)
+	udpAddr, err := net.ResolveUDPAddr("udp", addr)
+	assert.NoError(t, err)
 
 	token := make([]byte, crypto.KeySize)
 	crand.Read(token)
@@ -720,31 +816,28 @@ func TestRelayInitSuccess(t *testing.T) {
 		Addr: *udpAddr,
 	}
 
-	var recorder *httptest.ResponseRecorder
+	initMetrics := metrics.EmptyRelayInitMetrics
+
 	// Binary version
 	{
 		buff, err := packet.MarshalBinary()
 		assert.NoError(t, err)
-		recorder = relayInitAssertions(t, "application/octet-stream", relay, buff, http.StatusOK, &geoClient, ipfunc, nil, redisClient, routerPrivateKey[:])
-		header := recorder.Header()
 
-		contentType, ok := header["Content-Type"]
-		assert.True(t, ok)
-
-		assert.Equal(t, "application/octet-stream", contentType[0])
-		validateRelayInitSuccess(t, "application/octet-stream", recorder, geoClient, redisClient, location, addr, before, expected)
+		recorder := pingRelayBackendInit(t, "application/octet-stream", relay, buff, initMetrics, &geoClient, ipfunc, nil, redisClient, routerPrivateKey[:])
+		relayInitSuccessAssertions(t, recorder, "application/octet-stream", initMetrics.ErrorMetrics, &geoClient, redisClient, location, addr, before, expected)
 	}
 
 	// clear redis
-	redisServer, _ = miniredis.Run()
+	redisServer, err = miniredis.Run()
+	assert.NoError(t, err)
 	redisClient = redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
 	// JSON version
 	{
 		buff, err := packet.MarshalJSON()
 		assert.NoError(t, err)
-		recorder = relayInitAssertions(t, "application/json", relay, buff, http.StatusOK, &geoClient, ipfunc, nil, redisClient, routerPrivateKey[:])
 
-		validateRelayInitSuccess(t, "application/json", recorder, geoClient, redisClient, location, addr, before*1000, expected)
+		recorder := pingRelayBackendInit(t, "application/json", relay, buff, initMetrics, &geoClient, ipfunc, nil, redisClient, routerPrivateKey[:])
+		relayInitSuccessAssertions(t, recorder, "application/json", initMetrics.ErrorMetrics, &geoClient, redisClient, location, addr, before, expected)
 	}
 }
