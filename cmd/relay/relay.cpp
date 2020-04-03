@@ -5368,24 +5368,26 @@ int main( int argc, const char ** argv )
 
     uint8_t * update_response_memory = (uint8_t*) malloc( RESPONSE_MAX_BYTES );
 
+    const uint8_t MaxUpdateAttempts = 11;
+    bool successfulUpdates = true;
     while ( !quit )
     {
-        bool updated = false;
-
-        for ( int i = 0; i < 10; ++i )
+        uint8_t updateAttempts = 0;
+        if ( relay_update( curl, backend_hostname, relay_token, relay_address_string, update_response_memory, &relay, false ) == RELAY_OK )
         {
-            if ( relay_update( curl, backend_hostname, relay_token, relay_address_string, update_response_memory, &relay, false ) == RELAY_OK )
+            updateAttempts = 0;
+        }
+        else
+        {
+            if (++updateAttempts == MaxUpdateAttempts)
             {
-                updated = true;
+                printf( "could not update relay, max attempts reached, aborting program" );
+                successfulUpdates = false;
+                quit = 1;
                 break;
             }
-        }
 
-        if ( !updated )
-        {
             printf( "error: could not update relay\n\n" );
-            quit = 1;
-            break;
         }
 
         relay_platform_sleep( 1.0 );
@@ -5438,5 +5440,5 @@ int main( int argc, const char ** argv )
 
     relay_term();
 
-    return 0;
+    return successfulUpdates ? 0 : 1;
 }
