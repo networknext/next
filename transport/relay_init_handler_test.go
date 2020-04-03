@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -291,58 +292,60 @@ func TestRelayInitVersionIsInvalid(t *testing.T) {
 	}
 }
 
-// func TestRelayInitAddressIsInvalid(t *testing.T) {
-// 	relayPublicKey, relayPrivateKey := getRelayKeyPair(t)
-// 	routerPublicKey, routerPrivateKey, err := box.GenerateKey(crand.Reader)
-// 	assert.NoError(t, err)
+func TestRelayInitAddressIsInvalid(t *testing.T) {
+	t.Skip("Test can fail on certain machines due to relay address being unmarshaled and interpreted as correct. Needs more work to determine the cause.")
 
-// 	// generate nonce
-// 	nonce := make([]byte, crypto.NonceSize)
-// 	crand.Read(nonce)
+	relayPublicKey, relayPrivateKey := getRelayKeyPair(t)
+	routerPublicKey, routerPrivateKey, err := box.GenerateKey(crand.Reader)
+	assert.NoError(t, err)
 
-// 	// generate token
-// 	token := make([]byte, crypto.KeySize)
-// 	crand.Read(token)
+	// generate nonce
+	nonce := make([]byte, crypto.NonceSize)
+	crand.Read(nonce)
 
-// 	// encrypt token
-// 	encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
+	// generate token
+	token := make([]byte, crypto.KeySize)
+	crand.Read(token)
 
-// 	addr := "127.0.0.1:40000"
-// 	udp, _ := net.ResolveUDPAddr("udp", addr)
-// 	relay := routing.Relay{
-// 		ID: crypto.HashID(addr),
-// 		Datacenter: routing.Datacenter{
-// 			Name: "some datacenter",
-// 		},
-// 		PublicKey: relayPublicKey,
-// 	}
-// 	packet := transport.RelayInitRequest{
-// 		Magic:          transport.InitRequestMagic,
-// 		Version:        0,
-// 		Nonce:          nonce,
-// 		Address:        *udp,
-// 		EncryptedToken: encryptedToken,
-// 	}
+	// encrypt token
+	encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
 
-// 	// Binary version
-// 	{
-// 		buff, err := packet.MarshalBinary()
-// 		assert.NoError(t, err)
-// 		buff[4+4+crypto.NonceSize+4] = 'x' // first number in ip address is now 'x'
-// 		relayInitAssertions(t, "application/octet-stream", relay, buff, http.StatusBadRequest, nil, nil, nil, nil, routerPrivateKey[:])
-// 	}
+	addr := "127.0.0.1:40000"
+	udp, _ := net.ResolveUDPAddr("udp", addr)
+	relay := routing.Relay{
+		ID: crypto.HashID(addr),
+		Datacenter: routing.Datacenter{
+			Name: "some datacenter",
+		},
+		PublicKey: relayPublicKey,
+	}
+	packet := transport.RelayInitRequest{
+		Magic:          transport.InitRequestMagic,
+		Version:        0,
+		Nonce:          nonce,
+		Address:        *udp,
+		EncryptedToken: encryptedToken,
+	}
 
-// 	// JSON version
-// 	{
-// 		buff, err := packet.MarshalJSON()
-// 		assert.NoError(t, err)
+	// Binary version
+	{
+		buff, err := packet.MarshalBinary()
+		assert.NoError(t, err)
+		buff[4+4+crypto.NonceSize+4] = 'x' // first number in ip address is now 'x'
+		relayInitAssertions(t, "application/octet-stream", relay, buff, http.StatusBadRequest, nil, nil, nil, nil, routerPrivateKey[:])
+	}
 
-// 		offset := strings.Index(string(buff), addr)
-// 		assert.GreaterOrEqual(t, offset, 0)
-// 		buff[offset] = 'x' // first number in ip address is now 'x'
-// 		relayInitAssertions(t, "application/json", relay, buff, http.StatusBadRequest, nil, nil, nil, nil, routerPrivateKey[:])
-// 	}
-// }
+	// JSON version
+	{
+		buff, err := packet.MarshalJSON()
+		assert.NoError(t, err)
+
+		offset := strings.Index(string(buff), addr)
+		assert.GreaterOrEqual(t, offset, 0)
+		buff[offset] = 'x' // first number in ip address is now 'x'
+		relayInitAssertions(t, "application/json", relay, buff, http.StatusBadRequest, nil, nil, nil, nil, routerPrivateKey[:])
+	}
+}
 
 func TestRelayInitInvalidToken(t *testing.T) {
 	_, routerPrivateKey, err := box.GenerateKey(crand.Reader)

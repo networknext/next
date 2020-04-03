@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -193,32 +194,34 @@ func TestRelayUpdateUnequalTokens(t *testing.T) {
 	}
 }
 
-// func TestRelayUpdateInvalidAddress(t *testing.T) {
-// 	udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
-// 	packet := transport.RelayUpdateRequest{
-// 		Address: *udp,
-// 		Token:   make([]byte, crypto.KeySize),
-// 	}
+func TestRelayUpdateInvalidAddress(t *testing.T) {
+	t.Skip("Test can fail on certain machines due to relay address being unmarshaled and interpreted as correct. Needs more work to determine the cause.")
 
-// 	// Binary version
-// 	{
-// 		buff, err := packet.MarshalBinary()
-// 		assert.NoError(t, err)
-// 		buff[8] = 'x' // assign this index (which should be the first item in the address) as the letter 'x' making it invalid
-// 		relayUpdateAssertions(t, "application/octet-stream", buff, http.StatusBadRequest, nil, nil)
-// 	}
+	udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+	packet := transport.RelayUpdateRequest{
+		Address: *udp,
+		Token:   make([]byte, crypto.KeySize),
+	}
 
-// 	// JSON version
-// 	{
-// 		buff, err := json.Marshal(packet)
-// 		assert.NoError(t, err)
+	// Binary version
+	{
+		buff, err := packet.MarshalBinary()
+		assert.NoError(t, err)
+		buff[8] = 'x' // assign this index (which should be the first item in the address) as the letter 'x' making it invalid
+		relayUpdateAssertions(t, "application/octet-stream", buff, http.StatusBadRequest, nil, nil)
+	}
 
-// 		offset := strings.Index(string(buff), "127.0.0.1:40000")
-// 		assert.GreaterOrEqual(t, offset, 0)
-// 		buff[offset] = 'x' // assign this index (which should be the first item in the address) as the letter 'x' making it invalid
-// 		relayUpdateAssertions(t, "application/json", buff, http.StatusBadRequest, nil, nil)
-// 	}
-// }
+	// JSON version
+	{
+		buff, err := json.Marshal(packet)
+		assert.NoError(t, err)
+
+		offset := strings.Index(string(buff), "127.0.0.1:40000")
+		assert.GreaterOrEqual(t, offset, 0)
+		buff[offset] = 'x' // assign this index (which should be the first item in the address) as the letter 'x' making it invalid
+		relayUpdateAssertions(t, "application/json", buff, http.StatusBadRequest, nil, nil)
+	}
+}
 
 func TestRelayUpdateExceedMaxRelays(t *testing.T) {
 	udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
