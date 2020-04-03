@@ -268,7 +268,7 @@ dev-optimizer: ## runs a local optimizer
 
 .PHONY: dev-portal
 dev-portal: ## runs a local portal web server
-	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local $(GO) run cmd/portal/portal.go
+	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local UI_DIR=./cmd/portal/public $(GO) run cmd/portal/portal.go
 
 .PHONY: dev-relay-backend
 dev-relay-backend: ## runs a local relay backend
@@ -307,6 +307,28 @@ build-portal: ## builds the portal binary
 	@printf "Building portal... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/portal ./cmd/portal/portal.go
 	@printf "done\n"
+
+.PHONY: build-portal-artifact
+build-portal-artifact: build-portal ## builds the portal with the right env vars and creates a .tar.gz
+	@printf "Building portal artifact... "
+	@mkdir -p $(DIST_DIR)/artifact/portal
+	@cp $(DIST_DIR)/portal $(DIST_DIR)/artifact/portal/app
+	@cp -r ./cmd/portal/public $(DIST_DIR)/artifact/portal
+	@cp ./cmd/portal/dev.env $(DIST_DIR)/artifact/portal/app.env
+	@cp $(DEPLOY_DIR)/$(SYSTEMD_SERVICE_FILE) $(DIST_DIR)/artifact/portal/$(SYSTEMD_SERVICE_FILE)
+	@cd $(DIST_DIR)/artifact/portal && tar -zcf ../../portal.dev.tar.gz public app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
+	@printf "$(DIST_DIR)/portal.dev.tar.gz\n"
+
+.PHONY: publish-portal-artifact
+publish-portal-artifact: ## publishes the portal artifact to GCP Storage with gsutil
+	@printf "Publishing portal artifact... \n\n"
+	@gsutil cp $(DIST_DIR)/portal.dev.tar.gz $(ARTIFACT_BUCKET)/portal.dev.tar.gz
+	@printf "done\n"
+
+.PHONY: deploy-portal
+deploy-portal: ## builds and deploys the portal to the dev VM
+	@printf "Deploying portal... \n\n"
+	gcloud compute ssh portal-dev-1 -- 'cd /app && sudo ./vm-update-app.sh -a $(ARTIFACT_BUCKET)/portal.dev.tar.gz'
 
 .PHONY: build-relay-backend
 build-relay-backend: ## builds the relay backend binary
@@ -349,7 +371,7 @@ publish-relay-backend-prod-artifact: ## publishes the relay backend artifact to 
 .PHONY: deploy-relay-backend
 deploy-relay-backend: build-relay-backend ## builds and deploys the relay backend to the dev VM
 	@printf "Deploying relay backend... \n\n"
-	gcloud compute ssh relay-backend-dev-1 -- 'cd /app && sudo ./vm-update-app.sh -a gs://artifacts.network-next-v3-dev.appspot.com/relay_backend.dev.tar.gz'
+	gcloud compute ssh relay-backend-dev-1 -- 'cd /app && sudo ./vm-update-app.sh -a $(ARTIFACT_BUCKET)/relay_backend.dev.tar.gz'
 
 .PHONY: build-server-backend
 build-server-backend: ## builds the server backend binary
@@ -392,7 +414,7 @@ publish-server-backend-prod-artifact: ## publishes the server backend artifact t
 .PHONY: deploy-server-backend
 deploy-server-backend: build-server-backend ## builds and deploys the server backend to the dev VM
 	@printf "Deploying server backend... \n\n"
-	gcloud compute ssh server-backend-dev-1 -- 'cd /app && sudo ./vm-update-app.sh -a gs://artifacts.network-next-v3-dev.appspot.com/server_backend.dev.tar.gz'
+	gcloud compute ssh server-backend-dev-1 -- 'cd /app && sudo ./vm-update-app.sh -a $(ARTIFACT_BUCKET)/server_backend.dev.tar.gz'
 
 .PHONY: build-backend-artifacts
 build-backend-artifacts: build-relay-backend-artifact build-server-backend-artifact ## builds the backend artifacts
