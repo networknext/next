@@ -30,7 +30,7 @@ namespace core
   const uint32_t UpdateRequestVersion = 0;
   const uint32_t UpdateResponseVersion = 0;
 
-  const uint8_t MaxUpdateAttempts = 6;  // 1 for the initial update, 5 extra
+  const uint8_t MaxUpdateAttempts = 6; // 1 initial + 5 more for failures
 
   /*
    * A class that's responsible for backend related tasks
@@ -170,12 +170,12 @@ namespace core
       if (update(logger.print(), false)) {
         updateAttempts = 0;
       } else {
-        Log("error: could not update relay, attempts: ", ++updateAttempts);
-
-        if (updateAttempts == MaxUpdateAttempts) {
+        if (++updateAttempts == MaxUpdateAttempts) {
           Log("could not update relay, aborting program");
           break;
         }
+
+        Log("error: could not update relay, attempts: ", updateAttempts);
       }
 
       sessions.purge(relayClock.unixTime<util::Second>());

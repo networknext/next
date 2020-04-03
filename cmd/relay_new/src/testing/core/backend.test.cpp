@@ -77,21 +77,21 @@ Test(core_Backend_updateCycle_shutdown_60s)
   core::RelayManager manager(backendClock);
   core::SessionMap sessions;
   auto backend = std::move(makeBackend(info, manager, sessions));
+  volatile bool handle = true;
+  volatile bool shouldCleanShutdown = false;
+  util::ThroughputLogger logger(std::cout);
 
   testing::StubbedCurlWrapper::Success = true;
   testing::StubbedCurlWrapper::Response = BasicValidUpdateResponse;
 
   testClock.reset();
-  volatile bool handle = true;
-  volatile bool shouldCleanShutdown = false;
-  std::async(std::launch::async, [&] {
+  auto fut = std::async(std::launch::async, [&] {
     std::this_thread::sleep_for(10s);
     testing::StubbedCurlWrapper::Success = false;
     shouldCleanShutdown = true;  // just to mimic actual behavior
     handle = false;
   });
 
-  util::ThroughputLogger logger(std::cout);
   backend.updateCycle(handle, shouldCleanShutdown, logger, sessions, backendClock);
   auto elapsed = testClock.elapsed<util::Second>();
   check(elapsed >= 70.0 && elapsed < 71.0);
@@ -110,20 +110,20 @@ Test(core_Backend_updateCycle_ack_and_30s)
   core::RelayManager manager(backendClock);
   core::SessionMap sessions;
   auto backend = std::move(makeBackend(info, manager, sessions));
+  volatile bool handle = true;
+  volatile bool shouldCleanShutdown = false;
+  util::ThroughputLogger logger(std::cout);
 
   testing::StubbedCurlWrapper::Success = true;
   testing::StubbedCurlWrapper::Response = BasicValidUpdateResponse;
 
   testClock.reset();
-  volatile bool handle = true;
-  volatile bool shouldCleanShutdown = false;
-  std::async(std::launch::async, [&] {
+  auto fut = std::async(std::launch::async, [&] {
     std::this_thread::sleep_for(10s);
     shouldCleanShutdown = true;
     handle = false;
   });
 
-  util::ThroughputLogger logger(std::cout);
   backend.updateCycle(handle, shouldCleanShutdown, logger, sessions, backendClock);
   auto elapsed = testClock.elapsed<util::Second>();
   check(elapsed >= 40.0 && elapsed < 41.0);
@@ -151,15 +151,14 @@ Test(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
   testing::StubbedCurlWrapper::Response = BasicValidUpdateResponse;
 
   testClock.reset();
-  std::async(std::launch::async, [&] {
+  auto fut = std::async(std::launch::async, [&] {
     std::this_thread::sleep_for(10s);
     testing::StubbedCurlWrapper::Success = false;
+    std::this_thread::sleep_for(40s);
+    testing::StubbedCurlWrapper::Success = true;
     handle = false;
     shouldCleanShutdown = true;
   });
-
-  std::this_thread::sleep_for(40s);
-  testing::StubbedCurlWrapper::Success = true;
 
   backend.updateCycle(handle, shouldCleanShutdown, logger, sessions, backendClock);
   auto elapsed = testClock.elapsed<util::Second>();
@@ -167,9 +166,10 @@ Test(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
 }
 
 // Update the backend for 10 seconds, then switch the success of the request to false.
-// Then after another 10 seconds, set the success value to true and set the handle to be false.
-// The amount of seconds elapsed since the update cycle began should be about 50 and not 40, showing that
-// the boolean handle controls the update cycle and not the result of the update call
+// That will trigger the failure attempts which the number of is controlled by the MaxUpdateAttempts constant.
+// After the max attempts is reached it will attempt a clean shutdown (for safety).
+// But because the success value is never reset to true, the cleanshutdown ack will never succeed
+// so the final duration should be 10 seconds of success, MaxUpdateAttempts seconds of failure, and 60 seconds of failed backend acks
 Test(core_Backend_updateCycle_update_fails_should_not_exit)
 {
   util::Clock testClock;
@@ -187,19 +187,22 @@ Test(core_Backend_updateCycle_update_fails_should_not_exit)
   testing::StubbedCurlWrapper::Response = BasicValidUpdateResponse;
 
   testClock.reset();
-  std::async(std::launch::async, [&] {
+  auto fut = std::async(std::launch::async, [&] {
     std::this_thread::sleep_for(10s);
     testing::StubbedCurlWrapper::Success = false;  // set to false here to trigger failed updates
-    std::this_thread::sleep_for(10s);
-    testing::StubbedCurlWrapper::Success = true;  // set back to true to allow for a fast backend ack
-    handle = false;                               // exit the loop
-    shouldCleanShutdown = true;
   });
 
   backend.updateCycle(handle, shouldCleanShutdown, logger, sessions, backendClock);
   auto elapsed = testClock.elapsed<util::Second>();
-  // time will be 10 seconds of good updates, 10 seconds of bad updates, and then 30 seconds for a clean shutdown
-  check(elapsed >= 50 && elapsed < 51.0);
+  // time will be 10 seconds of good updates,
+  // 5 seconds of bad updates overlapped with
+  // the first 5 seconds of the second sleep callsleep
+  // which breaks out of the loop,
+  // the remaining 5 seconds are bad updates
+  // then the shutdown ack is a success,
+  // and finally 60 seconds for a (half failed) clean shutdown
+  // totals to ~75 seconds
+  check(elapsed >= 75.0 && elapsed < 76.0);
 }
 
 // When clean shutdown is not set to true, the function should return immediately
@@ -220,7 +223,7 @@ Test(core_Backend_updateCycle_no_clean_shutdown)
   testing::StubbedCurlWrapper::Response = BasicValidUpdateResponse;
 
   testClock.reset();
-  std::async(std::launch::async, [&] {
+  auto fut = std::async(std::launch::async, [&] {
     std::this_thread::sleep_for(10s);
     testing::StubbedCurlWrapper::Success = false;
     handle = false;

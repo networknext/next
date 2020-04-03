@@ -24,17 +24,6 @@ namespace
   volatile bool gAlive = true;
   volatile bool gShouldCleanShutdown = false;
 
-  void gracefulShutdownHandler(int)
-  {
-    gAlive = false;
-  }
-
-  void cleanShutdownHandler(int)
-  {
-    gShouldCleanShutdown = true;
-    gAlive = false;
-  }
-
   // TODO move this out of main and somewhere else to allow for test coverage
   inline bool getCryptoKeys(const util::Env& env, crypto::Keychain& keychain, std::string& b64RelayPubKey)
   {
@@ -139,9 +128,20 @@ namespace
     });
 #endif
 
+#if not defined TEST_BUILD and not defined BENCH_BUILD
+    auto gracefulShutdownHandler = [](int) {
+      gAlive = false;
+    };
+
+    auto cleanShutdownHandler = [](int) {
+      gShouldCleanShutdown = true;
+      gAlive = false;
+    };
+
     signal(SIGINT, gracefulShutdownHandler);
     signal(SIGTERM, gracefulShutdownHandler);
     signal(SIGHUP, cleanShutdownHandler);
+#endif
   }
 }  // namespace
 
