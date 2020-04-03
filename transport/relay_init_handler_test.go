@@ -12,8 +12,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-
-	// "strings"
+	"strings"
 	"testing"
 	"time"
 
@@ -278,9 +277,9 @@ func TestRelayInitVersionIsInvalid(t *testing.T) {
 	}
 }
 
-// todo: disable test until fixed
-/*
 func TestRelayInitAddressIsInvalid(t *testing.T) {
+	t.Skip("Test can fail on certain machines due to relay address being unmarshaled and interpreted as correct. Needs more work to determine the cause.")
+
 	relayPublicKey, relayPrivateKey := getRelayKeyPair(t)
 	routerPublicKey, routerPrivateKey, err := box.GenerateKey(crand.Reader)
 	assert.NoError(t, err)
@@ -317,7 +316,7 @@ func TestRelayInitAddressIsInvalid(t *testing.T) {
 	{
 		buff, err := packet.MarshalBinary()
 		assert.NoError(t, err)
-		buff[8+crypto.NonceSize] = 'x' // first number in ip address is now 'x'
+		buff[4+4+crypto.NonceSize+4] = 'x' // first number in ip address is now 'x'
 		relayInitAssertions(t, "application/octet-stream", relay, buff, http.StatusBadRequest, nil, nil, nil, nil, routerPrivateKey[:])
 	}
 
@@ -326,13 +325,12 @@ func TestRelayInitAddressIsInvalid(t *testing.T) {
 		buff, err := packet.MarshalJSON()
 		assert.NoError(t, err)
 
-		offset := strings.Index(string(buff), "127.0.0.1:40000")
+		offset := strings.Index(string(buff), addr)
 		assert.GreaterOrEqual(t, offset, 0)
 		buff[offset] = 'x' // first number in ip address is now 'x'
 		relayInitAssertions(t, "application/json", relay, buff, http.StatusBadRequest, nil, nil, nil, nil, routerPrivateKey[:])
 	}
 }
-*/
 
 func TestRelayInitInvalidToken(t *testing.T) {
 	_, routerPrivateKey, err := box.GenerateKey(crand.Reader)
