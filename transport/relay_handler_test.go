@@ -74,8 +74,7 @@ func relayHandlerAssertions(t *testing.T, token string, relay routing.Relay, hea
 		Storer:                inMemory,
 		StatsDb:               statsdb,
 		TrafficStatsPublisher: &stats.NoOpTrafficStatsPublisher{},
-		Duration:              &metrics.EmptyGauge{},
-		Counter:               &metrics.EmptyCounter{},
+		Metrics:               &metrics.EmptyRelayHandlerMetrics,
 		RouterPrivateKey:      routerPrivateKey,
 	})
 

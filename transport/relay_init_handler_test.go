@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+
 	// "strings"
 	"testing"
 	"time"
@@ -100,8 +101,7 @@ func relayInitAssertions(t *testing.T, contentType string, relay routing.Relay, 
 		GeoClient:        geoClient,
 		IpLocator:        ipfunc,
 		Storer:           inMemory,
-		Duration:         &metrics.EmptyGauge{},
-		Counter:          &metrics.EmptyCounter{},
+		Metrics:          &metrics.EmptyRelayInitMetrics,
 		RouterPrivateKey: routerPrivateKey,
 	})
 
