@@ -18,7 +18,7 @@ namespace testing
 {
   class _test_core_Backend_update_valid_;
   class _test_core_Backend_update_shutting_down_true_;
-}
+}  // namespace testing
 
 namespace core
 {
@@ -29,6 +29,8 @@ namespace core
 
   const uint32_t UpdateRequestVersion = 0;
   const uint32_t UpdateResponseVersion = 0;
+
+  const uint8_t MaxUpdateAttempts = 11; // 1 initial + 10 more for failures
 
   /*
    * A class that's responsible for backend related tasks
@@ -54,12 +56,16 @@ namespace core
 
     auto init() -> bool;
 
-    void updateCycle(
+    /*
+     * Updates the relay in a loop once per second until loopHandle is false
+     * Returns true as long as the relay doesn't reach the max number of failed update attempts
+     */
+    auto updateCycle(
      const volatile bool& loopHandle,
      const volatile bool& shouldCleanShutdown,
      util::ThroughputLogger& logger,
      core::SessionMap& sessions,
-     const util::Clock& relayClock);
+     const util::Clock& relayClock) -> bool;
 
    private:
     const std::string mHostname;
@@ -150,29 +156,32 @@ namespace core
   }
 
   template <typename T>
-  void Backend<T>::updateCycle(
+  bool Backend<T>::updateCycle(
    const volatile bool& loopHandle,
    const volatile bool& shouldCleanShutdown,
    util::ThroughputLogger& logger,
    core::SessionMap& sessions,
    const util::Clock& relayClock)
   {
+    bool successfulRoutine = true;
     std::vector<uint8_t> update_response_memory;
     update_response_memory.resize(RESPONSE_MAX_BYTES);
-    while (loopHandle) {
-      auto bytesReceived = logger.print();
-      bool updated = false;
 
-      for (int i = 0; i < 10; i++) {
-        if (update(bytesReceived, false)) {
-          updated = true;
+    // update once every 10 seconds
+    // if the update fails, try again, once per second for (MaxUpdateAttempts - 1) seconds
+    // if there's still no successful update, exit the loop and return false, and skip the clean shutdown
+    uint8_t updateAttempts = 0;
+    while (loopHandle) {
+      if (update(logger.print(), false)) {
+        updateAttempts = 0;
+      } else {
+        if (++updateAttempts == MaxUpdateAttempts) {
+          Log("could not update relay, max attempts reached, aborting program");
+          successfulRoutine = false;
           break;
         }
-      }
 
-      if (!updated) {
-        Log("error: could not update relay");
-        break;
+        Log("could not update relay, attempts: ", updateAttempts);
       }
 
       sessions.purge(relayClock.unixTime<util::Second>());
@@ -189,6 +198,8 @@ namespace core
         std::this_thread::sleep_for(30s);
       }
     }
+
+    return successfulRoutine;
   }
 
   template <typename T>
