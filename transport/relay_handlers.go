@@ -495,18 +495,21 @@ func RelayUpdateHandlerFunc(logger log.Logger, params *RelayUpdateHandlerConfig)
 		}
 		if err != nil {
 			http.Error(writer, err.Error(), http.StatusBadRequest)
+			params.Metrics.ErrorMetrics.UnmarshalFailure.Add(1)
 			return
 		}
 
 		if relayUpdateRequest.Version != VersionNumberUpdateRequest {
 			level.Error(handlerLogger).Log("msg", "version mismatch", "version", relayUpdateRequest.Version)
 			http.Error(writer, "version mismatch", http.StatusBadRequest)
+			params.Metrics.ErrorMetrics.InvalidVersion.Add(1)
 			return
 		}
 
 		if len(relayUpdateRequest.PingStats) > MaxRelays {
 			level.Error(handlerLogger).Log("msg", "max relays exceeded", "relay count", len(relayUpdateRequest.PingStats))
 			http.Error(writer, "max relays exceeded", http.StatusBadRequest)
+			params.Metrics.ErrorMetrics.ExceedMaxRelays.Add(1)
 			return
 		}
 
@@ -519,12 +522,14 @@ func RelayUpdateHandlerFunc(logger log.Logger, params *RelayUpdateHandlerConfig)
 		if exists.Err() != nil && exists.Err() != redis.Nil {
 			level.Error(handlerLogger).Log("msg", "failed to check if relay is registered", "err", exists.Err())
 			http.Error(writer, "failed to check if relay is registered", http.StatusInternalServerError)
+			params.Metrics.ErrorMetrics.RedisFailure.Add(1)
 			return
 		}
 
 		if !exists.Val() {
 			level.Warn(handlerLogger).Log("msg", "relay not initialized")
 			http.Error(writer, "relay not initialized", http.StatusNotFound)
+			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
 			return
 		}
 
@@ -544,13 +549,15 @@ func RelayUpdateHandlerFunc(logger log.Logger, params *RelayUpdateHandlerConfig)
 
 		if err = relay.UnmarshalBinary(data); err != nil {
 			level.Error(handlerLogger).Log("msg", "failed to unmarshal relay data", "err", err)
-			http.Error(writer, "failed to unmarshal relay data", http.StatusBadRequest)
+			http.Error(writer, "failed to unmarshal relay data", http.StatusInternalServerError)
+			params.Metrics.ErrorMetrics.RelayUnmarshalFailure.Add(1)
 			return
 		}
 
 		if !bytes.Equal(relayUpdateRequest.Token, relay.PublicKey) {
 			level.Error(handlerLogger).Log("msg", "relay public key doesn't match")
 			http.Error(writer, "relay public key doesn't match", http.StatusBadRequest)
+			params.Metrics.ErrorMetrics.InvalidToken.Add(1)
 			return
 		}
 

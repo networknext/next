@@ -720,8 +720,9 @@ func TestRelayUpdateRequestMarshalJSON(t *testing.T) {
 	rand.Read(token)
 
 	udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+	version := rand.Uint32()
 	req := transport.RelayUpdateRequest{
-		Version:       rand.Uint32(),
+		Version:       version,
 		Address:       *udp,
 		Token:         token,
 		PingStats:     stats,
@@ -732,7 +733,7 @@ func TestRelayUpdateRequestMarshalJSON(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.JSONEq(t, fmt.Sprintf(`{
-		"version":0,
+		"version":%d,
 		"relay_address":"127.0.0.1:40000",
 		"PingStats":[{
 			"RelayId":%d,
@@ -747,7 +748,7 @@ func TestRelayUpdateRequestMarshalJSON(t *testing.T) {
 			"PublicKey":"%s"
 		},
 		"shutting_down":false
-	}`, stat.RelayID, stat.RTT, stat.Jitter, stat.PacketLoss, req.BytesReceived, base64.StdEncoding.EncodeToString(token)), string(jsonRes))
+	}`, version, stat.RelayID, stat.RTT, stat.Jitter, stat.PacketLoss, req.BytesReceived, base64.StdEncoding.EncodeToString(token)), string(jsonRes))
 }
 
 func TestRelayUpdateRequestMarshalBinary(t *testing.T) {

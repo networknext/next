@@ -180,7 +180,7 @@ func relayInitSuccessAssertions(t *testing.T, recorder *httptest.ResponseRecorde
 	assert.Equal(t, errMetrics, metrics.EmptyRelayInitErrorMetrics)
 }
 
-func TestRelayInitBadPacket(t *testing.T) {
+func TestRelayInitUnmarshalFailure(t *testing.T) {
 	addr := "127.0.0.1:40000"
 	relay := routing.Relay{
 		ID: crypto.HashID(addr),
@@ -215,7 +215,7 @@ func TestRelayInitBadPacket(t *testing.T) {
 	}
 }
 
-func TestRelayInitMagicIsInvalid(t *testing.T) {
+func TestRelayInitInvalidMagic(t *testing.T) {
 	addr := "127.0.0.1:40000"
 	relay := routing.Relay{
 		ID: crypto.HashID(addr),
@@ -258,7 +258,7 @@ func TestRelayInitMagicIsInvalid(t *testing.T) {
 	}
 }
 
-func TestRelayInitVersionIsInvalid(t *testing.T) {
+func TestRelayInitInvalidVersion(t *testing.T) {
 	addr := "127.0.0.1:40000"
 	relay := routing.Relay{
 		ID: crypto.HashID(addr),
@@ -301,7 +301,7 @@ func TestRelayInitVersionIsInvalid(t *testing.T) {
 	}
 }
 
-func TestRelayInitAddressIsInvalid(t *testing.T) {
+func TestRelayInitInvalidAddress(t *testing.T) {
 	t.Skip("Test can fail on certain machines due to relay address being unmarshaled and interpreted as correct. Needs more work to determine the cause.")
 
 	relayPublicKey, _ := getRelayKeyPair(t)

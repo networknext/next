@@ -408,7 +408,7 @@ func (r *RelayUpdateRequest) UnmarshalBinary(buff []byte) error {
 func (r RelayUpdateRequest) MarshalJSON() ([]byte, error) {
 	data := make(map[string]interface{})
 
-	data["version"] = VersionNumberUpdateRequest
+	data["version"] = r.Version
 	data["relay_address"] = r.Address.String()
 
 	metadata := make(map[string]interface{})

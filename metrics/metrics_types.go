@@ -183,9 +183,26 @@ var EmptyRelayUpdateMetrics RelayUpdateMetrics = RelayUpdateMetrics{
 }
 
 type RelayUpdateErrorMetrics struct {
+	UnmarshalFailure      Counter
+	InvalidAddress        Counter
+	InvalidVersion        Counter
+	ExceedMaxRelays       Counter
+	RedisFailure          Counter
+	RelayNotFound         Counter
+	RelayUnmarshalFailure Counter
+	InvalidToken          Counter
 }
 
-var EmptyRelayUpdateErrorMetrics RelayUpdateErrorMetrics = RelayUpdateErrorMetrics{}
+var EmptyRelayUpdateErrorMetrics RelayUpdateErrorMetrics = RelayUpdateErrorMetrics{
+	UnmarshalFailure:      &EmptyCounter{},
+	InvalidAddress:        &EmptyCounter{},
+	InvalidVersion:        &EmptyCounter{},
+	ExceedMaxRelays:       &EmptyCounter{},
+	RedisFailure:          &EmptyCounter{},
+	RelayNotFound:         &EmptyCounter{},
+	RelayUnmarshalFailure: &EmptyCounter{},
+	InvalidToken:          &EmptyCounter{},
+}
 
 type RelayHandlerMetrics struct {
 	Invocations   Counter
