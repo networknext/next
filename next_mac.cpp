@@ -211,7 +211,7 @@ void next_platform_sleep( double time )
 
 void next_platform_socket_destroy( next_platform_socket_t * socket );
 
-next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size )
+next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size, bool enable_tagging )
 {
     next_assert( address );
     next_assert( address->type != NEXT_ADDRESS_NONE );
@@ -359,27 +359,30 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
         // blocking with no timeout
     }
 
-    // set packet type of service to low latency
+    // tag packet as low latency
 
-    if ( address->type == NEXT_ADDRESS_IPV6 )
+    if ( enable_tagging )
     {
-        #if defined(IPV6_TCLASS)
-        int tos = 0xA0;
-        if ( setsockopt( socket->handle, IPPROTO_IPV6, IPV6_TCLASS, (const char *)&tos, sizeof(tos) ) != 0 )
+        if ( address->type == NEXT_ADDRESS_IPV6 )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "failed to set socket tos (ipv6)" );
+            #if defined(IPV6_TCLASS)
+            int tos = 0xA0;
+            if ( setsockopt( socket->handle, IPPROTO_IPV6, IPV6_TCLASS, (const char *)&tos, sizeof(tos) ) != 0 )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "failed to set socket tos (ipv6)" );
+            }
+            #endif
         }
-        #endif
-    }
-    else
-    {
-        #if defined(IP_TOS)
-        int tos = 0xA0;
-        if ( setsockopt( socket->handle, IPPROTO_IP, IP_TOS, (const char *)&tos, sizeof(tos) ) != 0 )
+        else
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "failed to set socket tos (ipv4)" );
+            #if defined(IP_TOS)
+            int tos = 0xA0;
+            if ( setsockopt( socket->handle, IPPROTO_IP, IP_TOS, (const char *)&tos, sizeof(tos) ) != 0 )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "failed to set socket tos (ipv4)" );
+            }
+            #endif
         }
-        #endif
     }
 
     return socket;

@@ -148,6 +148,7 @@ struct next_config_t
     int socket_send_buffer_size;
     int socket_receive_buffer_size;
     bool disable_network_next;
+    bool disable_tagging;
 };
 
 NEXT_EXPORT_FUNC void next_default_config( next_config_t * config );

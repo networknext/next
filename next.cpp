@@ -273,7 +273,7 @@ extern int next_platform_inet_pton6( const char * address_string, uint16_t * add
 
 extern int next_platform_inet_ntop6( const uint16_t * address, char * address_string, size_t address_string_size );
 
-extern next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size );
+extern next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size, bool enable_tagging );
 
 extern void next_platform_socket_destroy( next_platform_socket_t * socket );
 
@@ -3396,6 +3396,7 @@ struct next_config_internal_t
     int socket_send_buffer_size;
     int socket_receive_buffer_size;
     bool disable_network_next;
+    bool disable_tagging;
 };
 
 static next_config_internal_t next_global_config;
@@ -3407,7 +3408,6 @@ void next_default_config( next_config_t * config )
     memset( config, 0, sizeof(next_config_t) );
     config->socket_send_buffer_size = NEXT_DEFAULT_SOCKET_SEND_BUFFER_SIZE;
     config->socket_receive_buffer_size = NEXT_DEFAULT_SOCKET_RECEIVE_BUFFER_SIZE;
-    config->disable_network_next = false;
 }
 
 int next_init( void * context, next_config_t * config_in )
@@ -3492,6 +3492,20 @@ int next_init( void * context, next_config_t * config_in )
             if ( value > 0 )
             {
                 config.disable_network_next = true;
+            }
+        }
+    }
+
+    config.disable_tagging = config_in ? config_in->disable_tagging : false;
+
+    const char * next_disable_tagging_override = next_platform_getenv( "NEXT_DISABLE_TAGGING" );
+    {
+        if ( next_disable_tagging_override != NULL )
+        {
+            int value = atoi( next_disable_tagging_override );
+            if ( value > 0 )
+            {
+                config.disable_tagging = true;
             }
         }
     }
@@ -5310,7 +5324,7 @@ next_client_internal_t * next_client_internal_create( void * context )
     bind_address.type = NEXT_ADDRESS_IPV4;
     bind_address.port = 0;
 
-    client->socket = next_platform_socket_create( client->context, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, 0.1f, next_global_config.socket_send_buffer_size, next_global_config.socket_receive_buffer_size );
+    client->socket = next_platform_socket_create( client->context, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, 0.1f, next_global_config.socket_send_buffer_size, next_global_config.socket_receive_buffer_size, !next_global_config.disable_tagging );
     if ( client->socket == NULL )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client could not create socket" );
@@ -8546,7 +8560,7 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         return NULL;
     }
 
-    server->socket = next_platform_socket_create( server->context, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, 0.1f, next_global_config.socket_send_buffer_size, next_global_config.socket_receive_buffer_size );
+    server->socket = next_platform_socket_create( server->context, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, 0.1f, next_global_config.socket_send_buffer_size, next_global_config.socket_receive_buffer_size, !next_global_config.disable_tagging );
     if ( server->socket == NULL )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "server could not create server socket" );
@@ -11661,7 +11675,7 @@ static void test_platform_socket()
         next_address_t local_address;
         next_address_parse( &bind_address, "0.0.0.0" );
         next_address_parse( &local_address, "127.0.0.1" );
-        next_platform_socket_t * socket = next_platform_socket_create( NULL, &bind_address, NEXT_PLATFORM_SOCKET_NON_BLOCKING, 0, 64*1024, 64*1024 );
+        next_platform_socket_t * socket = next_platform_socket_create( NULL, &bind_address, NEXT_PLATFORM_SOCKET_NON_BLOCKING, 0, 64*1024, 64*1024, true );
         local_address.port = bind_address.port;
         check( socket );
         uint8_t packet[256];
@@ -11681,7 +11695,7 @@ static void test_platform_socket()
         next_address_t local_address;
         next_address_parse( &bind_address, "0.0.0.0" );
         next_address_parse( &local_address, "127.0.0.1" );
-        next_platform_socket_t * socket = next_platform_socket_create( NULL, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, 0.01f, 64*1024, 64*1024 );
+        next_platform_socket_t * socket = next_platform_socket_create( NULL, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, 0.01f, 64*1024, 64*1024, true );
         local_address.port = bind_address.port;
         check( socket );
         uint8_t packet[256];
@@ -11701,7 +11715,7 @@ static void test_platform_socket()
         next_address_t local_address;
         next_address_parse( &bind_address, "0.0.0.0" );
         next_address_parse( &local_address, "127.0.0.1" );
-        next_platform_socket_t * socket = next_platform_socket_create( NULL, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, -1.0f, 64*1024, 64*1024 );
+        next_platform_socket_t * socket = next_platform_socket_create( NULL, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, -1.0f, 64*1024, 64*1024, true );
         local_address.port = bind_address.port;
         check( socket );
         uint8_t packet[256];
@@ -11720,7 +11734,7 @@ static void test_platform_socket()
         next_address_t local_address;
         next_address_parse( &bind_address, "[::]" );
         next_address_parse( &local_address, "[::1]" );
-        next_platform_socket_t * socket = next_platform_socket_create( NULL, &bind_address, NEXT_PLATFORM_SOCKET_NON_BLOCKING, 0, 64*1024, 64*1024 );
+        next_platform_socket_t * socket = next_platform_socket_create( NULL, &bind_address, NEXT_PLATFORM_SOCKET_NON_BLOCKING, 0, 64*1024, 64*1024, true );
         local_address.port = bind_address.port;
         check( socket );
         uint8_t packet[256];
@@ -11740,7 +11754,7 @@ static void test_platform_socket()
         next_address_t local_address;
         next_address_parse( &bind_address, "[::]" );
         next_address_parse( &local_address, "[::1]" );
-        next_platform_socket_t * socket = next_platform_socket_create( NULL, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, 0.01f, 64*1024, 64*1024 );
+        next_platform_socket_t * socket = next_platform_socket_create( NULL, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, 0.01f, 64*1024, 64*1024, true );
         local_address.port = bind_address.port;
         check( socket );
         uint8_t packet[256];
@@ -11760,7 +11774,7 @@ static void test_platform_socket()
         next_address_t local_address;
         next_address_parse( &bind_address, "[::]" );
         next_address_parse( &local_address, "[::1]" );
-        next_platform_socket_t * socket = next_platform_socket_create( NULL, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, -1.0f, 64*1024, 64*1024 );
+        next_platform_socket_t * socket = next_platform_socket_create( NULL, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, -1.0f, 64*1024, 64*1024, true );
         local_address.port = bind_address.port;
         check( socket );
         uint8_t packet[256];
