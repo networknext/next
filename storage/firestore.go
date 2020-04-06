@@ -111,17 +111,19 @@ func (fs *Firestore) SetRelayState(ctx context.Context, r *routing.Relay) error 
 		return fmt.Errorf("relay with ID %d doesn't exist", r.ID)
 	}
 
+	stateUpdateTime := uint64(time.Now().Unix())
 	rdocs := fs.Client.Collection("Relay").Documents(ctx)
 	for rdoc, err := rdocs.Next(); err != iterator.Done; {
 		if _, err := rdoc.Ref.Set(ctx, relay{
 			State:           r.State,
-			StateUpdateTime: uint64(time.Now().Unix()),
+			StateUpdateTime: stateUpdateTime,
 		}, firestore.MergeAll); err != nil {
 			return err
 		}
 
 		fs.relayMutex.Lock()
 		fs.relays[r.ID].State = r.State
+		fs.Relays()[r.ID].LastUpdateTime = stateUpdateTime
 		fs.relayMutex.Unlock()
 	}
 
@@ -283,6 +285,8 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 			PublicKey:           publicKey,
 			NICSpeedMbps:        int(r.NICSpeedMbps),
 			IncludedBandwidthGB: int(r.IncludedBandwithGB),
+			State:               r.State,
+			LastUpdateTime:      r.StateUpdateTime,
 		}
 
 		// Get datacenter

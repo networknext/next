@@ -30,6 +30,8 @@ type relay struct {
 	Longitude           float64 `json:"longitude"`
 	NICSpeedMbps        int     `json:"nic_speed_mpbs"`
 	IncludedBandwidthGB int     `json:"included_bandwidth_gb"`
+	State               uint32  `json:"state"`
+	StateUpdateTime     uint64  `json:"stateUpdateTime"`
 }
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {
@@ -42,6 +44,8 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			Longitude:           r.Longitude,
 			NICSpeedMbps:        r.NICSpeedMbps,
 			IncludedBandwidthGB: r.IncludedBandwidthGB,
+			State:               r.State,
+			StateUpdateTime:     r.LastUpdateTime,
 		})
 	}
 
