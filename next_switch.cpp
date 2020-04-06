@@ -286,6 +286,7 @@ int next_platform_socket_init( next_platform_socket_t * s, next_address_t * addr
     s->timeout_seconds = timeout_seconds;
     s->send_buffer_size = send_buffer_size;
     s->receive_buffer_size = receive_buffer_size;
+	s->enable_tagging = enable_tagging;
 
     if ( s->handle == nn::socket::InvalidSocket )
     {
@@ -466,8 +467,9 @@ int next_platform_socket_receive_packet( next_platform_socket_t * socket, next_a
         float timeout_seconds = socket->timeout_seconds;
         int send_buffer_size = socket->send_buffer_size;
         int receive_buffer_size = socket->receive_buffer_size;
+		bool enable_tagging = socket->enable_tagging;
 
-        if ( next_platform_socket_init( socket, &address, type, timeout_seconds, send_buffer_size, receive_buffer_size ) == NEXT_ERROR )
+        if ( next_platform_socket_init( socket, &address, type, timeout_seconds, send_buffer_size, receive_buffer_size, enable_tagging ) == NEXT_ERROR )
         {
             next_platform_socket_cleanup( socket );
             return 0;
