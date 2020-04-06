@@ -214,6 +214,10 @@ func TestRelayUpdateInvalidVersion(t *testing.T) {
 	{
 		buff, err := packet.MarshalBinary()
 		assert.NoError(t, err)
+		badAddr := "invalid address"        // "invalid address" is luckily the same number of characters as "127.0.0.1:40000"
+		for i := 0; i < len(badAddr); i++ { // Replace the address with the bad address character by character
+			buff[8+i] = badAddr[i]
+		}
 		recorder := pingRelayBackendUpdate(t, "application/octet-stream", buff, updateMetrics, nil, nil)
 		relayUpdateErrorAssertions(t, recorder, http.StatusBadRequest, metric)
 	}
@@ -222,6 +226,13 @@ func TestRelayUpdateInvalidVersion(t *testing.T) {
 	{
 		buff, err := packet.MarshalJSON()
 		assert.NoError(t, err)
+
+		offset := strings.Index(string(buff), "127.0.0.1:40000")
+		assert.GreaterOrEqual(t, offset, 0)
+		badAddr := "invalid address"        // "invalid address" is luckily the same number of characters as "127.0.0.1:40000"
+		for i := 0; i < len(badAddr); i++ { // Replace the address with the bad address character by character
+			buff[offset+i] = badAddr[i]
+		}
 		recorder := pingRelayBackendUpdate(t, "application/json", buff, updateMetrics, nil, nil)
 		relayUpdateErrorAssertions(t, recorder, http.StatusBadRequest, metric)
 	}

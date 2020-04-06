@@ -64,8 +64,6 @@ using namespace std::chrono_literals;
 #define RELAY_PUBLIC_KEY_BYTES                                    32
 #define RELAY_PRIVATE_KEY_BYTES                                   32
 
-std::unique_ptr<std::atomic<uint64_t>> gBytesReceived;
-
 // -------------------------------------------------------------------------------------
 
 extern int relay_platform_init();
@@ -4480,6 +4478,8 @@ struct relay_t
     int num_relays;
     uint64_t relay_ids[MAX_RELAYS];
     relay_address_t relay_addresses[MAX_RELAYS];
+    std::atomic<uint64_t> bytes_sent;
+    std::atomic<uint64_t> bytes_received;
 };
 
 struct curl_buffer_t
@@ -4632,8 +4632,10 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
         relay_write_float32( &p, stats.relay_packet_loss[i] );
     }
 
-    relay_write_uint64(&p, gBytesReceived->load());
-    gBytesReceived->store(0);
+    relay_write_uint64(&p, relay->bytes_sent.load());
+    relay->bytes_sent.store(0);
+    relay_write_uint64(&p, relay->bytes_received.load());
+    relay->bytes_received.store(0);
     relay_write_uint8(&p, shutdown);
 
     int update_data_length = (int) ( p - update_data );
@@ -4791,12 +4793,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
         if ( packet_bytes == 0 )
             continue;
 
-        (*gBytesReceived) += packet_bytes;
+        relay->bytes_received += packet_bytes;
 
         if ( packet_data[0] == RELAY_PING_PACKET && packet_bytes == 9 )
         {
             packet_data[0] = RELAY_PONG_PACKET;
             relay_platform_socket_send_packet( relay->socket, &from, packet_data, 9 );
+            relay->bytes_sent += 9;
         }
         else if ( packet_data[0] == RELAY_PONG_PACKET && packet_bytes == 9 )
         {
@@ -4846,6 +4849,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             }
             packet_data[RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES] = RELAY_ROUTE_REQUEST_PACKET;
             relay_platform_socket_send_packet( relay->socket, &token.next_address, packet_data + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES, packet_bytes - RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES );
+            relay->bytes_sent += packet_bytes - RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES;
         }
         else if ( packet_data[0] == RELAY_ROUTE_RESPONSE_PACKET )
         {
@@ -4882,6 +4886,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 continue;
             }
             relay_platform_socket_send_packet( relay->socket, &session->prev_address, packet_data, packet_bytes );
+            relay->bytes_sent += packet_bytes;
         }
         else if ( packet_data[0] == RELAY_CONTINUE_REQUEST_PACKET )
         {
@@ -4918,6 +4923,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             session->expire_timestamp = token.expire_timestamp;
             packet_data[RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES] = RELAY_CONTINUE_REQUEST_PACKET;
             relay_platform_socket_send_packet( relay->socket, &session->next_address, packet_data + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES, packet_bytes - RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES );
+            relay->bytes_sent += packet_bytes - RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES;
         }
         else if ( packet_data[0] == RELAY_CONTINUE_RESPONSE_PACKET )
         {
@@ -4954,6 +4960,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 continue;
             }
             relay_platform_socket_send_packet( relay->socket, &session->prev_address, packet_data, packet_bytes );
+            relay->bytes_sent += packet_bytes;
         }
         else if ( packet_data[0] == RELAY_CLIENT_TO_SERVER_PACKET )
         {
@@ -4990,6 +4997,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 continue;
             }
             relay_platform_socket_send_packet( relay->socket, &session->next_address, packet_data, packet_bytes );
+            relay->bytes_sent += packet_bytes;
         }
         else if ( packet_data[0] == RELAY_SERVER_TO_CLIENT_PACKET )
         {
@@ -5026,6 +5034,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 continue;
             }
             relay_platform_socket_send_packet( relay->socket, &session->prev_address, packet_data, packet_bytes );
+            relay->bytes_sent += packet_bytes;
         }
         else if ( packet_data[0] == RELAY_SESSION_PING_PACKET )
         {
@@ -5062,6 +5071,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 continue;
             }
             relay_platform_socket_send_packet( relay->socket, &session->next_address, packet_data, packet_bytes );
+            relay->bytes_sent += packet_bytes;
         }
         else if ( packet_data[0] == RELAY_SESSION_PONG_PACKET )
         {
@@ -5098,6 +5108,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 continue;
             }
             relay_platform_socket_send_packet( relay->socket, &session->prev_address, packet_data, packet_bytes );
+            relay->bytes_sent += packet_bytes;
         }
         else if ( packet_data[0] == RELAY_NEAR_PING_PACKET )
         {
@@ -5107,6 +5118,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             }
             packet_data[0] = RELAY_NEAR_PONG_PACKET;
             relay_platform_socket_send_packet( relay->socket, &from, packet_data, packet_bytes - 16 );
+            relay->bytes_sent += packet_bytes - 16;
         }
     }
 
@@ -5168,8 +5180,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
 
 int main( int argc, const char ** argv )
 {
-    gBytesReceived = std::make_unique<std::atomic<uint64_t>>();
-
     if ( argc == 2 && strcmp( argv[1], "test" ) == 0 )
     {
         relay_test();
@@ -5330,6 +5340,8 @@ int main( int argc, const char ** argv )
     memcpy( relay.relay_public_key, relay_public_key, RELAY_PUBLIC_KEY_BYTES );
     memcpy( relay.relay_private_key, relay_private_key, RELAY_PRIVATE_KEY_BYTES );
     memcpy( relay.router_public_key, router_public_key, crypto_sign_PUBLICKEYBYTES );
+    relay.bytes_sent = 0;
+    relay.bytes_received = 0;
 
     relay.socket = socket;
     relay.mutex = relay_platform_mutex_create();
@@ -5368,24 +5380,26 @@ int main( int argc, const char ** argv )
 
     uint8_t * update_response_memory = (uint8_t*) malloc( RESPONSE_MAX_BYTES );
 
+    const uint8_t MaxUpdateAttempts = 11;
+    bool successfulUpdates = true;
+    uint8_t updateAttempts = 0;
     while ( !quit )
     {
-        bool updated = false;
-
-        for ( int i = 0; i < 10; ++i )
+        if ( relay_update( curl, backend_hostname, relay_token, relay_address_string, update_response_memory, &relay, false ) == RELAY_OK )
         {
-            if ( relay_update( curl, backend_hostname, relay_token, relay_address_string, update_response_memory, &relay, false ) == RELAY_OK )
+            updateAttempts = 0;
+        }
+        else
+        {
+            if (++updateAttempts == MaxUpdateAttempts)
             {
-                updated = true;
+                printf( "could not update relay, max attempts reached, aborting program" );
+                successfulUpdates = false;
+                quit = 1;
                 break;
             }
-        }
 
-        if ( !updated )
-        {
             printf( "error: could not update relay\n\n" );
-            quit = 1;
-            break;
         }
 
         relay_platform_sleep( 1.0 );
@@ -5438,5 +5452,5 @@ int main( int argc, const char ** argv )
 
     relay_term();
 
-    return 0;
+    return successfulUpdates ? 0 : 1;
 }

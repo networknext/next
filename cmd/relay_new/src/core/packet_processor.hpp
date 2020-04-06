@@ -8,7 +8,7 @@
 #include "router_info.hpp"
 #include "session_map.hpp"
 #include "token.hpp"
-#include "util/throughput_logger.hpp"
+#include "util/throughput_recorder.hpp"
 
 namespace core
 {
@@ -28,7 +28,7 @@ namespace core
      core::SessionMap& sessions,
      core::RelayManager& relayManager,
      const volatile bool& handle,
-     util::ThroughputLogger& logger,
+     util::ThroughputRecorder& logger,
      const net::Address& receivingAddr);
     ~PacketProcessor() = default;
 
@@ -42,7 +42,7 @@ namespace core
     core::SessionMap& mSessionMap;
     core::RelayManager& mRelayManager;
     const volatile bool& mShouldProcess;
-    util::ThroughputLogger& mLogger;
+    util::ThroughputRecorder& mLogger;
     const net::Address& mRecvAddr;
 
     void processPacket(GenericPacket<>& packet, mmsghdr& header, GenericPacketBuffer<MaxPacketsToSend>& outputBuff);

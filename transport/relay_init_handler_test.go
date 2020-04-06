@@ -298,9 +298,7 @@ func TestRelayInitInvalidVersion(t *testing.T) {
 	}
 }
 
-func TestRelayInitInvalidAddress(t *testing.T) {
-	t.Skip("Test can fail on certain machines due to relay address being unmarshaled and interpreted as correct. Needs more work to determine the cause.")
-
+func TestRelayInitAddressIsInvalid(t *testing.T) {
 	relayPublicKey, _ := getRelayKeyPair(t)
 	_, routerPrivateKey, err := box.GenerateKey(crand.Reader)
 	assert.NoError(t, err)
@@ -335,7 +333,10 @@ func TestRelayInitInvalidAddress(t *testing.T) {
 	{
 		buff, err := packet.MarshalBinary()
 		assert.NoError(t, err)
-		buff[4+4+crypto.NonceSize+4] = 'x' // first number in ip address is now 'x'
+		badAddr := "invalid address"        // "invalid address" is luckily the same number of characters as "127.0.0.1:40000"
+		for i := 0; i < len(badAddr); i++ { // Replace the address with the bad address character by character
+			buff[4+4+crypto.NonceSize+4+i] = badAddr[i]
+		}
 		recorder := pingRelayBackendInit(t, "application/octet-stream", relay, buff, initMetrics, nil, nil, nil, nil, routerPrivateKey[:])
 		relayInitErrorAssertions(t, recorder, http.StatusBadRequest, metric)
 	}
@@ -347,7 +348,10 @@ func TestRelayInitInvalidAddress(t *testing.T) {
 
 		offset := strings.Index(string(buff), addr)
 		assert.GreaterOrEqual(t, offset, 0)
-		buff[offset] = 'x' // first number in ip address is now 'x'
+		badAddr := "invalid address"        // "invalid address" is luckily the same number of characters as "127.0.0.1:40000"
+		for i := 0; i < len(badAddr); i++ { // Replace the address with the bad address character by character
+			buff[offset+i] = badAddr[i]
+		}
 		recorder := pingRelayBackendInit(t, "application/json", relay, buff, initMetrics, nil, nil, nil, nil, routerPrivateKey[:])
 		relayInitErrorAssertions(t, recorder, http.StatusBadRequest, metric)
 	}

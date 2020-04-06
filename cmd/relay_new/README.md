@@ -39,7 +39,6 @@ This can be thought of as version 2 of the relay. Version 1 being the relay in t
 - `RELAY_SEND_BUFFER_SIZE` & `RELAY_RECV_BUFFER_SIZE`: In bytes, lets you set the amount of memory to use for each socket's send & receive buffers.
   - Example `RELAY_SOCKET_BUFFER_SIZE="4000000"`
   - Note, Macs apparently have issues with values above a million, thus "1000000" is the default value if not set
-- `RELAY_LOG_FILE`: Counterintuitively, this is not for all logging but instead solely for throughput logging. The file specified by this variable will have just Rx stats written to it, by packet type (ping packet, pong packet, route request, continue request, client to server, server to client, etc...) and at the top the total amount.
 
 # Building
 

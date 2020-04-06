@@ -24,17 +24,6 @@ namespace
   volatile bool gAlive = true;
   volatile bool gShouldCleanShutdown = false;
 
-  void gracefulShutdownHandler(int)
-  {
-    gAlive = false;
-  }
-
-  void cleanShutdownHandler(int)
-  {
-    gShouldCleanShutdown = true;
-    gAlive = false;
-  }
-
   // TODO move this out of main and somewhere else to allow for test coverage
   inline bool getCryptoKeys(const util::Env& env, crypto::Keychain& keychain, std::string& b64RelayPubKey)
   {
@@ -139,9 +128,20 @@ namespace
     });
 #endif
 
+#if not defined TEST_BUILD and not defined BENCH_BUILD
+    auto gracefulShutdownHandler = [](int) {
+      gAlive = false;
+    };
+
+    auto cleanShutdownHandler = [](int) {
+      gShouldCleanShutdown = true;
+      gAlive = false;
+    };
+
     signal(SIGINT, gracefulShutdownHandler);
     signal(SIGTERM, gracefulShutdownHandler);
     signal(SIGHUP, cleanShutdownHandler);
+#endif
   }
 }  // namespace
 
@@ -198,25 +198,6 @@ int main()
   LogDebug("Socket recv buffer size is ", socketRecvBuffSize, " bytes");
   LogDebug("Socket send buffer size is ", socketSendBuffSize, " bytes");
 
-  std::unique_ptr<std::ofstream> output;
-  std::unique_ptr<util::ThroughputLogger> logger;
-  {
-    if (!env.LogFile.empty()) {
-      auto file = std::make_unique<std::ofstream>();
-      file->open(env.LogFile);
-
-      if (*file) {
-        output = std::move(file);
-      }
-
-      if (output) {
-        logger = std::make_unique<util::ThroughputLogger>(*output, true);
-      } else {
-        logger = std::make_unique<util::ThroughputLogger>(std::cout, false);
-      }
-    }
-  }
-
   if (relay::relay_initialize() != RELAY_OK) {
     Log("error: failed to initialize relay\n\n");
     return 1;
@@ -226,6 +207,7 @@ int main()
 
   core::RouterInfo routerInfo;
   core::RelayManager relayManager(relayClock);
+  util::ThroughputRecorder recorder;
 
   LogDebug("creating sockets and threads");
 
@@ -328,10 +310,10 @@ int main()
                                                         &keychain,
                                                         &sessions,
                                                         &relayManager,
-                                                        &logger,
+                                                        &recorder,
                                                         &relayAddr] {
         core::PacketProcessor processor(
-         shouldReceive, *packetSocket, relayClock, keychain, sessions, relayManager, ::gAlive, *logger, relayAddr);
+         shouldReceive, *packetSocket, relayClock, keychain, sessions, relayManager, ::gAlive, recorder, relayAddr);
         processor.process(waitVar, socketAndThreadReady);
       });
 
@@ -418,11 +400,12 @@ int main()
 
   Log("Relay initialized\n\n");
 
-  backend.updateCycle(gAlive, gShouldCleanShutdown, *logger, sessions, relayClock);
+  bool success = backend.updateCycle(gAlive, gShouldCleanShutdown, recorder, sessions, relayClock);
 
+  // has to be here, updateCycle() may return on failure and this should be marked false here to account for that
   gAlive = false;
 
-  Log("Cleaning up\n");
+  Log("Cleaning up");
 
   shouldReceive = false;
 
@@ -432,15 +415,10 @@ int main()
   LogDebug("Joining threads");
   joinThreads();
 
-  LogDebug("Closing log file");
-  if (output) {
-    output->close();
-  }
-
   LogDebug("Terminating relay");
   relay::relay_term();
 
   LogDebug("Relay terminated. Address: ", relayAddr);
 
-  return 0;
+  return success ? 0 : 1;
 }

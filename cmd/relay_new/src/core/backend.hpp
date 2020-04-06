@@ -11,14 +11,14 @@
 #include "testing/test.hpp"
 #include "util/json.hpp"
 #include "util/logger.hpp"
-#include "util/throughput_logger.hpp"
+#include "util/throughput_recorder.hpp"
 
 // forward declare test names to allow private functions to be visible them
 namespace testing
 {
   class _test_core_Backend_update_valid_;
   class _test_core_Backend_update_shutting_down_true_;
-}
+}  // namespace testing
 
 namespace core
 {
@@ -29,6 +29,8 @@ namespace core
 
   const uint32_t UpdateRequestVersion = 0;
   const uint32_t UpdateResponseVersion = 0;
+
+  const uint8_t MaxUpdateAttempts = 11; // 1 initial + 10 more for failures
 
   /*
    * A class that's responsible for backend related tasks
@@ -54,12 +56,16 @@ namespace core
 
     auto init() -> bool;
 
-    void updateCycle(
+    /*
+     * Updates the relay in a loop once per second until loopHandle is false
+     * Returns true as long as the relay doesn't reach the max number of failed update attempts
+     */
+    auto updateCycle(
      const volatile bool& loopHandle,
      const volatile bool& shouldCleanShutdown,
-     util::ThroughputLogger& logger,
+     util::ThroughputRecorder& logger,
      core::SessionMap& sessions,
-     const util::Clock& relayClock);
+     const util::Clock& relayClock) -> bool;
 
    private:
     const std::string mHostname;
@@ -70,9 +76,10 @@ namespace core
     const std::string mBase64RelayPublicKey;
     const core::SessionMap& mSessionMap;
 
-    auto update(uint64_t bytesReceived, bool shutdown) -> bool;
+    auto update(const util::ThroughputRecorder& recorder, bool shutdown) -> bool;
     auto buildInitRequest(util::JSON& doc) -> std::tuple<bool, const char*>;
-    auto buildUpdateRequest(util::JSON& doc, uint64_t bytesReceived, bool shutdown) -> std::tuple<bool, const char*>;
+    auto buildUpdateRequest(util::JSON& doc, const util::ThroughputRecorder& recorder, bool shutdown)
+     -> std::tuple<bool, const char*>;
   };
 
   template <typename T>
@@ -150,38 +157,43 @@ namespace core
   }
 
   template <typename T>
-  void Backend<T>::updateCycle(
+  bool Backend<T>::updateCycle(
    const volatile bool& loopHandle,
    const volatile bool& shouldCleanShutdown,
-   util::ThroughputLogger& logger,
+   util::ThroughputRecorder& recorder,
    core::SessionMap& sessions,
    const util::Clock& relayClock)
   {
+    bool successfulRoutine = true;
     std::vector<uint8_t> update_response_memory;
     update_response_memory.resize(RESPONSE_MAX_BYTES);
-    while (loopHandle) {
-      auto bytesReceived = logger.print();
-      bool updated = false;
 
-      for (int i = 0; i < 10; i++) {
-        if (update(bytesReceived, false)) {
-          updated = true;
+    // update once every 10 seconds
+    // if the update fails, try again, once per second for (MaxUpdateAttempts - 1) seconds
+    // if there's still no successful update, exit the loop and return false, and skip the clean shutdown
+    uint8_t updateAttempts = 0;
+    while (loopHandle) {
+      if (update(recorder, false)) {
+        updateAttempts = 0;
+      } else {
+        if (++updateAttempts == MaxUpdateAttempts) {
+          Log("could not update relay, max attempts reached, aborting program");
+          successfulRoutine = false;
           break;
         }
-      }
 
-      if (!updated) {
-        Log("error: could not update relay");
-        break;
+        Log("could not update relay, attempts: ", updateAttempts);
       }
 
       sessions.purge(relayClock.unixTime<util::Second>());
+      recorder.reset();
+
       std::this_thread::sleep_for(1s);
     }
 
     if (shouldCleanShutdown) {
       unsigned int seconds = 0;
-      while (seconds++ < 60 && !update(0, true)) {
+      while (seconds++ < 60 && !update(recorder, true)) {
         std::this_thread::sleep_for(1s);
       }
 
@@ -189,13 +201,15 @@ namespace core
         std::this_thread::sleep_for(30s);
       }
     }
+
+    return successfulRoutine;
   }
 
   template <typename T>
-  auto Backend<T>::update(uint64_t bytesReceived, bool shutdown) -> bool
+  auto Backend<T>::update(const util::ThroughputRecorder& recorder, bool shutdown) -> bool
   {
     util::JSON doc;
-    auto [ok, err] = buildUpdateRequest(doc, bytesReceived, shutdown);
+    auto [ok, err] = buildUpdateRequest(doc, recorder, shutdown);
     if (!ok) {
       Log("error building update request: ", err);
       return false;
@@ -350,7 +364,8 @@ namespace core
   }
 
   template <typename T>
-  auto Backend<T>::buildUpdateRequest(util::JSON& doc, uint64_t bytesReceived, bool shutdown) -> std::tuple<bool, const char*>
+  auto Backend<T>::buildUpdateRequest(util::JSON& doc, const util::ThroughputRecorder& recorder, bool shutdown)
+   -> std::tuple<bool, const char*>
   {
     // TODO once the other stats are finally added, pull out the json parts that are always the same, no sense rebuilding those
     // parts of the document
@@ -360,32 +375,37 @@ namespace core
     doc.set(mBase64RelayPublicKey, "Metadata", "PublicKey");
 
     util::JSON trafficStats;
-    trafficStats.set(bytesReceived, "BytesMeasurementRx");
-    trafficStats.set(mSessionMap.size(), "SessionCount");
-
-    doc.set(trafficStats, "TrafficStats");
-
-    core::RelayStats stats;
-    mRelayManager.getStats(stats);
-    util::JSON pingStats;
-    pingStats.setArray();
-
-    // pushing behaves really weird when the pushed value goes out of scope, must be declared outside of for loop
-    util::JSON pingStat;
-    for (unsigned int i = 0; i < stats.NumRelays; ++i) {
-      pingStat.set(stats.IDs[i], "RelayId");
-      pingStat.set(stats.RTT[i], "RTT");
-      pingStat.set(stats.Jitter[i], "Jitter");
-      pingStat.set(stats.PacketLoss[i], "PacketLoss");
-
-      if (!pingStats.push(pingStat)) {
-        return {false, "ping stats not array! can't update!"};
-      }
+    {
+      auto stats = recorder.get();
+      trafficStats.set(stats.Sent.ByteCount, "BytesMeasurementTx");
+      trafficStats.set(stats.Received.ByteCount, "BytesMeasurementRx");
+      trafficStats.set(mSessionMap.size(), "SessionCount");
+      doc.set(trafficStats, "TrafficStats");
     }
 
-    // performs a deep copy, so it's ok for things to go out of scope after this, regular move seems to be weird due to the
-    // allocator concept
-    doc.set(pingStats, "PingStats");
+    core::RelayStats stats;
+    {
+      mRelayManager.getStats(stats);
+      util::JSON pingStats;
+      pingStats.setArray();
+
+      // pushing behaves really weird when the pushed value goes out of scope, must be declared outside of for loop
+      util::JSON pingStat;
+      for (unsigned int i = 0; i < stats.NumRelays; ++i) {
+        pingStat.set(stats.IDs[i], "RelayId");
+        pingStat.set(stats.RTT[i], "RTT");
+        pingStat.set(stats.Jitter[i], "Jitter");
+        pingStat.set(stats.PacketLoss[i], "PacketLoss");
+
+        if (!pingStats.push(pingStat)) {
+          return {false, "ping stats not array! can't update!"};
+        }
+      }
+
+      // performs a deep copy, so it's ok for things to go out of scope after this, regular move seems to be weird due to the
+      // allocator concept
+      doc.set(pingStats, "PingStats");
+    }
 
     return {true, nullptr};
   }
