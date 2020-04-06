@@ -2,17 +2,25 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"path"
+	"strings"
 )
 
 type Environment struct {
-	Hostname string `json:"hostname"`
+	Hostname  string `json:"hostname"`
+	AuthToken string `json:"auth_token"`
 }
 
 func (e *Environment) String() string {
-	return "Hostname: " + e.Hostname
+	var sb strings.Builder
+
+	sb.WriteString(fmt.Sprintf("Hostname: %s\n", e.Hostname))
+	sb.WriteString(fmt.Sprintf("AuthToken: %s\n", e.AuthToken))
+
+	return sb.String()
 }
 
 func (e *Environment) Exists() bool {
