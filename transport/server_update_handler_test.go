@@ -27,7 +27,7 @@ func TestFailToUnmarshalServerUpdate(t *testing.T) {
 	handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, nil, &metrics.EmptyServerUpdateMetrics)
 	handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: []byte("this is not a proper packet")})
 
-	_, err = redisServer.Get("SERVER-0.0.0.0:13")
+	_, err = redisServer.Get("SERVER-0-0.0.0.0:13")
 	assert.Error(t, err)
 }
 
@@ -57,7 +57,7 @@ func TestSDKVersionTooOld(t *testing.T) {
 	handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, nil, &metrics.EmptyServerUpdateMetrics)
 	handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
-	_, err = redisServer.Get("SERVER-0.0.0.0:13")
+	_, err = redisServer.Get("SERVER-0-0.0.0.0:13")
 	assert.Error(t, err)
 }
 
@@ -89,7 +89,7 @@ func TestBuyerNotFound(t *testing.T) {
 	handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &metrics.EmptyServerUpdateMetrics)
 	handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
-	_, err = redisServer.Get("SERVER-0.0.0.0:13")
+	_, err = redisServer.Get("SERVER-0-0.0.0.0:13")
 	assert.Error(t, err)
 }
 
@@ -125,7 +125,7 @@ func TestWrongBuyerPublicKey(t *testing.T) {
 	handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &metrics.EmptyServerUpdateMetrics)
 	handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
-	_, err = redisServer.Get("SERVER-0.0.0.0:13")
+	_, err = redisServer.Get("SERVER-0-0.0.0.0:13")
 	assert.Error(t, err)
 }
 
@@ -166,13 +166,13 @@ func TestServerPacketSequenceTooOld(t *testing.T) {
 	se, err := expected.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SERVER-0.0.0.0:13", string(se))
+	err = redisServer.Set("SERVER-0-0.0.0.0:13", string(se))
 	assert.NoError(t, err)
 
 	handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &metrics.EmptyServerUpdateMetrics)
 	handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
-	ds, err := redisServer.Get("SERVER-0.0.0.0:13")
+	ds, err := redisServer.Get("SERVER-0-0.0.0.0:13")
 	assert.NoError(t, err)
 
 	var actual transport.ServerCacheEntry
@@ -231,7 +231,7 @@ func TestSuccessfulUpdate(t *testing.T) {
 	handler(&buf, &incoming)
 
 	// Get the server entry directly from the in-memory redis and assert there is no error
-	ds, err := redisServer.Get("SERVER-0.0.0.0:13")
+	ds, err := redisServer.Get("SERVER-0-0.0.0.0:13")
 	assert.NoError(t, err)
 
 	// Create an "expected" ServerEntry based on the incoming ServerUpdatePacket above
