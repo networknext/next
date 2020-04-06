@@ -5370,9 +5370,9 @@ int main( int argc, const char ** argv )
 
     const uint8_t MaxUpdateAttempts = 11;
     bool successfulUpdates = true;
+    uint8_t updateAttempts = 0;
     while ( !quit )
     {
-        uint8_t updateAttempts = 0;
         if ( relay_update( curl, backend_hostname, relay_token, relay_address_string, update_response_memory, &relay, false ) == RELAY_OK )
         {
             updateAttempts = 0;
