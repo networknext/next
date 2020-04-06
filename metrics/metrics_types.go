@@ -217,9 +217,32 @@ var EmptyRelayHandlerMetrics RelayHandlerMetrics = RelayHandlerMetrics{
 }
 
 type RelayHandlerErrorMetrics struct {
+	UnmarshalFailure      Counter
+	ExceedMaxRelays       Counter
+	RelayNotFound         Counter
+	NoAuthHeader          Counter
+	BadAuthHeaderLength   Counter
+	BadAuthHeaderToken    Counter
+	BadNonce              Counter
+	BadEncryptedAddress   Counter
+	DecryptFailure        Counter
+	RedisFailure          Counter
+	RelayUnmarshalFailure Counter
 }
 
-var EmptyRelayHandlerErrorMetrics RelayHandlerErrorMetrics = RelayHandlerErrorMetrics{}
+var EmptyRelayHandlerErrorMetrics RelayHandlerErrorMetrics = RelayHandlerErrorMetrics{
+	UnmarshalFailure:      &EmptyCounter{},
+	ExceedMaxRelays:       &EmptyCounter{},
+	RelayNotFound:         &EmptyCounter{},
+	NoAuthHeader:          &EmptyCounter{},
+	BadAuthHeaderLength:   &EmptyCounter{},
+	BadAuthHeaderToken:    &EmptyCounter{},
+	BadNonce:              &EmptyCounter{},
+	BadEncryptedAddress:   &EmptyCounter{},
+	DecryptFailure:        &EmptyCounter{},
+	RedisFailure:          &EmptyCounter{},
+	RelayUnmarshalFailure: &EmptyCounter{},
+}
 
 type RelayStatMetrics struct {
 	NumRelays Gauge

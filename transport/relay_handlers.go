@@ -83,6 +83,7 @@ func RelayHandlerFunc(logger log.Logger, params *RelayHandlerConfig) func(writer
 		var relayRequest RelayRequest
 		if err := relayRequest.UnmarshalJSON(body); err != nil {
 			http.Error(writer, err.Error(), http.StatusBadRequest)
+			params.Metrics.ErrorMetrics.UnmarshalFailure.Add(1)
 			return
 		}
 
@@ -90,6 +91,7 @@ func RelayHandlerFunc(logger log.Logger, params *RelayHandlerConfig) func(writer
 		if len(relayRequest.PingStats) > MaxRelays {
 			level.Error(handlerLogger).Log("msg", "max relays exceeded", "relay count", len(relayRequest.PingStats))
 			http.Error(writer, "max relays exceeded", http.StatusBadRequest)
+			params.Metrics.ErrorMetrics.ExceedMaxRelays.Add(1)
 			return
 		}
 
@@ -103,6 +105,7 @@ func RelayHandlerFunc(logger log.Logger, params *RelayHandlerConfig) func(writer
 		if !ok {
 			level.Error(locallogger).Log("msg", "relay not in firestore")
 			http.Error(writer, "relay not in firestore", http.StatusNotFound)
+			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
 			return
 		}
 
@@ -114,6 +117,7 @@ func RelayHandlerFunc(logger log.Logger, params *RelayHandlerConfig) func(writer
 		if authorizationHeader == "" {
 			level.Error(locallogger).Log("msg", "no authorization header")
 			http.Error(writer, "no authorization header", http.StatusUnauthorized)
+			params.Metrics.ErrorMetrics.NoAuthHeader.Add(1)
 			return
 		}
 
@@ -122,6 +126,7 @@ func RelayHandlerFunc(logger log.Logger, params *RelayHandlerConfig) func(writer
 		if tokenIndex >= len(authorizationHeader) {
 			level.Error(locallogger).Log("msg", "bad authorization header length")
 			http.Error(writer, "bad authorization header length", http.StatusBadRequest)
+			params.Metrics.ErrorMetrics.BadAuthHeaderLength.Add(1)
 			return
 		}
 		token := authorizationHeader[tokenIndex:]
@@ -131,6 +136,7 @@ func RelayHandlerFunc(logger log.Logger, params *RelayHandlerConfig) func(writer
 		if splitResult == nil || len(splitResult) != 2 {
 			level.Error(locallogger).Log("msg", "bad authorization token")
 			http.Error(writer, "bad authorization token", http.StatusBadRequest)
+			params.Metrics.ErrorMetrics.BadAuthHeaderToken.Add(1)
 			return
 		}
 
@@ -142,6 +148,7 @@ func RelayHandlerFunc(logger log.Logger, params *RelayHandlerConfig) func(writer
 		if err != nil {
 			level.Error(locallogger).Log("msg", "bad nonce")
 			http.Error(writer, "bad nonce", http.StatusBadRequest)
+			params.Metrics.ErrorMetrics.BadNonce.Add(1)
 			return
 		}
 
@@ -149,6 +156,7 @@ func RelayHandlerFunc(logger log.Logger, params *RelayHandlerConfig) func(writer
 		if err != nil {
 			level.Error(locallogger).Log("msg", "bad encrypted address")
 			http.Error(writer, "bad encrypted address", http.StatusBadRequest)
+			params.Metrics.ErrorMetrics.BadEncryptedAddress.Add(1)
 			return
 		}
 
@@ -156,6 +164,7 @@ func RelayHandlerFunc(logger log.Logger, params *RelayHandlerConfig) func(writer
 		if _, ok := crypto.Open(encryptedAddress, nonce, relay.PublicKey, params.RouterPrivateKey); !ok {
 			level.Error(locallogger).Log("msg", "crypto open failed")
 			http.Error(writer, "crypto open failed", http.StatusUnauthorized)
+			params.Metrics.ErrorMetrics.DecryptFailure.Add(1)
 			return
 		}
 
@@ -165,6 +174,7 @@ func RelayHandlerFunc(logger log.Logger, params *RelayHandlerConfig) func(writer
 		if exists.Err() != nil && exists.Err() != redis.Nil {
 			level.Error(locallogger).Log("msg", "failed to check if relay is registered", "err", exists.Err())
 			http.Error(writer, "failed to check if relay is registered", http.StatusInternalServerError)
+			params.Metrics.ErrorMetrics.RedisFailure.Add(1)
 			return
 		}
 
@@ -219,6 +229,7 @@ func RelayHandlerFunc(logger log.Logger, params *RelayHandlerConfig) func(writer
 			if err = relay.UnmarshalBinary(data); err != nil {
 				level.Error(handlerLogger).Log("msg", "failed to unmarshal relay data", "err", err)
 				http.Error(writer, "failed to unmarshal relay data", http.StatusInternalServerError)
+				params.Metrics.ErrorMetrics.RelayUnmarshalFailure.Add(1)
 				return
 			}
 		}

@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -118,7 +119,7 @@ func pingRelayBackendInit(t *testing.T, contentType string, relay routing.Relay,
 
 func relayInitErrorAssertions(t *testing.T, recorder *httptest.ResponseRecorder, expectedCode int, errMetric metrics.Counter) {
 	assert.Equal(t, expectedCode, recorder.Code)
-	assert.Equal(t, 1.0, errMetric.Value())
+	assert.Equal(t, 1.0, errMetric.ValueReset())
 }
 
 func relayInitSuccessAssertions(t *testing.T, recorder *httptest.ResponseRecorder, expectedContentType string, errMetrics metrics.RelayInitErrorMetrics, geoClient *routing.GeoClient, redisClient *redis.Client, location routing.Location, addr string, before uint64, expected routing.Relay) {
@@ -177,7 +178,12 @@ func relayInitSuccessAssertions(t *testing.T, recorder *httptest.ResponseRecorde
 
 	assert.Equal(t, uint32(routing.RelayStateOnline), actual.State)
 
-	assert.Equal(t, errMetrics, metrics.EmptyRelayInitErrorMetrics)
+	errMetricsStruct := reflect.ValueOf(errMetrics)
+	for i := 0; i < errMetricsStruct.NumField(); i++ {
+		if errMetricsStruct.Field(i).CanInterface() {
+			assert.Equal(t, 0.0, errMetricsStruct.Field(i).Interface().(metrics.Counter).ValueReset())
+		}
+	}
 }
 
 func TestRelayInitUnmarshalFailure(t *testing.T) {
@@ -203,9 +209,6 @@ func TestRelayInitUnmarshalFailure(t *testing.T) {
 		recorder := pingRelayBackendInit(t, "application/octet-stream", relay, buff, initMetrics, nil, nil, nil, nil, nil)
 		relayInitErrorAssertions(t, recorder, http.StatusBadRequest, metric)
 	}
-
-	// Reset the metric so it's not counted twice
-	metric.ValueReset()
 
 	// JSON version
 	{
@@ -246,9 +249,6 @@ func TestRelayInitInvalidMagic(t *testing.T) {
 		relayInitErrorAssertions(t, recorder, http.StatusBadRequest, metric)
 	}
 
-	// Reset the metric so it's not counted twice
-	metric.ValueReset()
-
 	// JSON version
 	{
 		buff, err := packet.MarshalJSON()
@@ -288,9 +288,6 @@ func TestRelayInitInvalidVersion(t *testing.T) {
 		recorder := pingRelayBackendInit(t, "application/octet-stream", relay, buff, initMetrics, nil, nil, nil, nil, nil)
 		relayInitErrorAssertions(t, recorder, http.StatusBadRequest, metric)
 	}
-
-	// Reset the metric so it's not counted twice
-	metric.ValueReset()
 
 	// JSON version
 	{
@@ -343,9 +340,6 @@ func TestRelayInitInvalidAddress(t *testing.T) {
 		relayInitErrorAssertions(t, recorder, http.StatusBadRequest, metric)
 	}
 
-	// Reset the metric so it's not counted twice
-	metric.ValueReset()
-
 	// JSON version
 	{
 		buff, err := packet.MarshalJSON()
@@ -395,9 +389,6 @@ func TestRelayInitRelayDBLookupFailure(t *testing.T) {
 		recorder := pingRelayBackendInit(t, "application/octet-stream", relay, buff, initMetrics, nil, nil, inMemory, nil, nil)
 		relayInitErrorAssertions(t, recorder, http.StatusNotFound, metric)
 	}
-
-	// Reset the metric so it's not counted twice
-	metric.ValueReset()
 
 	// JSON version
 	{
@@ -451,9 +442,6 @@ func TestRelayInitInvalidToken(t *testing.T) {
 		recorder := pingRelayBackendInit(t, "application/octet-stream", relay, buff, initMetrics, nil, nil, nil, nil, routerPrivateKey[:])
 		relayInitErrorAssertions(t, recorder, http.StatusUnauthorized, metric)
 	}
-
-	// Reset the metric so it's not counted twice
-	metric.ValueReset()
 
 	// JSON version
 	{
@@ -514,9 +502,6 @@ func TestRelayInitInvalidNonce(t *testing.T) {
 		relayInitErrorAssertions(t, recorder, http.StatusUnauthorized, metric)
 	}
 
-	// Reset the metric so it's not counted twice
-	metric.ValueReset()
-
 	// JSON version
 	{
 		buff, err := packet.MarshalJSON()
@@ -576,9 +561,6 @@ func TestRelayInitRelayRedisFailure(t *testing.T) {
 		recorder := pingRelayBackendInit(t, "application/octet-stream", relay, buff, initMetrics, nil, nil, nil, redisClient, routerPrivateKey[:])
 		relayInitErrorAssertions(t, recorder, http.StatusInternalServerError, metric)
 	}
-
-	// Reset the metric so it's not counted twice
-	metric.ValueReset()
 
 	// JSON version
 	{
@@ -666,9 +648,6 @@ func TestRelayInitRelayExists(t *testing.T) {
 		relayInitErrorAssertions(t, recorder, http.StatusConflict, metric)
 	}
 
-	// Reset the metric so it's not counted twice
-	metric.ValueReset()
-
 	// JSON version
 	{
 		buff, err := packet.MarshalJSON()
@@ -740,9 +719,6 @@ func TestRelayInitRelayIPLookupFailure(t *testing.T) {
 	redisServer, err = miniredis.Run()
 	assert.NoError(t, err)
 	redisClient = redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
-
-	// Reset the metric so it's not counted twice
-	metric.ValueReset()
 
 	// JSON version
 	{
@@ -816,7 +792,20 @@ func TestRelayInitSuccess(t *testing.T) {
 		Addr: *udpAddr,
 	}
 
-	initMetrics := metrics.EmptyRelayInitMetrics
+	localMetrics := metrics.LocalHandler{}
+	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
+	assert.NoError(t, err)
+
+	initMetrics := metrics.RelayInitMetrics{
+		Invocations:   &metrics.EmptyCounter{},
+		DurationGauge: &metrics.EmptyGauge{},
+	}
+	v := reflect.ValueOf(&initMetrics.ErrorMetrics).Elem()
+	for i := 0; i < v.NumField(); i++ {
+		if v.Field(i).CanSet() {
+			v.Field(i).Set(reflect.ValueOf(metric))
+		}
+	}
 
 	// Binary version
 	{
