@@ -187,7 +187,10 @@ func TestRelayUpdateInvalidAddress(t *testing.T) {
 	{
 		buff, err := packet.MarshalBinary()
 		assert.NoError(t, err)
-		buff[8] = 'x' // assign this index (which should be the first item in the address) as the letter 'x' making it invalid
+		badAddr := "invalid address"        // "invalid address" is luckily the same number of characters as "127.0.0.1:40000"
+		for i := 0; i < len(badAddr); i++ { // Replace the address with the bad address character by character
+			buff[8+i] = badAddr[i]
+		}
 		relayUpdateAssertions(t, "application/octet-stream", buff, http.StatusBadRequest, nil, nil)
 	}
 
@@ -198,7 +201,10 @@ func TestRelayUpdateInvalidAddress(t *testing.T) {
 
 		offset := strings.Index(string(buff), "127.0.0.1:40000")
 		assert.GreaterOrEqual(t, offset, 0)
-		buff[offset] = 'x' // assign this index (which should be the first item in the address) as the letter 'x' making it invalid
+		badAddr := "invalid address"        // "invalid address" is luckily the same number of characters as "127.0.0.1:40000"
+		for i := 0; i < len(badAddr); i++ { // Replace the address with the bad address character by character
+			buff[offset+i] = badAddr[i]
+		}
 		relayUpdateAssertions(t, "application/json", buff, http.StatusBadRequest, nil, nil)
 	}
 }
