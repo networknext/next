@@ -7,6 +7,14 @@ The Server Backend is responsible for:
 3. Accepts client sessions from the game server to find relays near the client, find a route, and send it back to the game server
 4. Records metrics and billing information so that the routes being served are billed accordingly
 
+### Load & Scalability
+
+Status: **HIGH**  
+Scalability: **Horizontally, Load-Balanced**
+
+1. Game clients and game servers send UDP packets every 10 seconds
+2. The only network call made during these requests are to Redis, everything else is done in memory or in the background across the network to build a local cache
+
 ### To Run
 
 Run `make dev-server-backend`
