@@ -371,7 +371,7 @@ int next_platform_inet_ntop6( const uint16_t * address, char * address_string, s
 
 void next_platform_socket_destroy( next_platform_socket_t * );
 
-next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size )
+next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size, bool enable_tagging )
 {
     next_assert( address );
     next_assert( address->type != NEXT_ADDRESS_NONE );

@@ -31,10 +31,10 @@
 #include <stddef.h>
 
 #if !NEXT_DEVELOPMENT
-#define NEXT_VERSION_FULL                                   "3.4.1"
+#define NEXT_VERSION_FULL                                   "3.4.2"
 #define NEXT_VERSION_MAJOR_INT                                    3
 #define NEXT_VERSION_MINOR_INT                                    4
-#define NEXT_VERSION_PATCH_INT                                    1
+#define NEXT_VERSION_PATCH_INT                                    2
 #else // #if !NEXT_DEVELOPMENT
 #define NEXT_VERSION_FULL                                     "dev"
 #define NEXT_VERSION_MAJOR_INT                                    0
@@ -148,6 +148,7 @@ struct next_config_t
     int socket_send_buffer_size;
     int socket_receive_buffer_size;
     bool disable_network_next;
+    bool disable_tagging;
 };
 
 NEXT_EXPORT_FUNC void next_default_config( next_config_t * config );
