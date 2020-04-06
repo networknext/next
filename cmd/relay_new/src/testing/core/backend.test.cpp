@@ -275,7 +275,7 @@ Test(core_Backend_update_valid)
   recorder.addToSent(bytesSent);
   recorder.addToReceived(bytesReceived);
 
-   check(backend.update(recorder, false));
+  check(backend.update(recorder, false));
 
   util::JSON doc;
 

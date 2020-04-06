@@ -186,6 +186,8 @@ namespace core
       }
 
       sessions.purge(relayClock.unixTime<util::Second>());
+      recorder.reset();
+
       std::this_thread::sleep_for(1s);
     }
 
@@ -375,7 +377,7 @@ namespace core
     util::JSON trafficStats;
     {
       auto stats = recorder.get();
-      trafficStats.set(stats.Sent.ByteCount, "ByteMeasurementTx");
+      trafficStats.set(stats.Sent.ByteCount, "BytesMeasurementTx");
       trafficStats.set(stats.Received.ByteCount, "BytesMeasurementRx");
       trafficStats.set(mSessionMap.size(), "SessionCount");
       doc.set(trafficStats, "TrafficStats");
