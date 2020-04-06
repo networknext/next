@@ -185,7 +185,9 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 }
 
 type SessionCacheEntry struct {
+	CustomerID      uint64
 	SessionID       uint64
+	UserHash        uint64
 	Sequence        uint64
 	RouteHash       uint64
 	RouteDecision   routing.Decision
@@ -193,6 +195,8 @@ type SessionCacheEntry struct {
 	TimestampExpire time.Time
 	VetoTimestamp   time.Time
 	Version         uint8
+	DirectRTT       float64
+	NextRTT         float64
 	Response        []byte
 }
 
@@ -583,7 +587,9 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		{
 			level.Debug(locallogger).Log("msg", "caching session data")
 			updatedSessionCacheEntry := SessionCacheEntry{
+				CustomerID:      packet.CustomerID,
 				SessionID:       packet.SessionID,
+				UserHash:        packet.UserHash,
 				Sequence:        packet.Sequence,
 				RouteHash:       chosenRoute.Hash64(),
 				RouteDecision:   routeDecision,
@@ -592,6 +598,8 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 				VetoTimestamp:   sessionCacheEntry.VetoTimestamp,
 				Version:         sessionCacheEntry.Version, //This was already incremented for the route tokens
 				Response:        responseData,
+				DirectRTT:       directStats.RTT,
+				NextRTT:         nnStats.RTT,
 			}
 			result := redisClient.Set(sessionCacheKey, updatedSessionCacheEntry, 5*time.Minute)
 			if result.Err() != nil {
