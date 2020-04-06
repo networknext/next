@@ -146,6 +146,8 @@ void FNetworkNextModule::InitializeNetworkNextIfRequired()
 
 			config.socket_send_buffer_size = this->NetworkNextConfig->SocketSendBufferSize;
 			config.socket_receive_buffer_size = this->NetworkNextConfig->SocketReceiveBufferSize;
+			config.disable_network_next = this->NetworkNextConfig->DisableNetworkNext;
+			config.disable_tagging = this->NetworkNextConfig->DisableTagging;
 		}
 
 		// If failed to get keys at this point - fall back to environment variables
