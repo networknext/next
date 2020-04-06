@@ -5,6 +5,14 @@ The Web Portal is responsible for:
 1. Providing a single RPC API for data management (Relays, Datacenters, Buyers, etc.)
 2. Serve the static front end JavaScript Portal UI
 
+### Load & Scalability
+
+Status: **LOW**  
+Scalability: **Vertically**
+
+1. Serves the HTML/CSS/JS frontend portal to customers as they log in and browse the map and session information
+2. Fulfills requests from the Ops CLI tool for management of relays, datacenters, etc.
+
 ### To Run
 
 Run `make dev-portal`

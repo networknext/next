@@ -7,6 +7,14 @@ The Relay Backend is responsible for:
 3. Generate a cost then route matrix of optimized routes that are available which the Server Backend pulls a copy of
 4. Keeps an updated relay location list using Redis to find nearby relays so the Server Backend can find relays near game clients
 
+### Load & Scalability
+
+Status: **LOW-MEDIUM**  
+Scalability: **Vertically**
+
+1. Relays send HTTP requests every 1 second
+2. Computes the route matrix of all available routes every 10 seconds
+
 ### To Run
 
 Run `make dev-relay-backend`
