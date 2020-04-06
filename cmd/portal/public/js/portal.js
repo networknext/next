@@ -1,3 +1,29 @@
+function changePage(page) {
+	let account = document.getElementById("account-workspace");
+	let session = document.getElementById("session-workspace");
+	let map = document.getElementById("map-workspace");
+	let title = document.getElementById("workspace-title");
+
+	account.style.display = 'none';
+	map.style.display = 'none';
+	session.style.display = 'none';
+
+	switch (page) {
+		case 'sessions':
+			session.style.display = 'block';
+			title.textContent = 'Session Table';
+			break;
+		case 'account':
+			account.style.display = 'block';
+			title.textContent = 'Account Details';
+			break;
+		default:
+			map.style.display = 'block';
+			title.textContent = 'Session Map';
+			reloadMap();
+	}
+}
+
 JSONRPCClient = {
 
 	async call(method, params) {
@@ -26,13 +52,11 @@ JSONRPCClient = {
 			return json.result
 		})
 	}
-	
 }
 window.MapHandler = {
 
 	async initMap() {
 		console.log("Initializing map");
-		
 		// Grab the canvas element
 		document.getElementById('canvas');
 
@@ -41,7 +65,6 @@ window.MapHandler = {
 
 		// Init a new image object
 		const image = new Image();
-		
 		// Tell JS what to do when the image first loads
 		image.onload = setupMapImage;
 
@@ -65,9 +88,8 @@ window.MapHandler = {
 
 			// Translate the coordinate given to you to something that is mappable to the canvas
 			let coord = translateCoord({lat: 42.654110, lng: -73.752650}, offset);
-	
 			// Draw the pixel at that location
-			drawPixelAtLocation(coord);	
+			drawPixelAtLocation(coord);
 
 			// Make a bunch of random points for testing
 			for (var i = 0; i < 1000; i++) {
@@ -81,7 +103,6 @@ window.MapHandler = {
 			}
 
 		}
-		
 		function drawPixelAtLocation(coord) {
 			ctx.rect(coord.x, coord.y, 1, 1);
 			ctx.fillStyle = 'red';
@@ -99,4 +120,16 @@ window.MapHandler = {
 			}
 		}
 	}
+}
+
+function reloadMap() {
+	MapHandler
+		.initMap()
+		.then(() => {
+			console.log("Map Initialized");
+		})
+		.catch((e) => {
+			console.log("Something went wrong with the map init!");
+			console.log(e);
+		});
 }

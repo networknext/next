@@ -1,0 +1,60 @@
+body {
+  background-color: #fff;
+  color: #333;
+}
+
+.diagram {
+  width: 600px;
+  text-align: center;
+}
+
+svg {
+  pointer-events: visiblePainted;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+}
+
+svg > * {
+  pointer-events: none;
+}
+
+text {
+  font-size: 14px;
+  text-anchor: middle;
+}
+
+.tile polygon {
+  pointer-events: visiblePainted;
+  fill: hsl(60, 10%, 95%);
+  stroke: hsl(0, 0%, 70%);
+  stroke-width: 0.5;
+}
+
+.tile.q-axis-same polygon {
+  fill: hsl( 90, 20%, 87%);
+  stroke-width: 2.0;
+}
+.tile.r-axis-same polygon {
+  fill: hsl(200, 15%, 90%);
+  stroke-width: 2.0;
+}
+.tile.s-axis-same polygon {
+  fill: hsl(300, 10%, 90%);
+}
+.tile.q-axis-same.r-axis-same polygon {
+  fill: hsl(160, 20%, 80%);
+  stroke-width: 2.0;
+}
+.tile.q-axis-same tspan.q {
+  fill: hsl( 90, 100%, 35%);
+  font-weight: bold;
+}
+.tile.r-axis-same tspan.r {
+  fill: hsl(200, 100%, 45%);
+  font-weight: bold;
+}
+.tile.s-axis-same tspan.s {
+  fill: hsl(300, 80%, 50%);
+  font-weight: bold;
+}
