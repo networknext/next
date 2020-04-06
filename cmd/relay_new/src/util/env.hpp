@@ -16,7 +16,6 @@ namespace util
     std::string SendBufferSize;
     std::string RecvBufferSize;
     std::string ProcessorCount;
-    std::string LogFile;
   };
 
   inline Env::Env()
@@ -33,7 +32,6 @@ namespace util
      {"RELAY_SEND_BUFFER_SIZE", &SendBufferSize},
      {"RELAY_RECV_BUFFER_SIZE", &RecvBufferSize},
      {"RELAY_PROCESSOR_COUNT", &ProcessorCount},
-     {"RELAY_LOG_FILE", &LogFile},
     };
 
     for (auto& pair : requiredVars) {
