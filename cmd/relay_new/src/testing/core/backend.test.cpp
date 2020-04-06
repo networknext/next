@@ -79,7 +79,7 @@ Test(core_Backend_updateCycle_shutdown_60s)
   auto backend = std::move(makeBackend(info, manager, sessions));
   volatile bool handle = true;
   volatile bool shouldCleanShutdown = false;
-  util::ThroughputLogger logger(std::cout);
+  util::ThroughputRecorder logger;
 
   testing::StubbedCurlWrapper::Success = true;
   testing::StubbedCurlWrapper::Response = BasicValidUpdateResponse;
@@ -112,7 +112,7 @@ Test(core_Backend_updateCycle_ack_and_30s)
   auto backend = std::move(makeBackend(info, manager, sessions));
   volatile bool handle = true;
   volatile bool shouldCleanShutdown = false;
-  util::ThroughputLogger logger(std::cout);
+  util::ThroughputRecorder logger;
 
   testing::StubbedCurlWrapper::Success = true;
   testing::StubbedCurlWrapper::Response = BasicValidUpdateResponse;
@@ -145,7 +145,7 @@ Test(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
   auto backend = std::move(makeBackend(info, manager, sessions));
   volatile bool handle = true;
   volatile bool shouldCleanShutdown = false;
-  util::ThroughputLogger logger(std::cout);
+  util::ThroughputRecorder recorder;
 
   testing::StubbedCurlWrapper::Success = true;
   testing::StubbedCurlWrapper::Response = BasicValidUpdateResponse;
@@ -160,9 +160,8 @@ Test(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
     testing::StubbedCurlWrapper::Success = true;
   });
 
-  check(backend.updateCycle(handle, shouldCleanShutdown, logger, sessions, backendClock));
+  check(backend.updateCycle(handle, shouldCleanShutdown, recorder, sessions, backendClock));
   auto elapsed = testClock.elapsed<util::Second>();
-  std::cout << elapsed << std::endl;
   check(elapsed >= 80.0 && elapsed < 81.0);
 }
 
@@ -182,7 +181,7 @@ Test(core_Backend_updateCycle_update_fails_for_max_number_of_attempts)
   auto backend = std::move(makeBackend(info, manager, sessions));
   volatile bool handle = true;
   volatile bool shouldCleanShutdown = false;
-  util::ThroughputLogger logger(std::cout);
+  util::ThroughputRecorder recorder;
 
   testing::StubbedCurlWrapper::Success = true;
   testing::StubbedCurlWrapper::Response = BasicValidUpdateResponse;
@@ -193,7 +192,7 @@ Test(core_Backend_updateCycle_update_fails_for_max_number_of_attempts)
     testing::StubbedCurlWrapper::Success = false;  // set to false here to trigger failed updates
   });
 
-  check(!backend.updateCycle(handle, shouldCleanShutdown, logger, sessions, backendClock));
+  check(!backend.updateCycle(handle, shouldCleanShutdown, recorder, sessions, backendClock));
   auto elapsed = testClock.elapsed<util::Second>();
   // time will be 10 seconds of good updates and
   // 10 seconds of bad updates, which will cause
@@ -213,7 +212,7 @@ Test(core_Backend_updateCycle_no_clean_shutdown)
   auto backend = std::move(makeBackend(info, manager, sessions));
   volatile bool handle = true;
   volatile bool shouldCleanShutdown = false;
-  util::ThroughputLogger logger(std::cout);
+  util::ThroughputRecorder recorder;
 
   testing::StubbedCurlWrapper::Success = true;
   testing::StubbedCurlWrapper::Response = BasicValidUpdateResponse;
@@ -225,7 +224,7 @@ Test(core_Backend_updateCycle_no_clean_shutdown)
     handle = false;
   });
 
-  check(backend.updateCycle(handle, shouldCleanShutdown, logger, sessions, backendClock));
+  check(backend.updateCycle(handle, shouldCleanShutdown, recorder, sessions, backendClock));
   auto elapsed = testClock.elapsed<util::Second>();
   check(elapsed >= 10.0 && elapsed < 11.0);
 }
@@ -237,6 +236,7 @@ Test(core_Backend_update_valid)
   core::RelayManager manager(clock);
   core::SessionMap sessions;
   auto backend = std::move(makeBackend(routerInfo, manager, sessions));
+  util::ThroughputRecorder recorder;
 
   sessions.set(1234, std::make_shared<core::Session>(clock));  // just add one thing to the map to make it non-zero
 
@@ -256,22 +256,26 @@ Test(core_Backend_update_valid)
   }
 
   testing::StubbedCurlWrapper::Response = R"({
-     "version": 0,
-     "ping_data": [
-       {
-         "relay_id": 135792468,
-         "relay_address": "127.0.0.1:54321"
-       },
-       {
-         "relay_id": 246813579,
-         "relay_address": "127.0.0.1:13524"
-       }
-     ]
-   })";
+    "version": 0,
+    "ping_data": [
+      {
+        "relay_id": 135792468,
+        "relay_address": "127.0.0.1:54321"
+      },
+      {
+        "relay_id": 246813579,
+        "relay_address": "127.0.0.1:13524"
+      }
+    ]
+  })";
 
-  const uint64_t bytesReceived = 10000000000;
+  const auto bytesSent = 123456789;
+  const auto bytesReceived = 987654321;
 
-  check(backend.update(bytesReceived, false));
+  recorder.addToSent(bytesSent);
+  recorder.addToReceived(bytesReceived);
+
+   check(backend.update(recorder, false));
 
   util::JSON doc;
 
@@ -280,6 +284,7 @@ Test(core_Backend_update_valid)
   check(doc.get<uint32_t>("version") == 0);
   check(doc.get<std::string>("relay_address") == RelayAddr);
   check(doc.get<std::string>("Metadata", "PublicKey") == Base64RelayPublicKey);
+  check(doc.get<uint64_t>("TrafficStats", "BytesMeasurementTx") == bytesSent);
   check(doc.get<uint64_t>("TrafficStats", "BytesMeasurementRx") == bytesReceived);
   check(doc.get<size_t>("TrafficStats", "SessionCount") == sessions.size());
   check(!doc.get<bool>("shutting_down"));
@@ -326,10 +331,11 @@ Test(core_Backend_update_shutting_down_true)
   core::RelayManager manager(clock);
   core::SessionMap sessions;
   auto backend = std::move(makeBackend(routerInfo, manager, sessions));
+  util::ThroughputRecorder recorder;
 
   testing::StubbedCurlWrapper::Response = ::BasicValidUpdateResponse;
 
-  check(backend.update(0, true));
+  check(backend.update(recorder, true));
 
   util::JSON doc;
   check(doc.parse(testing::StubbedCurlWrapper::Request));
