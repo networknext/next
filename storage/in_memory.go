@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"context"
+
 	"github.com/networknext/backend/routing"
 )
 
@@ -37,6 +39,17 @@ func (m *InMemory) Relay(id uint64) (*routing.Relay, bool) {
 
 func (m *InMemory) Relays() []routing.Relay {
 	return m.LocalRelays
+}
+
+func (m *InMemory) SetRelayState(ctx context.Context, relay *routing.Relay) error {
+	for i := 0; i < len(m.LocalRelays); i++ {
+		if m.LocalRelays[i].ID == relay.ID {
+			m.LocalRelays[i].State = relay.State
+			break
+		}
+	}
+
+	return nil
 }
 
 func (m *InMemory) Datacenters() []routing.Datacenter {
