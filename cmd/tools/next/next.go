@@ -15,7 +15,6 @@ import (
 	"os/exec"
 	"runtime"
 	"sync"
-	"syscall"
 
 	"github.com/modood/table"
 	"github.com/peterbourgon/ff/v3/ffcli"
@@ -147,32 +146,6 @@ func bashQuiet(command string) (bool, string) {
 	return runCommandQuiet("bash", []string{"-c", command}, false)
 }
 
-func secureShell(user string, address string, port int) {
-	ssh, err := exec.LookPath("ssh")
-	if err != nil {
-		log.Fatalf("error: could not find ssh")
-	}
-	args := make([]string, 4)
-	args[0] = "ssh"
-	args[1] = "-p"
-	args[2] = fmt.Sprintf("%d", port)
-	args[3] = fmt.Sprintf("%s@%s", user, address)
-	env := os.Environ()
-	err = syscall.Exec(ssh, args, env)
-	if err != nil {
-		log.Fatalf("error: failed to exec ssh")
-	}
-}
-
-func sshToRelay(env Environment, relayName string) {
-	fmt.Printf("(ssh to relay %s)\n", relayName)
-	// todo: look up relay by name, get ssh data from relay entry.
-	user := "root"
-	address := "173.255.241.176"
-	port := 22
-	secureShell(user, address, port)
-}
-
 func main() {
 	var env Environment
 
@@ -228,10 +201,15 @@ func main() {
 				Subcommands: []*ffcli.Command{
 					{
 						Name:       "ssh",
-						ShortUsage: "next relays ssh <ip>",
+						ShortUsage: "next relays ssh <relay name>",
 						ShortHelp:  "SSH into a specific relay",
-						Exec: func(_ context.Context, _ []string) error {
-							fmt.Println("To Be Implemented")
+						Exec: func(ctx context.Context, args []string) error {
+							if len(args) < 1 {
+								log.Fatal("need a relay name")
+							}
+
+							ConnectToRelay(&ctx, args[0])
+
 							return nil
 						},
 					},
