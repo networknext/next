@@ -375,7 +375,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 		if !ok {
 			level.Error(locallogger).Log("msg", "relay not in firestore")
 			http.Error(writer, "relay not in firestore", http.StatusNotFound)
-			params.Metrics.ErrorMetrics.DBLookupFailure.Add(1)
+			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
 			return
 		}
 

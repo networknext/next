@@ -298,7 +298,7 @@ func TestRelayInitInvalidVersion(t *testing.T) {
 	}
 }
 
-func TestRelayInitAddressIsInvalid(t *testing.T) {
+func TestRelayInitInvalidAddress(t *testing.T) {
 	relayPublicKey, _ := getRelayKeyPair(t)
 	_, routerPrivateKey, err := box.GenerateKey(crand.Reader)
 	assert.NoError(t, err)
@@ -327,7 +327,7 @@ func TestRelayInitAddressIsInvalid(t *testing.T) {
 	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
 	assert.NoError(t, err)
 
-	initMetrics.ErrorMetrics.InvalidAddress = metric
+	initMetrics.ErrorMetrics.UnmarshalFailure = metric
 
 	// Binary version
 	{
@@ -357,7 +357,7 @@ func TestRelayInitAddressIsInvalid(t *testing.T) {
 	}
 }
 
-func TestRelayInitRelayDBLookupFailure(t *testing.T) {
+func TestRelayInitRelayNotFound(t *testing.T) {
 	addr := "127.0.0.1:40000"
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
 	assert.NoError(t, err)
@@ -384,7 +384,7 @@ func TestRelayInitRelayDBLookupFailure(t *testing.T) {
 	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
 	assert.NoError(t, err)
 
-	initMetrics.ErrorMetrics.DBLookupFailure = metric
+	initMetrics.ErrorMetrics.RelayNotFound = metric
 
 	// Binary version
 	{

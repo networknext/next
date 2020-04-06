@@ -150,8 +150,7 @@ type RelayInitErrorMetrics struct {
 	UnmarshalFailure   Counter
 	InvalidMagic       Counter
 	InvalidVersion     Counter
-	InvalidAddress     Counter
-	DBLookupFailure    Counter
+	RelayNotFound      Counter
 	DecryptionFailure  Counter
 	RedisFailure       Counter
 	RelayAlreadyExists Counter
@@ -162,8 +161,7 @@ var EmptyRelayInitErrorMetrics RelayInitErrorMetrics = RelayInitErrorMetrics{
 	UnmarshalFailure:   &EmptyCounter{},
 	InvalidMagic:       &EmptyCounter{},
 	InvalidVersion:     &EmptyCounter{},
-	InvalidAddress:     &EmptyCounter{},
-	DBLookupFailure:    &EmptyCounter{},
+	RelayNotFound:      &EmptyCounter{},
 	DecryptionFailure:  &EmptyCounter{},
 	RedisFailure:       &EmptyCounter{},
 	RelayAlreadyExists: &EmptyCounter{},
@@ -184,7 +182,6 @@ var EmptyRelayUpdateMetrics RelayUpdateMetrics = RelayUpdateMetrics{
 
 type RelayUpdateErrorMetrics struct {
 	UnmarshalFailure      Counter
-	InvalidAddress        Counter
 	InvalidVersion        Counter
 	ExceedMaxRelays       Counter
 	RedisFailure          Counter
@@ -195,7 +192,6 @@ type RelayUpdateErrorMetrics struct {
 
 var EmptyRelayUpdateErrorMetrics RelayUpdateErrorMetrics = RelayUpdateErrorMetrics{
 	UnmarshalFailure:      &EmptyCounter{},
-	InvalidAddress:        &EmptyCounter{},
 	InvalidVersion:        &EmptyCounter{},
 	ExceedMaxRelays:       &EmptyCounter{},
 	RedisFailure:          &EmptyCounter{},
