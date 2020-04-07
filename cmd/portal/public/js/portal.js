@@ -1,3 +1,5 @@
+currentMap = 'maps-vector-equirectangular.png';
+
 function changePage(page) {
 	let account = document.getElementById("account-workspace");
 	let session = document.getElementById("session-workspace");
@@ -22,6 +24,17 @@ function changePage(page) {
 			title.textContent = 'Session Map';
 			reloadMap();
 	}
+}
+
+function changeMap(map) {
+	switch (map) {
+		case 'NA':
+			currentMap = 'us.png';
+			break;
+		default:
+			currentMap = 'maps-vector-equirectangular.png'
+	}
+	changePage('home');
 }
 
 JSONRPCClient = {
@@ -69,7 +82,7 @@ window.MapHandler = {
 		image.onload = setupMapImage;
 
 		// Give the object the image you want to use
-		image.src = './maps-vector-equirectangular.png';
+		image.src = currentMap;
 
 		// Image setup function for first load
 		function setupMapImage() {
@@ -101,8 +114,8 @@ window.MapHandler = {
 
 				drawPixelAtLocation(coord);
 			}
-
 		}
+
 		function drawPixelAtLocation(coord) {
 			ctx.rect(coord.x, coord.y, 1, 1);
 			ctx.fillStyle = 'red';
