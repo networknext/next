@@ -99,10 +99,11 @@
         </nav>
         <div class="fill container-fluid">
             <div class="dashboard-title row">
-                <h1 id="workspace-title">Session Map</h1>
+                <h1 class="workspace-title">Session Map</h1>
             </div>
-            <div class="workspace row"  id="map-workspace">
-                <canvas class="fill" id="canvas"></canvas>
+            <div class="workspace row">
+                <canvas class="fill hidden" id="canvas"></canvas>
+                <svg id="grid-offset-odd-r" class="fill"></svg>
             </div>
             <div class="workspace row hidden" id="account-workspace">
                 <table id="relays">
@@ -151,6 +152,10 @@
                 integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6"
                 crossorigin="anonymous">
         </script>
+        <script src="js/d3/d3.v3.min.js"></script>
+        <script src="js/d3/topojson.v1.min.js"></script>
+        <script src="js/d3/d3.hexbin.js"></script>
+        <script src="js/hexmap/hexlib.js"></script>
         <script src="./js/portal.js"></script>
         <script>
             reloadMap();
@@ -164,7 +169,10 @@
                     }
                     });
                 })
-                .catch((e) => console.log(e));
+                .catch((e) => {
+                    console.log("Something went wrong with the map init!");
+                    console.log(e);
+                });
         </script>
     </body>
 </html>
