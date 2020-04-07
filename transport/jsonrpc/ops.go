@@ -30,6 +30,9 @@ type relay struct {
 	Longitude           float64 `json:"longitude"`
 	NICSpeedMbps        int     `json:"nic_speed_mpbs"`
 	IncludedBandwidthGB int     `json:"included_bandwidth_gb"`
+	ManagementAddr      string  `json:"management_addr"`
+	SSHUser             string  `json:"ssh_user"`
+	SSHPort             int64   `json:"ssh_port"`
 }
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {
@@ -42,6 +45,9 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			Longitude:           r.Longitude,
 			NICSpeedMbps:        r.NICSpeedMbps,
 			IncludedBandwidthGB: r.IncludedBandwidthGB,
+			ManagementAddr:      r.ManagementAddr,
+			SSHUser:             r.SSHUser,
+			SSHPort:             r.SSHPort,
 		})
 	}
 

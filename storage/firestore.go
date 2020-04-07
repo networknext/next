@@ -258,7 +258,7 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 			PublicKey:           publicKey,
 			NICSpeedMbps:        int(r.NICSpeedMbps),
 			IncludedBandwidthGB: int(r.IncludedBandwithGB),
-			ManagementAddress:   r.ManagementAddress,
+			ManagementAddr:      r.ManagementAddress,
 			SSHUser:             r.SSHUser,
 			SSHPort:             r.SSHPort,
 		}

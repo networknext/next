@@ -208,7 +208,7 @@ func main() {
 						log.Fatal("need a device identifer")
 					}
 
-					SSHInto(&ctx, env, args[0])
+					SSHInto(env, rpcClient, args[0])
 
 					return nil
 				},

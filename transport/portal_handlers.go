@@ -2,16 +2,12 @@ package transport
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/http"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/routing"
-	"github.com/networknext/backend/storage"
 )
 
 func PortalHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.RouteMatrix, username string, password string) func(writer http.ResponseWriter, request *http.Request) {
@@ -95,52 +91,5 @@ func PortalHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.RouteMatr
 		if err := tmpl.Execute(writer, res); err != nil {
 			fmt.Println(err)
 		}
-	}
-}
-
-type SSHInfo struct {
-	User    string `json:"user"`
-	Address string `json:"address"`
-	Port    int64  `json:"port"`
-}
-
-func RelaySSHInfoHandlerFunc(logger log.Logger, storer storage.Storer) func(http.ResponseWriter, *http.Request) {
-	return func(writer http.ResponseWriter, request *http.Request) {
-		relayNames := request.URL.Query()["relay_name"]
-		if len(relayNames) == 0 {
-			level.Error(logger).Log("msg", "No relay name given")
-		}
-
-		found := false
-		var r routing.Relay
-		relayName := relayNames[0]
-		for _, relay := range storer.Relays() {
-			if relay.Name == relayName {
-				r = relay
-				found = true
-			}
-		}
-
-		if !found {
-			level.Error(logger).Log("msg", fmt.Sprintf("failed to lookup relay with name '%s'", relayName))
-			writer.WriteHeader(http.StatusNotFound)
-			return
-		}
-
-		info := SSHInfo{
-			User:    r.SSHUser,
-			Address: r.ManagementAddress,
-			Port:    r.SSHPort,
-		}
-
-		respData, err := json.Marshal(&info)
-		if err != nil {
-			level.Error(logger).Log("msg", fmt.Sprintf("failed to marshal json response: %v", err))
-			writer.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		writer.WriteHeader(http.StatusOK)
-		writer.Write(respData)
 	}
 }
