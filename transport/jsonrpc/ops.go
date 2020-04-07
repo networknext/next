@@ -4,14 +4,42 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/go-redis/redis/v7"
+	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 )
 
 type OpsService struct {
 	RedisClient redis.Cmdable
 	Storage     storage.Storer
+}
+
+type BuyersArgs struct{}
+
+type BuyersReply struct {
+	Buyers []buyer
+}
+
+type buyer struct {
+	ID   uint64 `json:"id"`
+	Name string `json:"name"`
+}
+
+func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersReply) error {
+	for _, b := range s.Storage.Buyers() {
+		reply.Buyers = append(reply.Buyers, buyer{
+			ID:   b.ID,
+			Name: b.Name,
+		})
+	}
+
+	sort.Slice(reply.Buyers, func(i int, j int) bool {
+		return reply.Buyers[i].Name < reply.Buyers[j].Name
+	})
+
+	return nil
 }
 
 type RelaysArgs struct {
@@ -23,16 +51,18 @@ type RelaysReply struct {
 }
 
 type relay struct {
-	ID                  uint64  `json:"id"`
-	Name                string  `json:"name"`
-	Addr                string  `json:"addr"`
-	Latitude            float64 `json:"latitude"`
-	Longitude           float64 `json:"longitude"`
-	NICSpeedMbps        int     `json:"nic_speed_mpbs"`
-	IncludedBandwidthGB int     `json:"included_bandwidth_gb"`
-	ManagementAddr      string  `json:"management_addr"`
-	SSHUser             string  `json:"ssh_user"`
-	SSHPort             int64   `json:"ssh_port"`
+	ID                  uint64             `json:"id"`
+	Name                string             `json:"name"`
+	Addr                string             `json:"addr"`
+	Latitude            float64            `json:"latitude"`
+	Longitude           float64            `json:"longitude"`
+	NICSpeedMbps        int                `json:"nic_speed_mpbs"`
+	IncludedBandwidthGB int                `json:"included_bandwidth_gb"`
+	State               routing.RelayState `json:"state"`
+	StateUpdateTime     time.Time          `json:"stateUpdateTime"`
+	ManagementAddr      string             `json:"management_addr"`
+	SSHUser             string             `json:"ssh_user"`
+	SSHPort             int64              `json:"ssh_port"`
 }
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {
@@ -48,6 +78,8 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			ManagementAddr:      r.ManagementAddr,
 			SSHUser:             r.SSHUser,
 			SSHPort:             r.SSHPort,
+			State:               r.State,
+			StateUpdateTime:     r.LastUpdateTime,
 		})
 	}
 

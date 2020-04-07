@@ -28,7 +28,7 @@ func randomString(length int) string {
 }
 
 func fillRelayDatabase(redisClient *redis.Client) {
-	fillData := func(addr string, updateTime int64) {
+	fillData := func(addr string, updateTime time.Time) {
 		id := crypto.HashID(addr)
 		udp, _ := net.ResolveUDPAddr("udp", addr)
 		data := routing.Relay{
@@ -40,17 +40,17 @@ func fillRelayDatabase(redisClient *redis.Client) {
 				Name: randomString(5),
 			},
 			PublicKey:      randomPublicKey(),
-			LastUpdateTime: uint64(updateTime),
+			LastUpdateTime: updateTime,
 		}
 		redisClient.HSet(routing.HashKeyAllRelays, data.Key(), data)
 	}
 
-	fillData("127.0.0.1:40000", time.Now().Unix()-1)
-	fillData("127.0.0.2:40000", time.Now().Unix()-5)
-	fillData("127.0.0.3:40000", time.Now().Unix()-10)
-	fillData("127.0.0.4:40000", time.Now().Unix()-100)
-	fillData("127.0.0.5:40000", time.Now().Unix()-25)
-	fillData("127.0.0.6:40000", time.Now().Unix()-1000)
+	fillData("127.0.0.1:40000", time.Now().Add(time.Second*-1))
+	fillData("127.0.0.2:40000", time.Now().Add(time.Second*-5))
+	fillData("127.0.0.3:40000", time.Now().Add(time.Second*-10))
+	fillData("127.0.0.4:40000", time.Now().Add(time.Second*-100))
+	fillData("127.0.0.5:40000", time.Now().Add(time.Second*-25))
+	fillData("127.0.0.6:40000", time.Now().Add(time.Second*-1000))
 }
 
 func fillStatsDatabase(statsdb *routing.StatsDatabase) {

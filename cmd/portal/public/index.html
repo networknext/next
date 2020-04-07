@@ -47,6 +47,9 @@
                 justify-content: center;
                 background-color: lightgray;
             }
+            .hidden {
+                display: none;
+            }
         </style>
     </head>
     <body>
@@ -59,29 +62,28 @@
             </a>
             <ul class="navbar-nav px-3 w-100 mr-auto">
                 <li class="nav-item active text-nowrap">
-                    <a class="nav-link" href="#">Home</a>
+                    <a class="nav-link" href="#" onclick="changePage('home')">Home</a>
                 </li>
                 <li class="nav-item text-nowrap">
-                    <a class="nav-link" href="#">Sessions</a>
+                    <a class="nav-link" href="#" onclick="changePage('sessions')">Sessions</a>
                 </li>
             </ul>
             <ul class="navbar-nav px-3">
-                <li class="nav-item text-nowrap">
-                    <a class="nav-link" href="#">
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                         <i class="fas fa-flag fa-2x" data-toggle="tooltip" data-placement="bottom" title="Country Selection"></i>
                     </a>
+                    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
+                        <a class="dropdown-item" href="#" onclick="changeMap('NA')">NA</a>
+                        <a class="dropdown-item" href="#" onclick="changeMap('WORLD')">World</a>
+                    </div>
                 </li>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                         <i class="fas fa-user-circle fa-2x" data-toggle="tooltip" data-placement="bottom" title="Account"></i>
                     </a>
                     <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
-                        <a class="dropdown-item" href="#">Settings</a>
-                        <div id="adminPanel">
-                            <div class="dropdown-divider"></div>
-                            <a class="dropdown-item" href="#">Admin</a>
-                            <a class="dropdown-item" href="#">Impersonate</a>
-                        </div>
+                        <a class="dropdown-item" href="#" onclick="changePage('account')">Settings</a>
                     </div>
                 </li>
                 <li class="nav-item text-nowrap">
@@ -97,35 +99,44 @@
         </nav>
         <div class="fill container-fluid">
             <div class="dashboard-title row">
-                <h1 class="h2">Session Map</h1>
+                <h1 id="workspace-title">Session Map</h1>
             </div>
-            <div class="workspace row">
+            <div class="workspace row"  id="map-workspace">
                 <canvas class="fill" id="canvas"></canvas>
             </div>
+            <div class="workspace row hidden" id="account-workspace">
+                <table id="relays">
+                    <tr>
+                        <th>Address</th>
+                        <th>Datacenter</th>
+                        <th>Lat / Long</th>
+                        <th>Seller</th>
+                    </tr>
+                    <tr v-for="relay in relays">
+                        <td>{{ relay.Addr.IP }}:{{ relay.Addr.Port }}</td>
+                        <td>{{ relay.Datacenter.Name }}</td>
+                        <td>{{ relay.Latitude }} / {{ relay.Longitude }}</td>
+                        <td>{{ relay.Seller.Name }}</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="workspace row hidden" id="session-workspace">
+                <table id="relays">
+                    <tr>
+                        <th>Address</th>
+                        <th>Datacenter</th>
+                        <th>Lat / Long</th>
+                        <th>Seller</th>
+                    </tr>
+                    <tr v-for="relay in relays">
+                        <td>{{ relay.Addr.IP }}:{{ relay.Addr.Port }}</td>
+                        <td>{{ relay.Datacenter.Name }}</td>
+                        <td>{{ relay.Latitude }} / {{ relay.Longitude }}</td>
+                        <td>{{ relay.Seller.Name }}</td>
+                    </tr>
+                </table>
+            </div>
         </div>
-
-        <!-- Saving this for later -->
-
-            <!-- <h1>Portal</h1>
-
-            <h2>Relays</h2>
-            <table id="relays">
-                <tr>
-                    <th>Address</th>
-                    <th>Datacenter</th>
-                    <th>Lat / Long</th>
-                    <th>Seller</th>
-                </tr>
-                <tr v-for="relay in relays">
-                    <td>{{ relay.Addr.IP }}:{{ relay.Addr.Port }}</td>
-                    <td>{{ relay.Datacenter.Name }}</td>
-                    <td>{{ relay.Latitude }} / {{ relay.Longitude }}</td>
-                    <td>{{ relay.Seller.Name }}</td>
-                </tr>
-            </table> -->
-
-        <!-- /Saving this for later -->
-
 
         <script src="https://unpkg.com/vue"></script>
         <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js"
@@ -142,28 +153,18 @@
         </script>
         <script src="./js/portal.js"></script>
         <script>
-            MapHandler
-                .initMap()
-                .then(() => {
-                    console.log("Map Initialized");
+            reloadMap();
+            JSONRPCClient
+                .call('OpsService.Relays', {})
+                .then((response) => {
+                    new Vue({
+                    el: '#relays',
+                    data: {
+                        relays: response.Relays
+                    }
+                    });
                 })
-                .catch((e) => {
-                    console.log("Something went wrong with the map init!");
-                    console.log(e);
-                });
-            /* Saving this for later */
-                /* JSONRPCClient
-                    .call('OpsService.Relays', {})
-                    .then((response) => {
-                        new Vue({
-                        el: '#relays',
-                        data: {
-                            relays: response.Relays
-                        }
-                        });
-                    })
-                    .catch((e) => console.log(e)); */
-            /* Saving this for later */
+                .catch((e) => console.log(e));
         </script>
     </body>
 </html>

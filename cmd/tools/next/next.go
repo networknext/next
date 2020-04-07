@@ -10,14 +10,17 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 	"sync"
 
-	"github.com/modood/table"
 	"github.com/peterbourgon/ff/v3/ffcli"
+	"github.com/tidwall/gjson"
 	"github.com/ybbus/jsonrpc"
 )
 
@@ -154,10 +157,60 @@ func main() {
 	}
 	env.Read()
 
-	rpcClient := jsonrpc.NewClient("http://" + env.Hostname + "/rpc")
+	rpcClient := jsonrpc.NewClientWithOpts("http://"+env.Hostname+"/rpc", &jsonrpc.RPCClientOpts{
+		CustomHeaders: map[string]string{
+			"Authorization": fmt.Sprintf("Bearer %s", env.AuthToken),
+		},
+	})
+
 	root := &ffcli.Command{
 		ShortUsage: "next <subcommand>",
 		Subcommands: []*ffcli.Command{
+			{
+				Name:       "auth",
+				ShortUsage: "next auth",
+				ShortHelp:  "Authorize the CLI to interact with the Portal API",
+				Exec: func(_ context.Context, args []string) error {
+					req, err := http.NewRequest(
+						http.MethodPost,
+						"https://networknext.auth0.com/oauth/token",
+						strings.NewReader(`{
+							"client_id":"6W6PCgPc6yj6tzO9PtW6IopmZAWmltgb",
+							"client_secret":"EPZEHccNbjqh_Zwlc5cSFxvxFQHXZ990yjo6RlADjYWBz47XZMf-_JjVxcMW-XDj",
+							"audience":"https://portal.networknext.com",
+							"grant_type":"client_credentials"
+						}`),
+					)
+					if err != nil {
+						return err
+					}
+
+					req.Header.Add("Content-Type", "application/json")
+
+					res, err := http.DefaultClient.Do(req)
+					if err != nil {
+						return err
+					}
+					defer res.Body.Close()
+
+					if res.StatusCode != http.StatusOK {
+						return fmt.Errorf("auth0 returned code %d", res.StatusCode)
+					}
+
+					body, err := ioutil.ReadAll(res.Body)
+					if err != nil {
+						return err
+					}
+
+					env.AuthToken = gjson.ParseBytes(body).Get("access_token").String()
+					env.Write()
+
+					fmt.Println(env.String())
+
+					return nil
+				},
+			},
+
 			{
 				Name:       "env",
 				ShortUsage: "next env <hostname>",
@@ -167,7 +220,17 @@ func main() {
 						env.Hostname = args[0]
 						env.Write()
 					}
-					table.Output([]interface{}{env})
+					fmt.Println(env.String())
+					return nil
+				},
+			},
+
+			{
+				Name:       "buyers",
+				ShortUsage: "next buyers",
+				ShortHelp:  "Manage buyers",
+				Exec: func(_ context.Context, args []string) error {
+					buyers(rpcClient)
 					return nil
 				},
 			},

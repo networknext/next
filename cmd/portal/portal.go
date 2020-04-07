@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"encoding/base64"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -60,9 +62,17 @@ func main() {
 	}
 
 	var relayPublicKey []byte
+	var customerID uint64
+	var customerPublicKey []byte
 	{
 		if key := os.Getenv("RELAY_PUBLIC_KEY"); len(key) != 0 {
 			relayPublicKey, _ = base64.StdEncoding.DecodeString(key)
+		}
+
+		if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
+			customerPublicKey, _ = base64.StdEncoding.DecodeString(key)
+			customerID = binary.LittleEndian.Uint64(customerPublicKey[:8])
+			customerPublicKey = customerPublicKey[8:]
 		}
 	}
 
@@ -73,8 +83,21 @@ func main() {
 		os.Exit(1)
 	}
 
+	redisHosts := strings.Split(os.Getenv("REDIS_HOST_CACHE"), ",")
+	redisClientCache := storage.NewRedisClient(redisHosts...)
+	if err := redisClientCache.Ping().Err(); err != nil {
+		level.Error(logger).Log("envvar", "REDIS_HOST_CACHE", "value", redisHosts, "err", err)
+		os.Exit(1)
+	}
+
 	addr := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 40000}
 	var db storage.Storer = &storage.InMemory{
+		LocalBuyer: &routing.Buyer{
+			ID:                   customerID,
+			Name:                 "local",
+			PublicKey:            customerPublicKey,
+			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
+		},
 		LocalRelays: []routing.Relay{
 			routing.Relay{
 				Name:      "local.test_relay",
@@ -176,7 +199,9 @@ func main() {
 			RedisClient: redisClientRelays,
 			Storage:     db,
 		}, "")
-		s.RegisterService(&jsonrpc.BuyersService{}, "")
+		s.RegisterService(&jsonrpc.BuyersService{
+			RedisClient: redisClientCache,
+		}, "")
 		http.Handle("/rpc", s)
 
 		http.Handle("/", http.FileServer(http.Dir(uiDir)))

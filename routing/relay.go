@@ -30,10 +30,14 @@ const (
 	/* Duplicated in package: transport */
 	// MaxRelayAddressLength ...
 	MaxRelayAddressLength = 256
+)
 
-	RelayStateOffline      = 0
-	RelayStateOnline       = 1
-	RelayStateShuttingDown = 2
+type RelayState uint32
+
+const (
+	RelayStateOffline      RelayState = 0
+	RelayStateOnline       RelayState = 1
+	RelayStateShuttingDown RelayState = 2
 )
 
 // Relay ...
@@ -53,9 +57,9 @@ type Relay struct {
 	NICSpeedMbps        int
 	IncludedBandwidthGB int
 
-	LastUpdateTime uint64
+	LastUpdateTime time.Time
 
-	State uint32
+	State RelayState
 
 	ManagementAddr string
 	SSHUser        string
@@ -129,13 +133,17 @@ func (r *Relay) UnmarshalBinary(data []byte) error {
 		return errors.New("failed to unmarshal relay longitude")
 	}
 
-	if !encoding.ReadUint64(data, &index, &r.LastUpdateTime) {
+	var lastUpdateTime uint64
+	if !encoding.ReadUint64(data, &index, &lastUpdateTime) {
 		return errors.New("failed to unmarshal relay last update time")
 	}
+	r.LastUpdateTime = time.Unix(0, int64(lastUpdateTime))
 
-	if !encoding.ReadUint32(data, &index, &r.State) {
+	var state uint32
+	if !encoding.ReadUint32(data, &index, &state) {
 		return errors.New("failed to unmarshal relay state")
 	}
+	r.State = RelayState(state)
 
 	if udp, err := net.ResolveUDPAddr("udp", addr); udp != nil && err == nil {
 		r.Addr = *udp
@@ -165,8 +173,8 @@ func (r Relay) MarshalBinary() (data []byte, err error) {
 	encoding.WriteBool(data, &index, r.Datacenter.Enabled)
 	encoding.WriteFloat64(data, &index, r.Latitude)
 	encoding.WriteFloat64(data, &index, r.Longitude)
-	encoding.WriteUint64(data, &index, r.LastUpdateTime)
-	encoding.WriteUint32(data, &index, r.State)
+	encoding.WriteUint64(data, &index, uint64(r.LastUpdateTime.UnixNano()))
+	encoding.WriteUint32(data, &index, uint32(r.State))
 
 	return data, err
 }

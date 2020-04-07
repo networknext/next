@@ -55,6 +55,8 @@ type relay struct {
 	ManagementAddress  string                 `firestore:"managementAddress"`
 	SSHUser            string                 `firestore:"sshUser"`
 	SSHPort            int64                  `firestore:"sshPort"`
+	State              routing.RelayState     `firestore:"state"`
+	StateUpdateTime    time.Time              `firestore:"stateUpdateTime"`
 }
 
 type datacenter struct {
@@ -103,6 +105,34 @@ func (fs *Firestore) Relays() []routing.Relay {
 	return relays
 }
 
+func (fs *Firestore) SetRelayState(ctx context.Context, r *routing.Relay) error {
+	fs.relayMutex.Lock()
+	_, ok := fs.relays[r.ID]
+	fs.relayMutex.Unlock()
+
+	if !ok {
+		return fmt.Errorf("relay with ID %d doesn't exist", r.ID)
+	}
+
+	stateUpdateTime := time.Now()
+	rdocs := fs.Client.Collection("Relay").Documents(ctx)
+	for rdoc, err := rdocs.Next(); err != iterator.Done; {
+		if _, err := rdoc.Ref.Set(ctx, relay{
+			State:           r.State,
+			StateUpdateTime: stateUpdateTime,
+		}, firestore.MergeAll); err != nil {
+			return err
+		}
+
+		fs.relayMutex.Lock()
+		fs.relays[r.ID].State = r.State
+		fs.relays[r.ID].LastUpdateTime = stateUpdateTime
+		fs.relayMutex.Unlock()
+	}
+
+	return nil
+}
+
 func (fs *Firestore) Datacenters() []routing.Datacenter {
 	fs.datacenterMutex.Lock()
 	defer fs.datacenterMutex.Unlock()
@@ -121,6 +151,18 @@ func (fs *Firestore) Buyer(id uint64) (*routing.Buyer, bool) {
 
 	b, found := fs.buyers[id]
 	return b, found
+}
+
+func (fs *Firestore) Buyers() []routing.Buyer {
+	fs.buyerMutex.Lock()
+	defer fs.buyerMutex.Unlock()
+
+	var buyers []routing.Buyer
+	for _, buyer := range fs.buyers {
+		buyers = append(buyers, *buyer)
+	}
+
+	return buyers
 }
 
 // SyncLoop is a helper method that calls Sync
@@ -261,6 +303,8 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 			ManagementAddr:      r.ManagementAddress,
 			SSHUser:             r.SSHUser,
 			SSHPort:             r.SSHPort,
+			State:               r.State,
+			LastUpdateTime:      r.StateUpdateTime,
 		}
 
 		// Get datacenter
