@@ -8,7 +8,8 @@ import (
 )
 
 type Environment struct {
-	Hostname string `json:"hostname"`
+	Hostname       string `json:"hostname"`
+	SSHKeyFilePath string `json:"ssh_key_filepath`
 }
 
 func (e *Environment) String() string {

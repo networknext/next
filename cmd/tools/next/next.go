@@ -212,6 +212,21 @@ func main() {
 
 					return nil
 				},
+				Subcommands: []*ffcli.Command{
+					{
+						Name:       "key",
+						ShortUsage: "next ssh key <path to ssh key>",
+						ShortHelp:  "Set the key you'd like to use for ssh-ing",
+						Exec: func(ctx context.Context, args []string) error {
+							if len(args) > 0 {
+								env.SSHKeyFilePath = args[0]
+								env.Write()
+							}
+							table.Output([]interface{}{env})
+							return nil
+						},
+					},
+				},
 			},
 		},
 		Exec: func(context.Context, []string) error {

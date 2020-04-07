@@ -12,13 +12,6 @@ import (
 )
 
 func SSHInto(env Environment, rpcClient jsonrpc.RPCClient, relayName string) {
-	var ok bool
-	var keyfile string
-
-	if keyfile, ok = os.LookupEnv("RELAY_SERVER_KEY"); !ok {
-		log.Fatal("RELAY_SERVER_KEY env var not set")
-	}
-
 	args := localjsonrpc.RelaysArgs{
 		Name: relayName,
 	}
@@ -34,7 +27,15 @@ func SSHInto(env Environment, rpcClient jsonrpc.RPCClient, relayName string) {
 
 	relay := &reply.Relays[0]
 
-	con := NewSSHConn(relay.SSHUser, relay.ManagementAddr, relay.SSHPort, keyfile)
+	if env.SSHKeyFilePath == "" {
+		log.Fatalf("The ssh key file name is not set, set it with 'next ssh key <path>'")
+	}
+
+	if _, err := os.Stat(env.SSHKeyFilePath); err != nil {
+		log.Fatalf("The ssh key file '%s' does not exist, set it with 'next ssh key <path>'", env.SSHKeyFilePath)
+	}
+
+	con := NewSSHConn(relay.SSHUser, relay.ManagementAddr, relay.SSHPort, env.SSHKeyFilePath)
 
 	con.Connect()
 }
