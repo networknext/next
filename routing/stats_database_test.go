@@ -426,7 +426,7 @@ func TestStatsDatabase(t *testing.T) {
 					Name: randomString(5),
 				},
 				PublicKey:      randomPublicKey(),
-				LastUpdateTime: uint64(time.Now().Unix()),
+				LastUpdateTime: time.Now(),
 			}
 
 			buff, err := relay.MarshalBinary()

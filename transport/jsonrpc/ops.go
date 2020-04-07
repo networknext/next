@@ -4,8 +4,10 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/go-redis/redis/v7"
+	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 )
 
@@ -23,15 +25,15 @@ type RelaysReply struct {
 }
 
 type relay struct {
-	ID                  uint64  `json:"id"`
-	Name                string  `json:"name"`
-	Addr                string  `json:"addr"`
-	Latitude            float64 `json:"latitude"`
-	Longitude           float64 `json:"longitude"`
-	NICSpeedMbps        int     `json:"nic_speed_mpbs"`
-	IncludedBandwidthGB int     `json:"included_bandwidth_gb"`
-	State               uint32  `json:"state"`
-	StateUpdateTime     uint64  `json:"stateUpdateTime"`
+	ID                  uint64             `json:"id"`
+	Name                string             `json:"name"`
+	Addr                string             `json:"addr"`
+	Latitude            float64            `json:"latitude"`
+	Longitude           float64            `json:"longitude"`
+	NICSpeedMbps        int                `json:"nic_speed_mpbs"`
+	IncludedBandwidthGB int                `json:"included_bandwidth_gb"`
+	State               routing.RelayState `json:"state"`
+	StateUpdateTime     time.Time          `json:"stateUpdateTime"`
 }
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {

@@ -224,7 +224,7 @@ func RelayHandlerFunc(logger log.Logger, params *RelayHandlerConfig) func(writer
 		}
 
 		// Update the relay's last update time
-		relay.LastUpdateTime = uint64(time.Now().Unix())
+		relay.LastUpdateTime = time.Now()
 
 		// Update the relay's ping stats in statsdb
 		statsUpdate := &routing.RelayStatsUpdate{}
@@ -370,7 +370,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			PublicKey:      relayEntry.PublicKey,
 			Datacenter:     relayEntry.Datacenter,
 			Seller:         relayEntry.Seller,
-			LastUpdateTime: uint64(time.Now().Unix()),
+			LastUpdateTime: time.Now(),
 			Latitude:       relayEntry.Latitude,
 			Longitude:      relayEntry.Longitude,
 		}
@@ -429,7 +429,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 		var responseData []byte
 		response := RelayInitResponse{
 			Version:   VersionNumberInitResponse,
-			Timestamp: relay.LastUpdateTime,
+			Timestamp: uint64(relay.LastUpdateTime.Unix()),
 			PublicKey: relay.PublicKey,
 		}
 
@@ -552,7 +552,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, params *RelayUpdateHandlerConfig)
 
 		params.StatsDb.ProcessStats(statsUpdate)
 
-		relay.LastUpdateTime = uint64(time.Now().Unix())
+		relay.LastUpdateTime = time.Now()
 
 		relaysToPing := make([]routing.RelayPingData, 0)
 

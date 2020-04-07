@@ -111,7 +111,7 @@ func validateRelayUpdateSuccess(t *testing.T, expectedContentType string, record
 
 	assert.NotContains(t, relaysToPingIDs, entry.ID)
 	assert.NotContains(t, relaysToPingAddrs, addr)
-	assert.Equal(t, uint32(routing.RelayStateShuttingDown), actual.State)
+	assert.Equal(t, routing.RelayStateShuttingDown, actual.State)
 }
 
 func TestRelayUpdateRelayInvalid(t *testing.T) {
@@ -152,7 +152,7 @@ func TestRelayUpdateUnequalTokens(t *testing.T) {
 			Name: "some name",
 		},
 		PublicKey:      storedToken,
-		LastUpdateTime: uint64(time.Now().Unix() - 1),
+		LastUpdateTime: time.Now().Add(-time.Second),
 	}
 
 	raw, err := entry.MarshalBinary()
@@ -287,7 +287,7 @@ func TestRelayUpdateSuccess(t *testing.T) {
 			Name: "some name",
 		},
 		PublicKey:      make([]byte, crypto.KeySize),
-		LastUpdateTime: uint64(time.Now().Unix() - 1),
+		LastUpdateTime: time.Now().Add(-time.Second),
 		State:          routing.RelayStateOnline,
 	}
 

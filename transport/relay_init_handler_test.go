@@ -162,7 +162,7 @@ func validateRelayInitSuccess(t *testing.T, expectedContentType string, recorder
 		assert.Equal(t, location.Longitude, math.Round(relay.Longitude*1000)/1000)
 	}
 
-	assert.Equal(t, uint32(routing.RelayStateOnline), actual.State)
+	assert.Equal(t, routing.RelayStateOnline, actual.State)
 }
 
 func TestRelayInitBadPacket(t *testing.T) {
@@ -459,7 +459,7 @@ func TestRelayInitRelayExists(t *testing.T) {
 			Name: dcname,
 		},
 		PublicKey:      token,
-		LastUpdateTime: 1234,
+		LastUpdateTime: time.Now(),
 	}
 
 	relay := routing.Relay{

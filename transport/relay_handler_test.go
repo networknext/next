@@ -520,7 +520,7 @@ func TestRelayHandlerSuccess(t *testing.T) {
 		PublicKey:      relayPublicKey,
 		Latitude:       13,
 		Longitude:      13,
-		LastUpdateTime: uint64(time.Now().Unix() - 1),
+		LastUpdateTime: time.Now().Add(-time.Second),
 	}
 
 	var customerPublicKey []byte

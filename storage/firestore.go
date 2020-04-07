@@ -52,8 +52,8 @@ type relay struct {
 	IncludedBandwithGB float32                `firestore:"includedBandwidthGB"`
 	Datacenter         *firestore.DocumentRef `firestore:"datacenter"`
 	Seller             *firestore.DocumentRef `firestore:"seller"`
-	State              uint32                 `firestore:"state"`
-	StateUpdateTime    uint64                 `firestore:"stateUpdateTime"`
+	State              routing.RelayState     `firestore:"state"`
+	StateUpdateTime    time.Time              `firestore:"stateUpdateTime"`
 }
 
 type datacenter struct {
@@ -111,7 +111,7 @@ func (fs *Firestore) SetRelayState(ctx context.Context, r *routing.Relay) error 
 		return fmt.Errorf("relay with ID %d doesn't exist", r.ID)
 	}
 
-	stateUpdateTime := uint64(time.Now().Unix())
+	stateUpdateTime := time.Now()
 	rdocs := fs.Client.Collection("Relay").Documents(ctx)
 	for rdoc, err := rdocs.Next(); err != iterator.Done; {
 		if _, err := rdoc.Ref.Set(ctx, relay{
@@ -123,7 +123,7 @@ func (fs *Firestore) SetRelayState(ctx context.Context, r *routing.Relay) error 
 
 		fs.relayMutex.Lock()
 		fs.relays[r.ID].State = r.State
-		fs.Relays()[r.ID].LastUpdateTime = stateUpdateTime
+		fs.relays[r.ID].LastUpdateTime = stateUpdateTime
 		fs.relayMutex.Unlock()
 	}
 
