@@ -176,6 +176,18 @@ func sshToRelay(env Environment, relayName string) {
 	secureShell(user, address, port)
 }
 
+func handleJSONRPCError(err error) {
+	switch e := err.(type) {
+	case *jsonrpc.HTTPError:
+		switch e.Code {
+		case http.StatusUnauthorized:
+			log.Fatalf("%d: %s - use `next auth` to authorize the CLI", e.Code, http.StatusText(e.Code))
+		}
+	default:
+		log.Fatal(err)
+	}
+}
+
 func main() {
 	var env Environment
 
