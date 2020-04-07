@@ -10,15 +10,11 @@ import (
 	"os"
 	"os/exec"
 	"syscall"
+
+	"github.com/networknext/backend/transport"
 )
 
-type relaySSHInfo struct {
-	User    string `json:"user"`
-	Address string `json:"address"`
-	Port    int64  `json:"port"`
-}
-
-func getSSHInfo(ctx *context.Context, env Environment, relayName string) relaySSHInfo {
+func getSSHInfo(ctx *context.Context, env Environment, relayName string) transport.SSHInfo {
 	resp, err := http.Get("http://" + env.Hostname + "/ssh_info?relay_name=" + relayName)
 	if err != nil {
 		log.Fatalf("error querying ssh info: %v", err)
@@ -33,7 +29,7 @@ func getSSHInfo(ctx *context.Context, env Environment, relayName string) relaySS
 		log.Fatalf("error reading response body: %v", err)
 	}
 
-	var info relaySSHInfo
+	var info transport.SSHInfo
 	err = json.Unmarshal(body, &info)
 	if err != nil {
 		log.Fatalf("error parsing response: %v\nBody: %s", err, string(body))

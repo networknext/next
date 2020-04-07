@@ -98,6 +98,12 @@ func PortalHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.RouteMatr
 	}
 }
 
+type SSHInfo struct {
+	User    string `json:"user"`
+	Address string `json:"address"`
+	Port    int64  `json:"port"`
+}
+
 func RelaySSHInfoHandlerFunc(logger log.Logger, storer storage.Storer) func(http.ResponseWriter, *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		relayNames := request.URL.Query()["relay_name"]
@@ -121,13 +127,7 @@ func RelaySSHInfoHandlerFunc(logger log.Logger, storer storage.Storer) func(http
 			return
 		}
 
-		type sshInfo struct {
-			User    string `json:"user"`
-			Address string `json:"address"`
-			Port    int64  `json:"port"`
-		}
-
-		info := sshInfo{
+		info := SSHInfo{
 			User:    r.SSHUser,
 			Address: r.ManagementAddress,
 			Port:    r.SSHPort,
