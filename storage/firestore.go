@@ -52,6 +52,8 @@ type relay struct {
 	IncludedBandwithGB float32                `firestore:"includedBandwidthGB"`
 	Datacenter         *firestore.DocumentRef `firestore:"datacenter"`
 	Seller             *firestore.DocumentRef `firestore:"seller"`
+	State              routing.RelayState     `firestore:"state"`
+	StateUpdateTime    time.Time              `firestore:"stateUpdateTime"`
 }
 
 type datacenter struct {
@@ -98,6 +100,34 @@ func (fs *Firestore) Relays() []routing.Relay {
 	}
 
 	return relays
+}
+
+func (fs *Firestore) SetRelayState(ctx context.Context, r *routing.Relay) error {
+	fs.relayMutex.Lock()
+	_, ok := fs.relays[r.ID]
+	fs.relayMutex.Unlock()
+
+	if !ok {
+		return fmt.Errorf("relay with ID %d doesn't exist", r.ID)
+	}
+
+	stateUpdateTime := time.Now()
+	rdocs := fs.Client.Collection("Relay").Documents(ctx)
+	for rdoc, err := rdocs.Next(); err != iterator.Done; {
+		if _, err := rdoc.Ref.Set(ctx, relay{
+			State:           r.State,
+			StateUpdateTime: stateUpdateTime,
+		}, firestore.MergeAll); err != nil {
+			return err
+		}
+
+		fs.relayMutex.Lock()
+		fs.relays[r.ID].State = r.State
+		fs.relays[r.ID].LastUpdateTime = stateUpdateTime
+		fs.relayMutex.Unlock()
+	}
+
+	return nil
 }
 
 func (fs *Firestore) Datacenters() []routing.Datacenter {
@@ -267,6 +297,8 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 			PublicKey:           publicKey,
 			NICSpeedMbps:        int(r.NICSpeedMbps),
 			IncludedBandwidthGB: int(r.IncludedBandwithGB),
+			State:               r.State,
+			LastUpdateTime:      r.StateUpdateTime,
 		}
 
 		// Get datacenter

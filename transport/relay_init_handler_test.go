@@ -176,7 +176,7 @@ func relayInitSuccessAssertions(t *testing.T, recorder *httptest.ResponseRecorde
 		assert.Equal(t, location.Longitude, math.Round(relay.Longitude*1000)/1000)
 	}
 
-	assert.Equal(t, uint32(routing.RelayStateOnline), actual.State)
+	assert.Equal(t, routing.RelayStateOnline, actual.State)
 
 	errMetricsStruct := reflect.ValueOf(errMetrics)
 	for i := 0; i < errMetricsStruct.NumField(); i++ {
@@ -610,7 +610,7 @@ func TestRelayInitRelayExists(t *testing.T) {
 			Name: dcname,
 		},
 		PublicKey:      token,
-		LastUpdateTime: 1234,
+		LastUpdateTime: time.Now(),
 	}
 
 	relay := routing.Relay{

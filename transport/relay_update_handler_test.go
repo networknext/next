@@ -119,7 +119,7 @@ func relayUpdateSuccessAssertions(t *testing.T, recorder *httptest.ResponseRecor
 
 	assert.NotContains(t, relaysToPingIDs, entry.ID)
 	assert.NotContains(t, relaysToPingAddrs, addr)
-	assert.Equal(t, uint32(routing.RelayStateShuttingDown), actual.State)
+	assert.Equal(t, routing.RelayStateShuttingDown, actual.State)
 
 	errMetricsStruct := reflect.ValueOf(errMetrics)
 	for i := 0; i < errMetricsStruct.NumField(); i++ {
@@ -154,8 +154,6 @@ func TestRelayUpdateUnmarshalFailure(t *testing.T) {
 }
 
 func TestRelayUpdateInvalidAddress(t *testing.T) {
-	t.Skip("Test can fail on certain machines due to relay address being unmarshaled and interpreted as correct. Needs more work to determine the cause.")
-
 	udp, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 	assert.NoError(t, err)
 	packet := transport.RelayUpdateRequest{
@@ -407,7 +405,7 @@ func TestRelayUpdateInvalidToken(t *testing.T) {
 			Name: "some name",
 		},
 		PublicKey:      storedToken,
-		LastUpdateTime: uint64(time.Now().Unix() - 1),
+		LastUpdateTime: time.Now().Add(-time.Second),
 	}
 
 	raw, err := entry.MarshalBinary()
@@ -473,7 +471,7 @@ func TestRelayUpdateSuccess(t *testing.T) {
 			Name: "some name",
 		},
 		PublicKey:      make([]byte, crypto.KeySize),
-		LastUpdateTime: uint64(time.Now().Unix() - 1),
+		LastUpdateTime: time.Now().Add(-time.Second),
 		State:          routing.RelayStateOnline,
 	}
 

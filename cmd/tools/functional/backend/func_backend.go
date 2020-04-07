@@ -107,7 +107,7 @@ func TimeoutThread() {
 		for _, raw := range hgetallResult.Val() {
 			var r routing.Relay
 			r.UnmarshalBinary([]byte(raw))
-			if currentTimestamp-int64(r.LastUpdateTime) > unixTimeout {
+			if currentTimestamp-r.LastUpdateTime.Unix() > unixTimeout {
 				fmt.Println("Deleting redis relay")
 				backend.redisClient.HDel(routing.HashKeyAllRelays, r.Key())
 				backend.dirty = true
@@ -660,7 +660,7 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 		ID:             crypto.HashID(relay_address),
 		Addr:           *udpAddr,
 		PublicKey:      crypto.RelayPublicKey[:],
-		LastUpdateTime: uint64(time.Now().Unix()),
+		LastUpdateTime: time.Now(),
 	}
 
 	if backend.redisClient.HExists(routing.HashKeyAllRelays, relay.Key()).Val() {
@@ -714,7 +714,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		ID:             crypto.HashID(relay_address),
 		Addr:           *udpAddr,
 		PublicKey:      token,
-		LastUpdateTime: uint64(time.Now().Unix()),
+		LastUpdateTime: time.Now(),
 	}
 
 	var numRelays uint32
