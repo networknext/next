@@ -18,7 +18,6 @@ import (
 	"runtime"
 	"strings"
 	"sync"
-	"syscall"
 
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/tidwall/gjson"
@@ -150,32 +149,6 @@ func bashQuiet(command string) (bool, string) {
 	return runCommandQuiet("bash", []string{"-c", command}, false)
 }
 
-func secureShell(user string, address string, port int) {
-	ssh, err := exec.LookPath("ssh")
-	if err != nil {
-		log.Fatalf("error: could not find ssh")
-	}
-	args := make([]string, 4)
-	args[0] = "ssh"
-	args[1] = "-p"
-	args[2] = fmt.Sprintf("%d", port)
-	args[3] = fmt.Sprintf("%s@%s", user, address)
-	env := os.Environ()
-	err = syscall.Exec(ssh, args, env)
-	if err != nil {
-		log.Fatalf("error: failed to exec ssh")
-	}
-}
-
-func sshToRelay(env Environment, relayName string) {
-	fmt.Printf("(ssh to relay %s)\n", relayName)
-	// todo: look up relay by name, get ssh data from relay entry.
-	user := "root"
-	address := "173.255.241.176"
-	port := 22
-	secureShell(user, address, port)
-}
-
 func main() {
 	var env Environment
 
@@ -288,13 +261,33 @@ func main() {
 					relays(rpcClient, "")
 					return nil
 				},
+			},
+			{
+				Name:       "ssh",
+				ShortUsage: "next ssh <device identifier>",
+				ShortHelp:  "SSH into a remote device, for relays the identifier is their name",
+				Exec: func(ctx context.Context, args []string) error {
+					if len(args) < 1 {
+						log.Fatal("need a device identifer")
+					}
+
+					SSHInto(env, rpcClient, args[0])
+
+					return nil
+				},
 				Subcommands: []*ffcli.Command{
 					{
-						Name:       "ssh",
-						ShortUsage: "next relays ssh <ip>",
-						ShortHelp:  "SSH into a specific relay",
-						Exec: func(_ context.Context, _ []string) error {
-							fmt.Println("To Be Implemented")
+						Name:       "key",
+						ShortUsage: "next ssh key <path to ssh key>",
+						ShortHelp:  "Set the key you'd like to use for ssh-ing",
+						Exec: func(ctx context.Context, args []string) error {
+							if len(args) > 0 {
+								env.SSHKeyFilePath = args[0]
+								env.Write()
+							}
+
+							fmt.Println(env.String())
+
 							return nil
 						},
 					},

@@ -100,6 +100,7 @@ func main() {
 		},
 		LocalRelays: []routing.Relay{
 			routing.Relay{
+				Name:      "local.test_relay",
 				ID:        crypto.HashID(addr.String()),
 				Addr:      addr,
 				PublicKey: relayPublicKey,
@@ -112,6 +113,9 @@ func main() {
 					IngressPriceCents: 10,
 					EgressPriceCents:  20,
 				},
+				ManagementAddr: "127.0.0.1",
+				SSHUser:        "root",
+				SSHPort:        22,
 			},
 		},
 	}
