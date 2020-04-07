@@ -2,6 +2,7 @@ package transport_test
 
 import (
 	"bytes"
+	"context"
 	"crypto/ed25519"
 	"net"
 	"testing"
@@ -24,11 +25,21 @@ func TestFailToUnmarshalServerUpdate(t *testing.T) {
 	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 	assert.NoError(t, err)
 
-	handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, nil, &metrics.EmptyServerUpdateMetrics)
+	updateMetrics := metrics.EmptyServerUpdateMetrics
+	localMetrics := metrics.LocalHandler{}
+
+	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
+	assert.NoError(t, err)
+
+	updateMetrics.ErrorMetrics.UnmarshalFailure = metric
+
+	handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, nil, &updateMetrics)
 	handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: []byte("this is not a proper packet")})
 
 	_, err = redisServer.Get("SERVER-0-0.0.0.0:13")
 	assert.Error(t, err)
+
+	assert.Equal(t, 1.0, updateMetrics.ErrorMetrics.UnmarshalFailure.Value())
 }
 
 func TestSDKVersionTooOld(t *testing.T) {
@@ -37,6 +48,14 @@ func TestSDKVersionTooOld(t *testing.T) {
 
 	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 	assert.NoError(t, err)
+
+	updateMetrics := metrics.EmptyServerUpdateMetrics
+	localMetrics := metrics.LocalHandler{}
+
+	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
+	assert.NoError(t, err)
+
+	updateMetrics.ErrorMetrics.SDKTooOld = metric
 
 	packet := transport.ServerUpdatePacket{
 		Sequence:             13,
@@ -54,11 +73,13 @@ func TestSDKVersionTooOld(t *testing.T) {
 	data, err := packet.MarshalBinary()
 	assert.NoError(t, err)
 
-	handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, nil, &metrics.EmptyServerUpdateMetrics)
+	handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, nil, &updateMetrics)
 	handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 	_, err = redisServer.Get("SERVER-0-0.0.0.0:13")
 	assert.Error(t, err)
+
+	assert.Equal(t, 1.0, updateMetrics.ErrorMetrics.SDKTooOld.Value())
 }
 
 func TestBuyerNotFound(t *testing.T) {
@@ -69,6 +90,14 @@ func TestBuyerNotFound(t *testing.T) {
 
 	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 	assert.NoError(t, err)
+
+	updateMetrics := metrics.EmptyServerUpdateMetrics
+	localMetrics := metrics.LocalHandler{}
+
+	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
+	assert.NoError(t, err)
+
+	updateMetrics.ErrorMetrics.BuyerNotFound = metric
 
 	packet := transport.ServerUpdatePacket{
 		Sequence:             13,
@@ -86,24 +115,36 @@ func TestBuyerNotFound(t *testing.T) {
 	data, err := packet.MarshalBinary()
 	assert.NoError(t, err)
 
-	handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &metrics.EmptyServerUpdateMetrics)
+	handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &updateMetrics)
 	handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 	_, err = redisServer.Get("SERVER-0-0.0.0.0:13")
 	assert.Error(t, err)
+
+	assert.Equal(t, 1.0, updateMetrics.ErrorMetrics.BuyerNotFound.Value())
 }
 
-func TestWrongBuyerPublicKey(t *testing.T) {
+func TestVerificationFailure(t *testing.T) {
 	_, buyersServerPrivKey, err := ed25519.GenerateKey(nil)
 	assert.NoError(t, err)
 
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-	db := storage.InMemory{}
+	db := storage.InMemory{
+		LocalBuyer: &routing.Buyer{},
+	}
 
 	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 	assert.NoError(t, err)
+
+	updateMetrics := metrics.EmptyServerUpdateMetrics
+	localMetrics := metrics.LocalHandler{}
+
+	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
+	assert.NoError(t, err)
+
+	updateMetrics.ErrorMetrics.VerificationFailure = metric
 
 	packet := transport.ServerUpdatePacket{
 		Sequence:             13,
@@ -122,11 +163,13 @@ func TestWrongBuyerPublicKey(t *testing.T) {
 	data, err := packet.MarshalBinary()
 	assert.NoError(t, err)
 
-	handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &metrics.EmptyServerUpdateMetrics)
+	handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &updateMetrics)
 	handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 	_, err = redisServer.Get("SERVER-0-0.0.0.0:13")
 	assert.Error(t, err)
+
+	assert.Equal(t, 1.0, updateMetrics.ErrorMetrics.VerificationFailure.Value())
 }
 
 func TestServerPacketSequenceTooOld(t *testing.T) {
@@ -145,8 +188,16 @@ func TestServerPacketSequenceTooOld(t *testing.T) {
 	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 	assert.NoError(t, err)
 
+	updateMetrics := metrics.EmptyServerUpdateMetrics
+	localMetrics := metrics.LocalHandler{}
+
+	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
+	assert.NoError(t, err)
+
+	updateMetrics.ErrorMetrics.PacketSequenceTooOld = metric
+
 	packet := transport.ServerUpdatePacket{
-		Sequence:             1,
+		Sequence:             0,
 		ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
 		ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
 		ServerRoutePublicKey: TestServerBackendPublicKey,
@@ -169,7 +220,7 @@ func TestServerPacketSequenceTooOld(t *testing.T) {
 	err = redisServer.Set("SERVER-0-0.0.0.0:13", string(se))
 	assert.NoError(t, err)
 
-	handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &metrics.EmptyServerUpdateMetrics)
+	handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &updateMetrics)
 	handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 	ds, err := redisServer.Get("SERVER-0-0.0.0.0:13")
@@ -180,6 +231,8 @@ func TestServerPacketSequenceTooOld(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, expected.Sequence, actual.Sequence)
+
+	assert.Equal(t, 1.0, updateMetrics.ErrorMetrics.PacketSequenceTooOld.Value())
 }
 
 func TestSuccessfulUpdate(t *testing.T) {
