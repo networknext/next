@@ -285,7 +285,9 @@ func main() {
 								env.SSHKeyFilePath = args[0]
 								env.Write()
 							}
-							table.Output([]interface{}{env})
+
+							fmt.Println(env.String())
+
 							return nil
 						},
 					},

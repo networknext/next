@@ -20,6 +20,7 @@ func (e *Environment) String() string {
 
 	sb.WriteString(fmt.Sprintf("Hostname: %s\n", e.Hostname))
 	sb.WriteString(fmt.Sprintf("AuthToken: %s\n", e.AuthToken))
+	sb.WriteString(fmt.Sprintf("SSHKeyFilePath: %s\n", e.SSHKeyFilePath))
 
 	return sb.String()
 }
