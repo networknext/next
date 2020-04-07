@@ -18,6 +18,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"syscall"
 
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/tidwall/gjson"
