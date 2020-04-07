@@ -198,21 +198,19 @@ func main() {
 					relays(rpcClient, "")
 					return nil
 				},
-				Subcommands: []*ffcli.Command{
-					{
-						Name:       "ssh",
-						ShortUsage: "next relays ssh <relay name>",
-						ShortHelp:  "SSH into a specific relay",
-						Exec: func(ctx context.Context, args []string) error {
-							if len(args) < 1 {
-								log.Fatal("need a relay name")
-							}
+			},
+			{
+				Name:       "ssh",
+				ShortUsage: "next ssh <device identifier>",
+				ShortHelp:  "SSH into a remote device, for relays it's their name",
+				Exec: func(ctx context.Context, args []string) error {
+					if len(args) < 1 {
+						log.Fatal("need a device identifer")
+					}
 
-							ConnectToRelay(&ctx, args[0])
+					SSHInto(&ctx, env, args[0])
 
-							return nil
-						},
-					},
+					return nil
 				},
 			},
 		},

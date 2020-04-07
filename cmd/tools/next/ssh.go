@@ -2,54 +2,55 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"syscall"
-
-	"cloud.google.com/go/firestore"
-	"google.golang.org/api/iterator"
 )
 
-func ConnectToRelay(ctx *context.Context, relayName string) {
+type relaySSHInfo struct {
+	User    string `json:"user"`
+	Address string `json:"address"`
+	Port    int64  `json:"port"`
+}
+
+func getSSHInfo(ctx *context.Context, env Environment, relayName string) relaySSHInfo {
+	resp, err := http.Get("http://" + env.Hostname + "/ssh_info?relay_name=" + relayName)
+	if err != nil {
+		log.Fatalf("error querying ssh info: %v", err)
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		log.Fatalf("invalid query")
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatalf("error reading response body: %v", err)
+	}
+
+	var info relaySSHInfo
+	err = json.Unmarshal(body, &info)
+	if err != nil {
+		log.Fatalf("error parsing response: %v\nBody: %s", err, string(body))
+	}
+
+	return info
+}
+
+func SSHInto(ctx *context.Context, env Environment, relayName string) {
 	var ok bool
-	var gcpProjectID string
 	var keyfile string
-
-	if _, ok = os.LookupEnv("GOOGLE_APPLICATION_CREDENTIALS"); !ok {
-		log.Fatal("GOOGLE_APPLICATION_CREDENTIALS env var not set")
-	}
-
-	if gcpProjectID, ok = os.LookupEnv("GOOGLE_PROJECT_ID"); !ok {
-		log.Fatal("GOOGLE_PROJECT_ID env var not set")
-	}
 
 	if keyfile, ok = os.LookupEnv("RELAY_SERVER_KEY"); !ok {
 		log.Fatal("RELAY_SERVER_KEY env var not set")
 	}
 
-	firestoreClient, err := firestore.NewClient(*ctx, gcpProjectID)
-	if err != nil {
-		log.Fatalf("could not initialize firestore client: %v", err)
-	}
-
-	rdoc, err := firestoreClient.Collection("Relay").Where("displayName", "==", relayName).Documents(*ctx).Next()
-
-	if err == iterator.Done {
-		log.Fatalf("No relays found matching the query '%s'", relayName)
-	} else if err != nil {
-		log.Fatalf("error when finding relay in firestore: %v", err)
-	}
-
-	type relaySSHInfo struct {
-		Address string `firestore:"managementAddress"`
-		Port    int64  `firestore:"sshPort"`
-		User    string `firestore:"sshUser"`
-	}
-
-	var info relaySSHInfo
-	rdoc.DataTo(&info)
+	info := getSSHInfo(ctx, env, relayName)
 
 	con := NewSSHConn(ctx, info.User, info.Address, info.Port, keyfile)
 
@@ -64,13 +65,13 @@ type SSHConn struct {
 	keyfile string
 }
 
-func NewSSHConn(ctx *context.Context, user, address string, port int64, keyfile string) SSHConn {
+func NewSSHConn(ctx *context.Context, user, address string, port int64, authKeyFilename string) SSHConn {
 	return SSHConn{
 		ctx:     ctx,
 		user:    user,
 		address: address,
 		port:    port,
-		keyfile: keyfile,
+		keyfile: authKeyFilename,
 	}
 }
 

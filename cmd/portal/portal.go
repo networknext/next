@@ -23,6 +23,7 @@ import (
 	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
+	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/jsonrpc"
 )
 
@@ -77,6 +78,7 @@ func main() {
 	var db storage.Storer = &storage.InMemory{
 		LocalRelays: []routing.Relay{
 			routing.Relay{
+				Name:      "local.test_relay",
 				ID:        crypto.HashID(addr.String()),
 				Addr:      addr,
 				PublicKey: relayPublicKey,
@@ -89,6 +91,9 @@ func main() {
 					IngressPriceCents: 10,
 					EgressPriceCents:  20,
 				},
+				ManagementAddress: "127.0.0.1",
+				SSHUser:           "root",
+				SSHPort:           22,
 			},
 		},
 	}
@@ -176,6 +181,7 @@ func main() {
 		http.Handle("/rpc", s)
 
 		http.Handle("/", http.FileServer(http.Dir(uiDir)))
+		http.HandleFunc("/ssh_info", transport.RelaySSHInfoHandlerFunc(logger, db))
 
 		// http.HandleFunc("/", transport.PortalHandlerFunc(redisClientRelays, &routeMatrix, os.Getenv("BASIC_AUTH_USERNAME"), os.Getenv("BASIC_AUTH_PASSWORD")))
 		err := http.ListenAndServe(":"+port, nil)

@@ -52,6 +52,9 @@ type relay struct {
 	IncludedBandwithGB float32                `firestore:"includedBandwidthGB"`
 	Datacenter         *firestore.DocumentRef `firestore:"datacenter"`
 	Seller             *firestore.DocumentRef `firestore:"seller"`
+	ManagementAddress  string                 `firestore:"managementAddress"`
+	SSHUser            string                 `firestore:"sshUser"`
+	SSHPort            int64                  `firestore:"sshPort"`
 }
 
 type datacenter struct {
@@ -255,6 +258,9 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 			PublicKey:           publicKey,
 			NICSpeedMbps:        int(r.NICSpeedMbps),
 			IncludedBandwidthGB: int(r.IncludedBandwithGB),
+			ManagementAddress:   r.ManagementAddress,
+			SSHUser:             r.SSHUser,
+			SSHPort:             r.SSHPort,
 		}
 
 		// Get datacenter

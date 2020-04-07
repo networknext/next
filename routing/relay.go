@@ -56,6 +56,10 @@ type Relay struct {
 	LastUpdateTime uint64
 
 	State uint32
+
+	ManagementAddress string
+	SSHUser           string
+	SSHPort           int64
 }
 
 func (r *Relay) EncodedPublicKey() string {
