@@ -3,3 +3,14 @@
 # Network Next Operator Tool
 
 Run `./next` in the root of the repo for available commands.
+
+## SSH
+
+SSH into a remote device.
+
+Usage: `next ssh [identifier]`
+
+### With Relays
+
+To SSH into a relay you must have the public key that grants you access.\
+Once you do you must set the `RELAY_SERVER_KEY` environment varialbe to point to it.

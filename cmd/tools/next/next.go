@@ -202,7 +202,7 @@ func main() {
 			{
 				Name:       "ssh",
 				ShortUsage: "next ssh <device identifier>",
-				ShortHelp:  "SSH into a remote device, for relays it's their name",
+				ShortHelp:  "SSH into a remote device, for relays the identifier is their name",
 				Exec: func(ctx context.Context, args []string) error {
 					if len(args) < 1 {
 						log.Fatal("need a device identifer")
