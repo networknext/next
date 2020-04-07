@@ -120,6 +120,18 @@ func (fs *Firestore) Buyer(id uint64) (*routing.Buyer, bool) {
 	return b, found
 }
 
+func (fs *Firestore) Buyers() []routing.Buyer {
+	fs.buyerMutex.Lock()
+	defer fs.buyerMutex.Unlock()
+
+	var buyers []routing.Buyer
+	for _, buyer := range fs.buyers {
+		buyers = append(buyers, *buyer)
+	}
+
+	return buyers
+}
+
 // SyncLoop is a helper method that calls Sync
 func (fs *Firestore) SyncLoop(ctx context.Context, c <-chan time.Time) {
 	if err := fs.Sync(ctx); err != nil {

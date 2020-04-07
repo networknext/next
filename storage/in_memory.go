@@ -18,6 +18,10 @@ func (m *InMemory) Buyer(id uint64) (*routing.Buyer, bool) {
 	return nil, false
 }
 
+func (m *InMemory) Buyers() []routing.Buyer {
+	return []routing.Buyer{*m.LocalBuyer}
+}
+
 func (m *InMemory) Relay(id uint64) (*routing.Relay, bool) {
 	// Fail if literally nothing is set
 	if len(m.LocalRelays) == 0 {

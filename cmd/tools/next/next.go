@@ -253,6 +253,16 @@ func main() {
 			},
 
 			{
+				Name:       "buyers",
+				ShortUsage: "next buyers",
+				ShortHelp:  "Manage buyers",
+				Exec: func(_ context.Context, args []string) error {
+					buyers(rpcClient)
+					return nil
+				},
+			},
+
+			{
 				Name:       "datacenters",
 				ShortUsage: "next datacenters <name>",
 				ShortHelp:  "Manage datacenters",
