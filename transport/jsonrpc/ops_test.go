@@ -9,6 +9,23 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestBuyers(t *testing.T) {
+	svc := jsonrpc.OpsService{
+		Storage: &storage.InMemory{
+			LocalBuyer: &routing.Buyer{ID: 1, Name: "local.local.1"},
+		},
+	}
+
+	t.Run("list", func(t *testing.T) {
+		var reply jsonrpc.BuyersReply
+		err := svc.Buyers(nil, &jsonrpc.BuyersArgs{}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, reply.Buyers[0].ID, uint64(1))
+		assert.Equal(t, reply.Buyers[0].Name, "local.local.1")
+	})
+}
+
 func TestRelays(t *testing.T) {
 	svc := jsonrpc.OpsService{
 		Storage: &storage.InMemory{

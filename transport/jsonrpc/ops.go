@@ -14,6 +14,32 @@ type OpsService struct {
 	Storage     storage.Storer
 }
 
+type BuyersArgs struct{}
+
+type BuyersReply struct {
+	Buyers []buyer
+}
+
+type buyer struct {
+	ID   uint64 `json:"id"`
+	Name string `json:"name"`
+}
+
+func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersReply) error {
+	for _, b := range s.Storage.Buyers() {
+		reply.Buyers = append(reply.Buyers, buyer{
+			ID:   b.ID,
+			Name: b.Name,
+		})
+	}
+
+	sort.Slice(reply.Buyers, func(i int, j int) bool {
+		return reply.Buyers[i].Name < reply.Buyers[j].Name
+	})
+
+	return nil
+}
+
 type RelaysArgs struct {
 	Name string `json:"name"`
 }
