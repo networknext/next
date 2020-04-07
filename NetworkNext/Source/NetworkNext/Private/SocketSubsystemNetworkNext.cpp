@@ -165,6 +165,8 @@ FSocket* FSocketSubsystemNetworkNext::CreateSocketWithNetDriver(const FName& Soc
 #endif
 )
 {
+	UE_LOG(LogNetworkNext, Display, TEXT("CreateSocketWithNetDriver"));
+
 	// NOTE: The socket descriptions here are prefixed with a string that indicates
 	// the underlying FSocket C++ type. The NetworkNextNetDriver looks at the description of
 	// the resulting socket to determine whether it's safe to cast to back to SocketNetworkNextClient or
@@ -173,9 +175,14 @@ FSocket* FSocketSubsystemNetworkNext::CreateSocketWithNetDriver(const FName& Soc
 
 	if (SocketType == FName("NetworkNextClientSocket"))
 	{
+		UE_LOG(LogNetworkNext, Display, TEXT("NetworkNextClientSocket"));
+
 		this->InitializeNetworkNextIfRequired();
+
 		if (this->IsNetworkNextInitializedSuccessfully())
 		{
+			UE_LOG(LogNetworkNext, Display, TEXT("(initialized successfully)"));
+
 			FString ModifiedSocketDescription = SocketDescription;
 			ModifiedSocketDescription.InsertAt(0, TEXT("SOCKET_TYPE_NEXT_CLIENT_"));
 #if defined(NETWORKNEXT_HAS_ESOCKETPROTOCOLFAMILY)
@@ -186,12 +193,21 @@ FSocket* FSocketSubsystemNetworkNext::CreateSocketWithNetDriver(const FName& Soc
 			AddSocket(Socket);
 			return Socket;
 		}
+		else
+		{
+			UE_LOG(LogNetworkNext, Error, TEXT("(initialized failed)"));
+		}
 	}
 	else if (SocketType == FName("NetworkNextServerSocket"))
 	{
+		UE_LOG(LogNetworkNext, Display, TEXT("NetworkNextServerSocket"));
+
 		this->InitializeNetworkNextIfRequired();
+
 		if (this->IsNetworkNextInitializedSuccessfully())
 		{
+			UE_LOG(LogNetworkNext, Display, TEXT("(initialized successfully)"));
+
 			FString ModifiedSocketDescription = SocketDescription;
 			ModifiedSocketDescription.InsertAt(0, TEXT("SOCKET_TYPE_NEXT_SERVER_"));
 #if defined(NETWORKNEXT_HAS_ESOCKETPROTOCOLFAMILY)
@@ -201,6 +217,10 @@ FSocket* FSocketSubsystemNetworkNext::CreateSocketWithNetDriver(const FName& Soc
 #endif
 			AddSocket(Socket);
 			return Socket;
+		}
+		else
+		{
+			UE_LOG(LogNetworkNext, Error, TEXT("(initialized failed)"));
 		}
 	}
 
@@ -223,6 +243,8 @@ FSocket* FSocketSubsystemNetworkNext::CreateSocketWithNetDriver(const FName& Soc
  */
 void FSocketSubsystemNetworkNext::DestroySocket(FSocket* Socket)
 {
+	UE_LOG(LogNetworkNext, Display, TEXT("DestroySocket"));
+
 	// Possible non Network Next socket here PLATFORM_SOCKETSUBSYSTEM, but its just a pointer compare
 	RemoveSocket((FSocketNetworkNext*)Socket);
 	delete Socket;

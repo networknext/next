@@ -56,10 +56,6 @@ struct FNetworkNextConfig
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 SocketReceiveBufferSize;
 
-	/** The socket receive buffer size. If you don't set this, the default is used. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 SocketReceiveBufferSize;
-
 	/** Disable network next */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool DisableNetworkNext;

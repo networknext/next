@@ -41,11 +41,15 @@ FSocketNetworkNextServer::FSocketNetworkNextServer(const FString& InSocketDescri
 	this->NetworkNextServer = nullptr;
 	this->PacketQueueSize = 0;
 	this->bBound = false;
+
+	UE_LOG(LogNetworkNext, Display, TEXT("FSocketNetworkNextServer Created"));
 }
 
 FSocketNetworkNextServer::~FSocketNetworkNextServer()
 {
 	this->Close();
+
+	UE_LOG(LogNetworkNext, Display, TEXT("FSocketNetworkNextServer Destroyed"));
 }
 
 void FSocketNetworkNextServer::UpdateNetworkNextSocket()
@@ -150,6 +154,8 @@ bool FSocketNetworkNextServer::Close()
 
 bool FSocketNetworkNextServer::Bind(const FInternetAddr& Addr)
 {
+	UE_LOG(LogNetworkNext, Display, TEXT("FSocketNetworkNextServer::Bind"));
+
 	FNetworkNextModule& NetworkNextModule = FModuleManager::LoadModuleChecked<FNetworkNextModule>("NetworkNext");
 	const FNetworkNextServerConfig* ServerConfig = NetworkNextModule.GetServerConfig();
 
@@ -184,6 +190,7 @@ bool FSocketNetworkNextServer::Bind(const FInternetAddr& Addr)
 	{
 		// We could not create the server, do not set bBound to true and
 		// return false to indicate that we couldn't start listening.
+		UE_LOG(LogNetworkNext, Error, TEXT("Failed to create network next server"));
 		return false;
 	}
 

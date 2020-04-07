@@ -54,8 +54,11 @@ ISocketSubsystem* UNetworkNextNetDriver::GetSocketSubsystem()
 
 bool UNetworkNextNetDriver::InitBase(bool bInitAsClient, FNetworkNotify* InNotify, const FURL& URL, bool bReuseAddressAndPort, FString& Error)
 {
-	if (!UIpNetDriver::InitBase(bInitAsClient, InNotify, URL, bReuseAddressAndPort, Error))
+	UE_LOG(LogNetworkNext, Display, TEXT("UNetworkNextDriver::InitListen"));
+
+	if (!UNetDriver::InitBase(bInitAsClient, InNotify, URL, bReuseAddressAndPort, Error))
 	{
+		UE_LOG(LogNetworkNext, Warning, TEXT("UIpNetDriver::InitBase failed"));
 		return false;
 	}
 
@@ -69,6 +72,7 @@ bool UNetworkNextNetDriver::InitBase(bool bInitAsClient, FNetworkNotify* InNotif
 
 	if (Socket == NULL)
 	{
+		UE_LOG(LogNetworkNext, Warning, TEXT("Socket is NULL"));
 		Socket = 0;
 		Error = FString::Printf(TEXT("SteamSockets: socket failed (%i)"), (int32)SocketSubsystem->GetLastErrorCode());
 		return false;
@@ -86,6 +90,8 @@ bool UNetworkNextNetDriver::InitBase(bool bInitAsClient, FNetworkNotify* InNotif
 
 bool UNetworkNextNetDriver::InitConnect(FNetworkNotify* InNotify, const FURL& ConnectURL, FString& Error)
 {
+	UE_LOG(LogNetworkNext, Display, TEXT("UNetworkNextDriver::InitConnect"));
+
 	FSocketSubsystemNetworkNext* NetworkNextSockets = (FSocketSubsystemNetworkNext*)ISocketSubsystem::Get(NETWORKNEXT_SUBSYSTEM);
 	if (NetworkNextSockets)
 	{
@@ -108,9 +114,13 @@ bool UNetworkNextNetDriver::InitConnect(FNetworkNotify* InNotify, const FURL& Co
 
 bool UNetworkNextNetDriver::InitListen(FNetworkNotify* InNotify, FURL& ListenURL, bool bReuseAddressAndPort, FString& Error)
 {
+	UE_LOG(LogNetworkNext, Display, TEXT("UNetworkNextDriver::InitListen"));
+
 	FSocketSubsystemNetworkNext* NetworkNextSockets = (FSocketSubsystemNetworkNext*)ISocketSubsystem::Get(NETWORKNEXT_SUBSYSTEM);
 	if (NetworkNextSockets)
 	{
+		UE_LOG(LogNetworkNext, Display, TEXT("Create server socket"));
+
 		Socket = NetworkNextSockets->CreateSocketWithNetDriver(FName(TEXT("NetworkNextServerSocket")), TEXT("Unreal server (Network Next)"), this
 #if defined(NETWORKNEXT_SOCKETSUBSYSTEM_INTERFACE_HAS_PROTOCOLTYPE)
 			, ESocketProtocolFamily::None
@@ -123,6 +133,10 @@ bool UNetworkNextNetDriver::InitListen(FNetworkNotify* InNotify, FURL& ListenURL
 		{
 			ServerSocket = (FSocketNetworkNextServer*)Socket;
 		}
+	}
+	else
+	{
+		UE_LOG(LogNetworkNext, Warning, TEXT("Could not find NetworkNextSockets module?"));
 	}
 
 	return Super::InitListen(InNotify, ListenURL, bReuseAddressAndPort, Error);

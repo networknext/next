@@ -30,7 +30,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#if !NEXT_DEVELOPMENT
+#if !defined(NEXT_DEVELOPMENT)
 #define NEXT_VERSION_FULL                                   "3.4.2"
 #define NEXT_VERSION_MAJOR_INT                                    3
 #define NEXT_VERSION_MINOR_INT                                    4

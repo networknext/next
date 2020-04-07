@@ -50,6 +50,8 @@ FSocketNetworkNextClient::FSocketNetworkNextClient(const FString& InSocketDescri
 	this->PacketQueueSize = 0;
 	this->bConnected = false;
 	this->ClientStats = FNetworkNextClientStats::GetDisconnectedStats();
+
+	UE_LOG(LogNetworkNext, Display, TEXT("FSocketNetworkNextClient Created"));
 }
 
 FSocketNetworkNextClient::~FSocketNetworkNextClient()
@@ -60,6 +62,8 @@ FSocketNetworkNextClient::~FSocketNetworkNextClient()
 	}
 
 	this->NetworkNextClient = nullptr;
+
+	UE_LOG(LogNetworkNext, Display, TEXT("FSocketNetworkNextServer Destroyed"));
 }
 
 uint64_t FSocketNetworkNextClient::GetSessionId()

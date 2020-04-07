@@ -59,6 +59,12 @@ void FNetworkNextModule::StartupModule()
 #endif
 
 	this->NetworkNextHandle = FPlatformProcess::GetDllHandle(*LibraryPath);
+
+	if (!this->NetworkNextHandle)
+	{
+		UE_LOG(LogNetworkNext, Error, TEXT("Delayed load of network next library failed."));
+	}
+
 #endif
   
 	next_allocator(&FNetworkNextModule::Malloc, &FNetworkNextModule::Free);
@@ -86,6 +92,9 @@ void FNetworkNextModule::InitializeNetworkNextIfRequired()
 
 		next_config_t config;
 		next_default_config(&config);
+
+		// temporary. force UE4 plugin to point to pubg specific hostname. make configurable later.
+		strcpy_s(config.hostname, "pubg.networknext.com");
 
 		bool publicKeySet = false;
 		bool privateKeySet = false;
@@ -178,15 +187,19 @@ void FNetworkNextModule::InitializeNetworkNextIfRequired()
 
 			privateKeySet = true;
 		}
-		
 
+		FString hostname = FString(config.hostname);
+		UE_LOG(LogNetworkNext, Display, TEXT("Hostname is: %s"), *hostname);
+			
 		if (next_init(nullptr, &config) != NEXT_OK)
 		{
-			UE_LOG(LogNetworkNext, Error, TEXT("Network Next could not be initialized."));
+			UE_LOG(LogNetworkNext, Error, TEXT("Network Next could not be initialized"));
 			return;
 		}
 
 		this->NetworkNextIsSuccessfullyInitialized = true;
+
+		UE_LOG(LogNetworkNext, Display, TEXT("Network Next initialized"));
 	}
 }
 
