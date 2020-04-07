@@ -224,7 +224,7 @@ func TestFailToUnmarshalServerData(t *testing.T) {
 
 	sessionMetrics.SessionErrorMetrics.UnmarshalServerDataFailure = metric
 
-	err = redisServer.Set("SERVER-0.0.0.0:13", "Invalid server data")
+	err = redisServer.Set("SERVER-0-0.0.0.0:13", "Invalid server data")
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
@@ -274,10 +274,10 @@ func TestFailToUnmarshalSessionData(t *testing.T) {
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SERVER-0.0.0.0:13", string(serverCacheEntryData))
+	err = redisServer.Set("SERVER-0-0.0.0.0:13", string(serverCacheEntryData))
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SESSION-9999", "Invalid session data")
+	err = redisServer.Set("SESSION-0-9999", "Invalid session data")
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
@@ -330,7 +330,7 @@ func TestNoBuyerFound(t *testing.T) {
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SERVER-0.0.0.0:13", string(serverCacheEntryData))
+	err = redisServer.Set("SERVER-0-0.0.0.0:13", string(serverCacheEntryData))
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
@@ -386,7 +386,7 @@ func TestVerificationFailed(t *testing.T) {
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SERVER-0.0.0.0:13", string(serverCacheEntryData))
+	err = redisServer.Set("SERVER-0-0.0.0.0:13", string(serverCacheEntryData))
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
@@ -441,7 +441,7 @@ func TestSessionPacketSequenceTooOld(t *testing.T) {
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SERVER-0.0.0.0:13", string(serverCacheEntryData))
+	err = redisServer.Set("SERVER-0-0.0.0.0:13", string(serverCacheEntryData))
 	assert.NoError(t, err)
 
 	sessionCacheEntry := transport.SessionCacheEntry{
@@ -451,7 +451,7 @@ func TestSessionPacketSequenceTooOld(t *testing.T) {
 	sessionCacheEntryData, err := sessionCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SESSION-9999", string(sessionCacheEntryData))
+	err = redisServer.Set("SESSION-0-9999", string(sessionCacheEntryData))
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
@@ -507,7 +507,7 @@ func TestBadWriteCachedResponse(t *testing.T) {
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SERVER-0.0.0.0:13", string(serverCacheEntryData))
+	err = redisServer.Set("SERVER-0-0.0.0.0:13", string(serverCacheEntryData))
 	assert.NoError(t, err)
 
 	sessionCacheEntry := transport.SessionCacheEntry{
@@ -518,7 +518,7 @@ func TestBadWriteCachedResponse(t *testing.T) {
 	sessionCacheEntryData, err := sessionCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SESSION-9999", string(sessionCacheEntryData))
+	err = redisServer.Set("SESSION-0-9999", string(sessionCacheEntryData))
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
@@ -588,7 +588,7 @@ func TestClientIPLookupFail(t *testing.T) {
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SERVER-0.0.0.0:13", string(serverCacheEntryData))
+	err = redisServer.Set("SERVER-0-0.0.0.0:13", string(serverCacheEntryData))
 	assert.NoError(t, err)
 
 	sessionCacheEntry := transport.SessionCacheEntry{
@@ -598,7 +598,7 @@ func TestClientIPLookupFail(t *testing.T) {
 	sessionCacheEntryData, err := sessionCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SESSION-9999", string(sessionCacheEntryData))
+	err = redisServer.Set("SESSION-0-9999", string(sessionCacheEntryData))
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
@@ -675,7 +675,7 @@ func TestNoRelaysNearClient(t *testing.T) {
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SERVER-0.0.0.0:13", string(serverCacheEntryData))
+	err = redisServer.Set("SERVER-0-0.0.0.0:13", string(serverCacheEntryData))
 	assert.NoError(t, err)
 
 	sessionCacheEntry := transport.SessionCacheEntry{
@@ -685,7 +685,7 @@ func TestNoRelaysNearClient(t *testing.T) {
 	sessionCacheEntryData, err := sessionCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SESSION-9999", string(sessionCacheEntryData))
+	err = redisServer.Set("SESSION-0-9999", string(sessionCacheEntryData))
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
@@ -770,7 +770,7 @@ func TestNoRoutesFound(t *testing.T) {
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SERVER-0.0.0.0:13", string(serverCacheEntryData))
+	err = redisServer.Set("SERVER-0-0.0.0.0:13", string(serverCacheEntryData))
 	assert.NoError(t, err)
 
 	sessionCacheEntry := transport.SessionCacheEntry{
@@ -780,7 +780,7 @@ func TestNoRoutesFound(t *testing.T) {
 	sessionCacheEntryData, err := sessionCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SESSION-9999", string(sessionCacheEntryData))
+	err = redisServer.Set("SESSION-0-9999", string(sessionCacheEntryData))
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
@@ -875,7 +875,7 @@ func TestTokenEncryptionFailure(t *testing.T) {
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SERVER-0.0.0.0:13", string(serverCacheEntryData))
+	err = redisServer.Set("SERVER-0-0.0.0.0:13", string(serverCacheEntryData))
 	assert.NoError(t, err)
 
 	sessionCacheEntry := transport.SessionCacheEntry{
@@ -885,7 +885,7 @@ func TestTokenEncryptionFailure(t *testing.T) {
 	sessionCacheEntryData, err := sessionCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SESSION-9999", string(sessionCacheEntryData))
+	err = redisServer.Set("SESSION-0-9999", string(sessionCacheEntryData))
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
@@ -985,7 +985,7 @@ func TestBadWriteResponse(t *testing.T) {
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SERVER-0.0.0.0:13", string(serverCacheEntryData))
+	err = redisServer.Set("SERVER-0-0.0.0.0:13", string(serverCacheEntryData))
 	assert.NoError(t, err)
 
 	sessionCacheEntry := transport.SessionCacheEntry{
@@ -996,7 +996,7 @@ func TestBadWriteResponse(t *testing.T) {
 	sessionCacheEntryData, err := sessionCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SESSION-9999", string(sessionCacheEntryData))
+	err = redisServer.Set("SESSION-0-9999", string(sessionCacheEntryData))
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
@@ -1102,7 +1102,7 @@ func TestBillingFailure(t *testing.T) {
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SERVER-0.0.0.0:13", string(serverCacheEntryData))
+	err = redisServer.Set("SERVER-0-0.0.0.0:13", string(serverCacheEntryData))
 	assert.NoError(t, err)
 
 	sessionCacheEntry := transport.SessionCacheEntry{
@@ -1113,7 +1113,7 @@ func TestBillingFailure(t *testing.T) {
 	sessionCacheEntryData, err := sessionCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SESSION-9999", string(sessionCacheEntryData))
+	err = redisServer.Set("SESSION-0-9999", string(sessionCacheEntryData))
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
@@ -1222,7 +1222,7 @@ func TestNextRouteResponse(t *testing.T) {
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SERVER-0.0.0.0:13", string(serverCacheEntryData))
+	err = redisServer.Set("SERVER-0-0.0.0.0:13", string(serverCacheEntryData))
 	assert.NoError(t, err)
 
 	sessionCacheEntry := transport.SessionCacheEntry{
@@ -1233,7 +1233,7 @@ func TestNextRouteResponse(t *testing.T) {
 	sessionCacheEntryData, err := sessionCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SESSION-9999", string(sessionCacheEntryData))
+	err = redisServer.Set("SESSION-0-9999", string(sessionCacheEntryData))
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
@@ -1337,7 +1337,7 @@ func TestContinueRouteResponse(t *testing.T) {
 	se, err := expected.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SERVER-0.0.0.0:13", string(se))
+	err = redisServer.Set("SERVER-0-0.0.0.0:13", string(se))
 	assert.NoError(t, err)
 
 	expectedsession := transport.SessionCacheEntry{
@@ -1349,7 +1349,7 @@ func TestContinueRouteResponse(t *testing.T) {
 	sce, err := expectedsession.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SESSION-9999", string(sce))
+	err = redisServer.Set("SESSION-0-9999", string(sce))
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
@@ -1461,7 +1461,7 @@ func TestCachedRouteResponse(t *testing.T) {
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SERVER-0.0.0.0:13", string(serverCacheEntryData))
+	err = redisServer.Set("SERVER-0-0.0.0.0:13", string(serverCacheEntryData))
 	assert.NoError(t, err)
 
 	tokens := make([]byte, routing.EncryptedNextRouteTokenSize)
@@ -1490,7 +1490,7 @@ func TestCachedRouteResponse(t *testing.T) {
 	sessionCacheEntryData, err := sessionCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SESSION-9999", string(sessionCacheEntryData))
+	err = redisServer.Set("SESSION-0-9999", string(sessionCacheEntryData))
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
@@ -1604,7 +1604,7 @@ func TestVetoedRTT(t *testing.T) {
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SERVER-0.0.0.0:13", string(serverCacheEntryData))
+	err = redisServer.Set("SERVER-0-0.0.0.0:13", string(serverCacheEntryData))
 	assert.NoError(t, err)
 
 	sessionCacheEntry := transport.SessionCacheEntry{
@@ -1620,7 +1620,7 @@ func TestVetoedRTT(t *testing.T) {
 	sessionCacheEntryData, err := sessionCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SESSION-9999", string(sessionCacheEntryData))
+	err = redisServer.Set("SESSION-0-9999", string(sessionCacheEntryData))
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
@@ -1725,7 +1725,7 @@ func TestVetoExpiredRTT(t *testing.T) {
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SERVER-0.0.0.0:13", string(serverCacheEntryData))
+	err = redisServer.Set("SERVER-0-0.0.0.0:13", string(serverCacheEntryData))
 	assert.NoError(t, err)
 
 	sessionCacheEntry := transport.SessionCacheEntry{
@@ -1741,7 +1741,7 @@ func TestVetoExpiredRTT(t *testing.T) {
 	sessionCacheEntryData, err := sessionCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SESSION-9999", string(sessionCacheEntryData))
+	err = redisServer.Set("SESSION-0-9999", string(sessionCacheEntryData))
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
@@ -1846,7 +1846,7 @@ func TestVetoedPacketLoss(t *testing.T) {
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SERVER-0.0.0.0:13", string(serverCacheEntryData))
+	err = redisServer.Set("SERVER-0-0.0.0.0:13", string(serverCacheEntryData))
 	assert.NoError(t, err)
 
 	sessionCacheEntry := transport.SessionCacheEntry{
@@ -1862,7 +1862,7 @@ func TestVetoedPacketLoss(t *testing.T) {
 	sessionCacheEntryData, err := sessionCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SESSION-9999", string(sessionCacheEntryData))
+	err = redisServer.Set("SESSION-0-9999", string(sessionCacheEntryData))
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
@@ -1967,7 +1967,7 @@ func TestVetoExpiredPacketLoss(t *testing.T) {
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SERVER-0.0.0.0:13", string(serverCacheEntryData))
+	err = redisServer.Set("SERVER-0-0.0.0.0:13", string(serverCacheEntryData))
 	assert.NoError(t, err)
 
 	sessionCacheEntry := transport.SessionCacheEntry{
@@ -1983,7 +1983,7 @@ func TestVetoExpiredPacketLoss(t *testing.T) {
 	sessionCacheEntryData, err := sessionCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SESSION-9999", string(sessionCacheEntryData))
+	err = redisServer.Set("SESSION-0-9999", string(sessionCacheEntryData))
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
@@ -2091,7 +2091,7 @@ func TestForceDirect(t *testing.T) {
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SERVER-0.0.0.0:13", string(serverCacheEntryData))
+	err = redisServer.Set("SERVER-0-0.0.0.0:13", string(serverCacheEntryData))
 	assert.NoError(t, err)
 
 	sessionCacheEntry := transport.SessionCacheEntry{
@@ -2101,7 +2101,7 @@ func TestForceDirect(t *testing.T) {
 	sessionCacheEntryData, err := sessionCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SESSION-9999", string(sessionCacheEntryData))
+	err = redisServer.Set("SESSION-0-9999", string(sessionCacheEntryData))
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
@@ -2209,7 +2209,7 @@ func TestForceNext(t *testing.T) {
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SERVER-0.0.0.0:13", string(serverCacheEntryData))
+	err = redisServer.Set("SERVER-0-0.0.0.0:13", string(serverCacheEntryData))
 	assert.NoError(t, err)
 
 	sessionCacheEntry := transport.SessionCacheEntry{
@@ -2219,7 +2219,7 @@ func TestForceNext(t *testing.T) {
 	sessionCacheEntryData, err := sessionCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
 
-	err = redisServer.Set("SESSION-9999", string(sessionCacheEntryData))
+	err = redisServer.Set("SESSION-0-9999", string(sessionCacheEntryData))
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{

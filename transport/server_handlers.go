@@ -114,6 +114,8 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 			return
 		}
 
+		serverCacheKey := fmt.Sprintf("SERVER-%d-%s", packet.CustomerID, packet.ServerAddress.String())
+
 		locallogger := log.With(logger, "src_addr", incoming.SourceAddr.String(), "server_addr", packet.ServerAddress.String())
 
 		// Drop the packet if version is older that the minimun sdk version
@@ -142,7 +144,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 		// Get the the old ServerCacheEntry if it exists, otherwise serverentry is in zero value state
 		var serverentry ServerCacheEntry
 		{
-			result := redisClient.Get("SERVER-" + incoming.SourceAddr.String())
+			result := redisClient.Get(serverCacheKey)
 			if result.Err() != nil && result.Err() != redis.Nil {
 				level.Error(locallogger).Log("msg", "failed to get server", "err", result.Err())
 				return
@@ -172,7 +174,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 			Datacenter: routing.Datacenter{ID: packet.DatacenterID},
 			SDKVersion: packet.Version,
 		}
-		result := redisClient.Set("SERVER-"+incoming.SourceAddr.String(), serverentry, 5*time.Minute)
+		result := redisClient.Set(serverCacheKey, serverentry, 5*time.Minute)
 		if result.Err() != nil {
 			level.Error(locallogger).Log("msg", "failed to update server", "err", result.Err())
 			return
@@ -183,7 +185,9 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 }
 
 type SessionCacheEntry struct {
+	CustomerID      uint64
 	SessionID       uint64
+	UserHash        uint64
 	Sequence        uint64
 	RouteHash       uint64
 	RouteDecision   routing.Decision
@@ -191,6 +195,8 @@ type SessionCacheEntry struct {
 	TimestampExpire time.Time
 	VetoTimestamp   time.Time
 	Version         uint8
+	DirectRTT       float64
+	NextRTT         float64
 	Response        []byte
 }
 
@@ -237,6 +243,9 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			return
 		}
 
+		serverCacheKey := fmt.Sprintf("SERVER-%d-%s", packet.CustomerID, packet.ServerAddress.String())
+		sessionCacheKey := fmt.Sprintf("SESSION-%d-%d", packet.CustomerID, packet.SessionID)
+
 		locallogger := log.With(logger, "src_addr", incoming.SourceAddr.String(), "server_addr", packet.ServerAddress.String(), "client_addr", packet.ClientAddress.String(), "session_id", packet.SessionID)
 
 		if packet.FallbackToDirect {
@@ -258,8 +267,8 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		// Build a redis transaction to make a single network call
 		tx := redisClient.TxPipeline()
 		{
-			serverCacheCmd := tx.Get("SERVER-" + incoming.SourceAddr.String())
-			sessionCacheCmd := tx.Get(fmt.Sprintf("SESSION-%d", packet.SessionID))
+			serverCacheCmd := tx.Get(serverCacheKey)
+			sessionCacheCmd := tx.Get(sessionCacheKey)
 			if _, err := tx.Exec(); err != nil && err != redis.Nil {
 				level.Error(locallogger).Log("msg", "failed to execute redis pipeline", "err", err)
 				metrics.SessionErrorMetrics.PipelineExecFailure.Add(1)
@@ -578,7 +587,9 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		{
 			level.Debug(locallogger).Log("msg", "caching session data")
 			updatedSessionCacheEntry := SessionCacheEntry{
+				CustomerID:      packet.CustomerID,
 				SessionID:       packet.SessionID,
+				UserHash:        packet.UserHash,
 				Sequence:        packet.Sequence,
 				RouteHash:       chosenRoute.Hash64(),
 				RouteDecision:   routeDecision,
@@ -587,8 +598,10 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 				VetoTimestamp:   sessionCacheEntry.VetoTimestamp,
 				Version:         sessionCacheEntry.Version, //This was already incremented for the route tokens
 				Response:        responseData,
+				DirectRTT:       directStats.RTT,
+				NextRTT:         nnStats.RTT,
 			}
-			result := redisClient.Set(fmt.Sprintf("SESSION-%d", updatedSessionCacheEntry.SessionID), updatedSessionCacheEntry, 5*time.Minute)
+			result := redisClient.Set(sessionCacheKey, updatedSessionCacheEntry, 5*time.Minute)
 			if result.Err() != nil {
 				// This error case should never happen, can't produce it in test cases, but leaving it in anyway
 				level.Error(locallogger).Log("msg", "failed to update session", "err", err)
