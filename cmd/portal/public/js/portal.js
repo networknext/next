@@ -60,11 +60,13 @@ JSONRPCClient = {
 				params: params,
 				id: id
         	})
-		})
+		});
+
 
 		return response.json().then((json) => {
+			console.log(json)
 			if (json.error) {
-				throw new Error(json.error)
+				throw new Error(json.error);
 			}
 			return json.result
 		})

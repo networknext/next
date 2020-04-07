@@ -183,6 +183,34 @@
                 .call('OpsService.Relays', {})
                 .then((response) => {
                     new Vue({
+                    el: '#relays',
+                    data: {
+                        relays: response.Relays
+                    }
+                    });
+                })
+                .catch((e) => {
+                    console.log("Something went wrong with the map init!");
+                    console.log(e);
+                });
+            JSONRPCClient
+                .call('OpsService.Buyers', {})
+                .then((response) => {
+                    new Vue({
+                    el: '#sessions',
+                    data: {
+                        relays: response.Relays
+                    }
+                    });
+                })
+                .catch((e) => {
+                    console.log("Something went wrong with the map init!");
+                    console.log(e);
+                });
+                JSONRPCClient
+                .call('BuyersService.Sessions', {buyer_id: 13672574147039585173})
+                .then((response) => {
+                    new Vue({
                     el: '#sessions',
                     data: {
                         relays: response.Relays
