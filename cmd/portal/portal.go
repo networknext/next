@@ -198,7 +198,7 @@ func main() {
 		s.RegisterService(&jsonrpc.BuyersService{
 			RedisClient: redisClientCache,
 		}, "")
-		http.Handle("/rpc", s)
+		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), s))
 
 		http.Handle("/", http.FileServer(http.Dir(uiDir)))
 
