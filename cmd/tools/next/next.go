@@ -182,6 +182,8 @@ func handleJSONRPCError(err error) {
 		switch e.Code {
 		case http.StatusUnauthorized:
 			log.Fatalf("%d: %s - use `next auth` to authorize the CLI", e.Code, http.StatusText(e.Code))
+		default:
+			log.Fatalf("%d: %s", e.Code, http.StatusText(e.Code))
 		}
 	default:
 		log.Fatal(err)
