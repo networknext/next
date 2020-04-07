@@ -3,3 +3,12 @@
 # Network Next Operator Tool
 
 Run `./next` in the root of the repo for available commands.
+
+## SSH
+
+SSH into a remote device. You must set the SSH key before attempting to connect to a device, otherwise you will get denied.
+
+To SSH: `next ssh [identifier]`
+
+To set the SSH key: `next ssh key [path to key file]`
+- You can't use '~' in the path directly, it must be expanded by the shell first. Or in other words don't quote the argument

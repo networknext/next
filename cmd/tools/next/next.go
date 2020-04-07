@@ -18,7 +18,6 @@ import (
 	"runtime"
 	"strings"
 	"sync"
-	"syscall"
 
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/tidwall/gjson"
@@ -302,13 +301,33 @@ func main() {
 					relays(rpcClient, "")
 					return nil
 				},
+			},
+			{
+				Name:       "ssh",
+				ShortUsage: "next ssh <device identifier>",
+				ShortHelp:  "SSH into a remote device, for relays the identifier is their name",
+				Exec: func(ctx context.Context, args []string) error {
+					if len(args) < 1 {
+						log.Fatal("need a device identifer")
+					}
+
+					SSHInto(env, rpcClient, args[0])
+
+					return nil
+				},
 				Subcommands: []*ffcli.Command{
 					{
-						Name:       "ssh",
-						ShortUsage: "next relays ssh <ip>",
-						ShortHelp:  "SSH into a specific relay",
-						Exec: func(_ context.Context, _ []string) error {
-							fmt.Println("To Be Implemented")
+						Name:       "key",
+						ShortUsage: "next ssh key <path to ssh key>",
+						ShortHelp:  "Set the key you'd like to use for ssh-ing",
+						Exec: func(ctx context.Context, args []string) error {
+							if len(args) > 0 {
+								env.SSHKeyFilePath = args[0]
+								env.Write()
+							}
+
+							fmt.Println(env.String())
+
 							return nil
 						},
 					},

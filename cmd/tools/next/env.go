@@ -10,8 +10,9 @@ import (
 )
 
 type Environment struct {
-	Hostname  string `json:"hostname"`
-	AuthToken string `json:"auth_token"`
+	Hostname       string `json:"hostname"`
+	AuthToken      string `json:"auth_token"`
+	SSHKeyFilePath string `json:"ssh_key_filepath`
 }
 
 func (e *Environment) String() string {
@@ -19,6 +20,7 @@ func (e *Environment) String() string {
 
 	sb.WriteString(fmt.Sprintf("Hostname: %s\n", e.Hostname))
 	sb.WriteString(fmt.Sprintf("AuthToken: %s\n", e.AuthToken))
+	sb.WriteString(fmt.Sprintf("SSHKeyFilePath: %s\n", e.SSHKeyFilePath))
 
 	return sb.String()
 }
