@@ -191,6 +191,8 @@ window.MapHandler = {
 			var hex_width = hexsize * 2 * Math.sin(Math.PI / 3);
 			var hex_height = hexsize * 1.5;
 
+			d3.selectAll("svg > *").remove();
+
 			var grid_odd_r =  makeGridDiagram(d3.select(svg),
 								Grid.trapezoidalShape(0, (width/hex_width)-1, 0, height/hex_height, Grid.oddRToCube))
 								  .addHexCoordinates(Grid.cubeToOddR, true, false)
@@ -275,7 +277,7 @@ window.MapHandler = {
 
 		function makeGridDiagram(svg, cubes) {
 			var diagram = {};
-		
+
 			diagram.nodes = cubes.map(function(n) { return {cube: n, key: n.toString()}; });
 			diagram.root = svg.append('g');
 			diagram.tiles = diagram.root.selectAll("g.tile").data(diagram.nodes, function(node) { return node.key; });
@@ -283,8 +285,8 @@ window.MapHandler = {
 				.append('g').attr('class', "tile")
 				.each(function(d) { d.node = d3.select(this); });
 			diagram.polygons = diagram.tiles.append('polygon');
-		
-		
+
+
 			diagram.makeTilesSelectable = function(callback) {
 				diagram.selected = d3.set();
 				diagram.toggle = function(cube) {
@@ -294,7 +296,7 @@ window.MapHandler = {
 						diagram.selected.add(cube);
 					}
 				};
-		
+
 				var drag_state = 0;
 				var drag = d3.behavior.drag()
 					.on('dragstart', function(d) {
@@ -312,7 +314,7 @@ window.MapHandler = {
 						}
 						callback();
 					});
-		
+
 				diagram.tiles
 					.on('click', function(d) {
 						d3.event.preventDefault();
@@ -321,16 +323,16 @@ window.MapHandler = {
 					})
 					.call(drag);
 			};
-		
-		
+
+
 			diagram.addLabels = function(labelFunction) {
 				diagram.tiles.append('text')
 					.attr('y', "0.4em")
 					.text(function(d, i) { return labelFunction? labelFunction(d, i) : ""; });
 				return diagram;
 			};
-		
-		
+
+
 			diagram.addHexCoordinates = function(converter, withMouseover, withText) {
 				diagram.nodes.forEach(function (n) { n.hex = converter(n.cube); });
 				if (withText) {
@@ -343,13 +345,13 @@ window.MapHandler = {
 						selection.append('tspan').attr('class', "r").text(d.hex.r);
 					});
 				}
-		
+
 				function setSelection(hex) {
 					diagram.tiles
 						.classed('q-axis-same', function(other) { return hex.q == other.hex.q; })
 						.classed('r-axis-same', function(other) { return hex.r == other.hex.r; });
 				}
-		
+
 				if (withMouseover) {
 					diagram.tiles
 						.on('mouseover', function(d) {
@@ -359,10 +361,10 @@ window.MapHandler = {
 							setSelection(d.hex);
 						});
 				}
-		
+
 				return diagram;
 			};
-		
+
 			diagram.addCubeCoordinates = function(withMouseover) {
 				diagram.tiles.append('text')
 					.each(function(d) {
@@ -376,7 +378,7 @@ window.MapHandler = {
 						selection.append('tspan').attr('class', "s").text(labels[1]);
 						selection.append('tspan').attr('class', "r").text(labels[2]);
 					});
-		
+
 				function relocate() {
 					var BL = 4;  // adjust to vertically center
 					var offsets = diagram.orientation? [14, -9+BL, -14, -9+BL, 0, 13+BL] : [13, 0+BL, -9, -14+BL, -9, 14+BL];
@@ -385,24 +387,24 @@ window.MapHandler = {
 					diagram.tiles.select(".s").attr('x', offsets[2]).attr('y', offsets[3]);
 					diagram.tiles.select(".r").attr('x', offsets[4]).attr('y', offsets[5]);
 				}
-		
+
 				function setSelection(cube) {
 					["q", "s", "r"].forEach(function (axis, i) {
 						diagram.tiles.classed(axis + "-axis-same", function(other) { return cube.v()[i] == other.cube.v()[i]; });
 					});
 				}
-		
+
 				if (withMouseover) {
 					diagram.tiles
 						.on('mouseover', function(d) { return setSelection(d.cube); })
 						.on('touchstart', function(d) { return setSelection(d.cube); });
 				}
-		
+
 				diagram.onUpdate(relocate);
 				return diagram;
 			};
-		
-		
+
+
 			diagram.addPath = function() {
 				diagram.pathLayer = this.root.append('path')
 					.attr('d', "M 0 0")
@@ -416,8 +418,8 @@ window.MapHandler = {
 					diagram.pathLayer.attr('d', d.join(" "));
 				};
 			};
-		
-		
+
+
 			var pre_callbacks = [];
 			var post_callbacks = [];
 			diagram.onLayout = function(callback) { pre_callbacks.push(callback); };
@@ -516,20 +518,20 @@ window.MapHandler = {
 				var d = distanceToScreen(element.node());
 				actions.push([id, action, d]);
 			});
-		
+
 			// Sort so that the ones closest to the viewport are first
 			actions.sort(function(a, b) { return a[2] - b[2]; });
-		
+
 			// Draw all the ones that are visible now, or up to
 			// idle_draws_allowed that aren't visible now
 			actions.forEach(function(ia) {
 				var id = ia[0], action = ia[1], d = ia[2];
 				if (d == 0 || idle_draws_allowed > 0) {
 					if (d != 0) --idle_draws_allowed;
-		
+
 					delay.queue.remove(id);
 					delay.refresh.add(id);
-		
+
 					var animate = delay.refresh.has(id) && d == 0;
 					action(function(selection) {
 						return animate? selection.transition().duration(200) : selection;
