@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -70,6 +71,13 @@ func main() {
 	redisClientRelays := storage.NewRedisClient(redisRelayHost)
 	if err := redisClientRelays.Ping().Err(); err != nil {
 		level.Error(logger).Log("envvar", "REDIS_HOST_RELAYS", "value", redisRelayHost, "err", err)
+		os.Exit(1)
+	}
+
+	redisHosts := strings.Split(os.Getenv("REDIS_HOST_CACHE"), ",")
+	redisClientCache := storage.NewRedisClient(redisHosts...)
+	if err := redisClientCache.Ping().Err(); err != nil {
+		level.Error(logger).Log("envvar", "REDIS_HOST_CACHE", "value", redisHosts, "err", err)
 		os.Exit(1)
 	}
 
@@ -172,7 +180,9 @@ func main() {
 			RedisClient: redisClientRelays,
 			Storage:     db,
 		}, "")
-		s.RegisterService(&jsonrpc.BuyersService{}, "")
+		s.RegisterService(&jsonrpc.BuyersService{
+			RedisClient: redisClientCache,
+		}, "")
 		http.Handle("/rpc", s)
 
 		http.Handle("/", http.FileServer(http.Dir(uiDir)))
