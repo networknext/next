@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/base64"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"net"
@@ -60,9 +61,17 @@ func main() {
 	}
 
 	var relayPublicKey []byte
+	var customerID uint64
+	var customerPublicKey []byte
 	{
 		if key := os.Getenv("RELAY_PUBLIC_KEY"); len(key) != 0 {
 			relayPublicKey, _ = base64.StdEncoding.DecodeString(key)
+		}
+
+		if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
+			customerPublicKey, _ = base64.StdEncoding.DecodeString(key)
+			customerID = binary.LittleEndian.Uint64(customerPublicKey[:8])
+			customerPublicKey = customerPublicKey[8:]
 		}
 	}
 
@@ -75,6 +84,12 @@ func main() {
 
 	addr := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 40000}
 	var db storage.Storer = &storage.InMemory{
+		LocalBuyer: &routing.Buyer{
+			ID:                   customerID,
+			Name:                 "local",
+			PublicKey:            customerPublicKey,
+			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
+		},
 		LocalRelays: []routing.Relay{
 			routing.Relay{
 				ID:        crypto.HashID(addr.String()),
