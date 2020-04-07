@@ -15,11 +15,11 @@
               integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
               crossorigin="anonymous">
         <style>
-            body { font-family: monospace; padding: 50px; background-color: #343a40;}
+            body { font-family: monospace; padding: 50px; background-color: lightgray;}
             table { width: 100%; border-collapse: collapse; }
             table, th, td { padding: 3px; border: 1px solid black; }
             td { text-align: center; }
-            h1 {color: lightgrey;}
+            h1 {color: darkgrey;}
             .logo-container {
                 width: 100%;
                 height: 24px;
@@ -45,7 +45,7 @@
                 max-height: 1000px;
                 height: 100%;
                 justify-content: center;
-                background-color: lightgray;
+                background-color: darkgrey;
             }
             .hidden {
                 display: none;
@@ -106,36 +106,56 @@
                 <svg id="grid-offset-odd-r" class="fill"></svg>
             </div>
             <div class="workspace row hidden" id="account-workspace">
-                <table id="relays">
-                    <tr>
-                        <th>Address</th>
-                        <th>Datacenter</th>
-                        <th>Lat / Long</th>
-                        <th>Seller</th>
-                    </tr>
-                    <tr v-for="relay in relays">
-                        <td>{{ relay.Addr.IP }}:{{ relay.Addr.Port }}</td>
-                        <td>{{ relay.Datacenter.Name }}</td>
-                        <td>{{ relay.Latitude }} / {{ relay.Longitude }}</td>
-                        <td>{{ relay.Seller.Name }}</td>
-                    </tr>
-                </table>
+                <table class="table" id="accounts">
+                    <thead class="thead-dark">
+                      <tr>
+                        <th scope="col">Id</th>
+                        <th scope="col">First</th>
+                        <th scope="col">Last</th>
+                        <th scope="col">Email</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <th scope="row">1</th>
+                        <td>Mark</td>
+                        <td>Otto</td>
+                        <td>email@test.com</td>
+                      </tr>
+                      <tr>
+                        <th scope="row">2</th>
+                        <td>Jacob</td>
+                        <td>Thornton</td>
+                        <td>email@test.com</td>
+                      </tr>
+                      <tr>
+                        <th scope="row">3</th>
+                        <td>Larry</td>
+                        <td>the Bird</td>
+                        <td>email@test.com</td>
+                      </tr>
+                    </tbody>
+                  </table>
             </div>
             <div class="workspace row hidden" id="session-workspace">
-                <table id="relays">
-                    <tr>
-                        <th>Address</th>
-                        <th>Datacenter</th>
-                        <th>Lat / Long</th>
-                        <th>Seller</th>
-                    </tr>
-                    <tr v-for="relay in relays">
-                        <td>{{ relay.Addr.IP }}:{{ relay.Addr.Port }}</td>
-                        <td>{{ relay.Datacenter.Name }}</td>
-                        <td>{{ relay.Latitude }} / {{ relay.Longitude }}</td>
-                        <td>{{ relay.Seller.Name }}</td>
-                    </tr>
-                </table>
+                <table class="table" id="sessions">
+                    <thead class="thead-dark">
+                      <tr>
+                        <th scope="col">Address</th>
+                        <th scope="col">Datacenter</th>
+                        <th scope="col">Lat / Long</th>
+                        <th scope="col">Seller</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="relay in relays" scope="row">
+                            <td>{{ relay.Addr.IP }}:{{ relay.Addr.Port }}</td>
+                            <td>{{ relay.Datacenter.Name }}</td>
+                            <td>{{ relay.Latitude }} / {{ relay.Longitude }}</td>
+                            <td>{{ relay.Seller.Name }}</td>
+                        </tr>
+                    </tbody>
+                  </table>
             </div>
         </div>
 
@@ -163,7 +183,7 @@
                 .call('OpsService.Relays', {})
                 .then((response) => {
                     new Vue({
-                    el: '#relays',
+                    el: '#sessions',
                     data: {
                         relays: response.Relays
                     }
