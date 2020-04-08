@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v7"
+	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 )
@@ -143,14 +144,46 @@ func (s *BuyersService) Sessions(r *http.Request, args *SessionsArgs, reply *Ses
 	return nil
 }
 
-type GameConfiguration struct {
-	BuyerID uint64 `json:"buyer_id"`
+type GameConfigurationArgs struct {
+	BuyerID   string `json:"buyer_id"`
+	SessionID string `json:"session_id"`
 }
 
 type GameConfigurationReply struct {
-	GameConfiguration gameConfiguration `json:"game_config"`
+	GameConfiguration gameConfiguration `json:"game_configuration"`
 }
 
 type gameConfiguration struct {
-	PublicKey []byte `json:"pub_key"`
+	PublicKey []byte
+}
+
+func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurationArgs, reply *GameConfigurationReply) error {
+	var err error
+	var ok bool
+	var buyerInfo *routing.Buyer
+	var firestoreClient storage.Firestore
+	var storer storage.Storer
+	var buyerID uint64
+
+	if args.BuyerID == "" {
+		return fmt.Errorf("buyer_id is required")
+	}
+
+	if buyerID, err = strconv.ParseUint(args.BuyerID, 10, 64); err != nil {
+		return fmt.Errorf("failed to convert BuyerID to uint64")
+	}
+
+	buyerInfo, ok = firestoreClient.Buyer(buyerID)
+
+	fmt.Println(buyerID)
+	fmt.Println(ok)
+	fmt.Println(buyerInfo)
+
+	buyerInfo, ok = storer.Buyer(buyerID)
+
+	fmt.Println(buyerID)
+	fmt.Println(ok)
+	fmt.Println(buyerInfo)
+
+	return nil
 }
