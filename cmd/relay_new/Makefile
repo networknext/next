@@ -12,6 +12,14 @@ help:
 release: $(BIN) $(OBJ) $(OBJ_DIRS)
 	$(MAKE) -f $(RELEASE_MAKEFILE)
 
+.PHONY: build-release-artifact
+build-release-artifact: release
+	$(MAKE) -f $(ARTIFACT_MAKEFILE) release
+
+.PHONY: publish-release-artifact
+publish-release-artifact: build-release-artifact
+	$(MAKE) -f $(ARTIFACT_MAKEFILE) publish-release
+
 .PHONY: debug
 debug: $(BIN) $(OBJ) $(OBJ_DIRS)
 	$(MAKE) -f $(DEBUG_MAKEFILE)

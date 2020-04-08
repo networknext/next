@@ -1,0 +1,6 @@
+[Unit]
+Description=Network Next Relay
+
+[Service]
+ExecStart=/app/relay
+EnvironmentFile=/app/relay.env
