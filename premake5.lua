@@ -126,3 +126,16 @@ project "test"
 		links { "pthread" }
 	filter "system:macosx"
 		linkoptions { "-framework SystemConfiguration -framework CoreFoundation" }
+
+project "soak"
+	kind "ConsoleApp"
+	links { "next", "sodium" }
+	files { "soak.cpp" }
+	defines { "SODIUM_STATIC" }
+	filter "system:windows"
+		disablewarnings { "4324" }
+		includedirs { "sodium/include/" }
+	filter "system:not windows"
+		links { "pthread" }
+	filter "system:macosx"
+		linkoptions { "-framework SystemConfiguration -framework CoreFoundation" }

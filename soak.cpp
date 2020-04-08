@@ -83,7 +83,7 @@ int main( int argc, char ** argv )
         {
             if ( clients[i] == NULL && ( rand() % 1000 ) == 0 )
             {
-                clients[i] = next_client_create( NULL, client_packet_received );
+                clients[i] = next_client_create( NULL, "0.0.0.0:0", client_packet_received );
                 next_assert( clients[i] );
                 next_printf( NEXT_LOG_LEVEL_INFO, "created client %d", i );
             }

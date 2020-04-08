@@ -5233,6 +5233,7 @@ struct next_client_internal_t
     next_platform_mutex_t * command_mutex;
     next_platform_mutex_t * notify_mutex;
     next_address_t server_address;
+    uint16_t bound_port;
     bool session_open;
     bool upgraded;
     bool flagged;
@@ -5284,11 +5285,18 @@ struct next_client_internal_t
 
 void next_client_internal_destroy( next_client_internal_t * client );
 
-next_client_internal_t * next_client_internal_create( void * context )
+next_client_internal_t * next_client_internal_create( void * context, const char * bind_address_string )
 {
 #if !NEXT_DEVELOPMENT
     next_printf( NEXT_LOG_LEVEL_INFO, "client sdk version is %s", NEXT_VERSION_FULL );
 #endif // #if !NEXT_DEVELOPMENT
+
+    next_address_t bind_address;
+    if ( next_address_parse( &bind_address, bind_address_string ) != NEXT_OK )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "client failed to parse bind address: %s", bind_address_string );
+        return NULL;
+    }
 
     next_client_internal_t * client = (next_client_internal_t*) next_malloc( context, sizeof(next_client_internal_t) );
     if ( !client ) 
@@ -5319,11 +5327,6 @@ next_client_internal_t * next_client_internal_create( void * context )
         return NULL;
     }
 
-    next_address_t bind_address;
-    memset( &bind_address, 0, sizeof(bind_address) );
-    bind_address.type = NEXT_ADDRESS_IPV4;
-    bind_address.port = 0;
-
     client->socket = next_platform_socket_create( client->context, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, 0.1f, next_global_config.socket_send_buffer_size, next_global_config.socket_receive_buffer_size, !next_global_config.disable_tagging );
     if ( client->socket == NULL )
     {
@@ -5332,7 +5335,11 @@ next_client_internal_t * next_client_internal_create( void * context )
         return NULL;
     }
 
-    next_printf( NEXT_LOG_LEVEL_INFO, "client bound to port %d", bind_address.port );
+    int client_port = bind_address.port;
+
+    next_printf( NEXT_LOG_LEVEL_INFO, "client bound to port %d", client_port );
+
+    client->bound_port = client_port;
 
     client->command_mutex = next_platform_mutex_create( client->context );
     if ( client->command_mutex == NULL )
@@ -6502,6 +6509,7 @@ struct next_client_t
     bool upgraded;
     bool fallback_to_direct;
     uint8_t open_session_sequence;
+    uint16_t bound_port;
     uint64_t session_id;
     next_address_t server_address;
     next_client_internal_t * internal;
@@ -6515,8 +6523,9 @@ struct next_client_t
 
 void next_client_destroy( next_client_t * client );
 
-next_client_t * next_client_create( void * context, void (*packet_received_callback)( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes ) )
+next_client_t * next_client_create( void * context, const char * bind_address, void (*packet_received_callback)( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes ) )
 {
+    next_assert( bind_address );
     next_assert( packet_received_callback );
 
     next_client_t * client = (next_client_t*) next_malloc( context, sizeof(next_client_t) );
@@ -6528,13 +6537,15 @@ next_client_t * next_client_create( void * context, void (*packet_received_callb
     client->context = context;
     client->packet_received_callback = packet_received_callback;
 
-    client->internal = next_client_internal_create( client->context );
+    client->internal = next_client_internal_create( client->context, bind_address );
     if ( !client->internal )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client could not create internal client" );
         next_client_destroy( client );
         return NULL;
     }
+
+    client->bound_port = client->internal->bound_port;
 
     client->thread = next_platform_thread_create( client->context, next_client_internal_thread_function, client->internal );
     next_assert( client->thread );
@@ -6549,6 +6560,12 @@ next_client_t * next_client_create( void * context, void (*packet_received_callb
     next_bandwidth_limiter_reset( &client->receive_bandwidth );
 
     return client;
+}
+
+uint16_t next_client_port( next_client_t * client )
+{
+    next_assert( client );
+    return client->bound_port;
 }
 
 void next_client_destroy( next_client_t * client )
@@ -11831,14 +11848,23 @@ static void test_client_packet_received_callback( next_client_t * client, void *
 
 static void test_client()
 {
-    next_client_t * client = next_client_create( NULL, test_client_packet_received_callback );
+    next_client_t * client = next_client_create( NULL, "0.0.0.0:0", test_client_packet_received_callback );
     check( client );
+    check( next_client_port( client ) != 0 );
     next_client_open_session( client, "127.0.0.1:12345" );
     uint8_t packet[256];
     memset( packet, 0, sizeof(packet) );
     next_client_send_packet( client, packet, sizeof(packet) );
     next_client_update( client );
     next_client_close_session( client );
+    next_client_destroy( client );
+}
+
+static void test_client_port()
+{
+    next_client_t * client = next_client_create( NULL, "0.0.0.0:7777", test_client_packet_received_callback );
+    check( client );
+    check( next_client_port( client ) == 7777 );
     next_client_destroy( client );
 }
 
@@ -11855,14 +11881,22 @@ static void test_server()
 {
     next_server_t * server = next_server_create( NULL, "127.0.0.1:0", "0.0.0.0:0", "local", test_server_packet_received_callback );
     check( server );
+    check( next_server_port( server ) != 0 );
     next_address_t address;
     next_address_parse( &address, "127.0.0.1" );
     address.port = server->bound_port;
     uint8_t packet[256];
     memset( packet, 0, sizeof(packet) );
     next_server_send_packet( server, &address, packet, sizeof(packet) );
-    check( next_server_port( server ) != 0 );
     next_server_update( server );
+    next_server_destroy( server );
+}
+
+static void test_server_port()
+{
+    next_server_t * server = next_server_create( NULL, "127.0.0.1", "0.0.0.0:9000", "local", test_server_packet_received_callback );
+    check( server );
+    check( next_server_port( server ) == 9000 );
     next_server_destroy( server );
 }
 
@@ -11870,7 +11904,7 @@ static void test_direct()
 {
     next_server_t * server = next_server_create( NULL, "127.0.0.1", "0.0.0.0", "local", test_server_packet_received_callback );
     check( server );
-    next_client_t * client = next_client_create( NULL, test_client_packet_received_callback );
+    next_client_t * client = next_client_create( NULL, "0.0.0.0:0", test_client_packet_received_callback );
     check( client );
     char server_address[NEXT_MAX_ADDRESS_STRING_LENGTH];
     snprintf( server_address, sizeof( server_address ), "127.0.0.1:%hu", server->bound_port );
@@ -13338,7 +13372,9 @@ void next_test()
     RUN_TEST( test_platform_thread );
     RUN_TEST( test_platform_mutex );
     RUN_TEST( test_client );
+    RUN_TEST( test_client_port );
     RUN_TEST( test_server );
+    RUN_TEST( test_server_port );
     RUN_TEST( test_direct );
     RUN_TEST( test_upgrade_token );
     RUN_TEST( test_packets );
