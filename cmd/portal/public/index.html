@@ -15,11 +15,11 @@
               integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
               crossorigin="anonymous">
         <style>
-            body { font-family: monospace; padding: 50px; background-color: #343a40;}
+            body { font-family: monospace; padding: 50px; background-color: lightgray;}
             table { width: 100%; border-collapse: collapse; }
             table, th, td { padding: 3px; border: 1px solid black; }
             td { text-align: center; }
-            h1 {color: lightgrey;}
+            h1 {color: darkgrey;}
             .logo-container {
                 width: 100%;
                 height: 24px;
@@ -42,10 +42,12 @@
             }
             .workspace {
                 width: 100%;
-                max-height: 1000px;
-                height: 100%;
                 justify-content: center;
-                background-color: lightgray;
+                background-color: darkgrey;
+            }
+            .map {
+                height: 100%;
+                max-height: 1000px;
             }
             .hidden {
                 display: none;
@@ -101,40 +103,72 @@
             <div class="dashboard-title row">
                 <h1 id="workspace-title">Session Map</h1>
             </div>
-            <div class="workspace row"  id="map-workspace">
-                <canvas class="fill" id="canvas"></canvas>
+            <div class="workspace row map" id="map-workspace">
+                <canvas class="fill hidden" id="canvas"></canvas>
+                <svg id="grid-offset-odd-r" class="fill"></svg>
             </div>
             <div class="workspace row hidden" id="account-workspace">
-                <table id="relays">
-                    <tr>
-                        <th>Address</th>
-                        <th>Datacenter</th>
-                        <th>Lat / Long</th>
-                        <th>Seller</th>
-                    </tr>
-                    <tr v-for="relay in relays">
-                        <td>{{ relay.Addr.IP }}:{{ relay.Addr.Port }}</td>
-                        <td>{{ relay.Datacenter.Name }}</td>
-                        <td>{{ relay.Latitude }} / {{ relay.Longitude }}</td>
-                        <td>{{ relay.Seller.Name }}</td>
-                    </tr>
-                </table>
+                <table class="table" id="accounts">
+                    <thead class="thead-dark">
+                      <tr>
+                        <th scope="col">Id</th>
+                        <th scope="col">First</th>
+                        <th scope="col">Last</th>
+                        <th scope="col">Email</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <th scope="row">1</th>
+                        <td>Mark</td>
+                        <td>Otto</td>
+                        <td>email@test.com</td>
+                      </tr>
+                      <tr>
+                        <th scope="row">2</th>
+                        <td>Jacob</td>
+                        <td>Thornton</td>
+                        <td>email@test.com</td>
+                      </tr>
+                      <tr>
+                        <th scope="row">3</th>
+                        <td>Larry</td>
+                        <td>the Bird</td>
+                        <td>email@test.com</td>
+                      </tr>
+                    </tbody>
+                  </table>
             </div>
             <div class="workspace row hidden" id="session-workspace">
-                <table id="relays">
-                    <tr>
-                        <th>Address</th>
-                        <th>Datacenter</th>
-                        <th>Lat / Long</th>
-                        <th>Seller</th>
-                    </tr>
-                    <tr v-for="relay in relays">
-                        <td>{{ relay.Addr.IP }}:{{ relay.Addr.Port }}</td>
-                        <td>{{ relay.Datacenter.Name }}</td>
-                        <td>{{ relay.Latitude }} / {{ relay.Longitude }}</td>
-                        <td>{{ relay.Seller.Name }}</td>
-                    </tr>
-                </table>
+                <table class="table" id="sessions">
+                    <thead class="thead-dark">
+                      <tr>
+                        <th scope="col">Session ID</th>
+                        <th scope="col">User Hash</th>
+                        <th scope="col">Direct RTT</th>
+                        <th scope="col">Next RTT</th>
+                        <th scope="col">Change RTT</th>
+                        <th scope="col">On Network Next</th>
+                        <th scope="col">Expires At</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="session in sessions" scope="row">
+                            <td>{{ session.session_id }}</td>
+                            <td>{{ session.user_hash }}</td>
+                            <td>{{ session.direct_rtt }}</td>
+                            <td>{{ session.next_rtt }}</td>
+                            <td>{{ session.change_rtt }}</td>
+                            <td v-if="session.on_network_next">
+                                <i class="fas fa-check"></i>
+                            </td>
+                            <td v-if="!session.on_network_next">
+                                <i class="fas fa-times-circle"></i>
+                            </td>
+                            <td>{{ session.expires_at }}</td>
+                        </tr>
+                    </tbody>
+                  </table>
             </div>
         </div>
 
@@ -151,20 +185,27 @@
                 integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6"
                 crossorigin="anonymous">
         </script>
+        <script src="js/d3/d3.v3.min.js"></script>
+        <script src="js/d3/topojson.v1.min.js"></script>
+        <script src="js/d3/d3.hexbin.js"></script>
+        <script src="js/hexmap/hexlib.js"></script>
         <script src="./js/portal.js"></script>
         <script>
             reloadMap();
             JSONRPCClient
-                .call('OpsService.Relays', {})
+                .call('BuyersService.Sessions', {buyer_id: '13672574147039585173'})
                 .then((response) => {
                     new Vue({
-                    el: '#relays',
-                    data: {
-                        relays: response.Relays
-                    }
+                        el: '#sessions',
+                        data: {
+                            sessions: response.sessions || []
+                        }
                     });
                 })
-                .catch((e) => console.log(e));
+                .catch((e) => {
+                    console.log("Something went wrong with the map init!");
+                    console.log(e);
+                });
         </script>
     </body>
 </html>
