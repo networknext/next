@@ -54,26 +54,26 @@ func TestSessions(t *testing.T) {
 
 		assert.Equal(t, len(reply.Sessions), 4)
 
-		assert.Equal(t, reply.Sessions[0].SessionID, uint64(333))
-		assert.Equal(t, reply.Sessions[0].UserHash, uint64(777))
+		assert.Equal(t, reply.Sessions[0].SessionID, string("333"))
+		assert.Equal(t, reply.Sessions[0].UserHash, string("777"))
 		assert.Equal(t, reply.Sessions[0].DirectRTT, float64(20))
 		assert.Equal(t, reply.Sessions[0].NextRTT, float64(10))
 		assert.Equal(t, reply.Sessions[0].ChangeRTT, float64(-10))
 
-		assert.Equal(t, reply.Sessions[1].SessionID, uint64(222))
-		assert.Equal(t, reply.Sessions[1].UserHash, uint64(888))
+		assert.Equal(t, reply.Sessions[1].SessionID, string("222"))
+		assert.Equal(t, reply.Sessions[1].UserHash, string("888"))
 		assert.Equal(t, reply.Sessions[1].DirectRTT, float64(10))
 		assert.Equal(t, reply.Sessions[1].NextRTT, float64(5))
 		assert.Equal(t, reply.Sessions[1].ChangeRTT, float64(-5))
 
-		assert.Equal(t, reply.Sessions[2].SessionID, uint64(111))
-		assert.Equal(t, reply.Sessions[2].UserHash, uint64(999))
+		assert.Equal(t, reply.Sessions[2].SessionID, string("111"))
+		assert.Equal(t, reply.Sessions[2].UserHash, string("999"))
 		assert.Equal(t, reply.Sessions[2].DirectRTT, float64(5))
 		assert.Equal(t, reply.Sessions[2].NextRTT, float64(1))
 		assert.Equal(t, reply.Sessions[2].ChangeRTT, float64(-4))
 
-		assert.Equal(t, reply.Sessions[3].SessionID, uint64(444))
-		assert.Equal(t, reply.Sessions[3].UserHash, uint64(666))
+		assert.Equal(t, reply.Sessions[3].SessionID, string("444"))
+		assert.Equal(t, reply.Sessions[3].UserHash, string("666"))
 		assert.Equal(t, reply.Sessions[3].DirectRTT, float64(20))
 		assert.Equal(t, reply.Sessions[3].NextRTT, float64(40))
 		assert.Equal(t, reply.Sessions[3].ChangeRTT, float64(20))
@@ -86,8 +86,8 @@ func TestSessions(t *testing.T) {
 
 		assert.Equal(t, len(reply.Sessions), 1)
 
-		assert.Equal(t, reply.Sessions[0].SessionID, uint64(555))
-		assert.Equal(t, reply.Sessions[0].UserHash, uint64(555))
+		assert.Equal(t, reply.Sessions[0].SessionID, string("555"))
+		assert.Equal(t, reply.Sessions[0].UserHash, string("555"))
 		assert.Equal(t, reply.Sessions[0].DirectRTT, float64(20))
 		assert.Equal(t, reply.Sessions[0].NextRTT, float64(10))
 		assert.Equal(t, reply.Sessions[0].ChangeRTT, float64(-10))
