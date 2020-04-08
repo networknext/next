@@ -8,11 +8,13 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v7"
+	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 )
 
 type BuyersService struct {
 	RedisClient redis.Cmdable
+	Storage     storage.Storer
 }
 
 type MapArgs struct {
@@ -139,4 +141,16 @@ func (s *BuyersService) Sessions(r *http.Request, args *SessionsArgs, reply *Ses
 	})
 
 	return nil
+}
+
+type GameConfiguration struct {
+	BuyerID uint64 `json:"buyer_id"`
+}
+
+type GameConfigurationReply struct {
+	GameConfiguration gameConfiguration `json:"game_config"`
+}
+
+type gameConfiguration struct {
+	PublicKey []byte `json:"pub_key"`
 }
