@@ -79,10 +79,8 @@ func TestRelayStateUpdate(t *testing.T) {
 	t.Run("found", func(t *testing.T) {
 		svc := makeSvc()
 		err := svc.RelayStateUpdate(nil, &jsonrpc.RelayStateUpdateArgs{
-			Relay: jsonrpc.Relay{
-				ID:    1,
-				State: routing.RelayStateDisabled,
-			},
+			RelayID:    1,
+			RelayState: routing.RelayStateDisabled,
 		}, &jsonrpc.RelayStateUpdateReply{})
 		assert.NoError(t, err)
 
@@ -98,10 +96,8 @@ func TestRelayStateUpdate(t *testing.T) {
 	t.Run("not found", func(t *testing.T) {
 		svc := makeSvc()
 		err := svc.RelayStateUpdate(nil, &jsonrpc.RelayStateUpdateArgs{
-			Relay: jsonrpc.Relay{
-				ID:    987654321,
-				State: routing.RelayStateDisabled,
-			},
+			RelayID:    987654321,
+			RelayState: routing.RelayStateDisabled,
 		}, &jsonrpc.RelayStateUpdateReply{})
 		assert.Error(t, err)
 

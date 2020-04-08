@@ -22,7 +22,17 @@ func run(cmd string, args []string, env []string) {
 	}
 }
 
-func findRelay(rpcClient jsonrpc.RPCClient, relayName string) *localjsonrpc.Relay {
+func testForSSHKey(env Environment) {
+	if env.SSHKeyFilePath == "" {
+		log.Fatalf("The ssh key file name is not set, set it with 'next ssh key <path>'")
+	}
+
+	if _, err := os.Stat(env.SSHKeyFilePath); err != nil {
+		log.Fatalf("The ssh key file '%s' does not exist, set it with 'next ssh key <path>'", env.SSHKeyFilePath)
+	}
+}
+
+func SSHInto(env Environment, rpcClient jsonrpc.RPCClient, relayName string) {
 	args := localjsonrpc.RelaysArgs{
 		Name: relayName,
 	}
@@ -37,36 +47,37 @@ func findRelay(rpcClient jsonrpc.RPCClient, relayName string) *localjsonrpc.Rela
 	}
 
 	relay := reply.Relays[0]
-	return &relay
-}
 
-func testForSSHKey(env Environment) {
-	if env.SSHKeyFilePath == "" {
-		log.Fatalf("The ssh key file name is not set, set it with 'next ssh key <path>'")
-	}
-
-	if _, err := os.Stat(env.SSHKeyFilePath); err != nil {
-		log.Fatalf("The ssh key file '%s' does not exist, set it with 'next ssh key <path>'", env.SSHKeyFilePath)
-	}
-}
-
-func SSHInto(env Environment, rpcClient jsonrpc.RPCClient, relayName string) {
-	relay := findRelay(rpcClient, relayName)
 	testForSSHKey(env)
 	con := NewSSHConn(relay.SSHUser, relay.ManagementAddr, relay.SSHPort, env.SSHKeyFilePath)
 	con.Connect()
 }
 
 func Disable(env Environment, rpcClient jsonrpc.RPCClient, relayName string) {
-	relay := findRelay(rpcClient, relayName)
+	args := localjsonrpc.RelaysArgs{
+		Name: relayName,
+	}
+
+	var reply localjsonrpc.RelaysReply
+	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
+		log.Fatal(err)
+	}
+
+	if len(reply.Relays) == 0 {
+		log.Fatalf("could not find relay with name '%s'", relayName)
+	}
+
+	relay := reply.Relays[0]
+
 	fmt.Printf("Disabling relay '%s' (id = %d)\n", relay.Name, relay.ID)
 	testForSSHKey(env)
 	relay.State = routing.RelayStateDisabled
-	args := localjsonrpc.RelayStateUpdateArgs{
-		Relay: *relay,
+	updateArgs := localjsonrpc.RelayStateUpdateArgs{
+		RelayID:    relay.ID,
+		RelayState: relay.State,
 	}
-	var reply localjsonrpc.RelayStateUpdateReply
-	if err := rpcClient.CallFor(&reply, "OpsService.RelayStateUpdate", &args); err != nil {
+	var updateReply localjsonrpc.RelayStateUpdateReply
+	if err := rpcClient.CallFor(&updateReply, "OpsService.RelayStateUpdate", &updateArgs); err != nil {
 		log.Fatalf("could not update relay state: %v", err)
 	}
 	con := NewSSHConn(relay.SSHUser, relay.ManagementAddr, relay.SSHPort, env.SSHKeyFilePath)

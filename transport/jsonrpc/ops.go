@@ -48,10 +48,10 @@ type RelaysArgs struct {
 }
 
 type RelaysReply struct {
-	Relays []Relay
+	Relays []relay
 }
 
-type Relay struct {
+type relay struct {
 	ID                  uint64             `json:"id"`
 	Name                string             `json:"name"`
 	Addr                string             `json:"addr"`
@@ -68,7 +68,7 @@ type Relay struct {
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {
 	for _, r := range s.Storage.Relays() {
-		reply.Relays = append(reply.Relays, Relay{
+		reply.Relays = append(reply.Relays, relay{
 			ID:                  r.ID,
 			Name:                r.Name,
 			Addr:                r.Addr.String(),
@@ -85,7 +85,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 	}
 
 	if args.Name != "" {
-		var filtered []Relay
+		var filtered []relay
 		for idx := range reply.Relays {
 			if strings.Contains(reply.Relays[idx].Name, args.Name) {
 				filtered = append(filtered, reply.Relays[idx])
@@ -102,7 +102,8 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 }
 
 type RelayStateUpdateArgs struct {
-	Relay Relay `json:"relay"`
+	RelayID    uint64             `json:"relay_id"`
+	RelayState routing.RelayState `json:"relay_state"`
 }
 
 type RelayStateUpdateReply struct {
@@ -111,8 +112,8 @@ type RelayStateUpdateReply struct {
 func (s *OpsService) RelayStateUpdate(r *http.Request, args *RelayStateUpdateArgs, reply *RelayStateUpdateReply) error {
 	ctx := context.Background()
 	relay := routing.Relay{
-		ID:    args.Relay.ID,
-		State: args.Relay.State,
+		ID:    args.RelayID,
+		State: args.RelayState,
 	}
 
 	if err := s.Storage.SetRelayState(ctx, &relay); err != nil {
