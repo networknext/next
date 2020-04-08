@@ -108,7 +108,7 @@ endif
 
 .PHONY: help
 help: ## this list
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+	@echo -e "$$(grep -hE '^\S+:.*##' $(MAKEFILE_LIST) | sed -e 's/:.*##\s*/:/' -e 's/^\(.\+\):\(.*\)/\\033[36m\1\\033[m:\2/' | column -c2 -t -s :)"
 
 .PHONY: clean
 clean: ## cleans the dist directory of all builds
@@ -131,12 +131,12 @@ format: ## runs gofmt on all go source code
 .PHONY: test
 test: test-unit
 
-.PHONY: test-unit-sdk ## runs sdk unit tests
-test-unit-sdk: build-sdk-test
+.PHONY: test-unit-SDK
+test-unit-sdk: build-sdk-test ## runs sdk unit tests
 	@$(DIST_DIR)/$(SDKNAME)_test
 
-.PHONY: test-unit-relay ## runs relay unit tests
-test-unit-relay: build-relay
+.PHONY: test-unit-relay
+test-unit-relay: build-relay ## runs relay unit tests
 	@$(DIST_DIR)/relay test
 
 .PHONY: test-unit-backend
@@ -157,19 +157,19 @@ test-soak: clean build-sdk-test build-soak-test ## runs soak test
 
 ifeq ($(OS),linux)
 .PHONY: test-soak-valgrind
-test-soak-valgrind: clean build-sdk-test build-soak-test
+test-soak-valgrind: clean build-sdk-test build-soak-test ## runs sdk soak test
 	@valgrind --tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes --track-origins=yes $(DIST_DIR)/$(SDKNAME)_soak_test
 	@printf "\n"
 endif
 
 .PHONY: build-functional-backend
-build-functional-backend:
+build-functional-backend: ## builds the functional backend
 	@printf "Building functional backend... " ; \
 	$(GO) build -o ./dist/func_backend ./cmd/tools/functional/backend/*.go ; \
 	printf "done\n" ; \
 
 .PHONY: build-test-func
-build-test-func: clean build-sdk build-relay build-functional-server build-functional-client build-functional-backend
+build-test-func: clean build-sdk build-relay build-functional-server build-functional-client build-functional-backend ## builds the functional tests
 
 .PHONY: run-test-func
 run-test-func:
@@ -319,16 +319,38 @@ build-portal-artifact: build-portal ## builds the portal with the right env vars
 	@cd $(DIST_DIR)/artifact/portal && tar -zcf ../../portal.dev.tar.gz public app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
 	@printf "$(DIST_DIR)/portal.dev.tar.gz\n"
 
+.PHONY: build-portal-artifact
+build-portal-prod-artifact: build-portal ## builds the portal with the right env vars and creates a .tar.gz
+	@printf "Building portal artifact... "
+	@mkdir -p $(DIST_DIR)/artifact/portal
+	@cp $(DIST_DIR)/portal $(DIST_DIR)/artifact/portal/app
+	@cp -r ./cmd/portal/public $(DIST_DIR)/artifact/portal
+	@cp ./cmd/portal/prod.env $(DIST_DIR)/artifact/portal/app.env
+	@cp $(DEPLOY_DIR)/$(SYSTEMD_SERVICE_FILE) $(DIST_DIR)/artifact/portal/$(SYSTEMD_SERVICE_FILE)
+	@cd $(DIST_DIR)/artifact/portal && tar -zcf ../../portal.prod.tar.gz public app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
+	@printf "$(DIST_DIR)/portal.prod.tar.gz\n"
+
 .PHONY: publish-portal-artifact
 publish-portal-artifact: ## publishes the portal artifact to GCP Storage with gsutil
 	@printf "Publishing portal artifact... \n\n"
 	@gsutil cp $(DIST_DIR)/portal.dev.tar.gz $(ARTIFACT_BUCKET)/portal.dev.tar.gz
 	@printf "done\n"
 
+.PHONY: publish-portal-prod-artifact
+publish-portal-prod-artifact: ## publishes the portal artifact to GCP Storage with gsutil
+	@printf "Publishing portal artifact... \n\n"
+	@gsutil cp $(DIST_DIR)/portal.prod.tar.gz $(ARTIFACT_BUCKET_PROD)/portal.prod.tar.gz
+	@printf "done\n"
+
 .PHONY: deploy-portal
 deploy-portal: ## builds and deploys the portal to the dev VM
 	@printf "Deploying portal... \n\n"
 	gcloud compute ssh portal-dev-1 -- 'cd /app && sudo ./vm-update-app.sh -a $(ARTIFACT_BUCKET)/portal.dev.tar.gz'
+
+.PHONY: deploy-portal-prod
+deploy-portal-prod: ## builds and deploys the portal to the prod instance group
+	@printf "Deploying portal... \n\n"
+	@./deploy/prod.sh portal-mig $(ARTIFACT_BUCKET_PROD)/portal.prod.tar.gz
 
 .PHONY: build-relay-backend
 build-relay-backend: ## builds the relay backend binary
@@ -369,9 +391,14 @@ publish-relay-backend-prod-artifact: ## publishes the relay backend artifact to 
 	@printf "done\n"
 
 .PHONY: deploy-relay-backend
-deploy-relay-backend: build-relay-backend ## builds and deploys the relay backend to the dev VM
+deploy-relay-backend: ## builds and deploys the relay backend to the dev VM
 	@printf "Deploying relay backend... \n\n"
 	gcloud compute ssh relay-backend-dev-1 -- 'cd /app && sudo ./vm-update-app.sh -a $(ARTIFACT_BUCKET)/relay_backend.dev.tar.gz'
+
+.PHONY: deploy-relay-backend-prod
+deploy-relay-backend-prod: ## builds and deploys the relay backend to the prod instance group
+	@printf "Deploying relay backend... \n\n"
+	@./deploy/prod.sh relay-backend-mig $(ARTIFACT_BUCKET_PROD)/relay_backend.prod.tar.gz
 
 .PHONY: build-server-backend
 build-server-backend: ## builds the server backend binary
@@ -412,21 +439,29 @@ publish-server-backend-prod-artifact: ## publishes the server backend artifact t
 	@printf "done\n"
 
 .PHONY: deploy-server-backend
-deploy-server-backend: build-server-backend ## builds and deploys the server backend to the dev VM
+deploy-server-backend: ## builds and deploys the server backend to the dev VM
 	@printf "Deploying server backend... \n\n"
 	gcloud compute ssh server-backend-dev-1 -- 'cd /app && sudo ./vm-update-app.sh -a $(ARTIFACT_BUCKET)/server_backend.dev.tar.gz'
 
+.PHONY: deploy-server-backend-prod
+deploy-server-backend-prod: ## builds and deploys the server backend to the prod instance group
+	@printf "Deploying server backend... \n\n"
+	@./deploy/prod.sh server-backend-mig $(ARTIFACT_BUCKET_PROD)/server_backend.prod.tar.gz
+
 .PHONY: build-backend-artifacts
-build-backend-artifacts: build-relay-backend-artifact build-server-backend-artifact ## builds the backend artifacts
+build-backend-artifacts: build-portal-artifact build-relay-backend-artifact build-server-backend-artifact ## builds the backend artifacts
 
 .PHONY: build-backend-prod-artifacts
-build-backend-prod-artifacts: build-relay-backend-prod-artifact build-server-backend-prod-artifact ## builds the backend artifacts
+build-backend-prod-artifacts: build-portal-prod-artifact build-relay-backend-prod-artifact build-server-backend-prod-artifact ## builds the backend artifacts
 
 .PHONY: publish-backend-artifacts
-publish-backend-artifacts: publish-relay-backend-artifact publish-server-backend-artifact ## publishes the backend artifacts to GCP Storage with gsutil
+publish-backend-artifacts: publish-portal-artifact publish-relay-backend-artifact publish-server-backend-artifact ## publishes the backend artifacts to GCP Storage with gsutil
 
 .PHONY: publish-backend-prod-artifacts
-publish-backend-prod-artifacts: publish-relay-backend-prod-artifact publish-server-backend-prod-artifact ## publishes the backend artifacts to GCP Storage with gsutil
+publish-backend-prod-artifacts: publish-portal-prod-artifact publish-relay-backend-prod-artifact publish-server-backend-prod-artifact ## publishes the backend artifacts to GCP Storage with gsutil
+
+.PHONY: deploy-backend
+deploy-backend: deploy-portal deploy-relay-backend deploy-server-backend
 
 .PHONY: build-server
 build-server: build-sdk ## builds the server
