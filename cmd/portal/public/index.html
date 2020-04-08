@@ -18,7 +18,7 @@
             body { font-family: monospace; padding: 50px; background-color: lightgray;}
             table { width: 100%; border-collapse: collapse; }
             table, th, td { padding: 3px; border: 1px solid black; }
-            td { text-align: center; }
+            td, th { text-align: center; }
             h1 {color: darkgrey;}
             .logo-container {
                 width: 100%;
@@ -108,6 +108,33 @@
                 <svg id="grid-offset-odd-r" class="fill"></svg>
             </div>
             <div class="workspace row hidden" id="account-workspace">
+                <form class="px-5">
+                    <div class="form-row">
+                      <div class="form-group col-sm-1">
+                        <label for="inputEmail">Email</label>
+                        <input type="text" readonly class="form-control-plaintext" id="staticEmail" value="email@example.com">
+                      </div>
+                      <div class="form-group col-sm-2">
+                        <label for="newPassword">New Password</label>
+                        <input type="password" class="form-control" id="newPassword">
+                      </div>
+                      <div class="form-group col-sm-2">
+                        <label for="confirmPassword">Confirm New Password</label>
+                        <input type="password" class="form-control" id="confirmPassword">
+                      </div>
+                      <div class="form-group col-sm-2">
+                        <label for="newPubKey">New Public Key</label>
+                        <input type="text" class="form-control" id="newPubKey">
+                      </div>
+                      <div class="form-group col-sm-2">
+                        <label for="confirmPubKey">Confirm Public Key</label>
+                        <input type="text" class="form-control" id="confirmPubKey">
+                      </div>
+                      <div class="form-group col-sm-1">
+                        <button type="submit" id="saveButton" class="btn btn-primary form-control">Save</button>
+                      </div>
+                    </div>
+                  </form>
                 <table class="table" id="accounts">
                     <thead class="thead-dark">
                       <tr>
@@ -115,29 +142,23 @@
                         <th scope="col">First</th>
                         <th scope="col">Last</th>
                         <th scope="col">Email</th>
+                        <th scope="col">Edit</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr>
-                        <th scope="row">1</th>
-                        <td>Mark</td>
-                        <td>Otto</td>
-                        <td>email@test.com</td>
-                      </tr>
-                      <tr>
-                        <th scope="row">2</th>
-                        <td>Jacob</td>
-                        <td>Thornton</td>
-                        <td>email@test.com</td>
-                      </tr>
-                      <tr>
-                        <th scope="row">3</th>
-                        <td>Larry</td>
-                        <td>the Bird</td>
-                        <td>email@test.com</td>
-                      </tr>
+                        <tr v-for="account in accounts" scope="row">
+                            <td>{{ account.id }}</td>
+                            <td>{{ account.first_name }}</td>
+                            <td>{{ account.last_name }}</td>
+                            <td>{{ account.email }}</td>
+                            <td>
+                                <div>
+                                    Buttons go here
+                                </div>
+                            </td>
+                        </tr>
                     </tbody>
-                  </table>
+                </table>
             </div>
             <div class="workspace row hidden" id="session-workspace">
                 <table class="table" id="sessions">
