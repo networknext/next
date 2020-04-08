@@ -1,6 +1,7 @@
 package transport_test
 
 import (
+	"context"
 	"net"
 	"testing"
 
@@ -200,8 +201,9 @@ func TestBuildRouteRequest(t *testing.T) {
 		},
 	}
 
-	storer := storage.InMemory{
-		LocalRelays: clientRelays,
+	storer := storage.InMemory{}
+	for _, clientRelay := range clientRelays {
+		storer.AddRelay(context.Background(), clientRelay)
 	}
 
 	actual := transport.NewRouteRequest(updatePacket, buyer, serverData, location, &storer, clientRelays)

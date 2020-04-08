@@ -123,22 +123,19 @@ func main() {
 
 	// Create an in-memory relay & datacenter store
 	// that doesn't require talking to configstore
-	var db storage.Storer = &storage.InMemory{
-		LocalRelays: []routing.Relay{
-			routing.Relay{
-				PublicKey: relayPublicKey,
-				Datacenter: routing.Datacenter{
-					ID:   crypto.HashID("local"),
-					Name: "local",
-				},
-				Seller: routing.Seller{
-					Name:              "local",
-					IngressPriceCents: 10,
-					EgressPriceCents:  20,
-				},
-			},
+	var db storage.Storer = &storage.InMemory{}
+	db.AddRelay(ctx, routing.Relay{
+		PublicKey: relayPublicKey,
+		Datacenter: routing.Datacenter{
+			ID:   crypto.HashID("local"),
+			Name: "local",
 		},
-	}
+		Seller: routing.Seller{
+			Name:              "local",
+			IngressPriceCents: 10,
+			EgressPriceCents:  20,
+		},
+	})
 
 	// Create a no-op relay traffic stats publisher
 	var trafficStatsPublisher stats.Publisher = &stats.NoOpTrafficStatsPublisher{}
@@ -318,8 +315,8 @@ func main() {
 					continue
 				}
 
-				if err := db.SetRelayState(ctx, &relay); err != nil {
-					level.Error(logger).Log("msg", "failed to set relay state", "err", err)
+				if err := db.SetRelay(ctx, relay); err != nil {
+					level.Error(logger).Log("msg", "failed to set relay in storage", "id", relay.ID, "err", err)
 					continue
 				}
 			}

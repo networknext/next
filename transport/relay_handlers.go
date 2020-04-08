@@ -101,16 +101,16 @@ func RelayHandlerFunc(logger log.Logger, params *RelayHandlerConfig) func(writer
 		id := crypto.HashID(relayRequest.Address.String())
 
 		// Check if the relay is registered in firestore
-		relayEntry, ok := params.Storer.Relay(id)
-		if !ok {
-			level.Error(locallogger).Log("msg", "relay not in firestore")
-			http.Error(writer, "relay not in firestore", http.StatusNotFound)
+		relayEntry, err := params.Storer.Relay(id)
+		if err != nil {
+			level.Error(locallogger).Log("msg", "failed to get relay from storage", "err", err)
+			http.Error(writer, "failed to get relay from storage", http.StatusNotFound)
 			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
 			return
 		}
 
 		// Set the relay to the firestore entry for now
-		relay := *relayEntry
+		relay := relayEntry
 
 		// Get the relay's HTTP authorization header
 		authorizationHeader := request.Header.Get("Authorization")
@@ -371,10 +371,10 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 
 		id := crypto.HashID(relayInitRequest.Address.String())
 
-		relayEntry, ok := params.Storer.Relay(id)
-		if !ok {
-			level.Error(locallogger).Log("msg", "relay not in firestore")
-			http.Error(writer, "relay not in firestore", http.StatusNotFound)
+		relayEntry, err := params.Storer.Relay(id)
+		if err != nil {
+			level.Error(locallogger).Log("msg", "failed to get relay from storage", "err", err)
+			http.Error(writer, "failed to get relay from storage", http.StatusNotFound)
 			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
 			return
 		}

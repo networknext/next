@@ -266,9 +266,8 @@ func TestRelayHandlerNoAuthHeader(t *testing.T) {
 		},
 	}
 
-	inMemory := &storage.InMemory{
-		LocalRelays: []routing.Relay{relay},
-	}
+	inMemory := &storage.InMemory{}
+	inMemory.AddRelay(context.Background(), relay)
 
 	request := transport.RelayRequest{
 		Address: *udpAddr,
@@ -301,9 +300,8 @@ func TestRelayHandlerBadAuthHeaderLength(t *testing.T) {
 		},
 	}
 
-	inMemory := &storage.InMemory{
-		LocalRelays: []routing.Relay{relay},
-	}
+	inMemory := &storage.InMemory{}
+	inMemory.AddRelay(context.Background(), relay)
 
 	request := transport.RelayRequest{
 		Address: *udpAddr,
@@ -341,9 +339,8 @@ func TestRelayHandlerBadAuthHeaderToken(t *testing.T) {
 		},
 	}
 
-	inMemory := &storage.InMemory{
-		LocalRelays: []routing.Relay{relay},
-	}
+	inMemory := &storage.InMemory{}
+	inMemory.AddRelay(context.Background(), relay)
 
 	request := transport.RelayRequest{
 		Address: *udpAddr,
@@ -381,9 +378,8 @@ func TestRelayHandlerBadNonce(t *testing.T) {
 		},
 	}
 
-	inMemory := &storage.InMemory{
-		LocalRelays: []routing.Relay{relay},
-	}
+	inMemory := &storage.InMemory{}
+	inMemory.AddRelay(context.Background(), relay)
 
 	request := transport.RelayRequest{
 		Address: *udpAddr,
@@ -421,9 +417,8 @@ func TestRelayHandlerBadEncryptedAddress(t *testing.T) {
 		},
 	}
 
-	inMemory := &storage.InMemory{
-		LocalRelays: []routing.Relay{relay},
-	}
+	inMemory := &storage.InMemory{}
+	inMemory.AddRelay(context.Background(), relay)
 
 	nonce := make([]byte, crypto.NonceSize)
 	crand.Read(nonce)
@@ -474,9 +469,8 @@ func TestRelayHandlerDecryptFailure(t *testing.T) {
 		},
 	}
 
-	inMemory := &storage.InMemory{
-		LocalRelays: []routing.Relay{relay},
-	}
+	inMemory := &storage.InMemory{}
+	inMemory.AddRelay(context.Background(), relay)
 
 	nonce := make([]byte, crypto.NonceSize)
 	crand.Read(nonce)
@@ -532,9 +526,8 @@ func TestRelayHandlerRedisFailure(t *testing.T) {
 		PublicKey: relayPublicKey,
 	}
 
-	inMemory := &storage.InMemory{
-		LocalRelays: []routing.Relay{relay},
-	}
+	inMemory := &storage.InMemory{}
+	inMemory.AddRelay(context.Background(), relay)
 
 	nonce := make([]byte, crypto.NonceSize)
 	crand.Read(nonce)
@@ -596,9 +589,8 @@ func TestRelayHandlerRelayUnmarshalFailure(t *testing.T) {
 	entry := "bad relay entry"
 	redisServer.HSet(routing.HashKeyAllRelays, relay.Key(), entry)
 
-	inMemory := &storage.InMemory{
-		LocalRelays: []routing.Relay{relay},
-	}
+	inMemory := &storage.InMemory{}
+	inMemory.AddRelay(context.Background(), relay)
 
 	nonce := make([]byte, crypto.NonceSize)
 	crand.Read(nonce)
@@ -696,13 +688,11 @@ func TestRelayHandlerSuccess(t *testing.T) {
 		}
 	}
 
-	inMemory := &storage.InMemory{
-		LocalBuyer: &routing.Buyer{
-			PublicKey: customerPublicKey[8:],
-		},
-
-		LocalRelays: []routing.Relay{relay},
-	}
+	inMemory := &storage.InMemory{}
+	inMemory.AddBuyer(context.Background(), routing.Buyer{
+		PublicKey: customerPublicKey[8:],
+	})
+	inMemory.AddRelay(context.Background(), relay)
 
 	nonce := make([]byte, crypto.NonceSize)
 	crand.Read(nonce)

@@ -89,19 +89,16 @@ func pingRelayBackendInit(t *testing.T, contentType string, relay routing.Relay,
 		rtodcnameMap[uint32(relay.ID)] = relay.Datacenter.Name
 		rpubkeyMap := make(map[uint32][]byte)
 		rpubkeyMap[uint32(relay.ID)] = relay.PublicKey
-		inMemory = &storage.InMemory{
-			LocalBuyer: &routing.Buyer{
-				PublicKey: customerPublicKey[8:],
-			},
-
-			LocalRelays: []routing.Relay{
-				routing.Relay{
-					ID:        crypto.HashID("127.0.0.1:40000"),
-					PublicKey: relayPublicKey,
-					Latitude:  13,
-					Longitude: 13,
-				}},
-		}
+		inMemory = &storage.InMemory{}
+		inMemory.AddBuyer(context.Background(), routing.Buyer{
+			PublicKey: customerPublicKey[8:],
+		})
+		inMemory.AddRelay(context.Background(), routing.Relay{
+			ID:        crypto.HashID("127.0.0.1:40000"),
+			PublicKey: relayPublicKey,
+			Latitude:  13,
+			Longitude: 13,
+		})
 	}
 
 	handler := transport.RelayInitHandlerFunc(log.NewNopLogger(), &transport.RelayInitHandlerConfig{
