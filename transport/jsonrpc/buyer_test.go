@@ -43,13 +43,13 @@ func TestSessions(t *testing.T) {
 
 	t.Run("session_id not found", func(t *testing.T) {
 		var reply jsonrpc.SessionsReply
-		err := svc.Sessions(nil, &jsonrpc.SessionsArgs{BuyerID: 12345, SessionID: 3434}, &reply)
+		err := svc.Sessions(nil, &jsonrpc.SessionsArgs{BuyerID: "12345", SessionID: "3434"}, &reply)
 		assert.Error(t, err)
 	})
 
 	t.Run("list", func(t *testing.T) {
 		var reply jsonrpc.SessionsReply
-		err := svc.Sessions(nil, &jsonrpc.SessionsArgs{BuyerID: 12345}, &reply)
+		err := svc.Sessions(nil, &jsonrpc.SessionsArgs{BuyerID: "12345"}, &reply)
 		assert.NoError(t, err)
 
 		assert.Equal(t, len(reply.Sessions), 4)
@@ -81,7 +81,7 @@ func TestSessions(t *testing.T) {
 
 	t.Run("single", func(t *testing.T) {
 		var reply jsonrpc.SessionsReply
-		err := svc.Sessions(nil, &jsonrpc.SessionsArgs{BuyerID: 54321, SessionID: 555}, &reply)
+		err := svc.Sessions(nil, &jsonrpc.SessionsArgs{BuyerID: "54321", SessionID: "555"}, &reply)
 		assert.NoError(t, err)
 
 		assert.Equal(t, len(reply.Sessions), 1)
