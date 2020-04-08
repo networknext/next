@@ -345,7 +345,7 @@ publish-portal-prod-artifact: ## publishes the portal artifact to GCP Storage wi
 .PHONY: deploy-portal
 deploy-portal: ## builds and deploys the portal to the dev VM
 	@printf "Deploying portal... \n\n"
-	gcloud compute ssh portal-dev-1 -- 'cd /app && sudo ./vm-update-app.sh -a $(ARTIFACT_BUCKET)/portal.dev.tar.gz'
+	gcloud compute --project "network-next-v3-dev" ssh portal-dev-1 -- 'cd /app && sudo ./vm-update-app.sh -a $(ARTIFACT_BUCKET)/portal.dev.tar.gz'
 
 .PHONY: deploy-portal-prod
 deploy-portal-prod: ## builds and deploys the portal to the prod instance group
@@ -393,7 +393,7 @@ publish-relay-backend-prod-artifact: ## publishes the relay backend artifact to 
 .PHONY: deploy-relay-backend
 deploy-relay-backend: ## builds and deploys the relay backend to the dev VM
 	@printf "Deploying relay backend... \n\n"
-	gcloud compute ssh relay-backend-dev-1 -- 'cd /app && sudo ./vm-update-app.sh -a $(ARTIFACT_BUCKET)/relay_backend.dev.tar.gz'
+	gcloud compute --project "network-next-v3-dev" ssh relay-backend-dev-1 -- 'cd /app && sudo ./vm-update-app.sh -a $(ARTIFACT_BUCKET)/relay_backend.dev.tar.gz'
 
 .PHONY: deploy-relay-backend-prod
 deploy-relay-backend-prod: ## builds and deploys the relay backend to the prod instance group
@@ -441,7 +441,7 @@ publish-server-backend-prod-artifact: ## publishes the server backend artifact t
 .PHONY: deploy-server-backend
 deploy-server-backend: ## builds and deploys the server backend to the dev VM
 	@printf "Deploying server backend... \n\n"
-	gcloud compute ssh server-backend-dev-1 -- 'cd /app && sudo ./vm-update-app.sh -a $(ARTIFACT_BUCKET)/server_backend.dev.tar.gz'
+	gcloud compute --project "network-next-v3-dev" ssh server-backend-dev-1 -- 'cd /app && sudo ./vm-update-app.sh -a $(ARTIFACT_BUCKET)/server_backend.dev.tar.gz'
 
 .PHONY: deploy-server-backend-prod
 deploy-server-backend-prod: ## builds and deploys the server backend to the prod instance group
