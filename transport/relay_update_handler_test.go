@@ -119,7 +119,7 @@ func relayUpdateSuccessAssertions(t *testing.T, recorder *httptest.ResponseRecor
 
 	assert.NotContains(t, relaysToPingIDs, entry.ID)
 	assert.NotContains(t, relaysToPingAddrs, addr)
-	assert.Equal(t, routing.RelayStateShuttingDown, actual.State)
+	assert.Equal(t, routing.RelayStateMaintenance, actual.State)
 
 	errMetricsStruct := reflect.ValueOf(errMetrics)
 	for i := 0; i < errMetricsStruct.NumField(); i++ {
@@ -472,7 +472,7 @@ func TestRelayUpdateSuccess(t *testing.T) {
 		},
 		PublicKey:      make([]byte, crypto.KeySize),
 		LastUpdateTime: time.Now().Add(-time.Second),
-		State:          routing.RelayStateOnline,
+		State:          routing.RelayStateEnabled,
 	}
 
 	raw, err := entry.MarshalBinary()

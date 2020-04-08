@@ -36,7 +36,7 @@ func TestRelay(t *testing.T) {
 		Latitude:       123.456,
 		Longitude:      654.321,
 		LastUpdateTime: time.Now().Round(0), // Round(0) drops any monoatomic clock reading so that deep equal passes
-		State:          routing.RelayStateOnline,
+		State:          routing.RelayStateEnabled,
 	}
 
 	t.Run("MarshalBinary()", func(t *testing.T) {

@@ -7,11 +7,22 @@ import (
 	"os/exec"
 	"syscall"
 
+	"github.com/networknext/backend/routing"
 	localjsonrpc "github.com/networknext/backend/transport/jsonrpc"
 	"github.com/ybbus/jsonrpc"
 )
 
-func SSHInto(env Environment, rpcClient jsonrpc.RPCClient, relayName string) {
+const (
+	DisableRelayScript = `if [ ! $(id -u) = 0 ]; then sudo systemctl stop test_service; else systemctl stop test_service; fi`
+)
+
+func run(cmd string, args []string, env []string) {
+	if err := syscall.Exec(cmd, args, env); err != nil {
+		log.Fatalf("failed to exec %s: %v", cmd, err)
+	}
+}
+
+func findRelay(rpcClient jsonrpc.RPCClient, relayName string) *localjsonrpc.Relay {
 	args := localjsonrpc.RelaysArgs{
 		Name: relayName,
 	}
@@ -25,8 +36,11 @@ func SSHInto(env Environment, rpcClient jsonrpc.RPCClient, relayName string) {
 		log.Fatalf("could not find relay with name '%s'", relayName)
 	}
 
-	relay := &reply.Relays[0]
+	relay := reply.Relays[0]
+	return &relay
+}
 
+func testForSSHKey(env Environment) {
 	if env.SSHKeyFilePath == "" {
 		log.Fatalf("The ssh key file name is not set, set it with 'next ssh key <path>'")
 	}
@@ -34,10 +48,29 @@ func SSHInto(env Environment, rpcClient jsonrpc.RPCClient, relayName string) {
 	if _, err := os.Stat(env.SSHKeyFilePath); err != nil {
 		log.Fatalf("The ssh key file '%s' does not exist, set it with 'next ssh key <path>'", env.SSHKeyFilePath)
 	}
+}
 
+func SSHInto(env Environment, rpcClient jsonrpc.RPCClient, relayName string) {
+	relay := findRelay(rpcClient, relayName)
+	testForSSHKey(env)
 	con := NewSSHConn(relay.SSHUser, relay.ManagementAddr, relay.SSHPort, env.SSHKeyFilePath)
-
 	con.Connect()
+}
+
+func Disable(env Environment, rpcClient jsonrpc.RPCClient, relayName string) {
+	relay := findRelay(rpcClient, relayName)
+	fmt.Printf("Disabling relay '%s' (id = %d)\n", relay.Name, relay.ID)
+	testForSSHKey(env)
+	relay.State = routing.RelayStateDisabled
+	args := localjsonrpc.RelayStateUpdateArgs{
+		Relay: *relay,
+	}
+	var reply localjsonrpc.RelayStateUpdateReply
+	if err := rpcClient.CallFor(&reply, "OpsService.RelayStateUpdate", &args); err != nil {
+		log.Fatalf("could not update relay state: %v", err)
+	}
+	con := NewSSHConn(relay.SSHUser, relay.ManagementAddr, relay.SSHPort, env.SSHKeyFilePath)
+	con.ConnectAndThen(DisableRelayScript)
 }
 
 type SSHConn struct {
@@ -56,21 +89,36 @@ func NewSSHConn(user, address string, port int64, authKeyFilename string) SSHCon
 	}
 }
 
+func (con SSHConn) commonSSHCommands(prgm string) []string {
+	args := make([]string, 5)
+	args[0] = prgm
+	args[1] = "-i"
+	args[2] = con.keyfile
+	args[3] = "-p"
+	args[4] = fmt.Sprintf("%d", con.port)
+	return args
+}
+
 func (con SSHConn) Connect() {
 	ssh, err := exec.LookPath("ssh")
 	if err != nil {
 		log.Fatalf("error: could not find ssh")
 	}
-	args := make([]string, 6)
-	args[0] = "ssh"
-	args[1] = "-i"
-	args[2] = con.keyfile
-	args[3] = "-p"
-	args[4] = fmt.Sprintf("%d", con.port)
-	args[5] = fmt.Sprintf("%s@%s", con.user, con.address)
+	args := con.commonSSHCommands(ssh)
+	args = append(args, fmt.Sprintf("%s@%s", con.user, con.address))
 	env := os.Environ()
-	err = syscall.Exec(ssh, args, env)
+	run(ssh, args, env)
+}
+
+func (con SSHConn) ConnectAndThen(cmd string) {
+	ssh, err := exec.LookPath("ssh")
 	if err != nil {
-		log.Fatalf("error: failed to exec ssh")
+		log.Fatalf("could not find ssh: %v", err)
 	}
+	args := con.commonSSHCommands(ssh)
+	args = append(args, "-t")
+	args = append(args, fmt.Sprintf("%s@%s", con.user, con.address))
+	args = append(args, cmd)
+	env := os.Environ()
+	run(ssh, args, env)
 }

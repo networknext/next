@@ -267,8 +267,8 @@ func main() {
 				ShortUsage: "next ssh <device identifier>",
 				ShortHelp:  "SSH into a remote device, for relays the identifier is their name",
 				Exec: func(ctx context.Context, args []string) error {
-					if len(args) < 1 {
-						log.Fatal("need a device identifer")
+					if len(args) == 0 {
+						log.Fatal("You need to supply a device identifer")
 					}
 
 					SSHInto(env, rpcClient, args[0])
@@ -291,6 +291,20 @@ func main() {
 							return nil
 						},
 					},
+				},
+			},
+			{
+				Name:       "disable",
+				ShortUsage: "next enable <relay name>",
+				ShortHelp:  "Enable the specified relay",
+				Exec: func(_ context.Context, args []string) error {
+					if len(args) == 0 {
+						log.Fatal("You need to supply a relay name")
+					}
+
+					Disable(env, rpcClient, args[0])
+
+					return nil
 				},
 			},
 		},

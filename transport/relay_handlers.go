@@ -428,7 +428,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			return
 		}
 
-		relay.State = routing.RelayStateOnline
+		relay.State = routing.RelayStateEnabled
 
 		// HSet for full relay data
 		if res := params.RedisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay); res.Err() != nil && res.Err() != redis.Nil {
@@ -590,7 +590,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, params *RelayUpdateHandlerConfig)
 		}
 
 		if relayUpdateRequest.ShuttingDown {
-			relay.State = routing.RelayStateShuttingDown
+			relay.State = routing.RelayStateMaintenance
 		}
 
 		// HSet for full relay data
@@ -615,7 +615,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, params *RelayUpdateHandlerConfig)
 					continue
 				}
 
-				if unmarshaledValue.State == routing.RelayStateOnline {
+				if unmarshaledValue.State == routing.RelayStateEnabled {
 					relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(unmarshaledValue.ID), Address: unmarshaledValue.Addr.String()})
 				}
 			}

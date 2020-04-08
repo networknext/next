@@ -1,6 +1,7 @@
 package jsonrpc
 
 import (
+	"context"
 	"net/http"
 	"sort"
 	"strings"
@@ -47,10 +48,10 @@ type RelaysArgs struct {
 }
 
 type RelaysReply struct {
-	Relays []relay
+	Relays []Relay
 }
 
-type relay struct {
+type Relay struct {
 	ID                  uint64             `json:"id"`
 	Name                string             `json:"name"`
 	Addr                string             `json:"addr"`
@@ -67,7 +68,7 @@ type relay struct {
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {
 	for _, r := range s.Storage.Relays() {
-		reply.Relays = append(reply.Relays, relay{
+		reply.Relays = append(reply.Relays, Relay{
 			ID:                  r.ID,
 			Name:                r.Name,
 			Addr:                r.Addr.String(),
@@ -84,7 +85,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 	}
 
 	if args.Name != "" {
-		var filtered []relay
+		var filtered []Relay
 		for idx := range reply.Relays {
 			if strings.Contains(reply.Relays[idx].Name, args.Name) {
 				filtered = append(filtered, reply.Relays[idx])
@@ -96,6 +97,27 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 	sort.Slice(reply.Relays, func(i int, j int) bool {
 		return reply.Relays[i].Name < reply.Relays[j].Name
 	})
+
+	return nil
+}
+
+type RelayStateUpdateArgs struct {
+	Relay Relay `json:"relay"`
+}
+
+type RelayStateUpdateReply struct {
+}
+
+func (s *OpsService) RelayStateUpdate(r *http.Request, args *RelayStateUpdateArgs, reply *RelayStateUpdateReply) error {
+	ctx := context.Background()
+	relay := routing.Relay{
+		ID:    args.Relay.ID,
+		State: args.Relay.State,
+	}
+
+	if err := s.Storage.SetRelayState(ctx, &relay); err != nil {
+		return err
+	}
 
 	return nil
 }
