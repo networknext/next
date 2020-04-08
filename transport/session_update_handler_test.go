@@ -375,11 +375,10 @@ func TestVerificationFailed(t *testing.T) {
 	sessionMetrics.ErrorMetrics.VerifyFailure = errMetric
 	sessionMetrics.DirectSessions = directMetric
 
-	db := storage.InMemory{
-		LocalBuyer: &routing.Buyer{
-			PublicKey: TestServerBackendPublicKey, // normally would be buyers public key, intentionally using servers to cause error
-		},
-	}
+	db := storage.InMemory{}
+	db.AddBuyer(context.Background(), routing.Buyer{
+		PublicKey: TestServerBackendPublicKey, // normally would be buyers public key, intentionally using servers to cause error
+	})
 
 	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 	assert.NoError(t, err)
@@ -431,11 +430,10 @@ func TestSessionPacketSequenceTooOld(t *testing.T) {
 	sessionMetrics.ErrorMetrics.OldSequence = errMetric
 	sessionMetrics.DirectSessions = directMetric
 
-	db := storage.InMemory{
-		LocalBuyer: &routing.Buyer{
-			PublicKey: TestBuyersServerPublicKey,
-		},
-	}
+	db := storage.InMemory{}
+	db.AddBuyer(context.Background(), routing.Buyer{
+		PublicKey: TestBuyersServerPublicKey,
+	})
 
 	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 	assert.NoError(t, err)
@@ -498,11 +496,10 @@ func TestBadWriteCachedResponse(t *testing.T) {
 
 	sessionMetrics.ErrorMetrics.WriteCachedResponseFailure = metric
 
-	db := storage.InMemory{
-		LocalBuyer: &routing.Buyer{
-			PublicKey: TestBuyersServerPublicKey,
-		},
-	}
+	db := storage.InMemory{}
+	db.AddBuyer(context.Background(), routing.Buyer{
+		PublicKey: TestBuyersServerPublicKey,
+	})
 
 	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 	assert.NoError(t, err)
@@ -558,9 +555,6 @@ func TestBadWriteCachedResponse(t *testing.T) {
 }
 
 func TestClientIPLookupFail(t *testing.T) {
-	buyersServerPubKey, buyersServerPrivKey, err := ed25519.GenerateKey(nil)
-	assert.NoError(t, err)
-
 	redisServer, err := miniredis.Run()
 	assert.NoError(t, err)
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
@@ -576,11 +570,10 @@ func TestClientIPLookupFail(t *testing.T) {
 	sessionMetrics.ErrorMetrics.ClientLocateFailure = errMetric
 	sessionMetrics.DirectSessions = directMetric
 
-	db := storage.InMemory{
-		LocalBuyer: &routing.Buyer{
-			PublicKey: buyersServerPubKey,
-		},
-	}
+	db := storage.InMemory{}
+	db.AddBuyer(context.Background(), routing.Buyer{
+		PublicKey: TestBuyersServerPublicKey,
+	})
 
 	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
 		return routing.Location{}, errors.New("nope")
@@ -621,7 +614,7 @@ func TestClientIPLookupFail(t *testing.T) {
 
 		Signature: make([]byte, ed25519.SignatureSize),
 	}
-	packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData())
+	packet.Signature = crypto.Sign(TestBuyersServerPrivateKey, packet.GetSignData())
 
 	data, err := packet.MarshalBinary()
 	assert.NoError(t, err)
@@ -650,11 +643,10 @@ func TestNoRelaysNearClient(t *testing.T) {
 	sessionMetrics.ErrorMetrics.NearRelaysLocateFailure = errMetric
 	sessionMetrics.DirectSessions = directMetric
 
-	db := storage.InMemory{
-		LocalBuyer: &routing.Buyer{
-			PublicKey: TestBuyersServerPublicKey,
-		},
-	}
+	db := storage.InMemory{}
+	db.AddBuyer(context.Background(), routing.Buyer{
+		PublicKey: TestBuyersServerPublicKey,
+	})
 
 	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
 		return routing.Location{
@@ -738,11 +730,10 @@ func TestNoRoutesFound(t *testing.T) {
 	sessionMetrics.ErrorMetrics.RouteFailure = errMetric
 	sessionMetrics.DirectSessions = directMetric
 
-	db := storage.InMemory{
-		LocalBuyer: &routing.Buyer{
-			PublicKey: TestBuyersServerPublicKey,
-		},
-	}
+	db := storage.InMemory{}
+	db.AddBuyer(context.Background(), routing.Buyer{
+		PublicKey: TestBuyersServerPublicKey,
+	})
 
 	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
 		return routing.Location{
@@ -834,11 +825,10 @@ func TestTokenEncryptionFailure(t *testing.T) {
 	sessionMetrics.ErrorMetrics.EncryptionFailure = errMetric
 	sessionMetrics.DirectSessions = directMetric
 
-	db := storage.InMemory{
-		LocalBuyer: &routing.Buyer{
-			PublicKey: TestBuyersServerPublicKey,
-		},
-	}
+	db := storage.InMemory{}
+	db.AddBuyer(context.Background(), routing.Buyer{
+		PublicKey: TestBuyersServerPublicKey,
+	})
 
 	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
 		return routing.Location{
@@ -945,11 +935,10 @@ func TestBadWriteResponse(t *testing.T) {
 
 	sessionMetrics.ErrorMetrics.WriteResponseFailure = metric
 
-	db := storage.InMemory{
-		LocalBuyer: &routing.Buyer{
-			PublicKey: TestBuyersServerPublicKey,
-		},
-	}
+	db := storage.InMemory{}
+	db.AddBuyer(context.Background(), routing.Buyer{
+		PublicKey: TestBuyersServerPublicKey,
+	})
 
 	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
 		return routing.Location{
@@ -1063,11 +1052,10 @@ func TestBillingFailure(t *testing.T) {
 
 	sessionMetrics.ErrorMetrics.BillingFailure = metric
 
-	db := storage.InMemory{
-		LocalBuyer: &routing.Buyer{
-			PublicKey: TestBuyersServerPublicKey,
-		},
-	}
+	db := storage.InMemory{}
+	db.AddBuyer(context.Background(), routing.Buyer{
+		PublicKey: TestBuyersServerPublicKey,
+	})
 
 	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
 		return routing.Location{
@@ -1184,11 +1172,10 @@ func TestNextRouteResponse(t *testing.T) {
 	sessionMetrics.DecisionMetrics.RTTReduction = decisionMetric
 	sessionMetrics.NextSessions = nextMetric
 
-	db := storage.InMemory{
-		LocalBuyer: &routing.Buyer{
-			PublicKey: TestBuyersServerPublicKey,
-		},
-	}
+	db := storage.InMemory{}
+	db.AddBuyer(context.Background(), routing.Buyer{
+		PublicKey: TestBuyersServerPublicKey,
+	})
 
 	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
 		return routing.Location{
@@ -1301,11 +1288,10 @@ func TestContinueRouteResponse(t *testing.T) {
 	sessionMetrics.DecisionMetrics.RTTReduction = decisionMetric
 	sessionMetrics.NextSessions = nextMetric
 
-	db := storage.InMemory{
-		LocalBuyer: &routing.Buyer{
-			PublicKey: TestBuyersServerPublicKey,
-		},
-	}
+	db := storage.InMemory{}
+	db.AddBuyer(context.Background(), routing.Buyer{
+		PublicKey: TestBuyersServerPublicKey,
+	})
 
 	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
 		return routing.Location{
@@ -1425,11 +1411,10 @@ func TestCachedRouteResponse(t *testing.T) {
 	sessionMetrics.DirectSessions = directMetric
 	sessionMetrics.NextSessions = nextMetric
 
-	db := storage.InMemory{
-		LocalBuyer: &routing.Buyer{
-			PublicKey: TestBuyersServerPublicKey,
-		},
-	}
+	db := storage.InMemory{}
+	db.AddBuyer(context.Background(), routing.Buyer{
+		PublicKey: TestBuyersServerPublicKey,
+	})
 
 	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
 		return routing.Location{
@@ -1569,11 +1554,10 @@ func TestVetoedRTT(t *testing.T) {
 	sessionMetrics.DecisionMetrics.VetoRTT = decisionMetric
 	sessionMetrics.DirectSessions = directMetric
 
-	db := storage.InMemory{
-		LocalBuyer: &routing.Buyer{
-			PublicKey: TestBuyersServerPublicKey,
-		},
-	}
+	db := storage.InMemory{}
+	db.AddBuyer(context.Background(), routing.Buyer{
+		PublicKey: TestBuyersServerPublicKey,
+	})
 
 	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
 		return routing.Location{
@@ -1691,11 +1675,10 @@ func TestVetoExpiredRTT(t *testing.T) {
 	sessionMetrics.DecisionMetrics.InitialSlice = decisionMetric
 	sessionMetrics.DirectSessions = directMetric
 
-	db := storage.InMemory{
-		LocalBuyer: &routing.Buyer{
-			PublicKey: TestBuyersServerPublicKey,
-		},
-	}
+	db := storage.InMemory{}
+	db.AddBuyer(context.Background(), routing.Buyer{
+		PublicKey: TestBuyersServerPublicKey,
+	})
 
 	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
 		return routing.Location{
@@ -1813,11 +1796,10 @@ func TestVetoedPacketLoss(t *testing.T) {
 	sessionMetrics.DecisionMetrics.VetoPacketLoss = decisionMetric
 	sessionMetrics.DirectSessions = directMetric
 
-	db := storage.InMemory{
-		LocalBuyer: &routing.Buyer{
-			PublicKey: TestBuyersServerPublicKey,
-		},
-	}
+	db := storage.InMemory{}
+	db.AddBuyer(context.Background(), routing.Buyer{
+		PublicKey: TestBuyersServerPublicKey,
+	})
 
 	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
 		return routing.Location{
@@ -1935,11 +1917,10 @@ func TestVetoExpiredPacketLoss(t *testing.T) {
 	sessionMetrics.DecisionMetrics.InitialSlice = decisionMetric
 	sessionMetrics.DirectSessions = directMetric
 
-	db := storage.InMemory{
-		LocalBuyer: &routing.Buyer{
-			PublicKey: TestBuyersServerPublicKey,
-		},
-	}
+	db := storage.InMemory{}
+	db.AddBuyer(context.Background(), routing.Buyer{
+		PublicKey: TestBuyersServerPublicKey,
+	})
 
 	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
 		return routing.Location{
@@ -2057,14 +2038,13 @@ func TestForceDirect(t *testing.T) {
 	sessionMetrics.DecisionMetrics.ForceDirect = decisionMetric
 	sessionMetrics.DirectSessions = directMetric
 
-	db := storage.InMemory{
-		LocalBuyer: &routing.Buyer{
-			PublicKey:            TestBuyersServerPublicKey,
-			RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
-		},
-	}
-
-	db.LocalBuyer.RoutingRulesSettings.Mode = routing.ModeForceDirect
+	routeRuleSettings := routing.DefaultRoutingRulesSettings
+	routeRuleSettings.Mode = routing.ModeForceDirect
+	db := storage.InMemory{}
+	db.AddBuyer(context.Background(), routing.Buyer{
+		PublicKey:            TestBuyersServerPublicKey,
+		RoutingRulesSettings: routeRuleSettings,
+	})
 
 	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
 		return routing.Location{
@@ -2176,14 +2156,13 @@ func TestForceNext(t *testing.T) {
 	sessionMetrics.DecisionMetrics.ForceNext = decisionMetric
 	sessionMetrics.NextSessions = nextMetric
 
-	db := storage.InMemory{
-		LocalBuyer: &routing.Buyer{
-			PublicKey:            TestBuyersServerPublicKey,
-			RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
-		},
-	}
-
-	db.LocalBuyer.RoutingRulesSettings.Mode = routing.ModeForceNext
+	routeRuleSettings := routing.DefaultRoutingRulesSettings
+	routeRuleSettings.Mode = routing.ModeForceNext
+	db := storage.InMemory{}
+	db.AddBuyer(context.Background(), routing.Buyer{
+		PublicKey:            TestBuyersServerPublicKey,
+		RoutingRulesSettings: routeRuleSettings,
+	})
 
 	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
 		return routing.Location{

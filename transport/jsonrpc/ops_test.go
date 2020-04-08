@@ -1,6 +1,7 @@
 package jsonrpc_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/networknext/backend/routing"
@@ -10,10 +11,11 @@ import (
 )
 
 func TestBuyers(t *testing.T) {
+	storer := storage.InMemory{}
+	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "local.local.1"})
+
 	svc := jsonrpc.OpsService{
-		Storage: &storage.InMemory{
-			LocalBuyer: &routing.Buyer{ID: 1, Name: "local.local.1"},
-		},
+		Storage: &storer,
 	}
 
 	t.Run("list", func(t *testing.T) {
@@ -27,13 +29,12 @@ func TestBuyers(t *testing.T) {
 }
 
 func TestRelays(t *testing.T) {
+	storer := storage.InMemory{}
+	storer.AddRelay(context.Background(), routing.Relay{ID: 1, Name: "local.local.1"})
+	storer.AddRelay(context.Background(), routing.Relay{ID: 2, Name: "local.local.2"})
+
 	svc := jsonrpc.OpsService{
-		Storage: &storage.InMemory{
-			LocalRelays: []routing.Relay{
-				{ID: 1, Name: "local.local.1"},
-				{ID: 2, Name: "local.local.2"},
-			},
-		},
+		Storage: &storer,
 	}
 
 	t.Run("list", func(t *testing.T) {
@@ -65,13 +66,12 @@ func TestRelays(t *testing.T) {
 }
 
 func TestDatacenters(t *testing.T) {
+	storer := storage.InMemory{}
+	storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 1, Name: "local.local.1"})
+	storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 2, Name: "local.local.2"})
+
 	svc := jsonrpc.OpsService{
-		Storage: &storage.InMemory{
-			LocalDatacenters: []routing.Datacenter{
-				{Name: "local.local.1"},
-				{Name: "local.local.2"},
-			},
-		},
+		Storage: &storer,
 	}
 
 	t.Run("list", func(t *testing.T) {

@@ -129,9 +129,9 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 		locallogger = log.With(locallogger, "sdk", packet.Version.String())
 
 		// Get the buyer information for the id in the packet
-		buyer, ok := storer.Buyer(packet.CustomerID)
-		if !ok {
-			level.Error(locallogger).Log("msg", "failed to get buyer", "customer_id", packet.CustomerID)
+		buyer, err := storer.Buyer(packet.CustomerID)
+		if err != nil {
+			level.Error(locallogger).Log("msg", "failed to get buyer from storage", "err", err, "customer_id", packet.CustomerID)
 			metrics.ErrorMetrics.BuyerNotFound.Add(1)
 			return
 		}
@@ -326,10 +326,9 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 
 		locallogger = log.With(locallogger, "datacenter_id", serverCacheEntry.Datacenter.ID)
 
-		buyer, ok := storer.Buyer(packet.CustomerID)
-		if !ok {
-			err := fmt.Errorf("failed to get buyer with customer ID %v", packet.CustomerID)
-			level.Error(locallogger).Log("err", err)
+		buyer, err := storer.Buyer(packet.CustomerID)
+		if err != nil {
+			level.Error(locallogger).Log("msg", "failed to get buyer from storage", "err", err, "customer_id", packet.CustomerID)
 			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.BuyerNotFound)
 			return
 		}
@@ -617,7 +616,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		// Submit a new billing entry
 		{
 			sameRoute := chosenRoute.Hash64() == sessionCacheEntry.RouteHash
-			routeRequest := NewRouteRequest(packet, buyer, serverCacheEntry, location, storer, clientrelays)
+			routeRequest := NewRouteRequest(packet, &buyer, serverCacheEntry, location, storer, clientrelays)
 			billingEntry := NewBillingEntry(routeRequest, &chosenRoute, int(response.RouteType), sameRoute, &buyer.RoutingRulesSettings, routeDecision, &packet, sliceDuration, timestampStart, timestampNow, newSession)
 			if err := biller.Bill(context.Background(), packet.SessionID, billingEntry); err != nil {
 				level.Error(locallogger).Log("msg", "billing failed", "err", err)
