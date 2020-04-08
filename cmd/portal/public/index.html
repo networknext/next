@@ -42,10 +42,12 @@
             }
             .workspace {
                 width: 100%;
-                max-height: 1000px;
-                height: 100%;
                 justify-content: center;
                 background-color: darkgrey;
+            }
+            .map {
+                height: 100%;
+                max-height: 1000px;
             }
             .hidden {
                 display: none;
@@ -101,7 +103,7 @@
             <div class="dashboard-title row">
                 <h1 id="workspace-title">Session Map</h1>
             </div>
-            <div class="workspace row" id="map-workspace">
+            <div class="workspace row map" id="map-workspace">
                 <canvas class="fill hidden" id="canvas"></canvas>
                 <svg id="grid-offset-odd-r" class="fill"></svg>
             </div>
@@ -141,18 +143,29 @@
                 <table class="table" id="sessions">
                     <thead class="thead-dark">
                       <tr>
-                        <th scope="col">Address</th>
-                        <th scope="col">Datacenter</th>
-                        <th scope="col">Lat / Long</th>
-                        <th scope="col">Seller</th>
+                        <th scope="col">Session ID</th>
+                        <th scope="col">User Hash</th>
+                        <th scope="col">Direct RTT</th>
+                        <th scope="col">Next RTT</th>
+                        <th scope="col">Change RTT</th>
+                        <th scope="col">On Network Next</th>
+                        <th scope="col">Expires At</th>
                       </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="relay in relays" scope="row">
-                            <td>{{ relay.Addr.IP }}:{{ relay.Addr.Port }}</td>
-                            <td>{{ relay.Datacenter.Name }}</td>
-                            <td>{{ relay.Latitude }} / {{ relay.Longitude }}</td>
-                            <td>{{ relay.Seller.Name }}</td>
+                        <tr v-for="session in sessions" scope="row">
+                            <td>{{ session.session_id }}</td>
+                            <td>{{ session.user_hash }}</td>
+                            <td>{{ session.direct_rtt }}</td>
+                            <td>{{ session.next_rtt }}</td>
+                            <td>{{ session.change_rtt }}</td>
+                            <td v-if="session.on_network_next">
+                                <i class="fas fa-check"></i>
+                            </td>
+                            <td v-if="!session.on_network_next">
+                                <i class="fas fa-times-circle"></i>
+                            </td>
+                            <td>{{ session.expires_at }}</td>
                         </tr>
                     </tbody>
                   </table>
@@ -180,41 +193,13 @@
         <script>
             reloadMap();
             JSONRPCClient
-                .call('OpsService.Relays', {})
+                .call('BuyersService.Sessions', {buyer_id: '13672574147039585173'})
                 .then((response) => {
                     new Vue({
-                    el: '#relays',
-                    data: {
-                        relays: response.Relays
-                    }
-                    });
-                })
-                .catch((e) => {
-                    console.log("Something went wrong with the map init!");
-                    console.log(e);
-                });
-            JSONRPCClient
-                .call('OpsService.Buyers', {})
-                .then((response) => {
-                    new Vue({
-                    el: '#sessions',
-                    data: {
-                        relays: response.Relays
-                    }
-                    });
-                })
-                .catch((e) => {
-                    console.log("Something went wrong with the map init!");
-                    console.log(e);
-                });
-                JSONRPCClient
-                .call('BuyersService.Sessions', {buyer_id: 13672574147039585173})
-                .then((response) => {
-                    new Vue({
-                    el: '#sessions',
-                    data: {
-                        relays: response.Relays
-                    }
+                        el: '#sessions',
+                        data: {
+                            sessions: response.sessions || []
+                        }
                     });
                 })
                 .catch((e) => {

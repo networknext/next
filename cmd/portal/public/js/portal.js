@@ -49,6 +49,7 @@ JSONRPCClient = {
 			'Accept-Encoding':	'gzip',
 			'Content-Type':		'application/json',
 		}
+
 		params = params || {}
 		const id = JSON.stringify(params)
 		const response = await fetch('/rpc', {
