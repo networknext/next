@@ -71,10 +71,9 @@ func Disable(env Environment, rpcClient jsonrpc.RPCClient, relayName string) {
 
 	fmt.Printf("Disabling relay '%s' (id = %d)\n", relay.Name, relay.ID)
 	testForSSHKey(env)
-	relay.State = routing.RelayStateDisabled
 	updateArgs := localjsonrpc.RelayStateUpdateArgs{
 		RelayID:    relay.ID,
-		RelayState: relay.State,
+		RelayState: routing.RelayStateDisabled,
 	}
 	var updateReply localjsonrpc.RelayStateUpdateReply
 	if err := rpcClient.CallFor(&updateReply, "OpsService.RelayStateUpdate", &updateArgs); err != nil {
