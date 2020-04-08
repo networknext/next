@@ -294,17 +294,22 @@ func main() {
 				},
 			},
 			{
-				Name:       "disable",
-				ShortUsage: "next disable <relay name>",
-				ShortHelp:  "Disable the specified relay",
-				Exec: func(_ context.Context, args []string) error {
-					if len(args) == 0 {
-						log.Fatal("You need to supply a relay name")
-					}
+				Name: "relay",
+				Subcommands: []*ffcli.Command{
+					{
+						Name:       "disable",
+						ShortUsage: "next disable <relay name>",
+						ShortHelp:  "Disable the specified relay",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) == 0 {
+								log.Fatal("You need to supply a relay name")
+							}
 
-					Disable(env, rpcClient, args[0])
+							Disable(env, rpcClient, args[0])
 
-					return nil
+							return nil
+						},
+					},
 				},
 			},
 		},

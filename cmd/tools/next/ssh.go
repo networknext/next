@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	DisableRelayScript = `if [ ! $(id -u) = 0 ]; then sudo systemctl stop test_service; else systemctl stop test_service; fi`
+	DisableRelayScript = `if [ ! $(id -u) = 0 ]; then sudo systemctl stop relay; else systemctl stop relay; fi`
 )
 
 func run(cmd string, args []string, env []string) {
