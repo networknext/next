@@ -61,6 +61,8 @@ private:
 	uint32_t PacketQueueSize;
 
 	bool bBound;
+	FString ServerAddress;
+	int ServerPort;
 
 public:
 #if defined(NETWORKNEXT_HAS_ESOCKETPROTOCOLFAMILY)

@@ -41,6 +41,7 @@ FSocketNetworkNextServer::FSocketNetworkNextServer(const FString& InSocketDescri
 	this->NetworkNextServer = nullptr;
 	this->PacketQueueSize = 0;
 	this->bBound = false;
+	this->ServerPort = 0;
 
 	UE_LOG(LogNetworkNext, Display, TEXT("FSocketNetworkNextServer Created"));
 }
@@ -62,6 +63,8 @@ void FSocketNetworkNextServer::UpdateNetworkNextSocket()
 
 void FSocketNetworkNextServer::UpgradeClient(const TSharedPtr<FInternetAddr>& RemoteAddr, const FString& UserId, ENetworkNextPlatformType Platform, const FString& Tag)
 {
+	UE_LOG(LogNetworkNext, Display, TEXT("Upgrade Client"));
+
 	if (!this->bBound)
 	{
 		UE_LOG(LogNetworkNext, Error, TEXT("UpgradeClient called on SocketNetworkNextServer that was not yet bound."));
@@ -142,11 +145,15 @@ void FSocketNetworkNextServer::OnPacketReceived(next_server_t* server, void* con
 
 bool FSocketNetworkNextServer::Close()
 {
+	UE_LOG(LogNetworkNext, Display, TEXT("Close Server Socket"));
+
 	if (this->bBound)
 	{
 		next_server_destroy(this->NetworkNextServer);
 		this->NetworkNextServer = nullptr;
 		this->bBound = false;
+		this->ServerPort = 0;
+		this->ServerAddress = "";
 	}
 
 	return true;
@@ -154,9 +161,19 @@ bool FSocketNetworkNextServer::Close()
 
 bool FSocketNetworkNextServer::Bind(const FInternetAddr& Addr)
 {
-	UE_LOG(LogNetworkNext, Display, TEXT("FSocketNetworkNextServer::Bind"));
+	if (this->bBound)
+	{
+		next_server_destroy(this->NetworkNextServer);
+		this->NetworkNextServer = nullptr;
+		this->bBound = false;
+		this->ServerPort = 0;
+		this->ServerAddress = "";
+	}
+
+	UE_LOG(LogNetworkNext, Display, TEXT("Bind Server Socket (%s)"), *Addr.ToString(true));
 
 	FNetworkNextModule& NetworkNextModule = FModuleManager::LoadModuleChecked<FNetworkNextModule>("NetworkNext");
+
 	const FNetworkNextServerConfig* ServerConfig = NetworkNextModule.GetServerConfig();
 
 	// Setup defaults
@@ -195,6 +212,28 @@ bool FSocketNetworkNextServer::Bind(const FInternetAddr& Addr)
 	}
 
 	this->bBound = true;
+	this->ServerPort = next_server_port(NetworkNextServer);
+
+	int32 LastColon;
+	if (!ServerAddr.FindLastChar(TEXT(":")[0], LastColon))
+	{
+		UE_LOG(LogNetworkNext, Error, TEXT("Failed split address and port"));
+		return false;
+	}
+
+	if (ServerAddr[0] == TCHAR('['))
+	{
+		// ipv6 in network next form, eg. [::1]:20000
+		this->ServerAddress = *(ServerAddr.Mid(1, LastColon - 2)); /* for the brackets */
+	}
+	else
+	{
+		// ipv4 in network next form, eg. 127.0.0.1:20000
+		this->ServerAddress = *(ServerAddr.Mid(0, LastColon));
+	}
+
+	UE_LOG(LogNetworkNext, Display, TEXT("ServerAddress is %s"), *this->ServerAddress);
+	UE_LOG(LogNetworkNext, Display, TEXT("ServerPort is %d"), this->ServerPort);
 
 	return true;
 }
@@ -314,9 +353,9 @@ bool FSocketNetworkNextServer::RecvFrom(uint8* Data, int32 BufferSize, int32& By
  */
 void FSocketNetworkNextServer::GetAddress(FInternetAddr& OutAddr)
 {
-	// Dummy address for this interface.
-	bool bIsValid;
-	OutAddr.SetIp(TEXT("0.0.0.0"), bIsValid);
+	bool IsValid = false;
+	OutAddr.SetIp(*ServerAddress, IsValid);
+	OutAddr.SetPort(ServerPort);
 }
 
 /**
@@ -324,6 +363,5 @@ void FSocketNetworkNextServer::GetAddress(FInternetAddr& OutAddr)
  */
 int32 FSocketNetworkNextServer::GetPortNo()
 {
-	// Dummy port for this interface.
-	return 50000;
+	return ServerPort;
 }

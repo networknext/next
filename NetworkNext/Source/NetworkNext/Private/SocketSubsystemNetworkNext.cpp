@@ -83,6 +83,8 @@ bool FSocketSubsystemNetworkNext::IsNetworkNextInitializedSuccessfully()
  */
 FSocketSubsystemNetworkNext* FSocketSubsystemNetworkNext::Create()
 {
+	UE_LOG(LogNetworkNext, Display, TEXT("FSocketSubsystemNetworkNext::Create"));
+
 	if (SocketSingleton == nullptr)
 	{
 		SocketSingleton = new FSocketSubsystemNetworkNext();
@@ -96,6 +98,8 @@ FSocketSubsystemNetworkNext* FSocketSubsystemNetworkNext::Create()
  */
 void FSocketSubsystemNetworkNext::Destroy()
 {
+	UE_LOG(LogNetworkNext, Display, TEXT("FSocketSubsystemNetworkNext::Destroy"));
+
 	if (SocketSingleton != nullptr)
 	{
 		SocketSingleton->Shutdown();
@@ -106,6 +110,7 @@ void FSocketSubsystemNetworkNext::Destroy()
 
 bool FSocketSubsystemNetworkNext::Init(FString& Error)
 {
+	UE_LOG(LogNetworkNext, Display, TEXT("FSocketSubsystemNetworkNext::Init"));
 	return true;
 }
 
@@ -114,6 +119,8 @@ bool FSocketSubsystemNetworkNext::Init(FString& Error)
  */
 void FSocketSubsystemNetworkNext::Shutdown()
 {
+	UE_LOG(LogNetworkNext, Display, TEXT("FSocketSubsystemNetworkNext::Shutdown"));
+
 	for (auto Socket : this->NetworkNextSockets)
 	{
 		Socket->Close();
@@ -131,6 +138,8 @@ FSocket* FSocketSubsystemNetworkNext::CreateSocket(const FName& SocketType, cons
 #endif
 )
 {
+	UE_LOG(LogNetworkNext, Display, TEXT("FSocketSubsystemNetworkNext::CreateSocket (fallback socket)"));
+
 	// This implementation is a fallback for any sockets created outside NetworkNextNetDriver.
 
 	FSocket* NewSocket = nullptr;
@@ -165,7 +174,7 @@ FSocket* FSocketSubsystemNetworkNext::CreateSocketWithNetDriver(const FName& Soc
 #endif
 )
 {
-	UE_LOG(LogNetworkNext, Display, TEXT("CreateSocketWithNetDriver"));
+	UE_LOG(LogNetworkNext, Display, TEXT("FSocketSubsystemNetworkNext::CreateSocketWithNetDriver"));
 
 	// NOTE: The socket descriptions here are prefixed with a string that indicates
 	// the underlying FSocket C++ type. The NetworkNextNetDriver looks at the description of
@@ -243,7 +252,7 @@ FSocket* FSocketSubsystemNetworkNext::CreateSocketWithNetDriver(const FName& Soc
  */
 void FSocketSubsystemNetworkNext::DestroySocket(FSocket* Socket)
 {
-	UE_LOG(LogNetworkNext, Display, TEXT("DestroySocket"));
+	UE_LOG(LogNetworkNext, Display, TEXT("FSocketSubsystemNetworkNext::DestroySocket"));
 
 	// Possible non Network Next socket here PLATFORM_SOCKETSUBSYSTEM, but its just a pointer compare
 	RemoveSocket((FSocketNetworkNext*)Socket);

@@ -54,14 +54,14 @@ ISocketSubsystem* UNetworkNextNetDriver::GetSocketSubsystem()
 
 bool UNetworkNextNetDriver::InitBase(bool bInitAsClient, FNetworkNotify* InNotify, const FURL& URL, bool bReuseAddressAndPort, FString& Error)
 {
-	UE_LOG(LogNetworkNext, Display, TEXT("UNetworkNextDriver::InitListen"));
+	UE_LOG(LogNetworkNext, Display, TEXT("UNetworkNextDriver::InitBase"));
 
 	if (!UNetDriver::InitBase(bInitAsClient, InNotify, URL, bReuseAddressAndPort, Error))
 	{
 		UE_LOG(LogNetworkNext, Warning, TEXT("UIpNetDriver::InitBase failed"));
 		return false;
 	}
-
+	
 	ISocketSubsystem* SocketSubsystem = GetSocketSubsystem();
 	if (SocketSubsystem == NULL)
 	{
@@ -79,7 +79,28 @@ bool UNetworkNextNetDriver::InitBase(bool bInitAsClient, FNetworkNotify* InNotif
 	}
 
 	LocalAddr = SocketSubsystem->GetLocalBindAddr(*GLog);
-	LocalAddr->SetPort(URL.Port);
+
+#if PLATFORM_XBOXONE
+	// IMPORTANT: Randomize port number in specific range on XBoxOne. Necessary for reconnect to work after hard shutdown on this platform.
+	if (bInitAsClient)
+	{
+		int32 BeginPort = 0;
+		int32 Num = 1000;
+		GConfig->GetInt(TEXT("XboxNetwork"), TEXT("Ipv6UdpPortBegin"), BeginPort, GEngineIni);
+		GConfig->GetInt(TEXT("XboxNetwork"), TEXT("Ipv6UdpPortNum"), Num, GEngineIni);
+		if (BeginPort > 0)
+		{
+			UE_LOG(LogNetworkNext, Display, TEXT("XBoxOne port randomization from %d to %d"), BeginPort, BeginPort + Num);
+			LocalAddr->SetPort(BeginPort + FMath::Rand() % (FMath::Max<int32>(1, Num - MaxPortCountToTry)));
+		}
+	}
+	else
+	{
+		LocalAddr->SetPort(GetClientPort());
+	}
+#else
+	LocalAddr->SetPort(bInitAsClient ? GetClientPort() : URL.Port);
+#endif
 
 	int32 AttemptPort = LocalAddr->GetPort();
 	int32 BoundPort = SocketSubsystem->BindNextPort(Socket, *LocalAddr, MaxPortCountToTry + 1, 1);

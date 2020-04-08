@@ -37,18 +37,10 @@ FSocketNetworkNextClient::FSocketNetworkNextClient(const FString& InSocketDescri
 {
 	check(InNetDriver);
 
-	this->NetworkNextClient = next_client_create(
-		this,
-		&FSocketNetworkNextClient::OnPacketReceived
-	);
-
-	if (this->NetworkNextClient == nullptr)
-	{
-		UE_LOG(LogNetworkNext, Error, TEXT("Unable to create Network Next client."));
-	}
-
 	this->PacketQueueSize = 0;
 	this->bConnected = false;
+	this->bBound = false;
+	this->ClientPort = 0;
 	this->ClientStats = FNetworkNextClientStats::GetDisconnectedStats();
 
 	UE_LOG(LogNetworkNext, Display, TEXT("FSocketNetworkNextClient Created"));
@@ -137,19 +129,59 @@ void FSocketNetworkNextClient::OnPacketReceived(next_client_t* client, void* con
 
 bool FSocketNetworkNextClient::Close()
 {
-	if (this->NetworkNextClient != nullptr)
+	UE_LOG(LogNetworkNext, Display, TEXT("Close Client Socket"));
+
+	if (bBound)
 	{
-		next_client_close_session(this->NetworkNextClient);
+		if (this->NetworkNextClient != nullptr)
+		{
+			next_client_close_session(this->NetworkNextClient);
+			next_client_destroy(this->NetworkNextClient);
+		}
+		this->NetworkNextClient = NULL;
 	}
 
 	this->bConnected = false;
+	this->bBound = false;
+	this->ClientPort = 0;
 
 	return true;
 }
 
 bool FSocketNetworkNextClient::Bind(const FInternetAddr& Addr)
 {
-	// Ignored on client
+	UE_LOG(LogNetworkNext, Display, TEXT("Bind Client Socket (%s)"), *Addr.ToString(true));
+
+	if (bBound)
+	{
+		if (this->NetworkNextClient != nullptr)
+		{
+			next_client_close_session(this->NetworkNextClient);
+			next_client_destroy(this->NetworkNextClient);
+		}
+		this->NetworkNextClient = NULL;
+		this->bConnected = false;
+		this->ClientPort = 0;
+	}
+
+	FString BindAddr = Addr.ToString(true);
+
+	this->NetworkNextClient = next_client_create(
+		this,
+		TCHAR_TO_ANSI(*BindAddr),
+		&FSocketNetworkNextClient::OnPacketReceived
+	);
+
+	if (this->NetworkNextClient == nullptr)
+	{
+		UE_LOG(LogNetworkNext, Error, TEXT("Unable to create Network Next client."));
+		return false;
+	}
+
+	bBound = true;
+	ClientPort = next_client_port(NetworkNextClient);
+	UE_LOG(LogNetworkNext, Display, TEXT("ClientPort is %d"), ClientPort);
+
 	return true;
 }
 
@@ -170,7 +202,7 @@ bool FSocketNetworkNextClient::SendTo(const uint8* Data, int32 Count, int32& Byt
 #if PLATFORM_HAS_BSD_IPV6_SOCKETS
 	/*
 	*	When PLATFORM_HAS_BSD_IPV6_SOCKETS is set, Destination is of type FInternetAddrBSDIPv6.
-	*	FInternetAddrBSDIPv6 converts IPv4 addresses to IPv6 causing errors in SDK version 3.3.1, so we convert it back here.
+	*	FInternetAddrBSDIPv6 converts IPv4 addresses to IPv6 causing errors in Network Next SDK, so we convert it back here.
 	*
 	*	FInternetAddrBSDIPv6::SetIp(const in_addr& IPv4Addr) sets the last 4 bytes of the IPv6 address when converting from IPv4.
 	*	FInternetAddrBSDIPv6::GetIp(uint32& OutAddr) returns those 4 bytes, so the conversion back to IPv4 is safe when PLATFORM_HAS_BSD_IPV6_SOCKETS is set.
@@ -188,9 +220,9 @@ bool FSocketNetworkNextClient::SendTo(const uint8* Data, int32 Count, int32& Byt
 	FString serverAddrAndPort = Destination.ToString(true);
 #endif
 
-	if (this->NetworkNextClient == nullptr)
+	if (!bBound)
 	{
-		// We could not create the Network Next client, so we can't do anything.
+		// We are not bound to any port so we can't do anything yet
 		BytesSent = 0;
 		return false;
 	}
@@ -228,6 +260,7 @@ bool FSocketNetworkNextClient::SendTo(const uint8* Data, int32 Count, int32& Byt
 		Data,
 		Count
 	);
+
 	BytesSent = Count;
 
 	return true;
@@ -286,7 +319,6 @@ bool FSocketNetworkNextClient::RecvFrom(uint8* Data, int32 BufferSize, int32& By
  */
 void FSocketNetworkNextClient::GetAddress(FInternetAddr& OutAddr)
 {
-	// Dummy address for this interface.
 	bool bIsValid;
 	OutAddr.SetIp(TEXT("0.0.0.0"), bIsValid);
 }
@@ -296,8 +328,7 @@ void FSocketNetworkNextClient::GetAddress(FInternetAddr& OutAddr)
  */ 
 int32 FSocketNetworkNextClient::GetPortNo()
 {
-	// Dummy port for this interface.
-	return 50000;
+	return ClientPort;
 }
 
 // Note: this is based on dmadden's function here: https://www.daniweb.com/posts/jump/1294029

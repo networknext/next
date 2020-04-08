@@ -63,6 +63,8 @@ private:
 	int32 ServerPort;
 
 	bool bConnected;
+	bool bBound;
+	int ClientPort;
 
 	FNetworkNextClientStats ClientStats;
 
