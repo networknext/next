@@ -91,34 +91,32 @@ func main() {
 	}
 
 	addr := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 40000}
-	var db storage.Storer = &storage.InMemory{
-		LocalBuyer: &routing.Buyer{
-			ID:                   customerID,
-			Name:                 "local",
-			PublicKey:            customerPublicKey,
-			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
+	var db storage.Storer = &storage.InMemory{}
+	db.AddBuyer(ctx, routing.Buyer{
+		ID:                   customerID,
+		Name:                 "local",
+		PublicKey:            customerPublicKey,
+		RoutingRulesSettings: routing.LocalRoutingRulesSettings,
+	})
+
+	db.AddRelay(ctx, routing.Relay{
+		Name:      "local.test_relay",
+		ID:        crypto.HashID(addr.String()),
+		Addr:      addr,
+		PublicKey: relayPublicKey,
+		Datacenter: routing.Datacenter{
+			ID:   crypto.HashID("local"),
+			Name: "local",
 		},
-		LocalRelays: []routing.Relay{
-			routing.Relay{
-				Name:      "local.test_relay",
-				ID:        crypto.HashID(addr.String()),
-				Addr:      addr,
-				PublicKey: relayPublicKey,
-				Datacenter: routing.Datacenter{
-					ID:   crypto.HashID("local"),
-					Name: "local",
-				},
-				Seller: routing.Seller{
-					Name:              "local",
-					IngressPriceCents: 10,
-					EgressPriceCents:  20,
-				},
-				ManagementAddr: "127.0.0.1",
-				SSHUser:        "root",
-				SSHPort:        22,
-			},
+		Seller: routing.Seller{
+			Name:              "local",
+			IngressPriceCents: 10,
+			EgressPriceCents:  20,
 		},
-	}
+		ManagementAddr: "127.0.0.1",
+		SSHUser:        "root",
+		SSHPort:        22,
+	})
 
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS

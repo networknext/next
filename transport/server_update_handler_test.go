@@ -131,9 +131,8 @@ func TestVerificationFailure(t *testing.T) {
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-	db := storage.InMemory{
-		LocalBuyer: &routing.Buyer{},
-	}
+	db := storage.InMemory{}
+	db.AddBuyer(context.Background(), routing.Buyer{})
 
 	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 	assert.NoError(t, err)
@@ -179,11 +178,10 @@ func TestServerPacketSequenceTooOld(t *testing.T) {
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-	db := storage.InMemory{
-		LocalBuyer: &routing.Buyer{
-			PublicKey: buyersServerPubKey,
-		},
-	}
+	db := storage.InMemory{}
+	db.AddBuyer(context.Background(), routing.Buyer{
+		PublicKey: buyersServerPubKey,
+	})
 
 	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 	assert.NoError(t, err)
@@ -243,11 +241,10 @@ func TestSuccessfulUpdate(t *testing.T) {
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-	db := storage.InMemory{
-		LocalBuyer: &routing.Buyer{
-			PublicKey: buyersServerPubKey,
-		},
-	}
+	db := storage.InMemory{}
+	db.AddBuyer(context.Background(), routing.Buyer{
+		PublicKey: buyersServerPubKey,
+	})
 
 	// Create a ServerUpdatePacket and marshal it to binary so sent it into the UDP handler
 	packet := transport.ServerUpdatePacket{
