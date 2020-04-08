@@ -296,7 +296,7 @@ func main() {
 			{
 				Name:       "disable",
 				ShortUsage: "next disable <relay name>",
-				ShortHelp:  "Enable the specified relay",
+				ShortHelp:  "Disable the specified relay",
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) == 0 {
 						log.Fatal("You need to supply a relay name")
