@@ -16,9 +16,39 @@ const (
 	DisableRelayScript = `if [ ! $(id -u) = 0 ]; then sudo systemctl stop relay; else systemctl stop relay; fi`
 )
 
+type relaySSHInfo struct {
+	id      uint64
+	user    string
+	address string
+	port    int64
+}
+
 func run(cmd string, args []string, env []string) {
 	if err := syscall.Exec(cmd, args, env); err != nil {
 		log.Fatalf("failed to exec %s: %v", cmd, err)
+	}
+}
+
+func getSSHInfo(rpcClient jsonrpc.RPCClient, relayName string) relaySSHInfo {
+	args := localjsonrpc.RelaysArgs{
+		Name: relayName,
+	}
+
+	var reply localjsonrpc.RelaysReply
+	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
+		log.Fatal(err)
+	}
+
+	if len(reply.Relays) == 0 {
+		log.Fatalf("could not find relay with name '%s'", relayName)
+	}
+
+	relay := reply.Relays[0]
+	return relaySSHInfo{
+		id:      relay.ID,
+		user:    relay.SSHUser,
+		address: relay.ManagementAddr,
+		port:    relay.SSHPort,
 	}
 }
 
@@ -33,53 +63,25 @@ func testForSSHKey(env Environment) {
 }
 
 func SSHInto(env Environment, rpcClient jsonrpc.RPCClient, relayName string) {
-	args := localjsonrpc.RelaysArgs{
-		Name: relayName,
-	}
-
-	var reply localjsonrpc.RelaysReply
-	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
-		log.Fatal(err)
-	}
-
-	if len(reply.Relays) == 0 {
-		log.Fatalf("could not find relay with name '%s'", relayName)
-	}
-
-	relay := reply.Relays[0]
-
+	info := getSSHInfo(rpcClient, relayName)
 	testForSSHKey(env)
-	con := NewSSHConn(relay.SSHUser, relay.ManagementAddr, relay.SSHPort, env.SSHKeyFilePath)
+	con := NewSSHConn(info.user, info.address, info.port, env.SSHKeyFilePath)
 	con.Connect()
 }
 
 func Disable(env Environment, rpcClient jsonrpc.RPCClient, relayName string) {
-	args := localjsonrpc.RelaysArgs{
-		Name: relayName,
-	}
-
-	var reply localjsonrpc.RelaysReply
-	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
-		log.Fatal(err)
-	}
-
-	if len(reply.Relays) == 0 {
-		log.Fatalf("could not find relay with name '%s'", relayName)
-	}
-
-	relay := reply.Relays[0]
-
-	fmt.Printf("Disabling relay '%s' (id = %d)\n", relay.Name, relay.ID)
+	info := getSSHInfo(rpcClient, relayName)
+	fmt.Printf("Disabling relay '%s' (id = %d)\n", relayName, info.id)
 	testForSSHKey(env)
-	updateArgs := localjsonrpc.RelayStateUpdateArgs{
-		RelayID:    relay.ID,
+	args := localjsonrpc.RelayStateUpdateArgs{
+		RelayID:    info.id,
 		RelayState: routing.RelayStateDisabled,
 	}
-	var updateReply localjsonrpc.RelayStateUpdateReply
-	if err := rpcClient.CallFor(&updateReply, "OpsService.RelayStateUpdate", &updateArgs); err != nil {
+	var reply localjsonrpc.RelayStateUpdateReply
+	if err := rpcClient.CallFor(&reply, "OpsService.RelayStateUpdate", &args); err != nil {
 		log.Fatalf("could not update relay state: %v", err)
 	}
-	con := NewSSHConn(relay.SSHUser, relay.ManagementAddr, relay.SSHPort, env.SSHKeyFilePath)
+	con := NewSSHConn(info.user, info.address, info.port, env.SSHKeyFilePath)
 	con.ConnectAndIssueCmd(DisableRelayScript)
 }
 
