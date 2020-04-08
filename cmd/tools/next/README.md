@@ -17,4 +17,4 @@ To set the SSH key: `next ssh key [path to key file]`
 
 First the tool will update the relay's state in Firestore to the Disabled state. Then it will SSH into a relay, stop the relay service, and end the session.
 
-To Disable a relay: `next disable [relay name]`
+To Disable a relay: `next relay disable [relay name]`
