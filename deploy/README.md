@@ -12,54 +12,74 @@ The relay and server backend artifacts just have 2 files to make deployment easy
 - `app` binary is the compiled Go source
 - `app.env` text file of the environment variables needed to run
 
-The artifacts creates are named `(relay|server)_backend.dev.tar.gz` and end up in the `./dist` folder.
+The artifacts creates are named `(portal|relay_backend|server|backend).(dev|prod).tar.gz` and end up in the `./dist` folder.
 
-Each relay and server backends have their own `dev.env` for now which gets renamed to `app.dev` during building. In the future we will add `prod.dev` to be able to create production artifacts.
+Each relay and server backends have their own `(dev|prod).env` for now which gets renamed to `app.dev` during building.
 
-The artifacts get published to the following locations in GCP Storage which is the required location for the VMs to load them in.
+## Development
 
+GCP Project: `network-next-v3-dev`
+
+### GCP Artifacts
+
+- portal: `gs://artifacts.network-next-v3-dev.appspot.com/portal.dev.tar.gz`
 - relay backend: `gs://artifacts.network-next-v3-dev.appspot.com/relay_backend.dev.tar.gz`
 - server backend: `gs://artifacts.network-next-v3-dev.appspot.com/server_backend.dev.tar.gz`
 
-## Development Instances
+### Domains
 
-- relay_backend.dev.spacecats.net:40000
-- server_backend.dev.spacecats.net:40000
+- portal.dev.networknext.com
+- relay_backend.dev.networknext.com
+- server_backend.dev.networknext.com:40000
 
-NOTE: These domains are configured through cloudflare.com and point to the VMs External IP Addresses. These addresses can be seen in **VPC network** -> **External IP addresses** in the GCP console.
+Domains are configured through cloudflare.com and point to the VMs External IP Addresses. These addresses can be seen in **VPC network** -> **External IP addresses** in the GCP console.
 
-Currently there is a single VM for each backend (relay and server) running in GCP Compute Engine. Each of them are based off of their respective Instance Templates which define the CPU size, network rules, and startup script.
+### Instances
+
+Currently there is a single VM for each backend (portal, relay, and server) running in GCP Compute Engine. Each of them are based off of their respective Instance Templates which define the CPU size, network rules, and startup script.
 
 Instances can be seen in **Compute Engine** -> **VM instances**:
 
+- `portal-dev-1`
 - `relay-backend-dev-1`
 - `server-backend-dev-1`
+
+## Production
+
+GCP Project: `network-next-v3-prod`
+
+### GCP Artifacts
+
+- portal: `gs://us.artifacts.network-next-v3-prod.appspot.com/portal.dev.tar.gz`
+- relay backend: `gs://us.artifacts.network-next-v3-prod.appspot.com/relay_backend.dev.tar.gz`
+- server backend: `gs://us.artifacts.network-next-v3-prod.appspot.com/server_backend.dev.tar.gz`
+
+### Domains
+
+- portal.prod.networknext.com
+- relay_backend.prod.networknext.com
+- server_backend.prod.networknext.com:40000
+
+Domains are configured through cloudflare.com and point to the Load Balancers External IP Addresses. These addresses can be seen in **VPC network** -> **External IP addresses** in the GCP console.
+
+### Instances
+
+Currently there managed instance group for each backend (portal, relay, and server) running in GCP Compute Engine. Each of them are based off of their respective Instance Templates which define the CPU size, network rules, and startup script.
+
+Instances Groups can be seen in **Compute Engine** -> **Instance groups**:
+
+- `portal-mig`
+- `relay-backend-mig`
+- `server-backend-mig`
+
+## Deploying and Reloading Instances
 
 When each of the instances starts up or reboots it will perform the follow steps:
 
 1. Creates a `/app` directory in the root of the VM
 2. Copies the MaxmindDB file from GCP Storage
-3. Copies the artifact file for the instance `(relay|server)_backend.dev.tar.gz` from GCP Storage which was built and published with `make publish-backend-artifacts`.
-4. Extracts the `app` binary and the `app.env` environment variables file into `/app`
-5. Loads the environment variables with `source app.env`
-6. Starts the app as a background process with `./app&`
-
-## Restarting Instances
-
-In order for new artifacts to get loaded into the VM you need to basically reboot the VM. You need the `gcloud` tool available from the GCP Cloud SDK.
-
-Since these commands are specific to specific instances they are not available as `Makefile` targets. Just use `gcloud` directly.
-
-```
-> gcloud compute instances stop relay-backend-dev-1
-No zone specified. Using zone [us-central1-a] for instance: [relay-backend-dev-1].
-Stopping instance(s) relay-backend-dev-1...done.
-Updated [https://compute.googleapis.com/compute/v1/projects/network-next-v3-dev/zones/us-central1-a/instances/relay-backend-dev-1].
-
-> gcloud compute instances start relay-backend-dev-1
-No zone specified. Using zone [us-central1-a] for instance: [relay-backend-dev-1].
-Starting instance(s) relay-backend-dev-1...done.
-Updated [https://compute.googleapis.com/compute/v1/projects/network-next-v3-dev/zones/us-central1-a/instances/relay-backend-dev-1].
-Instance internal IP is 10.128.0.25
-Instance external IP is 35.222.99.199
-```
+3. Stops the systemd service `app.service`
+3. Copies the artifact file for the instance `(portal|relay_backend|server_backend).dev.tar.gz` from GCP Storage which was built and published with `make publish-backend-artifacts`.
+4. Extracts the `app` binary, `app.env` environment variables file, and `app.service` systemd service file into `/app`
+5. Moves the `app.service` file into the right place and reloads the systemd daemon
+6. Starts the systemd service `app.service`
