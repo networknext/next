@@ -67,13 +67,18 @@ func TestRelays(t *testing.T) {
 
 func TestRelayStateUpdate(t *testing.T) {
 	makeSvc := func() *jsonrpc.OpsService {
+		var storer storage.InMemory
+		storer.AddRelay(context.Background(), routing.Relay{
+			ID:    1,
+			State: 0,
+		})
+		storer.AddRelay(context.Background(), routing.Relay{
+			ID:    2,
+			State: 123456,
+		})
+
 		return &jsonrpc.OpsService{
-			Storage: &storage.InMemory{
-				LocalRelays: []routing.Relay{
-					{ID: 1, State: 0},
-					{ID: 2, State: 123456},
-				},
-			},
+			Storage: &storer,
 		}
 	}
 
@@ -85,12 +90,12 @@ func TestRelayStateUpdate(t *testing.T) {
 		}, &jsonrpc.RelayStateUpdateReply{})
 		assert.NoError(t, err)
 
-		relay, found := svc.Storage.Relay(1)
-		assert.True(t, found)
+		relay, err := svc.Storage.Relay(1)
+		assert.NoError(t, err)
 		assert.Equal(t, routing.RelayStateDisabled, relay.State)
 
-		relay, found = svc.Storage.Relay(2)
-		assert.True(t, found)
+		relay, err = svc.Storage.Relay(2)
+		assert.NoError(t, err)
 		assert.Equal(t, routing.RelayState(123456), relay.State)
 	})
 
@@ -102,12 +107,12 @@ func TestRelayStateUpdate(t *testing.T) {
 		}, &jsonrpc.RelayStateUpdateReply{})
 		assert.Error(t, err)
 
-		relay, found := svc.Storage.Relay(1)
-		assert.True(t, found)
+		relay, err := svc.Storage.Relay(1)
+		assert.NoError(t, err)
 		assert.Equal(t, routing.RelayState(0), relay.State)
 
-		relay, found = svc.Storage.Relay(2)
-		assert.True(t, found)
+		relay, err = svc.Storage.Relay(2)
+		assert.NoError(t, err)
 		assert.Equal(t, routing.RelayState(123456), relay.State)
 	})
 }
