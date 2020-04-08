@@ -38,16 +38,21 @@ void client_packet_received( next_client_t * client, void * context, const uint8
     (void) client; (void) context; (void) packet_data; (void) packet_bytes;
 }
 
+const char * customer_public_key = "";
+
 int main()
 {
     printf( "\nWelcome to Network Next!\n\n" );
 
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
     
-    next_init( NULL, NULL );
+    next_config_t config;
+    next_default_config( &config );
+    strncpy( config.customer_public_key, customer_public_key, sizeof(config.customer_public_key) - 1 );
+
+    next_init( NULL, &config ); 
 
     next_client_t * client = next_client_create( NULL, "0.0.0.0:0", client_packet_received );
-
     if ( client == NULL )
     {
         printf( "error: failed to create client\n" );

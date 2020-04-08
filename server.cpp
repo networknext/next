@@ -45,13 +45,21 @@ void server_packet_received( next_server_t * server, void * context, const next_
     }
 }
 
+const char * customer_hostname = "prod.networknext.com";
+const char * customer_private_key = "";
+
 int main()
 {
     printf( "\nWelcome to Network Next!\n\n" );
 
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
 
-    next_init( NULL, NULL ); 
+    next_config_t config;
+    next_default_config( &config );
+    strncpy( config.hostname, customer_hostname, sizeof(config.hostname) - 1 );
+    strncpy( config.customer_private_key, customer_private_key, sizeof(config.customer_private_key) - 1 );
+
+    next_init( NULL, &config ); 
 
     next_server_t * server = next_server_create( NULL, "127.0.0.1:32202", "0.0.0.0:32202", "local", server_packet_received );
 

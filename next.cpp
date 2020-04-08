@@ -3404,8 +3404,8 @@ static next_config_internal_t next_global_config;
 void next_default_config( next_config_t * config )
 {
     next_assert( config );
-    strncpy( config->hostname, NEXT_HOSTNAME, sizeof(config->hostname) - 1 );
     memset( config, 0, sizeof(next_config_t) );
+    strncpy( config->hostname, NEXT_HOSTNAME, sizeof(config->hostname) - 1 );
     config->socket_send_buffer_size = NEXT_DEFAULT_SOCKET_SEND_BUFFER_SIZE;
     config->socket_receive_buffer_size = NEXT_DEFAULT_SOCKET_RECEIVE_BUFFER_SIZE;
 }
