@@ -227,6 +227,15 @@
                     console.log("Something went wrong with the map init!");
                     console.log(e);
                 });
+            JSONRPCClient
+                .call('BuyersService.GameConfiguration', {buyer_id: '13672574147039585173'})
+                .then((response) => {
+                    console.log(response)
+                })
+                .catch((e) => {
+                    console.log("Something went wrong with the map init!");
+                    console.log(e);
+                });
         </script>
     </body>
 </html>
