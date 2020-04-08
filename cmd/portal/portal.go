@@ -113,7 +113,7 @@ func main() {
 					IngressPriceCents: 10,
 					EgressPriceCents:  20,
 				},
-				ManagementAddr: "it-lives",
+				ManagementAddr: "127.0.0.1",
 				SSHUser:        "root",
 				SSHPort:        22,
 			},

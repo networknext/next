@@ -295,7 +295,7 @@ func main() {
 			},
 			{
 				Name:       "disable",
-				ShortUsage: "next enable <relay name>",
+				ShortUsage: "next disable <relay name>",
 				ShortHelp:  "Enable the specified relay",
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) == 0 {

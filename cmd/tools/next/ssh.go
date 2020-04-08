@@ -70,7 +70,7 @@ func Disable(env Environment, rpcClient jsonrpc.RPCClient, relayName string) {
 		log.Fatalf("could not update relay state: %v", err)
 	}
 	con := NewSSHConn(relay.SSHUser, relay.ManagementAddr, relay.SSHPort, env.SSHKeyFilePath)
-	con.ConnectAndThen(DisableRelayScript)
+	con.ConnectAndIssueCmd(DisableRelayScript)
 }
 
 type SSHConn struct {
@@ -110,7 +110,7 @@ func (con SSHConn) Connect() {
 	run(ssh, args, env)
 }
 
-func (con SSHConn) ConnectAndThen(cmd string) {
+func (con SSHConn) ConnectAndIssueCmd(cmd string) {
 	ssh, err := exec.LookPath("ssh")
 	if err != nil {
 		log.Fatalf("could not find ssh: %v", err)
