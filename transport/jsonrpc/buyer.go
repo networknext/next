@@ -52,8 +52,8 @@ type SessionsReply struct {
 }
 
 type session struct {
-	SessionID     uint64    `json:"session_id"`
-	UserHash      uint64    `json:"user_hash"`
+	SessionID     string    `json:"session_id"`
+	UserHash      string    `json:"user_hash"`
 	DirectRTT     float64   `json:"direct_rtt"`
 	NextRTT       float64   `json:"next_rtt"`
 	ChangeRTT     float64   `json:"change_rtt"`
@@ -93,8 +93,8 @@ func (s *BuyersService) Sessions(r *http.Request, args *SessionsArgs, reply *Ses
 		}
 
 		reply.Sessions = append(reply.Sessions, session{
-			SessionID:     cacheEntry.SessionID,
-			UserHash:      cacheEntry.UserHash,
+			SessionID:     strconv.FormatUint(cacheEntry.SessionID, 10),
+			UserHash:      strconv.FormatUint(cacheEntry.UserHash, 10),
 			DirectRTT:     cacheEntry.DirectRTT,
 			NextRTT:       cacheEntry.NextRTT,
 			ChangeRTT:     cacheEntry.NextRTT - cacheEntry.DirectRTT,
@@ -124,8 +124,8 @@ func (s *BuyersService) Sessions(r *http.Request, args *SessionsArgs, reply *Ses
 		}
 
 		reply.Sessions = append(reply.Sessions, session{
-			SessionID:     cacheEntry.SessionID,
-			UserHash:      cacheEntry.UserHash,
+			SessionID:     strconv.FormatUint(cacheEntry.SessionID, 10),
+			UserHash:      strconv.FormatUint(cacheEntry.UserHash, 10),
 			DirectRTT:     cacheEntry.DirectRTT,
 			NextRTT:       cacheEntry.NextRTT,
 			ChangeRTT:     cacheEntry.NextRTT - cacheEntry.DirectRTT,
