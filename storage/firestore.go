@@ -146,6 +146,7 @@ func (fs *Firestore) RemoveBuyer(ctx context.Context, id uint64) error {
 	}
 
 	bdocs := fs.Client.Collection("Buyer").Documents(ctx)
+	defer bdocs.Stop()
 	for bdoc, err := bdocs.Next(); err != iterator.Done; {
 		if err != nil {
 			return fmt.Errorf("unknown error: %v", err)
@@ -195,6 +196,7 @@ func (fs *Firestore) SetBuyer(ctx context.Context, b routing.Buyer) error {
 
 	// Loop through all buyers in firestore
 	bdocs := fs.Client.Collection("Buyer").Documents(ctx)
+	defer bdocs.Stop()
 	for bdoc, err := bdocs.Next(); err != iterator.Done; {
 		if err != nil {
 			return fmt.Errorf("unknown error: %v", err)
@@ -264,6 +266,7 @@ func (fs *Firestore) AddRelay(ctx context.Context, r routing.Relay) error {
 
 	// Loop through all sellers in firestore
 	sdocs := fs.Client.Collection("Seller").Documents(ctx)
+	defer sdocs.Stop()
 	for sdoc, err := sdocs.Next(); err != iterator.Done; {
 		if err != nil {
 			return fmt.Errorf("unknown error: %v", err)
@@ -282,6 +285,7 @@ func (fs *Firestore) AddRelay(ctx context.Context, r routing.Relay) error {
 
 	// Loop through all datacenters in firestore
 	ddocs := fs.Client.Collection("Datacenter").Documents(ctx)
+	defer ddocs.Stop()
 	for ddoc, err := ddocs.Next(); err != iterator.Done; {
 		if err != nil {
 			return fmt.Errorf("unknown error: %v", err)
@@ -345,6 +349,7 @@ func (fs *Firestore) RemoveRelay(ctx context.Context, id uint64) error {
 	}
 
 	rdocs := fs.Client.Collection("Relay").Documents(ctx)
+	defer rdocs.Stop()
 	for rdoc, err := rdocs.Next(); err != iterator.Done; {
 		if err != nil {
 			return fmt.Errorf("unknown error: %v", err)
@@ -395,6 +400,7 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 
 	// Loop through all relays in firestore
 	rdocs := fs.Client.Collection("Relay").Documents(ctx)
+	defer rdocs.Stop()
 	for rdoc, err := rdocs.Next(); err != iterator.Done; {
 		if err != nil {
 			return fmt.Errorf("unknown error: %v", err)
@@ -487,6 +493,7 @@ func (fs *Firestore) RemoveDatacenter(ctx context.Context, id uint64) error {
 	}
 
 	ddocs := fs.Client.Collection("Datacenter").Documents(ctx)
+	defer ddocs.Stop()
 	for ddoc, err := ddocs.Next(); err != iterator.Done; {
 		if err != nil {
 			return fmt.Errorf("unknown error: %v", err)
@@ -535,15 +542,16 @@ func (fs *Firestore) SetDatacenter(ctx context.Context, d routing.Datacenter) er
 	}
 
 	// Loop through all datacenters in firestore
-	bdocs := fs.Client.Collection("Datacenter").Documents(ctx)
-	for bdoc, err := bdocs.Next(); err != iterator.Done; {
+	ddocs := fs.Client.Collection("Datacenter").Documents(ctx)
+	defer ddocs.Stop()
+	for ddoc, err := ddocs.Next(); err != iterator.Done; {
 		if err != nil {
 			return fmt.Errorf("unknown error: %v", err)
 		}
 
 		// Unmarshal the datacenter in firestore to see if it's the datacenter we want to update
 		var datacenterInRemoteStorage datacenter
-		err = bdoc.DataTo(&datacenterInRemoteStorage)
+		err = ddoc.DataTo(&datacenterInRemoteStorage)
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal document: %v", err)
 		}
@@ -551,7 +559,7 @@ func (fs *Firestore) SetDatacenter(ctx context.Context, d routing.Datacenter) er
 		// If the datacenter is the one we want to update, update it with the new data
 		if crypto.HashID(datacenterInRemoteStorage.Name) == d.ID {
 			// Update the datacenter in firestore
-			if _, err := bdoc.Ref.Set(ctx, newDatacenterData, firestore.MergeAll); err != nil {
+			if _, err := ddoc.Ref.Set(ctx, newDatacenterData, firestore.MergeAll); err != nil {
 				return err
 			}
 
@@ -623,6 +631,7 @@ func (fs *Firestore) syncDatacenters(ctx context.Context) error {
 	datacenters := make(map[uint64]routing.Datacenter)
 
 	ddocs := fs.Client.Collection("Datacenter").Documents(ctx)
+	defer ddocs.Stop()
 	for {
 		ddoc, err := ddocs.Next()
 		if err == iterator.Done {
@@ -661,6 +670,7 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 	relays := make(map[uint64]routing.Relay)
 
 	rdocs := fs.Client.Collection("Relay").Documents(ctx)
+	defer rdocs.Stop()
 	for {
 		rdoc, err := rdocs.Next()
 		if err == iterator.Done {
@@ -775,6 +785,7 @@ func (fs *Firestore) syncBuyers(ctx context.Context) error {
 	buyers := make(map[uint64]routing.Buyer)
 
 	bdocs := fs.Client.Collection("Buyer").Documents(ctx)
+	defer bdocs.Stop()
 	for {
 		bdoc, err := bdocs.Next()
 		if err == iterator.Done {
