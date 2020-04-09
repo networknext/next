@@ -12,3 +12,9 @@ To SSH: `next ssh [identifier]`
 
 To set the SSH key: `next ssh key [path to key file]`
 - You can't use '~' in the path directly, it must be expanded by the shell first. Or in other words don't quote the argument
+
+## Disable
+
+First the tool will update the relay's state in Firestore to the Disabled state. Then it will SSH into a relay, stop the relay service, and end the session.
+
+To Disable a relay: `next relay disable [relay name]`

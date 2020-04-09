@@ -40,6 +40,7 @@ func runCommand(command string, args []string) bool {
 	cmd := exec.Command(command, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
 	err := cmd.Run()
 	if err != nil {
 		fmt.Printf("runCommand error: %v\n", err)
@@ -52,6 +53,7 @@ func runCommandEnv(command string, args []string, env map[string]string) bool {
 	cmd := exec.Command(command, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
 	finalEnv := os.Environ()
 	for k, v := range env {
 		finalEnv = append(finalEnv, fmt.Sprintf("%s=%s", k, v))
@@ -267,8 +269,8 @@ func main() {
 				ShortUsage: "next ssh <device identifier>",
 				ShortHelp:  "SSH into a remote device, for relays the identifier is their name",
 				Exec: func(ctx context.Context, args []string) error {
-					if len(args) < 1 {
-						log.Fatal("need a device identifer")
+					if len(args) == 0 {
+						log.Fatal("You need to supply a device identifer")
 					}
 
 					SSHInto(env, rpcClient, args[0])
@@ -287,6 +289,25 @@ func main() {
 							}
 
 							fmt.Println(env.String())
+
+							return nil
+						},
+					},
+				},
+			},
+			{
+				Name: "relay",
+				Subcommands: []*ffcli.Command{
+					{
+						Name:       "disable",
+						ShortUsage: "next disable <relay name>",
+						ShortHelp:  "Disable the specified relay",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) == 0 {
+								log.Fatal("You need to supply a relay name")
+							}
+
+							Disable(env, rpcClient, args[0])
 
 							return nil
 						},
