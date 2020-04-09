@@ -195,13 +195,10 @@ type gameConfiguration struct {
 	ExpiresAt     time.Time `json:"expires_at"`
 }
 
-func (s *BuyersService) Sessions(r *http.Request, args *SessionsArgs, reply *SessionsReply) error {
+func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurationArgs, reply *GameConfigurationReply) error {
 	var err error
-	var cacheKeys []string
-	var cacheEntry transport.SessionCacheEntry
-	var cacheEntryData []byte
+	var firestore storage.Firestore
 	var buyerID uint64
-	var sessionID uint64
 
 	if args.BuyerID == "" {
 		return fmt.Errorf("buyer_id is required")
@@ -211,66 +208,7 @@ func (s *BuyersService) Sessions(r *http.Request, args *SessionsArgs, reply *Ses
 		return fmt.Errorf("failed to convert BuyerID to uint64")
 	}
 
-	if args.SessionID != "" {
-		if sessionID, err = strconv.ParseUint(args.SessionID, 10, 64); err != nil {
-			return fmt.Errorf("failed to convert SessionID to uint64")
-		}
+	fmt.Println(firestore.Buyer(buyerID))
 
-		getCmd := s.RedisClient.Get(fmt.Sprintf("SESSION-%d-%d", buyerID, sessionID))
-
-		if cacheEntryData, err = getCmd.Bytes(); err != nil {
-			return fmt.Errorf("failed to get session %d: %w", sessionID, err)
-		}
-
-		if err := cacheEntry.UnmarshalBinary(cacheEntryData); err != nil {
-			return fmt.Errorf("failed to unmarshal session %d: %w", sessionID, err)
-		}
-
-		reply.Sessions = append(reply.Sessions, session{
-			SessionID:     strconv.FormatUint(cacheEntry.SessionID, 10),
-			UserHash:      strconv.FormatUint(cacheEntry.UserHash, 10),
-			DirectRTT:     cacheEntry.DirectRTT,
-			NextRTT:       cacheEntry.NextRTT,
-			ChangeRTT:     cacheEntry.NextRTT - cacheEntry.DirectRTT,
-			OnNetworkNext: cacheEntry.RouteDecision.OnNetworkNext,
-			ExpiresAt:     cacheEntry.TimestampExpire,
-		})
-
-		return nil
-	}
-
-	iter := s.RedisClient.Scan(0, fmt.Sprintf("SESSION-%d-*", buyerID), 1000).Iterator()
-	for iter.Next() {
-		cacheKeys = append(cacheKeys, iter.Val())
-	}
-	if err := iter.Err(); err != nil {
-		return fmt.Errorf("failed to scan redis: %w", err)
-	}
-
-	res, err := s.RedisClient.MGet(cacheKeys...).Result()
-	if err != nil {
-		return fmt.Errorf("failed to multi-get redis: %w", err)
-	}
-
-	for _, val := range res {
-		if err := cacheEntry.UnmarshalBinary([]byte(val.(string))); err != nil {
-			continue
-		}
-
-		reply.Sessions = append(reply.Sessions, session{
-			SessionID:     strconv.FormatUint(cacheEntry.SessionID, 10),
-			UserHash:      strconv.FormatUint(cacheEntry.UserHash, 10),
-			DirectRTT:     cacheEntry.DirectRTT,
-			NextRTT:       cacheEntry.NextRTT,
-			ChangeRTT:     cacheEntry.NextRTT - cacheEntry.DirectRTT,
-			OnNetworkNext: cacheEntry.RouteDecision.OnNetworkNext,
-			ExpiresAt:     cacheEntry.TimestampExpire,
-		})
-	}
-
-	sort.Slice(reply.Sessions, func(i int, j int) bool {
-		return reply.Sessions[i].ChangeRTT < reply.Sessions[j].ChangeRTT
-	})
-
-	return nil
+	return fmt.Errorf("not supported yet")
 }
