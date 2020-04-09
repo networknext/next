@@ -77,7 +77,7 @@ func main() {
 		default:
 			relayslogger = level.NewFilter(relayslogger, level.AllowWarn())
 		}
-		relayslogger = log.With(logger, "ts", log.DefaultTimestampUTC)
+		relayslogger = log.With(relayslogger, "ts", log.DefaultTimestampUTC)
 	}
 	if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
 		loggingClient, err := gcplogging.NewClient(ctx, projectID)
