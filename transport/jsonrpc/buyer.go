@@ -16,7 +16,7 @@ type BuyersService struct {
 }
 
 type MapArgs struct {
-	BuyerID uint64 `json:"buyer_id"`
+	BuyerID string `json:"buyer_id"`
 }
 
 type MapReply struct {
@@ -25,7 +25,7 @@ type MapReply struct {
 }
 
 type point struct {
-	Coordinate []float64 `json:"COORDINATE"`
+	Coordinates []float64 `json:"COORDINATES"`
 }
 
 type cluster struct {
@@ -39,27 +39,66 @@ type cluster struct {
 
 func (s *BuyersService) SessionsMap(r *http.Request, args *MapArgs, reply *MapReply) error {
 	reply.OnNetworkNext = []point{
-		{Coordinate: []float64{-73.6696, 42.7273}},
-		{Coordinate: []float64{-73.6696, 42.7273}},
-		{Coordinate: []float64{-73.6696, 42.7273}},
-		{Coordinate: []float64{-73.6696, 42.7273}},
-		{Coordinate: []float64{-73.6696, 42.7273}},
-		{Coordinate: []float64{-73.6696, 42.7273}},
-		{Coordinate: []float64{-73.6696, 42.7273}},
-		{Coordinate: []float64{-73.6696, 42.7273}},
+		{Coordinates: []float64{-73.6696, 42.7273}},
+		{Coordinates: []float64{-73.6696, 42.7273}},
+		{Coordinates: []float64{-73.6696, 42.7273}},
+		{Coordinates: []float64{-73.6696, 42.7273}},
+		{Coordinates: []float64{-73.6696, 42.7273}},
+		{Coordinates: []float64{-73.6696, 42.7273}},
+		{Coordinates: []float64{-73.6696, 42.7273}},
+		{Coordinates: []float64{-73.6696, 42.7273}},
+		{Coordinates: []float64{-73.6696, 42.7273}},
+		{Coordinates: []float64{-73.6696, 42.7273}},
+		{Coordinates: []float64{-73.6696, 42.7273}},
+		{Coordinates: []float64{-73.6696, 42.7273}},
+		{Coordinates: []float64{-73.6696, 42.7273}},
+		{Coordinates: []float64{-73.6696, 42.7273}},
+		{Coordinates: []float64{-73.6696, 42.7273}},
+		{Coordinates: []float64{-73.6696, 42.7273}},
+		{Coordinates: []float64{-73.6696, 42.7273}},
+		{Coordinates: []float64{-73.6696, 42.7273}},
+		{Coordinates: []float64{-73.6696, 42.7273}},
+		{Coordinates: []float64{-73.6696, 42.7273}},
+		{Coordinates: []float64{-73.6696, 42.7273}},
+		{Coordinates: []float64{-73.6696, 42.7273}},
+		{Coordinates: []float64{-73.6696, 42.7273}},
+		{Coordinates: []float64{-73.7754, 42.6701}},
+		{Coordinates: []float64{-73.7754, 42.6701}},
+		{Coordinates: []float64{-73.7754, 42.6701}},
+		{Coordinates: []float64{-73.7754, 42.6701}},
+		{Coordinates: []float64{-73.7754, 42.6701}},
+		{Coordinates: []float64{-73.7754, 42.6701}},
 	}
 
-	reply.OnNetworkNext = []point{
-		{Coordinate: []float64{-73.842, 43.0034}},
-		{Coordinate: []float64{-73.842, 43.0034}},
-		{Coordinate: []float64{-73.842, 43.0034}},
-		{Coordinate: []float64{-73.842, 43.0034}},
-		{Coordinate: []float64{-73.842, 43.0034}},
-		{Coordinate: []float64{-73.842, 43.0034}},
-		{Coordinate: []float64{-73.842, 43.0034}},
-		{Coordinate: []float64{-73.842, 43.0034}},
-		{Coordinate: []float64{-73.842, 43.0034}},
-		{Coordinate: []float64{-73.842, 43.0034}},
+	reply.Direct = []point{
+		{Coordinates: []float64{-73.842, 43.0034}},
+		{Coordinates: []float64{-73.842, 43.0034}},
+		{Coordinates: []float64{-73.842, 43.0034}},
+		{Coordinates: []float64{-73.842, 43.0034}},
+		{Coordinates: []float64{-73.842, 43.0034}},
+		{Coordinates: []float64{-73.842, 43.0034}},
+		{Coordinates: []float64{-73.842, 43.0034}},
+		{Coordinates: []float64{-73.842, 43.0034}},
+		{Coordinates: []float64{-73.842, 43.0034}},
+		{Coordinates: []float64{-73.842, 43.0034}},
+		{Coordinates: []float64{-73.842, 43.0034}},
+		{Coordinates: []float64{-73.842, 43.0034}},
+		{Coordinates: []float64{-73.842, 43.0034}},
+		{Coordinates: []float64{-73.842, 43.0034}},
+		{Coordinates: []float64{-73.842, 43.0034}},
+		{Coordinates: []float64{-73.842, 43.0034}},
+		{Coordinates: []float64{-73.842, 43.0034}},
+		{Coordinates: []float64{-73.842, 43.0034}},
+		{Coordinates: []float64{-73.842, 43.0034}},
+		{Coordinates: []float64{-73.842, 43.0034}},
+		{Coordinates: []float64{-73.842, 43.0034}},
+		{Coordinates: []float64{-73.842, 43.0034}},
+		{Coordinates: []float64{-73.7754, 42.6701}},
+		{Coordinates: []float64{-73.7754, 42.6701}},
+		{Coordinates: []float64{-73.7754, 42.6701}},
+		{Coordinates: []float64{-73.7754, 42.6701}},
+		{Coordinates: []float64{-73.7754, 42.6701}},
+		{Coordinates: []float64{-73.7754, 42.6701}},
 	}
 
 	return nil
