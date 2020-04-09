@@ -40,6 +40,7 @@ func runCommand(command string, args []string) bool {
 	cmd := exec.Command(command, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
 	err := cmd.Run()
 	if err != nil {
 		fmt.Printf("runCommand error: %v\n", err)
@@ -52,6 +53,7 @@ func runCommandEnv(command string, args []string, env map[string]string) bool {
 	cmd := exec.Command(command, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
 	finalEnv := os.Environ()
 	for k, v := range env {
 		finalEnv = append(finalEnv, fmt.Sprintf("%s=%s", k, v))

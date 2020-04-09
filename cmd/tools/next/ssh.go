@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
-	"syscall"
 
 	"github.com/networknext/backend/routing"
 	localjsonrpc "github.com/networknext/backend/transport/jsonrpc"
@@ -21,12 +19,6 @@ type relaySSHInfo struct {
 	user    string
 	address string
 	port    int64
-}
-
-func run(cmd string, args []string, env []string) {
-	if err := syscall.Exec(cmd, args, env); err != nil {
-		log.Fatalf("failed to exec %s: %v", cmd, err)
-	}
 }
 
 func getSSHInfo(rpcClient jsonrpc.RPCClient, relayName string) relaySSHInfo {
@@ -101,36 +93,27 @@ func NewSSHConn(user, address string, port int64, authKeyFilename string) SSHCon
 	}
 }
 
-func (con SSHConn) commonSSHCommands(prgm string) []string {
-	args := make([]string, 5)
-	args[0] = prgm
-	args[1] = "-i"
-	args[2] = con.keyfile
-	args[3] = "-p"
-	args[4] = fmt.Sprintf("%d", con.port)
+func (con SSHConn) commonSSHCommands() []string {
+	args := make([]string, 4)
+	args[0] = "-i"
+	args[1] = con.keyfile
+	args[2] = "-p"
+	args[3] = fmt.Sprintf("%d", con.port)
 	return args
 }
 
 func (con SSHConn) Connect() {
-	ssh, err := exec.LookPath("ssh")
-	if err != nil {
-		log.Fatalf("error: could not find ssh")
+	args := con.commonSSHCommands()
+	args = append(args, "-tt", con.user+"@"+con.address)
+	if !runCommandEnv("ssh", args, nil) {
+		log.Fatalf("could not start ssh session")
 	}
-	args := con.commonSSHCommands(ssh)
-	args = append(args, fmt.Sprintf("%s@%s", con.user, con.address))
-	env := os.Environ()
-	run(ssh, args, env)
 }
 
 func (con SSHConn) ConnectAndIssueCmd(cmd string) {
-	ssh, err := exec.LookPath("ssh")
-	if err != nil {
-		log.Fatalf("could not find ssh: %v", err)
+	args := con.commonSSHCommands()
+	args = append(args, "-tt", con.user+"@"+con.address, "--", cmd)
+	if !runCommandEnv("ssh", args, nil) {
+		log.Fatalf("could not start ssh session")
 	}
-	args := con.commonSSHCommands(ssh)
-	args = append(args, "-t")
-	args = append(args, fmt.Sprintf("%s@%s", con.user, con.address))
-	args = append(args, cmd)
-	env := os.Environ()
-	run(ssh, args, env)
 }
