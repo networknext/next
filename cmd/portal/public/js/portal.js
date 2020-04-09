@@ -77,9 +77,18 @@ window.MapHandler = {
 
 	mapInstance: null,
 	async initMap() {
+		/* JSONRPCClient
+		.call('BuyersService.SessionsMap', {buyer_id: '13672574147039585173'})
+		.then((response) => {
+			console.log(response);
+		})
+		.catch((e) => {
+			console.log(e);
+		}); */
+
 		var data = [];
 
-		for (let i = 0; i < 1000000; i++) {
+		for (let i = 0; i < 10000; i++) {
 			let lat = getRandomInRange(-90, 90, 3);
 			let lon = getRandomInRange(-180, 180, 3);
 			data.push({COORDINATES: [lon, lat]});
