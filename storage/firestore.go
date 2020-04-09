@@ -617,7 +617,7 @@ func (fs *Firestore) Sync(ctx context.Context) error {
 
 	go func() {
 		if err := fs.syncDatacenters(ctx); err != nil {
-			outerErr = fmt.Errorf("failed to sync buyers: %v", err)
+			outerErr = fmt.Errorf("failed to sync datacenters: %v", err)
 		}
 		wg.Done()
 	}()
