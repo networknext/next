@@ -71,7 +71,7 @@ func pingRelayBackendHandler(t *testing.T, relay routing.Relay, headers map[stri
 		request.Header.Add(key, val)
 	}
 
-	handler := transport.RelayHandlerFunc(log.NewNopLogger(), &transport.RelayHandlerConfig{
+	handler := transport.RelayHandlerFunc(log.NewNopLogger(), log.NewNopLogger(), &transport.RelayHandlerConfig{
 		RedisClient:           redisClient,
 		GeoClient:             geoClient,
 		IpLocator:             ipfunc,
