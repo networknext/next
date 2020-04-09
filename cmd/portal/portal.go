@@ -91,7 +91,9 @@ func main() {
 	}
 
 	addr := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 40000}
-	var db storage.Storer = &storage.InMemory{}
+	var db storage.Storer = &storage.InMemory{
+		LocalMode: true,
+	}
 	db.AddBuyer(ctx, routing.Buyer{
 		ID:                   customerID,
 		Name:                 "local",
