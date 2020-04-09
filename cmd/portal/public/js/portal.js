@@ -21,12 +21,29 @@ function changePage(page) {
 			break;
 		case 'account':
 			account.style.display = 'block';
+			changeAccountPage();
 			title.textContent = 'Account Details';
 			break;
 		default:
 			map.style.display = 'block';
 			title.textContent = 'Session Map';
-			reloadMap();
+			//reloadMap();
+	}
+}
+
+function changeAccountPage(page) {
+	let config = document.getElementById("config");
+	let users = document.getElementById("users");
+
+	config.style.display = 'none';
+	users.style.display = 'none';
+
+	switch (page) {
+		case 'config':
+			config.style.display = 'block';
+			break;
+		default:
+			users.style.display = 'block';
 	}
 }
 

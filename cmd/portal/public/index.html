@@ -52,6 +52,9 @@
             .hidden {
                 display: none;
             }
+            .confirm-button {
+                background-color: #212529;
+            }
         </style>
     </head>
     <body>
@@ -108,57 +111,63 @@
                 <svg id="grid-offset-odd-r" class="fill"></svg>
             </div>
             <div class="workspace row hidden" id="account-workspace">
-                <form class="px-5">
-                    <div class="form-row">
-                      <div class="form-group col-sm-1">
-                        <label for="inputEmail">Email</label>
-                        <input type="text" readonly class="form-control-plaintext" id="staticEmail" value="email@example.com">
-                      </div>
-                      <div class="form-group col-sm-2">
-                        <label for="newPassword">New Password</label>
-                        <input type="password" class="form-control" id="newPassword">
-                      </div>
-                      <div class="form-group col-sm-2">
-                        <label for="confirmPassword">Confirm New Password</label>
-                        <input type="password" class="form-control" id="confirmPassword">
-                      </div>
+                <nav class="navbar navbar-expand-md navbar-dark fi bg-dark p-0 shadow">
+                    <ul class="navbar-nav px-3 w-100 mr-auto">
+                        <li class="nav-item active text-nowrap">
+                            <a class="nav-link" href="#" onclick="changeAccountPage('users')">Users</a>
+                        </li>
+                        <li class="nav-item text-nowrap">
+                            <a class="nav-link" href="#" onclick="changeAccountPage('config')">Game Configuration</a>
+                        </li>
+                    </ul>
+                </nav>
+                <form class="px-5 hidden" id="config">
+                    <div class="form-row justify-content-middle">
                       <div class="form-group col-sm-2">
                         <label for="newPubKey">New Public Key</label>
-                        <input type="text" class="form-control" id="newPubKey">
+                        <textarea type="text" class="form-control" id="newPubKey"></textarea>
                       </div>
                       <div class="form-group col-sm-2">
                         <label for="confirmPubKey">Confirm Public Key</label>
-                        <input type="text" class="form-control" id="confirmPubKey">
-                      </div>
-                      <div class="form-group col-sm-1">
-                        <button type="submit" id="saveButton" class="btn btn-primary form-control">Save</button>
+                        <textarea type="text" class="form-control" id="confirmPubKey"></textarea>
                       </div>
                     </div>
-                  </form>
-                <table class="table" id="accounts">
-                    <thead class="thead-dark">
-                      <tr>
-                        <th scope="col">Id</th>
-                        <th scope="col">First</th>
-                        <th scope="col">Last</th>
-                        <th scope="col">Email</th>
-                        <th scope="col">Edit</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="account in accounts" scope="row">
-                            <td>{{ account.id }}</td>
-                            <td>{{ account.first_name }}</td>
-                            <td>{{ account.last_name }}</td>
-                            <td>{{ account.email }}</td>
-                            <td>
-                                <div>
-                                    Buttons go here
-                                </div>
-                            </td>
+                    <div class="form-row justify-content-end">
+                        <div class="form-group col-sm-1">
+                            <button type="submit"
+                                    id="saveButton"
+                                    class="btn btn-primary form-control confirm-button">
+                                Save
+                            </button>
+                        </div>
+                    </div>
+                </form>
+                <div id="users">
+                    <table class="table">
+                        <thead class="thead-dark">
+                        <tr>
+                            <th scope="col">Id</th>
+                            <th scope="col">First</th>
+                            <th scope="col">Last</th>
+                            <th scope="col">Email</th>
+                            <th scope="col">Edit</th>
                         </tr>
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            <tr v-for="account in accounts" scope="row">
+                                <td>{{ account.id }}</td>
+                                <td>{{ account.first_name }}</td>
+                                <td>{{ account.last_name }}</td>
+                                <td>{{ account.email }}</td>
+                                <td>
+                                    <div>
+                                        Buttons go here
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
             <div class="workspace row hidden" id="session-workspace">
                 <table class="table" id="sessions">
@@ -171,7 +180,8 @@
                         <th scope="col">Change RTT</th>
                         <th scope="col">On Network Next</th>
                         <th scope="col">Expires At</th>
-                      </tr>
+                        <!-- <th scope="col">Details</th> -->
+                    </tr>
                     </thead>
                     <tbody>
                         <tr v-for="session in sessions" scope="row">
@@ -187,9 +197,33 @@
                                 <i class="fas fa-times-circle"></i>
                             </td>
                             <td>{{ session.expires_at }}</td>
+                            <!-- <td>
+                                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#exampleModal">
+                                    <i class="fas fa-info-circle"></i>
+                                </button>
+                            </td> -->
                         </tr>
                     </tbody>
                   </table>
+                  <!-- <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                    <div class="modal-dialog" role="document">
+                      <div class="modal-content">
+                        <div class="modal-header">
+                          <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
+                          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                          </button>
+                        </div>
+                        <div class="modal-body">
+                          ...
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                          <button type="button" class="btn btn-primary">Save changes</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div> -->
             </div>
         </div>
 
@@ -212,7 +246,7 @@
         <script src="js/hexmap/hexlib.js"></script>
         <script src="./js/portal.js"></script>
         <script>
-            reloadMap();
+            //reloadMap();
             JSONRPCClient
                 .call('BuyersService.Sessions', {buyer_id: '13672574147039585173'})
                 .then((response) => {
