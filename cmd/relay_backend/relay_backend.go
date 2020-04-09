@@ -63,21 +63,21 @@ func main() {
 
 		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
 
-		switch os.Getenv("RELAYS_LOG_LEVEL") {
+		switch os.Getenv("BACKEND_LOG_LEVEL") {
 		case "none":
-			relayslogger = level.NewFilter(relayslogger, level.AllowNone())
+			logger = level.NewFilter(logger, level.AllowNone())
 		case level.ErrorValue().String():
-			relayslogger = level.NewFilter(relayslogger, level.AllowError())
+			logger = level.NewFilter(logger, level.AllowError())
 		case level.WarnValue().String():
-			relayslogger = level.NewFilter(relayslogger, level.AllowWarn())
+			logger = level.NewFilter(logger, level.AllowWarn())
 		case level.InfoValue().String():
-			relayslogger = level.NewFilter(relayslogger, level.AllowInfo())
+			logger = level.NewFilter(logger, level.AllowInfo())
 		case level.DebugValue().String():
-			relayslogger = level.NewFilter(relayslogger, level.AllowDebug())
+			logger = level.NewFilter(logger, level.AllowDebug())
 		default:
-			relayslogger = level.NewFilter(relayslogger, level.AllowWarn())
+			logger = level.NewFilter(logger, level.AllowWarn())
 		}
-		relayslogger = log.With(relayslogger, "ts", log.DefaultTimestampUTC)
+		relayslogger = log.With(logger, "ts", log.DefaultTimestampUTC)
 	}
 	if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
 		loggingClient, err := gcplogging.NewClient(ctx, projectID)
