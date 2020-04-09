@@ -195,7 +195,6 @@ type gameConfiguration struct {
 
 func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurationArgs, reply *GameConfigurationReply) error {
 	var err error
-	var firestore storage.Firestore
 	var buyerID uint64
 
 	if args.BuyerID == "" {
@@ -206,7 +205,9 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 		return fmt.Errorf("failed to convert BuyerID to uint64")
 	}
 
-	fmt.Println(firestore.Buyer(buyerID))
+	fmt.Println(s.Storage.Buyer(buyerID))
+
+	// s.Storage.Buyer(buyerID).EncodedPublicKey()
 
 	return fmt.Errorf("not supported yet")
 }
