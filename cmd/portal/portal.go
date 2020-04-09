@@ -201,6 +201,7 @@ func main() {
 		}, "")
 		s.RegisterService(&jsonrpc.BuyersService{
 			RedisClient: redisClientCache,
+			Storage:     db,
 		}, "")
 		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), s))
 
