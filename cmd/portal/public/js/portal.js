@@ -94,44 +94,66 @@ window.MapHandler = {
 
 	mapInstance: null,
 	async initMap() {
-		/* JSONRPCClient
-		.call('BuyersService.SessionsMap', {buyer_id: '13672574147039585173'})
-		.then((response) => {
-			console.log(response);
-		})
-		.catch((e) => {
-			console.log(e);
-		}); */
-
-		var data = [];
-
-		for (let i = 0; i < 10000; i++) {
-			let lat = getRandomInRange(-90, 90, 3);
-			let lon = getRandomInRange(-180, 180, 3);
-			data.push({COORDINATES: [lon, lat]});
-		}
-		mapInstance = new deck.DeckGL({
-			mapboxApiAccessToken: 'pk.eyJ1IjoiYmF1bWJhY2hhbmRyZXciLCJhIjoiY2s4dDFwcGo2MGowZTNtcXpsbDN6dHBwdyJ9.Sr1lDY9i9o9yz84fJ-PSlg',
-			mapStyle: 'mapbox://styles/mapbox/dark-v9',
-			initialViewState: {
-				longitude: -122.45,
-				latitude: 37.8,
-				zoom: 4
-			},
-			container: 'map-workspace',
-			controller: true,
-			layers: [
-				new deck.HexagonLayer({
-					id: 'hexagon-layer',
+		JSONRPCClient
+			.call('BuyersService.SessionsMap', {buyer_id: '12354645743257'})
+			.then((response) => {
+				let data = response.on_network_next;
+				let nnLayer = new deck.HexagonLayer({
+					id: 'nn-layer',
 					data,
+					colorRange: [
+						[49,163,84],
+						[49,163,84],
+						[49,163,84],
+						[49,163,84],
+						[49,163,84]
+					],
 					pickable: false,
 					extruded: false,
-					radius: 100000,
+					radius: 1000,
 					elevationScale: 4,
 					getPosition: d => d.COORDINATES
-				})
-			]
-		});
+				});
+				data = response.direct;
+				let directLayer = new deck.HexagonLayer({
+					id: 'direct-layer',
+					data,
+					colorRange: [
+						[49,130,189],
+						[49,130,189],
+						[49,130,189],
+						[49,130,189],
+						[49,130,189],
+						[49,130,189],
+						[49,130,189]
+					],
+					pickable: false,
+					extruded: false,
+					radius: 1000,
+					elevationScale: 4,
+					getPosition: d => d.COORDINATES
+				});
+				var layers = [directLayer, nnLayer];
+				mapInstance = new deck.DeckGL({
+					mapboxApiAccessToken: 'pk.eyJ1IjoiYmF1bWJhY2hhbmRyZXciLCJhIjoiY2s4dDFwcGo2MGowZTNtcXpsbDN6dHBwdyJ9.Sr1lDY9i9o9yz84fJ-PSlg',
+					mapStyle: 'mapbox://styles/mapbox/dark-v9',
+					initialViewState: {
+						// Center of the continental US
+						longitude: -98.583333,
+						latitude: 39.833333,
+						zoom: 4,
+						minZoom: 4,
+						maxZoom: 15,
+					},
+					container: 'map-workspace',
+					controller: true,
+					layers: layers,
+					pitch: 80
+				});
+			})
+			.catch((e) => {
+				console.log(e);
+			});
 
 		let randomCoord = {
 			lat: getRandomInRange(-90, 90, 3),
