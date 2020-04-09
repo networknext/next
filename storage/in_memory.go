@@ -11,6 +11,8 @@ type InMemory struct {
 	localBuyers      []routing.Buyer
 	localRelays      []routing.Relay
 	localDatacenters []routing.Datacenter
+
+	LocalMode bool
 }
 
 func (m *InMemory) Buyer(id uint64) (routing.Buyer, error) {
@@ -85,7 +87,7 @@ func (m *InMemory) Relay(id uint64) (routing.Relay, error) {
 	}
 
 	// If the relay isn't found then just return the first one, since we need one for local dev
-	if len(m.localRelays) > 0 {
+	if m.LocalMode && len(m.localRelays) > 0 {
 		return m.localRelays[0], nil
 	}
 
@@ -144,7 +146,7 @@ func (m *InMemory) SetRelay(ctx context.Context, relay routing.Relay) error {
 	}
 
 	// If the relay isn't found then just set the first one, since we need to set one for local dev
-	if len(m.localRelays) > 0 {
+	if m.LocalMode && len(m.localRelays) > 0 {
 		m.localRelays[0] = relay
 		return nil
 	}

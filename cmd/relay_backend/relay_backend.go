@@ -43,6 +43,7 @@ func main() {
 
 	// Configure logging
 	logger := log.NewLogfmtLogger(os.Stdout)
+	relayslogger := log.NewLogfmtLogger(os.Stdout)
 	{
 		switch os.Getenv("BACKEND_LOG_LEVEL") {
 		case "none":
@@ -60,6 +61,22 @@ func main() {
 		}
 
 		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
+
+		switch os.Getenv("RELAYS_LOG_LEVEL") {
+		case "none":
+			relayslogger = level.NewFilter(relayslogger, level.AllowNone())
+		case level.ErrorValue().String():
+			relayslogger = level.NewFilter(relayslogger, level.AllowError())
+		case level.WarnValue().String():
+			relayslogger = level.NewFilter(relayslogger, level.AllowWarn())
+		case level.InfoValue().String():
+			relayslogger = level.NewFilter(relayslogger, level.AllowInfo())
+		case level.DebugValue().String():
+			relayslogger = level.NewFilter(relayslogger, level.AllowDebug())
+		default:
+			relayslogger = level.NewFilter(relayslogger, level.AllowWarn())
+		}
+		relayslogger = log.With(relayslogger, "ts", log.DefaultTimestampUTC)
 	}
 	if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
 		loggingClient, err := gcplogging.NewClient(ctx, projectID)
@@ -69,6 +86,7 @@ func main() {
 		}
 
 		logger = logging.NewStackdriverLogger(loggingClient, "relay-backend")
+		relayslogger = logging.NewStackdriverLogger(loggingClient, "relays")
 	}
 
 	var customerPublicKey []byte
@@ -122,7 +140,9 @@ func main() {
 
 	// Create an in-memory relay & datacenter store
 	// that doesn't require talking to configstore
-	var db storage.Storer = &storage.InMemory{}
+	var db storage.Storer = &storage.InMemory{
+		LocalMode: true,
+	}
 	db.AddRelay(ctx, routing.Relay{
 		PublicKey: relayPublicKey,
 		Datacenter: routing.Datacenter{
@@ -350,8 +370,8 @@ func main() {
 	router := mux.NewRouter()
 	router.HandleFunc("/healthz", transport.HealthzHandlerFunc())
 	router.HandleFunc("/relay_init", transport.RelayInitHandlerFunc(logger, &commonInitParams)).Methods("POST")
-	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(logger, &commonUpdateParams)).Methods("POST")
-	router.HandleFunc("/relays", transport.RelayHandlerFunc(logger, &commonHandlerParams)).Methods("POST")
+	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(logger, relayslogger, &commonUpdateParams)).Methods("POST")
+	router.HandleFunc("/relays", transport.RelayHandlerFunc(logger, relayslogger, &commonHandlerParams)).Methods("POST")
 	router.Handle("/cost_matrix", &costmatrix).Methods("GET")
 	router.Handle("/route_matrix", &routematrix).Methods("GET")
 	router.Handle("/debug/vars", expvar.Handler())
