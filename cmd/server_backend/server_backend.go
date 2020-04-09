@@ -131,7 +131,9 @@ func main() {
 	}
 
 	// Create an in-memory db
-	var db storage.Storer = &storage.InMemory{}
+	var db storage.Storer = &storage.InMemory{
+		LocalMode: true,
+	}
 	db.AddBuyer(ctx, routing.Buyer{
 		ID:                   13672574147039585173,
 		Name:                 "local",
