@@ -91,11 +91,12 @@ window.MapHandler = {
 						[49,163,84],
 						[49,163,84]
 					],
-					pickable: false,
+					pickable: true,
 					extruded: false,
 					radius: 1000,
 					elevationScale: 4,
-					getPosition: d => d.COORDINATES
+					getPosition: d => d.COORDINATES,
+					onHover: info => setTooltip(info.object, info.x, info.y)
 				});
 				data = response.direct;
 				let directLayer = new deck.HexagonLayer({
@@ -110,11 +111,12 @@ window.MapHandler = {
 						[49,130,189],
 						[49,130,189]
 					],
-					pickable: false,
+					pickable: true,
 					extruded: false,
 					radius: 1000,
 					elevationScale: 4,
-					getPosition: d => d.COORDINATES
+					getPosition: d => d.COORDINATES,
+					onHover: info => setTooltip(info.object, info.x, info.y)
 				});
 				var layers = [directLayer, nnLayer];
 				mapInstance = new deck.DeckGL({
@@ -137,6 +139,20 @@ window.MapHandler = {
 			.catch((e) => {
 				console.log(e);
 			});
+
+		function setTooltip(object, x, y) {
+			const el = document.getElementById('tooltip');
+			if (object) {
+				console.log(object)
+				el.innerHTML = object.points.length;
+				el.style.display = 'block';
+				el.style.left = x + 'px';
+				el.style.top = y + 'px';
+				el.style.fontSize = '32px';
+			} else {
+				el.style.display = 'none';
+			}
+		}
 
 		let randomCoord = {
 			lat: getRandomInRange(-90, 90, 3),
