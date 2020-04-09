@@ -30,7 +30,7 @@ type Firestore struct {
 }
 
 type buyer struct {
-	ID        uint64 `firestore:"sdkVersion3PublicKeyId"`
+	ID        int64  `firestore:"sdkVersion3PublicKeyId"`
 	Name      string `firestore:"name"`
 	Active    bool   `firestore:"active"`
 	Live      bool   `firestore:"isLiveCustomer"`
@@ -85,6 +85,21 @@ type routingRulesSettings struct {
 	EnableABTest                 bool    `firestore:"abTest"`
 }
 
+func NewFirestore(ctx context.Context, gcpProjectID string, logger log.Logger) (*Firestore, error) {
+	client, err := firestore.NewClient(ctx, gcpProjectID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Firestore{
+		Client:      client,
+		Logger:      logger,
+		datacenters: make(map[uint64]routing.Datacenter),
+		relays:      make(map[uint64]routing.Relay),
+		buyers:      make(map[uint64]routing.Buyer),
+	}, nil
+}
+
 func (fs *Firestore) Buyer(id uint64) (routing.Buyer, error) {
 	fs.buyerMutex.RLock()
 	defer fs.buyerMutex.RUnlock()
@@ -111,7 +126,7 @@ func (fs *Firestore) Buyers() []routing.Buyer {
 
 func (fs *Firestore) AddBuyer(ctx context.Context, b routing.Buyer) error {
 	newBuyerData := buyer{
-		ID:        b.ID,
+		ID:        int64(b.ID),
 		Name:      b.Name,
 		Active:    b.Active,
 		Live:      b.Live,
@@ -159,7 +174,7 @@ func (fs *Firestore) RemoveBuyer(ctx context.Context, id uint64) error {
 			return fmt.Errorf("failed to unmarshal document: %v", err)
 		}
 
-		if buyerInRemoteStorage.ID == id {
+		if uint64(buyerInRemoteStorage.ID) == id {
 			// Delete the buyer in remote storage
 			if _, err := bdoc.Ref.Delete(ctx); err != nil {
 				return err
@@ -210,7 +225,7 @@ func (fs *Firestore) SetBuyer(ctx context.Context, b routing.Buyer) error {
 		}
 
 		// If the buyer is the one we want to update, update it with the new data
-		if buyerInRemoteStorage.ID == b.ID {
+		if uint64(buyerInRemoteStorage.ID) == b.ID {
 			// Update the buyer in firestore
 			if _, err := bdoc.Ref.Set(ctx, newBuyerData, firestore.MergeAll); err != nil {
 				return err
@@ -811,8 +826,8 @@ func (fs *Firestore) syncBuyers(ctx context.Context) error {
 			level.Debug(fs.Logger).Log("msg", fmt.Sprintf("using default route rules for buyer %v", bdoc.Ref.ID), "err", err)
 		}
 
-		buyers[b.ID] = routing.Buyer{
-			ID:                   b.ID,
+		buyers[uint64(b.ID)] = routing.Buyer{
+			ID:                   uint64(b.ID),
 			Name:                 b.Name,
 			Active:               b.Active,
 			Live:                 b.Live,

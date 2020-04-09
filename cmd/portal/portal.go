@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"cloud.google.com/go/firestore"
 	"github.com/gorilla/rpc/v2"
 	"github.com/gorilla/rpc/v2/json2"
 
@@ -122,16 +121,11 @@ func main() {
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
 	// on creation so we can use that for the default then
 	if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
-		firestoreClient, err := firestore.NewClient(ctx, gcpProjectID)
+		// Create a Firestore Storer
+		fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
 		if err != nil {
 			level.Error(logger).Log("err", err)
 			os.Exit(1)
-		}
-
-		// Create a Firestore Storer
-		fs := storage.Firestore{
-			Client: firestoreClient,
-			Logger: logger,
 		}
 
 		// Start a goroutine to sync from Firestore
@@ -141,7 +135,7 @@ func main() {
 		}()
 
 		// Set the Firestore Storer to give to handlers
-		db = &fs
+		db = fs
 	}
 
 	var routeMatrix routing.RouteMatrix
