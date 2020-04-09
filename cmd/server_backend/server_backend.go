@@ -133,6 +133,8 @@ func main() {
 	// Create an in-memory db
 	var db storage.Storer = &storage.InMemory{}
 	db.AddBuyer(ctx, routing.Buyer{
+		ID:                   13672574147039585173,
+		Name:                 "local",
 		PublicKey:            customerPublicKey,
 		RoutingRulesSettings: routing.LocalRoutingRulesSettings,
 	})
