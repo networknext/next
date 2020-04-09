@@ -159,10 +159,8 @@ type gameConfiguration struct {
 
 func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurationArgs, reply *GameConfigurationReply) error {
 	var err error
-	var ok bool
-	var buyerInfo *routing.Buyer
-	var firestoreClient storage.Firestore
-	var storer storage.Storer
+	var buyerInfo routing.Buyer
+	var firestore storage.Firestore
 	var buyerID uint64
 
 	if args.BuyerID == "" {
@@ -173,16 +171,10 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 		return fmt.Errorf("failed to convert BuyerID to uint64")
 	}
 
-	buyerInfo, ok = firestoreClient.Buyer(buyerID)
+	if buyerInfo, err = firestore.Buyer(buyerID); err != nil {
+		return fmt.Errorf(err.Error())
+	}
 
-	fmt.Println(buyerID)
-	fmt.Println(ok)
-	fmt.Println(buyerInfo)
-
-	buyerInfo, ok = storer.Buyer(buyerID)
-
-	fmt.Println(buyerID)
-	fmt.Println(ok)
 	fmt.Println(buyerInfo)
 
 	return nil
