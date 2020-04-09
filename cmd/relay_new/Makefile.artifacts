@@ -13,5 +13,5 @@ DIST_FILES				= $(DIST_DIR)/relay.env $(DIST_DIR)/relay.service $(DIST_DIR)/inst
 release:
 	@printf 'Building relay artifact...'
 	tar -zcf $(RELEASE_ARTIFACT) $(RELEASE_EXE) $(DIST_FILES)
-	printf '$(RELEASE_ARTIFACT)'
+	@printf '$(RELEASE_ARTIFACT)'
 
