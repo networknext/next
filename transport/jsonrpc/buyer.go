@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v7"
-	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 )
@@ -140,42 +139,6 @@ func (s *BuyersService) Sessions(r *http.Request, args *SessionsArgs, reply *Ses
 	sort.Slice(reply.Sessions, func(i int, j int) bool {
 		return reply.Sessions[i].ChangeRTT < reply.Sessions[j].ChangeRTT
 	})
-
-	return nil
-}
-
-type GameConfigurationArgs struct {
-	BuyerID   string `json:"buyer_id"`
-	SessionID string `json:"session_id"`
-}
-
-type GameConfigurationReply struct {
-	GameConfiguration gameConfiguration `json:"game_configuration"`
-}
-
-type gameConfiguration struct {
-	PublicKey []byte
-}
-
-func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurationArgs, reply *GameConfigurationReply) error {
-	var err error
-	var buyerInfo routing.Buyer
-	var firestore storage.Firestore
-	var buyerID uint64
-
-	if args.BuyerID == "" {
-		return fmt.Errorf("buyer_id is required")
-	}
-
-	if buyerID, err = strconv.ParseUint(args.BuyerID, 10, 64); err != nil {
-		return fmt.Errorf("failed to convert BuyerID to uint64")
-	}
-
-	if buyerInfo, err = firestore.Buyer(buyerID); err != nil {
-		return fmt.Errorf(err.Error())
-	}
-
-	fmt.Println(buyerInfo)
 
 	return nil
 }
