@@ -304,8 +304,8 @@ build-sdk: $(DIST_DIR)/$(SDKNAME).so ## builds the sdk
 
 .PHONY: build-portal
 build-portal: ## builds the portal binary
-	@printf "Building portal... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/portal ./cmd/portal/portal.go
+	@printf "Building portal for Linux... "
+	@GOOS=linux $(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/portal ./cmd/portal/portal.go
 	@printf "done\n"
 
 .PHONY: build-portal-artifact
@@ -332,8 +332,8 @@ deploy-portal: ## builds and deploys the portal to the dev VM
 
 .PHONY: build-relay-backend
 build-relay-backend: ## builds the relay backend binary
-	@printf "Building relay backend... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/relay_backend ./cmd/relay_backend/relay_backend.go
+	@printf "Building relay backend for Linux... "
+	@GOOS=linux $(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/relay_backend ./cmd/relay_backend/relay_backend.go
 	@printf "done\n"
 
 .PHONY: build-relay-backend-artifact
@@ -375,8 +375,8 @@ deploy-relay-backend: build-relay-backend ## builds and deploys the relay backen
 
 .PHONY: build-server-backend
 build-server-backend: ## builds the server backend binary
-	@printf "Building server backend... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/server_backend ./cmd/server_backend/server_backend.go
+	@printf "Building server backend Linux... "
+	@GOOS=linux $(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/server_backend ./cmd/server_backend/server_backend.go
 	@printf "done\n"
 
 .PHONY: build-server-backend-artifact
