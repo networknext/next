@@ -12,7 +12,7 @@ The relay and server backend artifacts just have 2 files to make deployment easy
 - `app` binary is the compiled Go source
 - `app.env` text file of the environment variables needed to run
 
-The artifacts creates are named `(portal|relay_backend|server|backend).(dev|prod).tar.gz` and end up in the `./dist` folder.
+The artifacts creates are named `(portal|relay_backend|server_backend).(dev|prod).tar.gz` and end up in the `./dist` folder.
 
 Each relay and server backends have their own `(dev|prod).env` for now which gets renamed to `app.dev` during building.
 
