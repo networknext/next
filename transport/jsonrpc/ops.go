@@ -1,6 +1,8 @@
 package jsonrpc
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"sort"
 	"strings"
@@ -96,6 +98,30 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 	sort.Slice(reply.Relays, func(i int, j int) bool {
 		return reply.Relays[i].Name < reply.Relays[j].Name
 	})
+
+	return nil
+}
+
+type RelayStateUpdateArgs struct {
+	RelayID    uint64             `json:"relay_id"`
+	RelayState routing.RelayState `json:"relay_state"`
+}
+
+type RelayStateUpdateReply struct {
+}
+
+func (s *OpsService) RelayStateUpdate(r *http.Request, args *RelayStateUpdateArgs, reply *RelayStateUpdateReply) error {
+	relay, err := s.Storage.Relay(args.RelayID)
+
+	if err != nil {
+		return fmt.Errorf("relay with id %d not found", args.RelayID)
+	}
+
+	relay.State = args.RelayState
+
+	if err := s.Storage.SetRelay(context.Background(), relay); err != nil {
+		return err
+	}
 
 	return nil
 }

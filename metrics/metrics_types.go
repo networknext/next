@@ -688,6 +688,7 @@ func NewServerUpdateMetrics(ctx context.Context, metricsHandler Handler) (*Serve
 	updateMetrics := ServerUpdateMetrics{
 		Invocations:   updateInvocationsCounter,
 		DurationGauge: updateDurationGauge,
+		ErrorMetrics:  EmptyServerUpdateErrorMetrics,
 	}
 
 	return &updateMetrics, nil
@@ -719,6 +720,7 @@ func NewRelayInitMetrics(ctx context.Context, metricsHandler Handler) (*RelayIni
 	initMetrics := RelayInitMetrics{
 		Invocations:   initCount,
 		DurationGauge: initDuration,
+		ErrorMetrics:  EmptyRelayInitErrorMetrics,
 	}
 
 	return &initMetrics, nil
@@ -750,6 +752,7 @@ func NewRelayUpdateMetrics(ctx context.Context, metricsHandler Handler) (*RelayU
 	updateMetrics := RelayUpdateMetrics{
 		Invocations:   updateCount,
 		DurationGauge: updateDuration,
+		ErrorMetrics:  EmptyRelayUpdateErrorMetrics,
 	}
 
 	return &updateMetrics, nil
@@ -781,6 +784,7 @@ func NewRelayHandlerMetrics(ctx context.Context, metricsHandler Handler) (*Relay
 	handerMetrics := RelayHandlerMetrics{
 		Invocations:   handlerCount,
 		DurationGauge: handlerDuration,
+		ErrorMetrics:  EmptyRelayHandlerErrorMetrics,
 	}
 
 	return &handerMetrics, nil
