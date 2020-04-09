@@ -1,8 +1,6 @@
 package main
 
 import (
-	"log"
-
 	"github.com/modood/table"
 	localjsonrpc "github.com/networknext/backend/transport/jsonrpc"
 	"github.com/ybbus/jsonrpc"
@@ -15,7 +13,8 @@ func datacenters(rpcClient jsonrpc.RPCClient, filter string) {
 
 	var reply localjsonrpc.DatacentersReply
 	if err := rpcClient.CallFor(&reply, "OpsService.Datacenters", args); err != nil {
-		log.Fatal(err)
+		handleJSONRPCError(err)
+		return
 	}
 
 	table.Output(reply.Datacenters)
