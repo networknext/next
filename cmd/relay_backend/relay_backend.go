@@ -63,7 +63,7 @@ func main() {
 
 		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
 
-		switch os.Getenv("BACKEND_LOG_LEVEL") {
+		switch os.Getenv("RELAYS_LOG_LEVEL") {
 		case "none":
 			relayslogger = level.NewFilter(relayslogger, level.AllowNone())
 		case level.ErrorValue().String():
