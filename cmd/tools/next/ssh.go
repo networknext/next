@@ -14,14 +14,17 @@ const (
 	DisableRelayScript = `if [ ! $(id -u) = 0 ]; then sudo systemctl stop relay; else systemctl stop relay; fi`
 )
 
-type relaySSHInfo struct {
-	id      uint64
-	user    string
-	address string
-	port    int64
+type relayInfo struct {
+	id         uint64
+	user       string
+	address    string
+	port       string
+	publicAddr string
+	publicKey  string
+	privateKey string
 }
 
-func getSSHInfo(rpcClient jsonrpc.RPCClient, relayName string) relaySSHInfo {
+func getRelayInfo(rpcClient jsonrpc.RPCClient, relayName string) relayInfo {
 	args := localjsonrpc.RelaysArgs{
 		Name: relayName,
 	}
@@ -36,11 +39,12 @@ func getSSHInfo(rpcClient jsonrpc.RPCClient, relayName string) relaySSHInfo {
 	}
 
 	relay := reply.Relays[0]
-	return relaySSHInfo{
-		id:      relay.ID,
-		user:    relay.SSHUser,
-		address: relay.ManagementAddr,
-		port:    relay.SSHPort,
+	return relayInfo{
+		id:         relay.ID,
+		user:       relay.SSHUser,
+		address:    relay.ManagementAddr,
+		port:       fmt.Sprintf("%d", relay.SSHPort),
+		publicAddr: relay.Addr,
 	}
 }
 
@@ -55,14 +59,14 @@ func testForSSHKey(env Environment) {
 }
 
 func SSHInto(env Environment, rpcClient jsonrpc.RPCClient, relayName string) {
-	info := getSSHInfo(rpcClient, relayName)
+	info := getRelayInfo(rpcClient, relayName)
 	testForSSHKey(env)
 	con := NewSSHConn(info.user, info.address, info.port, env.SSHKeyFilePath)
 	con.Connect()
 }
 
 func Disable(env Environment, rpcClient jsonrpc.RPCClient, relayName string) {
-	info := getSSHInfo(rpcClient, relayName)
+	info := getRelayInfo(rpcClient, relayName)
 	fmt.Printf("Disabling relay '%s' (id = %d)\n", relayName, info.id)
 	testForSSHKey(env)
 	args := localjsonrpc.RelayStateUpdateArgs{
@@ -80,11 +84,11 @@ func Disable(env Environment, rpcClient jsonrpc.RPCClient, relayName string) {
 type SSHConn struct {
 	user    string
 	address string
-	port    int64
+	port    string
 	keyfile string
 }
 
-func NewSSHConn(user, address string, port int64, authKeyFilename string) SSHConn {
+func NewSSHConn(user, address string, port string, authKeyFilename string) SSHConn {
 	return SSHConn{
 		user:    user,
 		address: address,
@@ -98,7 +102,7 @@ func (con SSHConn) commonSSHCommands() []string {
 	args[0] = "-i"
 	args[1] = con.keyfile
 	args[2] = "-p"
-	args[3] = fmt.Sprintf("%d", con.port)
+	args[3] = con.port
 	return args
 }
 

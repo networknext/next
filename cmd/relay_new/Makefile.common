@@ -14,7 +14,6 @@ RELEASE_MAKEFILE 			:= Makefile.release
 DEBUG_MAKEFILE 				:= Makefile.debug
 TEST_MAKEFILE 				:= Makefile.test
 BENCHMARK_MAKEFILE 		:= Makefile.benchmark
-ARTIFACT_MAKEFILE			:= Makefile.artifact
 
 CXX										:= g++
 CXX_FLAGS 						:= -Wall -Wextra -std=c++17
