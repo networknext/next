@@ -84,6 +84,11 @@ func (m *InMemory) Relay(id uint64) (routing.Relay, error) {
 		}
 	}
 
+	// If the relay isn't found then just return the first one, since we need one for local dev
+	if len(m.localRelays) > 0 {
+		return m.localRelays[0], nil
+	}
+
 	return routing.Relay{}, fmt.Errorf("relay with id %d not found in memory storage", id)
 }
 
@@ -136,6 +141,12 @@ func (m *InMemory) SetRelay(ctx context.Context, relay routing.Relay) error {
 			m.localRelays[i] = relay
 			return nil
 		}
+	}
+
+	// If the relay isn't found then just set the first one, since we need to set one for local dev
+	if len(m.localRelays) > 0 {
+		m.localRelays[0] = relay
+		return nil
 	}
 
 	return fmt.Errorf("relay with id %d not found in memory storage", relay.ID)
