@@ -3443,6 +3443,11 @@ int next_init( void * context, next_config_t * config_in )
     config.socket_receive_buffer_size = NEXT_DEFAULT_SOCKET_RECEIVE_BUFFER_SIZE;
 
     const char * customer_public_key_env = next_platform_getenv( "NEXT_CUSTOMER_PUBLIC_KEY" );
+    if ( customer_public_key_env )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "customer public key override: '%s'", customer_public_key_env );
+    }
+
     const char * customer_public_key = customer_public_key_env ? customer_public_key_env : ( config_in ? config_in->customer_public_key : "" );
     if ( customer_public_key )
     {
@@ -3463,6 +3468,11 @@ int next_init( void * context, next_config_t * config_in )
     }
 
     const char * customer_private_key_env = next_platform_getenv( "NEXT_CUSTOMER_PRIVATE_KEY" );
+    if ( customer_private_key_env )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "customer private key override" );
+    }
+
     const char * customer_private_key = customer_private_key_env ? customer_private_key_env : ( config_in ? config_in->customer_private_key : "" );
     if ( customer_private_key )
     {
