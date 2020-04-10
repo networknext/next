@@ -547,15 +547,7 @@ void next_platform_socket_send_packet( next_platform_socket_t * socket, const ne
             ( (uint16_t*) &socket_address.sin6_addr ) [i] = next_platform_htons( to->data.ipv6[i] );
         }
         socket_address.sin6_port = next_platform_htons( to->port );
-        int result = sendto( socket->handle, (char*)( packet_data ), packet_bytes, 0, (sockaddr*)( &socket_address ), sizeof( sockaddr_in6 ) );
-        if ( result < 0 )
-        {
-            char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
-            next_address_to_string( to, address_string );
-            char error_string[256] = {0};
-            strerror_s( error_string, sizeof( error_string ), errno );
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "sendto (%s) failed: %s", address_string, error_string );
-        }
+        sendto( socket->handle, (char*)( packet_data ), packet_bytes, 0, (sockaddr*)( &socket_address ), sizeof( sockaddr_in6 ) );
     }
     else if ( to->type == NEXT_ADDRESS_IPV4 )
     {
@@ -567,19 +559,7 @@ void next_platform_socket_send_packet( next_platform_socket_t * socket, const ne
                                          ( ( (uint32_t) to->data.ipv4[2] ) << 16 )  | 
                                          ( ( (uint32_t) to->data.ipv4[3] ) << 24 );
         socket_address.sin_port = next_platform_htons( to->port );
-        int result = sendto( socket->handle, (const char*)( packet_data ), packet_bytes, 0, (sockaddr*)( &socket_address ), sizeof( sockaddr_in ) );
-        if ( result < 0 )
-        {
-            char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
-            next_address_to_string( to, address_string );
-            char error_string[256] = {0};
-            strerror_s( error_string, sizeof( error_string ), errno );
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "sendto (%s) failed: %s", address_string, error_string );
-        }
-    }
-    else
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "invalid address type. could not send packet" );
+        sendto( socket->handle, (const char*)( packet_data ), packet_bytes, 0, (sockaddr*)( &socket_address ), sizeof( sockaddr_in ) );
     }
 }
 

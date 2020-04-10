@@ -70,7 +70,7 @@
     <ReferencePath>$(Console_SdkLibPath);$(Console_SdkWindowsMetadataPath)</ReferencePath>
     <LibraryPath>$(Console_SdkLibPath)</LibraryPath>
     <LibraryWPath>$(Console_SdkLibPath);$(Console_SdkWindowsMetadataPath)</LibraryWPath>
-    <IncludePath>$(Console_SdkIncludeRoot);..\..\</IncludePath>
+    <IncludePath>$(Console_SdkIncludeRoot);..\..\include</IncludePath>
     <ExecutablePath>$(Console_SdkRoot)bin;$(VCInstallDir)bin\x86_amd64;$(VCInstallDir)bin;$(WindowsSDK_ExecutablePath_x86);$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(MSBuildToolsPath32);$(FxCopDir);$(PATH);</ExecutablePath>
     <LinkIncremental>false</LinkIncremental>
     <IntDir>$(Configuration)\sample\</IntDir>
@@ -79,7 +79,7 @@
     <ReferencePath>$(Console_SdkLibPath);$(Console_SdkWindowsMetadataPath)</ReferencePath>
     <LibraryPath>$(Console_SdkLibPath)</LibraryPath>
     <LibraryWPath>$(Console_SdkLibPath);$(Console_SdkWindowsMetadataPath)</LibraryWPath>
-    <IncludePath>$(Console_SdkIncludeRoot);..\..\</IncludePath>
+    <IncludePath>$(Console_SdkIncludeRoot);..\..\include</IncludePath>
     <ExecutablePath>$(Console_SdkRoot)bin;$(VCInstallDir)bin\x86_amd64;$(VCInstallDir)bin;$(WindowsSDK_ExecutablePath_x86);$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(MSBuildToolsPath32);$(FxCopDir);$(PATH);</ExecutablePath>
     <LinkIncremental>false</LinkIncremental>
     <IntDir>$(Configuration)\sample\</IntDir>
@@ -95,7 +95,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Durango'">
     <Link>
-      <AdditionalDependencies>d3d12_x.lib;combase.lib;kernelx.lib;uuid.lib;%(XboxExtensionsDependencies);</AdditionalDependencies>
+      <AdditionalDependencies>d3d12_x.lib;combase.lib;kernelx.lib;uuid.lib;%(XboxExtensionsDependencies);../../lib/XBoxOne/Debug/next.lib</AdditionalDependencies>
       <EntryPointSymbol>
       </EntryPointSymbol>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -122,7 +122,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile|Durango'">
     <Link>
-      <AdditionalDependencies>pixEvt.lib;d3d12_x.lib;combase.lib;kernelx.lib;uuid.lib;%(XboxExtensionsDependencies);</AdditionalDependencies>
+      <AdditionalDependencies>pixEvt.lib;d3d12_x.lib;combase.lib;kernelx.lib;uuid.lib;%(XboxExtensionsDependencies);../../lib/XBoxOne/release/next.lib</AdditionalDependencies>
       <EntryPointSymbol>
       </EntryPointSymbol>
       <GenerateDebugInformation>true</GenerateDebugInformation>

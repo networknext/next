@@ -380,10 +380,17 @@ static void default_log_function( int level, const char * format, ... )
     va_start( args, format );
     char buffer[1024];
     vsnprintf( buffer, sizeof( buffer ), format, args );
-    const char * level_string = next_log_level_string( level );
-    printf( "%.6f: %s: %s\n", next_time(), level_string, buffer );
-    va_end( args );
-    fflush( stdout );
+	if ( level != NEXT_LOG_LEVEL_NONE )
+	{
+		const char * level_string = next_log_level_string( level );
+		printf( "%.6f: %s: %s\n", next_time(), level_string, buffer );
+	}
+	else
+	{
+		printf( "%s\n", buffer );
+	}
+	va_end( args );
+	fflush( stdout );
 }
 
 static void (*log_function)( int level, const char * format, ... ) = default_log_function;
@@ -434,7 +441,17 @@ __inline void clear_and_free( void * context, void * p, size_t p_size )
     next_free( context, p );
 }
 
-void next_printf( int level, const char * format, ... ) 
+void next_printf( const char * format, ... )
+{
+	va_list args;
+	va_start( args, format );
+	char buffer[1024];
+	vsnprintf( buffer, sizeof(buffer), format, args );
+	log_function( NEXT_LOG_LEVEL_NONE, "%s", buffer );
+	va_end( args );
+}
+
+void next_printf( int level, const char * format, ... )
 {
     if ( level > log_level )
         return;
@@ -444,23 +461,6 @@ void next_printf( int level, const char * format, ... )
     vsnprintf( buffer, sizeof( buffer ), format, args );
     log_function( level, "%s", buffer );
     va_end( args );
-}
-
-void next_print_bytes( const char * label, const uint8_t * data, int data_bytes )
-{
-    printf( "%s: ", label );
-    for ( int i = 0; i < data_bytes; ++i )
-    {
-        if ( i != data_bytes - 1 )
-        {
-            printf( "0x%02x,", (int) data[i] );
-        }
-        else
-        {
-            printf( "0x%02x", (int) data[i] );
-        }
-    }
-    printf( " (%d bytes)\n", data_bytes );
 }
 
 const char * next_user_id_string( uint64_t user_id, char * buffer )
@@ -3392,7 +3392,7 @@ struct next_config_internal_t
     uint64_t customer_id;
     uint8_t customer_public_key[32];
     uint8_t customer_private_key[64];
-    bool invalid_customer_private_key;
+    bool valid_customer_private_key;
     int socket_send_buffer_size;
     int socket_receive_buffer_size;
     bool disable_network_next;
@@ -3453,7 +3453,8 @@ int next_init( void * context, next_config_t * config_in )
         }
     }
 
-    const char * customer_private_key = config_in ? config_in->customer_private_key : next_platform_getenv( "NEXT_CUSTOMER_PRIVATE_KEY" );
+	config.valid_customer_private_key = false;
+	const char * customer_private_key = config_in ? config_in->customer_private_key : next_platform_getenv( "NEXT_CUSTOMER_PRIVATE_KEY" );
     if ( customer_private_key )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "customer private key is '%s'", customer_private_key );
@@ -3463,14 +3464,14 @@ int next_init( void * context, next_config_t * config_in )
             const uint8_t * p = decode_buffer;
             config.customer_id = next_read_uint64( &p );
             memcpy( config.customer_private_key, decode_buffer + 8, crypto_sign_SECRETKEYBYTES );
+			config.valid_customer_private_key = true;
         }
         else
         {
             if ( customer_private_key[0] != '\0' )
             {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "customer private key is invalid: \"%s\"", customer_private_key );
+                next_printf( NEXT_LOG_LEVEL_ERROR, "customer private key is invalid: \"%s\"", customer_private_key );
             }
-            config.invalid_customer_private_key = true;
         }
     }
 
@@ -8455,7 +8456,7 @@ struct next_server_internal_t
     uint64_t datacenter_id;
     uint64_t customer_id;
     uint8_t customer_private_key[crypto_sign_SECRETKEYBYTES];
-    bool invalid_customer_private_key;
+    bool valid_customer_private_key;
     bool no_datacenter_specified;
     bool failed_to_resolve_hostname;
     bool resolve_hostname_finished;
@@ -8537,9 +8538,9 @@ next_server_internal_t * next_server_internal_create( void * context, const char
     server->context = context;
     server->customer_id = next_global_config.customer_id;
     memcpy( server->customer_private_key, next_global_config.customer_private_key, crypto_sign_SECRETKEYBYTES );
-    server->invalid_customer_private_key = next_global_config.invalid_customer_private_key;
+    server->valid_customer_private_key = next_global_config.valid_customer_private_key;
 
-    if ( !server->invalid_customer_private_key )
+    if ( server->valid_customer_private_key )
     {
         const char * datacenter = datacenter_string;
         const char * datacenter_env = next_platform_getenv( "NEXT_DATACENTER" );
@@ -8646,13 +8647,20 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         return NULL;
     }
 
-    server->resolve_hostname_thread = next_platform_thread_create( server->context, next_server_internal_resolve_hostname_thread_function, server );
-    if ( !server->resolve_hostname_thread )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "server could not create resolve hostname thread" );
-        next_server_internal_destroy( server );
-        return NULL;
-    }
+	if ( server->valid_customer_private_key )
+	{
+		server->resolve_hostname_thread = next_platform_thread_create( server->context, next_server_internal_resolve_hostname_thread_function, server );
+		if ( !server->resolve_hostname_thread )
+		{
+			next_printf( NEXT_LOG_LEVEL_ERROR, "server could not create resolve hostname thread" );
+			next_server_internal_destroy( server );
+			return NULL;
+		}
+	}
+	else
+	{
+		server->failed_to_resolve_hostname = true;
+	}
 
     char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
     next_printf( NEXT_LOG_LEVEL_INFO, "server started on %s", next_address_to_string( &server_address, address_string ) );
@@ -10395,7 +10403,7 @@ uint64_t next_server_upgrade_session( next_server_t * server, const next_address
 
     // if we don't have a valid customer private key, we can't upgrade sessions
 
-    if ( server->internal->invalid_customer_private_key )
+    if ( !server->internal->valid_customer_private_key )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server can't upgrade session. invalid customer private key" );
         return 0;
@@ -13349,7 +13357,7 @@ static void test_packet_loss_tracker()
 #define RUN_TEST( test_function )                                           \
     do                                                                      \
     {                                                                       \
-        printf( "    " #test_function "\n" );                               \
+        next_printf( "    " #test_function );								\
         fflush( stdout );                                                   \
         test_function();                                                    \
     }                                                                       \
