@@ -5335,11 +5335,9 @@ next_client_internal_t * next_client_internal_create( void * context, const char
         return NULL;
     }
 
-    int client_port = bind_address.port;
-
-    next_printf( NEXT_LOG_LEVEL_INFO, "client bound to port %d", client_port );
-
-    client->bound_port = client_port;
+	char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
+	next_printf( NEXT_LOG_LEVEL_INFO, "client bound to %s", next_address_to_string( &bind_address, address_string ) );
+    client->bound_port = bind_address.port;
 
     client->command_mutex = next_platform_mutex_create( client->context );
     if ( client->command_mutex == NULL )
@@ -11846,7 +11844,7 @@ static void test_client_packet_received_callback( next_client_t * client, void *
     num_client_packets_received++;
 }
 
-static void test_client()
+static void test_client_ipv4()
 {
     next_client_t * client = next_client_create( NULL, "0.0.0.0:0", test_client_packet_received_callback );
     check( client );
@@ -11860,12 +11858,18 @@ static void test_client()
     next_client_destroy( client );
 }
 
-static void test_client_port()
+static void test_client_ipv6()
 {
-    next_client_t * client = next_client_create( NULL, "0.0.0.0:7777", test_client_packet_received_callback );
-    check( client );
-    check( next_client_port( client ) == 7777 );
-    next_client_destroy( client );
+	next_client_t * client = next_client_create( NULL, "[::0]:0", test_client_packet_received_callback );
+	check( client);
+	check( next_client_port(client) != 0 );
+	next_client_open_session( client, "[::1]:12345" );
+	uint8_t packet[256];
+	memset( packet, 0, sizeof(packet) );
+	next_client_send_packet( client, packet, sizeof(packet) );
+	next_client_update( client);
+	next_client_close_session( client );
+	next_client_destroy( client );
 }
 
 static int num_server_packets_received = 0;
@@ -11877,7 +11881,7 @@ static void test_server_packet_received_callback( next_server_t * server, void *
     num_server_packets_received++;
 }
 
-static void test_server()
+static void test_server_ipv4()
 {
     next_server_t * server = next_server_create( NULL, "127.0.0.1:0", "0.0.0.0:0", "local", test_server_packet_received_callback );
     check( server );
@@ -11892,12 +11896,19 @@ static void test_server()
     next_server_destroy( server );
 }
 
-static void test_server_port()
+static void test_server_ipv6()
 {
-    next_server_t * server = next_server_create( NULL, "127.0.0.1", "0.0.0.0:9000", "local", test_server_packet_received_callback );
-    check( server );
-    check( next_server_port( server ) == 9000 );
-    next_server_destroy( server );
+	next_server_t * server = next_server_create( NULL, "[::1]:0", "[::0]:0", "local", test_server_packet_received_callback );
+	check( server );
+	check( next_server_port(server) != 0 );
+	next_address_t address;
+	next_address_parse( &address, "127.0.0.1" );
+	address.port = server->bound_port;
+	uint8_t packet[256];
+	memset( packet, 0, sizeof(packet) );
+	next_server_send_packet( server, &address, packet, sizeof(packet) );
+	next_server_update( server );
+	next_server_destroy( server );
 }
 
 static void test_direct()
@@ -13371,11 +13382,11 @@ void next_test()
     RUN_TEST( test_platform_socket );
     RUN_TEST( test_platform_thread );
     RUN_TEST( test_platform_mutex );
-    RUN_TEST( test_client );
-    RUN_TEST( test_client_port );
-    RUN_TEST( test_server );
-    RUN_TEST( test_server_port );
-    RUN_TEST( test_direct );
+	RUN_TEST( test_client_ipv4 );
+	RUN_TEST( test_client_ipv6 );
+	RUN_TEST( test_server_ipv4 );
+	RUN_TEST( test_server_ipv6 );
+	RUN_TEST( test_direct );
     RUN_TEST( test_upgrade_token );
     RUN_TEST( test_packets );
     RUN_TEST( test_pending_session_manager );

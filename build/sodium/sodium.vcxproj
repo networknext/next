@@ -1,100 +1,52 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
-    <ProjectConfiguration Include="Dynamic-Debug|durango">
-      <Configuration>Dynamic-Debug</Configuration>
+    <ProjectConfiguration Include="Debug|durango">
+      <Configuration>Debug</Configuration>
       <Platform>durango</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Dynamic-Debug|NX32">
-      <Configuration>Dynamic-Debug</Configuration>
+    <ProjectConfiguration Include="Debug|NX32">
+      <Configuration>Debug</Configuration>
       <Platform>NX32</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Dynamic-Debug|NX64">
-      <Configuration>Dynamic-Debug</Configuration>
+    <ProjectConfiguration Include="Debug|NX64">
+      <Configuration>Debug</Configuration>
       <Platform>NX64</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Dynamic-Debug|ORBIS">
-      <Configuration>Dynamic-Debug</Configuration>
+    <ProjectConfiguration Include="Debug|ORBIS">
+      <Configuration>Debug</Configuration>
       <Platform>ORBIS</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Dynamic-Debug|Win32">
-      <Configuration>Dynamic-Debug</Configuration>
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Dynamic-Debug|x64">
-      <Configuration>Dynamic-Debug</Configuration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Dynamic-Release|durango">
-      <Configuration>Dynamic-Release</Configuration>
+    <ProjectConfiguration Include="Release|durango">
+      <Configuration>Release</Configuration>
       <Platform>durango</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Dynamic-Release|NX32">
-      <Configuration>Dynamic-Release</Configuration>
+    <ProjectConfiguration Include="Release|NX32">
+      <Configuration>Release</Configuration>
       <Platform>NX32</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Dynamic-Release|NX64">
-      <Configuration>Dynamic-Release</Configuration>
+    <ProjectConfiguration Include="Release|NX64">
+      <Configuration>Release</Configuration>
       <Platform>NX64</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Dynamic-Release|ORBIS">
-      <Configuration>Dynamic-Release</Configuration>
+    <ProjectConfiguration Include="Release|ORBIS">
+      <Configuration>Release</Configuration>
       <Platform>ORBIS</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Dynamic-Release|Win32">
-      <Configuration>Dynamic-Release</Configuration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Dynamic-Release|x64">
-      <Configuration>Dynamic-Release</Configuration>
-      <Platform>x64</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Static-Debug|durango">
-      <Configuration>Static-Debug</Configuration>
-      <Platform>durango</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Static-Debug|NX32">
-      <Configuration>Static-Debug</Configuration>
-      <Platform>NX32</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Static-Debug|NX64">
-      <Configuration>Static-Debug</Configuration>
-      <Platform>NX64</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Static-Debug|ORBIS">
-      <Configuration>Static-Debug</Configuration>
-      <Platform>ORBIS</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Static-Debug|Win32">
-      <Configuration>Static-Debug</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Static-Release|durango">
-      <Configuration>Static-Release</Configuration>
-      <Platform>durango</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Static-Release|NX32">
-      <Configuration>Static-Release</Configuration>
-      <Platform>NX32</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Static-Release|NX64">
-      <Configuration>Static-Release</Configuration>
-      <Platform>NX64</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Static-Release|ORBIS">
-      <Configuration>Static-Release</Configuration>
-      <Platform>ORBIS</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Static-Release|Win32">
-      <Configuration>Static-Release</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Static-Debug|x64">
-      <Configuration>Static-Debug</Configuration>
-      <Platform>x64</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Static-Release|x64">
-      <Configuration>Static-Release</Configuration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
@@ -346,19 +298,13 @@
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Debug|Win32'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
-    <CharacterSet>MultiByte</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|NX32'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|NX32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
@@ -367,7 +313,7 @@
     <NintendoSdkSpec>NX</NintendoSdkSpec>
     <NintendoSdkBuildType>Debug</NintendoSdkBuildType>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Debug|NX32'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|NX64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
@@ -376,39 +322,14 @@
     <NintendoSdkSpec>NX</NintendoSdkSpec>
     <NintendoSdkBuildType>Debug</NintendoSdkBuildType>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|NX64'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
-    <CharacterSet>MultiByte</CharacterSet>
-    <NintendoSdkRoot>C:\Nintendo\7.4.0\NintendoSDK</NintendoSdkRoot>
-    <NintendoSdkSpec>NX</NintendoSdkSpec>
-    <NintendoSdkBuildType>Debug</NintendoSdkBuildType>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Debug|NX64'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
-    <CharacterSet>MultiByte</CharacterSet>
-    <NintendoSdkRoot>C:\Nintendo\7.4.0\NintendoSDK</NintendoSdkRoot>
-    <NintendoSdkSpec>NX</NintendoSdkSpec>
-    <NintendoSdkBuildType>Debug</NintendoSdkBuildType>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
     <WholeProgramOptimization>false</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Release|Win32'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
-    <WholeProgramOptimization>false</WholeProgramOptimization>
-    <CharacterSet>MultiByte</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|NX32'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|NX32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
@@ -418,7 +339,7 @@
     <NintendoSdkSpec>NX</NintendoSdkSpec>
     <NintendoSdkBuildType>Release</NintendoSdkBuildType>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Release|NX32'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|NX64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
@@ -428,91 +349,37 @@
     <NintendoSdkSpec>NX</NintendoSdkSpec>
     <NintendoSdkBuildType>Release</NintendoSdkBuildType>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|NX64'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
-    <WholeProgramOptimization>false</WholeProgramOptimization>
-    <CharacterSet>MultiByte</CharacterSet>
-    <NintendoSdkRoot>C:\Nintendo\7.4.0\NintendoSDK</NintendoSdkRoot>
-    <NintendoSdkSpec>NX</NintendoSdkSpec>
-    <NintendoSdkBuildType>Release</NintendoSdkBuildType>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Release|NX64'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
-    <WholeProgramOptimization>false</WholeProgramOptimization>
-    <CharacterSet>MultiByte</CharacterSet>
-    <NintendoSdkRoot>C:\Nintendo\7.4.0\NintendoSDK</NintendoSdkRoot>
-    <NintendoSdkSpec>NX</NintendoSdkSpec>
-    <NintendoSdkBuildType>Release</NintendoSdkBuildType>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Debug|x64'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|durango'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|durango'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
-    <CharacterSet>MultiByte</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Debug|durango'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
-    <CharacterSet>MultiByte</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
     <WholeProgramOptimization>false</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Release|x64'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|durango'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
     <WholeProgramOptimization>false</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|durango'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
-    <WholeProgramOptimization>false</WholeProgramOptimization>
-    <CharacterSet>MultiByte</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Release|durango'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
-    <WholeProgramOptimization>false</WholeProgramOptimization>
-    <CharacterSet>MultiByte</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ORBIS'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ORBIS'" Label="Configuration">
     <PlatformToolset>Clang</PlatformToolset>
     <ConfigurationType>StaticLibrary</ConfigurationType>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Debug|ORBIS'" Label="Configuration">
-    <PlatformToolset>Clang</PlatformToolset>
-    <ConfigurationType>StaticLibrary</ConfigurationType>
-  </PropertyGroup>
-  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Static-Release|ORBIS'">
-    <PlatformToolset>Clang</PlatformToolset>
-    <ConfigurationType>StaticLibrary</ConfigurationType>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Release|ORBIS'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ORBIS'" Label="Configuration">
     <PlatformToolset>Clang</PlatformToolset>
     <ConfigurationType>StaticLibrary</ConfigurationType>
   </PropertyGroup>
@@ -521,156 +388,82 @@
   </ImportGroup>
   <ImportGroup Label="Shared">
   </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Debug|Win32'" Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|NX32'" Label="PropertySheets">
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|NX32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="../ImportNintendoSdk.props" Condition="exists('../ImportNintendoSdk.props')" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Debug|NX32'" Label="PropertySheets">
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|NX64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="../ImportNintendoSdk.props" Condition="exists('../ImportNintendoSdk.props')" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|NX64'" Label="PropertySheets">
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|NX32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="../ImportNintendoSdk.props" Condition="exists('../ImportNintendoSdk.props')" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Debug|NX64'" Label="PropertySheets">
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|NX64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="../ImportNintendoSdk.props" Condition="exists('../ImportNintendoSdk.props')" />
   </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Release|Win32'" Label="PropertySheets">
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|durango'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|NX32'" Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="../ImportNintendoSdk.props" Condition="exists('../ImportNintendoSdk.props')" />
-  </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Release|NX32'" Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="../ImportNintendoSdk.props" Condition="exists('../ImportNintendoSdk.props')" />
-  </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|NX64'" Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="../ImportNintendoSdk.props" Condition="exists('../ImportNintendoSdk.props')" />
-  </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Release|NX64'" Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="../ImportNintendoSdk.props" Condition="exists('../ImportNintendoSdk.props')" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Debug|x64'" Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|durango'" Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Debug|durango'" Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Release|x64'" Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|durango'" Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Release|durango'" Label="PropertySheets">
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|durango'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <OutDir>$(SolutionDir)../lib/Windows-x86/$(Configuration)/</OutDir>
     <IntDir>$(ProjectDir)/int/Windows-x86/$(Configuration)/</IntDir>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Debug|Win32'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|NX32'">
+    <OutDir>$(SolutionDir)../lib/NintendoSwitch-$(Platform)/$(Configuration)/</OutDir>
+    <IntDir>$(ProjectDir)/int/NintendoSwitch-$(Platform)/$(Configuration)/</IntDir>
+    <IncludePath>$(NintendoSdkIncludePath);$(NXToolchainDir)\nx\armv7l\lib\clang\$(NXToolchainVersion)\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(NintendoSdkLibraryPath);$(LibraryPath)</LibraryPath>
+    <ExecutablePath>$(NintendoSdkRoot)\Tools\CommandLineTools\MakeInitialProgram;$(ExecutablePath)</ExecutablePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|NX64'">
+    <OutDir>$(SolutionDir)../lib/NintendoSwitch-$(Platform)/$(Configuration)/</OutDir>
+    <IntDir>$(ProjectDir)/int/NintendoSwitch-$(Platform)/$(Configuration)/</IntDir>
+    <IncludePath>$(NintendoSdkIncludePath);$(NXToolchainDir)\nx\armv7l\lib\clang\$(NXToolchainVersion)\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(NintendoSdkLibraryPath);$(LibraryPath)</LibraryPath>
+    <ExecutablePath>$(NintendoSdkRoot)\Tools\CommandLineTools\MakeInitialProgram;$(ExecutablePath)</ExecutablePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>$(SolutionDir)../lib/Windows-x86/$(Configuration)/</OutDir>
     <IntDir>$(ProjectDir)/int/Windows-x86/$(Configuration)/</IntDir>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|NX32'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|NX32'">
     <OutDir>$(SolutionDir)../lib/NintendoSwitch-$(Platform)/$(Configuration)/</OutDir>
     <IntDir>$(ProjectDir)/int/NintendoSwitch-$(Platform)/$(Configuration)/</IntDir>
     <IncludePath>$(NintendoSdkIncludePath);$(NXToolchainDir)\nx\armv7l\lib\clang\$(NXToolchainVersion)\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(NintendoSdkLibraryPath);$(LibraryPath)</LibraryPath>
     <ExecutablePath>$(NintendoSdkRoot)\Tools\CommandLineTools\MakeInitialProgram;$(ExecutablePath)</ExecutablePath>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Debug|NX32'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|NX64'">
     <OutDir>$(SolutionDir)../lib/NintendoSwitch-$(Platform)/$(Configuration)/</OutDir>
     <IntDir>$(ProjectDir)/int/NintendoSwitch-$(Platform)/$(Configuration)/</IntDir>
     <IncludePath>$(NintendoSdkIncludePath);$(NXToolchainDir)\nx\armv7l\lib\clang\$(NXToolchainVersion)\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(NintendoSdkLibraryPath);$(LibraryPath)</LibraryPath>
     <ExecutablePath>$(NintendoSdkRoot)\Tools\CommandLineTools\MakeInitialProgram;$(ExecutablePath)</ExecutablePath>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|NX64'">
-    <OutDir>$(SolutionDir)../lib/NintendoSwitch-$(Platform)/$(Configuration)/</OutDir>
-    <IntDir>$(ProjectDir)/int/NintendoSwitch-$(Platform)/$(Configuration)/</IntDir>
-    <IncludePath>$(NintendoSdkIncludePath);$(NXToolchainDir)\nx\armv7l\lib\clang\$(NXToolchainVersion)\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(NintendoSdkLibraryPath);$(LibraryPath)</LibraryPath>
-    <ExecutablePath>$(NintendoSdkRoot)\Tools\CommandLineTools\MakeInitialProgram;$(ExecutablePath)</ExecutablePath>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Debug|NX64'">
-    <OutDir>$(SolutionDir)../lib/NintendoSwitch-$(Platform)/$(Configuration)/</OutDir>
-    <IntDir>$(ProjectDir)/int/NintendoSwitch-$(Platform)/$(Configuration)/</IntDir>
-    <IncludePath>$(NintendoSdkIncludePath);$(NXToolchainDir)\nx\armv7l\lib\clang\$(NXToolchainVersion)\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(NintendoSdkLibraryPath);$(LibraryPath)</LibraryPath>
-    <ExecutablePath>$(NintendoSdkRoot)\Tools\CommandLineTools\MakeInitialProgram;$(ExecutablePath)</ExecutablePath>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">
-    <OutDir>$(SolutionDir)../lib/Windows-x86/$(Configuration)/</OutDir>
-    <IntDir>$(ProjectDir)/int/Windows-x86/$(Configuration)/</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Release|Win32'">
-    <OutDir>$(SolutionDir)../lib/Windows-x86/$(Configuration)/</OutDir>
-    <IntDir>$(ProjectDir)/int/Windows-x86/$(Configuration)/</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|NX32'">
-    <OutDir>$(SolutionDir)../lib/NintendoSwitch-$(Platform)/$(Configuration)/</OutDir>
-    <IntDir>$(ProjectDir)/int/NintendoSwitch-$(Platform)/$(Configuration)/</IntDir>
-    <IncludePath>$(NintendoSdkIncludePath);$(NXToolchainDir)\nx\armv7l\lib\clang\$(NXToolchainVersion)\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(NintendoSdkLibraryPath);$(LibraryPath)</LibraryPath>
-    <ExecutablePath>$(NintendoSdkRoot)\Tools\CommandLineTools\MakeInitialProgram;$(ExecutablePath)</ExecutablePath>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Release|NX32'">
-    <OutDir>$(SolutionDir)../lib/NintendoSwitch-$(Platform)/$(Configuration)/</OutDir>
-    <IntDir>$(ProjectDir)/int/NintendoSwitch-$(Platform)/$(Configuration)/</IntDir>
-    <IncludePath>$(NintendoSdkIncludePath);$(NXToolchainDir)\nx\armv7l\lib\clang\$(NXToolchainVersion)\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(NintendoSdkLibraryPath);$(LibraryPath)</LibraryPath>
-    <ExecutablePath>$(NintendoSdkRoot)\Tools\CommandLineTools\MakeInitialProgram;$(ExecutablePath)</ExecutablePath>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|NX64'">
-    <OutDir>$(SolutionDir)../lib/NintendoSwitch-$(Platform)/$(Configuration)/</OutDir>
-    <IntDir>$(ProjectDir)/int/NintendoSwitch-$(Platform)/$(Configuration)/</IntDir>
-    <IncludePath>$(NintendoSdkIncludePath);$(NXToolchainDir)\nx\armv7l\lib\clang\$(NXToolchainVersion)\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(NintendoSdkLibraryPath);$(LibraryPath)</LibraryPath>
-    <ExecutablePath>$(NintendoSdkRoot)\Tools\CommandLineTools\MakeInitialProgram;$(ExecutablePath)</ExecutablePath>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Release|NX64'">
-    <OutDir>$(SolutionDir)../lib/NintendoSwitch-$(Platform)/$(Configuration)/</OutDir>
-    <IntDir>$(ProjectDir)/int/NintendoSwitch-$(Platform)/$(Configuration)/</IntDir>
-    <IncludePath>$(NintendoSdkIncludePath);$(NXToolchainDir)\nx\armv7l\lib\clang\$(NXToolchainVersion)\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(NintendoSdkLibraryPath);$(LibraryPath)</LibraryPath>
-    <ExecutablePath>$(NintendoSdkRoot)\Tools\CommandLineTools\MakeInitialProgram;$(ExecutablePath)</ExecutablePath>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>$(SolutionDir)../lib/Windows-x86_64/$(Configuration)/</OutDir>
     <IntDir>$(ProjectDir)/int/Windows-x86_64/$(Configuration)/</IntDir>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Debug|x64'">
-    <OutDir>$(SolutionDir)../lib/Windows-x86_64/$(Configuration)/</OutDir>
-    <IntDir>$(ProjectDir)/int/Windows-x86_64/$(Configuration)/</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|durango'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|durango'">
     <OutDir>$(SolutionDir)../lib/XboxOne/$(Configuration)/</OutDir>
     <IntDir>$(ProjectDir)/int/XboxOne/$(Configuration)/</IntDir>
     <ExecutablePath>$(Console_SdkRoot)bin;$(VCInstallDir)bin\x86_amd64;$(VCInstallDir)bin;$(WindowsSDK_ExecutablePath_x86);$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(MSBuildToolsPath32);$(FxCopDir);$(PATH);</ExecutablePath>
@@ -679,24 +472,11 @@
     <LibraryPath>$(Console_SdkLibPath)</LibraryPath>
     <LibraryWPath>$(Console_SdkLibPath);$(Console_SdkWindowsMetadataPath)</LibraryWPath>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Debug|durango'">
-    <OutDir>$(SolutionDir)../lib/XboxOne/$(Configuration)/</OutDir>
-    <IntDir>$(ProjectDir)/int/XboxOne/$(Configuration)/</IntDir>
-    <ExecutablePath>$(Console_SdkRoot)bin;$(VCInstallDir)bin\x86_amd64;$(VCInstallDir)bin;$(WindowsSDK_ExecutablePath_x86);$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(MSBuildToolsPath32);$(FxCopDir);$(PATH);</ExecutablePath>
-    <IncludePath>$(Console_SdkIncludeRoot);..\..\next\</IncludePath>
-    <ReferencePath>$(Console_SdkLibPath);$(Console_SdkWindowsMetadataPath)</ReferencePath>
-    <LibraryPath>$(Console_SdkLibPath)</LibraryPath>
-    <LibraryWPath>$(Console_SdkLibPath);$(Console_SdkWindowsMetadataPath)</LibraryWPath>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(SolutionDir)../lib/Windows-x86_64/$(Configuration)/</OutDir>
     <IntDir>$(ProjectDir)/int/Windows-x86_64/$(Configuration)/</IntDir>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Release|x64'">
-    <OutDir>$(SolutionDir)../lib/Windows-x86_64/$(Configuration)/</OutDir>
-    <IntDir>$(ProjectDir)/int/Windows-x86_64/$(Configuration)/</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|durango'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|durango'">
     <OutDir>$(SolutionDir)../lib/XboxOne/$(Configuration)/</OutDir>
     <IntDir>$(ProjectDir)/int/XboxOne/$(Configuration)/</IntDir>
     <ExecutablePath>$(Console_SdkRoot)bin;$(VCInstallDir)bin\x86_amd64;$(VCInstallDir)bin;$(WindowsSDK_ExecutablePath_x86);$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(MSBuildToolsPath32);$(FxCopDir);$(PATH);</ExecutablePath>
@@ -705,32 +485,15 @@
     <LibraryPath>$(Console_SdkLibPath)</LibraryPath>
     <LibraryWPath>$(Console_SdkLibPath);$(Console_SdkWindowsMetadataPath)</LibraryWPath>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Release|durango'">
-    <OutDir>$(SolutionDir)../lib/XboxOne/$(Configuration)/</OutDir>
-    <IntDir>$(ProjectDir)/int/XboxOne/$(Configuration)/</IntDir>
-    <ExecutablePath>$(Console_SdkRoot)bin;$(VCInstallDir)bin\x86_amd64;$(VCInstallDir)bin;$(WindowsSDK_ExecutablePath_x86);$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(MSBuildToolsPath32);$(FxCopDir);$(PATH);</ExecutablePath>
-    <IncludePath>$(Console_SdkIncludeRoot);..\..\next\</IncludePath>
-    <ReferencePath>$(Console_SdkLibPath);$(Console_SdkWindowsMetadataPath)</ReferencePath>
-    <LibraryPath>$(Console_SdkLibPath)</LibraryPath>
-    <LibraryWPath>$(Console_SdkLibPath);$(Console_SdkWindowsMetadataPath)</LibraryWPath>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ORBIS'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ORBIS'">
     <OutDir>$(SolutionDir)../lib/Playstation4/$(Configuration)/</OutDir>
     <IntDir>$(ProjectDir)/int/Playstation4/$(Configuration)/</IntDir>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Debug|ORBIS'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ORBIS'">
     <OutDir>$(SolutionDir)../lib/Playstation4/$(Configuration)/</OutDir>
     <IntDir>$(ProjectDir)/int/Playstation4/$(Configuration)/</IntDir>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|ORBIS'">
-    <OutDir>$(SolutionDir)../lib/Playstation4/$(Configuration)/</OutDir>
-    <IntDir>$(ProjectDir)/int/Playstation4/$(Configuration)/</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Release|ORBIS'">
-    <OutDir>$(SolutionDir)../lib/Playstation4/$(Configuration)/</OutDir>
-    <IntDir>$(ProjectDir)/int/Playstation4/$(Configuration)/</IntDir>
-  </PropertyGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
@@ -740,29 +503,16 @@
       <PreprocessorDefinitions>SODIUM_STATIC;CONFIGURED=1;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <FloatingPointModel>Fast</FloatingPointModel>
-      <ProgramDataBaseFileName>$(OutDir)\$(TargetName).pdb</ProgramDataBaseFileName>
+      <ProgramDataBaseFileName>$(IntDir)\$(TargetName).pdb</ProgramDataBaseFileName>
       <TreatWarningAsError>true</TreatWarningAsError>
       <DisableSpecificWarnings>4221;4244;4715;4197;4146;4324;4456;4100;4459;4245;%(DisableSpecificWarnings)</DisableSpecificWarnings>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
+    <Lib>
+      <OutputFile>$(IntDir)$(TargetName)$(TargetExt)</OutputFile>
+    </Lib>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Debug|x64'">
-    <ClCompile>
-      <WarningLevel>Level4</WarningLevel>
-      <Optimization>Disabled</Optimization>
-      <SDLCheck>true</SDLCheck>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\sodium\include\sodium</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>SODIUM_STATIC;CONFIGURED=1;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
-      <FloatingPointModel>Fast</FloatingPointModel>
-      <ProgramDataBaseFileName>$(OutDir)\$(TargetName).pdb</ProgramDataBaseFileName>
-      <TreatWarningAsError>true</TreatWarningAsError>
-      <DisableSpecificWarnings>4221;4244;4715;4197;4146;4324;4456;4100;4459;4245;%(DisableSpecificWarnings)</DisableSpecificWarnings>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-    </ClCompile>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|durango'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|durango'">
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
@@ -779,28 +529,13 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <AdditionalUsingDirectories>$(Console_SdkPackagesRoot);$(Console_SdkWindowsMetadataPath);%(AdditionalUsingDirectories)</AdditionalUsingDirectories>
       <CompileAsWinRT>false</CompileAsWinRT>
+      <ForceConformanceInForLoopScope>true</ForceConformanceInForLoopScope>
     </ClCompile>
+    <Lib>
+      <OutputFile>$(IntDir)$(TargetName)$(TargetExt)</OutputFile>
+    </Lib>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Debug|durango'">
-    <ClCompile>
-      <WarningLevel>Level4</WarningLevel>
-      <Optimization>Disabled</Optimization>
-      <SDLCheck>
-      </SDLCheck>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\sodium\include\sodium</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>SODIUM_STATIC;CONFIGURED=1;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
-      <FloatingPointModel>Fast</FloatingPointModel>
-      <ProgramDataBaseFileName>$(OutDir)\$(TargetName).pdb</ProgramDataBaseFileName>
-      <TreatWarningAsError>true</TreatWarningAsError>
-      <DisableSpecificWarnings>4221;4244;4715;4197;4146;4324;4456;4100;4459;4245;%(DisableSpecificWarnings)</DisableSpecificWarnings>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalUsingDirectories>$(Console_SdkPackagesRoot);$(Console_SdkWindowsMetadataPath);%(AdditionalUsingDirectories)</AdditionalUsingDirectories>
-      <CompileAsWinRT>false</CompileAsWinRT>
-    </ClCompile>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
@@ -812,21 +547,11 @@
       <TreatWarningAsError>true</TreatWarningAsError>
       <DisableSpecificWarnings>4221;4244;4715;4197;4146;4324;4456;4100;4459;4245;%(DisableSpecificWarnings)</DisableSpecificWarnings>
     </ClCompile>
+    <Lib>
+      <OutputFile>$(IntDir)$(TargetName)$(TargetExt)</OutputFile>
+    </Lib>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Debug|Win32'">
-    <ClCompile>
-      <WarningLevel>Level4</WarningLevel>
-      <Optimization>Disabled</Optimization>
-      <SDLCheck>true</SDLCheck>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\sodium\include\sodium</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>SODIUM_STATIC;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ProgramDataBaseFileName>$(OutDir)\$(TargetName).pdb</ProgramDataBaseFileName>
-      <TreatWarningAsError>true</TreatWarningAsError>
-      <DisableSpecificWarnings>4221;4244;4715;4197;4146;4324;4456;4100;4459;4245;%(DisableSpecificWarnings)</DisableSpecificWarnings>
-    </ClCompile>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|NX32'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|NX32'">
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
@@ -840,8 +565,11 @@
       </DisableSpecificWarnings>
       <AdditionalOptions>-Wno-#warnings -Wno-unused-function -Wno-unknown-pragmas -Wno-unused-variable %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
+    <Lib>
+      <OutputFile>$(IntDir)$(TargetName)$(TargetExt)</OutputFile>
+    </Lib>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Debug|NX32'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|NX64'">
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
@@ -855,38 +583,11 @@
       </DisableSpecificWarnings>
       <AdditionalOptions>-Wno-#warnings -Wno-unused-function -Wno-unknown-pragmas -Wno-unused-variable %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
+    <Lib>
+      <OutputFile>$(IntDir)$(TargetName)$(TargetExt)</OutputFile>
+    </Lib>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|NX64'">
-    <ClCompile>
-      <WarningLevel>Level4</WarningLevel>
-      <Optimization>Disabled</Optimization>
-      <SDLCheck>true</SDLCheck>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\sodium\include\sodium</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>SODIUM_STATIC;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ProgramDataBaseFileName>$(OutDir)\$(TargetName).pdb</ProgramDataBaseFileName>
-      <TreatWarningAsError>true</TreatWarningAsError>
-      <DisableSpecificWarnings>
-      </DisableSpecificWarnings>
-      <AdditionalOptions>-Wno-#warnings -Wno-unused-function -Wno-unknown-pragmas -Wno-unused-variable %(AdditionalOptions)</AdditionalOptions>
-    </ClCompile>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Debug|NX64'">
-    <ClCompile>
-      <WarningLevel>Level4</WarningLevel>
-      <Optimization>Disabled</Optimization>
-      <SDLCheck>true</SDLCheck>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\sodium\include\sodium</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>SODIUM_STATIC;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ProgramDataBaseFileName>$(OutDir)\$(TargetName).pdb</ProgramDataBaseFileName>
-      <TreatWarningAsError>true</TreatWarningAsError>
-      <DisableSpecificWarnings>
-      </DisableSpecificWarnings>
-      <AdditionalOptions>-Wno-#warnings -Wno-unused-function -Wno-unknown-pragmas -Wno-unused-variable %(AdditionalOptions)</AdditionalOptions>
-    </ClCompile>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
@@ -904,27 +605,11 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
+    <Lib>
+      <OutputFile>$(IntDir)$(TargetName)$(TargetExt)</OutputFile>
+    </Lib>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Release|Win32'">
-    <ClCompile>
-      <WarningLevel>Level4</WarningLevel>
-      <Optimization>MaxSpeed</Optimization>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\sodium\include\sodium</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>SODIUM_STATIC;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ProgramDataBaseFileName>$(OutDir)\$(TargetName).pdb</ProgramDataBaseFileName>
-      <TreatWarningAsError>true</TreatWarningAsError>
-      <DisableSpecificWarnings>4221;4244;4715;4197;4146;4324;4456;4100;4459;4245;%(DisableSpecificWarnings)</DisableSpecificWarnings>
-    </ClCompile>
-    <Link>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|NX32'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|NX32'">
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
@@ -944,8 +629,11 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
+    <Lib>
+      <OutputFile>$(IntDir)$(TargetName)$(TargetExt)</OutputFile>
+    </Lib>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Release|NX32'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|NX64'">
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
@@ -965,50 +653,11 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
+    <Lib>
+      <OutputFile>$(IntDir)$(TargetName)$(TargetExt)</OutputFile>
+    </Lib>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|NX64'">
-    <ClCompile>
-      <WarningLevel>Level4</WarningLevel>
-      <Optimization>MaxSpeed</Optimization>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\sodium\include\sodium</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>SODIUM_STATIC;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ProgramDataBaseFileName>$(OutDir)\$(TargetName).pdb</ProgramDataBaseFileName>
-      <TreatWarningAsError>true</TreatWarningAsError>
-      <DisableSpecificWarnings>
-      </DisableSpecificWarnings>
-      <AdditionalOptions>-Wno-#warnings -Wno-unused-function -Wno-unknown-pragmas -Wno-unused-variable %(AdditionalOptions)</AdditionalOptions>
-    </ClCompile>
-    <Link>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Release|NX64'">
-    <ClCompile>
-      <WarningLevel>Level4</WarningLevel>
-      <Optimization>MaxSpeed</Optimization>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\sodium\include\sodium</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>SODIUM_STATIC;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ProgramDataBaseFileName>$(OutDir)\$(TargetName).pdb</ProgramDataBaseFileName>
-      <TreatWarningAsError>true</TreatWarningAsError>
-      <DisableSpecificWarnings>
-      </DisableSpecificWarnings>
-      <AdditionalOptions>-Wno-#warnings -Wno-unused-function -Wno-unknown-pragmas -Wno-unused-variable %(AdditionalOptions)</AdditionalOptions>
-    </ClCompile>
-    <Link>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
@@ -1031,34 +680,10 @@
     <Lib />
     <Lib>
       <LinkTimeCodeGeneration>false</LinkTimeCodeGeneration>
+      <OutputFile>$(IntDir)$(TargetName)$(TargetExt)</OutputFile>
     </Lib>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Release|x64'">
-    <ClCompile>
-      <WarningLevel>Level4</WarningLevel>
-      <Optimization>MaxSpeed</Optimization>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\sodium\include\sodium</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>SODIUM_STATIC;CONFIGURED=1;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
-      <FloatingPointModel>Fast</FloatingPointModel>
-      <ProgramDataBaseFileName>$(OutDir)\$(TargetName).pdb</ProgramDataBaseFileName>
-      <TreatWarningAsError>true</TreatWarningAsError>
-      <DisableSpecificWarnings>4221;4244;4715;4197;4146;4324;4456;4100;4459;4245;%(DisableSpecificWarnings)</DisableSpecificWarnings>
-      <WholeProgramOptimization>false</WholeProgramOptimization>
-    </ClCompile>
-    <Link>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-    </Link>
-    <Lib />
-    <Lib>
-      <LinkTimeCodeGeneration>false</LinkTimeCodeGeneration>
-    </Lib>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|durango'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|durango'">
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
@@ -1084,63 +709,28 @@
     <Lib />
     <Lib>
       <LinkTimeCodeGeneration>false</LinkTimeCodeGeneration>
+      <OutputFile>$(IntDir)$(TargetName)$(TargetExt)</OutputFile>
     </Lib>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Release|durango'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ORBIS'">
     <ClCompile>
-      <WarningLevel>Level4</WarningLevel>
-      <Optimization>MaxSpeed</Optimization>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>
-      </SDLCheck>
-      <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\sodium\include\sodium</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>SODIUM_STATIC;CONFIGURED=1;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
-      <FloatingPointModel>Fast</FloatingPointModel>
-      <ProgramDataBaseFileName>$(OutDir)\$(TargetName).pdb</ProgramDataBaseFileName>
-      <TreatWarningAsError>true</TreatWarningAsError>
-      <DisableSpecificWarnings>4221;4244;4715;4197;4146;4324;4456;4100;4459;4245;%(DisableSpecificWarnings)</DisableSpecificWarnings>
-      <WholeProgramOptimization>false</WholeProgramOptimization>
-      <AdditionalUsingDirectories>$(Console_SdkPackagesRoot);$(Console_SdkWindowsMetadataPath);%(AdditionalUsingDirectories)</AdditionalUsingDirectories>
-      <CompileAsWinRT>false</CompileAsWinRT>
+      <PreprocessorDefinitions>SODIUM_STATIC;CONFIGURED=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalOptions>-Wno-#warnings -Wno-unused-function -Wno-unknown-pragmas -Wno-unused-variable %(ClCompile.AdditionalOptions)</AdditionalOptions>
     </ClCompile>
-    <Link>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-    </Link>
-    <Lib />
     <Lib>
-      <LinkTimeCodeGeneration>false</LinkTimeCodeGeneration>
+      <OutputFile>$(IntDir)$(TargetName)$(TargetExt)</OutputFile>
     </Lib>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|ORBIS'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ORBIS'">
     <ClCompile>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\sodium\include\sodium</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>SODIUM_STATIC;CONFIGURED=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalOptions>-Wno-#warnings -Wno-unused-function -Wno-unknown-pragmas -Wno-unused-variable %(ClCompile.AdditionalOptions)</AdditionalOptions>
     </ClCompile>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Release|ORBIS'">
-    <ClCompile>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\sodium\include\sodium</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>SODIUM_STATIC;CONFIGURED=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalOptions>-Wno-#warnings -Wno-unused-function -Wno-unknown-pragmas -Wno-unused-variable %(ClCompile.AdditionalOptions)</AdditionalOptions>
-    </ClCompile>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ORBIS'">
-    <ClCompile>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\sodium\include\sodium</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>SODIUM_STATIC;CONFIGURED=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalOptions>-Wno-#warnings -Wno-unused-function -Wno-unknown-pragmas -Wno-unused-variable %(ClCompile.AdditionalOptions)</AdditionalOptions>
-    </ClCompile>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Dynamic-Debug|ORBIS'">
-    <ClCompile>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\sodium\include\sodium</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>SODIUM_STATIC;CONFIGURED=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalOptions>-Wno-#warnings -Wno-unused-function -Wno-unknown-pragmas -Wno-unused-variable %(ClCompile.AdditionalOptions)</AdditionalOptions>
-    </ClCompile>
+    <Lib>
+      <OutputFile>$(IntDir)$(TargetName)$(TargetExt)</OutputFile>
+    </Lib>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

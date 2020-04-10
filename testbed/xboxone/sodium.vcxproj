@@ -1,0 +1,352 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Release|Durango">
+      <Configuration>Release</Configuration>
+      <Platform>Durango</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Profile|Durango">
+      <Configuration>Profile</Configuration>
+      <Platform>Durango</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|Durango">
+      <Configuration>Debug</Configuration>
+      <Platform>Durango</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <RootNamespace>sodium</RootNamespace>
+    <ProjectGuid>{9ba1f280-23db-4473-86aa-3badf7a78c3c}</ProjectGuid>
+    <DefaultLanguage>en-US</DefaultLanguage>
+    <Keyword>Win32Proj</Keyword>
+    <ApplicationEnvironment>title</ApplicationEnvironment>
+    <!-- - - - -->
+    <MinimumVisualStudioVersion>14.0</MinimumVisualStudioVersion>
+    <TargetRuntime>Native</TargetRuntime>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <ItemDefinitionGroup Label="Globals">
+    <ClCompile>
+      <AdditionalIncludeDirectories>..\..\sodium\src\libsodium\include\sodium;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <DisableSpecificWarnings>4715;4324;4244;4456;4100;4146;4197;4245;4459;4702;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Durango'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <PlatformToolset>v141</PlatformToolset>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+    <EmbedManifest>false</EmbedManifest>
+    <GenerateManifest>false</GenerateManifest>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profile|Durango'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <PlatformToolset>v141</PlatformToolset>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+    <EmbedManifest>false</EmbedManifest>
+    <GenerateManifest>false</GenerateManifest>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Durango'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <PlatformToolset>v141</PlatformToolset>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+    <EmbedManifest>false</EmbedManifest>
+    <GenerateManifest>false</GenerateManifest>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_core\ed25519\ref10\fe_25_5\base.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_core\ed25519\ref10\fe_25_5\base2.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_core\ed25519\ref10\fe_25_5\constants.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_core\ed25519\ref10\fe_25_5\fe.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_generichash\blake2b\ref\blake2.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_generichash\blake2b\ref\blake2b-compress-avx2.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_generichash\blake2b\ref\blake2b-compress-sse41.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_generichash\blake2b\ref\blake2b-compress-ssse3.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_generichash\blake2b\ref\blake2b-load-avx2.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_generichash\blake2b\ref\blake2b-load-sse2.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_generichash\blake2b\ref\blake2b-load-sse41.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_onetimeauth\poly1305\donna\poly1305_donna.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_onetimeauth\poly1305\donna\poly1305_donna32.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_onetimeauth\poly1305\donna\poly1305_donna64.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_onetimeauth\poly1305\onetimeauth_poly1305.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_onetimeauth\poly1305\sse2\poly1305_sse2.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_pwhash\argon2\argon2-core.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_pwhash\argon2\argon2-encoding.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_pwhash\argon2\argon2.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_pwhash\argon2\blake2b-long.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_pwhash\argon2\blamka-round-avx2.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_pwhash\argon2\blamka-round-avx512f.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_pwhash\argon2\blamka-round-ref.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_pwhash\argon2\blamka-round-ssse3.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_pwhash\scryptsalsa208sha256\crypto_scrypt.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_pwhash\scryptsalsa208sha256\pbkdf2-sha256.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_scalarmult\curve25519\ref10\x25519_ref10.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_scalarmult\curve25519\sandy2x\consts_namespace.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_scalarmult\curve25519\sandy2x\curve25519_sandy2x.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_scalarmult\curve25519\sandy2x\fe.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_scalarmult\curve25519\sandy2x\fe51.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_scalarmult\curve25519\sandy2x\fe51_namespace.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_scalarmult\curve25519\sandy2x\ladder.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_scalarmult\curve25519\sandy2x\ladder_base.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_scalarmult\curve25519\sandy2x\ladder_base_namespace.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_scalarmult\curve25519\sandy2x\ladder_namespace.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_scalarmult\curve25519\scalarmult_curve25519.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_shorthash\siphash24\ref\shorthash_siphash_ref.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_sign\ed25519\ref10\sign_ed25519_ref10.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_stream\chacha20\dolbeau\chacha20_dolbeau-avx2.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_stream\chacha20\dolbeau\chacha20_dolbeau-ssse3.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_stream\chacha20\dolbeau\u0.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_stream\chacha20\dolbeau\u1.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_stream\chacha20\dolbeau\u4.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_stream\chacha20\dolbeau\u8.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_stream\chacha20\ref\chacha20_ref.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_stream\chacha20\stream_chacha20.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_stream\salsa20\ref\salsa20_ref.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_stream\salsa20\stream_salsa20.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_stream\salsa20\xmm6\salsa20_xmm6.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_stream\salsa20\xmm6int\salsa20_xmm6int-avx2.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_stream\salsa20\xmm6int\salsa20_xmm6int-sse2.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_stream\salsa20\xmm6int\u0.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_stream\salsa20\xmm6int\u1.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_stream\salsa20\xmm6int\u4.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\crypto_stream\salsa20\xmm6int\u8.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\include\sodium\private\common.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\include\sodium\private\ed25519_ref10.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\include\sodium\private\ed25519_ref10_fe_25_5.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\include\sodium\private\implementations.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\include\sodium\private\mutex.h" />
+    <ClInclude Include="..\..\sodium\src\libsodium\include\sodium\private\sse2_64_32.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_aead\chacha20poly1305\sodium\aead_chacha20poly1305.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_aead\xchacha20poly1305\sodium\aead_xchacha20poly1305.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_auth\crypto_auth.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_auth\hmacsha256\auth_hmacsha256.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_auth\hmacsha512\auth_hmacsha512.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_auth\hmacsha512256\auth_hmacsha512256.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_box\crypto_box.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_box\crypto_box_easy.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_box\crypto_box_seal.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_box\curve25519xchacha20poly1305\box_curve25519xchacha20poly1305.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_box\curve25519xchacha20poly1305\box_seal_curve25519xchacha20poly1305.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_box\curve25519xsalsa20poly1305\box_curve25519xsalsa20poly1305.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_core\ed25519\core_ed25519.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_core\ed25519\ref10\ed25519_ref10.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_core\hchacha20\core_hchacha20.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_core\hsalsa20\core_hsalsa20.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_core\hsalsa20\ref2\core_hsalsa20_ref2.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_core\salsa\ref\core_salsa_ref.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_generichash\blake2b\generichash_blake2.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_generichash\blake2b\ref\blake2b-compress-avx2.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_generichash\blake2b\ref\blake2b-compress-ref.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_generichash\blake2b\ref\blake2b-compress-sse41.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_generichash\blake2b\ref\blake2b-compress-ssse3.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_generichash\blake2b\ref\blake2b-ref.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_generichash\blake2b\ref\generichash_blake2b.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_generichash\crypto_generichash.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_hash\crypto_hash.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_hash\sha256\cp\hash_sha256_cp.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_hash\sha256\hash_sha256.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_hash\sha512\cp\hash_sha512_cp.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_hash\sha512\hash_sha512.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_kdf\blake2b\kdf_blake2b.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_kdf\crypto_kdf.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_kx\crypto_kx.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_onetimeauth\crypto_onetimeauth.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_onetimeauth\poly1305\donna\poly1305_donna.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_onetimeauth\poly1305\onetimeauth_poly1305.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_onetimeauth\poly1305\sse2\poly1305_sse2.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_pwhash\argon2\argon2-core.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_pwhash\argon2\argon2-encoding.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_pwhash\argon2\argon2-fill-block-avx2.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_pwhash\argon2\argon2-fill-block-avx512f.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_pwhash\argon2\argon2-fill-block-ref.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_pwhash\argon2\argon2-fill-block-ssse3.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_pwhash\argon2\argon2.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_pwhash\argon2\blake2b-long.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_pwhash\argon2\pwhash_argon2i.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_pwhash\argon2\pwhash_argon2id.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_pwhash\crypto_pwhash.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_pwhash\scryptsalsa208sha256\crypto_scrypt-common.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_pwhash\scryptsalsa208sha256\nosse\pwhash_scryptsalsa208sha256_nosse.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_pwhash\scryptsalsa208sha256\pbkdf2-sha256.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_pwhash\scryptsalsa208sha256\pwhash_scryptsalsa208sha256.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_pwhash\scryptsalsa208sha256\scrypt_platform.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_pwhash\scryptsalsa208sha256\sse\pwhash_scryptsalsa208sha256_sse.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_scalarmult\crypto_scalarmult.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_scalarmult\curve25519\ref10\x25519_ref10.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_scalarmult\curve25519\sandy2x\consts.S" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_scalarmult\curve25519\sandy2x\curve25519_sandy2x.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_scalarmult\curve25519\sandy2x\fe51_invert.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_scalarmult\curve25519\sandy2x\fe51_mul.S" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_scalarmult\curve25519\sandy2x\fe51_nsquare.S" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_scalarmult\curve25519\sandy2x\fe51_pack.S" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_scalarmult\curve25519\sandy2x\fe_frombytes_sandy2x.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_scalarmult\curve25519\sandy2x\ladder.S" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_scalarmult\curve25519\sandy2x\ladder_base.S" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_scalarmult\curve25519\sandy2x\sandy2x.S" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_scalarmult\curve25519\scalarmult_curve25519.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_scalarmult\ed25519\ref10\scalarmult_ed25519_ref10.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_secretbox\crypto_secretbox.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_secretbox\crypto_secretbox_easy.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_secretbox\xchacha20poly1305\secretbox_xchacha20poly1305.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_secretbox\xsalsa20poly1305\secretbox_xsalsa20poly1305.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_secretstream\xchacha20poly1305\secretstream_xchacha20poly1305.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_shorthash\crypto_shorthash.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_shorthash\siphash24\ref\shorthash_siphash24_ref.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_shorthash\siphash24\ref\shorthash_siphashx24_ref.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_shorthash\siphash24\shorthash_siphash24.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_shorthash\siphash24\shorthash_siphashx24.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_sign\crypto_sign.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_sign\ed25519\ref10\keypair.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_sign\ed25519\ref10\obsolete.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_sign\ed25519\ref10\open.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_sign\ed25519\ref10\sign.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_sign\ed25519\sign_ed25519.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_stream\chacha20\dolbeau\chacha20_dolbeau-avx2.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_stream\chacha20\dolbeau\chacha20_dolbeau-ssse3.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_stream\chacha20\ref\chacha20_ref.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_stream\chacha20\stream_chacha20.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_stream\crypto_stream.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_stream\salsa20\ref\salsa20_ref.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_stream\salsa20\stream_salsa20.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_stream\salsa20\xmm6\salsa20_xmm6-asm.S" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_stream\salsa20\xmm6\salsa20_xmm6.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_stream\salsa20\xmm6int\salsa20_xmm6int-avx2.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_stream\salsa20\xmm6int\salsa20_xmm6int-sse2.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_stream\salsa2012\ref\stream_salsa2012_ref.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_stream\salsa2012\stream_salsa2012.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_stream\salsa208\ref\stream_salsa208_ref.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_stream\salsa208\stream_salsa208.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_stream\xchacha20\stream_xchacha20.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_stream\xsalsa20\stream_xsalsa20.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\crypto_verify\sodium\verify.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\randombytes\randombytes.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\randombytes\salsa20\randombytes_salsa20_random.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\randombytes\sysrandom\randombytes_sysrandom.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\sodium\codecs.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\sodium\core.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\sodium\runtime.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\sodium\utils.c" />
+    <ClCompile Include="..\..\sodium\src\libsodium\sodium\version.c" />
+  </ItemGroup>
+  <PropertyGroup Label="UserMacros" />
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Durango'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Profile|Durango'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Durango'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Durango'">
+    <ReferencePath>$(Console_SdkLibPath);$(Console_SdkWindowsMetadataPath)</ReferencePath>
+    <LibraryPath>$(Console_SdkLibPath)</LibraryPath>
+    <LibraryWPath>$(Console_SdkLibPath);$(Console_SdkWindowsMetadataPath)</LibraryWPath>
+    <IncludePath>$(Console_SdkIncludeRoot)</IncludePath>
+    <ExecutablePath>$(Console_SdkRoot)bin;$(VCInstallDir)bin\x86_amd64;$(VCInstallDir)bin;$(WindowsSDK_ExecutablePath_x86);$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(MSBuildToolsPath32);$(FxCopDir);$(PATH);</ExecutablePath>
+    <IntDir>$(Configuration)\sodium\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profile|Durango'">
+    <ReferencePath>$(Console_SdkLibPath);$(Console_SdkWindowsMetadataPath)</ReferencePath>
+    <LibraryPath>$(Console_SdkLibPath)</LibraryPath>
+    <LibraryWPath>$(Console_SdkLibPath);$(Console_SdkWindowsMetadataPath)</LibraryWPath>
+    <IncludePath>$(Console_SdkIncludeRoot)</IncludePath>
+    <ExecutablePath>$(Console_SdkRoot)bin;$(VCInstallDir)bin\x86_amd64;$(VCInstallDir)bin;$(WindowsSDK_ExecutablePath_x86);$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(MSBuildToolsPath32);$(FxCopDir);$(PATH);</ExecutablePath>
+    <IntDir>$(Configuration)\sodium\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Durango'">
+    <ReferencePath>$(Console_SdkLibPath);$(Console_SdkWindowsMetadataPath)</ReferencePath>
+    <LibraryPath>$(Console_SdkLibPath)</LibraryPath>
+    <LibraryWPath>$(Console_SdkLibPath);$(Console_SdkWindowsMetadataPath)</LibraryWPath>
+    <IncludePath>$(Console_SdkIncludeRoot)</IncludePath>
+    <ExecutablePath>$(Console_SdkRoot)bin;$(VCInstallDir)bin\x86_amd64;$(VCInstallDir)bin;$(WindowsSDK_ExecutablePath_x86);$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(MSBuildToolsPath32);$(FxCopDir);$(PATH);</ExecutablePath>
+    <IntDir>$(Configuration)\sodium\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Durango'">
+    <Link>
+      <AdditionalDependencies>combase.lib;kernelx.lib;uuid.lib;</AdditionalDependencies>
+      <EntryPointSymbol>
+      </EntryPointSymbol>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateWindowsMetadata>false</GenerateWindowsMetadata>
+    </Link>
+    <ClCompile>
+      <PrecompiledHeader />
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <AdditionalUsingDirectories>$(Console_SdkPackagesRoot);$(Console_SdkWindowsMetadataPath);%(AdditionalUsingDirectories)</AdditionalUsingDirectories>
+      <Optimization>MaxSpeed</Optimization>
+      <PreprocessorDefinitions>NDEBUG;__WRL_NO_DEFAULT_LIB__;_LIB;SODIUM_STATIC;SODIUM_EXPORT=;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <WarningLevel>Level4</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <CompileAsWinRT>false</CompileAsWinRT>
+    </ClCompile>
+    <Lib>
+      <AdditionalOptions>/ignore:4221 %(AdditionalOptions)</AdditionalOptions>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile|Durango'">
+    <Link>
+      <AdditionalDependencies>combase.lib;kernelx.lib;uuid.lib;</AdditionalDependencies>
+      <EntryPointSymbol>
+      </EntryPointSymbol>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateWindowsMetadata>false</GenerateWindowsMetadata>
+    </Link>
+    <ClCompile>
+      <PrecompiledHeader />
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <AdditionalUsingDirectories>$(Console_SdkPackagesRoot);$(Console_SdkWindowsMetadataPath);%(AdditionalUsingDirectories)</AdditionalUsingDirectories>
+      <Optimization>MaxSpeed</Optimization>
+      <PreprocessorDefinitions>NDEBUG;__WRL_NO_DEFAULT_LIB__;_LIB;PROFILE;SODIUM_STATIC;SODIUM_EXPORT=;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <WarningLevel>Level4</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <CompileAsWinRT>false</CompileAsWinRT>
+    </ClCompile>
+    <Lib>
+      <AdditionalOptions>/ignore:4221 %(AdditionalOptions)</AdditionalOptions>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Durango'">
+    <Link>
+      <AdditionalDependencies>combase.lib;kernelx.lib;uuid.lib;</AdditionalDependencies>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateWindowsMetadata>false</GenerateWindowsMetadata>
+    </Link>
+    <ClCompile>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <PrecompiledHeader />
+      <MinimalRebuild>false</MinimalRebuild>
+      <AdditionalUsingDirectories>$(Console_SdkPackagesRoot);$(Console_SdkWindowsMetadataPath);%(AdditionalUsingDirectories)</AdditionalUsingDirectories>
+      <WarningLevel>Level4</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>_DEBUG;__WRL_NO_DEFAULT_LIB__;_LIB;SODIUM_STATIC;SODIUM_EXPORT=;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <CompileAsWinRT>false</CompileAsWinRT>
+    </ClCompile>
+    <Lib>
+      <AdditionalOptions>/ignore:4221 %(AdditionalOptions)</AdditionalOptions>
+    </Lib>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

@@ -20,7 +20,7 @@
     NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-// IMPORTANT: you must compile this file with /ZW
+// IMPORTANT: you must compile this file with /ZW to get windows runtime components
 
 #include "next_xboxone.h"
 
