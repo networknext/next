@@ -117,6 +117,58 @@ func TestRelayStateUpdate(t *testing.T) {
 	})
 }
 
+func TestRelayPublicKeyUpdate(t *testing.T) {
+	makeSvc := func() *jsonrpc.OpsService {
+		var storer storage.InMemory
+		storer.AddRelay(context.Background(), routing.Relay{
+			ID:        1,
+			PublicKey: []byte("oldpublickey"),
+		})
+		storer.AddRelay(context.Background(), routing.Relay{
+			ID:        2,
+			PublicKey: []byte("oldpublickey"),
+		})
+
+		return &jsonrpc.OpsService{
+			Storage: &storer,
+		}
+	}
+
+	t.Run("found", func(t *testing.T) {
+		svc := makeSvc()
+		err := svc.RelayPublicKeyUpdate(nil, &jsonrpc.RelayPublicKeyUpdateArgs{
+			RelayID:        1,
+			RelayPublicKey: "newpublickey",
+		}, &jsonrpc.RelayPublicKeyUpdateReply{})
+		assert.NoError(t, err)
+
+		relay, err := svc.Storage.Relay(1)
+		assert.NoError(t, err)
+		assert.Equal(t, "newpublickey", relay.PublicKey)
+
+		relay, err = svc.Storage.Relay(2)
+		assert.NoError(t, err)
+		assert.Equal(t, "oldpublickey", relay.PublicKey)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		svc := makeSvc()
+		err := svc.RelayPublicKeyUpdate(nil, &jsonrpc.RelayPublicKeyUpdateArgs{
+			RelayID:        987654321,
+			RelayPublicKey: "newpublickey",
+		}, &jsonrpc.RelayPublicKeyUpdateReply{})
+		assert.Error(t, err)
+
+		relay, err := svc.Storage.Relay(1)
+		assert.NoError(t, err)
+		assert.Equal(t, "oldpublickey", relay.PublicKey)
+
+		relay, err = svc.Storage.Relay(2)
+		assert.NoError(t, err)
+		assert.Equal(t, "oldpublickey", relay.PublicKey)
+	})
+}
+
 func TestDatacenters(t *testing.T) {
 	storer := storage.InMemory{}
 	storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 1, Name: "local.local.1"})
