@@ -7,8 +7,6 @@ package main
 import (
 	"bufio"
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"flag"
 	"fmt"
 	"io"
@@ -24,7 +22,6 @@ import (
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/tidwall/gjson"
 	"github.com/ybbus/jsonrpc"
-	"golang.org/x/crypto/nacl/box"
 )
 
 func isWindows() bool {
@@ -332,47 +329,7 @@ func main() {
 								log.Fatal("You need to supply at least one relay name")
 							}
 
-							makeEnv := func(info relayInfo) {
-								publicKey, privateKey, err := box.GenerateKey(rand.Reader)
-
-								if err != nil {
-									log.Fatal("could not generate public private keypair")
-								}
-
-								routerPublicKey, err := env.RouterPublicKey()
-
-								if err != nil {
-									log.Fatalf("could not get router public key: %v", err)
-								}
-
-								backendHostname, err := env.BackendHostname()
-
-								if err != nil {
-									log.Fatalf("could not get backend hostname: %v", err)
-								}
-
-								envvars := make(map[string]string)
-								envvars["RELAY_ADDRESS"] = info.publicAddr
-								envvars["RELAY_PUBLIC_KEY"] = base64.StdEncoding.EncodeToString(publicKey[:])
-								envvars["RELAY_PRIVATE_KEY"] = base64.StdEncoding.EncodeToString(privateKey[:])
-								envvars["RELAY_ROUTER_PUBLIC_KEY"] = routerPublicKey
-								envvars["RELAY_BACKEND_HOSTNAME"] = backendHostname
-
-								f, err := os.Create("deploy/relay/relay.env")
-								defer f.Close()
-
-								for k, v := range envvars {
-									f.WriteString(fmt.Sprintf("%s=%s\n", k, v))
-								}
-							}
-
-							for _, relayName := range args {
-								info := getRelayInfo(rpcClient, relayName)
-								makeEnv(info)
-								if !runCommandEnv("deploy/relay-update.sh", []string{env.SSHKeyFilePath, info.user + "@" + info.address}, nil) {
-									log.Fatal("could not execute the relay-update.sh script")
-								}
-							}
+							updateRelays(env, rpcClient, args)
 
 							return nil
 						},
@@ -383,10 +340,10 @@ func main() {
 						ShortHelp:  "Disable the specified relay",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) == 0 {
-								log.Fatal("You need to supply a relay name")
+								log.Fatal("You need to supply at least one relay name")
 							}
 
-							Disable(env, rpcClient, args[0])
+							disableRelays(env, rpcClient, args)
 
 							return nil
 						},

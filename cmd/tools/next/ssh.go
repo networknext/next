@@ -11,7 +11,18 @@ import (
 )
 
 const (
-	DisableRelayScript = `if [ ! $(id -u) = 0 ]; then sudo systemctl stop relay; else systemctl stop relay; fi`
+	// DisableRelayScript is the bash script used to disable relays
+	DisableRelayScript = `
+	systemctl is-active --quiet relay && sudo systemctl stop relay
+
+	echo "Waiting for the relay service to clean shutdown"
+
+	while systemctl is-active --quiet relay; do
+		sleep 1
+	done
+
+	echo "Relay service shutdown"
+	`
 )
 
 type relayInfo struct {
@@ -65,20 +76,22 @@ func SSHInto(env Environment, rpcClient jsonrpc.RPCClient, relayName string) {
 	con.Connect()
 }
 
-func Disable(env Environment, rpcClient jsonrpc.RPCClient, relayName string) {
-	info := getRelayInfo(rpcClient, relayName)
-	fmt.Printf("Disabling relay '%s' (id = %d)\n", relayName, info.id)
-	testForSSHKey(env)
-	args := localjsonrpc.RelayStateUpdateArgs{
-		RelayID:    info.id,
-		RelayState: routing.RelayStateDisabled,
+func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []string) {
+	for _, relayName := range relayNames {
+		info := getRelayInfo(rpcClient, relayName)
+		fmt.Printf("Disabling relay '%s' (id = %d)\n", relayName, info.id)
+		testForSSHKey(env)
+		args := localjsonrpc.RelayStateUpdateArgs{
+			RelayID:    info.id,
+			RelayState: routing.RelayStateDisabled,
+		}
+		var reply localjsonrpc.RelayStateUpdateReply
+		if err := rpcClient.CallFor(&reply, "OpsService.RelayStateUpdate", &args); err != nil {
+			log.Fatalf("could not update relay state: %v", err)
+		}
+		con := NewSSHConn(info.user, info.address, info.port, env.SSHKeyFilePath)
+		con.ConnectAndIssueCmd(DisableRelayScript)
 	}
-	var reply localjsonrpc.RelayStateUpdateReply
-	if err := rpcClient.CallFor(&reply, "OpsService.RelayStateUpdate", &args); err != nil {
-		log.Fatalf("could not update relay state: %v", err)
-	}
-	con := NewSSHConn(info.user, info.address, info.port, env.SSHKeyFilePath)
-	con.ConnectAndIssueCmd(DisableRelayScript)
 }
 
 type SSHConn struct {
