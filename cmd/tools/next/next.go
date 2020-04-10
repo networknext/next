@@ -342,8 +342,8 @@ func main() {
 				Subcommands: []*ffcli.Command{
 					{
 						Name:       "update",
-						ShortUsage: "next relay update <relay name> <relay name> ...",
-						ShortHelp:  "Update the specified relay",
+						ShortUsage: "next relay update <relay name...>",
+						ShortHelp:  "Update the specified relay(s)",
 						Exec: func(ctx context.Context, args []string) error {
 							if len(args) == 0 {
 								log.Fatal("You need to supply at least one relay name")
@@ -356,8 +356,8 @@ func main() {
 					},
 					{
 						Name:       "disable",
-						ShortUsage: "next relay disable <relay name>",
-						ShortHelp:  "Disable the specified relay",
+						ShortUsage: "next relay disable <relay name...>",
+						ShortHelp:  "Disable the specified relay(s)",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) == 0 {
 								log.Fatal("You need to supply at least one relay name")
