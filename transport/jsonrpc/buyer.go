@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v7"
+	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 )
@@ -182,7 +183,7 @@ type GameConfigurationArgs struct {
 }
 
 type GameConfigurationReply struct {
-	PublicKey []byte
+	PublicKey string `json:"public_key"`
 }
 
 type gameConfiguration struct {
@@ -198,6 +199,7 @@ type gameConfiguration struct {
 func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurationArgs, reply *GameConfigurationReply) error {
 	var err error
 	var buyerID uint64
+	var buyer routing.Buyer
 
 	if args.BuyerID == "" {
 		return fmt.Errorf("buyer_id is required")
@@ -207,9 +209,11 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 		return fmt.Errorf("failed to convert BuyerID to uint64")
 	}
 
-	fmt.Println(s.Storage.Buyer(buyerID))
+	if buyer, err = s.Storage.Buyer(buyerID); err != nil {
+		return fmt.Errorf("failed to fetch buyer info from Storer")
+	}
 
-	// s.Storage.Buyer(buyerID).EncodedPublicKey()
+	reply.PublicKey = buyer.EncodedPublicKey()
 
-	return fmt.Errorf("not supported yet")
+	return nil
 }
