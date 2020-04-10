@@ -12,7 +12,7 @@ import (
 const (
 	PortalHostnameLocal = "localhost:20000"
 	PortalHostnameDev   = "portal.dev.networknext.com"
-	PortalHostnameProd  = "portal.dev.networknext.com"
+	PortalHostnameProd  = "portal.prod.networknext.com"
 )
 
 type Environment struct {

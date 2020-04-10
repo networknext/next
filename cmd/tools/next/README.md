@@ -4,17 +4,6 @@
 
 Run `./next` in the root of the repo for available commands.
 
-## Env
-
-Set the tools current environment. If the environment is set to one of local, dev, or prod, the tool will use preconfigured settings for each respective environment.
-
-If the environment does not match one of those three the tool will be pointed to whatever the value is as a url value.
-
-Examples: \
-&nbsp;&nbsp;`next env local` \
-&nbsp;&nbsp;`next env localhost:20000` \
-&nbsp;&nbsp;`next env portal.dev.networknext.com`
-
 ## SSH
 
 SSH into a remote device. You must set the SSH key before attempting to connect to a device, otherwise you will get denied.
