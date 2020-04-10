@@ -1,11 +1,14 @@
 package jsonrpc_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/alicebob/miniredis"
 	"github.com/go-redis/redis/v7"
+	"github.com/networknext/backend/routing"
+	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/jsonrpc"
 	"github.com/stretchr/testify/assert"
@@ -44,6 +47,18 @@ func TestSessions(t *testing.T) {
 	t.Run("session_id not found", func(t *testing.T) {
 		var reply jsonrpc.SessionsReply
 		err := svc.Sessions(nil, &jsonrpc.SessionsArgs{BuyerID: "12345", SessionID: "3434"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("failed to convert buyer_id to uint64", func(t *testing.T) {
+		var reply jsonrpc.SessionsReply
+		err := svc.Sessions(nil, &jsonrpc.SessionsArgs{BuyerID: "asdgagasdgfa"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("failed to convert session_id to uint64", func(t *testing.T) {
+		var reply jsonrpc.SessionsReply
+		err := svc.Sessions(nil, &jsonrpc.SessionsArgs{SessionID: "asdgagasdgfa"}, &reply)
 		assert.Error(t, err)
 	})
 
@@ -91,5 +106,43 @@ func TestSessions(t *testing.T) {
 		assert.Equal(t, reply.Sessions[0].DirectRTT, float64(20))
 		assert.Equal(t, reply.Sessions[0].NextRTT, float64(10))
 		assert.Equal(t, reply.Sessions[0].ChangeRTT, float64(-10))
+	})
+}
+
+func TestGameConfiguration(t *testing.T) {
+	redisServer, _ := miniredis.Run()
+	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+	storer := storage.InMemory{}
+	pubkey := make([]byte, 4)
+	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "local.local.1", PublicKey: pubkey})
+
+	svc := jsonrpc.BuyersService{
+		RedisClient: redisClient,
+		Storage:     &storer,
+	}
+
+	t.Run("missing buyer_id", func(t *testing.T) {
+		var reply jsonrpc.GameConfigurationReply
+		err := svc.GameConfiguration(nil, &jsonrpc.GameConfigurationArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("failed to convert buyer_id to uint64", func(t *testing.T) {
+		var reply jsonrpc.GameConfigurationReply
+		err := svc.GameConfiguration(nil, &jsonrpc.GameConfigurationArgs{BuyerID: "asdgagasdgfa"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("failed to find buyer", func(t *testing.T) {
+		_, err := storer.Buyer(1234)
+		assert.Error(t, err)
+	})
+
+	t.Run("single", func(t *testing.T) {
+		var reply jsonrpc.GameConfigurationReply
+		err := svc.GameConfiguration(nil, &jsonrpc.GameConfigurationArgs{BuyerID: "1"}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, reply.GameConfiguration.PublicKey, "AAAAAA==")
 	})
 }
