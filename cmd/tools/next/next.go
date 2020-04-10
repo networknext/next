@@ -200,7 +200,7 @@ func main() {
 	}
 	env.Read()
 
-	rpcClient := jsonrpc.NewClientWithOpts("http://"+env.Hostname+"/rpc", &jsonrpc.RPCClientOpts{
+	rpcClient := jsonrpc.NewClientWithOpts("http://"+env.PortalHostname()+"/rpc", &jsonrpc.RPCClientOpts{
 		CustomHeaders: map[string]string{
 			"Authorization": fmt.Sprintf("Bearer %s", env.AuthToken),
 		},
@@ -256,13 +256,14 @@ func main() {
 
 			{
 				Name:       "env",
-				ShortUsage: "next env <hostname>",
+				ShortUsage: "next env <local|dev|prod|hostname>",
 				ShortHelp:  "Manage environment",
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) > 0 {
 						env.Hostname = args[0]
 						env.Write()
 					}
+
 					fmt.Println(env.String())
 					return nil
 				},
@@ -339,28 +340,6 @@ func main() {
 			{
 				Name: "relay",
 				Subcommands: []*ffcli.Command{
-					{
-						Name:       "env",
-						ShortUsage: "next relay env <dev|prod>",
-						ShortHelp:  "Sets the env configuration to use when updating relays",
-						Exec: func(ctx context.Context, args []string) error {
-							if len(args) == 0 {
-								log.Fatal("You need to supply one of <dev|prod>")
-							}
-
-							if args[0] != "dev" && args[0] != "prod" {
-								log.Fatalf("'%s' is invalid. You need to supply one of <dev|prod>", args[0])
-							}
-
-							env.RelayEnvironment = args[0]
-
-							env.Write()
-
-							fmt.Println(env.String())
-
-							return nil
-						},
-					},
 					{
 						Name:       "update",
 						ShortUsage: "next relay update <relay name> <relay name> ...",

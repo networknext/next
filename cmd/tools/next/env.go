@@ -11,6 +11,10 @@ import (
 )
 
 const (
+	PortalHostnameLocal = "localhost:20000"
+	PortalHostnameDev   = "portal.dev.networknext.com"
+	PortalHostnameProd  = "portal.dev.networknext.com"
+
 	RouterPublicKeyDev  = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
 	RouterPublicKeyProd = "placeholder"
 
@@ -19,10 +23,9 @@ const (
 )
 
 type Environment struct {
-	Hostname         string `json:"hostname"`
-	AuthToken        string `json:"auth_token"`
-	SSHKeyFilePath   string `json:"ssh_key_filepath`
-	RelayEnvironment string `json:"relay_environment"`
+	Hostname       string `json:"hostname"`
+	AuthToken      string `json:"auth_token"`
+	SSHKeyFilePath string `json:"ssh_key_filepath`
 }
 
 func (e *Environment) String() string {
@@ -31,7 +34,6 @@ func (e *Environment) String() string {
 	sb.WriteString(fmt.Sprintf("Hostname: %s\n", e.Hostname))
 	sb.WriteString(fmt.Sprintf("AuthToken: %s\n", e.AuthToken))
 	sb.WriteString(fmt.Sprintf("SSHKeyFilePath: %s\n", e.SSHKeyFilePath))
-	sb.WriteString(fmt.Sprintf("RelayEnvironment: %s\n", e.RelayEnvironment))
 
 	return sb.String()
 }
@@ -103,6 +105,19 @@ func (e *Environment) Clean() {
 	}
 }
 
+func (e *Environment) PortalHostname() string {
+	switch e.Hostname {
+	case "local":
+		return PortalHostnameLocal
+	case "dev":
+		return PortalHostnameDev
+	case "prod":
+		return PortalHostnameProd
+	}
+
+	return e.Hostname
+}
+
 func (e *Environment) RouterPublicKey() (string, error) {
 	return e.devOrProd(RouterPublicKeyDev, RouterPublicKeyProd)
 }
@@ -112,12 +127,12 @@ func (e *Environment) BackendHostname() (string, error) {
 }
 
 func (e *Environment) devOrProd(ifIsDev, ifIsProd string) (string, error) {
-	switch e.RelayEnvironment {
+	switch e.Hostname {
 	case "dev":
 		return ifIsDev, nil
 	case "prod":
 		return ifIsProd, nil
 	default:
-		return "", errors.New("Invalid relay environment, please set it to either 'dev' or 'prod'")
+		return "", errors.New("Invalid environment for the current operation, please set it to either 'dev' or 'prod'")
 	}
 }
