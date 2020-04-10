@@ -105,7 +105,7 @@ Because there are some remote services such as GCP that the backend components t
 Here are the requirements to run each of the GCP related unit tests:
 
 Firestore:
-Install the gcloud firestore emulator:
+Install the gcloud firestore emulator: (Note that the emulator needs a Java Runtime Environment version 1.8 or higher installed and added to PATH)
 `gcloud components install beta`
 `gcloud components install cloud-firestore-emulator`
 
