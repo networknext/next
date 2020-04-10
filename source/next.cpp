@@ -3428,6 +3428,13 @@ int next_init( void * context, next_config_t * config_in )
         return NEXT_ERROR;
     }
 
+    const char * log_level_override = next_platform_getenv( "NEXT_LOG_LEVEL" );
+    if ( log_level_override )
+    {
+        log_level = atoi( log_level_override );
+        next_printf( NEXT_LOG_LEVEL_INFO, "log level overridden to %d", log_level );
+    }
+
     next_config_internal_t config;
 
     memset( &config, 0, sizeof(next_config_internal_t) );
@@ -3561,12 +3568,6 @@ int next_init( void * context, next_config_t * config_in )
     next_encrypted_packets[NEXT_CLIENT_STATS_PACKET] = 1;
     next_encrypted_packets[NEXT_ROUTE_UPDATE_PACKET] = 1;
     next_encrypted_packets[NEXT_ROUTE_UPDATE_ACK_PACKET] = 1;
-
-    const char * log_level_override = next_platform_getenv( "NEXT_LOG_LEVEL" );
-    if ( log_level_override )
-    {
-        log_level = atoi( log_level_override );
-    }
 
     return NEXT_OK;
 }
@@ -5529,11 +5530,13 @@ int next_client_internal_process_packet_from_server( next_client_internal_t * cl
                 return NEXT_ERROR;
             }
 
+            /*
             if ( !next_address_equal( &client->server_address, &packet.server_address ) )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. packet server address does not match client server address" );
                 return NEXT_ERROR;
             }
+            */
 
             if ( !packet.Verify( client->customer_public_key ) )
             {
@@ -8606,7 +8609,8 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         server_address.port = bind_address.port;
     }
 
-    next_printf( NEXT_LOG_LEVEL_INFO, "server bound to port %d", bind_address.port );
+    char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
+    next_printf( NEXT_LOG_LEVEL_INFO, "server bound to %s", next_address_to_string( &bind_address, address_string ) );
 
     server->bind_address = bind_address;
     server->server_address = server_address;
@@ -8679,7 +8683,6 @@ next_server_internal_t * next_server_internal_create( void * context, const char
 		server->failed_to_resolve_hostname = true;
 	}
 
-    char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
     next_printf( NEXT_LOG_LEVEL_INFO, "server started on %s", next_address_to_string( &server_address, address_string ) );
 
     crypto_kx_keypair( server->server_kx_public_key, server->server_kx_private_key );
