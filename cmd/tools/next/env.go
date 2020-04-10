@@ -13,7 +13,7 @@ import (
 const (
 	PortalHostnameLocal = "localhost:20000"
 	PortalHostnameDev   = "portal.dev.networknext.com"
-	PortalHostnameProd  = "portal.dev.networknext.com"
+	PortalHostnameProd  = "portal.prod.networknext.com"
 
 	RouterPublicKeyDev  = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
 	RouterPublicKeyProd = "placeholder"
@@ -122,7 +122,7 @@ func (e *Environment) RouterPublicKey() (string, error) {
 	return e.devOrProd(RouterPublicKeyDev, RouterPublicKeyProd)
 }
 
-func (e *Environment) BackendHostname() (string, error) {
+func (e *Environment) RelayBackendHostname() (string, error) {
 	return e.devOrProd(RelayBackendHostnameDev, RelayBackendHostnameProd)
 }
 
