@@ -14,8 +14,8 @@ const (
 	RouterPublicKeyDev  = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
 	RouterPublicKeyProd = "placeholder"
 
-	BackendHostnameDev  = "http://relay_backend.dev.spacecats.net:40000"
-	BackendHostnameProd = "http://relay_backend.prod.spacecats.net:40000"
+	RelayBackendHostnameDev  = "http://relay_backend.dev.spacecats.net:40000"
+	RelayBackendHostnameProd = "http://relay_backend.prod.spacecats.net:40000"
 )
 
 type Environment struct {
@@ -108,7 +108,7 @@ func (e *Environment) RouterPublicKey() (string, error) {
 }
 
 func (e *Environment) BackendHostname() (string, error) {
-	return e.devOrProd(BackendHostnameDev, BackendHostnameProd)
+	return e.devOrProd(RelayBackendHostnameDev, RelayBackendHostnameProd)
 }
 
 func (e *Environment) devOrProd(ifIsDev, ifIsProd string) (string, error) {

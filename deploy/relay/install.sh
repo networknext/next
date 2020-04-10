@@ -17,15 +17,10 @@ backup_existing() {
 	done
 }
 
-service_is_active() {
-  return $(systemctl is-active --quiet relay)
-}
-
-service_is_active && sudo systemctl stop relay
-
-while service_is_active; do
-	sleep 1
-done
+if systemctl is-active --quiet relay; then
+  echo "Error: Please disable the relay before updating"
+  exit 1
+fi
 
 if [[ ! -d '/app' ]]; then
   sudo mkdir '/app'
