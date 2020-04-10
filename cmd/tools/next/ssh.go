@@ -27,7 +27,7 @@ const (
 type relayInfo struct {
 	id         uint64
 	user       string
-	address    string
+	sshAddr    string
 	port       string
 	publicAddr string
 	publicKey  string
@@ -52,7 +52,7 @@ func getRelayInfo(rpcClient jsonrpc.RPCClient, relayName string) relayInfo {
 	return relayInfo{
 		id:         relay.ID,
 		user:       relay.SSHUser,
-		address:    relay.ManagementAddr,
+		sshAddr:    relay.ManagementAddr,
 		port:       fmt.Sprintf("%d", relay.SSHPort),
 		publicAddr: relay.Addr,
 	}
@@ -71,7 +71,7 @@ func testForSSHKey(env Environment) {
 func SSHInto(env Environment, rpcClient jsonrpc.RPCClient, relayName string) {
 	info := getRelayInfo(rpcClient, relayName)
 	testForSSHKey(env)
-	con := NewSSHConn(info.user, info.address, info.port, env.SSHKeyFilePath)
+	con := NewSSHConn(info.user, info.sshAddr, info.port, env.SSHKeyFilePath)
 	con.Connect()
 }
 

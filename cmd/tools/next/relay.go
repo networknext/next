@@ -26,7 +26,7 @@ func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []st
 		if err := rpcClient.CallFor(&reply, "OpsService.RelayStateUpdate", &args); err != nil {
 			log.Fatalf("could not update relay state: %v", err)
 		}
-		con := NewSSHConn(info.user, info.address, info.port, env.SSHKeyFilePath)
+		con := NewSSHConn(info.user, info.sshAddr, info.port, env.SSHKeyFilePath)
 		con.ConnectAndIssueCmd(DisableRelayScript)
 	}
 }
@@ -84,7 +84,7 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 		fmt.Printf("Updating %s\n", relayName)
 		info := getRelayInfo(rpcClient, relayName)
 		makeEnv(info)
-		if !runCommandEnv("deploy/relay-update.sh", []string{env.SSHKeyFilePath, info.user + "@" + info.address}, nil) {
+		if !runCommandEnv("deploy/relay-update.sh", []string{env.SSHKeyFilePath, info.user + "@" + info.sshAddr}, nil) {
 			log.Fatal("could not execute the relay-update.sh script")
 		}
 	}
