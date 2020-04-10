@@ -91,3 +91,16 @@ func (e *Environment) Clean() {
 		log.Fatal("failed to clean environment", err)
 	}
 }
+
+func (e *Environment) PortalHostname() string {
+	switch e.Hostname {
+	case "local":
+		return PortalHostnameLocal
+	case "dev":
+		return PortalHostnameDev
+	case "prod":
+		return PortalHostnameProd
+	}
+
+	return e.Hostname
+}
