@@ -3537,6 +3537,7 @@ int next_init( void * context, next_config_t * config_in )
         int value = atoi( socket_send_buffer_size_override );
         if ( value > 0 )
         {
+            next_printf( NEXT_LOG_LEVEL_INFO, "override socket send buffer size: %d", value );
             config.socket_send_buffer_size = value;
         }
     }
@@ -3547,6 +3548,7 @@ int next_init( void * context, next_config_t * config_in )
         int value = atoi( socket_receive_buffer_size_override );
         if ( value > 0 )
         {
+            next_printf( NEXT_LOG_LEVEL_INFO, "override socket receive buffer size: %d", value );
             config.socket_receive_buffer_size = value;
         }
     }
@@ -3554,6 +3556,7 @@ int next_init( void * context, next_config_t * config_in )
     const char * next_hostname_override = next_platform_getenv( "NEXT_HOSTNAME" );
     if ( next_hostname_override )
     {
+        next_printf( NEXT_LOG_LEVEL_INFO, "override next hostname: '%s'", next_hostname_override );
         strncpy( config.hostname, next_hostname_override, sizeof(config.hostname) - 1 );
     }
 
@@ -9875,14 +9878,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     const char * hostname = next_global_config.hostname;
     const char * port = NEXT_PORT;
-    const char * override_hostname = next_platform_getenv( "NEXT_HOSTNAME" );
     const char * override_port = next_platform_getenv( "NEXT_PORT" );
-
-    if ( override_hostname )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "override hostname: '%s'", override_hostname );
-        hostname = override_hostname;
-    }
 
     if ( override_port )
     {
