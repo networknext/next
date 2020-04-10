@@ -133,6 +133,6 @@ func (e *Environment) devOrProd(ifIsDev, ifIsProd string) (string, error) {
 	case "prod":
 		return ifIsProd, nil
 	default:
-		return "", errors.New("Invalid environment for the current operation, please set it to either 'dev' or 'prod'")
+		return "", errors.New("Invalid environment for the current operation, please set the environment to either 'dev' or 'prod'")
 	}
 }
