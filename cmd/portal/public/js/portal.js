@@ -91,7 +91,7 @@ window.MapHandler = {
 					pickable: true,
 					extruded: false,
 					colorRange: [[0,109,44], [8,81,156]], // [blue, green]
-					radius: 1000,
+					radius: 100000,
 					elevationScale: 4,
 					getPosition: d => d.COORDINATES,
 					onHover: info => setTooltip(info.object, info.x, info.y)
@@ -131,7 +131,6 @@ window.MapHandler = {
 		function setTooltip(object, x, y) {
 			const el = document.getElementById('tooltip');
 			if (object) {
-				console.log(object)
 				el.innerHTML = object.points.length;
 				el.style.display = 'block';
 				el.style.left = x + 'px';
