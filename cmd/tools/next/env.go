@@ -9,6 +9,12 @@ import (
 	"strings"
 )
 
+const (
+	PortalHostnameLocal = "localhost:20000"
+	PortalHostnameDev   = "portal.dev.networknext.com"
+	PortalHostnameProd  = "portal.dev.networknext.com"
+)
+
 type Environment struct {
 	Hostname       string `json:"hostname"`
 	AuthToken      string `json:"auth_token"`
