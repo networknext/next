@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/networknext/backend/routing"
 	localjsonrpc "github.com/networknext/backend/transport/jsonrpc"
 	"github.com/ybbus/jsonrpc"
 )
@@ -74,24 +73,6 @@ func SSHInto(env Environment, rpcClient jsonrpc.RPCClient, relayName string) {
 	testForSSHKey(env)
 	con := NewSSHConn(info.user, info.address, info.port, env.SSHKeyFilePath)
 	con.Connect()
-}
-
-func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []string) {
-	for _, relayName := range relayNames {
-		info := getRelayInfo(rpcClient, relayName)
-		fmt.Printf("Disabling relay '%s' (id = %d)\n", relayName, info.id)
-		testForSSHKey(env)
-		args := localjsonrpc.RelayStateUpdateArgs{
-			RelayID:    info.id,
-			RelayState: routing.RelayStateDisabled,
-		}
-		var reply localjsonrpc.RelayStateUpdateReply
-		if err := rpcClient.CallFor(&reply, "OpsService.RelayStateUpdate", &args); err != nil {
-			log.Fatalf("could not update relay state: %v", err)
-		}
-		con := NewSSHConn(info.user, info.address, info.port, env.SSHKeyFilePath)
-		con.ConnectAndIssueCmd(DisableRelayScript)
-	}
 }
 
 type SSHConn struct {
