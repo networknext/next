@@ -8523,6 +8523,7 @@ next_server_internal_t * next_server_internal_create( void * context, const char
     const char * server_address_override = next_platform_getenv( "NEXT_SERVER_ADDRESS" );
     if ( server_address_override )
     {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server address override: %s\n", server_address_override );
         server_address_string = server_address_override;
     }
 
@@ -8536,6 +8537,7 @@ next_server_internal_t * next_server_internal_create( void * context, const char
     const char * bind_address_override = next_platform_getenv( "NEXT_BIND_ADDRESS" );
     if ( bind_address_override )
     {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server bind address override: %s\n", bind_address_override );
         bind_address_string = bind_address_override;
     }
 
