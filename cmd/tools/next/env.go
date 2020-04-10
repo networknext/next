@@ -118,6 +118,6 @@ func (e *Environment) devOrProd(ifIsDev, ifIsProd string) (string, error) {
 	case "prod":
 		return ifIsProd, nil
 	default:
-		return "", errors.New("Invalid relay environment")
+		return "", errors.New("Invalid relay environment, please set it to either 'dev' or 'prod'")
 	}
 }

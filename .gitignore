@@ -9,3 +9,7 @@ cover.out
 .ycm_extra_conf.py
 .env
 *.rdb
+
+# There's no point storing this
+# Generated each time
+relay.env

@@ -306,8 +306,12 @@ func main() {
 						ShortUsage: "next relay env <dev|prod>",
 						ShortHelp:  "Sets the env configuration to use when updating relays",
 						Exec: func(ctx context.Context, args []string) error {
-							if len(args) == 0 || args[0] != "dev" || args[0] != "prod" {
-								log.Fatalf("You need to supply one of <dev|prod>")
+							if len(args) == 0 {
+								log.Fatal("You need to supply one of <dev|prod>")
+							}
+
+							if args[0] != "dev" && args[0] != "prod" {
+								log.Fatalf("'%s' is invalid. You need to supply one of <dev|prod>", args[0])
 							}
 
 							env.RelayEnvironment = args[0]

@@ -4,9 +4,9 @@ bin='relay'
 env='relay.env'
 svc='relay.service'
 
-bin_dest='/var/relay'
-env_dest='/var/relay.env'
-svc_dest='/lib/systemd/system/relay.service'
+bin_dest="/app/$bin"
+env_dest="/app/$env"
+svc_dest="/lib/systemd/system/$svc"
 
 backup_existing() {
 	for file in "$@"; do
@@ -16,11 +16,19 @@ backup_existing() {
 	done
 }
 
-sudo systemctl stop relay
+service_is_active() {
+  return $(systemctl is-active --quiet relay)
+}
 
-while systemctl is-active --quiet relay; do
+service_is_active && sudo systemctl stop relay
+
+while service_is_active; do
 	sleep 1
 done
+
+if [[ ! -d '/app' ]]; then
+  sudo mkdir '/app'
+fi
 
 backup_existing "$bin_dest" "$env_dest" "$svc_dest"
 
@@ -30,4 +38,3 @@ sudo mv "$svc" "$svc_dest"
 
 sudo systemctl daemon-reload
 sudo systemctl start relay
-
