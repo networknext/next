@@ -9879,7 +9879,6 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     const char * hostname = next_global_config.hostname;
     const char * port = NEXT_PORT;
     const char * override_port = next_platform_getenv( "NEXT_PORT" );
-
     if ( override_port )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "override port: '%s'", override_port );
