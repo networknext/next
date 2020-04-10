@@ -8,19 +8,26 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v7"
+	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 )
 
 type BuyersService struct {
 	RedisClient redis.Cmdable
+	Storage     storage.Storer
 }
 
 type MapArgs struct {
-	BuyerID uint64 `json:"buyer_id"`
+	BuyerID string `json:"buyer_id"`
 }
 
 type MapReply struct {
-	Clusters []cluster `json:"clusters"`
+	SessionPoints []point `json:"sess_points"`
+}
+
+type point struct {
+	Coordinates   []float64 `json:"COORDINATES"`
+	OnNetworkNext bool      `json:"on_network_next"`
 }
 
 type cluster struct {
@@ -33,10 +40,39 @@ type cluster struct {
 }
 
 func (s *BuyersService) SessionsMap(r *http.Request, args *MapArgs, reply *MapReply) error {
-	reply.Clusters = []cluster{
-		{Country: "United States", Region: "NY", City: "Troy", Latitude: 42.7273, Longitude: -73.6696, Count: 10},
-		{Country: "United States", Region: "NY", City: "Saratoga Springs", Latitude: 43.0034, Longitude: -73.842, Count: 5},
-		{Country: "United States", Region: "NY", City: "Albany", Latitude: 42.6701, Longitude: -73.7754, Count: 200},
+	reply.SessionPoints = []point{
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: false},
 	}
 
 	return nil
