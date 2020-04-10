@@ -3435,7 +3435,8 @@ int next_init( void * context, next_config_t * config_in )
     config.socket_send_buffer_size = NEXT_DEFAULT_SOCKET_SEND_BUFFER_SIZE;
     config.socket_receive_buffer_size = NEXT_DEFAULT_SOCKET_RECEIVE_BUFFER_SIZE;
 
-    const char * customer_public_key = config_in ? config_in->customer_public_key : next_platform_getenv( "NEXT_CUSTOMER_PUBLIC_KEY" );
+    const char * customer_public_key_env = next_platform_getenv( "NEXT_CUSTOMER_PUBLIC_KEY" );
+    const char * customer_public_key = customer_public_key_env ? customer_public_key_env : ( config_in ? config_in->customer_public_key : "" );
     if ( customer_public_key )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "customer public key is '%s'", customer_public_key );
@@ -3443,6 +3444,7 @@ int next_init( void * context, next_config_t * config_in )
         if ( next_base64_decode_data( customer_public_key, decode_buffer, sizeof(decode_buffer) ) == sizeof(decode_buffer) )
         {
             memcpy( config.customer_public_key, decode_buffer + 8, crypto_sign_PUBLICKEYBYTES );
+            next_printf( NEXT_LOG_LEVEL_INFO, "found valid customer public key" );
         }
         else
         {
@@ -3450,11 +3452,15 @@ int next_init( void * context, next_config_t * config_in )
             {
                 next_printf( NEXT_LOG_LEVEL_ERROR, "customer public key is invalid: \"%s\"", customer_public_key );
             }
+            else
+            {
+                next_printf( NEXT_LOG_LEVEL_INFO, "no customer public key specified" );
+            }
         }
     }
 
-	config.valid_customer_private_key = false;
-	const char * customer_private_key = config_in ? config_in->customer_private_key : next_platform_getenv( "NEXT_CUSTOMER_PRIVATE_KEY" );
+    const char * customer_private_key_env = next_platform_getenv( "NEXT_CUSTOMER_PRIVATE_KEY" );
+    const char * customer_private_key = customer_private_key_env ? customer_private_key_env : ( config_in ? config_in->customer_private_key : "" );
     if ( customer_private_key )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "customer private key is '%s'", customer_private_key );
@@ -3465,6 +3471,7 @@ int next_init( void * context, next_config_t * config_in )
             config.customer_id = next_read_uint64( &p );
             memcpy( config.customer_private_key, decode_buffer + 8, crypto_sign_SECRETKEYBYTES );
 			config.valid_customer_private_key = true;
+            next_printf( NEXT_LOG_LEVEL_INFO, "found valid customer private key" );
         }
         else
         {
@@ -3497,6 +3504,11 @@ int next_init( void * context, next_config_t * config_in )
         }
     }
 
+    if ( config.disable_network_next )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "network next is disabled" );
+    }
+
     config.disable_tagging = config_in ? config_in->disable_tagging : false;
 
     const char * next_disable_tagging_override = next_platform_getenv( "NEXT_DISABLE_TAGGING" );
@@ -3509,6 +3521,11 @@ int next_init( void * context, next_config_t * config_in )
                 config.disable_tagging = true;
             }
         }
+    }
+
+    if ( config.disable_tagging )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "packet tagging is disabled" );
     }
 
     const char * socket_send_buffer_size_override = next_platform_getenv( "NEXT_SOCKET_SEND_BUFFER_SIZE" );

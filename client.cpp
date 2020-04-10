@@ -59,7 +59,7 @@ int main()
         return 1;
     }
 
-    next_client_open_session( client, "127.0.0.1:32202" );
+    next_client_open_session( client, "173.255.241.176:50000" );
 
     uint8_t packet_data[32];
     memset( packet_data, 0, sizeof( packet_data ) );
