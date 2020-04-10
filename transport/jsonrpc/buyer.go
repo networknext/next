@@ -183,17 +183,11 @@ type GameConfigurationArgs struct {
 }
 
 type GameConfigurationReply struct {
-	PublicKey string `json:"public_key"`
+	GameConfiguration gameConfiguration `json:"game_config"`
 }
 
 type gameConfiguration struct {
-	SessionID     string    `json:"session_id"`
-	UserHash      string    `json:"user_hash"`
-	DirectRTT     float64   `json:"direct_rtt"`
-	NextRTT       float64   `json:"next_rtt"`
-	ChangeRTT     float64   `json:"change_rtt"`
-	OnNetworkNext bool      `json:"on_network_next"`
-	ExpiresAt     time.Time `json:"expires_at"`
+	PublicKey string `json:"public_key"`
 }
 
 func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurationArgs, reply *GameConfigurationReply) error {
@@ -213,7 +207,7 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 		return fmt.Errorf("failed to fetch buyer info from Storer")
 	}
 
-	reply.PublicKey = buyer.EncodedPublicKey()
+	reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
 
 	return nil
 }
