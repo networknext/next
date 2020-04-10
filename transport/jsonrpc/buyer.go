@@ -8,11 +8,13 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v7"
+	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 )
 
 type BuyersService struct {
 	RedisClient redis.Cmdable
+	Storage     storage.Storer
 }
 
 type MapArgs struct {
