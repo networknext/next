@@ -8523,28 +8523,28 @@ next_server_internal_t * next_server_internal_create( void * context, const char
     const char * server_address_override = next_platform_getenv( "NEXT_SERVER_ADDRESS" );
     if ( server_address_override )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server address override: %s\n", server_address_override );
+        next_printf( NEXT_LOG_LEVEL_INFO, "server address override: '%s'", server_address_override );
         server_address_string = server_address_override;
     }
 
     next_address_t server_address;
     if ( next_address_parse( &server_address, server_address_string ) != NEXT_OK )
     {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to parse server address: %s", server_address_string );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to parse server address: '%s'", server_address_string );
         return NULL;
     }
 
     const char * bind_address_override = next_platform_getenv( "NEXT_BIND_ADDRESS" );
     if ( bind_address_override )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server bind address override: %s\n", bind_address_override );
+        next_printf( NEXT_LOG_LEVEL_INFO, "server bind address override: '%s'", bind_address_override );
         bind_address_string = bind_address_override;
     }
 
     next_address_t bind_address;
     if ( next_address_parse( &bind_address, bind_address_string ) != NEXT_OK )
     {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to parse bind address: %s", bind_address_string );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to parse bind address: '%s'", bind_address_string );
         return NULL;
     }
 
