@@ -9,9 +9,10 @@ env_dest="/app/$env"
 svc_dest="/lib/systemd/system/$svc"
 
 backup_existing() {
+  time=$(date -u +"%Y%m%d%H%M%S")
 	for file in "$@"; do
 		if [[ -f "$file" ]]; then
-			cp "$file" "$file.backup"
+			cp "$file" "$file.$time.backup"
 		fi
 	done
 }
