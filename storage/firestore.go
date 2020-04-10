@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"sort"
 	"strconv"
 	"sync"
 	"time"
@@ -23,10 +24,12 @@ type Firestore struct {
 	datacenters map[uint64]routing.Datacenter
 	relays      map[uint64]routing.Relay
 	buyers      map[uint64]routing.Buyer
+	sellers     map[string]routing.Seller
 
 	datacenterMutex sync.RWMutex
 	relayMutex      sync.RWMutex
 	buyerMutex      sync.RWMutex
+	sellerMutex     sync.RWMutex
 }
 
 type buyer struct {
@@ -97,6 +100,7 @@ func NewFirestore(ctx context.Context, gcpProjectID string, logger log.Logger) (
 		datacenters: make(map[uint64]routing.Datacenter),
 		relays:      make(map[uint64]routing.Relay),
 		buyers:      make(map[uint64]routing.Buyer),
+		sellers:     make(map[string]routing.Seller),
 	}, nil
 }
 
@@ -121,6 +125,7 @@ func (fs *Firestore) Buyers() []routing.Buyer {
 		buyers = append(buyers, buyer)
 	}
 
+	sort.Slice(buyers, func(i int, j int) bool { return buyers[i].ID < buyers[j].ID })
 	return buyers
 }
 
@@ -139,8 +144,10 @@ func (fs *Firestore) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		return err
 	}
 
-	// Add the buyer's routing rules settings to re4mote storage
-	fs.createRouteRulesSerttingsForBuyerID(ctx, ref.ID, b.Name, b.RoutingRulesSettings)
+	// Add the buyer's routing rules settings to remote storage
+	if err := fs.createRouteRulesSettingsForBuyerID(ctx, ref.ID, b.Name, b.RoutingRulesSettings); err != nil {
+		return err
+	}
 
 	// Add the buyer in cached storage
 	fs.buyerMutex.Lock()
@@ -162,7 +169,12 @@ func (fs *Firestore) RemoveBuyer(ctx context.Context, id uint64) error {
 
 	bdocs := fs.Client.Collection("Buyer").Documents(ctx)
 	defer bdocs.Stop()
-	for bdoc, err := bdocs.Next(); err != iterator.Done; {
+	for {
+		bdoc, err := bdocs.Next()
+		if err == iterator.Done {
+			break
+		}
+
 		if err != nil {
 			return fmt.Errorf("unknown error: %v", err)
 		}
@@ -175,6 +187,11 @@ func (fs *Firestore) RemoveBuyer(ctx context.Context, id uint64) error {
 		}
 
 		if uint64(buyerInRemoteStorage.ID) == id {
+			// Delete the buyer's routing rules settings in remote storage
+			if err := fs.deleteRouteRulesSettingsForBuyerID(ctx, bdoc.Ref.ID); err != nil {
+				return err
+			}
+
 			// Delete the buyer in remote storage
 			if _, err := bdoc.Ref.Delete(ctx); err != nil {
 				return err
@@ -201,18 +218,15 @@ func (fs *Firestore) SetBuyer(ctx context.Context, b routing.Buyer) error {
 		return fmt.Errorf("buyer with ID %d doesn't exist", b.ID)
 	}
 
-	// Set the data to update the buyer with
-	newBuyerData := buyer{
-		Name:      b.Name,
-		Active:    b.Active,
-		Live:      b.Live,
-		PublicKey: b.PublicKey,
-	}
-
 	// Loop through all buyers in firestore
 	bdocs := fs.Client.Collection("Buyer").Documents(ctx)
 	defer bdocs.Stop()
-	for bdoc, err := bdocs.Next(); err != iterator.Done; {
+	for {
+		bdoc, err := bdocs.Next()
+		if err == iterator.Done {
+			break
+		}
+
 		if err != nil {
 			return fmt.Errorf("unknown error: %v", err)
 		}
@@ -227,6 +241,13 @@ func (fs *Firestore) SetBuyer(ctx context.Context, b routing.Buyer) error {
 		// If the buyer is the one we want to update, update it with the new data
 		if uint64(buyerInRemoteStorage.ID) == b.ID {
 			// Update the buyer in firestore
+			newBuyerData := map[string]interface{}{
+				"name":                     b.Name,
+				"active":                   b.Active,
+				"isLiveCustomer":           b.Live,
+				"sdkVersion3PublicKeyData": b.PublicKey,
+			}
+
 			if _, err := bdoc.Ref.Set(ctx, newBuyerData, firestore.MergeAll); err != nil {
 				return err
 			}
@@ -250,6 +271,114 @@ func (fs *Firestore) SetBuyer(ctx context.Context, b routing.Buyer) error {
 	return fmt.Errorf("could not update buyer with id %d in firestore", b.ID)
 }
 
+func (fs *Firestore) Seller(id string) (routing.Seller, error) {
+	fs.sellerMutex.RLock()
+	defer fs.sellerMutex.RUnlock()
+
+	b, found := fs.sellers[id]
+	if !found {
+		return routing.Seller{}, fmt.Errorf("seller with id %s not found in firestore", id)
+	}
+
+	return b, nil
+}
+
+func (fs *Firestore) Sellers() []routing.Seller {
+	fs.sellerMutex.RLock()
+	defer fs.sellerMutex.RUnlock()
+
+	var sellers []routing.Seller
+	for _, seller := range fs.sellers {
+		sellers = append(sellers, seller)
+	}
+
+	sort.Slice(sellers, func(i int, j int) bool { return sellers[i].ID < sellers[j].ID })
+	return sellers
+}
+
+func (fs *Firestore) AddSeller(ctx context.Context, s routing.Seller) error {
+	// Check if the seller exists
+	fs.sellerMutex.RLock()
+	_, ok := fs.sellers[s.ID]
+	fs.sellerMutex.RUnlock()
+
+	if ok {
+		return fmt.Errorf("seller with ID %s already exists", s.ID)
+	}
+
+	newSellerData := seller{
+		Name:                       s.Name,
+		PricePublicIngressNibblins: convertCentsToNibblins(s.IngressPriceCents),
+		PricePublicEgressNibblins:  convertCentsToNibblins(s.EgressPriceCents),
+	}
+
+	// Add the seller in remote storage
+	_, err := fs.Client.Collection("Seller").Doc(s.ID).Set(ctx, newSellerData)
+	if err != nil {
+		return err
+	}
+
+	// Add the seller in cached storage
+	fs.sellerMutex.Lock()
+	fs.sellers[s.ID] = s
+	fs.sellerMutex.Unlock()
+
+	return nil
+}
+
+func (fs *Firestore) RemoveSeller(ctx context.Context, id string) error {
+	// Check if the seller exists
+	fs.sellerMutex.RLock()
+	_, ok := fs.sellers[id]
+	fs.sellerMutex.RUnlock()
+
+	if !ok {
+		return fmt.Errorf("seller with ID %s doesn't exist", id)
+	}
+
+	// Delete the seller in remote storage
+	if _, err := fs.Client.Collection("Seller").Doc(id).Delete(ctx); err != nil {
+		return err
+	}
+
+	// Delete the seller in cached storage
+	fs.sellerMutex.Lock()
+	delete(fs.sellers, id)
+	fs.sellerMutex.Unlock()
+	return nil
+}
+
+func (fs *Firestore) SetSeller(ctx context.Context, seller routing.Seller) error {
+	// Get a copy of the seller in cached storage
+	fs.sellerMutex.RLock()
+	sellerInCachedStorage, ok := fs.sellers[seller.ID]
+	fs.sellerMutex.RUnlock()
+
+	if !ok {
+		return fmt.Errorf("seller with ID %s doesn't exist", seller.ID)
+	}
+
+	// Update the seller in firestore
+	newSellerData := map[string]interface{}{
+		"name":                       seller.Name,
+		"pricePublicIngressNibblins": convertCentsToNibblins(seller.IngressPriceCents),
+		"pricePublicEgressNibblins":  convertCentsToNibblins(seller.EgressPriceCents),
+	}
+
+	if _, err := fs.Client.Collection("Buyer").Doc(seller.ID).Set(ctx, newSellerData, firestore.MergeAll); err != nil {
+		return err
+	}
+
+	// Update the cached version
+	sellerInCachedStorage = seller
+
+	fs.sellerMutex.Lock()
+	fs.sellers[seller.ID] = sellerInCachedStorage
+	fs.sellerMutex.Unlock()
+
+	return nil
+}
+
 func (fs *Firestore) Relay(id uint64) (routing.Relay, error) {
 	fs.relayMutex.RLock()
 	defer fs.relayMutex.RUnlock()
@@ -260,7 +389,6 @@ func (fs *Firestore) Relay(id uint64) (routing.Relay, error) {
 	}
 
 	return relay, nil
-
 }
 
 func (fs *Firestore) Relays() []routing.Relay {
@@ -272,6 +400,7 @@ func (fs *Firestore) Relays() []routing.Relay {
 		relays = append(relays, relay)
 	}
 
+	sort.Slice(relays, func(i int, j int) bool { return relays[i].ID < relays[j].ID })
 	return relays
 }
 
@@ -282,7 +411,12 @@ func (fs *Firestore) AddRelay(ctx context.Context, r routing.Relay) error {
 	// Loop through all sellers in firestore
 	sdocs := fs.Client.Collection("Seller").Documents(ctx)
 	defer sdocs.Stop()
-	for sdoc, err := sdocs.Next(); err != iterator.Done; {
+	for {
+		sdoc, err := sdocs.Next()
+		if err == iterator.Done {
+			break
+		}
+
 		if err != nil {
 			return fmt.Errorf("unknown error: %v", err)
 		}
@@ -301,7 +435,12 @@ func (fs *Firestore) AddRelay(ctx context.Context, r routing.Relay) error {
 	// Loop through all datacenters in firestore
 	ddocs := fs.Client.Collection("Datacenter").Documents(ctx)
 	defer ddocs.Stop()
-	for ddoc, err := ddocs.Next(); err != iterator.Done; {
+	for {
+		ddoc, err := ddocs.Next()
+		if err == iterator.Done {
+			break
+		}
+
 		if err != nil {
 			return fmt.Errorf("unknown error: %v", err)
 		}
@@ -365,7 +504,12 @@ func (fs *Firestore) RemoveRelay(ctx context.Context, id uint64) error {
 
 	rdocs := fs.Client.Collection("Relay").Documents(ctx)
 	defer rdocs.Stop()
-	for rdoc, err := rdocs.Next(); err != iterator.Done; {
+	for {
+		rdoc, err := rdocs.Next()
+		if err == iterator.Done {
+			break
+		}
+
 		if err != nil {
 			return fmt.Errorf("unknown error: %v", err)
 		}
@@ -406,17 +550,15 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 		return fmt.Errorf("relay with ID %d doesn't exist", r.ID)
 	}
 
-	// Set the data to update the relay with
-	stateUpdateTime := time.Now()
-	newRelayData := relay{
-		State:           r.State,
-		StateUpdateTime: stateUpdateTime,
-	}
-
 	// Loop through all relays in firestore
 	rdocs := fs.Client.Collection("Relay").Documents(ctx)
 	defer rdocs.Stop()
-	for rdoc, err := rdocs.Next(); err != iterator.Done; {
+	for {
+		rdoc, err := rdocs.Next()
+		if err == iterator.Done {
+			break
+		}
+
 		if err != nil {
 			return fmt.Errorf("unknown error: %v", err)
 		}
@@ -431,14 +573,21 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 		// If the relay is the one we want to update, update it with the new data
 		rid := crypto.HashID(relayInRemoteStorage.Address)
 		if rid == r.ID {
+			// Set the data to update the relay with
+			stateUpdateTime := time.Now()
+			newRelayData := map[string]interface{}{
+				"state":           r.State,
+				"stateUpdateTime": stateUpdateTime,
+			}
+
 			// Update the relay in firestore
 			if _, err := rdoc.Ref.Set(ctx, newRelayData, firestore.MergeAll); err != nil {
 				return err
 			}
 
 			// Update the cached version
-			relayInCachedStorage.State = newRelayData.State
-			relayInCachedStorage.LastUpdateTime = newRelayData.StateUpdateTime
+			relayInCachedStorage.State = r.State
+			relayInCachedStorage.LastUpdateTime = stateUpdateTime
 
 			fs.relayMutex.Lock()
 			fs.relays[r.ID] = relayInCachedStorage
@@ -472,6 +621,7 @@ func (fs *Firestore) Datacenters() []routing.Datacenter {
 		datacenters = append(datacenters, datacenter)
 	}
 
+	sort.Slice(datacenters, func(i int, j int) bool { return datacenters[i].ID < datacenters[j].ID })
 	return datacenters
 }
 
@@ -509,7 +659,12 @@ func (fs *Firestore) RemoveDatacenter(ctx context.Context, id uint64) error {
 
 	ddocs := fs.Client.Collection("Datacenter").Documents(ctx)
 	defer ddocs.Stop()
-	for ddoc, err := ddocs.Next(); err != iterator.Done; {
+	for {
+		ddoc, err := ddocs.Next()
+		if err == iterator.Done {
+			break
+		}
+
 		if err != nil {
 			return fmt.Errorf("unknown error: %v", err)
 		}
@@ -548,18 +703,15 @@ func (fs *Firestore) SetDatacenter(ctx context.Context, d routing.Datacenter) er
 		return fmt.Errorf("datacenter with ID %d doesn't exist", d.ID)
 	}
 
-	// Set the data to update the datacenter with
-	newDatacenterData := datacenter{
-		Name:      d.Name,
-		Enabled:   d.Enabled,
-		Latitude:  d.Location.Latitude,
-		Longitude: d.Location.Longitude,
-	}
-
 	// Loop through all datacenters in firestore
 	ddocs := fs.Client.Collection("Datacenter").Documents(ctx)
 	defer ddocs.Stop()
-	for ddoc, err := ddocs.Next(); err != iterator.Done; {
+	for {
+		ddoc, err := ddocs.Next()
+		if err == iterator.Done {
+			break
+		}
+
 		if err != nil {
 			return fmt.Errorf("unknown error: %v", err)
 		}
@@ -573,6 +725,14 @@ func (fs *Firestore) SetDatacenter(ctx context.Context, d routing.Datacenter) er
 
 		// If the datacenter is the one we want to update, update it with the new data
 		if crypto.HashID(datacenterInRemoteStorage.Name) == d.ID {
+			// Set the data to update the datacenter with
+			newDatacenterData := map[string]interface{}{
+				"name":      d.Name,
+				"enabled":   d.Enabled,
+				"latitude":  d.Location.Latitude,
+				"longitude": d.Location.Longitude,
+			}
+
 			// Update the datacenter in firestore
 			if _, err := ddoc.Ref.Set(ctx, newDatacenterData, firestore.MergeAll); err != nil {
 				return err
@@ -614,7 +774,7 @@ func (fs *Firestore) SyncLoop(ctx context.Context, c <-chan time.Time) {
 func (fs *Firestore) Sync(ctx context.Context) error {
 	var outerErr error
 	var wg sync.WaitGroup
-	wg.Add(3)
+	wg.Add(4)
 
 	go func() {
 		if err := fs.syncRelays(ctx); err != nil {
@@ -637,9 +797,52 @@ func (fs *Firestore) Sync(ctx context.Context) error {
 		wg.Done()
 	}()
 
+	go func() {
+		if err := fs.syncSellers(ctx); err != nil {
+			outerErr = fmt.Errorf("failed to sync sellers: %v", err)
+		}
+		wg.Done()
+	}()
+
 	wg.Wait()
 
 	return outerErr
+}
+
+func (fs *Firestore) syncSellers(ctx context.Context) error {
+	sellers := make(map[string]routing.Seller)
+
+	sdocs := fs.Client.Collection("Seller").Documents(ctx)
+	defer sdocs.Stop()
+	for {
+		sdoc, err := sdocs.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("unknown error: %v", err)
+		}
+
+		var s seller
+		err = sdoc.DataTo(&s)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal document: %v", err)
+		}
+
+		sellers[sdoc.Ref.ID] = routing.Seller{
+			Name:              s.Name,
+			IngressPriceCents: convertNibblinsToCents(s.PricePublicIngressNibblins),
+			EgressPriceCents:  convertNibblinsToCents(s.PricePublicEgressNibblins),
+		}
+	}
+
+	fs.sellerMutex.Lock()
+	fs.sellers = sellers
+	fs.sellerMutex.Unlock()
+
+	level.Info(fs.Logger).Log("during", "syncSellers", "num", len(fs.sellers))
+
+	return nil
 }
 
 func (fs *Firestore) syncDatacenters(ctx context.Context) error {
@@ -845,7 +1048,7 @@ func (fs *Firestore) syncBuyers(ctx context.Context) error {
 	return nil
 }
 
-func (fs *Firestore) createRouteRulesSerttingsForBuyerID(ctx context.Context, ID string, name string, rrs routing.RoutingRulesSettings) error {
+func (fs *Firestore) createRouteRulesSettingsForBuyerID(ctx context.Context, ID string, name string, rrs routing.RoutingRulesSettings) error {
 	// Comment below taken from old backend, at least attempting to explain why we need to append _0 (no existing entries have suffixes other than _0)
 	// "Must be of the form '<buyer key>_<tag id>'. The buyer key can be found by looking at the ID under Buyer; it should be something like 763IMDH693HLsr2LGTJY. The tag ID should be 0 (for default) or the fnv64a hash of the tag the customer is using. Therefore this value should look something like: 763IMDH693HLsr2LGTJY_0. This value can not be changed after the entity is created."
 	routeShaderID := ID + "_0"
@@ -875,6 +1078,16 @@ func (fs *Firestore) createRouteRulesSerttingsForBuyerID(ctx context.Context, ID
 	rsDocRef.ID = routeShaderID
 
 	_, err := rsDocRef.Create(ctx, rrsFirestore)
+	return err
+}
+
+func (fs *Firestore) deleteRouteRulesSettingsForBuyerID(ctx context.Context, ID string) error {
+	// Comment below taken from old backend, at least attempting to explain why we need to append _0 (no existing entries have suffixes other than _0)
+	// "Must be of the form '<buyer key>_<tag id>'. The buyer key can be found by looking at the ID under Buyer; it should be something like 763IMDH693HLsr2LGTJY. The tag ID should be 0 (for default) or the fnv64a hash of the tag the customer is using. Therefore this value should look something like: 763IMDH693HLsr2LGTJY_0. This value can not be changed after the entity is created."
+	routeShaderID := ID + "_0"
+
+	// Attempt to delete route shader for buyer
+	_, err := fs.Client.Collection("RouteShader").Doc(routeShaderID).Delete(ctx)
 	return err
 }
 
@@ -924,24 +1137,24 @@ func (fs *Firestore) setRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 	// "Must be of the form '<buyer key>_<tag id>'. The buyer key can be found by looking at the ID under Buyer; it should be something like 763IMDH693HLsr2LGTJY. The tag ID should be 0 (for default) or the fnv64a hash of the tag the customer is using. Therefore this value should look something like: 763IMDH693HLsr2LGTJY_0. This value can not be changed after the entity is created."
 	routeShaderID := ID + "_0"
 
-	// Convert RoutingRulesSettings struct to firestore version
-	rrsFirestore := routingRulesSettings{
-		DisplayName:                  name,
-		EnvelopeKbpsUp:               rrs.EnvelopeKbpsUp,
-		EnvelopeKbpsDown:             rrs.EnvelopeKbpsDown,
-		Mode:                         rrs.Mode,
-		MaxPricePerGBNibblins:        convertCentsToNibblins(rrs.MaxCentsPerGB),
-		AcceptableLatency:            rrs.AcceptableLatency,
-		RTTEpsilon:                   rrs.RTTEpsilon,
-		RTTThreshold:                 rrs.RTTThreshold,
-		RTTHysteresis:                rrs.RTTHysteresis,
-		RTTVeto:                      rrs.RTTVeto,
-		EnableYouOnlyLiveOnce:        rrs.EnableYouOnlyLiveOnce,
-		EnablePacketLossSafety:       rrs.EnablePacketLossSafety,
-		EnableMultipathForPacketLoss: rrs.EnableMultipathForPacketLoss,
-		EnableMultipathForJitter:     rrs.EnableMultipathForJitter,
-		EnableMultipathForRTT:        rrs.EnableMultipathForRTT,
-		EnableABTest:                 rrs.EnableABTest,
+	// Convert RoutingRulesSettings struct to firestore map
+	rrsFirestore := map[string]interface{}{
+		"displayName":           name,
+		"envelopeKbpsUp":        rrs.EnvelopeKbpsUp,
+		"envelopeKbpsDown":      rrs.EnvelopeKbpsDown,
+		"mode":                  rrs.Mode,
+		"maxPricePerGBNibblins": convertCentsToNibblins(rrs.MaxCentsPerGB),
+		"acceptableLatency":     rrs.AcceptableLatency,
+		"rttRouteSwitch":        rrs.RTTEpsilon,
+		"rttThreshold":          rrs.RTTThreshold,
+		"rttHysteresis":         rrs.RTTHysteresis,
+		"rttVeto":               rrs.RTTVeto,
+		"youOnlyLiveOnce":       rrs.EnableYouOnlyLiveOnce,
+		"packetLossSafety":      rrs.EnablePacketLossSafety,
+		"packetLossMultipath":   rrs.EnableMultipathForPacketLoss,
+		"jitterMultipath":       rrs.EnableMultipathForJitter,
+		"rttMultipath":          rrs.EnableMultipathForRTT,
+		"abTest":                rrs.EnableABTest,
 	}
 
 	// Attempt to set route shader for buyer

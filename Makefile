@@ -144,7 +144,7 @@ test-unit-backend: lint ## runs backend unit tests
 ifdef FIRESTORE_EMULATOR_HOST
 	@printf "Starting firestore emulator...\n\n"
 	@gcloud beta emulators firestore start --host-port $(FIRESTORE_EMULATOR_HOST) > /dev/null 2>&1 &
-	@sleep 1
+	@sleep 3
 endif
 	
 	@printf "Running go tests:\n\n"
