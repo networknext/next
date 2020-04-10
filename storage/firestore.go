@@ -281,7 +281,8 @@ func (fs *Firestore) syncDatacenters(ctx context.Context) error {
 		var d datacenter
 		err = ddoc.DataTo(&d)
 		if err != nil {
-			return fmt.Errorf("failed to marshal document: %v", err)
+			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to unmarshal datacenter %v", ddoc.Ref.ID), "err", err)
+			continue
 		}
 
 		datacenters[crypto.HashID(d.Name)] = routing.Datacenter{
@@ -319,7 +320,8 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 		var r relay
 		err = rdoc.DataTo(&r)
 		if err != nil {
-			return fmt.Errorf("failed to marshal document: %v", err)
+			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to unmarshal relay %v", rdoc.Ref.ID), "err", err)
+			continue
 		}
 
 		rid := crypto.HashID(r.Address)
@@ -433,7 +435,8 @@ func (fs *Firestore) syncBuyers(ctx context.Context) error {
 		var b buyer
 		err = bdoc.DataTo(&b)
 		if err != nil {
-			return fmt.Errorf("failed to marshal document: %v", err)
+			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to unmarshal buyer %v", bdoc.Ref.ID), "err", err)
+			continue
 		}
 
 		if !b.Active {
@@ -443,7 +446,7 @@ func (fs *Firestore) syncBuyers(ctx context.Context) error {
 		// Attempt to get routing rules settings for buyer (acceptable to fallback to default settings if none defined)
 		rrs, err := fs.getRoutingRulesSettingsForBuyerID(ctx, bdoc.Ref.ID)
 		if err != nil {
-			level.Debug(fs.Logger).Log("msg", fmt.Sprintf("using default route rules for buyer %v", bdoc.Ref.ID), "err", err)
+			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("using default route rules for buyer %v", bdoc.Ref.ID), "err", err)
 		}
 
 		buyers[uint64(b.ID)] = routing.Buyer{
