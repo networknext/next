@@ -186,6 +186,8 @@ window.MapHandler = {
 			.then((response) => {
 				console.log(response)
 				let data = response.sess_points;
+				const DATA_URL =
+  					'https://raw.githubusercontent.com/uber-common/deck.gl-data/master/examples/screen-grid/uber-pickup-locations.json';
 				let sessionLayer = new deck.HexagonLayer({
 					id: 'session-layer',
 					data,
@@ -197,7 +199,17 @@ window.MapHandler = {
 					getPosition: d => d.COORDINATES,
 					onHover: info => setTooltip(info.object, info.x, info.y)
 				});
-				var layers = [sessionLayer];
+				data = DATA_URL;
+				let sessionGridLayer = new deck.ScreenGridLayer({
+					id: 'grid',
+					data,
+					aggregation: 'SUM',
+					opacity: 0.8,
+					getPosition: d => [d[0], d[1]],
+					getWeight: d => d[2],
+					cellSizePixels: 20,
+				  })
+				var layers = [sessionGridLayer];
 				mapInstance = new deck.DeckGL({
 					mapboxApiAccessToken: 'pk.eyJ1IjoiYmF1bWJhY2hhbmRyZXciLCJhIjoiY2s4dDFwcGo2MGowZTNtcXpsbDN6dHBwdyJ9.Sr1lDY9i9o9yz84fJ-PSlg',
 					mapStyle: 'mapbox://styles/mapbox/dark-v9',
@@ -222,7 +234,6 @@ window.MapHandler = {
 					container: 'map-workspace',
 					controller: true,
 					layers: layers,
-					pitch: 80
 				});
 			})
 			.catch((e) => {
