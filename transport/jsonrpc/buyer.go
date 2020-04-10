@@ -30,15 +30,6 @@ type point struct {
 	OnNetworkNext bool      `json:"on_network_next"`
 }
 
-type cluster struct {
-	Country   string  `json:"country"`
-	Region    string  `json:"region"`
-	City      string  `json:"city"`
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
-	Count     int     `json:"count"`
-}
-
 func (s *BuyersService) SessionsMap(r *http.Request, args *MapArgs, reply *MapReply) error {
 	reply.SessionPoints = []point{
 		{Coordinates: []float64{-73.6, 42.7}, OnNetworkNext: true},
