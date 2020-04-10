@@ -3459,10 +3459,6 @@ int next_init( void * context, next_config_t * config_in )
             {
                 next_printf( NEXT_LOG_LEVEL_ERROR, "customer public key is invalid: \"%s\"", customer_public_key );
             }
-            else
-            {
-                next_printf( NEXT_LOG_LEVEL_INFO, "no customer public key specified" );
-            }
         }
     }
 
@@ -5530,13 +5526,11 @@ int next_client_internal_process_packet_from_server( next_client_internal_t * cl
                 return NEXT_ERROR;
             }
 
-            /*
             if ( !next_address_equal( &client->server_address, &packet.server_address ) )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. packet server address does not match client server address" );
                 return NEXT_ERROR;
             }
-            */
 
             if ( !packet.Verify( client->customer_public_key ) )
             {
@@ -9885,10 +9879,16 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     const char * override_port = next_platform_getenv( "NEXT_PORT" );
 
     if ( override_hostname )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "override hostname: '%s'", override_hostname );
         hostname = override_hostname;
+    }
 
     if ( override_port )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "override port: '%s'", override_port );
         port = override_port;
+    }
 
     next_printf( NEXT_LOG_LEVEL_INFO, "server resolving backend hostname '%s'", hostname );
 

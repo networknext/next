@@ -38,7 +38,7 @@ void client_packet_received( next_client_t * client, void * context, const uint8
     (void) client; (void) context; (void) packet_data; (void) packet_bytes;
 }
 
-const char * customer_public_key = "";
+const char * customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
 
 int main()
 {
@@ -59,7 +59,7 @@ int main()
         return 1;
     }
 
-    next_client_open_session( client, "173.255.241.176:50000" );
+    next_client_open_session( client, "173.255.241.176:32202" );
 
     uint8_t packet_data[32];
     memset( packet_data, 0, sizeof( packet_data ) );
