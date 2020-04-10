@@ -91,7 +91,9 @@ func main() {
 	}
 
 	addr := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 40000}
-	var db storage.Storer = &storage.InMemory{}
+	var db storage.Storer = &storage.InMemory{
+		LocalMode: true,
+	}
 	db.AddBuyer(ctx, routing.Buyer{
 		ID:                   customerID,
 		Name:                 "local",
@@ -200,7 +202,7 @@ func main() {
 		s.RegisterService(&jsonrpc.BuyersService{
 			RedisClient: redisClientCache,
 		}, "")
-		http.Handle("/rpc", s)
+		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), s))
 
 		http.Handle("/", http.FileServer(http.Dir(uiDir)))
 

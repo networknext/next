@@ -57,7 +57,7 @@ type RelayUpdateHandlerConfig struct {
 }
 
 // RelayHandlerFunc returns the function for the relays endpoint
-func RelayHandlerFunc(logger log.Logger, params *RelayHandlerConfig) func(writer http.ResponseWriter, request *http.Request) {
+func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayHandlerConfig) func(writer http.ResponseWriter, request *http.Request) {
 	handlerLogger := log.With(logger, "handler", "relay")
 
 	return func(writer http.ResponseWriter, request *http.Request) {
@@ -111,6 +111,16 @@ func RelayHandlerFunc(logger log.Logger, params *RelayHandlerConfig) func(writer
 
 		// Set the relay to the firestore entry for now
 		relay := relayEntry
+
+		level.Info(relayslogger).Log(
+			"id", relay.ID,
+			"name", relay.Name,
+			"datacenter", relay.Datacenter.Name,
+			"addr", relay.Addr.String(),
+			"session_count", relayRequest.TrafficStats.SessionCount,
+			"bytes_received", relayRequest.TrafficStats.BytesReceived,
+			"bytes_send", relayRequest.TrafficStats.BytesSent,
+		)
 
 		// Get the relay's HTTP authorization header
 		authorizationHeader := request.Header.Get("Authorization")
@@ -475,7 +485,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 }
 
 // RelayUpdateHandlerFunc returns the function for the relay update endpoint
-func RelayUpdateHandlerFunc(logger log.Logger, params *RelayUpdateHandlerConfig) func(writer http.ResponseWriter, request *http.Request) {
+func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayUpdateHandlerConfig) func(writer http.ResponseWriter, request *http.Request) {
 	handlerLogger := log.With(logger, "handler", "update")
 
 	return func(writer http.ResponseWriter, request *http.Request) {
@@ -620,6 +630,16 @@ func RelayUpdateHandlerFunc(logger log.Logger, params *RelayUpdateHandlerConfig)
 				}
 			}
 		}
+
+		level.Info(relayslogger).Log(
+			"id", relay.ID,
+			"name", relay.Name,
+			"datacenter", relay.Datacenter.Name,
+			"addr", relay.Addr.String(),
+			"session_count", 0,
+			"bytes_received", relayUpdateRequest.BytesReceived,
+			"bytes_send", relayUpdateRequest.BytesSent,
+		)
 
 		level.Debug(handlerLogger).Log("msg", "relay updated")
 

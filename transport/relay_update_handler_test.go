@@ -42,7 +42,7 @@ func pingRelayBackendUpdate(t *testing.T, contentType string, body []byte, metri
 	assert.NoError(t, err)
 	request.Header.Add("Content-Type", contentType)
 
-	handler := transport.RelayUpdateHandlerFunc(log.NewNopLogger(), &transport.RelayUpdateHandlerConfig{
+	handler := transport.RelayUpdateHandlerFunc(log.NewNopLogger(), log.NewNopLogger(), &transport.RelayUpdateHandlerConfig{
 		RedisClient:           redisClient,
 		StatsDb:               statsdb,
 		Metrics:               &metrics,

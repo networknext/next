@@ -18,6 +18,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"syscall"
 
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/tidwall/gjson"
@@ -149,6 +150,46 @@ func bash(command string) bool {
 
 func bashQuiet(command string) (bool, string) {
 	return runCommandQuiet("bash", []string{"-c", command}, false)
+}
+
+func secureShell(user string, address string, port int) {
+	ssh, err := exec.LookPath("ssh")
+	if err != nil {
+		log.Fatalf("error: could not find ssh")
+	}
+	args := make([]string, 4)
+	args[0] = "ssh"
+	args[1] = "-p"
+	args[2] = fmt.Sprintf("%d", port)
+	args[3] = fmt.Sprintf("%s@%s", user, address)
+	env := os.Environ()
+	err = syscall.Exec(ssh, args, env)
+	if err != nil {
+		log.Fatalf("error: failed to exec ssh")
+	}
+}
+
+func sshToRelay(env Environment, relayName string) {
+	fmt.Printf("(ssh to relay %s)\n", relayName)
+	// todo: look up relay by name, get ssh data from relay entry.
+	user := "root"
+	address := "173.255.241.176"
+	port := 22
+	secureShell(user, address, port)
+}
+
+func handleJSONRPCError(err error) {
+	switch e := err.(type) {
+	case *jsonrpc.HTTPError:
+		switch e.Code {
+		case http.StatusUnauthorized:
+			log.Fatalf("%d: %s - use `next auth` to authorize the CLI", e.Code, http.StatusText(e.Code))
+		default:
+			log.Fatalf("%d: %s", e.Code, http.StatusText(e.Code))
+		}
+	default:
+		log.Fatal(err)
+	}
 }
 
 func main() {
