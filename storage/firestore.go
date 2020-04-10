@@ -30,7 +30,7 @@ type Firestore struct {
 }
 
 type buyer struct {
-	ID        uint64 `firestore:"sdkVersion3PublicKeyId"`
+	ID        int64  `firestore:"sdkVersion3PublicKeyId"`
 	Name      string `firestore:"name"`
 	Active    bool   `firestore:"active"`
 	Live      bool   `firestore:"isLiveCustomer"`
@@ -446,8 +446,8 @@ func (fs *Firestore) syncBuyers(ctx context.Context) error {
 			level.Debug(fs.Logger).Log("msg", fmt.Sprintf("using default route rules for buyer %v", bdoc.Ref.ID), "err", err)
 		}
 
-		buyers[b.ID] = routing.Buyer{
-			ID:                   b.ID,
+		buyers[uint64(b.ID)] = routing.Buyer{
+			ID:                   uint64(b.ID),
 			Name:                 b.Name,
 			Active:               b.Active,
 			Live:                 b.Live,
