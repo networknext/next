@@ -26,7 +26,6 @@ function changePage(page) {
 		default:
 			map.style.display = 'block';
 			title.textContent = 'Session Map';
-			//reloadMap();
 	}
 }
 
@@ -44,10 +43,6 @@ function changeAccountPage(page) {
 		default:
 			users.style.display = 'block';
 	}
-}
-
-function changeMap(map) {
-	//MapHandler.mapInstance.
 }
 
 JSONRPCClient = {
