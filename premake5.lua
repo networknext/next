@@ -49,11 +49,12 @@ project "next"
 	defines { "NEXT_EXPORT", "SODIUM_STATIC" }
 	links { "sodium" }
 	files {
-		"next.h",
-		"next.cpp",
-		"next_*.h",
-		"next_*.cpp",
+		"include/next.h",
+		"source/next.cpp",
+		"source/next_*.h",
+		"source/next_*.cpp",
 	}
+	includedirs { "include" }
 	filter "system:not windows"
 		links { "pthread" }
 		targetname "next-%{cfg.platform}-%{cfg.buildcfg}"
@@ -92,6 +93,7 @@ project "client"
 	kind "ConsoleApp"
 	links { "next", "sodium" }
 	files { "client.cpp" }
+	includedirs { "include" }
 	defines { "SODIUM_STATIC" }
 	filter "system:windows"
 		disablewarnings { "4324" }
@@ -105,6 +107,7 @@ project "server"
 	kind "ConsoleApp"
 	links { "next", "sodium" }
 	files { "server.cpp" }
+	includedirs { "include" }
 	defines { "SODIUM_STATIC" }
 	filter "system:windows"
 		disablewarnings { "4324" }
@@ -118,6 +121,7 @@ project "test"
 	kind "ConsoleApp"
 	links { "next", "sodium" }
 	files { "test.cpp" }
+	includedirs { "include" }
 	defines { "SODIUM_STATIC" }
 	filter "system:windows"
 		disablewarnings { "4324" }
@@ -131,6 +135,7 @@ project "soak"
 	kind "ConsoleApp"
 	links { "next", "sodium" }
 	files { "soak.cpp" }
+	includedirs { "include" }
 	defines { "SODIUM_STATIC" }
 	filter "system:windows"
 		disablewarnings { "4324" }
