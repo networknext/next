@@ -45,8 +45,8 @@ void server_packet_received( next_server_t * server, void * context, const next_
     }
 }
 
-const char * customer_hostname = "v3.networknext.com";
-const char * customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn";
+const char * customer_hostname = "prod.networknext.com";
+const char * customer_private_key = "";
 
 int main()
 {
