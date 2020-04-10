@@ -61,7 +61,7 @@ int main()
 
     next_init( NULL, &config ); 
 
-    next_server_t * server = next_server_create( NULL, "192.168.1.2:32202", "0.0.0.0:32202", "local", server_packet_received );
+    next_server_t * server = next_server_create( NULL, "173.255.241.176:32202", "0.0.0.0:32202", "local", server_packet_received );
 
     if ( server == NULL )
     {
