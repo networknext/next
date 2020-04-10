@@ -256,7 +256,7 @@ func main() {
 
 			{
 				Name:       "env",
-				ShortUsage: "next env <hostname>",
+				ShortUsage: "next env <local|dev|prod|other_portal_hostname>",
 				ShortHelp:  "Manage environment",
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) > 0 {
