@@ -9,6 +9,12 @@ import (
 	"strings"
 )
 
+const (
+	PortalHostnameLocal = "localhost:20000"
+	PortalHostnameDev   = "portal.dev.networknext.com"
+	PortalHostnameProd  = "portal.prod.networknext.com"
+)
+
 type Environment struct {
 	Hostname       string `json:"hostname"`
 	AuthToken      string `json:"auth_token"`
@@ -90,4 +96,17 @@ func (e *Environment) Clean() {
 	if err != nil {
 		log.Fatal("failed to clean environment", err)
 	}
+}
+
+func (e *Environment) PortalHostname() string {
+	switch e.Hostname {
+	case "local":
+		return PortalHostnameLocal
+	case "dev":
+		return PortalHostnameDev
+	case "prod":
+		return PortalHostnameProd
+	}
+
+	return e.Hostname
 }

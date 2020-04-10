@@ -200,7 +200,7 @@ func main() {
 	}
 	env.Read()
 
-	rpcClient := jsonrpc.NewClientWithOpts("http://"+env.Hostname+"/rpc", &jsonrpc.RPCClientOpts{
+	rpcClient := jsonrpc.NewClientWithOpts("http://"+env.PortalHostname()+"/rpc", &jsonrpc.RPCClientOpts{
 		CustomHeaders: map[string]string{
 			"Authorization": fmt.Sprintf("Bearer %s", env.AuthToken),
 		},
@@ -256,7 +256,7 @@ func main() {
 
 			{
 				Name:       "env",
-				ShortUsage: "next env <hostname>",
+				ShortUsage: "next env <local|dev|prod|other_portal_hostname>",
 				ShortHelp:  "Manage environment",
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) > 0 {
