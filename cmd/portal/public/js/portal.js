@@ -2,7 +2,6 @@
  * TODO:
  * 	Refactor all of this into something more reasonable
  */
-currentMap = 'maps-vector-equirectangular.png';
 
 function changePage(page) {
 	let account = document.getElementById("account-workspace");
@@ -48,14 +47,7 @@ function changeAccountPage(page) {
 }
 
 function changeMap(map) {
-	switch (map) {
-		case 'NA':
-			currentMap = 'us.png';
-			break;
-		default:
-			currentMap = 'maps-vector-equirectangular.png'
-	}
-	changePage('home');
+	//MapHandler.mapInstance.
 }
 
 JSONRPCClient = {
@@ -97,45 +89,19 @@ window.MapHandler = {
 		JSONRPCClient
 			.call('BuyersService.SessionsMap', {buyer_id: '12354645743257'})
 			.then((response) => {
-				let data = response.on_network_next;
-				let nnLayer = new deck.HexagonLayer({
-					id: 'nn-layer',
+				let data = response.sess_points;
+				let sessionLayer = new deck.HexagonLayer({
+					id: 'session-layer',
 					data,
-					colorRange: [
-						[49,163,84],
-						[49,163,84],
-						[49,163,84],
-						[49,163,84],
-						[49,163,84]
-					],
 					pickable: true,
 					extruded: false,
+					colorRange: [[0,109,44], [8,81,156]], // [blue, green]
 					radius: 1000,
 					elevationScale: 4,
 					getPosition: d => d.COORDINATES,
 					onHover: info => setTooltip(info.object, info.x, info.y)
 				});
-				data = response.direct;
-				let directLayer = new deck.HexagonLayer({
-					id: 'direct-layer',
-					data,
-					colorRange: [
-						[49,130,189],
-						[49,130,189],
-						[49,130,189],
-						[49,130,189],
-						[49,130,189],
-						[49,130,189],
-						[49,130,189]
-					],
-					pickable: true,
-					extruded: false,
-					radius: 1000,
-					elevationScale: 4,
-					getPosition: d => d.COORDINATES,
-					onHover: info => setTooltip(info.object, info.x, info.y)
-				});
-				var layers = [directLayer, nnLayer];
+				var layers = [sessionLayer];
 				mapInstance = new deck.DeckGL({
 					mapboxApiAccessToken: 'pk.eyJ1IjoiYmF1bWJhY2hhbmRyZXciLCJhIjoiY2s4dDFwcGo2MGowZTNtcXpsbDN6dHBwdyJ9.Sr1lDY9i9o9yz84fJ-PSlg',
 					mapStyle: 'mapbox://styles/mapbox/dark-v9',
@@ -144,8 +110,18 @@ window.MapHandler = {
 						longitude: -98.583333,
 						latitude: 39.833333,
 						zoom: 4,
-						minZoom: 4,
+						// Center of the globe
+						/* longitude: 0,
+						latitude: 0,
+						zoom: 2, */
 						maxZoom: 15,
+					},
+					getColorValue: (points) => {
+						let onNetworkNext = points.find((point) => {
+							return point.on_network_next;
+						});
+
+						return typeof onNetworkNext === 'undefined' ? 0 : 1;
 					},
 					container: 'map-workspace',
 					controller: true,

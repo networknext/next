@@ -22,12 +22,12 @@ type MapArgs struct {
 }
 
 type MapReply struct {
-	OnNetworkNext []point `json:"on_network_next"`
-	Direct        []point `json:"direct"`
+	SessionPoints []point `json:"sess_points"`
 }
 
 type point struct {
-	Coordinates []float64 `json:"COORDINATES"`
+	Coordinates   []float64 `json:"COORDINATES"`
+	OnNetworkNext bool      `json:"on_network_next"`
 }
 
 type cluster struct {
@@ -40,67 +40,39 @@ type cluster struct {
 }
 
 func (s *BuyersService) SessionsMap(r *http.Request, args *MapArgs, reply *MapReply) error {
-	reply.OnNetworkNext = []point{
-		{Coordinates: []float64{-73.6696, 42.7273}},
-		{Coordinates: []float64{-73.6696, 42.7273}},
-		{Coordinates: []float64{-73.6696, 42.7273}},
-		{Coordinates: []float64{-73.6696, 42.7273}},
-		{Coordinates: []float64{-73.6696, 42.7273}},
-		{Coordinates: []float64{-73.6696, 42.7273}},
-		{Coordinates: []float64{-73.6696, 42.7273}},
-		{Coordinates: []float64{-73.6696, 42.7273}},
-		{Coordinates: []float64{-73.6696, 42.7273}},
-		{Coordinates: []float64{-73.6696, 42.7273}},
-		{Coordinates: []float64{-73.6696, 42.7273}},
-		{Coordinates: []float64{-73.6696, 42.7273}},
-		{Coordinates: []float64{-73.6696, 42.7273}},
-		{Coordinates: []float64{-73.6696, 42.7273}},
-		{Coordinates: []float64{-73.6696, 42.7273}},
-		{Coordinates: []float64{-73.6696, 42.7273}},
-		{Coordinates: []float64{-73.6696, 42.7273}},
-		{Coordinates: []float64{-73.6696, 42.7273}},
-		{Coordinates: []float64{-73.6696, 42.7273}},
-		{Coordinates: []float64{-73.6696, 42.7273}},
-		{Coordinates: []float64{-73.6696, 42.7273}},
-		{Coordinates: []float64{-73.6696, 42.7273}},
-		{Coordinates: []float64{-73.6696, 42.7273}},
-		{Coordinates: []float64{-73.7754, 42.6701}},
-		{Coordinates: []float64{-73.7754, 42.6701}},
-		{Coordinates: []float64{-73.7754, 42.6701}},
-		{Coordinates: []float64{-73.7754, 42.6701}},
-		{Coordinates: []float64{-73.7754, 42.6701}},
-		{Coordinates: []float64{-73.7754, 42.6701}},
-	}
-
-	reply.Direct = []point{
-		{Coordinates: []float64{-73.842, 43.0034}},
-		{Coordinates: []float64{-73.842, 43.0034}},
-		{Coordinates: []float64{-73.842, 43.0034}},
-		{Coordinates: []float64{-73.842, 43.0034}},
-		{Coordinates: []float64{-73.842, 43.0034}},
-		{Coordinates: []float64{-73.842, 43.0034}},
-		{Coordinates: []float64{-73.842, 43.0034}},
-		{Coordinates: []float64{-73.842, 43.0034}},
-		{Coordinates: []float64{-73.842, 43.0034}},
-		{Coordinates: []float64{-73.842, 43.0034}},
-		{Coordinates: []float64{-73.842, 43.0034}},
-		{Coordinates: []float64{-73.842, 43.0034}},
-		{Coordinates: []float64{-73.842, 43.0034}},
-		{Coordinates: []float64{-73.842, 43.0034}},
-		{Coordinates: []float64{-73.842, 43.0034}},
-		{Coordinates: []float64{-73.842, 43.0034}},
-		{Coordinates: []float64{-73.842, 43.0034}},
-		{Coordinates: []float64{-73.842, 43.0034}},
-		{Coordinates: []float64{-73.842, 43.0034}},
-		{Coordinates: []float64{-73.842, 43.0034}},
-		{Coordinates: []float64{-73.842, 43.0034}},
-		{Coordinates: []float64{-73.842, 43.0034}},
-		{Coordinates: []float64{-73.7754, 42.6701}},
-		{Coordinates: []float64{-73.7754, 42.6701}},
-		{Coordinates: []float64{-73.7754, 42.6701}},
-		{Coordinates: []float64{-73.7754, 42.6701}},
-		{Coordinates: []float64{-73.7754, 42.6701}},
-		{Coordinates: []float64{-73.7754, 42.6701}},
+	reply.SessionPoints = []point{
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: false},
 	}
 
 	return nil
