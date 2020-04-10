@@ -2,6 +2,7 @@ package jsonrpc_test
 
 import (
 	"context"
+	"encoding/base64"
 	"testing"
 
 	"github.com/networknext/backend/routing"
@@ -144,11 +145,11 @@ func TestRelayPublicKeyUpdate(t *testing.T) {
 
 		relay, err := svc.Storage.Relay(1)
 		assert.NoError(t, err)
-		assert.Equal(t, "newpublickey", relay.PublicKey)
+		assert.Equal(t, "newpublickey", base64.StdEncoding.EncodeToString(relay.PublicKey))
 
 		relay, err = svc.Storage.Relay(2)
 		assert.NoError(t, err)
-		assert.Equal(t, "oldpublickey", relay.PublicKey)
+		assert.Equal(t, []byte("oldpublickey"), relay.PublicKey)
 	})
 
 	t.Run("not found", func(t *testing.T) {
@@ -161,11 +162,11 @@ func TestRelayPublicKeyUpdate(t *testing.T) {
 
 		relay, err := svc.Storage.Relay(1)
 		assert.NoError(t, err)
-		assert.Equal(t, "oldpublickey", relay.PublicKey)
+		assert.Equal(t, []byte("oldpublickey"), relay.PublicKey)
 
 		relay, err = svc.Storage.Relay(2)
 		assert.NoError(t, err)
-		assert.Equal(t, "oldpublickey", relay.PublicKey)
+		assert.Equal(t, []byte("oldpublickey"), relay.PublicKey)
 	})
 }
 
