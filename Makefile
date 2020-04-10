@@ -143,7 +143,7 @@ test-unit-relay: build-relay ## runs relay unit tests
 test-unit-backend: lint ## runs backend unit tests
 ifdef FIRESTORE_EMULATOR_HOST
 	@printf "Starting firestore emulator...\n\n"
-	@gcloud beta emulators firestore start --host-port $(FIRESTORE_EMULATOR_HOST) > /dev/null 2>&1 &
+	@gcloud beta emulators firestore start --host-port $(FIRESTORE_EMULATOR_HOST) --no-user-output-enabled &
 	@sleep 3
 endif
 	
