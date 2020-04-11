@@ -4,22 +4,30 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/go-redis/redis/v7"
+	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 )
 
 type BuyersService struct {
 	RedisClient redis.Cmdable
+	Storage     storage.Storer
 }
 
 type MapArgs struct {
-	BuyerID uint64 `json:"buyer_id"`
+	BuyerID string `json:"buyer_id"`
 }
 
 type MapReply struct {
-	Clusters []cluster `json:"clusters"`
+	SessionPoints []point `json:"sess_points"`
+}
+
+type point struct {
+	Coordinates   []float64 `json:"COORDINATES"`
+	OnNetworkNext bool      `json:"on_network_next"`
 }
 
 type cluster struct {
@@ -32,18 +40,47 @@ type cluster struct {
 }
 
 func (s *BuyersService) SessionsMap(r *http.Request, args *MapArgs, reply *MapReply) error {
-	reply.Clusters = []cluster{
-		{Country: "United States", Region: "NY", City: "Troy", Latitude: 42.7273, Longitude: -73.6696, Count: 10},
-		{Country: "United States", Region: "NY", City: "Saratoga Springs", Latitude: 43.0034, Longitude: -73.842, Count: 5},
-		{Country: "United States", Region: "NY", City: "Albany", Latitude: 42.6701, Longitude: -73.7754, Count: 200},
+	reply.SessionPoints = []point{
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: false},
 	}
 
 	return nil
 }
 
 type SessionsArgs struct {
-	BuyerID   uint64 `json:"buyer_id"`
-	SessionID uint64 `json:"session_id"`
+	BuyerID   string `json:"buyer_id"`
+	SessionID string `json:"session_id"`
 }
 
 type SessionsReply struct {
@@ -51,8 +88,8 @@ type SessionsReply struct {
 }
 
 type session struct {
-	SessionID     uint64    `json:"session_id"`
-	UserHash      uint64    `json:"user_hash"`
+	SessionID     string    `json:"session_id"`
+	UserHash      string    `json:"user_hash"`
 	DirectRTT     float64   `json:"direct_rtt"`
 	NextRTT       float64   `json:"next_rtt"`
 	ChangeRTT     float64   `json:"change_rtt"`
@@ -65,24 +102,35 @@ func (s *BuyersService) Sessions(r *http.Request, args *SessionsArgs, reply *Ses
 	var cacheKeys []string
 	var cacheEntry transport.SessionCacheEntry
 	var cacheEntryData []byte
+	var buyerID uint64
+	var sessionID uint64
 
-	if args.BuyerID == 0 {
+	if args.BuyerID == "" {
 		return fmt.Errorf("buyer_id is required")
 	}
 
-	if args.SessionID > 0 {
-		getCmd := s.RedisClient.Get(fmt.Sprintf("SESSION-%d-%d", args.BuyerID, args.SessionID))
+	if buyerID, err = strconv.ParseUint(args.BuyerID, 10, 64); err != nil {
+		return fmt.Errorf("failed to convert BuyerID to uint64")
+	}
+
+	if args.SessionID != "" {
+		if sessionID, err = strconv.ParseUint(args.SessionID, 10, 64); err != nil {
+			return fmt.Errorf("failed to convert SessionID to uint64")
+		}
+
+		getCmd := s.RedisClient.Get(fmt.Sprintf("SESSION-%d-%d", buyerID, sessionID))
+
 		if cacheEntryData, err = getCmd.Bytes(); err != nil {
-			return fmt.Errorf("failed to get session %d: %w", args.SessionID, err)
+			return fmt.Errorf("failed to get session %d: %w", sessionID, err)
 		}
 
 		if err := cacheEntry.UnmarshalBinary(cacheEntryData); err != nil {
-			return fmt.Errorf("failed to unmarshal session %d: %w", args.SessionID, err)
+			return fmt.Errorf("failed to unmarshal session %d: %w", sessionID, err)
 		}
 
 		reply.Sessions = append(reply.Sessions, session{
-			SessionID:     cacheEntry.SessionID,
-			UserHash:      cacheEntry.UserHash,
+			SessionID:     strconv.FormatUint(cacheEntry.SessionID, 10),
+			UserHash:      strconv.FormatUint(cacheEntry.UserHash, 10),
 			DirectRTT:     cacheEntry.DirectRTT,
 			NextRTT:       cacheEntry.NextRTT,
 			ChangeRTT:     cacheEntry.NextRTT - cacheEntry.DirectRTT,
@@ -93,7 +141,7 @@ func (s *BuyersService) Sessions(r *http.Request, args *SessionsArgs, reply *Ses
 		return nil
 	}
 
-	iter := s.RedisClient.Scan(0, fmt.Sprintf("SESSION-%d-*", args.BuyerID), 1000).Iterator()
+	iter := s.RedisClient.Scan(0, fmt.Sprintf("SESSION-%d-*", buyerID), 1000).Iterator()
 	for iter.Next() {
 		cacheKeys = append(cacheKeys, iter.Val())
 	}
@@ -112,8 +160,8 @@ func (s *BuyersService) Sessions(r *http.Request, args *SessionsArgs, reply *Ses
 		}
 
 		reply.Sessions = append(reply.Sessions, session{
-			SessionID:     cacheEntry.SessionID,
-			UserHash:      cacheEntry.UserHash,
+			SessionID:     strconv.FormatUint(cacheEntry.SessionID, 10),
+			UserHash:      strconv.FormatUint(cacheEntry.UserHash, 10),
 			DirectRTT:     cacheEntry.DirectRTT,
 			NextRTT:       cacheEntry.NextRTT,
 			ChangeRTT:     cacheEntry.NextRTT - cacheEntry.DirectRTT,

@@ -163,8 +163,8 @@ func newNearRelayList(updatePacket SessionUpdatePacket, storer storage.Storer) [
 	var nearRelays []*billing.NearRelay
 	var i int32
 	for i = 0; i < updatePacket.NumNearRelays; i++ {
-		relay, ok := storer.Relay(updatePacket.NearRelayIDs[i])
-		if !ok {
+		relay, err := storer.Relay(updatePacket.NearRelayIDs[i])
+		if err != nil {
 			continue
 		}
 

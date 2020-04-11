@@ -41,6 +41,7 @@ func runCommand(command string, args []string) bool {
 	cmd := exec.Command(command, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
 	err := cmd.Run()
 	if err != nil {
 		fmt.Printf("runCommand error: %v\n", err)
@@ -53,6 +54,7 @@ func runCommandEnv(command string, args []string, env map[string]string) bool {
 	cmd := exec.Command(command, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
 	finalEnv := os.Environ()
 	for k, v := range env {
 		finalEnv = append(finalEnv, fmt.Sprintf("%s=%s", k, v))
@@ -176,6 +178,20 @@ func sshToRelay(env Environment, relayName string) {
 	secureShell(user, address, port)
 }
 
+func handleJSONRPCError(err error) {
+	switch e := err.(type) {
+	case *jsonrpc.HTTPError:
+		switch e.Code {
+		case http.StatusUnauthorized:
+			log.Fatalf("%d: %s - use `next auth` to authorize the CLI", e.Code, http.StatusText(e.Code))
+		default:
+			log.Fatalf("%d: %s", e.Code, http.StatusText(e.Code))
+		}
+	default:
+		log.Fatal(err)
+	}
+}
+
 func main() {
 	var env Environment
 
@@ -184,7 +200,7 @@ func main() {
 	}
 	env.Read()
 
-	rpcClient := jsonrpc.NewClientWithOpts("http://"+env.Hostname+"/rpc", &jsonrpc.RPCClientOpts{
+	rpcClient := jsonrpc.NewClientWithOpts("http://"+env.PortalHostname()+"/rpc", &jsonrpc.RPCClientOpts{
 		CustomHeaders: map[string]string{
 			"Authorization": fmt.Sprintf("Bearer %s", env.AuthToken),
 		},
@@ -240,7 +256,7 @@ func main() {
 
 			{
 				Name:       "env",
-				ShortUsage: "next env <hostname>",
+				ShortUsage: "next env <local|dev|prod|other_portal_hostname>",
 				ShortHelp:  "Manage environment",
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) > 0 {
@@ -248,6 +264,16 @@ func main() {
 						env.Write()
 					}
 					fmt.Println(env.String())
+					return nil
+				},
+			},
+
+			{
+				Name:       "buyers",
+				ShortUsage: "next buyers",
+				ShortHelp:  "Manage buyers",
+				Exec: func(_ context.Context, args []string) error {
+					buyers(rpcClient)
 					return nil
 				},
 			},
@@ -278,13 +304,52 @@ func main() {
 					relays(rpcClient, "")
 					return nil
 				},
+			},
+			{
+				Name:       "ssh",
+				ShortUsage: "next ssh <device identifier>",
+				ShortHelp:  "SSH into a remote device, for relays the identifier is their name",
+				Exec: func(ctx context.Context, args []string) error {
+					if len(args) == 0 {
+						log.Fatal("You need to supply a device identifer")
+					}
+
+					SSHInto(env, rpcClient, args[0])
+
+					return nil
+				},
 				Subcommands: []*ffcli.Command{
 					{
-						Name:       "ssh",
-						ShortUsage: "next relays ssh <ip>",
-						ShortHelp:  "SSH into a specific relay",
-						Exec: func(_ context.Context, _ []string) error {
-							fmt.Println("To Be Implemented")
+						Name:       "key",
+						ShortUsage: "next ssh key <path to ssh key>",
+						ShortHelp:  "Set the key you'd like to use for ssh-ing",
+						Exec: func(ctx context.Context, args []string) error {
+							if len(args) > 0 {
+								env.SSHKeyFilePath = args[0]
+								env.Write()
+							}
+
+							fmt.Println(env.String())
+
+							return nil
+						},
+					},
+				},
+			},
+			{
+				Name: "relay",
+				Subcommands: []*ffcli.Command{
+					{
+						Name:       "disable",
+						ShortUsage: "next disable <relay name>",
+						ShortHelp:  "Disable the specified relay",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) == 0 {
+								log.Fatal("You need to supply a relay name")
+							}
+
+							Disable(env, rpcClient, args[0])
+
 							return nil
 						},
 					},

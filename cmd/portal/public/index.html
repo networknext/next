@@ -14,12 +14,13 @@
               href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
               integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
               crossorigin="anonymous">
+        <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.53.0/mapbox-gl.css' rel='stylesheet' />
         <style>
-            body { font-family: monospace; padding: 50px; background-color: #343a40;}
+            body { font-family: monospace; padding: 50px; background-color: lightgray;}
             table { width: 100%; border-collapse: collapse; }
             table, th, td { padding: 3px; border: 1px solid black; }
-            td { text-align: center; }
-            h1 {color: lightgrey;}
+            td, th { text-align: center; }
+            h1 {color: darkgrey;}
             .logo-container {
                 width: 100%;
                 height: 24px;
@@ -42,10 +43,18 @@
             }
             .workspace {
                 width: 100%;
-                max-height: 1000px;
-                height: 100%;
                 justify-content: center;
-                background-color: lightgray;
+                background-color: darkgrey;
+            }
+            .map {
+                height: 100%;
+                max-height: 1000px;
+            }
+            .hidden {
+                display: none;
+            }
+            .confirm-button {
+                background-color: #212529;
             }
         </style>
     </head>
@@ -59,29 +68,28 @@
             </a>
             <ul class="navbar-nav px-3 w-100 mr-auto">
                 <li class="nav-item active text-nowrap">
-                    <a class="nav-link" href="#">Home</a>
+                    <a class="nav-link" href="#" onclick="changePage('home')">Home</a>
                 </li>
                 <li class="nav-item text-nowrap">
-                    <a class="nav-link" href="#">Sessions</a>
+                    <a class="nav-link" href="#" onclick="changePage('sessions')">Sessions</a>
                 </li>
             </ul>
             <ul class="navbar-nav px-3">
-                <li class="nav-item text-nowrap">
-                    <a class="nav-link" href="#">
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                         <i class="fas fa-flag fa-2x" data-toggle="tooltip" data-placement="bottom" title="Country Selection"></i>
                     </a>
+                    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
+                        <a class="dropdown-item" href="#" onclick="changeMap('NA')">NA</a>
+                        <a class="dropdown-item" href="#" onclick="changeMap('WORLD')">World</a>
+                    </div>
                 </li>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                         <i class="fas fa-user-circle fa-2x" data-toggle="tooltip" data-placement="bottom" title="Account"></i>
                     </a>
                     <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
-                        <a class="dropdown-item" href="#">Settings</a>
-                        <div id="adminPanel">
-                            <div class="dropdown-divider"></div>
-                            <a class="dropdown-item" href="#">Admin</a>
-                            <a class="dropdown-item" href="#">Impersonate</a>
-                        </div>
+                        <a class="dropdown-item" href="#" onclick="changePage('account')">Settings</a>
                     </div>
                 </li>
                 <li class="nav-item text-nowrap">
@@ -97,35 +105,131 @@
         </nav>
         <div class="fill container-fluid">
             <div class="dashboard-title row">
-                <h1 class="h2">Session Map</h1>
+                <h1 id="workspace-title">Session Map</h1>
             </div>
-            <div class="workspace row">
-                <canvas class="fill" id="canvas"></canvas>
+            <div class="workspace row map" id="map-workspace">
+            </div>
+            <div id="tooltip" style="position: absolute; z-index: 1; pointer-events: none;"></div>
+            <div class="workspace row hidden" id="account-workspace">
+                <nav class="navbar navbar-expand-md navbar-dark fi bg-dark p-0 shadow">
+                    <ul class="navbar-nav px-3 w-100 mr-auto">
+                        <li class="nav-item active text-nowrap">
+                            <a class="nav-link" href="#" onclick="changeAccountPage('users')">Users</a>
+                        </li>
+                        <li class="nav-item text-nowrap">
+                            <a class="nav-link" href="#" onclick="changeAccountPage('config')">Game Configuration</a>
+                        </li>
+                    </ul>
+                </nav>
+                <form class="px-5 hidden" id="config">
+                    <div class="form-row justify-content-middle">
+                      <div class="form-group col-sm-2">
+                        <label for="newPubKey">New Public Key</label>
+                        <textarea type="text" class="form-control" id="newPubKey"></textarea>
+                      </div>
+                      <div class="form-group col-sm-2">
+                        <label for="confirmPubKey">Confirm Public Key</label>
+                        <textarea type="text" class="form-control" id="confirmPubKey"></textarea>
+                      </div>
+                    </div>
+                    <div class="form-row justify-content-end">
+                        <div class="form-group col-sm-1">
+                            <button type="submit"
+                                    id="saveButton"
+                                    class="btn btn-primary form-control confirm-button">
+                                Save
+                            </button>
+                        </div>
+                    </div>
+                </form>
+                <div id="users">
+                    <table class="table">
+                        <thead class="thead-dark">
+                        <tr>
+                            <th scope="col">Id</th>
+                            <th scope="col">First</th>
+                            <th scope="col">Last</th>
+                            <th scope="col">Email</th>
+                            <th scope="col">Edit</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="account in accounts" scope="row">
+                                <td>{{ account.id }}</td>
+                                <td>{{ account.first_name }}</td>
+                                <td>{{ account.last_name }}</td>
+                                <td>{{ account.email }}</td>
+                                <td>
+                                    <div>
+                                        Buttons go here
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="workspace row hidden" id="session-workspace">
+                <table class="table" id="sessions">
+                    <thead class="thead-dark">
+                      <tr>
+                        <th scope="col">Session ID</th>
+                        <th scope="col">User Hash</th>
+                        <th scope="col">Direct RTT</th>
+                        <th scope="col">Next RTT</th>
+                        <th scope="col">Change RTT</th>
+                        <th scope="col">On Network Next</th>
+                        <th scope="col">Expires At</th>
+                        <!-- <th scope="col">Details</th> -->
+                    </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="session in sessions" scope="row">
+                            <td>{{ session.session_id }}</td>
+                            <td>{{ session.user_hash }}</td>
+                            <td>{{ session.direct_rtt }}</td>
+                            <td>{{ session.next_rtt }}</td>
+                            <td>{{ session.change_rtt }}</td>
+                            <td v-if="session.on_network_next">
+                                <i class="fas fa-check"></i>
+                            </td>
+                            <td v-if="!session.on_network_next">
+                                <i class="fas fa-times-circle"></i>
+                            </td>
+                            <td>{{ session.expires_at }}</td>
+                            <!-- <td>
+                                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#exampleModal">
+                                    <i class="fas fa-info-circle"></i>
+                                </button>
+                            </td> -->
+                        </tr>
+                    </tbody>
+                  </table>
+                  <!-- <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                    <div class="modal-dialog" role="document">
+                      <div class="modal-content">
+                        <div class="modal-header">
+                          <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
+                          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                          </button>
+                        </div>
+                        <div class="modal-body">
+                          ...
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                          <button type="button" class="btn btn-primary">Save changes</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div> -->
             </div>
         </div>
 
-        <!-- Saving this for later -->
-
-            <!-- <h1>Portal</h1>
-
-            <h2>Relays</h2>
-            <table id="relays">
-                <tr>
-                    <th>Address</th>
-                    <th>Datacenter</th>
-                    <th>Lat / Long</th>
-                    <th>Seller</th>
-                </tr>
-                <tr v-for="relay in relays">
-                    <td>{{ relay.Addr.IP }}:{{ relay.Addr.Port }}</td>
-                    <td>{{ relay.Datacenter.Name }}</td>
-                    <td>{{ relay.Latitude }} / {{ relay.Longitude }}</td>
-                    <td>{{ relay.Seller.Name }}</td>
-                </tr>
-            </table> -->
-
-        <!-- /Saving this for later -->
-
+        <script src="https://unpkg.com/deck.gl@latest/dist.min.js"></script>
+        <!-- optional if mapbox base map is needed -->
+        <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.53.0/mapbox-gl.js'></script>
 
         <script src="https://unpkg.com/vue"></script>
         <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js"
@@ -140,30 +244,43 @@
                 integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6"
                 crossorigin="anonymous">
         </script>
+        <script src="js/d3/d3.v3.min.js"></script>
+        <script src="js/d3/topojson.v1.min.js"></script>
+        <script src="js/d3/d3.hexbin.js"></script>
+        <script src="js/hexmap/hexlib.js"></script>
         <script src="./js/portal.js"></script>
         <script>
             MapHandler
                 .initMap()
-                .then(() => {
-                    console.log("Map Initialized");
+                .then((response) => {
+                    console.log(response);
+                })
+                .catch((error) => {
+                    console.log(error);
+                })
+            JSONRPCClient
+                .call('BuyersService.Sessions', {buyer_id: '13672574147039585173'})
+                .then((response) => {
+                    new Vue({
+                        el: '#sessions',
+                        data: {
+                            sessions: response.sessions || []
+                        }
+                    });
                 })
                 .catch((e) => {
                     console.log("Something went wrong with the map init!");
                     console.log(e);
                 });
-            /* Saving this for later */
-                /* JSONRPCClient
-                    .call('OpsService.Relays', {})
-                    .then((response) => {
-                        new Vue({
-                        el: '#relays',
-                        data: {
-                            relays: response.Relays
-                        }
-                        });
-                    })
-                    .catch((e) => console.log(e)); */
-            /* Saving this for later */
+            JSONRPCClient
+                .call('BuyersService.GameConfiguration', {buyer_id: '13672574147039585173'})
+                .then((response) => {
+                    console.log(response)
+                })
+                .catch((e) => {
+                    console.log("Something went wrong with the map init!");
+                    console.log(e);
+                });
         </script>
     </body>
 </html>

@@ -132,7 +132,7 @@ func seedRedis(t *testing.T, redisServer *miniredis.Miniredis, addressesToAdd []
 	addEntry := func(addr string) {
 		relay := routing.Relay{
 			PublicKey: make([]byte, crypto.KeySize),
-			State:     routing.RelayStateOnline,
+			State:     routing.RelayStateEnabled,
 		}
 		udpAddr, err := net.ResolveUDPAddr("udp", addr)
 		assert.NoError(t, err)

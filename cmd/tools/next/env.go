@@ -9,9 +9,16 @@ import (
 	"strings"
 )
 
+const (
+	PortalHostnameLocal = "localhost:20000"
+	PortalHostnameDev   = "portal.dev.networknext.com"
+	PortalHostnameProd  = "portal.prod.networknext.com"
+)
+
 type Environment struct {
-	Hostname  string `json:"hostname"`
-	AuthToken string `json:"auth_token"`
+	Hostname       string `json:"hostname"`
+	AuthToken      string `json:"auth_token"`
+	SSHKeyFilePath string `json:"ssh_key_filepath`
 }
 
 func (e *Environment) String() string {
@@ -19,6 +26,7 @@ func (e *Environment) String() string {
 
 	sb.WriteString(fmt.Sprintf("Hostname: %s\n", e.Hostname))
 	sb.WriteString(fmt.Sprintf("AuthToken: %s\n", e.AuthToken))
+	sb.WriteString(fmt.Sprintf("SSHKeyFilePath: %s\n", e.SSHKeyFilePath))
 
 	return sb.String()
 }
@@ -88,4 +96,17 @@ func (e *Environment) Clean() {
 	if err != nil {
 		log.Fatal("failed to clean environment", err)
 	}
+}
+
+func (e *Environment) PortalHostname() string {
+	switch e.Hostname {
+	case "local":
+		return PortalHostnameLocal
+	case "dev":
+		return PortalHostnameDev
+	case "prod":
+		return PortalHostnameProd
+	}
+
+	return e.Hostname
 }

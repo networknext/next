@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/base64"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"net"
@@ -61,9 +62,17 @@ func main() {
 	}
 
 	var relayPublicKey []byte
+	var customerID uint64
+	var customerPublicKey []byte
 	{
 		if key := os.Getenv("RELAY_PUBLIC_KEY"); len(key) != 0 {
 			relayPublicKey, _ = base64.StdEncoding.DecodeString(key)
+		}
+
+		if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
+			customerPublicKey, _ = base64.StdEncoding.DecodeString(key)
+			customerID = binary.LittleEndian.Uint64(customerPublicKey[:8])
+			customerPublicKey = customerPublicKey[8:]
 		}
 	}
 
@@ -83,23 +92,33 @@ func main() {
 
 	addr := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 40000}
 	var db storage.Storer = &storage.InMemory{
-		LocalRelays: []routing.Relay{
-			routing.Relay{
-				ID:        crypto.HashID(addr.String()),
-				Addr:      addr,
-				PublicKey: relayPublicKey,
-				Datacenter: routing.Datacenter{
-					ID:   crypto.HashID("local"),
-					Name: "local",
-				},
-				Seller: routing.Seller{
-					Name:              "local",
-					IngressPriceCents: 10,
-					EgressPriceCents:  20,
-				},
-			},
-		},
+		LocalMode: true,
 	}
+	db.AddBuyer(ctx, routing.Buyer{
+		ID:                   customerID,
+		Name:                 "local",
+		PublicKey:            customerPublicKey,
+		RoutingRulesSettings: routing.LocalRoutingRulesSettings,
+	})
+
+	db.AddRelay(ctx, routing.Relay{
+		Name:      "local.test_relay",
+		ID:        crypto.HashID(addr.String()),
+		Addr:      addr,
+		PublicKey: relayPublicKey,
+		Datacenter: routing.Datacenter{
+			ID:   crypto.HashID("local"),
+			Name: "local",
+		},
+		Seller: routing.Seller{
+			Name:              "local",
+			IngressPriceCents: 10,
+			EgressPriceCents:  20,
+		},
+		ManagementAddr: "127.0.0.1",
+		SSHUser:        "root",
+		SSHPort:        22,
+	})
 
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
@@ -183,7 +202,7 @@ func main() {
 		s.RegisterService(&jsonrpc.BuyersService{
 			RedisClient: redisClientCache,
 		}, "")
-		http.Handle("/rpc", s)
+		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), s))
 
 		http.Handle("/", http.FileServer(http.Dir(uiDir)))
 

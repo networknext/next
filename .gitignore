@@ -8,3 +8,4 @@ cover.out
 *.d
 .ycm_extra_conf.py
 .env
+*.rdb

@@ -132,11 +132,14 @@ func main() {
 
 	// Create an in-memory db
 	var db storage.Storer = &storage.InMemory{
-		LocalBuyer: &routing.Buyer{
-			PublicKey:            customerPublicKey,
-			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
-		},
+		LocalMode: true,
 	}
+	db.AddBuyer(ctx, routing.Buyer{
+		ID:                   13672574147039585173,
+		Name:                 "local",
+		PublicKey:            customerPublicKey,
+		RoutingRulesSettings: routing.LocalRoutingRulesSettings,
+	})
 
 	// Create a no-op biller
 	var biller billing.Biller = &billing.NoOpBiller{}

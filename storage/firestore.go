@@ -20,17 +20,17 @@ type Firestore struct {
 	Client *firestore.Client
 	Logger log.Logger
 
-	datacenters map[uint64]*routing.Datacenter
-	relays      map[uint64]*routing.Relay
-	buyers      map[uint64]*routing.Buyer
+	datacenters map[uint64]routing.Datacenter
+	relays      map[uint64]routing.Relay
+	buyers      map[uint64]routing.Buyer
 
-	datacenterMutex sync.Mutex
-	relayMutex      sync.Mutex
-	buyerMutex      sync.Mutex
+	datacenterMutex sync.RWMutex
+	relayMutex      sync.RWMutex
+	buyerMutex      sync.RWMutex
 }
 
 type buyer struct {
-	ID        int    `firestore:"sdkVersion3PublicKeyId"`
+	ID        int64  `firestore:"sdkVersion3PublicKeyId"`
 	Name      string `firestore:"name"`
 	Active    bool   `firestore:"active"`
 	Live      bool   `firestore:"isLiveCustomer"`
@@ -52,6 +52,11 @@ type relay struct {
 	IncludedBandwithGB float32                `firestore:"includedBandwidthGB"`
 	Datacenter         *firestore.DocumentRef `firestore:"datacenter"`
 	Seller             *firestore.DocumentRef `firestore:"seller"`
+	ManagementAddress  string                 `firestore:"managementAddress"`
+	SSHUser            string                 `firestore:"sshUser"`
+	SSHPort            int64                  `firestore:"sshPort"`
+	State              routing.RelayState     `firestore:"state"`
+	StateUpdateTime    time.Time              `firestore:"stateUpdateTime"`
 }
 
 type datacenter struct {
@@ -80,44 +85,134 @@ type routingRulesSettings struct {
 	EnableABTest                 bool    `firestore:"abTest"`
 }
 
-func (fs *Firestore) Relay(id uint64) (*routing.Relay, bool) {
-	fs.relayMutex.Lock()
-	defer fs.relayMutex.Unlock()
+func (fs *Firestore) Buyer(id uint64) (routing.Buyer, error) {
+	fs.buyerMutex.RLock()
+	defer fs.buyerMutex.RUnlock()
 
-	b, found := fs.relays[id]
-	return b, found
+	b, found := fs.buyers[id]
+	if !found {
+		return routing.Buyer{}, fmt.Errorf("buyer with id %d not found in firestore", id)
+	}
+
+	return b, nil
+}
+
+func (fs *Firestore) Buyers() []routing.Buyer {
+	fs.buyerMutex.RLock()
+	defer fs.buyerMutex.RUnlock()
+
+	var buyers []routing.Buyer
+	for _, buyer := range fs.buyers {
+		buyers = append(buyers, buyer)
+	}
+
+	return buyers
+}
+
+func (fs *Firestore) AddBuyer(ctx context.Context, buyer routing.Buyer) error {
+	return nil
+}
+
+func (fs *Firestore) RemoveBuyer(ctx context.Context, id uint64) error {
+	return nil
+}
+
+func (fs *Firestore) SetBuyer(ctx context.Context, buyer routing.Buyer) error {
+	return nil
+}
+
+func (fs *Firestore) Relay(id uint64) (routing.Relay, error) {
+	fs.relayMutex.RLock()
+	defer fs.relayMutex.RUnlock()
+
+	relay, found := fs.relays[id]
+	if !found {
+		return routing.Relay{}, fmt.Errorf("relay with id %d not found in firestore", id)
+	}
+
+	return relay, nil
+
 }
 
 func (fs *Firestore) Relays() []routing.Relay {
-	fs.relayMutex.Lock()
-	defer fs.relayMutex.Unlock()
+	fs.relayMutex.RLock()
+	defer fs.relayMutex.RUnlock()
 
 	var relays []routing.Relay
 	for _, relay := range fs.relays {
-		relays = append(relays, *relay)
+		relays = append(relays, relay)
 	}
 
 	return relays
 }
 
+func (fs *Firestore) AddRelay(ctx context.Context, relay routing.Relay) error {
+	return nil
+}
+
+func (fs *Firestore) RemoveRelay(ctx context.Context, id uint64) error {
+	return nil
+}
+
+// Only relay state is updated in firestore for now
+func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
+	fs.relayMutex.RLock()
+	relayInStorage, ok := fs.relays[r.ID]
+	fs.relayMutex.RUnlock()
+
+	if !ok {
+		return fmt.Errorf("relay with ID %d doesn't exist", r.ID)
+	}
+
+	stateUpdateTime := time.Now()
+	rdocs := fs.Client.Collection("Relay").Documents(ctx)
+	for rdoc, err := rdocs.Next(); err != iterator.Done; {
+		relay := relay{
+			State:           r.State,
+			StateUpdateTime: stateUpdateTime,
+		}
+
+		if _, err := rdoc.Ref.Set(ctx, relay, firestore.MergeAll); err != nil {
+			return err
+		}
+
+		relayInStorage.State = r.State
+		relayInStorage.LastUpdateTime = stateUpdateTime
+
+		fs.relayMutex.Lock()
+		fs.relays[r.ID] = relayInStorage
+		fs.relayMutex.Unlock()
+	}
+
+	return nil
+}
+
+func (fs *Firestore) Datacenter(id uint64) (routing.Datacenter, error) {
+	return routing.Datacenter{}, nil
+}
+
 func (fs *Firestore) Datacenters() []routing.Datacenter {
-	fs.datacenterMutex.Lock()
-	defer fs.datacenterMutex.Unlock()
+	fs.datacenterMutex.RLock()
+	defer fs.datacenterMutex.RUnlock()
 
 	var datacenters []routing.Datacenter
 	for _, datacenter := range fs.datacenters {
-		datacenters = append(datacenters, *datacenter)
+		datacenters = append(datacenters, datacenter)
 	}
 
 	return datacenters
 }
 
-func (fs *Firestore) Buyer(id uint64) (*routing.Buyer, bool) {
-	fs.buyerMutex.Lock()
-	defer fs.buyerMutex.Unlock()
+func (fs *Firestore) AddDatacenter(ctx context.Context, datacenter routing.Datacenter) error {
+	return nil
+}
 
-	b, found := fs.buyers[id]
-	return b, found
+func (fs *Firestore) RemoveDatacenter(ctx context.Context, id uint64) error {
+	return nil
+}
+
+func (fs *Firestore) SetDatacenter(ctx context.Context, datacenter routing.Datacenter) error {
+	return nil
 }
 
 // SyncLoop is a helper method that calls Sync
@@ -171,7 +266,7 @@ func (fs *Firestore) Sync(ctx context.Context) error {
 }
 
 func (fs *Firestore) syncDatacenters(ctx context.Context) error {
-	datacenters := make(map[uint64]*routing.Datacenter)
+	datacenters := make(map[uint64]routing.Datacenter)
 
 	ddocs := fs.Client.Collection("Datacenter").Documents(ctx)
 	for {
@@ -186,10 +281,11 @@ func (fs *Firestore) syncDatacenters(ctx context.Context) error {
 		var d datacenter
 		err = ddoc.DataTo(&d)
 		if err != nil {
-			return fmt.Errorf("failed to marshal document: %v", err)
+			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to unmarshal datacenter %v", ddoc.Ref.ID), "err", err)
+			continue
 		}
 
-		datacenters[crypto.HashID(d.Name)] = &routing.Datacenter{
+		datacenters[crypto.HashID(d.Name)] = routing.Datacenter{
 			Name:    d.Name,
 			Enabled: d.Enabled,
 			Location: routing.Location{
@@ -209,7 +305,7 @@ func (fs *Firestore) syncDatacenters(ctx context.Context) error {
 }
 
 func (fs *Firestore) syncRelays(ctx context.Context) error {
-	relays := make(map[uint64]*routing.Relay)
+	relays := make(map[uint64]routing.Relay)
 
 	rdocs := fs.Client.Collection("Relay").Documents(ctx)
 	for {
@@ -224,7 +320,8 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 		var r relay
 		err = rdoc.DataTo(&r)
 		if err != nil {
-			return fmt.Errorf("failed to marshal document: %v", err)
+			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to unmarshal relay %v", rdoc.Ref.ID), "err", err)
+			continue
 		}
 
 		rid := crypto.HashID(r.Address)
@@ -255,6 +352,11 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 			PublicKey:           publicKey,
 			NICSpeedMbps:        int(r.NICSpeedMbps),
 			IncludedBandwidthGB: int(r.IncludedBandwithGB),
+			ManagementAddr:      r.ManagementAddress,
+			SSHUser:             r.SSHUser,
+			SSHPort:             r.SSHPort,
+			State:               r.State,
+			LastUpdateTime:      r.StateUpdateTime,
 		}
 
 		// Get datacenter
@@ -305,7 +407,7 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 		relay.Seller = seller
 
 		// add populated relay to list
-		relays[rid] = &relay
+		relays[rid] = relay
 	}
 
 	fs.relayMutex.Lock()
@@ -318,7 +420,7 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 }
 
 func (fs *Firestore) syncBuyers(ctx context.Context) error {
-	buyers := make(map[uint64]*routing.Buyer)
+	buyers := make(map[uint64]routing.Buyer)
 
 	bdocs := fs.Client.Collection("Buyer").Documents(ctx)
 	for {
@@ -333,7 +435,8 @@ func (fs *Firestore) syncBuyers(ctx context.Context) error {
 		var b buyer
 		err = bdoc.DataTo(&b)
 		if err != nil {
-			return fmt.Errorf("failed to marshal document: %v", err)
+			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to unmarshal buyer %v", bdoc.Ref.ID), "err", err)
+			continue
 		}
 
 		if !b.Active {
@@ -343,10 +446,10 @@ func (fs *Firestore) syncBuyers(ctx context.Context) error {
 		// Attempt to get routing rules settings for buyer (acceptable to fallback to default settings if none defined)
 		rrs, err := fs.getRoutingRulesSettingsForBuyerID(ctx, bdoc.Ref.ID)
 		if err != nil {
-			level.Debug(fs.Logger).Log("msg", fmt.Sprintf("using default route rules for buyer %v", bdoc.Ref.ID), "err", err)
+			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("using default route rules for buyer %v", bdoc.Ref.ID), "err", err)
 		}
 
-		buyers[uint64(b.ID)] = &routing.Buyer{
+		buyers[uint64(b.ID)] = routing.Buyer{
 			ID:                   uint64(b.ID),
 			Name:                 b.Name,
 			Active:               b.Active,

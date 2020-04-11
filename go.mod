@@ -10,7 +10,8 @@ require (
 	github.com/VividCortex/gohistogram v1.0.0 // indirect
 	github.com/alicebob/miniredis v2.5.0+incompatible
 	github.com/alicebob/miniredis/v2 v2.11.2
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
+	github.com/auth0/go-jwt-middleware v0.0.0-20190805220309-36081240882b
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/go-kit/kit v0.9.0
 	github.com/go-logfmt/logfmt v0.5.0
 	github.com/go-redis/redis v6.15.7+incompatible
@@ -33,6 +34,7 @@ require (
 	github.com/tidwall/gjson v1.6.0
 	github.com/tidwall/pretty v1.0.1 // indirect
 	github.com/tidwall/sjson v1.0.4 // indirect
+	github.com/urfave/negroni v1.0.0 // indirect
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
 	golang.org/x/crypto v0.0.0-20200115085410-6d4e4cb37c7d
 	golang.org/x/exp v0.0.0-20200213203834-85f925bdd4d0 // indirect
