@@ -73,7 +73,8 @@
     <IncludePath>$(Console_SdkIncludeRoot);..\..\include</IncludePath>
     <ExecutablePath>$(Console_SdkRoot)bin;$(VCInstallDir)bin\x86_amd64;$(VCInstallDir)bin;$(WindowsSDK_ExecutablePath_x86);$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(MSBuildToolsPath32);$(FxCopDir);$(PATH);</ExecutablePath>
     <LinkIncremental>false</LinkIncremental>
-    <IntDir>$(Configuration)\sample\</IntDir>
+    <IntDir>int\$(Configuration)\</IntDir>
+    <OutDir>$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profile|Durango'">
     <ReferencePath>$(Console_SdkLibPath);$(Console_SdkWindowsMetadataPath)</ReferencePath>
@@ -82,7 +83,8 @@
     <IncludePath>$(Console_SdkIncludeRoot);..\..\include</IncludePath>
     <ExecutablePath>$(Console_SdkRoot)bin;$(VCInstallDir)bin\x86_amd64;$(VCInstallDir)bin;$(WindowsSDK_ExecutablePath_x86);$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(MSBuildToolsPath32);$(FxCopDir);$(PATH);</ExecutablePath>
     <LinkIncremental>false</LinkIncremental>
-    <IntDir>$(Configuration)\sample\</IntDir>
+    <IntDir>int\$(Configuration)\</IntDir>
+    <OutDir>$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Durango'">
     <ReferencePath>$(Console_SdkLibPath);$(Console_SdkWindowsMetadataPath)</ReferencePath>
@@ -91,7 +93,8 @@
     <IncludePath>$(Console_SdkIncludeRoot);..\..\include</IncludePath>
     <ExecutablePath>$(Console_SdkRoot)bin;$(VCInstallDir)bin\x86_amd64;$(VCInstallDir)bin;$(WindowsSDK_ExecutablePath_x86);$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(MSBuildToolsPath32);$(FxCopDir);$(PATH);</ExecutablePath>
     <LinkIncremental>true</LinkIncremental>
-    <IntDir>$(Configuration)\sample\</IntDir>
+    <IntDir>int\$(Configuration)\</IntDir>
+    <OutDir>$(Configuration)\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Durango'">
     <Link>
