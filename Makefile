@@ -194,13 +194,13 @@ test-func-parallel: build-test-func-parallel run-test-func-parallel ## runs func
 .PHONY: build-sdk-test
 build-sdk-test: build-sdk ## builds the sdk test binary
 	@printf "Building sdk test... "
-	@$(CXX) -Isdk -o $(DIST_DIR)/$(SDKNAME)_test ./sdk/test.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@$(CXX) -Isdk/include -o $(DIST_DIR)/$(SDKNAME)_test ./sdk/test.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-soak-test
 build-soak-test: build-sdk ## builds the sdk test binary
 	@printf "Building soak test... "
-	@$(CXX) -Isdk -o $(DIST_DIR)/$(SDKNAME)_soak_test ./sdk/soak.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@$(CXX) -Isdk/include -o $(DIST_DIR)/$(SDKNAME)_soak_test ./sdk/soak.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
 PHONY: build-tools
@@ -296,7 +296,7 @@ dev-multi-clients: build-client ## runs 20 local clients
 
 $(DIST_DIR)/$(SDKNAME).so:
 	@printf "Building sdk... "
-	@$(CXX) -fPIC -shared -o $(DIST_DIR)/$(SDKNAME).so ./sdk/next.cpp ./sdk/next_ios.cpp ./sdk/next_linux.cpp ./sdk/next_mac.cpp ./sdk/next_ps4.cpp ./sdk/next_switch.cpp ./sdk/next_windows.cpp ./sdk/next_xboxone.cpp $(LDFLAGS)
+	@$(CXX) -fPIC -Isdk/include -shared -o $(DIST_DIR)/$(SDKNAME).so ./sdk/source/next.cpp ./sdk/source/next_ios.cpp ./sdk/source/next_linux.cpp ./sdk/source/next_mac.cpp ./sdk/source/next_ps4.cpp ./sdk/source/next_switch.cpp ./sdk/source/next_windows.cpp ./sdk/source/next_xboxone.cpp $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-sdk
@@ -431,19 +431,19 @@ publish-backend-prod-artifacts: publish-relay-backend-prod-artifact publish-serv
 .PHONY: build-server
 build-server: build-sdk ## builds the server
 	@printf "Building server... "
-	@$(CXX) -Isdk -o $(DIST_DIR)/server ./cmd/server/server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@$(CXX) -Isdk/include -o $(DIST_DIR)/server ./cmd/server/server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional-server
 build-functional-server:
 	@printf "Building functional server... "
-	@$(CXX) -Isdk -o $(DIST_DIR)/func_server ./cmd/tools/functional/server/func_server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@$(CXX) -Isdk/include -o $(DIST_DIR)/func_server ./cmd/tools/functional/server/func_server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional-client
 build-functional-client:
 	@printf "Building functional client... "
-	@$(CXX) -Isdk -o $(DIST_DIR)/func_client ./cmd/tools/functional/client/func_client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@$(CXX) -Isdk/include -o $(DIST_DIR)/func_client ./cmd/tools/functional/client/func_client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional
@@ -452,7 +452,7 @@ build-functional: build-functional-client build-functional-server
 .PHONY: build-client
 build-client: build-sdk ## builds the client
 	@printf "Building client... "
-	@$(CXX) -Isdk -o $(DIST_DIR)/client ./cmd/client/client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@$(CXX) -Isdk/include -o $(DIST_DIR)/client ./cmd/client/client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-all
