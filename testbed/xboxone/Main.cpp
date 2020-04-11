@@ -14,7 +14,7 @@ using namespace Windows::UI::Core;
 using namespace Windows::Foundation;
 using namespace DirectX;
 
-const char * customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
+const char * customer_public_key = "pX89DxRQBaQuYebn80myIh+12DPY2mXFhoRhiLRpKFoffKSVE0zotg==";
 
 void packet_received( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
 {
@@ -119,7 +119,7 @@ public:
 
 		OutputDebugStringA("\nAll tests passed successfully!\n\n");
 
-		next_log_level(NEXT_LOG_LEVEL_INFO);
+		next_log_level(NEXT_LOG_LEVEL_DEBUG);
 		
 		OutputDebugStringA("Starting client...\n\n");
 
@@ -127,7 +127,7 @@ public:
         if ( !client )
 			return;
 
-        next_client_open_session( client, "173.255.241.176:50000" );
+        next_client_open_session( client, "173.255.241.176:32202" );
 
         while ( !exit )
         {
