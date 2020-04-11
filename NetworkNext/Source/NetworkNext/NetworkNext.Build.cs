@@ -48,26 +48,20 @@ public class NetworkNext : ModuleRules
         {
             Definitions.Add("NETWORKNEXT_AVAILABLE=1");
         }
-        // <XBOX
         else if (Target.Platform == UnrealTargetPlatform.XboxOne)
         {
             Definitions.Add("NETWORKNEXT_AVAILABLE=1");
         }
-        // XBOX>
-        // <PS4
         else if (Target.Platform == UnrealTargetPlatform.PS4)
         {
             Definitions.Add("NETWORKNEXT_AVAILABLE=1");
             Definitions.Add("NETWORKNEXT_ENABLE_DELAY_LOAD=1");
             Definitions.Add("NETWORKNEXT_ENABLE_DELAY_LOAD_PS4=1");
         }
-        // PS4>
-        // <SWITCH
         else if (Target.Platform == UnrealTargetPlatform.Switch)
         {
             Definitions.Add("NETWORKNEXT_AVAILABLE=1");
         }
-        // SWITCH>
 
         PublicDependencyModuleNames.AddRange(
             new string[] {

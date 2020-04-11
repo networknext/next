@@ -74,36 +74,25 @@ bool UNetworkNextNetDriver::InitBase(bool bInitAsClient, FNetworkNotify* InNotif
 	{
 		UE_LOG(LogNetworkNext, Warning, TEXT("Socket is NULL"));
 		Socket = 0;
-		Error = FString::Printf(TEXT("SteamSockets: socket failed (%i)"), (int32)SocketSubsystem->GetLastErrorCode());
+		Error = FString::Printf(TEXT("socket failed (%i)"), (int32)SocketSubsystem->GetLastErrorCode());
 		return false;
 	}
 
 	LocalAddr = SocketSubsystem->GetLocalBindAddr(*GLog);
 
-#if PLATFORM_XBOXONE
-	// IMPORTANT: Randomize port number in specific range on XBoxOne. Necessary for reconnect to work after hard shutdown on this platform.
 	if (bInitAsClient)
 	{
-		int32 BeginPort = 0;
-		int32 Num = 1000;
-		GConfig->GetInt(TEXT("XboxNetwork"), TEXT("Ipv6UdpPortBegin"), BeginPort, GEngineIni);
-		GConfig->GetInt(TEXT("XboxNetwork"), TEXT("Ipv6UdpPortNum"), Num, GEngineIni);
-		if (BeginPort > 0)
-		{
-			UE_LOG(LogNetworkNext, Display, TEXT("XBoxOne port randomization from %d to %d"), BeginPort, BeginPort + Num);
-			LocalAddr->SetPort(BeginPort + FMath::Rand() % (FMath::Max<int32>(1, Num - MaxPortCountToTry)));
-		}
+		// force client to bind to an ephemeral port
+		LocalAddr->SetPort(0);
 	}
 	else
 	{
-		LocalAddr->SetPort(GetClientPort());
+		// bind server to the specified port
+		LocalAddr->SetPort(URL.Port);
 	}
-#else
-	LocalAddr->SetPort(bInitAsClient ? GetClientPort() : URL.Port);
-#endif
 
-	int32 AttemptPort = LocalAddr->GetPort();
 	int32 BoundPort = SocketSubsystem->BindNextPort(Socket, *LocalAddr, MaxPortCountToTry + 1, 1);
+
 	UE_LOG(LogNet, Display, TEXT("%s bound to port %d"), *GetName(), BoundPort);
 
 	return true;

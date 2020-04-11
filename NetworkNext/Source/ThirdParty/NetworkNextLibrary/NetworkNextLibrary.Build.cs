@@ -33,18 +33,18 @@ public class NetworkNextLibrary : ModuleRules
 
         if (Target.Platform == UnrealTargetPlatform.Win64)
         {
-            PublicLibraryPaths.Add(Path.Combine(ModuleDirectory, "next", "lib", "Windows-x86_64", "Dynamic-Release"));
+            PublicLibraryPaths.Add(Path.Combine(ModuleDirectory, "next", "lib", "Windows-x86_64", "Release"));
             PublicAdditionalLibraries.Add("next.lib");
             PublicDelayLoadDLLs.Add("next.dll");
 
-            RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "next", "lib", "Windows-x86_64", "Dynamic-Release", "next.dll"), StagedFileType.NonUFS);
+            RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "next", "lib", "Windows-x86_64", "Release", "next.dll"), StagedFileType.NonUFS);
 
             // This makes the editor work, because RuntimeDependencies do not apply to builds of the editor.
             Directory.CreateDirectory(Path.Combine(ModuleDirectory, "..", "..", "..", "Binaries", "Win64"));
             try
             {
                 File.Copy(
-                    Path.Combine(ModuleDirectory, "next", "lib", "Windows-x86_64", "Dynamic-Release", "next.dll"),
+                    Path.Combine(ModuleDirectory, "next", "lib", "Windows-x86_64", "Release", "next.dll"),
                     Path.Combine(ModuleDirectory, "..", "..", "..", "Binaries", "Win64", "next.dll"),
                     true
                 );
@@ -55,18 +55,18 @@ public class NetworkNextLibrary : ModuleRules
         }
         else if (Target.Platform == UnrealTargetPlatform.Win32)
         {
-            PublicLibraryPaths.Add(Path.Combine(ModuleDirectory, "next", "lib", "Windows-x86", "Dynamic-Release"));
+            PublicLibraryPaths.Add(Path.Combine(ModuleDirectory, "next", "lib", "Windows-x86", "Release"));
             PublicAdditionalLibraries.Add("next.lib");
             PublicDelayLoadDLLs.Add("next.dll");
 
-            RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "next", "lib", "Windows-x86", "Dynamic-Release", "next.dll"), StagedFileType.NonUFS);
+            RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "next", "lib", "Windows-x86", "Release", "next.dll"), StagedFileType.NonUFS);
 
             // This makes the editor work, because RuntimeDependencies do not apply to builds of the editor.
             Directory.CreateDirectory(Path.Combine(ModuleDirectory, "..", "..", "..", "Binaries", "Win32"));
             try
             {
                 File.Copy(
-                    Path.Combine(ModuleDirectory, "next", "lib", "Windows-x86", "Dynamic-Release", "next.dll"),
+                    Path.Combine(ModuleDirectory, "next", "lib", "Windows-x86", "Release", "next.dll"),
                     Path.Combine(ModuleDirectory, "..", "..", "..", "Binaries", "Win32", "next.dll"),
                     true
                 );
@@ -77,17 +77,17 @@ public class NetworkNextLibrary : ModuleRules
         }
         else if (Target.Platform == UnrealTargetPlatform.XboxOne)
         {
-            PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "next", "lib", "XboxOne", "Dynamic-Release", "next.lib"));
-            RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "next", "lib", "XboxOne", "Dynamic-Release", "next.dll"), StagedFileType.NonUFS);
+            PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "next", "lib", "XboxOne", "Release", "next.lib"));
+            RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "next", "lib", "XboxOne", "Release", "next.dll"), StagedFileType.NonUFS);
         }
         else if (Target.Platform == UnrealTargetPlatform.PS4)
         {
-            PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "next", "lib", "Playstation4", "Dynamic-Release", "next_stub.a"));
-            RuntimeDependencies.Add(new RuntimeDependency(Path.Combine(ModuleDirectory, "next", "lib", "Playstation4", "Dynamic-Release", "next.prx")));
+            PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "next", "lib", "Playstation4", "Release", "next_stub.a"));
+            RuntimeDependencies.Add(new RuntimeDependency(Path.Combine(ModuleDirectory, "next", "lib", "Playstation4", "Release", "next.prx")));
         }
         else if (Target.Platform == UnrealTargetPlatform.Switch)
         {
-            PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "next", "lib", "NintendoSwitch-NX64", "Dynamic-Release", "next"));
+            PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "next", "lib", "NintendoSwitch-NX64", "Release", "next"));
         }
     }
 }
