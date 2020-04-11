@@ -119,7 +119,7 @@ public:
 
 		OutputDebugStringA("\nAll tests passed successfully!\n\n");
 
-		next_log_level(NEXT_LOG_LEVEL_DEBUG);
+		next_log_level(NEXT_LOG_LEVEL_INFO);
 		
 		OutputDebugStringA("Starting client...\n\n");
 

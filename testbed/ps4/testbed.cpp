@@ -1,12 +1,13 @@
-/*
-    Network Next. Copyright © 2017 - 2020 Network Next, Inc. All rights reserved.
-*/
+
+// Network Next PS4 Testbed
 
 #include "next.h"
 #include <stdlib.h>
 #include <libsecure.h>
 #include <string.h>
 #include <kernel.h>
+
+const char * customer_public_key = "pX89DxRQBaQuYebn80myIh+12DPY2mXFhoRhiLRpKFoffKSVE0zotg==";
 
 unsigned int sceLibcHeapExtendedAlloc = 1;
 
@@ -37,11 +38,23 @@ int32_t main( int argc, const char * const argv[] )
     if ( sceLibSecureInit( SCE_LIBSECURE_FLAGS_RANDOM_GENERATOR, &random_seed_block ) != SCE_LIBSECURE_OK )
         exit( 1 );
 
-	// todo: proper config setup
+	next_config_t config;
+	next_default_config( &config );
+	strncpy_s( config.customer_public_key, customer_public_key, sizeof(config.customer_public_key) - 1 );
 
-    next_init( NULL, NULL );
+	next_init( NULL, &config );
 
-	// todo: run tests
+	printf( "\nRunning tests...\n\n" );
+
+	next_log_level( NEXT_LOG_LEVEL_NONE );
+
+	next_test();
+
+	printf( "\nAll tests passed successfully!\n\n" );
+
+	next_log_level( NEXT_LOG_LEVEL_INFO );
+
+	printf( "Starting client...\n\n" );
 	
 	next_client_t * client = next_client_create( NULL, "0.0.0.0:0", packet_received );
     if ( !client )
@@ -61,7 +74,9 @@ int32_t main( int argc, const char * const argv[] )
         next_sleep( 1.0f / 60.0f );
     }
 
-    next_client_destroy( client );
+	printf("\nShutting down...\n\n");
+	
+	next_client_destroy( client );
 
     next_term();
 
