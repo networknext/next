@@ -29,3 +29,7 @@ obj
 ipch
 int
 lib
+Debug
+Release
+Profile
+Durango
