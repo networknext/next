@@ -3428,12 +3428,14 @@ int next_init( void * context, next_config_t * config_in )
         return NEXT_ERROR;
     }
 
+#if !defined(NEXT_DEVELOPMENT)
     const char * log_level_override = next_platform_getenv( "NEXT_LOG_LEVEL" );
     if ( log_level_override )
     {
         log_level = atoi( log_level_override );
         next_printf( NEXT_LOG_LEVEL_INFO, "log level overridden to %d", log_level );
     }
+#endif // !defined(NEXT_DEVELOPMENT)
 
     next_config_internal_t config;
 
@@ -3577,6 +3579,14 @@ int next_init( void * context, next_config_t * config_in )
     next_encrypted_packets[NEXT_CLIENT_STATS_PACKET] = 1;
     next_encrypted_packets[NEXT_ROUTE_UPDATE_PACKET] = 1;
     next_encrypted_packets[NEXT_ROUTE_UPDATE_ACK_PACKET] = 1;
+
+#if defined(NEXT_DEVELOPMENT)
+    const char * log_level_override = next_platform_getenv( "NEXT_LOG_LEVEL" );
+    if ( log_level_override )
+    {
+        log_level = atoi( log_level_override );
+    }
+#endif // defined(NEXT_DEVELOPMENT)
 
     return NEXT_OK;
 }
