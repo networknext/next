@@ -42,9 +42,30 @@ const char * customer_public_key = "pX89DxRQBaQuYebn80myIh+12DPY2mXFhoRhiLRpKFof
 
 int main()
 {
-    printf( "\nWelcome to Network Next!\n\n" );
+	printf( "\nRunning tests...\n\n" );
 
-    signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
+	next_log_level( NEXT_LOG_LEVEL_NONE );
+
+	if ( next_init(NULL, NULL) != NEXT_OK )
+	{
+		printf( "error: failed to initialize network next\n" );
+	}
+
+	next_log_level( NEXT_LOG_LEVEL_NONE );
+
+	next_test();
+
+	next_term();
+
+	fflush( stdout );
+
+	printf( "\nAll tests completed successfully!\n\n" );
+
+	printf( "Starting client...\n\n" );
+
+	next_log_level( NEXT_LOG_LEVEL_INFO );
+	
+	signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
     
     next_config_t config;
     next_default_config( &config );
