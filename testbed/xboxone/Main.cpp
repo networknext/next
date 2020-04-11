@@ -109,8 +109,8 @@ public:
     {
     }
 
-    virtual void Run()
-    {
+	virtual void Run()
+	{
 		OutputDebugStringA("\nRunning tests...\n\n");
 
 		next_log_level(NEXT_LOG_LEVEL_NONE);
@@ -120,11 +120,11 @@ public:
 		OutputDebugStringA("\nAll tests passed successfully!\n\n");
 
 		next_log_level(NEXT_LOG_LEVEL_INFO);
-		
+
 		OutputDebugStringA("Starting client...\n\n");
 
 		client = next_client_create( NULL, "0.0.0.0:0", packet_received );
-        if ( !client )
+		if ( !client)
 			return;
 
         next_client_open_session( client, "173.255.241.176:32202" );

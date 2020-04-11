@@ -63,6 +63,8 @@ int32_t main( int argc, const char * const argv[] )
         exit( 1 );
     }
 
+	next_client_open_session( client, "173.255.241.176:32202" );
+
     while ( !quit )
     {
         next_client_update( client );
@@ -74,7 +76,7 @@ int32_t main( int argc, const char * const argv[] )
         next_sleep( 1.0f / 60.0f );
     }
 
-	printf("\nShutting down...\n\n");
+	printf( "\nShutting down...\n\n" );
 	
 	next_client_destroy( client );
 

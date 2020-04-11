@@ -1,54 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
-    <ProjectConfiguration Include="Debug|durango">
-      <Configuration>Debug</Configuration>
-      <Platform>durango</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Debug|NX32">
-      <Configuration>Debug</Configuration>
-      <Platform>NX32</Platform>
-    </ProjectConfiguration>
     <ProjectConfiguration Include="Debug|NX64">
       <Configuration>Debug</Configuration>
       <Platform>NX64</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Debug|ORBIS">
-      <Configuration>Debug</Configuration>
-      <Platform>ORBIS</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Debug|Win32">
-      <Configuration>Debug</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Debug|x64">
-      <Configuration>Debug</Configuration>
-      <Platform>x64</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|durango">
-      <Configuration>Release</Configuration>
-      <Platform>durango</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|NX32">
-      <Configuration>Release</Configuration>
-      <Platform>NX32</Platform>
     </ProjectConfiguration>
     <ProjectConfiguration Include="Release|NX64">
       <Configuration>Release</Configuration>
       <Platform>NX64</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|ORBIS">
-      <Configuration>Release</Configuration>
-      <Platform>ORBIS</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|Win32">
-      <Configuration>Release</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|x64">
-      <Configuration>Release</Configuration>
-      <Platform>x64</Platform>
-    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="testbed.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
@@ -57,42 +20,8 @@
     <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
-    <WholeProgramOptimization>false</WholeProgramOptimization>
-    <CharacterSet>MultiByte</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
-    <WholeProgramOptimization>false</WholeProgramOptimization>
-    <CharacterSet>MultiByte</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|NX32'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
-    <WholeProgramOptimization>false</WholeProgramOptimization>
-    <CharacterSet>MultiByte</CharacterSet>
-    <NintendoSdkRoot>C:\Nintendo\7.4.0\NintendoSDK</NintendoSdkRoot>
-    <NintendoSdkSpec>NX</NintendoSdkSpec>
-    <NintendoSdkBuildType>Debug</NintendoSdkBuildType>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|NX32'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
-    <WholeProgramOptimization>false</WholeProgramOptimization>
-    <CharacterSet>MultiByte</CharacterSet>
-    <NintendoSdkRoot>C:\Nintendo\7.4.0\NintendoSDK</NintendoSdkRoot>
-    <NintendoSdkSpec>NX</NintendoSdkSpec>
-    <NintendoSdkBuildType>Debug</NintendoSdkBuildType>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|NX64'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
     <WholeProgramOptimization>false</WholeProgramOptimization>
@@ -102,7 +31,7 @@
     <NintendoSdkBuildType>Debug</NintendoSdkBuildType>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|NX64'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
     <WholeProgramOptimization>false</WholeProgramOptimization>
@@ -111,42 +40,6 @@
     <NintendoSdkSpec>NX</NintendoSdkSpec>
     <NintendoSdkBuildType>Debug</NintendoSdkBuildType>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
-    <WholeProgramOptimization>false</WholeProgramOptimization>
-    <CharacterSet>MultiByte</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
-    <WholeProgramOptimization>false</WholeProgramOptimization>
-    <CharacterSet>MultiByte</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|durango'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
-    <WholeProgramOptimization>false</WholeProgramOptimization>
-    <CharacterSet>MultiByte</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|durango'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
-    <WholeProgramOptimization>false</WholeProgramOptimization>
-    <CharacterSet>MultiByte</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release|ORBIS'">
-    <PlatformToolset>Clang</PlatformToolset>
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ORBIS'" Label="Configuration">
-    <PlatformToolset>Clang</PlatformToolset>
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
-  </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
@@ -154,184 +47,26 @@
   </ImportGroup>
   <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   <ImportGroup Condition="'$(Platform)'=='NX32' or '$(Platform)'=='NX64'" Label="PropertySheets">
-    <Import Project="../ImportNintendoSdk.props" Condition="exists('../ImportNintendoSdk.props')" />
+    <Import Project="ImportNintendoSdk.props" Condition="exists('ImportNintendoSdk.props')" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(SolutionDir)../lib/Windows-x86/$(Configuration)/</OutDir>
-    <IntDir>$(ProjectDir)/int/Windows-x86/$(Configuration)/</IntDir>
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);../../include</IncludePath>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LinkIncremental>true</LinkIncremental>
-    <OutDir>$(SolutionDir)../lib/Windows-x86/$(Configuration)/</OutDir>
-    <IntDir>$(ProjectDir)/int/Windows-x86/$(Configuration)/</IntDir>
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);../../include</IncludePath>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|NX32'">
-    <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(NintendoSdkIncludePath);$(NXToolchainDir)\nx\armv7l\lib\clang\$(NXToolchainVersion)\include;$(IncludePath);../../include</IncludePath>
-    <LibraryPath>$(NintendoSdkLibraryPath);$(LibraryPath)</LibraryPath>
-    <ExecutablePath>$(NintendoSdkRoot)\Tools\CommandLineTools\MakeInitialProgram;$(ExecutablePath)</ExecutablePath>
-    <OutDir>$(SolutionDir)../lib/NintendoSwitch-$(Platform)/$(Configuration)/</OutDir>
-    <IntDir>$(ProjectDir)/int/NintendoSwitch-$(Platform)/$(Configuration)/</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|NX32'">
-    <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(NintendoSdkIncludePath);$(NXToolchainDir)\nx\armv7l\lib\clang\$(NXToolchainVersion)\include;$(IncludePath);../../include</IncludePath>
-    <LibraryPath>$(NintendoSdkLibraryPath);$(LibraryPath)</LibraryPath>
-    <ExecutablePath>$(NintendoSdkRoot)\Tools\CommandLineTools\MakeInitialProgram;$(ExecutablePath)</ExecutablePath>
-    <OutDir>$(SolutionDir)../lib/NintendoSwitch-$(Platform)/$(Configuration)/</OutDir>
-    <IntDir>$(ProjectDir)/int/NintendoSwitch-$(Platform)/$(Configuration)/</IntDir>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|NX64'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>$(NintendoSdkIncludePath);$(NXToolchainDir)\nx\armv7l\lib\clang\$(NXToolchainVersion)\include;$(IncludePath);../../include</IncludePath>
     <LibraryPath>$(NintendoSdkLibraryPath);$(LibraryPath)</LibraryPath>
     <ExecutablePath>$(NintendoSdkRoot)\Tools\CommandLineTools\MakeInitialProgram;$(ExecutablePath)</ExecutablePath>
-    <OutDir>$(SolutionDir)../lib/NintendoSwitch-$(Platform)/$(Configuration)/</OutDir>
-    <IntDir>$(ProjectDir)/int/NintendoSwitch-$(Platform)/$(Configuration)/</IntDir>
+    <OutDir>$(Configuration)/</OutDir>
+    <IntDir>int/$(Configuration)/</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|NX64'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>$(NintendoSdkIncludePath);$(NXToolchainDir)\nx\armv7l\lib\clang\$(NXToolchainVersion)\include;$(IncludePath);../../include</IncludePath>
     <LibraryPath>$(NintendoSdkLibraryPath);$(LibraryPath)</LibraryPath>
     <ExecutablePath>$(NintendoSdkRoot)\Tools\CommandLineTools\MakeInitialProgram;$(ExecutablePath)</ExecutablePath>
-    <OutDir>$(SolutionDir)../lib/NintendoSwitch-$(Platform)/$(Configuration)/</OutDir>
-    <IntDir>$(ProjectDir)/int/NintendoSwitch-$(Platform)/$(Configuration)/</IntDir>
+    <OutDir>$(Configuration)/</OutDir>
+    <IntDir>int/$(Configuration)/</IntDir>
+    <NRODeployPath>$(OutDir)\nro\</NRODeployPath>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(SolutionDir)../lib/Windows-x86_64/$(Configuration)/</OutDir>
-    <IntDir>$(ProjectDir)/int/Windows-x86_64/$(Configuration)/</IntDir>
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);../../include</IncludePath>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(SolutionDir)../lib/Windows-x86_64/$(Configuration)/</OutDir>
-    <IntDir>$(ProjectDir)/int/Windows-x86_64/$(Configuration)/</IntDir>
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);../../include</IncludePath>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|durango'">
-    <LinkIncremental>false</LinkIncremental>
-    <ExecutablePath>$(Console_SdkRoot)bin;$(VCInstallDir)bin\x86_amd64;$(VCInstallDir)bin;$(WindowsSDK_ExecutablePath_x86);$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(MSBuildToolsPath32);$(FxCopDir);$(PATH);</ExecutablePath>
-    <IncludePath>$(Console_SdkIncludeRoot);../../include</IncludePath>
-    <ReferencePath>$(Console_SdkLibPath);$(Console_SdkWindowsMetadataPath)</ReferencePath>
-    <LibraryPath>$(Console_SdkLibPath)</LibraryPath>
-    <LibraryWPath>$(Console_SdkLibPath);$(Console_SdkWindowsMetadataPath)</LibraryWPath>
-    <GenerateManifest>false</GenerateManifest>
-    <OutDir>$(SolutionDir)../lib/XboxOne/$(Configuration)/</OutDir>
-    <IntDir>$(ProjectDir)/int/XboxOne/$(Configuration)/</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|durango'">
-    <LinkIncremental>false</LinkIncremental>
-    <ExecutablePath>$(Console_SdkRoot)bin;$(VCInstallDir)bin\x86_amd64;$(VCInstallDir)bin;$(WindowsSDK_ExecutablePath_x86);$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(MSBuildToolsPath32);$(FxCopDir);$(PATH);</ExecutablePath>
-    <IncludePath>$(Console_SdkIncludeRoot);../../include</IncludePath>
-    <ReferencePath>$(Console_SdkLibPath);$(Console_SdkWindowsMetadataPath)</ReferencePath>
-    <LibraryPath>$(Console_SdkLibPath)</LibraryPath>
-    <LibraryWPath>$(Console_SdkLibPath);$(Console_SdkWindowsMetadataPath)</LibraryWPath>
-    <GenerateManifest>false</GenerateManifest>
-    <OutDir>$(SolutionDir)../lib/XboxOne/$(Configuration)/</OutDir>
-    <IntDir>$(ProjectDir)/int/XboxOne/$(Configuration)/</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ORBIS'">
-    <OutDir>$(SolutionDir)../lib/Playstation4/$(Configuration)/</OutDir>
-    <IntDir>$(ProjectDir)/int/Playstation4/$(Configuration)/</IntDir>
-    <IncludePath>$(SCE_ORBIS_SDK_DIR)\host_tools\lib\clang\include;$(SCE_ORBIS_SDK_DIR)\target\include;$(SCE_ORBIS_SDK_DIR)\target\include_common;../../include</IncludePath>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ORBIS'">
-    <OutDir>$(SolutionDir)../lib/Playstation4/$(Configuration)/</OutDir>
-    <IntDir>$(ProjectDir)/int/Playstation4/$(Configuration)/</IntDir>
-    <IncludePath>$(SCE_ORBIS_SDK_DIR)\host_tools\lib\clang\include;$(SCE_ORBIS_SDK_DIR)\target\include;$(SCE_ORBIS_SDK_DIR)\target\include_common;../../include</IncludePath>
-  </PropertyGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <Optimization>MaxSpeed</Optimization>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\sodium\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>NEXT_SHARED;NEXT_EXPORT;SODIUM_STATIC;NDEBUG;_WINDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ProgramDataBaseFileName>$(OutDir)\$(TargetName).pdb</ProgramDataBaseFileName>
-    </ClCompile>
-    <Link>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(ProjectDir)../lib/Windows_$(Platform)/Static-Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <Optimization>MaxSpeed</Optimization>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\sodium\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>NEXT_SHARED;NEXT_EXPORT;SODIUM_STATIC;NDEBUG;_WINDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ProgramDataBaseFileName>$(OutDir)\$(TargetName).pdb</ProgramDataBaseFileName>
-      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
-    </ClCompile>
-    <Link>
-      <EnableCOMDATFolding>false</EnableCOMDATFolding>
-      <OptimizeReferences>false</OptimizeReferences>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(ProjectDir)../lib/Windows_$(Platform)/Static-Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
-      <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
-      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|NX32'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <Optimization>MaxSpeed</Optimization>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\sodium\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>NDEBUG;_LIB;NEXT_EXPORT;NEXT_SHARED;SODIUM_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ProgramDataBaseFileName>$(OutDir)\$(TargetName).pdb</ProgramDataBaseFileName>
-      <DisableSpecificWarnings>
-      </DisableSpecificWarnings>
-    </ClCompile>
-    <Link>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>$(_NintendoSdkSdkLibraryName).nss;libnn_init_memory$(NintendoSdkLibSuffix);libnn_gfx$(NintendoSdkLibSuffix);libnn_mii_draw$(NintendoSdkLibSuffix);%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(ProjectDir)../lib/$(Platform)/Static-Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|NX32'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <Optimization>MaxSpeed</Optimization>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\sodium\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>NDEBUG;_LIB;NEXT_EXPORT;NEXT_SHARED;SODIUM_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ProgramDataBaseFileName>$(OutDir)\$(TargetName).pdb</ProgramDataBaseFileName>
-      <DisableSpecificWarnings>
-      </DisableSpecificWarnings>
-    </ClCompile>
-    <Link>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>$(_NintendoSdkSdkLibraryName).nss;libnn_init_memory$(NintendoSdkLibSuffix);libnn_gfx$(NintendoSdkLibSuffix);libnn_mii_draw$(NintendoSdkLibSuffix);%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(ProjectDir)../lib/$(Platform)/Static-Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
-    </Link>
-  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|NX64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -362,7 +97,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\sodium\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>NDEBUG;_LIB;NEXT_EXPORT;NEXT_SHARED;SODIUM_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ProgramDataBaseFileName>$(OutDir)\$(TargetName).pdb</ProgramDataBaseFileName>
       <DisableSpecificWarnings>
@@ -371,164 +106,13 @@
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>$(_NintendoSdkSdkLibraryName).nss;libnn_init_memory$(NintendoSdkLibSuffix);libnn_gfx$(NintendoSdkLibSuffix);libnn_mii_draw$(NintendoSdkLibSuffix);%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(_NintendoSdkSdkLibraryName).nss;libnn_gll.a;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(ProjectDir)../lib/$(Platform)/Static-Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
+      <AdditionalNSODependencies>opengl.nso;%(AdditionalNSODependencies)</AdditionalNSODependencies>
+      <AdditionalNRODependencies>next.nro;%(AdditionalNRODependencies)</AdditionalNRODependencies>
     </Link>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <Optimization>MaxSpeed</Optimization>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\sodium\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>NEXT_SHARED;NEXT_EXPORT;SODIUM_STATIC;NDEBUG;_WINDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ProgramDataBaseFileName>$(OutDir)\$(TargetName).pdb</ProgramDataBaseFileName>
-      <WholeProgramOptimization>false</WholeProgramOptimization>
-    </ClCompile>
-    <Link>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(ProjectDir)../lib/Windows_$(Platform)/Static-Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <Optimization>MaxSpeed</Optimization>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\sodium\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>NEXT_SHARED;NEXT_EXPORT;SODIUM_STATIC;NDEBUG;_WINDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ProgramDataBaseFileName>$(OutDir)\$(TargetName).pdb</ProgramDataBaseFileName>
-      <WholeProgramOptimization>false</WholeProgramOptimization>
-      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
-    </ClCompile>
-    <Link>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(ProjectDir)../lib/Windows_$(Platform)/Static-Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|durango'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <Optimization>Disabled</Optimization>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\sodium\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>NEXT_SHARED;NEXT_EXPORT;SODIUM_STATIC;NDEBUG;_WINDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ProgramDataBaseFileName>$(OutDir)\$(TargetName).pdb</ProgramDataBaseFileName>
-      <WholeProgramOptimization>false</WholeProgramOptimization>
-      <CompileAsWinRT>true</CompileAsWinRT>
-      <AdditionalOptions>/Zc:twoPhase- %(AdditionalOptions)</AdditionalOptions>
-      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
-    </ClCompile>
-    <Link>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>$(ProjectDir)../lib/Windows_$(Platform)/Static-Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
-      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
-      <AdditionalDependencies>combase.lib;kernelx.lib;uuid.lib;bcrypt.lib;ws2_32.lib</AdditionalDependencies>
-      <SubSystem>Windows</SubSystem>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|durango'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <Optimization>Disabled</Optimization>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\sodium\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>NEXT_SHARED;NEXT_EXPORT;SODIUM_STATIC;DEBUG;_WINDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ProgramDataBaseFileName>$(OutDir)\$(TargetName).pdb</ProgramDataBaseFileName>
-      <WholeProgramOptimization>false</WholeProgramOptimization>
-      <CompileAsWinRT>true</CompileAsWinRT>
-      <AdditionalOptions>/Zc:twoPhase- %(AdditionalOptions)</AdditionalOptions>
-      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
-    </ClCompile>
-    <Link>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>$(ProjectDir)../lib/Windows_$(Platform)/Static-Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
-      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
-      <AdditionalDependencies>combase.lib;kernelx.lib;uuid.lib;bcrypt.lib;ws2_32.lib</AdditionalDependencies>
-      <SubSystem>Windows</SubSystem>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ORBIS'">
-    <ClCompile>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\sodium\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>NEXT_SHARED;NEXT_EXPORT;SODIUM_STATIC;NDEBUG;_WINDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ClCompile>
-    <Link>
-      <AdditionalLibraryDirectories>
-      </AdditionalLibraryDirectories>
-    </Link>
-    <Link>
-      <AdditionalDependencies>libSceNet_stub_weak.a;libSceNetCtl_stub_weak.a;libSceSecure.a;%(AdditionalDependencies)</AdditionalDependencies>
-    </Link>
-    <Lib>
-      <AdditionalDependencies>libsodium.a</AdditionalDependencies>
-    </Lib>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ORBIS'">
-    <ClCompile>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\sodium\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>NEXT_SHARED;NEXT_EXPORT;SODIUM_STATIC;NDEBUG;_WINDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ClCompile>
-    <Link>
-      <AdditionalLibraryDirectories>
-      </AdditionalLibraryDirectories>
-    </Link>
-    <Link>
-      <AdditionalDependencies>libSceNet_stub_weak.a;libSceNetCtl_stub_weak.a;libSceSecure.a;%(AdditionalDependencies)</AdditionalDependencies>
-    </Link>
-    <Lib>
-      <AdditionalDependencies>libsodium.a</AdditionalDependencies>
-    </Lib>
-  </ItemDefinitionGroup>
-  <ItemGroup>
-    <ProjectReference Include="../sodium/sodium.vcxproj">
-      <Project>{7efbf022-3f30-4987-b559-cd3157277029}</Project>
-      <LinkLibraryDependencies>true</LinkLibraryDependencies>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\..\include\next.h" />
-    <ClInclude Include="..\..\source\next_ios.h" />
-    <ClInclude Include="..\..\source\next_linux.h" />
-    <ClInclude Include="..\..\source\next_mac.h" />
-    <ClInclude Include="..\..\source\next_ps4.h" />
-    <ClInclude Include="..\..\source\next_switch.h" />
-    <ClInclude Include="..\..\source\next_windows.h" />
-    <ClInclude Include="..\..\source\next_xboxone.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="..\..\source\next.cpp" />
-    <ClCompile Include="..\..\source\next_ios.cpp" />
-    <ClCompile Include="..\..\source\next_linux.cpp" />
-    <ClCompile Include="..\..\source\next_mac.cpp" />
-    <ClCompile Include="..\..\source\next_ps4.cpp" />
-    <ClCompile Include="..\..\source\next_switch.cpp" />
-    <ClCompile Include="..\..\source\next_windows.cpp" />
-    <ClCompile Include="..\..\source\next_xboxone.cpp" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
