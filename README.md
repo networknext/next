@@ -40,6 +40,8 @@ The following steps outline the setup process on a standard Linux Debian/Ubuntu 
 For Mac OSX, use the corresponding `brew` command with the corresponding package name.
 For Windows, use WSL or WSL 2 to install a Linux environment and follow the steps accordingly.
 
+NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel free to set up in whatever way is easiest for you.
+
 1. Update package manager
 	`sudo apt update`
 
