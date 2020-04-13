@@ -25,7 +25,7 @@ blocks:
             - make test-unit-backend
       env_vars:
         - name: FIRESTORE_EMULATOR_HOST
-          value: "127.0.0.1:8000"
+          value: "127.0.0.1:11000"
 promotions:
   - name: Development Deployment
     pipeline_file: development-deploy.yml
