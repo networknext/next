@@ -45,7 +45,7 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
 1. Update package manager
 	`sudo apt update`
 
-2. Install build-essential
+2. Install build-essential -- This will install make, gcc, and g++
 	`sudo apt install build-essential`
 
 3. Install pkg-config
