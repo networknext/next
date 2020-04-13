@@ -1,7 +1,5 @@
 /*
-    Network Next SDK $(NEXT_VERSION_FULL)
-
-    Copyright © 2017 - 2020 Network Next, Inc.
+    Network Next SDK. Copyright © 2017 - 2020 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
     conditions are met:
@@ -113,7 +111,7 @@ int main()
     if ( next_init( NULL, &config ) != NEXT_OK )
         return 1;
 
-    next_client_t * client = next_client_create( NULL, client_packet_received );
+    next_client_t * client = next_client_create( NULL, "0.0.0.0:0", client_packet_received );
     if ( client == NULL )
         return 1;
 

@@ -2,11 +2,24 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
 	"path"
 	"strings"
+)
+
+const (
+	PortalHostnameLocal = "localhost:20000"
+	PortalHostnameDev   = "portal.dev.networknext.com"
+	PortalHostnameProd  = "portal.prod.networknext.com"
+
+	RouterPublicKeyDev  = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
+	RouterPublicKeyProd = "placeholder"
+
+	RelayBackendHostnameDev  = "http://relay_backend.dev.spacecats.net:40000"
+	RelayBackendHostnameProd = "http://relay_backend.prod.spacecats.net:40000"
 )
 
 type Environment struct {
@@ -89,5 +102,37 @@ func (e *Environment) Clean() {
 	err = os.RemoveAll(envFilePath)
 	if err != nil {
 		log.Fatal("failed to clean environment", err)
+	}
+}
+
+func (e *Environment) PortalHostname() string {
+	switch e.Hostname {
+	case "local":
+		return PortalHostnameLocal
+	case "dev":
+		return PortalHostnameDev
+	case "prod":
+		return PortalHostnameProd
+	}
+
+	return e.Hostname
+}
+
+func (e *Environment) RouterPublicKey() (string, error) {
+	return e.devOrProd(RouterPublicKeyDev, RouterPublicKeyProd)
+}
+
+func (e *Environment) RelayBackendHostname() (string, error) {
+	return e.devOrProd(RelayBackendHostnameDev, RelayBackendHostnameProd)
+}
+
+func (e *Environment) devOrProd(ifIsDev, ifIsProd string) (string, error) {
+	switch e.Hostname {
+	case "dev":
+		return ifIsDev, nil
+	case "prod":
+		return ifIsProd, nil
+	default:
+		return "", errors.New("Invalid environment for the current operation, please set the environment to either 'dev' or 'prod'")
 	}
 }

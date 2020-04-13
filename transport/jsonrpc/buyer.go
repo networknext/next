@@ -30,49 +30,12 @@ type point struct {
 	OnNetworkNext bool      `json:"on_network_next"`
 }
 
-type cluster struct {
-	Country   string  `json:"country"`
-	Region    string  `json:"region"`
-	City      string  `json:"city"`
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
-	Count     int     `json:"count"`
-}
-
 func (s *BuyersService) SessionsMap(r *http.Request, args *MapArgs, reply *MapReply) error {
 	reply.SessionPoints = []point{
-		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
-		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
-		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
-		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
-		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
-		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
-		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
-		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
-		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
-		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: false},
-		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: false},
-		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: false},
-		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: false},
-		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: false},
-		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.6, 42.7}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.7, 42.6}, OnNetworkNext: false},
+		{Coordinates: []float64{-73.8, 43.0}, OnNetworkNext: true},
+		{Coordinates: []float64{-73.8, 43.0}, OnNetworkNext: false},
 	}
 
 	return nil

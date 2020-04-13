@@ -19,8 +19,10 @@ blocks:
       jobs:
         - name: Build & Publish Artifacts to Storage
           commands:
+            - make build-portal-artifact
             - make build-relay-backend-artifact
             - make build-server-backend-artifact
+            - make publish-portal-artifact
             - make publish-relay-backend-artifact
             - make publish-server-backend-artifact
         # - name: Deploy to Compute VMs

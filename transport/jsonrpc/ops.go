@@ -2,6 +2,7 @@ package jsonrpc
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"sort"
@@ -114,10 +115,38 @@ func (s *OpsService) RelayStateUpdate(r *http.Request, args *RelayStateUpdateArg
 	relay, err := s.Storage.Relay(args.RelayID)
 
 	if err != nil {
-		return fmt.Errorf("relay with id %d not found", args.RelayID)
+		return err
 	}
 
 	relay.State = args.RelayState
+
+	if err := s.Storage.SetRelay(context.Background(), relay); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type RelayPublicKeyUpdateArgs struct {
+	RelayID        uint64 `json:"relay_id"`
+	RelayPublicKey string `json:"relay_public_key"`
+}
+
+type RelayPublicKeyUpdateReply struct {
+}
+
+func (s *OpsService) RelayPublicKeyUpdate(r *http.Request, args *RelayPublicKeyUpdateArgs, reply *RelayPublicKeyUpdateReply) error {
+	relay, err := s.Storage.Relay(args.RelayID)
+
+	if err != nil {
+		return err
+	}
+
+	relay.PublicKey, err = base64.StdEncoding.DecodeString(args.RelayPublicKey)
+
+	if err != nil {
+		return fmt.Errorf("could not decode relay public key: %v", err)
+	}
 
 	if err := s.Storage.SetRelay(context.Background(), relay); err != nil {
 		return err
