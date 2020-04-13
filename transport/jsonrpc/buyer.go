@@ -2,6 +2,7 @@ package jsonrpc
 
 import (
 	"fmt"
+	"math/rand"
 	"net/http"
 	"sort"
 	"strconv"
@@ -40,39 +41,56 @@ type cluster struct {
 }
 
 func (s *BuyersService) SessionsMap(r *http.Request, args *MapArgs, reply *MapReply) error {
-	reply.SessionPoints = []point{
-		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.6696, 42.7273}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
-		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
-		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
-		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
-		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
-		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
-		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
-		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
-		{Coordinates: []float64{-73.7754, 42.6701}, OnNetworkNext: false},
-		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: true},
-		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: false},
-		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: false},
-		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: false},
-		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: false},
-		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: false},
-		{Coordinates: []float64{-73.842, 43.0034}, OnNetworkNext: false},
+	var err error
+	var cacheEntry transport.SessionCacheEntry
+	var cacheEntryData []byte
+	var buyerID uint64
+
+	if args.BuyerID == "" {
+		return fmt.Errorf("buyer_id is required")
+	}
+
+	if buyerID, err = strconv.ParseUint(args.BuyerID, 10, 64); err != nil {
+		return fmt.Errorf("failed to convert BuyerID to uint64")
+	}
+
+	var getCmds []*redis.StringCmd
+	{
+		iter := s.RedisClient.Scan(0, fmt.Sprintf("SESSION-%d-*", buyerID), 10000).Iterator()
+		tx := s.RedisClient.TxPipeline()
+		for iter.Next() {
+			getCmds = append(getCmds, tx.Get(iter.Val()))
+		}
+		if err := iter.Err(); err != nil {
+			return fmt.Errorf("failed to scan redis: %w", err)
+		}
+		_, err = tx.Exec()
+		if err != nil {
+			return fmt.Errorf("failed to multi-get redis: %w", err)
+		}
+	}
+
+	for _, cmd := range getCmds {
+		cacheEntryData, err = cmd.Bytes()
+		if err != nil {
+			continue
+		}
+
+		if err := cacheEntry.UnmarshalBinary(cacheEntryData); err != nil {
+			continue
+		}
+
+		lat := cacheEntry.Location.Latitude
+		lng := cacheEntry.Location.Longitude
+		if lat == 0 && lng == 0 {
+			lat = (-123) + rand.Float64()*((-70)-(-123))
+			lng = 28 + rand.Float64()*(48-28)
+		}
+
+		reply.SessionPoints = append(reply.SessionPoints, point{
+			Coordinates:   []float64{lat, lng},
+			OnNetworkNext: cacheEntry.RouteDecision.OnNetworkNext,
+		})
 	}
 
 	return nil
@@ -99,7 +117,6 @@ type session struct {
 
 func (s *BuyersService) Sessions(r *http.Request, args *SessionsArgs, reply *SessionsReply) error {
 	var err error
-	var cacheKeys []string
 	var cacheEntry transport.SessionCacheEntry
 	var cacheEntryData []byte
 	var buyerID uint64
