@@ -31,6 +31,16 @@ func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []st
 	}
 }
 
+func enableRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []string) {
+	for _, relayName := range relayNames {
+		info := getRelayInfo(rpcClient, relayName)
+		fmt.Printf("Enabling relay '%s' (id = %d)\n", relayName, info.id)
+		testForSSHKey(env)
+		con := NewSSHConn(info.user, info.sshAddr, info.sshPort, env.SSHKeyFilePath)
+		con.ConnectAndIssueCmd(EnableRelayScript)
+	}
+}
+
 func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []string) {
 	makeEnv := func(info relayInfo) {
 		publicKey, privateKey, err := box.GenerateKey(rand.Reader)

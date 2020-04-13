@@ -12,7 +12,12 @@ import (
 const (
 	// DisableRelayScript is the bash script used to disable relays
 	DisableRelayScript = `
-	systemctl is-active --quiet relay && sudo systemctl stop relay
+	if ! systemctl is-active --quiet relay; then
+		echo 'Relay service has already been stopped'
+		exit 1
+	fi
+
+	sudo systemctl stop relay
 
 	echo "Waiting for the relay service to clean shutdown"
 
@@ -20,7 +25,18 @@ const (
 		sleep 1
 	done
 
-	echo "Relay service shutdown"
+	echo 'Relay service shutdown'
+	`
+
+	EnableRelayScript = `
+	if systemctl is-active --quiet relay; then
+		echo 'Relay service is already running'
+		exit 1
+	fi
+
+	sudo systemctl start relay
+
+	echo 'Relay service started'
 	`
 )
 
