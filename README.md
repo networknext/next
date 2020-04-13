@@ -4,6 +4,10 @@
 
 This is a monorepo that contains the Network Next backend.
 
+## Status
+
+![Build Status](https://networknext.semaphoreci.com/badges/backend.svg?key=822a130a-66de-4659-adb2-74237df34843)
+
 ## Development
 
 IMPORTANT: This repo uses [Git Submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules) to link in the [SDK](https://github.com/networknext/console). In order for this to work you need clone and interact with this repo over [SSH](https://help.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh).
