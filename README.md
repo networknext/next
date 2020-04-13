@@ -101,7 +101,7 @@ Unit tests and functional tests are used in order to test code before it ships.
 ## Unit Tests
 
 To run the unit tests, run `make test`. This will run unit tests for the SDK, relay, and all backend components.
-Because there are some remote services such as GCP that the backend components talk to, not all unit tests can be run without gcloud emulators or certain environment variables set.
+Because there are some remote services such as GCP that the backend components talk to, not all unit tests can be run without gcloud emulators or certain environment variables set. If the requirements for each of unit tests aren't met, they will be skipped.
 Here are the requirements to run each of the GCP related unit tests:
 
 Firestore:

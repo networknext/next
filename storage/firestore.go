@@ -831,6 +831,7 @@ func (fs *Firestore) syncSellers(ctx context.Context) error {
 		}
 
 		sellers[sdoc.Ref.ID] = routing.Seller{
+			ID:                sdoc.Ref.ID,
 			Name:              s.Name,
 			IngressPriceCents: convertNibblinsToCents(s.PricePublicIngressNibblins),
 			EgressPriceCents:  convertNibblinsToCents(s.PricePublicEgressNibblins),
@@ -867,7 +868,9 @@ func (fs *Firestore) syncDatacenters(ctx context.Context) error {
 			continue
 		}
 
-		datacenters[crypto.HashID(d.Name)] = routing.Datacenter{
+		did := crypto.HashID(d.Name)
+		datacenters[did] = routing.Datacenter{
+			ID:      did,
 			Name:    d.Name,
 			Enabled: d.Enabled,
 			Location: routing.Location{
@@ -963,6 +966,10 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 			ID:      crypto.HashID(d.Name),
 			Name:    d.Name,
 			Enabled: d.Enabled,
+			Location: routing.Location{
+				Latitude:  d.Latitude,
+				Longitude: d.Longitude,
+			},
 		}
 
 		relay.Datacenter = datacenter
