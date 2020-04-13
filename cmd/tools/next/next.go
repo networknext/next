@@ -263,6 +263,7 @@ func main() {
 						env.Hostname = args[0]
 						env.Write()
 					}
+
 					fmt.Println(env.String())
 					return nil
 				},
@@ -340,15 +341,29 @@ func main() {
 				Name: "relay",
 				Subcommands: []*ffcli.Command{
 					{
-						Name:       "disable",
-						ShortUsage: "next disable <relay name>",
-						ShortHelp:  "Disable the specified relay",
-						Exec: func(_ context.Context, args []string) error {
+						Name:       "update",
+						ShortUsage: "next relay update <relay name...>",
+						ShortHelp:  "Update the specified relay(s)",
+						Exec: func(ctx context.Context, args []string) error {
 							if len(args) == 0 {
-								log.Fatal("You need to supply a relay name")
+								log.Fatal("You need to supply at least one relay name")
 							}
 
-							Disable(env, rpcClient, args[0])
+							updateRelays(env, rpcClient, args)
+
+							return nil
+						},
+					},
+					{
+						Name:       "disable",
+						ShortUsage: "next relay disable <relay name...>",
+						ShortHelp:  "Disable the specified relay(s)",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) == 0 {
+								log.Fatal("You need to supply at least one relay name")
+							}
+
+							disableRelays(env, rpcClient, args)
 
 							return nil
 						},

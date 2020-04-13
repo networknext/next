@@ -154,7 +154,7 @@ func (fs *Firestore) RemoveRelay(ctx context.Context, id uint64) error {
 	return nil
 }
 
-// Only relay state is updated in firestore for now
+// Only relay state & public key is updated in firestore for now
 func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 	fs.relayMutex.RLock()
 	relayInStorage, ok := fs.relays[r.ID]
@@ -170,6 +170,7 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 		relay := relay{
 			State:           r.State,
 			StateUpdateTime: stateUpdateTime,
+			PublicKey:       r.PublicKey,
 		}
 
 		if _, err := rdoc.Ref.Set(ctx, relay, firestore.MergeAll); err != nil {
@@ -178,6 +179,7 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 
 		relayInStorage.State = r.State
 		relayInStorage.LastUpdateTime = stateUpdateTime
+		relayInStorage.PublicKey = r.PublicKey
 
 		fs.relayMutex.Lock()
 		fs.relays[r.ID] = relayInStorage

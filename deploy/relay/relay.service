@@ -1,0 +1,10 @@
+[Unit]
+Description=Network Next Relay
+
+[Service]
+Type=simple
+ExecStart=/app/relay
+EnvironmentFile=/app/relay.env
+
+[Install]
+WantedBy=multi-user.target
