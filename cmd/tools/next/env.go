@@ -131,6 +131,6 @@ func (e *Environment) localDevOrProd(ifIsLocal, ifIsDev, ifIsProd string) (strin
 	case "prod":
 		return ifIsProd, nil
 	default:
-		return "", errors.New("Hostname does not match 'local', 'dev', or 'prod'")
+		return "", errors.New("Environment does not match 'local', 'dev', or 'prod'")
 	}
 }
