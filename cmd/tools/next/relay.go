@@ -13,19 +13,23 @@ import (
 	"golang.org/x/crypto/nacl/box"
 )
 
+func updateRelayState(rpcClient jsonrpc.RPCClient, info relayInfo, state routing.RelayState) {
+	args := localjsonrpc.RelayStateUpdateArgs{
+		RelayID:    info.id,
+		RelayState: state,
+	}
+	var reply localjsonrpc.RelayStateUpdateReply
+	if err := rpcClient.CallFor(&reply, "OpsService.RelayStateUpdate", &args); err != nil {
+		log.Fatalf("could not update relay state: %v", err)
+	}
+}
+
 func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []string) {
 	for _, relayName := range relayNames {
 		info := getRelayInfo(rpcClient, relayName)
 		fmt.Printf("Disabling relay '%s' (id = %d)\n", relayName, info.id)
 		testForSSHKey(env)
-		args := localjsonrpc.RelayStateUpdateArgs{
-			RelayID:    info.id,
-			RelayState: routing.RelayStateDisabled,
-		}
-		var reply localjsonrpc.RelayStateUpdateReply
-		if err := rpcClient.CallFor(&reply, "OpsService.RelayStateUpdate", &args); err != nil {
-			log.Fatalf("could not update relay state: %v", err)
-		}
+		updateRelayState(rpcClient, info, routing.RelayStateDisabled)
 		con := NewSSHConn(info.user, info.sshAddr, info.sshPort, env.SSHKeyFilePath)
 		con.ConnectAndIssueCmd(DisableRelayScript)
 	}
@@ -36,6 +40,7 @@ func enableRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 		info := getRelayInfo(rpcClient, relayName)
 		fmt.Printf("Enabling relay '%s' (id = %d)\n", relayName, info.id)
 		testForSSHKey(env)
+		updateRelayState(rpcClient, info, routing.RelayStateEnabled)
 		con := NewSSHConn(info.user, info.sshAddr, info.sshPort, env.SSHKeyFilePath)
 		con.ConnectAndIssueCmd(EnableRelayScript)
 	}
@@ -97,5 +102,6 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 		if !runCommandEnv("deploy/relay-update.sh", []string{env.SSHKeyFilePath, info.user + "@" + info.sshAddr}, nil) {
 			log.Fatal("could not execute the relay-update.sh script")
 		}
+		updateRelayState(rpcClient, info, routing.RelayStateEnabled)
 	}
 }

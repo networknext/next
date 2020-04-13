@@ -438,8 +438,6 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			return
 		}
 
-		relay.State = routing.RelayStateEnabled
-
 		// HSet for full relay data
 		if res := params.RedisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay); res.Err() != nil && res.Err() != redis.Nil {
 			level.Error(locallogger).Log("msg", "failed to initialize relay", "err", res.Err())
