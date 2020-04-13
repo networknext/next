@@ -37,7 +37,7 @@ Developers should install these requirements however they need to be installed b
 ## Recommended Setup
 
 The following steps outline the setup process on a standard Linux Debian/Ubuntu installation. Dependencies are aquired through the package manager for ease of use where possible.
-For Mac OSX, use the corresponding `brew` command with the corresponding package name.
+For Mac OSX, use the corresponding `brew` command with the equivalent package name.
 For Windows, use WSL or WSL 2 to install a Linux environment and follow the steps accordingly.
 
 NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel free to set up in whatever way is easiest for you.
@@ -81,6 +81,8 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
 	`clip < <filepath_pub>` Replace <filepath_pub> with the path to your SSH public key (ex. ~/.ssh/id_rsa.pub)
 	Add the SSH public key to your Github account
 		- Login and go to Settings > SSH and GPG Keys > New SSH Key and paste in your key
+  `git clone git@github.com:networknext/backend.git`
+  `cd <clone_path>` where `<clone_path>` is the directory you cloned the repo to (usually `~/backend`)
 
 10. Init and update git submodules
 	`git submodule init`
