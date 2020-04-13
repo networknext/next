@@ -14,7 +14,7 @@ const (
 	DisableRelayScript = `
 	if ! systemctl is-active --quiet relay; then
 		echo 'Relay service has already been stopped'
-		exit 1
+		exit
 	fi
 
 	sudo systemctl stop relay
@@ -31,7 +31,7 @@ const (
 	EnableRelayScript = `
 	if systemctl is-active --quiet relay; then
 		echo 'Relay service is already running'
-		exit 1
+		exit
 	fi
 
 	sudo systemctl start relay

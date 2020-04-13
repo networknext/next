@@ -15,17 +15,17 @@ To set the SSH key: `next ssh key [path to key file]`
 
 ## Relay
 
-### Env
+### Enable
 
-Sets the environment specific to the relay.
+To Enable a relay: `next relay enable [relay name]`
 
-To set: `next relay env [dev|prod]`
+The tool will SSH into the specified relay and start the relay service. If it is already running the tool will do nothing.
 
 ### Disable
 
 To Disable a relay: `next relay disable [relay name]`
 
-First the tool will update the relay's state in Firestore to the Disabled state. Then it will SSH into a relay, stop the relay service, and end the session.
+First the tool will update the relay's state in Firestore to the Disabled state. Then it will SSH into a relay, stop the relay service, and end the session. If the service is already stopped the tool will do nothing.
 
 ### Update
 
