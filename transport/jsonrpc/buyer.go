@@ -141,21 +141,29 @@ func (s *BuyersService) Sessions(r *http.Request, args *SessionsArgs, reply *Ses
 		return nil
 	}
 
-	iter := s.RedisClient.Scan(0, fmt.Sprintf("SESSION-%d-*", buyerID), 1000).Iterator()
-	for iter.Next() {
-		cacheKeys = append(cacheKeys, iter.Val())
-	}
-	if err := iter.Err(); err != nil {
-		return fmt.Errorf("failed to scan redis: %w", err)
+	var getCmds []*redis.StringCmd
+	{
+		iter := s.RedisClient.Scan(0, fmt.Sprintf("SESSION-%d-*", buyerID), 10000).Iterator()
+		tx := s.RedisClient.TxPipeline()
+		for iter.Next() {
+			getCmds = append(getCmds, tx.Get(iter.Val()))
+		}
+		if err := iter.Err(); err != nil {
+			return fmt.Errorf("failed to scan redis: %w", err)
+		}
+		_, err = tx.Exec()
+		if err != nil {
+			return fmt.Errorf("failed to multi-get redis: %w", err)
+		}
 	}
 
-	res, err := s.RedisClient.MGet(cacheKeys...).Result()
-	if err != nil {
-		return fmt.Errorf("failed to multi-get redis: %w", err)
-	}
+	for _, cmd := range getCmds {
+		cacheEntryData, err = cmd.Bytes()
+		if err != nil {
+			continue
+		}
 
-	for _, val := range res {
-		if err := cacheEntry.UnmarshalBinary([]byte(val.(string))); err != nil {
+		if err := cacheEntry.UnmarshalBinary(cacheEntryData); err != nil {
 			continue
 		}
 
