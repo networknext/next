@@ -12,9 +12,3 @@ then
   gcloud --quiet components update --version $VERSION beta
   gcloud --quiet components install --version $VERSION cloud-firestore-emulator
 fi
-
-sudo apt-get update && sudo apt-get -y install libsodium-dev libcurl4-gnutls-dev g++-8
-sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8
-checkout
-sem-version go 1.13
-make clean

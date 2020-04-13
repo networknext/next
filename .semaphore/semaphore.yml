@@ -7,16 +7,22 @@ agent:
 global_job_config:
   prologue:
     commands:
-      - ./cmd/tools/scripts/semaphore-commands.sh
+      - sudo apt-get update && sudo apt-get -y install libsodium-dev libcurl4-gnutls-dev g++-8
+      - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8
+      - checkout
+      - sem-version go 1.13
+      - make clean
 blocks:
   - name: Unit
     task:
       jobs:
         - name: Relay
           commands:
+            - ./cmd/tools/scripts/semaphore-commands.sh
             - make test-unit-relay
         - name: Backend
           commands:
+            - ./cmd/tools/scripts/semaphore-commands.sh
             - make test-unit-backend
       env_vars:
         - name: FIRESTORE_EMULATOR_HOST
