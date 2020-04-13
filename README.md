@@ -34,6 +34,73 @@ The tool chain used for development is kept simple to make it easy for any opera
 
 Developers should install these requirements however they need to be installed based on your operating system. Windows users can leverage WSL to get all of these.
 
+## Recommended Setup
+
+The following steps outline the setup process on a standard Linux Debian/Ubuntu installation. Dependencies are aquired through the package manager for ease of use where possible.
+For Mac OSX, use the corresponding `brew` command with the corresponding package name.
+For Windows, use WSL or WSL 2 to install a Linux environment and follow the steps accordingly.
+
+1. Update package manager
+	`sudo apt update`
+
+2. Install build-essential
+	`sudo apt install build-essential`
+
+3. Install pkg-config
+	`sudo apt install pkg-config`
+
+4. Install libsodium
+	`sudo apt install libsodium-dev`
+
+5. Install libcurl
+	`sudo apt install libcurl4-openssl-dev`
+
+6. Install Go (must be 1.13+)
+	`cd /usr/local/`
+	`sudo curl https://dl.google.com/go/go1.14.2.linux-amd64.tar.gz | sudo tar -zxv`
+	Add Go to PATH:
+		`echo 'PATH=$PATH:/usr/local/go/bin' >> ~/.profile`
+	NOTE: For changes to your `.profile` to reflect in the terminal, sign out and sign back in.
+	If you're running WSL, you can stop it by typing `wsl -t <distro>` in Powershell and start it again.
+
+7. Install Redis
+	`sudo apt install redis-server`
+
+8. Install Docker
+	NOTE: If you're running Windows with WSL 1, follow this article: https://nickjanetakis.com/blog/setting-up-docker-for-windows-and-wsl-to-work-flawlessly
+	For WSL 2 these steps aren't necessary, installing Docker Desktop by itself is sufficient.
+
+9. Clone the repo with an SSH key
+	Instructions from `https://help.github.com/en/github/authenticating-to-github/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent`
+
+	`ssh-keygen -t rsa -b 4096 -C "your_email@example.com"`
+	`eval $(ssh-agent -s)`
+	`ssh-add <filepath_priv>` Replace <filepath_priv> with the path to your SSH private key (ex. ~/.ssh/id_rsa)
+	`clip < <filepath_pub>` Replace <filepath_pub> with the path to your SSH public key (ex. ~/.ssh/id_rsa.pub)
+	Add the SSH public key to your Github account
+		- Login and go to Settings > SSH and GPG Keys > New SSH Key and paste in your key
+
+10. Init and update git submodules
+	`git submodule init`
+	`git submodule update`
+
+11. Install Google Cloud SDK
+	Instructions from `https://cloud.google.com/sdk/docs/quickstart-debian-ubuntu`
+	For other platforms, see `https://cloud.google.com/sdk/docs/quickstarts` 
+
+	`echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list`
+	`curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -`
+	`sudo apt update && sudo apt install google-cloud-sdk`
+	`gcloud init`
+	When asked to choose a cloud project, choose `network-next-v3-dev`
+
+12. Install the Firestore emulator
+	`sudo apt install google-cloud-sdk-firestore-emulator`
+
+11. Run tests to confirm everything is working properly
+	`make test`
+	`make test-func-parallel`
+
 ## Running the "Happy Path"
 
 A good test to see if everything works and is installed is to run the "Happy Path". For this you will need to run the following commands **in separate terminal sessions**.
