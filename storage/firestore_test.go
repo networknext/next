@@ -69,10 +69,10 @@ func TestFirestore(t *testing.T) {
 			client, err := firestore.NewClient(ctx, projectID)
 			assert.NoError(t, err)
 
-			t.Cleanup(func() {
+			defer func() {
 				err := cleanFireStore(ctx, client)
 				assert.NoError(t, err)
-			})
+			}()
 
 			logger := log.NewNopLogger()
 
@@ -93,10 +93,10 @@ func TestFirestore(t *testing.T) {
 			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 			assert.NoError(t, err)
 
-			t.Cleanup(func() {
+			defer func() {
 				err := cleanFireStore(ctx, fs.Client)
 				assert.NoError(t, err)
-			})
+			}()
 
 			buyer, err := fs.Buyer(0)
 			assert.Empty(t, buyer)
@@ -107,10 +107,10 @@ func TestFirestore(t *testing.T) {
 			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 			assert.NoError(t, err)
 
-			t.Cleanup(func() {
+			defer func() {
 				err := cleanFireStore(ctx, fs.Client)
 				assert.NoError(t, err)
-			})
+			}()
 
 			expected := routing.Buyer{
 				ID:                   1,
@@ -135,10 +135,10 @@ func TestFirestore(t *testing.T) {
 		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 		assert.NoError(t, err)
 
-		t.Cleanup(func() {
+		defer func() {
 			err := cleanFireStore(ctx, fs.Client)
 			assert.NoError(t, err)
-		})
+		}()
 
 		expected := []routing.Buyer{
 			{
@@ -172,10 +172,10 @@ func TestFirestore(t *testing.T) {
 		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 		assert.NoError(t, err)
 
-		t.Cleanup(func() {
+		defer func() {
 			err := cleanFireStore(ctx, fs.Client)
 			assert.NoError(t, err)
-		})
+		}()
 
 		expected := routing.Buyer{
 			ID:                   1,
@@ -200,10 +200,10 @@ func TestFirestore(t *testing.T) {
 			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 			assert.NoError(t, err)
 
-			t.Cleanup(func() {
+			defer func() {
 				err := cleanFireStore(ctx, fs.Client)
 				assert.NoError(t, err)
-			})
+			}()
 
 			err = fs.RemoveBuyer(ctx, 0)
 			assert.EqualError(t, err, "buyer with ID 0 doesn't exist")
@@ -213,10 +213,10 @@ func TestFirestore(t *testing.T) {
 			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 			assert.NoError(t, err)
 
-			t.Cleanup(func() {
+			defer func() {
 				err := cleanFireStore(ctx, fs.Client)
 				assert.NoError(t, err)
-			})
+			}()
 
 			buyer := routing.Buyer{
 				ID:                   1,
@@ -240,10 +240,10 @@ func TestFirestore(t *testing.T) {
 			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 			assert.NoError(t, err)
 
-			t.Cleanup(func() {
+			defer func() {
 				err := cleanFireStore(ctx, fs.Client)
 				assert.NoError(t, err)
-			})
+			}()
 
 			buyer := routing.Buyer{
 				ID:                   1,
@@ -289,10 +289,10 @@ func TestFirestore(t *testing.T) {
 			actual.Live = false
 			assert.Equal(t, expected, actual)
 
-			t.Cleanup(func() {
+			defer func() {
 				err := cleanFireStore(ctx, fs.Client)
 				assert.NoError(t, err)
-			})
+			}()
 		})
 	})
 
@@ -301,10 +301,10 @@ func TestFirestore(t *testing.T) {
 			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 			assert.NoError(t, err)
 
-			t.Cleanup(func() {
+			defer func() {
 				err := cleanFireStore(ctx, fs.Client)
 				assert.NoError(t, err)
-			})
+			}()
 
 			seller, err := fs.Seller("id")
 			assert.Empty(t, seller)
@@ -315,10 +315,10 @@ func TestFirestore(t *testing.T) {
 			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 			assert.NoError(t, err)
 
-			t.Cleanup(func() {
+			defer func() {
 				err := cleanFireStore(ctx, fs.Client)
 				assert.NoError(t, err)
-			})
+			}()
 
 			expected := routing.Seller{
 				ID:   "id",
@@ -339,10 +339,10 @@ func TestFirestore(t *testing.T) {
 		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 		assert.NoError(t, err)
 
-		t.Cleanup(func() {
+		defer func() {
 			err := cleanFireStore(ctx, fs.Client)
 			assert.NoError(t, err)
-		})
+		}()
 
 		expected := []routing.Seller{
 			{
@@ -373,10 +373,10 @@ func TestFirestore(t *testing.T) {
 			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 			assert.NoError(t, err)
 
-			t.Cleanup(func() {
+			defer func() {
 				err := cleanFireStore(ctx, fs.Client)
 				assert.NoError(t, err)
-			})
+			}()
 
 			expected := routing.Seller{
 				ID:                "id",
@@ -396,10 +396,10 @@ func TestFirestore(t *testing.T) {
 			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 			assert.NoError(t, err)
 
-			t.Cleanup(func() {
+			defer func() {
 				err := cleanFireStore(ctx, fs.Client)
 				assert.NoError(t, err)
-			})
+			}()
 
 			expected := routing.Seller{
 				ID:                "id",
@@ -423,10 +423,10 @@ func TestFirestore(t *testing.T) {
 			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 			assert.NoError(t, err)
 
-			t.Cleanup(func() {
+			defer func() {
 				err := cleanFireStore(ctx, fs.Client)
 				assert.NoError(t, err)
-			})
+			}()
 
 			err = fs.RemoveSeller(ctx, "id")
 			assert.EqualError(t, err, "seller with ID id doesn't exist")
@@ -436,10 +436,10 @@ func TestFirestore(t *testing.T) {
 			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 			assert.NoError(t, err)
 
-			t.Cleanup(func() {
+			defer func() {
 				err := cleanFireStore(ctx, fs.Client)
 				assert.NoError(t, err)
-			})
+			}()
 
 			seller := routing.Seller{
 				ID:                "id",
@@ -461,10 +461,10 @@ func TestFirestore(t *testing.T) {
 			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 			assert.NoError(t, err)
 
-			t.Cleanup(func() {
+			defer func() {
 				err := cleanFireStore(ctx, fs.Client)
 				assert.NoError(t, err)
-			})
+			}()
 
 			seller := routing.Seller{
 				ID:                "id",
@@ -481,10 +481,10 @@ func TestFirestore(t *testing.T) {
 			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 			assert.NoError(t, err)
 
-			t.Cleanup(func() {
+			defer func() {
 				err := cleanFireStore(ctx, fs.Client)
 				assert.NoError(t, err)
-			})
+			}()
 
 			expected := routing.Seller{
 				ID:                "id",
@@ -518,10 +518,10 @@ func TestFirestore(t *testing.T) {
 			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 			assert.NoError(t, err)
 
-			t.Cleanup(func() {
+			defer func() {
 				err := cleanFireStore(ctx, fs.Client)
 				assert.NoError(t, err)
-			})
+			}()
 
 			relay, err := fs.Relay(0)
 			assert.Empty(t, relay)
@@ -532,10 +532,10 @@ func TestFirestore(t *testing.T) {
 			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 			assert.NoError(t, err)
 
-			t.Cleanup(func() {
+			defer func() {
 				err := cleanFireStore(ctx, fs.Client)
 				assert.NoError(t, err)
-			})
+			}()
 
 			addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 			assert.NoError(t, err)
@@ -586,10 +586,10 @@ func TestFirestore(t *testing.T) {
 		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 		assert.NoError(t, err)
 
-		t.Cleanup(func() {
+		defer func() {
 			err := cleanFireStore(ctx, fs.Client)
 			assert.NoError(t, err)
-		})
+		}()
 
 		addr1, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 		assert.NoError(t, err)
@@ -653,10 +653,10 @@ func TestFirestore(t *testing.T) {
 			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 			assert.NoError(t, err)
 
-			t.Cleanup(func() {
+			defer func() {
 				err := cleanFireStore(ctx, fs.Client)
 				assert.NoError(t, err)
-			})
+			}()
 
 			addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 			assert.NoError(t, err)
@@ -676,10 +676,10 @@ func TestFirestore(t *testing.T) {
 			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 			assert.NoError(t, err)
 
-			t.Cleanup(func() {
+			defer func() {
 				err := cleanFireStore(ctx, fs.Client)
 				assert.NoError(t, err)
-			})
+			}()
 
 			addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 			assert.NoError(t, err)
@@ -710,10 +710,10 @@ func TestFirestore(t *testing.T) {
 			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 			assert.NoError(t, err)
 
-			t.Cleanup(func() {
+			defer func() {
 				err := cleanFireStore(ctx, fs.Client)
 				assert.NoError(t, err)
-			})
+			}()
 
 			addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 			assert.NoError(t, err)
@@ -765,10 +765,10 @@ func TestFirestore(t *testing.T) {
 			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 			assert.NoError(t, err)
 
-			t.Cleanup(func() {
+			defer func() {
 				err := cleanFireStore(ctx, fs.Client)
 				assert.NoError(t, err)
-			})
+			}()
 
 			err = fs.RemoveRelay(ctx, 0)
 			assert.EqualError(t, err, "relay with ID 0 doesn't exist")
@@ -778,10 +778,10 @@ func TestFirestore(t *testing.T) {
 			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 			assert.NoError(t, err)
 
-			t.Cleanup(func() {
+			defer func() {
 				err := cleanFireStore(ctx, fs.Client)
 				assert.NoError(t, err)
-			})
+			}()
 
 			addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 			assert.NoError(t, err)
@@ -831,10 +831,10 @@ func TestFirestore(t *testing.T) {
 			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 			assert.NoError(t, err)
 
-			t.Cleanup(func() {
+			defer func() {
 				err := cleanFireStore(ctx, fs.Client)
 				assert.NoError(t, err)
-			})
+			}()
 
 			addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 			assert.NoError(t, err)
@@ -854,10 +854,10 @@ func TestFirestore(t *testing.T) {
 			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 			assert.NoError(t, err)
 
-			t.Cleanup(func() {
+			defer func() {
 				err := cleanFireStore(ctx, fs.Client)
 				assert.NoError(t, err)
-			})
+			}()
 
 			addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 			assert.NoError(t, err)
@@ -923,10 +923,10 @@ func TestFirestore(t *testing.T) {
 			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 			assert.NoError(t, err)
 
-			t.Cleanup(func() {
+			defer func() {
 				err := cleanFireStore(ctx, fs.Client)
 				assert.NoError(t, err)
-			})
+			}()
 
 			datacenter, err := fs.Datacenter(0)
 			assert.Empty(t, datacenter)
@@ -937,10 +937,10 @@ func TestFirestore(t *testing.T) {
 			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 			assert.NoError(t, err)
 
-			t.Cleanup(func() {
+			defer func() {
 				err := cleanFireStore(ctx, fs.Client)
 				assert.NoError(t, err)
-			})
+			}()
 
 			expected := routing.Datacenter{
 				ID:      1,
@@ -966,10 +966,10 @@ func TestFirestore(t *testing.T) {
 		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 		assert.NoError(t, err)
 
-		t.Cleanup(func() {
+		defer func() {
 			err := cleanFireStore(ctx, fs.Client)
 			assert.NoError(t, err)
-		})
+		}()
 
 		expected := []routing.Datacenter{
 			{
@@ -1005,10 +1005,10 @@ func TestFirestore(t *testing.T) {
 		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 		assert.NoError(t, err)
 
-		t.Cleanup(func() {
+		defer func() {
 			err := cleanFireStore(ctx, fs.Client)
 			assert.NoError(t, err)
-		})
+		}()
 
 		expected := routing.Datacenter{
 			ID:      1,
@@ -1034,10 +1034,10 @@ func TestFirestore(t *testing.T) {
 			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 			assert.NoError(t, err)
 
-			t.Cleanup(func() {
+			defer func() {
 				err := cleanFireStore(ctx, fs.Client)
 				assert.NoError(t, err)
-			})
+			}()
 
 			err = fs.RemoveDatacenter(ctx, 0)
 			assert.EqualError(t, err, "datacenter with ID 0 doesn't exist")
@@ -1047,10 +1047,10 @@ func TestFirestore(t *testing.T) {
 			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 			assert.NoError(t, err)
 
-			t.Cleanup(func() {
+			defer func() {
 				err := cleanFireStore(ctx, fs.Client)
 				assert.NoError(t, err)
-			})
+			}()
 
 			datacenter := routing.Datacenter{
 				ID:      crypto.HashID("local"),
@@ -1075,10 +1075,10 @@ func TestFirestore(t *testing.T) {
 			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 			assert.NoError(t, err)
 
-			t.Cleanup(func() {
+			defer func() {
 				err := cleanFireStore(ctx, fs.Client)
 				assert.NoError(t, err)
-			})
+			}()
 
 			datacenter := routing.Datacenter{
 				ID:      1,
@@ -1098,10 +1098,10 @@ func TestFirestore(t *testing.T) {
 			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 			assert.NoError(t, err)
 
-			t.Cleanup(func() {
+			defer func() {
 				err := cleanFireStore(ctx, fs.Client)
 				assert.NoError(t, err)
-			})
+			}()
 
 			expected := routing.Datacenter{
 				ID:      crypto.HashID("local"),
@@ -1135,10 +1135,10 @@ func TestFirestore(t *testing.T) {
 		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 		assert.NoError(t, err)
 
-		t.Cleanup(func() {
+		defer func() {
 			err := cleanFireStore(ctx, fs.Client)
 			assert.NoError(t, err)
-		})
+		}()
 
 		expectedBuyer := routing.Buyer{
 			ID:                   1,
