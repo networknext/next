@@ -4661,7 +4661,7 @@ void next_route_manager_fallback_to_direct( next_route_manager_t * route_manager
 
     route_manager->fallback_to_direct = true;
 
-    next_printf( NEXT_LOG_LEVEL_INFO, "client falls back to direct" );
+    next_printf( NEXT_LOG_LEVEL_INFO, "client fallback to direct" );
 
     route_manager->route_data.previous_route = route_manager->route_data.current_route;
     route_manager->route_data.previous_route_session_id = route_manager->route_data.current_route_session_id;
@@ -4680,7 +4680,7 @@ void next_route_manager_direct_route( next_route_manager_t * route_manager, bool
 
     if ( !quiet )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "direct route" );
+        next_printf( NEXT_LOG_LEVEL_INFO, "client direct route" );
     }
 
     route_manager->route_data.previous_route = route_manager->route_data.current_route;
@@ -4712,7 +4712,7 @@ void next_route_manager_begin_next_route( next_route_manager_t * route_manager, 
         return;
     }
 
-    next_printf( NEXT_LOG_LEVEL_INFO, "next route" );
+    next_printf( NEXT_LOG_LEVEL_INFO, "client next route (%s)", committed ? "committed" : "uncommitted" );
 
     route_manager->route_data.pending_route = true;
     route_manager->route_data.pending_route_committed = committed;
@@ -4777,7 +4777,7 @@ void next_route_manager_continue_next_route( next_route_manager_t * route_manage
     next_assert( route_manager->route_data.pending_continue_request_packet_bytes <= NEXT_MAX_PACKET_BYTES );
     route_manager->route_data.direct_route_expire_time = -1.0;
 
-    next_printf( NEXT_LOG_LEVEL_INFO, "continue route" );
+    next_printf( NEXT_LOG_LEVEL_INFO, "client continues route (%s)", committed ? "committed" : "uncommitted" );
 }
 
 void next_route_manager_update( next_route_manager_t * route_manager, int update_type, bool committed, int num_tokens, uint8_t * tokens, const uint8_t * public_key, const uint8_t * private_key )
