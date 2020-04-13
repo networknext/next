@@ -4680,7 +4680,7 @@ void next_route_manager_direct_route( next_route_manager_t * route_manager, bool
 
     if ( !quiet )
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client takes direct route" );
+        next_printf( NEXT_LOG_LEVEL_INFO, "direct route" );
     }
 
     route_manager->route_data.previous_route = route_manager->route_data.current_route;
@@ -4712,7 +4712,7 @@ void next_route_manager_begin_next_route( next_route_manager_t * route_manager, 
         return;
     }
 
-    next_printf( NEXT_LOG_LEVEL_DEBUG, "client has a new network next route" );
+    next_printf( NEXT_LOG_LEVEL_INFO, "next route" );
 
     route_manager->route_data.pending_route = true;
     route_manager->route_data.pending_route_committed = committed;
@@ -4776,6 +4776,8 @@ void next_route_manager_continue_next_route( next_route_manager_t * route_manage
     memcpy( route_manager->route_data.pending_continue_request_packet_data + 1, tokens + NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES, ( size_t(num_tokens) - 1 ) * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
     next_assert( route_manager->route_data.pending_continue_request_packet_bytes <= NEXT_MAX_PACKET_BYTES );
     route_manager->route_data.direct_route_expire_time = -1.0;
+
+    next_printf( NEXT_LOG_LEVEL_INFO, "continue route" );
 }
 
 void next_route_manager_update( next_route_manager_t * route_manager, int update_type, bool committed, int num_tokens, uint8_t * tokens, const uint8_t * public_key, const uint8_t * private_key )
