@@ -38,6 +38,8 @@ int32_t main( int argc, const char * const argv[] )
     if ( sceLibSecureInit( SCE_LIBSECURE_FLAGS_RANDOM_GENERATOR, &random_seed_block ) != SCE_LIBSECURE_OK )
         exit( 1 );
 
+	next_log_level(NEXT_LOG_LEVEL_NONE);
+
 	next_config_t config;
 	next_default_config( &config );
 	strncpy_s( config.customer_public_key, customer_public_key, sizeof(config.customer_public_key) - 1 );
@@ -45,8 +47,6 @@ int32_t main( int argc, const char * const argv[] )
 	next_init( NULL, &config );
 
 	printf( "\nRunning tests...\n\n" );
-
-	next_log_level( NEXT_LOG_LEVEL_NONE );
 
 	next_test();
 

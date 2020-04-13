@@ -29,7 +29,6 @@
 
 #include <nn/os.h>
 
-#define NEXT_PLATFORM_HAS_IPV6                  0
 #define NEXT_PLATFORM_SOCKET_NON_BLOCKING       0
 #define NEXT_PLATFORM_SOCKET_BLOCKING           1
 

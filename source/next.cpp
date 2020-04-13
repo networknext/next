@@ -11905,20 +11905,6 @@ static void test_client_ipv4()
     next_client_destroy( client );
 }
 
-static void test_client_ipv6()
-{
-	next_client_t * client = next_client_create( NULL, "[::0]:0", test_client_packet_received_callback );
-	check( client);
-	check( next_client_port(client) != 0 );
-	next_client_open_session( client, "[::1]:12345" );
-	uint8_t packet[256];
-	memset( packet, 0, sizeof(packet) );
-	next_client_send_packet( client, packet, sizeof(packet) );
-	next_client_update( client);
-	next_client_close_session( client );
-	next_client_destroy( client );
-}
-
 static int num_server_packets_received = 0;
 
 static void test_server_packet_received_callback( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
@@ -11943,6 +11929,22 @@ static void test_server_ipv4()
     next_server_destroy( server );
 }
 
+#if defined(NEXT_PLATFORM_HAS_IPV6)
+
+static void test_client_ipv6()
+{
+	next_client_t * client = next_client_create( NULL, "[::0]:0", test_client_packet_received_callback );
+	check( client );
+	check( next_client_port( client ) != 0 );
+	next_client_open_session( client, "[::1]:12345" );
+	uint8_t packet[256];
+	memset( packet, 0, sizeof(packet) );
+	next_client_send_packet( client, packet, sizeof(packet) );
+	next_client_update( client );
+	next_client_close_session( client );
+	next_client_destroy( client );
+}
+
 static void test_server_ipv6()
 {
 	next_server_t * server = next_server_create( NULL, "[::1]:0", "[::0]:0", "local", test_server_packet_received_callback );
@@ -11957,6 +11959,8 @@ static void test_server_ipv6()
 	next_server_update( server );
 	next_server_destroy( server );
 }
+
+#endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
 
 static void test_direct()
 {
@@ -13430,9 +13434,11 @@ void next_test()
     RUN_TEST( test_platform_thread );
     RUN_TEST( test_platform_mutex );
 	RUN_TEST( test_client_ipv4 );
-	RUN_TEST( test_client_ipv6 );
 	RUN_TEST( test_server_ipv4 );
+#if defined(NEXT_PLATFORM_HAS_IPV6)
+	RUN_TEST( test_client_ipv6 );
 	RUN_TEST( test_server_ipv6 );
+#endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
 	RUN_TEST( test_direct );
     RUN_TEST( test_upgrade_token );
     RUN_TEST( test_packets );

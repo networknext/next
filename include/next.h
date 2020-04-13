@@ -126,6 +126,10 @@
     #define NEXT_PLATFORM NEXT_PLATFORM_LINUX
 #endif
 
+#if NEXT_PLATFORM != NEXT_PLATFORM_PS4 && NEXT_PLATFORM != NEXT_PLATFORM_SWITCH
+#define NEXT_PLATFORM_HAS_IPV6 1
+#endif // #if NEXT_PLATFORM != NEXT_PLATFORM_PS4 && NEXT_PLATFORM != NEXT_PLATFORM_SWITCH
+
 #if defined( _MSC_VER )
 #define NEXT_PACK_PUSH() __pragma( pack( push, 8 ) )
 #define NEXT_PACK_POP() __pragma( pack( pop ) )

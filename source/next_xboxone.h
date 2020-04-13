@@ -31,11 +31,6 @@
 #include <windows.h>
 #include <winsock2.h>
 
-#if WINVER <= 0x0502
-#define NEXT_PLATFORM_HAS_IPV6                  0
-#else
-#define NEXT_PLATFORM_HAS_IPV6                  1
-#endif
 #define NEXT_PLATFORM_SOCKET_NON_BLOCKING       0
 #define NEXT_PLATFORM_SOCKET_BLOCKING           1
 
