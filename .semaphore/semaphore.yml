@@ -18,11 +18,11 @@ blocks:
       jobs:
         - name: Relay
           commands:
-            - ./cmd/tools/scripts/semaphore-commands.sh
+            - ./cmd/tools/scripts/semaphore-check-firestore.sh
             - make test-unit-relay
         - name: Backend
           commands:
-            - ./cmd/tools/scripts/semaphore-commands.sh
+            - ./cmd/tools/scripts/semaphore-check-firestore.sh
             - make test-unit-backend
       env_vars:
         - name: FIRESTORE_EMULATOR_HOST
