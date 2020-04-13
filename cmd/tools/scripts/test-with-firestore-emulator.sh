@@ -1,7 +1,7 @@
 #!/bin/bash
 
 printf "Starting firestore emulator...\n\n"
-setsid gcloud beta emulators firestore start --host-port $FIRESTORE_EMULATOR_HOST &
+setsid gcloud beta emulators firestore start --host-port $FIRESTORE_EMULATOR_HOST --no-user-output-enabled &
 sessionID=$! # Get the session ID of this process so we can close it later
 
 # Trap kill the process group so all firestore emulator processes are closed properly
