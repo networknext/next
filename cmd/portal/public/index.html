@@ -121,13 +121,11 @@
                         </li>
                     </ul>
                 </nav>
-                <form class="px-5 hidden" id="config">
+                <form class="px-5 hidden" id="config" onsubmit="updatePubKey()">
                     <div class="form-row justify-content-middle">
                         <div class="form-group col-sm-2">
                             <label for="pubKey">Public Key</label>
-                            <textarea type="text" class="form-control" id="pubKey">
-                                {{pubkey}}
-                            </textarea>
+                            <input type="text" class="form-control" id="pubKey" v-bind:value="pubkey">
                         </div>
                     </div>
                     <div class="form-row justify-content-end">
