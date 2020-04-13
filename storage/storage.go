@@ -23,6 +23,22 @@ type Storer interface {
 	// SetBuyer updates the buyer in storage with the provided copy and returns an error if the buyer could not be updated.
 	SetBuyer(ctx context.Context, buyer routing.Buyer) error
 
+	// Seller gets a copy of a seller with the specified seller ID,
+	// and returns an empty seller and an error if a seller with that ID doesn't exist in storage.
+	Seller(id string) (routing.Seller, error)
+
+	// Sellers returns a copy of all stored sellers.
+	Sellers() []routing.Seller
+
+	// AddSeller adds the provided seller to storage and returns an error if the seller could not be added.
+	AddSeller(ctx context.Context, seller routing.Seller) error
+
+	// RemoveSeller removes a seller with the provided seller ID from storage and returns an error if the seller could not be removed.
+	RemoveSeller(ctx context.Context, id string) error
+
+	// SetSeller updates the seller in storage with the provided copy and returns an error if the seller could not be updated.
+	SetSeller(ctx context.Context, seller routing.Seller) error
+
 	// Relay gets a copy of a relay with the specified relay ID
 	// and returns an empty relay and an error if a relay with that ID doesn't exist in storage.
 	Relay(id uint64) (routing.Relay, error)

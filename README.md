@@ -28,9 +28,9 @@ The tool chain used for development is kept simple to make it easy for any opera
 - [sh](https://linux.die.net/man/1/sh)
 - [Go](https://golang.org/dl/#stable) (at least Go 1.13)
 - [g++](http://man7.org/linux/man-pages/man1/g++.1.html)
-    - [libcurl](https://curl.haxx.se/libcurl/)
-    - [libsodium](https://libsodium.gitbook.io)
-    - [libpthread](https://www.gnu.org/software/hurd/libpthread.html)
+  - [libcurl](https://curl.haxx.se/libcurl/)
+  - [libsodium](https://libsodium.gitbook.io)
+  - [libpthread](https://www.gnu.org/software/hurd/libpthread.html)
 
 Developers should install these requirements however they need to be installed based on your operating system. Windows users can leverage WSL to get all of these.
 
@@ -97,6 +97,37 @@ The [`SDK`](./sdk) is shipped to customers to use in their game client and serve
 ```
 
 Made with [asciiflow](http://asciiflow.com/). This text can be imported, changed, and exported to update if needed.
+
+## Testing
+
+Unit tests and functional tests are used in order to test code before it ships.
+
+## Unit Tests
+
+To run the unit tests, run `make test`. This will run unit tests for the SDK, relay, and all backend components.
+Because there are some remote services such as GCP that the backend components talk to, not all unit tests can be run without gcloud emulators or certain environment variables set. If the requirements for each of unit tests aren't met, they will be skipped.
+Here are the requirements to run each of the GCP related unit tests:
+
+Firestore:
+Install the gcloud firestore emulator: (Note that the emulator needs a Java Runtime Environment version 1.8 or higher installed and added to PATH)
+`gcloud components install beta`
+`gcloud components install cloud-firestore-emulator`
+
+    Add the environment variable `FIRESTORE_EMULATOR_HOST` to your makefile with the local address of the emulator (ex. `localhost:8000`).
+
+Stackdriver Metrics:
+Add the environment variable `GOOGLE_PROJECT_ID` to your makefile. Set it to a GCP project you have credentials to (ex. `network-next-v3-dev`).
+Add the environment variable `GOOGLE_APPLICATION_CREDENTIALS` to your makefile. Set it to the file path of your credentials file (ex. `$(CURRENT_DIR)/testdata/v3-dev-creds.json`).
+
+Pub/Sub:
+Add the environment variable `GOOGLE_PROJECT_ID` to your makefile. Set it to a GCP project you have credentials to (ex. `network-next-v3-dev`).
+Add the environment variable `GOOGLE_PUBSUB_TOPIC_BILLING` to your makefile. Set it to a pubsub topic you have credentials to push to (ex. `billing-v3-dev`).
+Add the environment variable `GOOGLE_APPLICATION_CREDENTIALS` to your makefile. Set it to the file path of your credentials file (ex. `$(CURRENT_DIR)/testdata/v3-dev-creds.json`).
+
+## Functional Tests
+
+In addition to unit tests, the system also take advantage of functional tests that run real world scenarios to make sure that all of the components are working properly.
+To run the functional tests, run `make test-func`, or more preferably, `make test-func-parallel`, since the func tests take a long time to run in series.
 
 ## Docker and Docker Compose
 
