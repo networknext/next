@@ -6,10 +6,54 @@ import (
 
 	"github.com/alicebob/miniredis"
 	"github.com/go-redis/redis/v7"
+	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/jsonrpc"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestSessionsMap(t *testing.T) {
+	redisServer, _ := miniredis.Run()
+	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+	sessions := []transport.SessionCacheEntry{
+		{CustomerID: 12345, SessionID: 1, RouteDecision: routing.Decision{OnNetworkNext: false}, Location: routing.Location{Latitude: 0, Longitude: 0}},
+		{CustomerID: 12345, SessionID: 2, RouteDecision: routing.Decision{OnNetworkNext: true}, Location: routing.Location{Latitude: 13, Longitude: 14}},
+	}
+	for _, session := range sessions {
+		buf, err := session.MarshalBinary()
+		assert.NoError(t, err)
+
+		err = redisServer.Set(fmt.Sprintf("SESSION-%d-%d", session.CustomerID, session.SessionID), string(buf))
+		assert.NoError(t, err)
+	}
+
+	svc := jsonrpc.BuyersService{
+		RedisClient: redisClient,
+	}
+
+	t.Run("missing buyer_id", func(t *testing.T) {
+		var reply jsonrpc.MapReply
+		err := svc.SessionsMap(nil, &jsonrpc.MapArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("list", func(t *testing.T) {
+		var reply jsonrpc.MapReply
+		err := svc.SessionsMap(nil, &jsonrpc.MapArgs{BuyerID: "12345"}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 2, len(reply.SessionPoints))
+
+		assert.Equal(t, reply.SessionPoints[0].OnNetworkNext, false)
+		assert.NotZero(t, reply.SessionPoints[0].Coordinates[0])
+		assert.NotZero(t, reply.SessionPoints[0].Coordinates[1])
+
+		assert.Equal(t, reply.SessionPoints[1].OnNetworkNext, true)
+		assert.Equal(t, reply.SessionPoints[1].Coordinates[0], float64(13))
+		assert.Equal(t, reply.SessionPoints[1].Coordinates[1], float64(14))
+	})
+}
 
 func TestSessions(t *testing.T) {
 	redisServer, _ := miniredis.Run()
