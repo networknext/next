@@ -20,8 +20,8 @@ const (
 	RouterPublicKeyProd  = "placeholder"
 
 	RelayBackendHostnameLocal = "localhost:30000"
-	RelayBackendHostnameDev   = "http://relay_backend.dev.spacecats.net:40000"
-	RelayBackendHostnameProd  = "http://relay_backend.prod.spacecats.net:40000"
+	RelayBackendHostnameDev   = "http://relay_backend.dev.networknext.com:40000"
+	RelayBackendHostnameProd  = "http://relay_backend.prod.networknext.com"
 )
 
 type Environment struct {
