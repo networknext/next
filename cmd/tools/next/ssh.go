@@ -17,13 +17,15 @@ const (
 		exit
 	fi
 
-	sudo systemctl stop relay
+	sudo systemctl stop relay || exit 1
 
 	echo "Waiting for the relay service to clean shutdown"
 
 	while systemctl is-active --quiet relay; do
 		sleep 1
 	done
+
+	sudo systemctl disable relay
 
 	echo 'Relay service shutdown'
 	`
@@ -34,7 +36,8 @@ const (
 		exit
 	fi
 
-	sudo systemctl start relay
+	sudo systemctl enable relay || exit 1
+	sudo systemctl start relay || exit 1
 
 	echo 'Relay service started'
 	`
