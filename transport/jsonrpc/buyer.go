@@ -1,6 +1,7 @@
 package jsonrpc
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"sort"
@@ -142,7 +143,8 @@ func (s *BuyersService) Sessions(r *http.Request, args *SessionsArgs, reply *Ses
 }
 
 type GameConfigurationArgs struct {
-	BuyerID string `json:"buyer_id"`
+	BuyerID      string `json:"buyer_id"`
+	NewPublicKey string `json:"new_public_key"`
 }
 
 type GameConfigurationReply struct {
@@ -168,6 +170,38 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 
 	if buyer, err = s.Storage.Buyer(buyerID); err != nil {
 		return fmt.Errorf("failed to fetch buyer info from Storer")
+	}
+
+	reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
+
+	return nil
+}
+
+func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfigurationArgs, reply *GameConfigurationReply) error {
+	var err error
+	var buyerID uint64
+	var buyer routing.Buyer
+
+	ctx := context.Background()
+
+	if args.BuyerID == "" {
+		return fmt.Errorf("buyer_id is required")
+	}
+
+	if buyerID, err = strconv.ParseUint(args.BuyerID, 10, 64); err != nil {
+		return fmt.Errorf("failed to convert BuyerID to uint64")
+	}
+
+	if buyer, err = s.Storage.Buyer(buyerID); err != nil {
+		return fmt.Errorf("failed to fetch buyer info from Storer")
+	}
+
+	if err = buyer.DecodedPublicKey(args.NewPublicKey); err != nil {
+		return fmt.Errorf("failed to decode public key")
+	}
+
+	if err = s.Storage.SetBuyer(ctx, buyer); err != nil {
+		return fmt.Errorf("failed to update buyer public key")
 	}
 
 	reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()

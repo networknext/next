@@ -133,16 +133,27 @@ func TestGameConfiguration(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("failed to find buyer", func(t *testing.T) {
-		_, err := storer.Buyer(1234)
-		assert.Error(t, err)
-	})
-
 	t.Run("single", func(t *testing.T) {
 		var reply jsonrpc.GameConfigurationReply
 		err := svc.GameConfiguration(nil, &jsonrpc.GameConfigurationArgs{BuyerID: "1"}, &reply)
 		assert.NoError(t, err)
 
 		assert.Equal(t, reply.GameConfiguration.PublicKey, "AAAAAA==")
+	})
+
+	t.Run("update public key", func(t *testing.T) {
+		var reply jsonrpc.GameConfigurationReply
+		err := svc.UpdateGameConfiguration(nil, &jsonrpc.GameConfigurationArgs{BuyerID: "1", NewPublicKey: "iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAYA"}, &reply)
+
+		assert.NoError(t, err)
+
+		assert.Equal(t, reply.GameConfiguration.PublicKey, "iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAYA")
+	})
+
+	t.Run("failed to update public key", func(t *testing.T) {
+		var reply jsonrpc.GameConfigurationReply
+		err := svc.UpdateGameConfiguration(nil, &jsonrpc.GameConfigurationArgs{BuyerID: "1", NewPublicKey: "askjfgbdalksjdf balkjsdbf lkja flfakjs bdlkafs"}, &reply)
+
+		assert.Error(t, err)
 	})
 }
