@@ -36,3 +36,17 @@ func addDatacenter(rpcClient jsonrpc.RPCClient, datacenter routing.Datacenter) {
 
 	fmt.Printf("Datacenter \"%s\" added to storage.\n", datacenter.Name)
 }
+
+func removeDatacenter(rpcClient jsonrpc.RPCClient, name string) {
+	args := localjsonrpc.RemoveDatacenterArgs{
+		Name: name,
+	}
+
+	var reply localjsonrpc.RemoveDatacenterReply
+	if err := rpcClient.CallFor(&reply, "OpsService.RemoveDatacenter", args); err != nil {
+		handleJSONRPCError(err)
+		return
+	}
+
+	fmt.Printf("Datacenter \"%s\" removed from storage.\n", name)
+}

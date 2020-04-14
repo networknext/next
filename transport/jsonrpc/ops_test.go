@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"fmt"
 	"testing"
 
 	"github.com/networknext/backend/crypto"
@@ -73,6 +74,50 @@ func TestAddBuyer(t *testing.T) {
 	})
 }
 
+func TestRemoveBuyer(t *testing.T) {
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	publicKey := make([]byte, crypto.KeySize)
+	_, err := rand.Read(publicKey)
+	assert.NoError(t, err)
+
+	expected := routing.Buyer{
+		ID:                   1,
+		Name:                 "local buyer",
+		Active:               true,
+		Live:                 false,
+		PublicKey:            publicKey,
+		RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
+	}
+
+	t.Run("doesn't exist", func(t *testing.T) {
+		var reply jsonrpc.RemoveBuyerReply
+
+		err = svc.RemoveBuyer(nil, &jsonrpc.RemoveBuyerArgs{ID: expected.ID}, &reply)
+		assert.EqualError(t, err, "buyer with id 1 not found in memory storage")
+	})
+
+	t.Run("remove", func(t *testing.T) {
+		var addReply jsonrpc.AddBuyerReply
+		err := svc.AddBuyer(nil, &jsonrpc.AddBuyerArgs{Buyer: expected}, &addReply)
+		assert.NoError(t, err)
+
+		var reply jsonrpc.RemoveBuyerReply
+		err = svc.RemoveBuyer(nil, &jsonrpc.RemoveBuyerArgs{ID: expected.ID}, &reply)
+		assert.NoError(t, err)
+
+		var buyersReply jsonrpc.BuyersReply
+		err = svc.Buyers(nil, &jsonrpc.BuyersArgs{}, &buyersReply)
+		assert.NoError(t, err)
+
+		assert.Len(t, buyersReply.Buyers, 0)
+	})
+}
+
 func TestSellers(t *testing.T) {
 	expected := routing.Seller{
 		ID:                "1",
@@ -139,6 +184,48 @@ func TestAddSeller(t *testing.T) {
 
 		err = svc.AddSeller(nil, &jsonrpc.AddSellerArgs{Seller: expected}, &reply)
 		assert.EqualError(t, err, "seller with id id already exists in memory storage")
+	})
+}
+
+func TestRemoveSeller(t *testing.T) {
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	publicKey := make([]byte, crypto.KeySize)
+	_, err := rand.Read(publicKey)
+	assert.NoError(t, err)
+
+	expected := routing.Seller{
+		ID:                "1",
+		Name:              "local seller",
+		IngressPriceCents: 10,
+		EgressPriceCents:  20,
+	}
+
+	t.Run("doesn't exist", func(t *testing.T) {
+		var reply jsonrpc.RemoveSellerReply
+
+		err = svc.RemoveSeller(nil, &jsonrpc.RemoveSellerArgs{ID: expected.ID}, &reply)
+		assert.EqualError(t, err, "seller with id 1 not found in memory storage")
+	})
+
+	t.Run("remove", func(t *testing.T) {
+		var addReply jsonrpc.AddSellerReply
+		err := svc.AddSeller(nil, &jsonrpc.AddSellerArgs{Seller: expected}, &addReply)
+		assert.NoError(t, err)
+
+		var reply jsonrpc.RemoveSellerReply
+		err = svc.RemoveSeller(nil, &jsonrpc.RemoveSellerArgs{ID: expected.ID}, &reply)
+		assert.NoError(t, err)
+
+		var sellersReply jsonrpc.SellersReply
+		err = svc.Sellers(nil, &jsonrpc.SellersArgs{}, &sellersReply)
+		assert.NoError(t, err)
+
+		assert.Len(t, sellersReply.Sellers, 0)
 	})
 }
 
@@ -359,5 +446,50 @@ func TestAddDatacenter(t *testing.T) {
 
 		err = svc.AddDatacenter(nil, &jsonrpc.AddDatacenterArgs{Datacenter: expected}, &reply)
 		assert.EqualError(t, err, "datacenter with id 1 already exists in memory storage")
+	})
+}
+
+func TestRemoveDatacenter(t *testing.T) {
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	publicKey := make([]byte, crypto.KeySize)
+	_, err := rand.Read(publicKey)
+	assert.NoError(t, err)
+
+	expected := routing.Datacenter{
+		ID:      crypto.HashID("local datacenter"),
+		Name:    "local datacenter",
+		Enabled: false,
+		Location: routing.Location{
+			Latitude:  70.5,
+			Longitude: 120.5,
+		},
+	}
+
+	t.Run("doesn't exist", func(t *testing.T) {
+		var reply jsonrpc.RemoveDatacenterReply
+
+		err = svc.RemoveDatacenter(nil, &jsonrpc.RemoveDatacenterArgs{Name: expected.Name}, &reply)
+		assert.EqualError(t, err, fmt.Sprintf("datacenter with id %d not found in memory storage", expected.ID))
+	})
+
+	t.Run("remove", func(t *testing.T) {
+		var addReply jsonrpc.AddDatacenterReply
+		err := svc.AddDatacenter(nil, &jsonrpc.AddDatacenterArgs{Datacenter: expected}, &addReply)
+		assert.NoError(t, err)
+
+		var reply jsonrpc.RemoveDatacenterReply
+		err = svc.RemoveDatacenter(nil, &jsonrpc.RemoveDatacenterArgs{Name: expected.Name}, &reply)
+		assert.NoError(t, err)
+
+		var datacentersReply jsonrpc.DatacentersReply
+		err = svc.Datacenters(nil, &jsonrpc.DatacentersArgs{}, &datacentersReply)
+		assert.NoError(t, err)
+
+		assert.Len(t, datacentersReply.Datacenters, 0)
 	})
 }

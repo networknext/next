@@ -17,6 +17,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -312,7 +313,7 @@ func main() {
 					{
 						Name:       "add",
 						ShortUsage: "next buyers add [filepath]",
-						ShortHelp:  "Add a buyer to Firestore from a JSON file or piped from stdin",
+						ShortHelp:  "Add a buyer to storage from a JSON file or piped from stdin",
 						Exec: func(_ context.Context, args []string) error {
 							jsonData := readAddJSONFileData("buyers", args)
 
@@ -322,7 +323,7 @@ func main() {
 								log.Fatalf("Could not unmarshal buyer: %v", err)
 							}
 
-							// Add the Buyer to Firestore
+							// Add the Buyer to storage
 							addBuyer(rpcClient, buyer)
 							return nil
 						},
@@ -349,6 +350,24 @@ func main() {
 							},
 						},
 					},
+					{
+						Name:       "remove",
+						ShortUsage: "next buyers remove <id>",
+						ShortHelp:  "Remove a buyer from storage",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) == 0 {
+								log.Fatal("Provide the buyer ID of the buyer you wish to remove\nFor a list of buyers, use next buyers")
+							}
+
+							buyerID, err := strconv.ParseInt(args[0], 10, 64)
+							if err != nil {
+								log.Fatalf("Error parsing ID %s: %v", args[0], err)
+							}
+
+							removeBuyer(rpcClient, uint64(buyerID))
+							return nil
+						},
+					},
 				},
 			},
 			{
@@ -363,7 +382,7 @@ func main() {
 					{
 						Name:       "add",
 						ShortUsage: "next sellers add [filepath]",
-						ShortHelp:  "Add a seller to Firestore from a JSON file or piped from stdin",
+						ShortHelp:  "Add a seller to storage from a JSON file or piped from stdin",
 						Exec: func(_ context.Context, args []string) error {
 							jsonData := readAddJSONFileData("sellers", args)
 
@@ -373,7 +392,7 @@ func main() {
 								log.Fatalf("Could not unmarshal seller: %v", err)
 							}
 
-							// Add the Seller to Firestore
+							// Add the Seller to storage
 							addSeller(rpcClient, seller)
 							return nil
 						},
@@ -400,6 +419,19 @@ func main() {
 							},
 						},
 					},
+					{
+						Name:       "remove",
+						ShortUsage: "next sellers remove <id>",
+						ShortHelp:  "Remove a seller from storage",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) == 0 {
+								log.Fatal("Provide the seller ID of the seller you wish to remove\nFor a list of sellers, use next sellers")
+							}
+
+							removeSeller(rpcClient, args[0])
+							return nil
+						},
+					},
 				},
 			},
 			{
@@ -418,7 +450,7 @@ func main() {
 					{
 						Name:       "add",
 						ShortUsage: "next datacenters add <filepath>",
-						ShortHelp:  "Add a datacenter to Firestore from a JSON file or piped from stdin",
+						ShortHelp:  "Add a datacenter to storage from a JSON file or piped from stdin",
 						Exec: func(_ context.Context, args []string) error {
 							jsonData := readAddJSONFileData("datacenters", args)
 
@@ -431,7 +463,7 @@ func main() {
 							// Force the datacenter ID to be a hash of its name
 							datacenter.ID = crypto.HashID(datacenter.Name)
 
-							// Add the Datacenter to Firestore
+							// Add the Datacenter to storage
 							addDatacenter(rpcClient, datacenter)
 							return nil
 						},
@@ -457,6 +489,19 @@ func main() {
 									return nil
 								},
 							},
+						},
+					},
+					{
+						Name:       "remove",
+						ShortUsage: "next datacenters remove <id>",
+						ShortHelp:  "Remove a datacenter from storage",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) == 0 {
+								log.Fatal("Provide the datacenter ID of the datacenter you wish to remove\nFor a list of datacenters, use next datacenters")
+							}
+
+							removeDatacenter(rpcClient, args[0])
+							return nil
 						},
 					},
 				},

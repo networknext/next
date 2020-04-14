@@ -34,3 +34,17 @@ func addBuyer(rpcClient jsonrpc.RPCClient, buyer routing.Buyer) {
 
 	fmt.Printf("Buyer \"%s\" added to storage.\n", buyer.Name)
 }
+
+func removeBuyer(rpcClient jsonrpc.RPCClient, id uint64) {
+	args := localjsonrpc.RemoveBuyerArgs{
+		ID: id,
+	}
+
+	var reply localjsonrpc.RemoveBuyerReply
+	if err := rpcClient.CallFor(&reply, "OpsService.RemoveBuyer", args); err != nil {
+		handleJSONRPCError(err)
+		return
+	}
+
+	fmt.Printf("Buyer with ID \"%d\" removed from storage.\n", id)
+}

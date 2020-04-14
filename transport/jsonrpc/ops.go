@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v7"
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 )
@@ -63,6 +64,24 @@ func (s *OpsService) AddBuyer(r *http.Request, args *AddBuyerArgs, reply *AddBuy
 	return nil
 }
 
+type RemoveBuyerArgs struct {
+	ID uint64
+}
+
+type RemoveBuyerReply struct{}
+
+func (s *OpsService) RemoveBuyer(r *http.Request, args *RemoveBuyerArgs, reply *RemoveBuyerReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+
+	if err := s.Storage.RemoveBuyer(ctx, args.ID); err != nil {
+		cancelFunc()
+		return err
+	}
+
+	cancelFunc()
+	return nil
+}
+
 type SellersArgs struct{}
 
 type SellersReply struct {
@@ -103,6 +122,24 @@ func (s *OpsService) AddSeller(r *http.Request, args *AddSellerArgs, reply *AddS
 	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
 
 	if err := s.Storage.AddSeller(ctx, args.Seller); err != nil {
+		cancelFunc()
+		return err
+	}
+
+	cancelFunc()
+	return nil
+}
+
+type RemoveSellerArgs struct {
+	ID string
+}
+
+type RemoveSellerReply struct{}
+
+func (s *OpsService) RemoveSeller(r *http.Request, args *RemoveSellerArgs, reply *RemoveSellerReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+
+	if err := s.Storage.RemoveSeller(ctx, args.ID); err != nil {
 		cancelFunc()
 		return err
 	}
@@ -273,6 +310,26 @@ func (s *OpsService) AddDatacenter(r *http.Request, args *AddDatacenterArgs, rep
 	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
 
 	if err := s.Storage.AddDatacenter(ctx, args.Datacenter); err != nil {
+		cancelFunc()
+		return err
+	}
+
+	cancelFunc()
+	return nil
+}
+
+type RemoveDatacenterArgs struct {
+	Name string
+}
+
+type RemoveDatacenterReply struct{}
+
+func (s *OpsService) RemoveDatacenter(r *http.Request, args *RemoveDatacenterArgs, reply *RemoveDatacenterReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+
+	id := crypto.HashID(args.Name)
+
+	if err := s.Storage.RemoveDatacenter(ctx, id); err != nil {
 		cancelFunc()
 		return err
 	}
