@@ -45,6 +45,20 @@ function changeAccountPage(page) {
 	}
 }
 
+function updatePubKey() {
+	let newPubkey = document.getElementById("pubKey").value;
+
+	JSONRPCClient
+		.call("BuyersService.UpdateGameConfiguration", {buyer_id: '13672574147039585173', new_public_key: newPubkey})
+		.then((response) => {
+			document.getElementById("pubKey").value = response.game_config.public_key;
+		})
+		.catch((e) => {
+			console.log(e);
+			console.log("Failed to update public key");
+		})
+}
+
 JSONRPCClient = {
 
 	async call(method, params) {
@@ -84,6 +98,7 @@ window.MapHandler = {
 		JSONRPCClient
 			.call('BuyersService.SessionsMap', {buyer_id: '12354645743257'})
 			.then((response) => {
+				console.log(response)
 				let data = response.sess_points;
 				let sessionLayer = new deck.HexagonLayer({
 					id: 'session-layer',
@@ -91,7 +106,7 @@ window.MapHandler = {
 					pickable: true,
 					extruded: false,
 					colorRange: [[0,109,44], [8,81,156]], // [blue, green]
-					radius: 1000,
+					radius: 50000,
 					elevationScale: 4,
 					getPosition: d => d.COORDINATES,
 					onHover: info => setTooltip(info.object, info.x, info.y)
@@ -111,12 +126,12 @@ window.MapHandler = {
 						zoom: 2, */
 						maxZoom: 15,
 					},
-					getColorValue: (points) => {
+					getColorWeight: (points) => {
 						let onNetworkNext = points.find((point) => {
 							return point.on_network_next;
 						});
 
-						return typeof onNetworkNext === 'undefined' ? 0 : 1;
+						return typeof onNetworkNext === 'undefined' ? 1 : 0;
 					},
 					container: 'map-workspace',
 					controller: true,
@@ -131,7 +146,6 @@ window.MapHandler = {
 		function setTooltip(object, x, y) {
 			const el = document.getElementById('tooltip');
 			if (object) {
-				console.log(object)
 				el.innerHTML = object.points.length;
 				el.style.display = 'block';
 				el.style.left = x + 'px';

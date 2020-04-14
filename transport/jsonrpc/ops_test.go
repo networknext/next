@@ -2,6 +2,7 @@ package jsonrpc_test
 
 import (
 	"context"
+	"encoding/base64"
 	"testing"
 
 	"github.com/networknext/backend/routing"
@@ -114,6 +115,58 @@ func TestRelayStateUpdate(t *testing.T) {
 		relay, err = svc.Storage.Relay(2)
 		assert.NoError(t, err)
 		assert.Equal(t, routing.RelayState(123456), relay.State)
+	})
+}
+
+func TestRelayPublicKeyUpdate(t *testing.T) {
+	makeSvc := func() *jsonrpc.OpsService {
+		var storer storage.InMemory
+		storer.AddRelay(context.Background(), routing.Relay{
+			ID:        1,
+			PublicKey: []byte("oldpublickey"),
+		})
+		storer.AddRelay(context.Background(), routing.Relay{
+			ID:        2,
+			PublicKey: []byte("oldpublickey"),
+		})
+
+		return &jsonrpc.OpsService{
+			Storage: &storer,
+		}
+	}
+
+	t.Run("found", func(t *testing.T) {
+		svc := makeSvc()
+		err := svc.RelayPublicKeyUpdate(nil, &jsonrpc.RelayPublicKeyUpdateArgs{
+			RelayID:        1,
+			RelayPublicKey: "newpublickey",
+		}, &jsonrpc.RelayPublicKeyUpdateReply{})
+		assert.NoError(t, err)
+
+		relay, err := svc.Storage.Relay(1)
+		assert.NoError(t, err)
+		assert.Equal(t, "newpublickey", base64.StdEncoding.EncodeToString(relay.PublicKey))
+
+		relay, err = svc.Storage.Relay(2)
+		assert.NoError(t, err)
+		assert.Equal(t, []byte("oldpublickey"), relay.PublicKey)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		svc := makeSvc()
+		err := svc.RelayPublicKeyUpdate(nil, &jsonrpc.RelayPublicKeyUpdateArgs{
+			RelayID:        987654321,
+			RelayPublicKey: "newpublickey",
+		}, &jsonrpc.RelayPublicKeyUpdateReply{})
+		assert.Error(t, err)
+
+		relay, err := svc.Storage.Relay(1)
+		assert.NoError(t, err)
+		assert.Equal(t, []byte("oldpublickey"), relay.PublicKey)
+
+		relay, err = svc.Storage.Relay(2)
+		assert.NoError(t, err)
+		assert.Equal(t, []byte("oldpublickey"), relay.PublicKey)
 	})
 }
 
