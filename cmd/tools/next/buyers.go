@@ -1,7 +1,10 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/modood/table"
+	"github.com/networknext/backend/routing"
 	localjsonrpc "github.com/networknext/backend/transport/jsonrpc"
 	"github.com/ybbus/jsonrpc"
 )
@@ -16,4 +19,18 @@ func buyers(rpcClient jsonrpc.RPCClient) {
 	}
 
 	table.Output(reply.Buyers)
+}
+
+func addBuyer(rpcClient jsonrpc.RPCClient, buyer routing.Buyer) {
+	args := localjsonrpc.AddBuyerArgs{
+		Buyer: buyer,
+	}
+
+	var reply localjsonrpc.AddBuyerReply
+	if err := rpcClient.CallFor(&reply, "OpsService.AddBuyer", args); err != nil {
+		handleJSONRPCError(err)
+		return
+	}
+
+	fmt.Printf("Buyer \"%s\" added to storage.\n", buyer.Name)
 }

@@ -45,6 +45,72 @@ func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersRepl
 	return nil
 }
 
+type AddBuyerArgs struct {
+	Buyer routing.Buyer
+}
+
+type AddBuyerReply struct{}
+
+func (s *OpsService) AddBuyer(r *http.Request, args *AddBuyerArgs, reply *AddBuyerReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+
+	if err := s.Storage.AddBuyer(ctx, args.Buyer); err != nil {
+		cancelFunc()
+		return err
+	}
+
+	cancelFunc()
+	return nil
+}
+
+type SellersArgs struct{}
+
+type SellersReply struct {
+	Sellers []seller
+}
+
+type seller struct {
+	ID                string `json:"id"`
+	Name              string `json:"name"`
+	IngressPriceCents uint64 `json:"ingressPriceCents"`
+	EgressPriceCents  uint64 `json:"egressPriceCents"`
+}
+
+func (s *OpsService) Sellers(r *http.Request, args *SellersArgs, reply *SellersReply) error {
+	for _, s := range s.Storage.Sellers() {
+		reply.Sellers = append(reply.Sellers, seller{
+			ID:                s.ID,
+			Name:              s.Name,
+			IngressPriceCents: s.IngressPriceCents,
+			EgressPriceCents:  s.EgressPriceCents,
+		})
+	}
+
+	sort.Slice(reply.Sellers, func(i int, j int) bool {
+		return reply.Sellers[i].Name < reply.Sellers[j].Name
+	})
+
+	return nil
+}
+
+type AddSellerArgs struct {
+	Seller routing.Seller
+}
+
+type AddSellerReply struct{}
+
+func (s *OpsService) AddSeller(r *http.Request, args *AddSellerArgs, reply *AddSellerReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+
+	if err := s.Storage.AddSeller(ctx, args.Seller); err != nil {
+		cancelFunc()
+		return err
+	}
+
+	cancelFunc()
+	return nil
+}
+
 type RelaysArgs struct {
 	Name string `json:"name"`
 }
@@ -194,5 +260,23 @@ func (s *OpsService) Datacenters(r *http.Request, args *DatacentersArgs, reply *
 		return reply.Datacenters[i].Name < reply.Datacenters[j].Name
 	})
 
+	return nil
+}
+
+type AddDatacenterArgs struct {
+	Datacenter routing.Datacenter
+}
+
+type AddDatacenterReply struct{}
+
+func (s *OpsService) AddDatacenter(r *http.Request, args *AddDatacenterArgs, reply *AddDatacenterReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+
+	if err := s.Storage.AddDatacenter(ctx, args.Datacenter); err != nil {
+		cancelFunc()
+		return err
+	}
+
+	cancelFunc()
 	return nil
 }

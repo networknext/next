@@ -2,9 +2,11 @@ package jsonrpc_test
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/base64"
 	"testing"
 
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport/jsonrpc"
@@ -26,6 +28,117 @@ func TestBuyers(t *testing.T) {
 
 		assert.Equal(t, reply.Buyers[0].ID, uint64(1))
 		assert.Equal(t, reply.Buyers[0].Name, "local.local.1")
+	})
+}
+
+func TestAddBuyer(t *testing.T) {
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	publicKey := make([]byte, crypto.KeySize)
+	_, err := rand.Read(publicKey)
+	assert.NoError(t, err)
+
+	expected := routing.Buyer{
+		ID:                   1,
+		Name:                 "local buyer",
+		Active:               true,
+		Live:                 false,
+		PublicKey:            publicKey,
+		RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
+	}
+
+	t.Run("add", func(t *testing.T) {
+		var reply jsonrpc.AddBuyerReply
+		err := svc.AddBuyer(nil, &jsonrpc.AddBuyerArgs{Buyer: expected}, &reply)
+		assert.NoError(t, err)
+
+		var buyersReply jsonrpc.BuyersReply
+		err = svc.Buyers(nil, &jsonrpc.BuyersArgs{}, &buyersReply)
+		assert.NoError(t, err)
+
+		assert.Len(t, buyersReply.Buyers, 1)
+		assert.Equal(t, buyersReply.Buyers[0].ID, expected.ID)
+		assert.Equal(t, buyersReply.Buyers[0].Name, expected.Name)
+	})
+
+	t.Run("exists", func(t *testing.T) {
+		var reply jsonrpc.AddBuyerReply
+
+		err = svc.AddBuyer(nil, &jsonrpc.AddBuyerArgs{Buyer: expected}, &reply)
+		assert.EqualError(t, err, "buyer with id 1 already exists in memory storage")
+	})
+}
+
+func TestSellers(t *testing.T) {
+	expected := routing.Seller{
+		ID:                "1",
+		Name:              "local.local.1",
+		IngressPriceCents: 10,
+		EgressPriceCents:  20,
+	}
+
+	storer := storage.InMemory{}
+	storer.AddSeller(context.Background(), expected)
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	t.Run("list", func(t *testing.T) {
+		var reply jsonrpc.SellersReply
+		err := svc.Sellers(nil, &jsonrpc.SellersArgs{}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, reply.Sellers[0].ID, expected.ID)
+		assert.Equal(t, reply.Sellers[0].Name, expected.Name)
+		assert.Equal(t, reply.Sellers[0].IngressPriceCents, expected.IngressPriceCents)
+		assert.Equal(t, reply.Sellers[0].EgressPriceCents, expected.EgressPriceCents)
+	})
+}
+
+func TestAddSeller(t *testing.T) {
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	publicKey := make([]byte, crypto.KeySize)
+	_, err := rand.Read(publicKey)
+	assert.NoError(t, err)
+
+	expected := routing.Seller{
+		ID:                "id",
+		Name:              "local seller",
+		IngressPriceCents: 10,
+		EgressPriceCents:  20,
+	}
+
+	t.Run("add", func(t *testing.T) {
+		var reply jsonrpc.AddSellerReply
+		err := svc.AddSeller(nil, &jsonrpc.AddSellerArgs{Seller: expected}, &reply)
+		assert.NoError(t, err)
+
+		var sellersReply jsonrpc.SellersReply
+		err = svc.Sellers(nil, &jsonrpc.SellersArgs{}, &sellersReply)
+		assert.NoError(t, err)
+
+		assert.Len(t, sellersReply.Sellers, 1)
+		assert.Equal(t, sellersReply.Sellers[0].ID, expected.ID)
+		assert.Equal(t, sellersReply.Sellers[0].Name, expected.Name)
+		assert.Equal(t, sellersReply.Sellers[0].IngressPriceCents, expected.IngressPriceCents)
+		assert.Equal(t, sellersReply.Sellers[0].EgressPriceCents, expected.EgressPriceCents)
+	})
+
+	t.Run("exists", func(t *testing.T) {
+		var reply jsonrpc.AddSellerReply
+
+		err = svc.AddSeller(nil, &jsonrpc.AddSellerArgs{Seller: expected}, &reply)
+		assert.EqualError(t, err, "seller with id id already exists in memory storage")
 	})
 }
 
@@ -201,5 +314,50 @@ func TestDatacenters(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, len(empty.Datacenters), 0)
+	})
+}
+
+func TestAddDatacenter(t *testing.T) {
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	publicKey := make([]byte, crypto.KeySize)
+	_, err := rand.Read(publicKey)
+	assert.NoError(t, err)
+
+	expected := routing.Datacenter{
+		ID:      1,
+		Name:    "local datacenter",
+		Enabled: false,
+		Location: routing.Location{
+			Latitude:  70.5,
+			Longitude: 120.5,
+		},
+	}
+
+	t.Run("add", func(t *testing.T) {
+		var reply jsonrpc.AddDatacenterReply
+		err := svc.AddDatacenter(nil, &jsonrpc.AddDatacenterArgs{Datacenter: expected}, &reply)
+		assert.NoError(t, err)
+
+		var datacentersReply jsonrpc.DatacentersReply
+		err = svc.Datacenters(nil, &jsonrpc.DatacentersArgs{}, &datacentersReply)
+		assert.NoError(t, err)
+
+		assert.Len(t, datacentersReply.Datacenters, 1)
+		assert.Equal(t, datacentersReply.Datacenters[0].Name, expected.Name)
+		assert.Equal(t, datacentersReply.Datacenters[0].Latitude, expected.Location.Latitude)
+		assert.Equal(t, datacentersReply.Datacenters[0].Longitude, expected.Location.Longitude)
+		assert.Equal(t, datacentersReply.Datacenters[0].Enabled, expected.Enabled)
+	})
+
+	t.Run("exists", func(t *testing.T) {
+		var reply jsonrpc.AddDatacenterReply
+
+		err = svc.AddDatacenter(nil, &jsonrpc.AddDatacenterArgs{Datacenter: expected}, &reply)
+		assert.EqualError(t, err, "datacenter with id 1 already exists in memory storage")
 	})
 }
