@@ -105,6 +105,11 @@
 #define NEXT_SERVER_INIT_RESPONSE_SDK_VERSION_TOO_OLD                   3
 #define NEXT_SERVER_INIT_RESPONSE_SIGNATURE_CHECK_FAILED                4
 
+#define NEXT_SERVER_STATE_DIRECT_ONLY                                   0
+#define NEXT_SERVER_STATE_RESOLVING_HOSTNAME                            1
+#define NEXT_SERVER_STATE_INITIALIZING                                  2
+#define NEXT_SERVER_STATE_INITIALIZED                                   4
+
 static const uint8_t next_backend_public_key[] = 
 { 
      76,  97, 202, 140,  71, 135,  62, 212, 
@@ -8657,6 +8662,7 @@ struct next_server_notify_failed_to_resolve_hostname_t : public next_server_noti
 struct next_server_internal_t
 {
     void * context;
+    int state;
     uint64_t datacenter_id;
     uint64_t customer_id;
     uint8_t customer_private_key[crypto_sign_SECRETKEYBYTES];
