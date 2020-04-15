@@ -357,6 +357,13 @@ void next_sleep( double time_seconds )
     next_platform_sleep( time_seconds );
 }
 
+static int log_quiet = false;
+
+void next_quiet( bool flag )
+{
+    log_quiet = flag;
+}
+
 static int log_level = NEXT_LOG_LEVEL_INFO;
 
 void next_log_level( int level )
@@ -393,8 +400,11 @@ static void default_log_function( int level, const char * format, ... )
     vsnprintf( buffer, sizeof( buffer ), format, args );
 	if ( level != NEXT_LOG_LEVEL_NONE )
 	{
-		const char * level_string = next_log_level_string( level );
-		printf( "%.6f: %s: %s\n", next_time(), level_string, buffer );
+        if ( !log_quiet )
+        {
+            const char * level_string = next_log_level_string( level );
+            printf( "%.6f: %s: %s\n", next_time(), level_string, buffer );
+        }
 	}
 	else
 	{
@@ -3446,14 +3456,12 @@ int next_init( void * context, next_config_t * config_in )
         return NEXT_ERROR;
     }
 
-#if !defined(NEXT_DEVELOPMENT)
     const char * log_level_override = next_platform_getenv( "NEXT_LOG_LEVEL" );
     if ( log_level_override )
     {
         log_level = atoi( log_level_override );
         next_printf( NEXT_LOG_LEVEL_INFO, "log level overridden to %d", log_level );
     }
-#endif // !defined(NEXT_DEVELOPMENT)
 
     next_config_internal_t config;
 
@@ -3597,14 +3605,6 @@ int next_init( void * context, next_config_t * config_in )
     next_encrypted_packets[NEXT_CLIENT_STATS_PACKET] = 1;
     next_encrypted_packets[NEXT_ROUTE_UPDATE_PACKET] = 1;
     next_encrypted_packets[NEXT_ROUTE_UPDATE_ACK_PACKET] = 1;
-
-#if defined(NEXT_DEVELOPMENT)
-    const char * log_level_override = next_platform_getenv( "NEXT_LOG_LEVEL" );
-    if ( log_level_override )
-    {
-        log_level = atoi( log_level_override );
-    }
-#endif // defined(NEXT_DEVELOPMENT)
 
     return NEXT_OK;
 }

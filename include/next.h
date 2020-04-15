@@ -184,6 +184,8 @@ do                                                                              
 #define next_assert( ignore ) ((void)0)
 #endif
 
+NEXT_EXPORT_FUNC void next_quiet( bool flag );
+
 NEXT_EXPORT_FUNC void next_log_level( int level );
 
 NEXT_EXPORT_FUNC void next_log_function( void (*function)( int level, const char * format, ... ) );
