@@ -8669,6 +8669,8 @@ struct next_server_internal_t
     bool first_server_update;
     uint64_t upgrade_sequence;
     uint64_t server_update_sequence;
+    double last_backend_server_init;
+    double first_backend_server_init;
     double last_backend_server_update;
     next_address_t resolve_hostname_result;
     next_address_t backend_address;
@@ -9406,7 +9408,16 @@ int next_server_internal_process_packet( next_server_internal_t * server, const 
         }
         break;
 
-        // todo: backend server init response packet handler
+        case NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET:
+        {
+            // todo: backend server init response packet handler
+    
+            // todo: when we get a response back, check that it matches our request id. 
+            // if it does, then check response. if error, print error, go to direct state only. if OK then go to initialized.
+
+            return NEXT_OK;
+        }
+        break;
 
         case NEXT_BACKEND_SESSION_RESPONSE_PACKET:
         {
@@ -10215,16 +10226,42 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
     if ( state == NEXT_SERVER_STATE_INITIALIZING )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "initializing..." );
+        if ( server->first_backend_server_init == 0.0 )
+        {
+            server->first_backend_server_init = current_time;
+        }
 
-        // todo: perform initializing logic here
+        if ( server->last_backend_server_init + 1.0 <= current_time )
+        {
+            NextBackendServerInitPacket packet;
+            packet.request_id = next_random_uint64();
+            packet.customer_id = server->customer_id;
+            packet.datacenter_id = server->datacenter_id;
+            packet.Sign( server->customer_private_key );
 
-        // todo: send an initialize packet to the backend once per second
+            uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
 
-        // todo: give up after 10 seconds of trying. go back to state direct only.
+            int packet_bytes = 0;
 
-        // todo: when we get a response back, check that it matches our request id. 
-        // if it does, then check response. if error, print error, go to direct state only. if OK then go to initialized.
+            if ( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_PACKET, &packet, packet_data, &packet_bytes ) != NEXT_OK )
+            {
+                next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server init packet for backend" );
+                return;
+            }
+
+            next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
+
+            server->last_backend_server_init = current_time;
+
+            next_printf( NEXT_LOG_LEVEL_INFO, "server sent init packet to backend" );
+        }
+
+        if ( server->first_backend_server_init + 10.0 <= current_time )
+        {
+            next_printf( NEXT_LOG_LEVEL_ERROR, "server did not get an init response from backend. falling back to direct only" );
+            next_mutex_guard( server->state_and_resolve_hostname_mutex );
+            server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
+        }
     }
 
     // server update
