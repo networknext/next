@@ -59,6 +59,10 @@ function updatePubKey() {
 		})
 }
 
+AuthHandler = {
+	
+}
+
 JSONRPCClient = {
 
 	async call(method, params) {
