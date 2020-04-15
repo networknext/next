@@ -7954,6 +7954,118 @@ int next_session_manager_num_entries( next_session_manager_t * session_manager )
 #define NEXT_BACKEND_SERVER_UPDATE_PACKET               NEXT_BACKEND_PACKET_BASE
 #define NEXT_BACKEND_SESSION_UPDATE_PACKET              NEXT_BACKEND_PACKET_BASE + 1
 #define NEXT_BACKEND_SESSION_RESPONSE_PACKET            NEXT_BACKEND_PACKET_BASE + 2
+#define NEXT_BACKEND_SERVER_INIT_PACKET                 NEXT_BACKEND_PACKET_BASE + 3
+#define NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET        NEXT_BACKEND_PACKET_BASE + 4
+
+struct NextBackendServerInitPacket
+{
+    int version_major;
+    int version_minor;
+    int version_patch;
+    uint64_t customer_id;
+    uint64_t datacenter_id;
+    uint8_t signature[crypto_sign_BYTES];
+
+    NextBackendServerInitPacket()
+    {
+        version_major = NEXT_VERSION_MAJOR_INT;
+        version_minor = NEXT_VERSION_MINOR_INT;
+        version_patch = NEXT_VERSION_PATCH_INT;
+        customer_id = 0;
+        datacenter_id = 0;
+        memset( signature, 0, crypto_sign_BYTES );
+    }
+
+    template <typename Stream> bool Serialize( Stream & stream )
+    {
+        serialize_int( stream, version_major, 0, NEXT_VERSION_MAJOR_MAX );
+        serialize_int( stream, version_minor, 0, NEXT_VERSION_MINOR_MAX );
+        serialize_int( stream, version_patch, 0, NEXT_VERSION_PATCH_MAX );
+        serialize_uint64( stream, customer_id );
+        serialize_uint64( stream, datacenter_id );
+        serialize_bytes( stream, signature, crypto_sign_BYTES );
+        return true;
+    }
+
+    int GetSignData( uint8_t * buffer, int buffer_size )
+    {
+        uint8_t * p = buffer;
+        next_write_uint64( &p, version_major );
+        next_write_uint64( &p, version_minor );
+        next_write_uint64( &p, version_patch );
+        next_write_uint64( &p, customer_id );
+        next_write_uint64( &p, datacenter_id );
+        next_assert( p - buffer <= buffer_size );
+        (void) buffer_size;
+        return p - buffer;
+    }
+
+    void Sign( const uint8_t * private_key )
+    {
+        crypto_sign_state state;
+        crypto_sign_init( &state );
+        uint8_t sign_data[1024];
+        const int sign_bytes = GetSignData( sign_data, sizeof(sign_data) );
+        crypto_sign_update( &state, sign_data, sign_bytes );
+        crypto_sign_final_create( &state, signature, NULL, private_key );
+    }
+
+    bool Verify( const uint8_t * public_key )
+    {
+        crypto_sign_state state;
+        crypto_sign_init( &state );
+        uint8_t sign_data[1024];
+        const int sign_bytes = GetSignData( sign_data, sizeof(sign_data) );
+        crypto_sign_update( &state, sign_data, sign_bytes );
+        return crypto_sign_final_verify( &state, signature, public_key ) == 0;
+    }
+};
+
+struct NextBackendServerInitResponsePacket
+{
+    uint32_t response;
+    uint8_t signature[crypto_sign_BYTES];
+
+    NextBackendServerInitResponsePacket()
+    {
+        memset( this, 0, sizeof(NextBackendServerInitResponsePacket) );
+    }
+
+    template <typename Stream> bool Serialize( Stream & stream )
+    {
+        serialize_uint32( stream, response );
+        return true;
+    }
+
+    int GetSignData( uint8_t * buffer, int buffer_size )
+    {
+        uint8_t * p = buffer;
+        next_write_uint32( &p, response );
+        next_assert( p - buffer <= buffer_size );
+        (void) buffer_size;
+        return p - buffer;
+    }
+
+    void Sign( const uint8_t * private_key )
+    {
+        crypto_sign_state state;
+        crypto_sign_init( &state );
+        uint8_t sign_data[2048];
+        const int sign_bytes = GetSignData( sign_data, sizeof(sign_data) );
+        crypto_sign_update( &state, sign_data, sign_bytes );
+        crypto_sign_final_create( &state, signature, NULL, private_key );
+    }
+
+    bool Verify( const uint8_t * public_key )
+    {
+        crypto_sign_state state;
+        crypto_sign_init( &state );
+        uint8_t sign_data[2048];
+        const int sign_bytes = GetSignData( sign_data, sizeof(sign_data) );
+        crypto_sign_update( &state, sign_data, sign_bytes );
+        return crypto_sign_final_verify( &state, signature, public_key ) == 0;
+    }
+};
 
 struct NextBackendServerUpdatePacket
 {
@@ -8350,6 +8462,22 @@ int next_write_backend_packet( uint8_t packet_id, void * packet_object, uint8_t 
         }
         break;
 
+        case NEXT_BACKEND_SERVER_INIT_PACKET:
+        {
+            NextBackendServerInitPacket * packet = (NextBackendServerInitPacket*) packet_object;
+            if ( !packet->Serialize( stream ) )
+                return NEXT_ERROR;
+        }
+        break;
+
+        case NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET:
+        {
+            NextBackendServerInitResponsePacket * packet = (NextBackendServerInitResponsePacket*) packet_object;
+            if ( !packet->Serialize( stream ) )
+                return NEXT_ERROR;
+        }
+        break;
+
         default:
             return NEXT_ERROR;
     }
@@ -8394,6 +8522,22 @@ int next_read_backend_packet( uint8_t * packet_data, int packet_bytes, void * pa
         case NEXT_BACKEND_SESSION_RESPONSE_PACKET:
         {
             NextBackendSessionResponsePacket * packet = (NextBackendSessionResponsePacket*) packet_object;
+            if ( !packet->Serialize( stream ) )
+                return NEXT_ERROR;
+        }
+        break;
+
+        case NEXT_BACKEND_SERVER_INIT_PACKET:
+        {
+            NextBackendServerInitPacket * packet = (NextBackendServerInitPacket*) packet_object;
+            if ( !packet->Serialize( stream ) )
+                return NEXT_ERROR;
+        }
+        break;
+
+        case NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET:
+        {
+            NextBackendServerInitResponsePacket * packet = (NextBackendServerInitResponsePacket*) packet_object;
             if ( !packet->Serialize( stream ) )
                 return NEXT_ERROR;
         }
@@ -12695,6 +12839,34 @@ static void test_backend_packets()
 {
     uint8_t buffer[NEXT_MAX_PACKET_BYTES];
 
+    // server init
+    {
+        unsigned char public_key[crypto_sign_PUBLICKEYBYTES];
+        unsigned char private_key[crypto_sign_SECRETKEYBYTES];
+        crypto_sign_keypair( public_key, private_key );
+
+        static NextBackendServerInitPacket in, out;
+        in.customer_id = 1231234127431LL;
+        in.datacenter_id = next_datacenter_id( "local" );
+        in.Sign( private_key );
+
+        int packet_bytes = 0;
+        check( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_PACKET, &in, buffer, &packet_bytes ) == NEXT_OK );
+        check( next_read_backend_packet( buffer, packet_bytes, &out ) == NEXT_BACKEND_SERVER_INIT_PACKET );
+
+        check( in.version_major == out.version_major );
+        check( in.version_minor == out.version_minor );
+        check( in.version_patch == out.version_patch );
+        check( in.customer_id == out.customer_id );
+        check( in.datacenter_id == out.datacenter_id );
+        check( out.Verify( public_key ) );
+    }
+
+    // server init response
+    {
+        // todo
+    }
+
     // server update
     {
         unsigned char public_key[crypto_sign_PUBLICKEYBYTES];
@@ -12717,6 +12889,9 @@ static void test_backend_packets()
         check( next_read_backend_packet( buffer, packet_bytes, &out ) == NEXT_BACKEND_SERVER_UPDATE_PACKET );
 
         check( in.sequence == out.sequence );
+        check( in.version_major == out.version_major );
+        check( in.version_minor == out.version_minor );
+        check( in.version_patch == out.version_patch );
         check( in.customer_id == out.customer_id );
         check( in.datacenter_id == out.datacenter_id );
         check( in.num_sessions_pending == out.num_sessions_pending );
