@@ -45,6 +45,20 @@ function changeAccountPage(page) {
 	}
 }
 
+function updatePubKey() {
+	let newPubkey = document.getElementById("pubKey").value;
+
+	JSONRPCClient
+		.call("BuyersService.UpdateGameConfiguration", {buyer_id: '13672574147039585173', new_public_key: newPubkey})
+		.then((response) => {
+			document.getElementById("pubKey").value = response.game_config.public_key;
+		})
+		.catch((e) => {
+			console.log(e);
+			console.log("Failed to update public key");
+		})
+}
+
 JSONRPCClient = {
 
 	async call(method, params) {

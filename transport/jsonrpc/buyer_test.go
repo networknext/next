@@ -1,15 +1,61 @@
 package jsonrpc_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/alicebob/miniredis"
 	"github.com/go-redis/redis/v7"
+	"github.com/networknext/backend/routing"
+	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/jsonrpc"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestSessionsMap(t *testing.T) {
+	redisServer, _ := miniredis.Run()
+	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+	sessions := []transport.SessionCacheEntry{
+		{CustomerID: 12345, SessionID: 1, RouteDecision: routing.Decision{OnNetworkNext: false}, Location: routing.Location{Latitude: 0, Longitude: 0}},
+		{CustomerID: 12345, SessionID: 2, RouteDecision: routing.Decision{OnNetworkNext: true}, Location: routing.Location{Latitude: 13, Longitude: 14}},
+	}
+	for _, session := range sessions {
+		buf, err := session.MarshalBinary()
+		assert.NoError(t, err)
+
+		err = redisServer.Set(fmt.Sprintf("SESSION-%d-%d", session.CustomerID, session.SessionID), string(buf))
+		assert.NoError(t, err)
+	}
+
+	svc := jsonrpc.BuyersService{
+		RedisClient: redisClient,
+	}
+
+	t.Run("missing buyer_id", func(t *testing.T) {
+		var reply jsonrpc.MapReply
+		err := svc.SessionsMap(nil, &jsonrpc.MapArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("list", func(t *testing.T) {
+		var reply jsonrpc.MapReply
+		err := svc.SessionsMap(nil, &jsonrpc.MapArgs{BuyerID: "12345"}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 2, len(reply.SessionPoints))
+
+		assert.Equal(t, reply.SessionPoints[0].OnNetworkNext, false)
+		assert.NotZero(t, reply.SessionPoints[0].Coordinates[0])
+		assert.NotZero(t, reply.SessionPoints[0].Coordinates[1])
+
+		assert.Equal(t, reply.SessionPoints[1].OnNetworkNext, true)
+		assert.Equal(t, reply.SessionPoints[1].Coordinates[0], float64(13))
+		assert.Equal(t, reply.SessionPoints[1].Coordinates[1], float64(14))
+	})
+}
 
 func TestSessions(t *testing.T) {
 	redisServer, _ := miniredis.Run()
@@ -44,6 +90,18 @@ func TestSessions(t *testing.T) {
 	t.Run("session_id not found", func(t *testing.T) {
 		var reply jsonrpc.SessionsReply
 		err := svc.Sessions(nil, &jsonrpc.SessionsArgs{BuyerID: "12345", SessionID: "3434"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("failed to convert buyer_id to uint64", func(t *testing.T) {
+		var reply jsonrpc.SessionsReply
+		err := svc.Sessions(nil, &jsonrpc.SessionsArgs{BuyerID: "asdgagasdgfa"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("failed to convert session_id to uint64", func(t *testing.T) {
+		var reply jsonrpc.SessionsReply
+		err := svc.Sessions(nil, &jsonrpc.SessionsArgs{SessionID: "asdgagasdgfa"}, &reply)
 		assert.Error(t, err)
 	})
 
@@ -91,5 +149,54 @@ func TestSessions(t *testing.T) {
 		assert.Equal(t, reply.Sessions[0].DirectRTT, float64(20))
 		assert.Equal(t, reply.Sessions[0].NextRTT, float64(10))
 		assert.Equal(t, reply.Sessions[0].ChangeRTT, float64(-10))
+	})
+}
+
+func TestGameConfiguration(t *testing.T) {
+	redisServer, _ := miniredis.Run()
+	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+	storer := storage.InMemory{}
+	pubkey := make([]byte, 4)
+	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "local.local.1", PublicKey: pubkey})
+
+	svc := jsonrpc.BuyersService{
+		RedisClient: redisClient,
+		Storage:     &storer,
+	}
+
+	t.Run("missing buyer_id", func(t *testing.T) {
+		var reply jsonrpc.GameConfigurationReply
+		err := svc.GameConfiguration(nil, &jsonrpc.GameConfigurationArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("failed to convert buyer_id to uint64", func(t *testing.T) {
+		var reply jsonrpc.GameConfigurationReply
+		err := svc.GameConfiguration(nil, &jsonrpc.GameConfigurationArgs{BuyerID: "asdgagasdgfa"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("single", func(t *testing.T) {
+		var reply jsonrpc.GameConfigurationReply
+		err := svc.GameConfiguration(nil, &jsonrpc.GameConfigurationArgs{BuyerID: "1"}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, reply.GameConfiguration.PublicKey, "AAAAAA==")
+	})
+
+	t.Run("update public key", func(t *testing.T) {
+		var reply jsonrpc.GameConfigurationReply
+		err := svc.UpdateGameConfiguration(nil, &jsonrpc.GameConfigurationArgs{BuyerID: "1", NewPublicKey: "iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAYA"}, &reply)
+
+		assert.NoError(t, err)
+
+		assert.Equal(t, reply.GameConfiguration.PublicKey, "iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAYA")
+	})
+
+	t.Run("failed to update public key", func(t *testing.T) {
+		var reply jsonrpc.GameConfigurationReply
+		err := svc.UpdateGameConfiguration(nil, &jsonrpc.GameConfigurationArgs{BuyerID: "1", NewPublicKey: "askjfgbdalksjdf balkjsdbf lkja flfakjs bdlkafs"}, &reply)
+
+		assert.Error(t, err)
 	})
 }
