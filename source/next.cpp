@@ -7972,10 +7972,10 @@ int next_session_manager_num_entries( next_session_manager_t * session_manager )
 #define NEXT_BACKEND_SERVER_UPDATE_PACKET               NEXT_BACKEND_PACKET_BASE
 #define NEXT_BACKEND_SESSION_UPDATE_PACKET              NEXT_BACKEND_PACKET_BASE + 1
 #define NEXT_BACKEND_SESSION_RESPONSE_PACKET            NEXT_BACKEND_PACKET_BASE + 2
-#define NEXT_BACKEND_SERVER_INIT_PACKET                 NEXT_BACKEND_PACKET_BASE + 3
+#define NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET         NEXT_BACKEND_PACKET_BASE + 3
 #define NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET        NEXT_BACKEND_PACKET_BASE + 4
 
-struct NextBackendServerInitPacket
+struct NextBackendServerInitRequestPacket
 {
     uint64_t request_id;
     int version_major;
@@ -7985,7 +7985,7 @@ struct NextBackendServerInitPacket
     uint64_t datacenter_id;
     uint8_t signature[crypto_sign_BYTES];
 
-    NextBackendServerInitPacket()
+    NextBackendServerInitRequestPacket()
     {
         request_id = 0;
         version_major = NEXT_VERSION_MAJOR_INT;
@@ -8484,9 +8484,9 @@ int next_write_backend_packet( uint8_t packet_id, void * packet_object, uint8_t 
         }
         break;
 
-        case NEXT_BACKEND_SERVER_INIT_PACKET:
+        case NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET:
         {
-            NextBackendServerInitPacket * packet = (NextBackendServerInitPacket*) packet_object;
+            NextBackendServerInitRequestPacket * packet = (NextBackendServerInitRequestPacket*) packet_object;
             if ( !packet->Serialize( stream ) )
                 return NEXT_ERROR;
         }
@@ -8549,9 +8549,9 @@ int next_read_backend_packet( uint8_t * packet_data, int packet_bytes, void * pa
         }
         break;
 
-        case NEXT_BACKEND_SERVER_INIT_PACKET:
+        case NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET:
         {
-            NextBackendServerInitPacket * packet = (NextBackendServerInitPacket*) packet_object;
+            NextBackendServerInitRequestPacket * packet = (NextBackendServerInitRequestPacket*) packet_object;
             if ( !packet->Serialize( stream ) )
                 return NEXT_ERROR;
         }
@@ -8669,6 +8669,7 @@ struct next_server_internal_t
     bool first_server_update;
     uint64_t upgrade_sequence;
     uint64_t server_update_sequence;
+    uint64_t server_init_request_id;
     double last_backend_server_init;
     double first_backend_server_init;
     double last_backend_server_update;
@@ -9410,10 +9411,64 @@ int next_server_internal_process_packet( next_server_internal_t * server, const 
 
         case NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET:
         {
-            // todo: backend server init response packet handler
-    
-            // todo: when we get a response back, check that it matches our request id. 
-            // if it does, then check response. if error, print error, go to direct state only. if OK then go to initialized.
+            int state = NEXT_SERVER_STATE_DIRECT_ONLY;
+            {
+                next_mutex_guard( server->state_and_resolve_hostname_mutex );
+                state = server->state;
+            }
+
+            if ( state != NEXT_SERVER_STATE_INITIALIZING )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored init response packet from backend. server is not initializing" );
+                return NEXT_ERROR;
+            }
+
+            NextBackendServerInitResponsePacket packet;
+
+            if ( next_read_backend_packet( packet_data, packet_bytes, &packet ) != packet_id )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server init response packet from backend. packet failed to read" );
+                return NEXT_ERROR;
+            }
+
+            if ( !packet.Verify( next_backend_public_key ) )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server init response packet from backend. did not verify" );
+                return NEXT_ERROR;
+            }
+
+            if ( packet.request_id != server->server_init_request_id )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server init response packet from backend. request id mismatch" );
+                return NEXT_ERROR;
+            }
+
+            if ( packet.response != NEXT_SERVER_INIT_RESPONSE_OK )
+            {
+                switch ( packet.response )
+                {
+                    case NEXT_SERVER_INIT_RESPONSE_UNKNOWN_CUSTOMER: 
+                        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. unknown customer" );
+                        return NEXT_ERROR;
+
+                    case NEXT_SERVER_INIT_RESPONSE_UNKNOWN_DATACENTER:
+                        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. unknown datacenter" );
+                        return NEXT_ERROR;
+
+                    case NEXT_SERVER_INIT_RESPONSE_SDK_VERSION_TOO_OLD:
+                        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. sdk version too old" );
+                        return NEXT_ERROR;
+
+                    case NEXT_SERVER_INIT_RESPONSE_SIGNATURE_CHECK_FAILED:
+                        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. signature check failed" );
+                        break;
+                }
+            }
+
+            next_printf( NEXT_LOG_LEVEL_INFO, "server receive init response from backend. welcome to network next!" );
+
+            next_mutex_guard( server->state_and_resolve_hostname_mutex );
+            state = NEXT_SERVER_STATE_INITIALIZED;
 
             return NEXT_OK;
         }
@@ -10233,19 +10288,21 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
         if ( server->last_backend_server_init + 1.0 <= current_time )
         {
-            NextBackendServerInitPacket packet;
+            NextBackendServerInitRequestPacket packet;
             packet.request_id = next_random_uint64();
             packet.customer_id = server->customer_id;
             packet.datacenter_id = server->datacenter_id;
             packet.Sign( server->customer_private_key );
 
+            server->server_init_request_id = packet.request_id;
+
             uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
 
             int packet_bytes = 0;
 
-            if ( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_PACKET, &packet, packet_data, &packet_bytes ) != NEXT_OK )
+            if ( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET, &packet, packet_data, &packet_bytes ) != NEXT_OK )
             {
-                next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server init packet for backend" );
+                next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server init request packet for backend" );
                 return;
             }
 
@@ -10253,7 +10310,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
             server->last_backend_server_init = current_time;
 
-            next_printf( NEXT_LOG_LEVEL_INFO, "server sent init packet to backend" );
+            next_printf( NEXT_LOG_LEVEL_INFO, "server sent init request to backend" );
         }
 
         if ( server->first_backend_server_init + 10.0 <= current_time )
@@ -12953,15 +13010,15 @@ static void test_backend_packets()
         unsigned char private_key[crypto_sign_SECRETKEYBYTES];
         crypto_sign_keypair( public_key, private_key );
 
-        static NextBackendServerInitPacket in, out;
+        static NextBackendServerInitRequestPacket in, out;
         in.request_id = next_random_uint64();
         in.customer_id = 1231234127431LL;
         in.datacenter_id = next_datacenter_id( "local" );
         in.Sign( private_key );
 
         int packet_bytes = 0;
-        check( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_PACKET, &in, buffer, &packet_bytes ) == NEXT_OK );
-        check( next_read_backend_packet( buffer, packet_bytes, &out ) == NEXT_BACKEND_SERVER_INIT_PACKET );
+        check( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET, &in, buffer, &packet_bytes ) == NEXT_OK );
+        check( next_read_backend_packet( buffer, packet_bytes, &out ) == NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET );
 
         check( in.request_id == out.request_id );
         check( in.version_major == out.version_major );
