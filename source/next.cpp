@@ -8104,7 +8104,6 @@ struct NextBackendServerUpdatePacket
     uint32_t num_sessions_pending;
     uint32_t num_sessions_upgraded;
     next_address_t server_address;
-    next_address_t server_address_internal;
     uint8_t server_route_public_key[crypto_box_PUBLICKEYBYTES];
     uint8_t signature[crypto_sign_BYTES];
 
@@ -8119,7 +8118,6 @@ struct NextBackendServerUpdatePacket
         num_sessions_pending = 0;
         num_sessions_upgraded = 0;
         memset( &server_address, 0, sizeof(next_address_t) );
-        memset( &server_address_internal, 0, sizeof(next_address_t) );
         memset( server_route_public_key, 0, sizeof(server_route_public_key) );
         memset( signature, 0, crypto_sign_BYTES );
     }
@@ -8135,7 +8133,6 @@ struct NextBackendServerUpdatePacket
         serialize_uint32( stream, num_sessions_pending );
         serialize_uint32( stream, num_sessions_upgraded );
         serialize_address( stream, server_address );
-        serialize_address( stream, server_address_internal );
         serialize_bytes( stream, server_route_public_key, crypto_box_PUBLICKEYBYTES );
         serialize_bytes( stream, signature, crypto_sign_BYTES );
         return true;
@@ -8153,7 +8150,6 @@ struct NextBackendServerUpdatePacket
         next_write_uint32( &p, num_sessions_pending );
         next_write_uint32( &p, num_sessions_upgraded );
         next_write_address( &p, &server_address );
-        next_write_address( &p, &server_address_internal );
         next_write_bytes( &p, server_route_public_key, crypto_box_PUBLICKEYBYTES );
         next_assert( p - buffer <= buffer_size );
         (void) buffer_size;
@@ -8677,7 +8673,6 @@ struct next_server_internal_t
     next_address_t resolve_hostname_result;
     next_address_t backend_address;
     next_address_t server_address;
-    next_address_t server_address_internal;
     next_address_t bind_address;
     next_queue_t * command_queue;
     next_queue_t * notify_queue;
@@ -8685,7 +8680,7 @@ struct next_server_internal_t
     next_platform_mutex_t * command_mutex;
     next_platform_mutex_t * notify_mutex;
     next_platform_socket_t * socket;
-    next_platform_mutex_t * resolve_hostname_mutex;
+    next_platform_mutex_t * state_and_resolve_hostname_mutex;
     next_platform_thread_t * resolve_hostname_thread;
     next_pending_session_manager_t * pending_session_manager;
     next_session_manager_t * session_manager;
@@ -8806,13 +8801,6 @@ next_server_internal_t * next_server_internal_create( void * context, const char
 
     server->bind_address = bind_address;
     server->server_address = server_address;
-    server->server_address_internal = server_address;
-
-    const char * internal_address_string = next_platform_getenv( "NEXT_SERVER_ADDRESS_INTERNAL" );
-    if ( internal_address_string )
-    {
-        next_address_parse( &server->server_address_internal, internal_address_string );
-    }
 
     server->session_mutex = next_platform_mutex_create( server->context );
     if ( server->session_mutex == NULL )
@@ -8838,10 +8826,10 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         return NULL;
     }
 
-    server->resolve_hostname_mutex = next_platform_mutex_create( server->context );
-    if ( server->resolve_hostname_mutex == NULL )
+    server->state_and_resolve_hostname_mutex = next_platform_mutex_create( server->context );
+    if ( server->state_and_resolve_hostname_mutex == NULL )
     {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "server could not create resolve hostname mutex" );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "server could not create state and resolve hostname mutex" );
         next_server_internal_destroy( server );
         return NULL;
     }
@@ -8910,9 +8898,9 @@ void next_server_internal_destroy( next_server_internal_t * server )
     {
         next_platform_thread_destroy( server->resolve_hostname_thread );
     }
-    if ( server->resolve_hostname_mutex )
+    if ( server->state_and_resolve_hostname_mutex )
     {
-        next_platform_mutex_destroy( server->resolve_hostname_mutex );
+        next_platform_mutex_destroy( server->state_and_resolve_hostname_mutex );
     }
     if ( server->command_queue )
     {
@@ -9422,7 +9410,13 @@ int next_server_internal_process_packet( next_server_internal_t * server, const 
 
         case NEXT_BACKEND_SESSION_RESPONSE_PACKET:
         {
-            if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
+            int state = NEXT_SERVER_STATE_DIRECT_ONLY;
+            {
+                next_mutex_guard( server->state_and_resolve_hostname_mutex );
+                state = server->state;
+            }
+
+            if ( state != NEXT_SERVER_STATE_INITIALIZED )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. server is not initialized" );
                 return NEXT_ERROR;
@@ -9743,9 +9737,6 @@ void next_server_internal_update_route( next_server_internal_t * server )
 {
     next_assert( server );
 
-    if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
-        return;
-
     const double current_time = next_time();
     
     const int max_index = server->session_manager->max_entry_index;
@@ -9791,7 +9782,13 @@ void next_server_internal_update_pending_upgrades( next_server_internal_t * serv
 {
     next_assert( server );
 
-    if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
+    int state = NEXT_SERVER_STATE_DIRECT_ONLY;
+    {
+        next_mutex_guard( server->state_and_resolve_hostname_mutex );
+        state = server->state;
+    }
+
+    if ( state != NEXT_SERVER_STATE_INITIALIZED )
         return;
 
     const double current_time = next_time();
@@ -9847,7 +9844,13 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
 {
     next_assert( server );
 
-    if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
+    int state = NEXT_SERVER_STATE_DIRECT_ONLY;
+    {
+        next_mutex_guard( server->state_and_resolve_hostname_mutex );
+        state = server->state;
+    }
+
+    if ( state != NEXT_SERVER_STATE_INITIALIZED )
         return;
 
     const double current_time = next_time();
@@ -9981,7 +9984,13 @@ void next_server_internal_upgrade_session( next_server_internal_t * server, cons
 
     char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
 
-    if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
+    int state = NEXT_SERVER_STATE_DIRECT_ONLY;
+    {
+        next_mutex_guard( server->state_and_resolve_hostname_mutex );
+        state = server->state;
+    }
+
+    if ( state != NEXT_SERVER_STATE_INITIALIZED )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server cannot upgrade client %s. server is not initialized", next_address_to_string( address, buffer ) );
         return;
@@ -10108,7 +10117,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     if ( next_address_parse( &address, hostname ) == NEXT_OK )
     {
         address.port = atoi( port );
-        next_mutex_guard( server->resolve_hostname_mutex );
+        next_mutex_guard( server->state_and_resolve_hostname_mutex );
         server->resolve_hostname_finished = true;
         server->resolve_hostname_result = address;
         server->state = NEXT_SERVER_STATE_INITIALIZING;
@@ -10120,7 +10129,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
         if ( next_platform_hostname_resolve( hostname, port, &address ) == NEXT_OK )
         {
             {
-                next_mutex_guard( server->resolve_hostname_mutex );         // todo: potentially rename to "state mutex" ?
+                next_mutex_guard( server->state_and_resolve_hostname_mutex );
                 server->resolve_hostname_finished = true;
                 server->resolve_hostname_result = address;
                 server->state = NEXT_SERVER_STATE_INITIALIZING;
@@ -10137,7 +10146,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to resolve backend hostname: %s", hostname );
 
     {
-        next_mutex_guard( server->resolve_hostname_mutex );
+        next_mutex_guard( server->state_and_resolve_hostname_mutex );
         server->resolve_hostname_finished = true;
         memset( &server->resolve_hostname_result, 0, sizeof(next_address_t) );
         server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
@@ -10155,7 +10164,7 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
     next_address_t result;
     memset( &result, 0, sizeof(next_address_t) );
     {
-        next_mutex_guard( server->resolve_hostname_mutex );
+        next_mutex_guard( server->state_and_resolve_hostname_mutex );
         finished = server->resolve_hostname_finished;
         result = server->resolve_hostname_result;
     }
@@ -10198,14 +10207,20 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
     // server init
 
-    if ( server->state == NEXT_SERVER_STATE_INITIALIZING )
+    int state = NEXT_SERVER_STATE_DIRECT_ONLY;
+    {
+        next_mutex_guard( server->state_and_resolve_hostname_mutex );
+        state = server->state;
+    }
+
+    if ( state == NEXT_SERVER_STATE_INITIALIZING )
     {
         // todo: perform initializing logic here
     }
 
     // server update
 
-    if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
+    if ( state != NEXT_SERVER_STATE_INITIALIZED )
         return;
 
     bool first_server_update = server->first_server_update;
@@ -10219,7 +10234,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         packet.num_sessions_pending = next_pending_session_manager_num_entries( server->pending_session_manager );
         packet.num_sessions_upgraded = next_session_manager_num_entries( server->session_manager );
         packet.server_address = server->server_address;
-        packet.server_address_internal = server->server_address_internal;
         memcpy( packet.server_route_public_key, server->server_route_public_key, crypto_box_PUBLICKEYBYTES );
         packet.Sign( server->customer_private_key );
 
@@ -10628,9 +10642,13 @@ uint64_t next_server_upgrade_session( next_server_t * server, const next_address
 
     // we can only upgrade sessions once we've initialized
 
-    // todo: mutex here to get the state?
+    int state = NEXT_SERVER_STATE_DIRECT_ONLY;
+    {
+        next_mutex_guard( server->internal->state_and_resolve_hostname_mutex );
+        state = server->internal->state;
+    }
 
-    if ( server->internal->state != NEXT_SERVER_STATE_INITIALIZED )
+    if ( state != NEXT_SERVER_STATE_INITIALIZED )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "can't upgrade session. server is not initialized" );
         return 0;
@@ -12943,7 +12961,6 @@ static void test_backend_packets()
         in.num_sessions_pending = 10;
         in.num_sessions_upgraded = 20;
         next_address_parse( &in.server_address, "127.0.0.1:12345" );
-        next_address_parse( &in.server_address_internal, "127.0.0.1:20000" );
         next_random_bytes( in.server_route_public_key, crypto_box_PUBLICKEYBYTES );
         in.Sign( private_key );
 
@@ -12960,7 +12977,6 @@ static void test_backend_packets()
         check( in.num_sessions_pending == out.num_sessions_pending );
         check( in.num_sessions_upgraded == out.num_sessions_upgraded );
         check( next_address_equal( &in.server_address, &out.server_address ) );
-        check( next_address_equal( &in.server_address_internal, &out.server_address_internal ) );
         check( memcmp( in.server_route_public_key, out.server_route_public_key, crypto_box_PUBLICKEYBYTES ) == 0 );
         check( out.Verify( public_key ) );
     }
