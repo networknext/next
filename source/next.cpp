@@ -99,6 +99,12 @@
 #define NEXT_PACKET_LOSS_TRACKER_SAFETY                                30
 #define NEXT_SECONDS_BETWEEN_PACKET_LOSS_UPDATES                      0.1
 
+#define NEXT_SERVER_INIT_RESPONSE_OK                                    0
+#define NEXT_SERVER_INIT_RESPONSE_UNKNOWN_CUSTOMER                      1
+#define NEXT_SERVER_INIT_RESPONSE_UNKNOWN_DATACENTER                    2
+#define NEXT_SERVER_INIT_RESPONSE_SDK_VERSION_TOO_OLD                   3
+#define NEXT_SERVER_INIT_RESPONSE_SIGNATURE_CHECK_FAILED                4
+
 static const uint8_t next_backend_public_key[] = 
 { 
      76,  97, 202, 140,  71, 135,  62, 212, 
@@ -2399,6 +2405,13 @@ float next_random_float()
     uint64_t uint64_value = uint64_t(uint32_value);
     double double_value = double(uint64_value) / 0xFFFFFFFF;
     return float(double_value);
+}
+
+uint64_t next_random_uint64()
+{
+    uint64_t value;
+    next_random_bytes( (uint8_t*)&value, sizeof(value) );
+    return value;
 }
 
 // -------------------------------------------------------------
@@ -7959,6 +7972,7 @@ int next_session_manager_num_entries( next_session_manager_t * session_manager )
 
 struct NextBackendServerInitPacket
 {
+    uint64_t request_id;
     int version_major;
     int version_minor;
     int version_patch;
@@ -7968,6 +7982,7 @@ struct NextBackendServerInitPacket
 
     NextBackendServerInitPacket()
     {
+        request_id = 0;
         version_major = NEXT_VERSION_MAJOR_INT;
         version_minor = NEXT_VERSION_MINOR_INT;
         version_patch = NEXT_VERSION_PATCH_INT;
@@ -7978,6 +7993,7 @@ struct NextBackendServerInitPacket
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
+        serialize_uint64( stream, request_id );
         serialize_int( stream, version_major, 0, NEXT_VERSION_MAJOR_MAX );
         serialize_int( stream, version_minor, 0, NEXT_VERSION_MINOR_MAX );
         serialize_int( stream, version_patch, 0, NEXT_VERSION_PATCH_MAX );
@@ -7990,6 +8006,7 @@ struct NextBackendServerInitPacket
     int GetSignData( uint8_t * buffer, int buffer_size )
     {
         uint8_t * p = buffer;
+        next_write_uint64( &p, request_id );
         next_write_uint64( &p, version_major );
         next_write_uint64( &p, version_minor );
         next_write_uint64( &p, version_patch );
@@ -8023,6 +8040,7 @@ struct NextBackendServerInitPacket
 
 struct NextBackendServerInitResponsePacket
 {
+    uint64_t request_id;
     uint32_t response;
     uint8_t signature[crypto_sign_BYTES];
 
@@ -8033,13 +8051,16 @@ struct NextBackendServerInitResponsePacket
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
+        serialize_uint64( stream, request_id );
         serialize_uint32( stream, response );
+        serialize_bytes( stream, signature, crypto_sign_BYTES );
         return true;
     }
 
     int GetSignData( uint8_t * buffer, int buffer_size )
     {
         uint8_t * p = buffer;
+        next_write_uint64( &p, request_id );
         next_write_uint32( &p, response );
         next_assert( p - buffer <= buffer_size );
         (void) buffer_size;
@@ -12846,6 +12867,7 @@ static void test_backend_packets()
         crypto_sign_keypair( public_key, private_key );
 
         static NextBackendServerInitPacket in, out;
+        in.request_id = next_random_uint64();
         in.customer_id = 1231234127431LL;
         in.datacenter_id = next_datacenter_id( "local" );
         in.Sign( private_key );
@@ -12854,6 +12876,7 @@ static void test_backend_packets()
         check( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_PACKET, &in, buffer, &packet_bytes ) == NEXT_OK );
         check( next_read_backend_packet( buffer, packet_bytes, &out ) == NEXT_BACKEND_SERVER_INIT_PACKET );
 
+        check( in.request_id == out.request_id );
         check( in.version_major == out.version_major );
         check( in.version_minor == out.version_minor );
         check( in.version_patch == out.version_patch );
@@ -12864,7 +12887,22 @@ static void test_backend_packets()
 
     // server init response
     {
-        // todo
+        unsigned char public_key[crypto_sign_PUBLICKEYBYTES];
+        unsigned char private_key[crypto_sign_SECRETKEYBYTES];
+        crypto_sign_keypair( public_key, private_key );
+
+        static NextBackendServerInitResponsePacket in, out;
+        in.request_id = next_random_uint64();
+        in.response = NEXT_SERVER_INIT_RESPONSE_OK;
+        in.Sign( private_key );
+
+        int packet_bytes = 0;
+        check( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET, &in, buffer, &packet_bytes ) == NEXT_OK );
+        check( next_read_backend_packet( buffer, packet_bytes, &out ) == NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET );
+
+        check( in.request_id == out.request_id );
+        check( in.response == out.response );
+        check( out.Verify( public_key ) );
     }
 
     // server update
@@ -12872,6 +12910,8 @@ static void test_backend_packets()
         unsigned char public_key[crypto_sign_PUBLICKEYBYTES];
         unsigned char private_key[crypto_sign_SECRETKEYBYTES];
         crypto_sign_keypair( public_key, private_key );
+
+        // todo: probably want a request id with the session update. and also, nuke the address internal...
 
         static NextBackendServerUpdatePacket in, out;
         in.sequence = 10000;
