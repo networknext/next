@@ -10215,7 +10215,16 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
     if ( state == NEXT_SERVER_STATE_INITIALIZING )
     {
+        next_printf( NEXT_LOG_LEVEL_INFO, "initializing..." );
+
         // todo: perform initializing logic here
+
+        // todo: send an initialize packet to the backend once per second
+
+        // todo: give up after 10 seconds of trying. go back to state direct only.
+
+        // todo: when we get a response back, check that it matches our request id. 
+        // if it does, then check response. if error, print error, go to direct state only. if OK then go to initialized.
     }
 
     // server update
