@@ -141,11 +141,15 @@ test-unit-relay: build-relay ## runs relay unit tests
 
 .PHONY: test-unit-backend
 test-unit-backend: lint ## runs backend unit tests
+ifdef FIRESTORE_EMULATOR_HOST
+	@./cmd/tools/scripts/test-with-firestore-emulator.sh
+else
 	@printf "Running go tests:\n\n"
 	@$(GO) test  ./... -coverprofile ./cover.out
 	@printf "\n\nCoverage results of go tests:\n\n"
 	@$(GO) tool cover -func ./cover.out
 	@printf "\n"
+endif
 
 .PHONY: test-unit
 test-unit: clean test-unit-sdk test-unit-relay test-unit-backend ## runs all unit tests

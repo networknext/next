@@ -202,6 +202,7 @@ type SessionCacheEntry struct {
 	Version         uint8
 	DirectRTT       float64
 	NextRTT         float64
+	Location        routing.Location
 	Response        []byte
 }
 
@@ -604,6 +605,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 				Response:        responseData,
 				DirectRTT:       directStats.RTT,
 				NextRTT:         nnStats.RTT,
+				Location:        location,
 			}
 			result := redisClient.Set(sessionCacheKey, updatedSessionCacheEntry, 5*time.Minute)
 			if result.Err() != nil {

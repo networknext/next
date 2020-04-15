@@ -9,6 +9,7 @@ import (
 
 type InMemory struct {
 	localBuyers      []routing.Buyer
+	localSellers     []routing.Seller
 	localRelays      []routing.Relay
 	localDatacenters []routing.Datacenter
 
@@ -77,6 +78,70 @@ func (m *InMemory) SetBuyer(ctx context.Context, buyer routing.Buyer) error {
 	}
 
 	return fmt.Errorf("buyer with id %d not found in memory storage", buyer.ID)
+}
+
+func (m *InMemory) Seller(id string) (routing.Seller, error) {
+	for _, seller := range m.localSellers {
+		if seller.ID == id {
+			return seller, nil
+		}
+	}
+
+	return routing.Seller{}, fmt.Errorf("seller with id %s not found in memory storage", id)
+}
+
+func (m *InMemory) Sellers() []routing.Seller {
+	sellers := make([]routing.Seller, len(m.localSellers))
+	for i := range sellers {
+		sellers[i] = m.localSellers[i]
+	}
+
+	return sellers
+}
+
+func (m *InMemory) AddSeller(ctx context.Context, seller routing.Seller) error {
+	for _, b := range m.localSellers {
+		if b.ID == seller.ID {
+			return fmt.Errorf("seller with id %s already exists in memory storage", seller.ID)
+		}
+	}
+
+	m.localSellers = append(m.localSellers, seller)
+	return nil
+}
+
+func (m *InMemory) RemoveSeller(ctx context.Context, id string) error {
+	sellerIndex := -1
+	for i, seller := range m.localSellers {
+		if seller.ID == id {
+			sellerIndex = i
+		}
+	}
+
+	if sellerIndex < 0 {
+		return fmt.Errorf("seller with id %s not found in memory storage", id)
+	}
+
+	if sellerIndex+1 == len(m.localSellers) {
+		m.localSellers = m.localSellers[:sellerIndex]
+		return nil
+	}
+
+	frontSlice := m.localSellers[:sellerIndex]
+	backSlice := m.localSellers[sellerIndex+1:]
+	m.localSellers = append(frontSlice, backSlice...)
+	return nil
+}
+
+func (m *InMemory) SetSeller(ctx context.Context, seller routing.Seller) error {
+	for i := range m.localSellers {
+		if m.localSellers[i].ID == seller.ID {
+			m.localSellers[i] = seller
+			return nil
+		}
+	}
+
+	return fmt.Errorf("seller with id %s not found in memory storage", seller.ID)
 }
 
 func (m *InMemory) Relay(id uint64) (routing.Relay, error) {
