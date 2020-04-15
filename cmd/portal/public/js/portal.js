@@ -9,13 +9,20 @@ function changePage(page) {
 	let map = document.getElementById("map-workspace");
 	let title = document.getElementById("workspace-title");
 
+	let mapLink = document.getElementById("home-link");
+	let sessionLink = document.getElementById("session-link");
+
 	account.style.display = 'none';
 	map.style.display = 'none';
 	session.style.display = 'none';
 
+	mapLink.classList.remove("active");
+	sessionLink.classList.remove("active");
+
 	switch (page) {
 		case 'sessions':
 			session.style.display = 'block';
+			sessionLink.classList.add("active");
 			title.textContent = 'Session Table';
 			break;
 		case 'account':
@@ -25,6 +32,7 @@ function changePage(page) {
 			break;
 		default:
 			map.style.display = 'block';
+			mapLink.classList.add("active");
 			title.textContent = 'Session Map';
 	}
 }
@@ -32,16 +40,29 @@ function changePage(page) {
 function changeAccountPage(page) {
 	let config = document.getElementById("config");
 	let users = document.getElementById("users");
+	let newUser = document.getElementById("newUser");
+
+	let usersLink = document.getElementById("users-link");
+	let configLink = document.getElementById("config-link");
 
 	config.style.display = 'none';
 	users.style.display = 'none';
+	newUser.style.display = 'none';
+
+	usersLink.classList.remove("active");
+	configLink.classList.remove("active");
 
 	switch (page) {
 		case 'config':
 			config.style.display = 'block';
+			configLink.classList.add("active");
+			break;
+		case 'new':
+			newUser.style.display = 'block';
 			break;
 		default:
 			users.style.display = 'block';
+			usersLink.classList.add("active");
 	}
 }
 
@@ -59,8 +80,14 @@ function updatePubKey() {
 		})
 }
 
+function editUser(accountInfo) {
+	changeAccountPage('new');
+
+	document.getElementById("email").value = accountInfo.email;
+	document.getElementById("perms").value = accountInfo.email;
+}
+
 AuthHandler = {
-	
 }
 
 JSONRPCClient = {
