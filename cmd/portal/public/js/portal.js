@@ -127,7 +127,7 @@ window.MapHandler = {
 	mapInstance: null,
 	async initMap() {
 		JSONRPCClient
-			.call('BuyersService.SessionsMap', {buyer_id: '12354645743257'})
+			.call('BuyersService.SessionsMap', {buyer_id: '13672574147039585173'})
 			.then((response) => {
 				console.log(response)
 				let data = response.sess_points;
