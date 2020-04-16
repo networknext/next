@@ -277,7 +277,7 @@ func client_check(client_counters []uint64, client_stdout *bytes.Buffer, server_
 
 /*
 	Test that when a client connects to a server with no backend running, and with no customer public or private
-	keys set on either client and server, that packets are sent and received direct. This is network next disabled.
+	keys set on either client and server, that packets are sent and received direct. This is network next in direct mode.
 */
 
 func test_direct_default() {
@@ -313,95 +313,13 @@ func test_direct_default() {
 }
 
 /*
-	Test that we can upgrade a player and without a backend packets are still sent and received over direct.
-	This tests the codepath where we prefix the packets with [255] and a sequence number. eg. upgraded direct
+	Run a backend but no relays. Make sure that we send and receive all packets direct.
+	This tests the path where we prefix upgraded session direct packets with [255][sequence]
 */
 
 func test_direct_upgrade() {
 
 	fmt.Printf("test_direct_upgrade\n")
-
-	clientConfig := &ClientConfig{}
-	clientConfig.duration = 10.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
-
-	client_cmd, client_stdout, client_stderr := client(clientConfig)
-
-	serverConfig := &ServerConfig{}
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
-
-	server_cmd, server_stdout := server(serverConfig)
-
-	client_cmd.Wait()
-
-	server_cmd.Process.Signal(os.Interrupt)
-	server_cmd.Wait()
-
-	client_counters := read_client_counters(client_stderr.String())
-
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_OPEN_SESSION] == 1)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION] == 1)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_UPGRADE_SESSION] == 1)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT] == 0)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] > 500)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] > 500)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] == 0)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] == 0)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
-
-}
-
-/*
-	Test that without upgrading a player we are still able to send and receive packets direct.
-	This tests the codepath with zero byte prefix to packets.
-*/
-
-func test_direct_no_upgrade() {
-
-	fmt.Printf("test_direct_no_upgrade\n")
-
-	clientConfig := &ClientConfig{}
-	clientConfig.duration = 10.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
-
-	client_cmd, client_stdout, client_stderr := client(clientConfig)
-
-	serverConfig := &ServerConfig{}
-	serverConfig.no_upgrade = true
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
-
-	server_cmd, server_stdout := server(serverConfig)
-
-	client_cmd.Wait()
-
-	server_cmd.Process.Signal(os.Interrupt)
-	server_cmd.Wait()
-
-	client_counters := read_client_counters(client_stderr.String())
-
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_OPEN_SESSION] == 1)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION] == 1)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_UPGRADE_SESSION] == 0)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT] == 0)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] > 500)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] > 500)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] == 0)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] == 0)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
-
-}
-
-/*
-	Run a backend but no relays. Make sure that we send and receive all packets direct.
-*/
-
-func test_direct_with_backend() {
-
-	fmt.Printf("test_direct_with_backend\n")
 
 	clientConfig := &ClientConfig{}
 	clientConfig.duration = 60.0
@@ -441,99 +359,14 @@ func test_direct_with_backend() {
 }
 
 /*
-	Run a client and server and verify that after 30 seconds the client falls back to direct.
-	This corresponds to "direct route expired" condition in the SDK.
-*/
-
-func test_fallback_to_direct_without_backend() {
-
-	fmt.Printf("test_fallback_to_direct_without_backend\n")
-
-	clientConfig := &ClientConfig{}
-	clientConfig.duration = 40.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
-
-	client_cmd, client_stdout, client_stderr := client(clientConfig)
-
-	serverConfig := &ServerConfig{}
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
-
-	server_cmd, server_stdout := server(serverConfig)
-
-	client_cmd.Wait()
-
-	server_cmd.Process.Signal(os.Interrupt)
-	server_cmd.Wait()
-
-	client_counters := read_client_counters(client_stderr.String())
-
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_OPEN_SESSION] == 1)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION] == 1)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_UPGRADE_SESSION] == 1)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT] == 1)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] > 2350)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] > 2350)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] == 0)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] == 0)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
-
-}
-
-/*
-	Run a client and server without a backend, so in 30 seconds the client will fallback to direct due to "direct route expired".
-	Test that the client is able to reconnect after direct route expire, and properly upgrade a session. This verifies
-	that the fallback to direct flag is properly cleared by the client on reconnect.
-*/
-
-func test_fallback_to_direct_is_not_sticky() {
-
-	fmt.Printf("test_fallback_to_direct_is_not_sticky\n")
-
-	clientConfig := &ClientConfig{}
-	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
-	clientConfig.connect_time = 45.0
-	clientConfig.connect_address = "127.0.0.1:32202"
-
-	client_cmd, client_stdout, client_stderr := client(clientConfig)
-
-	serverConfig := &ServerConfig{}
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
-
-	server_cmd, server_stdout := server(serverConfig)
-
-	client_cmd.Wait()
-
-	server_cmd.Process.Signal(os.Interrupt)
-	server_cmd.Wait()
-
-	client_counters := read_client_counters(client_stderr.String())
-
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_OPEN_SESSION] == 2)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION] == 2)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_UPGRADE_SESSION] == 2)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT] == 1)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] > 0)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] > 0)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] == 0)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] == 0)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
-
-}
-
-/*
 	Run a backend and several relays. Verify that the session is upgraded and starts sending and receiving packets
 	over network next. This is the first test that will likely fail if something is wrong with the backend or the
 	relays.
 */
 
-func test_packets_over_next_with_relay_and_backend() {
+func test_network_next() {
 
-	fmt.Printf("test_packets_over_next_with_relay_and_backend\n")
+	fmt.Printf("test_network_next\n")
 
 	clientConfig := &ClientConfig{}
 	clientConfig.duration = 60.0
@@ -592,9 +425,9 @@ func test_packets_over_next_with_relay_and_backend() {
 	when our backend goes down in production we don't drop packets or disconnect players.
 */
 
-func test_fallback_to_direct_when_backend_goes_down() {
+func test_fallback_to_direct() {
 
-	fmt.Printf("test_fallback_to_direct_when_backend_goes_down\n")
+	fmt.Printf("test_fallback_to_direct\n")
 
 	clientConfig := &ClientConfig{}
 	clientConfig.duration = 60.0
@@ -655,9 +488,9 @@ func test_fallback_to_direct_when_backend_goes_down() {
 	This provides our customers with a way to disable network next on the server side.
 */
 
-func test_network_next_disabled_server() {
+func test_disable_network_next_on_server() {
 
-	fmt.Printf("test_network_next_disabled_server\n")
+	fmt.Printf("test_disable_network_next_on_server\n")
 
 	clientConfig := &ClientConfig{}
 	clientConfig.duration = 60.0
@@ -712,9 +545,9 @@ func test_network_next_disabled_server() {
 	Verify that the client is still able to connect to the server, but all packets are sent direct.
 */
 
-func test_network_next_disabled_client() {
+func test_disable_network_next_on_client() {
 
-	fmt.Printf("test_network_next_disabled_client\n")
+	fmt.Printf("test_disable_network_next_on_client\n")
 
 	clientConfig := &ClientConfig{}
 	clientConfig.duration = 60.0
@@ -1593,14 +1426,10 @@ func main() {
 	allTests := []test_function{
 		test_direct_default,
 		test_direct_upgrade,
-		test_direct_no_upgrade,
-		test_direct_with_backend,
-		test_fallback_to_direct_without_backend,
-		test_fallback_to_direct_is_not_sticky,
-		test_packets_over_next_with_relay_and_backend,
-		test_fallback_to_direct_when_backend_goes_down,
-		test_network_next_disabled_server,
-		test_network_next_disabled_client,
+		test_network_next,
+		test_fallback_to_direct,
+		test_disable_network_next_on_server,
+		test_disable_network_next_on_client,
 		test_server_under_load,
 		test_reconnect_direct,
 		test_reconnect_next,
