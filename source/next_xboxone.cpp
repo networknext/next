@@ -526,7 +526,10 @@ void next_platform_socket_destroy( next_platform_socket_t * socket )
         closesocket( socket->handle );
         socket->handle = 0;
     }
+
     memset( socket, 0, sizeof( *socket ) );
+
+    next_free( socket->context, socket );
 }
 
 void next_platform_socket_send_packet( next_platform_socket_t * socket, const next_address_t * to, const void * packet_data, int packet_bytes )

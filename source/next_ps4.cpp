@@ -394,11 +394,13 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
 void next_platform_socket_destroy( next_platform_socket_t * socket )
 {
     next_assert( socket );
+
     if ( socket->handle != 0 )
     {
         sceNetSocketClose( socket->handle );
         socket->handle = 0;
     }
+
     next_free( socket->context, socket );
 }
 
