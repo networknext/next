@@ -357,6 +357,13 @@ void next_sleep( double time_seconds )
     next_platform_sleep( time_seconds );
 }
 
+static int log_quiet = false;
+
+void next_quiet( bool flag )
+{
+    log_quiet = flag;
+}
+
 static int log_level = NEXT_LOG_LEVEL_INFO;
 
 void next_log_level( int level )
@@ -393,8 +400,11 @@ static void default_log_function( int level, const char * format, ... )
     vsnprintf( buffer, sizeof( buffer ), format, args );
 	if ( level != NEXT_LOG_LEVEL_NONE )
 	{
-		const char * level_string = next_log_level_string( level );
-		printf( "%.6f: %s: %s\n", next_time(), level_string, buffer );
+        if ( !log_quiet )
+        {
+            const char * level_string = next_log_level_string( level );
+            printf( "%.6f: %s: %s\n", next_time(), level_string, buffer );
+        }
 	}
 	else
 	{
@@ -3446,14 +3456,12 @@ int next_init( void * context, next_config_t * config_in )
         return NEXT_ERROR;
     }
 
-#if !defined(NEXT_DEVELOPMENT)
     const char * log_level_override = next_platform_getenv( "NEXT_LOG_LEVEL" );
     if ( log_level_override )
     {
         log_level = atoi( log_level_override );
         next_printf( NEXT_LOG_LEVEL_INFO, "log level overridden to %d", log_level );
     }
-#endif // !defined(NEXT_DEVELOPMENT)
 
     next_config_internal_t config;
 
@@ -3597,14 +3605,6 @@ int next_init( void * context, next_config_t * config_in )
     next_encrypted_packets[NEXT_CLIENT_STATS_PACKET] = 1;
     next_encrypted_packets[NEXT_ROUTE_UPDATE_PACKET] = 1;
     next_encrypted_packets[NEXT_ROUTE_UPDATE_ACK_PACKET] = 1;
-
-#if defined(NEXT_DEVELOPMENT)
-    const char * log_level_override = next_platform_getenv( "NEXT_LOG_LEVEL" );
-    if ( log_level_override )
-    {
-        log_level = atoi( log_level_override );
-    }
-#endif // defined(NEXT_DEVELOPMENT)
 
     return NEXT_OK;
 }
@@ -6780,6 +6780,7 @@ void next_client_update( next_client_t * client )
                 client->fallback_to_direct = stats_updated->fallback_to_direct;
                 if ( client->fallback_to_direct && client->upgraded )
                 {
+                    next_printf( NEXT_LOG_LEVEL_INFO, "detected race between upgrade and fallback to direct. clearing upgraded flag to avoid zombie client\n" );
                     client->upgraded = false;
                     client->session_id = 0;
                 }
@@ -7998,10 +7999,10 @@ struct NextBackendServerInitRequestPacket
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
-        serialize_uint64( stream, request_id );
         serialize_int( stream, version_major, 0, NEXT_VERSION_MAJOR_MAX );
         serialize_int( stream, version_minor, 0, NEXT_VERSION_MINOR_MAX );
         serialize_int( stream, version_patch, 0, NEXT_VERSION_PATCH_MAX );
+        serialize_uint64( stream, request_id );
         serialize_uint64( stream, customer_id );
         serialize_uint64( stream, datacenter_id );
         serialize_bytes( stream, signature, crypto_sign_BYTES );
@@ -8011,10 +8012,10 @@ struct NextBackendServerInitRequestPacket
     int GetSignData( uint8_t * buffer, int buffer_size )
     {
         uint8_t * p = buffer;
-        next_write_uint64( &p, request_id );
         next_write_uint64( &p, version_major );
         next_write_uint64( &p, version_minor );
         next_write_uint64( &p, version_patch );
+        next_write_uint64( &p, request_id );
         next_write_uint64( &p, customer_id );
         next_write_uint64( &p, datacenter_id );
         next_assert( p - buffer <= buffer_size );
@@ -9439,9 +9440,11 @@ int next_server_internal_process_packet( next_server_internal_t * server, const 
 
             if ( packet.request_id != server->server_init_request_id )
             {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server init response packet from backend. request id mismatch" );
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server init response packet from backend. request id mismatch (got %" PRIx64 ", expected %" PRIx64 ")", packet.request_id, server->server_init_request_id );
                 return NEXT_ERROR;
             }
+
+            next_printf( NEXT_LOG_LEVEL_INFO, "server receive init response from backend" );
 
             if ( packet.response != NEXT_SERVER_INIT_RESPONSE_OK )
             {
@@ -9461,14 +9464,14 @@ int next_server_internal_process_packet( next_server_internal_t * server, const 
 
                     case NEXT_SERVER_INIT_RESPONSE_SIGNATURE_CHECK_FAILED:
                         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. signature check failed" );
-                        break;
+                        return NEXT_ERROR;
                 }
             }
 
-            next_printf( NEXT_LOG_LEVEL_INFO, "server receive init response from backend. welcome to network next!" );
+            next_printf( NEXT_LOG_LEVEL_INFO, "welcome to network next :)" );
 
             next_mutex_guard( server->state_and_resolve_hostname_mutex );
-            state = NEXT_SERVER_STATE_INITIALIZED;
+            server->state = NEXT_SERVER_STATE_INITIALIZED;
 
             return NEXT_OK;
         }

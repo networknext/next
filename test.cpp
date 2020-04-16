@@ -27,14 +27,12 @@ int main()
 {
     printf( "\nRunning SDK tests:\n\n" );
 
-    next_log_level( NEXT_LOG_LEVEL_NONE );
+    next_quiet( true );
 
     if ( next_init( NULL, NULL ) != NEXT_OK )
     {
         printf( "error: failed to initialize network next\n" );
     }
-
-    next_log_level( NEXT_LOG_LEVEL_NONE );
 
     next_test();
 
