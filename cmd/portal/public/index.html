@@ -58,7 +58,7 @@
             }
         </style>
     </head>
-    <body>
+    <body class="hidden" id="app">
         <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark p-0 shadow">
             <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="#">
                 <div class="logo-container">
@@ -226,7 +226,7 @@
         <script src="https://unpkg.com/deck.gl@latest/dist.min.js"></script>
         <!-- optional if mapbox base map is needed -->
         <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.53.0/mapbox-gl.js'></script>
-
+        <script src="https://cdn.auth0.com/js/auth0-spa-js/1.7/auth0-spa-js.production.js"></script>
         <script src="https://unpkg.com/vue"></script>
         <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js"
                 integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n"
@@ -246,42 +246,58 @@
         <script src="js/hexmap/hexlib.js"></script>
         <script src="./js/portal.js"></script>
         <script>
-            MapHandler
-                .initMap()
-                .then((response) => {
-                    console.log(response);
-                })
-                .catch((error) => {
-                    console.log(error);
-                })
-            JSONRPCClient
-                .call('BuyersService.Sessions', {buyer_id: '13672574147039585173'})
-                .then((response) => {
-                    new Vue({
-                        el: '#sessions',
-                        data: {
-                            sessions: response.sessions || []
-                        }
-                    });
-                })
-                .catch((e) => {
-                    console.log("Something went wrong with the map init!");
-                    console.log(e);
+            var auth0 = null;
+
+            const configureClient = async () => {
+
+                auth0 = await createAuth0Client({
+                    domain: 'networknext.auth0.com',
+                    client_id: 'QTsi0xjNxK52MDQEXOgD8eTU61Q3T8kB',
                 });
-            JSONRPCClient
-                .call('BuyersService.GameConfiguration', {buyer_id: '13672574147039585173'})
-                .then((response) => {
-                    new Vue({
-                        el: '#pubKey',
-                        data: {
-                            pubkey: response.game_config.public_key
+            };
+
+            const login = async () => {
+                await auth0.loginWithRedirect({
+                    redirect_uri: window.location.origin
+                });
+            }
+
+            window.onload = async () => {
+                await configureClient();
+
+                const isAuthenticated = await auth0.isAuthenticated();
+
+                if (isAuthenticated) {
+                    // show the gated content
+
+                    Promise.all([
+                        auth0.getUser(),
+                        auth0.getTokenSilently()
+                    ]).then((response) => {
+                        userInfo = {
+                            email: response[0].email,
+                            name: response[0].name,
+                            nickname: response[0].nickname,
+                            token: response[1]
                         }
+                        console.log(userInfo)
                     })
-                })
-                .catch((e) => {
-                    console.log("Something went wrong grabbing current public key");
-                    console.log(e);
-                });
+                    startApp();
+                    return;
+                }
+                // NEW - check for the code and state parameters
+                const query = window.location.search;
+                if (query.includes("code=") && query.includes("state=")) {
+
+                    // Process the login state
+                    await auth0.handleRedirectCallback();
+
+                    // Use replaceState to redirect the user away and remove the querystring parameters
+                    window.history.replaceState({}, document.title, "/");
+                } else {
+                    login();
+                }
+            }
         </script>
     </body>
 </html>

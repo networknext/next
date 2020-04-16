@@ -3,6 +3,48 @@
  * 	Refactor all of this into something more reasonable
  */
 
+var userInfo = null;
+
+function startApp() {
+	document.getElementById("app").style.display = 'block';
+	MapHandler
+		.initMap()
+		.then((response) => {
+			console.log("Map init successful");
+		})
+		.catch((error) => {
+			console.log("Map init unsuccessful: " + error);
+		});
+	JSONRPCClient
+		.call('BuyersService.Sessions', {buyer_id: '13672574147039585173'})
+		.then((response) => {
+			new Vue({
+				el: '#sessions',
+				data: {
+					sessions: response.sessions || []
+				}
+			});
+		})
+		.catch((e) => {
+			console.log("Something went wrong with the map init!");
+			console.log(e);
+		});
+	JSONRPCClient
+		.call('BuyersService.GameConfiguration', {buyer_id: '13672574147039585173'})
+		.then((response) => {
+			new Vue({
+				el: '#pubKey',
+				data: {
+					pubkey: response.game_config.public_key
+				}
+			})
+		})
+		.catch((e) => {
+			console.log("Something went wrong grabbing current public key");
+			console.log(e);
+		});
+}
+
 function changePage(page) {
 	let account = document.getElementById("account-workspace");
 	let session = document.getElementById("session-workspace");
@@ -96,7 +138,7 @@ window.MapHandler = {
 	mapInstance: null,
 	async initMap() {
 		JSONRPCClient
-			.call('BuyersService.SessionsMap', {buyer_id: '12354645743257'})
+			.call('BuyersService.SessionsMap', {buyer_id: '13672574147039585173'})
 			.then((response) => {
 				console.log(response)
 				let data = response.sess_points;
