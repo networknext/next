@@ -33,7 +33,7 @@ func main() {
 	version := "3.4.4"
 
 	basedir := fmt.Sprintf("next-%s", version)
-	
+
 	fmt.Printf("\nMaking release %s in \"%s\"\n", version, basedir)
 
 	// create the release directory clean
@@ -45,20 +45,22 @@ func main() {
 	bash("cp include/next.h %s/include", basedir)
 
 	// copy across the debug win64 libraries
-	libdir := "lib/Windows-x86_64/Debug"
+	libdir := "lib/Win64/Debug"
 	bash("mkdir -p %s/%s", basedir, libdir)
-	bash("cp %s/next.lib %s/%s/next-win64-debug-%s.lib", libdir, basedir, libdir, version)
-	bash("cp %s/next.pdb %s/%s/next-win64-debug-%s.pdb", libdir, basedir, libdir, version)
-	bash("cp %s/next.dll %s/%s/next-win64-debug-%s.dll", libdir, basedir, libdir, version)
-	bash("cp %s/next.exp %s/%s/next-win64-debug-%s.exp", libdir, basedir, libdir, version)
+	bash("cp %s/next-win64-%s.lib %s/%s/next-win64-%s.lib", libdir, version, basedir, libdir, version)
+	bash("cp %s/next-win64-%s.pdb %s/%s/next-win64-%s.pdb", libdir, version, basedir, libdir, version)
+	bash("cp %s/next-win64-%s.dll %s/%s/next-win64-%s.dll", libdir, version, basedir, libdir, version)
+	bash("cp %s/next-win64-%s.exp %s/%s/next-win64-%s.exp", libdir, version, basedir, libdir, version)
 
 	// copy across the release win64 libraries
-	libdir = "lib/Windows-x86_64/Release"
+	libdir = "lib/Win64/Release"
 	bash("mkdir -p %s/%s", basedir, libdir)
-	bash("cp %s/next.lib %s/%s/next-win64-release-%s.lib", libdir, basedir, libdir, version)
-	bash("cp %s/next.pdb %s/%s/next-win64-release-%s.pdb", libdir, basedir, libdir, version)
-	bash("cp %s/next.dll %s/%s/next-win64-release-%s.dll", libdir, basedir, libdir, version)
-	bash("cp %s/next.exp %s/%s/next-win64-release-%s.exp", libdir, basedir, libdir, version)
+	bash("cp %s/next-win64-%s.lib %s/%s/next-win64-%s.lib", libdir, version, basedir, libdir, version)
+	bash("cp %s/next-win64-%s.pdb %s/%s/next-win64-%s.pdb", libdir, version, basedir, libdir, version)
+	bash("cp %s/next-win64-%s.dll %s/%s/next-win64-%s.dll", libdir, version, basedir, libdir, version)
+	bash("cp %s/next-win64-%s.exp %s/%s/next-win64-%s.exp", libdir, version, basedir, libdir, version)
+
+	/*
 
 	// copy across the debug win32 libraries
 	libdir = "lib/Windows-x86/Debug"
@@ -133,6 +135,7 @@ func main() {
 	bash("cp %s/next.nro %s/%s/next-nx32-release-%s.nro", libdir, basedir, libdir, version)
 	bash("cp %s/next.nrr %s/%s/next-nx32-release-%s.nrr", libdir, basedir, libdir, version)
 	bash("cp %s/next.nrs %s/%s/next-nx32-release-%s.nrs", libdir, basedir, libdir, version)
+	*/
 
 	// build manifest
 
@@ -140,35 +143,36 @@ func main() {
 
 	manifest = append(manifest, fmt.Sprintf("%s/include/next.h", basedir))
 
-	manifest = append(manifest, fmt.Sprintf("%s/lib/Windows-x86_64/Debug/next-win64-debug-%s.lib", basedir, version))
-	manifest = append(manifest, fmt.Sprintf("%s/lib/Windows-x86_64/Debug/next-win64-debug-%s.pdb", basedir, version))
-	manifest = append(manifest, fmt.Sprintf("%s/lib/Windows-x86_64/Debug/next-win64-debug-%s.dll", basedir, version))
-	manifest = append(manifest, fmt.Sprintf("%s/lib/Windows-x86_64/Debug/next-win64-debug-%s.exp", basedir, version))
+	manifest = append(manifest, fmt.Sprintf("%s/lib/Win64/Debug/next-win64-%s.lib", basedir, version))
+	manifest = append(manifest, fmt.Sprintf("%s/lib/Win64/Debug/next-win64-%s.pdb", basedir, version))
+	manifest = append(manifest, fmt.Sprintf("%s/lib/Win64/Debug/next-win64-%s.dll", basedir, version))
+	manifest = append(manifest, fmt.Sprintf("%s/lib/Win64/Debug/next-win64-%s.exp", basedir, version))
 
-	manifest = append(manifest, fmt.Sprintf("%s/lib/Windows-x86_64/Release/next-win64-release-%s.lib", basedir, version))
-	manifest = append(manifest, fmt.Sprintf("%s/lib/Windows-x86_64/Release/next-win64-release-%s.pdb", basedir, version))
-	manifest = append(manifest, fmt.Sprintf("%s/lib/Windows-x86_64/Release/next-win64-release-%s.dll", basedir, version))
-	manifest = append(manifest, fmt.Sprintf("%s/lib/Windows-x86_64/Release/next-win64-release-%s.exp", basedir, version))
+	manifest = append(manifest, fmt.Sprintf("%s/lib/Win64/Release/next-win64-%s.lib", basedir, version))
+	manifest = append(manifest, fmt.Sprintf("%s/lib/Win64/Release/next-win64-%s.pdb", basedir, version))
+	manifest = append(manifest, fmt.Sprintf("%s/lib/Win64/Release/next-win64-%s.dll", basedir, version))
+	manifest = append(manifest, fmt.Sprintf("%s/lib/Win64/Release/next-win64-%s.exp", basedir, version))
 
-	manifest = append(manifest, fmt.Sprintf("%s/lib/Windows-x86/Debug/next-win32-debug-%s.lib", basedir, version))
-	manifest = append(manifest, fmt.Sprintf("%s/lib/Windows-x86/Debug/next-win32-debug-%s.pdb", basedir, version))
-	manifest = append(manifest, fmt.Sprintf("%s/lib/Windows-x86/Debug/next-win32-debug-%s.dll", basedir, version))
-	manifest = append(manifest, fmt.Sprintf("%s/lib/Windows-x86/Debug/next-win32-debug-%s.exp", basedir, version))
+	/*
+	manifest = append(manifest, fmt.Sprintf("%s/lib/Win32/Debug/next-win32-debug-%s.lib", basedir, version))
+	manifest = append(manifest, fmt.Sprintf("%s/lib/Win32/Debug/next-win32-debug-%s.pdb", basedir, version))
+	manifest = append(manifest, fmt.Sprintf("%s/lib/Win32/Debug/next-win32-debug-%s.dll", basedir, version))
+	manifest = append(manifest, fmt.Sprintf("%s/lib/Win32/Debug/next-win32-debug-%s.exp", basedir, version))
 
-	manifest = append(manifest, fmt.Sprintf("%s/lib/Windows-x86/Release/next-win32-release-%s.lib", basedir, version))
-	manifest = append(manifest, fmt.Sprintf("%s/lib/Windows-x86/Release/next-win32-release-%s.pdb", basedir, version))
-	manifest = append(manifest, fmt.Sprintf("%s/lib/Windows-x86/Release/next-win32-release-%s.dll", basedir, version))
-	manifest = append(manifest, fmt.Sprintf("%s/lib/Windows-x86/Release/next-win32-release-%s.exp", basedir, version))
+	manifest = append(manifest, fmt.Sprintf("%s/lib/Win32/Release/next-win32-release-%s.lib", basedir, version))
+	manifest = append(manifest, fmt.Sprintf("%s/lib/Win32/Release/next-win32-release-%s.pdb", basedir, version))
+	manifest = append(manifest, fmt.Sprintf("%s/lib/Win32/Release/next-win32-release-%s.dll", basedir, version))
+	manifest = append(manifest, fmt.Sprintf("%s/lib/Win32/Release/next-win32-release-%s.exp", basedir, version))
 
-	manifest = append(manifest, fmt.Sprintf("%s/lib/XBoxOne/Debug/next-x1-debug-%s.lib", basedir, version))
-	manifest = append(manifest, fmt.Sprintf("%s/lib/XBoxOne/Debug/next-x1-debug-%s.pdb", basedir, version))
-	manifest = append(manifest, fmt.Sprintf("%s/lib/XBoxOne/Debug/next-x1-debug-%s.dll", basedir, version))
-	manifest = append(manifest, fmt.Sprintf("%s/lib/XBoxOne/Debug/next-x1-debug-%s.exp", basedir, version))
+	manifest = append(manifest, fmt.Sprintf("%s/lib/XBoxOne/Debug/next-xboxone-debug-%s.lib", basedir, version))
+	manifest = append(manifest, fmt.Sprintf("%s/lib/XBoxOne/Debug/next-xboxone-debug-%s.pdb", basedir, version))
+	manifest = append(manifest, fmt.Sprintf("%s/lib/XBoxOne/Debug/next-xboxone-debug-%s.dll", basedir, version))
+	manifest = append(manifest, fmt.Sprintf("%s/lib/XBoxOne/Debug/next-xboxone-debug-%s.exp", basedir, version))
 
-	manifest = append(manifest, fmt.Sprintf("%s/lib/XBoxOne/Release/next-x1-release-%s.lib", basedir, version))
-	manifest = append(manifest, fmt.Sprintf("%s/lib/XBoxOne/Release/next-x1-release-%s.pdb", basedir, version))
-	manifest = append(manifest, fmt.Sprintf("%s/lib/XBoxOne/Release/next-x1-release-%s.dll", basedir, version))
-	manifest = append(manifest, fmt.Sprintf("%s/lib/XBoxOne/Release/next-x1-release-%s.exp", basedir, version))
+	manifest = append(manifest, fmt.Sprintf("%s/lib/XBoxOne/Release/next-xboxone-release-%s.lib", basedir, version))
+	manifest = append(manifest, fmt.Sprintf("%s/lib/XBoxOne/Release/next-xboxone-release-%s.pdb", basedir, version))
+	manifest = append(manifest, fmt.Sprintf("%s/lib/XBoxOne/Release/next-xboxone-release-%s.dll", basedir, version))
+	manifest = append(manifest, fmt.Sprintf("%s/lib/XBoxOne/Release/next-xboxone-release-%s.exp", basedir, version))
 
 	manifest = append(manifest, fmt.Sprintf("%s/lib/Playstation4/Debug/next-ps4-debug-%s_stub_weak.a", basedir, version))
 	manifest = append(manifest, fmt.Sprintf("%s/lib/Playstation4/Debug/next-ps4-debug-%s_stub.a", basedir, version))
@@ -193,6 +197,7 @@ func main() {
 	manifest = append(manifest, fmt.Sprintf("%s/lib/NintendoSwitch-NX32/Release/next-nx32-release-%s.nro", basedir, version))
 	manifest = append(manifest, fmt.Sprintf("%s/lib/NintendoSwitch-NX32/Release/next-nx32-release-%s.nrr", basedir, version))
 	manifest = append(manifest, fmt.Sprintf("%s/lib/NintendoSwitch-NX32/Release/next-nx32-release-%s.nrs", basedir, version))
+	*/
 
 	fmt.Printf("\nManifest:\n\n" )
 	for _, file := range manifest {
