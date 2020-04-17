@@ -12278,34 +12278,6 @@ static void test_server_ipv6()
 
 #endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
 
-static void test_direct()
-{
-    next_server_t * server = next_server_create( NULL, "127.0.0.1", "0.0.0.0", "local", test_server_packet_received_callback );
-    check( server );
-    next_client_t * client = next_client_create( NULL, "0.0.0.0:0", test_client_packet_received_callback );
-    check( client );
-    char server_address[NEXT_MAX_ADDRESS_STRING_LENGTH];
-    snprintf( server_address, sizeof( server_address ), "127.0.0.1:%hu", server->bound_port );
-    next_client_open_session( client, server_address );
-    uint8_t packet[256];
-    memset( packet, 0, sizeof(packet) );
-    num_client_packets_received = 0;
-    num_server_packets_received = 0;
-    for ( int i = 0; i < 10000; ++i )
-    {
-        next_client_send_packet( client, packet, sizeof(packet) );
-        next_server_update( server );
-        next_client_update( client );
-        if ( num_client_packets_received > 0 && num_server_packets_received > 0 )
-            break;
-    }
-    check( num_client_packets_received > 0 );
-    check( num_server_packets_received > 0 );
-    next_client_close_session( client );
-    next_client_destroy( client );
-    next_server_destroy( server );
-}
-
 static void test_upgrade_token()
 {
     NextUpgradeToken in, out;
