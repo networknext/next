@@ -4598,8 +4598,6 @@ int next_read_header( int direction, uint8_t * type, uint64_t * sequence, uint64
 
 struct next_route_data_t
 {
-    double direct_route_expire_time;
-
     bool current_route;
     bool current_route_committed;
     double current_route_expire_time;
@@ -4653,7 +4651,6 @@ next_route_manager_t * next_route_manager_create( void * context )
         return NULL;
     memset( route_manager, 0, sizeof(next_route_manager_t) );
     route_manager->context = context;
-    route_manager->route_data.direct_route_expire_time = -1.0;
     return route_manager;
 }
 
@@ -4664,7 +4661,6 @@ void next_route_manager_reset( next_route_manager_t * route_manager )
     route_manager->send_sequence = 0;
     route_manager->fallback_to_direct = false;
     memset( &route_manager->route_data, 0, sizeof(next_route_data_t) );
-    route_manager->route_data.direct_route_expire_time = -1.0;
     route_manager->flags = 0;
 }
 
@@ -4707,8 +4703,6 @@ void next_route_manager_direct_route( next_route_manager_t * route_manager, bool
     memcpy( route_manager->route_data.previous_route_private_key, route_manager->route_data.current_route_private_key, crypto_box_SECRETKEYBYTES );
 
     route_manager->route_data.current_route = false;
-
-    route_manager->route_data.direct_route_expire_time = next_time() + NEXT_DIRECT_ROUTE_EXPIRE_TIME;
 }
 
 void next_route_manager_begin_next_route( next_route_manager_t * route_manager, bool committed, int num_tokens, uint8_t * tokens, const uint8_t * public_key, const uint8_t * private_key )
@@ -4747,7 +4741,6 @@ void next_route_manager_begin_next_route( next_route_manager_t * route_manager, 
     memcpy( route_manager->route_data.pending_route_request_packet_data + 1, tokens + NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES, ( size_t(num_tokens) - 1 ) * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES );
     memcpy( route_manager->route_data.pending_route_private_key, route_token.private_key, crypto_box_SECRETKEYBYTES );
     next_assert( route_manager->route_data.pending_route_request_packet_bytes <= NEXT_MAX_PACKET_BYTES );
-    route_manager->route_data.direct_route_expire_time = -1.0;
 }
 
 void next_route_manager_continue_next_route( next_route_manager_t * route_manager, bool committed, int num_tokens, uint8_t * tokens, const uint8_t * public_key, const uint8_t * private_key )
@@ -4793,7 +4786,6 @@ void next_route_manager_continue_next_route( next_route_manager_t * route_manage
     route_manager->route_data.pending_continue_request_packet_data[0] = NEXT_CONTINUE_REQUEST_PACKET;
     memcpy( route_manager->route_data.pending_continue_request_packet_data + 1, tokens + NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES, ( size_t(num_tokens) - 1 ) * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
     next_assert( route_manager->route_data.pending_continue_request_packet_bytes <= NEXT_MAX_PACKET_BYTES );
-    route_manager->route_data.direct_route_expire_time = -1.0;
 
     next_printf( NEXT_LOG_LEVEL_INFO, "client continues route (%s)", committed ? "committed" : "uncommitted" );
 }
@@ -4974,13 +4966,6 @@ void next_route_manager_check_for_timeouts( next_route_manager_t * route_manager
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client continue request timed out" );
         next_route_manager_fallback_to_direct( route_manager, NEXT_FLAGS_CONTINUE_REQUEST_TIMED_OUT );
-        return;
-    }
-
-    if ( route_manager->route_data.direct_route_expire_time >= 0.0 && route_manager->route_data.direct_route_expire_time <= current_time )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "client direct route expired" );
-        next_route_manager_fallback_to_direct( route_manager, NEXT_FLAGS_DIRECT_ROUTE_EXPIRED );
         return;
     }
 }
