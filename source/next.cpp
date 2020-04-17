@@ -8854,7 +8854,7 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         return NULL;
     }
 
-	if ( server->valid_customer_private_key && !server->no_datacenter_specified )
+	if ( !next_global_config.disable_network_next && server->valid_customer_private_key && !server->no_datacenter_specified )
 	{
         server->state = NEXT_SERVER_STATE_RESOLVING_HOSTNAME;
 		server->resolve_hostname_thread = next_platform_thread_create( server->context, next_server_internal_resolve_hostname_thread_function, server );
@@ -9465,6 +9465,10 @@ int next_server_internal_process_packet( next_server_internal_t * server, const 
                     case NEXT_SERVER_INIT_RESPONSE_SIGNATURE_CHECK_FAILED:
                         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. signature check failed" );
                         return NEXT_ERROR;
+
+                    default:
+                        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend for an unknown reason" );
+                        return NEXT_ERROR;                    
                 }
             }
 
