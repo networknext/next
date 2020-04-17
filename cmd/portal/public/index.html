@@ -298,7 +298,6 @@
 
                 if (isAuthenticated) {
                     // show the gated content
-
                     Promise.all([
                         auth0.getUser(),
                         auth0.getTokenSilently()
@@ -308,9 +307,10 @@
                             name: response[0].name,
                             nickname: response[0].nickname,
                             token: response[1]
-                        }
-                        console.log(userInfo)
-                    })
+                        };
+                    }).catch((e) => {
+                        console.log("Something went wrong with getting the user information");
+                    });
                     startApp();
                     return;
                 }
