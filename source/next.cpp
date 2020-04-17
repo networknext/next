@@ -10194,7 +10194,6 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
         next_mutex_guard( server->state_and_resolve_hostname_mutex );
         server->resolve_hostname_finished = true;
         server->resolve_hostname_result = address;
-        server->state = NEXT_SERVER_STATE_INITIALIZING;
         NEXT_PLATFORM_THREAD_RETURN();
     }
 
@@ -10207,7 +10206,6 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
                 next_mutex_guard( server->state_and_resolve_hostname_mutex );
                 server->resolve_hostname_finished = true;
                 server->resolve_hostname_result = address;
-                server->state = NEXT_SERVER_STATE_INITIALIZING;
             }
             NEXT_PLATFORM_THREAD_RETURN();
 
@@ -10270,6 +10268,7 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
     next_printf( NEXT_LOG_LEVEL_INFO, "server resolved backend hostname to %s", next_address_to_string( &result, address_buffer ) );
 
     server->backend_address = result;
+    server->state = NEXT_SERVER_STATE_INITIALIZING;
 
     return true;
 }
