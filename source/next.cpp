@@ -10290,6 +10290,8 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
     if ( state == NEXT_SERVER_STATE_INITIALIZING )
     {
+        next_assert( server->backend_address.type == NEXT_ADDRESS_IPV4 || server->backend_address.type == NEXT_ADDRESS_IPV6 );
+
         if ( server->first_backend_server_init == 0.0 )
         {
             server->first_backend_server_init = current_time;
