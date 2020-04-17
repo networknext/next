@@ -36,4 +36,4 @@ Durango
 next-*
 
 # But we want these directories
-!lib/**
+!/lib/**
