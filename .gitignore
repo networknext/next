@@ -36,17 +36,4 @@ Durango
 next-*
 
 # But we want these directories
-!lib/Win64/Debug/
-!lib/Win64/Release/
-!lib/Win32/Debug/
-!lib/Win32/Release/
-!lib/XBoxOne/Debug/
-!lib/XBoxOne/Release/
-!lib/Playstation4/Debug/
-!lib/Playstation4/Release/
-!lib/XBoxOne/Debug/
-!lib/XBoxOne/Release/
-!lib/NintendoSwitch_NX64/Debug/
-!lib/NintendoSwitch_NX64/Release/
-!lib/NintendoSwitch_NX32/Debug/
-!lib/NintendoSwitch_NX32/Release/
+!lib/**
