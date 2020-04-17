@@ -6788,7 +6788,7 @@ void next_client_update( next_client_t * client )
                 client->fallback_to_direct = stats_updated->fallback_to_direct;
                 if ( client->fallback_to_direct && client->upgraded )
                 {
-                    next_printf( NEXT_LOG_LEVEL_INFO, "detected race between upgrade and fallback to direct. clearing upgraded flag to avoid zombie client\n" );
+                    next_printf( NEXT_LOG_LEVEL_DEBUG, "detected race between upgrade and fallback to direct. clearing upgraded flag to avoid zombie client\n" );
                     client->upgraded = false;
                     client->session_id = 0;
                 }
