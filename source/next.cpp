@@ -9861,7 +9861,7 @@ void next_server_internal_update_pending_upgrades( next_server_internal_t * serv
         state = server->state;
     }
 
-    if ( state != NEXT_SERVER_STATE_INITIALIZED )
+    if ( state == NEXT_SERVER_STATE_DIRECT_ONLY )
         return;
 
     const double current_time = next_time();
@@ -9923,7 +9923,7 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
         state = server->state;
     }
 
-    if ( state != NEXT_SERVER_STATE_INITIALIZED )
+    if ( state == NEXT_SERVER_STATE_DIRECT_ONLY )
         return;
 
     const double current_time = next_time();
@@ -10190,6 +10190,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     if ( next_address_parse( &address, hostname ) == NEXT_OK )
     {
         address.port = atoi( port );
+        next_assert( address.type == NEXT_ADDRESS_IPV4 || address.type == NEXT_ADDRESS_IPV6 );
         next_mutex_guard( server->state_and_resolve_hostname_mutex );
         server->resolve_hostname_finished = true;
         server->resolve_hostname_result = address;
@@ -10202,6 +10203,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
         if ( next_platform_hostname_resolve( hostname, port, &address ) == NEXT_OK )
         {
             {
+                next_assert( address.type == NEXT_ADDRESS_IPV4 || address.type == NEXT_ADDRESS_IPV6 );
                 next_mutex_guard( server->state_and_resolve_hostname_mutex );
                 server->resolve_hostname_finished = true;
                 server->resolve_hostname_result = address;
