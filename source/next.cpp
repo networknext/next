@@ -6441,6 +6441,7 @@ void next_client_internal_send_pings_to_near_relays( next_client_internal_t * cl
 void next_client_internal_update_fallback_to_direct( next_client_internal_t * client )
 {
     next_platform_mutex_acquire( client->route_manager_mutex );
+    next_route_manager_check_for_timeouts( client->route_manager );
     const bool fallback_to_direct = client->route_manager->fallback_to_direct;
     next_platform_mutex_release( client->route_manager_mutex );
 
@@ -6472,7 +6473,6 @@ void next_client_internal_update_route_manager( next_client_internal_t * client 
     uint8_t continue_request_packet_data[NEXT_MAX_PACKET_BYTES];
 
     next_platform_mutex_acquire( client->route_manager_mutex );
-    next_route_manager_check_for_timeouts( client->route_manager );
     const bool send_route_request = next_route_manager_send_route_request( client->route_manager, &route_request_to, route_request_packet_data, &route_request_packet_bytes );
     const bool send_continue_request = next_route_manager_send_continue_request( client->route_manager, &continue_request_to, continue_request_packet_data, &continue_request_packet_bytes );
     next_platform_mutex_release( client->route_manager_mutex );
