@@ -3,24 +3,20 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.28010.2046
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "next_testbed", "testbed.vcxproj", "{E153BC48-A071-4229-A75C-E7D8E724FA96}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "testbed", "testbed.vcxproj", "{E153BC48-A071-4229-A75C-E7D8E724FA96}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|Durango = Debug|Durango
-		Profile|Durango = Profile|Durango
-		Release|Durango = Release|Durango
+		Debug|XBoxOne = Debug|XBoxOne
+		Release|XBoxOne = Release|XBoxOne
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{E153BC48-A071-4229-A75C-E7D8E724FA96}.Debug|Durango.ActiveCfg = Debug|Durango
-		{E153BC48-A071-4229-A75C-E7D8E724FA96}.Debug|Durango.Build.0 = Debug|Durango
-		{E153BC48-A071-4229-A75C-E7D8E724FA96}.Debug|Durango.Deploy.0 = Debug|Durango
-		{E153BC48-A071-4229-A75C-E7D8E724FA96}.Profile|Durango.ActiveCfg = Profile|Durango
-		{E153BC48-A071-4229-A75C-E7D8E724FA96}.Profile|Durango.Build.0 = Profile|Durango
-		{E153BC48-A071-4229-A75C-E7D8E724FA96}.Profile|Durango.Deploy.0 = Profile|Durango
-		{E153BC48-A071-4229-A75C-E7D8E724FA96}.Release|Durango.ActiveCfg = Release|Durango
-		{E153BC48-A071-4229-A75C-E7D8E724FA96}.Release|Durango.Build.0 = Release|Durango
-		{E153BC48-A071-4229-A75C-E7D8E724FA96}.Release|Durango.Deploy.0 = Release|Durango
+		{E153BC48-A071-4229-A75C-E7D8E724FA96}.Debug|XBoxOne.ActiveCfg = Release|Durango
+		{E153BC48-A071-4229-A75C-E7D8E724FA96}.Debug|XBoxOne.Build.0 = Release|Durango
+		{E153BC48-A071-4229-A75C-E7D8E724FA96}.Debug|XBoxOne.Deploy.0 = Release|Durango
+		{E153BC48-A071-4229-A75C-E7D8E724FA96}.Release|XBoxOne.ActiveCfg = Release|Durango
+		{E153BC48-A071-4229-A75C-E7D8E724FA96}.Release|XBoxOne.Build.0 = Release|Durango
+		{E153BC48-A071-4229-A75C-E7D8E724FA96}.Release|XBoxOne.Deploy.0 = Release|Durango
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
