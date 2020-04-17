@@ -6438,6 +6438,18 @@ void next_client_internal_send_pings_to_near_relays( next_client_internal_t * cl
     next_relay_manager_send_pings( client->near_relay_manager, client->socket, client->session_id );
 }
 
+void next_client_internal_update_fallback_to_direct( next_client_internal_t * client )
+{
+    next_platform_mutex_acquire( client->route_manager_mutex );
+    const bool fallback_to_direct = client->route_manager->fallback_to_direct;
+    next_platform_mutex_release( client->route_manager_mutex );
+
+    if ( !client->fallback_to_direct && fallback_to_direct )
+    {
+        client->counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT]++;
+    }
+}
+
 void next_client_internal_update_route_manager( next_client_internal_t * client )
 {
     next_assert( client );
@@ -6459,17 +6471,9 @@ void next_client_internal_update_route_manager( next_client_internal_t * client 
 
     next_platform_mutex_acquire( client->route_manager_mutex );
     next_route_manager_check_for_timeouts( client->route_manager );
-    const bool fallback_to_direct = client->route_manager->fallback_to_direct;
     const bool send_route_request = next_route_manager_send_route_request( client->route_manager, &route_request_to, route_request_packet_data, &route_request_packet_bytes );
     const bool send_continue_request = next_route_manager_send_continue_request( client->route_manager, &continue_request_to, continue_request_packet_data, &continue_request_packet_bytes );
     next_platform_mutex_release( client->route_manager_mutex );
-
-    if ( !client->fallback_to_direct && fallback_to_direct )
-    {
-        client->counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT]++;
-    }
-
-    client->fallback_to_direct = fallback_to_direct;
 
     if ( send_route_request )
     {
@@ -6542,6 +6546,8 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_client_inter
             next_client_internal_send_pings_to_near_relays( client );
 
             next_client_internal_update_stats( client );
+
+            next_client_internal_update_fallback_to_direct( client );
 
             next_client_internal_update_route_manager( client );
 
