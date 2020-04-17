@@ -10758,7 +10758,7 @@ uint64_t next_server_upgrade_session( next_server_t * server, const next_address
         state = server->internal->state;
     }
 
-    if ( state != NEXT_SERVER_STATE_INITIALIZED )
+    if ( state == NEXT_SERVER_STATE_DIRECT_ONLY )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server can't upgrade session. direct only mode" );
         return 0;
