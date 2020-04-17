@@ -6453,21 +6453,24 @@ void next_client_internal_send_pings_to_near_relays( next_client_internal_t * cl
 void next_client_internal_update_fallback_to_direct( next_client_internal_t * client )
 {
     next_assert( client );
-    
+
     if ( next_global_config.disable_network_next )
         return;
 
     next_platform_mutex_acquire( client->route_manager_mutex );
-    next_route_manager_check_for_timeouts( client->route_manager );
+    if ( client->upgraded )
+    {
+        next_route_manager_check_for_timeouts( client->route_manager );
+    }
     const bool fallback_to_direct = client->route_manager->fallback_to_direct;
     next_platform_mutex_release( client->route_manager_mutex );
 
     if ( !client->fallback_to_direct && fallback_to_direct )
     {
         client->counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT]++;
+        client->fallback_to_direct = fallback_to_direct;
+        return;
     }
-
-    client->fallback_to_direct = fallback_to_direct;
 }
 
 void next_client_internal_update_route_manager( next_client_internal_t * client )
