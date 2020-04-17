@@ -69,7 +69,7 @@ int main( int argc, char ** argv )
     uint8_t packet_data[NEXT_MTU];
     memset( packet_data, 0, sizeof( packet_data ) );
 
-    int iterations = 1000;
+    int iterations = 0;
     if ( argc == 2 ) 
     {
         iterations = atoi( argv[1] );
