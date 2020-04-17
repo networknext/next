@@ -67,11 +67,11 @@
                 </div>
             </a>
             <ul class="navbar-nav px-3 w-100 mr-auto">
-                <li class="nav-item active text-nowrap">
-                    <a class="nav-link" href="#" onclick="changePage('home')">Home</a>
+                <li class="nav-item text-nowrap">
+                    <a class="nav-link active" href="#" id="home-link" onclick="changePage('home')">Home</a>
                 </li>
                 <li class="nav-item text-nowrap">
-                    <a class="nav-link" href="#" onclick="changePage('sessions')">Sessions</a>
+                    <a class="nav-link" href="#" id="session-link" onclick="changePage('sessions')">Sessions</a>
                 </li>
             </ul>
             <ul class="navbar-nav px-3">
@@ -80,8 +80,8 @@
                         <i class="fas fa-flag fa-2x" data-toggle="tooltip" data-placement="bottom" title="Country Selection"></i>
                     </a>
                     <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
-                        <a class="dropdown-item" href="#" onclick="changeMap('NA')">NA</a>
-                        <a class="dropdown-item" href="#" onclick="changeMap('WORLD')">World</a>
+                        <a class="dropdown-item" href="#">NA</a>
+                        <a class="dropdown-item" href="#">World</a>
                     </div>
                 </li>
                 <li class="nav-item dropdown">
@@ -91,10 +91,6 @@
                     <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
                         <a class="dropdown-item" href="#" onclick="changePage('account')">Settings</a>
                     </div>
-                </li>
-                <li class="nav-item text-nowrap">
-                    <a class="nav-link" href="#">
-                    </a>
                 </li>
                 <li class="nav-item text-nowrap">
                     <a class="nav-link" href="#">
@@ -113,11 +109,18 @@
             <div class="workspace row hidden" id="account-workspace">
                 <nav class="navbar navbar-expand-md navbar-dark fi bg-dark p-0 shadow">
                     <ul class="navbar-nav px-3 w-100 mr-auto">
-                        <li class="nav-item active text-nowrap">
-                            <a class="nav-link" href="#" onclick="changeAccountPage('users')">Users</a>
+                        <li class="nav-item text-nowrap">
+                            <a class="nav-link" id="users-link" href="#" onclick="changeAccountPage('users')">Users</a>
                         </li>
                         <li class="nav-item text-nowrap">
-                            <a class="nav-link" href="#" onclick="changeAccountPage('config')">Game Configuration</a>
+                            <a class="nav-link" id="config-link" href="#" onclick="changeAccountPage('config')">Game Configuration</a>
+                        </li>
+                    </ul>
+                    <ul class="navbar-nav px-3">
+                        <li class="nav-item text-nowrap">
+                            <a class="nav-link" href="#" onclick="changeAccountPage('new')">
+                                <i class="fas fa-plus" data-toggle="tooltip" data-placement="bottom" title="Add User"></i>
+                            </a>
                         </li>
                     </ul>
                 </nav>
@@ -156,14 +159,40 @@
                                 <td>{{ account.last_name }}</td>
                                 <td>{{ account.email }}</td>
                                 <td>
-                                    <div>
-                                        Buttons go here
-                                    </div>
+                                    <button class="btn">
+                                        <i class="fas fa-edit" data-toggle="tooltip" data-placement="bottom" title="Edit User" onclick="editUser(account)"></i>
+                                    </button>
+                                    <button class="btn">
+                                        <i class="fas fa-trash" data-toggle="tooltip" data-placement="bottom" title="Delete User"></i>
+                                    </button>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
+                <form id="newUser">
+                    <div class="form-row justify-content-middle">
+                        <div class="form-group col-sm-2">
+                            <label for="email">Email</label>
+                            <input type="text" class="form-control" id="email">
+                        </div>
+                    </div>
+                    <div class="form-row justify-content-middle">
+                        <div class="form-group col-sm-2">
+                            <label for="perms">Permissions</label>
+                            <input type="text" class="form-control" id="perms">
+                        </div>
+                    </div>
+                    <div class="form-row justify-content-end">
+                        <div class="form-group col-sm-1">
+                            <button type="submit"
+                                    id="addUser"
+                                    class="btn btn-primary form-control confirm-button">
+                                Add User
+                            </button>
+                        </div>
+                    </div>
+                </form>
             </div>
             <div class="workspace row hidden" id="session-workspace">
                 <table class="table" id="sessions">
@@ -176,7 +205,7 @@
                         <th scope="col">Change RTT</th>
                         <th scope="col">On Network Next</th>
                         <th scope="col">Expires At</th>
-                        <!-- <th scope="col">Details</th> -->
+                        <th scope="col">Details</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -193,11 +222,11 @@
                                 <i class="fas fa-times-circle"></i>
                             </td>
                             <td>{{ session.expires_at }}</td>
-                            <!-- <td>
-                                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#exampleModal">
-                                    <i class="fas fa-info-circle"></i>
+                            <td>
+                                <button class="btn" data-toggle="modal" data-target="#exampleModal">
+                                    <i class="fas fa-info-circle" data-toggle="tooltip" data-placement="bottom" title="Session Info"></i>
                                 </button>
-                            </td> -->
+                            </td>
                         </tr>
                     </tbody>
                   </table>
@@ -222,7 +251,7 @@
                   </div> -->
             </div>
         </div>
-
+        <script src="https://cdn.auth0.com/js/auth0/9.11/auth0.min.js"></script>
         <script src="https://unpkg.com/deck.gl@latest/dist.min.js"></script>
         <!-- optional if mapbox base map is needed -->
         <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.53.0/mapbox-gl.js'></script>
