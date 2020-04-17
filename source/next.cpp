@@ -6194,6 +6194,9 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 {
     next_assert( client );
 
+    if ( next_global_config.disable_network_next )
+        return;
+
     if ( !client->upgraded )
         return;
 
@@ -6341,6 +6344,9 @@ void next_client_internal_update_direct_pings( next_client_internal_t * client )
 {
     next_assert( client );
 
+    if ( next_global_config.disable_network_next )
+        return;
+
     if ( !client->upgraded )
         return;
 
@@ -6372,6 +6378,9 @@ void next_client_internal_update_direct_pings( next_client_internal_t * client )
 void next_client_internal_update_next_pings( next_client_internal_t * client )
 {
     next_assert( client );
+
+    if ( next_global_config.disable_network_next )
+        return;
 
     if ( !client->upgraded )
         return;
@@ -6429,6 +6438,9 @@ void next_client_internal_send_pings_to_near_relays( next_client_internal_t * cl
 {
     next_assert( client );
 
+    if ( next_global_config.disable_network_next )
+        return;
+
     if ( !client->upgraded )
         return;
 
@@ -6440,6 +6452,11 @@ void next_client_internal_send_pings_to_near_relays( next_client_internal_t * cl
 
 void next_client_internal_update_fallback_to_direct( next_client_internal_t * client )
 {
+    next_assert( client );
+    
+    if ( next_global_config.disable_network_next )
+        return;
+
     next_platform_mutex_acquire( client->route_manager_mutex );
     next_route_manager_check_for_timeouts( client->route_manager );
     const bool fallback_to_direct = client->route_manager->fallback_to_direct;
@@ -6456,6 +6473,9 @@ void next_client_internal_update_fallback_to_direct( next_client_internal_t * cl
 void next_client_internal_update_route_manager( next_client_internal_t * client )
 {
     next_assert( client );
+
+    if ( next_global_config.disable_network_next )
+        return;
 
     if ( !client->upgraded )
         return;
@@ -6492,6 +6512,9 @@ void next_client_internal_update_route_manager( next_client_internal_t * client 
 
 void next_client_internal_update_upgrade_response( next_client_internal_t * client )
 {
+    if ( next_global_config.disable_network_next )
+        return;
+
     if ( client->fallback_to_direct )
         return;
 
@@ -9818,6 +9841,9 @@ void next_server_internal_update_route( next_server_internal_t * server )
 {
     next_assert( server );
 
+    if ( next_global_config.disable_network_next )
+        return;
+
     const double current_time = next_time();
     
     const int max_index = server->session_manager->max_entry_index;
@@ -9862,6 +9888,9 @@ void next_server_internal_update_route( next_server_internal_t * server )
 void next_server_internal_update_pending_upgrades( next_server_internal_t * server )
 {
     next_assert( server );
+
+    if ( next_global_config.disable_network_next )
+        return;
 
     int state = NEXT_SERVER_STATE_DIRECT_ONLY;
     {
@@ -9924,6 +9953,9 @@ void next_server_internal_update_pending_upgrades( next_server_internal_t * serv
 void next_server_internal_update_sessions( next_server_internal_t * server )
 {
     next_assert( server );
+
+    if ( next_global_config.disable_network_next )
+        return;
 
     int state = NEXT_SERVER_STATE_DIRECT_ONLY;
     {
@@ -10114,6 +10146,9 @@ void next_server_internal_tag_session( next_server_internal_t * server, const ne
 {
     next_assert( server );
     next_assert( address );
+
+    if ( next_global_config.disable_network_next )
+        return;
 
     next_pending_session_entry_t * pending_entry = next_pending_session_manager_find( server->pending_session_manager, address );
     if ( pending_entry )
