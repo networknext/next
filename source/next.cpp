@@ -6448,6 +6448,8 @@ void next_client_internal_update_fallback_to_direct( next_client_internal_t * cl
     {
         client->counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT]++;
     }
+
+    client->fallback_to_direct = fallback_to_direct;
 }
 
 void next_client_internal_update_route_manager( next_client_internal_t * client )
