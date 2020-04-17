@@ -10059,9 +10059,9 @@ void next_server_internal_upgrade_session( next_server_internal_t * server, cons
         state = server->state;
     }
 
-    if ( state != NEXT_SERVER_STATE_INITIALIZED )
+    if ( state == NEXT_SERVER_STATE_DIRECT_ONLY )
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server cannot upgrade client %s. server is not initialized", next_address_to_string( address, buffer ) );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server cannot upgrade client. direct only mode" );
         return;
     }
 
@@ -10318,7 +10318,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
         if ( server->first_backend_server_init + 10.0 <= current_time )
         {
-            next_printf( NEXT_LOG_LEVEL_ERROR, "server did not get an init response from backend. falling back to direct only" );
+            next_printf( NEXT_LOG_LEVEL_WARNING, "server did not get an init response from backend. falling back to direct only" );
             next_mutex_guard( server->state_and_resolve_hostname_mutex );
             server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
         }
@@ -10756,7 +10756,7 @@ uint64_t next_server_upgrade_session( next_server_t * server, const next_address
 
     if ( state != NEXT_SERVER_STATE_INITIALIZED )
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "can't upgrade session. server is not initialized" );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server can't upgrade session. direct only mode" );
         return 0;
     }
 
