@@ -13775,7 +13775,6 @@ void next_test()
 	RUN_TEST( test_client_ipv6 );
 	RUN_TEST( test_server_ipv6 );
 #endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
-	RUN_TEST( test_direct );
     RUN_TEST( test_upgrade_token );
     RUN_TEST( test_packets );
     RUN_TEST( test_pending_session_manager );
