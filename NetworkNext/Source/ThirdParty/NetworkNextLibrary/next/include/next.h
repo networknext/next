@@ -31,10 +31,10 @@
 #include <stddef.h>
 
 #if !defined(NEXT_DEVELOPMENT)
-#define NEXT_VERSION_FULL                                   "3.4.3"
+#define NEXT_VERSION_FULL                                   "3.4.4"
 #define NEXT_VERSION_MAJOR_INT                                    3
 #define NEXT_VERSION_MINOR_INT                                    4
-#define NEXT_VERSION_PATCH_INT                                    3
+#define NEXT_VERSION_PATCH_INT                                    4
 #else // #if !NEXT_DEVELOPMENT
 #define NEXT_VERSION_FULL                                     "dev"
 #define NEXT_VERSION_MAJOR_INT                                    0
@@ -183,6 +183,8 @@ do                                                                              
 #else
 #define next_assert( ignore ) ((void)0)
 #endif
+
+NEXT_EXPORT_FUNC void next_quiet( bool flag );
 
 NEXT_EXPORT_FUNC void next_log_level( int level );
 

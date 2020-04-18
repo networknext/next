@@ -47,13 +47,11 @@ void FNetworkNextModule::StartupModule()
 	FString BaseDir = IPluginManager::Get().FindPlugin("NetworkNext")->GetBaseDir();
 
 #if defined(NETWORKNEXT_ENABLE_DELAY_LOAD_WIN64)
-	FString LibraryPath = FPaths::Combine(*BaseDir, TEXT("Source/ThirdParty/NetworkNextLibrary/next/lib/Windows-x86_64/Release/next.dll"));
+	FString LibraryPath = FPaths::Combine(*BaseDir, TEXT("Source/ThirdParty/NetworkNextLibrary/next/lib/Win64/Release/next-win64-3.4.4.dll"));
 #elif defined(NETWORKNEXT_ENABLE_DELAY_LOAD_WIN32)
-	FString LibraryPath = FPaths::Combine(*BaseDir, TEXT("Source/ThirdParty/NetworkNextLibrary/next/lib/Windows-x86/Release/next.dll"));
-// <PS4
+	FString LibraryPath = FPaths::Combine(*BaseDir, TEXT("Source/ThirdParty/NetworkNextLibrary/next/lib/Win32/Release/next-win32-3.4.4.dll"));
 #elif defined(NETWORKNEXT_ENABLE_DELAY_LOAD_PS4)
-	FString LibraryPath = "next.prx";
-// PS4>
+	FString LibraryPath = "next-ps4-3.4.4.prx";
 #else
 #error Unsupported delay load path in NetworkNext.cpp
 #endif
