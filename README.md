@@ -78,7 +78,7 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
 	`ssh-keygen -t rsa -b 4096 -C "your_email@example.com"`
 	`eval $(ssh-agent -s)`
 	`ssh-add <filepath_priv>` Replace <filepath_priv> with the path to your SSH private key (ex. ~/.ssh/id_rsa)
-	`clip < <filepath_pub>` Replace <filepath_pub> with the path to your SSH public key (ex. ~/.ssh/id_rsa.pub)
+	Copy the contents of your SSH public key (in same directory as public key, ex. ~/.ssh/id_rsa.pub)
 	Add the SSH public key to your Github account
 		- Login and go to Settings > SSH and GPG Keys > New SSH Key and paste in your key
   `git clone git@github.com:networknext/backend.git`
