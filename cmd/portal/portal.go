@@ -45,7 +45,7 @@ func main() {
 		case level.DebugValue().String():
 			logger = level.NewFilter(logger, level.AllowDebug())
 		default:
-			logger = level.NewFilter(logger, level.AllowInfo())
+			logger = level.NewFilter(logger, level.AllowWarn())
 		}
 
 		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
