@@ -80,6 +80,42 @@ func (s *OpsService) RemoveBuyer(r *http.Request, args *RemoveBuyerArgs, reply *
 	return nil
 }
 
+type RouteShaderArgs struct {
+	Name string
+}
+
+type RouteShaderReply struct {
+	RoutingRuleSettings routingRuleSettings
+}
+
+type routingRuleSettings struct {
+	EnvelopeKbpsUp               int64   `json:"envelopeKbpsUp"`
+	EnvelopeKbpsDown             int64   `json:"envelopeKbpsDown"`
+	Mode                         int64   `json:"mode"`
+	MaxCentsPerGB                uint64  `json:"maxCentsPerGB"`
+	RTTEpsilon                   float32 `json:"rttEpsilon"`
+	RTTThreshold                 float32 `json:"rttThreshold"`
+	RTTHysteresis                float32 `json:"rttHysteresis"`
+	RTTVeto                      float32 `json:"rttVeto"`
+	EnableYouOnlyLiveOnce        bool    `json:"yolo"`
+	EnablePacketLossSafety       bool    `json:"plSafety"`
+	EnableMultipathForPacketLoss bool    `json:"plMultipath"`
+	EnableMultipathForJitter     bool    `json:"jitterMultipath"`
+	EnableMultipathForRTT        bool    `json:"rttMultipath"`
+	EnableABTest                 bool    `json:"abTest"`
+}
+
+func (s *OpsService) RouteShader(r *http.Request, args *RouteShaderArgs, reply *RouteShaderReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	if err := s.Storage.Buyer(ctx, args.Name); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 type SellersArgs struct{}
 
 type SellersReply struct {

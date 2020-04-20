@@ -182,7 +182,7 @@ func sshToRelay(env Environment, relayName string) {
 	secureShell(user, address, port)
 }
 
-func readAddJSONFileData(entity string, args []string) []byte {
+func readJSONData(entity string, args []string) []byte {
 	// Check if the input is piped or a filepath
 	fileInfo, err := os.Stdin.Stat()
 	if err != nil {
@@ -190,10 +190,10 @@ func readAddJSONFileData(entity string, args []string) []byte {
 	}
 	isPipedInput := fileInfo.Mode()&os.ModeCharDevice == 0
 
-	var fileData []byte
+	var data []byte
 	if isPipedInput {
 		// Read the piped input from stdin
-		fileData, err = ioutil.ReadAll(bufio.NewReader(os.Stdin))
+		data, err = ioutil.ReadAll(bufio.NewReader(os.Stdin))
 		if err != nil {
 			log.Fatalf("Error reading from stdin: %v", err)
 		}
@@ -203,13 +203,13 @@ func readAddJSONFileData(entity string, args []string) []byte {
 			log.Fatalf("Supply a file path to read the %s JSON or pipe it through stdin\nnext %s add [filepath]\nor\ncat <filepath> | next %s add\n\nFor an example JSON schema:\nnext %s add example", entity, entity, entity, entity)
 		}
 
-		fileData, err = ioutil.ReadFile(args[0])
+		data, err = ioutil.ReadFile(args[0])
 		if err != nil {
 			log.Fatalf("Error reading %s JSON file: %v", entity, err)
 		}
 	}
 
-	return fileData
+	return data
 }
 
 func handleJSONRPCError(err error) {
@@ -315,7 +315,7 @@ func main() {
 						ShortUsage: "next buyers add [filepath]",
 						ShortHelp:  "Add a buyer to storage from a JSON file or piped from stdin",
 						Exec: func(_ context.Context, args []string) error {
-							jsonData := readAddJSONFileData("buyers", args)
+							jsonData := readJSONData("buyers", args)
 
 							// Unmarshal the JSON and create the Buyer struct
 							var buyer routing.Buyer
@@ -371,6 +371,44 @@ func main() {
 				},
 			},
 			{
+				Name:       "routeshader",
+				ShortUsage: "next routeshader <buyer name>",
+				ShortHelp:  "Get a buyer's route shader from storage",
+				Exec: func(_ context.Context, args []string) error {
+					if len(args) == 0 {
+						log.Fatal("No buyer name provided.\nUsage:\nnext routeshader <buyer name>\nbuyer name: the buyer's name (ex. Psyonix)\nFor a list of buyers, use next buyers")
+					}
+
+					// Get the buyer's route shader
+					routeShader(rpcClient, args[0])
+					return nil
+				},
+				Subcommands: []*ffcli.Command{
+					{
+						Name:       "set",
+						ShortUsage: "next routeshader set <buyer name> [filepath]",
+						ShortHelp:  "Set the buyer's route shader in storage from a JSON file or piped from stdin",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) == 0 {
+								log.Fatal("No buyer name provided.\nUsage:\nnext routeshader set <buyer name> [filepath]\nbuyer name: the buyer's name (ex. Psyonix)\n(Optional) filepath: the filepath to a JSON file with the new route shader data. If this data is piped through stdin, this parameter is optional.\nFor a list of buyers, use next buyers")
+							}
+
+							jsonData := readJSONData("buyers", args[1:])
+
+							// Unmarshal the JSON and create the RoutingRuleSettings struct
+							var rrs routing.RoutingRulesSettings
+							if err := json.Unmarshal(jsonData, &rrs); err != nil {
+								log.Fatalf("Could not unmarshal route shader: %v", err)
+							}
+
+							// Set the route shader in storage
+							setRouteShader(rpcClient, args[0], rrs)
+							return nil
+						},
+					},
+				},
+			},
+			{
 				Name:       "sellers",
 				ShortUsage: "next sellers",
 				ShortHelp:  "Manage sellers",
@@ -384,7 +422,7 @@ func main() {
 						ShortUsage: "next sellers add [filepath]",
 						ShortHelp:  "Add a seller to storage from a JSON file or piped from stdin",
 						Exec: func(_ context.Context, args []string) error {
-							jsonData := readAddJSONFileData("sellers", args)
+							jsonData := readJSONData("sellers", args)
 
 							// Unmarshal the JSON and create the Seller struct
 							var seller routing.Seller
@@ -452,7 +490,7 @@ func main() {
 						ShortUsage: "next datacenters add <filepath>",
 						ShortHelp:  "Add a datacenter to storage from a JSON file or piped from stdin",
 						Exec: func(_ context.Context, args []string) error {
-							jsonData := readAddJSONFileData("datacenters", args)
+							jsonData := readJSONData("datacenters", args)
 
 							// Unmarshal the JSON and create the Datacenter struct
 							var datacenter routing.Datacenter
