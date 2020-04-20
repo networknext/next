@@ -239,7 +239,7 @@ func main() {
 		Conn:          connection,
 		MaxPacketSize: transport.DefaultMaxPacketSize,
 
-		ServerInitRequestHandlerFunc: func(w io.Writer, incoming *transport.UDPPacket) {
+		ServerInitHandlerFunc: func(w io.Writer, incoming *transport.UDPPacket) {
 			initRequest := &transport.ServerInitRequestPacket{}
 			if err = initRequest.UnmarshalBinary(incoming.Data); err != nil {
 				fmt.Printf("error: failed to read server init request packet: %v\n", err)
@@ -247,8 +247,8 @@ func main() {
 			}
 
 			initResponse := &transport.ServerInitResponsePacket{
-				RequestID: 		initRequest.RequestID,
-				Response:       0, // OK
+				RequestID: initRequest.RequestID,
+				Response:  transport.InitResponseOK,
 			}
 
 			initResponse.Signature = crypto.Sign(crypto.BackendPrivateKey, initResponse.GetSignData())

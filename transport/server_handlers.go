@@ -36,9 +36,9 @@ type UDPServerMux struct {
 	Conn          *net.UDPConn
 	MaxPacketSize int
 
-	ServerInitRequestHandlerFunc  	UDPHandlerFunc
-	ServerUpdateHandlerFunc  		UDPHandlerFunc
-	SessionUpdateHandlerFunc 		UDPHandlerFunc
+	ServerInitHandlerFunc    UDPHandlerFunc
+	ServerUpdateHandlerFunc  UDPHandlerFunc
+	SessionUpdateHandlerFunc UDPHandlerFunc
 }
 
 // Start begins accepting UDP packets from the UDP connection and will block
@@ -71,7 +71,7 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 
 		switch packet.Data[0] {
 		case PacketTypeServerInitRequest:
-			m.ServerInitRequestHandlerFunc(&buf, &packet)
+			m.ServerInitHandlerFunc(&buf, &packet)
 		case PacketTypeServerUpdate:
 			m.ServerUpdateHandlerFunc(&buf, &packet)
 		case PacketTypeSessionUpdate:
