@@ -35,10 +35,10 @@ const (
 )
 
 type ServerInitRequestPacket struct {
-	RequestID            uint64
-	CustomerID           uint64
-	DatacenterID         uint64
-	Signature            []byte
+	RequestID    uint64
+	CustomerID   uint64
+	DatacenterID uint64
+	Signature    []byte
 
 	Version SDKVersion
 }
@@ -92,9 +92,9 @@ func (packet *ServerInitRequestPacket) MarshalBinary() ([]byte, error) {
 }
 
 type ServerInitResponsePacket struct {
-	RequestID            uint64
-	Response             uint32
-	Signature            []byte
+	RequestID uint64
+	Response  uint32
+	Signature []byte
 }
 
 func (packet *ServerInitResponsePacket) Serialize(stream encoding.Stream) error {
@@ -144,7 +144,7 @@ type ServerUpdatePacket struct {
 	NumSessionsPending   uint32
 	NumSessionsUpgraded  uint32
 	ServerAddress        net.UDPAddr
-	ServerPrivateAddress net.UDPAddr			// no longer used in 3.4.* SDK. please remove field when convenient
+	ServerPrivateAddress net.UDPAddr // no longer used in 3.4.* SDK. please remove field when convenient
 	ServerRoutePublicKey []byte
 	Signature            []byte
 
