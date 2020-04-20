@@ -188,6 +188,17 @@ int main()
   std::string backendHostname = env.BackendHostname;
   std::cout << "    backend hostname is '" << backendHostname << "'\n";
 
+  // v3 backend hostname
+  net::Address v3BackendAddr;
+  {
+    if (!v3BackendAddr.resolve(env.RelayV3BackendHostname, env.RelayV3BackendPort)) {
+      Log("Could not resolve the v3 backend hostname to an ip address");
+      return 1;
+    }
+  }
+
+  std::cout << "    v3 ip is '" << v3BackendAddr.toString() << "'\n";
+
   unsigned int numProcessors = 0;
   if (!getNumProcessors(env, numProcessors)) {
     return 1;
@@ -260,7 +271,7 @@ int main()
     }
   };
 
-  auto slightlyLessGracefulShutdown = [&closeSockets, &joinThreads] {
+  auto cleanup = [&closeSockets, &joinThreads] {
     gAlive = false;
     closeSockets();
     joinThreads();
@@ -295,7 +306,7 @@ int main()
       {
         if (!packetSocket) {
           Log("could not create packetSocket");
-          slightlyLessGracefulShutdown();
+          cleanup();
           return 1;
         }
       }
@@ -348,7 +359,7 @@ int main()
     auto socket = makeSocket(bindAddr.Port);
     if (!socket) {
       Log("could not create pingSocket");
-      slightlyLessGracefulShutdown();
+      cleanup();
       return 1;
     }
 
@@ -384,15 +395,15 @@ int main()
     auto socket = makeSocket(bindAddr.Port);
     if (!socket) {
       Log("could not create v3 backend socket");
-      slightlyLessGracefulShutdown();
+      cleanup();
       return 1;
     }
 
-    auto thread = std::make_shared<std::thread>([&slightlyLessGracefulShutdown, &v3BackendSuccess] {
-      core::V3Backend backend;
+    auto thread = std::make_shared<std::thread>([&v3BackendAddr, socket, &cleanup, &v3BackendSuccess] {
+      core::V3Backend backend(v3BackendAddr, *socket);
 
       if (!backend.init()) {
-        slightlyLessGracefulShutdown();
+        cleanup();
         return;
       }
 
@@ -422,7 +433,7 @@ int main()
 
   if (!relay_initialized) {
     Log("error: could not initialize relay\n\n");
-    slightlyLessGracefulShutdown();
+    cleanup();
     return 1;
   }
 
@@ -430,21 +441,11 @@ int main()
 
   bool success = backend.updateCycle(gAlive, gShouldCleanShutdown, recorder, sessions, relayClock);
 
-  // has to be here, updateCycle() may return on failure and this should be marked false here to account for that
-  gAlive = false;
-
   Log("Cleaning up");
 
   shouldReceive = false;
 
-  LogDebug("Closing sockets");
-  closeSockets();
-
-  LogDebug("Joining threads");
-  joinThreads();
-
-  LogDebug("Terminating relay");
-  relay::relay_term();
+  cleanup();
 
   LogDebug("Relay terminated. Address: ", relayAddr);
 

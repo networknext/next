@@ -28,6 +28,7 @@ namespace net
     ~Address() = default;
 
     bool parse(const std::string& address_string_in);
+    bool resolve(const std::string& hostname, const std::string& port);
 
     void swap(Address& other);
 

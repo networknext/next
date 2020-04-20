@@ -16,6 +16,8 @@ namespace util
     std::string SendBufferSize;
     std::string RecvBufferSize;
     std::string ProcessorCount;
+    std::string RelayV3BackendHostname;
+    std::string RelayV3BackendPort;
   };
 
   inline Env::Env()
@@ -26,6 +28,8 @@ namespace util
      {"RELAY_PUBLIC_KEY", &RelayPublicKey},
      {"RELAY_ROUTER_PUBLIC_KEY", &RelayRouterPublicKey},
      {"RELAY_BACKEND_HOSTNAME", &BackendHostname},
+     {"RELAY_V3_BACKEND_HOSTNAME", &RelayV3BackendHostname},
+     {"RELAY_V3_BACKEND_PORT", &RelayV3BackendPort},
     };
 
     std::unordered_map<const char*, std::string*> optionalVars = {

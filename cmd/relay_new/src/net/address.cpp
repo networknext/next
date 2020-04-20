@@ -121,6 +121,29 @@ namespace net
     return false;
   }
 
+  auto Address::resolve(const std::string& hostname, const std::string& port) -> bool
+  {
+    bool success = false;
+    addrinfo hints = {};
+    addrinfo* result = nullptr;
+
+    if (getaddrinfo(hostname.c_str(), port.c_str(), &hints, &result) == 0 && result != nullptr) {
+      if (result->ai_addr->sa_family == AF_INET6) {
+        sockaddr_in6* addr_ipv6 = (sockaddr_in6*)(result->ai_addr);
+        *this = *addr_ipv6;
+        success = true;
+      } else if (result->ai_addr->sa_family == AF_INET) {
+        sockaddr_in* addr_ipv4 = (sockaddr_in*)(result->ai_addr);
+        *this = *addr_ipv4;
+        success = true;
+      }
+
+      freeaddrinfo(result);
+    }
+
+    return success;
+  }
+
   // TODO consider making this a bool retval. Since some windows versions can't do ipv6 then that would be the only case it
   // returns false
   void Address::toString(std::string& output) const
@@ -303,14 +326,15 @@ namespace legacy
         return buffer;
       } else {
         if (snprintf(buffer, RELAY_MAX_ADDRESS_STRING_LENGTH, "[%s]:%hu", address_string, address->port) < 0) {
-          Log("address string truncated: [", address_string,"]:", static_cast<uint32_t>(address->port));
+          Log("address string truncated: [", address_string, "]:", static_cast<uint32_t>(address->port));
         }
         return buffer;
       }
 #endif
     } else if (address->type == net::AddressType::IPv4) {
       if (address->port != 0) {
-        snprintf(buffer,
+        snprintf(
+         buffer,
          RELAY_MAX_ADDRESS_STRING_LENGTH,
          "%d.%d.%d.%d:%d",
          address->data.ipv4[0],
@@ -319,7 +343,8 @@ namespace legacy
          address->data.ipv4[3],
          address->port);
       } else {
-        snprintf(buffer,
+        snprintf(
+         buffer,
          RELAY_MAX_ADDRESS_STRING_LENGTH,
          "%d.%d.%d.%d",
          address->data.ipv4[0],

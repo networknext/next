@@ -5,14 +5,19 @@ using namespace std::chrono_literals;
 
 namespace core
 {
+  V3Backend::V3Backend(const net::Address& addr, os::Socket& socket): mAddr(addr), mSocket(socket) {}
+
   auto V3Backend::init() -> bool
   {
+    static std::string data = "foo";
+    static std::vector<uint8_t> buff(data.begin(), data.end());
+    mSocket.send(mAddr, buff.data(), buff.size());
     return true;
   }
 
-  auto V3Backend::updateCycle(const volatile bool& handle) -> bool {
+  auto V3Backend::updateCycle(const volatile bool& handle) -> bool
+  {
     while (handle) {
-
       if (!update()) {
         return false;
       }
@@ -25,6 +30,9 @@ namespace core
 
   auto V3Backend::update() -> bool
   {
+    static std::string data = "bar";
+    static std::vector<uint8_t> buff(data.begin(), data.end());
+    mSocket.send(mAddr, buff.data(), buff.size());
     return true;
   }
 }  // namespace core
