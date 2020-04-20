@@ -10,6 +10,7 @@
 #include "core/packet_processor.hpp"
 #include "core/ping_processor.hpp"
 #include "core/router_info.hpp"
+#include "core/v3_backend.hpp"
 #include "crypto/keychain.hpp"
 #include "encoding/base64.hpp"
 #include "relay/relay.hpp"
@@ -19,11 +20,11 @@
 
 using namespace std::chrono_literals;
 
+volatile bool gAlive = true;
+volatile bool gShouldCleanShutdown = false;
+
 namespace
 {
-  volatile bool gAlive = true;
-  volatile bool gShouldCleanShutdown = false;
-
   // TODO move this out of main and somewhere else to allow for test coverage
   inline bool getCryptoKeys(const util::Env& env, crypto::Keychain& keychain, std::string& b64RelayPubKey)
   {
@@ -219,8 +220,7 @@ int main()
   std::condition_variable waitVar;
 
   std::vector<os::SocketPtr> sockets;
-  std::unique_ptr<std::thread> pingThread;
-  std::vector<std::unique_ptr<std::thread>> packetThreads;
+  std::vector<std::shared_ptr<std::thread>> threads;
 
   // the relay address that should be exposed to other relays.
   // do not set this using the value from the env var.
@@ -254,11 +254,17 @@ int main()
   };
 
   // joins all threads that were placed in the vector
-  auto joinThreads = [&pingThread, &packetThreads] {
-    pingThread->join();
-    for (auto& thread : packetThreads) {
+  auto joinThreads = [&threads] {
+    for (auto& thread : threads) {
       thread->join();
     }
+  };
+
+  auto slightlyLessGracefulShutdown = [&closeSockets, &joinThreads] {
+    gAlive = false;
+    closeSockets();
+    joinThreads();
+    relay::relay_term();
   };
 
   // makes a shared ptr to a socket object
@@ -284,43 +290,38 @@ int main()
    */
   Log("creating ", numProcessors, " packet processing threads");
   {
-    packetThreads.resize(numProcessors);
-
     for (unsigned int i = 0; i < numProcessors; i++) {
       auto packetSocket = makeSocket(relayAddr.Port);
       {
         if (!packetSocket) {
           Log("could not create packetSocket");
-          ::gAlive = false;
-          closeSockets();
-          joinThreads();
-          relay::relay_term();
+          slightlyLessGracefulShutdown();
           return 1;
         }
       }
 
-      sockets.push_back(packetSocket);
-
-      // clang-format did this
-      packetThreads[i] = std::make_unique<std::thread>([&waitVar,
-                                                        &socketAndThreadReady,
-                                                        &shouldReceive,
-                                                        packetSocket,
-                                                        &relayClock,
-                                                        &keychain,
-                                                        &sessions,
-                                                        &relayManager,
-                                                        &recorder,
-                                                        &relayAddr] {
+      auto thread = std::make_shared<std::thread>([&waitVar,
+                                                   &socketAndThreadReady,
+                                                   &shouldReceive,
+                                                   packetSocket,
+                                                   &relayClock,
+                                                   &keychain,
+                                                   &sessions,
+                                                   &relayManager,
+                                                   &recorder,
+                                                   &relayAddr] {
         core::PacketProcessor processor(
-         shouldReceive, *packetSocket, relayClock, keychain, sessions, relayManager, ::gAlive, recorder, relayAddr);
+         shouldReceive, *packetSocket, relayClock, keychain, sessions, relayManager, gAlive, recorder, relayAddr);
         processor.process(waitVar, socketAndThreadReady);
       });
 
       wait();  // wait the the packet processor is ready to receive
 
+      sockets.push_back(packetSocket);
+      threads.push_back(thread);
+
       int error;
-      if (!os::SetThreadAffinity(*packetThreads[i], i, error)) {
+      if (!os::SetThreadAffinity(*thread, i, error)) {
         Log("Error setting thread affinity: ", error);
       }
     }
@@ -339,40 +340,70 @@ int main()
   // if they are the same the relay behaves weird, it'll sometimes behave right
   // othertimes it'll just ignore everything coming to it
   {
-    net::Address bindAddr = bindAddr;
+    net::Address bindAddr = relayAddr;
     {
       bindAddr.Port = 0;  // make sure the port is dynamically assigned
     }
 
-    auto pingSocket = makeSocket(bindAddr.Port);
-    if (!pingSocket) {
+    auto socket = makeSocket(bindAddr.Port);
+    if (!socket) {
       Log("could not create pingSocket");
-      ::gAlive = false;
-      relay::relay_term();
-      closeSockets();
-      joinThreads();
+      slightlyLessGracefulShutdown();
       return 1;
     }
 
-    sockets.push_back(pingSocket);
-
     // setup the ping processor to use the external address
     // relays use it to know where the receiving port of other relays are
-    pingThread = std::make_unique<std::thread>([&waitVar, &socketAndThreadReady, pingSocket, &relayManager, &relayAddr] {
-      core::PingProcessor pingProcessor(*pingSocket, relayManager, ::gAlive, relayAddr);
+    auto thread = std::make_shared<std::thread>([&waitVar, &socketAndThreadReady, socket, &relayManager, &relayAddr] {
+      core::PingProcessor pingProcessor(*socket, relayManager, gAlive, relayAddr);
       pingProcessor.process(waitVar, socketAndThreadReady);
     });
 
     wait();
 
+    sockets.push_back(socket);
+    threads.push_back(thread);
+
     int error;
-    if (!os::SetThreadAffinity(*pingThread, getPingProcNum(numProcessors), error)) {
+    if (!os::SetThreadAffinity(*thread, getPingProcNum(numProcessors), error)) {
       Log("Error setting thread affinity: ", error);
     }
   }
 
   LogDebug("communicating with backend");
   bool relay_initialized = false;
+  bool v3BackendSuccess = false;
+
+  // v3 backend compatability setup
+  {
+    net::Address bindAddr = relayAddr;
+    {
+      bindAddr.Port = 0;
+    }
+
+    auto socket = makeSocket(bindAddr.Port);
+    if (!socket) {
+      Log("could not create v3 backend socket");
+      slightlyLessGracefulShutdown();
+      return 1;
+    }
+
+    auto thread = std::make_shared<std::thread>([&slightlyLessGracefulShutdown, &v3BackendSuccess] {
+      core::V3Backend backend;
+
+      if (!backend.init()) {
+        slightlyLessGracefulShutdown();
+        return;
+      }
+
+      v3BackendSuccess = backend.updateCycle(gAlive);
+
+      gAlive = false;
+    });
+
+    sockets.push_back(socket);
+    threads.push_back(thread);
+  }
 
   core::Backend<net::CurlWrapper> backend(
    backendHostname, relayAddrString, keychain, routerInfo, relayManager, b64RelayPubKey, sessions);
@@ -391,10 +422,7 @@ int main()
 
   if (!relay_initialized) {
     Log("error: could not initialize relay\n\n");
-    ::gAlive = false;
-    joinThreads();
-    closeSockets();
-    relay::relay_term();
+    slightlyLessGracefulShutdown();
     return 1;
   }
 
@@ -420,5 +448,5 @@ int main()
 
   LogDebug("Relay terminated. Address: ", relayAddr);
 
-  return success ? 0 : 1;
+  return (success && v3BackendSuccess) ? 0 : 1;
 }
