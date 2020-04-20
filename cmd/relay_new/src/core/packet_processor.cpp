@@ -1,31 +1,33 @@
 #include "includes.h"
-#include "packet_processor.hpp"
 
+#include "core/continue_token.hpp"
+#include "core/route_token.hpp"
 #include "encoding/read.hpp"
 #include "encoding/write.hpp"
-
-#include "relay/relay_platform.hpp"
-#include "relay/relay.hpp"
-
-#include "core/route_token.hpp"
-#include "core/continue_token.hpp"
-
+#include "handlers/client_to_server_handler.hpp"
+#include "handlers/continue_request_handler.hpp"
+#include "handlers/continue_response_handler.hpp"
+#include "handlers/near_ping_handler.hpp"
 #include "handlers/relay_ping_handler.hpp"
 #include "handlers/relay_pong_handler.hpp"
 #include "handlers/route_request_handler.hpp"
 #include "handlers/route_response_handler.hpp"
-#include "handlers/continue_request_handler.hpp"
-#include "handlers/continue_response_handler.hpp"
-#include "handlers/client_to_server_handler.hpp"
 #include "handlers/server_to_client_handler.hpp"
 #include "handlers/session_ping_handler.hpp"
 #include "handlers/session_pong_handler.hpp"
-#include "handlers/near_ping_handler.hpp"
+#include "handlers/v3_init_handler.hpp"
+#include "packet_processor.hpp"
+#include "relay/relay.hpp"
+#include "relay/relay_platform.hpp"
 
 namespace
 {
   const uint8_t IPv4UDPHeaderSize = 28;
   const uint8_t IPv6UDPHeaderSize = 48;
+
+  const uint8_t V3BackendRelayResponse = 49;
+  const uint8_t V3BackendConfigResponse = 51;
+  const uint8_t V3BackendInitResponse = 52;
 }  // namespace
 
 namespace core
@@ -39,7 +41,8 @@ namespace core
    core::RelayManager& relayManager,
    const volatile bool& handle,
    util::ThroughputRecorder& logger,
-   const net::Address& receivingAddr)
+   const net::Address& receivingAddr,
+   util::Channel<GenericPacket<>>& channel)
    : mShouldReceive(shouldReceive),
      mSocket(socket),
      mRelayClock(relayClock),
@@ -48,7 +51,8 @@ namespace core
      mRelayManager(relayManager),
      mShouldProcess(handle),
      mLogger(logger),
-     mRecvAddr(receivingAddr)
+     mRecvAddr(receivingAddr),
+     mChannel(channel)
   {}
 
   void PacketProcessor::process(std::condition_variable& var, std::atomic<bool>& readyToReceive)
@@ -200,6 +204,15 @@ namespace core
         mLogger.addToReceived(packet.Len + headerBytes);
 
         handlers::NearPingHandler handler(packet, packet.Len, packet.Addr, mSocket);
+
+        handler.handle();
+      } break;
+      case V3BackendRelayResponse:
+      case V3BackendInitResponse:
+      case V3BackendConfigResponse: {
+        mLogger.addToReceived(packet.Len + headerBytes);
+
+        handlers::V3InitHandler handler(packet, packet.Len, mChannel);
 
         handler.handle();
       } break;

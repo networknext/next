@@ -14,6 +14,12 @@ namespace core
   template <size_t BuffSize = GenericPacketMaxSize>
   struct GenericPacket
   {
+    GenericPacket() = default;
+    GenericPacket(GenericPacket&& other);
+    ~GenericPacket() = default;
+
+    GenericPacket<BuffSize>& operator=(GenericPacket<BuffSize>&& other);
+
     net::Address Addr;
     std::array<uint8_t, BuffSize> Buffer;
     size_t Len;
@@ -50,6 +56,20 @@ namespace core
     // buffer for iovec structs
     std::vector<iovec> mIOVecBuff;
   };
+
+  template <size_t BuffSize>
+  GenericPacket<BuffSize>::GenericPacket(GenericPacket&& other)
+   : Addr(std::move(other.Addr)), Buffer(std::move(other.Buffer)), Len(std::move(other.Len))
+  {}
+
+  template <size_t BuffSize>
+  GenericPacket<BuffSize>& GenericPacket<BuffSize>::operator=(GenericPacket<BuffSize>&& other)
+  {
+    this->Addr = std::move(other.Addr);
+    this->Buffer = std::move(other.Buffer);
+    this->Len = std::move(other.Len);
+    return *this;
+  }
 
   template <size_t BuffSize, size_t PacketSize>
   GenericPacketBuffer<BuffSize, PacketSize>::GenericPacketBuffer(): mRawAddrBuff(BuffSize), mIOVecBuff(BuffSize)

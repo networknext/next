@@ -5,13 +5,21 @@ using namespace std::chrono_literals;
 
 namespace core
 {
-  V3Backend::V3Backend(const net::Address& addr, os::Socket& socket): mAddr(addr), mSocket(socket) {}
+  V3Backend::V3Backend(const net::Address& addr, os::Socket& socket, util::Channel<GenericPacket<>>& channel): mAddr(addr), mSocket(socket), mChannel(channel) {}
 
   auto V3Backend::init() -> bool
   {
     static std::string data = "foo";
     static std::vector<uint8_t> buff(data.begin(), data.end());
     mSocket.send(mAddr, buff.data(), buff.size());
+
+    GenericPacket<> packet;
+    mChannel.recv(packet);
+
+    std::string resp(packet.Buffer.begin() + 1, packet.Buffer.begin() + packet.Len);
+
+    LogDebug("\n\nInit: ", resp, "\n\n");
+
     return true;
   }
 
@@ -33,6 +41,14 @@ namespace core
     static std::string data = "bar";
     static std::vector<uint8_t> buff(data.begin(), data.end());
     mSocket.send(mAddr, buff.data(), buff.size());
+
+    GenericPacket<> packet;
+    mChannel.recv(packet);
+
+    std::string resp(packet.Buffer.begin() + 1, packet.Buffer.begin() + packet.Len);
+
+    LogDebug("\n\nUpdated: ", resp, "\n\n");
+
     return true;
   }
 }  // namespace core

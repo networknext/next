@@ -31,6 +31,7 @@
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 #include <linux/wireless.h>
+#include <list>
 #include <map>
 #include <memory>
 #include <mutex>

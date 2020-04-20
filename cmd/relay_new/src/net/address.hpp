@@ -24,6 +24,7 @@ namespace net
 
     Address();
     Address(const Address& other);
+    Address(Address&& other);
 
     ~Address() = default;
 
@@ -45,6 +46,7 @@ namespace net
     auto operator!=(const Address& other) const -> bool;
 
     auto operator=(const Address& other) -> Address&;
+    auto operator=(const Address&& other) -> Address&;
     auto operator=(const sockaddr_in& addr) -> Address&;
     auto operator=(const sockaddr_in6& addr) -> Address&;
 
@@ -168,7 +170,6 @@ namespace net
     }
   }
 
-
   inline auto Address::operator!=(const Address& other) const -> bool
   {
     return !(*this == other);
@@ -183,6 +184,25 @@ namespace net
       std::copy(other.IPv4.begin(), other.IPv4.end(), this->IPv4.begin());
     } else if (this->Type == AddressType::IPv6) {
       std::copy(other.IPv6.begin(), other.IPv6.end(), this->IPv6.begin());
+    }
+
+    return *this;
+  }
+
+  [[gnu::always_inline]] inline auto Address::operator=(const Address&& other) -> Address&
+  {
+    this->Type = other.Type;
+    this->Port = other.Port;
+
+    switch (other.Type) {
+      case AddressType::IPv4: {
+        this->IPv4 = std::move(other.IPv4);
+      } break;
+      case AddressType::IPv6: {
+        this->IPv6 = std::move(other.IPv6);
+      } break;
+      case AddressType::None:
+        break;
     }
 
     return *this;

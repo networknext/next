@@ -16,6 +16,7 @@
 #include "relay/relay.hpp"
 #include "relay/relay_platform.hpp"
 #include "testing/test.hpp"
+#include "util/channel.hpp"
 #include "util/env.hpp"
 
 using namespace std::chrono_literals;
@@ -246,6 +247,9 @@ int main()
   // session map to be shared across packet processors
   core::SessionMap sessions;
 
+  // Only used for v3 compat stuff
+  util::Channel<core::GenericPacket<>> channel;
+
   // wait until a thread is ready to do its job.
   // serializes the thread spawning so the relay doesn't
   // communicate with the backend until it is fully ready
@@ -311,7 +315,8 @@ int main()
         }
       }
 
-      auto thread = std::make_shared<std::thread>([&waitVar,
+      auto thread = std::make_shared<std::thread>([&channel,
+                                                   &waitVar,
                                                    &socketAndThreadReady,
                                                    &shouldReceive,
                                                    packetSocket,
@@ -322,7 +327,7 @@ int main()
                                                    &recorder,
                                                    &relayAddr] {
         core::PacketProcessor processor(
-         shouldReceive, *packetSocket, relayClock, keychain, sessions, relayManager, gAlive, recorder, relayAddr);
+         shouldReceive, *packetSocket, relayClock, keychain, sessions, relayManager, gAlive, recorder, relayAddr, channel);
         processor.process(waitVar, socketAndThreadReady);
       });
 
@@ -399,8 +404,8 @@ int main()
       return 1;
     }
 
-    auto thread = std::make_shared<std::thread>([&v3BackendAddr, socket, &cleanup, &v3BackendSuccess] {
-      core::V3Backend backend(v3BackendAddr, *socket);
+    auto thread = std::make_shared<std::thread>([&channel, &v3BackendAddr, socket, &cleanup, &v3BackendSuccess] {
+      core::V3Backend backend(v3BackendAddr, *socket, channel);
 
       if (!backend.init()) {
         cleanup();

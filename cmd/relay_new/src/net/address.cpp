@@ -12,6 +12,23 @@ namespace net
     IPv6.fill(0);
   }
 
+  Address::Address(Address&& other)
+  {
+    this->Type = other.Type;
+    this->Port = other.Port;
+
+    switch (other.Type) {
+      case AddressType::IPv4: {
+        this->IPv4 = std::move(other.IPv4);
+      } break;
+      case AddressType::IPv6: {
+        this->IPv6 = std::move(other.IPv6);
+      } break;
+      case AddressType::None:
+        break;
+    }
+  }
+
   auto Address::parse(const std::string& address) -> bool
   {
     reset();
