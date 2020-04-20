@@ -19,11 +19,13 @@ services:
             - nn-net
         environment:
             REDIS_HOST_RELAYS: redis:6379
+            REDIS_HOST_CACHE: redis:6379
             RELAY_PUBLIC_KEY: 9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=
             RELAY_ROUTER_PRIVATE_KEY: ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
             ROUTE_MATRIX_URI: http://relay_backend:30000/route_matrix
             BASIC_AUTH_USERNAME: local
             BASIC_AUTH_PASSWORD: local
+            UI_DIR: ./cmd/portal/public
             PORT: 20000
     
     relay_backend:
@@ -60,6 +62,7 @@ services:
             RELAY_ROUTER_PRIVATE_KEY: ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
             SERVER_BACKEND_PUBLIC_KEY: TGHKjEeHPtSgtZfDyuDPcQgtJTyRDtRvGSKvuiWWo0A=
             SERVER_BACKEND_PRIVATE_KEY: FXwFqzjGlIwUDwiq1N5Um5VUesdr4fP2hVV2cnJ+yARMYcqMR4c+1KC1l8PK4M9xCC0lPJEO1G8ZIq+6JZajQA==
+            NEXT_CUSTOMER_PUBLIC_KEY: leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==
             ROUTE_MATRIX_URI: http://relay_backend:30000/route_matrix
             MAXMIND_DB_URI: /app/testdata/GeoIP2-City-Test.mmdb
             PORT: 40000
