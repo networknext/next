@@ -19,6 +19,12 @@ const (
 	PacketTypeServerInitRequest  = 203
 	PacketTypeServerInitResponse = 204
 
+	InitResponseOK                   = 0
+	InitResponseUnknownCustomer      = 1
+	InitResponseUnknownDatacenter    = 2
+	InitResponseOldSDKVersion        = 3
+	InitResponseSignatureCheckFailed = 4
+
 	MaxNearRelays = 32
 	MaxTokens     = 7
 
