@@ -33,4 +33,5 @@ sudo mv "$env" "$env_dest"
 sudo mv "$svc" "$svc_dest"
 
 sudo systemctl daemon-reload
+sudo systemctl enable relay
 sudo systemctl start relay

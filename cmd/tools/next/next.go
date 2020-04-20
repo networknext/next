@@ -355,6 +355,20 @@ func main() {
 						},
 					},
 					{
+						Name:       "enable",
+						ShortUsage: "next relay enable <relay name...>",
+						ShortHelp:  "Enable the specified relay(s)",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) == 0 {
+								log.Fatal("You need to supply at least one relay name")
+							}
+
+							enableRelays(env, rpcClient, args)
+
+							return nil
+						},
+					},
+					{
 						Name:       "disable",
 						ShortUsage: "next relay disable <relay name...>",
 						ShortHelp:  "Disable the specified relay(s)",
