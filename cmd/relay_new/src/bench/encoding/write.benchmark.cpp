@@ -33,7 +33,7 @@ Bench(WriteAddress_vs_write_address_ipv4)
     Do(REPS)
     {
       uint8_t* ptr = &buff[0];
-      encoding::write_address(&ptr, &addr);
+      legacy::write_address(&ptr, &addr);
     }
 
     auto elapsed = Timer.elapsed<util::Nanosecond>() / REPS;

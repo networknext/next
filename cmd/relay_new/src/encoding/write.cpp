@@ -1,7 +1,7 @@
 #include "includes.h"
 #include "write.hpp"
 
-namespace encoding
+namespace legacy
 {
   void write_uint8(uint8_t** p, uint8_t value)
   {
@@ -108,4 +108,4 @@ namespace encoding
 
     assert(*buffer - start == net::Address::ByteSize);
   }
-}  // namespace encoding
+}  // namespace legacy

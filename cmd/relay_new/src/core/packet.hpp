@@ -11,19 +11,22 @@ namespace core
 {
   const size_t GenericPacketMaxSize = RELAY_MAX_PACKET_BYTES;
 
-  template <size_t BuffSize = GenericPacketMaxSize>
-  struct GenericPacket
+  template <typename T>
+  struct Packet
   {
-    GenericPacket() = default;
-    GenericPacket(GenericPacket&& other);
-    ~GenericPacket() = default;
+    Packet() = default;
+    Packet(Packet<T>&& other);
+    ~Packet() = default;
 
-    GenericPacket<BuffSize>& operator=(GenericPacket<BuffSize>&& other);
+    Packet<T>& operator=(Packet<T>&& other);
 
     net::Address Addr;
-    std::array<uint8_t, BuffSize> Buffer;
+    T Buffer;
     size_t Len;
   };
+
+  template <size_t BuffSize = GenericPacketMaxSize>
+  using GenericPacket = Packet<std::array<uint8_t, BuffSize>>;
 
   // holds BuffSize packets and shares memory between the header and the packet, packet interface is meant to be easy to use
   template <size_t BuffSize, size_t PacketSize = GenericPacketMaxSize>
@@ -57,13 +60,13 @@ namespace core
     std::vector<iovec> mIOVecBuff;
   };
 
-  template <size_t BuffSize>
-  GenericPacket<BuffSize>::GenericPacket(GenericPacket&& other)
+  template <typename T>
+  Packet<T>::Packet(Packet<T>&& other)
    : Addr(std::move(other.Addr)), Buffer(std::move(other.Buffer)), Len(std::move(other.Len))
   {}
 
-  template <size_t BuffSize>
-  GenericPacket<BuffSize>& GenericPacket<BuffSize>::operator=(GenericPacket<BuffSize>&& other)
+  template <typename T>
+  Packet<T>& Packet<T>::operator=(Packet<T>&& other)
   {
     this->Addr = std::move(other.Addr);
     this->Buffer = std::move(other.Buffer);

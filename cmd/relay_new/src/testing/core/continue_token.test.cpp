@@ -16,7 +16,7 @@ namespace
 
 Test(core_ContinueToken_general)
 {
-  core::GenericPacket packet;
+  core::GenericPacket<> packet;
 
   std::array<uint8_t, crypto_box_PUBLICKEYBYTES> sender_public_key;
   std::array<uint8_t, crypto_box_SECRETKEYBYTES> sender_private_key;

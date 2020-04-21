@@ -69,22 +69,22 @@ namespace relay
       assert((sequence & (1ULL << 62)) == 0);
     }
 
-    encoding::write_uint8(&buffer, type);
+    legacy::write_uint8(&buffer, type);
 
-    encoding::write_uint64(&buffer, sequence);
+    legacy::write_uint64(&buffer, sequence);
 
     uint8_t* additional = buffer;
     const int additional_length = 8 + 2;
 
-    encoding::write_uint64(&buffer, session_id);
-    encoding::write_uint8(&buffer, session_version);
-    encoding::write_uint8(&buffer, 0);  // todo: remove this once we fully switch to new relay
+    legacy::write_uint64(&buffer, session_id);
+    legacy::write_uint8(&buffer, session_version);
+    legacy::write_uint8(&buffer, 0);  // todo: remove this once we fully switch to new relay
 
     uint8_t nonce[12];
     {
       uint8_t* p = nonce;
-      encoding::write_uint32(&p, 0);
-      encoding::write_uint64(&p, sequence);
+      legacy::write_uint32(&p, 0);
+      legacy::write_uint64(&p, sequence);
     }
 
     unsigned long long encrypted_length = 0;
@@ -118,9 +118,9 @@ namespace relay
     if (buffer_length < RELAY_HEADER_BYTES)
       return RELAY_ERROR;
 
-    packet_type = encoding::read_uint8(&buffer);
+    packet_type = legacy::read_uint8(&buffer);
 
-    packet_sequence = encoding::read_uint64(&buffer);
+    packet_sequence = legacy::read_uint64(&buffer);
 
     if (direction == RELAY_DIRECTION_SERVER_TO_CLIENT) {
       // high bit must be set
@@ -144,8 +144,8 @@ namespace relay
     }
 
     *sequence = packet_sequence;
-    *session_id = encoding::read_uint64(&buffer);
-    *session_version = encoding::read_uint8(&buffer);
+    *session_id = legacy::read_uint64(&buffer);
+    *session_version = legacy::read_uint8(&buffer);
 
     return RELAY_OK;
   }
@@ -161,9 +161,9 @@ namespace relay
 
     const uint8_t* p = buffer;
 
-    uint8_t packet_type = encoding::read_uint8(&p);
+    uint8_t packet_type = legacy::read_uint8(&p);
 
-    uint64_t packet_sequence = encoding::read_uint64(&p);
+    uint64_t packet_sequence = legacy::read_uint64(&p);
 
     if (direction == RELAY_DIRECTION_SERVER_TO_CLIENT) {
       // high bit must be set
@@ -190,9 +190,9 @@ namespace relay
 
     const int additional_length = 8 + 2;
 
-    uint64_t packet_session_id = encoding::read_uint64(&p);
-    uint8_t packet_session_version = encoding::read_uint8(&p);
-    uint8_t packet_session_flags = encoding::read_uint8(&p);  // todo: remove once we fully switch over to new relay
+    uint64_t packet_session_id = legacy::read_uint64(&p);
+    uint8_t packet_session_version = legacy::read_uint8(&p);
+    uint8_t packet_session_flags = legacy::read_uint8(&p);  // todo: remove once we fully switch over to new relay
 
     (void)packet_session_id;
     (void)packet_session_version;
@@ -201,8 +201,8 @@ namespace relay
     uint8_t nonce[12];
     {
       uint8_t* q = nonce;
-      encoding::write_uint32(&q, 0);
-      encoding::write_uint64(&q, packet_sequence);
+      legacy::write_uint32(&q, 0);
+      legacy::write_uint64(&q, packet_sequence);
     }
 
     unsigned long long decrypted_length;

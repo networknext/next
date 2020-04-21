@@ -136,10 +136,10 @@ namespace legacy
 
     (void)start;
 
-    encoding::write_uint64(&buffer, token->expire_timestamp);
-    encoding::write_uint64(&buffer, token->session_id);
-    encoding::write_uint8(&buffer, token->session_version);
-    encoding::write_uint8(&buffer, token->session_flags);
+    write_uint64(&buffer, token->expire_timestamp);
+    write_uint64(&buffer, token->session_id);
+    write_uint8(&buffer, token->session_version);
+    write_uint8(&buffer, token->session_flags);
 
     assert(buffer - start == core::ContinueToken::ByteSize);
   }
@@ -153,10 +153,10 @@ namespace legacy
 
     (void)start;
 
-    token->expire_timestamp = encoding::read_uint64(&buffer);
-    token->session_id = encoding::read_uint64(&buffer);
-    token->session_version = encoding::read_uint8(&buffer);
-    token->session_flags = encoding::read_uint8(&buffer);
+    token->expire_timestamp = read_uint64(&buffer);
+    token->session_id = read_uint64(&buffer);
+    token->session_version = read_uint8(&buffer);
+    token->session_flags = read_uint8(&buffer);
 
     assert(buffer - start == core::ContinueToken::ByteSize);
   }
@@ -207,7 +207,7 @@ namespace legacy
 
     uint8_t* start = *buffer;
 
-    encoding::write_bytes(buffer, nonce, crypto_box_NONCEBYTES);
+    write_bytes(buffer, nonce, crypto_box_NONCEBYTES);
 
     relay_write_continue_token(token, *buffer, core::ContinueToken::ByteSize);
 

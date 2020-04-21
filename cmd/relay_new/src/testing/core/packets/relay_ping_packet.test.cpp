@@ -10,7 +10,7 @@ Test(core_packets_RelayPingPacket_general)
   uint8_t type = RELAY_PING_PACKET;
   auto seqnum = testing::Random<uint64_t>();
   net::Address addr = testing::RandomAddress();
-  core::GenericPacket packet;
+  core::GenericPacket<> packet;
 
   // get test data into buffer
   size_t index = 0;

@@ -27,7 +27,7 @@ Bench(ReadUint16_vs_read_uint16)
     Do(REPS)
     {
       const uint8_t* ptr = &buff[0];
-      encoding::read_uint16(&ptr);
+      legacy::read_uint16(&ptr);
     }
 
     auto elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
@@ -61,12 +61,12 @@ Bench(ReadAddress_vs_read_address_ipv4)
     uint8_t buff[net::Address::ByteSize];
     legacy::relay_address_parse(&addr, "127.0.0.1:51034");
     auto p = &buff[0];
-    encoding::write_address(&p, &addr);
+    legacy::write_address(&p, &addr);
 
     Do(REPS)
     {
       const uint8_t* ptr = &buff[0];
-      encoding::read_address(&ptr, &addr);
+      legacy::read_address(&ptr, &addr);
     }
 
     auto elapsed = Timer.elapsed<util::Nanosecond>() / REPS;
