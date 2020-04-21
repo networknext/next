@@ -39,6 +39,9 @@ namespace os
 
     size_t recv(net::Address& from, uint8_t* data, size_t maxSize) const;
 
+    template <size_t BuffSize>
+    void recv(core::GenericPacket<BuffSize>& packet) const;
+
     template <size_t BuffSize, size_t PacketSize>
     bool multirecv(core::GenericPacketBuffer<BuffSize, PacketSize>& packetBuff) const;
 
@@ -92,10 +95,17 @@ namespace os
     return multisend(packetBuff.Headers, packetBuff.Count);
   }
 
+  template <size_t BuffSize>
+  void Socket::recv(core::GenericPacket<BuffSize>& packet) const
+  {
+    packet.Len = this->recv(packet.Addr, packet.Buffer.data(), BuffSize);
+  }
+
   template <size_t BuffSize, size_t PacketSize>
   bool Socket::multirecv(core::GenericPacketBuffer<BuffSize, PacketSize>& packetBuff) const
   {
-    packetBuff.Count = recvmmsg(mSockFD,
+    packetBuff.Count = recvmmsg(
+     mSockFD,
      packetBuff.Headers.data(),
      BuffSize,
      MSG_WAITFORONE,

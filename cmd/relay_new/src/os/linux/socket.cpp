@@ -135,32 +135,29 @@ namespace os
     sockaddr_storage sockaddr_from;
 
     socklen_t len = sizeof(sockaddr_from);
-    auto res = recvfrom(mSockFD,
+    auto res = recvfrom(
+     mSockFD,
      data,
      maxSize,
      (mType == SocketType::NonBlocking) ? MSG_DONTWAIT : 0,
      reinterpret_cast<sockaddr*>(&sockaddr_from),
      &len);
 
-    if (res <= 0) {
+    if (res > 0) {
+      if (sockaddr_from.ss_family == AF_INET6) {
+        from = reinterpret_cast<sockaddr_in6&>(sockaddr_from);
+      } else if (sockaddr_from.ss_family == AF_INET) {
+        from = reinterpret_cast<sockaddr_in&>(sockaddr_from);
+      } else {
+        Log("received packet with invalid ss family: ", sockaddr_from.ss_family);
+        return 0;
+      }
+    } else {
       // if not a timeout, log the error
       if (errno != EAGAIN && errno != EINTR) {
         LogError("recvfrom failed");
       }
-
-      return 0;
     }
-
-    if (sockaddr_from.ss_family == AF_INET6) {
-      from = reinterpret_cast<sockaddr_in6&>(sockaddr_from);
-    } else if (sockaddr_from.ss_family == AF_INET) {
-      from = reinterpret_cast<sockaddr_in&>(sockaddr_from);
-    } else {
-      Log("received packet with invalid ss family: ", sockaddr_from.ss_family);
-      return 0;
-    }
-
-    assert(res >= 0);
 
     return res;
   }
@@ -492,7 +489,8 @@ namespace legacy
     sockaddr_storage sockaddr_from;
     socklen_t from_length = sizeof(sockaddr_from);
 
-    int result = int(recvfrom(socket->handle,
+    int result = int(recvfrom(
+     socket->handle,
      (char*)packet_data,
      max_packet_size,
      socket->type == RELAY_PLATFORM_SOCKET_NON_BLOCKING ? MSG_DONTWAIT : 0,

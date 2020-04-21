@@ -30,7 +30,7 @@ namespace core
   const uint32_t UpdateRequestVersion = 0;
   const uint32_t UpdateResponseVersion = 0;
 
-  const uint8_t MaxUpdateAttempts = 11; // 1 initial + 10 more for failures
+  const uint8_t MaxUpdateAttempts = 11;  // 1 initial + 10 more for failures
 
   /*
    * A class that's responsible for backend related tasks
@@ -112,8 +112,6 @@ namespace core
     std::string request = doc.toString();
     std::vector<char> response;
 
-    LogDebug("init request: ", doc.toPrettyString());
-
     if (!T::SendTo(mHostname, "/relay_init", request, response)) {
       Log("curl request failed in init");
       return false;
@@ -123,8 +121,6 @@ namespace core
       Log("could not parse json response in init: ", doc.err());
       return false;
     }
-
-    LogDebug("init response: ", doc.toPrettyString());
 
     if (doc.memberExists("version")) {
       if (doc.memberIs(util::JSON::Type::Number, "version")) {
@@ -217,8 +213,6 @@ namespace core
     std::string request = doc.toString();
     std::vector<char> response;
 
-    LogDebug("update request: ", doc.toPrettyString());
-
     if (!T::SendTo(mHostname, "/relay_update", request, response)) {
       Log("curl request failed in update");
       return false;
@@ -228,8 +222,6 @@ namespace core
       Log("could not parse json response in update: ", doc.err());
       return false;
     }
-
-    LogDebug("update response: ", doc.toPrettyString());
 
     if (doc.memberExists("version")) {
       if (doc.memberIs(util::JSON::Type::Number, "version")) {

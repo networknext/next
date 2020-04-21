@@ -5,7 +5,7 @@ using namespace std::chrono_literals;
 
 namespace core
 {
-  V3Backend::V3Backend(const net::Address& addr, os::Socket& socket, util::Channel<GenericPacket<>>& channel): mAddr(addr), mSocket(socket), mChannel(channel) {}
+  V3Backend::V3Backend(const net::Address& addr, os::Socket& socket): mAddr(addr), mSocket(socket) {}
 
   auto V3Backend::init() -> bool
   {
@@ -14,11 +14,11 @@ namespace core
     mSocket.send(mAddr, buff.data(), buff.size());
 
     GenericPacket<> packet;
-    mChannel.recv(packet);
+    mSocket.recv(packet);
 
     std::string resp(packet.Buffer.begin() + 1, packet.Buffer.begin() + packet.Len);
 
-    LogDebug("\n\nInit: ", resp, "\n\n");
+    LogDebug("Init: ", resp);
 
     return true;
   }
@@ -43,11 +43,11 @@ namespace core
     mSocket.send(mAddr, buff.data(), buff.size());
 
     GenericPacket<> packet;
-    mChannel.recv(packet);
+    mSocket.recv(packet);
 
     std::string resp(packet.Buffer.begin() + 1, packet.Buffer.begin() + packet.Len);
 
-    LogDebug("\n\nUpdated: ", resp, "\n\n");
+    LogDebug("Updated: ", resp);
 
     return true;
   }
