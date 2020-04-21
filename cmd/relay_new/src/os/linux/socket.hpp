@@ -31,6 +31,9 @@ namespace os
 
     bool send(const net::Address& to, const uint8_t* data, size_t size) const;
 
+    template <typename T>
+    bool send(const core::Packet<T>& packet) const;
+
     template <size_t BuffSize>
     bool multisend(std::array<mmsghdr, BuffSize>& packetBuff, int count) const;
 
@@ -39,8 +42,8 @@ namespace os
 
     size_t recv(net::Address& from, uint8_t* data, size_t maxSize) const;
 
-    template <size_t BuffSize>
-    void recv(core::GenericPacket<BuffSize>& packet) const;
+    template <typename T>
+    void recv(core::Packet<T>& packet) const;
 
     template <size_t BuffSize, size_t PacketSize>
     bool multirecv(core::GenericPacketBuffer<BuffSize, PacketSize>& packetBuff) const;
@@ -71,6 +74,12 @@ namespace os
     shutdown(mSockFD, SHUT_RDWR);
   }
 
+  template <typename T>
+  bool Socket::send(const core::Packet<T>& packet) const
+  {
+    return send(packet.Addr, packet.Buffer.data(), packet.Len);
+  }
+
   template <size_t BuffSize>
   bool Socket::multisend(std::array<mmsghdr, BuffSize>& headers, int count) const
   {
@@ -95,10 +104,10 @@ namespace os
     return multisend(packetBuff.Headers, packetBuff.Count);
   }
 
-  template <size_t BuffSize>
-  void Socket::recv(core::GenericPacket<BuffSize>& packet) const
+  template <typename T>
+  void Socket::recv(core::Packet<T>& packet) const
   {
-    packet.Len = this->recv(packet.Addr, packet.Buffer.data(), BuffSize);
+    packet.Len = this->recv(packet.Addr, packet.Buffer.data(), packet.Buffer.size());
   }
 
   template <size_t BuffSize, size_t PacketSize>

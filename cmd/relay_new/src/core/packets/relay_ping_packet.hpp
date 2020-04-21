@@ -2,9 +2,8 @@
 #define CORE_PACKETS_RELAY_PING_PACKET_HPP
 
 #include "core/packet.hpp"
-
 #include "encoding/read.hpp"
-
+#include "encoding/write.hpp"
 #include "net/address.hpp"
 
 namespace core

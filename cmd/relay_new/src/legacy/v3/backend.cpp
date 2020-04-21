@@ -1,6 +1,6 @@
 #include "includes.h"
 #include "backend.hpp"
-#include "packet_builder.hpp"
+#include "packet_send.hpp"
 
 using namespace std::chrono_literals;
 
@@ -69,6 +69,16 @@ namespace legacy
         return false;
       }
 
+      return true;
+    }
+
+    auto Backend::buildInitJSON(util::JSON& doc) -> bool
+    {
+      return true;
+    }
+
+    auto Backend::buildUpdateJSON(util::JSON& doc) -> bool
+    {
       return true;
     }
   }  // namespace v3

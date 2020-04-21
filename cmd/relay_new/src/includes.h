@@ -1,4 +1,5 @@
 #include "config.hpp"
+#include "lib/miniz/miniz.h"
 #include "sysinfo.hpp"
 #include <algorithm>
 #include <alloca.h>

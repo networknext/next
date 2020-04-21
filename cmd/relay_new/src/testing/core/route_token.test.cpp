@@ -27,19 +27,19 @@ Test(core_RouteToken_general)
   std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
   crypto::RandomBytes(nonce, crypto_box_NONCEBYTES);
 
-  const auto ExpireTimestamp = testing::Random<uint64_t>();
-  const auto SessionID = testing::Random<uint64_t>();
-  const auto SessionVersion = testing::Random<uint8_t>();
-  const auto SessionFlags = testing::Random<uint8_t>();
-  const auto KbpsUp = testing::Random<uint32_t>();
-  const auto KbpsDown = testing::Random<uint32_t>();
+  const auto ExpireTimestamp = crypto::Random<uint64_t>();
+  const auto SessionID = crypto::Random<uint64_t>();
+  const auto SessionVersion = crypto::Random<uint8_t>();
+  const auto SessionFlags = crypto::Random<uint8_t>();
+  const auto KbpsUp = crypto::Random<uint32_t>();
+  const auto KbpsDown = crypto::Random<uint32_t>();
   net::Address NextAddr;
   NextAddr.Type = net::AddressType::IPv4;
-  NextAddr.IPv4[0] = testing::Random<uint8_t>();
-  NextAddr.IPv4[1] = testing::Random<uint8_t>();
-  NextAddr.IPv4[2] = testing::Random<uint8_t>();
-  NextAddr.IPv4[3] = testing::Random<uint8_t>();
-  NextAddr.Port = testing::Random<uint32_t>();
+  NextAddr.IPv4[0] = crypto::Random<uint8_t>();
+  NextAddr.IPv4[1] = crypto::Random<uint8_t>();
+  NextAddr.IPv4[2] = crypto::Random<uint8_t>();
+  NextAddr.IPv4[3] = crypto::Random<uint8_t>();
+  NextAddr.Port = crypto::Random<uint32_t>();
   std::array<uint8_t, crypto_box_SECRETKEYBYTES> PrivateKey;
   crypto::RandomBytes(PrivateKey, PrivateKey.size());
 

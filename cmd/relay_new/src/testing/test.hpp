@@ -81,9 +81,6 @@ namespace testing
   }
 
   template <typename T>
-  std::enable_if_t<std::numeric_limits<T>::is_integer, T> Random();
-
-  template <typename T>
   std::enable_if_t<std::is_floating_point<T>::value, T> RandomDecimal();
 
   net::Address RandomAddress();
@@ -92,13 +89,6 @@ namespace testing
   // valid return types are std string/vector
   template <class ReturnType>
   ReturnType ReadFile(std::string filename);
-
-  template <typename T>
-  std::enable_if_t<std::numeric_limits<T>::is_integer, T> Random()
-  {
-    static auto rand = std::bind(std::uniform_int_distribution<T>(), std::default_random_engine());
-    return static_cast<T>(rand());
-  }
 
   template <typename T>
   std::enable_if_t<std::is_floating_point<T>::value, T> RandomDecimal()

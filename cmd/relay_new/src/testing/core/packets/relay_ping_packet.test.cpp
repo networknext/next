@@ -1,14 +1,14 @@
 #include "includes.h"
 #include "testing/test.hpp"
 
-#include "encoding/write.hpp"
-
 #include "core/packets/relay_ping_packet.hpp"
+#include "crypto/bytes.hpp"
+#include "encoding/write.hpp"
 
 Test(core_packets_RelayPingPacket_general)
 {
   uint8_t type = RELAY_PING_PACKET;
-  auto seqnum = testing::Random<uint64_t>();
+  auto seqnum = crypto::Random<uint64_t>();
   net::Address addr = testing::RandomAddress();
   core::GenericPacket<> packet;
 

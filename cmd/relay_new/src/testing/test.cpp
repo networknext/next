@@ -1,6 +1,8 @@
 #include "includes.h"
 #include "test.hpp"
 
+#include "crypto/bytes.hpp"
+
 namespace
 {
   bool gTestInit = false;
@@ -44,18 +46,18 @@ namespace testing
   net::Address RandomAddress()
   {
     net::Address retval;
-    if (Random<uint8_t>() & 1) {
+    if (crypto::Random<uint8_t>() & 1) {
       retval.Type = net::AddressType::IPv4;
       for (auto& ip : retval.IPv4) {
-        ip = Random<uint8_t>();
+        ip = crypto::Random<uint8_t>();
       }
-      retval.Port = Random<uint16_t>();
+      retval.Port = crypto::Random<uint16_t>();
     } else {
       retval.Type = net::AddressType::IPv6;
       for (auto& ip : retval.IPv6) {
-        ip = Random<uint16_t>();
+        ip = crypto::Random<uint16_t>();
       }
-      retval.Port = Random<uint16_t>();
+      retval.Port = crypto::Random<uint16_t>();
     }
     return retval;
   }

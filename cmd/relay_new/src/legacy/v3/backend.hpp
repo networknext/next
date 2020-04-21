@@ -29,8 +29,6 @@ namespace legacy
 
       auto buildInitJSON(util::JSON& doc) -> bool;
       auto buildUpdateJSON(util::JSON& doc) -> bool;
-
-      void buildPacketFragments(std::vector<uint8_t>& in, std::vector<std::vector<uint8_t>>& out);
     };
   }  // namespace v3
 }  // namespace legacy

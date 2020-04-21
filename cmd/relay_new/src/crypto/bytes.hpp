@@ -3,6 +3,13 @@
 namespace crypto
 {
   template <typename T>
+  [[gnu::always_inline]] std::enable_if_t<std::numeric_limits<T>::is_integer, T> Random()
+  {
+    static auto rand = std::bind(std::uniform_int_distribution<T>(), std::default_random_engine());
+    return static_cast<T>(rand());
+  }
+
+  template <typename T>
   [[gnu::always_inline]] inline void RandomBytes(T& buffer, int bytes)
   {
     randombytes_buf(buffer.data(), bytes);
