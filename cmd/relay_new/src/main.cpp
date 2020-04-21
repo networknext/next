@@ -10,7 +10,7 @@
 #include "core/packet_processor.hpp"
 #include "core/ping_processor.hpp"
 #include "core/router_info.hpp"
-#include "core/v3_backend.hpp"
+#include "legacy/v3/backend.hpp"
 #include "crypto/keychain.hpp"
 #include "encoding/base64.hpp"
 #include "relay/relay.hpp"
@@ -400,7 +400,7 @@ int main()
     }
 
     auto thread = std::make_shared<std::thread>([&v3BackendAddr, socket, &cleanup, &v3BackendSuccess] {
-      core::V3Backend backend(v3BackendAddr, *socket);
+      legacy::v3::Backend backend(v3BackendAddr, *socket);
 
       if (!backend.init()) {
         cleanup();
