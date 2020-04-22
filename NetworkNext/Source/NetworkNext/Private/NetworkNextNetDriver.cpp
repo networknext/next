@@ -80,9 +80,32 @@ bool UNetworkNextNetDriver::InitBase(bool bInitAsClient, FNetworkNotify* InNotif
 
 	LocalAddr = SocketSubsystem->GetLocalBindAddr(*GLog);
 
+#if PLATFORM_XBOXONE
+
 	if (bInitAsClient)
 	{
-		// force client to bind to an ephemeral port
+		// On XBoxOne we must ignore the local bind address (::0) and bind to 0.0.0.0 instead
+		LocalAddr->SetAnyAddress();
+
+		// For PUBG, we must bind in the range [40000,41000] or fail on XBoxOne
+		int32 BeginPort = 40000;
+		int32 Num = 1000;
+		GConfig->GetInt(TEXT("XboxNetwork"), TEXT("Ipv6UdpPortBegin"), BeginPort, GEngineIni);
+		GConfig->GetInt(TEXT("XboxNetwork"), TEXT("Ipv6UdpPortNum"), Num, GEngineIni);
+		UE_LOG(LogNetworkNext, Display, TEXT("XBoxOne binding UDP port in range: [%d, %d]"), BeginPort, BeginPort + Num);
+		LocalAddr->SetPort(BeginPort + FMath::Rand() % (FMath::Max<int32>(1, Num - MaxPortCountToTry)));
+	}
+	else
+	{
+		// bind server to the specified port
+		LocalAddr->SetPort(URL.Port);
+	}
+
+#else
+
+	if (bInitAsClient)
+	{
+		// bind client to an ephemeral port
 		LocalAddr->SetPort(0);
 	}
 	else
@@ -90,6 +113,8 @@ bool UNetworkNextNetDriver::InitBase(bool bInitAsClient, FNetworkNotify* InNotif
 		// bind server to the specified port
 		LocalAddr->SetPort(URL.Port);
 	}
+
+#endif
 
 	int32 BoundPort = SocketSubsystem->BindNextPort(Socket, *LocalAddr, MaxPortCountToTry + 1, 1);
 
