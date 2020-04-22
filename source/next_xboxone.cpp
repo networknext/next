@@ -393,19 +393,6 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
         return NULL;
     }
 
-    // force IPv6 only if necessary
-
-    if ( address->type == NEXT_ADDRESS_IPV6 )
-    {
-        int yes = 1;
-        if ( setsockopt( s->handle, IPPROTO_IPV6, IPV6_V6ONLY, (char*)( &yes ), sizeof( yes ) ) != 0 )
-        {
-            next_printf( NEXT_LOG_LEVEL_ERROR, "failed to set socket ipv6 only" );
-            next_platform_socket_destroy( s );
-            return NULL;
-        }
-    }
-
     // increase socket send and receive buffer sizes
 
     if ( setsockopt( s->handle, SOL_SOCKET, SO_SNDBUF, (char*)( &send_buffer_size ), sizeof( int ) ) != 0 )

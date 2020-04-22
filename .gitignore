@@ -34,6 +34,3 @@ Release
 Profile
 Durango
 next-*
-
-# But we want these directories
-!/lib/**
