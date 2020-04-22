@@ -188,17 +188,6 @@ int main()
   std::string backendHostname = env.BackendHostname;
   std::cout << "    backend hostname is '" << backendHostname << "'\n";
 
-  // v3 backend hostname
-  net::Address v3BackendAddr;
-  {
-    if (!v3BackendAddr.resolve(env.RelayV3BackendHostname, env.RelayV3BackendPort)) {
-      Log("Could not resolve the v3 backend hostname to an ip address");
-      return 1;
-    }
-  }
-
-  std::cout << "    v3 ip is '" << v3BackendAddr.toString() << "'\n";
-
   unsigned int numProcessors = 0;
   if (!getNumProcessors(env, numProcessors)) {
     return 1;
@@ -220,6 +209,9 @@ int main()
   core::RouterInfo routerInfo;
   core::RelayManager relayManager(relayClock);
   util::ThroughputRecorder recorder;
+  auto chan = util::makeChannel<core::GenericPacket<>>();
+  auto sender = std::get<0>(chan);
+  auto receiver = std::get<1>(chan);
 
   LogDebug("creating sockets and threads");
 
@@ -387,20 +379,15 @@ int main()
 
   // v3 backend compatability setup
   {
-    net::Address bindAddr = relayAddr;
-    {
-      bindAddr.Port = 0;
-    }
-
-    auto socket = makeSocket(bindAddr.Port);
+    auto socket = makeSocket(relayAddr.Port);
     if (!socket) {
       Log("could not create v3 backend socket");
       cleanup();
       return 1;
     }
 
-    auto thread = std::make_shared<std::thread>([&v3BackendAddr, socket, &cleanup, &v3BackendSuccess] {
-      legacy::v3::Backend backend(v3BackendAddr, *socket);
+    auto thread = std::make_shared<std::thread>([&receiver, &env, socket, &cleanup, &v3BackendSuccess] {
+      legacy::v3::Backend backend(receiver, env, *socket);
 
       if (!backend.init()) {
         cleanup();

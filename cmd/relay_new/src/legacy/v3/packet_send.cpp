@@ -1,32 +1,32 @@
 #include "includes.h"
 #include "packet_send.hpp"
-#include "crypto/bytes.hpp"
 
+#include "crypto/bytes.hpp"
 #include "encoding/write.hpp"
 
 namespace legacy
 {
   namespace v3
   {
-    // 1 byte packet type
-    // <encrypted>
-    //   <master token>
-    //     19 byte IP address
-    //     8 byte timestamp
-    //     32 byte MAC
+    // 1 byte packet type -- enum class PacketType
+    // <encrypted> -- by crypto_box_seal()
+    //   <master token> -- filled in by init request
+    //     19 byte IP address -- is the ip of [?]
+    //     8 byte timestamp -- not sure of resolution
+    //     32 byte MAC -- doesn't appear to be mutable, just copy from response
     //   </master token>
-    //   8 byte GUID
-    //   1 byte fragment index
-    //   1 byte fragment total
-    //   <zipped>
-    //     data (normally a JSON string)
+    //   8 byte GUID -- Random uint of this packet
+    //   1 byte fragment index -- Index of the fragment
+    //   1 byte fragment total -- Total number of fragments
+    //   <zipped> -- with standard zlib
+    //     data -- normally a JSON string
     //   </zipped>
     // </encrypted>
-    // 64 byte MAC (handled automatically by sodium)
+    // 64 byte MAC -- handled automatically by sodium
 
     auto build_udp_fragment(
 
-     uint8_t packet_type,
+     PacketType packet_type,
      const BackendToken& token,
      uint64_t id,
      uint8_t fragmentIndex,
@@ -51,7 +51,7 @@ namespace legacy
       out.Buffer.resize(total_bytes);
       out.Len = total_bytes;
       out.Addr = packet.Addr;
-      out.Buffer[0] = packet_type;
+      out.Buffer[0] = (uint8_t)packet_type;
 
       if (crypto_box_seal(&out.Buffer[1], buffer.data(), HeaderBytes - 1 + packet.Len, UDPSealKey) != 0) {
         Log("failed to seal v3 udp packet");
@@ -65,7 +65,7 @@ namespace legacy
      const os::Socket& socket,
      const net::Address& master_address,
      const BackendToken& master_token,
-     uint8_t packet_type,
+     PacketType packet_type,
      BackendRequest& request,
      core::GenericPacket<>& packet) -> bool
     {

@@ -4,6 +4,7 @@
 #include "net/address.hpp"
 #include "os/platform.hpp"
 #include "util/channel.hpp"
+#include "util/env.hpp"
 #include "util/json.hpp"
 
 namespace legacy
@@ -14,7 +15,7 @@ namespace legacy
     class Backend
     {
      public:
-      Backend(const net::Address& addr, os::Socket& socket);
+      Backend(util::Receiver<core::GenericPacket<>>& receiver, util::Env& env, os::Socket& socket);
       ~Backend() = default;
 
       auto init() -> bool;
@@ -22,12 +23,15 @@ namespace legacy
       auto updateCycle(const volatile bool& handle) -> bool;
 
      private:
-      const net::Address& mAddr;
+      util::Receiver<core::GenericPacket<>>& mReceiver;
+      const util::Env& mEnv;
       os::Socket& mSocket;
 
+      auto tryInit() -> bool;
       auto update() -> bool;
 
       auto buildInitJSON(util::JSON& doc) -> bool;
+      auto buildConfigJSON(util::JSON& doc) -> bool;
       auto buildUpdateJSON(util::JSON& doc) -> bool;
     };
   }  // namespace v3
