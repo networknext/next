@@ -69,7 +69,7 @@ func setRoutingRulesSettings(rpcClient jsonrpc.RPCClient, buyerID uint64, rrs ro
 		RoutingRulesSettings: rrs,
 	}
 
-	var reply localjsonrpc.SetRouteShaderReply
+	var reply localjsonrpc.SetRoutingRulesSettingsReply
 	if err := rpcClient.CallFor(&reply, "OpsService.SetRoutingRulesSettings", args); err != nil {
 		handleJSONRPCError(err)
 		return

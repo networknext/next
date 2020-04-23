@@ -118,6 +118,86 @@ func TestRemoveBuyer(t *testing.T) {
 	})
 }
 
+func TestRoutingRulesSettings(t *testing.T) {
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	t.Run("doesn't exist", func(t *testing.T) {
+		var reply jsonrpc.RoutingRulesSettingsReply
+
+		err := svc.RoutingRulesSettings(nil, &jsonrpc.RoutingRulesSettingsArgs{}, &reply)
+		assert.EqualError(t, err, "buyer with id 0 not found in memory storage")
+	})
+
+	t.Run("list", func(t *testing.T) {
+		storer.AddBuyer(context.Background(), routing.Buyer{ID: 0, Name: "local.local.1", RoutingRulesSettings: routing.DefaultRoutingRulesSettings})
+
+		var reply jsonrpc.RoutingRulesSettingsReply
+		err := svc.RoutingRulesSettings(nil, &jsonrpc.RoutingRulesSettingsArgs{}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, reply.RoutingRuleSettings[0].EnvelopeKbpsUp, routing.DefaultRoutingRulesSettings.EnvelopeKbpsUp)
+		assert.Equal(t, reply.RoutingRuleSettings[0].EnvelopeKbpsDown, routing.DefaultRoutingRulesSettings.EnvelopeKbpsDown)
+		assert.Equal(t, reply.RoutingRuleSettings[0].Mode, routing.DefaultRoutingRulesSettings.Mode)
+		assert.Equal(t, reply.RoutingRuleSettings[0].MaxCentsPerGB, routing.DefaultRoutingRulesSettings.MaxCentsPerGB)
+		assert.Equal(t, reply.RoutingRuleSettings[0].RTTEpsilon, routing.DefaultRoutingRulesSettings.RTTEpsilon)
+		assert.Equal(t, reply.RoutingRuleSettings[0].RTTThreshold, routing.DefaultRoutingRulesSettings.RTTThreshold)
+		assert.Equal(t, reply.RoutingRuleSettings[0].RTTHysteresis, routing.DefaultRoutingRulesSettings.RTTHysteresis)
+		assert.Equal(t, reply.RoutingRuleSettings[0].RTTVeto, routing.DefaultRoutingRulesSettings.RTTVeto)
+		assert.Equal(t, reply.RoutingRuleSettings[0].EnableYouOnlyLiveOnce, routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce)
+		assert.Equal(t, reply.RoutingRuleSettings[0].EnablePacketLossSafety, routing.DefaultRoutingRulesSettings.EnablePacketLossSafety)
+		assert.Equal(t, reply.RoutingRuleSettings[0].EnableMultipathForPacketLoss, routing.DefaultRoutingRulesSettings.EnableMultipathForPacketLoss)
+		assert.Equal(t, reply.RoutingRuleSettings[0].EnableMultipathForJitter, routing.DefaultRoutingRulesSettings.EnableMultipathForJitter)
+		assert.Equal(t, reply.RoutingRuleSettings[0].EnableMultipathForRTT, routing.DefaultRoutingRulesSettings.EnableMultipathForRTT)
+		assert.Equal(t, reply.RoutingRuleSettings[0].EnableABTest, routing.DefaultRoutingRulesSettings.EnableABTest)
+	})
+}
+
+func TestSetRoutingRulesSettings(t *testing.T) {
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	t.Run("doesn't exist", func(t *testing.T) {
+		var reply jsonrpc.SetRoutingRulesSettingsReply
+
+		err := svc.SetRoutingRulesSettings(nil, &jsonrpc.SetRoutingRulesSettingsArgs{BuyerID: 0, RoutingRulesSettings: routing.LocalRoutingRulesSettings}, &reply)
+		assert.EqualError(t, err, "buyer with id 0 not found in memory storage")
+	})
+
+	t.Run("set", func(t *testing.T) {
+		storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "local.local.1", RoutingRulesSettings: routing.DefaultRoutingRulesSettings})
+
+		var reply jsonrpc.SetRoutingRulesSettingsReply
+		err := svc.SetRoutingRulesSettings(nil, &jsonrpc.SetRoutingRulesSettingsArgs{BuyerID: 1, RoutingRulesSettings: routing.LocalRoutingRulesSettings}, &reply)
+		assert.NoError(t, err)
+
+		var rrsReply jsonrpc.RoutingRulesSettingsReply
+		err = svc.RoutingRulesSettings(nil, &jsonrpc.RoutingRulesSettingsArgs{BuyerID: 1}, &rrsReply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnvelopeKbpsUp, routing.LocalRoutingRulesSettings.EnvelopeKbpsUp)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnvelopeKbpsDown, routing.LocalRoutingRulesSettings.EnvelopeKbpsDown)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].Mode, routing.LocalRoutingRulesSettings.Mode)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].MaxCentsPerGB, routing.LocalRoutingRulesSettings.MaxCentsPerGB)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].RTTEpsilon, routing.LocalRoutingRulesSettings.RTTEpsilon)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].RTTThreshold, routing.LocalRoutingRulesSettings.RTTThreshold)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].RTTHysteresis, routing.LocalRoutingRulesSettings.RTTHysteresis)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].RTTVeto, routing.LocalRoutingRulesSettings.RTTVeto)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableYouOnlyLiveOnce, routing.LocalRoutingRulesSettings.EnableYouOnlyLiveOnce)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnablePacketLossSafety, routing.LocalRoutingRulesSettings.EnablePacketLossSafety)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableMultipathForPacketLoss, routing.LocalRoutingRulesSettings.EnableMultipathForPacketLoss)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableMultipathForJitter, routing.LocalRoutingRulesSettings.EnableMultipathForJitter)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableMultipathForRTT, routing.LocalRoutingRulesSettings.EnableMultipathForRTT)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableABTest, routing.LocalRoutingRulesSettings.EnableABTest)
+	})
+}
+
 func TestSellers(t *testing.T) {
 	expected := routing.Seller{
 		ID:                "1",

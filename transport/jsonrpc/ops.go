@@ -130,7 +130,7 @@ type SetRoutingRulesSettingsArgs struct {
 	RoutingRulesSettings routing.RoutingRulesSettings
 }
 
-func (s *OpsService) SetRoutingRulesSettings(r *http.Request, args *SetRoutingRulesSettingsArgs, reply *SetRouteShaderReply) error {
+func (s *OpsService) SetRoutingRulesSettings(r *http.Request, args *SetRoutingRulesSettingsArgs, reply *SetRoutingRulesSettingsReply) error {
 	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
@@ -144,7 +144,7 @@ func (s *OpsService) SetRoutingRulesSettings(r *http.Request, args *SetRoutingRu
 	return s.Storage.SetBuyer(ctx, buyer)
 }
 
-type SetRouteShaderReply struct{}
+type SetRoutingRulesSettingsReply struct{}
 
 type SellersArgs struct{}
 
