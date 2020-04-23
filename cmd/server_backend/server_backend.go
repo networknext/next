@@ -205,6 +205,12 @@ func main() {
 	}
 
 	// Create server update metrics
+	serverInitMetrics, err := metrics.NewServerInitMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create server update metrics", "err", err)
+	}
+
+	// Create server update metrics
 	serverUpdateMetrics, err := metrics.NewServerUpdateMetrics(ctx, metricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create server update metrics", "err", err)
@@ -274,6 +280,7 @@ func main() {
 			Conn:          conn,
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
+			ServerInitHandlerFunc:    transport.ServerInitHandlerFunc(logger, db, serverInitMetrics, serverPrivateKey),
 			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClientCache, db, serverUpdateMetrics),
 			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClientCache, db, &routeMatrix, ipLocator, &geoClient, sessionMetrics, biller, serverPrivateKey, routerPrivateKey),
 		}
