@@ -1,4 +1,6 @@
-include Makefile.common
+MAKEFILE_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+
+include $(MAKEFILE_DIR)/Makefile.common
 
 ############
 ### Vars ###

@@ -54,7 +54,7 @@ export RELAY_DEBUG = 0
 endif
 
 ## Relay keys are unique to each relay and used to DECRYPT only the segment in the route token indended for itself
-## For local dev purposes ALL relays we run will have the same keys, but in production they are all different 
+## For local dev purposes ALL relays we run will have the same keys, but in production they are all different
 ifndef RELAY_PUBLIC_KEY
 export RELAY_PUBLIC_KEY = 9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=
 endif
@@ -67,7 +67,7 @@ endif
 ##    BACKEND ENV   ##
 ######################
 
-## Server backend keys are used for SIGNING data so game servers can verify response data's authenticity 
+## Server backend keys are used for SIGNING data so game servers can verify response data's authenticity
 ifndef SERVER_BACKEND_PUBLIC_KEY
 export SERVER_BACKEND_PUBLIC_KEY = TGHKjEeHPtSgtZfDyuDPcQgtJTyRDtRvGSKvuiWWo0A=
 endif
@@ -85,7 +85,7 @@ ifndef RELAY_ROUTER_PRIVATE_KEY
 export RELAY_ROUTER_PRIVATE_KEY = ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
 endif
 
-## By default we set only error and warning logs for server_backend and relay_backend 
+## By default we set only error and warning logs for server_backend and relay_backend
 ifndef BACKEND_LOG_LEVEL
 export BACKEND_LOG_LEVEL = warn
 endif
@@ -245,16 +245,21 @@ dev-route: ## prints routes from relay to datacenter in route matrix
 #######################
 
 RELAY_DIR	:= ./cmd/relay
+NEW_RELAY_DIR := ./cmd/relay_new
+NEW_RELAY_MAKEFILE := Makefile
 RELAY_EXE	:= relay
-
-.PHONY: $(DIST_DIR)/$(RELAY_EXE)
-$(DIST_DIR)/$(RELAY_EXE):
 
 .PHONY: build-relay
 build-relay: ## builds the relay
 	@printf "Building relay... "
 	@$(CXX) $(CXX_FLAGS) -o $(DIST_DIR)/$(RELAY_EXE) cmd/relay/*.cpp $(LDFLAGS)
 	@printf "done\n"
+
+.PHONY: build-new-relay
+build-new-relay: ## builds the new relay
+	@printf "Building new relay... "
+	@cd $(NEW_RELAY_DIR) && $(MAKE) release
+	@echo "done"
 
 .PHONY: dev-relay
 dev-relay: $(DIST_DIR)/$(RELAY_EXE) build-relay ## runs a local relay
