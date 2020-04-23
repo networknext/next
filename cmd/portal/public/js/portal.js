@@ -6,6 +6,19 @@
 var userInfo = null;
 
 function startApp() {
+	Promise.all([
+		auth0.getUser(),
+		auth0.getTokenSilently()
+	]).then((response) => {
+		userInfo = {
+			email: response[0].email,
+			name: response[0].name,
+			nickname: response[0].nickname,
+			token: response[1]
+		};
+	}).catch((e) => {
+		console.log("Something went wrong with getting the user information");
+	});
 	document.getElementById("app").style.display = 'block';
 	MapHandler
 		.initMap()
