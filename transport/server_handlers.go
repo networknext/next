@@ -36,6 +36,7 @@ type UDPServerMux struct {
 	Conn          *net.UDPConn
 	MaxPacketSize int
 
+	ServerInitHandlerFunc    UDPHandlerFunc
 	ServerUpdateHandlerFunc  UDPHandlerFunc
 	SessionUpdateHandlerFunc UDPHandlerFunc
 }
@@ -69,6 +70,8 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 		var buf bytes.Buffer
 
 		switch packet.Data[0] {
+		case PacketTypeServerInitRequest:
+			m.ServerInitHandlerFunc(&buf, &packet)
 		case PacketTypeServerUpdate:
 			m.ServerUpdateHandlerFunc(&buf, &packet)
 		case PacketTypeSessionUpdate:
@@ -77,6 +80,75 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 
 		if buf.Len() > 0 {
 			m.Conn.WriteToUDP(buf.Bytes(), packet.SourceAddr)
+		}
+	}
+}
+
+func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, metrics *metrics.ServerInitMetrics, serverPrivateKey []byte) UDPHandlerFunc {
+	logger = log.With(logger, "handler", "init")
+
+	return func(w io.Writer, incoming *UDPPacket) {
+		durationStart := time.Now()
+		defer func() {
+			durationSince := time.Since(durationStart)
+			level.Info(logger).Log("duration", durationSince.Milliseconds())
+			metrics.Invocations.Add(1)
+		}()
+
+		var packet ServerInitRequestPacket
+		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
+			level.Error(logger).Log("msg", "could not read packet", "err", err)
+			metrics.ErrorMetrics.UnmarshalFailure.Add(1)
+			return
+		}
+
+		locallogger := log.With(
+			logger,
+			"src_addr", incoming.SourceAddr.String(),
+			"request_id", packet.RequestID,
+			"customer_id", packet.CustomerID,
+			"datacenter_id", packet.DatacenterID,
+			"sdk", packet.Version.String(),
+		)
+
+		response := ServerInitResponsePacket{
+			RequestID: packet.RequestID,
+			Response:  InitResponseOK,
+		}
+		defer func() {
+			if err := writeInitResponse(w, response, serverPrivateKey); err != nil {
+				level.Error(locallogger).Log("msg", "failed to write init response", "err", err)
+			}
+		}()
+
+		if !incoming.SourceAddr.IP.IsLoopback() && !packet.Version.AtLeast(SDKVersionMin) {
+			level.Error(locallogger).Log("msg", "sdk version is too old")
+			response.Response = InitResponseOldSDKVersion
+			metrics.ErrorMetrics.SDKTooOld.Add(1)
+			return
+		}
+
+		_, err := storer.Datacenter(packet.DatacenterID)
+		if err != nil {
+			level.Error(locallogger).Log("msg", "failed to get buyer from storage", "err", err)
+			response.Response = InitResponseUnknownDatacenter
+			metrics.ErrorMetrics.DatacenterNotFound.Add(1)
+			return
+		}
+
+		buyer, err := storer.Buyer(packet.CustomerID)
+		if err != nil {
+			level.Error(locallogger).Log("msg", "failed to get buyer from storage", "err", err)
+			response.Response = InitResponseUnknownCustomer
+			metrics.ErrorMetrics.BuyerNotFound.Add(1)
+			return
+		}
+
+		if !crypto.Verify(buyer.PublicKey, packet.GetSignData(), packet.Signature) {
+			level.Error(locallogger).Log("msg", "signature verification failed")
+			response.Response = InitResponseSignatureCheckFailed
+			metrics.ErrorMetrics.VerificationFailure.Add(1)
+			return
 		}
 	}
 }
@@ -667,6 +739,25 @@ func addRouteDecisionMetric(d routing.Decision, m *metrics.SessionMetrics) {
 	case routing.DecisionRTTIncrease:
 		m.DecisionMetrics.RTTIncrease.Add(1)
 	}
+}
+
+// writeInitResponse encrypts the server init response packet and sends it back to the server. Returns the marshaled response and an error.
+func writeInitResponse(w io.Writer, response ServerInitResponsePacket, privateKey []byte) error {
+	// Sign the response
+	response.Signature = crypto.Sign(privateKey, response.GetSignData())
+
+	// Marshal the packet
+	responseData, err := response.MarshalBinary()
+	if err != nil {
+		return err
+	}
+
+	// Send the Session Response back to the server
+	if _, err := w.Write(responseData); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // writeSessionResponse encrypts the session response packet and sends it back to the server. Returns the marshaled response and an error.

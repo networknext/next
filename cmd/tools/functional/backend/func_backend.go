@@ -239,6 +239,33 @@ func main() {
 		Conn:          connection,
 		MaxPacketSize: transport.DefaultMaxPacketSize,
 
+		ServerInitHandlerFunc: func(w io.Writer, incoming *transport.UDPPacket) {
+			initRequest := &transport.ServerInitRequestPacket{}
+			if err = initRequest.UnmarshalBinary(incoming.Data); err != nil {
+				fmt.Printf("error: failed to read server init request packet: %v\n", err)
+				return
+			}
+
+			initResponse := &transport.ServerInitResponsePacket{
+				RequestID: initRequest.RequestID,
+				Response:  transport.InitResponseOK,
+			}
+
+			initResponse.Signature = crypto.Sign(crypto.BackendPrivateKey, initResponse.GetSignData())
+
+			responsePacketData, err := initResponse.MarshalBinary()
+			if err != nil {
+				fmt.Printf("error: failed to write init response packet: %v\n", err)
+				return
+			}
+
+			_, err = w.Write(responsePacketData)
+			if err != nil {
+				fmt.Printf("error: failed to send udp response: %v\n", err)
+				return
+			}
+		},
+
 		ServerUpdateHandlerFunc: func(w io.Writer, incoming *transport.UDPPacket) {
 			serverUpdate := &transport.ServerUpdatePacket{}
 			if err = serverUpdate.UnmarshalBinary(incoming.Data); err != nil {
@@ -391,6 +418,7 @@ func main() {
 				sessionEntry.RouteHash = directRoute.Hash64()
 
 			} else {
+
 				// Make next route from near relays (but respect hop limit)
 				numRelays := len(nearRelays)
 				if numRelays > routing.MaxRelays {
