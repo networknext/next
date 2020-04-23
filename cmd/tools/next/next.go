@@ -355,6 +355,20 @@ func main() {
 						},
 					},
 					{
+						Name:       "revert",
+						ShortUsage: "next relay revert <ALL|relay name...>",
+						ShortHelp:  "revert all or some relays to the last binary placed on the server",
+						Exec: func(ctx context.Context, args []string) error {
+							if len(args) == 0 {
+								log.Fatal("You need to supply at least one relay name or 'ALL'")
+							}
+
+							revertRelays(env, rpcClient, args)
+
+							return nil
+						},
+					},
+					{
 						Name:       "enable",
 						ShortUsage: "next relay enable <relay name...>",
 						ShortHelp:  "Enable the specified relay(s)",

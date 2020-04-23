@@ -24,28 +24,6 @@ func updateRelayState(rpcClient jsonrpc.RPCClient, info relayInfo, state routing
 	}
 }
 
-func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []string) {
-	for _, relayName := range relayNames {
-		info := getRelayInfo(rpcClient, relayName)
-		fmt.Printf("Disabling relay '%s' (id = %d)\n", relayName, info.id)
-		testForSSHKey(env)
-		updateRelayState(rpcClient, info, routing.RelayStateDisabled)
-		con := NewSSHConn(info.user, info.sshAddr, info.sshPort, env.SSHKeyFilePath)
-		con.ConnectAndIssueCmd(DisableRelayScript)
-	}
-}
-
-func enableRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []string) {
-	for _, relayName := range relayNames {
-		info := getRelayInfo(rpcClient, relayName)
-		fmt.Printf("Enabling relay '%s' (id = %d)\n", relayName, info.id)
-		testForSSHKey(env)
-		updateRelayState(rpcClient, info, routing.RelayStateEnabled)
-		con := NewSSHConn(info.user, info.sshAddr, info.sshPort, env.SSHKeyFilePath)
-		con.ConnectAndIssueCmd(EnableRelayScript)
-	}
-}
-
 func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []string) {
 	makeEnv := func(info relayInfo) {
 		publicKey, privateKey, err := box.GenerateKey(rand.Reader)
@@ -80,7 +58,7 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 		defer f.Close()
 
 		for k, v := range envvars {
-			f.WriteString(fmt.Sprintf("%s=%s\n", k, v))
+			f.WriteString(fmt.Sprintf("%s='%s'\n", k, v))
 		}
 
 		args := localjsonrpc.RelayPublicKeyUpdateArgs{
@@ -95,6 +73,10 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 		}
 	}
 
+	if !runCommandEnv("make", []string{"build-new-relay"}, nil) {
+		log.Fatal("Failed to build relay")
+	}
+
 	for _, relayName := range relayNames {
 		fmt.Printf("Updating %s\n", relayName)
 		info := getRelayInfo(rpcClient, relayName)
@@ -103,5 +85,38 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 			log.Fatal("could not execute the relay-update.sh script")
 		}
 		updateRelayState(rpcClient, info, routing.RelayStateEnabled)
+	}
+}
+
+func revertRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []string) {
+	for _, relayName := range relayNames {
+		info := getRelayInfo(rpcClient, relayName)
+		fmt.Printf("Reverting relay '%s' (id = %d)\n", relayName, info.id)
+		testForSSHKey(env)
+		updateRelayState(rpcClient, info, routing.RelayStateEnabled)
+		con := NewSSHConn(info.user, info.sshAddr, info.sshPort, env.SSHKeyFilePath)
+		con.ConnectAndIssueCmd("./install.sh -r")
+	}
+}
+
+func enableRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []string) {
+	for _, relayName := range relayNames {
+		info := getRelayInfo(rpcClient, relayName)
+		fmt.Printf("Enabling relay '%s' (id = %d)\n", relayName, info.id)
+		testForSSHKey(env)
+		updateRelayState(rpcClient, info, routing.RelayStateEnabled)
+		con := NewSSHConn(info.user, info.sshAddr, info.sshPort, env.SSHKeyFilePath)
+		con.ConnectAndIssueCmd(EnableRelayScript)
+	}
+}
+
+func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []string) {
+	for _, relayName := range relayNames {
+		info := getRelayInfo(rpcClient, relayName)
+		fmt.Printf("Disabling relay '%s' (id = %d)\n", relayName, info.id)
+		testForSSHKey(env)
+		updateRelayState(rpcClient, info, routing.RelayStateDisabled)
+		con := NewSSHConn(info.user, info.sshAddr, info.sshPort, env.SSHKeyFilePath)
+		con.ConnectAndIssueCmd(DisableRelayScript)
 	}
 }
