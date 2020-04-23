@@ -150,7 +150,12 @@ bool FSocketNetworkNextClient::Close()
 
 bool FSocketNetworkNextClient::Bind(const FInternetAddr& Addr)
 {
-	UE_LOG(LogNetworkNext, Display, TEXT("Bind Client Socket (%s)"), *Addr.ToString(true));
+	// We must ignore the local bind address and bind to 0.0.0.0 instead. XBoxOne tries to bind to "::0" otherwise and breaks.
+	int BindPort = Addr.GetPort();
+	char BindAddress[256];
+	sprintf_s(BindAddress, "0.0.0.0:%d", BindPort);
+
+	UE_LOG(LogNetworkNext, Display, TEXT("Bind Client Socket (%s)"), ANSI_TO_TCHAR(BindAddress));
 
 	if (bBound)
 	{
@@ -164,11 +169,9 @@ bool FSocketNetworkNextClient::Bind(const FInternetAddr& Addr)
 		this->ClientPort = 0;
 	}
 
-	FString BindAddr = Addr.ToString(true);
-
 	this->NetworkNextClient = next_client_create(
 		this,
-		TCHAR_TO_ANSI(*BindAddr),
+		BindAddress,
 		&FSocketNetworkNextClient::OnPacketReceived
 	);
 

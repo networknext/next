@@ -80,13 +80,10 @@ bool UNetworkNextNetDriver::InitBase(bool bInitAsClient, FNetworkNotify* InNotif
 
 	LocalAddr = SocketSubsystem->GetLocalBindAddr(*GLog);
 
-#if PLATFORM_XBOXONE
+//#if PLATFORM_XBOXONE
 
 	if (bInitAsClient)
 	{
-		// On XBoxOne we must ignore the local bind address (::0) and bind to 0.0.0.0 instead
-		LocalAddr->SetAnyAddress();
-
 		// For PUBG, we must bind in the range [40000,41000] or fail on XBoxOne
 		int32 BeginPort = 40000;
 		int32 Num = 1000;
@@ -101,6 +98,7 @@ bool UNetworkNextNetDriver::InitBase(bool bInitAsClient, FNetworkNotify* InNotif
 		LocalAddr->SetPort(URL.Port);
 	}
 
+	/*
 #else
 
 	if (bInitAsClient)
@@ -115,6 +113,7 @@ bool UNetworkNextNetDriver::InitBase(bool bInitAsClient, FNetworkNotify* InNotif
 	}
 
 #endif
+	*/
 
 	int32 BoundPort = SocketSubsystem->BindNextPort(Socket, *LocalAddr, MaxPortCountToTry + 1, 1);
 
