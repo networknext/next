@@ -560,11 +560,11 @@ func main() {
 					},
 					{
 						Name:       "remove",
-						ShortUsage: "next datacenters remove <id>",
+						ShortUsage: "next datacenters remove <name>",
 						ShortHelp:  "Remove a datacenter from storage",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) == 0 {
-								log.Fatal("Provide the datacenter ID of the datacenter you wish to remove\nFor a list of datacenters, use next datacenters")
+								log.Fatal("Provide the datacenter name of the datacenter you wish to remove\nFor a list of datacenters, use next datacenters")
 							}
 
 							removeDatacenter(rpcClient, args[0])
