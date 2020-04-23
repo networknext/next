@@ -35,6 +35,9 @@ function startApp() {
 				el: '#sessions',
 				data: {
 					sessions: response.sessions || []
+				},
+				methods: {
+					fetchSessionInfo: fetchSessionInfo
 				}
 			});
 		})
@@ -49,6 +52,9 @@ function startApp() {
 				el: '#pubKey',
 				data: {
 					pubkey: response.game_config.public_key
+				},
+				methods: {
+					editUser: editUser
 				}
 			})
 		})
@@ -133,6 +139,73 @@ function updatePubKey() {
 			console.log(e);
 			console.log("Failed to update public key");
 		})
+}
+
+function fetchSessionInfo(sessionId = '') {
+
+	const id = sessionId || document.getElementById("sessionIDLookup").value;
+	document.getElementById("sessionIDLookup").value = '';
+
+	if (id == '') {
+		console.log("Can't use a empty id");
+		return;
+	}
+	JSONRPCClient
+		.call("BuyersService.Sessions", {buyer_id: '13672574147039585173', session_id: id})
+		.then((response) => {
+			console.log(response);
+			showDemoLatency();
+		})
+		.catch((e) => {
+			console.log("Something went wrong with fetching session information: ");
+			console.log(e);
+		});
+}
+
+function showDemoLatency() {
+	var options = {
+		series: [{
+			data: [34, 44, 54, 21, 12, 43, 33, 23, 66, 66, 58]
+		}],
+		chart: {
+			type: 'area',
+			height: 350,
+			toolbar: {
+				show: false
+			}
+		},
+		legend: {
+			show: true
+		},
+		stroke: {
+			curve: 'stepline',
+		},
+		dataLabels: {
+			enabled: false
+		},
+		title: {
+			text: 'Latency',
+			align: 'left'
+		},
+		markers: {
+			hover: {
+			sizeOffset: 4
+			}
+		},
+		xaxis: {
+			lines: {
+			show: false,
+			}
+		},
+		yaxis: {
+			lines: {
+			show: true,
+			}
+		}
+	};
+
+	var chart = new ApexCharts(document.querySelector("#latency-chart"), options);
+	chart.render();
 }
 
 function editUser(accountInfo) {
