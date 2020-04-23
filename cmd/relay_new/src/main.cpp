@@ -130,12 +130,20 @@ namespace
 
 #if not defined TEST_BUILD and not defined BENCH_BUILD
     auto gracefulShutdownHandler = [](int) {
-      gAlive = false;
+      if (gAlive) {
+        gAlive = false;
+      } else {
+        std::exit(1);
+      }
     };
 
     auto cleanShutdownHandler = [](int) {
-      gShouldCleanShutdown = true;
-      gAlive = false;
+      if (gAlive) {
+        gShouldCleanShutdown = true;
+        gAlive = false;
+      } else {
+        std::exit(1);
+      }
     };
 
     signal(SIGINT, gracefulShutdownHandler);
@@ -147,8 +155,6 @@ namespace
 
 int main()
 {
-  setupSignalHandlers();
-
 #ifdef TEST_BUILD
   return testing::SpecTest::Run() ? 0 : 1;
 #endif
@@ -399,6 +405,8 @@ int main()
   }
 
   Log("Relay initialized\n\n");
+
+  setupSignalHandlers();
 
   bool success = backend.updateCycle(gAlive, gShouldCleanShutdown, recorder, sessions, relayClock);
 
