@@ -154,7 +154,14 @@ function fetchSessionInfo(sessionId = '') {
 		.call("BuyersService.Sessions", {buyer_id: '13672574147039585173', session_id: id})
 		.then((response) => {
 			console.log(response);
-			showDemoLatency();
+			showDemoChart('latency-chart-1');
+			showDemoChart('latency-chart-2');
+			showDemoChart('jitter-chart-1');
+			showDemoChart('jitter-chart-2');
+			showDemoChart('packet-loss-chart-1');
+			showDemoChart('packet-loss-chart-2');
+			showDemoChart('bandwidth-chart-1');
+			showDemoChart('bandwidth-chart-2');
 		})
 		.catch((e) => {
 			console.log("Something went wrong with fetching session information: ");
@@ -162,7 +169,7 @@ function fetchSessionInfo(sessionId = '') {
 		});
 }
 
-function showDemoLatency() {
+function showDemoChart(id) {
 	var options = {
 		series: [{
 			data: [34, 44, 54, 21, 12, 43, 33, 23, 66, 66, 58]
@@ -172,7 +179,10 @@ function showDemoLatency() {
 			height: 350,
 			toolbar: {
 				show: false
-			}
+			},
+			zoom: {
+				enabled: false
+			},
 		},
 		legend: {
 			show: true
@@ -182,10 +192,6 @@ function showDemoLatency() {
 		},
 		dataLabels: {
 			enabled: false
-		},
-		title: {
-			text: 'Latency',
-			align: 'left'
 		},
 		markers: {
 			hover: {
@@ -204,7 +210,7 @@ function showDemoLatency() {
 		}
 	};
 
-	var chart = new ApexCharts(document.querySelector("#latency-chart"), options);
+	var chart = new ApexCharts(document.querySelector("#" + id), options);
 	chart.render();
 }
 
