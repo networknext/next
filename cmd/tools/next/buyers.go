@@ -63,7 +63,7 @@ func routingRulesSettings(rpcClient jsonrpc.RPCClient, buyerID uint64) {
 	table.Output(reply.RoutingRuleSettings)
 }
 
-func setRouteShader(rpcClient jsonrpc.RPCClient, buyerID uint64, rrs routing.RoutingRulesSettings) {
+func setRoutingRulesSettings(rpcClient jsonrpc.RPCClient, buyerID uint64, rrs routing.RoutingRulesSettings) {
 	args := localjsonrpc.SetRoutingRulesSettingsArgs{
 		BuyerID:              buyerID,
 		RoutingRulesSettings: rrs,

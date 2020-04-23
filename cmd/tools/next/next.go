@@ -414,7 +414,7 @@ func main() {
 							}
 
 							// Set the route shader in storage
-							setRouteShader(rpcClient, buyerID, rrs)
+							setRoutingRulesSettings(rpcClient, buyerID, rrs)
 							return nil
 						},
 						Subcommands: []*ffcli.Command{
