@@ -56,11 +56,7 @@ func (s *OpsService) AddBuyer(r *http.Request, args *AddBuyerArgs, reply *AddBuy
 	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
-	if err := s.Storage.AddBuyer(ctx, args.Buyer); err != nil {
-		return err
-	}
-
-	return nil
+	return s.Storage.AddBuyer(ctx, args.Buyer)
 }
 
 type RemoveBuyerArgs struct {
@@ -73,19 +69,15 @@ func (s *OpsService) RemoveBuyer(r *http.Request, args *RemoveBuyerArgs, reply *
 	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
-	if err := s.Storage.RemoveBuyer(ctx, args.ID); err != nil {
-		return err
-	}
-
-	return nil
+	return s.Storage.RemoveBuyer(ctx, args.ID)
 }
 
-type RouteShaderArgs struct {
-	Name string
+type RoutingRulesSettingsArgs struct {
+	BuyerID uint64
 }
 
-type RouteShaderReply struct {
-	RoutingRuleSettings routingRuleSettings
+type RoutingRulesSettingsReply struct {
+	RoutingRuleSettings []routingRuleSettings
 }
 
 type routingRuleSettings struct {
@@ -105,16 +97,54 @@ type routingRuleSettings struct {
 	EnableABTest                 bool    `json:"abTest"`
 }
 
-func (s *OpsService) RouteShader(r *http.Request, args *RouteShaderArgs, reply *RouteShaderReply) error {
-	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
-	defer cancelFunc()
-
-	if err := s.Storage.Buyer(ctx, args.Name); err != nil {
+func (s *OpsService) RoutingRulesSettings(r *http.Request, args *RoutingRulesSettingsArgs, reply *RoutingRulesSettingsReply) error {
+	buyer, err := s.Storage.Buyer(args.BuyerID)
+	if err != nil {
 		return err
+	}
+
+	reply.RoutingRuleSettings = []routingRuleSettings{
+		{
+			EnvelopeKbpsUp:               buyer.RoutingRulesSettings.EnvelopeKbpsUp,
+			EnvelopeKbpsDown:             buyer.RoutingRulesSettings.EnvelopeKbpsDown,
+			Mode:                         buyer.RoutingRulesSettings.Mode,
+			MaxCentsPerGB:                buyer.RoutingRulesSettings.MaxCentsPerGB,
+			RTTEpsilon:                   buyer.RoutingRulesSettings.RTTEpsilon,
+			RTTThreshold:                 buyer.RoutingRulesSettings.RTTThreshold,
+			RTTHysteresis:                buyer.RoutingRulesSettings.RTTHysteresis,
+			RTTVeto:                      buyer.RoutingRulesSettings.RTTVeto,
+			EnableYouOnlyLiveOnce:        buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce,
+			EnablePacketLossSafety:       buyer.RoutingRulesSettings.EnablePacketLossSafety,
+			EnableMultipathForPacketLoss: buyer.RoutingRulesSettings.EnableMultipathForPacketLoss,
+			EnableMultipathForJitter:     buyer.RoutingRulesSettings.EnableMultipathForJitter,
+			EnableMultipathForRTT:        buyer.RoutingRulesSettings.EnableMultipathForRTT,
+			EnableABTest:                 buyer.RoutingRulesSettings.EnableABTest,
+		},
 	}
 
 	return nil
 }
+
+type SetRoutingRulesSettingsArgs struct {
+	BuyerID              uint64
+	RoutingRulesSettings routing.RoutingRulesSettings
+}
+
+func (s *OpsService) SetRoutingRulesSettings(r *http.Request, args *SetRoutingRulesSettingsArgs, reply *SetRouteShaderReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	buyer, err := s.Storage.Buyer(args.BuyerID)
+	if err != nil {
+		return err
+	}
+
+	buyer.RoutingRulesSettings = args.RoutingRulesSettings
+
+	return s.Storage.SetBuyer(ctx, buyer)
+}
+
+type SetRouteShaderReply struct{}
 
 type SellersArgs struct{}
 
@@ -156,11 +186,7 @@ func (s *OpsService) AddSeller(r *http.Request, args *AddSellerArgs, reply *AddS
 	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
-	if err := s.Storage.AddSeller(ctx, args.Seller); err != nil {
-		return err
-	}
-
-	return nil
+	return s.Storage.AddSeller(ctx, args.Seller)
 }
 
 type RemoveSellerArgs struct {
@@ -173,11 +199,7 @@ func (s *OpsService) RemoveSeller(r *http.Request, args *RemoveSellerArgs, reply
 	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
-	if err := s.Storage.RemoveSeller(ctx, args.ID); err != nil {
-		return err
-	}
-
-	return nil
+	return s.Storage.RemoveSeller(ctx, args.ID)
 }
 
 type RelaysArgs struct {
@@ -254,12 +276,7 @@ func (s *OpsService) RelayStateUpdate(r *http.Request, args *RelayStateUpdateArg
 	}
 
 	relay.State = args.RelayState
-
-	if err := s.Storage.SetRelay(context.Background(), relay); err != nil {
-		return err
-	}
-
-	return nil
+	return s.Storage.SetRelay(context.Background(), relay)
 }
 
 type RelayPublicKeyUpdateArgs struct {
@@ -283,11 +300,7 @@ func (s *OpsService) RelayPublicKeyUpdate(r *http.Request, args *RelayPublicKeyU
 		return fmt.Errorf("could not decode relay public key: %v", err)
 	}
 
-	if err := s.Storage.SetRelay(context.Background(), relay); err != nil {
-		return err
-	}
-
-	return nil
+	return s.Storage.SetRelay(context.Background(), relay)
 }
 
 type DatacentersArgs struct {
@@ -342,11 +355,7 @@ func (s *OpsService) AddDatacenter(r *http.Request, args *AddDatacenterArgs, rep
 	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
-	if err := s.Storage.AddDatacenter(ctx, args.Datacenter); err != nil {
-		return err
-	}
-
-	return nil
+	return s.Storage.AddDatacenter(ctx, args.Datacenter)
 }
 
 type RemoveDatacenterArgs struct {
@@ -361,9 +370,5 @@ func (s *OpsService) RemoveDatacenter(r *http.Request, args *RemoveDatacenterArg
 
 	id := crypto.HashID(args.Name)
 
-	if err := s.Storage.RemoveDatacenter(ctx, id); err != nil {
-		return err
-	}
-
-	return nil
+	return s.Storage.RemoveDatacenter(ctx, id)
 }

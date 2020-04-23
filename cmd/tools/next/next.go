@@ -372,25 +372,37 @@ func main() {
 			},
 			{
 				Name:       "routeshader",
-				ShortUsage: "next routeshader <buyer name>",
+				ShortUsage: "next routeshader <buyer ID>",
 				ShortHelp:  "Get a buyer's route shader from storage",
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) == 0 {
-						log.Fatal("No buyer name provided.\nUsage:\nnext routeshader <buyer name>\nbuyer name: the buyer's name (ex. Psyonix)\nFor a list of buyers, use next buyers")
+						log.Fatal("No buyer ID provided.\nUsage:\nnext routeshader <buyer ID>\nbuyer ID: the buyer's ID\nFor a list of buyers, use next buyers")
+					}
+
+					// Parse buyerID into uint64
+					buyerID, err := strconv.ParseUint(args[0], 10, 64)
+					if err != nil {
+						log.Fatalf("Failed to parse \"%s\" as a buyer ID, must be a valid 64 bit unsigned integer\nFor a list of buyers, use next buyers", args[0])
 					}
 
 					// Get the buyer's route shader
-					routeShader(rpcClient, args[0])
+					routingRulesSettings(rpcClient, buyerID)
 					return nil
 				},
 				Subcommands: []*ffcli.Command{
 					{
 						Name:       "set",
-						ShortUsage: "next routeshader set <buyer name> [filepath]",
+						ShortUsage: "next routeshader set <buyer ID> [filepath]",
 						ShortHelp:  "Set the buyer's route shader in storage from a JSON file or piped from stdin",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) == 0 {
-								log.Fatal("No buyer name provided.\nUsage:\nnext routeshader set <buyer name> [filepath]\nbuyer name: the buyer's name (ex. Psyonix)\n(Optional) filepath: the filepath to a JSON file with the new route shader data. If this data is piped through stdin, this parameter is optional.\nFor a list of buyers, use next buyers")
+								log.Fatal("No buyer ID provided.\nUsage:\nnext routeshader set <buyer ID> [filepath]\nbuyer ID: the buyer's ID\n(Optional) filepath: the filepath to a JSON file with the new route shader data. If this data is piped through stdin, this parameter is optional.\nFor a list of buyers, use next buyers")
+							}
+
+							// Parse buyerID into uint64
+							buyerID, err := strconv.ParseUint(args[0], 10, 64)
+							if err != nil {
+								log.Fatalf("Failed to parse \"%s\" as a buyer ID, must be a valid 64 bit unsigned integer\nFor a list of buyers, use next buyers", args[0])
 							}
 
 							jsonData := readJSONData("buyers", args[1:])
@@ -402,8 +414,25 @@ func main() {
 							}
 
 							// Set the route shader in storage
-							setRouteShader(rpcClient, args[0], rrs)
+							setRouteShader(rpcClient, buyerID, rrs)
 							return nil
+						},
+						Subcommands: []*ffcli.Command{
+							{
+								Name:       "example",
+								ShortUsage: "next routeshader set example",
+								ShortHelp:  "Displays an example route shader for the correct JSON schema",
+								Exec: func(_ context.Context, args []string) error {
+									jsonBytes, err := json.MarshalIndent(routing.DefaultRoutingRulesSettings, "", "\t")
+									if err != nil {
+										log.Fatal("Failed to marshal route shader struct")
+									}
+
+									fmt.Println("Exmaple JSON schema to set a new route shader:")
+									fmt.Println(string(jsonBytes))
+									return nil
+								},
+							},
 						},
 					},
 				},

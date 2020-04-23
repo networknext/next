@@ -49,13 +49,13 @@ func removeBuyer(rpcClient jsonrpc.RPCClient, id uint64) {
 	fmt.Printf("Buyer with ID \"%d\" removed from storage.\n", id)
 }
 
-func routeShader(rpcClient jsonrpc.RPCClient, name string) {
-	args := localjsonrpc.RouteShaderArgs{
-		Name: name,
+func routingRulesSettings(rpcClient jsonrpc.RPCClient, buyerID uint64) {
+	args := localjsonrpc.RoutingRulesSettingsArgs{
+		BuyerID: buyerID,
 	}
 
-	var reply localjsonrpc.RouteShaderReply
-	if err := rpcClient.CallFor(&reply, "OpsService.RouteShader", args); err != nil {
+	var reply localjsonrpc.RoutingRulesSettingsReply
+	if err := rpcClient.CallFor(&reply, "OpsService.RoutingRulesSettings", args); err != nil {
 		handleJSONRPCError(err)
 		return
 	}
@@ -63,17 +63,17 @@ func routeShader(rpcClient jsonrpc.RPCClient, name string) {
 	table.Output(reply.RoutingRuleSettings)
 }
 
-func setRouteShader(rpcClient jsonrpc.RPCClient, name string, rrs routing.RoutingRulesSettings) {
-	args := localjsonrpc.SetRouteShaderArgs{
-		Name:                name,
-		RoutingRuleSettings: rrs,
+func setRouteShader(rpcClient jsonrpc.RPCClient, buyerID uint64, rrs routing.RoutingRulesSettings) {
+	args := localjsonrpc.SetRoutingRulesSettingsArgs{
+		BuyerID:              buyerID,
+		RoutingRulesSettings: rrs,
 	}
 
 	var reply localjsonrpc.SetRouteShaderReply
-	if err := rpcClient.CallFor(&reply, "OpsService.SetRouteShader", args); err != nil {
+	if err := rpcClient.CallFor(&reply, "OpsService.SetRoutingRulesSettings", args); err != nil {
 		handleJSONRPCError(err)
 		return
 	}
 
-	fmt.Printf("Route shader for buyer \"%s\" updated.\n", name)
+	fmt.Printf("Route shader for buyer with ID \"%d\" updated.\n", buyerID)
 }
