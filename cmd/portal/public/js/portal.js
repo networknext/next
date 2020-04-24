@@ -39,7 +39,7 @@ function startApp() {
 			});
 		})
 		.catch((e) => {
-			console.log("Something went wrong with the map init!");
+			console.log("Something went wrong with fetching sessions");
 			console.log(e);
 		});
 	JSONRPCClient
@@ -56,23 +56,41 @@ function startApp() {
 			console.log("Something went wrong grabbing current public key");
 			console.log(e);
 		});
+	JSONRPCClient
+		.call('OpsService.Relays', {})
+		.then((response) => {
+			console.log(response)
+			new Vue({
+				el: '#relays',
+				data: {
+					relays: response.relays || []
+				}
+			});
+		})
+		.catch((e) => {
+			console.log("Something went wrong with fetching relays")
+		});
 }
 
 function changePage(page) {
 	let account = document.getElementById("account-workspace");
 	let session = document.getElementById("session-workspace");
+	let relay = document.getElementById("relay-workspace");
 	let map = document.getElementById("map-workspace");
 	let title = document.getElementById("workspace-title");
 
 	let mapLink = document.getElementById("home-link");
 	let sessionLink = document.getElementById("session-link");
+	let relayLink = document.getElementById("relay-link");
 
 	account.style.display = 'none';
 	map.style.display = 'none';
 	session.style.display = 'none';
+	relay.style.display = 'none';
 
 	mapLink.classList.remove("active");
 	sessionLink.classList.remove("active");
+	relayLink.classList.remove("active");
 
 	switch (page) {
 		case 'sessions':
@@ -84,6 +102,11 @@ function changePage(page) {
 			account.style.display = 'block';
 			changeAccountPage();
 			title.textContent = 'Account Details';
+			break;
+		case 'relay':
+			relay.style.display = 'block';
+			relayLink.classList.add("active");
+			title.textContent = 'Relays Table';
 			break;
 		default:
 			map.style.display = 'block';
