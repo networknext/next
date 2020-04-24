@@ -130,7 +130,7 @@ func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, metrics *me
 
 		_, err := storer.Datacenter(packet.DatacenterID)
 		if err != nil {
-			level.Error(locallogger).Log("msg", "failed to get buyer from storage", "err", err)
+			level.Error(locallogger).Log("msg", "failed to get datacenter from storage", "err", err)
 			response.Response = InitResponseUnknownDatacenter
 			metrics.ErrorMetrics.DatacenterNotFound.Add(1)
 			return
