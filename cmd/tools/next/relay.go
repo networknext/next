@@ -98,6 +98,7 @@ func getInfoForAllRelays(rpcClient jsonrpc.RPCClient) []relayInfo {
 	for i, relay := range reply.Relays {
 		relays[i] = relayInfo{
 			id:         relay.ID,
+			name:       relay.Name,
 			user:       relay.SSHUser,
 			sshAddr:    relay.ManagementAddr,
 			sshPort:    fmt.Sprintf("%d", relay.SSHPort),
@@ -196,7 +197,7 @@ func revertRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 	} else {
 		for _, relayName := range relayNames {
 			info := getRelayInfo(rpcClient, relayName)
-			fmt.Printf("Reverting relay '%s' (id = %d)\n", relayName, info.id)
+			fmt.Printf("Reverting relay '%s' (id = %d)\n", info.name, info.id)
 			testForSSHKey(env)
 			updateRelayState(rpcClient, info, routing.RelayStateEnabled)
 			con := NewSSHConn(info.user, info.sshAddr, info.sshPort, env.SSHKeyFilePath)
