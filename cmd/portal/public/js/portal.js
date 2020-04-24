@@ -2,6 +2,7 @@
  * TODO:
  * 	Refactor all of this into something more reasonable
  */
+mapboxgl.accessToken = 'pk.eyJ1IjoiYmF1bWJhY2hhbmRyZXciLCJhIjoiY2s4dDFwcGo2MGowZTNtcXpsbDN6dHBwdyJ9.Sr1lDY9i9o9yz84fJ-PSlg';
 
 var userInfo = null;
 
@@ -35,6 +36,9 @@ function startApp() {
 				el: '#sessions',
 				data: {
 					sessions: response.sessions || []
+				},
+				methods: {
+					fetchSessionInfo: fetchSessionInfo
 				}
 			});
 		})
@@ -49,6 +53,9 @@ function startApp() {
 				el: '#pubKey',
 				data: {
 					pubkey: response.game_config.public_key
+				},
+				methods: {
+					editUser: editUser
 				}
 			})
 		})
@@ -135,6 +142,95 @@ function updatePubKey() {
 		})
 }
 
+function fetchSessionInfo(sessionId = '') {
+
+	const id = sessionId || document.getElementById("sessionIDLookup").value;
+	document.getElementById("sessionIDLookup").value = '';
+
+	/* if (id == '') {
+		console.log("Can't use a empty id");
+		return;
+	} */
+	JSONRPCClient
+		.call("BuyersService.Sessions", {buyer_id: '13672574147039585173'/* , session_id: id */})
+		.then((response) => {
+			console.log(response);
+			var sessionToolMapInstance = new deck.DeckGL({
+				mapboxApiAccessToken: mapboxgl.accessToken,
+				mapStyle: 'mapbox://styles/mapbox/dark-v10',
+				initialViewState: {
+					longitude: -98.583333,
+					latitude: 39.833333,
+					zoom: 4,
+					maxZoom: 15,
+				},
+				controller: true,
+				container: 'session-tool-map',
+			});
+
+			showDemoChart('latency-chart-1');
+			showDemoChart('latency-chart-2');
+			showDemoChart('jitter-chart-1');
+			showDemoChart('jitter-chart-2');
+			showDemoChart('packet-loss-chart-1');
+			showDemoChart('packet-loss-chart-2');
+			showDemoChart('bandwidth-chart-1');
+			showDemoChart('bandwidth-chart-2');
+		})
+		.catch((e) => {
+			console.log("Something went wrong with fetching session information: ");
+			console.log(e);
+		});
+}
+
+function showDemoChart(id) {
+	var options = {
+		series: [{
+			data: [34, 44, 54, 21, 12, 43, 33, 23, 66, 66, 58]
+		}],
+		chart: {
+			type: 'area',
+			height: 350,
+			toolbar: {
+				show: false
+			},
+			zoom: {
+				enabled: false
+			},
+		},
+		legend: {
+			show: true
+		},
+		stroke: {
+			curve: 'stepline',
+		},
+		theme: {
+			mode: "light"
+		},
+		dataLabels: {
+			enabled: false
+		},
+		markers: {
+			hover: {
+			sizeOffset: 4
+			}
+		},
+		xaxis: {
+			lines: {
+			show: false,
+			}
+		},
+		yaxis: {
+			lines: {
+			show: true,
+			}
+		}
+	};
+
+	var chart = new ApexCharts(document.querySelector("#" + id), options);
+	chart.render();
+}
+
 function editUser(accountInfo) {
 	changeAccountPage('new');
 
@@ -199,8 +295,8 @@ window.MapHandler = {
 				});
 				var layers = [sessionLayer];
 				mapInstance = new deck.DeckGL({
-					mapboxApiAccessToken: 'pk.eyJ1IjoiYmF1bWJhY2hhbmRyZXciLCJhIjoiY2s4dDFwcGo2MGowZTNtcXpsbDN6dHBwdyJ9.Sr1lDY9i9o9yz84fJ-PSlg',
-					mapStyle: 'mapbox://styles/mapbox/dark-v9',
+					mapboxApiAccessToken: mapboxgl.accessToken,
+					mapStyle: 'mapbox://styles/mapbox/dark-v10',
 					initialViewState: {
 						// Center of the continental US
 						longitude: -98.583333,
