@@ -43,7 +43,7 @@ function startApp() {
 			});
 		})
 		.catch((e) => {
-			console.log("Something went wrong with the map init!");
+			console.log("Something went wrong with fetching sessions");
 			console.log(e);
 		});
 	JSONRPCClient
@@ -94,44 +94,66 @@ function startApp() {
 			console.log("Something went wrong grabbing current public key");
 			console.log(e);
 		});
+	JSONRPCClient
+		.call('OpsService.Relays', {})
+		.then((response) => {
+			console.log(response)
+			new Vue({
+				el: '#relays',
+				data: {
+					relays: response.relays || []
+				}
+			});
+		})
+		.catch((e) => {
+			console.log("Something went wrong with fetching relays")
+		});
 }
 
 function changePage(page) {
 	let account = document.getElementById("account-workspace");
-	let session = document.getElementById("session-workspace");
-	let users = document.getElementById("users-workspace");
 	let map = document.getElementById("map-workspace");
+	let relay = document.getElementById("relay-workspace");
+	let session = document.getElementById("session-workspace");
 	let title = document.getElementById("workspace-title");
+	let users = document.getElementById("users-workspace");
 
 	let mapLink = document.getElementById("home-link");
+	let relayLink = document.getElementById("relay-link");
 	let sessionLink = document.getElementById("session-link");
 	let usersLink = document.getElementById("users-link");
 
 	account.style.display = 'none';
 	map.style.display = 'none';
+	relay.style.display = 'none';
 	session.style.display = 'none';
 	users.style.display = 'none';
 
 	mapLink.classList.remove("active");
+	relayLink.classList.remove("active");
 	sessionLink.classList.remove("active");
 	usersLink.classList.remove("active");
 
 	switch (page) {
-		case 'sessions':
-			session.style.display = 'block';
-			sessionLink.classList.add("active");
-			title.textContent = 'Session Table';
-			break;
 		case 'account':
 			account.style.display = 'block';
 			changeAccountPage();
 			title.textContent = 'Account Details';
 			break;
+		case 'relay':
+			relay.style.display = 'block';
+			relayLink.classList.add("active");
+			title.textContent = 'Relays Table';
+			break;
+		case 'sessions':
+			session.style.display = 'block';
+			sessionLink.classList.add("active");
+			title.textContent = 'Session Table';
+			break;
 		case 'users':
 			users.style.display = 'block';
 			usersLink.classList.add("active");
 			title.textContent = 'User Table';
-			break;
 		default:
 			map.style.display = 'block';
 			mapLink.classList.add("active");

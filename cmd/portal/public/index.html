@@ -83,7 +83,11 @@
                     <a class="nav-link" href="#" id="session-link" onclick="changePage('sessions')">Sessions</a>
                 </li>
                 <li class="nav-item text-nowrap">
+<<<<<<< HEAD
                     <a class="nav-link" href="#" id="users-link" onclick="changePage('users')">Users</a>
+=======
+                    <a class="nav-link" href="#" id="relay-link" onclick="changePage('relay')">Relays</a>
+>>>>>>> Got most of relays page done. Need a couple more things added to relay endpoint
                 </li>
             </ul>
             <ul class="navbar-nav px-3">
@@ -662,6 +666,50 @@
                       </div>
                     </div>
                   </div>
+            </div>
+            <div class="workspace row hidden" id="relay-workspace">
+                <table class="table" id="relays">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th scope="col">Relay Name</th>
+                            <th scope="col">Sessions</th>
+                            <th scope="col">Bandwidth</th>
+                            <th scope="col">Peak Utilization</th>
+                            <th scope="col">Revenue</th>
+                            <th scope="col">On Network Next</th>
+                            <th scope="col">NIC Speed</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="relay in relays" scope="row">
+                            <td>{{ relay.name }}</td>
+                            <td>IMPLEMENT ME</td>
+                            <td>{{ relay.included_bandwidth_gb }}Mbps</td>
+                            <td>IMPLEMENT ME</td>
+                            <td>IMPLEMENT ME</td>
+                            <td>{{ relay.nic_speed_mpbs }}Mbps</td>
+                        </tr>
+                    </tbody>
+                  </table>
+                  <!-- <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                    <div class="modal-dialog" role="document">
+                      <div class="modal-content">
+                        <div class="modal-header">
+                          <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
+                          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                          </button>
+                        </div>
+                        <div class="modal-body">
+                          ...
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                          <button type="button" class="btn btn-primary">Save changes</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div> -->
             </div>
         </div>
         <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>

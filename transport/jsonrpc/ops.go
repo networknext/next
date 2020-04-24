@@ -207,7 +207,7 @@ type RelaysArgs struct {
 }
 
 type RelaysReply struct {
-	Relays []relay
+	Relays []relay `json:"relays"`
 }
 
 type relay struct {
