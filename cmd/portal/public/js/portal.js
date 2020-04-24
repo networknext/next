@@ -205,7 +205,7 @@ function showDemoChart(id) {
 			curve: 'stepline',
 		},
 		theme: {
-			mode: "dark"
+			mode: "light"
 		},
 		dataLabels: {
 			enabled: false

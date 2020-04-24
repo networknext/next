@@ -231,7 +231,7 @@
                     </tr>
                     </thead>
                     <tbody>
-                        <tr>
+                        <!-- <tr>
                             <td>DEBUG</td>
                             <td>DEBUG</td>
                             <td>DEBUG</td>
@@ -246,7 +246,7 @@
                                     <i class="fas fa-info-circle" data-toggle="tooltip" data-placement="bottom" title="Session Info"></i>
                                 </button>
                             </td>
-                        </tr>
+                        </tr> -->
                         <tr v-for="session in sessions" scope="row">
                             <td>{{ session.session_id }}</td>
                             <td>{{ session.user_hash }}</td>
@@ -587,9 +587,6 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="modal-footer">
-                          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                         </div>
                       </div>
                     </div>
