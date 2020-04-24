@@ -5333,13 +5333,19 @@ int main( int argc, const char ** argv )
     }
 
     relay_t relay;
-    memset( &relay, 0, sizeof(relay) );
+    relay.relay_manager = nullptr;
+    relay.socket = nullptr;
+    relay.mutex = nullptr;
     relay.initialize_time = relay_platform_time();
     relay.initialize_router_timestamp = router_timestamp;
     relay.sessions = new std::map<uint64_t, relay_session_t*>();
     memcpy( relay.relay_public_key, relay_public_key, RELAY_PUBLIC_KEY_BYTES );
     memcpy( relay.relay_private_key, relay_private_key, RELAY_PRIVATE_KEY_BYTES );
     memcpy( relay.router_public_key, router_public_key, crypto_sign_PUBLICKEYBYTES );
+    relay.relays_dirty = false;
+    relay.num_relays = 0;
+    memset( relay.relay_ids, 0, sizeof(relay.relay_ids) );
+    memset( relay.relay_addresses, 0, sizeof(relay.relay_addresses) );
     relay.bytes_sent = 0;
     relay.bytes_received = 0;
 
