@@ -13,6 +13,101 @@ import (
 	"golang.org/x/crypto/nacl/box"
 )
 
+const (
+	// DisableRelayScript is the bash script used to disable relays
+	DisableRelayScript = `
+	if ! systemctl is-active --quiet relay; then
+		echo 'Relay service has already been stopped'
+		exit
+	fi
+
+	sudo systemctl stop relay || exit 1
+
+	echo "Waiting for the relay service to clean shutdown"
+
+	while systemctl is-active --quiet relay; do
+		sleep 1
+	done
+
+	sudo systemctl disable relay
+
+	echo 'Relay service shutdown'
+	`
+
+	EnableRelayScript = `
+	if systemctl is-active --quiet relay; then
+		echo 'Relay service is already running'
+		exit
+	fi
+
+	sudo systemctl enable relay || exit 1
+	sudo systemctl start relay || exit 1
+
+	echo 'Relay service started'
+	`
+)
+
+type relayInfo struct {
+	id         uint64
+	name       string
+	user       string
+	sshAddr    string
+	sshPort    string
+	publicAddr string
+}
+
+func getRelayInfo(rpcClient jsonrpc.RPCClient, relayName string) relayInfo {
+	args := localjsonrpc.RelaysArgs{
+		Name: relayName,
+	}
+
+	var reply localjsonrpc.RelaysReply
+	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
+		log.Fatal(err)
+	}
+
+	if len(reply.Relays) == 0 {
+		log.Fatalf("could not find relay with name '%s'", relayName)
+	}
+
+	relay := reply.Relays[0]
+	return relayInfo{
+		id:         relay.ID,
+		name:       relay.Name,
+		user:       relay.SSHUser,
+		sshAddr:    relay.ManagementAddr,
+		sshPort:    fmt.Sprintf("%d", relay.SSHPort),
+		publicAddr: relay.Addr,
+	}
+}
+
+func getInfoForAllRelays(rpcClient jsonrpc.RPCClient) []relayInfo {
+	args := localjsonrpc.RelaysArgs{}
+
+	var reply localjsonrpc.RelaysReply
+	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
+		log.Fatal(err)
+	}
+
+	if len(reply.Relays) == 0 {
+		log.Fatal("could not find a single relay")
+	}
+
+	relays := make([]relayInfo, len(reply.Relays))
+
+	for i, relay := range reply.Relays {
+		relays[i] = relayInfo{
+			id:         relay.ID,
+			user:       relay.SSHUser,
+			sshAddr:    relay.ManagementAddr,
+			sshPort:    fmt.Sprintf("%d", relay.SSHPort),
+			publicAddr: relay.Addr,
+		}
+	}
+
+	return relays
+}
+
 func updateRelayState(rpcClient jsonrpc.RPCClient, info relayInfo, state routing.RelayState) {
 	args := localjsonrpc.RelayStateUpdateArgs{
 		RelayID:    info.id,
@@ -89,13 +184,24 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 }
 
 func revertRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []string) {
-	for _, relayName := range relayNames {
-		info := getRelayInfo(rpcClient, relayName)
-		fmt.Printf("Reverting relay '%s' (id = %d)\n", relayName, info.id)
-		testForSSHKey(env)
-		updateRelayState(rpcClient, info, routing.RelayStateEnabled)
-		con := NewSSHConn(info.user, info.sshAddr, info.sshPort, env.SSHKeyFilePath)
-		con.ConnectAndIssueCmd("./install.sh -r")
+	if relayNames[0] == "ALL" {
+		relays := getInfoForAllRelays(rpcClient)
+		for _, info := range relays {
+			fmt.Printf("Reverting relay '%s' (id = %d)\n", info.name, info.id)
+			testForSSHKey(env)
+			updateRelayState(rpcClient, info, routing.RelayStateEnabled)
+			con := NewSSHConn(info.user, info.sshAddr, info.sshPort, env.SSHKeyFilePath)
+			con.ConnectAndIssueCmd("./install.sh -r")
+		}
+	} else {
+		for _, relayName := range relayNames {
+			info := getRelayInfo(rpcClient, relayName)
+			fmt.Printf("Reverting relay '%s' (id = %d)\n", relayName, info.id)
+			testForSSHKey(env)
+			updateRelayState(rpcClient, info, routing.RelayStateEnabled)
+			con := NewSSHConn(info.user, info.sshAddr, info.sshPort, env.SSHKeyFilePath)
+			con.ConnectAndIssueCmd("./install.sh -r")
+		}
 	}
 }
 

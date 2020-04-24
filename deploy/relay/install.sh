@@ -18,17 +18,20 @@ print_help() {
 backup_existing() {
 	time=$(date -u +"%Y%m%d%H%M%S")
 	for file in "$@"; do
+    # file is abs path, so reduce to just the filename
+    bname="$( basename $file )"
 		if [[ -f "$file" ]]; then
-      bname="$( basename $file )"
 			cp "$file" "$app/$bname.$time.backup"
+    else
+      echo "no '$bname' file found to backup"
 		fi
 	done
 }
 
 check_if_running() {
-	err_msg="$1"
+  # $1 = error message to print before exit
 	if systemctl is-active --quiet relay; then
-		echo "$err_msg"
+		echo "$1"
 		exit 1
 	fi
 }
@@ -56,17 +59,18 @@ revert_relay() {
 
   cd '/app'
 
+  # find all backup relays in the /app directory and store them into an array
   relays=()
   while IFS= read -d $'\0' -r relay; do
     relays=("${relays[@]}" "$relay")
   done < <( find . -regextype posix-extended -regex '.*/relay\.[0-9]+\.backup' -print0 )
 
+  # if the length of the array is 0
   if ! (( ${#relays[@]} )); then
     echo 'no relay to revert to'
-    exit 1
   fi
 
-  # get the most recent relay binary
+  # get the most recent relay binary using negative indexing
   relay="${relays[-1]}"
 
   echo "reverting to relay '$relay'"
@@ -75,28 +79,27 @@ revert_relay() {
   env_file="${relay/relay/relay.env}"
   svc_file="${relay/relay/relay.service}"
 
-  echo "looking for environment file '$env_file'"
+  echo "looking for matching environment file '$env_file'"
 
-  if [ ! -f "$env_file" ]; then
-    echo 'no environment file to revert to'
-    exit 1
+  # the relays on the prod systems now don't have env files, so if reverting to them
+  # it will not exist and thus the script should not exit because thats a valid case
+  if [ -f "$env_file" ]; then
+    mv "$env_file" "$env_dest"
+  else
+    echo 'no environment file to revert to, skipping'
   fi
 
-  echo 'found'
+  echo "looking for matching service file '$svc_file'"
 
-  echo "looking for service file '$svc_file'"
-
+  # however a service file is present for all versions so exit if this is not found
   if [ ! -f "$svc_file" ]; then
     echo 'no service file to revert to'
     exit 1
   fi
 
-  echo 'found'
+  echo 'found matching service file'
 
-  # if a matching relay, environment file, and service file all exist then replace with them
-  # this will remove the latest binary and the reverted one will now be the newest
   mv "$relay" "$bin_dest"
-  mv "$env_file" "$env_dest"
   mv "$svc_file" "$svc_dest"
 
   # enable and start the relay service
