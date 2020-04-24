@@ -297,19 +297,6 @@
                 const isAuthenticated = await auth0.isAuthenticated();
 
                 if (isAuthenticated) {
-                    Promise.all([
-                        auth0.getUser(),
-                        auth0.getTokenSilently()
-                    ]).then((response) => {
-                        userInfo = {
-                            email: response[0].email,
-                            name: response[0].name,
-                            nickname: response[0].nickname,
-                            token: response[1]
-                        };
-                    }).catch((e) => {
-                        console.log("Something went wrong with getting the user information");
-                    });
                     startApp();
                     return;
                 }
@@ -319,6 +306,7 @@
                     await auth0.handleRedirectCallback();
 
                     window.history.replaceState({}, document.title, "/");
+                    startApp();
                 } else {
                     login();
                 }
