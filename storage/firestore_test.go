@@ -262,6 +262,11 @@ func TestFirestore(t *testing.T) {
 			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 			assert.NoError(t, err)
 
+			defer func() {
+				err := cleanFireStore(ctx, fs.Client)
+				assert.NoError(t, err)
+			}()
+
 			expected := routing.Buyer{
 				ID:                   1,
 				Name:                 "local",
@@ -288,11 +293,6 @@ func TestFirestore(t *testing.T) {
 			actual.Active = true
 			actual.Live = false
 			assert.Equal(t, expected, actual)
-
-			defer func() {
-				err := cleanFireStore(ctx, fs.Client)
-				assert.NoError(t, err)
-			}()
 		})
 	})
 

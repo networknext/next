@@ -2,9 +2,12 @@ package jsonrpc_test
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/base64"
+	"fmt"
 	"testing"
 
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport/jsonrpc"
@@ -26,6 +29,283 @@ func TestBuyers(t *testing.T) {
 
 		assert.Equal(t, reply.Buyers[0].ID, uint64(1))
 		assert.Equal(t, reply.Buyers[0].Name, "local.local.1")
+	})
+}
+
+func TestAddBuyer(t *testing.T) {
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	publicKey := make([]byte, crypto.KeySize)
+	_, err := rand.Read(publicKey)
+	assert.NoError(t, err)
+
+	expected := routing.Buyer{
+		ID:                   1,
+		Name:                 "local buyer",
+		Active:               true,
+		Live:                 false,
+		PublicKey:            publicKey,
+		RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
+	}
+
+	t.Run("add", func(t *testing.T) {
+		var reply jsonrpc.AddBuyerReply
+		err := svc.AddBuyer(nil, &jsonrpc.AddBuyerArgs{Buyer: expected}, &reply)
+		assert.NoError(t, err)
+
+		var buyersReply jsonrpc.BuyersReply
+		err = svc.Buyers(nil, &jsonrpc.BuyersArgs{}, &buyersReply)
+		assert.NoError(t, err)
+
+		assert.Len(t, buyersReply.Buyers, 1)
+		assert.Equal(t, buyersReply.Buyers[0].ID, expected.ID)
+		assert.Equal(t, buyersReply.Buyers[0].Name, expected.Name)
+	})
+
+	t.Run("exists", func(t *testing.T) {
+		var reply jsonrpc.AddBuyerReply
+
+		err = svc.AddBuyer(nil, &jsonrpc.AddBuyerArgs{Buyer: expected}, &reply)
+		assert.EqualError(t, err, "buyer with id 1 already exists in memory storage")
+	})
+}
+
+func TestRemoveBuyer(t *testing.T) {
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	publicKey := make([]byte, crypto.KeySize)
+	_, err := rand.Read(publicKey)
+	assert.NoError(t, err)
+
+	expected := routing.Buyer{
+		ID:                   1,
+		Name:                 "local buyer",
+		Active:               true,
+		Live:                 false,
+		PublicKey:            publicKey,
+		RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
+	}
+
+	t.Run("doesn't exist", func(t *testing.T) {
+		var reply jsonrpc.RemoveBuyerReply
+
+		err = svc.RemoveBuyer(nil, &jsonrpc.RemoveBuyerArgs{ID: expected.ID}, &reply)
+		assert.EqualError(t, err, "buyer with id 1 not found in memory storage")
+	})
+
+	t.Run("remove", func(t *testing.T) {
+		var addReply jsonrpc.AddBuyerReply
+		err := svc.AddBuyer(nil, &jsonrpc.AddBuyerArgs{Buyer: expected}, &addReply)
+		assert.NoError(t, err)
+
+		var reply jsonrpc.RemoveBuyerReply
+		err = svc.RemoveBuyer(nil, &jsonrpc.RemoveBuyerArgs{ID: expected.ID}, &reply)
+		assert.NoError(t, err)
+
+		var buyersReply jsonrpc.BuyersReply
+		err = svc.Buyers(nil, &jsonrpc.BuyersArgs{}, &buyersReply)
+		assert.NoError(t, err)
+
+		assert.Len(t, buyersReply.Buyers, 0)
+	})
+}
+
+func TestRoutingRulesSettings(t *testing.T) {
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	t.Run("doesn't exist", func(t *testing.T) {
+		var reply jsonrpc.RoutingRulesSettingsReply
+
+		err := svc.RoutingRulesSettings(nil, &jsonrpc.RoutingRulesSettingsArgs{}, &reply)
+		assert.EqualError(t, err, "buyer with id 0 not found in memory storage")
+	})
+
+	t.Run("list", func(t *testing.T) {
+		storer.AddBuyer(context.Background(), routing.Buyer{ID: 0, Name: "local.local.1", RoutingRulesSettings: routing.DefaultRoutingRulesSettings})
+
+		var reply jsonrpc.RoutingRulesSettingsReply
+		err := svc.RoutingRulesSettings(nil, &jsonrpc.RoutingRulesSettingsArgs{}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, reply.RoutingRuleSettings[0].EnvelopeKbpsUp, routing.DefaultRoutingRulesSettings.EnvelopeKbpsUp)
+		assert.Equal(t, reply.RoutingRuleSettings[0].EnvelopeKbpsDown, routing.DefaultRoutingRulesSettings.EnvelopeKbpsDown)
+		assert.Equal(t, reply.RoutingRuleSettings[0].Mode, routing.DefaultRoutingRulesSettings.Mode)
+		assert.Equal(t, reply.RoutingRuleSettings[0].MaxCentsPerGB, routing.DefaultRoutingRulesSettings.MaxCentsPerGB)
+		assert.Equal(t, reply.RoutingRuleSettings[0].RTTEpsilon, routing.DefaultRoutingRulesSettings.RTTEpsilon)
+		assert.Equal(t, reply.RoutingRuleSettings[0].RTTThreshold, routing.DefaultRoutingRulesSettings.RTTThreshold)
+		assert.Equal(t, reply.RoutingRuleSettings[0].RTTHysteresis, routing.DefaultRoutingRulesSettings.RTTHysteresis)
+		assert.Equal(t, reply.RoutingRuleSettings[0].RTTVeto, routing.DefaultRoutingRulesSettings.RTTVeto)
+		assert.Equal(t, reply.RoutingRuleSettings[0].EnableYouOnlyLiveOnce, routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce)
+		assert.Equal(t, reply.RoutingRuleSettings[0].EnablePacketLossSafety, routing.DefaultRoutingRulesSettings.EnablePacketLossSafety)
+		assert.Equal(t, reply.RoutingRuleSettings[0].EnableMultipathForPacketLoss, routing.DefaultRoutingRulesSettings.EnableMultipathForPacketLoss)
+		assert.Equal(t, reply.RoutingRuleSettings[0].EnableMultipathForJitter, routing.DefaultRoutingRulesSettings.EnableMultipathForJitter)
+		assert.Equal(t, reply.RoutingRuleSettings[0].EnableMultipathForRTT, routing.DefaultRoutingRulesSettings.EnableMultipathForRTT)
+		assert.Equal(t, reply.RoutingRuleSettings[0].EnableABTest, routing.DefaultRoutingRulesSettings.EnableABTest)
+	})
+}
+
+func TestSetRoutingRulesSettings(t *testing.T) {
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	t.Run("doesn't exist", func(t *testing.T) {
+		var reply jsonrpc.SetRoutingRulesSettingsReply
+
+		err := svc.SetRoutingRulesSettings(nil, &jsonrpc.SetRoutingRulesSettingsArgs{BuyerID: 0, RoutingRulesSettings: routing.LocalRoutingRulesSettings}, &reply)
+		assert.EqualError(t, err, "buyer with id 0 not found in memory storage")
+	})
+
+	t.Run("set", func(t *testing.T) {
+		storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "local.local.1", RoutingRulesSettings: routing.DefaultRoutingRulesSettings})
+
+		var reply jsonrpc.SetRoutingRulesSettingsReply
+		err := svc.SetRoutingRulesSettings(nil, &jsonrpc.SetRoutingRulesSettingsArgs{BuyerID: 1, RoutingRulesSettings: routing.LocalRoutingRulesSettings}, &reply)
+		assert.NoError(t, err)
+
+		var rrsReply jsonrpc.RoutingRulesSettingsReply
+		err = svc.RoutingRulesSettings(nil, &jsonrpc.RoutingRulesSettingsArgs{BuyerID: 1}, &rrsReply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnvelopeKbpsUp, routing.LocalRoutingRulesSettings.EnvelopeKbpsUp)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnvelopeKbpsDown, routing.LocalRoutingRulesSettings.EnvelopeKbpsDown)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].Mode, routing.LocalRoutingRulesSettings.Mode)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].MaxCentsPerGB, routing.LocalRoutingRulesSettings.MaxCentsPerGB)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].RTTEpsilon, routing.LocalRoutingRulesSettings.RTTEpsilon)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].RTTThreshold, routing.LocalRoutingRulesSettings.RTTThreshold)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].RTTHysteresis, routing.LocalRoutingRulesSettings.RTTHysteresis)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].RTTVeto, routing.LocalRoutingRulesSettings.RTTVeto)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableYouOnlyLiveOnce, routing.LocalRoutingRulesSettings.EnableYouOnlyLiveOnce)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnablePacketLossSafety, routing.LocalRoutingRulesSettings.EnablePacketLossSafety)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableMultipathForPacketLoss, routing.LocalRoutingRulesSettings.EnableMultipathForPacketLoss)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableMultipathForJitter, routing.LocalRoutingRulesSettings.EnableMultipathForJitter)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableMultipathForRTT, routing.LocalRoutingRulesSettings.EnableMultipathForRTT)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableABTest, routing.LocalRoutingRulesSettings.EnableABTest)
+	})
+}
+
+func TestSellers(t *testing.T) {
+	expected := routing.Seller{
+		ID:                "1",
+		Name:              "local.local.1",
+		IngressPriceCents: 10,
+		EgressPriceCents:  20,
+	}
+
+	storer := storage.InMemory{}
+	storer.AddSeller(context.Background(), expected)
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	t.Run("list", func(t *testing.T) {
+		var reply jsonrpc.SellersReply
+		err := svc.Sellers(nil, &jsonrpc.SellersArgs{}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, reply.Sellers[0].ID, expected.ID)
+		assert.Equal(t, reply.Sellers[0].Name, expected.Name)
+		assert.Equal(t, reply.Sellers[0].IngressPriceCents, expected.IngressPriceCents)
+		assert.Equal(t, reply.Sellers[0].EgressPriceCents, expected.EgressPriceCents)
+	})
+}
+
+func TestAddSeller(t *testing.T) {
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	publicKey := make([]byte, crypto.KeySize)
+	_, err := rand.Read(publicKey)
+	assert.NoError(t, err)
+
+	expected := routing.Seller{
+		ID:                "id",
+		Name:              "local seller",
+		IngressPriceCents: 10,
+		EgressPriceCents:  20,
+	}
+
+	t.Run("add", func(t *testing.T) {
+		var reply jsonrpc.AddSellerReply
+		err := svc.AddSeller(nil, &jsonrpc.AddSellerArgs{Seller: expected}, &reply)
+		assert.NoError(t, err)
+
+		var sellersReply jsonrpc.SellersReply
+		err = svc.Sellers(nil, &jsonrpc.SellersArgs{}, &sellersReply)
+		assert.NoError(t, err)
+
+		assert.Len(t, sellersReply.Sellers, 1)
+		assert.Equal(t, sellersReply.Sellers[0].ID, expected.ID)
+		assert.Equal(t, sellersReply.Sellers[0].Name, expected.Name)
+		assert.Equal(t, sellersReply.Sellers[0].IngressPriceCents, expected.IngressPriceCents)
+		assert.Equal(t, sellersReply.Sellers[0].EgressPriceCents, expected.EgressPriceCents)
+	})
+
+	t.Run("exists", func(t *testing.T) {
+		var reply jsonrpc.AddSellerReply
+
+		err = svc.AddSeller(nil, &jsonrpc.AddSellerArgs{Seller: expected}, &reply)
+		assert.EqualError(t, err, "seller with id id already exists in memory storage")
+	})
+}
+
+func TestRemoveSeller(t *testing.T) {
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	publicKey := make([]byte, crypto.KeySize)
+	_, err := rand.Read(publicKey)
+	assert.NoError(t, err)
+
+	expected := routing.Seller{
+		ID:                "1",
+		Name:              "local seller",
+		IngressPriceCents: 10,
+		EgressPriceCents:  20,
+	}
+
+	t.Run("doesn't exist", func(t *testing.T) {
+		var reply jsonrpc.RemoveSellerReply
+
+		err = svc.RemoveSeller(nil, &jsonrpc.RemoveSellerArgs{ID: expected.ID}, &reply)
+		assert.EqualError(t, err, "seller with id 1 not found in memory storage")
+	})
+
+	t.Run("remove", func(t *testing.T) {
+		var addReply jsonrpc.AddSellerReply
+		err := svc.AddSeller(nil, &jsonrpc.AddSellerArgs{Seller: expected}, &addReply)
+		assert.NoError(t, err)
+
+		var reply jsonrpc.RemoveSellerReply
+		err = svc.RemoveSeller(nil, &jsonrpc.RemoveSellerArgs{ID: expected.ID}, &reply)
+		assert.NoError(t, err)
+
+		var sellersReply jsonrpc.SellersReply
+		err = svc.Sellers(nil, &jsonrpc.SellersArgs{}, &sellersReply)
+		assert.NoError(t, err)
+
+		assert.Len(t, sellersReply.Sellers, 0)
 	})
 }
 
@@ -201,5 +481,95 @@ func TestDatacenters(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, len(empty.Datacenters), 0)
+	})
+}
+
+func TestAddDatacenter(t *testing.T) {
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	publicKey := make([]byte, crypto.KeySize)
+	_, err := rand.Read(publicKey)
+	assert.NoError(t, err)
+
+	expected := routing.Datacenter{
+		ID:      1,
+		Name:    "local datacenter",
+		Enabled: false,
+		Location: routing.Location{
+			Latitude:  70.5,
+			Longitude: 120.5,
+		},
+	}
+
+	t.Run("add", func(t *testing.T) {
+		var reply jsonrpc.AddDatacenterReply
+		err := svc.AddDatacenter(nil, &jsonrpc.AddDatacenterArgs{Datacenter: expected}, &reply)
+		assert.NoError(t, err)
+
+		var datacentersReply jsonrpc.DatacentersReply
+		err = svc.Datacenters(nil, &jsonrpc.DatacentersArgs{}, &datacentersReply)
+		assert.NoError(t, err)
+
+		assert.Len(t, datacentersReply.Datacenters, 1)
+		assert.Equal(t, datacentersReply.Datacenters[0].Name, expected.Name)
+		assert.Equal(t, datacentersReply.Datacenters[0].Latitude, expected.Location.Latitude)
+		assert.Equal(t, datacentersReply.Datacenters[0].Longitude, expected.Location.Longitude)
+		assert.Equal(t, datacentersReply.Datacenters[0].Enabled, expected.Enabled)
+	})
+
+	t.Run("exists", func(t *testing.T) {
+		var reply jsonrpc.AddDatacenterReply
+
+		err = svc.AddDatacenter(nil, &jsonrpc.AddDatacenterArgs{Datacenter: expected}, &reply)
+		assert.EqualError(t, err, "datacenter with id 1 already exists in memory storage")
+	})
+}
+
+func TestRemoveDatacenter(t *testing.T) {
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	publicKey := make([]byte, crypto.KeySize)
+	_, err := rand.Read(publicKey)
+	assert.NoError(t, err)
+
+	expected := routing.Datacenter{
+		ID:      crypto.HashID("local datacenter"),
+		Name:    "local datacenter",
+		Enabled: false,
+		Location: routing.Location{
+			Latitude:  70.5,
+			Longitude: 120.5,
+		},
+	}
+
+	t.Run("doesn't exist", func(t *testing.T) {
+		var reply jsonrpc.RemoveDatacenterReply
+
+		err = svc.RemoveDatacenter(nil, &jsonrpc.RemoveDatacenterArgs{Name: expected.Name}, &reply)
+		assert.EqualError(t, err, fmt.Sprintf("datacenter with id %d not found in memory storage", expected.ID))
+	})
+
+	t.Run("remove", func(t *testing.T) {
+		var addReply jsonrpc.AddDatacenterReply
+		err := svc.AddDatacenter(nil, &jsonrpc.AddDatacenterArgs{Datacenter: expected}, &addReply)
+		assert.NoError(t, err)
+
+		var reply jsonrpc.RemoveDatacenterReply
+		err = svc.RemoveDatacenter(nil, &jsonrpc.RemoveDatacenterArgs{Name: expected.Name}, &reply)
+		assert.NoError(t, err)
+
+		var datacentersReply jsonrpc.DatacentersReply
+		err = svc.Datacenters(nil, &jsonrpc.DatacentersArgs{}, &datacentersReply)
+		assert.NoError(t, err)
+
+		assert.Len(t, datacentersReply.Datacenters, 0)
 	})
 }
