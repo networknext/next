@@ -82,6 +82,9 @@
                 <li class="nav-item text-nowrap">
                     <a class="nav-link" href="#" id="session-link" onclick="changePage('sessions')">Sessions</a>
                 </li>
+                <li class="nav-item text-nowrap">
+                    <a class="nav-link" href="#" id="users-link" onclick="changePage('users')">Users</a>
+                </li>
             </ul>
             <ul class="navbar-nav px-3">
                 <li class="nav-item dropdown">
@@ -114,12 +117,11 @@
             </div>
             <div class="workspace row map" id="map-workspace">
             </div>
-            <div id="tooltip" style="position: absolute; z-index: 1; pointer-events: none;"></div>
             <div class="workspace row hidden" id="account-workspace">
                 <nav class="navbar navbar-expand-md navbar-dark fi bg-dark p-0 shadow">
                     <ul class="navbar-nav px-3 w-100 mr-auto">
                         <li class="nav-item text-nowrap">
-                            <a class="nav-link" id="users-link" href="#" onclick="changeAccountPage('users')">Users</a>
+                            <a class="nav-link" id="accounts-link" href="#" onclick="changeAccountPage('accounts')">Users</a>
                         </li>
                         <li class="nav-item text-nowrap">
                             <a class="nav-link" id="config-link" href="#" onclick="changeAccountPage('config')">Game Configuration</a>
@@ -150,7 +152,7 @@
                         </div>
                     </div>
                 </form>
-                <div id="users">
+                <div id="accounts">
                     <table class="table">
                         <thead class="thead-dark">
                         <tr>
@@ -202,6 +204,72 @@
                         </div>
                     </div>
                 </form>
+            </div>
+            <div class="workspace row hidden" id="users-workspace">
+                <form id="userSearch" onsubmit="fetchUserInfo()">
+                    <div class="input-group mb-3">
+                        <div class="input-group-prepend">
+                        <span class="input-group-text" id="basic-addon1">ID</span>
+                        </div>
+                        <input type="text" class="form-control" placeholder="User ID" id="userIDLookup">
+                        <button type="submit"
+                                id="userIdSearch"
+                                class="btn btn-primary form-control confirm-button">
+                            Search
+                        </button>
+                    </div>
+                </form>
+                <table class="table" id="users">
+                    <thead class="thead-dark">
+                      <tr>
+                        <th scope="col">User ID</th>
+                        <th scope="col">Details</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                        <!-- <tr>
+                            <td>DEBUG</td>
+                            <td>DEBUG</td>
+                            <td>DEBUG</td>
+                            <td>DEBUG</td>
+                            <td>DEBUG</td>
+                            <td>
+                                <i class="fas fa-check"></i>
+                            </td>
+                            <td>DEBUG</td>
+                            <td>
+                                <button class="btn" data-toggle="modal" data-target="#sessionInfoModal" onclick="fetchSessionInfo()">
+                                    <i class="fas fa-info-circle" data-toggle="tooltip" data-placement="bottom" title="Session Info"></i>
+                                </button>
+                            </td>
+                        </tr> -->
+                        <tr v-for="user in users" scope="row">
+                            <td>{{ user.id }}</td>
+                            <td>
+                                <button class="btn" data-toggle="modal" data-target="#userInfoModal" v-on:click="fetchUserInfo(user.id)">
+                                    <i class="fas fa-info-circle" data-toggle="tooltip" data-placement="bottom" title="User Info"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="modal fade" id="userInfoModal" tabindex="-1" role="dialog" aria-labelledby="userInfoModalLabel" aria-hidden="true">
+                    <div class="modal-dialog" role="document" style="max-width: 2000px; max-height: 1000px; overflow-y: auto;">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="userInfoModalLabel">User Information</h5>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row">
+                                    TEST
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="workspace row hidden" id="session-workspace">
                 <form id="sessionSearch" onsubmit="fetchSessionInfo()">
