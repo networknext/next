@@ -71,7 +71,7 @@ revert_relay() {
 
   echo "reverting to relay '$relay'"
 
-  # match the timestamps
+  # match the timestamps, replaces relay.xyz.backup with relay.env.xyz.backup, same for svc file
   env_file="${relay/relay/relay.env}"
   svc_file="${relay/relay/relay.service}"
 
@@ -82,18 +82,24 @@ revert_relay() {
     exit 1
   fi
 
-  echo "looking for environment file '$svc_file'"
+  echo 'found'
+
+  echo "looking for service file '$svc_file'"
 
   if [ ! -f "$svc_file" ]; then
     echo 'no service file to revert to'
     exit 1
   fi
 
+  echo 'found'
+
   # if a matching relay, environment file, and service file all exist then replace with them
+  # this will remove the latest binary and the reverted one will now be the newest
   mv "$relay" "$bin_dest"
   mv "$env_file" "$env_dest"
   mv "$svc_file" "$svc_dest"
 
+  # enable and start the relay service
 	sudo systemctl daemon-reload
 	sudo systemctl enable relay
 	sudo systemctl start relay
@@ -105,14 +111,12 @@ while getopts 'irh' flag; do
 	case ${flag} in
 		i) cmd='i' ;;
 		r) cmd='r' ;;
-		h)
-			print_help
-			exit 1
-			;;
-		*)
-			print_help
-			exit 1
-			;;
+		h) print_help
+       exit 1
+       ;;
+		*) print_help
+       exit 1
+       ;;
 	esac
 done
 
