@@ -2,6 +2,7 @@
  * TODO:
  * 	Refactor all of this into something more reasonable
  */
+mapboxgl.accessToken = 'pk.eyJ1IjoiYmF1bWJhY2hhbmRyZXciLCJhIjoiY2s4dDFwcGo2MGowZTNtcXpsbDN6dHBwdyJ9.Sr1lDY9i9o9yz84fJ-PSlg';
 
 var userInfo = null;
 
@@ -146,14 +147,27 @@ function fetchSessionInfo(sessionId = '') {
 	const id = sessionId || document.getElementById("sessionIDLookup").value;
 	document.getElementById("sessionIDLookup").value = '';
 
-	if (id == '') {
+	/* if (id == '') {
 		console.log("Can't use a empty id");
 		return;
-	}
+	} */
 	JSONRPCClient
-		.call("BuyersService.Sessions", {buyer_id: '13672574147039585173', session_id: id})
+		.call("BuyersService.Sessions", {buyer_id: '13672574147039585173'/* , session_id: id */})
 		.then((response) => {
 			console.log(response);
+			var sessionToolMapInstance = new deck.DeckGL({
+				mapboxApiAccessToken: mapboxgl.accessToken,
+				mapStyle: 'mapbox://styles/mapbox/dark-v10',
+				initialViewState: {
+					longitude: -98.583333,
+					latitude: 39.833333,
+					zoom: 4,
+					maxZoom: 15,
+				},
+				controller: true,
+				container: 'session-tool-map',
+			});
+
 			showDemoChart('latency-chart-1');
 			showDemoChart('latency-chart-2');
 			showDemoChart('jitter-chart-1');
@@ -189,6 +203,9 @@ function showDemoChart(id) {
 		},
 		stroke: {
 			curve: 'stepline',
+		},
+		theme: {
+			mode: "dark"
 		},
 		dataLabels: {
 			enabled: false
@@ -278,8 +295,8 @@ window.MapHandler = {
 				});
 				var layers = [sessionLayer];
 				mapInstance = new deck.DeckGL({
-					mapboxApiAccessToken: 'pk.eyJ1IjoiYmF1bWJhY2hhbmRyZXciLCJhIjoiY2s4dDFwcGo2MGowZTNtcXpsbDN6dHBwdyJ9.Sr1lDY9i9o9yz84fJ-PSlg',
-					mapStyle: 'mapbox://styles/mapbox/dark-v9',
+					mapboxApiAccessToken: mapboxgl.accessToken,
+					mapStyle: 'mapbox://styles/mapbox/dark-v10',
 					initialViewState: {
 						// Center of the continental US
 						longitude: -98.583333,
