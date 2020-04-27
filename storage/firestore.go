@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"net"
 	"sort"
@@ -578,7 +579,7 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 			newRelayData := map[string]interface{}{
 				"state":           r.State,
 				"stateUpdateTime": stateUpdateTime,
-				"publicKey":       r.PublicKey,
+				"publicKey":       base64.StdEncoding.EncodeToString(r.PublicKey),
 			}
 
 			// Update the relay in firestore

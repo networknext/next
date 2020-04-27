@@ -176,11 +176,11 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 	for _, relayName := range relayNames {
 		fmt.Printf("Updating %s\n", relayName)
 		info := getRelayInfo(rpcClient, relayName)
+		updateRelayState(rpcClient, info, routing.RelayStateEnabled)
 		makeEnv(info)
 		if !runCommandEnv("deploy/relay-update.sh", []string{env.SSHKeyFilePath, info.user + "@" + info.sshAddr}, nil) {
 			log.Fatal("could not execute the relay-update.sh script")
 		}
-		updateRelayState(rpcClient, info, routing.RelayStateEnabled)
 	}
 }
 
