@@ -8,6 +8,43 @@ This is a monorepo that contains the Network Next backend.
 
 ![Build Status](https://networknext.semaphoreci.com/badges/backend.svg?key=822a130a-66de-4659-adb2-74237df34843)
 
+## CI/CD
+
+SemaphoreCI is used for running tests and deploying artifacts to GCP Storage under certain conditions:
+
+1. Unit tests are always run when a commit is pushed or a PR is issued
+2. **Development** artifacts are built and published when tests pass AND there is a merge to `master`
+3. **Production** artifacts are built and published when tests pass AND there is a tag matching `PROD-YYYYMMDD-*`
+
+Acceptable tags:
+
+- `PROD-20200427-01`
+- `PROD-20200427-hotfix-packet`
+
+Unacceptable tags:
+
+- `PROD-20200427`
+- `PROD-20200427-`
+
+### Tagging a Release
+
+```
+> git pull origin master
+Everything up to date.
+
+> git tag PROD-20200427-01
+
+> git push origin master --tags
+```
+
+The development and production artifacts are only published to GCP Storage. They are not sent to the VMs to start running. Once CI/CD completes you need to issue the appropriate `make` command to trigger a deployment to the VMs.
+
+- `make deploy-portal` or `make deploy-portal-prod` to deploy the portal to dev and prod respectively
+- `make deploy-relay-backend` or `make deploy-relay-backend-prod` to deploy the relay backend to dev and prod respectively
+- `make deploy-server-backend` or `make deploy-server-backend-prod` to deploy the server backend to dev and prod respectively
+
+For more information about deployment and artifcats see the [deploy](deploy) folder.
+
 ## Development
 
 IMPORTANT: This repo uses [Git Submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules) to link in the [SDK](https://github.com/networknext/console). In order for this to work you need clone and interact with this repo over [SSH](https://help.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh).
