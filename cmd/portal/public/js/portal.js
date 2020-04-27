@@ -27,18 +27,6 @@ function startApp() {
 				console.log("Map init unsuccessful: " + error);
 			});
 		JSONRPCClient
-			.call('ManagerService.Users', {buyer_id: '13672574147039585173'})
-			.then(
-				(response) => {
-					console.log(response);
-				}
-			)
-			.catch(
-				(e) => {
-					console.log(e);
-				}
-			)
-		JSONRPCClient
 			.call('BuyersService.Sessions', {buyer_id: '13672574147039585173'})
 			.then((response) => {
 				new Vue({
