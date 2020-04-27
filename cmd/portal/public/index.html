@@ -778,18 +778,21 @@
         <script src="js/hexmap/hexlib.js"></script>
         <script src="./js/portal.js"></script>
         <script>
-            var auth0 = null;
+            var loginClient = null;
 
             const configureClient = async () => {
 
-                auth0 = await createAuth0Client({
-                    domain: 'networknext.auth0.com',
-                    client_id: 'qR60cjo6FceoTWPYLNZSQmNiP2WIAQr9',
+                const domain = 'networknext.auth0.com';
+                const clientID = 'qR60cjo6FceoTWPYLNZSQmNiP2WIAQr9';
+
+                loginClient = await createAuth0Client({
+                    domain: domain,
+                    client_id: clientID
                 });
             };
 
             const login = async () => {
-                await auth0.loginWithRedirect({
+                await loginClient.loginWithRedirect({
                     redirect_uri: window.location.origin
                 });
             }
@@ -797,7 +800,7 @@
             window.onload = async () => {
                 await configureClient();
 
-                const isAuthenticated = await auth0.isAuthenticated();
+                const isAuthenticated = await loginClient.isAuthenticated();
 
                 if (isAuthenticated) {
                     startApp();
@@ -806,7 +809,7 @@
                 const query = window.location.search;
                 if (query.includes("code=") && query.includes("state=")) {
 
-                    await auth0.handleRedirectCallback();
+                    await loginClient.handleRedirectCallback();
 
                     window.history.replaceState({}, document.title, "/");
                     startApp();

@@ -119,6 +119,12 @@ func main() {
 		SSHPort:        22,
 	})
 
+	auth0Client, err := storage.NewAuth0Manager(ctx, logger)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		os.Exit(1)
+	}
+
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
 	// on creation so we can use that for the default then
@@ -197,6 +203,10 @@ func main() {
 			RedisClient: redisClientCache,
 			Storage:     db,
 		}, "")
+		s.RegisterService(&jsonrpc.AuthService{
+			Auth0: *auth0Client,
+		}, "")
+
 		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), s))
 
 		http.Handle("/", http.FileServer(http.Dir(uiDir)))

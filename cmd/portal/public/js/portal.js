@@ -8,8 +8,8 @@ var userInfo = null;
 
 function startApp() {
 	Promise.all([
-		auth0.getUser(),
-		auth0.getTokenSilently()
+		loginClient.getUser(),
+		loginClient.getTokenSilently()
 	]).then((response) => {
 		userInfo = {
 			email: response[0].email,
@@ -17,77 +17,56 @@ function startApp() {
 			nickname: response[0].nickname,
 			token: response[1]
 		};
-	}).catch((e) => {
-		console.log("Something went wrong with getting the user information");
-	});
-	document.getElementById("app").style.display = 'block';
-	MapHandler
-		.initMap()
-		.then((response) => {
-			console.log("Map init successful");
-		})
-		.catch((error) => {
-			console.log("Map init unsuccessful: " + error);
-		});
-	JSONRPCClient
-		.call('BuyersService.Sessions', {buyer_id: '13672574147039585173'})
-		.then((response) => {
-			new Vue({
-				el: '#sessions',
-				data: {
-					sessions: response.sessions || []
-				},
-				methods: {
-					fetchSessionInfo: fetchSessionInfo
-				}
+		document.getElementById("app").style.display = 'block';
+		MapHandler
+			.initMap()
+			.then((response) => {
+				console.log("Map init successful");
+			})
+			.catch((error) => {
+				console.log("Map init unsuccessful: " + error);
 			});
-		})
-		.catch((e) => {
-			console.log("Something went wrong with fetching sessions");
-			console.log(e);
-		});
-	JSONRPCClient
-		.call('BuyersService.Sessions', {buyer_id: '13672574147039585173'}) // Change this to user endpoint when available
-		.then((response) => {
-			new Vue({
-				el: '#users',
-				data: {
-					users: response.users || []
-				},
-				methods: {
-					fetchSessionInfo: fetchSessionInfo
+		JSONRPCClient
+			.call('ManagerService.Users', {buyer_id: '13672574147039585173'})
+			.then(
+				(response) => {
+					console.log(response);
 				}
+			)
+			.catch(
+				(e) => {
+					console.log(e);
+				}
+			)
+		JSONRPCClient
+			.call('BuyersService.Sessions', {buyer_id: '13672574147039585173'})
+			.then((response) => {
+				new Vue({
+					el: '#sessions',
+					data: {
+						sessions: response.sessions || []
+					},
+					methods: {
+						fetchSessionInfo: fetchSessionInfo
+					}
+				});
+			})
+			.catch((e) => {
+				console.log("Something went wrong with the map init!");
+				console.log(e);
 			});
-		})
-		.catch((e) => {
-			console.log("Something went wrong with fetching users");
-			console.log(e);
-		});
-	JSONRPCClient
-		.call('BuyersService.Sessions', {buyer_id: '13672574147039585173'}) // Change this to company accounts endpoint when available
-		.then((response) => {
-			new Vue({
-				el: '#accounts',
-				data: {
-					accounts: response.accounts || []
-				},
-				methods: {
-					editUser: editUser
-				}
-			});
-		})
-		.catch((e) => {
-			console.log("Something went wrong with fetching users");
-			console.log(e);
-		});
-	JSONRPCClient
-		.call('BuyersService.GameConfiguration', {buyer_id: '13672574147039585173'})
-		.then((response) => {
-			new Vue({
-				el: '#pubKey',
-				data: {
-					pubkey: response.game_config.public_key
-				}
+		JSONRPCClient
+			.call('BuyersService.GameConfiguration', {buyer_id: '13672574147039585173'})
+			.then((response) => {
+				new Vue({
+					el: '#pubKey',
+					data: {
+						pubkey: response.game_config.public_key
+					},
+					methods: {
+						editUser: editUser
+					}
+				})
 			})
 		})
 		.catch((e) => {
@@ -303,9 +282,6 @@ function editUser(accountInfo) {
 	document.getElementById("perms").value = accountInfo.email;
 }
 
-AuthHandler = {
-}
-
 JSONRPCClient = {
 
 	async call(method, params) {
@@ -313,6 +289,7 @@ JSONRPCClient = {
 			'Accept':		'application/json',
 			'Accept-Encoding':	'gzip',
 			'Content-Type':		'application/json',
+			'Authorization': `Bearer ${userInfo.token}`
 		}
 
 		params = params || {}

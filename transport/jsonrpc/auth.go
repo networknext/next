@@ -7,7 +7,25 @@ import (
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/networknext/backend/storage"
 )
+
+type AuthService struct {
+	Auth0 storage.Auth0
+}
+
+type UsersArgs struct{}
+
+type UsersReply struct {
+	Users []user `json:"users"`
+}
+
+type user struct {
+}
+
+/* func (s *AuthService) Users(r *http.Request, args *UsersArgs, reply *UsersReply) error {
+
+} */
 
 type response struct {
 	Message string `json:"message"`
