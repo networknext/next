@@ -34,4 +34,4 @@ promotions:
   - name: Production Deployment
     pipeline_file: production-deploy.yml
     auto_promote:
-      when: "tag =~ '^PROD-(\d{8})-(.+)' AND result = 'passed'"
+      when: "tag =~ '^PROD-(\\d{8})-(.+)' AND result = 'passed'"
