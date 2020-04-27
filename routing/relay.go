@@ -58,11 +58,8 @@ type Relay struct {
 	Seller     Seller
 	Datacenter Datacenter
 
-	Latitude  float64
-	Longitude float64
-
-	NICSpeedMbps        int
-	IncludedBandwidthGB int
+	NICSpeedMbps        uint64
+	IncludedBandwidthGB uint64
 
 	LastUpdateTime time.Time
 
@@ -71,6 +68,8 @@ type Relay struct {
 	ManagementAddr string
 	SSHUser        string
 	SSHPort        int64
+
+	TrafficStats RelayTrafficStats
 }
 
 func (r *Relay) EncodedPublicKey() string {
@@ -78,7 +77,30 @@ func (r *Relay) EncodedPublicKey() string {
 }
 
 func (r *Relay) Size() uint64 {
-	return uint64(8 + 4 + len(r.Name) + 4 + len(r.Addr.String()) + len(r.PublicKey) + 4 + len(r.Seller.ID) + 4 + len(r.Seller.Name) + 8 + 8 + 8 + 4 + len(r.Datacenter.Name) + 1 + 8 + 8 + 8 + 4)
+	return uint64(8 + // ID
+		4 + len(r.Name) + // Name
+		4 + len(r.Addr.String()) + // Address
+		len(r.PublicKey) + // Public Key
+		4 + len(r.Seller.ID) + // Seller ID
+		4 + len(r.Seller.Name) + // Seller Name
+		8 + // Seller Ingress Price
+		8 + // Seller Egress Price
+		8 + // Datacenter ID
+		4 + len(r.Datacenter.Name) + // Datacenter Name
+		1 + // Datacenter Enabled
+		8 + // Datacenter Location Latitude
+		8 + // Datacenter Location Longitude
+		8 + // NIC Speed Mbps
+		8 + // Included Bandwidth GB
+		8 + // Last Update Time
+		4 + // Relay State
+		4 + len(r.ManagementAddr) + // Management Address
+		4 + len(r.SSHUser) + // SSH Username
+		8 + // SSH Port
+		8 + // Traffic Stats Session Count
+		8 + // Traffic Stats Bytes Sent
+		8, // Traffic Stats Bytes Received
+	)
 }
 
 // UnmarshalBinary ...
@@ -86,7 +108,6 @@ func (r *Relay) Size() uint64 {
 func (r *Relay) UnmarshalBinary(data []byte) error {
 	index := 0
 
-	var addr string
 	if !encoding.ReadUint64(data, &index, &r.ID) {
 		return errors.New("failed to unmarshal relay ID")
 	}
@@ -96,8 +117,15 @@ func (r *Relay) UnmarshalBinary(data []byte) error {
 		return errors.New("failed to unmarshal relay name")
 	}
 
+	var addr string
 	if !encoding.ReadString(data, &index, &addr, MaxRelayAddressLength) {
 		return errors.New("failed to unmarshal relay address")
+	}
+
+	if udp, err := net.ResolveUDPAddr("udp", addr); udp != nil && err == nil {
+		r.Addr = *udp
+	} else {
+		return errors.New("invalid relay address")
 	}
 
 	if !encoding.ReadBytes(data, &index, &r.PublicKey, crypto.KeySize) {
@@ -132,12 +160,20 @@ func (r *Relay) UnmarshalBinary(data []byte) error {
 		return errors.New("failed to unmarshal relay datacenter enabled")
 	}
 
-	if !encoding.ReadFloat64(data, &index, &r.Latitude) {
+	if !encoding.ReadFloat64(data, &index, &r.Datacenter.Location.Latitude) {
 		return errors.New("failed to unmarshal relay latitude")
 	}
 
-	if !encoding.ReadFloat64(data, &index, &r.Longitude) {
+	if !encoding.ReadFloat64(data, &index, &r.Datacenter.Location.Longitude) {
 		return errors.New("failed to unmarshal relay longitude")
+	}
+
+	if !encoding.ReadUint64(data, &index, &r.NICSpeedMbps) {
+		return errors.New("failed to unmarshal relay NIC speed")
+	}
+
+	if !encoding.ReadUint64(data, &index, &r.IncludedBandwidthGB) {
+		return errors.New("failed to unmarshal relay included bandwidth")
 	}
 
 	var lastUpdateTime uint64
@@ -152,11 +188,32 @@ func (r *Relay) UnmarshalBinary(data []byte) error {
 	}
 	r.State = RelayState(state)
 
-	if udp, err := net.ResolveUDPAddr("udp", addr); udp != nil && err == nil {
-		r.Addr = *udp
-	} else {
-		return errors.New("invalid relay address")
+	if !encoding.ReadString(data, &index, &r.ManagementAddr, math.MaxInt32) {
+		return errors.New("failed to unmarshal relay management address")
 	}
+
+	if !encoding.ReadString(data, &index, &r.SSHUser, math.MaxInt32) {
+		return errors.New("failed to unmarshal relay SSH username")
+	}
+
+	var sshPort uint64
+	if !encoding.ReadUint64(data, &index, &sshPort) {
+		return errors.New("failed to unmarshal relay SSH port")
+	}
+	r.SSHPort = int64(sshPort)
+
+	if !encoding.ReadUint64(data, &index, &r.TrafficStats.SessionCount) {
+		return errors.New("failed to unmarshal relay session count")
+	}
+
+	if !encoding.ReadUint64(data, &index, &r.TrafficStats.BytesSent) {
+		return errors.New("failed to unmarshal relay bytes sent")
+	}
+
+	if !encoding.ReadUint64(data, &index, &r.TrafficStats.BytesReceived) {
+		return errors.New("failed to unmarshal relay bytes received")
+	}
+
 	return nil
 }
 
@@ -178,10 +235,18 @@ func (r Relay) MarshalBinary() (data []byte, err error) {
 	encoding.WriteUint64(data, &index, r.Datacenter.ID)
 	encoding.WriteString(data, &index, r.Datacenter.Name, uint32(len(r.Datacenter.Name)))
 	encoding.WriteBool(data, &index, r.Datacenter.Enabled)
-	encoding.WriteFloat64(data, &index, r.Latitude)
-	encoding.WriteFloat64(data, &index, r.Longitude)
+	encoding.WriteFloat64(data, &index, r.Datacenter.Location.Latitude)
+	encoding.WriteFloat64(data, &index, r.Datacenter.Location.Longitude)
+	encoding.WriteUint64(data, &index, r.NICSpeedMbps)
+	encoding.WriteUint64(data, &index, r.IncludedBandwidthGB)
 	encoding.WriteUint64(data, &index, uint64(r.LastUpdateTime.UnixNano()))
 	encoding.WriteUint32(data, &index, uint32(r.State))
+	encoding.WriteString(data, &index, r.ManagementAddr, uint32(len(r.ManagementAddr)))
+	encoding.WriteString(data, &index, r.SSHUser, uint32(len(r.SSHUser)))
+	encoding.WriteUint64(data, &index, uint64(r.SSHPort))
+	encoding.WriteUint64(data, &index, r.TrafficStats.SessionCount)
+	encoding.WriteUint64(data, &index, r.TrafficStats.BytesSent)
+	encoding.WriteUint64(data, &index, r.TrafficStats.BytesReceived)
 
 	return data, err
 }
@@ -189,6 +254,13 @@ func (r Relay) MarshalBinary() (data []byte, err error) {
 // Key returns the key used for Redis
 func (r *Relay) Key() string {
 	return HashKeyPrefixRelay + strconv.FormatUint(r.ID, 10)
+}
+
+// RelayTrafficStats describes the measured relay traffic statistics reported from the relay
+type RelayTrafficStats struct {
+	SessionCount  uint64
+	BytesSent     uint64
+	BytesReceived uint64
 }
 
 type Stats struct {

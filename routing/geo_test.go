@@ -93,17 +93,25 @@ func TestGeoClient(t *testing.T) {
 
 	t.Run("Add", func(t *testing.T) {
 		r1 := routing.Relay{
-			ID:        1,
-			Latitude:  38.115556,
-			Longitude: 13.361389,
+			ID: 1,
+			Datacenter: routing.Datacenter{
+				Location: routing.Location{
+					Latitude:  38.115556,
+					Longitude: 13.361389,
+				},
+			},
 		}
 		err := geoclient.Add(r1)
 		assert.NoError(t, err)
 
 		r2 := routing.Relay{
-			ID:        2,
-			Latitude:  37.502669,
-			Longitude: 15.087269,
+			ID: 2,
+			Datacenter: routing.Datacenter{
+				Location: routing.Location{
+					Latitude:  37.502669,
+					Longitude: 15.087269,
+				},
+			},
 		}
 		err = geoclient.Add(r2)
 		assert.NoError(t, err)
@@ -111,17 +119,25 @@ func TestGeoClient(t *testing.T) {
 
 	t.Run("RelaysWithin", func(t *testing.T) {
 		r1 := routing.Relay{
-			ID:        1,
-			Latitude:  38.115556,
-			Longitude: 13.361389,
+			ID: 1,
+			Datacenter: routing.Datacenter{
+				Location: routing.Location{
+					Latitude:  38.115556,
+					Longitude: 13.361389,
+				},
+			},
 		}
 		err := geoclient.Add(r1)
 		assert.NoError(t, err)
 
 		r2 := routing.Relay{
-			ID:        2,
-			Latitude:  37.502669,
-			Longitude: 15.087269,
+			ID: 2,
+			Datacenter: routing.Datacenter{
+				Location: routing.Location{
+					Latitude:  37.502669,
+					Longitude: 15.087269,
+				},
+			},
 		}
 		err = geoclient.Add(r2)
 		assert.NoError(t, err)

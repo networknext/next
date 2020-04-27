@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/alicebob/miniredis/v2"
+	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
@@ -314,8 +316,13 @@ func TestRelays(t *testing.T) {
 	storer.AddRelay(context.Background(), routing.Relay{ID: 1, Name: "local.local.1"})
 	storer.AddRelay(context.Background(), routing.Relay{ID: 2, Name: "local.local.2"})
 
+	redisServer, err := miniredis.Run()
+	assert.NoError(t, err)
+	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
 	svc := jsonrpc.OpsService{
-		Storage: &storer,
+		Storage:     &storer,
+		RedisClient: redisClient,
 	}
 
 	t.Run("list", func(t *testing.T) {

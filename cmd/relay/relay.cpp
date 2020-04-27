@@ -4611,7 +4611,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
 
     uint32_t update_version = 0;
 
-    uint8_t update_data[10*1024 + 8 + 1]; // + 8 for the bytes received counter, + 1 for the shutdown flag
+    uint8_t update_data[10*1024 + 8 + 8 + 8 + 1]; // + 8 for the session count, + 8 for the bytes sent counter, + 8 for the bytes received counter, + 1 for the shutdown flag
 
     uint8_t * p = update_data;
     relay_write_uint32( &p, update_version );
@@ -4632,6 +4632,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
         relay_write_float32( &p, stats.relay_packet_loss[i] );
     }
 
+    relay_write_uint64(&p, relay->sessions->size());
     relay_write_uint64(&p, relay->bytes_sent.load());
     relay->bytes_sent.store(0);
     relay_write_uint64(&p, relay->bytes_received.load());

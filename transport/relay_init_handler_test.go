@@ -96,8 +96,12 @@ func pingRelayBackendInit(t *testing.T, contentType string, relay routing.Relay,
 		inMemory.AddRelay(context.Background(), routing.Relay{
 			ID:        crypto.HashID("127.0.0.1:40000"),
 			PublicKey: relayPublicKey,
-			Latitude:  13,
-			Longitude: 13,
+			Datacenter: routing.Datacenter{
+				Location: routing.Location{
+					Latitude:  13,
+					Longitude: 13,
+				},
+			},
 		})
 	}
 
@@ -169,8 +173,8 @@ func relayInitSuccessAssertions(t *testing.T, recorder *httptest.ResponseRecorde
 		relay := relaysInLocation[0]
 
 		assert.Equal(t, crypto.HashID(addr), relay.ID)
-		assert.Equal(t, location.Latitude, math.Round(relay.Latitude*1000)/1000)
-		assert.Equal(t, location.Longitude, math.Round(relay.Longitude*1000)/1000)
+		assert.Equal(t, location.Latitude, math.Round(relay.Datacenter.Location.Latitude*1000)/1000)
+		assert.Equal(t, location.Longitude, math.Round(relay.Datacenter.Location.Longitude*1000)/1000)
 	}
 
 	assert.Equal(t, routing.RelayStateEnabled, actual.State)
@@ -687,10 +691,12 @@ func TestRelayInitRelayIPLookupFailure(t *testing.T) {
 		ID: crypto.HashID(addr),
 		Datacenter: routing.Datacenter{
 			Name: "some datacenter",
+			Location: routing.Location{
+				Latitude:  13,
+				Longitude: 13,
+			},
 		},
 		PublicKey: relayPublicKey,
-		Latitude:  13,
-		Longitude: 13,
 	}
 
 	packet := transport.RelayInitRequest{

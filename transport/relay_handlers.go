@@ -192,8 +192,8 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 		if !exists.Val() {
 			// Set the relay's lat long
 			if loc, err := params.IpLocator.LocateIP(relay.Addr.IP); err == nil {
-				relay.Latitude = loc.Latitude
-				relay.Longitude = loc.Longitude
+				relay.Datacenter.Location.Latitude = loc.Latitude
+				relay.Datacenter.Location.Longitude = loc.Longitude
 			} else {
 				level.Warn(locallogger).Log("msg", "using default geolocation from storage for relay")
 			}
@@ -250,7 +250,6 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 		// Update the relay's ping stats in statsdb
 		statsUpdate := &routing.RelayStatsUpdate{}
 		statsUpdate.ID = relay.ID
-		//statsUpdate.PingStats = append(statsUpdate.PingStats, relayRequest.PingStats...)
 
 		// For compatibility, convert the ping stats to the old struct for now
 		relayStatsPing := make([]routing.RelayStatsPing, len(relayRequest.PingStats))
@@ -265,6 +264,9 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 		statsUpdate.PingStats = relayStatsPing
 
 		params.StatsDb.ProcessStats(statsUpdate)
+
+		// Update the relay's traffic stats
+		relay.TrafficStats = relayRequest.TrafficStats
 
 		// Store the relay back in redis
 
@@ -389,16 +391,14 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			return
 		}
 
-		relay := routing.Relay{
-			ID:             id,
-			Addr:           relayInitRequest.Address,
-			PublicKey:      relayEntry.PublicKey,
-			Datacenter:     relayEntry.Datacenter,
-			Seller:         relayEntry.Seller,
-			LastUpdateTime: time.Now(),
-			Latitude:       relayEntry.Latitude,
-			Longitude:      relayEntry.Longitude,
-		}
+		relay := relayEntry
+
+		// Ideally the ID and address should be the same as firestore,
+		// but when running locally they're not, so take them from the request packet
+		relay.ID = id
+		relay.Addr = relayInitRequest.Address
+
+		relay.LastUpdateTime = time.Now()
 
 		if _, ok := crypto.Open(relayInitRequest.EncryptedToken, relayInitRequest.Nonce, relay.PublicKey, params.RouterPrivateKey); !ok {
 			level.Error(locallogger).Log("msg", "crypto open failed")
@@ -424,8 +424,8 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 		}
 
 		if loc, err := params.IpLocator.LocateIP(relay.Addr.IP); err == nil {
-			relay.Latitude = loc.Latitude
-			relay.Longitude = loc.Longitude
+			relay.Datacenter.Location.Latitude = loc.Latitude
+			relay.Datacenter.Location.Longitude = loc.Longitude
 		} else {
 			level.Warn(locallogger).Log("msg", "using default geolocation from storage for relay")
 			params.Metrics.ErrorMetrics.IPLookupFailure.Add(1)
@@ -588,6 +588,12 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 
 		relay.LastUpdateTime = time.Now()
 
+		relay.TrafficStats = routing.RelayTrafficStats{
+			SessionCount:  relayUpdateRequest.TrafficStats.SessionCount,
+			BytesSent:     relayUpdateRequest.TrafficStats.BytesSent,
+			BytesReceived: relayUpdateRequest.TrafficStats.BytesReceived,
+		}
+
 		relaysToPing := make([]routing.RelayPingData, 0)
 
 		// Regular set for expiry
@@ -634,9 +640,9 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			"name", relay.Name,
 			"datacenter", relay.Datacenter.Name,
 			"addr", relay.Addr.String(),
-			"session_count", 0,
-			"bytes_received", relayUpdateRequest.BytesReceived,
-			"bytes_send", relayUpdateRequest.BytesSent,
+			"session_count", relayUpdateRequest.TrafficStats.SessionCount,
+			"bytes_received", relayUpdateRequest.TrafficStats.BytesReceived,
+			"bytes_send", relayUpdateRequest.TrafficStats.BytesSent,
 		)
 
 		level.Debug(handlerLogger).Log("msg", "relay updated")

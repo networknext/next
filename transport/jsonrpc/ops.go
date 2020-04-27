@@ -216,23 +216,33 @@ type relay struct {
 	Addr                string             `json:"addr"`
 	Latitude            float64            `json:"latitude"`
 	Longitude           float64            `json:"longitude"`
-	NICSpeedMbps        int                `json:"nic_speed_mpbs"`
-	IncludedBandwidthGB int                `json:"included_bandwidth_gb"`
+	NICSpeedMbps        uint64             `json:"nic_speed_mpbs"`
+	IncludedBandwidthGB uint64             `json:"included_bandwidth_gb"`
 	State               routing.RelayState `json:"state"`
 	StateUpdateTime     time.Time          `json:"stateUpdateTime"`
 	ManagementAddr      string             `json:"management_addr"`
 	SSHUser             string             `json:"ssh_user"`
 	SSHPort             int64              `json:"ssh_port"`
+	SessionCount        uint64             `json:"sessionCount"`
+	BytesSent           uint64             `json:"bytesTx"`
+	BytesReceived       uint64             `json:"bytesRx"`
 }
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {
+	hgetallResult := s.RedisClient.HGetAll(routing.HashKeyAllRelays)
+	if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
+		return fmt.Errorf("failed to get all relays: %v", hgetallResult.Err())
+	}
+
+	relaysInRedis := hgetallResult.Val()
+
 	for _, r := range s.Storage.Relays() {
-		reply.Relays = append(reply.Relays, relay{
+		relay := relay{
 			ID:                  r.ID,
 			Name:                r.Name,
 			Addr:                r.Addr.String(),
-			Latitude:            r.Latitude,
-			Longitude:           r.Longitude,
+			Latitude:            r.Datacenter.Location.Latitude,
+			Longitude:           r.Datacenter.Location.Longitude,
 			NICSpeedMbps:        r.NICSpeedMbps,
 			IncludedBandwidthGB: r.IncludedBandwidthGB,
 			ManagementAddr:      r.ManagementAddr,
@@ -240,7 +250,19 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			SSHPort:             r.SSHPort,
 			State:               r.State,
 			StateUpdateTime:     r.LastUpdateTime,
-		})
+		}
+
+		// If the relay is in redis, get its traffic stats
+		if relayInRedisString, ok := relaysInRedis[r.Key()]; ok {
+			var relayInRedis routing.Relay
+			if err := relayInRedis.UnmarshalBinary([]byte(relayInRedisString)); err == nil {
+				relay.SessionCount = relayInRedis.TrafficStats.SessionCount
+				relay.BytesSent = relayInRedis.TrafficStats.BytesSent
+				relay.BytesReceived = relayInRedis.TrafficStats.BytesReceived
+			}
+		}
+
+		reply.Relays = append(reply.Relays, relay)
 	}
 
 	if args.Name != "" {

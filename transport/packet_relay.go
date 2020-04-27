@@ -33,18 +33,11 @@ type RelayPingStats struct {
 	PacketLoss float32 `json:"packet_loss"`
 }
 
-// RelayTrafficStats describes the measured relay traffic statistics reported from the relay
-type RelayTrafficStats struct {
-	SessionCount  uint64
-	BytesSent     uint64
-	BytesReceived uint64
-}
-
 // RelayRequest describes the packets coming into and going out of the relays endpoint
 type RelayRequest struct {
 	Address      net.UDPAddr
 	PingStats    []RelayPingStats
-	TrafficStats RelayTrafficStats
+	TrafficStats routing.RelayTrafficStats
 }
 
 func (r *RelayRequest) UnmarshalJSON(buf []byte) error {
@@ -312,10 +305,8 @@ type RelayUpdateRequest struct {
 	Address net.UDPAddr
 	Token   []byte
 
-	PingStats []routing.RelayStatsPing
-
-	BytesSent     uint64
-	BytesReceived uint64
+	PingStats    []routing.RelayStatsPing
+	TrafficStats routing.RelayTrafficStats
 
 	ShuttingDown bool
 }
@@ -351,8 +342,9 @@ func (r *RelayUpdateRequest) UnmarshalJSON(buff []byte) error {
 		return errors.New("invalid token size")
 	}
 
-	r.BytesSent = uint64(doc.Get("TrafficStats.BytesMeasurementTx").Int())
-	r.BytesReceived = uint64(doc.Get("TrafficStats.BytesMeasurementRx").Int())
+	r.TrafficStats.SessionCount = uint64(doc.Get("TrafficStats.SessionCount").Int())
+	r.TrafficStats.BytesSent = uint64(doc.Get("TrafficStats.BytesMeasurementTx").Int())
+	r.TrafficStats.BytesReceived = uint64(doc.Get("TrafficStats.BytesMeasurementRx").Int())
 
 	r.PingStats = make([]routing.RelayStatsPing, 0)
 	if err := json.Unmarshal([]byte(doc.Get("PingStats").Raw), &r.PingStats); err != nil {
@@ -394,11 +386,15 @@ func (r *RelayUpdateRequest) UnmarshalBinary(buff []byte) error {
 		}
 	}
 
-	if !encoding.ReadUint64(buff, &index, &r.BytesSent) {
+	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.SessionCount) {
+		return errors.New("invalid packet, could not read session count")
+	}
+
+	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.BytesSent) {
 		return errors.New("invalid packet, could not read bytes sent")
 	}
 
-	if !encoding.ReadUint64(buff, &index, &r.BytesReceived) {
+	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.BytesReceived) {
 		return errors.New("invalid packet, could not read bytes received")
 	}
 
@@ -424,8 +420,9 @@ func (r RelayUpdateRequest) MarshalJSON() ([]byte, error) {
 	data["PingStats"] = r.PingStats
 
 	trafficStats := make(map[string]interface{})
-	trafficStats["BytesMeasurementTx"] = r.BytesSent
-	trafficStats["BytesMeasurementRx"] = r.BytesReceived
+	trafficStats["SessionCount"] = r.TrafficStats.SessionCount
+	trafficStats["BytesMeasurementTx"] = r.TrafficStats.BytesSent
+	trafficStats["BytesMeasurementRx"] = r.TrafficStats.BytesReceived
 	data["TrafficStats"] = trafficStats
 
 	data["shutting_down"] = r.ShuttingDown
@@ -452,8 +449,9 @@ func (r RelayUpdateRequest) MarshalBinary() ([]byte, error) {
 		encoding.WriteUint32(data, &index, math.Float32bits(stats.PacketLoss))
 	}
 
-	encoding.WriteUint64(data, &index, r.BytesSent)
-	encoding.WriteUint64(data, &index, r.BytesReceived)
+	encoding.WriteUint64(data, &index, r.TrafficStats.SessionCount)
+	encoding.WriteUint64(data, &index, r.TrafficStats.BytesSent)
+	encoding.WriteUint64(data, &index, r.TrafficStats.BytesReceived)
 
 	if r.ShuttingDown {
 		data[index] = 1
@@ -463,7 +461,7 @@ func (r RelayUpdateRequest) MarshalBinary() ([]byte, error) {
 }
 
 func (r *RelayUpdateRequest) size() uint {
-	return uint(4 + 4 + len(r.Address.String()) + crypto.KeySize + 4 + 20*len(r.PingStats) + 8 + 8 + 1)
+	return uint(4 + 4 + len(r.Address.String()) + crypto.KeySize + 4 + 20*len(r.PingStats) + 8 + 8 + 8 + 1)
 }
 
 type RelayUpdateResponse struct {
