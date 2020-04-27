@@ -2,10 +2,9 @@
 #define CORE_HANDLERS_SESSION_PING_HANDLER_HPP
 
 #include "base_handler.hpp"
-
 #include "core/session_map.hpp"
-
 #include "os/platform.hpp"
+#include "util/throughput_recorder.hpp"
 
 namespace core
 {
@@ -14,18 +13,28 @@ namespace core
     class SessionPingHandler: public BaseHandler
     {
      public:
-      SessionPingHandler(GenericPacket<>& packet, const int packetSize, core::SessionMap& sessions, const os::Socket& socket);
+      SessionPingHandler(
+       GenericPacket<>& packet,
+       const int packetSize,
+       core::SessionMap& sessions,
+       const os::Socket& socket,
+       util::ThroughputRecorder& recorder);
 
       void handle();
 
      private:
       core::SessionMap& mSessionMap;
       const os::Socket& mSocket;
+      util::ThroughputRecorder& mRecorder;
     };
 
     inline SessionPingHandler::SessionPingHandler(
-     GenericPacket<>& packet, const int packetSize, core::SessionMap& sessions, const os::Socket& socket)
-     : BaseHandler(packet, packetSize), mSessionMap(sessions), mSocket(socket)
+     GenericPacket<>& packet,
+     const int packetSize,
+     core::SessionMap& sessions,
+     const os::Socket& socket,
+     util::ThroughputRecorder& recorder)
+     : BaseHandler(packet, packetSize), mSessionMap(sessions), mSocket(socket), mRecorder(recorder)
     {}
 
     inline void SessionPingHandler::handle()
@@ -76,6 +85,7 @@ namespace core
         return;
       }
 
+      mRecorder.addToSent(mPacketSize);
       mSocket.send(session->NextAddr, mPacket.Buffer.data(), mPacketSize);
     }
   }  // namespace handlers

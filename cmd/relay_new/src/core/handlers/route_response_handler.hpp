@@ -2,10 +2,9 @@
 #define CORE_HANDLERS_ROUTE_RESPONSE_HANDLER_HPP
 
 #include "base_handler.hpp"
-
 #include "core/session_map.hpp"
-
 #include "os/platform.hpp"
+#include "util/throughput_recorder.hpp"
 
 namespace core
 {
@@ -14,7 +13,8 @@ namespace core
     class RouteResponseHandler: public BaseHandler
     {
      public:
-      RouteResponseHandler(GenericPacket<>& packet, const int packetSize, core::SessionMap& sessions, util::ThroughputRecorder& recorder);
+      RouteResponseHandler(
+       GenericPacket<>& packet, const int packetSize, core::SessionMap& sessions, util::ThroughputRecorder& recorder);
 
       template <size_t Size>
       void handle(core::GenericPacketBuffer<Size>& buff);
@@ -24,8 +24,9 @@ namespace core
       util::ThroughputRecorder& mRecorder;
     };
 
-    inline RouteResponseHandler::RouteResponseHandler(GenericPacket<>& packet, const int packetSize, core::SessionMap& sessions)
-     : BaseHandler(packet, packetSize), mSessionMap(sessions)
+    inline RouteResponseHandler::RouteResponseHandler(
+     GenericPacket<>& packet, const int packetSize, core::SessionMap& sessions, util::ThroughputRecorder& recorder)
+     : BaseHandler(packet, packetSize), mSessionMap(sessions), mRecorder(recorder)
     {}
 
     template <size_t Size>
