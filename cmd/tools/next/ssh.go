@@ -1,81 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 
-	localjsonrpc "github.com/networknext/backend/transport/jsonrpc"
 	"github.com/ybbus/jsonrpc"
 )
-
-const (
-	// DisableRelayScript is the bash script used to disable relays
-	DisableRelayScript = `
-	if ! systemctl is-active --quiet relay; then
-		echo 'Relay service has already been stopped'
-		exit
-	fi
-
-	sudo systemctl stop relay || exit 1
-
-	echo "Waiting for the relay service to clean shutdown"
-
-	while systemctl is-active --quiet relay; do
-		sleep 1
-	done
-
-	sudo systemctl disable relay
-
-	echo 'Relay service shutdown'
-	`
-
-	EnableRelayScript = `
-	if systemctl is-active --quiet relay; then
-		echo 'Relay service is already running'
-		exit
-	fi
-
-	sudo systemctl enable relay || exit 1
-	sudo systemctl start relay || exit 1
-
-	echo 'Relay service started'
-	`
-)
-
-type relayInfo struct {
-	id         uint64
-	user       string
-	sshAddr    string
-	sshPort    string
-	publicAddr string
-	publicKey  string
-	privateKey string
-}
-
-func getRelayInfo(rpcClient jsonrpc.RPCClient, relayName string) relayInfo {
-	args := localjsonrpc.RelaysArgs{
-		Name: relayName,
-	}
-
-	var reply localjsonrpc.RelaysReply
-	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
-		log.Fatal(err)
-	}
-
-	if len(reply.Relays) == 0 {
-		log.Fatalf("could not find relay with name '%s'", relayName)
-	}
-
-	relay := reply.Relays[0]
-	return relayInfo{
-		id:         relay.ID,
-		user:       relay.SSHUser,
-		sshAddr:    relay.ManagementAddr,
-		sshPort:    fmt.Sprintf("%d", relay.SSHPort),
-		publicAddr: relay.Addr,
-	}
-}
 
 func testForSSHKey(env Environment) {
 	if env.SSHKeyFilePath == "" {
