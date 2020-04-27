@@ -1,0 +1,12 @@
+{
+    "type": "service_account",
+    "project_id": "network-next-v3-dev",
+    "private_key_id": "f72e2f67f84fbb1955ae97a62d901c2ccbee8119",
+    "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCQjFsGOcyPgt3U\n/J4gZ5ck+ClYDmKAGZpsG3DtR/wtrVHO+ZVTxgY7w2u0hRVciELbdcB202xzYDsd\nzk9PbYUY0I4Kh9EEEL84LyzZTSHSVspBupfSyIcl/XLu28WLz5ih/86vZawtP2p+\nI7niZcVwMLNUC+JsJrDXIW6VDa6zMxxDvjvFPv2XmoKzYKTCmVUnf0cXOTnzkoF+\nCURVcRj4E12l/qQ03LowzOz8XLObpokzJuH8ek4dy/HqpGy5fjrHxK0DNGjjqXT/\n/dmVOtlE2YkX2Wd6R9M7Wy3ZyUxfB//jm/5KwD/6XrsMVsHhKpFhfc/ActfQaiGh\nUQabNujxAgMBAAECggEAA4KvHr12XPljCQ5KClQtuOeAfIub44vLouq/MToNczAJ\ng7buxBoz8k1ejyOox0alZgZL8m7TzFEG2oRVS4Lnx7if7HxMLJa6CCOoKY5cnwq9\nzn8ZOxSk6JypRwkGGQ1FghCv/LVBy1cGD3JvbCLH2t/J6SWBPhpp8s2UbZEHoEE5\nC0W22xXfOX+1LRGyOpw3m7rN3bphSl9SXnnHq563syL/98PEIHKeD9v1F+LgjPtD\nQ65nkJtbOkonocRenO6dNwu2XYNcDGuFZnWIqLVOiK3b9O1nkM2xo/rxVLS0FI6k\nSOW9JVcVCc5H7Pb6Bb/KB324MkPnM+ACbwFGj9qOKQKBgQDCY2/suiYynigw7Opg\n4FwsijjEK9cAci6UhY5/PnKomAlgLEr/lkIXz4q3GuWKQe72IQ2XL1+SsyrJJ7nD\nS5vjqUOYZV/6WNeJh85cOLbI487LVmFuawjNeeW45k849gQrpmjQ0s2tkWi2RvKL\nbZKXb2MrpqhGOsOfu/z+8pB4eQKBgQC+XOq0+ApocHXZlPF2W+JeUvC6H46xxksE\nQ9SEKn5wE6/7dmg0nnv+Cx/rJ5PC5ZQ66xFFVKqm4rytAZB4Ct6Y4LZfrF60qiH8\n1/UVx82Mxb8F7Xsw27wqnuy7PDZLlSFedM6k+0Il3BeyqXX837/7L/fULMEvSRiD\nyItJ2DNGOQKBgA8C6NDKK0r7ZbUphowGp3eVEP8tN4RETQ6RJcjzxJz6aLbxlLUa\nIG6AS4EKZbGAl/iP4uHK+cF1bpdsJu9K9nXlS2AIbBoEJFjtkOUUSCFJXl3bhNin\nEV30zOWze2i1rurEBhIiRVnjAcgZwH897fUd1/W2AAa0YQkD1mzFxJxZAoGBAJzC\nR0TfPTLj6ShTzsN4xuCFzFZ4xjj+4aeRc9+iXpxMmg6pYwZxvAlnf9FVtgg4pege\nywocvqrO7DBLqXww9z1NTuFaQGLl9zcPX3OgJVRXQwbOmTOSv1EZrjhBTTTQiboO\n1lxlzAMBS0KE6fRjDOT8i0jd0ffuaZGcA5e7wf2BAoGARw1xhOgXKSaItTMsyi0x\nS9NGTB+UesQN6AYnEwtSj0hHdV3nleOlTslM8ww6tTMWstJj6bxqeap775E8qnWU\nkbx7KbCj4wmNGwWfwb4WEkTD6FGtNvYkuwfAOwJjPZm1N1QWmuFMNWqnCIk6aBm2\nognPbBPmOMLtGZMUAh2bwR4=\n-----END PRIVATE KEY-----\n",
+    "client_email": "semaphore-ci@network-next-v3-dev.iam.gserviceaccount.com",
+    "client_id": "109296900501185241722",
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/semaphore-ci%40network-next-v3-dev.iam.gserviceaccount.com"
+  }
