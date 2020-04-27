@@ -31,3 +31,7 @@ promotions:
     pipeline_file: development-deploy.yml
     auto_promote:
       when: branch = 'master' AND result = 'passed'
+  - name: Production Deployment
+      pipeline_file: production-deploy.yml
+      auto_promote:
+        when: "tag =~ '^PROD-(\d{8})-(.+)' AND result = 'passed'"
