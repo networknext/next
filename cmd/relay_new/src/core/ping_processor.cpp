@@ -15,8 +15,9 @@ namespace core
    const os::Socket& socket,
    core::RelayManager& relayManager,
    const volatile bool& shouldProcess,
-   const net::Address& relayAddress)
-   : mSocket(socket), mRelayManager(relayManager), mShouldProcess(shouldProcess), mRelayAddress(relayAddress)
+   const net::Address& relayAddress,
+   util::ThroughputRecorder& recorder)
+   : mSocket(socket), mRelayManager(relayManager), mShouldProcess(shouldProcess), mRelayAddress(relayAddress), mRecorder(recorder)
   {
     LogDebug("sending pings using this addr: ", relayAddress);
   }
@@ -61,6 +62,11 @@ namespace core
           // use the recv port addr here so the receiving relay knows where to send it back to
           encoding::WriteAddress(pkt.Buffer, index, mRelayAddress);
         }
+
+        pkt.Len = index;
+        hdr.msg_iov[0].iov_len = index;
+
+        mRecorder.addToSent(pkt.Len);
       }
 
       buffer.Count = numberOfRelaysToPing;
