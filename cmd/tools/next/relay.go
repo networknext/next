@@ -154,7 +154,7 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 		defer f.Close()
 
 		for k, v := range envvars {
-			f.WriteString(fmt.Sprintf("%s='%s'\n", k, v))
+			f.WriteString(fmt.Sprintf("%s=%s\n", k, v))
 		}
 
 		args := localjsonrpc.RelayPublicKeyUpdateArgs{
