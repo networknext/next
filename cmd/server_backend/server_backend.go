@@ -25,6 +25,7 @@ import (
 	"github.com/oschwald/geoip2-golang"
 
 	"github.com/networknext/backend/billing"
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
@@ -133,12 +134,24 @@ func main() {
 	var db storage.Storer = &storage.InMemory{
 		LocalMode: true,
 	}
-	db.AddBuyer(ctx, routing.Buyer{
+
+	if err := db.AddBuyer(ctx, routing.Buyer{
 		ID:                   13672574147039585173,
 		Name:                 "local",
 		PublicKey:            customerPublicKey,
 		RoutingRulesSettings: routing.LocalRoutingRulesSettings,
-	})
+	}); err != nil {
+		level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
+		os.Exit(1)
+	}
+	if err := db.AddDatacenter(ctx, routing.Datacenter{
+		ID:      crypto.HashID("local"),
+		Name:    "local",
+		Enabled: true,
+	}); err != nil {
+		level.Error(logger).Log("msg", "could not add datacenter to storage", "err", err)
+		os.Exit(1)
+	}
 
 	// Create a no-op biller
 	var biller billing.Biller = &billing.NoOpBiller{}
@@ -202,6 +215,12 @@ func main() {
 		go func() {
 			metricsHandler.WriteLoop(ctx, logger, time.Minute, 200)
 		}()
+	}
+
+	// Create server update metrics
+	serverInitMetrics, err := metrics.NewServerInitMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create server update metrics", "err", err)
 	}
 
 	// Create server update metrics
@@ -274,6 +293,7 @@ func main() {
 			Conn:          conn,
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
+			ServerInitHandlerFunc:    transport.ServerInitHandlerFunc(logger, db, serverInitMetrics, serverPrivateKey),
 			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClientCache, db, serverUpdateMetrics),
 			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClientCache, db, &routeMatrix, ipLocator, &geoClient, sessionMetrics, biller, serverPrivateKey, routerPrivateKey),
 		}

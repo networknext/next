@@ -11,15 +11,10 @@ function remove_containers() {
 tests=(
     test_direct_default
     test_direct_upgrade
-    test_direct_no_upgrade
-    test_direct_with_backend
-    test_fallback_to_direct_without_backend
-    test_fallback_to_direct_is_not_sticky
-    test_packets_over_next_with_relay_and_backend
-    test_idempotent
-    test_fallback_to_direct_when_backend_goes_down
-    test_network_next_disabled_server
-    test_network_next_disabled_client
+    test_network_next
+    test_fallback_to_direct
+    test_disable_network_next_on_server
+    test_disable_network_next_on_client
     test_server_under_load
     test_reconnect_direct
     test_reconnect_next
@@ -33,6 +28,7 @@ tests=(
     test_user_flags
     test_packet_loss_direct
     test_packet_loss_next
+    test_idempotent
 )
 
 for test in "${tests[@]}"; do

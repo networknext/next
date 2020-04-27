@@ -106,6 +106,34 @@ var EmptyDecisionMetrics DecisionMetrics = DecisionMetrics{
 	RTTIncrease:         &EmptyCounter{},
 }
 
+type ServerInitMetrics struct {
+	Invocations   Counter
+	DurationGauge Gauge
+	ErrorMetrics  ServerInitErrorMetrics
+}
+
+var EmptyServerInitMetrics ServerInitMetrics = ServerInitMetrics{
+	Invocations:   &EmptyCounter{},
+	DurationGauge: &EmptyGauge{},
+	ErrorMetrics:  EmptyServerInitErrorMetrics,
+}
+
+type ServerInitErrorMetrics struct {
+	UnmarshalFailure    Counter
+	SDKTooOld           Counter
+	BuyerNotFound       Counter
+	VerificationFailure Counter
+	DatacenterNotFound  Counter
+}
+
+var EmptyServerInitErrorMetrics ServerInitErrorMetrics = ServerInitErrorMetrics{
+	UnmarshalFailure:    &EmptyCounter{},
+	SDKTooOld:           &EmptyCounter{},
+	BuyerNotFound:       &EmptyCounter{},
+	DatacenterNotFound:  &EmptyCounter{},
+	VerificationFailure: &EmptyCounter{},
+}
+
 type ServerUpdateMetrics struct {
 	Invocations   Counter
 	DurationGauge Gauge
@@ -660,6 +688,38 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 	}
 
 	return &sessionMetrics, nil
+}
+
+func NewServerInitMetrics(ctx context.Context, metricsHandler Handler) (*ServerInitMetrics, error) {
+	initDurationGauge, err := metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Server init duration",
+		ServiceName: "server_backend",
+		ID:          "server.init.duration",
+		Unit:        "milliseconds",
+		Description: "How long it takes to process a server init request.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	initInvocationsCounter, err := metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Total server init invocations",
+		ServiceName: "server_backend",
+		ID:          "server.init.count",
+		Unit:        "invocations",
+		Description: "The total number of concurrent servers",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	initMetrics := ServerInitMetrics{
+		Invocations:   initInvocationsCounter,
+		DurationGauge: initDurationGauge,
+		ErrorMetrics:  EmptyServerInitErrorMetrics,
+	}
+
+	return &initMetrics, nil
 }
 
 func NewServerUpdateMetrics(ctx context.Context, metricsHandler Handler) (*ServerUpdateMetrics, error) {

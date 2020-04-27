@@ -13,9 +13,17 @@ import (
 const (
 	DefaultMaxPacketSize = 1500
 
-	PacketTypeServerUpdate    = 200
-	PacketTypeSessionUpdate   = 201
-	PacketTypeSessionResponse = 202
+	PacketTypeServerUpdate       = 200
+	PacketTypeSessionUpdate      = 201
+	PacketTypeSessionResponse    = 202
+	PacketTypeServerInitRequest  = 203
+	PacketTypeServerInitResponse = 204
+
+	InitResponseOK                   = 0
+	InitResponseUnknownCustomer      = 1
+	InitResponseUnknownDatacenter    = 2
+	InitResponseOldSDKVersion        = 3
+	InitResponseSignatureCheckFailed = 4
 
 	MaxNearRelays = 32
 	MaxTokens     = 7
@@ -26,28 +34,50 @@ const (
 	ConnectionTypeCellular = 3
 )
 
-type ServerUpdatePacket struct {
-	Sequence             uint64
-	CustomerID           uint64
-	DatacenterID         uint64
-	NumSessionsPending   uint32
-	NumSessionsUpgraded  uint32
-	ServerAddress        net.UDPAddr
-	ServerPrivateAddress net.UDPAddr
-	ServerRoutePublicKey []byte
-	Signature            []byte
+type ServerInitRequestPacket struct {
+	RequestID    uint64
+	CustomerID   uint64
+	DatacenterID uint64
+	Signature    []byte
 
 	Version SDKVersion
 }
 
-func (packet *ServerUpdatePacket) UnmarshalBinary(data []byte) error {
+func (packet *ServerInitRequestPacket) Serialize(stream encoding.Stream) error {
+	packetType := uint32(PacketTypeServerInitRequest)
+	stream.SerializeBits(&packetType, 8)
+	stream.SerializeInteger(&packet.Version.Major, 0, SDKVersionMax.Major)
+	stream.SerializeInteger(&packet.Version.Minor, 0, SDKVersionMax.Minor)
+	stream.SerializeInteger(&packet.Version.Patch, 0, SDKVersionMax.Patch)
+	stream.SerializeUint64(&packet.RequestID)
+	stream.SerializeUint64(&packet.CustomerID)
+	stream.SerializeUint64(&packet.DatacenterID)
+	if stream.IsReading() {
+		packet.Signature = make([]byte, ed25519.SignatureSize)
+	}
+	stream.SerializeBytes(packet.Signature)
+	return stream.Error()
+}
+
+func (packet *ServerInitRequestPacket) GetSignData() []byte {
+	buf := new(bytes.Buffer)
+	binary.Write(buf, binary.LittleEndian, uint64(packet.Version.Major))
+	binary.Write(buf, binary.LittleEndian, uint64(packet.Version.Minor))
+	binary.Write(buf, binary.LittleEndian, uint64(packet.Version.Patch))
+	binary.Write(buf, binary.LittleEndian, packet.RequestID)
+	binary.Write(buf, binary.LittleEndian, packet.CustomerID)
+	binary.Write(buf, binary.LittleEndian, packet.DatacenterID)
+	return buf.Bytes()
+}
+
+func (packet *ServerInitRequestPacket) UnmarshalBinary(data []byte) error {
 	if err := packet.Serialize(encoding.CreateReadStream(data)); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (packet *ServerUpdatePacket) MarshalBinary() ([]byte, error) {
+func (packet *ServerInitRequestPacket) MarshalBinary() ([]byte, error) {
 	ws, err := encoding.CreateWriteStream(DefaultMaxPacketSize)
 	if err != nil {
 		return nil, err
@@ -59,6 +89,66 @@ func (packet *ServerUpdatePacket) MarshalBinary() ([]byte, error) {
 	ws.Flush()
 
 	return ws.GetData(), nil
+}
+
+type ServerInitResponsePacket struct {
+	RequestID uint64
+	Response  uint32
+	Signature []byte
+}
+
+func (packet *ServerInitResponsePacket) Serialize(stream encoding.Stream) error {
+	packetType := uint32(PacketTypeServerInitResponse)
+	stream.SerializeBits(&packetType, 8)
+	stream.SerializeUint64(&packet.RequestID)
+	stream.SerializeUint32(&packet.Response)
+	if stream.IsReading() {
+		packet.Signature = make([]byte, ed25519.SignatureSize)
+	}
+	stream.SerializeBytes(packet.Signature)
+	return stream.Error()
+}
+
+func (packet *ServerInitResponsePacket) GetSignData() []byte {
+	buf := new(bytes.Buffer)
+	binary.Write(buf, binary.LittleEndian, packet.RequestID)
+	binary.Write(buf, binary.LittleEndian, packet.Response)
+	return buf.Bytes()
+}
+
+func (packet *ServerInitResponsePacket) UnmarshalBinary(data []byte) error {
+	if err := packet.Serialize(encoding.CreateReadStream(data)); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (packet *ServerInitResponsePacket) MarshalBinary() ([]byte, error) {
+	ws, err := encoding.CreateWriteStream(DefaultMaxPacketSize)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := packet.Serialize(ws); err != nil {
+		return nil, err
+	}
+	ws.Flush()
+
+	return ws.GetData(), nil
+}
+
+type ServerUpdatePacket struct {
+	Sequence             uint64
+	CustomerID           uint64
+	DatacenterID         uint64
+	NumSessionsPending   uint32
+	NumSessionsUpgraded  uint32
+	ServerAddress        net.UDPAddr
+	ServerPrivateAddress net.UDPAddr // no longer used in 3.4.* SDK. please remove field when convenient
+	ServerRoutePublicKey []byte
+	Signature            []byte
+
+	Version SDKVersion
 }
 
 func (packet *ServerUpdatePacket) Serialize(stream encoding.Stream) error {
@@ -74,7 +164,9 @@ func (packet *ServerUpdatePacket) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint32(&packet.NumSessionsPending)
 	stream.SerializeUint32(&packet.NumSessionsUpgraded)
 	stream.SerializeAddress(&packet.ServerAddress)
-	stream.SerializeAddress(&packet.ServerPrivateAddress)
+	if !packet.Version.AtLeast(SDKVersion{3, 4, 4}) {
+		stream.SerializeAddress(&packet.ServerPrivateAddress)
+	}
 	if stream.IsReading() {
 		packet.ServerRoutePublicKey = make([]byte, ed25519.PublicKeySize)
 		packet.Signature = make([]byte, ed25519.SignatureSize)
@@ -99,12 +191,35 @@ func (packet *ServerUpdatePacket) GetSignData() []byte {
 	encoding.WriteAddress(address, &packet.ServerAddress)
 	binary.Write(buf, binary.LittleEndian, address)
 
-	privateAddress := make([]byte, encoding.AddressSize)
-	encoding.WriteAddress(privateAddress, &packet.ServerPrivateAddress)
-	binary.Write(buf, binary.LittleEndian, privateAddress)
+	if !packet.Version.AtLeast(SDKVersion{3, 4, 4}) {
+		privateAddress := make([]byte, encoding.AddressSize)
+		encoding.WriteAddress(privateAddress, &packet.ServerPrivateAddress)
+		binary.Write(buf, binary.LittleEndian, privateAddress)
+	}
 
 	binary.Write(buf, binary.LittleEndian, packet.ServerRoutePublicKey)
 	return buf.Bytes()
+}
+
+func (packet *ServerUpdatePacket) UnmarshalBinary(data []byte) error {
+	if err := packet.Serialize(encoding.CreateReadStream(data)); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (packet *ServerUpdatePacket) MarshalBinary() ([]byte, error) {
+	ws, err := encoding.CreateWriteStream(DefaultMaxPacketSize)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := packet.Serialize(ws); err != nil {
+		return nil, err
+	}
+	ws.Flush()
+
+	return ws.GetData(), nil
 }
 
 type SessionUpdatePacket struct {
@@ -149,27 +264,6 @@ type SessionUpdatePacket struct {
 	Signature                 []byte
 
 	Version SDKVersion
-}
-
-func (packet *SessionUpdatePacket) UnmarshalBinary(data []byte) error {
-	if err := packet.Serialize(encoding.CreateReadStream(data)); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (packet *SessionUpdatePacket) MarshalBinary() ([]byte, error) {
-	ws, err := encoding.CreateWriteStream(DefaultMaxPacketSize)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := packet.Serialize(ws); err != nil {
-		return nil, err
-	}
-	ws.Flush()
-
-	return ws.GetData(), nil
 }
 
 func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
@@ -339,6 +433,27 @@ func (packet *SessionUpdatePacket) GetSignData() []byte {
 	return buf.Bytes()
 }
 
+func (packet *SessionUpdatePacket) UnmarshalBinary(data []byte) error {
+	if err := packet.Serialize(encoding.CreateReadStream(data)); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (packet *SessionUpdatePacket) MarshalBinary() ([]byte, error) {
+	ws, err := encoding.CreateWriteStream(DefaultMaxPacketSize)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := packet.Serialize(ws); err != nil {
+		return nil, err
+	}
+	ws.Flush()
+
+	return ws.GetData(), nil
+}
+
 type SessionResponsePacket struct {
 	Sequence             uint64
 	SessionID            uint64
@@ -354,27 +469,6 @@ type SessionResponsePacket struct {
 	Signature            []byte
 
 	Version SDKVersion
-}
-
-func (packet *SessionResponsePacket) UnmarshalBinary(data []byte) error {
-	if err := packet.Serialize(encoding.CreateReadStream(data)); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (packet *SessionResponsePacket) MarshalBinary() ([]byte, error) {
-	ws, err := encoding.CreateWriteStream(DefaultMaxPacketSize)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := packet.Serialize(ws); err != nil {
-		return nil, err
-	}
-	ws.Flush()
-
-	return ws.GetData(), nil
 }
 
 func (packet *SessionResponsePacket) Serialize(stream encoding.Stream) error {
@@ -462,4 +556,25 @@ func (packet *SessionResponsePacket) GetSignData() []byte {
 	binary.Write(buf, binary.LittleEndian, packet.ServerRoutePublicKey)
 
 	return buf.Bytes()
+}
+
+func (packet *SessionResponsePacket) UnmarshalBinary(data []byte) error {
+	if err := packet.Serialize(encoding.CreateReadStream(data)); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (packet *SessionResponsePacket) MarshalBinary() ([]byte, error) {
+	ws, err := encoding.CreateWriteStream(DefaultMaxPacketSize)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := packet.Serialize(ws); err != nil {
+		return nil, err
+	}
+	ws.Flush()
+
+	return ws.GetData(), nil
 }

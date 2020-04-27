@@ -47,7 +47,7 @@
                 background-color: darkgrey;
             }
             .map {
-                height: 100%;
+                height: 95%;
                 max-height: 1000px;
             }
             .hidden {
@@ -56,9 +56,18 @@
             .confirm-button {
                 background-color: #212529;
             }
+            .mapboxgl-canvas {
+                height: 100%;
+                width: 100%;
+            }
+            .mapboxgl-map {
+                height: 100%;
+                width: 100%;
+            }
+            #session-tool-map { position: absolute; top: 0; bottom: 0; width: 100%; }
         </style>
     </head>
-    <body>
+    <body class="hidden" id="app">
         <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark p-0 shadow">
             <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="#">
                 <div class="logo-container">
@@ -160,7 +169,7 @@
                                 <td>{{ account.email }}</td>
                                 <td>
                                     <button class="btn">
-                                        <i class="fas fa-edit" data-toggle="tooltip" data-placement="bottom" title="Edit User" onclick="editUser(account)"></i>
+                                        <i class="fas fa-edit" data-toggle="tooltip" data-placement="bottom" title="Edit User" v-on:click="editUser(account)"></i>
                                     </button>
                                     <button class="btn">
                                         <i class="fas fa-trash" data-toggle="tooltip" data-placement="bottom" title="Delete User"></i>
@@ -195,6 +204,19 @@
                 </form>
             </div>
             <div class="workspace row hidden" id="session-workspace">
+                <form id="sessionSearch" onsubmit="fetchSessionInfo()">
+                    <div class="input-group mb-3">
+                        <div class="input-group-prepend">
+                        <span class="input-group-text" id="basic-addon1">ID</span>
+                        </div>
+                        <input type="text" class="form-control" placeholder="Session ID" id="sessionIDLookup">
+                        <button type="submit"
+                                id="sessionIdSearch"
+                                class="btn btn-primary form-control confirm-button">
+                            Search
+                        </button>
+                    </div>
+                </form>
                 <table class="table" id="sessions">
                     <thead class="thead-dark">
                       <tr>
@@ -209,6 +231,22 @@
                     </tr>
                     </thead>
                     <tbody>
+                        <!-- <tr>
+                            <td>DEBUG</td>
+                            <td>DEBUG</td>
+                            <td>DEBUG</td>
+                            <td>DEBUG</td>
+                            <td>DEBUG</td>
+                            <td>
+                                <i class="fas fa-check"></i>
+                            </td>
+                            <td>DEBUG</td>
+                            <td>
+                                <button class="btn" data-toggle="modal" data-target="#sessionInfoModal" onclick="fetchSessionInfo()">
+                                    <i class="fas fa-info-circle" data-toggle="tooltip" data-placement="bottom" title="Session Info"></i>
+                                </button>
+                            </td>
+                        </tr> -->
                         <tr v-for="session in sessions" scope="row">
                             <td>{{ session.session_id }}</td>
                             <td>{{ session.user_hash }}</td>
@@ -223,39 +261,347 @@
                             </td>
                             <td>{{ session.expires_at }}</td>
                             <td>
-                                <button class="btn" data-toggle="modal" data-target="#exampleModal">
+                                <button class="btn" data-toggle="modal" data-target="#sessionInfoModal" v-on:click="fetchSessionInfo(session.session_id)">
                                     <i class="fas fa-info-circle" data-toggle="tooltip" data-placement="bottom" title="Session Info"></i>
                                 </button>
                             </td>
                         </tr>
                     </tbody>
                   </table>
-                  <!-- <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-                    <div class="modal-dialog" role="document">
+                  <div class="modal fade" id="sessionInfoModal" tabindex="-1" role="dialog" aria-labelledby="sessionInfoModalLabel" aria-hidden="true">
+                    <div class="modal-dialog" role="document" style="max-width: 2000px; max-height: 1000px; overflow-y: auto;">
                       <div class="modal-content">
                         <div class="modal-header">
-                          <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
+                          <h5 class="modal-title" id="sessionInfoModalLabel">Session Information</h5>
                           <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                             <span aria-hidden="true">&times;</span>
                           </button>
                         </div>
                         <div class="modal-body">
-                          ...
-                        </div>
-                        <div class="modal-footer">
-                          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                          <button type="button" class="btn btn-primary">Save changes</button>
+                            <div class="row">
+                                <div class="col-12 col-lg-8">
+                                    <div class="card mb-2">
+                                        <div class="card-header">
+                                            <strong>
+                                                Latency
+                                            </strong>
+                                            <div class="float-right">
+                                                <span
+                                                  class="mr-2">
+                                                    <span style="color: blue;">
+                                                        — Network Next
+                                                    </span>
+                                                    <span style="color: red;">
+                                                        — Direct
+                                                    </span>
+                                                    <span style="color: green">
+                                                        — Prediction
+                                                    </span>
+                                                </span>
+                                              </div>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="latency-chart-1">
+                                            </div>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="latency-chart-2">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card mb-2">
+                                        <div class="card-header">
+                                            <strong>
+                                                Jitter
+                                            </strong>
+                                            <div class="float-right">
+                                                <span
+                                                  class="mr-2">
+                                                    <span style="color: blue;">
+                                                        — Network Next
+                                                    </span>
+                                                    <span style="color: red;">
+                                                        — Direct
+                                                    </span>
+                                                    <span style="color: green">
+                                                        — Prediction
+                                                    </span>
+                                                </span>
+                                              </div>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="jitter-chart-1">
+                                            </div>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="jitter-chart-2">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card mb-2">
+                                        <div class="card-header">
+                                            <strong>
+                                                Packet Loss
+                                            </strong>
+                                            <div class="float-right">
+                                                <span
+                                                  class="mr-2">
+                                                    <span style="color: blue;">
+                                                        — Network Next
+                                                    </span>
+                                                    <span style="color: red;">
+                                                        — Direct
+                                                    </span>
+                                                    <span style="color: green">
+                                                        — Prediction
+                                                    </span>
+                                                </span>
+                                              </div>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="packet-loss-chart-1">
+                                            </div>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="packet-loss-chart-2">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card mb-2">
+                                        <div class="card-header">
+                                            <strong>
+                                                Bandwidth
+                                            </strong>
+                                            <div class="float-right">
+                                                <span
+                                                  class="mr-2">
+                                                    <span style="color: darkgoldenrod;">
+                                                        — Actual Up
+                                                    </span>
+                                                    <span style="color: blue;">
+                                                        — Actual Down
+                                                    </span>
+                                                </span>
+                                              </div>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="bandwidth-chart-1">
+                                            </div>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="bandwidth-chart-2">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12 col-lg-4">
+                                    <div class="card">
+                                        <div class="card-img-top" style="height: 20vh;">
+                                            <div id="session-tool-map"></div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="card-text">
+                                            <dl>
+                                                <dt>
+                                                    ISP
+                                                </dt>
+                                                <dd>
+                                                    Spectrum
+                                                </dd>
+                                                <dt>
+                                                    User ID
+                                                </dt>
+                                                <dd>
+                                                    123456678912344326
+                                                </dd>
+                                                <dt>
+                                                    Platform
+                                                </dt>
+                                                <dd>
+                                                    Linux
+                                                </dd>
+                                                <dt>
+                                                    Customer
+                                                </dt>
+                                                <dd>
+                                                    Psyonix
+                                                </dd>
+                                                <dt>
+                                                    SDK Version
+                                                </dt>
+                                                <dd>
+                                                    100
+                                                </dd>
+                                                <dt>
+                                                    Connection Type
+                                                </dt>
+                                                <dd>
+                                                    Magic
+                                                </dd>
+                                                <dt>
+                                                    Nearby Relays
+                                                    <span
+                                                      style="float: right; font-weight: normal; font-style: italic;"
+                                                    >
+                                                        at 5:00:00pm Apr 22
+                                                    </span>
+                                                </dt>
+                                                <table className="table table-sm mt-1">
+                                                    <thead>
+                                                      <tr>
+                                                        <th style="width: 25%;">
+                                                            Name
+                                                        </th>
+                                                        <th style="width: 25%;">
+                                                            RTT
+                                                        </th>
+                                                        <th style="width: 25%;">
+                                                            Jitter
+                                                        </th>
+                                                        <th style="width: 25%;">
+                                                            Packet Loss
+                                                        </th>
+                                                      </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                      <tr>
+                                                        <td>
+                                                            london
+                                                        </td>
+                                                        <td>
+                                                          <em>1243ms</em>
+                                                        </td>
+                                                        <td>
+                                                          <em>1243ms</em>
+                                                        </td>
+                                                        <td>
+                                                          <em>100.00%</em>
+                                                        </td>
+                                                      </tr>
+                                                      <tr>
+                                                        <td>
+                                                            london
+                                                        </td>
+                                                        <td>
+                                                          <em>1243ms</em>
+                                                        </td>
+                                                        <td>
+                                                          <em>1243ms</em>
+                                                        </td>
+                                                        <td>
+                                                          <em>100.00%</em>
+                                                        </td>
+                                                      </tr>
+                                                      <tr>
+                                                        <td>
+                                                            london
+                                                        </td>
+                                                        <td>
+                                                          <em>1243ms</em>
+                                                        </td>
+                                                        <td>
+                                                          <em>1243ms</em>
+                                                        </td>
+                                                        <td>
+                                                          <em>100.00%</em>
+                                                        </td>
+                                                      </tr>
+                                                      <tr>
+                                                        <td>
+                                                            london
+                                                        </td>
+                                                        <td>
+                                                          <em>1243ms</em>
+                                                        </td>
+                                                        <td>
+                                                          <em>1243ms</em>
+                                                        </td>
+                                                        <td>
+                                                          <em>100.00%</em>
+                                                        </td>
+                                                      </tr>
+                                                    </tbody>
+                                                  </table>
+                                                <dt>
+                                                    Route
+                                                    <span
+                                                      style="float: right; font-weight: normal; font-style: italic;"
+                                                    >
+                                                        at 5:00:00pm Apr 22
+                                                    </span>
+                                                </dt>
+                                                <table className="table table-sm mt-1">
+                                                    <thead>
+                                                      <tr>
+                                                        <th style="width: 50%;">
+                                                            Name
+                                                        </th>
+                                                        <th style="width: 50%;">
+                                                            Role
+                                                        </th>
+                                                      </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                      <tr>
+                                                        <td>
+                                                            192.168.1.11111
+                                                        </td>
+                                                        <td>
+                                                          <em>User (Player)</em>
+                                                        </td>
+                                                      </tr>
+                                                      <tr>
+                                                          <td>
+                                                              London relay
+                                                          </td>
+                                                          <td>
+                                                              Hop 1
+                                                          </td>
+                                                      </tr>
+                                                      <tr>
+                                                          <td>
+                                                              Spain relay
+                                                          </td>
+                                                          <td>
+                                                              Hop 2
+                                                          </td>
+                                                      </tr>
+                                                      <tr>
+                                                          <td>
+                                                              New York relay
+                                                          </td>
+                                                          <td>
+                                                              Hop 3
+                                                          </td>
+                                                      </tr>
+                                                      <tr>
+                                                        <td>
+                                                            192.168.1.1113
+                                                        </td>
+                                                        <td>
+                                                          <em>Destination Server</em>
+                                                        </td>
+                                                      </tr>
+                                                    </tbody>
+                                                </table>
+                                            </dl>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                       </div>
                     </div>
-                  </div> -->
+                  </div>
             </div>
         </div>
+        <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
         <script src="https://cdn.auth0.com/js/auth0/9.11/auth0.min.js"></script>
         <script src="https://unpkg.com/deck.gl@latest/dist.min.js"></script>
         <!-- optional if mapbox base map is needed -->
         <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.53.0/mapbox-gl.js'></script>
-
+        <script src="https://cdn.auth0.com/js/auth0-spa-js/1.7/auth0-spa-js.production.js"></script>
         <script src="https://unpkg.com/vue"></script>
         <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js"
                 integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n"
@@ -275,42 +621,42 @@
         <script src="js/hexmap/hexlib.js"></script>
         <script src="./js/portal.js"></script>
         <script>
-            MapHandler
-                .initMap()
-                .then((response) => {
-                    console.log(response);
-                })
-                .catch((error) => {
-                    console.log(error);
-                })
-            JSONRPCClient
-                .call('BuyersService.Sessions', {buyer_id: '13672574147039585173'})
-                .then((response) => {
-                    new Vue({
-                        el: '#sessions',
-                        data: {
-                            sessions: response.sessions || []
-                        }
-                    });
-                })
-                .catch((e) => {
-                    console.log("Something went wrong with the map init!");
-                    console.log(e);
+            var auth0 = null;
+
+            const configureClient = async () => {
+
+                auth0 = await createAuth0Client({
+                    domain: 'networknext.auth0.com',
+                    client_id: 'QTsi0xjNxK52MDQEXOgD8eTU61Q3T8kB',
                 });
-            JSONRPCClient
-                .call('BuyersService.GameConfiguration', {buyer_id: '13672574147039585173'})
-                .then((response) => {
-                    new Vue({
-                        el: '#pubKey',
-                        data: {
-                            pubkey: response.game_config.public_key
-                        }
-                    })
-                })
-                .catch((e) => {
-                    console.log("Something went wrong grabbing current public key");
-                    console.log(e);
+            };
+
+            const login = async () => {
+                await auth0.loginWithRedirect({
+                    redirect_uri: window.location.origin
                 });
+            }
+
+            window.onload = async () => {
+                await configureClient();
+
+                const isAuthenticated = await auth0.isAuthenticated();
+
+                if (isAuthenticated) {
+                    startApp();
+                    return;
+                }
+                const query = window.location.search;
+                if (query.includes("code=") && query.includes("state=")) {
+
+                    await auth0.handleRedirectCallback();
+
+                    window.history.replaceState({}, document.title, "/");
+                    startApp();
+                } else {
+                    login();
+                }
+            }
         </script>
     </body>
 </html>

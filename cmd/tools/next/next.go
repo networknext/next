@@ -7,6 +7,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -16,10 +17,13 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
 
+	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/routing"
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/tidwall/gjson"
 	"github.com/ybbus/jsonrpc"
@@ -178,6 +182,36 @@ func sshToRelay(env Environment, relayName string) {
 	secureShell(user, address, port)
 }
 
+func readJSONData(entity string, args []string) []byte {
+	// Check if the input is piped or a filepath
+	fileInfo, err := os.Stdin.Stat()
+	if err != nil {
+		log.Fatalf("Error checking stdin stat: %v", err)
+	}
+	isPipedInput := fileInfo.Mode()&os.ModeCharDevice == 0
+
+	var data []byte
+	if isPipedInput {
+		// Read the piped input from stdin
+		data, err = ioutil.ReadAll(bufio.NewReader(os.Stdin))
+		if err != nil {
+			log.Fatalf("Error reading from stdin: %v", err)
+		}
+	} else {
+		// Read the file at the given filepath
+		if len(args) == 0 {
+			log.Fatalf("Supply a file path to read the %s JSON or pipe it through stdin\nnext %s add [filepath]\nor\ncat <filepath> | next %s add\n\nFor an example JSON schema:\nnext %s add example", entity, entity, entity, entity)
+		}
+
+		data, err = ioutil.ReadFile(args[0])
+		if err != nil {
+			log.Fatalf("Error reading %s JSON file: %v", entity, err)
+		}
+	}
+
+	return data
+}
+
 func handleJSONRPCError(err error) {
 	switch e := err.(type) {
 	case *jsonrpc.HTTPError:
@@ -253,7 +287,6 @@ func main() {
 					return nil
 				},
 			},
-
 			{
 				Name:       "env",
 				ShortUsage: "next env <local|dev|prod|other_portal_hostname>",
@@ -268,7 +301,6 @@ func main() {
 					return nil
 				},
 			},
-
 			{
 				Name:       "buyers",
 				ShortUsage: "next buyers",
@@ -277,8 +309,198 @@ func main() {
 					buyers(rpcClient)
 					return nil
 				},
-			},
+				Subcommands: []*ffcli.Command{
+					{
+						Name:       "add",
+						ShortUsage: "next buyers add [filepath]",
+						ShortHelp:  "Add a buyer to storage from a JSON file or piped from stdin",
+						Exec: func(_ context.Context, args []string) error {
+							jsonData := readJSONData("buyers", args)
 
+							// Unmarshal the JSON and create the Buyer struct
+							var buyer routing.Buyer
+							if err := json.Unmarshal(jsonData, &buyer); err != nil {
+								log.Fatalf("Could not unmarshal buyer: %v", err)
+							}
+
+							// Add the Buyer to storage
+							addBuyer(rpcClient, buyer)
+							return nil
+						},
+						Subcommands: []*ffcli.Command{
+							{
+								Name:       "example",
+								ShortUsage: "next buyers add example",
+								ShortHelp:  "Displays an example buyer for the correct JSON schema",
+								Exec: func(_ context.Context, args []string) error {
+									example := routing.Buyer{
+										Name:      "name",
+										PublicKey: make([]byte, crypto.KeySize),
+									}
+
+									jsonBytes, err := json.MarshalIndent(example, "", "\t")
+									if err != nil {
+										log.Fatal("Failed to marshal buyer struct")
+									}
+
+									fmt.Println("Exmaple JSON schema to add a new buyer:")
+									fmt.Println(string(jsonBytes))
+									return nil
+								},
+							},
+						},
+					},
+					{
+						Name:       "remove",
+						ShortUsage: "next buyers remove <id>",
+						ShortHelp:  "Remove a buyer from storage",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) == 0 {
+								log.Fatal("Provide the buyer ID of the buyer you wish to remove\nFor a list of buyers, use next buyers")
+							}
+
+							buyerID, err := strconv.ParseInt(args[0], 10, 64)
+							if err != nil {
+								log.Fatalf("Error parsing ID %s: %v", args[0], err)
+							}
+
+							removeBuyer(rpcClient, uint64(buyerID))
+							return nil
+						},
+					},
+				},
+			},
+			{
+				Name:       "routeshader",
+				ShortUsage: "next routeshader <buyer ID>",
+				ShortHelp:  "Get a buyer's route shader from storage",
+				Exec: func(_ context.Context, args []string) error {
+					if len(args) == 0 {
+						log.Fatal("No buyer ID provided.\nUsage:\nnext routeshader <buyer ID>\nbuyer ID: the buyer's ID\nFor a list of buyers, use next buyers")
+					}
+
+					// Parse buyerID into uint64
+					buyerID, err := strconv.ParseUint(args[0], 10, 64)
+					if err != nil {
+						log.Fatalf("Failed to parse \"%s\" as a buyer ID, must be a valid 64 bit unsigned integer\nFor a list of buyers, use next buyers", args[0])
+					}
+
+					// Get the buyer's route shader
+					routingRulesSettings(rpcClient, buyerID)
+					return nil
+				},
+				Subcommands: []*ffcli.Command{
+					{
+						Name:       "set",
+						ShortUsage: "next routeshader set <buyer ID> [filepath]",
+						ShortHelp:  "Set the buyer's route shader in storage from a JSON file or piped from stdin",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) == 0 {
+								log.Fatal("No buyer ID provided.\nUsage:\nnext routeshader set <buyer ID> [filepath]\nbuyer ID: the buyer's ID\n(Optional) filepath: the filepath to a JSON file with the new route shader data. If this data is piped through stdin, this parameter is optional.\nFor a list of buyers, use next buyers")
+							}
+
+							// Parse buyerID into uint64
+							buyerID, err := strconv.ParseUint(args[0], 10, 64)
+							if err != nil {
+								log.Fatalf("Failed to parse \"%s\" as a buyer ID, must be a valid 64 bit unsigned integer\nFor a list of buyers, use next buyers", args[0])
+							}
+
+							jsonData := readJSONData("buyers", args[1:])
+
+							// Unmarshal the JSON and create the RoutingRuleSettings struct
+							var rrs routing.RoutingRulesSettings
+							if err := json.Unmarshal(jsonData, &rrs); err != nil {
+								log.Fatalf("Could not unmarshal route shader: %v", err)
+							}
+
+							// Set the route shader in storage
+							setRoutingRulesSettings(rpcClient, buyerID, rrs)
+							return nil
+						},
+						Subcommands: []*ffcli.Command{
+							{
+								Name:       "example",
+								ShortUsage: "next routeshader set example",
+								ShortHelp:  "Displays an example route shader for the correct JSON schema",
+								Exec: func(_ context.Context, args []string) error {
+									jsonBytes, err := json.MarshalIndent(routing.DefaultRoutingRulesSettings, "", "\t")
+									if err != nil {
+										log.Fatal("Failed to marshal route shader struct")
+									}
+
+									fmt.Println("Exmaple JSON schema to set a new route shader:")
+									fmt.Println(string(jsonBytes))
+									return nil
+								},
+							},
+						},
+					},
+				},
+			},
+			{
+				Name:       "sellers",
+				ShortUsage: "next sellers",
+				ShortHelp:  "Manage sellers",
+				Exec: func(_ context.Context, args []string) error {
+					sellers(rpcClient)
+					return nil
+				},
+				Subcommands: []*ffcli.Command{
+					{
+						Name:       "add",
+						ShortUsage: "next sellers add [filepath]",
+						ShortHelp:  "Add a seller to storage from a JSON file or piped from stdin",
+						Exec: func(_ context.Context, args []string) error {
+							jsonData := readJSONData("sellers", args)
+
+							// Unmarshal the JSON and create the Seller struct
+							var seller routing.Seller
+							if err := json.Unmarshal(jsonData, &seller); err != nil {
+								log.Fatalf("Could not unmarshal seller: %v", err)
+							}
+
+							// Add the Seller to storage
+							addSeller(rpcClient, seller)
+							return nil
+						},
+						Subcommands: []*ffcli.Command{
+							{
+								Name:       "example",
+								ShortUsage: "next sellers add example",
+								ShortHelp:  "Displays an example seller for the correct JSON schema",
+								Exec: func(_ context.Context, args []string) error {
+									example := routing.Seller{
+										ID:   "vultr",
+										Name: "name",
+									}
+
+									jsonBytes, err := json.MarshalIndent(example, "", "\t")
+									if err != nil {
+										log.Fatal("Failed to marshal seller struct")
+									}
+
+									fmt.Println("Exmaple JSON schema to add a new seller:")
+									fmt.Println(string(jsonBytes))
+									return nil
+								},
+							},
+						},
+					},
+					{
+						Name:       "remove",
+						ShortUsage: "next sellers remove <id>",
+						ShortHelp:  "Remove a seller from storage",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) == 0 {
+								log.Fatal("Provide the seller ID of the seller you wish to remove\nFor a list of sellers, use next sellers")
+							}
+
+							removeSeller(rpcClient, args[0])
+							return nil
+						},
+					},
+				},
+			},
 			{
 				Name:       "datacenters",
 				ShortUsage: "next datacenters <name>",
@@ -291,8 +513,66 @@ func main() {
 					datacenters(rpcClient, "")
 					return nil
 				},
-			},
+				Subcommands: []*ffcli.Command{
+					{
+						Name:       "add",
+						ShortUsage: "next datacenters add <filepath>",
+						ShortHelp:  "Add a datacenter to storage from a JSON file or piped from stdin",
+						Exec: func(_ context.Context, args []string) error {
+							jsonData := readJSONData("datacenters", args)
 
+							// Unmarshal the JSON and create the Datacenter struct
+							var datacenter routing.Datacenter
+							if err := json.Unmarshal(jsonData, &datacenter); err != nil {
+								log.Fatalf("Could not unmarshal datacenter: %v", err)
+							}
+
+							// Force the datacenter ID to be a hash of its name
+							datacenter.ID = crypto.HashID(datacenter.Name)
+
+							// Add the Datacenter to storage
+							addDatacenter(rpcClient, datacenter)
+							return nil
+						},
+						Subcommands: []*ffcli.Command{
+							{
+								Name:       "example",
+								ShortUsage: "next datacenters add example",
+								ShortHelp:  "Displays an example datacenter for the correct JSON schema",
+								Exec: func(_ context.Context, args []string) error {
+									example := routing.Datacenter{
+										ID:   crypto.HashID("name"),
+										Name: "name",
+									}
+
+									jsonBytes, err := json.MarshalIndent(example, "", "\t")
+									if err != nil {
+										log.Fatal("Failed to marshal datacenter struct")
+									}
+
+									fmt.Println("Exmaple JSON schema to add a new datacenter:")
+									fmt.Println(string(jsonBytes))
+									fmt.Println("NOTE: the datacenter ID will be overwritten with a hash of the datacenter name!")
+									return nil
+								},
+							},
+						},
+					},
+					{
+						Name:       "remove",
+						ShortUsage: "next datacenters remove <name>",
+						ShortHelp:  "Remove a datacenter from storage",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) == 0 {
+								log.Fatal("Provide the datacenter name of the datacenter you wish to remove\nFor a list of datacenters, use next datacenters")
+							}
+
+							removeDatacenter(rpcClient, args[0])
+							return nil
+						},
+					},
+				},
+			},
 			{
 				Name:       "relays",
 				ShortUsage: "next relays <name>",
