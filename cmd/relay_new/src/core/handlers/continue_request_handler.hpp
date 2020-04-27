@@ -5,6 +5,7 @@
 #include "core/session_map.hpp"
 #include "crypto/keychain.hpp"
 #include "os/platform.hpp"
+#include "util/throughput_recorder.hpp"
 
 namespace core
 {
@@ -18,15 +19,17 @@ namespace core
        GenericPacket<>& packet,
        const int packetSize,
        core::SessionMap& sessions,
-       const crypto::Keychain& keychain);
+       const crypto::Keychain& keychain,
+       util::ThroughputRecorder& recorder);
 
-      template <typename T, typename F>
-      void handle(T& sender, F funcptr);
+      template <size_t Size>
+      void handle(core::GenericPacketBuffer<Size>& buff);
 
      private:
       const util::Clock& mRelayClock;
       core::SessionMap& mSessionMap;
       const crypto::Keychain& mKeychain;
+      util::ThroughputRecorder& mRecorder;
     };
 
     inline ContinueRequestHandler::ContinueRequestHandler(
@@ -34,15 +37,13 @@ namespace core
      GenericPacket<>& packet,
      const int packetSize,
      core::SessionMap& sessions,
-     const crypto::Keychain& keychain)
-     : BaseHandler(packet, packetSize),
-       mRelayClock(relayClock),
-       mSessionMap(sessions),
-       mKeychain(keychain)
+     const crypto::Keychain& keychain,
+     util::ThroughputRecorder& recorder)
+     : BaseHandler(packet, packetSize), mRelayClock(relayClock), mSessionMap(sessions), mKeychain(keychain), mRecorder(recorder)
     {}
 
-    template <typename T, typename F>
-    inline void ContinueRequestHandler::handle(T& sender, F funcptr)
+    template <size_t Size>
+    inline void ContinueRequestHandler::handle(core::GenericPacketBuffer<Size>& buff)
     {
       if (mPacketSize < int(1 + ContinueToken::EncryptedByteSize * 2)) {
         Log("ignoring continue request. bad packet size (", mPacketSize, ")");
@@ -83,8 +84,9 @@ namespace core
       session->ExpireTimestamp = token.ExpireTimestamp;
       mPacket.Buffer[ContinueToken::EncryptedByteSize] = RELAY_CONTINUE_REQUEST_PACKET;
 
-      (sender.*funcptr)(
-       session->NextAddr, &mPacket.Buffer[ContinueToken::EncryptedByteSize], mPacketSize - ContinueToken::EncryptedByteSize);
+      auto length = mPacketSize - ContinueToken::EncryptedByteSize;
+      mRecorder.addToSent(length);
+      buff.push(session->NextAddr, &mPacket.Buffer[ContinueToken::EncryptedByteSize], length);
     }
   }  // namespace handlers
 }  // namespace core
