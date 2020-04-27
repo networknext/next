@@ -6,7 +6,7 @@ This is a monorepo that contains the Network Next backend.
 
 ## Status
 
-![Build Status](https://networknext.semaphoreci.com/badges/backend.svg?key=822a130a-66de-4659-adb2-74237df34843)
+[![Build Status](https://networknext.semaphoreci.com/badges/backend.svg?key=822a130a-66de-4659-adb2-74237df34843)](https://networknext.semaphoreci.com/projects/backend)
 
 ## CI/CD
 
