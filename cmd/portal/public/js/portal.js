@@ -43,7 +43,7 @@ function startApp() {
 			});
 		})
 		.catch((e) => {
-			console.log("Something went wrong with the map init!");
+			console.log("Something went wrong with fetching sessions");
 			console.log(e);
 		});
 	JSONRPCClient
@@ -94,38 +94,60 @@ function startApp() {
 			console.log("Something went wrong grabbing current public key");
 			console.log(e);
 		});
+	JSONRPCClient
+		.call('OpsService.Relays', {})
+		.then((response) => {
+			new Vue({
+				el: '#relays',
+				data: {
+					relays: response.relays || []
+				}
+			});
+		})
+		.catch((e) => {
+			console.log("Something went wrong with fetching relays")
+		});
 }
 
 function changePage(page) {
 	let account = document.getElementById("account-workspace");
-	let session = document.getElementById("session-workspace");
-	let users = document.getElementById("users-workspace");
 	let map = document.getElementById("map-workspace");
+	let relay = document.getElementById("relay-workspace");
+	let session = document.getElementById("session-workspace");
 	let title = document.getElementById("workspace-title");
+	let users = document.getElementById("users-workspace");
 
 	let mapLink = document.getElementById("home-link");
+	let relayLink = document.getElementById("relay-link");
 	let sessionLink = document.getElementById("session-link");
 	let usersLink = document.getElementById("users-link");
 
 	account.style.display = 'none';
 	map.style.display = 'none';
+	relay.style.display = 'none';
 	session.style.display = 'none';
 	users.style.display = 'none';
 
 	mapLink.classList.remove("active");
+	relayLink.classList.remove("active");
 	sessionLink.classList.remove("active");
 	usersLink.classList.remove("active");
 
 	switch (page) {
-		case 'sessions':
-			session.style.display = 'block';
-			sessionLink.classList.add("active");
-			title.textContent = 'Session Table';
-			break;
 		case 'account':
 			account.style.display = 'block';
 			changeAccountPage();
 			title.textContent = 'Account Details';
+			break;
+		case 'relay':
+			relay.style.display = 'block';
+			relayLink.classList.add("active");
+			title.textContent = 'Relays Table';
+			break;
+		case 'sessions':
+			session.style.display = 'block';
+			sessionLink.classList.add("active");
+			title.textContent = 'Session Table';
 			break;
 		case 'users':
 			users.style.display = 'block';
@@ -142,14 +164,16 @@ function changePage(page) {
 function changeAccountPage(page) {
 	let config = document.getElementById("config");
 	let accounts = document.getElementById("accounts");
-	let newUser = document.getElementById("newUser");
+	let newUser = document.getElementById("new-user");
+	let newUserButton = document.getElementById("new-user-button");
 
 	let accountsLink = document.getElementById("accounts-link");
 	let configLink = document.getElementById("config-link");
 
-	config.style.display = 'none';
 	accounts.style.display = 'none';
+	config.style.display = 'none';
 	newUser.style.display = 'none';
+	newUserButton.style.display = 'none';
 
 	accountsLink.classList.remove("active");
 	configLink.classList.remove("active");
@@ -165,6 +189,7 @@ function changeAccountPage(page) {
 		default:
 			accounts.style.display = 'block';
 			accountsLink.classList.add("active");
+			newUserButton.style.display = 'block';
 	}
 }
 
