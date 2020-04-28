@@ -29,12 +29,13 @@ func TestAuthMiddleware(t *testing.T) {
 }
 
 func TestAuthClient(t *testing.T) {
+	logger := log.NewNopLogger()
 	t.Run("create auth0Client", func(t *testing.T) {
-		_, err := storage.NewAuth0(context.Background(), log.NewNopLogger())
+		_, err := storage.NewAuth0(context.Background(), logger)
 		assert.NoError(t, err)
 	})
 
-	auth0Client, _ := storage.NewAuth0(context.Background(), log.NewNopLogger())
+	auth0Client, _ := storage.NewAuth0(context.Background(), logger)
 	svc := jsonrpc.AuthService{
 		Auth0: *auth0Client,
 	}
