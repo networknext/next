@@ -9,29 +9,116 @@ import (
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/networknext/backend/storage"
+	"gopkg.in/auth0.v4/management"
 )
 
 type AuthService struct {
 	Auth0 storage.Auth0
 }
 
-type UsersArgs struct{}
-
-type UsersReply struct {
-	Users []user `json:"users"`
+type AccountsArgs struct {
 }
 
-type user struct {
+type AccountsReply struct {
+	Accounts []account `json:"accounts"`
+}
+
+type AccountArgs struct {
+	UserID string `json:"user_id"`
+}
+
+type AccountReply struct {
+	UserAccount account            `json:"account"`
+	Roles       []*management.Role `json:"roles"`
+}
+
+type account struct {
 	UserID string `json:"user_id"`
 	Name   string `json:"name"`
 	Email  string `json:"email"`
-	Image  string `json:"image"`
 }
 
-func (s *AuthService) Users(r *http.Request, args *UsersArgs, reply *UsersReply) error {
-	userList, err := s.Auth0.Manager.User.List()
-	fmt.Println(userList.Users)
-	fmt.Println(err)
+func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
+	accountList, err := s.Auth0.Manager.User.List()
+	if err != nil {
+		return fmt.Errorf("failed to fetch user list: %w", err)
+	}
+
+	for _, a := range accountList.Users {
+		reply.Accounts = append(reply.Accounts, UnMarshalUserJSON(a))
+	}
+	return nil
+}
+
+func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *AccountReply) error {
+	if args.UserID == "" {
+		return fmt.Errorf("user_id is required")
+	}
+
+	userAccount, err := s.Auth0.Manager.User.Read(args.UserID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch user account: %w", err)
+	}
+
+	userRoles, err := s.Auth0.Manager.User.Roles(args.UserID)
+
+	if err != nil {
+		return fmt.Errorf("failed to get user roles: %w", err)
+	}
+
+	reply.Roles = userRoles.Roles
+
+	reply.UserAccount = UnMarshalUserJSON(userAccount)
+
+	return nil
+}
+
+func UnMarshalUserJSON(u *management.User) account {
+	account := account{
+		UserID: *u.Identities[0].UserID,
+		Name:   *u.Name,
+		Email:  *u.Email,
+	}
+
+	return account
+}
+
+func MarshalUserJSON(a account) *management.User {
+	return nil
+}
+
+type RolesArgs struct {
+	UserID string `json:"user_id"`
+}
+
+type RolesReply struct {
+	Roles []*management.Role `json:"roles"`
+}
+
+func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
+	roleList, err := s.Auth0.Manager.Role.List()
+	if err != nil {
+		fmt.Errorf("failed to fetch role list: %w", err)
+	}
+
+	reply.Roles = roleList.Roles
+
+	return nil
+}
+
+func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
+	if args.UserID == "" {
+		return fmt.Errorf("user_id is required")
+	}
+
+	userRoles, err := s.Auth0.Manager.User.Roles(args.UserID)
+
+	if err != nil {
+		return fmt.Errorf("failed to get user roles: %w", err)
+	}
+
+	reply.Roles = userRoles.Roles
+
 	return nil
 }
 

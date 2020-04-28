@@ -160,17 +160,13 @@
                         <thead class="thead-dark">
                         <tr>
                             <th scope="col">Id</th>
-                            <th scope="col">First</th>
-                            <th scope="col">Last</th>
                             <th scope="col">Email</th>
                             <th scope="col">Edit</th>
                         </tr>
                         </thead>
                         <tbody>
                             <tr v-for="account in accounts" scope="row">
-                                <td>{{ account.id }}</td>
-                                <td>{{ account.first_name }}</td>
-                                <td>{{ account.last_name }}</td>
+                                <td>{{ account.user_id }}</td>
                                 <td>{{ account.email }}</td>
                                 <td>
                                     <button class="btn">
@@ -291,6 +287,7 @@
                 <table class="table" id="sessions">
                     <thead class="thead-dark">
                       <tr>
+                        <th scope="col">Length</th>
                         <th scope="col">Session ID</th>
                         <th scope="col">User Hash</th>
                         <th scope="col">Direct RTT</th>
@@ -319,6 +316,7 @@
                             </td>
                         </tr> -->
                         <tr v-for="session in sessions" scope="row">
+                            <td>{{ sessions.length }}</td>
                             <td>{{ session.session_id }}</td>
                             <td>{{ session.user_hash }}</td>
                             <td>{{ session.direct_rtt }}</td>

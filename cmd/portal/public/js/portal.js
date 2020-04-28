@@ -6,8 +6,22 @@ mapboxgl.accessToken = 'pk.eyJ1IjoiYmF1bWJhY2hhbmRyZXciLCJhIjoiY2s4dDFwcGo2MGowZ
 
 var userInfo = null;
 
+var accountsTable = null;
+var pubKeyInput = null;
+var relaysTable = null;
+var sessionsTable = null;
+
 function startApp() {
+	/**
+	 * TODO: This whole thing needs to be cleaned up
+	 * 		No Reason to have all of these running on start. Load session map and current user details. That is all that is needed on window.load.
+	 * 		Create init handlers for other pages with their respective JSONRPC calls.
+	 */
 	Promise.all([
+		/**
+		 * QUESTION: Instead of grabbing the user here can we use the token to then go off and get everything from the backend?
+		 * 			 There are 3 different promises going off to get user details. There should be a better way to do this
+		 */
 		loginClient.getUser(),
 		loginClient.getTokenSilently()
 	]).then((response) => {
@@ -15,76 +29,32 @@ function startApp() {
 			email: response[0].email,
 			name: response[0].name,
 			nickname: response[0].nickname,
+			userId: response[0].sub,
 			token: response[1]
 		};
-		document.getElementById("app").style.display = 'block';
-		MapHandler
-			.initMap()
-			.then((response) => {
-				console.log("Map init successful");
-			})
-			.catch((error) => {
-				console.log("Map init unsuccessful: " + error);
-			});
 		JSONRPCClient
-			.call('AuthService.Users', {buyer_id: '13672574147039585173'})
-			.then(
-				(response) => {
-					console.log(response);
-				}
-			)
-			.catch(
-				(e) => {
-					console.log(e);
-				}
-			)
-		JSONRPCClient
-			.call('BuyersService.Sessions', {buyer_id: '13672574147039585173'})
+			.call('AuthService.UserRoles', {user_id: userInfo.userId})
 			.then((response) => {
-				new Vue({
-					el: '#sessions',
-					data: {
-						sessions: response.sessions || []
-					},
-					methods: {
-						fetchSessionInfo: fetchSessionInfo
-					}
-				});
+				userInfo.roles = response.roles;
+
+				document.getElementById("app").style.display = 'block';
+				MapHandler
+					.initMap()
+					.then((response) => {
+						console.log("Map init successful");
+					})
+					.catch((error) => {
+						console.log("Map init unsuccessful: " + error);
+					});
 			})
 			.catch((e) => {
-				console.log("Something went wrong with the map init!");
+				console.log("Something went wrong with getting the user roles");
 				console.log(e);
 			});
-		JSONRPCClient
-			.call('BuyersService.GameConfiguration', {buyer_id: '13672574147039585173'})
-			.then((response) => {
-				new Vue({
-					el: '#pubKey',
-					data: {
-						pubkey: response.game_config.public_key
-					},
-					methods: {
-						editUser: editUser
-					}
-				})
-			})
 		})
 		.catch((e) => {
-			console.log("Something went wrong grabbing current public key");
+			console.log("Something went wrong fetching user details or user token");
 			console.log(e);
-		});
-	JSONRPCClient
-		.call('OpsService.Relays', {})
-		.then((response) => {
-			new Vue({
-				el: '#relays',
-				data: {
-					relays: response.relays || []
-				}
-			});
-		})
-		.catch((e) => {
-			console.log("Something went wrong with fetching relays")
 		});
 }
 
@@ -114,21 +84,24 @@ function changePage(page) {
 
 	switch (page) {
 		case 'account':
+			loadAccountPage();
 			account.style.display = 'block';
-			changeAccountPage();
 			title.textContent = 'Account Details';
 			break;
 		case 'relay':
+			loadRelayPage();
 			relay.style.display = 'block';
 			relayLink.classList.add("active");
 			title.textContent = 'Relays Table';
 			break;
 		case 'sessions':
+			loadSessionPage();
 			session.style.display = 'block';
 			sessionLink.classList.add("active");
 			title.textContent = 'Session Table';
 			break;
 		case 'users':
+			loadUsersPage();
 			users.style.display = 'block';
 			usersLink.classList.add("active");
 			title.textContent = 'User Table';
@@ -159,6 +132,7 @@ function changeAccountPage(page) {
 
 	switch (page) {
 		case 'config':
+			loadConfigPage();
 			config.style.display = 'block';
 			configLink.classList.add("active");
 			break;
@@ -166,10 +140,127 @@ function changeAccountPage(page) {
 			newUser.style.display = 'block';
 			break;
 		default:
+			loadAccounts();
 			accounts.style.display = 'block';
 			accountsLink.classList.add("active");
 			newUserButton.style.display = 'block';
 	}
+}
+
+function loadAccountPage() {
+	changeAccountPage();
+}
+
+function loadAccounts() {
+	JSONRPCClient
+		.call('AuthService.AllAccounts', {buyer_id: '13672574147039585173'})
+		.then(
+			(response) => {
+				/**
+				 * I really dislike this but it is apparently the way to reload/update the data within a vue 
+				 */
+				if (accountsTable == null) {
+					accountsTable = new Vue({
+						el: '#accounts',
+						data: {
+							accounts: response.accounts
+						},
+						methods: {
+							editUser: editUser
+						}
+					})
+				} else {
+					Object.assign(accountsTable.$data, {accounts: response.accounts});
+				}
+			}
+		)
+		.catch(
+			(e) => {
+				console.log("Failed to fetch company accounts");
+				console.log(e);
+			}
+		);
+}
+
+function loadConfigPage() {
+	JSONRPCClient
+		.call('BuyersService.GameConfiguration', {buyer_id: '13672574147039585173'})
+		.then((response) => {
+			userInfo.pubKey = response.game_config.public_key;
+			/**
+			 * I really dislike this but it is apparently the way to reload/update the data within a vue
+			 */
+			if (pubKeyInput == null) {
+				pubKeyInput = new Vue({
+					el: '#pubKey',
+					data: {
+						pubkey: userInfo.pubKey
+					},
+					methods: {
+						updatePubKey: updatePubKey
+					}
+				})
+			} else {
+				Object.assign(pubKeyInput.$data, {pubkey: userInfo.pubKey})
+			}
+		})
+		.catch((e) => {
+			console.log("Something went wrong fetching public key");
+		});
+}
+
+function loadRelayPage() {
+	JSONRPCClient
+		.call('OpsService.Relays', {})
+		.then((response) => {
+			/**
+			 * I really dislike this but it is apparently the way to reload/update the data within a vue
+			 */
+			if (relaysTable == null) {
+				relaysTable = new Vue({
+					el: '#relays',
+					data: {
+						relays: response.relays || []
+					}
+				});
+			} else {
+				Object.assign(relaysTable.$data, {relays: response.relays})
+			}
+		})
+		.catch((e) => {
+			console.log("Something went wrong with fetching relays")
+		});
+}
+
+function loadSessionPage() {
+	JSONRPCClient
+		.call('BuyersService.Sessions', {buyer_id: '13672574147039585173'})
+		.then((response) => {
+			if (sessionsTable == null) {
+				/**
+				 * I really dislike this but it is apparently the way to reload/update the data within a vue
+				 */
+				sessionsTable = new Vue({
+					el: '#sessions',
+					data: {
+						sessions: response.sessions || []
+					},
+					methods: {
+						fetchSessionInfo: fetchSessionInfo
+					}
+				});
+			} else {
+				Object.assign(sessionsTable.$data, {sessions: response.sessions})
+			}
+		})
+		.catch((e) => {
+			console.log("Something went wrong with fetching the sessions list");
+			console.log(e);
+		});
+}
+
+function loadUsersPage() {
+
 }
 
 function updatePubKey() {
@@ -181,8 +272,8 @@ function updatePubKey() {
 			document.getElementById("pubKey").value = response.game_config.public_key;
 		})
 		.catch((e) => {
-			console.log(e);
 			console.log("Failed to update public key");
+			console.log(e);
 		})
 }
 
@@ -191,14 +282,13 @@ function fetchSessionInfo(sessionId = '') {
 	const id = sessionId || document.getElementById("sessionIDLookup").value;
 	document.getElementById("sessionIDLookup").value = '';
 
-	/* if (id == '') {
+	if (id == '') {
 		console.log("Can't use a empty id");
 		return;
-	} */
+	}
 	JSONRPCClient
 		.call("BuyersService.Sessions", {buyer_id: '13672574147039585173'/* , session_id: id */})
 		.then((response) => {
-			console.log(response);
 			var sessionToolMapInstance = new deck.DeckGL({
 				mapboxApiAccessToken: mapboxgl.accessToken,
 				mapStyle: 'mapbox://styles/mapbox/dark-v10',
@@ -307,7 +397,6 @@ JSONRPCClient = {
 
 
 		return response.json().then((json) => {
-			console.log(json)
 			if (json.error) {
 				throw new Error(json.error);
 			}
@@ -316,13 +405,11 @@ JSONRPCClient = {
 	}
 }
 window.MapHandler = {
-
 	mapInstance: null,
 	async initMap() {
 		JSONRPCClient
 			.call('BuyersService.SessionsMap', {buyer_id: '13672574147039585173'})
 			.then((response) => {
-				console.log(response)
 				const DATA_URL =
   					'https://raw.githubusercontent.com/uber-common/deck.gl-data/master/examples/screen-grid/uber-pickup-locations.json';
 				const data = DATA_URL, cellSize = 5, gpuAggregation = true, aggregation = 'SUM';
@@ -365,6 +452,7 @@ window.MapHandler = {
 				});
 			})
 			.catch((e) => {
+				console.log("Something went wrong with map init");
 				console.log(e);
 			});
 
