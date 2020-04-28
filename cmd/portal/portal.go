@@ -119,7 +119,7 @@ func main() {
 		SSHPort:        22,
 	})
 
-	auth0Client, err := storage.NewAuth0Manager(ctx, logger)
+	auth0Client, err := storage.NewAuth0(ctx, logger)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		os.Exit(1)

@@ -12,7 +12,7 @@ type Auth0 struct {
 	Logger  log.Logger
 }
 
-func NewAuth0Manager(ctx context.Context, logger log.Logger) (*Auth0, error) {
+func NewAuth0(ctx context.Context, logger log.Logger) (*Auth0, error) {
 	manager, err := management.New(
 		"networknext.auth0.com",
 		"NIwrWYmG9U3tCQP6QxJqCx8n2xGSTCvf",

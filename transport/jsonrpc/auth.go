@@ -3,6 +3,7 @@ package jsonrpc
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
@@ -23,9 +24,12 @@ type UsersReply struct {
 type user struct {
 }
 
-/* func (s *AuthService) Users(r *http.Request, args *UsersArgs, reply *UsersReply) error {
-
-} */
+func (s *AuthService) Users(r *http.Request, args *UsersArgs, reply *UsersReply) error {
+	userList, err := s.Auth0.Manager.User.List()
+	fmt.Println(userList)
+	fmt.Println(err)
+	return nil
+}
 
 type response struct {
 	Message string `json:"message"`
