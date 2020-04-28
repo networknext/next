@@ -12,20 +12,14 @@ var relaysTable = null;
 var sessionsTable = null;
 
 function startApp() {
-	/**
-	 * TODO: This whole thing needs to be cleaned up
-	 * 		No Reason to have all of these running on start. Load session map and current user details. That is all that is needed on window.load.
-	 * 		Create init handlers for other pages with their respective JSONRPC calls.
-	 */
 	Promise.all([
 		/**
 		 * QUESTION: Instead of grabbing the user here can we use the token to then go off and get everything from the backend?
-		 * 			 There are 3 different promises going off to get user details. There should be a better way to do this
+		 * TODO:	 There are 3 different promises going off to get user details. There should be a better way to do this
 		 */
 		loginClient.getUser(),
 		loginClient.getTokenSilently()
 	]).then((response) => {
-		console.log(response)
 		userInfo = {
 			email: response[0].email,
 			name: response[0].name,
@@ -261,7 +255,7 @@ function loadSessionPage() {
 }
 
 function loadUsersPage() {
-
+	// No Endpoint for this yet
 }
 
 function updatePubKey() {

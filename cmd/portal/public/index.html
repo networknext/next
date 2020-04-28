@@ -287,7 +287,6 @@
                 <table class="table" id="sessions">
                     <thead class="thead-dark">
                       <tr>
-                        <th scope="col">Length</th>
                         <th scope="col">Session ID</th>
                         <th scope="col">User Hash</th>
                         <th scope="col">Direct RTT</th>
@@ -316,7 +315,6 @@
                             </td>
                         </tr> -->
                         <tr v-for="session in sessions" scope="row">
-                            <td>{{ sessions.length }}</td>
                             <td>{{ session.session_id }}</td>
                             <td>{{ session.user_hash }}</td>
                             <td>{{ session.direct_rtt }}</td>
