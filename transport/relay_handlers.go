@@ -365,7 +365,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			return
 		}
 
-		locallogger = log.With(logger, "relay_addr", relayInitRequest.Address.String())
+		locallogger = log.With(locallogger, "relay_addr", relayInitRequest.Address.String())
 
 		if relayInitRequest.Magic != InitRequestMagic {
 			level.Error(locallogger).Log("msg", "magic number mismatch", "magic_number", relayInitRequest.Magic)
