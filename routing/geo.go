@@ -88,8 +88,8 @@ type GeoClient struct {
 func (c *GeoClient) Add(r Relay) error {
 	geoloc := redis.GeoLocation{
 		Name:      strconv.FormatUint(r.ID, 10),
-		Latitude:  r.Latitude,
-		Longitude: r.Longitude,
+		Latitude:  r.Datacenter.Location.Latitude,
+		Longitude: r.Datacenter.Location.Longitude,
 	}
 
 	return c.RedisClient.GeoAdd(c.Namespace, &geoloc).Err()
@@ -123,9 +123,13 @@ func (c *GeoClient) RelaysWithin(lat float64, long float64, radius float64, uom 
 		}
 
 		relays[idx] = Relay{
-			ID:        id,
-			Latitude:  geoloc.Latitude,
-			Longitude: geoloc.Longitude,
+			ID: id,
+			Datacenter: Datacenter{
+				Location: Location{
+					Latitude:  geoloc.Latitude,
+					Longitude: geoloc.Longitude,
+				},
+			},
 		}
 	}
 

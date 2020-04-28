@@ -752,9 +752,7 @@ func TestNoRoutesFound(t *testing.T) {
 	}
 
 	nearbyRelay := routing.Relay{
-		ID:        1,
-		Latitude:  0,
-		Longitude: 0,
+		ID: 1,
 	}
 	err = geoClient.Add(nearbyRelay)
 	assert.NoError(t, err)
@@ -847,9 +845,7 @@ func TestTokenEncryptionFailure(t *testing.T) {
 	}
 
 	nearbyRelay := routing.Relay{
-		ID:        1,
-		Latitude:  0,
-		Longitude: 0,
+		ID: 1,
 	}
 	err = geoClient.Add(nearbyRelay)
 	assert.NoError(t, err)
@@ -957,9 +953,7 @@ func TestBadWriteResponse(t *testing.T) {
 	}
 
 	nearbyRelay := routing.Relay{
-		ID:        1,
-		Latitude:  0,
-		Longitude: 0,
+		ID: 1,
 	}
 	err = geoClient.Add(nearbyRelay)
 	assert.NoError(t, err)
@@ -1074,9 +1068,7 @@ func TestBillingFailure(t *testing.T) {
 	}
 
 	nearbyRelay := routing.Relay{
-		ID:        1,
-		Latitude:  0,
-		Longitude: 0,
+		ID: 1,
 	}
 	err = geoClient.Add(nearbyRelay)
 	assert.NoError(t, err)
@@ -1194,9 +1186,7 @@ func TestNextRouteResponse(t *testing.T) {
 	}
 
 	nearbyRelay := routing.Relay{
-		ID:        1,
-		Latitude:  0,
-		Longitude: 0,
+		ID: 1,
 	}
 	err = geoClient.Add(nearbyRelay)
 	assert.NoError(t, err)
@@ -1310,9 +1300,7 @@ func TestContinueRouteResponse(t *testing.T) {
 	}
 
 	nearbyRelay := routing.Relay{
-		ID:        1,
-		Latitude:  0,
-		Longitude: 0,
+		ID: 1,
 	}
 	geoClient.Add(nearbyRelay)
 
@@ -1433,9 +1421,7 @@ func TestCachedRouteResponse(t *testing.T) {
 	}
 
 	nearbyRelay := routing.Relay{
-		ID:        1,
-		Latitude:  0,
-		Longitude: 0,
+		ID: 1,
 	}
 	err = geoClient.Add(nearbyRelay)
 	assert.NoError(t, err)
@@ -1576,9 +1562,7 @@ func TestVetoedRTT(t *testing.T) {
 	}
 
 	nearbyRelay := routing.Relay{
-		ID:        1,
-		Latitude:  0,
-		Longitude: 0,
+		ID: 1,
 	}
 	err = geoClient.Add(nearbyRelay)
 	assert.NoError(t, err)
@@ -1697,9 +1681,7 @@ func TestVetoExpiredRTT(t *testing.T) {
 	}
 
 	nearbyRelay := routing.Relay{
-		ID:        1,
-		Latitude:  0,
-		Longitude: 0,
+		ID: 1,
 	}
 	err = geoClient.Add(nearbyRelay)
 	assert.NoError(t, err)
@@ -1818,9 +1800,7 @@ func TestVetoedPacketLoss(t *testing.T) {
 	}
 
 	nearbyRelay := routing.Relay{
-		ID:        1,
-		Latitude:  0,
-		Longitude: 0,
+		ID: 1,
 	}
 	err = geoClient.Add(nearbyRelay)
 	assert.NoError(t, err)
@@ -1939,9 +1919,7 @@ func TestVetoExpiredPacketLoss(t *testing.T) {
 	}
 
 	nearbyRelay := routing.Relay{
-		ID:        1,
-		Latitude:  0,
-		Longitude: 0,
+		ID: 1,
 	}
 	err = geoClient.Add(nearbyRelay)
 	assert.NoError(t, err)
@@ -2063,9 +2041,7 @@ func TestForceDirect(t *testing.T) {
 	}
 
 	nearbyRelay := routing.Relay{
-		ID:        1,
-		Latitude:  0,
-		Longitude: 0,
+		ID: 1,
 	}
 	err = geoClient.Add(nearbyRelay)
 	assert.NoError(t, err)
@@ -2181,9 +2157,7 @@ func TestForceNext(t *testing.T) {
 	}
 
 	nearbyRelay := routing.Relay{
-		ID:        1,
-		Latitude:  0,
-		Longitude: 0,
+		ID: 1,
 	}
 	err = geoClient.Add(nearbyRelay)
 	assert.NoError(t, err)

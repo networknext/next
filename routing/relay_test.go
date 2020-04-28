@@ -32,9 +32,11 @@ func TestRelay(t *testing.T) {
 			ID:      321,
 			Name:    "datacenter name",
 			Enabled: true,
+			Location: routing.Location{
+				Latitude:  123.456,
+				Longitude: 654.321,
+			},
 		},
-		Latitude:       123.456,
-		Longitude:      654.321,
 		LastUpdateTime: time.Now().Round(0), // Round(0) drops any monoatomic clock reading so that deep equal passes
 		State:          routing.RelayStateEnabled,
 	}
@@ -143,14 +145,28 @@ func TestRelay(t *testing.T) {
 		t.Run("missing longitude", func(t *testing.T) {
 			size += 8
 			buff = buff[:size]
-			encoding.WriteUint64(buff, &index, uint64(expected.Latitude))
+			encoding.WriteFloat64(buff, &index, expected.Datacenter.Location.Latitude)
 			assert.EqualError(t, actual.UnmarshalBinary(buff), "failed to unmarshal relay longitude")
+		})
+
+		t.Run("missing NIC speed", func(t *testing.T) {
+			size += 8
+			buff = buff[:size]
+			encoding.WriteFloat64(buff, &index, expected.Datacenter.Location.Longitude)
+			assert.EqualError(t, actual.UnmarshalBinary(buff), "failed to unmarshal relay NIC speed")
+		})
+
+		t.Run("missing included bandwidth", func(t *testing.T) {
+			size += 8
+			buff = buff[:size]
+			encoding.WriteUint64(buff, &index, expected.NICSpeedMbps)
+			assert.EqualError(t, actual.UnmarshalBinary(buff), "failed to unmarshal relay included bandwidth")
 		})
 
 		t.Run("missing last update time", func(t *testing.T) {
 			size += 8
 			buff = buff[:size]
-			encoding.WriteUint64(buff, &index, uint64(expected.Longitude))
+			encoding.WriteUint64(buff, &index, uint64(expected.IncludedBandwidthGB))
 			assert.EqualError(t, actual.UnmarshalBinary(buff), "failed to unmarshal relay last update time")
 		})
 
@@ -161,10 +177,54 @@ func TestRelay(t *testing.T) {
 			assert.EqualError(t, actual.UnmarshalBinary(buff), "failed to unmarshal relay state")
 		})
 
-		t.Run("valid", func(t *testing.T) {
+		t.Run("missing management address", func(t *testing.T) {
 			size += 4
 			buff = buff[:size]
 			encoding.WriteUint32(buff, &index, uint32(expected.State))
+			assert.EqualError(t, actual.UnmarshalBinary(buff), "failed to unmarshal relay management address")
+		})
+
+		t.Run("missing ssh user", func(t *testing.T) {
+			managementAddr := expected.ManagementAddr
+			size += 4 + len(managementAddr)
+			buff = buff[:size]
+			encoding.WriteString(buff, &index, managementAddr, uint32(len(managementAddr)))
+			assert.EqualError(t, actual.UnmarshalBinary(buff), "failed to unmarshal relay SSH username")
+		})
+
+		t.Run("missing ssh port", func(t *testing.T) {
+			sshUser := expected.SSHUser
+			size += 4 + len(sshUser)
+			buff = buff[:size]
+			encoding.WriteString(buff, &index, sshUser, uint32(len(sshUser)))
+			assert.EqualError(t, actual.UnmarshalBinary(buff), "failed to unmarshal relay SSH port")
+		})
+
+		t.Run("missing session count", func(t *testing.T) {
+			size += 8
+			buff = buff[:size]
+			encoding.WriteUint64(buff, &index, uint64(expected.SSHPort))
+			assert.EqualError(t, actual.UnmarshalBinary(buff), "failed to unmarshal relay session count")
+		})
+
+		t.Run("missing bytes sent", func(t *testing.T) {
+			size += 8
+			buff = buff[:size]
+			encoding.WriteUint64(buff, &index, expected.TrafficStats.SessionCount)
+			assert.EqualError(t, actual.UnmarshalBinary(buff), "failed to unmarshal relay bytes sent")
+		})
+
+		t.Run("missing bytes received", func(t *testing.T) {
+			size += 8
+			buff = buff[:size]
+			encoding.WriteUint64(buff, &index, expected.TrafficStats.BytesSent)
+			assert.EqualError(t, actual.UnmarshalBinary(buff), "failed to unmarshal relay bytes received")
+		})
+
+		t.Run("valid", func(t *testing.T) {
+			size += 8
+			buff = buff[:size]
+			encoding.WriteUint64(buff, &index, expected.TrafficStats.BytesReceived)
 			assert.NoError(t, actual.UnmarshalBinary(buff))
 		})
 	})

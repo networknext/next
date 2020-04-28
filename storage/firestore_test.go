@@ -1156,16 +1156,13 @@ func TestFirestore(t *testing.T) {
 			EgressPriceCents:  20,
 		}
 
-		lat := 70.5
-		long := 120.5
-
 		expectedDatacenter := routing.Datacenter{
 			ID:      crypto.HashID("local"),
 			Name:    "local",
 			Enabled: true,
 			Location: routing.Location{
-				Latitude:  lat,
-				Longitude: long,
+				Latitude:  70.5,
+				Longitude: 120.5,
 			},
 		}
 
@@ -1179,8 +1176,6 @@ func TestFirestore(t *testing.T) {
 			PublicKey:  make([]byte, crypto.KeySize),
 			Seller:     expectedSeller,
 			Datacenter: expectedDatacenter,
-			Latitude:   lat,
-			Longitude:  long,
 		}
 
 		err = fs.AddBuyer(ctx, expectedBuyer)
