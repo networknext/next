@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"errors"
+	"fmt"
 	"net"
 	"testing"
 	"time"
@@ -1269,6 +1270,12 @@ func TestNextRouteResponse(t *testing.T) {
 	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &rp, &iploc, &geoClient, &sessionMetrics, &billing.NoOpBiller{}, TestServerBackendPrivateKey[:], TestRouterPrivateKey[:])
 	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
+	assert.True(t, redisServer.Exists(fmt.Sprintf("session-%x-meta", packet.SessionID)))
+	assert.Greater(t, redisServer.TTL(fmt.Sprintf("session-%x-meta", packet.SessionID)).Hours(), float64(-1))
+
+	assert.True(t, redisServer.Exists(fmt.Sprintf("session-%x-slices", packet.SessionID)))
+	assert.Greater(t, redisServer.TTL(fmt.Sprintf("session-%x-slices", packet.SessionID)).Hours(), float64(-1))
+
 	validateNextResponsePacket(t, resbuf, packet.SessionID, packet.Sequence, 5, routing.RouteTypeNew, sessionMetrics.NextSessions, sessionMetrics.DecisionMetrics.RTTReduction)
 }
 
@@ -1384,6 +1391,12 @@ func TestContinueRouteResponse(t *testing.T) {
 
 	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &rp, &iploc, &geoClient, &sessionMetrics, &billing.NoOpBiller{}, TestServerBackendPrivateKey[:], TestRouterPrivateKey[:])
 	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
+
+	assert.True(t, redisServer.Exists(fmt.Sprintf("session-%x-meta", packet.SessionID)))
+	assert.Greater(t, redisServer.TTL(fmt.Sprintf("session-%x-meta", packet.SessionID)).Hours(), float64(-1))
+
+	assert.True(t, redisServer.Exists(fmt.Sprintf("session-%x-slices", packet.SessionID)))
+	assert.Greater(t, redisServer.TTL(fmt.Sprintf("session-%x-slices", packet.SessionID)).Hours(), float64(-1))
 
 	var actual transport.SessionResponsePacket
 	err = actual.UnmarshalBinary(resbuf.Bytes())
