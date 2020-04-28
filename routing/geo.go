@@ -22,12 +22,12 @@ type IPLocator interface {
 
 // Location represents a lat/long on Earth with additional metadata
 type Location struct {
-	Continent string
-	Country   string
-	Region    string
-	City      string
-	Latitude  float64
-	Longitude float64
+	Continent string  `json:"continent"`
+	Country   string  `json:"country"`
+	Region    string  `json:"region"`
+	City      string  `json:"city"`
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
 }
 
 // MaxmindDB embeds the unofficial MaxmindDB reader so we can satisfy the IPLocator interface

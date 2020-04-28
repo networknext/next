@@ -192,9 +192,9 @@ func (r *Relay) Key() string {
 }
 
 type Stats struct {
-	RTT        float64
-	Jitter     float64
-	PacketLoss float64
+	RTT        float64 `json:"rtt"`
+	Jitter     float64 `json:"jitter"`
+	PacketLoss float64 `json:"packet_loss"`
 }
 
 func (s Stats) String() string {
