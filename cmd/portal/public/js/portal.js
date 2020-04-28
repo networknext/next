@@ -97,7 +97,6 @@ function startApp() {
 	JSONRPCClient
 		.call('OpsService.Relays', {})
 		.then((response) => {
-			console.log(response)
 			new Vue({
 				el: '#relays',
 				data: {
@@ -154,6 +153,7 @@ function changePage(page) {
 			users.style.display = 'block';
 			usersLink.classList.add("active");
 			title.textContent = 'User Table';
+			break;
 		default:
 			map.style.display = 'block';
 			mapLink.classList.add("active");
@@ -164,14 +164,16 @@ function changePage(page) {
 function changeAccountPage(page) {
 	let config = document.getElementById("config");
 	let accounts = document.getElementById("accounts");
-	let newUser = document.getElementById("newUser");
+	let newUser = document.getElementById("new-user");
+	let newUserButton = document.getElementById("new-user-button");
 
 	let accountsLink = document.getElementById("accounts-link");
 	let configLink = document.getElementById("config-link");
 
-	config.style.display = 'none';
 	accounts.style.display = 'none';
+	config.style.display = 'none';
 	newUser.style.display = 'none';
+	newUserButton.style.display = 'none';
 
 	accountsLink.classList.remove("active");
 	configLink.classList.remove("active");
@@ -187,6 +189,7 @@ function changeAccountPage(page) {
 		default:
 			accounts.style.display = 'block';
 			accountsLink.classList.add("active");
+			newUserButton.style.display = 'block';
 	}
 }
 
