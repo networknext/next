@@ -69,15 +69,15 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 			params.Metrics.Invocations.Add(1)
 		}()
 
+		locallogger := log.With(handlerLogger, "req_addr", request.RemoteAddr)
+
 		// Read in the request
 		body, err := ioutil.ReadAll(request.Body)
 		if err != nil {
-			level.Error(handlerLogger).Log("msg", "could not read packet", "err", err)
+			level.Error(locallogger).Log("msg", "could not read packet", "err", err)
 			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
-
-		handlerLogger = log.With(handlerLogger, "req_addr", request.RemoteAddr)
 
 		// Unmarshal the request packet
 		var relayRequest RelayRequest
@@ -89,13 +89,13 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 
 		// Check that the request doesn't exceed the maximum number of relays that a relay can ping
 		if len(relayRequest.PingStats) > MaxRelays {
-			level.Error(handlerLogger).Log("msg", "max relays exceeded", "relay count", len(relayRequest.PingStats))
+			level.Error(locallogger).Log("msg", "max relays exceeded", "relay count", len(relayRequest.PingStats))
 			http.Error(writer, "max relays exceeded", http.StatusBadRequest)
 			params.Metrics.ErrorMetrics.ExceedMaxRelays.Add(1)
 			return
 		}
 
-		locallogger := log.With(logger, "relay_addr", relayRequest.Address.String())
+		locallogger = log.With(logger, "relay_addr", relayRequest.Address.String())
 
 		// Gets the relay ID as a hash of its address
 		id := crypto.HashID(relayRequest.Address.String())
@@ -223,21 +223,21 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 			// Get the relay from redis
 			hgetResult := params.RedisClient.HGet(routing.HashKeyAllRelays, relay.Key())
 			if hgetResult.Err() != nil && hgetResult.Err() != redis.Nil {
-				level.Error(handlerLogger).Log("msg", "failed to get relay", "err", exists.Err())
+				level.Error(locallogger).Log("msg", "failed to get relay", "err", exists.Err())
 				http.Error(writer, "failed to get relay", http.StatusNotFound)
 				return
 			}
 
 			data, err := hgetResult.Bytes()
 			if err != nil && err != redis.Nil {
-				level.Error(handlerLogger).Log("msg", "failed to get relay data", "err", err)
+				level.Error(locallogger).Log("msg", "failed to get relay data", "err", err)
 				http.Error(writer, "failed to get relay data", http.StatusInternalServerError)
 				return
 			}
 
 			// Unmarshal the relay entry
 			if err = relay.UnmarshalBinary(data); err != nil {
-				level.Error(handlerLogger).Log("msg", "failed to unmarshal relay data", "err", err)
+				level.Error(locallogger).Log("msg", "failed to unmarshal relay data", "err", err)
 				http.Error(writer, "failed to unmarshal relay data", http.StatusInternalServerError)
 				params.Metrics.ErrorMetrics.RelayUnmarshalFailure.Add(1)
 				return
@@ -272,14 +272,14 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 
 		// Regular set for expiry
 		if res := params.RedisClient.Set(relay.Key(), relay.ID, routing.RelayTimeout); res.Err() != nil {
-			level.Error(handlerLogger).Log("msg", "failed to set relay expiry in redis", "err", res.Err())
+			level.Error(locallogger).Log("msg", "failed to set relay expiry in redis", "err", res.Err())
 			http.Error(writer, "failed to update relay", http.StatusInternalServerError)
 			return
 		}
 
 		// HSet for full relay data
 		if res := params.RedisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay); res.Err() != nil {
-			level.Error(handlerLogger).Log("msg", "failed to store relay in redis", "err", res.Err())
+			level.Error(locallogger).Log("msg", "failed to store relay in redis", "err", res.Err())
 			http.Error(writer, "failed to update relay", http.StatusInternalServerError)
 			return
 		}
@@ -287,12 +287,12 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 		// Get all of the relays to make a list of relays for the requesting relay to ping
 		hgetallResult := params.RedisClient.HGetAll(routing.HashKeyAllRelays)
 		if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
-			level.Error(handlerLogger).Log("msg", "failed to get other relays", "err", hgetallResult.Err())
+			level.Error(locallogger).Log("msg", "failed to get other relays", "err", hgetallResult.Err())
 			http.Error(writer, "failed to get other relays", http.StatusNotFound)
 			return
 		}
 
-		level.Debug(handlerLogger).Log("msg", "relay updated")
+		level.Debug(locallogger).Log("msg", "relay updated")
 
 		// Create the list of relays to ping
 		relaysToPing := make([]RelayPingStats, 0)
@@ -300,7 +300,7 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 			if k != relay.Key() {
 				var unmarshaledValue routing.Relay
 				if err := unmarshaledValue.UnmarshalBinary([]byte(v)); err != nil {
-					level.Error(handlerLogger).Log("msg", "failed to get other relay", "err", err)
+					level.Error(locallogger).Log("msg", "failed to get other relay", "err", err)
 					continue
 				}
 
@@ -319,7 +319,7 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 
 		responseData, err = response.MarshalJSON()
 		if err != nil {
-			level.Error(handlerLogger).Log("msg", "failed to marshal response JSON", "err", err)
+			level.Error(locallogger).Log("msg", "failed to marshal response JSON", "err", err)
 			http.Error(writer, "failed to marshal response JSON", http.StatusInternalServerError)
 			return
 		}
@@ -341,14 +341,14 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			params.Metrics.Invocations.Add(1)
 		}()
 
+		locallogger := log.With(handlerLogger, "req_addr", request.RemoteAddr)
+
 		body, err := ioutil.ReadAll(request.Body)
 		if err != nil {
-			level.Error(handlerLogger).Log("msg", "could not read packet", "err", err)
+			level.Error(locallogger).Log("msg", "could not read packet", "err", err)
 			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
-
-		handlerLogger = log.With(handlerLogger, "req_addr", request.RemoteAddr)
 
 		var relayInitRequest RelayInitRequest
 		switch request.Header.Get("Content-Type") {
@@ -365,7 +365,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			return
 		}
 
-		locallogger := log.With(logger, "relay_addr", relayInitRequest.Address.String())
+		locallogger = log.With(logger, "relay_addr", relayInitRequest.Address.String())
 
 		if relayInitRequest.Magic != InitRequestMagic {
 			level.Error(locallogger).Log("msg", "magic number mismatch", "magic_number", relayInitRequest.Magic)
@@ -501,7 +501,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			return
 		}
 
-		handlerLogger = log.With(handlerLogger, "req_addr", request.RemoteAddr)
+		locallogger := log.With(handlerLogger, "req_addr", request.RemoteAddr)
 
 		var relayUpdateRequest RelayUpdateRequest
 		switch request.Header.Get("Content-Type") {
@@ -519,14 +519,14 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		}
 
 		if relayUpdateRequest.Version != VersionNumberUpdateRequest {
-			level.Error(handlerLogger).Log("msg", "version mismatch", "version", relayUpdateRequest.Version)
+			level.Error(locallogger).Log("msg", "version mismatch", "version", relayUpdateRequest.Version)
 			http.Error(writer, "version mismatch", http.StatusBadRequest)
 			params.Metrics.ErrorMetrics.InvalidVersion.Add(1)
 			return
 		}
 
 		if len(relayUpdateRequest.PingStats) > MaxRelays {
-			level.Error(handlerLogger).Log("msg", "max relays exceeded", "relay count", len(relayUpdateRequest.PingStats))
+			level.Error(locallogger).Log("msg", "max relays exceeded", "relay count", len(relayUpdateRequest.PingStats))
 			http.Error(writer, "max relays exceeded", http.StatusBadRequest)
 			params.Metrics.ErrorMetrics.ExceedMaxRelays.Add(1)
 			return
@@ -539,14 +539,14 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		exists := params.RedisClient.HExists(routing.HashKeyAllRelays, relay.Key())
 
 		if exists.Err() != nil && exists.Err() != redis.Nil {
-			level.Error(handlerLogger).Log("msg", "failed to check if relay is registered", "err", exists.Err())
+			level.Error(locallogger).Log("msg", "failed to check if relay is registered", "err", exists.Err())
 			http.Error(writer, "failed to check if relay is registered", http.StatusInternalServerError)
 			params.Metrics.ErrorMetrics.RedisFailure.Add(1)
 			return
 		}
 
 		if !exists.Val() {
-			level.Warn(handlerLogger).Log("msg", "relay not initialized")
+			level.Warn(locallogger).Log("msg", "relay not initialized")
 			http.Error(writer, "relay not initialized", http.StatusNotFound)
 			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
 			return
@@ -554,27 +554,27 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 
 		hgetResult := params.RedisClient.HGet(routing.HashKeyAllRelays, relay.Key())
 		if hgetResult.Err() != nil && hgetResult.Err() != redis.Nil {
-			level.Error(handlerLogger).Log("msg", "failed to get relays", "err", exists.Err())
+			level.Error(locallogger).Log("msg", "failed to get relays", "err", exists.Err())
 			http.Error(writer, "failed to get relays", http.StatusNotFound)
 			return
 		}
 
 		data, err := hgetResult.Bytes()
 		if err != nil && err != redis.Nil {
-			level.Error(handlerLogger).Log("msg", "failed to get relay data", "err", err)
+			level.Error(locallogger).Log("msg", "failed to get relay data", "err", err)
 			http.Error(writer, "failed to get relay data", http.StatusInternalServerError)
 			return
 		}
 
 		if err = relay.UnmarshalBinary(data); err != nil {
-			level.Error(handlerLogger).Log("msg", "failed to unmarshal relay data", "err", err)
+			level.Error(locallogger).Log("msg", "failed to unmarshal relay data", "err", err)
 			http.Error(writer, "failed to unmarshal relay data", http.StatusInternalServerError)
 			params.Metrics.ErrorMetrics.RelayUnmarshalFailure.Add(1)
 			return
 		}
 
 		if !bytes.Equal(relayUpdateRequest.Token, relay.PublicKey) {
-			level.Error(handlerLogger).Log("msg", "relay public key doesn't match")
+			level.Error(locallogger).Log("msg", "relay public key doesn't match")
 			http.Error(writer, "relay public key doesn't match", http.StatusBadRequest)
 			params.Metrics.ErrorMetrics.InvalidToken.Add(1)
 			return
@@ -598,7 +598,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 
 		// Regular set for expiry
 		if res := params.RedisClient.Set(relay.Key(), 0, routing.RelayTimeout); res.Err() != nil {
-			level.Error(handlerLogger).Log("msg", "failed to store relay update expiry", "err", res.Err())
+			level.Error(locallogger).Log("msg", "failed to store relay update expiry", "err", res.Err())
 			http.Error(writer, "failed to store relay update expiry", http.StatusInternalServerError)
 			return
 		}
@@ -609,14 +609,14 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 
 		// HSet for full relay data
 		if res := params.RedisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay); res.Err() != nil {
-			level.Error(handlerLogger).Log("msg", "failed to store relay update", "err", res.Err())
+			level.Error(locallogger).Log("msg", "failed to store relay update", "err", res.Err())
 			http.Error(writer, "failed to store relay update", http.StatusInternalServerError)
 			return
 		}
 
 		hgetallResult := params.RedisClient.HGetAll(routing.HashKeyAllRelays)
 		if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
-			level.Error(handlerLogger).Log("msg", "failed to get other relays", "err", hgetallResult.Err())
+			level.Error(locallogger).Log("msg", "failed to get other relays", "err", hgetallResult.Err())
 			http.Error(writer, "failed to get other relays", http.StatusNotFound)
 			return
 		}
@@ -625,7 +625,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			if k != relay.Key() {
 				var unmarshaledValue routing.Relay
 				if err := unmarshaledValue.UnmarshalBinary([]byte(v)); err != nil {
-					level.Error(handlerLogger).Log("msg", "failed to get other relay", "err", err)
+					level.Error(locallogger).Log("msg", "failed to get other relay", "err", err)
 					continue
 				}
 
@@ -645,7 +645,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			"bytes_send", relayUpdateRequest.TrafficStats.BytesSent,
 		)
 
-		level.Debug(handlerLogger).Log("msg", "relay updated")
+		level.Debug(locallogger).Log("msg", "relay updated")
 
 		var responseData []byte
 		response := RelayUpdateResponse{}
