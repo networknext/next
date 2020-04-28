@@ -195,6 +195,37 @@ func (s *BuyersService) Sessions(r *http.Request, args *SessionsArgs, reply *Ses
 	return nil
 }
 
+type SessionDetailsArgs struct {
+	SessionID string `json:"session_id"`
+}
+
+type SessionDetailsReply struct {
+	Meta   routing.SessionMeta    `json:"meta"`
+	Slices []routing.SessionSlice `json:"slices"`
+}
+
+func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs, reply *SessionDetailsReply) error {
+	data, err := s.RedisClient.Get(fmt.Sprintf("session-%s-meta", args.SessionID)).Bytes()
+	if err != nil {
+		return err
+	}
+	err = reply.Meta.UnmarshalBinary(data)
+	if err != nil {
+		return err
+	}
+
+	err = s.RedisClient.SMembers(fmt.Sprintf("session-%s-slices", args.SessionID)).ScanSlice(&reply.Slices)
+	if err != nil {
+		return err
+	}
+
+	sort.Slice(reply.Slices, func(i int, j int) bool {
+		return reply.Slices[i].Timestamp.Before(reply.Slices[j].Timestamp)
+	})
+
+	return nil
+}
+
 type GameConfigurationArgs struct {
 	BuyerID      string `json:"buyer_id"`
 	NewPublicKey string `json:"new_public_key"`
