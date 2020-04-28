@@ -22,11 +22,15 @@ type UsersReply struct {
 }
 
 type user struct {
+	UserID string `json:"user_id"`
+	Name   string `json:"name"`
+	Email  string `json:"email"`
+	Image  string `json:"image"`
 }
 
 func (s *AuthService) Users(r *http.Request, args *UsersArgs, reply *UsersReply) error {
 	userList, err := s.Auth0.Manager.User.List()
-	fmt.Println(userList)
+	fmt.Println(userList.Users)
 	fmt.Println(err)
 	return nil
 }
