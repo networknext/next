@@ -47,15 +47,46 @@ function startApp() {
 			console.log(e);
 		});
 	JSONRPCClient
+		.call('BuyersService.Sessions', {buyer_id: '13672574147039585173'}) // Change this to user endpoint when available
+		.then((response) => {
+			new Vue({
+				el: '#users',
+				data: {
+					users: response.users || []
+				},
+				methods: {
+					fetchSessionInfo: fetchSessionInfo
+				}
+			});
+		})
+		.catch((e) => {
+			console.log("Something went wrong with fetching users");
+			console.log(e);
+		});
+	JSONRPCClient
+		.call('BuyersService.Sessions', {buyer_id: '13672574147039585173'}) // Change this to company accounts endpoint when available
+		.then((response) => {
+			new Vue({
+				el: '#accounts',
+				data: {
+					accounts: response.accounts || []
+				},
+				methods: {
+					editUser: editUser
+				}
+			});
+		})
+		.catch((e) => {
+			console.log("Something went wrong with fetching users");
+			console.log(e);
+		});
+	JSONRPCClient
 		.call('BuyersService.GameConfiguration', {buyer_id: '13672574147039585173'})
 		.then((response) => {
 			new Vue({
 				el: '#pubKey',
 				data: {
 					pubkey: response.game_config.public_key
-				},
-				methods: {
-					editUser: editUser
 				}
 			})
 		})
@@ -68,18 +99,22 @@ function startApp() {
 function changePage(page) {
 	let account = document.getElementById("account-workspace");
 	let session = document.getElementById("session-workspace");
+	let users = document.getElementById("users-workspace");
 	let map = document.getElementById("map-workspace");
 	let title = document.getElementById("workspace-title");
 
 	let mapLink = document.getElementById("home-link");
 	let sessionLink = document.getElementById("session-link");
+	let usersLink = document.getElementById("users-link");
 
 	account.style.display = 'none';
 	map.style.display = 'none';
 	session.style.display = 'none';
+	users.style.display = 'none';
 
 	mapLink.classList.remove("active");
 	sessionLink.classList.remove("active");
+	usersLink.classList.remove("active");
 
 	switch (page) {
 		case 'sessions':
@@ -92,6 +127,11 @@ function changePage(page) {
 			changeAccountPage();
 			title.textContent = 'Account Details';
 			break;
+		case 'users':
+			users.style.display = 'block';
+			usersLink.classList.add("active");
+			title.textContent = 'User Table';
+			break;
 		default:
 			map.style.display = 'block';
 			mapLink.classList.add("active");
@@ -101,17 +141,17 @@ function changePage(page) {
 
 function changeAccountPage(page) {
 	let config = document.getElementById("config");
-	let users = document.getElementById("users");
+	let accounts = document.getElementById("accounts");
 	let newUser = document.getElementById("newUser");
 
-	let usersLink = document.getElementById("users-link");
+	let accountsLink = document.getElementById("accounts-link");
 	let configLink = document.getElementById("config-link");
 
 	config.style.display = 'none';
-	users.style.display = 'none';
+	accounts.style.display = 'none';
 	newUser.style.display = 'none';
 
-	usersLink.classList.remove("active");
+	accountsLink.classList.remove("active");
 	configLink.classList.remove("active");
 
 	switch (page) {
@@ -123,8 +163,8 @@ function changeAccountPage(page) {
 			newUser.style.display = 'block';
 			break;
 		default:
-			users.style.display = 'block';
-			usersLink.classList.add("active");
+			accounts.style.display = 'block';
+			accountsLink.classList.add("active");
 	}
 }
 
@@ -291,7 +331,6 @@ window.MapHandler = {
 					radius: 50000,
 					elevationScale: 4,
 					getPosition: d => d.COORDINATES,
-					onHover: info => setTooltip(info.object, info.x, info.y)
 				});
 				var layers = [sessionLayer];
 				mapInstance = new deck.DeckGL({
@@ -324,19 +363,6 @@ window.MapHandler = {
 			.catch((e) => {
 				console.log(e);
 			});
-
-		function setTooltip(object, x, y) {
-			const el = document.getElementById('tooltip');
-			if (object) {
-				el.innerHTML = object.points.length;
-				el.style.display = 'block';
-				el.style.left = x + 'px';
-				el.style.top = y + 'px';
-				el.style.fontSize = '32px';
-			} else {
-				el.style.display = 'none';
-			}
-		}
 
 		let randomCoord = {
 			lat: getRandomInRange(-90, 90, 3),
