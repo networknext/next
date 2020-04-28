@@ -959,10 +959,6 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 			continue
 		}
 
-		if !d.Enabled {
-			continue
-		}
-
 		datacenter := routing.Datacenter{
 			ID:      crypto.HashID(d.Name),
 			Name:    d.Name,
