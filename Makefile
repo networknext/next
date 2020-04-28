@@ -173,7 +173,7 @@ build-functional-backend: ## builds the functional backend
 	printf "done\n" ; \
 
 .PHONY: build-test-func
-build-test-func: clean build-sdk build-relay build-functional-server build-functional-client build-functional-backend ## builds the functional tests
+build-test-func: clean build-sdk build-ref-relay build-functional-server build-functional-client build-functional-backend ## builds the functional tests
 
 .PHONY: run-test-func
 run-test-func:
@@ -249,14 +249,14 @@ NEW_RELAY_DIR := ./cmd/relay_new
 NEW_RELAY_MAKEFILE := Makefile
 RELAY_EXE	:= relay
 
-.PHONY: build-relay
-build-relay: ## builds the relay
+.PHONY: build-ref-relay
+build-ref-relay: ## builds the relay
 	@printf "Building relay... "
 	@$(CXX) $(CXX_FLAGS) -o $(DIST_DIR)/$(RELAY_EXE) cmd/relay/*.cpp $(LDFLAGS)
 	@printf "done\n"
 
-.PHONY: build-new-relay
-build-new-relay: ## builds the new relay
+.PHONY: build-relay
+build-relay: ## builds the new relay
 	@printf "Building new relay... "
 	@cd $(NEW_RELAY_DIR) && $(MAKE) release
 	@echo "done"
