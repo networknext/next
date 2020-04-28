@@ -690,10 +690,16 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		// Set portal data
 		{
 			meta := routing.SessionMeta{
+				ID:         fmt.Sprintf("%x", packet.SessionID),
+				UserHash:   fmt.Sprintf("%x", packet.UserHash),
+				ISP:        "TBD",
+				Datacenter: serverCacheEntry.Datacenter.Name,
+				NextRTT:    nnStats.RTT,
+				DirectRTT:  directStats.RTT,
+				DeltaRTT:   directStats.RTT - nnStats.RTT,
 				Location:   location,
 				ClientAddr: packet.ClientAddress.String(),
 				ServerAddr: packet.ServerAddress.String(),
-				Stats:      chosenRoute.Stats,
 				Hops:       len(chosenRoute.Relays),
 				SDK:        packet.Version.String(),
 			}
