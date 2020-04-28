@@ -195,6 +195,57 @@ func (s *BuyersService) Sessions(r *http.Request, args *SessionsArgs, reply *Ses
 	return nil
 }
 
+type TopSessionsArgs struct {
+	BuyerID string `json:"buyer_id"`
+}
+
+type TopSessionsReply struct {
+	Sessions []routing.SessionMeta `json:"sessions"`
+}
+
+func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, reply *TopSessionsReply) error {
+	var err error
+	var result []redis.Z
+
+	switch args.BuyerID {
+	case "":
+		result, err = s.RedisClient.ZRangeWithScores("top-global", 0, 1000).Result()
+		if err != nil {
+			return err
+		}
+	default:
+		result, err = s.RedisClient.ZRangeWithScores(fmt.Sprintf("top-buyer-%s", args.BuyerID), 0, 1000).Result()
+		if err != nil {
+			return err
+		}
+	}
+
+	var getCmds []*redis.StringCmd
+	tx := s.RedisClient.TxPipeline()
+	for _, member := range result {
+		getCmds = append(getCmds, tx.Get(fmt.Sprintf("session-%s-meta", member.Member.(string))))
+	}
+	_, err = tx.Exec()
+	if err != nil {
+		return err
+	}
+
+	reply.Sessions = make([]routing.SessionMeta, len(getCmds))
+	for idx := range getCmds {
+		err = getCmds[idx].Scan(&reply.Sessions[idx])
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+	}
+
+	sort.Slice(reply.Sessions, func(i int, j int) bool {
+		return reply.Sessions[i].DeltaRTT < reply.Sessions[j].DeltaRTT
+	})
+
+	return nil
+}
+
 type SessionDetailsArgs struct {
 	SessionID string `json:"session_id"`
 }

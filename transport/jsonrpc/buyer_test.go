@@ -163,7 +163,6 @@ func TestSessionDetails(t *testing.T) {
 		Location:   routing.Location{Latitude: 10, Longitude: 20},
 		ClientAddr: "127.0.0.1:1313",
 		ServerAddr: "10.0.0.1:50000",
-		Stats:      routing.Stats{RTT: 5, Jitter: 10, PacketLoss: 15},
 		Hops:       3,
 		SDK:        "3.4.4",
 	}
