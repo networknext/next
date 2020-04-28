@@ -25,6 +25,7 @@ function startApp() {
 		loginClient.getUser(),
 		loginClient.getTokenSilently()
 	]).then((response) => {
+		console.log(response)
 		userInfo = {
 			email: response[0].email,
 			name: response[0].name,
