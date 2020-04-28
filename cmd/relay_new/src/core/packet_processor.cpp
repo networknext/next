@@ -84,13 +84,6 @@ namespace core
     }
   }
 
-  /*
-   * Some handlers in here take a object and a function pointer of that object as an argument
-   * the only purpose to that was so that different objects that are responsable for sending packets
-   * can be easily swapped out for benchmarking purposes, once there is a definite solution to the
-   * throughput problem the function params will be written strictly
-   */
-
   inline void PacketProcessor::processPacket(
    GenericPacket<>& packet, mmsghdr& header, GenericPacketBuffer<MaxPacketsToSend>& outputBuff)
   {

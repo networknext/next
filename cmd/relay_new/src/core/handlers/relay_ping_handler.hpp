@@ -48,8 +48,6 @@ namespace core
       sendingAddr = packet.getFromAddr();
       packet.writeFromAddr(mRecvAddr);
 
-      LogDebug("got ping packet from ", sendingAddr);
-
       mRecorder.addToSent(RELAY_PING_PACKET_BYTES);
 
       // ? probably want to send immediately than use sendmmsg here?

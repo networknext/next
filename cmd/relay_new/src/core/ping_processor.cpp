@@ -48,8 +48,6 @@ namespace core
 
         auto& addr = pings[i].Addr;
 
-        LogDebug("[*] Sending ping to ", addr);
-
         fillMsgHdrWithAddr(hdr, addr);
 
         size_t index = 0;

@@ -15,7 +15,7 @@ DEBUG_MAKEFILE 				:= Makefile.debug
 TEST_MAKEFILE 				:= Makefile.test
 BENCHMARK_MAKEFILE 		:= Makefile.benchmark
 
-CXX										:= g++
+CXX										:= g++-8
 CXX_FLAGS 						:= -Wall -Wextra -std=c++17
 CXX_DBG_FLAGS					:= -g -O0
 CXX_PERF_FLAGS				:= -O3 # -march=native -frename-registers -funroll-loops -fopenmp -D_GLIBCXX_PARALLEL
