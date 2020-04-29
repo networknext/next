@@ -21,3 +21,8 @@ func (b *Buyer) DecodedPublicKey(key string) error {
 
 	return err
 }
+
+type Envelope struct {
+	Up   int64 `json:"up"`
+	Down int64 `json:"down"`
+}

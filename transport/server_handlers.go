@@ -687,6 +687,35 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 			}
 		}
 
+		// Set portal data
+		{
+			meta := routing.SessionMeta{
+				Location:   location,
+				ClientAddr: packet.ClientAddress.String(),
+				ServerAddr: packet.ServerAddress.String(),
+				Stats:      chosenRoute.Stats,
+				Hops:       len(chosenRoute.Relays),
+				SDK:        packet.Version.String(),
+			}
+			slice := routing.SessionSlice{
+				Timestamp: time.Now(),
+				Next:      nnStats,
+				Direct:    directStats,
+				Envelope: routing.Envelope{
+					Up:   int64(packet.KbpsUp),
+					Down: int64(packet.KbpsDown),
+				},
+			}
+
+			tx := redisClient.TxPipeline()
+			tx.Set(fmt.Sprintf("session-%x-meta", packet.SessionID), meta, 720*time.Hour)
+			tx.SAdd(fmt.Sprintf("session-%x-slices", packet.SessionID), slice)
+			tx.Expire(fmt.Sprintf("session-%x-slices", packet.SessionID), 720*time.Hour)
+			if _, err := tx.Exec(); err != nil {
+				level.Error(locallogger).Log("msg", "failed to update portal data", "err", err)
+			}
+		}
+
 		// Submit a new billing entry
 		{
 			sameRoute := chosenRoute.Hash64() == sessionCacheEntry.RouteHash

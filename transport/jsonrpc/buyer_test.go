@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/alicebob/miniredis"
 	"github.com/go-redis/redis/v7"
@@ -149,6 +150,62 @@ func TestSessions(t *testing.T) {
 		assert.Equal(t, reply.Sessions[0].DirectRTT, float64(20))
 		assert.Equal(t, reply.Sessions[0].NextRTT, float64(10))
 		assert.Equal(t, reply.Sessions[0].ChangeRTT, float64(-10))
+	})
+}
+
+func TestSessionDetails(t *testing.T) {
+	redisServer, _ := miniredis.Run()
+	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+	sessionID := fmt.Sprintf("%x", 999)
+
+	meta := routing.SessionMeta{
+		Location:   routing.Location{Latitude: 10, Longitude: 20},
+		ClientAddr: "127.0.0.1:1313",
+		ServerAddr: "10.0.0.1:50000",
+		Stats:      routing.Stats{RTT: 5, Jitter: 10, PacketLoss: 15},
+		Hops:       3,
+		SDK:        "3.4.4",
+	}
+	slice1 := routing.SessionSlice{
+		Timestamp: time.Now(),
+		Next:      routing.Stats{RTT: 5, Jitter: 10, PacketLoss: 15},
+		Direct:    routing.Stats{RTT: 15, Jitter: 20, PacketLoss: 25},
+		Envelope:  routing.Envelope{Up: 1500, Down: 1500},
+	}
+	slice2 := routing.SessionSlice{
+		Timestamp: time.Now().Add(10 * time.Second),
+		Next:      routing.Stats{RTT: 5, Jitter: 10, PacketLoss: 15},
+		Direct:    routing.Stats{RTT: 15, Jitter: 20, PacketLoss: 25},
+		Envelope:  routing.Envelope{Up: 1500, Down: 1500},
+	}
+
+	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID), meta, 720*time.Hour)
+	redisClient.SAdd(fmt.Sprintf("session-%s-slices", sessionID), slice1, slice2)
+
+	svc := jsonrpc.BuyersService{
+		RedisClient: redisClient,
+	}
+
+	t.Run("session_id not found", func(t *testing.T) {
+		var reply jsonrpc.SessionDetailsReply
+		err := svc.SessionDetails(nil, &jsonrpc.SessionDetailsArgs{SessionID: "nope"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.SessionDetailsReply
+		err := svc.SessionDetails(nil, &jsonrpc.SessionDetailsArgs{SessionID: sessionID}, &reply)
+		assert.NoError(t, err)
+		assert.Equal(t, meta, reply.Meta)
+		assert.Equal(t, slice1.Timestamp.Hour(), reply.Slices[0].Timestamp.Hour())
+		assert.Equal(t, slice1.Next, reply.Slices[0].Next)
+		assert.Equal(t, slice1.Direct, reply.Slices[0].Direct)
+		assert.Equal(t, slice1.Envelope, reply.Slices[0].Envelope)
+		assert.Equal(t, slice2.Timestamp.Hour(), reply.Slices[1].Timestamp.Hour())
+		assert.Equal(t, slice2.Next, reply.Slices[1].Next)
+		assert.Equal(t, slice2.Direct, reply.Slices[1].Direct)
+		assert.Equal(t, slice2.Envelope, reply.Slices[1].Envelope)
 	})
 }
 
