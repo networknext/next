@@ -579,7 +579,7 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 				"state":           r.State,
 				"stateUpdateTime": stateUpdateTime,
 				"publicKey":       r.PublicKey,
-				"nicSpeedMbps":    r.NICSpeedMbps,
+				"nicSpeedMbps":    int64(r.NICSpeedMbps),
 			}
 
 			// Update the relay in firestore
