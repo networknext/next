@@ -182,7 +182,7 @@ func main() {
 	// Remove sessions from top sessions when session meta keys expire
 	redisClientPortal.ConfigSet("notify-keyspace-events", "Ex")
 	go func() {
-		ps := redisClientRelays.Subscribe("__keyevent@0__:expired")
+		ps := redisClientPortal.Subscribe("__keyevent@0__:expired")
 		for {
 			msg, err := ps.ReceiveMessage()
 			if err != nil {
