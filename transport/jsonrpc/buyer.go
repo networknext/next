@@ -221,23 +221,38 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	}
 
 	var getCmds []*redis.StringCmd
-	tx := s.RedisClient.TxPipeline()
-	for _, member := range result {
-		getCmds = append(getCmds, tx.Get(fmt.Sprintf("session-%s-meta", member.Member.(string))))
+	{
+		gettx := s.RedisClient.TxPipeline()
+		for _, member := range result {
+			getCmds = append(getCmds, gettx.Get(fmt.Sprintf("session-%s-meta", member.Member.(string))))
+		}
+		_, err = gettx.Exec()
+		if err != nil && err != redis.Nil {
+			return err
+		}
 	}
-	_, err = tx.Exec()
+
+	exptx := s.RedisClient.TxPipeline()
+	{
+		var meta routing.SessionMeta
+		for _, cmd := range getCmds {
+			err = cmd.Scan(&meta)
+			if err != nil {
+				// If we get here then there is a session in the top lists
+				// but has missing meta information so we set an empty meta
+				// key to expire in 5 seconds for the main cleanup routine
+				// to clear the reference in the top lists
+				args := cmd.Args()
+				exptx.Set(args[1].(string), "", 5*time.Second)
+				continue
+			}
+
+			reply.Sessions = append(reply.Sessions, meta)
+		}
+	}
+	_, err = exptx.Exec()
 	if err != nil && err != redis.Nil {
 		return err
-	}
-
-	var meta routing.SessionMeta
-	for _, cmd := range getCmds {
-		err = cmd.Scan(&meta)
-		if err != nil {
-			continue
-		}
-
-		reply.Sessions = append(reply.Sessions, meta)
 	}
 
 	sort.Slice(reply.Sessions, func(i int, j int) bool {
