@@ -676,6 +676,29 @@ func main() {
 							return nil
 						},
 					},
+					{
+						Name:       "setnic",
+						ShortUsage: "next relay setnic <relay name> <value (Mbps)>",
+						ShortHelp:  "Updates the NIC speed value of a relay in storage",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) == 0 {
+								log.Fatal("You need to supply a relay name")
+							}
+
+							if len(args) == 1 {
+								log.Fatal("You need to supply a relay NIC speed in Mbps")
+							}
+
+							nicSpeed, err := strconv.ParseUint(args[1], 10, 64)
+							if err != nil {
+								log.Fatalf("Unable to parse %s as uint64", args[1])
+							}
+
+							setRelayNIC(rpcClient, args[0], nicSpeed)
+
+							return nil
+						},
+					},
 				},
 			},
 		},
