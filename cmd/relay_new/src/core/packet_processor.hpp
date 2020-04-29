@@ -28,7 +28,7 @@ namespace core
      core::SessionMap& sessions,
      core::RelayManager& relayManager,
      const volatile bool& handle,
-     util::ThroughputRecorder& logger,
+     util::ThroughputRecorder& recorder,
      const net::Address& receivingAddr);
     ~PacketProcessor() = default;
 
@@ -42,7 +42,7 @@ namespace core
     core::SessionMap& mSessionMap;
     core::RelayManager& mRelayManager;
     const volatile bool& mShouldProcess;
-    util::ThroughputRecorder& mLogger;
+    util::ThroughputRecorder& mRecorder;
     const net::Address& mRecvAddr;
 
     void processPacket(GenericPacket<>& packet, mmsghdr& header, GenericPacketBuffer<MaxPacketsToSend>& outputBuff);

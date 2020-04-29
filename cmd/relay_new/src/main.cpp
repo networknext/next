@@ -364,8 +364,8 @@ int main()
 
     // setup the ping processor to use the external address
     // relays use it to know where the receiving port of other relays are
-    pingThread = std::make_unique<std::thread>([&waitVar, &socketAndThreadReady, pingSocket, &relayManager, &relayAddr] {
-      core::PingProcessor pingProcessor(*pingSocket, relayManager, ::gAlive, relayAddr);
+    pingThread = std::make_unique<std::thread>([&waitVar, &socketAndThreadReady, pingSocket, &relayManager, &relayAddr, &recorder] {
+      core::PingProcessor pingProcessor(*pingSocket, relayManager, ::gAlive, relayAddr, recorder);
       pingProcessor.process(waitVar, socketAndThreadReady);
     });
 
