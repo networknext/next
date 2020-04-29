@@ -227,3 +227,17 @@ func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []st
 		con.ConnectAndIssueCmd(DisableRelayScript)
 	}
 }
+
+func setRelayNIC(rpcClient jsonrpc.RPCClient, relayName string, nicSpeed uint64) {
+	info := getRelayInfo(rpcClient, relayName)
+
+	args := localjsonrpc.RelayNICSpeedUpdateArgs{
+		RelayID:       info.id,
+		RelayNICSpeed: nicSpeed,
+	}
+
+	var reply localjsonrpc.RelayNICSpeedUpdateReply
+	if err := rpcClient.CallFor(&reply, "OpsService.RelayNICSpeedUpdate", args); err != nil {
+		log.Fatal(err)
+	}
+}

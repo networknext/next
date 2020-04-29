@@ -325,6 +325,26 @@ func (s *OpsService) RelayPublicKeyUpdate(r *http.Request, args *RelayPublicKeyU
 	return s.Storage.SetRelay(context.Background(), relay)
 }
 
+type RelayNICSpeedUpdateArgs struct {
+	RelayID       uint64 `json:"relay_id"`
+	RelayNICSpeed uint64 `json:"relay_nic_speed"`
+}
+
+type RelayNICSpeedUpdateReply struct {
+}
+
+func (s *OpsService) RelayNICSpeedUpdate(r *http.Request, args *RelayNICSpeedUpdateArgs, reply *RelayNICSpeedUpdateReply) error {
+	relay, err := s.Storage.Relay(args.RelayID)
+
+	if err != nil {
+		return err
+	}
+
+	relay.NICSpeedMbps = args.RelayNICSpeed
+
+	return s.Storage.SetRelay(context.Background(), relay)
+}
+
 type DatacentersArgs struct {
 	Name string `json:"name"`
 }
