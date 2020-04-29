@@ -293,7 +293,7 @@ type RouteProvider interface {
 }
 
 // SessionUpdateHandlerFunc ...
-func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, metrics *metrics.SessionMetrics, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable, redisClientPortal redis.Cmdable, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, metrics *metrics.SessionMetrics, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
 	logger = log.With(logger, "handler", "session")
 
 	return func(w io.Writer, incoming *UDPPacket) {
@@ -343,7 +343,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		}
 
 		// Build a redis transaction to make a single network call
-		tx := redisClient.TxPipeline()
+		tx := redisClientCache.TxPipeline()
 		{
 			serverCacheCmd := tx.Get(serverCacheKey)
 			sessionCacheCmd := tx.Get(sessionCacheKey)
@@ -679,7 +679,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 				NextRTT:         nnStats.RTT,
 				Location:        location,
 			}
-			result := redisClient.Set(sessionCacheKey, updatedSessionCacheEntry, 5*time.Minute)
+			result := redisClientCache.Set(sessionCacheKey, updatedSessionCacheEntry, 5*time.Minute)
 			if result.Err() != nil {
 				// This error case should never happen, can't produce it in test cases, but leaving it in anyway
 				level.Error(locallogger).Log("msg", "failed to update session", "err", err)
@@ -713,7 +713,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 				},
 			}
 
-			tx := redisClient.TxPipeline()
+			tx := redisClientPortal.TxPipeline()
 			tx.ZAdd("top-global", &redis.Z{Score: meta.DeltaRTT, Member: meta.ID})
 			tx.ZAdd(fmt.Sprintf("top-buyer-%x", packet.CustomerID), &redis.Z{Score: meta.DeltaRTT, Member: meta.ID})
 			tx.Set(fmt.Sprintf("session-%x-meta", packet.SessionID), meta, 720*time.Hour)
