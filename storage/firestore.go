@@ -539,7 +539,7 @@ func (fs *Firestore) RemoveRelay(ctx context.Context, id uint64) error {
 	return fmt.Errorf("could not remove relay with id %d in firestore", id)
 }
 
-// Only relay state & public key is updated in firestore for now
+// Only relay state, public key, and NIC speed are updated in firestore for now
 func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 	// Get a copy of the relay in cached storage
 	fs.relayMutex.RLock()
@@ -579,6 +579,7 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 				"state":           r.State,
 				"stateUpdateTime": stateUpdateTime,
 				"publicKey":       r.PublicKey,
+				"nicSpeedMbps":    r.NICSpeedMbps,
 			}
 
 			// Update the relay in firestore
