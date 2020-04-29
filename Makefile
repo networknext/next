@@ -98,6 +98,10 @@ ifndef MAXMIND_DB_URI
 export MAXMIND_DB_URI = ./testdata/GeoIP2-City-Test.mmdb
 endif
 
+ifndef REDIS_HOST_PORTAL
+export REDIS_HOST_PORTAL = 127.0.0.1:6379
+endif
+
 ifndef REDIS_HOST_RELAYS
 export REDIS_HOST_RELAYS = 127.0.0.1:6379
 endif
