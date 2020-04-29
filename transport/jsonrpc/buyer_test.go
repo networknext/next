@@ -192,6 +192,8 @@ func TestTopSessions(t *testing.T) {
 		assert.Equal(t, sessionID1, reply.Sessions[0].ID)
 		assert.Equal(t, sessionID2, reply.Sessions[1].ID)
 		assert.Equal(t, sessionID3, reply.Sessions[2].ID)
+
+		assert.Greater(t, int(redisClient.TTL("session-missing-meta").Val()), 0)
 	})
 
 	t.Run("top buyer", func(t *testing.T) {
@@ -202,6 +204,8 @@ func TestTopSessions(t *testing.T) {
 		assert.Equal(t, 2, len(reply.Sessions))
 		assert.Equal(t, sessionID2, reply.Sessions[0].ID)
 		assert.Equal(t, sessionID3, reply.Sessions[1].ID)
+
+		assert.Greater(t, int(redisClient.TTL("session-missing-meta").Val()), 0)
 	})
 }
 
