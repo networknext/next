@@ -120,7 +120,7 @@ namespace core
     }
 
     if (!doc.parse(response)) {
-      Log("could not parse json response in init: ", doc.err());
+      Log("could not parse json response in init: ", doc.err(), "\nResponse: ", response);
       return false;
     }
 
@@ -225,7 +225,7 @@ namespace core
     }
 
     if (!doc.parse(response)) {
-      Log("could not parse json response in update: ", doc.err());
+      Log("could not parse json response in update: ", doc.err(), "\nReponse: ", response);
       return false;
     }
 
