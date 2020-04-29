@@ -1,10 +1,20 @@
 [Unit]
 Description=Network Next Relay
+ConditionPathExists=/app/relay
+After=network.target
 
 [Service]
 Type=simple
+LimitNOFILE=1024
+WorkingDirectory=/app
 ExecStart=/app/relay
 EnvironmentFile=/app/relay.env
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=relay
+Restart=on-failure
+RestartSec=10
+StartLimitIntervalSec=60
 
 [Install]
 WantedBy=multi-user.target
