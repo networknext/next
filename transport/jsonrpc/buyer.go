@@ -195,6 +195,73 @@ func (s *BuyersService) Sessions(r *http.Request, args *SessionsArgs, reply *Ses
 	return nil
 }
 
+type TopSessionsArgs struct {
+	BuyerID string `json:"buyer_id"`
+}
+
+type TopSessionsReply struct {
+	Sessions []routing.SessionMeta `json:"sessions"`
+}
+
+func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, reply *TopSessionsReply) error {
+	var err error
+	var result []redis.Z
+
+	switch args.BuyerID {
+	case "":
+		result, err = s.RedisClient.ZRangeWithScores("top-global", 0, 1000).Result()
+		if err != nil {
+			return err
+		}
+	default:
+		result, err = s.RedisClient.ZRangeWithScores(fmt.Sprintf("top-buyer-%s", args.BuyerID), 0, 1000).Result()
+		if err != nil {
+			return err
+		}
+	}
+
+	var getCmds []*redis.StringCmd
+	{
+		gettx := s.RedisClient.TxPipeline()
+		for _, member := range result {
+			getCmds = append(getCmds, gettx.Get(fmt.Sprintf("session-%s-meta", member.Member.(string))))
+		}
+		_, err = gettx.Exec()
+		if err != nil && err != redis.Nil {
+			return err
+		}
+	}
+
+	exptx := s.RedisClient.TxPipeline()
+	{
+		var meta routing.SessionMeta
+		for _, cmd := range getCmds {
+			err = cmd.Scan(&meta)
+			if err != nil {
+				// If we get here then there is a session in the top lists
+				// but has missing meta information so we set an empty meta
+				// key to expire in 5 seconds for the main cleanup routine
+				// to clear the reference in the top lists
+				args := cmd.Args()
+				exptx.Set(args[1].(string), "", 5*time.Second)
+				continue
+			}
+
+			reply.Sessions = append(reply.Sessions, meta)
+		}
+	}
+	_, err = exptx.Exec()
+	if err != nil && err != redis.Nil {
+		return err
+	}
+
+	sort.Slice(reply.Sessions, func(i int, j int) bool {
+		return reply.Sessions[i].DeltaRTT < reply.Sessions[j].DeltaRTT
+	})
+
+	return nil
+}
+
 type SessionDetailsArgs struct {
 	SessionID string `json:"session_id"`
 }

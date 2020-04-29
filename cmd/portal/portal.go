@@ -75,6 +75,13 @@ func main() {
 		}
 	}
 
+	redisPortalHost := os.Getenv("REDIS_HOST_PORTAL")
+	redisClientPortal := storage.NewRedisClient(redisPortalHost)
+	if err := redisClientPortal.Ping().Err(); err != nil {
+		level.Error(logger).Log("envvar", "REDIS_HOST_PORTAL", "value", redisPortalHost, "err", err)
+		os.Exit(1)
+	}
+
 	redisRelayHost := os.Getenv("REDIS_HOST_RELAYS")
 	redisClientRelays := storage.NewRedisClient(redisRelayHost)
 	if err := redisClientRelays.Ping().Err(); err != nil {
@@ -171,6 +178,38 @@ func main() {
 			}()
 		}
 	}
+
+	// Remove sessions from top sessions when session meta keys expire
+	redisClientPortal.ConfigSet("notify-keyspace-events", "Ex")
+	go func() {
+		ps := redisClientPortal.Subscribe("__keyevent@0__:expired")
+		for {
+			msg, err := ps.ReceiveMessage()
+			if err != nil {
+				level.Error(logger).Log("msg", "error receiving expired message from pubsub", "err", err)
+				os.Exit(1)
+			}
+
+			if strings.HasSuffix(msg.Payload, "-meta") {
+				keyparts := strings.Split(msg.Payload, "-")
+				sessionID := keyparts[1]
+
+				scaniter := redisClientPortal.Scan(0, "top-buyer-*", 100).Iterator()
+
+				tx := redisClientPortal.TxPipeline()
+				tx.ZRem("top-global", sessionID)
+				for scaniter.Next() {
+					tx.ZRem(scaniter.Val(), sessionID)
+				}
+				if _, err := tx.Exec(); err != nil {
+					level.Error(logger).Log("msg", "error cleaning up top sessions", "err", err)
+					os.Exit(1)
+				}
+
+				level.Info(logger).Log("msg", "removed session from top sessions", "session_id", sessionID)
+			}
+		}
+	}()
 
 	uiDir := os.Getenv("UI_DIR")
 	if uiDir == "" {
