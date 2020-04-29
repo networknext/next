@@ -77,16 +77,16 @@
             </a>
             <ul class="navbar-nav px-3 w-100 mr-auto">
                 <li class="nav-item text-nowrap">
-                    <a class="nav-link active" href="#" id="home-link" onclick="changePage('home')">Home</a>
+                    <a class="nav-link active" href="#" id="home-link" onclick="PageHandler.changePage('home')">Home</a>
                 </li>
                 <li class="nav-item text-nowrap">
-                    <a class="nav-link" href="#" id="session-link" onclick="changePage('sessions')">Sessions</a>
+                    <a class="nav-link" href="#" id="sessions-link" onclick="PageHandler.changePage('sessions')">Sessions</a>
                 </li>
                 <li class="nav-item text-nowrap">
-                    <a class="nav-link" href="#" id="users-link" onclick="changePage('users')">Users</a>
+                    <a class="nav-link" href="#" id="users-link" onclick="PageHandler.changePage('users')">Users</a>
                 </li>
                 <li class="nav-item text-nowrap">
-                    <a class="nav-link" href="#" id="relay-link" onclick="changePage('relay')">Relays</a>
+                    <a class="nav-link" href="#" id="relays-link" onclick="PageHandler.changePage('relay')">Relays</a>
                 </li>
             </ul>
             <ul class="navbar-nav px-3">
@@ -104,7 +104,7 @@
                         <i class="fas fa-user-circle fa-2x" data-toggle="tooltip" data-placement="bottom" title="Account"></i>
                     </a>
                     <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
-                        <a class="dropdown-item" href="#" onclick="changePage('account')">Settings</a>
+                        <a class="dropdown-item" href="#" onclick="PageHandler.changePage('account')">Settings</a>
                     </div>
                 </li>
                 <li class="nav-item text-nowrap">
@@ -120,19 +120,19 @@
             </div>
             <div class="workspace row map" id="map-workspace">
             </div>
-            <div class="workspace row hidden" id="account-workspace">
+            <div class="workspace row hidden" id="accounts-workspace">
                 <nav class="navbar navbar-expand-md navbar-dark fi bg-dark p-0 shadow">
                     <ul class="navbar-nav px-3 w-100 mr-auto">
                         <li class="nav-item text-nowrap">
-                            <a class="nav-link" id="accounts-link" href="#" onclick="changeAccountPage('accounts')">Users</a>
+                            <a class="nav-link" id="accounts-link" href="#" onclick="PageHandler.changeAccountPage('accounts')">Users</a>
                         </li>
                         <li class="nav-item text-nowrap">
-                            <a class="nav-link" id="config-link" href="#" onclick="changeAccountPage('config')">Game Configuration</a>
+                            <a class="nav-link" id="config-link" href="#" onclick="PageHandler.changeAccountPage('config')">Game Configuration</a>
                         </li>
                     </ul>
                     <ul class="navbar-nav px-3" id="new-user-button">
                         <li class="nav-item text-nowrap">
-                            <a class="nav-link" href="#" onclick="changeAccountPage('new')">
+                            <a class="nav-link" href="#" onclick="PageHandler.changeAccountPage('new')">
                                 <i class="fas fa-plus" data-toggle="tooltip" data-placement="bottom" title="Add User"></i>
                             </a>
                         </li>
@@ -156,13 +156,16 @@
                     </div>
                 </form>
                 <div id="accounts">
-                    <table class="table">
+                    <div class="spinner-border" role="status" v-if="!accounts">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                    <table class="table" v-if="accounts && showAccountsTable">
                         <thead class="thead-dark">
-                        <tr>
-                            <th scope="col">Id</th>
-                            <th scope="col">Email</th>
-                            <th scope="col">Edit</th>
-                        </tr>
+                            <tr>
+                                <th scope="col">Id</th>
+                                <th scope="col">Email</th>
+                                <th scope="col">Edit</th>
+                            </tr>
                         </thead>
                         <tbody>
                             <tr v-for="account in accounts" scope="row">
@@ -218,40 +221,45 @@
                         </button>
                     </div>
                 </form>
-                <table class="table" id="users">
-                    <thead class="thead-dark">
-                      <tr>
-                        <th scope="col">User ID</th>
-                        <th scope="col">Details</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                        <!-- <tr>
-                            <td>DEBUG</td>
-                            <td>DEBUG</td>
-                            <td>DEBUG</td>
-                            <td>DEBUG</td>
-                            <td>DEBUG</td>
-                            <td>
-                                <i class="fas fa-check"></i>
-                            </td>
-                            <td>DEBUG</td>
-                            <td>
-                                <button class="btn" data-toggle="modal" data-target="#sessionInfoModal" onclick="fetchSessionInfo()">
-                                    <i class="fas fa-info-circle" data-toggle="tooltip" data-placement="bottom" title="Session Info"></i>
-                                </button>
-                            </td>
-                        </tr> -->
-                        <tr v-for="user in users" scope="row">
-                            <td>{{ user.id }}</td>
-                            <td>
-                                <button class="btn" data-toggle="modal" data-target="#userInfoModal" v-on:click="fetchUserInfo(user.id)">
-                                    <i class="fas fa-info-circle" data-toggle="tooltip" data-placement="bottom" title="User Info"></i>
-                                </button>
-                            </td>
+                <div id="users">
+                    <div class="spinner-border" role="status" v-if="!users">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                    <table class="table" v-else>
+                        <thead class="thead-dark">
+                        <tr>
+                            <th scope="col">User ID</th>
+                            <th scope="col">Details</th>
                         </tr>
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            <!-- <tr>
+                                <td>DEBUG</td>
+                                <td>DEBUG</td>
+                                <td>DEBUG</td>
+                                <td>DEBUG</td>
+                                <td>DEBUG</td>
+                                <td>
+                                    <i class="fas fa-check"></i>
+                                </td>
+                                <td>DEBUG</td>
+                                <td>
+                                    <button class="btn" data-toggle="modal" data-target="#sessionInfoModal" onclick="fetchSessionInfo()">
+                                        <i class="fas fa-info-circle" data-toggle="tooltip" data-placement="bottom" title="Session Info"></i>
+                                    </button>
+                                </td>
+                            </tr> -->
+                            <tr v-for="user in users" scope="row">
+                                <td>{{ user.id }}</td>
+                                <td>
+                                    <button class="btn" data-toggle="modal" data-target="#userInfoModal" v-on:click="fetchUserInfo(user.id)">
+                                        <i class="fas fa-info-circle" data-toggle="tooltip" data-placement="bottom" title="User Info"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
                 <div class="modal fade" id="userInfoModal" tabindex="-1" role="dialog" aria-labelledby="userInfoModalLabel" aria-hidden="true">
                     <div class="modal-dialog" role="document" style="max-width: 2000px; max-height: 1000px; overflow-y: auto;">
                         <div class="modal-content">
@@ -270,7 +278,7 @@
                     </div>
                 </div>
             </div>
-            <div class="workspace row hidden" id="session-workspace">
+            <div class="workspace row hidden" id="sessions-workspace">
                 <form id="sessionSearch" onsubmit="fetchSessionInfo()">
                     <div class="input-group mb-3">
                         <div class="input-group-prepend">
@@ -284,58 +292,63 @@
                         </button>
                     </div>
                 </form>
-                <table class="table" id="sessions">
-                    <thead class="thead-dark">
-                      <tr>
-                        <th scope="col">Session ID</th>
-                        <th scope="col">User Hash</th>
-                        <th scope="col">Direct RTT</th>
-                        <th scope="col">Next RTT</th>
-                        <th scope="col">Change RTT</th>
-                        <th scope="col">On Network Next</th>
-                        <th scope="col">Expires At</th>
-                        <th scope="col">Details</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                        <!-- <tr>
-                            <td>DEBUG</td>
-                            <td>DEBUG</td>
-                            <td>DEBUG</td>
-                            <td>DEBUG</td>
-                            <td>DEBUG</td>
-                            <td>
-                                <i class="fas fa-check"></i>
-                            </td>
-                            <td>DEBUG</td>
-                            <td>
-                                <button class="btn" data-toggle="modal" data-target="#sessionInfoModal" onclick="fetchSessionInfo()">
-                                    <i class="fas fa-info-circle" data-toggle="tooltip" data-placement="bottom" title="Session Info"></i>
-                                </button>
-                            </td>
-                        </tr> -->
-                        <tr v-for="session in sessions" scope="row">
-                            <td>{{ session.session_id }}</td>
-                            <td>{{ session.user_hash }}</td>
-                            <td>{{ session.direct_rtt }}</td>
-                            <td>{{ session.next_rtt }}</td>
-                            <td>{{ session.change_rtt }}</td>
-                            <td v-if="session.on_network_next">
-                                <i class="fas fa-check"></i>
-                            </td>
-                            <td v-if="!session.on_network_next">
-                                <i class="fas fa-times-circle"></i>
-                            </td>
-                            <td>{{ session.expires_at }}</td>
-                            <td>
-                                <button class="btn" data-toggle="modal" data-target="#sessionInfoModal" v-on:click="fetchSessionInfo(session.session_id)">
-                                    <i class="fas fa-info-circle" data-toggle="tooltip" data-placement="bottom" title="Session Info"></i>
-                                </button>
-                            </td>
+                <div id="sessions">
+                    <div class="spinner-border" role="status" v-if="!sessions">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                    <table class="table" v-else>
+                        <thead class="thead-dark">
+                        <tr>
+                            <th scope="col">Session ID</th>
+                            <th scope="col">User Hash</th>
+                            <th scope="col">Direct RTT</th>
+                            <th scope="col">Next RTT</th>
+                            <th scope="col">Change RTT</th>
+                            <th scope="col">On Network Next</th>
+                            <th scope="col">Expires At</th>
+                            <th scope="col">Details</th>
                         </tr>
-                    </tbody>
-                  </table>
-                  <div class="modal fade" id="sessionInfoModal" tabindex="-1" role="dialog" aria-labelledby="sessionInfoModalLabel" aria-hidden="true">
+                        </thead>
+                        <tbody>
+                            <!-- <tr>
+                                <td>DEBUG</td>
+                                <td>DEBUG</td>
+                                <td>DEBUG</td>
+                                <td>DEBUG</td>
+                                <td>DEBUG</td>
+                                <td>
+                                    <i class="fas fa-check"></i>
+                                </td>
+                                <td>DEBUG</td>
+                                <td>
+                                    <button class="btn" data-toggle="modal" data-target="#sessionInfoModal" onclick="fetchSessionInfo()">
+                                        <i class="fas fa-info-circle" data-toggle="tooltip" data-placement="bottom" title="Session Info"></i>
+                                    </button>
+                                </td>
+                            </tr> -->
+                            <tr v-for="session in sessions" scope="row">
+                                <td>{{ session.session_id }}</td>
+                                <td>{{ session.user_hash }}</td>
+                                <td>{{ session.direct_rtt }}</td>
+                                <td>{{ session.next_rtt }}</td>
+                                <td>{{ session.change_rtt }}</td>
+                                <td v-if="session.on_network_next">
+                                    <i class="fas fa-check"></i>
+                                </td>
+                                <td v-if="!session.on_network_next">
+                                    <i class="fas fa-times-circle"></i>
+                                </td>
+                                <td>{{ session.expires_at }}</td>
+                                <td>
+                                    <button class="btn" data-toggle="modal" data-target="#sessionInfoModal" v-on:click="fetchSessionInfo(session.session_id)">
+                                        <i class="fas fa-info-circle" data-toggle="tooltip" data-placement="bottom" title="Session Info"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal fade" id="sessionInfoModal" tabindex="-1" role="dialog" aria-labelledby="sessionInfoModalLabel" aria-hidden="true">
                     <div class="modal-dialog" role="document" style="max-width: 2000px; max-height: 1000px; overflow-y: auto;">
                       <div class="modal-content">
                         <div class="modal-header">
@@ -662,91 +675,53 @@
                     </div>
                   </div>
             </div>
-            <div class="workspace row hidden" id="relay-workspace">
-                <table class="table" id="relays">
-                    <thead class="thead-dark">
-                        <tr>
-                            <th scope="col">Relay Name</th>
-                            <th scope="col">Sessions</th>
-                            <th scope="col">Bandwidth</th>
-                            <th scope="col">Peak Utilization</th>
-                            <th scope="col">Revenue</th>
-                            <th scope="col">NIC Speed</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="relay in relays" scope="row">
-                            <td>{{ relay.name }}</td>
-                            <td>IMPLEMENT ME</td>
-                            <td>{{ relay.included_bandwidth_gb }}Mbps</td>
-                            <td>IMPLEMENT ME</td>
-                            <td>IMPLEMENT ME</td>
-                            <td>{{ relay.nic_speed_mpbs }}Mbps</td>
-                        </tr>
-                    </tbody>
-                  </table>
-                  <!-- <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-                    <div class="modal-dialog" role="document">
-                      <div class="modal-content">
-                        <div class="modal-header">
-                          <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
-                          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                          </button>
-                        </div>
-                        <div class="modal-body">
-                          ...
-                        </div>
-                        <div class="modal-footer">
-                          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                          <button type="button" class="btn btn-primary">Save changes</button>
-                        </div>
-                      </div>
+            <div class="workspace row hidden" id="relays-workspace">
+                <div id="relays">
+                    <div class="spinner-border" role="status" v-if="!relays">
+                        <span class="sr-only">Loading...</span>
                     </div>
-                  </div> -->
-            </div>
-            <div class="workspace row hidden" id="relay-workspace">
-                <table class="table" id="relays">
-                    <thead class="thead-dark">
-                        <tr>
-                            <th scope="col">Relay Name</th>
-                            <th scope="col">Sessions</th>
-                            <th scope="col">Bandwidth</th>
-                            <th scope="col">Peak Utilization</th>
-                            <th scope="col">Revenue</th>
-                            <th scope="col">NIC Speed</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="relay in relays" scope="row">
-                            <td>{{ relay.name }}</td>
-                            <td>IMPLEMENT ME</td>
-                            <td>{{ relay.included_bandwidth_gb }}Mbps</td>
-                            <td>IMPLEMENT ME</td>
-                            <td>IMPLEMENT ME</td>
-                            <td>{{ relay.nic_speed_mpbs }}Mbps</td>
-                        </tr>
-                    </tbody>
-                  </table>
-                  <!-- <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-                    <div class="modal-dialog" role="document">
-                      <div class="modal-content">
-                        <div class="modal-header">
-                          <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
-                          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                          </button>
+                    <table class="table" v-else>
+                        <thead class="thead-dark">
+                            <tr>
+                                <th scope="col">Relay Name</th>
+                                <th scope="col">Sessions</th>
+                                <th scope="col">Bandwidth</th>
+                                <th scope="col">Peak Utilization</th>
+                                <th scope="col">Revenue</th>
+                                <th scope="col">NIC Speed</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="relay in relays" scope="row">
+                                <td>{{ relay.name }}</td>
+                                <td>IMPLEMENT ME</td>
+                                <td>{{ relay.included_bandwidth_gb }}Mbps</td>
+                                <td>IMPLEMENT ME</td>
+                                <td>IMPLEMENT ME</td>
+                                <td>{{ relay.nic_speed_mpbs }}Mbps</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <!-- <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                        <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                            <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                            </div>
+                            <div class="modal-body">
+                            ...
+                            </div>
+                            <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                            <button type="button" class="btn btn-primary">Save changes</button>
+                            </div>
                         </div>
-                        <div class="modal-body">
-                          ...
                         </div>
-                        <div class="modal-footer">
-                          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                          <button type="button" class="btn btn-primary">Save changes</button>
-                        </div>
-                      </div>
-                    </div>
-                  </div> -->
+                    </div> -->
+                </div>
             </div>
         </div>
         <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
