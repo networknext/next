@@ -153,6 +153,58 @@ func TestSessions(t *testing.T) {
 	})
 }
 
+func TestTopSessions(t *testing.T) {
+	redisServer, _ := miniredis.Run()
+	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+	buyerID1 := fmt.Sprintf("%x", 111)
+	buyerID2 := fmt.Sprintf("%x", 222)
+
+	sessionID1 := fmt.Sprintf("%x", 111)
+	sessionID2 := fmt.Sprintf("%x", 222)
+	sessionID3 := fmt.Sprintf("%x", 333)
+	sessionID4 := "missing"
+
+	redisServer.ZAdd("top-global", 50, sessionID1)
+	redisServer.ZAdd("top-global", 100, sessionID2)
+	redisServer.ZAdd("top-global", 150, sessionID3)
+	redisServer.ZAdd("top-global", 150, sessionID4)
+
+	redisServer.ZAdd(fmt.Sprintf("top-buyer-%s", buyerID2), 50, sessionID1)
+	redisServer.ZAdd(fmt.Sprintf("top-buyer-%s", buyerID1), 100, sessionID2)
+	redisServer.ZAdd(fmt.Sprintf("top-buyer-%s", buyerID1), 150, sessionID3)
+	redisServer.ZAdd(fmt.Sprintf("top-buyer-%s", buyerID1), 150, sessionID4)
+
+	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID1), routing.SessionMeta{ID: sessionID1}, time.Hour)
+	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID2), routing.SessionMeta{ID: sessionID2}, time.Hour)
+	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID3), routing.SessionMeta{ID: sessionID3}, time.Hour)
+
+	svc := jsonrpc.BuyersService{
+		RedisClient: redisClient,
+	}
+
+	t.Run("top global", func(t *testing.T) {
+		var reply jsonrpc.TopSessionsReply
+		err := svc.TopSessions(nil, &jsonrpc.TopSessionsArgs{}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 3, len(reply.Sessions))
+		assert.Equal(t, sessionID1, reply.Sessions[0].ID)
+		assert.Equal(t, sessionID2, reply.Sessions[1].ID)
+		assert.Equal(t, sessionID3, reply.Sessions[2].ID)
+	})
+
+	t.Run("top buyer", func(t *testing.T) {
+		var reply jsonrpc.TopSessionsReply
+		err := svc.TopSessions(nil, &jsonrpc.TopSessionsArgs{BuyerID: buyerID1}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 2, len(reply.Sessions))
+		assert.Equal(t, sessionID2, reply.Sessions[0].ID)
+		assert.Equal(t, sessionID3, reply.Sessions[1].ID)
+	})
+}
+
 func TestSessionDetails(t *testing.T) {
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})

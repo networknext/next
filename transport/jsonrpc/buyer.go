@@ -226,17 +226,18 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 		getCmds = append(getCmds, tx.Get(fmt.Sprintf("session-%s-meta", member.Member.(string))))
 	}
 	_, err = tx.Exec()
-	if err != nil {
+	if err != nil && err != redis.Nil {
 		return err
 	}
 
-	reply.Sessions = make([]routing.SessionMeta, len(getCmds))
-	for idx := range getCmds {
-		err = getCmds[idx].Scan(&reply.Sessions[idx])
+	var meta routing.SessionMeta
+	for _, cmd := range getCmds {
+		err = cmd.Scan(&meta)
 		if err != nil {
-			fmt.Println(err)
 			continue
 		}
+
+		reply.Sessions = append(reply.Sessions, meta)
 	}
 
 	sort.Slice(reply.Sessions, func(i int, j int) bool {
