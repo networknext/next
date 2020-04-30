@@ -77,16 +77,16 @@
             </a>
             <ul class="navbar-nav px-3 w-100 mr-auto">
                 <li class="nav-item text-nowrap">
-                    <a class="nav-link active" href="#" id="home-link" onclick="PageHandler.changePage('home')">Home</a>
+                    <a class="nav-link active" href="#" id="home-link" onclick="WorkspaceHandler.changePage('home')">Home</a>
                 </li>
                 <li class="nav-item text-nowrap">
-                    <a class="nav-link" href="#" id="sessions-link" onclick="PageHandler.changePage('sessions')">Sessions</a>
+                    <a class="nav-link" href="#" id="sessions-link" onclick="WorkspaceHandler.changePage('sessions')">Sessions</a>
                 </li>
                 <li class="nav-item text-nowrap">
-                    <a class="nav-link" href="#" id="users-link" onclick="PageHandler.changePage('users')">Users</a>
+                    <a class="nav-link" href="#" id="users-link" onclick="WorkspaceHandler.changePage('users')">Users</a>
                 </li>
                 <li class="nav-item text-nowrap">
-                    <a class="nav-link" href="#" id="relays-link" onclick="PageHandler.changePage('relay')">Relays</a>
+                    <a class="nav-link" href="#" id="relays-link" onclick="WorkspaceHandler.changePage('relay')">Relays</a>
                 </li>
             </ul>
             <ul class="navbar-nav px-3">
@@ -104,7 +104,7 @@
                         <i class="fas fa-user-circle fa-2x" data-toggle="tooltip" data-placement="bottom" title="Account"></i>
                     </a>
                     <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
-                        <a class="dropdown-item" href="#" onclick="PageHandler.changePage('account')">Settings</a>
+                        <a class="dropdown-item" href="#" onclick="WorkspaceHandler.changePage('account')">Settings</a>
                     </div>
                 </li>
                 <li class="nav-item text-nowrap">
@@ -124,15 +124,15 @@
                 <nav class="navbar navbar-expand-md navbar-dark fi bg-dark p-0 shadow">
                     <ul class="navbar-nav px-3 w-100 mr-auto">
                         <li class="nav-item text-nowrap">
-                            <a class="nav-link" id="accounts-link" href="#" onclick="PageHandler.changeAccountPage('accounts')">Users</a>
+                            <a class="nav-link" id="accounts-link" href="#" onclick="WorkspaceHandler.changeAccountPage('accounts')">Users</a>
                         </li>
                         <li class="nav-item text-nowrap">
-                            <a class="nav-link" id="config-link" href="#" onclick="PageHandler.changeAccountPage('config')">Game Configuration</a>
+                            <a class="nav-link" id="config-link" href="#" onclick="WorkspaceHandler.changeAccountPage('config')">Game Configuration</a>
                         </li>
                     </ul>
                     <ul class="navbar-nav px-3" id="new-user-button">
                         <li class="nav-item text-nowrap">
-                            <a class="nav-link" href="#" onclick="PageHandler.changeAccountPage('new')">
+                            <a class="nav-link" href="#" onclick="WorkspaceHandler.changeAccountPage('new')">
                                 <i class="fas fa-plus" data-toggle="tooltip" data-placement="bottom" title="Add User"></i>
                             </a>
                         </li>
