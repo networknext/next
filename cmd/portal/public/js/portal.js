@@ -73,7 +73,7 @@ MapHandler = {
 					gpuAggregation,
 					aggregation
 				  })
-				var layers = [sessionGridLayer];
+				let layers = [sessionGridLayer];
 				mapInstance = new deck.DeckGL({
 					mapboxApiAccessToken: mapboxgl.accessToken,
 					mapStyle: 'mapbox://styles/mapbox/dark-v10',
@@ -231,7 +231,7 @@ WorkspaceHandler = {
 			)
 			.catch(
 				(e) => {
-					console.log("Failed to fetch company accounts");
+					console.log("Something went wrong fetching all accounts");
 					console.log(e);
 				}
 			);
@@ -248,6 +248,7 @@ WorkspaceHandler = {
 			})
 			.catch((e) => {
 				console.log("Something went wrong fetching public key");
+				console.log(e);
 			});
 	},
 	loadRelayPage() {
@@ -260,7 +261,8 @@ WorkspaceHandler = {
 				Object.assign(relaysTable.$data, {relays: response.relays});
 			})
 			.catch((e) => {
-				console.log("Something went wrong with fetching relays")
+				console.log("Something went wrong fetching relays");
+				console.log(e);
 			});
 	},
 	loadSessionPage() {
@@ -273,7 +275,7 @@ WorkspaceHandler = {
 				Object.assign(sessionsTable.$data, {sessions: response.sessions});
 			})
 			.catch((e) => {
-				console.log("Something went wrong with fetching the sessions list");
+				console.log("Something went wrong fetching the top sessions list");
 				console.log(e);
 			});
 	},
@@ -305,11 +307,12 @@ function startApp() {
 			.then((response) => {
 				console.log("Map init successful");
 			})
-			.catch((error) => {
-				console.log("Map init unsuccessful: " + error);
+			.catch((e) => {
+				console.log("Something went wrong initializing the map");
+				console.log(e);
 			});
 	}).catch((e) => {
-		console.log("Something went wrong with getting the user information");
+		console.log("Something went wrong getting the current user information");
 	});
 }
 
@@ -373,20 +376,22 @@ function updatePubKey() {
 			document.getElementById("pubKey").value = userInfo.pubKey;
 		})
 		.catch((e) => {
-			console.log("Failed to update public key");
+			console.log("Something went wrong updating the public key");
 			console.log(e);
 		})
 }
 
 function fetchSessionInfo(sessionId = '') {
-
-	var id = sessionId || document.getElementById("sessionIDLookup").value;
+	let id = sessionId || document.getElementById("sessionIDLookup").value;
 	document.getElementById("sessionIDLookup").value = '';
 
 	if (id == '') {
 		console.log("Can't use a empty id");
 		return;
 	}
+	/**
+	 * TODO: Add in a catch for when session ID isn't found
+	 */
 	JSONRPCClient
 		.call("BuyersService.SessionDetails", {session_id: id})
 		.then((response) => {
@@ -401,11 +406,11 @@ function fetchSessionInfo(sessionId = '') {
 					fetchSessionInfo: fetchSessionInfo
 				}
 			});
-			var data = {
+			let data = {
 				latitude: response.meta.location.latitude,
 				longitude: response.meta.location.longitude,
 			};
-			var sessionToolMapInstance = new deck.DeckGL({
+			let sessionToolMapInstance = new deck.DeckGL({
 				mapboxApiAccessToken: mapboxgl.accessToken,
 				mapStyle: 'mapbox://styles/mapbox/dark-v10',
 				initialViewState: {
@@ -437,29 +442,29 @@ function fetchSessionInfo(sessionId = '') {
 			generateCharts(response.slices);
 		})
 		.catch((e) => {
-			console.log("Something went wrong with fetching session information: ");
+			console.log("Something went wrong fetching session information: ");
 			console.log(e);
 		});
 }
 
 
 function generateCharts(data) {
-	latencyData = {
+	let latencyData = {
 		next: [],
 		direct: [],
 		improvement: [],
 	};
-	jitterData = {
+	let jitterData = {
 		next: [],
 		direct: [],
 		improvement: [],
 	};
-	packetLossData = {
+	let packetLossData = {
 		next: [],
 		direct: [],
 		improvement: [],
 	};
-	bandwidthData = {
+	let bandwidthData = {
 		up: [],
 		down: [],
 	};
@@ -541,7 +546,7 @@ function generateCharts(data) {
 		});
 	});
 
-	var defaultOptions = {
+	let defaultOptions = {
 		chart: {
 			type: 'area',
 			height: 350,
@@ -576,7 +581,7 @@ function generateCharts(data) {
 		},
 	};
 
-	var latencyOptionsImprovement = {
+	let latencyOptionsImprovement = {
 		series: [
 			{
 				name: 'Improvement',
@@ -593,7 +598,7 @@ function generateCharts(data) {
 		},
 	};
 
-	var latencyOptionsComparison = {
+	let latencyOptionsComparison = {
 		series: [
 			{
 				name: 'Network Next',
@@ -614,7 +619,7 @@ function generateCharts(data) {
 		},
 	};
 
-	var latencyImprovementChart = new ApexCharts(
+	let latencyImprovementChart = new ApexCharts(
 		document.querySelector("#latency-chart-1"),
 		{
 			...latencyOptionsImprovement,
@@ -622,7 +627,7 @@ function generateCharts(data) {
 		},
 	);
 
-	var latencyComparisonChart = new ApexCharts(
+	let latencyComparisonChart = new ApexCharts(
 		document.querySelector("#latency-chart-2"),
 		{
 			...latencyOptionsComparison,
@@ -630,7 +635,7 @@ function generateCharts(data) {
 		},
 	);
 
-	var jitterOptionsImprovement = {
+	let jitterOptionsImprovement = {
 		series: [
 			{
 				name: 'Improvement',
@@ -647,7 +652,7 @@ function generateCharts(data) {
 		},
 	};
 
-	var jitterOptionsComparison = {
+	let jitterOptionsComparison = {
 		series: [
 			{
 				name: 'Network Next',
@@ -668,7 +673,7 @@ function generateCharts(data) {
 		},
 	};
 
-	var jitterImprovementChart = new ApexCharts(
+	let jitterImprovementChart = new ApexCharts(
 		document.querySelector("#jitter-chart-1"),
 		{
 			...jitterOptionsImprovement,
@@ -676,7 +681,7 @@ function generateCharts(data) {
 		},
 	);
 
-	var jitterComparisonChart = new ApexCharts(
+	let jitterComparisonChart = new ApexCharts(
 		document.querySelector("#jitter-chart-2"),
 		{
 			...jitterOptionsComparison,
@@ -684,7 +689,7 @@ function generateCharts(data) {
 		},
 	);
 
-	var packetLossOptionsImprovement = {
+	let packetLossOptionsImprovement = {
 		series: [
 			{
 				name: 'Improvement',
@@ -701,7 +706,7 @@ function generateCharts(data) {
 		},
 	};
 
-	var packetLossOptionsComparison = {
+	let packetLossOptionsComparison = {
 		series: [
 			{
 				name: 'Network Next',
@@ -722,7 +727,7 @@ function generateCharts(data) {
 		},
 	};
 
-	var packetLossImprovementChart = new ApexCharts(
+	let packetLossImprovementChart = new ApexCharts(
 		document.querySelector("#packet-loss-chart-1"),
 		{
 			...packetLossOptionsImprovement,
@@ -730,7 +735,7 @@ function generateCharts(data) {
 		},
 	);
 
-	var packetLossComparisonChart = new ApexCharts(
+	let packetLossComparisonChart = new ApexCharts(
 		document.querySelector("#packet-loss-chart-2"),
 		{
 			...packetLossOptionsComparison,
@@ -738,7 +743,7 @@ function generateCharts(data) {
 		},
 	);
 
-	var bandwidthOptionsUp = {
+	let bandwidthOptionsUp = {
 		series: [
 			{
 				name: 'Actual Up',
@@ -755,7 +760,7 @@ function generateCharts(data) {
 		},
 	};
 
-	var bandwidthOptionsDown = {
+	let bandwidthOptionsDown = {
 		series: [
 			{
 				name: 'Actual Down',
@@ -772,7 +777,7 @@ function generateCharts(data) {
 		},
 	};
 
-	var bandwidthUpChart = new ApexCharts(
+	let bandwidthUpChart = new ApexCharts(
 		document.querySelector("#bandwidth-chart-1"),
 		{
 			...bandwidthOptionsUp,
@@ -780,7 +785,7 @@ function generateCharts(data) {
 		},
 	);
 
-	var bandwidthDownChart = new ApexCharts(
+	let bandwidthDownChart = new ApexCharts(
 		document.querySelector("#bandwidth-chart-2"),
 		{
 			...bandwidthOptionsDown,
