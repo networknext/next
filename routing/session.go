@@ -18,6 +18,7 @@ type SessionMeta struct {
 	ServerAddr string   `json:"server_addr"`
 	Hops       int      `json:"hops"`
 	SDK        string   `json:"sdk"`
+	Connection string   `json:"connection"`
 }
 
 func (s *SessionMeta) UnmarshalBinary(data []byte) error {
