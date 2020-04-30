@@ -150,6 +150,7 @@ type ServerUpdateErrorMetrics struct {
 	UnmarshalFailure     Counter
 	SDKTooOld            Counter
 	BuyerNotFound        Counter
+	DatacenterNotFound   Counter
 	VerificationFailure  Counter
 	PacketSequenceTooOld Counter
 }
@@ -158,6 +159,7 @@ var EmptyServerUpdateErrorMetrics ServerUpdateErrorMetrics = ServerUpdateErrorMe
 	UnmarshalFailure:     &EmptyCounter{},
 	SDKTooOld:            &EmptyCounter{},
 	BuyerNotFound:        &EmptyCounter{},
+	DatacenterNotFound:   &EmptyCounter{},
 	VerificationFailure:  &EmptyCounter{},
 	PacketSequenceTooOld: &EmptyCounter{},
 }
