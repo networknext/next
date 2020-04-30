@@ -98,6 +98,7 @@ func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, metrics *me
 
 		var packet ServerInitRequestPacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
+			sentry.CaptureException(err)
 			level.Error(logger).Log("msg", "could not read packet", "err", err)
 			metrics.ErrorMetrics.UnmarshalFailure.Add(1)
 			return
@@ -123,6 +124,7 @@ func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, metrics *me
 		}()
 
 		if !incoming.SourceAddr.IP.IsLoopback() && !packet.Version.AtLeast(SDKVersionMin) {
+			sentry.CaptureMessage("sdk version is too old")
 			level.Error(locallogger).Log("msg", "sdk version is too old")
 			response.Response = InitResponseOldSDKVersion
 			metrics.ErrorMetrics.SDKTooOld.Add(1)
@@ -131,6 +133,7 @@ func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, metrics *me
 
 		_, err := storer.Datacenter(packet.DatacenterID)
 		if err != nil {
+			sentry.CaptureException(err)
 			level.Error(locallogger).Log("msg", "failed to get datacenter from storage", "err", err)
 			response.Response = InitResponseUnknownDatacenter
 			metrics.ErrorMetrics.DatacenterNotFound.Add(1)
@@ -139,6 +142,7 @@ func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, metrics *me
 
 		buyer, err := storer.Buyer(packet.CustomerID)
 		if err != nil {
+			sentry.CaptureException(err)
 			level.Error(locallogger).Log("msg", "failed to get buyer from storage", "err", err)
 			response.Response = InitResponseUnknownCustomer
 			metrics.ErrorMetrics.BuyerNotFound.Add(1)
@@ -146,6 +150,7 @@ func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, metrics *me
 		}
 
 		if !crypto.Verify(buyer.PublicKey, packet.GetSignData(), packet.Signature) {
+			sentry.CaptureMessage("signature verification failed")
 			level.Error(locallogger).Log("msg", "signature verification failed")
 			response.Response = InitResponseSignatureCheckFailed
 			metrics.ErrorMetrics.VerificationFailure.Add(1)
@@ -183,6 +188,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 
 		var packet ServerUpdatePacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
+			sentry.CaptureException(err)
 			level.Error(logger).Log("msg", "could not read packet", "err", err)
 			metrics.ErrorMetrics.UnmarshalFailure.Add(1)
 			return
@@ -194,6 +200,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 
 		// Drop the packet if version is older that the minimun sdk version
 		if !incoming.SourceAddr.IP.IsLoopback() && !packet.Version.AtLeast(SDKVersionMin) {
+			sentry.CaptureMessage(fmt.Sprintf("sdk version is too old: %s", packet.Version.String()))
 			level.Error(locallogger).Log("msg", "sdk version is too old", "sdk", packet.Version.String())
 			metrics.ErrorMetrics.SDKTooOld.Add(1)
 			return
@@ -204,6 +211,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 		// Get the buyer information for the id in the packet
 		buyer, err := storer.Buyer(packet.CustomerID)
 		if err != nil {
+			sentry.CaptureException(err)
 			level.Error(locallogger).Log("msg", "failed to get buyer from storage", "err", err, "customer_id", packet.CustomerID)
 			metrics.ErrorMetrics.BuyerNotFound.Add(1)
 			return
@@ -213,6 +221,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 
 		// Drop the packet if the signed packet data cannot be verified with the buyers public key
 		if !crypto.Verify(buyer.PublicKey, packet.GetSignData(), packet.Signature) {
+			sentry.CaptureMessage("signature verification failed")
 			level.Error(locallogger).Log("msg", "signature verification failed")
 			metrics.ErrorMetrics.VerificationFailure.Add(1)
 			return
@@ -240,6 +249,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 
 		// Drop the packet if the sequence number is older than the previously cached sequence number
 		if packet.Sequence < serverentry.Sequence {
+			sentry.CaptureMessage(fmt.Sprintf("packet too old: seq = %d | latest sequence = %d", packet.Sequence, serverentry.Sequence))
 			level.Error(locallogger).Log("msg", "packet too old", "packet sequence", packet.Sequence, "lastest sequence", serverentry.Sequence)
 			metrics.ErrorMetrics.PacketSequenceTooOld.Add(1)
 			return
@@ -351,6 +361,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			serverCacheCmd := tx.Get(serverCacheKey)
 			sessionCacheCmd := tx.Get(sessionCacheKey)
 			if _, err := tx.Exec(); err != nil && err != redis.Nil {
+				sentry.CaptureException(err)
 				level.Error(locallogger).Log("msg", "failed to execute redis pipeline", "err", err)
 				metrics.ErrorMetrics.PipelineExecFailure.Add(1)
 				return

@@ -8,7 +8,6 @@ package main
 import (
 	"context"
 	"encoding/base64"
-	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -103,15 +102,6 @@ func main() {
 
 	// force sentry to post any updates upon program exit
 	defer sentry.Flush(time.Second * 2)
-
-	// test sentry error
-	go func() {
-		for {
-			time.Sleep(time.Second)
-			err := errors.New("sample error")
-			sentry.CaptureException(err)
-		}
-	}()
 
 	// var serverPublicKey []byte
 	var customerPublicKey []byte
