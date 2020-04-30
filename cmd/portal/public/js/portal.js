@@ -492,10 +492,9 @@ function fetchSessionInfo(sessionId = '') {
 				] */
 			});
 
-			loadCharts(data.slices);
+			loadCharts(response.slices);
 
 			showDemoChart('latency-chart-1');
-			showDemoChart('latency-chart-2');
 			showDemoChart('jitter-chart-1');
 			showDemoChart('jitter-chart-2');
 			showDemoChart('packet-loss-chart-1');
@@ -526,9 +525,8 @@ function loadCharts(data) {
 		improvement: []
 	};
 	bandwidthData = {
-		next: [],
-		direct: [],
-		improvement: []
+		up: [],
+		down: []
 	};
 
 	data.map((entry) => {
@@ -539,7 +537,57 @@ function loadCharts(data) {
 		jitterData.direct[timestamp] = entry.direct.jitter;
 		packetLossData.next[timestamp] = entry.next.packet_loss;
 		packetLossData.direct[timestamp] = entry.direct.packet_loss;
+		bandwidthData.up[timestamp] = entry.envelope.up;
+		bandwidthData.down[timestamp] = entry.envelope.down;
 	});
+
+	var latencyOptionsNext = {
+		series: [
+			{
+				name: 'Network Next',
+				data: latencyData.next,
+			},
+		],
+		chart: {
+			type: 'area',
+			height: 350,
+			toolbar: {
+				show: false,
+			},
+			zoom: {
+				enabled: false,
+			},
+		},
+		legend: {
+			show: true,
+		},
+		stroke: {
+			curve: 'stepline',
+		},
+		theme: {
+			mode: 'light',
+		},
+		dataLabels: {
+			enabled: false
+		},
+		markers: {
+			hover: {
+				sizeOffset: 4,
+			},
+		},
+		xaxis: {
+			lines: {
+				show: false,
+			},
+		},
+		yaxis: {
+			lines: {
+				show: true,
+			},
+		}
+	}
+	var chart = new ApexCharts(document.querySelector("#latency-chart-2"), latencyOptionsNext);
+	chart.render();
 }
 
 function showDemoChart(id) {
@@ -548,10 +596,6 @@ function showDemoChart(id) {
 					{
 						name: 'Network Next',
 						data: [34, 44, 54, 21, 12, 43, 33, 23, 66, 66, 58]
-					},
-					{
-						name: 'Direct',
-						data: [3, 52, 56, 23, 67, 23, 45, 65, 23, 32, 45]
 					}
 				],
 		chart: {
