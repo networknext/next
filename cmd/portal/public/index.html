@@ -292,6 +292,7 @@
                         </button>
                     </div>
                 </form>
+<<<<<<< HEAD
                 <div id="sessions">
                     <div class="spinner-border" role="status" v-if="!sessions">
                         <span class="sr-only">Loading...</span>
@@ -307,6 +308,49 @@
                             <th scope="col">On Network Next</th>
                             <th scope="col">Expires At</th>
                             <th scope="col">Details</th>
+=======
+                <table class="table" id="sessions">
+                    <thead class="thead-dark">
+                      <tr>
+                        <th scope="col">Session ID</th>
+                        <th scope="col">User Hash</th>
+                        <th scope="col">Datacenter</th>
+                        <th scope="col">Direct RTT</th>
+                        <th scope="col">Next RTT</th>
+                        <th scope="col">Improvement</th>
+                        <th scope="col">Details</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                        <!-- <tr>
+                            <td>DEBUG</td>
+                            <td>DEBUG</td>
+                            <td>DEBUG</td>
+                            <td>DEBUG</td>
+                            <td>DEBUG</td>
+                            <td>
+                                <i class="fas fa-check"></i>
+                            </td>
+                            <td>DEBUG</td>
+                            <td>
+                                <button class="btn" data-toggle="modal" data-target="#sessionInfoModal" onclick="fetchSessionInfo()">
+                                    <i class="fas fa-info-circle" data-toggle="tooltip" data-placement="bottom" title="Session Info"></i>
+                                </button>
+                            </td>
+                        </tr> -->
+                        <tr v-for="session in sessions" scope="row">
+                            <td>{{ session.id }}</td>
+                            <td>{{ session.user_hash }}</td>
+                            <td>{{ session.datacenter }}</td>
+                            <td>{{ session.direct_rtt }}</td>
+                            <td>{{ session.next_rtt }}</td>
+                            <td>{{ session.delta_rtt * -1}}</td>
+                            <td>
+                                <button class="btn" data-toggle="modal" data-target="#sessionInfoModal" v-on:click="fetchSessionInfo(session.id)">
+                                    <i class="fas fa-info-circle" data-toggle="tooltip" data-placement="bottom" title="Session Info"></i>
+                                </button>
+                            </td>
+>>>>>>> working on charts
                         </tr>
                         </thead>
                         <tbody>
@@ -357,7 +401,7 @@
                             <span aria-hidden="true">&times;</span>
                           </button>
                         </div>
-                        <div class="modal-body">
+                        <div class="modal-body" id="sessionDetails">
                             <div class="row">
                                 <div class="col-12 col-lg-8">
                                     <div class="card mb-2">
@@ -493,7 +537,7 @@
                                                     User ID
                                                 </dt>
                                                 <dd>
-                                                    123456678912344326
+                                                    {{ meta.user_hash }}
                                                 </dd>
                                                 <dt>
                                                     Platform
@@ -511,13 +555,13 @@
                                                     SDK Version
                                                 </dt>
                                                 <dd>
-                                                    100
+                                                    {{ meta.sdk }}
                                                 </dd>
                                                 <dt>
                                                     Connection Type
                                                 </dt>
                                                 <dd>
-                                                    Magic
+                                                    {{ meta.connection }}
                                                 </dd>
                                                 <dt>
                                                     Nearby Relays
@@ -623,41 +667,25 @@
                                                       </tr>
                                                     </thead>
                                                     <tbody>
-                                                      <tr>
-                                                        <td>
-                                                            192.168.1.11111
-                                                        </td>
-                                                        <td>
-                                                          <em>User (Player)</em>
-                                                        </td>
-                                                      </tr>
-                                                      <tr>
+                                                        <tr>
+                                                            <td>
+                                                                {{ meta.client_addr}}
+                                                            </td>
+                                                            <td>
+                                                                <em>User (Player)</em>
+                                                            </td>
+                                                        </tr>
+                                                        <tr v-for="index in meta.hops" :key="index" scope="row">
                                                           <td>
-                                                              London relay
+                                                              Relay {{ index }}
                                                           </td>
                                                           <td>
-                                                              Hop 1
-                                                          </td>
-                                                      </tr>
-                                                      <tr>
-                                                          <td>
-                                                              Spain relay
-                                                          </td>
-                                                          <td>
-                                                              Hop 2
-                                                          </td>
-                                                      </tr>
-                                                      <tr>
-                                                          <td>
-                                                              New York relay
-                                                          </td>
-                                                          <td>
-                                                              Hop 3
+                                                              Hop {{ index }}
                                                           </td>
                                                       </tr>
                                                       <tr>
                                                         <td>
-                                                            192.168.1.1113
+                                                            {{ meta.server_addr}}
                                                         </td>
                                                         <td>
                                                           <em>Destination Server</em>

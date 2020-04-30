@@ -296,20 +296,60 @@ function startApp() {
 			userId: response[0].sub,
 			token: response[1]
 		};
-		JSONRPCClient
-			.call('AuthService.UserRoles', {user_id: userInfo.userId})
-			.then((response) => {
-				userInfo.roles = response.roles;
-
-				document.getElementById("app").style.display = 'block';
-				MapHandler
-					.initMap()
-					.then((response) => {
-						console.log("Map init successful");
-					})
-					.catch((error) => {
-						console.log("Map init unsuccessful: " + error);
-					});
+	}).catch((e) => {
+		console.log("Something went wrong with getting the user information");
+	});
+	document.getElementById("app").style.display = 'block';
+	MapHandler
+		.initMap()
+		.then((response) => {
+			console.log("Map init successful");
+		})
+		.catch((error) => {
+			console.log("Map init unsuccessful: " + error);
+		});
+	JSONRPCClient
+		.call('BuyersService.TopSessions', {})
+		.then((response) => {
+			new Vue({
+				el: '#sessions',
+				data: {
+					sessions: response.sessions || []
+				},
+				methods: {
+					fetchSessionInfo: fetchSessionInfo
+				}
+			});
+		})
+		.catch((e) => {
+			console.log("Something went wrong with fetching sessions");
+			console.log(e);
+		});
+	JSONRPCClient
+		.call('BuyersService.Sessions', {buyer_id: '13672574147039585173'}) // Change this to user endpoint when available
+		.then((response) => {
+			new Vue({
+				el: '#users',
+				data: {
+					users: response.users || []
+				},
+				methods: {
+					fetchSessionInfo: fetchSessionInfo
+				}
+			});
+		})
+		.catch((e) => {
+			console.log("Something went wrong with fetching users");
+			console.log(e);
+		});
+	JSONRPCClient
+		.call('BuyersService.GameConfiguration', {buyer_id: '13672574147039585173'})
+		.then((response) => {
+			new Vue({
+				el: '#pubKey',
+				data: {
+					pubkey: response.game_config.public_key
+				}
 			})
 			.catch((e) => {
 				console.log("Something went wrong with getting the user roles");
@@ -318,6 +358,22 @@ function startApp() {
 		})
 		.catch((e) => {
 			console.log("Something went wrong fetching user details or user token");
+			console.log(e);
+		});
+	JSONRPCClient
+		.call('BuyersService.TopSessions', {})
+		.then((response) => {
+			console.log(response);
+		})
+		.catch((e) => {
+			console.log(e);
+		});
+	JSONRPCClient
+		.call('BuyersService.TopSessions', {buyer_id: '13672574147039585173'})
+		.then((response) => {
+			console.log(response);
+		})
+		.catch((e) => {
 			console.log(e);
 		});
 }
@@ -393,20 +449,50 @@ function fetchSessionInfo(sessionId = '') {
 		return;
 	}
 	JSONRPCClient
-		.call("BuyersService.Sessions", {buyer_id: '13672574147039585173'/* , session_id: id */})
+		.call("BuyersService.SessionDetails", {session_id: id})
 		.then((response) => {
+			console.log(response);
+			new Vue({
+				el: '#sessionDetails',
+				data: {
+					meta: response.meta,
+					slices: response.slices
+				}
+			});
+			var data = {
+				latitude: response.meta.location.latitude,
+				longitude: response.meta.location.longitude,
+			};
 			var sessionToolMapInstance = new deck.DeckGL({
 				mapboxApiAccessToken: mapboxgl.accessToken,
 				mapStyle: 'mapbox://styles/mapbox/dark-v10',
 				initialViewState: {
-					longitude: -98.583333,
-					latitude: 39.833333,
+					latitude: data.latitude,
+					longitude: data.longitude,
 					zoom: 4,
 					maxZoom: 15,
 				},
 				controller: true,
 				container: 'session-tool-map',
+				/* layers: [
+					new deck.IconLayer({
+						id: 'icon-layer',
+						data,
+						pickable: false,
+						// iconAtlas and iconMapping are required
+						// getIcon: return a string
+						iconAtlas: 'marker.png',
+						iconMapping: {marker: {x: 0, y: 0, width: 32, height: 32, mask: true}},
+						getIcon: d => 'marker',
+						sizeScale: 15,
+						getPosition: d => [d.longitude, d.latitude],
+						getSize: d => 100,
+						getColor: d => [7, 140, 0]
+					  })
+				] */
 			});
+
+			loadCharts(data.slices);
 
 			showDemoChart('latency-chart-1');
 			showDemoChart('latency-chart-2');
@@ -423,15 +509,51 @@ function fetchSessionInfo(sessionId = '') {
 		});
 }
 
-function fetchUserInfo(userID) {
-	// Need an endpoint for this
+function loadCharts(data) {
+	latencyData = {
+		next: [],
+		direct: [],
+		improvement: []
+	};
+	jitterData = {
+		next: [],
+		direct: [],
+		improvement: []
+	};
+	packetLossData = {
+		next: [],
+		direct: [],
+		improvement: []
+	};
+	bandwidthData = {
+		next: [],
+		direct: [],
+		improvement: []
+	};
+
+	data.map((entry) => {
+		let timestamp = entry.timestamp;
+		latencyData.next[timestamp] = entry.next.rtt;
+		latencyData.direct[timestamp] = entry.direct.rtt;
+		jitterData.next[timestamp] = entry.next.jitter;
+		jitterData.direct[timestamp] = entry.direct.jitter;
+		packetLossData.next[timestamp] = entry.next.packet_loss;
+		packetLossData.direct[timestamp] = entry.direct.packet_loss;
+	});
 }
 
 function showDemoChart(id) {
 	var options = {
-		series: [{
-			data: [34, 44, 54, 21, 12, 43, 33, 23, 66, 66, 58]
-		}],
+		series: [
+					{
+						name: 'Network Next',
+						data: [34, 44, 54, 21, 12, 43, 33, 23, 66, 66, 58]
+					},
+					{
+						name: 'Direct',
+						data: [3, 52, 56, 23, 67, 23, 45, 65, 23, 32, 45]
+					}
+				],
 		chart: {
 			type: 'area',
 			height: 350,
@@ -456,17 +578,17 @@ function showDemoChart(id) {
 		},
 		markers: {
 			hover: {
-			sizeOffset: 4
+				sizeOffset: 4
 			}
 		},
 		xaxis: {
 			lines: {
-			show: false,
+				show: false,
 			}
 		},
 		yaxis: {
 			lines: {
-			show: true,
+				show: true,
 			}
 		}
 	};
