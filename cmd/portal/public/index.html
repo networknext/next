@@ -344,7 +344,7 @@
                             <td>{{ session.datacenter }}</td>
                             <td>{{ session.direct_rtt }}</td>
                             <td>{{ session.next_rtt }}</td>
-                            <td>{{ session.delta_rtt * -1}}</td>
+                            <td>{{ session.delta_rtt }}</td>
                             <td>
                                 <button class="btn" data-toggle="modal" data-target="#sessionInfoModal" v-on:click="fetchSessionInfo(session.id)">
                                     <i class="fas fa-info-circle" data-toggle="tooltip" data-placement="bottom" title="Session Info"></i>

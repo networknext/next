@@ -296,86 +296,18 @@ function startApp() {
 			userId: response[0].sub,
 			token: response[1]
 		};
+		document.getElementById("app").style.display = 'block';
+		MapHandler
+			.initMap()
+			.then((response) => {
+				console.log("Map init successful");
+			})
+			.catch((error) => {
+				console.log("Map init unsuccessful: " + error);
+			});
 	}).catch((e) => {
 		console.log("Something went wrong with getting the user information");
 	});
-	document.getElementById("app").style.display = 'block';
-	MapHandler
-		.initMap()
-		.then((response) => {
-			console.log("Map init successful");
-		})
-		.catch((error) => {
-			console.log("Map init unsuccessful: " + error);
-		});
-	JSONRPCClient
-		.call('BuyersService.TopSessions', {})
-		.then((response) => {
-			new Vue({
-				el: '#sessions',
-				data: {
-					sessions: response.sessions || []
-				},
-				methods: {
-					fetchSessionInfo: fetchSessionInfo
-				}
-			});
-		})
-		.catch((e) => {
-			console.log("Something went wrong with fetching sessions");
-			console.log(e);
-		});
-	JSONRPCClient
-		.call('BuyersService.Sessions', {buyer_id: '13672574147039585173'}) // Change this to user endpoint when available
-		.then((response) => {
-			new Vue({
-				el: '#users',
-				data: {
-					users: response.users || []
-				},
-				methods: {
-					fetchSessionInfo: fetchSessionInfo
-				}
-			});
-		})
-		.catch((e) => {
-			console.log("Something went wrong with fetching users");
-			console.log(e);
-		});
-	JSONRPCClient
-		.call('BuyersService.GameConfiguration', {buyer_id: '13672574147039585173'})
-		.then((response) => {
-			new Vue({
-				el: '#pubKey',
-				data: {
-					pubkey: response.game_config.public_key
-				}
-			})
-			.catch((e) => {
-				console.log("Something went wrong with getting the user roles");
-				console.log(e);
-			});
-		})
-		.catch((e) => {
-			console.log("Something went wrong fetching user details or user token");
-			console.log(e);
-		});
-	JSONRPCClient
-		.call('BuyersService.TopSessions', {})
-		.then((response) => {
-			console.log(response);
-		})
-		.catch((e) => {
-			console.log(e);
-		});
-	JSONRPCClient
-		.call('BuyersService.TopSessions', {buyer_id: '13672574147039585173'})
-		.then((response) => {
-			console.log(response);
-		})
-		.catch((e) => {
-			console.log(e);
-		});
 }
 
 function createVueComponents() {
@@ -494,7 +426,6 @@ function fetchSessionInfo(sessionId = '') {
 
 			loadCharts(response.slices);
 
-			showDemoChart('latency-chart-1');
 			showDemoChart('jitter-chart-1');
 			showDemoChart('jitter-chart-2');
 			showDemoChart('packet-loss-chart-1');
@@ -531,23 +462,66 @@ function loadCharts(data) {
 
 	data.map((entry) => {
 		let timestamp = entry.timestamp;
-		latencyData.next[timestamp] = entry.next.rtt;
-		latencyData.direct[timestamp] = entry.direct.rtt;
-		jitterData.next[timestamp] = entry.next.jitter;
-		jitterData.direct[timestamp] = entry.direct.jitter;
-		packetLossData.next[timestamp] = entry.next.packet_loss;
-		packetLossData.direct[timestamp] = entry.direct.packet_loss;
-		bandwidthData.up[timestamp] = entry.envelope.up;
-		bandwidthData.down[timestamp] = entry.envelope.down;
+
+		// Latency
+		latencyData.next.push({
+			x: timestamp,
+			y: entry.next.rtt
+		});
+		latencyData.direct.push({
+			x: timestamp,
+			y: entry.direct.rtt
+		});
+		latencyData.improvement.push({
+			x: timestamp,
+			y: entry.direct.rtt - entry.next.rtt
+		});
+
+		// Jitter
+		jitterData.next.push({
+			x: timestamp,
+			y: entry.next.jitter
+		});
+		jitterData.direct.push({
+			x: timestamp,
+			y: entry.direct.jitter
+		});
+		jitterData.improvement.push({
+			x: timestamp,
+			y: entry.direct.jitter - entry.next.jitter
+		});
+
+		// Packetloss
+		packetLossData.next.push({
+			x: timestamp,
+			y: entry.next.packet_loss
+		});
+		packetLossData.direct.push({
+			x: timestamp,
+			y: entry.direct.packet_loss
+		});
+		packetLossData.improvement.push({
+			x: timestamp,
+			y: entry.direct.packet_loss - entry.next.packet_loss
+		});
+
+		// Bandwidth
+		bandwidthData.up.push({
+			x: timestamp,
+			y: entry.envelope.up
+		});
+		bandwidthData.down.push({
+			x: timestamp,
+			y: entry.envelope.down
+		});
 	});
 
-	var latencyOptionsNext = {
-		series: [
-			{
-				name: 'Network Next',
-				data: latencyData.next,
-			},
-		],
+	console.log(latencyData);
+	console.log(jitterData);
+	console.log(packetLossData);
+	console.log(bandwidthData);
+
+	var defaultOptions = {
 		chart: {
 			type: 'area',
 			height: 350,
@@ -585,9 +559,47 @@ function loadCharts(data) {
 				show: true,
 			},
 		}
-	}
-	var chart = new ApexCharts(document.querySelector("#latency-chart-2"), latencyOptionsNext);
-	chart.render();
+	};
+
+	var latencyOptionsImprovement = {
+		series: [
+			{
+				name: 'Improvement',
+				data: latencyData.improvement,
+			},
+		],
+	};
+
+	var latencyOptionsComparison = {
+		series: [
+			{
+				name: 'Network Next',
+				data: latencyData.next,
+			},
+			{
+				name: 'Direct',
+				data: latencyData.direct,
+			},
+		],
+	};
+
+	var latencyImprovementChart = new ApexCharts(
+		document.querySelector("#latency-chart-1"),
+		{
+			...latencyOptionsImprovement,
+			...defaultOptions
+		}
+	);
+
+	var latencyComparisonChart = new ApexCharts(
+		document.querySelector("#latency-chart-2"),
+		{
+			...latencyOptionsComparison,
+			...defaultOptions
+		}
+	);
+	latencyImprovementChart.render();
+	latencyComparisonChart.render();
 }
 
 function showDemoChart(id) {
