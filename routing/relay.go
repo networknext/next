@@ -34,17 +34,38 @@ const (
 
 type RelayState uint32
 
+func (state RelayState) String() string {
+	switch state {
+	case RelayStateEnabled:
+		return "enabled"
+	case RelayStateMaintenance:
+		return "maintenance"
+	case RelayStateDisabled:
+		return "disabled"
+	case RelayStateQuarantine:
+		return "quarantine"
+	case RelayStateDecommissioned:
+		return "decommissioned"
+	case RelayStateOffline:
+		return "offline"
+	default:
+		return "unknown"
+	}
+}
+
 const (
-	// RelayStateEnabled Offline if not yet communicating with backend, Online when communication establishes
+	// RelayStateEnabled if running and communicating with backend
 	RelayStateEnabled RelayState = 0
 	// RelayStateMaintenance System does a clean shutdown of the relay process
 	RelayStateMaintenance RelayState = 1
 	// RelayStateDisabled System does a clean shutdown and is shown as disabled as a temporary state before decommissioning in case it needs to be re-enabled
 	RelayStateDisabled RelayState = 2
-	// RelayStateQuarantine Backend has detected and unexpected disruption in service from this relay and has removed it from getting packets until it is manually added back into the system
+	// RelayStateQuarantine Backend has detected an unexpected disruption in service from this relay and has removed it from getting packets until it is manually added back into the system
 	RelayStateQuarantine RelayState = 3
 	// RelayStateDecommissioned System is removed from the UI and lists. Reusable fields like IP and name are cleared in firestore. Most data is retained for historical purposes
 	RelayStateDecommissioned RelayState = 4
+	// RelayStateOffline Relay has stopped communicating with the backend for some unknown reason
+	RelayStateOffline RelayState = 5
 )
 
 // Relay ...
