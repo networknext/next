@@ -15,6 +15,7 @@ import (
 
 	"github.com/gorilla/rpc/v2"
 	"github.com/gorilla/rpc/v2/json2"
+	"gopkg.in/auth0.v4/management"
 
 	gcplogging "cloud.google.com/go/logging"
 
@@ -126,6 +127,21 @@ func main() {
 		SSHPort:        22,
 	})
 
+	manager, err := management.New(
+		os.Getenv("AUTH_DOMAIN"),
+		os.Getenv("AUTH_CLIENTID"),
+		os.Getenv("AUTH_CLIENTSECRET"),
+	)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		os.Exit(1)
+	}
+
+	auth0Client := storage.Auth0{
+		Manager: manager,
+		Logger:  logger,
+	}
+
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
 	// on creation so we can use that for the default then
@@ -236,6 +252,10 @@ func main() {
 			RedisClient: redisClientCache,
 			Storage:     db,
 		}, "")
+		s.RegisterService(&jsonrpc.AuthService{
+			Auth0: auth0Client,
+		}, "")
+
 		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), s))
 
 		http.Handle("/", http.FileServer(http.Dir(uiDir)))
