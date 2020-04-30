@@ -132,6 +132,12 @@ func main() {
 		}
 		defer mmreader.Close()
 	}
+	if key, ok := os.LookupEnv("IPSTACK_ACCESS_KEY"); ok {
+		ipLocator = &routing.IPStack{
+			Client:    http.DefaultClient,
+			AccessKey: key,
+		}
+	}
 
 	geoClient := routing.GeoClient{
 		RedisClient: redisClientRelays,
