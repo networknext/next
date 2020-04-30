@@ -45,7 +45,7 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 	}
 
 	for _, a := range accountList.Users {
-		reply.Accounts = append(reply.Accounts, UnMarshalUserJSON(a))
+		reply.Accounts = append(reply.Accounts, UnMarshalUser(a))
 	}
 	return nil
 }
@@ -68,12 +68,12 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 
 	reply.Roles = userRoles.Roles
 
-	reply.UserAccount = UnMarshalUserJSON(userAccount)
+	reply.UserAccount = UnMarshalUser(userAccount)
 
 	return nil
 }
 
-func UnMarshalUserJSON(u *management.User) account {
+func UnMarshalUser(u *management.User) account {
 	account := account{
 		UserID: *u.Identities[0].UserID,
 		Name:   *u.Name,
@@ -83,7 +83,7 @@ func UnMarshalUserJSON(u *management.User) account {
 	return account
 }
 
-func MarshalUserJSON(a account) *management.User {
+func MarshalUser(a account) *management.User {
 	return nil
 }
 
