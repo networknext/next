@@ -692,7 +692,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			meta := routing.SessionMeta{
 				ID:         fmt.Sprintf("%x", packet.SessionID),
 				UserHash:   fmt.Sprintf("%x", packet.UserHash),
-				ISP:        "TBD",
 				Datacenter: serverCacheEntry.Datacenter.Name,
 				NextRTT:    nnStats.RTT,
 				DirectRTT:  directStats.RTT,

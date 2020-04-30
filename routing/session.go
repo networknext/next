@@ -9,7 +9,6 @@ import (
 type SessionMeta struct {
 	ID         string   `json:"id"`
 	UserHash   string   `json:"user_hash"`
-	ISP        string   `json:"isp"`
 	Datacenter string   `json:"datacenter"`
 	NextRTT    float64  `json:"next_rtt"`
 	DirectRTT  float64  `json:"direct_rtt"`
