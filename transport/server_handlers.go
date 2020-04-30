@@ -208,6 +208,13 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 			return
 		}
 
+		datacenter, err := storer.Datacenter(packet.DatacenterID)
+		if err != nil {
+			level.Error(locallogger).Log("msg", "failed to get datacenter from storage", "err", err, "customer_id", packet.CustomerID)
+			metrics.ErrorMetrics.DatacenterNotFound.Add(1)
+			return
+		}
+
 		locallogger = log.With(locallogger, "customer_id", packet.CustomerID)
 
 		// Drop the packet if the signed packet data cannot be verified with the buyers public key
@@ -248,7 +255,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 		serverentry = ServerCacheEntry{
 			Sequence:   packet.Sequence,
 			Server:     routing.Server{Addr: packet.ServerPrivateAddress, PublicKey: packet.ServerRoutePublicKey},
-			Datacenter: routing.Datacenter{ID: packet.DatacenterID},
+			Datacenter: datacenter,
 			SDKVersion: packet.Version,
 		}
 		result := redisClient.Set(serverCacheKey, serverentry, 5*time.Minute)
