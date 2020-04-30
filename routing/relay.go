@@ -34,6 +34,25 @@ const (
 
 type RelayState uint32
 
+func (state RelayState) String() string {
+	switch state {
+	case RelayStateEnabled:
+		return "enabled"
+	case RelayStateMaintenance:
+		return "maintenance"
+	case RelayStateDisabled:
+		return "disabled"
+	case RelayStateQuarantine:
+		return "quarantine"
+	case RelayStateDecommissioned:
+		return "decommissioned"
+	case RelayStateOffline:
+		return "offline"
+	default:
+		return "unknown"
+	}
+}
+
 const (
 	// RelayStateEnabled if running and communicating with backend
 	RelayStateEnabled RelayState = 0
