@@ -447,21 +447,21 @@ function generateCharts(data) {
 	latencyData = {
 		next: [],
 		direct: [],
-		improvement: []
+		improvement: [],
 	};
 	jitterData = {
 		next: [],
 		direct: [],
-		improvement: []
+		improvement: [],
 	};
 	packetLossData = {
 		next: [],
 		direct: [],
-		improvement: []
+		improvement: [],
 	};
 	bandwidthData = {
 		up: [],
-		down: []
+		down: [],
 	};
 
 	data.map((entry) => {
@@ -480,71 +480,66 @@ function generateCharts(data) {
 		);
 
 		// Latency
-		let next = entry.next.rtt * SEC_TO_MS;
-		let direct = entry.direct.rtt * SEC_TO_MS;
+		let next = Number.parseInt(entry.next.rtt * SEC_TO_MS).toFixed(0);
+		let direct = Number.parseInt(entry.direct.rtt * SEC_TO_MS).toFixed(0);
 		let improvement = direct - next;
 		latencyData.next.push({
 			x: timestamp,
-			y: Number.parseInt(next).toFixed(0)
+			y: next,
 		});
 		latencyData.direct.push({
 			x: timestamp,
-			y: Number.parseInt(direct).toFixed(0)
+			y: direct,
 		});
 		latencyData.improvement.push({
 			x: timestamp,
-			y: Number.parseInt(improvement).toFixed(0)
+			y: improvement,
 		});
 
 		// Jitter
-		next = entry.next.rtt * SEC_TO_MS;
-		direct = entry.direct.rtt * SEC_TO_MS;
+		next = Number.parseInt(entry.next.rtt * SEC_TO_MS).toFixed(0);
+		direct = Number.parseInt(entry.direct.rtt * SEC_TO_MS).toFixed(0);
 		improvement = direct - next;
 		jitterData.next.push({
 			x: timestamp,
-			y: Number.parseInt(next).toFixed(0)
+			y: next,
 		});
 		jitterData.direct.push({
 			x: timestamp,
-			y: Number.parseInt(direct).toFixed(0)
+			y: direct,
 		});
 		jitterData.improvement.push({
 			x: timestamp,
-			y: Number.parseInt(improvement).toFixed(0)
+			y: improvement,
 		});
 
 		// Packetloss
-		next = entry.next.packet_loss * DEC_TO_PERC;
-		direct = entry.direct.packet_loss * DEC_TO_PERC;
+		next = Number.parseInt(entry.next.packet_loss * DEC_TO_PERC).toFixed(0);
+		direct = Number.parseInt(entry.direct.packet_loss * DEC_TO_PERC).toFixed(0);
 		improvement = direct - next;
 		packetLossData.next.push({
 			x: timestamp,
-			y: Number.parseInt(next).toFixed(0)
+			y: next,
 		});
 		packetLossData.direct.push({
 			x: timestamp,
-			y: Number.parseInt(direct).toFixed(0)
+			y: direct,
 		});
 		packetLossData.improvement.push({
 			x: timestamp,
-			y: Number.parseInt(improvement).toFixed(0)
+			y: improvement,
 		});
 
 		// Bandwidth
 		bandwidthData.up.push({
 			x: timestamp,
-			y: entry.envelope.up
+			y: entry.envelope.up,
 		});
 		bandwidthData.down.push({
 			x: timestamp,
-			y: entry.envelope.down
+			y: entry.envelope.down,
 		});
 	});
-
-	console.log(latencyData);
-	console.log(jitterData);
-	console.log(packetLossData);
-	console.log(bandwidthData);
 
 	var defaultOptions = {
 		chart: {
@@ -595,7 +590,7 @@ function generateCharts(data) {
 			title: {
 				text: '(m/s)',
 			},
-		}
+		},
 	};
 
 	var latencyOptionsComparison = {
@@ -616,7 +611,7 @@ function generateCharts(data) {
 			title: {
 				text: '(m/s)',
 			},
-		}
+		},
 	};
 
 	var latencyImprovementChart = new ApexCharts(
@@ -624,7 +619,7 @@ function generateCharts(data) {
 		{
 			...latencyOptionsImprovement,
 			...defaultOptions
-		}
+		},
 	);
 
 	var latencyComparisonChart = new ApexCharts(
@@ -632,7 +627,7 @@ function generateCharts(data) {
 		{
 			...latencyOptionsComparison,
 			...defaultOptions
-		}
+		},
 	);
 
 	var jitterOptionsImprovement = {
@@ -649,7 +644,7 @@ function generateCharts(data) {
 			title: {
 				text: '(m/s)',
 			},
-		}
+		},
 	};
 
 	var jitterOptionsComparison = {
@@ -670,7 +665,7 @@ function generateCharts(data) {
 			title: {
 				text: '(m/s)',
 			},
-		}
+		},
 	};
 
 	var jitterImprovementChart = new ApexCharts(
@@ -678,7 +673,7 @@ function generateCharts(data) {
 		{
 			...jitterOptionsImprovement,
 			...defaultOptions
-		}
+		},
 	);
 
 	var jitterComparisonChart = new ApexCharts(
@@ -686,7 +681,7 @@ function generateCharts(data) {
 		{
 			...jitterOptionsComparison,
 			...defaultOptions
-		}
+		},
 	);
 
 	var packetLossOptionsImprovement = {
@@ -703,7 +698,7 @@ function generateCharts(data) {
 			title: {
 				text: '(%)',
 			},
-		}
+		},
 	};
 
 	var packetLossOptionsComparison = {
@@ -724,7 +719,7 @@ function generateCharts(data) {
 			title: {
 				text: '(%)',
 			},
-		}
+		},
 	};
 
 	var packetLossImprovementChart = new ApexCharts(
@@ -732,7 +727,7 @@ function generateCharts(data) {
 		{
 			...packetLossOptionsImprovement,
 			...defaultOptions
-		}
+		},
 	);
 
 	var packetLossComparisonChart = new ApexCharts(
@@ -740,7 +735,7 @@ function generateCharts(data) {
 		{
 			...packetLossOptionsComparison,
 			...defaultOptions
-		}
+		},
 	);
 
 	var bandwidthOptionsUp = {
@@ -757,7 +752,7 @@ function generateCharts(data) {
 			title: {
 				text: '(kbps)',
 			},
-		}
+		},
 	};
 
 	var bandwidthOptionsDown = {
@@ -774,7 +769,7 @@ function generateCharts(data) {
 			title: {
 				text: '(kbps)',
 			},
-		}
+		},
 	};
 
 	var bandwidthUpChart = new ApexCharts(
@@ -782,7 +777,7 @@ function generateCharts(data) {
 		{
 			...bandwidthOptionsUp,
 			...defaultOptions
-		}
+		},
 	);
 
 	var bandwidthDownChart = new ApexCharts(
@@ -790,7 +785,7 @@ function generateCharts(data) {
 		{
 			...bandwidthOptionsDown,
 			...defaultOptions
-		}
+		},
 	);
 	latencyImprovementChart.render();
 	latencyComparisonChart.render();
@@ -800,55 +795,4 @@ function generateCharts(data) {
 	packetLossComparisonChart.render();
 	bandwidthUpChart.render();
 	bandwidthDownChart.render();
-}
-
-function showDemoChart(id) {
-	var options = {
-		series: [
-					{
-						name: 'Network Next',
-						data: [34, 44, 54, 21, 12, 43, 33, 23, 66, 66, 58]
-					}
-				],
-		chart: {
-			type: 'area',
-			height: 350,
-			toolbar: {
-				show: false
-			},
-			zoom: {
-				enabled: false
-			},
-		},
-		legend: {
-			show: true
-		},
-		stroke: {
-			curve: 'stepline',
-		},
-		theme: {
-			mode: "light"
-		},
-		dataLabels: {
-			enabled: false
-		},
-		markers: {
-			hover: {
-				sizeOffset: 4
-			}
-		},
-		xaxis: {
-			lines: {
-				show: false,
-			}
-		},
-		yaxis: {
-			lines: {
-				show: true,
-			}
-		}
-	};
-
-	var chart = new ApexCharts(document.querySelector(`#${id}`), options);
-	chart.render();
 }
