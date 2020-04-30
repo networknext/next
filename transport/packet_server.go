@@ -34,6 +34,20 @@ const (
 	ConnectionTypeCellular = 3
 )
 
+// ConnectionTypeText is similar to http.StatusText(int) which converts the code to a readable text format
+func ConnectionTypeText(conntype int32) string {
+	switch conntype {
+	case ConnectionTypeWired:
+		return "wired"
+	case ConnectionTypeWifi:
+		return "wifi"
+	case ConnectionTypeCellular:
+		return "cellular"
+	default:
+		return "unknown"
+	}
+}
+
 type ServerInitRequestPacket struct {
 	RequestID    uint64
 	CustomerID   uint64
