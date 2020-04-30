@@ -34,8 +34,8 @@ func TestAuthClient(t *testing.T) {
 	t.Run("create auth0Client", func(t *testing.T) {
 		manager, err := management.New(
 			"networknext.auth0.com",
-			"NIwrWYmG9U3tCQP6QxJqCx8n2xGSTCvf",
-			"GZ9l7xF0dggtvz-jxbG7_-yX2YlvkGas4sIq2RJK4glxkHvT0t-WwMtyJlP5qix0",
+			"0Hn8oZfUwy5UPo6bUk0hYCQ2hMJnwQYg",
+			"l2namTU5jKVAkuCwV3votIPcP87jcOuJREtscx07aLgo8EykReX69StUVBfJOzx5",
 		)
 		assert.NoError(t, err)
 		auth0 := storage.Auth0{
@@ -47,8 +47,8 @@ func TestAuthClient(t *testing.T) {
 
 	manager, err := management.New(
 		"networknext.auth0.com",
-		"NIwrWYmG9U3tCQP6QxJqCx8n2xGSTCvf",
-		"GZ9l7xF0dggtvz-jxbG7_-yX2YlvkGas4sIq2RJK4glxkHvT0t-WwMtyJlP5qix0",
+		"0Hn8oZfUwy5UPo6bUk0hYCQ2hMJnwQYg",
+		"l2namTU5jKVAkuCwV3votIPcP87jcOuJREtscx07aLgo8EykReX69StUVBfJOzx5",
 	)
 	assert.NoError(t, err)
 
