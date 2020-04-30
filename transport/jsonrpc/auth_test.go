@@ -1,7 +1,6 @@
 package jsonrpc_test
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -10,6 +9,7 @@ import (
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport/jsonrpc"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/auth0.v4/management"
 )
 
 func TestAuthMiddleware(t *testing.T) {
@@ -30,14 +30,34 @@ func TestAuthMiddleware(t *testing.T) {
 
 func TestAuthClient(t *testing.T) {
 	logger := log.NewNopLogger()
+
 	t.Run("create auth0Client", func(t *testing.T) {
-		_, err := storage.NewAuth0(context.Background(), logger)
+		manager, err := management.New(
+			"networknext.auth0.com",
+			"NIwrWYmG9U3tCQP6QxJqCx8n2xGSTCvf",
+			"GZ9l7xF0dggtvz-jxbG7_-yX2YlvkGas4sIq2RJK4glxkHvT0t-WwMtyJlP5qix0",
+		)
 		assert.NoError(t, err)
+		auth0 := storage.Auth0{
+			Manager: manager,
+			Logger:  logger,
+		}
+		assert.NotEmpty(t, auth0)
 	})
 
-	auth0Client, _ := storage.NewAuth0(context.Background(), logger)
+	manager, err := management.New(
+		"networknext.auth0.com",
+		"NIwrWYmG9U3tCQP6QxJqCx8n2xGSTCvf",
+		"GZ9l7xF0dggtvz-jxbG7_-yX2YlvkGas4sIq2RJK4glxkHvT0t-WwMtyJlP5qix0",
+	)
+	assert.NoError(t, err)
+
+	auth0Client := storage.Auth0{
+		Manager: manager,
+		Logger:  logger,
+	}
 	svc := jsonrpc.AuthService{
-		Auth0: *auth0Client,
+		Auth0: auth0Client,
 	}
 
 	t.Run("fetch all auth0 accounts", func(t *testing.T) {

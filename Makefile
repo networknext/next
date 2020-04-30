@@ -106,6 +106,16 @@ ifndef REDIS_HOST_CACHE
 export REDIS_HOST_CACHE = 127.0.0.1:6379
 endif
 
+ifndef AUTH_DOMAIN
+export AUTH_DOMAIN = networknext.auth0.com
+endif
+ifndef AUTH_CLIENTID
+export AUTH_CLIENTID = NIwrWYmG9U3tCQP6QxJqCx8n2xGSTCvf
+endif
+ifndef AUTH_CLIENTSECRET
+export AUTH_CLIENTSECRET = GZ9l7xF0dggtvz-jxbG7_-yX2YlvkGas4sIq2RJK4glxkHvT0t-WwMtyJlP5qix0
+endif
+
 .PHONY: help
 help: ## this list
 	@echo -e "$$(grep -hE '^\S+:.*##' $(MAKEFILE_LIST) | sed -e 's/:.*##\s*/:/' -e 's/^\(.\+\):\(.*\)/\\033[36m\1\\033[m:\2/' | column -c2 -t -s :)"
