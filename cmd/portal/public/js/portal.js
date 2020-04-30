@@ -4,7 +4,14 @@
  */
 mapboxgl.accessToken = 'pk.eyJ1IjoiYmF1bWJhY2hhbmRyZXciLCJhIjoiY2s4dDFwcGo2MGowZTNtcXpsbDN6dHBwdyJ9.Sr1lDY9i9o9yz84fJ-PSlg';
 
-var userInfo = null;
+var userInfo = {
+	email: "",
+	name: "",
+	pubKey: "",
+	nickname: "",
+	token: "",
+	userId: "",
+};
 
 var accountsTable = null;
 var pubKeyInput = null;
@@ -124,7 +131,7 @@ PageHandler = {
 		let newUserButton = document.getElementById("new-user-button");
 
 		//Hide all workspace pages
-		Object.assign(this.accountsTable.$data.showAccountsTable, false);
+		Object.assign(accountsTable.$data, {showAccountsTable: false});
 		this.accountWorkspacePages.configPage.style.display = 'none';
 		this.accountWorkspacePages.newUserPage.style.display = 'none';
 
@@ -147,7 +154,7 @@ PageHandler = {
 				break;
 			default:
 				this.loadAccounts();
-				Object.assign(this.accountsTable.$data.showAccountsTable, true);
+				Object.assign(accountsTable.$data, {showAccountsTable: true});
 				this.links.accountsLink.classList.add("active");
 				newUserButton.style.display = 'block';
 		}
@@ -211,7 +218,7 @@ PageHandler = {
 					/**
 					 * I really dislike this but it is apparently the way to reload/update the data within a vue
 					 */
-					Object.assign(accountsTable.$data.accounts, response.accounts);
+					Object.assign(accountsTable.$data, {accounts: response.accounts});
 				}
 			)
 			.catch(
@@ -229,7 +236,7 @@ PageHandler = {
 				/**
 				 * I really dislike this but it is apparently the way to reload/update the data within a vue
 				 */
-				Object.assign(pubKeyInput.$data.pubKey, userInfo.pubKey);
+				Object.assign(pubKeyInput.$data, {pubKey: userInfo.pubKey});
 			})
 			.catch((e) => {
 				console.log("Something went wrong fetching public key");
@@ -242,7 +249,7 @@ PageHandler = {
 				/**
 				 * I really dislike this but it is apparently the way to reload/update the data within a vue
 				 */
-				Object.assign(relaysTable.$data.relays, response.relays);
+				Object.assign(relaysTable.$data, {relays: response.relays});
 			})
 			.catch((e) => {
 				console.log("Something went wrong with fetching relays")
@@ -255,7 +262,7 @@ PageHandler = {
 				/**
 				 * I really dislike this but it is apparently the way to reload/update the data within a vue
 				 */
-				Object.assign(sessionsTable.$data.sessions, response.sessions);
+				Object.assign(sessionsTable.$data, {sessions: response.sessions});
 			})
 			.catch((e) => {
 				console.log("Something went wrong with fetching the sessions list");
@@ -324,7 +331,7 @@ function createVueComponents() {
 	pubKeyInput = new Vue({
 		el: '#pubKey',
 		data: {
-			pubkey: ""
+			pubKey: userInfo.pubKey
 		},
 		methods: {
 			updatePubKey: updatePubKey
