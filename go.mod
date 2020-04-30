@@ -12,6 +12,7 @@ require (
 	github.com/alicebob/miniredis/v2 v2.11.2
 	github.com/auth0/go-jwt-middleware v0.0.0-20190805220309-36081240882b
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+	github.com/getsentry/sentry-go v0.6.0
 	github.com/go-kit/kit v0.9.0
 	github.com/go-logfmt/logfmt v0.5.0
 	github.com/go-redis/redis v6.15.7+incompatible

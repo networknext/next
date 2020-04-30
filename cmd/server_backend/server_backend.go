@@ -8,6 +8,7 @@ package main
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -20,6 +21,7 @@ import (
 
 	gcplogging "cloud.google.com/go/logging"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/oschwald/geoip2-golang"
@@ -65,6 +67,51 @@ func main() {
 
 		logger = logging.NewStackdriverLogger(loggingClient, "server-backend")
 	}
+
+	sentryOpts := sentry.ClientOptions{
+		ServerName: "Server Backend",
+		Release:    "placeholder-release",
+		Dist:       "placeholder-distribution",
+	}
+
+	// required
+
+	if val, ok := os.LookupEnv("SERVER_BACKEND_SENTRY_DSN"); ok {
+		sentryOpts.Dsn = val
+	} else {
+		level.Error(logger).Log("msg", "SERVER_BACKEND_SENTRY_DSN not set")
+		os.Exit(1)
+	}
+
+	// optional
+
+	if val := os.Getenv("SENTRY_DEBUG"); val == "true" {
+		level.Info(logger).Log("msg", "using sentry in local mode")
+		sentryOpts.Debug = true
+		sentryOpts.DebugWriter = os.Stdout
+	}
+
+	if val := os.Getenv("SENTRY_ATTACH_STACKTRACE"); val == "true" {
+		level.Info(logger).Log("msg", "attaching stacktrace with sentry")
+		sentryOpts.AttachStacktrace = true
+	}
+
+	if err := sentry.Init(sentryOpts); err != nil {
+		level.Error(logger).Log("msg", "failed to initialize sentry", "err", err)
+		os.Exit(1)
+	}
+
+	// force sentry to post any updates upon program exit
+	defer sentry.Flush(time.Second * 2)
+
+	// test sentry error
+	go func() {
+		for {
+			time.Sleep(time.Second)
+			err := errors.New("sample error")
+			sentry.CaptureException(err)
+		}
+	}()
 
 	// var serverPublicKey []byte
 	var customerPublicKey []byte
@@ -298,7 +345,7 @@ func main() {
 
 		conn, err := net.ListenUDP("udp", &addr)
 		if err != nil {
-			level.Error(logger).Log("addr", conn.LocalAddr().String(), "err", err)
+			level.Error(logger).Log("err", err)
 			os.Exit(1)
 		}
 
