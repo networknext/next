@@ -19,7 +19,6 @@ var relaysTable = null;
 var sessionsTable = null;
 
 JSONRPCClient = {
-
 	async call(method, params) {
 		const headers = {
 			'Accept':		'application/json',
@@ -105,7 +104,7 @@ MapHandler = {
 	}
 }
 
-PageHandler = {
+WorkspaceHandler = {
 	accountWorkspacePages: {
 		configPage: document.getElementById("config"),
 		newUserPage: document.getElementById("new-user"),
@@ -120,6 +119,8 @@ PageHandler = {
 	},
 	showAccountsTable: false,
 	workspaceTitle: document.getElementById("workspace-title"),
+	newUserEmail: document.getElementById("email"),
+	newUserPerms: document.getElementById("perms"),
 	workspaces: {
 		accountsWorkspace: document.getElementById("accounts-workspace"),
 		mapWorkspace: document.getElementById("map-workspace"),
@@ -131,9 +132,11 @@ PageHandler = {
 		let newUserButton = document.getElementById("new-user-button");
 
 		//Hide all workspace pages
-		Object.assign(accountsTable.$data, {showAccountsTable: false});
 		this.accountWorkspacePages.configPage.style.display = 'none';
 		this.accountWorkspacePages.newUserPage.style.display = 'none';
+
+		//Hide the accounts table Vue
+		Object.assign(accountsTable.$data, {showAccountsTable: false});
 
 		//Hide the new user button
 		newUserButton.style.display = 'none';
@@ -151,6 +154,8 @@ PageHandler = {
 				break;
 			case 'new':
 				this.accountWorkspacePages.newUserPage.style.display = 'block';
+				this.newUserEmail.value = '';
+				this.newUserPerms.value = '';
 				break;
 			default:
 				this.loadAccounts();
@@ -205,10 +210,10 @@ PageHandler = {
 		}
 	},
 	editUser(accountInfo) {
-		this.changeAccountPage('new');
+		WorkspaceHandler.changeAccountPage('new');
 
-		document.getElementById("email").value = accountInfo.email;
-		document.getElementById("perms").value = accountInfo.email;
+		WorkspaceHandler.newUserEmail.value = accountInfo.email || '';
+		WorkspaceHandler.newUserPerms.value = accountInfo.email || '';
 	},
 	loadAccounts() {
 		JSONRPCClient
@@ -325,7 +330,7 @@ function createVueComponents() {
 			showAccountsTable: false
 		},
 		methods: {
-			editUser: PageHandler.editUser
+			editUser: WorkspaceHandler.editUser
 		}
 	});
 	pubKeyInput = new Vue({
