@@ -712,6 +712,11 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 					Down: int64(packet.KbpsDown),
 				},
 			}
+			point := routing.SessionMapPoint{
+				Latitude:      location.Latitude,
+				Longitude:     location.Longitude,
+				OnNetworkNext: routeDecision.OnNetworkNext,
+			}
 
 			tx := redisClientPortal.TxPipeline()
 			tx.ZAdd("top-global", &redis.Z{Score: meta.DeltaRTT, Member: meta.ID})
@@ -719,6 +724,10 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			tx.Set(fmt.Sprintf("session-%x-meta", packet.SessionID), meta, 720*time.Hour)
 			tx.SAdd(fmt.Sprintf("session-%x-slices", packet.SessionID), slice)
 			tx.Expire(fmt.Sprintf("session-%x-slices", packet.SessionID), 720*time.Hour)
+			tx.SAdd("map-points-global", meta.ID)
+			tx.SAdd(fmt.Sprintf("map-points-buyer-%x", packet.CustomerID), meta.ID)
+			tx.Expire(fmt.Sprintf("map-points-buyer-%x", packet.CustomerID), 720*time.Hour)
+			tx.Set(fmt.Sprintf("session-%x-point", packet.SessionID), point, 720*time.Hour)
 			if _, err := tx.Exec(); err != nil {
 				level.Error(locallogger).Log("msg", "failed to update portal data", "err", err)
 			}

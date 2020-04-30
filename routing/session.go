@@ -43,3 +43,17 @@ func (s *SessionSlice) UnmarshalBinary(data []byte) error {
 func (s SessionSlice) MarshalBinary() ([]byte, error) {
 	return jsoniter.Marshal(s)
 }
+
+type SessionMapPoint struct {
+	Latitude      float64 `json:"latitude"`
+	Longitude     float64 `json:"longitude"`
+	OnNetworkNext bool    `json:"on_network_next"`
+}
+
+func (s *SessionMapPoint) UnmarshalBinary(data []byte) error {
+	return jsoniter.Unmarshal(data, s)
+}
+
+func (s SessionMapPoint) MarshalBinary() ([]byte, error) {
+	return jsoniter.Marshal(s)
+}

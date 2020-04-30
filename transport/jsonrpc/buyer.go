@@ -293,6 +293,69 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	return nil
 }
 
+type MapPointsArgs struct {
+	BuyerID string `json:"buyer_id"`
+}
+
+type MapPointsReply struct {
+	Points []routing.SessionMapPoint `json:"map_points"`
+}
+
+func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, reply *MapPointsReply) error {
+	var err error
+	var sessionIDs []string
+
+	switch args.BuyerID {
+	case "":
+		sessionIDs, err = s.RedisClient.SMembers("map-points-global").Result()
+		if err != nil {
+			return err
+		}
+	default:
+		sessionIDs, err = s.RedisClient.SMembers(fmt.Sprintf("map-points-buyer-%s", args.BuyerID)).Result()
+		if err != nil {
+			return err
+		}
+	}
+
+	var getCmds []*redis.StringCmd
+	{
+		gettx := s.RedisClient.TxPipeline()
+		for _, sessionID := range sessionIDs {
+			getCmds = append(getCmds, gettx.Get(fmt.Sprintf("session-%s-point", sessionID)))
+		}
+		_, err = gettx.Exec()
+		if err != nil && err != redis.Nil {
+			return err
+		}
+	}
+
+	exptx := s.RedisClient.TxPipeline()
+	{
+		var point routing.SessionMapPoint
+		for _, cmd := range getCmds {
+			err = cmd.Scan(&point)
+			if err != nil {
+				// If we get here then there is a point in the point map (map as in key -> val)
+				// but the actual point data is missing so we set an empty meta
+				// key to expire in 5 seconds for the main cleanup routine
+				// to clear the reference in the point map
+				args := cmd.Args()
+				exptx.Set(args[1].(string), "", 5*time.Second)
+				continue
+			}
+
+			reply.Points = append(reply.Points, point)
+		}
+	}
+	_, err = exptx.Exec()
+	if err != nil && err != redis.Nil {
+		return err
+	}
+
+	return nil
+}
+
 type GameConfigurationArgs struct {
 	BuyerID      string `json:"buyer_id"`
 	NewPublicKey string `json:"new_public_key"`
