@@ -4,6 +4,9 @@
  */
 mapboxgl.accessToken = 'pk.eyJ1IjoiYmF1bWJhY2hhbmRyZXciLCJhIjoiY2s4dDFwcGo2MGowZTNtcXpsbDN6dHBwdyJ9.Sr1lDY9i9o9yz84fJ-PSlg';
 
+const SEC_TO_MS = 1000;
+const DEC_TO_PERC = 100;
+
 var userInfo = {
 	email: "",
 	name: "",
@@ -262,7 +265,7 @@ WorkspaceHandler = {
 	},
 	loadSessionPage() {
 		JSONRPCClient
-			.call('BuyersService.Sessions', {buyer_id: '13672574147039585173'})
+			.call('BuyersService.TopSessions', {})
 			.then((response) => {
 				/**
 				 * I really dislike this but it is apparently the way to reload/update the data within a vue
@@ -356,6 +359,10 @@ function createVueComponents() {
 	});
 }
 
+function fetchUserInfo() {
+	// Need an endpoint for this
+}
+
 function updatePubKey() {
 	let newPubkey = document.getElementById("pubKey").value;
 
@@ -373,7 +380,7 @@ function updatePubKey() {
 
 function fetchSessionInfo(sessionId = '') {
 
-	const id = sessionId || document.getElementById("sessionIDLookup").value;
+	var id = sessionId || document.getElementById("sessionIDLookup").value;
 	document.getElementById("sessionIDLookup").value = '';
 
 	if (id == '') {
@@ -383,12 +390,15 @@ function fetchSessionInfo(sessionId = '') {
 	JSONRPCClient
 		.call("BuyersService.SessionDetails", {session_id: id})
 		.then((response) => {
-			console.log(response);
 			new Vue({
 				el: '#sessionDetails',
 				data: {
+					id: id,
 					meta: response.meta,
 					slices: response.slices
+				},
+				methods: {
+					fetchSessionInfo: fetchSessionInfo
 				}
 			});
 			var data = {
@@ -424,14 +434,7 @@ function fetchSessionInfo(sessionId = '') {
 				] */
 			});
 
-			loadCharts(response.slices);
-
-			showDemoChart('jitter-chart-1');
-			showDemoChart('jitter-chart-2');
-			showDemoChart('packet-loss-chart-1');
-			showDemoChart('packet-loss-chart-2');
-			showDemoChart('bandwidth-chart-1');
-			showDemoChart('bandwidth-chart-2');
+			generateCharts(response.slices);
 		})
 		.catch((e) => {
 			console.log("Something went wrong with fetching session information: ");
@@ -439,7 +442,8 @@ function fetchSessionInfo(sessionId = '') {
 		});
 }
 
-function loadCharts(data) {
+
+function generateCharts(data) {
 	latencyData = {
 		next: [],
 		direct: [],
@@ -461,48 +465,69 @@ function loadCharts(data) {
 	};
 
 	data.map((entry) => {
-		let timestamp = entry.timestamp;
+		let timestamp = new Date(entry.timestamp);
+		timestamp = timestamp.toLocaleString(
+			'en-us',
+			{
+				weekday: undefined,
+				year: undefined,
+				month: undefined,
+				day: undefined,
+				hour: '2-digit',
+				minute: '2-digit',
+				second: '2-digit',
+			},
+		);
 
 		// Latency
+		let next = entry.next.rtt * SEC_TO_MS;
+		let direct = entry.direct.rtt * SEC_TO_MS;
+		let improvement = direct - next;
 		latencyData.next.push({
 			x: timestamp,
-			y: entry.next.rtt
+			y: Number.parseInt(next).toFixed(0)
 		});
 		latencyData.direct.push({
 			x: timestamp,
-			y: entry.direct.rtt
+			y: Number.parseInt(direct).toFixed(0)
 		});
 		latencyData.improvement.push({
 			x: timestamp,
-			y: entry.direct.rtt - entry.next.rtt
+			y: Number.parseInt(improvement).toFixed(0)
 		});
 
 		// Jitter
+		next = entry.next.rtt * SEC_TO_MS;
+		direct = entry.direct.rtt * SEC_TO_MS;
+		improvement = direct - next;
 		jitterData.next.push({
 			x: timestamp,
-			y: entry.next.jitter
+			y: Number.parseInt(next).toFixed(0)
 		});
 		jitterData.direct.push({
 			x: timestamp,
-			y: entry.direct.jitter
+			y: Number.parseInt(direct).toFixed(0)
 		});
 		jitterData.improvement.push({
 			x: timestamp,
-			y: entry.direct.jitter - entry.next.jitter
+			y: Number.parseInt(improvement).toFixed(0)
 		});
 
 		// Packetloss
+		next = entry.next.packet_loss * DEC_TO_PERC;
+		direct = entry.direct.packet_loss * DEC_TO_PERC;
+		improvement = direct - next;
 		packetLossData.next.push({
 			x: timestamp,
-			y: entry.next.packet_loss
+			y: Number.parseInt(next).toFixed(0)
 		});
 		packetLossData.direct.push({
 			x: timestamp,
-			y: entry.direct.packet_loss
+			y: Number.parseInt(direct).toFixed(0)
 		});
 		packetLossData.improvement.push({
 			x: timestamp,
-			y: entry.direct.packet_loss - entry.next.packet_loss
+			y: Number.parseInt(improvement).toFixed(0)
 		});
 
 		// Bandwidth
@@ -533,7 +558,7 @@ function loadCharts(data) {
 			},
 		},
 		legend: {
-			show: true,
+			show: false,
 		},
 		stroke: {
 			curve: 'stepline',
@@ -554,11 +579,6 @@ function loadCharts(data) {
 				show: false,
 			},
 		},
-		yaxis: {
-			lines: {
-				show: true,
-			},
-		}
 	};
 
 	var latencyOptionsImprovement = {
@@ -568,6 +588,14 @@ function loadCharts(data) {
 				data: latencyData.improvement,
 			},
 		],
+		yaxis: {
+			lines: {
+				show: true,
+			},
+			title: {
+				text: '(m/s)',
+			},
+		}
 	};
 
 	var latencyOptionsComparison = {
@@ -581,6 +609,14 @@ function loadCharts(data) {
 				data: latencyData.direct,
 			},
 		],
+		yaxis: {
+			lines: {
+				show: true,
+			},
+			title: {
+				text: '(m/s)',
+			},
+		}
 	};
 
 	var latencyImprovementChart = new ApexCharts(
@@ -598,8 +634,172 @@ function loadCharts(data) {
 			...defaultOptions
 		}
 	);
+
+	var jitterOptionsImprovement = {
+		series: [
+			{
+				name: 'Improvement',
+				data: jitterData.improvement,
+			},
+		],
+		yaxis: {
+			lines: {
+				show: true,
+			},
+			title: {
+				text: '(m/s)',
+			},
+		}
+	};
+
+	var jitterOptionsComparison = {
+		series: [
+			{
+				name: 'Network Next',
+				data: jitterData.next,
+			},
+			{
+				name: 'Direct',
+				data: jitterData.direct,
+			},
+		],
+		yaxis: {
+			lines: {
+				show: true,
+			},
+			title: {
+				text: '(m/s)',
+			},
+		}
+	};
+
+	var jitterImprovementChart = new ApexCharts(
+		document.querySelector("#jitter-chart-1"),
+		{
+			...jitterOptionsImprovement,
+			...defaultOptions
+		}
+	);
+
+	var jitterComparisonChart = new ApexCharts(
+		document.querySelector("#jitter-chart-2"),
+		{
+			...jitterOptionsComparison,
+			...defaultOptions
+		}
+	);
+
+	var packetLossOptionsImprovement = {
+		series: [
+			{
+				name: 'Improvement',
+				data: packetLossData.improvement,
+			},
+		],
+		yaxis: {
+			lines: {
+				show: true,
+			},
+			title: {
+				text: '(%)',
+			},
+		}
+	};
+
+	var packetLossOptionsComparison = {
+		series: [
+			{
+				name: 'Network Next',
+				data: packetLossData.next,
+			},
+			{
+				name: 'Direct',
+				data: packetLossData.direct,
+			},
+		],
+		yaxis: {
+			lines: {
+				show: true,
+			},
+			title: {
+				text: '(%)',
+			},
+		}
+	};
+
+	var packetLossImprovementChart = new ApexCharts(
+		document.querySelector("#packet-loss-chart-1"),
+		{
+			...packetLossOptionsImprovement,
+			...defaultOptions
+		}
+	);
+
+	var packetLossComparisonChart = new ApexCharts(
+		document.querySelector("#packet-loss-chart-2"),
+		{
+			...packetLossOptionsComparison,
+			...defaultOptions
+		}
+	);
+
+	var bandwidthOptionsUp = {
+		series: [
+			{
+				name: 'Actual Up',
+				data: bandwidthData.up,
+			},
+		],
+		yaxis: {
+			lines: {
+				show: true,
+			},
+			title: {
+				text: '(kbps)',
+			},
+		}
+	};
+
+	var bandwidthOptionsDown = {
+		series: [
+			{
+				name: 'Actual Down',
+				data: bandwidthData.down,
+			},
+		],
+		yaxis: {
+			lines: {
+				show: true,
+			},
+			title: {
+				text: '(kbps)',
+			},
+		}
+	};
+
+	var bandwidthUpChart = new ApexCharts(
+		document.querySelector("#bandwidth-chart-1"),
+		{
+			...bandwidthOptionsUp,
+			...defaultOptions
+		}
+	);
+
+	var bandwidthDownChart = new ApexCharts(
+		document.querySelector("#bandwidth-chart-2"),
+		{
+			...bandwidthOptionsDown,
+			...defaultOptions
+		}
+	);
 	latencyImprovementChart.render();
 	latencyComparisonChart.render();
+	jitterImprovementChart.render();
+	jitterComparisonChart.render();
+	packetLossImprovementChart.render();
+	packetLossComparisonChart.render();
+	bandwidthUpChart.render();
+	bandwidthDownChart.render();
 }
 
 function showDemoChart(id) {
