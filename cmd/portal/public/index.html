@@ -16,24 +16,6 @@
               crossorigin="anonymous">
         <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.53.0/mapbox-gl.css' rel='stylesheet' />
         <style>
-            body { font-family: monospace; padding: 50px; background-color: lightgray;}
-            table { width: 100%; border-collapse: collapse; }
-            table, th, td { padding: 3px; border: 1px solid black; }
-            td, th { text-align: center; }
-            h1 {color: darkgrey;}
-            .logo-container {
-                width: 100%;
-                height: 24px;
-                margin: 0;
-                padding: 0;
-                display: flex;
-                align-items: center;
-                justify-content: left;
-            }
-            .logo-fit {
-                max-height: 24px;
-                max-width: 100%;
-            }
             .fill {
                 width: 100%;
                 height: 100%;
@@ -44,17 +26,10 @@
             .workspace {
                 width: 100%;
                 justify-content: center;
-                background-color: darkgrey;
             }
             .map {
                 height: 95%;
                 max-height: 1000px;
-            }
-            .hidden {
-                display: none;
-            }
-            .confirm-button {
-                background-color: #212529;
             }
             .mapboxgl-canvas {
                 height: 100%;
@@ -65,601 +40,669 @@
                 width: 100%;
             }
             #session-tool-map { position: absolute; top: 0; bottom: 0; width: 100%; }
+
+            body {
+                font-size: 0.875rem;
+            }
+
+            .feather {
+                width: 16px;
+                height: 16px;
+                vertical-align: text-bottom;
+            }
+
+            .logo-container {
+                width: 100%;
+                height: 24px;
+                margin: 0;
+                padding: 0;
+                display: flex;
+                align-items: center;
+                justify-content: left;
+            }
+
+            .logo-fit {
+                max-height: 24px;
+                max-width: 100%;
+            }
+
+            .fixed-width {
+                font-family: monospace;
+                font-size: 120%;
+            }
+
+            .hidden {
+                display: none;
+            }
+
+            div.table-no-top-line th {
+                border-top: none !important;
+            }
+
+            /*
+            * Sidebar
+            */
+
+            .sidebar {
+                position: fixed;
+                top: 0;
+                bottom: 0;
+                left: 0;
+                z-index: 100; /* Behind the navbar */
+                padding: 48px 0 0; /* Height of navbar */
+                box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.1);
+            }
+
+            .sidebar-sticky {
+                position: relative;
+                top: 0;
+                height: calc(100vh - 48px);
+                padding-top: 0.5rem;
+                overflow-x: hidden;
+                overflow-y: auto; /* Scrollable contents if viewport is shorter than content. */
+            }
+
+            @supports ((position: -webkit-sticky) or (position: sticky)) {
+                .sidebar-sticky {
+                    position: -webkit-sticky;
+                    position: sticky;
+                }
+            }
+
+            .sidebar .nav-link {
+                font-weight: 500;
+                color: #333;
+            }
+
+            .sidebar .nav-link .feather {
+                margin-right: 4px;
+                color: #999;
+            }
+
+            .sidebar .nav-link.active {
+                color: #007bff;
+            }
+
+            .sidebar .nav-link:hover .feather,
+            .sidebar .nav-link.active .feather {
+                color: inherit;
+            }
+
+            .sidebar-heading {
+                font-size: 0.75rem;
+                text-transform: uppercase;
+            }
+
+            /*
+            * Content
+            */
+
+            [role="main"] {
+                padding-top: 48px; /* Space for fixed navbar */
+            }
+
+            /*
+            * Navbar
+            */
+
+            .navbar-brand {
+                padding-top: 0.75rem;
+                padding-bottom: 0.75rem;
+                font-size: 1rem;
+                background-color: rgba(0, 0, 0, 0.25);
+                box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.25);
+            }
+
+            .navbar .form-control {
+                padding: 0.75rem 1rem;
+                border-width: 0;
+                border-radius: 0;
+            }
+
+            .form-control-dark {
+                color: #fff;
+                background-color: rgba(255, 255, 255, 0.1);
+                border-color: rgba(255, 255, 255, 0.1);
+            }
+
+            .form-control-dark:focus {
+                border-color: transparent;
+                box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.25);
+            }
+
+            .btn-group-xs > .btn,
+            .btn-xs {
+                padding: 0.25rem 0.4rem;
+                font-size: 0.875rem;
+                line-height: 0.5;
+                border-radius: 0.2rem;
+            }
+
+            td.td-btn {
+                padding-top: 0.15rem;
+                padding-bottom: 0;
+            }
+
+            td.td-btn > a.btn-xs {
+                padding-bottom: calc(0.25rem + 1px);
+            }
         </style>
     </head>
     <body class="hidden" id="app">
-        <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark p-0 shadow">
-            <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="#">
-                <div class="logo-container">
-                    <img class="logo-fit"
-                         src="logo.png" />
-                </div>
-            </a>
-            <ul class="navbar-nav px-3 w-100 mr-auto">
-                <li class="nav-item text-nowrap">
-                    <a class="nav-link active" href="#" id="home-link" onclick="WorkspaceHandler.changePage('home')">Home</a>
-                </li>
-                <li class="nav-item text-nowrap">
-                    <a class="nav-link" href="#" id="sessions-link" onclick="WorkspaceHandler.changePage('sessions')">Sessions</a>
-                </li>
-                <li class="nav-item text-nowrap">
-                    <a class="nav-link" href="#" id="users-link" onclick="WorkspaceHandler.changePage('users')">Users</a>
-                </li>
-                <li class="nav-item text-nowrap">
-                    <a class="nav-link" href="#" id="relays-link" onclick="WorkspaceHandler.changePage('relay')">Relays</a>
-                </li>
-            </ul>
-            <ul class="navbar-nav px-3">
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        <i class="fas fa-flag fa-2x" data-toggle="tooltip" data-placement="bottom" title="Country Selection"></i>
-                    </a>
-                    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
-                        <a class="dropdown-item" href="#" onclick="MapHandler.updateMap('NA')">North America</a>
-                        <a class="dropdown-item" href="#" onclick="MapHandler.updateMap('WORLD')">World</a>
+        <div id="root">
+            <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark p-0 shadow">
+                <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="/">
+                    <div class="logo-container">
+                        <img class="logo-fit" src="logo.png">
                     </div>
-                </li>
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        <i class="fas fa-user-circle fa-2x" data-toggle="tooltip" data-placement="bottom" title="Account"></i>
-                    </a>
-                    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
-                        <a class="dropdown-item" href="#" onclick="WorkspaceHandler.changePage('account')">Settings</a>
-                    </div>
-                </li>
-                <li class="nav-item text-nowrap">
-                    <a class="nav-link" href="#">
-                        <i class="fas fa-sign-out-alt fa-2x" data-toggle="tooltip" data-placement="bottom" title="Logout"></i>
-                    </a>
-                </li>
-            </ul>
-        </nav>
-        <div class="fill container-fluid">
-            <div class="dashboard-title row">
-                <h1 id="workspace-title">Session Map</h1>
-            </div>
-            <div class="workspace row map" id="map-workspace">
-            </div>
-            <div class="workspace row hidden" id="accounts-workspace">
-                <nav class="navbar navbar-expand-md navbar-dark fi bg-dark p-0 shadow">
-                    <ul class="navbar-nav px-3 w-100 mr-auto">
-                        <li class="nav-item text-nowrap">
-                            <a class="nav-link" id="accounts-link" href="#" onclick="WorkspaceHandler.changeAccountPage('accounts')">Users</a>
-                        </li>
-                        <li class="nav-item text-nowrap">
-                            <a class="nav-link" id="config-link" href="#" onclick="WorkspaceHandler.changeAccountPage('config')">Game Configuration</a>
-                        </li>
-                    </ul>
-                    <ul class="navbar-nav px-3" id="new-user-button">
-                        <li class="nav-item text-nowrap">
-                            <a class="nav-link" href="#" onclick="WorkspaceHandler.changeAccountPage('new')">
-                                <i class="fas fa-plus" data-toggle="tooltip" data-placement="bottom" title="Add User"></i>
-                            </a>
-                        </li>
-                    </ul>
-                </nav>
-                <form class="px-5 hidden" id="config" onsubmit="updatePubKey()">
-                    <div class="form-row justify-content-middle">
-                        <div class="form-group col-sm-2">
-                            <label for="pubKey">Public Key</label>
-                            <input type="text" class="form-control" id="pubKey" v-bind:value="pubKey">
-                        </div>
-                    </div>
-                    <div class="form-row justify-content-end">
-                        <div class="form-group col-sm-1">
-                            <button type="submit"
-                                    id="saveButton"
-                                    class="btn btn-primary form-control confirm-button">
-                                Save
-                            </button>
-                        </div>
-                    </div>
-                </form>
-                <div id="accounts">
-                    <div class="spinner-border" role="status" v-if="!accounts">
-                        <span class="sr-only">Loading...</span>
-                    </div>
-                    <table class="table" v-if="accounts && showAccountsTable">
-                        <thead class="thead-dark">
-                            <tr>
-                                <th scope="col">Id</th>
-                                <th scope="col">Email</th>
-                                <th scope="col">Edit</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="account in accounts" scope="row">
-                                <td>{{ account.user_id }}</td>
-                                <td>{{ account.email }}</td>
-                                <td>
-                                    <button class="btn">
-                                        <i class="fas fa-edit" data-toggle="tooltip" data-placement="bottom" title="Edit User" v-on:click="editUser(account)"></i>
-                                    </button>
-                                    <button class="btn">
-                                        <i class="fas fa-trash" data-toggle="tooltip" data-placement="bottom" title="Delete User"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <form id="new-user">
-                    <div class="form-row justify-content-middle">
-                        <div class="form-group col-sm-2">
-                            <label for="email">Email</label>
-                            <input type="text" class="form-control" id="email">
-                        </div>
-                    </div>
-                    <div class="form-row justify-content-middle">
-                        <div class="form-group col-sm-2">
-                            <label for="perms">Permissions</label>
-                            <input type="text" class="form-control" id="perms">
-                        </div>
-                    </div>
-                    <div class="form-row justify-content-end">
-                        <div class="form-group col-sm-1">
-                            <button type="submit"
-                                    id="addUser"
-                                    class="btn btn-primary form-control confirm-button">
-                                Add User
-                            </button>
-                        </div>
-                    </div>
-                </form>
-            </div>
-            <div class="workspace row hidden" id="users-workspace">
-                <form id="userSearch" onsubmit="fetchUserInfo()">
-                    <div class="input-group mb-3">
-                        <div class="input-group-prepend">
-                        <span class="input-group-text" id="basic-addon1">ID</span>
-                        </div>
-                        <input type="text" class="form-control" placeholder="User ID" id="userIDLookup">
-                        <button type="submit"
-                                id="userIdSearch"
-                                class="btn btn-primary form-control confirm-button">
-                            Search
-                        </button>
-                    </div>
-                </form>
-                <div id="users">
-                    <div class="spinner-border" role="status" v-if="!users">
-                        <span class="sr-only">Loading...</span>
-                    </div>
-                    <table class="table" v-else>
-                        <thead class="thead-dark">
-                        <tr>
-                            <th scope="col">User ID</th>
-                            <th scope="col">Details</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="user in users" scope="row">
-                                <td>{{ user.id }}</td>
-                                <td>
-                                    <button class="btn" data-toggle="modal" data-target="#userInfoModal" v-on:click="fetchUserInfo(user.id)">
-                                        <i class="fas fa-info-circle" data-toggle="tooltip" data-placement="bottom" title="User Info"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="modal fade" id="userInfoModal" tabindex="-1" role="dialog" aria-labelledby="userInfoModalLabel" aria-hidden="true">
-                    <div class="modal-dialog" role="document" style="max-width: 2000px; max-height: 1000px; overflow-y: auto;">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="userInfoModalLabel">User Information</h5>
-                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                    <span aria-hidden="true">&times;</span>
-                                </button>
-                            </div>
-                            <div class="modal-body">
-                                <div class="row">
-                                    TEST
+                </a>
+                <ul class="navbar-nav px-3 w-100 mr-auto">
+                    <li class="nav-item text-nowrap ">
+                        <a class="nav-link active" href="#" id="map-link" onclick="WorkspaceHandler.changePage('map')">
+                            Map
+                        </a>
+                    </li>
+                    <li class="nav-item text-nowrap">
+                        <a class="nav-link" href="#" id="sessions-link" onclick="WorkspaceHandler.changePage('sessions')">
+                            Sessions
+                        </a>
+                    </li>
+                    <li class="nav-item text-nowrap">
+                        <a class="nav-link" href="#" id="session-tool-link" onclick="WorkspaceHandler.changePage('session-tool')">
+                            Session Tool
+                        </a>
+                    </li>
+                    <li class="nav-item text-nowrap">
+                        <a class="nav-link" href="#" id="user-tool-link" onclick="WorkspaceHandler.changePage('user-tool')">
+                            User Tool
+                        </a>
+                    </li>
+                    <li class="nav-item text-nowrap">
+                        <a class="nav-link" href="#" id="settings-link" onclick="WorkspaceHandler.changePage('settings')">
+                            Settings
+                        </a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav px-3">
+                    <li class="nav-item text-nowrap  ">
+                        <a class="nav-link" href="/logout">
+                            Logout
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            <div class="container-fluid">
+                <div class="row">
+                    <main role="main" class="col-md-12 col-lg-12 px-4" id="map-workspace">
+                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                            <h1 class="h2" id="workspace-title">
+                                Map&nbsp;
+                                <span class="badge badge-dark">
+                                    {{sessions.length}} Total Sessions
+                                </span>&nbsp;
+                                <span class="badge badge-success">
+                                    {{session.onNN}} on Network Next
+                                </span>&nbsp;
+                                <span class="text-muted" style="font-size: 0.5em; line-height: 1em; vertical-align: middle;">
+                                    {{lastRefreshed}}
+                                </span>
+                            </h1>
+                            <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1 hidden">
+                                <div class="mr-auto"></div>
+                                <div class="px-2">
+                                    <select class="form-control">
+                                        <option value="world">
+                                            World
+                                        </option>
+                                        <option value="na">
+                                            North America
+                                        </option>
+                                        <option value="western-europe">
+                                            Western Europe
+                                        </option>
+                                        <option value="greater-europe">
+                                            Europe
+                                        </option>
+                                        <option value="us">
+                                            United States
+                                        </option>
+                                    </select>
+                                </div>
+                                <div class="px-2">
+                                    <select class="form-control">
+                                        <option value="everything">
+                                            Everything
+                                        </option>
+                                        <option value="direct">
+                                            Direct Only
+                                        </option>
+                                        <option value="next">
+                                            Network Next Only
+                                        </option>
+                                    </select>
+                                </div>
+                                <div class="px-2">
+                                    <select class="form-control">
+                                        <option value="dashboard">
+                                            Dashboard
+                                        </option>
+                                        <option value="website">
+                                            Website
+                                        </option>
+                                    </select>
+                                </div>
+                                <div class="px-2">
+                                    <select class="form-control">
+                                        <option value="default">
+                                            Default
+                                        </option>
+                                        <option value="fullscreen">
+                                            Fullscreen
+                                        </option>
+                                    </select>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-            </div>
-            <div class="workspace row hidden" id="sessions-workspace">
-                <form id="sessionSearch" onsubmit="fetchSessionInfo()">
-                    <div class="input-group mb-3">
-                        <div class="input-group-prepend">
-                        <span class="input-group-text" id="basic-addon1">ID</span>
+                        <div style="width: 100%; height: calc(-160px + 100vh); border: 1px solid rgb(136, 136, 136); background-color: rgb(27, 27, 27);" id="map-container">
                         </div>
-                        <input type="text" class="form-control" placeholder="Session ID" id="sessionIDLookup">
-                        <button type="submit"
-                                id="sessionIdSearch"
-                                class="btn btn-primary form-control confirm-button">
-                            Search
-                        </button>
-                    </div>
-                </form>
-                <table class="table" id="sessions">
-                    <thead class="thead-dark">
-                      <tr>
-                        <th scope="col">Session ID</th>
-                        <th scope="col">User Hash</th>
-                        <th scope="col">Datacenter</th>
-                        <th scope="col">Direct RTT</th>
-                        <th scope="col">Next RTT</th>
-                        <th scope="col">Improvement</th>
-                        <th scope="col">Details</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="session in sessions" scope="row">
-                            <td>{{ session.id }}</td>
-                            <td>{{ session.user_hash }}</td>
-                            <td>{{ session.datacenter }}</td>
-                            <td>{{ session.direct_rtt }}</td>
-                            <td>{{ session.next_rtt }}</td>
-                            <td>{{ session.delta_rtt }}</td>
-                            <td>
-                                <button class="btn" data-toggle="modal" data-target="#sessionInfoModal" v-on:click="fetchSessionInfo(session.id)">
-                                    <i class="fas fa-info-circle" data-toggle="tooltip" data-placement="bottom" title="Session Info"></i>
-                                </button>
-                            </td>
-                        </tr>
-                        </thead>
-                    </table>
-                </div>
-                <div class="modal fade" id="sessionInfoModal" tabindex="-1" role="dialog" aria-labelledby="sessionInfoModalLabel" aria-hidden="true">
-                    <div class="modal-dialog" role="document" style="max-width: 2000px; max-height: 1000px; overflow-y: auto;">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="sessionInfoModalLabel">Session Information</h5>
-                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                    <span aria-hidden="true">&times;</span>
-                                </button>
+                    </main>
+                    <main role="main" class="col-md-12 col-lg-12 px-4 hidden" id="sessions-workspace">
+                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                            <h1 class="h2">
+                                Sessions&nbsp;
+                                <span class="badge badge-dark">
+                                    {{sessions.length}} Total Sessions
+                                </span>&nbsp;
+                                <span class="badge badge-success">
+                                    {{session.onNN}} on Network Next
+                                </span>&nbsp;
+                                <span class="text-muted" style="font-size: 0.5em; line-height: 1em; vertical-align: middle;">
+                                    {{lastRefreshed}}
+                                </span>
+                            </h1>
+                            <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1 hidden">
+                                <div class="mr-auto"></div>
+                                <div class="px-2">
+                                    <select class="form-control">
+                                        <option value="rtt">
+                                            Sort by RTT
+                                        </option>
+                                        <option value="packetLoss">
+                                            Sort by Packet Loss
+                                        </option>
+                                    </select>
+                                </div>
                             </div>
-                            <div class="modal-body" id="sessionDetails">
+                        </div>
+                        <div class="table-responsive table-no-top-line" id="sessions">
+                            <table class="table table-sm table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th class="">
+                                            <span id="getIndicator">
+
+                                            </span>
+                                        </th>
+                                        <th class="">
+                                            <span id="getFlowidhexadecimal">
+                                                Session ID
+                                            </span>
+                                        </th>
+                                        <th class="">
+                                            <span id="getUserhash">
+                                                User ID
+                                            </span>
+                                        </th>
+                                        <th class="">
+                                            <span id="getUserisp">
+                                                ISP
+                                            </span>
+                                        </th>
+                                        <th class="">
+                                            <span id="getDestrelayname">
+                                                Datacenter
+                                            </span>
+                                        </th>
+                                        <th class="text-right">
+                                            <span id="direct">
+                                                Direct RTT
+                                            </span>
+                                        </th>
+                                        <th class="text-right">
+                                            <span id="next">
+                                                Next RTT
+                                            </span>
+                                        </th>
+                                        <th class="text-right">
+                                            <span id="improvement">
+                                                Improvement
+                                            </span>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="session in sessions">
+                                        <td class=" ">
+                                            <svg
+                                                aria-hidden="true"
+                                                focusable="false"
+                                                data-prefix="fas"
+                                                data-icon="circle"
+                                                class="svg-inline--fa fa-circle fa-w-16 fa-fw text-success"
+                                                role="img"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                viewBox="0 0 512 512">
+                                                <path fill="currentColor" d="M256 8C119 8 8 119 8 256s111 248 248 248 248-111 248-248S393 8 256 8z">
+
+                                                </path>
+                                            </svg>
+                                        </td>
+                                        <td class=" ">
+                                            <a class="text-dark fixed-width" href="/dev/session-debug-tool?id=6b132c210bf10f94">
+                                                {{ session.id }}
+                                            </a>
+                                        </td>
+                                        <td class=" ">
+                                            <a class="text-dark fixed-width" href="/users/sessions?user=8012609429620443184&amp;buyer=eyJraW5kIjoiQnV5ZXIiLCJuYW1lIjoiMTE4MTg5NDA4NDQxODg5OTEzOTcifQ%3D%3D">
+                                                {{ session.user_hash }}
+                                            </a>
+                                        </td>
+                                        <td class=" ">
+                                            {{ session.isp }}
+                                        </td>
+                                        <td class=" ">
+                                            <span class="text-dark">
+                                                {{ session.datacenter }}
+                                            </span>
+                                        </td>
+                                        <td class="text-right ">
+                                            {{ session.direct_rtt }}
+                                        </td>
+                                        <td class="text-right ">
+                                            {{ session.next_rtt }}
+                                        </td>
+                                        <td class="text-right ">
+                                            <span class="text-danger">
+                                                <b>
+                                                    {{ session.delta_rtt }}
+                                                </b>
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </main>
+                    <main role="main" class="col-md-12 col-lg-12 px-4 hidden" id="session-tool-workspace">
+                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                            <h1 class="h2">
+                                Session Tool
+                            </h1>
+                            <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1 hidden">
+                                <div class="mr-auto"></div>
+                            </div>
+                        </div>
+                        <form class="flow-stats-form">
+                            <div class="form-group">
+                                <label for="flowId">
+                                    Session ID
+                                </label>
                                 <div class="row">
-                                    <div class="col-12 col-lg-8">
-                                        <div class="card mb-2">
-                                            <div class="card-header">
-                                                <strong>
-                                                    Latency
-                                                </strong>
-                                                <div class="float-right">
-                                                    <span
-                                                    class="mr-2">
-                                                        <span style="color: blue;">
-                                                            — Network Next
-                                                        </span>
-                                                        <span style="color: red;">
-                                                            — Direct
-                                                        </span>
-                                                        <span style="color: green">
-                                                            — Prediction
-                                                        </span>
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <div class="card-body">
-                                                <div id="latency-chart-1">
-                                                </div>
-                                            </div>
-                                            <div class="card-body">
-                                                <div id="latency-chart-2">
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="card mb-2">
-                                            <div class="card-header">
-                                                <strong>
-                                                    Jitter
-                                                </strong>
-                                                <div class="float-right">
-                                                    <span class="mr-2">
-                                                        <span style="color: blue;">
-                                                            — Network Next
-                                                        </span>
-                                                        <span style="color: red;">
-                                                            — Direct
-                                                        </span>
-                                                        <span style="color: green">
-                                                            — Prediction
-                                                        </span>
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <div class="card-body">
-                                                <div id="jitter-chart-1">
-                                                </div>
-                                            </div>
-                                            <div class="card-body">
-                                                <div id="jitter-chart-2">
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="card mb-2">
-                                            <div class="card-header">
-                                                <strong>
-                                                    Packet Loss
-                                                </strong>
-                                                <div class="float-right">
-                                                    <span
-                                                    class="mr-2">
-                                                        <span style="color: blue;">
-                                                            — Network Next
-                                                        </span>
-                                                        <span style="color: red;">
-                                                            — Direct
-                                                        </span>
-                                                        <span style="color: green">
-                                                            — Prediction
-                                                        </span>
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <div class="card-body">
-                                                <div id="packet-loss-chart-1">
-                                                </div>
-                                            </div>
-                                            <div class="card-body">
-                                                <div id="packet-loss-chart-2">
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="card mb-2">
-                                            <div class="card-header">
-                                                <strong>
-                                                    Bandwidth
-                                                </strong>
-                                                <div class="float-right">
-                                                    <span
-                                                    class="mr-2">
-                                                        <span style="color: darkgoldenrod;">
-                                                            — Actual Up
-                                                        </span>
-                                                        <span style="color: blue;">
-                                                            — Actual Down
-                                                        </span>
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <div class="card-body">
-                                                <div id="bandwidth-chart-1">
-                                                </div>
-                                            </div>
-                                            <div class="card-body">
-                                                <div id="bandwidth-chart-2">
-                                                </div>
-                                            </div>
-                                        </div>
+                                    <div class="col">
+                                        <input id="flowId" class="form-control" type="text" placeholder="Enter a Session ID to view statistics" value="">
                                     </div>
-                                    <div class="col-12 col-lg-4">
-                                        <div class="card">
-                                            <div class="card-img-top" style="height: 20vh;">
-                                                <div id="session-tool-map"></div>
-                                            </div>
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="card-text">
-                                                <dl>
-                                                    <dt>
-                                                        ISP
-                                                    </dt>
-                                                    <dd>
-                                                        Spectrum
-                                                    </dd>
-                                                    <dt>
-                                                        User ID
-                                                    </dt>
-                                                    <dd>
-                                                        {{ meta.user_hash }}
-                                                    </dd>
-                                                    <dt>
-                                                        Platform
-                                                    </dt>
-                                                    <dd>
-                                                        Linux
-                                                    </dd>
-                                                    <dt>
-                                                        Customer
-                                                    </dt>
-                                                    <dd>
-                                                        Psyonix
-                                                    </dd>
-                                                    <dt>
-                                                        SDK Version
-                                                    </dt>
-                                                    <dd>
-                                                        {{ meta.sdk }}
-                                                    </dd>
-                                                    <dt>
-                                                        Connection Type
-                                                    </dt>
-                                                    <dd>
-                                                        {{ meta.connection }}
-                                                    </dd>
-                                                    <dt>
-                                                        Nearby Relays
-                                                        <span
-                                                        style="float: right; font-weight: normal; font-style: italic;">
-                                                            at 5:00:00pm Apr 22
-                                                        </span>
-                                                    </dt>
-                                                    <table className="table table-sm mt-1">
-                                                        <thead>
-                                                            <tr>
-                                                                <th style="width: 25%;">
-                                                                    Name
-                                                                </th>
-                                                                <th style="width: 25%;">
-                                                                    RTT
-                                                                </th>
-                                                                <th style="width: 25%;">
-                                                                    Jitter
-                                                                </th>
-                                                                <th style="width: 25%;">
-                                                                    Packet Loss
-                                                                </th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            <tr>
-                                                                <td>
-                                                                    london
-                                                                </td>
-                                                                <td>
-                                                                    <em>1243ms</em>
-                                                                </td>
-                                                                <td>
-                                                                    <em>1243ms</em>
-                                                                </td>
-                                                                <td>
-                                                                    <em>100.00%</em>
-                                                                </td>
-                                                            </tr>
-                                                            <tr>
-                                                                <td>
-                                                                    london
-                                                                </td>
-                                                                <td>
-                                                                    <em>1243ms</em>
-                                                                </td>
-                                                                <td>
-                                                                    <em>1243ms</em>
-                                                                </td>
-                                                                <td>
-                                                                    <em>100.00%</em>
-                                                                </td>
-                                                            </tr>
-                                                            <tr>
-                                                                <td>
-                                                                    london
-                                                                </td>
-                                                                <td>
-                                                                    <em>1243ms</em>
-                                                                </td>
-                                                                <td>
-                                                                    <em>1243ms</em>
-                                                                </td>
-                                                                <td>
-                                                                    <em>100.00%</em>
-                                                                </td>
-                                                            </tr>
-                                                            <tr>
-                                                                <td>
-                                                                    london
-                                                                </td>
-                                                                <td>
-                                                                    <em>1243ms</em>
-                                                                </td>
-                                                                <td>
-                                                                    <em>1243ms</em>
-                                                                </td>
-                                                                <td>
-                                                                    <em>100.00%</em>
-                                                                </td>
-                                                            </tr>
-                                                        </tbody>
-                                                    </table>
-                                                    <dt>
-                                                        Route
-                                                        <span
-                                                        style="float: right; font-weight: normal; font-style: italic;"
-                                                        >
-                                                            at 5:00:00pm Apr 22
-                                                        </span>
-                                                    </dt>
-                                                    <table className="table table-sm mt-1">
-                                                        <thead>
-                                                            <tr>
-                                                                <th style="width: 50%;">
-                                                                    Name
-                                                                </th>
-                                                                <th style="width: 50%;">
-                                                                    Role
-                                                                </th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            <tr>
-                                                                <td>
-                                                                    {{ meta.client_addr}}
-                                                                </td>
-                                                                <td>
-                                                                    <em>User (Player)</em>
-                                                                </td>
-                                                            </tr>
-                                                            <tr v-for="index in meta.hops" :key="index" scope="row">
-                                                                <td>
-                                                                    Relay {{ index }}
-                                                                </td>
-                                                                <td>
-                                                                    Hop {{ index }}
-                                                                </td>
-                                                            </tr>
-                                                            <tr>
-                                                                <td>
-                                                                    {{ meta.server_addr}}
-                                                                </td>
-                                                                <td>
-                                                                    <em>Destination Server</em>
-                                                                </td>
-                                                            </tr>
-                                                        </tbody>
-                                                    </table>
-                                                </dl>
-                                            </div>
-                                        </div>
+                                    <div class="col-auto">
+                                        <button class="btn btn-primary" disabled="" type="submit">
+                                            View Stats
+                                        </button>
                                     </div>
                                 </div>
                             </div>
+                        </form>
+                        <div class="alert alert-info" role="alert">
+                            Please enter a valid session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.
                         </div>
-                    </div>
-                </div>
-                <div class="workspace row hidden" id="relays-workspace">
-                    <div id="relays">
-                        <div class="spinner-border" role="status" v-if="!relays">
-                            <span class="sr-only">Loading...</span>
+                    </main>
+                    <main role="main" class="col-md-12 col-lg-12 px-4 hidden" id="user-tool-workspace">
+                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                            <h1 class="h2">
+                                Lookup User Sessions
+                            </h1>
+                            <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1 hidden">
+                                <div class="mr-auto"></div>
+                            </div>
                         </div>
-                        <table class="table" v-else>
-                            <thead class="thead-dark">
-                                <tr>
-                                    <th scope="col">Relay Name</th>
-                                    <th scope="col">Sessions</th>
-                                    <th scope="col">Bandwidth</th>
-                                    <th scope="col">Peak Utilization</th>
-                                    <th scope="col">Revenue</th>
-                                    <th scope="col">NIC Speed</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="relay in relays" scope="row">
-                                    <td>{{ relay.name }}</td>
-                                    <td>IMPLEMENT ME</td>
-                                    <td>{{ relay.included_bandwidth_gb }}Mbps</td>
-                                    <td>IMPLEMENT ME</td>
-                                    <td>IMPLEMENT ME</td>
-                                    <td>{{ relay.nic_speed_mpbs }}Mbps</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <!-- <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-                            <div class="modal-dialog" role="document">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
-                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                    <span aria-hidden="true">&times;</span>
-                                </button>
-                                </div>
-                                <div class="modal-body">
-                                ...
-                                </div>
-                                <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                                <button type="button" class="btn btn-primary">Save changes</button>
+                        <div class="form-group">
+                            <label for="userId">
+                                User ID
+                            </label>
+                            <div class="row">
+                                <div class="col">
+                                    <input id="flowId" class="form-control" type="text" placeholder="Enter a user ID to view their sessions" value="">
                                 </div>
                             </div>
+                        </div>
+                        <div class="alert alert-info" role="alert">
+                            Please enter a user ID to view their sessions.
+                        </div>
+                    </main>
+                    <main role="main" class="col-md-12 col-lg-12 px-4 hidden" id="settings-workspace">
+                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                            <h1 class="h2">
+                                Settings
+                            </h1>
+                            <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1 hidden">
+                                <div class="mr-auto"></div>
                             </div>
-                        </div> -->
-                    </div>
+                        </div>
+                        <div class="card" style="margin-bottom: 250px;">
+                            <div class="card-header">
+                                <ul class="nav nav-tabs card-header-tabs">
+                                    <li class="nav-item">
+                                        <a class="nav-link active" href="#" onclick="WorkspaceHandler.changeAccountPage('accounts')">
+                                            Users
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link " href="#" onclick="WorkspaceHandler.changeAccountPage('config')">
+                                            Game Configuration
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="card-body" id="accounts-page">
+                                <h5 class="card-title">
+                                    Automatic sign-in
+                                </h5>
+                                <p class="card-text">
+                                    Save time by allowing users with verified email addresses automatic access to your Network Next account.
+                                </p>
+                                <form>
+                                    <div class="form-group">
+                                        <label for="customerId">
+                                            Automatic Sign-in Domain
+                                        </label>
+                                        <input type="text" class="form-control form-control-sm" value="networknext.com">
+                                        <small class="form-text text-muted">
+                                            If you set this to a domain, such as "example.com", then anyone with a verified email address with this domain will automatically join your account when logging in. You can set this so that you don't need to manually onboard everyone in your organization.
+                                        </small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="customerId">
+                                            Permission Level
+                                        </label>
+                                        <div class="css-1pcexqc-container">
+                                            <div class="css-bg1rzq-control">
+                                                <div class="css-1hwfws3">
+                                                    <div class="css-es53b3-multiValue">
+                                                        <div class="css-12jo7m5">
+                                                            Viewer
+                                                        </div>
+                                                        <div class="css-1alnv5e">
+                                                            <svg height="14" width="14" viewBox="0 0 20 20" aria-hidden="true" focusable="false" class="css-19bqh2r">
+                                                                <path d="M14.348 14.849c-0.469 0.469-1.229 0.469-1.697 0l-2.651-3.030-2.651 3.029c-0.469 0.469-1.229 0.469-1.697 0-0.469-0.469-0.469-1.229 0-1.697l2.758-3.15-2.759-3.152c-0.469-0.469-0.469-1.228 0-1.697s1.228-0.469 1.697 0l2.652 3.031 2.651-3.031c0.469-0.469 1.228-0.469 1.697 0s0.469 1.229 0 1.697l-2.758 3.152 2.758 3.15c0.469 0.469 0.469 1.229 0 1.698z"></path>
+                                                            </svg>
+                                                        </div>
+                                                    </div>
+                                                    <div class="css-1g6gooi">
+                                                        <div class="" style="display: inline-block;">
+                                                            <input autocapitalize="none" autocomplete="off" autocorrect="off" id="react-select-3-input" spellcheck="false" tabindex="0" type="text" aria-autocomplete="list" style="box-sizing: content-box; width: 14px; background: rgba(0, 0, 0, 0) none repeat scroll 0px center; border: 0px none; font-size: inherit; opacity: 1; outline: currentcolor none 0px; padding: 0px; color: inherit;" value="">
+                                                            <div style="position: absolute; top: 0px; left: 0px; visibility: hidden; height: 0px; overflow: scroll; white-space: pre; font-size: 14px; font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji; font-weight: 400; font-style: normal; letter-spacing: normal; text-transform: none;"></div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="css-1wy0on6">
+                                                    <div aria-hidden="true" class="css-16pqwjk-indicatorContainer">
+                                                        <svg height="20" width="20" viewBox="0 0 20 20" aria-hidden="true" focusable="false" class="css-19bqh2r">
+                                                            <path d="M14.348 14.849c-0.469 0.469-1.229 0.469-1.697 0l-2.651-3.030-2.651 3.029c-0.469 0.469-1.229 0.469-1.697 0-0.469-0.469-0.469-1.229 0-1.697l2.758-3.15-2.759-3.152c-0.469-0.469-0.469-1.228 0-1.697s1.228-0.469 1.697 0l2.652 3.031 2.651-3.031c0.469-0.469 1.228-0.469 1.697 0s0.469 1.229 0 1.697l-2.758 3.152 2.758 3.15c0.469 0.469 0.469 1.229 0 1.698z"></path>
+                                                        </svg>
+                                                    </div>
+                                                    <span class="css-bgvzuu-indicatorSeparator"></span>
+                                                    <div aria-hidden="true" class="css-16pqwjk-indicatorContainer">
+                                                        <svg height="20" width="20" viewBox="0 0 20 20" aria-hidden="true" focusable="false" class="css-19bqh2r">
+                                                            <path d="M4.516 7.548c0.436-0.446 1.043-0.481 1.576 0l3.908 3.747 3.908-3.747c0.533-0.481 1.141-0.446 1.574 0 0.436 0.445 0.408 1.197 0 1.615-0.406 0.418-4.695 4.502-4.695 4.502-0.217 0.223-0.502 0.335-0.787 0.335s-0.57-0.112-0.789-0.335c0 0-4.287-4.084-4.695-4.502s-0.436-1.17 0-1.615z"></path>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <small class="form-text text-muted">
+                                            The permission level to grant accounts that join your account via automatic sign-in.
+                                        </small>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary btn-sm">
+                                        Save Automatic Sign-in
+                                    </button>
+                                    <p class="text-muted text-small mt-2"></p>
+                                </form>
+                                <hr class="mt-4 mb-4">
+                                <h5 class="card-title">
+                                    Add new users
+                                </h5>
+                                <p class="card-text">
+                                    Provide other people with access to your account.
+                                </p>
+                                <form>
+                                    <div class="form-group">
+                                        <label for="customerId">
+                                            Add users by email address
+                                        </label>
+                                        <textarea class="form-control form-control-sm"></textarea>
+                                        <small class="form-text text-muted">
+                                            Enter a newline or comma-delimited list of email addresses to add users to your account.
+                                        </small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="customerId">
+                                            Permission Level
+                                        </label>
+                                        <div class="css-1pcexqc-container">
+                                            <div class="css-bg1rzq-control">
+                                                <div class="css-1hwfws3">
+                                                    <div class="css-151xaom-placeholder">
+                                                        Select...
+                                                    </div>
+                                                    <div class="css-1g6gooi">
+                                                        <div class="" style="display: inline-block;">
+                                                            <input autocapitalize="none" autocomplete="off" autocorrect="off" id="react-select-5-input" spellcheck="false" tabindex="0" type="text" aria-autocomplete="list" style="box-sizing: content-box; width: 14px; background: rgba(0, 0, 0, 0) none repeat scroll 0px center; border: 0px none; font-size: inherit; opacity: 1; outline: currentcolor none 0px; padding: 0px; color: inherit;" value="">
+                                                            <div style="position: absolute; top: 0px; left: 0px; visibility: hidden; height: 0px; overflow: scroll; white-space: pre; font-size: 14px; font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji; font-weight: 400; font-style: normal; letter-spacing: normal; text-transform: none;"></div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="css-1wy0on6">
+                                                    <span class="css-bgvzuu-indicatorSeparator"></span>
+                                                    <div aria-hidden="true" class="css-16pqwjk-indicatorContainer">
+                                                        <svg height="20" width="20" viewBox="0 0 20 20" aria-hidden="true" focusable="false" class="css-19bqh2r">
+                                                            <path d="M4.516 7.548c0.436-0.446 1.043-0.481 1.576 0l3.908 3.747 3.908-3.747c0.533-0.481 1.141-0.446 1.574 0 0.436 0.445 0.408 1.197 0 1.615-0.406 0.418-4.695 4.502-4.695 4.502-0.217 0.223-0.502 0.335-0.787 0.335s-0.57-0.112-0.789-0.335c0 0-4.287-4.084-4.695-4.502s-0.436-1.17 0-1.615z"></path>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <small class="form-text text-muted">
+                                            The permission level to grant the added user accounts.
+                                        </small>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary btn-sm">
+                                        Add Users
+                                    </button>
+                                    <p class="text-muted text-small mt-2"></p>
+                                </form>
+                                <hr class="mt-4 mb-4">
+                                <h5 class="card-title">
+                                    Manage existing users
+                                </h5>
+                                <p class="card-text">
+                                    Manage the list of users that currently have access to your Network Next account.
+                                </p>
+                                <table class="table table-sm mt-4" id="accounts">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th style="width: 20%;">
+                                                Email Address
+                                            </th>
+                                            <th style="width: 70%;">
+                                                Permissions
+                                            </th>
+                                            <th style="width: 10%;">
+                                                Actions
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="account in accounts">
+                                            <td>
+                                                {{ account.email }}
+                                            </td>
+                                            <td>
+                                                {{ account.roles }}
+                                            </td>
+                                            <td class="td-btn">
+                                                <a href="#" class="btn btn-xs btn-primary">
+                                                    <svg aria-labelledby="svg-inline--fa-title-HCKMtIgTNyHc" data-prefix="fas" data-icon="pen" class="svg-inline--fa fa-pen fa-w-16 fa-fw " role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+                                                        <title id="svg-inline--fa-title-HCKMtIgTNyHc">
+                                                            Change this user's permissions
+                                                        </title>
+                                                        <path fill="currentColor" d="M290.74 93.24l128.02 128.02-277.99 277.99-114.14 12.6C11.35 513.54-1.56 500.62.14 485.34l12.7-114.22 277.9-277.88zm207.2-19.06l-60.11-60.11c-18.75-18.75-49.16-18.75-67.91 0l-56.55 56.55 128.02 128.02 56.55-56.55c18.75-18.76 18.75-49.16 0-67.91z"></path>
+                                                    </svg>
+                                                </a>&nbsp;
+                                                <a href="#" class="btn btn-xs btn-danger">
+                                                    <svg aria-labelledby="svg-inline--fa-title-KBBjvFyIL22U" data-prefix="fas" data-icon="trash" class="svg-inline--fa fa-trash fa-w-14 fa-fw " role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512">
+                                                        <title id="svg-inline--fa-title-KBBjvFyIL22U">
+                                                            Remove this user
+                                                        </title>
+                                                        <path fill="currentColor" d="M432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.8a23.72 23.72 0 0 0-21.4 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0-16-16zM53.2 467a48 48 0 0 0 47.9 45h245.8a48 48 0 0 0 47.9-45L416 128H32z"></path>
+                                                    </svg>
+                                                </a>&nbsp;
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="card-body hidden" id="config-page">
+                                <h5 class="card-title">
+                                    Game Configuration
+                                </h5>
+                                <p class="card-text">
+                                    Manage how your game connects to Network Next.
+                                </p>
+                                <form>
+                                    <div class="form-group" id="pubKey">
+                                        <label>
+                                            Public Key
+                                        </label>
+                                        <textarea class="form-control" placeholder="Enter your base64-encoded public key">
+                                            {{ pubKey }}
+                                        </textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary btn-sm">
+                                        Save game configuration
+                                    </button>
+                                    <p class="text-muted text-small mt-2"></p>
+                                </form>
+                            </div>
+                        </div>
+                    </main>
                 </div>
             </div>
         </div>
