@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/stretchr/testify/assert"
@@ -412,9 +413,23 @@ func TestInMemoryGetRelay(t *testing.T) {
 		expected := routing.Relay{
 			ID:   1,
 			Name: "relay name",
+			Seller: routing.Seller{
+				ID:   "seller ID",
+				Name: "seller name",
+			},
+			Datacenter: routing.Datacenter{
+				ID:   crypto.HashID("datacenter name"),
+				Name: "datadcenter name",
+			},
 		}
 
-		err := inMemory.AddRelay(ctx, expected)
+		err := inMemory.AddSeller(ctx, expected.Seller)
+		assert.NoError(t, err)
+
+		err = inMemory.AddDatacenter(ctx, expected.Datacenter)
+		assert.NoError(t, err)
+
+		err = inMemory.AddRelay(ctx, expected)
 		assert.NoError(t, err)
 
 		actual, err := inMemory.Relay(expected.ID)
@@ -441,9 +456,23 @@ func TestInMemoryGetRelays(t *testing.T) {
 		expected := routing.Relay{
 			ID:   1,
 			Name: "relay name",
+			Seller: routing.Seller{
+				ID:   "seller ID",
+				Name: "seller name",
+			},
+			Datacenter: routing.Datacenter{
+				ID:   crypto.HashID("datacenter name"),
+				Name: "datadcenter name",
+			},
 		}
 
-		err := inMemory.AddRelay(ctx, expected)
+		err := inMemory.AddSeller(ctx, expected.Seller)
+		assert.NoError(t, err)
+
+		err = inMemory.AddDatacenter(ctx, expected.Datacenter)
+		assert.NoError(t, err)
+
+		err = inMemory.AddRelay(ctx, expected)
 		assert.NoError(t, err)
 
 		actual := inMemory.Relays()
@@ -460,16 +489,30 @@ func TestInMemoryAddRelay(t *testing.T) {
 		relay := routing.Relay{
 			ID:   0,
 			Name: "relay name",
+			Seller: routing.Seller{
+				ID:   "seller ID",
+				Name: "seller name",
+			},
+			Datacenter: routing.Datacenter{
+				ID:   crypto.HashID("datacenter name"),
+				Name: "datadcenter name",
+			},
 		}
 
-		err := inMemory.AddRelay(ctx, relay)
+		err := inMemory.AddSeller(ctx, relay.Seller)
+		assert.NoError(t, err)
+
+		err = inMemory.AddDatacenter(ctx, relay.Datacenter)
+		assert.NoError(t, err)
+
+		err = inMemory.AddRelay(ctx, relay)
 		assert.NoError(t, err)
 
 		err = inMemory.AddRelay(ctx, relay)
 		assert.EqualError(t, err, "relay with id 0 already exists in memory storage")
 	})
 
-	t.Run("success", func(t *testing.T) {
+	t.Run("no seller", func(t *testing.T) {
 		inMemory := storage.InMemory{}
 
 		relay := routing.Relay{
@@ -478,6 +521,51 @@ func TestInMemoryAddRelay(t *testing.T) {
 		}
 
 		err := inMemory.AddRelay(ctx, relay)
+		assert.EqualError(t, err, "unknown seller with ID  - be sure to create the seller in storage first")
+	})
+
+	t.Run("no datacenter", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		relay := routing.Relay{
+			ID:   1,
+			Name: "relay name",
+			Seller: routing.Seller{
+				ID:   "seller ID",
+				Name: "seller name",
+			},
+		}
+
+		err := inMemory.AddSeller(ctx, relay.Seller)
+		assert.NoError(t, err)
+
+		err = inMemory.AddRelay(ctx, relay)
+		assert.EqualError(t, err, "unknown datacenter with ID 0 - be sure to create the datacenter in storage first")
+	})
+
+	t.Run("success", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		relay := routing.Relay{
+			ID:   1,
+			Name: "relay name",
+			Seller: routing.Seller{
+				ID:   "seller ID",
+				Name: "seller name",
+			},
+			Datacenter: routing.Datacenter{
+				ID:   crypto.HashID("datacenter name"),
+				Name: "datadcenter name",
+			},
+		}
+
+		err := inMemory.AddSeller(ctx, relay.Seller)
+		assert.NoError(t, err)
+
+		err = inMemory.AddDatacenter(ctx, relay.Datacenter)
+		assert.NoError(t, err)
+
+		err = inMemory.AddRelay(ctx, relay)
 		assert.NoError(t, err)
 
 		relay, err = inMemory.Relay(relay.ID)
@@ -503,19 +591,41 @@ func TestInMemoryRemoveRelay(t *testing.T) {
 			{
 				ID:   1,
 				Name: "relay name",
+				Seller: routing.Seller{
+					ID:   "seller ID",
+					Name: "seller name",
+				},
+				Datacenter: routing.Datacenter{
+					ID:   crypto.HashID("datacenter name"),
+					Name: "datadcenter name",
+				},
 			},
 			{
 				ID:   2,
 				Name: "relay name",
+				Seller: routing.Seller{
+					ID:   "seller ID",
+					Name: "seller name",
+				},
+				Datacenter: routing.Datacenter{
+					ID:   crypto.HashID("datacenter name"),
+					Name: "datadcenter name",
+				},
 			},
 		}
+
+		err := inMemory.AddSeller(ctx, relays[0].Seller)
+		assert.NoError(t, err)
+
+		err = inMemory.AddDatacenter(ctx, relays[0].Datacenter)
+		assert.NoError(t, err)
 
 		for i := 0; i < len(relays); i++ {
 			err := inMemory.AddRelay(ctx, relays[i])
 			assert.NoError(t, err)
 		}
 
-		err := inMemory.RemoveRelay(ctx, 2)
+		err = inMemory.RemoveRelay(ctx, 2)
 		assert.NoError(t, err)
 
 		expected := []routing.Relay{relays[0]}
@@ -530,19 +640,41 @@ func TestInMemoryRemoveRelay(t *testing.T) {
 			{
 				ID:   1,
 				Name: "relay name",
+				Seller: routing.Seller{
+					ID:   "seller ID",
+					Name: "seller name",
+				},
+				Datacenter: routing.Datacenter{
+					ID:   crypto.HashID("datacenter name"),
+					Name: "datadcenter name",
+				},
 			},
 			{
 				ID:   2,
 				Name: "relay name",
+				Seller: routing.Seller{
+					ID:   "seller ID",
+					Name: "seller name",
+				},
+				Datacenter: routing.Datacenter{
+					ID:   crypto.HashID("datacenter name"),
+					Name: "datadcenter name",
+				},
 			},
 		}
+
+		err := inMemory.AddSeller(ctx, relays[0].Seller)
+		assert.NoError(t, err)
+
+		err = inMemory.AddDatacenter(ctx, relays[0].Datacenter)
+		assert.NoError(t, err)
 
 		for i := 0; i < len(relays); i++ {
 			err := inMemory.AddRelay(ctx, relays[i])
 			assert.NoError(t, err)
 		}
 
-		err := inMemory.RemoveRelay(ctx, 1)
+		err = inMemory.RemoveRelay(ctx, 1)
 		assert.NoError(t, err)
 
 		expected := []routing.Relay{relays[1]}
@@ -572,9 +704,23 @@ func TestInMemorySetRelay(t *testing.T) {
 		relay := routing.Relay{
 			ID:   1,
 			Name: "relay name",
+			Seller: routing.Seller{
+				ID:   "seller ID",
+				Name: "seller name",
+			},
+			Datacenter: routing.Datacenter{
+				ID:   crypto.HashID("datacenter name"),
+				Name: "datadcenter name",
+			},
 		}
 
-		err := inMemory.AddRelay(ctx, relay)
+		err := inMemory.AddSeller(ctx, relay.Seller)
+		assert.NoError(t, err)
+
+		err = inMemory.AddDatacenter(ctx, relay.Datacenter)
+		assert.NoError(t, err)
+
+		err = inMemory.AddRelay(ctx, relay)
 		assert.NoError(t, err)
 
 		relay.Name = "new relay name"

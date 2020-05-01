@@ -13,6 +13,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -584,6 +585,71 @@ func main() {
 					}
 					relays(rpcClient, "")
 					return nil
+				},
+				Subcommands: []*ffcli.Command{
+					{
+						Name:       "add",
+						ShortUsage: "next relays add <filepath>",
+						ShortHelp:  "Add a relay to storage from a JSON file or piped from stdin",
+						Exec: func(_ context.Context, args []string) error {
+							jsonData := readJSONData("relays", args)
+
+							// Unmarshal the JSON and create the Relay struct
+							var relay routing.Relay
+							if err := json.Unmarshal(jsonData, &relay); err != nil {
+								log.Fatalf("Could not unmarshal relay: %v", err)
+							}
+
+							// Force the relay ID to be a hash of its address
+							relay.ID = crypto.HashID(relay.Addr.String())
+
+							// Add the Relay to storage
+							addRelay(rpcClient, relay)
+							return nil
+						},
+						Subcommands: []*ffcli.Command{
+							{
+								Name:       "example",
+								ShortUsage: "next relays add example",
+								ShortHelp:  "Displays an example relay for the correct JSON schema",
+								Exec: func(_ context.Context, args []string) error {
+									addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+									if err != nil {
+										log.Fatal("Failed to resolve 127.0.0.1:40000 as a UDP address")
+									}
+
+									example := routing.Relay{
+										ID:   crypto.HashID(addr.String()),
+										Addr: *addr,
+										Name: "name",
+									}
+
+									jsonBytes, err := json.MarshalIndent(example, "", "\t")
+									if err != nil {
+										log.Fatal("Failed to marshal relay struct")
+									}
+
+									fmt.Println("Exmaple JSON schema to add a new relay:")
+									fmt.Println(string(jsonBytes))
+									fmt.Println("NOTE: the relay ID will be overwritten with a hash of the relay address!")
+									return nil
+								},
+							},
+						},
+					},
+					{
+						Name:       "remove",
+						ShortUsage: "next relays remove <name>",
+						ShortHelp:  "Remove a relay from storage",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) == 0 {
+								log.Fatal("Provide the relay name of the relay you wish to remove\nFor a list of relay, use next relay")
+							}
+
+							removeRelay(rpcClient, args[0])
+							return nil
+						},
+					},
 				},
 			},
 			{

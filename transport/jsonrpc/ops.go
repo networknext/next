@@ -282,6 +282,32 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 	return nil
 }
 
+type AddRelayArgs struct {
+	Relay routing.Relay
+}
+
+type AddRelayReply struct{}
+
+func (s *OpsService) AddRelay(r *http.Request, args *AddRelayArgs, reply *AddRelayReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	return s.Storage.AddRelay(ctx, args.Relay)
+}
+
+type RemoveRelayArgs struct {
+	RelayID uint64
+}
+
+type RemoveRelayReply struct{}
+
+func (s *OpsService) RemoveRelay(r *http.Request, args *RemoveRelayArgs, reply *RemoveRelayReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	return s.Storage.RemoveRelay(ctx, args.RelayID)
+}
+
 type RelayStateUpdateArgs struct {
 	RelayID    uint64             `json:"relay_id"`
 	RelayState routing.RelayState `json:"relay_state"`
