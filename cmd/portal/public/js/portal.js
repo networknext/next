@@ -11,6 +11,7 @@ var userInfo = {
 	nickname: "",
 	token: "",
 	userId: "",
+	buyerId: "",
 };
 
 var accountsTable = null;
@@ -54,11 +55,16 @@ MapHandler = {
 	mapInstance: null,
 	async initMap() {
 		JSONRPCClient
-			.call('BuyersService.SessionsMap', {buyer_id: '13672574147039585173'})
+			.call('BuyersService.SessionMapPoints', {/* buyer_id: '13672574147039585173' */})
 			.then((response) => {
-				const DATA_URL =
-  					'https://raw.githubusercontent.com/uber-common/deck.gl-data/master/examples/screen-grid/uber-pickup-locations.json';
-				const data = DATA_URL, cellSize = 5, gpuAggregation = true, aggregation = 'SUM';
+				console.log(response);
+				/**
+				 * This code is used for demo purposes -> it uses around 580k points over NYC
+				 */
+				/* const DATA_URL =
+					  'https://raw.githubusercontent.com/uber-common/deck.gl-data/master/examples/screen-grid/uber-pickup-locations.json';
+				let data = DATA_URL;
+				const cellSize = 5, gpuAggregation = true, aggregation = 'SUM';
 				let sessionGridLayer = new deck.ScreenGridLayer({
 					id: 'session-layer',
 					data,
@@ -69,8 +75,28 @@ MapHandler = {
 					colorRange: [[0,109,44], [8,81,156]],
 					gpuAggregation,
 					aggregation
-				  })
-				var layers = [sessionGridLayer];
+				}); */
+				let data = response.map_points;
+				let layer = new deck.ScreenGridLayer({
+					id: 'sessions-layer',
+					data,
+					pickable: false,
+					opacity: 0.8,
+					cellSizePixels: 10,
+					colorRange: [
+						[0, 25, 0, 25],
+						[0, 85, 0, 85],
+						[0, 127, 0, 127],
+						[0, 170, 0, 170],
+						[0, 190, 0, 190],
+						[0, 255, 0, 255]
+					],
+					getPosition: d => [d.longitude, d.latitude],
+					getWeight: d => Math.random(10), // Need to come up with a weight system. It won't map anything if the array of points are all identical
+					gpuAggregation: true,
+					aggregation: 'SUM'
+				});
+				var layers = [layer];
 				mapInstance = new deck.DeckGL({
 					mapboxApiAccessToken: mapboxgl.accessToken,
 					mapStyle: 'mapbox://styles/mapbox/dark-v10',
@@ -84,13 +110,6 @@ MapHandler = {
 						latitude: 0,
 						zoom: 2, */
 						maxZoom: 15,
-					},
-					getColorWeight: (points) => {
-						let onNetworkNext = points.find((point) => {
-							return point.on_network_next;
-						});
-
-						return typeof onNetworkNext === 'undefined' ? 1 : 0;
 					},
 					container: 'map-workspace',
 					controller: true,
