@@ -34,6 +34,10 @@ import (
 	"github.com/networknext/backend/transport"
 )
 
+var (
+	release string
+)
+
 func main() {
 	ctx := context.Background()
 
@@ -69,8 +73,8 @@ func main() {
 
 	sentryOpts := sentry.ClientOptions{
 		ServerName:       "Server Backend",
-		Release:          "placeholder-release-version",
-		Dist:             "placeholder-distribution",
+		Release:          release,
+		Dist:             "linux",
 		AttachStacktrace: true,
 		Debug:            true,
 	}
