@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	jsoniter "github.com/json-iterator/go"
@@ -97,6 +98,7 @@ func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, metrics *me
 
 		var packet ServerInitRequestPacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
+			sentry.CaptureException(err)
 			level.Error(logger).Log("msg", "could not read packet", "err", err)
 			metrics.ErrorMetrics.UnmarshalFailure.Add(1)
 			return
@@ -122,6 +124,7 @@ func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, metrics *me
 		}()
 
 		if !incoming.SourceAddr.IP.IsLoopback() && !packet.Version.AtLeast(SDKVersionMin) {
+			sentry.CaptureMessage("sdk version is too old")
 			level.Error(locallogger).Log("msg", "sdk version is too old")
 			response.Response = InitResponseOldSDKVersion
 			metrics.ErrorMetrics.SDKTooOld.Add(1)
@@ -130,6 +133,7 @@ func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, metrics *me
 
 		_, err := storer.Datacenter(packet.DatacenterID)
 		if err != nil {
+			sentry.CaptureException(err)
 			level.Error(locallogger).Log("msg", "failed to get datacenter from storage", "err", err)
 			response.Response = InitResponseUnknownDatacenter
 			metrics.ErrorMetrics.DatacenterNotFound.Add(1)
@@ -138,6 +142,7 @@ func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, metrics *me
 
 		buyer, err := storer.Buyer(packet.CustomerID)
 		if err != nil {
+			sentry.CaptureException(err)
 			level.Error(locallogger).Log("msg", "failed to get buyer from storage", "err", err)
 			response.Response = InitResponseUnknownCustomer
 			metrics.ErrorMetrics.BuyerNotFound.Add(1)
@@ -145,6 +150,7 @@ func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, metrics *me
 		}
 
 		if !crypto.Verify(buyer.PublicKey, packet.GetSignData(), packet.Signature) {
+			sentry.CaptureMessage("signature verification failed")
 			level.Error(locallogger).Log("msg", "signature verification failed")
 			response.Response = InitResponseSignatureCheckFailed
 			metrics.ErrorMetrics.VerificationFailure.Add(1)
@@ -182,6 +188,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 
 		var packet ServerUpdatePacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
+			sentry.CaptureException(err)
 			level.Error(logger).Log("msg", "could not read packet", "err", err)
 			metrics.ErrorMetrics.UnmarshalFailure.Add(1)
 			return
@@ -193,6 +200,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 
 		// Drop the packet if version is older that the minimun sdk version
 		if !incoming.SourceAddr.IP.IsLoopback() && !packet.Version.AtLeast(SDKVersionMin) {
+			sentry.CaptureMessage(fmt.Sprintf("sdk version is too old: %s", packet.Version.String()))
 			level.Error(locallogger).Log("msg", "sdk version is too old", "sdk", packet.Version.String())
 			metrics.ErrorMetrics.SDKTooOld.Add(1)
 			return
@@ -203,6 +211,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 		// Get the buyer information for the id in the packet
 		buyer, err := storer.Buyer(packet.CustomerID)
 		if err != nil {
+			sentry.CaptureException(err)
 			level.Error(locallogger).Log("msg", "failed to get buyer from storage", "err", err, "customer_id", packet.CustomerID)
 			metrics.ErrorMetrics.BuyerNotFound.Add(1)
 			return
@@ -219,6 +228,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 
 		// Drop the packet if the signed packet data cannot be verified with the buyers public key
 		if !crypto.Verify(buyer.PublicKey, packet.GetSignData(), packet.Signature) {
+			sentry.CaptureMessage("signature verification failed")
 			level.Error(locallogger).Log("msg", "signature verification failed")
 			metrics.ErrorMetrics.VerificationFailure.Add(1)
 			return
@@ -246,6 +256,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 
 		// Drop the packet if the sequence number is older than the previously cached sequence number
 		if packet.Sequence < serverentry.Sequence {
+			sentry.CaptureMessage(fmt.Sprintf("packet too old: seq = %d | latest sequence = %d", packet.Sequence, serverentry.Sequence))
 			level.Error(locallogger).Log("msg", "packet too old", "packet sequence", packet.Sequence, "lastest sequence", serverentry.Sequence)
 			metrics.ErrorMetrics.PacketSequenceTooOld.Add(1)
 			return
@@ -323,6 +334,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 		// Deserialize the Session packet
 		var packet SessionUpdatePacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
+			sentry.CaptureException(err)
 			level.Error(logger).Log("msg", "could not read packet", "err", err)
 			metrics.ErrorMetrics.ReadPacketFailure.Add(1)
 			return
@@ -334,6 +346,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 		locallogger := log.With(logger, "src_addr", incoming.SourceAddr.String(), "server_addr", packet.ServerAddress.String(), "client_addr", packet.ClientAddress.String(), "session_id", packet.SessionID)
 
 		if packet.FallbackToDirect {
+			sentry.CaptureMessage("packet fallback to direct")
 			level.Error(logger).Log("err", "fallback to direct")
 			metrics.ErrorMetrics.FallbackToDirect.Add(1)
 			return
@@ -355,6 +368,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			serverCacheCmd := tx.Get(serverCacheKey)
 			sessionCacheCmd := tx.Get(sessionCacheKey)
 			if _, err := tx.Exec(); err != nil && err != redis.Nil {
+				sentry.CaptureException(err)
 				level.Error(locallogger).Log("msg", "failed to execute redis pipeline", "err", err)
 				metrics.ErrorMetrics.PipelineExecFailure.Add(1)
 				return
@@ -364,11 +378,13 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			// See next_server_internal_process_packet in next.cpp for full requirements of response packet
 			serverCacheData, err := serverCacheCmd.Bytes()
 			if err != nil {
+				sentry.CaptureException(err)
 				level.Error(locallogger).Log("msg", "failed to get server bytes", "err", err)
 				metrics.ErrorMetrics.GetServerDataFailure.Add(1)
 				return
 			}
 			if err := serverCacheEntry.UnmarshalBinary(serverCacheData); err != nil {
+				sentry.CaptureException(err)
 				level.Error(locallogger).Log("msg", "failed to unmarshal server bytes", "err", err)
 				metrics.ErrorMetrics.UnmarshalServerDataFailure.Add(1)
 				return
@@ -381,6 +397,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 				sessionCacheData, err := sessionCacheCmd.Bytes()
 				if err != nil {
 					// This error case should never happen, can't produce it in test cases, but leaving it in anyway
+					sentry.CaptureException(err)
 					level.Error(locallogger).Log("msg", "failed to get session bytes", "err", err)
 					writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.GetSessionDataFailure)
 					return
@@ -388,6 +405,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 
 				if len(sessionCacheData) != 0 {
 					if err := sessionCacheEntry.UnmarshalBinary(sessionCacheData); err != nil {
+						sentry.CaptureException(err)
 						level.Error(locallogger).Log("msg", "failed to unmarshal session bytes", "err", err)
 						writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.UnmarshalSessionDataFailure)
 						return
@@ -408,6 +426,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 
 		buyer, err := storer.Buyer(packet.CustomerID)
 		if err != nil {
+			sentry.CaptureException(err)
 			level.Error(locallogger).Log("msg", "failed to get buyer from storage", "err", err, "customer_id", packet.CustomerID)
 			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.BuyerNotFound)
 			return
@@ -416,6 +435,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 		locallogger = log.With(locallogger, "customer_id", packet.CustomerID)
 
 		if !crypto.Verify(buyer.PublicKey, packet.GetSignData(), packet.Signature) {
+			sentry.CaptureException(err)
 			err := errors.New("failed to verify packet signature with buyer public key")
 			level.Error(locallogger).Log("err", err)
 			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.VerifyFailure)
@@ -425,11 +445,13 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 		switch seq := packet.Sequence; {
 		case seq < sessionCacheEntry.Sequence:
 			err := fmt.Errorf("packet sequence too old. current_sequence %v, previous sequence %v", packet.Sequence, sessionCacheEntry.Sequence)
+			sentry.CaptureException(err)
 			level.Error(locallogger).Log("err", err)
 			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.OldSequence)
 			return
 		case seq == sessionCacheEntry.Sequence:
 			if _, err := w.Write(sessionCacheEntry.Response); err != nil {
+				sentry.CaptureException(err)
 				level.Error(locallogger).Log("err", err)
 				metrics.ErrorMetrics.WriteCachedResponseFailure.Add(1)
 			}
@@ -438,6 +460,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 
 		location, err := iploc.LocateIP(packet.ClientAddress.IP)
 		if err != nil {
+			sentry.CaptureException(err)
 			level.Error(locallogger).Log("msg", "failed to locate client", "err", err)
 			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.ClientLocateFailure)
 			return
@@ -447,6 +470,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 		clientrelays, err := geoClient.RelaysWithin(location.Latitude, location.Longitude, 500, "mi")
 
 		if len(clientrelays) == 0 || err != nil {
+			sentry.CaptureException(err)
 			level.Error(locallogger).Log("msg", "failed to locate relays near client", "err", err)
 			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.NearRelaysLocateFailure)
 			return
@@ -534,6 +558,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 				routing.SelectRoutesByRandomDestRelay(rand.NewSource(rand.Int63())),
 				routing.SelectRandomRoute(rand.NewSource(rand.Int63())))
 			if err != nil {
+				sentry.CaptureException(err)
 				level.Error(locallogger).Log("err", err)
 				writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.RouteFailure)
 				return
@@ -625,6 +650,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 
 				tokens, numtokens, err := token.Encrypt(routerPrivateKey)
 				if err != nil {
+					sentry.CaptureException(err)
 					level.Error(locallogger).Log("msg", "failed to encrypt route token", "err", err)
 					writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.EncryptionFailure)
 					return
@@ -655,6 +681,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 		// Send the Session Response back to the server
 		var responseData []byte
 		if responseData, err = writeSessionResponse(w, response, serverPrivateKey); err != nil {
+			sentry.CaptureException(err)
 			level.Error(locallogger).Log("msg", "failed to write session response", "err", err)
 			metrics.ErrorMetrics.WriteResponseFailure.Add(1)
 			return
@@ -689,6 +716,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			result := redisClientCache.Set(sessionCacheKey, updatedSessionCacheEntry, 5*time.Minute)
 			if result.Err() != nil {
 				// This error case should never happen, can't produce it in test cases, but leaving it in anyway
+				sentry.CaptureException(err)
 				level.Error(locallogger).Log("msg", "failed to update session", "err", err)
 				metrics.ErrorMetrics.UpdateSessionFailure.Add(1)
 			}
@@ -719,6 +747,11 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 					Down: int64(packet.KbpsDown),
 				},
 			}
+			point := routing.SessionMapPoint{
+				Latitude:      location.Latitude,
+				Longitude:     location.Longitude,
+				OnNetworkNext: routeDecision.OnNetworkNext,
+			}
 
 			tx := redisClientPortal.TxPipeline()
 			tx.ZAdd("top-global", &redis.Z{Score: meta.DeltaRTT, Member: meta.ID})
@@ -726,7 +759,12 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			tx.Set(fmt.Sprintf("session-%x-meta", packet.SessionID), meta, 720*time.Hour)
 			tx.SAdd(fmt.Sprintf("session-%x-slices", packet.SessionID), slice)
 			tx.Expire(fmt.Sprintf("session-%x-slices", packet.SessionID), 720*time.Hour)
+			tx.SAdd("map-points-global", meta.ID)
+			tx.SAdd(fmt.Sprintf("map-points-buyer-%x", packet.CustomerID), meta.ID)
+			tx.Expire(fmt.Sprintf("map-points-buyer-%x", packet.CustomerID), 720*time.Hour)
+			tx.Set(fmt.Sprintf("session-%x-point", packet.SessionID), point, 720*time.Hour)
 			if _, err := tx.Exec(); err != nil {
+				sentry.CaptureException(err)
 				level.Error(locallogger).Log("msg", "failed to update portal data", "err", err)
 			}
 		}
@@ -737,6 +775,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			routeRequest := NewRouteRequest(packet, &buyer, serverCacheEntry, location, storer, clientrelays)
 			billingEntry := NewBillingEntry(routeRequest, &chosenRoute, int(response.RouteType), sameRoute, &buyer.RoutingRulesSettings, routeDecision, &packet, sliceDuration, timestampStart, timestampNow, newSession)
 			if err := biller.Bill(context.Background(), packet.SessionID, billingEntry); err != nil {
+				sentry.CaptureException(err)
 				level.Error(locallogger).Log("msg", "billing failed", "err", err)
 				metrics.ErrorMetrics.BillingFailure.Add(1)
 			}
