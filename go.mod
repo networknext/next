@@ -26,11 +26,9 @@ require (
 	github.com/modood/table v0.0.0-20200225102042-88de94bb9876
 	github.com/oschwald/geoip2-golang v1.4.0
 	github.com/peterbourgon/ff/v3 v3.0.0
-	github.com/smartystreets/goconvey v1.6.4 // indirect
 	github.com/stretchr/testify v1.4.0
 	github.com/tidwall/gjson v1.6.0
 	github.com/tidwall/pretty v1.0.1 // indirect
-	github.com/urfave/negroni v1.0.0 // indirect
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
 	golang.org/x/crypto v0.0.0-20200115085410-6d4e4cb37c7d
 	golang.org/x/exp v0.0.0-20200213203834-85f925bdd4d0 // indirect
