@@ -69,22 +69,18 @@ func main() {
 
 	sentryOpts := sentry.ClientOptions{
 		ServerName:       "Server Backend",
-		Release:          "placeholder-release",
+		Release:          "placeholder-release-version",
 		Dist:             "placeholder-distribution",
 		AttachStacktrace: true,
-	}
-
-	if val, ok := os.LookupEnv("SERVER_BACKEND_SENTRY_DSN"); ok {
-		sentryOpts.Dsn = val
-	} else {
-		level.Error(logger).Log("msg", "SERVER_BACKEND_SENTRY_DSN not set")
-		os.Exit(1)
+		Debug:            true,
 	}
 
 	if err := sentry.Init(sentryOpts); err != nil {
 		level.Error(logger).Log("msg", "failed to initialize sentry", "err", err)
 		os.Exit(1)
 	}
+
+	sentry.CaptureMessage("test")
 
 	// force sentry to post any updates upon program exit
 	defer sentry.Flush(time.Second * 2)

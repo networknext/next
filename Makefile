@@ -110,19 +110,6 @@ ifndef REDIS_HOST_CACHE
 export REDIS_HOST_CACHE = 127.0.0.1:6379
 endif
 
-ifndef SERVER_BACKEND_SENTRY_DSN
-export SERVER_BACKEND_SENTRY_DSN := https://507603ae494d417d8b33ff41891a1c47@o382503.ingest.sentry.io/5211447
-endif
-
-ifndef RELAY_BACKEND_SENTRY_DSN
-export RELAY_BACKEND_SENTRY_DSN := https://f84af51fbd2348b88c1f76583f0da0f5@o382503.ingest.sentry.io/5211451
-endif
-
-# Read by sentry's sdk
-ifndef SENTRY_ENV
-export SENTRY_ENV := local
-endif
-
 .PHONY: help
 help: ## this list
 	@echo -e "$$(grep -hE '^\S+:.*##' $(MAKEFILE_LIST) | sed -e 's/:.*##\s*/:/' -e 's/^\(.\+\):\(.*\)/\\033[36m\1\\033[m:\2/' | column -c2 -t -s :)"
