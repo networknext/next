@@ -8,6 +8,7 @@ const SEC_TO_MS = 1000;
 const DEC_TO_PERC = 100;
 
 var userInfo = {
+<<<<<<< HEAD
 	email: "",
 	name: "",
 	pubKey: "",
@@ -15,6 +16,14 @@ var userInfo = {
 	token: "",
 	userId: "",
 	buyerId: "",
+=======
+	email: "test",
+	name: "test",
+	pubKey: "test",
+	nickname: "test",
+	token: "test",
+	userId: "test",
+>>>>>>> Turning off auth for dev test
 };
 
 var accountsTable = null;
@@ -328,11 +337,21 @@ WorkspaceHandler = {
 
 function startApp() {
 	createVueComponents();
-	Promise.all([
-		/**
-		 * QUESTION: Instead of grabbing the user here can we use the token to then go off and get everything from the backend?
-		 * TODO:	 There are 3 different promises going off to get user details. There should be a better way to do this
-		 */
+	document.getElementById("app").style.display = 'block';
+	MapHandler
+			.initMap()
+			.then((response) => {
+				console.log("Map init successful");
+			})
+			.catch((e) => {
+				console.log("Something went wrong initializing the map");
+				console.log(e);
+			});
+	/**
+	 * QUESTION: Instead of grabbing the user here can we use the token to then go off and get everything from the backend?
+	 * TODO:	 There are 3 different promises going off to get user details. There should be a better way to do this
+	 */
+	/* Promise.all([
 		loginClient.getUser(),
 		loginClient.getTokenSilently()
 	]).then((response) => {
@@ -355,7 +374,7 @@ function startApp() {
 			});
 	}).catch((e) => {
 		console.log("Something went wrong getting the current user information");
-	});
+	}); */
 }
 
 function createVueComponents() {
