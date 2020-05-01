@@ -55,12 +55,27 @@ JSONRPCClient = {
 }
 
 MapHandler = {
+	defaultNA: {
+		initialViewState: {
+			zoom: 4,
+			longitude: -98.583333, // 'Center' of the US
+			latitude: 39.833333,
+			maxZoom: 14,
+		},
+	},
+	defaultWorld: {
+		initialViewState: {
+			zoom: 2,
+			longitude: 0, // 'Center' of the world map
+			latitude: 0,
+			maxZoom: 14,
+		},
+	},
 	mapInstance: null,
 	async initMap() {
 		JSONRPCClient
-			.call('BuyersService.SessionMapPoints', {/* buyer_id: '13672574147039585173' */})
+			.call('BuyersService.SessionMapPoints', {})
 			.then((response) => {
-				console.log(response);
 				/**
 				 * This code is used for demo purposes -> it uses around 580k points over NYC
 				 */
@@ -99,20 +114,12 @@ MapHandler = {
 					gpuAggregation: true,
 					aggregation: 'SUM'
 				});
-				var layers = [layer];
-				mapInstance = new deck.DeckGL({
+				let layers = [layer];
+				this.mapInstance = new deck.DeckGL({
 					mapboxApiAccessToken: mapboxgl.accessToken,
 					mapStyle: 'mapbox://styles/mapbox/dark-v10',
 					initialViewState: {
-						// Center of the continental US
-						longitude: -98.583333,
-						latitude: 39.833333,
-						zoom: 4,
-						// Center of the globe
-						/* longitude: 0,
-						latitude: 0,
-						zoom: 2, */
-						maxZoom: 15,
+						...this.defaultWorld.initialViewState
 					},
 					container: 'map-workspace',
 					controller: true,
@@ -123,6 +130,22 @@ MapHandler = {
 				console.log("Something went wrong with map init");
 				console.log(e);
 			});
+	},
+	updateMap(mapType) {
+		switch (mapType) {
+			case 'NA':
+				this.mapInstance.setProps({
+					...this.defaultNA
+				});
+				break;
+			case 'WORLD':
+				this.mapInstance.setProps({
+					...this.defaultWorld
+				});
+				break;
+			default:
+				// Nothing for now
+		}
 	}
 }
 
