@@ -8,22 +8,12 @@ const SEC_TO_MS = 1000;
 const DEC_TO_PERC = 100;
 
 var userInfo = {
-<<<<<<< HEAD
-	email: "",
-	name: "",
-	pubKey: "",
-	nickname: "",
-	token: "",
-	userId: "",
-	buyerId: "",
-=======
 	email: "test",
 	name: "test",
 	pubKey: "test",
 	nickname: "test",
 	token: "test",
 	userId: "test",
->>>>>>> Turning off auth for dev test
 };
 
 var accountsTable = null;
