@@ -68,31 +68,17 @@ func main() {
 	}
 
 	sentryOpts := sentry.ClientOptions{
-		ServerName: "Server Backend",
-		Release:    "placeholder-release",
-		Dist:       "placeholder-distribution",
+		ServerName:       "Server Backend",
+		Release:          "placeholder-release",
+		Dist:             "placeholder-distribution",
+		AttachStacktrace: true,
 	}
-
-	// required
 
 	if val, ok := os.LookupEnv("SERVER_BACKEND_SENTRY_DSN"); ok {
 		sentryOpts.Dsn = val
 	} else {
 		level.Error(logger).Log("msg", "SERVER_BACKEND_SENTRY_DSN not set")
 		os.Exit(1)
-	}
-
-	// optional
-
-	if val := os.Getenv("SENTRY_DEBUG"); val == "true" {
-		level.Info(logger).Log("msg", "using sentry in local mode")
-		sentryOpts.Debug = true
-		sentryOpts.DebugWriter = os.Stdout
-	}
-
-	if val := os.Getenv("SENTRY_ATTACH_STACKTRACE"); val == "true" {
-		level.Info(logger).Log("msg", "attaching stacktrace with sentry")
-		sentryOpts.AttachStacktrace = true
 	}
 
 	if err := sentry.Init(sentryOpts); err != nil {
