@@ -118,6 +118,7 @@ ifndef RELAY_BACKEND_SENTRY_DSN
 export RELAY_BACKEND_SENTRY_DSN := https://f84af51fbd2348b88c1f76583f0da0f5@o382503.ingest.sentry.io/5211451
 endif
 
+# Read by sentry's sdk
 ifndef SENTRY_ENV
 export SENTRY_ENV := local
 endif
