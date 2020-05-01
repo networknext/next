@@ -303,27 +303,6 @@
                             </td>
                         </tr>
                         </thead>
-                        <tbody>
-                            <tr v-for="session in sessions" scope="row">
-                                <td>{{ session.session_id }}</td>
-                                <td>{{ session.user_hash }}</td>
-                                <td>{{ session.direct_rtt }}</td>
-                                <td>{{ session.next_rtt }}</td>
-                                <td>{{ session.change_rtt }}</td>
-                                <td v-if="session.on_network_next">
-                                    <i class="fas fa-check"></i>
-                                </td>
-                                <td v-if="!session.on_network_next">
-                                    <i class="fas fa-times-circle"></i>
-                                </td>
-                                <td>{{ session.expires_at }}</td>
-                                <td>
-                                    <button class="btn" data-toggle="modal" data-target="#sessionInfoModal" v-on:click="fetchSessionInfo(session.session_id)">
-                                        <i class="fas fa-info-circle" data-toggle="tooltip" data-placement="bottom" title="Session Info"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                        </tbody>
                     </table>
                 </div>
                 <div class="modal fade" id="sessionInfoModal" tabindex="-1" role="dialog" aria-labelledby="sessionInfoModalLabel" aria-hidden="true">
@@ -634,53 +613,53 @@
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="workspace row hidden" id="relays-workspace">
-                <div id="relays">
-                    <div class="spinner-border" role="status" v-if="!relays">
-                        <span class="sr-only">Loading...</span>
+                <div class="workspace row hidden" id="relays-workspace">
+                    <div id="relays">
+                        <div class="spinner-border" role="status" v-if="!relays">
+                            <span class="sr-only">Loading...</span>
+                        </div>
+                        <table class="table" v-else>
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th scope="col">Relay Name</th>
+                                    <th scope="col">Sessions</th>
+                                    <th scope="col">Bandwidth</th>
+                                    <th scope="col">Peak Utilization</th>
+                                    <th scope="col">Revenue</th>
+                                    <th scope="col">NIC Speed</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="relay in relays" scope="row">
+                                    <td>{{ relay.name }}</td>
+                                    <td>IMPLEMENT ME</td>
+                                    <td>{{ relay.included_bandwidth_gb }}Mbps</td>
+                                    <td>IMPLEMENT ME</td>
+                                    <td>IMPLEMENT ME</td>
+                                    <td>{{ relay.nic_speed_mpbs }}Mbps</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <!-- <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                            <div class="modal-dialog" role="document">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                                </div>
+                                <div class="modal-body">
+                                ...
+                                </div>
+                                <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                <button type="button" class="btn btn-primary">Save changes</button>
+                                </div>
+                            </div>
+                            </div>
+                        </div> -->
                     </div>
-                    <table class="table" v-else>
-                        <thead class="thead-dark">
-                            <tr>
-                                <th scope="col">Relay Name</th>
-                                <th scope="col">Sessions</th>
-                                <th scope="col">Bandwidth</th>
-                                <th scope="col">Peak Utilization</th>
-                                <th scope="col">Revenue</th>
-                                <th scope="col">NIC Speed</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="relay in relays" scope="row">
-                                <td>{{ relay.name }}</td>
-                                <td>IMPLEMENT ME</td>
-                                <td>{{ relay.included_bandwidth_gb }}Mbps</td>
-                                <td>IMPLEMENT ME</td>
-                                <td>IMPLEMENT ME</td>
-                                <td>{{ relay.nic_speed_mpbs }}Mbps</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                    <!-- <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-                        <div class="modal-dialog" role="document">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                            <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
-                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                <span aria-hidden="true">&times;</span>
-                            </button>
-                            </div>
-                            <div class="modal-body">
-                            ...
-                            </div>
-                            <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                            <button type="button" class="btn btn-primary">Save changes</button>
-                            </div>
-                        </div>
-                        </div>
-                    </div> -->
                 </div>
             </div>
         </div>
