@@ -80,8 +80,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	sentry.CaptureMessage("test")
-
 	// force sentry to post any updates upon program exit
 	defer sentry.Flush(time.Second * 2)
 
