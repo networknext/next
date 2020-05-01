@@ -20,6 +20,7 @@ import (
 
 	gcplogging "cloud.google.com/go/logging"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/oschwald/geoip2-golang"
@@ -31,6 +32,10 @@ import (
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
+)
+
+var (
+	release string
 )
 
 func main() {
@@ -65,6 +70,22 @@ func main() {
 
 		logger = logging.NewStackdriverLogger(loggingClient, "server-backend")
 	}
+
+	sentryOpts := sentry.ClientOptions{
+		ServerName:       "Server Backend",
+		Release:          release,
+		Dist:             "linux",
+		AttachStacktrace: true,
+		Debug:            true,
+	}
+
+	if err := sentry.Init(sentryOpts); err != nil {
+		level.Error(logger).Log("msg", "failed to initialize sentry", "err", err)
+		os.Exit(1)
+	}
+
+	// force sentry to post any updates upon program exit
+	defer sentry.Flush(time.Second * 2)
 
 	// var serverPublicKey []byte
 	var customerPublicKey []byte
@@ -298,7 +319,7 @@ func main() {
 
 		conn, err := net.ListenUDP("udp", &addr)
 		if err != nil {
-			level.Error(logger).Log("addr", conn.LocalAddr().String(), "err", err)
+			level.Error(logger).Log("err", err)
 			os.Exit(1)
 		}
 

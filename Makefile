@@ -13,8 +13,7 @@ endif
 SDKNAME = libnext
 
 TIMESTAMP ?= $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
-SHA ?= $(shell git rev-parse --short HEAD)
-TAG ?= $(shell git describe --tags 2> /dev/null)
+RELEASE ?= $(shell git describe --tags --exact-match 2> /dev/null || git rev-parse --short HEAD)
 
 CURRENT_DIR = $(shell pwd -P)
 DEPLOY_DIR = ./deploy
@@ -432,7 +431,7 @@ deploy-relay-backend-prod: ## builds and deploys the relay backend to the prod i
 .PHONY: build-server-backend
 build-server-backend: ## builds the server backend binary
 	@printf "Building server backend... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/server_backend ./cmd/server_backend/server_backend.go
+	@$(GO) build -ldflags "-s -w -X main.release=$(RELEASE)" -o ${DIST_DIR}/server_backend ./cmd/server_backend/server_backend.go
 	@printf "done\n"
 
 .PHONY: build-server-backend-artifact
