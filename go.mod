@@ -38,4 +38,5 @@ require (
 	google.golang.org/api v0.17.0
 	google.golang.org/genproto v0.0.0-20200212174721-66ed5ce911ce
 	google.golang.org/grpc v1.27.1
+	gopkg.in/auth0.v4 v4.3.4
 )

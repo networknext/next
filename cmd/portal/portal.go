@@ -15,6 +15,7 @@ import (
 
 	"github.com/gorilla/rpc/v2"
 	"github.com/gorilla/rpc/v2/json2"
+	"gopkg.in/auth0.v4/management"
 
 	gcplogging "cloud.google.com/go/logging"
 
@@ -89,13 +90,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	redisHosts := strings.Split(os.Getenv("REDIS_HOST_CACHE"), ",")
-	redisClientCache := storage.NewRedisClient(redisHosts...)
-	if err := redisClientCache.Ping().Err(); err != nil {
-		level.Error(logger).Log("envvar", "REDIS_HOST_CACHE", "value", redisHosts, "err", err)
-		os.Exit(1)
-	}
-
 	addr := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 40000}
 	var db storage.Storer = &storage.InMemory{
 		LocalMode: true,
@@ -125,6 +119,21 @@ func main() {
 		SSHUser:        "root",
 		SSHPort:        22,
 	})
+
+	manager, err := management.New(
+		os.Getenv("AUTH_DOMAIN"),
+		os.Getenv("AUTH_CLIENTID"),
+		os.Getenv("AUTH_CLIENTSECRET"),
+	)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		os.Exit(1)
+	}
+
+	auth0Client := storage.Auth0{
+		Manager: manager,
+		Logger:  logger,
+	}
 
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
@@ -194,19 +203,27 @@ func main() {
 				keyparts := strings.Split(msg.Payload, "-")
 				sessionID := keyparts[1]
 
-				scaniter := redisClientPortal.Scan(0, "top-buyer-*", 100).Iterator()
+				topscaniter := redisClientPortal.Scan(0, "top-buyer-*", 100).Iterator()
+				mapscaniter := redisClientPortal.Scan(0, "map-points-buyer-*", 100).Iterator()
 
 				tx := redisClientPortal.TxPipeline()
+
 				tx.ZRem("top-global", sessionID)
-				for scaniter.Next() {
-					tx.ZRem(scaniter.Val(), sessionID)
+				for topscaniter.Next() {
+					tx.ZRem(topscaniter.Val(), sessionID)
 				}
+
+				tx.SRem("map-points-global", sessionID)
+				for mapscaniter.Next() {
+					tx.SRem(mapscaniter.Val(), sessionID)
+				}
+
 				if _, err := tx.Exec(); err != nil {
-					level.Error(logger).Log("msg", "error cleaning up top sessions", "err", err)
+					level.Error(logger).Log("msg", "error cleaning up top sessions and map sessions", "err", err)
 					os.Exit(1)
 				}
 
-				level.Info(logger).Log("msg", "removed session from top sessions", "session_id", sessionID)
+				level.Info(logger).Log("msg", "removed session from top sessions and map sessions", "session_id", sessionID)
 			}
 		}
 	}()
@@ -233,14 +250,17 @@ func main() {
 			Storage:     db,
 		}, "")
 		s.RegisterService(&jsonrpc.BuyersService{
-			RedisClient: redisClientCache,
+			RedisClient: redisClientPortal,
 			Storage:     db,
 		}, "")
+		s.RegisterService(&jsonrpc.AuthService{
+			Auth0: auth0Client,
+		}, "")
+
 		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), s))
 
 		http.Handle("/", http.FileServer(http.Dir(uiDir)))
 
-		// http.HandleFunc("/", transport.PortalHandlerFunc(redisClientRelays, &routeMatrix, os.Getenv("BASIC_AUTH_USERNAME"), os.Getenv("BASIC_AUTH_PASSWORD")))
 		err := http.ListenAndServe(":"+port, nil)
 		if err != nil {
 			level.Error(logger).Log("err", err)
