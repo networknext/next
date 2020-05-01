@@ -195,6 +195,73 @@ func (s *BuyersService) Sessions(r *http.Request, args *SessionsArgs, reply *Ses
 	return nil
 }
 
+type TopSessionsArgs struct {
+	BuyerID string `json:"buyer_id"`
+}
+
+type TopSessionsReply struct {
+	Sessions []routing.SessionMeta `json:"sessions"`
+}
+
+func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, reply *TopSessionsReply) error {
+	var err error
+	var result []redis.Z
+
+	switch args.BuyerID {
+	case "":
+		result, err = s.RedisClient.ZRangeWithScores("top-global", 0, 1000).Result()
+		if err != nil {
+			return err
+		}
+	default:
+		result, err = s.RedisClient.ZRangeWithScores(fmt.Sprintf("top-buyer-%s", args.BuyerID), 0, 1000).Result()
+		if err != nil {
+			return err
+		}
+	}
+
+	var getCmds []*redis.StringCmd
+	{
+		gettx := s.RedisClient.TxPipeline()
+		for _, member := range result {
+			getCmds = append(getCmds, gettx.Get(fmt.Sprintf("session-%s-meta", member.Member.(string))))
+		}
+		_, err = gettx.Exec()
+		if err != nil && err != redis.Nil {
+			return err
+		}
+	}
+
+	exptx := s.RedisClient.TxPipeline()
+	{
+		var meta routing.SessionMeta
+		for _, cmd := range getCmds {
+			err = cmd.Scan(&meta)
+			if err != nil {
+				// If we get here then there is a session in the top lists
+				// but has missing meta information so we set an empty meta
+				// key to expire in 5 seconds for the main cleanup routine
+				// to clear the reference in the top lists
+				args := cmd.Args()
+				exptx.Set(args[1].(string), "", 5*time.Second)
+				continue
+			}
+
+			reply.Sessions = append(reply.Sessions, meta)
+		}
+	}
+	_, err = exptx.Exec()
+	if err != nil && err != redis.Nil {
+		return err
+	}
+
+	sort.Slice(reply.Sessions, func(i int, j int) bool {
+		return reply.Sessions[i].DeltaRTT < reply.Sessions[j].DeltaRTT
+	})
+
+	return nil
+}
+
 type SessionDetailsArgs struct {
 	SessionID string `json:"session_id"`
 }
@@ -222,6 +289,69 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	sort.Slice(reply.Slices, func(i int, j int) bool {
 		return reply.Slices[i].Timestamp.Before(reply.Slices[j].Timestamp)
 	})
+
+	return nil
+}
+
+type MapPointsArgs struct {
+	BuyerID string `json:"buyer_id"`
+}
+
+type MapPointsReply struct {
+	Points []routing.SessionMapPoint `json:"map_points"`
+}
+
+func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, reply *MapPointsReply) error {
+	var err error
+	var sessionIDs []string
+
+	switch args.BuyerID {
+	case "":
+		sessionIDs, err = s.RedisClient.SMembers("map-points-global").Result()
+		if err != nil {
+			return err
+		}
+	default:
+		sessionIDs, err = s.RedisClient.SMembers(fmt.Sprintf("map-points-buyer-%s", args.BuyerID)).Result()
+		if err != nil {
+			return err
+		}
+	}
+
+	var getCmds []*redis.StringCmd
+	{
+		gettx := s.RedisClient.TxPipeline()
+		for _, sessionID := range sessionIDs {
+			getCmds = append(getCmds, gettx.Get(fmt.Sprintf("session-%s-point", sessionID)))
+		}
+		_, err = gettx.Exec()
+		if err != nil && err != redis.Nil {
+			return err
+		}
+	}
+
+	exptx := s.RedisClient.TxPipeline()
+	{
+		var point routing.SessionMapPoint
+		for _, cmd := range getCmds {
+			err = cmd.Scan(&point)
+			if err != nil {
+				// If we get here then there is a point in the point map (map as in key -> val)
+				// but the actual point data is missing so we set an empty meta
+				// key to expire in 5 seconds for the main cleanup routine
+				// to clear the reference in the point map
+				args := cmd.Args()
+				exptx.Set(args[1].(string), "", 5*time.Second)
+				continue
+			}
+
+			reply.Points = append(reply.Points, point)
+		}
+	}
+	_, err = exptx.Exec()
+	if err != nil && err != redis.Nil {
+		return err
+	}
 
 	return nil
 }

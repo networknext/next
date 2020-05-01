@@ -211,21 +211,21 @@ type RelaysReply struct {
 }
 
 type relay struct {
-	ID                  uint64             `json:"id"`
-	Name                string             `json:"name"`
-	Addr                string             `json:"addr"`
-	Latitude            float64            `json:"latitude"`
-	Longitude           float64            `json:"longitude"`
-	NICSpeedMbps        uint64             `json:"nic_speed_mpbs"`
-	IncludedBandwidthGB uint64             `json:"included_bandwidth_gb"`
-	State               routing.RelayState `json:"state"`
-	StateUpdateTime     time.Time          `json:"stateUpdateTime"`
-	ManagementAddr      string             `json:"management_addr"`
-	SSHUser             string             `json:"ssh_user"`
-	SSHPort             int64              `json:"ssh_port"`
-	SessionCount        uint64             `json:"sessionCount"`
-	BytesSent           uint64             `json:"bytesTx"`
-	BytesReceived       uint64             `json:"bytesRx"`
+	ID                  uint64    `json:"id"`
+	Name                string    `json:"name"`
+	Addr                string    `json:"addr"`
+	Latitude            float64   `json:"latitude"`
+	Longitude           float64   `json:"longitude"`
+	NICSpeedMbps        uint64    `json:"nic_speed_mpbs"`
+	IncludedBandwidthGB uint64    `json:"included_bandwidth_gb"`
+	State               string    `json:"state"`
+	StateUpdateTime     time.Time `json:"stateUpdateTime"`
+	ManagementAddr      string    `json:"management_addr"`
+	SSHUser             string    `json:"ssh_user"`
+	SSHPort             int64     `json:"ssh_port"`
+	SessionCount        uint64    `json:"sessionCount"`
+	BytesSent           uint64    `json:"bytesTx"`
+	BytesReceived       uint64    `json:"bytesRx"`
 }
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {
@@ -248,7 +248,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			ManagementAddr:      r.ManagementAddr,
 			SSHUser:             r.SSHUser,
 			SSHPort:             r.SSHPort,
-			State:               r.State,
+			State:               r.State.String(),
 			StateUpdateTime:     r.LastUpdateTime,
 		}
 
@@ -321,6 +321,26 @@ func (s *OpsService) RelayPublicKeyUpdate(r *http.Request, args *RelayPublicKeyU
 	if err != nil {
 		return fmt.Errorf("could not decode relay public key: %v", err)
 	}
+
+	return s.Storage.SetRelay(context.Background(), relay)
+}
+
+type RelayNICSpeedUpdateArgs struct {
+	RelayID       uint64 `json:"relay_id"`
+	RelayNICSpeed uint64 `json:"relay_nic_speed"`
+}
+
+type RelayNICSpeedUpdateReply struct {
+}
+
+func (s *OpsService) RelayNICSpeedUpdate(r *http.Request, args *RelayNICSpeedUpdateArgs, reply *RelayNICSpeedUpdateReply) error {
+	relay, err := s.Storage.Relay(args.RelayID)
+
+	if err != nil {
+		return err
+	}
+
+	relay.NICSpeedMbps = args.RelayNICSpeed
 
 	return s.Storage.SetRelay(context.Background(), relay)
 }

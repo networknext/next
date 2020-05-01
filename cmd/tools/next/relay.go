@@ -169,7 +169,7 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 		}
 	}
 
-	if !runCommandEnv("make", []string{"build-new-relay"}, nil) {
+	if !runCommandEnv("make", []string{"build-relay"}, nil) {
 		log.Fatal("Failed to build relay")
 	}
 
@@ -225,5 +225,19 @@ func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []st
 		updateRelayState(rpcClient, info, routing.RelayStateDisabled)
 		con := NewSSHConn(info.user, info.sshAddr, info.sshPort, env.SSHKeyFilePath)
 		con.ConnectAndIssueCmd(DisableRelayScript)
+	}
+}
+
+func setRelayNIC(rpcClient jsonrpc.RPCClient, relayName string, nicSpeed uint64) {
+	info := getRelayInfo(rpcClient, relayName)
+
+	args := localjsonrpc.RelayNICSpeedUpdateArgs{
+		RelayID:       info.id,
+		RelayNICSpeed: nicSpeed,
+	}
+
+	var reply localjsonrpc.RelayNICSpeedUpdateReply
+	if err := rpcClient.CallFor(&reply, "OpsService.RelayNICSpeedUpdate", args); err != nil {
+		log.Fatal(err)
 	}
 }

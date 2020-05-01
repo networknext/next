@@ -98,12 +98,26 @@ ifndef MAXMIND_DB_URI
 export MAXMIND_DB_URI = ./testdata/GeoIP2-City-Test.mmdb
 endif
 
+ifndef REDIS_HOST_PORTAL
+export REDIS_HOST_PORTAL = 127.0.0.1:6379
+endif
+
 ifndef REDIS_HOST_RELAYS
 export REDIS_HOST_RELAYS = 127.0.0.1:6379
 endif
 
 ifndef REDIS_HOST_CACHE
 export REDIS_HOST_CACHE = 127.0.0.1:6379
+endif
+
+ifndef AUTH_DOMAIN
+export AUTH_DOMAIN = networknext.auth0.com
+endif
+ifndef AUTH_CLIENTID
+export AUTH_CLIENTID = NIwrWYmG9U3tCQP6QxJqCx8n2xGSTCvf
+endif
+ifndef AUTH_CLIENTSECRET
+export AUTH_CLIENTSECRET = GZ9l7xF0dggtvz-jxbG7_-yX2YlvkGas4sIq2RJK4glxkHvT0t-WwMtyJlP5qix0
 endif
 
 .PHONY: help
@@ -136,8 +150,8 @@ test-unit-sdk: build-sdk-test ## runs sdk unit tests
 	@$(DIST_DIR)/$(SDKNAME)_test
 
 .PHONY: test-unit-relay
-test-unit-relay: build-relay ## runs relay unit tests
-	@$(DIST_DIR)/relay test
+test-unit-relay: build-relay-tests ## runs relay unit tests
+	@$(NEW_RELAY_DIR)/bin/relay.test
 
 .PHONY: test-unit-backend
 test-unit-backend: lint ## runs backend unit tests
@@ -173,7 +187,7 @@ build-functional-backend: ## builds the functional backend
 	printf "done\n" ; \
 
 .PHONY: build-test-func
-build-test-func: clean build-sdk build-relay build-functional-server build-functional-client build-functional-backend ## builds the functional tests
+build-test-func: clean build-sdk build-ref-relay build-functional-server build-functional-client build-functional-backend ## builds the functional tests
 
 .PHONY: run-test-func
 run-test-func:
@@ -249,24 +263,30 @@ NEW_RELAY_DIR := ./cmd/relay_new
 NEW_RELAY_MAKEFILE := Makefile
 RELAY_EXE	:= relay
 
-.PHONY: build-relay
-build-relay: ## builds the relay
+.PHONY: build-ref-relay
+build-ref-relay: ## builds the relay
 	@printf "Building relay... "
 	@$(CXX) $(CXX_FLAGS) -o $(DIST_DIR)/$(RELAY_EXE) cmd/relay/*.cpp $(LDFLAGS)
 	@printf "done\n"
 
-.PHONY: build-new-relay
-build-new-relay: ## builds the new relay
+.PHONY: build-relay
+build-relay: ## builds the new relay
 	@printf "Building new relay... "
 	@cd $(NEW_RELAY_DIR) && $(MAKE) release
 	@echo "done"
 
+.PHONY: build-relay-tests
+build-relay-tests: ## builds the relay version that runs tests
+	@printf "Building relay with tests enabled... "
+	@cd $(NEW_RELAY_DIR) && $(MAKE) test
+	@echo "done"
+
 .PHONY: dev-relay
-dev-relay: $(DIST_DIR)/$(RELAY_EXE) build-relay ## runs a local relay
-	@$<
+dev-relay: build-relay ## runs a local relay
+	@$(DIST_DIR)/$(RELAY_EXE)
 
 .PHONY: dev-multi-relays
-dev-multi-relays: $(DIST_DIR)/$(RELAY_EXE) build-relay ## runs 10 local relays
+dev-multi-relays: build-relay ## runs 10 local relays
 	./cmd/tools/scripts/relay-spawner.sh -n 10 -p 10000
 
 #######################

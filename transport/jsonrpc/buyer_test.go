@@ -153,6 +153,62 @@ func TestSessions(t *testing.T) {
 	})
 }
 
+func TestTopSessions(t *testing.T) {
+	redisServer, _ := miniredis.Run()
+	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+	buyerID1 := fmt.Sprintf("%x", 111)
+	buyerID2 := fmt.Sprintf("%x", 222)
+
+	sessionID1 := fmt.Sprintf("%x", 111)
+	sessionID2 := fmt.Sprintf("%x", 222)
+	sessionID3 := fmt.Sprintf("%x", 333)
+	sessionID4 := "missing"
+
+	redisServer.ZAdd("top-global", 50, sessionID1)
+	redisServer.ZAdd("top-global", 100, sessionID2)
+	redisServer.ZAdd("top-global", 150, sessionID3)
+	redisServer.ZAdd("top-global", 150, sessionID4)
+
+	redisServer.ZAdd(fmt.Sprintf("top-buyer-%s", buyerID2), 50, sessionID1)
+	redisServer.ZAdd(fmt.Sprintf("top-buyer-%s", buyerID1), 100, sessionID2)
+	redisServer.ZAdd(fmt.Sprintf("top-buyer-%s", buyerID1), 150, sessionID3)
+	redisServer.ZAdd(fmt.Sprintf("top-buyer-%s", buyerID1), 150, sessionID4)
+
+	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID1), routing.SessionMeta{ID: sessionID1}, time.Hour)
+	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID2), routing.SessionMeta{ID: sessionID2}, time.Hour)
+	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID3), routing.SessionMeta{ID: sessionID3}, time.Hour)
+
+	svc := jsonrpc.BuyersService{
+		RedisClient: redisClient,
+	}
+
+	t.Run("top global", func(t *testing.T) {
+		var reply jsonrpc.TopSessionsReply
+		err := svc.TopSessions(nil, &jsonrpc.TopSessionsArgs{}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 3, len(reply.Sessions))
+		assert.Equal(t, sessionID1, reply.Sessions[0].ID)
+		assert.Equal(t, sessionID2, reply.Sessions[1].ID)
+		assert.Equal(t, sessionID3, reply.Sessions[2].ID)
+
+		assert.Greater(t, int(redisClient.TTL("session-missing-meta").Val()), 0)
+	})
+
+	t.Run("top buyer", func(t *testing.T) {
+		var reply jsonrpc.TopSessionsReply
+		err := svc.TopSessions(nil, &jsonrpc.TopSessionsArgs{BuyerID: buyerID1}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 2, len(reply.Sessions))
+		assert.Equal(t, sessionID2, reply.Sessions[0].ID)
+		assert.Equal(t, sessionID3, reply.Sessions[1].ID)
+
+		assert.Greater(t, int(redisClient.TTL("session-missing-meta").Val()), 0)
+	})
+}
+
 func TestSessionDetails(t *testing.T) {
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
@@ -163,7 +219,6 @@ func TestSessionDetails(t *testing.T) {
 		Location:   routing.Location{Latitude: 10, Longitude: 20},
 		ClientAddr: "127.0.0.1:1313",
 		ServerAddr: "10.0.0.1:50000",
-		Stats:      routing.Stats{RTT: 5, Jitter: 10, PacketLoss: 15},
 		Hops:       3,
 		SDK:        "3.4.4",
 	}
@@ -206,6 +261,68 @@ func TestSessionDetails(t *testing.T) {
 		assert.Equal(t, slice2.Next, reply.Slices[1].Next)
 		assert.Equal(t, slice2.Direct, reply.Slices[1].Direct)
 		assert.Equal(t, slice2.Envelope, reply.Slices[1].Envelope)
+	})
+}
+
+func TestSessionMapPoints(t *testing.T) {
+	redisServer, _ := miniredis.Run()
+	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+	buyerID1 := fmt.Sprintf("%x", 111)
+	buyerID2 := fmt.Sprintf("%x", 222)
+
+	sessionID1 := fmt.Sprintf("%x", 111)
+	sessionID2 := fmt.Sprintf("%x", 222)
+	sessionID3 := fmt.Sprintf("%x", 333)
+	sessionID4 := "missing"
+
+	redisServer.SetAdd("map-points-global", sessionID1)
+	redisServer.SetAdd("map-points-global", sessionID2)
+	redisServer.SetAdd("map-points-global", sessionID3)
+	redisServer.SetAdd("map-points-global", sessionID4)
+
+	redisServer.SetAdd(fmt.Sprintf("map-points-buyer-%s", buyerID2), sessionID1)
+	redisServer.SetAdd(fmt.Sprintf("map-points-buyer-%s", buyerID1), sessionID2)
+	redisServer.SetAdd(fmt.Sprintf("map-points-buyer-%s", buyerID1), sessionID3)
+	redisServer.SetAdd(fmt.Sprintf("map-points-buyer-%s", buyerID1), sessionID4)
+
+	points := []routing.SessionMapPoint{
+		{Latitude: 10, Longitude: 40, OnNetworkNext: true},
+		{Latitude: 20, Longitude: 50, OnNetworkNext: false},
+		{Latitude: 30, Longitude: 60, OnNetworkNext: true},
+	}
+
+	redisClient.Set(fmt.Sprintf("session-%s-point", sessionID1), points[0], time.Hour)
+	redisClient.Set(fmt.Sprintf("session-%s-point", sessionID2), points[1], time.Hour)
+	redisClient.Set(fmt.Sprintf("session-%s-point", sessionID3), points[2], time.Hour)
+	svc := jsonrpc.BuyersService{
+		RedisClient: redisClient,
+	}
+
+	t.Run("points global", func(t *testing.T) {
+		var reply jsonrpc.MapPointsReply
+		err := svc.SessionMapPoints(nil, &jsonrpc.MapPointsArgs{}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 3, len(reply.Points))
+		assert.Contains(t, reply.Points, points[0])
+		assert.Contains(t, reply.Points, points[1])
+		assert.Contains(t, reply.Points, points[2])
+
+		assert.Greater(t, int(redisClient.TTL("session-missing-point").Val()), 0)
+	})
+
+	t.Run("points by buyer", func(t *testing.T) {
+		var reply jsonrpc.MapPointsReply
+		err := svc.SessionMapPoints(nil, &jsonrpc.MapPointsArgs{BuyerID: buyerID1}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 2, len(reply.Points))
+		assert.NotContains(t, reply.Points, points[0])
+		assert.Contains(t, reply.Points, points[1])
+		assert.Contains(t, reply.Points, points[2])
+
+		assert.Greater(t, int(redisClient.TTL("session-missing-point").Val()), 0)
 	})
 }
 

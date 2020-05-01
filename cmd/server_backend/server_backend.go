@@ -98,6 +98,13 @@ func main() {
 		}
 	}
 
+	redisPortalHost := os.Getenv("REDIS_HOST_PORTAL")
+	redisClientPortal := storage.NewRedisClient(redisPortalHost)
+	if err := redisClientPortal.Ping().Err(); err != nil {
+		level.Error(logger).Log("envvar", "REDIS_HOST_PORTAL", "value", redisPortalHost, "err", err)
+		os.Exit(1)
+	}
+
 	redisHost := os.Getenv("REDIS_HOST_RELAYS")
 	redisClientRelays := storage.NewRedisClient(redisHost)
 	if err := redisClientRelays.Ping().Err(); err != nil {
@@ -123,6 +130,12 @@ func main() {
 			Reader: mmreader,
 		}
 		defer mmreader.Close()
+	}
+	if key, ok := os.LookupEnv("IPSTACK_ACCESS_KEY"); ok {
+		ipLocator = &routing.IPStack{
+			Client:    http.DefaultClient,
+			AccessKey: key,
+		}
 	}
 
 	geoClient := routing.GeoClient{
@@ -295,7 +308,7 @@ func main() {
 
 			ServerInitHandlerFunc:    transport.ServerInitHandlerFunc(logger, db, serverInitMetrics, serverPrivateKey),
 			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClientCache, db, serverUpdateMetrics),
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClientCache, db, &routeMatrix, ipLocator, &geoClient, sessionMetrics, biller, serverPrivateKey, routerPrivateKey),
+			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClientCache, redisClientPortal, db, &routeMatrix, ipLocator, &geoClient, sessionMetrics, biller, serverPrivateKey, routerPrivateKey),
 		}
 
 		go func() {

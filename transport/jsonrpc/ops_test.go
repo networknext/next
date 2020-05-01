@@ -457,6 +457,58 @@ func TestRelayPublicKeyUpdate(t *testing.T) {
 	})
 }
 
+func TestRelayNICSpeedUpdate(t *testing.T) {
+	makeSvc := func() *jsonrpc.OpsService {
+		var storer storage.InMemory
+		storer.AddRelay(context.Background(), routing.Relay{
+			ID:           1,
+			NICSpeedMbps: 1000,
+		})
+		storer.AddRelay(context.Background(), routing.Relay{
+			ID:           2,
+			NICSpeedMbps: 2000,
+		})
+
+		return &jsonrpc.OpsService{
+			Storage: &storer,
+		}
+	}
+
+	t.Run("found", func(t *testing.T) {
+		svc := makeSvc()
+		err := svc.RelayNICSpeedUpdate(nil, &jsonrpc.RelayNICSpeedUpdateArgs{
+			RelayID:       1,
+			RelayNICSpeed: 10000,
+		}, &jsonrpc.RelayNICSpeedUpdateReply{})
+		assert.NoError(t, err)
+
+		relay, err := svc.Storage.Relay(1)
+		assert.NoError(t, err)
+		assert.Equal(t, uint64(10000), relay.NICSpeedMbps)
+
+		relay, err = svc.Storage.Relay(2)
+		assert.NoError(t, err)
+		assert.Equal(t, uint64(2000), relay.NICSpeedMbps)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		svc := makeSvc()
+		err := svc.RelayNICSpeedUpdate(nil, &jsonrpc.RelayNICSpeedUpdateArgs{
+			RelayID:       987654321,
+			RelayNICSpeed: 10000,
+		}, &jsonrpc.RelayNICSpeedUpdateReply{})
+		assert.Error(t, err)
+
+		relay, err := svc.Storage.Relay(1)
+		assert.NoError(t, err)
+		assert.Equal(t, uint64(1000), relay.NICSpeedMbps)
+
+		relay, err = svc.Storage.Relay(2)
+		assert.NoError(t, err)
+		assert.Equal(t, uint64(2000), relay.NICSpeedMbps)
+	})
+}
+
 func TestDatacenters(t *testing.T) {
 	storer := storage.InMemory{}
 	storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 1, Name: "local.local.1"})

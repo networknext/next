@@ -124,6 +124,49 @@ func TestBuyerNotFound(t *testing.T) {
 	assert.Equal(t, 1.0, updateMetrics.ErrorMetrics.BuyerNotFound.Value())
 }
 
+func TestDatacenterNotFound(t *testing.T) {
+	redisServer, _ := miniredis.Run()
+	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+	db := storage.InMemory{}
+	db.AddBuyer(context.Background(), routing.Buyer{})
+
+	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
+	assert.NoError(t, err)
+
+	updateMetrics := metrics.EmptyServerUpdateMetrics
+	localMetrics := metrics.LocalHandler{}
+
+	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
+	assert.NoError(t, err)
+
+	updateMetrics.ErrorMetrics.DatacenterNotFound = metric
+
+	packet := transport.ServerUpdatePacket{
+		Sequence:             13,
+		ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
+		ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
+		ServerRoutePublicKey: TestServerBackendPublicKey,
+
+		DatacenterID: 13,
+
+		Version: transport.SDKVersionMin,
+
+		Signature: make([]byte, ed25519.SignatureSize),
+	}
+
+	data, err := packet.MarshalBinary()
+	assert.NoError(t, err)
+
+	handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, &db, &updateMetrics)
+	handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
+
+	_, err = redisServer.Get("SERVER-0-0.0.0.0:13")
+	assert.Error(t, err)
+
+	assert.Equal(t, 1.0, updateMetrics.ErrorMetrics.DatacenterNotFound.Value())
+}
+
 func TestVerificationFailure(t *testing.T) {
 	_, buyersServerPrivKey, err := ed25519.GenerateKey(nil)
 	assert.NoError(t, err)
@@ -133,6 +176,7 @@ func TestVerificationFailure(t *testing.T) {
 
 	db := storage.InMemory{}
 	db.AddBuyer(context.Background(), routing.Buyer{})
+	db.AddDatacenter(context.Background(), routing.Datacenter{ID: 13})
 
 	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 	assert.NoError(t, err)
@@ -182,6 +226,7 @@ func TestServerPacketSequenceTooOld(t *testing.T) {
 	db.AddBuyer(context.Background(), routing.Buyer{
 		PublicKey: buyersServerPubKey,
 	})
+	db.AddDatacenter(context.Background(), routing.Datacenter{ID: 13})
 
 	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 	assert.NoError(t, err)
@@ -245,6 +290,7 @@ func TestSuccessfulUpdate(t *testing.T) {
 	db.AddBuyer(context.Background(), routing.Buyer{
 		PublicKey: buyersServerPubKey,
 	})
+	db.AddDatacenter(context.Background(), routing.Datacenter{ID: 13})
 
 	// Create a ServerUpdatePacket and marshal it to binary so sent it into the UDP handler
 	packet := transport.ServerUpdatePacket{

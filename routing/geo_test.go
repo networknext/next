@@ -2,6 +2,7 @@ package routing_test
 
 import (
 	"net"
+	"net/http"
 	"testing"
 
 	"github.com/alicebob/miniredis/v2"
@@ -13,6 +14,51 @@ import (
 )
 
 func TestIPLocator(t *testing.T) {
+	t.Run("IPStack", func(t *testing.T) {
+		ipstack := routing.IPStack{
+			Client:    http.DefaultClient,
+			AccessKey: "2a3640e34301da9ab257c59243b0d7c6",
+		}
+
+		{
+			expected := routing.Location{
+				Continent: "Europe",
+				Country:   "United Kingdom",
+				Region:    "England",
+				City:      "Stroud",
+				Latitude:  51.750999450683594,
+				Longitude: -2.296999931335449,
+				ISP:       "Andrews & Arnold Ltd",
+			}
+
+			actual, err := ipstack.LocateIP(net.ParseIP("81.2.69.160"))
+			assert.NoError(t, err)
+
+			assert.Equal(t, expected, actual)
+		}
+
+		{
+			actual, err := ipstack.LocateIP(net.ParseIP("127.0.0.1"))
+			assert.NoError(t, err)
+
+			assert.Equal(t, routing.LocationNullIsland, actual)
+		}
+
+		{
+			actual, err := ipstack.LocateIP(([]byte)("localhost"))
+			assert.NoError(t, err)
+
+			assert.Equal(t, routing.LocationNullIsland, actual)
+		}
+
+		{
+			actual, err := ipstack.LocateIP(net.ParseIP("0.0.0.0"))
+			assert.EqualError(t, err, "no location found for '0.0.0.0'")
+
+			assert.Equal(t, routing.Location{}, actual)
+		}
+	})
+
 	t.Run("Maxmind", func(t *testing.T) {
 		mmreader, err := geoip2.Open("../testdata/GeoIP2-City-Test.mmdb")
 		assert.NoError(t, err)
@@ -29,6 +75,7 @@ func TestIPLocator(t *testing.T) {
 				City:      "London",
 				Latitude:  51.5142,
 				Longitude: -0.0931,
+				ISP:       "unknown",
 			}
 
 			actual, err := mmdb.LocateIP(net.ParseIP("81.2.69.160"))
@@ -41,14 +88,14 @@ func TestIPLocator(t *testing.T) {
 			actual, err := mmdb.LocateIP(net.ParseIP("127.0.0.1"))
 			assert.NoError(t, err)
 
-			assert.Equal(t, routing.Location{}, actual)
+			assert.Equal(t, routing.LocationNullIsland, actual)
 		}
 
 		{
 			actual, err := mmdb.LocateIP(([]byte)("localhost"))
 			assert.NoError(t, err)
 
-			assert.Equal(t, routing.Location{}, actual)
+			assert.Equal(t, routing.LocationNullIsland, actual)
 		}
 
 		{

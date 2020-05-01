@@ -208,6 +208,13 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 			return
 		}
 
+		datacenter, err := storer.Datacenter(packet.DatacenterID)
+		if err != nil {
+			level.Error(locallogger).Log("msg", "failed to get datacenter from storage", "err", err, "customer_id", packet.CustomerID)
+			metrics.ErrorMetrics.DatacenterNotFound.Add(1)
+			return
+		}
+
 		locallogger = log.With(locallogger, "customer_id", packet.CustomerID)
 
 		// Drop the packet if the signed packet data cannot be verified with the buyers public key
@@ -248,7 +255,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 		serverentry = ServerCacheEntry{
 			Sequence:   packet.Sequence,
 			Server:     routing.Server{Addr: packet.ServerPrivateAddress, PublicKey: packet.ServerRoutePublicKey},
-			Datacenter: routing.Datacenter{ID: packet.DatacenterID},
+			Datacenter: datacenter,
 			SDKVersion: packet.Version,
 		}
 		result := redisClient.Set(serverCacheKey, serverentry, 5*time.Minute)
@@ -293,7 +300,7 @@ type RouteProvider interface {
 }
 
 // SessionUpdateHandlerFunc ...
-func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, metrics *metrics.SessionMetrics, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable, redisClientPortal redis.Cmdable, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, metrics *metrics.SessionMetrics, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
 	logger = log.With(logger, "handler", "session")
 
 	return func(w io.Writer, incoming *UDPPacket) {
@@ -343,7 +350,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		}
 
 		// Build a redis transaction to make a single network call
-		tx := redisClient.TxPipeline()
+		tx := redisClientCache.TxPipeline()
 		{
 			serverCacheCmd := tx.Get(serverCacheKey)
 			sessionCacheCmd := tx.Get(sessionCacheKey)
@@ -679,7 +686,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 				NextRTT:         nnStats.RTT,
 				Location:        location,
 			}
-			result := redisClient.Set(sessionCacheKey, updatedSessionCacheEntry, 5*time.Minute)
+			result := redisClientCache.Set(sessionCacheKey, updatedSessionCacheEntry, 5*time.Minute)
 			if result.Err() != nil {
 				// This error case should never happen, can't produce it in test cases, but leaving it in anyway
 				level.Error(locallogger).Log("msg", "failed to update session", "err", err)
@@ -690,12 +697,18 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 		// Set portal data
 		{
 			meta := routing.SessionMeta{
+				ID:         fmt.Sprintf("%x", packet.SessionID),
+				UserHash:   fmt.Sprintf("%x", packet.UserHash),
+				Datacenter: serverCacheEntry.Datacenter.Name,
+				NextRTT:    nnStats.RTT,
+				DirectRTT:  directStats.RTT,
+				DeltaRTT:   directStats.RTT - nnStats.RTT,
 				Location:   location,
 				ClientAddr: packet.ClientAddress.String(),
 				ServerAddr: packet.ServerAddress.String(),
-				Stats:      chosenRoute.Stats,
 				Hops:       len(chosenRoute.Relays),
 				SDK:        packet.Version.String(),
+				Connection: ConnectionTypeText(packet.ConnectionType),
 			}
 			slice := routing.SessionSlice{
 				Timestamp: time.Now(),
@@ -706,11 +719,22 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, stor
 					Down: int64(packet.KbpsDown),
 				},
 			}
+			point := routing.SessionMapPoint{
+				Latitude:      location.Latitude,
+				Longitude:     location.Longitude,
+				OnNetworkNext: routeDecision.OnNetworkNext,
+			}
 
-			tx := redisClient.TxPipeline()
+			tx := redisClientPortal.TxPipeline()
+			tx.ZAdd("top-global", &redis.Z{Score: meta.DeltaRTT, Member: meta.ID})
+			tx.ZAdd(fmt.Sprintf("top-buyer-%x", packet.CustomerID), &redis.Z{Score: meta.DeltaRTT, Member: meta.ID})
 			tx.Set(fmt.Sprintf("session-%x-meta", packet.SessionID), meta, 720*time.Hour)
 			tx.SAdd(fmt.Sprintf("session-%x-slices", packet.SessionID), slice)
 			tx.Expire(fmt.Sprintf("session-%x-slices", packet.SessionID), 720*time.Hour)
+			tx.SAdd("map-points-global", meta.ID)
+			tx.SAdd(fmt.Sprintf("map-points-buyer-%x", packet.CustomerID), meta.ID)
+			tx.Expire(fmt.Sprintf("map-points-buyer-%x", packet.CustomerID), 720*time.Hour)
+			tx.Set(fmt.Sprintf("session-%x-point", packet.SessionID), point, 720*time.Hour)
 			if _, err := tx.Exec(); err != nil {
 				level.Error(locallogger).Log("msg", "failed to update portal data", "err", err)
 			}
