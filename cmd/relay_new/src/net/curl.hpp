@@ -16,8 +16,9 @@ namespace net
     static size_t curlWriteFunction(char* ptr, size_t size, size_t nmemb, void* userdata)
     {
       auto respBuff = reinterpret_cast<RespType*>(userdata);
-      respBuff->reserve(size * nmemb);
-      std::copy(ptr, ptr + size * nmemb, respBuff->end());
+      auto index = respBuff->size();
+      respBuff->resize(respBuff->size() + size * nmemb);
+      std::copy(ptr, ptr + size * nmemb, respBuff->begin() + index);
       return size * nmemb;
     }
 
