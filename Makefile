@@ -383,7 +383,7 @@ deploy-portal-prod: ## builds and deploys the portal to the prod instance group
 .PHONY: build-relay-backend
 build-relay-backend: ## builds the relay backend binary
 	@printf "Building relay backend... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/relay_backend ./cmd/relay_backend/relay_backend.go
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA) -X main.release=$(RELEASE)" -o ${DIST_DIR}/relay_backend ./cmd/relay_backend/relay_backend.go
 	@printf "done\n"
 
 .PHONY: build-relay-backend-artifact

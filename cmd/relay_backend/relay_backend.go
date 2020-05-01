@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/go-redis/redis"
 	"github.com/gorilla/mux"
 	"github.com/networknext/backend/billing"
@@ -36,6 +37,10 @@ import (
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
+)
+
+var (
+	release string
 )
 
 func main() {
@@ -88,6 +93,22 @@ func main() {
 		logger = logging.NewStackdriverLogger(loggingClient, "relay-backend")
 		relayslogger = logging.NewStackdriverLogger(loggingClient, "relays")
 	}
+
+	sentryOpts := sentry.ClientOptions{
+		ServerName:       "Relay Backend",
+		Release:          release,
+		Dist:             "linux",
+		AttachStacktrace: true,
+		Debug:            true,
+	}
+
+	if err := sentry.Init(sentryOpts); err != nil {
+		level.Error(logger).Log("msg", "failed to initialize sentry", "err", err)
+		os.Exit(1)
+	}
+
+	// force sentry to post any updates upon program exit
+	defer sentry.Flush(time.Second * 2)
 
 	var customerPublicKey []byte
 	{
