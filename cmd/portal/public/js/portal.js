@@ -120,7 +120,7 @@ MapHandler = {
 					initialViewState: {
 						...this.defaultWorld.initialViewState
 					},
-					container: 'map-workspace',
+					container: 'map-container',
 					controller: true,
 					layers: layers,
 				});
@@ -149,108 +149,82 @@ MapHandler = {
 }
 
 WorkspaceHandler = {
-	accountWorkspacePages: {
-		configPage: document.getElementById("config"),
-		newUserPage: document.getElementById("new-user"),
-	},
 	links: {
-		accountsLink: document.getElementById("accounts-link"),
+		accountsLink: document.getElementById("settings-link"),
 		configLink: document.getElementById("config-link"),
-		mapLink: document.getElementById("home-link"),
-		relaysLink: document.getElementById("relays-link"),
+		mapLink: document.getElementById("map-link"),
 		sessionsLink: document.getElementById("sessions-link"),
-		usersLink: document.getElementById("users-link"),
+		sessionToolLink: document.getElementById("session-tool-link"),
+		settingsLink: document.getElementById("settings-link"),
+		userToolLink: document.getElementById("user-tool-link"),
 	},
 	showAccountsTable: false,
-	workspaceTitle: document.getElementById("workspace-title"),
 	newUserEmail: document.getElementById("email"),
 	newUserPerms: document.getElementById("perms"),
 	workspaces: {
-		accountsWorkspace: document.getElementById("accounts-workspace"),
+		settingsWorkspace: document.getElementById("settings-workspace"),
 		mapWorkspace: document.getElementById("map-workspace"),
-		relaysWorkspace: document.getElementById("relays-workspace"),
 		sessionsWorkspace: document.getElementById("sessions-workspace"),
-		usersWorkspace: document.getElementById("users-workspace"),
+		sessionToolWorkspace: document.getElementById("session-tool-workspace"),
+		userToolWorkspace: document.getElementById("user-tool-workspace"),
+	},
+	pages: {
+		accounts: document.getElementById("accounts-page"),
+		config: document.getElementById("config-page"),
 	},
 	changeAccountPage(page) {
-		let newUserButton = document.getElementById("new-user-button");
+		// Hide all workspaces
+		this.pages.accounts.style.display = 'none';
+		this.pages.config.style.display = 'none';
 
-		//Hide all workspace pages
-		this.accountWorkspacePages.configPage.style.display = 'none';
-		this.accountWorkspacePages.newUserPage.style.display = 'none';
-
-		//Hide the accounts table Vue
-		Object.assign(accountsTable.$data, {showAccountsTable: false});
-
-		//Hide the new user button
-		newUserButton.style.display = 'none';
-
-		//Remove all link highlights
-		this.links.accountsLink.classList.remove("active");
-		this.links.configLink.classList.remove("active");
-
-		//Run setup for selected account page
+		// Run setup for selected page
 		switch (page) {
 			case 'config':
-				this.loadConfigPage();
-				this.accountWorkspacePages.configPage.style.display = 'block';
-				this.links.configLink.classList.add("active");
-				break;
-			case 'new':
-				this.accountWorkspacePages.newUserPage.style.display = 'block';
-				this.newUserEmail.value = '';
-				this.newUserPerms.value = '';
+				this.pages.config.style.display = 'block';
 				break;
 			default:
-				this.loadAccounts();
-				Object.assign(accountsTable.$data, {showAccountsTable: true});
-				this.links.accountsLink.classList.add("active");
-				newUserButton.style.display = 'block';
+				this.pages.accounts.style.display = 'block';
 		}
 	},
 	changePage(page) {
 		// Hide all workspaces
-		this.workspaces.accountsWorkspace.style.display = 'none';
+		this.workspaces.settingsWorkspace.style.display = 'none';
 		this.workspaces.mapWorkspace.style.display = 'none';
-		this.workspaces.relaysWorkspace.style.display = 'none';
 		this.workspaces.sessionsWorkspace.style.display = 'none';
-		this.workspaces.usersWorkspace.style.display = 'none';
+		this.workspaces.sessionToolWorkspace.style.display = 'none';
+		this.workspaces.userToolWorkspace.style.display = 'none';
 
 		// Remove all link highlights
 		this.links.mapLink.classList.remove("active");
-		this.links.relaysLink.classList.remove("active");
 		this.links.sessionsLink.classList.remove("active");
-		this.links.usersLink.classList.remove("active");
+		this.links.sessionToolLink.classList.remove("active");
+		this.links.userToolLink.classList.remove("active");
+		this.links.settingsLink.classList.remove("active");
 
 		// Run setup for selected page
 		switch (page) {
-			case 'account':
-				this.changeAccountPage();
-				this.workspaces.accountsWorkspace.style.display = 'block';
-				this.workspaceTitle.textContent = 'Account Details';
-				break;
-			case 'relay':
-				this.loadRelayPage();
-				this.workspaces.relaysWorkspace.style.display = 'block';
-				this.links.relaysLink.classList.add("active");
-				this.workspaceTitle.textContent = 'Relays Table';
+			case 'settings':
+				this.loadSettingsPage();
+				this.workspaces.settingsWorkspace.style.display = 'block';
+				this.links.settingsLink.classList.add("active");
 				break;
 			case 'sessions':
-				this.loadSessionPage();
+				this.loadSessionsPage();
 				this.workspaces.sessionsWorkspace.style.display = 'block';
 				this.links.sessionsLink.classList.add("active");
-				this.workspaceTitle.textContent = 'Session Table';
 				break;
-			case 'users':
+			case 'session-tool':
+				this.workspaces.sessionToolWorkspace.style.display = 'block';
+				this.links.sessionToolLink.classList.add("active");
+				break;
+			case 'user-tool':
 				this.loadUsersPage();
-				this.workspaces.usersWorkspace.style.display = 'block';
-				this.links.usersLink.classList.add("active");
-				this.workspaceTitle.textContent = 'User Table';
+				this.workspaces.userToolWorkspace.style.display = 'block';
+				this.links.userToolLink.classList.add("active");
 				break;
 			default:
 				this.workspaces.mapWorkspace.style.display = 'block';
 				this.links.mapLink.classList.add("active");
-				this.workspaceTitle.textContent = 'Session Map';
 		}
 	},
 	editUser(accountInfo) {
@@ -259,7 +233,8 @@ WorkspaceHandler = {
 		WorkspaceHandler.newUserEmail.value = accountInfo.email || '';
 		WorkspaceHandler.newUserPerms.value = accountInfo.email || '';
 	},
-	loadAccounts() {
+	loadSettingsPage() {
+		this.changeAccountPage();
 		JSONRPCClient
 			.call('AuthService.AllAccounts', {buyer_id: '13672574147039585173'})
 			.then(
@@ -306,7 +281,7 @@ WorkspaceHandler = {
 				console.log(e);
 			});
 	},
-	loadSessionPage() {
+	loadSessionsPage() {
 		JSONRPCClient
 			.call('BuyersService.TopSessions', {})
 			.then((response) => {
@@ -387,12 +362,6 @@ function createVueComponents() {
 			updatePubKey: updatePubKey
 		}
 	});
-	relaysTable = new Vue({
-		el: '#relays',
-		data: {
-			relays: null
-		}
-	});
 	sessionsTable = new Vue({
 		el: '#sessions',
 		data: {
@@ -400,15 +369,6 @@ function createVueComponents() {
 		},
 		methods: {
 			fetchSessionInfo: fetchSessionInfo
-		}
-	});
-	usersTable = new Vue({
-		el: '#users',
-		data: {
-			users: null
-		},
-		methods: {
-			fetchUserInfo: fetchUserInfo
 		}
 	});
 }
