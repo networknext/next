@@ -7,6 +7,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -22,6 +23,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
@@ -225,6 +227,25 @@ func handleJSONRPCError(err error) {
 	default:
 		log.Fatal(err)
 	}
+}
+
+type relay struct {
+	Name                string
+	Addr                string
+	PublicKey           string
+	SellerID            string
+	DatacenterName      string
+	NicSpeedMbps        uint64
+	IncludedBandwidthGB uint64
+	ManagementAddr      string
+	SSHUser             string
+	SSHPort             int64
+}
+
+type datacenter struct {
+	Name     string
+	Enabled  bool
+	Location routing.Location
 }
 
 func main() {
@@ -522,17 +543,22 @@ func main() {
 						Exec: func(_ context.Context, args []string) error {
 							jsonData := readJSONData("datacenters", args)
 
-							// Unmarshal the JSON and create the Datacenter struct
-							var datacenter routing.Datacenter
+							// Unmarshal the JSON and create the datacenter struct
+							var datacenter datacenter
 							if err := json.Unmarshal(jsonData, &datacenter); err != nil {
 								log.Fatalf("Could not unmarshal datacenter: %v", err)
 							}
 
-							// Force the datacenter ID to be a hash of its name
-							datacenter.ID = crypto.HashID(datacenter.Name)
+							// Build the actual Datacenter struct from the input datacenter struct
+							realDatacenter := routing.Datacenter{
+								ID:       crypto.HashID(datacenter.Name),
+								Name:     datacenter.Name,
+								Enabled:  datacenter.Enabled,
+								Location: datacenter.Location,
+							}
 
 							// Add the Datacenter to storage
-							addDatacenter(rpcClient, datacenter)
+							addDatacenter(rpcClient, realDatacenter)
 							return nil
 						},
 						Subcommands: []*ffcli.Command{
@@ -541,9 +567,10 @@ func main() {
 								ShortUsage: "next datacenters add example",
 								ShortHelp:  "Displays an example datacenter for the correct JSON schema",
 								Exec: func(_ context.Context, args []string) error {
-									example := routing.Datacenter{
-										ID:   crypto.HashID("name"),
-										Name: "name",
+									example := datacenter{
+										Name:     "name",
+										Enabled:  false,
+										Location: routing.LocationNullIsland,
 									}
 
 									jsonBytes, err := json.MarshalIndent(example, "", "\t")
@@ -553,7 +580,6 @@ func main() {
 
 									fmt.Println("Exmaple JSON schema to add a new datacenter:")
 									fmt.Println(string(jsonBytes))
-									fmt.Println("NOTE: the datacenter ID will be overwritten with a hash of the datacenter name!")
 									return nil
 								},
 							},
@@ -594,17 +620,46 @@ func main() {
 						Exec: func(_ context.Context, args []string) error {
 							jsonData := readJSONData("relays", args)
 
-							// Unmarshal the JSON and create the Relay struct
-							var relay routing.Relay
+							// Unmarshal the JSON and create the relay struct
+							var relay relay
 							if err := json.Unmarshal(jsonData, &relay); err != nil {
 								log.Fatalf("Could not unmarshal relay: %v", err)
 							}
 
-							// Force the relay ID to be a hash of its address
-							relay.ID = crypto.HashID(relay.Addr.String())
+							addr, err := net.ResolveUDPAddr("udp", relay.Addr)
+							if err != nil {
+								log.Fatalf("Could not resolve udp address %s: %v", relay.Addr, err)
+							}
+
+							publicKey, err := base64.StdEncoding.DecodeString(relay.PublicKey)
+							if err != nil {
+								log.Fatalf("Could not decode bas64 public key %s: %v", relay.PublicKey, err)
+							}
+
+							// Build the actual Relay struct from the input relay struct
+							realRelay := routing.Relay{
+								ID:        crypto.HashID(relay.Addr),
+								Name:      relay.Name,
+								Addr:      *addr,
+								PublicKey: publicKey,
+								Seller: routing.Seller{
+									ID: relay.SellerID,
+								},
+								Datacenter: routing.Datacenter{
+									ID:   crypto.HashID(relay.DatacenterName),
+									Name: relay.DatacenterName,
+								},
+								NICSpeedMbps:        relay.NicSpeedMbps,
+								IncludedBandwidthGB: relay.IncludedBandwidthGB,
+								LastUpdateTime:      time.Now(),
+								State:               routing.RelayStateMaintenance,
+								ManagementAddr:      relay.ManagementAddr,
+								SSHUser:             relay.SSHUser,
+								SSHPort:             relay.SSHPort,
+							}
 
 							// Add the Relay to storage
-							addRelay(rpcClient, relay)
+							addRelay(rpcClient, realRelay)
 							return nil
 						},
 						Subcommands: []*ffcli.Command{
@@ -613,15 +668,17 @@ func main() {
 								ShortUsage: "next relays add example",
 								ShortHelp:  "Displays an example relay for the correct JSON schema",
 								Exec: func(_ context.Context, args []string) error {
-									addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
-									if err != nil {
-										log.Fatal("Failed to resolve 127.0.0.1:40000 as a UDP address")
-									}
-
-									example := routing.Relay{
-										ID:   crypto.HashID(addr.String()),
-										Addr: *addr,
-										Name: "name",
+									example := relay{
+										Name:                "name",
+										Addr:                "127.0.0.1:40000",
+										PublicKey:           "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+										SellerID:            "sellerID",
+										DatacenterName:      "datacenter.name",
+										NicSpeedMbps:        1000,
+										IncludedBandwidthGB: 1,
+										ManagementAddr:      "127.0.0.1",
+										SSHUser:             "root",
+										SSHPort:             40000,
 									}
 
 									jsonBytes, err := json.MarshalIndent(example, "", "\t")
@@ -631,7 +688,6 @@ func main() {
 
 									fmt.Println("Exmaple JSON schema to add a new relay:")
 									fmt.Println(string(jsonBytes))
-									fmt.Println("NOTE: the relay ID will be overwritten with a hash of the relay address!")
 									return nil
 								},
 							},
