@@ -1,0 +1,306 @@
+<div class="modal fade" id="sessionInfoModal" tabindex="-1" role="dialog" aria-labelledby="sessionInfoModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document" style="max-width: 2000px; max-height: 1000px; overflow-y: auto;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="sessionInfoModalLabel">Session Information</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="sessionDetails">
+                <div class="row">
+                    <div class="col-12 col-lg-8">
+                        <div class="card mb-2">
+                            <div class="card-header">
+                                <strong>
+                                    Latency
+                                </strong>
+                                <div class="float-right">
+                                    <span
+                                    class="mr-2">
+                                        <span style="color: blue;">
+                                            — Network Next
+                                        </span>
+                                        <span style="color: red;">
+                                            — Direct
+                                        </span>
+                                        <span style="color: green">
+                                            — Prediction
+                                        </span>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="latency-chart-1">
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="latency-chart-2">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card mb-2">
+                            <div class="card-header">
+                                <strong>
+                                    Jitter
+                                </strong>
+                                <div class="float-right">
+                                    <span class="mr-2">
+                                        <span style="color: blue;">
+                                            — Network Next
+                                        </span>
+                                        <span style="color: red;">
+                                            — Direct
+                                        </span>
+                                        <span style="color: green">
+                                            — Prediction
+                                        </span>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="jitter-chart-1"></div>
+                            </div>
+                            <div class="card-body">
+                                <div id="jitter-chart-2"></div>
+                            </div>
+                        </div>
+                        <div class="card mb-2">
+                            <div class="card-header">
+                                <strong>
+                                    Packet Loss
+                                </strong>
+                                <div class="float-right">
+                                    <span
+                                    class="mr-2">
+                                        <span style="color: blue;">
+                                            — Network Next
+                                        </span>
+                                        <span style="color: red;">
+                                            — Direct
+                                        </span>
+                                        <span style="color: green">
+                                            — Prediction
+                                        </span>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="packet-loss-chart-1">
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="packet-loss-chart-2">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card mb-2">
+                            <div class="card-header">
+                                <strong>
+                                    Bandwidth
+                                </strong>
+                                <div class="float-right">
+                                    <span
+                                    class="mr-2">
+                                        <span style="color: darkgoldenrod;">
+                                            — Actual Up
+                                        </span>
+                                        <span style="color: blue;">
+                                            — Actual Down
+                                        </span>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="bandwidth-chart-1">
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="bandwidth-chart-2">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-4">
+                        <div class="card">
+                            <div class="card-img-top" style="height: 20vh;">
+                                <div id="session-tool-map"></div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="card-text">
+                                <dl>
+                                    <dt>
+                                        ISP
+                                    </dt>
+                                    <dd>
+                                        Spectrum
+                                    </dd>
+                                    <dt>
+                                        User ID
+                                    </dt>
+                                    <dd>
+                                        {{ meta.user_hash }}
+                                    </dd>
+                                    <dt>
+                                        Platform
+                                    </dt>
+                                    <dd>
+                                        Linux
+                                    </dd>
+                                    <dt>
+                                        Customer
+                                    </dt>
+                                    <dd>
+                                        Psyonix
+                                    </dd>
+                                    <dt>
+                                        SDK Version
+                                    </dt>
+                                    <dd>
+                                        {{ meta.sdk }}
+                                    </dd>
+                                    <dt>
+                                        Connection Type
+                                    </dt>
+                                    <dd>
+                                        {{ meta.connection }}
+                                    </dd>
+                                    <dt>
+                                        Nearby Relays
+                                        <span
+                                        style="float: right; font-weight: normal; font-style: italic;">
+                                            at 5:00:00pm Apr 22
+                                        </span>
+                                    </dt>
+                                    <table className="table table-sm mt-1">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 25%;">
+                                                    Name
+                                                </th>
+                                                <th style="width: 25%;">
+                                                    RTT
+                                                </th>
+                                                <th style="width: 25%;">
+                                                    Jitter
+                                                </th>
+                                                <th style="width: 25%;">
+                                                    Packet Loss
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>
+                                                    london
+                                                </td>
+                                                <td>
+                                                    <em>1243ms</em>
+                                                </td>
+                                                <td>
+                                                    <em>1243ms</em>
+                                                </td>
+                                                <td>
+                                                    <em>100.00%</em>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    london
+                                                </td>
+                                                <td>
+                                                    <em>1243ms</em>
+                                                </td>
+                                                <td>
+                                                    <em>1243ms</em>
+                                                </td>
+                                                <td>
+                                                    <em>100.00%</em>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    london
+                                                </td>
+                                                <td>
+                                                    <em>1243ms</em>
+                                                </td>
+                                                <td>
+                                                    <em>1243ms</em>
+                                                </td>
+                                                <td>
+                                                    <em>100.00%</em>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    london
+                                                </td>
+                                                <td>
+                                                    <em>1243ms</em>
+                                                </td>
+                                                <td>
+                                                    <em>1243ms</em>
+                                                </td>
+                                                <td>
+                                                    <em>100.00%</em>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                    <dt>
+                                        Route
+                                        <span
+                                        style="float: right; font-weight: normal; font-style: italic;"
+                                        >
+                                            at 5:00:00pm Apr 22
+                                        </span>
+                                    </dt>
+                                    <table className="table table-sm mt-1">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 50%;">
+                                                    Name
+                                                </th>
+                                                <th style="width: 50%;">
+                                                    Role
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>
+                                                    {{ meta.client_addr}}
+                                                </td>
+                                                <td>
+                                                    <em>User (Player)</em>
+                                                </td>
+                                            </tr>
+                                            <tr v-for="index in meta.hops" :key="index" scope="row">
+                                                <td>
+                                                    Relay {{ index }}
+                                                </td>
+                                                <td>
+                                                    Hop {{ index }}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    {{ meta.server_addr}}
+                                                </td>
+                                                <td>
+                                                    <em>Destination Server</em>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
