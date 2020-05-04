@@ -5,7 +5,6 @@ import (
 
 	"github.com/modood/table"
 	"github.com/networknext/backend/routing"
-	"github.com/networknext/backend/storage"
 	localjsonrpc "github.com/networknext/backend/transport/jsonrpc"
 	"github.com/ybbus/jsonrpc"
 )
@@ -30,15 +29,7 @@ func addRelay(rpcClient jsonrpc.RPCClient, relay routing.Relay) {
 
 	var reply localjsonrpc.AddRelayReply
 	if err := rpcClient.CallFor(&reply, "OpsService.AddRelay", args); err != nil {
-		switch e := err.(type) {
-		case *storage.UnknownSellerError:
-			// Prompt to add seller
-		case *storage.UnknownDatacenterError:
-			// Prompt to add datacenter
-		default:
-			handleJSONRPCError(e)
-		}
-
+		handleJSONRPCError(err)
 		return
 	}
 
