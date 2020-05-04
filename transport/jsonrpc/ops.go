@@ -95,6 +95,7 @@ type routingRuleSettings struct {
 	EnableMultipathForJitter     bool    `json:"jitterMultipath"`
 	EnableMultipathForRTT        bool    `json:"rttMultipath"`
 	EnableABTest                 bool    `json:"abTest"`
+	EnableTryBeforeYouBuy        bool    `json:"tryBeforeYouBuy"`
 	CommittedRouteCountThreshold int64   `json:"committedRouteThreshold"`
 }
 
@@ -120,6 +121,7 @@ func (s *OpsService) RoutingRulesSettings(r *http.Request, args *RoutingRulesSet
 			EnableMultipathForJitter:     buyer.RoutingRulesSettings.EnableMultipathForJitter,
 			EnableMultipathForRTT:        buyer.RoutingRulesSettings.EnableMultipathForRTT,
 			EnableABTest:                 buyer.RoutingRulesSettings.EnableABTest,
+			EnableTryBeforeYouBuy:        buyer.RoutingRulesSettings.EnableTryBeforeYouBuy,
 			CommittedRouteCountThreshold: buyer.RoutingRulesSettings.CommittedRouteCountThreshold,
 		},
 	}

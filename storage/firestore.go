@@ -86,6 +86,7 @@ type routingRulesSettings struct {
 	EnableMultipathForJitter     bool    `firestore:"jitterMultipath"`
 	EnableMultipathForRTT        bool    `firestore:"rttMultipath"`
 	EnableABTest                 bool    `firestore:"abTest"`
+	EnableTryBeforeYouBuy        bool    `firestore:"tryBeforeYouBuy"`
 	CommittedRouteCountThreshold int64   `firestore:"committedRouteThreshold"`
 }
 
@@ -1081,6 +1082,7 @@ func (fs *Firestore) createRouteRulesSettingsForBuyerID(ctx context.Context, ID 
 		EnableMultipathForJitter:     rrs.EnableMultipathForJitter,
 		EnableMultipathForRTT:        rrs.EnableMultipathForRTT,
 		EnableABTest:                 rrs.EnableABTest,
+		EnableTryBeforeYouBuy:        rrs.EnableTryBeforeYouBuy,
 		CommittedRouteCountThreshold: rrs.CommittedRouteCountThreshold,
 	}
 
@@ -1139,6 +1141,7 @@ func (fs *Firestore) getRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 	rrs.EnableMultipathForJitter = tempRRS.EnableMultipathForJitter
 	rrs.EnableMultipathForRTT = tempRRS.EnableMultipathForRTT
 	rrs.EnableABTest = tempRRS.EnableABTest
+	rrs.EnableTryBeforeYouBuy = tempRRS.EnableTryBeforeYouBuy
 	rrs.CommittedRouteCountThreshold = tempRRS.CommittedRouteCountThreshold
 
 	return rrs, nil
@@ -1167,6 +1170,7 @@ func (fs *Firestore) setRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 		"jitterMultipath":         rrs.EnableMultipathForJitter,
 		"rttMultipath":            rrs.EnableMultipathForRTT,
 		"abTest":                  rrs.EnableABTest,
+		"tryBeforeYouBuy":         rrs.EnableTryBeforeYouBuy,
 		"committedRouteThreshold": rrs.CommittedRouteCountThreshold,
 	}
 
