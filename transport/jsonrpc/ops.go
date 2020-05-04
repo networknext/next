@@ -96,7 +96,7 @@ type routingRuleSettings struct {
 	EnableMultipathForRTT        bool    `json:"rttMultipath"`
 	EnableABTest                 bool    `json:"abTest"`
 	EnableTryBeforeYouBuy        bool    `json:"tryBeforeYouBuy"`
-	CommittedRouteCountThreshold int64   `json:"committedRouteThreshold"`
+	TryBeforeYouBuyMaxSlices     int64   `json:"tryBeforeYouBuyMaxSlices"`
 }
 
 func (s *OpsService) RoutingRulesSettings(r *http.Request, args *RoutingRulesSettingsArgs, reply *RoutingRulesSettingsReply) error {
@@ -122,7 +122,7 @@ func (s *OpsService) RoutingRulesSettings(r *http.Request, args *RoutingRulesSet
 			EnableMultipathForRTT:        buyer.RoutingRulesSettings.EnableMultipathForRTT,
 			EnableABTest:                 buyer.RoutingRulesSettings.EnableABTest,
 			EnableTryBeforeYouBuy:        buyer.RoutingRulesSettings.EnableTryBeforeYouBuy,
-			CommittedRouteCountThreshold: buyer.RoutingRulesSettings.CommittedRouteCountThreshold,
+			TryBeforeYouBuyMaxSlices:     buyer.RoutingRulesSettings.TryBeforeYouBuyMaxSlices,
 		},
 	}
 

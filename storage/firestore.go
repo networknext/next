@@ -87,7 +87,7 @@ type routingRulesSettings struct {
 	EnableMultipathForRTT        bool    `firestore:"rttMultipath"`
 	EnableABTest                 bool    `firestore:"abTest"`
 	EnableTryBeforeYouBuy        bool    `firestore:"tryBeforeYouBuy"`
-	CommittedRouteCountThreshold int64   `firestore:"committedRouteThreshold"`
+	TryBeforeYouBuyMaxSlices     int64   `firestore:"tryBeforeYouBuyMaxSlices"`
 }
 
 func NewFirestore(ctx context.Context, gcpProjectID string, logger log.Logger) (*Firestore, error) {
@@ -1083,7 +1083,7 @@ func (fs *Firestore) createRouteRulesSettingsForBuyerID(ctx context.Context, ID 
 		EnableMultipathForRTT:        rrs.EnableMultipathForRTT,
 		EnableABTest:                 rrs.EnableABTest,
 		EnableTryBeforeYouBuy:        rrs.EnableTryBeforeYouBuy,
-		CommittedRouteCountThreshold: rrs.CommittedRouteCountThreshold,
+		TryBeforeYouBuyMaxSlices:     rrs.TryBeforeYouBuyMaxSlices,
 	}
 
 	// Attempt to create route shader for buyer
@@ -1142,7 +1142,7 @@ func (fs *Firestore) getRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 	rrs.EnableMultipathForRTT = tempRRS.EnableMultipathForRTT
 	rrs.EnableABTest = tempRRS.EnableABTest
 	rrs.EnableTryBeforeYouBuy = tempRRS.EnableTryBeforeYouBuy
-	rrs.CommittedRouteCountThreshold = tempRRS.CommittedRouteCountThreshold
+	rrs.TryBeforeYouBuyMaxSlices = tempRRS.TryBeforeYouBuyMaxSlices
 
 	return rrs, nil
 }
@@ -1171,7 +1171,7 @@ func (fs *Firestore) setRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 		"rttMultipath":            rrs.EnableMultipathForRTT,
 		"abTest":                  rrs.EnableABTest,
 		"tryBeforeYouBuy":         rrs.EnableTryBeforeYouBuy,
-		"committedRouteThreshold": rrs.CommittedRouteCountThreshold,
+		"committedRouteThreshold": rrs.TryBeforeYouBuyMaxSlices,
 	}
 
 	// Attempt to set route shader for buyer

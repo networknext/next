@@ -591,7 +591,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 						sessionCacheEntry.CommittedRouteCount = 0
 					}
 
-					if sessionCacheEntry.CommittedRouteCount >= uint64(buyer.RoutingRulesSettings.CommittedRouteCountThreshold) {
+					if sessionCacheEntry.CommittedRouteCount >= uint64(buyer.RoutingRulesSettings.TryBeforeYouBuyMaxSlices) {
 						response.Committed = true
 					}
 				}

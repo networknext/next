@@ -2473,7 +2473,7 @@ func TestCommitted(t *testing.T) {
 		SessionID:           9999,
 		Sequence:            13,
 		TimestampStart:      time.Now().Add(-5 * time.Second),
-		CommittedRouteCount: uint64(rrs.CommittedRouteCountThreshold),
+		CommittedRouteCount: uint64(rrs.TryBeforeYouBuyMaxSlices),
 	}
 	sessionCacheEntryData, err := sessionCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
@@ -2523,5 +2523,5 @@ func TestCommitted(t *testing.T) {
 	err = sessionCacheEntry.UnmarshalBinary([]byte(sessionCacheEntryString))
 	assert.NoError(t, err)
 
-	assert.Equal(t, uint64(rrs.CommittedRouteCountThreshold+1), sessionCacheEntry.CommittedRouteCount)
+	assert.Equal(t, uint64(rrs.TryBeforeYouBuyMaxSlices+1), sessionCacheEntry.CommittedRouteCount)
 }
