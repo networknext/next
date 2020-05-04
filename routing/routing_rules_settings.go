@@ -66,26 +66,31 @@ type RoutingRulesSettings struct {
 
 	// If true, the customer is participating in an A/B test. Additional metrics will be recorded and half the sessions that would take network next will take direct instead
 	EnableABTest bool
+
+	// How many network next routes that show improvement over direct should we count before committing to a network next route
+	CommittedRouteCountThreshold uint64
 }
 
 var DefaultRoutingRulesSettings = RoutingRulesSettings{
-	MaxCentsPerGB:     25.0,
-	EnvelopeKbpsUp:    256,
-	EnvelopeKbpsDown:  256,
-	AcceptableLatency: -1.0,
-	RTTThreshold:      5.0,
-	RTTEpsilon:        2.0,
-	RTTHysteresis:     5.0,
-	RTTVeto:           20.0,
+	MaxCentsPerGB:                25.0,
+	EnvelopeKbpsUp:               256,
+	EnvelopeKbpsDown:             256,
+	AcceptableLatency:            -1.0,
+	RTTThreshold:                 5.0,
+	RTTEpsilon:                   2.0,
+	RTTHysteresis:                5.0,
+	RTTVeto:                      20.0,
+	CommittedRouteCountThreshold: 3,
 }
 
 var LocalRoutingRulesSettings = RoutingRulesSettings{
-	MaxCentsPerGB:     25.0,
-	EnvelopeKbpsUp:    256,
-	EnvelopeKbpsDown:  256,
-	AcceptableLatency: -1.0,
-	RTTThreshold:      0.05,
-	RTTEpsilon:        0.1,
-	RTTHysteresis:     0.05,
-	RTTVeto:           1.0,
+	MaxCentsPerGB:                25.0,
+	EnvelopeKbpsUp:               256,
+	EnvelopeKbpsDown:             256,
+	AcceptableLatency:            -1.0,
+	RTTThreshold:                 0.05,
+	RTTEpsilon:                   0.1,
+	RTTHysteresis:                0.05,
+	RTTVeto:                      1.0,
+	CommittedRouteCountThreshold: 3,
 }

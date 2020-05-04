@@ -577,15 +577,12 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 				"buyer_yolo", buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce,
 			)
 
-			// Should probably be in the RouteRulesSettings, but keeping it here for now
-			routeCountThreshold := uint64(3)
-
 			if shouldDecide { // Only decide on a route if we should, early out for force next mode
 				routeDecision = nextRoute.Decide(sessionCacheEntry.RouteDecision, nnStats, directStats,
 					routing.DecideUpgradeRTT(float64(buyer.RoutingRulesSettings.RTTThreshold)),
 					routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis), buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
 					routing.DecideVeto(float64(buyer.RoutingRulesSettings.RTTVeto), buyer.RoutingRulesSettings.EnablePacketLossSafety, buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
-					routing.DecideCommitted(packet.TryBeforeYouBuy, &sessionCacheEntry.CommittedRouteCount, routeCountThreshold),
+					routing.DecideCommitted(packet.TryBeforeYouBuy, &sessionCacheEntry.CommittedRouteCount, buyer.RoutingRulesSettings.CommittedRouteCountThreshold),
 				)
 
 				if routing.IsVetoed(routeDecision) {
