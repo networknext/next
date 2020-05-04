@@ -18,7 +18,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"reflect"
 	"runtime"
 	"strconv"
 	"strings"
@@ -219,7 +218,6 @@ func readJSONData(entity string, args []string) []byte {
 func handleJSONRPCError(env Environment, err error) {
 	switch e := err.(type) {
 	case *jsonrpc.HTTPError:
-		fmt.Println(reflect.TypeOf(fmt.Errorf("test")))
 		switch e.Code {
 		case http.StatusUnauthorized:
 			log.Fatalf("%d: %s - use `next auth` to authorize the CLI", e.Code, http.StatusText(e.Code))
