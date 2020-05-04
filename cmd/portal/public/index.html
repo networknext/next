@@ -245,7 +245,7 @@
                                     {{sessions.length}} Total Sessions
                                 </span>&nbsp;
                                 <span class="badge badge-success">
-                                    IMPLEMENT on Network Next
+                                    {{ onNN.length }} on Network Next
                                 </span>&nbsp;
                                 <span class="text-muted" style="font-size: 0.5em; line-height: 1em; vertical-align: middle;">
                                     IMPLEMENT
@@ -321,7 +321,7 @@
                                         {{sessions.length}} Total Sessions
                                     </span>&nbsp;
                                     <span class="badge badge-success">
-                                        IMPLEMENT on Network Next
+                                        {{ onNN.length }} on Network Next
                                     </span>&nbsp;
                                     <span class="text-muted" style="font-size: 0.5em; line-height: 1em; vertical-align: middle;">
                                         IMPLEMENT
@@ -448,7 +448,7 @@
                                 <div class="mr-auto"></div>
                             </div>
                         </div>
-                        <form class="flow-stats-form">
+                        <form class="flow-stats-form" onsubmit="fetchSessionInfo()">
                             <div class="form-group">
                                 <label for="session-id-input">
                                     Session ID
@@ -458,7 +458,7 @@
                                         <input id="session-id-input" class="form-control" type="text" placeholder="Enter a Session ID to view statistics" value="">
                                     </div>
                                     <div class="col-auto">
-                                        <button class="btn btn-primary" disabled="" type="submit">
+                                        <button class="btn btn-primary" type="submit">
                                             View Stats
                                         </button>
                                     </div>
@@ -467,6 +467,9 @@
                         </form>
                         <div class="alert alert-info" role="alert" id="session-tool-alert">
                             Please enter a valid session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.
+                        </div>
+                        <div class="alert alert-danger hidden" role="alert" id="session-tool-danger">
+                            Failed to fetch session details
                         </div>
                         <div id="session-details">
                             <div v-if="showDetails">
@@ -804,9 +807,6 @@
                         </div>
                     </main>
                     <main role="main" class="col-md-12 col-lg-12 px-4 hidden" id="settings-workspace">
-                        <div class="spinner-border" role="status" id="settings-spinner">
-                            <span class="sr-only">Loading...</span>
-                        </div>
                         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                             <h1 class="h2">
                                 Settings
@@ -819,12 +819,12 @@
                             <div class="card-header">
                                 <ul class="nav nav-tabs card-header-tabs">
                                     <li class="nav-item">
-                                        <a class="nav-link active" href="#" onclick="WorkspaceHandler.changeAccountPage('accounts')">
+                                        <a class="nav-link active" id="accounts-link" href="#" onclick="WorkspaceHandler.changeAccountPage('accounts')">
                                             Users
                                         </a>
                                     </li>
                                     <li class="nav-item">
-                                        <a class="nav-link " href="#" onclick="WorkspaceHandler.changeAccountPage('config')">
+                                        <a class="nav-link" id="config-link" href="#" onclick="WorkspaceHandler.changeAccountPage('config')">
                                             Game Configuration
                                         </a>
                                     </li>
@@ -955,49 +955,56 @@
                                 <p class="card-text">
                                     Manage the list of users that currently have access to your Network Next account.
                                 </p>
-                                <table class="table table-sm mt-4" id="accounts">
-                                    <thead class="thead-light">
-                                        <tr>
-                                            <th style="width: 20%;">
-                                                Email Address
-                                            </th>
-                                            <th style="width: 70%;">
-                                                Permissions
-                                            </th>
-                                            <th style="width: 10%;">
-                                                Actions
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr v-for="account in accounts">
-                                            <td>
-                                                {{ account.email }}
-                                            </td>
-                                            <td>
-                                                {{ account.roles }}
-                                            </td>
-                                            <td class="td-btn">
-                                                <a href="#" class="btn btn-xs btn-primary">
-                                                    <svg aria-labelledby="svg-inline--fa-title-HCKMtIgTNyHc" data-prefix="fas" data-icon="pen" class="svg-inline--fa fa-pen fa-w-16 fa-fw " role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-                                                        <title id="svg-inline--fa-title-HCKMtIgTNyHc">
-                                                            Change this user's permissions
-                                                        </title>
-                                                        <path fill="currentColor" d="M290.74 93.24l128.02 128.02-277.99 277.99-114.14 12.6C11.35 513.54-1.56 500.62.14 485.34l12.7-114.22 277.9-277.88zm207.2-19.06l-60.11-60.11c-18.75-18.75-49.16-18.75-67.91 0l-56.55 56.55 128.02 128.02 56.55-56.55c18.75-18.76 18.75-49.16 0-67.91z"></path>
-                                                    </svg>
-                                                </a>&nbsp;
-                                                <a href="#" class="btn btn-xs btn-danger">
-                                                    <svg aria-labelledby="svg-inline--fa-title-KBBjvFyIL22U" data-prefix="fas" data-icon="trash" class="svg-inline--fa fa-trash fa-w-14 fa-fw " role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512">
-                                                        <title id="svg-inline--fa-title-KBBjvFyIL22U">
-                                                            Remove this user
-                                                        </title>
-                                                        <path fill="currentColor" d="M432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.8a23.72 23.72 0 0 0-21.4 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0-16-16zM53.2 467a48 48 0 0 0 47.9 45h245.8a48 48 0 0 0 47.9-45L416 128H32z"></path>
-                                                    </svg>
-                                                </a>&nbsp;
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                                <div id="accounts">
+                                    <div id="map-spinner" v-if="!showAccounts">
+                                        <div class="spinner-border" role="status">
+                                            <span class="sr-only">Loading...</span>
+                                        </div>
+                                    </div>
+                                    <table class="table table-sm mt-4" v-if="showAccounts">
+                                        <thead class="thead-light">
+                                            <tr>
+                                                <th style="width: 20%;">
+                                                    Email Address
+                                                </th>
+                                                <th style="width: 70%;">
+                                                    Permissions
+                                                </th>
+                                                <th style="width: 10%;">
+                                                    Actions
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="account in accounts">
+                                                <td>
+                                                    {{ account.email }}
+                                                </td>
+                                                <td>
+                                                    {{ account.roles }}
+                                                </td>
+                                                <td class="td-btn">
+                                                    <a href="#" class="btn btn-xs btn-primary">
+                                                        <svg aria-labelledby="svg-inline--fa-title-HCKMtIgTNyHc" data-prefix="fas" data-icon="pen" class="svg-inline--fa fa-pen fa-w-16 fa-fw " role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+                                                            <title id="svg-inline--fa-title-HCKMtIgTNyHc">
+                                                                Change this user's permissions
+                                                            </title>
+                                                            <path fill="currentColor" d="M290.74 93.24l128.02 128.02-277.99 277.99-114.14 12.6C11.35 513.54-1.56 500.62.14 485.34l12.7-114.22 277.9-277.88zm207.2-19.06l-60.11-60.11c-18.75-18.75-49.16-18.75-67.91 0l-56.55 56.55 128.02 128.02 56.55-56.55c18.75-18.76 18.75-49.16 0-67.91z"></path>
+                                                        </svg>
+                                                    </a>&nbsp;
+                                                    <a href="#" class="btn btn-xs btn-danger">
+                                                        <svg aria-labelledby="svg-inline--fa-title-KBBjvFyIL22U" data-prefix="fas" data-icon="trash" class="svg-inline--fa fa-trash fa-w-14 fa-fw " role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512">
+                                                            <title id="svg-inline--fa-title-KBBjvFyIL22U">
+                                                                Remove this user
+                                                            </title>
+                                                            <path fill="currentColor" d="M432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.8a23.72 23.72 0 0 0-21.4 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0-16-16zM53.2 467a48 48 0 0 0 47.9 45h245.8a48 48 0 0 0 47.9-45L416 128H32z"></path>
+                                                        </svg>
+                                                    </a>&nbsp;
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                             <div class="card-body hidden" id="config-page">
                                 <h5 class="card-title">
@@ -1006,13 +1013,12 @@
                                 <p class="card-text">
                                     Manage how your game connects to Network Next.
                                 </p>
-                                <form>
+                                <form onsubmit="updatePubKey()">
                                     <div class="form-group" id="pubKey">
                                         <label>
                                             Public Key
                                         </label>
-                                        <textarea class="form-control" placeholder="Enter your base64-encoded public key">
-                                            {{ pubKey }}
+                                        <textarea class="form-control" placeholder="Enter your base64-encoded public key" id="pubkey-input" v-model="pubKey">
                                         </textarea>
                                     </div>
                                     <button type="submit" class="btn btn-primary btn-sm">
@@ -1046,11 +1052,7 @@
         </script>
         <script src="./js/portal.js"></script>
         <script>
-            // Disabling auth to run on dev
-            /* var loginClient = null;
-
-            const configureClient = async () => {
-
+            window.onload = async () => {
                 const domain = 'networknext.auth0.com';
                 const clientID = 'qR60cjo6FceoTWPYLNZSQmNiP2WIAQr9';
 
@@ -1058,16 +1060,6 @@
                     domain: domain,
                     client_id: clientID
                 });
-            };
-
-            const login = async () => {
-                await loginClient.loginWithRedirect({
-                    redirect_uri: window.location.origin
-                });
-            }
-
-            window.onload = async () => {
-                await configureClient();
 
                 const isAuthenticated = await loginClient.isAuthenticated();
 
@@ -1083,10 +1075,11 @@
                     window.history.replaceState({}, document.title, "/");
                     startApp();
                 } else {
-                    login();
+                    await loginClient.loginWithRedirect({
+                        redirect_uri: window.location.origin
+                    });
                 }
-            } */
-            startApp();
+            }
         </script>
     </body>
 </html>
