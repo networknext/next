@@ -118,7 +118,7 @@ namespace core
     }
 
     if (!doc.parse(response)) {
-      Log("could not parse json response in init: ", doc.err());
+      Log("could not parse json response in init: ", doc.err(), "\nResponse: ", std::string(response.begin(), response.end()));
       return false;
     }
 
@@ -219,7 +219,7 @@ namespace core
     }
 
     if (!doc.parse(response)) {
-      Log("could not parse json response in update: ", doc.err());
+      Log("could not parse json response in update: ", doc.err(), "\nReponse: ", std::string(response.begin(), response.end()));
       return false;
     }
 

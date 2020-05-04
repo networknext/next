@@ -14,12 +14,13 @@ var userInfo = {
 	nickname: "",
 	token: "",
 	userId: "",
-	buyerId: "",
 };
 
 var accountsTable = null;
+var mapSessionsCount = null;
 var pubKeyInput = null;
 var relaysTable = null;
+var sessionDetailsVue = null;
 var sessionsTable = null;
 
 JSONRPCClient = {
@@ -55,9 +56,9 @@ JSONRPCClient = {
 }
 
 MapHandler = {
-	defaultNA: {
+	defaultUSA: {
 		initialViewState: {
-			zoom: 4,
+			zoom: 4.6,
 			longitude: -98.583333, // 'Center' of the US
 			latitude: 39.833333,
 			maxZoom: 14,
@@ -95,6 +96,12 @@ MapHandler = {
 					aggregation
 				}); */
 				let data = response.map_points;
+				Object.assign(mapSessionsCount.$data, {
+					onNN: data.filter((point) => {
+						return point.on_network_next;
+					}),
+					sessions: data,
+				});
 				let layer = new deck.ScreenGridLayer({
 					id: 'sessions-layer',
 					data,
@@ -121,10 +128,11 @@ MapHandler = {
 					initialViewState: {
 						...this.defaultWorld.initialViewState
 					},
-					container: 'map-workspace',
+					container: 'map-container',
 					controller: true,
 					layers: layers,
 				});
+				Object.assign(mapSessionsCount.$data, {showCount: true});
 			})
 			.catch((e) => {
 				console.log("Something went wrong with map init");
@@ -133,9 +141,9 @@ MapHandler = {
 	},
 	updateMap(mapType) {
 		switch (mapType) {
-			case 'NA':
+			case 'USA':
 				this.mapInstance.setProps({
-					...this.defaultNA
+					...this.defaultUSA
 				});
 				break;
 			case 'WORLD':
@@ -150,108 +158,103 @@ MapHandler = {
 }
 
 WorkspaceHandler = {
-	accountWorkspacePages: {
-		configPage: document.getElementById("config"),
-		newUserPage: document.getElementById("new-user"),
+	alerts: {
+		sessionToolAlert: document.getElementById("session-tool-alert"),
+		sessionToolDanger: document.getElementById("session-tool-danger"),
 	},
 	links: {
 		accountsLink: document.getElementById("accounts-link"),
 		configLink: document.getElementById("config-link"),
-		mapLink: document.getElementById("home-link"),
-		relaysLink: document.getElementById("relays-link"),
+		mapLink: document.getElementById("map-link"),
 		sessionsLink: document.getElementById("sessions-link"),
-		usersLink: document.getElementById("users-link"),
+		sessionToolLink: document.getElementById("session-tool-link"),
+		settingsLink: document.getElementById("settings-link"),
+		userToolLink: document.getElementById("user-tool-link"),
 	},
-	showAccountsTable: false,
-	workspaceTitle: document.getElementById("workspace-title"),
 	newUserEmail: document.getElementById("email"),
 	newUserPerms: document.getElementById("perms"),
+	pages: {
+		accounts: document.getElementById("accounts-page"),
+		config: document.getElementById("config-page"),
+	},
+	spinners: {
+		map: document.getElementById("map-spinner"),
+		sessions: document.getElementById("sessions-spinner"),
+		sessionTool: document.getElementById("session-tool-spinner"),
+		userTool: document.getElementById("user-tool-spinner"),
+		settings: document.getElementById("settings-spinner"),
+	},
 	workspaces: {
-		accountsWorkspace: document.getElementById("accounts-workspace"),
 		mapWorkspace: document.getElementById("map-workspace"),
-		relaysWorkspace: document.getElementById("relays-workspace"),
 		sessionsWorkspace: document.getElementById("sessions-workspace"),
-		usersWorkspace: document.getElementById("users-workspace"),
+		sessionToolWorkspace: document.getElementById("session-tool-workspace"),
+		settingsWorkspace: document.getElementById("settings-workspace"),
+		userToolWorkspace: document.getElementById("user-tool-workspace"),
 	},
 	changeAccountPage(page) {
-		let newUserButton = document.getElementById("new-user-button");
+		// Hide all workspaces
+		this.pages.accounts.style.display = 'none';
+		this.pages.config.style.display = 'none';
 
-		//Hide all workspace pages
-		this.accountWorkspacePages.configPage.style.display = 'none';
-		this.accountWorkspacePages.newUserPage.style.display = 'none';
-
-		//Hide the accounts table Vue
-		Object.assign(accountsTable.$data, {showAccountsTable: false});
-
-		//Hide the new user button
-		newUserButton.style.display = 'none';
-
-		//Remove all link highlights
-		this.links.accountsLink.classList.remove("active");
-		this.links.configLink.classList.remove("active");
-
-		//Run setup for selected account page
+		// Run setup for selected page
 		switch (page) {
 			case 'config':
 				this.loadConfigPage();
-				this.accountWorkspacePages.configPage.style.display = 'block';
+				this.links.accountsLink.classList.remove("active");
 				this.links.configLink.classList.add("active");
-				break;
-			case 'new':
-				this.accountWorkspacePages.newUserPage.style.display = 'block';
-				this.newUserEmail.value = '';
-				this.newUserPerms.value = '';
+				this.pages.config.style.display = 'block';
 				break;
 			default:
-				this.loadAccounts();
-				Object.assign(accountsTable.$data, {showAccountsTable: true});
+				this.links.configLink.classList.remove("active");
 				this.links.accountsLink.classList.add("active");
-				newUserButton.style.display = 'block';
+				this.pages.accounts.style.display = 'block';
 		}
 	},
 	changePage(page) {
 		// Hide all workspaces
-		this.workspaces.accountsWorkspace.style.display = 'none';
 		this.workspaces.mapWorkspace.style.display = 'none';
-		this.workspaces.relaysWorkspace.style.display = 'none';
 		this.workspaces.sessionsWorkspace.style.display = 'none';
-		this.workspaces.usersWorkspace.style.display = 'none';
+		this.workspaces.sessionToolWorkspace.style.display = 'none';
+		this.workspaces.settingsWorkspace.style.display = 'none';
+		this.workspaces.userToolWorkspace.style.display = 'none';
 
 		// Remove all link highlights
+		this.links.accountsLink.classList.remove("active");
+		this.links.configLink.classList.remove("active");
 		this.links.mapLink.classList.remove("active");
-		this.links.relaysLink.classList.remove("active");
 		this.links.sessionsLink.classList.remove("active");
-		this.links.usersLink.classList.remove("active");
+		this.links.sessionToolLink.classList.remove("active");
+		this.links.userToolLink.classList.remove("active");
+		this.links.settingsLink.classList.remove("active");
 
 		// Run setup for selected page
 		switch (page) {
-			case 'account':
-				this.changeAccountPage();
-				this.workspaces.accountsWorkspace.style.display = 'block';
-				this.workspaceTitle.textContent = 'Account Details';
-				break;
-			case 'relay':
-				this.loadRelayPage();
-				this.workspaces.relaysWorkspace.style.display = 'block';
-				this.links.relaysLink.classList.add("active");
-				this.workspaceTitle.textContent = 'Relays Table';
+			case 'settings':
+				this.loadSettingsPage();
+				this.workspaces.settingsWorkspace.style.display = 'block';
+				this.links.accountsLink.classList.add("active");
+				this.links.settingsLink.classList.add("active");
 				break;
 			case 'sessions':
-				this.loadSessionPage();
+				this.loadSessionsPage();
 				this.workspaces.sessionsWorkspace.style.display = 'block';
 				this.links.sessionsLink.classList.add("active");
-				this.workspaceTitle.textContent = 'Session Table';
 				break;
-			case 'users':
+			case 'session-tool':
+				this.alerts.sessionToolAlert.style.display = 'block';
+				this.alerts.sessionToolDanger.style.display = 'none';
+				sessionDetailsVue ? Object.assign(sessionDetailsVue.$data, {showDetails: false}) : null;
+				this.workspaces.sessionToolWorkspace.style.display = 'block';
+				this.links.sessionToolLink.classList.add("active");
+				break;
+			case 'user-tool':
 				this.loadUsersPage();
-				this.workspaces.usersWorkspace.style.display = 'block';
-				this.links.usersLink.classList.add("active");
-				this.workspaceTitle.textContent = 'User Table';
+				this.workspaces.userToolWorkspace.style.display = 'block';
+				this.links.userToolLink.classList.add("active");
 				break;
 			default:
 				this.workspaces.mapWorkspace.style.display = 'block';
 				this.links.mapLink.classList.add("active");
-				this.workspaceTitle.textContent = 'Session Map';
 		}
 	},
 	editUser(accountInfo) {
@@ -260,7 +263,8 @@ WorkspaceHandler = {
 		WorkspaceHandler.newUserEmail.value = accountInfo.email || '';
 		WorkspaceHandler.newUserPerms.value = accountInfo.email || '';
 	},
-	loadAccounts() {
+	loadSettingsPage() {
+		this.changeAccountPage();
 		JSONRPCClient
 			.call('AuthService.AllAccounts', {buyer_id: '13672574147039585173'})
 			.then(
@@ -268,7 +272,10 @@ WorkspaceHandler = {
 					/**
 					 * I really dislike this but it is apparently the way to reload/update the data within a vue
 					 */
-					Object.assign(accountsTable.$data, {accounts: response.accounts});
+					Object.assign(accountsTable.$data, {
+						accounts: response.accounts,
+						showAccounts: true,
+					});
 				}
 			)
 			.catch(
@@ -307,14 +314,21 @@ WorkspaceHandler = {
 				console.log(e);
 			});
 	},
-	loadSessionPage() {
+	loadSessionsPage() {
 		JSONRPCClient
 			.call('BuyersService.TopSessions', {})
 			.then((response) => {
+				let sessions = response.sessions;
 				/**
 				 * I really dislike this but it is apparently the way to reload/update the data within a vue
 				 */
-				Object.assign(sessionsTable.$data, {sessions: response.sessions});
+				Object.assign(sessionsTable.$data, {
+					onNN: sessions.filter((session) => {
+						return session.on_network_next;
+					}),
+					sessions: sessions,
+					showCount: true,
+				});
 			})
 			.catch((e) => {
 				console.log("Something went wrong fetching the top sessions list");
@@ -328,11 +342,12 @@ WorkspaceHandler = {
 
 function startApp() {
 	createVueComponents();
+	document.getElementById("app").style.display = 'block';
+	/**
+	 * QUESTION: Instead of grabbing the user here can we use the token to then go off and get everything from the backend?
+	 * TODO:	 There are 3 different promises going off to get user details. There should be a better way to do this
+	 */
 	Promise.all([
-		/**
-		 * QUESTION: Instead of grabbing the user here can we use the token to then go off and get everything from the backend?
-		 * TODO:	 There are 3 different promises going off to get user details. There should be a better way to do this
-		 */
 		loginClient.getUser(),
 		loginClient.getTokenSilently()
 	]).then((response) => {
@@ -363,7 +378,7 @@ function createVueComponents() {
 		el: '#accounts',
 		data: {
 			accounts: null,
-			showAccountsTable: false
+			showAccounts: false,
 		},
 		methods: {
 			editUser: WorkspaceHandler.editUser
@@ -378,28 +393,32 @@ function createVueComponents() {
 			updatePubKey: updatePubKey
 		}
 	});
-	relaysTable = new Vue({
-		el: '#relays',
+	sessionDetailsVue = new Vue({
+		el: '#session-details',
 		data: {
-			relays: null
+			id: '',
+			meta: null,
+			showDetails: false,
+			slices: [],
 		}
 	});
 	sessionsTable = new Vue({
 		el: '#sessions',
 		data: {
-			sessions: null
+			onNN: [],
+			sessions: [],
+			showCount: false,
 		},
 		methods: {
 			fetchSessionInfo: fetchSessionInfo
 		}
 	});
-	usersTable = new Vue({
-		el: '#users',
+	mapSessionsCount = new Vue({
+		el: '#map-sessions-count',
 		data: {
-			users: null
-		},
-		methods: {
-			fetchUserInfo: fetchUserInfo
+			onNN: [],
+			sessions: [],
+			showCount: false,
 		}
 	});
 }
@@ -409,83 +428,86 @@ function fetchUserInfo() {
 }
 
 function updatePubKey() {
-	let newPubkey = document.getElementById("pubKey").value;
+	let newPubkey = document.getElementById("pubkey-input").value;
 
 	JSONRPCClient
 		.call("BuyersService.UpdateGameConfiguration", {buyer_id: '13672574147039585173', new_public_key: newPubkey})
 		.then((response) => {
 			userInfo.pubkey = response.game_config.public_key;
-			document.getElementById("pubKey").value = userInfo.pubKey;
 		})
 		.catch((e) => {
 			console.log("Something went wrong updating the public key");
 			console.log(e);
-		})
+		});
 }
 
 function fetchSessionInfo(sessionId = '') {
-	let id = sessionId || document.getElementById("sessionIDLookup").value;
-	document.getElementById("sessionIDLookup").value = '';
+	WorkspaceHandler.changePage("session-tool");
+	let id = sessionId || document.getElementById("session-id-input").value;
+	document.getElementById("session-id-input").value = id;
 
 	if (id == '') {
 		console.log("Can't use a empty id");
+		document.getElementById("session-id-input").value = '';
 		return;
 	}
+	WorkspaceHandler.alerts.sessionToolAlert.style.display = 'none';
 	/**
 	 * TODO: Add in a catch for when session ID isn't found
 	 */
 	JSONRPCClient
 		.call("BuyersService.SessionDetails", {session_id: id})
 		.then((response) => {
-			new Vue({
-				el: '#sessionDetails',
-				data: {
-					id: id,
-					meta: response.meta,
-					slices: response.slices
-				},
-				methods: {
-					fetchSessionInfo: fetchSessionInfo
-				}
+			Object.assign(sessionDetailsVue.$data, {
+				meta: response.meta
 			});
-			let data = {
-				latitude: response.meta.location.latitude,
-				longitude: response.meta.location.longitude,
-			};
-			let sessionToolMapInstance = new deck.DeckGL({
-				mapboxApiAccessToken: mapboxgl.accessToken,
-				mapStyle: 'mapbox://styles/mapbox/dark-v10',
-				initialViewState: {
-					latitude: data.latitude,
-					longitude: data.longitude,
-					zoom: 4,
-					maxZoom: 15,
-				},
-				controller: true,
-				container: 'session-tool-map',
-				/* layers: [
-					new deck.IconLayer({
-						id: 'icon-layer',
-						data,
-						pickable: false,
-						// iconAtlas and iconMapping are required
-						// getIcon: return a string
-						iconAtlas: 'marker.png',
-						iconMapping: {marker: {x: 0, y: 0, width: 32, height: 32, mask: true}},
-						getIcon: d => 'marker',
-						sizeScale: 15,
-						getPosition: d => [d.longitude, d.latitude],
-						getSize: d => 100,
-						getColor: d => [7, 140, 0]
-					  })
-				] */
+			Object.assign(sessionDetailsVue.$data, {
+				slices: response.slices
 			});
+			Object.assign(sessionDetailsVue.$data, {showDetails: true});
 
-			generateCharts(response.slices);
+			setTimeout(() => {
+				let data = {
+					latitude: response.meta.location.latitude,
+					longitude: response.meta.location.longitude,
+				};
+
+				generateCharts(response.slices);
+				let sessionToolMapInstance = new deck.DeckGL({
+					mapboxApiAccessToken: mapboxgl.accessToken,
+					mapStyle: 'mapbox://styles/mapbox/dark-v10',
+					initialViewState: {
+						latitude: data.latitude,
+						longitude: data.longitude,
+						zoom: 4,
+						maxZoom: 15,
+					},
+					controller: true,
+					container: 'session-tool-map',
+					/* layers: [
+						new deck.IconLayer({
+							id: 'icon-layer',
+							data,
+							pickable: false,
+							// iconAtlas and iconMapping are required
+							// getIcon: return a string
+							iconAtlas: 'marker.png',
+							iconMapping: {marker: {x: 0, y: 0, width: 32, height: 32, mask: true}},
+							getIcon: d => 'marker',
+							sizeScale: 15,
+							getPosition: d => [d.longitude, d.latitude],
+							getSize: d => 100,
+							getColor: d => [7, 140, 0]
+						})
+					] */
+				});
+			});
 		})
 		.catch((e) => {
 			console.log("Something went wrong fetching session information: ");
 			console.log(e);
+			WorkspaceHandler.alerts.sessionToolDanger.style.display = 'block';
+			document.getElementById("session-id-input").value = '';
 		});
 }
 

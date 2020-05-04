@@ -147,9 +147,9 @@ namespace
       }
     };
 
-    signal(SIGINT, gracefulShutdownHandler);
-    signal(SIGTERM, gracefulShutdownHandler);
-    signal(SIGHUP, cleanShutdownHandler);
+    signal(SIGINT, gracefulShutdownHandler); // ctrl-c
+    signal(SIGTERM, cleanShutdownHandler); // systemd stop
+    signal(SIGHUP, cleanShutdownHandler); // terminal session ends
 #endif
   }
 }  // namespace

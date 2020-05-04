@@ -16,8 +16,9 @@ namespace net
     static size_t curlWriteFunction(char* ptr, size_t size, size_t nmemb, void* userdata)
     {
       auto respBuff = reinterpret_cast<RespType*>(userdata);
-      respBuff->resize(size * nmemb);
-      std::copy(ptr, ptr + size * nmemb, respBuff->begin());
+      auto index = respBuff->size();
+      respBuff->resize(respBuff->size() + size * nmemb);
+      std::copy(ptr, ptr + size * nmemb, respBuff->begin() + index);
       return size * nmemb;
     }
 
@@ -51,7 +52,7 @@ namespace net
     curl_easy_setopt(wrapper.mHandle, CURLOPT_MAXREDIRS, 50L);
     curl_easy_setopt(wrapper.mHandle, CURLOPT_HTTP_VERSION, (long)CURL_HTTP_VERSION_2TLS);
     curl_easy_setopt(wrapper.mHandle, CURLOPT_TCP_KEEPALIVE, 1L);
-    curl_easy_setopt(wrapper.mHandle, CURLOPT_TIMEOUT_MS, long(2000));
+    curl_easy_setopt(wrapper.mHandle, CURLOPT_TIMEOUT_MS, long(1000));
     curl_easy_setopt(wrapper.mHandle, CURLOPT_WRITEDATA, &response);
     curl_easy_setopt(wrapper.mHandle, CURLOPT_WRITEFUNCTION, &curlWriteFunction<RespType>);
 

@@ -631,7 +631,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			return
 		}
 
-		if relayUpdateRequest.ShuttingDown {
+		if relayUpdateRequest.ShuttingDown && relay.State != routing.RelayStateDisabled {
 			relay.State = routing.RelayStateMaintenance
 		}
 
