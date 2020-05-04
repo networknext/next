@@ -432,14 +432,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			return
 		}
 
-		if int64(packet.SessionID%100) > buyer.RoutingRulesSettings.SelectionPercentage {
-			sessionCacheEntry.RouteDecision = routing.Decision{
-				OnNetworkNext: false,
-				Reason:        routing.DecisionForceDirect,
-			}
-			shouldSelect = false
-		}
-
 		locallogger = log.With(locallogger, "customer_id", packet.CustomerID)
 
 		if !crypto.Verify(buyer.PublicKey, packet.GetSignData(), packet.Signature) {
@@ -542,7 +534,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			timestampExpire = timestampExpire.Add(time.Duration(sliceDuration) * time.Second)
 		}
 
-		if buyer.RoutingRulesSettings.Mode == routing.ModeForceDirect {
+		if buyer.RoutingRulesSettings.Mode == routing.ModeForceDirect || int64(packet.SessionID%100) > buyer.RoutingRulesSettings.SelectionPercentage {
 			shouldSelect = false
 			routeDecision = routing.Decision{
 				OnNetworkNext: false,
