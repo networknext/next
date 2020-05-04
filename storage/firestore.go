@@ -365,7 +365,7 @@ func (fs *Firestore) SetSeller(ctx context.Context, seller routing.Seller) error
 		"pricePublicEgressNibblins":  convertCentsToNibblins(seller.EgressPriceCents),
 	}
 
-	if _, err := fs.Client.Collection("Buyer").Doc(seller.ID).Set(ctx, newSellerData, firestore.MergeAll); err != nil {
+	if _, err := fs.Client.Collection("Seller").Doc(seller.ID).Set(ctx, newSellerData, firestore.MergeAll); err != nil {
 		return err
 	}
 
