@@ -582,8 +582,19 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 					routing.DecideUpgradeRTT(float64(buyer.RoutingRulesSettings.RTTThreshold)),
 					routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis), buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
 					routing.DecideVeto(float64(buyer.RoutingRulesSettings.RTTVeto), buyer.RoutingRulesSettings.EnablePacketLossSafety, buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
-					routing.DecideCommitted(packet.TryBeforeYouBuy, &sessionCacheEntry.CommittedRouteCount, uint64(buyer.RoutingRulesSettings.CommittedRouteCountThreshold)),
 				)
+
+				if buyer.RoutingRulesSettings.EnableTryBeforeYouBuy {
+					if routeDecision.OnNetworkNext {
+						sessionCacheEntry.CommittedRouteCount++
+					} else {
+						sessionCacheEntry.CommittedRouteCount = 0
+					}
+
+					if sessionCacheEntry.CommittedRouteCount >= uint64(buyer.RoutingRulesSettings.CommittedRouteCountThreshold) {
+						response.Committed = true
+					}
+				}
 
 				if routing.IsVetoed(routeDecision) {
 					// Session was vetoed this update, so set the veto timeout
@@ -823,8 +834,6 @@ func addRouteDecisionMetric(d routing.Decision, m *metrics.SessionMetrics) {
 		m.DecisionMetrics.VetoPacketLossYOLO.Add(1)
 	case routing.DecisionRTTIncrease:
 		m.DecisionMetrics.RTTIncrease.Add(1)
-	case routing.DecisionCommitPending:
-		m.DecisionMetrics.CommitPending.Add(1)
 	}
 }
 

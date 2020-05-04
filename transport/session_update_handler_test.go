@@ -41,7 +41,7 @@ func (bad *badBiller) Bill(ctx context.Context, sessionID uint64, entry *billing
 	return errors.New("bad bill")
 }
 
-func validateDirectResponsePacket(t *testing.T, resbuf bytes.Buffer, directCounter metrics.Counter, reasonCounter metrics.Counter) {
+func validateResponsePacket(t *testing.T, resbuf bytes.Buffer) transport.SessionResponsePacket {
 	assert.Greater(t, resbuf.Len(), 0)
 
 	var actual transport.SessionResponsePacket
@@ -50,6 +50,12 @@ func validateDirectResponsePacket(t *testing.T, resbuf bytes.Buffer, directCount
 
 	verified := crypto.Verify(TestServerBackendPublicKey, actual.GetSignData(), actual.Signature)
 	assert.True(t, verified)
+
+	return actual
+}
+
+func validateDirectResponsePacket(t *testing.T, resbuf bytes.Buffer, directCounter metrics.Counter, reasonCounter metrics.Counter) {
+	actual := validateResponsePacket(t, resbuf)
 
 	assert.Equal(t, int(actual.RouteType), routing.RouteTypeDirect)
 
@@ -57,21 +63,15 @@ func validateDirectResponsePacket(t *testing.T, resbuf bytes.Buffer, directCount
 	assert.Equal(t, 1.0, reasonCounter.Value())
 }
 
-func validateNextResponsePacket(t *testing.T, resbuf bytes.Buffer, sessionID uint64, sequence uint64, numTokens int32, routeType int32, nextCounter metrics.Counter, reasonCounter metrics.Counter) {
-	assert.Greater(t, resbuf.Len(), 0)
-
-	var actual transport.SessionResponsePacket
-	err := actual.UnmarshalBinary(resbuf.Bytes())
-	assert.NoError(t, err)
-
-	verified := crypto.Verify(TestServerBackendPublicKey, actual.GetSignData(), actual.Signature)
-	assert.True(t, verified)
+func validateNextResponsePacket(t *testing.T, resbuf bytes.Buffer, sessionID uint64, sequence uint64, numTokens int32, routeType int32, committed bool, nextCounter metrics.Counter, reasonCounter metrics.Counter) {
+	actual := validateResponsePacket(t, resbuf)
 
 	assert.Equal(t, sessionID, actual.SessionID)
 	assert.Equal(t, sequence, actual.Sequence)
 	assert.Equal(t, routeType, actual.RouteType)
 	assert.Equal(t, numTokens, actual.NumTokens)
 	assert.Equal(t, TestBuyersServerPublicKey[:], actual.ServerRoutePublicKey)
+	assert.Equal(t, committed, actual.Committed)
 
 	assert.Equal(t, 1.0, nextCounter.Value())
 	assert.Equal(t, 1.0, reasonCounter.Value())
@@ -1278,7 +1278,7 @@ func TestNextRouteResponse(t *testing.T) {
 	assert.True(t, redisServer.Exists(fmt.Sprintf("session-%x-slices", packet.SessionID)))
 	assert.Greater(t, redisServer.TTL(fmt.Sprintf("session-%x-slices", packet.SessionID)).Hours(), float64(-1))
 
-	validateNextResponsePacket(t, resbuf, packet.SessionID, packet.Sequence, 5, routing.RouteTypeNew, sessionMetrics.NextSessions, sessionMetrics.DecisionMetrics.RTTReduction)
+	validateNextResponsePacket(t, resbuf, packet.SessionID, packet.Sequence, 5, routing.RouteTypeNew, false, sessionMetrics.NextSessions, sessionMetrics.DecisionMetrics.RTTReduction)
 }
 
 func TestContinueRouteResponse(t *testing.T) {
@@ -1417,7 +1417,7 @@ func TestContinueRouteResponse(t *testing.T) {
 	verified := crypto.Verify(TestServerBackendPublicKey, actual.GetSignData(), actual.Signature)
 	assert.True(t, verified)
 
-	validateNextResponsePacket(t, resbuf, packet.SessionID, packet.Sequence, 5, routing.RouteTypeContinue, sessionMetrics.NextSessions, sessionMetrics.DecisionMetrics.RTTReduction)
+	validateNextResponsePacket(t, resbuf, packet.SessionID, packet.Sequence, 5, routing.RouteTypeContinue, false, sessionMetrics.NextSessions, sessionMetrics.DecisionMetrics.RTTReduction)
 }
 
 func TestCachedRouteResponse(t *testing.T) {
@@ -2266,5 +2266,262 @@ func TestForceNext(t *testing.T) {
 	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, redisClient, &db, &rp, &iploc, &geoClient, &sessionMetrics, &billing.NoOpBiller{}, TestServerBackendPrivateKey[:], TestRouterPrivateKey[:])
 	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
-	validateNextResponsePacket(t, resbuf, packet.SessionID, packet.Sequence, 5, routing.RouteTypeNew, sessionMetrics.NextSessions, sessionMetrics.DecisionMetrics.ForceNext)
+	validateNextResponsePacket(t, resbuf, packet.SessionID, packet.Sequence, 5, routing.RouteTypeNew, false, sessionMetrics.NextSessions, sessionMetrics.DecisionMetrics.ForceNext)
+}
+
+func TestCommitPending(t *testing.T) {
+	redisServer, err := miniredis.Run()
+	assert.NoError(t, err)
+	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+	sessionMetrics := metrics.EmptySessionMetrics
+	localMetrics := metrics.LocalHandler{}
+
+	nextMetric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "next metric"})
+	assert.NoError(t, err)
+
+	sessionMetrics.NextSessions = nextMetric
+
+	rrs := routing.DefaultRoutingRulesSettings
+	rrs.EnableTryBeforeYouBuy = true
+
+	db := storage.InMemory{}
+	db.AddBuyer(context.Background(), routing.Buyer{
+		PublicKey:            TestBuyersServerPublicKey,
+		RoutingRulesSettings: rrs,
+	})
+
+	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
+		return routing.Location{
+			Continent: "NA",
+			Country:   "US",
+			Region:    "NY",
+			City:      "Troy",
+			Latitude:  0,
+			Longitude: 0,
+		}, nil
+	})
+
+	geoClient := routing.GeoClient{
+		RedisClient: redisClient,
+		Namespace:   "GEO_TEST",
+	}
+
+	nearbyRelay := routing.Relay{
+		ID: 1,
+	}
+	err = geoClient.Add(nearbyRelay)
+	assert.NoError(t, err)
+
+	rp := mockRouteProvider{
+		routes: []routing.Route{
+			{
+				Relays: []routing.Relay{
+					{ID: 1, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
+					{ID: 2, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
+					{ID: 3, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
+				},
+			},
+		},
+	}
+
+	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
+	assert.NoError(t, err)
+
+	serverCacheEntry := transport.ServerCacheEntry{
+		Sequence: 13,
+		Server: routing.Server{
+			Addr:      *addr,
+			PublicKey: TestBuyersServerPublicKey[:],
+		},
+	}
+	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
+	assert.NoError(t, err)
+
+	err = redisServer.Set("SERVER-0-0.0.0.0:13", string(serverCacheEntryData))
+	assert.NoError(t, err)
+
+	sessionCacheEntry := transport.SessionCacheEntry{
+		SessionID:      9999,
+		Sequence:       13,
+		TimestampStart: time.Now().Add(-5 * time.Second),
+	}
+	sessionCacheEntryData, err := sessionCacheEntry.MarshalBinary()
+	assert.NoError(t, err)
+
+	err = redisServer.Set("SESSION-0-9999", string(sessionCacheEntryData))
+	assert.NoError(t, err)
+
+	packet := transport.SessionUpdatePacket{
+		SessionID:     9999,
+		Sequence:      14,
+		ServerAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
+
+		NumNearRelays:       1,
+		NearRelayIDs:        []uint64{1},
+		NearRelayMinRTT:     []float32{1},
+		NearRelayMaxRTT:     []float32{1},
+		NearRelayMeanRTT:    []float32{1},
+		NearRelayJitter:     []float32{1},
+		NearRelayPacketLoss: []float32{1},
+
+		OnNetworkNext: true,
+		NextMinRTT:    50,
+		DirectMinRTT:  70,
+
+		ClientAddress: net.UDPAddr{
+			IP:   net.ParseIP("0.0.0.0"),
+			Port: 1234,
+		},
+		ClientRoutePublicKey: TestBuyersClientPublicKey[:],
+	}
+	packet.Signature = crypto.Sign(TestBuyersServerPrivateKey, packet.GetSignData())
+
+	data, err := packet.MarshalBinary()
+	assert.NoError(t, err)
+
+	var resbuf bytes.Buffer
+
+	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, redisClient, &db, &rp, &iploc, &geoClient, &sessionMetrics, &billing.NoOpBiller{}, TestServerBackendPrivateKey[:], TestRouterPrivateKey[:])
+	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
+
+	actual := validateResponsePacket(t, resbuf)
+	assert.Equal(t, false, actual.Committed)
+
+	sessionCacheEntryString, err := redisServer.Get("SESSION-0-9999")
+	assert.NoError(t, err)
+
+	err = sessionCacheEntry.UnmarshalBinary([]byte(sessionCacheEntryString))
+	assert.NoError(t, err)
+
+	assert.Equal(t, uint64(1), sessionCacheEntry.CommittedRouteCount)
+}
+
+func TestCommitted(t *testing.T) {
+	redisServer, err := miniredis.Run()
+	assert.NoError(t, err)
+	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+	sessionMetrics := metrics.EmptySessionMetrics
+	localMetrics := metrics.LocalHandler{}
+
+	nextMetric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "next metric"})
+	assert.NoError(t, err)
+
+	sessionMetrics.NextSessions = nextMetric
+
+	rrs := routing.DefaultRoutingRulesSettings
+	rrs.EnableTryBeforeYouBuy = true
+
+	db := storage.InMemory{}
+	db.AddBuyer(context.Background(), routing.Buyer{
+		PublicKey:            TestBuyersServerPublicKey,
+		RoutingRulesSettings: rrs,
+	})
+
+	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
+		return routing.Location{
+			Continent: "NA",
+			Country:   "US",
+			Region:    "NY",
+			City:      "Troy",
+			Latitude:  0,
+			Longitude: 0,
+		}, nil
+	})
+
+	geoClient := routing.GeoClient{
+		RedisClient: redisClient,
+		Namespace:   "GEO_TEST",
+	}
+
+	nearbyRelay := routing.Relay{
+		ID: 1,
+	}
+	err = geoClient.Add(nearbyRelay)
+	assert.NoError(t, err)
+
+	rp := mockRouteProvider{
+		routes: []routing.Route{
+			{
+				Relays: []routing.Relay{
+					{ID: 1, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
+					{ID: 2, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
+					{ID: 3, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
+				},
+			},
+		},
+	}
+
+	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
+	assert.NoError(t, err)
+
+	serverCacheEntry := transport.ServerCacheEntry{
+		Sequence: 13,
+		Server: routing.Server{
+			Addr:      *addr,
+			PublicKey: TestBuyersServerPublicKey[:],
+		},
+	}
+	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
+	assert.NoError(t, err)
+
+	err = redisServer.Set("SERVER-0-0.0.0.0:13", string(serverCacheEntryData))
+	assert.NoError(t, err)
+
+	sessionCacheEntry := transport.SessionCacheEntry{
+		SessionID:           9999,
+		Sequence:            13,
+		TimestampStart:      time.Now().Add(-5 * time.Second),
+		CommittedRouteCount: uint64(rrs.CommittedRouteCountThreshold),
+	}
+	sessionCacheEntryData, err := sessionCacheEntry.MarshalBinary()
+	assert.NoError(t, err)
+
+	err = redisServer.Set("SESSION-0-9999", string(sessionCacheEntryData))
+	assert.NoError(t, err)
+
+	packet := transport.SessionUpdatePacket{
+		SessionID:     9999,
+		Sequence:      14,
+		ServerAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
+
+		NumNearRelays:       1,
+		NearRelayIDs:        []uint64{1},
+		NearRelayMinRTT:     []float32{1},
+		NearRelayMaxRTT:     []float32{1},
+		NearRelayMeanRTT:    []float32{1},
+		NearRelayJitter:     []float32{1},
+		NearRelayPacketLoss: []float32{1},
+
+		OnNetworkNext: true,
+		NextMinRTT:    50,
+		DirectMinRTT:  70,
+
+		ClientAddress: net.UDPAddr{
+			IP:   net.ParseIP("0.0.0.0"),
+			Port: 1234,
+		},
+		ClientRoutePublicKey: TestBuyersClientPublicKey[:],
+	}
+	packet.Signature = crypto.Sign(TestBuyersServerPrivateKey, packet.GetSignData())
+
+	data, err := packet.MarshalBinary()
+	assert.NoError(t, err)
+
+	var resbuf bytes.Buffer
+
+	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, redisClient, &db, &rp, &iploc, &geoClient, &sessionMetrics, &billing.NoOpBiller{}, TestServerBackendPrivateKey[:], TestRouterPrivateKey[:])
+	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
+
+	actual := validateResponsePacket(t, resbuf)
+	assert.Equal(t, true, actual.Committed)
+
+	sessionCacheEntryString, err := redisServer.Get("SESSION-0-9999")
+	assert.NoError(t, err)
+
+	err = sessionCacheEntry.UnmarshalBinary([]byte(sessionCacheEntryString))
+	assert.NoError(t, err)
+
+	assert.Equal(t, uint64(rrs.CommittedRouteCountThreshold+1), sessionCacheEntry.CommittedRouteCount)
 }
