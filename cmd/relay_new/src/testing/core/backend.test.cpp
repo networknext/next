@@ -64,7 +64,7 @@ Test(core_backend_init_valid)
   check(doc.get<std::string>("encrypted_token").length() == Base64EncryptedTokenLength);
 }
 
-// Update the backend for 10 seconds, then proceed to switch the handle to false.
+// Update the backend for 2 seconds, then proceed to switch the handle to false.
 // The relay should then attempt to ack the backend.
 // It won't receive a success response from the backend so instead it will
 // live for 60 seconds and skip the ack
@@ -97,7 +97,7 @@ Test(core_Backend_updateCycle_shutdown_60s)
   check(elapsed >= 62.0 && elapsed < 63.0);
 }
 
-// Update the backend for 10 seconds, then proceed to switch the handle to false.
+// Update the backend for 2 seconds, then proceed to switch the handle to false.
 // The relay should then attempt to ack the backend and shutdown for 30 seconds.
 // It will receive a success response and then live for another 30 seconds.
 // The 60 second timeout will not apply here
@@ -129,8 +129,8 @@ Test(core_Backend_updateCycle_ack_and_30s)
   check(elapsed >= 32.0 && elapsed < 33.0);
 }
 
-// Update the backend for 10 seconds, then proceed to switch the handle to false.
-// The relay will not get a success response for 40 seconds after the handle is set
+// Update the backend for 2 seconds, then proceed to switch the handle to false.
+// The relay will not get a success response for 31 seconds after the handle is set.
 // After which it will get a success and then proceed with the normal routine of waiting 30 seconds
 // The amount of time waited will be greater than 60 seconds
 // This is to assert the updateCycle will ignore the 60 second timeout if the backend gets an update
@@ -194,7 +194,7 @@ Test(core_Backend_updateCycle_update_fails_for_max_number_of_attempts)
 
   check(!backend.updateCycle(handle, shouldCleanShutdown, recorder, sessions, backendClock));
   auto elapsed = testClock.elapsed<util::Second>();
-  // time will be 10 seconds of good updates and
+  // time will be 2 seconds of good updates and
   // 10 seconds of bad updates, which will cause
   // the relay to abort with no clean shutdown
   check(elapsed >= 12.0 && elapsed < 13.0);
