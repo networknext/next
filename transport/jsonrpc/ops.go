@@ -95,6 +95,7 @@ type routingRuleSettings struct {
 	EnableMultipathForJitter     bool    `json:"jitterMultipath"`
 	EnableMultipathForRTT        bool    `json:"rttMultipath"`
 	EnableABTest                 bool    `json:"abTest"`
+	SelectionPercentage          int64   `json:"selectionPercentage"`
 }
 
 func (s *OpsService) RoutingRulesSettings(r *http.Request, args *RoutingRulesSettingsArgs, reply *RoutingRulesSettingsReply) error {
@@ -119,6 +120,7 @@ func (s *OpsService) RoutingRulesSettings(r *http.Request, args *RoutingRulesSet
 			EnableMultipathForJitter:     buyer.RoutingRulesSettings.EnableMultipathForJitter,
 			EnableMultipathForRTT:        buyer.RoutingRulesSettings.EnableMultipathForRTT,
 			EnableABTest:                 buyer.RoutingRulesSettings.EnableABTest,
+			SelectionPercentage:          buyer.RoutingRulesSettings.SelectionPercentage,
 		},
 	}
 
