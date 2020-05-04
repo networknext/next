@@ -8,12 +8,12 @@ const SEC_TO_MS = 1000;
 const DEC_TO_PERC = 100;
 
 var userInfo = {
-	email: "test",
-	name: "test",
-	pubKey: "test",
-	nickname: "test",
-	token: "test",
-	userId: "test",
+	email: "",
+	name: "",
+	pubKey: "",
+	nickname: "",
+	token: "tst",
+	userId: "",
 };
 
 var accountsTable = null;
@@ -96,7 +96,13 @@ MapHandler = {
 					aggregation
 				}); */
 				let data = response.map_points;
-				Object.assign(mapSessionsCount.$data, {sessions: data});
+				console.log(data);
+				Object.assign(mapSessionsCount.$data, {
+					onNN: data.filter((point) => {
+						return point.on_network_next;
+					}),
+					sessions: data,
+				});
 				let layer = new deck.ScreenGridLayer({
 					id: 'sessions-layer',
 					data,
@@ -154,10 +160,11 @@ MapHandler = {
 
 WorkspaceHandler = {
 	alerts: {
-		sessionToolAlert: document.getElementById("session-tool-alert")
+		sessionToolAlert: document.getElementById("session-tool-alert"),
+		sessionToolDanger: document.getElementById("session-tool-danger"),
 	},
 	links: {
-		accountsLink: document.getElementById("settings-link"),
+		accountsLink: document.getElementById("accounts-link"),
 		configLink: document.getElementById("config-link"),
 		mapLink: document.getElementById("map-link"),
 		sessionsLink: document.getElementById("sessions-link"),
@@ -193,9 +200,14 @@ WorkspaceHandler = {
 		// Run setup for selected page
 		switch (page) {
 			case 'config':
+				this.loadConfigPage();
+				this.links.accountsLink.classList.remove("active");
+				this.links.configLink.classList.add("active");
 				this.pages.config.style.display = 'block';
 				break;
 			default:
+				this.links.configLink.classList.remove("active");
+				this.links.accountsLink.classList.add("active");
 				this.pages.accounts.style.display = 'block';
 		}
 	},
@@ -208,6 +220,8 @@ WorkspaceHandler = {
 		this.workspaces.userToolWorkspace.style.display = 'none';
 
 		// Remove all link highlights
+		this.links.accountsLink.classList.remove("active");
+		this.links.configLink.classList.remove("active");
 		this.links.mapLink.classList.remove("active");
 		this.links.sessionsLink.classList.remove("active");
 		this.links.sessionToolLink.classList.remove("active");
@@ -219,6 +233,7 @@ WorkspaceHandler = {
 			case 'settings':
 				this.loadSettingsPage();
 				this.workspaces.settingsWorkspace.style.display = 'block';
+				this.links.accountsLink.classList.add("active");
 				this.links.settingsLink.classList.add("active");
 				break;
 			case 'sessions':
@@ -227,6 +242,8 @@ WorkspaceHandler = {
 				this.links.sessionsLink.classList.add("active");
 				break;
 			case 'session-tool':
+				this.alerts.sessionToolAlert.style.display = 'block';
+				this.alerts.sessionToolDanger.style.display = 'none';
 				sessionDetailsVue ? Object.assign(sessionDetailsVue.$data, {showDetails: false}) : null;
 				this.workspaces.sessionToolWorkspace.style.display = 'block';
 				this.links.sessionToolLink.classList.add("active");
@@ -256,7 +273,10 @@ WorkspaceHandler = {
 					/**
 					 * I really dislike this but it is apparently the way to reload/update the data within a vue
 					 */
-					Object.assign(accountsTable.$data, {accounts: response.accounts});
+					Object.assign(accountsTable.$data, {
+						accounts: response.accounts,
+						showAccounts: true,
+					});
 				}
 			)
 			.catch(
@@ -299,11 +319,15 @@ WorkspaceHandler = {
 		JSONRPCClient
 			.call('BuyersService.TopSessions', {})
 			.then((response) => {
+				let sessions = response.sessions;
 				/**
 				 * I really dislike this but it is apparently the way to reload/update the data within a vue
 				 */
 				Object.assign(sessionsTable.$data, {
-					sessions: response.sessions,
+					onNN: sessions.filter((session) => {
+						return session.on_network_next;
+					}),
+					sessions: sessions,
 					showCount: true,
 				});
 			})
@@ -320,20 +344,11 @@ WorkspaceHandler = {
 function startApp() {
 	createVueComponents();
 	document.getElementById("app").style.display = 'block';
-	MapHandler
-			.initMap()
-			.then((response) => {
-				console.log("Map init successful");
-			})
-			.catch((e) => {
-				console.log("Something went wrong initializing the map");
-				console.log(e);
-			});
 	/**
 	 * QUESTION: Instead of grabbing the user here can we use the token to then go off and get everything from the backend?
 	 * TODO:	 There are 3 different promises going off to get user details. There should be a better way to do this
 	 */
-	/* Promise.all([
+	Promise.all([
 		loginClient.getUser(),
 		loginClient.getTokenSilently()
 	]).then((response) => {
@@ -356,7 +371,7 @@ function startApp() {
 			});
 	}).catch((e) => {
 		console.log("Something went wrong getting the current user information");
-	}); */
+	});
 }
 
 function createVueComponents() {
@@ -391,6 +406,7 @@ function createVueComponents() {
 	sessionsTable = new Vue({
 		el: '#sessions',
 		data: {
+			onNN: [],
 			sessions: [],
 			showCount: false,
 		},
@@ -401,6 +417,7 @@ function createVueComponents() {
 	mapSessionsCount = new Vue({
 		el: '#map-sessions-count',
 		data: {
+			onNN: [],
 			sessions: [],
 			showCount: false,
 		}
@@ -412,18 +429,17 @@ function fetchUserInfo() {
 }
 
 function updatePubKey() {
-	let newPubkey = document.getElementById("pubKey").value;
+	let newPubkey = document.getElementById("pubkey-input").value;
 
 	JSONRPCClient
 		.call("BuyersService.UpdateGameConfiguration", {buyer_id: '13672574147039585173', new_public_key: newPubkey})
 		.then((response) => {
 			userInfo.pubkey = response.game_config.public_key;
-			document.getElementById("pubKey").value = userInfo.pubKey;
 		})
 		.catch((e) => {
 			console.log("Something went wrong updating the public key");
 			console.log(e);
-		})
+		});
 }
 
 function fetchSessionInfo(sessionId = '') {
@@ -436,6 +452,7 @@ function fetchSessionInfo(sessionId = '') {
 		document.getElementById("session-id-input").value = '';
 		return;
 	}
+	WorkspaceHandler.alerts.sessionToolAlert.style.display = 'none';
 	/**
 	 * TODO: Add in a catch for when session ID isn't found
 	 */
@@ -490,6 +507,7 @@ function fetchSessionInfo(sessionId = '') {
 		.catch((e) => {
 			console.log("Something went wrong fetching session information: ");
 			console.log(e);
+			WorkspaceHandler.alerts.sessionToolDanger.style.display = 'block';
 			document.getElementById("session-id-input").value = '';
 		});
 }
