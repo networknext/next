@@ -823,8 +823,8 @@ func addRouteDecisionMetric(d routing.Decision, m *metrics.SessionMetrics) {
 		m.DecisionMetrics.VetoPacketLossYOLO.Add(1)
 	case routing.DecisionRTTIncrease:
 		m.DecisionMetrics.RTTIncrease.Add(1)
-	case routing.DecisionCommittedPending:
-		m.DecisionMetrics.CommittedPending.Add(1)
+	case routing.DecisionCommitPending:
+		m.DecisionMetrics.CommitPending.Add(1)
 	}
 }
 

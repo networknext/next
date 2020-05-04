@@ -175,7 +175,7 @@ func TestDecideCommitted(t *testing.T) {
 	routeDecisionFunc = routing.DecideCommitted(true, &committedRouteCount, routeCountThreshold)
 
 	decision = routeDecisionFunc(decision, routing.Stats{}, routing.Stats{}, routing.Stats{})
-	assert.Equal(t, routing.Decision{false, routing.DecisionCommittedPending}, decision)
+	assert.Equal(t, routing.Decision{false, routing.DecisionCommitPending}, decision)
 	assert.Equal(t, uint64(1), committedRouteCount)
 
 	// Test if the route was an improvement, and the SDK should finally be committed to the route

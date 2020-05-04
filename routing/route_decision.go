@@ -67,8 +67,8 @@ func (dr DecisionReason) String() string {
 		reason = "Veto Packet Loss YOLO"
 	case DecisionRTTIncrease:
 		reason = "RTT Increase"
-	case DecisionCommittedPending:
-		reason = "Committed Pending"
+	case DecisionCommitPending:
+		reason = "Commit Pending"
 	}
 
 	return fmt.Sprintf("%s (%d)", reason, dr)
@@ -95,7 +95,7 @@ const (
 	DecisionInitialSlice          DecisionReason = 1 << 16
 	DecisionNoNearRelays          DecisionReason = 1 << 17
 	DecisionRTTIncrease           DecisionReason = 1 << 18
-	DecisionCommittedPending      DecisionReason = 1 << 19
+	DecisionCommitPending         DecisionReason = 1 << 19
 )
 
 // DecideUpgradeRTT will decide if the client should use the network next route if the RTT reduction is greater than the given threshold.
@@ -103,7 +103,7 @@ const (
 func DecideUpgradeRTT(rttThreshold float64) DecisionFunc {
 	return func(prevDecision Decision, predictedNextStats Stats, lastNextStats Stats, directStats Stats) Decision {
 		// If upgrading to a nextwork next route would reduce RTT by at least the given threshold, upgrade
-		if !prevDecision.OnNetworkNext && !IsVetoed(prevDecision) && !IsCommittedPending(prevDecision) && directStats.RTT-predictedNextStats.RTT >= rttThreshold {
+		if !prevDecision.OnNetworkNext && !IsVetoed(prevDecision) && !IsCommitPending(prevDecision) && directStats.RTT-predictedNextStats.RTT >= rttThreshold {
 			return Decision{true, DecisionRTTReduction}
 		}
 
@@ -208,7 +208,7 @@ func DecideCommitted(tryBeforeYouBuy bool, committedRouteCount *uint64, routeCou
 
 		// This route was an improvement, but the SDK shouldn't be committed to the route yet, so force it direct
 		*committedRouteCount++
-		return Decision{false, DecisionCommittedPending}
+		return Decision{false, DecisionCommitPending}
 	}
 }
 
@@ -223,9 +223,9 @@ func IsVetoed(decision Decision) bool {
 	return false
 }
 
-// IsCommittedPending returns true if the route is an improvement but was forced to direct because it's not yet committed
-func IsCommittedPending(decision Decision) bool {
-	if !decision.OnNetworkNext && decision.Reason == DecisionCommittedPending {
+// IsCommitPending returns true if the route is an improvement but was forced to direct because it's not yet committed
+func IsCommitPending(decision Decision) bool {
+	if !decision.OnNetworkNext && decision.Reason == DecisionCommitPending {
 		return true
 	}
 

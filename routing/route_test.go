@@ -652,7 +652,7 @@ func TestValidateInitialSlice(t *testing.T) {
 }
 
 // Test case to check that a route won't be committed until it hits the improved route threshold
-func TestDecideCommittedPending(t *testing.T) {
+func TestDecideCommitPending(t *testing.T) {
 	var committedRouteCount uint64
 	improvedRouteThreshold := uint64(3)
 
@@ -690,7 +690,7 @@ func TestDecideCommittedPending(t *testing.T) {
 
 	expected := routing.Decision{
 		OnNetworkNext: false,
-		Reason:        routing.DecisionCommittedPending,
+		Reason:        routing.DecisionCommitPending,
 	}
 
 	// Loop through all permutations and combinations of the decision functions and test that the result is the same
