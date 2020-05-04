@@ -310,12 +310,12 @@
                         <div style="width: 100%; height: calc(-160px + 100vh); border: 1px solid rgb(136, 136, 136); background-color: rgb(27, 27, 27);" id="map-container"></div>
                     </main>
                     <main role="main" class="col-md-12 col-lg-12 px-4 hidden" id="sessions-workspace">
-                        <div class="spinner-border" role="status" id="sessions-spinner">
-                            <span class="sr-only">Loading...</span>
-                        </div>
                         <div id="sessions">
                             <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                                <h1 class="h2">
+                                <div class="spinner-border" role="status" id="sessions-spinner" v-if="!showCount">
+                                    <span class="sr-only">Loading...</span>
+                                </div>
+                                <h1 class="h2" v-if="showCount">
                                     Sessions&nbsp;
                                     <span class="badge badge-dark">
                                         {{sessions.length}} Total Sessions

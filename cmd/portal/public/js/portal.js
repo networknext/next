@@ -304,6 +304,7 @@ WorkspaceHandler = {
 				 * I really dislike this but it is apparently the way to reload/update the data within a vue
 				 */
 				Object.assign(sessionsTable.$data, {sessions: response.sessions});
+				Object.assign(sessionsTable.$data, {showCount: true});
 			})
 			.catch((e) => {
 				console.log("Something went wrong fetching the top sessions list");
@@ -379,7 +380,8 @@ function createVueComponents() {
 	sessionsTable = new Vue({
 		el: '#sessions',
 		data: {
-			sessions: []
+			sessions: [],
+			showCount: false,
 		},
 		methods: {
 			fetchSessionInfo: fetchSessionInfo
