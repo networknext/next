@@ -83,6 +83,7 @@ type DecisionMetrics struct {
 	VetoRTTYOLO         Counter
 	VetoPacketLossYOLO  Counter
 	RTTIncrease         Counter
+	CommittedPending    Counter
 }
 
 var EmptyDecisionMetrics DecisionMetrics = DecisionMetrics{
@@ -104,6 +105,7 @@ var EmptyDecisionMetrics DecisionMetrics = DecisionMetrics{
 	VetoRTTYOLO:         &EmptyCounter{},
 	VetoPacketLossYOLO:  &EmptyCounter{},
 	RTTIncrease:         &EmptyCounter{},
+	CommittedPending:    &EmptyCounter{},
 }
 
 type ServerInitMetrics struct {
@@ -503,6 +505,16 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		DisplayName: "Decision RTT increase",
 		ServiceName: "server_backend",
 		ID:          "session.route_decision.rtt_increase",
+		Unit:        "decisions",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.DecisionMetrics.CommittedPending, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Decision committed pending",
+		ServiceName: "server_backend",
+		ID:          "session.route_decision.committed_pending",
 		Unit:        "decisions",
 	})
 	if err != nil {

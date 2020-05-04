@@ -280,20 +280,21 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 }
 
 type SessionCacheEntry struct {
-	CustomerID      uint64
-	SessionID       uint64
-	UserHash        uint64
-	Sequence        uint64
-	RouteHash       uint64
-	RouteDecision   routing.Decision
-	TimestampStart  time.Time
-	TimestampExpire time.Time
-	VetoTimestamp   time.Time
-	Version         uint8
-	DirectRTT       float64
-	NextRTT         float64
-	Location        routing.Location
-	Response        []byte
+	CustomerID          uint64
+	SessionID           uint64
+	UserHash            uint64
+	Sequence            uint64
+	RouteHash           uint64
+	RouteDecision       routing.Decision
+	CommittedRouteCount uint64
+	TimestampStart      time.Time
+	TimestampExpire     time.Time
+	VetoTimestamp       time.Time
+	Version             uint8
+	DirectRTT           float64
+	NextRTT             float64
+	Location            routing.Location
+	Response            []byte
 }
 
 func (e *SessionCacheEntry) UnmarshalBinary(data []byte) error {
@@ -576,11 +577,15 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 				"buyer_yolo", buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce,
 			)
 
+			// Should probably be in the RouteRulesSettings, but keeping it here for now
+			routeCountThreshold := uint64(3)
+
 			if shouldDecide { // Only decide on a route if we should, early out for force next mode
 				routeDecision = nextRoute.Decide(sessionCacheEntry.RouteDecision, nnStats, directStats,
 					routing.DecideUpgradeRTT(float64(buyer.RoutingRulesSettings.RTTThreshold)),
 					routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis), buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
 					routing.DecideVeto(float64(buyer.RoutingRulesSettings.RTTVeto), buyer.RoutingRulesSettings.EnablePacketLossSafety, buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
+					routing.DecideCommitted(packet.TryBeforeYouBuy, &sessionCacheEntry.CommittedRouteCount, routeCountThreshold),
 				)
 
 				if routing.IsVetoed(routeDecision) {
@@ -697,20 +702,21 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 		{
 			level.Debug(locallogger).Log("msg", "caching session data")
 			updatedSessionCacheEntry := SessionCacheEntry{
-				CustomerID:      packet.CustomerID,
-				SessionID:       packet.SessionID,
-				UserHash:        packet.UserHash,
-				Sequence:        packet.Sequence,
-				RouteHash:       chosenRoute.Hash64(),
-				RouteDecision:   routeDecision,
-				TimestampStart:  timestampStart,
-				TimestampExpire: timestampExpire,
-				VetoTimestamp:   sessionCacheEntry.VetoTimestamp,
-				Version:         sessionCacheEntry.Version, //This was already incremented for the route tokens
-				Response:        responseData,
-				DirectRTT:       directStats.RTT,
-				NextRTT:         nnStats.RTT,
-				Location:        location,
+				CustomerID:          packet.CustomerID,
+				SessionID:           packet.SessionID,
+				UserHash:            packet.UserHash,
+				Sequence:            packet.Sequence,
+				RouteHash:           chosenRoute.Hash64(),
+				RouteDecision:       routeDecision,
+				CommittedRouteCount: sessionCacheEntry.CommittedRouteCount,
+				TimestampStart:      timestampStart,
+				TimestampExpire:     timestampExpire,
+				VetoTimestamp:       sessionCacheEntry.VetoTimestamp,
+				Version:             sessionCacheEntry.Version, //This was already incremented for the route tokens
+				Response:            responseData,
+				DirectRTT:           directStats.RTT,
+				NextRTT:             nnStats.RTT,
+				Location:            location,
 			}
 			result := redisClientCache.Set(sessionCacheKey, updatedSessionCacheEntry, 5*time.Minute)
 			if result.Err() != nil {
@@ -820,6 +826,8 @@ func addRouteDecisionMetric(d routing.Decision, m *metrics.SessionMetrics) {
 		m.DecisionMetrics.VetoPacketLossYOLO.Add(1)
 	case routing.DecisionRTTIncrease:
 		m.DecisionMetrics.RTTIncrease.Add(1)
+	case routing.DecisionCommittedPending:
+		m.DecisionMetrics.CommittedPending.Add(1)
 	}
 }
 

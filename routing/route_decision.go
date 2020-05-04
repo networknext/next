@@ -4,11 +4,13 @@ import (
 	"fmt"
 )
 
+// Decision is a representation of a whether or not a route should go over network next and why or why not.
 type Decision struct {
 	OnNetworkNext bool
 	Reason        DecisionReason
 }
 
+// DecisionFunc is a decision making function that decides whether or not a route should go over network next or direct.
 // Decision takes in whether or not the logic is currently considering staying on network next,
 // the stats of the predicted network next route,
 // the stats of the last network next route,
@@ -65,6 +67,8 @@ func (dr DecisionReason) String() string {
 		reason = "Veto Packet Loss YOLO"
 	case DecisionRTTIncrease:
 		reason = "RTT Increase"
+	case DecisionCommittedPending:
+		reason = "Committed Pending"
 	}
 
 	return fmt.Sprintf("%s (%d)", reason, dr)
@@ -91,6 +95,7 @@ const (
 	DecisionInitialSlice          DecisionReason = 1 << 16
 	DecisionNoNearRelays          DecisionReason = 1 << 17
 	DecisionRTTIncrease           DecisionReason = 1 << 18
+	DecisionCommittedPending      DecisionReason = 1 << 19
 )
 
 // DecideUpgradeRTT will decide if the client should use the network next route if the RTT reduction is greater than the given threshold.
@@ -98,7 +103,7 @@ const (
 func DecideUpgradeRTT(rttThreshold float64) DecisionFunc {
 	return func(prevDecision Decision, predictedNextStats Stats, lastNextStats Stats, directStats Stats) Decision {
 		// If upgrading to a nextwork next route would reduce RTT by at least the given threshold, upgrade
-		if !prevDecision.OnNetworkNext && !IsVetoed(prevDecision) && directStats.RTT-predictedNextStats.RTT >= rttThreshold {
+		if !prevDecision.OnNetworkNext && !IsVetoed(prevDecision) && !IsCommittedPending(prevDecision) && directStats.RTT-predictedNextStats.RTT >= rttThreshold {
 			return Decision{true, DecisionRTTReduction}
 		}
 
@@ -159,40 +164,69 @@ func DecideVeto(rttVeto float64, packetLossSafety bool, yolo bool) DecisionFunc 
 
 			// If the route isn't vetoed, then it stays on network next
 			return Decision{prevDecision.OnNetworkNext, DecisionNoChange}
-		} else {
-			// Handle the case where another decision function decided to switch back to direct due
-			// to RTT increase, but the increase is so severe it should be vetoed.
-			// If the previous route was direct, then the last next stats should be empty,
-			// so the veto shouldn't affect direct routes
-			if prevDecision.Reason == DecisionRTTIncrease {
-				if lastNextStats.RTT-directStats.RTT > rttVeto {
-					// If the buyer has YouOnlyLiveOnce safety setting enabled, add that reason to the DecisionReason
-					if yolo {
-						return Decision{false, DecisionVetoRTT | DecisionVetoYOLO}
-					}
-
-					return Decision{false, DecisionVetoRTT}
-				}
-			}
-
-			// If the route isn't on network next yet, then this decision doesn't apply.
-			return Decision{prevDecision.OnNetworkNext, DecisionNoChange}
 		}
-	}
-}
 
-// DecideCommitted is not yet implemented
-func DecideCommitted() DecisionFunc {
-	return func(prevDecision Decision, predictedNextStats Stats, lastNextStats Stats, directStats Stats) Decision {
+		// Handle the case where another decision function decided to switch back to direct due
+		// to RTT increase, but the increase is so severe it should be vetoed.
+		if prevDecision.Reason == DecisionRTTIncrease {
+			if lastNextStats.RTT-directStats.RTT > rttVeto {
+				// If the buyer has YouOnlyLiveOnce safety setting enabled, add that reason to the DecisionReason
+				if yolo {
+					return Decision{false, DecisionVetoRTT | DecisionVetoYOLO}
+				}
+
+				return Decision{false, DecisionVetoRTT}
+			}
+		}
+
+		// If the route isn't on network next yet, then this decision doesn't apply.
 		return Decision{prevDecision.OnNetworkNext, DecisionNoChange}
 	}
 }
 
+// DecideCommitted will decide if the selected route should be taken based on the number of previous network next routes that were an improvement over direct
+func DecideCommitted(tryBeforeYouBuy bool, committedRouteCount *uint64, routeCountThreshold uint64) DecisionFunc {
+	return func(prevDecision Decision, predictedNextStats Stats, lastNextStats Stats, directStats Stats) Decision {
+		// If the buyer doesn't have try before you buy enabled, skip this decision check
+		if !tryBeforeYouBuy {
+			*committedRouteCount = 0
+			return Decision{prevDecision.OnNetworkNext, DecisionNoChange}
+		}
+
+		// If the route isn't going over network next yet, then don't consider whether or not it's committed
+		if !prevDecision.OnNetworkNext {
+			*committedRouteCount = 0
+			return Decision{false, DecisionNoChange}
+		}
+
+		// If the decision logic has considered a network next route so far and the past routeCountThreshold routes have been an improvement,
+		// then maintain the network next route
+		if *committedRouteCount >= routeCountThreshold {
+			*committedRouteCount = routeCountThreshold
+			return Decision{true, DecisionNoChange}
+		}
+
+		// This route was an improvement, but the SDK shouldn't be committed to the route yet, so force it direct
+		*committedRouteCount++
+		return Decision{false, DecisionCommittedPending}
+	}
+}
+
+// IsVetoed returns true if the given route decision was a veto.
 func IsVetoed(decision Decision) bool {
 	if !decision.OnNetworkNext {
 		if decision.Reason&DecisionVetoNoRoute != 0 || decision.Reason&DecisionVetoPacketLoss != 0 || decision.Reason&DecisionVetoRTT != 0 || decision.Reason&DecisionVetoYOLO != 0 {
 			return true
 		}
+	}
+
+	return false
+}
+
+// IsCommittedPending returns true if the route is an improvement but was forced to direct because it's not yet committed
+func IsCommittedPending(decision Decision) bool {
+	if !decision.OnNetworkNext && decision.Reason == DecisionCommittedPending {
+		return true
 	}
 
 	return false

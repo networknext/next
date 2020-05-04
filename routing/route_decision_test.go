@@ -131,9 +131,58 @@ func TestDecideVeto(t *testing.T) {
 	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
 	assert.Equal(t, routing.Decision{true, routing.DecisionNoChange}, decision)
 
+	// Test if route was changed to direct from another function, but the RTT increase was so severe that it should be vetoed
+	lastNextStats.RTT = 60
+	decision = routing.Decision{OnNetworkNext: false, Reason: routing.DecisionRTTIncrease}
+	routeDecisionFunc = routing.DecideVeto(rttVeto, true, false)
+
+	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
+	assert.Equal(t, routing.Decision{false, routing.DecisionVetoRTT}, decision)
+
+	// Now with yolo
+	decision = routing.Decision{OnNetworkNext: false, Reason: routing.DecisionRTTIncrease}
+	routeDecisionFunc = routing.DecideVeto(rttVeto, true, true)
+
+	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
+	assert.Equal(t, routing.Decision{false, routing.DecisionVetoRTT | routing.DecisionVetoYOLO}, decision)
+
 	// Test if direct route isn't changed
 	decision.OnNetworkNext = false
 
 	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
 	assert.Equal(t, routing.Decision{false, routing.DecisionNoChange}, decision)
+}
+
+func TestDecideCommitted(t *testing.T) {
+	decision := routing.Decision{false, routing.DecisionNoChange}
+	committedRouteCount := uint64(0)
+	routeCountThreshold := uint64(3)
+
+	// Test if a route is unchanged when try before you buy is disabled
+	routeDecisionFunc := routing.DecideCommitted(false, &committedRouteCount, routeCountThreshold)
+
+	decision = routeDecisionFunc(decision, routing.Stats{}, routing.Stats{}, routing.Stats{})
+	assert.Equal(t, routing.Decision{false, routing.DecisionNoChange}, decision)
+
+	// Now test if the route has try before you buy enabled but the route is already direct
+	routeDecisionFunc = routing.DecideCommitted(true, &committedRouteCount, routeCountThreshold)
+
+	decision = routeDecisionFunc(decision, routing.Stats{}, routing.Stats{}, routing.Stats{})
+	assert.Equal(t, routing.Decision{false, routing.DecisionNoChange}, decision)
+
+	// Test if the route was an improvement, but not enough routes have been observed yet
+	decision.OnNetworkNext = true
+	routeDecisionFunc = routing.DecideCommitted(true, &committedRouteCount, routeCountThreshold)
+
+	decision = routeDecisionFunc(decision, routing.Stats{}, routing.Stats{}, routing.Stats{})
+	assert.Equal(t, routing.Decision{false, routing.DecisionCommittedPending}, decision)
+	assert.Equal(t, uint64(1), committedRouteCount)
+
+	// Test if the route was an improvement, and the SDK should finally be committed to the route
+	decision.OnNetworkNext = true
+	committedRouteCount = routeCountThreshold
+	routeDecisionFunc = routing.DecideCommitted(true, &committedRouteCount, routeCountThreshold)
+
+	decision = routeDecisionFunc(decision, routing.Stats{}, routing.Stats{}, routing.Stats{})
+	assert.Equal(t, routing.Decision{true, routing.DecisionNoChange}, decision)
 }
