@@ -12,7 +12,7 @@ var userInfo = {
 	name: "",
 	pubKey: "",
 	nickname: "",
-	token: "tst",
+	token: "",
 	userId: "",
 };
 
