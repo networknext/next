@@ -293,6 +293,10 @@ func main() {
 
 			level.Info(logger).Log("matrix", "route", "entries", len(routematrix.Entries))
 
+			if len(routematrix.Entries) == 0 {
+				sentry.CaptureMessage("no routes within route matrix")
+			}
+
 			time.Sleep(10 * time.Second)
 		}
 	}()

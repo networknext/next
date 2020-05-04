@@ -558,7 +558,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 				routing.SelectRoutesByRandomDestRelay(rand.NewSource(rand.Int63())),
 				routing.SelectRandomRoute(rand.NewSource(rand.Int63())))
 			if err != nil {
-				sentry.CaptureException(err)
 				level.Error(locallogger).Log("err", err)
 				writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.RouteFailure)
 				return
