@@ -1,10 +1,16 @@
 [Unit]
 Description=Network Next Relay
+ConditionPathExists=/app/relay
+After=network.target
 
 [Service]
 Type=simple
+LimitNOFILE=1024
+WorkingDirectory=/app
 ExecStart=/app/relay
 EnvironmentFile=/app/relay.env
+Restart=on-failure
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target

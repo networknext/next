@@ -87,7 +87,8 @@ namespace core
   void GenericPacketBuffer<BuffSize, PacketSize>::push(const net::Address& dest, const uint8_t* data, size_t len)
   {
     assert(len <= PacketSize);
-
+    auto& pkt = Packets[Count];
+    pkt.Len = len;
     auto& iov = mIOVecBuff[Count];
     iov.iov_len = len;
     std::copy(data, data + len, reinterpret_cast<uint8_t*>(iov.iov_base));
