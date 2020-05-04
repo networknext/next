@@ -32,7 +32,7 @@ namespace util
      std::shared_ptr<std::condition_variable> var);
     ~Sender() override = default;
 
-    void send(T& msg);
+    void send(T&& msg);
   };
 
   template <typename T>
@@ -51,7 +51,7 @@ namespace util
     auto hasItems() -> bool;
 
    private:
-    std::mutex mWaitLock;
+    std::shared_ptr<std::mutex> mWaitLock;
   };
 
   template <typename T>
@@ -62,8 +62,8 @@ namespace util
     auto queue = std::make_shared<std::list<T>>();
     auto var = std::make_shared<std::condition_variable>();
 
-    Sender<T> sender(closed, lock, queue, var);
-    Receiver<T> receiver(closed, lock, queue, var);
+    Sender<T> sender(closed, queue, lock, var);
+    Receiver<T> receiver(closed, queue, lock, var);
 
     return {sender, receiver};
   }
@@ -81,8 +81,8 @@ namespace util
   Channel<T>::~Channel()
   {
     std::unique_lock<std::mutex> lock(*mLock);
-    close = true;
-    mVar.notify_all();
+    *mClosed = true;
+    mVar->notify_all();
   }
 
   template <typename T>
@@ -91,7 +91,7 @@ namespace util
    std::shared_ptr<std::list<T>> queue,
    std::shared_ptr<std::mutex> lock,
    std::shared_ptr<std::condition_variable> var)
-   : Channel(closed, queue, lock, var)
+   : Channel<T>(closed, queue, lock, var)
   {}
 
   template <typename T>
@@ -100,43 +100,43 @@ namespace util
    std::shared_ptr<std::list<T>> queue,
    std::shared_ptr<std::mutex> lock,
    std::shared_ptr<std::condition_variable> var)
-   : Channel(closed, queue, lock, var)
+   : Channel<T>(closed, queue, lock, var), mWaitLock(std::make_shared<std::mutex>())
   {}
 
   template <typename T>
-  void Sender<T>::send(T& item)
+  void Sender<T>::send(T&& item)
   {
-    std::unique_lock<std::mutex> lock(*mLock);
+    std::unique_lock<std::mutex> lock(*this->mLock);
 
-    if (mClosed) {
+    if (this->mClosed) {
       throw std::logic_error("tried to send on a closed channel");
     }
 
-    mQueue->push_back(std::move(item));
+    this->mQueue->push_back(std::move(item));
 
-    mVar->notify_one();
+    this->mVar->notify_one();
   }
 
   template <typename T>
   auto Receiver<T>::recv(T& msg) -> bool
   {
-    std::unique_lock<std::mutex> lock(mWaitLock);
+    std::unique_lock<std::mutex> lock(*this->mWaitLock);
 
-    mVar.wait(lock, [this] {
-      return *mClosed || !mQueue->empty();
+    this->mVar->wait(lock, [this] {
+      return *this->mClosed || !this->mQueue->empty();
     });
 
     // queue modification takes place within this block
     {
-      std::unique_lock<std::mutex>(*mLock);
+      std::unique_lock<std::mutex>(*this->mLock);
 
-      if (mQueue->empty()) {
+      if (this->mQueue->empty()) {
         return false;
       }
 
-      msg = std::move(mQueue->front());
+      msg = std::move(this->mQueue->front());
 
-      mQueue->pop_front();
+      this->mQueue->pop_front();
 
       return true;
     }
@@ -145,7 +145,7 @@ namespace util
   template <typename T>
   auto Receiver<T>::hasItems() -> bool
   {
-    std::unique_lock<std::mutex>(*mLock);
-    return mQueue->size() > 0;
+    std::unique_lock<std::mutex>(*this->mLock);
+    return this->mQueue->size() > 0;
   }
 }  // namespace util

@@ -12,7 +12,7 @@ SRC_OBJ_FILES					:= $(patsubst $(SRC)/%.cpp, $(OBJ)/%.test.o, $(SRC_FILES))
 SRC_DEP_FILES					:= $(patsubst $(SRC)/%.cpp, $(OBJ)/%.test.d, $(SRC_FILES))
 
 COMMON_FLAGS 					:= $(CXX) $(CXX_FLAGS) $(CXX_DBG_FLAGS)
-COMMON_COMPILE_FLAGS 	:= $(COMMON_FLAGS) -c -DTEST_BUILD 
+COMMON_COMPILE_FLAGS 	:= $(COMMON_FLAGS) -c -DTEST_BUILD
 
 ################
 ### Targets  ###
@@ -23,10 +23,10 @@ all:  $(BIN)/$(EXE)
 
 .PHONY: run
 run: $(BIN)/$(EXE)
-	@$<
+	@$< $(TESTS)
 
 .PHONY: clean
-clean: 
+clean:
 	@rm -f $(BIN)/$(EXE) $(SRC_OBJ_FILES) $(SRC_DEP_FILES) $(GCH)
 
 ##############
@@ -46,4 +46,3 @@ $(BIN)/$(EXE): $(SRC_OBJ_FILES)
 	$(COMMON_FLAGS) -o $@ $^ $(LIBRARIES)
 
 -include $(SRC_DEP_FILES)
-

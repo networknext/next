@@ -154,10 +154,10 @@ namespace
   }
 }  // namespace
 
-int main()
+int main(int argc, const char* argv[])
 {
 #ifdef TEST_BUILD
-  return testing::SpecTest::Run() ? 0 : 1;
+  return testing::SpecTest::Run(argc, argv) ? 0 : 1;
 #endif
 
 #ifdef BENCH_BUILD

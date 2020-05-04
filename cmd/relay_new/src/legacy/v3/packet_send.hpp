@@ -15,7 +15,7 @@ namespace legacy
      const net::Address& master_address,
      const BackendToken& master_token,
      PacketType packet_type,
-     const BackendRequest& request,
+     BackendRequest& request,
      core::GenericPacket<>& packet) -> bool;
   }
 }  // namespace legacy

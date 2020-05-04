@@ -21,13 +21,30 @@ namespace testing
     gTests->push_back(this);
   }
 
-  bool SpecTest::Run()
+  bool SpecTest::Run(int argc, const char* argv[])
   {
-    std::cout << "Test count: " << gTests->size() << '\n';
-
     std::sort(gTests->begin(), gTests->end(), [](testing::SpecTest* a, testing::SpecTest* b) -> bool {
       return strcmp(a->TestName, b->TestName) > 0;
     });
+
+    if (argc > 1) {
+      gTests->erase(
+       std::remove_if(
+        gTests->begin(),
+        gTests->end(),
+        [argc, argv](auto test) -> bool {
+          for (int i = 1; i < argc; i++) {
+            if (std::string(argv[i]) == test->TestName) {
+              return false;
+            }
+          }
+
+          return true;
+        }),
+       gTests->end());
+    }
+
+    std::cout << "Test count: " << gTests->size() << '\n';
 
     bool noTestsSkipped = true;
     for (auto test : *gTests) {

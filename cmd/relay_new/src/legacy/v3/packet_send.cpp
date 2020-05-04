@@ -34,7 +34,7 @@ namespace legacy
      const core::Packet<std::vector<uint8_t>>& packet,
      core::Packet<std::vector<uint8_t>>& out) -> bool
     {
-      assert(fragmentTotal > 0 && fragmentIndex < fragmentTotal && fragmentTotal <= FragmentMax);
+      assert(fragmentTotal > 0 && fragmentIndex < fragmentTotal);
 
       int total_bytes = HeaderBytes + packet.Len + crypto_box_SEALBYTES;
 
@@ -118,7 +118,7 @@ namespace legacy
         return false;
       }
 
-      for (int i = 0; i < fragment_total; i++) {
+      for (size_t i = 0; i < fragment_total; i++) {
         int fragment_bytes;
         if (i == fragment_total - 1) {
           // last fragment

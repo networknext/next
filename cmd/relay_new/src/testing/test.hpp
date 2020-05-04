@@ -49,7 +49,7 @@ namespace testing
   class SpecTest
   {
    public:
-    static bool Run();
+    static bool Run(int argc, const char* argv[]);
 
     const char* TestName;
     const bool Disabled;

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "net/address.hpp"
+
 namespace legacy
 {
   namespace v3

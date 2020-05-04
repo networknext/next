@@ -25,8 +25,6 @@ namespace legacy
           success = true;
           break;
         }
-
-        std::this_thread::sleep_for(1s);
       }
       return success;
     }
@@ -73,12 +71,13 @@ namespace legacy
       core::GenericPacket<> packet;
 
       // send request
-
       if (!packet_send(mSocket, token.Address, token, PacketType::InitRequest, request, packet)) {
         Log("failed to send init packet");
         return false;
       }
 
+      // wait a seconds for the response to come in
+      std::this_thread::sleep_for(1s);
 
       // receive response
       mReceiver.recv(packet);
@@ -90,6 +89,8 @@ namespace legacy
       }
 
       // process response
+
+      LogDebug("hey shit worked");
 
       return true;
     }
@@ -153,8 +154,10 @@ namespace legacy
       return true;
     }
 
-    auto Backend::buildConfigJSON(util::JSON& doc) -> bool {
+    auto Backend::buildConfigJSON(util::JSON& doc) -> bool
+    {
       doc.set("config", "value");
+      return true;
     }
 
     auto Backend::buildUpdateJSON(util::JSON& doc) -> bool
