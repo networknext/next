@@ -6,6 +6,7 @@
 #include "encoding/read.hpp"
 #include "net/address.hpp"
 #include "os/platform.hpp"
+#include "util/throughput_recorder.hpp"
 
 namespace core
 {
@@ -14,18 +15,28 @@ namespace core
     class RelayPingHandler: public BaseHandler
     {
      public:
-      RelayPingHandler(GenericPacket<>& packet, const int size, const os::Socket& socket, const net::Address& mRecvAddr);
+      RelayPingHandler(
+       GenericPacket<>& packet,
+       const int size,
+       const os::Socket& socket,
+       const net::Address& mRecvAddr,
+       util::ThroughputRecorder& recorder);
 
       void handle();
 
      private:
       const os::Socket& mSocket;
       const net::Address& mRecvAddr;
+      util::ThroughputRecorder& mRecorder;
     };
 
     inline RelayPingHandler::RelayPingHandler(
-     GenericPacket<>& packet, const int size, const os::Socket& socket, const net::Address& receivingAddress)
-     : BaseHandler(packet, size), mSocket(socket), mRecvAddr(receivingAddress)
+     GenericPacket<>& packet,
+     const int size,
+     const os::Socket& socket,
+     const net::Address& receivingAddress,
+     util::ThroughputRecorder& recorder)
+     : BaseHandler(packet, size), mSocket(socket), mRecvAddr(receivingAddress), mRecorder(recorder)
     {}
 
     inline void RelayPingHandler::handle()
@@ -37,7 +48,7 @@ namespace core
       sendingAddr = packet.getFromAddr();
       packet.writeFromAddr(mRecvAddr);
 
-      LogDebug("got ping packet from ", sendingAddr);
+      mRecorder.addToSent(RELAY_PING_PACKET_BYTES);
 
       // ? probably want to send immediately than use sendmmsg here?
       if (!mSocket.send(sendingAddr, packet.Internal.Buffer.data(), RELAY_PING_PACKET_BYTES)) {

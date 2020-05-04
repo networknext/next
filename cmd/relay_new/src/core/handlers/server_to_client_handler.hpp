@@ -1,10 +1,10 @@
 #ifndef CORE_HANDLERS_SERVER_TO_CLIENT_HANDLER_HPP
 #define CORE_HANDLERS_SERVER_TO_CLIENT_HANDLER_HPP
+
 #include "base_handler.hpp"
-
 #include "core/session_map.hpp"
-
 #include "os/platform.hpp"
+#include "util/throughput_recorder.hpp"
 
 namespace core
 {
@@ -13,22 +13,24 @@ namespace core
     class ServerToClientHandler: public BaseHandler
     {
      public:
-      ServerToClientHandler(GenericPacket<>& packet, const int packetSize, core::SessionMap& sessions);
+      ServerToClientHandler(
+       GenericPacket<>& packet, const int packetSize, core::SessionMap& sessions, util::ThroughputRecorder& recorder);
 
-      template <typename T, typename F>
-      void handle(T& sender, F funcptr);
+      template <size_t Size>
+      void handle(core::GenericPacketBuffer<Size>& buff);
 
      private:
       core::SessionMap& mSessionMap;
+      util::ThroughputRecorder& mRecorder;
     };
 
     inline ServerToClientHandler::ServerToClientHandler(
-     GenericPacket<>& packet, const int packetSize, core::SessionMap& sessions)
-     : BaseHandler(packet, packetSize), mSessionMap(sessions)
+     GenericPacket<>& packet, const int packetSize, core::SessionMap& sessions, util::ThroughputRecorder& recorder)
+     : BaseHandler(packet, packetSize), mSessionMap(sessions), mRecorder(recorder)
     {}
 
-    template <typename T, typename F>
-    inline void ServerToClientHandler::handle(T& sender, F funcptr)
+    template <size_t Size>
+    inline void ServerToClientHandler::handle(core::GenericPacketBuffer<Size>& buff)
     {
       if (mPacketSize <= RELAY_HEADER_BYTES || mPacketSize > RELAY_HEADER_BYTES + RELAY_MTU) {
         return;
@@ -76,7 +78,8 @@ namespace core
         return;
       }
 
-      (sender.*funcptr)(session->PrevAddr, mPacket.Buffer.data(), mPacketSize);
+      mRecorder.addToSent(mPacketSize);
+      buff.push(session->PrevAddr, mPacket.Buffer.data(), mPacketSize);
       LogDebug("sent server packet to ", session->PrevAddr);
     }
   }  // namespace handlers

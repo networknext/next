@@ -13,8 +13,7 @@ endif
 SDKNAME = libnext
 
 TIMESTAMP ?= $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
-SHA ?= $(shell git rev-parse --short HEAD)
-TAG ?= $(shell git describe --tags 2> /dev/null)
+RELEASE ?= $(shell git describe --tags --exact-match 2> /dev/null || git rev-parse --short HEAD)
 
 CURRENT_DIR = $(shell pwd -P)
 DEPLOY_DIR = ./deploy
@@ -35,7 +34,7 @@ export NEXT_DATACENTER = local
 export NEXT_CUSTOMER_PUBLIC_KEY = leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==
 export NEXT_CUSTOMER_PRIVATE_KEY = leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn
 export NEXT_HOSTNAME = 127.0.0.1
-export NEXT_PORT = 40000    # Do not change. This must stay at 40000. The shipped SDK relies on this!
+export NEXT_PORT = 40000
 
 ####################
 ##    RELAY ENV   ##
@@ -54,7 +53,7 @@ export RELAY_DEBUG = 0
 endif
 
 ## Relay keys are unique to each relay and used to DECRYPT only the segment in the route token indended for itself
-## For local dev purposes ALL relays we run will have the same keys, but in production they are all different 
+## For local dev purposes ALL relays we run will have the same keys, but in production they are all different
 ifndef RELAY_PUBLIC_KEY
 export RELAY_PUBLIC_KEY = 9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=
 endif
@@ -67,7 +66,7 @@ endif
 ##    BACKEND ENV   ##
 ######################
 
-## Server backend keys are used for SIGNING data so game servers can verify response data's authenticity 
+## Server backend keys are used for SIGNING data so game servers can verify response data's authenticity
 ifndef SERVER_BACKEND_PUBLIC_KEY
 export SERVER_BACKEND_PUBLIC_KEY = TGHKjEeHPtSgtZfDyuDPcQgtJTyRDtRvGSKvuiWWo0A=
 endif
@@ -85,7 +84,7 @@ ifndef RELAY_ROUTER_PRIVATE_KEY
 export RELAY_ROUTER_PRIVATE_KEY = ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
 endif
 
-## By default we set only error and warning logs for server_backend and relay_backend 
+## By default we set only error and warning logs for server_backend and relay_backend
 ifndef BACKEND_LOG_LEVEL
 export BACKEND_LOG_LEVEL = warn
 endif
@@ -98,12 +97,26 @@ ifndef MAXMIND_DB_URI
 export MAXMIND_DB_URI = ./testdata/GeoIP2-City-Test.mmdb
 endif
 
+ifndef REDIS_HOST_PORTAL
+export REDIS_HOST_PORTAL = 127.0.0.1:6379
+endif
+
 ifndef REDIS_HOST_RELAYS
 export REDIS_HOST_RELAYS = 127.0.0.1:6379
 endif
 
 ifndef REDIS_HOST_CACHE
 export REDIS_HOST_CACHE = 127.0.0.1:6379
+endif
+
+ifndef AUTH_DOMAIN
+export AUTH_DOMAIN = networknext.auth0.com
+endif
+ifndef AUTH_CLIENTID
+export AUTH_CLIENTID = NIwrWYmG9U3tCQP6QxJqCx8n2xGSTCvf
+endif
+ifndef AUTH_CLIENTSECRET
+export AUTH_CLIENTSECRET = GZ9l7xF0dggtvz-jxbG7_-yX2YlvkGas4sIq2RJK4glxkHvT0t-WwMtyJlP5qix0
 endif
 
 .PHONY: help
@@ -136,8 +149,8 @@ test-unit-sdk: build-sdk-test ## runs sdk unit tests
 	@$(DIST_DIR)/$(SDKNAME)_test
 
 .PHONY: test-unit-relay
-test-unit-relay: build-relay ## runs relay unit tests
-	@$(DIST_DIR)/relay test
+test-unit-relay: build-relay-tests ## runs relay unit tests
+	@$(NEW_RELAY_DIR)/bin/relay.test
 
 .PHONY: test-unit-backend
 test-unit-backend: lint ## runs backend unit tests
@@ -173,7 +186,7 @@ build-functional-backend: ## builds the functional backend
 	printf "done\n" ; \
 
 .PHONY: build-test-func
-build-test-func: clean build-sdk build-relay build-functional-server build-functional-client build-functional-backend ## builds the functional tests
+build-test-func: clean build-sdk build-ref-relay build-functional-server build-functional-client build-functional-backend ## builds the functional tests
 
 .PHONY: run-test-func
 run-test-func:
@@ -245,23 +258,34 @@ dev-route: ## prints routes from relay to datacenter in route matrix
 #######################
 
 RELAY_DIR	:= ./cmd/relay
+NEW_RELAY_DIR := ./cmd/relay_new
+NEW_RELAY_MAKEFILE := Makefile
 RELAY_EXE	:= relay
 
-.PHONY: $(DIST_DIR)/$(RELAY_EXE)
-$(DIST_DIR)/$(RELAY_EXE):
-
-.PHONY: build-relay
-build-relay: ## builds the relay
+.PHONY: build-ref-relay
+build-ref-relay: ## builds the relay
 	@printf "Building relay... "
 	@$(CXX) $(CXX_FLAGS) -o $(DIST_DIR)/$(RELAY_EXE) cmd/relay/*.cpp $(LDFLAGS)
 	@printf "done\n"
 
+.PHONY: build-relay
+build-relay: ## builds the new relay
+	@printf "Building new relay... "
+	@cd $(NEW_RELAY_DIR) && $(MAKE) release
+	@echo "done"
+
+.PHONY: build-relay-tests
+build-relay-tests: ## builds the relay version that runs tests
+	@printf "Building relay with tests enabled... "
+	@cd $(NEW_RELAY_DIR) && $(MAKE) test
+	@echo "done"
+
 .PHONY: dev-relay
-dev-relay: $(DIST_DIR)/$(RELAY_EXE) build-relay ## runs a local relay
-	@$<
+dev-relay: build-relay ## runs a local relay
+	@$(DIST_DIR)/$(RELAY_EXE)
 
 .PHONY: dev-multi-relays
-dev-multi-relays: $(DIST_DIR)/$(RELAY_EXE) build-relay ## runs 10 local relays
+dev-multi-relays: build-relay ## runs 10 local relays
 	./cmd/tools/scripts/relay-spawner.sh -n 10 -p 10000
 
 #######################
@@ -359,7 +383,7 @@ deploy-portal-prod: ## builds and deploys the portal to the prod instance group
 .PHONY: build-relay-backend
 build-relay-backend: ## builds the relay backend binary
 	@printf "Building relay backend... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/relay_backend ./cmd/relay_backend/relay_backend.go
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA) -X main.release=$(RELEASE)" -o ${DIST_DIR}/relay_backend ./cmd/relay_backend/relay_backend.go
 	@printf "done\n"
 
 .PHONY: build-relay-backend-artifact
@@ -407,7 +431,7 @@ deploy-relay-backend-prod: ## builds and deploys the relay backend to the prod i
 .PHONY: build-server-backend
 build-server-backend: ## builds the server backend binary
 	@printf "Building server backend... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/server_backend ./cmd/server_backend/server_backend.go
+	@$(GO) build -ldflags "-s -w -X main.release=$(RELEASE)" -o ${DIST_DIR}/server_backend ./cmd/server_backend/server_backend.go
 	@printf "done\n"
 
 .PHONY: build-server-backend-artifact

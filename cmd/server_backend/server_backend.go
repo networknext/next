@@ -20,16 +20,22 @@ import (
 
 	gcplogging "cloud.google.com/go/logging"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/oschwald/geoip2-golang"
 
 	"github.com/networknext/backend/billing"
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
+)
+
+var (
+	release string
 )
 
 func main() {
@@ -65,6 +71,22 @@ func main() {
 		logger = logging.NewStackdriverLogger(loggingClient, "server-backend")
 	}
 
+	sentryOpts := sentry.ClientOptions{
+		ServerName:       "Server Backend",
+		Release:          release,
+		Dist:             "linux",
+		AttachStacktrace: true,
+		Debug:            true,
+	}
+
+	if err := sentry.Init(sentryOpts); err != nil {
+		level.Error(logger).Log("msg", "failed to initialize sentry", "err", err)
+		os.Exit(1)
+	}
+
+	// force sentry to post any updates upon program exit
+	defer sentry.Flush(time.Second * 2)
+
 	// var serverPublicKey []byte
 	var customerPublicKey []byte
 	var serverPrivateKey []byte
@@ -97,6 +119,13 @@ func main() {
 		}
 	}
 
+	redisPortalHost := os.Getenv("REDIS_HOST_PORTAL")
+	redisClientPortal := storage.NewRedisClient(redisPortalHost)
+	if err := redisClientPortal.Ping().Err(); err != nil {
+		level.Error(logger).Log("envvar", "REDIS_HOST_PORTAL", "value", redisPortalHost, "err", err)
+		os.Exit(1)
+	}
+
 	redisHost := os.Getenv("REDIS_HOST_RELAYS")
 	redisClientRelays := storage.NewRedisClient(redisHost)
 	if err := redisClientRelays.Ping().Err(); err != nil {
@@ -123,6 +152,12 @@ func main() {
 		}
 		defer mmreader.Close()
 	}
+	if key, ok := os.LookupEnv("IPSTACK_ACCESS_KEY"); ok {
+		ipLocator = &routing.IPStack{
+			Client:    http.DefaultClient,
+			AccessKey: key,
+		}
+	}
 
 	geoClient := routing.GeoClient{
 		RedisClient: redisClientRelays,
@@ -133,12 +168,24 @@ func main() {
 	var db storage.Storer = &storage.InMemory{
 		LocalMode: true,
 	}
-	db.AddBuyer(ctx, routing.Buyer{
+
+	if err := db.AddBuyer(ctx, routing.Buyer{
 		ID:                   13672574147039585173,
 		Name:                 "local",
 		PublicKey:            customerPublicKey,
 		RoutingRulesSettings: routing.LocalRoutingRulesSettings,
-	})
+	}); err != nil {
+		level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
+		os.Exit(1)
+	}
+	if err := db.AddDatacenter(ctx, routing.Datacenter{
+		ID:      crypto.HashID("local"),
+		Name:    "local",
+		Enabled: true,
+	}); err != nil {
+		level.Error(logger).Log("msg", "could not add datacenter to storage", "err", err)
+		os.Exit(1)
+	}
 
 	// Create a no-op biller
 	var biller billing.Biller = &billing.NoOpBiller{}
@@ -205,6 +252,12 @@ func main() {
 	}
 
 	// Create server update metrics
+	serverInitMetrics, err := metrics.NewServerInitMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create server update metrics", "err", err)
+	}
+
+	// Create server update metrics
 	serverUpdateMetrics, err := metrics.NewServerUpdateMetrics(ctx, metricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create server update metrics", "err", err)
@@ -266,7 +319,7 @@ func main() {
 
 		conn, err := net.ListenUDP("udp", &addr)
 		if err != nil {
-			level.Error(logger).Log("addr", conn.LocalAddr().String(), "err", err)
+			level.Error(logger).Log("err", err)
 			os.Exit(1)
 		}
 
@@ -274,8 +327,9 @@ func main() {
 			Conn:          conn,
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
+			ServerInitHandlerFunc:    transport.ServerInitHandlerFunc(logger, db, serverInitMetrics, serverPrivateKey),
 			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClientCache, db, serverUpdateMetrics),
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClientCache, db, &routeMatrix, ipLocator, &geoClient, sessionMetrics, biller, serverPrivateKey, routerPrivateKey),
+			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClientCache, redisClientPortal, db, &routeMatrix, ipLocator, &geoClient, sessionMetrics, biller, serverPrivateKey, routerPrivateKey),
 		}
 
 		go func() {

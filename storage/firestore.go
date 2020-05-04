@@ -51,8 +51,8 @@ type relay struct {
 	Address            string                 `firestore:"publicAddress"`
 	PublicKey          []byte                 `firestore:"publicKey"`
 	UpdateKey          []byte                 `firestore:"updateKey"`
-	NICSpeedMbps       int                    `firestore:"nicSpeedMbps"`
-	IncludedBandwithGB int                    `firestore:"includedBandwidthGB"`
+	NICSpeedMbps       int64                  `firestore:"nicSpeedMbps"`
+	IncludedBandwithGB int64                  `firestore:"includedBandwidthGB"`
 	Datacenter         *firestore.DocumentRef `firestore:"datacenter"`
 	Seller             *firestore.DocumentRef `firestore:"seller"`
 	ManagementAddress  string                 `firestore:"managementAddress"`
@@ -468,8 +468,8 @@ func (fs *Firestore) AddRelay(ctx context.Context, r routing.Relay) error {
 		Address:            r.Addr.String(),
 		PublicKey:          r.PublicKey,
 		UpdateKey:          r.PublicKey,
-		NICSpeedMbps:       r.NICSpeedMbps,
-		IncludedBandwithGB: r.IncludedBandwidthGB,
+		NICSpeedMbps:       int64(r.NICSpeedMbps),
+		IncludedBandwithGB: int64(r.IncludedBandwidthGB),
 		Datacenter:         datacenterRef,
 		Seller:             sellerRef,
 		ManagementAddress:  r.ManagementAddr,
@@ -539,7 +539,7 @@ func (fs *Firestore) RemoveRelay(ctx context.Context, id uint64) error {
 	return fmt.Errorf("could not remove relay with id %d in firestore", id)
 }
 
-// Only relay state & public key is updated in firestore for now
+// Only relay state, public key, and NIC speed are updated in firestore for now
 func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 	// Get a copy of the relay in cached storage
 	fs.relayMutex.RLock()
@@ -579,6 +579,7 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 				"state":           r.State,
 				"stateUpdateTime": stateUpdateTime,
 				"publicKey":       r.PublicKey,
+				"nicSpeedMbps":    int64(r.NICSpeedMbps),
 			}
 
 			// Update the relay in firestore
@@ -937,8 +938,8 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 				Port: int(iport),
 			},
 			PublicKey:           publicKey,
-			NICSpeedMbps:        r.NICSpeedMbps,
-			IncludedBandwidthGB: r.IncludedBandwithGB,
+			NICSpeedMbps:        uint64(r.NICSpeedMbps),
+			IncludedBandwidthGB: uint64(r.IncludedBandwithGB),
 			ManagementAddr:      r.ManagementAddress,
 			SSHUser:             r.SSHUser,
 			SSHPort:             r.SSHPort,
@@ -959,10 +960,6 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 			continue
 		}
 
-		if !d.Enabled {
-			continue
-		}
-
 		datacenter := routing.Datacenter{
 			ID:      crypto.HashID(d.Name),
 			Name:    d.Name,
@@ -974,8 +971,6 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 		}
 
 		relay.Datacenter = datacenter
-		relay.Latitude = float64(d.Latitude)
-		relay.Longitude = float64(d.Longitude)
 
 		// Get seller
 		sdoc, err := r.Seller.Get(ctx)

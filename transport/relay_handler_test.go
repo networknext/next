@@ -119,8 +119,8 @@ func relayHandlerSuccessAssertions(t *testing.T, recorder *httptest.ResponseReco
 		relay := relaysInLocation[0]
 
 		assert.Equal(t, crypto.HashID(addr), relay.ID)
-		assert.Equal(t, location.Latitude, math.Round(relay.Latitude*1000)/1000)
-		assert.Equal(t, location.Longitude, math.Round(relay.Longitude*1000)/1000)
+		assert.Equal(t, location.Latitude, math.Round(relay.Datacenter.Location.Latitude*1000)/1000)
+		assert.Equal(t, location.Longitude, math.Round(relay.Datacenter.Location.Longitude*1000)/1000)
 	}
 
 	// Validate response header is correct
@@ -673,10 +673,12 @@ func TestRelayHandlerSuccess(t *testing.T) {
 		Datacenter: routing.Datacenter{
 			ID:   1,
 			Name: "some name",
+			Location: routing.Location{
+				Latitude:  13,
+				Longitude: 13,
+			},
 		},
 		PublicKey:      relayPublicKey,
-		Latitude:       13,
-		Longitude:      13,
 		LastUpdateTime: time.Now().Add(-time.Second),
 	}
 
@@ -740,7 +742,7 @@ func TestRelayHandlerSuccess(t *testing.T) {
 				PacketLoss: 12,
 			},
 		},
-		TrafficStats: transport.RelayTrafficStats{
+		TrafficStats: routing.RelayTrafficStats{
 			SessionCount:  10,
 			BytesSent:     1000000,
 			BytesReceived: 1000000,

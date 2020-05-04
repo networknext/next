@@ -2,14 +2,11 @@
 #define CORE_HANDLERS_ROUTE_REQUEST_HANDLER_HPP
 
 #include "base_handler.hpp"
-
 #include "core/session_map.hpp"
-
 #include "crypto/keychain.hpp"
-
 #include "net/address.hpp"
-
 #include "os/platform.hpp"
+#include "util/throughput_recorder.hpp"
 
 namespace core
 {
@@ -24,16 +21,18 @@ namespace core
        const int size,
        const net::Address& from,
        const crypto::Keychain& keychain,
-       core::SessionMap& sessions);
+       core::SessionMap& sessions,
+       util::ThroughputRecorder& recorder);
 
-      template <typename T, typename F>
-      void handle(T& sender, F funcptr);
+      template <size_t Size>
+      void handle(core::GenericPacketBuffer<Size>& size);
 
      private:
       const util::Clock& mRelayClock;
       const net::Address& mFrom;
       const crypto::Keychain& mKeychain;
       core::SessionMap& mSessionMap;
+      util::ThroughputRecorder& mRecorder;
     };
 
     inline RouteRequestHandler::RouteRequestHandler(
@@ -42,16 +41,18 @@ namespace core
      const int size,
      const net::Address& from,
      const crypto::Keychain& keychain,
-     core::SessionMap& sessions)
+     core::SessionMap& sessions,
+     util::ThroughputRecorder& recorder)
      : BaseHandler(packet, size),
        mRelayClock(relayClock),
        mFrom(from),
        mKeychain(keychain),
-       mSessionMap(sessions)
+       mSessionMap(sessions),
+       mRecorder(recorder)
     {}
 
-    template <typename T, typename F>
-    inline void RouteRequestHandler::handle(T& sender, F funcptr)
+    template <size_t Size>
+    inline void RouteRequestHandler::handle(core::GenericPacketBuffer<Size>& buff)
     {
       LogDebug("got route request from ", mFrom);
 
@@ -109,8 +110,9 @@ namespace core
 
       LogDebug("sending route request to ", token.NextAddr);
 
-      (sender.*funcptr)(
-       token.NextAddr, &mPacket.Buffer[RouteToken::EncryptedByteSize], mPacketSize - RouteToken::EncryptedByteSize);
+      auto length = mPacketSize - RouteToken::EncryptedByteSize;
+      mRecorder.addToSent(length);
+      buff.push(token.NextAddr, &mPacket.Buffer[RouteToken::EncryptedByteSize], length);
     }
   }  // namespace handlers
 }  // namespace core

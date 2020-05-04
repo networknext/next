@@ -47,7 +47,7 @@
                 background-color: darkgrey;
             }
             .map {
-                height: 100%;
+                height: 95%;
                 max-height: 1000px;
             }
             .hidden {
@@ -56,9 +56,18 @@
             .confirm-button {
                 background-color: #212529;
             }
+            .mapboxgl-canvas {
+                height: 100%;
+                width: 100%;
+            }
+            .mapboxgl-map {
+                height: 100%;
+                width: 100%;
+            }
+            #session-tool-map { position: absolute; top: 0; bottom: 0; width: 100%; }
         </style>
     </head>
-    <body>
+    <body class="hidden" id="app">
         <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark p-0 shadow">
             <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="#">
                 <div class="logo-container">
@@ -68,10 +77,16 @@
             </a>
             <ul class="navbar-nav px-3 w-100 mr-auto">
                 <li class="nav-item text-nowrap">
-                    <a class="nav-link active" href="#" id="home-link" onclick="changePage('home')">Home</a>
+                    <a class="nav-link active" href="#" id="home-link" onclick="WorkspaceHandler.changePage('home')">Home</a>
                 </li>
                 <li class="nav-item text-nowrap">
-                    <a class="nav-link" href="#" id="session-link" onclick="changePage('sessions')">Sessions</a>
+                    <a class="nav-link" href="#" id="sessions-link" onclick="WorkspaceHandler.changePage('sessions')">Sessions</a>
+                </li>
+                <li class="nav-item text-nowrap">
+                    <a class="nav-link" href="#" id="users-link" onclick="WorkspaceHandler.changePage('users')">Users</a>
+                </li>
+                <li class="nav-item text-nowrap">
+                    <a class="nav-link" href="#" id="relays-link" onclick="WorkspaceHandler.changePage('relay')">Relays</a>
                 </li>
             </ul>
             <ul class="navbar-nav px-3">
@@ -80,8 +95,8 @@
                         <i class="fas fa-flag fa-2x" data-toggle="tooltip" data-placement="bottom" title="Country Selection"></i>
                     </a>
                     <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
-                        <a class="dropdown-item" href="#">NA</a>
-                        <a class="dropdown-item" href="#">World</a>
+                        <a class="dropdown-item" href="#" onclick="MapHandler.updateMap('NA')">North America</a>
+                        <a class="dropdown-item" href="#" onclick="MapHandler.updateMap('WORLD')">World</a>
                     </div>
                 </li>
                 <li class="nav-item dropdown">
@@ -89,7 +104,7 @@
                         <i class="fas fa-user-circle fa-2x" data-toggle="tooltip" data-placement="bottom" title="Account"></i>
                     </a>
                     <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
-                        <a class="dropdown-item" href="#" onclick="changePage('account')">Settings</a>
+                        <a class="dropdown-item" href="#" onclick="WorkspaceHandler.changePage('account')">Settings</a>
                     </div>
                 </li>
                 <li class="nav-item text-nowrap">
@@ -105,20 +120,19 @@
             </div>
             <div class="workspace row map" id="map-workspace">
             </div>
-            <div id="tooltip" style="position: absolute; z-index: 1; pointer-events: none;"></div>
-            <div class="workspace row hidden" id="account-workspace">
+            <div class="workspace row hidden" id="accounts-workspace">
                 <nav class="navbar navbar-expand-md navbar-dark fi bg-dark p-0 shadow">
                     <ul class="navbar-nav px-3 w-100 mr-auto">
                         <li class="nav-item text-nowrap">
-                            <a class="nav-link" id="users-link" href="#" onclick="changeAccountPage('users')">Users</a>
+                            <a class="nav-link" id="accounts-link" href="#" onclick="WorkspaceHandler.changeAccountPage('accounts')">Users</a>
                         </li>
                         <li class="nav-item text-nowrap">
-                            <a class="nav-link" id="config-link" href="#" onclick="changeAccountPage('config')">Game Configuration</a>
+                            <a class="nav-link" id="config-link" href="#" onclick="WorkspaceHandler.changeAccountPage('config')">Game Configuration</a>
                         </li>
                     </ul>
-                    <ul class="navbar-nav px-3">
+                    <ul class="navbar-nav px-3" id="new-user-button">
                         <li class="nav-item text-nowrap">
-                            <a class="nav-link" href="#" onclick="changeAccountPage('new')">
+                            <a class="nav-link" href="#" onclick="WorkspaceHandler.changeAccountPage('new')">
                                 <i class="fas fa-plus" data-toggle="tooltip" data-placement="bottom" title="Add User"></i>
                             </a>
                         </li>
@@ -128,7 +142,7 @@
                     <div class="form-row justify-content-middle">
                         <div class="form-group col-sm-2">
                             <label for="pubKey">Public Key</label>
-                            <input type="text" class="form-control" id="pubKey" v-bind:value="pubkey">
+                            <input type="text" class="form-control" id="pubKey" v-bind:value="pubKey">
                         </div>
                     </div>
                     <div class="form-row justify-content-end">
@@ -141,26 +155,25 @@
                         </div>
                     </div>
                 </form>
-                <div id="users">
-                    <table class="table">
+                <div id="accounts">
+                    <div class="spinner-border" role="status" v-if="!accounts">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                    <table class="table" v-if="accounts && showAccountsTable">
                         <thead class="thead-dark">
-                        <tr>
-                            <th scope="col">Id</th>
-                            <th scope="col">First</th>
-                            <th scope="col">Last</th>
-                            <th scope="col">Email</th>
-                            <th scope="col">Edit</th>
-                        </tr>
+                            <tr>
+                                <th scope="col">Id</th>
+                                <th scope="col">Email</th>
+                                <th scope="col">Edit</th>
+                            </tr>
                         </thead>
                         <tbody>
                             <tr v-for="account in accounts" scope="row">
-                                <td>{{ account.id }}</td>
-                                <td>{{ account.first_name }}</td>
-                                <td>{{ account.last_name }}</td>
+                                <td>{{ account.user_id }}</td>
                                 <td>{{ account.email }}</td>
                                 <td>
                                     <button class="btn">
-                                        <i class="fas fa-edit" data-toggle="tooltip" data-placement="bottom" title="Edit User" onclick="editUser(account)"></i>
+                                        <i class="fas fa-edit" data-toggle="tooltip" data-placement="bottom" title="Edit User" v-on:click="editUser(account)"></i>
                                     </button>
                                     <button class="btn">
                                         <i class="fas fa-trash" data-toggle="tooltip" data-placement="bottom" title="Delete User"></i>
@@ -170,7 +183,7 @@
                         </tbody>
                     </table>
                 </div>
-                <form id="newUser">
+                <form id="new-user">
                     <div class="form-row justify-content-middle">
                         <div class="form-group col-sm-2">
                             <label for="email">Email</label>
@@ -194,68 +207,467 @@
                     </div>
                 </form>
             </div>
-            <div class="workspace row hidden" id="session-workspace">
+            <div class="workspace row hidden" id="users-workspace">
+                <form id="userSearch" onsubmit="fetchUserInfo()">
+                    <div class="input-group mb-3">
+                        <div class="input-group-prepend">
+                        <span class="input-group-text" id="basic-addon1">ID</span>
+                        </div>
+                        <input type="text" class="form-control" placeholder="User ID" id="userIDLookup">
+                        <button type="submit"
+                                id="userIdSearch"
+                                class="btn btn-primary form-control confirm-button">
+                            Search
+                        </button>
+                    </div>
+                </form>
+                <div id="users">
+                    <div class="spinner-border" role="status" v-if="!users">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                    <table class="table" v-else>
+                        <thead class="thead-dark">
+                        <tr>
+                            <th scope="col">User ID</th>
+                            <th scope="col">Details</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="user in users" scope="row">
+                                <td>{{ user.id }}</td>
+                                <td>
+                                    <button class="btn" data-toggle="modal" data-target="#userInfoModal" v-on:click="fetchUserInfo(user.id)">
+                                        <i class="fas fa-info-circle" data-toggle="tooltip" data-placement="bottom" title="User Info"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal fade" id="userInfoModal" tabindex="-1" role="dialog" aria-labelledby="userInfoModalLabel" aria-hidden="true">
+                    <div class="modal-dialog" role="document" style="max-width: 2000px; max-height: 1000px; overflow-y: auto;">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="userInfoModalLabel">User Information</h5>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row">
+                                    TEST
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="workspace row hidden" id="sessions-workspace">
+                <form id="sessionSearch" onsubmit="fetchSessionInfo()">
+                    <div class="input-group mb-3">
+                        <div class="input-group-prepend">
+                        <span class="input-group-text" id="basic-addon1">ID</span>
+                        </div>
+                        <input type="text" class="form-control" placeholder="Session ID" id="sessionIDLookup">
+                        <button type="submit"
+                                id="sessionIdSearch"
+                                class="btn btn-primary form-control confirm-button">
+                            Search
+                        </button>
+                    </div>
+                </form>
                 <table class="table" id="sessions">
                     <thead class="thead-dark">
                       <tr>
                         <th scope="col">Session ID</th>
                         <th scope="col">User Hash</th>
+                        <th scope="col">Datacenter</th>
                         <th scope="col">Direct RTT</th>
                         <th scope="col">Next RTT</th>
-                        <th scope="col">Change RTT</th>
-                        <th scope="col">On Network Next</th>
-                        <th scope="col">Expires At</th>
+                        <th scope="col">Improvement</th>
                         <th scope="col">Details</th>
                     </tr>
                     </thead>
                     <tbody>
                         <tr v-for="session in sessions" scope="row">
-                            <td>{{ session.session_id }}</td>
+                            <td>{{ session.id }}</td>
                             <td>{{ session.user_hash }}</td>
+                            <td>{{ session.datacenter }}</td>
                             <td>{{ session.direct_rtt }}</td>
                             <td>{{ session.next_rtt }}</td>
-                            <td>{{ session.change_rtt }}</td>
-                            <td v-if="session.on_network_next">
-                                <i class="fas fa-check"></i>
-                            </td>
-                            <td v-if="!session.on_network_next">
-                                <i class="fas fa-times-circle"></i>
-                            </td>
-                            <td>{{ session.expires_at }}</td>
+                            <td>{{ session.delta_rtt }}</td>
                             <td>
-                                <button class="btn" data-toggle="modal" data-target="#exampleModal">
+                                <button class="btn" data-toggle="modal" data-target="#sessionInfoModal" v-on:click="fetchSessionInfo(session.id)">
                                     <i class="fas fa-info-circle" data-toggle="tooltip" data-placement="bottom" title="Session Info"></i>
                                 </button>
                             </td>
                         </tr>
-                    </tbody>
-                  </table>
-                  <!-- <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-                    <div class="modal-dialog" role="document">
-                      <div class="modal-content">
-                        <div class="modal-header">
-                          <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
-                          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                          </button>
+                        </thead>
+                    </table>
+                </div>
+                <div class="modal fade" id="sessionInfoModal" tabindex="-1" role="dialog" aria-labelledby="sessionInfoModalLabel" aria-hidden="true">
+                    <div class="modal-dialog" role="document" style="max-width: 2000px; max-height: 1000px; overflow-y: auto;">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="sessionInfoModalLabel">Session Information</h5>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body" id="sessionDetails">
+                                <div class="row">
+                                    <div class="col-12 col-lg-8">
+                                        <div class="card mb-2">
+                                            <div class="card-header">
+                                                <strong>
+                                                    Latency
+                                                </strong>
+                                                <div class="float-right">
+                                                    <span
+                                                    class="mr-2">
+                                                        <span style="color: blue;">
+                                                            — Network Next
+                                                        </span>
+                                                        <span style="color: red;">
+                                                            — Direct
+                                                        </span>
+                                                        <span style="color: green">
+                                                            — Prediction
+                                                        </span>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div class="card-body">
+                                                <div id="latency-chart-1">
+                                                </div>
+                                            </div>
+                                            <div class="card-body">
+                                                <div id="latency-chart-2">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="card mb-2">
+                                            <div class="card-header">
+                                                <strong>
+                                                    Jitter
+                                                </strong>
+                                                <div class="float-right">
+                                                    <span class="mr-2">
+                                                        <span style="color: blue;">
+                                                            — Network Next
+                                                        </span>
+                                                        <span style="color: red;">
+                                                            — Direct
+                                                        </span>
+                                                        <span style="color: green">
+                                                            — Prediction
+                                                        </span>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div class="card-body">
+                                                <div id="jitter-chart-1">
+                                                </div>
+                                            </div>
+                                            <div class="card-body">
+                                                <div id="jitter-chart-2">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="card mb-2">
+                                            <div class="card-header">
+                                                <strong>
+                                                    Packet Loss
+                                                </strong>
+                                                <div class="float-right">
+                                                    <span
+                                                    class="mr-2">
+                                                        <span style="color: blue;">
+                                                            — Network Next
+                                                        </span>
+                                                        <span style="color: red;">
+                                                            — Direct
+                                                        </span>
+                                                        <span style="color: green">
+                                                            — Prediction
+                                                        </span>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div class="card-body">
+                                                <div id="packet-loss-chart-1">
+                                                </div>
+                                            </div>
+                                            <div class="card-body">
+                                                <div id="packet-loss-chart-2">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="card mb-2">
+                                            <div class="card-header">
+                                                <strong>
+                                                    Bandwidth
+                                                </strong>
+                                                <div class="float-right">
+                                                    <span
+                                                    class="mr-2">
+                                                        <span style="color: darkgoldenrod;">
+                                                            — Actual Up
+                                                        </span>
+                                                        <span style="color: blue;">
+                                                            — Actual Down
+                                                        </span>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div class="card-body">
+                                                <div id="bandwidth-chart-1">
+                                                </div>
+                                            </div>
+                                            <div class="card-body">
+                                                <div id="bandwidth-chart-2">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 col-lg-4">
+                                        <div class="card">
+                                            <div class="card-img-top" style="height: 20vh;">
+                                                <div id="session-tool-map"></div>
+                                            </div>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="card-text">
+                                                <dl>
+                                                    <dt>
+                                                        ISP
+                                                    </dt>
+                                                    <dd>
+                                                        Spectrum
+                                                    </dd>
+                                                    <dt>
+                                                        User ID
+                                                    </dt>
+                                                    <dd>
+                                                        {{ meta.user_hash }}
+                                                    </dd>
+                                                    <dt>
+                                                        Platform
+                                                    </dt>
+                                                    <dd>
+                                                        Linux
+                                                    </dd>
+                                                    <dt>
+                                                        Customer
+                                                    </dt>
+                                                    <dd>
+                                                        Psyonix
+                                                    </dd>
+                                                    <dt>
+                                                        SDK Version
+                                                    </dt>
+                                                    <dd>
+                                                        {{ meta.sdk }}
+                                                    </dd>
+                                                    <dt>
+                                                        Connection Type
+                                                    </dt>
+                                                    <dd>
+                                                        {{ meta.connection }}
+                                                    </dd>
+                                                    <dt>
+                                                        Nearby Relays
+                                                        <span
+                                                        style="float: right; font-weight: normal; font-style: italic;">
+                                                            at 5:00:00pm Apr 22
+                                                        </span>
+                                                    </dt>
+                                                    <table className="table table-sm mt-1">
+                                                        <thead>
+                                                            <tr>
+                                                                <th style="width: 25%;">
+                                                                    Name
+                                                                </th>
+                                                                <th style="width: 25%;">
+                                                                    RTT
+                                                                </th>
+                                                                <th style="width: 25%;">
+                                                                    Jitter
+                                                                </th>
+                                                                <th style="width: 25%;">
+                                                                    Packet Loss
+                                                                </th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr>
+                                                                <td>
+                                                                    london
+                                                                </td>
+                                                                <td>
+                                                                    <em>1243ms</em>
+                                                                </td>
+                                                                <td>
+                                                                    <em>1243ms</em>
+                                                                </td>
+                                                                <td>
+                                                                    <em>100.00%</em>
+                                                                </td>
+                                                            </tr>
+                                                            <tr>
+                                                                <td>
+                                                                    london
+                                                                </td>
+                                                                <td>
+                                                                    <em>1243ms</em>
+                                                                </td>
+                                                                <td>
+                                                                    <em>1243ms</em>
+                                                                </td>
+                                                                <td>
+                                                                    <em>100.00%</em>
+                                                                </td>
+                                                            </tr>
+                                                            <tr>
+                                                                <td>
+                                                                    london
+                                                                </td>
+                                                                <td>
+                                                                    <em>1243ms</em>
+                                                                </td>
+                                                                <td>
+                                                                    <em>1243ms</em>
+                                                                </td>
+                                                                <td>
+                                                                    <em>100.00%</em>
+                                                                </td>
+                                                            </tr>
+                                                            <tr>
+                                                                <td>
+                                                                    london
+                                                                </td>
+                                                                <td>
+                                                                    <em>1243ms</em>
+                                                                </td>
+                                                                <td>
+                                                                    <em>1243ms</em>
+                                                                </td>
+                                                                <td>
+                                                                    <em>100.00%</em>
+                                                                </td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                    <dt>
+                                                        Route
+                                                        <span
+                                                        style="float: right; font-weight: normal; font-style: italic;"
+                                                        >
+                                                            at 5:00:00pm Apr 22
+                                                        </span>
+                                                    </dt>
+                                                    <table className="table table-sm mt-1">
+                                                        <thead>
+                                                            <tr>
+                                                                <th style="width: 50%;">
+                                                                    Name
+                                                                </th>
+                                                                <th style="width: 50%;">
+                                                                    Role
+                                                                </th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr>
+                                                                <td>
+                                                                    {{ meta.client_addr}}
+                                                                </td>
+                                                                <td>
+                                                                    <em>User (Player)</em>
+                                                                </td>
+                                                            </tr>
+                                                            <tr v-for="index in meta.hops" :key="index" scope="row">
+                                                                <td>
+                                                                    Relay {{ index }}
+                                                                </td>
+                                                                <td>
+                                                                    Hop {{ index }}
+                                                                </td>
+                                                            </tr>
+                                                            <tr>
+                                                                <td>
+                                                                    {{ meta.server_addr}}
+                                                                </td>
+                                                                <td>
+                                                                    <em>Destination Server</em>
+                                                                </td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </dl>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="modal-body">
-                          ...
-                        </div>
-                        <div class="modal-footer">
-                          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                          <button type="button" class="btn btn-primary">Save changes</button>
-                        </div>
-                      </div>
                     </div>
-                  </div> -->
+                </div>
+                <div class="workspace row hidden" id="relays-workspace">
+                    <div id="relays">
+                        <div class="spinner-border" role="status" v-if="!relays">
+                            <span class="sr-only">Loading...</span>
+                        </div>
+                        <table class="table" v-else>
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th scope="col">Relay Name</th>
+                                    <th scope="col">Sessions</th>
+                                    <th scope="col">Bandwidth</th>
+                                    <th scope="col">Peak Utilization</th>
+                                    <th scope="col">Revenue</th>
+                                    <th scope="col">NIC Speed</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="relay in relays" scope="row">
+                                    <td>{{ relay.name }}</td>
+                                    <td>IMPLEMENT ME</td>
+                                    <td>{{ relay.included_bandwidth_gb }}Mbps</td>
+                                    <td>IMPLEMENT ME</td>
+                                    <td>IMPLEMENT ME</td>
+                                    <td>{{ relay.nic_speed_mpbs }}Mbps</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <!-- <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                            <div class="modal-dialog" role="document">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                                </div>
+                                <div class="modal-body">
+                                ...
+                                </div>
+                                <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                <button type="button" class="btn btn-primary">Save changes</button>
+                                </div>
+                            </div>
+                            </div>
+                        </div> -->
+                    </div>
+                </div>
             </div>
         </div>
+        <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
         <script src="https://cdn.auth0.com/js/auth0/9.11/auth0.min.js"></script>
         <script src="https://unpkg.com/deck.gl@latest/dist.min.js"></script>
-        <!-- optional if mapbox base map is needed -->
         <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.53.0/mapbox-gl.js'></script>
-
+        <script src="https://cdn.auth0.com/js/auth0-spa-js/1.7/auth0-spa-js.production.js"></script>
         <script src="https://unpkg.com/vue"></script>
         <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js"
                 integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n"
@@ -275,42 +687,45 @@
         <script src="js/hexmap/hexlib.js"></script>
         <script src="./js/portal.js"></script>
         <script>
-            MapHandler
-                .initMap()
-                .then((response) => {
-                    console.log(response);
-                })
-                .catch((error) => {
-                    console.log(error);
-                })
-            JSONRPCClient
-                .call('BuyersService.Sessions', {buyer_id: '13672574147039585173'})
-                .then((response) => {
-                    new Vue({
-                        el: '#sessions',
-                        data: {
-                            sessions: response.sessions || []
-                        }
-                    });
-                })
-                .catch((e) => {
-                    console.log("Something went wrong with the map init!");
-                    console.log(e);
+            var loginClient = null;
+
+            const configureClient = async () => {
+
+                const domain = 'networknext.auth0.com';
+                const clientID = 'qR60cjo6FceoTWPYLNZSQmNiP2WIAQr9';
+
+                loginClient = await createAuth0Client({
+                    domain: domain,
+                    client_id: clientID
                 });
-            JSONRPCClient
-                .call('BuyersService.GameConfiguration', {buyer_id: '13672574147039585173'})
-                .then((response) => {
-                    new Vue({
-                        el: '#pubKey',
-                        data: {
-                            pubkey: response.game_config.public_key
-                        }
-                    })
-                })
-                .catch((e) => {
-                    console.log("Something went wrong grabbing current public key");
-                    console.log(e);
+            };
+
+            const login = async () => {
+                await loginClient.loginWithRedirect({
+                    redirect_uri: window.location.origin
                 });
+            }
+
+            window.onload = async () => {
+                await configureClient();
+
+                const isAuthenticated = await loginClient.isAuthenticated();
+
+                if (isAuthenticated) {
+                    startApp();
+                    return;
+                }
+                const query = window.location.search;
+                if (query.includes("code=") && query.includes("state=")) {
+
+                    await loginClient.handleRedirectCallback();
+
+                    window.history.replaceState({}, document.title, "/");
+                    startApp();
+                } else {
+                    login();
+                }
+            }
         </script>
     </body>
 </html>

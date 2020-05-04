@@ -1,7 +1,10 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/modood/table"
+	"github.com/networknext/backend/routing"
 	localjsonrpc "github.com/networknext/backend/transport/jsonrpc"
 	"github.com/ybbus/jsonrpc"
 )
@@ -18,4 +21,32 @@ func datacenters(rpcClient jsonrpc.RPCClient, filter string) {
 	}
 
 	table.Output(reply.Datacenters)
+}
+
+func addDatacenter(rpcClient jsonrpc.RPCClient, datacenter routing.Datacenter) {
+	args := localjsonrpc.AddDatacenterArgs{
+		Datacenter: datacenter,
+	}
+
+	var reply localjsonrpc.AddDatacenterReply
+	if err := rpcClient.CallFor(&reply, "OpsService.AddDatacenter", args); err != nil {
+		handleJSONRPCError(err)
+		return
+	}
+
+	fmt.Printf("Datacenter \"%s\" added to storage.\n", datacenter.Name)
+}
+
+func removeDatacenter(rpcClient jsonrpc.RPCClient, name string) {
+	args := localjsonrpc.RemoveDatacenterArgs{
+		Name: name,
+	}
+
+	var reply localjsonrpc.RemoveDatacenterReply
+	if err := rpcClient.CallFor(&reply, "OpsService.RemoveDatacenter", args); err != nil {
+		handleJSONRPCError(err)
+		return
+	}
+
+	fmt.Printf("Datacenter \"%s\" removed from storage.\n", name)
 }

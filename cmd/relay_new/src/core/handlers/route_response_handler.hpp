@@ -2,10 +2,9 @@
 #define CORE_HANDLERS_ROUTE_RESPONSE_HANDLER_HPP
 
 #include "base_handler.hpp"
-
 #include "core/session_map.hpp"
-
 #include "os/platform.hpp"
+#include "util/throughput_recorder.hpp"
 
 namespace core
 {
@@ -14,21 +13,24 @@ namespace core
     class RouteResponseHandler: public BaseHandler
     {
      public:
-      RouteResponseHandler(GenericPacket<>& packet, const int packetSize, core::SessionMap& sessions);
+      RouteResponseHandler(
+       GenericPacket<>& packet, const int packetSize, core::SessionMap& sessions, util::ThroughputRecorder& recorder);
 
-      template <typename T, typename F>
-      void handle(T& sender, F funcptr);
+      template <size_t Size>
+      void handle(core::GenericPacketBuffer<Size>& buff);
 
      private:
       core::SessionMap& mSessionMap;
+      util::ThroughputRecorder& mRecorder;
     };
 
-    inline RouteResponseHandler::RouteResponseHandler(GenericPacket<>& packet, const int packetSize, core::SessionMap& sessions)
-     : BaseHandler(packet, packetSize), mSessionMap(sessions)
+    inline RouteResponseHandler::RouteResponseHandler(
+     GenericPacket<>& packet, const int packetSize, core::SessionMap& sessions, util::ThroughputRecorder& recorder)
+     : BaseHandler(packet, packetSize), mSessionMap(sessions), mRecorder(recorder)
     {}
 
-    template <typename T, typename F>
-    inline void RouteResponseHandler::handle(T& sender, F funcptr)
+    template <size_t Size>
+    inline void RouteResponseHandler::handle(core::GenericPacketBuffer<Size>& buff)
     {
       if (mPacketSize != RELAY_HEADER_BYTES) {
         Log("ignoring route response, header byte count invalid: ", mPacketSize, " != ", RELAY_HEADER_BYTES);
@@ -81,7 +83,8 @@ namespace core
 
       LogDebug("sending response to ", session->PrevAddr);
 
-      (sender.*funcptr)(session->PrevAddr, mPacket.Buffer.data(), mPacketSize);
+      mRecorder.addToSent(mPacketSize);
+      buff.push(session->PrevAddr, mPacket.Buffer.data(), mPacketSize);
     }
   }  // namespace handlers
 }  // namespace core

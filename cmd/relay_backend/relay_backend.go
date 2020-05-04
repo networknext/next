@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/go-redis/redis"
 	"github.com/gorilla/mux"
 	"github.com/networknext/backend/billing"
@@ -36,6 +37,10 @@ import (
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
+)
+
+var (
+	release string
 )
 
 func main() {
@@ -89,6 +94,22 @@ func main() {
 		relayslogger = logging.NewStackdriverLogger(loggingClient, "relays")
 	}
 
+	sentryOpts := sentry.ClientOptions{
+		ServerName:       "Relay Backend",
+		Release:          release,
+		Dist:             "linux",
+		AttachStacktrace: true,
+		Debug:            true,
+	}
+
+	if err := sentry.Init(sentryOpts); err != nil {
+		level.Error(logger).Log("msg", "failed to initialize sentry", "err", err)
+		os.Exit(1)
+	}
+
+	// force sentry to post any updates upon program exit
+	defer sentry.Flush(time.Second * 2)
+
 	var customerPublicKey []byte
 	{
 		if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
@@ -131,6 +152,12 @@ func main() {
 			Reader: mmreader,
 		}
 		defer mmreader.Close()
+	}
+	if key, ok := os.LookupEnv("IPSTACK_ACCESS_KEY"); ok {
+		ipLocator = &routing.IPStack{
+			Client:    http.DefaultClient,
+			AccessKey: key,
+		}
 	}
 
 	geoClient := routing.GeoClient{
@@ -309,6 +336,25 @@ func main() {
 
 				// Remove relay entry from statsDB (which in turn means it won't appear in cost matrix)
 				statsdb.DeleteEntry(rawID)
+
+				// Set the relay's state to offline in storage if it was previously enabled
+				relay, err := db.Relay(rawID)
+				if err != nil {
+					level.Error(logger).Log("msg", fmt.Sprintf("Failed to retrieve relay with ID %v from storage when attempting to set relay state to offline", rawID), "err", err)
+					os.Exit(1)
+				}
+
+				// The relay was enabled and running properly but has failed to communicate to the backend for some reason
+				// This check is necessary so that if a relay is shut down by the backend, by the supplier, or manually
+				// then it won't incorrectly overwrite that state.
+				if relay.State == routing.RelayStateEnabled {
+					relay.State = routing.RelayStateOffline
+				}
+
+				if err := db.SetRelay(ctx, relay); err != nil {
+					level.Error(logger).Log("msg", fmt.Sprintf("Failed to set relay with ID %v in storage when attempting to set relay state to offline", rawID), "err", err)
+					os.Exit(1)
+				}
 			}
 		}
 	}()

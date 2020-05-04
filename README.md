@@ -6,7 +6,44 @@ This is a monorepo that contains the Network Next backend.
 
 ## Status
 
-![Build Status](https://networknext.semaphoreci.com/badges/backend.svg?key=822a130a-66de-4659-adb2-74237df34843)
+[![Build Status](https://networknext.semaphoreci.com/badges/backend.svg?key=822a130a-66de-4659-adb2-74237df34843)](https://networknext.semaphoreci.com/projects/backend)
+
+## CI/CD
+
+SemaphoreCI is used for running tests and deploying artifacts to GCP Storage under certain conditions:
+
+1. Unit tests are always run when a commit is pushed or a PR is issued
+2. **Development** artifacts are built and published when tests pass AND there is a merge to `master`
+3. **Production** artifacts are built and published when tests pass AND there is a tag matching `PROD-YYYYMMDD-*`
+
+Acceptable tags:
+
+- `PROD-20200427-01`
+- `PROD-20200427-hotfix-packet`
+
+Unacceptable tags:
+
+- `PROD-20200427`
+- `PROD-20200427-`
+
+### Tagging a Release
+
+```
+> git pull origin master
+Everything up to date.
+
+> git tag PROD-20200427-01
+
+> git push origin master --tags
+```
+
+The development and production artifacts are only published to GCP Storage. They are not sent to the VMs to start running. Once CI/CD completes you need to issue the appropriate `make` command to trigger a deployment to the VMs.
+
+- `make deploy-portal` or `make deploy-portal-prod` to deploy the portal to dev and prod respectively
+- `make deploy-relay-backend` or `make deploy-relay-backend-prod` to deploy the relay backend to dev and prod respectively
+- `make deploy-server-backend` or `make deploy-server-backend-prod` to deploy the server backend to dev and prod respectively
+
+For more information about deployment and artifcats see the [deploy](deploy) folder.
 
 ## Development
 
@@ -57,7 +94,13 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
 5. Install libcurl
 	`sudo apt install libcurl4-openssl-dev`
 
-6. Install Go (must be 1.13+)
+7. Install RapidJSON
+  `sudo apt install rapidjson-dev`
+
+8. Install g++ version 8
+  `sudo apt install g++-8`
+
+9. Install Go (must be 1.13+)
 	`cd /usr/local/`
 	`sudo curl https://dl.google.com/go/go1.14.2.linux-amd64.tar.gz | sudo tar -zxv`
 	Add Go to PATH:
@@ -65,14 +108,14 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
 	NOTE: For changes to your `.profile` to reflect in the terminal, sign out and sign back in.
 	If you're running WSL, you can stop it by typing `wsl -t <distro>` in Powershell and start it again.
 
-7. Install Redis
+10. Install Redis
 	`sudo apt install redis-server`
 
-8. Install Docker
+11. Install Docker
 	NOTE: If you're running Windows with WSL 1, follow this article: https://nickjanetakis.com/blog/setting-up-docker-for-windows-and-wsl-to-work-flawlessly
 	For WSL 2 these steps aren't necessary, installing Docker Desktop by itself is sufficient.
 
-9. Clone the repo with an SSH key
+12. Clone the repo with an SSH key
 	Instructions from `https://help.github.com/en/github/authenticating-to-github/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent`
 
 	`ssh-keygen -t rsa -b 4096 -C "your_email@example.com"`
@@ -84,13 +127,13 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
   `git clone git@github.com:networknext/backend.git`
   `cd <clone_path>` where `<clone_path>` is the directory you cloned the repo to (usually `~/backend`)
 
-10. Init and update git submodules
+13. Init and update git submodules
 	`git submodule init`
 	`git submodule update`
 
-11. Install Google Cloud SDK
+14. Install Google Cloud SDK
 	Instructions from `https://cloud.google.com/sdk/docs/quickstart-debian-ubuntu`
-	For other platforms, see `https://cloud.google.com/sdk/docs/quickstarts` 
+	For other platforms, see `https://cloud.google.com/sdk/docs/quickstarts`
 
 	`echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list`
 	`curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -`
@@ -98,10 +141,10 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
 	`gcloud init`
 	When asked to choose a cloud project, choose `network-next-v3-dev`
 
-12. Install the Firestore emulator
+15. Install the Firestore emulator
 	`sudo apt install google-cloud-sdk-firestore-emulator`
 
-11. Run tests to confirm everything is working properly
+16. Run tests to confirm everything is working properly
 	`make test`
 	`make test-func-parallel`
 

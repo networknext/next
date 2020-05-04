@@ -131,12 +131,20 @@ namespace
 
 #if not defined TEST_BUILD and not defined BENCH_BUILD
     auto gracefulShutdownHandler = [](int) {
-      gAlive = false;
+      if (gAlive) {
+        gAlive = false;
+      } else {
+        std::exit(1);
+      }
     };
 
     auto cleanShutdownHandler = [](int) {
-      gShouldCleanShutdown = true;
-      gAlive = false;
+      if (gAlive) {
+        gShouldCleanShutdown = true;
+        gAlive = false;
+      } else {
+        std::exit(1);
+      }
     };
 
     signal(SIGINT, gracefulShutdownHandler);
@@ -148,8 +156,6 @@ namespace
 
 int main()
 {
-  setupSignalHandlers();
-
 #ifdef TEST_BUILD
   return testing::SpecTest::Run() ? 0 : 1;
 #endif
@@ -357,8 +363,8 @@ int main()
 
     // setup the ping processor to use the external address
     // relays use it to know where the receiving port of other relays are
-    auto thread = std::make_shared<std::thread>([&waitVar, &socketAndThreadReady, socket, &relayManager, &relayAddr] {
-      core::PingProcessor pingProcessor(*socket, relayManager, gAlive, relayAddr);
+    auto thread = std::make_shared<std::thread>([&waitVar, &socketAndThreadReady, socket, &relayManager, &relayAddr, &recorder] {
+      core::PingProcessor pingProcessor(*socket, relayManager, gAlive, relayAddr, recorder);
       pingProcessor.process(waitVar, socketAndThreadReady);
     });
 
@@ -425,6 +431,8 @@ int main()
   }
 
   Log("Relay initialized\n\n");
+
+  setupSignalHandlers();
 
   bool success = backend.updateCycle(gAlive, gShouldCleanShutdown, recorder, sessions, relayClock);
 

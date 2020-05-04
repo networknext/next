@@ -4611,7 +4611,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
 
     uint32_t update_version = 0;
 
-    uint8_t update_data[10*1024 + 8 + 1]; // + 8 for the bytes received counter, + 1 for the shutdown flag
+    uint8_t update_data[10*1024 + 8 + 8 + 8 + 1]; // + 8 for the session count, + 8 for the bytes sent counter, + 8 for the bytes received counter, + 1 for the shutdown flag
 
     uint8_t * p = update_data;
     relay_write_uint32( &p, update_version );
@@ -4632,6 +4632,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
         relay_write_float32( &p, stats.relay_packet_loss[i] );
     }
 
+    relay_write_uint64(&p, relay->sessions->size());
     relay_write_uint64(&p, relay->bytes_sent.load());
     relay->bytes_sent.store(0);
     relay_write_uint64(&p, relay->bytes_received.load());
@@ -5333,13 +5334,19 @@ int main( int argc, const char ** argv )
     }
 
     relay_t relay;
-    memset( &relay, 0, sizeof(relay) );
+    relay.relay_manager = nullptr;
+    relay.socket = nullptr;
+    relay.mutex = nullptr;
     relay.initialize_time = relay_platform_time();
     relay.initialize_router_timestamp = router_timestamp;
     relay.sessions = new std::map<uint64_t, relay_session_t*>();
     memcpy( relay.relay_public_key, relay_public_key, RELAY_PUBLIC_KEY_BYTES );
     memcpy( relay.relay_private_key, relay_private_key, RELAY_PRIVATE_KEY_BYTES );
     memcpy( relay.router_public_key, router_public_key, crypto_sign_PUBLICKEYBYTES );
+    relay.relays_dirty = false;
+    relay.num_relays = 0;
+    memset( relay.relay_ids, 0, sizeof(relay.relay_ids) );
+    memset( relay.relay_addresses, 0, sizeof(relay.relay_addresses) );
     relay.bytes_sent = 0;
     relay.bytes_received = 0;
 

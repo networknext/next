@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v7"
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 )
@@ -45,45 +46,223 @@ func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersRepl
 	return nil
 }
 
+type AddBuyerArgs struct {
+	Buyer routing.Buyer
+}
+
+type AddBuyerReply struct{}
+
+func (s *OpsService) AddBuyer(r *http.Request, args *AddBuyerArgs, reply *AddBuyerReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	return s.Storage.AddBuyer(ctx, args.Buyer)
+}
+
+type RemoveBuyerArgs struct {
+	ID uint64
+}
+
+type RemoveBuyerReply struct{}
+
+func (s *OpsService) RemoveBuyer(r *http.Request, args *RemoveBuyerArgs, reply *RemoveBuyerReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	return s.Storage.RemoveBuyer(ctx, args.ID)
+}
+
+type RoutingRulesSettingsArgs struct {
+	BuyerID uint64
+}
+
+type RoutingRulesSettingsReply struct {
+	RoutingRuleSettings []routingRuleSettings
+}
+
+type routingRuleSettings struct {
+	EnvelopeKbpsUp               int64   `json:"envelopeKbpsUp"`
+	EnvelopeKbpsDown             int64   `json:"envelopeKbpsDown"`
+	Mode                         int64   `json:"mode"`
+	MaxCentsPerGB                uint64  `json:"maxCentsPerGB"`
+	RTTEpsilon                   float32 `json:"rttEpsilon"`
+	RTTThreshold                 float32 `json:"rttThreshold"`
+	RTTHysteresis                float32 `json:"rttHysteresis"`
+	RTTVeto                      float32 `json:"rttVeto"`
+	EnableYouOnlyLiveOnce        bool    `json:"yolo"`
+	EnablePacketLossSafety       bool    `json:"plSafety"`
+	EnableMultipathForPacketLoss bool    `json:"plMultipath"`
+	EnableMultipathForJitter     bool    `json:"jitterMultipath"`
+	EnableMultipathForRTT        bool    `json:"rttMultipath"`
+	EnableABTest                 bool    `json:"abTest"`
+}
+
+func (s *OpsService) RoutingRulesSettings(r *http.Request, args *RoutingRulesSettingsArgs, reply *RoutingRulesSettingsReply) error {
+	buyer, err := s.Storage.Buyer(args.BuyerID)
+	if err != nil {
+		return err
+	}
+
+	reply.RoutingRuleSettings = []routingRuleSettings{
+		{
+			EnvelopeKbpsUp:               buyer.RoutingRulesSettings.EnvelopeKbpsUp,
+			EnvelopeKbpsDown:             buyer.RoutingRulesSettings.EnvelopeKbpsDown,
+			Mode:                         buyer.RoutingRulesSettings.Mode,
+			MaxCentsPerGB:                buyer.RoutingRulesSettings.MaxCentsPerGB,
+			RTTEpsilon:                   buyer.RoutingRulesSettings.RTTEpsilon,
+			RTTThreshold:                 buyer.RoutingRulesSettings.RTTThreshold,
+			RTTHysteresis:                buyer.RoutingRulesSettings.RTTHysteresis,
+			RTTVeto:                      buyer.RoutingRulesSettings.RTTVeto,
+			EnableYouOnlyLiveOnce:        buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce,
+			EnablePacketLossSafety:       buyer.RoutingRulesSettings.EnablePacketLossSafety,
+			EnableMultipathForPacketLoss: buyer.RoutingRulesSettings.EnableMultipathForPacketLoss,
+			EnableMultipathForJitter:     buyer.RoutingRulesSettings.EnableMultipathForJitter,
+			EnableMultipathForRTT:        buyer.RoutingRulesSettings.EnableMultipathForRTT,
+			EnableABTest:                 buyer.RoutingRulesSettings.EnableABTest,
+		},
+	}
+
+	return nil
+}
+
+type SetRoutingRulesSettingsArgs struct {
+	BuyerID              uint64
+	RoutingRulesSettings routing.RoutingRulesSettings
+}
+
+func (s *OpsService) SetRoutingRulesSettings(r *http.Request, args *SetRoutingRulesSettingsArgs, reply *SetRoutingRulesSettingsReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	buyer, err := s.Storage.Buyer(args.BuyerID)
+	if err != nil {
+		return err
+	}
+
+	buyer.RoutingRulesSettings = args.RoutingRulesSettings
+
+	return s.Storage.SetBuyer(ctx, buyer)
+}
+
+type SetRoutingRulesSettingsReply struct{}
+
+type SellersArgs struct{}
+
+type SellersReply struct {
+	Sellers []seller
+}
+
+type seller struct {
+	ID                string `json:"id"`
+	Name              string `json:"name"`
+	IngressPriceCents uint64 `json:"ingressPriceCents"`
+	EgressPriceCents  uint64 `json:"egressPriceCents"`
+}
+
+func (s *OpsService) Sellers(r *http.Request, args *SellersArgs, reply *SellersReply) error {
+	for _, s := range s.Storage.Sellers() {
+		reply.Sellers = append(reply.Sellers, seller{
+			ID:                s.ID,
+			Name:              s.Name,
+			IngressPriceCents: s.IngressPriceCents,
+			EgressPriceCents:  s.EgressPriceCents,
+		})
+	}
+
+	sort.Slice(reply.Sellers, func(i int, j int) bool {
+		return reply.Sellers[i].Name < reply.Sellers[j].Name
+	})
+
+	return nil
+}
+
+type AddSellerArgs struct {
+	Seller routing.Seller
+}
+
+type AddSellerReply struct{}
+
+func (s *OpsService) AddSeller(r *http.Request, args *AddSellerArgs, reply *AddSellerReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	return s.Storage.AddSeller(ctx, args.Seller)
+}
+
+type RemoveSellerArgs struct {
+	ID string
+}
+
+type RemoveSellerReply struct{}
+
+func (s *OpsService) RemoveSeller(r *http.Request, args *RemoveSellerArgs, reply *RemoveSellerReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	return s.Storage.RemoveSeller(ctx, args.ID)
+}
+
 type RelaysArgs struct {
 	Name string `json:"name"`
 }
 
 type RelaysReply struct {
-	Relays []relay
+	Relays []relay `json:"relays"`
 }
 
 type relay struct {
-	ID                  uint64             `json:"id"`
-	Name                string             `json:"name"`
-	Addr                string             `json:"addr"`
-	Latitude            float64            `json:"latitude"`
-	Longitude           float64            `json:"longitude"`
-	NICSpeedMbps        int                `json:"nic_speed_mpbs"`
-	IncludedBandwidthGB int                `json:"included_bandwidth_gb"`
-	State               routing.RelayState `json:"state"`
-	StateUpdateTime     time.Time          `json:"stateUpdateTime"`
-	ManagementAddr      string             `json:"management_addr"`
-	SSHUser             string             `json:"ssh_user"`
-	SSHPort             int64              `json:"ssh_port"`
+	ID                  uint64    `json:"id"`
+	Name                string    `json:"name"`
+	Addr                string    `json:"addr"`
+	Latitude            float64   `json:"latitude"`
+	Longitude           float64   `json:"longitude"`
+	NICSpeedMbps        uint64    `json:"nic_speed_mpbs"`
+	IncludedBandwidthGB uint64    `json:"included_bandwidth_gb"`
+	State               string    `json:"state"`
+	StateUpdateTime     time.Time `json:"stateUpdateTime"`
+	ManagementAddr      string    `json:"management_addr"`
+	SSHUser             string    `json:"ssh_user"`
+	SSHPort             int64     `json:"ssh_port"`
+	SessionCount        uint64    `json:"sessionCount"`
+	BytesSent           uint64    `json:"bytesTx"`
+	BytesReceived       uint64    `json:"bytesRx"`
 }
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {
+	hgetallResult := s.RedisClient.HGetAll(routing.HashKeyAllRelays)
+	if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
+		return fmt.Errorf("failed to get all relays: %v", hgetallResult.Err())
+	}
+
+	relaysInRedis := hgetallResult.Val()
+
 	for _, r := range s.Storage.Relays() {
-		reply.Relays = append(reply.Relays, relay{
+		relay := relay{
 			ID:                  r.ID,
 			Name:                r.Name,
 			Addr:                r.Addr.String(),
-			Latitude:            r.Latitude,
-			Longitude:           r.Longitude,
+			Latitude:            r.Datacenter.Location.Latitude,
+			Longitude:           r.Datacenter.Location.Longitude,
 			NICSpeedMbps:        r.NICSpeedMbps,
 			IncludedBandwidthGB: r.IncludedBandwidthGB,
 			ManagementAddr:      r.ManagementAddr,
 			SSHUser:             r.SSHUser,
 			SSHPort:             r.SSHPort,
-			State:               r.State,
+			State:               r.State.String(),
 			StateUpdateTime:     r.LastUpdateTime,
-		})
+		}
+
+		// If the relay is in redis, get its traffic stats
+		if relayInRedisString, ok := relaysInRedis[r.Key()]; ok {
+			var relayInRedis routing.Relay
+			if err := relayInRedis.UnmarshalBinary([]byte(relayInRedisString)); err == nil {
+				relay.SessionCount = relayInRedis.TrafficStats.SessionCount
+				relay.BytesSent = relayInRedis.TrafficStats.BytesSent
+				relay.BytesReceived = relayInRedis.TrafficStats.BytesReceived
+			}
+		}
+
+		reply.Relays = append(reply.Relays, relay)
 	}
 
 	if args.Name != "" {
@@ -119,12 +298,7 @@ func (s *OpsService) RelayStateUpdate(r *http.Request, args *RelayStateUpdateArg
 	}
 
 	relay.State = args.RelayState
-
-	if err := s.Storage.SetRelay(context.Background(), relay); err != nil {
-		return err
-	}
-
-	return nil
+	return s.Storage.SetRelay(context.Background(), relay)
 }
 
 type RelayPublicKeyUpdateArgs struct {
@@ -148,11 +322,27 @@ func (s *OpsService) RelayPublicKeyUpdate(r *http.Request, args *RelayPublicKeyU
 		return fmt.Errorf("could not decode relay public key: %v", err)
 	}
 
-	if err := s.Storage.SetRelay(context.Background(), relay); err != nil {
+	return s.Storage.SetRelay(context.Background(), relay)
+}
+
+type RelayNICSpeedUpdateArgs struct {
+	RelayID       uint64 `json:"relay_id"`
+	RelayNICSpeed uint64 `json:"relay_nic_speed"`
+}
+
+type RelayNICSpeedUpdateReply struct {
+}
+
+func (s *OpsService) RelayNICSpeedUpdate(r *http.Request, args *RelayNICSpeedUpdateArgs, reply *RelayNICSpeedUpdateReply) error {
+	relay, err := s.Storage.Relay(args.RelayID)
+
+	if err != nil {
 		return err
 	}
 
-	return nil
+	relay.NICSpeedMbps = args.RelayNICSpeed
+
+	return s.Storage.SetRelay(context.Background(), relay)
 }
 
 type DatacentersArgs struct {
@@ -195,4 +385,32 @@ func (s *OpsService) Datacenters(r *http.Request, args *DatacentersArgs, reply *
 	})
 
 	return nil
+}
+
+type AddDatacenterArgs struct {
+	Datacenter routing.Datacenter
+}
+
+type AddDatacenterReply struct{}
+
+func (s *OpsService) AddDatacenter(r *http.Request, args *AddDatacenterArgs, reply *AddDatacenterReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	return s.Storage.AddDatacenter(ctx, args.Datacenter)
+}
+
+type RemoveDatacenterArgs struct {
+	Name string
+}
+
+type RemoveDatacenterReply struct{}
+
+func (s *OpsService) RemoveDatacenter(r *http.Request, args *RemoveDatacenterArgs, reply *RemoveDatacenterReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	id := crypto.HashID(args.Name)
+
+	return s.Storage.RemoveDatacenter(ctx, id)
 }

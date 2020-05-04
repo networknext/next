@@ -123,7 +123,6 @@ namespace os
       return false;
     }
 
-    LogDebug("[*] sent to: ", to);
     return true;
   }
 

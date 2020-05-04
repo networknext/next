@@ -113,7 +113,7 @@ namespace core
 
     auto& iov = mIOVecBuff[Count];
     iov.iov_len = len;
-    std::copy(data, data + iov.iov_len, reinterpret_cast<uint8_t*>(iov.iov_base));
+    std::copy(data, data + len, reinterpret_cast<uint8_t*>(iov.iov_base));
 
     dest.to(Headers[Count]);
 

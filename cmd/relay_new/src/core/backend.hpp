@@ -178,7 +178,7 @@ namespace core
           break;
         }
 
-        Log("could not update relay, attempts: ", updateAttempts);
+        Log("could not update relay, attempts: ", (unsigned int)updateAttempts);
       }
 
       sessions.purge(relayClock.unixTime<util::Second>());
