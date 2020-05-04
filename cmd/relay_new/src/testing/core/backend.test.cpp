@@ -86,7 +86,7 @@ Test(core_Backend_updateCycle_shutdown_60s)
 
   testClock.reset();
   auto fut = std::async(std::launch::async, [&] {
-    std::this_thread::sleep_for(10s);
+    std::this_thread::sleep_for(2s);
     testing::StubbedCurlWrapper::Success = false;
     shouldCleanShutdown = true;  // just to mimic actual behavior
     handle = false;
@@ -94,7 +94,7 @@ Test(core_Backend_updateCycle_shutdown_60s)
 
   check(backend.updateCycle(handle, shouldCleanShutdown, logger, sessions, backendClock));
   auto elapsed = testClock.elapsed<util::Second>();
-  check(elapsed >= 70.0 && elapsed < 71.0);
+  check(elapsed >= 62.0 && elapsed < 63.0);
 }
 
 // Update the backend for 10 seconds, then proceed to switch the handle to false.
@@ -119,14 +119,14 @@ Test(core_Backend_updateCycle_ack_and_30s)
 
   testClock.reset();
   auto fut = std::async(std::launch::async, [&] {
-    std::this_thread::sleep_for(10s);
+    std::this_thread::sleep_for(2s);
     shouldCleanShutdown = true;
     handle = false;
   });
 
   check(backend.updateCycle(handle, shouldCleanShutdown, logger, sessions, backendClock));
   auto elapsed = testClock.elapsed<util::Second>();
-  check(elapsed >= 40.0 && elapsed < 41.0);
+  check(elapsed >= 32.0 && elapsed < 33.0);
 }
 
 // Update the backend for 10 seconds, then proceed to switch the handle to false.
@@ -152,17 +152,17 @@ Test(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
 
   testClock.reset();
   auto fut = std::async(std::launch::async, [&] {
-    std::this_thread::sleep_for(10s);
+    std::this_thread::sleep_for(2s);
     shouldCleanShutdown = true;
     testing::StubbedCurlWrapper::Success = false;
     handle = false;
-    std::this_thread::sleep_for(40s);
+    std::this_thread::sleep_for(31s);
     testing::StubbedCurlWrapper::Success = true;
   });
 
   check(backend.updateCycle(handle, shouldCleanShutdown, recorder, sessions, backendClock));
   auto elapsed = testClock.elapsed<util::Second>();
-  check(elapsed >= 80.0 && elapsed < 81.0);
+  check(elapsed >= 63.0 && elapsed < 64.0);
 }
 
 // Update the backend for 10 seconds, then switch the success of the request to false.
@@ -188,7 +188,7 @@ Test(core_Backend_updateCycle_update_fails_for_max_number_of_attempts)
 
   testClock.reset();
   auto fut = std::async(std::launch::async, [&] {
-    std::this_thread::sleep_for(10s);
+    std::this_thread::sleep_for(2s);
     testing::StubbedCurlWrapper::Success = false;  // set to false here to trigger failed updates
   });
 
@@ -197,7 +197,7 @@ Test(core_Backend_updateCycle_update_fails_for_max_number_of_attempts)
   // time will be 10 seconds of good updates and
   // 10 seconds of bad updates, which will cause
   // the relay to abort with no clean shutdown
-  check(elapsed >= 20.0 && elapsed < 21.0);
+  check(elapsed >= 12.0 && elapsed < 13.0);
 }
 
 // When clean shutdown is not set to true, the function should return immediately
@@ -219,14 +219,14 @@ Test(core_Backend_updateCycle_no_clean_shutdown)
 
   testClock.reset();
   auto fut = std::async(std::launch::async, [&] {
-    std::this_thread::sleep_for(10s);
+    std::this_thread::sleep_for(2s);
     testing::StubbedCurlWrapper::Success = false;
     handle = false;
   });
 
   check(backend.updateCycle(handle, shouldCleanShutdown, recorder, sessions, backendClock));
   auto elapsed = testClock.elapsed<util::Second>();
-  check(elapsed >= 10.0 && elapsed < 11.0);
+  check(elapsed >= 2.0 && elapsed < 3.0);
 }
 
 Test(core_Backend_update_valid)
