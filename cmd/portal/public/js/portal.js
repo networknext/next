@@ -56,9 +56,9 @@ JSONRPCClient = {
 }
 
 MapHandler = {
-	defaultNA: {
+	defaultUSA: {
 		initialViewState: {
-			zoom: 4,
+			zoom: 4.6,
 			longitude: -98.583333, // 'Center' of the US
 			latitude: 39.833333,
 			maxZoom: 14,
@@ -141,9 +141,9 @@ MapHandler = {
 	},
 	updateMap(mapType) {
 		switch (mapType) {
-			case 'NA':
+			case 'USA':
 				this.mapInstance.setProps({
-					...this.defaultNA
+					...this.defaultUSA
 				});
 				break;
 			case 'WORLD':

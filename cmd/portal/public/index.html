@@ -251,28 +251,19 @@
                                     IMPLEMENT
                                 </span>
                             </h1>
-                            <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1 hidden">
+                            <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1">
                                 <div class="mr-auto"></div>
                                 <div class="px-2">
                                     <select class="form-control">
-                                        <option value="world">
+                                        <option onclick="MapHandler.updateMap('WORLD')">
                                             World
                                         </option>
-                                        <option value="na">
-                                            North America
-                                        </option>
-                                        <option value="western-europe">
-                                            Western Europe
-                                        </option>
-                                        <option value="greater-europe">
-                                            Europe
-                                        </option>
-                                        <option value="us">
+                                        <option onclick="MapHandler.updateMap('USA')">
                                             United States
                                         </option>
                                     </select>
                                 </div>
-                                <div class="px-2">
+                                <div class="px-2" v-if="false">
                                     <select class="form-control">
                                         <option value="everything">
                                             Everything
@@ -285,7 +276,7 @@
                                         </option>
                                     </select>
                                 </div>
-                                <div class="px-2">
+                                <div class="px-2" v-if="false">
                                     <select class="form-control">
                                         <option value="dashboard">
                                             Dashboard
@@ -295,7 +286,7 @@
                                         </option>
                                     </select>
                                 </div>
-                                <div class="px-2">
+                                <div class="px-2" v-if="false">
                                     <select class="form-control">
                                         <option value="default">
                                             Default
