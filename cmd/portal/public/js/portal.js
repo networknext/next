@@ -153,6 +153,9 @@ MapHandler = {
 }
 
 WorkspaceHandler = {
+	alerts: {
+		sessionToolAlert: document.getElementById("session-tool-alert")
+	},
 	links: {
 		accountsLink: document.getElementById("settings-link"),
 		configLink: document.getElementById("config-link"),
@@ -162,13 +165,11 @@ WorkspaceHandler = {
 		settingsLink: document.getElementById("settings-link"),
 		userToolLink: document.getElementById("user-tool-link"),
 	},
-	showSessionDetails: false,
 	newUserEmail: document.getElementById("email"),
 	newUserPerms: document.getElementById("perms"),
 	pages: {
 		accounts: document.getElementById("accounts-page"),
 		config: document.getElementById("config-page"),
-		sessionDetails: document.getElementById("session-details"),
 	},
 	spinners: {
 		map: document.getElementById("map-spinner"),
@@ -206,9 +207,6 @@ WorkspaceHandler = {
 		this.workspaces.settingsWorkspace.style.display = 'none';
 		this.workspaces.userToolWorkspace.style.display = 'none';
 
-		// Hide sessions details
-		// this.pages.sessionDetails.style.display = 'none';
-
 		// Remove all link highlights
 		this.links.mapLink.classList.remove("active");
 		this.links.sessionsLink.classList.remove("active");
@@ -229,6 +227,7 @@ WorkspaceHandler = {
 				this.links.sessionsLink.classList.add("active");
 				break;
 			case 'session-tool':
+				sessionDetailsVue ? Object.assign(sessionDetailsVue.$data, {showDetails: false}) : null;
 				this.workspaces.sessionToolWorkspace.style.display = 'block';
 				this.links.sessionToolLink.classList.add("active");
 				break;
@@ -303,8 +302,10 @@ WorkspaceHandler = {
 				/**
 				 * I really dislike this but it is apparently the way to reload/update the data within a vue
 				 */
-				Object.assign(sessionsTable.$data, {sessions: response.sessions});
-				Object.assign(sessionsTable.$data, {showCount: true});
+				Object.assign(sessionsTable.$data, {
+					sessions: response.sessions,
+					showCount: true,
+				});
 			})
 			.catch((e) => {
 				console.log("Something went wrong fetching the top sessions list");
@@ -363,6 +364,7 @@ function createVueComponents() {
 		el: '#accounts',
 		data: {
 			accounts: null,
+			showAccounts: false,
 		},
 		methods: {
 			editUser: WorkspaceHandler.editUser
@@ -375,6 +377,15 @@ function createVueComponents() {
 		},
 		methods: {
 			updatePubKey: updatePubKey
+		}
+	});
+	sessionDetailsVue = new Vue({
+		el: '#session-details',
+		data: {
+			id: '',
+			meta: null,
+			showDetails: false,
+			slices: [],
 		}
 	});
 	sessionsTable = new Vue({
@@ -431,51 +442,50 @@ function fetchSessionInfo(sessionId = '') {
 	JSONRPCClient
 		.call("BuyersService.SessionDetails", {session_id: id})
 		.then((response) => {
-			console.log(response);
-			sessionDetailsVue = new Vue({
-				el: '#session-details',
-				data: {
-					id: id,
-					meta: response.meta,
-					showSessionDetails: WorkspaceHandler.showSessionDetails,
-					slices: response.slices,
-				}
+			Object.assign(sessionDetailsVue.$data, {
+				meta: response.meta
 			});
-			let data = {
-				latitude: response.meta.location.latitude,
-				longitude: response.meta.location.longitude,
-			};
-			let sessionToolMapInstance = new deck.DeckGL({
-				mapboxApiAccessToken: mapboxgl.accessToken,
-				mapStyle: 'mapbox://styles/mapbox/dark-v10',
-				initialViewState: {
-					latitude: data.latitude,
-					longitude: data.longitude,
-					zoom: 4,
-					maxZoom: 15,
-				},
-				controller: true,
-				container: 'session-tool-map',
-				/* layers: [
-					new deck.IconLayer({
-						id: 'icon-layer',
-						data,
-						pickable: false,
-						// iconAtlas and iconMapping are required
-						// getIcon: return a string
-						iconAtlas: 'marker.png',
-						iconMapping: {marker: {x: 0, y: 0, width: 32, height: 32, mask: true}},
-						getIcon: d => 'marker',
-						sizeScale: 15,
-						getPosition: d => [d.longitude, d.latitude],
-						getSize: d => 100,
-						getColor: d => [7, 140, 0]
-					  })
-				] */
+			Object.assign(sessionDetailsVue.$data, {
+				slices: response.slices
 			});
+			Object.assign(sessionDetailsVue.$data, {showDetails: true});
 
-			generateCharts(response.slices);
-			Object.assign(sessionDetailsVue.$data, {showSessionDetails: true});
+			setTimeout(() => {
+				let data = {
+					latitude: response.meta.location.latitude,
+					longitude: response.meta.location.longitude,
+				};
+
+				generateCharts(response.slices);
+				let sessionToolMapInstance = new deck.DeckGL({
+					mapboxApiAccessToken: mapboxgl.accessToken,
+					mapStyle: 'mapbox://styles/mapbox/dark-v10',
+					initialViewState: {
+						latitude: data.latitude,
+						longitude: data.longitude,
+						zoom: 4,
+						maxZoom: 15,
+					},
+					controller: true,
+					container: 'session-tool-map',
+					/* layers: [
+						new deck.IconLayer({
+							id: 'icon-layer',
+							data,
+							pickable: false,
+							// iconAtlas and iconMapping are required
+							// getIcon: return a string
+							iconAtlas: 'marker.png',
+							iconMapping: {marker: {x: 0, y: 0, width: 32, height: 32, mask: true}},
+							getIcon: d => 'marker',
+							sizeScale: 15,
+							getPosition: d => [d.longitude, d.latitude],
+							getSize: d => 100,
+							getColor: d => [7, 140, 0]
+						})
+					] */
+				});
+			});
 		})
 		.catch((e) => {
 			console.log("Something went wrong fetching session information: ");
