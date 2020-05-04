@@ -17,8 +17,10 @@ var userInfo = {
 };
 
 var accountsTable = null;
+var mapSessionsCount = null;
 var pubKeyInput = null;
 var relaysTable = null;
+var sessionDetailsVue = null;
 var sessionsTable = null;
 
 JSONRPCClient = {
@@ -94,6 +96,7 @@ MapHandler = {
 					aggregation
 				}); */
 				let data = response.map_points;
+				Object.assign(mapSessionsCount.$data, {sessions: data});
 				let layer = new deck.ScreenGridLayer({
 					id: 'sessions-layer',
 					data,
@@ -124,6 +127,7 @@ MapHandler = {
 					controller: true,
 					layers: layers,
 				});
+				Object.assign(mapSessionsCount.$data, {showCount: true});
 			})
 			.catch((e) => {
 				console.log("Something went wrong with map init");
@@ -158,19 +162,27 @@ WorkspaceHandler = {
 		settingsLink: document.getElementById("settings-link"),
 		userToolLink: document.getElementById("user-tool-link"),
 	},
-	showAccountsTable: false,
+	showSessionDetails: false,
 	newUserEmail: document.getElementById("email"),
 	newUserPerms: document.getElementById("perms"),
-	workspaces: {
-		settingsWorkspace: document.getElementById("settings-workspace"),
-		mapWorkspace: document.getElementById("map-workspace"),
-		sessionsWorkspace: document.getElementById("sessions-workspace"),
-		sessionToolWorkspace: document.getElementById("session-tool-workspace"),
-		userToolWorkspace: document.getElementById("user-tool-workspace"),
-	},
 	pages: {
 		accounts: document.getElementById("accounts-page"),
 		config: document.getElementById("config-page"),
+		sessionDetails: document.getElementById("session-details"),
+	},
+	spinners: {
+		map: document.getElementById("map-spinner"),
+		sessions: document.getElementById("sessions-spinner"),
+		sessionTool: document.getElementById("session-tool-spinner"),
+		userTool: document.getElementById("user-tool-spinner"),
+		settings: document.getElementById("settings-spinner"),
+	},
+	workspaces: {
+		mapWorkspace: document.getElementById("map-workspace"),
+		sessionsWorkspace: document.getElementById("sessions-workspace"),
+		sessionToolWorkspace: document.getElementById("session-tool-workspace"),
+		settingsWorkspace: document.getElementById("settings-workspace"),
+		userToolWorkspace: document.getElementById("user-tool-workspace"),
 	},
 	changeAccountPage(page) {
 		// Hide all workspaces
@@ -188,11 +200,14 @@ WorkspaceHandler = {
 	},
 	changePage(page) {
 		// Hide all workspaces
-		this.workspaces.settingsWorkspace.style.display = 'none';
 		this.workspaces.mapWorkspace.style.display = 'none';
 		this.workspaces.sessionsWorkspace.style.display = 'none';
 		this.workspaces.sessionToolWorkspace.style.display = 'none';
+		this.workspaces.settingsWorkspace.style.display = 'none';
 		this.workspaces.userToolWorkspace.style.display = 'none';
+
+		// Hide sessions details
+		// this.pages.sessionDetails.style.display = 'none';
 
 		// Remove all link highlights
 		this.links.mapLink.classList.remove("active");
@@ -347,7 +362,6 @@ function createVueComponents() {
 		el: '#accounts',
 		data: {
 			accounts: null,
-			showAccountsTable: false
 		},
 		methods: {
 			editUser: WorkspaceHandler.editUser
@@ -365,10 +379,17 @@ function createVueComponents() {
 	sessionsTable = new Vue({
 		el: '#sessions',
 		data: {
-			sessions: null
+			sessions: []
 		},
 		methods: {
 			fetchSessionInfo: fetchSessionInfo
+		}
+	});
+	mapSessionsCount = new Vue({
+		el: '#map-sessions-count',
+		data: {
+			sessions: [],
+			showCount: false,
 		}
 	});
 }
@@ -393,11 +414,13 @@ function updatePubKey() {
 }
 
 function fetchSessionInfo(sessionId = '') {
-	let id = sessionId || document.getElementById("sessionIDLookup").value;
-	document.getElementById("sessionIDLookup").value = '';
+	WorkspaceHandler.changePage("session-tool");
+	let id = sessionId || document.getElementById("session-id-input").value;
+	document.getElementById("session-id-input").value = id;
 
 	if (id == '') {
 		console.log("Can't use a empty id");
+		document.getElementById("session-id-input").value = '';
 		return;
 	}
 	/**
@@ -406,15 +429,14 @@ function fetchSessionInfo(sessionId = '') {
 	JSONRPCClient
 		.call("BuyersService.SessionDetails", {session_id: id})
 		.then((response) => {
-			new Vue({
-				el: '#sessionDetails',
+			console.log(response);
+			sessionDetailsVue = new Vue({
+				el: '#session-details',
 				data: {
 					id: id,
 					meta: response.meta,
-					slices: response.slices
-				},
-				methods: {
-					fetchSessionInfo: fetchSessionInfo
+					showSessionDetails: WorkspaceHandler.showSessionDetails,
+					slices: response.slices,
 				}
 			});
 			let data = {
@@ -451,10 +473,12 @@ function fetchSessionInfo(sessionId = '') {
 			});
 
 			generateCharts(response.slices);
+			Object.assign(sessionDetailsVue.$data, {showSessionDetails: true});
 		})
 		.catch((e) => {
 			console.log("Something went wrong fetching session information: ");
 			console.log(e);
+			document.getElementById("session-id-input").value = '';
 		});
 }
 
