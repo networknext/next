@@ -23,10 +23,6 @@ namespace testing
 
   bool SpecTest::Run(int argc, const char* argv[])
   {
-    std::sort(gTests->begin(), gTests->end(), [](testing::SpecTest* a, testing::SpecTest* b) -> bool {
-      return strcmp(a->TestName, b->TestName) > 0;
-    });
-
     if (argc > 1) {
       gTests->erase(
        std::remove_if(
@@ -43,6 +39,22 @@ namespace testing
         }),
        gTests->end());
     }
+
+    std::sort(gTests->begin(), gTests->end(), [](testing::SpecTest* a, testing::SpecTest* b) -> bool {
+      auto capitalize = [](std::string& str) {
+        for (char& c : str) {
+          c &= 0xDF;
+        }
+      };
+
+      std::string aName = a->TestName;
+      std::string bName = b->TestName;
+
+      capitalize(aName);
+      capitalize(bName);
+
+      return aName.compare(bName) > 0;
+    });
 
     std::cout << "Test count: " << gTests->size() << '\n';
 
