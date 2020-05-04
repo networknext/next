@@ -733,7 +733,8 @@ func TestNoRoutesFound(t *testing.T) {
 
 	db := storage.InMemory{}
 	db.AddBuyer(context.Background(), routing.Buyer{
-		PublicKey: TestBuyersServerPublicKey,
+		PublicKey:            TestBuyersServerPublicKey,
+		RoutingRulesSettings: routing.LocalRoutingRulesSettings,
 	})
 
 	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
@@ -824,10 +825,13 @@ func TestTokenEncryptionFailure(t *testing.T) {
 	sessionMetrics.ErrorMetrics.EncryptionFailure = errMetric
 	sessionMetrics.DirectSessions = directMetric
 
-	db := storage.InMemory{}
-	db.AddBuyer(context.Background(), routing.Buyer{
+	buyer := routing.Buyer{
 		PublicKey: TestBuyersServerPublicKey,
-	})
+	}
+	buyer.RoutingRulesSettings.SelectionPercentage = 100
+
+	db := storage.InMemory{}
+	db.AddBuyer(context.Background(), buyer)
 
 	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
 		return routing.Location{
@@ -1167,7 +1171,8 @@ func TestNextRouteResponse(t *testing.T) {
 
 	db := storage.InMemory{}
 	db.AddBuyer(context.Background(), routing.Buyer{
-		PublicKey: TestBuyersServerPublicKey,
+		PublicKey:            TestBuyersServerPublicKey,
+		RoutingRulesSettings: routing.LocalRoutingRulesSettings,
 	})
 
 	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
@@ -1299,7 +1304,8 @@ func TestContinueRouteResponse(t *testing.T) {
 
 	db := storage.InMemory{}
 	db.AddBuyer(context.Background(), routing.Buyer{
-		PublicKey: TestBuyersServerPublicKey,
+		PublicKey:            TestBuyersServerPublicKey,
+		RoutingRulesSettings: routing.LocalRoutingRulesSettings,
 	})
 
 	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
@@ -1438,7 +1444,8 @@ func TestCachedRouteResponse(t *testing.T) {
 
 	db := storage.InMemory{}
 	db.AddBuyer(context.Background(), routing.Buyer{
-		PublicKey: TestBuyersServerPublicKey,
+		PublicKey:            TestBuyersServerPublicKey,
+		RoutingRulesSettings: routing.LocalRoutingRulesSettings,
 	})
 
 	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
@@ -1579,7 +1586,8 @@ func TestVetoedRTT(t *testing.T) {
 
 	db := storage.InMemory{}
 	db.AddBuyer(context.Background(), routing.Buyer{
-		PublicKey: TestBuyersServerPublicKey,
+		PublicKey:            TestBuyersServerPublicKey,
+		RoutingRulesSettings: routing.LocalRoutingRulesSettings,
 	})
 
 	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
@@ -1698,7 +1706,8 @@ func TestVetoExpiredRTT(t *testing.T) {
 
 	db := storage.InMemory{}
 	db.AddBuyer(context.Background(), routing.Buyer{
-		PublicKey: TestBuyersServerPublicKey,
+		PublicKey:            TestBuyersServerPublicKey,
+		RoutingRulesSettings: routing.LocalRoutingRulesSettings,
 	})
 
 	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
@@ -1817,7 +1826,8 @@ func TestVetoedPacketLoss(t *testing.T) {
 
 	db := storage.InMemory{}
 	db.AddBuyer(context.Background(), routing.Buyer{
-		PublicKey: TestBuyersServerPublicKey,
+		PublicKey:            TestBuyersServerPublicKey,
+		RoutingRulesSettings: routing.LocalRoutingRulesSettings,
 	})
 
 	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
@@ -1936,7 +1946,8 @@ func TestVetoExpiredPacketLoss(t *testing.T) {
 
 	db := storage.InMemory{}
 	db.AddBuyer(context.Background(), routing.Buyer{
-		PublicKey: TestBuyersServerPublicKey,
+		PublicKey:            TestBuyersServerPublicKey,
+		RoutingRulesSettings: routing.LocalRoutingRulesSettings,
 	})
 
 	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
@@ -2171,6 +2182,7 @@ func TestForceNext(t *testing.T) {
 
 	routeRuleSettings := routing.DefaultRoutingRulesSettings
 	routeRuleSettings.Mode = routing.ModeForceNext
+	routeRuleSettings.SelectionPercentage = 100
 	db := storage.InMemory{}
 	db.AddBuyer(context.Background(), routing.Buyer{
 		PublicKey:            TestBuyersServerPublicKey,
