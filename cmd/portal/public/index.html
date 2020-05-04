@@ -40,7 +40,6 @@
                 width: 100%;
             }
             #session-tool-map { position: absolute; top: 0; bottom: 0; width: 100%; }
-
             body {
                 font-size: 0.875rem;
             }
@@ -234,17 +233,22 @@
             <div class="container-fluid">
                 <div class="row">
                     <main role="main" class="col-md-12 col-lg-12 px-4" id="map-workspace">
-                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                            <h1 class="h2" id="workspace-title">
+                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom" id="map-sessions-count">
+                            <div id="map-spinner" v-if="!showCount">
+                                <div class="spinner-border" role="status">
+                                    <span class="sr-only">Loading...</span>
+                                </div>
+                            </div>
+                            <h1 class="h2" id="workspace-title" v-if="showCount">
                                 Map&nbsp;
                                 <span class="badge badge-dark">
                                     {{sessions.length}} Total Sessions
                                 </span>&nbsp;
                                 <span class="badge badge-success">
-                                    {{session.onNN}} on Network Next
+                                    IMPLEMENT on Network Next
                                 </span>&nbsp;
                                 <span class="text-muted" style="font-size: 0.5em; line-height: 1em; vertical-align: middle;">
-                                    {{lastRefreshed}}
+                                    IMPLEMENT
                                 </span>
                             </h1>
                             <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1 hidden">
@@ -303,137 +307,142 @@
                                 </div>
                             </div>
                         </div>
-                        <div style="width: 100%; height: calc(-160px + 100vh); border: 1px solid rgb(136, 136, 136); background-color: rgb(27, 27, 27);" id="map-container">
-                        </div>
+                        <div style="width: 100%; height: calc(-160px + 100vh); border: 1px solid rgb(136, 136, 136); background-color: rgb(27, 27, 27);" id="map-container"></div>
                     </main>
                     <main role="main" class="col-md-12 col-lg-12 px-4 hidden" id="sessions-workspace">
-                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                            <h1 class="h2">
-                                Sessions&nbsp;
-                                <span class="badge badge-dark">
-                                    {{sessions.length}} Total Sessions
-                                </span>&nbsp;
-                                <span class="badge badge-success">
-                                    {{session.onNN}} on Network Next
-                                </span>&nbsp;
-                                <span class="text-muted" style="font-size: 0.5em; line-height: 1em; vertical-align: middle;">
-                                    {{lastRefreshed}}
-                                </span>
-                            </h1>
-                            <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1 hidden">
-                                <div class="mr-auto"></div>
-                                <div class="px-2">
-                                    <select class="form-control">
-                                        <option value="rtt">
-                                            Sort by RTT
-                                        </option>
-                                        <option value="packetLoss">
-                                            Sort by Packet Loss
-                                        </option>
-                                    </select>
+                        <div class="spinner-border" role="status" id="sessions-spinner">
+                            <span class="sr-only">Loading...</span>
+                        </div>
+                        <div id="sessions">
+                            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                                <h1 class="h2">
+                                    Sessions&nbsp;
+                                    <span class="badge badge-dark">
+                                        {{sessions.length}} Total Sessions
+                                    </span>&nbsp;
+                                    <span class="badge badge-success">
+                                        IMPLEMENT on Network Next
+                                    </span>&nbsp;
+                                    <span class="text-muted" style="font-size: 0.5em; line-height: 1em; vertical-align: middle;">
+                                        IMPLEMENT
+                                    </span>
+                                </h1>
+                                <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1 hidden">
+                                    <div class="mr-auto"></div>
+                                    <div class="px-2">
+                                        <select class="form-control">
+                                            <option value="rtt">
+                                                Sort by RTT
+                                            </option>
+                                            <option value="packetLoss">
+                                                Sort by Packet Loss
+                                            </option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="table-responsive table-no-top-line" id="sessions">
-                            <table class="table table-sm table-striped table-hover">
-                                <thead>
-                                    <tr>
-                                        <th class="">
-                                            <span id="getIndicator">
+                            <div class="table-responsive table-no-top-line">
+                                <table class="table table-sm table-striped table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>
+                                                <span id="getIndicator">
 
-                                            </span>
-                                        </th>
-                                        <th class="">
-                                            <span id="getFlowidhexadecimal">
-                                                Session ID
-                                            </span>
-                                        </th>
-                                        <th class="">
-                                            <span id="getUserhash">
-                                                User ID
-                                            </span>
-                                        </th>
-                                        <th class="">
-                                            <span id="getUserisp">
-                                                ISP
-                                            </span>
-                                        </th>
-                                        <th class="">
-                                            <span id="getDestrelayname">
-                                                Datacenter
-                                            </span>
-                                        </th>
-                                        <th class="text-right">
-                                            <span id="direct">
-                                                Direct RTT
-                                            </span>
-                                        </th>
-                                        <th class="text-right">
-                                            <span id="next">
-                                                Next RTT
-                                            </span>
-                                        </th>
-                                        <th class="text-right">
-                                            <span id="improvement">
-                                                Improvement
-                                            </span>
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr v-for="session in sessions">
-                                        <td class=" ">
-                                            <svg
-                                                aria-hidden="true"
-                                                focusable="false"
-                                                data-prefix="fas"
-                                                data-icon="circle"
-                                                class="svg-inline--fa fa-circle fa-w-16 fa-fw text-success"
-                                                role="img"
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                viewBox="0 0 512 512">
-                                                <path fill="currentColor" d="M256 8C119 8 8 119 8 256s111 248 248 248 248-111 248-248S393 8 256 8z">
-
-                                                </path>
-                                            </svg>
-                                        </td>
-                                        <td class=" ">
-                                            <a class="text-dark fixed-width" href="/dev/session-debug-tool?id=6b132c210bf10f94">
-                                                {{ session.id }}
-                                            </a>
-                                        </td>
-                                        <td class=" ">
-                                            <a class="text-dark fixed-width" href="/users/sessions?user=8012609429620443184&amp;buyer=eyJraW5kIjoiQnV5ZXIiLCJuYW1lIjoiMTE4MTg5NDA4NDQxODg5OTEzOTcifQ%3D%3D">
-                                                {{ session.user_hash }}
-                                            </a>
-                                        </td>
-                                        <td class=" ">
-                                            {{ session.isp }}
-                                        </td>
-                                        <td class=" ">
-                                            <span class="text-dark">
-                                                {{ session.datacenter }}
-                                            </span>
-                                        </td>
-                                        <td class="text-right ">
-                                            {{ session.direct_rtt }}
-                                        </td>
-                                        <td class="text-right ">
-                                            {{ session.next_rtt }}
-                                        </td>
-                                        <td class="text-right ">
-                                            <span class="text-danger">
-                                                <b>
-                                                    {{ session.delta_rtt }}
-                                                </b>
-                                            </span>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                                                </span>
+                                            </th>
+                                            <th>
+                                                <span id="getFlowidhexadecimal">
+                                                    Session ID
+                                                </span>
+                                            </th>
+                                            <th>
+                                                <span id="getUserhash">
+                                                    User ID
+                                                </span>
+                                            </th>
+                                            <th>
+                                                <span id="getUserisp">
+                                                    ISP
+                                                </span>
+                                            </th>
+                                            <th>
+                                                <span id="getDestrelayname">
+                                                    Datacenter
+                                                </span>
+                                            </th>
+                                            <th class="text-right">
+                                                <span id="direct">
+                                                    Direct RTT
+                                                </span>
+                                            </th>
+                                            <th class="text-right">
+                                                <span id="next">
+                                                    Next RTT
+                                                </span>
+                                            </th>
+                                            <th class="text-right">
+                                                <span id="improvement">
+                                                    Improvement
+                                                </span>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="session in sessions">
+                                            <td>
+                                                <svg
+                                                    aria-hidden="true"
+                                                    focusable="false"
+                                                    data-prefix="fas"
+                                                    data-icon="circle"
+                                                    class="svg-inline--fa fa-circle fa-w-16 fa-fw text-success"
+                                                    role="img"
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    viewBox="0 0 512 512">
+                                                    <path fill="currentColor" d="M256 8C119 8 8 119 8 256s111 248 248 248 248-111 248-248S393 8 256 8z"></path>
+                                                </svg>
+                                            </td>
+                                            <td>
+                                                <a class="text-dark fixed-width" href="#" v-on:click="fetchSessionInfo(session.id)">
+                                                    {{ session.id }}
+                                                </a>
+                                            </td>
+                                            <td>
+                                                <a class="text-dark fixed-width" href="#" v-on:click="fetchUserInfo(session.user_hash)">
+                                                    {{ session.user_hash }}
+                                                </a>
+                                            </td>
+                                            <td>
+                                                {{ session.location.isp }}
+                                            </td>
+                                            <td>
+                                                <span class="text-dark">
+                                                    {{ session.datacenter }}
+                                                </span>
+                                            </td>
+                                            <td class="text-right ">
+                                                {{ session.direct_rtt }}
+                                            </td>
+                                            <td class="text-right ">
+                                                {{ session.next_rtt }}
+                                            </td>
+                                            <td class="text-right ">
+                                                <span class="text-danger">
+                                                    <b>
+                                                        {{ session.delta_rtt }}
+                                                    </b>
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </main>
                     <main role="main" class="col-md-12 col-lg-12 px-4 hidden" id="session-tool-workspace">
+                        <div class="spinner-border" role="status" id="session-tool-spinner">
+                            <span class="sr-only">Loading...</span>
+                        </div>
                         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                             <h1 class="h2">
                                 Session Tool
@@ -444,12 +453,12 @@
                         </div>
                         <form class="flow-stats-form">
                             <div class="form-group">
-                                <label for="flowId">
+                                <label for="session-id-input">
                                     Session ID
                                 </label>
                                 <div class="row">
                                     <div class="col">
-                                        <input id="flowId" class="form-control" type="text" placeholder="Enter a Session ID to view statistics" value="">
+                                        <input id="session-id-input" class="form-control" type="text" placeholder="Enter a Session ID to view statistics" value="">
                                     </div>
                                     <div class="col-auto">
                                         <button class="btn btn-primary" disabled="" type="submit">
@@ -462,8 +471,317 @@
                         <div class="alert alert-info" role="alert">
                             Please enter a valid session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.
                         </div>
+                        <div id="session-details">
+                            <div class="row">
+                                <div class="col-12 col-lg-8">
+                                    <div class="card mb-2">
+                                        <div class="card-header">
+                                            <strong>
+                                                Latency
+                                            </strong>
+                                            <div class="float-right">
+                                                <span class="mr-2" style="border-right: 2px dotted rgb(51, 51, 51); display: none;"></span>
+                                                <span style="color: blue;">
+                                                    — Network Next
+                                                </span>
+                                                <span style="color: red;">
+                                                    — Direct
+                                                </span>
+                                                <span style="color: forestgreen;">
+                                                    — Prediction
+                                                </span>
+                                                <span></span>
+                                            </div>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="latency-chart-1"></div>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="latency-chart-2"></div>
+                                        </div>
+                                    </div>
+                                    <div class="card mb-2">
+                                        <div class="card-header">
+                                            <strong>
+                                                Jitter
+                                            </strong>
+                                            <div class="float-right">
+                                                <span class="mr-2" style="border-right: 2px dotted rgb(51, 51, 51); display: none;"></span>
+                                                <span style="color: blue;">
+                                                    — Network Next
+                                                </span>
+                                                <span style="color: red;">
+                                                    — Direct
+                                                </span>
+                                                <span style="color: forestgreen;">
+                                                    — Prediction
+                                                </span>
+                                                <span></span>
+                                            </div>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="jitter-chart-1"></div>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="jitter-chart-2"></div>
+                                        </div>
+                                    </div>
+                                    <div class="card mb-2">
+                                        <div class="card-header">
+                                            <strong>
+                                                Packet Loss
+                                            </strong>
+                                            <div class="float-right">
+                                                <span class="mr-2" style="border-right: 2px dotted rgb(51, 51, 51); display: none;"></span>
+                                                <span style="color: blue;">
+                                                    — Network Next
+                                                </span>
+                                                <span style="color: red;">
+                                                    — Direct
+                                                </span>
+                                                <span style="color: forestgreen;">
+                                                    — Prediction
+                                                </span>
+                                                <span></span>
+                                            </div>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="packet-loss-chart-1">
+                                            </div>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="packet-loss-chart-2">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card mb-2">
+                                        <div class="card-header">
+                                            <strong>
+                                                Bandwidth
+                                            </strong>
+                                            <div class="float-right">
+                                                <span class="mr-2" style="border-right: 2px dotted rgb(51, 51, 51); display: none;"></span>
+                                                <span style="color: orange;">
+                                                    — Actual Up
+                                                </span>
+                                                <span style="color: blue;">
+                                                    — Actual Down
+                                                </span>
+                                                <span></span>
+                                            </div>
+                                            <div class="float-right">
+                                                <span id="traffic-up-legend"></span>
+                                                <span id="traffic-down-legend"></span>
+                                            </div>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="bandwidth-chart-1">
+                                            </div>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="bandwidth-chart-2">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12 col-lg-4">
+                                    <div class="card">
+                                        <div class="card-img-top">
+                                            <div id="session-tool-map" style="width: 100%; height: 20vh; margin: 0px; padding: 0px; position: relative;"></div>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="card-text">
+                                                <dl>
+                                                    <dt>
+                                                        ISP
+                                                    </dt>
+                                                    <dd>
+                                                        <em>
+                                                            Unavailable
+                                                        </em>
+                                                    </dd>
+                                                    <div>
+                                                        <dt>
+                                                            User ID
+                                                        </dt>
+                                                        <dd>
+                                                            <a class="text-dark">
+                                                                {{ meta.user_hash }}
+                                                            </a>
+                                                        </dd>
+                                                    </div>
+                                                    <dt>
+                                                        Customer
+                                                    </dt>
+                                                    <dd>
+                                                        (no such buyer)
+                                                    </dd>
+                                                    <dt>
+                                                        SDK Version
+                                                    </dt>
+                                                    <dd>
+                                                        {{ meta.sdk }}
+                                                    </dd>
+                                                    <dt>
+                                                        Connection Type
+                                                    </dt>
+                                                    <dd>
+                                                        {{ meta.connection }}
+                                                    </dd>
+                                                    <dt>
+                                                        Nearby Relays
+                                                        <span style="float: right; font-weight: normal; font-style: italic;">
+                                                            at 8:01:45am May 4
+                                                        </span>
+                                                    </dt>
+                                                    <table class="table table-sm mt-1">
+                                                        <thead>
+                                                            <tr>
+                                                                <th style="width: 50%;">
+                                                                    Name
+                                                                </th>
+                                                                <th style="width: 16.66%;">
+                                                                    RTT
+                                                                </th>
+                                                                <th style="width: 16.66%;">
+                                                                    Jitter
+                                                                </th>
+                                                                <th style="width: 16.66%;">
+                                                                    Packet Loss
+                                                                </th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr>
+                                                                <td>
+                                                                    <a class="text-dark" href="/admin/relays/view/?id=eyJraW5kIjoiUmVsYXkiLCJuYW1lIjoiMTk1ODM3OTUyMTE2MjgxMDQ3MyJ9"></a>&nbsp;
+                                                                </td>
+                                                                <td>
+                                                                    -
+                                                                </td>
+                                                                <td>
+                                                                    -
+                                                                </td>
+                                                                <td>
+                                                                    -
+                                                                </td>
+                                                            </tr>
+                                                            <tr>
+                                                                <td>
+                                                                    <a class="text-dark"></a>&nbsp;
+                                                                </td>
+                                                                <td>
+                                                                    -
+                                                                </td>
+                                                                <td>
+                                                                    -
+                                                                </td>
+                                                                <td>
+                                                                    -
+                                                                </td>
+                                                            </tr>
+                                                            <tr>
+                                                                <td>
+                                                                    <a class="text-dark"></a>&nbsp;
+                                                                </td>
+                                                                <td>
+                                                                    -
+                                                                </td>
+                                                                <td>
+                                                                    -
+                                                                </td>
+                                                                <td>
+                                                                    -
+                                                                </td>
+                                                            </tr>
+                                                            <tr>
+                                                                <td>
+                                                                    <a class="text-dark"></a>&nbsp;
+                                                                </td>
+                                                                <td>
+                                                                    -
+                                                                </td>
+                                                                <td>
+                                                                    -
+                                                                </td>
+                                                                <td>
+                                                                    -
+                                                                </td>
+                                                            </tr>
+                                                            <tr>
+                                                                <td>
+                                                                    <a class="text-dark"></a>&nbsp;
+                                                                </td>
+                                                                <td>
+                                                                    -
+                                                                </td>
+                                                                <td>
+                                                                    -
+                                                                </td>
+                                                                <td>
+                                                                    -
+                                                                </td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                    <dt>
+                                                        Route
+                                                        <span style="float: right; font-weight: normal; font-style: italic;">
+                                                            at 8:01:45am May 4
+                                                        </span>
+                                                    </dt>
+                                                    <table class="table table-sm mt-1">
+                                                        <thead>
+                                                            <tr>
+                                                                <th style="width: 50%;">
+                                                                    Name
+                                                                </th>
+                                                                <th style="width: 50%;">
+                                                                    Role
+                                                                </th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr>
+                                                                <td>
+                                                                    {{ meta.client_addr }}
+                                                                </td>
+                                                                <td>
+                                                                    <em>
+                                                                        User (Player)
+                                                                    </em>
+                                                                </td>
+                                                            </tr>
+                                                            <tr v-for="index in meta.hops" :key="index" scope="row">
+                                                                <td>
+                                                                    Relay {{ index }}
+                                                                </td>
+                                                                <td>
+                                                                    Hop {{ index }}
+                                                                </td>
+                                                            </tr>
+                                                            <tr>
+                                                                <td>
+                                                                    {{ meta.server_addr}}
+                                                                </td>
+                                                                <td>
+                                                                    <em>Destination Server</em>
+                                                                </td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </dl>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </main>
                     <main role="main" class="col-md-12 col-lg-12 px-4 hidden" id="user-tool-workspace">
+                        <div class="spinner-border" role="status" id="user-tool-spinner">
+                            <span class="sr-only">Loading...</span>
+                        </div>
                         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                             <h1 class="h2">
                                 Lookup User Sessions
@@ -478,7 +796,7 @@
                             </label>
                             <div class="row">
                                 <div class="col">
-                                    <input id="flowId" class="form-control" type="text" placeholder="Enter a user ID to view their sessions" value="">
+                                    <input id="user-id-input" class="form-control" type="text" placeholder="Enter a user ID to view their sessions" value="">
                                 </div>
                             </div>
                         </div>
@@ -487,6 +805,9 @@
                         </div>
                     </main>
                     <main role="main" class="col-md-12 col-lg-12 px-4 hidden" id="settings-workspace">
+                        <div class="spinner-border" role="status" id="settings-spinner">
+                            <span class="sr-only">Loading...</span>
+                        </div>
                         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                             <h1 class="h2">
                                 Settings
@@ -545,7 +866,7 @@
                                                         </div>
                                                     </div>
                                                     <div class="css-1g6gooi">
-                                                        <div class="" style="display: inline-block;">
+                                                        <div style="display: inline-block;">
                                                             <input autocapitalize="none" autocomplete="off" autocorrect="off" id="react-select-3-input" spellcheck="false" tabindex="0" type="text" aria-autocomplete="list" style="box-sizing: content-box; width: 14px; background: rgba(0, 0, 0, 0) none repeat scroll 0px center; border: 0px none; font-size: inherit; opacity: 1; outline: currentcolor none 0px; padding: 0px; color: inherit;" value="">
                                                             <div style="position: absolute; top: 0px; left: 0px; visibility: hidden; height: 0px; overflow: scroll; white-space: pre; font-size: 14px; font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji; font-weight: 400; font-style: normal; letter-spacing: normal; text-transform: none;"></div>
                                                         </div>
@@ -603,7 +924,7 @@
                                                         Select...
                                                     </div>
                                                     <div class="css-1g6gooi">
-                                                        <div class="" style="display: inline-block;">
+                                                        <div style="display: inline-block;">
                                                             <input autocapitalize="none" autocomplete="off" autocorrect="off" id="react-select-5-input" spellcheck="false" tabindex="0" type="text" aria-autocomplete="list" style="box-sizing: content-box; width: 14px; background: rgba(0, 0, 0, 0) none repeat scroll 0px center; border: 0px none; font-size: inherit; opacity: 1; outline: currentcolor none 0px; padding: 0px; color: inherit;" value="">
                                                             <div style="position: absolute; top: 0px; left: 0px; visibility: hidden; height: 0px; overflow: scroll; white-space: pre; font-size: 14px; font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji; font-weight: 400; font-style: normal; letter-spacing: normal; text-transform: none;"></div>
                                                         </div>
@@ -724,10 +1045,6 @@
                 integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6"
                 crossorigin="anonymous">
         </script>
-        <script src="js/d3/d3.v3.min.js"></script>
-        <script src="js/d3/topojson.v1.min.js"></script>
-        <script src="js/d3/d3.hexbin.js"></script>
-        <script src="js/hexmap/hexlib.js"></script>
         <script src="./js/portal.js"></script>
         <script>
             // Disabling auth to run on dev
