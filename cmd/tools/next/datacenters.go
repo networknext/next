@@ -9,42 +9,42 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
-func datacenters(rpcClient jsonrpc.RPCClient, filter string) {
+func datacenters(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 	args := localjsonrpc.DatacentersArgs{
 		Name: filter,
 	}
 
 	var reply localjsonrpc.DatacentersReply
 	if err := rpcClient.CallFor(&reply, "OpsService.Datacenters", args); err != nil {
-		handleJSONRPCError(err)
+		handleJSONRPCError(env, err)
 		return
 	}
 
 	table.Output(reply.Datacenters)
 }
 
-func addDatacenter(rpcClient jsonrpc.RPCClient, datacenter routing.Datacenter) {
+func addDatacenter(rpcClient jsonrpc.RPCClient, env Environment, datacenter routing.Datacenter) {
 	args := localjsonrpc.AddDatacenterArgs{
 		Datacenter: datacenter,
 	}
 
 	var reply localjsonrpc.AddDatacenterReply
 	if err := rpcClient.CallFor(&reply, "OpsService.AddDatacenter", args); err != nil {
-		handleJSONRPCError(err)
+		handleJSONRPCError(env, err)
 		return
 	}
 
 	fmt.Printf("Datacenter \"%s\" added to storage.\n", datacenter.Name)
 }
 
-func removeDatacenter(rpcClient jsonrpc.RPCClient, name string) {
+func removeDatacenter(rpcClient jsonrpc.RPCClient, env Environment, name string) {
 	args := localjsonrpc.RemoveDatacenterArgs{
 		Name: name,
 	}
 
 	var reply localjsonrpc.RemoveDatacenterReply
 	if err := rpcClient.CallFor(&reply, "OpsService.RemoveDatacenter", args); err != nil {
-		handleJSONRPCError(err)
+		handleJSONRPCError(env, err)
 		return
 	}
 

@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"reflect"
 	"runtime"
 	"strconv"
 	"strings"
@@ -215,9 +216,10 @@ func readJSONData(entity string, args []string) []byte {
 	return data
 }
 
-func handleJSONRPCError(err error) {
+func handleJSONRPCError(env Environment, err error) {
 	switch e := err.(type) {
 	case *jsonrpc.HTTPError:
+		fmt.Println(reflect.TypeOf(fmt.Errorf("test")))
 		switch e.Code {
 		case http.StatusUnauthorized:
 			log.Fatalf("%d: %s - use `next auth` to authorize the CLI", e.Code, http.StatusText(e.Code))
@@ -225,7 +227,11 @@ func handleJSONRPCError(err error) {
 			log.Fatalf("%d: %s", e.Code, http.StatusText(e.Code))
 		}
 	default:
-		log.Fatal(err)
+		if env.Hostname != "local" && env.Hostname != "dev" && env.Hostname != "prod" {
+			log.Fatalf("%v - make sure the hostname is set to either 'prod', 'dev', or 'local' with\nnext env <env>", err)
+		} else {
+			log.Fatal(err)
+		}
 	}
 }
 
@@ -328,7 +334,7 @@ func main() {
 				ShortUsage: "next buyers",
 				ShortHelp:  "Manage buyers",
 				Exec: func(_ context.Context, args []string) error {
-					buyers(rpcClient)
+					buyers(rpcClient, env)
 					return nil
 				},
 				Subcommands: []*ffcli.Command{
@@ -346,7 +352,7 @@ func main() {
 							}
 
 							// Add the Buyer to storage
-							addBuyer(rpcClient, buyer)
+							addBuyer(rpcClient, env, buyer)
 							return nil
 						},
 						Subcommands: []*ffcli.Command{
@@ -386,7 +392,7 @@ func main() {
 								log.Fatalf("Error parsing ID %s: %v", args[0], err)
 							}
 
-							removeBuyer(rpcClient, uint64(buyerID))
+							removeBuyer(rpcClient, env, uint64(buyerID))
 							return nil
 						},
 					},
@@ -408,7 +414,7 @@ func main() {
 					}
 
 					// Get the buyer's route shader
-					routingRulesSettings(rpcClient, buyerID)
+					routingRulesSettings(rpcClient, env, buyerID)
 					return nil
 				},
 				Subcommands: []*ffcli.Command{
@@ -436,7 +442,7 @@ func main() {
 							}
 
 							// Set the route shader in storage
-							setRoutingRulesSettings(rpcClient, buyerID, rrs)
+							setRoutingRulesSettings(rpcClient, env, buyerID, rrs)
 							return nil
 						},
 						Subcommands: []*ffcli.Command{
@@ -464,7 +470,7 @@ func main() {
 				ShortUsage: "next sellers",
 				ShortHelp:  "Manage sellers",
 				Exec: func(_ context.Context, args []string) error {
-					sellers(rpcClient)
+					sellers(rpcClient, env)
 					return nil
 				},
 				Subcommands: []*ffcli.Command{
@@ -482,7 +488,7 @@ func main() {
 							}
 
 							// Add the Seller to storage
-							addSeller(rpcClient, seller)
+							addSeller(rpcClient, env, seller)
 							return nil
 						},
 						Subcommands: []*ffcli.Command{
@@ -517,7 +523,7 @@ func main() {
 								log.Fatal("Provide the seller ID of the seller you wish to remove\nFor a list of sellers, use next sellers")
 							}
 
-							removeSeller(rpcClient, args[0])
+							removeSeller(rpcClient, env, args[0])
 							return nil
 						},
 					},
@@ -529,10 +535,10 @@ func main() {
 				ShortHelp:  "Manage datacenters",
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) > 0 {
-						datacenters(rpcClient, args[0])
+						datacenters(rpcClient, env, args[0])
 						return nil
 					}
-					datacenters(rpcClient, "")
+					datacenters(rpcClient, env, "")
 					return nil
 				},
 				Subcommands: []*ffcli.Command{
@@ -558,7 +564,7 @@ func main() {
 							}
 
 							// Add the Datacenter to storage
-							addDatacenter(rpcClient, realDatacenter)
+							addDatacenter(rpcClient, env, realDatacenter)
 							return nil
 						},
 						Subcommands: []*ffcli.Command{
@@ -594,7 +600,7 @@ func main() {
 								log.Fatal("Provide the datacenter name of the datacenter you wish to remove\nFor a list of datacenters, use next datacenters")
 							}
 
-							removeDatacenter(rpcClient, args[0])
+							removeDatacenter(rpcClient, env, args[0])
 							return nil
 						},
 					},
@@ -606,10 +612,10 @@ func main() {
 				ShortHelp:  "Manage relays",
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) > 0 {
-						relays(rpcClient, args[0])
+						relays(rpcClient, env, args[0])
 						return nil
 					}
-					relays(rpcClient, "")
+					relays(rpcClient, env, "")
 					return nil
 				},
 				Subcommands: []*ffcli.Command{
@@ -659,7 +665,7 @@ func main() {
 							}
 
 							// Add the Relay to storage
-							addRelay(rpcClient, realRelay)
+							addRelay(rpcClient, env, realRelay)
 							return nil
 						},
 						Subcommands: []*ffcli.Command{
@@ -702,7 +708,7 @@ func main() {
 								log.Fatal("Provide the relay name of the relay you wish to remove\nFor a list of relay, use next relay")
 							}
 
-							removeRelay(rpcClient, args[0])
+							removeRelay(rpcClient, env, args[0])
 							return nil
 						},
 					},
