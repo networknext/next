@@ -96,7 +96,6 @@ MapHandler = {
 					aggregation
 				}); */
 				let data = response.map_points;
-				console.log(data);
 				Object.assign(mapSessionsCount.$data, {
 					onNN: data.filter((point) => {
 						return point.on_network_next;
