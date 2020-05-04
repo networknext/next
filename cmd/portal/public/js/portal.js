@@ -51,7 +51,7 @@ JSONRPCClient = {
 				throw new Error(json.error);
 			}
 			return json.result
-		})
+		});
 	}
 }
 
@@ -514,354 +514,155 @@ function fetchSessionInfo(sessionId = '') {
 
 function generateCharts(data) {
 	let latencyData = {
-		next: [],
-		direct: [],
-		improvement: [],
+		improvement: [
+			[],
+			[],
+		],
+		comparison: [
+			[],
+			[],
+			[],
+		],
 	};
 	let jitterData = {
-		next: [],
-		direct: [],
-		improvement: [],
+		improvement: [
+			[],
+			[],
+		],
+		comparison: [
+			[],
+			[],
+			[],
+		],
 	};
 	let packetLossData = {
-		next: [],
-		direct: [],
-		improvement: [],
+		improvement: [
+			[],
+			[],
+		],
+		comparison: [
+			[],
+			[],
+			[],
+		],
 	};
 	let bandwidthData = {
-		up: [],
-		down: [],
+		up: [
+			[],
+			[],
+		],
+		down: [
+			[],
+			[],
+		],
 	};
 
-	data.map((entry) => {
-		let timestamp = new Date(entry.timestamp);
-		timestamp = timestamp.toLocaleString(
-			'en-us',
-			{
-				weekday: undefined,
-				year: undefined,
-				month: undefined,
-				day: undefined,
-				hour: '2-digit',
-				minute: '2-digit',
-				second: '2-digit',
-			},
-		);
+	data.map((entry, index) => {
+		let timestamp = new Date(entry.timestamp).getTime();
 
 		// Latency
 		let next = Number.parseInt(entry.next.rtt * SEC_TO_MS).toFixed(0);
 		let direct = Number.parseInt(entry.direct.rtt * SEC_TO_MS).toFixed(0);
 		let improvement = direct - next;
-		latencyData.next.push({
-			x: timestamp,
-			y: next,
-		});
-		latencyData.direct.push({
-			x: timestamp,
-			y: direct,
-		});
-		latencyData.improvement.push({
-			x: timestamp,
-			y: improvement,
-		});
+		latencyData.improvement[0].push(index);
+		latencyData.improvement[1].push(improvement);
+		latencyData.comparison[0].push(timestamp);
+		latencyData.comparison[1].push(next);
+		latencyData.comparison[2].push(direct);
 
 		// Jitter
-		next = Number.parseInt(entry.next.rtt * SEC_TO_MS).toFixed(0);
-		direct = Number.parseInt(entry.direct.rtt * SEC_TO_MS).toFixed(0);
+		next = Number.parseInt(entry.next.jitter * SEC_TO_MS).toFixed(0);
+		direct = Number.parseInt(entry.direct.jitter * SEC_TO_MS).toFixed(0);
 		improvement = direct - next;
-		jitterData.next.push({
-			x: timestamp,
-			y: next,
-		});
-		jitterData.direct.push({
-			x: timestamp,
-			y: direct,
-		});
-		jitterData.improvement.push({
-			x: timestamp,
-			y: improvement,
-		});
+		jitterData.improvement[0].push(index);
+		jitterData.improvement[1].push(improvement);
+		jitterData.comparison[0].push(timestamp);
+		jitterData.comparison[1].push(next);
+		jitterData.comparison[2].push(direct);
 
 		// Packetloss
 		next = Number.parseInt(entry.next.packet_loss * DEC_TO_PERC).toFixed(0);
 		direct = Number.parseInt(entry.direct.packet_loss * DEC_TO_PERC).toFixed(0);
 		improvement = direct - next;
-		packetLossData.next.push({
-			x: timestamp,
-			y: next,
-		});
-		packetLossData.direct.push({
-			x: timestamp,
-			y: direct,
-		});
-		packetLossData.improvement.push({
-			x: timestamp,
-			y: improvement,
-		});
+		packetLossData.improvement[0].push(index);
+		packetLossData.improvement[1].push(improvement);
+		packetLossData.comparison[0].push(timestamp);
+		packetLossData.comparison[1].push(next);
+		packetLossData.comparison[2].push(direct);
 
 		// Bandwidth
-		bandwidthData.up.push({
-			x: timestamp,
-			y: entry.envelope.up,
-		});
-		bandwidthData.down.push({
-			x: timestamp,
-			y: entry.envelope.down,
-		});
+		bandwidthData.up[0].push(index);
+		bandwidthData.up[1].push(entry.envelope.up);
+		bandwidthData.down[0].push(timestamp);
+		bandwidthData.down[1].push(entry.envelope.down);
 	});
 
-	let defaultOptions = {
-		chart: {
-			type: 'area',
-			height: 350,
-			toolbar: {
-				show: false,
-			},
-			zoom: {
-				enabled: false,
-			},
-		},
-		legend: {
-			show: false,
-		},
-		stroke: {
-			curve: 'stepline',
-		},
-		theme: {
-			mode: 'light',
-		},
-		dataLabels: {
-			enabled: false
-		},
-		markers: {
-			hover: {
-				sizeOffset: 4,
-			},
-		},
-		xaxis: {
-			lines: {
-				show: false,
-			},
-		},
-	};
-
-	let latencyOptionsImprovement = {
+	const latencyImprovementOpts = {
+		width: 1000,
+		height: 600,
 		series: [
+			{},
 			{
-				name: 'Improvement',
-				data: latencyData.improvement,
+				stroke: "green",
+				fill: "rgba(0,255,0,0.1)",
+				label: "Improvement"
 			},
 		],
-		yaxis: {
-			lines: {
-				show: true,
-			},
-			title: {
-				text: '(m/s)',
-			},
-		},
 	};
 
-	let latencyOptionsComparison = {
+	const latencycomparisonOpts = {
+		width: 1000,
+		height: 600,
 		series: [
+			{},
 			{
-				name: 'Network Next',
-				data: latencyData.next,
+				stroke: "blue",
+				fill: "rgba(0,0,255,0.1)",
+				label: "Network Next"
 			},
 			{
-				name: 'Direct',
-				data: latencyData.direct,
+				stroke: "red",
+				fill: "rgba(255,0,0,0.1)",
+				label: "Direct"
 			},
 		],
-		yaxis: {
-			lines: {
-				show: true,
-			},
-			title: {
-				text: '(m/s)',
-			},
-		},
 	};
 
-	let latencyImprovementChart = new ApexCharts(
-		document.querySelector("#latency-chart-1"),
-		{
-			...latencyOptionsImprovement,
-			...defaultOptions
-		},
-	);
-
-	let latencyComparisonChart = new ApexCharts(
-		document.querySelector("#latency-chart-2"),
-		{
-			...latencyOptionsComparison,
-			...defaultOptions
-		},
-	);
-
-	let jitterOptionsImprovement = {
+	const bandwidthUpOpts = {
+		width: 1000,
+		height: 600,
 		series: [
+			{},
 			{
-				name: 'Improvement',
-				data: jitterData.improvement,
+				stroke: "blue",
+				fill: "rgba(0,0,255,0.1)",
+				label: "Actual Up"
 			},
 		],
-		yaxis: {
-			lines: {
-				show: true,
-			},
-			title: {
-				text: '(m/s)',
-			},
-		},
 	};
 
-	let jitterOptionsComparison = {
+	const bandwidthDownOpts = {
+		width: 1000,
+		height: 600,
 		series: [
+			{},
 			{
-				name: 'Network Next',
-				data: jitterData.next,
-			},
-			{
-				name: 'Direct',
-				data: jitterData.direct,
+				stroke: "orange",
+				fill: "rgba(255,165,0,0.1)",
+				label: "Actual Down"
 			},
 		],
-		yaxis: {
-			lines: {
-				show: true,
-			},
-			title: {
-				text: '(m/s)',
-			},
-		},
 	};
 
-	let jitterImprovementChart = new ApexCharts(
-		document.querySelector("#jitter-chart-1"),
-		{
-			...jitterOptionsImprovement,
-			...defaultOptions
-		},
-	);
+	let latencyImprovementChart = new uPlot(latencyImprovementOpts, latencyData.improvement, document.getElementById("latency-chart-1"));
+	let latencyComparisonChart = new uPlot(latencycomparisonOpts, latencyData.comparison, document.getElementById("latency-chart-2"));
 
-	let jitterComparisonChart = new ApexCharts(
-		document.querySelector("#jitter-chart-2"),
-		{
-			...jitterOptionsComparison,
-			...defaultOptions
-		},
-	);
+	let jitterImprovementChart = new uPlot(latencyImprovementOpts, jitterData.improvement, document.getElementById("jitter-chart-1"));
+	let jitterComparisonChart = new uPlot(latencycomparisonOpts, jitterData.comparison, document.getElementById("jitter-chart-2"));
 
-	let packetLossOptionsImprovement = {
-		series: [
-			{
-				name: 'Improvement',
-				data: packetLossData.improvement,
-			},
-		],
-		yaxis: {
-			lines: {
-				show: true,
-			},
-			title: {
-				text: '(%)',
-			},
-		},
-	};
+	let packetLossImprovementChart = new uPlot(latencyImprovementOpts, packetLossData.improvement, document.getElementById("packet-loss-chart-1"));
+	let packetLossComparisonChart = new uPlot(latencycomparisonOpts, packetLossData.comparison, document.getElementById("packet-loss-chart-2"));
 
-	let packetLossOptionsComparison = {
-		series: [
-			{
-				name: 'Network Next',
-				data: packetLossData.next,
-			},
-			{
-				name: 'Direct',
-				data: packetLossData.direct,
-			},
-		],
-		yaxis: {
-			lines: {
-				show: true,
-			},
-			title: {
-				text: '(%)',
-			},
-		},
-	};
-
-	let packetLossImprovementChart = new ApexCharts(
-		document.querySelector("#packet-loss-chart-1"),
-		{
-			...packetLossOptionsImprovement,
-			...defaultOptions
-		},
-	);
-
-	let packetLossComparisonChart = new ApexCharts(
-		document.querySelector("#packet-loss-chart-2"),
-		{
-			...packetLossOptionsComparison,
-			...defaultOptions
-		},
-	);
-
-	let bandwidthOptionsUp = {
-		series: [
-			{
-				name: 'Actual Up',
-				data: bandwidthData.up,
-			},
-		],
-		yaxis: {
-			lines: {
-				show: true,
-			},
-			title: {
-				text: '(kbps)',
-			},
-		},
-	};
-
-	let bandwidthOptionsDown = {
-		series: [
-			{
-				name: 'Actual Down',
-				data: bandwidthData.down,
-			},
-		],
-		yaxis: {
-			lines: {
-				show: true,
-			},
-			title: {
-				text: '(kbps)',
-			},
-		},
-	};
-
-	let bandwidthUpChart = new ApexCharts(
-		document.querySelector("#bandwidth-chart-1"),
-		{
-			...bandwidthOptionsUp,
-			...defaultOptions
-		},
-	);
-
-	let bandwidthDownChart = new ApexCharts(
-		document.querySelector("#bandwidth-chart-2"),
-		{
-			...bandwidthOptionsDown,
-			...defaultOptions
-		},
-	);
-	latencyImprovementChart.render();
-	latencyComparisonChart.render();
-	jitterImprovementChart.render();
-	jitterComparisonChart.render();
-	packetLossImprovementChart.render();
-	packetLossComparisonChart.render();
-	bandwidthUpChart.render();
-	bandwidthDownChart.render();
+	let bandwidthUpChart = new uPlot(bandwidthUpOpts, bandwidthData.up, document.getElementById("bandwidth-chart-1"));
+	let bandwidthDownChart = new uPlot(bandwidthDownOpts, bandwidthData.down, document.getElementById("bandwidth-chart-2"));
 }
