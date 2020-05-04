@@ -582,7 +582,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 					routing.DecideUpgradeRTT(float64(buyer.RoutingRulesSettings.RTTThreshold)),
 					routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis), buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
 					routing.DecideVeto(float64(buyer.RoutingRulesSettings.RTTVeto), buyer.RoutingRulesSettings.EnablePacketLossSafety, buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
-					routing.DecideCommitted(packet.TryBeforeYouBuy, &sessionCacheEntry.CommittedRouteCount, buyer.RoutingRulesSettings.CommittedRouteCountThreshold),
+					routing.DecideCommitted(packet.TryBeforeYouBuy, &sessionCacheEntry.CommittedRouteCount, uint64(buyer.RoutingRulesSettings.CommittedRouteCountThreshold)),
 				)
 
 				if routing.IsVetoed(routeDecision) {

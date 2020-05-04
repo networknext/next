@@ -68,7 +68,7 @@ type RoutingRulesSettings struct {
 	EnableABTest bool
 
 	// How many network next routes that show improvement over direct should we count before committing to a network next route
-	CommittedRouteCountThreshold uint64
+	CommittedRouteCountThreshold int64
 }
 
 var DefaultRoutingRulesSettings = RoutingRulesSettings{
