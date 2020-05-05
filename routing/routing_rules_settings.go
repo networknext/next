@@ -70,8 +70,8 @@ type RoutingRulesSettings struct {
 	// If true, the backend should only mark routes as committed if TryBeforeYouBuyMaxSlices network next routes have been observed to improve over direct
 	EnableTryBeforeYouBuy bool
 
-	// How many network next routes that show improvement over direct should we count before committing to a network next route
-	TryBeforeYouBuyMaxSlices int64
+	// The maximum number of slices we should observe if we can't confidently decide whether or not to veto a session during the committed logic.
+	TryBeforeYouBuyMaxSlices int8
 }
 
 var DefaultRoutingRulesSettings = RoutingRulesSettings{

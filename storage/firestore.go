@@ -87,7 +87,7 @@ type routingRulesSettings struct {
 	EnableMultipathForRTT        bool    `firestore:"rttMultipath"`
 	EnableABTest                 bool    `firestore:"abTest"`
 	EnableTryBeforeYouBuy        bool    `firestore:"tryBeforeYouBuy"`
-	TryBeforeYouBuyMaxSlices     int64   `firestore:"tryBeforeYouBuyMaxSlices"`
+	TryBeforeYouBuyMaxSlices     int8    `firestore:"tryBeforeYouBuyMaxSlices"`
 }
 
 func NewFirestore(ctx context.Context, gcpProjectID string, logger log.Logger) (*Firestore, error) {
@@ -1154,24 +1154,24 @@ func (fs *Firestore) setRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 
 	// Convert RoutingRulesSettings struct to firestore map
 	rrsFirestore := map[string]interface{}{
-		"displayName":             name,
-		"envelopeKbpsUp":          rrs.EnvelopeKbpsUp,
-		"envelopeKbpsDown":        rrs.EnvelopeKbpsDown,
-		"mode":                    rrs.Mode,
-		"maxPricePerGBNibblins":   convertCentsToNibblins(rrs.MaxCentsPerGB),
-		"acceptableLatency":       rrs.AcceptableLatency,
-		"rttRouteSwitch":          rrs.RTTEpsilon,
-		"rttThreshold":            rrs.RTTThreshold,
-		"rttHysteresis":           rrs.RTTHysteresis,
-		"rttVeto":                 rrs.RTTVeto,
-		"youOnlyLiveOnce":         rrs.EnableYouOnlyLiveOnce,
-		"packetLossSafety":        rrs.EnablePacketLossSafety,
-		"packetLossMultipath":     rrs.EnableMultipathForPacketLoss,
-		"jitterMultipath":         rrs.EnableMultipathForJitter,
-		"rttMultipath":            rrs.EnableMultipathForRTT,
-		"abTest":                  rrs.EnableABTest,
-		"tryBeforeYouBuy":         rrs.EnableTryBeforeYouBuy,
-		"committedRouteThreshold": rrs.TryBeforeYouBuyMaxSlices,
+		"displayName":              name,
+		"envelopeKbpsUp":           rrs.EnvelopeKbpsUp,
+		"envelopeKbpsDown":         rrs.EnvelopeKbpsDown,
+		"mode":                     rrs.Mode,
+		"maxPricePerGBNibblins":    convertCentsToNibblins(rrs.MaxCentsPerGB),
+		"acceptableLatency":        rrs.AcceptableLatency,
+		"rttRouteSwitch":           rrs.RTTEpsilon,
+		"rttThreshold":             rrs.RTTThreshold,
+		"rttHysteresis":            rrs.RTTHysteresis,
+		"rttVeto":                  rrs.RTTVeto,
+		"youOnlyLiveOnce":          rrs.EnableYouOnlyLiveOnce,
+		"packetLossSafety":         rrs.EnablePacketLossSafety,
+		"packetLossMultipath":      rrs.EnableMultipathForPacketLoss,
+		"jitterMultipath":          rrs.EnableMultipathForJitter,
+		"rttMultipath":             rrs.EnableMultipathForRTT,
+		"abTest":                   rrs.EnableABTest,
+		"tryBeforeYouBuy":          rrs.EnableTryBeforeYouBuy,
+		"tryBeforeYouBuyMaxSlices": rrs.TryBeforeYouBuyMaxSlices,
 	}
 
 	// Attempt to set route shader for buyer

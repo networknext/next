@@ -152,3 +152,69 @@ func TestDecideVeto(t *testing.T) {
 	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
 	assert.Equal(t, routing.Decision{false, routing.DecisionNoChange}, decision)
 }
+
+func TestDecideCommitted(t *testing.T) {
+	lastNextStats := routing.Stats{
+		RTT:        30,
+		Jitter:     0,
+		PacketLoss: 0,
+	}
+
+	directStats := routing.Stats{
+		RTT:        60,
+		Jitter:     0,
+		PacketLoss: 0,
+	}
+
+	maxSlices := uint8(routing.DefaultRoutingRulesSettings.TryBeforeYouBuyMaxSlices)
+	decision := routing.Decision{false, routing.DecisionNoChange}
+
+	var commitPending bool
+	var observedSliceCounter uint8
+	var committed bool
+
+	// Check direct routes aren't affected
+	routeDecisionFunc := routing.DecideCommitted(false, maxSlices, &commitPending, &observedSliceCounter, &committed)
+	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
+	assert.Equal(t, routing.Decision{false, routing.DecisionNoChange}, decision)
+	assert.Equal(t, false, commitPending)
+	assert.Equal(t, uint8(0), observedSliceCounter)
+	assert.Equal(t, false, committed)
+
+	// Check if a slice newly on NN is "initialized" properly
+	decision.OnNetworkNext = true
+	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
+	assert.Equal(t, routing.Decision{true, routing.DecisionNoChange}, decision)
+	assert.Equal(t, true, commitPending)
+	assert.Equal(t, uint8(0), observedSliceCounter)
+	assert.Equal(t, false, committed)
+
+	// Now check the case where the route is better
+	routeDecisionFunc = routing.DecideCommitted(true, maxSlices, &commitPending, &observedSliceCounter, &committed)
+	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
+	assert.Equal(t, routing.Decision{true, routing.DecisionNoChange}, decision)
+	assert.Equal(t, false, commitPending)
+	assert.Equal(t, uint8(0), observedSliceCounter)
+	assert.Equal(t, true, committed)
+
+	// Now check the case where the route isn't bad enough yet to veto
+	commitPending = true
+	lastNextStats.RTT = 65
+	decision.OnNetworkNext = true
+	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
+	assert.Equal(t, routing.Decision{true, routing.DecisionNoChange}, decision)
+	assert.Equal(t, true, commitPending)
+	assert.Equal(t, uint8(1), observedSliceCounter)
+	assert.Equal(t, false, committed)
+
+	// Now check the case where the route has taken too long to decide and should veto
+	observedSliceCounter = maxSlices
+	lastNextStats.PacketLoss = 0
+	lastNextStats.RTT = 65
+	decision.OnNetworkNext = true
+	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
+	assert.Equal(t, routing.Decision{false, routing.DecisionVetoCommit}, decision)
+	assert.Equal(t, false, commitPending)
+	assert.Equal(t, uint8(0), observedSliceCounter)
+	assert.Equal(t, false, committed)
+}

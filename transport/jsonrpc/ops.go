@@ -96,7 +96,7 @@ type routingRuleSettings struct {
 	EnableMultipathForRTT        bool    `json:"rttMultipath"`
 	EnableABTest                 bool    `json:"abTest"`
 	EnableTryBeforeYouBuy        bool    `json:"tryBeforeYouBuy"`
-	TryBeforeYouBuyMaxSlices     int64   `json:"tryBeforeYouBuyMaxSlices"`
+	TryBeforeYouBuyMaxSlices     int8    `json:"tryBeforeYouBuyMaxSlices"`
 }
 
 func (s *OpsService) RoutingRulesSettings(r *http.Request, args *RoutingRulesSettingsArgs, reply *RoutingRulesSettingsReply) error {
