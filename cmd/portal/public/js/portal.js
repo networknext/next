@@ -22,6 +22,9 @@ var pubKeyInput = null;
 var relaysTable = null;
 var sessionDetailsVue = null;
 var sessionsTable = null;
+var autoSigninPermissions = null;
+var addUserPermissions = null;
+var editUserPermissions = null;
 
 JSONRPCClient = {
 	async call(method, params) {
@@ -258,32 +261,89 @@ WorkspaceHandler = {
 		}
 	},
 	editUser(accountInfo) {
-		WorkspaceHandler.changeAccountPage('new');
-
-		WorkspaceHandler.newUserEmail.value = accountInfo.email || '';
-		WorkspaceHandler.newUserPerms.value = accountInfo.email || '';
+		let accountIndex = accountsTable.$data.accounts.indexOf(accountInfo);
+		accountsTable.$set(accountsTable.$data.accounts[accountIndex], 'delete', false);
+		accountsTable.$set(accountsTable.$data.accounts[accountIndex], 'edit', true);
+	},
+	saveUser(accountInfo) {
+		accountInfo.delete ? console.log("Deleting user"): null;
+		accountInfo.edit ? console.log("Editing user"): null;
+		WorkspaceHandler.cancelEditUser(accountInfo);
+	},
+	deleteUser(accountInfo) {
+		let accountIndex = accountsTable.$data.accounts.indexOf(accountInfo);
+		accountsTable.$set(accountsTable.$data.accounts[accountIndex], 'delete', true);
+		accountsTable.$set(accountsTable.$data.accounts[accountIndex], 'edit', false);
+	},
+	cancelEditUser(accountInfo) {
+		let accountIndex = accountsTable.$data.accounts.indexOf(accountInfo);
+		accountsTable.$set(accountsTable.$data.accounts[accountIndex], 'delete', false);
+		accountsTable.$set(accountsTable.$data.accounts[accountIndex], 'edit', false);
 	},
 	loadSettingsPage() {
 		this.changeAccountPage();
-		JSONRPCClient
-			.call('AuthService.AllAccounts', {buyer_id: '13672574147039585173'})
+		let promises = [
+			JSONRPCClient
+				.call('AuthService.AllAccounts', {buyer_id: '13672574147039585173'}),
+			JSONRPCClient
+				.call('AuthService.AllRoles', {})
+		];
+		Promise.all(promises)
 			.then(
-				(response) => {
+				(responses) => {
+					console.log(responses);
+
+					let roles = responses[1].roles;
+					let choices = roles.map((role) => {
+						return {
+							value: role,
+							label: role.name,
+							customProperties: {
+								description: role.description,
+							},
+						};
+					});
+
+					addUserPermissions = new Choices(
+						document.getElementById("add-user-permissions"),
+						{
+							removeItemButton: true,
+							choices: choices,
+						}
+					);
+
+					choices = roles.map((role) => {
+						return {
+							value: role,
+							label: role.name,
+							customProperties: {
+								description: role.description,
+							},
+							selected: role.name === 'Viewer'
+						};
+					});
+
+					autoSigninPermissions = new Choices(
+						document.getElementById("auto-signin-permissions"),
+						{
+							removeItemButton: true,
+							choices: choices,
+						}
+					);
+
 					/**
 					 * I really dislike this but it is apparently the way to reload/update the data within a vue
 					 */
 					Object.assign(accountsTable.$data, {
-						accounts: response.accounts,
+						accounts: responses[0].accounts,
 						showAccounts: true,
 					});
 				}
 			)
-			.catch(
-				(e) => {
-					console.log("Something went wrong fetching all accounts");
-					console.log(e);
-				}
-			);
+			.catch((errors) => {
+				console.log("Something went wrong loading settings page");
+				console.log(errors);
+			});
 	},
 	loadConfigPage() {
 		JSONRPCClient
@@ -341,8 +401,6 @@ WorkspaceHandler = {
 }
 
 function startApp() {
-	createVueComponents();
-	document.getElementById("app").style.display = 'block';
 	/**
 	 * QUESTION: Instead of grabbing the user here can we use the token to then go off and get everything from the backend?
 	 * TODO:	 There are 3 different promises going off to get user details. There should be a better way to do this
@@ -358,6 +416,7 @@ function startApp() {
 			userId: response[0].sub,
 			token: response[1]
 		};
+		createVueComponents();
 		document.getElementById("app").style.display = 'block';
 		MapHandler
 			.initMap()
@@ -381,7 +440,10 @@ function createVueComponents() {
 			showAccounts: false,
 		},
 		methods: {
-			editUser: WorkspaceHandler.editUser
+			cancelEditUser: WorkspaceHandler.cancelEditUser,
+			deleteUser: WorkspaceHandler.deleteUser,
+			editUser: WorkspaceHandler.editUser,
+			saveUser: WorkspaceHandler.saveUser,
 		}
 	});
 	pubKeyInput = new Vue({
