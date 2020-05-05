@@ -175,6 +175,29 @@ func (m *InMemory) AddRelay(ctx context.Context, relay routing.Relay) error {
 		}
 	}
 
+	// Emulate firestore behavior by requiring the seller and datacenter to exist before adding the relay
+	foundSeller := false
+	for _, s := range m.localSellers {
+		if s.ID == relay.Seller.ID {
+			foundSeller = true
+		}
+	}
+
+	if !foundSeller {
+		return fmt.Errorf("unknown seller with ID %s - be sure to create the seller in storage first", relay.Seller.ID)
+	}
+
+	foundDatacenter := false
+	for _, d := range m.localDatacenters {
+		if d.ID == relay.Datacenter.ID {
+			foundDatacenter = true
+		}
+	}
+
+	if !foundDatacenter {
+		return fmt.Errorf("unknown datacenter with ID %d - be sure to create the datacenter in storage first", relay.Datacenter.ID)
+	}
+
 	m.localRelays = append(m.localRelays, relay)
 	return nil
 }

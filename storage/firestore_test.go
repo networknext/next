@@ -206,7 +206,7 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			err = fs.RemoveBuyer(ctx, 0)
-			assert.EqualError(t, err, "buyer with ID 0 doesn't exist")
+			assert.EqualError(t, err, "buyer with id 0 not found in firestore")
 		})
 
 		t.Run("success", func(t *testing.T) {
@@ -255,7 +255,7 @@ func TestFirestore(t *testing.T) {
 			}
 
 			err = fs.SetBuyer(ctx, buyer)
-			assert.EqualError(t, err, "buyer with ID 1 doesn't exist")
+			assert.EqualError(t, err, "buyer with id 1 not found in firestore")
 		})
 
 		t.Run("success", func(t *testing.T) {
@@ -389,7 +389,7 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 
 			err = fs.AddSeller(ctx, expected)
-			assert.EqualError(t, err, "seller with ID id already exists")
+			assert.EqualError(t, err, "seller with id id already exists in firestore")
 		})
 
 		t.Run("success", func(t *testing.T) {
@@ -429,7 +429,7 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			err = fs.RemoveSeller(ctx, "id")
-			assert.EqualError(t, err, "seller with ID id doesn't exist")
+			assert.EqualError(t, err, "seller with id id not found in firestore")
 		})
 
 		t.Run("success", func(t *testing.T) {
@@ -474,7 +474,7 @@ func TestFirestore(t *testing.T) {
 			}
 
 			err = fs.SetSeller(ctx, seller)
-			assert.EqualError(t, err, "seller with ID id doesn't exist")
+			assert.EqualError(t, err, "seller with id id not found in firestore")
 		})
 
 		t.Run("success", func(t *testing.T) {
@@ -669,7 +669,7 @@ func TestFirestore(t *testing.T) {
 			}
 
 			err = fs.AddRelay(ctx, expected)
-			assert.EqualError(t, err, "unknown seller with ID  - be sure to create the seller in firestore first")
+			assert.EqualError(t, err, "seller with id  not found in firestore")
 		})
 
 		t.Run("datacenter not found", func(t *testing.T) {
@@ -703,7 +703,7 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 
 			err = fs.AddRelay(ctx, expected)
-			assert.EqualError(t, err, "unknown datacenter with ID 0 - be sure to create the datacenter in firestore first")
+			assert.EqualError(t, err, "datacenter with id 0 not found in firestore")
 		})
 
 		t.Run("success", func(t *testing.T) {
@@ -771,7 +771,7 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			err = fs.RemoveRelay(ctx, 0)
-			assert.EqualError(t, err, "relay with ID 0 doesn't exist")
+			assert.EqualError(t, err, "relay with id 0 not found in firestore")
 		})
 
 		t.Run("success", func(t *testing.T) {
@@ -847,7 +847,7 @@ func TestFirestore(t *testing.T) {
 			}
 
 			err = fs.SetRelay(ctx, relay)
-			assert.EqualError(t, err, "relay with ID 1 doesn't exist")
+			assert.EqualError(t, err, "relay with id 1 not found in firestore")
 		})
 
 		t.Run("success", func(t *testing.T) {
@@ -1040,7 +1040,7 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			err = fs.RemoveDatacenter(ctx, 0)
-			assert.EqualError(t, err, "datacenter with ID 0 doesn't exist")
+			assert.EqualError(t, err, "datacenter with id 0 not found in firestore")
 		})
 
 		t.Run("success", func(t *testing.T) {
@@ -1091,7 +1091,7 @@ func TestFirestore(t *testing.T) {
 			}
 
 			err = fs.SetDatacenter(ctx, datacenter)
-			assert.EqualError(t, err, "datacenter with ID 1 doesn't exist")
+			assert.EqualError(t, err, "datacenter with id 1 not found in firestore")
 		})
 
 		t.Run("success", func(t *testing.T) {

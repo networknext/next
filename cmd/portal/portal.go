@@ -94,31 +94,55 @@ func main() {
 	var db storage.Storer = &storage.InMemory{
 		LocalMode: true,
 	}
-	db.AddBuyer(ctx, routing.Buyer{
-		ID:                   customerID,
-		Name:                 "local",
-		PublicKey:            customerPublicKey,
-		RoutingRulesSettings: routing.LocalRoutingRulesSettings,
-	})
 
-	db.AddRelay(ctx, routing.Relay{
-		Name:      "local.test_relay",
-		ID:        crypto.HashID(addr.String()),
-		Addr:      addr,
-		PublicKey: relayPublicKey,
-		Datacenter: routing.Datacenter{
-			ID:   crypto.HashID("local"),
-			Name: "local",
-		},
-		Seller: routing.Seller{
+	{
+		if err := db.AddBuyer(ctx, routing.Buyer{
+			ID:                   customerID,
+			Name:                 "local",
+			PublicKey:            customerPublicKey,
+			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
+		}); err != nil {
+			level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
+			os.Exit(1)
+		}
+
+		seller := routing.Seller{
+			ID:                "sellerID",
 			Name:              "local",
 			IngressPriceCents: 10,
 			EgressPriceCents:  20,
-		},
-		ManagementAddr: "127.0.0.1",
-		SSHUser:        "root",
-		SSHPort:        22,
-	})
+		}
+
+		datacenter := routing.Datacenter{
+			ID:   crypto.HashID("local"),
+			Name: "local",
+		}
+
+		if err := db.AddSeller(ctx, seller); err != nil {
+			level.Error(logger).Log("msg", "could not add seller to storage", "err", err)
+			os.Exit(1)
+		}
+
+		if err := db.AddDatacenter(ctx, datacenter); err != nil {
+			level.Error(logger).Log("msg", "could not add datacenter to storage", "err", err)
+			os.Exit(1)
+		}
+
+		if err := db.AddRelay(ctx, routing.Relay{
+			Name:           "local.test_relay",
+			ID:             crypto.HashID(addr.String()),
+			Addr:           addr,
+			PublicKey:      relayPublicKey,
+			Seller:         seller,
+			Datacenter:     datacenter,
+			ManagementAddr: "127.0.0.1",
+			SSHUser:        "root",
+			SSHPort:        22,
+		}); err != nil {
+			level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
+			os.Exit(1)
+		}
+	}
 
 	manager, err := management.New(
 		os.Getenv("AUTH_DOMAIN"),

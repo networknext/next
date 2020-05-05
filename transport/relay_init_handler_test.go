@@ -3,8 +3,7 @@ package transport_test
 import (
 	"bytes"
 	"context"
-	crand "crypto/rand"
-	"encoding/base64"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"math"
@@ -12,7 +11,6 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -48,23 +46,8 @@ func pingRelayBackendInit(t *testing.T, contentType string, relay routing.Relay,
 		}
 	}
 
-	var customerPublicKey []byte
-	{
-		if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
-			var err error
-			customerPublicKey, err = base64.StdEncoding.DecodeString(key)
-			assert.NoError(t, err)
-		}
-	}
-
-	var relayPublicKey []byte
-	{
-		if key := os.Getenv("RELAY_PUBLIC_KEY"); len(key) != 0 {
-			var err error
-			relayPublicKey, err = base64.StdEncoding.DecodeString(key)
-			assert.NoError(t, err)
-		}
-	}
+	customerPublicKey := make([]byte, crypto.KeySize)
+	rand.Read(customerPublicKey)
 
 	if ipfunc == nil {
 		ipfunc = func(ip net.IP) (routing.Location, error) {
@@ -90,19 +73,16 @@ func pingRelayBackendInit(t *testing.T, contentType string, relay routing.Relay,
 		rpubkeyMap := make(map[uint32][]byte)
 		rpubkeyMap[uint32(relay.ID)] = relay.PublicKey
 		inMemory = &storage.InMemory{}
-		inMemory.AddBuyer(context.Background(), routing.Buyer{
-			PublicKey: customerPublicKey[8:],
+		err = inMemory.AddBuyer(context.Background(), routing.Buyer{
+			PublicKey: customerPublicKey,
 		})
-		inMemory.AddRelay(context.Background(), routing.Relay{
-			ID:        crypto.HashID("127.0.0.1:40000"),
-			PublicKey: relayPublicKey,
-			Datacenter: routing.Datacenter{
-				Location: routing.Location{
-					Latitude:  13,
-					Longitude: 13,
-				},
-			},
-		})
+		assert.NoError(t, err)
+		err = inMemory.AddSeller(context.Background(), relay.Seller)
+		assert.NoError(t, err)
+		err = inMemory.AddDatacenter(context.Background(), relay.Datacenter)
+		assert.NoError(t, err)
+		err = inMemory.AddRelay(context.Background(), relay)
+		assert.NoError(t, err)
 	}
 
 	handler := transport.RelayInitHandlerFunc(log.NewNopLogger(), &transport.RelayInitHandlerConfig{
@@ -191,7 +171,12 @@ func TestRelayInitUnmarshalFailure(t *testing.T) {
 	addr := "127.0.0.1:40000"
 	relay := routing.Relay{
 		ID: crypto.HashID(addr),
+		Seller: routing.Seller{
+			ID:   "sellerID",
+			Name: "seller name",
+		},
 		Datacenter: routing.Datacenter{
+			ID:   crypto.HashID("some datacenter"),
 			Name: "some datacenter",
 		},
 	}
@@ -223,7 +208,12 @@ func TestRelayInitInvalidMagic(t *testing.T) {
 	addr := "127.0.0.1:40000"
 	relay := routing.Relay{
 		ID: crypto.HashID(addr),
+		Seller: routing.Seller{
+			ID:   "sellerID",
+			Name: "seller name",
+		},
 		Datacenter: routing.Datacenter{
+			ID:   crypto.HashID("some datacenter"),
 			Name: "some datacenter",
 		},
 	}
@@ -263,7 +253,12 @@ func TestRelayInitInvalidVersion(t *testing.T) {
 	addr := "127.0.0.1:40000"
 	relay := routing.Relay{
 		ID: crypto.HashID(addr),
+		Seller: routing.Seller{
+			ID:   "sellerID",
+			Name: "seller name",
+		},
 		Datacenter: routing.Datacenter{
+			ID:   crypto.HashID("some datacenter"),
 			Name: "some datacenter",
 		},
 	}
@@ -300,19 +295,25 @@ func TestRelayInitInvalidVersion(t *testing.T) {
 }
 
 func TestRelayInitInvalidAddress(t *testing.T) {
-	relayPublicKey, _ := getRelayKeyPair(t)
-	_, routerPrivateKey, err := box.GenerateKey(crand.Reader)
+	relayPublicKey, _, err := box.GenerateKey(rand.Reader)
+	assert.NoError(t, err)
+	_, routerPrivateKey, err := box.GenerateKey(rand.Reader)
 	assert.NoError(t, err)
 
 	addr := "127.0.0.1:40000"
 	udp, err := net.ResolveUDPAddr("udp", addr)
 	assert.NoError(t, err)
 	relay := routing.Relay{
-		ID: crypto.HashID(addr),
+		ID:        crypto.HashID(addr),
+		PublicKey: relayPublicKey[:],
+		Seller: routing.Seller{
+			ID:   "sellerID",
+			Name: "seller name",
+		},
 		Datacenter: routing.Datacenter{
+			ID:   crypto.HashID("some datacenter"),
 			Name: "some datacenter",
 		},
-		PublicKey: relayPublicKey,
 	}
 	packet := transport.RelayInitRequest{
 		Magic:          transport.InitRequestMagic,
@@ -367,7 +368,12 @@ func TestRelayInitRelayNotFound(t *testing.T) {
 
 	relay := routing.Relay{
 		ID: crypto.HashID(addr),
+		Seller: routing.Seller{
+			ID:   "sellerID",
+			Name: "seller name",
+		},
 		Datacenter: routing.Datacenter{
+			ID:   crypto.HashID("some datacenter"),
 			Name: "some datacenter",
 		},
 	}
@@ -405,12 +411,12 @@ func TestRelayInitRelayNotFound(t *testing.T) {
 }
 
 func TestRelayInitInvalidToken(t *testing.T) {
-	_, routerPrivateKey, err := box.GenerateKey(crand.Reader)
+	_, routerPrivateKey, err := box.GenerateKey(rand.Reader)
 	assert.NoError(t, err)
 
 	// generate nonce
 	nonce := make([]byte, crypto.NonceSize)
-	crand.Read(nonce)
+	rand.Read(nonce)
 
 	// generate token but leave it as 0's
 	token := make([]byte, routing.EncryptedRelayTokenSize)
@@ -420,7 +426,12 @@ func TestRelayInitInvalidToken(t *testing.T) {
 	assert.NoError(t, err)
 	relay := routing.Relay{
 		ID: crypto.HashID(addr),
+		Seller: routing.Seller{
+			ID:   "sellerID",
+			Name: "seller name",
+		},
 		Datacenter: routing.Datacenter{
+			ID:   crypto.HashID("some datacenter"),
 			Name: "some datacenter",
 		},
 	}
@@ -458,17 +469,18 @@ func TestRelayInitInvalidToken(t *testing.T) {
 }
 
 func TestRelayInitInvalidNonce(t *testing.T) {
-	relayPublicKey, relayPrivateKey := getRelayKeyPair(t)
-	routerPublicKey, routerPrivateKey, err := box.GenerateKey(crand.Reader)
+	relayPublicKey, relayPrivateKey, err := box.GenerateKey(rand.Reader)
+	assert.NoError(t, err)
+	routerPublicKey, routerPrivateKey, err := box.GenerateKey(rand.Reader)
 	assert.NoError(t, err)
 
 	// generate nonce
 	nonce := make([]byte, crypto.NonceSize)
-	crand.Read(nonce)
+	rand.Read(nonce)
 
 	// generate random token
 	token := make([]byte, crypto.KeySize)
-	crand.Read(token)
+	rand.Read(token)
 
 	// seal it with the bad nonce
 	encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
@@ -477,11 +489,16 @@ func TestRelayInitInvalidNonce(t *testing.T) {
 	udp, err := net.ResolveUDPAddr("udp", addr)
 	assert.NoError(t, err)
 	relay := routing.Relay{
-		ID: crypto.HashID(addr),
+		ID:        crypto.HashID(addr),
+		PublicKey: relayPublicKey[:],
+		Seller: routing.Seller{
+			ID:   "sellerID",
+			Name: "seller name",
+		},
 		Datacenter: routing.Datacenter{
+			ID:   crypto.HashID("some datacenter"),
 			Name: "some datacenter",
 		},
-		PublicKey: relayPublicKey,
 	}
 	packet := transport.RelayInitRequest{
 		Magic:          transport.InitRequestMagic,
@@ -520,28 +537,34 @@ func TestRelayInitRelayRedisFailure(t *testing.T) {
 	// Don't establish a redis server so redis calls fail
 	redisClient := redis.NewClient(&redis.Options{Addr: "0.0.0.0"})
 
-	relayPublicKey, relayPrivateKey := getRelayKeyPair(t)
-	routerPublicKey, routerPrivateKey, err := box.GenerateKey(crand.Reader)
+	relayPublicKey, relayPrivateKey, err := box.GenerateKey(rand.Reader)
+	assert.NoError(t, err)
+	routerPublicKey, routerPrivateKey, err := box.GenerateKey(rand.Reader)
 	assert.NoError(t, err)
 
 	nonce := make([]byte, crypto.NonceSize)
-	crand.Read(nonce)
+	rand.Read(nonce)
 
 	addr := "127.0.0.1:40000"
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
 	assert.NoError(t, err)
 
 	token := make([]byte, crypto.KeySize)
-	crand.Read(token)
+	rand.Read(token)
 
 	encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
 
 	relay := routing.Relay{
-		ID: crypto.HashID(addr),
+		ID:        crypto.HashID(addr),
+		PublicKey: relayPublicKey[:],
+		Seller: routing.Seller{
+			ID:   "sellerID",
+			Name: "seller name",
+		},
 		Datacenter: routing.Datacenter{
+			ID:   crypto.HashID("some datacenter"),
 			Name: "some datacenter",
 		},
-		PublicKey: relayPublicKey,
 	}
 
 	packet := transport.RelayInitRequest{
@@ -581,17 +604,18 @@ func TestRelayInitRelayExists(t *testing.T) {
 	assert.NoError(t, err)
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-	relayPublicKey, relayPrivateKey := getRelayKeyPair(t)
-	routerPublicKey, routerPrivateKey, err := box.GenerateKey(crand.Reader)
+	relayPublicKey, relayPrivateKey, err := box.GenerateKey(rand.Reader)
+	assert.NoError(t, err)
+	routerPublicKey, routerPrivateKey, err := box.GenerateKey(rand.Reader)
 	assert.NoError(t, err)
 
 	// generate nonce
 	nonce := make([]byte, crypto.NonceSize)
-	crand.Read(nonce)
+	rand.Read(nonce)
 
 	// generate token
 	token := make([]byte, crypto.KeySize)
-	crand.Read(token)
+	rand.Read(token)
 
 	// encrypt token
 	encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
@@ -603,14 +627,18 @@ func TestRelayInitRelayExists(t *testing.T) {
 	dcname := "another name"
 
 	entry := routing.Relay{
-		ID:   crypto.HashID(addr),
-		Name: name,
-		Addr: *udpAddr,
+		ID:        crypto.HashID(addr),
+		Name:      name,
+		Addr:      *udpAddr,
+		PublicKey: token,
+		Seller: routing.Seller{
+			ID:   "sellerID",
+			Name: "seller name",
+		},
 		Datacenter: routing.Datacenter{
-			ID:   32,
+			ID:   crypto.HashID(dcname),
 			Name: dcname,
 		},
-		PublicKey:      token,
 		LastUpdateTime: time.Now(),
 	}
 
@@ -619,7 +647,7 @@ func TestRelayInitRelayExists(t *testing.T) {
 		Datacenter: routing.Datacenter{
 			Name: "some datacenter",
 		},
-		PublicKey: relayPublicKey,
+		PublicKey: relayPublicKey[:],
 	}
 
 	packet := transport.RelayInitRequest{
@@ -667,8 +695,9 @@ func TestRelayInitRelayIPLookupFailure(t *testing.T) {
 	assert.NoError(t, err)
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-	relayPublicKey, relayPrivateKey := getRelayKeyPair(t)
-	routerPublicKey, routerPrivateKey, err := box.GenerateKey(crand.Reader)
+	relayPublicKey, relayPrivateKey, err := box.GenerateKey(rand.Reader)
+	assert.NoError(t, err)
+	routerPublicKey, routerPrivateKey, err := box.GenerateKey(rand.Reader)
 	assert.NoError(t, err)
 
 	ipfunc := func(ip net.IP) (routing.Location, error) {
@@ -676,27 +705,32 @@ func TestRelayInitRelayIPLookupFailure(t *testing.T) {
 	}
 
 	nonce := make([]byte, crypto.NonceSize)
-	crand.Read(nonce)
+	rand.Read(nonce)
 
 	addr := "127.0.0.1:40000"
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
 	assert.NoError(t, err)
 
 	token := make([]byte, crypto.KeySize)
-	crand.Read(token)
+	rand.Read(token)
 
 	encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
 
 	relay := routing.Relay{
-		ID: crypto.HashID(addr),
+		ID:        crypto.HashID(addr),
+		PublicKey: relayPublicKey[:],
+		Seller: routing.Seller{
+			ID:   "sellerID",
+			Name: "seller name",
+		},
 		Datacenter: routing.Datacenter{
+			ID:   crypto.HashID("some datacenter"),
 			Name: "some datacenter",
 			Location: routing.Location{
 				Latitude:  13,
 				Longitude: 13,
 			},
 		},
-		PublicKey: relayPublicKey,
 	}
 
 	packet := transport.RelayInitRequest{
@@ -741,8 +775,9 @@ func TestRelayInitSuccess(t *testing.T) {
 	assert.NoError(t, err)
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-	relayPublicKey, relayPrivateKey := getRelayKeyPair(t)
-	routerPublicKey, routerPrivateKey, err := box.GenerateKey(crand.Reader)
+	relayPublicKey, relayPrivateKey, err := box.GenerateKey(rand.Reader)
+	assert.NoError(t, err)
+	routerPublicKey, routerPrivateKey, err := box.GenerateKey(rand.Reader)
 	assert.NoError(t, err)
 
 	var geoClient routing.GeoClient
@@ -766,25 +801,30 @@ func TestRelayInitSuccess(t *testing.T) {
 	}
 
 	nonce := make([]byte, crypto.NonceSize)
-	crand.Read(nonce)
+	rand.Read(nonce)
 
 	addr := "127.0.0.1:40000"
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
 	assert.NoError(t, err)
 
 	token := make([]byte, crypto.KeySize)
-	crand.Read(token)
+	rand.Read(token)
 
 	encryptedToken := crypto.Seal(token, nonce, routerPublicKey[:], relayPrivateKey[:])
 
 	before := uint64(time.Now().Unix())
 
 	relay := routing.Relay{
-		ID: crypto.HashID(addr),
+		ID:        crypto.HashID(addr),
+		PublicKey: relayPublicKey[:],
+		Seller: routing.Seller{
+			ID:   "sellerID",
+			Name: "seller name",
+		},
 		Datacenter: routing.Datacenter{
+			ID:   crypto.HashID("some datacenter"),
 			Name: "some datacenter",
 		},
-		PublicKey: relayPublicKey,
 	}
 
 	packet := transport.RelayInitRequest{
@@ -797,6 +837,14 @@ func TestRelayInitSuccess(t *testing.T) {
 	expected := routing.Relay{
 		ID:   crypto.HashID(addr),
 		Addr: *udpAddr,
+		Seller: routing.Seller{
+			ID:   "sellerID",
+			Name: "seller name",
+		},
+		Datacenter: routing.Datacenter{
+			ID:   crypto.HashID("some datacenter"),
+			Name: "some datacenter",
+		},
 	}
 
 	localMetrics := metrics.LocalHandler{}

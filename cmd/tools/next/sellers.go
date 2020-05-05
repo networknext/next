@@ -9,40 +9,40 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
-func sellers(rpcClient jsonrpc.RPCClient) {
+func sellers(rpcClient jsonrpc.RPCClient, env Environment) {
 	args := localjsonrpc.SellersArgs{}
 
 	var reply localjsonrpc.SellersReply
 	if err := rpcClient.CallFor(&reply, "OpsService.Sellers", args); err != nil {
-		handleJSONRPCError(err)
+		handleJSONRPCError(env, err)
 		return
 	}
 
 	table.Output(reply.Sellers)
 }
 
-func addSeller(rpcClient jsonrpc.RPCClient, seller routing.Seller) {
+func addSeller(rpcClient jsonrpc.RPCClient, env Environment, seller routing.Seller) {
 	args := localjsonrpc.AddSellerArgs{
 		Seller: seller,
 	}
 
 	var reply localjsonrpc.AddSellerReply
 	if err := rpcClient.CallFor(&reply, "OpsService.AddSeller", args); err != nil {
-		handleJSONRPCError(err)
+		handleJSONRPCError(env, err)
 		return
 	}
 
 	fmt.Printf("Seller \"%s\" added to storage.\n", seller.Name)
 }
 
-func removeSeller(rpcClient jsonrpc.RPCClient, id string) {
+func removeSeller(rpcClient jsonrpc.RPCClient, env Environment, id string) {
 	args := localjsonrpc.RemoveSellerArgs{
 		ID: id,
 	}
 
 	var reply localjsonrpc.RemoveSellerReply
 	if err := rpcClient.CallFor(&reply, "OpsService.RemoveSeller", args); err != nil {
-		handleJSONRPCError(err)
+		handleJSONRPCError(env, err)
 		return
 	}
 
