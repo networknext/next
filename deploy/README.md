@@ -34,6 +34,12 @@ GCP Project: `network-next-v3-dev`
 
 Domains are configured through cloudflare.com and point to the VMs External IP Addresses. These addresses can be seen in **VPC network** -> **External IP addresses** in the GCP console.
 
+### TLS
+
+The TLS certificates for portal.dev.networknext.com are configured directly inside the Go binary since the dev instances is a VM with a public IP. The certificate needed to be configure right inside the VM. So the dev instance listens on port `443` and that tells the binary to load in the same certificates in prod, but they are defined in [../transport/certificates.go](../transport/certificates.go).
+
+The original certificates can be seen in [Cloudflare](https://dash.cloudflare.com/77635bc76eaa9a2e9226686d693209ea/networknext.com/ssl-tls/origin).
+
 ### Instances
 
 Currently there is a single VM for each backend (portal, relay, and server) running in GCP Compute Engine. Each of them are based off of their respective Instance Templates which define the CPU size, network rules, and startup script.
@@ -56,11 +62,18 @@ GCP Project: `network-next-v3-prod`
 
 ### Domains
 
+- portal.networknext.com
 - portal.prod.networknext.com
 - relay_backend.prod.networknext.com
 - server_backend.prod.networknext.com:40000
 
 Domains are configured through cloudflare.com and point to the Load Balancers External IP Addresses. These addresses can be seen in **VPC network** -> **External IP addresses** in the GCP console.
+
+### TLS
+
+The TLS certificates for portal.networknext.com are configured on the `portal-lb` balancer in GCP which is were the certificate terminates and then the traffic from the load balancer talks over port 80 to the instance group.
+
+The original certificates can be seen in [Cloudflare](https://dash.cloudflare.com/77635bc76eaa9a2e9226686d693209ea/networknext.com/ssl-tls/origin).
 
 ### Instances
 
