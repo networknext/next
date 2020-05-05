@@ -97,6 +97,7 @@ type routingRuleSettings struct {
 	EnableABTest                 bool    `json:"abTest"`
 	EnableTryBeforeYouBuy        bool    `json:"tryBeforeYouBuy"`
 	TryBeforeYouBuyMaxSlices     int8    `json:"tryBeforeYouBuyMaxSlices"`
+	SelectionPercentage          int64   `json:"selectionPercentage"`
 }
 
 func (s *OpsService) RoutingRulesSettings(r *http.Request, args *RoutingRulesSettingsArgs, reply *RoutingRulesSettingsReply) error {
@@ -123,6 +124,7 @@ func (s *OpsService) RoutingRulesSettings(r *http.Request, args *RoutingRulesSet
 			EnableABTest:                 buyer.RoutingRulesSettings.EnableABTest,
 			EnableTryBeforeYouBuy:        buyer.RoutingRulesSettings.EnableTryBeforeYouBuy,
 			TryBeforeYouBuyMaxSlices:     buyer.RoutingRulesSettings.TryBeforeYouBuyMaxSlices,
+			SelectionPercentage:          buyer.RoutingRulesSettings.SelectionPercentage,
 		},
 	}
 

@@ -88,6 +88,7 @@ type routingRulesSettings struct {
 	EnableABTest                 bool    `firestore:"abTest"`
 	EnableTryBeforeYouBuy        bool    `firestore:"tryBeforeYouBuy"`
 	TryBeforeYouBuyMaxSlices     int8    `firestore:"tryBeforeYouBuyMaxSlices"`
+	SelectionPercentage          int64   `firestore:"selectionPercentage"`
 }
 
 func NewFirestore(ctx context.Context, gcpProjectID string, logger log.Logger) (*Firestore, error) {
@@ -1084,6 +1085,7 @@ func (fs *Firestore) createRouteRulesSettingsForBuyerID(ctx context.Context, ID 
 		EnableABTest:                 rrs.EnableABTest,
 		EnableTryBeforeYouBuy:        rrs.EnableTryBeforeYouBuy,
 		TryBeforeYouBuyMaxSlices:     rrs.TryBeforeYouBuyMaxSlices,
+		SelectionPercentage:          rrs.SelectionPercentage,
 	}
 
 	// Attempt to create route shader for buyer
@@ -1143,6 +1145,7 @@ func (fs *Firestore) getRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 	rrs.EnableABTest = tempRRS.EnableABTest
 	rrs.EnableTryBeforeYouBuy = tempRRS.EnableTryBeforeYouBuy
 	rrs.TryBeforeYouBuyMaxSlices = tempRRS.TryBeforeYouBuyMaxSlices
+	rrs.SelectionPercentage = tempRRS.SelectionPercentage
 
 	return rrs, nil
 }
@@ -1172,6 +1175,7 @@ func (fs *Firestore) setRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 		"abTest":                   rrs.EnableABTest,
 		"tryBeforeYouBuy":          rrs.EnableTryBeforeYouBuy,
 		"tryBeforeYouBuyMaxSlices": rrs.TryBeforeYouBuyMaxSlices,
+		"selectionPercentage":      rrs.SelectionPercentage,
 	}
 
 	// Attempt to set route shader for buyer
