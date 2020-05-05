@@ -17,18 +17,6 @@ namespace legacy
      : mReceiver(receiver), mEnv(env), mSocket(socket)
     {}
 
-    auto Backend::init() -> bool
-    {
-      bool success = false;
-      for (int i = 0; i < 60; i++) {
-        if (tryInit()) {
-          success = true;
-          break;
-        }
-      }
-      return success;
-    }
-
     // clang-format off
     /*
      * Init response appears to be
@@ -46,7 +34,7 @@ namespace legacy
      */
     // clang-format on
 
-    auto Backend::tryInit() -> bool
+    auto Backend::init() -> bool
     {
       // prep
 
@@ -69,18 +57,27 @@ namespace legacy
       BackendRequest request;
 
       core::GenericPacket<> packet;
+      uint8_t attempts = 0;
+      do {
+        attempts++;
+        // send request
+        LogDebug("sending init packet")
+        if (!packet_send(mSocket, backendAddr, token, PacketType::InitRequest, packet)) {
+          Log("failed to send init packet");
+          return false;
+        }
 
-      // send request
-      if (!packet_send(mSocket, token.Address, token, PacketType::InitRequest, request, packet)) {
-        Log("failed to send init packet");
+        // wait a second for the response to come in
+        std::this_thread::sleep_for(1s);
+
+        // receive response if it exists, if not resend
+        LogDebug("checking for response")
+      } while ((!mSocket.closed() && !mReceiver.closed() && (!mReceiver.hasItems() || !mReceiver.recv(packet))) || attempts <= 60);
+
+      if (mSocket.closed() || mReceiver.closed() || attempts > 60) {
+        LogDebug("could not init relay");
         return false;
       }
-
-      // wait a seconds for the response to come in
-      std::this_thread::sleep_for(1s);
-
-      // receive response
-      mReceiver.recv(packet);
 
       std::string resp(packet.Buffer.begin() + 1, packet.Buffer.begin() + packet.Len);
       if (!doc.parse(resp)) {

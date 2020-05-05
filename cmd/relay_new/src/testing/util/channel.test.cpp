@@ -4,18 +4,20 @@
 
 using namespace std::chrono_literals;
 
-Test(util_Channel_general, true)
+Test(util_Channel_general)
 {
-  auto chan = util::makeChannel<int>();
+  auto chan = util::makeChannel<std::string>();
   auto sender = std::get<0>(chan);
   auto receiver = std::get<1>(chan);
+  std::string msg = "test string";
+  std::string result;
 
-  auto fut = std::async(std::launch::async, [&] {
-    std::this_thread::sleep_for(1s);
-    sender.send(1);
-  });
+  sender.send(msg);
 
-  int result = 0;
   check(receiver.recv(result));
-  check(result == 1);
+
+  check(msg == "");
+  check(result == "test string", [&] {
+    std::cout << "result is " << result << std::endl;
+  });
 }

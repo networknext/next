@@ -6,7 +6,11 @@ namespace util
   class Channel
   {
    public:
-    virtual ~Channel();
+    virtual ~Channel() = default;
+
+    void close();
+
+    auto closed() -> bool;
 
    protected:
     Channel(
@@ -32,7 +36,7 @@ namespace util
      std::shared_ptr<std::condition_variable> var);
     ~Sender() override = default;
 
-    void send(T&& msg);
+    void send(T& msg);
   };
 
   template <typename T>
@@ -78,14 +82,6 @@ namespace util
   {}
 
   template <typename T>
-  Channel<T>::~Channel()
-  {
-    std::unique_lock<std::mutex> lock(*mLock);
-    *mClosed = true;
-    mVar->notify_all();
-  }
-
-  template <typename T>
   Sender<T>::Sender(
    std::shared_ptr<std::atomic<bool>> closed,
    std::shared_ptr<std::list<T>> queue,
@@ -104,11 +100,25 @@ namespace util
   {}
 
   template <typename T>
-  void Sender<T>::send(T&& item)
+  void Channel<T>::close()
+  {
+    std::unique_lock<std::mutex> lock(*mLock);
+    *mClosed = true;
+    mVar->notify_all();
+  }
+
+  template <typename T>
+  auto Channel<T>::closed() -> bool
+  {
+    return *mClosed;
+  }
+
+  template <typename T>
+  void Sender<T>::send(T& item)
   {
     std::unique_lock<std::mutex> lock(*this->mLock);
 
-    if (this->mClosed) {
+    if (*this->mClosed) {
       throw std::logic_error("tried to send on a closed channel");
     }
 
@@ -128,7 +138,7 @@ namespace util
 
     // queue modification takes place within this block
     {
-      std::unique_lock<std::mutex>(*this->mLock);
+      std::unique_lock<std::mutex> lock(*this->mLock);
 
       if (this->mQueue->empty()) {
         return false;

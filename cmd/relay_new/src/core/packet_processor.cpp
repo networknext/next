@@ -196,6 +196,11 @@ namespace core
 
         handler.handle();
       } break;
+      case V3BackendRelayResponse:
+      case V3BackendConfigResponse:
+      case V3BackendInitResponse:
+        LogDebug("got something from old backend");
+        break;
       default: {
         LogDebug("received unknown packet type: ", std::hex, (int)packet.Buffer[0], std::dec);
         mRecorder.addToUnknown(packet.Len + headerBytes);

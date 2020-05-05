@@ -32,6 +32,10 @@ printf "Building functional backend... "
 go build -o ./dist/func_backend ./cmd/tools/functional/backend/*.go
 printf "done\n"
 
+printf "Building old functional backend... "
+go build -o ./dist/func_backend_old ./cmd/tools/functional/backend_old/*.go
+printf "done\n"
+
 printf "Building functional tests... "
 go build -o ./dist/func_tests ./cmd/tools/functional/tests/func_tests.go
 printf "done\n"

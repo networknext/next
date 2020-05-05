@@ -49,12 +49,14 @@ namespace os
     bool multirecv(core::GenericPacketBuffer<BuffSize, PacketSize>& packetBuff) const;
 
     void close();
+    auto closed() -> bool;
 
     const net::Address& getAddress() const;
 
    private:
     int mSockFD = 0;
     const SocketType mType;
+    std::atomic<bool> mClosed;
 
     bool setBufferSizes(size_t sendBufferSize, size_t recvBufferSize);
     bool setLingerTime(int lingerTime);
@@ -71,7 +73,12 @@ namespace os
 
   [[gnu::always_inline]] inline void Socket::close()
   {
+    mClosed = true;
     shutdown(mSockFD, SHUT_RDWR);
+  }
+
+  [[gnu::always_inline]] inline auto Socket::closed() -> bool {
+    return mClosed;
   }
 
   template <typename T>

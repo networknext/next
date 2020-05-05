@@ -66,7 +66,6 @@ namespace legacy
      const net::Address& master_address,
      const BackendToken& master_token,
      PacketType packet_type,
-     BackendRequest& request,
      core::GenericPacket<>& packet) -> bool
     {
       if (master_address.Type == net::AddressType::None) {
@@ -74,7 +73,7 @@ namespace legacy
         return false;
       }
 
-      memset(&request, 0, sizeof(request));
+      BackendRequest request = {};
       request.id = crypto::Random<uint64_t>();
 
       size_t compressed_bytes_available = packet.Len + 32;
@@ -118,6 +117,7 @@ namespace legacy
         return false;
       }
 
+      LogDebug("sending ", fragment_total, " fragments");
       for (size_t i = 0; i < fragment_total; i++) {
         int fragment_bytes;
         if (i == fragment_total - 1) {
