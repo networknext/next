@@ -534,7 +534,8 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			timestampExpire = timestampExpire.Add(time.Duration(sliceDuration) * time.Second)
 		}
 
-		if buyer.RoutingRulesSettings.Mode == routing.ModeForceDirect || int64(packet.SessionID%100) > buyer.RoutingRulesSettings.SelectionPercentage {
+		if buyer.RoutingRulesSettings.Mode == routing.ModeForceDirect || int64(packet.SessionID%100) > buyer.RoutingRulesSettings.SelectionPercentage ||
+			(buyer.RoutingRulesSettings.EnableABTest && packet.SessionID%2 == 1) {
 			shouldSelect = false
 			routeDecision = routing.Decision{
 				OnNetworkNext: false,
