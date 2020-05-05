@@ -292,7 +292,6 @@ Test(core_Backend_update_valid)
   auto pingStats = doc.get<util::JSON>("PingStats");
 
   check(pingStats.isArray());
-
   auto& value = pingStats[0];
 
   check(value.HasMember("RelayId"));
@@ -301,20 +300,10 @@ Test(core_Backend_update_valid)
   check(value.HasMember("PacketLoss"));
 
   auto& relayID = value["RelayId"];
-  // auto& rtt = value["RTT"];
-  // auto& jitter = value["Jitter"];
-  // auto& packetLoss = value["PacketLoss"];
 
   check(relayID.Get<uint64_t>() == 987654321);
 
-  // not set up right, the actual tests pass for this
-  // so not currently concerned with it passing here,
-  // need to learn how the logic actually works to
-  // set this up right
-
-  // check(rtt.Get<float>() != 10000.0f);
-  // check(jitter.Get<float>() == 0.0f);
-  // check(packetLoss.Get<float>() == 0.0f);
+  std::this_thread::sleep_for(1s); // needed for getPingData()
 
   std::array<core::PingData, MAX_RELAYS> pingData;
   auto count = manager.getPingData(pingData);

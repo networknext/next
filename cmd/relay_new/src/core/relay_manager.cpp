@@ -71,7 +71,7 @@ namespace core
 
   unsigned int RelayManager::getPingData(std::array<PingData, MAX_RELAYS>& data)
   {
-    double current_time = relay::relay_platform_time();  // TODO replace with clock
+    double current_time = mClock.elapsed<util::Second>();
     unsigned int numPings = 0;
 
     // locked mutex scope
@@ -205,8 +205,8 @@ namespace legacy
     int num_found = 0;
     for (int i = 0; i < num_relays; ++i) {
       for (int j = 0; j < manager->num_relays; ++j) {
-        if (relay_ids[i] == manager->relay_ids[j] &&
-            relay_address_equal(&relay_addresses[i], &manager->relay_addresses[j]) == 1) {
+        if (
+         relay_ids[i] == manager->relay_ids[j] && relay_address_equal(&relay_addresses[i], &manager->relay_addresses[j]) == 1) {
           num_found++;
           break;
         }
