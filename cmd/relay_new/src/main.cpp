@@ -147,15 +147,17 @@ namespace
       }
     };
 
-    signal(SIGINT, gracefulShutdownHandler); // ctrl-c
-    signal(SIGTERM, cleanShutdownHandler); // systemd stop
-    signal(SIGHUP, cleanShutdownHandler); // terminal session ends
+    signal(SIGINT, gracefulShutdownHandler);  // ctrl-c
+    signal(SIGTERM, cleanShutdownHandler);    // systemd stop
+    signal(SIGHUP, cleanShutdownHandler);     // terminal session ends
 #endif
   }
 }  // namespace
 
 int main(int argc, const char* argv[])
 {
+  (void)argc;
+  (void)argv;
 #ifdef TEST_BUILD
   return testing::SpecTest::Run(argc, argv) ? 0 : 1;
 #endif
@@ -318,9 +320,10 @@ int main(int argc, const char* argv[])
                                                    &sessions,
                                                    &relayManager,
                                                    &recorder,
-                                                   &relayAddr] {
+                                                   &relayAddr,
+                                                   &sender] {
         core::PacketProcessor processor(
-         shouldReceive, *packetSocket, relayClock, keychain, sessions, relayManager, gAlive, recorder, relayAddr);
+         shouldReceive, *packetSocket, relayClock, keychain, sessions, relayManager, gAlive, recorder, relayAddr, sender);
         processor.process(waitVar, socketAndThreadReady);
       });
 
@@ -363,10 +366,11 @@ int main(int argc, const char* argv[])
 
     // setup the ping processor to use the external address
     // relays use it to know where the receiving port of other relays are
-    auto thread = std::make_shared<std::thread>([&waitVar, &socketAndThreadReady, socket, &relayManager, &relayAddr, &recorder] {
-      core::PingProcessor pingProcessor(*socket, relayManager, gAlive, relayAddr, recorder);
-      pingProcessor.process(waitVar, socketAndThreadReady);
-    });
+    auto thread =
+     std::make_shared<std::thread>([&waitVar, &socketAndThreadReady, socket, &relayManager, &relayAddr, &recorder] {
+       core::PingProcessor pingProcessor(*socket, relayManager, gAlive, relayAddr, recorder);
+       pingProcessor.process(waitVar, socketAndThreadReady);
+     });
 
     wait();
 
@@ -400,6 +404,8 @@ int main(int argc, const char* argv[])
         return;
       }
 
+      Log("Relay initalized with old backend");
+
       v3BackendSuccess = backend.updateCycle(gAlive);
 
       gAlive = false;
@@ -430,7 +436,7 @@ int main(int argc, const char* argv[])
     return 1;
   }
 
-  Log("Relay initialized\n\n");
+  Log("Relay initialized with new backend\n\n");
 
   setupSignalHandlers();
 

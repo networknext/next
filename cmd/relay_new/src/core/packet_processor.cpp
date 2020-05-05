@@ -40,7 +40,8 @@ namespace core
    core::RelayManager& relayManager,
    const volatile bool& handle,
    util::ThroughputRecorder& logger,
-   const net::Address& receivingAddr)
+   const net::Address& receivingAddr,
+   util::Sender<core::GenericPacket<>>& sender)
    : mShouldReceive(shouldReceive),
      mSocket(socket),
      mRelayClock(relayClock),
@@ -49,7 +50,8 @@ namespace core
      mRelayManager(relayManager),
      mShouldProcess(handle),
      mRecorder(logger),
-     mRecvAddr(receivingAddr)
+     mRecvAddr(receivingAddr),
+     mSender(sender)
   {}
 
   void PacketProcessor::process(std::condition_variable& var, std::atomic<bool>& readyToReceive)
@@ -200,6 +202,7 @@ namespace core
       case V3BackendConfigResponse:
       case V3BackendInitResponse:
         LogDebug("got something from old backend");
+        mSender.send(packet);
         break;
       default: {
         LogDebug("received unknown packet type: ", std::hex, (int)packet.Buffer[0], std::dec);

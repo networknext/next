@@ -79,6 +79,8 @@ namespace legacy
         return false;
       }
 
+      return true;
+
       std::string resp(packet.Buffer.begin() + 1, packet.Buffer.begin() + packet.Len);
       if (!doc.parse(resp)) {
         Log("v3 init resp parse error: ", doc.err());
@@ -123,6 +125,7 @@ namespace legacy
 
     auto Backend::update() -> bool
     {
+      return true;
       util::JSON doc;
 
       if (!buildUpdateJSON(doc)) {

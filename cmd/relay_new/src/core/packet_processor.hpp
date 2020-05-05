@@ -8,6 +8,7 @@
 #include "router_info.hpp"
 #include "session_map.hpp"
 #include "token.hpp"
+#include "util/channel.hpp"
 #include "util/throughput_recorder.hpp"
 
 namespace core
@@ -29,7 +30,8 @@ namespace core
      core::RelayManager& relayManager,
      const volatile bool& handle,
      util::ThroughputRecorder& recorder,
-     const net::Address& receivingAddr);
+     const net::Address& receivingAddr,
+     util::Sender<core::GenericPacket<>>& sender);
     ~PacketProcessor() = default;
 
     void process(std::condition_variable& var, std::atomic<bool>& readyToReceive);
@@ -44,6 +46,7 @@ namespace core
     const volatile bool& mShouldProcess;
     util::ThroughputRecorder& mRecorder;
     const net::Address& mRecvAddr;
+    util::Sender<core::GenericPacket<>>& mSender;
 
     void processPacket(GenericPacket<>& packet, mmsghdr& header, GenericPacketBuffer<MaxPacketsToSend>& outputBuff);
 

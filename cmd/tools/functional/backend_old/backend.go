@@ -1022,14 +1022,13 @@ func TerribleOldShite() {
 	go listener.Listen(
 		&packetsReceivedCount,
 		func(packet *UDPPacketToMaster, from *net.UDPAddr, conn *net.UDPConn) error {
-			fmt.Printf("got a packet")
+			fmt.Println("got a packet")
 			if packet.Type == NEXT_PACKET_TYPE_RELAY_INIT_REQUEST {
-				fmt.Printf("got init request")
+				fmt.Println("got init request")
 				var token [MasterTokenBytes]byte
 				err := WriteMasterToken(token[:], &net.UDPAddr{IP: from.IP, Port: 0})
 				if err != nil {
 					return fmt.Errorf("could not write master token: %v", err)
-					return nil
 				}
 
 				response := &InitResponseJSON{
