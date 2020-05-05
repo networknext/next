@@ -758,6 +758,8 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			tx.Set(fmt.Sprintf("session-%x-meta", packet.SessionID), meta, 720*time.Hour)
 			tx.SAdd(fmt.Sprintf("session-%x-slices", packet.SessionID), slice)
 			tx.Expire(fmt.Sprintf("session-%x-slices", packet.SessionID), 720*time.Hour)
+			tx.SAdd(fmt.Sprintf("user-%x-sessions", packet.UserHash), meta.ID)
+			tx.Expire(fmt.Sprintf("user-%x-sessions", packet.UserHash), 720*time.Hour)
 			tx.SAdd("map-points-global", meta.ID)
 			tx.SAdd(fmt.Sprintf("map-points-buyer-%x", packet.CustomerID), meta.ID)
 			tx.Expire(fmt.Sprintf("map-points-buyer-%x", packet.CustomerID), 720*time.Hour)

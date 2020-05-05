@@ -89,107 +89,58 @@ func (s *BuyersService) SessionsMap(r *http.Request, args *MapArgs, reply *MapRe
 	return nil
 }
 
-type SessionsArgs struct {
-	BuyerID   string `json:"buyer_id"`
-	SessionID string `json:"session_id"`
+type UserSessionsArgs struct {
+	UserHash string `json:"user_hash"`
 }
 
-type SessionsReply struct {
-	Sessions []session `json:"sessions"`
+type UserSessionsReply struct {
+	Sessions []routing.SessionMeta `json:"sessions"`
 }
 
-type session struct {
-	SessionID     string    `json:"session_id"`
-	UserHash      string    `json:"user_hash"`
-	DirectRTT     float64   `json:"direct_rtt"`
-	NextRTT       float64   `json:"next_rtt"`
-	ChangeRTT     float64   `json:"change_rtt"`
-	OnNetworkNext bool      `json:"on_network_next"`
-	ExpiresAt     time.Time `json:"expires_at"`
-}
-
-func (s *BuyersService) Sessions(r *http.Request, args *SessionsArgs, reply *SessionsReply) error {
-	var err error
-	var cacheEntry transport.SessionCacheEntry
-	var cacheEntryData []byte
-	var buyerID uint64
-	var sessionID uint64
-
-	if args.BuyerID == "" {
-		return fmt.Errorf("buyer_id is required")
-	}
-
-	if buyerID, err = strconv.ParseUint(args.BuyerID, 10, 64); err != nil {
-		return fmt.Errorf("failed to convert BuyerID to uint64")
-	}
-
-	if args.SessionID != "" {
-		if sessionID, err = strconv.ParseUint(args.SessionID, 10, 64); err != nil {
-			return fmt.Errorf("failed to convert SessionID to uint64")
-		}
-
-		getCmd := s.RedisClient.Get(fmt.Sprintf("SESSION-%d-%d", buyerID, sessionID))
-
-		if cacheEntryData, err = getCmd.Bytes(); err != nil {
-			return fmt.Errorf("failed to get session %d: %w", sessionID, err)
-		}
-
-		if err := cacheEntry.UnmarshalBinary(cacheEntryData); err != nil {
-			return fmt.Errorf("failed to unmarshal session %d: %w", sessionID, err)
-		}
-
-		reply.Sessions = append(reply.Sessions, session{
-			SessionID:     strconv.FormatUint(cacheEntry.SessionID, 10),
-			UserHash:      strconv.FormatUint(cacheEntry.UserHash, 10),
-			DirectRTT:     cacheEntry.DirectRTT,
-			NextRTT:       cacheEntry.NextRTT,
-			ChangeRTT:     cacheEntry.NextRTT - cacheEntry.DirectRTT,
-			OnNetworkNext: cacheEntry.RouteDecision.OnNetworkNext,
-			ExpiresAt:     cacheEntry.TimestampExpire,
-		})
-
-		return nil
+func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, reply *UserSessionsReply) error {
+	var sessionIDs []string
+	err := s.RedisClient.SMembers(fmt.Sprintf("user-%s-sessions", args.UserHash)).ScanSlice(&sessionIDs)
+	if err != nil {
+		return err
 	}
 
 	var getCmds []*redis.StringCmd
 	{
-		iter := s.RedisClient.Scan(0, fmt.Sprintf("SESSION-%d-*", buyerID), 10000).Iterator()
-		tx := s.RedisClient.TxPipeline()
-		for iter.Next() {
-			getCmds = append(getCmds, tx.Get(iter.Val()))
+		gettx := s.RedisClient.TxPipeline()
+		for _, sessionID := range sessionIDs {
+			getCmds = append(getCmds, gettx.Get(fmt.Sprintf("session-%s-meta", sessionID)))
 		}
-		if err := iter.Err(); err != nil {
-			return fmt.Errorf("failed to scan redis: %w", err)
-		}
-		_, err = tx.Exec()
-		if err != nil {
-			return fmt.Errorf("failed to multi-get redis: %w", err)
+		_, err = gettx.Exec()
+		if err != nil && err != redis.Nil {
+			return err
 		}
 	}
 
-	for _, cmd := range getCmds {
-		cacheEntryData, err = cmd.Bytes()
-		if err != nil {
-			continue
-		}
+	exptx := s.RedisClient.TxPipeline()
+	{
+		var meta routing.SessionMeta
+		for _, cmd := range getCmds {
+			err = cmd.Scan(&meta)
+			if err != nil {
+				// If we get here then there is a session in the top lists
+				// but has missing meta information so we set an empty meta
+				// key to expire in 5 seconds for the main cleanup routine
+				// to clear the reference in the top lists
+				args := cmd.Args()
+				exptx.Set(args[1].(string), "", 5*time.Second)
+				continue
+			}
 
-		if err := cacheEntry.UnmarshalBinary(cacheEntryData); err != nil {
-			continue
+			reply.Sessions = append(reply.Sessions, meta)
 		}
-
-		reply.Sessions = append(reply.Sessions, session{
-			SessionID:     strconv.FormatUint(cacheEntry.SessionID, 10),
-			UserHash:      strconv.FormatUint(cacheEntry.UserHash, 10),
-			DirectRTT:     cacheEntry.DirectRTT,
-			NextRTT:       cacheEntry.NextRTT,
-			ChangeRTT:     cacheEntry.NextRTT - cacheEntry.DirectRTT,
-			OnNetworkNext: cacheEntry.RouteDecision.OnNetworkNext,
-			ExpiresAt:     cacheEntry.TimestampExpire,
-		})
+	}
+	_, err = exptx.Exec()
+	if err != nil && err != redis.Nil {
+		return err
 	}
 
 	sort.Slice(reply.Sessions, func(i int, j int) bool {
-		return reply.Sessions[i].ChangeRTT < reply.Sessions[j].ChangeRTT
+		return reply.Sessions[i].ID < reply.Sessions[j].ID
 	})
 
 	return nil
