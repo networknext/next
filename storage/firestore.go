@@ -86,6 +86,7 @@ type routingRulesSettings struct {
 	EnableMultipathForJitter     bool    `firestore:"jitterMultipath"`
 	EnableMultipathForRTT        bool    `firestore:"rttMultipath"`
 	EnableABTest                 bool    `firestore:"abTest"`
+	SelectionPercentage          int64   `firestore:"selectionPercentage"`
 }
 
 func NewFirestore(ctx context.Context, gcpProjectID string, logger log.Logger) (*Firestore, error) {
@@ -1080,6 +1081,7 @@ func (fs *Firestore) createRouteRulesSettingsForBuyerID(ctx context.Context, ID 
 		EnableMultipathForJitter:     rrs.EnableMultipathForJitter,
 		EnableMultipathForRTT:        rrs.EnableMultipathForRTT,
 		EnableABTest:                 rrs.EnableABTest,
+		SelectionPercentage:          rrs.SelectionPercentage,
 	}
 
 	// Attempt to create route shader for buyer
@@ -1137,6 +1139,7 @@ func (fs *Firestore) getRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 	rrs.EnableMultipathForJitter = tempRRS.EnableMultipathForJitter
 	rrs.EnableMultipathForRTT = tempRRS.EnableMultipathForRTT
 	rrs.EnableABTest = tempRRS.EnableABTest
+	rrs.SelectionPercentage = tempRRS.SelectionPercentage
 
 	return rrs, nil
 }
@@ -1164,6 +1167,7 @@ func (fs *Firestore) setRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 		"jitterMultipath":       rrs.EnableMultipathForJitter,
 		"rttMultipath":          rrs.EnableMultipathForRTT,
 		"abTest":                rrs.EnableABTest,
+		"selectionPercentage":   rrs.SelectionPercentage,
 	}
 
 	// Attempt to set route shader for buyer
