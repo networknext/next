@@ -17,7 +17,7 @@ Test(util_Channel_general)
   check(receiver.recv(result));
 
   check(msg == "");
-  check(result == "test string", [&] {
+  check(result == "test string").onFail([&] {
     std::cout << "result is " << result << std::endl;
   });
 }

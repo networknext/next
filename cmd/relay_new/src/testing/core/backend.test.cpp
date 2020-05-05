@@ -308,7 +308,7 @@ Test(core_Backend_update_valid)
   std::array<core::PingData, MAX_RELAYS> pingData;
   auto count = manager.getPingData(pingData);
 
-  check(count == 2, [&] {
+  check(count == 2).onFail([&] {
     std::cout << "count is " << count << '\n';
   });
   check(pingData[0].Addr.toString() == "127.0.0.1:54321");

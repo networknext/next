@@ -40,26 +40,7 @@
  */
 #define Test(...) TEST_MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__)
 
-#define CHECK_EXPR(cond, msg) \
-  testing::check_handler((cond), msg, #cond, (const char*)__FUNCTION__, (const char*)__FILE__, __LINE__);
-
-#define CHECK_WITHOUT_MSG(cond) CHECK_EXPR(cond, nullptr)
-
-#define CHECK_WITH_MSG(cond, msg) CHECK_EXPR(cond, msg)
-
-#define GET_3RD_CHECK_ARG(arg1, arg2, arg3, ...) arg3
-#define CHECK_MACRO_CHOOSER(...) GET_3RD_CHECK_ARG(__VA_ARGS__, CHECK_WITH_MSG, CHECK_WITHOUT_MSG)
-
-/*
- * Check macro. Takes two paramters. First is required, it is the expression to evaluate. The second is an optional lambda.
- *
- * The lambda is only executed if the expression evaluates to false.
- * Useful for printing error messages containing information
- * that would otherwise be unavailable.
- *
- * When using the lambda, you cannot include a single comma anywhere otherwise it'll break the macro
- */
-#define check(...) CHECK_MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__)
+#define check(cond) testing::CheckHandler((cond), #cond, __FUNCTION__, __FILE__, __LINE__)
 
 namespace testing
 {
@@ -77,27 +58,56 @@ namespace testing
     SpecTest(const char* name, bool disabled);
   };
 
-  template <typename T>
-  void check_handler(T result, std::function<void(void)> failMessage, const char* condition, const char* function, const char* file, int line);
-
-  template <>
-  inline void check_handler(bool result, std::function<void(void)> failMessage, const char* condition, const char* function, const char* file, int line)
+  class SpecCheck
   {
-    if (!result) {
-      printf("check failed: ( %s ), function %s, file %s, line %d\n", condition, function, file, line);
-      if (failMessage) {
-        failMessage();
+   public:
+    SpecCheck(bool result, const char* condition, const char* function, const char* file, int line);
+    ~SpecCheck();
+
+    void onFail(std::function<void(void)> failFunc);
+
+   private:
+    bool mResult;
+    const char* mCondition;
+    const char* mFunction;
+    const char* mFile;
+    const int mLine;
+    std::function<void(void)> mOnFail;
+  };
+
+  inline SpecCheck::SpecCheck(bool result, const char* condition, const char* function, const char* file, int line)
+   : mResult(result), mCondition(condition), mFunction(function), mFile(file), mLine(line)
+  {}
+
+  inline SpecCheck::~SpecCheck()
+  {
+    if (!mResult) {
+      std::cout << "check failed: ( " << mCondition << " ), function " << mFunction << ", file " << mFile << ", line  " << mLine
+                << std::endl;
+      if (mOnFail) {
+        mOnFail();
       }
-      fflush(stdout);
-#ifndef NDEBUG
 #if defined(__GNUC__)
       __builtin_trap();
 #elif defined(_MSC_VER)
       __debugbreak();
 #endif
-#endif
-      exit(1);
+      std::exit(1);
     }
+  }
+
+  inline void SpecCheck::onFail(std::function<void(void)> failFunc)
+  {
+    mOnFail = failFunc;
+  }
+
+  template <typename T>
+  SpecCheck CheckHandler(T result, const char* condition, const char* function, const char* file, int line);
+
+  template <>
+  inline SpecCheck CheckHandler(bool result, const char* condition, const char* function, const char* file, int line)
+  {
+    return SpecCheck(result, condition, function, file, line);
   }
 
   template <typename T>
