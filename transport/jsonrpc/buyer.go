@@ -3,7 +3,6 @@ package jsonrpc
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"net/http"
 	"sort"
 	"strconv"
@@ -12,81 +11,11 @@ import (
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
-	"github.com/networknext/backend/transport"
 )
 
 type BuyersService struct {
 	RedisClient redis.Cmdable
 	Storage     storage.Storer
-}
-
-type MapArgs struct {
-	BuyerID string `json:"buyer_id"`
-}
-
-type MapReply struct {
-	SessionPoints []point `json:"sess_points"`
-}
-
-type point struct {
-	Coordinates   []float64 `json:"COORDINATES"`
-	OnNetworkNext bool      `json:"on_network_next"`
-}
-
-func (s *BuyersService) SessionsMap(r *http.Request, args *MapArgs, reply *MapReply) error {
-	var err error
-	var cacheEntry transport.SessionCacheEntry
-	var cacheEntryData []byte
-	var buyerID uint64
-
-	if args.BuyerID == "" {
-		return fmt.Errorf("buyer_id is required")
-	}
-
-	if buyerID, err = strconv.ParseUint(args.BuyerID, 10, 64); err != nil {
-		return fmt.Errorf("failed to convert BuyerID to uint64")
-	}
-
-	var getCmds []*redis.StringCmd
-	{
-		iter := s.RedisClient.Scan(0, fmt.Sprintf("SESSION-%d-*", buyerID), 10000).Iterator()
-		tx := s.RedisClient.TxPipeline()
-		for iter.Next() {
-			getCmds = append(getCmds, tx.Get(iter.Val()))
-		}
-		if err := iter.Err(); err != nil {
-			return fmt.Errorf("failed to scan redis: %w", err)
-		}
-		_, err = tx.Exec()
-		if err != nil {
-			return fmt.Errorf("failed to multi-get redis: %w", err)
-		}
-	}
-
-	for _, cmd := range getCmds {
-		cacheEntryData, err = cmd.Bytes()
-		if err != nil {
-			continue
-		}
-
-		if err := cacheEntry.UnmarshalBinary(cacheEntryData); err != nil {
-			continue
-		}
-
-		lat := cacheEntry.Location.Latitude
-		lng := cacheEntry.Location.Longitude
-		if lat == 0 && lng == 0 {
-			lat = (-123) + rand.Float64()*((-70)-(-123))
-			lng = 28 + rand.Float64()*(48-28)
-		}
-
-		reply.SessionPoints = append(reply.SessionPoints, point{
-			Coordinates:   []float64{lat, lng},
-			OnNetworkNext: cacheEntry.RouteDecision.OnNetworkNext,
-		})
-	}
-
-	return nil
 }
 
 type UserSessionsArgs struct {
