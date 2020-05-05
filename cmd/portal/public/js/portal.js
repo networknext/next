@@ -557,14 +557,14 @@ function generateCharts(data) {
 		],
 	};
 
-	data.map((entry, index) => {
-		let timestamp = new Date(entry.timestamp).getTime();
+	data.map((entry) => {
+		let timestamp = new Date(entry.timestamp).getTime() / 1000;
 
 		// Latency
 		let next = Number.parseInt(entry.next.rtt * SEC_TO_MS).toFixed(0);
 		let direct = Number.parseInt(entry.direct.rtt * SEC_TO_MS).toFixed(0);
 		let improvement = direct - next;
-		latencyData.improvement[0].push(index);
+		latencyData.improvement[0].push(timestamp);
 		latencyData.improvement[1].push(improvement);
 		latencyData.comparison[0].push(timestamp);
 		latencyData.comparison[1].push(next);
@@ -574,7 +574,7 @@ function generateCharts(data) {
 		next = Number.parseInt(entry.next.jitter * SEC_TO_MS).toFixed(0);
 		direct = Number.parseInt(entry.direct.jitter * SEC_TO_MS).toFixed(0);
 		improvement = direct - next;
-		jitterData.improvement[0].push(index);
+		jitterData.improvement[0].push(timestamp);
 		jitterData.improvement[1].push(improvement);
 		jitterData.comparison[0].push(timestamp);
 		jitterData.comparison[1].push(next);
@@ -584,66 +584,144 @@ function generateCharts(data) {
 		next = Number.parseInt(entry.next.packet_loss * DEC_TO_PERC).toFixed(0);
 		direct = Number.parseInt(entry.direct.packet_loss * DEC_TO_PERC).toFixed(0);
 		improvement = direct - next;
-		packetLossData.improvement[0].push(index);
+		packetLossData.improvement[0].push(timestamp);
 		packetLossData.improvement[1].push(improvement);
 		packetLossData.comparison[0].push(timestamp);
 		packetLossData.comparison[1].push(next);
 		packetLossData.comparison[2].push(direct);
 
 		// Bandwidth
-		bandwidthData.up[0].push(index);
+		bandwidthData.up[0].push(timestamp);
 		bandwidthData.up[1].push(entry.envelope.up);
 		bandwidthData.down[0].push(timestamp);
 		bandwidthData.down[1].push(entry.envelope.down);
 	});
 
+	console.log(document.getElementById("latency-chart-1").clientWidth);
+	console.log(document.getElementById("latency-chart-1").clientHeight);
+
+	const defaultOpts = {
+		width: document.getElementById("latency-chart-1").clientWidth,
+		height: 260,
+	};
+
 	const latencyImprovementOpts = {
-		width: 1000,
-		height: 600,
+		...defaultOpts,
 		series: [
 			{},
 			{
 				stroke: "green",
 				fill: "rgba(0,255,0,0.1)",
-				label: "Improvement"
+				label: "Improvement",
 			},
 		],
+		axes: [
+			{},
+			{
+			  show: true,
+			  gap: 5,
+			  size: 70,
+			  values: (self, ticks) => ticks.map(rawValue => rawValue + "ms"),
+			}
+		  ]
 	};
 
 	const latencycomparisonOpts = {
-		width: 1000,
-		height: 600,
+		...defaultOpts,
 		series: [
 			{},
 			{
 				stroke: "blue",
 				fill: "rgba(0,0,255,0.1)",
-				label: "Network Next"
+				label: "Network Next",
 			},
 			{
 				stroke: "red",
 				fill: "rgba(255,0,0,0.1)",
-				label: "Direct"
+				label: "Direct",
 			},
 		],
+		axes: [
+			{},
+			{
+			  show: true,
+			  gap: 5,
+			  size: 70,
+			  values: (self, ticks) => ticks.map(rawValue => rawValue + "ms"),
+			}
+		  ]
 	};
 
-	const bandwidthUpOpts = {
-		width: 1000,
-		height: 600,
+	const packetLossImprovementOpts = {
+		...defaultOpts,
+		series: [
+			{},
+			{
+				stroke: "green",
+				fill: "rgba(0,255,0,0.1)",
+				label: "Improvement",
+			},
+		],
+		axes: [
+			{},
+			{
+			  show: true,
+			  gap: 5,
+			  size: 50,
+			  values: (self, ticks) => ticks.map(rawValue => rawValue + "%"),
+			}
+		  ]
+	};
+
+	const packetLossComparisonOpts = {
+		...defaultOpts,
 		series: [
 			{},
 			{
 				stroke: "blue",
 				fill: "rgba(0,0,255,0.1)",
-				label: "Actual Up"
+				label: "Network Next",
+			},
+			{
+				stroke: "red",
+				fill: "rgba(255,0,0,0.1)",
+				label: "Direct",
 			},
 		],
+		axes: [
+			{},
+			{
+			  show: true,
+			  gap: 5,
+			  size: 50,
+			  values: (self, ticks) => ticks.map(rawValue => rawValue + "%"),
+			}
+		]
+	};
+
+	const bandwidthUpOpts = {
+		...defaultOpts,
+		series: [
+			{},
+			{
+				stroke: "blue",
+				fill: "rgba(0,0,255,0.1)",
+				label: "Actual Up",
+			},
+		],
+		axes: [
+			{},
+			{
+			  show: true,
+			  gap: 5,
+			  size: 70,
+			  values: (self, ticks) => ticks.map(rawValue => rawValue + "kbps"),
+			}
+		]
 	};
 
 	const bandwidthDownOpts = {
-		width: 1000,
-		height: 600,
+		...defaultOpts,
 		series: [
 			{},
 			{
@@ -652,6 +730,15 @@ function generateCharts(data) {
 				label: "Actual Down"
 			},
 		],
+		axes: [
+			{},
+			{
+			  show: true,
+			  gap: 5,
+			  size: 70,
+			  values: (self, ticks) => ticks.map(rawValue => rawValue + "kbps"),
+			}
+		]
 	};
 
 	let latencyImprovementChart = new uPlot(latencyImprovementOpts, latencyData.improvement, document.getElementById("latency-chart-1"));
@@ -660,8 +747,8 @@ function generateCharts(data) {
 	let jitterImprovementChart = new uPlot(latencyImprovementOpts, jitterData.improvement, document.getElementById("jitter-chart-1"));
 	let jitterComparisonChart = new uPlot(latencycomparisonOpts, jitterData.comparison, document.getElementById("jitter-chart-2"));
 
-	let packetLossImprovementChart = new uPlot(latencyImprovementOpts, packetLossData.improvement, document.getElementById("packet-loss-chart-1"));
-	let packetLossComparisonChart = new uPlot(latencycomparisonOpts, packetLossData.comparison, document.getElementById("packet-loss-chart-2"));
+	let packetLossImprovementChart = new uPlot(packetLossImprovementOpts, packetLossData.improvement, document.getElementById("packet-loss-chart-1"));
+	let packetLossComparisonChart = new uPlot(packetLossComparisonOpts, packetLossData.comparison, document.getElementById("packet-loss-chart-2"));
 
 	let bandwidthUpChart = new uPlot(bandwidthUpOpts, bandwidthData.up, document.getElementById("bandwidth-chart-1"));
 	let bandwidthDownChart = new uPlot(bandwidthDownOpts, bandwidthData.down, document.getElementById("bandwidth-chart-2"));
