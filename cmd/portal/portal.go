@@ -229,8 +229,9 @@ func main() {
 				keyparts := strings.Split(msg.Payload, "-")
 				sessionID := keyparts[1]
 
-				topscaniter := redisClientPortal.Scan(0, "top-buyer-*", 100).Iterator()
-				mapscaniter := redisClientPortal.Scan(0, "map-points-buyer-*", 100).Iterator()
+				topscaniter := redisClientPortal.Scan(0, "top-buyer-*", 1000).Iterator()
+				mapscaniter := redisClientPortal.Scan(0, "map-points-buyer-*", 1000).Iterator()
+				userscaniter := redisClientPortal.Scan(0, "user-*", 1000).Iterator()
 
 				tx := redisClientPortal.TxPipeline()
 
@@ -242,6 +243,10 @@ func main() {
 				tx.SRem("map-points-global", sessionID)
 				for mapscaniter.Next() {
 					tx.SRem(mapscaniter.Val(), sessionID)
+				}
+
+				for userscaniter.Next() {
+					tx.SRem(userscaniter.Val(), sessionID)
 				}
 
 				if _, err := tx.Exec(); err != nil {
