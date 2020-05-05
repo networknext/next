@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
@@ -25,6 +26,7 @@ import (
 	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
+	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/jsonrpc"
 )
 
@@ -261,6 +263,29 @@ func main() {
 
 		http.Handle("/", http.FileServer(http.Dir(uiDir)))
 
+		level.Info(logger).Log("addr", ":"+port)
+
+		// If the port is set to 443 then build the certificates and run a TLS-enabled HTTP server
+		if port == "443" {
+			cert, err := tls.X509KeyPair(transport.TLSCertificate, transport.TLSPrivateKey)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				os.Exit(1)
+			}
+
+			server := &http.Server{
+				Addr:      ":" + port,
+				TLSConfig: &tls.Config{Certificates: []tls.Certificate{cert}},
+			}
+
+			err = server.ListenAndServeTLS("", "")
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				os.Exit(1)
+			}
+		}
+
+		// Fall through to running on any other port defined with TLS disabled
 		err := http.ListenAndServe(":"+port, nil)
 		if err != nil {
 			level.Error(logger).Log("err", err)
