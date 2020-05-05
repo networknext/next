@@ -1022,9 +1022,9 @@ func TerribleOldShite() {
 	go listener.Listen(
 		&packetsReceivedCount,
 		func(packet *UDPPacketToMaster, from *net.UDPAddr, conn *net.UDPConn) error {
-
+			fmt.Printf("got a packet")
 			if packet.Type == NEXT_PACKET_TYPE_RELAY_INIT_REQUEST {
-
+				fmt.Printf("got init request")
 				var token [MasterTokenBytes]byte
 				err := WriteMasterToken(token[:], &net.UDPAddr{IP: from.IP, Port: 0})
 				if err != nil {
@@ -1099,6 +1099,6 @@ func TerribleOldShite() {
 
 			return nil
 		},
-		":40000",
+		"127.0.0.1:40000",
 	)
 }
