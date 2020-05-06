@@ -49,12 +49,8 @@ func (dr DecisionReason) String() string {
 		reason = "Veto Packet Loss"
 	case DecisionFallbackToDirect:
 		reason = "Fallback to Direct"
-	case DecisionUnused:
-		reason = "Unused"
 	case DecisionVetoYOLO:
 		reason = "Veto YOLO"
-	case DecisionVetoNoRoute:
-		reason = "Veto No Route"
 	case DecisionDatacenterHasNoRelays:
 		reason = "Datacenter Has No Relays"
 	case DecisionInitialSlice:
@@ -65,8 +61,10 @@ func (dr DecisionReason) String() string {
 		reason = "Veto RTT YOLO"
 	case DecisionVetoPacketLoss | DecisionVetoYOLO:
 		reason = "Veto Packet Loss YOLO"
-	case DecisionRTTIncrease:
-		reason = "RTT Increase"
+	case DecisionRTTHysteresis:
+		reason = "RTT Hysteresis"
+	default:
+		reason = "Unused"
 	}
 
 	return fmt.Sprintf("%s (%d)", reason, dr)
@@ -86,13 +84,11 @@ const (
 	DecisionRTTMultipath          DecisionReason = 1 << 9
 	DecisionVetoPacketLoss        DecisionReason = 1 << 10
 	DecisionFallbackToDirect      DecisionReason = 1 << 11
-	DecisionUnused                DecisionReason = 1 << 12
 	DecisionVetoYOLO              DecisionReason = 1 << 13
-	DecisionVetoNoRoute           DecisionReason = 1 << 14
 	DecisionDatacenterHasNoRelays DecisionReason = 1 << 15
 	DecisionInitialSlice          DecisionReason = 1 << 16
 	DecisionNoNearRelays          DecisionReason = 1 << 17
-	DecisionRTTIncrease           DecisionReason = 1 << 18
+	DecisionRTTHysteresis         DecisionReason = 1 << 18
 	DecisionVetoCommit            DecisionReason = 1 << 19
 )
 
@@ -126,7 +122,7 @@ func DecideDowngradeRTT(rttHysteresis float64, yolo bool) DecisionFunc {
 			}
 
 			// Network next route increases RTT too much, switch back to direct
-			return Decision{false, DecisionRTTIncrease}
+			return Decision{false, DecisionRTTHysteresis}
 		}
 
 		// If the route is already direct, don't touch it
@@ -166,7 +162,7 @@ func DecideVeto(rttVeto float64, packetLossSafety bool, yolo bool) DecisionFunc 
 
 		// Handle the case where another decision function decided to switch back to direct due
 		// to RTT increase, but the increase is so severe it should be vetoed.
-		if prevDecision.Reason == DecisionRTTIncrease {
+		if prevDecision.Reason == DecisionRTTHysteresis {
 			if lastNextStats.RTT-directStats.RTT > rttVeto {
 				// If the buyer has YouOnlyLiveOnce safety setting enabled, add that reason to the DecisionReason
 				if yolo {
@@ -248,8 +244,7 @@ func DecideCommitted(onNNLastSlice bool, maxObservedSlices uint8, commitPending 
 // IsVetoed returns true if the given route decision was a veto.
 func IsVetoed(decision Decision) bool {
 	if !decision.OnNetworkNext {
-		if decision.Reason&DecisionVetoNoRoute != 0 || decision.Reason&DecisionVetoPacketLoss != 0 || decision.Reason&DecisionVetoRTT != 0 ||
-			decision.Reason&DecisionVetoYOLO != 0 || decision.Reason&DecisionVetoCommit != 0 {
+		if decision.Reason&DecisionVetoPacketLoss != 0 || decision.Reason&DecisionVetoRTT != 0 || decision.Reason&DecisionVetoYOLO != 0 || decision.Reason&DecisionVetoCommit != 0 {
 			return true
 		}
 	}

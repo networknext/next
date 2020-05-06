@@ -92,7 +92,7 @@ func TestDecideDowngradeRTTHysteresis(t *testing.T) {
 
 	expected := routing.Decision{
 		OnNetworkNext: false,
-		Reason:        routing.DecisionRTTIncrease,
+		Reason:        routing.DecisionRTTHysteresis,
 	}
 
 	// Loop through all permutations of the decision functions and test that the result is the same
@@ -522,12 +522,12 @@ func TestValidateNoChange(t *testing.T) {
 	// the reason isn't changed
 	startingDecision := routing.Decision{
 		OnNetworkNext: false,
-		Reason:        routing.DecisionUnused,
+		Reason:        routing.DecisionFallbackToDirect,
 	}
 
 	expected := routing.Decision{
 		OnNetworkNext: false,
-		Reason:        routing.DecisionUnused,
+		Reason:        routing.DecisionFallbackToDirect,
 	}
 
 	// Loop through all permutations and combinations of the decision functions and test that the result is the same
@@ -546,12 +546,12 @@ func TestValidateNoChange(t *testing.T) {
 	// Run test again with OnNetworkNext true
 	startingDecision = routing.Decision{
 		OnNetworkNext: true,
-		Reason:        routing.DecisionUnused,
+		Reason:        routing.DecisionFallbackToDirect,
 	}
 
 	expected = routing.Decision{
 		OnNetworkNext: true,
-		Reason:        routing.DecisionUnused,
+		Reason:        routing.DecisionFallbackToDirect,
 	}
 
 	// Loop through all permutations and combinations of the decision functions and test that the result is the same

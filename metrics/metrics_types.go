@@ -78,11 +78,10 @@ type DecisionMetrics struct {
 	VetoPacketLoss      Counter
 	FallbackToDirect    Counter
 	VetoYOLO            Counter
-	VetoNoRoute         Counter
 	InitialSlice        Counter
 	VetoRTTYOLO         Counter
 	VetoPacketLossYOLO  Counter
-	RTTIncrease         Counter
+	RTTHysteresis       Counter
 	VetoCommit          Counter
 }
 
@@ -100,11 +99,10 @@ var EmptyDecisionMetrics DecisionMetrics = DecisionMetrics{
 	VetoPacketLoss:      &EmptyCounter{},
 	FallbackToDirect:    &EmptyCounter{},
 	VetoYOLO:            &EmptyCounter{},
-	VetoNoRoute:         &EmptyCounter{},
 	InitialSlice:        &EmptyCounter{},
 	VetoRTTYOLO:         &EmptyCounter{},
 	VetoPacketLossYOLO:  &EmptyCounter{},
-	RTTIncrease:         &EmptyCounter{},
+	RTTHysteresis:       &EmptyCounter{},
 	VetoCommit:          &EmptyCounter{},
 }
 
@@ -461,16 +459,6 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
-	sessionMetrics.DecisionMetrics.VetoNoRoute, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Decision veto no route",
-		ServiceName: "server_backend",
-		ID:          "session.route_decision.veto_no_route",
-		Unit:        "decisions",
-	})
-	if err != nil {
-		return nil, err
-	}
-
 	sessionMetrics.DecisionMetrics.InitialSlice, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Decision initial slice",
 		ServiceName: "server_backend",
@@ -501,10 +489,10 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
-	sessionMetrics.DecisionMetrics.RTTIncrease, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Decision RTT increase",
+	sessionMetrics.DecisionMetrics.RTTHysteresis, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Decision RTT hysteresis",
 		ServiceName: "server_backend",
-		ID:          "session.route_decision.rtt_increase",
+		ID:          "session.route_decision.rtt_hysteresis",
 		Unit:        "decisions",
 	})
 	if err != nil {
