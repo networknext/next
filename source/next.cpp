@@ -111,8 +111,6 @@
 
 #define NEXT_MAGIC                                     0x6d0f54ac87acda73
 
-// todo
-/*
 static const uint8_t next_backend_public_key[] = 
 { 
      76,  97, 202, 140,  71, 135,  62, 212, 
@@ -121,6 +119,7 @@ static const uint8_t next_backend_public_key[] =
      25,  34, 175, 186,  37, 150, 163,  64 
 };
 
+/*
 static const uint8_t next_router_public_key[] = 
 { 
     0x49, 0x2e, 0x79, 0x74, 0x49, 0x7d, 0x9d, 0x34, 
@@ -10270,9 +10269,75 @@ bool next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( ( server->state == NEXT_SERVER_STATE_INITIALIZING || server->state == NEXT_SERVER_STATE_INITIALIZED ) && next_address_equal( from, &server->backend_address ) )
     {
-        // todo
-        printf( "*** server received packet from backend ***\n" );
-        return true;
+        if ( packet_id == NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET )
+        {
+            int state = NEXT_SERVER_STATE_DIRECT_ONLY;
+            {
+                next_mutex_guard( server->state_and_resolve_hostname_mutex );
+                state = server->state;
+            }
+
+            if ( state != NEXT_SERVER_STATE_INITIALIZING )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored init response packet from backend. server is not initializing" );
+                return true;
+            }
+
+            NextBackendServerInitResponsePacket packet;
+
+            if ( next_read_backend_packet( packet_data, packet_bytes, &packet ) != packet_id )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server init response packet from backend. packet failed to read" );
+                return true;
+            }
+
+            if ( !packet.Verify( next_backend_public_key ) )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server init response packet from backend. did not verify" );
+                return true;
+            }
+
+            if ( packet.request_id != server->server_init_request_id )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server init response packet from backend. request id mismatch (got %" PRIx64 ", expected %" PRIx64 ")", packet.request_id, server->server_init_request_id );
+                return true;
+            }
+
+            next_printf( NEXT_LOG_LEVEL_INFO, "server receive init response from backend" );
+
+            if ( packet.response != NEXT_SERVER_INIT_RESPONSE_OK )
+            {
+                switch ( packet.response )
+                {
+                    case NEXT_SERVER_INIT_RESPONSE_UNKNOWN_CUSTOMER: 
+                        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. unknown customer" );
+                        return true;
+
+                    case NEXT_SERVER_INIT_RESPONSE_UNKNOWN_DATACENTER:
+                        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. unknown datacenter" );
+                        return true;
+
+                    case NEXT_SERVER_INIT_RESPONSE_SDK_VERSION_TOO_OLD:
+                        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. sdk version too old" );
+                        return true;
+
+                    case NEXT_SERVER_INIT_RESPONSE_SIGNATURE_CHECK_FAILED:
+                        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. signature check failed" );
+                        return true;
+
+                    default:
+                        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend for an unknown reason" );
+                        return true;
+                }
+            }
+
+            next_printf( NEXT_LOG_LEVEL_INFO, "welcome to network next :)" );
+
+            next_mutex_guard( server->state_and_resolve_hostname_mutex );
+            server->state = NEXT_SERVER_STATE_INITIALIZED;
+
+            return true;
+        }
     }
 
     // upgrade response packet
