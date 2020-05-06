@@ -37,12 +37,16 @@ void server_packet_received( next_server_t * server, void * context, const next_
 {
     (void) context;
 
+    printf( "server received packet\n" );
+
     next_server_send_packet( server, from, packet_data, packet_bytes );
 
+    /*
     if ( !next_server_session_upgraded( server, from ) )
     {
         next_server_upgrade_session( server, from, 0, 0, NULL );
     }
+    */
 }
 
 const char * customer_hostname = "prod.networknext.com";
@@ -61,7 +65,7 @@ int main()
 
     next_init( NULL, &config ); 
 
-    next_server_t * server = next_server_create( NULL, "173.255.241.176:32202", "0.0.0.0:32202", "local", server_packet_received );
+    next_server_t * server = next_server_create( NULL, "127.0.0.1:32202", "0.0.0.0:32202", "local", server_packet_received );
 
     if ( server == NULL )
     {

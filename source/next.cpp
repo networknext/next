@@ -111,6 +111,8 @@
 
 #define NEXT_MAGIC                                     0x6d0f54ac87acda73
 
+// todo
+/*
 static const uint8_t next_backend_public_key[] = 
 { 
      76,  97, 202, 140,  71, 135,  62, 212, 
@@ -126,6 +128,7 @@ static const uint8_t next_router_public_key[] =
     0x1b, 0xff, 0x61, 0xc6, 0x0e, 0x65, 0x92, 0xd7, 
     0x09, 0x64, 0xe9, 0x34, 0x12, 0x32, 0x5f, 0x46 
 };
+*/
 
 #if !defined (NEXT_LITTLE_ENDIAN ) && !defined( NEXT_BIG_ENDIAN )
 
@@ -5976,9 +5979,9 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     const bool from_server_address = client->server_address.type != 0 && next_address_equal( from, &client->server_address );
 
-    // NEXT_DIRECT_PACKET
+    const int packet_id = packet_data[0];
 
-    if ( client->upgraded && packet_data[0] == NEXT_DIRECT_PACKET && packet_bytes <= NEXT_MTU + 18 && from_server_address )
+    if ( client->upgraded && packet_id == NEXT_DIRECT_PACKET && packet_bytes <= NEXT_MTU + 18 && from_server_address )
     {
         const uint8_t * p = packet_data + 1;
 
@@ -6020,23 +6023,11 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
         next_packet_loss_tracker_packet_received( &client->packet_loss_tracker, clean_sequence );
     }
 
-    // other network next packet types
-
-    // todo
-
     /*
-    int packet_id = packet_data[0];
-
     switch ( packet_id )
     {
         case NEXT_RELAY_PONG_PACKET:
         {
-            if ( !client->upgraded )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored relay pong packet. not upgraded yet" );
-                return NEXT_ERROR;
-            }            
-
             NextRelayPongPacket packet;
 
             if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL ) != packet_id )
@@ -6045,10 +6036,18 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
                 return NEXT_ERROR;
             }
 
+            // todo: check magic
+
+            if ( !client->upgraded )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored relay pong packet. not upgraded yet" );
+                return true;
+            }            
+
             if ( packet.session_id != client->session_id )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignoring relay pong packet. session id does not match" );
-                return NEXT_ERROR;
+                return true;
             }
 
             next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL );
@@ -6059,6 +6058,10 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         case NEXT_ROUTE_RESPONSE_PACKET:
         {
+            // todo: WTF we should be reading the packet prior to mutex... 
+
+            // todo: magic
+
             next_platform_mutex_acquire( client->route_manager_mutex );
             next_route_manager_process_route_response_packet( client->route_manager, from, packet_data, packet_bytes, &client->special_replay_protection );
             bool route_established = client->route_manager->route_data.current_route;
@@ -6079,16 +6082,20 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
             }
             next_platform_mutex_release( client->bandwidth_mutex );
 
-            return NEXT_OK;
+            return true;
         }
         break;
 
         case NEXT_CONTINUE_RESPONSE_PACKET:
         {
+            // todo: we should be reading the packet prior to mutex
+
+            // todo: magic
+
             next_platform_mutex_acquire( client->route_manager_mutex );
             next_route_manager_process_continue_response_packet( client->route_manager, from, packet_data, packet_bytes, &client->special_replay_protection );
             next_platform_mutex_release( client->route_manager_mutex );
-            return NEXT_OK;
+            return true;
         }
         break;
 
@@ -6097,6 +6104,10 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
             int payload_bytes = 0;
             uint64_t payload_sequence = 0;
             uint8_t payload_data[NEXT_MTU];
+
+            // todo: we should be reading the packet prior to mutex
+
+            // todo: magic
 
             next_platform_mutex_acquire( client->route_manager_mutex );
             const bool result = next_route_manager_process_server_to_client_packet( client->route_manager, from, packet_data, packet_bytes, &payload_sequence, payload_data, &payload_bytes );
@@ -7020,6 +7031,12 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
     next_assert( packet_bytes >= 0 );
     next_assert( packet_bytes <= NEXT_MTU );
 
+    if ( next_global_config.disable_network_next )
+    {
+        next_client_send_packet_direct( client, packet_data, packet_bytes );
+        return;
+    }
+
     if ( !client->session_open )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client can't send packet because no session is open" );
@@ -7034,7 +7051,7 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
     if ( packet_bytes > NEXT_MTU )
     {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "client can't send packet because it's larger than MTU (%d)", NEXT_MTU );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "client can't send packet because packet size of %d larger than MTU (%d)", packet_bytes, NEXT_MTU );
         return;
     }
 
@@ -7111,17 +7128,16 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
         if ( send_direct )
         {
-            // todo: update to magic
+            // [255][magic][open session sequence][sequence](payload) style packets direct to server
 
-            // [255][open session sequence][sequence](payload) style packets direct to server
-
-            uint8_t buffer[10+NEXT_MTU];
+            uint8_t buffer[18+NEXT_MTU];
             uint8_t * p = buffer;
-            next_write_uint8( &p, 255 );
+            next_write_uint8( &p, NEXT_DIRECT_PACKET );
+            next_write_uint64( &p, NEXT_MAGIC );
             next_write_uint8( &p, client->open_session_sequence );
             next_write_uint64( &p, send_sequence );
-            memcpy( buffer+10, packet_data, packet_bytes );
-            next_platform_socket_send_packet( client->internal->socket, &client->server_address, buffer, packet_bytes + 10 );
+            memcpy( buffer+18, packet_data, packet_bytes );
+            next_platform_socket_send_packet( client->internal->socket, &client->server_address, buffer, packet_bytes + 18 );
             client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
         }
     }
@@ -7140,52 +7156,21 @@ void next_client_send_packet_direct( next_client_t * client, const uint8_t * pac
     next_assert( packet_bytes >= 0 );
     next_assert( packet_bytes <= NEXT_MTU );
 
-    if ( !client->session_open )
-    {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client can't send direct packet because no session is open" );
-        return;
-    }
-
     if ( packet_bytes <= 0 )
     {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "client can't send direct packet because packet bytes are less than zero" );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "client can't send packet because packet bytes are less than zero" );
         return;
     }
 
     if ( packet_bytes > NEXT_MTU )
     {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "client can't send direct packet because it's larger than MTU (%d)", NEXT_MTU );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "client can't send packet because packet size of %d larger than MTU (%d)", packet_bytes, NEXT_MTU );
         return;
     }
 
-    if ( client->upgraded )
-    {
-        next_platform_mutex_acquire( client->internal->route_manager_mutex );
-        const uint64_t send_sequence = next_route_manager_next_send_sequence( client->internal->route_manager );
-        next_platform_mutex_release( client->internal->route_manager_mutex );
+    next_platform_socket_send_packet( client->internal->socket, &client->server_address, packet_data, packet_bytes );
 
-        // [255][open session sequence][sequence](payload) style packets direct to server
-
-        uint8_t buffer[10+NEXT_MTU];
-        uint8_t * p = buffer;
-        next_write_uint8( &p, 255 );
-        next_write_uint8( &p, client->open_session_sequence );
-        next_write_uint64( &p, send_sequence );
-        memcpy( buffer+10, packet_data, packet_bytes );
-        next_platform_socket_send_packet( client->internal->socket, &client->server_address, buffer, packet_bytes + 10 );
-        client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
-
-    }
-    else
-    {
-        // send [0](payload) style packet direct to server
-
-        uint8_t buffer[1+NEXT_MTU];
-        buffer[0] = 0;
-        memcpy( buffer+1, packet_data, packet_bytes );
-        next_platform_socket_send_packet( client->internal->socket, &client->server_address, buffer, packet_bytes + 1 );
-        client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
-    }
+    client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
 }
 
 void next_client_flag_session( next_client_t * client )
@@ -9288,6 +9273,8 @@ next_session_entry_t * next_server_internal_check_client_to_server_packet( next_
     return entry;
 }
 
+// todo
+/*
 int next_server_internal_process_packet( next_server_internal_t * server, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
 {
     next_assert( server );
@@ -10020,6 +10007,7 @@ int next_server_internal_process_packet( next_server_internal_t * server, const 
 
     return NEXT_ERROR;
 }
+*/
 
 void next_server_internal_update_route( next_server_internal_t * server )
 {
@@ -10200,6 +10188,44 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
     }
 }
 
+bool next_server_internal_process_network_next_packet( next_server_internal_t * server, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
+{
+    next_assert( server );
+    next_assert( from );
+    next_assert( packet_data );
+    next_assert( packet_bytes );
+
+    (void) server;
+    (void) from;
+    (void) packet_data;
+    (void) packet_bytes;
+
+    // ...
+
+    return false;
+}
+
+void next_server_internal_process_game_packet( next_server_internal_t * server, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
+{
+    next_assert( server );
+    next_assert( from );
+    next_assert( packet_data );
+    next_assert( packet_bytes );
+
+    if ( packet_bytes <= NEXT_MTU )
+    {
+        next_server_notify_packet_received_t * notify = (next_server_notify_packet_received_t*) next_malloc( server->context, sizeof( next_server_notify_packet_received_t ) );
+        notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
+        notify->from = *from;
+        notify->packet_bytes = packet_bytes;
+        memcpy( notify->packet_data, packet_data, size_t(packet_bytes) - 1 );
+        {
+            next_mutex_guard( server->notify_mutex );
+            next_queue_push( server->notify_queue, notify );            
+        }
+    }
+}
+
 void next_server_internal_block_and_receive_packet( next_server_internal_t * server )
 {
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
@@ -10214,10 +10240,16 @@ void next_server_internal_block_and_receive_packet( next_server_internal_t * ser
         return;
 
 #if NEXT_DEVELOPMENT
-     if ( next_packet_loss && ( rand() % 10 ) == 0 )
+    if ( next_packet_loss && ( rand() % 10 ) == 0 )
          return;
 #endif // #if NEXT_DEVELOPMENT
 
+    if ( next_server_internal_process_network_next_packet( server, &from, packet_data, packet_bytes ) )
+        return;
+
+    next_server_internal_process_game_packet( server, &from, packet_data, packet_bytes );
+
+    /*
     if ( packet_data[0] == 0 && packet_bytes >= 2 && packet_bytes <= NEXT_MTU + 1 )
     {
         next_server_notify_packet_received_t * notify = (next_server_notify_packet_received_t*) next_malloc( server->context, sizeof( next_server_notify_packet_received_t ) );
@@ -10272,6 +10304,7 @@ void next_server_internal_block_and_receive_packet( next_server_internal_t * ser
     {
         next_server_internal_process_packet( server, &from, packet_data, packet_bytes );
     }
+    */
 }
 
 void next_server_internal_upgrade_session( next_server_internal_t * server, const next_address_t * address, uint64_t session_id, uint64_t user_hash, uint32_t platform_id, uint64_t tag )
@@ -11102,6 +11135,12 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
     next_assert( packet_bytes >= 0 );
     next_assert( packet_bytes <= NEXT_MTU );
 
+    if ( next_global_config.disable_network_next )
+    {
+        next_server_send_packet_direct( server, to_address, packet_data, packet_bytes );
+        return;
+    }
+
     if ( packet_bytes <= 0 )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "server can't send packet because packet size is <= 0 bytes" );
@@ -11110,13 +11149,13 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
     if ( packet_bytes > NEXT_MTU )
     {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "server can't send packet because packet size is greater than MTU (%d)", NEXT_MTU );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "server can't send packet because packet size of %d is greater than MTU (%d)", packet_bytes, NEXT_MTU );
         return;
     }
 
     next_proxy_session_entry_t * entry = next_proxy_session_manager_find( server->session_manager, to_address );
 
-    bool send_zero_byte_direct = true;
+    bool send_raw_direct = true;
     bool send_over_network_next = false;
     bool send_upgraded_direct = false;
 
@@ -11139,7 +11178,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
             multipath = internal_entry->mutex_multipath;
             committed = internal_entry->mutex_committed;
             envelope_kbps_down = internal_entry->mutex_envelope_kbps_down;
-            send_zero_byte_direct = false;
+            send_raw_direct = false;
             send_over_network_next = internal_entry->mutex_send_over_network_next && ( committed || multipath );
             send_upgraded_direct = !send_over_network_next || multipath;
             send_sequence = internal_entry->mutex_payload_send_sequence++;
@@ -11152,7 +11191,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
         }
         next_platform_mutex_release( server->internal->session_mutex );
 
-        if ( !send_zero_byte_direct )
+        if ( !send_raw_direct )
         {
             if ( send_over_network_next )
             {
@@ -11192,27 +11231,23 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
             if ( send_upgraded_direct )
             {
-                // [255][open session sequence][packet sequence](payload) style packet direct to client
+                // [255][magic][open session sequence][packet sequence](payload) style packet direct to client
 
-                uint8_t buffer[10+NEXT_MTU];
+                uint8_t buffer[18+NEXT_MTU];
                 uint8_t * p = buffer;
-                next_write_uint8( &p, 255 );
+                next_write_uint8( &p, NEXT_DIRECT_PACKET );
+                next_write_uint64( &p, NEXT_MAGIC );
                 next_write_uint8( &p, open_session_sequence );
                 next_write_uint64( &p, send_sequence );
-                memcpy( buffer+10, packet_data, packet_bytes );
-                next_platform_socket_send_packet( server->internal->socket, to_address, buffer, packet_bytes + 10 );
+                memcpy( buffer+18, packet_data, packet_bytes );
+                next_platform_socket_send_packet( server->internal->socket, to_address, buffer, packet_bytes + 18 );
             }
         }
     }
 
-    if ( send_zero_byte_direct )
+    if ( send_raw_direct )
     {
-        // [0](payload) style packet direct to client
-
-        uint8_t buffer[1+NEXT_MTU];
-        buffer[0] = 0;
-        memcpy( buffer+1, packet_data, packet_bytes );
-        next_platform_socket_send_packet( server->internal->socket, to_address, buffer, packet_bytes + 1 );
+        next_platform_socket_send_packet( server->internal->socket, to_address, packet_data, packet_bytes );
     }
 }
 
@@ -11232,16 +11267,11 @@ void next_server_send_packet_direct( next_server_t * server, const next_address_
 
     if ( packet_bytes > NEXT_MTU )
     {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "server can't send packet because packet size is greater than MTU (%d)", NEXT_MTU );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "server can't send packet because packet size of %d is greater than MTU (%d)", packet_bytes, NEXT_MTU );
         return;
     }
 
-    // [0](payload) style packet direct to client
-
-    uint8_t buffer[1+NEXT_MTU];
-    buffer[0] = 0;
-    memcpy( buffer+1, packet_data, packet_bytes );
-    next_platform_socket_send_packet( server->internal->socket, to_address, buffer, packet_bytes + 1 );
+    next_platform_socket_send_packet( server->internal->socket, to_address, packet_data, packet_bytes );
 }
 
 // ---------------------------------------------------------------
