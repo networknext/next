@@ -25,8 +25,8 @@ func (dr DecisionReason) String() string {
 	var reason string
 
 	switch dr {
-	case DecisionNoChange:
-		reason = "No Change"
+	case DecisionNoReason:
+		reason = "No Reason"
 	case DecisionForceDirect:
 		reason = "Force Direct"
 	case DecisionForceNext:
@@ -63,6 +63,8 @@ func (dr DecisionReason) String() string {
 		reason = "Veto Packet Loss YOLO"
 	case DecisionRTTHysteresis:
 		reason = "RTT Hysteresis"
+	case DecisionVetoCommit:
+		reason = "RTT Veto Commit"
 	default:
 		reason = "Unused"
 	}
@@ -72,7 +74,7 @@ func (dr DecisionReason) String() string {
 
 // Route decision flags are required for billing, so this has to work the same for the billing entry to be correct
 const (
-	DecisionNoChange              DecisionReason = 0
+	DecisionNoReason              DecisionReason = 0
 	DecisionForceDirect           DecisionReason = 1 << 1
 	DecisionForceNext             DecisionReason = 1 << 2
 	DecisionNoNextRoute           DecisionReason = 1 << 3
@@ -102,7 +104,7 @@ func DecideUpgradeRTT(rttThreshold float64) DecisionFunc {
 		}
 
 		// If the RTT isn't reduced, return the original route consideration
-		return Decision{prevDecision.OnNetworkNext, DecisionNoChange}
+		return prevDecision
 	}
 }
 
@@ -113,7 +115,7 @@ func DecideDowngradeRTT(rttHysteresis float64, yolo bool) DecisionFunc {
 		// If staying on a nextwork next route doesn't increase RTT by more than the given hysteresis value, stay
 		if prevDecision.OnNetworkNext {
 			if predictedNextStats.RTT-directStats.RTT <= rttHysteresis {
-				return Decision{prevDecision.OnNetworkNext, DecisionNoChange}
+				return prevDecision
 			}
 
 			// If the buyer has YouOnlyLiveOnce safety setting enabled, veto them and add that reason to the DecisionReason
@@ -126,7 +128,7 @@ func DecideDowngradeRTT(rttHysteresis float64, yolo bool) DecisionFunc {
 		}
 
 		// If the route is already direct, don't touch it
-		return Decision{prevDecision.OnNetworkNext, DecisionNoChange}
+		return prevDecision
 	}
 }
 
@@ -157,7 +159,7 @@ func DecideVeto(rttVeto float64, packetLossSafety bool, yolo bool) DecisionFunc 
 			}
 
 			// If the route isn't vetoed, then it stays on network next
-			return Decision{prevDecision.OnNetworkNext, DecisionNoChange}
+			return prevDecision
 		}
 
 		// Handle the case where another decision function decided to switch back to direct due
@@ -174,7 +176,7 @@ func DecideVeto(rttVeto float64, packetLossSafety bool, yolo bool) DecisionFunc 
 		}
 
 		// If the route isn't on network next yet, then this decision doesn't apply.
-		return Decision{prevDecision.OnNetworkNext, DecisionNoChange}
+		return prevDecision
 	}
 }
 
@@ -202,7 +204,7 @@ func DecideCommitted(onNNLastSlice bool, maxObservedSlices uint8, commitPending 
 				*committed = false
 
 				// Don't change the route deicison yet
-				return Decision{prevDecision.OnNetworkNext, DecisionNoChange}
+				return prevDecision
 			} else if *commitPending { // See if the session is still pending
 				if lastNextStats.RTT <= directStats.RTT && lastNextStats.PacketLoss <= directStats.PacketLoss {
 					// The NN route was the same or better than direct, so commit to it
@@ -211,7 +213,7 @@ func DecideCommitted(onNNLastSlice bool, maxObservedSlices uint8, commitPending 
 					*committed = true
 
 					// Don't actually change the route decision since it's good
-					return Decision{prevDecision.OnNetworkNext, DecisionNoChange}
+					return prevDecision
 				} else if lastNextStats.RTT > directStats.RTT || lastNextStats.PacketLoss > directStats.PacketLoss {
 					// The route wasn't so bad that it was vetoed, so continue to observe the route
 					*commitPending = true
@@ -227,7 +229,7 @@ func DecideCommitted(onNNLastSlice bool, maxObservedSlices uint8, commitPending 
 					}
 
 					// Keep waiting for more data
-					return Decision{prevDecision.OnNetworkNext, DecisionNoChange}
+					return prevDecision
 				}
 			}
 		}
@@ -237,7 +239,7 @@ func DecideCommitted(onNNLastSlice bool, maxObservedSlices uint8, commitPending 
 		*committed = false
 
 		// Don't affect direct routes
-		return Decision{prevDecision.OnNetworkNext, DecisionNoChange}
+		return prevDecision
 	}
 }
 

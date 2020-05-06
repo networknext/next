@@ -2606,7 +2606,7 @@ func TestVetoCommit(t *testing.T) {
 		Sequence:  13,
 		RouteDecision: routing.Decision{
 			OnNetworkNext: true,
-			Reason:        routing.DecisionNoChange,
+			Reason:        routing.DecisionNoReason,
 		},
 		CommitPending:              true,
 		CommitObservedSliceCounter: uint8(rrs.TryBeforeYouBuyMaxSlices),
@@ -2667,7 +2667,7 @@ func TestCommitted(t *testing.T) {
 	nextMetric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "route metric"})
 	assert.NoError(t, err)
 
-	sessionMetrics.DecisionMetrics.NoChange = decisionMetric
+	sessionMetrics.DecisionMetrics.NoReason = decisionMetric
 	sessionMetrics.NextSessions = nextMetric
 
 	rrs := routing.LocalRoutingRulesSettings
@@ -2735,7 +2735,7 @@ func TestCommitted(t *testing.T) {
 		Sequence:  13,
 		RouteDecision: routing.Decision{
 			OnNetworkNext: true,
-			Reason:        routing.DecisionNoChange,
+			Reason:        routing.DecisionNoReason,
 		},
 		CommitPending:              true,
 		CommitObservedSliceCounter: uint8(rrs.TryBeforeYouBuyMaxSlices),
@@ -2779,6 +2779,6 @@ func TestCommitted(t *testing.T) {
 	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, redisClient, &db, &rp, &iploc, &geoClient, &sessionMetrics, &billing.NoOpBiller{}, TestServerBackendPrivateKey[:], TestRouterPrivateKey[:])
 	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
-	actual := validateNextResponsePacket(t, resbuf, packet.SessionID, packet.Sequence, 5, routing.RouteTypeNew, sessionMetrics.NextSessions, sessionMetrics.DecisionMetrics.NoChange)
+	actual := validateNextResponsePacket(t, resbuf, packet.SessionID, packet.Sequence, 5, routing.RouteTypeNew, sessionMetrics.NextSessions, sessionMetrics.DecisionMetrics.NoReason)
 	assert.Equal(t, true, actual.Committed)
 }

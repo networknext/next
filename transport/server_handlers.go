@@ -809,8 +809,8 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 
 func addRouteDecisionMetric(d routing.Decision, m *metrics.SessionMetrics) {
 	switch d.Reason {
-	case routing.DecisionNoChange:
-		m.DecisionMetrics.NoChange.Add(1)
+	case routing.DecisionNoReason:
+		m.DecisionMetrics.NoReason.Add(1)
 	case routing.DecisionForceDirect:
 		m.DecisionMetrics.ForceDirect.Add(1)
 	case routing.DecisionForceNext:
