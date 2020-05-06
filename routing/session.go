@@ -7,18 +7,19 @@ import (
 )
 
 type SessionMeta struct {
-	ID         string   `json:"id"`
-	UserHash   string   `json:"user_hash"`
-	Datacenter string   `json:"datacenter"`
-	NextRTT    float64  `json:"next_rtt"`
-	DirectRTT  float64  `json:"direct_rtt"`
-	DeltaRTT   float64  `json:"delta_rtt"`
-	Location   Location `json:"location"`
-	ClientAddr string   `json:"client_addr"`
-	ServerAddr string   `json:"server_addr"`
-	Hops       int      `json:"hops"`
-	SDK        string   `json:"sdk"`
-	Connection string   `json:"connection"`
+	ID           string   `json:"id"`
+	UserHash     string   `json:"user_hash"`
+	Datacenter   string   `json:"datacenter"`
+	NextRTT      float64  `json:"next_rtt"`
+	DirectRTT    float64  `json:"direct_rtt"`
+	DeltaRTT     float64  `json:"delta_rtt"`
+	Location     Location `json:"location"`
+	ClientAddr   string   `json:"client_addr"`
+	ServerAddr   string   `json:"server_addr"`
+	Hops         int      `json:"hops"`
+	SDK          string   `json:"sdk"`
+	Connection   string   `json:"connection"`
+	NearbyRelays []Relay  `json:"nearby_relays"`
 }
 
 func (s *SessionMeta) UnmarshalBinary(data []byte) error {
