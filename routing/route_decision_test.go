@@ -133,14 +133,14 @@ func TestDecideVeto(t *testing.T) {
 
 	// Test if route was changed to direct from another function, but the RTT increase was so severe that it should be vetoed
 	lastNextStats.RTT = 60
-	decision = routing.Decision{OnNetworkNext: false, Reason: routing.DecisionRTTIncrease}
+	decision = routing.Decision{OnNetworkNext: false, Reason: routing.DecisionRTTHysteresis}
 	routeDecisionFunc = routing.DecideVeto(rttVeto, true, false)
 
 	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
 	assert.Equal(t, routing.Decision{false, routing.DecisionVetoRTT}, decision)
 
 	// Now with yolo
-	decision = routing.Decision{OnNetworkNext: false, Reason: routing.DecisionRTTIncrease}
+	decision = routing.Decision{OnNetworkNext: false, Reason: routing.DecisionRTTHysteresis}
 	routeDecisionFunc = routing.DecideVeto(rttVeto, true, true)
 
 	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
