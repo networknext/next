@@ -24,7 +24,7 @@ var sessionDetailsVue = null;
 var sessionsTable = null;
 var autoSigninPermissions = null;
 var addUserPermissions = null;
-var editUserPermissions = null;
+var editUserPermissions = [];
 
 JSONRPCClient = {
 	async call(method, params) {
@@ -50,6 +50,7 @@ JSONRPCClient = {
 
 
 		return response.json().then((json) => {
+			console.log(json);
 			if (json.error) {
 				throw new Error(json.error);
 			}
@@ -260,25 +261,52 @@ WorkspaceHandler = {
 				this.links.mapLink.classList.add("active");
 		}
 	},
-	editUser(accountInfo) {
-		let accountIndex = accountsTable.$data.accounts.indexOf(accountInfo);
-		accountsTable.$set(accountsTable.$data.accounts[accountIndex], 'delete', false);
-		accountsTable.$set(accountsTable.$data.accounts[accountIndex], 'edit', true);
+	editUser(accountInfo, index) {
+		accountsTable.$set(accountsTable.$data.accounts[index], 'delete', false);
+		accountsTable.$set(accountsTable.$data.accounts[index], 'edit', true);
+
+		editUserPermissions[accountInfo.user_id].enable();
 	},
-	saveUser(accountInfo) {
+	saveUser(accountInfo, index) {
 		accountInfo.delete ? console.log("Deleting user"): null;
 		accountInfo.edit ? console.log("Editing user"): null;
-		WorkspaceHandler.cancelEditUser(accountInfo);
+
+		if (accountInfo.edit) {
+			let roles = editUserPermissions[accountInfo.user_id].getValue(true);
+			JSONRPCClient
+				.call('AuthService.UpdateUserRoles', {user_id: `auth|${accountInfo.user_id}`, roles: roles})
+				.then((response) => {
+					accountsTable.$set(accountsTable.$data.accounts[index], 'roles', roles);
+					WorkspaceHandler.cancelEditUser(accountInfo);
+				})
+				.catch((e) => {
+					console.log("Something went wrong updating the users permissions");
+					console.log(e);
+				});
+			return;
+		}
+		if (accountInfo.delete) {
+			JSONRPCClient
+				.call('AuthService.DeleteUser', {user_id: accountInfo.user_id})
+				.then((response) => {
+					accountsTable.$data.accounts.splice(index, 1);
+					WorkspaceHandler.cancelEditUser(accountInfo);
+				})
+				.catch((e) => {
+					console.log("Something went wrong updating the users permissions");
+					console.log(e);
+				});
+			return;
+		}
 	},
-	deleteUser(accountInfo) {
-		let accountIndex = accountsTable.$data.accounts.indexOf(accountInfo);
-		accountsTable.$set(accountsTable.$data.accounts[accountIndex], 'delete', true);
-		accountsTable.$set(accountsTable.$data.accounts[accountIndex], 'edit', false);
+	deleteUser(index) {
+		accountsTable.$set(accountsTable.$data.accounts[index], 'delete', true);
+		accountsTable.$set(accountsTable.$data.accounts[index], 'edit', false);
 	},
-	cancelEditUser(accountInfo) {
-		let accountIndex = accountsTable.$data.accounts.indexOf(accountInfo);
-		accountsTable.$set(accountsTable.$data.accounts[accountIndex], 'delete', false);
-		accountsTable.$set(accountsTable.$data.accounts[accountIndex], 'edit', false);
+	cancelEditUser(accountInfo, index) {
+		accountsTable.$set(accountsTable.$data.accounts[index], 'delete', false);
+		accountsTable.$set(accountsTable.$data.accounts[index], 'edit', false);
+		editUserPermissions[accountInfo.user_id].disable();
 	},
 	loadSettingsPage() {
 		this.changeAccountPage();
@@ -294,6 +322,7 @@ WorkspaceHandler = {
 					console.log(responses);
 
 					let roles = responses[1].roles;
+					let accounts = responses[0].accounts;
 					let choices = roles.map((role) => {
 						return {
 							value: role,
@@ -304,13 +333,15 @@ WorkspaceHandler = {
 						};
 					});
 
-					addUserPermissions = new Choices(
-						document.getElementById("add-user-permissions"),
-						{
-							removeItemButton: true,
-							choices: choices,
-						}
-					);
+					if (!addUserPermissions) {
+						addUserPermissions = new Choices(
+							document.getElementById("add-user-permissions"),
+							{
+								removeItemButton: true,
+								choices: choices,
+							}
+						);
+					}
 
 					choices = roles.map((role) => {
 						return {
@@ -323,20 +354,47 @@ WorkspaceHandler = {
 						};
 					});
 
-					autoSigninPermissions = new Choices(
-						document.getElementById("auto-signin-permissions"),
-						{
-							removeItemButton: true,
-							choices: choices,
-						}
-					);
+					if (!autoSigninPermissions) {
+						autoSigninPermissions = new Choices(
+							document.getElementById("auto-signin-permissions"),
+							{
+								removeItemButton: true,
+								choices: choices,
+							}
+						);
+					}
 
 					/**
 					 * I really dislike this but it is apparently the way to reload/update the data within a vue
 					 */
 					Object.assign(accountsTable.$data, {
-						accounts: responses[0].accounts,
+						accounts: accounts,
 						showAccounts: true,
+					});
+
+					setTimeout(() => {
+						choices = roles.map((role) => {
+							return {
+								value: role,
+								label: role.name,
+								customProperties: {
+									description: role.description,
+								},
+							};
+						});
+
+						accounts.forEach((account) => {
+							if (!editUserPermissions[account.user_id]) {
+
+								editUserPermissions[account.user_id] = new Choices(
+									document.getElementById(`edit-user-permissions-${account.user_id}`),
+									{
+										removeItemButton: true,
+										choices: choices,
+									}
+								).disable();
+							}
+						});
 					});
 				}
 			)

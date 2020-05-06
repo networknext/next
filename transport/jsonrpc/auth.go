@@ -20,7 +20,7 @@ type AccountsArgs struct {
 }
 
 type AccountsReply struct {
-	Accounts []account `json:"accounts"`
+	UserAccounts []account `json:"accounts"`
 }
 
 type AccountArgs struct {
@@ -28,14 +28,14 @@ type AccountArgs struct {
 }
 
 type AccountReply struct {
-	UserAccount account            `json:"account"`
-	Roles       []*management.Role `json:"roles"`
+	UserAccount account `json:"account"`
 }
 
 type account struct {
-	UserID string `json:"user_id"`
-	Name   string `json:"name"`
-	Email  string `json:"email"`
+	UserID string             `json:"user_id"`
+	Name   string             `json:"name"`
+	Email  string             `json:"email"`
+	Roles  []*management.Role `json:"roles"`
 }
 
 func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
@@ -45,7 +45,11 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 	}
 
 	for _, a := range accountList.Users {
-		reply.Accounts = append(reply.Accounts, UnMarshalUser(a))
+		userRoles, err := s.Auth0.Manager.User.Roles(*a.ID)
+		if err != nil {
+			return fmt.Errorf("failed to fetch user roles: %w", err)
+		}
+		reply.UserAccounts = append(reply.UserAccounts, UnMarshalUser(a, userRoles))
 	}
 	return nil
 }
@@ -66,18 +70,28 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 		return fmt.Errorf("failed to get user roles: %w", err)
 	}
 
-	reply.Roles = userRoles.Roles
-
-	reply.UserAccount = UnMarshalUser(userAccount)
+	reply.UserAccount = UnMarshalUser(userAccount, userRoles)
 
 	return nil
 }
 
-func UnMarshalUser(u *management.User) account {
+func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, reply *AccountReply) error {
+	if args.UserID == "" {
+		return fmt.Errorf("user_id is required")
+	}
+
+	if err := s.Auth0.Manager.User.Delete(args.UserID); err != nil {
+		return fmt.Errorf("failed to delete user: %w", err)
+	}
+	return nil
+}
+
+func UnMarshalUser(u *management.User, r *management.RoleList) account {
 	account := account{
 		UserID: *u.Identities[0].UserID,
 		Name:   *u.Name,
 		Email:  *u.Email,
+		Roles:  r.Roles,
 	}
 
 	return account
@@ -88,7 +102,8 @@ func MarshalUser(a account) *management.User {
 }
 
 type RolesArgs struct {
-	UserID string `json:"user_id"`
+	UserID string             `json:"user_id"`
+	Roles  []*management.Role `json:"roles"`
 }
 
 type RolesReply struct {
@@ -119,6 +134,37 @@ func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesRe
 
 	reply.Roles = userRoles.Roles
 
+	return nil
+}
+
+func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
+	if args.UserID == "" {
+		return fmt.Errorf("user_id is required")
+	}
+
+	userRoles, err := s.Auth0.Manager.User.Roles(args.UserID)
+
+	if err != nil {
+		return fmt.Errorf("failed to fetch user roles: %w", err)
+	}
+
+	for _, r := range userRoles.Roles {
+		err := s.Auth0.Manager.User.RemoveRoles(args.UserID, r)
+		if err != nil {
+			return fmt.Errorf("failed to remove current user role: %w", err)
+		}
+	}
+
+	if len(args.Roles) == 0 {
+		return nil
+	}
+
+	for _, r := range args.Roles {
+		err := s.Auth0.Manager.User.AssignRoles(args.UserID, r)
+		if err != nil {
+			return fmt.Errorf("failed to assign role: %w", err)
+		}
+	}
 	return nil
 }
 

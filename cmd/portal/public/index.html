@@ -29,6 +29,11 @@
                 border-left: 0px;
                 color: black;
             }
+            .choices__item .is-highlighted {
+                background-color: lightgray;
+                border: 1px solid darkgray;
+                color: black;
+            }
             .fill {
                 width: 100%;
                 height: 100%;
@@ -259,9 +264,6 @@
                                 </span>&nbsp;
                                 <span class="badge badge-success">
                                     {{ onNN.length }} on Network Next
-                                </span>&nbsp;
-                                <span class="text-muted" style="font-size: 0.5em; line-height: 1em; vertical-align: middle;">
-                                    IMPLEMENT
                                 </span>
                             </h1>
                             <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1">
@@ -326,9 +328,6 @@
                                     </span>&nbsp;
                                     <span class="badge badge-success">
                                         {{ onNN.length }} on Network Next
-                                    </span>&nbsp;
-                                    <span class="text-muted" style="font-size: 0.5em; line-height: 1em; vertical-align: middle;">
-                                        IMPLEMENT
                                     </span>
                                 </h1>
                                 <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1 hidden">
@@ -345,7 +344,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="table-responsive table-no-top-line">
+                            <div class="table-responsive table-no-top-line" v-if="showCount">
                                 <table class="table table-sm table-striped table-hover">
                                     <thead>
                                         <tr>
@@ -392,7 +391,7 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr v-for="session in sessions">
+                                        <tr v-for="(session, index) in sessions">
                                             <td>
                                                 <svg
                                                     aria-hidden="true"
@@ -602,7 +601,7 @@
                                                         </dt>
                                                         <dd>
                                                             <em>
-                                                                Unavailable
+                                                                {{ meta.location.isp}}
                                                             </em>
                                                         </dd>
                                                         <div>
@@ -935,17 +934,14 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <tr v-for="account in accounts">
+                                            <tr v-for="(account, index) in accounts">
                                                 <td>
                                                     {{ account.email }}
                                                 </td>
-                                                <td v-if="!account.edit">
-                                                    {{ account.roles }}
-                                                </td>
-                                                <td v-if="account.edit">
+                                                <td>
                                                     <select
                                                         class="form-control"
-                                                        id="edit-user-permissions"
+                                                        :id="`edit-user-permissions-${account.user_id}`"
                                                         multiple
                                                     >
                                                     </select>
@@ -956,7 +952,7 @@
                                                         data-toggle="tooltip"
                                                         data-placement="bottom"
                                                         title="Change this user's permissions"
-                                                        v-on:click="editUser(account)"
+                                                        v-on:click="editUser(account, index)"
                                                     >
                                                         <i class="fas fa-pen fa-w-16 fa-fw"></i>
                                                     </button>&nbsp;
@@ -965,7 +961,7 @@
                                                         data-toggle="tooltip"
                                                         data-placement="bottom"
                                                         title="Remove this user"
-                                                        v-on:click="deleteUser(account)"
+                                                        v-on:click="deleteUser(index)"
                                                     >
                                                         <i class="fas fa-trash fa-w-14 fa-fw"></i>
                                                     </button>&nbsp;
@@ -976,7 +972,7 @@
                                                         data-toggle="tooltip"
                                                         data-placement="bottom"
                                                         title="Change this user's permissions"
-                                                        v-on:click="saveUser(account)"
+                                                        v-on:click="saveUser(account, index)"
                                                     >
                                                         <i class="fas fa-check fa-w-16 fa-fw"></i>
                                                     </button>&nbsp;
@@ -985,7 +981,7 @@
                                                         data-toggle="tooltip"
                                                         data-placement="bottom"
                                                         title="Remove this user"
-                                                        v-on:click="cancelEditUser(account)"
+                                                        v-on:click="cancelEditUser(account, index)"
                                                     >
                                                         <i class="fas fa-times fa-w-14 fa-fw"></i>
                                                     </button>&nbsp;
