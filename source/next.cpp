@@ -6547,6 +6547,9 @@ void next_client_internal_update_direct_pings( next_client_internal_t * client )
 {
     next_assert( client );
 
+    // todo: turn this back on. temporarily disabled
+    
+    /*
     if ( next_global_config.disable_network_next )
         return;
 
@@ -6576,6 +6579,7 @@ void next_client_internal_update_direct_pings( next_client_internal_t * client )
         next_platform_mutex_release( client->route_manager_mutex );
         client->fallback_to_direct = true;
     }
+    */
 }
 
 void next_client_internal_update_next_pings( next_client_internal_t * client )
