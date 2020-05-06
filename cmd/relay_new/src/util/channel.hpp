@@ -12,6 +12,8 @@ namespace util
 
     auto closed() -> bool;
 
+    auto size() -> size_t;
+
    protected:
     Channel(
      std::shared_ptr<std::atomic<bool>> closed,
@@ -111,6 +113,12 @@ namespace util
   auto Channel<T>::closed() -> bool
   {
     return *mClosed;
+  }
+
+  template <typename T>
+  auto Channel<T>::size() -> size_t
+  {
+    return this->mQueue->size();
   }
 
   template <typename T>

@@ -38,6 +38,7 @@ namespace legacy
     {
       // prep
 
+      LogDebug("building init json");
       util::JSON doc;
       if (!buildInitJSON(doc)) {
         Log("could not build v3 init json");
@@ -47,6 +48,7 @@ namespace legacy
       std::string data = doc.toString();
       std::vector<uint8_t> buff(data.begin(), data.end());
 
+      LogDebug("resolving backend addr");
       net::Address backendAddr;
       if (!backendAddr.resolve(mEnv.RelayV3BackendHostname, mEnv.RelayV3BackendPort)) {
         Log("Could not resolve the v3 backend hostname to an ip address");
@@ -54,15 +56,20 @@ namespace legacy
       }
 
       BackendToken token;
-      BackendRequest request;
 
+      std::string initJSON = doc.toString();
       core::GenericPacket<> packet;
+      std::copy(initJSON.begin(), initJSON.end(), packet.Buffer.begin());
+      packet.Len = initJSON.length();
+      packet.Addr = backendAddr;
+
       uint8_t attempts = 0;
+      bool done = false;
       do {
         attempts++;
         // send request
-        LogDebug("sending init packet")
-        if (!packet_send(mSocket, backendAddr, token, PacketType::InitRequest, packet)) {
+        LogDebug("sending init packet") if (!packet_send(mSocket, backendAddr, token, PacketType::InitRequest, packet))
+        {
           Log("failed to send init packet");
           return false;
         }
@@ -71,8 +78,13 @@ namespace legacy
         std::this_thread::sleep_for(1s);
 
         // receive response if it exists, if not resend
-        LogDebug("checking for response")
-      } while ((!mSocket.closed() && !mReceiver.closed() && (!mReceiver.hasItems() || !mReceiver.recv(packet))) || attempts <= 60);
+        LogDebug("checking for response");
+
+        if (mReceiver.hasItems()) {
+          mReceiver.recv(packet);
+          done = true;
+        }
+      } while (!done && !mSocket.closed() && !mReceiver.closed() && attempts <= 60);
 
       if (mSocket.closed() || mReceiver.closed() || attempts > 60) {
         LogDebug("could not init relay");
@@ -151,6 +163,14 @@ namespace legacy
     auto Backend::buildInitJSON(util::JSON& doc) -> bool
     {
       doc.set("init", "value");
+
+      for (int i = 0; i < 250; i++) {
+        std::stringstream ss;
+        ss << "value" << i;
+        auto str = ss.str();
+        doc.set("init", str.c_str());
+      }
+
       return true;
     }
 

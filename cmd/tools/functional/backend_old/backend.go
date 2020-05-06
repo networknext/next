@@ -1031,6 +1031,8 @@ func TerribleOldShite() {
 					return fmt.Errorf("could not write master token: %v", err)
 				}
 
+				fmt.Println("wrote master token")
+
 				response := &InitResponseJSON{
 					Timestamp:   uint64(time.Now().UnixNano() / 1000000), // milliseconds
 					IP2Location: "",
@@ -1045,11 +1047,11 @@ func TerribleOldShite() {
 					return fmt.Errorf("could not build relay init response packet: %v", err)
 				}
 
+				fmt.Printf("built packets, size: %d\n", len(packets))
+
 				for _, packet := range packets {
 					conn.WriteToUDP(packet, from)
 				}
-				return nil
-
 			} else if packet.Type == NEXT_PACKET_TYPE_RELAY_CONFIG_REQUEST {
 
 				var request RelayConfigRequest
@@ -1078,8 +1080,6 @@ func TerribleOldShite() {
 				for _, packet := range packets {
 					conn.WriteToUDP(packet, from)
 				}
-				return nil
-
 			} else if packet.Type == NEXT_PACKET_TYPE_RELAY_REPORT {
 
 				relayEntry := RelayEntry{}
@@ -1093,7 +1093,6 @@ func TerribleOldShite() {
 				backend.mutex.Lock()
 				backend.relayDatabase[key] = relayEntry
 				backend.mutex.Unlock()
-
 			}
 
 			return nil

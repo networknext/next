@@ -444,6 +444,9 @@ int main(int argc, const char* argv[])
 
   Log("Cleaning up");
 
+  receiver.close();
+  sender.close(); // redundant
+
   shouldReceive = false;
 
   cleanup();

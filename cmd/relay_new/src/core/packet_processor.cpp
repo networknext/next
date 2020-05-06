@@ -201,8 +201,8 @@ namespace core
       case V3BackendRelayResponse:
       case V3BackendConfigResponse:
       case V3BackendInitResponse:
-        LogDebug("got something from old backend");
         mSender.send(packet);
+        LogDebug("got something from old backend, current number of items in channel ", mSender.size());
         break;
       default: {
         LogDebug("received unknown packet type: ", std::hex, (int)packet.Buffer[0], std::dec);
