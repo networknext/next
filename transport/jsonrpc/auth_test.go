@@ -139,8 +139,8 @@ func TestAuthClient(t *testing.T) {
 
 		assert.NotEqual(t, len(reply.Roles), 0)
 		assert.Equal(t, len(reply.Roles), 1)
-		assert.Equal(t, reply.Roles[0].ID, id)
-		assert.Equal(t, reply.Roles[0].Name, name)
-		assert.Equal(t, reply.Roles[0].Description, description)
+		assert.Equal(t, reply.Roles[0].ID, &id)
+		assert.Equal(t, reply.Roles[0].Name, &name)
+		assert.Equal(t, reply.Roles[0].Description, &description)
 	})
 }
