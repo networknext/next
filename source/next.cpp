@@ -10266,6 +10266,15 @@ bool next_server_internal_process_network_next_packet( next_server_internal_t * 
         return true;
     }
 
+    // backend response packets
+
+    if ( ( server->state == NEXT_SERVER_STATE_INITIALIZING || server->state == NEXT_SERVER_STATE_INITIALIZED ) && next_address_equal( from, &server->backend_address ) )
+    {
+        // todo
+        printf( "*** server received packet from backend ***\n" );
+        return true;
+    }
+
     // upgrade response packet
 
     if ( packet_id == NEXT_UPGRADE_RESPONSE_PACKET )
@@ -10476,6 +10485,11 @@ void next_server_internal_process_game_packet( next_server_internal_t * server, 
 
 void next_server_internal_block_and_receive_packet( next_server_internal_t * server )
 {
+    // IMPORTANT: don't pump to receive any packets while we are resolving the backend hostname
+    // we don't know the backend hostname yet, and thus cannot distinguish backend packets from client packets.
+    if ( server->state == NEXT_SERVER_STATE_RESOLVING_HOSTNAME )
+        return;
+
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
 
     next_address_t from;
@@ -10719,9 +10733,7 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
     next_printf( NEXT_LOG_LEVEL_INFO, "server resolved backend hostname to %s", next_address_to_string( &result, address_buffer ) );
 
     server->backend_address = result;
-    // todo: temporarily jump straight to initialized
-    server->state = NEXT_SERVER_STATE_INITIALIZED;
-    // server->state = NEXT_SERVER_STATE_INITIALIZING;
+    server->state = NEXT_SERVER_STATE_INITIALIZING;
 
     return true;
 }

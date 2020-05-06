@@ -1,94 +1,14 @@
 DONE
 
-	Packets to postfix with MAGIC:
-
-		NEXT_DIRECT (255)
-		NEXT_ROUTE_REQUEST_PACKET
-		NEXT_ROUTE_RESPONSE_PACKET
-		NEXT_CONTINUE_REQUEST_PACKET
-		NEXT_CONTINUE_RESPONSE_PACKET
-		NEXT_DIRECT_PING_PACKET
-		NEXT_DIRECT_PONG_PACKET
-
-	Packets that already have signature checks, so they don't need changes:
-
-		NEXT_CLIENT_TO_SERVER_PACKET
-		NEXT_SERVER_TO_CLIENT_PACKET
-		NEXT_PING_PACKET
-		NEXT_PONG_PACKET
-		NEXT_UPGRADE_REQUEST_PACKET
-		NEXT_UPGRADE_CONFIRM_PACKET
-		NEXT_UPGRADE_RESPONSE_PACKET
-		NEXT_CLIENT_STATS_PACKET
-		NEXT_ROUTE_UPDATE_PACKET
-		NEXT_ROUTE_UPDATE_ACK_PACKET
-		NEXT_RELAY_PING_PACKET
-		NEXT_RELAY_PONG_PACKET
-
-	All backend packets already have signature checks.
-
-	So the only work required is to:
-
-		1. Extend all packet code to try to read network next packets first. Return false if it's not a valid NN packet.
-		
-		2. If we fail to read a packet as a network next packet, then it should be passed on to the game as a game packet.
-
-	To get started, extend these packets to have magic included:
-
-		NEXT_DIRECT_PING_PACKET
-		NEXT_DIRECT_PONG_PACKET
-
-	Seems easy enough and quite simple.
-
-	Now do the direct packet with 255...
-
-	Now do client send packets...
-
-	Now implement server send and receive direct.
-
-	Now implement server receive 255 type packets.
-
-	OK client and server should be ready to send and receive raw and upgraded direct packets.
-
-	Disable direct pings when upgraded temporarily.
-
-	Identify packets that need to work to get upgrading working.
-
-		NEXT_UPGRADE_REQUEST_PACKET
-		NEXT_UPGRADE_CONFIRM_PACKET
-		NEXT_UPGRADE_RESPONSE_PACKET
-
-	Added magic to the upgrade request packet.
-
-	Now hook up the client to read the upgrade request packet.
-
-	Need to comment out the server init request/response and go direct to server init'd.
-
-	Need to comment out server packets sent to backend, since we don't handle the responses yet.
-
-	Client gets upgrade request packet now.
-
-	The only packets between client and server that are encrypted are:
-
-	    next_encrypted_packets[NEXT_DIRECT_PING_PACKET] = 1;
-	    next_encrypted_packets[NEXT_DIRECT_PONG_PACKET] = 1;
-	    next_encrypted_packets[NEXT_CLIENT_STATS_PACKET] = 1;
-	    next_encrypted_packets[NEXT_ROUTE_UPDATE_PACKET] = 1;
-	    next_encrypted_packets[NEXT_ROUTE_UPDATE_ACK_PACKET] = 1;
-
-	Added magic bytes to the upgrade response and upgrade confirm packets.
-
-	Extend server to process the upgrade response packet from client.
-
-	Extend client to process the upgrade response packet from server.
-
-	Verify that upgrade completes and client and server receive upgraded direct packets.
-
 TODO
 
 	OK what other packets need to be upgraded?
 
+	Can distinguish my packets from backend from game protocol packets, since they will all come from the backend IP address.
 
+	No change required there.
+
+	Do that now...
 
 
 
