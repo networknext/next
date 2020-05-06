@@ -169,6 +169,7 @@ namespace legacy
       return true;
     }
 
+    // TODO init data is not json, must send init key (NEXT_MASTER_INIT_KEY)
     auto Backend::buildInitJSON(util::JSON& doc) -> bool
     {
       doc.set("init", "value");
@@ -183,12 +184,50 @@ namespace legacy
       return true;
     }
 
+    /*
+     *  {
+     *    "RelayId": uint64,
+     *  }
+     */
     auto Backend::buildConfigJSON(util::JSON& doc) -> bool
     {
       doc.set("config", "value");
       return true;
     }
 
+    // clang-format off
+    /*
+     *  {
+     *    "Usage": double, // from manage_get_usage_from_samples()
+     *    "TrafficStats": {
+     *      "BytesPaidTx": uint64, // ? what is this, look up usage
+     *      "BytesPaidRx": uint64, // ? ditto
+     *      "BytesManagementTx": uint64, // number of bytes sent from management things, like pings and backend communication
+     *      "BytesManagementRx": uint64, // ditto except for received bytes
+     *      "BytesMeasurementTx": uint64, // number of bytes sent for all remaining cases
+     *      "BytesMeasurementRx": uint64, // number of bytes received for all remaining cases
+     *      "BytesInvalidRx": uint64, // bytes received that the relay can't/shouldn't process
+     *      "SessionCount": uint64, // number of sessions this relay is currently handling
+     *    },
+     *    "PingStats": [
+     *      {
+     *        "RelayId": uint64,
+     *        "RTT": double,
+     *        "Jitter": double,
+     *        "PacketLoss": double
+     *      },
+     *      ...
+     *    ],
+     *    "Metadata": {
+     *      "Id": uint64, // this relay's id
+     *      "PublicKey": string, // base64 of the public key
+     *      "PingKey": string, // base64 of the ping key, relay.cpp (4362) crypto_auth_keygen
+     *      "Group": string, // from config response
+     *      "Shutdown": bool, // false until shutdown handle is true
+     *    }
+     *  }
+     */
+    // clang-format on
     auto Backend::buildUpdateJSON(util::JSON& doc) -> bool
     {
       doc.set("update", "value");
