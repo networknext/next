@@ -11,21 +11,22 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func checkPubsubEmulator(t *testing.T) {
+	pubsubEmulatorHost := os.Getenv("PUBSUB_EMULATOR_HOST")
+	if pubsubEmulatorHost == "" {
+		t.Skip("Pub/Sub emulator not set up, skipping billing pub/sub tests")
+	}
+}
+
 func TestNewPubSubBiller(t *testing.T) {
+	checkPubsubEmulator(t)
+
 	// Test base case
 	_, err := billing.NewBiller(context.Background(), log.NewNopLogger(), "", "", nil)
 	assert.NoError(t, err)
 
 	// Test success case
-	projectID := os.Getenv("GOOGLE_PROJECT_ID")
-	if projectID == "" {
-		t.Skip() // Ignore this test if billing isn't configured
-	}
-
-	assert.NotEmpty(t, projectID)
-
-	topicID := os.Getenv("GOOGLE_PUBSUB_TOPIC_BILLING")
-	assert.NotEmpty(t, topicID)
+	projectID := "default"
 
 	descriptor := &billing.Descriptor{
 		ClientCount:         1,
@@ -36,7 +37,7 @@ func TestNewPubSubBiller(t *testing.T) {
 		Timeout:             time.Minute,
 		ResultChannelBuffer: 10000 * 60 * 10,
 	}
-	_, err = billing.NewBiller(context.Background(), log.NewNopLogger(), projectID, topicID, descriptor)
+	_, err = billing.NewBiller(context.Background(), log.NewNopLogger(), projectID, "billing", descriptor)
 	assert.NoError(t, err)
 	assert.Equal(t, billing.Descriptor{
 		ClientCount:         1,
@@ -50,6 +51,7 @@ func TestNewPubSubBiller(t *testing.T) {
 }
 
 func TestPubSubBill(t *testing.T) {
+	checkPubsubEmulator(t)
 	ctx := context.Background()
 
 	// Call Bill() with bad data
@@ -63,15 +65,6 @@ func TestPubSubBill(t *testing.T) {
 	assert.EqualError(t, err, "billing: clients not initialized")
 
 	// Success case
-	projectID := os.Getenv("GOOGLE_PROJECT_ID")
-	if projectID == "" {
-		t.Skip() // Ignore this test if billing isn't configured
-	}
-	assert.NotEmpty(t, projectID)
-
-	topicID := os.Getenv("GOOGLE_PUBSUB_TOPIC_BILLING")
-	assert.NotEmpty(t, topicID)
-
 	descriptor := &billing.Descriptor{
 		ClientCount:         1,
 		DelayThreshold:      time.Millisecond,
@@ -81,7 +74,7 @@ func TestPubSubBill(t *testing.T) {
 		Timeout:             time.Minute,
 		ResultChannelBuffer: 10000 * 60 * 10,
 	}
-	biller, err = billing.NewBiller(context.Background(), log.NewNopLogger(), projectID, topicID, descriptor)
+	biller, err = billing.NewBiller(context.Background(), log.NewNopLogger(), "default", "billing", descriptor)
 	assert.NoError(t, err)
 	assert.Equal(t, billing.Descriptor{
 		ClientCount:         1,
