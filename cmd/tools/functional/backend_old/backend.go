@@ -1022,7 +1022,7 @@ func TerribleOldShite() {
 	go listener.Listen(
 		&packetsReceivedCount,
 		func(packet *UDPPacketToMaster, from *net.UDPAddr, conn *net.UDPConn) error {
-			fmt.Println("got a packet")
+			fmt.Printf("got a packet, id: %d\n", packet.ID)
 			if packet.Type == NEXT_PACKET_TYPE_RELAY_INIT_REQUEST {
 				fmt.Println("got init request")
 				var token [MasterTokenBytes]byte

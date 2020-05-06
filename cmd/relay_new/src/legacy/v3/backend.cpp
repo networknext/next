@@ -72,13 +72,18 @@ namespace legacy
         LogDebug("checking for response");
 
         // receive response(s) if it exists, if not resend
-        while (mReceiver.hasItems()) {
-          mReceiver.recv(packet);
+        if (mReceiver.hasItems()) {
+          while (mReceiver.hasItems()) {
+            LogDebug("got packet data");
+            mReceiver.recv(packet);
 
-          // this will return true once all the fragments have been received
-          if (readResponse(packet, request, response, completeResponse)) {
-            done = true;
+            // this will return true once all the fragments have been received
+            if (readResponse(packet, request, response, completeResponse)) {
+              done = true;
+            }
           }
+        } else {
+          LogDebug("no received packets yet");
         }
 
         attempts++;
@@ -233,8 +238,11 @@ namespace legacy
     //     JSON string
     //   </zipped>
     // </signed>
-    auto Backend::readResponse(core::GenericPacket<>& packet, BackendRequest& request, BackendResponse& response, std::vector<uint8_t>& completeBuffer) -> bool
+    auto Backend::readResponse(
+     core::GenericPacket<>& packet, BackendRequest& request, BackendResponse& response, std::vector<uint8_t>& completeBuffer)
+     -> bool
     {
+      LogDebug("reading backend response");
       int zip_start = int(1 + crypto_sign_BYTES + sizeof(uint64_t) + sizeof(uint16_t) + sizeof(uint16_t));
 
       if (packet.Len < zip_start || packet.Len > zip_start + FragmentSize) {
@@ -338,7 +346,7 @@ namespace legacy
 
       // all fragments have been received
 
-      request.id = 0; // reset request
+      request.id = 0;  // reset request
 
       completeBuffer.resize(complete_bytes);
 
