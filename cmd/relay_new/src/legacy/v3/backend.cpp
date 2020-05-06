@@ -264,7 +264,7 @@ namespace legacy
       }
 
       size_t index = 1 + crypto_sign_BYTES;
-      uint64_t packet_id = encoding::ReadUint8(packet.Buffer, index);
+      uint64_t packet_id = encoding::ReadUint64(packet.Buffer, index);
       if (packet_id != request.id) {
         Log("discarding unexpected master UDP packet, expected ID ", request.id, ", got ", packet_id);
         return false;
@@ -381,7 +381,7 @@ namespace legacy
 
       result = inflate(&z, Z_NO_FLUSH);
       if (result != Z_STREAM_END) {
-        Log("failed to decompress master UDP packet: inflate failed");
+        Log("failed to decompress master UDP packet: inflate failed, result is ", result);
         return false;
       }
 
