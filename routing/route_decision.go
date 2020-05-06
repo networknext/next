@@ -47,12 +47,8 @@ func (dr DecisionReason) String() string {
 		reason = "Veto Packet Loss"
 	case DecisionFallbackToDirect:
 		reason = "Fallback to Direct"
-	case DecisionUnused1:
-		reason = "Unused 1"
 	case DecisionVetoYOLO:
 		reason = "Veto YOLO"
-	case DecisionUnused2:
-		reason = "Unused 2"
 	case DecisionDatacenterHasNoRelays:
 		reason = "Datacenter Has No Relays"
 	case DecisionInitialSlice:
@@ -65,6 +61,8 @@ func (dr DecisionReason) String() string {
 		reason = "Veto Packet Loss YOLO"
 	case DecisionRTTHysteresis:
 		reason = "RTT Hysteresis"
+	default:
+		reason = "Unused"
 	}
 
 	return fmt.Sprintf("%s (%d)", reason, dr)
@@ -84,9 +82,7 @@ const (
 	DecisionRTTMultipath          DecisionReason = 1 << 9
 	DecisionVetoPacketLoss        DecisionReason = 1 << 10
 	DecisionFallbackToDirect      DecisionReason = 1 << 11
-	DecisionUnused1               DecisionReason = 1 << 12
 	DecisionVetoYOLO              DecisionReason = 1 << 13
-	DecisionUnused2               DecisionReason = 1 << 14
 	DecisionDatacenterHasNoRelays DecisionReason = 1 << 15
 	DecisionInitialSlice          DecisionReason = 1 << 16
 	DecisionNoNearRelays          DecisionReason = 1 << 17
@@ -190,7 +186,7 @@ func DecideCommitted() DecisionFunc {
 
 func IsVetoed(decision Decision) bool {
 	if !decision.OnNetworkNext {
-		if decision.Reason&DecisionUnused2 != 0 || decision.Reason&DecisionVetoPacketLoss != 0 || decision.Reason&DecisionVetoRTT != 0 || decision.Reason&DecisionVetoYOLO != 0 {
+		if decision.Reason&DecisionVetoPacketLoss != 0 || decision.Reason&DecisionVetoRTT != 0 || decision.Reason&DecisionVetoYOLO != 0 {
 			return true
 		}
 	}
