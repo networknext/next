@@ -63,13 +63,12 @@ namespace legacy
 
     auto packet_send(
      const os::Socket& socket,
-     const net::Address& master_address,
      const BackendToken& master_token,
      PacketType packet_type,
      core::GenericPacket<>& packet,
      BackendRequest& request) -> bool
     {
-      if (master_address.Type == net::AddressType::None) {
+      if (packet.Addr.Type == net::AddressType::None) {
         LogDebug("can't send master UDP packet: address has not resolved yet");  // should not happen in this repo
         return false;
       }
@@ -135,7 +134,7 @@ namespace legacy
         core::Packet<std::vector<uint8_t>> out;
         pkt.Buffer.resize(fragment_bytes);
         pkt.Len = fragment_bytes;
-        pkt.Addr = master_address;
+        pkt.Addr = packet.Addr;
         std::copy(
          compressed_buffer.begin() + i * FragmentSize,
          compressed_buffer.begin() + i * FragmentSize + fragment_bytes,

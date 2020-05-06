@@ -408,7 +408,7 @@ int main(int argc, const char* argv[])
       Log("relay initalized with old backend");
 
       if (!backend.config()) {
-        Log("could not configure relay with old backend")
+        Log("could not configure relay with old backend");
         cleanup();
         return;
       }

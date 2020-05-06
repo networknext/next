@@ -1,6 +1,7 @@
 #include "includes.h"
 #include "backend.hpp"
 #include "packet_send.hpp"
+#include "encoding/base64.hpp"
 #include "encoding/read.hpp"
 
 using namespace std::chrono_literals;
@@ -39,16 +40,6 @@ namespace legacy
     {
       // prep
 
-      LogDebug("building init json");
-      util::JSON doc;
-      if (!buildInitJSON(doc)) {
-        Log("could not build v3 init json");
-        return false;
-      }
-
-      std::string data = doc.toString();
-      std::vector<uint8_t> buff(data.begin(), data.end());
-
       LogDebug("resolving backend addr");
       net::Address backendAddr;
       if (!backendAddr.resolve(mEnv.RelayV3BackendHostname, mEnv.RelayV3BackendPort)) {
@@ -56,22 +47,21 @@ namespace legacy
         return 1;
       }
 
-      BackendToken token;
       BackendRequest request;
+      BackendResponse response;
+      std::vector<uint8_t> completeResponse;
 
-      std::string initJSON = doc.toString();
       core::GenericPacket<> packet;
-      std::copy(initJSON.begin(), initJSON.end(), packet.Buffer.begin());
-      packet.Len = initJSON.length();
+      std::copy(std::begin(InitKey), std::end(InitKey), packet.Buffer.begin());
+      packet.Len = sizeof(InitKey);
       packet.Addr = backendAddr;
 
       uint8_t attempts = 0;
       bool done = false;
       do {
-        attempts++;
         // send request
         LogDebug("sending init packet");
-        if (!packet_send(mSocket, backendAddr, token, PacketType::InitRequest, packet)) {
+        if (!packet_send(mSocket, mToken, PacketType::InitRequest, packet, request)) {
           Log("failed to send init packet");
           return false;
         }
@@ -79,31 +69,44 @@ namespace legacy
         // wait a second for the response to come in
         std::this_thread::sleep_for(1s);
 
-        // receive response if it exists, if not resend
         LogDebug("checking for response");
 
-        if (mReceiver.hasItems()) {
+        // receive response(s) if it exists, if not resend
+        while (mReceiver.hasItems()) {
           mReceiver.recv(packet);
-          done = true;
-        }
-      } while (!done && !mSocket.closed() && !mReceiver.closed() && attempts <= 60);
 
-      if (mSocket.closed() || mReceiver.closed() || attempts > 60) {
+          // this will return true once all the fragments have been received
+          if (readResponse(packet, request, response, completeResponse)) {
+            done = true;
+          }
+        }
+
+        attempts++;
+      } while (!done && !mSocket.closed() && !mReceiver.closed() && attempts < 60);
+
+      if (mSocket.closed() || mReceiver.closed() || attempts == 60) {
         LogDebug("could not init relay");
         return false;
       }
 
-      return true;
-
-      std::string resp(packet.Buffer.begin() + 1, packet.Buffer.begin() + packet.Len);
-      if (!doc.parse(resp)) {
-        Log("v3 init resp parse error: ", doc.err());
+      util::JSON doc;
+      if (!this->buildCompleteResponse(completeResponse, doc)) {
         return false;
       }
 
       // process response
 
-      LogDebug("hey shit worked");
+      auto timestamp = doc.get<uint64_t>("Timestamp");
+      auto b64TokenBuff = doc.get<std::string>("Token");
+      std::array<uint8_t, TokenBytes> tokenBuff;
+      if (encoding::base64::Decode(b64TokenBuff, tokenBuff) == 0) {
+        Log("failed to decode master token");
+        return false;
+      }
+
+      size_t index = 0;
+      encoding::ReadAddress(tokenBuff, index, mToken.Address);
+      encoding::ReadBytes(tokenBuff, index, mToken.HMAC, mToken.HMAC.size());
 
       return true;
     }
@@ -164,21 +167,6 @@ namespace legacy
       if (!doc.parse(resp)) {
         Log("v3 update resp parse error: ", doc.err());
         return false;
-      }
-
-      return true;
-    }
-
-    // TODO init data is not json, must send init key (NEXT_MASTER_INIT_KEY)
-    auto Backend::buildInitJSON(util::JSON& doc) -> bool
-    {
-      doc.set("init", "value");
-
-      for (int i = 0; i < 250; i++) {
-        std::stringstream ss;
-        ss << "value" << i;
-        auto str = ss.str();
-        doc.set("init", str.c_str());
       }
 
       return true;
@@ -245,7 +233,7 @@ namespace legacy
     //     JSON string
     //   </zipped>
     // </signed>
-    auto Backend::readResponse(core::GenericPacket<>& packet, BackendRequest& request, BackendResponse& response) -> bool
+    auto Backend::readResponse(core::GenericPacket<>& packet, BackendRequest& request, BackendResponse& response, std::vector<uint8_t>& completeBuffer) -> bool
     {
       int zip_start = int(1 + crypto_sign_BYTES + sizeof(uint64_t) + sizeof(uint16_t) + sizeof(uint16_t));
 
@@ -350,17 +338,60 @@ namespace legacy
 
       // all fragments have been received
 
-      request.id = 0;
+      request.id = 0; // reset request
 
-      uint8_t* complete_buffer = (uint8_t*)(alloca(complete_bytes));
+      completeBuffer.resize(complete_bytes);
+
       int bytes = 0;
       for (int i = 0; i < request.fragment_total; i++) {
         auto& fragment = request.fragments[i];
-        std::copy(fragment.data.begin(), fragment.data.begin() + fragment.length, &complete_buffer[bytes]);
+        std::copy(fragment.data.begin(), fragment.data.begin() + fragment.length, completeBuffer.begin() + bytes);
         bytes += fragment.length;
       }
+
       assert(bytes == complete_bytes);
-      return manage_master_packet_read_complete(complete_buffer, complete_bytes, doc);
+
+      return true;
+    }
+
+    auto Backend::buildCompleteResponse(std::vector<uint8_t>& completeBuffer, util::JSON& doc) -> bool
+    {
+      const int MaxPayload = 2 * FragmentSize * FragmentMax;
+      std::vector<char> buffer(MaxPayload + 1);
+
+      z_stream z = {};
+      z.next_in = (Bytef*)(completeBuffer.data());
+      z.avail_in = completeBuffer.size();
+      z.next_out = (Bytef*)(buffer.data());
+      z.avail_out = MaxPayload;
+
+      int result = inflateInit(&z);
+      if (result != Z_OK) {
+        Log("failed to decompress master UDP packet: inflateInit failed");
+        return false;
+      }
+
+      result = inflate(&z, Z_NO_FLUSH);
+      if (result != Z_STREAM_END) {
+        Log("failed to decompress master UDP packet: inflate failed");
+        return false;
+      }
+
+      result = inflateEnd(&z);
+      if (result != Z_OK) {
+        Log("failed to decompress master UDP packet: inflateEnd failed");
+        return false;
+      }
+
+      int bytes = int(MaxPayload - z.avail_out);
+      if (bytes == 0) {
+        Log("failed to decompress master UDP packet: not enough buffer space");
+        return false;
+      }
+
+      doc.parse(buffer);
+
+      return true;
     }
   }  // namespace v3
 }  // namespace legacy

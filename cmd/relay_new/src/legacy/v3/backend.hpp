@@ -1,6 +1,8 @@
 #pragma once
 
+#include "backend_request.hpp"
 #include "backend_response.hpp"
+#include "backend_token.hpp"
 #include "core/packet.hpp"
 #include "net/address.hpp"
 #include "os/platform.hpp"
@@ -28,14 +30,15 @@ namespace legacy
       util::Receiver<core::GenericPacket<>>& mReceiver;
       const util::Env& mEnv;
       os::Socket& mSocket;
+      BackendToken mToken;
 
       auto tryInit() -> bool;
       auto update() -> bool;
 
-      auto buildInitJSON(util::JSON& doc) -> bool;
       auto buildConfigJSON(util::JSON& doc) -> bool;
       auto buildUpdateJSON(util::JSON& doc) -> bool;
-      auto readResponse(core::GenericPacket<>& packet, BackendRequest& request, BackendResponse& response) -> bool;
+      auto readResponse(core::GenericPacket<>& packet, BackendRequest& request, BackendResponse& response, std::vector<uint8_t>& completeResponse) -> bool;
+      auto buildCompleteResponse(std::vector<uint8_t>& completeBuffer, util::JSON& doc) -> bool;
     };
   }  // namespace v3
 }  // namespace legacy
