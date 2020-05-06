@@ -27,7 +27,7 @@ func TestDecideUpgradeRTT(t *testing.T) {
 	assert.Equal(
 		t,
 		routing.Decision{true, routing.DecisionRTTReduction},
-		routeDecisionFunc(routing.Decision{false, routing.DecisionNoChange}, predictedStats, routing.Stats{}, directStats),
+		routeDecisionFunc(routing.Decision{}, predictedStats, routing.Stats{}, directStats),
 	)
 
 	// Now test if the route is left alone
@@ -35,8 +35,8 @@ func TestDecideUpgradeRTT(t *testing.T) {
 	predictedStats.RTT = directStats.RTT
 	assert.Equal(
 		t,
-		routing.Decision{false, routing.DecisionNoChange},
-		routeDecisionFunc(routing.Decision{false, routing.DecisionNoChange}, predictedStats, routing.Stats{}, directStats),
+		routing.Decision{},
+		routeDecisionFunc(routing.Decision{}, predictedStats, routing.Stats{}, directStats),
 	)
 }
 
@@ -57,10 +57,10 @@ func TestDecideDowngradeRTT(t *testing.T) {
 	rttHyteresis := float64(routing.DefaultRoutingRulesSettings.RTTHysteresis)
 	routeDecisionFunc := routing.DecideDowngradeRTT(rttHyteresis, false)
 
-	decision := routing.Decision{true, routing.DecisionNoChange}
+	decision := routing.Decision{true, routing.DecisionNoReason}
 	decision = routeDecisionFunc(decision, predictedStats, routing.Stats{}, directStats)
 
-	assert.Equal(t, routing.Decision{true, routing.DecisionNoChange}, decision)
+	assert.Equal(t, routing.Decision{true, routing.DecisionNoReason}, decision)
 
 	// Now test to see if the route gets downgraded to a direct route due to RTT
 	predictedStats.RTT = directStats.RTT + rttHyteresis + 1.0
@@ -69,8 +69,9 @@ func TestDecideDowngradeRTT(t *testing.T) {
 	assert.Equal(t, routing.Decision{false, routing.DecisionRTTIncrease}, decision)
 
 	// Now test if a direct route is given
+	decision = routing.Decision{}
 	decision = routeDecisionFunc(decision, predictedStats, routing.Stats{}, directStats)
-	assert.Equal(t, routing.Decision{false, routing.DecisionNoChange}, decision)
+	assert.Equal(t, routing.Decision{}, decision)
 
 	// Now test if the route is vetoed with YOLO enabled
 	decision.OnNetworkNext = true
@@ -96,7 +97,7 @@ func TestDecideVeto(t *testing.T) {
 	rttVeto := float64(routing.DefaultRoutingRulesSettings.RTTVeto)
 	routeDecisionFunc := routing.DecideVeto(rttVeto, false, false)
 
-	decision := routing.Decision{true, routing.DecisionNoChange}
+	decision := routing.Decision{true, routing.DecisionNoReason}
 	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
 	assert.Equal(t, routing.Decision{false, routing.DecisionVetoRTT}, decision)
 
@@ -125,11 +126,11 @@ func TestDecideVeto(t *testing.T) {
 
 	// Test if route isn't vetoed
 	lastNextStats.PacketLoss = directStats.PacketLoss
-	decision.OnNetworkNext = true
+	decision = routing.Decision{true, routing.DecisionNoReason}
 	routeDecisionFunc = routing.DecideVeto(rttVeto, true, true)
 
 	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
-	assert.Equal(t, routing.Decision{true, routing.DecisionNoChange}, decision)
+	assert.Equal(t, routing.Decision{true, routing.DecisionNoReason}, decision)
 
 	// Test if route was changed to direct from another function, but the RTT increase was so severe that it should be vetoed
 	lastNextStats.RTT = 60
@@ -147,10 +148,10 @@ func TestDecideVeto(t *testing.T) {
 	assert.Equal(t, routing.Decision{false, routing.DecisionVetoRTT | routing.DecisionVetoYOLO}, decision)
 
 	// Test if direct route isn't changed
-	decision.OnNetworkNext = false
+	decision = routing.Decision{false, routing.DecisionNoReason}
 
 	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
-	assert.Equal(t, routing.Decision{false, routing.DecisionNoChange}, decision)
+	assert.Equal(t, routing.Decision{}, decision)
 }
 
 func TestDecideCommitted(t *testing.T) {
@@ -167,7 +168,7 @@ func TestDecideCommitted(t *testing.T) {
 	}
 
 	maxSlices := uint8(routing.DefaultRoutingRulesSettings.TryBeforeYouBuyMaxSlices)
-	decision := routing.Decision{false, routing.DecisionNoChange}
+	decision := routing.Decision{}
 
 	var commitPending bool
 	var observedSliceCounter uint8
@@ -176,7 +177,7 @@ func TestDecideCommitted(t *testing.T) {
 	// Check direct routes aren't affected
 	routeDecisionFunc := routing.DecideCommitted(false, maxSlices, &commitPending, &observedSliceCounter, &committed)
 	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
-	assert.Equal(t, routing.Decision{false, routing.DecisionNoChange}, decision)
+	assert.Equal(t, routing.Decision{}, decision)
 	assert.Equal(t, false, commitPending)
 	assert.Equal(t, uint8(0), observedSliceCounter)
 	assert.Equal(t, false, committed)
@@ -184,7 +185,7 @@ func TestDecideCommitted(t *testing.T) {
 	// Check if a slice newly on NN is "initialized" properly
 	decision.OnNetworkNext = true
 	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
-	assert.Equal(t, routing.Decision{true, routing.DecisionNoChange}, decision)
+	assert.Equal(t, routing.Decision{true, routing.DecisionNoReason}, decision)
 	assert.Equal(t, true, commitPending)
 	assert.Equal(t, uint8(0), observedSliceCounter)
 	assert.Equal(t, false, committed)
@@ -192,7 +193,7 @@ func TestDecideCommitted(t *testing.T) {
 	// Now check the case where the route is better
 	routeDecisionFunc = routing.DecideCommitted(true, maxSlices, &commitPending, &observedSliceCounter, &committed)
 	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
-	assert.Equal(t, routing.Decision{true, routing.DecisionNoChange}, decision)
+	assert.Equal(t, routing.Decision{true, routing.DecisionNoReason}, decision)
 	assert.Equal(t, false, commitPending)
 	assert.Equal(t, uint8(0), observedSliceCounter)
 	assert.Equal(t, true, committed)
@@ -202,7 +203,7 @@ func TestDecideCommitted(t *testing.T) {
 	lastNextStats.RTT = 65
 	decision.OnNetworkNext = true
 	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
-	assert.Equal(t, routing.Decision{true, routing.DecisionNoChange}, decision)
+	assert.Equal(t, routing.Decision{true, routing.DecisionNoReason}, decision)
 	assert.Equal(t, true, commitPending)
 	assert.Equal(t, uint8(1), observedSliceCounter)
 	assert.Equal(t, false, committed)

@@ -65,7 +65,7 @@ var EmptySessionErrorMetrics SessionErrorMetrics = SessionErrorMetrics{
 }
 
 type DecisionMetrics struct {
-	NoChange            Counter
+	NoReason            Counter
 	ForceDirect         Counter
 	ForceNext           Counter
 	NoNextRoute         Counter
@@ -87,7 +87,7 @@ type DecisionMetrics struct {
 }
 
 var EmptyDecisionMetrics DecisionMetrics = DecisionMetrics{
-	NoChange:            &EmptyCounter{},
+	NoReason:            &EmptyCounter{},
 	ForceDirect:         &EmptyCounter{},
 	ForceNext:           &EmptyCounter{},
 	NoNextRoute:         &EmptyCounter{},
@@ -331,10 +331,10 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
-	sessionMetrics.DecisionMetrics.NoChange, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Decision no change",
+	sessionMetrics.DecisionMetrics.NoReason, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Decision no reason",
 		ServiceName: "server_backend",
-		ID:          "session.route_decision.no_change",
+		ID:          "session.route_decision.no_reason",
 		Unit:        "decisions",
 	})
 	if err != nil {
