@@ -63,8 +63,12 @@ func (dr DecisionReason) String() string {
 		reason = "Veto Packet Loss YOLO"
 	case DecisionRTTHysteresis:
 		reason = "RTT Hysteresis"
+	case DecisionRTTHysteresis | DecisionVetoYOLO:
+		reason = "RTT Hysteresis YOLO"
 	case DecisionVetoCommit:
-		reason = "RTT Veto Commit"
+		reason = "Veto Commit"
+	case DecisionVetoCommit | DecisionVetoYOLO:
+		reason = "Veto Commit YOLO"
 	default:
 		reason = "Unused"
 	}
@@ -120,7 +124,7 @@ func DecideDowngradeRTT(rttHysteresis float64, yolo bool) DecisionFunc {
 
 			// If the buyer has YouOnlyLiveOnce safety setting enabled, veto them and add that reason to the DecisionReason
 			if yolo {
-				return Decision{false, DecisionVetoRTT | DecisionVetoYOLO}
+				return Decision{false, DecisionRTTHysteresis | DecisionVetoYOLO}
 			}
 
 			// Network next route increases RTT too much, switch back to direct
@@ -163,7 +167,7 @@ func DecideVeto(rttVeto float64, packetLossSafety bool, yolo bool) DecisionFunc 
 		}
 
 		// Handle the case where another decision function decided to switch back to direct due
-		// to RTT increase, but the increase is so severe it should be vetoed.
+		// to RTT hysteresis, but the increase is so severe it should be vetoed.
 		if prevDecision.Reason == DecisionRTTHysteresis {
 			if lastNextStats.RTT-directStats.RTT > rttVeto {
 				// If the buyer has YouOnlyLiveOnce safety setting enabled, add that reason to the DecisionReason
@@ -186,12 +190,13 @@ func DecideVeto(rttVeto float64, packetLossSafety bool, yolo bool) DecisionFunc 
 // IN VARS
 // onNNLastSlice: Whether or not the session was on NN during the last slice
 // maxObservedSlices: The maximum number of slices to observe before vetoing an inconclusive session
+// yolo: Whether or not the buyer has YOLO enabled
 // OUT VARS
 // commitPending: Whether or not the logic is still considering to commit or not
 // observedSliceCounter: How many slices have been observed while deciding whether or not to commit
 // committed: Whether or not the route is committed
 // The out vars describe the state of the committed logic to keep this function stateless.
-func DecideCommitted(onNNLastSlice bool, maxObservedSlices uint8, commitPending *bool, observedSliceCounter *uint8, committed *bool) DecisionFunc {
+func DecideCommitted(onNNLastSlice bool, maxObservedSlices uint8, yolo bool, commitPending *bool, observedSliceCounter *uint8, committed *bool) DecisionFunc {
 	return func(prevDecision Decision, predictedNextStats, lastNextStats, directStats Stats) Decision {
 		// Only consider committing a route if try before you buy is enabled and
 		// the route decision logic has decided on a NN route in the first place
@@ -225,6 +230,12 @@ func DecideCommitted(onNNLastSlice bool, maxObservedSlices uint8, commitPending 
 						*commitPending = false
 						*observedSliceCounter = 0
 						*committed = false
+
+						// Add yolo reason if yolo is enabled
+						if yolo {
+							return Decision{false, DecisionVetoCommit | DecisionVetoYOLO}
+						}
+
 						return Decision{false, DecisionVetoCommit}
 					}
 
