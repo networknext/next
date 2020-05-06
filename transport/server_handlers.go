@@ -598,8 +598,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			newSession = true
 		}
 
-		if buyer.RoutingRulesSettings.Mode == routing.ModeForceDirect || int64(packet.SessionID%100) > buyer.RoutingRulesSettings.SelectionPercentage ||
-			(buyer.RoutingRulesSettings.EnableABTest && packet.SessionID%2 == 1) {
+		if buyer.RoutingRulesSettings.Mode == routing.ModeForceDirect || int64(packet.SessionID%100) > buyer.RoutingRulesSettings.SelectionPercentage {
 			shouldSelect = false
 			routeDecision = routing.Decision{
 				OnNetworkNext: false,
@@ -611,6 +610,12 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			routeDecision = routing.Decision{
 				OnNetworkNext: true,
 				Reason:        routing.DecisionForceNext,
+			}
+		} else if buyer.RoutingRulesSettings.EnableABTest && packet.SessionID%2 == 1 {
+			shouldSelect = false
+			routeDecision = routing.Decision{
+				OnNetworkNext: false,
+				Reason:        routing.DecisionABTestDirect,
 			}
 		}
 
@@ -890,8 +895,8 @@ func submitBillingEntry(biller billing.Biller, serverCacheEntry ServerCacheEntry
 
 func addRouteDecisionMetric(d routing.Decision, m *metrics.SessionMetrics) {
 	switch d.Reason {
-	case routing.DecisionNoChange:
-		m.DecisionMetrics.NoChange.Add(1)
+	case routing.DecisionNoReason:
+		m.DecisionMetrics.NoReason.Add(1)
 	case routing.DecisionForceDirect:
 		m.DecisionMetrics.ForceDirect.Add(1)
 	case routing.DecisionForceNext:
@@ -916,20 +921,17 @@ func addRouteDecisionMetric(d routing.Decision, m *metrics.SessionMetrics) {
 		m.DecisionMetrics.FallbackToDirect.Add(1)
 	case routing.DecisionVetoYOLO:
 		m.DecisionMetrics.VetoYOLO.Add(1)
-	case routing.DecisionVetoNoRoute:
-		m.DecisionMetrics.VetoNoRoute.Add(1)
 	case routing.DecisionInitialSlice:
 		m.DecisionMetrics.InitialSlice.Add(1)
 	case routing.DecisionVetoRTT | routing.DecisionVetoYOLO:
 		m.DecisionMetrics.VetoRTTYOLO.Add(1)
 	case routing.DecisionVetoPacketLoss | routing.DecisionVetoYOLO:
 		m.DecisionMetrics.VetoPacketLossYOLO.Add(1)
-	case routing.DecisionRTTIncrease:
-		m.DecisionMetrics.RTTIncrease.Add(1)
+	case routing.DecisionRTTHysteresis:
+		m.DecisionMetrics.RTTHysteresis.Add(1)
 	case routing.DecisionVetoCommit:
 		m.DecisionMetrics.VetoCommit.Add(1)
 	}
-
 }
 
 // writeInitResponse encrypts the server init response packet and sends it back to the server. Returns the marshaled response and an error.
