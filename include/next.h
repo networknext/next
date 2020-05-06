@@ -31,10 +31,10 @@
 #include <stddef.h>
 
 #if !defined(NEXT_DEVELOPMENT)
-#define NEXT_VERSION_FULL                                   "3.4.4"
+#define NEXT_VERSION_FULL                                   "3.5.0"
 #define NEXT_VERSION_MAJOR_INT                                    3
-#define NEXT_VERSION_MINOR_INT                                    4
-#define NEXT_VERSION_PATCH_INT                                    4
+#define NEXT_VERSION_MINOR_INT                                    5
+#define NEXT_VERSION_PATCH_INT                                    0
 #else // #if !NEXT_DEVELOPMENT
 #define NEXT_VERSION_FULL                                     "dev"
 #define NEXT_VERSION_MAJOR_INT                                    0

@@ -79,7 +79,6 @@
 #define NEXT_VERSION_MINOR_MAX                                       1023
 #define NEXT_VERSION_PATCH_MAX                                        254
 #define NEXT_BANDWIDTH_LIMITER_INTERVAL                               1.0
-#define NEXT_DIRECT_ROUTE_EXPIRE_TIME                                30.0
 
 #define NEXT_CLIENT_COUNTER_OPEN_SESSION                                0
 #define NEXT_CLIENT_COUNTER_CLOSE_SESSION                               1
@@ -108,7 +107,9 @@
 #define NEXT_SERVER_STATE_DIRECT_ONLY                                   0
 #define NEXT_SERVER_STATE_RESOLVING_HOSTNAME                            1
 #define NEXT_SERVER_STATE_INITIALIZING                                  2
-#define NEXT_SERVER_STATE_INITIALIZED                                   4
+#define NEXT_SERVER_STATE_INITIALIZED                                   3
+
+#define NEXT_MAGIC                                     0x6d0f54ac87acda73
 
 static const uint8_t next_backend_public_key[] = 
 { 
@@ -2693,6 +2694,7 @@ int next_packet_loss_tracker_update( next_packet_loss_tracker_t * tracker )
 #define NEXT_ROUTE_UPDATE_ACK_PACKET                        72
 #define NEXT_RELAY_PING_PACKET                              73
 #define NEXT_RELAY_PONG_PACKET                              74
+#define NEXT_DIRECT_PACKET                                 255
 
 struct NextUpgradeRequestPacket
 {
@@ -2845,6 +2847,10 @@ struct NextDirectPingPacket
     
     template <typename Stream> bool Serialize( Stream & stream )
     {
+        uint64_t magic = Stream::IsWriting ? NEXT_MAGIC : 0;
+        serialize_uint64( stream, magic );
+        if ( Stream::IsReading && magic != NEXT_MAGIC )
+            return false;
         serialize_uint64( stream, ping_sequence );
         return true;
     }
@@ -2856,6 +2862,10 @@ struct NextDirectPongPacket
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
+        uint64_t magic = Stream::IsWriting ? NEXT_MAGIC : 0;
+        serialize_uint64( stream, magic );
+        if ( Stream::IsReading && magic != NEXT_MAGIC )
+            return false;
         serialize_uint64( stream, ping_sequence );
         return true;
     }
@@ -5504,6 +5514,8 @@ int next_client_internal_send_packet_to_server( next_client_internal_t * client,
     return NEXT_OK;
 }
 
+#if 0
+
 int next_client_internal_process_packet_from_server( next_client_internal_t * client, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
 {
     next_assert( client );
@@ -5954,6 +5966,246 @@ int next_client_internal_process_network_next_packet( next_client_internal_t * c
     return NEXT_ERROR;
 }
 
+#endif // #if 0
+
+bool next_client_internal_process_network_next_packet( next_client_internal_t * client, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
+{
+    next_assert( client );
+    next_assert( from );
+    next_assert( packet_data );
+
+    const bool from_server_address = client->server_address.type != 0 && next_address_equal( from, &client->server_address );
+
+    // NEXT_DIRECT_PACKET
+
+    if ( client->upgraded && packet_data[0] == NEXT_DIRECT_PACKET && packet_bytes <= NEXT_MTU + 18 && from_server_address )
+    {
+        const uint8_t * p = packet_data + 1;
+
+        uint64_t packet_magic = next_read_uint64( &p );
+        if ( packet_magic != NEXT_MAGIC )
+            return false;
+        
+        uint8_t packet_session_sequence = next_read_uint8( &p );
+        
+        if ( packet_session_sequence != client->open_session_sequence )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored direct packet. session mismatch" );
+            return true;
+        }
+        
+        uint64_t packet_sequence = next_read_uint64( &p );
+        
+        uint64_t clean_sequence = next_clean_sequence( packet_sequence );
+        if ( next_replay_protection_already_received( &client->payload_replay_protection, clean_sequence ) )
+        {
+            if ( !client->multipath )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "client already received direct packet %" PRIu64 " (%" PRIu64 ")", clean_sequence, client->payload_replay_protection.most_recent_sequence );
+            }
+            return true;
+        }
+        next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
+        notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
+        notify->packet_bytes = packet_bytes - 18;
+        memcpy( notify->packet_data, packet_data + 18, size_t(packet_bytes) - 18 );
+        {
+            next_mutex_guard( client->notify_mutex );
+            next_queue_push( client->notify_queue, notify );            
+        }
+        client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT]++;
+
+        next_replay_protection_advance_sequence( &client->payload_replay_protection, clean_sequence );
+
+        next_packet_loss_tracker_packet_received( &client->packet_loss_tracker, clean_sequence );
+    }
+
+    // other network next packet types
+
+    // todo
+
+    /*
+    int packet_id = packet_data[0];
+
+    switch ( packet_id )
+    {
+        case NEXT_RELAY_PONG_PACKET:
+        {
+            if ( !client->upgraded )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored relay pong packet. not upgraded yet" );
+                return NEXT_ERROR;
+            }            
+
+            NextRelayPongPacket packet;
+
+            if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL ) != packet_id )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored relay pong packet. failed to read" );
+                return NEXT_ERROR;
+            }
+
+            if ( packet.session_id != client->session_id )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignoring relay pong packet. session id does not match" );
+                return NEXT_ERROR;
+            }
+
+            next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL );
+
+            next_relay_manager_process_pong( client->near_relay_manager, from, packet.ping_sequence );
+        }
+        break;        
+
+        case NEXT_ROUTE_RESPONSE_PACKET:
+        {
+            next_platform_mutex_acquire( client->route_manager_mutex );
+            next_route_manager_process_route_response_packet( client->route_manager, from, packet_data, packet_bytes, &client->special_replay_protection );
+            bool route_established = client->route_manager->route_data.current_route;
+            int route_kbps_up = client->route_manager->route_data.current_route_kbps_up;
+            int route_kbps_down = client->route_manager->route_data.current_route_kbps_down;
+            next_platform_mutex_release( client->route_manager_mutex );
+
+            next_platform_mutex_acquire( client->bandwidth_mutex );
+            if ( route_established )
+            {
+                client->bandwidth_envelope_kbps_up = route_kbps_up;
+                client->bandwidth_envelope_kbps_down = route_kbps_down;
+            }
+            else
+            {
+                client->bandwidth_envelope_kbps_up = 0;
+                client->bandwidth_envelope_kbps_down = 0;
+            }
+            next_platform_mutex_release( client->bandwidth_mutex );
+
+            return NEXT_OK;
+        }
+        break;
+
+        case NEXT_CONTINUE_RESPONSE_PACKET:
+        {
+            next_platform_mutex_acquire( client->route_manager_mutex );
+            next_route_manager_process_continue_response_packet( client->route_manager, from, packet_data, packet_bytes, &client->special_replay_protection );
+            next_platform_mutex_release( client->route_manager_mutex );
+            return NEXT_OK;
+        }
+        break;
+
+        case NEXT_SERVER_TO_CLIENT_PACKET:
+        {
+            int payload_bytes = 0;
+            uint64_t payload_sequence = 0;
+            uint8_t payload_data[NEXT_MTU];
+
+            next_platform_mutex_acquire( client->route_manager_mutex );
+            const bool result = next_route_manager_process_server_to_client_packet( client->route_manager, from, packet_data, packet_bytes, &payload_sequence, payload_data, &payload_bytes );
+            next_platform_mutex_release( client->route_manager_mutex );
+
+            if ( !result )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored server to client packet. could not verify" );
+                return NEXT_ERROR;
+            }
+
+            const bool already_received = next_replay_protection_already_received( &client->payload_replay_protection, payload_sequence ) != 0;
+
+            if ( already_received && !multipath )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "client already received server to client packet %" PRIu64, payload_sequence );
+                return NEXT_ERROR;
+            }
+
+            if ( already_received && multipath )
+            {
+                client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT]++;
+                return NEXT_OK;
+            }
+
+            uint64_t clean_sequence = next_clean_sequence( payload_sequence );
+
+            next_replay_protection_advance_sequence( &client->payload_replay_protection, clean_sequence );
+    
+            next_packet_loss_tracker_packet_received( &client->packet_loss_tracker, clean_sequence );
+
+            next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
+            notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
+            notify->packet_bytes = payload_bytes;
+            memcpy( notify->packet_data, payload_data, payload_bytes );
+            {
+                next_mutex_guard( client->notify_mutex );
+                next_queue_push( client->notify_queue, notify );            
+            }
+
+            client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT]++;
+
+            return NEXT_OK;
+        }
+        break;
+
+        case NEXT_PONG_PACKET:
+        {
+            int payload_bytes = 0;
+            uint64_t payload_sequence = 0;
+            uint8_t payload_data[NEXT_MTU];
+
+            next_platform_mutex_acquire( client->route_manager_mutex );
+            const bool result = next_route_manager_process_server_to_client_packet( client->route_manager, from, packet_data, packet_bytes, &payload_sequence, payload_data, &payload_bytes );
+            next_platform_mutex_release( client->route_manager_mutex );
+
+            if ( !result )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored pong packet. could not verify" );
+                return NEXT_ERROR;
+            }
+
+            uint64_t clean_sequence = next_clean_sequence( payload_sequence );
+
+            if ( next_replay_protection_already_received( &client->special_replay_protection, clean_sequence ) )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "client already received pong packet %" PRIu64, clean_sequence );
+                return NEXT_ERROR;
+            }
+
+            next_replay_protection_advance_sequence( &client->special_replay_protection, clean_sequence );
+
+            const uint8_t * p = packet_data + NEXT_HEADER_BYTES;
+
+            uint64_t ping_sequence = next_read_uint64( &p );
+
+            next_ping_history_pong_received( &client->next_ping_history, ping_sequence, next_time() );
+
+            return NEXT_OK;
+        }
+        break;
+    }
+    */
+
+    return false;
+}
+
+void next_client_internal_process_game_packet( next_client_internal_t * client, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
+{
+    next_assert( client );
+    next_assert( from );
+    next_assert( packet_data );
+
+    const bool from_server_address = client->server_address.type != 0 && next_address_equal( from, &client->server_address );
+
+    if ( packet_bytes <= NEXT_MTU && from_server_address )
+    {
+        next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
+        notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
+        notify->packet_bytes = packet_bytes;
+        memcpy( notify->packet_data, packet_data, size_t(packet_bytes) );
+        {
+            next_mutex_guard( client->notify_mutex );
+            next_queue_push( client->notify_queue, notify );            
+        }
+        client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT]++;
+    }
+}
+
 #if NEXT_DEVELOPMENT
 bool next_packet_loss = false;
 #endif // #if NEXT_DEVELOPMENT
@@ -5976,63 +6228,10 @@ void next_client_internal_block_and_receive_packet( next_client_internal_t * cli
         return;
 #endif // #if NEXT_DEVELOPMENT
 
-    const bool from_server_address = client->server_address.type != 0 && next_address_equal( &from, &client->server_address );
+    if ( next_client_internal_process_network_next_packet( client, &from, packet_data, packet_bytes ) )
+        return;
 
-    if ( packet_data[0] == 0 && packet_bytes <= NEXT_MTU + 1 && from_server_address )
-    {
-        next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
-        notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
-        notify->packet_bytes = packet_bytes - 1;
-        memcpy( notify->packet_data, packet_data + 1, size_t(packet_bytes) - 1 );
-        {
-            next_mutex_guard( client->notify_mutex );
-            next_queue_push( client->notify_queue, notify );            
-        }
-        client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT]++;
-    }
-    else if ( client->upgraded && packet_data[0] == 255 && packet_bytes <= NEXT_MTU + 10 && from_server_address )
-    {
-        const uint8_t * p = packet_data + 1;
-        uint8_t packet_session_sequence = next_read_uint8( &p );
-        if ( packet_session_sequence != client->open_session_sequence )
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored direct packet. session mismatch" );
-            return;
-        }
-        uint64_t packet_sequence = next_read_uint64( &p );
-        uint64_t clean_sequence = next_clean_sequence( packet_sequence );
-        if ( next_replay_protection_already_received( &client->payload_replay_protection, clean_sequence ) )
-        {
-            if ( !client->multipath )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client already received direct packet %" PRIu64 " (%" PRIu64 ")", clean_sequence, client->payload_replay_protection.most_recent_sequence );
-            }
-            return;
-        }
-        next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
-        notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
-        notify->packet_bytes = packet_bytes - 10;
-        memcpy( notify->packet_data, packet_data + 10, size_t(packet_bytes) - 10 );
-        {
-            next_mutex_guard( client->notify_mutex );
-            next_queue_push( client->notify_queue, notify );            
-        }
-        client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT]++;
-
-        next_replay_protection_advance_sequence( &client->payload_replay_protection, clean_sequence );
-        next_packet_loss_tracker_packet_received( &client->packet_loss_tracker, clean_sequence );
-    }
-    else
-    {
-        if ( from_server_address )
-        {
-            next_client_internal_process_packet_from_server( client, &from, packet_data, packet_bytes );
-        }
-        else
-        {
-            next_client_internal_process_network_next_packet( client, &from, packet_data, packet_bytes, client->multipath );
-        }
-    }
+    next_client_internal_process_game_packet( client, &from, packet_data, packet_bytes );
 }
 
 bool next_client_internal_pump_commands( next_client_internal_t * client )
@@ -6912,6 +7111,8 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
         if ( send_direct )
         {
+            // todo: update to magic
+
             // [255][open session sequence][sequence](payload) style packets direct to server
 
             uint8_t buffer[10+NEXT_MTU];
@@ -6926,12 +7127,7 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
     }
     else
     {
-        // send [0](payload) style packet direct to server
-
-        uint8_t buffer[1+NEXT_MTU];
-        buffer[0] = 0;
-        memcpy( buffer+1, packet_data, packet_bytes );
-        next_platform_socket_send_packet( client->internal->socket, &client->server_address, buffer, packet_bytes + 1 );
+        next_platform_socket_send_packet( client->internal->socket, &client->server_address, packet_data, packet_bytes );
         client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
     }
 }
