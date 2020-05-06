@@ -6021,6 +6021,11 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
         next_replay_protection_advance_sequence( &client->payload_replay_protection, clean_sequence );
 
         next_packet_loss_tracker_packet_received( &client->packet_loss_tracker, clean_sequence );
+
+        // todo
+        printf( "client received upgraded direct packet\n" );
+
+        return true;
     }
 
     /*
@@ -6214,6 +6219,9 @@ void next_client_internal_process_game_packet( next_client_internal_t * client, 
             next_queue_push( client->notify_queue, notify );            
         }
         client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT]++;
+
+        // todo
+        printf( "client received raw direct packet\n" );
     }
 }
 
@@ -10195,12 +10203,59 @@ bool next_server_internal_process_network_next_packet( next_server_internal_t * 
     next_assert( packet_data );
     next_assert( packet_bytes );
 
-    (void) server;
-    (void) from;
-    (void) packet_data;
-    (void) packet_bytes;
+    if ( packet_data[0] == NEXT_DIRECT_PACKET && packet_bytes > 18 && packet_bytes <= NEXT_MTU + 18 )
+    {
+        const uint8_t * p = packet_data + 1;
 
-    // ...
+        uint64_t packet_magic = next_read_uint64( &p );
+
+        if ( packet_magic != NEXT_MAGIC )
+            return false;
+
+        uint8_t packet_session_sequence = next_read_uint8( &p );
+        
+        uint64_t packet_sequence = next_read_uint64( &p );
+        
+        next_session_entry_t * entry = next_session_manager_find_by_address( server->session_manager, from );
+        if ( !entry )
+        {
+            char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored direct packet from %s. could not find session for address", next_address_to_string( from, address_buffer ) );
+            return true;
+        }
+
+        if ( packet_session_sequence != entry->client_open_session_sequence )
+        {
+            char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored direct packet from %s. session mismatch", next_address_to_string( from, address_buffer ) );
+            return true;
+        }
+
+        uint64_t clean_sequence = next_clean_sequence( packet_sequence );
+
+        if ( next_replay_protection_already_received( &entry->payload_replay_protection, clean_sequence ) )
+        {
+            char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored direct packet from %s. already received (%" PRIx64 " vs. %" PRIx64 ")", next_address_to_string( from, address_buffer ), clean_sequence, entry->payload_replay_protection.most_recent_sequence );
+            return true;
+        }
+
+        next_replay_protection_advance_sequence( &entry->payload_replay_protection, clean_sequence );
+
+        next_packet_loss_tracker_packet_received( &entry->packet_loss_tracker, clean_sequence );
+
+        next_server_notify_packet_received_t * notify = (next_server_notify_packet_received_t*) next_malloc( server->context, sizeof( next_server_notify_packet_received_t ) );
+        notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
+        notify->from = *from;
+        notify->packet_bytes = packet_bytes - 18;
+        memcpy( notify->packet_data, packet_data + 18, size_t(packet_bytes) - 18 );
+        {
+            next_mutex_guard( server->notify_mutex );
+            next_queue_push( server->notify_queue, notify );            
+        }
+
+        return true;
+    }
 
     return false;
 }
@@ -10214,6 +10269,9 @@ void next_server_internal_process_game_packet( next_server_internal_t * server, 
 
     if ( packet_bytes <= NEXT_MTU )
     {
+        // todo
+        printf( "server received raw direct packet\n" );
+
         next_server_notify_packet_received_t * notify = (next_server_notify_packet_received_t*) next_malloc( server->context, sizeof( next_server_notify_packet_received_t ) );
         notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
         notify->from = *from;
