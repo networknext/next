@@ -4,11 +4,13 @@ import (
 	"fmt"
 )
 
+// Decision is a representation of a whether or not a route should go over network next and why or why not.
 type Decision struct {
 	OnNetworkNext bool
 	Reason        DecisionReason
 }
 
+// DecisionFunc is a decision making function that decides whether or not a route should go over network next or direct.
 // Decision takes in whether or not the logic is currently considering staying on network next,
 // the stats of the predicted network next route,
 // the stats of the last network next route,
@@ -91,6 +93,7 @@ const (
 	DecisionInitialSlice          DecisionReason = 1 << 16
 	DecisionNoNearRelays          DecisionReason = 1 << 17
 	DecisionRTTIncrease           DecisionReason = 1 << 18
+	DecisionVetoCommit            DecisionReason = 1 << 19
 )
 
 // DecideUpgradeRTT will decide if the client should use the network next route if the RTT reduction is greater than the given threshold.
@@ -159,38 +162,94 @@ func DecideVeto(rttVeto float64, packetLossSafety bool, yolo bool) DecisionFunc 
 
 			// If the route isn't vetoed, then it stays on network next
 			return Decision{prevDecision.OnNetworkNext, DecisionNoChange}
-		} else {
-			// Handle the case where another decision function decided to switch back to direct due
-			// to RTT increase, but the increase is so severe it should be vetoed.
-			// If the previous route was direct, then the last next stats should be empty,
-			// so the veto shouldn't affect direct routes
-			if prevDecision.Reason == DecisionRTTIncrease {
-				if lastNextStats.RTT-directStats.RTT > rttVeto {
-					// If the buyer has YouOnlyLiveOnce safety setting enabled, add that reason to the DecisionReason
-					if yolo {
-						return Decision{false, DecisionVetoRTT | DecisionVetoYOLO}
-					}
-
-					return Decision{false, DecisionVetoRTT}
-				}
-			}
-
-			// If the route isn't on network next yet, then this decision doesn't apply.
-			return Decision{prevDecision.OnNetworkNext, DecisionNoChange}
 		}
-	}
-}
 
-// DecideCommitted is not yet implemented
-func DecideCommitted() DecisionFunc {
-	return func(prevDecision Decision, predictedNextStats Stats, lastNextStats Stats, directStats Stats) Decision {
+		// Handle the case where another decision function decided to switch back to direct due
+		// to RTT increase, but the increase is so severe it should be vetoed.
+		if prevDecision.Reason == DecisionRTTIncrease {
+			if lastNextStats.RTT-directStats.RTT > rttVeto {
+				// If the buyer has YouOnlyLiveOnce safety setting enabled, add that reason to the DecisionReason
+				if yolo {
+					return Decision{false, DecisionVetoRTT | DecisionVetoYOLO}
+				}
+
+				return Decision{false, DecisionVetoRTT}
+			}
+		}
+
+		// If the route isn't on network next yet, then this decision doesn't apply.
 		return Decision{prevDecision.OnNetworkNext, DecisionNoChange}
 	}
 }
 
+// DecideCommitted will decide if the route should be committed to the decided route through the committed out parameter.
+// This function will not ever upgrade a route, it will only either keep it the same or veto it if it ends up being much worse
+// than direct or if it takes too long to confidently decide.
+// IN VARS
+// onNNLastSlice: Whether or not the session was on NN during the last slice
+// maxObservedSlices: The maximum number of slices to observe before vetoing an inconclusive session
+// OUT VARS
+// commitPending: Whether or not the logic is still considering to commit or not
+// observedSliceCounter: How many slices have been observed while deciding whether or not to commit
+// committed: Whether or not the route is committed
+// The out vars describe the state of the committed logic to keep this function stateless.
+func DecideCommitted(onNNLastSlice bool, maxObservedSlices uint8, commitPending *bool, observedSliceCounter *uint8, committed *bool) DecisionFunc {
+	return func(prevDecision Decision, predictedNextStats, lastNextStats, directStats Stats) Decision {
+		// Only consider committing a route if try before you buy is enabled and
+		// the route decision logic has decided on a NN route in the first place
+		if prevDecision.OnNetworkNext {
+			// Check if the session ID is newly on NN
+			if !onNNLastSlice {
+				// Set the session to pending commit
+				*commitPending = true
+				*observedSliceCounter = 0
+				*committed = false
+
+				// Don't change the route deicison yet
+				return Decision{prevDecision.OnNetworkNext, DecisionNoChange}
+			} else if *commitPending { // See if the session is still pending
+				if lastNextStats.RTT <= directStats.RTT && lastNextStats.PacketLoss <= directStats.PacketLoss {
+					// The NN route was the same or better than direct, so commit to it
+					*commitPending = false
+					*observedSliceCounter = 0
+					*committed = true
+
+					// Don't actually change the route decision since it's good
+					return Decision{prevDecision.OnNetworkNext, DecisionNoChange}
+				} else if lastNextStats.RTT > directStats.RTT || lastNextStats.PacketLoss > directStats.PacketLoss {
+					// The route wasn't so bad that it was vetoed, so continue to observe the route
+					*commitPending = true
+					*observedSliceCounter++
+					*committed = false
+
+					if *observedSliceCounter >= maxObservedSlices {
+						// This session doesn't seem to be working out, just veto it
+						*commitPending = false
+						*observedSliceCounter = 0
+						*committed = false
+						return Decision{false, DecisionVetoCommit}
+					}
+
+					// Keep waiting for more data
+					return Decision{prevDecision.OnNetworkNext, DecisionNoChange}
+				}
+			}
+		}
+
+		*commitPending = false
+		*observedSliceCounter = 0
+		*committed = false
+
+		// Don't affect direct routes
+		return Decision{prevDecision.OnNetworkNext, DecisionNoChange}
+	}
+}
+
+// IsVetoed returns true if the given route decision was a veto.
 func IsVetoed(decision Decision) bool {
 	if !decision.OnNetworkNext {
-		if decision.Reason&DecisionVetoNoRoute != 0 || decision.Reason&DecisionVetoPacketLoss != 0 || decision.Reason&DecisionVetoRTT != 0 || decision.Reason&DecisionVetoYOLO != 0 {
+		if decision.Reason&DecisionVetoNoRoute != 0 || decision.Reason&DecisionVetoPacketLoss != 0 || decision.Reason&DecisionVetoRTT != 0 ||
+			decision.Reason&DecisionVetoYOLO != 0 || decision.Reason&DecisionVetoCommit != 0 {
 			return true
 		}
 	}

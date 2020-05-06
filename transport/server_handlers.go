@@ -280,20 +280,23 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 }
 
 type SessionCacheEntry struct {
-	CustomerID      uint64
-	SessionID       uint64
-	UserHash        uint64
-	Sequence        uint64
-	RouteHash       uint64
-	RouteDecision   routing.Decision
-	TimestampStart  time.Time
-	TimestampExpire time.Time
-	VetoTimestamp   time.Time
-	Version         uint8
-	DirectRTT       float64
-	NextRTT         float64
-	Location        routing.Location
-	Response        []byte
+	CustomerID                 uint64
+	SessionID                  uint64
+	UserHash                   uint64
+	Sequence                   uint64
+	RouteHash                  uint64
+	RouteDecision              routing.Decision
+	CommitPending              bool
+	CommitObservedSliceCounter uint8
+	Committed                  bool
+	TimestampStart             time.Time
+	TimestampExpire            time.Time
+	VetoTimestamp              time.Time
+	Version                    uint8
+	DirectRTT                  float64
+	NextRTT                    float64
+	Location                   routing.Location
+	Response                   []byte
 }
 
 func (e *SessionCacheEntry) UnmarshalBinary(data []byte) error {
@@ -578,15 +581,26 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			)
 
 			if shouldDecide { // Only decide on a route if we should, early out for force next mode
-				routeDecision = nextRoute.Decide(sessionCacheEntry.RouteDecision, nnStats, directStats,
+				deciderFuncs := []routing.DecisionFunc{
 					routing.DecideUpgradeRTT(float64(buyer.RoutingRulesSettings.RTTThreshold)),
 					routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis), buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
 					routing.DecideVeto(float64(buyer.RoutingRulesSettings.RTTVeto), buyer.RoutingRulesSettings.EnablePacketLossSafety, buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
-				)
+				}
+
+				if buyer.RoutingRulesSettings.EnableTryBeforeYouBuy {
+					deciderFuncs = append(deciderFuncs,
+						routing.DecideCommitted(sessionCacheEntry.RouteDecision.OnNetworkNext, uint8(buyer.RoutingRulesSettings.TryBeforeYouBuyMaxSlices),
+							&sessionCacheEntry.CommitPending, &sessionCacheEntry.CommitObservedSliceCounter, &sessionCacheEntry.Committed))
+				}
+
+				routeDecision = nextRoute.Decide(sessionCacheEntry.RouteDecision, nnStats, directStats, deciderFuncs...)
 
 				if routing.IsVetoed(routeDecision) {
 					// Session was vetoed this update, so set the veto timeout
 					sessionCacheEntry.VetoTimestamp = timestampNow.Add(time.Hour)
+				} else if sessionCacheEntry.Committed {
+					// If the session is committed, set the committed flag in the response
+					response.Committed = true
 				}
 			}
 
@@ -698,20 +712,23 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 		{
 			level.Debug(locallogger).Log("msg", "caching session data")
 			updatedSessionCacheEntry := SessionCacheEntry{
-				CustomerID:      packet.CustomerID,
-				SessionID:       packet.SessionID,
-				UserHash:        packet.UserHash,
-				Sequence:        packet.Sequence,
-				RouteHash:       chosenRoute.Hash64(),
-				RouteDecision:   routeDecision,
-				TimestampStart:  timestampStart,
-				TimestampExpire: timestampExpire,
-				VetoTimestamp:   sessionCacheEntry.VetoTimestamp,
-				Version:         sessionCacheEntry.Version, //This was already incremented for the route tokens
-				Response:        responseData,
-				DirectRTT:       directStats.RTT,
-				NextRTT:         nnStats.RTT,
-				Location:        location,
+				CustomerID:                 packet.CustomerID,
+				SessionID:                  packet.SessionID,
+				UserHash:                   packet.UserHash,
+				Sequence:                   packet.Sequence,
+				RouteHash:                  chosenRoute.Hash64(),
+				RouteDecision:              routeDecision,
+				CommitPending:              sessionCacheEntry.CommitPending,
+				CommitObservedSliceCounter: sessionCacheEntry.CommitObservedSliceCounter,
+				Committed:                  sessionCacheEntry.Committed,
+				TimestampStart:             timestampStart,
+				TimestampExpire:            timestampExpire,
+				VetoTimestamp:              sessionCacheEntry.VetoTimestamp,
+				Version:                    sessionCacheEntry.Version, //This was already incremented for the route tokens
+				Response:                   responseData,
+				DirectRTT:                  directStats.RTT,
+				NextRTT:                    nnStats.RTT,
+				Location:                   location,
 			}
 			result := redisClientCache.Set(sessionCacheKey, updatedSessionCacheEntry, 5*time.Minute)
 			if result.Err() != nil {
@@ -823,7 +840,10 @@ func addRouteDecisionMetric(d routing.Decision, m *metrics.SessionMetrics) {
 		m.DecisionMetrics.VetoPacketLossYOLO.Add(1)
 	case routing.DecisionRTTIncrease:
 		m.DecisionMetrics.RTTIncrease.Add(1)
+	case routing.DecisionVetoCommit:
+		m.DecisionMetrics.VetoCommit.Add(1)
 	}
+
 }
 
 // writeInitResponse encrypts the server init response packet and sends it back to the server. Returns the marshaled response and an error.

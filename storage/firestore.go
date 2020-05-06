@@ -86,6 +86,8 @@ type routingRulesSettings struct {
 	EnableMultipathForJitter     bool    `firestore:"jitterMultipath"`
 	EnableMultipathForRTT        bool    `firestore:"rttMultipath"`
 	EnableABTest                 bool    `firestore:"abTest"`
+	EnableTryBeforeYouBuy        bool    `firestore:"tryBeforeYouBuy"`
+	TryBeforeYouBuyMaxSlices     int8    `firestore:"tryBeforeYouBuyMaxSlices"`
 	SelectionPercentage          int64   `firestore:"selectionPercentage"`
 }
 
@@ -1137,6 +1139,8 @@ func (fs *Firestore) createRouteRulesSettingsForBuyerID(ctx context.Context, ID 
 		EnableMultipathForJitter:     rrs.EnableMultipathForJitter,
 		EnableMultipathForRTT:        rrs.EnableMultipathForRTT,
 		EnableABTest:                 rrs.EnableABTest,
+		EnableTryBeforeYouBuy:        rrs.EnableTryBeforeYouBuy,
+		TryBeforeYouBuyMaxSlices:     rrs.TryBeforeYouBuyMaxSlices,
 		SelectionPercentage:          rrs.SelectionPercentage,
 	}
 
@@ -1195,6 +1199,8 @@ func (fs *Firestore) getRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 	rrs.EnableMultipathForJitter = tempRRS.EnableMultipathForJitter
 	rrs.EnableMultipathForRTT = tempRRS.EnableMultipathForRTT
 	rrs.EnableABTest = tempRRS.EnableABTest
+	rrs.EnableTryBeforeYouBuy = tempRRS.EnableTryBeforeYouBuy
+	rrs.TryBeforeYouBuyMaxSlices = tempRRS.TryBeforeYouBuyMaxSlices
 	rrs.SelectionPercentage = tempRRS.SelectionPercentage
 
 	return rrs, nil
@@ -1207,23 +1213,25 @@ func (fs *Firestore) setRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 
 	// Convert RoutingRulesSettings struct to firestore map
 	rrsFirestore := map[string]interface{}{
-		"displayName":           name,
-		"envelopeKbpsUp":        rrs.EnvelopeKbpsUp,
-		"envelopeKbpsDown":      rrs.EnvelopeKbpsDown,
-		"mode":                  rrs.Mode,
-		"maxPricePerGBNibblins": convertCentsToNibblins(rrs.MaxCentsPerGB),
-		"acceptableLatency":     rrs.AcceptableLatency,
-		"rttRouteSwitch":        rrs.RTTEpsilon,
-		"rttThreshold":          rrs.RTTThreshold,
-		"rttHysteresis":         rrs.RTTHysteresis,
-		"rttVeto":               rrs.RTTVeto,
-		"youOnlyLiveOnce":       rrs.EnableYouOnlyLiveOnce,
-		"packetLossSafety":      rrs.EnablePacketLossSafety,
-		"packetLossMultipath":   rrs.EnableMultipathForPacketLoss,
-		"jitterMultipath":       rrs.EnableMultipathForJitter,
-		"rttMultipath":          rrs.EnableMultipathForRTT,
-		"abTest":                rrs.EnableABTest,
-		"selectionPercentage":   rrs.SelectionPercentage,
+		"displayName":              name,
+		"envelopeKbpsUp":           rrs.EnvelopeKbpsUp,
+		"envelopeKbpsDown":         rrs.EnvelopeKbpsDown,
+		"mode":                     rrs.Mode,
+		"maxPricePerGBNibblins":    convertCentsToNibblins(rrs.MaxCentsPerGB),
+		"acceptableLatency":        rrs.AcceptableLatency,
+		"rttRouteSwitch":           rrs.RTTEpsilon,
+		"rttThreshold":             rrs.RTTThreshold,
+		"rttHysteresis":            rrs.RTTHysteresis,
+		"rttVeto":                  rrs.RTTVeto,
+		"youOnlyLiveOnce":          rrs.EnableYouOnlyLiveOnce,
+		"packetLossSafety":         rrs.EnablePacketLossSafety,
+		"packetLossMultipath":      rrs.EnableMultipathForPacketLoss,
+		"jitterMultipath":          rrs.EnableMultipathForJitter,
+		"rttMultipath":             rrs.EnableMultipathForRTT,
+		"abTest":                   rrs.EnableABTest,
+		"tryBeforeYouBuy":          rrs.EnableTryBeforeYouBuy,
+		"tryBeforeYouBuyMaxSlices": rrs.TryBeforeYouBuyMaxSlices,
+		"selectionPercentage":      rrs.SelectionPercentage,
 	}
 
 	// Attempt to set route shader for buyer
