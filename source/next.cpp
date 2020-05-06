@@ -2715,12 +2715,18 @@ struct NextUpgradeRequestPacket
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
+        uint64_t magic = Stream::IsWriting ? NEXT_MAGIC : 0;
+        serialize_uint64( stream, magic );
+        if ( Stream::IsReading && magic != NEXT_MAGIC )
+            return false;
+
         serialize_uint64( stream, protocol_version );
         serialize_uint64( stream, session_id );
         serialize_address( stream, server_address );
         serialize_bytes( stream, server_kx_public_key, crypto_kx_PUBLICKEYBYTES );
         serialize_bytes( stream, upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
         serialize_bytes( stream, signature, crypto_sign_BYTES );
+
         return true;
     }
 
@@ -5981,6 +5987,8 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     const int packet_id = packet_data[0];
 
+    // upgraded direct packet (255)
+
     if ( client->upgraded && packet_id == NEXT_DIRECT_PACKET && packet_bytes <= NEXT_MTU + 18 && from_server_address )
     {
         const uint8_t * p = packet_data + 1;
@@ -6028,174 +6036,83 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
         return true;
     }
 
-    /*
-    switch ( packet_id )
+    // upgrade request packet (not encrypted)
+
+    if ( from_server_address && packet_id == NEXT_UPGRADE_REQUEST_PACKET )
     {
-        case NEXT_RELAY_PONG_PACKET:
+        printf( "*** client received upgrade request packet ***\n" );
+
+        NextUpgradeRequestPacket packet;
+
+        if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL ) != packet_id )
         {
-            NextRelayPongPacket packet;
-
-            if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL ) != packet_id )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored relay pong packet. failed to read" );
-                return NEXT_ERROR;
-            }
-
-            // todo: check magic
-
-            if ( !client->upgraded )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored relay pong packet. not upgraded yet" );
-                return true;
-            }            
-
-            if ( packet.session_id != client->session_id )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignoring relay pong packet. session id does not match" );
-                return true;
-            }
-
-            next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL );
-
-            next_relay_manager_process_pong( client->near_relay_manager, from, packet.ping_sequence );
+            return false;
         }
-        break;        
 
-        case NEXT_ROUTE_RESPONSE_PACKET:
+        if ( !packet.Verify( client->customer_public_key ) )
         {
-            // todo: WTF we should be reading the packet prior to mutex... 
-
-            // todo: magic
-
-            next_platform_mutex_acquire( client->route_manager_mutex );
-            next_route_manager_process_route_response_packet( client->route_manager, from, packet_data, packet_bytes, &client->special_replay_protection );
-            bool route_established = client->route_manager->route_data.current_route;
-            int route_kbps_up = client->route_manager->route_data.current_route_kbps_up;
-            int route_kbps_down = client->route_manager->route_data.current_route_kbps_down;
-            next_platform_mutex_release( client->route_manager_mutex );
-
-            next_platform_mutex_acquire( client->bandwidth_mutex );
-            if ( route_established )
-            {
-                client->bandwidth_envelope_kbps_up = route_kbps_up;
-                client->bandwidth_envelope_kbps_down = route_kbps_down;
-            }
-            else
-            {
-                client->bandwidth_envelope_kbps_up = 0;
-                client->bandwidth_envelope_kbps_down = 0;
-            }
-            next_platform_mutex_release( client->bandwidth_mutex );
-
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. did not verify" );
             return true;
         }
-        break;
 
-        case NEXT_CONTINUE_RESPONSE_PACKET:
+        if ( client->fallback_to_direct )
         {
-            // todo: we should be reading the packet prior to mutex
-
-            // todo: magic
-
-            next_platform_mutex_acquire( client->route_manager_mutex );
-            next_route_manager_process_continue_response_packet( client->route_manager, from, packet_data, packet_bytes, &client->special_replay_protection );
-            next_platform_mutex_release( client->route_manager_mutex );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. in fallback to direct state" );
             return true;
         }
-        break;
 
-        case NEXT_SERVER_TO_CLIENT_PACKET:
+        if ( next_global_config.disable_network_next )
         {
-            int payload_bytes = 0;
-            uint64_t payload_sequence = 0;
-            uint8_t payload_data[NEXT_MTU];
-
-            // todo: we should be reading the packet prior to mutex
-
-            // todo: magic
-
-            next_platform_mutex_acquire( client->route_manager_mutex );
-            const bool result = next_route_manager_process_server_to_client_packet( client->route_manager, from, packet_data, packet_bytes, &payload_sequence, payload_data, &payload_bytes );
-            next_platform_mutex_release( client->route_manager_mutex );
-
-            if ( !result )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored server to client packet. could not verify" );
-                return NEXT_ERROR;
-            }
-
-            const bool already_received = next_replay_protection_already_received( &client->payload_replay_protection, payload_sequence ) != 0;
-
-            if ( already_received && !multipath )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client already received server to client packet %" PRIu64, payload_sequence );
-                return NEXT_ERROR;
-            }
-
-            if ( already_received && multipath )
-            {
-                client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT]++;
-                return NEXT_OK;
-            }
-
-            uint64_t clean_sequence = next_clean_sequence( payload_sequence );
-
-            next_replay_protection_advance_sequence( &client->payload_replay_protection, clean_sequence );
-    
-            next_packet_loss_tracker_packet_received( &client->packet_loss_tracker, clean_sequence );
-
-            next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
-            notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
-            notify->packet_bytes = payload_bytes;
-            memcpy( notify->packet_data, payload_data, payload_bytes );
-            {
-                next_mutex_guard( client->notify_mutex );
-                next_queue_push( client->notify_queue, notify );            
-            }
-
-            client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT]++;
-
-            return NEXT_OK;
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. network next is disabled" );
+            return true;
         }
-        break;
 
-        case NEXT_PONG_PACKET:
+        if ( packet.protocol_version != next_protocol_version() )
         {
-            int payload_bytes = 0;
-            uint64_t payload_sequence = 0;
-            uint8_t payload_data[NEXT_MTU];
-
-            next_platform_mutex_acquire( client->route_manager_mutex );
-            const bool result = next_route_manager_process_server_to_client_packet( client->route_manager, from, packet_data, packet_bytes, &payload_sequence, payload_data, &payload_bytes );
-            next_platform_mutex_release( client->route_manager_mutex );
-
-            if ( !result )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored pong packet. could not verify" );
-                return NEXT_ERROR;
-            }
-
-            uint64_t clean_sequence = next_clean_sequence( payload_sequence );
-
-            if ( next_replay_protection_already_received( &client->special_replay_protection, clean_sequence ) )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client already received pong packet %" PRIu64, clean_sequence );
-                return NEXT_ERROR;
-            }
-
-            next_replay_protection_advance_sequence( &client->special_replay_protection, clean_sequence );
-
-            const uint8_t * p = packet_data + NEXT_HEADER_BYTES;
-
-            uint64_t ping_sequence = next_read_uint64( &p );
-
-            next_ping_history_pong_received( &client->next_ping_history, ping_sequence, next_time() );
-
-            return NEXT_OK;
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. protocol version mismatch" );
+            return true;
         }
-        break;
+
+        if ( !next_address_equal( &client->server_address, &packet.server_address ) )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. packet server address does not match client server address" );
+            return true;
+        }
+
+        next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL );
+
+        // todo: bring this back when ready
+        /*
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client received upgrade request packet from server" );
+
+        NextUpgradeResponsePacket response;
+        response.client_open_session_sequence = client->open_session_sequence;
+        memcpy( response.client_kx_public_key, client->client_kx_public_key, crypto_kx_PUBLICKEYBYTES );
+        memcpy( response.client_route_public_key, client->client_route_public_key, crypto_box_PUBLICKEYBYTES );
+        memcpy( response.upgrade_token, packet.upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
+
+        if ( next_client_internal_send_packet_to_server( client, NEXT_UPGRADE_RESPONSE_PACKET, &response ) != NEXT_OK )
+        {
+            next_printf( NEXT_LOG_LEVEL_WARN, "client failed to send upgrade response packet to server" );
+            return NEXT_ERROR;
+        }
+
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent upgrade response packet to server" );
+
+        // IMPORTANT: Cache upgrade response and keep sending it until we get an upgrade confirm.
+        // Without this, under very rare packet loss conditions it's possible for the client to get
+        // stuck in an undefined state.
+
+        client->sending_upgrade_response = true;
+        client->upgrade_response = response;
+        client->upgrade_response_start_time = next_time();
+        client->last_upgrade_response_send_time = next_time();
+        */
+
+        return true;
     }
-    */
+
+    // ...
 
     return false;
 }
@@ -6221,7 +6138,7 @@ void next_client_internal_process_game_packet( next_client_internal_t * client, 
         client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT]++;
 
         // todo
-        printf( "client received raw direct packet\n" );
+        // printf( "client received raw direct packet\n" );
     }
 }
 
@@ -6548,7 +6465,7 @@ void next_client_internal_update_direct_pings( next_client_internal_t * client )
     next_assert( client );
 
     // todo: turn this back on. temporarily disabled
-    
+
     /*
     if ( next_global_config.disable_network_next )
         return;
@@ -10121,6 +10038,9 @@ void next_server_internal_update_pending_upgrades( next_server_internal_t * serv
             
             entry->last_packet_send_time = current_time;
 
+            // todo
+            printf( "*** upgrade request packet ***\n" );
+
             NextUpgradeRequestPacket packet;
             packet.protocol_version = next_protocol_version();
             packet.session_id = entry->session_id;
@@ -10274,7 +10194,7 @@ void next_server_internal_process_game_packet( next_server_internal_t * server, 
     if ( packet_bytes <= NEXT_MTU )
     {
         // todo
-        printf( "server received raw direct packet\n" );
+        // printf( "server received raw direct packet\n" );
 
         next_server_notify_packet_received_t * notify = (next_server_notify_packet_received_t*) next_malloc( server->context, sizeof( next_server_notify_packet_received_t ) );
         notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
