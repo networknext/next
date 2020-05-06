@@ -89,7 +89,7 @@ func TestDecideDowngradeRTTHysteresis(t *testing.T) {
 
 	expected := routing.Decision{
 		OnNetworkNext: false,
-		Reason:        routing.DecisionRTTIncrease,
+		Reason:        routing.DecisionRTTHysteresis,
 	}
 
 	// Loop through all permutations of the decision functions and test that the result is the same
