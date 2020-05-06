@@ -1,0 +1,268 @@
+DONE
+
+	Packets to postfix with MAGIC:
+
+		NEXT_DIRECT (255)
+		NEXT_ROUTE_REQUEST_PACKET
+		NEXT_ROUTE_RESPONSE_PACKET
+		NEXT_CONTINUE_REQUEST_PACKET
+		NEXT_CONTINUE_RESPONSE_PACKET
+		NEXT_DIRECT_PING_PACKET
+		NEXT_DIRECT_PONG_PACKET
+
+	Packets that already have signature checks, so they don't need changes:
+
+		NEXT_CLIENT_TO_SERVER_PACKET
+		NEXT_SERVER_TO_CLIENT_PACKET
+		NEXT_PING_PACKET
+		NEXT_PONG_PACKET
+		NEXT_UPGRADE_REQUEST_PACKET
+		NEXT_UPGRADE_CONFIRM_PACKET
+		NEXT_UPGRADE_RESPONSE_PACKET
+		NEXT_CLIENT_STATS_PACKET
+		NEXT_ROUTE_UPDATE_PACKET
+		NEXT_ROUTE_UPDATE_ACK_PACKET
+		NEXT_RELAY_PING_PACKET
+		NEXT_RELAY_PONG_PACKET
+
+	All backend packets already have signature checks.
+
+	So the only work required is to:
+
+		1. Extend all packet code to try to read network next packets first. Return false if it's not a valid NN packet.
+		
+		2. If we fail to read a packet as a network next packet, then it should be passed on to the game as a game packet.
+
+	To get started, extend these packets to have magic included:
+
+		NEXT_DIRECT_PING_PACKET
+		NEXT_DIRECT_PONG_PACKET
+
+	Seems easy enough and quite simple.
+
+	Now do the direct packet with 255...
+
+	Now do client send packets...
+
+	Now implement server send and receive direct.
+
+	Now implement server receive 255 type packets.
+
+	OK client and server should be ready to send and receive raw and upgraded direct packets.
+
+	Disable direct pings when upgraded temporarily.
+
+	Identify packets that need to work to get upgrading working.
+
+		NEXT_UPGRADE_REQUEST_PACKET
+		NEXT_UPGRADE_CONFIRM_PACKET
+		NEXT_UPGRADE_RESPONSE_PACKET
+
+	Added magic to the upgrade request packet.
+
+	Now hook up the client to read the upgrade request packet.
+
+	Need to comment out the server init request/response and go direct to server init'd.
+
+	Need to comment out server packets sent to backend, since we don't handle the responses yet.
+
+	Client gets upgrade request packet now.
+
+	The only packets between client and server that are encrypted are:
+
+	    next_encrypted_packets[NEXT_DIRECT_PING_PACKET] = 1;
+	    next_encrypted_packets[NEXT_DIRECT_PONG_PACKET] = 1;
+	    next_encrypted_packets[NEXT_CLIENT_STATS_PACKET] = 1;
+	    next_encrypted_packets[NEXT_ROUTE_UPDATE_PACKET] = 1;
+	    next_encrypted_packets[NEXT_ROUTE_UPDATE_ACK_PACKET] = 1;
+
+	Added magic bytes to the upgrade response and upgrade confirm packets.
+
+	Extend server to process the upgrade response packet from client.
+
+	Extend client to process the upgrade response packet from server.
+
+	Verify that upgrade completes and client and server receive upgraded direct packets.
+
+TODO
+
+	OK what other packets need to be upgraded?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	--------------------------------
+
+	Need to move all packets that go across relays that have changed, into new byte values.
+
+	This makes it possible for a relay to support both old and new protocol across relays (!!!)
+
+	--------------------------------
+
+	Add memory guard buffers to help catch memory trashes (suspected from Velan).
+
+	--------------------------------
+
+	Find a way to automatically determine what datacenter we are running in.
+
+	eg. either public IP address range for bare metal, or server-side code that detects when you are in a cloud.
+
+	Environment variable setting should always remain available as a fallback.
+
+	--------------------------------
+
+	Get the win64 testbed up and running debug and release.
+
+	Get the win64 soak test running inside the win64 testbed.
+
+	Run soak test for 1 hr on windows.
+
+	--------------------------------
+
+	Get the soak test running on ps4.
+
+	Run soak test for 1 hr on ps4.
+
+	--------------------------------
+
+	Get the soak test running on x1.
+
+	Run soak test for 1 hr on x1.
+
+	--------------------------------
+
+	From Velan:
+
+	"Xbox One seems to have asymmetric alloc/free, it attempted to free something using the global context that wasn't allocated with the global context."
+
+	Find this and fix it.
+
+	--------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	--------------------------------
+
+	Would be good to track the client and server packets sent, so we can do packet loss as a % calculation, when games send different rates of packets.
+
+	--------------------------------
+
+	Re-add the client and server tests with ports, once I enable the ports on X1 in my own manifest...
+
+	--------------------------------
+
+	Find a way to get the X1 testing going within a UE4 plugin context.
+
+	There is weird stuff with the ipv4 as ipv6 that needs to be tested.
+
+	Also need to test the port binding running in the context of UE4.
+
+	--------------------------------
+
+	"Hey Glenn, the distro we'll be using is CentOS. Would it be possible for you to provide us with the plugin for both versions 7 and 8?"
+
+	PUBG need Linux plugin versions for CentOS 7 and 8.
+
+	--------------------------------
+
+	Fix the link problem with the nintendo testbed.
+
+	Get Nintendo switch devkit from Troy Innovation Garage.
+
+	Set it up the test kit and verify that tests pass and the switch client connects to the linux server.
+
+	Get assets from Nathan for Nintendo Switch.
+
+	--------------------------------
+
+	Build the iOS testbed and verify working on my iPad Pro or with emulator.
+
+	--------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	-----------------
+
+	Psychz 1 month trial. Coordinate with PUBG launch. Make sure we have the eval tools to determine which relays are performant before starting the trial.
+
+	-----------------
+
+	Open source relay code so we can work with Stackpath.
+
+	-----------------
+
+	Update job listings on website.
+
+	Make sure job listings actually go somewhere...

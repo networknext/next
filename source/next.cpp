@@ -2778,10 +2778,16 @@ struct NextUpgradeResponsePacket
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
+        uint64_t magic = Stream::IsWriting ? NEXT_MAGIC : 0;
+        serialize_uint64( stream, magic );
+        if ( Stream::IsReading && magic != NEXT_MAGIC )
+            return false;
+
         serialize_bits( stream, client_open_session_sequence, 8 );
         serialize_bytes( stream, client_kx_public_key, crypto_kx_PUBLICKEYBYTES );
         serialize_bytes( stream, client_route_public_key, crypto_box_PUBLICKEYBYTES );
         serialize_bytes( stream, upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
+
         return true;
     }
 };
@@ -2802,12 +2808,18 @@ struct NextUpgradeConfirmPacket
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
+        uint64_t magic = Stream::IsWriting ? NEXT_MAGIC : 0;
+        serialize_uint64( stream, magic );
+        if ( Stream::IsReading && magic != NEXT_MAGIC )
+            return false;
+
         serialize_uint64( stream, upgrade_sequence );
         serialize_uint64( stream, session_id );
         serialize_address( stream, server_address );
         serialize_bytes( stream, client_kx_public_key, crypto_kx_PUBLICKEYBYTES );
         serialize_bytes( stream, server_kx_public_key, crypto_kx_PUBLICKEYBYTES );
         serialize_bytes( stream, signature, crypto_sign_BYTES );
+
         return true;
     }
 
@@ -6040,14 +6052,13 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( from_server_address && packet_id == NEXT_UPGRADE_REQUEST_PACKET )
     {
-        printf( "*** client received upgrade request packet ***\n" );
+        if ( !next_address_equal( from, &client->server_address ) )
+            return false;
 
         NextUpgradeRequestPacket packet;
 
         if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL ) != packet_id )
-        {
             return false;
-        }
 
         if ( !packet.Verify( client->customer_public_key ) )
         {
@@ -6073,16 +6084,8 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
             return true;
         }
 
-        if ( !next_address_equal( &client->server_address, &packet.server_address ) )
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. packet server address does not match client server address" );
-            return true;
-        }
-
         next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL );
 
-        // todo: bring this back when ready
-        /*
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client received upgrade request packet from server" );
 
         NextUpgradeResponsePacket response;
@@ -6107,7 +6110,82 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
         client->upgrade_response = response;
         client->upgrade_response_start_time = next_time();
         client->last_upgrade_response_send_time = next_time();
-        */
+
+        printf( "*** client received upgrade request packet ***\n" );
+
+        return true;
+    }
+
+    // upgrade confirm packet
+
+    if ( packet_id == NEXT_UPGRADE_CONFIRM_PACKET )
+    {
+        if ( !next_address_equal( from, &client->server_address ) )
+            return false;
+ 
+        NextUpgradeConfirmPacket packet;
+
+        if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL ) != packet_id )
+            return false;
+
+        if ( !packet.Verify( client->customer_public_key ) )
+            return false;
+
+        if ( !client->sending_upgrade_response )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade confirm packet from server. unexpected" );
+            return true;
+        }
+
+        if ( client->fallback_to_direct )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. in fallback to direct state" );
+            return true;
+        }
+
+        if ( memcmp( packet.client_kx_public_key, client->client_kx_public_key, crypto_kx_PUBLICKEYBYTES ) != 0 )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade confirm packet from server. client public key does not match" );
+            return true;
+        }
+
+        if ( client->upgraded && client->upgrade_sequence >= packet.upgrade_sequence )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade confirm packet from server. client already upgraded" );
+            return true;
+        }
+
+        uint8_t client_send_key[crypto_kx_SESSIONKEYBYTES];
+        uint8_t client_receive_key[crypto_kx_SESSIONKEYBYTES];
+        if ( crypto_kx_client_session_keys( client_receive_key, client_send_key, client->client_kx_public_key, client->client_kx_private_key, packet.server_kx_public_key ) != 0 )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade confirm packet from server. could not generate session keys from server public key" );
+            return true;
+        }
+
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client received upgrade confirm packet from server" );
+
+        next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL );
+
+        client->upgraded = true;
+        client->upgrade_sequence = packet.upgrade_sequence;
+        client->session_id = packet.session_id;
+        client->last_direct_pong_time = next_time();
+        memcpy( client->client_send_key, client_send_key, crypto_kx_SESSIONKEYBYTES );
+        memcpy( client->client_receive_key, client_receive_key, crypto_kx_SESSIONKEYBYTES );
+
+        next_client_notify_upgraded_t * notify = (next_client_notify_upgraded_t*) next_malloc( client->context, sizeof(next_client_notify_upgraded_t) );
+        next_assert( notify );
+        notify->type = NEXT_CLIENT_NOTIFY_UPGRADED;
+        notify->session_id = client->session_id;
+        {
+            next_mutex_guard( client->notify_mutex );
+            next_queue_push( client->notify_queue, notify );
+        }
+
+        client->counters[NEXT_CLIENT_COUNTER_UPGRADE_SESSION]++;
+
+        client->sending_upgrade_response = false;
 
         return true;
     }
@@ -10127,7 +10205,11 @@ bool next_server_internal_process_network_next_packet( next_server_internal_t * 
     next_assert( packet_data );
     next_assert( packet_bytes );
 
-    if ( packet_data[0] == NEXT_DIRECT_PACKET && packet_bytes > 18 && packet_bytes <= NEXT_MTU + 18 )
+    const int packet_id = packet_data[0];
+
+    // upgraded direct packet (255)
+
+    if ( packet_id == NEXT_DIRECT_PACKET && packet_bytes > 18 && packet_bytes <= NEXT_MTU + 18 )
     {
         const uint8_t * p = packet_data + 1;
 
@@ -10178,8 +10260,192 @@ bool next_server_internal_process_network_next_packet( next_server_internal_t * 
             next_queue_push( server->notify_queue, notify );            
         }
 
+        // todo
+        printf( "server received upgraded direct packet\n" );
+
         return true;
     }
+
+    // upgrade response packet
+
+    if ( packet_id == NEXT_UPGRADE_RESPONSE_PACKET )
+    {
+        NextUpgradeResponsePacket packet;
+
+        if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL ) != packet_id )
+            return false;
+        
+        NextUpgradeToken upgrade_token;
+
+        // does the session already exist? if so we still need to reply with upgrade commit in case of server -> client packet loss
+
+        bool upgraded = false;
+
+        next_session_entry_t * existing_entry = next_session_manager_find_by_address( server->session_manager, from );
+        
+        if ( existing_entry )
+        {
+            if ( !upgrade_token.Read( packet.upgrade_token, existing_entry->ephemeral_private_key ) )
+            {
+                char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored upgrade response from %s. could not decrypt upgrade token (existing entry)", next_address_to_string( from, address_buffer ) );
+                return true;
+            }
+
+            if ( upgrade_token.session_id != existing_entry->session_id )
+            {
+                char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored upgrade response from %s. session id does not match existing entry", next_address_to_string( from, address_buffer ) );
+                return true;
+            }
+
+            if ( !next_address_equal( &upgrade_token.client_address, &existing_entry->address ) )
+            {
+                char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored upgrade response from %s. client address does not match existing entry", next_address_to_string( from, address_buffer ) );
+                return true;
+            }
+        }
+        else
+        {
+            // session does not exist yet. look up pending upgrade entry...
+
+            next_pending_session_entry_t * pending_entry = next_pending_session_manager_find( server->pending_session_manager, from );
+            if ( pending_entry == NULL )
+            {
+                char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored upgrade response from %s. does not match any pending upgrade", next_address_to_string( from, address_buffer ) );
+                return true;
+            }
+
+            if ( !upgrade_token.Read( packet.upgrade_token, pending_entry->private_key ) )
+            {
+                char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored upgrade response from %s. could not decrypt upgrade token", next_address_to_string( from, address_buffer ) );
+                return true;
+            }
+
+            if ( upgrade_token.session_id != pending_entry->session_id )
+            {
+                char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored upgrade response from %s. session id does not match pending upgrade entry", next_address_to_string( from, address_buffer ) );
+                return true;
+            }
+
+            if ( !next_address_equal( &upgrade_token.client_address, &pending_entry->address ) )
+            {
+                char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored upgrade response from %s. client address does not match pending upgrade entry", next_address_to_string( from, address_buffer ) );
+                return true;
+            }
+
+            uint8_t server_send_key[crypto_kx_SESSIONKEYBYTES];
+            uint8_t server_receive_key[crypto_kx_SESSIONKEYBYTES];
+            if ( crypto_kx_server_session_keys( server_receive_key, server_send_key, server->server_kx_public_key, server->server_kx_private_key, packet.client_kx_public_key ) != 0 )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server could not generate session keys from client public key" );
+                return true;
+            }
+
+            // remove from pending upgrade
+
+            next_pending_session_manager_remove_by_address( server->pending_session_manager, from );
+
+            // add to established sessions
+
+            next_platform_mutex_acquire( server->session_mutex );
+            next_session_entry_t * entry = next_session_manager_add( server->session_manager, &pending_entry->address, pending_entry->session_id, pending_entry->private_key, pending_entry->upgrade_token );
+            next_platform_mutex_release( server->session_mutex );
+            if ( entry == NULL )
+            {
+                char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+                next_printf( NEXT_LOG_LEVEL_ERROR, "server ignored upgrade response from %s. failed to add session", next_address_to_string( from, address_buffer ) );
+                return NEXT_ERROR;
+            }
+
+            memcpy( entry->send_key, server_send_key, crypto_kx_SESSIONKEYBYTES );
+            memcpy( entry->receive_key, server_receive_key, crypto_kx_SESSIONKEYBYTES );
+            memcpy( entry->client_route_public_key, packet.client_route_public_key, crypto_box_PUBLICKEYBYTES );
+            entry->last_client_stats_update = next_time();
+            entry->user_hash = pending_entry->user_hash;
+            entry->platform_id_override = pending_entry->platform_id;
+            entry->tag = pending_entry->tag;
+            entry->client_open_session_sequence = packet.client_open_session_sequence;
+
+            // notify session upgraded
+
+            next_server_notify_session_upgraded_t * notify = (next_server_notify_session_upgraded_t*) next_malloc( server->context, sizeof( next_server_notify_session_upgraded_t ) );
+            notify->type = NEXT_SERVER_NOTIFY_SESSION_UPGRADED;
+            notify->address = entry->address;
+            notify->session_id = entry->session_id;
+            notify->tag = entry->tag;
+            {
+                next_mutex_guard( server->notify_mutex );
+                next_queue_push( server->notify_queue, notify );            
+            }
+
+            char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server received upgrade response packet from client %s", next_address_to_string( from, address_buffer ) );
+
+            upgraded = true;
+        }
+
+        if ( !next_address_equal( &upgrade_token.client_address, from ) )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored upgrade response. client address does not match from address" );
+            return true;
+        }
+
+        if ( upgrade_token.expire_timestamp < uint64_t(next_time()) )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored upgrade response. upgrade token expired" );
+            return true;
+        }
+
+        if ( !next_address_equal( &upgrade_token.client_address, from ) )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored upgrade response. client address does not match from address" );
+            return true;
+        }
+
+        if ( !next_address_equal( &upgrade_token.server_address, &server->server_address ) )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored upgrade response. server address does not match" );
+            return true;
+        }
+
+        next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL );
+
+        if ( !upgraded )
+        {
+            char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server received upgrade response packet from %s", next_address_to_string( from, address_buffer ) );
+        }
+
+        // reply with upgrade confirm
+
+        NextUpgradeConfirmPacket response;
+        response.upgrade_sequence = server->upgrade_sequence++;
+        response.session_id = upgrade_token.session_id;
+        response.server_address = server->server_address;
+        memcpy( response.client_kx_public_key, packet.client_kx_public_key, crypto_kx_PUBLICKEYBYTES );
+        memcpy( response.server_kx_public_key, server->server_kx_public_key, crypto_kx_PUBLICKEYBYTES );
+        response.Sign( server->customer_private_key );
+
+        if ( next_server_internal_send_packet( server, from, NEXT_UPGRADE_CONFIRM_PACKET, &response ) != NEXT_OK )
+        {
+            next_printf( NEXT_LOG_LEVEL_ERROR, "server could not send upgrade confirm packet" );
+            return true;
+        }
+
+        char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent upgrade confirm packet to client %s", next_address_to_string( from, address_buffer ) );
+
+        // todo
+        printf( "*** upgrade confirm packet ***\n" );
+    }
+
+    // ...
 
     return false;
 }
@@ -10194,7 +10460,7 @@ void next_server_internal_process_game_packet( next_server_internal_t * server, 
     if ( packet_bytes <= NEXT_MTU )
     {
         // todo
-        // printf( "server received raw direct packet\n" );
+        printf( "server received raw direct packet\n" );
 
         next_server_notify_packet_received_t * notify = (next_server_notify_packet_received_t*) next_malloc( server->context, sizeof( next_server_notify_packet_received_t ) );
         notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
@@ -10230,63 +10496,6 @@ void next_server_internal_block_and_receive_packet( next_server_internal_t * ser
         return;
 
     next_server_internal_process_game_packet( server, &from, packet_data, packet_bytes );
-
-    /*
-    if ( packet_data[0] == 0 && packet_bytes >= 2 && packet_bytes <= NEXT_MTU + 1 )
-    {
-        next_server_notify_packet_received_t * notify = (next_server_notify_packet_received_t*) next_malloc( server->context, sizeof( next_server_notify_packet_received_t ) );
-        notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
-        notify->from = from;
-        notify->packet_bytes = packet_bytes - 1;
-        memcpy( notify->packet_data, packet_data + 1, size_t(packet_bytes) - 1 );
-        {
-            next_mutex_guard( server->notify_mutex );
-            next_queue_push( server->notify_queue, notify );            
-        }
-    }
-    
-    if ( packet_data[0] == 255 && packet_bytes >= 11 && packet_bytes <= NEXT_MTU + 10 )
-    {
-        const uint8_t * p = packet_data + 1;
-        uint8_t packet_session_sequence = next_read_uint8( &p );
-        uint64_t packet_sequence = next_read_uint64( &p );
-        next_session_entry_t * entry = next_session_manager_find_by_address( server->session_manager, &from );
-        if ( !entry )
-        {
-            char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored direct packet from %s. could not find session for address", next_address_to_string( &from, address_buffer ) );
-            return;
-        }
-        if ( packet_session_sequence != entry->client_open_session_sequence )
-        {
-            char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored direct packet from %s. session mismatch", next_address_to_string( &from, address_buffer ) );
-            return;
-        }
-        uint64_t clean_sequence = next_clean_sequence( packet_sequence );
-        if ( next_replay_protection_already_received( &entry->payload_replay_protection, clean_sequence ) )
-        {
-            char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored direct packet from %s. already received (%" PRIx64 " vs. %" PRIx64 ")", next_address_to_string( &from, address_buffer ), clean_sequence, entry->payload_replay_protection.most_recent_sequence );
-            return;
-        }
-        next_replay_protection_advance_sequence( &entry->payload_replay_protection, clean_sequence );
-        next_packet_loss_tracker_packet_received( &entry->packet_loss_tracker, clean_sequence );
-        next_server_notify_packet_received_t * notify = (next_server_notify_packet_received_t*) next_malloc( server->context, sizeof( next_server_notify_packet_received_t ) );
-        notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
-        notify->from = from;
-        notify->packet_bytes = packet_bytes - 10;
-        memcpy( notify->packet_data, packet_data + 10, size_t(packet_bytes) - 10 );
-        {
-            next_mutex_guard( server->notify_mutex );
-            next_queue_push( server->notify_queue, notify );            
-        }
-    }
-    else
-    {
-        next_server_internal_process_packet( server, &from, packet_data, packet_bytes );
-    }
-    */
 }
 
 void next_server_internal_upgrade_session( next_server_internal_t * server, const next_address_t * address, uint64_t session_id, uint64_t user_hash, uint32_t platform_id, uint64_t tag )
@@ -10510,7 +10719,9 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
     next_printf( NEXT_LOG_LEVEL_INFO, "server resolved backend hostname to %s", next_address_to_string( &result, address_buffer ) );
 
     server->backend_address = result;
-    server->state = NEXT_SERVER_STATE_INITIALIZING;
+    // todo: temporarily jump straight to initialized
+    server->state = NEXT_SERVER_STATE_INITIALIZED;
+    // server->state = NEXT_SERVER_STATE_INITIALIZING;
 
     return true;
 }
@@ -10573,6 +10784,31 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         }
     }
 
+    // packet loss updates
+
+    const int max_entry_index = server->session_manager->max_entry_index;
+
+    for ( int i = 0; i <= max_entry_index; ++i )
+    {
+        if ( server->session_manager->session_ids[i] == 0 )
+            continue;
+
+        next_session_entry_t * session = &server->session_manager->entries[i];
+
+        if ( session->stats_fallback_to_direct )
+            continue;
+
+        if ( session->next_packet_loss_update_time <= current_time )
+        {
+            const int packets_lost = next_packet_loss_tracker_update( &session->packet_loss_tracker );
+            session->stats_packets_lost_client_to_server += packets_lost;
+            session->next_packet_loss_update_time = current_time + NEXT_SECONDS_BETWEEN_PACKET_LOSS_UPDATES;
+        }
+    }
+
+    // todo: turn this back on
+
+    /*
     // server update
 
     if ( state != NEXT_SERVER_STATE_INITIALIZED )
@@ -10615,8 +10851,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         return;
 
     // session updates
-
-    const int max_entry_index = server->session_manager->max_entry_index;
 
     for ( int i = 0; i <= max_entry_index; ++i )
     {
@@ -10717,26 +10951,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             session->next_session_update_time = -1.0;
         }
     }
-
-    // packet loss updates
-
-    for ( int i = 0; i <= max_entry_index; ++i )
-    {
-        if ( server->session_manager->session_ids[i] == 0 )
-            continue;
-
-        next_session_entry_t * session = &server->session_manager->entries[i];
-
-        if ( session->stats_fallback_to_direct )
-            continue;
-
-        if ( session->next_packet_loss_update_time <= current_time )
-        {
-            const int packets_lost = next_packet_loss_tracker_update( &session->packet_loss_tracker );
-            session->stats_packets_lost_client_to_server += packets_lost;
-            session->next_packet_loss_update_time = current_time + NEXT_SECONDS_BETWEEN_PACKET_LOSS_UPDATES;
-        }
-    }
+    */
 }
 
 static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_internal_thread_function( void * context )
