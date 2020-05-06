@@ -84,7 +84,7 @@ namespace legacy
       z.next_out = compressed_buffer.data();
       z.avail_out = compressed_bytes_available;
       z.next_in = packet.Buffer.data();
-      z.avail_in = packet.Buffer.size();
+      z.avail_in = packet.Len;
 
       LogDebug("deflate init");
       int result = deflateInit(&z, Z_DEFAULT_COMPRESSION);
