@@ -1,5 +1,6 @@
 #pragma once
 
+#include "backend_response.hpp"
 #include "core/packet.hpp"
 #include "net/address.hpp"
 #include "os/platform.hpp"
@@ -19,6 +20,7 @@ namespace legacy
       ~Backend() = default;
 
       auto init() -> bool;
+      auto config() -> bool;
 
       auto updateCycle(const volatile bool& handle) -> bool;
 
@@ -33,6 +35,7 @@ namespace legacy
       auto buildInitJSON(util::JSON& doc) -> bool;
       auto buildConfigJSON(util::JSON& doc) -> bool;
       auto buildUpdateJSON(util::JSON& doc) -> bool;
+      auto readResponse(core::GenericPacket<>& packet, BackendRequest& request, BackendResponse& response) -> bool;
     };
   }  // namespace v3
 }  // namespace legacy

@@ -127,7 +127,8 @@ namespace util
     std::unique_lock<std::mutex> lock(*this->mLock);
 
     if (*this->mClosed) {
-      throw std::logic_error("tried to send on a closed channel");
+      LogDebug("tried to send on a closed channel");
+      return;
     }
 
     this->mQueue->push_back(std::move(item));

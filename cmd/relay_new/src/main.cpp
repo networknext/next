@@ -379,7 +379,7 @@ int main(int argc, const char* argv[])
 
     int error;
     if (!os::SetThreadAffinity(*thread, getPingProcNum(numProcessors), error)) {
-      Log("Error setting thread affinity: ", error);
+      Log("error setting thread affinity: ", error);
     }
   }
 
@@ -400,11 +400,20 @@ int main(int argc, const char* argv[])
       legacy::v3::Backend backend(receiver, env, *socket);
 
       if (!backend.init()) {
+        Log("could not initialize relay with old backend");
         cleanup();
         return;
       }
 
-      Log("Relay initalized with old backend");
+      Log("relay initalized with old backend");
+
+      if (!backend.config()) {
+        Log("could not configure relay with old backend")
+        cleanup();
+        return;
+      }
+
+      Log("relay configured with old backend");
 
       v3BackendSuccess = backend.updateCycle(gAlive);
 
@@ -436,13 +445,13 @@ int main(int argc, const char* argv[])
     return 1;
   }
 
-  Log("Relay initialized with new backend\n\n");
+  Log("relay initialized with new backend\n\n");
 
   setupSignalHandlers();
 
   bool success = backend.updateCycle(gAlive, gShouldCleanShutdown, recorder, sessions, relayClock);
 
-  Log("Cleaning up");
+  Log("cleaning up");
 
   receiver.close();
   sender.close(); // redundant

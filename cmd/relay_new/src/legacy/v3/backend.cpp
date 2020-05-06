@@ -1,6 +1,7 @@
 #include "includes.h"
 #include "backend.hpp"
 #include "packet_send.hpp"
+#include "encoding/read.hpp"
 
 using namespace std::chrono_literals;
 
@@ -56,6 +57,7 @@ namespace legacy
       }
 
       BackendToken token;
+      BackendRequest request;
 
       std::string initJSON = doc.toString();
       core::GenericPacket<> packet;
@@ -68,8 +70,8 @@ namespace legacy
       do {
         attempts++;
         // send request
-        LogDebug("sending init packet") if (!packet_send(mSocket, backendAddr, token, PacketType::InitRequest, packet))
-        {
+        LogDebug("sending init packet");
+        if (!packet_send(mSocket, backendAddr, token, PacketType::InitRequest, packet)) {
           Log("failed to send init packet");
           return false;
         }
@@ -106,12 +108,19 @@ namespace legacy
       return true;
     }
 
+    auto Backend::config() -> bool
+    {
+      return true;
+    }
+
     auto Backend::updateCycle(const volatile bool& handle) -> bool
     {
       while (handle) {
         if (!update()) {
           return false;
         }
+
+        LogDebug("updated with old backend");
 
         std::this_thread::sleep_for(10s);
       }
@@ -184,6 +193,135 @@ namespace legacy
     {
       doc.set("update", "value");
       return true;
+    }
+
+    // 1 byte packet type
+    // 64 byte signature
+    // <signed>
+    //   8 byte GUID
+    //   1 byte fragment index
+    //   1 byte fragment count
+    //   2 byte status code
+    //   <zipped>
+    //     JSON string
+    //   </zipped>
+    // </signed>
+    auto Backend::readResponse(core::GenericPacket<>& packet, BackendRequest& request, BackendResponse& response) -> bool
+    {
+      int zip_start = int(1 + crypto_sign_BYTES + sizeof(uint64_t) + sizeof(uint16_t) + sizeof(uint16_t));
+
+      if (packet.Len < zip_start || packet.Len > zip_start + FragmentSize) {
+        Log(
+         "invalid master UDP packet. expected between ",
+         zip_start,
+         " and ",
+         zip_start + FragmentSize,
+         " bytes, got ",
+         packet.Len);
+        return false;
+      }
+
+      if (
+       crypto_sign_verify_detached(
+        &packet.Buffer[1], &packet.Buffer[1 + crypto_sign_BYTES], packet.Len - (1 + crypto_sign_BYTES), UDPSignKey) != 0) {
+        Log("invalid master UDP packet. bad cryptographic signature.");
+        return false;
+      }
+
+      size_t index = 1 + crypto_sign_BYTES;
+      uint64_t packet_id = encoding::ReadUint8(packet.Buffer, index);
+      if (packet_id != request.id) {
+        Log("discarding unexpected master UDP packet, expected ID ", request.id, ", got ", packet_id);
+        return false;
+      }
+
+      response.FragIndex = encoding::ReadUint8(packet.Buffer, index);
+      response.FragCount = encoding::ReadUint8(packet.Buffer, index);
+      response.StatusCode = encoding::ReadUint16(packet.Buffer, index);
+
+      if (response.FragCount == 0) {
+        Log("invalid master fragment count (", static_cast<uint32_t>(response.FragCount), "), discarding packet");
+        return false;
+      }
+
+      if (response.FragIndex >= response.FragCount) {
+        Log(
+         "invalid master fragment index (",
+         static_cast<uint32_t>(response.FragIndex + 1),
+         "/",
+         static_cast<uint32_t>(response.FragCount),
+         "), discarding packet");
+        return false;
+      }
+
+      response.Type = static_cast<PacketType>(packet.Buffer[0]);
+
+      if (request.fragment_total == 0) {
+        request.type = response.Type;
+        request.fragment_total = response.FragCount;
+      }
+
+      if (response.Type != request.type) {
+        Log("expected packet type ", request.type, ", got ", static_cast<uint32_t>(packet.Buffer[0]), ", discarding packet");
+        return false;
+      }
+
+      if (response.FragCount != request.fragment_total) {
+        Log(
+         "expected ",
+         request.fragment_total,
+         " fragments, got fragment ",
+         static_cast<uint32_t>(response.FragIndex + 1),
+         "/",
+         static_cast<uint32_t>(response.FragCount),
+         ", discarding packet");
+        return false;
+      }
+
+      if (request.fragments[response.FragIndex].received) {
+        Log(
+         "already received master fragment ",
+         static_cast<uint32_t>(response.FragIndex + 1),
+         "/",
+         static_cast<uint32_t>(response.FragCount),
+         ", ignoring packet");
+        return false;
+      }
+
+      // save this fragment
+      {
+        auto& fragment = request.fragments[response.FragIndex];
+        fragment.length = uint16_t(packet.Len - zip_start);
+        std::copy(packet.Buffer.begin() + zip_start, packet.Buffer.begin() + fragment.length, fragment.data.begin());
+        fragment.received = true;
+      }
+
+      // check received fragments
+
+      int complete_bytes = 0;
+
+      for (int i = 0; i < request.fragment_total; i++) {
+        auto& fragment = request.fragments[i];
+        if (fragment.received) {
+          complete_bytes += fragment.length;
+        } else {
+          return false;  // not all fragments have been received yet
+        }
+      }
+
+      // all fragments have been received
+
+      request.id = 0;
+
+      uint8_t* complete_buffer = (uint8_t*)(alloca(complete_bytes));
+      int bytes = 0;
+      for (int i = 0; i < request.fragment_total; i++) {
+        auto& fragment = request.fragments[i];
+        std::copy(fragment.data.begin(), fragment.data.begin() + fragment.length, &complete_buffer[bytes]);
+        bytes += fragment.length;
+      }
+      assert(bytes == complete_bytes);
+      return manage_master_packet_read_complete(complete_buffer, complete_bytes, doc);
     }
   }  // namespace v3
 }  // namespace legacy

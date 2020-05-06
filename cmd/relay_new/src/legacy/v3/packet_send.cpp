@@ -66,14 +66,15 @@ namespace legacy
      const net::Address& master_address,
      const BackendToken& master_token,
      PacketType packet_type,
-     core::GenericPacket<>& packet) -> bool
+     core::GenericPacket<>& packet,
+     BackendRequest& request) -> bool
     {
       if (master_address.Type == net::AddressType::None) {
         LogDebug("can't send master UDP packet: address has not resolved yet");  // should not happen in this repo
         return false;
       }
 
-      BackendRequest request = {};
+      request = {};
       request.id = crypto::Random<uint64_t>();
 
       size_t compressed_bytes_available = packet.Len + 32;
