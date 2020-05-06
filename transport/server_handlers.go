@@ -348,13 +348,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 
 		locallogger := log.With(logger, "src_addr", incoming.SourceAddr.String(), "server_addr", packet.ServerAddress.String(), "client_addr", packet.ClientAddress.String(), "session_id", packet.SessionID)
 
-		if packet.FallbackToDirect {
-			sentry.CaptureMessage("packet fallback to direct")
-			level.Error(logger).Log("err", "fallback to direct")
-			metrics.ErrorMetrics.FallbackToDirect.Add(1)
-			return
-		}
-
 		var serverCacheEntry ServerCacheEntry
 		var sessionCacheEntry SessionCacheEntry
 
@@ -461,39 +454,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			return
 		}
 
-		location, err := iploc.LocateIP(packet.ClientAddress.IP)
-		if err != nil {
-			sentry.CaptureException(err)
-			level.Error(locallogger).Log("msg", "failed to locate client", "err", err)
-			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.ClientLocateFailure)
-			return
-		}
-		level.Debug(locallogger).Log("client_ip", packet.ClientAddress.IP.String(), "lat", location.Latitude, "long", location.Longitude)
-
-		clientrelays, err := geoClient.RelaysWithin(location.Latitude, location.Longitude, 500, "mi")
-
-		if len(clientrelays) == 0 || err != nil {
-			sentry.CaptureException(err)
-			level.Error(locallogger).Log("msg", "failed to locate relays near client", "err", err)
-			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.NearRelaysLocateFailure)
-			return
-		}
-
-		// Clamp relay count to max
-		if len(clientrelays) > int(MaxNearRelays) {
-			clientrelays = clientrelays[:MaxNearRelays]
-		}
-
-		// We need to do this because RelaysWithin only has the ID of the relay and we need the Addr and PublicKey too
-		// Maybe we consider a nicer way to do this in the future
-		for idx := range clientrelays {
-			clientrelays[idx], _ = rp.ResolveRelay(clientrelays[idx].ID)
-		}
-
-		dsrelays := rp.RelaysIn(serverCacheEntry.Datacenter)
-
-		level.Debug(locallogger).Log("num_datacenter_relays", len(dsrelays), "num_client_relays", len(clientrelays))
-
 		// Set initial route decision values
 		nnStats := routing.Stats{
 			RTT:        float64(packet.NextMinRTT),
@@ -513,16 +473,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 
 		routeDecision := sessionCacheEntry.RouteDecision
 
-		if routing.IsVetoed(routeDecision) && sessionCacheEntry.VetoTimestamp.Before(timestampNow) {
-			// Veto expired, bring the session back on with an initial slice
-			routeDecision = routing.Decision{
-				OnNetworkNext: false,
-				Reason:        routing.DecisionInitialSlice,
-			}
-			shouldSelect = false
-			newSession = true
-		}
-
 		// Purchase 20 seconds ahead for new sessions and 10 seconds ahead for existing ones
 		// This way we always have a 10 second buffer
 		timestampStart := sessionCacheEntry.TimestampStart
@@ -535,6 +485,117 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 		} else {
 			sliceDuration = billing.BillingSliceSeconds
 			timestampExpire = timestampExpire.Add(time.Duration(sliceDuration) * time.Second)
+		}
+
+		// Check if the client is falling back to direct
+		if packet.FallbackToDirect {
+			sentry.CaptureMessage("packet fallback to direct")
+			level.Error(logger).Log("err", "fallback to direct")
+			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.FallbackToDirect)
+
+			if err := updatePortalData(redisClientPortal, packet, nnStats, directStats, len(chosenRoute.Relays), routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, routing.LocationNullIsland); err != nil {
+				sentry.CaptureException(err)
+				level.Error(locallogger).Log("msg", "failed to update portal data", "err", err)
+			}
+
+			if err := submitBillingEntry(biller, serverCacheEntry, sessionCacheEntry, packet, response, buyer, chosenRoute, routing.LocationNullIsland, storer, nil,
+				routing.Decision{OnNetworkNext: false, Reason: routing.DecisionFallbackToDirect}, sliceDuration, timestampStart, timestampNow, newSession); err != nil {
+				sentry.CaptureException(err)
+				level.Error(locallogger).Log("msg", "billing failed", "err", err)
+				metrics.ErrorMetrics.BillingFailure.Add(1)
+			}
+
+			return
+		}
+
+		// Get relays near the client
+		location, err := iploc.LocateIP(packet.ClientAddress.IP)
+		if err != nil {
+			sentry.CaptureException(err)
+			level.Error(locallogger).Log("msg", "failed to locate client", "err", err)
+			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.ClientLocateFailure)
+
+			if err := updatePortalData(redisClientPortal, packet, nnStats, directStats, len(chosenRoute.Relays), routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, location); err != nil {
+				sentry.CaptureException(err)
+				level.Error(locallogger).Log("msg", "failed to update portal data", "err", err)
+			}
+
+			if err := submitBillingEntry(biller, serverCacheEntry, sessionCacheEntry, packet, response, buyer, chosenRoute, location, storer, nil,
+				routing.Decision{OnNetworkNext: false, Reason: routing.DecisionNoNearRelays}, sliceDuration, timestampStart, timestampNow, newSession); err != nil {
+				sentry.CaptureException(err)
+				level.Error(locallogger).Log("msg", "billing failed", "err", err)
+				metrics.ErrorMetrics.BillingFailure.Add(1)
+			}
+
+			return
+		}
+		level.Debug(locallogger).Log("client_ip", packet.ClientAddress.IP.String(), "lat", location.Latitude, "long", location.Longitude)
+
+		clientRelays, err := geoClient.RelaysWithin(location.Latitude, location.Longitude, 500, "mi")
+
+		if len(clientRelays) == 0 || err != nil {
+			sentry.CaptureException(err)
+			level.Error(locallogger).Log("msg", "failed to locate relays near client", "err", err)
+			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.NearRelaysLocateFailure)
+
+			if err := updatePortalData(redisClientPortal, packet, nnStats, directStats, len(chosenRoute.Relays), routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, location); err != nil {
+				sentry.CaptureException(err)
+				level.Error(locallogger).Log("msg", "failed to update portal data", "err", err)
+			}
+
+			if err := submitBillingEntry(biller, serverCacheEntry, sessionCacheEntry, packet, response, buyer, chosenRoute, location, storer, clientRelays,
+				routing.Decision{OnNetworkNext: false, Reason: routing.DecisionNoNearRelays}, sliceDuration, timestampStart, timestampNow, newSession); err != nil {
+				sentry.CaptureException(err)
+				level.Error(locallogger).Log("msg", "billing failed", "err", err)
+				metrics.ErrorMetrics.BillingFailure.Add(1)
+			}
+
+			return
+		}
+
+		// Clamp relay count to max
+		if len(clientRelays) > int(MaxNearRelays) {
+			clientRelays = clientRelays[:MaxNearRelays]
+		}
+
+		// We need to do this because RelaysWithin only has the ID of the relay and we need the Addr and PublicKey too
+		// Maybe we consider a nicer way to do this in the future
+		for idx := range clientRelays {
+			clientRelays[idx], _ = rp.ResolveRelay(clientRelays[idx].ID)
+		}
+
+		dsRelays := rp.RelaysIn(serverCacheEntry.Datacenter)
+
+		level.Debug(locallogger).Log("num_datacenter_relays", len(dsRelays), "num_client_relays", len(clientRelays))
+
+		if len(dsRelays) == 0 {
+			sentry.CaptureMessage(fmt.Sprintf("No relays in datacenter %s", serverCacheEntry.Datacenter.Name))
+			level.Error(locallogger).Log("msg", "no relays in datacenter", "datacenter", serverCacheEntry.Datacenter.Name)
+			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.NoRelaysInDatacenter)
+
+			if err := updatePortalData(redisClientPortal, packet, nnStats, directStats, len(chosenRoute.Relays), routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, location); err != nil {
+				sentry.CaptureException(err)
+				level.Error(locallogger).Log("msg", "failed to update portal data", "err", err)
+			}
+
+			if err := submitBillingEntry(biller, serverCacheEntry, sessionCacheEntry, packet, response, buyer, chosenRoute, location, storer, clientRelays,
+				routing.Decision{OnNetworkNext: false, Reason: routing.DecisionDatacenterHasNoRelays}, sliceDuration, timestampStart, timestampNow, newSession); err != nil {
+				sentry.CaptureException(err)
+				level.Error(locallogger).Log("msg", "billing failed", "err", err)
+				metrics.ErrorMetrics.BillingFailure.Add(1)
+			}
+
+			return
+		}
+
+		if routing.IsVetoed(routeDecision) && sessionCacheEntry.VetoTimestamp.Before(timestampNow) {
+			// Veto expired, bring the session back on with an initial slice
+			routeDecision = routing.Decision{
+				OnNetworkNext: false,
+				Reason:        routing.DecisionInitialSlice,
+			}
+			shouldSelect = false
+			newSession = true
 		}
 
 		if buyer.RoutingRulesSettings.Mode == routing.ModeForceDirect || int64(packet.SessionID%100) > buyer.RoutingRulesSettings.SelectionPercentage ||
@@ -556,7 +617,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 		if shouldSelect { // Only select a route if we should, early out for initial slice and force direct mode
 			level.Debug(locallogger).Log("buyer_rtt_epsilon", buyer.RoutingRulesSettings.RTTEpsilon, "cached_route_hash", sessionCacheEntry.RouteHash)
 			// Get a set of possible routes from the RouteProvider and on error ensure it falls back to direct
-			routes, err := rp.Routes(dsrelays, clientrelays,
+			routes, err := rp.Routes(dsRelays, clientRelays,
 				routing.SelectAcceptableRoutesFromBestRTT(float64(buyer.RoutingRulesSettings.RTTEpsilon)),
 				routing.SelectContainsRouteHash(sessionCacheEntry.RouteHash),
 				routing.SelectRoutesByRandomDestRelay(rand.NewSource(rand.Int63())),
@@ -564,6 +625,19 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			if err != nil {
 				level.Error(locallogger).Log("err", err)
 				writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.RouteFailure)
+
+				if err := updatePortalData(redisClientPortal, packet, nnStats, directStats, len(chosenRoute.Relays), routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, location); err != nil {
+					sentry.CaptureException(err)
+					level.Error(locallogger).Log("msg", "failed to update portal data", "err", err)
+				}
+
+				if err := submitBillingEntry(biller, serverCacheEntry, sessionCacheEntry, packet, response, buyer, chosenRoute, location, storer, clientRelays,
+					routing.Decision{OnNetworkNext: false, Reason: routing.DecisionNoNextRoute}, sliceDuration, timestampStart, timestampNow, newSession); err != nil {
+					sentry.CaptureException(err)
+					level.Error(locallogger).Log("msg", "billing failed", "err", err)
+					metrics.ErrorMetrics.BillingFailure.Add(1)
+				}
+
 				return
 			}
 
@@ -678,10 +752,10 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 				response.Tokens = tokens
 
 				// Fill in the near relays
-				response.NumNearRelays = int32(len(clientrelays))
-				response.NearRelayIDs = make([]uint64, len(clientrelays))
-				response.NearRelayAddresses = make([]net.UDPAddr, len(clientrelays))
-				for idx, relay := range clientrelays {
+				response.NumNearRelays = int32(len(clientRelays))
+				response.NearRelayIDs = make([]uint64, len(clientRelays))
+				response.NearRelayAddresses = make([]net.UDPAddr, len(clientRelays))
+				for idx, relay := range clientRelays {
 					response.NearRelayIDs[idx] = relay.ID
 					response.NearRelayAddresses[idx] = relay.Addr
 				}
@@ -740,66 +814,78 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 		}
 
 		// Set portal data
-		{
-			meta := routing.SessionMeta{
-				ID:         fmt.Sprintf("%x", packet.SessionID),
-				UserHash:   fmt.Sprintf("%x", packet.UserHash),
-				Datacenter: serverCacheEntry.Datacenter.Name,
-				NextRTT:    nnStats.RTT,
-				DirectRTT:  directStats.RTT,
-				DeltaRTT:   directStats.RTT - nnStats.RTT,
-				Location:   location,
-				ClientAddr: packet.ClientAddress.String(),
-				ServerAddr: packet.ServerAddress.String(),
-				Hops:       len(chosenRoute.Relays),
-				SDK:        packet.Version.String(),
-				Connection: ConnectionTypeText(packet.ConnectionType),
-			}
-			slice := routing.SessionSlice{
-				Timestamp: time.Now(),
-				Next:      nnStats,
-				Direct:    directStats,
-				Envelope: routing.Envelope{
-					Up:   int64(packet.KbpsUp),
-					Down: int64(packet.KbpsDown),
-				},
-			}
-			point := routing.SessionMapPoint{
-				Latitude:      location.Latitude,
-				Longitude:     location.Longitude,
-				OnNetworkNext: routeDecision.OnNetworkNext,
-			}
-
-			tx := redisClientPortal.TxPipeline()
-			tx.ZAdd("top-global", &redis.Z{Score: meta.DeltaRTT, Member: meta.ID})
-			tx.ZAdd(fmt.Sprintf("top-buyer-%x", packet.CustomerID), &redis.Z{Score: meta.DeltaRTT, Member: meta.ID})
-			tx.Set(fmt.Sprintf("session-%x-meta", packet.SessionID), meta, 720*time.Hour)
-			tx.SAdd(fmt.Sprintf("session-%x-slices", packet.SessionID), slice)
-			tx.Expire(fmt.Sprintf("session-%x-slices", packet.SessionID), 720*time.Hour)
-			tx.SAdd(fmt.Sprintf("user-%x-sessions", packet.UserHash), meta.ID)
-			tx.Expire(fmt.Sprintf("user-%x-sessions", packet.UserHash), 720*time.Hour)
-			tx.SAdd("map-points-global", meta.ID)
-			tx.SAdd(fmt.Sprintf("map-points-buyer-%x", packet.CustomerID), meta.ID)
-			tx.Expire(fmt.Sprintf("map-points-buyer-%x", packet.CustomerID), 720*time.Hour)
-			tx.Set(fmt.Sprintf("session-%x-point", packet.SessionID), point, 720*time.Hour)
-			if _, err := tx.Exec(); err != nil {
-				sentry.CaptureException(err)
-				level.Error(locallogger).Log("msg", "failed to update portal data", "err", err)
-			}
+		if err := updatePortalData(redisClientPortal, packet, nnStats, directStats, len(chosenRoute.Relays), routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, location); err != nil {
+			sentry.CaptureException(err)
+			level.Error(locallogger).Log("msg", "failed to update portal data", "err", err)
 		}
 
 		// Submit a new billing entry
-		{
-			sameRoute := chosenRoute.Hash64() == sessionCacheEntry.RouteHash
-			routeRequest := NewRouteRequest(packet, &buyer, serverCacheEntry, location, storer, clientrelays)
-			billingEntry := NewBillingEntry(routeRequest, &chosenRoute, int(response.RouteType), sameRoute, &buyer.RoutingRulesSettings, routeDecision, &packet, sliceDuration, timestampStart, timestampNow, newSession)
-			if err := biller.Bill(context.Background(), packet.SessionID, billingEntry); err != nil {
-				sentry.CaptureException(err)
-				level.Error(locallogger).Log("msg", "billing failed", "err", err)
-				metrics.ErrorMetrics.BillingFailure.Add(1)
-			}
+		if err := submitBillingEntry(biller, serverCacheEntry, sessionCacheEntry, packet, response, buyer, chosenRoute, location, storer, clientRelays,
+			routeDecision, sliceDuration, timestampStart, timestampNow, newSession); err != nil {
+			sentry.CaptureException(err)
+			level.Error(locallogger).Log("msg", "billing failed", "err", err)
+			metrics.ErrorMetrics.BillingFailure.Add(1)
 		}
 	}
+}
+
+func updatePortalData(redisClientPortal redis.Cmdable, packet SessionUpdatePacket, nnStats routing.Stats, directStats routing.Stats, relayHops int, onNetworkNext bool, datacenterName string, location routing.Location) error {
+	meta := routing.SessionMeta{
+		ID:         fmt.Sprintf("%x", packet.SessionID),
+		UserHash:   fmt.Sprintf("%x", packet.UserHash),
+		Datacenter: datacenterName,
+		NextRTT:    nnStats.RTT,
+		DirectRTT:  directStats.RTT,
+		DeltaRTT:   directStats.RTT - nnStats.RTT,
+		Location:   location,
+		ClientAddr: packet.ClientAddress.String(),
+		ServerAddr: packet.ServerAddress.String(),
+		Hops:       relayHops,
+		SDK:        packet.Version.String(),
+		Connection: ConnectionTypeText(packet.ConnectionType),
+	}
+	slice := routing.SessionSlice{
+		Timestamp: time.Now(),
+		Next:      nnStats,
+		Direct:    directStats,
+		Envelope: routing.Envelope{
+			Up:   int64(packet.KbpsUp),
+			Down: int64(packet.KbpsDown),
+		},
+	}
+	point := routing.SessionMapPoint{
+		Latitude:      location.Latitude,
+		Longitude:     location.Longitude,
+		OnNetworkNext: onNetworkNext,
+	}
+
+	tx := redisClientPortal.TxPipeline()
+	tx.ZAdd("top-global", &redis.Z{Score: meta.DeltaRTT, Member: meta.ID})
+	tx.ZAdd(fmt.Sprintf("top-buyer-%x", packet.CustomerID), &redis.Z{Score: meta.DeltaRTT, Member: meta.ID})
+	tx.Set(fmt.Sprintf("session-%x-meta", packet.SessionID), meta, 720*time.Hour)
+	tx.SAdd(fmt.Sprintf("session-%x-slices", packet.SessionID), slice)
+	tx.Expire(fmt.Sprintf("session-%x-slices", packet.SessionID), 720*time.Hour)
+	tx.SAdd(fmt.Sprintf("user-%x-sessions", packet.UserHash), meta.ID)
+	tx.Expire(fmt.Sprintf("user-%x-sessions", packet.UserHash), 720*time.Hour)
+	tx.SAdd("map-points-global", meta.ID)
+	tx.SAdd(fmt.Sprintf("map-points-buyer-%x", packet.CustomerID), meta.ID)
+	tx.Expire(fmt.Sprintf("map-points-buyer-%x", packet.CustomerID), 720*time.Hour)
+	tx.Set(fmt.Sprintf("session-%x-point", packet.SessionID), point, 720*time.Hour)
+	if _, err := tx.Exec(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func submitBillingEntry(biller billing.Biller, serverCacheEntry ServerCacheEntry, sessionCacheEntry SessionCacheEntry, request SessionUpdatePacket, response SessionResponsePacket,
+	buyer routing.Buyer, chosenRoute routing.Route, location routing.Location, storer storage.Storer, clientRelays []routing.Relay, routeDecision routing.Decision,
+	sliceDuration uint64, timestampStart time.Time, timestampNow time.Time, newSession bool) error {
+
+	sameRoute := chosenRoute.Hash64() == sessionCacheEntry.RouteHash
+	routeRequest := NewRouteRequest(request, &buyer, serverCacheEntry, location, storer, clientRelays)
+	billingEntry := NewBillingEntry(routeRequest, &chosenRoute, int(response.RouteType), sameRoute, &buyer.RoutingRulesSettings, routeDecision, &request, sliceDuration, timestampStart, timestampNow, newSession)
+	return biller.Bill(context.Background(), request.SessionID, billingEntry)
 }
 
 func addRouteDecisionMetric(d routing.Decision, m *metrics.SessionMetrics) {
