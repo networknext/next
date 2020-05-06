@@ -274,9 +274,9 @@ WorkspaceHandler = {
 		if (accountInfo.edit) {
 			let roles = editUserPermissions[accountInfo.user_id].getValue(true);
 			JSONRPCClient
-				.call('AuthService.UpdateUserRoles', {user_id: `auth|${accountInfo.user_id}`, roles: roles})
+				.call('AuthService.UpdateUserRoles', {user_id: `auth0|${accountInfo.user_id}`, roles: roles})
 				.then((response) => {
-					accountsTable.$set(accountsTable.$data.accounts[index], 'roles', roles);
+					accountInfo.roles = response.roles || [];
 					WorkspaceHandler.cancelEditUser(accountInfo);
 				})
 				.catch((e) => {
@@ -304,9 +304,12 @@ WorkspaceHandler = {
 		accountsTable.$set(accountsTable.$data.accounts[index], 'edit', false);
 	},
 	cancelEditUser(accountInfo, index) {
-		accountsTable.$set(accountsTable.$data.accounts[index], 'delete', false);
-		accountsTable.$set(accountsTable.$data.accounts[index], 'edit', false);
 		editUserPermissions[accountInfo.user_id].disable();
+		let accounts = accountsTable.$data.accounts;
+		accountInfo.delete = false;
+		accountInfo.edit = false;
+		accounts[index] = accountInfo;
+		Object.assign(accountsTable.$data, {accounts: accounts});
 	},
 	loadSettingsPage() {
 		this.changeAccountPage();
@@ -373,24 +376,22 @@ WorkspaceHandler = {
 					});
 
 					setTimeout(() => {
-						choices = roles.map((role) => {
-							return {
-								value: role,
-								label: role.name,
-								customProperties: {
-									description: role.description,
-								},
-							};
-						});
-
 						accounts.forEach((account) => {
 							if (!editUserPermissions[account.user_id]) {
-
 								editUserPermissions[account.user_id] = new Choices(
 									document.getElementById(`edit-user-permissions-${account.user_id}`),
 									{
 										removeItemButton: true,
-										choices: choices,
+										choices: roles.map((role) => {
+											return {
+												value: role,
+												label: role.name,
+												customProperties: {
+													description: role.description,
+												},
+												selected: account.roles.findIndex((userRole) => role.name == userRole.name) !== -1
+											};
+										}),
 									}
 								).disable();
 							}

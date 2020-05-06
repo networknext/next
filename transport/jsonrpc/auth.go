@@ -165,6 +165,7 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 			return fmt.Errorf("failed to assign role: %w", err)
 		}
 	}
+	reply.Roles = args.Roles
 	return nil
 }
 
