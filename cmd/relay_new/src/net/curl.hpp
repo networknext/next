@@ -24,15 +24,17 @@ namespace net
 
    public:
     template <typename ReqType, typename RespType>
-    static bool SendTo(const std::string hostname, const std::string endpoint, const ReqType& request, RespType& response);
+    static bool SendTo(const std::string hostname, const std::string endpoint, const ReqType& request, RespType& response, size_t* bytesSent);
   };
 
-  /* Sends data to the specified hostname and endpoint
+  /*
+   * Sends data to the specified hostname and endpoint
    * request can be anything that supplies ReqType::data() and ReqType::size()
    * response can be anything that supplies RespType::resize() and is compatable with std::copy()
    */
   template <typename ReqType, typename RespType>
-  bool CurlWrapper::SendTo(const std::string hostname, const std::string endpoint, const ReqType& request, RespType& response)
+  bool CurlWrapper::SendTo(
+   const std::string hostname, const std::string endpoint, const ReqType& request, RespType& response, size_t* bytesSent)
   {
     static CurlWrapper wrapper;
 
@@ -64,6 +66,12 @@ namespace net
     if (ret != 0) {
       Log("curl request for '", hostname, endpoint, "' had an error: ", ret);
       return false;
+    }
+
+    if (bytesSent != nullptr) {
+      if (!curl_easy_getinfo(wrapper.mHandle, CURLINFO_REQUEST_SIZE, bytesSent)) {
+        Log("curl could not get the last request size"); // non-critical failure, don't return false
+      }
     }
 
     long code = 0;
