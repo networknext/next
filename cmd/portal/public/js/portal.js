@@ -548,9 +548,9 @@ function fetchSessionInfo(sessionId = '') {
 		.then((response) => {
 			console.log(response)
 			Object.assign(sessionDetailsVue.$data, {
+				meta: response.meta,
 				slices: response.slices,
 				showDetails: true,
-				meta: meta
 			});
 
 			setTimeout(() => {

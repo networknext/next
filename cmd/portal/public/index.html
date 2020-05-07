@@ -590,7 +590,7 @@
                                                         </dt>
                                                         <dd>
                                                             <em>
-                                                                Unavailable
+                                                                {{ meta.location.isp }}
                                                             </em>
                                                         </dd>
                                                         <div>
@@ -624,10 +624,10 @@
                                                         <dt>
                                                             Nearby Relays
                                                         </dt>
-                                                        <dd>
+                                                        <dd v-if="meta.nearby_relays == 0">
                                                             No Nearby Relays
                                                         </dd>
-                                                        <table class="table table-sm mt-1" v-if="meta.relays.length > 0">
+                                                        <table class="table table-sm mt-1" v-if="meta.nearby_relays.length > 0">
                                                             <thead>
                                                                 <tr>
                                                                     <th style="width: 50%;">
@@ -650,22 +650,19 @@
                                                                         <a class="text-dark">{{ relay.name }}</a>&nbsp;
                                                                     </td>
                                                                     <td>
-                                                                        {{ relay.rtt }}
+                                                                        {{ relay.client_stats.rtt }}
                                                                     </td>
                                                                     <td>
-                                                                        {{ relay.jitter }}
+                                                                        {{ relay.client_stats.jitter }}
                                                                     </td>
                                                                     <td>
-                                                                        {{ relay.packet_loss }}
+                                                                        {{ relay.client_stats.packet_loss }}
                                                                     </td>
                                                                 </tr>
                                                             </tbody>
                                                         </table>
                                                         <dt>
                                                             Route
-                                                            <span style="float: right; font-weight: normal; font-style: italic;">
-                                                                at 8:01:45am May 4
-                                                            </span>
                                                         </dt>
                                                         <table class="table table-sm mt-1">
                                                             <thead>
