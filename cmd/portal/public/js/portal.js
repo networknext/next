@@ -24,6 +24,10 @@ var sessionDetailsVue = null;
 var sessionsTable = null;
 var userSessionTable = null;
 
+var autoSigninPermissions = null;
+var addUserPermissions = null;
+var editUserPermissions = [];
+
 JSONRPCClient = {
 	async call(method, params) {
 		const headers = {
@@ -48,6 +52,7 @@ JSONRPCClient = {
 
 
 		return response.json().then((json) => {
+			console.log(json);
 			if (json.error) {
 				throw new Error(json.error);
 			}
@@ -274,33 +279,147 @@ WorkspaceHandler = {
 				this.links.mapLink.classList.add("active");
 		}
 	},
-	editUser(accountInfo) {
-		WorkspaceHandler.changeAccountPage('new');
+	editUser(accountInfo, index) {
+		accountsTable.$set(accountsTable.$data.accounts[index], 'delete', false);
+		accountsTable.$set(accountsTable.$data.accounts[index], 'edit', true);
 
-		WorkspaceHandler.newUserEmail.value = accountInfo.email || '';
-		WorkspaceHandler.newUserPerms.value = accountInfo.email || '';
+		editUserPermissions[accountInfo.user_id].enable();
+	},
+	saveUser(accountInfo, index) {
+		if (accountInfo.edit) {
+			let roles = editUserPermissions[accountInfo.user_id].getValue(true);
+			JSONRPCClient
+				.call('AuthService.UpdateUserRoles', {user_id: `auth0|${accountInfo.user_id}`, roles: roles})
+				.then((response) => {
+					accountInfo.roles = response.roles || [];
+					WorkspaceHandler.cancelEditUser(accountInfo);
+				})
+				.catch((e) => {
+					console.log("Something went wrong updating the users permissions");
+					console.log(e);
+				});
+			return;
+		}
+		if (accountInfo.delete) {
+			JSONRPCClient
+				.call('AuthService.DeleteUserAccount', {user_id: `auth0|${accountInfo.user_id}`})
+				.then((response) => {
+					let accounts = accountsTable.$data.accounts;
+					accounts.splice(index, 1);
+					Object.assign(accountsTable.$data, {accounts: accounts});
+					editUserPermissions[accountInfo.user_id] = null;
+				})
+				.catch((e) => {
+					console.log("Something went wrong updating the users permissions");
+					console.log(e);
+				});
+			return;
+		}
+	},
+	deleteUser(index) {
+		accountsTable.$set(accountsTable.$data.accounts[index], 'delete', true);
+		accountsTable.$set(accountsTable.$data.accounts[index], 'edit', false);
+	},
+	cancelEditUser(accountInfo, index) {
+		editUserPermissions[accountInfo.user_id].disable();
+		let accounts = accountsTable.$data.accounts;
+		accountInfo.delete = false;
+		accountInfo.edit = false;
+		accounts[index] = accountInfo;
+		Object.assign(accountsTable.$data, {accounts: accounts});
 	},
 	loadSettingsPage() {
 		this.changeAccountPage();
-		JSONRPCClient
-			.call('AuthService.AllAccounts', {buyer_id: '13672574147039585173'})
+		let promises = [
+			JSONRPCClient
+				.call('AuthService.AllAccounts', {buyer_id: '13672574147039585173'}),
+			JSONRPCClient
+				.call('AuthService.AllRoles', {})
+		];
+		Promise.all(promises)
 			.then(
-				(response) => {
+				(responses) => {
+					console.log(responses);
+
+					let roles = responses[1].roles;
+					let accounts = responses[0].accounts;
+					let choices = roles.map((role) => {
+						return {
+							value: role,
+							label: role.name,
+							customProperties: {
+								description: role.description,
+							},
+						};
+					});
+
+					if (!addUserPermissions) {
+						addUserPermissions = new Choices(
+							document.getElementById("add-user-permissions"),
+							{
+								removeItemButton: true,
+								choices: choices,
+							}
+						);
+					}
+
+					choices = roles.map((role) => {
+						return {
+							value: role,
+							label: role.name,
+							customProperties: {
+								description: role.description,
+							},
+							selected: role.name === 'Viewer'
+						};
+					});
+
+					if (!autoSigninPermissions) {
+						autoSigninPermissions = new Choices(
+							document.getElementById("auto-signin-permissions"),
+							{
+								removeItemButton: true,
+								choices: choices,
+							}
+						);
+					}
+
 					/**
 					 * I really dislike this but it is apparently the way to reload/update the data within a vue
 					 */
 					Object.assign(accountsTable.$data, {
-						accounts: response.accounts,
+						accounts: accounts,
 						showAccounts: true,
+					});
+
+					setTimeout(() => {
+						accounts.forEach((account) => {
+							if (!editUserPermissions[account.user_id]) {
+								editUserPermissions[account.user_id] = new Choices(
+									document.getElementById(`edit-user-permissions-${account.user_id}`),
+									{
+										removeItemButton: true,
+										choices: roles.map((role) => {
+											return {
+												value: role,
+												label: role.name,
+												customProperties: {
+													description: role.description,
+												},
+												selected: account.roles.findIndex((userRole) => role.name == userRole.name) !== -1
+											};
+										}),
+									}
+								).disable();
+							}
+						});
 					});
 				}
 			)
-			.catch(
-				(e) => {
-					console.log("Something went wrong fetching all accounts");
-					console.log(e);
-				}
-			);
+			.catch((errors) => {
+				console.log("Something went wrong loading settings page");
+				console.log(errors);
+			});
 	},
 	loadConfigPage() {
 		JSONRPCClient
@@ -358,8 +477,6 @@ WorkspaceHandler = {
 }
 
 function startApp() {
-	createVueComponents();
-	document.getElementById("app").style.display = 'block';
 	/**
 	 * QUESTION: Instead of grabbing the user here can we use the token to then go off and get everything from the backend?
 	 * TODO:	 There are 3 different promises going off to get user details. There should be a better way to do this
@@ -375,6 +492,7 @@ function startApp() {
 			userId: response[0].sub,
 			token: response[1]
 		};
+		createVueComponents();
 		document.getElementById("app").style.display = 'block';
 		MapHandler
 			.initMap()
@@ -398,7 +516,10 @@ function createVueComponents() {
 			showAccounts: false,
 		},
 		methods: {
-			editUser: WorkspaceHandler.editUser
+			cancelEditUser: WorkspaceHandler.cancelEditUser,
+			deleteUser: WorkspaceHandler.deleteUser,
+			editUser: WorkspaceHandler.editUser,
+			saveUser: WorkspaceHandler.saveUser,
 		}
 	});
 	mapSessionsCount = new Vue({
