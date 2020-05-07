@@ -312,5 +312,5 @@ func (m *InMemory) SetDatacenter(ctx context.Context, datacenter routing.Datacen
 		}
 	}
 
-	return fmt.Errorf("datacenter with id %d not found in memory storage", datacenter.ID)
+	return &DoesNotExistError{resourceType: "datacenter", resourceRef: datacenter.ID}
 }
