@@ -148,16 +148,20 @@ test: test-unit
 test-unit-sdk: build-sdk-test ## runs sdk unit tests
 	@$(DIST_DIR)/$(SDKNAME)_test
 
-.PHONY: test-unit-relay
-test-unit-relay: build-relay-tests ## runs relay unit tests
+.PHONY: test-unit-relay-new
+test-unit-relay-new: build-relay-new-tests ## runs relay unit tests
 	@$(NEW_RELAY_DIR)/bin/relay.test
+
+.PHONY: test-unit-relay-ref
+test-unit-relay-ref: build-relay-ref
+	@$(DIST_DIR)/relay test
 
 .PHONY: test-unit-backend
 test-unit-backend: lint ## runs backend unit tests
 	@./cmd/tools/scripts/test-unit-backend.sh
 
 .PHONY: test-unit
-test-unit: clean test-unit-sdk test-unit-relay test-unit-backend ## runs all unit tests
+test-unit: clean test-unit-sdk test-unit-relay-new test-unit-relay-ref test-unit-backend ## runs all unit tests
 
 .PHONY: test-soak
 test-soak: clean build-sdk-test build-soak-test ## runs soak test
@@ -178,7 +182,7 @@ build-functional-backend: ## builds the functional backend
 	printf "done\n" ; \
 
 .PHONY: build-test-func
-build-test-func: clean build-sdk build-ref-relay build-functional-server build-functional-client build-functional-backend ## builds the functional tests
+build-test-func: clean build-sdk build-relay-ref build-functional-server build-functional-client build-functional-backend ## builds the functional tests
 
 .PHONY: run-test-func
 run-test-func:
@@ -254,30 +258,38 @@ NEW_RELAY_DIR := ./cmd/relay_new
 NEW_RELAY_MAKEFILE := Makefile
 RELAY_EXE	:= relay
 
-.PHONY: build-ref-relay
-build-ref-relay: ## builds the relay
+.PHONY: build-relay-ref
+build-relay-ref: ## builds the relay
 	@printf "Building relay... "
 	@$(CXX) $(CXX_FLAGS) -o $(DIST_DIR)/$(RELAY_EXE) cmd/relay/*.cpp $(LDFLAGS)
 	@printf "done\n"
 
-.PHONY: build-relay
-build-relay: ## builds the new relay
+.PHONY: build-relay-new
+build-relay-new: ## builds the new relay
 	@printf "Building new relay... "
 	@cd $(NEW_RELAY_DIR) && $(MAKE) release
 	@echo "done"
 
-.PHONY: build-relay-tests
-build-relay-tests: ## builds the relay version that runs tests
+.PHONY: build-relay-new-tests
+build-relay-new-tests: ## builds the relay version that runs tests
 	@printf "Building relay with tests enabled... "
 	@cd $(NEW_RELAY_DIR) && $(MAKE) test
 	@echo "done"
 
-.PHONY: dev-relay
-dev-relay: build-relay ## runs a local relay
+.PHONY: dev-relay-ref
+dev-relay-ref: build-relay-ref
 	@$(DIST_DIR)/$(RELAY_EXE)
 
-.PHONY: dev-multi-relays
-dev-multi-relays: build-relay ## runs 10 local relays
+.PHONY: dev-relay-new
+dev-relay-new: build-relay-new ## runs a local relay
+	@$(DIST_DIR)/$(RELAY_EXE)
+
+.PHONY: dev-multi-ref-relays
+dev-multi-relays-ref: build-relay-ref ## runs 10 local reference relays
+	./cmd/tools/scripts/relay-spawner.sh -n 10 -p 10000
+
+.PHONY: dev-multi-new-relays
+dev-multi-relays-new: build-relay-new ## runs 10 local new relays
 	./cmd/tools/scripts/relay-spawner.sh -n 10 -p 10000
 
 #######################
@@ -298,8 +310,8 @@ dev-relay-backend: ## runs a local relay backend
 dev-server-backend: ## runs a local server backend
 	@PORT=40000 $(GO) run cmd/server_backend/server_backend.go
 
-.PHONY: dev-backend
-dev-backend: ## runs a local backend
+.PHONY: dev-backend-ref
+dev-backend-ref: ## runs a local backend using the reference/functional backend binary
 	$(GO) run cmd/tools/functional/backend/*.go
 
 .PHONY: dev-server
