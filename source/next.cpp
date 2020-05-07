@@ -10695,21 +10695,14 @@ bool next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_DIRECT_PING_PACKET )
     {
-        if ( !session )
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored direct ping packet. can't find session for address" );
-            return NEXT_ERROR;
-        }
+        next_assert( session );
 
         NextDirectPingPacket packet;
 
         uint64_t packet_sequence = 0;
 
         if ( next_read_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection ) != packet_id )
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored direct ping packet. failed to read" );
-            return NEXT_ERROR;
-        }
+            return false;
 
         next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection, NULL );
 
@@ -10719,13 +10712,71 @@ bool next_server_internal_process_network_next_packet( next_server_internal_t * 
         if ( next_server_internal_send_packet( server, from, NEXT_DIRECT_PONG_PACKET, &response ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server could not send upgrade confirm packet" );
-            return NEXT_ERROR;
+            return true;
         }
 
         return true;
     }
 
-    // ...
+    // client stats packet
+
+    if ( packet_id == NEXT_CLIENT_STATS_PACKET )
+    {
+        next_assert( session );
+
+        NextClientStatsPacket packet;
+
+        uint64_t packet_sequence = 0;
+
+        if ( next_read_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection ) != packet_id )
+            return false;
+
+        next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection, NULL );
+
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server received client stats packet for session %" PRIx64, session->session_id );
+
+        if ( packet_sequence > session->stats_sequence )
+        {
+            session->stats_sequence = packet_sequence;
+
+            session->stats_flags |= packet.flags;
+            session->stats_flagged = packet.flagged;
+            session->stats_multipath = packet.multipath;
+            session->stats_fallback_to_direct = packet.fallback_to_direct;
+
+            session->stats_platform_id = packet.platform_id;
+            session->stats_connection_type = packet.connection_type;
+            session->stats_kbps_up = packet.kbps_up;
+            session->stats_kbps_down = packet.kbps_down;
+            session->stats_direct_min_rtt = packet.direct_min_rtt;
+            session->stats_direct_max_rtt = packet.direct_max_rtt;
+            session->stats_direct_mean_rtt = packet.direct_mean_rtt;
+            session->stats_direct_jitter = packet.direct_jitter;
+            session->stats_direct_packet_loss = packet.direct_packet_loss;
+            session->stats_next = packet.next;
+            session->stats_committed = packet.committed;
+            session->stats_next_min_rtt = packet.next_min_rtt;
+            session->stats_next_max_rtt = packet.next_max_rtt;
+            session->stats_next_mean_rtt = packet.next_mean_rtt;
+            session->stats_next_jitter = packet.next_jitter;
+            session->stats_next_packet_loss = packet.next_packet_loss;
+            session->stats_num_near_relays = packet.num_near_relays;
+            for ( int i = 0; i < packet.num_near_relays; ++i )
+            {
+                session->stats_near_relay_ids[i] = packet.near_relay_ids[i];
+                session->stats_near_relay_min_rtt[i] = packet.near_relay_min_rtt[i];
+                session->stats_near_relay_max_rtt[i] = packet.near_relay_max_rtt[i];
+                session->stats_near_relay_mean_rtt[i] = packet.near_relay_mean_rtt[i];
+                session->stats_near_relay_jitter[i] = packet.near_relay_jitter[i];
+                session->stats_near_relay_packet_loss[i] = packet.near_relay_packet_loss[i];
+            }
+            session->stats_packets_lost_server_to_client = packet.packets_lost_server_to_client;
+            session->stats_user_flags |= packet.user_flags;
+            session->last_client_stats_update = next_time();
+        }
+
+        return true;
+    }
 
     return false;
 }
