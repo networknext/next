@@ -161,6 +161,16 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		return err
 	}
 
+	// We fill in the name on the portal side so we don't spend time doing it while serving sessions
+	for idx, relay := range reply.Meta.NearbyRelays {
+		r, err := s.Storage.Relay(relay.ID)
+		if err != nil {
+			continue
+		}
+
+		reply.Meta.NearbyRelays[idx].Name = r.Name
+	}
+
 	err = s.RedisClient.SMembers(fmt.Sprintf("session-%s-slices", args.SessionID)).ScanSlice(&reply.Slices)
 	if err != nil {
 		return err

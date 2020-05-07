@@ -133,6 +133,9 @@ func TestSessionDetails(t *testing.T) {
 		ServerAddr: "10.0.0.1:50000",
 		Hops:       3,
 		SDK:        "3.4.4",
+		NearbyRelays: []routing.Relay{
+			{ID: 1, ClientStats: routing.Stats{RTT: 1, Jitter: 2, PacketLoss: 3}},
+		},
 	}
 	slice1 := routing.SessionSlice{
 		Timestamp: time.Now(),
@@ -150,8 +153,17 @@ func TestSessionDetails(t *testing.T) {
 	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID), meta, 720*time.Hour)
 	redisClient.SAdd(fmt.Sprintf("session-%s-slices", sessionID), slice1, slice2)
 
+	// After setting the cache without the name, set the name to the expected output we need
+	meta.NearbyRelays[0].Name = "local"
+
+	inMemory := storage.InMemory{}
+	inMemory.AddSeller(context.Background(), routing.Seller{ID: "local"})
+	inMemory.AddDatacenter(context.Background(), routing.Datacenter{ID: 1})
+	inMemory.AddRelay(context.Background(), routing.Relay{ID: 1, Name: "local", Seller: routing.Seller{ID: "local"}, Datacenter: routing.Datacenter{ID: 1}})
+
 	svc := jsonrpc.BuyersService{
 		RedisClient: redisClient,
+		Storage:     &inMemory,
 	}
 
 	t.Run("session_id not found", func(t *testing.T) {

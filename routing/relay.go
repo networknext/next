@@ -70,27 +70,28 @@ const (
 
 // Relay ...
 type Relay struct {
-	ID   uint64
-	Name string
+	ID   uint64 `json:"id"`
+	Name string `json:"name"`
 
-	Addr      net.UDPAddr
-	PublicKey []byte
+	Addr      net.UDPAddr `json:"-"`
+	PublicKey []byte      `json:"-"`
 
-	Seller     Seller
-	Datacenter Datacenter
+	Seller     Seller     `json:"-"`
+	Datacenter Datacenter `json:"-"`
 
-	NICSpeedMbps        uint64
-	IncludedBandwidthGB uint64
+	NICSpeedMbps        uint64 `json:"-"`
+	IncludedBandwidthGB uint64 `json:"-"`
 
-	LastUpdateTime time.Time
+	LastUpdateTime time.Time `json:"-"`
 
-	State RelayState
+	State RelayState `json:"-"`
 
-	ManagementAddr string
-	SSHUser        string
-	SSHPort        int64
+	ManagementAddr string `json:"-"`
+	SSHUser        string `json:"-"`
+	SSHPort        int64  `json:"-"`
 
-	TrafficStats RelayTrafficStats
+	TrafficStats RelayTrafficStats `json:"-"`
+	ClientStats  Stats             `json:"client_stats"`
 }
 
 func (r *Relay) EncodedPublicKey() string {
