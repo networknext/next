@@ -8,7 +8,6 @@ import (
 )
 
 func TestDecideUpgradeRTT(t *testing.T) {
-	// Test if a route gets upgraded to network next
 	predictedStats := routing.Stats{
 		RTT:        30,
 		Jitter:     0,
@@ -24,6 +23,14 @@ func TestDecideUpgradeRTT(t *testing.T) {
 	rttThreshold := float64(routing.DefaultRoutingRulesSettings.RTTThreshold)
 	routeDecisionFunc := routing.DecideUpgradeRTT(rttThreshold)
 
+	// Test if multipath is enabled
+	assert.Equal(
+		t,
+		routing.Decision{true, routing.DecisionRTTReductionMultipath},
+		routeDecisionFunc(routing.Decision{true, routing.DecisionRTTReductionMultipath}, predictedStats, routing.Stats{}, directStats),
+	)
+
+	// Now test if a route gets upgraded to network next
 	assert.Equal(
 		t,
 		routing.Decision{true, routing.DecisionRTTReduction},
@@ -41,7 +48,6 @@ func TestDecideUpgradeRTT(t *testing.T) {
 }
 
 func TestDecideDowngradeRTT(t *testing.T) {
-	// Test if a route stays on the network next route
 	predictedStats := routing.Stats{
 		RTT:        40,
 		Jitter:     0,
@@ -57,7 +63,14 @@ func TestDecideDowngradeRTT(t *testing.T) {
 	rttHyteresis := float64(routing.DefaultRoutingRulesSettings.RTTHysteresis)
 	routeDecisionFunc := routing.DecideDowngradeRTT(rttHyteresis, false)
 
-	decision := routing.Decision{true, routing.DecisionNoReason}
+	// Test if multipath is enabled
+	decision := routing.Decision{true, routing.DecisionRTTReductionMultipath}
+	decision = routeDecisionFunc(decision, predictedStats, routing.Stats{}, directStats)
+
+	assert.Equal(t, routing.Decision{true, routing.DecisionRTTReductionMultipath}, decision)
+
+	// Now test if a route stays on the network next route
+	decision = routing.Decision{true, routing.DecisionNoReason}
 	decision = routeDecisionFunc(decision, predictedStats, routing.Stats{}, directStats)
 
 	assert.Equal(t, routing.Decision{true, routing.DecisionNoReason}, decision)
@@ -81,7 +94,6 @@ func TestDecideDowngradeRTT(t *testing.T) {
 }
 
 func TestDecideVeto(t *testing.T) {
-	// Test if a route is vetoed for RTT increases
 	lastNextStats := routing.Stats{
 		RTT:        60,
 		Jitter:     0,
@@ -97,7 +109,13 @@ func TestDecideVeto(t *testing.T) {
 	rttVeto := float64(routing.DefaultRoutingRulesSettings.RTTVeto)
 	routeDecisionFunc := routing.DecideVeto(rttVeto, false, false)
 
-	decision := routing.Decision{true, routing.DecisionNoReason}
+	// Test if multipath is enabled
+	decision := routing.Decision{true, routing.DecisionRTTReductionMultipath}
+	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
+	assert.Equal(t, routing.Decision{true, routing.DecisionRTTReductionMultipath}, decision)
+
+	// Now test if a route is vetoed for RTT increases
+	decision = routing.Decision{true, routing.DecisionNoReason}
 	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
 	assert.Equal(t, routing.Decision{false, routing.DecisionVetoRTT}, decision)
 
@@ -168,14 +186,23 @@ func TestDecideCommitted(t *testing.T) {
 	}
 
 	maxSlices := uint8(routing.DefaultRoutingRulesSettings.TryBeforeYouBuyMaxSlices)
-	decision := routing.Decision{}
 
 	var commitPending bool
 	var observedSliceCounter uint8
 	var committed bool
 
-	// Check direct routes aren't affected
 	routeDecisionFunc := routing.DecideCommitted(false, maxSlices, false, &commitPending, &observedSliceCounter, &committed)
+
+	// Test if multipath is enabled
+	decision := routing.Decision{true, routing.DecisionRTTReductionMultipath}
+	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
+	assert.Equal(t, routing.Decision{true, routing.DecisionRTTReductionMultipath}, decision)
+	assert.Equal(t, false, commitPending)
+	assert.Equal(t, uint8(0), observedSliceCounter)
+	assert.Equal(t, true, committed)
+
+	// Check direct routes aren't affected
+	decision = routing.Decision{}
 	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
 	assert.Equal(t, routing.Decision{}, decision)
 	assert.Equal(t, false, commitPending)
@@ -227,4 +254,37 @@ func TestDecideCommitted(t *testing.T) {
 	assert.Equal(t, false, commitPending)
 	assert.Equal(t, uint8(0), observedSliceCounter)
 	assert.Equal(t, false, committed)
+}
+
+func TestDecideMultipath(t *testing.T) {
+	rttThreshold := float64(routing.LocalRoutingRulesSettings.RTTThreshold)
+
+	// Test if multipath isn't enabled
+	routeDecisionFunc := routing.DecideMultipath(false, false, false, rttThreshold)
+	predictedNNStats := routing.Stats{RTT: 30}
+	directStats := routing.Stats{RTT: 60}
+	decision := routing.Decision{}
+	decision = routeDecisionFunc(decision, predictedNNStats, routing.Stats{}, directStats)
+	assert.Equal(t, routing.Decision{}, decision)
+
+	// Test when multipath reason is RTT reduction
+	routeDecisionFunc = routing.DecideMultipath(true, true, true, rttThreshold)
+	decision = routeDecisionFunc(decision, predictedNNStats, routing.Stats{}, directStats)
+	assert.Equal(t, routing.Decision{true, routing.DecisionRTTReductionMultipath}, decision)
+
+	// Test when multipath reason is high jitter
+	routeDecisionFunc = routing.DecideMultipath(true, true, true, rttThreshold)
+	decision = routing.Decision{}
+	predictedNNStats = routing.Stats{}
+	directStats = routing.Stats{Jitter: 50}
+	decision = routeDecisionFunc(decision, predictedNNStats, routing.Stats{}, directStats)
+	assert.Equal(t, routing.Decision{true, routing.DecisionHighJitterMultipath}, decision)
+
+	// Test when multipath reason is high packet loss
+	routeDecisionFunc = routing.DecideMultipath(true, true, true, rttThreshold)
+	decision = routing.Decision{}
+	predictedNNStats = routing.Stats{}
+	directStats = routing.Stats{PacketLoss: 1}
+	decision = routeDecisionFunc(decision, predictedNNStats, routing.Stats{}, directStats)
+	assert.Equal(t, routing.Decision{true, routing.DecisionHighPacketLossMultipath}, decision)
 }

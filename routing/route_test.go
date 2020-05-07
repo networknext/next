@@ -9,11 +9,13 @@ import (
 
 // Test case where we should upgrade to a nextwork next route
 func TestDecideUpgradeRoute(t *testing.T) {
+	rrs := routing.DefaultRoutingRulesSettings
 
 	decisionFuncs := []routing.DecisionFunc{
-		routing.DecideUpgradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTThreshold)),
-		routing.DecideDowngradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
-		routing.DecideVeto(float64(routing.DefaultRoutingRulesSettings.RTTVeto), routing.DefaultRoutingRulesSettings.EnablePacketLossSafety, routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
+		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), rrs.EnableYouOnlyLiveOnce),
+		routing.DecideVeto(float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
 	}
 
 	lastNNStats := routing.Stats{
@@ -55,11 +57,13 @@ func TestDecideUpgradeRoute(t *testing.T) {
 
 // Test case where we should get off a nextwork next route due to hysteresis
 func TestDecideDowngradeRTTHysteresis(t *testing.T) {
+	rrs := routing.DefaultRoutingRulesSettings
 
 	decisionFuncs := []routing.DecisionFunc{
-		routing.DecideUpgradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTThreshold)),
-		routing.DecideDowngradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
-		routing.DecideVeto(float64(routing.DefaultRoutingRulesSettings.RTTVeto), routing.DefaultRoutingRulesSettings.EnablePacketLossSafety, routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
+		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), rrs.EnableYouOnlyLiveOnce),
+		routing.DecideVeto(float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
 	}
 
 	lastNNStats := routing.Stats{
@@ -104,13 +108,14 @@ func TestDecideDowngradeRTTHysteresis(t *testing.T) {
 
 // Test case where we should get off a nextwork next route due to hysteresis and YOLO is enabled, vetoing the session
 func TestDecideDowngradeRTTHysteresisYOLO(t *testing.T) {
-	routingRulesSettings := routing.DefaultRoutingRulesSettings
-	routingRulesSettings.EnableYouOnlyLiveOnce = true
+	rrs := routing.DefaultRoutingRulesSettings
+	rrs.EnableYouOnlyLiveOnce = true
 
 	decisionFuncs := []routing.DecisionFunc{
-		routing.DecideUpgradeRTT(float64(routingRulesSettings.RTTThreshold)),
-		routing.DecideDowngradeRTT(float64(routingRulesSettings.RTTHysteresis), routingRulesSettings.EnableYouOnlyLiveOnce),
-		routing.DecideVeto(float64(routingRulesSettings.RTTVeto), routingRulesSettings.EnablePacketLossSafety, routingRulesSettings.EnableYouOnlyLiveOnce),
+		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), rrs.EnableYouOnlyLiveOnce),
+		routing.DecideVeto(float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
 	}
 
 	lastNNStats := routing.Stats{
@@ -160,12 +165,13 @@ func TestDecideDowngradeRTTHysteresisYOLO(t *testing.T) {
 
 // Test case where we should get off a network next route due to RTT veto
 func TestDecideRTTVeto(t *testing.T) {
-	routingRulesSettings := routing.DefaultRoutingRulesSettings
+	rrs := routing.DefaultRoutingRulesSettings
 
 	decisionFuncs := []routing.DecisionFunc{
-		routing.DecideUpgradeRTT(float64(routingRulesSettings.RTTThreshold)),
-		routing.DecideDowngradeRTT(float64(routingRulesSettings.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
-		routing.DecideVeto(float64(routingRulesSettings.RTTVeto), routingRulesSettings.EnablePacketLossSafety, routingRulesSettings.EnableYouOnlyLiveOnce),
+		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
+		routing.DecideVeto(float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
 	}
 
 	lastNNStats := routing.Stats{
@@ -215,13 +221,14 @@ func TestDecideRTTVeto(t *testing.T) {
 
 // Test case where we should downgrade to a direct route due to RTT veto and YOLO is enabled
 func TestDecideRTTVetoYOLO(t *testing.T) {
-	routingRulesSettings := routing.DefaultRoutingRulesSettings
-	routingRulesSettings.EnableYouOnlyLiveOnce = true
+	rrs := routing.DefaultRoutingRulesSettings
+	rrs.EnableYouOnlyLiveOnce = true
 
 	decisionFuncs := []routing.DecisionFunc{
-		routing.DecideUpgradeRTT(float64(routingRulesSettings.RTTThreshold)),
-		routing.DecideDowngradeRTT(float64(routingRulesSettings.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
-		routing.DecideVeto(float64(routingRulesSettings.RTTVeto), routingRulesSettings.EnablePacketLossSafety, routingRulesSettings.EnableYouOnlyLiveOnce),
+		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
+		routing.DecideVeto(float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
 	}
 
 	lastNNStats := routing.Stats{
@@ -271,13 +278,14 @@ func TestDecideRTTVetoYOLO(t *testing.T) {
 
 // Test case where we should downgrade to a direct route due to packet loss veto
 func TestDecidePacketLossVeto(t *testing.T) {
-	routingRulesSettings := routing.DefaultRoutingRulesSettings
-	routingRulesSettings.EnablePacketLossSafety = true
+	rrs := routing.DefaultRoutingRulesSettings
+	rrs.EnablePacketLossSafety = true
 
 	decisionFuncs := []routing.DecisionFunc{
-		routing.DecideUpgradeRTT(float64(routingRulesSettings.RTTThreshold)),
-		routing.DecideDowngradeRTT(float64(routingRulesSettings.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
-		routing.DecideVeto(float64(routingRulesSettings.RTTVeto), routingRulesSettings.EnablePacketLossSafety, routingRulesSettings.EnableYouOnlyLiveOnce),
+		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
+		routing.DecideVeto(float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
 	}
 
 	lastNNStats := routing.Stats{
@@ -327,14 +335,15 @@ func TestDecidePacketLossVeto(t *testing.T) {
 
 // Test case where we should downgrade to a direct route due to packet loss veto and YOLO is enabled
 func TestDecidePacketLossVetoYOLO(t *testing.T) {
-	routingRulesSettings := routing.DefaultRoutingRulesSettings
-	routingRulesSettings.EnablePacketLossSafety = true
-	routingRulesSettings.EnableYouOnlyLiveOnce = true
+	rrs := routing.DefaultRoutingRulesSettings
+	rrs.EnablePacketLossSafety = true
+	rrs.EnableYouOnlyLiveOnce = true
 
 	decisionFuncs := []routing.DecisionFunc{
-		routing.DecideUpgradeRTT(float64(routingRulesSettings.RTTThreshold)),
-		routing.DecideDowngradeRTT(float64(routingRulesSettings.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
-		routing.DecideVeto(float64(routingRulesSettings.RTTVeto), routingRulesSettings.EnablePacketLossSafety, routingRulesSettings.EnableYouOnlyLiveOnce),
+		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
+		routing.DecideVeto(float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
 	}
 
 	lastNNStats := routing.Stats{
@@ -384,10 +393,13 @@ func TestDecidePacketLossVetoYOLO(t *testing.T) {
 
 // Test case where we stay on direct with no change
 func TestDecideStayOnDirectRoute(t *testing.T) {
+	rrs := routing.DefaultRoutingRulesSettings
+
 	decisionFuncs := []routing.DecisionFunc{
-		routing.DecideUpgradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTThreshold)),
-		routing.DecideDowngradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
-		routing.DecideVeto(float64(routing.DefaultRoutingRulesSettings.RTTVeto), routing.DefaultRoutingRulesSettings.EnablePacketLossSafety, routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
+		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), rrs.EnableYouOnlyLiveOnce),
+		routing.DecideVeto(float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
 	}
 
 	lastNNStats := routing.Stats{
@@ -430,10 +442,13 @@ func TestDecideStayOnDirectRoute(t *testing.T) {
 
 // Test case where we stay on nextwork next with no change
 func TestDecideStayOnNNRoute(t *testing.T) {
+	rrs := routing.DefaultRoutingRulesSettings
+
 	decisionFuncs := []routing.DecisionFunc{
-		routing.DecideUpgradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTThreshold)),
-		routing.DecideDowngradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
-		routing.DecideVeto(float64(routing.DefaultRoutingRulesSettings.RTTVeto), routing.DefaultRoutingRulesSettings.EnablePacketLossSafety, routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
+		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), rrs.EnableYouOnlyLiveOnce),
+		routing.DecideVeto(float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
 	}
 
 	lastNNStats := routing.Stats{
@@ -482,10 +497,13 @@ func TestDecideStayOnNNRoute(t *testing.T) {
 
 // Test case to check that DecisionInitialSlice is never the reason twice in a row
 func TestValidateInitialSlice(t *testing.T) {
+	rrs := routing.DefaultRoutingRulesSettings
+
 	decisionFuncs := []routing.DecisionFunc{
-		routing.DecideUpgradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTThreshold)),
-		routing.DecideDowngradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
-		routing.DecideVeto(float64(routing.DefaultRoutingRulesSettings.RTTVeto), routing.DefaultRoutingRulesSettings.EnablePacketLossSafety, routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
+		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), rrs.EnableYouOnlyLiveOnce),
+		routing.DecideVeto(float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
 	}
 
 	lastNNStats := routing.Stats{
@@ -531,18 +549,19 @@ func TestValidateInitialSlice(t *testing.T) {
 
 // Test case where we should get off a network next route due to commit veto
 func TestDecideCommitVeto(t *testing.T) {
-	routingRulesSettings := routing.DefaultRoutingRulesSettings
-	routingRulesSettings.EnableTryBeforeYouBuy = true
+	rrs := routing.DefaultRoutingRulesSettings
+	rrs.EnableTryBeforeYouBuy = true
 
 	var commitPending bool
 	var commitObservedSliceCounter uint8
 	var committed bool
 
 	decisionFuncs := []routing.DecisionFunc{
-		routing.DecideUpgradeRTT(float64(routingRulesSettings.RTTThreshold)),
-		routing.DecideDowngradeRTT(float64(routingRulesSettings.RTTHysteresis), routingRulesSettings.EnableYouOnlyLiveOnce),
-		routing.DecideVeto(float64(routingRulesSettings.RTTVeto), routingRulesSettings.EnablePacketLossSafety, routingRulesSettings.EnableYouOnlyLiveOnce),
-		routing.DecideCommitted(true, uint8(routingRulesSettings.TryBeforeYouBuyMaxSlices), routingRulesSettings.EnableYouOnlyLiveOnce, &commitPending, &commitObservedSliceCounter, &committed),
+		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), rrs.EnableYouOnlyLiveOnce),
+		routing.DecideVeto(float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
+		routing.DecideCommitted(true, uint8(rrs.TryBeforeYouBuyMaxSlices), rrs.EnableYouOnlyLiveOnce, &commitPending, &commitObservedSliceCounter, &committed),
 	}
 
 	lastNNStats := routing.Stats{
@@ -580,12 +599,12 @@ func TestDecideCommitVeto(t *testing.T) {
 	combs := combinations(decisionFuncIndices)
 	for i := 0; i < len(combs); i++ {
 		perms := permutations(combs[i])
-		perms = filterPermutations(perms, 3) // Remove all permutations that don't include DecideCommitted, since that's the function we're testing for
+		perms = filterPermutations(perms, 4) // Remove all permutations that don't include DecideCommitted, since that's the function we're testing for
 		funcs := replaceIndicesWithDecisionFuncs(perms, decisionFuncs)
 
 		for j := 0; j < len(funcs); j++ {
 			commitPending = true
-			commitObservedSliceCounter = uint8(routingRulesSettings.TryBeforeYouBuyMaxSlices)
+			commitObservedSliceCounter = uint8(rrs.TryBeforeYouBuyMaxSlices)
 			committed = false
 
 			decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, funcs[j]...)
@@ -599,18 +618,19 @@ func TestDecideCommitVeto(t *testing.T) {
 
 // Test case to check that the committed flag from the decision function is being set correctly
 func TestValidateCommitted(t *testing.T) {
-	routingRulesSettings := routing.DefaultRoutingRulesSettings
-	routingRulesSettings.EnableTryBeforeYouBuy = true
+	rrs := routing.DefaultRoutingRulesSettings
+	rrs.EnableTryBeforeYouBuy = true
 
 	var commitPending bool
 	var commitObservedSliceCounter uint8
 	var committed bool
 
 	decisionFuncs := []routing.DecisionFunc{
-		routing.DecideUpgradeRTT(float64(routingRulesSettings.RTTThreshold)),
-		routing.DecideDowngradeRTT(float64(routingRulesSettings.RTTHysteresis), routingRulesSettings.EnableYouOnlyLiveOnce),
-		routing.DecideVeto(float64(routingRulesSettings.RTTVeto), routingRulesSettings.EnablePacketLossSafety, routingRulesSettings.EnableYouOnlyLiveOnce),
-		routing.DecideCommitted(true, uint8(routingRulesSettings.TryBeforeYouBuyMaxSlices), routingRulesSettings.EnableYouOnlyLiveOnce, &commitPending, &commitObservedSliceCounter, &committed),
+		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), rrs.EnableYouOnlyLiveOnce),
+		routing.DecideVeto(float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
+		routing.DecideCommitted(true, uint8(rrs.TryBeforeYouBuyMaxSlices), rrs.EnableYouOnlyLiveOnce, &commitPending, &commitObservedSliceCounter, &committed),
 	}
 
 	lastNNStats := routing.Stats{
@@ -648,12 +668,12 @@ func TestValidateCommitted(t *testing.T) {
 	combs := combinations(decisionFuncIndices)
 	for i := 0; i < len(combs); i++ {
 		perms := permutations(combs[i])
-		perms = filterPermutations(perms, 3) // Remove all permutations that don't include DecideCommitted, since that's the function we're testing for
+		perms = filterPermutations(perms, 4) // Remove all permutations that don't include DecideCommitted, since that's the function we're testing for
 		funcs := replaceIndicesWithDecisionFuncs(perms, decisionFuncs)
 
 		for j := 0; j < len(funcs); j++ {
 			commitPending = true
-			commitObservedSliceCounter = uint8(routingRulesSettings.TryBeforeYouBuyMaxSlices)
+			commitObservedSliceCounter = uint8(rrs.TryBeforeYouBuyMaxSlices)
 			committed = false
 
 			decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, funcs[j]...)
@@ -661,6 +681,220 @@ func TestValidateCommitted(t *testing.T) {
 			assert.Equal(t, false, commitPending)
 			assert.Equal(t, uint8(0), commitObservedSliceCounter)
 			assert.Equal(t, true, committed)
+		}
+	}
+}
+
+// Test case to check that direct routes are still served if the next route isn't good enough for multipath
+func TestDecideMultipathDirect(t *testing.T) {
+	rrs := routing.DefaultRoutingRulesSettings
+	rrs.EnableMultipathForRTT = true
+	rrs.EnableMultipathForJitter = true
+	rrs.EnableMultipathForPacketLoss = true
+
+	decisionFuncs := []routing.DecisionFunc{
+		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), rrs.EnableYouOnlyLiveOnce),
+		routing.DecideVeto(float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
+	}
+
+	lastNNStats := routing.Stats{
+		RTT:        0,
+		Jitter:     0,
+		PacketLoss: 0,
+	}
+
+	lastDirectStats := routing.Stats{
+		RTT:        30,
+		Jitter:     0,
+		PacketLoss: 0,
+	}
+
+	route := routing.Route{
+		Stats: routing.Stats{
+			RTT:        40,
+			Jitter:     0,
+			PacketLoss: 0,
+		},
+	}
+
+	startingDecision := routing.Decision{}
+
+	expected := routing.Decision{}
+
+	// Loop through all permutations and combinations of the decision functions and test that the result is the same
+	decisionFuncIndices := createIndexSlice(decisionFuncs)
+	combs := combinations(decisionFuncIndices)
+	for i := 0; i < len(combs); i++ {
+		perms := permutations(combs[i])
+		funcs := replaceIndicesWithDecisionFuncs(perms, decisionFuncs)
+
+		for j := 0; j < len(perms); j++ {
+			decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, funcs[j]...)
+			assert.Equal(t, expected, decision)
+		}
+	}
+}
+
+// Test case to check that when multipath is enabled for RTT that the session is upgraded and the decision reason is always the multipath version
+func TestValidateMultipathRTT(t *testing.T) {
+	rrs := routing.DefaultRoutingRulesSettings
+	rrs.EnableMultipathForRTT = true
+
+	decisionFuncs := []routing.DecisionFunc{
+		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), rrs.EnableYouOnlyLiveOnce),
+		routing.DecideVeto(float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
+	}
+
+	lastNNStats := routing.Stats{
+		RTT:        0,
+		Jitter:     0,
+		PacketLoss: 0,
+	}
+
+	lastDirectStats := routing.Stats{
+		RTT:        40,
+		Jitter:     0,
+		PacketLoss: 0,
+	}
+
+	route := routing.Route{
+		Stats: routing.Stats{
+			RTT:        30,
+			Jitter:     0,
+			PacketLoss: 0,
+		},
+	}
+
+	startingDecision := routing.Decision{}
+
+	expected := routing.Decision{
+		OnNetworkNext: true,
+		Reason:        routing.DecisionRTTReductionMultipath,
+	}
+
+	// Loop through all permutations and combinations of the decision functions and test that the result is the same
+	decisionFuncIndices := createIndexSlice(decisionFuncs)
+	combs := combinations(decisionFuncIndices)
+	for i := 0; i < len(combs); i++ {
+		perms := permutations(combs[i])
+		perms = filterPermutations(perms, 3) // Remove all permutations that don't include DecideMultipath, since that's the function we're testing for
+		funcs := replaceIndicesWithDecisionFuncs(perms, decisionFuncs)
+
+		for j := 0; j < len(perms); j++ {
+			decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, funcs[j]...)
+			assert.Equal(t, expected, decision)
+		}
+	}
+}
+
+// Test case to check that when multipath is enabled for jitter that the session is upgraded and the decision reason is always the multipath version
+func TestValidateMultipathJitter(t *testing.T) {
+	rrs := routing.DefaultRoutingRulesSettings
+	rrs.EnableMultipathForJitter = true
+
+	decisionFuncs := []routing.DecisionFunc{
+		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), rrs.EnableYouOnlyLiveOnce),
+		routing.DecideVeto(float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
+	}
+
+	lastNNStats := routing.Stats{
+		RTT:        0,
+		Jitter:     0,
+		PacketLoss: 0,
+	}
+
+	lastDirectStats := routing.Stats{
+		RTT:        0,
+		Jitter:     50,
+		PacketLoss: 0,
+	}
+
+	route := routing.Route{
+		Stats: routing.Stats{
+			RTT:        0,
+			Jitter:     0,
+			PacketLoss: 0,
+		},
+	}
+
+	startingDecision := routing.Decision{}
+
+	expected := routing.Decision{
+		OnNetworkNext: true,
+		Reason:        routing.DecisionHighJitterMultipath,
+	}
+
+	// Loop through all permutations and combinations of the decision functions and test that the result is the same
+	decisionFuncIndices := createIndexSlice(decisionFuncs)
+	combs := combinations(decisionFuncIndices)
+	for i := 0; i < len(combs); i++ {
+		perms := permutations(combs[i])
+		perms = filterPermutations(perms, 3) // Remove all permutations that don't include DecideMultipath, since that's the function we're testing for
+		funcs := replaceIndicesWithDecisionFuncs(perms, decisionFuncs)
+
+		for j := 0; j < len(perms); j++ {
+			decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, funcs[j]...)
+			assert.Equal(t, expected, decision)
+		}
+	}
+}
+
+// Test case to check that when multipath is enabled for packet loss that the session is upgraded and the decision reason is always the multipath version
+func TestValidateMultipathPacketLoss(t *testing.T) {
+	rrs := routing.DefaultRoutingRulesSettings
+	rrs.EnableMultipathForPacketLoss = true
+
+	decisionFuncs := []routing.DecisionFunc{
+		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), rrs.EnableYouOnlyLiveOnce),
+		routing.DecideVeto(float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
+	}
+
+	lastNNStats := routing.Stats{
+		RTT:        0,
+		Jitter:     0,
+		PacketLoss: 0,
+	}
+
+	lastDirectStats := routing.Stats{
+		RTT:        0,
+		Jitter:     0,
+		PacketLoss: 1,
+	}
+
+	route := routing.Route{
+		Stats: routing.Stats{
+			RTT:        0,
+			Jitter:     0,
+			PacketLoss: 0,
+		},
+	}
+
+	startingDecision := routing.Decision{}
+
+	expected := routing.Decision{
+		OnNetworkNext: true,
+		Reason:        routing.DecisionHighPacketLossMultipath,
+	}
+
+	// Loop through all permutations and combinations of the decision functions and test that the result is the same
+	decisionFuncIndices := createIndexSlice(decisionFuncs)
+	combs := combinations(decisionFuncIndices)
+	for i := 0; i < len(combs); i++ {
+		perms := permutations(combs[i])
+		perms = filterPermutations(perms, 3) // Remove all permutations that don't include DecideMultipath, since that's the function we're testing for
+		funcs := replaceIndicesWithDecisionFuncs(perms, decisionFuncs)
+
+		for j := 0; j < len(perms); j++ {
+			decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, funcs[j]...)
+			assert.Equal(t, expected, decision)
 		}
 	}
 }

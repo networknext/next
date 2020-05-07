@@ -37,14 +37,14 @@ func (dr DecisionReason) String() string {
 		reason = "AB Test Direct"
 	case DecisionRTTReduction:
 		reason = "RTT Reduction"
-	case DecisionPacketLossMultipath:
+	case DecisionHighPacketLossMultipath:
 		reason = "Packet Loss Multipath"
-	case DecisionJitterMultipath:
+	case DecisionHighJitterMultipath:
 		reason = "Jitter Multipath"
 	case DecisionVetoRTT:
 		reason = "Veto RTT"
-	case DecisionRTTMultipath:
-		reason = "RTT Multipath"
+	case DecisionRTTReductionMultipath:
+		reason = "RTT Reduction Multipath"
 	case DecisionVetoPacketLoss:
 		reason = "Veto Packet Loss"
 	case DecisionFallbackToDirect:
@@ -70,7 +70,7 @@ func (dr DecisionReason) String() string {
 	case DecisionVetoCommit | DecisionVetoYOLO:
 		reason = "Veto Commit YOLO"
 	default:
-		reason = "Unused"
+		reason = "Unknown"
 	}
 
 	return fmt.Sprintf("%s (%d)", reason, dr)
@@ -78,30 +78,36 @@ func (dr DecisionReason) String() string {
 
 // Route decision flags are required for billing, so this has to work the same for the billing entry to be correct
 const (
-	DecisionNoReason              DecisionReason = 0
-	DecisionForceDirect           DecisionReason = 1 << 1
-	DecisionForceNext             DecisionReason = 1 << 2
-	DecisionNoNextRoute           DecisionReason = 1 << 3
-	DecisionABTestDirect          DecisionReason = 1 << 4
-	DecisionRTTReduction          DecisionReason = 1 << 5
-	DecisionPacketLossMultipath   DecisionReason = 1 << 6
-	DecisionJitterMultipath       DecisionReason = 1 << 7
-	DecisionVetoRTT               DecisionReason = 1 << 8
-	DecisionRTTMultipath          DecisionReason = 1 << 9
-	DecisionVetoPacketLoss        DecisionReason = 1 << 10
-	DecisionFallbackToDirect      DecisionReason = 1 << 11
-	DecisionVetoYOLO              DecisionReason = 1 << 13
-	DecisionDatacenterHasNoRelays DecisionReason = 1 << 15
-	DecisionInitialSlice          DecisionReason = 1 << 16
-	DecisionNoNearRelays          DecisionReason = 1 << 17
-	DecisionRTTHysteresis         DecisionReason = 1 << 18
-	DecisionVetoCommit            DecisionReason = 1 << 19
+	DecisionNoReason                DecisionReason = 0
+	DecisionForceDirect             DecisionReason = 1 << 1
+	DecisionForceNext               DecisionReason = 1 << 2
+	DecisionNoNextRoute             DecisionReason = 1 << 3
+	DecisionABTestDirect            DecisionReason = 1 << 4
+	DecisionRTTReduction            DecisionReason = 1 << 5
+	DecisionHighPacketLossMultipath DecisionReason = 1 << 6
+	DecisionHighJitterMultipath     DecisionReason = 1 << 7
+	DecisionVetoRTT                 DecisionReason = 1 << 8
+	DecisionRTTReductionMultipath   DecisionReason = 1 << 9
+	DecisionVetoPacketLoss          DecisionReason = 1 << 10
+	DecisionFallbackToDirect        DecisionReason = 1 << 11
+	DecisionVetoYOLO                DecisionReason = 1 << 13
+	DecisionDatacenterHasNoRelays   DecisionReason = 1 << 15
+	DecisionInitialSlice            DecisionReason = 1 << 16
+	DecisionNoNearRelays            DecisionReason = 1 << 17
+	DecisionRTTHysteresis           DecisionReason = 1 << 18
+	DecisionVetoCommit              DecisionReason = 1 << 19
 )
 
 // DecideUpgradeRTT will decide if the client should use the network next route if the RTT reduction is greater than the given threshold.
 // This decision only upgrades direct routes, so network next routes aren't considered.
+// Multipath sessions aren't considered.
 func DecideUpgradeRTT(rttThreshold float64) DecisionFunc {
 	return func(prevDecision Decision, predictedNextStats Stats, lastNextStats Stats, directStats Stats) Decision {
+		// If we've already decided on multipath, then don't change the reason
+		if IsMultipath(prevDecision) {
+			return prevDecision
+		}
+
 		// If upgrading to a nextwork next route would reduce RTT by at least the given threshold, upgrade
 		if !prevDecision.OnNetworkNext && !IsVetoed(prevDecision) && directStats.RTT-predictedNextStats.RTT >= rttThreshold {
 			return Decision{true, DecisionRTTReduction}
@@ -114,8 +120,14 @@ func DecideUpgradeRTT(rttThreshold float64) DecisionFunc {
 
 // DecideDowngradeRTT will decide if the client should continue using the network next route if the network next RTT increase doesn't exceed the hysteresis value.
 // This decision only downgrades network next routes, so direct routes aren't considered.
+// Multipath sessions aren't considered.
 func DecideDowngradeRTT(rttHysteresis float64, yolo bool) DecisionFunc {
 	return func(prevDecision Decision, predictedNextStats Stats, lastNextStats Stats, directStats Stats) Decision {
+		// If we've already decided on multipath, then don't change the reason
+		if IsMultipath(prevDecision) {
+			return prevDecision
+		}
+
 		// If staying on a nextwork next route doesn't increase RTT by more than the given hysteresis value, stay
 		if prevDecision.OnNetworkNext {
 			if predictedNextStats.RTT-directStats.RTT <= rttHysteresis {
@@ -139,8 +151,14 @@ func DecideDowngradeRTT(rttHysteresis float64, yolo bool) DecisionFunc {
 // DecideVeto will decide if a client should switch to a direct route if the network next route it's on increases
 // RTT by more than the RTT veto value, or increases packet loss if packet loss safety is enabled.
 // This decision only downgrades network next routes, so direct routes aren't considered.
+// Multipath sessions aren't considered.
 func DecideVeto(rttVeto float64, packetLossSafety bool, yolo bool) DecisionFunc {
 	return func(prevDecision Decision, predictedNextStats Stats, lastNextStats Stats, directStats Stats) Decision {
+		// If we've already decided on multipath, then don't change the reason
+		if IsMultipath(prevDecision) {
+			return prevDecision
+		}
+
 		if prevDecision.OnNetworkNext {
 			// Whether or not the network next route made the RTT worse than the veto value
 			if lastNextStats.RTT-directStats.RTT > rttVeto {
@@ -196,8 +214,18 @@ func DecideVeto(rttVeto float64, packetLossSafety bool, yolo bool) DecisionFunc 
 // observedSliceCounter: How many slices have been observed while deciding whether or not to commit
 // committed: Whether or not the route is committed
 // The out vars describe the state of the committed logic to keep this function stateless.
+// This decision only downgrades network next routes, so direct routes aren't considered.
+// Multipath sessions aren't considered.
 func DecideCommitted(onNNLastSlice bool, maxObservedSlices uint8, yolo bool, commitPending *bool, observedSliceCounter *uint8, committed *bool) DecisionFunc {
 	return func(prevDecision Decision, predictedNextStats, lastNextStats, directStats Stats) Decision {
+		// If we've already decided on multipath, then don't change the reason
+		if IsMultipath(prevDecision) {
+			*commitPending = false
+			*observedSliceCounter = 0
+			*committed = true // Since network next routes will always be used in multipath, always commit to them
+			return prevDecision
+		}
+
 		// Only consider committing a route if try before you buy is enabled and
 		// the route decision logic has decided on a NN route in the first place
 		if prevDecision.OnNetworkNext {
@@ -254,12 +282,56 @@ func DecideCommitted(onNNLastSlice bool, maxObservedSlices uint8, yolo bool, com
 	}
 }
 
+// DecideMultipath will decide if we should serve a network next route to be used for multipath
+// If the decision function can't find a good enough reason to send a network next route, then it decides to go direct
+// If multipath isn't enabled then the decision isn't affected
+func DecideMultipath(rttMultipath bool, jitterMultipath bool, packetLossMultipath bool, rttThreshold float64) DecisionFunc {
+	return func(prevDecision Decision, predictedNextStats, lastNextStats, directStats Stats) Decision {
+		decision := prevDecision
+
+		// Reset the decision reason if multipath is enabled
+		if rttMultipath || jitterMultipath || packetLossMultipath {
+			decision.OnNetworkNext = false // Start with false, then if we should use multipath then go to true
+			decision.Reason = DecisionNoReason
+		}
+
+		// If the RTT reduction would result in direct -> next, then use the RTT multipath decision reason
+		if rttMultipath && directStats.RTT-predictedNextStats.RTT >= rttThreshold {
+			decision.OnNetworkNext = true
+			decision.Reason |= DecisionRTTReductionMultipath
+		}
+
+		// If the direct jitter is too high, then use multipath for jitter
+		if jitterMultipath && directStats.Jitter >= 50.0 {
+			decision.OnNetworkNext = true
+			decision.Reason |= DecisionHighJitterMultipath
+		}
+
+		// If the direct packet loss is more than 1%, then use multipath for packet loss
+		if packetLossMultipath && directStats.PacketLoss >= 1.0 {
+			decision.OnNetworkNext = true
+			decision.Reason |= DecisionHighPacketLossMultipath
+		}
+
+		return decision
+	}
+}
+
 // IsVetoed returns true if the given route decision was a veto.
 func IsVetoed(decision Decision) bool {
 	if !decision.OnNetworkNext {
 		if decision.Reason&DecisionVetoPacketLoss != 0 || decision.Reason&DecisionVetoRTT != 0 || decision.Reason&DecisionVetoYOLO != 0 || decision.Reason&DecisionVetoCommit != 0 {
 			return true
 		}
+	}
+
+	return false
+}
+
+// IsMultipath returns true if the given route decision decided to enable multipath
+func IsMultipath(decision Decision) bool {
+	if decision.Reason&DecisionRTTReductionMultipath != 0 || decision.Reason&DecisionHighJitterMultipath != 0 || decision.Reason&DecisionHighPacketLossMultipath != 0 {
+		return true
 	}
 
 	return false
