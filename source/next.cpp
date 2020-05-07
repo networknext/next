@@ -9305,16 +9305,16 @@ inline int next_sequence_greater_than( uint8_t s1, uint8_t s2 )
            ( ( s1 < s2 ) && ( s2 - s1  > 128 ) );
 }
 
-next_session_entry_t * next_server_internal_check_client_to_server_packet( next_server_internal_t * server, uint8_t * packet_data, int packet_bytes )
+next_session_entry_t * next_server_internal_check_client_to_server_packet( next_server_internal_t * server, uint8_t * packet_data, int packet_bytes, bool * valid )
 {
     next_assert( server );
     next_assert( packet_data );
+    next_assert( valid );
  
+    *valid = false;
+
     if ( packet_bytes <= NEXT_HEADER_BYTES )
-    {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client to server packet. too small to be valid" );
         return NULL;
-    }
 
     uint8_t packet_type = 0;
     uint64_t packet_sequence = 0;
@@ -9323,18 +9323,19 @@ next_session_entry_t * next_server_internal_check_client_to_server_packet( next_
     uint8_t packet_session_flags = 0;
 
     if ( next_peek_header( NEXT_DIRECTION_CLIENT_TO_SERVER, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, packet_data, packet_bytes ) != NEXT_OK )
-    {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client to server packet. could not peek header" );
         return NULL;
-    }
+
+    // todo: would feel more comfortable having more checks by this point
 
     next_session_entry_t * entry = next_session_manager_find_by_session_id( server->session_manager, packet_session_id );
     if ( !entry )
-    {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client to server packet. could not find session %" PRIx64, packet_session_id );
         return NULL;
-    }
 
+    // todo: we now need to check the signature against all of the three private keys we could encounter.
+    // if it doesn't match any, then we say we don't know what's up with this packet.
+
+    *valid = true;
+ 
     if ( !entry->has_pending_route && !entry->has_current_route && !entry->has_previous_route )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client to server packet. session has no route" );
@@ -10701,7 +10702,7 @@ bool next_server_internal_process_network_next_packet( next_server_internal_t * 
             {
                 char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
                 next_printf( NEXT_LOG_LEVEL_ERROR, "server ignored upgrade response from %s. failed to add session", next_address_to_string( from, address_buffer ) );
-                return NEXT_ERROR;
+                return true;
             }
 
             memcpy( entry->send_key, server_send_key, crypto_kx_SESSIONKEYBYTES );
@@ -10784,6 +10785,191 @@ bool next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         // todo
         // printf( "*** upgrade confirm packet ***\n" );
+
+        return true;
+    }
+
+    // -------------------
+    // PACKETS FROM RELAYS
+    // -------------------
+
+    if ( packet_id == NEXT_ROUTE_REQUEST_PACKET )
+    {
+        if ( packet_bytes != 1 + NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES )
+            return false;
+
+        uint8_t * buffer = &packet_data[1];
+        next_route_token_t route_token;
+        if ( next_read_encrypted_route_token( &buffer, &route_token, next_router_public_key, server->server_route_private_key ) != NEXT_OK )
+            return false;
+
+        next_session_entry_t * entry = next_session_manager_find_by_session_id( server->session_manager, route_token.session_id );
+        if ( !entry )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored route request packet. could not find session %" PRIx64 );
+            return true;
+        }
+
+        if ( entry->has_current_route && route_token.expire_timestamp < entry->current_route_expire_timestamp )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored route request packet. expire timestamp is older than current route" );
+            return true;
+        }
+
+        if ( entry->has_current_route && next_sequence_greater_than( entry->most_recent_session_version, route_token.session_version ) )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored route request packet. route is older than most recent session (%d vs. %d)", route_token.session_version, entry->most_recent_session_version );
+            return true;
+        }
+
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server received route request packet from relay for session %" PRIx64, route_token.session_id );
+
+        if ( next_sequence_greater_than( route_token.session_version, entry->pending_route_session_version ) )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server added pending route for session %" PRIx64, route_token.session_id );
+            entry->has_pending_route = true;
+            entry->pending_route_session_version = route_token.session_version;
+            entry->pending_route_expire_timestamp = route_token.expire_timestamp;
+            entry->pending_route_expire_time = entry->has_current_route ? ( entry->current_route_expire_time + NEXT_SLICE_SECONDS * 2 ) : ( next_time() + NEXT_SLICE_SECONDS * 2 );
+            entry->pending_route_kbps_up = route_token.kbps_up;
+            entry->pending_route_kbps_down = route_token.kbps_down;
+            entry->pending_route_send_address = *from;
+            memcpy( entry->pending_route_private_key, route_token.private_key, crypto_box_SECRETKEYBYTES );
+            entry->most_recent_session_version = route_token.session_version;
+        }
+
+        uint8_t response[NEXT_HEADER_BYTES];
+
+        uint64_t session_send_sequence = entry->special_send_sequence++;
+        session_send_sequence |= uint64_t(1) << 63;
+        session_send_sequence |= uint64_t(1) << 62;
+
+        if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_ROUTE_RESPONSE_PACKET, session_send_sequence, entry->session_id, entry->pending_route_session_version, 0, entry->pending_route_private_key, response, NEXT_MTU ) != NEXT_OK )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server failed to write next route response packet" );
+            return true;
+        }
+
+        next_platform_socket_send_packet( server->socket, from, response, NEXT_HEADER_BYTES );
+
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent route response packet to relay for session %" PRIx64, entry->session_id );
+
+        return true;
+    }
+
+    // continue request packet
+
+    if ( packet_id == NEXT_CONTINUE_REQUEST_PACKET )
+    {
+        if ( packet_bytes != 1 + NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES )
+            return false;
+
+        uint8_t * buffer = &packet_data[1];
+        next_continue_token_t continue_token;
+        if ( next_read_encrypted_continue_token( &buffer, &continue_token, next_router_public_key, server->server_route_private_key ) != NEXT_OK )
+            return false;
+
+        next_session_entry_t * entry = next_session_manager_find_by_session_id( server->session_manager, continue_token.session_id );
+        if ( !entry )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored continue request packet from relay. could not find session %" PRIx64 );
+            return true;
+        }
+
+        if ( !entry->has_current_route )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored continue request packet from relay. session has no route to continue" );
+            return true;
+        }
+
+        if ( continue_token.session_version != entry->current_route_session_version )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored continue request packet from relay. session version does not match" );
+            return true;
+        }
+
+        if ( continue_token.expire_timestamp < entry->current_route_expire_timestamp )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored continue request packet from relay. expire timestamp is older than current route" );
+            return true;
+        }
+
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server received continue request packet from relay for session %" PRIx64, continue_token.session_id );
+
+        entry->current_route_expire_timestamp = continue_token.expire_timestamp;
+        entry->current_route_expire_time += NEXT_SLICE_SECONDS;
+        entry->has_previous_route = false;
+
+        uint8_t response[NEXT_HEADER_BYTES];
+
+        uint64_t session_send_sequence = entry->special_send_sequence++;
+        session_send_sequence |= uint64_t(1) << 63;
+        session_send_sequence |= uint64_t(1) << 62;
+
+        if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_CONTINUE_RESPONSE_PACKET, session_send_sequence, entry->session_id, entry->current_route_session_version, 0, entry->current_route_private_key, response, NEXT_MTU ) != NEXT_OK )
+        {
+            next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write next continue response packet" );
+            return true;
+        }
+
+        next_platform_socket_send_packet( server->socket, from, response, NEXT_HEADER_BYTES );
+
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent continue response packet to relay for session %" PRIx64, entry->session_id );
+
+        return true;
+    }
+
+    // client to server packet
+
+    if ( packet_id == NEXT_CLIENT_TO_SERVER_PACKET )
+    {
+        if ( packet_bytes <= NEXT_HEADER_BYTES )
+            return false;
+
+        bool valid = false;
+        next_session_entry_t * entry = next_server_internal_check_client_to_server_packet( server, packet_data, packet_bytes, &valid );
+        if ( !entry )
+            return valid;
+
+        next_server_notify_packet_received_t * notify = (next_server_notify_packet_received_t*) next_malloc( server->context, sizeof( next_server_notify_packet_received_t ) );
+        notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
+        notify->from = entry->address;
+        notify->packet_bytes = packet_bytes - NEXT_HEADER_BYTES;
+        next_assert( packet_bytes > NEXT_HEADER_BYTES );
+        memcpy( notify->packet_data, packet_data + NEXT_HEADER_BYTES, size_t(packet_bytes) - NEXT_HEADER_BYTES );
+        {
+            next_mutex_guard( server->notify_mutex );
+            next_queue_push( server->notify_queue, notify );
+        }
+
+        return true;
+    }
+
+    // ping packet
+
+    if ( packet_id == NEXT_PING_PACKET )
+    {
+        if ( packet_bytes != NEXT_HEADER_BYTES + 8 )
+            return false;
+
+        bool valid = false;
+        next_session_entry_t * entry = next_server_internal_check_client_to_server_packet( server, packet_data, packet_bytes, &valid );
+        if ( !entry )
+            return valid;
+
+        uint64_t send_sequence = entry->special_send_sequence++;
+        send_sequence |= uint64_t(1) << 63;
+        send_sequence |= uint64_t(1) << 62;
+
+        if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_PONG_PACKET, send_sequence, entry->session_id, entry->current_route_session_version, 0, entry->current_route_private_key, packet_data, NEXT_HEADER_BYTES + 8 ) != NEXT_OK )
+        {
+            next_printf( NEXT_LOG_LEVEL_WARN, "server failed to write pong packet header" );
+            return true;
+        }
+
+        next_platform_socket_send_packet( server->socket, from, packet_data, NEXT_HEADER_BYTES + 8 );
+
+        return true;
     }
 
     // ----------------------------------

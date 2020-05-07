@@ -1,16 +1,22 @@
 DONE
 
-TODO
-	
 	Server needs to handle "route request" packet. Check the very specific size (one token). Check that it decrypts, otherwise pass to game.
-
-	--------------------------------
 
 	Once this is done, running under a func test backend should result in the client getting the route response packet.
 
+	Bring across "continue request" packet.
+
+TODO
+
+	Bring across "client to server" packet.
+
+	Bring across "next ping" packet.
+
 	--------------------------------
 
-	Once this passes, bring across the other packet types.
+	Bring across "server to client" packet.
+
+	Bring across "next pong" packet.
 
 	--------------------------------
 
@@ -22,6 +28,21 @@ TODO
 
 	--------------------------------
 
+	Need a test with payload packets of all first bytes, to make sure they all get through even when network next is enabled on the server, even post-upgrade, make sure they all get through, eg. switch to sending direct after upgrade... test all byte combinations.
+
+	--------------------------------
+
+	Add a test to verify that no network next packets leak through to game in the common case.
+
+	--------------------------------
+
+	Fuzz test with client and server localhost with random direct packets w. random lengths.
+
+	Meant to check stability of our protocols against random data.
+
+	Worth running overnight. Add test.
+
+	--------------------------------
 
 
 
