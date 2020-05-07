@@ -1,11 +1,9 @@
 package transport_test
 
 import (
-	"encoding/base64"
 	"errors"
 	"net"
 	"net/http"
-	"os"
 	"testing"
 
 	"github.com/alicebob/miniredis/v2"
@@ -112,20 +110,6 @@ func NewTestHTTPClient(fn RoundTripFunc) *http.Client {
 	return &http.Client{
 		Transport: RoundTripFunc(fn),
 	}
-}
-
-func getRelayKeyPair(t *testing.T) (pubKey []byte, privKey []byte) {
-	key := os.Getenv("RELAY_PUBLIC_KEY")
-	assert.NotEqual(t, 0, len(key))
-	pubKey, err := base64.StdEncoding.DecodeString(key)
-	assert.NoError(t, err)
-
-	key = os.Getenv("RELAY_PRIVATE_KEY")
-	assert.NotEqual(t, 0, len(key))
-	privKey, err = base64.StdEncoding.DecodeString(key)
-	assert.NoError(t, err)
-
-	return pubKey, privKey
 }
 
 func seedRedis(t *testing.T, redisServer *miniredis.Miniredis, addressesToAdd []string) {

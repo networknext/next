@@ -10,6 +10,7 @@ global_job_config:
       - sudo apt-get update && sudo apt-get -y install libsodium-dev libcurl4-gnutls-dev g++-8 rapidjson-dev
       - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8
       - sudo apt-get install google-cloud-sdk-firestore-emulator
+      - sudo apt-get install google-cloud-sdk-pubsub-emulator
       - checkout
       - sem-version go 1.13
       - make clean
@@ -26,6 +27,8 @@ blocks:
       env_vars:
         - name: FIRESTORE_EMULATOR_HOST
           value: "127.0.0.1:11000"
+        - name: PUBSUB_EMULATOR_HOST
+          value: "127.0.0.1:12000"
 promotions:
   - name: Development Deployment
     pipeline_file: development-deploy.yml

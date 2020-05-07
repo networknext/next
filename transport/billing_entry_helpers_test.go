@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/networknext/backend/billing"
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
@@ -177,6 +178,16 @@ func TestBuildRouteRequest(t *testing.T) {
 		Longitude: -73.6835691,
 	}
 
+	seller := routing.Seller{
+		ID:   "sellerID",
+		Name: "seller name",
+	}
+
+	datacenter := routing.Datacenter{
+		ID:   crypto.HashID("datacenter name"),
+		Name: "datacenter name",
+	}
+
 	clientRelays := []routing.Relay{
 		routing.Relay{
 			ID: 100,
@@ -184,6 +195,8 @@ func TestBuildRouteRequest(t *testing.T) {
 				IP:   net.ParseIP("127.0.0.1"),
 				Port: 1000,
 			},
+			Seller:     seller,
+			Datacenter: datacenter,
 		},
 		routing.Relay{
 			ID: 200,
@@ -191,6 +204,8 @@ func TestBuildRouteRequest(t *testing.T) {
 				IP:   net.ParseIP("127.0.0.2"),
 				Port: 2000,
 			},
+			Seller:     seller,
+			Datacenter: datacenter,
 		},
 		routing.Relay{
 			ID: 300,
@@ -198,12 +213,21 @@ func TestBuildRouteRequest(t *testing.T) {
 				IP:   net.ParseIP("127.0.0.3"),
 				Port: 3000,
 			},
+			Seller:     seller,
+			Datacenter: datacenter,
 		},
 	}
 
 	storer := storage.InMemory{}
+
+	err := storer.AddSeller(context.Background(), seller)
+	assert.NoError(t, err)
+	err = storer.AddDatacenter(context.Background(), datacenter)
+	assert.NoError(t, err)
+
 	for _, clientRelay := range clientRelays {
-		storer.AddRelay(context.Background(), clientRelay)
+		err := storer.AddRelay(context.Background(), clientRelay)
+		assert.NoError(t, err)
 	}
 
 	actual := transport.NewRouteRequest(updatePacket, buyer, serverData, location, &storer, clientRelays)

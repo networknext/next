@@ -66,26 +66,42 @@ type RoutingRulesSettings struct {
 
 	// If true, the customer is participating in an A/B test. Additional metrics will be recorded and half the sessions that would take network next will take direct instead
 	EnableABTest bool
+
+	// If true, the backend should only mark routes as committed if TryBeforeYouBuyMaxSlices network next routes have been observed to improve over direct
+	EnableTryBeforeYouBuy bool
+
+	// The maximum number of slices we should observe if we can't confidently decide whether or not to veto a session during the committed logic.
+	TryBeforeYouBuyMaxSlices int8
+
+	// What percentage of sessions should route selection occur on a scale of 0 to 100.
+	// For example if SelectionPercentage was set to 20 this would only allow 20% of incoming sessions be considered for route selection the rest would be forced direct.
+	// If this defaults to 0 for any reason we force direct for the entire player base to be safe.
+	// Set this to >= 100 to enable ALL sessions for a buyer to be considered for route selection.
+	SelectionPercentage int64
 }
 
 var DefaultRoutingRulesSettings = RoutingRulesSettings{
-	MaxCentsPerGB:     25.0,
-	EnvelopeKbpsUp:    256,
-	EnvelopeKbpsDown:  256,
-	AcceptableLatency: -1.0,
-	RTTThreshold:      5.0,
-	RTTEpsilon:        2.0,
-	RTTHysteresis:     5.0,
-	RTTVeto:           20.0,
+	MaxCentsPerGB:            25.0,
+	EnvelopeKbpsUp:           256,
+	EnvelopeKbpsDown:         256,
+	AcceptableLatency:        -1.0,
+	RTTThreshold:             5.0,
+	RTTEpsilon:               2.0,
+	RTTHysteresis:            5.0,
+	RTTVeto:                  20.0,
+	TryBeforeYouBuyMaxSlices: 3,
+	SelectionPercentage:      0,
 }
 
 var LocalRoutingRulesSettings = RoutingRulesSettings{
-	MaxCentsPerGB:     25.0,
-	EnvelopeKbpsUp:    256,
-	EnvelopeKbpsDown:  256,
-	AcceptableLatency: -1.0,
-	RTTThreshold:      0.05,
-	RTTEpsilon:        0.1,
-	RTTHysteresis:     0.05,
-	RTTVeto:           1.0,
+	MaxCentsPerGB:            25.0,
+	EnvelopeKbpsUp:           256,
+	EnvelopeKbpsDown:         256,
+	AcceptableLatency:        -1.0,
+	RTTThreshold:             0.05,
+	RTTEpsilon:               0.1,
+	RTTHysteresis:            0.05,
+	RTTVeto:                  1.0,
+	TryBeforeYouBuyMaxSlices: 3,
+	SelectionPercentage:      100,
 }

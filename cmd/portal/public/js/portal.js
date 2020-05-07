@@ -22,6 +22,7 @@ var pubKeyInput = null;
 var relaysTable = null;
 var sessionDetailsVue = null;
 var sessionsTable = null;
+var userSessionTable = null;
 
 JSONRPCClient = {
 	async call(method, params) {
@@ -51,7 +52,7 @@ JSONRPCClient = {
 				throw new Error(json.error);
 			}
 			return json.result
-		})
+		});
 	}
 }
 
@@ -161,6 +162,8 @@ WorkspaceHandler = {
 	alerts: {
 		sessionToolAlert: document.getElementById("session-tool-alert"),
 		sessionToolDanger: document.getElementById("session-tool-danger"),
+		userToolAlert: document.getElementById("user-tool-alert"),
+		userToolDanger: document.getElementById("user-tool-danger"),
 	},
 	links: {
 		accountsLink: document.getElementById("accounts-link"),
@@ -241,14 +244,28 @@ WorkspaceHandler = {
 				this.links.sessionsLink.classList.add("active");
 				break;
 			case 'session-tool':
-				this.alerts.sessionToolAlert.style.display = 'block';
-				this.alerts.sessionToolDanger.style.display = 'none';
-				sessionDetailsVue ? Object.assign(sessionDetailsVue.$data, {showDetails: false}) : null;
+				WorkspaceHandler.alerts.sessionToolAlert.style.display = 'block';
+				WorkspaceHandler.alerts.sessionToolDanger.style.display = 'none';
+
+				Object.assign(sessionDetailsVue.$data, {
+					meta: null,
+					slices: [],
+					showDetails: false,
+				});
+				document.getElementById("session-id-input").value = '';
 				this.workspaces.sessionToolWorkspace.style.display = 'block';
 				this.links.sessionToolLink.classList.add("active");
 				break;
 			case 'user-tool':
-				this.loadUsersPage();
+				WorkspaceHandler.alerts.userToolAlert.style.display = 'block';
+				WorkspaceHandler.alerts.userToolDanger.style.display = 'none';
+
+				Object.assign(userSessionTable.$data, {
+					sessions: [],
+					showTable: false,
+				});
+
+				document.getElementById("user-hash-input").value = '';
 				this.workspaces.userToolWorkspace.style.display = 'block';
 				this.links.userToolLink.classList.add("active");
 				break;
@@ -384,6 +401,14 @@ function createVueComponents() {
 			editUser: WorkspaceHandler.editUser
 		}
 	});
+	mapSessionsCount = new Vue({
+		el: '#map-sessions-count',
+		data: {
+			onNN: [],
+			sessions: [],
+			showCount: false,
+		}
+	});
 	pubKeyInput = new Vue({
 		el: '#pubKey',
 		data: {
@@ -410,21 +435,73 @@ function createVueComponents() {
 			showCount: false,
 		},
 		methods: {
+			fetchSessionInfo: fetchSessionInfo,
+			fetchUserSessions: fetchUserSessions,
+		}
+	});
+	userSessionTable = new Vue({
+		el: '#user-sessions',
+		data: {
+			hash: '',
+			sessions: [],
+			showTable: false,
+		},
+		methods: {
 			fetchSessionInfo: fetchSessionInfo
 		}
-	});
-	mapSessionsCount = new Vue({
-		el: '#map-sessions-count',
-		data: {
-			onNN: [],
-			sessions: [],
-			showCount: false,
-		}
-	});
+	})
 }
 
-function fetchUserInfo() {
-	// Need an endpoint for this
+function fetchUserSessions(userHash = '') {
+	WorkspaceHandler.alerts.userToolAlert.style.display = 'none';
+	WorkspaceHandler.alerts.userToolDanger.style.display = 'none';
+
+	let hash = '';
+
+	if (userHash != '') {
+		WorkspaceHandler.changePage('user-tool');
+		hash = userHash;
+		document.getElementById("user-hash-input").value = hash;
+	} else {
+		hash = document.getElementById("user-hash-input").value;
+	}
+
+	if (hash == '') {
+		Object.assign(userSessionTable.$data, {
+			sessions: [],
+			showTable: false,
+		});
+		document.getElementById("user-hash-input").value = '';
+		WorkspaceHandler.alerts.userToolDanger.style.display = 'block';
+		return;
+	}
+
+	JSONRPCClient
+		.call("BuyersService.UserSessions", {user_hash: hash})
+		.then((response) => {
+			let sessions = response.sessions || [];
+
+			/**
+			 * I really dislike this but it is apparently the way to reload/update the data within a vue
+			 */
+			Object.assign(userSessionTable.$data, {
+				sessions: sessions,
+				showTable: true,
+			});
+
+			WorkspaceHandler.alerts.userToolAlert.style.display = 'none';
+			WorkspaceHandler.alerts.userToolDanger.style.display = 'none';
+		})
+		.catch((e) => {
+			Object.assign(userSessionTable.$data, {
+				sessions: [],
+				showTable: false,
+			});
+			console.log("Something went wrong fetching user sessions: ");
+			console.log(e);
+			WorkspaceHandler.alerts.userToolDanger.style.display = 'block';
+			document.getElementById("user-hash-input").value = '';
+		});
 }
 
 function updatePubKey() {
@@ -442,29 +519,38 @@ function updatePubKey() {
 }
 
 function fetchSessionInfo(sessionId = '') {
-	WorkspaceHandler.changePage("session-tool");
-	let id = sessionId || document.getElementById("session-id-input").value;
-	document.getElementById("session-id-input").value = id;
+	WorkspaceHandler.alerts.sessionToolAlert.style.display = 'none';
+	WorkspaceHandler.alerts.sessionToolDanger.style.display = 'none';
+
+	let id = '';
+
+	if (sessionId != '') {
+		WorkspaceHandler.changePage('session-tool');
+		id = sessionId;
+		document.getElementById("session-id-input").value = id;
+	} else {
+		id = document.getElementById("session-id-input").value;
+	}
 
 	if (id == '') {
-		console.log("Can't use a empty id");
+		Object.assign(sessionDetailsVue.$data, {
+			meta: null,
+			slices: [],
+			showDetails: false,
+		});
 		document.getElementById("session-id-input").value = '';
+		WorkspaceHandler.alerts.sessionToolDanger.style.display = 'block';
 		return;
 	}
-	WorkspaceHandler.alerts.sessionToolAlert.style.display = 'none';
-	/**
-	 * TODO: Add in a catch for when session ID isn't found
-	 */
+
 	JSONRPCClient
 		.call("BuyersService.SessionDetails", {session_id: id})
 		.then((response) => {
 			Object.assign(sessionDetailsVue.$data, {
-				meta: response.meta
+				meta: response.meta,
+				slices: response.slices,
+				showDetails: true
 			});
-			Object.assign(sessionDetailsVue.$data, {
-				slices: response.slices
-			});
-			Object.assign(sessionDetailsVue.$data, {showDetails: true});
 
 			setTimeout(() => {
 				let data = {
@@ -502,9 +588,17 @@ function fetchSessionInfo(sessionId = '') {
 					] */
 				});
 			});
+
+			WorkspaceHandler.alerts.sessionToolAlert.style.display = 'none';
+			WorkspaceHandler.alerts.sessionToolDanger.style.display = 'none';
 		})
 		.catch((e) => {
-			console.log("Something went wrong fetching session information: ");
+			Object.assign(sessionDetailsVue.$data, {
+				meta: null,
+				slices: [],
+				showDetails: false,
+			});
+			console.log("Something went wrong fetching session details: ");
 			console.log(e);
 			WorkspaceHandler.alerts.sessionToolDanger.style.display = 'block';
 			document.getElementById("session-id-input").value = '';
@@ -514,354 +608,239 @@ function fetchSessionInfo(sessionId = '') {
 
 function generateCharts(data) {
 	let latencyData = {
-		next: [],
-		direct: [],
-		improvement: [],
+		improvement: [
+			[],
+			[],
+		],
+		comparison: [
+			[],
+			[],
+			[],
+		],
 	};
 	let jitterData = {
-		next: [],
-		direct: [],
-		improvement: [],
+		improvement: [
+			[],
+			[],
+		],
+		comparison: [
+			[],
+			[],
+			[],
+		],
 	};
 	let packetLossData = {
-		next: [],
-		direct: [],
-		improvement: [],
+		improvement: [
+			[],
+			[],
+		],
+		comparison: [
+			[],
+			[],
+			[],
+		],
 	};
 	let bandwidthData = {
-		up: [],
-		down: [],
+		up: [
+			[],
+			[],
+		],
+		down: [
+			[],
+			[],
+		],
 	};
 
 	data.map((entry) => {
-		let timestamp = new Date(entry.timestamp);
-		timestamp = timestamp.toLocaleString(
-			'en-us',
-			{
-				weekday: undefined,
-				year: undefined,
-				month: undefined,
-				day: undefined,
-				hour: '2-digit',
-				minute: '2-digit',
-				second: '2-digit',
-			},
-		);
+		let timestamp = new Date(entry.timestamp).getTime() / 1000;
 
 		// Latency
 		let next = Number.parseInt(entry.next.rtt * SEC_TO_MS).toFixed(0);
 		let direct = Number.parseInt(entry.direct.rtt * SEC_TO_MS).toFixed(0);
 		let improvement = direct - next;
-		latencyData.next.push({
-			x: timestamp,
-			y: next,
-		});
-		latencyData.direct.push({
-			x: timestamp,
-			y: direct,
-		});
-		latencyData.improvement.push({
-			x: timestamp,
-			y: improvement,
-		});
+		latencyData.improvement[0].push(timestamp);
+		latencyData.improvement[1].push(improvement);
+		latencyData.comparison[0].push(timestamp);
+		latencyData.comparison[1].push(next);
+		latencyData.comparison[2].push(direct);
 
 		// Jitter
-		next = Number.parseInt(entry.next.rtt * SEC_TO_MS).toFixed(0);
-		direct = Number.parseInt(entry.direct.rtt * SEC_TO_MS).toFixed(0);
+		next = Number.parseInt(entry.next.jitter * SEC_TO_MS).toFixed(0);
+		direct = Number.parseInt(entry.direct.jitter * SEC_TO_MS).toFixed(0);
 		improvement = direct - next;
-		jitterData.next.push({
-			x: timestamp,
-			y: next,
-		});
-		jitterData.direct.push({
-			x: timestamp,
-			y: direct,
-		});
-		jitterData.improvement.push({
-			x: timestamp,
-			y: improvement,
-		});
+		jitterData.improvement[0].push(timestamp);
+		jitterData.improvement[1].push(improvement);
+		jitterData.comparison[0].push(timestamp);
+		jitterData.comparison[1].push(next);
+		jitterData.comparison[2].push(direct);
 
 		// Packetloss
 		next = Number.parseInt(entry.next.packet_loss * DEC_TO_PERC).toFixed(0);
 		direct = Number.parseInt(entry.direct.packet_loss * DEC_TO_PERC).toFixed(0);
 		improvement = direct - next;
-		packetLossData.next.push({
-			x: timestamp,
-			y: next,
-		});
-		packetLossData.direct.push({
-			x: timestamp,
-			y: direct,
-		});
-		packetLossData.improvement.push({
-			x: timestamp,
-			y: improvement,
-		});
+		packetLossData.improvement[0].push(timestamp);
+		packetLossData.improvement[1].push(improvement);
+		packetLossData.comparison[0].push(timestamp);
+		packetLossData.comparison[1].push(next);
+		packetLossData.comparison[2].push(direct);
 
 		// Bandwidth
-		bandwidthData.up.push({
-			x: timestamp,
-			y: entry.envelope.up,
-		});
-		bandwidthData.down.push({
-			x: timestamp,
-			y: entry.envelope.down,
-		});
+		bandwidthData.up[0].push(timestamp);
+		bandwidthData.up[1].push(entry.envelope.up);
+		bandwidthData.down[0].push(timestamp);
+		bandwidthData.down[1].push(entry.envelope.down);
 	});
 
-	let defaultOptions = {
-		chart: {
-			type: 'area',
-			height: 350,
-			toolbar: {
-				show: false,
-			},
-			zoom: {
-				enabled: false,
-			},
-		},
-		legend: {
-			show: false,
-		},
-		stroke: {
-			curve: 'stepline',
-		},
-		theme: {
-			mode: 'light',
-		},
-		dataLabels: {
-			enabled: false
-		},
-		markers: {
-			hover: {
-				sizeOffset: 4,
-			},
-		},
-		xaxis: {
-			lines: {
-				show: false,
-			},
-		},
+	const defaultOpts = {
+		width: document.getElementById("latency-chart-1").clientWidth,
+		height: 260,
 	};
 
-	let latencyOptionsImprovement = {
+	const latencyImprovementOpts = {
+		...defaultOpts,
 		series: [
+			{},
 			{
-				name: 'Improvement',
-				data: latencyData.improvement,
+				stroke: "green",
+				fill: "rgba(0,255,0,0.1)",
+				label: "Improvement",
 			},
 		],
-		yaxis: {
-			lines: {
-				show: true,
-			},
-			title: {
-				text: '(m/s)',
-			},
-		},
+		axes: [
+			{},
+			{
+			  show: true,
+			  gap: 5,
+			  size: 70,
+			  values: (self, ticks) => ticks.map(rawValue => rawValue + "ms"),
+			}
+		  ]
 	};
 
-	let latencyOptionsComparison = {
+	const latencycomparisonOpts = {
+		...defaultOpts,
 		series: [
+			{},
 			{
-				name: 'Network Next',
-				data: latencyData.next,
+				stroke: "blue",
+				fill: "rgba(0,0,255,0.1)",
+				label: "Network Next",
 			},
 			{
-				name: 'Direct',
-				data: latencyData.direct,
+				stroke: "red",
+				fill: "rgba(255,0,0,0.1)",
+				label: "Direct",
 			},
 		],
-		yaxis: {
-			lines: {
-				show: true,
-			},
-			title: {
-				text: '(m/s)',
-			},
-		},
+		axes: [
+			{},
+			{
+			  show: true,
+			  gap: 5,
+			  size: 70,
+			  values: (self, ticks) => ticks.map(rawValue => rawValue + "ms"),
+			}
+		  ]
 	};
 
-	let latencyImprovementChart = new ApexCharts(
-		document.querySelector("#latency-chart-1"),
-		{
-			...latencyOptionsImprovement,
-			...defaultOptions
-		},
-	);
-
-	let latencyComparisonChart = new ApexCharts(
-		document.querySelector("#latency-chart-2"),
-		{
-			...latencyOptionsComparison,
-			...defaultOptions
-		},
-	);
-
-	let jitterOptionsImprovement = {
+	const packetLossImprovementOpts = {
+		...defaultOpts,
 		series: [
+			{},
 			{
-				name: 'Improvement',
-				data: jitterData.improvement,
+				stroke: "green",
+				fill: "rgba(0,255,0,0.1)",
+				label: "Improvement",
 			},
 		],
-		yaxis: {
-			lines: {
-				show: true,
-			},
-			title: {
-				text: '(m/s)',
-			},
-		},
+		axes: [
+			{},
+			{
+			  show: true,
+			  gap: 5,
+			  size: 50,
+			  values: (self, ticks) => ticks.map(rawValue => rawValue + "%"),
+			}
+		  ]
 	};
 
-	let jitterOptionsComparison = {
+	const packetLossComparisonOpts = {
+		...defaultOpts,
 		series: [
+			{},
 			{
-				name: 'Network Next',
-				data: jitterData.next,
+				stroke: "blue",
+				fill: "rgba(0,0,255,0.1)",
+				label: "Network Next",
 			},
 			{
-				name: 'Direct',
-				data: jitterData.direct,
+				stroke: "red",
+				fill: "rgba(255,0,0,0.1)",
+				label: "Direct",
 			},
 		],
-		yaxis: {
-			lines: {
-				show: true,
-			},
-			title: {
-				text: '(m/s)',
-			},
-		},
+		axes: [
+			{},
+			{
+			  show: true,
+			  gap: 5,
+			  size: 50,
+			  values: (self, ticks) => ticks.map(rawValue => rawValue + "%"),
+			}
+		]
 	};
 
-	let jitterImprovementChart = new ApexCharts(
-		document.querySelector("#jitter-chart-1"),
-		{
-			...jitterOptionsImprovement,
-			...defaultOptions
-		},
-	);
-
-	let jitterComparisonChart = new ApexCharts(
-		document.querySelector("#jitter-chart-2"),
-		{
-			...jitterOptionsComparison,
-			...defaultOptions
-		},
-	);
-
-	let packetLossOptionsImprovement = {
+	const bandwidthUpOpts = {
+		...defaultOpts,
 		series: [
+			{},
 			{
-				name: 'Improvement',
-				data: packetLossData.improvement,
+				stroke: "blue",
+				fill: "rgba(0,0,255,0.1)",
+				label: "Actual Up",
 			},
 		],
-		yaxis: {
-			lines: {
-				show: true,
-			},
-			title: {
-				text: '(%)',
-			},
-		},
+		axes: [
+			{},
+			{
+			  show: true,
+			  gap: 5,
+			  size: 70,
+			  values: (self, ticks) => ticks.map(rawValue => rawValue + "kbps"),
+			}
+		]
 	};
 
-	let packetLossOptionsComparison = {
+	const bandwidthDownOpts = {
+		...defaultOpts,
 		series: [
+			{},
 			{
-				name: 'Network Next',
-				data: packetLossData.next,
-			},
-			{
-				name: 'Direct',
-				data: packetLossData.direct,
+				stroke: "orange",
+				fill: "rgba(255,165,0,0.1)",
+				label: "Actual Down"
 			},
 		],
-		yaxis: {
-			lines: {
-				show: true,
-			},
-			title: {
-				text: '(%)',
-			},
-		},
-	};
-
-	let packetLossImprovementChart = new ApexCharts(
-		document.querySelector("#packet-loss-chart-1"),
-		{
-			...packetLossOptionsImprovement,
-			...defaultOptions
-		},
-	);
-
-	let packetLossComparisonChart = new ApexCharts(
-		document.querySelector("#packet-loss-chart-2"),
-		{
-			...packetLossOptionsComparison,
-			...defaultOptions
-		},
-	);
-
-	let bandwidthOptionsUp = {
-		series: [
+		axes: [
+			{},
 			{
-				name: 'Actual Up',
-				data: bandwidthData.up,
-			},
-		],
-		yaxis: {
-			lines: {
-				show: true,
-			},
-			title: {
-				text: '(kbps)',
-			},
-		},
+			  show: true,
+			  gap: 5,
+			  size: 70,
+			  values: (self, ticks) => ticks.map(rawValue => rawValue + "kbps"),
+			}
+		]
 	};
 
-	let bandwidthOptionsDown = {
-		series: [
-			{
-				name: 'Actual Down',
-				data: bandwidthData.down,
-			},
-		],
-		yaxis: {
-			lines: {
-				show: true,
-			},
-			title: {
-				text: '(kbps)',
-			},
-		},
-	};
+	let latencyImprovementChart = new uPlot(latencyImprovementOpts, latencyData.improvement, document.getElementById("latency-chart-1"));
+	let latencyComparisonChart = new uPlot(latencycomparisonOpts, latencyData.comparison, document.getElementById("latency-chart-2"));
 
-	let bandwidthUpChart = new ApexCharts(
-		document.querySelector("#bandwidth-chart-1"),
-		{
-			...bandwidthOptionsUp,
-			...defaultOptions
-		},
-	);
+	let jitterImprovementChart = new uPlot(latencyImprovementOpts, jitterData.improvement, document.getElementById("jitter-chart-1"));
+	let jitterComparisonChart = new uPlot(latencycomparisonOpts, jitterData.comparison, document.getElementById("jitter-chart-2"));
 
-	let bandwidthDownChart = new ApexCharts(
-		document.querySelector("#bandwidth-chart-2"),
-		{
-			...bandwidthOptionsDown,
-			...defaultOptions
-		},
-	);
-	latencyImprovementChart.render();
-	latencyComparisonChart.render();
-	jitterImprovementChart.render();
-	jitterComparisonChart.render();
-	packetLossImprovementChart.render();
-	packetLossComparisonChart.render();
-	bandwidthUpChart.render();
-	bandwidthDownChart.render();
+	let packetLossImprovementChart = new uPlot(packetLossImprovementOpts, packetLossData.improvement, document.getElementById("packet-loss-chart-1"));
+	let packetLossComparisonChart = new uPlot(packetLossComparisonOpts, packetLossData.comparison, document.getElementById("packet-loss-chart-2"));
+
+	let bandwidthUpChart = new uPlot(bandwidthUpOpts, bandwidthData.up, document.getElementById("bandwidth-chart-1"));
+	let bandwidthDownChart = new uPlot(bandwidthDownOpts, bandwidthData.down, document.getElementById("bandwidth-chart-2"));
 }

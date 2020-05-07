@@ -9,11 +9,11 @@ import (
 
 // Test case where we should upgrade to a nextwork next route
 func TestDecideUpgradeRoute(t *testing.T) {
+
 	decisionFuncs := []routing.DecisionFunc{
 		routing.DecideUpgradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTThreshold)),
 		routing.DecideDowngradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(float64(routing.DefaultRoutingRulesSettings.RTTVeto), routing.DefaultRoutingRulesSettings.EnablePacketLossSafety, routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
-		routing.DecideCommitted(),
 	}
 
 	lastNNStats := routing.Stats{
@@ -36,10 +36,7 @@ func TestDecideUpgradeRoute(t *testing.T) {
 		},
 	}
 
-	startingDecision := routing.Decision{
-		OnNetworkNext: false,
-		Reason:        routing.DecisionNoChange,
-	}
+	startingDecision := routing.Decision{}
 
 	expected := routing.Decision{
 		OnNetworkNext: true,
@@ -58,11 +55,11 @@ func TestDecideUpgradeRoute(t *testing.T) {
 
 // Test case where we should get off a nextwork next route due to hysteresis
 func TestDecideDowngradeRTTHysteresis(t *testing.T) {
+
 	decisionFuncs := []routing.DecisionFunc{
 		routing.DecideUpgradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTThreshold)),
 		routing.DecideDowngradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(float64(routing.DefaultRoutingRulesSettings.RTTVeto), routing.DefaultRoutingRulesSettings.EnablePacketLossSafety, routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
-		routing.DecideCommitted(),
 	}
 
 	lastNNStats := routing.Stats{
@@ -87,12 +84,12 @@ func TestDecideDowngradeRTTHysteresis(t *testing.T) {
 
 	startingDecision := routing.Decision{
 		OnNetworkNext: true,
-		Reason:        routing.DecisionNoChange,
+		Reason:        routing.DecisionNoReason,
 	}
 
 	expected := routing.Decision{
 		OnNetworkNext: false,
-		Reason:        routing.DecisionRTTIncrease,
+		Reason:        routing.DecisionRTTHysteresis,
 	}
 
 	// Loop through all permutations of the decision functions and test that the result is the same
@@ -114,7 +111,6 @@ func TestDecideDowngradeRTTHysteresisYOLO(t *testing.T) {
 		routing.DecideUpgradeRTT(float64(routingRulesSettings.RTTThreshold)),
 		routing.DecideDowngradeRTT(float64(routingRulesSettings.RTTHysteresis), routingRulesSettings.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(float64(routingRulesSettings.RTTVeto), routingRulesSettings.EnablePacketLossSafety, routingRulesSettings.EnableYouOnlyLiveOnce),
-		routing.DecideCommitted(),
 	}
 
 	lastNNStats := routing.Stats{
@@ -139,12 +135,12 @@ func TestDecideDowngradeRTTHysteresisYOLO(t *testing.T) {
 
 	startingDecision := routing.Decision{
 		OnNetworkNext: true,
-		Reason:        routing.DecisionNoChange,
+		Reason:        routing.DecisionNoReason,
 	}
 
 	expected := routing.Decision{
 		OnNetworkNext: false,
-		Reason:        routing.DecisionVetoRTT | routing.DecisionVetoYOLO,
+		Reason:        routing.DecisionRTTHysteresis | routing.DecisionVetoYOLO,
 	}
 
 	// Loop through all permutations and combinations of the decision functions and test that the result is the same
@@ -170,7 +166,6 @@ func TestDecideRTTVeto(t *testing.T) {
 		routing.DecideUpgradeRTT(float64(routingRulesSettings.RTTThreshold)),
 		routing.DecideDowngradeRTT(float64(routingRulesSettings.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(float64(routingRulesSettings.RTTVeto), routingRulesSettings.EnablePacketLossSafety, routingRulesSettings.EnableYouOnlyLiveOnce),
-		routing.DecideCommitted(),
 	}
 
 	lastNNStats := routing.Stats{
@@ -195,7 +190,7 @@ func TestDecideRTTVeto(t *testing.T) {
 
 	startingDecision := routing.Decision{
 		OnNetworkNext: true,
-		Reason:        routing.DecisionNoChange,
+		Reason:        routing.DecisionNoReason,
 	}
 
 	expected := routing.Decision{
@@ -227,7 +222,6 @@ func TestDecideRTTVetoYOLO(t *testing.T) {
 		routing.DecideUpgradeRTT(float64(routingRulesSettings.RTTThreshold)),
 		routing.DecideDowngradeRTT(float64(routingRulesSettings.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(float64(routingRulesSettings.RTTVeto), routingRulesSettings.EnablePacketLossSafety, routingRulesSettings.EnableYouOnlyLiveOnce),
-		routing.DecideCommitted(),
 	}
 
 	lastNNStats := routing.Stats{
@@ -252,7 +246,7 @@ func TestDecideRTTVetoYOLO(t *testing.T) {
 
 	startingDecision := routing.Decision{
 		OnNetworkNext: true,
-		Reason:        routing.DecisionNoChange,
+		Reason:        routing.DecisionNoReason,
 	}
 
 	expected := routing.Decision{
@@ -284,7 +278,6 @@ func TestDecidePacketLossVeto(t *testing.T) {
 		routing.DecideUpgradeRTT(float64(routingRulesSettings.RTTThreshold)),
 		routing.DecideDowngradeRTT(float64(routingRulesSettings.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(float64(routingRulesSettings.RTTVeto), routingRulesSettings.EnablePacketLossSafety, routingRulesSettings.EnableYouOnlyLiveOnce),
-		routing.DecideCommitted(),
 	}
 
 	lastNNStats := routing.Stats{
@@ -309,7 +302,7 @@ func TestDecidePacketLossVeto(t *testing.T) {
 
 	startingDecision := routing.Decision{
 		OnNetworkNext: true,
-		Reason:        routing.DecisionNoChange,
+		Reason:        routing.DecisionNoReason,
 	}
 
 	expected := routing.Decision{
@@ -342,7 +335,6 @@ func TestDecidePacketLossVetoYOLO(t *testing.T) {
 		routing.DecideUpgradeRTT(float64(routingRulesSettings.RTTThreshold)),
 		routing.DecideDowngradeRTT(float64(routingRulesSettings.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(float64(routingRulesSettings.RTTVeto), routingRulesSettings.EnablePacketLossSafety, routingRulesSettings.EnableYouOnlyLiveOnce),
-		routing.DecideCommitted(),
 	}
 
 	lastNNStats := routing.Stats{
@@ -367,7 +359,7 @@ func TestDecidePacketLossVetoYOLO(t *testing.T) {
 
 	startingDecision := routing.Decision{
 		OnNetworkNext: true,
-		Reason:        routing.DecisionNoChange,
+		Reason:        routing.DecisionNoReason,
 	}
 
 	expected := routing.Decision{
@@ -396,7 +388,6 @@ func TestDecideStayOnDirectRoute(t *testing.T) {
 		routing.DecideUpgradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTThreshold)),
 		routing.DecideDowngradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(float64(routing.DefaultRoutingRulesSettings.RTTVeto), routing.DefaultRoutingRulesSettings.EnablePacketLossSafety, routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
-		routing.DecideCommitted(),
 	}
 
 	lastNNStats := routing.Stats{
@@ -419,15 +410,9 @@ func TestDecideStayOnDirectRoute(t *testing.T) {
 		},
 	}
 
-	startingDecision := routing.Decision{
-		OnNetworkNext: false,
-		Reason:        routing.DecisionNoChange,
-	}
+	startingDecision := routing.Decision{}
 
-	expected := routing.Decision{
-		OnNetworkNext: false,
-		Reason:        routing.DecisionNoChange,
-	}
+	expected := routing.Decision{}
 
 	// Loop through all permutations and combinations of the decision functions and test that the result is the same
 	decisionFuncIndices := createIndexSlice(decisionFuncs)
@@ -449,7 +434,6 @@ func TestDecideStayOnNNRoute(t *testing.T) {
 		routing.DecideUpgradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTThreshold)),
 		routing.DecideDowngradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(float64(routing.DefaultRoutingRulesSettings.RTTVeto), routing.DefaultRoutingRulesSettings.EnablePacketLossSafety, routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
-		routing.DecideCommitted(),
 	}
 
 	lastNNStats := routing.Stats{
@@ -474,97 +458,17 @@ func TestDecideStayOnNNRoute(t *testing.T) {
 
 	startingDecision := routing.Decision{
 		OnNetworkNext: true,
-		Reason:        routing.DecisionNoChange,
+		Reason:        routing.DecisionNoReason,
 	}
 
 	expected := routing.Decision{
 		OnNetworkNext: true,
-		Reason:        routing.DecisionNoChange,
+		Reason:        routing.DecisionNoReason,
 	}
 
 	// Loop through all permutations and combinations of the decision functions and test that the result is the same
 	decisionFuncIndices := createIndexSlice(decisionFuncs)
 	combs := combinations(decisionFuncIndices)
-	for i := 0; i < len(combs); i++ {
-		perms := permutations(combs[i])
-		funcs := replaceIndicesWithDecisionFuncs(perms, decisionFuncs)
-
-		for j := 0; j < len(funcs); j++ {
-			decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, funcs[j]...)
-			assert.Equal(t, expected, decision)
-		}
-	}
-}
-
-// Test case to check that DecisionNoChange really doesn't change the decision reason
-func TestValidateNoChange(t *testing.T) {
-	decisionFuncs := []routing.DecisionFunc{
-		routing.DecideUpgradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTThreshold)),
-		routing.DecideDowngradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
-		routing.DecideVeto(float64(routing.DefaultRoutingRulesSettings.RTTVeto), routing.DefaultRoutingRulesSettings.EnablePacketLossSafety, routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
-		routing.DecideCommitted(),
-	}
-
-	lastNNStats := routing.Stats{
-		RTT:        30,
-		Jitter:     0,
-		PacketLoss: 0,
-	}
-
-	lastDirectStats := routing.Stats{
-		RTT:        30,
-		Jitter:     0,
-		PacketLoss: 0,
-	}
-
-	route := routing.Route{
-		Stats: routing.Stats{
-			RTT:        30,
-			Jitter:     0,
-			PacketLoss: 0,
-		},
-	}
-
-	// Use a decision reason not handled by the decision functions so that
-	// we can confirm DecisionNoChange was never set as the reason and that
-	// the reason isn't changed
-	startingDecision := routing.Decision{
-		OnNetworkNext: false,
-		Reason:        routing.DecisionUnused,
-	}
-
-	expected := routing.Decision{
-		OnNetworkNext: false,
-		Reason:        routing.DecisionUnused,
-	}
-
-	// Loop through all permutations and combinations of the decision functions and test that the result is the same
-	decisionFuncIndices := createIndexSlice(decisionFuncs)
-	combs := combinations(decisionFuncIndices)
-	for i := 0; i < len(combs); i++ {
-		perms := permutations(combs[i])
-		funcs := replaceIndicesWithDecisionFuncs(perms, decisionFuncs)
-
-		for j := 0; j < len(funcs); j++ {
-			decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, funcs[j]...)
-			assert.Equal(t, expected, decision)
-		}
-	}
-
-	// Run test again with OnNetworkNext true
-	startingDecision = routing.Decision{
-		OnNetworkNext: true,
-		Reason:        routing.DecisionUnused,
-	}
-
-	expected = routing.Decision{
-		OnNetworkNext: true,
-		Reason:        routing.DecisionUnused,
-	}
-
-	// Loop through all permutations and combinations of the decision functions and test that the result is the same
-	decisionFuncIndices = createIndexSlice(decisionFuncs)
-	combs = combinations(decisionFuncIndices)
 	for i := 0; i < len(combs); i++ {
 		perms := permutations(combs[i])
 		funcs := replaceIndicesWithDecisionFuncs(perms, decisionFuncs)
@@ -582,7 +486,6 @@ func TestValidateInitialSlice(t *testing.T) {
 		routing.DecideUpgradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTThreshold)),
 		routing.DecideDowngradeRTT(float64(routing.DefaultRoutingRulesSettings.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(float64(routing.DefaultRoutingRulesSettings.RTTVeto), routing.DefaultRoutingRulesSettings.EnablePacketLossSafety, routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
-		routing.DecideCommitted(),
 	}
 
 	lastNNStats := routing.Stats{
@@ -610,10 +513,7 @@ func TestValidateInitialSlice(t *testing.T) {
 		Reason:        routing.DecisionInitialSlice,
 	}
 
-	expected := routing.Decision{
-		OnNetworkNext: false,
-		Reason:        routing.DecisionNoChange,
-	}
+	expected := routing.Decision{}
 
 	// Loop through all permutations and combinations of the decision functions and test that the result is the same
 	decisionFuncIndices := createIndexSlice(decisionFuncs)
@@ -625,6 +525,142 @@ func TestValidateInitialSlice(t *testing.T) {
 		for j := 0; j < len(perms); j++ {
 			decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, funcs[j]...)
 			assert.Equal(t, expected, decision)
+		}
+	}
+}
+
+// Test case where we should get off a network next route due to commit veto
+func TestDecideCommitVeto(t *testing.T) {
+	routingRulesSettings := routing.DefaultRoutingRulesSettings
+	routingRulesSettings.EnableTryBeforeYouBuy = true
+
+	var commitPending bool
+	var commitObservedSliceCounter uint8
+	var committed bool
+
+	decisionFuncs := []routing.DecisionFunc{
+		routing.DecideUpgradeRTT(float64(routingRulesSettings.RTTThreshold)),
+		routing.DecideDowngradeRTT(float64(routingRulesSettings.RTTHysteresis), routingRulesSettings.EnableYouOnlyLiveOnce),
+		routing.DecideVeto(float64(routingRulesSettings.RTTVeto), routingRulesSettings.EnablePacketLossSafety, routingRulesSettings.EnableYouOnlyLiveOnce),
+		routing.DecideCommitted(true, uint8(routingRulesSettings.TryBeforeYouBuyMaxSlices), routingRulesSettings.EnableYouOnlyLiveOnce, &commitPending, &commitObservedSliceCounter, &committed),
+	}
+
+	lastNNStats := routing.Stats{
+		RTT:        45,
+		Jitter:     0,
+		PacketLoss: 0,
+	}
+
+	lastDirectStats := routing.Stats{
+		RTT:        40,
+		Jitter:     0,
+		PacketLoss: 0,
+	}
+
+	route := routing.Route{
+		Stats: routing.Stats{
+			RTT:        20,
+			Jitter:     0,
+			PacketLoss: 0,
+		},
+	}
+
+	startingDecision := routing.Decision{
+		OnNetworkNext: true,
+		Reason:        routing.DecisionNoReason,
+	}
+
+	expected := routing.Decision{
+		OnNetworkNext: false,
+		Reason:        routing.DecisionVetoCommit,
+	}
+
+	// Loop through all permutations and combinations of the decision functions and test that the result is the same
+	decisionFuncIndices := createIndexSlice(decisionFuncs)
+	combs := combinations(decisionFuncIndices)
+	for i := 0; i < len(combs); i++ {
+		perms := permutations(combs[i])
+		perms = filterPermutations(perms, 3) // Remove all permutations that don't include DecideCommitted, since that's the function we're testing for
+		funcs := replaceIndicesWithDecisionFuncs(perms, decisionFuncs)
+
+		for j := 0; j < len(funcs); j++ {
+			commitPending = true
+			commitObservedSliceCounter = uint8(routingRulesSettings.TryBeforeYouBuyMaxSlices)
+			committed = false
+
+			decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, funcs[j]...)
+			assert.Equal(t, expected, decision)
+			assert.Equal(t, false, commitPending)
+			assert.Equal(t, uint8(0), commitObservedSliceCounter)
+			assert.Equal(t, false, committed)
+		}
+	}
+}
+
+// Test case to check that the committed flag from the decision function is being set correctly
+func TestValidateCommitted(t *testing.T) {
+	routingRulesSettings := routing.DefaultRoutingRulesSettings
+	routingRulesSettings.EnableTryBeforeYouBuy = true
+
+	var commitPending bool
+	var commitObservedSliceCounter uint8
+	var committed bool
+
+	decisionFuncs := []routing.DecisionFunc{
+		routing.DecideUpgradeRTT(float64(routingRulesSettings.RTTThreshold)),
+		routing.DecideDowngradeRTT(float64(routingRulesSettings.RTTHysteresis), routingRulesSettings.EnableYouOnlyLiveOnce),
+		routing.DecideVeto(float64(routingRulesSettings.RTTVeto), routingRulesSettings.EnablePacketLossSafety, routingRulesSettings.EnableYouOnlyLiveOnce),
+		routing.DecideCommitted(true, uint8(routingRulesSettings.TryBeforeYouBuyMaxSlices), routingRulesSettings.EnableYouOnlyLiveOnce, &commitPending, &commitObservedSliceCounter, &committed),
+	}
+
+	lastNNStats := routing.Stats{
+		RTT:        30,
+		Jitter:     0,
+		PacketLoss: 0,
+	}
+
+	lastDirectStats := routing.Stats{
+		RTT:        40,
+		Jitter:     0,
+		PacketLoss: 0,
+	}
+
+	route := routing.Route{
+		Stats: routing.Stats{
+			RTT:        35,
+			Jitter:     0,
+			PacketLoss: 0,
+		},
+	}
+
+	startingDecision := routing.Decision{
+		OnNetworkNext: true,
+		Reason:        routing.DecisionNoReason,
+	}
+
+	expected := routing.Decision{
+		OnNetworkNext: true,
+		Reason:        routing.DecisionNoReason,
+	}
+
+	// Loop through all permutations and combinations of the decision functions and test that the result is the same
+	decisionFuncIndices := createIndexSlice(decisionFuncs)
+	combs := combinations(decisionFuncIndices)
+	for i := 0; i < len(combs); i++ {
+		perms := permutations(combs[i])
+		perms = filterPermutations(perms, 3) // Remove all permutations that don't include DecideCommitted, since that's the function we're testing for
+		funcs := replaceIndicesWithDecisionFuncs(perms, decisionFuncs)
+
+		for j := 0; j < len(funcs); j++ {
+			commitPending = true
+			commitObservedSliceCounter = uint8(routingRulesSettings.TryBeforeYouBuyMaxSlices)
+			committed = false
+
+			decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, funcs[j]...)
+			assert.Equal(t, expected, decision)
+			assert.Equal(t, false, commitPending)
+			assert.Equal(t, uint8(0), commitObservedSliceCounter)
+			assert.Equal(t, true, committed)
 		}
 	}
 }
