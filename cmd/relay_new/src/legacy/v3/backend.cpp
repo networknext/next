@@ -3,6 +3,7 @@
 #include "packet_send.hpp"
 #include "encoding/base64.hpp"
 #include "encoding/read.hpp"
+#include "crypto/hash.hpp"
 
 using namespace std::chrono_literals;
 
@@ -118,6 +119,14 @@ namespace legacy
 
     auto Backend::config() -> bool
     {
+      Log("configuring relay");
+
+      util::JSON doc;
+      if (!buildConfigJSON(doc)) {
+        Log("failed to build config json");
+        return false;
+      }
+
       return true;
     }
 
@@ -327,7 +336,8 @@ namespace legacy
       {
         auto& fragment = request.fragments[response.FragIndex];
         fragment.length = static_cast<uint16_t>(packet.Len - zip_start);
-        std::copy(packet.Buffer.begin() + zip_start, packet.Buffer.begin() + zip_start + fragment.length, fragment.data.begin());
+        std::copy(
+         packet.Buffer.begin() + zip_start, packet.Buffer.begin() + zip_start + fragment.length, fragment.data.begin());
         fragment.received = true;
       }
 
