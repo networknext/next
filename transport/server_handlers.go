@@ -489,7 +489,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 
 		// Check if the client is falling back to direct
 		if packet.FallbackToDirect {
-			sentry.CaptureMessage("packet fallback to direct")
 			level.Error(logger).Log("err", "fallback to direct")
 			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.FallbackToDirect)
 
