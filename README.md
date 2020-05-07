@@ -94,13 +94,13 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
 5. Install libcurl
 	`sudo apt install libcurl4-openssl-dev`
 
-7. Install RapidJSON
+6. Install RapidJSON
   `sudo apt install rapidjson-dev`
 
-8. Install g++ version 8
+7. Install g++ version 8
   `sudo apt install g++-8`
 
-9. Install Go (must be 1.13+)
+8. Install Go (must be 1.13+)
 	`cd /usr/local/`
 	`sudo curl https://dl.google.com/go/go1.14.2.linux-amd64.tar.gz | sudo tar -zxv`
 	Add Go to PATH:
@@ -108,14 +108,14 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
 	NOTE: For changes to your `.profile` to reflect in the terminal, sign out and sign back in.
 	If you're running WSL, you can stop it by typing `wsl -t <distro>` in Powershell and start it again.
 
-10. Install Redis
+9. Install Redis
 	`sudo apt install redis-server`
 
-11. Install Docker
+10. Install Docker
 	NOTE: If you're running Windows with WSL 1, follow this article: https://nickjanetakis.com/blog/setting-up-docker-for-windows-and-wsl-to-work-flawlessly
 	For WSL 2 these steps aren't necessary, installing Docker Desktop by itself is sufficient.
 
-12. Clone the repo with an SSH key
+11. Clone the repo with an SSH key
 	Instructions from `https://help.github.com/en/github/authenticating-to-github/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent`
 
 	`ssh-keygen -t rsa -b 4096 -C "your_email@example.com"`
@@ -127,11 +127,11 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
   `git clone git@github.com:networknext/backend.git`
   `cd <clone_path>` where `<clone_path>` is the directory you cloned the repo to (usually `~/backend`)
 
-13. Init and update git submodules
+12. Init and update git submodules
 	`git submodule init`
 	`git submodule update`
 
-14. Install Google Cloud SDK
+13. Install Google Cloud SDK
 	Instructions from `https://cloud.google.com/sdk/docs/quickstart-debian-ubuntu`
 	For other platforms, see `https://cloud.google.com/sdk/docs/quickstarts`
 
@@ -141,8 +141,11 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
 	`gcloud init`
 	When asked to choose a cloud project, choose `network-next-v3-dev`
 
-15. Install the Firestore emulator
+14. Install the Firestore emulator
 	`sudo apt install google-cloud-sdk-firestore-emulator`
+
+15. Install the Pub/Sub emulator
+	`sudo apt install google-cloud-sdk-pubsub-emulator`
 
 16. Run tests to confirm everything is working properly
 	`make test`
@@ -226,6 +229,8 @@ Firestore:
 Install the gcloud firestore emulator: (Note that the emulator needs a Java Runtime Environment version 1.8 or higher installed and added to PATH)
 `gcloud components install beta`
 `gcloud components install cloud-firestore-emulator`
+or
+`sudo apt install google-cloud-sdk-firestore-emulator`
 
     Add the environment variable `FIRESTORE_EMULATOR_HOST` to your makefile with the local address of the emulator (ex. `localhost:8000`).
 
@@ -234,9 +239,13 @@ Add the environment variable `GOOGLE_PROJECT_ID` to your makefile. Set it to a G
 Add the environment variable `GOOGLE_APPLICATION_CREDENTIALS` to your makefile. Set it to the file path of your credentials file (ex. `$(CURRENT_DIR)/testdata/v3-dev-creds.json`).
 
 Pub/Sub:
-Add the environment variable `GOOGLE_PROJECT_ID` to your makefile. Set it to a GCP project you have credentials to (ex. `network-next-v3-dev`).
-Add the environment variable `GOOGLE_PUBSUB_TOPIC_BILLING` to your makefile. Set it to a pubsub topic you have credentials to push to (ex. `billing-v3-dev`).
-Add the environment variable `GOOGLE_APPLICATION_CREDENTIALS` to your makefile. Set it to the file path of your credentials file (ex. `$(CURRENT_DIR)/testdata/v3-dev-creds.json`).
+Install the gcloud pubsub emulator: (Note that the emulator needs a Java Runtime Environment version 1.7 or higher installed and added to PATH)
+`gcloud components install beta`
+`gcloud components install pubsub-emulator`
+or
+`sudo apt install google-cloud-sdk-pubsub-emulator`
+
+    Add the environment variable `FIRESTORE_PUBSUB_HOST` to your makefile with the local address of the emulator (ex. `localhost:9000`).
 
 ## Functional Tests
 
