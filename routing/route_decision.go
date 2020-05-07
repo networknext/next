@@ -287,6 +287,12 @@ func DecideCommitted(onNNLastSlice bool, maxObservedSlices uint8, yolo bool, com
 // If multipath isn't enabled then the decision isn't affected
 func DecideMultipath(rttMultipath bool, jitterMultipath bool, packetLossMultipath bool, rttThreshold float64) DecisionFunc {
 	return func(prevDecision Decision, predictedNextStats, lastNextStats, directStats Stats) Decision {
+		// If we've already decided on multipath, then don't change the reason
+		// This is to make sure that the session can't go back to direct, since multipath always needs a next route
+		if IsMultipath(prevDecision) {
+			return prevDecision
+		}
+
 		decision := prevDecision
 
 		// Reset the decision reason if multipath is enabled

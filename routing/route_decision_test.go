@@ -267,8 +267,14 @@ func TestDecideMultipath(t *testing.T) {
 	decision = routeDecisionFunc(decision, predictedNNStats, routing.Stats{}, directStats)
 	assert.Equal(t, routing.Decision{}, decision)
 
-	// Test when multipath reason is RTT reduction
+	// Test if multipath is already active
 	routeDecisionFunc = routing.DecideMultipath(true, true, true, rttThreshold)
+	decision = routing.Decision{true, routing.DecisionRTTReductionMultipath}
+	decision = routeDecisionFunc(decision, predictedNNStats, routing.Stats{}, directStats)
+	assert.Equal(t, routing.Decision{true, routing.DecisionRTTReductionMultipath}, decision)
+
+	// Test when multipath reason is RTT reduction
+	decision = routing.Decision{}
 	decision = routeDecisionFunc(decision, predictedNNStats, routing.Stats{}, directStats)
 	assert.Equal(t, routing.Decision{true, routing.DecisionRTTReductionMultipath}, decision)
 

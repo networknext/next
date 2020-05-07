@@ -685,7 +685,7 @@ func TestValidateCommitted(t *testing.T) {
 	}
 }
 
-// Test case to check that direct routes are still served if the next route isn't good enough for multipath
+// Test case to check that direct routes are still served if the initial next route isn't good enough for multipath
 func TestDecideMultipathDirect(t *testing.T) {
 	rrs := routing.DefaultRoutingRulesSettings
 	rrs.EnableMultipathForRTT = true
@@ -722,6 +722,58 @@ func TestDecideMultipathDirect(t *testing.T) {
 	startingDecision := routing.Decision{}
 
 	expected := routing.Decision{}
+
+	// Loop through all permutations and combinations of the decision functions and test that the result is the same
+	decisionFuncIndices := createIndexSlice(decisionFuncs)
+	combs := combinations(decisionFuncIndices)
+	for i := 0; i < len(combs); i++ {
+		perms := permutations(combs[i])
+		funcs := replaceIndicesWithDecisionFuncs(perms, decisionFuncs)
+
+		for j := 0; j < len(perms); j++ {
+			decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, funcs[j]...)
+			assert.Equal(t, expected, decision)
+		}
+	}
+}
+
+// Test case to check that direct routes are never served if multipath is already active
+func TestDecideMultipathStayActive(t *testing.T) {
+	rrs := routing.DefaultRoutingRulesSettings
+	rrs.EnableMultipathForRTT = true
+	rrs.EnableMultipathForJitter = true
+	rrs.EnableMultipathForPacketLoss = true
+
+	decisionFuncs := []routing.DecisionFunc{
+		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), rrs.EnableYouOnlyLiveOnce),
+		routing.DecideVeto(float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
+	}
+
+	lastNNStats := routing.Stats{
+		RTT:        50,
+		Jitter:     0,
+		PacketLoss: 0,
+	}
+
+	lastDirectStats := routing.Stats{
+		RTT:        30,
+		Jitter:     0,
+		PacketLoss: 0,
+	}
+
+	route := routing.Route{
+		Stats: routing.Stats{
+			RTT:        40,
+			Jitter:     0,
+			PacketLoss: 0,
+		},
+	}
+
+	startingDecision := routing.Decision{true, routing.DecisionRTTReductionMultipath}
+
+	expected := routing.Decision{true, routing.DecisionRTTReductionMultipath}
 
 	// Loop through all permutations and combinations of the decision functions and test that the result is the same
 	decisionFuncIndices := createIndexSlice(decisionFuncs)
