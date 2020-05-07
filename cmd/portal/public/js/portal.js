@@ -653,46 +653,23 @@ function fetchSessionInfo(sessionId = '') {
 	JSONRPCClient
 		.call("BuyersService.SessionDetails", {session_id: id})
 		.then((response) => {
+			console.log(response);
+			let meta = response.meta;
+			meta.nearby_relays = meta.nearby_relays ?? [];
 			Object.assign(sessionDetailsVue.$data, {
-				meta: response.meta,
+				meta: meta,
 				slices: response.slices,
 				showDetails: true,
 			});
 
 			setTimeout(() => {
-				let data = {
-					latitude: response.meta.location.latitude,
-					longitude: response.meta.location.longitude,
-				};
-
 				generateCharts(response.slices);
-				let sessionToolMapInstance = new deck.DeckGL({
-					mapboxApiAccessToken: mapboxgl.accessToken,
-					mapStyle: 'mapbox://styles/mapbox/dark-v10',
-					initialViewState: {
-						latitude: data.latitude,
-						longitude: data.longitude,
-						zoom: 4,
-						maxZoom: 15,
-					},
-					controller: true,
+
+				var sessionToolMapInstance = new mapboxgl.Map({
 					container: 'session-tool-map',
-					/* layers: [
-						new deck.IconLayer({
-							id: 'icon-layer',
-							data,
-							pickable: false,
-							// iconAtlas and iconMapping are required
-							// getIcon: return a string
-							iconAtlas: 'marker.png',
-							iconMapping: {marker: {x: 0, y: 0, width: 32, height: 32, mask: true}},
-							getIcon: d => 'marker',
-							sizeScale: 15,
-							getPosition: d => [d.longitude, d.latitude],
-							getSize: d => 100,
-							getColor: d => [7, 140, 0]
-						})
-					] */
+					style: 'mapbox://styles/mapbox/dark-v10',
+					center: [0, 0],
+					zoom: 2
 				});
 			});
 
