@@ -30,19 +30,60 @@ DONE
 
 	Get route update ack packet working (client -> server)
 
-TODO
-
 	What other packet types remain?
 
 	All the packet types that go across relays.
 
-	Can these be distinguished from client -> server packets?
+		#define NEXT_ROUTE_REQUEST_PACKET                            1
+		#define NEXT_ROUTE_RESPONSE_PACKET                           2
+		#define NEXT_CLIENT_TO_SERVER_PACKET                         3
+		#define NEXT_SERVER_TO_CLIENT_PACKET                         4
+		#define NEXT_PING_PACKET                                    11
+		#define NEXT_PONG_PACKET                                    12
+		#define NEXT_CONTINUE_REQUEST_PACKET                        13
+		#define NEXT_CONTINUE_RESPONSE_PACKET                       14
 
-	Perhaps. In the client -> server direction, if they don't come from the IP address of the client, then they are from a relay.
+	Out of these packets, the "route request" and "continue request" are *sent* by the client, so we don't need to change them.
 
-	In the server -> client direction, if they don't come from the IP address of the server, then they are from a relay.
+	The rest of the packets are sent and received by client or server. They all have a signature, and if the signature doesn't verify we can just hand the packet to the game for processing.
 
-	Bake this in. Do it :)
+	This should be easy, and we don't need to break compatibility with relays.
+
+	Now bring across:
+
+		NEXT_ROUTE_RESPONSE_PACKET
+
+	Implement the code to pass to game if the signature fails or anything in read fails.
+
+TODO
+	
+	Getting this now:
+
+	"error: server timed out waiting for backend response for session a158884114aa9356"
+
+	Did something break, are we handling the backend session response correctly?
+
+	--------------------------------
+
+	Server needs to handle "route request" packet. Check the very specific size (one token). Check that it decrypts, otherwise pass to game.
+
+	--------------------------------
+
+	Once this is done, running under a func test backend should result in the client getting the route response packet.
+
+	--------------------------------
+
+	Once this passes, bring across the other packet types.
+
+	--------------------------------
+
+	Verify that everything works with func backend, eg. packets across network next route.
+
+	--------------------------------
+
+	Network Next should pass functional tests again.
+
+	--------------------------------
 
 
 
@@ -55,10 +96,7 @@ TODO
 
 
 
-
-
-
-
+ 
 
 
 

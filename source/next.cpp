@@ -4647,7 +4647,6 @@ struct next_route_data_t
     double pending_route_last_send_time;
     uint64_t pending_route_session_id;
     uint8_t pending_route_session_version;
-    uint8_t pending_route_session_flags;
     int pending_route_kbps_up;
     int pending_route_kbps_down;
     int pending_route_request_packet_bytes;
@@ -4761,7 +4760,6 @@ void next_route_manager_begin_next_route( next_route_manager_t * route_manager, 
     route_manager->route_data.pending_route_next_address = route_token.next_address;
     route_manager->route_data.pending_route_session_id = route_token.session_id;
     route_manager->route_data.pending_route_session_version = route_token.session_version;
-    route_manager->route_data.pending_route_session_flags = route_token.session_version;
     route_manager->route_data.pending_route_kbps_up = route_token.kbps_up;
     route_manager->route_data.pending_route_kbps_down = route_token.kbps_down;
     route_manager->route_data.pending_route_request_packet_bytes = 1 + ( num_tokens - 1 ) * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES;
@@ -5048,100 +5046,6 @@ bool next_route_manager_send_continue_request( next_route_manager_t * route_mana
     memcpy( packet_data, route_manager->route_data.pending_continue_request_packet_data, route_manager->route_data.pending_continue_request_packet_bytes );
 
     return true;
-}
-
-void next_route_manager_process_route_response_packet( next_route_manager_t * route_manager, const next_address_t * from, uint8_t * packet_data, int packet_bytes, next_replay_protection_t * replay_protection )
-{
-    next_assert( route_manager );
-    next_assert( from );
-    next_assert( packet_data );
-    next_assert( packet_bytes > 1 );
-    next_assert( packet_bytes <= NEXT_MAX_PACKET_BYTES );
-
-    (void) from;
-
-    if ( route_manager->fallback_to_direct )
-        return;
-
-    if ( !route_manager->route_data.pending_route )
-    {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. no pending route" );
-        return;
-    }
-
-    if ( packet_bytes != NEXT_HEADER_BYTES )
-    {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. wrong size" );
-        return;
-    }
-
-    uint8_t packet_type = 0;
-    uint64_t packet_sequence = 0;
-    uint64_t packet_session_id = 0;
-    uint8_t packet_session_version = 0;
-    uint8_t packet_session_flags = 0;
-
-    if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, route_manager->route_data.pending_route_private_key, packet_data, packet_bytes ) != NEXT_OK )
-    {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. could not read header" );
-        return;
-    }
-
-    uint64_t clean_sequence = next_clean_sequence( packet_sequence );
-
-    if ( next_replay_protection_already_received( replay_protection, clean_sequence ) )
-    {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. sequence already received (%" PRIx64 " vs. %" PRIx64 ")", clean_sequence, replay_protection->most_recent_sequence );
-        return;
-    }
-
-    next_assert( packet_type == NEXT_ROUTE_RESPONSE_PACKET );
-
-    if ( packet_session_id != route_manager->route_data.pending_route_session_id )
-    {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. session id mismatch" );
-        return;
-    }
-
-    if ( packet_session_version != route_manager->route_data.pending_route_session_version )
-    {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. session version mismatch" );
-        return;
-    }
-
-    next_replay_protection_advance_sequence( replay_protection, clean_sequence );
-
-    next_printf( NEXT_LOG_LEVEL_DEBUG, "client received route response from relay" );
-
-    if ( route_manager->route_data.current_route )
-    {
-        route_manager->route_data.previous_route = route_manager->route_data.current_route;
-        route_manager->route_data.previous_route_session_id = route_manager->route_data.current_route_session_id;
-        route_manager->route_data.previous_route_session_version = route_manager->route_data.current_route_session_version;
-        memcpy( route_manager->route_data.previous_route_private_key, route_manager->route_data.current_route_private_key, crypto_box_SECRETKEYBYTES );
-    }
-
-    route_manager->route_data.current_route_committed = route_manager->route_data.pending_route_committed;
-    route_manager->route_data.current_route_session_id = route_manager->route_data.pending_route_session_id;
-    route_manager->route_data.current_route_session_version = route_manager->route_data.pending_route_session_version;
-    route_manager->route_data.current_route_kbps_up = route_manager->route_data.pending_route_kbps_up;
-    route_manager->route_data.current_route_kbps_down = route_manager->route_data.pending_route_kbps_down;
-    route_manager->route_data.current_route_next_address = route_manager->route_data.pending_route_next_address;
-    memcpy( route_manager->route_data.current_route_private_key, route_manager->route_data.pending_route_private_key, crypto_box_SECRETKEYBYTES );
-
-    if ( !route_manager->route_data.current_route )
-    {
-        route_manager->route_data.current_route_expire_time = route_manager->route_data.pending_route_start_time + 2.0 * NEXT_SLICE_SECONDS;
-    }
-    else
-    {
-        route_manager->route_data.current_route_expire_time += 2.0 * NEXT_SLICE_SECONDS;
-    }
-
-    route_manager->route_data.current_route = true;    
-    route_manager->route_data.pending_route = false;
-
-    next_printf( NEXT_LOG_LEVEL_DEBUG, "client network next route is confirmed" );
 }
 
 void next_route_manager_process_continue_response_packet( next_route_manager_t * route_manager, const next_address_t * from, uint8_t * packet_data, int packet_bytes, next_replay_protection_t * replay_protection )
@@ -6184,6 +6088,128 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
         client->counters[NEXT_CLIENT_COUNTER_UPGRADE_SESSION]++;
 
         client->sending_upgrade_response = false;
+
+        return true;
+    }
+
+    // --------------------------
+    // SIGNED PACKETS FROM RELAYS
+    // --------------------------
+
+    if ( packet_id == NEXT_ROUTE_RESPONSE_PACKET )
+    {
+        if ( packet_bytes != NEXT_HEADER_BYTES )
+            return false;
+
+        next_platform_mutex_acquire( client->route_manager_mutex );
+        uint8_t route_private_key[crypto_box_SECRETKEYBYTES];
+        memcpy( route_private_key, client->route_manager->route_data.pending_route_private_key, crypto_box_SECRETKEYBYTES );
+        const bool fallback_to_direct = client->route_manager->fallback_to_direct;
+        const bool pending_route = client->route_manager->route_data.pending_route;
+        const uint64_t pending_route_session_id = client->route_manager->route_data.pending_route_session_id;
+        const uint8_t pending_route_session_version = client->route_manager->route_data.pending_route_session_version;
+        next_platform_mutex_release( client->route_manager_mutex );
+
+        uint8_t packet_type = 0;
+        uint64_t packet_sequence = 0;
+        uint64_t packet_session_id = 0;
+        uint8_t packet_session_version = 0;
+        uint8_t packet_session_flags = 0;
+
+        if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, route_private_key, packet_data, packet_bytes ) != NEXT_OK )
+            return false;
+
+        if ( fallback_to_direct )
+            return true;
+
+        if ( !pending_route )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. no pending route" );
+            return true;
+        }
+
+        next_mutex_guard( client->route_manager_mutex );
+
+        next_route_manager_t * route_manager = client->route_manager;
+
+        uint64_t clean_sequence = next_clean_sequence( packet_sequence );
+
+        next_replay_protection_t * replay_protection = &client->special_replay_protection;
+
+        if ( next_replay_protection_already_received( replay_protection, clean_sequence ) )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. sequence already received (%" PRIx64 " vs. %" PRIx64 ")", clean_sequence, replay_protection->most_recent_sequence );
+            return true;
+        }
+
+        next_assert( packet_type == NEXT_ROUTE_RESPONSE_PACKET );
+
+        if ( packet_session_id != pending_route_session_id )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. session id mismatch" );
+            return true;
+        }
+
+        if ( packet_session_version != pending_route_session_version )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. session version mismatch" );
+            return true;
+        }
+
+        next_replay_protection_advance_sequence( replay_protection, clean_sequence );
+
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client received route response from relay" );
+
+        if ( route_manager->route_data.current_route )
+        {
+            route_manager->route_data.previous_route = route_manager->route_data.current_route;
+            route_manager->route_data.previous_route_session_id = route_manager->route_data.current_route_session_id;
+            route_manager->route_data.previous_route_session_version = route_manager->route_data.current_route_session_version;
+            memcpy( route_manager->route_data.previous_route_private_key, route_manager->route_data.current_route_private_key, crypto_box_SECRETKEYBYTES );
+        }
+
+        route_manager->route_data.current_route_committed = route_manager->route_data.pending_route_committed;
+        route_manager->route_data.current_route_session_id = route_manager->route_data.pending_route_session_id;
+        route_manager->route_data.current_route_session_version = route_manager->route_data.pending_route_session_version;
+        route_manager->route_data.current_route_kbps_up = route_manager->route_data.pending_route_kbps_up;
+        route_manager->route_data.current_route_kbps_down = route_manager->route_data.pending_route_kbps_down;
+        route_manager->route_data.current_route_next_address = route_manager->route_data.pending_route_next_address;
+        memcpy( route_manager->route_data.current_route_private_key, route_manager->route_data.pending_route_private_key, crypto_box_SECRETKEYBYTES );
+
+        if ( !route_manager->route_data.current_route )
+        {
+            route_manager->route_data.current_route_expire_time = route_manager->route_data.pending_route_start_time + 2.0 * NEXT_SLICE_SECONDS;
+        }
+        else
+        {
+            route_manager->route_data.current_route_expire_time += 2.0 * NEXT_SLICE_SECONDS;
+        }
+
+        route_manager->route_data.current_route = true;
+        route_manager->route_data.pending_route = false;
+
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client network next route is confirmed" );
+
+        const bool route_established = route_manager->route_data.current_route;
+
+        const int route_kbps_up = route_manager->route_data.current_route_kbps_up;
+        const int route_kbps_down = route_manager->route_data.current_route_kbps_down;
+
+        if ( route_established )
+        {
+            client->bandwidth_envelope_kbps_up = route_kbps_up;
+            client->bandwidth_envelope_kbps_down = route_kbps_down;
+        }
+        else
+        {
+            client->bandwidth_envelope_kbps_up = 0;
+            client->bandwidth_envelope_kbps_down = 0;
+        }
+
+        next_platform_mutex_release( client->route_manager_mutex );
+
+        // todo
+        printf( "*** route response packet ***\n" );
 
         return true;
     }
@@ -10412,7 +10438,7 @@ bool next_server_internal_process_network_next_packet( next_server_internal_t * 
                 return true;
             }
 
-            next_printf( NEXT_LOG_LEVEL_INFO, "server receive init response from backend" );
+            next_printf( NEXT_LOG_LEVEL_INFO, "server received init response from backend" );
 
             if ( packet.response != NEXT_SERVER_INIT_RESPONSE_OK )
             {
