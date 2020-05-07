@@ -326,8 +326,8 @@ namespace legacy
       // save this fragment
       {
         auto& fragment = request.fragments[response.FragIndex];
-        fragment.length = uint16_t(packet.Len - zip_start);
-        std::copy(packet.Buffer.begin() + zip_start, packet.Buffer.begin() + fragment.length, fragment.data.begin());
+        fragment.length = static_cast<uint16_t>(packet.Len - zip_start);
+        std::copy(packet.Buffer.begin() + zip_start, packet.Buffer.begin() + zip_start + fragment.length, fragment.data.begin());
         fragment.received = true;
       }
 
