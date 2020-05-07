@@ -10,8 +10,6 @@ DONE
 
 	Add session update response.
 
-TODO
-
 	What other packets need to be exchanged between client and server post upgrade, while going direct?
 
 	Do these next...
@@ -21,10 +19,14 @@ TODO
 		#define NEXT_CLIENT_STATS_PACKET                            70
 		#define NEXT_ROUTE_UPDATE_PACKET                            71
 		#define NEXT_ROUTE_UPDATE_ACK_PACKET                        72
-	
 
+	Get server processing direct ping packet again.
 
+	Get client processing direct pong packet again.
 
+TODO
+
+	Get client stats packet working.
 
 
 

@@ -6189,7 +6189,39 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
         return true;
     }
 
-    // ...
+    // ----------------------------------
+    // ENCRYPTED SERVER TO CLIENT PACKETS
+    // ----------------------------------
+
+    if ( packet_id == NEXT_DIRECT_PONG_PACKET )
+    {
+        NextDirectPongPacket packet;
+
+        uint64_t packet_sequence = 0;
+
+        if ( next_read_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, client->client_receive_key, &client->internal_replay_protection ) != packet_id )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored direct pong packet from server. failed to read" );
+            return NEXT_ERROR;
+        }
+
+        if ( !next_address_equal( from, &client->server_address ) )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored direct pong packet. does not come from server" );
+            return NEXT_ERROR;
+        }
+
+        next_ping_history_pong_received( &client->direct_ping_history, packet.ping_sequence, next_time() );
+
+        next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, client->client_receive_key, &client->internal_replay_protection, &client->packet_loss_tracker );
+
+        client->last_direct_pong_time = next_time();
+
+        // todo
+        printf( "*** PONG ***\n" );
+
+        return true;
+    }
 
     return false;
 }
@@ -6541,9 +6573,6 @@ void next_client_internal_update_direct_pings( next_client_internal_t * client )
 {
     next_assert( client );
 
-    // todo: turn this back on. temporarily disabled
-
-    /*
     if ( next_global_config.disable_network_next )
         return;
 
@@ -6573,7 +6602,6 @@ void next_client_internal_update_direct_pings( next_client_internal_t * client )
         next_platform_mutex_release( client->route_manager_mutex );
         client->fallback_to_direct = true;
     }
-    */
 }
 
 void next_client_internal_update_next_pings( next_client_internal_t * client )
@@ -10648,6 +10676,53 @@ bool next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         // todo
         printf( "*** upgrade confirm packet ***\n" );
+    }
+
+    // ----------------------------------
+    // ENCRYPTED CLIENT TO SERVER PACKETS
+    // ----------------------------------
+
+    next_session_entry_t * session = NULL;
+
+    if ( next_encrypted_packets[packet_id] )
+    {
+        session = next_session_manager_find_by_address( server->session_manager, from );
+        if ( !session )
+            return false;
+    }
+
+    // direct ping packet
+
+    if ( packet_id == NEXT_DIRECT_PING_PACKET )
+    {
+        if ( !session )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored direct ping packet. can't find session for address" );
+            return NEXT_ERROR;
+        }
+
+        NextDirectPingPacket packet;
+
+        uint64_t packet_sequence = 0;
+
+        if ( next_read_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection ) != packet_id )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored direct ping packet. failed to read" );
+            return NEXT_ERROR;
+        }
+
+        next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection, NULL );
+
+        NextDirectPongPacket response;
+        response.ping_sequence = packet.ping_sequence;
+
+        if ( next_server_internal_send_packet( server, from, NEXT_DIRECT_PONG_PACKET, &response ) != NEXT_OK )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server could not send upgrade confirm packet" );
+            return NEXT_ERROR;
+        }
+
+        return true;
     }
 
     // ...
