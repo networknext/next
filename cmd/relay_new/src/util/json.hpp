@@ -363,13 +363,13 @@ namespace util
   }
 
   template <>
-  inline void JSON::setValue(rapidjson::Value* member, uint8_t& value)
+  inline void JSON::setValue(rapidjson::Value* member, const uint8_t& value)
   {
     member->SetUint(value);
   }
 
   template <>
-  inline void JSON::setValue(rapidjson::Value* member, uint16_t& value)
+  inline void JSON::setValue(rapidjson::Value* member, const uint16_t& value)
   {
     member->SetUint(value);
   }
@@ -388,6 +388,12 @@ namespace util
 
   template <>
   inline void JSON::setValue(rapidjson::Value* member, uint64_t& value)
+  {
+    member->SetUint64(value);
+  }
+
+  template <>
+  inline void JSON::setValue(rapidjson::Value* member, const uint64_t& value)
   {
     member->SetUint64(value);
   }
