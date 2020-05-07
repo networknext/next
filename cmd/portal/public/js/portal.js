@@ -547,8 +547,6 @@ function fetchSessionInfo(sessionId = '') {
 		.call("BuyersService.SessionDetails", {session_id: id})
 		.then((response) => {
 			console.log(response)
-			let meta = response.meta;
-			meta.relays = meta.relays || [];
 			Object.assign(sessionDetailsVue.$data, {
 				slices: response.slices,
 				showDetails: true,
