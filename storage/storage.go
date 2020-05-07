@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/networknext/backend/routing"
 )
@@ -10,6 +11,9 @@ type Storer interface {
 	// Buyer gets a copy of a buyer with the specified buyer ID,
 	// and returns an empty buyer and an error if a buyer with that ID doesn't exist in storage.
 	Buyer(id uint64) (routing.Buyer, error)
+
+	// BuyerWithDomain gets the Buyer with the matching domain name
+	BuyerWithDomain(domain string) (routing.Buyer, error)
 
 	// Buyers returns a copy of all stored buyers.
 	Buyers() []routing.Buyer

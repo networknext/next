@@ -32,6 +32,14 @@ type Firestore struct {
 	sellerMutex     sync.RWMutex
 }
 
+type customer struct {
+	Name   string                 `firestore:"name"`
+	Domain string                 `firestore:"automaticSigninDomain"`
+	Active bool                   `firestore:"active"`
+	Buyer  *firestore.DocumentRef `firestore:"buyer"`
+	Seller *firestore.DocumentRef `firestore:"seller"`
+}
+
 type buyer struct {
 	ID        int64  `firestore:"sdkVersion3PublicKeyId"`
 	Name      string `firestore:"name"`
@@ -787,7 +795,7 @@ func (fs *Firestore) SyncLoop(ctx context.Context, c <-chan time.Time) {
 func (fs *Firestore) Sync(ctx context.Context) error {
 	var outerErr error
 	var wg sync.WaitGroup
-	wg.Add(4)
+	wg.Add(3)
 
 	go func() {
 		if err := fs.syncRelays(ctx); err != nil {
@@ -797,8 +805,8 @@ func (fs *Firestore) Sync(ctx context.Context) error {
 	}()
 
 	go func() {
-		if err := fs.syncBuyers(ctx); err != nil {
-			outerErr = fmt.Errorf("failed to sync buyers: %v", err)
+		if err := fs.syncCustomers(ctx); err != nil {
+			outerErr = fmt.Errorf("failed to sync customers: %v", err)
 		}
 		wg.Done()
 	}()
@@ -810,54 +818,9 @@ func (fs *Firestore) Sync(ctx context.Context) error {
 		wg.Done()
 	}()
 
-	go func() {
-		if err := fs.syncSellers(ctx); err != nil {
-			outerErr = fmt.Errorf("failed to sync sellers: %v", err)
-		}
-		wg.Done()
-	}()
-
 	wg.Wait()
 
 	return outerErr
-}
-
-func (fs *Firestore) syncSellers(ctx context.Context) error {
-	sellers := make(map[string]routing.Seller)
-
-	sdocs := fs.Client.Collection("Seller").Documents(ctx)
-	defer sdocs.Stop()
-	for {
-		sdoc, err := sdocs.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return &FirestoreError{err: err}
-		}
-
-		var s seller
-		err = sdoc.DataTo(&s)
-		if err != nil {
-			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to unmarshal seller %v", sdoc.Ref.ID), "err", err)
-			continue
-		}
-
-		sellers[sdoc.Ref.ID] = routing.Seller{
-			ID:                sdoc.Ref.ID,
-			Name:              s.Name,
-			IngressPriceCents: convertNibblinsToCents(s.PricePublicIngressNibblins),
-			EgressPriceCents:  convertNibblinsToCents(s.PricePublicEgressNibblins),
-		}
-	}
-
-	fs.sellerMutex.Lock()
-	fs.sellers = sellers
-	fs.sellerMutex.Unlock()
-
-	level.Info(fs.Logger).Log("during", "syncSellers", "num", len(fs.sellers))
-
-	return nil
 }
 
 func (fs *Firestore) syncDatacenters(ctx context.Context) error {
@@ -1018,13 +981,14 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 	return nil
 }
 
-func (fs *Firestore) syncBuyers(ctx context.Context) error {
+func (fs *Firestore) syncCustomers(ctx context.Context) error {
 	buyers := make(map[uint64]routing.Buyer)
+	sellers := make(map[string]routing.Seller)
 
-	bdocs := fs.Client.Collection("Buyer").Documents(ctx)
-	defer bdocs.Stop()
+	cdocs := fs.Client.Collection("Customer").Documents(ctx)
+	defer cdocs.Stop()
 	for {
-		bdoc, err := bdocs.Next()
+		cdoc, err := cdocs.Next()
 		if err == iterator.Done {
 			break
 		}
@@ -1032,30 +996,67 @@ func (fs *Firestore) syncBuyers(ctx context.Context) error {
 			return &FirestoreError{err: err}
 		}
 
-		var b buyer
-		err = bdoc.DataTo(&b)
+		var c customer
+		err = cdoc.DataTo(&c)
 		if err != nil {
-			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to unmarshal buyer %v", bdoc.Ref.ID), "err", err)
+			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to unmarshal customer %v", cdoc.Ref.ID), "err", err)
 			continue
 		}
 
-		if !b.Active {
+		if !c.Active {
 			continue
 		}
 
-		// Attempt to get routing rules settings for buyer (acceptable to fallback to default settings if none defined)
-		rrs, err := fs.getRoutingRulesSettingsForBuyerID(ctx, bdoc.Ref.ID)
-		if err != nil {
-			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("using default route rules for buyer %v", bdoc.Ref.ID), "err", err)
+		// Get the associated buyer for the customer
+		if c.Buyer != nil {
+			bdoc, err := c.Buyer.Get(ctx)
+			if err != nil {
+				level.Error(fs.Logger).Log("msg", fmt.Sprintf("failed to get buyer %v", c.Buyer.ID), "err", err)
+				continue
+			}
+			var b buyer
+			err = bdoc.DataTo(&b)
+			if err != nil {
+				level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to unmarshal seller %v", bdoc.Ref.ID), "err", err)
+				continue
+			}
+			rrs, err := fs.getRoutingRulesSettingsForBuyerID(ctx, bdoc.Ref.ID)
+			if err != nil {
+				level.Warn(fs.Logger).Log("msg", fmt.Sprintf("using default route rules for buyer %v", bdoc.Ref.ID), "err", err)
+			}
+			buyers[uint64(b.ID)] = routing.Buyer{
+				ID:                   uint64(b.ID),
+				Name:                 b.Name,
+				Domain:               c.Domain,
+				Active:               b.Active,
+				Live:                 b.Live,
+				PublicKey:            b.PublicKey,
+				RoutingRulesSettings: rrs,
+			}
+			fmt.Println(buyers[uint64(b.ID)])
 		}
 
-		buyers[uint64(b.ID)] = routing.Buyer{
-			ID:                   uint64(b.ID),
-			Name:                 b.Name,
-			Active:               b.Active,
-			Live:                 b.Live,
-			PublicKey:            b.PublicKey,
-			RoutingRulesSettings: rrs,
+		// Get the associated seller for the customer
+		if c.Seller != nil {
+			sdoc, err := c.Seller.Get(ctx)
+			if err != nil {
+				level.Error(fs.Logger).Log("msg", fmt.Sprintf("failed to get seller %v", c.Seller.ID), "err", err)
+				continue
+			}
+			var s seller
+			err = sdoc.DataTo(&s)
+			if err != nil {
+				level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to unmarshal seller %v", sdoc.Ref.ID), "err", err)
+				continue
+			}
+
+			sellers[sdoc.Ref.ID] = routing.Seller{
+				ID:                sdoc.Ref.ID,
+				Name:              s.Name,
+				Domain:            c.Domain,
+				IngressPriceCents: convertNibblinsToCents(s.PricePublicIngressNibblins),
+				EgressPriceCents:  convertNibblinsToCents(s.PricePublicEgressNibblins),
+			}
 		}
 	}
 
@@ -1063,7 +1064,12 @@ func (fs *Firestore) syncBuyers(ctx context.Context) error {
 	fs.buyers = buyers
 	fs.buyerMutex.Unlock()
 
+	fs.sellerMutex.Lock()
+	fs.sellers = sellers
+	fs.sellerMutex.Unlock()
+
 	level.Info(fs.Logger).Log("during", "syncBuyers", "num", len(fs.buyers))
+	level.Info(fs.Logger).Log("during", "syncSellers", "num", len(fs.sellers))
 
 	return nil
 }

@@ -5,6 +5,7 @@ import "encoding/base64"
 type Buyer struct {
 	ID                   uint64
 	Name                 string
+	Domain               string
 	Active               bool
 	Live                 bool
 	PublicKey            []byte
