@@ -16,8 +16,8 @@ namespace legacy
 {
   namespace v3
   {
-    Backend::Backend(util::Receiver<core::GenericPacket<>>& receiver, util::Env& env, os::Socket& socket)
-     : mReceiver(receiver), mEnv(env), mSocket(socket)
+    Backend::Backend(util::Receiver<core::GenericPacket<>>& receiver, util::Env& env, os::Socket& socket, util::Clock& relayClock)
+     : mReceiver(receiver), mEnv(env), mSocket(socket), mClock(relayClock)
     {}
 
     // clang-format off
@@ -59,9 +59,11 @@ namespace legacy
 
       uint8_t attempts = 0;
       bool done = false;
+      uint64_t requested;
       do {
         // send request
         LogDebug("sending init packet");
+        requested = mClock.elapsed<util::Nanosecond>();
         if (!packet_send(mSocket, mToken, PacketType::InitRequest, packet, request)) {
           Log("failed to send init packet");
           return false;
@@ -99,6 +101,8 @@ namespace legacy
       if (!this->buildCompleteResponse(completeResponse, doc)) {
         return false;
       }
+
+      uint64_t received
 
       // process response
 

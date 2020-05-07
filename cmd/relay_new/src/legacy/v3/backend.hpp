@@ -9,6 +9,7 @@
 #include "util/channel.hpp"
 #include "util/env.hpp"
 #include "util/json.hpp"
+#include "util/clock.hpp"
 
 namespace legacy
 {
@@ -18,7 +19,7 @@ namespace legacy
     class Backend
     {
      public:
-      Backend(util::Receiver<core::GenericPacket<>>& receiver, util::Env& env, os::Socket& socket);
+      Backend(util::Receiver<core::GenericPacket<>>& receiver, util::Env& env, os::Socket& socket, util::Clock& relayClock);
       ~Backend() = default;
 
       auto init() -> bool;
@@ -30,6 +31,7 @@ namespace legacy
       util::Receiver<core::GenericPacket<>>& mReceiver;
       const util::Env& mEnv;
       os::Socket& mSocket;
+      const util::Clock& mClock;
       BackendToken mToken;
 
       auto tryInit() -> bool;
