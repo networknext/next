@@ -17,6 +17,7 @@ namespace util
     std::string RecvBufferSize;
     std::string ProcessorCount;
 
+    std::string RelayV3Name;
     std::string RelayV3BackendHostname;
     std::string RelayV3BackendPort;
     std::string RelayV3UpdateKey;
@@ -31,6 +32,7 @@ namespace util
      {"RELAY_PUBLIC_KEY", &RelayPublicKey},
      {"RELAY_ROUTER_PUBLIC_KEY", &RelayRouterPublicKey},
      {"RELAY_BACKEND_HOSTNAME", &BackendHostname},
+     {"RELAY_V3_NAME", &RelayV3Name},
      {"RELAY_V3_BACKEND_HOSTNAME", &RelayV3BackendHostname},
      {"RELAY_V3_BACKEND_PORT", &RelayV3BackendPort},
      {"RELAY_V3_UPDATE_KEY", &RelayV3UpdateKey},

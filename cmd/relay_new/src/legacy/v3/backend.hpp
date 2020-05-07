@@ -19,7 +19,7 @@ namespace legacy
     class Backend
     {
      public:
-      Backend(util::Receiver<core::GenericPacket<>>& receiver, util::Env& env, os::Socket& socket, util::Clock& relayClock);
+      Backend(util::Receiver<core::GenericPacket<>>& receiver, util::Env& env, os::Socket& socket, const util::Clock& relayClock);
       ~Backend() = default;
 
       auto init() -> bool;
@@ -33,6 +33,9 @@ namespace legacy
       os::Socket& mSocket;
       const util::Clock& mClock;
       BackendToken mToken;
+      uint64_t mInitTimestamp;
+      std::string mGroup;
+      uint64_t mGroupID;
 
       auto tryInit() -> bool;
       auto update() -> bool;

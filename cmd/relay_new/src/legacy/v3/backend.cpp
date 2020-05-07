@@ -16,7 +16,8 @@ namespace legacy
 {
   namespace v3
   {
-    Backend::Backend(util::Receiver<core::GenericPacket<>>& receiver, util::Env& env, os::Socket& socket, util::Clock& relayClock)
+    Backend::Backend(
+     util::Receiver<core::GenericPacket<>>& receiver, util::Env& env, os::Socket& socket, const util::Clock& relayClock)
      : mReceiver(receiver), mEnv(env), mSocket(socket), mClock(relayClock)
     {}
 
@@ -61,20 +62,24 @@ namespace legacy
       bool done = false;
       uint64_t requested;
       do {
-        // send request
         LogDebug("sending init packet");
         requested = mClock.elapsed<util::Nanosecond>();
-        if (!packet_send(mSocket, mToken, PacketType::InitRequest, packet, request)) {
-          Log("failed to send init packet");
-          return false;
-        }
+        bool sendSuccess = packet_send(mSocket, mToken, PacketType::InitRequest, packet, request);
 
-        // wait a second for the response to come in
+        attempts++;
+
+        // wait a second for the response to come in or if send failed
         std::this_thread::sleep_for(1s);
+
+        if (!sendSuccess) {
+          Log("failed to send init packet");
+          continue;
+        }
 
         LogDebug("checking for response");
 
         // receive response(s) if it exists, if not resend
+        // if + while so that I can log something for the sake of debugging
         if (mReceiver.hasItems()) {
           while (mReceiver.hasItems()) {
             LogDebug("got packet data");
@@ -88,8 +93,6 @@ namespace legacy
         } else {
           LogDebug("no received packets yet");
         }
-
-        attempts++;
       } while (!done && !mSocket.closed() && !mReceiver.closed() && attempts < 60);
 
       if (mSocket.closed() || mReceiver.closed() || attempts == 60) {
@@ -102,15 +105,25 @@ namespace legacy
         return false;
       }
 
-      uint64_t received
+      uint64_t received = mClock.elapsed<util::Nanosecond>();
 
       // process response
 
-      auto timestamp = doc.get<uint64_t>("Timestamp");
+      if (!doc.memberExists("Timestamp")) {
+        Log("v3 backend json does not contain 'Timestamp' member");
+        return false;
+      }
+
+      if (!doc.memberExists("Token")) {
+        Log("v3 backend json does not contain 'Token' member");
+        return false;
+      }
+
+      mInitTimestamp = doc.get<uint64_t>("Timestamp") / 1000000 - (received - requested) / 2;
       auto b64TokenBuff = doc.get<std::string>("Token");
       std::array<uint8_t, TokenBytes> tokenBuff;
       if (encoding::base64::Decode(b64TokenBuff, tokenBuff) == 0) {
-        Log("failed to decode master token");
+        Log("failed to decode master token: ", b64TokenBuff);
         return false;
       }
 
@@ -130,6 +143,64 @@ namespace legacy
         Log("failed to build config json");
         return false;
       }
+
+      core::GenericPacket<> packet;
+      auto jsonStr = doc.toString();
+      std::copy(jsonStr.begin(), jsonStr.end(), packet.Buffer.begin());
+
+      BackendRequest request;
+      BackendResponse response;
+      std::vector<uint8_t> completeResponse;
+
+      uint8_t attempts = 0;
+      bool done = false;
+      do {
+        LogDebug("sending config packet");
+        bool sendSuccess = packet_send(mSocket, mToken, PacketType::ConfigRequest, packet, request);
+
+        attempts++;
+
+        std::this_thread::sleep_for(1s);
+
+        if (!sendSuccess) {
+          Log("failed to send config packet");
+          continue;
+        }
+
+        LogDebug("checking for response");
+
+        if (mReceiver.hasItems()) {
+          while (mReceiver.hasItems()) {
+            LogDebug("got packet data");
+            mReceiver.recv(packet);
+
+            if (readResponse(packet, request, response, completeResponse)) {
+              done = true;
+            }
+          }
+        } else {
+          LogDebug("no received packets yet");
+        }
+      } while (!done && !mSocket.closed() && !mReceiver.closed() && attempts < 60);
+
+      if (mSocket.closed() || mReceiver.closed() || attempts == 60) {
+        LogDebug("could not config relay");
+        return false;
+      }
+
+      if (!this->buildCompleteResponse(completeResponse, doc)) {
+        return false;
+      }
+
+      if (!doc.memberExists("Group")) {
+        Log("v3 backend json does not contain 'Group' member");
+        return false;
+      }
+
+      mGroup = doc.get<std::string>("Group");
+
+      crypto::FNV fnv(mGroup);
+      mGroupID = fnv.Value;
 
       return true;
     }
@@ -197,14 +268,16 @@ namespace legacy
      */
     auto Backend::buildConfigJSON(util::JSON& doc) -> bool
     {
-      doc.set("config", "value");
+      crypto::FNV relayID(mEnv.RelayV3Name);
+      doc.set(relayID.Value, "RelayId");
       return true;
     }
 
     // clang-format off
     /*
      *  {
-     *    "Usage": double, // from manage_get_usage_from_samples()
+     *    "Usage": double, // 100.0 * 8.0 * (bytes_per_sec_total_tx + bytes_per_sec_total_rx) / relaySpeed
+
      *    "TrafficStats": {
      *      "BytesPaidTx": uint64, // ? what is this, look up usage
      *      "BytesPaidRx": uint64, // ? ditto

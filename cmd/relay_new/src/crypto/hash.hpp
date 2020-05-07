@@ -11,10 +11,10 @@ namespace crypto
     const uint64_t Value;
 
    private:
-    auto hash(const std::string& val) -> uint64_t
+    auto hash(const std::string& val) -> uint64_t;
   };  // namespace crypto
 
-  FNV::FNV(std::string val): Value(hash(val)) {}
+  inline FNV::FNV(std::string val): Value(hash(val)) {}
 
   inline auto FNV::hash(const std::string& val) -> uint64_t
   {

@@ -396,8 +396,8 @@ int main(int argc, const char* argv[])
       return 1;
     }
 
-    auto thread = std::make_shared<std::thread>([&receiver, &env, socket, &cleanup, &v3BackendSuccess] {
-      legacy::v3::Backend backend(receiver, env, *socket);
+    auto thread = std::make_shared<std::thread>([&receiver, &env, socket, &cleanup, &v3BackendSuccess, &relayClock] {
+      legacy::v3::Backend backend(receiver, env, *socket, relayClock);
 
       if (!backend.init()) {
         Log("could not initialize relay with old backend");
