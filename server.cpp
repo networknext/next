@@ -45,7 +45,7 @@ void server_packet_received( next_server_t * server, void * context, const next_
     }
 }
 
-const char * customer_hostname = "dev.networknext.com";
+const char * customer_hostname = "127.0.0.1";
 const char * customer_private_key = "";
 
 int main()

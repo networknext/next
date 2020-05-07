@@ -10884,7 +10884,7 @@ bool next_server_internal_process_network_next_packet( next_server_internal_t * 
         }
 
         // todo
-        // printf( "*** client stats packet ***\n" );
+        printf( "*** client stats packet ***\n" );
 
         return true;
     }
