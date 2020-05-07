@@ -116,7 +116,7 @@ func TestAuthClient(t *testing.T) {
 		roles := []*management.Role{}
 
 		// The user ID here is linked to baumbachandrew@gmail.com => Delete the user and this will not pass
-		err := svc.UpdateUserRoles(nil, &jsonrpc.RolesArgs{UserID: "auth0|5eb2d80ce32a7c19eafbad88", Roles: roles}, &reply)
+		err := svc.UpdateUserRoles(nil, &jsonrpc.RolesArgs{UserID: "auth0|5eb41e3195054819ac206076", Roles: roles}, &reply)
 		assert.NoError(t, err)
 
 		assert.Equal(t, len(reply.Roles), 0)
@@ -134,7 +134,7 @@ func TestAuthClient(t *testing.T) {
 		}
 
 		// The user ID here is linked to baumbachandrew@gmail.com => Delete the user and this will not pass
-		err := svc.UpdateUserRoles(nil, &jsonrpc.RolesArgs{UserID: "auth0|5eb2d80ce32a7c19eafbad88", Roles: roles}, &reply)
+		err := svc.UpdateUserRoles(nil, &jsonrpc.RolesArgs{UserID: "auth0|5eb41e3195054819ac206076", Roles: roles}, &reply)
 		assert.NoError(t, err)
 
 		assert.NotEqual(t, len(reply.Roles), 0)
