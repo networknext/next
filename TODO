@@ -24,12 +24,25 @@ DONE
 
 	Get client processing direct pong packet again.
 
-TODO
-
 	Get client stats packet working.
 
+	Get route update packet working (server -> client)
 
+	Get route update ack packet working (client -> server)
 
+TODO
+
+	What other packet types remain?
+
+	All the packet types that go across relays.
+
+	Can these be distinguished from client -> server packets?
+
+	Perhaps. In the client -> server direction, if they don't come from the IP address of the client, then they are from a relay.
+
+	In the server -> client direction, if they don't come from the IP address of the server, then they are from a relay.
+
+	Bake this in. Do it :)
 
 
 

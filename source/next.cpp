@@ -119,7 +119,6 @@ static const uint8_t next_backend_public_key[] =
      25,  34, 175, 186,  37, 150, 163,  64 
 };
 
-/*
 static const uint8_t next_router_public_key[] = 
 { 
     0x49, 0x2e, 0x79, 0x74, 0x49, 0x7d, 0x9d, 0x34, 
@@ -127,7 +126,6 @@ static const uint8_t next_router_public_key[] =
     0x1b, 0xff, 0x61, 0xc6, 0x0e, 0x65, 0x92, 0xd7, 
     0x09, 0x64, 0xe9, 0x34, 0x12, 0x32, 0x5f, 0x46 
 };
-*/
 
 #if !defined (NEXT_LITTLE_ENDIAN ) && !defined( NEXT_BIG_ENDIAN )
 
@@ -6042,7 +6040,7 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
         next_packet_loss_tracker_packet_received( &client->packet_loss_tracker, clean_sequence );
 
         // todo
-        printf( "client received upgraded direct packet\n" );
+        // printf( "client received upgraded direct packet\n" );
 
         return true;
     }
@@ -6110,7 +6108,8 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
         client->upgrade_response_start_time = next_time();
         client->last_upgrade_response_send_time = next_time();
 
-        printf( "*** client received upgrade request packet ***\n" );
+        // todo
+        // printf( "*** client received upgrade request packet ***\n" );
 
         return true;
     }
@@ -6193,6 +6192,9 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
     // ENCRYPTED SERVER TO CLIENT PACKETS
     // ----------------------------------
 
+    if ( !next_address_equal( from, &client->server_address ) )
+        return false;
+
     if ( packet_id == NEXT_DIRECT_PONG_PACKET )
     {
         NextDirectPongPacket packet;
@@ -6218,7 +6220,81 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
         client->last_direct_pong_time = next_time();
 
         // todo
-        printf( "*** PONG ***\n" );
+        // printf( "*** PONG ***\n" );
+
+        return true;
+    }
+
+    if ( packet_id == NEXT_ROUTE_UPDATE_PACKET )
+    {
+        NextRouteUpdatePacket packet;
+
+        uint64_t packet_sequence = 0;
+
+        if ( next_read_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, client->client_receive_key, &client->internal_replay_protection ) != packet_id )
+            return false;
+
+        if ( client->fallback_to_direct )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route update packet from server. in fallback to direct state" );
+            return true;
+        }
+
+        if ( packet.sequence < client->route_update_sequence )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route update packet from server. sequence is old" );
+            return true;
+        }
+
+        next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, client->client_receive_key, &client->internal_replay_protection, &client->packet_loss_tracker );
+
+        bool fallback_to_direct = false;
+
+        if ( packet.sequence != client->route_update_sequence )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client received route update packet from server" );
+
+            next_relay_manager_update( client->near_relay_manager, packet.num_near_relays, packet.near_relay_ids, packet.near_relay_addresses );
+
+            next_platform_mutex_acquire( client->route_manager_mutex );
+            next_route_manager_update( client->route_manager, packet.update_type, packet.committed, packet.num_tokens, packet.tokens, next_router_public_key, client->client_route_private_key );
+            fallback_to_direct = client->route_manager->fallback_to_direct;
+            next_platform_mutex_release( client->route_manager_mutex );
+
+            if ( !client->fallback_to_direct && fallback_to_direct )
+            {
+                client->counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT]++;
+            }
+
+            if ( packet.multipath && !client->multipath )
+            {
+                next_printf( NEXT_LOG_LEVEL_INFO, "client multipath enabled" );
+                client->multipath = true;
+                client->counters[NEXT_CLIENT_COUNTER_MULTIPATH]++;
+            }
+
+            client->fallback_to_direct = fallback_to_direct;
+            client->route_update_sequence = packet.sequence;
+            client->client_stats.packets_lost_client_to_server = packet.packets_lost_client_to_server;
+            client->counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_CLIENT_TO_SERVER] = packet.packets_lost_client_to_server;
+        }
+
+        if ( fallback_to_direct )
+            return NEXT_ERROR;
+
+        NextRouteUpdateAckPacket ack;
+        ack.sequence = packet.sequence;
+
+        if ( next_client_internal_send_packet_to_server( client, NEXT_ROUTE_UPDATE_ACK_PACKET, &ack ) != NEXT_OK )
+        {
+            next_printf( NEXT_LOG_LEVEL_WARN, "client failed to send route update ack packet to server" );
+            return NEXT_ERROR;
+        }
+
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent route update ack packet to server" );
+
+        // todo
+        printf( "*** route update packet ***\n" );
 
         return true;
     }
@@ -10063,6 +10139,9 @@ void next_server_internal_update_route( next_server_internal_t * server )
 
         if ( entry->update_dirty && entry->update_last_send_time + NEXT_UPDATE_SEND_TIME <= current_time )
         {
+            // todo
+            printf( "*** server sent route update packet ***\n" );
+
             NextRouteUpdatePacket packet;
             packet.sequence = entry->update_sequence;
             packet.num_near_relays = entry->update_num_near_relays;
@@ -10144,7 +10223,7 @@ void next_server_internal_update_pending_upgrades( next_server_internal_t * serv
             entry->last_packet_send_time = current_time;
 
             // todo
-            printf( "*** upgrade request packet ***\n" );
+            // printf( "*** upgrade request packet ***\n" );
 
             NextUpgradeRequestPacket packet;
             packet.protocol_version = next_protocol_version();
@@ -10288,7 +10367,7 @@ bool next_server_internal_process_network_next_packet( next_server_internal_t * 
         }
 
         // todo
-        printf( "server received upgraded direct packet\n" );
+        // printf( "server received upgraded direct packet\n" );
 
         return true;
     }
@@ -10495,6 +10574,9 @@ bool next_server_internal_process_network_next_packet( next_server_internal_t * 
             // so we pick up on flags that were only set for a frame inside a 10 second long slice...
             entry->stats_user_flags = 0;
 
+            // todo
+            printf( "*** session update response ***\n" );
+
             return true;
         }   
     }
@@ -10675,7 +10757,7 @@ bool next_server_internal_process_network_next_packet( next_server_internal_t * 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent upgrade confirm packet to client %s", next_address_to_string( from, address_buffer ) );
 
         // todo
-        printf( "*** upgrade confirm packet ***\n" );
+        // printf( "*** upgrade confirm packet ***\n" );
     }
 
     // ----------------------------------
@@ -10775,6 +10857,40 @@ bool next_server_internal_process_network_next_packet( next_server_internal_t * 
             session->last_client_stats_update = next_time();
         }
 
+        // todo
+        // printf( "*** client stats packet ***\n" );
+
+        return true;
+    }
+
+    // route update ack packet
+
+    if ( packet_id == NEXT_ROUTE_UPDATE_ACK_PACKET )
+    {
+        next_assert( session );
+
+        NextRouteUpdateAckPacket packet;
+
+        uint64_t packet_sequence = 0;
+
+        if ( next_read_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection ) != packet_id )
+            return false;
+
+        if ( packet.sequence != session->update_sequence )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored route update ack packet. wrong update sequence number" );
+            return true;
+        }
+
+        next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection, NULL );
+
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server received route update ack from client for session %" PRIx64, session->session_id );
+
+        session->update_dirty = false;
+
+        // todo
+        printf( "*** route update ack ***\n" );
+
         return true;
     }
 
@@ -10791,7 +10907,7 @@ void next_server_internal_process_game_packet( next_server_internal_t * server, 
     if ( packet_bytes <= NEXT_MTU )
     {
         // todo
-        printf( "server received raw direct packet\n" );
+        // printf( "server received raw direct packet\n" );
 
         next_server_notify_packet_received_t * notify = (next_server_notify_packet_received_t*) next_malloc( server->context, sizeof( next_server_notify_packet_received_t ) );
         notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
@@ -11140,9 +11256,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         }
     }
 
-    // todo: turn this back on
-
-    /*
     // server update
 
     if ( state != NEXT_SERVER_STATE_INITIALIZED )
@@ -11195,6 +11308,9 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
         if ( session->next_session_update_time >= 0.0 && session->next_session_update_time <= current_time )
         {
+            // todo
+            printf( "*** send session update ***\n" );
+
             NextBackendSessionUpdatePacket packet;
 
             packet.sequence = ++session->update_sequence;
@@ -11285,7 +11401,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             session->next_session_update_time = -1.0;
         }
     }
-    */
 }
 
 static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_internal_thread_function( void * context )
