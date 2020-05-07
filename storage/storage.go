@@ -71,3 +71,29 @@ type Storer interface {
 	// SetDatacenter updates the datacenter in storage with the provided copy and returns an error if the datacenter could not be updated.
 	SetDatacenter(ctx context.Context, datacenter routing.Datacenter) error
 }
+
+type UnmarshalError struct {
+	err error
+}
+
+func (e *UnmarshalError) Error() string {
+	return fmt.Sprintf("unmarshal error: %v", e.err)
+}
+
+type DoesNotExistError struct {
+	resourceType string
+	resourceRef  interface{}
+}
+
+func (e *DoesNotExistError) Error() string {
+	return fmt.Sprintf("%s with reference %v not found", e.resourceType, e.resourceRef)
+}
+
+type AlreadyExistsError struct {
+	resourceType string
+	resourceRef  interface{}
+}
+
+func (e *AlreadyExistsError) Error() string {
+	return fmt.Sprintf("%s with reference %v already exists", e.resourceType, e.resourceRef)
+}

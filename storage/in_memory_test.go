@@ -18,7 +18,7 @@ func TestInMemoryGetBuyer(t *testing.T) {
 
 		actual, err := inMemory.Buyer(0)
 		assert.Empty(t, actual)
-		assert.EqualError(t, err, "buyer with id 0 not found in memory storage")
+		assert.EqualError(t, err, "buyer with reference 0 not found")
 	})
 
 	t.Run("success", func(t *testing.T) {
@@ -81,7 +81,7 @@ func TestInMemoryAddBuyer(t *testing.T) {
 		assert.NoError(t, err)
 
 		err = inMemory.AddBuyer(ctx, buyer)
-		assert.EqualError(t, err, "buyer with id 0 already exists in memory storage")
+		assert.EqualError(t, err, "buyer with reference 0 already exists")
 	})
 
 	t.Run("success", func(t *testing.T) {
@@ -108,7 +108,7 @@ func TestInMemoryRemoveBuyer(t *testing.T) {
 		inMemory := storage.InMemory{}
 
 		err := inMemory.RemoveBuyer(ctx, 0)
-		assert.EqualError(t, err, "buyer with id 0 not found in memory storage")
+		assert.EqualError(t, err, "buyer with reference 0 not found")
 	})
 
 	t.Run("success removing last element", func(t *testing.T) {
@@ -178,7 +178,7 @@ func TestInMemorySetBuyer(t *testing.T) {
 		}
 
 		err := inMemory.SetBuyer(ctx, buyer)
-		assert.EqualError(t, err, "buyer with id 0 not found in memory storage")
+		assert.EqualError(t, err, "buyer with reference 0 not found")
 	})
 
 	t.Run("success", func(t *testing.T) {
@@ -211,7 +211,7 @@ func TestInMemoryGetSeller(t *testing.T) {
 
 		actual, err := inMemory.Seller("id")
 		assert.Empty(t, actual)
-		assert.EqualError(t, err, "seller with id id not found in memory storage")
+		assert.EqualError(t, err, "seller with reference id not found")
 	})
 
 	t.Run("success", func(t *testing.T) {
@@ -274,7 +274,7 @@ func TestInMemoryAddSeller(t *testing.T) {
 		assert.NoError(t, err)
 
 		err = inMemory.AddSeller(ctx, seller)
-		assert.EqualError(t, err, "seller with id id already exists in memory storage")
+		assert.EqualError(t, err, "seller with reference id already exists")
 	})
 
 	t.Run("success", func(t *testing.T) {
@@ -301,7 +301,7 @@ func TestInMemoryRemoveSeller(t *testing.T) {
 		inMemory := storage.InMemory{}
 
 		err := inMemory.RemoveSeller(ctx, "id")
-		assert.EqualError(t, err, "seller with id id not found in memory storage")
+		assert.EqualError(t, err, "seller with reference id not found")
 	})
 
 	t.Run("success removing last element", func(t *testing.T) {
@@ -371,7 +371,7 @@ func TestInMemorySetSeller(t *testing.T) {
 		}
 
 		err := inMemory.SetSeller(ctx, seller)
-		assert.EqualError(t, err, "seller with id id not found in memory storage")
+		assert.EqualError(t, err, "seller with reference id not found")
 	})
 
 	t.Run("success", func(t *testing.T) {
@@ -404,7 +404,7 @@ func TestInMemoryGetRelay(t *testing.T) {
 
 		actual, err := inMemory.Relay(0)
 		assert.Empty(t, actual)
-		assert.EqualError(t, err, "relay with id 0 not found in memory storage")
+		assert.EqualError(t, err, "relay with reference 0 not found")
 	})
 
 	t.Run("success", func(t *testing.T) {
@@ -509,7 +509,7 @@ func TestInMemoryAddRelay(t *testing.T) {
 		assert.NoError(t, err)
 
 		err = inMemory.AddRelay(ctx, relay)
-		assert.EqualError(t, err, "relay with id 0 already exists in memory storage")
+		assert.EqualError(t, err, "relay with reference 0 already exists")
 	})
 
 	t.Run("no seller", func(t *testing.T) {
@@ -521,7 +521,7 @@ func TestInMemoryAddRelay(t *testing.T) {
 		}
 
 		err := inMemory.AddRelay(ctx, relay)
-		assert.EqualError(t, err, "unknown seller with ID  - be sure to create the seller in storage first")
+		assert.EqualError(t, err, "seller with reference  not found")
 	})
 
 	t.Run("no datacenter", func(t *testing.T) {
@@ -540,7 +540,7 @@ func TestInMemoryAddRelay(t *testing.T) {
 		assert.NoError(t, err)
 
 		err = inMemory.AddRelay(ctx, relay)
-		assert.EqualError(t, err, "unknown datacenter with ID 0 - be sure to create the datacenter in storage first")
+		assert.EqualError(t, err, "datacenter with reference 0 not found")
 	})
 
 	t.Run("success", func(t *testing.T) {
@@ -581,7 +581,7 @@ func TestInMemoryRemoveRelay(t *testing.T) {
 		inMemory := storage.InMemory{}
 
 		err := inMemory.RemoveRelay(ctx, 0)
-		assert.EqualError(t, err, "relay with id 0 not found in memory storage")
+		assert.EqualError(t, err, "relay with reference 0 not found")
 	})
 
 	t.Run("success removing last element", func(t *testing.T) {
@@ -695,7 +695,7 @@ func TestInMemorySetRelay(t *testing.T) {
 		}
 
 		err := inMemory.SetRelay(ctx, relay)
-		assert.EqualError(t, err, "relay with id 0 not found in memory storage")
+		assert.EqualError(t, err, "relay with reference 0 not found")
 	})
 
 	t.Run("success", func(t *testing.T) {
@@ -742,7 +742,7 @@ func TestInMemoryGetDatacenter(t *testing.T) {
 
 		actual, err := inMemory.Datacenter(0)
 		assert.Empty(t, actual)
-		assert.EqualError(t, err, "datacenter with id 0 not found in memory storage")
+		assert.EqualError(t, err, "datacenter with reference 0 not found")
 	})
 
 	t.Run("success", func(t *testing.T) {
@@ -805,7 +805,7 @@ func TestInMemoryAddDatacenter(t *testing.T) {
 		assert.NoError(t, err)
 
 		err = inMemory.AddDatacenter(ctx, datacenter)
-		assert.EqualError(t, err, "datacenter with id 0 already exists in memory storage")
+		assert.EqualError(t, err, "datacenter with reference 0 already exists")
 	})
 
 	t.Run("success", func(t *testing.T) {
@@ -832,7 +832,7 @@ func TestInMemoryRemoveDatacenter(t *testing.T) {
 		inMemory := storage.InMemory{}
 
 		err := inMemory.RemoveDatacenter(ctx, 0)
-		assert.EqualError(t, err, "datacenter with id 0 not found in memory storage")
+		assert.EqualError(t, err, "datacenter with reference 0 not found")
 	})
 
 	t.Run("success removing last element", func(t *testing.T) {
@@ -902,7 +902,7 @@ func TestInMemorySetDatacenter(t *testing.T) {
 		}
 
 		err := inMemory.SetDatacenter(ctx, datacenter)
-		assert.EqualError(t, err, "datacenter with id 0 not found in memory storage")
+		assert.EqualError(t, err, "datacenter with reference 0 not found")
 	})
 
 	t.Run("success", func(t *testing.T) {

@@ -99,54 +99,6 @@ func (e *FirestoreError) Error() string {
 	return fmt.Sprintf("unknown Firestore error: %v", e.err)
 }
 
-type UnmarshalError struct {
-	err error
-}
-
-func (e *UnmarshalError) Error() string {
-	return fmt.Sprintf("unmarshal error: %v", e.err)
-}
-
-type UnknownBuyerError struct {
-	buyerID uint64
-}
-
-func (e *UnknownBuyerError) Error() string {
-	return fmt.Sprintf("buyer with id %d not found in firestore", e.buyerID)
-}
-
-type UnknownSellerError struct {
-	sellerID string
-}
-
-func (e *UnknownSellerError) Error() string {
-	return fmt.Sprintf("seller with id %s not found in firestore", e.sellerID)
-}
-
-type SellerExistsError struct {
-	sellerID string
-}
-
-func (e *SellerExistsError) Error() string {
-	return fmt.Sprintf("seller with id %s already exists in firestore", e.sellerID)
-}
-
-type UnknownRelayError struct {
-	relayID uint64
-}
-
-func (e *UnknownRelayError) Error() string {
-	return fmt.Sprintf("relay with id %d not found in firestore", e.relayID)
-}
-
-type UnknownDatacenterError struct {
-	datacenterID uint64
-}
-
-func (e *UnknownDatacenterError) Error() string {
-	return fmt.Sprintf("datacenter with id %d not found in firestore", e.datacenterID)
-}
-
 func NewFirestore(ctx context.Context, gcpProjectID string, logger log.Logger) (*Firestore, error) {
 	client, err := firestore.NewClient(ctx, gcpProjectID)
 	if err != nil {
@@ -169,7 +121,7 @@ func (fs *Firestore) Buyer(id uint64) (routing.Buyer, error) {
 
 	b, found := fs.buyers[id]
 	if !found {
-		return routing.Buyer{}, &UnknownBuyerError{buyerID: id}
+		return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: id}
 	}
 
 	return b, nil
@@ -223,7 +175,7 @@ func (fs *Firestore) RemoveBuyer(ctx context.Context, id uint64) error {
 	fs.buyerMutex.RUnlock()
 
 	if !ok {
-		return &UnknownBuyerError{buyerID: id}
+		return &DoesNotExistError{resourceType: "buyer", resourceRef: id}
 	}
 
 	bdocs := fs.Client.Collection("Buyer").Documents(ctx)
@@ -264,7 +216,7 @@ func (fs *Firestore) RemoveBuyer(ctx context.Context, id uint64) error {
 		}
 	}
 
-	return &UnknownBuyerError{buyerID: id}
+	return &DoesNotExistError{resourceType: "buyer", resourceRef: id}
 }
 
 func (fs *Firestore) SetBuyer(ctx context.Context, b routing.Buyer) error {
@@ -274,7 +226,7 @@ func (fs *Firestore) SetBuyer(ctx context.Context, b routing.Buyer) error {
 	fs.buyerMutex.RUnlock()
 
 	if !ok {
-		return &UnknownBuyerError{buyerID: b.ID}
+		return &DoesNotExistError{resourceType: "buyer", resourceRef: b.ID}
 	}
 
 	// Loop through all buyers in firestore
@@ -327,7 +279,7 @@ func (fs *Firestore) SetBuyer(ctx context.Context, b routing.Buyer) error {
 		}
 	}
 
-	return &UnknownBuyerError{buyerID: b.ID}
+	return &DoesNotExistError{resourceType: "buyer", resourceRef: b.ID}
 }
 
 func (fs *Firestore) Seller(id string) (routing.Seller, error) {
@@ -336,7 +288,7 @@ func (fs *Firestore) Seller(id string) (routing.Seller, error) {
 
 	s, found := fs.sellers[id]
 	if !found {
-		return routing.Seller{}, &UnknownSellerError{sellerID: id}
+		return routing.Seller{}, &DoesNotExistError{resourceType: "seller", resourceRef: id}
 	}
 
 	return s, nil
@@ -362,7 +314,7 @@ func (fs *Firestore) AddSeller(ctx context.Context, s routing.Seller) error {
 	fs.sellerMutex.RUnlock()
 
 	if ok {
-		return &SellerExistsError{sellerID: s.ID}
+		return &AlreadyExistsError{resourceType: "seller", resourceRef: s.ID}
 	}
 
 	newSellerData := seller{
@@ -392,7 +344,7 @@ func (fs *Firestore) RemoveSeller(ctx context.Context, id string) error {
 	fs.sellerMutex.RUnlock()
 
 	if !ok {
-		return &UnknownSellerError{sellerID: id}
+		return &DoesNotExistError{resourceType: "seller", resourceRef: id}
 	}
 
 	// Delete the seller in remote storage
@@ -414,7 +366,7 @@ func (fs *Firestore) SetSeller(ctx context.Context, seller routing.Seller) error
 	fs.sellerMutex.RUnlock()
 
 	if !ok {
-		return &UnknownSellerError{sellerID: seller.ID}
+		return &DoesNotExistError{resourceType: "seller", resourceRef: seller.ID}
 	}
 
 	// Update the seller in firestore
@@ -444,7 +396,7 @@ func (fs *Firestore) Relay(id uint64) (routing.Relay, error) {
 
 	relay, found := fs.relays[id]
 	if !found {
-		return routing.Relay{}, &UnknownRelayError{relayID: id}
+		return routing.Relay{}, &DoesNotExistError{resourceType: "relay", resourceRef: id}
 	}
 
 	return relay, nil
@@ -488,7 +440,7 @@ func (fs *Firestore) AddRelay(ctx context.Context, r routing.Relay) error {
 	}
 
 	if sellerRef == nil {
-		return &UnknownSellerError{sellerID: r.Seller.ID}
+		return &DoesNotExistError{resourceType: "seller", resourceRef: r.Seller.ID}
 	}
 
 	// Loop through all datacenters in firestore
@@ -519,7 +471,7 @@ func (fs *Firestore) AddRelay(ctx context.Context, r routing.Relay) error {
 	}
 
 	if datacenterRef == nil {
-		return &UnknownDatacenterError{datacenterID: r.Datacenter.ID}
+		return &DoesNotExistError{resourceType: "datacenter", resourceRef: r.Datacenter.ID}
 	}
 
 	newRelayData := relay{
@@ -558,7 +510,7 @@ func (fs *Firestore) RemoveRelay(ctx context.Context, id uint64) error {
 	fs.relayMutex.RUnlock()
 
 	if !ok {
-		return &UnknownRelayError{relayID: id}
+		return &DoesNotExistError{resourceType: "relay", resourceRef: id}
 	}
 
 	rdocs := fs.Client.Collection("Relay").Documents(ctx)
@@ -595,7 +547,7 @@ func (fs *Firestore) RemoveRelay(ctx context.Context, id uint64) error {
 		}
 	}
 
-	return &UnknownRelayError{relayID: id}
+	return &DoesNotExistError{resourceType: "relay", resourceRef: id}
 }
 
 // Only relay state, public key, and NIC speed are updated in firestore for now
@@ -606,7 +558,7 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 	fs.relayMutex.RUnlock()
 
 	if !ok {
-		return &UnknownRelayError{relayID: r.ID}
+		return &DoesNotExistError{resourceType: "relay", resourceRef: r.ID}
 	}
 
 	// Loop through all relays in firestore
@@ -658,7 +610,7 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 		}
 	}
 
-	return &UnknownRelayError{relayID: r.ID}
+	return &DoesNotExistError{resourceType: "relay", resourceRef: r.ID}
 }
 
 func (fs *Firestore) Datacenter(id uint64) (routing.Datacenter, error) {
@@ -667,7 +619,7 @@ func (fs *Firestore) Datacenter(id uint64) (routing.Datacenter, error) {
 
 	d, found := fs.datacenters[id]
 	if !found {
-		return routing.Datacenter{}, &UnknownDatacenterError{datacenterID: id}
+		return routing.Datacenter{}, &DoesNotExistError{resourceType: "datacenter", resourceRef: id}
 	}
 
 	return d, nil
@@ -715,7 +667,7 @@ func (fs *Firestore) RemoveDatacenter(ctx context.Context, id uint64) error {
 	fs.datacenterMutex.RUnlock()
 
 	if !ok {
-		return &UnknownDatacenterError{datacenterID: id}
+		return &DoesNotExistError{resourceType: "dataceter", resourceRef: id}
 	}
 
 	ddocs := fs.Client.Collection("Datacenter").Documents(ctx)
@@ -751,7 +703,7 @@ func (fs *Firestore) RemoveDatacenter(ctx context.Context, id uint64) error {
 		}
 	}
 
-	return &UnknownDatacenterError{datacenterID: id}
+	return &DoesNotExistError{resourceType: "datacenter", resourceRef: id}
 }
 
 func (fs *Firestore) SetDatacenter(ctx context.Context, d routing.Datacenter) error {
@@ -761,7 +713,7 @@ func (fs *Firestore) SetDatacenter(ctx context.Context, d routing.Datacenter) er
 	fs.datacenterMutex.RUnlock()
 
 	if !ok {
-		return &UnknownDatacenterError{datacenterID: d.ID}
+		return &DoesNotExistError{resourceType: "datacenter", resourceRef: d.ID}
 	}
 
 	// Loop through all datacenters in firestore
@@ -810,7 +762,7 @@ func (fs *Firestore) SetDatacenter(ctx context.Context, d routing.Datacenter) er
 		}
 	}
 
-	return &UnknownDatacenterError{datacenterID: d.ID}
+	return &DoesNotExistError{resourceType: "datacenter", resourceRef: d.ID}
 }
 
 // SyncLoop is a helper method that calls Sync
