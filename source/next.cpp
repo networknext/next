@@ -4878,7 +4878,7 @@ void next_route_manager_prepare_send_packet( next_route_manager_t * route_manage
     *packet_bytes = NEXT_HEADER_BYTES + payload_bytes;
 }
 
-bool next_route_manager_process_server_to_client_packet( next_route_manager_t * route_manager, const next_address_t * from, uint8_t * packet_data, int packet_bytes, uint64_t * payload_sequence, uint8_t * payload_data, int * payload_bytes )
+bool next_route_manager_process_server_to_client_packet( next_route_manager_t * route_manager, const next_address_t * from, uint8_t * packet_data, int packet_bytes, uint64_t * payload_sequence, uint8_t * payload_data, int * payload_bytes, bool * valid )
 {
     next_assert( route_manager );
     next_assert( from );
@@ -4886,21 +4886,14 @@ bool next_route_manager_process_server_to_client_packet( next_route_manager_t * 
     next_assert( payload_sequence );
     next_assert( payload_data );
     next_assert( payload_bytes );
+    next_assert( valid );
+
+    *valid = false;
 
     (void) from;
 
     if ( packet_bytes <= NEXT_HEADER_BYTES )
-    {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored server to client packet. too small" );
         return false;
-    }
-
-
-    if ( !route_manager->route_data.current_route && !route_manager->route_data.previous_route )
-    {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored server to client packet. no current or previous route" );
-        return false;
-    }
 
     uint8_t packet_type = 0;
     uint64_t packet_sequence = 0;
@@ -4913,12 +4906,16 @@ bool next_route_manager_process_server_to_client_packet( next_route_manager_t * 
     if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, route_manager->route_data.current_route_private_key, packet_data, packet_bytes ) != NEXT_OK )
     {
         from_current_route = false;
-
         if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, route_manager->route_data.previous_route_private_key, packet_data, packet_bytes ) != NEXT_OK )
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored server to client packet. could not read header" );
             return false;
-        }
+    }
+
+    *valid = true;
+
+    if ( !route_manager->route_data.current_route && !route_manager->route_data.previous_route )
+    {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored server to client packet. no current or previous route" );
+        return false;
     }
 
     if ( from_current_route )
@@ -5998,7 +5995,7 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
         if ( next_client_internal_send_packet_to_server( client, NEXT_UPGRADE_RESPONSE_PACKET, &response ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_WARN, "client failed to send upgrade response packet to server" );
-            return NEXT_ERROR;
+            return true;
         }
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent upgrade response packet to server" );
@@ -6092,9 +6089,9 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
         return true;
     }
 
-    // --------------------------
-    // SIGNED PACKETS FROM RELAYS
-    // --------------------------
+    // -------------------
+    // PACKETS FROM RELAYS
+    // -------------------
 
     if ( packet_id == NEXT_ROUTE_RESPONSE_PACKET )
     {
@@ -6214,9 +6211,97 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
         return true;
     }
 
-    // ----------------------------------
-    // ENCRYPTED SERVER TO CLIENT PACKETS
-    // ----------------------------------
+    // server to client packet
+
+    if ( packet_id == NEXT_SERVER_TO_CLIENT_PACKET )
+    {
+        int payload_bytes = 0;
+        uint64_t payload_sequence = 0;
+        uint8_t payload_data[NEXT_MTU];
+
+        next_platform_mutex_acquire( client->route_manager_mutex );
+        bool valid = false;
+        const bool result = next_route_manager_process_server_to_client_packet( client->route_manager, from, packet_data, packet_bytes, &payload_sequence, payload_data, &payload_bytes, &valid );
+        next_platform_mutex_release( client->route_manager_mutex );
+
+        if ( !result )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored server to client packet. could not verify" );
+            return valid;
+        }
+
+        const bool already_received = next_replay_protection_already_received( &client->payload_replay_protection, payload_sequence ) != 0;
+
+        if ( already_received && !client->multipath )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client already received server to client packet %" PRIu64, payload_sequence );
+            return true;
+        }
+
+        if ( already_received && client->multipath )
+        {
+            client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT]++;
+            return true;
+        }
+
+        uint64_t clean_sequence = next_clean_sequence( payload_sequence );
+
+        next_replay_protection_advance_sequence( &client->payload_replay_protection, clean_sequence );
+
+        next_packet_loss_tracker_packet_received( &client->packet_loss_tracker, clean_sequence );
+
+        next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
+        notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
+        notify->packet_bytes = payload_bytes;
+        memcpy( notify->packet_data, payload_data, payload_bytes );
+        {
+            next_mutex_guard( client->notify_mutex );
+            next_queue_push( client->notify_queue, notify );            
+        }
+
+        client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT]++;
+
+        return true;
+    }
+
+    // next pong packet
+
+    if ( packet_id == NEXT_PONG_PACKET )
+    {
+        int payload_bytes = 0;
+        uint64_t payload_sequence = 0;
+        uint8_t payload_data[NEXT_MTU];
+
+        next_platform_mutex_acquire( client->route_manager_mutex );
+        bool valid = false;
+        const bool result = next_route_manager_process_server_to_client_packet( client->route_manager, from, packet_data, packet_bytes, &payload_sequence, payload_data, &payload_bytes, &valid );
+        next_platform_mutex_release( client->route_manager_mutex );
+
+        if ( !result )
+            return valid;
+        
+        uint64_t clean_sequence = next_clean_sequence( payload_sequence );
+
+        if ( next_replay_protection_already_received( &client->special_replay_protection, clean_sequence ) )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client already received pong packet %" PRIu64, clean_sequence );
+            return true;
+        }
+
+        next_replay_protection_advance_sequence( &client->special_replay_protection, clean_sequence );
+
+        const uint8_t * p = packet_data + NEXT_HEADER_BYTES;
+
+        uint64_t ping_sequence = next_read_uint64( &p );
+
+        next_ping_history_pong_received( &client->next_ping_history, ping_sequence, next_time() );
+
+        return true;
+    }
+
+    // -------------------
+    // PACKETS FROM SERVER
+    // -------------------
 
     if ( !next_address_equal( from, &client->server_address ) )
         return false;
@@ -6227,17 +6312,9 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         uint64_t packet_sequence = 0;
 
+        // todo: check this function to see if we need a "bool * valid"
         if ( next_read_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, client->client_receive_key, &client->internal_replay_protection ) != packet_id )
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored direct pong packet from server. failed to read" );
-            return NEXT_ERROR;
-        }
-
-        if ( !next_address_equal( from, &client->server_address ) )
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored direct pong packet. does not come from server" );
-            return NEXT_ERROR;
-        }
+            return false;
 
         next_ping_history_pong_received( &client->direct_ping_history, packet.ping_sequence, next_time() );
 
@@ -6306,7 +6383,7 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
         }
 
         if ( fallback_to_direct )
-            return NEXT_ERROR;
+            return true;
 
         NextRouteUpdateAckPacket ack;
         ack.sequence = packet.sequence;
@@ -6314,7 +6391,7 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
         if ( next_client_internal_send_packet_to_server( client, NEXT_ROUTE_UPDATE_ACK_PACKET, &ack ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_WARN, "client failed to send route update ack packet to server" );
-            return NEXT_ERROR;
+            return true;
         }
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent route update ack packet to server" );

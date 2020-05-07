@@ -6,21 +6,19 @@ DONE
 
 	Bring across "continue request" packet.
 
-TODO
-
 	Bring across "client to server" packet.
 
 	Bring across "next ping" packet.
-
-	--------------------------------
 
 	Bring across "server to client" packet.
 
 	Bring across "next pong" packet.
 
+TODO
+
 	--------------------------------
 
-	Verify that everything works with func backend, eg. packets across network next route.
+	Verify that everything works with ref backend, eg. packets across network next route.
 
 	--------------------------------
 
