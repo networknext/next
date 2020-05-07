@@ -549,7 +549,7 @@ function fetchSessionInfo(sessionId = '') {
 			Object.assign(sessionDetailsVue.$data, {
 				meta: response.meta,
 				slices: response.slices,
-				showDetails: true
+				showDetails: true,
 			});
 
 			setTimeout(() => {

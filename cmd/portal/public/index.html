@@ -382,17 +382,8 @@
                                     <tbody>
                                         <tr v-for="session in sessions">
                                             <td>
-                                                <svg
-                                                    aria-hidden="true"
-                                                    focusable="false"
-                                                    data-prefix="fas"
-                                                    data-icon="circle"
-                                                    class="svg-inline--fa fa-circle fa-w-16 fa-fw text-success"
-                                                    role="img"
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    viewBox="0 0 512 512">
-                                                    <path fill="currentColor" d="M256 8C119 8 8 119 8 256s111 248 248 248 248-111 248-248S393 8 256 8z"></path>
-                                                </svg>
+                                                <i class="fas fa-circle fa-w-16 fa-fw text-success" v-if="session.on_network_next"></i>
+                                                <i class="fas fa-circle fa-w-16 fa-fw text-primary" v-if="!session.on_network_next"></i>
                                             </td>
                                             <td>
                                                 <a class="text-dark fixed-width" href="#" v-on:click="fetchSessionInfo(session.id)">
@@ -590,7 +581,7 @@
                                                         </dt>
                                                         <dd>
                                                             <em>
-                                                                Unavailable
+                                                                {{ meta.location.isp }}
                                                             </em>
                                                         </dd>
                                                         <div>
@@ -623,11 +614,11 @@
                                                         </dd>
                                                         <dt>
                                                             Nearby Relays
-                                                            <span style="float: right; font-weight: normal; font-style: italic;">
-                                                                at 8:01:45am May 4
-                                                            </span>
                                                         </dt>
-                                                        <table class="table table-sm mt-1">
+                                                        <dd v-if="meta.nearby_relays == 0">
+                                                            No Nearby Relays
+                                                        </dd>
+                                                        <table class="table table-sm mt-1" v-if="meta.nearby_relays.length > 0">
                                                             <thead>
                                                                 <tr>
                                                                     <th style="width: 50%;">
@@ -645,83 +636,24 @@
                                                                 </tr>
                                                             </thead>
                                                             <tbody>
-                                                                <tr>
+                                                                <tr v-for="relay in meta.nearby_relays">
                                                                     <td>
-                                                                        <a class="text-dark" href="/admin/relays/view/?id=eyJraW5kIjoiUmVsYXkiLCJuYW1lIjoiMTk1ODM3OTUyMTE2MjgxMDQ3MyJ9"></a>&nbsp;
+                                                                        <a class="text-dark">{{ relay.name }}</a>&nbsp;
                                                                     </td>
                                                                     <td>
-                                                                        -
+                                                                        {{ relay.client_stats.rtt }}
                                                                     </td>
                                                                     <td>
-                                                                        -
+                                                                        {{ relay.client_stats.jitter }}
                                                                     </td>
                                                                     <td>
-                                                                        -
-                                                                    </td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <td>
-                                                                        <a class="text-dark"></a>&nbsp;
-                                                                    </td>
-                                                                    <td>
-                                                                        -
-                                                                    </td>
-                                                                    <td>
-                                                                        -
-                                                                    </td>
-                                                                    <td>
-                                                                        -
-                                                                    </td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <td>
-                                                                        <a class="text-dark"></a>&nbsp;
-                                                                    </td>
-                                                                    <td>
-                                                                        -
-                                                                    </td>
-                                                                    <td>
-                                                                        -
-                                                                    </td>
-                                                                    <td>
-                                                                        -
-                                                                    </td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <td>
-                                                                        <a class="text-dark"></a>&nbsp;
-                                                                    </td>
-                                                                    <td>
-                                                                        -
-                                                                    </td>
-                                                                    <td>
-                                                                        -
-                                                                    </td>
-                                                                    <td>
-                                                                        -
-                                                                    </td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <td>
-                                                                        <a class="text-dark"></a>&nbsp;
-                                                                    </td>
-                                                                    <td>
-                                                                        -
-                                                                    </td>
-                                                                    <td>
-                                                                        -
-                                                                    </td>
-                                                                    <td>
-                                                                        -
+                                                                        {{ relay.client_stats.packet_loss }}
                                                                     </td>
                                                                 </tr>
                                                             </tbody>
                                                         </table>
                                                         <dt>
                                                             Route
-                                                            <span style="float: right; font-weight: normal; font-style: italic;">
-                                                                at 8:01:45am May 4
-                                                            </span>
                                                         </dt>
                                                         <table class="table table-sm mt-1">
                                                             <thead>
