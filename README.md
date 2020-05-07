@@ -2,7 +2,7 @@
 
 <br>
 
-## SDK for Consoles
+## Network Next SDK
 
 Supported platforms:
 
