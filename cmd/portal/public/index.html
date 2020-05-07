@@ -623,11 +623,11 @@
                                                         </dd>
                                                         <dt>
                                                             Nearby Relays
-                                                            <span style="float: right; font-weight: normal; font-style: italic;">
-                                                                at 8:01:45am May 4
-                                                            </span>
                                                         </dt>
-                                                        <table class="table table-sm mt-1">
+                                                        <dd>
+                                                            No Nearby Relays
+                                                        </dd>
+                                                        <table class="table table-sm mt-1" v-if="meta.relays.length > 0">
                                                             <thead>
                                                                 <tr>
                                                                     <th style="width: 50%;">
@@ -645,74 +645,18 @@
                                                                 </tr>
                                                             </thead>
                                                             <tbody>
-                                                                <tr>
+                                                                <tr v-for="relay in meta.relays">
                                                                     <td>
-                                                                        <a class="text-dark" href="/admin/relays/view/?id=eyJraW5kIjoiUmVsYXkiLCJuYW1lIjoiMTk1ODM3OTUyMTE2MjgxMDQ3MyJ9"></a>&nbsp;
+                                                                        <a class="text-dark">{{ relay.name }}</a>&nbsp;
                                                                     </td>
                                                                     <td>
-                                                                        -
+                                                                        {{ relay.rtt }}
                                                                     </td>
                                                                     <td>
-                                                                        -
+                                                                        {{ relay.jitter }}
                                                                     </td>
                                                                     <td>
-                                                                        -
-                                                                    </td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <td>
-                                                                        <a class="text-dark"></a>&nbsp;
-                                                                    </td>
-                                                                    <td>
-                                                                        -
-                                                                    </td>
-                                                                    <td>
-                                                                        -
-                                                                    </td>
-                                                                    <td>
-                                                                        -
-                                                                    </td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <td>
-                                                                        <a class="text-dark"></a>&nbsp;
-                                                                    </td>
-                                                                    <td>
-                                                                        -
-                                                                    </td>
-                                                                    <td>
-                                                                        -
-                                                                    </td>
-                                                                    <td>
-                                                                        -
-                                                                    </td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <td>
-                                                                        <a class="text-dark"></a>&nbsp;
-                                                                    </td>
-                                                                    <td>
-                                                                        -
-                                                                    </td>
-                                                                    <td>
-                                                                        -
-                                                                    </td>
-                                                                    <td>
-                                                                        -
-                                                                    </td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <td>
-                                                                        <a class="text-dark"></a>&nbsp;
-                                                                    </td>
-                                                                    <td>
-                                                                        -
-                                                                    </td>
-                                                                    <td>
-                                                                        -
-                                                                    </td>
-                                                                    <td>
-                                                                        -
+                                                                        {{ relay.packet_loss }}
                                                                     </td>
                                                                 </tr>
                                                             </tbody>

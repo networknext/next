@@ -546,10 +546,13 @@ function fetchSessionInfo(sessionId = '') {
 	JSONRPCClient
 		.call("BuyersService.SessionDetails", {session_id: id})
 		.then((response) => {
+			console.log(response)
+			let meta = response.meta;
+			meta.relays = meta.relays || [];
 			Object.assign(sessionDetailsVue.$data, {
-				meta: response.meta,
 				slices: response.slices,
-				showDetails: true
+				showDetails: true,
+				meta: meta
 			});
 
 			setTimeout(() => {
