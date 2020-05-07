@@ -1,15 +1,16 @@
 DONE
 
-TODO
-
 	OK what other packets need to be upgraded?
 
 	Can distinguish my packets from backend from game protocol packets, since they will all come from the backend IP address.
 
 	No change required there.
 
-	Do that now...
+	Add server init response.
 
+TODO
+
+	Add server 
 
 
 
