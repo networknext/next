@@ -546,7 +546,6 @@ function fetchSessionInfo(sessionId = '') {
 	JSONRPCClient
 		.call("BuyersService.SessionDetails", {session_id: id})
 		.then((response) => {
-			console.log(response)
 			Object.assign(sessionDetailsVue.$data, {
 				meta: response.meta,
 				slices: response.slices,
