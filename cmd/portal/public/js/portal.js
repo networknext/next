@@ -120,7 +120,7 @@ MapHandler = {
 				let data = response.map_points;
 				Object.assign(mapSessionsCount.$data, {
 					onNN: data.filter((point) => {
-						return point.on_network_next;
+						return point.on_network_next == true;
 					}),
 					sessions: data,
 				});
@@ -131,15 +131,15 @@ MapHandler = {
 					opacity: 0.8,
 					cellSizePixels: 10,
 					colorRange: [
-						[0, 25, 0, 25],
-						[0, 85, 0, 85],
-						[0, 127, 0, 127],
-						[0, 170, 0, 170],
-						[0, 190, 0, 190],
-						[0, 255, 0, 255]
+						[40, 167, 69],
+						[36, 163, 113],
+						[27, 153, 159],
+						[18, 143, 206],
+						[9, 133, 252],
+						[0, 123, 255]
 					],
 					getPosition: d => [d.longitude, d.latitude],
-					getWeight: d => Math.random(10), // Need to come up with a weight system. It won't map anything if the array of points are all identical
+					getWeight: d => d.on_network_next ? 100 : 1, // Need to come up with a weight system. It won't map anything if the array of points are all identical
 					gpuAggregation: true,
 					aggregation: 'SUM'
 				});
