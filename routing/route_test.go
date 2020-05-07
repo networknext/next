@@ -140,7 +140,7 @@ func TestDecideDowngradeRTTHysteresisYOLO(t *testing.T) {
 
 	expected := routing.Decision{
 		OnNetworkNext: false,
-		Reason:        routing.DecisionVetoRTT | routing.DecisionVetoYOLO,
+		Reason:        routing.DecisionRTTHysteresis | routing.DecisionVetoYOLO,
 	}
 
 	// Loop through all permutations and combinations of the decision functions and test that the result is the same
@@ -540,9 +540,9 @@ func TestDecideCommitVeto(t *testing.T) {
 
 	decisionFuncs := []routing.DecisionFunc{
 		routing.DecideUpgradeRTT(float64(routingRulesSettings.RTTThreshold)),
-		routing.DecideDowngradeRTT(float64(routingRulesSettings.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
+		routing.DecideDowngradeRTT(float64(routingRulesSettings.RTTHysteresis), routingRulesSettings.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(float64(routingRulesSettings.RTTVeto), routingRulesSettings.EnablePacketLossSafety, routingRulesSettings.EnableYouOnlyLiveOnce),
-		routing.DecideCommitted(true, uint8(routingRulesSettings.TryBeforeYouBuyMaxSlices), &commitPending, &commitObservedSliceCounter, &committed),
+		routing.DecideCommitted(true, uint8(routingRulesSettings.TryBeforeYouBuyMaxSlices), routingRulesSettings.EnableYouOnlyLiveOnce, &commitPending, &commitObservedSliceCounter, &committed),
 	}
 
 	lastNNStats := routing.Stats{
@@ -608,9 +608,9 @@ func TestValidateCommitted(t *testing.T) {
 
 	decisionFuncs := []routing.DecisionFunc{
 		routing.DecideUpgradeRTT(float64(routingRulesSettings.RTTThreshold)),
-		routing.DecideDowngradeRTT(float64(routingRulesSettings.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
+		routing.DecideDowngradeRTT(float64(routingRulesSettings.RTTHysteresis), routingRulesSettings.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(float64(routingRulesSettings.RTTVeto), routingRulesSettings.EnablePacketLossSafety, routingRulesSettings.EnableYouOnlyLiveOnce),
-		routing.DecideCommitted(true, uint8(routingRulesSettings.TryBeforeYouBuyMaxSlices), &commitPending, &commitObservedSliceCounter, &committed),
+		routing.DecideCommitted(true, uint8(routingRulesSettings.TryBeforeYouBuyMaxSlices), routingRulesSettings.EnableYouOnlyLiveOnce, &commitPending, &commitObservedSliceCounter, &committed),
 	}
 
 	lastNNStats := routing.Stats{

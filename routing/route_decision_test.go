@@ -77,7 +77,7 @@ func TestDecideDowngradeRTT(t *testing.T) {
 	decision.OnNetworkNext = true
 	routeDecisionFunc = routing.DecideDowngradeRTT(rttHyteresis, true)
 	decision = routeDecisionFunc(decision, predictedStats, routing.Stats{}, directStats)
-	assert.Equal(t, routing.Decision{false, routing.DecisionVetoRTT | routing.DecisionVetoYOLO}, decision)
+	assert.Equal(t, routing.Decision{false, routing.DecisionRTTHysteresis | routing.DecisionVetoYOLO}, decision)
 }
 
 func TestDecideVeto(t *testing.T) {
@@ -175,7 +175,7 @@ func TestDecideCommitted(t *testing.T) {
 	var committed bool
 
 	// Check direct routes aren't affected
-	routeDecisionFunc := routing.DecideCommitted(false, maxSlices, &commitPending, &observedSliceCounter, &committed)
+	routeDecisionFunc := routing.DecideCommitted(false, maxSlices, false, &commitPending, &observedSliceCounter, &committed)
 	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
 	assert.Equal(t, routing.Decision{}, decision)
 	assert.Equal(t, false, commitPending)
@@ -191,7 +191,7 @@ func TestDecideCommitted(t *testing.T) {
 	assert.Equal(t, false, committed)
 
 	// Now check the case where the route is better
-	routeDecisionFunc = routing.DecideCommitted(true, maxSlices, &commitPending, &observedSliceCounter, &committed)
+	routeDecisionFunc = routing.DecideCommitted(true, maxSlices, false, &commitPending, &observedSliceCounter, &committed)
 	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
 	assert.Equal(t, routing.Decision{true, routing.DecisionNoReason}, decision)
 	assert.Equal(t, false, commitPending)
@@ -210,11 +210,20 @@ func TestDecideCommitted(t *testing.T) {
 
 	// Now check the case where the route has taken too long to decide and should veto
 	observedSliceCounter = maxSlices
-	lastNextStats.PacketLoss = 0
-	lastNextStats.RTT = 65
 	decision.OnNetworkNext = true
 	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
 	assert.Equal(t, routing.Decision{false, routing.DecisionVetoCommit}, decision)
+	assert.Equal(t, false, commitPending)
+	assert.Equal(t, uint8(0), observedSliceCounter)
+	assert.Equal(t, false, committed)
+
+	// Now check the case where the route has taken too long to decide and should veto and yolo is enabled
+	decision.OnNetworkNext = true
+	commitPending = true
+	observedSliceCounter = maxSlices
+	routeDecisionFunc = routing.DecideCommitted(true, maxSlices, true, &commitPending, &observedSliceCounter, &committed)
+	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
+	assert.Equal(t, routing.Decision{false, routing.DecisionVetoCommit | routing.DecisionVetoYOLO}, decision)
 	assert.Equal(t, false, commitPending)
 	assert.Equal(t, uint8(0), observedSliceCounter)
 	assert.Equal(t, false, committed)

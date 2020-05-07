@@ -588,13 +588,17 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 		}
 
 		if routing.IsVetoed(routeDecision) && sessionCacheEntry.VetoTimestamp.Before(timestampNow) {
-			// Veto expired, bring the session back on with an initial slice
-			routeDecision = routing.Decision{
-				OnNetworkNext: false,
-				Reason:        routing.DecisionInitialSlice,
-			}
 			shouldSelect = false
-			newSession = true
+
+			// Don't allow sessions vetoed with YOLO to come back on
+			if routeDecision.Reason&routing.DecisionVetoYOLO == 0 {
+				// Veto expired, bring the session back on with an initial slice
+				routeDecision = routing.Decision{
+					OnNetworkNext: false,
+					Reason:        routing.DecisionInitialSlice,
+				}
+				newSession = true
+			}
 		}
 
 		if buyer.RoutingRulesSettings.Mode == routing.ModeForceDirect || int64(packet.SessionID%100) > buyer.RoutingRulesSettings.SelectionPercentage {
@@ -667,7 +671,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 
 				if buyer.RoutingRulesSettings.EnableTryBeforeYouBuy {
 					deciderFuncs = append(deciderFuncs,
-						routing.DecideCommitted(sessionCacheEntry.RouteDecision.OnNetworkNext, uint8(buyer.RoutingRulesSettings.TryBeforeYouBuyMaxSlices),
+						routing.DecideCommitted(sessionCacheEntry.RouteDecision.OnNetworkNext, uint8(buyer.RoutingRulesSettings.TryBeforeYouBuyMaxSlices), buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce,
 							&sessionCacheEntry.CommitPending, &sessionCacheEntry.CommitObservedSliceCounter, &sessionCacheEntry.Committed))
 				}
 
