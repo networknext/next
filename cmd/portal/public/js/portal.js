@@ -287,7 +287,7 @@ WorkspaceHandler = {
 		}
 		if (accountInfo.delete) {
 			JSONRPCClient
-				.call('AuthService.DeleteUser', {user_id: accountInfo.user_id})
+				.call('AuthService.DeleteUserAccount', {user_id: accountInfo.user_id})
 				.then((response) => {
 					accountsTable.$data.accounts.splice(index, 1);
 					WorkspaceHandler.cancelEditUser(accountInfo);
