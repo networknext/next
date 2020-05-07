@@ -760,6 +760,18 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 				SDK:        packet.Version.String(),
 				Connection: ConnectionTypeText(packet.ConnectionType),
 			}
+			// Only fill in the essential information here to then let the poral fill in additional relay info
+			// so we don't spend time fetching info from storage here
+			for idx := 0; idx < int(packet.NumNearRelays); idx++ {
+				meta.NearbyRelays = append(meta.NearbyRelays, routing.Relay{
+					ID: packet.NearRelayIDs[idx],
+					ClientStats: routing.Stats{
+						RTT:        float64(packet.NearRelayMeanRTT[idx]),
+						Jitter:     float64(packet.NearRelayJitter[idx]),
+						PacketLoss: float64(packet.NearRelayPacketLoss[idx]),
+					},
+				})
+			}
 			slice := routing.SessionSlice{
 				Timestamp: time.Now(),
 				Next:      nnStats,
