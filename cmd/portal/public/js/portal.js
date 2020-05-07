@@ -22,6 +22,7 @@ var pubKeyInput = null;
 var relaysTable = null;
 var sessionDetailsVue = null;
 var sessionsTable = null;
+var userSessionTable = null;
 
 JSONRPCClient = {
 	async call(method, params) {
@@ -161,6 +162,8 @@ WorkspaceHandler = {
 	alerts: {
 		sessionToolAlert: document.getElementById("session-tool-alert"),
 		sessionToolDanger: document.getElementById("session-tool-danger"),
+		userToolAlert: document.getElementById("user-tool-alert"),
+		userToolDanger: document.getElementById("user-tool-danger"),
 	},
 	links: {
 		accountsLink: document.getElementById("accounts-link"),
@@ -241,14 +244,28 @@ WorkspaceHandler = {
 				this.links.sessionsLink.classList.add("active");
 				break;
 			case 'session-tool':
-				this.alerts.sessionToolAlert.style.display = 'block';
-				this.alerts.sessionToolDanger.style.display = 'none';
-				sessionDetailsVue ? Object.assign(sessionDetailsVue.$data, {showDetails: false}) : null;
+				WorkspaceHandler.alerts.sessionToolAlert.style.display = 'block';
+				WorkspaceHandler.alerts.sessionToolDanger.style.display = 'none';
+
+				Object.assign(sessionDetailsVue.$data, {
+					meta: null,
+					slices: [],
+					showDetails: false,
+				});
+				document.getElementById("session-id-input").value = '';
 				this.workspaces.sessionToolWorkspace.style.display = 'block';
 				this.links.sessionToolLink.classList.add("active");
 				break;
 			case 'user-tool':
-				this.loadUsersPage();
+				WorkspaceHandler.alerts.userToolAlert.style.display = 'block';
+				WorkspaceHandler.alerts.userToolDanger.style.display = 'none';
+
+				Object.assign(userSessionTable.$data, {
+					sessions: [],
+					showTable: false,
+				});
+
+				document.getElementById("user-hash-input").value = '';
 				this.workspaces.userToolWorkspace.style.display = 'block';
 				this.links.userToolLink.classList.add("active");
 				break;
@@ -384,6 +401,14 @@ function createVueComponents() {
 			editUser: WorkspaceHandler.editUser
 		}
 	});
+	mapSessionsCount = new Vue({
+		el: '#map-sessions-count',
+		data: {
+			onNN: [],
+			sessions: [],
+			showCount: false,
+		}
+	});
 	pubKeyInput = new Vue({
 		el: '#pubKey',
 		data: {
@@ -410,21 +435,73 @@ function createVueComponents() {
 			showCount: false,
 		},
 		methods: {
+			fetchSessionInfo: fetchSessionInfo,
+			fetchUserSessions: fetchUserSessions,
+		}
+	});
+	userSessionTable = new Vue({
+		el: '#user-sessions',
+		data: {
+			hash: '',
+			sessions: [],
+			showTable: false,
+		},
+		methods: {
 			fetchSessionInfo: fetchSessionInfo
 		}
-	});
-	mapSessionsCount = new Vue({
-		el: '#map-sessions-count',
-		data: {
-			onNN: [],
-			sessions: [],
-			showCount: false,
-		}
-	});
+	})
 }
 
-function fetchUserInfo() {
-	// Need an endpoint for this
+function fetchUserSessions(userHash = '') {
+	WorkspaceHandler.alerts.userToolAlert.style.display = 'none';
+	WorkspaceHandler.alerts.userToolDanger.style.display = 'none';
+
+	let hash = '';
+
+	if (userHash != '') {
+		WorkspaceHandler.changePage('user-tool');
+		hash = userHash;
+		document.getElementById("user-hash-input").value = hash;
+	} else {
+		hash = document.getElementById("user-hash-input").value;
+	}
+
+	if (hash == '') {
+		Object.assign(userSessionTable.$data, {
+			sessions: [],
+			showTable: false,
+		});
+		document.getElementById("user-hash-input").value = '';
+		WorkspaceHandler.alerts.userToolDanger.style.display = 'block';
+		return;
+	}
+
+	JSONRPCClient
+		.call("BuyersService.UserSessions", {user_hash: hash})
+		.then((response) => {
+			let sessions = response.sessions || [];
+
+			/**
+			 * I really dislike this but it is apparently the way to reload/update the data within a vue
+			 */
+			Object.assign(userSessionTable.$data, {
+				sessions: sessions,
+				showTable: true,
+			});
+
+			WorkspaceHandler.alerts.userToolAlert.style.display = 'none';
+			WorkspaceHandler.alerts.userToolDanger.style.display = 'none';
+		})
+		.catch((e) => {
+			Object.assign(userSessionTable.$data, {
+				sessions: [],
+				showTable: false,
+			});
+			console.log("Something went wrong fetching user sessions: ");
+			console.log(e);
+			WorkspaceHandler.alerts.userToolDanger.style.display = 'block';
+			document.getElementById("user-hash-input").value = '';
+		});
 }
 
 function updatePubKey() {
@@ -442,29 +519,38 @@ function updatePubKey() {
 }
 
 function fetchSessionInfo(sessionId = '') {
-	WorkspaceHandler.changePage("session-tool");
-	let id = sessionId || document.getElementById("session-id-input").value;
-	document.getElementById("session-id-input").value = id;
+	WorkspaceHandler.alerts.sessionToolAlert.style.display = 'none';
+	WorkspaceHandler.alerts.sessionToolDanger.style.display = 'none';
+
+	let id = '';
+
+	if (sessionId != '') {
+		WorkspaceHandler.changePage('session-tool');
+		id = sessionId;
+		document.getElementById("session-id-input").value = id;
+	} else {
+		id = document.getElementById("session-id-input").value;
+	}
 
 	if (id == '') {
-		console.log("Can't use a empty id");
+		Object.assign(sessionDetailsVue.$data, {
+			meta: null,
+			slices: [],
+			showDetails: false,
+		});
 		document.getElementById("session-id-input").value = '';
+		WorkspaceHandler.alerts.sessionToolDanger.style.display = 'block';
 		return;
 	}
-	WorkspaceHandler.alerts.sessionToolAlert.style.display = 'none';
-	/**
-	 * TODO: Add in a catch for when session ID isn't found
-	 */
+
 	JSONRPCClient
 		.call("BuyersService.SessionDetails", {session_id: id})
 		.then((response) => {
 			Object.assign(sessionDetailsVue.$data, {
-				meta: response.meta
+				meta: response.meta,
+				slices: response.slices,
+				showDetails: true
 			});
-			Object.assign(sessionDetailsVue.$data, {
-				slices: response.slices
-			});
-			Object.assign(sessionDetailsVue.$data, {showDetails: true});
 
 			setTimeout(() => {
 				let data = {
@@ -502,9 +588,17 @@ function fetchSessionInfo(sessionId = '') {
 					] */
 				});
 			});
+
+			WorkspaceHandler.alerts.sessionToolAlert.style.display = 'none';
+			WorkspaceHandler.alerts.sessionToolDanger.style.display = 'none';
 		})
 		.catch((e) => {
-			console.log("Something went wrong fetching session information: ");
+			Object.assign(sessionDetailsVue.$data, {
+				meta: null,
+				slices: [],
+				showDetails: false,
+			});
+			console.log("Something went wrong fetching session details: ");
 			console.log(e);
 			WorkspaceHandler.alerts.sessionToolDanger.style.display = 'block';
 			document.getElementById("session-id-input").value = '';
@@ -596,9 +690,6 @@ function generateCharts(data) {
 		bandwidthData.down[0].push(timestamp);
 		bandwidthData.down[1].push(entry.envelope.down);
 	});
-
-	console.log(document.getElementById("latency-chart-1").clientWidth);
-	console.log(document.getElementById("latency-chart-1").clientHeight);
 
 	const defaultOpts = {
 		width: document.getElementById("latency-chart-1").clientWidth,
