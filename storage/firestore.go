@@ -135,6 +135,19 @@ func (fs *Firestore) Buyer(id uint64) (routing.Buyer, error) {
 	return b, nil
 }
 
+func (fs *Firestore) BuyerWithDomain(domain string) (routing.Buyer, error) {
+	fs.buyerMutex.RLock()
+	defer fs.buyerMutex.RUnlock()
+
+	for _, buyer := range fs.buyers {
+		if buyer.Domain == domain {
+			return buyer, nil
+		}
+	}
+
+	return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: domain}
+}
+
 func (fs *Firestore) Buyers() []routing.Buyer {
 	fs.buyerMutex.RLock()
 	defer fs.buyerMutex.RUnlock()

@@ -24,6 +24,15 @@ func (m *InMemory) Buyer(id uint64) (routing.Buyer, error) {
 
 	return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: id}
 }
+
+func (m *InMemory) BuyerWithDomain(domain string) (routing.Buyer, error) {
+	for _, buyer := range m.localBuyers {
+		if buyer.Domain == domain {
+			return buyer, nil
+		}
+	}
+
+	return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: domain}
 }
 
 func (m *InMemory) Buyers() []routing.Buyer {

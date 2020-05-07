@@ -1,11 +1,14 @@
 package jsonrpc_test
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/go-kit/kit/log"
+	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport/jsonrpc"
 	"github.com/stretchr/testify/assert"
@@ -56,8 +59,12 @@ func TestAuthClient(t *testing.T) {
 		Manager: manager,
 		Logger:  logger,
 	}
+	db := storage.InMemory{}
+	db.AddBuyer(context.Background(), routing.Buyer{ID: 111, Domain: "networknext.com"})
+
 	svc := jsonrpc.AuthService{
-		Auth0: auth0Client,
+		Auth0:   auth0Client,
+		Storage: &db,
 	}
 
 	t.Run("fetch all auth0 accounts", func(t *testing.T) {
@@ -83,6 +90,7 @@ func TestAuthClient(t *testing.T) {
 		assert.Equal(t, reply.UserAccount.Name, "andrew@networknext.com")
 		assert.Equal(t, reply.UserAccount.Email, "andrew@networknext.com")
 		assert.Equal(t, reply.UserAccount.UserID, "5e823e827e97a90cf402109e")
+		assert.Equal(t, reply.UserAccount.BuyerID, fmt.Sprintf("%x", 111))
 	})
 
 	t.Run("fetch user roles no user id", func(t *testing.T) {
