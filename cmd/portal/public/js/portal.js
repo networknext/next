@@ -22,6 +22,8 @@ var pubKeyInput = null;
 var relaysTable = null;
 var sessionDetailsVue = null;
 var sessionsTable = null;
+var userSessionTable = null;
+
 var autoSigninPermissions = null;
 var addUserPermissions = null;
 var editUserPermissions = [];
@@ -165,6 +167,8 @@ WorkspaceHandler = {
 	alerts: {
 		sessionToolAlert: document.getElementById("session-tool-alert"),
 		sessionToolDanger: document.getElementById("session-tool-danger"),
+		userToolAlert: document.getElementById("user-tool-alert"),
+		userToolDanger: document.getElementById("user-tool-danger"),
 	},
 	links: {
 		accountsLink: document.getElementById("accounts-link"),
@@ -245,14 +249,28 @@ WorkspaceHandler = {
 				this.links.sessionsLink.classList.add("active");
 				break;
 			case 'session-tool':
-				this.alerts.sessionToolAlert.style.display = 'block';
-				this.alerts.sessionToolDanger.style.display = 'none';
-				sessionDetailsVue ? Object.assign(sessionDetailsVue.$data, {showDetails: false}) : null;
+				WorkspaceHandler.alerts.sessionToolAlert.style.display = 'block';
+				WorkspaceHandler.alerts.sessionToolDanger.style.display = 'none';
+
+				Object.assign(sessionDetailsVue.$data, {
+					meta: null,
+					slices: [],
+					showDetails: false,
+				});
+				document.getElementById("session-id-input").value = '';
 				this.workspaces.sessionToolWorkspace.style.display = 'block';
 				this.links.sessionToolLink.classList.add("active");
 				break;
 			case 'user-tool':
-				this.loadUsersPage();
+				WorkspaceHandler.alerts.userToolAlert.style.display = 'block';
+				WorkspaceHandler.alerts.userToolDanger.style.display = 'none';
+
+				Object.assign(userSessionTable.$data, {
+					sessions: [],
+					showTable: false,
+				});
+
+				document.getElementById("user-hash-input").value = '';
 				this.workspaces.userToolWorkspace.style.display = 'block';
 				this.links.userToolLink.classList.add("active");
 				break;
@@ -504,6 +522,14 @@ function createVueComponents() {
 			saveUser: WorkspaceHandler.saveUser,
 		}
 	});
+	mapSessionsCount = new Vue({
+		el: '#map-sessions-count',
+		data: {
+			onNN: [],
+			sessions: [],
+			showCount: false,
+		}
+	});
 	pubKeyInput = new Vue({
 		el: '#pubKey',
 		data: {
@@ -530,21 +556,73 @@ function createVueComponents() {
 			showCount: false,
 		},
 		methods: {
+			fetchSessionInfo: fetchSessionInfo,
+			fetchUserSessions: fetchUserSessions,
+		}
+	});
+	userSessionTable = new Vue({
+		el: '#user-sessions',
+		data: {
+			hash: '',
+			sessions: [],
+			showTable: false,
+		},
+		methods: {
 			fetchSessionInfo: fetchSessionInfo
 		}
-	});
-	mapSessionsCount = new Vue({
-		el: '#map-sessions-count',
-		data: {
-			onNN: [],
-			sessions: [],
-			showCount: false,
-		}
-	});
+	})
 }
 
-function fetchUserInfo() {
-	// Need an endpoint for this
+function fetchUserSessions(userHash = '') {
+	WorkspaceHandler.alerts.userToolAlert.style.display = 'none';
+	WorkspaceHandler.alerts.userToolDanger.style.display = 'none';
+
+	let hash = '';
+
+	if (userHash != '') {
+		WorkspaceHandler.changePage('user-tool');
+		hash = userHash;
+		document.getElementById("user-hash-input").value = hash;
+	} else {
+		hash = document.getElementById("user-hash-input").value;
+	}
+
+	if (hash == '') {
+		Object.assign(userSessionTable.$data, {
+			sessions: [],
+			showTable: false,
+		});
+		document.getElementById("user-hash-input").value = '';
+		WorkspaceHandler.alerts.userToolDanger.style.display = 'block';
+		return;
+	}
+
+	JSONRPCClient
+		.call("BuyersService.UserSessions", {user_hash: hash})
+		.then((response) => {
+			let sessions = response.sessions || [];
+
+			/**
+			 * I really dislike this but it is apparently the way to reload/update the data within a vue
+			 */
+			Object.assign(userSessionTable.$data, {
+				sessions: sessions,
+				showTable: true,
+			});
+
+			WorkspaceHandler.alerts.userToolAlert.style.display = 'none';
+			WorkspaceHandler.alerts.userToolDanger.style.display = 'none';
+		})
+		.catch((e) => {
+			Object.assign(userSessionTable.$data, {
+				sessions: [],
+				showTable: false,
+			});
+			console.log("Something went wrong fetching user sessions: ");
+			console.log(e);
+			WorkspaceHandler.alerts.userToolDanger.style.display = 'block';
+			document.getElementById("user-hash-input").value = '';
+		});
 }
 
 function updatePubKey() {
@@ -562,29 +640,38 @@ function updatePubKey() {
 }
 
 function fetchSessionInfo(sessionId = '') {
-	WorkspaceHandler.changePage("session-tool");
-	let id = sessionId || document.getElementById("session-id-input").value;
-	document.getElementById("session-id-input").value = id;
+	WorkspaceHandler.alerts.sessionToolAlert.style.display = 'none';
+	WorkspaceHandler.alerts.sessionToolDanger.style.display = 'none';
+
+	let id = '';
+
+	if (sessionId != '') {
+		WorkspaceHandler.changePage('session-tool');
+		id = sessionId;
+		document.getElementById("session-id-input").value = id;
+	} else {
+		id = document.getElementById("session-id-input").value;
+	}
 
 	if (id == '') {
-		console.log("Can't use a empty id");
+		Object.assign(sessionDetailsVue.$data, {
+			meta: null,
+			slices: [],
+			showDetails: false,
+		});
 		document.getElementById("session-id-input").value = '';
+		WorkspaceHandler.alerts.sessionToolDanger.style.display = 'block';
 		return;
 	}
-	WorkspaceHandler.alerts.sessionToolAlert.style.display = 'none';
-	/**
-	 * TODO: Add in a catch for when session ID isn't found
-	 */
+
 	JSONRPCClient
 		.call("BuyersService.SessionDetails", {session_id: id})
 		.then((response) => {
 			Object.assign(sessionDetailsVue.$data, {
-				meta: response.meta
+				meta: response.meta,
+				slices: response.slices,
+				showDetails: true
 			});
-			Object.assign(sessionDetailsVue.$data, {
-				slices: response.slices
-			});
-			Object.assign(sessionDetailsVue.$data, {showDetails: true});
 
 			setTimeout(() => {
 				let data = {
@@ -622,9 +709,17 @@ function fetchSessionInfo(sessionId = '') {
 					] */
 				});
 			});
+
+			WorkspaceHandler.alerts.sessionToolAlert.style.display = 'none';
+			WorkspaceHandler.alerts.sessionToolDanger.style.display = 'none';
 		})
 		.catch((e) => {
-			console.log("Something went wrong fetching session information: ");
+			Object.assign(sessionDetailsVue.$data, {
+				meta: null,
+				slices: [],
+				showDetails: false,
+			});
+			console.log("Something went wrong fetching session details: ");
 			console.log(e);
 			WorkspaceHandler.alerts.sessionToolDanger.style.display = 'block';
 			document.getElementById("session-id-input").value = '';
@@ -677,14 +772,14 @@ function generateCharts(data) {
 		],
 	};
 
-	data.map((entry, index) => {
-		let timestamp = new Date(entry.timestamp).getTime();
+	data.map((entry) => {
+		let timestamp = new Date(entry.timestamp).getTime() / 1000;
 
 		// Latency
 		let next = Number.parseInt(entry.next.rtt * SEC_TO_MS).toFixed(0);
 		let direct = Number.parseInt(entry.direct.rtt * SEC_TO_MS).toFixed(0);
 		let improvement = direct - next;
-		latencyData.improvement[0].push(index);
+		latencyData.improvement[0].push(timestamp);
 		latencyData.improvement[1].push(improvement);
 		latencyData.comparison[0].push(timestamp);
 		latencyData.comparison[1].push(next);
@@ -694,7 +789,7 @@ function generateCharts(data) {
 		next = Number.parseInt(entry.next.jitter * SEC_TO_MS).toFixed(0);
 		direct = Number.parseInt(entry.direct.jitter * SEC_TO_MS).toFixed(0);
 		improvement = direct - next;
-		jitterData.improvement[0].push(index);
+		jitterData.improvement[0].push(timestamp);
 		jitterData.improvement[1].push(improvement);
 		jitterData.comparison[0].push(timestamp);
 		jitterData.comparison[1].push(next);
@@ -704,66 +799,141 @@ function generateCharts(data) {
 		next = Number.parseInt(entry.next.packet_loss * DEC_TO_PERC).toFixed(0);
 		direct = Number.parseInt(entry.direct.packet_loss * DEC_TO_PERC).toFixed(0);
 		improvement = direct - next;
-		packetLossData.improvement[0].push(index);
+		packetLossData.improvement[0].push(timestamp);
 		packetLossData.improvement[1].push(improvement);
 		packetLossData.comparison[0].push(timestamp);
 		packetLossData.comparison[1].push(next);
 		packetLossData.comparison[2].push(direct);
 
 		// Bandwidth
-		bandwidthData.up[0].push(index);
+		bandwidthData.up[0].push(timestamp);
 		bandwidthData.up[1].push(entry.envelope.up);
 		bandwidthData.down[0].push(timestamp);
 		bandwidthData.down[1].push(entry.envelope.down);
 	});
 
+	const defaultOpts = {
+		width: document.getElementById("latency-chart-1").clientWidth,
+		height: 260,
+	};
+
 	const latencyImprovementOpts = {
-		width: 1000,
-		height: 600,
+		...defaultOpts,
 		series: [
 			{},
 			{
 				stroke: "green",
 				fill: "rgba(0,255,0,0.1)",
-				label: "Improvement"
+				label: "Improvement",
 			},
 		],
+		axes: [
+			{},
+			{
+			  show: true,
+			  gap: 5,
+			  size: 70,
+			  values: (self, ticks) => ticks.map(rawValue => rawValue + "ms"),
+			}
+		  ]
 	};
 
 	const latencycomparisonOpts = {
-		width: 1000,
-		height: 600,
+		...defaultOpts,
 		series: [
 			{},
 			{
 				stroke: "blue",
 				fill: "rgba(0,0,255,0.1)",
-				label: "Network Next"
+				label: "Network Next",
 			},
 			{
 				stroke: "red",
 				fill: "rgba(255,0,0,0.1)",
-				label: "Direct"
+				label: "Direct",
 			},
 		],
+		axes: [
+			{},
+			{
+			  show: true,
+			  gap: 5,
+			  size: 70,
+			  values: (self, ticks) => ticks.map(rawValue => rawValue + "ms"),
+			}
+		  ]
 	};
 
-	const bandwidthUpOpts = {
-		width: 1000,
-		height: 600,
+	const packetLossImprovementOpts = {
+		...defaultOpts,
+		series: [
+			{},
+			{
+				stroke: "green",
+				fill: "rgba(0,255,0,0.1)",
+				label: "Improvement",
+			},
+		],
+		axes: [
+			{},
+			{
+			  show: true,
+			  gap: 5,
+			  size: 50,
+			  values: (self, ticks) => ticks.map(rawValue => rawValue + "%"),
+			}
+		  ]
+	};
+
+	const packetLossComparisonOpts = {
+		...defaultOpts,
 		series: [
 			{},
 			{
 				stroke: "blue",
 				fill: "rgba(0,0,255,0.1)",
-				label: "Actual Up"
+				label: "Network Next",
+			},
+			{
+				stroke: "red",
+				fill: "rgba(255,0,0,0.1)",
+				label: "Direct",
 			},
 		],
+		axes: [
+			{},
+			{
+			  show: true,
+			  gap: 5,
+			  size: 50,
+			  values: (self, ticks) => ticks.map(rawValue => rawValue + "%"),
+			}
+		]
+	};
+
+	const bandwidthUpOpts = {
+		...defaultOpts,
+		series: [
+			{},
+			{
+				stroke: "blue",
+				fill: "rgba(0,0,255,0.1)",
+				label: "Actual Up",
+			},
+		],
+		axes: [
+			{},
+			{
+			  show: true,
+			  gap: 5,
+			  size: 70,
+			  values: (self, ticks) => ticks.map(rawValue => rawValue + "kbps"),
+			}
+		]
 	};
 
 	const bandwidthDownOpts = {
-		width: 1000,
-		height: 600,
+		...defaultOpts,
 		series: [
 			{},
 			{
@@ -772,6 +942,15 @@ function generateCharts(data) {
 				label: "Actual Down"
 			},
 		],
+		axes: [
+			{},
+			{
+			  show: true,
+			  gap: 5,
+			  size: 70,
+			  values: (self, ticks) => ticks.map(rawValue => rawValue + "kbps"),
+			}
+		]
 	};
 
 	let latencyImprovementChart = new uPlot(latencyImprovementOpts, latencyData.improvement, document.getElementById("latency-chart-1"));
@@ -780,8 +959,8 @@ function generateCharts(data) {
 	let jitterImprovementChart = new uPlot(latencyImprovementOpts, jitterData.improvement, document.getElementById("jitter-chart-1"));
 	let jitterComparisonChart = new uPlot(latencycomparisonOpts, jitterData.comparison, document.getElementById("jitter-chart-2"));
 
-	let packetLossImprovementChart = new uPlot(latencyImprovementOpts, packetLossData.improvement, document.getElementById("packet-loss-chart-1"));
-	let packetLossComparisonChart = new uPlot(latencycomparisonOpts, packetLossData.comparison, document.getElementById("packet-loss-chart-2"));
+	let packetLossImprovementChart = new uPlot(packetLossImprovementOpts, packetLossData.improvement, document.getElementById("packet-loss-chart-1"));
+	let packetLossComparisonChart = new uPlot(packetLossComparisonOpts, packetLossData.comparison, document.getElementById("packet-loss-chart-2"));
 
 	let bandwidthUpChart = new uPlot(bandwidthUpOpts, bandwidthData.up, document.getElementById("bandwidth-chart-1"));
 	let bandwidthDownChart = new uPlot(bandwidthDownOpts, bandwidthData.down, document.getElementById("bandwidth-chart-2"));

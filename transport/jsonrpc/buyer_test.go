@@ -10,146 +10,58 @@ import (
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
-	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/jsonrpc"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestSessionsMap(t *testing.T) {
+func TestUserSessions(t *testing.T) {
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-	sessions := []transport.SessionCacheEntry{
-		{CustomerID: 12345, SessionID: 1, RouteDecision: routing.Decision{OnNetworkNext: false}, Location: routing.Location{Latitude: 0, Longitude: 0}},
-		{CustomerID: 12345, SessionID: 2, RouteDecision: routing.Decision{OnNetworkNext: true}, Location: routing.Location{Latitude: 13, Longitude: 14}},
-	}
-	for _, session := range sessions {
-		buf, err := session.MarshalBinary()
-		assert.NoError(t, err)
+	userHash1 := fmt.Sprintf("%x", 111)
+	userHash2 := fmt.Sprintf("%x", 222)
 
-		err = redisServer.Set(fmt.Sprintf("SESSION-%d-%d", session.CustomerID, session.SessionID), string(buf))
-		assert.NoError(t, err)
-	}
+	sessionID1 := fmt.Sprintf("%x", 111)
+	sessionID2 := fmt.Sprintf("%x", 222)
+	sessionID3 := fmt.Sprintf("%x", 333)
+	sessionID4 := "missing"
+
+	redisServer.SetAdd(fmt.Sprintf("user-%s-sessions", userHash2), sessionID1)
+	redisServer.SetAdd(fmt.Sprintf("user-%s-sessions", userHash1), sessionID2)
+	redisServer.SetAdd(fmt.Sprintf("user-%s-sessions", userHash1), sessionID3)
+	redisServer.SetAdd(fmt.Sprintf("user-%s-sessions", userHash1), sessionID4)
+
+	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID1), routing.SessionMeta{ID: sessionID1}, time.Hour)
+	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID2), routing.SessionMeta{ID: sessionID2}, time.Hour)
+	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID3), routing.SessionMeta{ID: sessionID3}, time.Hour)
 
 	svc := jsonrpc.BuyersService{
 		RedisClient: redisClient,
 	}
 
-	t.Run("missing buyer_id", func(t *testing.T) {
-		var reply jsonrpc.MapReply
-		err := svc.SessionsMap(nil, &jsonrpc.MapArgs{}, &reply)
-		assert.Error(t, err)
+	t.Run("missing user_hash", func(t *testing.T) {
+		var reply jsonrpc.UserSessionsReply
+		err := svc.UserSessions(nil, &jsonrpc.UserSessionsArgs{}, &reply)
+		assert.NoError(t, err)
+		assert.Equal(t, 0, len(reply.Sessions))
+	})
+
+	t.Run("user_hash not found", func(t *testing.T) {
+		var reply jsonrpc.UserSessionsReply
+		err := svc.UserSessions(nil, &jsonrpc.UserSessionsArgs{UserHash: "12345"}, &reply)
+		assert.NoError(t, err)
+		assert.Equal(t, 0, len(reply.Sessions))
 	})
 
 	t.Run("list", func(t *testing.T) {
-		var reply jsonrpc.MapReply
-		err := svc.SessionsMap(nil, &jsonrpc.MapArgs{BuyerID: "12345"}, &reply)
+		var reply jsonrpc.UserSessionsReply
+		err := svc.UserSessions(nil, &jsonrpc.UserSessionsArgs{UserHash: userHash1}, &reply)
 		assert.NoError(t, err)
 
-		assert.Equal(t, 2, len(reply.SessionPoints))
+		assert.Equal(t, len(reply.Sessions), 2)
 
-		assert.Equal(t, reply.SessionPoints[0].OnNetworkNext, false)
-		assert.NotZero(t, reply.SessionPoints[0].Coordinates[0])
-		assert.NotZero(t, reply.SessionPoints[0].Coordinates[1])
-
-		assert.Equal(t, reply.SessionPoints[1].OnNetworkNext, true)
-		assert.Equal(t, reply.SessionPoints[1].Coordinates[0], float64(13))
-		assert.Equal(t, reply.SessionPoints[1].Coordinates[1], float64(14))
-	})
-}
-
-func TestSessions(t *testing.T) {
-	redisServer, _ := miniredis.Run()
-	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
-
-	sessions := []transport.SessionCacheEntry{
-		{CustomerID: 12345, SessionID: 111, UserHash: 999, DirectRTT: 5, NextRTT: 1},
-		{CustomerID: 12345, SessionID: 222, UserHash: 888, DirectRTT: 10, NextRTT: 5},
-		{CustomerID: 12345, SessionID: 333, UserHash: 777, DirectRTT: 20, NextRTT: 10},
-		{CustomerID: 12345, SessionID: 444, UserHash: 666, DirectRTT: 20, NextRTT: 40},
-
-		{CustomerID: 54321, SessionID: 555, UserHash: 555, DirectRTT: 20, NextRTT: 10},
-	}
-	for _, session := range sessions {
-		buf, err := session.MarshalBinary()
-		assert.NoError(t, err)
-
-		err = redisServer.Set(fmt.Sprintf("SESSION-%d-%d", session.CustomerID, session.SessionID), string(buf))
-		assert.NoError(t, err)
-	}
-
-	svc := jsonrpc.BuyersService{
-		RedisClient: redisClient,
-	}
-
-	t.Run("missing buyer_id", func(t *testing.T) {
-		var reply jsonrpc.SessionsReply
-		err := svc.Sessions(nil, &jsonrpc.SessionsArgs{}, &reply)
-		assert.Error(t, err)
-	})
-
-	t.Run("session_id not found", func(t *testing.T) {
-		var reply jsonrpc.SessionsReply
-		err := svc.Sessions(nil, &jsonrpc.SessionsArgs{BuyerID: "12345", SessionID: "3434"}, &reply)
-		assert.Error(t, err)
-	})
-
-	t.Run("failed to convert buyer_id to uint64", func(t *testing.T) {
-		var reply jsonrpc.SessionsReply
-		err := svc.Sessions(nil, &jsonrpc.SessionsArgs{BuyerID: "asdgagasdgfa"}, &reply)
-		assert.Error(t, err)
-	})
-
-	t.Run("failed to convert session_id to uint64", func(t *testing.T) {
-		var reply jsonrpc.SessionsReply
-		err := svc.Sessions(nil, &jsonrpc.SessionsArgs{SessionID: "asdgagasdgfa"}, &reply)
-		assert.Error(t, err)
-	})
-
-	t.Run("list", func(t *testing.T) {
-		var reply jsonrpc.SessionsReply
-		err := svc.Sessions(nil, &jsonrpc.SessionsArgs{BuyerID: "12345"}, &reply)
-		assert.NoError(t, err)
-
-		assert.Equal(t, len(reply.Sessions), 4)
-
-		assert.Equal(t, reply.Sessions[0].SessionID, string("333"))
-		assert.Equal(t, reply.Sessions[0].UserHash, string("777"))
-		assert.Equal(t, reply.Sessions[0].DirectRTT, float64(20))
-		assert.Equal(t, reply.Sessions[0].NextRTT, float64(10))
-		assert.Equal(t, reply.Sessions[0].ChangeRTT, float64(-10))
-
-		assert.Equal(t, reply.Sessions[1].SessionID, string("222"))
-		assert.Equal(t, reply.Sessions[1].UserHash, string("888"))
-		assert.Equal(t, reply.Sessions[1].DirectRTT, float64(10))
-		assert.Equal(t, reply.Sessions[1].NextRTT, float64(5))
-		assert.Equal(t, reply.Sessions[1].ChangeRTT, float64(-5))
-
-		assert.Equal(t, reply.Sessions[2].SessionID, string("111"))
-		assert.Equal(t, reply.Sessions[2].UserHash, string("999"))
-		assert.Equal(t, reply.Sessions[2].DirectRTT, float64(5))
-		assert.Equal(t, reply.Sessions[2].NextRTT, float64(1))
-		assert.Equal(t, reply.Sessions[2].ChangeRTT, float64(-4))
-
-		assert.Equal(t, reply.Sessions[3].SessionID, string("444"))
-		assert.Equal(t, reply.Sessions[3].UserHash, string("666"))
-		assert.Equal(t, reply.Sessions[3].DirectRTT, float64(20))
-		assert.Equal(t, reply.Sessions[3].NextRTT, float64(40))
-		assert.Equal(t, reply.Sessions[3].ChangeRTT, float64(20))
-	})
-
-	t.Run("single", func(t *testing.T) {
-		var reply jsonrpc.SessionsReply
-		err := svc.Sessions(nil, &jsonrpc.SessionsArgs{BuyerID: "54321", SessionID: "555"}, &reply)
-		assert.NoError(t, err)
-
-		assert.Equal(t, len(reply.Sessions), 1)
-
-		assert.Equal(t, reply.Sessions[0].SessionID, string("555"))
-		assert.Equal(t, reply.Sessions[0].UserHash, string("555"))
-		assert.Equal(t, reply.Sessions[0].DirectRTT, float64(20))
-		assert.Equal(t, reply.Sessions[0].NextRTT, float64(10))
-		assert.Equal(t, reply.Sessions[0].ChangeRTT, float64(-10))
+		assert.Equal(t, reply.Sessions[0].ID, sessionID3)
+		assert.Equal(t, reply.Sessions[1].ID, sessionID2)
 	})
 }
 
@@ -221,6 +133,9 @@ func TestSessionDetails(t *testing.T) {
 		ServerAddr: "10.0.0.1:50000",
 		Hops:       3,
 		SDK:        "3.4.4",
+		NearbyRelays: []routing.Relay{
+			{ID: 1, ClientStats: routing.Stats{RTT: 1, Jitter: 2, PacketLoss: 3}},
+		},
 	}
 	slice1 := routing.SessionSlice{
 		Timestamp: time.Now(),
@@ -238,8 +153,17 @@ func TestSessionDetails(t *testing.T) {
 	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID), meta, 720*time.Hour)
 	redisClient.SAdd(fmt.Sprintf("session-%s-slices", sessionID), slice1, slice2)
 
+	// After setting the cache without the name, set the name to the expected output we need
+	meta.NearbyRelays[0].Name = "local"
+
+	inMemory := storage.InMemory{}
+	inMemory.AddSeller(context.Background(), routing.Seller{ID: "local"})
+	inMemory.AddDatacenter(context.Background(), routing.Datacenter{ID: 1})
+	inMemory.AddRelay(context.Background(), routing.Relay{ID: 1, Name: "local", Seller: routing.Seller{ID: "local"}, Datacenter: routing.Datacenter{ID: 1}})
+
 	svc := jsonrpc.BuyersService{
 		RedisClient: redisClient,
+		Storage:     &inMemory,
 	}
 
 	t.Run("session_id not found", func(t *testing.T) {

@@ -3,14 +3,13 @@ package transport_test
 import (
 	"bytes"
 	"context"
-	crand "crypto/rand"
+	"crypto/rand"
 	"encoding/base64"
 	"math"
 	mrand "math/rand"
 	"net"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"reflect"
 	"testing"
 	"time"
@@ -261,13 +260,23 @@ func TestRelayHandlerNoAuthHeader(t *testing.T) {
 	relay := routing.Relay{
 		ID:   crypto.HashID(addr),
 		Addr: *udpAddr,
+		Seller: routing.Seller{
+			ID:   "sellerID",
+			Name: "seller name",
+		},
 		Datacenter: routing.Datacenter{
+			ID:   crypto.HashID("some datacenter"),
 			Name: "some datacenter",
 		},
 	}
 
 	inMemory := &storage.InMemory{}
-	inMemory.AddRelay(context.Background(), relay)
+	err = inMemory.AddSeller(context.Background(), relay.Seller)
+	assert.NoError(t, err)
+	err = inMemory.AddDatacenter(context.Background(), relay.Datacenter)
+	assert.NoError(t, err)
+	err = inMemory.AddRelay(context.Background(), relay)
+	assert.NoError(t, err)
 
 	request := transport.RelayRequest{
 		Address: *udpAddr,
@@ -295,13 +304,23 @@ func TestRelayHandlerBadAuthHeaderLength(t *testing.T) {
 	relay := routing.Relay{
 		ID:   crypto.HashID(addr),
 		Addr: *udpAddr,
+		Seller: routing.Seller{
+			ID:   "sellerID",
+			Name: "seller name",
+		},
 		Datacenter: routing.Datacenter{
+			ID:   crypto.HashID("some datacenter"),
 			Name: "some datacenter",
 		},
 	}
 
 	inMemory := &storage.InMemory{}
-	inMemory.AddRelay(context.Background(), relay)
+	err = inMemory.AddSeller(context.Background(), relay.Seller)
+	assert.NoError(t, err)
+	err = inMemory.AddDatacenter(context.Background(), relay.Datacenter)
+	assert.NoError(t, err)
+	err = inMemory.AddRelay(context.Background(), relay)
+	assert.NoError(t, err)
 
 	request := transport.RelayRequest{
 		Address: *udpAddr,
@@ -334,13 +353,23 @@ func TestRelayHandlerBadAuthHeaderToken(t *testing.T) {
 	relay := routing.Relay{
 		ID:   crypto.HashID(addr),
 		Addr: *udpAddr,
+		Seller: routing.Seller{
+			ID:   "sellerID",
+			Name: "seller name",
+		},
 		Datacenter: routing.Datacenter{
+			ID:   crypto.HashID("some datacenter"),
 			Name: "some datacenter",
 		},
 	}
 
 	inMemory := &storage.InMemory{}
-	inMemory.AddRelay(context.Background(), relay)
+	err = inMemory.AddSeller(context.Background(), relay.Seller)
+	assert.NoError(t, err)
+	err = inMemory.AddDatacenter(context.Background(), relay.Datacenter)
+	assert.NoError(t, err)
+	err = inMemory.AddRelay(context.Background(), relay)
+	assert.NoError(t, err)
 
 	request := transport.RelayRequest{
 		Address: *udpAddr,
@@ -373,13 +402,23 @@ func TestRelayHandlerBadNonce(t *testing.T) {
 	relay := routing.Relay{
 		ID:   crypto.HashID(addr),
 		Addr: *udpAddr,
+		Seller: routing.Seller{
+			ID:   "sellerID",
+			Name: "seller name",
+		},
 		Datacenter: routing.Datacenter{
+			ID:   crypto.HashID("some datacenter"),
 			Name: "some datacenter",
 		},
 	}
 
 	inMemory := &storage.InMemory{}
-	inMemory.AddRelay(context.Background(), relay)
+	err = inMemory.AddSeller(context.Background(), relay.Seller)
+	assert.NoError(t, err)
+	err = inMemory.AddDatacenter(context.Background(), relay.Datacenter)
+	assert.NoError(t, err)
+	err = inMemory.AddRelay(context.Background(), relay)
+	assert.NoError(t, err)
 
 	request := transport.RelayRequest{
 		Address: *udpAddr,
@@ -412,16 +451,26 @@ func TestRelayHandlerBadEncryptedAddress(t *testing.T) {
 	relay := routing.Relay{
 		ID:   crypto.HashID(addr),
 		Addr: *udpAddr,
+		Seller: routing.Seller{
+			ID:   "sellerID",
+			Name: "seller name",
+		},
 		Datacenter: routing.Datacenter{
+			ID:   crypto.HashID("some datacenter"),
 			Name: "some datacenter",
 		},
 	}
 
 	inMemory := &storage.InMemory{}
-	inMemory.AddRelay(context.Background(), relay)
+	err = inMemory.AddSeller(context.Background(), relay.Seller)
+	assert.NoError(t, err)
+	err = inMemory.AddDatacenter(context.Background(), relay.Datacenter)
+	assert.NoError(t, err)
+	err = inMemory.AddRelay(context.Background(), relay)
+	assert.NoError(t, err)
 
 	nonce := make([]byte, crypto.NonceSize)
-	crand.Read(nonce)
+	rand.Read(nonce)
 
 	nonceBase64 := base64.StdEncoding.EncodeToString(nonce)
 	encryptedAddressBase64 := "badaddress"
@@ -457,26 +506,37 @@ func TestRelayHandlerDecryptFailure(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Don't use the other key in the key pairs to fail decryption
-	_, relayPrivateKey := getRelayKeyPair(t)
-	routerPublicKey, _, err := box.GenerateKey(crand.Reader)
+	_, relayPrivateKey, err := box.GenerateKey(rand.Reader)
+	assert.NoError(t, err)
+	routerPublicKey, _, err := box.GenerateKey(rand.Reader)
 	assert.NoError(t, err)
 
 	relay := routing.Relay{
 		ID:   crypto.HashID(addr),
 		Addr: *udpAddr,
+		Seller: routing.Seller{
+			ID:   "sellerID",
+			Name: "seller name",
+		},
 		Datacenter: routing.Datacenter{
+			ID:   crypto.HashID("some datacenter"),
 			Name: "some datacenter",
 		},
 	}
 
 	inMemory := &storage.InMemory{}
-	inMemory.AddRelay(context.Background(), relay)
+	err = inMemory.AddSeller(context.Background(), relay.Seller)
+	assert.NoError(t, err)
+	err = inMemory.AddDatacenter(context.Background(), relay.Datacenter)
+	assert.NoError(t, err)
+	err = inMemory.AddRelay(context.Background(), relay)
+	assert.NoError(t, err)
 
 	nonce := make([]byte, crypto.NonceSize)
-	crand.Read(nonce)
+	rand.Read(nonce)
 
 	// Encrypt the address
-	encryptedAddress := crypto.Seal([]byte(addr), nonce, routerPublicKey[:], relayPrivateKey)
+	encryptedAddress := crypto.Seal([]byte(addr), nonce, routerPublicKey[:], relayPrivateKey[:])
 
 	nonceBase64 := base64.StdEncoding.EncodeToString(nonce)
 	encryptedAddressBase64 := base64.StdEncoding.EncodeToString(encryptedAddress)
@@ -511,29 +571,40 @@ func TestRelayHandlerRedisFailure(t *testing.T) {
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
 	assert.NoError(t, err)
 
-	relayPublicKey, relayPrivateKey := getRelayKeyPair(t)
-	routerPublicKey, routerPrivateKey, err := box.GenerateKey(crand.Reader)
+	relayPublicKey, relayPrivateKey, err := box.GenerateKey(rand.Reader)
+	assert.NoError(t, err)
+	routerPublicKey, routerPrivateKey, err := box.GenerateKey(rand.Reader)
 	assert.NoError(t, err)
 
 	redisClient := redis.NewClient(&redis.Options{Addr: "0.0.0.0"})
 
 	relay := routing.Relay{
-		ID:   crypto.HashID(addr),
-		Addr: *udpAddr,
+		ID:        crypto.HashID(addr),
+		Addr:      *udpAddr,
+		PublicKey: relayPublicKey[:],
+		Seller: routing.Seller{
+			ID:   "sellerID",
+			Name: "seller name",
+		},
 		Datacenter: routing.Datacenter{
+			ID:   crypto.HashID("some datacenter"),
 			Name: "some datacenter",
 		},
-		PublicKey: relayPublicKey,
 	}
 
 	inMemory := &storage.InMemory{}
-	inMemory.AddRelay(context.Background(), relay)
+	err = inMemory.AddSeller(context.Background(), relay.Seller)
+	assert.NoError(t, err)
+	err = inMemory.AddDatacenter(context.Background(), relay.Datacenter)
+	assert.NoError(t, err)
+	err = inMemory.AddRelay(context.Background(), relay)
+	assert.NoError(t, err)
 
 	nonce := make([]byte, crypto.NonceSize)
-	crand.Read(nonce)
+	rand.Read(nonce)
 
 	// Encrypt the address
-	encryptedAddress := crypto.Seal([]byte(addr), nonce, routerPublicKey[:], relayPrivateKey)
+	encryptedAddress := crypto.Seal([]byte(addr), nonce, routerPublicKey[:], relayPrivateKey[:])
 
 	nonceBase64 := base64.StdEncoding.EncodeToString(nonce)
 	encryptedAddressBase64 := base64.StdEncoding.EncodeToString(encryptedAddress)
@@ -568,8 +639,9 @@ func TestRelayHandlerRelayUnmarshalFailure(t *testing.T) {
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
 	assert.NoError(t, err)
 
-	relayPublicKey, relayPrivateKey := getRelayKeyPair(t)
-	routerPublicKey, routerPrivateKey, err := box.GenerateKey(crand.Reader)
+	relayPublicKey, relayPrivateKey, err := box.GenerateKey(rand.Reader)
+	assert.NoError(t, err)
+	routerPublicKey, routerPrivateKey, err := box.GenerateKey(rand.Reader)
 	assert.NoError(t, err)
 
 	redisServer, err := miniredis.Run()
@@ -577,12 +649,17 @@ func TestRelayHandlerRelayUnmarshalFailure(t *testing.T) {
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
 	relay := routing.Relay{
-		ID:   crypto.HashID(addr),
-		Addr: *udpAddr,
+		ID:        crypto.HashID(addr),
+		Addr:      *udpAddr,
+		PublicKey: relayPublicKey[:],
+		Seller: routing.Seller{
+			ID:   "sellerID",
+			Name: "seller name",
+		},
 		Datacenter: routing.Datacenter{
+			ID:   crypto.HashID("some datacenter"),
 			Name: "some datacenter",
 		},
-		PublicKey: relayPublicKey,
 	}
 
 	// Set a bad entry in redis
@@ -590,13 +667,18 @@ func TestRelayHandlerRelayUnmarshalFailure(t *testing.T) {
 	redisServer.HSet(routing.HashKeyAllRelays, relay.Key(), entry)
 
 	inMemory := &storage.InMemory{}
-	inMemory.AddRelay(context.Background(), relay)
+	err = inMemory.AddSeller(context.Background(), relay.Seller)
+	assert.NoError(t, err)
+	err = inMemory.AddDatacenter(context.Background(), relay.Datacenter)
+	assert.NoError(t, err)
+	err = inMemory.AddRelay(context.Background(), relay)
+	assert.NoError(t, err)
 
 	nonce := make([]byte, crypto.NonceSize)
-	crand.Read(nonce)
+	rand.Read(nonce)
 
 	// Encrypt the address
-	encryptedAddress := crypto.Seal([]byte(addr), nonce, routerPublicKey[:], relayPrivateKey)
+	encryptedAddress := crypto.Seal([]byte(addr), nonce, routerPublicKey[:], relayPrivateKey[:])
 
 	nonceBase64 := base64.StdEncoding.EncodeToString(nonce)
 	encryptedAddressBase64 := base64.StdEncoding.EncodeToString(encryptedAddress)
@@ -631,8 +713,9 @@ func TestRelayHandlerSuccess(t *testing.T) {
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
 	assert.NoError(t, err)
 
-	relayPublicKey, relayPrivateKey := getRelayKeyPair(t)
-	routerPublicKey, routerPrivateKey, err := box.GenerateKey(crand.Reader)
+	relayPublicKey, relayPrivateKey, err := box.GenerateKey(rand.Reader)
+	assert.NoError(t, err)
+	routerPublicKey, routerPrivateKey, err := box.GenerateKey(rand.Reader)
 	assert.NoError(t, err)
 
 	redisServer, err := miniredis.Run()
@@ -668,39 +751,40 @@ func TestRelayHandlerSuccess(t *testing.T) {
 
 	// Create relay in DB storage
 	relay := routing.Relay{
-		ID:   crypto.HashID(addr),
-		Addr: *udpAddr,
-		Datacenter: routing.Datacenter{
-			ID:   1,
-			Name: "some name",
-			Location: routing.Location{
-				Latitude:  13,
-				Longitude: 13,
-			},
+		ID:        crypto.HashID(addr),
+		Addr:      *udpAddr,
+		PublicKey: relayPublicKey[:],
+		Seller: routing.Seller{
+			ID:   "sellerID",
+			Name: "seller name",
 		},
-		PublicKey:      relayPublicKey,
+		Datacenter: routing.Datacenter{
+			ID:   crypto.HashID("some datacenter"),
+			Name: "some datacenter",
+		},
 		LastUpdateTime: time.Now().Add(-time.Second),
 	}
 
-	var customerPublicKey []byte
-	{
-		if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
-			customerPublicKey, err = base64.StdEncoding.DecodeString(key)
-			assert.NoError(t, err)
-		}
-	}
+	customerPublicKey := make([]byte, crypto.KeySize)
+	rand.Read(customerPublicKey)
 
 	inMemory := &storage.InMemory{}
-	inMemory.AddBuyer(context.Background(), routing.Buyer{
+	err = inMemory.AddBuyer(context.Background(), routing.Buyer{
 		PublicKey: customerPublicKey[8:],
 	})
-	inMemory.AddRelay(context.Background(), relay)
+	assert.NoError(t, err)
+	err = inMemory.AddSeller(context.Background(), relay.Seller)
+	assert.NoError(t, err)
+	err = inMemory.AddDatacenter(context.Background(), relay.Datacenter)
+	assert.NoError(t, err)
+	err = inMemory.AddRelay(context.Background(), relay)
+	assert.NoError(t, err)
 
 	nonce := make([]byte, crypto.NonceSize)
-	crand.Read(nonce)
+	rand.Read(nonce)
 
 	// Encrypt the address
-	encryptedAddress := crypto.Seal([]byte(addr), nonce, routerPublicKey[:], relayPrivateKey)
+	encryptedAddress := crypto.Seal([]byte(addr), nonce, routerPublicKey[:], relayPrivateKey[:])
 
 	nonceBase64 := base64.StdEncoding.EncodeToString(nonce)
 	encryptedAddressBase64 := base64.StdEncoding.EncodeToString(encryptedAddress)
@@ -756,7 +840,7 @@ func TestRelayHandlerSuccess(t *testing.T) {
 			ID:   1,
 			Name: "some name",
 		},
-		PublicKey: relayPublicKey,
+		PublicKey: relayPublicKey[:],
 	}
 
 	localMetrics := metrics.LocalHandler{}

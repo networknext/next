@@ -95,6 +95,8 @@ type routingRuleSettings struct {
 	EnableMultipathForJitter     bool    `json:"jitterMultipath"`
 	EnableMultipathForRTT        bool    `json:"rttMultipath"`
 	EnableABTest                 bool    `json:"abTest"`
+	EnableTryBeforeYouBuy        bool    `json:"tryBeforeYouBuy"`
+	TryBeforeYouBuyMaxSlices     int8    `json:"tryBeforeYouBuyMaxSlices"`
 	SelectionPercentage          int64   `json:"selectionPercentage"`
 }
 
@@ -120,6 +122,8 @@ func (s *OpsService) RoutingRulesSettings(r *http.Request, args *RoutingRulesSet
 			EnableMultipathForJitter:     buyer.RoutingRulesSettings.EnableMultipathForJitter,
 			EnableMultipathForRTT:        buyer.RoutingRulesSettings.EnableMultipathForRTT,
 			EnableABTest:                 buyer.RoutingRulesSettings.EnableABTest,
+			EnableTryBeforeYouBuy:        buyer.RoutingRulesSettings.EnableTryBeforeYouBuy,
+			TryBeforeYouBuyMaxSlices:     buyer.RoutingRulesSettings.TryBeforeYouBuyMaxSlices,
 			SelectionPercentage:          buyer.RoutingRulesSettings.SelectionPercentage,
 		},
 	}
@@ -282,6 +286,32 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 	})
 
 	return nil
+}
+
+type AddRelayArgs struct {
+	Relay routing.Relay
+}
+
+type AddRelayReply struct{}
+
+func (s *OpsService) AddRelay(r *http.Request, args *AddRelayArgs, reply *AddRelayReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	return s.Storage.AddRelay(ctx, args.Relay)
+}
+
+type RemoveRelayArgs struct {
+	RelayID uint64
+}
+
+type RemoveRelayReply struct{}
+
+func (s *OpsService) RemoveRelay(r *http.Request, args *RemoveRelayArgs, reply *RemoveRelayReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	return s.Storage.RemoveRelay(ctx, args.RelayID)
 }
 
 type RelayStateUpdateArgs struct {

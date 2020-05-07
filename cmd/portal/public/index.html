@@ -411,7 +411,7 @@
                                                 </a>
                                             </td>
                                             <td>
-                                                <a class="text-dark fixed-width" href="#" v-on:click="fetchUserInfo(session.user_hash)">
+                                                <a class="text-dark fixed-width" href="#" v-on:click="fetchUserSessions(session.user_hash)">
                                                     {{ session.user_hash }}
                                                 </a>
                                             </td>
@@ -498,10 +498,10 @@
                                                 </div>
                                             </div>
                                             <div class="card-body">
-                                                <div id="latency-chart-1"></div>
+                                                <div id="latency-chart-1" class="fill"></div>
                                             </div>
                                             <div class="card-body">
-                                                <div id="latency-chart-2"></div>
+                                                <div id="latency-chart-2" class="fill"></div>
                                             </div>
                                         </div>
                                         <div class="card mb-2">
@@ -524,10 +524,10 @@
                                                 </div>
                                             </div>
                                             <div class="card-body">
-                                                <div id="jitter-chart-1"></div>
+                                                <div id="jitter-chart-1" class="fill"></div>
                                             </div>
                                             <div class="card-body">
-                                                <div id="jitter-chart-2"></div>
+                                                <div id="jitter-chart-2" class="fill"></div>
                                             </div>
                                         </div>
                                         <div class="card mb-2">
@@ -550,11 +550,11 @@
                                                 </div>
                                             </div>
                                             <div class="card-body">
-                                                <div id="packet-loss-chart-1">
+                                                <div id="packet-loss-chart-1" class="fill">
                                                 </div>
                                             </div>
                                             <div class="card-body">
-                                                <div id="packet-loss-chart-2">
+                                                <div id="packet-loss-chart-2" class="fill">
                                                 </div>
                                             </div>
                                         </div>
@@ -579,11 +579,11 @@
                                                 </div>
                                             </div>
                                             <div class="card-body">
-                                                <div id="bandwidth-chart-1">
+                                                <div id="bandwidth-chart-1" class="fill">
                                                 </div>
                                             </div>
                                             <div class="card-body">
-                                                <div id="bandwidth-chart-2">
+                                                <div id="bandwidth-chart-2" class="fill">
                                                 </div>
                                             </div>
                                         </div>
@@ -784,29 +784,115 @@
                         </div>
                     </main>
                     <main role="main" class="col-md-12 col-lg-12 px-4 hidden" id="user-tool-workspace">
-                        <div class="spinner-border hidden" role="status" id="user-tool-spinner">
-                            <span class="sr-only">Loading...</span>
-                        </div>
                         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                             <h1 class="h2">
-                                Lookup User Sessions
+                                User Tool
                             </h1>
                             <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1 hidden">
                                 <div class="mr-auto"></div>
                             </div>
                         </div>
-                        <div class="form-group">
-                            <label for="userId">
-                                User ID
-                            </label>
-                            <div class="row">
-                                <div class="col">
-                                    <input id="user-id-input" class="form-control" type="text" placeholder="Enter a user ID to view their sessions" value="">
+                        <form class="flow-stats-form" onsubmit="fetchUserSessions()">
+                            <div class="form-group">
+                                <label for="user-hash-input">
+                                    User ID
+                                </label>
+                                <div class="row">
+                                    <div class="col">
+                                        <input id="user-hash-input" class="form-control" type="text" placeholder="Enter a Session ID to view statistics" value="">
+                                    </div>
+                                    <div class="col-auto">
+                                        <button class="btn btn-primary" type="submit">
+                                            View Sessions
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="alert alert-info" role="alert">
+                        </form>
+                        <div class="alert alert-info" role="alert" id="user-tool-alert">
                             Please enter a user ID to view their sessions.
+                        </div>
+                        <div class="alert alert-danger hidden" role="alert" id="user-tool-danger">
+                            Failed to fetch user sessions
+                        </div>
+                        <div id="user-sessions">
+                            <div class="table-responsive table-no-top-line">
+                                <table class="table table-sm" v-if="showTable">
+                                    <thead>
+                                        <tr>
+                                            <th class="">
+                                                <span id="getFlowidhexadecimal">
+                                                    Session ID
+                                                </span>
+                                            </th>
+                                            <th class="">
+                                                <span id="getPlatform">
+                                                    Platform
+                                                </span>
+                                            </th>
+                                            <th class="">
+                                                <span id="getConnectiontype">
+                                                    Connection Type
+                                                </span>
+                                            </th>
+                                            <th class="">
+                                                <span id="getUserisp">
+                                                    ISP
+                                                </span>
+                                            </th>
+                                            <th class="">
+                                                <span id="getDestrelayname">
+                                                    Datacenter
+                                                </span>
+                                            </th>
+                                            <th class="">
+                                                <span id="getServeraddress">
+                                                    Server Address
+                                                </span>
+                                            </th>
+                                            <th class="">
+                                                <span id="getSessionstartutc">
+                                                    Started
+                                                </span>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody v-if="sessions.length > 0">
+                                        <tr v-for="session in sessions">
+                                            <td>
+                                                <a class="text-dark fixed-width" href="#" v-on:click="fetchSessionInfo(session.id)">
+                                                    {{ session.id }}
+                                                </a>
+                                            </td>
+                                            <td>
+                                                {{ session.platform }}
+                                            </td>
+                                            <td>
+                                                {{ session.connection }}
+                                            </td>
+                                            <td>
+                                                {{ session.location.isp }}
+                                            </td>
+                                            <td>
+                                                {{ session.datacenter }}
+                                            </td>
+                                            <td>
+                                                {{ session.server_addr }}
+                                            </td>
+                                            <td>
+                                                IMPLEMENT
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                    <tbody v-if="sessions.length == 0">
+                                        <tr>
+                                            <td colspan="7" class="text-muted">
+                                                There are no sessions belonging to this user.
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </main>
                     <main role="main" class="col-md-12 col-lg-12 px-4 hidden" id="settings-workspace">

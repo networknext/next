@@ -170,18 +170,39 @@ func main() {
 	var db storage.Storer = &storage.InMemory{
 		LocalMode: true,
 	}
-	db.AddRelay(ctx, routing.Relay{
-		PublicKey: relayPublicKey,
-		Datacenter: routing.Datacenter{
-			ID:   crypto.HashID("local"),
-			Name: "local",
-		},
-		Seller: routing.Seller{
+
+	{
+		seller := routing.Seller{
+			ID:                "sellerID",
 			Name:              "local",
 			IngressPriceCents: 10,
 			EgressPriceCents:  20,
-		},
-	})
+		}
+
+		datacenter := routing.Datacenter{
+			ID:   crypto.HashID("local"),
+			Name: "local",
+		}
+
+		if err := db.AddSeller(ctx, seller); err != nil {
+			level.Error(logger).Log("msg", "could not add seller to storage", "err", err)
+			os.Exit(1)
+		}
+
+		if err := db.AddDatacenter(ctx, datacenter); err != nil {
+			level.Error(logger).Log("msg", "could not add datacenter to storage", "err", err)
+			os.Exit(1)
+		}
+
+		if err := db.AddRelay(ctx, routing.Relay{
+			PublicKey:  relayPublicKey,
+			Seller:     seller,
+			Datacenter: datacenter,
+		}); err != nil {
+			level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
+			os.Exit(1)
+		}
+	}
 
 	// Create a no-op relay traffic stats publisher
 	var trafficStatsPublisher stats.Publisher = &stats.NoOpTrafficStatsPublisher{}

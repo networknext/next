@@ -36,6 +36,7 @@ type SessionErrorMetrics struct {
 	WriteCachedResponseFailure  Counter
 	ClientLocateFailure         Counter
 	NearRelaysLocateFailure     Counter
+	NoRelaysInDatacenter        Counter
 	RouteFailure                Counter
 	EncryptionFailure           Counter
 	WriteResponseFailure        Counter
@@ -57,6 +58,7 @@ var EmptySessionErrorMetrics SessionErrorMetrics = SessionErrorMetrics{
 	WriteCachedResponseFailure:  &EmptyCounter{},
 	ClientLocateFailure:         &EmptyCounter{},
 	NearRelaysLocateFailure:     &EmptyCounter{},
+	NoRelaysInDatacenter:        &EmptyCounter{},
 	RouteFailure:                &EmptyCounter{},
 	EncryptionFailure:           &EmptyCounter{},
 	WriteResponseFailure:        &EmptyCounter{},
@@ -65,7 +67,7 @@ var EmptySessionErrorMetrics SessionErrorMetrics = SessionErrorMetrics{
 }
 
 type DecisionMetrics struct {
-	NoChange            Counter
+	NoReason            Counter
 	ForceDirect         Counter
 	ForceNext           Counter
 	NoNextRoute         Counter
@@ -78,15 +80,15 @@ type DecisionMetrics struct {
 	VetoPacketLoss      Counter
 	FallbackToDirect    Counter
 	VetoYOLO            Counter
-	VetoNoRoute         Counter
 	InitialSlice        Counter
 	VetoRTTYOLO         Counter
 	VetoPacketLossYOLO  Counter
-	RTTIncrease         Counter
+	RTTHysteresis       Counter
+	VetoCommit          Counter
 }
 
 var EmptyDecisionMetrics DecisionMetrics = DecisionMetrics{
-	NoChange:            &EmptyCounter{},
+	NoReason:            &EmptyCounter{},
 	ForceDirect:         &EmptyCounter{},
 	ForceNext:           &EmptyCounter{},
 	NoNextRoute:         &EmptyCounter{},
@@ -99,11 +101,11 @@ var EmptyDecisionMetrics DecisionMetrics = DecisionMetrics{
 	VetoPacketLoss:      &EmptyCounter{},
 	FallbackToDirect:    &EmptyCounter{},
 	VetoYOLO:            &EmptyCounter{},
-	VetoNoRoute:         &EmptyCounter{},
 	InitialSlice:        &EmptyCounter{},
 	VetoRTTYOLO:         &EmptyCounter{},
 	VetoPacketLossYOLO:  &EmptyCounter{},
-	RTTIncrease:         &EmptyCounter{},
+	RTTHysteresis:       &EmptyCounter{},
+	VetoCommit:          &EmptyCounter{},
 }
 
 type ServerInitMetrics struct {
@@ -329,10 +331,10 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
-	sessionMetrics.DecisionMetrics.NoChange, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Decision no change",
+	sessionMetrics.DecisionMetrics.NoReason, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Decision no reason",
 		ServiceName: "server_backend",
-		ID:          "session.route_decision.no_change",
+		ID:          "session.route_decision.no_reason",
 		Unit:        "decisions",
 	})
 	if err != nil {
@@ -459,16 +461,6 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
-	sessionMetrics.DecisionMetrics.VetoNoRoute, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Decision veto no route",
-		ServiceName: "server_backend",
-		ID:          "session.route_decision.veto_no_route",
-		Unit:        "decisions",
-	})
-	if err != nil {
-		return nil, err
-	}
-
 	sessionMetrics.DecisionMetrics.InitialSlice, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Decision initial slice",
 		ServiceName: "server_backend",
@@ -499,10 +491,20 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
-	sessionMetrics.DecisionMetrics.RTTIncrease, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Decision RTT increase",
+	sessionMetrics.DecisionMetrics.RTTHysteresis, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Decision RTT hysteresis",
 		ServiceName: "server_backend",
-		ID:          "session.route_decision.rtt_increase",
+		ID:          "session.route_decision.rtt_hysteresis",
+		Unit:        "decisions",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.DecisionMetrics.VetoCommit, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Decision veto commit",
+		ServiceName: "server_backend",
+		ID:          "session.route_decision.veto_commit",
 		Unit:        "decisions",
 	})
 	if err != nil {
@@ -583,6 +585,16 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		DisplayName: "Session Near Relays Locate Failure",
 		ServiceName: "server_backend",
 		ID:          "session.error.near_relays_locate_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.ErrorMetrics.NoRelaysInDatacenter, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session No Relays In Datacenter",
+		ServiceName: "server_backend",
+		ID:          "session.error.no_relays_in_datacenter",
 		Unit:        "errors",
 	})
 	if err != nil {

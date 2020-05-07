@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"net"
 	"testing"
 
 	"github.com/alicebob/miniredis/v2"
@@ -155,6 +156,8 @@ func TestRoutingRulesSettings(t *testing.T) {
 		assert.Equal(t, reply.RoutingRuleSettings[0].EnableMultipathForJitter, routing.DefaultRoutingRulesSettings.EnableMultipathForJitter)
 		assert.Equal(t, reply.RoutingRuleSettings[0].EnableMultipathForRTT, routing.DefaultRoutingRulesSettings.EnableMultipathForRTT)
 		assert.Equal(t, reply.RoutingRuleSettings[0].EnableABTest, routing.DefaultRoutingRulesSettings.EnableABTest)
+		assert.Equal(t, reply.RoutingRuleSettings[0].EnableTryBeforeYouBuy, routing.DefaultRoutingRulesSettings.EnableTryBeforeYouBuy)
+		assert.Equal(t, reply.RoutingRuleSettings[0].TryBeforeYouBuyMaxSlices, routing.DefaultRoutingRulesSettings.TryBeforeYouBuyMaxSlices)
 	})
 }
 
@@ -197,6 +200,8 @@ func TestSetRoutingRulesSettings(t *testing.T) {
 		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableMultipathForJitter, routing.LocalRoutingRulesSettings.EnableMultipathForJitter)
 		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableMultipathForRTT, routing.LocalRoutingRulesSettings.EnableMultipathForRTT)
 		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableABTest, routing.LocalRoutingRulesSettings.EnableABTest)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableTryBeforeYouBuy, routing.DefaultRoutingRulesSettings.EnableTryBeforeYouBuy)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].TryBeforeYouBuyMaxSlices, routing.DefaultRoutingRulesSettings.TryBeforeYouBuyMaxSlices)
 	})
 }
 
@@ -234,10 +239,6 @@ func TestAddSeller(t *testing.T) {
 		Storage: &storer,
 	}
 
-	publicKey := make([]byte, crypto.KeySize)
-	_, err := rand.Read(publicKey)
-	assert.NoError(t, err)
-
 	expected := routing.Seller{
 		ID:                "id",
 		Name:              "local seller",
@@ -264,7 +265,7 @@ func TestAddSeller(t *testing.T) {
 	t.Run("exists", func(t *testing.T) {
 		var reply jsonrpc.AddSellerReply
 
-		err = svc.AddSeller(nil, &jsonrpc.AddSellerArgs{Seller: expected}, &reply)
+		err := svc.AddSeller(nil, &jsonrpc.AddSellerArgs{Seller: expected}, &reply)
 		assert.EqualError(t, err, "seller with id id already exists in memory storage")
 	})
 }
@@ -276,10 +277,6 @@ func TestRemoveSeller(t *testing.T) {
 		Storage: &storer,
 	}
 
-	publicKey := make([]byte, crypto.KeySize)
-	_, err := rand.Read(publicKey)
-	assert.NoError(t, err)
-
 	expected := routing.Seller{
 		ID:                "1",
 		Name:              "local seller",
@@ -290,7 +287,7 @@ func TestRemoveSeller(t *testing.T) {
 	t.Run("doesn't exist", func(t *testing.T) {
 		var reply jsonrpc.RemoveSellerReply
 
-		err = svc.RemoveSeller(nil, &jsonrpc.RemoveSellerArgs{ID: expected.ID}, &reply)
+		err := svc.RemoveSeller(nil, &jsonrpc.RemoveSellerArgs{ID: expected.ID}, &reply)
 		assert.EqualError(t, err, "seller with id 1 not found in memory storage")
 	})
 
@@ -313,8 +310,39 @@ func TestRemoveSeller(t *testing.T) {
 
 func TestRelays(t *testing.T) {
 	storer := storage.InMemory{}
-	storer.AddRelay(context.Background(), routing.Relay{ID: 1, Name: "local.local.1"})
-	storer.AddRelay(context.Background(), routing.Relay{ID: 2, Name: "local.local.2"})
+
+	seller := routing.Seller{
+		ID:   "sellerID",
+		Name: "seller name",
+	}
+
+	datacenter := routing.Datacenter{
+		ID:   crypto.HashID("datacenter name"),
+		Name: "datacenter name",
+	}
+
+	relay1 := routing.Relay{
+		ID:         1,
+		Name:       "local.local.1",
+		Seller:     seller,
+		Datacenter: datacenter,
+	}
+
+	relay2 := routing.Relay{
+		ID:         2,
+		Name:       "local.local.2",
+		Seller:     seller,
+		Datacenter: datacenter,
+	}
+
+	err := storer.AddSeller(context.Background(), seller)
+	assert.NoError(t, err)
+	err = storer.AddDatacenter(context.Background(), datacenter)
+	assert.NoError(t, err)
+	err = storer.AddRelay(context.Background(), relay1)
+	assert.NoError(t, err)
+	err = storer.AddRelay(context.Background(), relay2)
+	assert.NoError(t, err)
 
 	redisServer, err := miniredis.Run()
 	assert.NoError(t, err)
@@ -353,17 +381,175 @@ func TestRelays(t *testing.T) {
 	})
 }
 
+func TestAddRelay(t *testing.T) {
+	storer := storage.InMemory{}
+
+	redisServer, err := miniredis.Run()
+	assert.NoError(t, err)
+	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+	svc := jsonrpc.OpsService{
+		Storage:     &storer,
+		RedisClient: redisClient,
+	}
+
+	addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+	assert.NoError(t, err)
+
+	expected := routing.Relay{
+		ID:   crypto.HashID(addr.String()),
+		Name: "local relay",
+		Addr: *addr,
+	}
+
+	t.Run("seller doesn't exist", func(t *testing.T) {
+		var reply jsonrpc.AddRelayReply
+		err := svc.AddRelay(nil, &jsonrpc.AddRelayArgs{Relay: expected}, &reply)
+		assert.EqualError(t, err, "unknown seller with ID  - be sure to create the seller in storage first")
+	})
+
+	t.Run("datacenter doesn't exist", func(t *testing.T) {
+		expected.Seller = routing.Seller{
+			ID:                "sellerID",
+			Name:              "seller name",
+			IngressPriceCents: 10,
+			EgressPriceCents:  20,
+		}
+
+		var sellerReply jsonrpc.AddSellerReply
+		err := svc.AddSeller(nil, &jsonrpc.AddSellerArgs{Seller: expected.Seller}, &sellerReply)
+		assert.NoError(t, err)
+
+		var reply jsonrpc.AddRelayReply
+		err = svc.AddRelay(nil, &jsonrpc.AddRelayArgs{Relay: expected}, &reply)
+		assert.EqualError(t, err, "unknown datacenter with ID 0 - be sure to create the datacenter in storage first")
+	})
+
+	t.Run("add", func(t *testing.T) {
+		expected.Datacenter = routing.Datacenter{
+			ID:       crypto.HashID("datacenter name"),
+			Name:     "datacenter name",
+			Enabled:  true,
+			Location: routing.LocationNullIsland,
+		}
+
+		var datacenterReply jsonrpc.AddDatacenterReply
+		err := svc.AddDatacenter(nil, &jsonrpc.AddDatacenterArgs{Datacenter: expected.Datacenter}, &datacenterReply)
+		assert.NoError(t, err)
+
+		var reply jsonrpc.AddRelayReply
+		err = svc.AddRelay(nil, &jsonrpc.AddRelayArgs{Relay: expected}, &reply)
+		assert.NoError(t, err)
+
+		var relaysReply jsonrpc.RelaysReply
+		err = svc.Relays(nil, &jsonrpc.RelaysArgs{}, &relaysReply)
+		assert.NoError(t, err)
+
+		assert.Len(t, relaysReply.Relays, 1)
+		assert.Equal(t, relaysReply.Relays[0].ID, expected.ID)
+		assert.Equal(t, relaysReply.Relays[0].Name, expected.Name)
+		assert.Equal(t, relaysReply.Relays[0].Addr, expected.Addr.String())
+	})
+
+	t.Run("exists", func(t *testing.T) {
+		var reply jsonrpc.AddRelayReply
+
+		err = svc.AddRelay(nil, &jsonrpc.AddRelayArgs{Relay: expected}, &reply)
+		assert.EqualError(t, err, fmt.Sprintf("relay with id %d already exists in memory storage", expected.ID))
+	})
+}
+
+func TestRemoveRelay(t *testing.T) {
+	storer := storage.InMemory{}
+
+	redisServer, err := miniredis.Run()
+	assert.NoError(t, err)
+	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+	svc := jsonrpc.OpsService{
+		Storage:     &storer,
+		RedisClient: redisClient,
+	}
+
+	addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+	assert.NoError(t, err)
+
+	seller := routing.Seller{
+		ID:   "sellerID",
+		Name: "seller name",
+	}
+
+	datacenter := routing.Datacenter{
+		ID:   crypto.HashID("datacenter name"),
+		Name: "datacenter name",
+	}
+
+	expected := routing.Relay{
+		ID:         crypto.HashID(addr.String()),
+		Name:       "local relay",
+		Addr:       *addr,
+		Seller:     seller,
+		Datacenter: datacenter,
+	}
+
+	svc.AddSeller(nil, &jsonrpc.AddSellerArgs{Seller: seller}, &jsonrpc.AddSellerReply{})
+	svc.AddDatacenter(nil, &jsonrpc.AddDatacenterArgs{Datacenter: datacenter}, &jsonrpc.AddDatacenterReply{})
+
+	t.Run("doesn't exist", func(t *testing.T) {
+		var reply jsonrpc.RemoveRelayReply
+
+		err = svc.RemoveRelay(nil, &jsonrpc.RemoveRelayArgs{RelayID: expected.ID}, &reply)
+		assert.EqualError(t, err, fmt.Sprintf("relay with id %d not found in memory storage", expected.ID))
+	})
+
+	t.Run("remove", func(t *testing.T) {
+		var addReply jsonrpc.AddRelayReply
+		err := svc.AddRelay(nil, &jsonrpc.AddRelayArgs{Relay: expected}, &addReply)
+		assert.NoError(t, err)
+
+		var reply jsonrpc.RemoveRelayReply
+		err = svc.RemoveRelay(nil, &jsonrpc.RemoveRelayArgs{RelayID: expected.ID}, &reply)
+		assert.NoError(t, err)
+
+		var relaysReply jsonrpc.RelaysReply
+		err = svc.Relays(nil, &jsonrpc.RelaysArgs{}, &relaysReply)
+		assert.NoError(t, err)
+
+		assert.Len(t, relaysReply.Relays, 0)
+	})
+}
+
 func TestRelayStateUpdate(t *testing.T) {
 	makeSvc := func() *jsonrpc.OpsService {
 		var storer storage.InMemory
-		storer.AddRelay(context.Background(), routing.Relay{
-			ID:    1,
-			State: 0,
+
+		seller := routing.Seller{
+			ID:   "sellerID",
+			Name: "seller name",
+		}
+
+		datacenter := routing.Datacenter{
+			ID:   crypto.HashID("datacenter name"),
+			Name: "datacenter name",
+		}
+
+		storer.AddSeller(context.Background(), seller)
+		storer.AddDatacenter(context.Background(), datacenter)
+
+		err := storer.AddRelay(context.Background(), routing.Relay{
+			ID:         1,
+			State:      0,
+			Seller:     seller,
+			Datacenter: datacenter,
 		})
-		storer.AddRelay(context.Background(), routing.Relay{
-			ID:    2,
-			State: 123456,
+		assert.NoError(t, err)
+		err = storer.AddRelay(context.Background(), routing.Relay{
+			ID:         2,
+			State:      123456,
+			Seller:     seller,
+			Datacenter: datacenter,
 		})
+		assert.NoError(t, err)
 
 		return &jsonrpc.OpsService{
 			Storage: &storer,
@@ -408,14 +594,34 @@ func TestRelayStateUpdate(t *testing.T) {
 func TestRelayPublicKeyUpdate(t *testing.T) {
 	makeSvc := func() *jsonrpc.OpsService {
 		var storer storage.InMemory
-		storer.AddRelay(context.Background(), routing.Relay{
-			ID:        1,
-			PublicKey: []byte("oldpublickey"),
+
+		seller := routing.Seller{
+			ID:   "sellerID",
+			Name: "seller name",
+		}
+
+		datacenter := routing.Datacenter{
+			ID:   crypto.HashID("datacenter name"),
+			Name: "datacenter name",
+		}
+
+		storer.AddSeller(context.Background(), seller)
+		storer.AddDatacenter(context.Background(), datacenter)
+
+		err := storer.AddRelay(context.Background(), routing.Relay{
+			ID:         1,
+			PublicKey:  []byte("oldpublickey"),
+			Seller:     seller,
+			Datacenter: datacenter,
 		})
-		storer.AddRelay(context.Background(), routing.Relay{
-			ID:        2,
-			PublicKey: []byte("oldpublickey"),
+		assert.NoError(t, err)
+		err = storer.AddRelay(context.Background(), routing.Relay{
+			ID:         2,
+			PublicKey:  []byte("oldpublickey"),
+			Seller:     seller,
+			Datacenter: datacenter,
 		})
+		assert.NoError(t, err)
 
 		return &jsonrpc.OpsService{
 			Storage: &storer,
@@ -460,14 +666,34 @@ func TestRelayPublicKeyUpdate(t *testing.T) {
 func TestRelayNICSpeedUpdate(t *testing.T) {
 	makeSvc := func() *jsonrpc.OpsService {
 		var storer storage.InMemory
-		storer.AddRelay(context.Background(), routing.Relay{
+
+		seller := routing.Seller{
+			ID:   "sellerID",
+			Name: "seller name",
+		}
+
+		datacenter := routing.Datacenter{
+			ID:   crypto.HashID("datacenter name"),
+			Name: "datacenter name",
+		}
+
+		storer.AddSeller(context.Background(), seller)
+		storer.AddDatacenter(context.Background(), datacenter)
+
+		err := storer.AddRelay(context.Background(), routing.Relay{
 			ID:           1,
 			NICSpeedMbps: 1000,
+			Seller:       seller,
+			Datacenter:   datacenter,
 		})
-		storer.AddRelay(context.Background(), routing.Relay{
+		assert.NoError(t, err)
+		err = storer.AddRelay(context.Background(), routing.Relay{
 			ID:           2,
 			NICSpeedMbps: 2000,
+			Seller:       seller,
+			Datacenter:   datacenter,
 		})
+		assert.NoError(t, err)
 
 		return &jsonrpc.OpsService{
 			Storage: &storer,
@@ -550,10 +776,6 @@ func TestAddDatacenter(t *testing.T) {
 		Storage: &storer,
 	}
 
-	publicKey := make([]byte, crypto.KeySize)
-	_, err := rand.Read(publicKey)
-	assert.NoError(t, err)
-
 	expected := routing.Datacenter{
 		ID:      1,
 		Name:    "local datacenter",
@@ -583,7 +805,7 @@ func TestAddDatacenter(t *testing.T) {
 	t.Run("exists", func(t *testing.T) {
 		var reply jsonrpc.AddDatacenterReply
 
-		err = svc.AddDatacenter(nil, &jsonrpc.AddDatacenterArgs{Datacenter: expected}, &reply)
+		err := svc.AddDatacenter(nil, &jsonrpc.AddDatacenterArgs{Datacenter: expected}, &reply)
 		assert.EqualError(t, err, "datacenter with id 1 already exists in memory storage")
 	})
 }
@@ -594,10 +816,6 @@ func TestRemoveDatacenter(t *testing.T) {
 	svc := jsonrpc.OpsService{
 		Storage: &storer,
 	}
-
-	publicKey := make([]byte, crypto.KeySize)
-	_, err := rand.Read(publicKey)
-	assert.NoError(t, err)
 
 	expected := routing.Datacenter{
 		ID:      crypto.HashID("local datacenter"),
@@ -612,7 +830,7 @@ func TestRemoveDatacenter(t *testing.T) {
 	t.Run("doesn't exist", func(t *testing.T) {
 		var reply jsonrpc.RemoveDatacenterReply
 
-		err = svc.RemoveDatacenter(nil, &jsonrpc.RemoveDatacenterArgs{Name: expected.Name}, &reply)
+		err := svc.RemoveDatacenter(nil, &jsonrpc.RemoveDatacenterArgs{Name: expected.Name}, &reply)
 		assert.EqualError(t, err, fmt.Sprintf("datacenter with id %d not found in memory storage", expected.ID))
 	})
 
