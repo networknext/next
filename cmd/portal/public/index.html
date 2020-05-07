@@ -349,42 +349,42 @@
                                     <thead>
                                         <tr>
                                             <th>
-                                                <span id="getIndicator">
+                                                <span>
 
                                                 </span>
                                             </th>
                                             <th>
-                                                <span id="getFlowidhexadecimal">
+                                                <span>
                                                     Session ID
                                                 </span>
                                             </th>
                                             <th>
-                                                <span id="getUserhash">
+                                                <span>
                                                     User ID
                                                 </span>
                                             </th>
                                             <th>
-                                                <span id="getUserisp">
+                                                <span>
                                                     ISP
                                                 </span>
                                             </th>
                                             <th>
-                                                <span id="getDestrelayname">
+                                                <span>
                                                     Datacenter
                                                 </span>
                                             </th>
                                             <th class="text-right">
-                                                <span id="direct">
+                                                <span>
                                                     Direct RTT
                                                 </span>
                                             </th>
                                             <th class="text-right">
-                                                <span id="next">
+                                                <span>
                                                     Next RTT
                                                 </span>
                                             </th>
                                             <th class="text-right">
-                                                <span id="improvement">
+                                                <span>
                                                     Improvement
                                                 </span>
                                             </th>
@@ -415,15 +415,25 @@
                                                 </span>
                                             </td>
                                             <td class="text-right ">
-                                                {{ session.direct_rtt }}
+                                                {{ parseFloat(session.direct_rtt).toFixed(2) }}
                                             </td>
                                             <td class="text-right ">
-                                                {{ session.next_rtt }}
+                                                {{ parseFloat(session.next_rtt).toFixed(2) }}
                                             </td>
                                             <td class="text-right ">
-                                                <span class="text-danger">
+                                                <span class="text-success" v-if="session.delta_rtt > 5">
                                                     <b>
-                                                        {{ session.delta_rtt }}
+                                                        {{ parseFloat(session.delta_rtt).toFixed(2) }}
+                                                    </b>
+                                                </span>
+                                                <span style="color: orange;" v-if="session.delta_rtt > 2">
+                                                    <b>
+                                                        {{ parseFloat(session.delta_rtt).toFixed(2) }}
+                                                    </b>
+                                                </span>
+                                                <span class="text-danger" v-if="session.delta_rtt <= 2">
+                                                    <b>
+                                                        {{ parseFloat(session.delta_rtt).toFixed(2) }}
                                                     </b>
                                                 </span>
                                             </td>
@@ -752,38 +762,38 @@
                                 <table class="table table-sm" v-if="showTable">
                                     <thead>
                                         <tr>
-                                            <th class="">
-                                                <span id="getFlowidhexadecimal">
+                                            <th>
+                                                <span>
                                                     Session ID
                                                 </span>
                                             </th>
-                                            <th class="">
-                                                <span id="getPlatform">
+                                            <th>
+                                                <span>
                                                     Platform
                                                 </span>
                                             </th>
-                                            <th class="">
-                                                <span id="getConnectiontype">
+                                            <th>
+                                                <span>
                                                     Connection Type
                                                 </span>
                                             </th>
-                                            <th class="">
-                                                <span id="getUserisp">
+                                            <th>
+                                                <span>
                                                     ISP
                                                 </span>
                                             </th>
-                                            <th class="">
-                                                <span id="getDestrelayname">
+                                            <th>
+                                                <span>
                                                     Datacenter
                                                 </span>
                                             </th>
-                                            <th class="">
-                                                <span id="getServeraddress">
+                                            <th>
+                                                <span>
                                                     Server Address
                                                 </span>
                                             </th>
-                                            <th class="">
-                                                <span id="getSessionstartutc">
+                                            <th>
+                                                <span>
                                                     Started
                                                 </span>
                                             </th>

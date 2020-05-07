@@ -4,7 +4,6 @@
  */
 mapboxgl.accessToken = 'pk.eyJ1IjoiYmF1bWJhY2hhbmRyZXciLCJhIjoiY2s4dDFwcGo2MGowZTNtcXpsbDN6dHBwdyJ9.Sr1lDY9i9o9yz84fJ-PSlg';
 
-const SEC_TO_MS = 1000;
 const DEC_TO_PERC = 100;
 
 var userInfo = {
@@ -15,6 +14,23 @@ var userInfo = {
 	token: "",
 	userId: "",
 };
+
+var defaultSessionDetailsVue = {
+	meta: null,
+	slices: [],
+	showDetails: false,
+};
+
+var defaultSessionsTable = {
+	onNN: [],
+	sessions: [],
+	showCount: false,
+};
+
+var defaultUserSessionTable = {
+	sessions: [],
+	showTable: false,
+}
 
 var accountsTable = null;
 var mapSessionsCount = null;
@@ -252,11 +268,7 @@ WorkspaceHandler = {
 				WorkspaceHandler.alerts.sessionToolAlert.style.display = 'block';
 				WorkspaceHandler.alerts.sessionToolDanger.style.display = 'none';
 
-				Object.assign(sessionDetailsVue.$data, {
-					meta: null,
-					slices: [],
-					showDetails: false,
-				});
+				Object.assign(sessionDetailsVue.$data, defaultSessionDetailsVue);
 				document.getElementById("session-id-input").value = '';
 				this.workspaces.sessionToolWorkspace.style.display = 'block';
 				this.links.sessionToolLink.classList.add("active");
@@ -265,10 +277,7 @@ WorkspaceHandler = {
 				WorkspaceHandler.alerts.userToolAlert.style.display = 'block';
 				WorkspaceHandler.alerts.userToolDanger.style.display = 'none';
 
-				Object.assign(userSessionTable.$data, {
-					sessions: [],
-					showTable: false,
-				});
+				Object.assign(userSessionTable.$data, defaultUserSessionTable);
 
 				document.getElementById("user-hash-input").value = '';
 				this.workspaces.userToolWorkspace.style.display = 'block';
@@ -541,20 +550,11 @@ function createVueComponents() {
 	});
 	sessionDetailsVue = new Vue({
 		el: '#session-details',
-		data: {
-			id: '',
-			meta: null,
-			showDetails: false,
-			slices: [],
-		}
+		data: defaultSessionDetailsVue
 	});
 	sessionsTable = new Vue({
 		el: '#sessions',
-		data: {
-			onNN: [],
-			sessions: [],
-			showCount: false,
-		},
+		data: defaultSessionsTable,
 		methods: {
 			fetchSessionInfo: fetchSessionInfo,
 			fetchUserSessions: fetchUserSessions,
@@ -562,11 +562,7 @@ function createVueComponents() {
 	});
 	userSessionTable = new Vue({
 		el: '#user-sessions',
-		data: {
-			hash: '',
-			sessions: [],
-			showTable: false,
-		},
+		data: defaultUserSessionTable,
 		methods: {
 			fetchSessionInfo: fetchSessionInfo
 		}
@@ -588,10 +584,7 @@ function fetchUserSessions(userHash = '') {
 	}
 
 	if (hash == '') {
-		Object.assign(userSessionTable.$data, {
-			sessions: [],
-			showTable: false,
-		});
+		Object.assign(userSessionTable.$data, defaultUserSessionTable);
 		document.getElementById("user-hash-input").value = '';
 		WorkspaceHandler.alerts.userToolDanger.style.display = 'block';
 		return;
@@ -614,10 +607,7 @@ function fetchUserSessions(userHash = '') {
 			WorkspaceHandler.alerts.userToolDanger.style.display = 'none';
 		})
 		.catch((e) => {
-			Object.assign(userSessionTable.$data, {
-				sessions: [],
-				showTable: false,
-			});
+			Object.assign(userSessionTable.$data, defaultUserSessionTable);
 			console.log("Something went wrong fetching user sessions: ");
 			console.log(e);
 			WorkspaceHandler.alerts.userToolDanger.style.display = 'block';
@@ -654,11 +644,7 @@ function fetchSessionInfo(sessionId = '') {
 	}
 
 	if (id == '') {
-		Object.assign(sessionDetailsVue.$data, {
-			meta: null,
-			slices: [],
-			showDetails: false,
-		});
+		Object.assign(sessionDetailsVue.$data, defaultSessionDetailsVue);
 		document.getElementById("session-id-input").value = '';
 		WorkspaceHandler.alerts.sessionToolDanger.style.display = 'block';
 		return;
@@ -714,11 +700,7 @@ function fetchSessionInfo(sessionId = '') {
 			WorkspaceHandler.alerts.sessionToolDanger.style.display = 'none';
 		})
 		.catch((e) => {
-			Object.assign(sessionDetailsVue.$data, {
-				meta: null,
-				slices: [],
-				showDetails: false,
-			});
+			Object.assign(sessionDetailsVue.$data, defaultSessionDetailsVue);
 			console.log("Something went wrong fetching session details: ");
 			console.log(e);
 			WorkspaceHandler.alerts.sessionToolDanger.style.display = 'block';
@@ -776,8 +758,8 @@ function generateCharts(data) {
 		let timestamp = new Date(entry.timestamp).getTime() / 1000;
 
 		// Latency
-		let next = Number.parseInt(entry.next.rtt * SEC_TO_MS).toFixed(0);
-		let direct = Number.parseInt(entry.direct.rtt * SEC_TO_MS).toFixed(0);
+		let next = parseFloat(entry.next.rtt);
+		let direct = parseFloat(entry.direct.rtt);
 		let improvement = direct - next;
 		latencyData.improvement[0].push(timestamp);
 		latencyData.improvement[1].push(improvement);
@@ -786,8 +768,8 @@ function generateCharts(data) {
 		latencyData.comparison[2].push(direct);
 
 		// Jitter
-		next = Number.parseInt(entry.next.jitter * SEC_TO_MS).toFixed(0);
-		direct = Number.parseInt(entry.direct.jitter * SEC_TO_MS).toFixed(0);
+		next = parseFloat(entry.next.jitter);
+		direct = parseFloat(entry.direct.jitter);
 		improvement = direct - next;
 		jitterData.improvement[0].push(timestamp);
 		jitterData.improvement[1].push(improvement);
@@ -796,8 +778,8 @@ function generateCharts(data) {
 		jitterData.comparison[2].push(direct);
 
 		// Packetloss
-		next = Number.parseInt(entry.next.packet_loss * DEC_TO_PERC).toFixed(0);
-		direct = Number.parseInt(entry.direct.packet_loss * DEC_TO_PERC).toFixed(0);
+		next = parseFloat(entry.next.packet_loss * DEC_TO_PERC);
+		direct = parseFloat(entry.direct.packet_loss * DEC_TO_PERC);
 		improvement = direct - next;
 		packetLossData.improvement[0].push(timestamp);
 		packetLossData.improvement[1].push(improvement);
