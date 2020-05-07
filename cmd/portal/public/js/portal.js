@@ -268,9 +268,6 @@ WorkspaceHandler = {
 		editUserPermissions[accountInfo.user_id].enable();
 	},
 	saveUser(accountInfo, index) {
-		accountInfo.delete ? console.log("Deleting user"): null;
-		accountInfo.edit ? console.log("Editing user"): null;
-
 		if (accountInfo.edit) {
 			let roles = editUserPermissions[accountInfo.user_id].getValue(true);
 			JSONRPCClient
@@ -287,10 +284,12 @@ WorkspaceHandler = {
 		}
 		if (accountInfo.delete) {
 			JSONRPCClient
-				.call('AuthService.DeleteUserAccount', {user_id: accountInfo.user_id})
+				.call('AuthService.DeleteUserAccount', {user_id: `auth0|${accountInfo.user_id}`})
 				.then((response) => {
-					accountsTable.$data.accounts.splice(index, 1);
-					WorkspaceHandler.cancelEditUser(accountInfo);
+					let accounts = accountsTable.$data.accounts;
+					accounts.splice(index, 1);
+					Object.assign(accountsTable.$data, {accounts: accounts});
+					editUserPermissions[accountInfo.user_id] = null;
 				})
 				.catch((e) => {
 					console.log("Something went wrong updating the users permissions");
