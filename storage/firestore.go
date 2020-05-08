@@ -1046,7 +1046,6 @@ func (fs *Firestore) syncCustomers(ctx context.Context) error {
 				PublicKey:            b.PublicKey,
 				RoutingRulesSettings: rrs,
 			}
-			fmt.Println(buyers[uint64(b.ID)])
 		}
 
 		// Get the associated seller for the customer
