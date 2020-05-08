@@ -22,11 +22,45 @@ DONE
 
 	Now need to go across all todos and remove debug logs...
 
+	Network Next passes functional tests again.
+
+	Added next_is_network_next_packet
+
+	Removing NEXT_MAGIC.
+
+	Simplifying...
+
+	Extended next_write_packet to include the hash prefix.
+
+	Extend next_read_packet to skip past the hash prefix, since we've already checked...		
+
+	Added assert to make sure it's valid tho.
+
+	Extend next_write_backend packet to include the packet hash.
+
 TODO
+
+	Remove all the contortions around *valid. It's no longer necessary or required complexity.
 
 	--------------------------------
 
-	Network Next should pass functional tests again.
+	Get the reference backend talking the protocol with the blake2 prefix.
+
+	--------------------------------
+
+	Upgrade reference to have a codepath for the blake2 prefixed packets.
+
+	--------------------------------
+
+
+
+
+
+
+
+
+
+
 
 	--------------------------------
 
@@ -34,7 +68,7 @@ TODO
 
 	--------------------------------
 
-	Add a test to verify that no network next packets leak through to game in the common case.
+	Add a test to verify that no network next packets leak through to game.
 
 	--------------------------------
 
@@ -43,31 +77,6 @@ TODO
 	Meant to check stability of our protocols against random data.
 
 	Worth running overnight. Add test.
-
-	--------------------------------
-
-	Maybe extend stream serialize to check that there are no remaining bytes at the end of packet read... this would increase entropy.
- 
-	--------------------------------
-
-
-
-
-
-
-
-
-
-
- 
-
-
-
-	--------------------------------
-
-	Need to move all packets that go across relays that have changed, into new byte values.
-
-	This makes it possible for a relay to support both old and new protocol across relays (!!!)
 
 	--------------------------------
 

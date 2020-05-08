@@ -109,7 +109,7 @@
 #define NEXT_SERVER_STATE_INITIALIZING                                  2
 #define NEXT_SERVER_STATE_INITIALIZED                                   3
 
-#define NEXT_MAGIC                                     0x6d0f54ac87acda73
+#define NEXT_PACKET_HASH_BYTES                                          8
 
 static const uint8_t next_backend_public_key[] = 
 { 
@@ -125,6 +125,14 @@ static const uint8_t next_router_public_key[] =
     0xa7, 0x55, 0x50, 0xeb, 0xab, 0x03, 0xde, 0xa9, 
     0x1b, 0xff, 0x61, 0xc6, 0x0e, 0x65, 0x92, 0xd7, 
     0x09, 0x64, 0xe9, 0x34, 0x12, 0x32, 0x5f, 0x46 
+};
+
+static const uint8_t next_packet_hash_key[] =
+{
+    0xe3, 0x18, 0x61, 0x72, 0xee, 0x70, 0x62, 0x37, 
+    0x40, 0xf6, 0x0a, 0xea, 0xe0, 0xb5, 0x1a, 0x2c, 
+    0x2a, 0x47, 0x98, 0x8f, 0x27, 0xec, 0x63, 0x2c, 
+    0x25, 0x04, 0x74, 0x89, 0xaf, 0x5a, 0xeb, 0x24
 };
 
 #if !defined (NEXT_LITTLE_ENDIAN ) && !defined( NEXT_BIG_ENDIAN )
@@ -2430,6 +2438,25 @@ uint64_t next_random_uint64()
     return value;
 }
 
+int next_is_network_next_packet( const uint8_t * packet_data, int packet_bytes )
+{
+    if ( packet_bytes <= NEXT_PACKET_HASH_BYTES )
+        return 0;
+
+    if ( packet_bytes > NEXT_MAX_PACKET_BYTES )
+        return false;
+
+    const uint8_t * message = packet_data + NEXT_PACKET_HASH_BYTES;
+    const int message_length = packet_bytes - NEXT_PACKET_HASH_BYTES;
+
+    next_assert( message_length > 0 );
+
+    uint8_t hash[NEXT_PACKET_HASH_BYTES];
+    crypto_generichash( hash, NEXT_PACKET_HASH_BYTES, message, message_length, next_packet_hash_key, crypto_generichash_KEYBYTES );
+
+    return memcmp( hash, packet_data, NEXT_PACKET_HASH_BYTES ) == 0;
+}
+
 // -------------------------------------------------------------
 
 struct NextUpgradeToken
@@ -2712,18 +2739,12 @@ struct NextUpgradeRequestPacket
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
-        uint64_t magic = Stream::IsWriting ? NEXT_MAGIC : 0;
-        serialize_uint64( stream, magic );
-        if ( Stream::IsReading && magic != NEXT_MAGIC )
-            return false;
-
         serialize_uint64( stream, protocol_version );
         serialize_uint64( stream, session_id );
         serialize_address( stream, server_address );
         serialize_bytes( stream, server_kx_public_key, crypto_kx_PUBLICKEYBYTES );
         serialize_bytes( stream, upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
         serialize_bytes( stream, signature, crypto_sign_BYTES );
-
         return true;
     }
 
@@ -2775,16 +2796,10 @@ struct NextUpgradeResponsePacket
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
-        uint64_t magic = Stream::IsWriting ? NEXT_MAGIC : 0;
-        serialize_uint64( stream, magic );
-        if ( Stream::IsReading && magic != NEXT_MAGIC )
-            return false;
-
         serialize_bits( stream, client_open_session_sequence, 8 );
         serialize_bytes( stream, client_kx_public_key, crypto_kx_PUBLICKEYBYTES );
         serialize_bytes( stream, client_route_public_key, crypto_box_PUBLICKEYBYTES );
         serialize_bytes( stream, upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
-
         return true;
     }
 };
@@ -2805,18 +2820,12 @@ struct NextUpgradeConfirmPacket
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
-        uint64_t magic = Stream::IsWriting ? NEXT_MAGIC : 0;
-        serialize_uint64( stream, magic );
-        if ( Stream::IsReading && magic != NEXT_MAGIC )
-            return false;
-
         serialize_uint64( stream, upgrade_sequence );
         serialize_uint64( stream, session_id );
         serialize_address( stream, server_address );
         serialize_bytes( stream, client_kx_public_key, crypto_kx_PUBLICKEYBYTES );
         serialize_bytes( stream, server_kx_public_key, crypto_kx_PUBLICKEYBYTES );
         serialize_bytes( stream, signature, crypto_sign_BYTES );
-
         return true;
     }
 
@@ -2865,10 +2874,6 @@ struct NextDirectPingPacket
     
     template <typename Stream> bool Serialize( Stream & stream )
     {
-        uint64_t magic = Stream::IsWriting ? NEXT_MAGIC : 0;
-        serialize_uint64( stream, magic );
-        if ( Stream::IsReading && magic != NEXT_MAGIC )
-            return false;
         serialize_uint64( stream, ping_sequence );
         return true;
     }
@@ -2880,10 +2885,6 @@ struct NextDirectPongPacket
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
-        uint64_t magic = Stream::IsWriting ? NEXT_MAGIC : 0;
-        serialize_uint64( stream, magic );
-        if ( Stream::IsReading && magic != NEXT_MAGIC )
-            return false;
         serialize_uint64( stream, ping_sequence );
         return true;
     }
@@ -3088,6 +3089,9 @@ int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet
 
     typedef next::WriteStream Stream;
 
+    uint64_t hash = 0;
+    serialize_uint64( stream, hash );
+
     serialize_bits( stream, packet_id, 8 );
 
     if ( encrypted_packet && encrypted_packet[packet_id] != 0 )
@@ -3220,10 +3224,10 @@ int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet
 
     if ( encrypted_packet && encrypted_packet[packet_id] )
     {
-        uint8_t * additional = packet_data;
-        uint8_t * nonce = packet_data + 1;
-        uint8_t * message = packet_data + 1 + 8;
-        int message_length = *packet_bytes - 1 - 8;
+        uint8_t * additional = packet_data + NEXT_PACKET_HASH_BYTES;
+        uint8_t * nonce = packet_data + NEXT_PACKET_HASH_BYTES + 1;
+        uint8_t * message = packet_data + NEXT_PACKET_HASH_BYTES + 1 + 8;
+        int message_length = *packet_bytes - 1 - 8 - NEXT_PACKET_HASH_BYTES;
 
         unsigned long long encrypted_bytes = 0;
 
@@ -3234,10 +3238,17 @@ int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet
 
         next_assert( encrypted_bytes == uint64_t(message_length) + crypto_aead_chacha20poly1305_ABYTES );
 
-        *packet_bytes = 1 + 8 + encrypted_bytes;
+        *packet_bytes = NEXT_PACKET_HASH_BYTES + 1 + 8 + encrypted_bytes;
 
         (*sequence)++;
     }
+
+    const uint8_t * message = packet_data + NEXT_PACKET_HASH_BYTES;
+    const int message_length = *packet_bytes - NEXT_PACKET_HASH_BYTES;
+
+    next_assert( message_length > 0 );
+
+    crypto_generichash( packet_data, NEXT_PACKET_HASH_BYTES, message, message_length, next_packet_hash_key, crypto_generichash_KEYBYTES );
 
     return NEXT_OK;
 }
@@ -3261,6 +3272,11 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
     next_assert( valid );
 
     *valid = false;
+
+    next_assert( next_is_network_next_packet( packet_data, packet_bytes ) );
+    next_assert( packet_bytes >= NEXT_PACKET_HASH_BYTES );
+    packet_bytes -= NEXT_PACKET_HASH_BYTES;
+    packet_data += NEXT_PACKET_HASH_BYTES;
 
     if ( packet_bytes < 1 )
         return NEXT_ERROR;
@@ -5381,14 +5397,10 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     // upgraded direct packet (255)
 
-    if ( client->upgraded && packet_id == NEXT_DIRECT_PACKET && packet_bytes <= NEXT_MTU + 18 && from_server_address )
+    if ( client->upgraded && packet_id == NEXT_DIRECT_PACKET && packet_bytes <= NEXT_MTU + 10 && from_server_address )
     {
         const uint8_t * p = packet_data + 1;
 
-        uint64_t packet_magic = next_read_uint64( &p );
-        if ( packet_magic != NEXT_MAGIC )
-            return false;
-        
         uint8_t packet_session_sequence = next_read_uint8( &p );
         
         if ( packet_session_sequence != client->open_session_sequence )
@@ -5410,8 +5422,8 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
         }
         next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
-        notify->packet_bytes = packet_bytes - 18;
-        memcpy( notify->packet_data, packet_data + 18, size_t(packet_bytes) - 18 );
+        notify->packet_bytes = packet_bytes - 10;
+        memcpy( notify->packet_data, packet_data + 10, size_t(packet_bytes) - 10 );
         {
             next_mutex_guard( client->notify_mutex );
             next_queue_push( client->notify_queue, notify );            
@@ -5995,10 +6007,14 @@ void next_client_internal_block_and_receive_packet( next_client_internal_t * cli
         return;
 #endif // #if NEXT_DEVELOPMENT
 
-    if ( next_client_internal_process_network_next_packet( client, &from, packet_data, packet_bytes ) )
-        return;
-
-    next_client_internal_process_game_packet( client, &from, packet_data, packet_bytes );
+    if ( next_is_network_next_packet( packet_data, packet_bytes ) )
+    {
+        next_client_internal_process_network_next_packet( client, &from, packet_data + NEXT_PACKET_HASH_BYTES, packet_bytes - NEXT_PACKET_HASH_BYTES );
+    }
+    else
+    {
+        next_client_internal_process_game_packet( client, &from, packet_data, packet_bytes );
+    }
 }
 
 bool next_client_internal_pump_commands( next_client_internal_t * client )
@@ -6765,7 +6781,7 @@ void next_client_update( next_client_t * client )
                 client->fallback_to_direct = stats_updated->fallback_to_direct;
                 if ( client->fallback_to_direct && client->upgraded )
                 {
-                    next_printf( NEXT_LOG_LEVEL_DEBUG, "detected race between upgrade and fallback to direct. clearing upgraded flag to avoid zombie client\n" );
+                    next_printf( NEXT_LOG_LEVEL_DEBUG, "detected race between upgrade and fallback to direct. clearing upgraded flag to avoid zombie client" );
                     client->upgraded = false;
                     client->session_id = 0;
                 }
@@ -6884,16 +6900,15 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
         if ( send_direct )
         {
-            // [255][magic][open session sequence][sequence](payload) style packets direct to server
+            // [255][magic][sequence](payload) style packets direct to server
 
-            uint8_t buffer[18+NEXT_MTU];
+            uint8_t buffer[10+NEXT_MTU];
             uint8_t * p = buffer;
             next_write_uint8( &p, NEXT_DIRECT_PACKET );
-            next_write_uint64( &p, NEXT_MAGIC );
             next_write_uint8( &p, client->open_session_sequence );
             next_write_uint64( &p, send_sequence );
-            memcpy( buffer+18, packet_data, packet_bytes );
-            next_platform_socket_send_packet( client->internal->socket, &client->server_address, buffer, packet_bytes + 18 );
+            memcpy( buffer+10, packet_data, packet_bytes );
+            next_platform_socket_send_packet( client->internal->socket, &client->server_address, buffer, packet_bytes + 10 );
             client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
         }
     }
@@ -8413,6 +8428,9 @@ int next_write_backend_packet( uint8_t packet_id, void * packet_object, uint8_t 
 
     typedef next::WriteStream Stream;
 
+    uint64_t hash = 0;
+    serialize_uint64( stream, hash );
+
     serialize_bits( stream, packet_id, 8 );
 
     switch ( packet_id )
@@ -8465,6 +8483,13 @@ int next_write_backend_packet( uint8_t packet_id, void * packet_object, uint8_t 
 
     *packet_bytes = stream.GetBytesProcessed();
 
+    const uint8_t * message = packet_data + NEXT_PACKET_HASH_BYTES;
+    const int message_length = *packet_bytes - NEXT_PACKET_HASH_BYTES;
+
+    next_assert( message_length > 0 );
+
+    crypto_generichash( packet_data, NEXT_PACKET_HASH_BYTES, message, message_length, next_packet_hash_key, crypto_generichash_KEYBYTES );
+
     return NEXT_OK;
 }
 
@@ -8472,6 +8497,11 @@ int next_read_backend_packet( uint8_t * packet_data, int packet_bytes, void * pa
 {
     next_assert( packet_data );
     next_assert( packet_object );
+
+    next_assert( next_is_network_next_packet( packet_data, packet_bytes ) );
+    next_assert( packet_bytes >= NEXT_PACKET_HASH_BYTES );
+    packet_bytes -= NEXT_PACKET_HASH_BYTES;
+    packet_data += NEXT_PACKET_HASH_BYTES;
 
     if ( packet_bytes < 1 )
         return NEXT_ERROR;
@@ -9212,14 +9242,9 @@ bool next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     // upgraded direct packet (255)
 
-    if ( packet_id == NEXT_DIRECT_PACKET && packet_bytes > 18 && packet_bytes <= NEXT_MTU + 18 )
+    if ( packet_id == NEXT_DIRECT_PACKET && packet_bytes > 10 && packet_bytes <= NEXT_MTU + 10 )
     {
         const uint8_t * p = packet_data + 1;
-
-        uint64_t packet_magic = next_read_uint64( &p );
-
-        if ( packet_magic != NEXT_MAGIC )
-            return false;
 
         uint8_t packet_session_sequence = next_read_uint8( &p );
         
@@ -9256,8 +9281,8 @@ bool next_server_internal_process_network_next_packet( next_server_internal_t * 
         next_server_notify_packet_received_t * notify = (next_server_notify_packet_received_t*) next_malloc( server->context, sizeof( next_server_notify_packet_received_t ) );
         notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
         notify->from = *from;
-        notify->packet_bytes = packet_bytes - 18;
-        memcpy( notify->packet_data, packet_data + 18, size_t(packet_bytes) - 18 );
+        notify->packet_bytes = packet_bytes - 10;
+        memcpy( notify->packet_data, packet_data + 10, size_t(packet_bytes) - 10 );
         {
             next_mutex_guard( server->notify_mutex );
             next_queue_push( server->notify_queue, notify );            
@@ -9991,11 +10016,6 @@ void next_server_internal_process_game_packet( next_server_internal_t * server, 
 
 void next_server_internal_block_and_receive_packet( next_server_internal_t * server )
 {
-    // IMPORTANT: don't pump to receive any packets while we are resolving the backend hostname
-    // we don't know the backend hostname yet, and thus cannot distinguish backend packets from client packets.
-    if ( server->state == NEXT_SERVER_STATE_RESOLVING_HOSTNAME )
-        return;
-
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
 
     next_address_t from;
@@ -10012,10 +10032,14 @@ void next_server_internal_block_and_receive_packet( next_server_internal_t * ser
          return;
 #endif // #if NEXT_DEVELOPMENT
 
-    if ( next_server_internal_process_network_next_packet( server, &from, packet_data, packet_bytes ) )
-        return;
-
-    next_server_internal_process_game_packet( server, &from, packet_data, packet_bytes );
+    if ( next_is_network_next_packet( packet_data, packet_bytes ) )
+    {
+        next_server_internal_process_network_next_packet( server, &from, packet_data, packet_bytes );
+    }
+    else
+    {
+        next_server_internal_process_game_packet( server, &from, packet_data, packet_bytes );    
+    }
 }
 
 void next_server_internal_upgrade_session( next_server_internal_t * server, const next_address_t * address, uint64_t session_id, uint64_t user_hash, uint32_t platform_id, uint64_t tag )
@@ -10942,16 +10966,15 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
             if ( send_upgraded_direct )
             {
-                // [255][magic][open session sequence][packet sequence](payload) style packet direct to client
+                // [255][magic][packet sequence](payload) style packet direct to client
 
-                uint8_t buffer[18+NEXT_MTU];
+                uint8_t buffer[10+NEXT_MTU];
                 uint8_t * p = buffer;
                 next_write_uint8( &p, NEXT_DIRECT_PACKET );
-                next_write_uint64( &p, NEXT_MAGIC );
                 next_write_uint8( &p, open_session_sequence );
                 next_write_uint64( &p, send_sequence );
-                memcpy( buffer+18, packet_data, packet_bytes );
-                next_platform_socket_send_packet( server->internal->socket, to_address, buffer, packet_bytes + 18 );
+                memcpy( buffer+10, packet_data, packet_bytes );
+                next_platform_socket_send_packet( server->internal->socket, to_address, buffer, packet_bytes + 10 );
             }
         }
     }

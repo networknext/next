@@ -36,6 +36,8 @@ void interrupt_handler( int signal )
 void client_packet_received( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
 {
     (void) client; (void) context; (void) packet_data; (void) packet_bytes;
+
+    printf( "client received packet\n" );
 }
 
 const char * customer_public_key = "pX89DxRQBaQuYebn80myIh+12DPY2mXFhoRhiLRpKFoffKSVE0zotg==";
