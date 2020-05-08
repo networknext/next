@@ -14,11 +14,11 @@ DONE
 
 	Bring across "next pong" packet.
 
+	Verify that everything works with ref backend, eg. packets across network next route.
+
 TODO
 
-	--------------------------------
-
-	Verify that everything works with ref backend, eg. packets across network next route.
+	Works fine, but seems like continue request timed out. Might be missing continue response packet handling?
 
 	--------------------------------
 
