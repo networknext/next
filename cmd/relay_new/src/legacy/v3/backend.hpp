@@ -6,10 +6,11 @@
 #include "core/packet.hpp"
 #include "net/address.hpp"
 #include "os/platform.hpp"
+#include "traffic_stats.hpp"
 #include "util/channel.hpp"
+#include "util/clock.hpp"
 #include "util/env.hpp"
 #include "util/json.hpp"
-#include "util/clock.hpp"
 
 namespace legacy
 {
@@ -19,7 +20,7 @@ namespace legacy
     class Backend
     {
      public:
-      Backend(util::Receiver<core::GenericPacket<>>& receiver, util::Env& env, os::Socket& socket, const util::Clock& relayClock);
+      Backend(util::Receiver<core::GenericPacket<>>& receiver, util::Env& env, os::Socket& socket, const util::Clock& relayClock, TrafficStats& stats);
       ~Backend() = default;
 
       auto init() -> bool;
@@ -32,6 +33,7 @@ namespace legacy
       const util::Env& mEnv;
       os::Socket& mSocket;
       const util::Clock& mClock;
+      TrafficStats& mStats;
       BackendToken mToken;
       uint64_t mInitTimestamp;
       std::string mGroup;

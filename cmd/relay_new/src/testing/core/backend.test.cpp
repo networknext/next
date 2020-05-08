@@ -23,12 +23,13 @@ namespace
   core::Backend<testing::StubbedCurlWrapper> makeBackend(
    core::RouterInfo& info, core::RelayManager& manager, core::SessionMap& sessions)
   {
-    crypto::Keychain keychain;
+    static crypto::Keychain keychain;
+    static legacy::v3::TrafficStats ts;
 
     check(keychain.parse(Base64RelayPublicKey, Base64RelayPrivateKey, Base64RouterPublicKey));
 
     return core::Backend<testing::StubbedCurlWrapper>(
-     BackendHostname, RelayAddr, keychain, info, manager, Base64RelayPublicKey, sessions);
+     BackendHostname, RelayAddr, keychain, info, manager, Base64RelayPublicKey, sessions, ts);
   }
 }  // namespace
 

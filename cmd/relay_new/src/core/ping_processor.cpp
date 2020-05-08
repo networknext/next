@@ -16,8 +16,14 @@ namespace core
    core::RelayManager& relayManager,
    const volatile bool& shouldProcess,
    const net::Address& relayAddress,
-   util::ThroughputRecorder& recorder)
-   : mSocket(socket), mRelayManager(relayManager), mShouldProcess(shouldProcess), mRelayAddress(relayAddress), mRecorder(recorder)
+   util::ThroughputRecorder& recorder,
+   legacy::v3::TrafficStats& stats)
+   : mSocket(socket),
+     mRelayManager(relayManager),
+     mShouldProcess(shouldProcess),
+     mRelayAddress(relayAddress),
+     mRecorder(recorder),
+     mStats(stats)
   {
     LogDebug("sending pings using this addr: ", relayAddress);
   }
@@ -64,7 +70,18 @@ namespace core
         pkt.Len = index;
         hdr.msg_iov[0].iov_len = index;
 
-        mRecorder.addToSent(pkt.Len);
+        size_t headerSize = 0;
+        if (addr.Type == net::AddressType::IPv4) {
+          headerSize = net::IPv4UDPHeaderSize;
+        } else if (addr.Type == net::AddressType::IPv6) {
+          headerSize = net::IPv6UDPHeaderSize;
+        }
+
+        size_t wholePacketSize = headerSize + pkt.Len;
+
+        // could also just do: (1 + 8 + net::Address::ByteSize) * number of relays to ping to make this faster
+        mRecorder.addToSent(wholePacketSize);
+        mStats.BytesPerSecManagementTx += wholePacketSize;
       }
 
       buffer.Count = numberOfRelaysToPing;

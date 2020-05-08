@@ -7,6 +7,9 @@
 
 namespace net
 {
+  const uint8_t IPv4UDPHeaderSize = 28;
+  const uint8_t IPv6UDPHeaderSize = 48;
+
   enum class AddressType : uint8_t
   {
     None,

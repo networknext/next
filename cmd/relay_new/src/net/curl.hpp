@@ -24,7 +24,8 @@ namespace net
 
    public:
     template <typename ReqType, typename RespType>
-    static bool SendTo(const std::string hostname, const std::string endpoint, const ReqType& request, RespType& response, size_t* bytesSent);
+    static bool SendTo(
+     const std::string hostname, const std::string endpoint, const ReqType& request, RespType& response, size_t& bytesSent);
   };
 
   /*
@@ -34,7 +35,7 @@ namespace net
    */
   template <typename ReqType, typename RespType>
   bool CurlWrapper::SendTo(
-   const std::string hostname, const std::string endpoint, const ReqType& request, RespType& response, size_t* bytesSent)
+   const std::string hostname, const std::string endpoint, const ReqType& request, RespType& response, size_t& bytesSent)
   {
     static CurlWrapper wrapper;
 
@@ -68,10 +69,8 @@ namespace net
       return false;
     }
 
-    if (bytesSent != nullptr) {
-      if (!curl_easy_getinfo(wrapper.mHandle, CURLINFO_REQUEST_SIZE, bytesSent)) {
-        Log("curl could not get the last request size"); // non-critical failure, don't return false
-      }
+    if (!curl_easy_getinfo(wrapper.mHandle, CURLINFO_REQUEST_SIZE, &bytesSent)) {
+      Log("curl could not get the last request size");  // non-critical failure, don't return false
     }
 
     long code = 0;

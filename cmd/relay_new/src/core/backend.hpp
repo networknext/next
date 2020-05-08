@@ -12,6 +12,7 @@
 #include "util/json.hpp"
 #include "util/logger.hpp"
 #include "util/throughput_recorder.hpp"
+#include "legacy/v3/traffic_stats.hpp"
 
 // forward declare test names to allow private functions to be visible them
 namespace testing
@@ -51,7 +52,8 @@ namespace core
      RouterInfo& routerInfo,
      RelayManager& relayManager,
      std::string base64RelayPublicKey,
-     const core::SessionMap& sessions);
+     const core::SessionMap& sessions,
+     legacy::v3::TrafficStats& stats);
     ~Backend() = default;
 
     auto init() -> bool;
@@ -75,8 +77,9 @@ namespace core
     RelayManager& mRelayManager;
     const std::string mBase64RelayPublicKey;
     const core::SessionMap& mSessionMap;
+    legacy::v3::TrafficStats& mStats;
 
-    auto update(const util::ThroughputRecorder& recorder, bool shutdown) -> bool;
+    auto update(util::ThroughputRecorder& recorder, bool shutdown) -> bool;
     auto buildInitRequest(util::JSON& doc) -> std::tuple<bool, const char*>;
     auto buildUpdateRequest(util::JSON& doc, const util::ThroughputRecorder& recorder, bool shutdown)
      -> std::tuple<bool, const char*>;
@@ -90,14 +93,16 @@ namespace core
    RouterInfo& routerInfo,
    RelayManager& relayManager,
    std::string base64RelayPublicKey,
-   const core::SessionMap& sessions)
+   const core::SessionMap& sessions,
+   legacy::v3::TrafficStats& stats)
    : mHostname(hostname),
      mAddressStr(address),
      mKeychain(keychain),
      mRouterInfo(routerInfo),
      mRelayManager(relayManager),
      mBase64RelayPublicKey(base64RelayPublicKey),
-     mSessionMap(sessions)
+     mSessionMap(sessions),
+     mStats(stats)
   {}
 
   template <typename T>
@@ -112,7 +117,8 @@ namespace core
     std::string request = doc.toString();
     std::vector<char> response;
 
-    if (!T::SendTo(mHostname, "/relay_init", request, response)) {
+    size_t bytesSent = 0;
+    if (!T::SendTo(mHostname, "/relay_init", request, response, bytesSent)) {
       Log("curl request failed in init");
       return false;
     }
@@ -202,7 +208,7 @@ namespace core
   }
 
   template <typename T>
-  auto Backend<T>::update(const util::ThroughputRecorder& recorder, bool shutdown) -> bool
+  auto Backend<T>::update(util::ThroughputRecorder& recorder, bool shutdown) -> bool
   {
     util::JSON doc;
     auto [ok, err] = buildUpdateRequest(doc, recorder, shutdown);
@@ -212,11 +218,13 @@ namespace core
     }
     std::string request = doc.toString();
     std::vector<char> response;
-
-    if (!T::SendTo(mHostname, "/relay_update", request, response)) {
+    size_t bytesSent = 0;
+    if (!T::SendTo(mHostname, "/relay_update", request, response, bytesSent)) {
       Log("curl request failed in update");
       return false;
     }
+    recorder.addToSent(bytesSent);
+    mStats.BytesPerSecManagementTx += bytesSent;
 
     if (!doc.parse(response)) {
       Log("could not parse json response in update: ", doc.err(), "\nReponse: ", std::string(response.begin(), response.end()));

@@ -10,6 +10,7 @@
 #include "token.hpp"
 #include "util/channel.hpp"
 #include "util/throughput_recorder.hpp"
+#include "legacy/v3/traffic_stats.hpp"
 
 namespace core
 {
@@ -31,7 +32,8 @@ namespace core
      const volatile bool& handle,
      util::ThroughputRecorder& recorder,
      const net::Address& receivingAddr,
-     util::Sender<core::GenericPacket<>>& sender);
+     util::Sender<core::GenericPacket<>>& sender,
+     legacy::v3::TrafficStats& stats);
     ~PacketProcessor() = default;
 
     void process(std::condition_variable& var, std::atomic<bool>& readyToReceive);
@@ -47,6 +49,7 @@ namespace core
     util::ThroughputRecorder& mRecorder;
     const net::Address& mRecvAddr;
     util::Sender<core::GenericPacket<>>& mSender;
+    legacy::v3::TrafficStats& mStats;
 
     void processPacket(GenericPacket<>& packet, mmsghdr& header, GenericPacketBuffer<MaxPacketsToSend>& outputBuff);
 

@@ -214,6 +214,7 @@ int main(int argc, const char* argv[])
 
   Log("Initializing relay\n");
 
+  legacy::v3::TrafficStats legacyStats;
   core::RouterInfo routerInfo;
   core::RelayManager relayManager(relayClock);
   util::ThroughputRecorder recorder;
@@ -321,9 +322,10 @@ int main(int argc, const char* argv[])
                                                    &relayManager,
                                                    &recorder,
                                                    &relayAddr,
-                                                   &sender] {
+                                                   &sender,
+                                                   &legacyStats] {
         core::PacketProcessor processor(
-         shouldReceive, *packetSocket, relayClock, keychain, sessions, relayManager, gAlive, recorder, relayAddr, sender);
+         shouldReceive, *packetSocket, relayClock, keychain, sessions, relayManager, gAlive, recorder, relayAddr, sender, legacyStats);
         processor.process(waitVar, socketAndThreadReady);
       });
 
@@ -367,8 +369,8 @@ int main(int argc, const char* argv[])
     // setup the ping processor to use the external address
     // relays use it to know where the receiving port of other relays are
     auto thread =
-     std::make_shared<std::thread>([&waitVar, &socketAndThreadReady, socket, &relayManager, &relayAddr, &recorder] {
-       core::PingProcessor pingProcessor(*socket, relayManager, gAlive, relayAddr, recorder);
+     std::make_shared<std::thread>([&waitVar, &socketAndThreadReady, socket, &relayManager, &relayAddr, &recorder, &legacyStats] {
+       core::PingProcessor pingProcessor(*socket, relayManager, gAlive, relayAddr, recorder, legacyStats);
        pingProcessor.process(waitVar, socketAndThreadReady);
      });
 
@@ -396,8 +398,8 @@ int main(int argc, const char* argv[])
       return 1;
     }
 
-    auto thread = std::make_shared<std::thread>([&receiver, &env, socket, &cleanup, &v3BackendSuccess, &relayClock] {
-      legacy::v3::Backend backend(receiver, env, *socket, relayClock);
+    auto thread = std::make_shared<std::thread>([&receiver, &env, socket, &cleanup, &v3BackendSuccess, &relayClock, &legacyStats] {
+      legacy::v3::Backend backend(receiver, env, *socket, relayClock, legacyStats);
 
       if (!backend.init()) {
         Log("could not initialize relay with old backend");
@@ -425,7 +427,7 @@ int main(int argc, const char* argv[])
   }
 
   core::Backend<net::CurlWrapper> backend(
-   backendHostname, relayAddrString, keychain, routerInfo, relayManager, b64RelayPubKey, sessions);
+   backendHostname, relayAddrString, keychain, routerInfo, relayManager, b64RelayPubKey, sessions, legacyStats);
 
   for (int i = 0; i < 60; ++i) {
     if (backend.init()) {

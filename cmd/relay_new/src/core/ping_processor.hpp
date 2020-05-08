@@ -4,6 +4,7 @@
 #include "core/relay_manager.hpp"
 #include "os/platform.hpp"
 #include "util/throughput_recorder.hpp"
+#include "legacy/v3/traffic_stats.hpp"
 
 namespace core
 {
@@ -15,7 +16,8 @@ namespace core
      core::RelayManager& relayManger,
      const volatile bool& shouldProcess,
      const net::Address& relayAddr,
-     util::ThroughputRecorder& recorder);
+     util::ThroughputRecorder& recorder,
+     legacy::v3::TrafficStats& stats);
     ~PingProcessor() = default;
 
     void process(std::condition_variable& var, std::atomic<bool>& readyToSend);
@@ -26,6 +28,7 @@ namespace core
     const volatile bool& mShouldProcess;
     const net::Address& mRelayAddress;
     util::ThroughputRecorder& mRecorder;
+    legacy::v3::TrafficStats& mStats;
 
     void fillMsgHdrWithAddr(msghdr& hdr, const net::Address& addr);
   };

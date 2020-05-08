@@ -17,8 +17,12 @@ namespace legacy
   namespace v3
   {
     Backend::Backend(
-     util::Receiver<core::GenericPacket<>>& receiver, util::Env& env, os::Socket& socket, const util::Clock& relayClock)
-     : mReceiver(receiver), mEnv(env), mSocket(socket), mClock(relayClock)
+     util::Receiver<core::GenericPacket<>>& receiver,
+     util::Env& env,
+     os::Socket& socket,
+     const util::Clock& relayClock,
+     TrafficStats& stats)
+     : mReceiver(receiver), mEnv(env), mSocket(socket), mClock(relayClock), mStats(stats)
     {}
 
     // clang-format off
@@ -309,7 +313,36 @@ namespace legacy
     // clang-format on
     auto Backend::buildUpdateJSON(util::JSON& doc) -> bool
     {
-      doc.set("update", "value");
+      {
+        util::JSON trafficStats;
+
+        size_t bytesPerSecPaidTx = mStats.BytesPerSecPaidTx;
+        size_t bytesPerSecPaidRx = mStats.BytesPerSecPaidRx;
+        size_t bytesPerSecManagementTx = mStats.BytesPerSecManagementTx;
+        size_t bytesPerSecManagementRx = mStats.BytesPerSecManagementRx;
+        size_t bytesPerSecMeasurementTx = mStats.BytesPerSecMeasurementTx;
+        size_t bytesPerSecMeasurementRx = mStats.BytesPerSecMeasurementRx;
+        size_t bytesPerSecInvalidRx = mStats.BytesPerSecInvalidRx;
+
+        mStats.BytesPerSecPaidTx -= bytesPerSecPaidTx;
+        mStats.BytesPerSecPaidRx -= bytesPerSecPaidRx;
+        mStats.BytesPerSecManagementTx -= bytesPerSecManagementTx;
+        mStats.BytesPerSecManagementRx -= bytesPerSecManagementRx;
+        mStats.BytesPerSecMeasurementTx -= bytesPerSecMeasurementTx;
+        mStats.BytesPerSecMeasurementRx -= bytesPerSecMeasurementRx;
+        mStats.BytesPerSecInvalidRx -= bytesPerSecInvalidRx;
+
+        trafficStats.set(bytesPerSecPaidTx, "BytesPaidTx");
+        trafficStats.set(bytesPerSecPaidRx, "BytesPaidRx");
+        trafficStats.set(bytesPerSecManagementTx, "BytesManagementTx");
+        trafficStats.set(bytesPerSecManagementRx, "BytesManagementRx");
+        trafficStats.set(bytesPerSecMeasurementTx, "BytesMeasurementTx");
+        trafficStats.set(bytesPerSecMeasurementRx, "BytesMeasurementRx");
+        trafficStats.set(bytesPerSecInvalidRx, "BytesInvalidRx");
+
+        doc.set(trafficStats, "TrafficStats");
+      }
+
       return true;
     }
 
