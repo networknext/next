@@ -66,7 +66,7 @@ TODO
 
 	--------------------------------
 
-	Upgrade reference to have a codepath for the blake2 prefixed packets.
+	Upgrade reference relay to have a codepath for the blake2 prefixed packets.
 
 	--------------------------------
 
@@ -79,14 +79,6 @@ TODO
 
 
 
-
-	--------------------------------
-
-	Need a test with payload packets of all first bytes, to make sure they all get through even when network next is enabled on the server, even post-upgrade, make sure they all get through, eg. switch to sending direct after upgrade... test all byte combinations.
-
-	--------------------------------
-
-	Add a test to verify that no network next packets leak through to game.
 
 	--------------------------------
 
@@ -99,14 +91,6 @@ TODO
 	--------------------------------
 
 	Add memory guard buffers to help catch memory trashes (suspected from Velan).
-
-	--------------------------------
-
-	Find a way to automatically determine what datacenter we are running in.
-
-	eg. either public IP address range for bare metal, or server-side code that detects when you are in a cloud.
-
-	Environment variable setting should always remain available as a fallback.
 
 	--------------------------------
 
@@ -138,59 +122,11 @@ TODO
 
 	--------------------------------
 
-	Need extra safety. If a packet comes in that has a stale key or address, it will get forward to the game.
+	Find a way to automatically determine what datacenter we are running in.
 
-	It would be much better for every packet to have some safety, eg. looking exclusively at its own contents, we should be able to
-	have a high confidence whether it is a network next packet, or a game packet.
+	eg. either public IP address range for bare metal, or server-side code that detects when you are in a cloud.
 
-	This generally should mean a prefixed signature or hash in front of the packet.
-
-	Perhaps just 8 bytes is needed.
-
-	We should extend packets to do this generally.
-
-	The backend however is a special case, we don't need to change those packets.
-
-	BUT
-
-	We do need to change packets received from either the client, server or relays to have this property.
-
-	Add a 32byte CRC or something in front of each packet. *** It really needs to be done ***
-
-	--------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+	Environment variable setting should always remain available as a fallback.
 
 	--------------------------------
 
@@ -216,48 +152,6 @@ TODO
 
 	--------------------------------
 
-	Fix the link problem with the nintendo testbed.
-
-	Get Nintendo switch devkit from Troy Innovation Garage.
-
-	Set it up the test kit and verify that tests pass and the switch client connects to the linux server.
-
-	Get assets from Nathan for Nintendo Switch.
-
-	--------------------------------
-
 	Build the iOS testbed and verify working on my iPad Pro or with emulator.
 
 	--------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	-----------------
-
-	Psychz 1 month trial. Coordinate with PUBG launch. Make sure we have the eval tools to determine which relays are performant before starting the trial.
-
-	-----------------
-
-	Open source relay code so we can work with Stackpath.
-
-	-----------------
-
-	Update job listings on website.
-
-	Make sure job listings actually go somewhere...
