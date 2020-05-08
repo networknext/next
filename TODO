@@ -16,9 +16,13 @@ DONE
 
 	Verify that everything works with ref backend, eg. packets across network next route.
 
+	Works fine, but seems like continue request timed out. Might be missing continue response packet handling?
+
+	Fixed. Continue response not handled.
+
 TODO
 
-	Works fine, but seems like continue request timed out. Might be missing continue response packet handling?
+	Now need to go across all todos and remove debug logs...
 
 	--------------------------------
 
