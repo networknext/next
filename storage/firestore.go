@@ -688,7 +688,7 @@ func (fs *Firestore) RemoveDatacenter(ctx context.Context, id uint64) error {
 	fs.datacenterMutex.RUnlock()
 
 	if !ok {
-		return &DoesNotExistError{resourceType: "dataceter", resourceRef: id}
+		return &DoesNotExistError{resourceType: "datacenter", resourceRef: id}
 	}
 
 	ddocs := fs.Client.Collection("Datacenter").Documents(ctx)
