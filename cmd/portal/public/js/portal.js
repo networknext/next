@@ -4,7 +4,6 @@
  */
 mapboxgl.accessToken = 'pk.eyJ1IjoiYmF1bWJhY2hhbmRyZXciLCJhIjoiY2s4dDFwcGo2MGowZTNtcXpsbDN6dHBwdyJ9.Sr1lDY9i9o9yz84fJ-PSlg';
 
-const SEC_TO_MS = 1000;
 const DEC_TO_PERC = 100;
 
 var userInfo = {
@@ -15,6 +14,23 @@ var userInfo = {
 	token: "",
 	userId: "",
 };
+
+var defaultSessionDetailsVue = {
+	meta: null,
+	slices: [],
+	showDetails: false,
+};
+
+var defaultSessionsTable = {
+	onNN: [],
+	sessions: [],
+	showCount: false,
+};
+
+var defaultUserSessionTable = {
+	sessions: [],
+	showTable: false,
+}
 
 var accountsTable = null;
 var mapSessionsCount = null;
@@ -52,7 +68,6 @@ JSONRPCClient = {
 
 
 		return response.json().then((json) => {
-			console.log(json);
 			if (json.error) {
 				throw new Error(json.error);
 			}
@@ -104,7 +119,7 @@ MapHandler = {
 				let data = response.map_points;
 				Object.assign(mapSessionsCount.$data, {
 					onNN: data.filter((point) => {
-						return point.on_network_next;
+						return point.on_network_next == true;
 					}),
 					sessions: data,
 				});
@@ -115,15 +130,15 @@ MapHandler = {
 					opacity: 0.8,
 					cellSizePixels: 10,
 					colorRange: [
-						[0, 25, 0, 25],
-						[0, 85, 0, 85],
-						[0, 127, 0, 127],
-						[0, 170, 0, 170],
-						[0, 190, 0, 190],
-						[0, 255, 0, 255]
+						[40, 167, 69],
+						[36, 163, 113],
+						[27, 153, 159],
+						[18, 143, 206],
+						[9, 133, 252],
+						[0, 123, 255]
 					],
 					getPosition: d => [d.longitude, d.latitude],
-					getWeight: d => Math.random(10), // Need to come up with a weight system. It won't map anything if the array of points are all identical
+					getWeight: d => d.on_network_next ? 100 : 1, // Need to come up with a weight system. It won't map anything if the array of points are all identical
 					gpuAggregation: true,
 					aggregation: 'SUM'
 				});
@@ -252,11 +267,7 @@ WorkspaceHandler = {
 				WorkspaceHandler.alerts.sessionToolAlert.style.display = 'block';
 				WorkspaceHandler.alerts.sessionToolDanger.style.display = 'none';
 
-				Object.assign(sessionDetailsVue.$data, {
-					meta: null,
-					slices: [],
-					showDetails: false,
-				});
+				Object.assign(sessionDetailsVue.$data, {...defaultSessionDetailsVue});
 				document.getElementById("session-id-input").value = '';
 				this.workspaces.sessionToolWorkspace.style.display = 'block';
 				this.links.sessionToolLink.classList.add("active");
@@ -265,10 +276,7 @@ WorkspaceHandler = {
 				WorkspaceHandler.alerts.userToolAlert.style.display = 'block';
 				WorkspaceHandler.alerts.userToolDanger.style.display = 'none';
 
-				Object.assign(userSessionTable.$data, {
-					sessions: [],
-					showTable: false,
-				});
+				Object.assign(userSessionTable.$data, {...defaultUserSessionTable});
 
 				document.getElementById("user-hash-input").value = '';
 				this.workspaces.userToolWorkspace.style.display = 'block';
@@ -339,8 +347,6 @@ WorkspaceHandler = {
 		Promise.all(promises)
 			.then(
 				(responses) => {
-					console.log(responses);
-
 					let roles = responses[1].roles;
 					let accounts = responses[0].accounts;
 					let choices = roles.map((role) => {
@@ -542,19 +548,14 @@ function createVueComponents() {
 	sessionDetailsVue = new Vue({
 		el: '#session-details',
 		data: {
-			id: '',
 			meta: null,
-			showDetails: false,
 			slices: [],
+			showDetails: false,
 		}
 	});
 	sessionsTable = new Vue({
 		el: '#sessions',
-		data: {
-			onNN: [],
-			sessions: [],
-			showCount: false,
-		},
+		data: {...defaultSessionsTable},
 		methods: {
 			fetchSessionInfo: fetchSessionInfo,
 			fetchUserSessions: fetchUserSessions,
@@ -562,11 +563,7 @@ function createVueComponents() {
 	});
 	userSessionTable = new Vue({
 		el: '#user-sessions',
-		data: {
-			hash: '',
-			sessions: [],
-			showTable: false,
-		},
+		data: {...defaultUserSessionTable},
 		methods: {
 			fetchSessionInfo: fetchSessionInfo
 		}
@@ -588,10 +585,7 @@ function fetchUserSessions(userHash = '') {
 	}
 
 	if (hash == '') {
-		Object.assign(userSessionTable.$data, {
-			sessions: [],
-			showTable: false,
-		});
+		Object.assign(userSessionTable.$data, {...defaultUserSessionTable});
 		document.getElementById("user-hash-input").value = '';
 		WorkspaceHandler.alerts.userToolDanger.style.display = 'block';
 		return;
@@ -614,10 +608,7 @@ function fetchUserSessions(userHash = '') {
 			WorkspaceHandler.alerts.userToolDanger.style.display = 'none';
 		})
 		.catch((e) => {
-			Object.assign(userSessionTable.$data, {
-				sessions: [],
-				showTable: false,
-			});
+			Object.assign(userSessionTable.$data, {...defaultUserSessionTable});
 			console.log("Something went wrong fetching user sessions: ");
 			console.log(e);
 			WorkspaceHandler.alerts.userToolDanger.style.display = 'block';
@@ -654,11 +645,7 @@ function fetchSessionInfo(sessionId = '') {
 	}
 
 	if (id == '') {
-		Object.assign(sessionDetailsVue.$data, {
-			meta: null,
-			slices: [],
-			showDetails: false,
-		});
+		Object.assign(sessionDetailsVue.$data, {...defaultSessionDetailsVue});
 		document.getElementById("session-id-input").value = '';
 		WorkspaceHandler.alerts.sessionToolDanger.style.display = 'block';
 		return;
@@ -667,46 +654,22 @@ function fetchSessionInfo(sessionId = '') {
 	JSONRPCClient
 		.call("BuyersService.SessionDetails", {session_id: id})
 		.then((response) => {
+			let meta = response.meta;
+			meta.nearby_relays = meta.nearby_relays ?? [];
 			Object.assign(sessionDetailsVue.$data, {
-				meta: response.meta,
+				meta: meta,
 				slices: response.slices,
 				showDetails: true,
 			});
 
 			setTimeout(() => {
-				let data = {
-					latitude: response.meta.location.latitude,
-					longitude: response.meta.location.longitude,
-				};
-
 				generateCharts(response.slices);
-				let sessionToolMapInstance = new deck.DeckGL({
-					mapboxApiAccessToken: mapboxgl.accessToken,
-					mapStyle: 'mapbox://styles/mapbox/dark-v10',
-					initialViewState: {
-						latitude: data.latitude,
-						longitude: data.longitude,
-						zoom: 4,
-						maxZoom: 15,
-					},
-					controller: true,
+
+				var sessionToolMapInstance = new mapboxgl.Map({
 					container: 'session-tool-map',
-					/* layers: [
-						new deck.IconLayer({
-							id: 'icon-layer',
-							data,
-							pickable: false,
-							// iconAtlas and iconMapping are required
-							// getIcon: return a string
-							iconAtlas: 'marker.png',
-							iconMapping: {marker: {x: 0, y: 0, width: 32, height: 32, mask: true}},
-							getIcon: d => 'marker',
-							sizeScale: 15,
-							getPosition: d => [d.longitude, d.latitude],
-							getSize: d => 100,
-							getColor: d => [7, 140, 0]
-						})
-					] */
+					style: 'mapbox://styles/mapbox/dark-v10',
+					center: [0, 0],
+					zoom: 2
 				});
 			});
 
@@ -714,11 +677,7 @@ function fetchSessionInfo(sessionId = '') {
 			WorkspaceHandler.alerts.sessionToolDanger.style.display = 'none';
 		})
 		.catch((e) => {
-			Object.assign(sessionDetailsVue.$data, {
-				meta: null,
-				slices: [],
-				showDetails: false,
-			});
+			Object.assign(sessionDetailsVue.$data, {...defaultSessionDetailsVue});
 			console.log("Something went wrong fetching session details: ");
 			console.log(e);
 			WorkspaceHandler.alerts.sessionToolDanger.style.display = 'block';
@@ -776,8 +735,8 @@ function generateCharts(data) {
 		let timestamp = new Date(entry.timestamp).getTime() / 1000;
 
 		// Latency
-		let next = Number.parseInt(entry.next.rtt * SEC_TO_MS).toFixed(0);
-		let direct = Number.parseInt(entry.direct.rtt * SEC_TO_MS).toFixed(0);
+		let next = parseFloat(entry.next.rtt);
+		let direct = parseFloat(entry.direct.rtt);
 		let improvement = direct - next;
 		latencyData.improvement[0].push(timestamp);
 		latencyData.improvement[1].push(improvement);
@@ -786,8 +745,8 @@ function generateCharts(data) {
 		latencyData.comparison[2].push(direct);
 
 		// Jitter
-		next = Number.parseInt(entry.next.jitter * SEC_TO_MS).toFixed(0);
-		direct = Number.parseInt(entry.direct.jitter * SEC_TO_MS).toFixed(0);
+		next = parseFloat(entry.next.jitter);
+		direct = parseFloat(entry.direct.jitter);
 		improvement = direct - next;
 		jitterData.improvement[0].push(timestamp);
 		jitterData.improvement[1].push(improvement);
@@ -796,8 +755,8 @@ function generateCharts(data) {
 		jitterData.comparison[2].push(direct);
 
 		// Packetloss
-		next = Number.parseInt(entry.next.packet_loss * DEC_TO_PERC).toFixed(0);
-		direct = Number.parseInt(entry.direct.packet_loss * DEC_TO_PERC).toFixed(0);
+		next = parseFloat(entry.next.packet_loss * DEC_TO_PERC);
+		direct = parseFloat(entry.direct.packet_loss * DEC_TO_PERC);
 		improvement = direct - next;
 		packetLossData.improvement[0].push(timestamp);
 		packetLossData.improvement[1].push(improvement);
