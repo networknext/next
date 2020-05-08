@@ -5045,78 +5045,6 @@ bool next_route_manager_send_continue_request( next_route_manager_t * route_mana
     return true;
 }
 
-void next_route_manager_process_continue_response_packet( next_route_manager_t * route_manager, const next_address_t * from, uint8_t * packet_data, int packet_bytes, next_replay_protection_t * replay_protection )
-{
-    next_assert( route_manager );
-    next_assert( from );
-    next_assert( packet_data );
-    next_assert( packet_bytes > 1 );
-    next_assert( packet_bytes <= NEXT_MAX_PACKET_BYTES );
-
-    (void) from;
-
-    if ( route_manager->fallback_to_direct )
-        return;
-
-    if ( !route_manager->route_data.current_route )
-        return;
-
-    if ( !route_manager->route_data.pending_continue )
-        return;
-
-    if ( packet_bytes != NEXT_HEADER_BYTES )
-    {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored continue response packet from relay. wrong size" );
-        return;
-    }
-
-    uint8_t packet_type = 0;
-    uint64_t packet_sequence = 0;
-    uint64_t packet_session_id = 0;
-    uint8_t packet_session_version = 0;
-    uint8_t packet_session_flags = 0;
-
-    if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, route_manager->route_data.current_route_private_key, packet_data, packet_bytes ) != NEXT_OK )
-    {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored continue response packet from relay. could not read header" );
-        return;
-    }
-
-    uint64_t clean_sequence = next_clean_sequence( packet_sequence );
-
-    if ( next_replay_protection_already_received( replay_protection, clean_sequence ) )
-    {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored continue response packet from relay. sequence already received (%" PRIx64 " vs. %" PRIx64 ")", clean_sequence, replay_protection->most_recent_sequence );
-        return;
-    }
-
-    next_assert( packet_type == NEXT_CONTINUE_RESPONSE_PACKET );
-
-    if ( packet_session_id != route_manager->route_data.current_route_session_id )
-    {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored continue response packet from relay. session id mismatch" );
-        return;
-    }
-
-    if ( packet_session_version != route_manager->route_data.current_route_session_version )
-    {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored continue response packet from relay. session version mismatch" );
-        return;
-    }
-
-    next_replay_protection_advance_sequence( replay_protection, clean_sequence );
-
-    next_printf( NEXT_LOG_LEVEL_DEBUG, "client received continue response from relay" );
-
-    route_manager->route_data.current_route_committed = route_manager->route_data.pending_continue_committed;
-
-    route_manager->route_data.current_route_expire_time += NEXT_SLICE_SECONDS;
-
-    route_manager->route_data.pending_continue = false;
-
-    next_printf( NEXT_LOG_LEVEL_DEBUG, "client continue network next route is confirmed" );
-}
-
 void next_route_manager_destroy( next_route_manager_t * route_manager )
 {
     next_assert( route_manager );
@@ -6207,6 +6135,78 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         // todo
         printf( "*** route response packet ***\n" );
+
+        return true;
+    }
+
+    // continue response packet
+
+    if ( packet_id == NEXT_CONTINUE_RESPONSE_PACKET )
+    {
+        if ( packet_bytes != NEXT_HEADER_BYTES )
+            return false;
+
+        next_platform_mutex_acquire( client->route_manager_mutex );
+        uint8_t current_route_private_key[crypto_box_SECRETKEYBYTES];
+        memcpy( current_route_private_key, client->route_manager->route_data.current_route_private_key, crypto_box_SECRETKEYBYTES );
+        const bool fallback_to_direct = client->route_manager->fallback_to_direct;
+        const bool current_route = client->route_manager->route_data.current_route;
+        const bool pending_continue = client->route_manager->route_data.pending_continue;
+        const uint64_t current_route_session_id = client->route_manager->route_data.current_route_session_id;
+        const uint8_t current_route_session_version = client->route_manager->route_data.current_route_session_version;
+        next_platform_mutex_release( client->route_manager_mutex );
+
+        uint8_t packet_type = 0;
+        uint64_t packet_sequence = 0;
+        uint64_t packet_session_id = 0;
+        uint8_t packet_session_version = 0;
+        uint8_t packet_session_flags = 0;
+
+        if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, current_route_private_key, packet_data, packet_bytes ) != NEXT_OK )
+            return false;
+
+        if ( fallback_to_direct )
+            return true;
+
+        if ( !current_route )
+            return true;
+
+        if ( !pending_continue )
+            return true;
+
+        uint64_t clean_sequence = next_clean_sequence( packet_sequence );
+
+        next_replay_protection_t * replay_protection = &client->special_replay_protection;
+
+        if ( next_replay_protection_already_received( replay_protection, clean_sequence ) )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored continue response packet from relay. sequence already received (%" PRIx64 " vs. %" PRIx64 ")", clean_sequence, replay_protection->most_recent_sequence );
+            return true;
+        }
+
+        if ( packet_session_id != current_route_session_id )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored continue response packet from relay. session id mismatch" );
+            return true;
+        }
+
+        if ( packet_session_version != current_route_session_version )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored continue response packet from relay. session version mismatch" );
+            return true;
+        }
+
+        next_replay_protection_advance_sequence( replay_protection, clean_sequence );
+
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client received continue response from relay" );
+
+        next_platform_mutex_acquire( client->route_manager_mutex );
+        client->route_manager->route_data.current_route_committed = client->route_manager->route_data.pending_continue_committed;
+        client->route_manager->route_data.current_route_expire_time += NEXT_SLICE_SECONDS;
+        client->route_manager->route_data.pending_continue = false;
+        next_platform_mutex_release( client->route_manager_mutex );
+
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client continue network next route is confirmed" );
 
         return true;
     }
