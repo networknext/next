@@ -268,7 +268,7 @@ WorkspaceHandler = {
 				WorkspaceHandler.alerts.sessionToolAlert.style.display = 'block';
 				WorkspaceHandler.alerts.sessionToolDanger.style.display = 'none';
 
-				Object.assign(sessionDetailsVue.$data, defaultSessionDetailsVue);
+				Object.assign(sessionDetailsVue.$data, {...defaultSessionDetailsVue});
 				document.getElementById("session-id-input").value = '';
 				this.workspaces.sessionToolWorkspace.style.display = 'block';
 				this.links.sessionToolLink.classList.add("active");
@@ -277,7 +277,7 @@ WorkspaceHandler = {
 				WorkspaceHandler.alerts.userToolAlert.style.display = 'block';
 				WorkspaceHandler.alerts.userToolDanger.style.display = 'none';
 
-				Object.assign(userSessionTable.$data, defaultUserSessionTable);
+				Object.assign(userSessionTable.$data, {...defaultUserSessionTable});
 
 				document.getElementById("user-hash-input").value = '';
 				this.workspaces.userToolWorkspace.style.display = 'block';
@@ -550,11 +550,15 @@ function createVueComponents() {
 	});
 	sessionDetailsVue = new Vue({
 		el: '#session-details',
-		data: defaultSessionDetailsVue
+		data: {
+			meta: null,
+			slices: [],
+			showDetails: false,
+		}
 	});
 	sessionsTable = new Vue({
 		el: '#sessions',
-		data: defaultSessionsTable,
+		data: {...defaultSessionsTable},
 		methods: {
 			fetchSessionInfo: fetchSessionInfo,
 			fetchUserSessions: fetchUserSessions,
@@ -562,7 +566,7 @@ function createVueComponents() {
 	});
 	userSessionTable = new Vue({
 		el: '#user-sessions',
-		data: defaultUserSessionTable,
+		data: {...defaultUserSessionTable},
 		methods: {
 			fetchSessionInfo: fetchSessionInfo
 		}
@@ -584,7 +588,7 @@ function fetchUserSessions(userHash = '') {
 	}
 
 	if (hash == '') {
-		Object.assign(userSessionTable.$data, defaultUserSessionTable);
+		Object.assign(userSessionTable.$data, {...defaultUserSessionTable});
 		document.getElementById("user-hash-input").value = '';
 		WorkspaceHandler.alerts.userToolDanger.style.display = 'block';
 		return;
@@ -607,7 +611,7 @@ function fetchUserSessions(userHash = '') {
 			WorkspaceHandler.alerts.userToolDanger.style.display = 'none';
 		})
 		.catch((e) => {
-			Object.assign(userSessionTable.$data, defaultUserSessionTable);
+			Object.assign(userSessionTable.$data, {...defaultUserSessionTable});
 			console.log("Something went wrong fetching user sessions: ");
 			console.log(e);
 			WorkspaceHandler.alerts.userToolDanger.style.display = 'block';
@@ -644,7 +648,7 @@ function fetchSessionInfo(sessionId = '') {
 	}
 
 	if (id == '') {
-		Object.assign(sessionDetailsVue.$data, defaultSessionDetailsVue);
+		Object.assign(sessionDetailsVue.$data, {...defaultSessionDetailsVue});
 		document.getElementById("session-id-input").value = '';
 		WorkspaceHandler.alerts.sessionToolDanger.style.display = 'block';
 		return;
@@ -677,7 +681,7 @@ function fetchSessionInfo(sessionId = '') {
 			WorkspaceHandler.alerts.sessionToolDanger.style.display = 'none';
 		})
 		.catch((e) => {
-			Object.assign(sessionDetailsVue.$data, defaultSessionDetailsVue);
+			Object.assign(sessionDetailsVue.$data, {...defaultSessionDetailsVue});
 			console.log("Something went wrong fetching session details: ");
 			console.log(e);
 			WorkspaceHandler.alerts.sessionToolDanger.style.display = 'block';
