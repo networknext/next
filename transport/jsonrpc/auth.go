@@ -1,6 +1,7 @@
 package jsonrpc
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -17,6 +18,8 @@ type AuthService struct {
 }
 
 type AccountsArgs struct {
+	Emails []string           `json:"emails"`
+	Roles  []*management.Role `json:"roles"`
 }
 
 type AccountsReply struct {
@@ -49,7 +52,7 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 		if err != nil {
 			return fmt.Errorf("failed to fetch user roles: %w", err)
 		}
-		reply.UserAccounts = append(reply.UserAccounts, UnMarshalUser(a, userRoles))
+		reply.UserAccounts = append(reply.UserAccounts, UnMarshalUser(a, userRoles.Roles))
 	}
 	return nil
 }
@@ -70,7 +73,7 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 		return fmt.Errorf("failed to get user roles: %w", err)
 	}
 
-	reply.UserAccount = UnMarshalUser(userAccount, userRoles)
+	reply.UserAccount = UnMarshalUser(userAccount, userRoles.Roles)
 
 	return nil
 }
@@ -86,12 +89,74 @@ func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, repl
 	return nil
 }
 
-func UnMarshalUser(u *management.User, r *management.RoleList) account {
+func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
+	connectionID := "Username-Password-Authentication"
+	emails := args.Emails
+	roles := args.Roles
+	falseValue := false
+
+	var accounts []account
+
+	newCustomerIDsMap := make(map[string]interface{})
+
+	for _, e := range emails {
+		pw, err := GenerateRandomString(32)
+		if err != nil {
+			fmt.Errorf("failed to generate a random password: %w", err)
+		}
+		newUser := &management.User{
+			Connection:    &connectionID,
+			Email:         &e,
+			EmailVerified: &falseValue,
+			VerifyEmail:   &falseValue,
+			Password:      &pw,
+			AppMetadata: map[string]interface{}{
+				"customer": newCustomerIDsMap,
+			},
+		}
+		if err = s.Auth0.Manager.User.Create(newUser); err != nil {
+			return fmt.Errorf("failed to create new user: %w", err)
+		}
+
+		if err = s.Auth0.Manager.User.AssignRoles(*newUser.ID, args.Roles...); err != nil {
+			return fmt.Errorf("failed to add user roles: %w", err)
+		}
+
+		accounts = append(accounts, UnMarshalUser(newUser, roles))
+	}
+	reply.UserAccounts = accounts
+	return nil
+}
+
+func GenerateRandomString(n int) (string, error) {
+	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
+	bytes, err := GenerateRandomBytes(n)
+	if err != nil {
+		return "", err
+	}
+	for i, b := range bytes {
+		bytes[i] = letters[b%byte(len(letters))]
+	}
+	return string(bytes), nil
+}
+
+func GenerateRandomBytes(n int) ([]byte, error) {
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+	// Note that err == nil only if we read len(b) bytes.
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
+}
+
+func UnMarshalUser(u *management.User, r []*management.Role) account {
 	account := account{
 		UserID: *u.Identities[0].UserID,
 		Name:   *u.Name,
 		Email:  *u.Email,
-		Roles:  r.Roles,
+		Roles:  r,
 	}
 
 	return account
@@ -148,23 +213,20 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 		return fmt.Errorf("failed to fetch user roles: %w", err)
 	}
 
-	for _, r := range userRoles.Roles {
-		err := s.Auth0.Manager.User.RemoveRoles(args.UserID, r)
-		if err != nil {
-			return fmt.Errorf("failed to remove current user role: %w", err)
-		}
+	err = s.Auth0.Manager.User.RemoveRoles(args.UserID, userRoles.Roles...)
+	if err != nil {
+		return fmt.Errorf("failed to remove current user role: %w", err)
 	}
 
 	if len(args.Roles) == 0 {
 		return nil
 	}
 
-	for _, r := range args.Roles {
-		err := s.Auth0.Manager.User.AssignRoles(args.UserID, r)
-		if err != nil {
-			return fmt.Errorf("failed to assign role: %w", err)
-		}
+	err = s.Auth0.Manager.User.AssignRoles(args.UserID, args.Roles...)
+	if err != nil {
+		return fmt.Errorf("failed to assign role: %w", err)
 	}
+
 	reply.Roles = args.Roles
 	return nil
 }
