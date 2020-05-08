@@ -858,7 +858,7 @@ func updatePortalData(redisClientPortal redis.Cmdable, packet SessionUpdatePacke
 		SDK:        packet.Version.String(),
 		Connection: ConnectionTypeText(packet.ConnectionType),
 	}
-	// Only fill in the essential information here to then let the poral fill in additional relay info
+	// Only fill in the essential information here to then let the portal fill in additional relay info
 	// so we don't spend time fetching info from storage here
 	for idx := 0; idx < int(packet.NumNearRelays); idx++ {
 		meta.NearbyRelays = append(meta.NearbyRelays, routing.Relay{
@@ -888,15 +888,15 @@ func updatePortalData(redisClientPortal redis.Cmdable, packet SessionUpdatePacke
 	tx := redisClientPortal.TxPipeline()
 	tx.ZAdd("top-global", &redis.Z{Score: meta.DeltaRTT, Member: meta.ID})
 	tx.ZAdd(fmt.Sprintf("top-buyer-%x", packet.CustomerID), &redis.Z{Score: meta.DeltaRTT, Member: meta.ID})
-	tx.Set(fmt.Sprintf("session-%x-meta", packet.SessionID), meta, 720*time.Hour)
+	tx.Set(fmt.Sprintf("session-%x-meta", packet.SessionID), meta, 30*time.Second)
 	tx.SAdd(fmt.Sprintf("session-%x-slices", packet.SessionID), slice)
-	tx.Expire(fmt.Sprintf("session-%x-slices", packet.SessionID), 720*time.Hour)
+	tx.Expire(fmt.Sprintf("session-%x-slices", packet.SessionID), 30*time.Second)
 	tx.SAdd(fmt.Sprintf("user-%x-sessions", packet.UserHash), meta.ID)
-	tx.Expire(fmt.Sprintf("user-%x-sessions", packet.UserHash), 720*time.Hour)
+	tx.Expire(fmt.Sprintf("user-%x-sessions", packet.UserHash), 30*time.Second)
 	tx.SAdd("map-points-global", meta.ID)
 	tx.SAdd(fmt.Sprintf("map-points-buyer-%x", packet.CustomerID), meta.ID)
-	tx.Expire(fmt.Sprintf("map-points-buyer-%x", packet.CustomerID), 720*time.Hour)
-	tx.Set(fmt.Sprintf("session-%x-point", packet.SessionID), point, 720*time.Hour)
+	tx.Expire(fmt.Sprintf("map-points-buyer-%x", packet.CustomerID), 30*time.Second)
+	tx.Set(fmt.Sprintf("session-%x-point", packet.SessionID), point, 30*time.Second)
 	if _, err := tx.Exec(); err != nil {
 		return err
 	}
