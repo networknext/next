@@ -667,6 +667,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 					routing.DecideUpgradeRTT(float64(buyer.RoutingRulesSettings.RTTThreshold)),
 					routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis), buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
 					routing.DecideVeto(float64(buyer.RoutingRulesSettings.RTTVeto), buyer.RoutingRulesSettings.EnablePacketLossSafety, buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
+					routing.DecideMultipath(buyer.RoutingRulesSettings.EnableMultipathForRTT, buyer.RoutingRulesSettings.EnableMultipathForJitter, buyer.RoutingRulesSettings.EnableMultipathForPacketLoss, float64(buyer.RoutingRulesSettings.RTTThreshold)),
 				}
 
 				if buyer.RoutingRulesSettings.EnableTryBeforeYouBuy {
@@ -683,6 +684,11 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 				} else if sessionCacheEntry.Committed {
 					// If the session is committed, set the committed flag in the response
 					response.Committed = true
+				}
+
+				// If the route decision logic has decided to use multipath, then set the multipath flag in the response
+				if routing.IsMultipath(routeDecision) {
+					response.Multipath = true
 				}
 			}
 
@@ -922,13 +928,13 @@ func addRouteDecisionMetric(d routing.Decision, m *metrics.SessionMetrics) {
 		m.DecisionMetrics.ABTestDirect.Add(1)
 	case routing.DecisionRTTReduction:
 		m.DecisionMetrics.RTTReduction.Add(1)
-	case routing.DecisionPacketLossMultipath:
+	case routing.DecisionHighPacketLossMultipath:
 		m.DecisionMetrics.PacketLossMultipath.Add(1)
-	case routing.DecisionJitterMultipath:
+	case routing.DecisionHighJitterMultipath:
 		m.DecisionMetrics.JitterMultipath.Add(1)
 	case routing.DecisionVetoRTT:
 		m.DecisionMetrics.VetoRTT.Add(1)
-	case routing.DecisionRTTMultipath:
+	case routing.DecisionRTTReductionMultipath:
 		m.DecisionMetrics.RTTMultipath.Add(1)
 	case routing.DecisionVetoPacketLoss:
 		m.DecisionMetrics.VetoPacketLoss.Add(1)
