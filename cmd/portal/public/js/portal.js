@@ -68,7 +68,6 @@ JSONRPCClient = {
 
 
 		return response.json().then((json) => {
-			console.log(json);
 			if (json.error) {
 				throw new Error(json.error);
 			}
@@ -348,8 +347,6 @@ WorkspaceHandler = {
 		Promise.all(promises)
 			.then(
 				(responses) => {
-					console.log(responses);
-
 					let roles = responses[1].roles;
 					let accounts = responses[0].accounts;
 					let choices = roles.map((role) => {
@@ -657,7 +654,6 @@ function fetchSessionInfo(sessionId = '') {
 	JSONRPCClient
 		.call("BuyersService.SessionDetails", {session_id: id})
 		.then((response) => {
-			console.log(response);
 			let meta = response.meta;
 			meta.nearby_relays = meta.nearby_relays ?? [];
 			Object.assign(sessionDetailsVue.$data, {
