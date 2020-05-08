@@ -26,6 +26,7 @@ type SessionErrorMetrics struct {
 	UnserviceableUpdate         Counter
 	ReadPacketFailure           Counter
 	FallbackToDirect            Counter
+	EarlyFallbackToDirect       Counter
 	PipelineExecFailure         Counter
 	GetServerDataFailure        Counter
 	UnmarshalServerDataFailure  Counter
@@ -49,6 +50,7 @@ var EmptySessionErrorMetrics SessionErrorMetrics = SessionErrorMetrics{
 	UnserviceableUpdate:         &EmptyCounter{},
 	ReadPacketFailure:           &EmptyCounter{},
 	FallbackToDirect:            &EmptyCounter{},
+	EarlyFallbackToDirect:       &EmptyCounter{},
 	PipelineExecFailure:         &EmptyCounter{},
 	GetServerDataFailure:        &EmptyCounter{},
 	UnmarshalServerDataFailure:  &EmptyCounter{},
@@ -569,6 +571,16 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		DisplayName: "Session Fallback To Direct",
 		ServiceName: "server_backend",
 		ID:          "session.error.fallback_to_direct",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.ErrorMetrics.EarlyFallbackToDirect, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Early Fallback To Direct",
+		ServiceName: "server_backend",
+		ID:          "session.error.early_fallback_to_direct",
 		Unit:        "errors",
 	})
 	if err != nil {

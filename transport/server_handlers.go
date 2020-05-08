@@ -500,8 +500,18 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 
 		// Check if the client is falling back to direct
 		if packet.FallbackToDirect {
-			level.Error(logger).Log("err", "fallback to direct")
-			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.FallbackToDirect)
+			// if we are about to issue the second slice, and the client has already fallen
+			// back to direct, then this is an early fallback. the first slice we issue is
+			// always a direct route, so the client can never have been on a Network Next route
+			// at this point, and thus they shouldn't be falling back from anything.
+			if timestampNow.Sub(sessionCacheEntry.TimestampStart) < (billing.BillingSliceSeconds*1.5*time.Second) &&
+				timestampNow.Sub(sessionCacheEntry.TimestampStart) > (billing.BillingSliceSeconds*0.5*time.Second) {
+				level.Error(logger).Log("err", "early fallback to direct")
+				writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.EarlyFallbackToDirect)
+			} else {
+				level.Error(logger).Log("err", "fallback to direct")
+				writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.FallbackToDirect)
+			}
 
 			if err := updatePortalData(redisClientPortal, packet, nnStats, directStats, len(chosenRoute.Relays), routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, routing.LocationNullIsland); err != nil {
 				sentry.CaptureException(err)
