@@ -111,6 +111,7 @@
 
 #define NEXT_PACKET_HASH_BYTES                                          8
 
+/*
 static const uint8_t next_backend_public_key[] = 
 { 
      76,  97, 202, 140,  71, 135,  62, 212, 
@@ -126,6 +127,7 @@ static const uint8_t next_router_public_key[] =
     0x1b, 0xff, 0x61, 0xc6, 0x0e, 0x65, 0x92, 0xd7, 
     0x09, 0x64, 0xe9, 0x34, 0x12, 0x32, 0x5f, 0x46 
 };
+*/
 
 static const uint8_t next_packet_hash_key[] =
 {
@@ -3265,13 +3267,10 @@ uint64_t next_clean_sequence( uint64_t sequence )
     return sequence & mask;
 }
 
-int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_object, const int * encrypted_packet, uint64_t * sequence, const uint8_t * private_key, next_replay_protection_t * replay_protection, bool * valid )
+int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_object, const int * encrypted_packet, uint64_t * sequence, const uint8_t * private_key, next_replay_protection_t * replay_protection )
 {
     next_assert( packet_data );
     next_assert( packet_object );
-    next_assert( valid );
-
-    *valid = false;
 
     next_assert( next_is_network_next_packet( packet_data, packet_bytes ) );
     next_assert( packet_bytes >= NEXT_PACKET_HASH_BYTES );
@@ -3320,6 +3319,14 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
 
         packet_data += 1 + 8;
         packet_bytes -= 1 + 8;
+
+        uint64_t clean_sequence = next_clean_sequence( *sequence );
+
+        if ( next_replay_protection_already_received( replay_protection, clean_sequence ) )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "packet already received: %" PRIu64 " vs. %" PRIu64, clean_sequence, replay_protection->most_recent_sequence );
+            return NEXT_ERROR;
+        }
     }
     else
     {
@@ -3416,19 +3423,6 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
 
         default:
             return NEXT_ERROR;
-    }
-
-    *valid = true;
-
-    if ( encrypted_packet && encrypted_packet[packet_id] )
-    {
-        uint64_t clean_sequence = next_clean_sequence( *sequence );
-
-        if ( next_replay_protection_already_received( replay_protection, clean_sequence ) )
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "packet already received: %" PRIu64 " vs. %" PRIu64, clean_sequence, replay_protection->most_recent_sequence );
-            return NEXT_ERROR;
-        }
     }
 
     return (int) packet_id;
@@ -5385,7 +5379,7 @@ int next_client_internal_send_packet_to_server( next_client_internal_t * client,
     return NEXT_OK;
 }
 
-bool next_client_internal_process_network_next_packet( next_client_internal_t * client, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
+void next_client_internal_process_network_next_packet( next_client_internal_t * client, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
 {
     next_assert( client );
     next_assert( from );
@@ -5406,7 +5400,7 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
         if ( packet_session_sequence != client->open_session_sequence )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored direct packet. session mismatch" );
-            return true;
+            return;
         }
         
         uint64_t packet_sequence = next_read_uint64( &p );
@@ -5418,7 +5412,7 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "client already received direct packet %" PRIu64 " (%" PRIu64 ")", clean_sequence, client->payload_replay_protection.most_recent_sequence );
             }
-            return true;
+            return;
         }
         next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
@@ -5434,7 +5428,7 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         next_packet_loss_tracker_packet_received( &client->packet_loss_tracker, clean_sequence );
 
-        return true;
+        return;
     }
 
     // upgrade request packet (not encrypted)
@@ -5442,36 +5436,41 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
     if ( from_server_address && packet_id == NEXT_UPGRADE_REQUEST_PACKET )
     {
         if ( !next_address_equal( from, &client->server_address ) )
-            return false;
-
-        NextUpgradeRequestPacket packet;
-
-        bool valid = false;
-        if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, &valid ) != packet_id )
-            return valid;
-
-        if ( !packet.Verify( client->customer_public_key ) )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. did not verify" );
-            return true;
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. packet does not come from server address" );
+            return;
         }
 
         if ( client->fallback_to_direct )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. in fallback to direct state" );
-            return true;
+            return;
         }
 
         if ( next_global_config.disable_network_next )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. network next is disabled" );
-            return true;
+            return;
+        }
+
+        NextUpgradeRequestPacket packet;
+
+        if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL ) != packet_id )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. failed to read" );
+            return;
         }
 
         if ( packet.protocol_version != next_protocol_version() )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. protocol version mismatch" );
-            return true;
+            return;
+        }
+
+        if ( !packet.Verify( client->customer_public_key ) )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. did not verify" );
+            return;
         }
 
         next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL );
@@ -5487,7 +5486,7 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
         if ( next_client_internal_send_packet_to_server( client, NEXT_UPGRADE_RESPONSE_PACKET, &response ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_WARN, "client failed to send upgrade response packet to server" );
-            return true;
+            return;
         }
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent upgrade response packet to server" );
@@ -5501,9 +5500,10 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
         client->upgrade_response_start_time = next_time();
         client->last_upgrade_response_send_time = next_time();
 
-        return true;
+        return;
     }
 
+    /*
     // upgrade confirm packet
 
     if ( packet_id == NEXT_UPGRADE_CONFIRM_PACKET )
@@ -5959,8 +5959,7 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         return true;
     }
-
-    return false;
+    */
 }
 
 void next_client_internal_process_game_packet( next_client_internal_t * client, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
@@ -9231,15 +9230,18 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
     }
 }
 
-bool next_server_internal_process_network_next_packet( next_server_internal_t * server, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
+void next_server_internal_process_network_next_packet( next_server_internal_t * server, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
 {
     next_assert( server );
     next_assert( from );
     next_assert( packet_data );
     next_assert( packet_bytes );
 
-    const int packet_id = packet_data[0];
+    // const int packet_id = packet_data[0];
 
+    // todo
+
+    /*
     // upgraded direct packet (255)
 
     if ( packet_id == NEXT_DIRECT_PACKET && packet_bytes > 10 && packet_bytes <= NEXT_MTU + 10 )
@@ -9503,9 +9505,8 @@ bool next_server_internal_process_network_next_packet( next_server_internal_t * 
     {
         NextUpgradeResponsePacket packet;
 
-        bool valid = false;
-        if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, &valid ) != packet_id )
-            return valid;
+        if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL ) != packet_id )
+            return;
         
         NextUpgradeToken upgrade_token;
 
@@ -9989,8 +9990,7 @@ bool next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         return true;
     }
-
-    return false;
+    */
 }
 
 void next_server_internal_process_game_packet( next_server_internal_t * server, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
@@ -12314,10 +12314,8 @@ static void test_packets()
         int packet_bytes = 0;
         check( next_write_packet( NEXT_UPGRADE_REQUEST_PACKET, &in, buffer, &packet_bytes, NULL, NULL, NULL ) == NEXT_OK );
 
-        bool valid = false;
-        check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL, &valid ) == NEXT_UPGRADE_REQUEST_PACKET );
+        check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL ) == NEXT_UPGRADE_REQUEST_PACKET );
 
-        check( valid );
         check( in.protocol_version == out.protocol_version );
         check( in.session_id == out.session_id );
         check( next_address_equal( &in.server_address, &out.server_address ) );
@@ -12335,10 +12333,7 @@ static void test_packets()
 
         int packet_bytes = 0;
         check( next_write_packet( NEXT_UPGRADE_RESPONSE_PACKET, &in, buffer, &packet_bytes, NULL, NULL, NULL ) == NEXT_OK );
-
-        bool valid = false;
-        check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL, &valid ) == NEXT_UPGRADE_RESPONSE_PACKET );
-        check( valid );
+        check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL ) == NEXT_UPGRADE_RESPONSE_PACKET );
 
         check( memcmp( in.client_kx_public_key, out.client_kx_public_key, crypto_kx_PUBLICKEYBYTES ) == 0 );
         check( memcmp( in.client_route_public_key, out.client_route_public_key, crypto_box_PUBLICKEYBYTES ) == 0 );
@@ -12362,9 +12357,7 @@ static void test_packets()
         int packet_bytes = 0;
         check( next_write_packet( NEXT_UPGRADE_CONFIRM_PACKET, &in, buffer, &packet_bytes, NULL, NULL, NULL ) == NEXT_OK );
 
-        bool valid = false;
-        check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL, &valid ) == NEXT_UPGRADE_CONFIRM_PACKET );
-        check( valid );
+        check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL ) == NEXT_UPGRADE_CONFIRM_PACKET );
 
         check( in.upgrade_sequence == out.upgrade_sequence );
         check( in.session_id == out.session_id );
@@ -12387,9 +12380,7 @@ static void test_packets()
         static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
         check( next_write_packet( NEXT_DIRECT_PING_PACKET, &in, buffer, &packet_bytes, next_encrypted_packets, &in_sequence, private_key ) == NEXT_OK );
-        bool valid = false;
-        check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection, &valid ) == NEXT_DIRECT_PING_PACKET );
-        check( valid );
+        check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection ) == NEXT_DIRECT_PING_PACKET );
         check( in_sequence == out_sequence + 1 );
         check( in.ping_sequence == out.ping_sequence );
     }
@@ -12404,9 +12395,7 @@ static void test_packets()
         static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
         check( next_write_packet( NEXT_DIRECT_PONG_PACKET, &in, buffer, &packet_bytes, next_encrypted_packets, &in_sequence, private_key ) == NEXT_OK );
-        bool valid = false;
-        check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection, &valid ) == NEXT_DIRECT_PONG_PACKET );
-        check( valid );
+        check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection ) == NEXT_DIRECT_PONG_PACKET );
         check( in_sequence == out_sequence + 1 );
         check( in.ping_sequence == out.ping_sequence );
     }
@@ -12449,9 +12438,7 @@ static void test_packets()
         static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
         check( next_write_packet( NEXT_CLIENT_STATS_PACKET, &in, buffer, &packet_bytes, next_encrypted_packets, &in_sequence, private_key ) == NEXT_OK );
-        bool valid = false;
-        check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection, &valid ) == NEXT_CLIENT_STATS_PACKET );
-        check( valid );
+        check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection ) == NEXT_CLIENT_STATS_PACKET );
         check( in_sequence == out_sequence + 1 );
         check( in.flags == out.flags );
         check( in.flagged == out.flagged );
@@ -12506,9 +12493,7 @@ static void test_packets()
         static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
         check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, buffer, &packet_bytes, next_encrypted_packets, &in_sequence, private_key ) == NEXT_OK );
-        bool valid = false;
-        check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection, &valid ) == NEXT_ROUTE_UPDATE_PACKET );
-        check( valid );
+        check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
         check( in_sequence == out_sequence + 1 );
         check( in.sequence == out.sequence );
         check( in.num_near_relays == out.num_near_relays );
@@ -12547,9 +12532,7 @@ static void test_packets()
         static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
         check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, buffer, &packet_bytes, next_encrypted_packets, &in_sequence, private_key ) == NEXT_OK );
-        bool valid = false;
-        check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection, &valid ) == NEXT_ROUTE_UPDATE_PACKET );
-        check( valid );
+        check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
         check( in_sequence == out_sequence + 1 );
         check( in.sequence == out.sequence );
         check( in.num_near_relays == out.num_near_relays );
@@ -12592,9 +12575,7 @@ static void test_packets()
         static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
         check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, buffer, &packet_bytes, next_encrypted_packets, &in_sequence, private_key ) == NEXT_OK );
-        bool valid = false;
-        check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection, &valid ) == NEXT_ROUTE_UPDATE_PACKET );
-        check( valid );
+        check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
         check( in_sequence == out_sequence + 1 );
         check( in.sequence == out.sequence );
         check( in.num_near_relays == out.num_near_relays );
@@ -12621,9 +12602,7 @@ static void test_packets()
         static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
         check( next_write_packet( NEXT_ROUTE_UPDATE_ACK_PACKET, &in, buffer, &packet_bytes, next_encrypted_packets, &in_sequence, private_key ) == NEXT_OK );
-        bool valid = false;
-        check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection, &valid ) == NEXT_ROUTE_UPDATE_ACK_PACKET );
-        check( valid );
+        check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_ACK_PACKET );
         check( in_sequence == out_sequence + 1 );
         check( in.sequence == out.sequence );
     }
@@ -12635,9 +12614,7 @@ static void test_packets()
         in.session_id = 1000000;
         int packet_bytes = 0;
         check( next_write_packet( NEXT_RELAY_PING_PACKET, &in, buffer, &packet_bytes, NULL, NULL, NULL ) == NEXT_OK );
-        bool valid = false;
-        check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL, &valid ) == NEXT_RELAY_PING_PACKET );
-        check( valid );
+        check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL ) == NEXT_RELAY_PING_PACKET );
         check( in.ping_sequence == out.ping_sequence );
         check( in.session_id == out.session_id );
         check( in.padding1 == out.padding1 );
@@ -12651,9 +12628,7 @@ static void test_packets()
         in.session_id = 1000000;
         int packet_bytes = 0;
         check( next_write_packet( NEXT_RELAY_PONG_PACKET, &in, buffer, &packet_bytes, NULL, NULL, NULL ) == NEXT_OK );
-        bool valid = false;
-        check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL, &valid ) == NEXT_RELAY_PONG_PACKET );
-        check( valid );
+        check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL ) == NEXT_RELAY_PONG_PACKET );
         check( in.ping_sequence == out.ping_sequence );
         check( in.session_id == out.session_id );
     }
