@@ -121,7 +121,7 @@ endif
 
 .PHONY: help
 help: ## this list
-	@echo -e "$$(grep -hE '^\S+:.*##' $(MAKEFILE_LIST) | sed -e 's/:.*##\s*/:/' -e 's/^\(.\+\):\(.*\)/\\033[36m\1\\033[m:\2/' | column -c2 -t -s :)"
+	@echo "$$(grep -hE '^\S+:.*##' $(MAKEFILE_LIST) | sed -e 's/:.*##\s*/:/' -e 's/^\(.\+\):\(.*\)/\\033[36m\1\\033[m:\2/' | column -c2 -t -s :)"
 
 .PHONY: clean
 clean: ## cleans the dist directory of all builds
@@ -144,16 +144,16 @@ format: ## runs gofmt on all go source code
 .PHONY: test
 test: test-unit
 
-.PHONY: test-unit-SDK
+.PHONY: test-unit-sdk
 test-unit-sdk: build-sdk-test ## runs sdk unit tests
 	@$(DIST_DIR)/$(SDKNAME)_test
 
-.PHONY: test-unit-relay-new
-test-unit-relay-new: build-relay-new-tests ## runs relay unit tests
+.PHONY: test-unit-relay
+test-unit-relay-new: build-relay-tests ## runs relay unit tests
 	@$(NEW_RELAY_DIR)/bin/relay.test
 
-.PHONY: test-unit-relay-ref
-test-unit-relay-ref: build-relay-ref
+.PHONY: test-unit-reference-relay
+test-unit-relay-ref: build-reference-relay
 	@$(DIST_DIR)/relay test
 
 .PHONY: test-unit-backend
@@ -161,7 +161,7 @@ test-unit-backend: lint ## runs backend unit tests
 	@./cmd/tools/scripts/test-unit-backend.sh
 
 .PHONY: test-unit
-test-unit: clean test-unit-sdk test-unit-relay-new test-unit-relay-ref test-unit-backend ## runs all unit tests
+test-unit: clean test-unit-sdk test-unit-relay test-unit-reference-relay test-unit-backend ## runs all unit tests
 
 .PHONY: test-soak
 test-soak: clean build-sdk-test build-soak-test ## runs soak test
@@ -259,8 +259,8 @@ NEW_RELAY_MAKEFILE := Makefile
 RELAY_EXE	:= relay
 
 .PHONY: build-relay-ref
-build-relay-ref: ## builds the relay
-	@printf "Building relay... "
+build-relay-ref: ## builds the reference relay
+	@printf "Building reference relay... "
 	@$(CXX) $(CXX_FLAGS) -o $(DIST_DIR)/$(RELAY_EXE) cmd/relay/*.cpp $(LDFLAGS)
 	@printf "done\n"
 
@@ -270,26 +270,18 @@ build-relay-new: ## builds the new relay
 	@cd $(NEW_RELAY_DIR) && $(MAKE) release
 	@echo "done"
 
-.PHONY: build-relay-new-tests
-build-relay-new-tests: ## builds the relay version that runs tests
+.PHONY: build-relay-tests
+build-relay-tests: ## builds the new relay tests
 	@printf "Building relay with tests enabled... "
 	@cd $(NEW_RELAY_DIR) && $(MAKE) test
 	@echo "done"
 
-.PHONY: dev-relay-ref
-dev-relay-ref: build-relay-ref
+.PHONY: dev-relay
+dev-relay: build-new-relay ## runs a local relay
 	@$(DIST_DIR)/$(RELAY_EXE)
 
-.PHONY: dev-relay-new
-dev-relay-new: build-relay-new ## runs a local relay
-	@$(DIST_DIR)/$(RELAY_EXE)
-
-.PHONY: dev-multi-ref-relays
-dev-multi-relays-ref: build-relay-ref ## runs 10 local reference relays
-	./cmd/tools/scripts/relay-spawner.sh -n 10 -p 10000
-
-.PHONY: dev-multi-new-relays
-dev-multi-relays-new: build-relay-new ## runs 10 local new relays
+.PHONY: dev-multi-relays
+dev-multi-relays: build-new-relay ## runs 10 local relays
 	./cmd/tools/scripts/relay-spawner.sh -n 10 -p 10000
 
 #######################
@@ -310,9 +302,13 @@ dev-relay-backend: ## runs a local relay backend
 dev-server-backend: ## runs a local server backend
 	@PORT=40000 $(GO) run cmd/server_backend/server_backend.go
 
-.PHONY: dev-backend-ref
-dev-backend-ref: ## runs a local backend using the reference/functional backend binary
+.PHONY: dev-reference-backend
+dev-reference-backend: ## runs a local reference backend
 	$(GO) run cmd/tools/functional/backend/*.go
+
+.PHONY: dev-reference-relay 
+dev-reference-relay: build-ref-relay ## runs a local reference relay
+	@$(DIST_DIR)/$(RELAY_EXE)
 
 .PHONY: dev-server
 dev-server: build-sdk build-server  ## runs a local server
@@ -523,7 +519,7 @@ build-client: build-sdk ## builds the client
 	@printf "done\n"
 
 .PHONY: build-all
-build-all: build-relay-backend build-server-backend build-relay build-client build-server build-functional build-sdk-test build-soak-test build-tools ## builds everything
+build-all: build-relay-backend build-server-backend build-relay-new build-relay-ref build-client build-server build-functional build-sdk-test build-soak-test build-tools ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all
