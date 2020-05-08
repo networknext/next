@@ -5428,6 +5428,9 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         next_packet_loss_tracker_packet_received( &client->packet_loss_tracker, clean_sequence );
 
+        // todo
+        printf( "client received upgraded direct packet\n" );
+
         return;
     }
 
@@ -6017,6 +6020,9 @@ void next_client_internal_process_game_packet( next_client_internal_t * client, 
             next_queue_push( client->notify_queue, notify );            
         }
         client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT]++;
+
+        // todo
+        printf( "client received raw game packet\n" );
     }
 }
 
@@ -6939,6 +6945,7 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
             uint8_t buffer[NEXT_PACKET_HASH_BYTES+10+NEXT_MTU];
             uint8_t * p = buffer;
+            next_write_uint64( &p, 0 );
             next_write_uint8( &p, NEXT_DIRECT_PACKET );
             next_write_uint8( &p, client->open_session_sequence );
             next_write_uint64( &p, send_sequence );
@@ -9322,6 +9329,9 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             next_queue_push( server->notify_queue, notify );            
         }
 
+        // todo:
+        printf( "server received upgraded direct packet\n" );
+
         return;
     }
 
@@ -10055,6 +10065,9 @@ void next_server_internal_process_game_packet( next_server_internal_t * server, 
             next_mutex_guard( server->notify_mutex );
             next_queue_push( server->notify_queue, notify );            
         }
+
+        // todo
+        printf( "server received raw game packet\n" );
     }
 }
 
@@ -11014,6 +11027,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
                 uint8_t buffer[NEXT_PACKET_HASH_BYTES+10+NEXT_MTU];
                 uint8_t * p = buffer;
+                next_write_uint64( &p, 0 );
                 next_write_uint8( &p, NEXT_DIRECT_PACKET );
                 next_write_uint8( &p, open_session_sequence );
                 next_write_uint64( &p, send_sequence );

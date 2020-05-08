@@ -42,19 +42,15 @@ DONE
 
 	Whoo boy there's a lot of fixes required.
 
+	Next step is to verify both raw and upgraded direct packets are getting through fine.
+
+	Raw are getting through, but upgraded direct are not (on the server at least).
+
+	Dig in on the upgraded direct on the server. It could be malformed on the client, or the code to read it could be broken.
+	
+	Malformed send. Fixed on both sides and now upgraded direct packets get through.
+
 TODO
-
-	Next step is to verify both raw and direct packets are getting through fine.
-
-	--------------------------------
-
-	Then extend to verify and make sure that the actual *contents* of packets in both directions are correct.
-
-	--------------------------------
-
-	We really should have a functional test that verifies payload client -> server direct, upgraded direct, and next.
-
-	I mean FFS we could break game payload and not know...
 
 	--------------------------------
 
@@ -79,6 +75,12 @@ TODO
 
 
 
+
+	--------------------------------
+
+	We really should have a functional test that verifies payload client -> server direct, upgraded direct, and next.
+
+	I mean FFS we could break game payload and not know...
 
 	--------------------------------
 
