@@ -20,9 +20,9 @@ DONE
 
 	Fixed. Continue response not handled.
 
-TODO
-
 	Now need to go across all todos and remove debug logs...
+
+TODO
 
 	--------------------------------
 
@@ -46,6 +46,9 @@ TODO
 
 	--------------------------------
 
+	Maybe extend stream serialize to check that there are no remaining bytes at the end of packet read... this would increase entropy.
+ 
+	--------------------------------
 
 
 
@@ -105,6 +108,27 @@ TODO
 	"Xbox One seems to have asymmetric alloc/free, it attempted to free something using the global context that wasn't allocated with the global context."
 
 	Find this and fix it.
+
+	--------------------------------
+
+	Need extra safety. If a packet comes in that has a stale key or address, it will get forward to the game.
+
+	It would be much better for every packet to have some safety, eg. looking exclusively at its own contents, we should be able to
+	have a high confidence whether it is a network next packet, or a game packet.
+
+	This generally should mean a prefixed signature or hash in front of the packet.
+
+	Perhaps just 8 bytes is needed.
+
+	We should extend packets to do this generally.
+
+	The backend however is a special case, we don't need to change those packets.
+
+	BUT
+
+	We do need to change packets received from either the client, server or relays to have this property.
+
+	Add a 32byte CRC or something in front of each packet. *** It really needs to be done ***
 
 	--------------------------------
 

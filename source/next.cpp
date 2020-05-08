@@ -3254,10 +3254,13 @@ uint64_t next_clean_sequence( uint64_t sequence )
     return sequence & mask;
 }
 
-int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_object, const int * encrypted_packet, uint64_t * sequence, const uint8_t * private_key, next_replay_protection_t * replay_protection )
+int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_object, const int * encrypted_packet, uint64_t * sequence, const uint8_t * private_key, next_replay_protection_t * replay_protection, bool * valid )
 {
     next_assert( packet_data );
     next_assert( packet_object );
+    next_assert( valid );
+
+    *valid = false;
 
     if ( packet_bytes < 1 )
         return NEXT_ERROR;
@@ -3279,14 +3282,6 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
         const uint8_t * p = &packet_data[1];
 
         *sequence = next_read_uint64( &p );
-
-        uint64_t clean_sequence = next_clean_sequence( *sequence );
-
-        if ( next_replay_protection_already_received( replay_protection, clean_sequence ) )
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "packet already received: %" PRIu64 " vs. %" PRIu64, clean_sequence, replay_protection->most_recent_sequence );
-            return NEXT_ERROR;
-        }
 
         uint8_t * additional = packet_data;
         uint8_t * nonce = packet_data + 1;
@@ -3405,6 +3400,19 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
 
         default:
             return NEXT_ERROR;
+    }
+
+    *valid = true;
+
+    if ( encrypted_packet && encrypted_packet[packet_id] )
+    {
+        uint64_t clean_sequence = next_clean_sequence( *sequence );
+
+        if ( next_replay_protection_already_received( replay_protection, clean_sequence ) )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "packet already received: %" PRIu64 " vs. %" PRIu64, clean_sequence, replay_protection->most_recent_sequence );
+            return NEXT_ERROR;
+        }
     }
 
     return (int) packet_id;
@@ -5361,460 +5369,6 @@ int next_client_internal_send_packet_to_server( next_client_internal_t * client,
     return NEXT_OK;
 }
 
-#if 0
-
-int next_client_internal_process_packet_from_server( next_client_internal_t * client, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
-{
-    next_assert( client );
-    next_assert( from );
-    next_assert( packet_data );
-
-    int packet_id = packet_data[0];
-
-    if ( next_encrypted_packets[packet_id] && !client->upgraded )
-    {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client can't decrypt packet. not upgraded yet" );
-        return NEXT_ERROR;
-    }
-
-    switch ( packet_id )
-    {
-        case NEXT_UPGRADE_REQUEST_PACKET:
-        {
-            if ( client->fallback_to_direct )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. in fallback to direct state" );
-                return NEXT_ERROR;
-            }
-
-            NextUpgradeRequestPacket packet;
-
-            if ( next_global_config.disable_network_next )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. network next is disabled" );
-                return NEXT_ERROR;
-            }
-
-            if ( !next_address_equal( from, &client->server_address ) )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet. does not come from server" );
-                return NEXT_ERROR;
-            }
-
-            if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL ) != packet_id )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. failed to read" );
-                return NEXT_ERROR;
-            }
-
-            if ( packet.protocol_version != next_protocol_version() )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. protocol version mismatch" );
-                return NEXT_ERROR;
-            }
-
-            if ( !next_address_equal( &client->server_address, &packet.server_address ) )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. packet server address does not match client server address" );
-                return NEXT_ERROR;
-            }
-
-            if ( !packet.Verify( client->customer_public_key ) )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. did not verify" );
-                return NEXT_ERROR;
-            }
-
-            next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL );
-
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "client received upgrade request packet from server" );
-
-            NextUpgradeResponsePacket response;
-            response.client_open_session_sequence = client->open_session_sequence;
-            memcpy( response.client_kx_public_key, client->client_kx_public_key, crypto_kx_PUBLICKEYBYTES );
-            memcpy( response.client_route_public_key, client->client_route_public_key, crypto_box_PUBLICKEYBYTES );
-            memcpy( response.upgrade_token, packet.upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
-
-            if ( next_client_internal_send_packet_to_server( client, NEXT_UPGRADE_RESPONSE_PACKET, &response ) != NEXT_OK )
-            {
-                next_printf( NEXT_LOG_LEVEL_WARN, "client failed to send upgrade response packet to server" );
-                return NEXT_ERROR;
-            }
-
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent upgrade response packet to server" );
-
-            // IMPORTANT: Cache upgrade response and keep sending it until we get an upgrade confirm.
-            // Without this, under very rare packet loss conditions it's possible for the client to get
-            // stuck in an undefined state.
-
-            client->sending_upgrade_response = true;
-            client->upgrade_response = response;
-            client->upgrade_response_start_time = next_time();
-            client->last_upgrade_response_send_time = next_time();
-
-            return NEXT_OK;
-        }
-        break;
-
-        case NEXT_UPGRADE_CONFIRM_PACKET:
-        {
-            if ( !client->sending_upgrade_response )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade confirm packet from server. unexpected" );
-                return NEXT_ERROR;
-            }
-
-            if ( !next_address_equal( from, &client->server_address ) )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade confirm packet. packet does not come from server" );
-                return NEXT_ERROR;
-            }
-
-            NextUpgradeConfirmPacket packet;
-
-            if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL ) != packet_id )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade confirm packet from server. failed to read" );
-                return NEXT_ERROR;
-            }
-
-            if ( !packet.Verify( client->customer_public_key ) )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade confirm packet from server. did not verify" );
-                return NEXT_ERROR;
-            }
-
-            if ( client->fallback_to_direct )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. in fallback to direct state" );
-                return NEXT_ERROR;
-            }
-
-            if ( memcmp( packet.client_kx_public_key, client->client_kx_public_key, crypto_kx_PUBLICKEYBYTES ) != 0 )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade confirm packet from server. client public key does not match" );
-                return NEXT_ERROR;
-            }
-
-            if ( client->upgraded && client->upgrade_sequence >= packet.upgrade_sequence )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade confirm packet from server. client already upgraded" );
-                return NEXT_ERROR;
-            }
-
-            uint8_t client_send_key[crypto_kx_SESSIONKEYBYTES];
-            uint8_t client_receive_key[crypto_kx_SESSIONKEYBYTES];
-            if ( crypto_kx_client_session_keys( client_receive_key, client_send_key, client->client_kx_public_key, client->client_kx_private_key, packet.server_kx_public_key ) != 0 )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade confirm packet from server. could not generate session keys from server public key" );
-                return NEXT_ERROR;
-            }
-
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "client received upgrade confirm packet from server" );
-
-            next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL );
-
-            client->upgraded = true;
-            client->upgrade_sequence = packet.upgrade_sequence;
-            client->session_id = packet.session_id;
-            client->last_direct_pong_time = next_time();
-            memcpy( client->client_send_key, client_send_key, crypto_kx_SESSIONKEYBYTES );
-            memcpy( client->client_receive_key, client_receive_key, crypto_kx_SESSIONKEYBYTES );
-
-            next_client_notify_upgraded_t * notify = (next_client_notify_upgraded_t*) next_malloc( client->context, sizeof(next_client_notify_upgraded_t) );
-            next_assert( notify );
-            notify->type = NEXT_CLIENT_NOTIFY_UPGRADED;
-            notify->session_id = client->session_id;
-            {
-                next_mutex_guard( client->notify_mutex );
-                next_queue_push( client->notify_queue, notify );
-            }
-
-            client->counters[NEXT_CLIENT_COUNTER_UPGRADE_SESSION]++;
-
-            client->sending_upgrade_response = false;
-
-            return NEXT_OK;
-        }
-        break;
-
-        case NEXT_DIRECT_PONG_PACKET:
-        {
-            NextDirectPongPacket packet;
-
-            uint64_t packet_sequence = 0;
-
-            if ( next_read_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, client->client_receive_key, &client->internal_replay_protection ) != packet_id )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored direct pong packet from server. failed to read" );
-                return NEXT_ERROR;
-            }
-
-            if ( !next_address_equal( from, &client->server_address ) )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored direct pong packet. does not come from server" );
-                return NEXT_ERROR;
-            }
-
-            next_ping_history_pong_received( &client->direct_ping_history, packet.ping_sequence, next_time() );
-
-            next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, client->client_receive_key, &client->internal_replay_protection, &client->packet_loss_tracker );
-
-            client->last_direct_pong_time = next_time();
-        }
-        break;        
-
-        case NEXT_ROUTE_UPDATE_PACKET:
-        {
-            if ( !next_address_equal( from, &client->server_address ) )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route update packet. does not come from server" );
-                return NEXT_ERROR;
-            }
-
-            if ( client->fallback_to_direct )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route update packet from server. in fallback to direct state" );
-                return NEXT_ERROR;
-            }
-
-            NextRouteUpdatePacket packet;
-
-            uint64_t packet_sequence = 0;
-
-            if ( next_read_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, client->client_receive_key, &client->internal_replay_protection ) != packet_id )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route update packet from server. failed to read" );
-                return NEXT_ERROR;
-            }
-
-            if ( packet.sequence < client->route_update_sequence )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route update packet from server. sequence is old" );
-                return NEXT_ERROR;
-            }
-
-            next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, client->client_receive_key, &client->internal_replay_protection, &client->packet_loss_tracker );
-
-            bool fallback_to_direct = false;
-
-            if ( packet.sequence != client->route_update_sequence )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client received route update packet from server" );
-
-                next_relay_manager_update( client->near_relay_manager, packet.num_near_relays, packet.near_relay_ids, packet.near_relay_addresses );
-
-                next_platform_mutex_acquire( client->route_manager_mutex );
-                next_route_manager_update( client->route_manager, packet.update_type, packet.committed, packet.num_tokens, packet.tokens, next_router_public_key, client->client_route_private_key );
-                fallback_to_direct = client->route_manager->fallback_to_direct;
-                next_platform_mutex_release( client->route_manager_mutex );
-
-                if ( !client->fallback_to_direct && fallback_to_direct )
-                {
-                    client->counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT]++;
-                }
-
-                if ( packet.multipath && !client->multipath )
-                {
-                    next_printf( NEXT_LOG_LEVEL_INFO, "client multipath enabled" );
-                    client->multipath = true;
-                    client->counters[NEXT_CLIENT_COUNTER_MULTIPATH]++;
-                }
-
-                client->fallback_to_direct = fallback_to_direct;
-                client->route_update_sequence = packet.sequence;
-                client->client_stats.packets_lost_client_to_server = packet.packets_lost_client_to_server;
-                client->counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_CLIENT_TO_SERVER] = packet.packets_lost_client_to_server;
-            }
-
-            if ( fallback_to_direct )
-                return NEXT_ERROR;
-
-            NextRouteUpdateAckPacket ack;
-            ack.sequence = packet.sequence;
-
-            if ( next_client_internal_send_packet_to_server( client, NEXT_ROUTE_UPDATE_ACK_PACKET, &ack ) != NEXT_OK )
-            {
-                next_printf( NEXT_LOG_LEVEL_WARN, "client failed to send route update ack packet to server" );
-                return NEXT_ERROR;
-            }
-
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent route update ack packet to server" );
-        }
-        break;        
-
-        default: break;
-    }
-
-    return NEXT_ERROR;
-}
-
-int next_client_internal_process_network_next_packet( next_client_internal_t * client, const next_address_t * from, uint8_t * packet_data, int packet_bytes, bool multipath )
-{
-    next_assert( client );
-    next_assert( from );
-    next_assert( packet_data );
-
-    int packet_id = packet_data[0];
-
-    switch ( packet_id )
-    {
-        case NEXT_RELAY_PONG_PACKET:
-        {
-            if ( !client->upgraded )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored relay pong packet. not upgraded yet" );
-                return NEXT_ERROR;
-            }            
-
-            NextRelayPongPacket packet;
-
-            if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL ) != packet_id )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored relay pong packet. failed to read" );
-                return NEXT_ERROR;
-            }
-
-            if ( packet.session_id != client->session_id )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignoring relay pong packet. session id does not match" );
-                return NEXT_ERROR;
-            }
-
-            next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL );
-
-            next_relay_manager_process_pong( client->near_relay_manager, from, packet.ping_sequence );
-        }
-        break;        
-
-        case NEXT_ROUTE_RESPONSE_PACKET:
-        {
-            next_platform_mutex_acquire( client->route_manager_mutex );
-            next_route_manager_process_route_response_packet( client->route_manager, from, packet_data, packet_bytes, &client->special_replay_protection );
-            bool route_established = client->route_manager->route_data.current_route;
-            int route_kbps_up = client->route_manager->route_data.current_route_kbps_up;
-            int route_kbps_down = client->route_manager->route_data.current_route_kbps_down;
-            next_platform_mutex_release( client->route_manager_mutex );
-
-            next_platform_mutex_acquire( client->bandwidth_mutex );
-            if ( route_established )
-            {
-                client->bandwidth_envelope_kbps_up = route_kbps_up;
-                client->bandwidth_envelope_kbps_down = route_kbps_down;
-            }
-            else
-            {
-                client->bandwidth_envelope_kbps_up = 0;
-                client->bandwidth_envelope_kbps_down = 0;
-            }
-            next_platform_mutex_release( client->bandwidth_mutex );
-
-            return NEXT_OK;
-        }
-        break;
-
-        case NEXT_CONTINUE_RESPONSE_PACKET:
-        {
-            next_platform_mutex_acquire( client->route_manager_mutex );
-            next_route_manager_process_continue_response_packet( client->route_manager, from, packet_data, packet_bytes, &client->special_replay_protection );
-            next_platform_mutex_release( client->route_manager_mutex );
-            return NEXT_OK;
-        }
-        break;
-
-        case NEXT_SERVER_TO_CLIENT_PACKET:
-        {
-            int payload_bytes = 0;
-            uint64_t payload_sequence = 0;
-            uint8_t payload_data[NEXT_MTU];
-
-            next_platform_mutex_acquire( client->route_manager_mutex );
-            const bool result = next_route_manager_process_server_to_client_packet( client->route_manager, from, packet_data, packet_bytes, &payload_sequence, payload_data, &payload_bytes );
-            next_platform_mutex_release( client->route_manager_mutex );
-
-            if ( !result )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored server to client packet. could not verify" );
-                return NEXT_ERROR;
-            }
-
-            const bool already_received = next_replay_protection_already_received( &client->payload_replay_protection, payload_sequence ) != 0;
-
-            if ( already_received && !multipath )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client already received server to client packet %" PRIu64, payload_sequence );
-                return NEXT_ERROR;
-            }
-
-            if ( already_received && multipath )
-            {
-                client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT]++;
-                return NEXT_OK;
-            }
-
-            uint64_t clean_sequence = next_clean_sequence( payload_sequence );
-
-            next_replay_protection_advance_sequence( &client->payload_replay_protection, clean_sequence );
-    
-            next_packet_loss_tracker_packet_received( &client->packet_loss_tracker, clean_sequence );
-
-            next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
-            notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
-            notify->packet_bytes = payload_bytes;
-            memcpy( notify->packet_data, payload_data, payload_bytes );
-            {
-                next_mutex_guard( client->notify_mutex );
-                next_queue_push( client->notify_queue, notify );            
-            }
-
-            client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT]++;
-
-            return NEXT_OK;
-        }
-        break;
-
-        case NEXT_PONG_PACKET:
-        {
-            int payload_bytes = 0;
-            uint64_t payload_sequence = 0;
-            uint8_t payload_data[NEXT_MTU];
-
-            next_platform_mutex_acquire( client->route_manager_mutex );
-            const bool result = next_route_manager_process_server_to_client_packet( client->route_manager, from, packet_data, packet_bytes, &payload_sequence, payload_data, &payload_bytes );
-            next_platform_mutex_release( client->route_manager_mutex );
-
-            if ( !result )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored pong packet. could not verify" );
-                return NEXT_ERROR;
-            }
-
-            uint64_t clean_sequence = next_clean_sequence( payload_sequence );
-
-            if ( next_replay_protection_already_received( &client->special_replay_protection, clean_sequence ) )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client already received pong packet %" PRIu64, clean_sequence );
-                return NEXT_ERROR;
-            }
-
-            next_replay_protection_advance_sequence( &client->special_replay_protection, clean_sequence );
-
-            const uint8_t * p = packet_data + NEXT_HEADER_BYTES;
-
-            uint64_t ping_sequence = next_read_uint64( &p );
-
-            next_ping_history_pong_received( &client->next_ping_history, ping_sequence, next_time() );
-
-            return NEXT_OK;
-        }
-        break;
-    }
-
-    return NEXT_ERROR;
-}
-
-#endif // #if 0
-
 bool next_client_internal_process_network_next_packet( next_client_internal_t * client, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
 {
     next_assert( client );
@@ -5880,8 +5434,9 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         NextUpgradeRequestPacket packet;
 
-        if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL ) != packet_id )
-            return false;
+        bool valid = false;
+        if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, &valid ) != packet_id )
+            return valid;
 
         if ( !packet.Verify( client->customer_public_key ) )
         {
@@ -5946,8 +5501,9 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
  
         NextUpgradeConfirmPacket packet;
 
-        if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL ) != packet_id )
-            return false;
+        bool valid = false;
+        if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, &valid ) != packet_id )
+            return valid;
 
         if ( !packet.Verify( client->customer_public_key ) )
             return false;
@@ -6305,9 +5861,9 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         uint64_t packet_sequence = 0;
 
-        // todo: check this function to see if we need a "bool * valid"
-        if ( next_read_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, client->client_receive_key, &client->internal_replay_protection ) != packet_id )
-            return false;
+        bool valid = false;
+        if ( next_read_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, client->client_receive_key, &client->internal_replay_protection, &valid ) != packet_id )
+            return valid;
 
         next_ping_history_pong_received( &client->direct_ping_history, packet.ping_sequence, next_time() );
 
@@ -6326,8 +5882,9 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         uint64_t packet_sequence = 0;
 
-        if ( next_read_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, client->client_receive_key, &client->internal_replay_protection ) != packet_id )
-            return false;
+        bool valid = false;
+        if ( next_read_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, client->client_receive_key, &client->internal_replay_protection, &valid ) != packet_id )
+            return valid;
 
         if ( client->fallback_to_direct )
         {
@@ -9392,8 +8949,12 @@ next_session_entry_t * next_server_internal_check_client_to_server_packet( next_
     if ( !entry )
         return NULL;
 
-    // todo: we now need to check the signature against all of the three private keys we could encounter.
-    // if it doesn't match any, then we say we don't know what's up with this packet.
+    const bool pending_route_ok = next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, entry->pending_route_private_key, packet_data, packet_bytes ) == NEXT_OK;
+    const bool current_route_ok = next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, entry->current_route_private_key, packet_data, packet_bytes ) == NEXT_OK;
+    const bool previous_route_ok = next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, entry->previous_route_private_key, packet_data, packet_bytes ) == NEXT_OK;
+
+    if ( !pending_route_ok && !current_route_ok && !previous_route_ok )
+        return NULL;
 
     *valid = true;
  
@@ -9418,7 +8979,7 @@ next_session_entry_t * next_server_internal_check_client_to_server_packet( next_
         return NULL;
     }
 
-    if ( entry->has_pending_route && next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, entry->pending_route_private_key, packet_data, packet_bytes ) == NEXT_OK )
+    if ( entry->has_pending_route && pending_route_ok )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server promoted pending route for session %" PRIx64, entry->session_id );
 
@@ -9448,17 +9009,6 @@ next_session_entry_t * next_server_internal_check_client_to_server_packet( next_
         entry->mutex_send_address = entry->current_route_send_address;
         memcpy( entry->mutex_private_key, entry->current_route_private_key, crypto_box_SECRETKEYBYTES );
         next_platform_mutex_release( server->session_mutex );
-    }
-    else
-    {
-        if ( next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, entry->current_route_private_key, packet_data, packet_bytes ) != NEXT_OK )
-        {
-            if ( next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, entry->previous_route_private_key, packet_data, packet_bytes ) != NEXT_OK )
-            {
-                next_printf( NEXT_LOG_LEVEL_ERROR, "server ignored client to server packet. could not read header" );
-                return NULL;
-            }
-        }
     }
 
     next_replay_protection_advance_sequence( replay_protection, clean_sequence );
@@ -9928,8 +9478,9 @@ bool next_server_internal_process_network_next_packet( next_server_internal_t * 
     {
         NextUpgradeResponsePacket packet;
 
-        if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL ) != packet_id )
-            return false;
+        bool valid = false;
+        if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, &valid ) != packet_id )
+            return valid;
         
         NextUpgradeToken upgrade_token;
 
@@ -10306,8 +9857,9 @@ bool next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         uint64_t packet_sequence = 0;
 
-        if ( next_read_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection ) != packet_id )
-            return false;
+        bool valid = false;
+        if ( next_read_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection, &valid ) != packet_id )
+            return valid;
 
         next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection, NULL );
 
@@ -10333,8 +9885,9 @@ bool next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         uint64_t packet_sequence = 0;
 
-        if ( next_read_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection ) != packet_id )
-            return false;
+        bool valid = false;
+        if ( next_read_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection, &valid ) != packet_id )
+            return valid;
 
         next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection, NULL );
 
@@ -10393,8 +9946,9 @@ bool next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         uint64_t packet_sequence = 0;
 
-        if ( next_read_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection ) != packet_id )
-            return false;
+        bool valid = false;
+        if ( next_read_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection, &valid ) != packet_id )
+            return true;
 
         if ( packet.sequence != session->update_sequence )
         {
@@ -12736,8 +12290,11 @@ static void test_packets()
 
         int packet_bytes = 0;
         check( next_write_packet( NEXT_UPGRADE_REQUEST_PACKET, &in, buffer, &packet_bytes, NULL, NULL, NULL ) == NEXT_OK );
-        check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL ) == NEXT_UPGRADE_REQUEST_PACKET );
 
+        bool valid = false;
+        check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL, &valid ) == NEXT_UPGRADE_REQUEST_PACKET );
+
+        check( valid );
         check( in.protocol_version == out.protocol_version );
         check( in.session_id == out.session_id );
         check( next_address_equal( &in.server_address, &out.server_address ) );
@@ -12755,7 +12312,10 @@ static void test_packets()
 
         int packet_bytes = 0;
         check( next_write_packet( NEXT_UPGRADE_RESPONSE_PACKET, &in, buffer, &packet_bytes, NULL, NULL, NULL ) == NEXT_OK );
-        check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL ) == NEXT_UPGRADE_RESPONSE_PACKET );
+
+        bool valid = false;
+        check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL, &valid ) == NEXT_UPGRADE_RESPONSE_PACKET );
+        check( valid );
 
         check( memcmp( in.client_kx_public_key, out.client_kx_public_key, crypto_kx_PUBLICKEYBYTES ) == 0 );
         check( memcmp( in.client_route_public_key, out.client_route_public_key, crypto_box_PUBLICKEYBYTES ) == 0 );
@@ -12778,7 +12338,10 @@ static void test_packets()
 
         int packet_bytes = 0;
         check( next_write_packet( NEXT_UPGRADE_CONFIRM_PACKET, &in, buffer, &packet_bytes, NULL, NULL, NULL ) == NEXT_OK );
-        check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL ) == NEXT_UPGRADE_CONFIRM_PACKET );
+
+        bool valid = false;
+        check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL, &valid ) == NEXT_UPGRADE_CONFIRM_PACKET );
+        check( valid );
 
         check( in.upgrade_sequence == out.upgrade_sequence );
         check( in.session_id == out.session_id );
@@ -12801,7 +12364,9 @@ static void test_packets()
         static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
         check( next_write_packet( NEXT_DIRECT_PING_PACKET, &in, buffer, &packet_bytes, next_encrypted_packets, &in_sequence, private_key ) == NEXT_OK );
-        check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection ) == NEXT_DIRECT_PING_PACKET );
+        bool valid = false;
+        check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection, &valid ) == NEXT_DIRECT_PING_PACKET );
+        check( valid );
         check( in_sequence == out_sequence + 1 );
         check( in.ping_sequence == out.ping_sequence );
     }
@@ -12816,7 +12381,9 @@ static void test_packets()
         static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
         check( next_write_packet( NEXT_DIRECT_PONG_PACKET, &in, buffer, &packet_bytes, next_encrypted_packets, &in_sequence, private_key ) == NEXT_OK );
-        check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection ) == NEXT_DIRECT_PONG_PACKET );
+        bool valid = false;
+        check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection, &valid ) == NEXT_DIRECT_PONG_PACKET );
+        check( valid );
         check( in_sequence == out_sequence + 1 );
         check( in.ping_sequence == out.ping_sequence );
     }
@@ -12859,7 +12426,9 @@ static void test_packets()
         static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
         check( next_write_packet( NEXT_CLIENT_STATS_PACKET, &in, buffer, &packet_bytes, next_encrypted_packets, &in_sequence, private_key ) == NEXT_OK );
-        check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection ) == NEXT_CLIENT_STATS_PACKET );
+        bool valid = false;
+        check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection, &valid ) == NEXT_CLIENT_STATS_PACKET );
+        check( valid );
         check( in_sequence == out_sequence + 1 );
         check( in.flags == out.flags );
         check( in.flagged == out.flagged );
@@ -12914,7 +12483,9 @@ static void test_packets()
         static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
         check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, buffer, &packet_bytes, next_encrypted_packets, &in_sequence, private_key ) == NEXT_OK );
-        check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
+        bool valid = false;
+        check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection, &valid ) == NEXT_ROUTE_UPDATE_PACKET );
+        check( valid );
         check( in_sequence == out_sequence + 1 );
         check( in.sequence == out.sequence );
         check( in.num_near_relays == out.num_near_relays );
@@ -12953,7 +12524,9 @@ static void test_packets()
         static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
         check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, buffer, &packet_bytes, next_encrypted_packets, &in_sequence, private_key ) == NEXT_OK );
-        check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
+        bool valid = false;
+        check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection, &valid ) == NEXT_ROUTE_UPDATE_PACKET );
+        check( valid );
         check( in_sequence == out_sequence + 1 );
         check( in.sequence == out.sequence );
         check( in.num_near_relays == out.num_near_relays );
@@ -12996,7 +12569,9 @@ static void test_packets()
         static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
         check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, buffer, &packet_bytes, next_encrypted_packets, &in_sequence, private_key ) == NEXT_OK );
-        check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
+        bool valid = false;
+        check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection, &valid ) == NEXT_ROUTE_UPDATE_PACKET );
+        check( valid );
         check( in_sequence == out_sequence + 1 );
         check( in.sequence == out.sequence );
         check( in.num_near_relays == out.num_near_relays );
@@ -13023,7 +12598,9 @@ static void test_packets()
         static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
         check( next_write_packet( NEXT_ROUTE_UPDATE_ACK_PACKET, &in, buffer, &packet_bytes, next_encrypted_packets, &in_sequence, private_key ) == NEXT_OK );
-        check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_ACK_PACKET );
+        bool valid = false;
+        check( next_read_packet( buffer, packet_bytes, &out, next_encrypted_packets, &out_sequence, private_key, &replay_protection, &valid ) == NEXT_ROUTE_UPDATE_ACK_PACKET );
+        check( valid );
         check( in_sequence == out_sequence + 1 );
         check( in.sequence == out.sequence );
     }
@@ -13035,7 +12612,9 @@ static void test_packets()
         in.session_id = 1000000;
         int packet_bytes = 0;
         check( next_write_packet( NEXT_RELAY_PING_PACKET, &in, buffer, &packet_bytes, NULL, NULL, NULL ) == NEXT_OK );
-        check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL ) == NEXT_RELAY_PING_PACKET );
+        bool valid = false;
+        check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL, &valid ) == NEXT_RELAY_PING_PACKET );
+        check( valid );
         check( in.ping_sequence == out.ping_sequence );
         check( in.session_id == out.session_id );
         check( in.padding1 == out.padding1 );
@@ -13049,7 +12628,9 @@ static void test_packets()
         in.session_id = 1000000;
         int packet_bytes = 0;
         check( next_write_packet( NEXT_RELAY_PONG_PACKET, &in, buffer, &packet_bytes, NULL, NULL, NULL ) == NEXT_OK );
-        check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL ) == NEXT_RELAY_PONG_PACKET );
+        bool valid = false;
+        check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL, &valid ) == NEXT_RELAY_PONG_PACKET );
+        check( valid );
         check( in.ping_sequence == out.ping_sequence );
         check( in.session_id == out.session_id );
     }
