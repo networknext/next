@@ -1066,7 +1066,6 @@ func (fs *Firestore) syncCustomers(ctx context.Context) error {
 			sellers[sdoc.Ref.ID] = routing.Seller{
 				ID:                sdoc.Ref.ID,
 				Name:              s.Name,
-				Domain:            c.Domain,
 				IngressPriceCents: convertNibblinsToCents(s.PricePublicIngressNibblins),
 				EgressPriceCents:  convertNibblinsToCents(s.PricePublicEgressNibblins),
 			}
