@@ -960,7 +960,7 @@ func test_route_switching() {
 }
 
 /*
-	Put the backend into a mode where it servers up even slices on network next, and odd slices going direct.
+	Put the backend into a mode where it serves up even slices on network next, and odd slices going direct.
 	Verify that the SDK is able to handle transitioning from direct -> next, and next -> direct without dropping packets.
 */
 

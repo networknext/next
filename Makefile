@@ -153,7 +153,7 @@ test-unit-relay-new: build-relay-tests ## runs relay unit tests
 	@$(NEW_RELAY_DIR)/bin/relay.test
 
 .PHONY: test-unit-reference-relay
-test-unit-relay-ref: build-reference-relay
+test-unit-relay-ref: build-relay-ref
 	@$(DIST_DIR)/relay test
 
 .PHONY: test-unit-backend
@@ -306,8 +306,8 @@ dev-server-backend: ## runs a local server backend
 dev-reference-backend: ## runs a local reference backend
 	$(GO) run cmd/tools/functional/backend/*.go
 
-.PHONY: dev-reference-relay
-dev-reference-relay: build-ref-relay ## runs a local reference relay
+.PHONY: dev-reference-relay 
+dev-reference-relay: build-relay-ref ## runs a local reference relay
 	@$(DIST_DIR)/$(RELAY_EXE)
 
 .PHONY: dev-server
