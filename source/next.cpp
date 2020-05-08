@@ -6297,6 +6297,8 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
     if ( !next_address_equal( from, &client->server_address ) )
         return false;
 
+    // direct pong packet
+
     if ( packet_id == NEXT_DIRECT_PONG_PACKET )
     {
         NextDirectPongPacket packet;
@@ -6315,6 +6317,8 @@ bool next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         return true;
     }
+
+    // route update packet
 
     if ( packet_id == NEXT_ROUTE_UPDATE_PACKET )
     {
