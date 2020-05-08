@@ -1,58 +1,6 @@
 DONE
 
-	Server needs to handle "route request" packet. Check the very specific size (one token). Check that it decrypts, otherwise pass to game.
-
-	Once this is done, running under a func test backend should result in the client getting the route response packet.
-
-	Bring across "continue request" packet.
-
-	Bring across "client to server" packet.
-
-	Bring across "next ping" packet.
-
-	Bring across "server to client" packet.
-
-	Bring across "next pong" packet.
-
-	Verify that everything works with ref backend, eg. packets across network next route.
-
-	Works fine, but seems like continue request timed out. Might be missing continue response packet handling?
-
-	Fixed. Continue response not handled.
-
-	Now need to go across all todos and remove debug logs...
-
-	Network Next passes functional tests again.
-
-	Added next_is_network_next_packet
-
-	Removing NEXT_MAGIC.
-
-	Simplifying...
-
-	Extended next_write_packet to include the hash prefix.
-
-	Extend next_read_packet to skip past the hash prefix, since we've already checked...		
-
-	Added assert to make sure it's valid tho.
-
-	Extend next_write_backend packet to include the packet hash.
-
-	Remove all the contortions around *valid. It's no longer necessary or required complexity.
-
-	Whoo boy there's a lot of fixes required.
-
-	Next step is to verify both raw and upgraded direct packets are getting through fine.
-
-	Raw are getting through, but upgraded direct are not (on the server at least).
-
-	Dig in on the upgraded direct on the server. It could be malformed on the client, or the code to read it could be broken.
-	
-	Malformed send. Fixed on both sides and now upgraded direct packets get through.
-
 TODO
-
-	--------------------------------
 
 	Check all next_printf functions. Just found one that was missing args.
 

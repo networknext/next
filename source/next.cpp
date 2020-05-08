@@ -4797,8 +4797,6 @@ void next_route_manager_continue_next_route( next_route_manager_t * route_manage
     if ( route_manager->fallback_to_direct )
         return;
 
-    next_printf( NEXT_LOG_LEVEL_DEBUG, "client continues current network next route" );
-
     if ( !route_manager->route_data.current_route )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client has no route to continue" );
@@ -6966,7 +6964,7 @@ void next_client_send_packet_direct( next_client_t * client, const uint8_t * pac
 
     if ( packet_bytes <= 0 )
     {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "client can't send packet because packet bytes are less than zero" );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "client can't send packet because packet size <= 0" );
         return;
     }
 
@@ -10798,7 +10796,7 @@ uint64_t next_server_upgrade_session( next_server_t * server, const next_address
     next_assert( server->internal->command_mutex );
     next_assert( server->internal->command_queue );
 
-    // we can only upgrade sessions once we've initialized
+    // don't upgrade sessions in direct only mode
 
     int state = NEXT_SERVER_STATE_DIRECT_ONLY;
     {
