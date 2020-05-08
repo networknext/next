@@ -111,7 +111,6 @@
 
 #define NEXT_PACKET_HASH_BYTES                                          8
 
-/*
 static const uint8_t next_backend_public_key[] = 
 { 
      76,  97, 202, 140,  71, 135,  62, 212, 
@@ -127,7 +126,6 @@ static const uint8_t next_router_public_key[] =
     0x1b, 0xff, 0x61, 0xc6, 0x0e, 0x65, 0x92, 0xd7, 
     0x09, 0x64, 0xe9, 0x34, 0x12, 0x32, 0x5f, 0x46 
 };
-*/
 
 static const uint8_t next_packet_hash_key[] =
 {
@@ -3274,9 +3272,9 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
 
     next_assert( next_is_network_next_packet( packet_data, packet_bytes ) );
     next_assert( packet_bytes >= NEXT_PACKET_HASH_BYTES );
-    packet_bytes -= NEXT_PACKET_HASH_BYTES;
     packet_data += NEXT_PACKET_HASH_BYTES;
-
+    packet_bytes -= NEXT_PACKET_HASH_BYTES;
+ 
     if ( packet_bytes < 1 )
         return NEXT_ERROR;
 
@@ -3382,10 +3380,7 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
         {
             NextClientStatsPacket * packet = (NextClientStatsPacket*) packet_object;
             if ( !packet->Serialize( stream ) )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "failed to read client stats packet" );
                 return NEXT_ERROR;
-            }
         }
         break;
 
@@ -3433,6 +3428,11 @@ void next_post_validate_packet( uint8_t * packet_data, int packet_bytes, void * 
     (void) packet_bytes;
     (void) packet_object;
     (void) private_key;
+
+    next_assert( packet_bytes >= NEXT_PACKET_HASH_BYTES );
+
+    packet_data += NEXT_PACKET_HASH_BYTES;
+    packet_bytes -= NEXT_PACKET_HASH_BYTES;
 
     next_assert( packet_bytes >= 1 );
 
@@ -4896,19 +4896,20 @@ void next_route_manager_prepare_send_packet( next_route_manager_t * route_manage
     *packet_bytes = NEXT_HEADER_BYTES + payload_bytes;
 }
 
-bool next_route_manager_process_server_to_client_packet( next_route_manager_t * route_manager, const next_address_t * from, uint8_t * packet_data, int packet_bytes, uint64_t * payload_sequence, uint8_t * payload_data, int * payload_bytes, bool * valid )
+bool next_route_manager_process_server_to_client_packet( next_route_manager_t * route_manager, const next_address_t * from, uint8_t * packet_data, int packet_bytes, uint64_t * payload_sequence, uint8_t * payload_data, int * payload_bytes )
 {
     next_assert( route_manager );
-    next_assert( from );
     next_assert( packet_data );
     next_assert( payload_sequence );
     next_assert( payload_data );
     next_assert( payload_bytes );
-    next_assert( valid );
 
-    *valid = false;
+    next_assert( next_is_network_next_packet( packet_data, packet_bytes ) );
 
     (void) from;
+
+    packet_data += NEXT_PACKET_HASH_BYTES;
+    packet_bytes -= NEXT_PACKET_HASH_BYTES;
 
     if ( packet_bytes <= NEXT_HEADER_BYTES )
         return false;
@@ -4927,8 +4928,6 @@ bool next_route_manager_process_server_to_client_packet( next_route_manager_t * 
         if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, route_manager->route_data.previous_route_private_key, packet_data, packet_bytes ) != NEXT_OK )
             return false;
     }
-
-    *valid = true;
 
     if ( !route_manager->route_data.current_route && !route_manager->route_data.previous_route )
     {
@@ -5384,16 +5383,17 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
     next_assert( client );
     next_assert( from );
     next_assert( packet_data );
+    next_assert( next_is_network_next_packet( packet_data, packet_bytes ) );
 
     const bool from_server_address = client->server_address.type != 0 && next_address_equal( from, &client->server_address );
 
-    const int packet_id = packet_data[0];
+    const int packet_id = packet_data[NEXT_PACKET_HASH_BYTES];
 
     // upgraded direct packet (255)
 
-    if ( client->upgraded && packet_id == NEXT_DIRECT_PACKET && packet_bytes <= NEXT_MTU + 10 && from_server_address )
+    if ( client->upgraded && packet_id == NEXT_DIRECT_PACKET && packet_bytes <= NEXT_MTU + NEXT_PACKET_HASH_BYTES + 10 && from_server_address )
     {
-        const uint8_t * p = packet_data + 1;
+        const uint8_t * p = packet_data + NEXT_PACKET_HASH_BYTES + 1;
 
         uint8_t packet_session_sequence = next_read_uint8( &p );
         
@@ -5416,8 +5416,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         }
         next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
-        notify->packet_bytes = packet_bytes - 10;
-        memcpy( notify->packet_data, packet_data + 10, size_t(packet_bytes) - 10 );
+        notify->packet_bytes = packet_bytes - ( 10 + NEXT_PACKET_HASH_BYTES );
+        memcpy( notify->packet_data, packet_data + 10 + NEXT_PACKET_HASH_BYTES, size_t(packet_bytes) - ( 10 + NEXT_PACKET_HASH_BYTES ) );
         {
             next_mutex_guard( client->notify_mutex );
             next_queue_push( client->notify_queue, notify );            
@@ -5454,7 +5454,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         }
 
         NextUpgradeRequestPacket packet;
-
         if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL ) != packet_id )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. failed to read" );
@@ -5503,45 +5502,51 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         return;
     }
 
-    /*
     // upgrade confirm packet
 
     if ( packet_id == NEXT_UPGRADE_CONFIRM_PACKET )
     {
-        if ( !next_address_equal( from, &client->server_address ) )
-            return false;
- 
-        NextUpgradeConfirmPacket packet;
-
-        bool valid = false;
-        if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, &valid ) != packet_id )
-            return valid;
-
-        if ( !packet.Verify( client->customer_public_key ) )
-            return false;
-
         if ( !client->sending_upgrade_response )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade confirm packet from server. unexpected" );
-            return true;
+            return;
         }
 
         if ( client->fallback_to_direct )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. in fallback to direct state" );
-            return true;
+            return;
+        }
+
+        if ( !next_address_equal( from, &client->server_address ) )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. not from server address" );
+            return;
+        }
+ 
+        NextUpgradeConfirmPacket packet;
+        if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL ) != packet_id )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. could not read packet" );
+            return;
+        }
+
+        if ( !packet.Verify( client->customer_public_key ) )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. did not verify" );
+            return;
         }
 
         if ( memcmp( packet.client_kx_public_key, client->client_kx_public_key, crypto_kx_PUBLICKEYBYTES ) != 0 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade confirm packet from server. client public key does not match" );
-            return true;
+            return;
         }
 
         if ( client->upgraded && client->upgrade_sequence >= packet.upgrade_sequence )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade confirm packet from server. client already upgraded" );
-            return true;
+            return;
         }
 
         uint8_t client_send_key[crypto_kx_SESSIONKEYBYTES];
@@ -5549,7 +5554,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         if ( crypto_kx_client_session_keys( client_receive_key, client_send_key, client->client_kx_public_key, client->client_kx_private_key, packet.server_kx_public_key ) != 0 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade confirm packet from server. could not generate session keys from server public key" );
-            return true;
+            return;
         }
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client received upgrade confirm packet from server" );
@@ -5576,7 +5581,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         client->sending_upgrade_response = false;
 
-        return true;
+        return;
     }
 
     // -------------------
@@ -5585,8 +5590,11 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_ROUTE_RESPONSE_PACKET )
     {
-        if ( packet_bytes != NEXT_HEADER_BYTES )
-            return false;
+        if ( packet_bytes != NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. bad packet size" );
+            return;
+        }
 
         next_platform_mutex_acquire( client->route_manager_mutex );
         uint8_t route_private_key[crypto_box_SECRETKEYBYTES];
@@ -5604,15 +5612,21 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         uint8_t packet_session_flags = 0;
 
         if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, route_private_key, packet_data, packet_bytes ) != NEXT_OK )
-            return false;
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. could not read header" );
+            return;
+        }
 
         if ( fallback_to_direct )
-            return true;
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. in fallback to direct state" );
+            return;
+        }
 
         if ( !pending_route )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. no pending route" );
-            return true;
+            return;
         }
 
         next_mutex_guard( client->route_manager_mutex );
@@ -5626,7 +5640,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         if ( next_replay_protection_already_received( replay_protection, clean_sequence ) )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. sequence already received (%" PRIx64 " vs. %" PRIx64 ")", clean_sequence, replay_protection->most_recent_sequence );
-            return true;
+            return;
         }
 
         next_assert( packet_type == NEXT_ROUTE_RESPONSE_PACKET );
@@ -5634,13 +5648,13 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         if ( packet_session_id != pending_route_session_id )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. session id mismatch" );
-            return true;
+            return;
         }
 
         if ( packet_session_version != pending_route_session_version )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. session version mismatch" );
-            return true;
+            return;
         }
 
         next_replay_protection_advance_sequence( replay_protection, clean_sequence );
@@ -5695,15 +5709,18 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         next_platform_mutex_release( client->route_manager_mutex );
 
-        return true;
+        return;
     }
 
     // continue response packet
 
     if ( packet_id == NEXT_CONTINUE_RESPONSE_PACKET )
     {
-        if ( packet_bytes != NEXT_HEADER_BYTES )
-            return false;
+        if ( packet_bytes != NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored continue response packet from relay. bad packet size" );
+            return;
+        }
 
         next_platform_mutex_acquire( client->route_manager_mutex );
         uint8_t current_route_private_key[crypto_box_SECRETKEYBYTES];
@@ -5715,6 +5732,24 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         const uint8_t current_route_session_version = client->route_manager->route_data.current_route_session_version;
         next_platform_mutex_release( client->route_manager_mutex );
 
+        if ( fallback_to_direct )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored continue response packet from relay. in fallback to direct state" );
+            return;
+        }
+
+        if ( !current_route )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored continue response packet from relay. no current route" );
+            return;
+        }
+
+        if ( !pending_continue )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored continue response packet from relay. no pending continue" );
+            return;
+        }
+
         uint8_t packet_type = 0;
         uint64_t packet_sequence = 0;
         uint64_t packet_session_id = 0;
@@ -5722,16 +5757,10 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         uint8_t packet_session_flags = 0;
 
         if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, current_route_private_key, packet_data, packet_bytes ) != NEXT_OK )
-            return false;
-
-        if ( fallback_to_direct )
-            return true;
-
-        if ( !current_route )
-            return true;
-
-        if ( !pending_continue )
-            return true;
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored continue response packet from relay. could not read header" );
+            return;
+        }
 
         uint64_t clean_sequence = next_clean_sequence( packet_sequence );
 
@@ -5740,19 +5769,19 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         if ( next_replay_protection_already_received( replay_protection, clean_sequence ) )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored continue response packet from relay. sequence already received (%" PRIx64 " vs. %" PRIx64 ")", clean_sequence, replay_protection->most_recent_sequence );
-            return true;
+            return;
         }
 
         if ( packet_session_id != current_route_session_id )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored continue response packet from relay. session id mismatch" );
-            return true;
+            return;
         }
 
         if ( packet_session_version != current_route_session_version )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored continue response packet from relay. session version mismatch" );
-            return true;
+            return;
         }
 
         next_replay_protection_advance_sequence( replay_protection, clean_sequence );
@@ -5767,7 +5796,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client continue network next route is confirmed" );
 
-        return true;
+        return;
     }
 
     // server to client packet
@@ -5776,17 +5805,16 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
     {
         int payload_bytes = 0;
         uint64_t payload_sequence = 0;
-        uint8_t payload_data[NEXT_MTU];
+        uint8_t payload_data[NEXT_MTU];         // todo: looks like we're doing a double copy here? seems dumb
 
         next_platform_mutex_acquire( client->route_manager_mutex );
-        bool valid = false;
-        const bool result = next_route_manager_process_server_to_client_packet( client->route_manager, from, packet_data, packet_bytes, &payload_sequence, payload_data, &payload_bytes, &valid );
+        const bool result = next_route_manager_process_server_to_client_packet( client->route_manager, from, packet_data, packet_bytes, &payload_sequence, payload_data, &payload_bytes );
         next_platform_mutex_release( client->route_manager_mutex );
 
         if ( !result )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored server to client packet. could not verify" );
-            return valid;
+            return;
         }
 
         const bool already_received = next_replay_protection_already_received( &client->payload_replay_protection, payload_sequence ) != 0;
@@ -5794,13 +5822,13 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         if ( already_received && !client->multipath )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client already received server to client packet %" PRIu64, payload_sequence );
-            return true;
+            return;
         }
 
         if ( already_received && client->multipath )
         {
             client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT]++;
-            return true;
+            return;
         }
 
         uint64_t clean_sequence = next_clean_sequence( payload_sequence );
@@ -5820,7 +5848,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT]++;
 
-        return true;
+        return;
     }
 
     // next pong packet
@@ -5832,19 +5860,21 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         uint8_t payload_data[NEXT_MTU];
 
         next_platform_mutex_acquire( client->route_manager_mutex );
-        bool valid = false;
-        const bool result = next_route_manager_process_server_to_client_packet( client->route_manager, from, packet_data, packet_bytes, &payload_sequence, payload_data, &payload_bytes, &valid );
+        const bool result = next_route_manager_process_server_to_client_packet( client->route_manager, from, packet_data, packet_bytes, &payload_sequence, payload_data, &payload_bytes );
         next_platform_mutex_release( client->route_manager_mutex );
 
         if ( !result )
-            return valid;
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored server to client packet. could not verify" );
+            return;
+        }
         
         uint64_t clean_sequence = next_clean_sequence( payload_sequence );
 
         if ( next_replay_protection_already_received( &client->special_replay_protection, clean_sequence ) )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client already received pong packet %" PRIu64, clean_sequence );
-            return true;
+            return;
         }
 
         next_replay_protection_advance_sequence( &client->special_replay_protection, clean_sequence );
@@ -5855,7 +5885,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         next_ping_history_pong_received( &client->next_ping_history, ping_sequence, next_time() );
 
-        return true;
+        return;
     }
 
     // -------------------
@@ -5863,7 +5893,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
     // -------------------
 
     if ( !next_address_equal( from, &client->server_address ) )
-        return false;
+        return;
 
     // direct pong packet
 
@@ -5873,9 +5903,11 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         uint64_t packet_sequence = 0;
 
-        bool valid = false;
-        if ( next_read_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, client->client_receive_key, &client->internal_replay_protection, &valid ) != packet_id )
-            return valid;
+        if ( next_read_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, client->client_receive_key, &client->internal_replay_protection ) != packet_id )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored direct pong packet. could not read" );
+            return;
+        }
 
         next_ping_history_pong_received( &client->direct_ping_history, packet.ping_sequence, next_time() );
 
@@ -5883,31 +5915,33 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         client->last_direct_pong_time = next_time();
 
-        return true;
+        return;
     }
 
     // route update packet
 
     if ( packet_id == NEXT_ROUTE_UPDATE_PACKET )
     {
+        if ( client->fallback_to_direct )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route update packet from server. in fallback to direct state (1)" );
+            return;
+        }
+
         NextRouteUpdatePacket packet;
 
         uint64_t packet_sequence = 0;
 
-        bool valid = false;
-        if ( next_read_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, client->client_receive_key, &client->internal_replay_protection, &valid ) != packet_id )
-            return valid;
-
-        if ( client->fallback_to_direct )
+        if ( next_read_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, client->client_receive_key, &client->internal_replay_protection ) != packet_id )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route update packet from server. in fallback to direct state" );
-            return true;
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route update packet. could not read" );
+            return;
         }
 
         if ( packet.sequence < client->route_update_sequence )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route update packet from server. sequence is old" );
-            return true;
+            return;
         }
 
         next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, client->client_receive_key, &client->internal_replay_protection, &client->packet_loss_tracker );
@@ -5944,7 +5978,10 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         }
 
         if ( fallback_to_direct )
-            return true;
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route update packet from server. in fallback to direct state (2)" );
+            return;
+        }
 
         NextRouteUpdateAckPacket ack;
         ack.sequence = packet.sequence;
@@ -5952,14 +5989,13 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         if ( next_client_internal_send_packet_to_server( client, NEXT_ROUTE_UPDATE_ACK_PACKET, &ack ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_WARN, "client failed to send route update ack packet to server" );
-            return true;
+            return;
         }
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent route update ack packet to server" );
 
-        return true;
+        return;
     }
-    */
 }
 
 void next_client_internal_process_game_packet( next_client_internal_t * client, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
@@ -6008,7 +6044,7 @@ void next_client_internal_block_and_receive_packet( next_client_internal_t * cli
 
     if ( next_is_network_next_packet( packet_data, packet_bytes ) )
     {
-        next_client_internal_process_network_next_packet( client, &from, packet_data + NEXT_PACKET_HASH_BYTES, packet_bytes - NEXT_PACKET_HASH_BYTES );
+        next_client_internal_process_network_next_packet( client, &from, packet_data, packet_bytes );
     }
     else
     {
@@ -6899,15 +6935,16 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
         if ( send_direct )
         {
-            // [255][magic][sequence](payload) style packets direct to server
+            // [255][session sequence][packet sequence](payload) style packets direct to server
 
-            uint8_t buffer[10+NEXT_MTU];
+            uint8_t buffer[NEXT_PACKET_HASH_BYTES+10+NEXT_MTU];
             uint8_t * p = buffer;
             next_write_uint8( &p, NEXT_DIRECT_PACKET );
             next_write_uint8( &p, client->open_session_sequence );
             next_write_uint64( &p, send_sequence );
-            memcpy( buffer+10, packet_data, packet_bytes );
-            next_platform_socket_send_packet( client->internal->socket, &client->server_address, buffer, packet_bytes + 10 );
+            memcpy( buffer+NEXT_PACKET_HASH_BYTES+10, packet_data, packet_bytes );
+            crypto_generichash( buffer, NEXT_PACKET_HASH_BYTES, buffer+NEXT_PACKET_HASH_BYTES, packet_bytes+10, next_packet_hash_key, crypto_generichash_KEYBYTES );
+            next_platform_socket_send_packet( client->internal->socket, &client->server_address, buffer, packet_bytes + NEXT_PACKET_HASH_BYTES + 10 );
             client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
         }
     }
@@ -8954,13 +8991,10 @@ inline int next_sequence_greater_than( uint8_t s1, uint8_t s2 )
            ( ( s1 < s2 ) && ( s2 - s1  > 128 ) );
 }
 
-next_session_entry_t * next_server_internal_check_client_to_server_packet( next_server_internal_t * server, uint8_t * packet_data, int packet_bytes, bool * valid )
+next_session_entry_t * next_server_internal_check_client_to_server_packet( next_server_internal_t * server, uint8_t * packet_data, int packet_bytes )
 {
     next_assert( server );
     next_assert( packet_data );
-    next_assert( valid );
- 
-    *valid = false;
 
     if ( packet_bytes <= NEXT_HEADER_BYTES )
         return NULL;
@@ -8978,15 +9012,6 @@ next_session_entry_t * next_server_internal_check_client_to_server_packet( next_
     if ( !entry )
         return NULL;
 
-    const bool pending_route_ok = next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, entry->pending_route_private_key, packet_data, packet_bytes ) == NEXT_OK;
-    const bool current_route_ok = next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, entry->current_route_private_key, packet_data, packet_bytes ) == NEXT_OK;
-    const bool previous_route_ok = next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, entry->previous_route_private_key, packet_data, packet_bytes ) == NEXT_OK;
-
-    if ( !pending_route_ok && !current_route_ok && !previous_route_ok )
-        return NULL;
-
-    *valid = true;
- 
     if ( !entry->has_pending_route && !entry->has_current_route && !entry->has_previous_route )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client to server packet. session has no route" );
@@ -9008,7 +9033,7 @@ next_session_entry_t * next_server_internal_check_client_to_server_packet( next_
         return NULL;
     }
 
-    if ( entry->has_pending_route && pending_route_ok )
+    if ( entry->has_pending_route && next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, entry->pending_route_private_key, packet_data, packet_bytes ) == NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server promoted pending route for session %" PRIx64, entry->session_id );
 
@@ -9038,6 +9063,15 @@ next_session_entry_t * next_server_internal_check_client_to_server_packet( next_
         entry->mutex_send_address = entry->current_route_send_address;
         memcpy( entry->mutex_private_key, entry->current_route_private_key, crypto_box_SECRETKEYBYTES );
         next_platform_mutex_release( server->session_mutex );
+    }
+    else
+    {
+        const bool current_route_ok = next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, entry->current_route_private_key, packet_data, packet_bytes ) == NEXT_OK;
+
+        const bool previous_route_ok = next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, entry->previous_route_private_key, packet_data, packet_bytes ) == NEXT_OK;
+
+        if ( !current_route_ok && !previous_route_ok )
+            return NULL;        
     }
 
     next_replay_protection_advance_sequence( replay_protection, clean_sequence );
@@ -9236,17 +9270,15 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
     next_assert( from );
     next_assert( packet_data );
     next_assert( packet_bytes );
+    next_assert( next_is_network_next_packet( packet_data, packet_bytes ) );
 
-    // const int packet_id = packet_data[0];
+    const int packet_id = packet_data[NEXT_PACKET_HASH_BYTES];
 
-    // todo
-
-    /*
     // upgraded direct packet (255)
 
-    if ( packet_id == NEXT_DIRECT_PACKET && packet_bytes > 10 && packet_bytes <= NEXT_MTU + 10 )
+    if ( packet_id == NEXT_DIRECT_PACKET && packet_bytes > NEXT_PACKET_HASH_BYTES + 10 && packet_bytes <= NEXT_PACKET_HASH_BYTES + 10 + NEXT_MTU )
     {
-        const uint8_t * p = packet_data + 1;
+        const uint8_t * p = packet_data + NEXT_PACKET_HASH_BYTES + 1;
 
         uint8_t packet_session_sequence = next_read_uint8( &p );
         
@@ -9257,14 +9289,14 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         {
             char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored direct packet from %s. could not find session for address", next_address_to_string( from, address_buffer ) );
-            return true;
+            return;
         }
 
         if ( packet_session_sequence != entry->client_open_session_sequence )
         {
             char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored direct packet from %s. session mismatch", next_address_to_string( from, address_buffer ) );
-            return true;
+            return;
         }
 
         uint64_t clean_sequence = next_clean_sequence( packet_sequence );
@@ -9273,7 +9305,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         {
             char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored direct packet from %s. already received (%" PRIx64 " vs. %" PRIx64 ")", next_address_to_string( from, address_buffer ), clean_sequence, entry->payload_replay_protection.most_recent_sequence );
-            return true;
+            return;
         }
 
         next_replay_protection_advance_sequence( &entry->payload_replay_protection, clean_sequence );
@@ -9283,14 +9315,14 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         next_server_notify_packet_received_t * notify = (next_server_notify_packet_received_t*) next_malloc( server->context, sizeof( next_server_notify_packet_received_t ) );
         notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
         notify->from = *from;
-        notify->packet_bytes = packet_bytes - 10;
-        memcpy( notify->packet_data, packet_data + 10, size_t(packet_bytes) - 10 );
+        notify->packet_bytes = packet_bytes - ( NEXT_PACKET_HASH_BYTES + 10 );
+        memcpy( notify->packet_data, packet_data + NEXT_PACKET_HASH_BYTES + 10, size_t(packet_bytes) - ( NEXT_PACKET_HASH_BYTES + 10 ) );
         {
             next_mutex_guard( server->notify_mutex );
             next_queue_push( server->notify_queue, notify );            
         }
 
-        return true;
+        return;
     }
 
     // backend response packets
@@ -9310,7 +9342,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             if ( state != NEXT_SERVER_STATE_INITIALIZING )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored init response packet from backend. server is not initializing" );
-                return true;
+                return;
             }
 
             NextBackendServerInitResponsePacket packet;
@@ -9318,19 +9350,19 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             if ( next_read_backend_packet( packet_data, packet_bytes, &packet ) != packet_id )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server init response packet from backend. packet failed to read" );
-                return true;
+                return;
             }
 
             if ( !packet.Verify( next_backend_public_key ) )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server init response packet from backend. did not verify" );
-                return true;
+                return;
             }
 
             if ( packet.request_id != server->server_init_request_id )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server init response packet from backend. request id mismatch (got %" PRIx64 ", expected %" PRIx64 ")", packet.request_id, server->server_init_request_id );
-                return true;
+                return;
             }
 
             next_printf( NEXT_LOG_LEVEL_INFO, "server received init response from backend" );
@@ -9341,23 +9373,23 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                 {
                     case NEXT_SERVER_INIT_RESPONSE_UNKNOWN_CUSTOMER: 
                         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. unknown customer" );
-                        return true;
+                        return;
 
                     case NEXT_SERVER_INIT_RESPONSE_UNKNOWN_DATACENTER:
                         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. unknown datacenter" );
-                        return true;
+                        return;
 
                     case NEXT_SERVER_INIT_RESPONSE_SDK_VERSION_TOO_OLD:
                         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. sdk version too old" );
-                        return true;
+                        return;
 
                     case NEXT_SERVER_INIT_RESPONSE_SIGNATURE_CHECK_FAILED:
                         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. signature check failed" );
-                        return true;
+                        return;
 
                     default:
                         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend for an unknown reason" );
-                        return true;
+                        return;
                 }
             }
 
@@ -9366,7 +9398,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             next_mutex_guard( server->state_and_resolve_hostname_mutex );
             server->state = NEXT_SERVER_STATE_INITIALIZED;
 
-            return true;
+            return;
         }
 
         // session update response
@@ -9382,7 +9414,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             if ( state != NEXT_SERVER_STATE_INITIALIZED )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. server is not initialized" );
-                return true;
+                return;
             }
 
             NextBackendSessionResponsePacket packet;
@@ -9390,38 +9422,38 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             if ( next_read_backend_packet( packet_data, packet_bytes, &packet ) != packet_id )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. packet failed to read" );
-                return true;
+                return;
             }
 
             if ( !packet.Verify( next_backend_public_key ) )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. did not verify" );
-                return true;
+                return;
             }
 
             if ( memcmp( packet.server_route_public_key, server->server_route_public_key, sizeof(packet.server_route_public_key) ) != 0 )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. server public key mismatch" );
-                return true;
+                return;
             }
 
             next_session_entry_t * entry = next_session_manager_find_by_session_id( server->session_manager, packet.session_id );
             if ( !entry )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. could not find session %" PRIx64, packet.session_id );
-                return true;
+                return;
             }
 
             if ( !entry->waiting_for_update_response )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. not waiting for session response" );
-                return true;
+                return;
             }
 
             if ( packet.sequence != entry->update_sequence )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. wrong sequence number" );
-                return true;
+                return;
             }
 
             const char * update_type = "???";
@@ -9495,7 +9527,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             // so we pick up on flags that were only set for a frame inside a 10 second long slice...
             entry->stats_user_flags = 0;
 
-            return true;
+            return;
         }   
     }
 
@@ -9522,21 +9554,21 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             {
                 char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored upgrade response from %s. could not decrypt upgrade token (existing entry)", next_address_to_string( from, address_buffer ) );
-                return true;
+                return;
             }
 
             if ( upgrade_token.session_id != existing_entry->session_id )
             {
                 char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored upgrade response from %s. session id does not match existing entry", next_address_to_string( from, address_buffer ) );
-                return true;
+                return;
             }
 
             if ( !next_address_equal( &upgrade_token.client_address, &existing_entry->address ) )
             {
                 char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored upgrade response from %s. client address does not match existing entry", next_address_to_string( from, address_buffer ) );
-                return true;
+                return;
             }
         }
         else
@@ -9548,28 +9580,28 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             {
                 char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored upgrade response from %s. does not match any pending upgrade", next_address_to_string( from, address_buffer ) );
-                return true;
+                return;
             }
 
             if ( !upgrade_token.Read( packet.upgrade_token, pending_entry->private_key ) )
             {
                 char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored upgrade response from %s. could not decrypt upgrade token", next_address_to_string( from, address_buffer ) );
-                return true;
+                return;
             }
 
             if ( upgrade_token.session_id != pending_entry->session_id )
             {
                 char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored upgrade response from %s. session id does not match pending upgrade entry", next_address_to_string( from, address_buffer ) );
-                return true;
+                return;
             }
 
             if ( !next_address_equal( &upgrade_token.client_address, &pending_entry->address ) )
             {
                 char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored upgrade response from %s. client address does not match pending upgrade entry", next_address_to_string( from, address_buffer ) );
-                return true;
+                return;
             }
 
             uint8_t server_send_key[crypto_kx_SESSIONKEYBYTES];
@@ -9577,7 +9609,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             if ( crypto_kx_server_session_keys( server_receive_key, server_send_key, server->server_kx_public_key, server->server_kx_private_key, packet.client_kx_public_key ) != 0 )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server could not generate session keys from client public key" );
-                return true;
+                return;
             }
 
             // remove from pending upgrade
@@ -9593,7 +9625,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             {
                 char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
                 next_printf( NEXT_LOG_LEVEL_ERROR, "server ignored upgrade response from %s. failed to add session", next_address_to_string( from, address_buffer ) );
-                return true;
+                return;
             }
 
             memcpy( entry->send_key, server_send_key, crypto_kx_SESSIONKEYBYTES );
@@ -9626,25 +9658,25 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         if ( !next_address_equal( &upgrade_token.client_address, from ) )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored upgrade response. client address does not match from address" );
-            return true;
+            return;
         }
 
         if ( upgrade_token.expire_timestamp < uint64_t(next_time()) )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored upgrade response. upgrade token expired" );
-            return true;
+            return;
         }
 
         if ( !next_address_equal( &upgrade_token.client_address, from ) )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored upgrade response. client address does not match from address" );
-            return true;
+            return;
         }
 
         if ( !next_address_equal( &upgrade_token.server_address, &server->server_address ) )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored upgrade response. server address does not match" );
-            return true;
+            return;
         }
 
         next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL );
@@ -9668,13 +9700,13 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         if ( next_server_internal_send_packet( server, from, NEXT_UPGRADE_CONFIRM_PACKET, &response ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_ERROR, "server could not send upgrade confirm packet" );
-            return true;
+            return;
         }
 
         char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent upgrade confirm packet to client %s", next_address_to_string( from, address_buffer ) );
 
-        return true;
+        return;
     }
 
     // -------------------
@@ -9684,30 +9716,33 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
     if ( packet_id == NEXT_ROUTE_REQUEST_PACKET )
     {
         if ( packet_bytes != 1 + NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES )
-            return false;
+            return;
 
-        uint8_t * buffer = &packet_data[1];
+        uint8_t * buffer = &packet_data[NEXT_PACKET_HASH_BYTES+1];
         next_route_token_t route_token;
         if ( next_read_encrypted_route_token( &buffer, &route_token, next_router_public_key, server->server_route_private_key ) != NEXT_OK )
-            return false;
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored route request packet. bad route" );
+            return;
+        }
 
         next_session_entry_t * entry = next_session_manager_find_by_session_id( server->session_manager, route_token.session_id );
         if ( !entry )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored route request packet. could not find session %" PRIx64 );
-            return true;
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored route request packet. could not find session %" PRIx64, route_token.session_id );
+            return;
         }
 
         if ( entry->has_current_route && route_token.expire_timestamp < entry->current_route_expire_timestamp )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored route request packet. expire timestamp is older than current route" );
-            return true;
+            return;
         }
 
         if ( entry->has_current_route && next_sequence_greater_than( entry->most_recent_session_version, route_token.session_version ) )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored route request packet. route is older than most recent session (%d vs. %d)", route_token.session_version, entry->most_recent_session_version );
-            return true;
+            return;
         }
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server received route request packet from relay for session %" PRIx64, route_token.session_id );
@@ -9735,14 +9770,14 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_ROUTE_RESPONSE_PACKET, session_send_sequence, entry->session_id, entry->pending_route_session_version, 0, entry->pending_route_private_key, response, NEXT_MTU ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server failed to write next route response packet" );
-            return true;
+            return;
         }
 
         next_platform_socket_send_packet( server->socket, from, response, NEXT_HEADER_BYTES );
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent route response packet to relay for session %" PRIx64, entry->session_id );
 
-        return true;
+        return;
     }
 
     // continue request packet
@@ -9750,36 +9785,39 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
     if ( packet_id == NEXT_CONTINUE_REQUEST_PACKET )
     {
         if ( packet_bytes != 1 + NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES )
-            return false;
+            return;
 
-        uint8_t * buffer = &packet_data[1];
+        uint8_t * buffer = &packet_data[NEXT_PACKET_HASH_BYTES + 1];
         next_continue_token_t continue_token;
         if ( next_read_encrypted_continue_token( &buffer, &continue_token, next_router_public_key, server->server_route_private_key ) != NEXT_OK )
-            return false;
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored continue request packet from relay. bad token" );
+            return;
+        }
 
         next_session_entry_t * entry = next_session_manager_find_by_session_id( server->session_manager, continue_token.session_id );
         if ( !entry )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored continue request packet from relay. could not find session %" PRIx64 );
-            return true;
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored continue request packet from relay. could not find session %" PRIx64, continue_token.session_id );
+            return;
         }
 
         if ( !entry->has_current_route )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored continue request packet from relay. session has no route to continue" );
-            return true;
+            return;
         }
 
         if ( continue_token.session_version != entry->current_route_session_version )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored continue request packet from relay. session version does not match" );
-            return true;
+            return;
         }
 
         if ( continue_token.expire_timestamp < entry->current_route_expire_timestamp )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored continue request packet from relay. expire timestamp is older than current route" );
-            return true;
+            return;
         }
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server received continue request packet from relay for session %" PRIx64, continue_token.session_id );
@@ -9797,53 +9835,64 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_CONTINUE_RESPONSE_PACKET, session_send_sequence, entry->session_id, entry->current_route_session_version, 0, entry->current_route_private_key, response, NEXT_MTU ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write next continue response packet" );
-            return true;
+            return;
         }
 
         next_platform_socket_send_packet( server->socket, from, response, NEXT_HEADER_BYTES );
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent continue response packet to relay for session %" PRIx64, entry->session_id );
 
-        return true;
+        return;
     }
 
     // client to server packet
 
     if ( packet_id == NEXT_CLIENT_TO_SERVER_PACKET )
     {
-        if ( packet_bytes <= NEXT_HEADER_BYTES )
-            return false;
+        if ( packet_bytes <= NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client to server packet. bad packet size" );
+            return;
+        }
 
-        bool valid = false;
-        next_session_entry_t * entry = next_server_internal_check_client_to_server_packet( server, packet_data, packet_bytes, &valid );
+        // todo: check this function
+        next_session_entry_t * entry = next_server_internal_check_client_to_server_packet( server, packet_data, packet_bytes );
         if ( !entry )
-            return valid;
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client to server packet. did not verify" );
+            return;
+        }
 
         next_server_notify_packet_received_t * notify = (next_server_notify_packet_received_t*) next_malloc( server->context, sizeof( next_server_notify_packet_received_t ) );
         notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
         notify->from = entry->address;
         notify->packet_bytes = packet_bytes - NEXT_HEADER_BYTES;
         next_assert( packet_bytes > NEXT_HEADER_BYTES );
-        memcpy( notify->packet_data, packet_data + NEXT_HEADER_BYTES, size_t(packet_bytes) - NEXT_HEADER_BYTES );
+        memcpy( notify->packet_data, packet_data + NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES, size_t(packet_bytes) - ( NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES ) );
         {
             next_mutex_guard( server->notify_mutex );
             next_queue_push( server->notify_queue, notify );
         }
 
-        return true;
+        return;
     }
 
     // ping packet
 
     if ( packet_id == NEXT_PING_PACKET )
     {
-        if ( packet_bytes != NEXT_HEADER_BYTES + 8 )
-            return false;
+        if ( packet_bytes != NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES + 8 )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored next ping packet. bad packet size" );            
+            return;
+        }
 
-        bool valid = false;
-        next_session_entry_t * entry = next_server_internal_check_client_to_server_packet( server, packet_data, packet_bytes, &valid );
+        next_session_entry_t * entry = next_server_internal_check_client_to_server_packet( server, packet_data, packet_bytes );
         if ( !entry )
-            return valid;
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored next ping packet. did not verify" );
+            return;
+        }
 
         uint64_t send_sequence = entry->special_send_sequence++;
         send_sequence |= uint64_t(1) << 63;
@@ -9852,12 +9901,12 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_PONG_PACKET, send_sequence, entry->session_id, entry->current_route_session_version, 0, entry->current_route_private_key, packet_data, NEXT_HEADER_BYTES + 8 ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_WARN, "server failed to write pong packet header" );
-            return true;
+            return;
         }
 
-        next_platform_socket_send_packet( server->socket, from, packet_data, NEXT_HEADER_BYTES + 8 );
+        next_platform_socket_send_packet( server->socket, from, packet_data, NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES + 8 );
 
-        return true;
+        return;
     }
 
     // ----------------------------------
@@ -9870,7 +9919,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
     {
         session = next_session_manager_find_by_address( server->session_manager, from );
         if ( !session )
-            return false;
+            return;
     }
 
     // direct ping packet
@@ -9879,13 +9928,11 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
     {
         next_assert( session );
 
-        NextDirectPingPacket packet;
-
         uint64_t packet_sequence = 0;
 
-        bool valid = false;
-        if ( next_read_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection, &valid ) != packet_id )
-            return valid;
+        NextDirectPingPacket packet;
+        if ( next_read_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection ) != packet_id )
+            return;
 
         next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection, NULL );
 
@@ -9895,10 +9942,10 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         if ( next_server_internal_send_packet( server, from, NEXT_DIRECT_PONG_PACKET, &response ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server could not send upgrade confirm packet" );
-            return true;
+            return;
         }
 
-        return true;
+        return;
     }
 
     // client stats packet
@@ -9911,9 +9958,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         uint64_t packet_sequence = 0;
 
-        bool valid = false;
-        if ( next_read_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection, &valid ) != packet_id )
-            return valid;
+        if ( next_read_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection ) != packet_id )
+            return;
 
         next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection, NULL );
 
@@ -9959,7 +10005,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             session->last_client_stats_update = next_time();
         }
 
-        return true;
+        return;
     }
 
     // route update ack packet
@@ -9972,14 +10018,13 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         uint64_t packet_sequence = 0;
 
-        bool valid = false;
-        if ( next_read_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection, &valid ) != packet_id )
-            return true;
+        if ( next_read_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection ) != packet_id )
+            return;
 
         if ( packet.sequence != session->update_sequence )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored route update ack packet. wrong update sequence number" );
-            return true;
+            return;
         }
 
         next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection, NULL );
@@ -9988,9 +10033,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         session->update_dirty = false;
 
-        return true;
+        return;
     }
-    */
 }
 
 void next_server_internal_process_game_packet( next_server_internal_t * server, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
@@ -10966,15 +11010,16 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
             if ( send_upgraded_direct )
             {
-                // [255][magic][packet sequence](payload) style packet direct to client
+                // [255][session sequence][packet sequence](payload) style packet direct to client
 
-                uint8_t buffer[10+NEXT_MTU];
+                uint8_t buffer[NEXT_PACKET_HASH_BYTES+10+NEXT_MTU];
                 uint8_t * p = buffer;
                 next_write_uint8( &p, NEXT_DIRECT_PACKET );
                 next_write_uint8( &p, open_session_sequence );
                 next_write_uint64( &p, send_sequence );
-                memcpy( buffer+10, packet_data, packet_bytes );
-                next_platform_socket_send_packet( server->internal->socket, to_address, buffer, packet_bytes + 10 );
+                memcpy( buffer+NEXT_PACKET_HASH_BYTES+10, packet_data, packet_bytes );
+                crypto_generichash( buffer, NEXT_PACKET_HASH_BYTES, buffer+NEXT_PACKET_HASH_BYTES, packet_bytes+10, next_packet_hash_key, crypto_generichash_KEYBYTES );
+                next_platform_socket_send_packet( server->internal->socket, to_address, buffer, packet_bytes + NEXT_PACKET_HASH_BYTES + 10 );
             }
         }
     }

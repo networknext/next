@@ -38,9 +38,15 @@ DONE
 
 	Extend next_write_backend packet to include the packet hash.
 
+	Remove all the contortions around *valid. It's no longer necessary or required complexity.
+
 TODO
 
-	Remove all the contortions around *valid. It's no longer necessary or required complexity.
+	Whoo boy there's a lot of fixes required.
+
+	--------------------------------
+
+	Check all next_printf functions. Just found one that was missing args.
 
 	--------------------------------
 
