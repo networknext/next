@@ -5428,9 +5428,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         next_packet_loss_tracker_packet_received( &client->packet_loss_tracker, clean_sequence );
 
-        // todo
-        printf( "client received upgraded direct packet\n" );
-
         return;
     }
 
@@ -6020,9 +6017,6 @@ void next_client_internal_process_game_packet( next_client_internal_t * client, 
             next_queue_push( client->notify_queue, notify );            
         }
         client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT]++;
-
-        // todo
-        printf( "client received raw game packet\n" );
     }
 }
 
@@ -9003,6 +8997,11 @@ next_session_entry_t * next_server_internal_check_client_to_server_packet( next_
     next_assert( server );
     next_assert( packet_data );
 
+    next_assert( next_is_network_next_packet( packet_data, packet_bytes ) );
+
+    packet_data += NEXT_PACKET_HASH_BYTES;
+    packet_bytes -= NEXT_PACKET_HASH_BYTES;
+
     if ( packet_bytes <= NEXT_HEADER_BYTES )
         return NULL;
 
@@ -9328,9 +9327,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             next_mutex_guard( server->notify_mutex );
             next_queue_push( server->notify_queue, notify );            
         }
-
-        // todo:
-        printf( "server received upgraded direct packet\n" );
 
         return;
     }
@@ -10065,9 +10061,6 @@ void next_server_internal_process_game_packet( next_server_internal_t * server, 
             next_mutex_guard( server->notify_mutex );
             next_queue_push( server->notify_queue, notify );            
         }
-
-        // todo
-        printf( "server received raw game packet\n" );
     }
 }
 
@@ -10377,7 +10370,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
         if ( server->first_backend_server_init + 10.0 <= current_time )
         {
-            next_printf( NEXT_LOG_LEVEL_WARN, "server did not get an init response from backend. falling back to direct only" );
+            next_printf( NEXT_LOG_LEVEL_INFO, "server did not get an init response from backend. falling back to direct only" );
             next_mutex_guard( server->state_and_resolve_hostname_mutex );
             server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
         }
