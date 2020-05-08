@@ -1143,6 +1143,7 @@ func TestFirestore(t *testing.T) {
 		expectedBuyer := routing.Buyer{
 			ID:                   1,
 			Name:                 "local",
+			Domain:               "example.com",
 			Active:               true,
 			Live:                 false,
 			PublicKey:            make([]byte, crypto.KeySize),
@@ -1183,6 +1184,28 @@ func TestFirestore(t *testing.T) {
 
 		err = fs.AddSeller(ctx, expectedSeller)
 		assert.NoError(t, err)
+
+		// Need to inject a Customer above the Buyer and Seller since Sync requires the Customer exist to get the Domain
+		// This saves us from adding Customer(), AddCustomer(), RemoveCustomer() for now to get the portal working requiring
+		// the Buyer.ID based on Customer.Domain
+		{
+			snap, err := fs.Client.Collection("Buyer").Where("name", "==", "local").Documents(ctx).Next()
+			assert.NoError(t, err)
+			bdoc := snap.Ref
+
+			snap, err = fs.Client.Collection("Seller").Where("name", "==", "local").Documents(ctx).Next()
+			assert.NoError(t, err)
+			sdoc := snap.Ref
+
+			_, err = fs.Client.Collection("Customer").NewDoc().Create(ctx, map[string]interface{}{
+				"buyer":                 bdoc,
+				"seller":                sdoc,
+				"automaticSigninDomain": "example.com",
+				"name":                  "local",
+				"active":                true,
+			})
+			assert.NoError(t, err)
+		}
 
 		err = fs.AddDatacenter(ctx, expectedDatacenter)
 		assert.NoError(t, err)
