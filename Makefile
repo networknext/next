@@ -253,15 +253,14 @@ dev-route: ## prints routes from relay to datacenter in route matrix
 # Relay Build Process #
 #######################
 
-RELAY_DIR	:= ./cmd/relay
 NEW_RELAY_DIR := ./cmd/relay_new
 NEW_RELAY_MAKEFILE := Makefile
-RELAY_EXE	:= relay
+RELAY_EXE := relay
 
 .PHONY: build-relay-ref
 build-relay-ref: ## builds the reference relay
 	@printf "Building reference relay... "
-	@$(CXX) $(CXX_FLAGS) -o $(DIST_DIR)/$(RELAY_EXE) cmd/relay/*.cpp $(LDFLAGS)
+	@$(CXX) $(CXX_FLAGS) -o $(DIST_DIR)/reference_relay reference/relay/*.cpp $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-relay-new
@@ -277,7 +276,7 @@ build-relay-tests: ## builds the new relay tests
 	@echo "done"
 
 .PHONY: dev-relay
-dev-relay: build-new-relay ## runs a local relay
+dev-relay: build-relay-new ## runs a local relay
 	@$(DIST_DIR)/$(RELAY_EXE)
 
 .PHONY: dev-multi-relays
@@ -308,7 +307,7 @@ dev-reference-backend: ## runs a local reference backend
 
 .PHONY: dev-reference-relay 
 dev-reference-relay: build-relay-ref ## runs a local reference relay
-	@$(DIST_DIR)/$(RELAY_EXE)
+	@$(DIST_DIR)/reference_relay
 
 .PHONY: dev-server
 dev-server: build-sdk build-server  ## runs a local server
