@@ -82,6 +82,12 @@ const NEXT_MAX_RELAY_ADDRESS_LENGTH = 256
 const NEXT_RELAY_TOKEN_BYTES = 32
 const NEXT_MAX_RELAYS = 1024
 
+const NEXT_SERVER_INIT_RESPONSE_OK = 0
+const NEXT_SERVER_INIT_RESPONSE_UNKNOWN_CUSTOMER = 1
+const NEXT_SERVER_INIT_RESPONSE_UNKNOWN_DATACENTER = 2
+const NEXT_SERVER_INIT_RESPONSE_SDK_VERSION_TOO_OLD = 3
+const NEXT_SERVER_INIT_RESPONSE_SIGNATURE_CHECK_FAILED = 4
+
 const (
 	ADDRESS_NONE = 0
 	ADDRESS_IPV4 = 1
@@ -119,6 +125,68 @@ var backendPrivateKey = []byte{21, 124, 5, 171, 56, 198, 148, 140, 20, 15, 8, 17
 
 // ===================================================================================================================
 
+type NextBackendServerInitRequestPacket struct {
+	RequestID    		uint64
+	CustomerID   		uint64
+	DatacenterID 		uint64
+	Signature    		[]byte
+	VersionMajor         int32
+	VersionMinor         int32
+	VersionPatch         int32
+}
+
+func (packet *NextBackendServerInitRequestPacket) Serialize(stream Stream) error {
+	stream.SerializeInteger(&packet.VersionMajor, 0, NEXT_VERSION_MAJOR_MAX)
+	stream.SerializeInteger(&packet.VersionMinor, 0, NEXT_VERSION_MINOR_MAX)
+	stream.SerializeInteger(&packet.VersionPatch, 0, NEXT_VERSION_PATCH_MAX)
+	stream.SerializeUint64(&packet.RequestID)
+	stream.SerializeUint64(&packet.CustomerID)
+	stream.SerializeUint64(&packet.DatacenterID)
+	if stream.IsReading() {
+		packet.Signature = make([]byte, SignatureBytes)
+	}
+	stream.SerializeBytes(packet.Signature)
+	return stream.Error()
+}
+
+func (packet *NextBackendServerInitRequestPacket) GetSignData() []byte {
+	buf := new(bytes.Buffer)
+	binary.Write(buf, binary.LittleEndian, uint64(packet.VersionMajor))
+	binary.Write(buf, binary.LittleEndian, uint64(packet.VersionMinor))
+	binary.Write(buf, binary.LittleEndian, uint64(packet.VersionPatch))
+	binary.Write(buf, binary.LittleEndian, packet.RequestID)
+	binary.Write(buf, binary.LittleEndian, packet.CustomerID)
+	binary.Write(buf, binary.LittleEndian, packet.DatacenterID)
+	return buf.Bytes()
+}
+
+// -------------------------------------------------------------------------------------
+
+type NextBackendServerInitResponsePacket struct {
+	RequestID uint64
+	Response  uint32
+	Signature []byte
+}
+
+func (packet *NextBackendServerInitResponsePacket) Serialize(stream Stream) error {
+	stream.SerializeUint64(&packet.RequestID)
+	stream.SerializeUint32(&packet.Response)
+	if stream.IsReading() {
+		packet.Signature = make([]byte, SignatureBytes)
+	}
+	stream.SerializeBytes(packet.Signature)
+	return stream.Error()
+}
+
+func (packet *NextBackendServerInitResponsePacket) GetSignData() []byte {
+	buf := new(bytes.Buffer)
+	binary.Write(buf, binary.LittleEndian, packet.RequestID)
+	binary.Write(buf, binary.LittleEndian, packet.Response)
+	return buf.Bytes()
+}
+
+// -------------------------------------------------------------------------------------
+
 type NextBackendServerUpdatePacket struct {
 	Sequence             uint64
 	VersionMajor         int32
@@ -144,7 +212,6 @@ func (packet *NextBackendServerUpdatePacket) Serialize(stream Stream) error {
 	stream.SerializeUint32(&packet.NumSessionsPending)
 	stream.SerializeUint32(&packet.NumSessionsUpgraded)
 	stream.SerializeAddress(&packet.ServerAddress)
-	stream.SerializeAddress(&packet.ServerPrivateAddress)
 	if stream.IsReading() {
 		packet.ServerRoutePublicKey = make([]byte, Crypto_box_PUBLICKEYBYTES)
 		packet.Signature = make([]byte, SignatureBytes)
@@ -164,15 +231,12 @@ func (packet *NextBackendServerUpdatePacket) GetSignData() []byte {
 	binary.Write(buf, binary.LittleEndian, packet.DatacenterId)
 	binary.Write(buf, binary.LittleEndian, packet.NumSessionsPending)
 	binary.Write(buf, binary.LittleEndian, packet.NumSessionsUpgraded)
-
 	address := make([]byte, NEXT_ADDRESS_BYTES)
 	WriteAddress(address, &packet.ServerAddress)
 	binary.Write(buf, binary.LittleEndian, address)
-
 	privateAddress := make([]byte, NEXT_ADDRESS_BYTES)
 	WriteAddress(privateAddress, &packet.ServerPrivateAddress)
 	binary.Write(buf, binary.LittleEndian, privateAddress)
-
 	binary.Write(buf, binary.LittleEndian, packet.ServerRoutePublicKey)
 	return buf.Bytes()
 }
@@ -594,7 +658,48 @@ func main() {
 
 		if packetType == NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET {
 
-			fmt.Printf( "init request\n" );
+			fmt.Printf( "server init request packet\n" );
+
+			readStream := CreateReadStream(packetData[1:])
+
+			serverInitRequest := &NextBackendServerInitRequestPacket{}
+			if err := serverInitRequest.Serialize(readStream); err != nil {
+				fmt.Printf("error: failed to read server init request packet: %v\n", err)
+				continue
+			}
+
+			initResponse := &NextBackendServerInitResponsePacket{}
+			initResponse.RequestID = serverInitRequest.RequestID
+			initResponse.Response = NEXT_SERVER_INIT_RESPONSE_OK
+
+			signResponseData := initResponse.GetSignData()
+
+			initResponse.Signature = CryptoSignCreate(signResponseData, backendPrivateKey)
+			if initResponse.Signature == nil {
+				fmt.Printf("error: failed to sign server init response packet")
+				continue
+			}
+
+			writeStream, err := CreateWriteStream(NEXT_MAX_PACKET_BYTES)
+			if err != nil {
+				fmt.Printf("error: failed to write server init response packet: %v\n", err)
+				continue
+			}
+			responsePacketType := uint32(NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET)
+			writeStream.SerializeBits(&responsePacketType, 8)
+			if err := initResponse.Serialize(writeStream); err != nil {
+				fmt.Printf("error: failed to write server init response packet: %v\n", err)
+				continue
+			}
+			writeStream.Flush()
+
+			responsePacketData := writeStream.GetData()[0:writeStream.GetBytesProcessed()]
+
+			_, err = connection.WriteToUDP(responsePacketData, from)
+			if err != nil {
+				fmt.Printf("error: failed to send udp response: %v\n", err)
+				continue
+			}
 
 		} else if packetType == NEXT_BACKEND_SERVER_UPDATE_PACKET {
 
