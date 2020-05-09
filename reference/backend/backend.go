@@ -678,6 +678,11 @@ func main() {
 				continue
 			}
 
+			if sessionResponse.Signature == nil {
+				fmt.Printf("error: failed to sign session response packet")
+				continue
+			}
+
 			// todo: we really should run the signature check here
 
 			initResponse := &NextBackendServerInitResponsePacket{}
@@ -685,7 +690,6 @@ func main() {
 			initResponse.Response = NEXT_SERVER_INIT_RESPONSE_OK
 
 			signResponseData := initResponse.GetSignData()
-
 			initResponse.Signature = CryptoSignCreate(signResponseData, backendPrivateKey)
 			if initResponse.Signature == nil {
 				fmt.Printf("error: failed to sign server init response packet")
@@ -894,7 +898,6 @@ func main() {
 			backend.mutex.Unlock()
 
 			signResponseData := sessionResponse.GetSignData(NEXT_VERSION_MAJOR, NEXT_VERSION_MINOR, NEXT_VERSION_PATCH)
-
 			sessionResponse.Signature = CryptoSignCreate(signResponseData, backendPrivateKey)
 			if sessionResponse.Signature == nil {
 				fmt.Printf("error: failed to sign session response packet")
