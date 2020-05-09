@@ -53,6 +53,7 @@ const NEXT_ROUTE_TYPE_DIRECT = 0
 const NEXT_ROUTE_TYPE_NEW = 1
 const NEXT_ROUTE_TYPE_CONTINUE = 2
 
+// todo: we really don't need this
 const NEXT_VERSION_MAJOR = 0
 const NEXT_VERSION_MINOR = 0
 const NEXT_VERSION_PATCH = 0
@@ -88,6 +89,8 @@ const NEXT_SERVER_INIT_RESPONSE_UNKNOWN_DATACENTER = 2
 const NEXT_SERVER_INIT_RESPONSE_SDK_VERSION_TOO_OLD = 3
 const NEXT_SERVER_INIT_RESPONSE_SIGNATURE_CHECK_FAILED = 4
 
+const NEXT_PACKET_HASH_BYTES = 8
+
 const (
 	ADDRESS_NONE = 0
 	ADDRESS_IPV4 = 1
@@ -122,6 +125,8 @@ var relayPublicKey = []byte{
 var routerPrivateKey = [...]byte{0x96, 0xce, 0x57, 0x8b, 0x00, 0x19, 0x44, 0x27, 0xf2, 0xb9, 0x90, 0x1b, 0x43, 0x56, 0xfd, 0x4f, 0x56, 0xe1, 0xd9, 0x56, 0x58, 0xf2, 0xf4, 0x3b, 0x86, 0x9f, 0x12, 0x75, 0x24, 0xd2, 0x47, 0xb3}
 
 var backendPrivateKey = []byte{21, 124, 5, 171, 56, 198, 148, 140, 20, 15, 8, 170, 212, 222, 84, 155, 149, 84, 122, 199, 107, 225, 243, 246, 133, 85, 118, 114, 114, 126, 200, 4, 76, 97, 202, 140, 71, 135, 62, 212, 160, 181, 151, 195, 202, 224, 207, 113, 8, 45, 37, 60, 145, 14, 212, 111, 25, 34, 175, 186, 37, 150, 163, 64}
+
+var packetHashKey = []byte{0xe3, 0x18, 0x61, 0x72, 0xee, 0x70, 0x62, 0x37, 0x40, 0xf6, 0x0a, 0xea, 0xe0, 0xb5, 0x1a, 0x2c, 0x2a, 0x47, 0x98, 0x8f, 0x27, 0xec, 0x63, 0x2c, 0x25, 0x04, 0x74, 0x89, 0xaf, 0x5a, 0xeb, 0x24}
 
 // ===================================================================================================================
 
@@ -627,6 +632,30 @@ func RouteChanged(previous []uint64, current []uint64) bool {
 	return false
 }
 
+func IsNetworkNextPacket(packetData []byte, packetBytes int) bool {
+	if packetBytes <= NEXT_PACKET_HASH_BYTES {
+		return false
+	}
+	if packetBytes > NEXT_MAX_PACKET_BYTES {
+		return false
+	}
+	hash := make([]byte, NEXT_PACKET_HASH_BYTES)
+	C.crypto_generichash(
+		(*C.uchar)(&hash[0]), 
+		C.ulong(NEXT_PACKET_HASH_BYTES), 
+		(*C.uchar)(&packetData[NEXT_PACKET_HASH_BYTES]), 
+		C.ulonglong(packetBytes - NEXT_PACKET_HASH_BYTES), 
+		(*C.uchar)(&packetHashKey[0]), 
+		C.ulong(C.crypto_generichash_KEYBYTES),
+	)
+	for i := 0; i < NEXT_PACKET_HASH_BYTES; i++ {
+		if hash[i] != packetData[i] {
+			return false
+		}
+	}
+	return true
+}
+
 func main() {
 
 	rand.Seed(time.Now().UnixNano())
@@ -664,7 +693,15 @@ func main() {
 			continue
 		}
 
-		// todo: run the blake2 here
+		if !IsNetworkNextPacket(packetData, packetBytes) {
+			fmt.Printf("not network next packet (%d)\n", packetBytes)
+			continue
+		}
+
+		fmt.Printf( "is network next packet (%d)\n", packetBytes)
+
+		packetData = packetData[NEXT_PACKET_HASH_BYTES:]
+		packetBytes -= NEXT_PACKET_HASH_BYTES
 
 		packetType := packetData[0]
 
@@ -675,11 +712,6 @@ func main() {
 			serverInitRequest := &NextBackendServerInitRequestPacket{}
 			if err := serverInitRequest.Serialize(readStream); err != nil {
 				fmt.Printf("error: failed to read server init request packet: %v\n", err)
-				continue
-			}
-
-			if sessionResponse.Signature == nil {
-				fmt.Printf("error: failed to sign session response packet")
 				continue
 			}
 
