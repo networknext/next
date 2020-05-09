@@ -2,18 +2,25 @@ DONE
 
 	Check all next_printf functions. Just found one that was missing args.
 
+	Bring back the old reference backend before it was changed to use helper code.
+
+	Clean it up and identify where we need to extend with blake2 prefix.
+
 TODO
 
-	--------------------------------
+	Extend the reference backend to talk server init request/response protocol.
 
-	Get the reference backend talking the protocol with the blake2 prefix.
-
-	--------------------------------
-
-	Upgrade reference relay to have a codepath for the blake2 prefixed packets.
+	Verify reference backend is able to talk to server and relays properly, and can carry sessions from an older version of SDK.
 
 	--------------------------------
 
+	Update the reference backend to talk the protocol with the blake2 packet hash prefix.
+
+	--------------------------------
+
+	Upgrade the reference relay to have a codepath for the blake2 prefixed packets.
+
+	--------------------------------
 
 
 
