@@ -6,11 +6,23 @@ DONE
 
 	Clean it up and identify where we need to extend with blake2 prefix.
 
-TODO
-
 	Extend the reference backend to talk server init request/response protocol.
 
+	Init request packet is read.
+
+	Next, get the response going...
+
+	ps. Verified relay talks to the reference backend just fine.
+
 	Verify reference backend is able to talk to server and relays properly, and can carry sessions from an older version of SDK.
+
+	Verify session update works with relays. It needs to be updated to support user flags and committed.
+
+TODO
+
+	--------------------------------
+
+	Bring across code for blake2 hash into golang via libsodium.
 
 	--------------------------------
 

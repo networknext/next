@@ -3250,6 +3250,8 @@ int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet
 
     crypto_generichash( packet_data, NEXT_PACKET_HASH_BYTES, message, message_length, next_packet_hash_key, crypto_generichash_KEYBYTES );
 
+    next_assert( next_is_network_next_packet( packet_data, packet_bytes ) );
+
     return NEXT_OK;
 }
 
@@ -8524,6 +8526,8 @@ int next_write_backend_packet( uint8_t packet_id, void * packet_object, uint8_t 
     next_assert( message_length > 0 );
 
     crypto_generichash( packet_data, NEXT_PACKET_HASH_BYTES, message, message_length, next_packet_hash_key, crypto_generichash_KEYBYTES );
+
+    next_assert( next_is_network_next_packet( packet_data, packet_bytes ) );
 
     return NEXT_OK;
 }
