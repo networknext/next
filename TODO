@@ -18,22 +18,29 @@ DONE
 
 	Verify session update works with relays. It needs to be updated to support user flags and committed.
 
-TODO
-
-	--------------------------------
-
 	Bring across code for blake2 hash into golang via libsodium.
 
+	Reference backend code can now determine if a packet is network next or not.
+
+	Extend backend code to sign packets sent back to the server.
+
+	Verify the server gets the init response.
+
+	Extend to the session update response.
+
+	Verify that without a relay, client and server work and can sustain an upgraded direct route.
+
+	Do not bother to maintain support for old and new relay packets. That can be done in the new relay. The reference relay is always bleeding edge.
+
+TODO
+
+	Upgrade the reference relay to use the blake2 prefixed packets.
+
 	--------------------------------
 
-	Update the reference backend to talk the protocol with the blake2 packet hash prefix.
+	Verify that we can get traffic across several reference relays and the reference backend.
 
 	--------------------------------
-
-	Upgrade the reference relay to have a codepath for the blake2 prefixed packets.
-
-	--------------------------------
-
 
 
 
