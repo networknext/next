@@ -1201,11 +1201,11 @@ func CreateBitWriter(bytes int) (*BitWriter, error) {
 	}, nil
 }
 
-func HostToNetwork(x uint32) uint32 {
+func hostToNetwork(x uint32) uint32 {
 	return x
 }
 
-func NetworkToHost(x uint32) uint32 {
+func networkToHost(x uint32) uint32 {
 	return x
 }
 
@@ -1225,7 +1225,7 @@ func (writer *BitWriter) WriteBits(value uint32, bits int) error {
 	writer.scratchBits += bits
 
 	if writer.scratchBits >= 32 {
-		writer.data[writer.wordIndex] = HostToNetwork(uint32(writer.scratch & 0xFFFFFFFF))
+		writer.data[writer.wordIndex] = hostToNetwork(uint32(writer.scratch & 0xFFFFFFFF))
 		writer.scratch >>= 32
 		writer.scratchBits -= 32
 		writer.wordIndex++
@@ -1332,7 +1332,7 @@ func (writer *BitWriter) FlushBits() error {
 		if writer.wordIndex >= writer.numWords {
 			return fmt.Errorf("buffer overflow")
 		}
-		writer.data[writer.wordIndex] = HostToNetwork(uint32(writer.scratch & 0xFFFFFFFF))
+		writer.data[writer.wordIndex] = hostToNetwork(uint32(writer.scratch & 0xFFFFFFFF))
 		writer.scratch >>= 32
 		writer.scratchBits = 0
 		writer.wordIndex++
@@ -1359,6 +1359,8 @@ func (writer *BitWriter) GetData() []byte {
 func (writer *BitWriter) GetBytesWritten() int {
 	return (writer.bitsWritten + 7) / 8
 }
+
+// -----------------------------------------------------------------
 
 type BitReader struct {
 	data        []uint32
@@ -1402,7 +1404,7 @@ func (reader *BitReader) ReadBits(bits int) (uint32, error) {
 		if reader.wordIndex >= reader.numWords {
 			return 0, fmt.Errorf("would read past end of buffer")
 		}
-		reader.scratch |= uint64(NetworkToHost(reader.data[reader.wordIndex])) << uint(reader.scratchBits)
+		reader.scratch |= uint64(networkToHost(reader.data[reader.wordIndex])) << uint(reader.scratchBits)
 		reader.scratchBits += 32
 		reader.wordIndex++
 	}
