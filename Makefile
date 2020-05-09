@@ -303,7 +303,7 @@ dev-server-backend: ## runs a local server backend
 
 .PHONY: dev-reference-backend
 dev-reference-backend: ## runs a local reference backend
-	$(GO) run cmd/tools/functional/backend/*.go
+	$(GO) run reference/backend/*.go
 
 .PHONY: dev-reference-relay 
 dev-reference-relay: build-relay-ref ## runs a local reference relay
