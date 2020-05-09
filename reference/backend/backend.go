@@ -49,9 +49,9 @@ const NEXT_ENCRYPTED_SESSION_TOKEN_BYTES = 117
 const NEXT_CONTINUE_TOKEN_BYTES = 18
 const NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES = 58
 
-const NEXT_UPDATE_TYPE_DIRECT = 0
-const NEXT_UPDATE_TYPE_ROUTE = 1
-const NEXT_UPDATE_TYPE_CONTINUE = 2
+const NEXT_ROUTE_TYPE_DIRECT = 0
+const NEXT_ROUTE_TYPE_NEW = 1
+const NEXT_ROUTE_TYPE_CONTINUE = 2
 
 const NEXT_VERSION_MAJOR = 0
 const NEXT_VERSION_MINOR = 0
@@ -126,9 +126,9 @@ var backendPrivateKey = []byte{21, 124, 5, 171, 56, 198, 148, 140, 20, 15, 8, 17
 // ===================================================================================================================
 
 type NextBackendServerInitRequestPacket struct {
-	RequestID    		uint64
-	CustomerID   		uint64
-	DatacenterID 		uint64
+	RequestId    		uint64
+	CustomerId   		uint64
+	DatacenterId 		uint64
 	Signature    		[]byte
 	VersionMajor         int32
 	VersionMinor         int32
@@ -139,9 +139,9 @@ func (packet *NextBackendServerInitRequestPacket) Serialize(stream Stream) error
 	stream.SerializeInteger(&packet.VersionMajor, 0, NEXT_VERSION_MAJOR_MAX)
 	stream.SerializeInteger(&packet.VersionMinor, 0, NEXT_VERSION_MINOR_MAX)
 	stream.SerializeInteger(&packet.VersionPatch, 0, NEXT_VERSION_PATCH_MAX)
-	stream.SerializeUint64(&packet.RequestID)
-	stream.SerializeUint64(&packet.CustomerID)
-	stream.SerializeUint64(&packet.DatacenterID)
+	stream.SerializeUint64(&packet.RequestId)
+	stream.SerializeUint64(&packet.CustomerId)
+	stream.SerializeUint64(&packet.DatacenterId)
 	if stream.IsReading() {
 		packet.Signature = make([]byte, SignatureBytes)
 	}
@@ -154,22 +154,22 @@ func (packet *NextBackendServerInitRequestPacket) GetSignData() []byte {
 	binary.Write(buf, binary.LittleEndian, uint64(packet.VersionMajor))
 	binary.Write(buf, binary.LittleEndian, uint64(packet.VersionMinor))
 	binary.Write(buf, binary.LittleEndian, uint64(packet.VersionPatch))
-	binary.Write(buf, binary.LittleEndian, packet.RequestID)
-	binary.Write(buf, binary.LittleEndian, packet.CustomerID)
-	binary.Write(buf, binary.LittleEndian, packet.DatacenterID)
+	binary.Write(buf, binary.LittleEndian, packet.RequestId)
+	binary.Write(buf, binary.LittleEndian, packet.CustomerId)
+	binary.Write(buf, binary.LittleEndian, packet.DatacenterId)
 	return buf.Bytes()
 }
 
 // -------------------------------------------------------------------------------------
 
 type NextBackendServerInitResponsePacket struct {
-	RequestID uint64
+	RequestId uint64
 	Response  uint32
 	Signature []byte
 }
 
 func (packet *NextBackendServerInitResponsePacket) Serialize(stream Stream) error {
-	stream.SerializeUint64(&packet.RequestID)
+	stream.SerializeUint64(&packet.RequestId)
 	stream.SerializeUint32(&packet.Response)
 	if stream.IsReading() {
 		packet.Signature = make([]byte, SignatureBytes)
@@ -180,7 +180,7 @@ func (packet *NextBackendServerInitResponsePacket) Serialize(stream Stream) erro
 
 func (packet *NextBackendServerInitResponsePacket) GetSignData() []byte {
 	buf := new(bytes.Buffer)
-	binary.Write(buf, binary.LittleEndian, packet.RequestID)
+	binary.Write(buf, binary.LittleEndian, packet.RequestId)
 	binary.Write(buf, binary.LittleEndian, packet.Response)
 	return buf.Bytes()
 }
@@ -197,7 +197,6 @@ type NextBackendServerUpdatePacket struct {
 	NumSessionsPending   uint32
 	NumSessionsUpgraded  uint32
 	ServerAddress        net.UDPAddr
-	ServerPrivateAddress net.UDPAddr
 	ServerRoutePublicKey []byte
 	Signature            []byte
 }
@@ -234,9 +233,6 @@ func (packet *NextBackendServerUpdatePacket) GetSignData() []byte {
 	address := make([]byte, NEXT_ADDRESS_BYTES)
 	WriteAddress(address, &packet.ServerAddress)
 	binary.Write(buf, binary.LittleEndian, address)
-	privateAddress := make([]byte, NEXT_ADDRESS_BYTES)
-	WriteAddress(privateAddress, &packet.ServerPrivateAddress)
-	binary.Write(buf, binary.LittleEndian, privateAddress)
 	binary.Write(buf, binary.LittleEndian, packet.ServerRoutePublicKey)
 	return buf.Bytes()
 }
@@ -256,21 +252,22 @@ type NextBackendSessionUpdatePacket struct {
 	TryBeforeYouBuy           bool
 	ConnectionType            int32
 	OnNetworkNext             bool
-	DirectMinRtt              float32
-	DirectMaxRtt              float32
-	DirectMeanRtt             float32
+	Committed                 bool
+	DirectMinRTT              float32
+	DirectMaxRTT              float32
+	DirectMeanRTT             float32
 	DirectJitter              float32
 	DirectPacketLoss          float32
-	NextMinRtt                float32
-	NextMaxRtt                float32
-	NextMeanRtt               float32
+	NextMinRTT                float32
+	NextMaxRTT                float32
+	NextMeanRTT               float32
 	NextJitter                float32
 	NextPacketLoss            float32
 	NumNearRelays             int32
 	NearRelayIds              []uint64
-	NearRelayMinRtt           []float32
-	NearRelayMaxRtt           []float32
-	NearRelayMeanRtt          []float32
+	NearRelayMinRTT           []float32
+	NearRelayMaxRTT           []float32
+	NearRelayMeanRTT          []float32
 	NearRelayJitter           []float32
 	NearRelayPacketLoss       []float32
 	ClientAddress             net.UDPAddr
@@ -280,21 +277,22 @@ type NextBackendSessionUpdatePacket struct {
 	KbpsDown                  uint32
 	PacketsLostClientToServer uint64
 	PacketsLostServerToClient uint64
+	UserFlags                 uint64
 	Signature                 []byte
 }
 
 func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream, versionMajor int32, versionMinor int32, versionPatch int32) error {
 	stream.SerializeUint64(&packet.Sequence)
-	stream.SerializeUint64(&packet.CustomerID)
+	stream.SerializeUint64(&packet.CustomerId)
 	stream.SerializeAddress(&packet.ServerAddress)
-	stream.SerializeUint64(&packet.SessionID)
+	stream.SerializeUint64(&packet.SessionId)
 	stream.SerializeUint64(&packet.UserHash)
-	stream.SerializeUint64(&packet.PlatformID)
+	stream.SerializeUint64(&packet.PlatformId)
 	stream.SerializeUint64(&packet.Tag)
 	stream.SerializeBits(&packet.Flags, 11)
 	stream.SerializeBool(&packet.Flagged)
 	stream.SerializeBool(&packet.FallbackToDirect)
-	stream.SerializeInteger(&packet.ConnectionType, ConnectionTypeUnknown, ConnectionTypeCellular)
+	stream.SerializeInteger(&packet.ConnectionType, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_CELLULAR)
 	stream.SerializeFloat32(&packet.DirectMinRTT)
 	stream.SerializeFloat32(&packet.DirectMaxRTT)
 	stream.SerializeFloat32(&packet.DirectMeanRTT)
@@ -309,9 +307,9 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream, versionMa
 		stream.SerializeFloat32(&packet.NextJitter)
 		stream.SerializeFloat32(&packet.NextPacketLoss)
 	}
-	stream.SerializeInteger(&packet.NumNearRelays, 0, MaxNearRelays)
+	stream.SerializeInteger(&packet.NumNearRelays, 0, NEXT_MAX_NEAR_RELAYS)
 	if stream.IsReading() {
-		packet.NearRelayIDs = make([]uint64, packet.NumNearRelays)
+		packet.NearRelayIds = make([]uint64, packet.NumNearRelays)
 		packet.NearRelayMinRTT = make([]float32, packet.NumNearRelays)
 		packet.NearRelayMaxRTT = make([]float32, packet.NumNearRelays)
 		packet.NearRelayMeanRTT = make([]float32, packet.NumNearRelays)
@@ -320,7 +318,7 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream, versionMa
 	}
 	var i int32
 	for i = 0; i < packet.NumNearRelays; i++ {
-		stream.SerializeUint64(&packet.NearRelayIDs[i])
+		stream.SerializeUint64(&packet.NearRelayIds[i])
 		stream.SerializeFloat32(&packet.NearRelayMinRTT[i])
 		stream.SerializeFloat32(&packet.NearRelayMaxRTT[i])
 		stream.SerializeFloat32(&packet.NearRelayMeanRTT[i])
@@ -374,15 +372,15 @@ func (packet *NextBackendSessionUpdatePacket) GetSignData(versionMajor int32, ve
 
 	binary.Write(buf, binary.LittleEndian, onNetworkNext)
 
-	binary.Write(buf, binary.LittleEndian, packet.DirectMinRtt)
-	binary.Write(buf, binary.LittleEndian, packet.DirectMaxRtt)
-	binary.Write(buf, binary.LittleEndian, packet.DirectMeanRtt)
+	binary.Write(buf, binary.LittleEndian, packet.DirectMinRTT)
+	binary.Write(buf, binary.LittleEndian, packet.DirectMaxRTT)
+	binary.Write(buf, binary.LittleEndian, packet.DirectMeanRTT)
 	binary.Write(buf, binary.LittleEndian, packet.DirectJitter)
 	binary.Write(buf, binary.LittleEndian, packet.DirectPacketLoss)
 
-	binary.Write(buf, binary.LittleEndian, packet.NextMinRtt)
-	binary.Write(buf, binary.LittleEndian, packet.NextMaxRtt)
-	binary.Write(buf, binary.LittleEndian, packet.NextMeanRtt)
+	binary.Write(buf, binary.LittleEndian, packet.NextMinRTT)
+	binary.Write(buf, binary.LittleEndian, packet.NextMaxRTT)
+	binary.Write(buf, binary.LittleEndian, packet.NextMeanRTT)
 	binary.Write(buf, binary.LittleEndian, packet.NextJitter)
 	binary.Write(buf, binary.LittleEndian, packet.NextPacketLoss)
 
@@ -390,9 +388,9 @@ func (packet *NextBackendSessionUpdatePacket) GetSignData(versionMajor int32, ve
 	var i int32
 	for i = 0; i < packet.NumNearRelays; i++ {
 		binary.Write(buf, binary.LittleEndian, packet.NearRelayIds[i])
-		binary.Write(buf, binary.LittleEndian, packet.NearRelayMinRtt[i])
-		binary.Write(buf, binary.LittleEndian, packet.NearRelayMaxRtt[i])
-		binary.Write(buf, binary.LittleEndian, packet.NearRelayMeanRtt[i])
+		binary.Write(buf, binary.LittleEndian, packet.NearRelayMinRTT[i])
+		binary.Write(buf, binary.LittleEndian, packet.NearRelayMaxRTT[i])
+		binary.Write(buf, binary.LittleEndian, packet.NearRelayMeanRTT[i])
 		binary.Write(buf, binary.LittleEndian, packet.NearRelayJitter[i])
 		binary.Write(buf, binary.LittleEndian, packet.NearRelayPacketLoss[i])
 	}
@@ -424,8 +422,9 @@ type NextBackendSessionResponsePacket struct {
 	NumNearRelays        int32
 	NearRelayIds         []uint64
 	NearRelayAddresses   []net.UDPAddr
-	ResponseType         int32
+	RouteType            int32
 	Multipath            bool
+	Committed            bool
 	NumTokens            int32
 	Tokens               []byte
 	ServerRoutePublicKey []byte
@@ -445,15 +444,22 @@ func (packet *NextBackendSessionResponsePacket) Serialize(stream Stream, version
 		stream.SerializeUint64(&packet.NearRelayIds[i])
 		stream.SerializeAddress(&packet.NearRelayAddresses[i])
 	}
-	stream.SerializeInteger(&packet.ResponseType, 0, NEXT_UPDATE_TYPE_CONTINUE)
-	if packet.ResponseType != NEXT_UPDATE_TYPE_DIRECT {
+	stream.SerializeInteger(&packet.RouteType, 0, NEXT_ROUTE_TYPE_CONTINUE)
+	if packet.RouteType != NEXT_ROUTE_TYPE_DIRECT {
 		stream.SerializeBool(&packet.Multipath)
+		stream.SerializeBool(&packet.Committed)
 		stream.SerializeInteger(&packet.NumTokens, 0, NEXT_MAX_NODES)
 	}
-	if packet.ResponseType == NEXT_UPDATE_TYPE_ROUTE {
+	if packet.RouteType == NEXT_ROUTE_TYPE_NEW {
+		if stream.IsReading() {
+			packet.Tokens = make([]byte, packet.NumTokens*NEXT_ENCRYPTED_SESSION_TOKEN_BYTES)
+		}
 		stream.SerializeBytes(packet.Tokens)
 	}
-	if packet.ResponseType == NEXT_UPDATE_TYPE_CONTINUE {
+	if packet.RouteType == NEXT_ROUTE_TYPE_CONTINUE {
+		if stream.IsReading() {
+			packet.Tokens = make([]byte, packet.NumTokens*NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES)
+		}
 		stream.SerializeBytes(packet.Tokens)
 	}
 	if stream.IsReading() {
@@ -477,19 +483,24 @@ func (packet *NextBackendSessionResponsePacket) GetSignData(versionMajor int32, 
 		WriteAddress(address, &packet.NearRelayAddresses[i])
 		binary.Write(buf, binary.LittleEndian, address)
 	}
-	binary.Write(buf, binary.LittleEndian, uint8(packet.ResponseType))
-	if packet.ResponseType != NEXT_UPDATE_TYPE_DIRECT {
+	binary.Write(buf, binary.LittleEndian, uint8(packet.RouteType))
+	if packet.RouteType != NEXT_ROUTE_TYPE_DIRECT {
 		if packet.Multipath {
+			binary.Write(buf, binary.LittleEndian, uint8(1))
+		} else {
+			binary.Write(buf, binary.LittleEndian, uint8(0))
+		}
+		if packet.Committed {
 			binary.Write(buf, binary.LittleEndian, uint8(1))
 		} else {
 			binary.Write(buf, binary.LittleEndian, uint8(0))
 		}
 		binary.Write(buf, binary.LittleEndian, uint8(packet.NumTokens))
 	}
-	if packet.ResponseType == NEXT_UPDATE_TYPE_ROUTE {
+	if packet.RouteType == NEXT_ROUTE_TYPE_NEW {
 		binary.Write(buf, binary.LittleEndian, packet.Tokens)
 	}
-	if packet.ResponseType == NEXT_UPDATE_TYPE_CONTINUE {
+	if packet.RouteType == NEXT_ROUTE_TYPE_CONTINUE {
 		binary.Write(buf, binary.LittleEndian, packet.Tokens)
 	}
 	binary.Write(buf, binary.LittleEndian, packet.ServerRoutePublicKey)
@@ -659,8 +670,6 @@ func main() {
 
 		if packetType == NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET {
 
-			fmt.Printf( "server init request packet\n" );
-
 			readStream := CreateReadStream(packetData[1:])
 
 			serverInitRequest := &NextBackendServerInitRequestPacket{}
@@ -669,8 +678,10 @@ func main() {
 				continue
 			}
 
+			// todo: we really should run the signature check here
+
 			initResponse := &NextBackendServerInitResponsePacket{}
-			initResponse.RequestID = serverInitRequest.RequestID
+			initResponse.RequestId = serverInitRequest.RequestId
 			initResponse.Response = NEXT_SERVER_INIT_RESPONSE_OK
 
 			signResponseData := initResponse.GetSignData()
@@ -704,8 +715,6 @@ func main() {
 
 		} else if packetType == NEXT_BACKEND_SERVER_UPDATE_PACKET {
 
-			fmt.Printf( "server update packet\n" );
-
 			readStream := CreateReadStream(packetData[1:])
 
 			serverUpdate := &NextBackendServerUpdatePacket{}
@@ -713,6 +722,8 @@ func main() {
 				fmt.Printf("error: failed to read server update packet: %v\n", err)
 				continue
 			}
+
+			// todo: we really should run the signature check here
 
 			serverEntry := ServerEntry{}
 			serverEntry.address = from
@@ -738,6 +749,8 @@ func main() {
 				continue
 			}
 
+			// todo: we really should run the signature check here
+
 			if sessionUpdate.FallbackToDirect {
 				continue
 			}
@@ -750,10 +763,6 @@ func main() {
 			}
 
 			nearRelayIds, nearRelayAddresses := GetNearRelays()
-
-			_ = serverEntry
-			_ = nearRelayIds
-			_ = nearRelayAddresses
 
 			var sessionResponse *NextBackendSessionResponsePacket
 
@@ -784,7 +793,7 @@ func main() {
 					NumNearRelays:        int32(len(nearRelayIds)),
 					NearRelayIds:         nearRelayIds,
 					NearRelayAddresses:   nearRelayAddresses,
-					ResponseType:         int32(NEXT_UPDATE_TYPE_DIRECT),
+					RouteType:            int32(NEXT_ROUTE_TYPE_DIRECT),
 					NumTokens:            0,
 					Tokens:               nil,
 					ServerRoutePublicKey: serverEntry.publicKey,
@@ -826,7 +835,7 @@ func main() {
 
 				var tokens []byte
 
-				var responseType int32
+				var routeType int32
 
 				if !sessionEntry.next || routeChanged {
 
@@ -838,7 +847,7 @@ func main() {
 						fmt.Printf("error: could not write route tokens: %v\n", err)
 						continue
 					}
-					responseType = NEXT_UPDATE_TYPE_ROUTE
+					routeType = NEXT_ROUTE_TYPE_NEW
 
 				} else {
 
@@ -849,7 +858,7 @@ func main() {
 						fmt.Printf("error: could not write continue tokens: %v\n", err)
 						continue
 					}
-					responseType = NEXT_UPDATE_TYPE_CONTINUE
+					routeType = NEXT_ROUTE_TYPE_CONTINUE
 
 				}
 
@@ -859,8 +868,9 @@ func main() {
 					NumNearRelays:        int32(len(nearRelayIds)),
 					NearRelayIds:         nearRelayIds,
 					NearRelayAddresses:   nearRelayAddresses,
-					ResponseType:         responseType,
+					RouteType:            routeType,
 					Multipath:            false,
+					Committed:            true,
 					NumTokens:            int32(numNodes),
 					Tokens:               tokens,
 					ServerRoutePublicKey: serverEntry.publicKey,
