@@ -226,6 +226,12 @@ int relay_is_network_next_packet( const uint8_t * packet_data, int packet_bytes 
     return memcmp( hash, packet_data, RELAY_PACKET_HASH_BYTES ) == 0;
 }
 
+void relay_sign_network_next_packet( uint8_t * packet_data, int packet_bytes )
+{
+    assert( packet_bytes > RELAY_PACKET_HASH_BYTES );
+    crypto_generichash( packet_data, RELAY_PACKET_HASH_BYTES, packet_data + RELAY_PACKET_HASH_BYTES, packet_bytes - RELAY_PACKET_HASH_BYTES, relay_packet_hash_key, crypto_generichash_KEYBYTES );
+}
+
 // -----------------------------------------------------------------------------
 
 void relay_write_uint8( uint8_t ** p, uint8_t value )
@@ -4743,7 +4749,6 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
 
     struct relay_ping_data_t
     {
-
         uint64_t id;
         relay_address_t address;
     };
@@ -4788,6 +4793,7 @@ void interrupt_handler( int signal )
     (void) signal; quit = 1;
 }
 
+// todo: just say NO to hungarian notation
 static volatile bool gShouldCleanShutdown = false;
 
 void clean_shutdown_handler( int signal )
@@ -4821,26 +4827,34 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
     while ( !quit )
     {
         relay_address_t from;
-        const int packet_bytes = relay_platform_socket_receive_packet( relay->socket, &from, packet_data, sizeof(packet_data) );
+        int packet_bytes = relay_platform_socket_receive_packet( relay->socket, &from, packet_data, sizeof(packet_data) );
         if ( packet_bytes == 0 )
+            continue;
+
+        if ( !relay_is_network_next_packet( packet_data, packet_bytes ) )
             continue;
 
         relay->bytes_received += packet_bytes;
 
-        if ( packet_data[0] == RELAY_PING_PACKET && packet_bytes == 9 )
+        int packet_id = packet_data[RELAY_PACKET_HASH_BYTES];
+
+        if ( packet_id == RELAY_PING_PACKET && packet_bytes == RELAY_PACKET_HASH_BYTES + 1 + 8 )
         {
-            packet_data[0] = RELAY_PONG_PACKET;
-            relay_platform_socket_send_packet( relay->socket, &from, packet_data, 9 );
-            relay->bytes_sent += 9;
+            packet_data[RELAY_PACKET_HASH_BYTES] = RELAY_PONG_PACKET;
+            relay_sign_network_next_packet( packet_data, RELAY_PACKET_HASH_BYTES + 1 + 8 );
+            relay_platform_socket_send_packet( relay->socket, &from, packet_data, RELAY_PACKET_HASH_BYTES + 1 + 8 );
+            relay->bytes_sent += RELAY_PACKET_HASH_BYTES + 1 + 8;
         }
-        else if ( packet_data[0] == RELAY_PONG_PACKET && packet_bytes == 9 )
+        else if ( packet_id == RELAY_PONG_PACKET && packet_bytes == RELAY_PACKET_HASH_BYTES + 1 + 8 )
         {
             relay_platform_mutex_acquire( relay->mutex );
-            const uint8_t * p = packet_data + 1;
+            const uint8_t * p = packet_data + RELAY_PACKET_HASH_BYTES + 1;
             uint64_t sequence = relay_read_uint64( &p );
             relay_manager_process_pong( relay->relay_manager, &from, sequence );
             relay_platform_mutex_release( relay->mutex );
         }
+
+        /*
         else if ( packet_data[0] == RELAY_ROUTE_REQUEST_PACKET )
         {
             if ( packet_bytes < int( 1 + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES * 2 ) )
@@ -5152,6 +5166,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             relay_platform_socket_send_packet( relay->socket, &from, packet_data, packet_bytes - 16 );
             relay->bytes_sent += packet_bytes - 16;
         }
+        */
     }
 
     RELAY_PLATFORM_THREAD_RETURN();

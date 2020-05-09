@@ -656,6 +656,22 @@ func IsNetworkNextPacket(packetData []byte, packetBytes int) bool {
 	return true
 }
 
+func SignNetworkNextPacket(packetData []byte) []byte {
+	signedPacketData := make([]byte, len(packetData) + NEXT_PACKET_HASH_BYTES)
+	C.crypto_generichash(
+		(*C.uchar)(&signedPacketData[0]), 
+		C.ulong(NEXT_PACKET_HASH_BYTES), 
+		(*C.uchar)(&packetData[0]), 
+		C.ulonglong(len(packetData)), 
+		(*C.uchar)(&packetHashKey[0]), 
+		C.ulong(C.crypto_generichash_KEYBYTES),
+	)
+	for i := 0; i < len(packetData); i++ {
+		signedPacketData[NEXT_PACKET_HASH_BYTES+i] = packetData[i]
+	}
+	return signedPacketData
+}
+
 func main() {
 
 	rand.Seed(time.Now().UnixNano())
@@ -694,11 +710,8 @@ func main() {
 		}
 
 		if !IsNetworkNextPacket(packetData, packetBytes) {
-			fmt.Printf("not network next packet (%d)\n", packetBytes)
 			continue
 		}
-
-		fmt.Printf( "is network next packet (%d)\n", packetBytes)
 
 		packetData = packetData[NEXT_PACKET_HASH_BYTES:]
 		packetBytes -= NEXT_PACKET_HASH_BYTES
@@ -743,7 +756,9 @@ func main() {
 
 			responsePacketData := writeStream.GetData()[0:writeStream.GetBytesProcessed()]
 
-			_, err = connection.WriteToUDP(responsePacketData, from)
+			signedResponsePacketData := SignNetworkNextPacket(responsePacketData)
+
+			_, err = connection.WriteToUDP(signedResponsePacketData, from)
 			if err != nil {
 				fmt.Printf("error: failed to send udp response: %v\n", err)
 				continue
@@ -951,7 +966,9 @@ func main() {
 
 			responsePacketData := writeStream.GetData()[0:writeStream.GetBytesProcessed()]
 
-			_, err = connection.WriteToUDP(responsePacketData, from)
+			signedResponsePacketData := SignNetworkNextPacket(responsePacketData)
+
+			_, err = connection.WriteToUDP(signedResponsePacketData, from)
 			if err != nil {
 				fmt.Printf("error: failed to send udp response: %v\n", err)
 				continue
