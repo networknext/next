@@ -218,9 +218,7 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream, versionMa
 	stream.SerializeUint64(&packet.UserHash)
 	stream.SerializeUint64(&packet.PlatformId)
 	stream.SerializeUint64(&packet.Tag)
-	if ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 3, 3, 4) {
-		stream.SerializeBits(&packet.Flags, NEXT_FLAGS_COUNT)
-	}
+	stream.SerializeBits(&packet.Flags, NEXT_FLAGS_COUNT)
 	stream.SerializeBool(&packet.Flagged)
 	stream.SerializeBool(&packet.FallbackToDirect)
 	stream.SerializeBool(&packet.TryBeforeYouBuy)
@@ -264,10 +262,8 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream, versionMa
 	stream.SerializeBytes(packet.ClientRoutePublicKey)
 	stream.SerializeUint32(&packet.KbpsUp)
 	stream.SerializeUint32(&packet.KbpsDown)
-	if ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 3, 3, 2) {
-		stream.SerializeUint64(&packet.PacketsLostClientToServer)
-		stream.SerializeUint64(&packet.PacketsLostServerToClient)
-	}
+	stream.SerializeUint64(&packet.PacketsLostClientToServer)
+	stream.SerializeUint64(&packet.PacketsLostServerToClient)
 	stream.SerializeBytes(packet.Signature)
 	return stream.Error()
 }
@@ -290,9 +286,7 @@ func (packet *NextBackendSessionUpdatePacket) GetSignData(versionMajor int32, ve
 	binary.Write(buf, binary.LittleEndian, packet.PlatformId)
 	binary.Write(buf, binary.LittleEndian, packet.Tag)
 
-	if ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 3, 3, 4) {
-		binary.Write(buf, binary.LittleEndian, packet.Flags)
-	}
+	binary.Write(buf, binary.LittleEndian, packet.Flags)
 	binary.Write(buf, binary.LittleEndian, packet.Flagged)
 	binary.Write(buf, binary.LittleEndian, packet.FallbackToDirect)
 	binary.Write(buf, binary.LittleEndian, packet.TryBeforeYouBuy)
@@ -340,10 +334,8 @@ func (packet *NextBackendSessionUpdatePacket) GetSignData(versionMajor int32, ve
 	binary.Write(buf, binary.LittleEndian, packet.KbpsUp)
 	binary.Write(buf, binary.LittleEndian, packet.KbpsDown)
 
-	if ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 3, 3, 2) {
-		binary.Write(buf, binary.LittleEndian, packet.PacketsLostClientToServer)
-		binary.Write(buf, binary.LittleEndian, packet.PacketsLostServerToClient)
-	}
+	binary.Write(buf, binary.LittleEndian, packet.PacketsLostClientToServer)
+	binary.Write(buf, binary.LittleEndian, packet.PacketsLostServerToClient)
 
 	binary.Write(buf, binary.LittleEndian, packet.ClientRoutePublicKey)
 
