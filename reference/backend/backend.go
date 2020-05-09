@@ -1535,9 +1535,6 @@ type Stream interface {
 	SerializeFloat64(value *float64)
 	SerializeBytes(data []byte)
 	SerializeString(value *string, maxSize int)
-	SerializeIntRelative(previous *int32, current *int32)
-	SerializeAckRelative(sequence uint16, ack *uint16)
-	SerializeSequenceRelative(sequence1 uint16, sequence2 *uint16)
 	SerializeAlign()
 	SerializeAddress(addr *net.UDPAddr)
 	GetAlignBits() int
@@ -1713,6 +1710,80 @@ func (stream *WriteStream) SerializeString(value *string, maxSize int) {
 	stream.SerializeBytes([]byte(*value))
 }
 
+func (stream *WriteStream) SerializeIntRelative(previous *int32, current *int32) {
+	if stream.err != nil {
+		return
+	}
+	if previous == nil {
+		stream.error(fmt.Errorf("previous is nil"))
+		return
+	}
+	if current == nil {
+		stream.error(fmt.Errorf("current is nil"))
+		return
+	}
+	if *previous >= *current {
+		stream.error(fmt.Errorf("previous value should be less than current value"))
+		return
+	}
+
+	difference := *current - *previous
+
+	oneBit := difference == 1
+	stream.SerializeBool(&oneBit)
+	if oneBit {
+		return
+	}
+
+	twoBits := difference <= 6
+	stream.SerializeBool(&twoBits)
+	if twoBits {
+		min := int32(2)
+		max := int32(6)
+		stream.SerializeInteger(&difference, min, max)
+		return
+	}
+
+	fourBits := difference <= 23
+	stream.SerializeBool(&fourBits)
+	if fourBits {
+		min := int32(7)
+		max := int32(23)
+		stream.SerializeInteger(&difference, min, max)
+		return
+	}
+
+	eightBits := difference <= 280
+	stream.SerializeBool(&eightBits)
+	if eightBits {
+		min := int32(24)
+		max := int32(280)
+		stream.SerializeInteger(&difference, min, max)
+		return
+	}
+
+	twelveBits := difference <= 4377
+	stream.SerializeBool(&twelveBits)
+	if twelveBits {
+		min := int32(281)
+		max := int32(4377)
+		stream.SerializeInteger(&difference, min, max)
+		return
+	}
+
+	sixteenBits := difference <= 4377
+	stream.SerializeBool(&sixteenBits)
+	if sixteenBits {
+		min := int32(4378)
+		max := int32(69914)
+		stream.SerializeInteger(&difference, min, max)
+		return
+	}
+
+	uint32Value := uint32(*current)
+	stream.SerializeUint32(&uint32Value)
+}
+
 func (stream *WriteStream) SerializeAddress(addr *net.UDPAddr) {
 	if stream.err != nil {
 		return
@@ -1754,6 +1825,17 @@ func (stream *WriteStream) SerializeAddress(addr *net.UDPAddr) {
 		uint32Value := uint32(addr.Port)
 		stream.SerializeBits(&uint32Value, 16)
 	}
+}
+
+func (stream *WriteStream) SerializeAlign() {
+	if stream.err != nil {
+		return
+	}
+	stream.error(stream.writer.WriteAlign())
+}
+
+func (stream *WriteStream) GetAlignBits() int {
+	return stream.writer.GetAlignBits()
 }
 
 func (stream *WriteStream) Flush() {
@@ -2082,44 +2164,6 @@ func (stream *ReadStream) SerializeIntRelative(previous *int32, current *int32) 
 		return
 	}
 	*current = int32(uint32Value)
-}
-
-func (stream *ReadStream) SerializeAckRelative(sequence uint16, ack *uint16) {
-	if ack == nil {
-		stream.error(fmt.Errorf("ack is nil"))
-		return
-	}
-	ackDelta := int32(0)
-	ackInRange := false
-	stream.SerializeBool(&ackInRange)
-	if ackInRange {
-		stream.SerializeInteger(&ackDelta, 1, 64)
-		*ack = sequence - uint16(ackDelta)
-	} else {
-		uint32Value := uint32(0)
-		stream.SerializeBits(&uint32Value, 16)
-		*ack = uint16(uint32Value)
-	}
-}
-
-func (stream *ReadStream) SerializeSequenceRelative(sequence1 uint16, sequence2 *uint16) {
-	if stream.err != nil {
-		return
-	}
-	if sequence2 == nil {
-		stream.error(fmt.Errorf("sequence2 is nil"))
-		return
-	}
-	a := int32(sequence1)
-	b := int32(0)
-	stream.SerializeIntRelative(&a, &b)
-	if stream.err != nil {
-		return
-	}
-	if b >= 65536 {
-		b -= 65536
-	}
-	*sequence2 = uint16(b)
 }
 
 func (stream *ReadStream) SerializeAddress(addr *net.UDPAddr) {
