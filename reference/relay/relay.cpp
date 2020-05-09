@@ -4853,27 +4853,27 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             relay_manager_process_pong( relay->relay_manager, &from, sequence );
             relay_platform_mutex_release( relay->mutex );
         }
-
-        /*
-        else if ( packet_data[0] == RELAY_ROUTE_REQUEST_PACKET )
+        else if ( packet_id == RELAY_ROUTE_REQUEST_PACKET )
         {
-            if ( packet_bytes < int( 1 + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES * 2 ) )
+            if ( packet_bytes < int( RELAY_PACKET_HASH_BYTES + 1 + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES * 2 ) )
             {
                 relay_printf( "ignoring route request. bad packet size (%d)", packet_bytes );
                 continue;
             }
-            uint8_t * p = &packet_data[1];
+
+            uint8_t * p = packet_data + RELAY_PACKET_HASH_BYTES + 1;
             relay_route_token_t token;
             if ( relay_read_encrypted_route_token( &p, &token, relay->router_public_key, relay->relay_private_key ) != RELAY_OK )
             {
                 relay_printf( "ignoring route request. could not read route token" );
                 continue;
             }
+
             if ( token.expire_timestamp < relay_timestamp( relay ) )
-            {
                 continue;
-            }
-            uint64_t hash = token.session_id ^ token.session_version;
+            
+            uint64_t hash = token.session_id ^ token.session_version;       // todo: dangerous
+
             if ( relay->sessions->find(hash) == relay->sessions->end() )
             {
                 relay_session_t * session = (relay_session_t*) malloc( sizeof( relay_session_t ) );
@@ -4893,121 +4893,131 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 relay->sessions->insert( std::make_pair(hash, session) );
                 printf( "session created: %" PRIx64 ".%d\n", token.session_id, token.session_version );
             }
-            packet_data[RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES] = RELAY_ROUTE_REQUEST_PACKET;
+
+            packet_data[RELAY_PACKET_HASH_BYTES+RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES] = RELAY_ROUTE_REQUEST_PACKET;
+
+            relay_sign_network_next_packet( packet_data + RELAY_PACKET_HASH_BYTES, packet_bytes - RELAY_PACKET_HASH_BYTES );
+            
             relay_platform_socket_send_packet( relay->socket, &token.next_address, packet_data + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES, packet_bytes - RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES );
+            
             relay->bytes_sent += packet_bytes - RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES;
         }
-        else if ( packet_data[0] == RELAY_ROUTE_RESPONSE_PACKET )
+        else if ( packet_id == RELAY_ROUTE_RESPONSE_PACKET )
         {
-            if ( packet_bytes != RELAY_HEADER_BYTES )
-            {
+            if ( packet_bytes != RELAY_PACKET_HASH_BYTES + RELAY_HEADER_BYTES )
                 continue;
-            }
+
             uint8_t type;
             uint64_t sequence;
             uint64_t session_id;
             uint8_t session_version;
-            if ( relay_peek_header( RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, packet_data, packet_bytes ) != RELAY_OK )
-            {
+            if ( relay_peek_header( RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, packet_data + RELAY_PACKET_HASH_BYTES, packet_bytes - RELAY_PACKET_HASH_BYTES ) != RELAY_OK )
                 continue;
-            }
-            uint64_t hash = session_id ^ session_version;
+
+            uint64_t hash = session_id ^ session_version;       // todo: this looks unsafe :)
+
             relay_session_t * session = (*(relay->sessions))[hash];
             if ( !session )
-            {
                 continue;
-            }
+
             if ( session->expire_timestamp < relay_timestamp( relay ) )
-            {
                 continue;
-            }
+
+            // todo: this really should be done with replay protection
             uint64_t clean_sequence = relay_clean_sequence( sequence );
             if ( clean_sequence <= session->server_to_client_sequence )
-            {
                 continue;
-            }
+            
             session->server_to_client_sequence = clean_sequence;
-            if ( relay_verify_header( RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data, packet_bytes ) != RELAY_OK )
-            {
+
+            if ( relay_verify_header( RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data + RELAY_PACKET_HASH_BYTES, packet_bytes - RELAY_PACKET_HASH_BYTES ) != RELAY_OK )
                 continue;
-            }
+
             relay_platform_socket_send_packet( relay->socket, &session->prev_address, packet_data, packet_bytes );
+
             relay->bytes_sent += packet_bytes;
         }
-        else if ( packet_data[0] == RELAY_CONTINUE_REQUEST_PACKET )
+        else if ( packet_id == RELAY_CONTINUE_REQUEST_PACKET )
         {
-            if ( packet_bytes < int( 1 + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES * 2 ) )
+            if ( packet_bytes < int( RELAY_PACKET_HASH_BYTES + 1 + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES * 2 ) )
             {
                 relay_printf( "ignoring continue request. bad packet size (%d)", packet_bytes );
                 continue;
             }
-            uint8_t * p = &packet_data[1];
+
+            uint8_t * p = packet_data + RELAY_PACKET_HASH_BYTES + 1;
             relay_continue_token_t token;
             if ( relay_read_encrypted_continue_token( &p, &token, relay->router_public_key, relay->relay_private_key ) != RELAY_OK )
             {
                 relay_printf( "ignoring continue request. could not read continue token" );
                 continue;
             }
+
             if ( token.expire_timestamp < relay_timestamp( relay ) )
-            {
                 continue;
-            }
-            uint64_t hash = token.session_id ^ token.session_version;
+
+            uint64_t hash = token.session_id ^ token.session_version;       // todo: unsafe
+
             relay_session_t * session = (*(relay->sessions))[hash];
             if ( !session )
-            {
                 continue;
-            }
+
             if ( session->expire_timestamp < relay_timestamp( relay ) )
-            {
                 continue;
-            }
+
             if ( session->expire_timestamp != token.expire_timestamp )
             {
                 printf( "session continued: %" PRIx64 ".%d\n", token.session_id, token.session_version );
             }
+
             session->expire_timestamp = token.expire_timestamp;
+
             packet_data[RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES] = RELAY_CONTINUE_REQUEST_PACKET;
+
+            relay_sign_network_next_packet( packet_data + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES, packet_bytes - RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES );
+
             relay_platform_socket_send_packet( relay->socket, &session->next_address, packet_data + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES, packet_bytes - RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES );
+            
             relay->bytes_sent += packet_bytes - RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES;
         }
-        else if ( packet_data[0] == RELAY_CONTINUE_RESPONSE_PACKET )
+        else if ( packet_id == RELAY_CONTINUE_RESPONSE_PACKET )
         {
-            if ( packet_bytes != RELAY_HEADER_BYTES )
-            {
+            if ( packet_bytes != RELAY_PACKET_HASH_BYTES + RELAY_HEADER_BYTES )
                 continue;
-            }
+
             uint8_t type;
             uint64_t sequence;
             uint64_t session_id;
             uint8_t session_version;
-            if ( relay_peek_header( RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, packet_data, packet_bytes ) != RELAY_OK )
-            {
+            if ( relay_peek_header( RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, packet_data + RELAY_PACKET_HASH_BYTES, packet_bytes - RELAY_PACKET_HASH_BYTES ) != RELAY_OK )
                 continue;
-            }
-            uint64_t hash = session_id ^ session_version;
+
+            uint64_t hash = session_id ^ session_version;           // todo: hohoho
+
             relay_session_t * session = (*(relay->sessions))[hash];
             if ( !session )
-            {
                 continue;
-            }
+
             if ( session->expire_timestamp < relay_timestamp( relay ) )
-            {
                 continue;
-            }
+
+            // todo: this should be done via replay protection
             uint64_t clean_sequence = relay_clean_sequence( sequence );
             if ( clean_sequence <= session->server_to_client_sequence )
-            {
                 continue;
-            }
+
             session->server_to_client_sequence = clean_sequence;
-            if ( relay_verify_header( RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data, packet_bytes ) != RELAY_OK )
-            {
+
+            if ( relay_verify_header( RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data + RELAY_PACKET_HASH_BYTES, packet_bytes - RELAY_PACKET_HASH_BYTES ) != RELAY_OK )
                 continue;
-            }
+
             relay_platform_socket_send_packet( relay->socket, &session->prev_address, packet_data, packet_bytes );
+
             relay->bytes_sent += packet_bytes;
         }
+
+        // todo
+        /*
         else if ( packet_data[0] == RELAY_CLIENT_TO_SERVER_PACKET )
         {
             if ( packet_bytes <= RELAY_HEADER_BYTES || packet_bytes > RELAY_HEADER_BYTES + RELAY_MTU )
