@@ -5899,6 +5899,40 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         return;
     }
 
+    // relay pong packet
+
+    if ( packet_id == NEXT_RELAY_PONG_PACKET )
+    {
+        // todo
+        printf( "relay pong packet\n" );
+
+        if ( !client->upgraded )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored relay pong packet. not upgraded yet" );
+            return;
+        }            
+
+        NextRelayPongPacket packet;
+
+        if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL ) != packet_id )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored relay pong packet. failed to read" );
+            return;
+        }
+
+        if ( packet.session_id != client->session_id )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignoring relay pong packet. session id does not match" );
+            return;
+        }
+
+        next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL );
+
+        next_relay_manager_process_pong( client->near_relay_manager, from, packet.ping_sequence );
+
+        return;
+    }
+
     // -------------------
     // PACKETS FROM SERVER
     // -------------------

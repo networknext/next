@@ -80,27 +80,70 @@ DONE
 
 	Relay was screwing it up. fixed.
 
-TODO
-
 	Verify direct and next pongs are received on client.
-
-	--------------------------------
 
 	Verify near ping/pongs are working.
 
-	--------------------------------
+	Verify that relay to relay pings and pongs are being received.
 
 	Verify that we can get traffic across several reference relays.
 
+	Works.
+
+	There's a situation where the backend stops receiving packets from teh server after a while.
+
+	Adding a log shows the packets are triggering "not a network next packet".
+
+	Have I missed a codepath where the server updates or session updates are not hash prefixed properly?
+	
+	Can't seem to reproduce this without relays in the mix. What is it?
+
+	It does reproduce without relays, just leave it for a while:
+
+	-----------------------------
+	server: 127.0.0.1:32202
+	-----------------------------
+	server: 127.0.0.1:32202
+	session: dfab85ba9373c91e
+	error: not a network next packet (220)
+	error: not a network next packet (220)
+	error: not a network next packet (220)
+	error: not a network next packet (220)
+	error: not a network next packet (220)
+	error: not a network next packet (220)
+	-----------------------------
+	server: 127.0.0.1:32202
+	error: not a network next packet (140)
+	-----------------------------
+	(nil)
+	error: not a network next packet (140)
+	error: not a network next packet (140)
+	error: not a network next packet (140)
+	error: not a network next packet (140)
+	error: not a network next packet (140)
+	error: not a network next packet (140)
+
 	--------------------------------
 
+	These must be server update packets. Nothing else is being sent to the backend.
+
+TODO
+
+
+	But how can these be sent through to the backend, without tripping the code to check if network next packet on write backend packet?
 
 
 
 
 
 
+	--------------------------------
 
+	When no customer public key is specified on the client, print this out and say falling back to direct only.
+
+	--------------------------------
+
+	When no customer private key is specified, on the server, print this out and say, falling back to direct only.
 
 	--------------------------------
 
@@ -110,13 +153,19 @@ TODO
 
 	--------------------------------
 
-	Really should have a functional test that verifies next pings and pings are working.
-
-	Also direct pings and pongs. More counters?
+	Add counters to verify next pings and pongs are working.
 
 	--------------------------------
 
-	Should have a functional test that verifies near relay ping/pong is working.
+	Add counters to verify direct pings and pongs are working.
+
+	--------------------------------
+
+	Add counters to verify near relay ping and pong are working.
+
+	--------------------------------
+
+	Check counters for pings/pongs to make sure they are as expected in functional tests.
 
 	--------------------------------
 
