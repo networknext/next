@@ -5189,7 +5189,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
         }
         else if ( packet_id == RELAY_SESSION_PING_PACKET )
         {
-            if ( packet_bytes != RELAY_PACKET_HASH_BYTES + RELAY_HEADER_BYTES + 32 )
+            if ( packet_bytes != RELAY_PACKET_HASH_BYTES + RELAY_HEADER_BYTES + 8 )
             {
                 relay_printf( "ignored session ping packet. bad packet size (%d)", packet_bytes );
                 continue;
@@ -5236,13 +5236,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
             session->client_to_server_sequence = clean_sequence;
 
-            relay_platform_socket_send_packet( relay->socket, &session->next_address, packet_data + RELAY_PACKET_HASH_BYTES, packet_bytes - RELAY_PACKET_HASH_BYTES );
+            relay_platform_socket_send_packet( relay->socket, &session->next_address, packet_data, packet_bytes );
 
             relay->bytes_sent += packet_bytes;
         }
         else if ( packet_id == RELAY_SESSION_PONG_PACKET )
         {
-            if ( packet_bytes != RELAY_PACKET_HASH_BYTES + RELAY_HEADER_BYTES + 32 )
+            if ( packet_bytes != RELAY_PACKET_HASH_BYTES + RELAY_HEADER_BYTES + 8 )
             {
                 relay_printf( "ignored session pong packet. bad packet size (%d)", packet_bytes );
                 continue;
