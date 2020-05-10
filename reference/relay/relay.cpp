@@ -4834,9 +4834,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
         if ( !relay_is_network_next_packet( packet_data, packet_bytes ) )
         {
             // todo
-            printf( "not a network next packet (%d)\n", packet_bytes );
+            printf( "not a network next packet (%d/%d)\n", packet_data[8], packet_bytes );
             continue;
         }
+
+        printf( "network next packet (%d/%d)\n", packet_data[8], packet_bytes );
 
         relay->bytes_received += packet_bytes;
 
@@ -4903,7 +4905,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
             packet_data[RELAY_PACKET_HASH_BYTES+RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES] = RELAY_ROUTE_REQUEST_PACKET;
 
-            relay_sign_network_next_packet( packet_data + RELAY_PACKET_HASH_BYTES, packet_bytes - RELAY_PACKET_HASH_BYTES );
+            relay_sign_network_next_packet( packet_data + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES, packet_bytes - RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES );
             
             relay_platform_socket_send_packet( relay->socket, &token.next_address, packet_data + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES, packet_bytes - RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES );
             
