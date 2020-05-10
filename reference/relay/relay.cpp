@@ -4793,7 +4793,6 @@ void interrupt_handler( int signal )
     (void) signal; quit = 1;
 }
 
-// todo: just say NO to hungarian notation
 static volatile bool gShouldCleanShutdown = false;
 
 void clean_shutdown_handler( int signal )
@@ -4832,13 +4831,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             continue;
 
         if ( !relay_is_network_next_packet( packet_data, packet_bytes ) )
-        {
-            // todo
-            printf( "not a network next packet (%d/%d)\n", packet_data[8], packet_bytes );
             continue;
-        }
-
-        printf( "network next packet (%d/%d)\n", packet_data[8], packet_bytes );
 
         relay->bytes_received += packet_bytes;
 
@@ -5354,11 +5347,12 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
 
         for ( int i = 0; i < num_pings; ++i )
         {
-            uint8_t packet_data[9];
-            packet_data[0] = RELAY_PING_PACKET;
-            uint8_t * p = packet_data + 1;
+            uint8_t packet_data[RELAY_PACKET_HASH_BYTES+1+8];
+            packet_data[RELAY_PACKET_HASH_BYTES] = RELAY_PING_PACKET;
+            uint8_t * p = packet_data + RELAY_PACKET_HASH_BYTES + 1;
             relay_write_uint64( &p, pings[i].sequence );
-            relay_platform_socket_send_packet( relay->socket, &pings[i].address, packet_data, 9 );
+            relay_sign_network_next_packet( packet_data, RELAY_PACKET_HASH_BYTES + 1 + 8 );
+            relay_platform_socket_send_packet( relay->socket, &pings[i].address, packet_data, RELAY_PACKET_HASH_BYTES + 1 + 8 );
         }
 
         relay_platform_sleep( 1.0 / 100.0 );

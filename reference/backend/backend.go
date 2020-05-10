@@ -633,10 +633,113 @@ func RouteChanged(previous []uint64, current []uint64) bool {
 }
 
 func IsNetworkNextPacket(packetData []byte, packetBytes int) bool {
+
+    if packetHashKey[0] != 0xe3 {
+    	panic("busted")
+    }
+    if packetHashKey[1] != 0x18 {
+    	panic("busted")
+    }
+    if packetHashKey[2] != 0x61 {
+    	panic("busted")
+    }
+    if packetHashKey[3] != 0x72 {
+    	panic("busted")
+    }
+    if packetHashKey[4] != 0xee {
+    	panic("busted")
+    }
+    if packetHashKey[5] != 0x70 {
+    	panic("busted")
+    }
+    if packetHashKey[6] != 0x62 {
+    	panic("busted")
+    }
+    if packetHashKey[7] != 0x37 {
+    	panic("busted")
+    }
+
+    if packetHashKey[8] != 0x40 {
+    	panic("busted")
+    }
+    if packetHashKey[9] != 0xf6 {
+    	panic("busted")
+    }
+    if packetHashKey[10] != 0x0a {
+    	panic("busted")
+    }
+    if packetHashKey[11] != 0xea {
+    	panic("busted")
+    }
+    if packetHashKey[12] != 0xe0 {
+    	panic("busted")
+    }
+    if packetHashKey[13] != 0xb5 {
+    	panic("busted")
+    }
+    if packetHashKey[14] != 0x1a {
+    	panic("busted")
+    }
+    if packetHashKey[15] != 0x2c {
+    	panic("busted")
+    }
+
+    if packetHashKey[16] != 0x2a {
+    	panic("busted")
+    }
+    if packetHashKey[17] != 0x47 {
+    	panic("busted")
+    }
+    if packetHashKey[18] != 0x98 {
+    	panic("busted")
+    }
+    if packetHashKey[19] != 0x8f {
+    	panic("busted")
+    }
+    if packetHashKey[20] != 0x27 {
+    	panic("busted")
+    }
+    if packetHashKey[21] != 0xec {
+    	panic("busted")
+    }
+    if packetHashKey[22] != 0x63 {
+    	panic("busted")
+    }
+    if packetHashKey[23] != 0x2c {
+    	panic("busted")
+    }
+
+    if packetHashKey[24] != 0x25 {
+    	panic("busted")
+    }
+    if packetHashKey[25] != 0x04 {
+    	panic("busted")
+    }
+    if packetHashKey[26] != 0x74 {
+    	panic("busted")
+    }
+    if packetHashKey[27] != 0x89 {
+    	panic("busted")
+    }
+    if packetHashKey[28] != 0xaf {
+    	panic("busted")
+    }
+    if packetHashKey[29] != 0x5a {
+    	panic("busted")
+    }
+    if packetHashKey[30] != 0xeb {
+    	panic("busted")
+    }
+    if packetHashKey[31] != 0x24 {
+    	panic("busted")
+    }
+
 	if packetBytes <= NEXT_PACKET_HASH_BYTES {
+		fmt.Printf("packet too small\n")
 		return false
 	}
 	if packetBytes > NEXT_MAX_PACKET_BYTES {
+		fmt.Printf("packet too big\n")
 		return false
 	}
 	hash := make([]byte, NEXT_PACKET_HASH_BYTES)
@@ -710,6 +813,7 @@ func main() {
 		}
 
 		if !IsNetworkNextPacket(packetData, packetBytes) {
+			fmt.Printf("error: not a network next packet (%d)\n", packetBytes)
 			continue
 		}
 
@@ -737,7 +841,7 @@ func main() {
 			signResponseData := initResponse.GetSignData()
 			initResponse.Signature = CryptoSignCreate(signResponseData, backendPrivateKey)
 			if initResponse.Signature == nil {
-				fmt.Printf("error: failed to sign server init response packet")
+				fmt.Printf("error: failed to sign server init response packet\n")
 				continue
 			}
 
