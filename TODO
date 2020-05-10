@@ -32,13 +32,65 @@ DONE
 
 	Do not bother to maintain support for old and new relay packets. That can be done in the new relay. The reference relay is always bleeding edge.
 
+	Upgrade the reference relay to use the blake2 prefixed packets.
+
+	Extend the reference relay to have full debug logs on all conditions where packets are ignored.
+
+	Update code that sends route request packet to prefix with packet hash.
+
+	Is the server getting a route request packet from the relay, or is the server ignoring it?
+
+	Server is now getting the route request packet, but I'm not sure it's firing back the route response correctly with hash prefix.
+
+	Extend the server to reply back with the route response packet with hash prefix. 
+
+	Fix client processing of continue response packet.
+
+	Client now gets continue response packet.
+
+	Appears that the server is not getting the continue request from the relay...
+
+	Fixed error in continue response packet forwarding.
+
+	I believe the client -> server packets aren't getting through, which doesn't confirm the route.
+
+	Thus when the continue request packet gets through: "server ignored continue request packet. no route to continue".
+
+	Error in filling out continue response on server fixed.
+
+	Client is now getting continue response, but is unable to read header.
+
+	Easy fix. It's not reading at correct offset.
+
+	Client now continues route.
+
+	Seems like a lot of packets hitting the relay that don't have the signature.
+
+	Next ping/pong packets? Probably...
+
+	Could also be server -> client packets. Check those first.
+
+	Now the packets are less frequent. Clearly pings. Relay is definitely receiving next pings.
+
+	Not sure if server is receiving next pings.
+
+	Relay doesn't seem to be receiving next pongs.
+
+	Check the server...
+
+	Relay was screwing it up. fixed.
+
 TODO
 
-	Upgrade the reference relay to use the blake2 prefixed packets.
+	Verify direct and next pongs are received on client.
 
 	--------------------------------
 
-	Verify that we can get traffic across several reference relays and the reference backend.
+	Verify near ping/pongs are working.
+
+	--------------------------------
+
+	Verify that we can get traffic across several reference relays.
 
 	--------------------------------
 
@@ -55,6 +107,16 @@ TODO
 	We really should have a functional test that verifies payload client -> server direct, upgraded direct, and next.
 
 	I mean FFS we could break game payload and not know...
+
+	--------------------------------
+
+	Really should have a functional test that verifies next pings and pings are working.
+
+	Also direct pings and pongs. More counters?
+
+	--------------------------------
+
+	Should have a functional test that verifies near relay ping/pong is working.
 
 	--------------------------------
 

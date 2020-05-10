@@ -373,7 +373,8 @@ void next_quiet( bool flag )
     log_quiet = flag;
 }
 
-static int log_level = NEXT_LOG_LEVEL_INFO;
+// todo
+static int log_level = NEXT_LOG_LEVEL_DEBUG;//INFO;
 
 void next_log_level( int level )
 {
@@ -2455,6 +2456,12 @@ int next_is_network_next_packet( const uint8_t * packet_data, int packet_bytes )
     crypto_generichash( hash, NEXT_PACKET_HASH_BYTES, message, message_length, next_packet_hash_key, crypto_generichash_KEYBYTES );
 
     return memcmp( hash, packet_data, NEXT_PACKET_HASH_BYTES ) == 0;
+}
+
+void next_sign_network_next_packet( uint8_t * packet_data, int packet_bytes )
+{
+    next_assert( packet_bytes > NEXT_PACKET_HASH_BYTES );
+    crypto_generichash( packet_data, NEXT_PACKET_HASH_BYTES, packet_data + NEXT_PACKET_HASH_BYTES, packet_bytes - NEXT_PACKET_HASH_BYTES, next_packet_hash_key, crypto_generichash_KEYBYTES );
 }
 
 // -------------------------------------------------------------
@@ -4782,9 +4789,10 @@ void next_route_manager_begin_next_route( next_route_manager_t * route_manager, 
     route_manager->route_data.pending_route_session_version = route_token.session_version;
     route_manager->route_data.pending_route_kbps_up = route_token.kbps_up;
     route_manager->route_data.pending_route_kbps_down = route_token.kbps_down;
-    route_manager->route_data.pending_route_request_packet_bytes = 1 + ( num_tokens - 1 ) * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES;
-    route_manager->route_data.pending_route_request_packet_data[0] = NEXT_ROUTE_REQUEST_PACKET;
-    memcpy( route_manager->route_data.pending_route_request_packet_data + 1, tokens + NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES, ( size_t(num_tokens) - 1 ) * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES );
+    route_manager->route_data.pending_route_request_packet_bytes = NEXT_PACKET_HASH_BYTES + 1 + ( num_tokens - 1 ) * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES;
+    route_manager->route_data.pending_route_request_packet_data[NEXT_PACKET_HASH_BYTES] = NEXT_ROUTE_REQUEST_PACKET;
+    memcpy( route_manager->route_data.pending_route_request_packet_data + NEXT_PACKET_HASH_BYTES + 1, tokens + NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES, ( size_t(num_tokens) - 1 ) * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES );
+    next_sign_network_next_packet( route_manager->route_data.pending_route_request_packet_data, route_manager->route_data.pending_route_request_packet_bytes );
     memcpy( route_manager->route_data.pending_route_private_key, route_token.private_key, crypto_box_SECRETKEYBYTES );
     next_assert( route_manager->route_data.pending_route_request_packet_bytes <= NEXT_MAX_PACKET_BYTES );
 }
@@ -4826,9 +4834,10 @@ void next_route_manager_continue_next_route( next_route_manager_t * route_manage
     route_manager->route_data.pending_continue_committed = committed;
     route_manager->route_data.pending_continue_start_time = next_time();
     route_manager->route_data.pending_continue_last_send_time = -1000.0;
-    route_manager->route_data.pending_continue_request_packet_bytes = 1 + ( num_tokens - 1 ) * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES;
-    route_manager->route_data.pending_continue_request_packet_data[0] = NEXT_CONTINUE_REQUEST_PACKET;
-    memcpy( route_manager->route_data.pending_continue_request_packet_data + 1, tokens + NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES, ( size_t(num_tokens) - 1 ) * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
+    route_manager->route_data.pending_continue_request_packet_bytes = NEXT_PACKET_HASH_BYTES + 1 + ( num_tokens - 1 ) * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES;
+    route_manager->route_data.pending_continue_request_packet_data[NEXT_PACKET_HASH_BYTES] = NEXT_CONTINUE_REQUEST_PACKET;
+    memcpy( route_manager->route_data.pending_continue_request_packet_data + NEXT_PACKET_HASH_BYTES + 1, tokens + NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES, ( size_t(num_tokens) - 1 ) * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
+    next_sign_network_next_packet( route_manager->route_data.pending_continue_request_packet_data, route_manager->route_data.pending_continue_request_packet_bytes );    
     next_assert( route_manager->route_data.pending_continue_request_packet_bytes <= NEXT_MAX_PACKET_BYTES );
 
     next_printf( NEXT_LOG_LEVEL_INFO, "client continues route (%s)", committed ? "committed" : "uncommitted" );
@@ -4885,15 +4894,17 @@ void next_route_manager_prepare_send_packet( next_route_manager_t * route_manage
 
     *to = route_manager->route_data.current_route_next_address;
 
-    if ( next_write_header( NEXT_DIRECTION_CLIENT_TO_SERVER, NEXT_CLIENT_TO_SERVER_PACKET, sequence, route_manager->route_data.current_route_session_id, route_manager->route_data.current_route_session_version, 0, route_manager->route_data.current_route_private_key, packet_data, NEXT_MAX_PACKET_BYTES ) != NEXT_OK )
+    if ( next_write_header( NEXT_DIRECTION_CLIENT_TO_SERVER, NEXT_CLIENT_TO_SERVER_PACKET, sequence, route_manager->route_data.current_route_session_id, route_manager->route_data.current_route_session_version, 0, route_manager->route_data.current_route_private_key, packet_data + NEXT_PACKET_HASH_BYTES, NEXT_MAX_PACKET_BYTES ) != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client failed to write client to server packet header" );
         return;
     }
 
-    memcpy( packet_data + NEXT_HEADER_BYTES, payload_data, payload_bytes );
+    memcpy( packet_data + NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES, payload_data, payload_bytes );
 
-    *packet_bytes = NEXT_HEADER_BYTES + payload_bytes;
+    *packet_bytes = NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES + payload_bytes;
+
+    next_sign_network_next_packet( packet_data, *packet_bytes );
 }
 
 bool next_route_manager_process_server_to_client_packet( next_route_manager_t * route_manager, const next_address_t * from, uint8_t * packet_data, int packet_bytes, uint64_t * payload_sequence, uint8_t * payload_data, int * payload_bytes )
@@ -5611,7 +5622,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         uint8_t packet_session_version = 0;
         uint8_t packet_session_flags = 0;
 
-        if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, route_private_key, packet_data, packet_bytes ) != NEXT_OK )
+        if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, route_private_key, packet_data + NEXT_PACKET_HASH_BYTES, packet_bytes - NEXT_PACKET_HASH_BYTES ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. could not read header" );
             return;
@@ -5756,7 +5767,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         uint8_t packet_session_version = 0;
         uint8_t packet_session_flags = 0;
 
-        if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, current_route_private_key, packet_data, packet_bytes ) != NEXT_OK )
+        if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, current_route_private_key, packet_data + NEXT_PACKET_HASH_BYTES, packet_bytes - NEXT_PACKET_HASH_BYTES ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored continue response packet from relay. could not read header" );
             return;
@@ -6412,9 +6423,9 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
         uint64_t sequence = client->special_send_sequence++;
         sequence |= (1ULL<<62);
 
-        uint8_t packet[NEXT_HEADER_BYTES+8];
+        uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
 
-        if ( next_write_header( NEXT_DIRECTION_CLIENT_TO_SERVER, NEXT_PING_PACKET, sequence, session_id, session_version, 0, private_key, packet, sizeof(packet) ) != NEXT_OK )
+        if ( next_write_header( NEXT_DIRECTION_CLIENT_TO_SERVER, NEXT_PING_PACKET, sequence, session_id, session_version, 0, private_key, packet_data + NEXT_PACKET_HASH_BYTES, sizeof(packet_data) - NEXT_PACKET_HASH_BYTES ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_ERROR, "client failed to write next ping packet" );
             return;
@@ -6422,10 +6433,15 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
 
         const uint64_t ping_sequence = next_ping_history_ping_sent( &client->next_ping_history, current_time );
 
-        uint8_t * p = packet + NEXT_HEADER_BYTES;
+        uint8_t * p = packet_data + NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES;
+
         next_write_uint64( &p, ping_sequence );
 
-        next_platform_socket_send_packet( client->socket, &to, packet, sizeof(packet) );
+        int packet_bytes = NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES + 8;
+
+        next_sign_network_next_packet( packet_data, packet_bytes );
+
+        next_platform_socket_send_packet( client->socket, &to, packet_data, packet_bytes );
 
         client->last_next_ping_time = current_time;
 
@@ -9723,10 +9739,13 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_ROUTE_REQUEST_PACKET )
     {
-        if ( packet_bytes != 1 + NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES )
+        if ( packet_bytes != NEXT_PACKET_HASH_BYTES + 1 + NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored route request packet. wrong size" );
             return;
+        }
 
-        uint8_t * buffer = &packet_data[NEXT_PACKET_HASH_BYTES+1];
+        uint8_t * buffer = packet_data + NEXT_PACKET_HASH_BYTES + 1;
         next_route_token_t route_token;
         if ( next_read_encrypted_route_token( &buffer, &route_token, next_router_public_key, server->server_route_private_key ) != NEXT_OK )
         {
@@ -9769,19 +9788,21 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             entry->most_recent_session_version = route_token.session_version;
         }
 
-        uint8_t response[NEXT_HEADER_BYTES];
+        uint8_t response[NEXT_MAX_PACKET_BYTES];
 
         uint64_t session_send_sequence = entry->special_send_sequence++;
         session_send_sequence |= uint64_t(1) << 63;
         session_send_sequence |= uint64_t(1) << 62;
 
-        if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_ROUTE_RESPONSE_PACKET, session_send_sequence, entry->session_id, entry->pending_route_session_version, 0, entry->pending_route_private_key, response, NEXT_MTU ) != NEXT_OK )
+        if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_ROUTE_RESPONSE_PACKET, session_send_sequence, entry->session_id, entry->pending_route_session_version, 0, entry->pending_route_private_key, response + NEXT_PACKET_HASH_BYTES, NEXT_MTU ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server failed to write next route response packet" );
             return;
         }
 
-        next_platform_socket_send_packet( server->socket, from, response, NEXT_HEADER_BYTES );
+        next_sign_network_next_packet( response, NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES );
+
+        next_platform_socket_send_packet( server->socket, from, response, NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES );
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent route response packet to relay for session %" PRIx64, entry->session_id );
 
@@ -9792,10 +9813,13 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_CONTINUE_REQUEST_PACKET )
     {
-        if ( packet_bytes != 1 + NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES )
+        if ( packet_bytes != NEXT_PACKET_HASH_BYTES + 1 + NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored continue request packet. wrong size" );
             return;
+        }
 
-        uint8_t * buffer = &packet_data[NEXT_PACKET_HASH_BYTES + 1];
+        uint8_t * buffer = packet_data + NEXT_PACKET_HASH_BYTES + 1;
         next_continue_token_t continue_token;
         if ( next_read_encrypted_continue_token( &buffer, &continue_token, next_router_public_key, server->server_route_private_key ) != NEXT_OK )
         {
@@ -9834,19 +9858,21 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         entry->current_route_expire_time += NEXT_SLICE_SECONDS;
         entry->has_previous_route = false;
 
-        uint8_t response[NEXT_HEADER_BYTES];
+        uint8_t response[NEXT_MAX_PACKET_BYTES];
 
         uint64_t session_send_sequence = entry->special_send_sequence++;
         session_send_sequence |= uint64_t(1) << 63;
         session_send_sequence |= uint64_t(1) << 62;
 
-        if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_CONTINUE_RESPONSE_PACKET, session_send_sequence, entry->session_id, entry->current_route_session_version, 0, entry->current_route_private_key, response, NEXT_MTU ) != NEXT_OK )
+        if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_CONTINUE_RESPONSE_PACKET, session_send_sequence, entry->session_id, entry->current_route_session_version, 0, entry->current_route_private_key, response + NEXT_PACKET_HASH_BYTES, NEXT_MTU ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write next continue response packet" );
             return;
         }
 
-        next_platform_socket_send_packet( server->socket, from, response, NEXT_HEADER_BYTES );
+        next_sign_network_next_packet( response, NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES );
+
+        next_platform_socket_send_packet( server->socket, from, response, NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES );
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent continue response packet to relay for session %" PRIx64, entry->session_id );
 
@@ -9906,11 +9932,13 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         send_sequence |= uint64_t(1) << 63;
         send_sequence |= uint64_t(1) << 62;
 
-        if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_PONG_PACKET, send_sequence, entry->session_id, entry->current_route_session_version, 0, entry->current_route_private_key, packet_data, NEXT_HEADER_BYTES + 8 ) != NEXT_OK )
+        if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_PONG_PACKET, send_sequence, entry->session_id, entry->current_route_session_version, 0, entry->current_route_private_key, packet_data + NEXT_PACKET_HASH_BYTES, NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES + 8 ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_WARN, "server failed to write pong packet header" );
             return;
         }
+
+        next_sign_network_next_packet( packet_data, NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES + 8 );        
 
         next_platform_socket_send_packet( server->socket, from, packet_data, NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES + 8 );
 
@@ -11003,15 +11031,17 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
                 uint8_t next_packet_data[NEXT_MAX_PACKET_BYTES];
                 
-                if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_SERVER_TO_CLIENT_PACKET, send_sequence, session_id, session_version, 0, session_private_key, next_packet_data, NEXT_MAX_PACKET_BYTES ) != NEXT_OK )
+                if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_SERVER_TO_CLIENT_PACKET, send_sequence, session_id, session_version, 0, session_private_key, next_packet_data + NEXT_PACKET_HASH_BYTES, NEXT_MAX_PACKET_BYTES - NEXT_PACKET_HASH_BYTES ) != NEXT_OK )
                 {
                     next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server to client packet header" );
                     return;
                 }
 
-                memcpy( next_packet_data + NEXT_HEADER_BYTES, packet_data, packet_bytes );
+                memcpy( next_packet_data + NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES, packet_data, packet_bytes );
 
-                int next_packet_bytes = NEXT_HEADER_BYTES + packet_bytes;
+                int next_packet_bytes = NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES + packet_bytes;
+
+                next_sign_network_next_packet( next_packet_data, next_packet_bytes );
 
                 next_platform_socket_send_packet( server->internal->socket, &session_address, next_packet_data, next_packet_bytes );
             }
