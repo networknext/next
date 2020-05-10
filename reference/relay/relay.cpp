@@ -5008,10 +5008,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
             session->expire_timestamp = token.expire_timestamp;
 
-            packet_data[RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES] = RELAY_CONTINUE_REQUEST_PACKET;
+            packet_data[RELAY_PACKET_HASH_BYTES+RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES] = RELAY_CONTINUE_REQUEST_PACKET;
 
             relay_sign_network_next_packet( packet_data + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES, packet_bytes - RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES );
-
+            
             relay_platform_socket_send_packet( relay->socket, &session->next_address, packet_data + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES, packet_bytes - RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES );
             
             relay->bytes_sent += packet_bytes - RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES;
