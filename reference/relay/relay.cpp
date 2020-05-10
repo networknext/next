@@ -144,7 +144,7 @@ relay_mutex_helper_t::~relay_mutex_helper_t()
 
 // -----------------------------------------------------------------------------
 
-static int relay_debug = 0;
+static int relay_debug = 1;
 
 void relay_printf( const char * format, ... )
 {
@@ -2593,7 +2593,7 @@ int relay_write_header( int direction, uint8_t type, uint64_t sequence, uint64_t
 
     relay_write_uint64( &buffer, session_id );
     relay_write_uint8( &buffer, session_version );
-    relay_write_uint8( &buffer, 0 );    // todo: remove this once we fully switch to new relay
+    relay_write_uint8( &buffer, 0 );
 
     uint8_t nonce[12];
     {
@@ -2717,7 +2717,7 @@ int relay_verify_header( int direction, const uint8_t * private_key, uint8_t * b
 
     uint64_t packet_session_id = relay_read_uint64( &p );
     uint8_t packet_session_version = relay_read_uint8( &p );
-    uint8_t packet_session_flags = relay_read_uint8( &p );      // todo: remove once we fully switch over to new relay
+    uint8_t packet_session_flags = relay_read_uint8( &p );
 
     (void) packet_session_id;
     (void) packet_session_version;
@@ -4832,7 +4832,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             continue;
 
         if ( !relay_is_network_next_packet( packet_data, packet_bytes ) )
+        {
+            // todo
+            printf( "not a network next packet (%d)\n", packet_bytes );
             continue;
+        }
 
         relay->bytes_received += packet_bytes;
 
@@ -4870,9 +4874,12 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             }
 
             if ( token.expire_timestamp < relay_timestamp( relay ) )
+            {
+                relay_printf( "not a network next packet (%d)\n", packet_bytes );
                 continue;
+            }
             
-            uint64_t hash = token.session_id ^ token.session_version;       // todo: dangerous
+            uint64_t hash = token.session_id ^ token.session_version;
 
             if ( relay->sessions->find(hash) == relay->sessions->end() )
             {
@@ -4905,33 +4912,51 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
         else if ( packet_id == RELAY_ROUTE_RESPONSE_PACKET )
         {
             if ( packet_bytes != RELAY_PACKET_HASH_BYTES + RELAY_HEADER_BYTES )
+            {
+                relay_printf( "ignored route response packet. wrong packet size (%d)", packet_bytes );
                 continue;
+            }
 
             uint8_t type;
             uint64_t sequence;
             uint64_t session_id;
             uint8_t session_version;
             if ( relay_peek_header( RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, packet_data + RELAY_PACKET_HASH_BYTES, packet_bytes - RELAY_PACKET_HASH_BYTES ) != RELAY_OK )
+            {
+                relay_printf( "ignored route response packet. could not peek header" );
                 continue;
+            }
 
-            uint64_t hash = session_id ^ session_version;       // todo: this looks unsafe :)
+            uint64_t hash = session_id ^ session_version;
 
             relay_session_t * session = (*(relay->sessions))[hash];
             if ( !session )
+            {
+                relay_printf( "ignored route response packet. could not find session" );
                 continue;
+            }
 
             if ( session->expire_timestamp < relay_timestamp( relay ) )
+            {
+                relay_printf( "ignored route response packet. expired" );
                 continue;
+            }
 
-            // todo: this really should be done with replay protection
             uint64_t clean_sequence = relay_clean_sequence( sequence );
-            if ( clean_sequence <= session->server_to_client_sequence )
-                continue;
-            
-            session->server_to_client_sequence = clean_sequence;
 
-            if ( relay_verify_header( RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data + RELAY_PACKET_HASH_BYTES, packet_bytes - RELAY_PACKET_HASH_BYTES ) != RELAY_OK )
+            if ( clean_sequence <= session->server_to_client_sequence )
+            {
+                relay_printf( "ignored route response packet. packet already received" );
                 continue;
+            }
+            
+            if ( relay_verify_header( RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data + RELAY_PACKET_HASH_BYTES, packet_bytes - RELAY_PACKET_HASH_BYTES ) != RELAY_OK )
+            {
+                relay_printf( "ignored route response packet. header did not verify" );
+                continue;
+            }
+
+            session->server_to_client_sequence = clean_sequence;
 
             relay_platform_socket_send_packet( relay->socket, &session->prev_address, packet_data, packet_bytes );
 
@@ -4954,16 +4979,25 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             }
 
             if ( token.expire_timestamp < relay_timestamp( relay ) )
+            {
+                relay_printf( "ignored continue request. token expired" );
                 continue;
+            }
 
-            uint64_t hash = token.session_id ^ token.session_version;       // todo: unsafe
+            uint64_t hash = token.session_id ^ token.session_version;
 
             relay_session_t * session = (*(relay->sessions))[hash];
             if ( !session )
+            {
+                relay_printf( "ignored continue request. could not find session" );
                 continue;
+            }
 
             if ( session->expire_timestamp < relay_timestamp( relay ) )
+            {
+                relay_printf( "ignored continue request. session expired" );
                 continue;
+            }
 
             if ( session->expire_timestamp != token.expire_timestamp )
             {
@@ -4983,200 +5017,296 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
         else if ( packet_id == RELAY_CONTINUE_RESPONSE_PACKET )
         {
             if ( packet_bytes != RELAY_PACKET_HASH_BYTES + RELAY_HEADER_BYTES )
+            {
+                relay_printf( "ignored continue response packet. bad packet size (%d)", packet_bytes );
                 continue;
+            }
 
             uint8_t type;
             uint64_t sequence;
             uint64_t session_id;
             uint8_t session_version;
             if ( relay_peek_header( RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, packet_data + RELAY_PACKET_HASH_BYTES, packet_bytes - RELAY_PACKET_HASH_BYTES ) != RELAY_OK )
+            {
+                relay_printf( "ignored continue response packet. could not peek header" );
                 continue;
+            }
 
-            uint64_t hash = session_id ^ session_version;           // todo: hohoho
+            uint64_t hash = session_id ^ session_version;
 
             relay_session_t * session = (*(relay->sessions))[hash];
             if ( !session )
+            {
+                relay_printf( "ignored continue response packet. could not find session" );
                 continue;
+            }
 
             if ( session->expire_timestamp < relay_timestamp( relay ) )
+            {
+                relay_printf( "ignored continue response packet. session expired" );
                 continue;
+            }
 
-            // todo: this should be done via replay protection
             uint64_t clean_sequence = relay_clean_sequence( sequence );
+            
             if ( clean_sequence <= session->server_to_client_sequence )
+            {
+                relay_printf( "ignored continue response packet. already received" );
                 continue;
-
-            session->server_to_client_sequence = clean_sequence;
+            }
 
             if ( relay_verify_header( RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data + RELAY_PACKET_HASH_BYTES, packet_bytes - RELAY_PACKET_HASH_BYTES ) != RELAY_OK )
+            {
+                relay_printf( "ignored continue response packet. could not verify header" );
                 continue;
+            }
+
+            session->server_to_client_sequence = clean_sequence;
 
             relay_platform_socket_send_packet( relay->socket, &session->prev_address, packet_data, packet_bytes );
 
             relay->bytes_sent += packet_bytes;
         }
-
-        // todo
-        /*
-        else if ( packet_data[0] == RELAY_CLIENT_TO_SERVER_PACKET )
+        else if ( packet_id == RELAY_CLIENT_TO_SERVER_PACKET )
         {
-            if ( packet_bytes <= RELAY_HEADER_BYTES || packet_bytes > RELAY_HEADER_BYTES + RELAY_MTU )
+            if ( packet_bytes <= RELAY_PACKET_HASH_BYTES + RELAY_HEADER_BYTES )
             {
+                relay_printf( "ignored client to server packet. packet too small (%d)", packet_bytes );
                 continue;
             }
+
+            if ( packet_bytes > RELAY_PACKET_HASH_BYTES + RELAY_HEADER_BYTES + RELAY_MTU )
+            {
+                relay_printf( "ignored client to server packet. packet too big (%d)", packet_bytes );
+                continue;
+            }
+
             uint8_t type;
             uint64_t sequence;
             uint64_t session_id;
             uint8_t session_version;
-            if ( relay_peek_header( RELAY_DIRECTION_CLIENT_TO_SERVER, &type, &sequence, &session_id, &session_version, packet_data, packet_bytes ) != RELAY_OK )
+            if ( relay_peek_header( RELAY_DIRECTION_CLIENT_TO_SERVER, &type, &sequence, &session_id, &session_version, packet_data + RELAY_PACKET_HASH_BYTES, packet_bytes - RELAY_PACKET_HASH_BYTES ) != RELAY_OK )
             {
+                relay_printf( "ignored client to server packet. could not peek header" );
                 continue;
             }
+
             uint64_t hash = session_id ^ session_version;
+
             relay_session_t * session = (*(relay->sessions))[hash];
             if ( !session )
             {
+                relay_printf( "ignored client to server packet. could not find session" );
                 continue;
             }
+
             if ( session->expire_timestamp < relay_timestamp( relay ) )
             {
+                relay_printf( "ignored client to server packet. session expired" );
                 continue;
             }
+
             uint64_t clean_sequence = relay_clean_sequence( sequence );
+
             if ( relay_replay_protection_already_received( &session->replay_protection_client_to_server, clean_sequence ) )
             {
+                relay_printf( "ignored client to server packet. already received" );
                 continue;
             }
-            relay_replay_protection_advance_sequence( &session->replay_protection_client_to_server, clean_sequence );
-            if ( relay_verify_header( RELAY_DIRECTION_CLIENT_TO_SERVER, session->private_key, packet_data, packet_bytes ) != RELAY_OK )
+
+            if ( relay_verify_header( RELAY_DIRECTION_CLIENT_TO_SERVER, session->private_key, packet_data + RELAY_PACKET_HASH_BYTES, packet_bytes - RELAY_PACKET_HASH_BYTES ) != RELAY_OK )
             {
+                relay_printf( "ignored client to server packet. could not verify header" );
                 continue;
             }
+            
+            relay_replay_protection_advance_sequence( &session->replay_protection_client_to_server, clean_sequence );
+
             relay_platform_socket_send_packet( relay->socket, &session->next_address, packet_data, packet_bytes );
+            
             relay->bytes_sent += packet_bytes;
         }
-        else if ( packet_data[0] == RELAY_SERVER_TO_CLIENT_PACKET )
+        else if ( packet_id == RELAY_SERVER_TO_CLIENT_PACKET )
         {
-            if ( packet_bytes <= RELAY_HEADER_BYTES || packet_bytes > RELAY_HEADER_BYTES + RELAY_MTU )
+            if ( packet_bytes <= RELAY_PACKET_HASH_BYTES + RELAY_HEADER_BYTES )
             {
+                relay_printf( "ignored server to client packet. packet too small (%d)", packet_bytes );
                 continue;
             }
+
+            if ( packet_bytes > RELAY_PACKET_HASH_BYTES + RELAY_HEADER_BYTES + RELAY_MTU )
+            {
+                relay_printf( "ignored server to client packet. packet too big (%d)", packet_bytes );
+                continue;
+            }
+
             uint8_t type;
             uint64_t sequence;
             uint64_t session_id;
             uint8_t session_version;
-            if ( relay_peek_header( RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, packet_data, packet_bytes ) != RELAY_OK )
+            if ( relay_peek_header( RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, packet_data + RELAY_PACKET_HASH_BYTES, packet_bytes - RELAY_PACKET_HASH_BYTES ) != RELAY_OK )
             {
+                relay_printf( "ignored server to client packet. could not peek header" );
                 continue;
             }
+
             uint64_t hash = session_id ^ session_version;
+
             relay_session_t * session = (*(relay->sessions))[hash];
             if ( !session )
             {
+                relay_printf( "ignored server to client packet. could not find session" );
                 continue;
             }
+
             if ( session->expire_timestamp < relay_timestamp( relay ) )
             {
+                relay_printf( "ignored server to client packet. session expired" );
                 continue;
             }
+
             uint64_t clean_sequence = relay_clean_sequence( sequence );
+
             if ( relay_replay_protection_already_received( &session->replay_protection_server_to_client, clean_sequence ) )
             {
+                relay_printf( "ignored server to client packet. already received" );
                 continue;
             }
-            relay_replay_protection_advance_sequence( &session->replay_protection_server_to_client, clean_sequence );
-            if ( relay_verify_header( RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data, packet_bytes ) != RELAY_OK )
+
+            if ( relay_verify_header( RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data + RELAY_PACKET_HASH_BYTES, packet_bytes - RELAY_PACKET_HASH_BYTES ) != RELAY_OK )
             {
+                relay_printf( "ignored server to client packet. could not verify header" );
                 continue;
             }
-            relay_platform_socket_send_packet( relay->socket, &session->prev_address, packet_data, packet_bytes );
+
+            relay_replay_protection_advance_sequence( &session->replay_protection_server_to_client, clean_sequence );
+
+            relay_platform_socket_send_packet( relay->socket, &session->prev_address, packet_data + RELAY_PACKET_HASH_BYTES, packet_bytes - RELAY_PACKET_HASH_BYTES );
+
             relay->bytes_sent += packet_bytes;
         }
-        else if ( packet_data[0] == RELAY_SESSION_PING_PACKET )
+        else if ( packet_id == RELAY_SESSION_PING_PACKET )
         {
-            if ( packet_bytes > RELAY_HEADER_BYTES + 32 )
+            if ( packet_bytes != RELAY_PACKET_HASH_BYTES + RELAY_HEADER_BYTES + 32 )
             {
+                relay_printf( "ignored session ping packet. bad packet size (%d)", packet_bytes );
                 continue;
             }
+
             uint8_t type;
             uint64_t sequence;
             uint64_t session_id;
             uint8_t session_version;
-            if ( relay_peek_header( RELAY_DIRECTION_CLIENT_TO_SERVER, &type, &sequence, &session_id, &session_version, packet_data, packet_bytes ) != RELAY_OK )
+            if ( relay_peek_header( RELAY_DIRECTION_CLIENT_TO_SERVER, &type, &sequence, &session_id, &session_version, packet_data + RELAY_PACKET_HASH_BYTES, packet_bytes - RELAY_PACKET_HASH_BYTES ) != RELAY_OK )
             {
+                relay_printf( "ignored session ping packet. could not peek header" );
                 continue;
             }
+
             uint64_t hash = session_id ^ session_version;
+
             relay_session_t * session = (*(relay->sessions))[hash];
             if ( !session )
             {
+                relay_printf( "ignored session ping packet. session does not exist" );
                 continue;
             }
+
             if ( session->expire_timestamp < relay_timestamp( relay ) )
             {
+                relay_printf( "ignored session ping packet. session expired" );
                 continue;
             }
+
             uint64_t clean_sequence = relay_clean_sequence( sequence );
+
             if ( clean_sequence <= session->client_to_server_sequence )
             {
+                relay_printf( "ignored session ping packet. already received" );
                 continue;
             }
-            session->client_to_server_sequence = clean_sequence;
-            if ( relay_verify_header( RELAY_DIRECTION_CLIENT_TO_SERVER, session->private_key, packet_data, packet_bytes ) != RELAY_OK )
+        
+            if ( relay_verify_header( RELAY_DIRECTION_CLIENT_TO_SERVER, session->private_key, packet_data + RELAY_PACKET_HASH_BYTES, packet_bytes - RELAY_PACKET_HASH_BYTES ) != RELAY_OK )
             {
+                relay_printf( "ignored session ping packet. could not verify header" );
                 continue;
             }
-            relay_platform_socket_send_packet( relay->socket, &session->next_address, packet_data, packet_bytes );
+
+            session->client_to_server_sequence = clean_sequence;
+
+            relay_platform_socket_send_packet( relay->socket, &session->next_address, packet_data + RELAY_PACKET_HASH_BYTES, packet_bytes - RELAY_PACKET_HASH_BYTES );
+
             relay->bytes_sent += packet_bytes;
         }
-        else if ( packet_data[0] == RELAY_SESSION_PONG_PACKET )
+        else if ( packet_id == RELAY_SESSION_PONG_PACKET )
         {
-            if ( packet_bytes > RELAY_HEADER_BYTES + 32 )
+            if ( packet_bytes != RELAY_PACKET_HASH_BYTES + RELAY_HEADER_BYTES + 32 )
             {
+                relay_printf( "ignored session pong packet. bad packet size (%d)", packet_bytes );
                 continue;
             }
+
             uint8_t type;
             uint64_t sequence;
             uint64_t session_id;
             uint8_t session_version;
-            if ( relay_peek_header( RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, packet_data, packet_bytes ) != RELAY_OK )
+            if ( relay_peek_header( RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, packet_data + RELAY_PACKET_HASH_BYTES, packet_bytes - RELAY_PACKET_HASH_BYTES ) != RELAY_OK )
             {
+                relay_printf( "ignored session pong packet. could not peek header" );
                 continue;
             }
+
             uint64_t hash = session_id ^ session_version;
+
             relay_session_t * session = (*(relay->sessions))[hash];
             if ( !session )
             {
+                relay_printf( "ignored session pong packet. session does not exist" );
                 continue;
             }
+
             if ( session->expire_timestamp < relay_timestamp( relay ) )
             {
+                relay_printf( "ignored session pong packet. session expired" );
                 continue;
             }
+
             uint64_t clean_sequence = relay_clean_sequence( sequence );
+
             if ( clean_sequence <= session->server_to_client_sequence )
             {
+                relay_printf( "ignored session pong packet. already received" );
                 continue;
             }
-            session->server_to_client_sequence = clean_sequence;
-            if ( relay_verify_header( RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data, packet_bytes ) != RELAY_OK )
+
+            if ( relay_verify_header( RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data + RELAY_PACKET_HASH_BYTES, packet_bytes - RELAY_PACKET_HASH_BYTES ) != RELAY_OK )
             {
+                relay_printf( "ignored session pong packet. could not verify header" );
                 continue;
             }
+
+            session->server_to_client_sequence = clean_sequence;
+
             relay_platform_socket_send_packet( relay->socket, &session->prev_address, packet_data, packet_bytes );
+
             relay->bytes_sent += packet_bytes;
         }
-        else if ( packet_data[0] == RELAY_NEAR_PING_PACKET )
+        else if ( packet_id == RELAY_NEAR_PING_PACKET )
         {
-            if ( packet_bytes != 1 + 8 + 8 + 8 + 8 )
+            if ( packet_bytes != RELAY_PACKET_HASH_BYTES + 1 + 8 + 8 + 8 + 8 )
             {
+                relay_printf( "ignored relay near ping packet. bad packet size (%d)", packet_bytes );
                 continue;
             }
-            packet_data[0] = RELAY_NEAR_PONG_PACKET;
+
+            packet_data[RELAY_PACKET_HASH_BYTES] = RELAY_NEAR_PONG_PACKET;
+
+            relay_sign_network_next_packet( packet_data, packet_bytes - 16 );
+
             relay_platform_socket_send_packet( relay->socket, &from, packet_data, packet_bytes - 16 );
+
             relay->bytes_sent += packet_bytes - 16;
         }
-        */
     }
 
     RELAY_PLATFORM_THREAD_RETURN();
