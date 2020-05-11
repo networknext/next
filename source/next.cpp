@@ -2660,6 +2660,7 @@ void next_replay_protection_advance_sequence( next_replay_protection_t * replay_
 
 int next_wire_packet_bits( int packet_bytes )
 {
+    // todo: add the packet hash here
     return ( 14 + 20 + 8 + packet_bytes + 4 ) * 8;
 }
 
@@ -4181,7 +4182,7 @@ void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platfor
     next_assert( manager );
     next_assert( socket );
 
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES*2];   // todo
+    uint8_t packet_data[NEXT_MAX_PACKET_BYTES*2];
 
     double current_time = next_time();
 
@@ -4752,7 +4753,7 @@ struct next_route_data_t
     int pending_route_kbps_down;
     int pending_route_request_packet_bytes;
     next_address_t pending_route_next_address;
-    uint8_t pending_route_request_packet_data[NEXT_MAX_PACKET_BYTES*2]; // todo
+    uint8_t pending_route_request_packet_data[NEXT_MAX_PACKET_BYTES];
     uint8_t pending_route_private_key[crypto_box_SECRETKEYBYTES];
     
     bool pending_continue;
@@ -4760,7 +4761,7 @@ struct next_route_data_t
     double pending_continue_start_time;
     double pending_continue_last_send_time;
     int pending_continue_request_packet_bytes;
-    uint8_t pending_continue_request_packet_data[NEXT_MAX_PACKET_BYTES*2]; // todo
+    uint8_t pending_continue_request_packet_data[NEXT_MAX_PACKET_BYTES];
 };
 
 struct next_route_manager_t
@@ -5230,6 +5231,8 @@ struct next_client_notify_stats_updated_t : public next_client_notify_t
 
 struct next_client_internal_t
 {
+    NEXT_DECLARE_SENTINEL(0)
+
     void * context;
     next_queue_t * command_queue;
     next_queue_t * notify_queue;
@@ -5261,6 +5264,9 @@ struct next_client_internal_t
     next_route_manager_t * route_manager;
     next_platform_mutex_t * route_manager_mutex;
     next_packet_loss_tracker_t packet_loss_tracker;
+
+    NEXT_DECLARE_SENTINEL(1)
+
     uint8_t customer_public_key[crypto_sign_PUBLICKEYBYTES];
     uint8_t client_kx_public_key[crypto_kx_PUBLICKEYBYTES];
     uint8_t client_kx_private_key[crypto_kx_SECRETKEYBYTES];
@@ -5268,23 +5274,34 @@ struct next_client_internal_t
     uint8_t client_receive_key[crypto_kx_SESSIONKEYBYTES];
     uint8_t client_route_public_key[crypto_box_PUBLICKEYBYTES];
     uint8_t client_route_private_key[crypto_box_SECRETKEYBYTES];
+
+    NEXT_DECLARE_SENTINEL(2)
+
     next_ping_history_t next_ping_history;
     next_ping_history_t direct_ping_history;
     next_client_stats_t client_stats;
     next_replay_protection_t payload_replay_protection;
     next_replay_protection_t special_replay_protection;
     next_replay_protection_t internal_replay_protection;
+
+    NEXT_DECLARE_SENTINEL(3)
+
     next_platform_mutex_t * bandwidth_mutex;
     bool bandwidth_over_budget;
     float bandwidth_usage_kbps_up;
     float bandwidth_usage_kbps_down;
     float bandwidth_envelope_kbps_up;
     float bandwidth_envelope_kbps_down;
+    
+    NEXT_DECLARE_SENTINEL(4)
+
     bool sending_upgrade_response;
     NextUpgradeResponsePacket upgrade_response;
     double upgrade_response_start_time;
     double last_upgrade_response_send_time;
     uint64_t counters[NEXT_CLIENT_COUNTER_MAX];
+
+    NEXT_DECLARE_SENTINEL(5)
 };
 
 void next_client_internal_destroy( next_client_internal_t * client );
@@ -6719,6 +6736,8 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_client_inter
 
 struct next_client_t
 {
+    NEXT_DECLARE_SENTINEL(0)
+
     void * context;
     bool session_open;
     bool upgraded;
@@ -6734,6 +6753,8 @@ struct next_client_t
     next_bandwidth_limiter_t send_bandwidth;
     next_bandwidth_limiter_t receive_bandwidth;
     uint64_t counters[NEXT_CLIENT_COUNTER_MAX];
+
+    NEXT_DECLARE_SENTINEL(1)
 };
 
 void next_client_destroy( next_client_t * client );
@@ -6911,7 +6932,7 @@ void next_client_update( next_client_t * client )
                 const int envelope_kbps_down = client->internal->bandwidth_envelope_kbps_down;
                 next_platform_mutex_release( client->internal->bandwidth_mutex );
 
-                // is this accurate? what about direct packets?!
+                // is this accurate? what about direct packets received. don't they go through this codepath?
                 const int packet_bits = next_wire_packet_bits( NEXT_HEADER_BYTES + packet_received->packet_bytes );
 
                 next_bandwidth_limiter_add_packet( &client->receive_bandwidth, next_time(), envelope_kbps_down, packet_bits );
@@ -7018,6 +7039,8 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
         next_platform_mutex_acquire( client->internal->bandwidth_mutex );
         const int envelope_kbps_up = client->internal->bandwidth_envelope_kbps_up;
         next_platform_mutex_release( client->internal->bandwidth_mutex );
+
+        // todo: WTF. we are including direct packets in the bandwidth budget here?!
 
         // todo: whut... needs to be updated to have the packet hash
         const int packet_bits = next_wire_packet_bits( NEXT_HEADER_BYTES + packet_bytes );
@@ -7815,19 +7838,8 @@ struct next_session_entry_t
     int update_num_near_relays;
     uint64_t update_near_relay_ids[NEXT_MAX_NEAR_RELAYS];
     next_address_t update_near_relay_addresses[NEXT_MAX_NEAR_RELAYS];
-
-    // todo
-    uint8_t safety_1[1024];
-
     int update_packet_bytes;
-
-    // todo
-    uint8_t safety_2[1024];
-
-    uint8_t update_packet_data[NEXT_MAX_PACKET_BYTES*2];    // todo
-
-    // todo
-    uint8_t safety_3[1024];
+    uint8_t update_packet_data[NEXT_MAX_PACKET_BYTES];
 
     bool has_pending_route;
     bool pending_route_committed;
@@ -10526,9 +10538,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
                 return;
             }
 
-            // todo
-            next_print_packet( packet_data, packet_bytes );
-
             next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
 
             server->last_backend_server_init = current_time;
@@ -10594,9 +10603,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         }
 
         next_assert( next_is_network_next_packet( packet_data, packet_bytes ) );
-
-        // todo
-        next_print_packet( packet_data, packet_bytes );
 
         next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
 
@@ -10679,16 +10685,8 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
             next_assert( next_is_network_next_packet( session->update_packet_data, session->update_packet_bytes ) );
 
-            // todo
-            printf( "*** SEND SESSION UPDATE ***\n" );
-            next_print_packet( session->update_packet_data, session->update_packet_bytes );
-
-            // todo
-            fucking_log_it = true;
             next_platform_socket_send_packet( server->socket, &server->backend_address, session->update_packet_data, session->update_packet_bytes );
-            // todo
-            fucking_log_it = false;
-
+            
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent session update packet to backend for session %" PRIx64, session->session_id );
 
             if ( session->next_session_update_time == 0.0 )
@@ -10711,15 +10709,9 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
             next_assert( next_is_network_next_packet( session->update_packet_data, session->update_packet_bytes ) );
 
-            // todo
-            printf( "*** RESEND SESSION UPDATE ***\n" );
             next_print_packet( session->update_packet_data, session->update_packet_bytes );
 
-            // todo
-            fucking_log_it = true;
             next_platform_socket_send_packet( server->socket, &server->backend_address, session->update_packet_data, session->update_packet_bytes );
-            // todo
-            fucking_log_it = false;
 
             session->next_session_resend_time += NEXT_SESSION_UPDATE_RESEND_TIME;
         }
@@ -10776,6 +10768,8 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
 struct next_server_t
 {
+    NEXT_DECLARE_SENTINEL(0)
+
     void * context;
     next_server_internal_t * internal;
     next_platform_thread_t * thread;
@@ -10784,6 +10778,8 @@ struct next_server_t
     next_proxy_session_manager_t * pending_session_manager;
     next_proxy_session_manager_t * session_manager;
     uint16_t bound_port;
+
+    NEXT_DECLARE_SENTINEL(1)
 };
 
 void next_server_destroy( next_server_t * server );

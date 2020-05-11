@@ -10,12 +10,14 @@ DONE
 
 	Start with #2. This means adding memory sentinels throughout data structures.
 
+	Fixed. Stupid golang slices. =p
+
 TODO
 
 	Make sure programming team can work monday. That means, make sure they don't have 3.4.5 in their SDK folder...
 
 
-	
+
 
 
 
@@ -27,9 +29,13 @@ TODO
 
 	When no customer public key is specified on the client, print this out and say falling back to direct only.
 
+	(don't print out customer key found, dumb)
+
 	--------------------------------
 
 	When no customer private key is specified, on the server, print this out and say, falling back to direct only.
+
+	(don't print out customer key found, dumb)
 
 	--------------------------------
 
