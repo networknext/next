@@ -1112,12 +1112,11 @@ func TerribleOldShite() {
 				i := 0
 				for _, relay := range backend.relayDatabase {
 					if relay.id != relayEntry.id {
-						fmt.Printf("ping target found: %d", relay.id)
 						target := &response.PingTargets[i]
 						target.Address = relay.address.String()
 						target.Id = relay.id
-						target.Group = "some group"
-						target.PingToken = "some token"
+						target.Group = "hlCNAmtJiPFJkRpmIdVpTIUbAvpCYaSdJWwmNSBmNcSGYpibDsFjfbyWCDRVrJRPgRxFXEwCudmSFcyQPMDJWlpcLpRdFkSpGXwwnIPDvWiCLxDnzzxGlhmtnbgBPHEbWdOukHMfFUNAAigwxsTkgkMrWjNVSNPjxrRAIXLIvsUKiXGuFKLjzGdFbXnHmRjJrMtvIrVoypkpZbIMdbJtuTAiaNXUxEDIbMUquGMrbiZVXbIWnepUJlEVGfJSSYheRXsUhsdNCGzCshETpICeAJfEjnKPRubsuIqhJgpEuafOlnuszswbGHSVHbmGPIILUnCUfVJBZYEjRnrxleWrWKPcVlBVqAkNHCaiVZtxcvHZvOFYGmmowHxtbpalsTGdCvxjpUzNEiJLmrArbcpCxXrZqZsLstZnGNAtKcGEssqYkCQkWcLpzYzMZozXphTtUPLhAxwayyJZtCGwnTbqtuJBsAYXZuDJvTnDLkucDatszjPnegkdGReZCQZIADAfIAHdeuocBPToyulNcrnpEqHMdvychUwWIgNinoPWySuIdxVoqqRCrUrWgmQZluYjsngyJQkxWnhYTcJtAFcUOCHpdkTsuBwClYncCHBxpXpUpOrTNKkXglGyXDTjUiOuFpzOscEJAXpKUboJCNXjyDAfdAYCSVbDtBFJLBHgzkydbxcgjHyuQDfkYfeQDEdbZfWnWCuLsAFGjTwopiSTrkfkmmliFxwRXyfJbhFyhqawQhhZHqLJCIejTpxvCglebsjegRSNRZURpesrAiYQeIbzGIJppCxIsoSuGZykpEXYyzPeGeoMJWpIxQcjkUUWOeoMdhkKdLBHQGYnFHWThXUenFAzpNDKteOoFfZEkTqKcGLNUVVxmAiZRFVDXgKlglVKJpOLljtaoEBHpJXtgDyYqiEekNjroFPLOinvjjBzWlfIdyxuTPeNmQxFcGGVZFpFNecyHWODtNdJxllgoHLjcdFwfGuWigjSngSMEewjQBdcvrIsHOZfsteiPYRf"
+						target.PingToken = "hlCNAmtJiPFJkRpmIdVpTIUbAvpCYaSdJWwmNSBmNcSGYpibDsFjfbyWCDRVrJRPgRxFXEwCudmSFcyQPMDJWlpcLpRdFkSpGXwwnIPDvWiCLxDnzzxGlhmtnbgBPHEbWdOukHMfFUNAAigwxsTkgkMrWjNVSNPjxrRAIXLIvsUKiXGuFKLjzGdFbXnHmRjJrMtvIrVoypkpZbIMdbJtuTAiaNXUxEDIbMUquGMrbiZVXbIWnepUJlEVGfJSSYheRXsUhsdNCGzCshETpICeAJfEjnKPRubsuIqhJgpEuafOlnuszswbGHSVHbmGPIILUnCUfVJBZYEjRnrxleWrWKPcVlBVqAkNHCaiVZtxcvHZvOFYGmmowHxtbpalsTGdCvxjpUzNEiJLmrArbcpCxXrZqZsLstZnGNAtKcGEssqYkCQkWcLpzYzMZozXphTtUPLhAxwayyJZtCGwnTbqtuJBsAYXZuDJvTnDLkucDatszjPnegkdGReZCQZIADAfIAHdeuocBPToyulNcrnpEqHMdvychUwWIgNinoPWySuIdxVoqqRCrUrWgmQZluYjsngyJQkxWnhYTcJtAFcUOCHpdkTsuBwClYncCHBxpXpUpOrTNKkXglGyXDTjUiOuFpzOscEJAXpKUboJCNXjyDAfdAYCSVbDtBFJLBHgzkydbxcgjHyuQDfkYfeQDEdbZfWnWCuLsAFGjTwopiSTrkfkmmliFxwRXyfJbhFyhqawQhhZHqLJCIejTpxvCglebsjegRSNRZURpesrAiYQeIbzGIJppCxIsoSuGZykpEXYyzPeGeoMJWpIxQcjkUUWOeoMdhkKdLBHQGYnFHWThXUenFAzpNDKteOoFfZEkTqKcGLNUVVxmAiZRFVDXgKlglVKJpOLljtaoEBHpJXtgDyYqiEekNjroFPLOinvjjBzWlfIdyxuTPeNmQxFcGGVZFpFNecyHWODtNdJxllgoHLjcdFwfGuWigjSngSMEewjQBdcvrIsHOZfsteiPYRf"
 						i++
 					}
 				}
@@ -1132,7 +1131,7 @@ func TerribleOldShite() {
 					return fmt.Errorf("could not build relay config response packet: %v", err)
 				}
 
-				fmt.Printf("sending %d packets", len(packets))
+				fmt.Printf("sending %d packets\n", len(packets))
 				for _, packet := range packets {
 					conn.WriteToUDP(packet, from)
 				}
