@@ -304,12 +304,6 @@ namespace util
   template <>
   inline void JSON::setValue(rapidjson::Value* member, JSON& other)
   {
-    if (other.isArray()) {
-      member->SetArray();
-    } else {
-      member->SetObject();
-    }
-
     member->CopyFrom(other.mDoc, mDoc.GetAllocator());
   }
 
@@ -363,7 +357,19 @@ namespace util
   }
 
   template <>
+  inline void JSON::setValue(rapidjson::Value* member, uint8_t& value)
+  {
+    member->SetUint(value);
+  }
+
+  template <>
   inline void JSON::setValue(rapidjson::Value* member, const uint8_t& value)
+  {
+    member->SetUint(value);
+  }
+
+  template <>
+  inline void JSON::setValue(rapidjson::Value* member, uint16_t& value)
   {
     member->SetUint(value);
   }
@@ -397,6 +403,7 @@ namespace util
   {
     member->SetUint64(value);
   }
+
 
   template <size_t Size>
   inline void JSON::setValue(rapidjson::Value* member, char const (&value)[Size])
@@ -538,18 +545,12 @@ namespace util
     }
   }
 
-  template <typename T>
-  inline void JSON::pushBack(T& value)
-  {
-    rapidjson::Value v;
-    v.Set(value);
-    mDoc.PushBack(v, mDoc.GetAllocator());
-  }
-
   template <>
   inline void JSON::pushBack(JSON& value)
   {
-    mDoc.PushBack(value.mDoc, mDoc.GetAllocator());
+    rapidjson::Value tmp;
+    tmp.CopyFrom(value.mDoc, mDoc.GetAllocator());
+    mDoc.PushBack(tmp, mDoc.GetAllocator());
   }
 
   template <>
@@ -565,6 +566,14 @@ namespace util
   {
     rapidjson::Value v;
     v.SetString(rapidjson::StringRef(value, Size), mDoc.GetAllocator());
+    mDoc.PushBack(v, mDoc.GetAllocator());
+  }
+
+  template <typename T>
+  inline void JSON::pushBack(T& value)
+  {
+    rapidjson::Value v;
+    v.Set(value);
     mDoc.PushBack(v, mDoc.GetAllocator());
   }
 }  // namespace ftypes

@@ -4,6 +4,7 @@
 #include "encoding/base64.hpp"
 #include "encoding/read.hpp"
 #include "crypto/hash.hpp"
+#include "core/relay_stats.hpp"
 
 using namespace std::chrono_literals;
 
@@ -22,7 +23,12 @@ namespace legacy
      os::Socket& socket,
      const util::Clock& relayClock,
      TrafficStats& stats)
-     : mReceiver(receiver), mEnv(env), mSocket(socket), mClock(relayClock), mStats(stats)
+     : mReceiver(receiver),
+       mEnv(env),
+       mSocket(socket),
+       mClock(relayClock),
+       mStats(stats),
+       mRelayID(crypto::FNV(mEnv.RelayV3Name).Value)
     {}
 
     // clang-format off
@@ -272,8 +278,7 @@ namespace legacy
      */
     auto Backend::buildConfigJSON(util::JSON& doc) -> bool
     {
-      crypto::FNV relayID(mEnv.RelayV3Name);
-      doc.set(relayID.Value, "RelayId");
+      doc.set(mRelayID, "RelayId");
       return true;
     }
 
@@ -313,6 +318,7 @@ namespace legacy
     // clang-format on
     auto Backend::buildUpdateJSON(util::JSON& doc) -> bool
     {
+      // traffic stats
       {
         util::JSON trafficStats;
 
@@ -341,6 +347,43 @@ namespace legacy
         trafficStats.set(bytesPerSecInvalidRx, "BytesInvalidRx");
 
         doc.set(trafficStats, "TrafficStats");
+      }
+
+      // metadata
+      {
+        util::JSON metadata;
+
+        metadata.set(mRelayID, "Id");
+        metadata.set(mEnv.RelayPublicKey, "PublicKey");
+        metadata.set(mPingKey, "PingKey");
+        metadata.set(mGroup, "Group");
+        metadata.set(shuttingDown, "Shutdown");
+
+        doc.set(metadata, "Metadata");
+      }
+
+      // ping stats
+      {
+        util::JSON pingStats;
+
+        pingStats.setArray();
+
+        core::RelayStats stats;
+        mRelayManager.getStats(stats);
+
+        for (unsigned int i = 0; i < stats.NumRelays; ++i) {
+          util::JSON pingStat;
+          pingStat.set(stats.IDs[i], "RelayId");
+          pingStat.set(stats.RTT[i], "RTT");
+          pingStat.set(stats.Jitter[i], "Jitter");
+          pingStat.set(stats.PacketLoss[i], "PacketLoss");
+
+          if (!pingStats.push(pingStat)) {
+            return {false, "ping stats not array! can't update!"};
+          }
+        }
+
+        doc.set(pingStats, "PingStats");
       }
 
       return true;

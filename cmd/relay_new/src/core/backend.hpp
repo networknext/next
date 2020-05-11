@@ -374,8 +374,10 @@ namespace core
     doc.set(mAddressStr, "relay_address");
     doc.set(mBase64RelayPublicKey, "Metadata", "PublicKey");
 
-    util::JSON trafficStats;
+    // traffic stats
     {
+      util::JSON trafficStats;
+
       auto stats = recorder.get();
       trafficStats.set(stats.Sent.ByteCount, "BytesMeasurementTx");
       trafficStats.set(stats.Received.ByteCount, "BytesMeasurementRx");
@@ -383,10 +385,12 @@ namespace core
       doc.set(trafficStats, "TrafficStats");
     }
 
-    core::RelayStats stats;
+    // ping stats
     {
-      mRelayManager.getStats(stats);
       util::JSON pingStats;
+
+      core::RelayStats stats;
+      mRelayManager.getStats(stats);
       pingStats.setArray();
 
       // pushing behaves really weird when the pushed value goes out of scope, must be declared outside of for loop

@@ -36,6 +36,7 @@ namespace legacy
       TrafficStats& mStats;
       BackendToken mToken;
       uint64_t mInitTimestamp;
+      uint64_t mRelayID;
       std::string mGroup;
       uint64_t mGroupID;
 
