@@ -585,7 +585,7 @@ func TimeoutThread() {
 			for k := range backend.sessionDatabase {
 				fmt.Printf("session: %x\n", k)
 			}
-			if len(backend.relayDatabase) == 0 && len(backend.serverDatabase) && len(backend.sessionDatabase) == 0 {
+			if len(backend.relayDatabase) == 0 && len(backend.serverDatabase) == 0 && len(backend.sessionDatabase) == 0 {
 				fmt.Printf("(nil)\n")
 			}
 			backend.dirty = false
@@ -802,9 +802,9 @@ func main() {
 
 	fmt.Printf("started reference backend on ports %d and %d\n", NEXT_RELAY_BACKEND_PORT, NEXT_SERVER_BACKEND_PORT)
 
-	packetData := make([]byte, NEXT_MAX_PACKET_BYTES)
-
 	for {
+
+		packetData := make([]byte, NEXT_MAX_PACKET_BYTES)
 
 		packetBytes, from, err := connection.ReadFromUDP(packetData)
 
