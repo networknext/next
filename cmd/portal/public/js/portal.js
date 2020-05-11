@@ -32,7 +32,7 @@ var defaultUserSessionTable = {
 	showTable: false,
 }
 
-var accountsTable = null;
+var settingsPage = null;
 var mapSessionsCount = null;
 var pubKeyInput = null;
 var relaysTable = null;
@@ -43,6 +43,8 @@ var userSessionTable = null;
 var autoSigninPermissions = null;
 var addUserPermissions = null;
 var editUserPermissions = [];
+
+var allRoles = [];
 
 JSONRPCClient = {
 	async call(method, params) {
@@ -197,7 +199,7 @@ WorkspaceHandler = {
 	newUserEmail: document.getElementById("email"),
 	newUserPerms: document.getElementById("perms"),
 	pages: {
-		accounts: document.getElementById("accounts-page"),
+		accounts: document.getElementById("settings-page"),
 		config: document.getElementById("config-page"),
 	},
 	spinners: {
@@ -288,8 +290,8 @@ WorkspaceHandler = {
 		}
 	},
 	editUser(accountInfo, index) {
-		accountsTable.$set(accountsTable.$data.accounts[index], 'delete', false);
-		accountsTable.$set(accountsTable.$data.accounts[index], 'edit', true);
+		settingsPage.$set(settingsPage.$data.accounts[index], 'delete', false);
+		settingsPage.$set(settingsPage.$data.accounts[index], 'edit', true);
 
 		editUserPermissions[accountInfo.user_id].enable();
 	},
@@ -301,10 +303,26 @@ WorkspaceHandler = {
 				.then((response) => {
 					accountInfo.roles = response.roles || [];
 					WorkspaceHandler.cancelEditUser(accountInfo);
+					Object.assign(settingsPage.$data.updateUser.success, {
+						message: 'Updated user account successfully',
+					});
+					setTimeout(() => {
+						Object.assign(settingsPage.$data.updateUser.success, {
+							message: '',
+						});
+					}, 5000);
 				})
 				.catch((e) => {
 					console.log("Something went wrong updating the users permissions");
 					console.log(e);
+					Object.assign(settingsPage.$data.updateUser.failure, {
+						message: 'Failed to update user',
+					});
+					setTimeout(() => {
+						Object.assign(settingsPage.$data.updateUser.failure, {
+							message: '',
+						});
+					}, 5000);
 				});
 			return;
 		}
@@ -312,29 +330,45 @@ WorkspaceHandler = {
 			JSONRPCClient
 				.call('AuthService.DeleteUserAccount', {user_id: `auth0|${accountInfo.user_id}`})
 				.then((response) => {
-					let accounts = accountsTable.$data.accounts;
+					let accounts = settingsPage.$data.accounts;
 					accounts.splice(index, 1);
-					Object.assign(accountsTable.$data, {accounts: accounts});
+					Object.assign(settingsPage.$data, {accounts: accounts});
 					editUserPermissions[accountInfo.user_id] = null;
+					Object.assign(settingsPage.$data.updateUser.success, {
+						message: 'Deleted user account successfully',
+					});
+					setTimeout(() => {
+						Object.assign(settingsPage.$data.updateUser.success, {
+							message: '',
+						});
+					}, 5000);
 				})
 				.catch((e) => {
 					console.log("Something went wrong updating the users permissions");
 					console.log(e);
+					Object.assign(settingsPage.$data.updateUser.failure, {
+						message: 'Failed to delete user',
+					});
+					setTimeout(() => {
+						Object.assign(settingsPage.$data.updateUser.failure, {
+							message: '',
+						});
+					}, 5000);
 				});
 			return;
 		}
 	},
 	deleteUser(index) {
-		accountsTable.$set(accountsTable.$data.accounts[index], 'delete', true);
-		accountsTable.$set(accountsTable.$data.accounts[index], 'edit', false);
+		settingsPage.$set(settingsPage.$data.accounts[index], 'delete', true);
+		settingsPage.$set(settingsPage.$data.accounts[index], 'edit', false);
 	},
 	cancelEditUser(accountInfo, index) {
 		editUserPermissions[accountInfo.user_id].disable();
-		let accounts = accountsTable.$data.accounts;
+		let accounts = settingsPage.$data.accounts;
 		accountInfo.delete = false;
 		accountInfo.edit = false;
 		accounts[index] = accountInfo;
-		Object.assign(accountsTable.$data, {accounts: accounts});
+		Object.assign(settingsPage.$data, {accounts: accounts});
 	},
 	loadSettingsPage() {
 		this.changeAccountPage();
@@ -347,78 +381,60 @@ WorkspaceHandler = {
 		Promise.all(promises)
 			.then(
 				(responses) => {
-					let roles = responses[1].roles;
 					let accounts = responses[0].accounts;
-					let choices = roles.map((role) => {
-						return {
-							value: role,
-							label: role.name,
-							customProperties: {
-								description: role.description,
-							},
-						};
-					});
-
-					if (!addUserPermissions) {
-						addUserPermissions = new Choices(
-							document.getElementById("add-user-permissions"),
-							{
-								removeItemButton: true,
-								choices: choices,
-							}
-						);
-					}
-
-					choices = roles.map((role) => {
-						return {
-							value: role,
-							label: role.name,
-							customProperties: {
-								description: role.description,
-							},
-							selected: role.name === 'Viewer'
-						};
-					});
-
-					if (!autoSigninPermissions) {
-						autoSigninPermissions = new Choices(
-							document.getElementById("auto-signin-permissions"),
-							{
-								removeItemButton: true,
-								choices: choices,
-							}
-						);
-					}
 
 					/**
 					 * I really dislike this but it is apparently the way to reload/update the data within a vue
 					 */
-					Object.assign(accountsTable.$data, {
+					Object.assign(settingsPage.$data, {
 						accounts: accounts,
 						showAccounts: true,
 					});
+					allRoles = responses[1].roles;
 
 					setTimeout(() => {
-						accounts.forEach((account) => {
-							if (!editUserPermissions[account.user_id]) {
-								editUserPermissions[account.user_id] = new Choices(
-									document.getElementById(`edit-user-permissions-${account.user_id}`),
-									{
-										removeItemButton: true,
-										choices: roles.map((role) => {
-											return {
-												value: role,
-												label: role.name,
-												customProperties: {
-													description: role.description,
-												},
-												selected: account.roles.findIndex((userRole) => role.name == userRole.name) !== -1
-											};
-										}),
-									}
-								).disable();
-							}
+						let choices = allRoles.map((role) => {
+							return {
+								value: role,
+								label: role.name,
+								customProperties: {
+									description: role.description,
+								},
+							};
 						});
+
+						if (!addUserPermissions) {
+							addUserPermissions = new Choices(
+								document.getElementById("add-user-permissions"),
+								{
+									removeItemButton: true,
+									choices: choices,
+								}
+							);
+						}
+
+						choices = allRoles.map((role) => {
+							return {
+								value: role,
+								label: role.name,
+								customProperties: {
+									description: role.description,
+								},
+								selected: role.name === 'Viewer'
+							};
+						});
+
+						if (!autoSigninPermissions) {
+							autoSigninPermissions = new Choices(
+								document.getElementById("auto-signin-permissions"),
+								{
+									removeItemButton: true,
+									choices: choices,
+								}
+							);
+						}
+
+						generateRolesDropdown(accounts);
 					});
 				}
 			)
@@ -515,11 +531,27 @@ function startApp() {
 }
 
 function createVueComponents() {
-	accountsTable = new Vue({
-		el: '#accounts',
+	settingsPage = new Vue({
+		el: '#settings-page',
 		data: {
 			accounts: null,
 			showAccounts: false,
+			newUser: {
+				failure: {
+					message: '',
+				},
+				success: {
+					message: '',
+				},
+			},
+			updateUser: {
+				failure: {
+					message: '',
+				},
+				success: {
+					message: '',
+				},
+			},
 		},
 		methods: {
 			cancelEditUser: WorkspaceHandler.cancelEditUser,
@@ -628,6 +660,85 @@ function updatePubKey() {
 			console.log("Something went wrong updating the public key");
 			console.log(e);
 		});
+}
+
+function addUsers(event) {
+	event.preventDefault();
+	let roles = addUserPermissions.getValue(true);
+	let emails = String(document.getElementById("new-user-emails").value)
+		.split(/(,|\n)/g)
+		.map((x) => x.trim())
+		.filter((x) => x !== "" && x !== ",");
+
+	if (roles.length == 0) {
+		roles = [{
+			description: "Can see current sessions and the map.",
+			id: "rol_ScQpWhLvmTKRlqLU",
+			name: "Viewer",
+		}];
+	}
+	JSONRPCClient
+		.call("AuthService.AddUserAccount", {emails: emails, roles: roles})
+		.then((response) => {
+			let newAccounts = response.accounts;
+			Object.assign(settingsPage.$data, {accounts: settingsPage.$data.accounts.concat(newAccounts)});
+			setTimeout(() => {
+				generateRolesDropdown(newAccounts);
+			});
+			Object.assign(settingsPage.$data.newUser.success, {
+				message: 'User account added successfully',
+			});
+			setTimeout(() => {
+				Object.assign(settingsPage.$data.newUser.success, {
+					message: '',
+				});
+			}, 5000);
+		})
+		.catch((e) => {
+			console.log("Something went wrong creating new users");
+			console.log(e);
+			Object.assign(settingsPage.$data.newUser.failure, {
+				message: 'Failed to add user account',
+			});
+			setTimeout(() => {
+				Object.assign(settingsPage.$data.newUser.failure, {
+					message: '',
+				});
+			}, 5000);
+		});
+	addUserPermissions.removeActiveItems();
+	document.getElementById("new-user-emails").value = '';
+}
+
+function generateRolesDropdown(accounts) {
+	accounts.forEach((account) => {
+		if (!editUserPermissions[account.user_id]) {
+			editUserPermissions[account.user_id] = new Choices(
+				document.getElementById(`edit-user-permissions-${account.user_id}`),
+				{
+					removeItemButton: true,
+					choices: allRoles.map((role) => {
+						return {
+							value: role,
+							label: role.name,
+							customProperties: {
+								description: role.description,
+							},
+							selected: account.roles.findIndex((userRole) => role.name == userRole.name) !== -1
+						};
+					}),
+				}
+			).disable();
+		}
+	});
+}
+
+function saveAutoSignIn(event) {
+	event.preventDefault();
+	let roles = autoSigninPermissions.getValue(true);
+	let domain = document.getElementById("auto-sign-in-domain").value;
+
+	// Make JSONRPC call
 }
 
 function fetchSessionInfo(sessionId = '') {
