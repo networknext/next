@@ -70,6 +70,7 @@ JSONRPCClient = {
 
 
 		return response.json().then((json) => {
+			console.log(json)
 			if (json.error) {
 				throw new Error(json.error);
 			}
@@ -303,10 +304,26 @@ WorkspaceHandler = {
 				.then((response) => {
 					accountInfo.roles = response.roles || [];
 					WorkspaceHandler.cancelEditUser(accountInfo);
+					Object.assign(settingsPage.$data.updateUser.success, {
+						message: 'Updated user account successfully',
+					});
+					setTimeout(() => {
+						Object.assign(settingsPage.$data.updateUser.success, {
+							message: '',
+						});
+					}, 5000);
 				})
 				.catch((e) => {
 					console.log("Something went wrong updating the users permissions");
 					console.log(e);
+					Object.assign(settingsPage.$data.updateUser.failure, {
+						message: 'Failed to update user',
+					});
+					setTimeout(() => {
+						Object.assign(settingsPage.$data.updateUser.failure, {
+							message: '',
+						});
+					}, 5000);
 				});
 			return;
 		}
@@ -318,10 +335,26 @@ WorkspaceHandler = {
 					accounts.splice(index, 1);
 					Object.assign(settingsPage.$data, {accounts: accounts});
 					editUserPermissions[accountInfo.user_id] = null;
+					Object.assign(settingsPage.$data.updateUser.success, {
+						message: 'Deleted user account successfully',
+					});
+					setTimeout(() => {
+						Object.assign(settingsPage.$data.updateUser.success, {
+							message: '',
+						});
+					}, 5000);
 				})
 				.catch((e) => {
 					console.log("Something went wrong updating the users permissions");
 					console.log(e);
+					Object.assign(settingsPage.$data.updateUser.failure, {
+						message: 'Failed to delete user',
+					});
+					setTimeout(() => {
+						Object.assign(settingsPage.$data.updateUser.failure, {
+							message: '',
+						});
+					}, 5000);
 				});
 			return;
 		}
@@ -359,6 +392,7 @@ WorkspaceHandler = {
 						showAccounts: true,
 					});
 					allRoles = responses[1].roles;
+					console.log(allRoles)
 
 					setTimeout(() => {
 						let choices = allRoles.map((role) => {
@@ -638,6 +672,13 @@ function addUsers(event) {
 		.map((x) => x.trim())
 		.filter((x) => x !== "" && x !== ",");
 
+	if (roles.length == 0) {
+		roles = [{
+			description: "Can see current sessions and the map.",
+			id: "rol_ScQpWhLvmTKRlqLU",
+			name: "Viewer",
+		}];
+	}
 	JSONRPCClient
 		.call("AuthService.AddUserAccount", {emails: emails, roles: roles})
 		.then((response) => {
@@ -646,42 +687,26 @@ function addUsers(event) {
 			setTimeout(() => {
 				generateRolesDropdown(newAccounts);
 			});
-			/* Object.assign(settingsPage.$data, {
-				newUser: {
-					success: {
-						message: 'User account added successfully',
-					},
-				},
+			Object.assign(settingsPage.$data.newUser.success, {
+				message: 'User account added successfully',
 			});
 			setTimeout(() => {
-				Object.assign(settingsPage.$data, {
-					newUser: {
-						success: {
-							message: '',
-						},
-					},
+				Object.assign(settingsPage.$data.newUser.success, {
+					message: '',
 				});
-			}, 5000); */
+			}, 5000);
 		})
 		.catch((e) => {
 			console.log("Something went wrong creating new users");
 			console.log(e);
-			/* Object.assign(settingsPage.$data, {
-				newUser: {
-					failure: {
-						message: 'Failed to add user account',
-					},
-				},
+			Object.assign(settingsPage.$data.newUser.failure, {
+				message: 'Failed to add user account',
 			});
 			setTimeout(() => {
-				Object.assign(settingsPage.$data, {
-					newUser: {
-						success: {
-							message: '',
-						},
-					},
+				Object.assign(settingsPage.$data.newUser.failure, {
+					message: '',
 				});
-			}, 5000); */
+			}, 5000);
 		});
 	addUserPermissions.removeActiveItems();
 	document.getElementById("new-user-emails").value = '';
