@@ -239,6 +239,69 @@ namespace legacy
         Log(err);
       }
 
+      bool allValid = true;
+      auto relays = doc.get<util::JSON>("ping_data");
+      if (relays.isArray()) {
+        size_t count = 0;
+        std::array<uint64_t, MAX_RELAYS> relayIDs = {};
+        std::array<net::Address, MAX_RELAYS> relayAddresses;
+        relays.foreach([&allValid, &count, &relayIDs, &relayAddresses](rapidjson::Value& relayData) {
+          if (!relayData.HasMember("relay_id")) {
+            Log("ping data missing 'relay_id'");
+            allValid = false;
+            return;
+          }
+
+          auto idMember = std::move(relayData["relay_id"]);
+          if (idMember.GetType() != rapidjson::Type::kNumberType) {
+            Log("id from ping not number type");
+            allValid = false;
+            return;
+          }
+
+          auto id = idMember.GetUint64();
+
+          if (!relayData.HasMember("relay_address")) {
+            Log("ping data missing member 'relay_address' for relay id: ", id);
+            allValid = false;
+            return;
+          }
+
+          auto addrMember = std::move(relayData["relay_address"]);
+          if (addrMember.GetType() != rapidjson::Type::kStringType) {
+            Log("relay address is not a string in ping data for relay with id: ", id);
+            allValid = false;
+            return;
+          }
+
+          std::string address = addrMember.GetString();
+
+          relayIDs[count] = id;
+          if (!relayAddresses[count].parse(address)) {
+            Log("failed to parse address for relay '", id, "': ", address);
+            allValid = false;
+            return;
+          }
+
+          count++;
+        });
+
+        if (count > MAX_RELAYS) {
+          Log("error: too many relays to ping. max is ", MAX_RELAYS, ", got ", count, '\n');
+          return false;
+        }
+
+        mRelayManager.update(count, relayIDs, relayAddresses);
+      } else if (relays.memberIs(util::JSON::Type::Null)) {
+        Log("no relays received from backend, ping data is null");
+      } else {
+        Log("update ping data not array");
+        // TODO how to handle
+      }
+
+      if (!allValid) {
+        Log("some or all of the update ping data was invalid");
+      }
       return true;
     }
 
