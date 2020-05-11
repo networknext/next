@@ -70,7 +70,6 @@ JSONRPCClient = {
 
 
 		return response.json().then((json) => {
-			console.log(json)
 			if (json.error) {
 				throw new Error(json.error);
 			}
@@ -392,7 +391,6 @@ WorkspaceHandler = {
 						showAccounts: true,
 					});
 					allRoles = responses[1].roles;
-					console.log(allRoles)
 
 					setTimeout(() => {
 						let choices = allRoles.map((role) => {
@@ -739,9 +737,6 @@ function saveAutoSignIn(event) {
 	event.preventDefault();
 	let roles = autoSigninPermissions.getValue(true);
 	let domain = document.getElementById("auto-sign-in-domain").value;
-
-	console.log(roles);
-	console.log(domain);
 
 	// Make JSONRPC call
 }
