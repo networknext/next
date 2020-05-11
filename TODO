@@ -1,62 +1,5 @@
 DONE
 
-	It does reproduce without relays, just leave it for a while:
-
-	-----------------------------
-	server: 127.0.0.1:32202
-	-----------------------------
-	server: 127.0.0.1:32202
-	session: dfab85ba9373c91e
-	error: not a network next packet (220)
-	error: not a network next packet (220)
-	error: not a network next packet (220)
-	error: not a network next packet (220)
-	error: not a network next packet (220)
-	error: not a network next packet (220)
-	-----------------------------
-	server: 127.0.0.1:32202
-	error: not a network next packet (140)
-	-----------------------------
-	(nil)
-	error: not a network next packet (140)
-	error: not a network next packet (140)
-	error: not a network next packet (140)
-	error: not a network next packet (140)
-	error: not a network next packet (140)
-	error: not a network next packet (140)
-
-	--------------------------------
-
-	These must be server update or session update packets. Nothing else is being sent to the backend.
-
-	Could it be retries of session updates?
-
-	But how would that make a server go away... must be server update packets not getting through?
-
-	Or a memory trash and the packet hash key gets changed? WUT
-
-	But how can these be sent through to the backend, without tripping the code to check if network next packet on write backend packet?
-
-	It seems it is sending through correctly, but somehow the packet is not verifing it.
-
-	Look at all places packets are sent to backend, in case there are some resend caches that aren't updated.
-
-	Everything seems to be covered, and I can't seem to catch the sender or receiver in having any problems with the packet signature.
-
-	Only thing I can think of now is to print out packets sent to the backend, and print out packets received on the backend.
-
-	It really looks like the packet is getting truncated by 10 bytes for some reason.
-
-	Check sender side...
-
-	Seems to be sending out correct.
-
-	What the fuck is going on?!
-
-	Could it be threading related, to do with a session timing out, and fucking up the session data mid packet send?
-
-TODO
-
 	I can see two possibilities:
 
 		1. Threading issue caused by timing out session
@@ -65,9 +8,14 @@ TODO
 
 	Really difficult to identify #1, but I can write solid code to identify #2 if it is occuring.
 
+	Start with #2. This means adding memory sentinels throughout data structures.
+
+TODO
+
+	Make sure programming team can work monday. That means, make sure they don't have 3.4.5 in their SDK folder...
 
 
-
+	
 
 
 

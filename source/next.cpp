@@ -347,6 +347,22 @@ next_mutex_helper_t::~next_mutex_helper_t()
 
 // -------------------------------------------------------------
 
+#define NEXT_ENABLE_MEMORY_CHECKS 1
+
+#if NEXT_ENABLE_MEMORY_CHECKS
+
+    #define NEXT_DECLARE_SENTINEL(n) uint8_t next_sentinel_##n[256];
+
+    
+
+#else // #if NEXT_ENABLE_MEMORY_CHECKS
+
+    #define NEXT_DECLARE_SENTINEL
+
+#endif // #if NEXT_ENABLE_MEMORY_CHECKS
+
+// -------------------------------------------------------------
+
 bool next_platform_getenv_bool(const char *name)
 {
     const char *v = next_platform_getenv(name);
@@ -8806,11 +8822,19 @@ struct next_server_notify_failed_to_resolve_hostname_t : public next_server_noti
 
 struct next_server_internal_t
 {
+    NEXT_DECLARE_SENTINEL(0)
+
     void * context;
     int state;
     uint64_t datacenter_id;
     uint64_t customer_id;
+
+    NEXT_DECLARE_SENTINEL(1)
+
     uint8_t customer_private_key[crypto_sign_SECRETKEYBYTES];
+
+    NEXT_DECLARE_SENTINEL(2)
+
     bool valid_customer_private_key;
     bool no_datacenter_specified;
     bool failed_to_resolve_hostname;
@@ -8836,10 +8860,15 @@ struct next_server_internal_t
     next_platform_thread_t * resolve_hostname_thread;
     next_pending_session_manager_t * pending_session_manager;
     next_session_manager_t * session_manager;
+
+    NEXT_DECLARE_SENTINEL(3)
+
     uint8_t server_kx_public_key[crypto_kx_PUBLICKEYBYTES];
     uint8_t server_kx_private_key[crypto_kx_SECRETKEYBYTES];
     uint8_t server_route_public_key[crypto_box_PUBLICKEYBYTES];
     uint8_t server_route_private_key[crypto_box_SECRETKEYBYTES];
+
+    NEXT_DECLARE_SENTINEL(4)
 };
 
 void next_server_internal_destroy( next_server_internal_t * server );

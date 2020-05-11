@@ -450,7 +450,7 @@ void next_platform_socket_send_packet( next_platform_socket_t * socket, const ne
         // todo
         if ( fucking_log_it )
         {
-            printf( "sent packet to backend (%d)\n", packet_bytes );
+            printf( "sent packet to backend (%d->%d)\n", packet_bytes, result );
         }
     }
     else
