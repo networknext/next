@@ -32,9 +32,13 @@ DONE
 
 	next_queue_t
 
+	next_session_manager_t
+
 TODO
 
-	next_session_manager_t
+	next_session_entry_t
+
+	--------------------------------
 
 	next_pending_session_manager_t
 

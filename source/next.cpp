@@ -8212,8 +8212,6 @@ bool next_session_manager_expand( next_session_manager_t * session_manager )
 
 void next_clear_session_entry( next_session_entry_t * entry, const next_address_t * address, uint64_t session_id )
 {
-    next_session_entry_verify_sentinels( entry );
-
     memset( entry, 0, sizeof(next_session_entry_t) );
 
     next_session_entry_initialize_sentinels( entry );
