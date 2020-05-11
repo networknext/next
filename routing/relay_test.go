@@ -221,10 +221,17 @@ func TestRelay(t *testing.T) {
 			assert.EqualError(t, actual.UnmarshalBinary(buff), "failed to unmarshal relay bytes received")
 		})
 
-		t.Run("valid", func(t *testing.T) {
+		t.Run("missing max sessions", func(t *testing.T) {
 			size += 8
 			buff = buff[:size]
 			encoding.WriteUint64(buff, &index, expected.TrafficStats.BytesReceived)
+			assert.EqualError(t, actual.UnmarshalBinary(buff), "failed to unmarshal relay max sessions")
+		})
+
+		t.Run("valid", func(t *testing.T) {
+			size += 4
+			buff = buff[:size]
+			encoding.WriteUint32(buff, &index, expected.MaxSessions)
 			assert.NoError(t, actual.UnmarshalBinary(buff))
 		})
 	})

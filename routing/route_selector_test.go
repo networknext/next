@@ -80,6 +80,105 @@ func TestSelectAcceptableRoutesFromBestRTT(t *testing.T) {
 	assert.Equal(t, float64(5.2), selectedRoutes[2].Stats.RTT)
 }
 
+func TestSelectContainsRouteHash(t *testing.T) {
+	routes := []routing.Route{
+		{
+			Relays: []routing.Relay{
+				{ID: 1}, {ID: 2}, {ID: 3},
+			},
+		},
+		{
+			Relays: []routing.Relay{
+				{ID: 4}, {ID: 1}, {ID: 2},
+			},
+		},
+	}
+
+	selectedRoutes := routing.SelectContainsRouteHash(routes[0].Hash64())(routes)
+
+	assert.Equal(t, 1, len(selectedRoutes))
+	assert.Equal(t, uint64(1), selectedRoutes[0].Relays[0].ID)
+	assert.Equal(t, uint64(2), selectedRoutes[0].Relays[1].ID)
+	assert.Equal(t, uint64(3), selectedRoutes[0].Relays[2].ID)
+}
+
+func TestSelectUnencumberedRoutes(t *testing.T) {
+	routes := []routing.Route{
+		{
+			Relays: []routing.Relay{
+				{
+					ID: 1,
+					TrafficStats: routing.RelayTrafficStats{
+						SessionCount: 150,
+					},
+					MaxSessions: 3000,
+				},
+				{
+					ID: 2,
+					TrafficStats: routing.RelayTrafficStats{
+						SessionCount: 450,
+					},
+					MaxSessions: 3000,
+				},
+				{
+					ID: 3,
+					TrafficStats: routing.RelayTrafficStats{
+						SessionCount: 300,
+					},
+					MaxSessions: 3000,
+				},
+			},
+			Stats: routing.Stats{
+				RTT:        5,
+				Jitter:     0,
+				PacketLoss: 0,
+			},
+		},
+		{
+			Relays: []routing.Relay{
+				{
+					ID: 4,
+					TrafficStats: routing.RelayTrafficStats{
+						SessionCount: 3000,
+					},
+					MaxSessions: 3000,
+				},
+				{
+					ID: 2,
+					TrafficStats: routing.RelayTrafficStats{
+						SessionCount: 450,
+					},
+					MaxSessions: 3000,
+				},
+				{
+					ID: 5,
+					TrafficStats: routing.RelayTrafficStats{
+						SessionCount: 4500,
+					},
+					MaxSessions: 6000,
+				},
+				{
+					ID: 3,
+					TrafficStats: routing.RelayTrafficStats{
+						SessionCount: 300,
+					},
+					MaxSessions: 3000,
+				},
+			},
+			Stats: routing.Stats{
+				RTT:        4.7,
+				Jitter:     0,
+				PacketLoss: 0,
+			},
+		},
+	}
+
+	selectedRoutes := routing.SelectUnencumberedRoutes(0.8)(routes)
+
+	assert.Equal(t, 1, len(selectedRoutes))
+	assert.Equal(t, routes[0], selectedRoutes[0])
+}
+
 func TestSelectRoutesByRandomDestRelay(t *testing.T) {
 	routes := []routing.Route{
 		{

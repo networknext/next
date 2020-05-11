@@ -68,6 +68,7 @@ type relay struct {
 	SSHPort            int64                  `firestore:"sshPort"`
 	State              routing.RelayState     `firestore:"state"`
 	StateUpdateTime    time.Time              `firestore:"stateUpdateTime"`
+	MaxSessions        int32                  `firestore:"maxSessions"`
 }
 
 type datacenter struct {
@@ -932,6 +933,7 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 			SSHPort:             r.SSHPort,
 			State:               r.State,
 			LastUpdateTime:      r.StateUpdateTime,
+			MaxSessions:         uint32(r.MaxSessions),
 		}
 
 		// Get datacenter

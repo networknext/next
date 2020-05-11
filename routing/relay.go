@@ -92,6 +92,8 @@ type Relay struct {
 
 	TrafficStats RelayTrafficStats `json:"-"`
 	ClientStats  Stats             `json:"client_stats"`
+
+	MaxSessions uint32 `json:"-"`
 }
 
 func (r *Relay) EncodedPublicKey() string {
@@ -121,7 +123,8 @@ func (r *Relay) Size() uint64 {
 		8 + // SSH Port
 		8 + // Traffic Stats Session Count
 		8 + // Traffic Stats Bytes Sent
-		8, // Traffic Stats Bytes Received
+		8 + // Traffic Stats Bytes Received
+		4, // Max Sessions
 	)
 }
 
@@ -236,6 +239,10 @@ func (r *Relay) UnmarshalBinary(data []byte) error {
 		return errors.New("failed to unmarshal relay bytes received")
 	}
 
+	if !encoding.ReadUint32(data, &index, &r.MaxSessions) {
+		return errors.New("failed to unmarshal relay max sessions")
+	}
+
 	return nil
 }
 
@@ -269,6 +276,7 @@ func (r Relay) MarshalBinary() (data []byte, err error) {
 	encoding.WriteUint64(data, &index, r.TrafficStats.SessionCount)
 	encoding.WriteUint64(data, &index, r.TrafficStats.BytesSent)
 	encoding.WriteUint64(data, &index, r.TrafficStats.BytesReceived)
+	encoding.WriteUint32(data, &index, r.MaxSessions)
 
 	return data, err
 }
