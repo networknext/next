@@ -351,13 +351,19 @@ next_mutex_helper_t::~next_mutex_helper_t()
 
 #if NEXT_ENABLE_MEMORY_CHECKS
 
-    #define NEXT_DECLARE_SENTINEL(n) uint8_t next_sentinel_##n[256];
+    #define NEXT_DECLARE_SENTINEL(n) uint32_t next_sentinel_##n[64];
 
-    
+    #define NEXT_INITIALIZE_SENTINEL(pointer,n) for ( int i = 0; i < 64; ++i ) { pointer->next_sentinel_##n[i] = 0xBAADF00D; }
+
+    #define NEXT_VERIFY_SENTINEL(pointer,n) for ( int i = 0; i < 64; ++i ) { next_assert( pointer->next_sentinel_##n[i] == 0xBAADF00D ); }
 
 #else // #if NEXT_ENABLE_MEMORY_CHECKS
 
-    #define NEXT_DECLARE_SENTINEL
+    #define NEXT_DECLARE_SENTINEL(n)
+
+    #define NEXT_INITIALIZE_SENTINEL(pointer,n)
+
+    #define NEXT_VERIFY_SENTINEL(pointer,n)
 
 #endif // #if NEXT_ENABLE_MEMORY_CHECKS
 
@@ -8883,6 +8889,28 @@ struct next_server_internal_t
     NEXT_DECLARE_SENTINEL(4)
 };
 
+void next_server_internal_initialize_sentinels( next_server_internal_t * server )
+{
+    (void) server;
+    next_assert( server );
+    NEXT_INITIALIZE_SENTINEL( server, 0 )
+    NEXT_INITIALIZE_SENTINEL( server, 1 )
+    NEXT_INITIALIZE_SENTINEL( server, 2 )
+    NEXT_INITIALIZE_SENTINEL( server, 3 )
+    NEXT_INITIALIZE_SENTINEL( server, 4 )
+}
+
+void next_server_internal_verify_sentinels( next_server_internal_t * server )
+{
+    (void) server;
+    next_assert( server );
+    NEXT_VERIFY_SENTINEL( server, 0 )
+    NEXT_VERIFY_SENTINEL( server, 1 )
+    NEXT_VERIFY_SENTINEL( server, 2 )
+    NEXT_VERIFY_SENTINEL( server, 3 )
+    NEXT_VERIFY_SENTINEL( server, 4 )
+}
+
 void next_server_internal_destroy( next_server_internal_t * server );
 
 static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_internal_resolve_hostname_thread_function( void * context );
@@ -8934,6 +8962,10 @@ next_server_internal_t * next_server_internal_create( void * context, const char
     }
 
     memset( server, 0, sizeof( next_server_internal_t) );
+
+    next_server_internal_initialize_sentinels( server );
+
+    next_server_internal_verify_sentinels( server );
 
     server->context = context;
     server->customer_id = next_global_config.customer_id;
@@ -9071,6 +9103,9 @@ next_server_internal_t * next_server_internal_create( void * context, const char
 void next_server_internal_destroy( next_server_internal_t * server )
 {
     next_assert( server );
+
+    next_server_internal_verify_sentinels( server );
+
     if ( server->socket )
     {
         next_platform_socket_destroy( server->socket );
@@ -9111,6 +9146,9 @@ void next_server_internal_destroy( next_server_internal_t * server )
     {
         next_pending_session_manager_destroy( server->pending_session_manager );
     }
+
+    next_server_internal_verify_sentinels( server );
+
     clear_and_free( server->context, server, sizeof(next_server_internal_t) );
 }
 
@@ -9120,6 +9158,8 @@ int next_server_internal_send_packet( next_server_internal_t * server, const nex
     next_assert( server->socket );
     next_assert( packet_object );
     
+    next_server_internal_verify_sentinels( server );
+
     int packet_bytes = 0;
     
     uint8_t buffer[NEXT_MAX_PACKET_BYTES*2];
@@ -9162,6 +9202,8 @@ next_session_entry_t * next_server_internal_check_client_to_server_packet( next_
 {
     next_assert( server );
     next_assert( packet_data );
+
+    next_server_internal_verify_sentinels( server );
 
     next_assert( next_is_network_next_packet( packet_data, packet_bytes ) );
 
@@ -9261,6 +9303,8 @@ void next_server_internal_update_route( next_server_internal_t * server )
 {
     next_assert( server );
 
+    next_server_internal_verify_sentinels( server );
+
     if ( next_global_config.disable_network_next )
         return;
 
@@ -9308,6 +9352,8 @@ void next_server_internal_update_route( next_server_internal_t * server )
 void next_server_internal_update_pending_upgrades( next_server_internal_t * server )
 {
     next_assert( server );
+
+    next_server_internal_verify_sentinels( server );
 
     if ( next_global_config.disable_network_next )
         return;
@@ -9373,6 +9419,8 @@ void next_server_internal_update_pending_upgrades( next_server_internal_t * serv
 void next_server_internal_update_sessions( next_server_internal_t * server )
 {
     next_assert( server );
+
+    next_server_internal_verify_sentinels( server );
 
     if ( next_global_config.disable_network_next )
         return;
@@ -9443,6 +9491,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
     next_assert( packet_data );
     next_assert( packet_bytes );
     next_assert( next_is_network_next_packet( packet_data, packet_bytes ) );
+
+    next_server_internal_verify_sentinels( server );
 
     const int packet_id = packet_data[NEXT_PACKET_HASH_BYTES];
 
@@ -10227,6 +10277,8 @@ void next_server_internal_process_game_packet( next_server_internal_t * server, 
     next_assert( packet_data );
     next_assert( packet_bytes );
 
+    next_server_internal_verify_sentinels( server );
+
     if ( packet_bytes <= NEXT_MTU )
     {
         next_server_notify_packet_received_t * notify = (next_server_notify_packet_received_t*) next_malloc( server->context, sizeof( next_server_notify_packet_received_t ) );
@@ -10243,6 +10295,8 @@ void next_server_internal_process_game_packet( next_server_internal_t * server, 
 
 void next_server_internal_block_and_receive_packet( next_server_internal_t * server )
 {
+    next_server_internal_verify_sentinels( server );
+
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES*2];
 
     next_address_t from;
@@ -10273,6 +10327,8 @@ void next_server_internal_upgrade_session( next_server_internal_t * server, cons
 {
     next_assert( server );
     next_assert( address );
+
+    next_server_internal_verify_sentinels( server );
 
     char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
 
@@ -10326,6 +10382,8 @@ void next_server_internal_tag_session( next_server_internal_t * server, const ne
     next_assert( server );
     next_assert( address );
 
+    next_server_internal_verify_sentinels( server );
+
     if ( next_global_config.disable_network_next )
         return;
 
@@ -10348,6 +10406,8 @@ bool next_server_internal_pump_commands( next_server_internal_t * server, bool q
 {
     while ( true )
     {
+        next_server_internal_verify_sentinels( server );
+
         void * entry = NULL;
         {
             next_mutex_guard( server->command_mutex );
@@ -10452,6 +10512,8 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
 static bool next_server_internal_update_resolve_hostname( next_server_internal_t * server )
 {
+    next_server_internal_verify_sentinels( server );
+
     if ( !server->resolve_hostname_thread )
         return true;
 
@@ -10499,7 +10561,7 @@ extern bool fucking_log_it;
 
 void next_server_internal_backend_update( next_server_internal_t * server )
 {
-    next_assert( server );
+    next_server_internal_verify_sentinels( server );
 
     double current_time = next_time();
 
@@ -10768,8 +10830,6 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
 struct next_server_t
 {
-    NEXT_DECLARE_SENTINEL(0)
-
     void * context;
     next_server_internal_t * internal;
     next_platform_thread_t * thread;
@@ -10778,8 +10838,6 @@ struct next_server_t
     next_proxy_session_manager_t * pending_session_manager;
     next_proxy_session_manager_t * session_manager;
     uint16_t bound_port;
-
-    NEXT_DECLARE_SENTINEL(1)
 };
 
 void next_server_destroy( next_server_t * server );

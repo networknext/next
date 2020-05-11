@@ -1,20 +1,46 @@
 DONE
 
-	I can see two possibilities:
-
-		1. Threading issue caused by timing out session
-
-		2. Memory trash issue, where timing out session trashes memory somehow.
-
-	Really difficult to identify #1, but I can write solid code to identify #2 if it is occuring.
-
-	Start with #2. This means adding memory sentinels throughout data structures.
-
 	Fixed. Stupid golang slices. =p
+
+	Make sure programming team can work monday. That means, make sure they don't have 3.4.5 in their SDK folder... done.
+
+	OK. Next thing to do is to implement memory sentinels all over the place.
+
+	Start with the server internal. Implement the system. Run it in soak...
+
+	Verify sentinel triggers on modification of data.
+	
+	Add verifications for the sentinels at all functions in server internal.
 
 TODO
 
-	Make sure programming team can work monday. That means, make sure they don't have 3.4.5 in their SDK folder...
+	Soak test needs to be extended to include a test customer private and public key.
+
+	--------------------------------
+
+	Very soak test passes with sentinels.
+
+	--------------------------------
+
+	Extend to cover sentinels to objects used by the server internal.
+
+	--------------------------------
+
+	When 100% coverage is reached with server internal, run soak test again and leave it running for a few hours.
+
+	--------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
