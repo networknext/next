@@ -34,9 +34,25 @@ void interrupt_handler( int signal )
     (void) signal; quit = 1;
 }
 
+void generate_packet( uint8_t * packet_data, int & packet_bytes )
+{
+    packet_bytes = 1 + ( rand() % NEXT_MTU );
+    const int start = packet_bytes % 256;
+    for ( int i = 0; i < packet_bytes; ++i )
+        packet_data[i] = (uint8_t) ( start + i ) % 256;
+}
+
+void verify_packet( const uint8_t * packet_data, int packet_bytes )
+{
+    const int start = packet_bytes % 256;
+    for ( int i = 0; i < packet_bytes; ++i )
+        next_assert( packet_data[i] == (uint8_t) ( ( start + i ) % 256 ) );
+}
+
 void client_packet_received( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
 {
-    (void) client; (void) context; (void) packet_data; (void) packet_bytes;
+    (void) client; (void) context;
+    verify_packet( packet_data, packet_bytes );
 }
 
 #define NEXT_CLIENT_COUNTER_MAX 64
@@ -129,9 +145,6 @@ int main()
         next_packet_loss = true;
     }
 
-    uint8_t packet_data[32];
-    memset( packet_data, 0, sizeof( packet_data ) );
-
     double stop_time = -1.0f;
 
     const char * duration_env = getenv( "CLIENT_DURATION" );
@@ -163,7 +176,14 @@ int main()
 
         next_client_update( client );
 
-        next_client_send_packet( client, packet_data, sizeof( packet_data ) );
+        uint8_t packet_data[NEXT_MTU];
+        memset( packet_data, 0, sizeof( packet_data ) );
+
+        int packet_bytes = 0;
+
+        generate_packet( packet_data, packet_bytes );
+
+        next_client_send_packet( client, packet_data, packet_bytes );
 
         next_sleep( delta_time );
 

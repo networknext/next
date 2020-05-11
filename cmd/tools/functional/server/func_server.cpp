@@ -37,9 +37,26 @@ bool no_upgrade = false;
 
 extern bool next_packet_loss;
 
+void generate_packet( uint8_t * packet_data, int & packet_bytes )
+{
+    packet_bytes = 1 + ( rand() % NEXT_MTU );
+    const int start = packet_bytes % 256;
+    for ( int i = 0; i < packet_bytes; ++i )
+        packet_data[i] = (uint8_t) ( start + i ) % 256;
+}
+
+void verify_packet( const uint8_t * packet_data, int packet_bytes )
+{
+    const int start = packet_bytes % 256;
+    for ( int i = 0; i < packet_bytes; ++i )
+        next_assert( packet_data[i] == (uint8_t) ( ( start + i ) % 256 ) );
+}
+
 void server_packet_received( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
 {
     (void) context;
+
+    verify_packet( packet_data, packet_bytes );
 
     next_server_send_packet( server, from, packet_data, packet_bytes );
 

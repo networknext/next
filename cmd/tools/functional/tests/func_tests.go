@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	relayBin   = "./dist/relay"
+	relayBin   = "./dist/reference_relay"
 	backendBin = "./dist/func_backend"
 	clientBin  = "./dist/func_client"
 	serverBin  = "./dist/func_server"
