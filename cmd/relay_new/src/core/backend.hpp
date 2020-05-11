@@ -393,9 +393,8 @@ namespace core
       mRelayManager.getStats(stats);
       pingStats.setArray();
 
-      // pushing behaves really weird when the pushed value goes out of scope, must be declared outside of for loop
-      util::JSON pingStat;
       for (unsigned int i = 0; i < stats.NumRelays; ++i) {
+        util::JSON pingStat;
         pingStat.set(stats.IDs[i], "RelayId");
         pingStat.set(stats.RTT[i], "RTT");
         pingStat.set(stats.Jitter[i], "Jitter");
@@ -406,8 +405,6 @@ namespace core
         }
       }
 
-      // performs a deep copy, so it's ok for things to go out of scope after this, regular move seems to be weird due to the
-      // allocator concept
       doc.set(pingStats, "PingStats");
     }
 

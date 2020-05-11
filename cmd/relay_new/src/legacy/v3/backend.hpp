@@ -4,6 +4,7 @@
 #include "backend_response.hpp"
 #include "backend_token.hpp"
 #include "core/packet.hpp"
+#include "core/relay_manager.hpp"
 #include "net/address.hpp"
 #include "os/platform.hpp"
 #include "traffic_stats.hpp"
@@ -20,7 +21,7 @@ namespace legacy
     class Backend
     {
      public:
-      Backend(util::Receiver<core::GenericPacket<>>& receiver, util::Env& env, os::Socket& socket, const util::Clock& relayClock, TrafficStats& stats);
+      Backend(util::Receiver<core::GenericPacket<>>& receiver, util::Env& env, os::Socket& socket, const util::Clock& relayClock, TrafficStats& stats, core::RelayManager& manager);
       ~Backend() = default;
 
       auto init() -> bool;
@@ -34,17 +35,19 @@ namespace legacy
       os::Socket& mSocket;
       const util::Clock& mClock;
       TrafficStats& mStats;
+      core::RelayManager& mRelayManager;
       BackendToken mToken;
       uint64_t mInitTimestamp;
       uint64_t mRelayID;
       std::string mGroup;
       uint64_t mGroupID;
+      std::string mPingKey;
 
       auto tryInit() -> bool;
-      auto update() -> bool;
+      auto update(bool shuttingDown) -> bool;
 
       auto buildConfigJSON(util::JSON& doc) -> bool;
-      auto buildUpdateJSON(util::JSON& doc) -> bool;
+      auto buildUpdateJSON(util::JSON& doc, bool shuttingDown) -> bool;
       auto readResponse(core::GenericPacket<>& packet, BackendRequest& request, BackendResponse& response, std::vector<uint8_t>& completeResponse) -> bool;
       auto buildCompleteResponse(std::vector<uint8_t>& completeBuffer, util::JSON& doc) -> bool;
     };

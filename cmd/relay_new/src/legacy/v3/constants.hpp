@@ -6,11 +6,13 @@ namespace legacy
 {
   namespace v3
   {
-    const uint8_t FragmentMax = 255;
-    const size_t FragmentSize = 1024;
+    const uint8_t FragmentMax  = 255;
+    const size_t  FragmentSize = 1024;
 
-    const size_t TokenBytes = net::Address::ByteSize + 32;
+    const size_t TokenBytes  = net::Address::ByteSize + 32;
     const size_t HeaderBytes = 1 + TokenBytes + sizeof(uint64_t) + 2;
+
+    const size_t PingKeySize = crypto_auth_KEYBYTES;
 
     const uint8_t UDPSignKey[] = {
      0x60, 0x45, 0x96, 0x52, 0x4f, 0x1c, 0x00, 0xda, 0x35, 0x1b, 0x6c, 0x17, 0x8b, 0xa8, 0xaa, 0xac,
@@ -40,7 +42,7 @@ namespace legacy
 
     enum class PacketType : uint8_t
     {
-      InitRequest = 43,
+      InitRequest   = 43,
       ConfigRequest = 50,
       UpdateRequest = 48,  // relay report
     };

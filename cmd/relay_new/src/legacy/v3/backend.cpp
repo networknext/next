@@ -22,14 +22,23 @@ namespace legacy
      util::Env& env,
      os::Socket& socket,
      const util::Clock& relayClock,
-     TrafficStats& stats)
+     TrafficStats& stats,
+     core::RelayManager& manager)
      : mReceiver(receiver),
        mEnv(env),
        mSocket(socket),
        mClock(relayClock),
        mStats(stats),
+       mRelayManager(manager),
        mRelayID(crypto::FNV(mEnv.RelayV3Name).Value)
-    {}
+    {
+      LogDebug("generating ping key");
+      std::array<uint8_t, PingKeySize> key;
+      crypto_auth_keygen(key.data());
+      mPingKey.resize(PingKeySize * 2); // allocate enough space for the encoding
+      mPingKey.resize(encoding::base64::Encode(key, mPingKey)); // truncate the length
+      LogDebug("done");
+    }
 
     // clang-format off
     /*
@@ -146,7 +155,7 @@ namespace legacy
 
     auto Backend::config() -> bool
     {
-      Log("configuring relay");
+      LogDebug("configuring relay");
 
       util::JSON doc;
       if (!buildConfigJSON(doc)) {
@@ -154,9 +163,18 @@ namespace legacy
         return false;
       }
 
+      LogDebug("resolving backend addr");
+      net::Address backendAddr;
+      if (!backendAddr.resolve(mEnv.RelayV3BackendHostname, mEnv.RelayV3BackendPort)) {
+        Log("Could not resolve the v3 backend hostname to an ip address");
+        return 1;
+      }
+
       core::GenericPacket<> packet;
       auto jsonStr = doc.toString();
       std::copy(jsonStr.begin(), jsonStr.end(), packet.Buffer.begin());
+      packet.Len = jsonStr.length();
+      packet.Addr = backendAddr;
 
       BackendRequest request;
       BackendResponse response;
@@ -209,8 +227,7 @@ namespace legacy
 
       mGroup = doc.get<std::string>("Group");
 
-      crypto::FNV fnv(mGroup);
-      mGroupID = fnv.Value;
+      mGroupID = crypto::FNV(mGroup).Value;
 
       return true;
     }
@@ -218,7 +235,8 @@ namespace legacy
     auto Backend::updateCycle(const volatile bool& handle) -> bool
     {
       while (handle) {
-        if (!update()) {
+        if (!update(false)) {
+          Log("failed to update relay");
           return false;
         }
 
@@ -226,6 +244,8 @@ namespace legacy
 
         std::this_thread::sleep_for(10s);
       }
+
+      update(true);
 
       return true;
     }
@@ -246,27 +266,16 @@ namespace legacy
      *}
      */
 
-    auto Backend::update() -> bool
+    auto Backend::update(bool shuttingDown) -> bool
     {
-      return true;
       util::JSON doc;
 
-      if (!buildUpdateJSON(doc)) {
+      if (!buildUpdateJSON(doc, shuttingDown)) {
         Log("could not build v3 update json");
         return false;
       }
 
-      std::string data = doc.toString();
-      std::vector<uint8_t> buff(data.begin(), data.end());
-
-      core::GenericPacket<> packet;
-      mSocket.recv(packet);
-
-      std::string resp(packet.Buffer.begin() + 1, packet.Buffer.begin() + packet.Len);
-      if (!doc.parse(resp)) {
-        Log("v3 update resp parse error: ", doc.err());
-        return false;
-      }
+      LogDebug("sending v3: ", doc.toPrettyString());
 
       return true;
     }
@@ -288,12 +297,12 @@ namespace legacy
      *    "Usage": double, // 100.0 * 8.0 * (bytes_per_sec_total_tx + bytes_per_sec_total_rx) / relaySpeed
 
      *    "TrafficStats": {
-     *      "BytesPaidTx": uint64, // ? what is this, look up usage
-     *      "BytesPaidRx": uint64, // ? ditto
+     *      "BytesPaidTx": uint64, // number of bytes sent between game client <-> server
+     *      "BytesPaidRx": uint64, // ditto but received
      *      "BytesManagementTx": uint64, // number of bytes sent from management things, like pings and backend communication
-     *      "BytesManagementRx": uint64, // ditto except for received bytes
+     *      "BytesManagementRx": uint64, // ditto but received
      *      "BytesMeasurementTx": uint64, // number of bytes sent for all remaining cases
-     *      "BytesMeasurementRx": uint64, // number of bytes received for all remaining cases
+     *      "BytesMeasurementRx": uint64, // ditto but received
      *      "BytesInvalidRx": uint64, // bytes received that the relay can't/shouldn't process
      *      "SessionCount": uint64, // number of sessions this relay is currently handling
      *    },
@@ -316,7 +325,7 @@ namespace legacy
      *  }
      */
     // clang-format on
-    auto Backend::buildUpdateJSON(util::JSON& doc) -> bool
+    auto Backend::buildUpdateJSON(util::JSON& doc, bool shuttingDown) -> bool
     {
       // traffic stats
       {
@@ -379,7 +388,7 @@ namespace legacy
           pingStat.set(stats.PacketLoss[i], "PacketLoss");
 
           if (!pingStats.push(pingStat)) {
-            return {false, "ping stats not array! can't update!"};
+            return false;
           }
         }
 
@@ -405,7 +414,7 @@ namespace legacy
      -> bool
     {
       LogDebug("reading backend response");
-      int zip_start = int(1 + crypto_sign_BYTES + sizeof(uint64_t) + sizeof(uint16_t) + sizeof(uint16_t));
+      size_t zip_start = (size_t)(1 + crypto_sign_BYTES + sizeof(uint64_t) + sizeof(uint16_t) + sizeof(uint16_t));
 
       if (packet.Len < zip_start || packet.Len > zip_start + FragmentSize) {
         Log(
