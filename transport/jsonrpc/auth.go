@@ -188,40 +188,6 @@ func GenerateRandomBytes(n int) ([]byte, error) {
 	return b, nil
 }
 
-func UnMarshalUser(u *management.User, r []*management.Role) account {
-	account := account{
-		UserID: *u.Identities[0].UserID,
-		Name:   *u.Name,
-		Email:  *u.Email,
-		Roles:  r,
-	}
-	reply.UserAccounts = accounts
-	return nil
-}
-
-func GenerateRandomString(n int) (string, error) {
-	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
-	bytes, err := GenerateRandomBytes(n)
-	if err != nil {
-		return "", err
-	}
-	for i, b := range bytes {
-		bytes[i] = letters[b%byte(len(letters))]
-	}
-	return string(bytes), nil
-}
-
-func GenerateRandomBytes(n int) ([]byte, error) {
-	b := make([]byte, n)
-	_, err := rand.Read(b)
-	// Note that err == nil only if we read len(b) bytes.
-	if err != nil {
-		return nil, err
-	}
-
-	return b, nil
-}
-
 func newAccount(u *management.User, r []*management.Role, buyer_id string) account {
 	account := account{
 		UserID:  *u.Identities[0].UserID,
