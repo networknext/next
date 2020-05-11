@@ -62,7 +62,8 @@ func (m *RouteMatrix) ResolveRelay(id uint64) (Relay, error) {
 	if relayIndex >= len(m.RelayAddresses) ||
 		relayIndex >= len(m.RelayPublicKeys) ||
 		relayIndex >= len(m.RelaySellers) ||
-		relayIndex >= len(m.RelaySessionCounts) {
+		relayIndex >= len(m.RelaySessionCounts) ||
+		relayIndex >= len(m.RelayMaxSessionCounts) {
 		return Relay{}, fmt.Errorf("relay %d has an invalid index %d", id, relayIndex)
 	}
 
