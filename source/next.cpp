@@ -9243,6 +9243,10 @@ void next_server_internal_verify_sentinels( next_server_internal_t * server )
     NEXT_VERIFY_SENTINEL( server, 2 )
     NEXT_VERIFY_SENTINEL( server, 3 )
     NEXT_VERIFY_SENTINEL( server, 4 )
+    if ( server->session_manager )
+        next_session_manager_verify_sentinels( server->session_manager );
+    if ( server->pending_session_manager )
+        next_pending_session_manager_verify_sentinels( server->pending_session_manager );
 }
 
 void next_server_internal_destroy( next_server_internal_t * server );
@@ -9475,10 +9479,12 @@ void next_server_internal_destroy( next_server_internal_t * server )
     if ( server->session_manager )
     {
         next_session_manager_destroy( server->session_manager );
+        server->session_manager = NULL;
     }
     if ( server->pending_session_manager )
     {
         next_pending_session_manager_destroy( server->pending_session_manager );
+        server->pending_session_manager = NULL;
     }
 
     next_server_internal_verify_sentinels( server );
