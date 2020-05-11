@@ -806,7 +806,12 @@ func main() {
 
 	for {
 
-		packetBytes, from, _ := connection.ReadFromUDP(packetData)
+		packetBytes, from, err := connection.ReadFromUDP(packetData)
+
+		if err != nil {
+			fmt.Printf("socket error: %v\n", err)
+			continue
+		}
 
 		if packetBytes <= 0 {
 			continue
@@ -814,6 +819,12 @@ func main() {
 
 		if !IsNetworkNextPacket(packetData, packetBytes) {
 			fmt.Printf("error: not a network next packet (%d)\n", packetBytes)
+			fmt.Printf("===========================================================\n")
+			fmt.Printf("%d bytes:\n", packetBytes)
+			for i := 0; i < packetBytes; i++ {
+				fmt.Printf("%02x, ", packetData[i])
+			}
+			fmt.Printf("\n===========================================================\n")
 			continue
 		}
 
