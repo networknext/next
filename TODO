@@ -16,9 +16,19 @@ DONE
 
 	Very soak test passes with sentinels.
 
-TODO
+	Extend soak test to have very specific packet payloads that can be independently verified.
 
-	--------------------------------
+	Contents and length must be able to be verified.
+
+	haha lol and the payload stuff trips. Stupid bug in the raw direct packet. Fixed.
+
+	Soak test now passes with packet generation and verification. If the soak test runs, we can be confident that we have the 
+
+	Extend the functional test client and server to include the packet generate and detect.
+
+	Functional backend won't pass until main codebase packets are upgraded to support blake2 prefix. Moving on.
+
+TODO
 
 	Extend to cover sentinels to objects used by the server internal.
 

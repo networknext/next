@@ -44,14 +44,31 @@ void interrupt_handler( int signal )
     (void) signal; quit = 1;
 }
 
+void generate_packet( uint8_t * packet_data, int & packet_bytes )
+{
+    packet_bytes = 1 + ( rand() % NEXT_MTU );
+    const int start = packet_bytes % 256;
+    for ( int i = 0; i < packet_bytes; ++i )
+        packet_data[i] = (uint8_t) ( start + i ) % 256;
+}
+
+void verify_packet( const uint8_t * packet_data, int packet_bytes )
+{
+    const int start = packet_bytes % 256;
+    for ( int i = 0; i < packet_bytes; ++i )
+        next_assert( packet_data[i] == (uint8_t) ( ( start + i ) % 256 ) );
+}
+
 void client_packet_received( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
 {
-    (void) client; (void) context; (void) packet_data; (void) packet_bytes;
+    (void) client; (void) context;
+    verify_packet( packet_data, packet_bytes );
 }
 
 void server_packet_received( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
 {
     (void) context;
+    verify_packet( packet_data, packet_bytes );
     next_server_send_packet( server, from, packet_data, packet_bytes );
     if ( !next_server_session_upgraded( server, from ) )
     {
@@ -80,9 +97,6 @@ int main( int argc, char ** argv )
 
     next_init( NULL, &config );
     
-    uint8_t packet_data[NEXT_MTU];
-    memset( packet_data, 0, sizeof( packet_data ) );
-
     int iterations = 0;
     if ( argc == 2 ) 
     {
@@ -180,7 +194,15 @@ int main( int argc, char ** argv )
             if ( clients[i] )
             {
                 next_client_update( clients[i] );
-                next_client_send_packet( clients[i], packet_data, 1 + ( rand() % NEXT_MTU ) );
+
+                uint8_t packet_data[NEXT_MTU];
+                memset( packet_data, 0, sizeof( packet_data ) );
+
+                int packet_bytes = 0;
+
+                generate_packet( packet_data, packet_bytes );
+
+                next_client_send_packet( clients[i], packet_data, packet_bytes );
             }
         }
 

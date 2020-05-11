@@ -2531,17 +2531,6 @@ void next_sign_network_next_packet( uint8_t * packet_data, int packet_bytes )
     crypto_generichash( packet_data, NEXT_PACKET_HASH_BYTES, packet_data + NEXT_PACKET_HASH_BYTES, packet_bytes - NEXT_PACKET_HASH_BYTES, next_packet_hash_key, crypto_generichash_KEYBYTES );
 }
 
-void next_print_packet( const uint8_t * packet_data, int packet_bytes )
-{
-    printf( "============================================================\n" );
-    printf( "%d bytes:\n", packet_bytes );
-    for ( int i = 0; i < packet_bytes; ++i )
-    {
-        printf( "%02x, ", packet_data[i] );
-    }
-    printf( "\n============================================================\n" );
-}
-
 // -------------------------------------------------------------
 
 struct NextUpgradeToken
@@ -9543,7 +9532,9 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
         notify->from = *from;
         notify->packet_bytes = packet_bytes - ( NEXT_PACKET_HASH_BYTES + 10 );
-        memcpy( notify->packet_data, packet_data + NEXT_PACKET_HASH_BYTES + 10, size_t(packet_bytes) - ( NEXT_PACKET_HASH_BYTES + 10 ) );
+        next_assert( notify->packet_bytes > 0 );
+        next_assert( notify->packet_bytes <= NEXT_MTU );
+        memcpy( notify->packet_data, packet_data + NEXT_PACKET_HASH_BYTES + 10, size_t(notify->packet_bytes) );
         {
             next_mutex_guard( server->notify_mutex );
             next_queue_push( server->notify_queue, notify );            
@@ -10102,9 +10093,10 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         next_server_notify_packet_received_t * notify = (next_server_notify_packet_received_t*) next_malloc( server->context, sizeof( next_server_notify_packet_received_t ) );
         notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
         notify->from = entry->address;
-        notify->packet_bytes = packet_bytes - NEXT_HEADER_BYTES;
-        next_assert( packet_bytes > NEXT_HEADER_BYTES );
-        memcpy( notify->packet_data, packet_data + NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES, size_t(packet_bytes) - ( NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES ) );
+        notify->packet_bytes = packet_bytes - ( NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES );
+        next_assert( notify->packet_bytes > 0 );
+        next_assert( notify->packet_bytes <= NEXT_MTU );
+        memcpy( notify->packet_data, packet_data + NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES, size_t(notify->packet_bytes) );
         {
             next_mutex_guard( server->notify_mutex );
             next_queue_push( server->notify_queue, notify );
@@ -10290,7 +10282,9 @@ void next_server_internal_process_game_packet( next_server_internal_t * server, 
         notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
         notify->from = *from;
         notify->packet_bytes = packet_bytes;
-        memcpy( notify->packet_data, packet_data, size_t(packet_bytes) - 1 );
+        next_assert( packet_bytes > 0 );
+        next_assert( packet_bytes <= NEXT_MTU );
+        memcpy( notify->packet_data, packet_data, size_t(packet_bytes) );
         {
             next_mutex_guard( server->notify_mutex );
             next_queue_push( server->notify_queue, notify );            
@@ -10778,8 +10772,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
             next_assert( next_is_network_next_packet( session->update_packet_data, session->update_packet_bytes ) );
 
-            next_print_packet( session->update_packet_data, session->update_packet_bytes );
-
             next_platform_socket_send_packet( server->socket, &server->backend_address, session->update_packet_data, session->update_packet_bytes );
 
             session->next_session_resend_time += NEXT_SESSION_UPDATE_RESEND_TIME;
@@ -10973,7 +10965,8 @@ void next_server_update( next_server_t * server )
             {
                 next_server_notify_packet_received_t * packet_received = (next_server_notify_packet_received_t*) notify;
                 next_assert( packet_received->packet_data );
-                next_assert( packet_received->packet_bytes > 0 && packet_received->packet_bytes <= NEXT_MTU );
+                next_assert( packet_received->packet_bytes > 0 );
+                next_assert( packet_received->packet_bytes <= NEXT_MTU );
                 server->packet_received_callback( server, server->context, &packet_received->from, packet_received->packet_data, packet_received->packet_bytes );
             }
             break;
