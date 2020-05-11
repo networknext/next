@@ -917,7 +917,7 @@
                                 <div class="alert alert-success" role="alert" id="session-tool-alert" v-if="newUser.success.message != ''">
                                     {{ newUser.success.message }}
                                 </div>
-                                <div class="alert alert-success" role="alert" id="session-tool-alert" v-if="newUser.failure.message != ''">
+                                <div class="alert alert-danger" role="alert" id="session-tool-alert" v-if="newUser.failure.message != ''">
                                     {{ newUser.failure.message }}
                                 </div>
                                 <form onsubmit="addUsers(event)" v-if="showAccounts">
@@ -962,20 +962,6 @@
                                         <span class="sr-only">Loading...</span>
                                     </div>
                                 </div>
-                                <div
-                                    class="alert alert-success"
-                                    role="alert"
-                                    v-if="updateUser.success.message != ''"
-                                >
-                                    {{ updateUser.success.message }}
-                                </div>
-                                <div
-                                    class="alert alert-danger"
-                                    role="alert"
-                                    v-if="updateUser.failure.message != ''"
-                                >
-                                    {{ updateUser.failure.message }}
-                                </div>
                                 <table class="table table-sm mt-4" v-if="showAccounts">
                                     <thead class="thead-light">
                                         <tr>
@@ -992,6 +978,20 @@
                                     </thead>
                                     <tbody>
                                         <tr v-for="(account, index) in accounts">
+                                            <div
+                                                class="alert alert-success"
+                                                role="alert"
+                                                v-if="updateUser.success.message != ''"
+                                            >
+                                                {{ updateUser.success.message }}
+                                            </div>
+                                            <div
+                                                class="alert alert-danger"
+                                                role="alert"
+                                                v-if="updateUser.failure.message != ''"
+                                            >
+                                                {{ updateUser.failure.message }}
+                                            </div>
                                             <td>
                                                 {{ account.email }}
                                             </td>
