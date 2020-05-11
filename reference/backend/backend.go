@@ -585,7 +585,7 @@ func TimeoutThread() {
 			for k := range backend.sessionDatabase {
 				fmt.Printf("session: %x\n", k)
 			}
-			if len(backend.relayDatabase) == 0 && len(backend.serverDatabase) == 0 {
+			if len(backend.relayDatabase) == 0 && len(backend.serverDatabase) && len(backend.sessionDatabase) == 0 {
 				fmt.Printf("(nil)\n")
 			}
 			backend.dirty = false
