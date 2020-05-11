@@ -1012,7 +1012,15 @@ type RelayJSON struct {
 	ManagementAddress string
 }
 
+type PingTarget struct {
+	Address   string
+	Id        uint64
+	Group     string
+	PingToken string
+}
+
 type RelayUpdateJSON struct {
+	PingTargets []PingTarget
 }
 
 func TerribleOldShite() {
@@ -1093,15 +1101,34 @@ func TerribleOldShite() {
 				key := from.String()
 
 				backend.mutex.Lock()
-				backend.relayDatabase[key] = relayEntry
-				backend.mutex.Unlock()
 
-				response := RelayUpdateJSON{}
+				backend.relayDatabase[key] = relayEntry
+
+				relayCount := len(backend.relayDatabase)
+				response := RelayUpdateJSON{
+					PingTargets: make([]PingTarget, relayCount-1),
+				}
+
+				i := 0
+				for _, relay := range backend.relayDatabase {
+					if relay.id != relayEntry.id {
+						fmt.Printf("ping target found: %d", relay.id)
+						target := response.PingTargets[i]
+						target.Address = relay.address.String()
+						target.Id = relay.id
+						target.Group = "some group"
+						target.PingToken = "some token"
+						i++
+					}
+				}
+
+				backend.mutex.Unlock()
 
 				responseData, _ := json.Marshal(response)
 
 				packets, err := builder.Build(&UDPPacketToClient{Type: NEXT_PACKET_TYPE_RELAY_REPORT_RESPONSE, ID: packet.ID, Status: uint16(200), Data: responseData})
 				if err != nil {
+					fmt.Printf("could not build relay config response packet: %v\n", err)
 					return fmt.Errorf("could not build relay config response packet: %v", err)
 				}
 
