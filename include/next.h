@@ -243,6 +243,10 @@ struct next_client_stats_t
 
 // -----------------------------------------
 
+#define NEXT_CLIENT_STATE_CLOSED        0
+#define NEXT_CLIENT_STATE_OPEN          1                               
+#define NEXT_CLIENT_STATE_ERROR         2
+
 struct next_client_t;
 
 NEXT_EXPORT_FUNC next_client_t * next_client_create( void * context, const char * bind_address, void (*packet_received_callback)( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes ) );
@@ -254,6 +258,8 @@ NEXT_EXPORT_FUNC void next_client_open_session( next_client_t * client, const ch
 NEXT_EXPORT_FUNC void next_client_close_session( next_client_t * client );
 
 NEXT_EXPORT_FUNC bool next_client_is_session_open( next_client_t * client );
+
+NEXT_EXPORT_FUNC int next_client_state( next_client_t * client );
 
 NEXT_EXPORT_FUNC void next_client_update( next_client_t * client );
 
@@ -273,11 +279,18 @@ NEXT_EXPORT_FUNC void next_client_destroy( next_client_t * client );
 
 // -----------------------------------------
 
+#define NEXT_SERVER_STATE_DIRECT_ONLY               0
+#define NEXT_SERVER_STATE_RESOLVING_HOSTNAME        1
+#define NEXT_SERVER_STATE_INITIALIZING              2
+#define NEXT_SERVER_STATE_INITIALIZED               3
+
 struct next_server_t;
 
 NEXT_EXPORT_FUNC next_server_t * next_server_create( void * context, const char * server_address, const char * bind_address, const char * datacenter, void (*packet_received_callback)( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes ) );
 
 NEXT_EXPORT_FUNC uint16_t next_server_port( next_server_t * server );
+
+NEXT_EXPORT_FUNC int next_server_state( next_server_t * server );
 
 NEXT_EXPORT_FUNC void next_server_update( next_server_t * server );
 

@@ -12,13 +12,11 @@ DONE
 	
 	Add verifications for the sentinels at all functions in server internal.
 
-TODO
-
 	Soak test needs to be extended to include a test customer private and public key.
 
-	--------------------------------
-
 	Very soak test passes with sentinels.
+
+TODO
 
 	--------------------------------
 

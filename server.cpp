@@ -46,6 +46,7 @@ void server_packet_received( next_server_t * server, void * context, const next_
 }
 
 const char * customer_hostname = "127.0.0.1";
+const char * customer_datacenter = "linode.fremont"; // "local";
 const char * customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn";
 
 int main()
@@ -62,7 +63,7 @@ int main()
     next_init( NULL, &config ); 
 
     // todo: hack -- datacenter should be "local"
-    next_server_t * server = next_server_create( NULL, "127.0.0.1:32202", "0.0.0.0:32202", "linode.fremont", server_packet_received );
+    next_server_t * server = next_server_create( NULL, "127.0.0.1:32202", "0.0.0.0:32202", customer_datacenter, server_packet_received );
     if ( server == NULL )
     {
         printf( "error: failed to create server\n" );

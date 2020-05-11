@@ -29,8 +29,9 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
-const int MaxServers = 8;
+const int MaxServers = 10;
 const int MaxClients = 100;
 
 static next_server_t * servers[MaxServers];
@@ -58,13 +59,26 @@ void server_packet_received( next_server_t * server, void * context, const next_
     }
 }
 
+const char * customer_hostname = "127.0.0.1";
+const char * customer_datacenter = "linode.fremont"; // "local";
+const char * customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
+const char * customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn";
+
 int main( int argc, char ** argv )
 {
     printf( "\nWelcome to Network Next!\n\n" );
 
+    srand( time( NULL ) );
+
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
     
-    next_init( NULL, NULL );
+    next_config_t config;
+    next_default_config( &config );
+    strncpy( config.hostname, customer_hostname, sizeof(config.hostname) - 1 );
+    strncpy( config.customer_public_key, customer_public_key, sizeof(config.customer_public_key) - 1 );
+    strncpy( config.customer_private_key, customer_private_key, sizeof(config.customer_private_key) - 1 );
+
+    next_init( NULL, &config );
     
     uint8_t packet_data[NEXT_MTU];
     memset( packet_data, 0, sizeof( packet_data ) );
@@ -93,7 +107,7 @@ int main( int argc, char ** argv )
 
         for ( int i = 0; i < MaxClients; ++i )
         {
-            if ( clients[i] && ( rand() % 1500 ) == 0 )
+            if ( clients[i] && ( rand() % 15000 ) == 0 )
             {
                 next_client_destroy( clients[i] );
                 clients[i] = NULL;
@@ -105,7 +119,12 @@ int main( int argc, char ** argv )
 
         for ( int i = 0; i < MaxClients; ++i )
         {
-            if ( clients[i] && ( rand() % 500 ) == 0 )
+            if ( !clients[i] )
+                continue;
+
+            int client_state = next_client_state( clients[i] );
+
+            if ( ( client_state == NEXT_CLIENT_STATE_CLOSED || client_state == NEXT_CLIENT_STATE_ERROR ) && ( rand() % 100 ) == 0 )
             {
                 int j = rand() % MaxServers;
                 char server_address_string[256]; 
@@ -118,7 +137,7 @@ int main( int argc, char ** argv )
 
         for ( int i = 0; i < MaxClients; ++i )
         {
-            if ( clients[i] && ( rand() % 750 ) == 0 )
+            if ( clients[i] && ( rand() % 5000 ) == 0 )
             {
                 next_client_close_session( clients[i] );
             }
@@ -128,7 +147,7 @@ int main( int argc, char ** argv )
 
         for ( int i = 0; i < MaxServers; ++i )
         {
-            if ( servers[i] == NULL && ( rand() % 1000 ) == 0 )
+            if ( servers[i] == NULL && ( rand() % 100 ) == 0 )
             {
                 char server_address_string[256]; 
                 char bind_address_string[256];
@@ -146,7 +165,7 @@ int main( int argc, char ** argv )
 
         for ( int i = 0; i < MaxServers; ++i )
         {
-            if ( servers[i] && ( rand() % 1500 ) == 0 )
+            if ( servers[i] && ( rand() % 10000 ) == 0 )
             {
                 next_server_destroy( servers[i] );
                 servers[i] = NULL;

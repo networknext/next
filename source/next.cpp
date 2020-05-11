@@ -104,11 +104,6 @@
 #define NEXT_SERVER_INIT_RESPONSE_SDK_VERSION_TOO_OLD                   3
 #define NEXT_SERVER_INIT_RESPONSE_SIGNATURE_CHECK_FAILED                4
 
-#define NEXT_SERVER_STATE_DIRECT_ONLY                                   0
-#define NEXT_SERVER_STATE_RESOLVING_HOSTNAME                            1
-#define NEXT_SERVER_STATE_INITIALIZING                                  2
-#define NEXT_SERVER_STATE_INITIALIZED                                   3
-
 #define NEXT_PACKET_HASH_BYTES                                          8
 
 static const uint8_t next_backend_public_key[] = 
@@ -6216,6 +6211,7 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
             {
                 next_client_command_open_session_t * open_session_command = (next_client_command_open_session_t*) entry;
                 client->server_address = open_session_command->server_address;
+                // todo: having only session open state is just not going to cut it
                 client->session_open = true;
                 client->open_session_sequence++;
                 client->last_direct_ping_time = next_time();
@@ -6745,7 +6741,7 @@ struct next_client_t
     NEXT_DECLARE_SENTINEL(0)
 
     void * context;
-    bool session_open;
+    int state;
     bool upgraded;
     bool fallback_to_direct;
     uint8_t open_session_sequence;
@@ -6853,6 +6849,7 @@ void next_client_open_session( next_client_t * client, const char * server_addre
     if ( next_address_parse( &server_address, server_address_string ) != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client open session failed. could not parse server address: %s", server_address_string );
+        client->state = NEXT_CLIENT_STATE_ERROR;
         return;
     }
     
@@ -6860,6 +6857,7 @@ void next_client_open_session( next_client_t * client, const char * server_addre
     if ( !command )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client open session failed. could not create open session command" );
+        client->state = NEXT_CLIENT_STATE_ERROR;
         return;
     }
 
@@ -6871,15 +6869,21 @@ void next_client_open_session( next_client_t * client, const char * server_addre
         next_queue_push( client->internal->command_queue, command );
     }
 
-    client->session_open = true;
+    client->state = NEXT_CLIENT_STATE_OPEN;
     client->server_address = server_address;
     client->open_session_sequence++;
 }
 
-bool next_client_is_session_open(next_client_t * client)
+bool next_client_is_session_open( next_client_t * client )
+{
+    next_assert( client );
+    return client->state == NEXT_CLIENT_STATE_OPEN;
+}
+
+int next_client_state( next_client_t * client )
 {
 	next_assert( client );
-	return client->session_open;
+	return client->state;
 }
 
 void next_client_close_session( next_client_t * client )
@@ -6893,6 +6897,7 @@ void next_client_close_session( next_client_t * client )
     if ( !command )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client close session failed. could not create close session command" );
+        client->state = NEXT_CLIENT_STATE_ERROR;
         return;
     }
     
@@ -6902,13 +6907,13 @@ void next_client_close_session( next_client_t * client )
         next_queue_push( client->internal->command_queue, command );
     }
 
-    client->session_open = false;
     client->upgraded = false;
     client->fallback_to_direct = false;
     client->session_id = 0;    memset( &client->client_stats, 0, sizeof(next_client_stats_t ) );
     memset( &client->server_address, 0, sizeof(next_address_t) );
     next_bandwidth_limiter_reset( &client->send_bandwidth );
     next_bandwidth_limiter_reset( &client->receive_bandwidth );
+    client->state = NEXT_CLIENT_STATE_CLOSED;
 }
 
 void next_client_update( next_client_t * client )
@@ -6995,7 +7000,7 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
         return;
     }
 
-    if ( !client->session_open )
+    if ( client->state != NEXT_CLIENT_STATE_OPEN )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client can't send packet because no session is open" );
         return;
@@ -10562,6 +10567,8 @@ extern bool fucking_log_it;
 void next_server_internal_backend_update( next_server_internal_t * server )
 {
     next_server_internal_verify_sentinels( server );
+
+    next_assert( server );
 
     double current_time = next_time();
 
