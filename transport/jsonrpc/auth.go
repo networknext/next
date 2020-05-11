@@ -188,6 +188,40 @@ func GenerateRandomBytes(n int) ([]byte, error) {
 	return b, nil
 }
 
+func UnMarshalUser(u *management.User, r []*management.Role) account {
+	account := account{
+		UserID: *u.Identities[0].UserID,
+		Name:   *u.Name,
+		Email:  *u.Email,
+		Roles:  r,
+	}
+	reply.UserAccounts = accounts
+	return nil
+}
+
+func GenerateRandomString(n int) (string, error) {
+	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
+	bytes, err := GenerateRandomBytes(n)
+	if err != nil {
+		return "", err
+	}
+	for i, b := range bytes {
+		bytes[i] = letters[b%byte(len(letters))]
+	}
+	return string(bytes), nil
+}
+
+func GenerateRandomBytes(n int) ([]byte, error) {
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+	// Note that err == nil only if we read len(b) bytes.
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
+}
+
 func newAccount(u *management.User, r []*management.Role, buyer_id string) account {
 	account := account{
 		UserID:  *u.Identities[0].UserID,
@@ -247,9 +281,13 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 		return fmt.Errorf("failed to fetch user roles: %w", err)
 	}
 
+<<<<<<< HEAD
 	if len(userRoles.Roles) > 0 {
 		err = s.Auth0.Manager.User.RemoveRoles(args.UserID, userRoles.Roles...)
 	}
+=======
+	err = s.Auth0.Manager.User.RemoveRoles(args.UserID, userRoles.Roles...)
+>>>>>>> 361d0712a81cb3edb8a033532d5a2c0e2b75175d
 	if err != nil {
 		return fmt.Errorf("failed to remove current user role: %w", err)
 	}
