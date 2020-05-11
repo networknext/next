@@ -150,7 +150,7 @@ func TestSessionDetails(t *testing.T) {
 		Envelope:  routing.Envelope{Up: 1500, Down: 1500},
 	}
 
-	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID), meta, 720*time.Hour)
+	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID), meta, 30*time.Second)
 	redisClient.SAdd(fmt.Sprintf("session-%s-slices", sessionID), slice1, slice2)
 
 	// After setting the cache without the name, set the name to the expected output we need
