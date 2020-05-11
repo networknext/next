@@ -1014,7 +1014,7 @@ func writeSessionResponse(w io.Writer, response SessionResponsePacket, privateKe
 	return responseData, nil
 }
 
-func writeSessionErrorResponse(w io.Writer, response SessionResponsePacket, privateKey []byte, directSessions metrics.Counter, writeResponseFailure metrics.Counter, unserviceablePacketCounter metrics.Counter, errCounter metrics.Counter) {
+func writeSessionErrorResponse(w io.Writer, response SessionResponsePacket, privateKey []byte, directSessions metrics.Counter, writeResponseFailure metrics.Counter, unserviceableUpdateCounter metrics.Counter, errCounter metrics.Counter) {
 	if _, err := writeSessionResponse(w, response, privateKey); err != nil {
 		writeResponseFailure.Add(1)
 		return
@@ -1022,6 +1022,6 @@ func writeSessionErrorResponse(w io.Writer, response SessionResponsePacket, priv
 
 	directSessions.Add(1)
 
-	unserviceablePacketCounter.Add(1)
+	unserviceableUpdateCounter.Add(1)
 	errCounter.Add(1)
 }
