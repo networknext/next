@@ -28,13 +28,31 @@ DONE
 
 	Functional backend won't pass until main codebase packets are upgraded to support blake2 prefix. Moving on.
 
+	Extend to cover sentinels to objects used by the server internal.
+
+	next_queue_t
+
 TODO
 
-	Extend to cover sentinels to objects used by the server internal.
+	next_session_manager_t
+
+	next_pending_session_manager_t
+
+	next_relay_protection_t
+
+	next_packet_loss_tracker_t
+
+	--------------------------------
+
+	Hook up server verify to verify sub-objects.
 
 	--------------------------------
 
 	When 100% coverage is reached with server internal, run soak test again and leave it running for a few hours.
+
+	--------------------------------
+
+	Get the valgrind thing going again so we can run soak under valgrind for a few hours.
 
 	--------------------------------
 
