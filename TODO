@@ -1,58 +1,24 @@
 DONE
 
-	Fixed. Stupid golang slices. =p
-
-	Make sure programming team can work monday. That means, make sure they don't have 3.4.5 in their SDK folder... done.
-
-	OK. Next thing to do is to implement memory sentinels all over the place.
-
-	Start with the server internal. Implement the system. Run it in soak...
-
-	Verify sentinel triggers on modification of data.
-	
-	Add verifications for the sentinels at all functions in server internal.
-
-	Soak test needs to be extended to include a test customer private and public key.
-
-	Very soak test passes with sentinels.
-
-	Extend soak test to have very specific packet payloads that can be independently verified.
-
-	Contents and length must be able to be verified.
-
-	haha lol and the payload stuff trips. Stupid bug in the raw direct packet. Fixed.
-
-	Soak test now passes with packet generation and verification. If the soak test runs, we can be confident that we have the 
-
-	Extend the functional test client and server to include the packet generate and detect.
-
-	Functional backend won't pass until main codebase packets are upgraded to support blake2 prefix. Moving on.
-
-	Extend to cover sentinels to objects used by the server internal.
-
-	next_queue_t
-
-	next_session_manager_t
-
-	next_session_entry_t
-
-	next_pending_session_manager_t
-
-	next_pending_session_entry_t
-
-	next_replay_protection_t
-
-TODO
-
 	next_packet_loss_tracker_t
-
-	--------------------------------
 
 	When 100% coverage is reached with server internal, run soak test again and leave it running for a few hours.
 
+TODO
+
+	Extend to cover the next_server_t
+
 	--------------------------------
 
-	Get the valgrind thing going again so we can run soak under valgrind for a few hours.
+	Extend to cover the next_client_internal_t
+
+	--------------------------------
+
+	Extend to cover internal objects of next_client_internal_t
+
+	--------------------------------
+
+	Extend to cover next_client_t
 
 	--------------------------------
 
@@ -130,11 +96,7 @@ TODO
 
 	Meant to check stability of our protocols against random data.
 
-	Worth running overnight. Add test.
-
-	--------------------------------
-
-	Add memory guard buffers to help catch memory trashes (suspected from Velan).
+	Worth running overnight. Add test: ./bin/fuzz
 
 	--------------------------------
 
@@ -174,19 +136,11 @@ TODO
 
 	--------------------------------
 
-	Would be good to track the client and server packets sent, so we can do packet loss as a % calculation, when games send different rates of packets.
+	*** IMPORTANT ***
 
-	--------------------------------
+	Would be good to track the client and server packets sent, so we can do packet loss as a % calculation, when games send different rates of packets, or even, variable packet sends... we'll need it.
 
-	Re-add the client and server tests with ports, once I enable the ports on X1 in my own manifest...
-
-	--------------------------------
-
-	Find a way to get the X1 testing going within a UE4 plugin context.
-
-	There is weird stuff with the ipv4 as ipv6 that needs to be tested.
-
-	Also need to test the port binding running in the context of UE4.
+	Better get it in ASAP. Going to suck if we don't have it for a customer.
 
 	--------------------------------
 

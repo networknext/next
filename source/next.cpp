@@ -2603,12 +2603,12 @@ struct NextUpgradeToken
 
 struct next_replay_protection_t
 {
-    NEXT_DECLARE_SENTINEL( 0 )
+    NEXT_DECLARE_SENTINEL(0)
 
     uint64_t most_recent_sequence;
     uint64_t received_packet[NEXT_REPLAY_PROTECTION_BUFFER_SIZE];
 
-    NEXT_DECLARE_SENTINEL( 1 )
+    NEXT_DECLARE_SENTINEL(1)
 };
 
 void next_replay_protection_initialize_sentinels( next_replay_protection_t * replay_protection )
@@ -2751,43 +2751,81 @@ double next_bandwidth_limiter_usage_kbps( next_bandwidth_limiter_t * bandwidth_l
 
 struct next_packet_loss_tracker_t
 {
+    NEXT_DECLARE_SENTINEL(0)
+
     void * context;
     uint64_t last_packet_processed;
     uint64_t most_recent_packet_received;
+
+    NEXT_DECLARE_SENTINEL(1)
+
     uint64_t received_packets[NEXT_PACKET_LOSS_TRACKER_HISTORY];
+
+    NEXT_DECLARE_SENTINEL(2)
 };
+
+void next_packet_loss_tracker_initialize_sentinels( next_packet_loss_tracker_t * tracker )
+{
+    (void) tracker;
+    next_assert( tracker );
+    NEXT_INITIALIZE_SENTINEL( tracker, 0 )
+    NEXT_INITIALIZE_SENTINEL( tracker, 1 )
+    NEXT_INITIALIZE_SENTINEL( tracker, 2 )
+}
+
+void next_packet_loss_tracker_verify_sentinels( next_packet_loss_tracker_t * tracker )
+{
+    (void) tracker;
+    next_assert( tracker );
+    NEXT_VERIFY_SENTINEL( tracker, 0 )
+    NEXT_VERIFY_SENTINEL( tracker, 1 )
+    NEXT_VERIFY_SENTINEL( tracker, 2 )
+}
 
 void next_packet_loss_tracker_reset( next_packet_loss_tracker_t * tracker )
 {
     next_assert( tracker );
+
+    next_packet_loss_tracker_initialize_sentinels( tracker );
+    
     tracker->last_packet_processed = 0;
     tracker->most_recent_packet_received = 0;
+    
     for ( int i = 0; i < NEXT_PACKET_LOSS_TRACKER_HISTORY; ++i )
     {
         tracker->received_packets[i] = 0xFFFFFFFFFFFFFFFFUL;        
     }
+
+    next_packet_loss_tracker_verify_sentinels( tracker );
 }
 
 void next_packet_loss_tracker_packet_received( next_packet_loss_tracker_t * tracker, uint64_t sequence )
 {
-    next_assert( tracker );
+    next_packet_loss_tracker_verify_sentinels( tracker );
+
     sequence++;
+    
     const int index = int( sequence % NEXT_PACKET_LOSS_TRACKER_HISTORY );
+    
     tracker->received_packets[index] = sequence;
     tracker->most_recent_packet_received = sequence;
 }
 
 int next_packet_loss_tracker_update( next_packet_loss_tracker_t * tracker )
 {
-    next_assert( tracker );
+    next_packet_loss_tracker_verify_sentinels( tracker );
+
     int lost_packets = 0;
+    
     uint64_t start = tracker->last_packet_processed + 1;
     uint64_t finish = ( tracker->most_recent_packet_received > NEXT_PACKET_LOSS_TRACKER_SAFETY ) ? ( tracker->most_recent_packet_received - NEXT_PACKET_LOSS_TRACKER_SAFETY ) : 0;
+    
     if ( finish > start && finish - start > NEXT_PACKET_LOSS_TRACKER_HISTORY )
     {
         tracker->last_packet_processed = tracker->most_recent_packet_received;
         return 0;
     }
+    
     for ( uint64_t sequence = start; sequence <= finish; ++sequence )
     {
         const int index = int( sequence % NEXT_PACKET_LOSS_TRACKER_HISTORY );
@@ -2796,7 +2834,9 @@ int next_packet_loss_tracker_update( next_packet_loss_tracker_t * tracker )
             lost_packets++;
         }
     }
+    
     tracker->last_packet_processed = finish;
+    
     return lost_packets;
 }
 
@@ -5467,12 +5507,13 @@ next_client_internal_t * next_client_internal_create( void * context, const char
     }
 
     next_ping_history_clear( &client->next_ping_history );
-
     next_ping_history_clear( &client->direct_ping_history );
 
     next_replay_protection_reset( &client->payload_replay_protection );
     next_replay_protection_reset( &client->special_replay_protection );
     next_replay_protection_reset( &client->internal_replay_protection );
+
+    next_packet_loss_tracker_reset( &client->packet_loss_tracker );
 
     return client;
 }
@@ -8197,6 +8238,7 @@ void next_session_entry_verify_sentinels( next_session_entry_t * entry )
     next_replay_protection_verify_sentinels( &entry->payload_replay_protection );
     next_replay_protection_verify_sentinels( &entry->special_replay_protection );
     next_replay_protection_verify_sentinels( &entry->internal_replay_protection );
+    next_packet_loss_tracker_verify_sentinels( &entry->packet_loss_tracker );
 }
 
 struct next_session_manager_t
@@ -11204,6 +11246,8 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
 struct next_server_t
 {
+    NEXT_DECLARE_SENTINEL(0)
+
     void * context;
     next_server_internal_t * internal;
     next_platform_thread_t * thread;
@@ -11212,7 +11256,32 @@ struct next_server_t
     next_proxy_session_manager_t * pending_session_manager;
     next_proxy_session_manager_t * session_manager;
     uint16_t bound_port;
+
+    NEXT_DECLARE_SENTINEL(1)
 };
+
+void next_server_initialize_sentinels( next_server_t * server )
+{
+    (void) server;
+    next_assert( server );
+    NEXT_INITIALIZE_SENTINEL( server, 0 )
+    NEXT_INITIALIZE_SENTINEL( server, 1 )
+}
+
+void next_server_verify_sentinels( next_server_t * server )
+{
+    (void) server;
+    next_assert( server );
+    NEXT_VERIFY_SENTINEL( server, 0 )
+    NEXT_VERIFY_SENTINEL( server, 1 )
+    // todo
+    /*
+    if ( server->session_manager )
+        next_proxy_session_manager_verify_sentinels( server->session_manager );
+    if ( server->pending_session_manager )
+        next_proxy_session_manager_verify_sentinels( server->pending_session_manager );
+        */
+}
 
 void next_server_destroy( next_server_t * server );
 
@@ -11227,6 +11296,8 @@ next_server_t * next_server_create( void * context, const char * server_address,
         return NULL;
 
     memset( server, 0, sizeof( next_server_t) );
+
+    next_server_initialize_sentinels( server );
 
     server->context = context;
 
@@ -11269,17 +11340,20 @@ next_server_t * next_server_create( void * context, const char * server_address,
     server->context = context;
     server->packet_received_callback = packet_received_callback;
 
+    next_server_verify_sentinels( server );
+
     return server;
 }
 
 uint16_t next_server_port( next_server_t * server )
 {
+    next_server_verify_sentinels( server );
     return server->bound_port;
 }
 
 void next_server_destroy( next_server_t * server )
 {
-    next_assert( server );
+    next_server_verify_sentinels( server );
 
     if ( server->pending_session_manager )
     {
@@ -11319,7 +11393,7 @@ void next_server_destroy( next_server_t * server )
 
 void next_server_update( next_server_t * server )
 {
-    next_assert( server );
+    next_server_verify_sentinels( server );
 
     while ( true )
     {
@@ -11413,7 +11487,8 @@ uint64_t next_generate_session_id()
 
 uint64_t next_server_upgrade_session( next_server_t * server, const next_address_t * address, const char * user_id, uint32_t platform_id, const char * tag )
 {
-    next_assert( server );
+    next_server_verify_sentinels( server );
+
     next_assert( server->internal );
     next_assert( server->internal->command_mutex );
     next_assert( server->internal->command_queue );
@@ -11484,7 +11559,8 @@ uint64_t next_server_upgrade_session( next_server_t * server, const next_address
 
 void next_server_tag_session( next_server_t * server, const next_address_t * address, const char * tag )
 {
-    next_assert( server );
+    next_server_verify_sentinels( server );
+
     next_assert( server->internal );
     next_assert( server->internal->command_mutex );
     next_assert( server->internal->command_queue );
@@ -11519,22 +11595,27 @@ void next_server_tag_session( next_server_t * server, const next_address_t * add
 
 int next_server_session_upgraded( next_server_t * server, const next_address_t * address )
 {
-    next_assert( server );
+    next_server_verify_sentinels( server );
+
     next_assert( server->internal );
     next_assert( server->internal->command_mutex );
     next_assert( server->internal->command_queue );
+
     next_proxy_session_entry_t * pending_entry = next_proxy_session_manager_find( server->pending_session_manager, address );
     if ( pending_entry != NULL )
         return 1;
+
     next_proxy_session_entry_t * entry = next_proxy_session_manager_find( server->session_manager, address );
     if ( entry != NULL )
         return 1;
+
     return 0;
 }
 
 void next_server_send_packet( next_server_t * server, const next_address_t * to_address, const uint8_t * packet_data, int packet_bytes )
 {
-    next_assert( server );
+    next_server_verify_sentinels( server );
+
     next_assert( to_address );
     next_assert( packet_data );
     next_assert( packet_bytes >= 0 );
@@ -11662,7 +11743,8 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
 void next_server_send_packet_direct( next_server_t * server, const next_address_t * to_address, const uint8_t * packet_data, int packet_bytes )
 {
-    next_assert( server );
+    next_server_verify_sentinels( server );
+
     next_assert( to_address );
     next_assert( packet_data );
     next_assert( packet_bytes >= 0 );
