@@ -1113,7 +1113,7 @@ func TerribleOldShite() {
 				for _, relay := range backend.relayDatabase {
 					if relay.id != relayEntry.id {
 						fmt.Printf("ping target found: %d", relay.id)
-						target := response.PingTargets[i]
+						target := &response.PingTargets[i]
 						target.Address = relay.address.String()
 						target.Id = relay.id
 						target.Group = "some group"
