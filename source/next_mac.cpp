@@ -400,6 +400,9 @@ void next_platform_socket_destroy( next_platform_socket_t * socket )
     next_free( socket->context, socket );
 }
 
+// todo
+bool fucking_log_it = false;
+
 void next_platform_socket_send_packet( next_platform_socket_t * socket, const next_address_t * to, const void * packet_data, int packet_bytes )
 {
     next_assert( socket );
@@ -442,6 +445,12 @@ void next_platform_socket_send_packet( next_platform_socket_t * socket, const ne
             char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
             next_address_to_string( to, address_string );
             next_printf( NEXT_LOG_LEVEL_DEBUG, "sendto (%s) failed: %s", address_string, strerror( errno ) );
+        }
+
+        // todo
+        if ( fucking_log_it )
+        {
+            printf( "sent packet to backend (%d)\n", packet_bytes );
         }
     }
     else

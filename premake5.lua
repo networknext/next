@@ -32,6 +32,7 @@ solution "next"
 		disablewarnings{ "4127" }
 	filter "configurations:Debug"
 		symbols "On"
+		defines { "_DEBUG" }
 	filter "configurations:Release"
 		symbols "On"
 		optimize "Speed"

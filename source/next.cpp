@@ -373,8 +373,7 @@ void next_quiet( bool flag )
     log_quiet = flag;
 }
 
-// todo
-static int log_level = NEXT_LOG_LEVEL_DEBUG;//INFO;
+static int log_level = NEXT_LOG_LEVEL_INFO;
 
 void next_log_level( int level )
 {
@@ -2441,6 +2440,57 @@ uint64_t next_random_uint64()
 
 int next_is_network_next_packet( const uint8_t * packet_data, int packet_bytes )
 {
+#ifndef NDEBUG
+
+    // EXPECTED KEY VALUE
+    /*
+        static const uint8_t next_packet_hash_key[] =
+        {
+            0xe3, 0x18, 0x61, 0x72, 0xee, 0x70, 0x62, 0x37, 
+            0x40, 0xf6, 0x0a, 0xea, 0xe0, 0xb5, 0x1a, 0x2c, 
+            0x2a, 0x47, 0x98, 0x8f, 0x27, 0xec, 0x63, 0x2c, 
+            0x25, 0x04, 0x74, 0x89, 0xaf, 0x5a, 0xeb, 0x24
+        };
+    */
+
+    next_assert( next_packet_hash_key[0] == 0xe3 );
+    next_assert( next_packet_hash_key[1] == 0x18 );
+    next_assert( next_packet_hash_key[2] == 0x61 );
+    next_assert( next_packet_hash_key[3] == 0x72 );
+    next_assert( next_packet_hash_key[4] == 0xee );
+    next_assert( next_packet_hash_key[5] == 0x70 );
+    next_assert( next_packet_hash_key[6] == 0x62 );
+    next_assert( next_packet_hash_key[7] == 0x37 );
+
+    next_assert( next_packet_hash_key[8] == 0x40 );
+    next_assert( next_packet_hash_key[9] == 0xf6 );
+    next_assert( next_packet_hash_key[10] == 0x0a );
+    next_assert( next_packet_hash_key[11] == 0xea );
+    next_assert( next_packet_hash_key[12] == 0xe0 );
+    next_assert( next_packet_hash_key[13] == 0xb5 );
+    next_assert( next_packet_hash_key[14] == 0x1a );
+    next_assert( next_packet_hash_key[15] == 0x2c );
+
+    next_assert( next_packet_hash_key[16] == 0x2a );
+    next_assert( next_packet_hash_key[17] == 0x47 );
+    next_assert( next_packet_hash_key[18] == 0x98 );
+    next_assert( next_packet_hash_key[19] == 0x8f );
+    next_assert( next_packet_hash_key[20] == 0x27 );
+    next_assert( next_packet_hash_key[21] == 0xec );
+    next_assert( next_packet_hash_key[22] == 0x63 );
+    next_assert( next_packet_hash_key[23] == 0x2c );
+
+    next_assert( next_packet_hash_key[24] == 0x25 );
+    next_assert( next_packet_hash_key[25] == 0x04 );
+    next_assert( next_packet_hash_key[26] == 0x74 );
+    next_assert( next_packet_hash_key[27] == 0x89 );
+    next_assert( next_packet_hash_key[28] == 0xaf );
+    next_assert( next_packet_hash_key[29] == 0x5a );
+    next_assert( next_packet_hash_key[30] == 0xeb );
+    next_assert( next_packet_hash_key[31] == 0x24 );
+
+#endif // #ifndef NDEBUG
+
     if ( packet_bytes <= NEXT_PACKET_HASH_BYTES )
         return 0;
 
@@ -2462,6 +2512,17 @@ void next_sign_network_next_packet( uint8_t * packet_data, int packet_bytes )
 {
     next_assert( packet_bytes > NEXT_PACKET_HASH_BYTES );
     crypto_generichash( packet_data, NEXT_PACKET_HASH_BYTES, packet_data + NEXT_PACKET_HASH_BYTES, packet_bytes - NEXT_PACKET_HASH_BYTES, next_packet_hash_key, crypto_generichash_KEYBYTES );
+}
+
+void next_print_packet( const uint8_t * packet_data, int packet_bytes )
+{
+    printf( "============================================================\n" );
+    printf( "%d bytes:\n", packet_bytes );
+    for ( int i = 0; i < packet_bytes; ++i )
+    {
+        printf( "%02x, ", packet_data[i] );
+    }
+    printf( "\n============================================================\n" );
 }
 
 // -------------------------------------------------------------
@@ -4104,7 +4165,7 @@ void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platfor
     next_assert( manager );
     next_assert( socket );
 
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+    uint8_t packet_data[NEXT_MAX_PACKET_BYTES*2];   // todo
 
     double current_time = next_time();
 
@@ -4451,13 +4512,10 @@ int next_read_encrypted_continue_token( uint8_t ** buffer, next_continue_token_t
 #define NEXT_DIRECTION_CLIENT_TO_SERVER             0
 #define NEXT_DIRECTION_SERVER_TO_CLIENT             1
 
-int next_write_header( int direction, uint8_t type, uint64_t sequence, uint64_t session_id, uint8_t session_version, uint8_t session_flags, const uint8_t * private_key, uint8_t * buffer, int buffer_length )
+int next_write_header( int direction, uint8_t type, uint64_t sequence, uint64_t session_id, uint8_t session_version, uint8_t session_flags, const uint8_t * private_key, uint8_t * buffer )
 {
     next_assert( private_key );
     next_assert( buffer );
-    next_assert( NEXT_HEADER_BYTES <= buffer_length );
-
-    (void) buffer_length;
 
     uint8_t * start = buffer;
 
@@ -4678,7 +4736,7 @@ struct next_route_data_t
     int pending_route_kbps_down;
     int pending_route_request_packet_bytes;
     next_address_t pending_route_next_address;
-    uint8_t pending_route_request_packet_data[NEXT_MAX_PACKET_BYTES];
+    uint8_t pending_route_request_packet_data[NEXT_MAX_PACKET_BYTES*2]; // todo
     uint8_t pending_route_private_key[crypto_box_SECRETKEYBYTES];
     
     bool pending_continue;
@@ -4686,7 +4744,7 @@ struct next_route_data_t
     double pending_continue_start_time;
     double pending_continue_last_send_time;
     int pending_continue_request_packet_bytes;
-    uint8_t pending_continue_request_packet_data[NEXT_MAX_PACKET_BYTES];
+    uint8_t pending_continue_request_packet_data[NEXT_MAX_PACKET_BYTES*2]; // todo
 };
 
 struct next_route_manager_t
@@ -4894,7 +4952,7 @@ void next_route_manager_prepare_send_packet( next_route_manager_t * route_manage
 
     *to = route_manager->route_data.current_route_next_address;
 
-    if ( next_write_header( NEXT_DIRECTION_CLIENT_TO_SERVER, NEXT_CLIENT_TO_SERVER_PACKET, sequence, route_manager->route_data.current_route_session_id, route_manager->route_data.current_route_session_version, 0, route_manager->route_data.current_route_private_key, packet_data + NEXT_PACKET_HASH_BYTES, NEXT_MAX_PACKET_BYTES ) != NEXT_OK )
+    if ( next_write_header( NEXT_DIRECTION_CLIENT_TO_SERVER, NEXT_CLIENT_TO_SERVER_PACKET, sequence, route_manager->route_data.current_route_session_id, route_manager->route_data.current_route_session_version, 0, route_manager->route_data.current_route_private_key, packet_data + NEXT_PACKET_HASH_BYTES ) != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client failed to write client to server packet header" );
         return;
@@ -4984,6 +5042,8 @@ bool next_route_manager_process_server_to_client_packet( next_route_manager_t * 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored server to client packet. too large (%d>%d)", *payload_bytes, NEXT_MTU );
         return false;
     }
+
+    // todo: why even copy at all?! we can just point to it...
 
     memcpy( payload_data, packet_data + NEXT_HEADER_BYTES, *payload_bytes );
 
@@ -5379,7 +5439,7 @@ int next_client_internal_send_packet_to_server( next_client_internal_t * client,
         return NEXT_ERROR;
     }
     int packet_bytes = 0;
-    uint8_t buffer[NEXT_MAX_PACKET_BYTES];
+    uint8_t buffer[NEXT_MAX_PACKET_BYTES*2];
     if ( next_write_packet( packet_id, packet_object, buffer, &packet_bytes, next_encrypted_packets, &client->internal_send_sequence, client->client_send_key ) != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client failed to write internal packet type %d", packet_id );
@@ -5868,7 +5928,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
     {
         int payload_bytes = 0;
         uint64_t payload_sequence = 0;
-        uint8_t payload_data[NEXT_MTU];
+        uint8_t payload_data[NEXT_MTU];     // todo: wut. we don't need payload for pong packet...
 
         next_platform_mutex_acquire( client->route_manager_mutex );
         const bool result = next_route_manager_process_server_to_client_packet( client->route_manager, from, packet_data, packet_bytes, &payload_sequence, payload_data, &payload_bytes );
@@ -5890,7 +5950,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         next_replay_protection_advance_sequence( &client->special_replay_protection, clean_sequence );
 
-        const uint8_t * p = packet_data + NEXT_HEADER_BYTES;
+        const uint8_t * p = packet_data + NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES;
 
         uint64_t ping_sequence = next_read_uint64( &p );
 
@@ -5903,9 +5963,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_RELAY_PONG_PACKET )
     {
-        // todo
-        printf( "relay pong packet\n" );
-
         if ( !client->upgraded )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored relay pong packet. not upgraded yet" );
@@ -6071,11 +6128,11 @@ bool next_packet_loss = false;
 
 void next_client_internal_block_and_receive_packet( next_client_internal_t * client )
 {
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+    uint8_t packet_data[NEXT_MAX_PACKET_BYTES*2];
 
     next_address_t from;
     
-    int packet_bytes = next_platform_socket_receive_packet( client->socket, &from, packet_data, sizeof(packet_data) );
+    int packet_bytes = next_platform_socket_receive_packet( client->socket, &from, packet_data, NEXT_MAX_PACKET_BYTES );
 
     next_assert( packet_bytes >= 0 );
 
@@ -6457,9 +6514,9 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
         uint64_t sequence = client->special_send_sequence++;
         sequence |= (1ULL<<62);
 
-        uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+        uint8_t packet_data[NEXT_MAX_PACKET_BYTES*2];
 
-        if ( next_write_header( NEXT_DIRECTION_CLIENT_TO_SERVER, NEXT_PING_PACKET, sequence, session_id, session_version, 0, private_key, packet_data + NEXT_PACKET_HASH_BYTES, sizeof(packet_data) - NEXT_PACKET_HASH_BYTES ) != NEXT_OK )
+        if ( next_write_header( NEXT_DIRECTION_CLIENT_TO_SERVER, NEXT_PING_PACKET, sequence, session_id, session_version, 0, private_key, packet_data + NEXT_PACKET_HASH_BYTES ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_ERROR, "client failed to write next ping packet" );
             return;
@@ -6544,8 +6601,8 @@ void next_client_internal_update_route_manager( next_client_internal_t * client 
     int route_request_packet_bytes;
     int continue_request_packet_bytes;
 
-    uint8_t route_request_packet_data[NEXT_MAX_PACKET_BYTES];
-    uint8_t continue_request_packet_data[NEXT_MAX_PACKET_BYTES];
+    uint8_t route_request_packet_data[NEXT_MAX_PACKET_BYTES*2];
+    uint8_t continue_request_packet_data[NEXT_MAX_PACKET_BYTES*2];
 
     next_platform_mutex_acquire( client->route_manager_mutex );
     const bool send_route_request = next_route_manager_send_route_request( client->route_manager, &route_request_to, route_request_packet_data, &route_request_packet_bytes );
@@ -6838,6 +6895,7 @@ void next_client_update( next_client_t * client )
                 const int envelope_kbps_down = client->internal->bandwidth_envelope_kbps_down;
                 next_platform_mutex_release( client->internal->bandwidth_mutex );
 
+                // is this accurate? what about direct packets?!
                 const int packet_bits = next_wire_packet_bits( NEXT_HEADER_BYTES + packet_received->packet_bytes );
 
                 next_bandwidth_limiter_add_packet( &client->receive_bandwidth, next_time(), envelope_kbps_down, packet_bits );
@@ -6945,6 +7003,7 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
         const int envelope_kbps_up = client->internal->bandwidth_envelope_kbps_up;
         next_platform_mutex_release( client->internal->bandwidth_mutex );
 
+        // todo: whut... needs to be updated to have the packet hash
         const int packet_bits = next_wire_packet_bits( NEXT_HEADER_BYTES + packet_bytes );
 
         bool over_budget = next_bandwidth_limiter_add_packet( &client->send_bandwidth, next_time(), envelope_kbps_up, packet_bits );
@@ -6972,7 +7031,7 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
             int next_packet_bytes = 0;
             next_address_t next_to;
-            uint8_t next_packet_data[NEXT_MAX_PACKET_BYTES];
+            uint8_t next_packet_data[NEXT_MAX_PACKET_BYTES*2];
 
             next_platform_mutex_acquire( client->internal->route_manager_mutex );
             next_route_manager_prepare_send_packet( client->internal->route_manager, send_sequence, &next_to, packet_data, packet_bytes, next_packet_data, &next_packet_bytes );
@@ -7740,8 +7799,19 @@ struct next_session_entry_t
     int update_num_near_relays;
     uint64_t update_near_relay_ids[NEXT_MAX_NEAR_RELAYS];
     next_address_t update_near_relay_addresses[NEXT_MAX_NEAR_RELAYS];
-    uint8_t update_packet_data[NEXT_MAX_PACKET_BYTES];
+
+    // todo
+    uint8_t safety_1[1024];
+
     int update_packet_bytes;
+
+    // todo
+    uint8_t safety_2[1024];
+
+    uint8_t update_packet_data[NEXT_MAX_PACKET_BYTES*2];    // todo
+
+    // todo
+    uint8_t safety_3[1024];
 
     bool has_pending_route;
     bool pending_route_committed;
@@ -8570,6 +8640,9 @@ int next_write_backend_packet( uint8_t packet_id, void * packet_object, uint8_t 
 
     *packet_bytes = stream.GetBytesProcessed();
 
+    next_assert( *packet_bytes >= 0 );
+    next_assert( *packet_bytes < NEXT_MAX_PACKET_BYTES );
+
     const uint8_t * message = packet_data + NEXT_PACKET_HASH_BYTES;
     const int message_length = *packet_bytes - NEXT_PACKET_HASH_BYTES;
 
@@ -9008,7 +9081,7 @@ int next_server_internal_send_packet( next_server_internal_t * server, const nex
     
     int packet_bytes = 0;
     
-    uint8_t buffer[NEXT_MAX_PACKET_BYTES];
+    uint8_t buffer[NEXT_MAX_PACKET_BYTES*2];
 
     uint64_t * sequence = NULL;
     uint8_t * send_key = NULL;
@@ -9822,13 +9895,13 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             entry->most_recent_session_version = route_token.session_version;
         }
 
-        uint8_t response[NEXT_MAX_PACKET_BYTES];
+        uint8_t response[NEXT_MAX_PACKET_BYTES*2];
 
         uint64_t session_send_sequence = entry->special_send_sequence++;
         session_send_sequence |= uint64_t(1) << 63;
         session_send_sequence |= uint64_t(1) << 62;
 
-        if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_ROUTE_RESPONSE_PACKET, session_send_sequence, entry->session_id, entry->pending_route_session_version, 0, entry->pending_route_private_key, response + NEXT_PACKET_HASH_BYTES, NEXT_MTU ) != NEXT_OK )
+        if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_ROUTE_RESPONSE_PACKET, session_send_sequence, entry->session_id, entry->pending_route_session_version, 0, entry->pending_route_private_key, response + NEXT_PACKET_HASH_BYTES ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server failed to write next route response packet" );
             return;
@@ -9892,13 +9965,13 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         entry->current_route_expire_time += NEXT_SLICE_SECONDS;
         entry->has_previous_route = false;
 
-        uint8_t response[NEXT_MAX_PACKET_BYTES];
+        uint8_t response[NEXT_MAX_PACKET_BYTES*2];
 
         uint64_t session_send_sequence = entry->special_send_sequence++;
         session_send_sequence |= uint64_t(1) << 63;
         session_send_sequence |= uint64_t(1) << 62;
 
-        if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_CONTINUE_RESPONSE_PACKET, session_send_sequence, entry->session_id, entry->current_route_session_version, 0, entry->current_route_private_key, response + NEXT_PACKET_HASH_BYTES, NEXT_MTU ) != NEXT_OK )
+        if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_CONTINUE_RESPONSE_PACKET, session_send_sequence, entry->session_id, entry->current_route_session_version, 0, entry->current_route_private_key, response + NEXT_PACKET_HASH_BYTES ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write next continue response packet" );
             return;
@@ -9923,7 +9996,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             return;
         }
 
-        // todo: check this function
         next_session_entry_t * entry = next_server_internal_check_client_to_server_packet( server, packet_data, packet_bytes );
         if ( !entry )
         {
@@ -9966,7 +10038,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         send_sequence |= uint64_t(1) << 63;
         send_sequence |= uint64_t(1) << 62;
 
-        if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_PONG_PACKET, send_sequence, entry->session_id, entry->current_route_session_version, 0, entry->current_route_private_key, packet_data + NEXT_PACKET_HASH_BYTES, NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES + 8 ) != NEXT_OK )
+        if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_PONG_PACKET, send_sequence, entry->session_id, entry->current_route_session_version, 0, entry->current_route_private_key, packet_data + NEXT_PACKET_HASH_BYTES ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_WARN, "server failed to write pong packet header" );
             return;
@@ -10130,11 +10202,11 @@ void next_server_internal_process_game_packet( next_server_internal_t * server, 
 
 void next_server_internal_block_and_receive_packet( next_server_internal_t * server )
 {
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+    uint8_t packet_data[NEXT_MAX_PACKET_BYTES*2];
 
     next_address_t from;
     
-    const int packet_bytes = next_platform_socket_receive_packet( server->socket, &from, packet_data, sizeof(packet_data) );
+    const int packet_bytes = next_platform_socket_receive_packet( server->socket, &from, packet_data, NEXT_MAX_PACKET_BYTES );
     
     next_assert( packet_bytes >= 0 );
 
@@ -10382,6 +10454,8 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
     return true;
 }
 
+extern bool fucking_log_it;
+
 void next_server_internal_backend_update( next_server_internal_t * server )
 {
     next_assert( server );
@@ -10415,15 +10489,16 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
             server->server_init_request_id = packet.request_id;
 
-            uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-
             int packet_bytes = 0;
-
+            uint8_t packet_data[NEXT_MAX_PACKET_BYTES*2];
             if ( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET, &packet, packet_data, &packet_bytes ) != NEXT_OK )
             {
                 next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server init request packet for backend" );
                 return;
             }
+
+            // todo
+            next_print_packet( packet_data, packet_bytes );
 
             next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
 
@@ -10481,15 +10556,18 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         memcpy( packet.server_route_public_key, server->server_route_public_key, crypto_box_PUBLICKEYBYTES );
         packet.Sign( server->customer_private_key );
 
-        uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-
         int packet_bytes = 0;
-
+        uint8_t packet_data[NEXT_MAX_PACKET_BYTES*2];
         if ( next_write_backend_packet( NEXT_BACKEND_SERVER_UPDATE_PACKET, &packet, packet_data, &packet_bytes ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server update packet for backend" );
             return;
         }
+
+        next_assert( next_is_network_next_packet( packet_data, packet_bytes ) );
+
+        // todo
+        next_print_packet( packet_data, packet_bytes );
 
         next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
 
@@ -10570,7 +10648,17 @@ void next_server_internal_backend_update( next_server_internal_t * server )
                 return;
             }
 
+            next_assert( next_is_network_next_packet( session->update_packet_data, session->update_packet_bytes ) );
+
+            // todo
+            printf( "*** SEND SESSION UPDATE ***\n" );
+            next_print_packet( session->update_packet_data, session->update_packet_bytes );
+
+            // todo
+            fucking_log_it = true;
             next_platform_socket_send_packet( server->socket, &server->backend_address, session->update_packet_data, session->update_packet_bytes );
+            // todo
+            fucking_log_it = false;
 
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent session update packet to backend for session %" PRIx64, session->session_id );
 
@@ -10592,7 +10680,17 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server resent session update packet to backend for session %" PRIx64, session->session_id );
 
+            next_assert( next_is_network_next_packet( session->update_packet_data, session->update_packet_bytes ) );
+
+            // todo
+            printf( "*** RESEND SESSION UPDATE ***\n" );
+            next_print_packet( session->update_packet_data, session->update_packet_bytes );
+
+            // todo
+            fucking_log_it = true;
             next_platform_socket_send_packet( server->socket, &server->backend_address, session->update_packet_data, session->update_packet_bytes );
+            // todo
+            fucking_log_it = false;
 
             session->next_session_resend_time += NEXT_SESSION_UPDATE_RESEND_TIME;
         }
@@ -11044,6 +11142,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
         {
             if ( send_over_network_next )
             {
+                // todo: needs packet hash bytes
                 const int packet_bits = next_wire_packet_bits( NEXT_HEADER_BYTES + packet_bytes );
 
                 bool over_budget = next_bandwidth_limiter_add_packet( &entry->send_bandwidth, next_time(), envelope_kbps_down, packet_bits );
@@ -11063,9 +11162,9 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
             {
                 // send over network next
 
-                uint8_t next_packet_data[NEXT_MAX_PACKET_BYTES];
+                uint8_t next_packet_data[NEXT_MAX_PACKET_BYTES*2];
                 
-                if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_SERVER_TO_CLIENT_PACKET, send_sequence, session_id, session_version, 0, session_private_key, next_packet_data + NEXT_PACKET_HASH_BYTES, NEXT_MAX_PACKET_BYTES - NEXT_PACKET_HASH_BYTES ) != NEXT_OK )
+                if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_SERVER_TO_CLIENT_PACKET, send_sequence, session_id, session_version, 0, session_private_key, next_packet_data + NEXT_PACKET_HASH_BYTES ) != NEXT_OK )
                 {
                     next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server to client packet header" );
                     return;
@@ -11084,7 +11183,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
             {
                 // [255][session sequence][packet sequence](payload) style packet direct to client
 
-                uint8_t buffer[NEXT_PACKET_HASH_BYTES+10+NEXT_MTU];
+                uint8_t buffer[NEXT_MAX_PACKET_BYTES*2];
                 uint8_t * p = buffer;
                 next_write_uint64( &p, 0 );
                 next_write_uint8( &p, NEXT_DIRECT_PACKET );
@@ -13621,7 +13720,7 @@ static void test_header()
         uint8_t session_version = 0x12;
         uint8_t session_flags = 0x1;
 
-        check( next_write_header( NEXT_DIRECTION_CLIENT_TO_SERVER, NEXT_CLIENT_TO_SERVER_PACKET, sequence, session_id, session_version, session_flags, private_key, buffer, sizeof( buffer ) ) == NEXT_OK );
+        check( next_write_header( NEXT_DIRECTION_CLIENT_TO_SERVER, NEXT_CLIENT_TO_SERVER_PACKET, sequence, session_id, session_version, session_flags, private_key, buffer ) == NEXT_OK );
 
         uint8_t read_type = 0;
         uint64_t read_sequence = 0;
@@ -13659,7 +13758,7 @@ static void test_header()
         uint8_t session_version = 0x12;
         uint8_t session_flags = 0x1;
 
-        check( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_SERVER_TO_CLIENT_PACKET, sequence, session_id, session_version, session_flags, private_key, buffer, sizeof( buffer ) ) == NEXT_OK );
+        check( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_SERVER_TO_CLIENT_PACKET, sequence, session_id, session_version, session_flags, private_key, buffer ) == NEXT_OK );
 
         uint8_t read_type = 0;
         uint64_t read_sequence = 0;

@@ -1,103 +1,5 @@
 DONE
 
-	Check all next_printf functions. Just found one that was missing args.
-
-	Bring back the old reference backend before it was changed to use helper code.
-
-	Clean it up and identify where we need to extend with blake2 prefix.
-
-	Extend the reference backend to talk server init request/response protocol.
-
-	Init request packet is read.
-
-	Next, get the response going...
-
-	ps. Verified relay talks to the reference backend just fine.
-
-	Verify reference backend is able to talk to server and relays properly, and can carry sessions from an older version of SDK.
-
-	Verify session update works with relays. It needs to be updated to support user flags and committed.
-
-	Bring across code for blake2 hash into golang via libsodium.
-
-	Reference backend code can now determine if a packet is network next or not.
-
-	Extend backend code to sign packets sent back to the server.
-
-	Verify the server gets the init response.
-
-	Extend to the session update response.
-
-	Verify that without a relay, client and server work and can sustain an upgraded direct route.
-
-	Do not bother to maintain support for old and new relay packets. That can be done in the new relay. The reference relay is always bleeding edge.
-
-	Upgrade the reference relay to use the blake2 prefixed packets.
-
-	Extend the reference relay to have full debug logs on all conditions where packets are ignored.
-
-	Update code that sends route request packet to prefix with packet hash.
-
-	Is the server getting a route request packet from the relay, or is the server ignoring it?
-
-	Server is now getting the route request packet, but I'm not sure it's firing back the route response correctly with hash prefix.
-
-	Extend the server to reply back with the route response packet with hash prefix. 
-
-	Fix client processing of continue response packet.
-
-	Client now gets continue response packet.
-
-	Appears that the server is not getting the continue request from the relay...
-
-	Fixed error in continue response packet forwarding.
-
-	I believe the client -> server packets aren't getting through, which doesn't confirm the route.
-
-	Thus when the continue request packet gets through: "server ignored continue request packet. no route to continue".
-
-	Error in filling out continue response on server fixed.
-
-	Client is now getting continue response, but is unable to read header.
-
-	Easy fix. It's not reading at correct offset.
-
-	Client now continues route.
-
-	Seems like a lot of packets hitting the relay that don't have the signature.
-
-	Next ping/pong packets? Probably...
-
-	Could also be server -> client packets. Check those first.
-
-	Now the packets are less frequent. Clearly pings. Relay is definitely receiving next pings.
-
-	Not sure if server is receiving next pings.
-
-	Relay doesn't seem to be receiving next pongs.
-
-	Check the server...
-
-	Relay was screwing it up. fixed.
-
-	Verify direct and next pongs are received on client.
-
-	Verify near ping/pongs are working.
-
-	Verify that relay to relay pings and pongs are being received.
-
-	Verify that we can get traffic across several reference relays.
-
-	Works.
-
-	There's a situation where the backend stops receiving packets from teh server after a while.
-
-	Adding a log shows the packets are triggering "not a network next packet".
-
-	Have I missed a codepath where the server updates or session updates are not hash prefixed properly?
-	
-	Can't seem to reproduce this without relays in the mix. What is it?
-
 	It does reproduce without relays, just leave it for a while:
 
 	-----------------------------
@@ -125,12 +27,48 @@ DONE
 
 	--------------------------------
 
-	These must be server update packets. Nothing else is being sent to the backend.
+	These must be server update or session update packets. Nothing else is being sent to the backend.
+
+	Could it be retries of session updates?
+
+	But how would that make a server go away... must be server update packets not getting through?
+
+	Or a memory trash and the packet hash key gets changed? WUT
+
+	But how can these be sent through to the backend, without tripping the code to check if network next packet on write backend packet?
+
+	It seems it is sending through correctly, but somehow the packet is not verifing it.
+
+	Look at all places packets are sent to backend, in case there are some resend caches that aren't updated.
+
+	Everything seems to be covered, and I can't seem to catch the sender or receiver in having any problems with the packet signature.
+
+	Only thing I can think of now is to print out packets sent to the backend, and print out packets received on the backend.
+
+	It really looks like the packet is getting truncated by 10 bytes for some reason.
+
+	Check sender side...
+
+	Seems to be sending out correct.
+
+	What the fuck is going on?!
+
+	Could it be threading related, to do with a session timing out, and fucking up the session data mid packet send?
 
 TODO
 
+	I can see two possibilities:
 
-	But how can these be sent through to the backend, without tripping the code to check if network next packet on write backend packet?
+		1. Threading issue caused by timing out session
+
+		2. Memory trash issue, where timing out session trashes memory somehow.
+
+	Really difficult to identify #1, but I can write solid code to identify #2 if it is occuring.
+
+
+
+
+
 
 
 
@@ -150,6 +88,10 @@ TODO
 	We really should have a functional test that verifies payload client -> server direct, upgraded direct, and next.
 
 	I mean FFS we could break game payload and not know...
+
+	--------------------------------
+
+	There must be a functional test to verify bandwidth limiting.
 
 	--------------------------------
 
