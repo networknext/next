@@ -240,19 +240,19 @@ namespace legacy
       }
 
       bool allValid = true;
-      auto relays = doc.get<util::JSON>("ping_data");
+      auto relays = doc.get<util::JSON>("PingTargets");
       if (relays.isArray()) {
         size_t count = 0;
         std::array<uint64_t, MAX_RELAYS> relayIDs = {};
         std::array<net::Address, MAX_RELAYS> relayAddresses;
         relays.foreach([&allValid, &count, &relayIDs, &relayAddresses](rapidjson::Value& relayData) {
-          if (!relayData.HasMember("relay_id")) {
-            Log("ping data missing 'relay_id'");
+          if (!relayData.HasMember("Id")) {
+            Log("ping targets missing 'Id'");
             allValid = false;
             return;
           }
 
-          auto idMember = std::move(relayData["relay_id"]);
+          auto idMember = std::move(relayData["Id"]);
           if (idMember.GetType() != rapidjson::Type::kNumberType) {
             Log("id from ping not number type");
             allValid = false;
@@ -261,13 +261,13 @@ namespace legacy
 
           auto id = idMember.GetUint64();
 
-          if (!relayData.HasMember("relay_address")) {
-            Log("ping data missing member 'relay_address' for relay id: ", id);
+          if (!relayData.HasMember("Address")) {
+            Log("ping data missing member 'Address' for relay id: ", id);
             allValid = false;
             return;
           }
 
-          auto addrMember = std::move(relayData["relay_address"]);
+          auto addrMember = std::move(relayData["Address"]);
           if (addrMember.GetType() != rapidjson::Type::kStringType) {
             Log("relay address is not a string in ping data for relay with id: ", id);
             allValid = false;
