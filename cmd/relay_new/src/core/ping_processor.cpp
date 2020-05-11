@@ -17,13 +17,15 @@ namespace core
    const volatile bool& shouldProcess,
    const net::Address& relayAddress,
    util::ThroughputRecorder& recorder,
-   legacy::v3::TrafficStats& stats)
+   legacy::v3::TrafficStats& stats,
+   bool isV3)
    : mSocket(socket),
      mRelayManager(relayManager),
      mShouldProcess(shouldProcess),
      mRelayAddress(relayAddress),
      mRecorder(recorder),
-     mStats(stats)
+     mStats(stats),
+     mIsV3(isV3)
   {
     LogDebug("sending pings using this addr: ", relayAddress);
   }
@@ -65,6 +67,7 @@ namespace core
 
           // use the recv port addr here so the receiving relay knows where to send it back to
           encoding::WriteAddress(pkt.Buffer, index, mRelayAddress);
+          encoding::WriteUint8(pkt.Buffer, index, mIsV3);
         }
 
         pkt.Len = index;

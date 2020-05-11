@@ -35,6 +35,7 @@ namespace core
    const crypto::Keychain& keychain,
    core::SessionMap& sessions,
    core::RelayManager& relayManager,
+   core::RelayManager& v3RelayManager,
    const volatile bool& handle,
    util::ThroughputRecorder& logger,
    const net::Address& receivingAddr,
@@ -46,6 +47,7 @@ namespace core
      mKeychain(keychain),
      mSessionMap(sessions),
      mRelayManager(relayManager),
+     mV3RelayManager(v3RelayManager),
      mShouldProcess(handle),
      mRecorder(logger),
      mRecvAddr(receivingAddr),
@@ -136,7 +138,7 @@ namespace core
           mRecorder.addToReceived(wholePacketSize);
           mStats.BytesPerSecMeasurementRx += wholePacketSize;
 
-          handlers::RelayPongHandler handler(packet, packet.Len, mRelayManager);
+          handlers::RelayPongHandler handler(packet, packet.Len, mRelayManager, mV3RelayManager);
 
           handler.handle();
         } else {

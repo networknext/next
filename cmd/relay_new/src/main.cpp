@@ -321,6 +321,7 @@ int main(int argc, const char* argv[])
                                                    &keychain,
                                                    &sessions,
                                                    &relayManager,
+                                                   &v3RelayManager,
                                                    &recorder,
                                                    &relayAddr,
                                                    &sender,
@@ -332,6 +333,7 @@ int main(int argc, const char* argv[])
          keychain,
          sessions,
          relayManager,
+         v3RelayManager,
          gAlive,
          recorder,
          relayAddr,
@@ -381,7 +383,7 @@ int main(int argc, const char* argv[])
     // relays use it to know where the receiving port of other relays are
     auto thread = std::make_shared<std::thread>(
      [&waitVar, &socketAndThreadReady, socket, &relayManager, &relayAddr, &recorder, &v3TrafficStats] {
-       core::PingProcessor pingProcessor(*socket, relayManager, gAlive, relayAddr, recorder, v3TrafficStats);
+       core::PingProcessor pingProcessor(*socket, relayManager, gAlive, relayAddr, recorder, v3TrafficStats, false);
        pingProcessor.process(waitVar, socketAndThreadReady);
      });
 
@@ -419,7 +421,7 @@ int main(int argc, const char* argv[])
 
       auto thread = std::make_shared<std::thread>(
        [&waitVar, &socketAndThreadReady, socket, &v3RelayManager, &relayAddr, &recorder, &v3TrafficStats] {
-         core::PingProcessor pingProcessor(*socket, v3RelayManager, gAlive, relayAddr, recorder, v3TrafficStats);
+         core::PingProcessor pingProcessor(*socket, v3RelayManager, gAlive, relayAddr, recorder, v3TrafficStats, true);
          pingProcessor.process(waitVar, socketAndThreadReady);
        });
 

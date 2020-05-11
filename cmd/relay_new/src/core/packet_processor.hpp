@@ -29,6 +29,7 @@ namespace core
      const crypto::Keychain& keychain,
      core::SessionMap& sessions,
      core::RelayManager& relayManager,
+     core::RelayManager& v3RelayManager,
      const volatile bool& handle,
      util::ThroughputRecorder& recorder,
      const net::Address& receivingAddr,
@@ -45,6 +46,7 @@ namespace core
     const crypto::Keychain& mKeychain;
     core::SessionMap& mSessionMap;
     core::RelayManager& mRelayManager;
+    core::RelayManager& mV3RelayManager;
     const volatile bool& mShouldProcess;
     util::ThroughputRecorder& mRecorder;
     const net::Address& mRecvAddr;

@@ -50,7 +50,6 @@ namespace core
 
       mRecorder.addToSent(RELAY_PING_PACKET_BYTES);
 
-      // ? probably want to send immediately than use sendmmsg here?
       if (!mSocket.send(sendingAddr, packet.Internal.Buffer.data(), RELAY_PING_PACKET_BYTES)) {
         Log("failed to send data");
       }

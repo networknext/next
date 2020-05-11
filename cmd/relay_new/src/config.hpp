@@ -10,7 +10,7 @@
 #define RELAY_HEADER_BYTES 35
 
 #define RELAY_ADDRESS_BUFFER_SAFETY 32
-#define RELAY_PING_PACKET_BYTES 1 + 8 + net::Address::ByteSize  // identifier, seq num, ...
+#define RELAY_PING_PACKET_BYTES 1 + 8 + net::Address::ByteSize + 1  // identifier, seq num, ..., is v3
 
 #define RELAY_REPLAY_PROTECTION_BUFFER_SIZE 256UL
 

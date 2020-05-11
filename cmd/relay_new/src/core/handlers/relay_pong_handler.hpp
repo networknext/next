@@ -2,6 +2,7 @@
 #define CORE_HANDLERS_RELAY_PONG_HANDLER_HPP
 
 #include "base_handler.hpp"
+#include "core/packets/relay_ping_packet.hpp"
 #include "core/relay_manager.hpp"
 #include "util/logger.hpp"
 
@@ -12,30 +13,29 @@ namespace core
     class RelayPongHandler: public BaseHandler
     {
      public:
-      RelayPongHandler(GenericPacket<>& packet, int packetSize, RelayManager& manager);
+      RelayPongHandler(GenericPacket<>& packet, int packetSize, RelayManager& manager, RelayManager& v3Manager);
 
       void handle();
 
      private:
       RelayManager& mRelayManager;
+      RelayManager& mV3RelayManager;
     };
 
-    inline RelayPongHandler::RelayPongHandler(GenericPacket<>& packet, int packetSize, RelayManager& manager)
-     : BaseHandler(packet, packetSize), mRelayManager(manager)
+    inline RelayPongHandler::RelayPongHandler(
+     GenericPacket<>& packet, int packetSize, RelayManager& manager, RelayManager& v3Manager)
+     : BaseHandler(packet, packetSize), mRelayManager(manager), mV3RelayManager(v3Manager)
     {}
 
     inline void RelayPongHandler::handle()
     {
-      net::Address addr;  // the actual from
+      packets::RelayPingPacket packet(mPacket, mPacketSize);
 
-      size_t index = 1;  // skip the identifier byte
-      uint64_t sequence = encoding::ReadUint64(mPacket.Buffer, index);
-      // pings are sent on a different port, need to read actual address to stay consistent
-      encoding::ReadAddress(mPacket.Buffer, index, addr);
+      LogDebug("got pong packet from ", packet.getFromAddr());
 
-      LogDebug("got pong packet from ", addr);
       // process the pong time
-      mRelayManager.processPong(addr, sequence);
+      packet.isV3() ? mV3RelayManager.processPong(packet.getFromAddr(), packet.getSeqNum())
+                    : mRelayManager.processPong(packet.getFromAddr(), packet.getSeqNum());
     }
   }  // namespace handlers
 }  // namespace core
