@@ -96,6 +96,7 @@ const (
 	DecisionNoNearRelays            DecisionReason = 1 << 17
 	DecisionRTTHysteresis           DecisionReason = 1 << 18
 	DecisionVetoCommit              DecisionReason = 1 << 19
+	DecisionDatacenterDisabled      DecisionReason = 1 << 20
 )
 
 // DecideUpgradeRTT will decide if the client should use the network next route if the RTT reduction is greater than the given threshold.

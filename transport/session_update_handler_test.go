@@ -824,6 +824,99 @@ func TestNoRelaysNearClient(t *testing.T) {
 	validateDirectResponsePacket(t, resbuf, sessionMetrics.DirectSessions, sessionMetrics.ErrorMetrics.NearRelaysLocateFailure)
 }
 
+func TestDatacenterDisabled(t *testing.T) {
+	redisServer, err := miniredis.Run()
+	assert.NoError(t, err)
+	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+	sessionMetrics := metrics.EmptySessionMetrics
+	localMetrics := metrics.LocalHandler{}
+
+	errMetric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "err metric"})
+	assert.NoError(t, err)
+	directMetric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "direct metric"})
+	assert.NoError(t, err)
+
+	sessionMetrics.ErrorMetrics.DatacenterDisabled = errMetric
+	sessionMetrics.DirectSessions = directMetric
+
+	db := storage.InMemory{}
+	db.AddBuyer(context.Background(), routing.Buyer{
+		PublicKey: TestBuyersServerPublicKey,
+	})
+
+	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
+		return routing.Location{
+			Continent: "NA",
+			Country:   "US",
+			Region:    "NY",
+			City:      "Troy",
+			Latitude:  0,
+			Longitude: 0,
+		}, nil
+	})
+
+	geoClient := routing.GeoClient{
+		RedisClient: redisClient,
+		Namespace:   "GEO_TEST",
+	}
+
+	nearbyRelay := routing.Relay{
+		ID: 1,
+	}
+	err = geoClient.Add(nearbyRelay)
+	assert.NoError(t, err)
+
+	rp := mockRouteProvider{}
+
+	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
+	assert.NoError(t, err)
+
+	serverCacheEntry := transport.ServerCacheEntry{
+		Sequence: 13,
+		Server: routing.Server{
+			Addr:      *addr,
+			PublicKey: TestServerBackendPublicKey,
+		},
+	}
+	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
+	assert.NoError(t, err)
+
+	err = redisServer.Set("SERVER-0-0.0.0.0:13", string(serverCacheEntryData))
+	assert.NoError(t, err)
+
+	sessionCacheEntry := transport.SessionCacheEntry{
+		SessionID: 9999,
+		Sequence:  13,
+	}
+	sessionCacheEntryData, err := sessionCacheEntry.MarshalBinary()
+	assert.NoError(t, err)
+
+	err = redisServer.Set("SESSION-0-9999", string(sessionCacheEntryData))
+	assert.NoError(t, err)
+
+	packet := transport.SessionUpdatePacket{
+		SessionID:     9999,
+		Sequence:      14,
+		ServerAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
+
+		ClientRoutePublicKey: make([]byte, crypto.KeySize),
+
+		Signature: make([]byte, ed25519.SignatureSize),
+	}
+	packet.Signature = crypto.Sign(TestBuyersServerPrivateKey, packet.GetSignData())
+
+	data, err := packet.MarshalBinary()
+	assert.NoError(t, err)
+
+	var resbuf bytes.Buffer
+
+	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, redisClient, &db, &rp, &iploc, &geoClient, &sessionMetrics, &billing.NoOpBiller{}, TestServerBackendPrivateKey, nil)
+	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
+
+	validateDirectResponsePacket(t, resbuf, sessionMetrics.DirectSessions, sessionMetrics.ErrorMetrics.DatacenterDisabled)
+}
+
 func TestNoRelaysInDatacenter(t *testing.T) {
 	redisServer, err := miniredis.Run()
 	assert.NoError(t, err)
@@ -877,6 +970,9 @@ func TestNoRelaysInDatacenter(t *testing.T) {
 		Server: routing.Server{
 			Addr:      *addr,
 			PublicKey: TestServerBackendPublicKey,
+		},
+		Datacenter: routing.Datacenter{
+			Enabled: true,
 		},
 	}
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
@@ -973,6 +1069,9 @@ func TestNoRoutesFound(t *testing.T) {
 		Server: routing.Server{
 			Addr:      *addr,
 			PublicKey: TestServerBackendPublicKey,
+		},
+		Datacenter: routing.Datacenter{
+			Enabled: true,
 		},
 	}
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
@@ -1080,6 +1179,9 @@ func TestTokenEncryptionFailure(t *testing.T) {
 		Server: routing.Server{
 			Addr:      *addr,
 			PublicKey: TestBuyersServerPublicKey[:],
+		},
+		Datacenter: routing.Datacenter{
+			Enabled: true,
 		},
 	}
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
@@ -1426,6 +1528,9 @@ func TestNextRouteResponse(t *testing.T) {
 			Addr:      *addr,
 			PublicKey: TestBuyersServerPublicKey[:],
 		},
+		Datacenter: routing.Datacenter{
+			Enabled: true,
+		},
 	}
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
@@ -1561,6 +1666,9 @@ func TestContinueRouteResponse(t *testing.T) {
 		Server: routing.Server{
 			Addr:      *addr,
 			PublicKey: TestBuyersServerPublicKey[:],
+		},
+		Datacenter: routing.Datacenter{
+			Enabled: true,
 		},
 	}
 	se, err := expected.MarshalBinary()
@@ -1707,6 +1815,9 @@ func TestCachedRouteResponse(t *testing.T) {
 			Addr:      *addr,
 			PublicKey: TestBuyersServerPublicKey[:],
 		},
+		Datacenter: routing.Datacenter{
+			Enabled: true,
+		},
 	}
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
@@ -1850,6 +1961,9 @@ func TestVetoedRTT(t *testing.T) {
 			Addr:      *addr,
 			PublicKey: TestBuyersServerPublicKey[:],
 		},
+		Datacenter: routing.Datacenter{
+			Enabled: true,
+		},
 	}
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
@@ -1970,6 +2084,9 @@ func TestVetoExpiredRTT(t *testing.T) {
 		Server: routing.Server{
 			Addr:      *addr,
 			PublicKey: TestBuyersServerPublicKey[:],
+		},
+		Datacenter: routing.Datacenter{
+			Enabled: true,
 		},
 	}
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
@@ -2092,6 +2209,9 @@ func TestVetoedPacketLoss(t *testing.T) {
 			Addr:      *addr,
 			PublicKey: TestBuyersServerPublicKey[:],
 		},
+		Datacenter: routing.Datacenter{
+			Enabled: true,
+		},
 	}
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
@@ -2212,6 +2332,9 @@ func TestVetoExpiredPacketLoss(t *testing.T) {
 		Server: routing.Server{
 			Addr:      *addr,
 			PublicKey: TestBuyersServerPublicKey[:],
+		},
+		Datacenter: routing.Datacenter{
+			Enabled: true,
 		},
 	}
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
@@ -2337,6 +2460,9 @@ func TestVetoYOLONoReturn(t *testing.T) {
 			Addr:      *addr,
 			PublicKey: TestBuyersServerPublicKey[:],
 		},
+		Datacenter: routing.Datacenter{
+			Enabled: true,
+		},
 	}
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
@@ -2461,6 +2587,9 @@ func TestForceDirect(t *testing.T) {
 				Addr:      *addr,
 				PublicKey: TestBuyersServerPublicKey[:],
 			},
+			Datacenter: routing.Datacenter{
+				Enabled: true,
+			},
 		}
 		serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
 		assert.NoError(t, err)
@@ -2577,6 +2706,9 @@ func TestForceDirect(t *testing.T) {
 			Server: routing.Server{
 				Addr:      *addr,
 				PublicKey: TestBuyersServerPublicKey[:],
+			},
+			Datacenter: routing.Datacenter{
+				Enabled: true,
 			},
 		}
 		serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
@@ -2697,6 +2829,9 @@ func TestForceNext(t *testing.T) {
 			Addr:      *addr,
 			PublicKey: TestBuyersServerPublicKey[:],
 		},
+		Datacenter: routing.Datacenter{
+			Enabled: true,
+		},
 	}
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
@@ -2813,6 +2948,9 @@ func TestABTest(t *testing.T) {
 		Server: routing.Server{
 			Addr:      *addr,
 			PublicKey: TestBuyersServerPublicKey[:],
+		},
+		Datacenter: routing.Datacenter{
+			Enabled: true,
 		},
 	}
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
@@ -2932,6 +3070,9 @@ func TestVetoCommit(t *testing.T) {
 		Server: routing.Server{
 			Addr:      *addr,
 			PublicKey: TestBuyersServerPublicKey[:],
+		},
+		Datacenter: routing.Datacenter{
+			Enabled: true,
 		},
 	}
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
@@ -3063,6 +3204,9 @@ func TestCommitted(t *testing.T) {
 			Addr:      *addr,
 			PublicKey: TestBuyersServerPublicKey[:],
 		},
+		Datacenter: routing.Datacenter{
+			Enabled: true,
+		},
 	}
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
@@ -3193,6 +3337,9 @@ func TestMultipathRTT(t *testing.T) {
 			Addr:      *addr,
 			PublicKey: TestBuyersServerPublicKey[:],
 		},
+		Datacenter: routing.Datacenter{
+			Enabled: true,
+		},
 	}
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
@@ -3315,6 +3462,9 @@ func TestMultipathJitter(t *testing.T) {
 			Addr:      *addr,
 			PublicKey: TestBuyersServerPublicKey[:],
 		},
+		Datacenter: routing.Datacenter{
+			Enabled: true,
+		},
 	}
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
@@ -3436,6 +3586,9 @@ func TestMultipathPacketLoss(t *testing.T) {
 		Server: routing.Server{
 			Addr:      *addr,
 			PublicKey: TestBuyersServerPublicKey[:],
+		},
+		Datacenter: routing.Datacenter{
+			Enabled: true,
 		},
 	}
 	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()

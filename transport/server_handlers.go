@@ -584,6 +584,27 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			clientRelays[idx], _ = rp.ResolveRelay(clientRelays[idx].ID)
 		}
 
+		if !serverCacheEntry.Datacenter.Enabled {
+			// datacenter is disabled, so next routes can't be made
+			sentry.CaptureMessage(fmt.Sprintf("Datacenter %s is disabled", serverCacheEntry.Datacenter.Name))
+			level.Error(locallogger).Log("msg", "datacenter is disabled", "datacenter", serverCacheEntry.Datacenter.Name)
+			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.DatacenterDisabled)
+
+			if err := updatePortalData(redisClientPortal, packet, nnStats, directStats, len(chosenRoute.Relays), routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, location); err != nil {
+				sentry.CaptureException(err)
+				level.Error(locallogger).Log("msg", "failed to update portal data", "err", err)
+			}
+
+			if err := submitBillingEntry(biller, serverCacheEntry, sessionCacheEntry, packet, response, buyer, chosenRoute, location, storer, clientRelays,
+				routing.Decision{OnNetworkNext: false, Reason: routing.DecisionDatacenterDisabled}, sliceDuration, timestampStart, timestampNow, newSession); err != nil {
+				sentry.CaptureException(err)
+				level.Error(locallogger).Log("msg", "billing failed", "err", err)
+				metrics.ErrorMetrics.BillingFailure.Add(1)
+			}
+
+			return
+		}
+
 		dsRelays := rp.RelaysIn(serverCacheEntry.Datacenter)
 
 		level.Debug(locallogger).Log("num_datacenter_relays", len(dsRelays), "num_client_relays", len(clientRelays))
