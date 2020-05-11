@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
 	"github.com/dgrijalva/jwt-go"
@@ -13,7 +14,8 @@ import (
 )
 
 type AuthService struct {
-	Auth0 storage.Auth0
+	Auth0   storage.Auth0
+	Storage storage.Storer
 }
 
 type AccountsArgs struct {
@@ -32,10 +34,11 @@ type AccountReply struct {
 }
 
 type account struct {
-	UserID string             `json:"user_id"`
-	Name   string             `json:"name"`
-	Email  string             `json:"email"`
-	Roles  []*management.Role `json:"roles"`
+	UserID  string             `json:"user_id"`
+	BuyerID string             `json:"buyer_id"`
+	Name    string             `json:"name"`
+	Email   string             `json:"email"`
+	Roles   []*management.Role `json:"roles"`
 }
 
 func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
@@ -49,8 +52,20 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 		if err != nil {
 			return fmt.Errorf("failed to fetch user roles: %w", err)
 		}
-		reply.UserAccounts = append(reply.UserAccounts, UnMarshalUser(a, userRoles))
+		emailParts := strings.Split(*a.Email, "@")
+		if len(emailParts) <= 0 {
+			return fmt.Errorf("failed to parse email %s for domain", *a.Email)
+		}
+		domain := emailParts[len(emailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
+
+		buyer, err := s.Storage.BuyerWithDomain(domain)
+		if err != nil {
+			continue
+		}
+
+		reply.UserAccounts = append(reply.UserAccounts, newAccount(a, userRoles, fmt.Sprintf("%x", buyer.ID)))
 	}
+
 	return nil
 }
 
@@ -64,13 +79,23 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 		return fmt.Errorf("failed to fetch user account: %w", err)
 	}
 
-	userRoles, err := s.Auth0.Manager.User.Roles(args.UserID)
+	emailParts := strings.Split(*userAccount.Email, "@")
+	if len(emailParts) <= 0 {
+		return fmt.Errorf("failed to parse email %s for domain", *userAccount.Email)
+	}
+	domain := emailParts[len(emailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
 
+	buyer, err := s.Storage.BuyerWithDomain(domain)
 	if err != nil {
-		return fmt.Errorf("failed to get user roles: %w", err)
+		return err
 	}
 
-	reply.UserAccount = UnMarshalUser(userAccount, userRoles)
+	userRoles, err := s.Auth0.Manager.User.Roles(*userAccount.ID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch user roles: %w", err)
+	}
+
+	reply.UserAccount = newAccount(userAccount, userRoles, fmt.Sprintf("%x", buyer.ID))
 
 	return nil
 }
@@ -86,19 +111,16 @@ func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, repl
 	return nil
 }
 
-func UnMarshalUser(u *management.User, r *management.RoleList) account {
+func newAccount(u *management.User, r *management.RoleList, buyer_id string) account {
 	account := account{
-		UserID: *u.Identities[0].UserID,
-		Name:   *u.Name,
-		Email:  *u.Email,
-		Roles:  r.Roles,
+		UserID:  *u.Identities[0].UserID,
+		BuyerID: buyer_id,
+		Name:    *u.Name,
+		Email:   *u.Email,
+		Roles:   r.Roles,
 	}
 
 	return account
-}
-
-func MarshalUser(a account) *management.User {
-	return nil
 }
 
 type RolesArgs struct {

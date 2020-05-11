@@ -73,7 +73,7 @@ func TestAddBuyer(t *testing.T) {
 		var reply jsonrpc.AddBuyerReply
 
 		err = svc.AddBuyer(nil, &jsonrpc.AddBuyerArgs{Buyer: expected}, &reply)
-		assert.EqualError(t, err, "buyer with id 1 already exists in memory storage")
+		assert.EqualError(t, err, "buyer with reference 1 already exists")
 	})
 }
 
@@ -101,7 +101,7 @@ func TestRemoveBuyer(t *testing.T) {
 		var reply jsonrpc.RemoveBuyerReply
 
 		err = svc.RemoveBuyer(nil, &jsonrpc.RemoveBuyerArgs{ID: expected.ID}, &reply)
-		assert.EqualError(t, err, "buyer with id 1 not found in memory storage")
+		assert.EqualError(t, err, "buyer with reference 1 not found")
 	})
 
 	t.Run("remove", func(t *testing.T) {
@@ -132,7 +132,7 @@ func TestRoutingRulesSettings(t *testing.T) {
 		var reply jsonrpc.RoutingRulesSettingsReply
 
 		err := svc.RoutingRulesSettings(nil, &jsonrpc.RoutingRulesSettingsArgs{}, &reply)
-		assert.EqualError(t, err, "buyer with id 0 not found in memory storage")
+		assert.EqualError(t, err, "buyer with reference 0 not found")
 	})
 
 	t.Run("list", func(t *testing.T) {
@@ -172,7 +172,7 @@ func TestSetRoutingRulesSettings(t *testing.T) {
 		var reply jsonrpc.SetRoutingRulesSettingsReply
 
 		err := svc.SetRoutingRulesSettings(nil, &jsonrpc.SetRoutingRulesSettingsArgs{BuyerID: 0, RoutingRulesSettings: routing.LocalRoutingRulesSettings}, &reply)
-		assert.EqualError(t, err, "buyer with id 0 not found in memory storage")
+		assert.EqualError(t, err, "buyer with reference 0 not found")
 	})
 
 	t.Run("set", func(t *testing.T) {
@@ -266,7 +266,7 @@ func TestAddSeller(t *testing.T) {
 		var reply jsonrpc.AddSellerReply
 
 		err := svc.AddSeller(nil, &jsonrpc.AddSellerArgs{Seller: expected}, &reply)
-		assert.EqualError(t, err, "seller with id id already exists in memory storage")
+		assert.EqualError(t, err, "seller with reference id already exists")
 	})
 }
 
@@ -288,7 +288,7 @@ func TestRemoveSeller(t *testing.T) {
 		var reply jsonrpc.RemoveSellerReply
 
 		err := svc.RemoveSeller(nil, &jsonrpc.RemoveSellerArgs{ID: expected.ID}, &reply)
-		assert.EqualError(t, err, "seller with id 1 not found in memory storage")
+		assert.EqualError(t, err, "seller with reference 1 not found")
 	})
 
 	t.Run("remove", func(t *testing.T) {
@@ -405,7 +405,7 @@ func TestAddRelay(t *testing.T) {
 	t.Run("seller doesn't exist", func(t *testing.T) {
 		var reply jsonrpc.AddRelayReply
 		err := svc.AddRelay(nil, &jsonrpc.AddRelayArgs{Relay: expected}, &reply)
-		assert.EqualError(t, err, "unknown seller with ID  - be sure to create the seller in storage first")
+		assert.EqualError(t, err, "seller with reference  not found")
 	})
 
 	t.Run("datacenter doesn't exist", func(t *testing.T) {
@@ -422,7 +422,7 @@ func TestAddRelay(t *testing.T) {
 
 		var reply jsonrpc.AddRelayReply
 		err = svc.AddRelay(nil, &jsonrpc.AddRelayArgs{Relay: expected}, &reply)
-		assert.EqualError(t, err, "unknown datacenter with ID 0 - be sure to create the datacenter in storage first")
+		assert.EqualError(t, err, "datacenter with reference 0 not found")
 	})
 
 	t.Run("add", func(t *testing.T) {
@@ -455,7 +455,7 @@ func TestAddRelay(t *testing.T) {
 		var reply jsonrpc.AddRelayReply
 
 		err = svc.AddRelay(nil, &jsonrpc.AddRelayArgs{Relay: expected}, &reply)
-		assert.EqualError(t, err, fmt.Sprintf("relay with id %d already exists in memory storage", expected.ID))
+		assert.EqualError(t, err, fmt.Sprintf("relay with reference %d already exists", expected.ID))
 	})
 }
 
@@ -499,7 +499,7 @@ func TestRemoveRelay(t *testing.T) {
 		var reply jsonrpc.RemoveRelayReply
 
 		err = svc.RemoveRelay(nil, &jsonrpc.RemoveRelayArgs{RelayID: expected.ID}, &reply)
-		assert.EqualError(t, err, fmt.Sprintf("relay with id %d not found in memory storage", expected.ID))
+		assert.EqualError(t, err, fmt.Sprintf("relay with reference %d not found", expected.ID))
 	})
 
 	t.Run("remove", func(t *testing.T) {
@@ -806,7 +806,7 @@ func TestAddDatacenter(t *testing.T) {
 		var reply jsonrpc.AddDatacenterReply
 
 		err := svc.AddDatacenter(nil, &jsonrpc.AddDatacenterArgs{Datacenter: expected}, &reply)
-		assert.EqualError(t, err, "datacenter with id 1 already exists in memory storage")
+		assert.EqualError(t, err, "datacenter with reference 1 already exists")
 	})
 }
 
@@ -831,7 +831,7 @@ func TestRemoveDatacenter(t *testing.T) {
 		var reply jsonrpc.RemoveDatacenterReply
 
 		err := svc.RemoveDatacenter(nil, &jsonrpc.RemoveDatacenterArgs{Name: expected.Name}, &reply)
-		assert.EqualError(t, err, fmt.Sprintf("datacenter with id %d not found in memory storage", expected.ID))
+		assert.EqualError(t, err, fmt.Sprintf("datacenter with reference %d not found", expected.ID))
 	})
 
 	t.Run("remove", func(t *testing.T) {
