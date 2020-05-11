@@ -217,13 +217,23 @@ namespace core
         handler.handle();
       } break;
       // Next three all do the same thing
-      case V3BackendRelayResponse:
-      case V3BackendConfigResponse:
       case V3BackendInitResponse: {
         mRecorder.addToReceived(wholePacketSize);
         mStats.BytesPerSecManagementRx += wholePacketSize;
         mSender.send(packet);
-        LogDebug("got something from old backend, current number of items in channel ", mSender.size());
+        LogDebug("got init response, current number of items in channel ", mSender.size());
+      } break;
+      case V3BackendConfigResponse: {
+        mRecorder.addToReceived(wholePacketSize);
+        mStats.BytesPerSecManagementRx += wholePacketSize;
+        mSender.send(packet);
+        LogDebug("got config response, current number of items in channel ", mSender.size());
+      } break;
+      case V3BackendRelayResponse: {
+        mRecorder.addToReceived(wholePacketSize);
+        mStats.BytesPerSecManagementRx += wholePacketSize;
+        mSender.send(packet);
+        LogDebug("got relay response, current number of items in channel ", mSender.size());
       } break;
       default: {
         LogDebug("received unknown packet type: ", std::hex, (int)packet.Buffer[0], std::dec);

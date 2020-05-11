@@ -13,7 +13,7 @@ namespace legacy
     //   <master token> -- filled in by init request
     //     19 byte IP address -- is the ip of [?]
     //     8 byte timestamp -- not sure of resolution
-    //     32 byte MAC -- doesn't appear to be mutable, just copy from response
+    //     32 byte MAC -- hash
     //   </master token>
     //   8 byte GUID -- Random uint of this packet
     //   1 byte fragment index -- Index of the fragment
@@ -23,11 +23,10 @@ namespace legacy
     //   </zipped>
     // </encrypted>
     // 64 byte MAC -- handled automatically by sodium
-
     auto build_udp_fragment(
 
      PacketType packet_type,
-     const BackendToken& token,
+     const BackendToken& master_token,
      uint64_t id,
      uint8_t fragmentIndex,
      uint8_t fragmentTotal,
@@ -41,8 +40,8 @@ namespace legacy
       std::vector<uint8_t> buffer(total_bytes - 1);
 
       size_t index = 0;
-      encoding::WriteAddress(buffer, index, token.Address);
-      encoding::WriteBytes(buffer, index, token.HMAC, token.HMAC.size());
+      encoding::WriteAddress(buffer, index, master_token.Address);
+      encoding::WriteBytes(buffer, index, master_token.HMAC, master_token.HMAC.size());
       encoding::WriteUint64(buffer, index, id);
       encoding::WriteUint8(buffer, index, fragmentIndex);
       encoding::WriteUint8(buffer, index, fragmentTotal);
@@ -64,7 +63,6 @@ namespace legacy
     auto packet_send(
      const os::Socket& socket,
      const BackendToken& master_token,
-     PacketType packet_type,
      core::GenericPacket<>& packet,
      BackendRequest& request) -> bool
     {
@@ -73,7 +71,6 @@ namespace legacy
         return false;
       }
 
-      request = {};
       request.id = crypto::Random<uint64_t>();
 
       size_t compressed_bytes_available = packet.Len + 32;
@@ -140,7 +137,7 @@ namespace legacy
          compressed_buffer.begin() + i * FragmentSize + fragment_bytes,
          pkt.Buffer.begin());
 
-        if (!build_udp_fragment(packet_type, master_token, request.id, i, fragment_total, pkt, out)) {
+        if (!build_udp_fragment(request.type, master_token, request.id, i, fragment_total, pkt, out)) {
           Log("failed to build v3 packet");
           return false;
         }

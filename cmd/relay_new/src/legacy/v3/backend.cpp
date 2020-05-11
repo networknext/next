@@ -35,8 +35,8 @@ namespace legacy
       LogDebug("generating ping key");
       std::array<uint8_t, PingKeySize> key;
       crypto_auth_keygen(key.data());
-      mPingKey.resize(PingKeySize * 2); // allocate enough space for the encoding
-      mPingKey.resize(encoding::base64::Encode(key, mPingKey)); // truncate the length
+      mPingKey.resize(PingKeySize * 2);                          // allocate enough space for the encoding
+      mPingKey.resize(encoding::base64::Encode(key, mPingKey));  // truncate the length
       LogDebug("done");
     }
 
@@ -68,65 +68,28 @@ namespace legacy
         return 1;
       }
 
-      BackendRequest request;
-      BackendResponse response;
-      std::vector<uint8_t> completeResponse;
-
       core::GenericPacket<> packet;
-      std::copy(std::begin(InitKey), std::end(InitKey), packet.Buffer.begin());
-      packet.Len = sizeof(InitKey);
-      packet.Addr = backendAddr;
-
-      uint8_t attempts = 0;
-      bool done = false;
-      uint64_t requested;
-      do {
-        LogDebug("sending init packet");
-        requested = mClock.elapsed<util::Nanosecond>();
-        bool sendSuccess = packet_send(mSocket, mToken, PacketType::InitRequest, packet, request);
-
-        attempts++;
-
-        // wait a second for the response to come in or if send failed
-        std::this_thread::sleep_for(1s);
-
-        if (!sendSuccess) {
-          Log("failed to send init packet");
-          continue;
-        }
-
-        LogDebug("checking for response");
-
-        // receive response(s) if it exists, if not resend
-        // if + while so that I can log something for the sake of debugging
-        if (mReceiver.hasItems()) {
-          while (mReceiver.hasItems()) {
-            LogDebug("got packet data");
-            mReceiver.recv(packet);
-
-            // this will return true once all the fragments have been received
-            if (readResponse(packet, request, response, completeResponse)) {
-              done = true;
-            }
-          }
-        } else {
-          LogDebug("no received packets yet");
-        }
-      } while (!done && !mSocket.closed() && !mReceiver.closed() && attempts < 60);
-
-      if (mSocket.closed() || mReceiver.closed() || attempts == 60) {
-        LogDebug("could not init relay");
-        return false;
+      {
+        std::copy(std::begin(InitKey), std::end(InitKey), packet.Buffer.begin());
+        packet.Len = sizeof(InitKey);
+        packet.Addr = backendAddr;
       }
-
+      BackendRequest request = {};
+      {
+        request.type = PacketType::InitRequest;
+      }
+      BackendResponse response;
       util::JSON doc;
-      if (!this->buildCompleteResponse(completeResponse, doc)) {
+
+      auto [ok, err] = sendAndRecv(packet, request, response, doc);
+      if (!ok) {
+        Log(err);
         return false;
       }
-
-      uint64_t received = mClock.elapsed<util::Nanosecond>();
 
       // process response
+
+      LogDebug("processing init response");
 
       if (!doc.memberExists("Timestamp")) {
         Log("v3 backend json does not contain 'Timestamp' member");
@@ -138,7 +101,7 @@ namespace legacy
         return false;
       }
 
-      mInitTimestamp = doc.get<uint64_t>("Timestamp") / 1000000 - (received - requested) / 2;
+      mInitTimestamp = doc.get<uint64_t>("Timestamp") / 1000000 - (response.At - request.At) / 2;
       auto b64TokenBuff = doc.get<std::string>("Token");
       std::array<uint8_t, TokenBytes> tokenBuff;
       if (encoding::base64::Decode(b64TokenBuff, tokenBuff) == 0) {
@@ -157,66 +120,40 @@ namespace legacy
     {
       LogDebug("configuring relay");
 
-      util::JSON doc;
-      if (!buildConfigJSON(doc)) {
-        Log("failed to build config json");
-        return false;
-      }
-
-      LogDebug("resolving backend addr");
       net::Address backendAddr;
-      if (!backendAddr.resolve(mEnv.RelayV3BackendHostname, mEnv.RelayV3BackendPort)) {
-        Log("Could not resolve the v3 backend hostname to an ip address");
-        return 1;
+      {
+        LogDebug("resolving backend addr");
+        if (!backendAddr.resolve(mEnv.RelayV3BackendHostname, mEnv.RelayV3BackendPort)) {
+          Log("Could not resolve the v3 backend hostname to an ip address");
+          return 1;
+        }
       }
 
       core::GenericPacket<> packet;
-      auto jsonStr = doc.toString();
-      std::copy(jsonStr.begin(), jsonStr.end(), packet.Buffer.begin());
-      packet.Len = jsonStr.length();
-      packet.Addr = backendAddr;
-
-      BackendRequest request;
-      BackendResponse response;
-      std::vector<uint8_t> completeResponse;
-
-      uint8_t attempts = 0;
-      bool done = false;
-      do {
-        LogDebug("sending config packet");
-        bool sendSuccess = packet_send(mSocket, mToken, PacketType::ConfigRequest, packet, request);
-
-        attempts++;
-
-        std::this_thread::sleep_for(1s);
-
-        if (!sendSuccess) {
-          Log("failed to send config packet");
-          continue;
-        }
-
-        LogDebug("checking for response");
-
-        if (mReceiver.hasItems()) {
-          while (mReceiver.hasItems()) {
-            LogDebug("got packet data");
-            mReceiver.recv(packet);
-
-            if (readResponse(packet, request, response, completeResponse)) {
-              done = true;
-            }
+      {
+        util::JSON doc;
+        {
+          if (!buildConfigJSON(doc)) {
+            Log("failed to build config json");
+            return false;
           }
-        } else {
-          LogDebug("no received packets yet");
         }
-      } while (!done && !mSocket.closed() && !mReceiver.closed() && attempts < 60);
 
-      if (mSocket.closed() || mReceiver.closed() || attempts == 60) {
-        LogDebug("could not config relay");
-        return false;
+        auto jsonStr = doc.toString();
+        std::copy(jsonStr.begin(), jsonStr.end(), packet.Buffer.begin());
+        packet.Len = jsonStr.length();
+        packet.Addr = backendAddr;
       }
+      BackendRequest request = {};
+      {
+        request.type = PacketType::ConfigRequest;
+      }
+      BackendResponse response;
+      util::JSON doc;
 
-      if (!this->buildCompleteResponse(completeResponse, doc)) {
+      auto [ok, err] = sendAndRecv(packet, request, response, doc);
+      if (!ok) {
+        Log(err);
         return false;
       }
 
@@ -268,14 +205,39 @@ namespace legacy
 
     auto Backend::update(bool shuttingDown) -> bool
     {
-      util::JSON doc;
-
-      if (!buildUpdateJSON(doc, shuttingDown)) {
-        Log("could not build v3 update json");
-        return false;
+      net::Address backendAddr;
+      {
+        LogDebug("resolving backend addr");
+        if (!backendAddr.resolve(mEnv.RelayV3BackendHostname, mEnv.RelayV3BackendPort)) {
+          Log("Could not resolve the v3 backend hostname to an ip address");
+          return 1;
+        }
       }
 
-      LogDebug("sending v3: ", doc.toPrettyString());
+      core::GenericPacket<> packet;
+      {
+        util::JSON doc;
+        if (!buildUpdateJSON(doc, shuttingDown)) {
+          Log("could not build v3 update json");
+          return false;
+        }
+        LogDebug("sending update v3: ", doc.toPrettyString());
+        auto jsonStr = doc.toString();
+        std::copy(jsonStr.begin(), jsonStr.end(), packet.Buffer.begin());
+        packet.Len = jsonStr.length();
+        packet.Addr = backendAddr;
+      }
+      BackendRequest request = {};
+      {
+        request.type = PacketType::UpdateRequest;
+      }
+      BackendResponse response;
+      util::JSON doc;
+
+      auto [ok, err] = sendAndRecv(packet, request, response, doc);
+      if (!ok) {
+        Log(err);
+      }
 
       return true;
     }
@@ -398,6 +360,66 @@ namespace legacy
       return true;
     }
 
+    auto Backend::sendAndRecv(
+     core::GenericPacket<>& packet, BackendRequest& request, BackendResponse& response, util::JSON& doc)
+     -> std::tuple<bool, std::string>
+    {
+      std::vector<uint8_t> completeResponse;
+      bool done = false;
+      unsigned int attempts = 0;
+      do {
+        LogDebug("sending ", request.type, " packet");
+        request.At = mClock.elapsed<util::Nanosecond>();
+        bool sendSuccess = packet_send(mSocket, mToken, packet, request);
+
+        attempts++;
+
+        // wait a second for the response to come in or if send failed
+        std::this_thread::sleep_for(1s);
+
+        if (!sendSuccess) {
+          Log("failed to send init packet");
+          continue;
+        }
+
+        LogDebug("checking for response");
+
+        // receive response(s) if it exists, if not resend
+        // if + while so that I can log something for the sake of debugging
+        if (mReceiver.hasItems()) {
+          while (mReceiver.hasItems()) {
+            LogDebug("got packet data");
+            mReceiver.recv(packet);
+
+            // this will return true once all the fragments have been received
+            if (readResponse(packet, request, response, completeResponse)) {
+              done = true;
+            }
+          }
+        } else {
+          LogDebug("no received packets yet");
+        }
+      } while (!done && !mSocket.closed() && !mReceiver.closed() && attempts < 60);
+
+      response.At = mClock.elapsed<util::Nanosecond>();
+
+      if (mSocket.closed() || mReceiver.closed() || attempts == 60) {
+        std::stringstream ss;
+        ss << "could not send request, attempts: " << attempts;
+        return {false, ss.str()};
+      }
+
+      LogDebug("building complete response");
+      auto [ok, err] = this->buildCompleteResponse(completeResponse, doc);
+      if (!ok) {
+        return {false, err};
+      }
+
+      LogDebug("received v3: ", doc.toPrettyString());
+
+      return {true, ""};
+    }
+
     // 1 byte packet type
     // 64 byte signature
     // <signed>
@@ -427,6 +449,7 @@ namespace legacy
         return false;
       }
 
+      LogDebug("verifing signature");
       if (
        crypto_sign_verify_detached(
         &packet.Buffer[1], &packet.Buffer[1 + crypto_sign_BYTES], packet.Len - (1 + crypto_sign_BYTES), UDPSignKey) != 0) {
@@ -434,16 +457,22 @@ namespace legacy
         return false;
       }
 
+      LogDebug("getting packet id");
       size_t index = 1 + crypto_sign_BYTES;
       uint64_t packet_id = encoding::ReadUint64(packet.Buffer, index);
       if (packet_id != request.id) {
         Log("discarding unexpected master UDP packet, expected ID ", request.id, ", got ", packet_id);
         return false;
       }
+      LogDebug("id is ", packet_id);
 
       response.FragIndex = encoding::ReadUint8(packet.Buffer, index);
       response.FragCount = encoding::ReadUint8(packet.Buffer, index);
       response.StatusCode = encoding::ReadUint16(packet.Buffer, index);
+
+      LogDebug("fragment index is ", (int)response.FragIndex);
+      LogDebug("fragment count is ", (int)response.FragCount);
+      LogDebug("status code is ", (int)response.StatusCode);
 
       if (response.FragCount == 0) {
         Log("invalid master fragment count (", static_cast<uint32_t>(response.FragCount), "), discarding packet");
@@ -461,6 +490,8 @@ namespace legacy
       }
 
       response.Type = static_cast<PacketType>(packet.Buffer[0]);
+
+      LogDebug("packet is of type: ", response.Type);
 
       if (request.fragment_total == 0) {
         request.type = response.Type;
@@ -496,6 +527,7 @@ namespace legacy
 
       // save this fragment
       {
+        LogDebug("saving fragment");
         auto& fragment = request.fragments[response.FragIndex];
         fragment.length = static_cast<uint16_t>(packet.Len - zip_start);
         std::copy(
@@ -517,9 +549,11 @@ namespace legacy
       }
 
       // all fragments have been received
+      LogDebug("all fragments received");
 
       request.id = 0;  // reset request
 
+      LogDebug("total size of fragment: ", complete_bytes);
       completeBuffer.resize(complete_bytes);
 
       int bytes = 0;
@@ -529,12 +563,14 @@ namespace legacy
         bytes += fragment.length;
       }
 
+      LogDebug("built complete packet");
+
       assert(bytes == complete_bytes);
 
       return true;
     }
 
-    auto Backend::buildCompleteResponse(std::vector<uint8_t>& completeBuffer, util::JSON& doc) -> bool
+    auto Backend::buildCompleteResponse(std::vector<uint8_t>& completeBuffer, util::JSON& doc) -> std::tuple<bool, std::string>
     {
       const int MaxPayload = 2 * FragmentSize * FragmentMax;
       std::vector<char> buffer(MaxPayload + 1);
@@ -545,33 +581,41 @@ namespace legacy
       z.next_out = (Bytef*)(buffer.data());
       z.avail_out = MaxPayload;
 
+      LogDebug("initalizing inflate");
       int result = inflateInit(&z);
       if (result != Z_OK) {
-        Log("failed to decompress master UDP packet: inflateInit failed");
-        return false;
+        return {false, "failed to decompress master UDP packet: inflateInit failed"};
       }
 
+      LogDebug("inflating");
       result = inflate(&z, Z_NO_FLUSH);
       if (result != Z_STREAM_END) {
-        Log("failed to decompress master UDP packet: inflate failed, result is ", result);
-        return false;
+        std::stringstream ss;
+        ss << "failed to decompress master UDP packet: inflate failed, result is " << result;
+        return {false, ss.str()};
       }
 
+      LogDebug("ending inflate");
       result = inflateEnd(&z);
       if (result != Z_OK) {
-        Log("failed to decompress master UDP packet: inflateEnd failed");
-        return false;
+        return {false, "failed to decompress master UDP packet: inflateEnd failed"};
       }
 
       int bytes = int(MaxPayload - z.avail_out);
       if (bytes == 0) {
-        Log("failed to decompress master UDP packet: not enough buffer space");
-        return false;
+        return {false, "failed to decompress master UDP packet: not enough buffer space"};
       }
 
-      doc.parse(buffer);
+      LogDebug("parsing buffer");
+      if (!doc.parse(buffer)) {
+        std::stringstream ss;
+        std::string strbuff(buffer.begin(), buffer.end());
+        ss << "failed to parse json response, looks like: " << strbuff;
+        return {false, ss.str()};
+      }
+      LogDebug("done");
 
-      return true;
+      return {true, ""};
     }
   }  // namespace v3
 }  // namespace legacy

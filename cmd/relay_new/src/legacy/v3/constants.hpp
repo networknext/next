@@ -55,10 +55,10 @@ namespace legacy
           str = "Init Request";
         } break;
         case PacketType::ConfigRequest: {
-          str = "Init Request";
+          str = "Config Request";
         } break;
         case PacketType::UpdateRequest: {
-          str = "Init Request";
+          str = "Update Request";
         } break;
         default: {
           str = "Unknown";

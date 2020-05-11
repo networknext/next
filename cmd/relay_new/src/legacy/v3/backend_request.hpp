@@ -19,6 +19,7 @@ namespace legacy
       std::array<BackendRequestFragment, FragmentMax> fragments;
       uint8_t fragment_total;
       PacketType type;
+      uint64_t At;
     };
   }  // namespace v3
 }  // namespace legacy

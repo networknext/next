@@ -894,7 +894,8 @@ const NEXT_PACKET_TYPE_RELAY_INIT_REQUEST = 43
 const NEXT_PACKET_TYPE_RELAY_INIT_RESPONSE = 52
 const NEXT_PACKET_TYPE_RELAY_CONFIG_REQUEST = 50
 const NEXT_PACKET_TYPE_RELAY_CONFIG_RESPONSE = 51
-const NEXT_PACKET_TYPE_RELAY_REPORT = 48
+const NEXT_PACKET_TYPE_RELAY_REPORT_REQUEST = 48
+const NEXT_PACKET_TYPE_RELAY_REPORT_RESPONSE = 49
 
 var MasterTokenSignKey = []byte{
 	0x15, 0xa0, 0x59, 0x84, 0x51, 0x1e, 0xf7, 0x96,
@@ -1011,6 +1012,9 @@ type RelayJSON struct {
 	ManagementAddress string
 }
 
+type RelayUpdateJSON struct {
+}
+
 func TerribleOldShite() {
 
 	listener := UDPListenerMasterCreate(MasterTokenSignKey, MasterUDPSealPublicKey, MasterUDPSealPrivateKey)
@@ -1030,8 +1034,6 @@ func TerribleOldShite() {
 				if err != nil {
 					return fmt.Errorf("could not write master token: %v", err)
 				}
-
-				fmt.Println("wrote master token")
 
 				response := &InitResponseJSON{
 					Timestamp:   uint64(time.Now().UnixNano() / 1000000), // milliseconds
@@ -1053,7 +1055,7 @@ func TerribleOldShite() {
 					conn.WriteToUDP(packet, from)
 				}
 			} else if packet.Type == NEXT_PACKET_TYPE_RELAY_CONFIG_REQUEST {
-
+				fmt.Println("got config request")
 				var request RelayConfigRequest
 				if err := json.Unmarshal(packet.Data, &request); err != nil {
 					fmt.Printf("could not parse relay config request json: %s", err)
@@ -1080,19 +1082,33 @@ func TerribleOldShite() {
 				for _, packet := range packets {
 					conn.WriteToUDP(packet, from)
 				}
-			} else if packet.Type == NEXT_PACKET_TYPE_RELAY_REPORT {
-
+			} else if packet.Type == NEXT_PACKET_TYPE_RELAY_REPORT_REQUEST {
+				fmt.Println("got update request")
 				relayEntry := RelayEntry{}
 				relayEntry.name = from.String()
 				relayEntry.id = GetRelayId(from.String())
 				relayEntry.address = from
 				relayEntry.lastUpdate = time.Now().Unix()
 
-				key := string(from.String())
+				key := from.String()
 
 				backend.mutex.Lock()
 				backend.relayDatabase[key] = relayEntry
 				backend.mutex.Unlock()
+
+				response := RelayUpdateJSON{}
+
+				responseData, _ := json.Marshal(response)
+
+				packets, err := builder.Build(&UDPPacketToClient{Type: NEXT_PACKET_TYPE_RELAY_REPORT_RESPONSE, ID: packet.ID, Status: uint16(200), Data: responseData})
+				if err != nil {
+					return fmt.Errorf("could not build relay config response packet: %v", err)
+				}
+
+				fmt.Printf("sending %d packets", len(packets))
+				for _, packet := range packets {
+					conn.WriteToUDP(packet, from)
+				}
 			}
 
 			return nil

@@ -13,7 +13,6 @@ namespace legacy
     auto packet_send(
      const os::Socket& socket,
      const BackendToken& master_token,
-     PacketType packet_type,
      core::GenericPacket<>& packet,
      BackendRequest& request) -> bool;
   }

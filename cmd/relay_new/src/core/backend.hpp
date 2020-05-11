@@ -239,7 +239,7 @@ namespace core
           return false;
         }
       } else {
-        Log("warning: update version not number");
+        Log("warning, update version not number");
       }
     } else {
       Log("warning, version number missing in update response");

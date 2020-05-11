@@ -16,6 +16,7 @@ namespace legacy
       uint8_t FragCount;
       uint16_t StatusCode;
       core::Packet<std::vector<uint8_t>> Data;
+      uint64_t At;
     };
   }  // namespace v3
 }  // namespace legacy

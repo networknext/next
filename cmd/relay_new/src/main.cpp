@@ -71,9 +71,9 @@ namespace
     if (env.ProcessorCount.empty()) {
       numProcs = std::thread::hardware_concurrency();
       if (numProcs > 0) {
-        Log("RELAY_PROCESSOR_COUNT not set, autodetected number of processors available: ", numProcs, "\n\n");
+        Log("RELAY_PROCESSOR_COUNT not set, autodetected number of processors available: ", numProcs);
       } else {
-        Log("error: RELAY_PROCESSOR_COUNT not set, could not detect processor count, please set the env var\n\n");
+        Log("error: RELAY_PROCESSOR_COUNT not set, could not detect processor count, please set the env var");
         return false;
       }
     } else {
@@ -180,7 +180,7 @@ int main(int argc, const char* argv[])
   net::Address relayAddr;
   {
     if (!relayAddr.parse(env.RelayAddress)) {
-      Log("error: invalid relay address '", env.RelayAddress, "'\n");
+      Log("error: invalid relay address: ", env.RelayAddress);
       return 1;
     }
 
@@ -212,7 +212,7 @@ int main(int argc, const char* argv[])
     return 1;
   }
 
-  Log("Initializing relay\n");
+  Log("Initializing relay");
 
   legacy::v3::TrafficStats v3TrafficStats;
   core::RouterInfo routerInfo;
@@ -404,6 +404,7 @@ int main(int argc, const char* argv[])
   {
     // ping proc setup
     {
+      LogDebug("initializing v3 ping processor");
       net::Address bindAddr = relayAddr;
       {
         bindAddr.Port = 0;
@@ -435,6 +436,7 @@ int main(int argc, const char* argv[])
 
     // backend setup
     {
+      LogDebug("initializing relay with v3 backend");
       auto socket = makeSocket(relayAddr.Port);
       if (!socket) {
         Log("could not create v3 backend socket");
@@ -452,7 +454,7 @@ int main(int argc, const char* argv[])
            return;
          }
 
-         Log("relay initalized with old backend");
+         Log("relay initialized with old backend");
 
          if (!backend.config()) {
            Log("could not configure relay with old backend");
@@ -488,12 +490,12 @@ int main(int argc, const char* argv[])
   }
 
   if (!relay_initialized) {
-    Log("error: could not initialize relay\n\n");
+    Log("error: could not initialize relay");
     cleanup();
     return 1;
   }
 
-  Log("relay initialized with new backend\n\n");
+  Log("relay initialized with new backend");
 
   setupSignalHandlers();
 

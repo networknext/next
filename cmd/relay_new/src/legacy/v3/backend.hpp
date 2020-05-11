@@ -21,7 +21,13 @@ namespace legacy
     class Backend
     {
      public:
-      Backend(util::Receiver<core::GenericPacket<>>& receiver, util::Env& env, os::Socket& socket, const util::Clock& relayClock, TrafficStats& stats, core::RelayManager& manager);
+      Backend(
+       util::Receiver<core::GenericPacket<>>& receiver,
+       util::Env& env,
+       os::Socket& socket,
+       const util::Clock& relayClock,
+       TrafficStats& stats,
+       core::RelayManager& manager);
       ~Backend() = default;
 
       auto init() -> bool;
@@ -48,8 +54,15 @@ namespace legacy
 
       auto buildConfigJSON(util::JSON& doc) -> bool;
       auto buildUpdateJSON(util::JSON& doc, bool shuttingDown) -> bool;
-      auto readResponse(core::GenericPacket<>& packet, BackendRequest& request, BackendResponse& response, std::vector<uint8_t>& completeResponse) -> bool;
-      auto buildCompleteResponse(std::vector<uint8_t>& completeBuffer, util::JSON& doc) -> bool;
+
+      auto sendAndRecv(core::GenericPacket<>& packet, BackendRequest& request, BackendResponse& response, util::JSON& doc)
+       -> std::tuple<bool, std::string>;
+      auto readResponse(
+       core::GenericPacket<>& packet,
+       BackendRequest& request,
+       BackendResponse& response,
+       std::vector<uint8_t>& completeResponse) -> bool;
+      auto buildCompleteResponse(std::vector<uint8_t>& completeBuffer, util::JSON& doc) -> std::tuple<bool, std::string>;
     };
   }  // namespace v3
 }  // namespace legacy
