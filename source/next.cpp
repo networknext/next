@@ -7427,6 +7427,8 @@ int next_address_equal( const next_address_t * a, const next_address_t * b )
 
 struct next_pending_session_entry_t
 {
+    NEXT_DECLARE_SENTINEL(0)
+
     next_address_t address;
     uint64_t session_id;
     uint64_t user_hash;
@@ -7436,66 +7438,141 @@ struct next_pending_session_entry_t
     double last_packet_send_time;
     uint8_t private_key[crypto_secretbox_KEYBYTES];
     uint8_t upgrade_token[NEXT_UPGRADE_TOKEN_BYTES];
+
+    NEXT_DECLARE_SENTINEL(1)
 };
+
+void next_pending_session_entry_initialize_sentinels( next_pending_session_entry_t * entry )
+{
+    (void) entry;
+    next_assert( entry );
+    NEXT_INITIALIZE_SENTINEL( entry, 0 )
+    NEXT_INITIALIZE_SENTINEL( entry, 1 )
+}
+
+void next_pending_session_entry_verify_sentinels( next_pending_session_entry_t * entry )
+{
+    // todo
+    (void) entry;
+    next_assert( entry );
+    /*
+    NEXT_VERIFY_SENTINEL( entry, 0 )
+    NEXT_VERIFY_SENTINEL( entry, 1 )
+    */
+}
 
 struct next_pending_session_manager_t
 {
+    NEXT_DECLARE_SENTINEL(0)
+
     void * context;
     int size;
     int max_entry_index;
     next_address_t * addresses;
     next_pending_session_entry_t * entries;
+
+    NEXT_DECLARE_SENTINEL(1)
 };
+
+void next_pending_session_manager_initialize_sentinels( next_pending_session_manager_t * session_manager )
+{
+    (void) session_manager;
+    next_assert( session_manager );
+    NEXT_INITIALIZE_SENTINEL( session_manager, 0 )
+    NEXT_INITIALIZE_SENTINEL( session_manager, 1 )
+}
+
+void next_pending_session_manager_verify_sentinels( next_pending_session_manager_t * session_manager )
+{
+    (void) session_manager;
+    next_assert( session_manager );
+    NEXT_VERIFY_SENTINEL( session_manager, 0 )
+    NEXT_VERIFY_SENTINEL( session_manager, 1 )
+    const int size = session_manager->size;
+    for ( int i = 0; i < size; ++i )
+    {
+        if ( session_manager->addresses[i].type != 0 )
+        {
+            next_pending_session_entry_verify_sentinels( &session_manager->entries[i] );
+        }
+    }
+}
 
 void next_pending_session_manager_destroy( next_pending_session_manager_t * pending_session_manager );
 
 next_pending_session_manager_t * next_pending_session_manager_create( void * context, int initial_size )
 {
     next_pending_session_manager_t * pending_session_manager = (next_pending_session_manager_t*) next_malloc( context, sizeof(next_pending_session_manager_t) );
+ 
     next_assert( pending_session_manager );
     if ( !pending_session_manager )
         return NULL;
+ 
     memset( pending_session_manager, 0, sizeof(next_pending_session_manager_t) );
+ 
+    next_pending_session_manager_initialize_sentinels( pending_session_manager );
+
     pending_session_manager->context = context;
     pending_session_manager->size = initial_size;
     pending_session_manager->addresses = (next_address_t*) next_malloc( context, initial_size * sizeof(next_address_t) );
     pending_session_manager->entries = (next_pending_session_entry_t*) next_malloc( context, initial_size * sizeof(next_pending_session_entry_t) );
+
     next_assert( pending_session_manager->addresses );
     next_assert( pending_session_manager->entries );
+
     if ( pending_session_manager->addresses == NULL || pending_session_manager->entries == NULL )
     {
         next_pending_session_manager_destroy( pending_session_manager );
         return NULL;
     }
+
     memset( pending_session_manager->addresses, 0, initial_size * sizeof(next_address_t) );
     memset( pending_session_manager->entries, 0, initial_size * sizeof(next_pending_session_entry_t) );
+
+    for ( int i = 0; i < initial_size; i++ )
+        next_pending_session_entry_initialize_sentinels( &pending_session_manager->entries[i] );
+
+    next_pending_session_manager_verify_sentinels( pending_session_manager );
+
     return pending_session_manager;
 }
 
 void next_pending_session_manager_destroy( next_pending_session_manager_t * pending_session_manager )
 {
-    next_assert( pending_session_manager );
+    next_pending_session_manager_verify_sentinels( pending_session_manager );
+ 
     next_free( pending_session_manager->context, pending_session_manager->addresses );
     next_free( pending_session_manager->context, pending_session_manager->entries );
+ 
     clear_and_free( pending_session_manager->context, pending_session_manager, sizeof(next_pending_session_manager_t) );
 }
 
 bool next_pending_session_manager_expand( next_pending_session_manager_t * pending_session_manager )
 {
-    next_assert( pending_session_manager );
+    next_pending_session_manager_verify_sentinels( pending_session_manager );
+
     int new_size = pending_session_manager->size * 2;
+    
     next_address_t * new_addresses = (next_address_t*) next_malloc( pending_session_manager->context, new_size * sizeof(next_address_t) );
+    
     next_pending_session_entry_t * new_entries = (next_pending_session_entry_t*) next_malloc( pending_session_manager->context, new_size * sizeof(next_pending_session_entry_t) );
+    
     next_assert( pending_session_manager->addresses );
     next_assert( pending_session_manager->entries );
+    
     if ( pending_session_manager->addresses == NULL || pending_session_manager->entries == NULL )
     {
         next_free( pending_session_manager->context, new_addresses );
         next_free( pending_session_manager->context, new_entries );
         return false;
     }
+    
     memset( new_addresses, 0, new_size * sizeof(next_address_t) );
     memset( new_entries, 0, new_size * sizeof(next_pending_session_entry_t) );
+    
+    for ( int i = 0; i < new_size; ++i )
+        next_pending_session_entry_initialize_sentinels( &pending_session_manager->entries[i] );
+
     int index = 0;
     const int current_size = pending_session_manager->size;
     for ( int i = 0; i < current_size; ++i )
@@ -7507,18 +7584,24 @@ bool next_pending_session_manager_expand( next_pending_session_manager_t * pendi
             index++;            
         }
     }
+    
     next_free( pending_session_manager->context, pending_session_manager->addresses );
     next_free( pending_session_manager->context, pending_session_manager->entries );
+    
     pending_session_manager->addresses = new_addresses;
     pending_session_manager->entries = new_entries;
     pending_session_manager->size = new_size;
     pending_session_manager->max_entry_index = index - 1;
+    
+    next_pending_session_manager_verify_sentinels( pending_session_manager );
+
     return true;
 }
 
 next_pending_session_entry_t * next_pending_session_manager_add( next_pending_session_manager_t * pending_session_manager, const next_address_t * address, uint64_t session_id, const uint8_t * private_key, const uint8_t * upgrade_token, double current_time )
 {
-    next_assert( pending_session_manager );
+    next_pending_session_manager_verify_sentinels( pending_session_manager );
+
     next_assert( session_id != 0 );
     next_assert( address );
     next_assert( address->type != NEXT_ADDRESS_NONE );
@@ -7562,16 +7645,22 @@ next_pending_session_entry_t * next_pending_session_manager_add( next_pending_se
     memcpy( entry->private_key, private_key, crypto_secretbox_KEYBYTES );
     memcpy( entry->upgrade_token, upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
 
+    next_pending_session_manager_verify_sentinels( pending_session_manager );
+
     return entry;
 }
 
 void next_pending_session_manager_remove_at_index( next_pending_session_manager_t * pending_session_manager, int index )
 {
-    next_assert( pending_session_manager );
+    next_pending_session_manager_verify_sentinels( pending_session_manager );
+
     next_assert( index >= 0 );
     next_assert( index <= pending_session_manager->max_entry_index );
+
     const int max_index = pending_session_manager->max_entry_index;
+
     pending_session_manager->addresses[index].type = NEXT_ADDRESS_NONE;
+
     if ( index == max_index )
     {
         while ( index > 0 && pending_session_manager->addresses[index].type == NEXT_ADDRESS_NONE )
@@ -7584,9 +7673,12 @@ void next_pending_session_manager_remove_at_index( next_pending_session_manager_
 
 void next_pending_session_manager_remove_by_address( next_pending_session_manager_t * pending_session_manager, const next_address_t * address )
 {
-    next_assert( pending_session_manager );
+    next_pending_session_manager_verify_sentinels( pending_session_manager );
+
     next_assert( address );
+
     const int max_index = pending_session_manager->max_entry_index;
+
     for ( int i = 0; i <= max_index; ++i )
     {
         if ( next_address_equal( address, &pending_session_manager->addresses[i] ) == 1 )
@@ -7599,9 +7691,12 @@ void next_pending_session_manager_remove_by_address( next_pending_session_manage
 
 next_pending_session_entry_t * next_pending_session_manager_find( next_pending_session_manager_t * pending_session_manager, const next_address_t * address )
 {
-    next_assert( pending_session_manager );
+    next_pending_session_manager_verify_sentinels( pending_session_manager );
+
     next_assert( address );
+
     const int max_index = pending_session_manager->max_entry_index;
+
     for ( int i = 0; i <= max_index; ++i )
     {
         if ( next_address_equal( address, &pending_session_manager->addresses[i] ) == 1 )
@@ -7609,14 +7704,18 @@ next_pending_session_entry_t * next_pending_session_manager_find( next_pending_s
             return &pending_session_manager->entries[i];
         }        
     }
+
     return NULL;
 }
 
 int next_pending_session_manager_num_entries( next_pending_session_manager_t * pending_session_manager )
 {
-    next_assert( pending_session_manager );
+    next_pending_session_manager_verify_sentinels( pending_session_manager );
+
     int num_entries = 0;
+
     const int max_index = pending_session_manager->max_entry_index;
+
     for ( int i = 0; i <= max_index; ++i )
     {
         if ( pending_session_manager->addresses[i].type != 0 )
@@ -7624,6 +7723,7 @@ int next_pending_session_manager_num_entries( next_pending_session_manager_t * p
             num_entries++;
         }        
     }
+
     return num_entries;
 }
 
