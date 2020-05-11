@@ -2603,20 +2603,44 @@ struct NextUpgradeToken
 
 struct next_replay_protection_t
 {
+    NEXT_DECLARE_SENTINEL( 0 )
+
     uint64_t most_recent_sequence;
     uint64_t received_packet[NEXT_REPLAY_PROTECTION_BUFFER_SIZE];
+
+    NEXT_DECLARE_SENTINEL( 1 )
 };
+
+void next_replay_protection_initialize_sentinels( next_replay_protection_t * replay_protection )
+{
+    (void) replay_protection;
+    next_assert( replay_protection );
+    NEXT_INITIALIZE_SENTINEL( replay_protection, 0 )
+    NEXT_INITIALIZE_SENTINEL( replay_protection, 1 )
+}
+
+void next_replay_protection_verify_sentinels( next_replay_protection_t * replay_protection )
+{
+    (void) replay_protection;
+    next_assert( replay_protection );
+    NEXT_VERIFY_SENTINEL( replay_protection, 0 )
+    NEXT_VERIFY_SENTINEL( replay_protection, 1 )
+}
 
 void next_replay_protection_reset( next_replay_protection_t * replay_protection )
 {
-    next_assert( replay_protection );
+    next_replay_protection_initialize_sentinels( replay_protection );
+
     replay_protection->most_recent_sequence = 0;
+    
     memset( replay_protection->received_packet, 0xFF, sizeof( replay_protection->received_packet ) );
+    
+    next_replay_protection_verify_sentinels( replay_protection );
 }
 
 int next_replay_protection_already_received( next_replay_protection_t * replay_protection, uint64_t sequence )
 {
-    next_assert( replay_protection );
+    next_replay_protection_verify_sentinels( replay_protection );
 
     if ( sequence + NEXT_REPLAY_PROTECTION_BUFFER_SIZE <= replay_protection->most_recent_sequence )
         return 1;
@@ -2634,7 +2658,7 @@ int next_replay_protection_already_received( next_replay_protection_t * replay_p
 
 void next_replay_protection_advance_sequence( next_replay_protection_t * replay_protection, uint64_t sequence )
 {
-    next_assert( replay_protection );
+    next_replay_protection_verify_sentinels( replay_protection );
 
     if ( sequence > replay_protection->most_recent_sequence )
     {
@@ -2650,7 +2674,7 @@ void next_replay_protection_advance_sequence( next_replay_protection_t * replay_
 
 int next_wire_packet_bits( int packet_bytes )
 {
-    // todo: add the packet hash here
+    // todo: document this calculation
     return ( 14 + 20 + 8 + packet_bytes + 4 ) * 8;
 }
 
@@ -7452,13 +7476,10 @@ void next_pending_session_entry_initialize_sentinels( next_pending_session_entry
 
 void next_pending_session_entry_verify_sentinels( next_pending_session_entry_t * entry )
 {
-    // todo
     (void) entry;
     next_assert( entry );
-    /*
     NEXT_VERIFY_SENTINEL( entry, 0 )
     NEXT_VERIFY_SENTINEL( entry, 1 )
-    */
 }
 
 struct next_pending_session_manager_t
@@ -8083,9 +8104,12 @@ struct next_session_entry_t
     next_replay_protection_t payload_replay_protection;
     next_replay_protection_t special_replay_protection;
     next_replay_protection_t internal_replay_protection;
-    next_packet_loss_tracker_t packet_loss_tracker;
 
     NEXT_DECLARE_SENTINEL(24)
+
+    next_packet_loss_tracker_t packet_loss_tracker;
+
+    NEXT_DECLARE_SENTINEL(25)
 
     bool mutex_multipath;
     bool mutex_committed;
@@ -8097,11 +8121,11 @@ struct next_session_entry_t
     bool mutex_send_over_network_next;
     next_address_t mutex_send_address;
  
-    NEXT_DECLARE_SENTINEL(25)
+    NEXT_DECLARE_SENTINEL(26)
 
     uint8_t mutex_private_key[crypto_box_SECRETKEYBYTES];
 
-    NEXT_DECLARE_SENTINEL(26)
+    NEXT_DECLARE_SENTINEL(27)
 };
 
 void next_session_entry_initialize_sentinels( next_session_entry_t * entry )
@@ -8135,6 +8159,7 @@ void next_session_entry_initialize_sentinels( next_session_entry_t * entry )
     NEXT_INITIALIZE_SENTINEL( entry, 24 )
     NEXT_INITIALIZE_SENTINEL( entry, 25 )
     NEXT_INITIALIZE_SENTINEL( entry, 26 )
+    NEXT_INITIALIZE_SENTINEL( entry, 27 )
 }
 
 void next_session_entry_verify_sentinels( next_session_entry_t * entry )
@@ -8168,6 +8193,10 @@ void next_session_entry_verify_sentinels( next_session_entry_t * entry )
     NEXT_VERIFY_SENTINEL( entry, 24 )
     NEXT_VERIFY_SENTINEL( entry, 25 )
     NEXT_VERIFY_SENTINEL( entry, 26 )
+    NEXT_VERIFY_SENTINEL( entry, 27 )
+    next_replay_protection_verify_sentinels( &entry->payload_replay_protection );
+    next_replay_protection_verify_sentinels( &entry->special_replay_protection );
+    next_replay_protection_verify_sentinels( &entry->internal_replay_protection );
 }
 
 struct next_session_manager_t

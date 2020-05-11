@@ -40,19 +40,11 @@ DONE
 
 	next_pending_session_entry_t
 
-TODO
-
-	--------------------------------
-
 	next_replay_protection_t
 
-	--------------------------------
+TODO
 
 	next_packet_loss_tracker_t
-
-	--------------------------------
-
-	Hook up server verify to verify sub-objects.
 
 	--------------------------------
 
