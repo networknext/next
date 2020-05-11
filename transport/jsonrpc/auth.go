@@ -247,13 +247,9 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 		return fmt.Errorf("failed to fetch user roles: %w", err)
 	}
 
-<<<<<<< HEAD
 	if len(userRoles.Roles) > 0 {
 		err = s.Auth0.Manager.User.RemoveRoles(args.UserID, userRoles.Roles...)
 	}
-=======
-	err = s.Auth0.Manager.User.RemoveRoles(args.UserID, userRoles.Roles...)
->>>>>>> 361d0712a81cb3edb8a033532d5a2c0e2b75175d
 	if err != nil {
 		return fmt.Errorf("failed to remove current user role: %w", err)
 	}
