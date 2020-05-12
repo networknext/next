@@ -67,6 +67,7 @@ JSONRPCClient = {
 
 
 		return response.json().then((json) => {
+			console.log(json)
 			if (json.error) {
 				throw new Error(json.error);
 			}
@@ -123,10 +124,9 @@ MapHandler = {
 	refreshMapSessions() {
 		setTimeout(() => {
 			let filter = mapSessionsCount.$data.filter;
-			let buyerId = filter.buyerId;
 
 			JSONRPCClient
-				.call('BuyersService.SessionMapPoints', {buyer_id: buyerId})
+				.call('BuyersService.SessionMapPoints', {buyer_id: filter.buyerId})
 				.then((response) => {
 					/**
 					 * This code is used for demo purposes -> it uses around 580k points over NYC
@@ -147,7 +147,7 @@ MapHandler = {
 						aggregation
 					}); */
 
-					let sessions = response.map_points;
+					let sessions = response.map_points || [];
 					let onNN = sessions.filter((point) => {
 						return point.on_network_next;
 					});
@@ -222,6 +222,7 @@ UserHandler = {
 	userInfo: {
 		company: "",
 		email: "",
+		id: "",
 		name: "",
 		nickname: "",
 		pubKey: "",
@@ -244,7 +245,7 @@ UserHandler = {
 			return JSONRPCClient.call("AuthService.UserAccount", {user_id: this.userInfo.userId})
 		})
 		.then((response) => {
-			this.userInfo.buyerId = response.account.id;
+			this.userInfo.id = response.account.id;
 			this.userInfo.company = response.account.company_name;
 			this.userInfo.roles = response.account.roles;
 		}).catch((e) => {
@@ -309,15 +310,18 @@ WorkspaceHandler = {
 		// Run setup for selected page
 		switch (page) {
 			case 'config':
-				this.loadConfigPage();
 				this.links.accountsLink.classList.remove("active");
 				this.links.configLink.classList.add("active");
-				this.pages.config.style.display = 'block';
+				Object.assign(settingsPage.$data, {
+					showSettings: false,
+				});
 				break;
 			default:
 				this.links.configLink.classList.remove("active");
 				this.links.accountsLink.classList.add("active");
-				this.pages.accounts.style.display = 'block';
+				Object.assign(settingsPage.$data, {
+					showSettings: true,
+				});
 		}
 	},
 	changePage(page) {
@@ -457,6 +461,33 @@ WorkspaceHandler = {
 	},
 	loadSettingsPage() {
 		this.changeAccountPage();
+
+		console.log(UserHandler.userInfo.id);
+		if (UserHandler.userInfo.id != '') {
+			JSONRPCClient
+			.call('BuyersService.GameConfiguration', {buyer_id: UserHandler.userInfo.id})
+			.then((response) => {
+				UserHandler.userInfo.pubKey = response.game_config.public_key;
+				/**
+				 * I really dislike this but it is apparently the way to reload/update the data within a vue
+				 */
+				Object.assign(settingsPage.$data, {
+					pubKey: UserHandler.userInfo.pubKey,
+				});
+			})
+			.catch((e) => {
+				console.log("Something went wrong fetching public key");
+				console.log(e);
+			});
+		} else {
+			/**
+			 * I really dislike this but it is apparently the way to reload/update the data within a vue
+			 */
+			Object.assign(settingsPage.$data, {
+				pubKey: '',
+			});
+		}
+
 		let buyerId = !UserHandler.isAdmin() ? UserHandler.userInfo.id : "";
 		updateAccountsTableFilter({
 			buyerId: buyerId,
@@ -464,13 +495,15 @@ WorkspaceHandler = {
 	},
 	loadConfigPage() {
 		JSONRPCClient
-			.call('BuyersService.GameConfiguration', {buyer_id: UserHandler.userInfo.buyerId || '13672574147039585173'})
+			.call('BuyersService.GameConfiguration', {buyer_id: UserHandler.userInfo.id})
 			.then((response) => {
 				UserHandler.userInfo.pubKey = response.game_config.public_key;
 				/**
 				 * I really dislike this but it is apparently the way to reload/update the data within a vue
 				 */
-				Object.assign(pubKeyInput.$data, {pubKey: UserHandler.userInfo.pubKey});
+				Object.assign(pubKeyInput.$data, {
+					pubKey: UserHandler.userInfo.pubKey,
+				});
 			})
 			.catch((e) => {
 				console.log("Something went wrong fetching public key");
@@ -528,7 +561,7 @@ function startApp() {
 			console.log(e);
 		});
 	JSONRPCClient
-		.call('OpsService.Buyers', {})
+		.call('BuyersService.Buyers', {})
 		.then((response) => {
 			console.log(response);
 			allBuyers = response.Buyers;
@@ -554,7 +587,9 @@ function createVueComponents() {
 					message: '',
 				},
 			},
+			pubKey: UserHandler.userInfo.pubKey,
 			showAccounts: false,
+			showSettings: true,
 			updateUser: {
 				failure: {
 					message: '',
@@ -571,7 +606,8 @@ function createVueComponents() {
 			isAdmin: UserHandler.isAdmin,
 			refreshAccountsTable: refreshAccountsTable,
 			saveUser: WorkspaceHandler.saveUser,
-			updateAccountsTableFilter: updateAccountsTableFilter
+			updateAccountsTableFilter: updateAccountsTableFilter,
+			updatePubKey: updatePubKey
 		}
 	});
 	mapSessionsCount = new Vue({
@@ -589,15 +625,6 @@ function createVueComponents() {
 			isAdmin: UserHandler.isAdmin,
 			refreshMapSessions: MapHandler.refreshMapSessions,
 			updateFilter: MapHandler.updateFilter,
-		}
-	});
-	pubKeyInput = new Vue({
-		el: '#pubKey',
-		data: {
-			pubKey: UserHandler.userInfo.pubKey
-		},
-		methods: {
-			updatePubKey: updatePubKey
 		}
 	});
 	sessionDetailsVue = new Vue({
@@ -766,7 +793,7 @@ function refreshSessionTable() {
 		JSONRPCClient
 			.call('BuyersService.TopSessions', {buyer_id: filter.buyerId})
 			.then((response) => {
-				let sessions = response.sessions;
+				let sessions = response.sessions || [];
 				let onNN = sessions.filter((point) => {
 					return point.on_network_next;
 				});
@@ -853,7 +880,7 @@ function updatePubKey() {
 	let newPubkey = document.getElementById("pubkey-input").value;
 
 	JSONRPCClient
-		.call("BuyersService.UpdateGameConfiguration", {buyer_id: UserHandler.userInfo.buyerId || '13672574147039585173', new_public_key: newPubkey})
+		.call("BuyersService.UpdateGameConfiguration", {buyer_id: UserHandler.userInfo.id, new_public_key: newPubkey})
 		.then((response) => {
 			UserHandler.userInfo.pubkey = response.game_config.public_key;
 		})
