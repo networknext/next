@@ -310,7 +310,7 @@ extern void next_platform_thread_destroy( next_platform_thread_t * thread );
 
 extern void next_platform_thread_set_sched_max( next_platform_thread_t * thread );
 
-extern next_platform_mutex_t * next_platform_mutex_create( void * context );
+extern int next_platform_mutex_create( next_platform_mutex_t * mutex );
 
 extern void next_platform_mutex_acquire( next_platform_mutex_t * mutex );
 
@@ -318,22 +318,22 @@ extern void next_platform_mutex_release( next_platform_mutex_t * mutex );
 
 extern void next_platform_mutex_destroy( next_platform_mutex_t * mutex );
 
-struct next_mutex_helper_t
+struct next_platform_mutex_helper_t
 {
     next_platform_mutex_t * mutex;
-    next_mutex_helper_t( next_platform_mutex_t * mutex );
-    ~next_mutex_helper_t();
+    next_platform_mutex_helper_t( next_platform_mutex_t * mutex );
+    ~next_platform_mutex_helper_t();
 };
 
-#define next_mutex_guard( _mutex ) next_mutex_helper_t __mutex_helper( _mutex )
+#define next_platform_mutex_guard( _mutex ) next_platform_mutex_helper_t __mutex_helper( _mutex )
 
-next_mutex_helper_t::next_mutex_helper_t( next_platform_mutex_t * mutex ) : mutex( mutex )
+next_platform_mutex_helper_t::next_platform_mutex_helper_t( next_platform_mutex_t * mutex ) : mutex( mutex )
 {
     next_assert( mutex );
     next_platform_mutex_acquire( mutex );
 }
 
-next_mutex_helper_t::~next_mutex_helper_t()
+next_platform_mutex_helper_t::~next_platform_mutex_helper_t()
 {
     next_assert( mutex );
     next_platform_mutex_release( mutex );
@@ -5600,8 +5600,8 @@ struct next_client_internal_t
     next_queue_t * command_queue;
     next_queue_t * notify_queue;
     next_platform_socket_t * socket;
-    next_platform_mutex_t * command_mutex;
-    next_platform_mutex_t * notify_mutex;
+    next_platform_mutex_t command_mutex;
+    next_platform_mutex_t notify_mutex;
     next_address_t server_address;
     uint16_t bound_port;
     bool session_open;
@@ -5627,7 +5627,7 @@ struct next_client_internal_t
 
     next_relay_manager_t * near_relay_manager;
     next_route_manager_t * route_manager;
-    next_platform_mutex_t * route_manager_mutex;
+    next_platform_mutex_t route_manager_mutex;
 
     NEXT_DECLARE_SENTINEL(2)
 
@@ -5664,7 +5664,7 @@ struct next_client_internal_t
 
     NEXT_DECLARE_SENTINEL(8)
 
-    next_platform_mutex_t * bandwidth_mutex;
+    next_platform_mutex_t bandwidth_mutex;
     bool bandwidth_over_budget;
     float bandwidth_usage_kbps_up;
     float bandwidth_usage_kbps_down;
@@ -5807,16 +5807,16 @@ next_client_internal_t * next_client_internal_create( void * context, const char
 	next_printf( NEXT_LOG_LEVEL_INFO, "client bound to %s", next_address_to_string( &bind_address, address_string ) );
     client->bound_port = bind_address.port;
 
-    client->command_mutex = next_platform_mutex_create( client->context );
-    if ( client->command_mutex == NULL )
+    int result = next_platform_mutex_create( &client->command_mutex );
+    if ( result != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client could not create command mutex" );
         next_client_internal_destroy( client );
         return NULL;
     }
 
-    client->notify_mutex = next_platform_mutex_create( client->context );
-    if ( client->notify_mutex == NULL )
+    result = next_platform_mutex_create( &client->notify_mutex );
+    if ( result != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client could not create notify mutex" );
         next_client_internal_destroy( client );
@@ -5839,16 +5839,16 @@ next_client_internal_t * next_client_internal_create( void * context, const char
         return NULL;
     }
 
-    client->route_manager_mutex = next_platform_mutex_create( client->context );
-    if ( !client->route_manager_mutex )
+    result = next_platform_mutex_create( &client->route_manager_mutex );
+    if ( result != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client could not create client route manager mutex" );
         next_client_internal_destroy( client );
         return NULL;
     }
 
-    client->bandwidth_mutex = next_platform_mutex_create( client->context );
-    if ( client->bandwidth_mutex == NULL )
+    result = next_platform_mutex_create( &client->bandwidth_mutex );
+    if ( result != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client could not create bandwidth mutex" );
         next_client_internal_destroy( client );
@@ -5877,14 +5877,6 @@ void next_client_internal_destroy( next_client_internal_t * client )
     {
         next_platform_socket_destroy( client->socket );
     }
-    if ( client->command_mutex )
-    {
-        next_platform_mutex_destroy( client->command_mutex );
-    }
-    if ( client->notify_mutex )
-    {
-        next_platform_mutex_destroy( client->notify_mutex );
-    }
     if ( client->command_queue )
     {
         next_queue_destroy( client->command_queue );
@@ -5901,14 +5893,12 @@ void next_client_internal_destroy( next_client_internal_t * client )
     {
         next_route_manager_destroy( client->route_manager );
     }
-    if ( client->route_manager_mutex )
-    {
-        next_platform_mutex_destroy( client->route_manager_mutex );
-    }
-    if ( client->bandwidth_mutex )
-    {
-        next_platform_mutex_destroy( client->bandwidth_mutex );
-    }
+
+    next_platform_mutex_destroy( &client->command_mutex );
+    next_platform_mutex_destroy( &client->notify_mutex );
+    next_platform_mutex_destroy( &client->route_manager_mutex );
+    next_platform_mutex_destroy( &client->bandwidth_mutex );
+
     clear_and_free( client->context, client, sizeof(next_client_internal_t) );
 }
 
@@ -5982,7 +5972,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         notify->packet_bytes = packet_bytes - ( 10 + NEXT_PACKET_HASH_BYTES );
         memcpy( notify->packet_data, packet_data + 10 + NEXT_PACKET_HASH_BYTES, size_t(packet_bytes) - ( 10 + NEXT_PACKET_HASH_BYTES ) );
         {
-            next_mutex_guard( client->notify_mutex );
+            next_platform_mutex_guard( &client->notify_mutex );
             next_queue_push( client->notify_queue, notify );            
         }
         client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT]++;
@@ -6136,7 +6126,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         notify->type = NEXT_CLIENT_NOTIFY_UPGRADED;
         notify->session_id = client->session_id;
         {
-            next_mutex_guard( client->notify_mutex );
+            next_platform_mutex_guard( &client->notify_mutex );
             next_queue_push( client->notify_queue, notify );
         }
 
@@ -6159,14 +6149,14 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }
 
-        next_platform_mutex_acquire( client->route_manager_mutex );
+        next_platform_mutex_acquire( &client->route_manager_mutex );
         uint8_t route_private_key[crypto_box_SECRETKEYBYTES];
         memcpy( route_private_key, client->route_manager->route_data.pending_route_private_key, crypto_box_SECRETKEYBYTES );
         const bool fallback_to_direct = client->route_manager->fallback_to_direct;
         const bool pending_route = client->route_manager->route_data.pending_route;
         const uint64_t pending_route_session_id = client->route_manager->route_data.pending_route_session_id;
         const uint8_t pending_route_session_version = client->route_manager->route_data.pending_route_session_version;
-        next_platform_mutex_release( client->route_manager_mutex );
+        next_platform_mutex_release( &client->route_manager_mutex );
 
         uint8_t packet_type = 0;
         uint64_t packet_sequence = 0;
@@ -6192,7 +6182,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }
 
-        next_mutex_guard( client->route_manager_mutex );
+        next_platform_mutex_guard( &client->route_manager_mutex );
 
         next_route_manager_t * route_manager = client->route_manager;
 
@@ -6270,7 +6260,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             client->bandwidth_envelope_kbps_down = 0;
         }
 
-        next_platform_mutex_release( client->route_manager_mutex );
+        next_platform_mutex_release( &client->route_manager_mutex );
 
         return;
     }
@@ -6285,7 +6275,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }
 
-        next_platform_mutex_acquire( client->route_manager_mutex );
+        next_platform_mutex_acquire( &client->route_manager_mutex );
         uint8_t current_route_private_key[crypto_box_SECRETKEYBYTES];
         memcpy( current_route_private_key, client->route_manager->route_data.current_route_private_key, crypto_box_SECRETKEYBYTES );
         const bool fallback_to_direct = client->route_manager->fallback_to_direct;
@@ -6293,7 +6283,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         const bool pending_continue = client->route_manager->route_data.pending_continue;
         const uint64_t current_route_session_id = client->route_manager->route_data.current_route_session_id;
         const uint8_t current_route_session_version = client->route_manager->route_data.current_route_session_version;
-        next_platform_mutex_release( client->route_manager_mutex );
+        next_platform_mutex_release( &client->route_manager_mutex );
 
         if ( fallback_to_direct )
         {
@@ -6351,11 +6341,11 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client received continue response from relay" );
 
-        next_platform_mutex_acquire( client->route_manager_mutex );
+        next_platform_mutex_acquire( &client->route_manager_mutex );
         client->route_manager->route_data.current_route_committed = client->route_manager->route_data.pending_continue_committed;
         client->route_manager->route_data.current_route_expire_time += NEXT_SLICE_SECONDS;
         client->route_manager->route_data.pending_continue = false;
-        next_platform_mutex_release( client->route_manager_mutex );
+        next_platform_mutex_release( &client->route_manager_mutex );
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client continue network next route is confirmed" );
 
@@ -6370,9 +6360,9 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         uint64_t payload_sequence = 0;
         uint8_t payload_data[NEXT_MTU];         // todo: looks like we're doing a double copy here? seems dumb
 
-        next_platform_mutex_acquire( client->route_manager_mutex );
+        next_platform_mutex_acquire( &client->route_manager_mutex );
         const bool result = next_route_manager_process_server_to_client_packet( client->route_manager, from, packet_data, packet_bytes, &payload_sequence, payload_data, &payload_bytes );
-        next_platform_mutex_release( client->route_manager_mutex );
+        next_platform_mutex_release( &client->route_manager_mutex );
 
         if ( !result )
         {
@@ -6405,7 +6395,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         notify->packet_bytes = payload_bytes;
         memcpy( notify->packet_data, payload_data, payload_bytes );
         {
-            next_mutex_guard( client->notify_mutex );
+            next_platform_mutex_guard( &client->notify_mutex );
             next_queue_push( client->notify_queue, notify );            
         }
 
@@ -6422,9 +6412,9 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         uint64_t payload_sequence = 0;
         uint8_t payload_data[NEXT_MTU];     // todo: wut. we don't need payload for pong packet...
 
-        next_platform_mutex_acquire( client->route_manager_mutex );
+        next_platform_mutex_acquire( &client->route_manager_mutex );
         const bool result = next_route_manager_process_server_to_client_packet( client->route_manager, from, packet_data, packet_bytes, &payload_sequence, payload_data, &payload_bytes );
-        next_platform_mutex_release( client->route_manager_mutex );
+        next_platform_mutex_release( &client->route_manager_mutex );
 
         if ( !result )
         {
@@ -6548,10 +6538,10 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
             next_relay_manager_update( client->near_relay_manager, packet.num_near_relays, packet.near_relay_ids, packet.near_relay_addresses );
 
-            next_platform_mutex_acquire( client->route_manager_mutex );
+            next_platform_mutex_acquire( &client->route_manager_mutex );
             next_route_manager_update( client->route_manager, packet.update_type, packet.committed, packet.num_tokens, packet.tokens, next_router_public_key, client->client_route_private_key );
             fallback_to_direct = client->route_manager->fallback_to_direct;
-            next_platform_mutex_release( client->route_manager_mutex );
+            next_platform_mutex_release( &client->route_manager_mutex );
 
             if ( !client->fallback_to_direct && fallback_to_direct )
             {
@@ -6608,7 +6598,7 @@ void next_client_internal_process_game_packet( next_client_internal_t * client, 
         notify->packet_bytes = packet_bytes;
         memcpy( notify->packet_data, packet_data, size_t(packet_bytes) );
         {
-            next_mutex_guard( client->notify_mutex );
+            next_platform_mutex_guard( &client->notify_mutex );
             next_queue_push( client->notify_queue, notify );            
         }
         client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT]++;
@@ -6659,7 +6649,7 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
     {
         void * entry = NULL;
         {
-            next_mutex_guard( client->command_mutex );
+            next_platform_mutex_guard( &client->command_mutex );
             entry = next_queue_pop( client->command_queue );
         }
 
@@ -6684,10 +6674,10 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
                 next_printf( NEXT_LOG_LEVEL_INFO, "client opened session to %s", next_address_to_string( &open_session_command->server_address, buffer ) );
                 client->counters[NEXT_CLIENT_COUNTER_OPEN_SESSION]++;
-                next_platform_mutex_acquire( client->route_manager_mutex );
+                next_platform_mutex_acquire( &client->route_manager_mutex );
                 next_route_manager_reset( client->route_manager );
                 next_route_manager_direct_route( client->route_manager, true );
-                next_platform_mutex_release( client->route_manager_mutex );
+                next_platform_mutex_release( &client->route_manager_mutex );
             }
             break;
 
@@ -6742,17 +6732,17 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 next_replay_protection_reset( &client->special_replay_protection );
                 next_replay_protection_reset( &client->internal_replay_protection );
 
-                next_platform_mutex_acquire( client->bandwidth_mutex );
+                next_platform_mutex_acquire( &client->bandwidth_mutex );
                 client->bandwidth_over_budget = 0;
                 client->bandwidth_usage_kbps_up = 0;
                 client->bandwidth_usage_kbps_down = 0;
                 client->bandwidth_envelope_kbps_up = 0;
                 client->bandwidth_envelope_kbps_down = 0;
-                next_platform_mutex_release( client->bandwidth_mutex );
+                next_platform_mutex_release( &client->bandwidth_mutex );
 
-                next_platform_mutex_acquire( client->route_manager_mutex );
+                next_platform_mutex_acquire( &client->route_manager_mutex );
                 next_route_manager_reset( client->route_manager );
-                next_platform_mutex_release( client->route_manager_mutex );
+                next_platform_mutex_release( &client->route_manager_mutex );
 
                 next_packet_loss_tracker_reset( &client->packet_loss_tracker );
 
@@ -6812,12 +6802,12 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
     if ( client->last_stats_update_time + ( 1.0 / NEXT_CLIENT_STATS_UPDATES_PER_SECOND ) < current_time )
     {
-        next_platform_mutex_acquire( client->route_manager_mutex );
+        next_platform_mutex_acquire( &client->route_manager_mutex );
         const bool network_next = client->route_manager->route_data.current_route;
         const bool fallback_to_direct = client->route_manager->fallback_to_direct;
         const bool committed = network_next && client->route_manager->route_data.current_route_committed;
         const uint64_t flags = client->route_manager->flags;
-        next_platform_mutex_release( client->route_manager_mutex );
+        next_platform_mutex_release( &client->route_manager_mutex );
 
         client->client_stats.flags = flags;
         client->client_stats.next = network_next;
@@ -6881,7 +6871,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         notify->stats = client->client_stats;
         notify->fallback_to_direct = fallback_to_direct;
         {
-            next_mutex_guard( client->notify_mutex );
+            next_platform_mutex_guard( &client->notify_mutex );
             next_queue_push( client->notify_queue, notify );            
         }
 
@@ -6900,10 +6890,10 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         packet.platform_id = client->client_stats.platform_id;
         packet.connection_type = client->client_stats.connection_type;
 
-        next_platform_mutex_acquire( client->bandwidth_mutex );
+        next_platform_mutex_acquire( &client->bandwidth_mutex );
         packet.kbps_up = (int) ceil( client->bandwidth_usage_kbps_up );
         packet.kbps_down = (int) ceil( client->bandwidth_usage_kbps_down );
-        next_platform_mutex_release( client->bandwidth_mutex );
+        next_platform_mutex_release( &client->bandwidth_mutex );
 
         packet.next = client->client_stats.next;
         packet.committed = client->client_stats.committed;
@@ -6976,9 +6966,9 @@ void next_client_internal_update_direct_pings( next_client_internal_t * client )
 
     if ( client->last_direct_pong_time + NEXT_SESSION_TIMEOUT < current_time && !client->fallback_to_direct )
     {
-        next_platform_mutex_acquire( client->route_manager_mutex );
+        next_platform_mutex_acquire( &client->route_manager_mutex );
         next_route_manager_fallback_to_direct( client->route_manager, NEXT_FLAGS_CLIENT_TIMED_OUT );
-        next_platform_mutex_release( client->route_manager_mutex );
+        next_platform_mutex_release( &client->route_manager_mutex );
         client->fallback_to_direct = true;
     }
 }
@@ -7000,20 +6990,20 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
 
     if ( client->last_next_ping_time + ( 1.0 / NEXT_PINGS_PER_SECOND ) <= current_time )
     {
-        next_platform_mutex_acquire( client->route_manager_mutex );
+        next_platform_mutex_acquire( &client->route_manager_mutex );
         const bool send_over_network_next = client->route_manager->route_data.current_route;
-        next_platform_mutex_release( client->route_manager_mutex );
+        next_platform_mutex_release( &client->route_manager_mutex );
 
         if ( !send_over_network_next )
             return;
 
-        next_platform_mutex_acquire( client->route_manager_mutex );
+        next_platform_mutex_acquire( &client->route_manager_mutex );
         const uint64_t session_id = client->route_manager->route_data.current_route_session_id;
         const uint8_t session_version = client->route_manager->route_data.current_route_session_version;
         const next_address_t to = client->route_manager->route_data.current_route_next_address;
         uint8_t private_key[crypto_box_SECRETKEYBYTES];
         memcpy( private_key, client->route_manager->route_data.current_route_private_key, crypto_box_SECRETKEYBYTES );
-        next_platform_mutex_release( client->route_manager_mutex );
+        next_platform_mutex_release( &client->route_manager_mutex );
 
         uint64_t sequence = client->special_send_sequence++;
         sequence |= (1ULL<<62);
@@ -7070,13 +7060,13 @@ void next_client_internal_update_fallback_to_direct( next_client_internal_t * cl
     if ( next_global_config.disable_network_next )
         return;
 
-    next_platform_mutex_acquire( client->route_manager_mutex );
+    next_platform_mutex_acquire( &client->route_manager_mutex );
     if ( client->upgraded )
     {
         next_route_manager_check_for_timeouts( client->route_manager );
     }
     const bool fallback_to_direct = client->route_manager->fallback_to_direct;
-    next_platform_mutex_release( client->route_manager_mutex );
+    next_platform_mutex_release( &client->route_manager_mutex );
 
     if ( !client->fallback_to_direct && fallback_to_direct )
     {
@@ -7108,10 +7098,10 @@ void next_client_internal_update_route_manager( next_client_internal_t * client 
     uint8_t route_request_packet_data[NEXT_MAX_PACKET_BYTES*2];
     uint8_t continue_request_packet_data[NEXT_MAX_PACKET_BYTES*2];
 
-    next_platform_mutex_acquire( client->route_manager_mutex );
+    next_platform_mutex_acquire( &client->route_manager_mutex );
     const bool send_route_request = next_route_manager_send_route_request( client->route_manager, &route_request_to, route_request_packet_data, &route_request_packet_bytes );
     const bool send_continue_request = next_route_manager_send_continue_request( client->route_manager, &continue_request_to, continue_request_packet_data, &continue_request_packet_bytes );
-    next_platform_mutex_release( client->route_manager_mutex );
+    next_platform_mutex_release( &client->route_manager_mutex );
 
     if ( send_route_request )
     {
@@ -7157,9 +7147,9 @@ void next_client_internal_update_upgrade_response( next_client_internal_t * clie
     if ( client->upgrade_response_start_time + 5.0 <= current_time )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "upgrade response timed out" );
-        next_platform_mutex_acquire( client->route_manager_mutex );
+        next_platform_mutex_acquire( &client->route_manager_mutex );
         next_route_manager_fallback_to_direct( client->route_manager, NEXT_FLAGS_UPGRADE_RESPONSE_TIMED_OUT );
-        next_platform_mutex_release( client->route_manager_mutex );
+        next_platform_mutex_release( &client->route_manager_mutex );
         client->fallback_to_direct = true;
     }
 }
@@ -7327,7 +7317,7 @@ void next_client_destroy( next_client_t * client )
         }
         command->type = NEXT_CLIENT_COMMAND_DESTROY;
         {
-            next_mutex_guard( client->internal->command_mutex );
+            next_platform_mutex_guard( &client->internal->command_mutex );
             next_queue_push( client->internal->command_queue, command );
         }
 
@@ -7348,9 +7338,7 @@ void next_client_open_session( next_client_t * client, const char * server_addre
     next_client_verify_sentinels( client );
 
     next_assert( client->internal );
-    next_assert( client->internal->command_mutex );
-    next_assert( client->internal->command_queue );
-
+    
     next_client_close_session( client );
 
     next_address_t server_address;
@@ -7373,7 +7361,7 @@ void next_client_open_session( next_client_t * client, const char * server_addre
     command->server_address = server_address;
 
     {    
-        next_mutex_guard( client->internal->command_mutex );
+        next_platform_mutex_guard( &client->internal->command_mutex );
         next_queue_push( client->internal->command_queue, command );
     }
 
@@ -7401,9 +7389,7 @@ void next_client_close_session( next_client_t * client )
     next_client_verify_sentinels( client );
 
     next_assert( client->internal );
-    next_assert( client->internal->command_mutex );
-    next_assert( client->internal->command_queue );
-
+    
     next_client_command_close_session_t * command = (next_client_command_close_session_t*) next_malloc( client->context, sizeof( next_client_command_close_session_t ) );
     if ( !command )
     {
@@ -7414,7 +7400,7 @@ void next_client_close_session( next_client_t * client )
     
     command->type = NEXT_CLIENT_COMMAND_CLOSE_SESSION;
     {
-        next_mutex_guard( client->internal->command_mutex );    
+        next_platform_mutex_guard( &client->internal->command_mutex );    
         next_queue_push( client->internal->command_queue, command );
     }
 
@@ -7435,7 +7421,7 @@ void next_client_update( next_client_t * client )
     {
         void * entry = NULL;
         {
-            next_mutex_guard( client->internal->notify_mutex );    
+            next_platform_mutex_guard( &client->internal->notify_mutex );    
             entry = next_queue_pop( client->internal->notify_queue );
         }
 
@@ -7452,9 +7438,9 @@ void next_client_update( next_client_t * client )
 
                 client->packet_received_callback( client, client->context, packet_received->packet_data, packet_received->packet_bytes );
 
-                next_platform_mutex_acquire( client->internal->bandwidth_mutex );
+                next_platform_mutex_acquire( &client->internal->bandwidth_mutex );
                 const int envelope_kbps_down = client->internal->bandwidth_envelope_kbps_down;
-                next_platform_mutex_release( client->internal->bandwidth_mutex );
+                next_platform_mutex_release( &client->internal->bandwidth_mutex );
 
                 // is this accurate? what about direct packets received. don't they go through this codepath?
                 const int packet_bits = next_wire_packet_bits( NEXT_HEADER_BYTES + packet_received->packet_bytes );
@@ -7463,9 +7449,9 @@ void next_client_update( next_client_t * client )
 
                 double kbps_down = next_bandwidth_limiter_usage_kbps( &client->receive_bandwidth, next_time() );
 
-                next_platform_mutex_acquire( client->internal->bandwidth_mutex );
+                next_platform_mutex_acquire( &client->internal->bandwidth_mutex );
                 client->internal->bandwidth_usage_kbps_down = kbps_down;
-                next_platform_mutex_release( client->internal->bandwidth_mutex );
+                next_platform_mutex_release( &client->internal->bandwidth_mutex );
             }
             break;
 
@@ -7539,12 +7525,12 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
     if ( client->upgraded )
     {
-        next_platform_mutex_acquire( client->internal->route_manager_mutex );
+        next_platform_mutex_acquire( &client->internal->route_manager_mutex );
         const uint64_t send_sequence = next_route_manager_next_send_sequence( client->internal->route_manager );
         bool send_over_network_next = next_route_manager_has_network_next_route( client->internal->route_manager );
         bool committed = next_route_manager_committed( client->internal->route_manager );
         bool send_direct = !send_over_network_next;
-        next_platform_mutex_release( client->internal->route_manager_mutex );
+        next_platform_mutex_release( &client->internal->route_manager_mutex );
 
         bool multipath = client->client_stats.multipath;
 
@@ -7561,9 +7547,9 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
         // don't send over network next if we're over the bandwidth budget
 
-        next_platform_mutex_acquire( client->internal->bandwidth_mutex );
+        next_platform_mutex_acquire( &client->internal->bandwidth_mutex );
         const int envelope_kbps_up = client->internal->bandwidth_envelope_kbps_up;
-        next_platform_mutex_release( client->internal->bandwidth_mutex );
+        next_platform_mutex_release( &client->internal->bandwidth_mutex );
 
         // todo: WTF. we are including direct packets in the bandwidth budget here?!
 
@@ -7574,10 +7560,10 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
         double usage_kbps_up = next_bandwidth_limiter_usage_kbps( &client->send_bandwidth, next_time() );
 
-        next_platform_mutex_acquire( client->internal->bandwidth_mutex );
+        next_platform_mutex_acquire( &client->internal->bandwidth_mutex );
         client->internal->bandwidth_over_budget = over_budget;
         client->internal->bandwidth_usage_kbps_up = usage_kbps_up;
-        next_platform_mutex_release( client->internal->bandwidth_mutex );
+        next_platform_mutex_release( &client->internal->bandwidth_mutex );
 
         if ( send_over_network_next && over_budget )
         {
@@ -7597,9 +7583,9 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
             next_address_t next_to;
             uint8_t next_packet_data[NEXT_MAX_PACKET_BYTES*2];
 
-            next_platform_mutex_acquire( client->internal->route_manager_mutex );
+            next_platform_mutex_acquire( &client->internal->route_manager_mutex );
             next_route_manager_prepare_send_packet( client->internal->route_manager, send_sequence, &next_to, packet_data, packet_bytes, next_packet_data, &next_packet_bytes );
-            next_platform_mutex_release( client->internal->route_manager_mutex );
+            next_platform_mutex_release( &client->internal->route_manager_mutex );
 
             next_platform_socket_send_packet( client->internal->socket, &next_to, next_packet_data, next_packet_bytes );
 
@@ -7669,7 +7655,7 @@ void next_client_flag_session( next_client_t * client )
 
     command->type = NEXT_CLIENT_COMMAND_FLAG_SESSION;
     {    
-        next_mutex_guard( client->internal->command_mutex );
+        next_platform_mutex_guard( &client->internal->command_mutex );
         next_queue_push( client->internal->command_queue, command );
     }
 }
@@ -7704,7 +7690,7 @@ void next_client_set_user_flags( next_client_t * client, uint64_t user_flags )
     command->user_flags = user_flags;
 
     {    
-        next_mutex_guard( client->internal->command_mutex );
+        next_platform_mutex_guard( &client->internal->command_mutex );
         next_queue_push( client->internal->command_queue, command );
     }
 }
@@ -9800,11 +9786,11 @@ struct next_server_internal_t
     next_address_t bind_address;
     next_queue_t * command_queue;
     next_queue_t * notify_queue;
-    next_platform_mutex_t * session_mutex;
-    next_platform_mutex_t * command_mutex;
-    next_platform_mutex_t * notify_mutex;
+    next_platform_mutex_t session_mutex;
+    next_platform_mutex_t command_mutex;
+    next_platform_mutex_t notify_mutex;
     next_platform_socket_t * socket;
-    next_platform_mutex_t * state_and_resolve_hostname_mutex;
+    next_platform_mutex_t state_and_resolve_hostname_mutex;
     next_platform_thread_t * resolve_hostname_thread;
     next_pending_session_manager_t * pending_session_manager;
     next_session_manager_t * session_manager;
@@ -9961,32 +9947,35 @@ next_server_internal_t * next_server_internal_create( void * context, const char
     server->bind_address = bind_address;
     server->server_address = server_address;
 
-    server->session_mutex = next_platform_mutex_create( server->context );
-    if ( server->session_mutex == NULL )
+    int result = next_platform_mutex_create( &server->session_mutex );
+    if ( result != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "server could not create session mutex" );
         next_server_internal_destroy( server );
         return NULL;
     }
 
-    server->command_mutex = next_platform_mutex_create( server->context );
-    if ( server->command_mutex == NULL )
+    result = next_platform_mutex_create( &server->command_mutex );
+    
+    if ( result != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "server could not create command mutex" );
         next_server_internal_destroy( server );
         return NULL;
     }
 
-    server->notify_mutex = next_platform_mutex_create( server->context );
-    if ( server->notify_mutex == NULL )
+    result = next_platform_mutex_create( &server->notify_mutex );
+    
+    if ( result != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "server could not create notify mutex" );
         next_server_internal_destroy( server );
         return NULL;
     }
 
-    server->state_and_resolve_hostname_mutex = next_platform_mutex_create( server->context );
-    if ( server->state_and_resolve_hostname_mutex == NULL )
+    result = next_platform_mutex_create( &server->state_and_resolve_hostname_mutex );
+    
+    if ( result != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "server could not create state and resolve hostname mutex" );
         next_server_internal_destroy( server );
@@ -10044,25 +10033,9 @@ void next_server_internal_destroy( next_server_internal_t * server )
     {
         next_platform_socket_destroy( server->socket );
     }
-    if ( server->session_mutex )
-    {
-        next_platform_mutex_destroy( server->session_mutex );
-    }
-    if ( server->command_mutex )
-    {
-        next_platform_mutex_destroy( server->command_mutex );
-    }
-    if ( server->notify_mutex )
-    {
-        next_platform_mutex_destroy( server->notify_mutex );
-    }
     if ( server->resolve_hostname_thread )
     {
         next_platform_thread_destroy( server->resolve_hostname_thread );
-    }
-    if ( server->state_and_resolve_hostname_mutex )
-    {
-        next_platform_mutex_destroy( server->state_and_resolve_hostname_mutex );
     }
     if ( server->command_queue )
     {
@@ -10082,6 +10055,11 @@ void next_server_internal_destroy( next_server_internal_t * server )
         next_pending_session_manager_destroy( server->pending_session_manager );
         server->pending_session_manager = NULL;
     }
+
+    next_platform_mutex_destroy( &server->session_mutex );
+    next_platform_mutex_destroy( &server->command_mutex );
+    next_platform_mutex_destroy( &server->notify_mutex );
+    next_platform_mutex_destroy( &server->state_and_resolve_hostname_mutex );
 
     next_server_internal_verify_sentinels( server );
 
@@ -10204,7 +10182,7 @@ next_session_entry_t * next_server_internal_check_client_to_server_packet( next_
         entry->current_route_send_address = entry->pending_route_send_address;
         memcpy( entry->current_route_private_key, entry->pending_route_private_key, crypto_box_SECRETKEYBYTES );
 
-        next_platform_mutex_acquire( server->session_mutex );
+        next_platform_mutex_acquire( &server->session_mutex );
         entry->mutex_envelope_kbps_up = entry->current_route_kbps_up;
         entry->mutex_envelope_kbps_down = entry->current_route_kbps_down;
         entry->mutex_send_over_network_next = true;
@@ -10212,7 +10190,7 @@ next_session_entry_t * next_server_internal_check_client_to_server_packet( next_
         entry->mutex_session_version = entry->current_route_session_version;
         entry->mutex_send_address = entry->current_route_send_address;
         memcpy( entry->mutex_private_key, entry->current_route_private_key, crypto_box_SECRETKEYBYTES );
-        next_platform_mutex_release( server->session_mutex );
+        next_platform_mutex_release( &server->session_mutex );
     }
     else
     {
@@ -10296,7 +10274,7 @@ void next_server_internal_update_pending_upgrades( next_server_internal_t * serv
 
     int state = NEXT_SERVER_STATE_DIRECT_ONLY;
     {
-        next_mutex_guard( server->state_and_resolve_hostname_mutex );
+        next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
         state = server->state;
     }
 
@@ -10326,7 +10304,7 @@ void next_server_internal_update_pending_upgrades( next_server_internal_t * serv
             notify->address = entry->address;
             notify->session_id = entry->session_id;
             {
-                next_mutex_guard( server->notify_mutex );
+                next_platform_mutex_guard( &server->notify_mutex );
                 next_queue_push( server->notify_queue, notify );            
             }
             continue;
@@ -10363,7 +10341,7 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
 
     int state = NEXT_SERVER_STATE_DIRECT_ONLY;
     {
-        next_mutex_guard( server->state_and_resolve_hostname_mutex );
+        next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
         state = server->state;
     }
 
@@ -10391,13 +10369,13 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
             notify->address = entry->address;
             notify->session_id = entry->session_id;
             {
-                next_mutex_guard( server->notify_mutex );
+                next_platform_mutex_guard( &server->notify_mutex );
                 next_queue_push( server->notify_queue, notify );
             }
 
-            next_platform_mutex_acquire( server->session_mutex );
+            next_platform_mutex_acquire( &server->session_mutex );
             next_session_manager_remove_at_index( server->session_manager, index );
-            next_platform_mutex_release( server->session_mutex );
+            next_platform_mutex_release( &server->session_mutex );
 
             continue;
         }
@@ -10411,9 +10389,9 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
             entry->update_dirty = false;
             entry->waiting_for_update_response = false;
 
-            next_platform_mutex_acquire( server->session_mutex );
+            next_platform_mutex_acquire( &server->session_mutex );
             entry->mutex_send_over_network_next = false;
-            next_platform_mutex_release( server->session_mutex );
+            next_platform_mutex_release( &server->session_mutex );
         }
 
         index++;
@@ -10478,7 +10456,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         next_assert( notify->packet_bytes <= NEXT_MTU );
         memcpy( notify->packet_data, packet_data + NEXT_PACKET_HASH_BYTES + 10, size_t(notify->packet_bytes) );
         {
-            next_mutex_guard( server->notify_mutex );
+            next_platform_mutex_guard( &server->notify_mutex );
             next_queue_push( server->notify_queue, notify );            
         }
 
@@ -10495,7 +10473,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         {
             int state = NEXT_SERVER_STATE_DIRECT_ONLY;
             {
-                next_mutex_guard( server->state_and_resolve_hostname_mutex );
+                next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
                 state = server->state;
             }
 
@@ -10555,7 +10533,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
             next_printf( NEXT_LOG_LEVEL_INFO, "welcome to network next :)" );
 
-            next_mutex_guard( server->state_and_resolve_hostname_mutex );
+            next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
             server->state = NEXT_SERVER_STATE_INITIALIZED;
 
             return;
@@ -10567,7 +10545,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         {
             int state = NEXT_SERVER_STATE_DIRECT_ONLY;
             {
-                next_mutex_guard( server->state_and_resolve_hostname_mutex );
+                next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
                 state = server->state;
             }
 
@@ -10633,15 +10611,15 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server multipath enabled for session %" PRIx64, entry->session_id );
                 entry->multipath = true;
-                next_platform_mutex_acquire( server->session_mutex );
+                next_platform_mutex_acquire( &server->session_mutex );
                 entry->mutex_multipath = true;
-                next_platform_mutex_release( server->session_mutex );
+                next_platform_mutex_release( &server->session_mutex );
             }
 
             entry->committed = packet.committed;
-            next_platform_mutex_acquire( server->session_mutex );
+            next_platform_mutex_acquire( &server->session_mutex );
             entry->mutex_committed = packet.committed;
-            next_platform_mutex_release( server->session_mutex );
+            next_platform_mutex_release( &server->session_mutex );
 
             entry->update_dirty = true;
             entry->update_type = (uint8_t) packet.response_type;
@@ -10665,13 +10643,13 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             {
                 bool session_transitions_to_direct = false;
 
-                next_platform_mutex_acquire( server->session_mutex );
+                next_platform_mutex_acquire( &server->session_mutex );
                 if ( entry->mutex_send_over_network_next )
                 {
                     entry->mutex_send_over_network_next = false;
                     session_transitions_to_direct = true;
                 }
-                next_platform_mutex_release( server->session_mutex );
+                next_platform_mutex_release( &server->session_mutex );
 
                 if ( session_transitions_to_direct )
                 {
@@ -10778,9 +10756,9 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
             // add to established sessions
 
-            next_platform_mutex_acquire( server->session_mutex );
+            next_platform_mutex_acquire( &server->session_mutex );
             next_session_entry_t * entry = next_session_manager_add( server->session_manager, &pending_entry->address, pending_entry->session_id, pending_entry->private_key, pending_entry->upgrade_token );
-            next_platform_mutex_release( server->session_mutex );
+            next_platform_mutex_release( &server->session_mutex );
             if ( entry == NULL )
             {
                 char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
@@ -10805,7 +10783,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             notify->session_id = entry->session_id;
             notify->tag = entry->tag;
             {
-                next_mutex_guard( server->notify_mutex );
+                next_platform_mutex_guard( &server->notify_mutex );
                 next_queue_push( server->notify_queue, notify );            
             }
 
@@ -11040,7 +11018,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         next_assert( notify->packet_bytes <= NEXT_MTU );
         memcpy( notify->packet_data, packet_data + NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES, size_t(notify->packet_bytes) );
         {
-            next_mutex_guard( server->notify_mutex );
+            next_platform_mutex_guard( &server->notify_mutex );
             next_queue_push( server->notify_queue, notify );
         }
 
@@ -11228,7 +11206,7 @@ void next_server_internal_process_game_packet( next_server_internal_t * server, 
         next_assert( packet_bytes <= NEXT_MTU );
         memcpy( notify->packet_data, packet_data, size_t(packet_bytes) );
         {
-            next_mutex_guard( server->notify_mutex );
+            next_platform_mutex_guard( &server->notify_mutex );
             next_queue_push( server->notify_queue, notify );            
         }
     }
@@ -11275,7 +11253,7 @@ void next_server_internal_upgrade_session( next_server_internal_t * server, cons
 
     int state = NEXT_SERVER_STATE_DIRECT_ONLY;
     {
-        next_mutex_guard( server->state_and_resolve_hostname_mutex );
+        next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
         state = server->state;
     }
 
@@ -11351,7 +11329,7 @@ bool next_server_internal_pump_commands( next_server_internal_t * server, bool q
 
         void * entry = NULL;
         {
-            next_mutex_guard( server->command_mutex );
+            next_platform_mutex_guard( &server->command_mutex );
             entry = next_queue_pop( server->command_queue );
         }
 
@@ -11414,7 +11392,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     {
         address.port = atoi( port );
         next_assert( address.type == NEXT_ADDRESS_IPV4 || address.type == NEXT_ADDRESS_IPV6 );
-        next_mutex_guard( server->state_and_resolve_hostname_mutex );
+        next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
         server->resolve_hostname_finished = true;
         server->resolve_hostname_result = address;
         NEXT_PLATFORM_THREAD_RETURN();
@@ -11426,7 +11404,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
         {
             {
                 next_assert( address.type == NEXT_ADDRESS_IPV4 || address.type == NEXT_ADDRESS_IPV6 );
-                next_mutex_guard( server->state_and_resolve_hostname_mutex );
+                next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
                 server->resolve_hostname_finished = true;
                 server->resolve_hostname_result = address;
             }
@@ -11442,7 +11420,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to resolve backend hostname: %s", hostname );
 
     {
-        next_mutex_guard( server->state_and_resolve_hostname_mutex );
+        next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
         server->resolve_hostname_finished = true;
         memset( &server->resolve_hostname_result, 0, sizeof(next_address_t) );
         server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
@@ -11462,7 +11440,7 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
     next_address_t result;
     memset( &result, 0, sizeof(next_address_t) );
     {
-        next_mutex_guard( server->state_and_resolve_hostname_mutex );
+        next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
         finished = server->resolve_hostname_finished;
         result = server->resolve_hostname_result;
     }
@@ -11482,7 +11460,7 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
         next_server_notify_failed_to_resolve_hostname_t * notify = (next_server_notify_failed_to_resolve_hostname_t*) next_malloc( server->context, sizeof( next_server_notify_failed_to_resolve_hostname_t ) );
         notify->type = NEXT_SERVER_NOTIFY_FAILED_TO_RESOLVE_HOSTNAME;
         {
-            next_mutex_guard( server->notify_mutex );
+            next_platform_mutex_guard( &server->notify_mutex );
             next_queue_push( server->notify_queue, notify );
         }
         return true;
@@ -11512,7 +11490,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
     int state = NEXT_SERVER_STATE_DIRECT_ONLY;
     {
-        next_mutex_guard( server->state_and_resolve_hostname_mutex );
+        next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
         state = server->state;
     }
 
@@ -11553,7 +11531,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         if ( server->first_backend_server_init + 10.0 <= current_time )
         {
             next_printf( NEXT_LOG_LEVEL_INFO, "server did not get an init response from backend. falling back to direct only" );
-            next_mutex_guard( server->state_and_resolve_hostname_mutex );
+            next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
             server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
         }
     }
@@ -11898,7 +11876,7 @@ void next_server_destroy( next_server_t * server )
         }
         command->type = NEXT_SERVER_COMMAND_DESTROY;
         {
-            next_mutex_guard( server->internal->command_mutex );
+            next_platform_mutex_guard( &server->internal->command_mutex );
             next_queue_push( server->internal->command_queue, command );
         }
 
@@ -11922,7 +11900,7 @@ void next_server_update( next_server_t * server )
     {
         void * queue_entry = NULL;
         {
-            next_mutex_guard( server->internal->notify_mutex );    
+            next_platform_mutex_guard( &server->internal->notify_mutex );    
             queue_entry = next_queue_pop( server->internal->notify_queue );
         }
 
@@ -12013,14 +11991,12 @@ uint64_t next_server_upgrade_session( next_server_t * server, const next_address
     next_server_verify_sentinels( server );
 
     next_assert( server->internal );
-    next_assert( server->internal->command_mutex );
-    next_assert( server->internal->command_queue );
-
+    
     // don't upgrade sessions in direct only mode
 
     int state = NEXT_SERVER_STATE_DIRECT_ONLY;
     {
-        next_mutex_guard( server->internal->state_and_resolve_hostname_mutex );
+        next_platform_mutex_guard( &server->internal->state_and_resolve_hostname_mutex );
         state = server->internal->state;
     }
 
@@ -12058,7 +12034,7 @@ uint64_t next_server_upgrade_session( next_server_t * server, const next_address
     command->tag = tag_id;
 
     {    
-        next_mutex_guard( server->internal->command_mutex );
+        next_platform_mutex_guard( &server->internal->command_mutex );
         next_queue_push( server->internal->command_queue, command );
     }
 
@@ -12085,9 +12061,7 @@ void next_server_tag_session( next_server_t * server, const next_address_t * add
     next_server_verify_sentinels( server );
 
     next_assert( server->internal );
-    next_assert( server->internal->command_mutex );
-    next_assert( server->internal->command_queue );
-
+    
     // send tag session command to internal server
 
     next_server_command_tag_session_t * command = (next_server_command_tag_session_t*) next_malloc( server->context, sizeof( next_server_command_tag_session_t ) );
@@ -12111,7 +12085,7 @@ void next_server_tag_session( next_server_t * server, const next_address_t * add
     command->tag = tag_id;
 
     {    
-        next_mutex_guard( server->internal->command_mutex );
+        next_platform_mutex_guard( &server->internal->command_mutex );
         next_queue_push( server->internal->command_queue, command );
     }
 }
@@ -12121,9 +12095,7 @@ int next_server_session_upgraded( next_server_t * server, const next_address_t *
     next_server_verify_sentinels( server );
 
     next_assert( server->internal );
-    next_assert( server->internal->command_mutex );
-    next_assert( server->internal->command_queue );
-
+    
     next_proxy_session_entry_t * pending_entry = next_proxy_session_manager_find( server->pending_session_manager, address );
     if ( pending_entry != NULL )
         return 1;
@@ -12180,7 +12152,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
         next_address_t session_address;
         uint8_t session_private_key[crypto_box_SECRETKEYBYTES];
 
-        next_platform_mutex_acquire( server->internal->session_mutex );
+        next_platform_mutex_acquire( &server->internal->session_mutex );
         next_session_entry_t * internal_entry = next_session_manager_find_by_address( server->internal->session_manager, to_address );
         if ( internal_entry )
         {
@@ -12198,7 +12170,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
             session_address = internal_entry->mutex_send_address;
             memcpy( session_private_key, internal_entry->mutex_private_key, crypto_box_SECRETKEYBYTES );
         }
-        next_platform_mutex_release( server->internal->session_mutex );
+        next_platform_mutex_release( &server->internal->session_mutex );
 
         if ( !send_raw_direct )
         {
@@ -12286,6 +12258,37 @@ void next_server_send_packet_direct( next_server_t * server, const next_address_
     }
 
     next_platform_socket_send_packet( server->internal->socket, to_address, packet_data, packet_bytes );
+}
+
+// ---------------------------------------------------------------
+
+int next_mutex_create( next_mutex_t * mutex )
+{
+    next_assert( mutex );
+    next_assert( sizeof(next_platform_mutex_t) <= sizeof(next_mutex_t) );
+    next_platform_mutex_t * platform_mutex = (next_platform_mutex_t*) mutex;
+    return next_platform_mutex_create( platform_mutex );
+}
+
+void next_mutex_acquire( next_mutex_t * mutex )
+{
+    next_assert( mutex );
+    next_platform_mutex_t * platform_mutex = (next_platform_mutex_t*) mutex;
+    next_platform_mutex_acquire( platform_mutex );
+}
+
+void next_mutex_release( next_mutex_t * mutex )
+{
+    next_assert( mutex );
+    next_platform_mutex_t * platform_mutex = (next_platform_mutex_t*) mutex;
+    next_platform_mutex_release( platform_mutex );
+}
+
+void next_mutex_destroy( next_mutex_t * mutex )
+{
+    next_assert( mutex );
+    next_platform_mutex_t * platform_mutex = (next_platform_mutex_t*) mutex;
+    next_platform_mutex_destroy( platform_mutex );
 }
 
 // ---------------------------------------------------------------
@@ -13459,15 +13462,16 @@ static void test_platform_thread()
 
 static void test_platform_mutex()
 {
-    next_platform_mutex_t * mutex = next_platform_mutex_create( NULL );
-    check( mutex );
-    next_platform_mutex_acquire( mutex );
-    next_platform_mutex_release( mutex );
+    next_platform_mutex_t mutex;
+    int result = next_platform_mutex_create( &mutex );
+    check( result == NEXT_OK );
+    next_platform_mutex_acquire( &mutex );
+    next_platform_mutex_release( &mutex );
     {
-        next_mutex_guard( mutex );
+        next_platform_mutex_guard( &mutex );
         // ...
     }
-    next_platform_mutex_destroy( mutex );
+    next_platform_mutex_destroy( &mutex );
 }
 
 static int num_client_packets_received = 0;

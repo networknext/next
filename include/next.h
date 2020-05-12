@@ -308,7 +308,32 @@ NEXT_EXPORT_FUNC void next_server_destroy( next_server_t * server );
 
 // -----------------------------------------
 
+#define NEXT_MUTEX_BYTES 256
+
+struct next_mutex_t { uint8_t dummy[NEXT_MUTEX_BYTES]; };
+
+NEXT_EXPORT_FUNC int next_mutex_create( next_mutex_t * mutex );
+
+NEXT_EXPORT_FUNC void next_mutex_acquire( next_mutex_t * mutex );
+
+NEXT_EXPORT_FUNC void next_mutex_release( next_mutex_t * mutex );
+
+NEXT_EXPORT_FUNC void next_mutex_destroy( next_mutex_t * mutex );
+
+struct next_mutex_helper_t
+{
+    next_mutex_t * _mutex;
+    next_mutex_helper_t( next_mutex_t * mutex ) : _mutex( mutex ) { next_assert( mutex ); next_mutex_acquire( _mutex ); }
+    ~next_mutex_helper_t() { next_assert( _mutex ); next_mutex_release( _mutex ); _mutex = NULL; }
+};
+
+#define next_mutex_guard( _mutex ) next_mutex_helper_t __mutex_helper( _mutex )
+
+// -----------------------------------------
+
 NEXT_EXPORT_FUNC void next_test();
+
+// -----------------------------------------
 
 NEXT_PACK_POP()
 

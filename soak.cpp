@@ -85,32 +85,42 @@ struct AllocatorEntry
 
 class Allocator
 {
+    int64_t num_allocations;
+    next_mutex_t mutex;
     std::map<void*, AllocatorEntry> entries;
 
 public:
 
     Allocator()
     {
-        // ...
+        int result = next_mutex_create( &mutex );
+        next_assert( result == NEXT_OK );
+        num_allocations = 0;
     }
 
     ~Allocator()
     {
-        // ...
+        next_mutex_destroy( &mutex );
+        next_assert( num_allocations == 0 );
     }
 
     void * Alloc( size_t size )
     {
+        next_mutex_guard( &mutex );
         void * pointer = malloc( size );
         next_assert( pointer );
         // todo: add entry
+        num_allocations++;
         return pointer;
     }
 
     void Free( void * pointer )
     {
+        next_mutex_guard( &mutex );
         next_assert( pointer );
+        next_assert( num_allocations > 0 );
         // todo: check that entry exists
+        num_allocations--;
         free( pointer );
     }
 };
@@ -119,14 +129,12 @@ Allocator global_allocator;
 
 void * malloc_function( void * context, size_t bytes )
 {
-    printf( "alloc\n" );
     (void) context;
     return global_allocator.Alloc( bytes );
 }
 
 void free_function( void * context, void * p )
 {
-    printf( "free\n" );
     (void) context;
     return global_allocator.Free( p );
 }
@@ -285,10 +293,6 @@ int main( int argc, char ** argv )
         next_sleep( 0.01 );
     }
 
-    // send random packets
-
-    
-    
     // destroy clients
 
     for ( int i = 0; i < MaxClients; ++i )

@@ -1,18 +1,71 @@
 DONE
 
+	Extend the soak test to run with global and per-client and per-server allocator contexts.
+
 TODO
+
+	Hooking up the allocator, I need to be able to use a mutex to make the allocator threadsafe.
+
+	Unfortunately, this creates a chicken and egg situation, since the mutex create relies on the allocator.
+
+	Clearly the mutex needs to be modified to not use allocation.
+
+	Do this now, then expose a wrapper API that 
 
 	--------------------------------
 
-	Extend the soak test to run with global and per-client and per-server allocator contexts.
-
 	Inside these contexts, have a std::map and track all allocations. When it frees, make sure all allocations are free.
+
+	--------------------------------
 
 	Implement sentinels at the beginning and after each allocated block of memory.
 
 	Basically we now have our own valgrind now...
 
 	--------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	When no customer public key is specified on the client, print this out and say falling back to direct only.
 
