@@ -76,6 +76,61 @@ void server_packet_received( next_server_t * server, void * context, const next_
     }
 }
 
+#include <map>
+
+struct AllocatorEntry
+{
+    // ...
+};
+
+class Allocator
+{
+    std::map<void*, AllocatorEntry> entries;
+
+public:
+
+    Allocator()
+    {
+        // ...
+    }
+
+    ~Allocator()
+    {
+        // ...
+    }
+
+    void * Alloc( size_t size )
+    {
+        void * pointer = malloc( size );
+        next_assert( pointer );
+        // todo: add entry
+        return pointer;
+    }
+
+    void Free( void * pointer )
+    {
+        next_assert( pointer );
+        // todo: check that entry exists
+        free( pointer );
+    }
+};
+
+Allocator global_allocator;
+
+void * malloc_function( void * context, size_t bytes )
+{
+    printf( "alloc\n" );
+    (void) context;
+    return global_allocator.Alloc( bytes );
+}
+
+void free_function( void * context, void * p )
+{
+    printf( "free\n" );
+    (void) context;
+    return global_allocator.Free( p );
+}
+
 const char * customer_hostname = "127.0.0.1";
 const char * customer_datacenter = "linode.fremont"; // "local";
 const char * customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
@@ -94,6 +149,8 @@ int main( int argc, char ** argv )
     strncpy( config.hostname, customer_hostname, sizeof(config.hostname) - 1 );
     strncpy( config.customer_public_key, customer_public_key, sizeof(config.customer_public_key) - 1 );
     strncpy( config.customer_private_key, customer_private_key, sizeof(config.customer_private_key) - 1 );
+
+    next_allocator( malloc_function, free_function );
 
     next_init( NULL, &config );
     
