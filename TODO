@@ -4,9 +4,13 @@ DONE
 
 	When 100% coverage is reached with server internal, run soak test again and leave it running for a few hours.
 
+	Extend to cover the next_server_t
+
 TODO
 
-	Extend to cover the next_server_t
+	next_proxy_session_manager_t
+
+	next_proxy_session_entry_t
 
 	--------------------------------
 
