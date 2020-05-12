@@ -227,6 +227,10 @@ int main( int argc, char ** argv )
 
         next_sleep( 0.01 );
     }
+
+    // send random packets
+
+    
     
     // destroy clients
 

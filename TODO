@@ -16,6 +16,16 @@ DONE
 
 TODO
 
+	Crash in "test_pending_session_manager".
+
+		test_packets
+		test_pending_session_manager
+		free(): invalid next size (normal)
+		Aborted (core dumped)
+		root@linux:~/sdk# ^C
+
+	--------------------------------
+
 	next_client_stats_t
 
 	near_relay_stats_t
@@ -58,13 +68,13 @@ TODO
 
 	--------------------------------
 
-	Extend the soak test to run with global and per-client and per-server contexts.
+	Extend the soak test to run with global and per-client and per-server allocator contexts.
 
 	Inside these contexts, have a std::map and track all allocations. When it frees, make sure all allocations are free.
 
-	Implement safety checks at the end of each freed buffer.
+	Implement sentinels at the beginning and after each allocated block of memory.
 
-	Basically we now have our own valgrind now.
+	Basically we now have our own valgrind now...
 
 	--------------------------------
 
@@ -77,12 +87,6 @@ TODO
 	When no customer private key is specified, on the server, print this out and say, falling back to direct only.
 
 	(don't print out customer key found, dumb)
-
-	--------------------------------
-
-	We really should have a functional test that verifies payload client -> server direct, upgraded direct, and next.
-
-	I mean FFS we could break game payload and not know...
 
 	--------------------------------
 
@@ -102,15 +106,7 @@ TODO
 
 	--------------------------------
 
-	Check counters for pings/pongs to make sure they are as expected in functional tests.
-
-	--------------------------------
-
-	Fuzz test with client and server localhost with random direct packets w. random lengths.
-
-	Meant to check stability of our protocols against random data.
-
-	Worth running overnight. Add test: ./bin/fuzz
+	^--- functional tests for each of the ping cases above.
 
 	--------------------------------
 
@@ -131,39 +127,5 @@ TODO
 	Get the soak test running on x1.
 
 	Run soak test for 1 hr on x1.
-
-	--------------------------------
-
-	From Velan:
-
-	"Xbox One seems to have asymmetric alloc/free, it attempted to free something using the global context that wasn't allocated with the global context."
-
-	Find this and fix it.
-
-	--------------------------------
-
-	Find a way to automatically determine what datacenter we are running in.
-
-	eg. either public IP address range for bare metal, or server-side code that detects when you are in a cloud.
-
-	Environment variable setting should always remain available as a fallback.
-
-	--------------------------------
-
-	*** IMPORTANT ***
-
-	Would be good to track the client and server packets sent, so we can do packet loss as a % calculation, when games send different rates of packets, or even, variable packet sends... we'll need it.
-
-	Better get it in ASAP. Going to suck if we don't have it for a customer.
-
-	--------------------------------
-
-	"Hey Glenn, the distro we'll be using is CentOS. Would it be possible for you to provide us with the plugin for both versions 7 and 8?"
-
-	PUBG need Linux plugin versions for CentOS 7 and 8.
-
-	--------------------------------
-
-	Build the iOS testbed and verify working on my iPad Pro or with emulator.
 
 	--------------------------------
