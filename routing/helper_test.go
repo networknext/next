@@ -231,6 +231,14 @@ func putSellers(buff []byte, offset *int, sellers []routing.Seller) {
 	}
 }
 
+func putSessionCounts(buf []byte, offset *int, sessionCounts []uint32) {
+	putUint32s(buf, offset, sessionCounts...)
+}
+
+func putMaxSessionCounts(buf []byte, offset *int, maxSessionCounts []uint32) {
+	putUint32s(buf, offset, maxSessionCounts...)
+}
+
 func putEntries(buff []byte, offset *int, entries []routing.RouteMatrixEntry) {
 	for _, entry := range entries {
 		putInt32s(buff, offset, entry.DirectRTT)
@@ -348,6 +356,14 @@ func sizeofSellers(sellers []routing.Seller) int {
 	}
 
 	return length
+}
+
+func sizeofSessionCounts(sessionCounts []uint32) int {
+	return 4 * len(sessionCounts)
+}
+
+func sizeofMaxSessionCounts(maxSessionCounts []uint32) int {
+	return 4 * len(maxSessionCounts)
 }
 
 func sizeofRouteMatrixEntry(entries []routing.RouteMatrixEntry) int {

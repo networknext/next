@@ -441,7 +441,7 @@ func TestStatsDatabase(t *testing.T) {
 
 			var costMatrix routing.CostMatrix
 			err = statsdb.GetCostMatrix(&costMatrix, redisClient)
-			assert.EqualError(t, err, "failed to unmarshal relay when creating cost matrix: failed to unmarshal relay bytes received")
+			assert.EqualError(t, err, "failed to unmarshal relay when creating cost matrix: failed to unmarshal relay max sessions")
 		})
 	})
 }

@@ -670,8 +670,10 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			routes, err := rp.Routes(dsRelays, clientRelays,
 				routing.SelectAcceptableRoutesFromBestRTT(float64(buyer.RoutingRulesSettings.RTTEpsilon)),
 				routing.SelectContainsRouteHash(sessionCacheEntry.RouteHash),
+				routing.SelectUnencumberedRoutes(0.8),
 				routing.SelectRoutesByRandomDestRelay(rand.NewSource(rand.Int63())),
-				routing.SelectRandomRoute(rand.NewSource(rand.Int63())))
+				routing.SelectRandomRoute(rand.NewSource(rand.Int63())),
+			)
 			if err != nil {
 				level.Error(locallogger).Log("err", err)
 				writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.RouteFailure)
