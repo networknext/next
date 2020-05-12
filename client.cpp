@@ -26,6 +26,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+const char * bind_address = "0.0.0.0:0";
+const char * server_address = "127.0.0.1:32202";
+const char * customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
+
 static volatile int quit = 0;
 
 void interrupt_handler( int signal )
@@ -37,8 +41,6 @@ void client_packet_received( next_client_t * client, void * context, const uint8
 {
     (void) client; (void) context; (void) packet_data; (void) packet_bytes;
 }
-
-const char * customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
 
 int main()
 {
@@ -52,14 +54,14 @@ int main()
 
     next_init( NULL, &config ); 
 
-    next_client_t * client = next_client_create( NULL, "0.0.0.0:0", client_packet_received );
+    next_client_t * client = next_client_create( NULL, bind_address, client_packet_received );
     if ( client == NULL )
     {
         printf( "error: failed to create client\n" );
         return 1;
     }
 
-    next_client_open_session( client, "127.0.0.1:32202" );
+    next_client_open_session( client, server_address );
 
     uint8_t packet_data[32];
     memset( packet_data, 0, sizeof( packet_data ) );

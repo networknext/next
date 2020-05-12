@@ -26,6 +26,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+const char * bind_address = "0.0.0.0:32202";
+const char * server_address = "127.0.0.1:32202";
+const char * server_datacenter = "local";
+const char * backend_hostname = "127.0.0.1";
+const char * customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn";
+
 static volatile int quit = 0;
 
 void interrupt_handler( int signal )
@@ -45,10 +51,6 @@ void server_packet_received( next_server_t * server, void * context, const next_
     }
 }
 
-const char * customer_hostname = "127.0.0.1";
-const char * customer_datacenter = "linode.fremont"; // "local";
-const char * customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn";
-
 int main()
 {
     printf( "\nWelcome to Network Next!\n\n" );
@@ -57,13 +59,12 @@ int main()
 
     next_config_t config;
     next_default_config( &config );
-    strncpy( config.hostname, customer_hostname, sizeof(config.hostname) - 1 );
+    strncpy( config.hostname, backend_hostname, sizeof(config.hostname) - 1 );
     strncpy( config.customer_private_key, customer_private_key, sizeof(config.customer_private_key) - 1 );
 
     next_init( NULL, &config ); 
 
-    // todo: hack -- datacenter should be "local"
-    next_server_t * server = next_server_create( NULL, "127.0.0.1:32202", "0.0.0.0:32202", customer_datacenter, server_packet_received );
+    next_server_t * server = next_server_create( NULL, server_address, bind_address, server_datacenter, server_packet_received );
     if ( server == NULL )
     {
         printf( "error: failed to create server\n" );

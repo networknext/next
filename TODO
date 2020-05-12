@@ -22,7 +22,11 @@ DONE
 
 	Make sure next_client_internal_t is POD. Fixes G++ warning.
 
+	Pass over client.cpp, server.cpp and soak.cpp to make sure they are all setup with the correct keys and datacenters etc.
+
 TODO
+
+	IMPORTANT: Extend to upload number of packets sent, number of packets received for each slice.
 
 	--------------------------------
 
@@ -50,22 +54,34 @@ TODO
 
 	--------------------------------
 
-	Get the win64 testbed up and running debug and release.
+	Get windows build working and run testbed.
 
-	Get the win64 soak test running inside the win64 testbed.
+	Verify unit test passes.
 
-	Run soak test for 1 hr on windows.
-
-	--------------------------------
-
-	Get the soak test running on ps4.
-
-	Run soak test for 1 hr on ps4.
+	Verify soak test passes.
 
 	--------------------------------
 
-	Get the soak test running on x1.
+	Get PS4 build working and run testbed.
 
-	Run soak test for 1 hr on x1.
+	Verify unit test passes.
+
+	Verify soak test passes.
+
+	--------------------------------
+
+	Get X1 build working and run testbed.
+
+	Verify unit test passes.
+
+	Verify soak test passes.
+
+	--------------------------------
+
+	Make SDK 3.4.5 release.
+
+	--------------------------------
+
+	Hand off to customers.
 
 	--------------------------------
