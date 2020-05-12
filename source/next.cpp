@@ -13414,7 +13414,6 @@ static void test_platform_mutex()
     next_platform_mutex_t mutex;
     int result = next_platform_mutex_create( &mutex );
     check( result == NEXT_OK );
-    /*
     next_platform_mutex_acquire( &mutex );
     next_platform_mutex_release( &mutex );
     {
@@ -13422,7 +13421,6 @@ static void test_platform_mutex()
         // ...
     }
     next_platform_mutex_destroy( &mutex );
-    */
 }
 
 static int num_client_packets_received = 0;
