@@ -2457,57 +2457,6 @@ uint64_t next_random_uint64()
 
 int next_is_network_next_packet( const uint8_t * packet_data, int packet_bytes )
 {
-#ifndef NDEBUG
-
-    // EXPECTED KEY VALUE
-    /*
-        static const uint8_t next_packet_hash_key[] =
-        {
-            0xe3, 0x18, 0x61, 0x72, 0xee, 0x70, 0x62, 0x37, 
-            0x40, 0xf6, 0x0a, 0xea, 0xe0, 0xb5, 0x1a, 0x2c, 
-            0x2a, 0x47, 0x98, 0x8f, 0x27, 0xec, 0x63, 0x2c, 
-            0x25, 0x04, 0x74, 0x89, 0xaf, 0x5a, 0xeb, 0x24
-        };
-    */
-
-    next_assert( next_packet_hash_key[0] == 0xe3 );
-    next_assert( next_packet_hash_key[1] == 0x18 );
-    next_assert( next_packet_hash_key[2] == 0x61 );
-    next_assert( next_packet_hash_key[3] == 0x72 );
-    next_assert( next_packet_hash_key[4] == 0xee );
-    next_assert( next_packet_hash_key[5] == 0x70 );
-    next_assert( next_packet_hash_key[6] == 0x62 );
-    next_assert( next_packet_hash_key[7] == 0x37 );
-
-    next_assert( next_packet_hash_key[8] == 0x40 );
-    next_assert( next_packet_hash_key[9] == 0xf6 );
-    next_assert( next_packet_hash_key[10] == 0x0a );
-    next_assert( next_packet_hash_key[11] == 0xea );
-    next_assert( next_packet_hash_key[12] == 0xe0 );
-    next_assert( next_packet_hash_key[13] == 0xb5 );
-    next_assert( next_packet_hash_key[14] == 0x1a );
-    next_assert( next_packet_hash_key[15] == 0x2c );
-
-    next_assert( next_packet_hash_key[16] == 0x2a );
-    next_assert( next_packet_hash_key[17] == 0x47 );
-    next_assert( next_packet_hash_key[18] == 0x98 );
-    next_assert( next_packet_hash_key[19] == 0x8f );
-    next_assert( next_packet_hash_key[20] == 0x27 );
-    next_assert( next_packet_hash_key[21] == 0xec );
-    next_assert( next_packet_hash_key[22] == 0x63 );
-    next_assert( next_packet_hash_key[23] == 0x2c );
-
-    next_assert( next_packet_hash_key[24] == 0x25 );
-    next_assert( next_packet_hash_key[25] == 0x04 );
-    next_assert( next_packet_hash_key[26] == 0x74 );
-    next_assert( next_packet_hash_key[27] == 0x89 );
-    next_assert( next_packet_hash_key[28] == 0xaf );
-    next_assert( next_packet_hash_key[29] == 0x5a );
-    next_assert( next_packet_hash_key[30] == 0xeb );
-    next_assert( next_packet_hash_key[31] == 0x24 );
-
-#endif // #ifndef NDEBUG
-
     if ( packet_bytes <= NEXT_PACKET_HASH_BYTES )
         return 0;
 

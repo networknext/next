@@ -87,7 +87,7 @@ class Allocator
 {
     int64_t num_allocations;
     next_mutex_t mutex;
-    std::map<void*, AllocatorEntry> entries;
+    std::map<void*, AllocatorEntry*> entries;
 
 public:
 
@@ -102,6 +102,7 @@ public:
     {
         next_mutex_destroy( &mutex );
         next_assert( num_allocations == 0 );
+        next_assert( entries.size() == 0 );
     }
 
     void * Alloc( size_t size )
@@ -109,7 +110,9 @@ public:
         next_mutex_guard( &mutex );
         void * pointer = malloc( size );
         next_assert( pointer );
-        // todo: add entry
+        next_assert( entries[pointer] == NULL );
+        AllocatorEntry * entry = new AllocatorEntry();
+        entries[pointer] = entry;
         num_allocations++;
         return pointer;
     }
@@ -119,7 +122,9 @@ public:
         next_mutex_guard( &mutex );
         next_assert( pointer );
         next_assert( num_allocations > 0 );
-        // todo: check that entry exists
+        std::map<void*, AllocatorEntry*>::iterator itor = entries.find( pointer );
+        next_assert( itor != entries.end() );
+        entries.erase( itor );
         num_allocations--;
         free( pointer );
     }
@@ -129,14 +134,16 @@ Allocator global_allocator;
 
 void * malloc_function( void * context, size_t bytes )
 {
-    (void) context;
-    return global_allocator.Alloc( bytes );
+    next_assert( context );
+    Allocator * allocator = (Allocator*) context;
+    return allocator->Alloc( bytes );
 }
 
 void free_function( void * context, void * p )
 {
-    (void) context;
-    return global_allocator.Free( p );
+    next_assert( context );
+    Allocator * allocator = (Allocator*) context;
+    return allocator->Free( p );
 }
 
 const char * customer_hostname = "127.0.0.1";
@@ -160,7 +167,7 @@ int main( int argc, char ** argv )
 
     next_allocator( malloc_function, free_function );
 
-    next_init( NULL, &config );
+    next_init( &global_allocator, &config );
     
     int iterations = 0;
     if ( argc == 2 ) 
@@ -176,7 +183,9 @@ int main( int argc, char ** argv )
         {
             if ( clients[i] == NULL && ( rand() % 1000 ) == 0 )
             {
-                clients[i] = next_client_create( NULL, "0.0.0.0:0", client_packet_received );
+                // todo: create client allocator
+
+                clients[i] = next_client_create( &global_allocator, "0.0.0.0:0", client_packet_received );
                 next_assert( clients[i] );
                 next_printf( NEXT_LOG_LEVEL_INFO, "created client %d", i );
             }
@@ -189,7 +198,12 @@ int main( int argc, char ** argv )
             if ( clients[i] && ( rand() % 15000 ) == 0 )
             {
                 next_client_destroy( clients[i] );
+
+                // todo: destroy client allocator
+
                 clients[i] = NULL;
+                // client_allocator[i] = NULL;
+                
                 next_printf( NEXT_LOG_LEVEL_INFO, "destroyed client %d", i );
             }
         }
@@ -228,11 +242,13 @@ int main( int argc, char ** argv )
         {
             if ( servers[i] == NULL && ( rand() % 100 ) == 0 )
             {
+                // todo: create server allocator
+
                 char server_address_string[256]; 
                 char bind_address_string[256];
                 sprintf( server_address_string, "127.0.0.1:%d", 50000 + i );
                 sprintf( bind_address_string, "0.0.0.0:%d", 50000 + i );
-                servers[i] = next_server_create( NULL, server_address_string, bind_address_string, "local", server_packet_received );
+                servers[i] = next_server_create( &global_allocator, server_address_string, bind_address_string, "local", server_packet_received );
                 if ( servers[i] )
                 {
                     next_printf( NEXT_LOG_LEVEL_INFO, "created server %d", i );
@@ -246,8 +262,13 @@ int main( int argc, char ** argv )
         {
             if ( servers[i] && ( rand() % 10000 ) == 0 )
             {
+                // todo: destroy server allocator
+
                 next_server_destroy( servers[i] );
+
                 servers[i] = NULL;
+                // todo: server_allocator[i] = NULL;
+
                 next_printf( NEXT_LOG_LEVEL_INFO, "destroyed server %d", i );
             }
         }
