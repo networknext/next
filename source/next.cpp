@@ -7774,7 +7774,7 @@ bool next_pending_session_manager_expand( next_pending_session_manager_t * pendi
     memset( new_entries, 0, new_size * sizeof(next_pending_session_entry_t) );
     
     for ( int i = 0; i < new_size; ++i )
-        next_pending_session_entry_initialize_sentinels( &pending_session_manager->entries[i] );
+        next_pending_session_entry_initialize_sentinels( &new_entries[i] );
 
     int index = 0;
     const int current_size = pending_session_manager->size;
