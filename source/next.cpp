@@ -5357,12 +5357,18 @@ struct next_client_internal_t
     double last_stats_update_time;
     double last_stats_report_time;
     uint64_t route_update_sequence;
+
+    NEXT_DECLARE_SENTINEL(1)
+
     next_relay_manager_t * near_relay_manager;
     next_route_manager_t * route_manager;
     next_platform_mutex_t * route_manager_mutex;
+
+    NEXT_DECLARE_SENTINEL(2)
+
     next_packet_loss_tracker_t packet_loss_tracker;
 
-    NEXT_DECLARE_SENTINEL(1)
+    NEXT_DECLARE_SENTINEL(3)
 
     uint8_t customer_public_key[crypto_sign_PUBLICKEYBYTES];
     uint8_t client_kx_public_key[crypto_kx_PUBLICKEYBYTES];
@@ -5372,26 +5378,26 @@ struct next_client_internal_t
     uint8_t client_route_public_key[crypto_box_PUBLICKEYBYTES];
     uint8_t client_route_private_key[crypto_box_SECRETKEYBYTES];
 
-    NEXT_DECLARE_SENTINEL(2)
+    NEXT_DECLARE_SENTINEL(4)
 
     next_client_stats_t client_stats;
 
-    NEXT_DECLARE_SENTINEL(3)
+    NEXT_DECLARE_SENTINEL(5)
 
     next_relay_stats_t near_relay_stats;
 
-    NEXT_DECLARE_SENTINEL(4)
+    NEXT_DECLARE_SENTINEL(6)
 
     next_ping_history_t next_ping_history;
     next_ping_history_t direct_ping_history;
 
-    NEXT_DECLARE_SENTINEL(5)
+    NEXT_DECLARE_SENTINEL(7)
 
     next_replay_protection_t payload_replay_protection;
     next_replay_protection_t special_replay_protection;
     next_replay_protection_t internal_replay_protection;
 
-    NEXT_DECLARE_SENTINEL(6)
+    NEXT_DECLARE_SENTINEL(8)
 
     next_platform_mutex_t * bandwidth_mutex;
     bool bandwidth_over_budget;
@@ -5400,18 +5406,18 @@ struct next_client_internal_t
     float bandwidth_envelope_kbps_up;
     float bandwidth_envelope_kbps_down;
     
-    NEXT_DECLARE_SENTINEL(7)
+    NEXT_DECLARE_SENTINEL(9)
 
     bool sending_upgrade_response;
     NextUpgradeResponsePacket upgrade_response;
     double upgrade_response_start_time;
     double last_upgrade_response_send_time;
 
-    NEXT_DECLARE_SENTINEL(8)
+    NEXT_DECLARE_SENTINEL(10)
 
     uint64_t counters[NEXT_CLIENT_COUNTER_MAX];
 
-    NEXT_DECLARE_SENTINEL(9)
+    NEXT_DECLARE_SENTINEL(11)
 };
 
 void next_client_internal_initialize_sentinels( next_client_internal_t * client )
@@ -5428,12 +5434,16 @@ void next_client_internal_initialize_sentinels( next_client_internal_t * client 
     NEXT_INITIALIZE_SENTINEL( client, 7 )
     NEXT_INITIALIZE_SENTINEL( client, 8 )
     NEXT_INITIALIZE_SENTINEL( client, 9 )
+    NEXT_INITIALIZE_SENTINEL( client, 10 )
+    NEXT_INITIALIZE_SENTINEL( client, 11 )
 }
 
 void next_client_internal_verify_sentinels( next_client_internal_t * client )
 {
     (void) client;
+
     next_assert( client );
+
     NEXT_VERIFY_SENTINEL( client, 0 )
     NEXT_VERIFY_SENTINEL( client, 1 )
     NEXT_VERIFY_SENTINEL( client, 2 )
@@ -5444,6 +5454,20 @@ void next_client_internal_verify_sentinels( next_client_internal_t * client )
     NEXT_VERIFY_SENTINEL( client, 7 )
     NEXT_VERIFY_SENTINEL( client, 8 )
     NEXT_VERIFY_SENTINEL( client, 9 )
+    NEXT_VERIFY_SENTINEL( client, 10 )
+    NEXT_VERIFY_SENTINEL( client, 11 )
+
+    if ( client->command_queue )
+        next_queue_verify_sentinels( client->command_queue );
+
+    if ( client->notify_queue )
+        next_queue_verify_sentinels( client->notify_queue );
+
+    next_replay_protection_verify_sentinels( &client->payload_replay_protection );
+    next_replay_protection_verify_sentinels( &client->special_replay_protection );
+    next_replay_protection_verify_sentinels( &client->internal_replay_protection );
+
+    // todo: rest of client internal objects
 }
 
 void next_client_internal_destroy( next_client_internal_t * client );
