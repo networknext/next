@@ -67,14 +67,13 @@ namespace legacy
      BackendRequest& request) -> bool
     {
       if (packet.Addr.Type == net::AddressType::None) {
-        LogDebug("can't send master UDP packet: address has not resolved yet");  // should not happen in this repo
+        Log("can't send master UDP packet: address has not resolved");
         return false;
       }
 
       request.id = crypto::Random<uint64_t>();
 
       size_t compressed_bytes_available = packet.Len + 32;
-      LogDebug("creating buffer for compressed data, size: ", compressed_bytes_available);
       std::vector<uint8_t> compressed_buffer(compressed_bytes_available);
 
       z_stream z = {};
@@ -83,21 +82,18 @@ namespace legacy
       z.next_in = packet.Buffer.data();
       z.avail_in = packet.Len;
 
-      LogDebug("deflate init");
       int result = deflateInit(&z, Z_DEFAULT_COMPRESSION);
       if (result != Z_OK) {
         Log("failed to compress master UDP packet: deflateInit failed");
         return false;
       }
 
-      LogDebug("deflating");
       result = deflate(&z, Z_FINISH);
       if (result != Z_STREAM_END || z.avail_in > 0) {
         Log("failed to compress master UDP packet: deflate failed, result: ", result, ", avail in: ", z.avail_in);
         return false;
       }
 
-      LogDebug("end deflate");
       result = deflateEnd(&z);
       if (result != Z_OK) {
         Log("failed to compress master UDP packet: deflateEnd failed");
@@ -105,7 +101,6 @@ namespace legacy
       }
 
       size_t compressed_bytes = compressed_bytes_available - z.avail_out;
-      LogDebug("overall compressed size: ", compressed_bytes);
 
       size_t fragment_total = compressed_bytes / FragmentSize;
       if (compressed_bytes % FragmentSize != 0) {
@@ -117,7 +112,6 @@ namespace legacy
         return false;
       }
 
-      LogDebug("sending ", fragment_total, " fragments");
       for (size_t i = 0; i < fragment_total; i++) {
         int fragment_bytes;
         if (i == fragment_total - 1) {

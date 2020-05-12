@@ -17,11 +17,11 @@ namespace util
     std::string RecvBufferSize;
     std::string ProcessorCount;
 
-    std::string RelayV3Name;
-    std::string RelayV3BackendHostname;
-    std::string RelayV3BackendPort;
-    std::string RelayV3UpdateKey;
-    std::string RelayV3Speed;
+    std::string RelayV3Name;             // Firestore ID
+    std::string RelayV3BackendHostname;  // just the hostname, no http prefix
+    std::string RelayV3BackendPort;      // port that should be used to talk to the backend
+    std::string RelayV3UpdateKey;        // From firestore
+    std::string RelayV3Speed;            // May take away the v3 when it comes time to implement utilization
   };
 
   inline Env::Env()

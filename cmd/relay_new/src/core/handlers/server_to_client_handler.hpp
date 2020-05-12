@@ -80,7 +80,7 @@ namespace core
 
       mRecorder.addToSent(mPacketSize);
       buff.push(session->PrevAddr, mPacket.Buffer.data(), mPacketSize);
-      LogDebug("sent server packet to ", session->PrevAddr);
+      LogDebug("sent server response to ", session->PrevAddr);
     }
   }  // namespace handlers
 }  // namespace core

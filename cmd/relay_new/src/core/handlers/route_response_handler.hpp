@@ -81,7 +81,7 @@ namespace core
         return;
       }
 
-      LogDebug("sending response to ", session->PrevAddr);
+      LogDebug("sending route response to ", session->PrevAddr);
 
       mRecorder.addToSent(mPacketSize);
       buff.push(session->PrevAddr, mPacket.Buffer.data(), mPacketSize);

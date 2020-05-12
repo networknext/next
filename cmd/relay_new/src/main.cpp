@@ -204,9 +204,6 @@ int main(int argc, const char* argv[])
   int socketRecvBuffSize = getBufferSize(env.RecvBufferSize);
   int socketSendBuffSize = getBufferSize(env.SendBufferSize);
 
-  LogDebug("Socket recv buffer size is ", socketRecvBuffSize, " bytes");
-  LogDebug("Socket send buffer size is ", socketSendBuffSize, " bytes");
-
   if (relay::relay_initialize() != RELAY_OK) {
     Log("error: failed to initialize relay\n\n");
     return 1;
@@ -222,8 +219,6 @@ int main(int argc, const char* argv[])
   auto chan = util::makeChannel<core::GenericPacket<>>();
   auto sender = std::get<0>(chan);
   auto receiver = std::get<1>(chan);
-
-  LogDebug("creating sockets and threads");
 
   // these next four variables are used to force the threads to be
   // created serially
@@ -398,7 +393,6 @@ int main(int argc, const char* argv[])
     }
   }
 
-  LogDebug("communicating with backend");
   bool relay_initialized = false;
   bool v3BackendSuccess = false;
 
@@ -406,7 +400,6 @@ int main(int argc, const char* argv[])
   {
     // ping proc setup
     {
-      LogDebug("initializing v3 ping processor");
       net::Address bindAddr = relayAddr;
       {
         bindAddr.Port = 0;
@@ -438,7 +431,6 @@ int main(int argc, const char* argv[])
 
     // backend setup
     {
-      LogDebug("initializing relay with v3 backend");
       auto socket = makeSocket(relayAddr.Port);
       if (!socket) {
         Log("could not create v3 backend socket");

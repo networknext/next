@@ -32,12 +32,10 @@ namespace legacy
        mRelayManager(manager),
        mRelayID(crypto::FNV(mEnv.RelayV3Name).Value)
     {
-      LogDebug("generating ping key");
       std::array<uint8_t, PingKeySize> key;
       crypto_auth_keygen(key.data());
       mPingKey.resize(PingKeySize * 2);                          // allocate enough space for the encoding
       mPingKey.resize(encoding::base64::Encode(key, mPingKey));  // truncate the length
-      LogDebug("done");
     }
 
     // clang-format off
@@ -61,7 +59,6 @@ namespace legacy
     {
       // prep
 
-      LogDebug("resolving backend addr");
       net::Address backendAddr;
       if (!backendAddr.resolve(mEnv.RelayV3BackendHostname, mEnv.RelayV3BackendPort)) {
         Log("Could not resolve the v3 backend hostname to an ip address");
@@ -88,8 +85,6 @@ namespace legacy
       }
 
       // process response
-
-      LogDebug("processing init response");
 
       if (!doc.memberExists("Timestamp")) {
         Log("v3 backend json does not contain 'Timestamp' member");
@@ -118,11 +113,8 @@ namespace legacy
 
     auto Backend::config() -> bool
     {
-      LogDebug("configuring relay");
-
       net::Address backendAddr;
       {
-        LogDebug("resolving backend addr");
         if (!backendAddr.resolve(mEnv.RelayV3BackendHostname, mEnv.RelayV3BackendPort)) {
           Log("Could not resolve the v3 backend hostname to an ip address");
           return 1;
@@ -177,8 +169,6 @@ namespace legacy
           return false;
         }
 
-        LogDebug("updated with old backend");
-
         std::this_thread::sleep_for(10s);
       }
 
@@ -207,7 +197,6 @@ namespace legacy
     {
       net::Address backendAddr;
       {
-        LogDebug("resolving backend addr");
         if (!backendAddr.resolve(mEnv.RelayV3BackendHostname, mEnv.RelayV3BackendPort)) {
           Log("Could not resolve the v3 backend hostname to an ip address");
           return 1;
@@ -221,7 +210,9 @@ namespace legacy
           Log("could not build v3 update json");
           return false;
         }
+
         LogDebug("sending update v3: ", doc.toPrettyString());
+
         auto jsonStr = doc.toString();
         std::copy(jsonStr.begin(), jsonStr.end(), packet.Buffer.begin());
         packet.Len = jsonStr.length();
@@ -445,8 +436,6 @@ namespace legacy
           continue;
         }
 
-        LogDebug("checking for response");
-
         // receive response(s) if it exists, if not resend
         // if + while so that I can log something for the sake of debugging
         if (mReceiver.hasItems()) {
@@ -472,7 +461,6 @@ namespace legacy
         return {false, ss.str()};
       }
 
-      LogDebug("building complete response");
       auto [ok, err] = this->buildCompleteResponse(completeResponse, doc);
       if (!ok) {
         return {false, err};
@@ -498,7 +486,6 @@ namespace legacy
      core::GenericPacket<>& packet, BackendRequest& request, BackendResponse& response, std::vector<uint8_t>& completeBuffer)
      -> bool
     {
-      LogDebug("reading backend response");
       size_t zip_start = (size_t)(1 + crypto_sign_BYTES + sizeof(uint64_t) + sizeof(uint16_t) + sizeof(uint16_t));
 
       if (packet.Len < zip_start || packet.Len > zip_start + FragmentSize) {
@@ -512,7 +499,6 @@ namespace legacy
         return false;
       }
 
-      LogDebug("verifing signature");
       if (
        crypto_sign_verify_detached(
         &packet.Buffer[1], &packet.Buffer[1 + crypto_sign_BYTES], packet.Len - (1 + crypto_sign_BYTES), UDPSignKey) != 0) {
@@ -520,22 +506,16 @@ namespace legacy
         return false;
       }
 
-      LogDebug("getting packet id");
       size_t index = 1 + crypto_sign_BYTES;
       uint64_t packet_id = encoding::ReadUint64(packet.Buffer, index);
       if (packet_id != request.id) {
         Log("discarding unexpected master UDP packet, expected ID ", request.id, ", got ", packet_id);
         return false;
       }
-      LogDebug("id is ", packet_id);
 
       response.FragIndex = encoding::ReadUint8(packet.Buffer, index);
       response.FragCount = encoding::ReadUint8(packet.Buffer, index);
       response.StatusCode = encoding::ReadUint16(packet.Buffer, index);
-
-      LogDebug("fragment index is ", (int)response.FragIndex);
-      LogDebug("fragment count is ", (int)response.FragCount);
-      LogDebug("status code is ", (int)response.StatusCode);
 
       if (response.FragCount == 0) {
         Log("invalid master fragment count (", static_cast<uint32_t>(response.FragCount), "), discarding packet");
@@ -553,8 +533,6 @@ namespace legacy
       }
 
       response.Type = static_cast<PacketType>(packet.Buffer[0]);
-
-      LogDebug("packet is of type: ", response.Type);
 
       if (request.fragment_total == 0) {
         request.type = response.Type;
@@ -590,7 +568,6 @@ namespace legacy
 
       // save this fragment
       {
-        LogDebug("saving fragment");
         auto& fragment = request.fragments[response.FragIndex];
         fragment.length = static_cast<uint16_t>(packet.Len - zip_start);
         std::copy(
@@ -612,11 +589,9 @@ namespace legacy
       }
 
       // all fragments have been received
-      LogDebug("all fragments received");
 
       request.id = 0;  // reset request
 
-      LogDebug("total size of fragment: ", complete_bytes);
       completeBuffer.resize(complete_bytes);
 
       int bytes = 0;
@@ -625,8 +600,6 @@ namespace legacy
         std::copy(fragment.data.begin(), fragment.data.begin() + fragment.length, completeBuffer.begin() + bytes);
         bytes += fragment.length;
       }
-
-      LogDebug("built complete packet");
 
       assert(bytes == complete_bytes);
 
@@ -644,13 +617,11 @@ namespace legacy
       z.next_out = (Bytef*)(buffer.data());
       z.avail_out = MaxPayload;
 
-      LogDebug("initalizing inflate");
       int result = inflateInit(&z);
       if (result != Z_OK) {
         return {false, "failed to decompress master UDP packet: inflateInit failed"};
       }
 
-      LogDebug("inflating");
       result = inflate(&z, Z_NO_FLUSH);
       if (result != Z_STREAM_END) {
         std::stringstream ss;
@@ -658,7 +629,6 @@ namespace legacy
         return {false, ss.str()};
       }
 
-      LogDebug("ending inflate");
       result = inflateEnd(&z);
       if (result != Z_OK) {
         return {false, "failed to decompress master UDP packet: inflateEnd failed"};
@@ -669,14 +639,12 @@ namespace legacy
         return {false, "failed to decompress master UDP packet: not enough buffer space"};
       }
 
-      LogDebug("parsing buffer");
       if (!doc.parse(buffer)) {
         std::stringstream ss;
         std::string strbuff(buffer.begin(), buffer.end());
         ss << "failed to parse json response, looks like: " << strbuff;
         return {false, ss.str()};
       }
-      LogDebug("done");
 
       return {true, ""};
     }

@@ -67,7 +67,7 @@ namespace core
 
           // use the recv port addr here so the receiving relay knows where to send it back to
           encoding::WriteAddress(pkt.Buffer, index, mRelayAddress);
-          encoding::WriteUint8(pkt.Buffer, index, mIsV3);
+          encoding::WriteUint8(pkt.Buffer, index, mIsV3 ? 1 : 0); // bools are not always 1 byte
         }
 
         pkt.Len = index;
