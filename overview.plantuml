@@ -1,0 +1,66 @@
+@startuml
+node NetworkNext {
+    database BigTable
+    database BigQuery
+    database Firestore
+    database RedisRelays
+    database RedisSessionCache
+    database RedisPortal
+    queue PubSub
+    queue Dataflow
+
+    node RelayBackend [
+        RelayBackend
+
+        - Cost Matrix
+        - Route Matrix
+    ]
+    node ServerBackend [
+        ServerBackend
+
+        - Instance1
+        - Instance2
+        - InstanceN
+    ]
+    node Portal [
+        Portal
+
+        - RPC API
+        - Web UI
+    ]
+}
+
+cloud Internet {
+    node Auth0
+    node Relays [
+        1..N Relays
+    ]
+    node GameServer
+    node GameClient
+}
+
+RelayBackend <..> Relays : Ping Stats (1s)
+RelayBackend <..> RedisRelays
+RelayBackend <..> Firestore
+
+GameServer <..> GameClient : Direct Route
+GameClient <..> Relays : Next Route\nHop 0
+GameServer <..> Relays : Next Route\nHop (3..5)
+ServerBackend <..> GameServer : Session Updates (10s)
+ServerBackend <.. Firestore : Syncs Buyers\n&\nDatacenters (10s)
+ServerBackend <.. RelayBackend : Syncs Route Matrix (10s)
+ServerBackend <.. RedisRelays : Relays Near\nClient IP
+ServerBackend <..> RedisSessionCache
+ServerBackend ..> RedisPortal
+ServerBackend ..> PubSub : Billing Slice Entries
+
+PubSub ..> Dataflow
+Dataflow ..> BigTable
+BigTable ..> BigQuery
+
+Portal <.. Firestore : Syncs Buyers\n&\nDatacenters (10s)
+Portal <.. BigQuery : Session Details\n&\nUser Sessions
+Portal <.. RedisPortal : Session Map\n&\nTop Sessions
+Portal <..> Auth0 : User Accounts
+@enduml
+
