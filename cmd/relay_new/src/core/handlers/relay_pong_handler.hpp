@@ -31,11 +31,14 @@ namespace core
     {
       packets::RelayPingPacket packet(mPacket, mPacketSize);
 
-      LogDebug("got pong packet from ", packet.getFromAddr());
-
       // process the pong time
-      packet.isV3() ? mV3RelayManager.processPong(packet.getFromAddr(), packet.getSeqNum())
-                    : mRelayManager.processPong(packet.getFromAddr(), packet.getSeqNum());
+      if (packet.isV3()) {
+        LogDebug("got v3 pong packet from ", packet.getFromAddr());
+        mV3RelayManager.processPong(packet.getFromAddr(), packet.getSeqNum());
+      } else {
+        LogDebug("got pong packet from ", packet.getFromAddr());
+        mRelayManager.processPong(packet.getFromAddr(), packet.getSeqNum());
+      }
     }
   }  // namespace handlers
 }  // namespace core
