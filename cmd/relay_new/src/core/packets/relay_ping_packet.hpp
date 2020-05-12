@@ -13,7 +13,7 @@ namespace core
     class RelayPingPacket
     {
      public:
-      RelayPingPacket(GenericPacket<>& packet, int size);
+      RelayPingPacket(GenericPacket<>& packet);
 
       // getters do no cache, just make the indexes of the packet clearer
       auto getSeqNum() -> uint64_t;
@@ -24,10 +24,9 @@ namespace core
       void writeFromAddr(const net::Address& addr);
 
       GenericPacket<>& Internal;
-      const int Size;
     };
 
-    inline RelayPingPacket::RelayPingPacket(GenericPacket<>& packet, int size): Internal(packet), Size(size) {}
+    inline RelayPingPacket::RelayPingPacket(GenericPacket<>& packet): Internal(packet) {}
 
     inline auto RelayPingPacket::getSeqNum() -> uint64_t
     {

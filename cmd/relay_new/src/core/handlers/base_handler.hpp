@@ -10,13 +10,12 @@ namespace core
     class BaseHandler
     {
      protected:
-      BaseHandler(GenericPacket<>& packet, const int packetSize);
+      BaseHandler(GenericPacket<>& packet);
 
       GenericPacket<>& mPacket;
-      const int mPacketSize;
     };
 
-    inline BaseHandler::BaseHandler(GenericPacket<>& packet, const int packetSize): mPacket(packet), mPacketSize(packetSize) {}
+    inline BaseHandler::BaseHandler(GenericPacket<>& packet): mPacket(packet) {}
   }  // namespace handlers
 }  // namespace core
 #endif

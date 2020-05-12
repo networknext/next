@@ -5,6 +5,7 @@
 #include "core/session_map.hpp"
 #include "os/platform.hpp"
 #include "util/throughput_recorder.hpp"
+#include "legacy/v3/traffic_stats.hpp"
 
 namespace core
 {
@@ -14,7 +15,7 @@ namespace core
     {
      public:
       RouteResponseHandler(
-       GenericPacket<>& packet, const int packetSize, core::SessionMap& sessions, util::ThroughputRecorder& recorder);
+       GenericPacket<>& packet, core::SessionMap& sessions, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats);
 
       template <size_t Size>
       void handle(core::GenericPacketBuffer<Size>& buff);
@@ -22,18 +23,19 @@ namespace core
      private:
       core::SessionMap& mSessionMap;
       util::ThroughputRecorder& mRecorder;
+      legacy::v3::TrafficStats& mStats;
     };
 
     inline RouteResponseHandler::RouteResponseHandler(
-     GenericPacket<>& packet, const int packetSize, core::SessionMap& sessions, util::ThroughputRecorder& recorder)
-     : BaseHandler(packet, packetSize), mSessionMap(sessions), mRecorder(recorder)
+     GenericPacket<>& packet, core::SessionMap& sessions, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats)
+     : BaseHandler(packet), mSessionMap(sessions), mRecorder(recorder), mStats(stats)
     {}
 
     template <size_t Size>
     inline void RouteResponseHandler::handle(core::GenericPacketBuffer<Size>& buff)
     {
-      if (mPacketSize != RELAY_HEADER_BYTES) {
-        Log("ignoring route response, header byte count invalid: ", mPacketSize, " != ", RELAY_HEADER_BYTES);
+      if (mPacket.Len != RELAY_HEADER_BYTES) {
+        Log("ignoring route response, header byte count invalid: ", mPacket.Len, " != ", RELAY_HEADER_BYTES);
         return;
       }
 
@@ -49,7 +51,7 @@ namespace core
         &session_id,
         &session_version,
         mPacket.Buffer.data(),
-        mPacketSize) != RELAY_OK) {
+        mPacket.Len) != RELAY_OK) {
         Log("ignoring route response, relay header could not be read");
         return;
       }
@@ -76,15 +78,16 @@ namespace core
       session->ServerToClientSeq = clean_sequence;
       if (
        relay::relay_verify_header(
-        RELAY_DIRECTION_SERVER_TO_CLIENT, session->PrivateKey.data(), mPacket.Buffer.data(), mPacketSize) != RELAY_OK) {
+        RELAY_DIRECTION_SERVER_TO_CLIENT, session->PrivateKey.data(), mPacket.Buffer.data(), mPacket.Len) != RELAY_OK) {
         Log("ignoring route response, header is invalid");
         return;
       }
 
       LogDebug("sending route response to ", session->PrevAddr);
 
-      mRecorder.addToSent(mPacketSize);
-      buff.push(session->PrevAddr, mPacket.Buffer.data(), mPacketSize);
+      mRecorder.addToSent(mPacket.Len);
+      mStats.BytesPerSecManagementTx += mPacket.Len;
+      buff.push(session->PrevAddr, mPacket.Buffer.data(), mPacket.Len);
     }
   }  // namespace handlers
 }  // namespace core

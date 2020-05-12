@@ -7,6 +7,7 @@
 #include "net/address.hpp"
 #include "os/platform.hpp"
 #include "util/throughput_recorder.hpp"
+#include "legacy/v3/traffic_stats.hpp"
 
 namespace core
 {
@@ -18,11 +19,10 @@ namespace core
       RouteRequestHandler(
        const util::Clock& relayClock,
        GenericPacket<>& packet,
-       const int size,
        const net::Address& from,
        const crypto::Keychain& keychain,
        core::SessionMap& sessions,
-       util::ThroughputRecorder& recorder);
+       util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats);
 
       template <size_t Size>
       void handle(core::GenericPacketBuffer<Size>& size);
@@ -33,22 +33,23 @@ namespace core
       const crypto::Keychain& mKeychain;
       core::SessionMap& mSessionMap;
       util::ThroughputRecorder& mRecorder;
+      legacy::v3::TrafficStats& mStats;
     };
 
     inline RouteRequestHandler::RouteRequestHandler(
      const util::Clock& relayClock,
      GenericPacket<>& packet,
-     const int size,
      const net::Address& from,
      const crypto::Keychain& keychain,
      core::SessionMap& sessions,
-     util::ThroughputRecorder& recorder)
-     : BaseHandler(packet, size),
+     util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats)
+     : BaseHandler(packet),
        mRelayClock(relayClock),
        mFrom(from),
        mKeychain(keychain),
        mSessionMap(sessions),
-       mRecorder(recorder)
+       mRecorder(recorder),
+       mStats(stats)
     {}
 
     template <size_t Size>
@@ -56,8 +57,8 @@ namespace core
     {
       LogDebug("got route request from ", mFrom);
 
-      if (mPacketSize < int(1 + RouteToken::EncryptedByteSize * 2)) {
-        Log("ignoring route request. bad packet size (", mPacketSize, ")");
+      if (mPacket.Len < int(1 + RouteToken::EncryptedByteSize * 2)) {
+        Log("ignoring route request. bad packet size (", mPacket.Len, ")");
         return;
       }
 
@@ -110,8 +111,9 @@ namespace core
 
       LogDebug("sending route request to ", token.NextAddr);
 
-      auto length = mPacketSize - RouteToken::EncryptedByteSize;
+      auto length = mPacket.Len - RouteToken::EncryptedByteSize;
       mRecorder.addToSent(length);
+      mStats.BytesPerSecManagementTx += length;
       buff.push(token.NextAddr, &mPacket.Buffer[RouteToken::EncryptedByteSize], length);
     }
   }  // namespace handlers

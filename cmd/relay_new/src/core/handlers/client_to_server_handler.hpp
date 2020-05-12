@@ -6,6 +6,7 @@
 #include "os/platform.hpp"
 #include "relay/relay.hpp"
 #include "util/throughput_recorder.hpp"
+#include "legacy/v3/traffic_stats.hpp"
 
 namespace core
 {
@@ -15,7 +16,7 @@ namespace core
     {
      public:
       ClientToServerHandler(
-       GenericPacket<>& packet, const int packetSize, core::SessionMap& sessions, util::ThroughputRecorder& recorder);
+       GenericPacket<>& packet, core::SessionMap& sessions, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats);
 
       template <size_t Size>
       void handle(core::GenericPacketBuffer<Size>& buff);
@@ -23,17 +24,18 @@ namespace core
      private:
       core::SessionMap& mSessionMap;
       util::ThroughputRecorder& mRecorder;
+      legacy::v3::TrafficStats& mStats;
     };
 
     inline ClientToServerHandler::ClientToServerHandler(
-     GenericPacket<>& packet, const int packetSize, core::SessionMap& sessions, util::ThroughputRecorder& recorder)
-     : BaseHandler(packet, packetSize), mSessionMap(sessions), mRecorder(recorder)
+     GenericPacket<>& packet, core::SessionMap& sessions, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats)
+     : BaseHandler(packet), mSessionMap(sessions), mRecorder(recorder), mStats(stats)
     {}
 
     template <size_t Size>
     inline void ClientToServerHandler::handle(core::GenericPacketBuffer<Size>& buff)
     {
-      if (mPacketSize <= RELAY_HEADER_BYTES || mPacketSize > RELAY_HEADER_BYTES + RELAY_MTU) {
+      if (mPacket.Len <= RELAY_HEADER_BYTES || mPacket.Len > RELAY_HEADER_BYTES + RELAY_MTU) {
         return;
       }
 
@@ -50,7 +52,7 @@ namespace core
         &session_id,
         &session_version,
         mPacket.Buffer.data(),
-        mPacketSize) != RELAY_OK) {
+        mPacket.Len) != RELAY_OK) {
         return;
       }
 
@@ -76,13 +78,14 @@ namespace core
       relay_replay_protection_advance_sequence(&session->ClientToServerProtection, clean_sequence);
       if (
        relay::relay_verify_header(
-        RELAY_DIRECTION_CLIENT_TO_SERVER, session->PrivateKey.data(), mPacket.Buffer.data(), mPacketSize) != RELAY_OK) {
+        RELAY_DIRECTION_CLIENT_TO_SERVER, session->PrivateKey.data(), mPacket.Buffer.data(), mPacket.Len) != RELAY_OK) {
         return;
       }
 
       LogDebug("sending client packet to ", session->NextAddr);
-      mRecorder.addToSent(mPacketSize);
-      buff.push(session->NextAddr, mPacket.Buffer.data(), mPacketSize);
+      mRecorder.addToSent(mPacket.Len);
+      mStats.BytesPerSecPaidTx += mPacket.Len;
+      buff.push(session->NextAddr, mPacket.Buffer.data(), mPacket.Len);
     }
   }  // namespace handlers
 }  // namespace core

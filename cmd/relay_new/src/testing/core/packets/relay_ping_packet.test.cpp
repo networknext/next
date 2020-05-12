@@ -18,12 +18,11 @@ Test(core_packets_RelayPingPacket_general)
   encoding::WriteUint64(packet.Buffer, index, seqnum);
   encoding::WriteAddress(packet.Buffer, index, addr);
 
-  const int size = RELAY_PING_PACKET_BYTES;
-  core::packets::RelayPingPacket pingPacket(packet, size);
+  packet.Len = RELAY_PING_PACKET_BYTES;
+  core::packets::RelayPingPacket pingPacket(packet);
 
   // make sure packet is passed values correctly
   check(pingPacket.Internal.Buffer[0] == RELAY_PING_PACKET);
-  check(pingPacket.Size == size);
 
   // ensure getters work
   check(pingPacket.getSeqNum() == seqnum);
@@ -36,7 +35,7 @@ Test(core_packets_RelayPingPacket_general)
   pingPacket.writeFromAddr(addr);
 
   // since the first packet has its addr filled, create another for reading purposes
-  core::packets::RelayPingPacket followup(packet, size);
+  core::packets::RelayPingPacket followup(packet);
 
   // ensure the new addr was written to the buffer
   check(followup.getFromAddr() == addr);

@@ -125,7 +125,7 @@ namespace core
           mRecorder.addToReceived(wholePacketSize);
           mStats.BytesPerSecMeasurementRx += wholePacketSize;
 
-          handlers::RelayPingHandler handler(packet, packet.Len, mSocket, mRecvAddr, mRecorder);
+          handlers::RelayPingHandler handler(packet, mSocket, mRecvAddr, mRecorder, mStats);
 
           handler.handle();
         } else {
@@ -138,7 +138,7 @@ namespace core
           mRecorder.addToReceived(wholePacketSize);
           mStats.BytesPerSecMeasurementRx += wholePacketSize;
 
-          handlers::RelayPongHandler handler(packet, packet.Len, mRelayManager, mV3RelayManager);
+          handlers::RelayPongHandler handler(packet, mRelayManager, mV3RelayManager);
 
           handler.handle();
         } else {
@@ -150,7 +150,7 @@ namespace core
         mRecorder.addToReceived(wholePacketSize);
         mStats.BytesPerSecManagementRx += wholePacketSize;
 
-        handlers::RouteRequestHandler handler(mRelayClock, packet, packet.Len, packet.Addr, mKeychain, mSessionMap, mRecorder);
+        handlers::RouteRequestHandler handler(mRelayClock, packet, packet.Addr, mKeychain, mSessionMap, mRecorder, mStats);
 
         handler.handle(outputBuff);
       } break;
@@ -158,7 +158,7 @@ namespace core
         mRecorder.addToReceived(wholePacketSize);
         mStats.BytesPerSecManagementRx += wholePacketSize;
 
-        handlers::RouteResponseHandler handler(packet, packet.Len, mSessionMap, mRecorder);
+        handlers::RouteResponseHandler handler(packet, mSessionMap, mRecorder, mStats);
 
         handler.handle(outputBuff);
       } break;
@@ -166,7 +166,7 @@ namespace core
         mRecorder.addToReceived(wholePacketSize);
         mStats.BytesPerSecManagementRx += wholePacketSize;
 
-        handlers::ContinueRequestHandler handler(mRelayClock, packet, packet.Len, mSessionMap, mKeychain, mRecorder);
+        handlers::ContinueRequestHandler handler(mRelayClock, packet, mSessionMap, mKeychain, mRecorder, mStats);
 
         handler.handle(outputBuff);
       } break;
@@ -174,7 +174,7 @@ namespace core
         mRecorder.addToReceived(wholePacketSize);
         mStats.BytesPerSecManagementRx += wholePacketSize;
 
-        handlers::ContinueResponseHandler handler(packet, packet.Len, mSessionMap, mRecorder);
+        handlers::ContinueResponseHandler handler(packet, mSessionMap, mRecorder, mStats);
 
         handler.handle(outputBuff);
       } break;
@@ -182,7 +182,7 @@ namespace core
         mRecorder.addToReceived(wholePacketSize);
         mStats.BytesPerSecPaidRx += wholePacketSize;
 
-        handlers::ClientToServerHandler handler(packet, packet.Len, mSessionMap, mRecorder);
+        handlers::ClientToServerHandler handler(packet, mSessionMap, mRecorder, mStats);
 
         handler.handle(outputBuff);
       } break;
@@ -190,7 +190,7 @@ namespace core
         mRecorder.addToReceived(wholePacketSize);
         mStats.BytesPerSecPaidRx += wholePacketSize;
 
-        handlers::ServerToClientHandler handler(packet, packet.Len, mSessionMap, mRecorder);
+        handlers::ServerToClientHandler handler(packet, mSessionMap, mRecorder, mStats);
 
         handler.handle(outputBuff);
       } break;
@@ -198,7 +198,7 @@ namespace core
         mRecorder.addToReceived(wholePacketSize);
         mStats.BytesPerSecMeasurementRx += wholePacketSize;
 
-        handlers::SessionPingHandler handler(packet, packet.Len, mSessionMap, mSocket, mRecorder);
+        handlers::SessionPingHandler handler(packet, mSessionMap, mSocket, mRecorder, mStats);
 
         handler.handle();
       } break;
@@ -206,7 +206,7 @@ namespace core
         mRecorder.addToReceived(wholePacketSize);
         mStats.BytesPerSecMeasurementRx += wholePacketSize;
 
-        handlers::SessionPongHandler handler(packet, packet.Len, mSessionMap, mSocket, mRecorder);
+        handlers::SessionPongHandler handler(packet, mSessionMap, mSocket, mRecorder, mStats);
 
         handler.handle();
       } break;
@@ -214,7 +214,7 @@ namespace core
         mRecorder.addToReceived(wholePacketSize);
         mStats.BytesPerSecMeasurementRx += wholePacketSize;
 
-        handlers::NearPingHandler handler(packet, packet.Len, packet.Addr, mSocket, mRecorder);
+        handlers::NearPingHandler handler(packet, packet.Addr, mSocket, mRecorder, mStats);
 
         handler.handle();
       } break;
