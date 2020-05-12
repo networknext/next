@@ -6,15 +6,6 @@ mapboxgl.accessToken = 'pk.eyJ1IjoiYmF1bWJhY2hhbmRyZXciLCJhIjoiY2s4dDFwcGo2MGowZ
 
 const DEC_TO_PERC = 100;
 
-var userInfo = {
-	email: "",
-	name: "",
-	pubKey: "",
-	nickname: "",
-	token: "",
-	userId: "",
-};
-
 var defaultSessionDetailsVue = {
 	meta: null,
 	slices: [],
@@ -52,7 +43,7 @@ JSONRPCClient = {
 			'Accept':		'application/json',
 			'Accept-Encoding':	'gzip',
 			'Content-Type':		'application/json',
-			'Authorization': `Bearer ${userInfo.token}`
+			'Authorization': `Bearer ${UserHandler.userInfo.token}`
 		}
 
 		params = params || {}
@@ -70,6 +61,7 @@ JSONRPCClient = {
 
 
 		return response.json().then((json) => {
+			console.log(json)
 			if (json.error) {
 				throw new Error(json.error);
 			}
@@ -178,6 +170,52 @@ MapHandler = {
 				// Nothing for now
 		}
 	}
+}
+
+UserHandler = {
+	userInfo: {
+		email: "",
+		name: "",
+		nickname: "",
+		pubKey: "",
+		roles: [],
+		token: "",
+		userId: "",
+	},
+	async fetchCurrentUserInfo() {
+		return Promise.all([
+			loginClient.getUser(),
+			loginClient.getTokenSilently()
+		]).then((response) => {
+			this.userInfo = {
+				email: response[0].email,
+				name: response[0].name,
+				nickname: response[0].nickname,
+				userId: response[0].sub,
+				token: response[1]
+			};
+			return JSONRPCClient.call("AuthService.UserAccount", {user_id: this.userInfo.userId})
+		})
+		.then((response) => {
+			console.log(response)
+			this.userInfo.buyerId = response.account.buyer_id;
+			this.userInfo.roles = response.account.roles;
+		}).catch((e) => {
+			console.log("Something went wrong getting the current user information");
+			console.log(e);
+
+			// Need to handle no BuyerID gracefully
+		});
+	},
+	isAdmin(account) {
+		return account.roles.findIndex((role) => role.name == "Admin") !== -1
+	},
+	isOwner() {
+		return account.roles.findIndex((role) => role.name == "Owner") !== -1
+	},
+	isViewer() {
+		return account.roles.findIndex((role) => role.name == "Viewer") !== -1
+	},
 }
 
 WorkspaceHandler = {
@@ -374,14 +412,55 @@ WorkspaceHandler = {
 		this.changeAccountPage();
 		let promises = [
 			JSONRPCClient
-				.call('AuthService.AllAccounts', {buyer_id: '13672574147039585173'}),
+				.call('AuthService.AllAccounts', {buyer_id: UserHandler.userInfo.buyerId || '13672574147039585173'}),
 			JSONRPCClient
 				.call('AuthService.AllRoles', {})
 		];
 		Promise.all(promises)
 			.then(
 				(responses) => {
-					let accounts = responses[0].accounts;
+					let roles = responses[1].roles;
+					let accounts = responses[0].accounts || [];
+					let choices = roles.map((role) => {
+						return {
+							value: role,
+							label: role.name,
+							customProperties: {
+								description: role.description,
+							},
+						};
+					});
+
+					if (!addUserPermissions) {
+						addUserPermissions = new Choices(
+							document.getElementById("add-user-permissions"),
+							{
+								removeItemButton: true,
+								choices: choices,
+							}
+						);
+					}
+
+					choices = roles.map((role) => {
+						return {
+							value: role,
+							label: role.name,
+							customProperties: {
+								description: role.description,
+							},
+							selected: role.name === 'Viewer'
+						};
+					});
+
+					if (!autoSigninPermissions) {
+						autoSigninPermissions = new Choices(
+							document.getElementById("auto-signin-permissions"),
+							{
+								removeItemButton: true,
+								choices: choices,
+							}
+						);
+					}
 
 					/**
 					 * I really dislike this but it is apparently the way to reload/update the data within a vue
@@ -445,13 +524,13 @@ WorkspaceHandler = {
 	},
 	loadConfigPage() {
 		JSONRPCClient
-			.call('BuyersService.GameConfiguration', {buyer_id: '13672574147039585173'})
+			.call('BuyersService.GameConfiguration', {buyer_id: UserHandler.userInfo.buyerId || '13672574147039585173'})
 			.then((response) => {
-				userInfo.pubKey = response.game_config.public_key;
+				UserHandler.userInfo.pubKey = response.game_config.public_key;
 				/**
 				 * I really dislike this but it is apparently the way to reload/update the data within a vue
 				 */
-				Object.assign(pubKeyInput.$data, {pubKey: userInfo.pubKey});
+				Object.assign(pubKeyInput.$data, {pubKey: UserHandler.userInfo.pubKey});
 			})
 			.catch((e) => {
 				console.log("Something went wrong fetching public key");
@@ -503,31 +582,24 @@ function startApp() {
 	 * QUESTION: Instead of grabbing the user here can we use the token to then go off and get everything from the backend?
 	 * TODO:	 There are 3 different promises going off to get user details. There should be a better way to do this
 	 */
-	Promise.all([
-		loginClient.getUser(),
-		loginClient.getTokenSilently()
-	]).then((response) => {
-		userInfo = {
-			email: response[0].email,
-			name: response[0].name,
-			nickname: response[0].nickname,
-			userId: response[0].sub,
-			token: response[1]
-		};
-		createVueComponents();
-		document.getElementById("app").style.display = 'block';
-		MapHandler
-			.initMap()
-			.then((response) => {
-				console.log("Map init successful");
-			})
-			.catch((e) => {
-				console.log("Something went wrong initializing the map");
-				console.log(e);
-			});
-	}).catch((e) => {
-		console.log("Something went wrong getting the current user information");
-	});
+
+	UserHandler.fetchCurrentUserInfo()
+		.then(() => {
+			createVueComponents();
+			document.getElementById("app").style.display = 'block';
+			MapHandler
+				.initMap()
+				.then((response) => {
+					console.log("Map init successful");
+				})
+				.catch((e) => {
+					console.log("Something went wrong initializing the map");
+					console.log(e);
+				});
+		}).catch((e) => {
+			console.log("Something went wrong getting the current user information");
+			console.log(e);
+		});
 }
 
 function createVueComponents() {
@@ -571,7 +643,7 @@ function createVueComponents() {
 	pubKeyInput = new Vue({
 		el: '#pubKey',
 		data: {
-			pubKey: userInfo.pubKey
+			pubKey: UserHandler.userInfo.pubKey
 		},
 		methods: {
 			updatePubKey: updatePubKey
@@ -652,9 +724,9 @@ function updatePubKey() {
 	let newPubkey = document.getElementById("pubkey-input").value;
 
 	JSONRPCClient
-		.call("BuyersService.UpdateGameConfiguration", {buyer_id: '13672574147039585173', new_public_key: newPubkey})
+		.call("BuyersService.UpdateGameConfiguration", {buyer_id: UserHandler.userInfo.buyerId || '13672574147039585173', new_public_key: newPubkey})
 		.then((response) => {
-			userInfo.pubkey = response.game_config.public_key;
+			UserHandler.userInfo.pubkey = response.game_config.public_key;
 		})
 		.catch((e) => {
 			console.log("Something went wrong updating the public key");

@@ -62,9 +62,6 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 		domain := emailParts[len(emailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
 
 		buyer, err := s.Storage.BuyerWithDomain(domain)
-		if err != nil {
-			continue
-		}
 
 		reply.UserAccounts = append(reply.UserAccounts, newAccount(a, userRoles.Roles, fmt.Sprintf("%x", buyer.ID)))
 	}
@@ -89,9 +86,6 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 	domain := emailParts[len(emailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
 
 	buyer, err := s.Storage.BuyerWithDomain(domain)
-	if err != nil {
-		return err
-	}
 
 	userRoles, err := s.Auth0.Manager.User.Roles(*userAccount.ID)
 	if err != nil {
