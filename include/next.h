@@ -239,6 +239,8 @@ struct next_client_stats_t
     float direct_packet_loss;
     float kbps_up;
     float kbps_down;
+    uint64_t packets_sent_client_to_server;
+    uint64_t packets_sent_server_to_client;
     uint64_t packets_lost_client_to_server;
     uint64_t packets_lost_server_to_client;
     uint64_t user_flags;

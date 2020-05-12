@@ -3006,6 +3006,7 @@ struct NextClientStatsPacket
     float near_relay_mean_rtt[NEXT_MAX_NEAR_RELAYS];
     float near_relay_jitter[NEXT_MAX_NEAR_RELAYS];
     float near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
+    uint64_t packets_sent_client_to_server;
     uint64_t packets_lost_server_to_client;
     uint64_t user_flags;
 
@@ -3049,6 +3050,7 @@ struct NextClientStatsPacket
             serialize_float( stream, near_relay_jitter[i] );
             serialize_float( stream, near_relay_packet_loss[i] );
         }
+        serialize_uint64( stream, packets_sent_client_to_server );
         serialize_uint64( stream, packets_lost_server_to_client );
         serialize_uint64( stream, user_flags );
         return true;
@@ -5468,6 +5470,7 @@ void next_route_manager_destroy( next_route_manager_t * route_manager )
 #define NEXT_CLIENT_COMMAND_DESTROY                 2
 #define NEXT_CLIENT_COMMAND_FLAG_SESSION            3
 #define NEXT_CLIENT_COMMAND_USER_FLAGS              4
+#define NEXT_CLIENT_COMMAND_PACKET_SENT             5
 
 struct next_client_command_t
 {
@@ -5497,6 +5500,11 @@ struct next_client_command_flag_session_t : public next_client_command_t
 struct next_client_command_user_flags_t : public next_client_command_t
 {
     uint64_t user_flags;
+};
+
+struct next_client_command_packet_sent_t : public next_client_command_t
+{
+    // ...
 };
 
 // ---------------------------------------------------------------
@@ -5552,6 +5560,7 @@ struct next_client_internal_t
     bool flagged;
     bool fallback_to_direct;
     bool multipath;
+    uint64_t packets_sent;
     uint64_t user_flags;
     uint8_t open_session_sequence;
     uint64_t upgrade_sequence;
@@ -6648,6 +6657,7 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 client->user_flags = 0;
                 client->upgrade_sequence = 0;
                 client->session_id = 0;
+                client->packets_sent = 0;
                 client->internal_send_sequence = 0;
                 client->last_next_ping_time = 0.0;
                 client->first_next_ping_time = 0.0;
@@ -6719,6 +6729,12 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
             case NEXT_CLIENT_COMMAND_USER_FLAGS:
             {
                 client->user_flags |= ((next_client_command_user_flags_t*)command)->user_flags;
+            }
+            break;
+
+            case NEXT_CLIENT_COMMAND_PACKET_SENT:
+            {
+                client->packets_sent++;
             }
             break;
 
@@ -8450,6 +8466,7 @@ struct next_session_entry_t
 
     next_address_t address;
     uint64_t session_id;
+    uint64_t packets_sent;
     uint8_t most_recent_session_version;
     uint64_t special_send_sequence;
     uint64_t internal_send_sequence;
@@ -9242,6 +9259,8 @@ struct NextBackendSessionUpdatePacket
     uint8_t client_route_public_key[crypto_box_PUBLICKEYBYTES];
     uint32_t kbps_up;
     uint32_t kbps_down;
+    uint64_t packets_sent_client_to_server;
+    uint64_t packets_sent_server_to_client;
     uint64_t packets_lost_client_to_server;
     uint64_t packets_lost_server_to_client;
     uint64_t user_flags;
@@ -9294,6 +9313,8 @@ struct NextBackendSessionUpdatePacket
         serialize_bytes( stream, client_route_public_key, crypto_box_PUBLICKEYBYTES );
         serialize_uint32( stream, kbps_up );
         serialize_uint32( stream, kbps_down );
+        serialize_uint64( stream, packets_sent_client_to_server );
+        serialize_uint64( stream, packets_sent_server_to_client );
         serialize_uint64( stream, packets_lost_client_to_server );
         serialize_uint64( stream, packets_lost_server_to_client );
         serialize_uint64( stream, user_flags );
@@ -9340,6 +9361,8 @@ struct NextBackendSessionUpdatePacket
         next_write_address( &p, &server_address );
         next_write_uint32( &p, kbps_up );
         next_write_uint32( &p, kbps_down );
+        next_write_uint64( &p, packets_sent_client_to_server );
+        next_write_uint64( &p, packets_sent_server_to_client );
         next_write_uint64( &p, packets_lost_client_to_server );
         next_write_uint64( &p, packets_lost_server_to_client );
         next_write_uint64( &p, user_flags );
