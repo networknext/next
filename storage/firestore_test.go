@@ -1171,12 +1171,13 @@ func TestFirestore(t *testing.T) {
 		assert.NoError(t, err)
 
 		expectedRelay := routing.Relay{
-			ID:         crypto.HashID(addr.String()),
-			Name:       "local",
-			Addr:       *addr,
-			PublicKey:  make([]byte, crypto.KeySize),
-			Seller:     expectedSeller,
-			Datacenter: expectedDatacenter,
+			ID:          crypto.HashID(addr.String()),
+			Name:        "local",
+			Addr:        *addr,
+			PublicKey:   make([]byte, crypto.KeySize),
+			Seller:      expectedSeller,
+			Datacenter:  expectedDatacenter,
+			MaxSessions: 3000,
 		}
 
 		err = fs.AddBuyer(ctx, expectedBuyer)
