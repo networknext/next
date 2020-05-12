@@ -13416,10 +13416,12 @@ static void test_platform_mutex()
     check( result == NEXT_OK );
     next_platform_mutex_acquire( &mutex );
     next_platform_mutex_release( &mutex );
+    /*
     {
         next_platform_mutex_guard( &mutex );
         // ...
     }
+    */
     next_platform_mutex_destroy( &mutex );
 }
 

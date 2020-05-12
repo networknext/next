@@ -648,7 +648,7 @@ int next_platform_mutex_create( next_platform_mutex_t * mutex )
     next_assert( mutex );
 
     pthread_mutexattr_t attr;
-    pthread_mutexattr_init(&attr);
+    pthread_mutexattr_init( &attr );
     pthread_mutexattr_settype( &attr, 0 );
     int result = pthread_mutex_init( &mutex->handle, &attr );
     pthread_mutexattr_destroy( &attr );
