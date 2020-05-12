@@ -11,19 +11,19 @@ help:
 	@echo "help - TODO"
 
 .PHONY: release
-release: $(BIN) $(OBJ) $(OBJ_DIRS)
+release: $(BIN) $(OBJ) $(SRC_OBJ_DIRS)
 	$(MAKE) -f $(RELEASE_MAKEFILE)
 
 .PHONY: debug
-debug: $(BIN) $(OBJ) $(OBJ_DIRS)
+debug: $(BIN) $(OBJ) $(SRC_OBJ_DIRS)
 	$(MAKE) -f $(DEBUG_MAKEFILE)
 
 .PHONY: test
-test: $(BIN) $(OBJ) $(OBJ_DIRS)
+test: $(BIN) $(OBJ) $(SRC_OBJ_DIRS)
 	$(MAKE) -f $(TEST_MAKEFILE)
 
 .PHONY: benchmark
-benchmark: $(BIN) $(OBJ) $(OBJ_DIRS)
+benchmark: $(BIN) $(OBJ) $(SRC_OBJ_DIRS)
 	$(MAKE) -f $(BENCHMARK_MAKEFILE)
 
 .PHONY: run-release
@@ -65,6 +65,6 @@ $(OBJ):
 	@echo "Creating obj directory"
 	-@mkdir $@
 
-$(OBJ_DIRS):
+$(SRC_OBJ_DIRS):
 	@echo "creating obj directory: $@"
 	-@mkdir -p $@
