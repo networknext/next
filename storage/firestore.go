@@ -936,6 +936,11 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 			MaxSessions:         uint32(r.MaxSessions),
 		}
 
+		// Set a default max session count of 3000 if the value isn't set in firestore
+		if relay.MaxSessions == 0 {
+			relay.MaxSessions = 3000
+		}
+
 		// Get datacenter
 		ddoc, err := r.Datacenter.Get(ctx)
 		if err != nil {
