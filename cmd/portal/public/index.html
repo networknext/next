@@ -291,13 +291,16 @@
                                         </option>
                                     </select>
                                 </div>
-                                <div class="px-2" v-if="isAdmin()">
+                                <div class="px-2">
                                     <select class="form-control">
                                         <option value="all" v-on:click="updateFilter({buyerId: '', sessionType: filter.sessionType})">
                                             All
                                         </option>
-                                        <option v-for="buyer in allBuyers" v-on:click="updateFilter({buyerId: buyer.id, sessionType: filter.sessionType})">
+                                        <option v-for="buyer in allBuyers" v-on:click="updateFilter({buyerId: buyer.id, sessionType: filter.sessionType})" v-if="isAdmin()">
                                             {{ buyer.name }}
+                                        </option>
+                                        <option v-on:click="updateFilter({buyerId: UserHandler.userInfo.id, sessionType: filter.sessionType})" v-if="!isAdmin()">
+                                            {{ UserHandler.userInfo.name }}
                                         </option>
                                     </select>
                                 </div>
@@ -342,13 +345,18 @@
                                             </option>
                                         </select>
                                     </div>
-                                    <div class="px-2" v-if="isAdmin()">
-                                        <select class="form-control">
+                                    <div class="px-2">
+                                        <select class="form-control" v-if="isAdmin()">
                                             <option value="all" v-on:click="updateSessionFilter({buyerId: '', sessionType: filter.sessionType})">
                                                 All
                                             </option>
                                             <option v-for="buyer in allBuyers" v-on:click="updateSessionFilter({buyerId: buyer.id, sessionType: filter.sessionType})">
                                                 {{ buyer.name }}
+                                            </option>
+                                        </select>
+                                        <select class="form-control" v-if="!isAdmin()">
+                                            <option v-on:click="updateSessionFilter({buyerId: UserHandler.userInfo.id, sessionType: filter.sessionType})">
+                                                {{ UserHandler.userInfo.name }}
                                             </option>
                                         </select>
                                     </div>
