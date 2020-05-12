@@ -8,18 +8,18 @@ namespace legacy
   {
     struct BackendRequestFragment
     {
-      std::array<uint8_t, FragmentSize> data;
-      uint16_t length;
-      bool received;
+      std::array<uint8_t, FragmentSize> Data;
+      uint16_t Length;
+      bool Received;
     };
 
     struct BackendRequest
     {
-      uint64_t id;
-      std::array<BackendRequestFragment, FragmentMax> fragments;
-      uint8_t fragment_total;
-      PacketType type;
-      uint64_t At;
+      uint64_t ID;
+      std::array<BackendRequestFragment, FragmentMax> Fragments;
+      uint8_t FragmentTotal;
+      PacketType Type;
+      uint64_t At; // when the request was made
     };
   }  // namespace v3
 }  // namespace legacy

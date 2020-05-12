@@ -71,7 +71,7 @@ namespace legacy
         return false;
       }
 
-      request.id = crypto::Random<uint64_t>();
+      request.ID = crypto::Random<uint64_t>();
 
       size_t compressed_bytes_available = packet.Len + 32;
       std::vector<uint8_t> compressed_buffer(compressed_bytes_available);
@@ -131,7 +131,7 @@ namespace legacy
          compressed_buffer.begin() + i * FragmentSize + fragment_bytes,
          pkt.Buffer.begin());
 
-        if (!build_udp_fragment(request.type, master_token, request.id, i, fragment_total, pkt, out)) {
+        if (!build_udp_fragment(request.Type, master_token, request.ID, i, fragment_total, pkt, out)) {
           Log("failed to build v3 packet");
           return false;
         }

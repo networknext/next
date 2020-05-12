@@ -73,7 +73,7 @@ namespace legacy
       }
       BackendRequest request = {};
       {
-        request.type = PacketType::InitRequest;
+        request.Type = PacketType::InitRequest;
       }
       BackendResponse response;
       util::JSON doc;
@@ -138,7 +138,7 @@ namespace legacy
       }
       BackendRequest request = {};
       {
-        request.type = PacketType::ConfigRequest;
+        request.Type = PacketType::ConfigRequest;
       }
       BackendResponse response;
       util::JSON doc;
@@ -220,7 +220,7 @@ namespace legacy
       }
       BackendRequest request = {};
       {
-        request.type = PacketType::UpdateRequest;
+        request.Type = PacketType::UpdateRequest;
       }
       BackendResponse response;
       util::JSON doc;
@@ -422,7 +422,7 @@ namespace legacy
       bool done = false;
       unsigned int attempts = 0;
       do {
-        LogDebug("sending ", request.type, " packet");
+        LogDebug("sending ", request.Type, " packet");
         request.At = mClock.elapsed<util::Nanosecond>();
         bool sendSuccess = packet_send(mSocket, mToken, packet, request);
 
@@ -508,8 +508,8 @@ namespace legacy
 
       size_t index = 1 + crypto_sign_BYTES;
       uint64_t packet_id = encoding::ReadUint64(packet.Buffer, index);
-      if (packet_id != request.id) {
-        Log("discarding unexpected master UDP packet, expected ID ", request.id, ", got ", packet_id);
+      if (packet_id != request.ID) {
+        Log("discarding unexpected master UDP packet, expected ID ", request.ID, ", got ", packet_id);
         return false;
       }
 
@@ -534,20 +534,20 @@ namespace legacy
 
       response.Type = static_cast<PacketType>(packet.Buffer[0]);
 
-      if (request.fragment_total == 0) {
-        request.type = response.Type;
-        request.fragment_total = response.FragCount;
+      if (request.FragmentTotal == 0) {
+        request.Type = response.Type;
+        request.FragmentTotal = response.FragCount;
       }
 
-      if (response.Type != request.type) {
-        Log("expected packet type ", request.type, ", got ", static_cast<uint32_t>(packet.Buffer[0]), ", discarding packet");
+      if (response.Type != request.Type) {
+        Log("expected packet type ", request.Type, ", got ", static_cast<uint32_t>(packet.Buffer[0]), ", discarding packet");
         return false;
       }
 
-      if (response.FragCount != request.fragment_total) {
+      if (response.FragCount != request.FragmentTotal) {
         Log(
          "expected ",
-         request.fragment_total,
+         request.FragmentTotal,
          " fragments, got fragment ",
          static_cast<uint32_t>(response.FragIndex + 1),
          "/",
@@ -556,7 +556,7 @@ namespace legacy
         return false;
       }
 
-      if (request.fragments[response.FragIndex].received) {
+      if (request.Fragments[response.FragIndex].Received) {
         Log(
          "already received master fragment ",
          static_cast<uint32_t>(response.FragIndex + 1),
@@ -568,21 +568,21 @@ namespace legacy
 
       // save this fragment
       {
-        auto& fragment = request.fragments[response.FragIndex];
-        fragment.length = static_cast<uint16_t>(packet.Len - zip_start);
+        auto& fragment = request.Fragments[response.FragIndex];
+        fragment.Length = static_cast<uint16_t>(packet.Len - zip_start);
         std::copy(
-         packet.Buffer.begin() + zip_start, packet.Buffer.begin() + zip_start + fragment.length, fragment.data.begin());
-        fragment.received = true;
+         packet.Buffer.begin() + zip_start, packet.Buffer.begin() + zip_start + fragment.Length, fragment.Data.begin());
+        fragment.Received = true;
       }
 
       // check received fragments
 
       int complete_bytes = 0;
 
-      for (int i = 0; i < request.fragment_total; i++) {
-        auto& fragment = request.fragments[i];
-        if (fragment.received) {
-          complete_bytes += fragment.length;
+      for (int i = 0; i < request.FragmentTotal; i++) {
+        auto& fragment = request.Fragments[i];
+        if (fragment.Received) {
+          complete_bytes += fragment.Length;
         } else {
           return false;  // not all fragments have been received yet
         }
@@ -590,15 +590,15 @@ namespace legacy
 
       // all fragments have been received
 
-      request.id = 0;  // reset request
+      request.ID = 0;  // reset request
 
       completeBuffer.resize(complete_bytes);
 
       int bytes = 0;
-      for (int i = 0; i < request.fragment_total; i++) {
-        auto& fragment = request.fragments[i];
-        std::copy(fragment.data.begin(), fragment.data.begin() + fragment.length, completeBuffer.begin() + bytes);
-        bytes += fragment.length;
+      for (int i = 0; i < request.FragmentTotal; i++) {
+        auto& fragment = request.Fragments[i];
+        std::copy(fragment.Data.begin(), fragment.Data.begin() + fragment.Length, completeBuffer.begin() + bytes);
+        bytes += fragment.Length;
       }
 
       assert(bytes == complete_bytes);
