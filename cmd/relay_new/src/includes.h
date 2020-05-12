@@ -1,5 +1,4 @@
 #include "config.hpp"
-#include "lib/miniz/miniz.h"
 #include "sysinfo.hpp"
 #include <algorithm>
 #include <alloca.h>
@@ -35,6 +34,7 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <miniz/miniz.h>
 #include <mutex>
 #include <mutex>
 #include <netdb.h>
