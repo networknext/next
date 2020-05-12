@@ -681,7 +681,7 @@ void next_platform_mutex_destroy( next_platform_mutex_t * mutex )
     if ( mutex->ok )
     {
         pthread_mutex_destroy( &mutex->handle );
-        memset( &mutex, 0, sizeof(next_platform_mutex_t) );
+        memset( mutex, 0, sizeof(next_platform_mutex_t) );
     }
 }
 

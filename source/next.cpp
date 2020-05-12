@@ -13411,10 +13411,10 @@ static void test_platform_thread()
 
 static void test_platform_mutex()
 {
-    /*
     next_platform_mutex_t mutex;
     int result = next_platform_mutex_create( &mutex );
     check( result == NEXT_OK );
+    /*
     next_platform_mutex_acquire( &mutex );
     next_platform_mutex_release( &mutex );
     {
