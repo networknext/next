@@ -3950,38 +3950,78 @@ struct next_ping_history_entry_t
 
 struct next_ping_history_t
 {
+    NEXT_DECLARE_SENTINEL(0)
+
     uint64_t sequence;
+
+    NEXT_DECLARE_SENTINEL(1)
+
     next_ping_history_entry_t entries[NEXT_PING_HISTORY_ENTRY_COUNT];
+
+    NEXT_DECLARE_SENTINEL(2)
 };
+
+void next_ping_history_initialize_sentinels( next_ping_history_t * history )
+{
+    (void) history;
+    next_assert( history );
+    NEXT_INITIALIZE_SENTINEL( history, 0 )
+    NEXT_INITIALIZE_SENTINEL( history, 1 )
+    NEXT_INITIALIZE_SENTINEL( history, 2 )
+}
+
+void next_ping_history_verify_sentinels( const next_ping_history_t * history )
+{
+    (void) history;
+    next_assert( history );
+    NEXT_VERIFY_SENTINEL( history, 0 )
+    NEXT_VERIFY_SENTINEL( history, 1 )
+    NEXT_VERIFY_SENTINEL( history, 2 )
+}
 
 void next_ping_history_clear( next_ping_history_t * history )
 {
     next_assert( history );
+
+    next_ping_history_initialize_sentinels( history );
+
     history->sequence = 0;
+
     for ( int i = 0; i < NEXT_PING_HISTORY_ENTRY_COUNT; ++i )
     {
         history->entries[i].sequence = 0xFFFFFFFFFFFFFFFFULL;
         history->entries[i].time_ping_sent = -1.0;
         history->entries[i].time_pong_received = -1.0;
     }
+
+    next_ping_history_verify_sentinels( history );
 }
 
 uint64_t next_ping_history_ping_sent( next_ping_history_t * history, double time )
 {
-    next_assert( history );
+    next_ping_history_verify_sentinels( history );
+
     const int index = history->sequence % NEXT_PING_HISTORY_ENTRY_COUNT;
+
     next_ping_history_entry_t * entry = &history->entries[index];
+
     entry->sequence = history->sequence;
     entry->time_ping_sent = time;
     entry->time_pong_received = -1.0;
+
     history->sequence++;
+
     return entry->sequence;
 }
 
 void next_ping_history_pong_received( next_ping_history_t * history, uint64_t sequence, double time )
 {
+    next_ping_history_verify_sentinels( history );
+
     const int index = sequence % NEXT_PING_HISTORY_ENTRY_COUNT;
+
     next_ping_history_entry_t * entry = &history->entries[index];
+
     if ( entry->sequence == sequence )
     {
         entry->time_pong_received = time;
@@ -3990,9 +4030,9 @@ void next_ping_history_pong_received( next_ping_history_t * history, uint64_t se
 
 void next_route_stats_from_ping_history( const next_ping_history_t * history, double start, double end, next_route_stats_t * stats, double ping_safety )
 {
-    next_assert( history );
-    next_assert( stats );
+    next_ping_history_verify_sentinels( history );
 
+    next_assert( stats );
     next_assert( start < end );
 
     stats->min_rtt = 0.0f;
@@ -4101,31 +4141,138 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
     {
         stats->jitter = 3.0f * (float) sqrt( stddev_rtt / num_jitter_samples );
     }
+
+    next_ping_history_verify_sentinels( history );
 }
 
 // ---------------------------------------------------------------
 
 struct next_relay_stats_t
 {
+    NEXT_DECLARE_SENTINEL(0)
+
     int num_relays;
+
+    NEXT_DECLARE_SENTINEL(1)
+
     uint64_t relay_ids[NEXT_MAX_NEAR_RELAYS];
+
+    NEXT_DECLARE_SENTINEL(2)
+
     float relay_min_rtt[NEXT_MAX_NEAR_RELAYS];
+
+    NEXT_DECLARE_SENTINEL(3)
+
     float relay_max_rtt[NEXT_MAX_NEAR_RELAYS];
+
+    NEXT_DECLARE_SENTINEL(4)
+
     float relay_mean_rtt[NEXT_MAX_NEAR_RELAYS];
+
+    NEXT_DECLARE_SENTINEL(5)
+
     float relay_jitter[NEXT_MAX_NEAR_RELAYS];
+
+    NEXT_DECLARE_SENTINEL(6)
+
     float relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
+
+    NEXT_DECLARE_SENTINEL(7)
 };
+
+void next_relay_stats_initialize_sentinels( next_relay_stats_t * stats )
+{
+    (void) stats;
+    next_assert( stats );
+    NEXT_INITIALIZE_SENTINEL( stats, 0 )
+    NEXT_INITIALIZE_SENTINEL( stats, 1 )
+    NEXT_INITIALIZE_SENTINEL( stats, 2 )
+    NEXT_INITIALIZE_SENTINEL( stats, 3 )
+    NEXT_INITIALIZE_SENTINEL( stats, 4 )
+    NEXT_INITIALIZE_SENTINEL( stats, 5 )
+    NEXT_INITIALIZE_SENTINEL( stats, 6 )
+    NEXT_INITIALIZE_SENTINEL( stats, 7 )
+}
+
+void next_relay_stats_verify_sentinels( next_relay_stats_t * stats )
+{
+    (void) stats;
+    next_assert( stats );
+    NEXT_VERIFY_SENTINEL( stats, 0 )
+    NEXT_VERIFY_SENTINEL( stats, 1 )
+    NEXT_VERIFY_SENTINEL( stats, 2 )
+    NEXT_VERIFY_SENTINEL( stats, 3 )
+    NEXT_VERIFY_SENTINEL( stats, 4 )
+    NEXT_VERIFY_SENTINEL( stats, 5 )
+    NEXT_VERIFY_SENTINEL( stats, 6 )
+    NEXT_VERIFY_SENTINEL( stats, 7 )
+}
+
+// ---------------------------------------------------------------
 
 struct next_relay_manager_t
 {
+    NEXT_DECLARE_SENTINEL(0)
+
     void * context;
     int num_relays;
+
+    NEXT_DECLARE_SENTINEL(1)
+
     uint64_t relay_ids[NEXT_MAX_NEAR_RELAYS];
+
+    NEXT_DECLARE_SENTINEL(2)
+
     double relay_last_ping_time[NEXT_MAX_NEAR_RELAYS];
+
+    NEXT_DECLARE_SENTINEL(3)
+
     next_address_t relay_addresses[NEXT_MAX_NEAR_RELAYS];
+
+    NEXT_DECLARE_SENTINEL(4)
+
     next_ping_history_t * relay_ping_history[NEXT_MAX_NEAR_RELAYS];
+
+    NEXT_DECLARE_SENTINEL(5)
+
     next_ping_history_t ping_history_array[NEXT_MAX_NEAR_RELAYS];
+
+    NEXT_DECLARE_SENTINEL(6)
 };
+
+void next_relay_manager_initialize_sentinels( next_relay_manager_t * manager )
+{
+    (void) manager;
+
+    next_assert( manager );
+
+    NEXT_INITIALIZE_SENTINEL( manager, 0 )
+    NEXT_INITIALIZE_SENTINEL( manager, 1 )
+    NEXT_INITIALIZE_SENTINEL( manager, 2 )
+    NEXT_INITIALIZE_SENTINEL( manager, 3 )
+    NEXT_INITIALIZE_SENTINEL( manager, 4 )
+    NEXT_INITIALIZE_SENTINEL( manager, 5 )
+    NEXT_INITIALIZE_SENTINEL( manager, 6 )
+
+    for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        next_ping_history_initialize_sentinels( &manager->ping_history_array[i] );
+}
+
+void next_relay_manager_verify_sentinels( next_relay_manager_t * manager )
+{
+    (void) manager;
+    next_assert( manager );
+    NEXT_VERIFY_SENTINEL( manager, 0 )
+    NEXT_VERIFY_SENTINEL( manager, 1 )
+    NEXT_VERIFY_SENTINEL( manager, 2 )
+    NEXT_VERIFY_SENTINEL( manager, 3 )
+    NEXT_VERIFY_SENTINEL( manager, 4 )
+    NEXT_VERIFY_SENTINEL( manager, 5 )
+    NEXT_VERIFY_SENTINEL( manager, 6 )
+
+    for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        next_ping_history_verify_sentinels( &manager->ping_history_array[i] );
+}
 
 void next_relay_manager_reset( next_relay_manager_t * manager );
 
@@ -4134,19 +4281,29 @@ next_relay_manager_t * next_relay_manager_create( void * context )
     next_relay_manager_t * manager = (next_relay_manager_t*) next_malloc( context, sizeof(next_relay_manager_t) );
     if ( !manager ) 
         return NULL;
+
     manager->context = context;
+    
+    next_relay_manager_initialize_sentinels( manager );
+
     next_relay_manager_reset( manager );
+    
+    next_relay_manager_verify_sentinels( manager );
+
     return manager;
 }
 
 void next_relay_manager_reset( next_relay_manager_t * manager )
 {
-    next_assert( manager );
+    next_relay_manager_verify_sentinels( manager );
+
     manager->num_relays = 0;
+    
     memset( manager->relay_ids, 0, sizeof(manager->relay_ids) );
     memset( manager->relay_last_ping_time, 0, sizeof(manager->relay_last_ping_time) );
     memset( manager->relay_addresses, 0, sizeof(manager->relay_addresses) );
     memset( manager->relay_ping_history, 0, sizeof(manager->relay_ping_history) );
+    
     for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
     {
         next_ping_history_clear( &manager->ping_history_array[i] );
@@ -4155,7 +4312,8 @@ void next_relay_manager_reset( next_relay_manager_t * manager )
 
 void next_relay_manager_update( next_relay_manager_t * manager, int num_relays, const uint64_t * relay_ids, const next_address_t * relay_addresses )
 {
-    next_assert( manager );
+    next_relay_manager_verify_sentinels( manager );
+
     next_assert( num_relays >= 0 );
     next_assert( num_relays <= NEXT_MAX_NEAR_RELAYS );
     next_assert( relay_ids );
@@ -4273,11 +4431,14 @@ void next_relay_manager_update( next_relay_manager_t * manager, int num_relays, 
     }
 
 #endif // #ifndef DEBUG
+
+    next_relay_manager_verify_sentinels( manager );
 }
 
 void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platform_socket_t * socket, uint64_t session_id )
 {
-    next_assert( manager );
+    next_relay_manager_verify_sentinels( manager );
+    
     next_assert( socket );
 
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES*2];
@@ -4311,7 +4472,8 @@ void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platfor
 
 bool next_relay_manager_process_pong( next_relay_manager_t * manager, const next_address_t * from, uint64_t sequence )
 {
-    next_assert( manager );
+    next_relay_manager_verify_sentinels( manager );
+
     next_assert( from );
 
     for ( int i = 0; i < manager->num_relays; ++i )
@@ -4328,17 +4490,22 @@ bool next_relay_manager_process_pong( next_relay_manager_t * manager, const next
 
 void next_relay_manager_get_stats( next_relay_manager_t * manager, next_relay_stats_t * stats )
 {
-    next_assert( manager );
+    next_relay_manager_verify_sentinels( manager );
+
     next_assert( stats );
 
     double current_time = next_time();
     
+    next_relay_stats_initialize_sentinels( stats );
+
     stats->num_relays = manager->num_relays;
     
     for ( int i = 0; i < stats->num_relays; ++i )
     {        
         next_route_stats_t route_stats;
+        
         next_route_stats_from_ping_history( manager->relay_ping_history[i], current_time - NEXT_CLIENT_STATS_WINDOW, current_time, &route_stats, NEXT_PING_SAFETY );
+        
         stats->relay_ids[i] = manager->relay_ids[i];
         stats->relay_min_rtt[i] = route_stats.min_rtt;
         stats->relay_max_rtt[i] = route_stats.max_rtt;
@@ -4346,10 +4513,14 @@ void next_relay_manager_get_stats( next_relay_manager_t * manager, next_relay_st
         stats->relay_jitter[i] = route_stats.jitter;
         stats->relay_packet_loss[i] = route_stats.packet_loss;
     }
+
+    next_relay_stats_verify_sentinels( stats );
 }
 
 void next_relay_manager_destroy( next_relay_manager_t * manager )
 {
+    next_relay_manager_verify_sentinels( manager );
+
     next_free( manager->context, manager );
 }
 
@@ -4826,6 +4997,8 @@ int next_read_header( int direction, uint8_t * type, uint64_t * sequence, uint64
 
 struct next_route_data_t
 {
+    NEXT_DECLARE_SENTINEL(0)
+
     bool current_route;
     bool current_route_committed;
     double current_route_expire_time;
@@ -4834,12 +5007,22 @@ struct next_route_data_t
     int current_route_kbps_up;
     int current_route_kbps_down;
     next_address_t current_route_next_address;
+
+    NEXT_DECLARE_SENTINEL(1)
+
     uint8_t current_route_private_key[crypto_box_SECRETKEYBYTES];
+
+    NEXT_DECLARE_SENTINEL(2)
 
     bool previous_route;
     uint64_t previous_route_session_id;
     uint8_t previous_route_session_version;
+
+    NEXT_DECLARE_SENTINEL(3)
+
     uint8_t previous_route_private_key[crypto_box_SECRETKEYBYTES];
+
+    NEXT_DECLARE_SENTINEL(4)
 
     bool pending_route;
     bool pending_route_committed;
@@ -4851,25 +5034,92 @@ struct next_route_data_t
     int pending_route_kbps_down;
     int pending_route_request_packet_bytes;
     next_address_t pending_route_next_address;
+
+    NEXT_DECLARE_SENTINEL(5)
+
     uint8_t pending_route_request_packet_data[NEXT_MAX_PACKET_BYTES];
+
+    NEXT_DECLARE_SENTINEL(6)
+
     uint8_t pending_route_private_key[crypto_box_SECRETKEYBYTES];
     
+    NEXT_DECLARE_SENTINEL(7)
+
     bool pending_continue;
     bool pending_continue_committed;
     double pending_continue_start_time;
     double pending_continue_last_send_time;
     int pending_continue_request_packet_bytes;
+
+    NEXT_DECLARE_SENTINEL(8)
+
     uint8_t pending_continue_request_packet_data[NEXT_MAX_PACKET_BYTES];
+
+    NEXT_DECLARE_SENTINEL(9)
 };
+
+void next_route_data_initialize_sentinels( next_route_data_t * route_data )
+{
+    (void) route_data;
+    next_assert( route_data );
+    NEXT_INITIALIZE_SENTINEL( route_data, 0 )
+    NEXT_INITIALIZE_SENTINEL( route_data, 1 )
+    NEXT_INITIALIZE_SENTINEL( route_data, 2 )
+    NEXT_INITIALIZE_SENTINEL( route_data, 3 )
+    NEXT_INITIALIZE_SENTINEL( route_data, 4 )
+    NEXT_INITIALIZE_SENTINEL( route_data, 5 )
+    NEXT_INITIALIZE_SENTINEL( route_data, 6 )
+    NEXT_INITIALIZE_SENTINEL( route_data, 7 )
+    NEXT_INITIALIZE_SENTINEL( route_data, 8 )
+    NEXT_INITIALIZE_SENTINEL( route_data, 9 )
+}
+
+void next_route_data_verify_sentinels( next_route_data_t * route_data )
+{
+    (void) route_data;
+    next_assert( route_data );
+    NEXT_VERIFY_SENTINEL( route_data, 0 )
+    NEXT_VERIFY_SENTINEL( route_data, 1 )
+    NEXT_VERIFY_SENTINEL( route_data, 2 )
+    NEXT_VERIFY_SENTINEL( route_data, 3 )
+    NEXT_VERIFY_SENTINEL( route_data, 4 )
+    NEXT_VERIFY_SENTINEL( route_data, 5 )
+    NEXT_VERIFY_SENTINEL( route_data, 6 )
+    NEXT_VERIFY_SENTINEL( route_data, 7 )
+    NEXT_VERIFY_SENTINEL( route_data, 8 )
+    NEXT_VERIFY_SENTINEL( route_data, 9 )
+}
 
 struct next_route_manager_t
 {
+    NEXT_DECLARE_SENTINEL(0)
+
     void * context;
     uint64_t send_sequence;
     bool fallback_to_direct;
     next_route_data_t route_data;
     uint32_t flags;
+
+    NEXT_DECLARE_SENTINEL(1)
 };
+
+void next_route_manager_initialize_sentinels( next_route_manager_t * route_manager )
+{
+    (void) route_manager;
+    next_assert( route_manager );
+    NEXT_INITIALIZE_SENTINEL( route_manager, 0 )
+    NEXT_INITIALIZE_SENTINEL( route_manager, 1 )
+    next_route_data_initialize_sentinels( &route_manager->route_data );
+}
+
+void next_route_manager_verify_sentinels( next_route_manager_t * route_manager )
+{
+    (void) route_manager;
+    next_assert( route_manager );
+    NEXT_VERIFY_SENTINEL( route_manager, 0 )
+    NEXT_VERIFY_SENTINEL( route_manager, 1 )
+    next_route_data_verify_sentinels( &route_manager->route_data );
+}
 
 next_route_manager_t * next_route_manager_create( void * context )
 {
@@ -4877,23 +5127,30 @@ next_route_manager_t * next_route_manager_create( void * context )
     if ( !route_manager ) 
         return NULL;
     memset( route_manager, 0, sizeof(next_route_manager_t) );
+    next_route_manager_initialize_sentinels( route_manager );
     route_manager->context = context;
     return route_manager;
 }
 
 void next_route_manager_reset( next_route_manager_t * route_manager )
 {
-    next_assert( route_manager );
-
+    next_route_manager_verify_sentinels( route_manager );
+    
     route_manager->send_sequence = 0;
     route_manager->fallback_to_direct = false;
+    
     memset( &route_manager->route_data, 0, sizeof(next_route_data_t) );
+    
+    next_route_manager_initialize_sentinels( route_manager );
+    
     route_manager->flags = 0;
+
+    next_route_manager_verify_sentinels( route_manager );
 }
 
 void next_route_manager_fallback_to_direct( next_route_manager_t * route_manager, uint32_t flags )
 {
-    next_assert( route_manager );
+    next_route_manager_verify_sentinels( route_manager );
 
     route_manager->flags |= flags;
 
@@ -4914,7 +5171,7 @@ void next_route_manager_fallback_to_direct( next_route_manager_t * route_manager
 
 void next_route_manager_direct_route( next_route_manager_t * route_manager, bool quiet )
 {
-    next_assert( route_manager );
+    next_route_manager_verify_sentinels( route_manager );
 
     if ( route_manager->fallback_to_direct )
         return;
@@ -4934,7 +5191,8 @@ void next_route_manager_direct_route( next_route_manager_t * route_manager, bool
 
 void next_route_manager_begin_next_route( next_route_manager_t * route_manager, bool committed, int num_tokens, uint8_t * tokens, const uint8_t * public_key, const uint8_t * private_key )
 {
-    next_assert( route_manager );
+    next_route_manager_verify_sentinels( route_manager );
+
     next_assert( tokens );
     next_assert( num_tokens >= 2 );
     next_assert( num_tokens <= NEXT_MAX_TOKENS );
@@ -4972,7 +5230,8 @@ void next_route_manager_begin_next_route( next_route_manager_t * route_manager, 
 
 void next_route_manager_continue_next_route( next_route_manager_t * route_manager, bool committed, int num_tokens, uint8_t * tokens, const uint8_t * public_key, const uint8_t * private_key )
 {
-    next_assert( route_manager );
+    next_route_manager_verify_sentinels( route_manager );
+
     next_assert( tokens );
     next_assert( num_tokens >= 2 );
     next_assert( num_tokens <= NEXT_MAX_TOKENS );
@@ -5018,7 +5277,8 @@ void next_route_manager_continue_next_route( next_route_manager_t * route_manage
 
 void next_route_manager_update( next_route_manager_t * route_manager, int update_type, bool committed, int num_tokens, uint8_t * tokens, const uint8_t * public_key, const uint8_t * private_key )
 {
-    next_assert( route_manager );
+    next_route_manager_verify_sentinels( route_manager );
+
     next_assert( public_key );
     next_assert( private_key );
 
@@ -5038,25 +5298,26 @@ void next_route_manager_update( next_route_manager_t * route_manager, int update
 
 bool next_route_manager_has_network_next_route( next_route_manager_t * route_manager )
 {
-    next_assert( route_manager );
+    next_route_manager_verify_sentinels( route_manager );
     return route_manager->route_data.current_route;
 }
 
 uint64_t next_route_manager_next_send_sequence( next_route_manager_t * route_manager )
 {
-    next_assert( route_manager );
+    next_route_manager_verify_sentinels( route_manager );
     return route_manager->send_sequence++;
 }
 
 bool next_route_manager_committed( next_route_manager_t * route_manager )
 {
-    next_assert( route_manager );
+    next_route_manager_verify_sentinels( route_manager );
     return route_manager->route_data.current_route && route_manager->route_data.current_route_committed;
 }
 
 void next_route_manager_prepare_send_packet( next_route_manager_t * route_manager, uint64_t sequence, next_address_t * to, const uint8_t * payload_data, int payload_bytes, uint8_t * packet_data, int * packet_bytes )
 {
-    next_assert( route_manager );
+    next_route_manager_verify_sentinels( route_manager );
+
     next_assert( route_manager->route_data.current_route );
     next_assert( to );
     next_assert( payload_data );
@@ -5082,7 +5343,8 @@ void next_route_manager_prepare_send_packet( next_route_manager_t * route_manage
 
 bool next_route_manager_process_server_to_client_packet( next_route_manager_t * route_manager, const next_address_t * from, uint8_t * packet_data, int packet_bytes, uint64_t * payload_sequence, uint8_t * payload_data, int * payload_bytes )
 {
-    next_assert( route_manager );
+    next_route_manager_verify_sentinels( route_manager );
+
     next_assert( packet_data );
     next_assert( payload_sequence );
     next_assert( payload_data );
@@ -5167,7 +5429,7 @@ bool next_route_manager_process_server_to_client_packet( next_route_manager_t * 
 
 void next_route_manager_check_for_timeouts( next_route_manager_t * route_manager )
 {
-    next_assert( route_manager );
+    next_route_manager_verify_sentinels( route_manager );
 
     if ( route_manager->fallback_to_direct )
         return;
@@ -5198,7 +5460,8 @@ void next_route_manager_check_for_timeouts( next_route_manager_t * route_manager
 
 bool next_route_manager_send_route_request( next_route_manager_t * route_manager, next_address_t * to, uint8_t * packet_data, int * packet_bytes )
 {
-    next_assert( route_manager );
+    next_route_manager_verify_sentinels( route_manager );
+
     next_assert( to );
     next_assert( packet_data );
     next_assert( packet_bytes );
@@ -5224,7 +5487,8 @@ bool next_route_manager_send_route_request( next_route_manager_t * route_manager
 
 bool next_route_manager_send_continue_request( next_route_manager_t * route_manager, next_address_t * to, uint8_t * packet_data, int * packet_bytes )
 {
-    next_assert( route_manager );
+    next_route_manager_verify_sentinels( route_manager );
+
     next_assert( to );
     next_assert( packet_data );
     next_assert( packet_bytes );
@@ -5250,7 +5514,8 @@ bool next_route_manager_send_continue_request( next_route_manager_t * route_mana
 
 void next_route_manager_destroy( next_route_manager_t * route_manager )
 {
-    next_assert( route_manager );
+    next_route_manager_verify_sentinels( route_manager );
+
     next_free( route_manager->context, route_manager );
 }
 
@@ -5436,6 +5701,11 @@ void next_client_internal_initialize_sentinels( next_client_internal_t * client 
     NEXT_INITIALIZE_SENTINEL( client, 9 )
     NEXT_INITIALIZE_SENTINEL( client, 10 )
     NEXT_INITIALIZE_SENTINEL( client, 11 )
+
+    next_relay_stats_initialize_sentinels( &client->near_relay_stats );
+
+    next_ping_history_initialize_sentinels( &client->next_ping_history );
+    next_ping_history_initialize_sentinels( &client->direct_ping_history );
 }
 
 void next_client_internal_verify_sentinels( next_client_internal_t * client )
@@ -5467,7 +5737,16 @@ void next_client_internal_verify_sentinels( next_client_internal_t * client )
     next_replay_protection_verify_sentinels( &client->special_replay_protection );
     next_replay_protection_verify_sentinels( &client->internal_replay_protection );
 
-    // todo: rest of client internal objects
+    next_relay_stats_verify_sentinels( &client->near_relay_stats );
+
+    if ( client->near_relay_manager )
+        next_relay_manager_verify_sentinels( client->near_relay_manager );
+
+    next_ping_history_verify_sentinels( &client->next_ping_history );
+    next_ping_history_verify_sentinels( &client->direct_ping_history );
+
+    if ( client->route_manager )
+        next_route_manager_verify_sentinels( client->route_manager );
 }
 
 void next_client_internal_destroy( next_client_internal_t * client );
@@ -6421,6 +6700,7 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 next_printf( NEXT_LOG_LEVEL_INFO, "client closed session to %s", next_address_to_string( &client->server_address, buffer ) );
 
                 memset( &client->server_address, 0, sizeof(next_address_t) );
+
                 client->session_open = false;
                 client->upgraded = false;
                 client->flagged = false;
@@ -6441,17 +6721,23 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 client->upgrade_response = NextUpgradeResponsePacket();
                 client->upgrade_response_start_time = 0.0;
                 client->last_upgrade_response_send_time = 0.0;
+                
+                memset( &client->client_stats, 0, sizeof(next_client_stats_t) );
                 memset( &client->near_relay_stats, 0, sizeof(next_relay_stats_t ) );
+                next_relay_stats_initialize_sentinels( &client->near_relay_stats );
+
                 next_relay_manager_reset( client->near_relay_manager );
+
                 memset( client->client_kx_public_key, 0, crypto_kx_PUBLICKEYBYTES );
                 memset( client->client_kx_private_key, 0, crypto_kx_SECRETKEYBYTES );
                 memset( client->client_send_key, 0, crypto_kx_SESSIONKEYBYTES );
                 memset( client->client_receive_key, 0, crypto_kx_SESSIONKEYBYTES );
                 memset( client->client_route_public_key, 0, crypto_box_PUBLICKEYBYTES );
                 memset( client->client_route_private_key, 0, crypto_box_SECRETKEYBYTES );
+
                 next_ping_history_clear( &client->next_ping_history );
                 next_ping_history_clear( &client->direct_ping_history );
-                memset( &client->client_stats, 0, sizeof(next_client_stats_t) );
+
                 next_replay_protection_reset( &client->payload_replay_protection );
                 next_replay_protection_reset( &client->special_replay_protection );
                 next_replay_protection_reset( &client->internal_replay_protection );

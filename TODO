@@ -14,8 +14,6 @@ DONE
 
 	next_client_t
 
-TODO
-
 	Crash in "test_pending_session_manager".
 
 		test_packets
@@ -24,47 +22,19 @@ TODO
 		Aborted (core dumped)
 		root@linux:~/sdk# ^C
 
-	--------------------------------
+	Fixed. It was a memory trash that I added, ironically, while adding sentinel checks to protect against memory trashing... o_O
 
-	next_client_stats_t
+	next_client_stats_t. it's just a struct. nothing to do.
 
 	near_relay_stats_t
 
-	next_ping_history_t
-
 	next_near_relay_manager_t
+
+	next_ping_history_t
 
 	next_route_manager_t
 
-	--------------------------------
-
-	Extend to cover internal objects of next_client_internal_t
-
-	--------------------------------
-
-	Extend to cover internal objects of next_client_t
-
-	--------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+TODO
 
 	--------------------------------
 
