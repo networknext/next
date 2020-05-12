@@ -70,13 +70,14 @@ const RTT_Threshold = 1.0
 
 func OptimizeThread() {
 	for {
+		backend.mutex.Lock()
 		if err := backend.statsDatabase.GetCostMatrix(backend.costMatrix, backend.redisClient); err != nil {
 			fmt.Printf("error generating cost matrix: %v\n", err)
 		}
-
 		if err := backend.costMatrix.Optimize(backend.routeMatrix, RTT_Threshold); err != nil {
 			fmt.Printf("error generating route matrix: %v\n", err)
 		}
+		backend.mutex.Unlock()
 
 		time.Sleep(1 * time.Second)
 	}
@@ -108,13 +109,11 @@ func TimeoutThread() {
 			var r routing.Relay
 			r.UnmarshalBinary([]byte(raw))
 			if currentTimestamp-r.LastUpdateTime.Unix() > unixTimeout {
-				fmt.Println("Deleting redis relay")
 				backend.redisClient.HDel(routing.HashKeyAllRelays, r.Key())
 				backend.dirty = true
 				continue
 			}
 		}
-
 		if backend.dirty {
 			fmt.Printf("-----------------------------\n")
 			hgetallResult := backend.redisClient.HGetAll(routing.HashKeyAllRelays)
@@ -130,9 +129,6 @@ func TimeoutThread() {
 			for k := range backend.sessionDatabase {
 				fmt.Printf("session: %x\n", k)
 			}
-			if len(hgetallResult.Val()) == 0 && len(backend.serverDatabase) == 0 {
-				fmt.Printf("No relay or server entries\n")
-			}
 			backend.dirty = false
 		}
 		backend.mutex.Unlock()
@@ -141,23 +137,16 @@ func TimeoutThread() {
 
 func (backend *Backend) GetNearRelays() []routing.Relay {
 	var nearRelays = make([]routing.Relay, 0)
-
-	// Get relays
 	hgetallResult := backend.redisClient.HGetAll(routing.HashKeyAllRelays)
 	for _, raw := range hgetallResult.Val() {
 		var r routing.Relay
 		r.UnmarshalBinary([]byte(raw))
 		nearRelays = append(nearRelays, r)
 	}
-
-	// sort them by ID for consistency
 	sort.SliceStable(nearRelays[:], func(i, j int) bool { return nearRelays[i].ID < nearRelays[j].ID })
-
-	// Clamp relay count to max
 	if len(nearRelays) > int(transport.MaxNearRelays) {
 		nearRelays = nearRelays[:transport.MaxNearRelays]
 	}
-
 	return nearRelays
 }
 
@@ -225,7 +214,7 @@ func main() {
 		IP:   net.ParseIP("0.0.0.0"),
 	}
 
-	fmt.Printf("started functional backend on ports %d and %d\n", NEXT_RELAY_BACKEND_PORT, NEXT_SERVER_BACKEND_PORT)
+	fmt.Printf("started reference backend on ports %d and %d\n", NEXT_RELAY_BACKEND_PORT, NEXT_SERVER_BACKEND_PORT)
 
 	connection, err := net.ListenUDP("udp", &listenAddress)
 	if err != nil {
@@ -292,12 +281,12 @@ func main() {
 		SessionUpdateHandlerFunc: func(w io.Writer, incoming *transport.UDPPacket) {
 			sessionUpdate := &transport.SessionUpdatePacket{}
 			if err = sessionUpdate.UnmarshalBinary(incoming.Data); err != nil {
-				fmt.Printf("error: failed to read server session update packet: %v\n", err)
+				// fmt.Printf("error: failed to read server session update packet: %v\n", err)
 				return
 			}
 
 			if sessionUpdate.FallbackToDirect {
-				fmt.Printf("error: fallback to direct %s\n", incoming.SourceAddr)
+				// fmt.Printf("error: fallback to direct %s\n", incoming.SourceAddr)
 				return
 			}
 
@@ -305,7 +294,7 @@ func main() {
 			serverEntry, ok := backend.serverDatabase[string(incoming.SourceAddr.String())]
 			backend.mutex.RUnlock()
 			if !ok {
-				fmt.Printf("error: could not find server %s\n", incoming.SourceAddr)
+				// fmt.Printf("error: could not find server %s\n", incoming.SourceAddr)
 				return
 			}
 
@@ -711,6 +700,7 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 }
 
 func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
+
 	body, err := ioutil.ReadAll(request.Body)
 	if err != nil {
 		return
@@ -780,7 +770,10 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		statsUpdate.PingStats = append(statsUpdate.PingStats, ping)
 	}
 
+	backend.mutex.Lock()
 	backend.statsDatabase.ProcessStats(statsUpdate)
+	backend.mutex.Unlock()
+
 	relaysToPing := make([]routing.RelayPingData, 0)
 
 	hgetallResult := backend.redisClient.HGetAll(routing.HashKeyAllRelays)
@@ -799,7 +792,6 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
 	backend.redisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay)
 
-	// Back to old code
 	responseData := make([]byte, 10*1024)
 
 	index = 0
@@ -835,8 +827,6 @@ func WebServer() {
 	router := mux.NewRouter()
 	router.HandleFunc("/relay_init", RelayInitHandler).Methods("POST")
 	router.HandleFunc("/relay_update", RelayUpdateHandler).Methods("POST")
-	router.Handle("/cost_matrix", backend.costMatrix).Methods("GET")
-	router.Handle("/route_matrix", backend.routeMatrix).Methods("GET")
 	router.HandleFunc("/near", NearHandler).Methods("GET")
 	http.ListenAndServe(fmt.Sprintf(":%d", NEXT_RELAY_BACKEND_PORT), router)
 }

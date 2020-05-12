@@ -4,7 +4,6 @@
  */
 mapboxgl.accessToken = 'pk.eyJ1IjoiYmF1bWJhY2hhbmRyZXciLCJhIjoiY2s4dDFwcGo2MGowZTNtcXpsbDN6dHBwdyJ9.Sr1lDY9i9o9yz84fJ-PSlg';
 
-const SEC_TO_MS = 1000;
 const DEC_TO_PERC = 100;
 
 var userInfo = {
@@ -16,13 +15,36 @@ var userInfo = {
 	userId: "",
 };
 
-var accountsTable = null;
+var defaultSessionDetailsVue = {
+	meta: null,
+	slices: [],
+	showDetails: false,
+};
+
+var defaultSessionsTable = {
+	onNN: [],
+	sessions: [],
+	showCount: false,
+};
+
+var defaultUserSessionTable = {
+	sessions: [],
+	showTable: false,
+}
+
+var settingsPage = null;
 var mapSessionsCount = null;
 var pubKeyInput = null;
 var relaysTable = null;
 var sessionDetailsVue = null;
 var sessionsTable = null;
 var userSessionTable = null;
+
+var autoSigninPermissions = null;
+var addUserPermissions = null;
+var editUserPermissions = [];
+
+var allRoles = [];
 
 JSONRPCClient = {
 	async call(method, params) {
@@ -99,7 +121,7 @@ MapHandler = {
 				let data = response.map_points;
 				Object.assign(mapSessionsCount.$data, {
 					onNN: data.filter((point) => {
-						return point.on_network_next;
+						return point.on_network_next == true;
 					}),
 					sessions: data,
 				});
@@ -110,15 +132,15 @@ MapHandler = {
 					opacity: 0.8,
 					cellSizePixels: 10,
 					colorRange: [
-						[0, 25, 0, 25],
-						[0, 85, 0, 85],
-						[0, 127, 0, 127],
-						[0, 170, 0, 170],
-						[0, 190, 0, 190],
-						[0, 255, 0, 255]
+						[40, 167, 69],
+						[36, 163, 113],
+						[27, 153, 159],
+						[18, 143, 206],
+						[9, 133, 252],
+						[0, 123, 255]
 					],
 					getPosition: d => [d.longitude, d.latitude],
-					getWeight: d => Math.random(10), // Need to come up with a weight system. It won't map anything if the array of points are all identical
+					getWeight: d => d.on_network_next ? 100 : 1, // Need to come up with a weight system. It won't map anything if the array of points are all identical
 					gpuAggregation: true,
 					aggregation: 'SUM'
 				});
@@ -177,7 +199,7 @@ WorkspaceHandler = {
 	newUserEmail: document.getElementById("email"),
 	newUserPerms: document.getElementById("perms"),
 	pages: {
-		accounts: document.getElementById("accounts-page"),
+		accounts: document.getElementById("settings-page"),
 		config: document.getElementById("config-page"),
 	},
 	spinners: {
@@ -247,11 +269,7 @@ WorkspaceHandler = {
 				WorkspaceHandler.alerts.sessionToolAlert.style.display = 'block';
 				WorkspaceHandler.alerts.sessionToolDanger.style.display = 'none';
 
-				Object.assign(sessionDetailsVue.$data, {
-					meta: null,
-					slices: [],
-					showDetails: false,
-				});
+				Object.assign(sessionDetailsVue.$data, {...defaultSessionDetailsVue});
 				document.getElementById("session-id-input").value = '';
 				this.workspaces.sessionToolWorkspace.style.display = 'block';
 				this.links.sessionToolLink.classList.add("active");
@@ -260,10 +278,7 @@ WorkspaceHandler = {
 				WorkspaceHandler.alerts.userToolAlert.style.display = 'block';
 				WorkspaceHandler.alerts.userToolDanger.style.display = 'none';
 
-				Object.assign(userSessionTable.$data, {
-					sessions: [],
-					showTable: false,
-				});
+				Object.assign(userSessionTable.$data, {...defaultUserSessionTable});
 
 				document.getElementById("user-hash-input").value = '';
 				this.workspaces.userToolWorkspace.style.display = 'block';
@@ -274,33 +289,159 @@ WorkspaceHandler = {
 				this.links.mapLink.classList.add("active");
 		}
 	},
-	editUser(accountInfo) {
-		WorkspaceHandler.changeAccountPage('new');
+	editUser(accountInfo, index) {
+		settingsPage.$set(settingsPage.$data.accounts[index], 'delete', false);
+		settingsPage.$set(settingsPage.$data.accounts[index], 'edit', true);
 
-		WorkspaceHandler.newUserEmail.value = accountInfo.email || '';
-		WorkspaceHandler.newUserPerms.value = accountInfo.email || '';
+		editUserPermissions[accountInfo.user_id].enable();
+	},
+	saveUser(accountInfo, index) {
+		if (accountInfo.edit) {
+			let roles = editUserPermissions[accountInfo.user_id].getValue(true);
+			JSONRPCClient
+				.call('AuthService.UpdateUserRoles', {user_id: `auth0|${accountInfo.user_id}`, roles: roles})
+				.then((response) => {
+					accountInfo.roles = response.roles || [];
+					WorkspaceHandler.cancelEditUser(accountInfo);
+					Object.assign(settingsPage.$data.updateUser.success, {
+						message: 'Updated user account successfully',
+					});
+					setTimeout(() => {
+						Object.assign(settingsPage.$data.updateUser.success, {
+							message: '',
+						});
+					}, 5000);
+				})
+				.catch((e) => {
+					console.log("Something went wrong updating the users permissions");
+					console.log(e);
+					Object.assign(settingsPage.$data.updateUser.failure, {
+						message: 'Failed to update user',
+					});
+					setTimeout(() => {
+						Object.assign(settingsPage.$data.updateUser.failure, {
+							message: '',
+						});
+					}, 5000);
+				});
+			return;
+		}
+		if (accountInfo.delete) {
+			JSONRPCClient
+				.call('AuthService.DeleteUserAccount', {user_id: `auth0|${accountInfo.user_id}`})
+				.then((response) => {
+					let accounts = settingsPage.$data.accounts;
+					accounts.splice(index, 1);
+					Object.assign(settingsPage.$data, {accounts: accounts});
+					editUserPermissions[accountInfo.user_id] = null;
+					Object.assign(settingsPage.$data.updateUser.success, {
+						message: 'Deleted user account successfully',
+					});
+					setTimeout(() => {
+						Object.assign(settingsPage.$data.updateUser.success, {
+							message: '',
+						});
+					}, 5000);
+				})
+				.catch((e) => {
+					console.log("Something went wrong updating the users permissions");
+					console.log(e);
+					Object.assign(settingsPage.$data.updateUser.failure, {
+						message: 'Failed to delete user',
+					});
+					setTimeout(() => {
+						Object.assign(settingsPage.$data.updateUser.failure, {
+							message: '',
+						});
+					}, 5000);
+				});
+			return;
+		}
+	},
+	deleteUser(index) {
+		settingsPage.$set(settingsPage.$data.accounts[index], 'delete', true);
+		settingsPage.$set(settingsPage.$data.accounts[index], 'edit', false);
+	},
+	cancelEditUser(accountInfo, index) {
+		editUserPermissions[accountInfo.user_id].disable();
+		let accounts = settingsPage.$data.accounts;
+		accountInfo.delete = false;
+		accountInfo.edit = false;
+		accounts[index] = accountInfo;
+		Object.assign(settingsPage.$data, {accounts: accounts});
 	},
 	loadSettingsPage() {
 		this.changeAccountPage();
-		JSONRPCClient
-			.call('AuthService.AllAccounts', {buyer_id: '13672574147039585173'})
+		let promises = [
+			JSONRPCClient
+				.call('AuthService.AllAccounts', {buyer_id: '13672574147039585173'}),
+			JSONRPCClient
+				.call('AuthService.AllRoles', {})
+		];
+		Promise.all(promises)
 			.then(
-				(response) => {
+				(responses) => {
+					let accounts = responses[0].accounts;
+
 					/**
 					 * I really dislike this but it is apparently the way to reload/update the data within a vue
 					 */
-					Object.assign(accountsTable.$data, {
-						accounts: response.accounts,
+					Object.assign(settingsPage.$data, {
+						accounts: accounts,
 						showAccounts: true,
+					});
+					allRoles = responses[1].roles;
+
+					setTimeout(() => {
+						let choices = allRoles.map((role) => {
+							return {
+								value: role,
+								label: role.name,
+								customProperties: {
+									description: role.description,
+								},
+							};
+						});
+
+						if (!addUserPermissions) {
+							addUserPermissions = new Choices(
+								document.getElementById("add-user-permissions"),
+								{
+									removeItemButton: true,
+									choices: choices,
+								}
+							);
+						}
+
+						choices = allRoles.map((role) => {
+							return {
+								value: role,
+								label: role.name,
+								customProperties: {
+									description: role.description,
+								},
+								selected: role.name === 'Viewer'
+							};
+						});
+
+						if (!autoSigninPermissions) {
+							autoSigninPermissions = new Choices(
+								document.getElementById("auto-signin-permissions"),
+								{
+									removeItemButton: true,
+									choices: choices,
+								}
+							);
+						}
+
+						generateRolesDropdown(accounts);
 					});
 				}
 			)
-			.catch(
-				(e) => {
-					console.log("Something went wrong fetching all accounts");
-					console.log(e);
-				}
-			);
+			.catch((errors) => {
+				console.log("Something went wrong loading settings page");
+				console.log(errors);
+			});
 	},
 	loadConfigPage() {
 		JSONRPCClient
@@ -358,8 +499,6 @@ WorkspaceHandler = {
 }
 
 function startApp() {
-	createVueComponents();
-	document.getElementById("app").style.display = 'block';
 	/**
 	 * QUESTION: Instead of grabbing the user here can we use the token to then go off and get everything from the backend?
 	 * TODO:	 There are 3 different promises going off to get user details. There should be a better way to do this
@@ -375,6 +514,7 @@ function startApp() {
 			userId: response[0].sub,
 			token: response[1]
 		};
+		createVueComponents();
 		document.getElementById("app").style.display = 'block';
 		MapHandler
 			.initMap()
@@ -391,14 +531,33 @@ function startApp() {
 }
 
 function createVueComponents() {
-	accountsTable = new Vue({
-		el: '#accounts',
+	settingsPage = new Vue({
+		el: '#settings-page',
 		data: {
 			accounts: null,
 			showAccounts: false,
+			newUser: {
+				failure: {
+					message: '',
+				},
+				success: {
+					message: '',
+				},
+			},
+			updateUser: {
+				failure: {
+					message: '',
+				},
+				success: {
+					message: '',
+				},
+			},
 		},
 		methods: {
-			editUser: WorkspaceHandler.editUser
+			cancelEditUser: WorkspaceHandler.cancelEditUser,
+			deleteUser: WorkspaceHandler.deleteUser,
+			editUser: WorkspaceHandler.editUser,
+			saveUser: WorkspaceHandler.saveUser,
 		}
 	});
 	mapSessionsCount = new Vue({
@@ -421,19 +580,14 @@ function createVueComponents() {
 	sessionDetailsVue = new Vue({
 		el: '#session-details',
 		data: {
-			id: '',
 			meta: null,
-			showDetails: false,
 			slices: [],
+			showDetails: false,
 		}
 	});
 	sessionsTable = new Vue({
 		el: '#sessions',
-		data: {
-			onNN: [],
-			sessions: [],
-			showCount: false,
-		},
+		data: {...defaultSessionsTable},
 		methods: {
 			fetchSessionInfo: fetchSessionInfo,
 			fetchUserSessions: fetchUserSessions,
@@ -441,11 +595,7 @@ function createVueComponents() {
 	});
 	userSessionTable = new Vue({
 		el: '#user-sessions',
-		data: {
-			hash: '',
-			sessions: [],
-			showTable: false,
-		},
+		data: {...defaultUserSessionTable},
 		methods: {
 			fetchSessionInfo: fetchSessionInfo
 		}
@@ -467,10 +617,7 @@ function fetchUserSessions(userHash = '') {
 	}
 
 	if (hash == '') {
-		Object.assign(userSessionTable.$data, {
-			sessions: [],
-			showTable: false,
-		});
+		Object.assign(userSessionTable.$data, {...defaultUserSessionTable});
 		document.getElementById("user-hash-input").value = '';
 		WorkspaceHandler.alerts.userToolDanger.style.display = 'block';
 		return;
@@ -493,10 +640,7 @@ function fetchUserSessions(userHash = '') {
 			WorkspaceHandler.alerts.userToolDanger.style.display = 'none';
 		})
 		.catch((e) => {
-			Object.assign(userSessionTable.$data, {
-				sessions: [],
-				showTable: false,
-			});
+			Object.assign(userSessionTable.$data, {...defaultUserSessionTable});
 			console.log("Something went wrong fetching user sessions: ");
 			console.log(e);
 			WorkspaceHandler.alerts.userToolDanger.style.display = 'block';
@@ -518,6 +662,85 @@ function updatePubKey() {
 		});
 }
 
+function addUsers(event) {
+	event.preventDefault();
+	let roles = addUserPermissions.getValue(true);
+	let emails = String(document.getElementById("new-user-emails").value)
+		.split(/(,|\n)/g)
+		.map((x) => x.trim())
+		.filter((x) => x !== "" && x !== ",");
+
+	if (roles.length == 0) {
+		roles = [{
+			description: "Can see current sessions and the map.",
+			id: "rol_ScQpWhLvmTKRlqLU",
+			name: "Viewer",
+		}];
+	}
+	JSONRPCClient
+		.call("AuthService.AddUserAccount", {emails: emails, roles: roles})
+		.then((response) => {
+			let newAccounts = response.accounts;
+			Object.assign(settingsPage.$data, {accounts: settingsPage.$data.accounts.concat(newAccounts)});
+			setTimeout(() => {
+				generateRolesDropdown(newAccounts);
+			});
+			Object.assign(settingsPage.$data.newUser.success, {
+				message: 'User account added successfully',
+			});
+			setTimeout(() => {
+				Object.assign(settingsPage.$data.newUser.success, {
+					message: '',
+				});
+			}, 5000);
+		})
+		.catch((e) => {
+			console.log("Something went wrong creating new users");
+			console.log(e);
+			Object.assign(settingsPage.$data.newUser.failure, {
+				message: 'Failed to add user account',
+			});
+			setTimeout(() => {
+				Object.assign(settingsPage.$data.newUser.failure, {
+					message: '',
+				});
+			}, 5000);
+		});
+	addUserPermissions.removeActiveItems();
+	document.getElementById("new-user-emails").value = '';
+}
+
+function generateRolesDropdown(accounts) {
+	accounts.forEach((account) => {
+		if (!editUserPermissions[account.user_id]) {
+			editUserPermissions[account.user_id] = new Choices(
+				document.getElementById(`edit-user-permissions-${account.user_id}`),
+				{
+					removeItemButton: true,
+					choices: allRoles.map((role) => {
+						return {
+							value: role,
+							label: role.name,
+							customProperties: {
+								description: role.description,
+							},
+							selected: account.roles.findIndex((userRole) => role.name == userRole.name) !== -1
+						};
+					}),
+				}
+			).disable();
+		}
+	});
+}
+
+function saveAutoSignIn(event) {
+	event.preventDefault();
+	let roles = autoSigninPermissions.getValue(true);
+	let domain = document.getElementById("auto-sign-in-domain").value;
+
+	// Make JSONRPC call
+}
+
 function fetchSessionInfo(sessionId = '') {
 	WorkspaceHandler.alerts.sessionToolAlert.style.display = 'none';
 	WorkspaceHandler.alerts.sessionToolDanger.style.display = 'none';
@@ -533,11 +756,7 @@ function fetchSessionInfo(sessionId = '') {
 	}
 
 	if (id == '') {
-		Object.assign(sessionDetailsVue.$data, {
-			meta: null,
-			slices: [],
-			showDetails: false,
-		});
+		Object.assign(sessionDetailsVue.$data, {...defaultSessionDetailsVue});
 		document.getElementById("session-id-input").value = '';
 		WorkspaceHandler.alerts.sessionToolDanger.style.display = 'block';
 		return;
@@ -546,46 +765,22 @@ function fetchSessionInfo(sessionId = '') {
 	JSONRPCClient
 		.call("BuyersService.SessionDetails", {session_id: id})
 		.then((response) => {
+			let meta = response.meta;
+			meta.nearby_relays = meta.nearby_relays ?? [];
 			Object.assign(sessionDetailsVue.$data, {
-				meta: response.meta,
+				meta: meta,
 				slices: response.slices,
-				showDetails: true
+				showDetails: true,
 			});
 
 			setTimeout(() => {
-				let data = {
-					latitude: response.meta.location.latitude,
-					longitude: response.meta.location.longitude,
-				};
-
 				generateCharts(response.slices);
-				let sessionToolMapInstance = new deck.DeckGL({
-					mapboxApiAccessToken: mapboxgl.accessToken,
-					mapStyle: 'mapbox://styles/mapbox/dark-v10',
-					initialViewState: {
-						latitude: data.latitude,
-						longitude: data.longitude,
-						zoom: 4,
-						maxZoom: 15,
-					},
-					controller: true,
+
+				var sessionToolMapInstance = new mapboxgl.Map({
 					container: 'session-tool-map',
-					/* layers: [
-						new deck.IconLayer({
-							id: 'icon-layer',
-							data,
-							pickable: false,
-							// iconAtlas and iconMapping are required
-							// getIcon: return a string
-							iconAtlas: 'marker.png',
-							iconMapping: {marker: {x: 0, y: 0, width: 32, height: 32, mask: true}},
-							getIcon: d => 'marker',
-							sizeScale: 15,
-							getPosition: d => [d.longitude, d.latitude],
-							getSize: d => 100,
-							getColor: d => [7, 140, 0]
-						})
-					] */
+					style: 'mapbox://styles/mapbox/dark-v10',
+					center: [0, 0],
+					zoom: 2
 				});
 			});
 
@@ -593,11 +788,7 @@ function fetchSessionInfo(sessionId = '') {
 			WorkspaceHandler.alerts.sessionToolDanger.style.display = 'none';
 		})
 		.catch((e) => {
-			Object.assign(sessionDetailsVue.$data, {
-				meta: null,
-				slices: [],
-				showDetails: false,
-			});
+			Object.assign(sessionDetailsVue.$data, {...defaultSessionDetailsVue});
 			console.log("Something went wrong fetching session details: ");
 			console.log(e);
 			WorkspaceHandler.alerts.sessionToolDanger.style.display = 'block';
@@ -655,8 +846,8 @@ function generateCharts(data) {
 		let timestamp = new Date(entry.timestamp).getTime() / 1000;
 
 		// Latency
-		let next = Number.parseInt(entry.next.rtt * SEC_TO_MS).toFixed(0);
-		let direct = Number.parseInt(entry.direct.rtt * SEC_TO_MS).toFixed(0);
+		let next = parseFloat(entry.next.rtt);
+		let direct = parseFloat(entry.direct.rtt);
 		let improvement = direct - next;
 		latencyData.improvement[0].push(timestamp);
 		latencyData.improvement[1].push(improvement);
@@ -665,8 +856,8 @@ function generateCharts(data) {
 		latencyData.comparison[2].push(direct);
 
 		// Jitter
-		next = Number.parseInt(entry.next.jitter * SEC_TO_MS).toFixed(0);
-		direct = Number.parseInt(entry.direct.jitter * SEC_TO_MS).toFixed(0);
+		next = parseFloat(entry.next.jitter);
+		direct = parseFloat(entry.direct.jitter);
 		improvement = direct - next;
 		jitterData.improvement[0].push(timestamp);
 		jitterData.improvement[1].push(improvement);
@@ -675,8 +866,8 @@ function generateCharts(data) {
 		jitterData.comparison[2].push(direct);
 
 		// Packetloss
-		next = Number.parseInt(entry.next.packet_loss * DEC_TO_PERC).toFixed(0);
-		direct = Number.parseInt(entry.direct.packet_loss * DEC_TO_PERC).toFixed(0);
+		next = parseFloat(entry.next.packet_loss * DEC_TO_PERC);
+		direct = parseFloat(entry.direct.packet_loss * DEC_TO_PERC);
 		improvement = direct - next;
 		packetLossData.improvement[0].push(timestamp);
 		packetLossData.improvement[1].push(improvement);

@@ -285,7 +285,8 @@ func main() {
 			Storage:     db,
 		}, "")
 		s.RegisterService(&jsonrpc.AuthService{
-			Auth0: auth0Client,
+			Auth0:   auth0Client,
+			Storage: db,
 		}, "")
 
 		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), s))

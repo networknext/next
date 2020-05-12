@@ -1,11 +1,14 @@
 package jsonrpc_test
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/go-kit/kit/log"
+	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport/jsonrpc"
 	"github.com/stretchr/testify/assert"
@@ -56,8 +59,12 @@ func TestAuthClient(t *testing.T) {
 		Manager: manager,
 		Logger:  logger,
 	}
+	db := storage.InMemory{}
+	db.AddBuyer(context.Background(), routing.Buyer{ID: 111, Domain: "networknext.com"})
+
 	svc := jsonrpc.AuthService{
-		Auth0: auth0Client,
+		Auth0:   auth0Client,
+		Storage: &db,
 	}
 
 	t.Run("fetch all auth0 accounts", func(t *testing.T) {
@@ -83,6 +90,7 @@ func TestAuthClient(t *testing.T) {
 		assert.Equal(t, reply.UserAccount.Name, "andrew@networknext.com")
 		assert.Equal(t, reply.UserAccount.Email, "andrew@networknext.com")
 		assert.Equal(t, reply.UserAccount.UserID, "5e823e827e97a90cf402109e")
+		assert.Equal(t, reply.UserAccount.BuyerID, fmt.Sprintf("%x", 111))
 	})
 
 	t.Run("fetch user roles no user id", func(t *testing.T) {
@@ -108,5 +116,39 @@ func TestAuthClient(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.NotEqual(t, len(reply.Roles), 0)
+	})
+
+	t.Run("Remove all auth0 roles", func(t *testing.T) {
+		var reply jsonrpc.RolesReply
+
+		roles := []*management.Role{}
+
+		// The user ID here is linked to baumbachandrew@gmail.com => Delete the user and this will not pass
+		err := svc.UpdateUserRoles(nil, &jsonrpc.RolesArgs{UserID: "auth0|5eb41e3195054819ac206076", Roles: roles}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, len(reply.Roles), 0)
+	})
+
+	t.Run("Update auth0 roles", func(t *testing.T) {
+		var reply jsonrpc.RolesReply
+
+		id := "rol_YfFrtom32or4vH89"
+		name := "Admin"
+		description := "Can manage the Network Next system, including access to configstore."
+
+		roles := []*management.Role{
+			{ID: &id, Name: &name, Description: &description},
+		}
+
+		// The user ID here is linked to baumbachandrew@gmail.com => Delete the user and this will not pass
+		err := svc.UpdateUserRoles(nil, &jsonrpc.RolesArgs{UserID: "auth0|5eb41e3195054819ac206076", Roles: roles}, &reply)
+		assert.NoError(t, err)
+
+		assert.NotEqual(t, len(reply.Roles), 0)
+		assert.Equal(t, len(reply.Roles), 1)
+		assert.Equal(t, reply.Roles[0].ID, &id)
+		assert.Equal(t, reply.Roles[0].Name, &name)
+		assert.Equal(t, reply.Roles[0].Description, &description)
 	})
 }

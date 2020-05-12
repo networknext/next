@@ -40,15 +40,15 @@ func NewBillingEntry(
 		sliceFlags |= billing.RouteSliceFlagFallbackToDirect
 	}
 
-	if (routeDecision.Reason & routing.DecisionPacketLossMultipath) != 0 {
+	if (routeDecision.Reason & routing.DecisionHighPacketLossMultipath) != 0 {
 		sliceFlags |= billing.RouteSliceFlagPacketLossMultipath
 	}
 
-	if (routeDecision.Reason & routing.DecisionJitterMultipath) != 0 {
+	if (routeDecision.Reason & routing.DecisionHighJitterMultipath) != 0 {
 		sliceFlags |= billing.RouteSliceFlagJitterMultipath
 	}
 
-	if (routeDecision.Reason & routing.DecisionRTTMultipath) != 0 {
+	if (routeDecision.Reason & routing.DecisionRTTReductionMultipath) != 0 {
 		sliceFlags |= billing.RouteSliceFlagRTTMultipath
 	}
 

@@ -20,7 +20,7 @@ blocks:
       jobs:
         - name: Relay
           commands:
-            - make test-unit-relay
+            - make test-unit-relay-new
         - name: Backend
           commands:
             - make test-unit-backend
