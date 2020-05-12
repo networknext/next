@@ -37,7 +37,7 @@ clean:
 
 # precompiled header
 $(GCH): $(PCH) Makefile
-	$(COMMON_COMPILE_FLAGS) -o $@ -x c++-header $<
+	$(COMMON_COMPILE_FLAGS) -o $@ $(INCLUDE_DIRS) -x c++-header $<
 
 # all object files
 $(OBJ)/%.o: $(SRC)/%.cpp $(GCH)
