@@ -260,10 +260,10 @@
                             <h1 class="h2" id="workspace-title" v-if="showCount">
                                 Map&nbsp;
                                 <span class="badge badge-dark">
-                                    {{sessions.length}} Total Sessions
+                                    {{ totalSessions }} Total Sessions
                                 </span>&nbsp;
                                 <span class="badge badge-success">
-                                    {{ onNN.length }} on Network Next
+                                    {{ onNN }} on Network Next
                                 </span>
                             </h1>
                             <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1">
@@ -280,21 +280,24 @@
                                 </div>
                                 <div class="px-2">
                                     <select class="form-control">
-                                        <option value="everything">
+                                        <option value="everything" v-on:click="updateFilter({buyerId: filter.buyerId, sessionType: 'all'})">
                                             Everything
                                         </option>
-                                        <option value="direct">
+                                        <option value="direct" v-on:click="updateFilter({buyerId: filter.buyerId, sessionType: 'direct'})">
                                             Direct Only
                                         </option>
-                                        <option value="next">
+                                        <option value="next" v-on:click="updateFilter({buyerId: filter.buyerId, sessionType: 'nn'})">
                                             Network Next Only
                                         </option>
                                     </select>
                                 </div>
-                                <div class="px-2">
+                                <div class="px-2" v-if="isAdmin()">
                                     <select class="form-control">
-                                        <option value="all">
+                                        <option value="all" v-on:click="updateFilter({buyerId: '', sessionType: filter.sessionType})">
                                             All
+                                        </option>
+                                        <option v-for="buyer in allBuyers" v-on:click="updateFilter({buyerId: buyer.id, sessionType: filter.sessionType})">
+                                            {{ buyer.name }}
                                         </option>
                                     </select>
                                 </div>
@@ -317,15 +320,35 @@
                                         {{ onNN.length }} on Network Next
                                     </span>
                                 </h1>
-                                <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1 hidden">
+                                <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1">
                                     <div class="mr-auto"></div>
                                     <div class="px-2">
                                         <select class="form-control">
                                             <option value="rtt">
                                                 Sort by RTT
                                             </option>
-                                            <option value="packetLoss">
-                                                Sort by Packet Loss
+                                        </select>
+                                    </div>
+                                    <div class="px-2">
+                                        <select class="form-control">
+                                            <option value="everything">
+                                                Everything
+                                            </option>
+                                            <option value="direct">
+                                                Direct Only
+                                            </option>
+                                            <option value="next">
+                                                Network Next Only
+                                            </option>
+                                        </select>
+                                    </div>
+                                    <div class="px-2" v-if="isAdmin()">
+                                        <select class="form-control">
+                                            <option value="all">
+                                                All
+                                            </option>
+                                            <option v-for="buyer in allBuyers" v-on:click="refreshSessionsTable(buyer.id)">
+                                                {{ buyer.name }}
                                             </option>
                                         </select>
                                     </div>
@@ -337,7 +360,7 @@
                                         <tr>
                                             <th>
                                                 <span>
-
+                                                    <!-- No Title -->
                                                 </span>
                                             </th>
                                             <th>
@@ -947,6 +970,19 @@
                                 <div id="account-table-spinner" v-if="!showAccounts">
                                     <div class="spinner-border" role="status">
                                         <span class="sr-only">Loading...</span>
+                                    </div>
+                                </div>
+                                <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" v-if="showAccounts && isAdmin()">
+                                    <div class="mr-auto"></div>
+                                    <div class="px-2">
+                                        <select class="form-control">
+                                            <option value="all">
+                                                All
+                                            </option>
+                                            <option v-for="buyer in allBuyers" v-on:click="refreshAccountTable(buyer.id)">
+                                                {{ buyer.name }}
+                                            </option>
+                                        </select>
                                     </div>
                                 </div>
                                 <table class="table table-sm mt-4" v-if="showAccounts">
