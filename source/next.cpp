@@ -2621,10 +2621,9 @@ void next_replay_protection_advance_sequence( next_replay_protection_t * replay_
 
 // -------------------------------------------------------------
 
-int next_wire_packet_bits( int packet_bytes )
+int next_wire_packet_bits( int payload_bytes )
 {
-    // todo: document this calculation
-    return ( 14 + 20 + 8 + packet_bytes + 4 ) * 8;
+    return ( NEXT_ETHERNET_HEADER_BYTES + NEXT_IPV4_HEADER_BYTES + NEXT_UDP_HEADER_BYTES + NEXT_HEADER_BYTES + payload_bytes ) * 8;
 }
 
 struct next_bandwidth_limiter_t
@@ -5290,14 +5289,12 @@ void next_route_manager_prepare_send_packet( next_route_manager_t * route_manage
     next_sign_network_next_packet( packet_data, *packet_bytes );
 }
 
-bool next_route_manager_process_server_to_client_packet( next_route_manager_t * route_manager, const next_address_t * from, uint8_t * packet_data, int packet_bytes, uint64_t * payload_sequence, uint8_t * payload_data, int * payload_bytes )
+bool next_route_manager_process_server_to_client_packet( next_route_manager_t * route_manager, const next_address_t * from, uint8_t * packet_data, int packet_bytes, uint64_t * payload_sequence )
 {
     next_route_manager_verify_sentinels( route_manager );
 
     next_assert( packet_data );
     next_assert( payload_sequence );
-    next_assert( payload_data );
-    next_assert( payload_bytes );
 
     next_assert( next_is_network_next_packet( packet_data, packet_bytes ) );
 
@@ -5361,17 +5358,13 @@ bool next_route_manager_process_server_to_client_packet( next_route_manager_t * 
 
     *payload_sequence = packet_sequence;
 
-    *payload_bytes = packet_bytes - NEXT_HEADER_BYTES;
+    int payload_bytes = packet_bytes - NEXT_HEADER_BYTES;
 
-    if ( *payload_bytes > NEXT_MTU )
+    if ( payload_bytes > NEXT_MTU )
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored server to client packet. too large (%d>%d)", *payload_bytes, NEXT_MTU );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored server to client packet. too large (%d>%d)", payload_bytes, NEXT_MTU );
         return false;
     }
-
-    // todo: why even copy at all?! we can just point to it...
-
-    memcpy( payload_data, packet_data + NEXT_HEADER_BYTES, *payload_bytes );
 
     return true;
 }
@@ -5519,8 +5512,9 @@ struct next_client_notify_t
 
 struct next_client_notify_packet_received_t : public next_client_notify_t
 {
-    int packet_bytes;
-    uint8_t packet_data[NEXT_MTU];
+    bool direct;
+    int payload_bytes;
+    uint8_t payload_data[NEXT_MTU];
 };
 
 struct next_client_notify_upgraded_t : public next_client_notify_t
@@ -5623,9 +5617,10 @@ struct next_client_internal_t
     NEXT_DECLARE_SENTINEL(9)
 
     bool sending_upgrade_response;
-    NextUpgradeResponsePacket upgrade_response;
     double upgrade_response_start_time;
     double last_upgrade_response_send_time;
+    int upgrade_response_packet_bytes;
+    uint8_t upgrade_response_packet_data[NEXT_MAX_PACKET_BYTES];
 
     NEXT_DECLARE_SENTINEL(10)
 
@@ -5918,8 +5913,9 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         }
         next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
-        notify->packet_bytes = packet_bytes - ( 10 + NEXT_PACKET_HASH_BYTES );
-        memcpy( notify->packet_data, packet_data + 10 + NEXT_PACKET_HASH_BYTES, size_t(packet_bytes) - ( 10 + NEXT_PACKET_HASH_BYTES ) );
+        notify->direct = true;
+        notify->payload_bytes = packet_bytes - ( 10 + NEXT_PACKET_HASH_BYTES );
+        memcpy( notify->payload_data, packet_data + 10 + NEXT_PACKET_HASH_BYTES, size_t(packet_bytes) - ( 10 + NEXT_PACKET_HASH_BYTES ) );
         {
             next_platform_mutex_guard( &client->notify_mutex );
             next_queue_push( client->notify_queue, notify );            
@@ -5996,8 +5992,14 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         // Without this, under very rare packet loss conditions it's possible for the client to get
         // stuck in an undefined state.
 
+        client->upgrade_response_packet_bytes = 0;
+        if ( next_write_packet( NEXT_UPGRADE_RESPONSE_PACKET, &response, client->upgrade_response_packet_data, &client->upgrade_response_packet_bytes, next_encrypted_packets, &client->internal_send_sequence, client->client_send_key ) != NEXT_OK )
+        {
+            next_printf( NEXT_LOG_LEVEL_ERROR, "client failed to write upgrade response packet" );
+            return;
+        }
+
         client->sending_upgrade_response = true;
-        client->upgrade_response = response;
         client->upgrade_response_start_time = next_time();
         client->last_upgrade_response_send_time = next_time();
 
@@ -6305,12 +6307,10 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_SERVER_TO_CLIENT_PACKET )
     {
-        int payload_bytes = 0;
         uint64_t payload_sequence = 0;
-        uint8_t payload_data[NEXT_MTU];         // todo: looks like we're doing a double copy here? seems dumb
 
         next_platform_mutex_acquire( &client->route_manager_mutex );
-        const bool result = next_route_manager_process_server_to_client_packet( client->route_manager, from, packet_data, packet_bytes, &payload_sequence, payload_data, &payload_bytes );
+        const bool result = next_route_manager_process_server_to_client_packet( client->route_manager, from, packet_data, packet_bytes, &payload_sequence );
         next_platform_mutex_release( &client->route_manager_mutex );
 
         if ( !result )
@@ -6341,8 +6341,9 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
-        notify->packet_bytes = payload_bytes;
-        memcpy( notify->packet_data, payload_data, payload_bytes );
+        notify->direct = false;
+        notify->payload_bytes = packet_bytes - NEXT_HEADER_BYTES;
+        memcpy( notify->payload_data, packet_data + NEXT_HEADER_BYTES, packet_bytes - NEXT_HEADER_BYTES );
         {
             next_platform_mutex_guard( &client->notify_mutex );
             next_queue_push( client->notify_queue, notify );            
@@ -6357,12 +6358,10 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_PONG_PACKET )
     {
-        int payload_bytes = 0;
         uint64_t payload_sequence = 0;
-        uint8_t payload_data[NEXT_MTU];     // todo: wut. we don't need payload for pong packet...
-
+ 
         next_platform_mutex_acquire( &client->route_manager_mutex );
-        const bool result = next_route_manager_process_server_to_client_packet( client->route_manager, from, packet_data, packet_bytes, &payload_sequence, payload_data, &payload_bytes );
+        const bool result = next_route_manager_process_server_to_client_packet( client->route_manager, from, packet_data, packet_bytes, &payload_sequence );
         next_platform_mutex_release( &client->route_manager_mutex );
 
         if ( !result )
@@ -6544,8 +6543,9 @@ void next_client_internal_process_game_packet( next_client_internal_t * client, 
     {
         next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
-        notify->packet_bytes = packet_bytes;
-        memcpy( notify->packet_data, packet_data, size_t(packet_bytes) );
+        notify->direct = true;
+        notify->payload_bytes = packet_bytes;
+        memcpy( notify->payload_data, packet_data, size_t(packet_bytes) );
         {
             next_platform_mutex_guard( &client->notify_mutex );
             next_queue_push( client->notify_queue, notify );            
@@ -6657,7 +6657,8 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 client->last_stats_report_time = 0.0;
                 client->route_update_sequence = 0;
                 client->sending_upgrade_response = false;
-                client->upgrade_response = NextUpgradeResponsePacket();
+                client->upgrade_response_packet_bytes = 0;
+                memset( client->upgrade_response_packet_data, 0, sizeof(client->upgrade_response_packet_data) );
                 client->upgrade_response_start_time = 0.0;
                 client->last_upgrade_response_send_time = 0.0;
                 
@@ -7083,11 +7084,9 @@ void next_client_internal_update_upgrade_response( next_client_internal_t * clie
     if ( client->last_upgrade_response_send_time + 0.1 > current_time )
         return;
 
-    if ( next_client_internal_send_packet_to_server( client, NEXT_UPGRADE_RESPONSE_PACKET, &client->upgrade_response ) != NEXT_OK )
-    {
-        next_printf( NEXT_LOG_LEVEL_WARN, "client failed to send upgrade response packet to server" );
-        return;
-    }
+    next_assert( client->upgrade_response_packet_bytes > 0 );
+
+    next_platform_socket_send_packet( client->socket, &client->server_address, client->upgrade_response_packet_data, client->upgrade_response_packet_bytes );
 
     next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent upgrade response packet to server" );
 
@@ -7168,8 +7167,8 @@ struct next_client_t
 
     NEXT_DECLARE_SENTINEL(2)
 
-    next_bandwidth_limiter_t send_bandwidth;
-    next_bandwidth_limiter_t receive_bandwidth;
+    next_bandwidth_limiter_t next_send_bandwidth;
+    next_bandwidth_limiter_t next_receive_bandwidth;
 
     NEXT_DECLARE_SENTINEL(3)
 
@@ -7237,8 +7236,8 @@ next_client_t * next_client_create( void * context, const char * bind_address, v
         return NULL;
     }
 
-    next_bandwidth_limiter_reset( &client->send_bandwidth );
-    next_bandwidth_limiter_reset( &client->receive_bandwidth );
+    next_bandwidth_limiter_reset( &client->next_send_bandwidth );
+    next_bandwidth_limiter_reset( &client->next_receive_bandwidth );
 
     next_client_verify_sentinels( client );
 
@@ -7357,8 +7356,8 @@ void next_client_close_session( next_client_t * client )
     client->fallback_to_direct = false;
     client->session_id = 0;    memset( &client->client_stats, 0, sizeof(next_client_stats_t ) );
     memset( &client->server_address, 0, sizeof(next_address_t) );
-    next_bandwidth_limiter_reset( &client->send_bandwidth );
-    next_bandwidth_limiter_reset( &client->receive_bandwidth );
+    next_bandwidth_limiter_reset( &client->next_send_bandwidth );
+    next_bandwidth_limiter_reset( &client->next_receive_bandwidth );
     client->state = NEXT_CLIENT_STATE_CLOSED;
 }
 
@@ -7385,22 +7384,24 @@ void next_client_update( next_client_t * client )
             {
                 next_client_notify_packet_received_t * packet_received = (next_client_notify_packet_received_t*) notify;
 
-                client->packet_received_callback( client, client->context, packet_received->packet_data, packet_received->packet_bytes );
+                client->packet_received_callback( client, client->context, packet_received->payload_data, packet_received->payload_bytes );
 
                 next_platform_mutex_acquire( &client->internal->bandwidth_mutex );
                 const int envelope_kbps_down = client->internal->bandwidth_envelope_kbps_down;
                 next_platform_mutex_release( &client->internal->bandwidth_mutex );
 
-                // is this accurate? what about direct packets received. don't they go through this codepath?
-                const int packet_bits = next_wire_packet_bits( NEXT_HEADER_BYTES + packet_received->packet_bytes );
+                if ( !packet_received->direct )
+                {
+                    const int wire_packet_bits = next_wire_packet_bits( packet_received->payload_bytes );
 
-                next_bandwidth_limiter_add_packet( &client->receive_bandwidth, next_time(), envelope_kbps_down, packet_bits );
+                    next_bandwidth_limiter_add_packet( &client->next_receive_bandwidth, next_time(), envelope_kbps_down, wire_packet_bits );
 
-                double kbps_down = next_bandwidth_limiter_usage_kbps( &client->receive_bandwidth, next_time() );
+                    double kbps_down = next_bandwidth_limiter_usage_kbps( &client->next_receive_bandwidth, next_time() );
 
-                next_platform_mutex_acquire( &client->internal->bandwidth_mutex );
-                client->internal->bandwidth_usage_kbps_down = kbps_down;
-                next_platform_mutex_release( &client->internal->bandwidth_mutex );
+                    next_platform_mutex_acquire( &client->internal->bandwidth_mutex );
+                    client->internal->bandwidth_usage_kbps_down = kbps_down;
+                    next_platform_mutex_release( &client->internal->bandwidth_mutex );
+                }
             }
             break;
 
@@ -7496,31 +7497,31 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
         // don't send over network next if we're over the bandwidth budget
 
-        next_platform_mutex_acquire( &client->internal->bandwidth_mutex );
-        const int envelope_kbps_up = client->internal->bandwidth_envelope_kbps_up;
-        next_platform_mutex_release( &client->internal->bandwidth_mutex );
-
-        // todo: WTF. we are including direct packets in the bandwidth budget here?!
-
-        // todo: whut... needs to be updated to have the packet hash
-        const int packet_bits = next_wire_packet_bits( NEXT_HEADER_BYTES + packet_bytes );
-
-        bool over_budget = next_bandwidth_limiter_add_packet( &client->send_bandwidth, next_time(), envelope_kbps_up, packet_bits );
-
-        double usage_kbps_up = next_bandwidth_limiter_usage_kbps( &client->send_bandwidth, next_time() );
-
-        next_platform_mutex_acquire( &client->internal->bandwidth_mutex );
-        client->internal->bandwidth_over_budget = over_budget;
-        client->internal->bandwidth_usage_kbps_up = usage_kbps_up;
-        next_platform_mutex_release( &client->internal->bandwidth_mutex );
-
-        if ( send_over_network_next && over_budget )
+        if ( send_over_network_next )
         {
-            send_over_network_next = false;
-            if ( !multipath )
+            next_platform_mutex_acquire( &client->internal->bandwidth_mutex );
+            const int envelope_kbps_up = client->internal->bandwidth_envelope_kbps_up;
+            next_platform_mutex_release( &client->internal->bandwidth_mutex );
+
+            const int wire_packet_bits = next_wire_packet_bits( packet_bytes );
+
+            bool over_budget = next_bandwidth_limiter_add_packet( &client->next_send_bandwidth, next_time(), envelope_kbps_up, wire_packet_bits );
+
+            double usage_kbps_up = next_bandwidth_limiter_usage_kbps( &client->next_send_bandwidth, next_time() );
+
+            next_platform_mutex_acquire( &client->internal->bandwidth_mutex );
+            client->internal->bandwidth_over_budget = over_budget;
+            client->internal->bandwidth_usage_kbps_up = usage_kbps_up;
+            next_platform_mutex_release( &client->internal->bandwidth_mutex );
+
+            if ( over_budget )
             {
-                next_printf( NEXT_LOG_LEVEL_WARN, "client exceeded bandwidth budget (%d kbps). sending packet direct instead", envelope_kbps_up );
-                send_direct = true;
+                send_over_network_next = false;
+                if ( !multipath )
+                {
+                    next_printf( NEXT_LOG_LEVEL_WARN, "client exceeded bandwidth budget (%d kbps). sending packet direct instead", envelope_kbps_up );
+                    send_direct = true;
+                }
             }
         }
 
@@ -12125,10 +12126,9 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
         {
             if ( send_over_network_next )
             {
-                // todo: needs packet hash bytes
-                const int packet_bits = next_wire_packet_bits( NEXT_HEADER_BYTES + packet_bytes );
+                const int wire_packet_bits = next_wire_packet_bits( packet_bytes );
 
-                bool over_budget = next_bandwidth_limiter_add_packet( &entry->send_bandwidth, next_time(), envelope_kbps_down, packet_bits );
+                bool over_budget = next_bandwidth_limiter_add_packet( &entry->send_bandwidth, next_time(), envelope_kbps_down, wire_packet_bits );
 
                 if ( over_budget )
                 {

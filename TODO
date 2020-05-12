@@ -14,33 +14,23 @@ DONE
 
 	Next step is to have separate allocators per-client, server and global.
 
-TODO
-
 	Now get the linux build compiling against with the mutex changes.
-
-	--------------------------------
 
 	Run the soak test on linux.
 
-	--------------------------------
+	Pass over todos and fix.
 
-	When no customer public key is specified on the client, print this out and say falling back to direct only.
+	Make sure next_client_internal_t is POD. Fixes G++ warning.
 
-	(don't print out customer key found, dumb)
-
-	--------------------------------
-
-	When no customer private key is specified, on the server, print this out and say, falling back to direct only.
-
-	(don't print out customer key found, dumb)
-
-	--------------------------------
-
-	Build with G++ and fix warning reported re. non-POD data struct cleared with memset 0.
+TODO
 
 	--------------------------------
 
 	There must be a functional test to verify bandwidth limiting.
+
+	(add counters for packets sent direct because over bandwidth limit, client -> server, server -> client. add tests for each case).
+
+	Make sure that sending packets direct doesn't count towards bandwidth limit. Add a test for that.
 
 	--------------------------------
 
