@@ -135,13 +135,9 @@ void generate_packet( uint8_t * packet_data, int & packet_bytes )
 
 void verify_packet( const uint8_t * packet_data, int packet_bytes )
 {
-    (void) packet_data;
-    (void) packet_bytes;
-    /*
     const int start = packet_bytes % 256;
     for ( int i = 0; i < packet_bytes; ++i )
         next_assert( packet_data[i] == (uint8_t) ( ( start + i ) % 256 ) );
-        */
 }
 
 void client_packet_received( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
