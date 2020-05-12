@@ -6,15 +6,13 @@ DONE
 
 	Extend to cover the next_server_t
 
-TODO
-
 	next_proxy_session_manager_t
 
 	next_proxy_session_entry_t
 
-	--------------------------------
+TODO
 
-	Extend to cover the next_client_internal_t
+	Extend to cover next_client_internal_t
 
 	--------------------------------
 
