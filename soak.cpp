@@ -30,53 +30,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-
-const int MaxServers = 10;
-const int MaxClients = 100;
-
-static next_server_t * servers[MaxServers];
-static next_client_t * clients[MaxClients];
-
-static volatile int quit = 0;
-
-void interrupt_handler( int signal )
-{
-    (void) signal; quit = 1;
-}
-
-void generate_packet( uint8_t * packet_data, int & packet_bytes )
-{
-    packet_bytes = 1 + ( rand() % NEXT_MTU );
-    const int start = packet_bytes % 256;
-    for ( int i = 0; i < packet_bytes; ++i )
-        packet_data[i] = (uint8_t) ( start + i ) % 256;
-}
-
-void verify_packet( const uint8_t * packet_data, int packet_bytes )
-{
-    const int start = packet_bytes % 256;
-    for ( int i = 0; i < packet_bytes; ++i )
-        next_assert( packet_data[i] == (uint8_t) ( ( start + i ) % 256 ) );
-}
-
-void client_packet_received( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
-{
-    (void) client; (void) context;
-    verify_packet( packet_data, packet_bytes );
-}
-
-void server_packet_received( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
-{
-    (void) context;
-    verify_packet( packet_data, packet_bytes );
-    next_server_send_packet( server, from, packet_data, packet_bytes );
-    if ( !next_server_session_upgraded( server, from ) )
-    {
-        next_server_upgrade_session( server, from, 0, 0, NULL );
-    }
-}
-
 #include <map>
+
+const char * customer_hostname = "127.0.0.1";
+const char * customer_datacenter = "linode.fremont"; // "local";
+const char * customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
+const char * customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn";
+
+// -------------------------------------------
 
 struct AllocatorEntry
 {
@@ -130,8 +91,6 @@ public:
     }
 };
 
-Allocator global_allocator;
-
 void * malloc_function( void * context, size_t bytes )
 {
     next_assert( context );
@@ -146,10 +105,59 @@ void free_function( void * context, void * p )
     return allocator->Free( p );
 }
 
-const char * customer_hostname = "127.0.0.1";
-const char * customer_datacenter = "linode.fremont"; // "local";
-const char * customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
-const char * customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn";
+// ----------------------------------------------------------
+
+const int MaxServers = 10;
+const int MaxClients = 100;
+
+static next_server_t * servers[MaxServers];
+static next_client_t * clients[MaxClients];
+
+static Allocator * server_allocator[MaxServers];
+static Allocator * client_allocator[MaxClients];
+
+static Allocator global_allocator;
+
+static volatile int quit = 0;
+
+void interrupt_handler( int signal )
+{
+    (void) signal; quit = 1;
+}
+
+void generate_packet( uint8_t * packet_data, int & packet_bytes )
+{
+    packet_bytes = 1 + ( rand() % NEXT_MTU );
+    const int start = packet_bytes % 256;
+    for ( int i = 0; i < packet_bytes; ++i )
+        packet_data[i] = (uint8_t) ( start + i ) % 256;
+}
+
+void verify_packet( const uint8_t * packet_data, int packet_bytes )
+{
+    const int start = packet_bytes % 256;
+    for ( int i = 0; i < packet_bytes; ++i )
+        next_assert( packet_data[i] == (uint8_t) ( ( start + i ) % 256 ) );
+}
+
+void client_packet_received( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
+{
+    (void) client; (void) context;
+    verify_packet( packet_data, packet_bytes );
+}
+
+void server_packet_received( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
+{
+    (void) context;
+    verify_packet( packet_data, packet_bytes );
+    next_server_send_packet( server, from, packet_data, packet_bytes );
+    if ( !next_server_session_upgraded( server, from ) )
+    {
+        next_server_upgrade_session( server, from, 0, 0, NULL );
+    }
+}
+
+// ----------------------------------------------------------
 
 int main( int argc, char ** argv )
 {
@@ -183,9 +191,9 @@ int main( int argc, char ** argv )
         {
             if ( clients[i] == NULL && ( rand() % 1000 ) == 0 )
             {
-                // todo: create client allocator
-
-                clients[i] = next_client_create( &global_allocator, "0.0.0.0:0", client_packet_received );
+                next_assert( client_allocator[i] == NULL );
+                client_allocator[i] = new Allocator();
+                clients[i] = next_client_create( client_allocator[i], "0.0.0.0:0", client_packet_received );
                 next_assert( clients[i] );
                 next_printf( NEXT_LOG_LEVEL_INFO, "created client %d", i );
             }
@@ -197,12 +205,13 @@ int main( int argc, char ** argv )
         {
             if ( clients[i] && ( rand() % 15000 ) == 0 )
             {
+                next_assert( client_allocator[i] != NULL );
+                
                 next_client_destroy( clients[i] );
 
-                // todo: destroy client allocator
-
+                delete client_allocator[i];
+                client_allocator[i] = NULL;
                 clients[i] = NULL;
-                // client_allocator[i] = NULL;
                 
                 next_printf( NEXT_LOG_LEVEL_INFO, "destroyed client %d", i );
             }
@@ -242,13 +251,13 @@ int main( int argc, char ** argv )
         {
             if ( servers[i] == NULL && ( rand() % 100 ) == 0 )
             {
-                // todo: create server allocator
-
+                next_assert( server_allocator[i] == NULL );
+                server_allocator[i] = new Allocator();
                 char server_address_string[256]; 
                 char bind_address_string[256];
                 sprintf( server_address_string, "127.0.0.1:%d", 50000 + i );
                 sprintf( bind_address_string, "0.0.0.0:%d", 50000 + i );
-                servers[i] = next_server_create( &global_allocator, server_address_string, bind_address_string, "local", server_packet_received );
+                servers[i] = next_server_create( server_allocator[i], server_address_string, bind_address_string, "local", server_packet_received );
                 if ( servers[i] )
                 {
                     next_printf( NEXT_LOG_LEVEL_INFO, "created server %d", i );
@@ -262,12 +271,13 @@ int main( int argc, char ** argv )
         {
             if ( servers[i] && ( rand() % 10000 ) == 0 )
             {
-                // todo: destroy server allocator
+                next_assert( server_allocator[i] != NULL );
 
                 next_server_destroy( servers[i] );
 
+                delete server_allocator[i];
+                server_allocator[i] = NULL;
                 servers[i] = NULL;
-                // todo: server_allocator[i] = NULL;
 
                 next_printf( NEXT_LOG_LEVEL_INFO, "destroyed server %d", i );
             }

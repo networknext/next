@@ -12,9 +12,15 @@ DONE
 
 	Fixed. Now I have a mutex and thread safe allocator, plus the allocator has a map that tracks allocated and freed pointers.
 
+	Next step is to have separate allocators per-client, server and global.
+
 TODO
 
-	Next step is to have separate allocators per-client, server and global.
+	Now get the linux build compiling against with the mutex changes.
+
+	--------------------------------
+
+	Run the soak test on linux.
 
 	--------------------------------
 
