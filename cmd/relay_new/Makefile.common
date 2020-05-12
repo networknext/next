@@ -31,8 +31,12 @@ INCLUDE_DIRS					:= -I$(INCLUDE) -I$(LIB)
 
 LIBRARIES							:= -lsodium -lcurl -lpthread -lm
 
+LIB_SUB_DIRS					:= $(shell find lib/* -type d -print)
+LIB_OBJ_DIRS					:= $(patsubst $(LIB)/%, $(OBJ)/$(LIB)/%, $(LIB_SUB_DIRS))
+LIB_FILES							:= $(call rwildcard,$(LIB),*.cpp)
+
 SRC_SUB_DIRS					:= $(shell find src/* -type d -print)
-SRC_OBJ_DIRS					:= $(patsubst $(SRC)/%, $(OBJ)/%, $(SRC_SUB_DIRS))
+SRC_OBJ_DIRS					:= $(patsubst $(SRC)/%, $(OBJ)/$(SRC)/%, $(SRC_SUB_DIRS))
 SRC_FILES							:= $(call rwildcard,$(SRC),*.cpp)
 
 # precompiled header file

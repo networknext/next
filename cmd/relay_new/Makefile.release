@@ -8,8 +8,11 @@ include $(MAKEFILE_DIR)/Makefile.common
 
 EXE										:= relay
 
-SRC_OBJ_FILES					:= $(patsubst $(SRC)/%.cpp, $(OBJ)/%.o, $(SRC_FILES))
-SRC_DEP_FILES					:= $(patsubst $(SRC)/%.cpp, $(OBJ)/%.d, $(SRC_FILES))
+LIB_OBJ_FILES					:= $(patsubst $(LIB)/%.cpp, $(OBJ)/$(LIB)/%.o, $(LIB_FILES))
+LIB_DEP_FILES					:= $(patsubst $(LIB)/%.cpp, $(OBJ)/$(LIB)/%.d, $(LIB_FILES))
+
+SRC_OBJ_FILES					:= $(patsubst $(SRC)/%.cpp, $(OBJ)/$(SRC)/%.o, $(SRC_FILES))
+SRC_DEP_FILES					:= $(patsubst $(SRC)/%.cpp, $(OBJ)/$(SRC)/%.d, $(SRC_FILES))
 
 COMMON_FLAGS 					:= $(CXX) $(CXX_FLAGS) $(CXX_PERF_FLAGS)
 COMMON_COMPILE_FLAGS 	:= $(COMMON_FLAGS) -c -DNDEBUG
@@ -21,7 +24,7 @@ DIST_DIR							:= ../../dist
 ################
 
 .PHONY: all
-all:  $(BIN)/$(EXE) $(DIST_DIR)/$(EXE)
+all: $(BIN)/$(EXE) $(DIST_DIR)/$(EXE)
 
 .PHONY: run
 run: $(BIN)/$(EXE)
@@ -40,14 +43,17 @@ $(GCH): $(PCH) Makefile
 	$(COMMON_COMPILE_FLAGS) -o $@ $(INCLUDE_DIRS) -x c++-header $<
 
 # all object files
-$(OBJ)/%.o: $(SRC)/%.cpp $(GCH)
+$(OBJ)/$(SRC)/%.o: $(SRC)/%.cpp $(GCH)
+	$(COMMON_COMPILE_FLAGS) -o $@ $(INCLUDE_DIRS) -MMD -MP $<
+
+$(OBJ)/$(LIB)/%.o: $(LIB)/%.cpp
 	$(COMMON_COMPILE_FLAGS) -o $@ $(INCLUDE_DIRS) -MMD -MP $<
 
 # the executable
-$(BIN)/$(EXE): $(SRC_OBJ_FILES)
+$(BIN)/$(EXE): $(SRC_OBJ_FILES) $(LIB_OBJ_FILES)
 	$(COMMON_FLAGS) -o $@ $^ $(LIBRARIES)
 
--include $(SRC_DEP_FILES)
+-include $(SRC_DEP_FILES) $(LIB_DEP_FILES)
 
 ####################
 ### Distribution ###
