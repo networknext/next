@@ -608,6 +608,8 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			return
 		}
 
+		fmt.Printf("Relay state: %d\n", relay.State)
+
 		statsUpdate := &routing.RelayStatsUpdate{}
 		statsUpdate.ID = relay.ID
 		statsUpdate.PingStats = append(statsUpdate.PingStats, relayUpdateRequest.PingStats...)

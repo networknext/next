@@ -219,6 +219,9 @@ namespace core
     std::string request = doc.toString();
     std::vector<char> response;
     size_t bytesSent = 0;
+
+    LogDebug("Sending: ", doc.toPrettyString());
+
     if (!T::SendTo(mHostname, "/relay_update", request, response, bytesSent)) {
       Log("curl request failed in update");
       return false;
@@ -230,6 +233,8 @@ namespace core
       Log("could not parse json response in update: ", doc.err(), "\nReponse: ", std::string(response.begin(), response.end()));
       return false;
     }
+
+    LogDebug("Received: ", doc.toPrettyString());
 
     if (doc.memberExists("version")) {
       if (doc.memberIs(util::JSON::Type::Number, "version")) {
