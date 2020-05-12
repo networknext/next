@@ -49,3 +49,4 @@ $(BIN)/$(EXE): $(SRC_OBJ_FILES) $(LIB_OBJ_FILES)
 	$(COMMON_FLAGS) -o $@ $^ $(LIBRARIES)
 
 -include $(SRC_DEP_FILES) $(LIB_DEP_FILES)
+
