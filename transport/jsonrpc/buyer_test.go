@@ -14,6 +14,24 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestBuyersList(t *testing.T) {
+	storer := storage.InMemory{}
+	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "local.local.1"})
+
+	svc := jsonrpc.BuyersService{
+		Storage: &storer,
+	}
+
+	t.Run("list", func(t *testing.T) {
+		var reply jsonrpc.BuyerListReply
+		err := svc.Buyers(nil, &jsonrpc.BuyerListArgs{}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, reply.Buyers[0].ID, "1")
+		assert.Equal(t, reply.Buyers[0].Name, "local.local.1")
+	})
+}
+
 func TestUserSessions(t *testing.T) {
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
