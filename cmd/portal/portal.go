@@ -18,6 +18,7 @@ import (
 	"github.com/gorilla/rpc/v2/json2"
 	"gopkg.in/auth0.v4/management"
 
+	"cloud.google.com/go/bigquery"
 	gcplogging "cloud.google.com/go/logging"
 
 	"github.com/go-kit/kit/log"
@@ -93,10 +94,12 @@ func main() {
 	}
 
 	addr := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 40000}
-	var db storage.Storer = &storage.InMemory{
+
+	inMemory := &storage.InMemory{
 		LocalMode: true,
 	}
 
+	var db storage.Storer = inMemory
 	{
 		if err := db.AddBuyer(ctx, routing.Buyer{
 			ID:                   customerID,
@@ -164,6 +167,7 @@ func main() {
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
 	// on creation so we can use that for the default then
+	var querier storage.Querier = inMemory
 	if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
 		// Create a Firestore Storer
 		fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
@@ -180,8 +184,16 @@ func main() {
 
 		// Set the Firestore Storer to give to handlers
 		db = fs
-	}
 
+		bq, err := bigquery.NewClient(ctx, gcpProjectID)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
+		querier = &storage.BigQuery{
+			Client: bq,
+		}
+	}
 	var routeMatrix routing.RouteMatrix
 	{
 		if uri, ok := os.LookupEnv("ROUTE_MATRIX_URI"); ok {
@@ -283,6 +295,7 @@ func main() {
 		s.RegisterService(&jsonrpc.BuyersService{
 			RedisClient: redisClientPortal,
 			Storage:     db,
+			Querier:     querier,
 		}, "")
 		s.RegisterService(&jsonrpc.AuthService{
 			Auth0:   auth0Client,

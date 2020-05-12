@@ -16,6 +16,7 @@ import (
 type BuyersService struct {
 	RedisClient redis.Cmdable
 	Storage     storage.Storer
+	Querier     storage.Querier
 }
 
 type UserSessionsArgs struct {
@@ -27,8 +28,21 @@ type UserSessionsReply struct {
 }
 
 func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, reply *UserSessionsReply) error {
+	var err error
+
+	if args.UserHash == "" {
+		return nil
+	}
+
+	userID, _ := strconv.ParseUint(args.UserHash, 16, 64)
+
+	reply.Sessions, err = s.Querier.SessionsWithUserHash(r.Context(), userID)
+	if err != nil {
+		return err
+	}
+
 	var sessionIDs []string
-	err := s.RedisClient.SMembers(fmt.Sprintf("user-%s-sessions", args.UserHash)).ScanSlice(&sessionIDs)
+	err = s.RedisClient.SMembers(fmt.Sprintf("user-%s-sessions", args.UserHash)).ScanSlice(&sessionIDs)
 	if err != nil {
 		return err
 	}
