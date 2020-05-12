@@ -23,13 +23,15 @@ namespace legacy
      os::Socket& socket,
      const util::Clock& relayClock,
      TrafficStats& stats,
-     core::RelayManager& manager)
+     core::RelayManager& manager,
+     const size_t speed)
      : mReceiver(receiver),
        mEnv(env),
        mSocket(socket),
        mClock(relayClock),
        mStats(stats),
        mRelayManager(manager),
+       mSpeed(speed),
        mRelayID(crypto::FNV(mEnv.RelayV3Name).Value)
     {
       std::array<uint8_t, PingKeySize> key;
@@ -372,6 +374,10 @@ namespace legacy
         trafficStats.set(bytesPerSecInvalidRx, "BytesInvalidRx");
 
         doc.set(trafficStats, "TrafficStats");
+
+        auto total = bytesPerSecInvalidRx + bytesPerSecPaidRx + bytesPerSecManagementRx + bytesPerSecMeasurementRx + bytesPerSecPaidTx + bytesPerSecManagementTx + bytesPerSecManagementTx;
+        double usage = 100.0 * 8.0 * total / mSpeed;
+        doc.set(usage, "Usage");
       }
 
       // metadata
