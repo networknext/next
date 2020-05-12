@@ -67,7 +67,6 @@ JSONRPCClient = {
 
 
 		return response.json().then((json) => {
-			console.log(json)
 			if (json.error) {
 				throw new Error(json.error);
 			}
@@ -462,7 +461,6 @@ WorkspaceHandler = {
 	loadSettingsPage() {
 		this.changeAccountPage();
 
-		console.log(UserHandler.userInfo.id);
 		if (UserHandler.userInfo.id != '') {
 			JSONRPCClient
 			.call('BuyersService.GameConfiguration', {buyer_id: UserHandler.userInfo.id})
@@ -563,7 +561,6 @@ function startApp() {
 	JSONRPCClient
 		.call('BuyersService.Buyers', {})
 		.then((response) => {
-			console.log(response);
 			allBuyers = response.Buyers;
 		})
 		.catch((e) => {
