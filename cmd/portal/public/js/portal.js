@@ -67,7 +67,6 @@ JSONRPCClient = {
 
 
 		return response.json().then((json) => {
-			console.log(json)
 			if (json.error) {
 				throw new Error(json.error);
 			}
@@ -245,7 +244,6 @@ UserHandler = {
 			return JSONRPCClient.call("AuthService.UserAccount", {user_id: this.userInfo.userId})
 		})
 		.then((response) => {
-			console.log(response)
 			this.userInfo.buyerId = response.account.id;
 			this.userInfo.company = response.account.company_name;
 			this.userInfo.roles = response.account.roles;
@@ -536,7 +534,7 @@ function startApp() {
 			allBuyers = response.Buyers;
 		})
 		.catch((e) => {
-			console.log("Something went wrong fetching relays");
+			console.log("Something went wrong fetching buyers");
 			console.log(e);
 		});
 }
