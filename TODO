@@ -10,9 +10,15 @@ DONE
 
 	next_proxy_session_entry_t
 
+	next_client_internal_t
+
+	next_client_t
+
 TODO
 
-	Extend to cover next_client_internal_t
+	next_ping_history_t
+
+	near_relay_stats_t
 
 	--------------------------------
 
@@ -20,7 +26,7 @@ TODO
 
 	--------------------------------
 
-	Extend to cover next_client_t
+	Extend to cover internal objects of next_client_t
 
 	--------------------------------
 

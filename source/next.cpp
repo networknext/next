@@ -5357,7 +5357,6 @@ struct next_client_internal_t
     double last_stats_update_time;
     double last_stats_report_time;
     uint64_t route_update_sequence;
-    next_relay_stats_t near_relay_stats;
     next_relay_manager_t * near_relay_manager;
     next_route_manager_t * route_manager;
     next_platform_mutex_t * route_manager_mutex;
@@ -5375,14 +5374,24 @@ struct next_client_internal_t
 
     NEXT_DECLARE_SENTINEL(2)
 
+    next_client_stats_t client_stats;
+
+    NEXT_DECLARE_SENTINEL(3)
+
+    next_relay_stats_t near_relay_stats;
+
+    NEXT_DECLARE_SENTINEL(4)
+
     next_ping_history_t next_ping_history;
     next_ping_history_t direct_ping_history;
-    next_client_stats_t client_stats;
+
+    NEXT_DECLARE_SENTINEL(5)
+
     next_replay_protection_t payload_replay_protection;
     next_replay_protection_t special_replay_protection;
     next_replay_protection_t internal_replay_protection;
 
-    NEXT_DECLARE_SENTINEL(3)
+    NEXT_DECLARE_SENTINEL(6)
 
     next_platform_mutex_t * bandwidth_mutex;
     bool bandwidth_over_budget;
@@ -5391,16 +5400,51 @@ struct next_client_internal_t
     float bandwidth_envelope_kbps_up;
     float bandwidth_envelope_kbps_down;
     
-    NEXT_DECLARE_SENTINEL(4)
+    NEXT_DECLARE_SENTINEL(7)
 
     bool sending_upgrade_response;
     NextUpgradeResponsePacket upgrade_response;
     double upgrade_response_start_time;
     double last_upgrade_response_send_time;
+
+    NEXT_DECLARE_SENTINEL(8)
+
     uint64_t counters[NEXT_CLIENT_COUNTER_MAX];
 
-    NEXT_DECLARE_SENTINEL(5)
+    NEXT_DECLARE_SENTINEL(9)
 };
+
+void next_client_internal_initialize_sentinels( next_client_internal_t * client )
+{
+    (void) client;
+    next_assert( client );
+    NEXT_INITIALIZE_SENTINEL( client, 0 )
+    NEXT_INITIALIZE_SENTINEL( client, 1 )
+    NEXT_INITIALIZE_SENTINEL( client, 2 )
+    NEXT_INITIALIZE_SENTINEL( client, 3 )
+    NEXT_INITIALIZE_SENTINEL( client, 4 )
+    NEXT_INITIALIZE_SENTINEL( client, 5 )
+    NEXT_INITIALIZE_SENTINEL( client, 6 )
+    NEXT_INITIALIZE_SENTINEL( client, 7 )
+    NEXT_INITIALIZE_SENTINEL( client, 8 )
+    NEXT_INITIALIZE_SENTINEL( client, 9 )
+}
+
+void next_client_internal_verify_sentinels( next_client_internal_t * client )
+{
+    (void) client;
+    next_assert( client );
+    NEXT_VERIFY_SENTINEL( client, 0 )
+    NEXT_VERIFY_SENTINEL( client, 1 )
+    NEXT_VERIFY_SENTINEL( client, 2 )
+    NEXT_VERIFY_SENTINEL( client, 3 )
+    NEXT_VERIFY_SENTINEL( client, 4 )
+    NEXT_VERIFY_SENTINEL( client, 5 )
+    NEXT_VERIFY_SENTINEL( client, 6 )
+    NEXT_VERIFY_SENTINEL( client, 7 )
+    NEXT_VERIFY_SENTINEL( client, 8 )
+    NEXT_VERIFY_SENTINEL( client, 9 )
+}
 
 void next_client_internal_destroy( next_client_internal_t * client );
 
@@ -5425,6 +5469,8 @@ next_client_internal_t * next_client_internal_create( void * context, const char
     }
 
     memset( client, 0, sizeof( next_client_internal_t) );
+
+    next_client_internal_initialize_sentinels( client );
 
     client->context = context;
 
@@ -5515,12 +5561,15 @@ next_client_internal_t * next_client_internal_create( void * context, const char
 
     next_packet_loss_tracker_reset( &client->packet_loss_tracker );
 
+    next_client_internal_verify_sentinels( client );
+
     return client;
 }
 
 void next_client_internal_destroy( next_client_internal_t * client )
 {
-    next_assert( client );
+    next_client_internal_verify_sentinels( client );
+
     if ( client->socket )
     {
         next_platform_socket_destroy( client->socket );
@@ -5562,28 +5611,36 @@ void next_client_internal_destroy( next_client_internal_t * client )
 
 int next_client_internal_send_packet_to_server( next_client_internal_t * client, uint8_t packet_id, void * packet_object )
 {
-    next_assert( client );
+    next_client_internal_verify_sentinels( client );
+
     next_assert( packet_object );
     next_assert( client->session_open );
+
     if ( !client->session_open )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client can't send internal packet to server because no session is open" );
         return NEXT_ERROR;
     }
+
     int packet_bytes = 0;
+
     uint8_t buffer[NEXT_MAX_PACKET_BYTES*2];
+
     if ( next_write_packet( packet_id, packet_object, buffer, &packet_bytes, next_encrypted_packets, &client->internal_send_sequence, client->client_send_key ) != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client failed to write internal packet type %d", packet_id );
         return NEXT_ERROR;
     }
+
     next_platform_socket_send_packet( client->socket, &client->server_address, buffer, packet_bytes );
+
     return NEXT_OK;
 }
 
 void next_client_internal_process_network_next_packet( next_client_internal_t * client, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
 {
-    next_assert( client );
+    next_client_internal_verify_sentinels( client );
+
     next_assert( from );
     next_assert( packet_data );
     next_assert( next_is_network_next_packet( packet_data, packet_bytes ) );
@@ -6234,7 +6291,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
 void next_client_internal_process_game_packet( next_client_internal_t * client, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
 {
-    next_assert( client );
+    next_client_internal_verify_sentinels( client );
+
     next_assert( from );
     next_assert( packet_data );
 
@@ -6260,6 +6318,8 @@ bool next_packet_loss = false;
 
 void next_client_internal_block_and_receive_packet( next_client_internal_t * client )
 {
+    next_client_internal_verify_sentinels( client );
+
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES*2];
 
     next_address_t from;
@@ -6288,6 +6348,8 @@ void next_client_internal_block_and_receive_packet( next_client_internal_t * cli
 
 bool next_client_internal_pump_commands( next_client_internal_t * client )
 {
+    next_client_internal_verify_sentinels( client );
+
     bool quit = false;
 
     while ( true )
@@ -6309,7 +6371,6 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
             {
                 next_client_command_open_session_t * open_session_command = (next_client_command_open_session_t*) entry;
                 client->server_address = open_session_command->server_address;
-                // todo: having only session open state is just not going to cut it
                 client->session_open = true;
                 client->open_session_sequence++;
                 client->last_direct_ping_time = next_time();
@@ -6429,7 +6490,7 @@ float next_fake_next_rtt = 0.0f;
 
 void next_client_internal_update_stats( next_client_internal_t * client )
 {
-    next_assert( client );
+    next_client_internal_verify_sentinels( client );
 
     if ( next_global_config.disable_network_next )
         return;
@@ -6579,7 +6640,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
 void next_client_internal_update_direct_pings( next_client_internal_t * client )
 {
-    next_assert( client );
+    next_client_internal_verify_sentinels( client );
 
     if ( next_global_config.disable_network_next )
         return;
@@ -6614,7 +6675,7 @@ void next_client_internal_update_direct_pings( next_client_internal_t * client )
 
 void next_client_internal_update_next_pings( next_client_internal_t * client )
 {
-    next_assert( client );
+    next_client_internal_verify_sentinels( client );
 
     if ( next_global_config.disable_network_next )
         return;
@@ -6678,7 +6739,7 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
 
 void next_client_internal_send_pings_to_near_relays( next_client_internal_t * client )
 {
-    next_assert( client );
+    next_client_internal_verify_sentinels( client );
 
     if ( next_global_config.disable_network_next )
         return;
@@ -6694,7 +6755,7 @@ void next_client_internal_send_pings_to_near_relays( next_client_internal_t * cl
 
 void next_client_internal_update_fallback_to_direct( next_client_internal_t * client )
 {
-    next_assert( client );
+    next_client_internal_verify_sentinels( client );
 
     if ( next_global_config.disable_network_next )
         return;
@@ -6717,7 +6778,7 @@ void next_client_internal_update_fallback_to_direct( next_client_internal_t * cl
 
 void next_client_internal_update_route_manager( next_client_internal_t * client )
 {
-    next_assert( client );
+    next_client_internal_verify_sentinels( client );
 
     if ( next_global_config.disable_network_next )
         return;
@@ -6757,6 +6818,8 @@ void next_client_internal_update_route_manager( next_client_internal_t * client 
 
 void next_client_internal_update_upgrade_response( next_client_internal_t * client )
 {
+    next_client_internal_verify_sentinels( client );
+
     if ( next_global_config.disable_network_next )
         return;
 
@@ -6849,13 +6912,44 @@ struct next_client_t
     next_client_internal_t * internal;
     next_platform_thread_t * thread;
     void (*packet_received_callback)( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes );
-    next_client_stats_t client_stats;
-    next_bandwidth_limiter_t send_bandwidth;
-    next_bandwidth_limiter_t receive_bandwidth;
-    uint64_t counters[NEXT_CLIENT_COUNTER_MAX];
 
     NEXT_DECLARE_SENTINEL(1)
+
+    next_client_stats_t client_stats;
+
+    NEXT_DECLARE_SENTINEL(2)
+
+    next_bandwidth_limiter_t send_bandwidth;
+    next_bandwidth_limiter_t receive_bandwidth;
+
+    NEXT_DECLARE_SENTINEL(3)
+
+    uint64_t counters[NEXT_CLIENT_COUNTER_MAX];
+
+    NEXT_DECLARE_SENTINEL(4)
 };
+
+void next_client_initialize_sentinels( next_client_t * client )
+{
+    (void) client;
+    next_assert( client );
+    NEXT_INITIALIZE_SENTINEL( client, 0 )
+    NEXT_INITIALIZE_SENTINEL( client, 1 )
+    NEXT_INITIALIZE_SENTINEL( client, 2 )
+    NEXT_INITIALIZE_SENTINEL( client, 3 )
+    NEXT_INITIALIZE_SENTINEL( client, 4 )
+}
+
+void next_client_verify_sentinels( next_client_t * client )
+{
+    (void) client;
+    next_assert( client );
+    NEXT_VERIFY_SENTINEL( client, 0 )
+    NEXT_VERIFY_SENTINEL( client, 1 )
+    NEXT_VERIFY_SENTINEL( client, 2 )
+    NEXT_VERIFY_SENTINEL( client, 3 )
+    NEXT_VERIFY_SENTINEL( client, 4 )
+}
 
 void next_client_destroy( next_client_t * client );
 
@@ -6869,6 +6963,8 @@ next_client_t * next_client_create( void * context, const char * bind_address, v
         return NULL;
 
     memset( client, 0, sizeof( next_client_t) );
+
+    next_client_initialize_sentinels( client );
 
     client->context = context;
     client->packet_received_callback = packet_received_callback;
@@ -6895,18 +6991,21 @@ next_client_t * next_client_create( void * context, const char * bind_address, v
     next_bandwidth_limiter_reset( &client->send_bandwidth );
     next_bandwidth_limiter_reset( &client->receive_bandwidth );
 
+    next_client_verify_sentinels( client );
+
     return client;
 }
 
 uint16_t next_client_port( next_client_t * client )
 {
-    next_assert( client );
+    next_client_verify_sentinels( client );
+
     return client->bound_port;
 }
 
 void next_client_destroy( next_client_t * client )
 {
-    next_assert( client );
+    next_client_verify_sentinels( client );
 
     if ( client->thread )
     {
@@ -6936,7 +7035,8 @@ void next_client_destroy( next_client_t * client )
 
 void next_client_open_session( next_client_t * client, const char * server_address_string )
 {
-    next_assert( client );
+    next_client_verify_sentinels( client );
+
     next_assert( client->internal );
     next_assert( client->internal->command_mutex );
     next_assert( client->internal->command_queue );
@@ -6974,19 +7074,22 @@ void next_client_open_session( next_client_t * client, const char * server_addre
 
 bool next_client_is_session_open( next_client_t * client )
 {
-    next_assert( client );
+    next_client_verify_sentinels( client );
+
     return client->state == NEXT_CLIENT_STATE_OPEN;
 }
 
 int next_client_state( next_client_t * client )
 {
-	next_assert( client );
+    next_client_verify_sentinels( client );
+
 	return client->state;
 }
 
 void next_client_close_session( next_client_t * client )
 {
-    next_assert( client );
+    next_client_verify_sentinels( client );
+
     next_assert( client->internal );
     next_assert( client->internal->command_mutex );
     next_assert( client->internal->command_queue );
@@ -7016,6 +7119,8 @@ void next_client_close_session( next_client_t * client )
 
 void next_client_update( next_client_t * client )
 {
+    next_client_verify_sentinels( client );
+
     while ( true )
     {
         void * entry = NULL;
@@ -7086,7 +7191,8 @@ void next_client_update( next_client_t * client )
 
 void next_client_send_packet( next_client_t * client, const uint8_t * packet_data, int packet_bytes )
 {
-    next_assert( client );
+    next_client_verify_sentinels( client );
+
     next_assert( client->internal );
     next_assert( client->internal->socket );
     next_assert( packet_bytes >= 0 );
@@ -7215,7 +7321,8 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
 void next_client_send_packet_direct( next_client_t * client, const uint8_t * packet_data, int packet_bytes )
 {
-    next_assert( client );
+    next_client_verify_sentinels( client );
+
     next_assert( client->internal );
     next_assert( client->internal->socket );
     next_assert( packet_bytes >= 0 );
@@ -7240,13 +7347,16 @@ void next_client_send_packet_direct( next_client_t * client, const uint8_t * pac
 
 void next_client_flag_session( next_client_t * client )
 {
-    next_assert( client );
+    next_client_verify_sentinels( client );
+
     next_client_command_flag_session_t * command = (next_client_command_flag_session_t*) next_malloc( client->context, sizeof( next_client_command_flag_session_t ) );
+
     if ( !command )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "flag session failed. could not create flag session command" );
         return;
     }
+
     command->type = NEXT_CLIENT_COMMAND_FLAG_SESSION;
     {    
         next_mutex_guard( client->internal->command_mutex );
@@ -7256,27 +7366,33 @@ void next_client_flag_session( next_client_t * client )
 
 uint64_t next_client_session_id( next_client_t * client )
 {
-    next_assert( client );
+    next_client_verify_sentinels( client );
+
     return client->session_id;
 }
 
 const next_client_stats_t * next_client_stats( next_client_t * client )
 {
-    next_assert( client );
+    next_client_verify_sentinels( client );
+
     return &client->client_stats;
 }
 
 void next_client_set_user_flags( next_client_t * client, uint64_t user_flags )
 {
-    next_assert( client );
+    next_client_verify_sentinels( client );
+
     next_client_command_user_flags_t * command = (next_client_command_user_flags_t*) next_malloc( client->context, sizeof( next_client_command_user_flags_t ) );
+
     if ( !command )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "set user flags failed. could not create user flags command" );
         return;
     }
+
     command->type = NEXT_CLIENT_COMMAND_USER_FLAGS;
     command->user_flags = user_flags;
+
     {    
         next_mutex_guard( client->internal->command_mutex );
         next_queue_push( client->internal->command_queue, command );
@@ -7285,6 +7401,7 @@ void next_client_set_user_flags( next_client_t * client, uint64_t user_flags )
 
 void next_client_counters( next_client_t * client, uint64_t * counters )
 {
+    next_client_verify_sentinels( client );
     uint64_t internal_counters[NEXT_CLIENT_COUNTER_MAX];
     memcpy( counters, client->counters, sizeof(uint64_t) * NEXT_CLIENT_COUNTER_MAX );
     memcpy( internal_counters, client->internal->counters, sizeof(uint64_t) * NEXT_CLIENT_COUNTER_MAX );
