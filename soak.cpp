@@ -253,15 +253,14 @@ int main( int argc, char ** argv )
             {
                 next_assert( server_allocator[i] == NULL );
                 server_allocator[i] = new Allocator();
+                next_assert( server_allocator[i] );
                 char server_address_string[256]; 
                 char bind_address_string[256];
                 sprintf( server_address_string, "127.0.0.1:%d", 50000 + i );
                 sprintf( bind_address_string, "0.0.0.0:%d", 50000 + i );
                 servers[i] = next_server_create( server_allocator[i], server_address_string, bind_address_string, "local", server_packet_received );
-                if ( servers[i] )
-                {
-                    next_printf( NEXT_LOG_LEVEL_INFO, "created server %d", i );
-                }
+                next_assert( servers[i] );
+                next_printf( NEXT_LOG_LEVEL_INFO, "created server %d", i );
             }
         }
 
@@ -331,6 +330,8 @@ int main( int argc, char ** argv )
         if ( clients[i] )
         {
             next_client_destroy( clients[i] );
+            next_assert( client_allocator[i] );
+            delete client_allocator[i];
             next_printf( NEXT_LOG_LEVEL_INFO, "destroyed client %d", i );
         }
     }
@@ -342,6 +343,8 @@ int main( int argc, char ** argv )
         if ( servers[i] )
         {
             next_server_destroy( servers[i] );
+            next_assert( server_allocator[i] );
+            delete server_allocator[i];
             next_printf( NEXT_LOG_LEVEL_INFO, "destroyed server %d", i );
         }
     }
