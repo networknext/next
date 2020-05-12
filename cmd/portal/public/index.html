@@ -314,15 +314,15 @@
                                 <h1 class="h2" v-if="showCount">
                                     Sessions&nbsp;
                                     <span class="badge badge-dark">
-                                        {{sessions.length}} Total Sessions
+                                        {{ totalSessions}} Total Sessions
                                     </span>&nbsp;
                                     <span class="badge badge-success">
-                                        {{ onNN.length }} on Network Next
+                                        {{ onNN }} on Network Next
                                     </span>
                                 </h1>
                                 <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1">
                                     <div class="mr-auto"></div>
-                                    <div class="px-2">
+                                    <div class="px-2 hidden">
                                         <select class="form-control">
                                             <option value="rtt">
                                                 Sort by RTT
@@ -331,23 +331,23 @@
                                     </div>
                                     <div class="px-2">
                                         <select class="form-control">
-                                            <option value="everything">
+                                            <option value="everything" v-on:click="updateSessionFilter({buyerId: filter.buyerId, sessionType: 'all'})">
                                                 Everything
                                             </option>
-                                            <option value="direct">
+                                            <option value="direct" v-on:click="updateSessionFilter({buyerId: filter.buyerId, sessionType: 'direct'})">
                                                 Direct Only
                                             </option>
-                                            <option value="next">
+                                            <option value="next" v-on:click="updateSessionFilter({buyerId: filter.buyerId, sessionType: 'nn'})">
                                                 Network Next Only
                                             </option>
                                         </select>
                                     </div>
                                     <div class="px-2" v-if="isAdmin()">
                                         <select class="form-control">
-                                            <option value="all">
+                                            <option value="all" v-on:click="updateSessionFilter({buyerId: '', sessionType: filter.sessionType})">
                                                 All
                                             </option>
-                                            <option v-for="buyer in allBuyers" v-on:click="refreshSessionsTable(buyer.id)">
+                                            <option v-for="buyer in allBuyers" v-on:click="updateSessionFilter({buyerId: buyer.id, sessionType: filter.sessionType})">
                                                 {{ buyer.name }}
                                             </option>
                                         </select>
@@ -976,10 +976,10 @@
                                     <div class="mr-auto"></div>
                                     <div class="px-2">
                                         <select class="form-control">
-                                            <option value="all">
+                                            <option value="all" v-on:click="updateAccountsTableFilter({buyerId: ''})">
                                                 All
                                             </option>
-                                            <option v-for="buyer in allBuyers" v-on:click="refreshAccountTable(buyer.id)">
+                                            <option v-for="buyer in allBuyers" v-on:click="updateAccountsTableFilter({buyerId: buyer.id})">
                                                 {{ buyer.name }}
                                             </option>
                                         </select>

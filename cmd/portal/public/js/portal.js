@@ -13,9 +13,11 @@ var defaultSessionDetailsVue = {
 };
 
 var defaultSessionsTable = {
-	onNN: [],
+	direct: 0,
+	onNN: 0,
 	sessions: [],
 	showCount: false,
+	totalSessions: 0,
 };
 
 var defaultUserSessionTable = {
@@ -145,7 +147,6 @@ MapHandler = {
 						gpuAggregation,
 						aggregation
 					}); */
-					debugger;
 
 					let sessions = response.map_points;
 					let onNN = sessions.filter((point) => {
@@ -457,9 +458,193 @@ WorkspaceHandler = {
 	},
 	loadSettingsPage() {
 		this.changeAccountPage();
+		let buyerId = !UserHandler.isAdmin() ? UserHandler.userInfo.id : "";
+		updateAccountsTableFilter({
+			buyerId: buyerId,
+		});
+	},
+	loadConfigPage() {
+		JSONRPCClient
+			.call('BuyersService.GameConfiguration', {buyer_id: UserHandler.userInfo.buyerId || '13672574147039585173'})
+			.then((response) => {
+				UserHandler.userInfo.pubKey = response.game_config.public_key;
+				/**
+				 * I really dislike this but it is apparently the way to reload/update the data within a vue
+				 */
+				Object.assign(pubKeyInput.$data, {pubKey: UserHandler.userInfo.pubKey});
+			})
+			.catch((e) => {
+				console.log("Something went wrong fetching public key");
+				console.log(e);
+			});
+	},
+	loadRelayPage() {
+		JSONRPCClient
+			.call('OpsService.Relays', {})
+			.then((response) => {
+				/**
+				 * I really dislike this but it is apparently the way to reload/update the data within a vue
+				 */
+				Object.assign(relaysTable.$data, {relays: response.relays});
+			})
+			.catch((e) => {
+				console.log("Something went wrong fetching relays");
+				console.log(e);
+			});
+	},
+	loadSessionsPage() {
+		let buyerId = !UserHandler.isAdmin() ? UserHandler.userInfo.id : "";
+		updateSessionFilter({
+			buyerId: buyerId,
+			sessionType: 'all'
+		});
+	},
+	loadUsersPage() {
+		// No Endpoint for this yet
+	}
+}
+
+function startApp() {
+	/**
+	 * QUESTION: Instead of grabbing the user here can we use the token to then go off and get everything from the backend?
+	 * TODO:	 There are 3 different promises going off to get user details. There should be a better way to do this
+	 */
+
+	UserHandler
+		.fetchCurrentUserInfo()
+		.then(() => {
+			createVueComponents();
+			document.getElementById("app").style.display = 'block';
+			MapHandler
+				.initMap()
+				.then((response) => {
+					console.log("Map init successful");
+				})
+				.catch((e) => {
+					console.log("Something went wrong initializing the map");
+					console.log(e);
+				});
+		}).catch((e) => {
+			console.log("Something went wrong getting the current user information");
+			console.log(e);
+		});
+	JSONRPCClient
+		.call('OpsService.Buyers', {})
+		.then((response) => {
+			console.log(response);
+			allBuyers = response.Buyers;
+		})
+		.catch((e) => {
+			console.log("Something went wrong fetching relays");
+			console.log(e);
+		});
+}
+
+function createVueComponents() {
+	settingsPage = new Vue({
+		el: '#settings-page',
+		data: {
+			accounts: null,
+			allBuyers: allBuyers,
+			filter: {buyerId: UserHandler.userInfo.id},
+			newUser: {
+				failure: {
+					message: '',
+				},
+				success: {
+					message: '',
+				},
+			},
+			showAccounts: false,
+			updateUser: {
+				failure: {
+					message: '',
+				},
+				success: {
+					message: '',
+				},
+			},
+		},
+		methods: {
+			cancelEditUser: WorkspaceHandler.cancelEditUser,
+			deleteUser: WorkspaceHandler.deleteUser,
+			editUser: WorkspaceHandler.editUser,
+			isAdmin: UserHandler.isAdmin,
+			refreshAccountsTable: refreshAccountsTable,
+			saveUser: WorkspaceHandler.saveUser,
+			updateAccountsTableFilter: updateAccountsTableFilter
+		}
+	});
+	mapSessionsCount = new Vue({
+		el: '#map-sessions-count',
+		data: {
+			allBuyers: allBuyers,
+			direct: 0,
+			filter: {buyerId: UserHandler.userInfo.id, sessionType: 'all'},
+			onNN: 0,
+			showCount: false,
+			totalSessions: 0,
+			userInfo: UserHandler.userInfo
+		},
+		methods: {
+			isAdmin: UserHandler.isAdmin,
+			refreshMapSessions: MapHandler.refreshMapSessions,
+			updateFilter: MapHandler.updateFilter,
+		}
+	});
+	pubKeyInput = new Vue({
+		el: '#pubKey',
+		data: {
+			pubKey: UserHandler.userInfo.pubKey
+		},
+		methods: {
+			updatePubKey: updatePubKey
+		}
+	});
+	sessionDetailsVue = new Vue({
+		el: '#session-details',
+		data: {
+			meta: null,
+			slices: [],
+			showDetails: false,
+		}
+	});
+	sessionsTable = new Vue({
+		el: '#sessions',
+		data: {
+			allBuyers: allBuyers,
+			...defaultSessionsTable,
+			filter: {buyerId: UserHandler.userInfo.id, sessionType: 'all'},
+		},
+		methods: {
+			fetchSessionInfo: fetchSessionInfo,
+			fetchUserSessions: fetchUserSessions,
+			isAdmin: UserHandler.isAdmin,
+			updateSessionFilter: updateSessionFilter,
+			refreshSessionTable: refreshSessionTable,
+		}
+	});
+	userSessionTable = new Vue({
+		el: '#user-sessions',
+		data: {...defaultUserSessionTable},
+		methods: {
+			fetchSessionInfo: fetchSessionInfo
+		}
+	})
+}
+
+function updateAccountsTableFilter(filter) {
+	Object.assign(settingsPage.$data, {filter: filter});
+	refreshAccountsTable();
+}
+
+function refreshAccountsTable() {
+	setTimeout(() => {
+		let filter = settingsPage.$data.filter;
+
 		let promises = [
 			JSONRPCClient
-				.call('AuthService.AllAccounts', {buyer_id: UserHandler.userInfo.buyerId || '13672574147039585173'}),
+				.call('AuthService.AllAccounts', {buyer_id: filter.buyerId}),
 			JSONRPCClient
 				.call('AuthService.AllRoles', {})
 		];
@@ -567,49 +752,48 @@ WorkspaceHandler = {
 			console.log("Something went wrong loading settings page");
 			console.log(errors);
 		});
-	},
-	loadConfigPage() {
+	});
+}
+
+function updateSessionFilter(filter) {
+	Object.assign(sessionsTable.$data, {filter: filter});
+	refreshSessionTable();
+}
+
+function refreshSessionTable() {
+	setTimeout(() => {
+		let filter = sessionsTable.$data.filter;
+
 		JSONRPCClient
-			.call('BuyersService.GameConfiguration', {buyer_id: UserHandler.userInfo.buyerId || '13672574147039585173'})
-			.then((response) => {
-				UserHandler.userInfo.pubKey = response.game_config.public_key;
-				/**
-				 * I really dislike this but it is apparently the way to reload/update the data within a vue
-				 */
-				Object.assign(pubKeyInput.$data, {pubKey: UserHandler.userInfo.pubKey});
-			})
-			.catch((e) => {
-				console.log("Something went wrong fetching public key");
-				console.log(e);
-			});
-	},
-	loadRelayPage() {
-		JSONRPCClient
-			.call('OpsService.Relays', {})
-			.then((response) => {
-				/**
-				 * I really dislike this but it is apparently the way to reload/update the data within a vue
-				 */
-				Object.assign(relaysTable.$data, {relays: response.relays});
-			})
-			.catch((e) => {
-				console.log("Something went wrong fetching relays");
-				console.log(e);
-			});
-	},
-	loadSessionsPage() {
-		JSONRPCClient
-			.call('BuyersService.TopSessions', {})
+			.call('BuyersService.TopSessions', {buyer_id: filter.buyerId})
 			.then((response) => {
 				let sessions = response.sessions;
+				let onNN = sessions.filter((point) => {
+					return point.on_network_next;
+				});
+				let direct = sessions.filter((point) => {
+					return !point.on_network_next;
+				});
+				let data = [];
+
+				switch (filter.sessionType) {
+					case 'direct':
+						data = direct;
+						break;
+					case 'nn':
+						data = onNN;
+						break;
+					default:
+						data = sessions;
+				}
 				/**
 				 * I really dislike this but it is apparently the way to reload/update the data within a vue
 				 */
 				Object.assign(sessionsTable.$data, {
-					onNN: sessions.filter((session) => {
-						return session.on_network_next;
-					}),
-					sessions: sessions,
+					direct: direct.length,
+					onNN: onNN.length,
+					totalSessions: sessions.length,
+					sessions: data,
 					showCount: true,
 				});
 			})
@@ -617,133 +801,7 @@ WorkspaceHandler = {
 				console.log("Something went wrong fetching the top sessions list");
 				console.log(e);
 			});
-	},
-	loadUsersPage() {
-		// No Endpoint for this yet
-	}
-}
-
-function startApp() {
-	/**
-	 * QUESTION: Instead of grabbing the user here can we use the token to then go off and get everything from the backend?
-	 * TODO:	 There are 3 different promises going off to get user details. There should be a better way to do this
-	 */
-
-	UserHandler
-		.fetchCurrentUserInfo()
-		.then(() => {
-			createVueComponents();
-			document.getElementById("app").style.display = 'block';
-			MapHandler
-				.initMap()
-				.then((response) => {
-					console.log("Map init successful");
-				})
-				.catch((e) => {
-					console.log("Something went wrong initializing the map");
-					console.log(e);
-				});
-		}).catch((e) => {
-			console.log("Something went wrong getting the current user information");
-			console.log(e);
-		});
-	JSONRPCClient
-		.call('OpsService.Buyers', {})
-		.then((response) => {
-			console.log(response);
-			allBuyers = response.Buyers;
-		})
-		.catch((e) => {
-			console.log("Something went wrong fetching relays");
-			console.log(e);
-		});
-}
-
-function createVueComponents() {
-	settingsPage = new Vue({
-		el: '#settings-page',
-		data: {
-			accounts: null,
-			allBuyers: allBuyers,
-			showAccounts: false,
-			newUser: {
-				failure: {
-					message: '',
-				},
-				success: {
-					message: '',
-				},
-			},
-			updateUser: {
-				failure: {
-					message: '',
-				},
-				success: {
-					message: '',
-				},
-			},
-		},
-		methods: {
-			cancelEditUser: WorkspaceHandler.cancelEditUser,
-			deleteUser: WorkspaceHandler.deleteUser,
-			editUser: WorkspaceHandler.editUser,
-			isAdmin: UserHandler.isAdmin,
-			saveUser: WorkspaceHandler.saveUser,
-		}
 	});
-	mapSessionsCount = new Vue({
-		el: '#map-sessions-count',
-		data: {
-			allBuyers: allBuyers,
-			direct: 0,
-			filter: {buyerId: UserHandler.userInfo.id, sessionType: 'all'},
-			onNN: 0,
-			showCount: false,
-			totalSessions: 0,
-			userInfo: UserHandler.userInfo
-		},
-		methods: {
-			isAdmin: UserHandler.isAdmin,
-			refreshMapSessions: MapHandler.refreshMapSessions,
-			updateFilter: MapHandler.updateFilter,
-		}
-	});
-	pubKeyInput = new Vue({
-		el: '#pubKey',
-		data: {
-			pubKey: UserHandler.userInfo.pubKey
-		},
-		methods: {
-			updatePubKey: updatePubKey
-		}
-	});
-	sessionDetailsVue = new Vue({
-		el: '#session-details',
-		data: {
-			meta: null,
-			slices: [],
-			showDetails: false,
-		}
-	});
-	sessionsTable = new Vue({
-		el: '#sessions',
-		data: {
-			allBuyers: allBuyers,
-			...defaultSessionsTable,
-		},
-		methods: {
-			fetchSessionInfo: fetchSessionInfo,
-			fetchUserSessions: fetchUserSessions,
-			isAdmin: UserHandler.isAdmin,
-		}
-	});
-	userSessionTable = new Vue({
-		el: '#user-sessions',
-		data: {...defaultUserSessionTable},
-		methods: {
-			fetchSessionInfo: fetchSessionInfo
-		}
-	})
 }
 
 function fetchUserSessions(userHash = '') {
