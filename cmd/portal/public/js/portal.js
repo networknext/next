@@ -173,6 +173,7 @@ MapHandler = {
 						onNN: onNN.length,
 						totalSessions: sessions.length,
 					});
+
 					let layer = new deck.ScreenGridLayer({
 						id: 'sessions-layer',
 						data,
@@ -193,7 +194,7 @@ MapHandler = {
 						aggregation: 'SUM'
 					});
 
-					let layers = [layer];
+					let layers = data.length > 0 ? [layer] : [];
 					if (this.mapInstance) {
 						this.mapInstance.setProps({layers})
 					} else {
