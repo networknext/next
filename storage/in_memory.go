@@ -15,6 +15,18 @@ type InMemory struct {
 	LocalMode bool
 }
 
+func (m *InMemory) Session(ctx context.Context, id uint64) (routing.SessionMeta, error) {
+	return routing.SessionMeta{}, nil
+}
+
+func (m *InMemory) SessionsWithUserHash(ctx context.Context, hash uint64) ([]routing.SessionMeta, error) {
+	return nil, nil
+}
+
+func (m *InMemory) Slices(ctx context.Context, id uint64) ([]routing.SessionSlice, error) {
+	return nil, nil
+}
+
 func (m *InMemory) Buyer(id uint64) (routing.Buyer, error) {
 	for _, buyer := range m.localBuyers {
 		if buyer.ID == id {

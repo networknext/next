@@ -27,26 +27,7 @@ const (
 
 	MaxNearRelays = 32
 	MaxTokens     = 7
-
-	ConnectionTypeUnknown  = 0
-	ConnectionTypeWired    = 1
-	ConnectionTypeWifi     = 2
-	ConnectionTypeCellular = 3
 )
-
-// ConnectionTypeText is similar to http.StatusText(int) which converts the code to a readable text format
-func ConnectionTypeText(conntype int32) string {
-	switch conntype {
-	case ConnectionTypeWired:
-		return "wired"
-	case ConnectionTypeWifi:
-		return "wifi"
-	case ConnectionTypeCellular:
-		return "cellular"
-	default:
-		return "unknown"
-	}
-}
 
 type ServerInitRequestPacket struct {
 	RequestID    uint64
@@ -307,7 +288,7 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 		stream.SerializeBool(&packet.TryBeforeYouBuy)
 	}
 
-	stream.SerializeInteger(&packet.ConnectionType, ConnectionTypeUnknown, ConnectionTypeCellular)
+	stream.SerializeInteger(&packet.ConnectionType, routing.ConnectionTypeUnknown, routing.ConnectionTypeCellular)
 	stream.SerializeFloat32(&packet.DirectMinRTT)
 	stream.SerializeFloat32(&packet.DirectMaxRTT)
 	stream.SerializeFloat32(&packet.DirectMeanRTT)

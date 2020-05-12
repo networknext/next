@@ -7,6 +7,12 @@ import (
 	"github.com/networknext/backend/routing"
 )
 
+type Querier interface {
+	Session(ctx context.Context, id uint64) (routing.SessionMeta, error)
+	SessionsWithUserHash(ctx context.Context, hash uint64) ([]routing.SessionMeta, error)
+	Slices(ctx context.Context, id uint64) ([]routing.SessionSlice, error)
+}
+
 type Storer interface {
 	// Buyer gets a copy of a buyer with the specified buyer ID,
 	// and returns an empty buyer and an error if a buyer with that ID doesn't exist in storage.

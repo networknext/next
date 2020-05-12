@@ -3,10 +3,11 @@ module github.com/networknext/backend
 go 1.13
 
 require (
-	cloud.google.com/go v0.53.0
+	cloud.google.com/go v0.57.0
+	cloud.google.com/go/bigquery v1.7.0
 	cloud.google.com/go/firestore v1.1.1
 	cloud.google.com/go/logging v1.0.0
-	cloud.google.com/go/pubsub v1.1.0
+	cloud.google.com/go/pubsub v1.3.1
 	github.com/VividCortex/gohistogram v1.0.0 // indirect
 	github.com/alicebob/miniredis v2.5.0+incompatible
 	github.com/alicebob/miniredis/v2 v2.11.2
@@ -21,7 +22,7 @@ require (
 	github.com/go-redis/redis/v7 v7.0.0-beta.5
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/gogo/protobuf v1.3.1
-	github.com/golang/protobuf v1.3.3
+	github.com/golang/protobuf v1.4.1
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/rpc v1.2.0
 	github.com/json-iterator/go v1.1.9
@@ -33,10 +34,11 @@ require (
 	github.com/tidwall/pretty v1.0.1 // indirect
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
 	golang.org/x/crypto v0.0.0-20200115085410-6d4e4cb37c7d
-	golang.org/x/exp v0.0.0-20200213203834-85f925bdd4d0 // indirect
-	golang.org/x/tools v0.0.0-20200214144324-88be01311a71 // indirect
-	google.golang.org/api v0.17.0
-	google.golang.org/genproto v0.0.0-20200212174721-66ed5ce911ce
-	google.golang.org/grpc v1.27.1
+	golang.org/x/net v0.0.0-20200506145744-7e3656a0809f // indirect
+	golang.org/x/sys v0.0.0-20200511232937-7e40ca221e25 // indirect
+	golang.org/x/tools v0.0.0-20200512001501-aaeff5de670a // indirect
+	google.golang.org/api v0.24.0
+	google.golang.org/genproto v0.0.0-20200511104702-f5ebc3bea380
+	google.golang.org/grpc v1.29.1
 	gopkg.in/auth0.v4 v4.3.4
 )

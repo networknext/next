@@ -898,7 +898,7 @@ func updatePortalData(redisClientPortal redis.Cmdable, packet SessionUpdatePacke
 		ServerAddr: packet.ServerAddress.String(),
 		Hops:       relayHops,
 		SDK:        packet.Version.String(),
-		Connection: ConnectionTypeText(packet.ConnectionType),
+		Connection: routing.ConnectionTypeText(packet.ConnectionType),
 	}
 	// Only fill in the essential information here to then let the portal fill in additional relay info
 	// so we don't spend time fetching info from storage here
