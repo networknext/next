@@ -3,6 +3,8 @@ package jsonrpc_test
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -37,25 +39,32 @@ func TestUserSessions(t *testing.T) {
 
 	svc := jsonrpc.BuyersService{
 		RedisClient: redisClient,
+		Querier:     &storage.InMemory{},
 	}
 
 	t.Run("missing user_hash", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/rpc", nil)
+
 		var reply jsonrpc.UserSessionsReply
-		err := svc.UserSessions(nil, &jsonrpc.UserSessionsArgs{}, &reply)
+		err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{}, &reply)
 		assert.NoError(t, err)
 		assert.Equal(t, 0, len(reply.Sessions))
 	})
 
 	t.Run("user_hash not found", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/rpc", nil)
+
 		var reply jsonrpc.UserSessionsReply
-		err := svc.UserSessions(nil, &jsonrpc.UserSessionsArgs{UserHash: "12345"}, &reply)
+		err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserHash: "12345"}, &reply)
 		assert.NoError(t, err)
 		assert.Equal(t, 0, len(reply.Sessions))
 	})
 
 	t.Run("list", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/rpc", nil)
+
 		var reply jsonrpc.UserSessionsReply
-		err := svc.UserSessions(nil, &jsonrpc.UserSessionsArgs{UserHash: userHash1}, &reply)
+		err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserHash: userHash1}, &reply)
 		assert.NoError(t, err)
 
 		assert.Equal(t, len(reply.Sessions), 2)
