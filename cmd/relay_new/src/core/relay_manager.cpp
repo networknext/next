@@ -26,7 +26,7 @@ namespace core
 
   auto RelayManager::processPong(const net::Address& from, uint64_t seq) -> bool
   {
-    bool pongFound = false;
+    bool pongReceived = false;
 
     // locked mutex scope
     {
@@ -34,15 +34,16 @@ namespace core
       for (unsigned int i = 0; i < mNumRelays; i++) {
         if (from == mRelays[i].Addr) {
           mRelays[i].History->pongReceived(seq, mClock.elapsed<util::Second>());
-          pongFound = true;
+          pongReceived = true;
           break;
         }
       }
     }
-    return pongFound;
+
+    return pongReceived;
   }
 
-  void RelayManager::getStats(RelayStats& stats)
+  void RelayManager::getStats(bool forV3, RelayStats& stats)
   {
     auto currentTime = mClock.elapsed<util::Second>();
 
@@ -52,8 +53,9 @@ namespace core
       stats.NumRelays = mNumRelays;
 
       for (unsigned int i = 0; i < mNumRelays; i++) {
-        RouteStats rs(*mRelays[i].History, currentTime - RELAY_STATS_WINDOW, currentTime, RELAY_PING_SAFETY);
-        stats.IDs[i] = mRelays[i].ID;
+        auto& relay = mRelays[i];
+        RouteStats rs(*relay.History, currentTime - RELAY_STATS_WINDOW, currentTime, RELAY_PING_SAFETY);
+        stats.IDs[i] = (forV3 ? relay.V3ID : relay.ID);
         stats.RTT[i] = rs.RTT;
         stats.Jitter[i] = rs.Jitter;
         stats.PacketLoss[i] = rs.PacketLoss;
@@ -63,7 +65,7 @@ namespace core
 
   unsigned int RelayManager::getPingData(std::array<PingData, MAX_RELAYS>& data)
   {
-    double current_time = mClock.elapsed<util::Second>();
+    double current_time = mClock.elapsed<util::Millisecond>();
     unsigned int numPings = 0;
 
     // locked mutex scope

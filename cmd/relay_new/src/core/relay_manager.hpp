@@ -19,8 +19,10 @@ namespace core
     net::Address Addr;
   };
 
-  struct Relay {
+  struct Relay
+  {
     uint64_t ID;
+    uint64_t V3ID;  // id from old backend
     double LastPingTime = INVALID_PING_TIME;
     net::Address Addr;
     PingHistory* History = nullptr;
@@ -34,13 +36,15 @@ namespace core
 
     void reset();
 
-    void update(unsigned int numRelays,
+    void update(
+     bool v3Update,
+     unsigned int numRelays,
      const std::array<uint64_t, MAX_RELAYS>& relayIDs,
      const std::array<net::Address, MAX_RELAYS>& relayAddrs);
 
     auto processPong(const net::Address& from, uint64_t seq) -> bool;
 
-    void getStats(RelayStats& stats);
+    void getStats(bool forV3, RelayStats& stats);
 
     unsigned int getPingData(std::array<PingData, MAX_RELAYS>& data);
 
@@ -52,35 +56,10 @@ namespace core
     std::vector<PingHistory> mPingHistoryBuff;
   };
 
-  /*
-    things attempted to make faster:
-
-    - using an unordered_map encapsulating the 5 arrays, and also reducing the n^2 loop to just n, reducing the 5 copy() calls
-    to just a single map.insert(begin, end) call, and combining the 3'rd for loop into the first to reduce overall complexity
-    from O(n^2 + 7n) to just O(3n).
-    -- results: the maps iteration at the end took far longer than the amount of time saved by the other optimizations (which
-    would cause getStats() to become much, much slower even if that last loop was brought into the main), if the max relay size
-    ever exceeds a million then maybe the map solution will be more beneficial, but anything under arrays seem to win, even with
-    the bad time complexity
-
-    - using an unordered_set as a relay id cache, reducing the n^2 loop to just n and combinging
-    -- results: doing so meant the PingHistory pointer array couldn't be used, and instead the constructor or clear() had to be
-    used to reset the index, and that was slower than the n^2 loop iteration with the pointers
-
-    - End result, this is as fast as it's gonna get until there's spare time for someone to really rework it
-
-    - One last idea, maybe go back to the unordered map concept, and since iterating the first loop is blazing fast bring the
-    last loop (the one with the time stuff) into the first. And use an array of struct pointers where the struct is the
-    encapsulated info currently in the 5 arrays. So getStats() can be iterated just as fast while the relay data can be updated
-    in just O(2n) time. Doing so would require the relay array to have it's internal's shifted a lot during the function, which
-    may be more expensive than the time saved by reducing all the loops again.
-
-    -- after refactoring, this isn't that concering, previously this was called in the ping thread, but now it is within the
-    update function (main thread) which only executes once a second so it's far less critical
-  */
-
   // it is used in one place throughout the codebase, so always inline it, no sense in doing a function call
-  [[gnu::always_inline]] inline void RelayManager::update(unsigned int numRelays,
+  [[gnu::always_inline]] inline void RelayManager::update(
+   bool v3Update,
+   unsigned int numRelays,
    const std::array<uint64_t, MAX_RELAYS>& relayIDs,
    const std::array<net::Address, MAX_RELAYS>& relayAddrs)
   {
@@ -97,13 +76,16 @@ namespace core
     // locked mutex scope
     {
       std::lock_guard<std::mutex> lk(mLock);
-      for (unsigned int i = 0; i < mNumRelays; i++) {
-        for (unsigned int j = 0; j < numRelays; j++) {
-          if (mRelays[i].ID == relayIDs[j]) {
-            found[j] = true;
-            newRelays[index++] = mRelays[i];
 
-            const auto slot = mRelays[i].History - mPingHistoryBuff.data();  // TODO make this more readable
+      for (unsigned int i = 0; i < mNumRelays; i++) {
+        auto& relay = mRelays[i];
+        for (unsigned int j = 0; j < numRelays; j++) {
+          if (mRelays[i].Addr == relayAddrs[j]) {
+            found[j] = true;
+            (v3Update ? relay.V3ID : relay.ID) = relayIDs[j];  // always assign the id, needed for first update iteration
+            auto& newRelay = newRelays[index++] = relay;
+
+            const auto slot = newRelay.History - mPingHistoryBuff.data();  // TODO make this more readable
             assert(slot >= 0);
             assert(slot < MAX_RELAYS);
             historySlotToken[slot] = true;
@@ -115,12 +97,13 @@ namespace core
 
       for (unsigned int i = 0; i < numRelays; i++) {
         if (!found[i]) {
-          newRelays[index].ID = relayIDs[i];
-          newRelays[index].Addr = relayAddrs[i];
+          auto& newRelay = newRelays[index];
+          (v3Update ? newRelay.V3ID : newRelay.ID) = relayIDs[i];
+          newRelay.Addr = relayAddrs[i];
           for (int j = 0; j < MAX_RELAYS; j++) {
             if (!historySlotToken[j]) {
-              newRelays[index].History = &mPingHistoryBuff[j];
-              newRelays[index].History->clear();
+              newRelay.History = &mPingHistoryBuff[j];
+              newRelay.History->clear();
               historySlotToken[j] = true;
               break;
             }
@@ -151,7 +134,8 @@ namespace core
       unsigned int numFound = 0;
       for (unsigned int i = 0; i < numRelays; i++) {
         for (unsigned int j = 0; j < mNumRelays; j++) {
-          if (relayIDs[i] == mRelays[j].ID && relayAddrs[i] == mRelays[j].Addr) {
+          const auto relay = mRelays[j];
+          if ((relayIDs[i] == relay.ID || relayIDs[i] == relay.V3ID) && relayAddrs[i] == mRelays[j].Addr) {
             numFound++;
             break;
           }

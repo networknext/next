@@ -608,6 +608,8 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			return
 		}
 
+		fmt.Printf("Relay (%s) state: %d\n", relay.Addr.String(), relay.State)
+
 		statsUpdate := &routing.RelayStatsUpdate{}
 		statsUpdate.ID = relay.ID
 		statsUpdate.PingStats = append(statsUpdate.PingStats, relayUpdateRequest.PingStats...)
@@ -657,9 +659,9 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 					continue
 				}
 
-				if unmarshaledValue.State == routing.RelayStateEnabled {
-					relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(unmarshaledValue.ID), Address: unmarshaledValue.Addr.String()})
-				}
+				//if unmarshaledValue.State == routing.RelayStateEnabled {
+				relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(unmarshaledValue.ID), Address: unmarshaledValue.Addr.String()})
+				//}
 			}
 		}
 

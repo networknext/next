@@ -251,7 +251,7 @@ Test(core_Backend_update_valid)
     net::Address addr;
     check(addr.parse("127.0.0.1:12345"));
     addrs[0] = addr;
-    manager.update(numRelays, ids, addrs);
+    manager.update(false, numRelays, ids, addrs);
     check(manager.getPingData(pingData) == 1);
     manager.processPong(pingData[0].Addr, pingData[0].Seq);
   }

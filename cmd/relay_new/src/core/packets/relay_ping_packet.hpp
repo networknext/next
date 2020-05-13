@@ -18,7 +18,6 @@ namespace core
       // getters do no cache, just make the indexes of the packet clearer
       auto getSeqNum() -> uint64_t;
       auto getFromAddr() -> net::Address;
-      auto isV3() -> bool;
 
       // write the addr to the buffer
       void writeFromAddr(const net::Address& addr);
@@ -40,11 +39,6 @@ namespace core
       net::Address addr;
       encoding::ReadAddress(Internal.Buffer, index, addr);
       return addr;
-    }
-
-    inline auto RelayPingPacket::isV3() -> bool {
-      size_t index = 28;
-      return encoding::ReadUint8(Internal.Buffer, index);
     }
 
     inline void RelayPingPacket::writeFromAddr(const net::Address& addr)

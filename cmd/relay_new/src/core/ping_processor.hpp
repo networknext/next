@@ -17,8 +17,7 @@ namespace core
      const volatile bool& shouldProcess,
      const net::Address& relayAddr,
      util::ThroughputRecorder& recorder,
-     legacy::v3::TrafficStats& stats,
-     bool isV3);
+     legacy::v3::TrafficStats& stats);
     ~PingProcessor() = default;
 
     void process(std::condition_variable& var, std::atomic<bool>& readyToSend);
@@ -30,7 +29,6 @@ namespace core
     const net::Address& mRelayAddress;
     util::ThroughputRecorder& mRecorder;
     legacy::v3::TrafficStats& mStats;
-    const bool mIsV3;
 
     void fillMsgHdrWithAddr(msghdr& hdr, const net::Address& addr);
   };
