@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"net"
 	"runtime"
+	"strconv"
 	"time"
 
 	"github.com/getsentry/sentry-go"
@@ -901,6 +902,8 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 		Hops:       relayHops,
 		SDK:        packet.Version.String(),
 		Connection: ConnectionTypeText(packet.ConnectionType),
+		Platform:   platformIDToString(packet.PlatformID),
+		CustomerID: strconv.FormatUint(packet.CustomerID, 10),
 	}
 	// Only fill in the essential information here to then let the portal fill in additional relay info
 	// so we don't spend time fetching info from storage here
@@ -1047,4 +1050,20 @@ func writeSessionErrorResponse(w io.Writer, response SessionResponsePacket, priv
 
 	unserviceableUpdateCounter.Add(1)
 	errCounter.Add(1)
+}
+
+func platformIDToString(id uint64) string {
+
+	var platforms = []string{
+		"Unknown",
+		"Windows",
+		"Mac",
+		"Unix",
+		"Switch",
+		"PS4",
+		"IOS",
+		"XBOXOne",
+	}
+
+	return platforms[id]
 }

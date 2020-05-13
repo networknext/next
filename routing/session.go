@@ -20,6 +20,8 @@ type SessionMeta struct {
 	SDK          string   `json:"sdk"`
 	Connection   string   `json:"connection"`
 	NearbyRelays []Relay  `json:"nearby_relays"`
+	Platform     string   `json:"platform"`
+	CustomerID   string   `json:"customer_id"`
 }
 
 func (s *SessionMeta) UnmarshalBinary(data []byte) error {
