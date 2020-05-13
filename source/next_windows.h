@@ -75,7 +75,7 @@ typedef next_platform_thread_return_t (NEXT_PLATFORM_THREAD_FUNC next_platform_t
 
 struct next_platform_mutex_t
 {
-    void * context;
+	bool ok;
     CRITICAL_SECTION handle;
 };
 
