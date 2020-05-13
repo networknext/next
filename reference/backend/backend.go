@@ -814,13 +814,6 @@ func main() {
 
 			// todo: we really should run the signature check here
 
-			fmt.Printf( "==============================================================\n" )
-			fmt.Printf( "PacketsSentClientToServer = %d\n", sessionUpdate.PacketsSentClientToServer );
-			fmt.Printf( "PacketsSentServerToClient = %d\n", sessionUpdate.PacketsSentServerToClient );
-			fmt.Printf( "PacketsLostClientToServer = %d\n", sessionUpdate.PacketsLostClientToServer );
-			fmt.Printf( "PacketsLostServerToClient = %d\n", sessionUpdate.PacketsLostServerToClient );
-			fmt.Printf( "==============================================================\n" )
-
 			if sessionUpdate.FallbackToDirect {
 				continue
 			}
