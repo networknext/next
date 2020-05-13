@@ -48,9 +48,28 @@ DONE
 
 	Fixed. Bug in relay added with signature stuff.
 
-TODO
-	
 	Now the client is getting the next packets.
+
+	kbps down looks correct on client.
+
+	Now print out the rest of stats...
+	
+	Verified packet loss stats are correct.
+
+	Client stats are all good.
+
+	Values in the backend are all zeros:
+
+		PacketsSentClientToServer = 0
+		PacketsSentServerToClient = 0
+		PacketsLostClientToServer = 0
+		PacketsLostServerToClient = 0
+
+	Fixed. Error in serialization on the backend.
+
+TODO
+
+	Thread safety on the client for the packets_sent value. Create a new mutex for it.
 
 	--------------------------------
 

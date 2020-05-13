@@ -86,14 +86,8 @@ int main()
             const next_client_stats_t * stats = next_client_stats( client );
             next_assert( stats );
             printf( "===================================================================\n" );
-            /*
-            uint64_t packets_sent_client_to_server;
-            uint64_t packets_sent_server_to_client;
-            uint64_t packets_lost_client_to_server;
-            uint64_t packets_lost_server_to_client;
-            uint64_t user_flags;
-            */
             printf( "flags = %" PRIx64 "\n", stats->flags );
+            printf( "user_flags = %" PRIx64 "\n", stats->user_flags );
             printf( "platform_id = %" PRIx64 "\n", stats->flags );
             printf( "connection_type = %d\n", stats->connection_type );
             printf( "multipath = %s\n", stats->multipath ? "yes" : "no" );
@@ -112,6 +106,10 @@ int main()
             printf( "next_packet_loss = %.2f\n", stats->next_packet_loss );
             printf( "next_kbps_up = %.2f\n", stats->next_kbps_up );
             printf( "next_kbps_down = %.2f\n", stats->next_kbps_down );
+            printf( "packets_sent_client_to_server = %" PRIu64 "\n", stats->packets_sent_client_to_server );
+            printf( "packets_sent_server_to_client = %" PRIu64 "\n", stats->packets_sent_server_to_client );
+            printf( "packets_lost_client_to_server = %" PRIu64 "\n", stats->packets_lost_client_to_server );
+            printf( "packets_lost_server_to_client = %" PRIu64 "\n", stats->packets_lost_server_to_client );
             printf( "===================================================================\n" );
             accumulator = 0.0;
         }

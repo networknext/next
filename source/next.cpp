@@ -342,6 +342,7 @@ next_platform_mutex_helper_t::~next_platform_mutex_helper_t()
 
 // -------------------------------------------------------------
 
+// todo
 #define NEXT_ENABLE_MEMORY_CHECKS 1
 
 #if NEXT_ENABLE_MEMORY_CHECKS
@@ -6827,6 +6828,8 @@ void next_client_internal_update_stats( next_client_internal_t * client )
             client->counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_SERVER_TO_CLIENT] += packets_lost;
         }
 
+        client->client_stats.packets_sent_client_to_server = client->packets_sent;
+
         next_relay_manager_get_stats( client->near_relay_manager, &client->near_relay_stats );
 
         next_client_notify_stats_updated_t * notify = (next_client_notify_stats_updated_t*) next_malloc( client->context, sizeof( next_client_notify_stats_updated_t ) );
@@ -12162,7 +12165,6 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
         if ( multipath )
         {
-            printf( "multipath\n" );
             send_upgraded_direct = true;
         }
 
@@ -12206,9 +12208,6 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
                 next_assert( next_is_network_next_packet( next_packet_data, next_packet_bytes ) );
 
                 next_platform_socket_send_packet( server->internal->socket, &session_address, next_packet_data, next_packet_bytes );
-
-                // todo
-                printf( "send next\n" );
             }
 
             if ( send_upgraded_direct )
@@ -12224,9 +12223,6 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
                 memcpy( buffer+NEXT_PACKET_HASH_BYTES+10, packet_data, packet_bytes );
                 crypto_generichash( buffer, NEXT_PACKET_HASH_BYTES, buffer+NEXT_PACKET_HASH_BYTES, packet_bytes+10, next_packet_hash_key, crypto_generichash_KEYBYTES );
                 next_platform_socket_send_packet( server->internal->socket, to_address, buffer, packet_bytes + NEXT_PACKET_HASH_BYTES + 10 );
-
-                // todo
-                printf( "send upgraded direct\n" );
             }
         }
     }
@@ -12234,9 +12230,6 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
     if ( send_raw_direct )
     {
         next_platform_socket_send_packet( server->internal->socket, to_address, packet_data, packet_bytes );
-
-        // todo
-        printf( "send raw direct\n" );
     }
 }
 
