@@ -5557,7 +5557,6 @@ struct next_client_internal_t
     bool flagged;
     bool fallback_to_direct;
     bool multipath;
-    uint64_t packets_sent;
     uint64_t user_flags;
     uint8_t open_session_sequence;
     uint64_t upgrade_sequence;
@@ -5574,15 +5573,20 @@ struct next_client_internal_t
 
     NEXT_DECLARE_SENTINEL(1)
 
+    next_platform_mutex_t packets_sent_mutex;
+    uint64_t packets_sent;
+
+    NEXT_DECLARE_SENTINEL(2)
+
     next_relay_manager_t * near_relay_manager;
     next_route_manager_t * route_manager;
     next_platform_mutex_t route_manager_mutex;
 
-    NEXT_DECLARE_SENTINEL(2)
+    NEXT_DECLARE_SENTINEL(3)
 
     next_packet_loss_tracker_t packet_loss_tracker;
 
-    NEXT_DECLARE_SENTINEL(3)
+    NEXT_DECLARE_SENTINEL(4)
 
     uint8_t customer_public_key[crypto_sign_PUBLICKEYBYTES];
     uint8_t client_kx_public_key[crypto_kx_PUBLICKEYBYTES];
@@ -5592,26 +5596,26 @@ struct next_client_internal_t
     uint8_t client_route_public_key[crypto_box_PUBLICKEYBYTES];
     uint8_t client_route_private_key[crypto_box_SECRETKEYBYTES];
 
-    NEXT_DECLARE_SENTINEL(4)
+    NEXT_DECLARE_SENTINEL(5)
 
     next_client_stats_t client_stats;
 
-    NEXT_DECLARE_SENTINEL(5)
+    NEXT_DECLARE_SENTINEL(6)
 
     next_relay_stats_t near_relay_stats;
 
-    NEXT_DECLARE_SENTINEL(6)
+    NEXT_DECLARE_SENTINEL(7)
 
     next_ping_history_t next_ping_history;
     next_ping_history_t direct_ping_history;
 
-    NEXT_DECLARE_SENTINEL(7)
+    NEXT_DECLARE_SENTINEL(8)
 
     next_replay_protection_t payload_replay_protection;
     next_replay_protection_t special_replay_protection;
     next_replay_protection_t internal_replay_protection;
 
-    NEXT_DECLARE_SENTINEL(8)
+    NEXT_DECLARE_SENTINEL(9)
 
     next_platform_mutex_t bandwidth_mutex;
     bool bandwidth_over_budget;
@@ -5620,7 +5624,7 @@ struct next_client_internal_t
     float bandwidth_envelope_kbps_up;
     float bandwidth_envelope_kbps_down;
     
-    NEXT_DECLARE_SENTINEL(9)
+    NEXT_DECLARE_SENTINEL(10)
 
     bool sending_upgrade_response;
     double upgrade_response_start_time;
@@ -5628,11 +5632,11 @@ struct next_client_internal_t
     int upgrade_response_packet_bytes;
     uint8_t upgrade_response_packet_data[NEXT_MAX_PACKET_BYTES];
 
-    NEXT_DECLARE_SENTINEL(10)
+    NEXT_DECLARE_SENTINEL(11)
 
     uint64_t counters[NEXT_CLIENT_COUNTER_MAX];
 
-    NEXT_DECLARE_SENTINEL(11)
+    NEXT_DECLARE_SENTINEL(12)
 };
 
 void next_client_internal_initialize_sentinels( next_client_internal_t * client )
@@ -5651,6 +5655,7 @@ void next_client_internal_initialize_sentinels( next_client_internal_t * client 
     NEXT_INITIALIZE_SENTINEL( client, 9 )
     NEXT_INITIALIZE_SENTINEL( client, 10 )
     NEXT_INITIALIZE_SENTINEL( client, 11 )
+    NEXT_INITIALIZE_SENTINEL( client, 12 )
 
     next_relay_stats_initialize_sentinels( &client->near_relay_stats );
 
@@ -5676,6 +5681,7 @@ void next_client_internal_verify_sentinels( next_client_internal_t * client )
     NEXT_VERIFY_SENTINEL( client, 9 )
     NEXT_VERIFY_SENTINEL( client, 10 )
     NEXT_VERIFY_SENTINEL( client, 11 )
+    NEXT_VERIFY_SENTINEL( client, 12 )
 
     if ( client->command_queue )
         next_queue_verify_sentinels( client->command_queue );
@@ -5757,7 +5763,15 @@ next_client_internal_t * next_client_internal_create( void * context, const char
 	next_printf( NEXT_LOG_LEVEL_INFO, "client bound to %s", next_address_to_string( &bind_address, address_string ) );
     client->bound_port = bind_address.port;
 
-    int result = next_platform_mutex_create( &client->command_mutex );
+    int result = next_platform_mutex_create( &client->packets_sent_mutex );
+    if ( result != NEXT_OK )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "client could not packets sent mutex" );
+        next_client_internal_destroy( client );
+        return NULL;
+    }
+
+    result = next_platform_mutex_create( &client->command_mutex );
     if ( result != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client could not create command mutex" );
@@ -5846,6 +5860,7 @@ void next_client_internal_destroy( next_client_internal_t * client )
 
     next_platform_mutex_destroy( &client->command_mutex );
     next_platform_mutex_destroy( &client->notify_mutex );
+    next_platform_mutex_destroy( &client->packets_sent_mutex );
     next_platform_mutex_destroy( &client->route_manager_mutex );
     next_platform_mutex_destroy( &client->bandwidth_mutex );
 
@@ -6655,7 +6670,6 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 client->user_flags = 0;
                 client->upgrade_sequence = 0;
                 client->session_id = 0;
-                client->packets_sent = 0;
                 client->internal_send_sequence = 0;
                 client->last_next_ping_time = 0.0;
                 client->first_next_ping_time = 0.0;
@@ -6669,7 +6683,11 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 memset( client->upgrade_response_packet_data, 0, sizeof(client->upgrade_response_packet_data) );
                 client->upgrade_response_start_time = 0.0;
                 client->last_upgrade_response_send_time = 0.0;
-                
+
+                next_platform_mutex_acquire( &client->packets_sent_mutex );
+                client->packets_sent = 0;
+                next_platform_mutex_release( &client->packets_sent_mutex );
+
                 memset( &client->client_stats, 0, sizeof(next_client_stats_t) );
                 memset( &client->near_relay_stats, 0, sizeof(next_relay_stats_t ) );
                 next_relay_stats_initialize_sentinels( &client->near_relay_stats );
@@ -6828,7 +6846,9 @@ void next_client_internal_update_stats( next_client_internal_t * client )
             client->counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_SERVER_TO_CLIENT] += packets_lost;
         }
 
+        next_platform_mutex_acquire( &client->packets_sent_mutex );                
         client->client_stats.packets_sent_client_to_server = client->packets_sent;
+        next_platform_mutex_release( &client->packets_sent_mutex );                
 
         next_relay_manager_get_stats( client->near_relay_manager, &client->near_relay_stats );
 
@@ -6889,7 +6909,10 @@ void next_client_internal_update_stats( next_client_internal_t * client )
             }
         }
 
+        next_platform_mutex_acquire( &client->packets_sent_mutex );                
         packet.packets_sent_client_to_server = client->packets_sent;
+        next_platform_mutex_release( &client->packets_sent_mutex );                
+
         packet.packets_lost_server_to_client = client->client_stats.packets_lost_server_to_client;
 
         packet.user_flags = client->user_flags;
@@ -7581,8 +7604,9 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
         client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
     }
 
-    // todo: thread safety
+    next_platform_mutex_acquire( &client->internal->packets_sent_mutex );
     client->internal->packets_sent++;
+    next_platform_mutex_release( &client->internal->packets_sent_mutex );
 }
 
 void next_client_send_packet_direct( next_client_t * client, const uint8_t * packet_data, int packet_bytes )

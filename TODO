@@ -67,15 +67,75 @@ DONE
 
 	Fixed. Error in serialization on the backend.
 
-TODO
-
 	Thread safety on the client for the packets_sent value. Create a new mutex for it.
-
-	--------------------------------
 
 	Extend backend to print out packets sent, and packets lost stats it sees.
 
 	Verify these are correct.
+
+TODO
+
+	--------------------------------
+
+	Get windows build working and run testbed.
+
+	Verify unit test passes.
+
+	Verify soak test passes.
+
+	--------------------------------
+
+	Get PS4 build working and run testbed.
+
+	Verify unit test passes.
+
+	Verify soak test passes.
+
+	--------------------------------
+
+	Get X1 build working and run testbed.
+
+	Verify unit test passes.
+
+	Verify soak test passes.
+
+	--------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	--------------------------------
 
@@ -103,27 +163,7 @@ TODO
 
 	--------------------------------
 
-	Get windows build working and run testbed.
-
-	Verify unit test passes.
-
-	Verify soak test passes.
-
-	--------------------------------
-
-	Get PS4 build working and run testbed.
-
-	Verify unit test passes.
-
-	Verify soak test passes.
-
-	--------------------------------
-
-	Get X1 build working and run testbed.
-
-	Verify unit test passes.
-
-	Verify soak test passes.
+	Double check all client.cpp, server.cpp and testbed.cpp for each platform are working with correct settings.
 
 	--------------------------------
 
