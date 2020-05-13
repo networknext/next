@@ -260,7 +260,7 @@
                             <h1 class="h2" id="workspace-title" v-if="showCount">
                                 Map&nbsp;
                                 <span class="badge badge-dark">
-                                    {{sessions.length}} Total Sessions
+                                    {{ sessions.length }} Total Sessions
                                 </span>&nbsp;
                                 <span class="badge badge-success">
                                     {{ onNN.length }} on Network Next
@@ -324,10 +324,10 @@
                                 <h1 class="h2" v-if="showCount">
                                     Sessions&nbsp;
                                     <span class="badge badge-dark">
-                                        {{sessions.length}} Total Sessions
+                                        {{ allMapSessions.length }} Total Sessions
                                     </span>&nbsp;
                                     <span class="badge badge-success">
-                                        {{ onNN.length }} on Network Next
+                                        {{ nnSessions.length }} on Network Next
                                     </span>
                                 </h1>
                                 <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1 hidden">
@@ -1091,10 +1091,15 @@
                 integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6"
                 crossorigin="anonymous">
         </script>
+        <script src="https://browser.sentry-cdn.com/5.15.5/bundle.min.js"
+            integrity="sha384-wF7Jc4ZlWVxe/L8Ji3hOIBeTgo/HwFuaeEfjGmS3EXAG7Y+7Kjjr91gJpJtr+PAT"
+            crossorigin="anonymous">
+        </script>
         <script src="./js/uPlot/uPlot.iife.min.js"></script>
         <script src="./js/choices/scripts/choices.js"></script>
         <script src="./js/portal.js"></script>
         <script>
+            Sentry.init({ dsn: 'https://e24b8397eac44e1eb7ac090b5492d29e@o382503.ingest.sentry.io/5211452' });
             window.onload = async () => {
                 const domain = 'networknext.auth0.com';
                 const clientID = 'qR60cjo6FceoTWPYLNZSQmNiP2WIAQr9';
@@ -1102,9 +1107,16 @@
                 loginClient = await createAuth0Client({
                     domain: domain,
                     client_id: clientID
+                })
+                .catch((e) => {
+                    Sentry.captureException(e);
                 });
 
-                const isAuthenticated = await loginClient.isAuthenticated();
+                const isAuthenticated =
+                    await loginClient.isAuthenticated()
+                        .catch((e) => {
+                            Sentry.captureException(e);
+                        });
 
                 if (isAuthenticated) {
                     startApp();
@@ -1113,13 +1125,18 @@
                 const query = window.location.search;
                 if (query.includes("code=") && query.includes("state=")) {
 
-                    await loginClient.handleRedirectCallback();
+                    await loginClient.handleRedirectCallback()
+                        .catch((e) => {
+                            Sentry.captureException(e);
+                        });
 
                     window.history.replaceState({}, document.title, "/");
                     startApp();
                 } else {
                     await loginClient.loginWithRedirect({
                         redirect_uri: window.location.origin
+                    }).catch((e) => {
+                        Sentry.captureException(e);
                     });
                 }
             }

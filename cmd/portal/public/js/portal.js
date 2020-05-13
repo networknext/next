@@ -22,7 +22,6 @@ var defaultSessionDetailsVue = {
 };
 
 var defaultSessionsTable = {
-	onNN: [],
 	sessions: [],
 	showCount: false,
 };
@@ -119,47 +118,63 @@ MapHandler = {
 					aggregation
 				}); */
 				let data = response.map_points;
+				let onNN = data.filter((point) => {
+					return point.on_network_next;
+				});
+				let direct = data.filter((point) => {
+					return !point.on_network_next;
+				});
+
+				Object.assign(sessionsTable.$data, {
+					nnSessions: onNN,
+					allMapSessions: data,
+				});
+
 				Object.assign(mapSessionsCount.$data, {
-					onNN: data.filter((point) => {
-						return point.on_network_next == true;
-					}),
+					onNN: onNN,
 					sessions: data,
 				});
-				let layer = new deck.ScreenGridLayer({
-					id: 'sessions-layer',
-					data,
-					pickable: false,
-					opacity: 0.8,
-					cellSizePixels: 10,
-					colorRange: [
-						[40, 167, 69],
-						[36, 163, 113],
-						[27, 153, 159],
-						[18, 143, 206],
-						[9, 133, 252],
-						[0, 123, 255]
-					],
-					getPosition: d => [d.longitude, d.latitude],
-					getWeight: d => d.on_network_next ? 100 : 1, // Need to come up with a weight system. It won't map anything if the array of points are all identical
-					gpuAggregation: true,
-					aggregation: 'SUM'
-				});
-				let layers = [layer];
-				this.mapInstance = new deck.DeckGL({
-					mapboxApiAccessToken: mapboxgl.accessToken,
-					mapStyle: 'mapbox://styles/mapbox/dark-v10',
-					initialViewState: {
-						...this.defaultWorld.initialViewState
-					},
-					container: 'map-container',
-					controller: true,
-					layers: layers,
-				});
+				try {
+					let layer = new deck.ScreenGridLayer({
+						id: 'sessions-layer',
+						data,
+						pickable: false,
+						opacity: 0.8,
+						cellSizePixels: 10,
+						colorRange: [
+							[40, 167, 69],
+							[36, 163, 113],
+							[27, 153, 159],
+							[18, 143, 206],
+							[9, 133, 252],
+							[0, 123, 255]
+						],
+						getPosition: d => [d.longitude, d.latitude],
+						getWeight: d => d.on_network_next ? 100 : 1, // Need to come up with a weight system. It won't map anything if the array of points are all identical
+						gpuAggregation: true,
+						aggregation: 'SUM'
+					});
+					let layers = [layer];
+					this.mapInstance = new deck.DeckGL({
+						mapboxApiAccessToken: mapboxgl.accessToken,
+						mapStyle: 'mapbox://styles/mapbox/dark-v10',
+						initialViewState: {
+							...this.defaultWorld.initialViewState
+						},
+						container: 'map-container',
+						controller: true,
+						layers: layers,
+					});
+				}
+				catch(e) {
+					console.log("Something went wrong with DeckGL");
+					Sentry.captureException(e);
+				}
 				Object.assign(mapSessionsCount.$data, {showCount: true});
 			})
 			.catch((e) => {
 				console.log("Something went wrong with map init");
-				console.log(e);
+				Sentry.captureException(e);
 			});
 	},
 	updateMap(mapType) {
@@ -314,7 +329,7 @@ WorkspaceHandler = {
 				})
 				.catch((e) => {
 					console.log("Something went wrong updating the users permissions");
-					console.log(e);
+					Sentry.captureException(e);
 					Object.assign(settingsPage.$data.updateUser.failure, {
 						message: 'Failed to update user',
 					});
@@ -345,7 +360,7 @@ WorkspaceHandler = {
 				})
 				.catch((e) => {
 					console.log("Something went wrong updating the users permissions");
-					console.log(e);
+					Sentry.captureException(e);
 					Object.assign(settingsPage.$data.updateUser.failure, {
 						message: 'Failed to delete user',
 					});
@@ -455,7 +470,7 @@ WorkspaceHandler = {
 			})
 			.catch((e) => {
 				console.log("Something went wrong fetching public key");
-				console.log(e);
+				Sentry.captureException(e);
 			});
 	},
 	loadRelayPage() {
@@ -469,7 +484,7 @@ WorkspaceHandler = {
 			})
 			.catch((e) => {
 				console.log("Something went wrong fetching relays");
-				console.log(e);
+				Sentry.captureException(e);
 			});
 	},
 	loadSessionsPage() {
@@ -490,7 +505,7 @@ WorkspaceHandler = {
 			})
 			.catch((e) => {
 				console.log("Something went wrong fetching the top sessions list");
-				console.log(e);
+				Sentry.captureException(e);
 			});
 	},
 	loadUsersPage() {
@@ -516,17 +531,10 @@ function startApp() {
 		};
 		createVueComponents();
 		document.getElementById("app").style.display = 'block';
-		MapHandler
-			.initMap()
-			.then((response) => {
-				console.log("Map init successful");
-			})
-			.catch((e) => {
-				console.log("Something went wrong initializing the map");
-				console.log(e);
-			});
+		return MapHandler.initMap();
 	}).catch((e) => {
-		console.log("Something went wrong getting the current user information");
+		console.log("Something went wrong starting the app");
+		Sentry.captureException(e);
 	});
 }
 
@@ -587,7 +595,11 @@ function createVueComponents() {
 	});
 	sessionsTable = new Vue({
 		el: '#sessions',
-		data: {...defaultSessionsTable},
+		data: {
+			...defaultSessionsTable,
+			allMapSessions: [],
+			nnSessions: [],
+		},
 		methods: {
 			fetchSessionInfo: fetchSessionInfo,
 			fetchUserSessions: fetchUserSessions,
@@ -642,7 +654,7 @@ function fetchUserSessions(userHash = '') {
 		.catch((e) => {
 			Object.assign(userSessionTable.$data, {...defaultUserSessionTable});
 			console.log("Something went wrong fetching user sessions: ");
-			console.log(e);
+			Sentry.captureException(e);
 			WorkspaceHandler.alerts.userToolDanger.style.display = 'block';
 			document.getElementById("user-hash-input").value = '';
 		});
@@ -658,7 +670,7 @@ function updatePubKey() {
 		})
 		.catch((e) => {
 			console.log("Something went wrong updating the public key");
-			console.log(e);
+			Sentry.captureException(e);
 		});
 }
 
@@ -696,7 +708,7 @@ function addUsers(event) {
 		})
 		.catch((e) => {
 			console.log("Something went wrong creating new users");
-			console.log(e);
+			Sentry.captureException(e);
 			Object.assign(settingsPage.$data.newUser.failure, {
 				message: 'Failed to add user account',
 			});
@@ -790,7 +802,7 @@ function fetchSessionInfo(sessionId = '') {
 		.catch((e) => {
 			Object.assign(sessionDetailsVue.$data, {...defaultSessionDetailsVue});
 			console.log("Something went wrong fetching session details: ");
-			console.log(e);
+			Sentry.captureException(e);
 			WorkspaceHandler.alerts.sessionToolDanger.style.display = 'block';
 			document.getElementById("session-id-input").value = '';
 		});
