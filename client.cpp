@@ -25,6 +25,7 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 
 const char * bind_address = "0.0.0.0:0";
 const char * server_address = "127.0.0.1:32202";
@@ -66,13 +67,54 @@ int main()
     uint8_t packet_data[32];
     memset( packet_data, 0, sizeof( packet_data ) );
 
+    double delta_time = 1.0 / 60.0;
+
+    double accumulator = 0.0;
+
     while ( !quit )
     {
         next_client_update( client );
 
         next_client_send_packet( client, packet_data, sizeof( packet_data ) );
         
-        next_sleep( 1.0f / 60.0f );
+        next_sleep( delta_time );
+
+        accumulator += delta_time;
+
+        if ( accumulator > 10.0 )
+        {
+            const next_client_stats_t * stats = next_client_stats( client );
+            next_assert( stats );
+            printf( "===================================================================\n" );
+            /*
+            uint64_t packets_sent_client_to_server;
+            uint64_t packets_sent_server_to_client;
+            uint64_t packets_lost_client_to_server;
+            uint64_t packets_lost_server_to_client;
+            uint64_t user_flags;
+            */
+            printf( "flags = %" PRIx64 "\n", stats->flags );
+            printf( "platform_id = %" PRIx64 "\n", stats->flags );
+            printf( "connection_type = %d\n", stats->connection_type );
+            printf( "multipath = %s\n", stats->multipath ? "yes" : "no" );
+            printf( "committed = %s\n", stats->committed ? "yes" : "no" );
+            printf( "flagged = %s\n", stats->flagged ? "yes" : "no" );
+            printf( "direct_min_rtt = %.2f\n", stats->direct_min_rtt );
+            printf( "direct_max_rtt = %.2f\n", stats->direct_max_rtt );
+            printf( "direct_mean_rtt = %.2f\n", stats->direct_mean_rtt );
+            printf( "direct_jitter = %.2f\n", stats->direct_jitter );
+            printf( "direct_packet_loss = %.2f\n", stats->direct_packet_loss );
+            printf( "next = %s\n", stats->next ? "yes" : "no" );
+            printf( "next_min_rtt = %.2f\n", stats->next_min_rtt );
+            printf( "next_max_rtt = %.2f\n", stats->next_max_rtt );
+            printf( "next_mean_rtt = %.2f\n", stats->next_mean_rtt );
+            printf( "next_jitter = %.2f\n", stats->next_jitter );
+            printf( "next_packet_loss = %.2f\n", stats->next_packet_loss );
+            printf( "next_kbps_up = %.2f\n", stats->next_kbps_up );
+            printf( "next_kbps_down = %.2f\n", stats->next_kbps_down );
+            printf( "===================================================================\n" );
+            accumulator = 0.0;
+        }
     }
 
     next_client_destroy( client );

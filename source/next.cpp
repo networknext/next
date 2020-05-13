@@ -3068,6 +3068,7 @@ struct NextRouteUpdatePacket
     uint8_t update_type;
     int num_tokens;
     uint8_t tokens[NEXT_MAX_TOKENS*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES];
+    uint64_t packets_sent_server_to_client;
     uint64_t packets_lost_client_to_server;
 
     NextRouteUpdatePacket()
@@ -3099,6 +3100,7 @@ struct NextRouteUpdatePacket
         {
             serialize_bytes( stream, tokens, num_tokens * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
         }
+        serialize_uint64( stream, packets_sent_server_to_client );
         serialize_uint64( stream, packets_lost_client_to_server );
         return true;
     }
@@ -5470,7 +5472,6 @@ void next_route_manager_destroy( next_route_manager_t * route_manager )
 #define NEXT_CLIENT_COMMAND_DESTROY                 2
 #define NEXT_CLIENT_COMMAND_FLAG_SESSION            3
 #define NEXT_CLIENT_COMMAND_USER_FLAGS              4
-#define NEXT_CLIENT_COMMAND_PACKET_SENT             5
 
 struct next_client_command_t
 {
@@ -5500,11 +5501,6 @@ struct next_client_command_flag_session_t : public next_client_command_t
 struct next_client_command_user_flags_t : public next_client_command_t
 {
     uint64_t user_flags;
-};
-
-struct next_client_command_packet_sent_t : public next_client_command_t
-{
-    // ...
 };
 
 // ---------------------------------------------------------------
@@ -6514,6 +6510,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
             client->fallback_to_direct = fallback_to_direct;
             client->route_update_sequence = packet.sequence;
+            client->client_stats.packets_sent_server_to_client = packet.packets_sent_server_to_client;
             client->client_stats.packets_lost_client_to_server = packet.packets_lost_client_to_server;
             client->counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_CLIENT_TO_SERVER] = packet.packets_lost_client_to_server;
         }
@@ -6732,12 +6729,6 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
             }
             break;
 
-            case NEXT_CLIENT_COMMAND_PACKET_SENT:
-            {
-                client->packets_sent++;
-            }
-            break;
-
             default: break;                
         }
 
@@ -6796,6 +6787,10 @@ void next_client_internal_update_stats( next_client_internal_t * client )
             client->client_stats.next_mean_rtt = next_route_stats.mean_rtt;
             client->client_stats.next_jitter = next_route_stats.jitter;    
             client->client_stats.next_packet_loss = next_route_stats.packet_loss;
+            next_platform_mutex_acquire( &client->bandwidth_mutex );
+            client->client_stats.next_kbps_up = client->bandwidth_usage_kbps_up;
+            client->client_stats.next_kbps_down = client->bandwidth_usage_kbps_down;
+            next_platform_mutex_release( &client->bandwidth_mutex );
         }
         else
         {
@@ -6804,6 +6799,8 @@ void next_client_internal_update_stats( next_client_internal_t * client )
             client->client_stats.next_mean_rtt = 0.0f;
             client->client_stats.next_jitter = 0.0f;
             client->client_stats.next_packet_loss = 0.0f;
+            client->client_stats.next_kbps_up = 0;
+            client->client_stats.next_kbps_down = 0;
         }
 
         client->client_stats.direct_min_rtt = direct_route_stats.min_rtt;
@@ -6889,6 +6886,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
             }
         }
 
+        packet.packets_sent_client_to_server = client->packets_sent;
         packet.packets_lost_server_to_client = client->client_stats.packets_lost_server_to_client;
 
         packet.user_flags = client->user_flags;
@@ -7579,6 +7577,9 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
         next_platform_socket_send_packet( client->internal->socket, &client->server_address, packet_data, packet_bytes );
         client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
     }
+
+    // todo: thread safety
+    client->internal->packets_sent++;
 }
 
 void next_client_send_packet_direct( next_client_t * client, const uint8_t * packet_data, int packet_bytes )
@@ -7605,6 +7606,9 @@ void next_client_send_packet_direct( next_client_t * client, const uint8_t * pac
     next_platform_socket_send_packet( client->internal->socket, &client->server_address, packet_data, packet_bytes );
 
     client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
+
+    // todo: thread safety
+    client->internal->packets_sent++;
 }
 
 void next_client_flag_session( next_client_t * client )
@@ -8466,7 +8470,6 @@ struct next_session_entry_t
 
     next_address_t address;
     uint64_t session_id;
-    uint64_t packets_sent;
     uint8_t most_recent_session_version;
     uint64_t special_send_sequence;
     uint64_t internal_send_sequence;
@@ -8526,6 +8529,8 @@ struct next_session_entry_t
 
     NEXT_DECLARE_SENTINEL(8)
 
+    uint64_t stats_packets_sent_client_to_server;
+    uint64_t stats_packets_sent_server_to_client;
     uint64_t stats_packets_lost_client_to_server;
     uint64_t stats_packets_lost_server_to_client;
     uint64_t stats_user_flags;
@@ -10227,6 +10232,10 @@ void next_server_internal_update_route( next_server_internal_t * server )
             }
             packet.packets_lost_client_to_server = entry->stats_packets_lost_client_to_server;
 
+            next_platform_mutex_acquire( &server->session_mutex );
+            packet.packets_sent_server_to_client = entry->stats_packets_sent_server_to_client;
+            next_platform_mutex_release( &server->session_mutex );
+
             next_server_internal_send_packet( server, &entry->address, NEXT_ROUTE_UPDATE_PACKET, &packet );            
 
             entry->update_last_send_time = current_time;
@@ -11123,6 +11132,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                 session->stats_near_relay_jitter[i] = packet.near_relay_jitter[i];
                 session->stats_near_relay_packet_loss[i] = packet.near_relay_packet_loss[i];
             }
+            session->stats_packets_sent_client_to_server = packet.packets_sent_client_to_server;
             session->stats_packets_lost_server_to_client = packet.packets_lost_server_to_client;
             session->stats_user_flags |= packet.user_flags;
             session->last_client_stats_update = next_time();
@@ -11603,6 +11613,10 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.connection_type = session->stats_connection_type;
             packet.kbps_up = session->stats_kbps_up;
             packet.kbps_down = session->stats_kbps_down;
+            packet.packets_sent_client_to_server = session->stats_packets_sent_client_to_server;
+            next_platform_mutex_acquire( &server->session_mutex );
+            packet.packets_sent_server_to_client = session->stats_packets_sent_server_to_client;
+            next_platform_mutex_release( &server->session_mutex );
             packet.packets_lost_client_to_server = session->stats_packets_lost_client_to_server;
             packet.packets_lost_server_to_client = session->stats_packets_lost_server_to_client;
             packet.user_flags = session->stats_user_flags;
@@ -12129,12 +12143,12 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
         next_session_entry_t * internal_entry = next_session_manager_find_by_address( server->internal->session_manager, to_address );
         if ( internal_entry )
         {
+            send_raw_direct = false;
             multipath = internal_entry->mutex_multipath;
             committed = internal_entry->mutex_committed;
             envelope_kbps_down = internal_entry->mutex_envelope_kbps_down;
-            send_raw_direct = false;
             send_over_network_next = internal_entry->mutex_send_over_network_next && ( committed || multipath );
-            send_upgraded_direct = !send_over_network_next || multipath;
+            send_upgraded_direct = !send_over_network_next;
             send_sequence = internal_entry->mutex_payload_send_sequence++;
             send_sequence |= uint64_t(1) << 63;
             open_session_sequence = internal_entry->client_open_session_sequence;
@@ -12142,8 +12156,15 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
             session_version = internal_entry->mutex_session_version;
             session_address = internal_entry->mutex_send_address;
             memcpy( session_private_key, internal_entry->mutex_private_key, crypto_box_SECRETKEYBYTES );
+            internal_entry->stats_packets_sent_server_to_client++;
         }
         next_platform_mutex_release( &server->internal->session_mutex );
+
+        if ( multipath )
+        {
+            printf( "multipath\n" );
+            send_upgraded_direct = true;
+        }
 
         if ( !send_raw_direct )
         {
@@ -12182,7 +12203,12 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
                 next_sign_network_next_packet( next_packet_data, next_packet_bytes );
 
+                next_assert( next_is_network_next_packet( next_packet_data, next_packet_bytes ) );
+
                 next_platform_socket_send_packet( server->internal->socket, &session_address, next_packet_data, next_packet_bytes );
+
+                // todo
+                printf( "send next\n" );
             }
 
             if ( send_upgraded_direct )
@@ -12198,6 +12224,9 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
                 memcpy( buffer+NEXT_PACKET_HASH_BYTES+10, packet_data, packet_bytes );
                 crypto_generichash( buffer, NEXT_PACKET_HASH_BYTES, buffer+NEXT_PACKET_HASH_BYTES, packet_bytes+10, next_packet_hash_key, crypto_generichash_KEYBYTES );
                 next_platform_socket_send_packet( server->internal->socket, to_address, buffer, packet_bytes + NEXT_PACKET_HASH_BYTES + 10 );
+
+                // todo
+                printf( "send upgraded direct\n" );
             }
         }
     }
@@ -12205,6 +12234,9 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
     if ( send_raw_direct )
     {
         next_platform_socket_send_packet( server->internal->socket, to_address, packet_data, packet_bytes );
+
+        // todo
+        printf( "send raw direct\n" );
     }
 }
 
@@ -13723,6 +13755,7 @@ static void test_packets()
             check( in.near_relay_jitter[i] == out.near_relay_jitter[i] );
             check( in.near_relay_packet_loss[i] == out.near_relay_packet_loss[i] );
         }
+        check( in.packets_sent_client_to_server == out.packets_sent_client_to_server );
         check( in.packets_lost_server_to_client == out.packets_lost_server_to_client );
         check( in.user_flags == out.user_flags );
     }
@@ -13742,6 +13775,7 @@ static void test_packets()
             next_address_parse( &in.near_relay_addresses[i], relay_address );
         }
         in.update_type = NEXT_UPDATE_TYPE_DIRECT;
+        in.packets_sent_server_to_client = 11000;
         in.packets_lost_client_to_server = 10000;
         uint64_t in_sequence = 1000;
         uint64_t out_sequence = 0;
@@ -13759,6 +13793,7 @@ static void test_packets()
             check( next_address_equal( &in.near_relay_addresses[i], &out.near_relay_addresses[i] ) );
         }
         check( in.update_type == out.update_type );
+        check( in.packets_sent_server_to_client == out.packets_sent_server_to_client );
         check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
     }
 
@@ -13781,6 +13816,7 @@ static void test_packets()
         in.committed = true;
         in.num_tokens = NEXT_MAX_TOKENS;
         next_random_bytes( in.tokens, NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES * NEXT_MAX_TOKENS );
+        in.packets_sent_server_to_client = 11000;
         in.packets_lost_client_to_server = 10000;
         uint64_t in_sequence = 1000;
         uint64_t out_sequence = 0;
@@ -13802,6 +13838,7 @@ static void test_packets()
         check( in.committed == out.committed );
         check( in.num_tokens == out.num_tokens );
         check( memcmp( in.tokens, out.tokens, NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES * NEXT_MAX_TOKENS ) == 0 );
+        check( in.packets_sent_server_to_client == out.packets_sent_server_to_client );
         check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
     }
 

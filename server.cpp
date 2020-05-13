@@ -25,6 +25,7 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 
 const char * bind_address = "0.0.0.0:32202";
 const char * server_address = "127.0.0.1:32202";

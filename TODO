@@ -24,9 +24,39 @@ DONE
 
 	Pass over client.cpp, server.cpp and soak.cpp to make sure they are all setup with the correct keys and datacenters etc.
 
-TODO
+	Extended client to track number of packets sent.
 
-	IMPORTANT: Extend to upload number of packets sent, number of packets received for each slice.
+	Extended client stats packet 
+
+	Finishing plumbing of client to server, and server to client sent packets.
+
+	Extend client.cpp to print out stats once every 10 seconds.
+
+	Verify stats all look correct.
+
+	next_kbps_down is locked at zero. Doesn't seem to be getting updated.
+
+	It's getting updated. For some reason the server is broken and is sending packets over direct from server -> client.
+
+	Confirmed. Packets from server -> client are sending upgraded direct. Why?
+
+	Fixed. Seems like a logic error, but not really sure.
+
+	Now the client is not getting the server -> client packets sent from the server.
+
+	What's blocking them? It shouldn't be the relay, but it's probably either the code sending the packets, or the code receiving them.
+
+	Fixed. Bug in relay added with signature stuff.
+
+TODO
+	
+	Now the client is getting the next packets.
+
+	--------------------------------
+
+	Extend backend to print out packets sent, and packets lost stats it sees.
+
+	Verify these are correct.
 
 	--------------------------------
 
