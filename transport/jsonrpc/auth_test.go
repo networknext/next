@@ -2,7 +2,6 @@ package jsonrpc_test
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -90,7 +89,8 @@ func TestAuthClient(t *testing.T) {
 		assert.Equal(t, reply.UserAccount.Name, "andrew@networknext.com")
 		assert.Equal(t, reply.UserAccount.Email, "andrew@networknext.com")
 		assert.Equal(t, reply.UserAccount.UserID, "5e823e827e97a90cf402109e")
-		assert.Equal(t, reply.UserAccount.BuyerID, fmt.Sprintf("%x", 111))
+		assert.Equal(t, reply.UserAccount.ID, "111")
+		assert.Equal(t, reply.UserAccount.CompanyName, "")
 	})
 
 	t.Run("fetch user roles no user id", func(t *testing.T) {

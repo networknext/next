@@ -6,10 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"gopkg.in/auth0.v4/management"
 )
@@ -37,11 +39,12 @@ type AccountReply struct {
 }
 
 type account struct {
-	UserID  string             `json:"user_id"`
-	BuyerID string             `json:"buyer_id"`
-	Name    string             `json:"name"`
-	Email   string             `json:"email"`
-	Roles   []*management.Role `json:"roles"`
+	UserID      string             `json:"user_id"`
+	ID          string             `json:"id"`
+	CompanyName string             `json:"company_name"`
+	Name        string             `json:"name"`
+	Email       string             `json:"email"`
+	Roles       []*management.Role `json:"roles"`
 }
 
 func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
@@ -62,11 +65,8 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 		domain := emailParts[len(emailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
 
 		buyer, err := s.Storage.BuyerWithDomain(domain)
-		if err != nil {
-			continue
-		}
 
-		reply.UserAccounts = append(reply.UserAccounts, newAccount(a, userRoles.Roles, fmt.Sprintf("%x", buyer.ID)))
+		reply.UserAccounts = append(reply.UserAccounts, newAccount(a, userRoles.Roles, buyer))
 	}
 
 	return nil
@@ -89,16 +89,13 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 	domain := emailParts[len(emailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
 
 	buyer, err := s.Storage.BuyerWithDomain(domain)
-	if err != nil {
-		return err
-	}
 
 	userRoles, err := s.Auth0.Manager.User.Roles(*userAccount.ID)
 	if err != nil {
 		return fmt.Errorf("failed to fetch user roles: %w", err)
 	}
 
-	reply.UserAccount = newAccount(userAccount, userRoles.Roles, fmt.Sprintf("%x", buyer.ID))
+	reply.UserAccount = newAccount(userAccount, userRoles.Roles, buyer)
 
 	return nil
 }
@@ -133,9 +130,6 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 		domain := emailParts[len(emailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
 
 		buyer, err := s.Storage.BuyerWithDomain(domain)
-		if err != nil {
-			return err
-		}
 
 		pw, err := GenerateRandomString(32)
 		if err != nil {
@@ -159,7 +153,7 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 			return fmt.Errorf("failed to add user roles: %w", err)
 		}
 
-		accounts = append(accounts, newAccount(newUser, roles, fmt.Sprintf("%x", buyer.ID)))
+		accounts = append(accounts, newAccount(newUser, roles, buyer))
 	}
 	reply.UserAccounts = accounts
 	return nil
@@ -188,13 +182,16 @@ func GenerateRandomBytes(n int) ([]byte, error) {
 	return b, nil
 }
 
-func newAccount(u *management.User, r []*management.Role, buyer_id string) account {
+func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer) account {
+	id := strconv.FormatUint(buyer.ID, 10)
+
 	account := account{
-		UserID:  *u.Identities[0].UserID,
-		BuyerID: buyer_id,
-		Name:    *u.Name,
-		Email:   *u.Email,
-		Roles:   r,
+		UserID:      *u.Identities[0].UserID,
+		ID:          id,
+		CompanyName: buyer.Name,
+		Name:        *u.Name,
+		Email:       *u.Email,
+		Roles:       r,
 	}
 
 	return account
