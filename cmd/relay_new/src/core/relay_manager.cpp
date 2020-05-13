@@ -12,11 +12,7 @@ namespace core
 {
   RelayManager::RelayManager(const util::Clock& clock): mClock(clock)
   {
-    mRelayIDs.resize(MAX_RELAYS);
-    mLastRelayPingTime.resize(MAX_RELAYS);
-    mRelayAddresses.resize(MAX_RELAYS);
-    mRelayPingHistory.resize(MAX_RELAYS);
-    mPingHistoryArray.resize(MAX_RELAYS);
+    mPingHistoryBuff.resize(MAX_RELAYS);
     reset();
   }
 
@@ -25,29 +21,25 @@ namespace core
     // locked mutex scope
     std::lock_guard<std::mutex> lk(mLock);
     mNumRelays = 0;
-    std::fill(mRelayIDs.begin(), mRelayIDs.end(), 0);
-    std::fill(mLastRelayPingTime.begin(), mLastRelayPingTime.end(), 0);
-    std::fill(mRelayAddresses.begin(), mRelayAddresses.end(), net::Address());
-    std::fill(mRelayPingHistory.begin(), mRelayPingHistory.end(), nullptr);
-    std::fill(mPingHistoryArray.begin(), mPingHistoryArray.end(), PingHistory());
+    std::fill(mRelays.begin(), mRelays.end(), Relay());
   }
 
   auto RelayManager::processPong(const net::Address& from, uint64_t seq) -> bool
   {
-    bool retval = false;
+    bool pongFound = false;
 
     // locked mutex scope
     {
       std::lock_guard<std::mutex> lk(mLock);
       for (unsigned int i = 0; i < mNumRelays; i++) {
-        if (from == mRelayAddresses[i]) {
-          mRelayPingHistory[i]->pongReceived(seq, mClock.elapsed<util::Second>());
-          retval = true;
+        if (from == mRelays[i].Addr) {
+          mRelays[i].History->pongReceived(seq, mClock.elapsed<util::Second>());
+          pongFound = true;
           break;
         }
       }
     }
-    return retval;
+    return pongFound;
   }
 
   void RelayManager::getStats(RelayStats& stats)
@@ -60,8 +52,8 @@ namespace core
       stats.NumRelays = mNumRelays;
 
       for (unsigned int i = 0; i < mNumRelays; i++) {
-        RouteStats rs(*mRelayPingHistory[i], currentTime - RELAY_STATS_WINDOW, currentTime, RELAY_PING_SAFETY);
-        stats.IDs[i] = mRelayIDs[i];
+        RouteStats rs(*mRelays[i].History, currentTime - RELAY_STATS_WINDOW, currentTime, RELAY_PING_SAFETY);
+        stats.IDs[i] = mRelays[i].ID;
         stats.RTT[i] = rs.RTT;
         stats.Jitter[i] = rs.Jitter;
         stats.PacketLoss[i] = rs.PacketLoss;
@@ -78,10 +70,10 @@ namespace core
     {
       std::lock_guard<std::mutex> lk(mLock);
       for (unsigned int i = 0; i < mNumRelays; ++i) {
-        if (mLastRelayPingTime[i] + RELAY_PING_TIME <= current_time) {
-          data[numPings].Seq = mRelayPingHistory[i]->pingSent(current_time);
-          data[numPings].Addr = mRelayAddresses[i];
-          mLastRelayPingTime[i] = current_time;
+        if (mRelays[i].LastPingTime + RELAY_PING_TIME <= current_time) {
+          data[numPings].Seq = mRelays[i].History->pingSent(current_time);
+          data[numPings].Addr = mRelays[i].Addr;
+          mRelays[i].LastPingTime = current_time;
           numPings++;
         }
       }
