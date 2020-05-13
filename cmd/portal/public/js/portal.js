@@ -13,8 +13,6 @@ var defaultSessionDetailsVue = {
 };
 
 var defaultSessionsTable = {
-	direct: 0,
-	onNN: 0,
 	sessions: [],
 	showCount: false,
 	totalSessions: 0,
@@ -402,7 +400,7 @@ WorkspaceHandler = {
 				})
 				.catch((e) => {
 					console.log("Something went wrong updating the users permissions");
-					console.log(e);
+					Sentry.captureException(e);
 					Object.assign(settingsPage.$data.updateUser.failure, {
 						message: 'Failed to update user',
 					});
@@ -433,7 +431,7 @@ WorkspaceHandler = {
 				})
 				.catch((e) => {
 					console.log("Something went wrong updating the users permissions");
-					console.log(e);
+					Sentry.captureException(e);
 					Object.assign(settingsPage.$data.updateUser.failure, {
 						message: 'Failed to delete user',
 					});
@@ -475,7 +473,7 @@ WorkspaceHandler = {
 			})
 			.catch((e) => {
 				console.log("Something went wrong fetching public key");
-				console.log(e);
+				Sentry.captureException(e);
 			});
 		} else {
 			/**
@@ -504,8 +502,8 @@ WorkspaceHandler = {
 				});
 			})
 			.catch((e) => {
-				console.log("Something went wrong fetching public key");
-				console.log(e);
+				console.log("Something went wrong fetching relays");
+				Sentry.captureException(e);
 			});
 	},
 	loadRelayPage() {
@@ -518,8 +516,8 @@ WorkspaceHandler = {
 				Object.assign(relaysTable.$data, {relays: response.relays});
 			})
 			.catch((e) => {
-				console.log("Something went wrong fetching relays");
-				console.log(e);
+				console.log("Something went wrong fetching the top sessions list");
+				Sentry.captureException(e);
 			});
 	},
 	loadSessionsPage() {
@@ -636,8 +634,10 @@ function createVueComponents() {
 		el: '#sessions',
 		data: {
 			allBuyers: allBuyers,
-			...defaultSessionsTable,
 			filter: {buyerId: UserHandler.userInfo.id, sessionType: 'all'},
+			...defaultSessionsTable,
+			allMapSessions: [],
+			nnSessions: [],
 		},
 		methods: {
 			fetchSessionInfo: fetchSessionInfo,
@@ -867,7 +867,7 @@ function fetchUserSessions(userHash = '') {
 		.catch((e) => {
 			Object.assign(userSessionTable.$data, {...defaultUserSessionTable});
 			console.log("Something went wrong fetching user sessions: ");
-			console.log(e);
+			Sentry.captureException(e);
 			WorkspaceHandler.alerts.userToolDanger.style.display = 'block';
 			document.getElementById("user-hash-input").value = '';
 		});
@@ -883,7 +883,7 @@ function updatePubKey() {
 		})
 		.catch((e) => {
 			console.log("Something went wrong updating the public key");
-			console.log(e);
+			Sentry.captureException(e);
 		});
 }
 
@@ -921,7 +921,7 @@ function addUsers(event) {
 		})
 		.catch((e) => {
 			console.log("Something went wrong creating new users");
-			console.log(e);
+			Sentry.captureException(e);
 			Object.assign(settingsPage.$data.newUser.failure, {
 				message: 'Failed to add user account',
 			});
@@ -1015,7 +1015,7 @@ function fetchSessionInfo(sessionId = '') {
 		.catch((e) => {
 			Object.assign(sessionDetailsVue.$data, {...defaultSessionDetailsVue});
 			console.log("Something went wrong fetching session details: ");
-			console.log(e);
+			Sentry.captureException(e);
 			WorkspaceHandler.alerts.sessionToolDanger.style.display = 'block';
 			document.getElementById("session-id-input").value = '';
 		});
