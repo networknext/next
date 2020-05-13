@@ -525,10 +525,11 @@ WorkspaceHandler = {
 		JSONRPCClient
 			.call('OpsService.Relays', {})
 			.then((response) => {
+				let relays = response.relays || [];
 				/**
 				 * I really dislike this but it is apparently the way to reload/update the data within a vue
 				 */
-				Object.assign(relaysTable.$data, {relays: response.relays});
+				Object.assign(relaysTable.$data, {relays: relays});
 			})
 			.catch((e) => {
 				console.log("Something went wrong fetching the top sessions list");
@@ -870,6 +871,7 @@ function fetchUserSessions(userHash = '') {
 	JSONRPCClient
 		.call("BuyersService.UserSessions", {user_hash: hash})
 		.then((response) => {
+			console.log(response)
 			let sessions = response.sessions || [];
 
 			/**

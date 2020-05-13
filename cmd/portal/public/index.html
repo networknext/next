@@ -316,7 +316,7 @@
                                 </div>
                                 <h1 class="h2" v-if="showCount">
                                     Sessions&nbsp;
-                                    <span class="badge badge-dark">
+                                    <span>
                                         {{ allMapSessions.length }} Total Sessions
                                     </span>&nbsp;
                                     <span class="badge badge-success">
@@ -716,12 +716,12 @@
                                                                         </em>
                                                                     </td>
                                                                 </tr>
-                                                                <tr v-for="index in meta.hops" :key="index" scope="row">
+                                                                <tr v-for="hop in meta.hops" scope="row">
                                                                     <td>
-                                                                        Relay {{ index }}
+                                                                        {{ hop.name }}
                                                                     </td>
                                                                     <td>
-                                                                        Hop {{ index }}
+                                                                        Hop
                                                                     </td>
                                                                 </tr>
                                                                 <tr>
