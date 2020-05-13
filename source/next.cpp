@@ -6363,8 +6363,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
         notify->direct = false;
-        notify->payload_bytes = packet_bytes - NEXT_HEADER_BYTES;
-        memcpy( notify->payload_data, packet_data + NEXT_HEADER_BYTES, packet_bytes - NEXT_HEADER_BYTES );
+        notify->payload_bytes = packet_bytes - ( NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES );
+        memcpy( notify->payload_data, packet_data + NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES, packet_bytes - ( NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES ) );
         {
             next_platform_mutex_guard( &client->notify_mutex );
             next_queue_push( client->notify_queue, notify );            

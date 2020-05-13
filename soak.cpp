@@ -32,6 +32,9 @@
 #include <time.h>
 #include <map>
 
+const int MaxServers = 10;
+const int MaxClients = 100;
+
 const char * server_datacenter = "local";
 const char * backend_hostname = "127.0.0.1";
 const char * customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
@@ -107,9 +110,6 @@ void free_function( void * context, void * p )
 
 // ----------------------------------------------------------
 
-const int MaxServers = 10;
-const int MaxClients = 100;
-
 static next_server_t * servers[MaxServers];
 static next_client_t * clients[MaxClients];
 
@@ -137,7 +137,13 @@ void verify_packet( const uint8_t * packet_data, int packet_bytes )
 {
     const int start = packet_bytes % 256;
     for ( int i = 0; i < packet_bytes; ++i )
+    {
+        if ( packet_data[i] != (uint8_t) ( ( start + i ) % 256 ) )
+        {
+            printf( "%d: %d != %d (%d)\n", i, packet_data[i], ( start + i ) % 256, packet_bytes );
+        }
         next_assert( packet_data[i] == (uint8_t) ( ( start + i ) % 256 ) );
+    }
 }
 
 void client_packet_received( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )

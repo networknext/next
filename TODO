@@ -73,9 +73,13 @@ DONE
 
 	Verify these are correct.
 
+	Soak test run overnight on Mac and Linux.
+
+	Found server -> client offset problem with packet hash. Fixed.
+
 TODO
 
-	Soak test run overnight on Mac and Linux.
+	Run soak overnight on mac.
 
 	--------------------------------
 
