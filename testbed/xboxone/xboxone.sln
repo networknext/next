@@ -11,9 +11,9 @@ Global
 		Release|XBoxOne = Release|XBoxOne
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{E153BC48-A071-4229-A75C-E7D8E724FA96}.Debug|XBoxOne.ActiveCfg = Release|Durango
-		{E153BC48-A071-4229-A75C-E7D8E724FA96}.Debug|XBoxOne.Build.0 = Release|Durango
-		{E153BC48-A071-4229-A75C-E7D8E724FA96}.Debug|XBoxOne.Deploy.0 = Release|Durango
+		{E153BC48-A071-4229-A75C-E7D8E724FA96}.Debug|XBoxOne.ActiveCfg = Debug|Durango
+		{E153BC48-A071-4229-A75C-E7D8E724FA96}.Debug|XBoxOne.Build.0 = Debug|Durango
+		{E153BC48-A071-4229-A75C-E7D8E724FA96}.Debug|XBoxOne.Deploy.0 = Debug|Durango
 		{E153BC48-A071-4229-A75C-E7D8E724FA96}.Release|XBoxOne.ActiveCfg = Release|Durango
 		{E153BC48-A071-4229-A75C-E7D8E724FA96}.Release|XBoxOne.Build.0 = Release|Durango
 		{E153BC48-A071-4229-A75C-E7D8E724FA96}.Release|XBoxOne.Deploy.0 = Release|Durango

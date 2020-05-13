@@ -108,7 +108,7 @@ void next_platform_thread_set_sched_max( next_platform_thread_t * thread )
 int next_platform_mutex_create( next_platform_mutex_t * mutex )
 {
 	next_assert( mutex );
-	memset( mutex, 0, sizeof(next_mutex_t) );
+	memset( mutex, 0, sizeof(next_platform_mutex_t) );
     if ( !InitializeCriticalSectionAndSpinCount( &mutex->handle, 0xFF ) )
     {
 		return NEXT_ERROR;
