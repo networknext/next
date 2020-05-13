@@ -5176,7 +5176,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
             relay_replay_protection_advance_sequence( &session->replay_protection_server_to_client, clean_sequence );
 
-            relay_platform_socket_send_packet( relay->socket, &session->prev_address, packet_data + RELAY_PACKET_HASH_BYTES, packet_bytes - RELAY_PACKET_HASH_BYTES );
+            relay_platform_socket_send_packet( relay->socket, &session->prev_address, packet_data, packet_bytes );
 
             relay->bytes_sent += packet_bytes;
         }

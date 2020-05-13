@@ -53,7 +53,6 @@ const NEXT_ROUTE_TYPE_DIRECT = 0
 const NEXT_ROUTE_TYPE_NEW = 1
 const NEXT_ROUTE_TYPE_CONTINUE = 2
 
-// todo: we really don't need this
 const NEXT_VERSION_MAJOR = 0
 const NEXT_VERSION_MINOR = 0
 const NEXT_VERSION_PATCH = 0
@@ -280,6 +279,8 @@ type NextBackendSessionUpdatePacket struct {
 	ClientRoutePublicKey      []byte
 	KbpsUp                    uint32
 	KbpsDown                  uint32
+	PacketsSentClientToServer uint64
+	PacketsSentServerToClient uint64
 	PacketsLostClientToServer uint64
 	PacketsLostServerToClient uint64
 	UserFlags                 uint64
@@ -338,6 +339,10 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream, versionMa
 	stream.SerializeBytes(packet.ClientRoutePublicKey)
 	stream.SerializeUint32(&packet.KbpsUp)
 	stream.SerializeUint32(&packet.KbpsDown)
+	if ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 3, 4, 5) {
+		stream.SerializeUint64(&packet.PacketsSentClientToServer)
+		stream.SerializeUint64(&packet.PacketsSentServerToClient)
+	}
 	stream.SerializeUint64(&packet.PacketsLostClientToServer)
 	stream.SerializeUint64(&packet.PacketsLostServerToClient)
 	stream.SerializeUint64(&packet.UserFlags)
@@ -808,6 +813,13 @@ func main() {
 			}
 
 			// todo: we really should run the signature check here
+
+			fmt.Printf( "==============================================================\n" )
+			fmt.Printf( "PacketsSentClientToServer = %d\n", sessionUpdate.PacketsSentClientToServer );
+			fmt.Printf( "PacketsSentServerToClient = %d\n", sessionUpdate.PacketsSentServerToClient );
+			fmt.Printf( "PacketsLostClientToServer = %d\n", sessionUpdate.PacketsLostClientToServer );
+			fmt.Printf( "PacketsLostServerToClient = %d\n", sessionUpdate.PacketsLostServerToClient );
+			fmt.Printf( "==============================================================\n" )
 
 			if sessionUpdate.FallbackToDirect {
 				continue
