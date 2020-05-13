@@ -13,8 +13,6 @@ var defaultSessionDetailsVue = {
 };
 
 var defaultSessionsTable = {
-	direct: 0,
-	onNN: 0,
 	sessions: [],
 	showCount: false,
 	totalSessions: 0,
@@ -67,6 +65,7 @@ JSONRPCClient = {
 
 
 		return response.json().then((json) => {
+			console.log(json)
 			if (json.error) {
 				throw new Error(json.error);
 			}
@@ -166,10 +165,14 @@ MapHandler = {
 							data = sessions;
 					}
 
+					Object.assign(sessionsTable.$data, {
+						allMapSessions: sessions,
+						nnSessions: onNN,
+					});
+
 					Object.assign(mapSessionsCount.$data, {
-						direct: direct.length,
-						onNN: onNN.length,
-						totalSessions: sessions.length,
+						onNN: onNN,
+						sessions: sessions,
 					});
 
 					let layer = new deck.ScreenGridLayer({
@@ -212,6 +215,7 @@ MapHandler = {
 				.catch((e) => {
 					console.log("Something went wrong with map init");
 					console.log(e);
+					Sentry.captureException(e);
 				});
 			});
 	}
@@ -250,6 +254,7 @@ UserHandler = {
 		}).catch((e) => {
 			console.log("Something went wrong getting the current user information");
 			console.log(e);
+			Sentry.captureException(e);
 
 			// Need to handle no BuyerID gracefully
 		});
@@ -402,7 +407,7 @@ WorkspaceHandler = {
 				})
 				.catch((e) => {
 					console.log("Something went wrong updating the users permissions");
-					console.log(e);
+					Sentry.captureException(e);
 					Object.assign(settingsPage.$data.updateUser.failure, {
 						message: 'Failed to update user',
 					});
@@ -433,7 +438,7 @@ WorkspaceHandler = {
 				})
 				.catch((e) => {
 					console.log("Something went wrong updating the users permissions");
-					console.log(e);
+					Sentry.captureException(e);
 					Object.assign(settingsPage.$data.updateUser.failure, {
 						message: 'Failed to delete user',
 					});
@@ -463,20 +468,28 @@ WorkspaceHandler = {
 
 		if (UserHandler.userInfo.id != '') {
 			JSONRPCClient
-			.call('BuyersService.GameConfiguration', {buyer_id: UserHandler.userInfo.id})
-			.then((response) => {
-				UserHandler.userInfo.pubKey = response.game_config.public_key;
-				/**
-				 * I really dislike this but it is apparently the way to reload/update the data within a vue
-				 */
-				Object.assign(settingsPage.$data, {
-					pubKey: UserHandler.userInfo.pubKey,
+				.call('BuyersService.GameConfiguration', {buyer_id: UserHandler.userInfo.id})
+				.then((response) => {
+					UserHandler.userInfo.pubKey = response.game_config.public_key;
+					/**
+					 * I really dislike this but it is apparently the way to reload/update the data within a vue
+					 */
+					Object.assign(settingsPage.$data, {
+						pubKey: UserHandler.userInfo.pubKey,
+					});
+				})
+				.catch((e) => {
+					console.log("Something went wrong fetching public key");
+					console.log(e)
+					Sentry.captureException(e);
+					UserHandler.userInfo.pubKey = "";
+					/**
+					 * I really dislike this but it is apparently the way to reload/update the data within a vue
+					 */
+					Object.assign(settingsPage.$data, {
+						pubKey: "",
+					});
 				});
-			})
-			.catch((e) => {
-				console.log("Something went wrong fetching public key");
-				console.log(e);
-			});
 		} else {
 			/**
 			 * I really dislike this but it is apparently the way to reload/update the data within a vue
@@ -504,8 +517,8 @@ WorkspaceHandler = {
 				});
 			})
 			.catch((e) => {
-				console.log("Something went wrong fetching public key");
-				console.log(e);
+				console.log("Something went wrong fetching relays");
+				Sentry.captureException(e);
 			});
 	},
 	loadRelayPage() {
@@ -518,8 +531,8 @@ WorkspaceHandler = {
 				Object.assign(relaysTable.$data, {relays: response.relays});
 			})
 			.catch((e) => {
-				console.log("Something went wrong fetching relays");
-				console.log(e);
+				console.log("Something went wrong fetching the top sessions list");
+				Sentry.captureException(e);
 			});
 	},
 	loadSessionsPage() {
@@ -553,10 +566,12 @@ function startApp() {
 				.catch((e) => {
 					console.log("Something went wrong initializing the map");
 					console.log(e);
+					Sentry.captureException(e);
 				});
 		}).catch((e) => {
 			console.log("Something went wrong getting the current user information");
 			console.log(e);
+			Sentry.captureException(e);
 		});
 	JSONRPCClient
 		.call('BuyersService.Buyers', {})
@@ -566,6 +581,7 @@ function startApp() {
 		.catch((e) => {
 			console.log("Something went wrong fetching buyers");
 			console.log(e);
+			Sentry.captureException(e);
 		});
 }
 
@@ -611,12 +627,11 @@ function createVueComponents() {
 		el: '#map-sessions-count',
 		data: {
 			allBuyers: allBuyers,
-			direct: 0,
 			filter: {buyerId: UserHandler.userInfo.id, sessionType: 'all'},
-			onNN: 0,
 			showCount: false,
-			totalSessions: 0,
-			userInfo: UserHandler.userInfo
+			sessions: [],
+			userInfo: UserHandler.userInfo,
+			onNN: [],
 		},
 		methods: {
 			isAdmin: UserHandler.isAdmin,
@@ -636,8 +651,10 @@ function createVueComponents() {
 		el: '#sessions',
 		data: {
 			allBuyers: allBuyers,
-			...defaultSessionsTable,
 			filter: {buyerId: UserHandler.userInfo.id, sessionType: 'all'},
+			...defaultSessionsTable,
+			allMapSessions: [],
+			nnSessions: [],
 		},
 		methods: {
 			fetchSessionInfo: fetchSessionInfo,
@@ -774,6 +791,7 @@ function refreshAccountsTable() {
 		.catch((errors) => {
 			console.log("Something went wrong loading settings page");
 			console.log(errors);
+			Sentry.captureException(errors);
 		});
 	});
 }
@@ -823,6 +841,7 @@ function refreshSessionTable() {
 			.catch((e) => {
 				console.log("Something went wrong fetching the top sessions list");
 				console.log(e);
+				Sentry.captureException(e);
 			});
 	});
 }
@@ -867,7 +886,7 @@ function fetchUserSessions(userHash = '') {
 		.catch((e) => {
 			Object.assign(userSessionTable.$data, {...defaultUserSessionTable});
 			console.log("Something went wrong fetching user sessions: ");
-			console.log(e);
+			Sentry.captureException(e);
 			WorkspaceHandler.alerts.userToolDanger.style.display = 'block';
 			document.getElementById("user-hash-input").value = '';
 		});
@@ -883,7 +902,7 @@ function updatePubKey() {
 		})
 		.catch((e) => {
 			console.log("Something went wrong updating the public key");
-			console.log(e);
+			Sentry.captureException(e);
 		});
 }
 
@@ -921,7 +940,7 @@ function addUsers(event) {
 		})
 		.catch((e) => {
 			console.log("Something went wrong creating new users");
-			console.log(e);
+			Sentry.captureException(e);
 			Object.assign(settingsPage.$data.newUser.failure, {
 				message: 'Failed to add user account',
 			});
@@ -1015,7 +1034,7 @@ function fetchSessionInfo(sessionId = '') {
 		.catch((e) => {
 			Object.assign(sessionDetailsVue.$data, {...defaultSessionDetailsVue});
 			console.log("Something went wrong fetching session details: ");
-			console.log(e);
+			Sentry.captureException(e);
 			WorkspaceHandler.alerts.sessionToolDanger.style.display = 'block';
 			document.getElementById("session-id-input").value = '';
 		});
