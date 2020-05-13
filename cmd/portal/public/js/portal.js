@@ -65,6 +65,7 @@ JSONRPCClient = {
 
 
 		return response.json().then((json) => {
+			console.log(json)
 			if (json.error) {
 				throw new Error(json.error);
 			}
@@ -164,10 +165,14 @@ MapHandler = {
 							data = sessions;
 					}
 
+					Object.assign(sessionsTable.$data, {
+						allMapSessions: sessions,
+						nnSessions: onNN,
+					});
+
 					Object.assign(mapSessionsCount.$data, {
-						direct: direct.length,
-						onNN: onNN.length,
-						totalSessions: sessions.length,
+						onNN: onNN,
+						sessions: sessions,
 					});
 
 					let layer = new deck.ScreenGridLayer({
@@ -210,6 +215,7 @@ MapHandler = {
 				.catch((e) => {
 					console.log("Something went wrong with map init");
 					console.log(e);
+					Sentry.captureException(e);
 				});
 			});
 	}
@@ -248,6 +254,7 @@ UserHandler = {
 		}).catch((e) => {
 			console.log("Something went wrong getting the current user information");
 			console.log(e);
+			Sentry.captureException(e);
 
 			// Need to handle no BuyerID gracefully
 		});
@@ -461,20 +468,28 @@ WorkspaceHandler = {
 
 		if (UserHandler.userInfo.id != '') {
 			JSONRPCClient
-			.call('BuyersService.GameConfiguration', {buyer_id: UserHandler.userInfo.id})
-			.then((response) => {
-				UserHandler.userInfo.pubKey = response.game_config.public_key;
-				/**
-				 * I really dislike this but it is apparently the way to reload/update the data within a vue
-				 */
-				Object.assign(settingsPage.$data, {
-					pubKey: UserHandler.userInfo.pubKey,
+				.call('BuyersService.GameConfiguration', {buyer_id: UserHandler.userInfo.id})
+				.then((response) => {
+					UserHandler.userInfo.pubKey = response.game_config.public_key;
+					/**
+					 * I really dislike this but it is apparently the way to reload/update the data within a vue
+					 */
+					Object.assign(settingsPage.$data, {
+						pubKey: UserHandler.userInfo.pubKey,
+					});
+				})
+				.catch((e) => {
+					console.log("Something went wrong fetching public key");
+					console.log(e)
+					Sentry.captureException(e);
+					UserHandler.userInfo.pubKey = "";
+					/**
+					 * I really dislike this but it is apparently the way to reload/update the data within a vue
+					 */
+					Object.assign(settingsPage.$data, {
+						pubKey: "",
+					});
 				});
-			})
-			.catch((e) => {
-				console.log("Something went wrong fetching public key");
-				Sentry.captureException(e);
-			});
 		} else {
 			/**
 			 * I really dislike this but it is apparently the way to reload/update the data within a vue
@@ -551,10 +566,12 @@ function startApp() {
 				.catch((e) => {
 					console.log("Something went wrong initializing the map");
 					console.log(e);
+					Sentry.captureException(e);
 				});
 		}).catch((e) => {
 			console.log("Something went wrong getting the current user information");
 			console.log(e);
+			Sentry.captureException(e);
 		});
 	JSONRPCClient
 		.call('BuyersService.Buyers', {})
@@ -564,6 +581,7 @@ function startApp() {
 		.catch((e) => {
 			console.log("Something went wrong fetching buyers");
 			console.log(e);
+			Sentry.captureException(e);
 		});
 }
 
@@ -609,12 +627,11 @@ function createVueComponents() {
 		el: '#map-sessions-count',
 		data: {
 			allBuyers: allBuyers,
-			direct: 0,
 			filter: {buyerId: UserHandler.userInfo.id, sessionType: 'all'},
-			onNN: 0,
 			showCount: false,
-			totalSessions: 0,
-			userInfo: UserHandler.userInfo
+			sessions: [],
+			userInfo: UserHandler.userInfo,
+			onNN: [],
 		},
 		methods: {
 			isAdmin: UserHandler.isAdmin,
@@ -774,6 +791,7 @@ function refreshAccountsTable() {
 		.catch((errors) => {
 			console.log("Something went wrong loading settings page");
 			console.log(errors);
+			Sentry.captureException(errors);
 		});
 	});
 }
@@ -823,6 +841,7 @@ function refreshSessionTable() {
 			.catch((e) => {
 				console.log("Something went wrong fetching the top sessions list");
 				console.log(e);
+				Sentry.captureException(e);
 			});
 	});
 }
