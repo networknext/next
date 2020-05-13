@@ -634,10 +634,26 @@
                                                             </dd>
                                                         </div>
                                                         <dt>
+                                                            User IP Address
+                                                        </dt>
+                                                        <dd>
+                                                            {{ meta.client_addr }}
+                                                        </dd>
+                                                        <dt>
+                                                            Platform
+                                                        </dt>
+                                                        <dd>
+                                                            {{ meta.platform }}
+                                                        </dd>
+                                                        <dt>
                                                             Customer
                                                         </dt>
                                                         <dd>
-                                                            (no such buyer)
+                                                            {{
+                                                                allBuyers.find((buyer) => {
+                                                                    return buyer.id == meta.customer_id
+                                                                }).name
+                                                            }}
                                                         </dd>
                                                         <dt>
                                                             SDK Version
@@ -677,7 +693,7 @@
                                                             <tbody>
                                                                 <tr v-for="relay in meta.nearby_relays">
                                                                     <td>
-                                                                        <a class="text-dark">{{ relay.name }}</a>&nbsp;
+                                                                        <a class="text-dark">{{ relay.datacenter.name }}</a>&nbsp;
                                                                     </td>
                                                                     <td>
                                                                         {{ relay.client_stats.rtt }}
@@ -716,12 +732,12 @@
                                                                         </em>
                                                                     </td>
                                                                 </tr>
-                                                                <tr v-for="hop in meta.hops" scope="row">
+                                                                <tr v-for="(hop, index) in meta.hops" scope="row">
                                                                     <td>
-                                                                        {{ hop.name }}
+                                                                        {{ hop.datacenter.name }}
                                                                     </td>
                                                                     <td>
-                                                                        Hop
+                                                                        Hop {{ index }}
                                                                     </td>
                                                                 </tr>
                                                                 <tr>

@@ -646,6 +646,7 @@ function createVueComponents() {
 			meta: null,
 			slices: [],
 			showDetails: false,
+			allBuyers: allBuyers
 		}
 	});
 	sessionsTable = new Vue({

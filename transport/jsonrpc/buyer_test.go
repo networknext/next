@@ -149,8 +149,12 @@ func TestSessionDetails(t *testing.T) {
 		Location:   routing.Location{Latitude: 10, Longitude: 20},
 		ClientAddr: "127.0.0.1:1313",
 		ServerAddr: "10.0.0.1:50000",
-		Hops:       3,
-		SDK:        "3.4.4",
+		Hops: []routing.Relay{
+			{ID: 1234},
+			{ID: 1234},
+			{ID: 1234},
+		},
+		SDK: "3.4.4",
 		NearbyRelays: []routing.Relay{
 			{ID: 1, ClientStats: routing.Stats{RTT: 1, Jitter: 2, PacketLoss: 3}},
 		},
