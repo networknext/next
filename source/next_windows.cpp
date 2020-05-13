@@ -136,40 +136,44 @@ void next_platform_thread_set_sched_max( next_platform_thread_t * thread )
     (void)thread;
 }
 
-next_platform_mutex_t * next_platform_mutex_create( void * context )
+int next_platform_mutex_create( next_platform_mutex_t * mutex )
 {
-    next_platform_mutex_t * mutex = (next_platform_mutex_t *) next_malloc( context, sizeof( next_platform_mutex_t ) );
-
     next_assert( mutex );
 
-    mutex->context = context;
+	memset( mutex, 0, sizeof(next_platform_mutex_t) );
 
     if ( !InitializeCriticalSectionAndSpinCount( &mutex->handle, 0xFF ) )
     {
-        next_free( context, mutex );
-        return NULL;
+		return NEXT_ERROR;
     }
 
-    return mutex;
+	mutex->ok = true;
+
+	return NEXT_OK;
 }
 
 void next_platform_mutex_acquire( next_platform_mutex_t * mutex )
 {
     next_assert( mutex );
+	next_assert( mutex->ok );
     EnterCriticalSection( &mutex->handle );
 }
 
 void next_platform_mutex_release( next_platform_mutex_t * mutex )
 {
     next_assert( mutex );
+	next_assert( mutex->ok );
     LeaveCriticalSection( &mutex->handle );
 }
 
 void next_platform_mutex_destroy( next_platform_mutex_t * mutex )
 {
     next_assert( mutex );
-    DeleteCriticalSection( &mutex->handle );
-    next_free( mutex->context, mutex );
+	if ( mutex->ok )
+	{
+		DeleteCriticalSection(&mutex->handle);
+		memset(mutex, 0, sizeof(next_platform_mutex_t));
+	}
 }
 
 // time
