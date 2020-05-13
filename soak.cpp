@@ -256,8 +256,8 @@ int main( int argc, char ** argv )
                 next_assert( server_allocator[i] );
                 char server_address_string[256]; 
                 char bind_address_string[256];
-                sprintf( server_address_string, "127.0.0.1:%d", 25000 + i );
-                sprintf( bind_address_string, "0.0.0.0:%d", 50000 + i );
+                sprintf( server_address_string, "127.0.0.1:%d", 20000 + i );
+                sprintf( bind_address_string, "0.0.0.0:%d", 20000 + i );
                 servers[i] = next_server_create( server_allocator[i], server_address_string, bind_address_string, "local", server_packet_received );
                 next_assert( servers[i] );
                 next_printf( NEXT_LOG_LEVEL_INFO, "created server %d", i );
