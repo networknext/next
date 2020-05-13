@@ -10,27 +10,26 @@ DONE
 
 	Get PS4 build working and run testbed. Verify unit test passes.
 
-TODO
-
 	Verify soak test passes on Win64,
-
-	Verify soak test passes on PS4.
-
-	Verify soak test passes on X1.
-
-	--------------------------------------------
 
 	Fix nintendo platform mutex.
 
 	Verify nintendo platform can build.
 
-	--------------------------------------------
-
 	Fix iOS platform mutex.
 
-	--------------------------------------------
+TODO
 
 	Update SDK version in all build and testbed projects, rebuild and individually test each platform.
+
+	Verify testbed runs on X1
+
+	Verify testbed runs on PS4
+
+	--------------------------------------------
+
+	--------------------------------------------
+
 
 	--------------------------------------------
 
