@@ -15,7 +15,7 @@
     <ProjectGuid>{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}</ProjectGuid>
     <RootNamespace>next</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
-    <ProjectName>next-nx64-3.4.4</ProjectName>
+    <ProjectName>next-nx64-3.4.5</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|NX64'" Label="Configuration">
@@ -119,20 +119,16 @@
     <ClInclude Include="..\..\..\source\next_ios.h" />
     <ClInclude Include="..\..\..\source\next_linux.h" />
     <ClInclude Include="..\..\..\source\next_mac.h" />
-    <ClInclude Include="..\..\..\source\next_ps4.h" />
     <ClInclude Include="..\..\..\source\next_switch.h" />
     <ClInclude Include="..\..\..\source\next_windows.h" />
-    <ClInclude Include="..\..\..\source\next_xboxone.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\source\next.cpp" />
     <ClCompile Include="..\..\..\source\next_ios.cpp" />
     <ClCompile Include="..\..\..\source\next_linux.cpp" />
     <ClCompile Include="..\..\..\source\next_mac.cpp" />
-    <ClCompile Include="..\..\..\source\next_ps4.cpp" />
     <ClCompile Include="..\..\..\source\next_switch.cpp" />
     <ClCompile Include="..\..\..\source\next_windows.cpp" />
-    <ClCompile Include="..\..\..\source\next_xboxone.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
