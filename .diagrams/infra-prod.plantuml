@@ -1,0 +1,122 @@
+@startuml
+cloud Relays
+
+cloud Cloudflare {
+    component portal.networknext.com
+    component prod.networknext.com [
+        (prod|psyonix|pubg).networknext.com
+    ]
+}
+
+cloud Sentry {
+    component portal_backend_project
+    component portal_ui_project
+    component relay_backend_project
+    component server_backend_project
+}
+
+node VPC {
+    component portal_lb_ip
+    component relay_backend_lb_ip
+    component server_backend_lb_ip
+}
+
+node LoadBalancing {
+    component portal_lb
+    component relay_backend_lb
+    component server_backend_lb
+}
+
+node HealthChecks {
+    component portal_hc
+    component relay_backend_hc
+    component server_backend_hc
+}
+
+node InstanceTemplates {
+    component portal_tmpl
+    component relay_backend_tmpl
+    component server_backend_tmpl
+}
+
+node InstanceGroups {
+    component portal_mig
+    component relay_backend_mig
+    component server_backend_mig
+}
+
+node VirtualMachines {
+    component portal_mig_XXX
+    component relay_backend_mig_XXX
+    component server_backend_mig_XXX
+}
+
+node Memorystore {
+    component portal_prod_1
+    component relay_backend_prod_1
+    component server_backend_prod_1
+}
+
+node PubSub {
+    queue topic_billing
+}
+
+node Dataflow {
+    queue pipeline
+}
+
+node Bigtable {
+    database bt_billing
+}
+
+node BigQuery {
+    database bq_billing
+}
+
+node Firestore {
+    file documents
+}
+
+node Storage {
+    component "us.artifacts.network-next-v3-prod.appspot.com" {
+        artifact "portal.prod.tar.gz"
+        artifact "relay_backend.prod.tar.gz"
+        artifact "server_backend.prod.tar.gz"
+        artifact "vm-update-app.sh"
+        artifact "GeoLite2-City.mmdb"
+    }
+}
+
+node Monitoring {
+    frame sessions
+    frame percentiles
+    frame route_decisions
+    frame route_matrix
+}
+
+node Logging {
+    file portal_log_stream
+    file relay_backend_log_stream
+    file server_backend_log_stream
+}
+
+Relays <--> relay_backend_lb_ip
+portal.networknext.com <--> portal_lb_ip : HTTP / TLS 1.3
+prod.networknext.com <--> server_backend_lb_ip : UDP
+
+VPC <--> LoadBalancing : Forwarding rules
+LoadBalancing <--> HealthChecks : Proxy to healthy VMs
+InstanceTemplates --> InstanceGroups : Defines VMs
+InstanceGroups <--> HealthChecks : Scale Up/Down VMs
+InstanceGroups --> VirtualMachines : Manages VMs
+Storage --> VirtualMachines : Copy artifact
+Memorystore <--> VirtualMachines : Redis connections
+Firestore <--> VirtualMachines : Sync documents
+VirtualMachines --> Monitoring : Publish metrics
+VirtualMachines --> Sentry : Publish errors
+
+VirtualMachines --> PubSub
+PubSub --> Dataflow
+Dataflow --> Bigtable
+Bigtable --> BigQuery
+@enduml
