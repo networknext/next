@@ -65,7 +65,6 @@ JSONRPCClient = {
 
 
 		return response.json().then((json) => {
-			console.log(json)
 			if (json.error) {
 				throw new Error(json.error);
 			}
