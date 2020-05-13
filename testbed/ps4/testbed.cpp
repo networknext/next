@@ -28,7 +28,7 @@ static uint8_t random_seed[4160];
 
 int32_t main( int argc, const char * const argv[] )
 {
-    SceKernelModule next_library = sceKernelLoadStartModule("/app0/next-ps4-3.4.4.prx", 0, NULL, 0, NULL, NULL);
+    SceKernelModule next_library = sceKernelLoadStartModule("/app0/next-ps4-3.4.5.prx", 0, NULL, 0, NULL, NULL);
     if ( next_library < 0 )
     {
         printf( "Failed to load next PRX library\n" );
