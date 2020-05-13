@@ -1,114 +1,38 @@
 DONE
 
-	Extend the soak test to run with global and per-client and per-server allocator contexts.
-
-	Hooking up the allocator, I need to be able to use a mutex to make the allocator threadsafe.
-
-	Unfortunately, this creates a chicken and egg situation, since the mutex create relies on the allocator.
-
-	Clearly the mutex needs to be modified to not use allocation.
-
-	Do this now, then expose a wrapper API that 
-
-	Fixed. Now I have a mutex and thread safe allocator, plus the allocator has a map that tracks allocated and freed pointers.
-
-	Next step is to have separate allocators per-client, server and global.
-
-	Now get the linux build compiling against with the mutex changes.
-
-	Run the soak test on linux.
-
-	Pass over todos and fix.
-
-	Make sure next_client_internal_t is POD. Fixes G++ warning.
-
-	Pass over client.cpp, server.cpp and soak.cpp to make sure they are all setup with the correct keys and datacenters etc.
-
-	Extended client to track number of packets sent.
-
-	Extended client stats packet 
-
-	Finishing plumbing of client to server, and server to client sent packets.
-
-	Extend client.cpp to print out stats once every 10 seconds.
-
-	Verify stats all look correct.
-
-	next_kbps_down is locked at zero. Doesn't seem to be getting updated.
-
-	It's getting updated. For some reason the server is broken and is sending packets over direct from server -> client.
-
-	Confirmed. Packets from server -> client are sending upgraded direct. Why?
-
-	Fixed. Seems like a logic error, but not really sure.
-
-	Now the client is not getting the server -> client packets sent from the server.
-
-	What's blocking them? It shouldn't be the relay, but it's probably either the code sending the packets, or the code receiving them.
-
-	Fixed. Bug in relay added with signature stuff.
-
-	Now the client is getting the next packets.
-
-	kbps down looks correct on client.
-
-	Now print out the rest of stats...
-	
-	Verified packet loss stats are correct.
-
-	Client stats are all good.
-
-	Values in the backend are all zeros:
-
-		PacketsSentClientToServer = 0
-		PacketsSentServerToClient = 0
-		PacketsLostClientToServer = 0
-		PacketsLostServerToClient = 0
-
-	Fixed. Error in serialization on the backend.
-
-	Thread safety on the client for the packets_sent value. Create a new mutex for it.
-
-	Extend backend to print out packets sent, and packets lost stats it sees.
-
-	Verify these are correct.
-
 	Soak test run overnight on Mac and Linux.
 
 	Found server -> client offset problem with packet hash. Fixed.
 
-TODO
-
 	Run soak overnight on mac.
 
-	--------------------------------
+	Get windows build working and run testbed. Verify unit test passes.
 
-	Get windows build working and run testbed.
+	Get PS4 build working and run testbed. Verify unit test passes.
 
-	Verify unit test passes.
+TODO
 
-	Verify soak test passes.
+	Verify soak test passes on Win64,
 
-	--------------------------------
+	Verify soak test passes on PS4.
 
-	Get PS4 build working and run testbed.
+	Verify soak test passes on X1.
 
-	Verify unit test passes.
+	--------------------------------------------
 
-	Verify soak test passes.
+	Fix nintendo platform mutex.
 
-	--------------------------------
+	Verify nintendo platform can build.
 
-	Get X1 build working and run testbed.
+	--------------------------------------------
 
-	Verify unit test passes.
+	Fix iOS platform mutex.
 
-	Verify soak test passes.
+	--------------------------------------------
 
-	--------------------------------
+	Update SDK version in all build and testbed projects, rebuild and individually test each platform.
 
-
-
+	--------------------------------------------
 
 
 
