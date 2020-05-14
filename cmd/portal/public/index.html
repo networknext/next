@@ -634,10 +634,26 @@
                                                             </dd>
                                                         </div>
                                                         <dt>
+                                                            User IP Address
+                                                        </dt>
+                                                        <dd>
+                                                            {{ meta.client_addr }}
+                                                        </dd>
+                                                        <dt>
+                                                            Platform
+                                                        </dt>
+                                                        <dd>
+                                                            {{ meta.platform }}
+                                                        </dd>
+                                                        <dt>
                                                             Customer
                                                         </dt>
                                                         <dd>
-                                                            (no such buyer)
+                                                            {{
+                                                                allBuyers.find((buyer) => {
+                                                                    return buyer.id == meta.customer_id
+                                                                }).name
+                                                            }}
                                                         </dd>
                                                         <dt>
                                                             SDK Version
@@ -716,12 +732,12 @@
                                                                         </em>
                                                                     </td>
                                                                 </tr>
-                                                                <tr v-for="index in meta.hops" :key="index" scope="row">
+                                                                <tr v-for="(hop, index) in meta.hops" scope="row">
                                                                     <td>
-                                                                        Relay {{ index }}
+                                                                        {{ hop.name }}
                                                                     </td>
                                                                     <td>
-                                                                        Hop {{ index }}
+                                                                        Hop {{ index + 1 }}
                                                                     </td>
                                                                 </tr>
                                                                 <tr>
