@@ -352,6 +352,7 @@ func TestRelayUpdateRelayUnmarshalFailure(t *testing.T) {
 		ID: crypto.HashID(addr),
 	}
 
+	redisServer.Set(entry.Key(), "0")
 	redisServer.HSet(routing.HashKeyAllRelays, entry.Key(), "invalid relay data")
 
 	updateMetrics := metrics.EmptyRelayUpdateMetrics
@@ -410,6 +411,7 @@ func TestRelayUpdateInvalidToken(t *testing.T) {
 
 	raw, err := entry.MarshalBinary()
 	assert.NoError(t, err)
+	redisServer.Set(entry.Key(), "0")
 	redisServer.HSet(routing.HashKeyAllRelays, entry.Key(), string(raw))
 
 	updateMetrics := metrics.EmptyRelayUpdateMetrics
@@ -477,6 +479,7 @@ func TestRelayUpdateSuccess(t *testing.T) {
 
 	raw, err := entry.MarshalBinary()
 	assert.NoError(t, err)
+	redisServer.Set(entry.Key(), "0")
 	redisServer.HSet(routing.HashKeyAllRelays, entry.Key(), string(raw))
 
 	localMetrics := metrics.LocalHandler{}

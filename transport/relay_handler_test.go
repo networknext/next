@@ -664,6 +664,7 @@ func TestRelayHandlerRelayUnmarshalFailure(t *testing.T) {
 
 	// Set a bad entry in redis
 	entry := "bad relay entry"
+	redisServer.Set(relay.Key(), "0")
 	redisServer.HSet(routing.HashKeyAllRelays, relay.Key(), entry)
 
 	inMemory := &storage.InMemory{}

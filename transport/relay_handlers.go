@@ -191,7 +191,7 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 		}
 
 		// Check if the relay exists in redis
-		exists := params.RedisClient.HExists(routing.HashKeyAllRelays, relay.Key())
+		exists := params.RedisClient.Exists(relay.Key())
 
 		if exists.Err() != nil && exists.Err() != redis.Nil {
 			sentry.CaptureException(exists.Err())
@@ -202,7 +202,7 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 		}
 
 		// If the relay doesn't exist, add it
-		if !exists.Val() {
+		if exists.Val() == 0 {
 			// Set the relay's lat long
 			if loc, err := params.IpLocator.LocateIP(relay.Addr.IP); err == nil {
 				relay.Datacenter.Location.Latitude = loc.Latitude
@@ -560,7 +560,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			ID: crypto.HashID(relayUpdateRequest.Address.String()),
 		}
 
-		exists := params.RedisClient.HExists(routing.HashKeyAllRelays, relay.Key())
+		exists := params.RedisClient.Exists(relay.Key())
 
 		if exists.Err() != nil && exists.Err() != redis.Nil {
 			sentry.CaptureException(exists.Err())
@@ -570,7 +570,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			return
 		}
 
-		if !exists.Val() {
+		if exists.Val() == 0 {
 			sentry.CaptureMessage("relay not initalized")
 			level.Warn(locallogger).Log("msg", "relay not initialized")
 			http.Error(writer, "relay not initialized", http.StatusNotFound)
