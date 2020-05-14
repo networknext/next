@@ -26,7 +26,7 @@ func TestAuthMiddleware(t *testing.T) {
 		res := httptest.NewRecorder()
 
 		authMiddleware.ServeHTTP(res, req)
-		assert.Equal(t, res.Code, http.StatusOK)
+		assert.Equal(t, http.StatusOK, res.Code)
 	})
 }
 
