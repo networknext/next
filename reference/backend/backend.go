@@ -10,25 +10,26 @@ package main
 import "C"
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/binary"
 	"fmt"
-	"github.com/gorilla/mux"
 	"hash/fnv"
 	"io/ioutil"
 	"math"
-	"math/rand"
 	"math/bits"
+	"math/rand"
 	"net"
 	"net/http"
 	"runtime/debug"
-	"encoding/base64"
-	"crypto/sha256"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
-	"bytes"
-	"strconv"
 	"unsafe"
+
+	"github.com/gorilla/mux"
 )
 
 const NEXT_MAX_NEAR_RELAYS = 32
@@ -130,13 +131,13 @@ var packetHashKey = []byte{0xe3, 0x18, 0x61, 0x72, 0xee, 0x70, 0x62, 0x37, 0x40,
 // ===================================================================================================================
 
 type NextBackendServerInitRequestPacket struct {
-	RequestId    		uint64
-	CustomerId   		uint64
-	DatacenterId 		uint64
-	Signature    		[]byte
-	VersionMajor         int32
-	VersionMinor         int32
-	VersionPatch         int32
+	RequestId    uint64
+	CustomerId   uint64
+	DatacenterId uint64
+	Signature    []byte
+	VersionMajor int32
+	VersionMinor int32
+	VersionPatch int32
 }
 
 func (packet *NextBackendServerInitRequestPacket) Serialize(stream Stream) error {
@@ -648,11 +649,11 @@ func IsNetworkNextPacket(packetData []byte, packetBytes int) bool {
 	}
 	hash := make([]byte, NEXT_PACKET_HASH_BYTES)
 	C.crypto_generichash(
-		(*C.uchar)(&hash[0]), 
-		C.ulong(NEXT_PACKET_HASH_BYTES), 
-		(*C.uchar)(&packetData[NEXT_PACKET_HASH_BYTES]), 
-		C.ulonglong(packetBytes - NEXT_PACKET_HASH_BYTES), 
-		(*C.uchar)(&packetHashKey[0]), 
+		(*C.uchar)(&hash[0]),
+		C.ulong(NEXT_PACKET_HASH_BYTES),
+		(*C.uchar)(&packetData[NEXT_PACKET_HASH_BYTES]),
+		C.ulonglong(packetBytes-NEXT_PACKET_HASH_BYTES),
+		(*C.uchar)(&packetHashKey[0]),
 		C.ulong(C.crypto_generichash_KEYBYTES),
 	)
 	for i := 0; i < NEXT_PACKET_HASH_BYTES; i++ {
@@ -664,13 +665,13 @@ func IsNetworkNextPacket(packetData []byte, packetBytes int) bool {
 }
 
 func SignNetworkNextPacket(packetData []byte) []byte {
-	signedPacketData := make([]byte, len(packetData) + NEXT_PACKET_HASH_BYTES)
+	signedPacketData := make([]byte, len(packetData)+NEXT_PACKET_HASH_BYTES)
 	C.crypto_generichash(
-		(*C.uchar)(&signedPacketData[0]), 
-		C.ulong(NEXT_PACKET_HASH_BYTES), 
-		(*C.uchar)(&packetData[0]), 
-		C.ulonglong(len(packetData)), 
-		(*C.uchar)(&packetHashKey[0]), 
+		(*C.uchar)(&signedPacketData[0]),
+		C.ulong(NEXT_PACKET_HASH_BYTES),
+		(*C.uchar)(&packetData[0]),
+		C.ulonglong(len(packetData)),
+		(*C.uchar)(&packetHashKey[0]),
 		C.ulong(C.crypto_generichash_KEYBYTES),
 	)
 	for i := 0; i < len(packetData); i++ {
@@ -2421,7 +2422,7 @@ func (stream *ReadStream) GetBytesProcessed() int {
 // -------------------------------------------------------------------------------------
 
 func ProtocolVersionAtLeast(serverVersionMajor int32, serverVersionMinor int32, serverVersionPatch int32, targetProtocolVersionMajor int32, targetProtocolVersionMinor int32, targetProtocolVersionPatch int32) bool {
-	
+
 	if serverVersionMajor == 0 && serverVersionMinor == 0 && serverVersionPatch == 0 {
 		// This is an internal build, assume latest version.
 		return true
