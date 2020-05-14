@@ -233,30 +233,29 @@ UserHandler = {
 		userId: "",
 	},
 	async fetchCurrentUserInfo() {
-		return Promise.all([
-			loginClient.getUser(),
-			loginClient.getIdTokenClaims(),
-		]).then((responses) => {
-			this.userInfo = {
-				email: responses[0].email,
-				name: responses[0].name,
-				nickname: responses[0].nickname,
-				userId: responses[0].sub,
-				token: responses[1].__raw,
-			};
-			return JSONRPCClient.call("AuthService.UserAccount", {user_id: this.userInfo.userId})
-		})
-		.then((response) => {
-			this.userInfo.id = response.account.id;
-			this.userInfo.company = response.account.company_name;
-			this.userInfo.roles = response.account.roles;
-		}).catch((e) => {
-			console.log("Something went wrong getting the current user information");
-			console.log(e);
-			Sentry.captureException(e);
+		return loginClient.getIdTokenClaims()
+			.then((response) => {
+				this.userInfo = {
+					email: response.email,
+					name: response.name,
+					nickname: response.nickname,
+					userId: response.sub,
+					token: response.__raw,
+				};
+				return JSONRPCClient.call("AuthService.UserAccount", {user_id: this.userInfo.userId})
+			})
+			.then((response) => {
+				this.userInfo.id = response.account.id;
+				this.userInfo.company = response.account.company_name;
+				this.userInfo.roles = response.account.roles;
+				console.log(this.userInfo)
+			}).catch((e) => {
+				console.log("Something went wrong getting the current user information");
+				console.log(e);
+				Sentry.captureException(e);
 
-			// Need to handle no BuyerID gracefully
-		});
+				// Need to handle no BuyerID gracefully
+			});
 	},
 	isAdmin() {
 		return UserHandler.userInfo.roles.findIndex((role) => role.name == "Admin") !== -1
@@ -556,6 +555,17 @@ function startApp() {
 	UserHandler
 		.fetchCurrentUserInfo()
 		.then(() => {
+			return JSONRPCClient
+				.call('BuyersService.Buyers', {})
+				.then((response) => {
+					allBuyers = response.Buyers;
+				})
+				.catch((e) => {
+					console.log("Something went wrong fetching buyers");
+					console.log(e);
+					Sentry.captureException(e);
+				});
+		}).then(() => {
 			createVueComponents();
 			document.getElementById("app").style.display = 'block';
 			MapHandler
@@ -565,16 +575,6 @@ function startApp() {
 				})
 				.catch((e) => {
 					console.log("Something went wrong initializing the map");
-					console.log(e);
-					Sentry.captureException(e);
-				});
-			JSONRPCClient
-				.call('BuyersService.Buyers', {})
-				.then((response) => {
-					allBuyers = response.Buyers;
-				})
-				.catch((e) => {
-					console.log("Something went wrong fetching buyers");
 					console.log(e);
 					Sentry.captureException(e);
 				});
@@ -617,6 +617,7 @@ function createVueComponents() {
 			deleteUser: WorkspaceHandler.deleteUser,
 			editUser: WorkspaceHandler.editUser,
 			isAdmin: UserHandler.isAdmin,
+			isOwner: UserHandler.isOwner,
 			refreshAccountsTable: refreshAccountsTable,
 			saveUser: WorkspaceHandler.saveUser,
 			updateAccountsTableFilter: updateAccountsTableFilter,
