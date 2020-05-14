@@ -16,13 +16,11 @@ If at any point Network Next is down, our SDK falls back to the public network, 
 How it works
 ------------
 
-The SDK consists of two main components. A client and a server. 
+The SDK has two main components. A client and a server. 
 
 (diagrams etc.)
 
 These components work together to monitor a player's connection and accelerate it when we find a route across Network Next.
-
-When we find a route that meets your network optimization requirements, we steer player traffic across these private networks. Otherwise, players traverse the public network directly between the client and server.
 
 (etc etc...)
 

@@ -296,13 +296,9 @@ int main( int argc, char ** argv )
             {
                 next_client_update( clients[i] );
 
-                uint8_t packet_data[NEXT_MTU];
-                memset( packet_data, 0, sizeof( packet_data ) );
-
                 int packet_bytes = 0;
-
+                uint8_t packet_data[NEXT_MTU];
                 generate_packet( packet_data, packet_bytes );
-
                 next_client_send_packet( clients[i], packet_data, packet_bytes );
             }
         }
