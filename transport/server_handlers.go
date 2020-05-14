@@ -36,6 +36,7 @@ type UDPHandlerFunc func(io.Writer, *UDPPacket)
 type UDPServerMux struct {
 	Conn          *net.UDPConn
 	MaxPacketSize int
+	PacketHash    *crypto.PacketHash
 
 	ServerInitHandlerFunc    UDPHandlerFunc
 	ServerUpdateHandlerFunc  UDPHandlerFunc
@@ -66,7 +67,15 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 			continue
 		}
 
-		packet := UDPPacket{SourceAddr: addr, Data: data[:numbytes]}
+		// Check the packet hash is legit and remove the hash from the beginning of the packet
+		// to continue processing the packet as normal
+		var hashedPacket bool
+		if err := m.PacketHash.Check(data); err == nil {
+			data = data[crypto.PacketHashSize : numbytes-crypto.PacketHashSize]
+			hashedPacket = true
+		}
+
+		packet := UDPPacket{SourceAddr: addr, Data: data}
 
 		var buf bytes.Buffer
 
@@ -80,7 +89,14 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 		}
 
 		if buf.Len() > 0 {
-			m.Conn.WriteToUDP(buf.Bytes(), packet.SourceAddr)
+			res := buf.Bytes()
+
+			// If the hashed checks out above then hash the response to the sender
+			if hashedPacket {
+				res = m.PacketHash.Sum(res)
+			}
+
+			m.Conn.WriteToUDP(res, packet.SourceAddr)
 		}
 	}
 }
