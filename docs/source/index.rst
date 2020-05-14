@@ -8,7 +8,7 @@ Introduction
 
 Network Next is the marketplace for premium network transit. 
 
-Our technology monitors your player's network connections and runs bids on our marketplace to find routes across private networks with better performance than the public internet.
+Our technology monitors your player's network connection and runs bids on our marketplace to find better routes across private networks.
 
 If at any point Network Next is down, our SDK falls back to the public internet, without any disruption to your players.
 
