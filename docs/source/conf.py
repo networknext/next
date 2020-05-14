@@ -19,7 +19,7 @@
 
 project = 'Network Next SDK'
 copyright = '2020, Network Next Team'
-author = 'Team Network Next'
+author = 'Network Next, Inc.'
 
 # The full version, including alpha/beta/rc tags
 release = '3.4.5'
