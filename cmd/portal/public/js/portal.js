@@ -524,7 +524,7 @@ WorkspaceHandler = {
 		JSONRPCClient
 			.call('OpsService.Relays', {})
 			.then((response) => {
-				let relays = response.relays || [];
+				let relays = response.relays;
 				/**
 				 * I really dislike this but it is apparently the way to reload/update the data within a vue
 				 */

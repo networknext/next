@@ -693,7 +693,7 @@
                                                             <tbody>
                                                                 <tr v-for="relay in meta.nearby_relays">
                                                                     <td>
-                                                                        <a class="text-dark">{{ relay.datacenter.name }}</a>&nbsp;
+                                                                        <a class="text-dark">{{ relay.name }}</a>&nbsp;
                                                                     </td>
                                                                     <td>
                                                                         {{ relay.client_stats.rtt }}
@@ -734,10 +734,10 @@
                                                                 </tr>
                                                                 <tr v-for="(hop, index) in meta.hops" scope="row">
                                                                     <td>
-                                                                        {{ hop.datacenter.name }}
+                                                                        {{ hop.name }}
                                                                     </td>
                                                                     <td>
-                                                                        Hop {{ index }}
+                                                                        Hop {{ index + 1 }}
                                                                     </td>
                                                                 </tr>
                                                                 <tr>
