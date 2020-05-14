@@ -18,7 +18,6 @@ If at any point Network Next is down, our SDK simply falls back to the public in
 
 .. toctree::
    :maxdepth: 2
-   :caption:
 
    how_it_works
    simple_client_example
