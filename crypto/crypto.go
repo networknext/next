@@ -1,15 +1,11 @@
 package crypto
 
 import (
-	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/binary"
-	"errors"
-	"hash"
 	"hash/fnv"
 
-	"golang.org/x/crypto/blake2b"
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/nacl/box"
 	"golang.org/x/crypto/poly1305"
@@ -47,47 +43,6 @@ var (
 		0x2a, 0x47, 0x98, 0x8f, 0x27, 0xec, 0x63, 0x2c, 0x25, 0x04, 0x74, 0x89, 0xaf, 0x5a, 0xeb, 0x24,
 	}
 )
-
-type PacketHash struct {
-	blake2b hash.Hash
-}
-
-// NewHash creates a Blake2b hash with the given key
-func NewPacketHash(key []byte) (*PacketHash, error) {
-	h, err := blake2b.New256(key)
-	if err != nil {
-		return nil, err
-	}
-
-	return &PacketHash{blake2b: h}, nil
-}
-
-func (ph *PacketHash) Sum(data []byte) []byte {
-	hash := ph.blake2b.Sum(data)
-
-	// The hash is message:checksum to get just the checksum
-	checksum := hash[len(data):]
-
-	// Prepend only the first 8 bytes of the checksum to the original data
-	return append(checksum[:PacketHashSize], data...)
-}
-
-// Check verifies the data with the hash of itself
-func (ph *PacketHash) Check(data []byte) error {
-	if len(data) < PacketHashSize {
-		return errors.New("data len too short")
-	}
-
-	// Get the hash of just the message at offset 8
-	hash := ph.Sum(data[PacketHashSize:])
-
-	// Compare the original checksum:message with the new hash checksum:message
-	if !bytes.Equal(data, hash) {
-		return errors.New("checksum failed")
-	}
-
-	return nil
-}
 
 // HashID hashes a string to a uint64 so it can be used as IDs for Relays, Datacenters, etc.
 func HashID(s string) uint64 {
@@ -165,4 +120,18 @@ func Sign(privateKey []byte, data []byte) []byte {
 // code linting
 func Verify(publicKey []byte, data []byte, sig []byte) bool {
 	return sodiumVerify(data, sig, publicKey)
+}
+
+// Hash wraps sodiumHash with is a wrapper around libsodium
+// We wrap this to avoid inclding C in other libs breaking
+// code linting
+func Hash(key []byte, data []byte) []byte {
+	return sodiumHash(data, key)
+}
+
+// Check wraps sodiumCheck with is a wrapper around libsodium
+// We wrap this to avoid inclding C in other libs breaking
+// code linting
+func Check(key []byte, data []byte) bool {
+	return sodiumCheck(data, key)
 }

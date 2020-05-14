@@ -14,29 +14,22 @@ import (
 func TestHashCheck(t *testing.T) {
 	msg := []byte("just some data to hash")
 
-	packetHash, err := crypto.NewPacketHash(crypto.PacketHashKey)
-	assert.NoError(t, err)
-
 	expected := []byte{
-		// Checksum
-		0x00, 0x91, 0x36, 0x91, 0xef, 0x2d, 0x8f, 0xe2,
+		// Hash
+		0x58, 0x95, 0x1d, 0x93, 0xd1, 0x31, 0x6e, 0x61,
 
 		// Message "just some data to hash"
 		0x6a, 0x75, 0x73, 0x74, 0x20, 0x73, 0x6f, 0x6d, 0x65, 0x20, 0x64, 0x61, 0x74, 0x61, 0x20, 0x74, 0x6f, 0x20, 0x68, 0x61, 0x73, 0x68,
 	}
-	checksum := packetHash.Sum(msg)
-	assert.Equal(t, crypto.PacketHashSize+len(msg), len(checksum))
-	assert.Equal(t, expected, checksum)
+	packetHash := crypto.Hash(crypto.PacketHashKey, msg)
+	assert.Equal(t, crypto.PacketHashSize+len(msg), len(packetHash))
+	assert.Equal(t, expected, packetHash)
 
-	err = packetHash.Check(checksum)
-	assert.NoError(t, err)
+	assert.True(t, crypto.Check(crypto.PacketHashKey, packetHash))
+	assert.False(t, crypto.Check(crypto.PacketHashKey, []byte("short")))
 
-	err = packetHash.Check([]byte("short"))
-	assert.Error(t, err)
-
-	msg = append([]byte("bad chksm"), msg...)
-	err = packetHash.Check(msg)
-	assert.Error(t, err)
+	expected[0] = 0x13 // Change any part of the hash so it doesn't represet the data
+	assert.False(t, crypto.Check(crypto.PacketHashKey, expected))
 }
 
 func TestSignVerify(t *testing.T) {
