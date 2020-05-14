@@ -871,7 +871,6 @@ function fetchUserSessions(userHash = '') {
 	JSONRPCClient
 		.call("BuyersService.UserSessions", {user_hash: hash})
 		.then((response) => {
-			console.log(response)
 			let sessions = response.sessions || [];
 
 			/**
