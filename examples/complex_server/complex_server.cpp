@@ -88,20 +88,6 @@ public:
     }
 };
 
-void * malloc_function( void * context, size_t bytes )
-{
-    next_assert( context );
-    Allocator * allocator = (Allocator*) context;
-    return allocator->Alloc( bytes );
-}
-
-void free_function( void * context, void * p )
-{
-    next_assert( context );
-    Allocator * allocator = (Allocator*) context;
-    return allocator->Free( p );
-}
-
 Allocator global_allocator;
 
 struct Context
@@ -114,6 +100,76 @@ struct ServerContext
     Allocator * allocator;
     uint32_t server_data;
 };
+
+void * malloc_function( void * _context, size_t bytes )
+{
+    Context * context = (Context*) _context;
+    next_assert( context );
+    next_assert( context->allocator );
+    return context->allocator->Alloc( bytes );
+}
+
+void free_function( void * _context, void * p )
+{
+    Context * context = (Context*) _context;
+    next_assert( context );
+    next_assert( context->allocator );
+    return context->allocator->Free( p );
+}
+
+// -------------------------------------------------------------
+
+extern const char * log_level_string( int level )
+{
+    if ( level == NEXT_LOG_LEVEL_DEBUG )
+        return "debug";
+    else if ( level == NEXT_LOG_LEVEL_INFO )
+        return "info";
+    else if ( level == NEXT_LOG_LEVEL_ERROR )
+        return "error";
+    else if ( level == NEXT_LOG_LEVEL_WARN )
+        return "warning";
+    else
+        return "???";
+}
+
+void log_function( int level, const char * format, ... ) 
+{
+    va_list args;
+    va_start( args, format );
+    char buffer[1024];
+    vsnprintf( buffer, sizeof( buffer ), format, args );
+    if ( level != NEXT_LOG_LEVEL_NONE )
+    {
+        const char * level_string = log_level_string( level );
+        printf( "%.2f: %s: %s\n", next_time(), level_string, buffer );
+    }
+    else
+    {
+        printf( "%s\n", buffer );
+    }
+    va_end( args );
+    fflush( stdout );
+}
+
+void assert_function( const char * condition, const char * function, const char * file, int line )
+{
+    printf( "assert failed: ( %s ), function %s, file %s, line %d\n", condition, function, file, line );
+    fflush( stdout );
+    #if defined(_MSC_VER)
+        __debugbreak();
+    #elif defined(__ORBIS__)
+        __builtin_trap();
+    #elif defined(__clang__)
+        __builtin_debugtrap();
+    #elif defined(__GNUC__)
+        __builtin_trap();
+    #elif defined(linux) || defined(__linux) || defined(__linux__) || defined(__APPLE__)
+        raise(SIGTRAP);
+    #else
+        #error "asserts not supported on this platform!"
+    #endif
+}
 
 // -------------------------------------------------------------
 
@@ -152,6 +208,11 @@ void server_packet_received( next_server_t * server, void * _context, const next
     next_server_send_packet( server, from, packet_data, packet_bytes );
     
     next_printf( NEXT_LOG_LEVEL_INFO, "server received packet from client (%d bytes)", packet_bytes );
+
+    if ( !next_server_session_upgraded( server, from ) )
+    {
+        next_server_upgrade_session( server, from, 0, 0, NULL );
+    }
 }
 
 int main()
@@ -160,6 +221,14 @@ int main()
 
     Context global_context;
     global_context.allocator = &global_allocator;
+
+    next_log_level( NEXT_LOG_LEVEL_INFO );
+
+    next_log_function( log_function );
+
+    next_assert_function( assert_function );
+
+    next_allocator( malloc_function, free_function );
 
     next_config_t config;
     next_default_config( &config );

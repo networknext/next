@@ -49,7 +49,7 @@ void xbox_printf( int level, const char * format, ... )
 	char buffer2[1024];
 	if (level != NEXT_LOG_LEVEL_NONE)
 	{
-		snprintf(buffer2, sizeof(buffer2), "%0.6f %s: %s\n", next_time(), level_str, buffer);
+		snprintf(buffer2, sizeof(buffer2), "%0.2f %s: %s\n", next_time(), level_str, buffer);
 	}
 	else
 	{
