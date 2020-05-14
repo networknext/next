@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"net"
 	"runtime"
+	"strconv"
 	"time"
 
 	"github.com/getsentry/sentry-go"
@@ -320,7 +321,7 @@ type RouteProvider interface {
 }
 
 // SessionUpdateHandlerFunc ...
-func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable, redisClientPortal redis.Cmdable, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, metrics *metrics.SessionMetrics, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable, redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, metrics *metrics.SessionMetrics, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
 	logger = log.With(logger, "handler", "session")
 
 	return func(w io.Writer, incoming *UDPPacket) {
@@ -513,7 +514,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 				writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.FallbackToDirect)
 			}
 
-			if err := updatePortalData(redisClientPortal, packet, nnStats, directStats, len(chosenRoute.Relays), routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, routing.LocationNullIsland); err != nil {
+			if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, routing.LocationNullIsland); err != nil {
 				sentry.CaptureException(err)
 				level.Error(locallogger).Log("msg", "failed to update portal data", "err", err)
 			}
@@ -535,7 +536,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			level.Error(locallogger).Log("msg", "failed to locate client", "err", err)
 			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.ClientLocateFailure)
 
-			if err := updatePortalData(redisClientPortal, packet, nnStats, directStats, len(chosenRoute.Relays), routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, location); err != nil {
+			if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, location); err != nil {
 				sentry.CaptureException(err)
 				level.Error(locallogger).Log("msg", "failed to update portal data", "err", err)
 			}
@@ -558,7 +559,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			level.Error(locallogger).Log("msg", "failed to locate relays near client", "err", err)
 			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.NearRelaysLocateFailure)
 
-			if err := updatePortalData(redisClientPortal, packet, nnStats, directStats, len(chosenRoute.Relays), routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, location); err != nil {
+			if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, location); err != nil {
 				sentry.CaptureException(err)
 				level.Error(locallogger).Log("msg", "failed to update portal data", "err", err)
 			}
@@ -590,7 +591,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			level.Error(locallogger).Log("msg", "datacenter is disabled", "datacenter", serverCacheEntry.Datacenter.Name)
 			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.DatacenterDisabled)
 
-			if err := updatePortalData(redisClientPortal, packet, nnStats, directStats, len(chosenRoute.Relays), routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, location); err != nil {
+			if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, location); err != nil {
 				sentry.CaptureException(err)
 				level.Error(locallogger).Log("msg", "failed to update portal data", "err", err)
 			}
@@ -614,7 +615,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			level.Error(locallogger).Log("msg", "no relays in datacenter", "datacenter", serverCacheEntry.Datacenter.Name)
 			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.NoRelaysInDatacenter)
 
-			if err := updatePortalData(redisClientPortal, packet, nnStats, directStats, len(chosenRoute.Relays), routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, location); err != nil {
+			if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, location); err != nil {
 				sentry.CaptureException(err)
 				level.Error(locallogger).Log("msg", "failed to update portal data", "err", err)
 			}
@@ -670,13 +671,15 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			routes, err := rp.Routes(dsRelays, clientRelays,
 				routing.SelectAcceptableRoutesFromBestRTT(float64(buyer.RoutingRulesSettings.RTTEpsilon)),
 				routing.SelectContainsRouteHash(sessionCacheEntry.RouteHash),
+				routing.SelectUnencumberedRoutes(0.8),
 				routing.SelectRoutesByRandomDestRelay(rand.NewSource(rand.Int63())),
-				routing.SelectRandomRoute(rand.NewSource(rand.Int63())))
+				routing.SelectRandomRoute(rand.NewSource(rand.Int63())),
+			)
 			if err != nil {
 				level.Error(locallogger).Log("err", err)
 				writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.RouteFailure)
 
-				if err := updatePortalData(redisClientPortal, packet, nnStats, directStats, len(chosenRoute.Relays), routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, location); err != nil {
+				if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, location); err != nil {
 					sentry.CaptureException(err)
 					level.Error(locallogger).Log("msg", "failed to update portal data", "err", err)
 				}
@@ -870,7 +873,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 		}
 
 		// Set portal data
-		if err := updatePortalData(redisClientPortal, packet, nnStats, directStats, len(chosenRoute.Relays), routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, location); err != nil {
+		if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, location); err != nil {
 			sentry.CaptureException(err)
 			level.Error(locallogger).Log("msg", "failed to update portal data", "err", err)
 		}
@@ -885,7 +888,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 	}
 }
 
-func updatePortalData(redisClientPortal redis.Cmdable, packet SessionUpdatePacket, nnStats routing.Stats, directStats routing.Stats, relayHops int, onNetworkNext bool, datacenterName string, location routing.Location) error {
+func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration, packet SessionUpdatePacket, nnStats routing.Stats, directStats routing.Stats, relayHops []routing.Relay, onNetworkNext bool, datacenterName string, location routing.Location) error {
 	meta := routing.SessionMeta{
 		ID:         fmt.Sprintf("%x", packet.SessionID),
 		UserHash:   fmt.Sprintf("%x", packet.UserHash),
@@ -899,6 +902,8 @@ func updatePortalData(redisClientPortal redis.Cmdable, packet SessionUpdatePacke
 		Hops:       relayHops,
 		SDK:        packet.Version.String(),
 		Connection: ConnectionTypeText(packet.ConnectionType),
+		Platform:   PlatformTypeText(packet.PlatformID),
+		CustomerID: strconv.FormatUint(packet.CustomerID, 10),
 	}
 	// Only fill in the essential information here to then let the portal fill in additional relay info
 	// so we don't spend time fetching info from storage here
@@ -930,15 +935,15 @@ func updatePortalData(redisClientPortal redis.Cmdable, packet SessionUpdatePacke
 	tx := redisClientPortal.TxPipeline()
 	tx.ZAdd("top-global", &redis.Z{Score: meta.DeltaRTT, Member: meta.ID})
 	tx.ZAdd(fmt.Sprintf("top-buyer-%x", packet.CustomerID), &redis.Z{Score: meta.DeltaRTT, Member: meta.ID})
-	tx.Set(fmt.Sprintf("session-%x-meta", packet.SessionID), meta, 30*time.Second)
+	tx.Set(fmt.Sprintf("session-%x-meta", packet.SessionID), meta, redisClientPortalExp)
 	tx.SAdd(fmt.Sprintf("session-%x-slices", packet.SessionID), slice)
-	tx.Expire(fmt.Sprintf("session-%x-slices", packet.SessionID), 30*time.Second)
+	tx.Expire(fmt.Sprintf("session-%x-slices", packet.SessionID), redisClientPortalExp)
 	tx.SAdd(fmt.Sprintf("user-%x-sessions", packet.UserHash), meta.ID)
-	tx.Expire(fmt.Sprintf("user-%x-sessions", packet.UserHash), 30*time.Second)
+	tx.Expire(fmt.Sprintf("user-%x-sessions", packet.UserHash), redisClientPortalExp)
 	tx.SAdd("map-points-global", meta.ID)
 	tx.SAdd(fmt.Sprintf("map-points-buyer-%x", packet.CustomerID), meta.ID)
-	tx.Expire(fmt.Sprintf("map-points-buyer-%x", packet.CustomerID), 30*time.Second)
-	tx.Set(fmt.Sprintf("session-%x-point", packet.SessionID), point, 30*time.Second)
+	tx.Expire(fmt.Sprintf("map-points-buyer-%x", packet.CustomerID), redisClientPortalExp)
+	tx.Set(fmt.Sprintf("session-%x-point", packet.SessionID), point, redisClientPortalExp)
 	if _, err := tx.Exec(); err != nil {
 		return err
 	}

@@ -19,7 +19,7 @@ import (
 const (
 	// RouteMatrixVersion ...
 	// IMPORTANT: Increment this when you change the binary format
-	RouteMatrixVersion = 4
+	RouteMatrixVersion = 5
 )
 
 // RouteMatrixEntry ...
@@ -37,15 +37,17 @@ type RouteMatrix struct {
 
 	RelayIndicies map[uint64]int
 
-	RelayIDs         []uint64
-	RelayNames       []string
-	RelayAddresses   [][]byte
-	RelayPublicKeys  [][]byte
-	DatacenterRelays map[uint64][]uint64
-	DatacenterIDs    []uint64
-	DatacenterNames  []string
-	Entries          []RouteMatrixEntry
-	RelaySellers     []Seller
+	RelayIDs              []uint64
+	RelayNames            []string
+	RelayAddresses        [][]byte
+	RelayPublicKeys       [][]byte
+	DatacenterRelays      map[uint64][]uint64
+	DatacenterIDs         []uint64
+	DatacenterNames       []string
+	Entries               []RouteMatrixEntry
+	RelaySellers          []Seller
+	RelaySessionCounts    []uint32
+	RelayMaxSessionCounts []uint32
 }
 
 func (m *RouteMatrix) ResolveRelay(id uint64) (Relay, error) {
@@ -59,7 +61,9 @@ func (m *RouteMatrix) ResolveRelay(id uint64) (Relay, error) {
 
 	if relayIndex >= len(m.RelayAddresses) ||
 		relayIndex >= len(m.RelayPublicKeys) ||
-		relayIndex >= len(m.RelaySellers) {
+		relayIndex >= len(m.RelaySellers) ||
+		relayIndex >= len(m.RelaySessionCounts) ||
+		relayIndex >= len(m.RelayMaxSessionCounts) {
 		return Relay{}, fmt.Errorf("relay %d has an invalid index %d", id, relayIndex)
 	}
 
@@ -81,6 +85,10 @@ func (m *RouteMatrix) ResolveRelay(id uint64) (Relay, error) {
 		},
 		PublicKey: m.RelayPublicKeys[relayIndex],
 		Seller:    m.RelaySellers[relayIndex],
+		TrafficStats: RelayTrafficStats{
+			SessionCount: uint64(m.RelaySessionCounts[relayIndex]),
+		},
+		MaxSessions: m.RelayMaxSessionCounts[relayIndex],
 	}, nil
 }
 
@@ -292,7 +300,7 @@ func (m *RouteMatrix) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-/* Binary data outline for RouteMatrix v4: "->" means seqential elements in memory and not another section, "(...)" mean that section sequentially repeats for however many
+/* Binary data outline for RouteMatrix v5: "->" means seqential elements in memory and not another section, "(...)" mean that section sequentially repeats for however many
  * Version number { uint32 }
  * Number of relays { uint32 }
  * Relay IDs { [NumberOfRelays]uint64 }
@@ -316,6 +324,8 @@ func (m *RouteMatrix) ServeHTTP(w http.ResponseWriter, r *http.Request) {
  * 	IngressPriceCents { uint64 }
  *	EgressPriceCents { uint64 }
  * )
+ * Relay Session Counts { [NumberOfRelays]uint32 }
+ * Relay Max Session Counts { [NumberOfRelays]uint32 }
  */
 
 // UnmarshalBinary ...
@@ -488,6 +498,24 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 		}
 	}
 
+	m.RelaySessionCounts = make([]uint32, numRelays)
+	if version >= 5 {
+		for i := range m.RelaySessionCounts {
+			if !encoding.ReadUint32(data, &index, &m.RelaySessionCounts[i]) {
+				return errors.New("[RouteMatrix] invalid read on relay session count")
+			}
+		}
+	}
+
+	m.RelayMaxSessionCounts = make([]uint32, numRelays)
+	if version >= 5 {
+		for i := range m.RelayMaxSessionCounts {
+			if !encoding.ReadUint32(data, &index, &m.RelayMaxSessionCounts[i]) {
+				return errors.New("[RouteMatrix] invalid read on relay max session count")
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -588,6 +616,14 @@ func (m *RouteMatrix) MarshalBinary() ([]byte, error) {
 		encoding.WriteUint64(data, &index, seller.EgressPriceCents)
 	}
 
+	for i := range m.RelaySessionCounts {
+		encoding.WriteUint32(data, &index, m.RelaySessionCounts[i])
+	}
+
+	for i := range m.RelayMaxSessionCounts {
+		encoding.WriteUint32(data, &index, m.RelayMaxSessionCounts[i])
+	}
+
 	return data, nil
 }
 
@@ -636,6 +672,12 @@ func (m *RouteMatrix) Size() uint64 {
 	for _, seller := range m.RelaySellers {
 		length += uint64(4 + len(seller.ID) + 4 + len(seller.Name) + 8 + 8)
 	}
+
+	// Add length of relay session counts
+	length += uint64(len(m.RelaySessionCounts) * 4)
+
+	// Add length of relay max session counts
+	length += uint64(len(m.RelayMaxSessionCounts) * 4)
 
 	return length
 }

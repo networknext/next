@@ -12,8 +12,8 @@ import (
 
 const (
 	PortalHostnameLocal = "localhost:20000"
-	PortalHostnameDev   = "portal.dev.networknext.com"
-	PortalHostnameProd  = "portal.prod.networknext.com"
+	PortalHostnameDev   = "portal-dev.networknext.com"
+	PortalHostnameProd  = "portal.networknext.com"
 
 	RouterPublicKeyLocal = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
 	RouterPublicKeyDev   = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="

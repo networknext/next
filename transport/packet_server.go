@@ -32,6 +32,15 @@ const (
 	ConnectionTypeWired    = 1
 	ConnectionTypeWifi     = 2
 	ConnectionTypeCellular = 3
+
+	PlatformTypeUnknown = 0
+	PlatformTypeWindows = 1
+	PlatformTypeMac     = 2
+	PlatformTypeUnix    = 3
+	PlatformTypeSwitch  = 4
+	PlatformTypePS4     = 5
+	PlatformTypeIOS     = 6
+	PlatformTypeXBOXOne = 7
 )
 
 // ConnectionTypeText is similar to http.StatusText(int) which converts the code to a readable text format
@@ -43,6 +52,28 @@ func ConnectionTypeText(conntype int32) string {
 		return "wifi"
 	case ConnectionTypeCellular:
 		return "cellular"
+	default:
+		return "unknown"
+	}
+}
+
+// PlatformTypeText is similar to http.StatusText(int) which converts the code to a readable text format
+func PlatformTypeText(platformType uint64) string {
+	switch platformType {
+	case PlatformTypeWindows:
+		return "Windows"
+	case PlatformTypeMac:
+		return "Mac"
+	case PlatformTypeUnix:
+		return "Unix"
+	case PlatformTypeSwitch:
+		return "Switch"
+	case PlatformTypePS4:
+		return "PS4"
+	case PlatformTypeIOS:
+		return "IOS"
+	case PlatformTypeXBOXOne:
+		return "XBOXOne"
 	default:
 		return "unknown"
 	}

@@ -6,15 +6,6 @@ mapboxgl.accessToken = 'pk.eyJ1IjoiYmF1bWJhY2hhbmRyZXciLCJhIjoiY2s4dDFwcGo2MGowZ
 
 const DEC_TO_PERC = 100;
 
-var userInfo = {
-	email: "",
-	name: "",
-	pubKey: "",
-	nickname: "",
-	token: "",
-	userId: "",
-};
-
 var defaultSessionDetailsVue = {
 	meta: null,
 	slices: [],
@@ -22,9 +13,9 @@ var defaultSessionDetailsVue = {
 };
 
 var defaultSessionsTable = {
-	onNN: [],
 	sessions: [],
 	showCount: false,
+	totalSessions: 0,
 };
 
 var defaultUserSessionTable = {
@@ -46,13 +37,17 @@ var editUserPermissions = [];
 
 var allRoles = [];
 
+var allBuyers = [];
+
+var mapFilter = {};
+
 JSONRPCClient = {
 	async call(method, params) {
 		const headers = {
 			'Accept':		'application/json',
 			'Accept-Encoding':	'gzip',
 			'Content-Type':		'application/json',
-			'Authorization': `Bearer ${userInfo.token}`
+			'Authorization': `Bearer ${UserHandler.userInfo.token}`
 		}
 
 		params = params || {}
@@ -97,70 +92,15 @@ MapHandler = {
 	},
 	mapInstance: null,
 	async initMap() {
-		JSONRPCClient
-			.call('BuyersService.SessionMapPoints', {})
-			.then((response) => {
-				/**
-				 * This code is used for demo purposes -> it uses around 580k points over NYC
-				 */
-				/* const DATA_URL =
-					  'https://raw.githubusercontent.com/uber-common/deck.gl-data/master/examples/screen-grid/uber-pickup-locations.json';
-				let data = DATA_URL;
-				const cellSize = 5, gpuAggregation = true, aggregation = 'SUM';
-				let sessionGridLayer = new deck.ScreenGridLayer({
-					id: 'session-layer',
-					data,
-					opacity: 0.8,
-					getPosition: d => [d[0], d[1]],
-					getWeight: d => d[2],
-					cellSizePixels: cellSize,
-					colorRange: [[0,109,44], [8,81,156]],
-					gpuAggregation,
-					aggregation
-				}); */
-				let data = response.map_points;
-				Object.assign(mapSessionsCount.$data, {
-					onNN: data.filter((point) => {
-						return point.on_network_next == true;
-					}),
-					sessions: data,
-				});
-				let layer = new deck.ScreenGridLayer({
-					id: 'sessions-layer',
-					data,
-					pickable: false,
-					opacity: 0.8,
-					cellSizePixels: 10,
-					colorRange: [
-						[40, 167, 69],
-						[36, 163, 113],
-						[27, 153, 159],
-						[18, 143, 206],
-						[9, 133, 252],
-						[0, 123, 255]
-					],
-					getPosition: d => [d.longitude, d.latitude],
-					getWeight: d => d.on_network_next ? 100 : 1, // Need to come up with a weight system. It won't map anything if the array of points are all identical
-					gpuAggregation: true,
-					aggregation: 'SUM'
-				});
-				let layers = [layer];
-				this.mapInstance = new deck.DeckGL({
-					mapboxApiAccessToken: mapboxgl.accessToken,
-					mapStyle: 'mapbox://styles/mapbox/dark-v10',
-					initialViewState: {
-						...this.defaultWorld.initialViewState
-					},
-					container: 'map-container',
-					controller: true,
-					layers: layers,
-				});
-				Object.assign(mapSessionsCount.$data, {showCount: true});
-			})
-			.catch((e) => {
-				console.log("Something went wrong with map init");
-				console.log(e);
-			});
+		let buyerId = !UserHandler.isAdmin() ? UserHandler.userInfo.id : "";
+		this.updateFilter({
+			buyerId: buyerId,
+			sessionType: 'all'
+		});
+	},
+	updateFilter(filter) {
+		Object.assign(mapSessionsCount.$data, {filter: filter});
+		this.refreshMapSessions();
 	},
 	updateMap(mapType) {
 		switch (mapType) {
@@ -177,7 +117,156 @@ MapHandler = {
 			default:
 				// Nothing for now
 		}
+	},
+	refreshMapSessions() {
+		setTimeout(() => {
+			let filter = mapSessionsCount.$data.filter;
+
+			JSONRPCClient
+				.call('BuyersService.SessionMapPoints', {buyer_id: filter.buyerId})
+				.then((response) => {
+					/**
+					 * This code is used for demo purposes -> it uses around 580k points over NYC
+					 */
+					/* const DATA_URL =
+						'https://raw.githubusercontent.com/uber-common/deck.gl-data/master/examples/screen-grid/uber-pickup-locations.json';
+					let data = DATA_URL;
+					const cellSize = 5, gpuAggregation = true, aggregation = 'SUM';
+					let sessionGridLayer = new deck.ScreenGridLayer({
+						id: 'session-layer',
+						data,
+						opacity: 0.8,
+						getPosition: d => [d[0], d[1]],
+						getWeight: d => d[2],
+						cellSizePixels: cellSize,
+						colorRange: [[0,109,44], [8,81,156]],
+						gpuAggregation,
+						aggregation
+					}); */
+
+					let sessions = response.map_points || [];
+					let onNN = sessions.filter((point) => {
+						return point.on_network_next;
+					});
+					let direct = sessions.filter((point) => {
+						return !point.on_network_next;
+					});
+					let data = [];
+
+					switch (filter.sessionType) {
+						case 'direct':
+							data = direct;
+							break;
+						case 'nn':
+							data = onNN;
+							break;
+						default:
+							data = sessions;
+					}
+
+					Object.assign(sessionsTable.$data, {
+						allMapSessions: sessions,
+						nnSessions: onNN,
+					});
+
+					Object.assign(mapSessionsCount.$data, {
+						onNN: onNN,
+						sessions: sessions,
+					});
+
+					let layer = new deck.ScreenGridLayer({
+						id: 'sessions-layer',
+						data,
+						pickable: false,
+						opacity: 0.8,
+						cellSizePixels: 10,
+						colorRange: [
+							[40, 167, 69],
+							[36, 163, 113],
+							[27, 153, 159],
+							[18, 143, 206],
+							[9, 133, 252],
+							[0, 123, 255]
+						],
+						getPosition: d => [d.longitude, d.latitude],
+						getWeight: d => d.on_network_next ? 100 : 1, // Need to come up with a weight system. It won't map anything if the array of points are all identical
+						gpuAggregation: true,
+						aggregation: 'SUM'
+					});
+
+					let layers = data.length > 0 ? [layer] : [];
+					if (this.mapInstance) {
+						this.mapInstance.setProps({layers})
+					} else {
+						this.mapInstance = new deck.DeckGL({
+							mapboxApiAccessToken: mapboxgl.accessToken,
+							mapStyle: 'mapbox://styles/mapbox/dark-v10',
+							initialViewState: {
+								...MapHandler.defaultWorld.initialViewState
+							},
+							container: 'map-container',
+							controller: true,
+							layers: layers,
+						});
+					}
+					Object.assign(mapSessionsCount.$data, {showCount: true});
+				})
+				.catch((e) => {
+					console.log("Something went wrong with map init");
+					console.log(e);
+					Sentry.captureException(e);
+				});
+			});
 	}
+}
+
+UserHandler = {
+	userInfo: {
+		company: "",
+		email: "",
+		id: "",
+		name: "",
+		nickname: "",
+		pubKey: "",
+		roles: [],
+		token: "",
+		userId: "",
+	},
+	async fetchCurrentUserInfo() {
+		return Promise.all([
+			loginClient.getUser(),
+			loginClient.getIdTokenClaims(),
+		]).then((responses) => {
+			this.userInfo = {
+				email: responses[0].email,
+				name: responses[0].name,
+				nickname: responses[0].nickname,
+				userId: responses[0].sub,
+				token: responses[1].__raw,
+			};
+			return JSONRPCClient.call("AuthService.UserAccount", {user_id: this.userInfo.userId})
+		})
+		.then((response) => {
+			this.userInfo.id = response.account.id;
+			this.userInfo.company = response.account.company_name;
+			this.userInfo.roles = response.account.roles;
+		}).catch((e) => {
+			console.log("Something went wrong getting the current user information");
+			console.log(e);
+			Sentry.captureException(e);
+
+			// Need to handle no BuyerID gracefully
+		});
+	},
+	isAdmin() {
+		return UserHandler.userInfo.roles.findIndex((role) => role.name == "Admin") !== -1
+	},
+	isOwner() {
+		return UserHandler.userInfo.roles.findIndex((role) => role.name == "Owner") !== -1
+	},
+	isViewer() {
+		return UserHandler.userInfo.roles.findIndex((role) => role.name == "Viewer") !== -1
+	},
 }
 
 WorkspaceHandler = {
@@ -224,15 +313,18 @@ WorkspaceHandler = {
 		// Run setup for selected page
 		switch (page) {
 			case 'config':
-				this.loadConfigPage();
 				this.links.accountsLink.classList.remove("active");
 				this.links.configLink.classList.add("active");
-				this.pages.config.style.display = 'block';
+				Object.assign(settingsPage.$data, {
+					showSettings: false,
+				});
 				break;
 			default:
 				this.links.configLink.classList.remove("active");
 				this.links.accountsLink.classList.add("active");
-				this.pages.accounts.style.display = 'block';
+				Object.assign(settingsPage.$data, {
+					showSettings: true,
+				});
 		}
 	},
 	changePage(page) {
@@ -314,7 +406,7 @@ WorkspaceHandler = {
 				})
 				.catch((e) => {
 					console.log("Something went wrong updating the users permissions");
-					console.log(e);
+					Sentry.captureException(e);
 					Object.assign(settingsPage.$data.updateUser.failure, {
 						message: 'Failed to update user',
 					});
@@ -345,7 +437,7 @@ WorkspaceHandler = {
 				})
 				.catch((e) => {
 					console.log("Something went wrong updating the users permissions");
-					console.log(e);
+					Sentry.captureException(e);
 					Object.assign(settingsPage.$data.updateUser.failure, {
 						message: 'Failed to delete user',
 					});
@@ -372,126 +464,83 @@ WorkspaceHandler = {
 	},
 	loadSettingsPage() {
 		this.changeAccountPage();
-		let promises = [
-			JSONRPCClient
-				.call('AuthService.AllAccounts', {buyer_id: '13672574147039585173'}),
-			JSONRPCClient
-				.call('AuthService.AllRoles', {})
-		];
-		Promise.all(promises)
-			.then(
-				(responses) => {
-					let accounts = responses[0].accounts;
 
+		if (UserHandler.userInfo.id != '') {
+			JSONRPCClient
+				.call('BuyersService.GameConfiguration', {buyer_id: UserHandler.userInfo.id})
+				.then((response) => {
+					UserHandler.userInfo.pubKey = response.game_config.public_key;
 					/**
 					 * I really dislike this but it is apparently the way to reload/update the data within a vue
 					 */
 					Object.assign(settingsPage.$data, {
-						accounts: accounts,
-						showAccounts: true,
+						pubKey: UserHandler.userInfo.pubKey,
 					});
-					allRoles = responses[1].roles;
-
-					setTimeout(() => {
-						let choices = allRoles.map((role) => {
-							return {
-								value: role,
-								label: role.name,
-								customProperties: {
-									description: role.description,
-								},
-							};
-						});
-
-						if (!addUserPermissions) {
-							addUserPermissions = new Choices(
-								document.getElementById("add-user-permissions"),
-								{
-									removeItemButton: true,
-									choices: choices,
-								}
-							);
-						}
-
-						choices = allRoles.map((role) => {
-							return {
-								value: role,
-								label: role.name,
-								customProperties: {
-									description: role.description,
-								},
-								selected: role.name === 'Viewer'
-							};
-						});
-
-						if (!autoSigninPermissions) {
-							autoSigninPermissions = new Choices(
-								document.getElementById("auto-signin-permissions"),
-								{
-									removeItemButton: true,
-									choices: choices,
-								}
-							);
-						}
-
-						generateRolesDropdown(accounts);
+				})
+				.catch((e) => {
+					console.log("Something went wrong fetching public key");
+					console.log(e)
+					Sentry.captureException(e);
+					UserHandler.userInfo.pubKey = "";
+					/**
+					 * I really dislike this but it is apparently the way to reload/update the data within a vue
+					 */
+					Object.assign(settingsPage.$data, {
+						pubKey: "",
 					});
-				}
-			)
-			.catch((errors) => {
-				console.log("Something went wrong loading settings page");
-				console.log(errors);
+				});
+		} else {
+			/**
+			 * I really dislike this but it is apparently the way to reload/update the data within a vue
+			 */
+			Object.assign(settingsPage.$data, {
+				pubKey: '',
 			});
+		}
+
+		let buyerId = !UserHandler.isAdmin() ? UserHandler.userInfo.id : "";
+		updateAccountsTableFilter({
+			buyerId: buyerId,
+		});
 	},
 	loadConfigPage() {
 		JSONRPCClient
-			.call('BuyersService.GameConfiguration', {buyer_id: '13672574147039585173'})
+			.call('BuyersService.GameConfiguration', {buyer_id: UserHandler.userInfo.id})
 			.then((response) => {
-				userInfo.pubKey = response.game_config.public_key;
+				UserHandler.userInfo.pubKey = response.game_config.public_key;
 				/**
 				 * I really dislike this but it is apparently the way to reload/update the data within a vue
 				 */
-				Object.assign(pubKeyInput.$data, {pubKey: userInfo.pubKey});
+				Object.assign(pubKeyInput.$data, {
+					pubKey: UserHandler.userInfo.pubKey,
+				});
 			})
 			.catch((e) => {
-				console.log("Something went wrong fetching public key");
-				console.log(e);
+				console.log("Something went wrong fetching relays");
+				Sentry.captureException(e);
 			});
 	},
 	loadRelayPage() {
 		JSONRPCClient
 			.call('OpsService.Relays', {})
 			.then((response) => {
+				let relays = response.relays;
 				/**
 				 * I really dislike this but it is apparently the way to reload/update the data within a vue
 				 */
-				Object.assign(relaysTable.$data, {relays: response.relays});
-			})
-			.catch((e) => {
-				console.log("Something went wrong fetching relays");
-				console.log(e);
-			});
-	},
-	loadSessionsPage() {
-		JSONRPCClient
-			.call('BuyersService.TopSessions', {})
-			.then((response) => {
-				let sessions = response.sessions;
-				/**
-				 * I really dislike this but it is apparently the way to reload/update the data within a vue
-				 */
-				Object.assign(sessionsTable.$data, {
-					onNN: sessions.filter((session) => {
-						return session.on_network_next;
-					}),
-					sessions: sessions,
-					showCount: true,
-				});
+				Object.assign(relaysTable.$data, {relays: relays});
 			})
 			.catch((e) => {
 				console.log("Something went wrong fetching the top sessions list");
-				console.log(e);
+				Sentry.captureException(e);
 			});
+	},
+	loadSessionsPage() {
+		let buyerId = !UserHandler.isAdmin() ? UserHandler.userInfo.id : "";
+		updateSessionFilter({
+			buyerId: buyerId,
+			sessionType: 'all'
+		});
 	},
 	loadUsersPage() {
 		// No Endpoint for this yet
@@ -503,31 +552,37 @@ function startApp() {
 	 * QUESTION: Instead of grabbing the user here can we use the token to then go off and get everything from the backend?
 	 * TODO:	 There are 3 different promises going off to get user details. There should be a better way to do this
 	 */
-	Promise.all([
-		loginClient.getUser(),
-		loginClient.getTokenSilently()
-	]).then((response) => {
-		userInfo = {
-			email: response[0].email,
-			name: response[0].name,
-			nickname: response[0].nickname,
-			userId: response[0].sub,
-			token: response[1]
-		};
-		createVueComponents();
-		document.getElementById("app").style.display = 'block';
-		MapHandler
-			.initMap()
-			.then((response) => {
-				console.log("Map init successful");
-			})
-			.catch((e) => {
-				console.log("Something went wrong initializing the map");
-				console.log(e);
-			});
-	}).catch((e) => {
-		console.log("Something went wrong getting the current user information");
-	});
+
+	UserHandler
+		.fetchCurrentUserInfo()
+		.then(() => {
+			createVueComponents();
+			document.getElementById("app").style.display = 'block';
+			MapHandler
+				.initMap()
+				.then((response) => {
+					console.log("Map init successful");
+				})
+				.catch((e) => {
+					console.log("Something went wrong initializing the map");
+					console.log(e);
+					Sentry.captureException(e);
+				});
+			JSONRPCClient
+				.call('BuyersService.Buyers', {})
+				.then((response) => {
+					allBuyers = response.Buyers;
+				})
+				.catch((e) => {
+					console.log("Something went wrong fetching buyers");
+					console.log(e);
+					Sentry.captureException(e);
+				});
+		}).catch((e) => {
+			console.log("Something went wrong getting the current user information");
+			console.log(e);
+			Sentry.captureException(e);
+		});
 }
 
 function createVueComponents() {
@@ -535,7 +590,8 @@ function createVueComponents() {
 		el: '#settings-page',
 		data: {
 			accounts: null,
-			showAccounts: false,
+			allBuyers: allBuyers,
+			filter: {buyerId: UserHandler.userInfo.id},
 			newUser: {
 				failure: {
 					message: '',
@@ -544,6 +600,9 @@ function createVueComponents() {
 					message: '',
 				},
 			},
+			pubKey: UserHandler.userInfo.pubKey,
+			showAccounts: false,
+			showSettings: true,
 			updateUser: {
 				failure: {
 					message: '',
@@ -557,24 +616,27 @@ function createVueComponents() {
 			cancelEditUser: WorkspaceHandler.cancelEditUser,
 			deleteUser: WorkspaceHandler.deleteUser,
 			editUser: WorkspaceHandler.editUser,
+			isAdmin: UserHandler.isAdmin,
+			refreshAccountsTable: refreshAccountsTable,
 			saveUser: WorkspaceHandler.saveUser,
+			updateAccountsTableFilter: updateAccountsTableFilter,
+			updatePubKey: updatePubKey
 		}
 	});
 	mapSessionsCount = new Vue({
 		el: '#map-sessions-count',
 		data: {
-			onNN: [],
-			sessions: [],
+			allBuyers: allBuyers,
+			filter: {buyerId: UserHandler.userInfo.id, sessionType: 'all'},
 			showCount: false,
-		}
-	});
-	pubKeyInput = new Vue({
-		el: '#pubKey',
-		data: {
-			pubKey: userInfo.pubKey
+			sessions: [],
+			userInfo: UserHandler.userInfo,
+			onNN: [],
 		},
 		methods: {
-			updatePubKey: updatePubKey
+			isAdmin: UserHandler.isAdmin,
+			refreshMapSessions: MapHandler.refreshMapSessions,
+			updateFilter: MapHandler.updateFilter,
 		}
 	});
 	sessionDetailsVue = new Vue({
@@ -583,14 +645,24 @@ function createVueComponents() {
 			meta: null,
 			slices: [],
 			showDetails: false,
+			allBuyers: allBuyers
 		}
 	});
 	sessionsTable = new Vue({
 		el: '#sessions',
-		data: {...defaultSessionsTable},
+		data: {
+			allBuyers: allBuyers,
+			filter: {buyerId: UserHandler.userInfo.id, sessionType: 'all'},
+			...defaultSessionsTable,
+			allMapSessions: [],
+			nnSessions: [],
+		},
 		methods: {
 			fetchSessionInfo: fetchSessionInfo,
 			fetchUserSessions: fetchUserSessions,
+			isAdmin: UserHandler.isAdmin,
+			updateSessionFilter: updateSessionFilter,
+			refreshSessionTable: refreshSessionTable,
 		}
 	});
 	userSessionTable = new Vue({
@@ -600,6 +672,179 @@ function createVueComponents() {
 			fetchSessionInfo: fetchSessionInfo
 		}
 	})
+}
+
+function updateAccountsTableFilter(filter) {
+	Object.assign(settingsPage.$data, {filter: filter});
+	refreshAccountsTable();
+}
+
+function refreshAccountsTable() {
+	setTimeout(() => {
+		let filter = settingsPage.$data.filter;
+
+		let promises = [
+			JSONRPCClient
+				.call('AuthService.AllAccounts', {buyer_id: filter.buyerId}),
+			JSONRPCClient
+				.call('AuthService.AllRoles', {})
+		];
+		Promise.all(promises)
+			.then((responses) => {
+				allRoles = responses[1].roles;
+				let accounts = responses[0].accounts || [];
+
+				/**
+				 * I really dislike this but it is apparently the way to reload/update the data within a vue
+				 */
+				Object.assign(settingsPage.$data, {
+					accounts: accounts,
+					showAccounts: true,
+				});
+
+				setTimeout(() => {
+					let choices = allRoles.map((role) => {
+						return {
+							value: role,
+							label: role.name,
+							customProperties: {
+								description: role.description,
+							},
+						};
+					});
+
+					if (!addUserPermissions) {
+						addUserPermissions = new Choices(
+							document.getElementById("add-user-permissions"),
+							{
+								removeItemButton: true,
+								choices: choices,
+							}
+						);
+					}
+
+					choices = allRoles.map((role) => {
+						return {
+							value: role,
+							label: role.name,
+							customProperties: {
+								description: role.description,
+							},
+							selected: role.name === 'Viewer'
+						};
+					});
+
+					if (!autoSigninPermissions) {
+						autoSigninPermissions = new Choices(
+							document.getElementById("auto-signin-permissions"),
+							{
+								removeItemButton: true,
+								choices: choices,
+							}
+						);
+					}
+
+					choices = allRoles.map((role) => {
+						return {
+							value: role,
+							label: role.name,
+							customProperties: {
+								description: role.description,
+							},
+						};
+					});
+
+					if (!addUserPermissions) {
+						addUserPermissions = new Choices(
+							document.getElementById("add-user-permissions"),
+							{
+								removeItemButton: true,
+								choices: choices,
+							}
+						);
+					}
+
+					choices = allRoles.map((role) => {
+						return {
+							value: role,
+							label: role.name,
+							customProperties: {
+								description: role.description,
+							},
+							selected: role.name === 'Viewer'
+						};
+					});
+
+					if (!autoSigninPermissions) {
+						autoSigninPermissions = new Choices(
+							document.getElementById("auto-signin-permissions"),
+							{
+								removeItemButton: true,
+								choices: choices,
+							}
+						);
+					}
+
+					generateRolesDropdown(accounts);
+				});
+			}
+		)
+		.catch((errors) => {
+			console.log("Something went wrong loading settings page");
+			console.log(errors);
+			Sentry.captureException(errors);
+		});
+	});
+}
+
+function updateSessionFilter(filter) {
+	Object.assign(sessionsTable.$data, {filter: filter});
+	refreshSessionTable();
+}
+
+function refreshSessionTable() {
+	setTimeout(() => {
+		let filter = sessionsTable.$data.filter;
+
+		JSONRPCClient
+			.call('BuyersService.TopSessions', {buyer_id: filter.buyerId})
+			.then((response) => {
+				let sessions = response.sessions || [];
+				let onNN = sessions.filter((point) => {
+					return point.on_network_next;
+				});
+				let direct = sessions.filter((point) => {
+					return !point.on_network_next;
+				});
+				let data = [];
+
+				switch (filter.sessionType) {
+					case 'direct':
+						data = direct;
+						break;
+					case 'nn':
+						data = onNN;
+						break;
+					default:
+						data = sessions;
+				}
+				/**
+				 * I really dislike this but it is apparently the way to reload/update the data within a vue
+				 */
+				Object.assign(sessionsTable.$data, {
+					direct: direct.length,
+					onNN: onNN.length,
+					totalSessions: sessions.length,
+					sessions: data,
+					showCount: true,
+				});
+			})
+			.catch((e) => {
+				console.log("Something went wrong fetching the top sessions list");
+				console.log(e);
+				Sentry.captureException(e);
+			});
+	});
 }
 
 function fetchUserSessions(userHash = '') {
@@ -642,7 +887,7 @@ function fetchUserSessions(userHash = '') {
 		.catch((e) => {
 			Object.assign(userSessionTable.$data, {...defaultUserSessionTable});
 			console.log("Something went wrong fetching user sessions: ");
-			console.log(e);
+			Sentry.captureException(e);
 			WorkspaceHandler.alerts.userToolDanger.style.display = 'block';
 			document.getElementById("user-hash-input").value = '';
 		});
@@ -652,13 +897,13 @@ function updatePubKey() {
 	let newPubkey = document.getElementById("pubkey-input").value;
 
 	JSONRPCClient
-		.call("BuyersService.UpdateGameConfiguration", {buyer_id: '13672574147039585173', new_public_key: newPubkey})
+		.call("BuyersService.UpdateGameConfiguration", {buyer_id: UserHandler.userInfo.id, new_public_key: newPubkey})
 		.then((response) => {
-			userInfo.pubkey = response.game_config.public_key;
+			UserHandler.userInfo.pubkey = response.game_config.public_key;
 		})
 		.catch((e) => {
 			console.log("Something went wrong updating the public key");
-			console.log(e);
+			Sentry.captureException(e);
 		});
 }
 
@@ -696,7 +941,7 @@ function addUsers(event) {
 		})
 		.catch((e) => {
 			console.log("Something went wrong creating new users");
-			console.log(e);
+			Sentry.captureException(e);
 			Object.assign(settingsPage.$data.newUser.failure, {
 				message: 'Failed to add user account',
 			});
@@ -790,7 +1035,7 @@ function fetchSessionInfo(sessionId = '') {
 		.catch((e) => {
 			Object.assign(sessionDetailsVue.$data, {...defaultSessionDetailsVue});
 			console.log("Something went wrong fetching session details: ");
-			console.log(e);
+			Sentry.captureException(e);
 			WorkspaceHandler.alerts.sessionToolDanger.style.display = 'block';
 			document.getElementById("session-id-input").value = '';
 		});

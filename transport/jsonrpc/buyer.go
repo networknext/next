@@ -312,3 +312,31 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 	return nil
 }
+
+type BuyerListArgs struct{}
+
+type BuyerListReply struct {
+	Buyers []buyerAccount
+}
+
+type buyerAccount struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *BuyerListReply) error {
+	for _, b := range s.Storage.Buyers() {
+		id := strconv.FormatUint(b.ID, 10)
+		account := buyerAccount{
+			ID:   id,
+			Name: b.Name,
+		}
+		reply.Buyers = append(reply.Buyers, account)
+	}
+
+	sort.Slice(reply.Buyers, func(i int, j int) bool {
+		return reply.Buyers[i].Name < reply.Buyers[j].Name
+	})
+
+	return nil
+}

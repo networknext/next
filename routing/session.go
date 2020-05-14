@@ -16,10 +16,12 @@ type SessionMeta struct {
 	Location     Location `json:"location"`
 	ClientAddr   string   `json:"client_addr"`
 	ServerAddr   string   `json:"server_addr"`
-	Hops         int      `json:"hops"`
+	Hops         []Relay  `json:"hops"`
 	SDK          string   `json:"sdk"`
 	Connection   string   `json:"connection"`
 	NearbyRelays []Relay  `json:"nearby_relays"`
+	Platform     string   `json:"platform"`
+	CustomerID   string   `json:"customer_id"`
 }
 
 func (s *SessionMeta) UnmarshalBinary(data []byte) error {

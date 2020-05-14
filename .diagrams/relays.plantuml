@@ -1,0 +1,54 @@
+@startuml
+node NetworkNext {
+    node ServerBackend
+}
+
+cloud Internet {
+    cloud vultr.losangles {
+        node vultr.losangles_relay
+    }
+
+    cloud vultr.dallas {
+        node vultr.dallas_relay
+        node GameServer
+    }
+
+    cloud vultr.london {
+        node vultr.london_relay
+    }
+    
+    cloud packet.houston {
+        node packet.houston_relay
+    }
+
+    cloud packet.dubai {
+        node packet.dubai_relay
+    }
+
+    cloud packet.chicago {
+        node packet.chicago_relay
+    }
+    
+    cloud linode.sandiego {
+        node linode.sandiego_relay
+    }
+
+    cloud linode.columbus {
+        node linode.columbus_relay
+    }
+
+    node GameClient [
+    GameClient
+
+    San Diego ISP
+]
+}
+
+GameServer <..> ServerBackend : Route Selection\n&\nDecision (10s)
+GameServer <~~> GameClient : Next Route\nor\nDirect Route
+GameClient <==> linode.sandiego_relay : Hop 0
+linode.sandiego_relay <==> packet.chicago_relay : Hop 1
+packet.chicago_relay <==> linode.columbus_relay : Hop 2
+linode.columbus_relay <==> vultr.dallas_relay : Hop 3
+vultr.dallas_relay <==> GameServer : Hop 4
+@enduml

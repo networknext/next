@@ -38,6 +38,8 @@ The default setting is `warn` when running `make dev-relay-backend` and `make de
 - `MAXMIND_DB_URI`: local path to a `.mmdb` file for IP lookups
 - `REDIS_HOST_RELAYS`: address of the Redis server that has the lat/long information for the relays
 - `REDIS_HOST_CACHE`: address of the Redis server(s) in comma-separated format to cache server/session data
+- `REDIS_HOST_PORTAL`: redis instance to save map, top sessions, and session details
+- `REDIS_HOST_PORTAL_EXPIRATION`: when portal data expires after a session ends, format is parsed with https://golang.org/pkg/time/#ParseDuration
 
 #### Optional
 
