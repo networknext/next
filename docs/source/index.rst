@@ -11,7 +11,7 @@ Our technology monitors your player's network connections and runs bids on our m
 
 When we find a route that meets your network optimization requirements, we steer player traffic across these private networks. Otherwise, players traverse the public network directly between the client and server.
 
-If at any point Network Next is down, our SDK automatically falls back to providing unaccerelated direct connections between clients and servers.
+If at any point Network Next is down, our SDK automatically falls back to the public network, without any disruption to your players :)
 
 Usage
 -----
