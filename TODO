@@ -18,23 +18,27 @@ DONE
 
 	Fix iOS platform mutex.
 
-TODO
-
 	Update SDK version in all build and testbed projects, rebuild and individually test each platform.
 
 	Verify testbed runs on X1
 
 	Verify testbed runs on PS4
 
-	--------------------------------------------
+	Disable the memory checks.
 
-	--------------------------------------------
+	Rebuild all binaries without memory checks.
 
+TODO
 
-	--------------------------------------------
+	Write SDK docs with https://readthedocs.com
 
+	----------------------------------------
 
+	Wait for the backend to catch up to us and become 3.4.5 compatible.
 
+	Make SDK 3.4.5 release.
+
+	----------------------------------------
 
 
 
@@ -89,17 +93,5 @@ TODO
 	--------------------------------
 
 	^--- functional tests for each of the ping cases above.
-
-	--------------------------------
-
-	Double check all client.cpp, server.cpp and testbed.cpp for each platform are working with correct settings.
-
-	--------------------------------
-
-	Make SDK 3.4.5 release.
-
-	--------------------------------
-
-	Hand off to customers.
 
 	--------------------------------
