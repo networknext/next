@@ -90,6 +90,34 @@ project "sodium"
   		buildoptions { "-Wno-unused-parameter", "-Wno-unused-function", "-Wno-unknown-pragmas", "-Wno-unused-variable" }
 end
 
+project "test"
+	kind "ConsoleApp"
+	links { "next", "sodium" }
+	files { "test.cpp" }
+	includedirs { "include" }
+	defines { "SODIUM_STATIC" }
+	filter "system:windows"
+		disablewarnings { "4324" }
+		includedirs { "sodium/include/" }
+	filter "system:not windows"
+		links { "pthread" }
+	filter "system:macosx"
+		linkoptions { "-framework SystemConfiguration -framework CoreFoundation" }
+
+project "soak"
+	kind "ConsoleApp"
+	links { "next", "sodium" }
+	files { "soak.cpp" }
+	includedirs { "include" }
+	defines { "SODIUM_STATIC" }
+	filter "system:windows"
+		disablewarnings { "4324" }
+		includedirs { "sodium/include/" }
+	filter "system:not windows"
+		links { "pthread" }
+	filter "system:macosx"
+		linkoptions { "-framework SystemConfiguration -framework CoreFoundation" }
+
 project "client"
 	kind "ConsoleApp"
 	links { "next", "sodium" }
@@ -118,10 +146,10 @@ project "server"
 	filter "system:macosx"
 		linkoptions { "-framework SystemConfiguration -framework CoreFoundation" }
 
-project "test"
+project "simple_client"
 	kind "ConsoleApp"
 	links { "next", "sodium" }
-	files { "test.cpp" }
+	files { "examples/simple_client/simple_client.cpp" }
 	includedirs { "include" }
 	defines { "SODIUM_STATIC" }
 	filter "system:windows"
@@ -132,10 +160,10 @@ project "test"
 	filter "system:macosx"
 		linkoptions { "-framework SystemConfiguration -framework CoreFoundation" }
 
-project "soak"
+project "simple_server"
 	kind "ConsoleApp"
 	links { "next", "sodium" }
-	files { "soak.cpp" }
+	files { "examples/simple_server/simple_server.cpp" }
 	includedirs { "include" }
 	defines { "SODIUM_STATIC" }
 	filter "system:windows"
@@ -145,3 +173,4 @@ project "soak"
 		links { "pthread" }
 	filter "system:macosx"
 		linkoptions { "-framework SystemConfiguration -framework CoreFoundation" }
+
