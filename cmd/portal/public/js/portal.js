@@ -637,6 +637,7 @@ function createVueComponents() {
 				},
 				settings: {
 					accounts: [],
+					pubKey: '',
 					show: false,
 					showAccounts: true,
 					showConfig: false,
@@ -650,6 +651,7 @@ function createVueComponents() {
 					showFailure: false,
 					showSessions: false,
 					showSuccess: false,
+					showTable: false,
 					success: {
 						message: ''
 					},
