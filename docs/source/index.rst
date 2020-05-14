@@ -2,6 +2,7 @@
 Network Next SDK
 ================
 
+
 Introduction
 ------------
 
@@ -13,6 +14,7 @@ When we find a route that meets your network optimization requirements, we steer
 
 If at any point Network Next is down, our SDK falls back to the public network, without any disruption to your players.
 
+
 Usage
 -----
 
@@ -20,10 +22,9 @@ To use Network Next you must integrate our SDK with your game.
 
 The SDK consists of two main components. A client and a server. These components work together to monitor a player's connection and accelerate it when we find a route across Network Next.
 
-To get started, let's look at an example of creating a client.
 
-Client
-------
+Client Example
+--------------
 
 First, initialize the SDK:
 
@@ -40,7 +41,7 @@ Next, define a function to be called when packets are received:
 	    printf( "client received packet (%d bytes)", packet_bytes );
 	}
 
-Now create a network next client:
+Create the client:
 
 .. code-block:: c++
 
@@ -57,7 +58,7 @@ Open a session between the client and the server:
 
 	next_client_open_session( client, "127.0.0.0:50000" );
 
-and now you can send packets to the server like this:
+Now you can send packets to the server like this:
 
 .. code-block:: c++
 
@@ -65,13 +66,13 @@ and now you can send packets to the server like this:
 	memset( packet_data, 0, sizeof( packet_data ) );
 	next_client_send_packet( client, packet_data, sizeof(packet_data) );
 
-Make sure the client is updated once every time your game frame updates:
+Make sure the client is updated once every frame:
 
 .. code-block:: c++
 
-	next_client_update_session( client );
+	next_client_update( client );
 
-And finally, when you have finished your session with the server, close it:
+When you have finished your session with the server, close it:
 
 .. code-block:: c++
 
@@ -83,17 +84,49 @@ When you are finished using your client, destroy it:
 
 	next_client_destroy( client );
 
-And before your application terminates, shut down the network next SDK:
+Before your application terminates, please shut down the SDK:
 
 .. code-block:: c++
 
 	next_term();
 
-Server
-------
 
-Yes yes yes
+Server Example
+--------------
 
+Initialize the SDK:
+
+.. code-block:: c++
+
+	next_init( NULL, NULL ); 
+
+Next, define a function to be called when packets are received. 
+
+Here is one that reflects the packet back to the client that sent it:
+
+.. code-block:: c++
+
+	void server_packet_received( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
+	{
+	    next_server_send_packet( server, from, packet_data, packet_bytes );
+	}
+
+Now create the server. In this example, we bind the server to port 50000 on 127.0.0.1 IPv4 address (localhost) and the datacenter where your server is running to "local":
+
+.. code-block:: c++
+
+    next_server_t * server = next_server_create( NULL, "127.0.0.1:50000", "0.0.0.0:50000", "local", server_packet_received );
+    if ( server == NULL )
+    {
+        printf( "error: failed to create server\n" );
+        return 1;
+    }
+
+Make sure the server gets updated once every frame:
+
+.. code-block:: c++
+
+	next_server_update( server );
 
 .. toctree::
    :maxdepth: 2
