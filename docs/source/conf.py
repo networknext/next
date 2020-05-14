@@ -18,8 +18,8 @@
 # -- Project information -----------------------------------------------------
 
 project = 'Network Next SDK'
-copyright = '2020, Network Next Team'
-author = 'Network Next, Inc.'
+copyright = '2020, Network Next, Inc.'
+author = 'Team Network Next'
 
 # The full version, including alpha/beta/rc tags
 release = '3.4.5'
