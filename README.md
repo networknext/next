@@ -2,6 +2,8 @@
 
 <br>
 
+[![Documentation Status](https://readthedocs.com/projects/network-next-sdk/badge/?version=latest)](https://network-next-sdk.readthedocs-hosted.com/en/latest/?badge=latest)
+
 ## Network Next SDK
 
 Supported platforms:
