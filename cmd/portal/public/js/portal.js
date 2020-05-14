@@ -235,14 +235,14 @@ UserHandler = {
 	async fetchCurrentUserInfo() {
 		return Promise.all([
 			loginClient.getUser(),
-			loginClient.getTokenSilently()
+			loginClient.getIdTokenClaims(),
 		]).then((responses) => {
 			this.userInfo = {
 				email: responses[0].email,
 				name: responses[0].name,
 				nickname: responses[0].nickname,
 				userId: responses[0].sub,
-				token: responses[1],
+				token: responses[1].__raw,
 			};
 			return JSONRPCClient.call("AuthService.UserAccount", {user_id: this.userInfo.userId})
 		})
@@ -568,18 +568,18 @@ function startApp() {
 					console.log(e);
 					Sentry.captureException(e);
 				});
+			JSONRPCClient
+				.call('BuyersService.Buyers', {})
+				.then((response) => {
+					allBuyers = response.Buyers;
+				})
+				.catch((e) => {
+					console.log("Something went wrong fetching buyers");
+					console.log(e);
+					Sentry.captureException(e);
+				});
 		}).catch((e) => {
 			console.log("Something went wrong getting the current user information");
-			console.log(e);
-			Sentry.captureException(e);
-		});
-	JSONRPCClient
-		.call('BuyersService.Buyers', {})
-		.then((response) => {
-			allBuyers = response.Buyers;
-		})
-		.catch((e) => {
-			console.log("Something went wrong fetching buyers");
 			console.log(e);
 			Sentry.captureException(e);
 		});
