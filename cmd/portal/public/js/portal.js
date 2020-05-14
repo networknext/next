@@ -35,12 +35,6 @@ var autoSigninPermissions = null;
 var addUserPermissions = null;
 var editUserPermissions = [];
 
-var allRoles = [];
-
-var allBuyers = [];
-
-var mapFilter = {};
-
 JSONRPCClient = {
 	async call(method, params) {
 		const headers = {
@@ -65,6 +59,7 @@ JSONRPCClient = {
 
 
 		return response.json().then((json) => {
+			console.log(json)
 			if (json.error) {
 				throw new Error(json.error);
 			}
@@ -91,15 +86,15 @@ MapHandler = {
 		},
 	},
 	mapInstance: null,
-	async initMap() {
+	initMap() {
 		let buyerId = !UserHandler.isAdmin() ? UserHandler.userInfo.id : "";
-		this.updateFilter({
+		this.updateFilter('map', {
 			buyerId: buyerId,
 			sessionType: 'all'
 		});
 	},
 	updateFilter(filter) {
-		Object.assign(mapSessionsCount.$data, {filter: filter});
+		Object.assign(rootComponent.$data.pages.map, {filter: filter});
 		this.refreshMapSessions();
 	},
 	updateMap(mapType) {
@@ -119,105 +114,98 @@ MapHandler = {
 		}
 	},
 	refreshMapSessions() {
-		setTimeout(() => {
-			let filter = mapSessionsCount.$data.filter;
+		let filter = rootComponent.$data.pages.map.filter;
+		JSONRPCClient
+			.call('BuyersService.SessionMapPoints', {buyer_id: filter.buyerId})
+			.then((response) => {
+				/**
+				 * This code is used for demo purposes -> it uses around 580k points over NYC
+				 */
+				/* const DATA_URL =
+					'https://raw.githubusercontent.com/uber-common/deck.gl-data/master/examples/screen-grid/uber-pickup-locations.json';
+				let data = DATA_URL;
+				const cellSize = 5, gpuAggregation = true, aggregation = 'SUM';
+				let sessionGridLayer = new deck.ScreenGridLayer({
+					id: 'session-layer',
+					data,
+					opacity: 0.8,
+					getPosition: d => [d[0], d[1]],
+					getWeight: d => d[2],
+					cellSizePixels: cellSize,
+					colorRange: [[0,109,44], [8,81,156]],
+					gpuAggregation,
+					aggregation
+				}); */
 
-			JSONRPCClient
-				.call('BuyersService.SessionMapPoints', {buyer_id: filter.buyerId})
-				.then((response) => {
-					/**
-					 * This code is used for demo purposes -> it uses around 580k points over NYC
-					 */
-					/* const DATA_URL =
-						'https://raw.githubusercontent.com/uber-common/deck.gl-data/master/examples/screen-grid/uber-pickup-locations.json';
-					let data = DATA_URL;
-					const cellSize = 5, gpuAggregation = true, aggregation = 'SUM';
-					let sessionGridLayer = new deck.ScreenGridLayer({
-						id: 'session-layer',
-						data,
-						opacity: 0.8,
-						getPosition: d => [d[0], d[1]],
-						getWeight: d => d[2],
-						cellSizePixels: cellSize,
-						colorRange: [[0,109,44], [8,81,156]],
-						gpuAggregation,
-						aggregation
-					}); */
-
-					let sessions = response.map_points || [];
-					let onNN = sessions.filter((point) => {
-						return point.on_network_next;
-					});
-					let direct = sessions.filter((point) => {
-						return !point.on_network_next;
-					});
-					let data = [];
-
-					switch (filter.sessionType) {
-						case 'direct':
-							data = direct;
-							break;
-						case 'nn':
-							data = onNN;
-							break;
-						default:
-							data = sessions;
-					}
-
-					Object.assign(sessionsTable.$data, {
-						allMapSessions: sessions,
-						nnSessions: onNN,
-					});
-
-					Object.assign(mapSessionsCount.$data, {
-						onNN: onNN,
-						sessions: sessions,
-					});
-
-					let layer = new deck.ScreenGridLayer({
-						id: 'sessions-layer',
-						data,
-						pickable: false,
-						opacity: 0.8,
-						cellSizePixels: 10,
-						colorRange: [
-							[40, 167, 69],
-							[36, 163, 113],
-							[27, 153, 159],
-							[18, 143, 206],
-							[9, 133, 252],
-							[0, 123, 255]
-						],
-						getPosition: d => [d.longitude, d.latitude],
-						getWeight: d => d.on_network_next ? 100 : 1, // Need to come up with a weight system. It won't map anything if the array of points are all identical
-						gpuAggregation: true,
-						aggregation: 'SUM'
-					});
-
-					let layers = data.length > 0 ? [layer] : [];
-					if (this.mapInstance) {
-						this.mapInstance.setProps({layers})
-					} else {
-						this.mapInstance = new deck.DeckGL({
-							mapboxApiAccessToken: mapboxgl.accessToken,
-							mapStyle: 'mapbox://styles/mapbox/dark-v10',
-							initialViewState: {
-								...MapHandler.defaultWorld.initialViewState
-							},
-							container: 'map-container',
-							controller: true,
-							layers: layers,
-						});
-					}
-					Object.assign(mapSessionsCount.$data, {showCount: true});
-				})
-				.catch((e) => {
-					console.log("Something went wrong with map init");
-					console.log(e);
-					Sentry.captureException(e);
+				let sessions = response.map_points || [];
+				let onNN = sessions.filter((point) => {
+					return point.on_network_next;
 				});
+				let direct = sessions.filter((point) => {
+					return !point.on_network_next;
+				});
+				let data = [];
+
+				switch (filter.sessionType) {
+					case 'direct':
+						data = direct;
+						break;
+					case 'nn':
+						data = onNN;
+						break;
+					default:
+						data = sessions;
+				}
+
+				Object.assign(rootComponent.$data, {
+					direct: direct,
+					mapSessions: sessions,
+					onNN: onNN,
+				});
+
+				let layer = new deck.ScreenGridLayer({
+					id: 'sessions-layer',
+					data,
+					pickable: false,
+					opacity: 0.8,
+					cellSizePixels: 10,
+					colorRange: [
+						[40, 167, 69],
+						[36, 163, 113],
+						[27, 153, 159],
+						[18, 143, 206],
+						[9, 133, 252],
+						[0, 123, 255]
+					],
+					getPosition: d => [d.longitude, d.latitude],
+					getWeight: d => d.on_network_next ? 100 : 1, // Need to come up with a weight system. It won't map anything if the array of points are all identical
+					gpuAggregation: true,
+					aggregation: 'SUM'
+				});
+
+				let layers = data.length > 0 ? [layer] : [];
+				if (this.mapInstance) {
+					this.mapInstance.setProps({layers})
+				} else {
+					this.mapInstance = new deck.DeckGL({
+						mapboxApiAccessToken: mapboxgl.accessToken,
+						mapStyle: 'mapbox://styles/mapbox/dark-v10',
+						initialViewState: {
+							...MapHandler.defaultWorld.initialViewState
+						},
+						container: 'map-container',
+						controller: true,
+						layers: layers,
+					});
+				}
+				Object.assign(rootComponent.$data, {showCount: true});
+			})
+			.catch((e) => {
+				console.log("Something went wrong with map init");
+				console.log(e);
+				Sentry.captureException(e);
 			});
-	}
+	},
 }
 
 UserHandler = {
@@ -268,41 +256,6 @@ UserHandler = {
 }
 
 WorkspaceHandler = {
-	alerts: {
-		sessionToolAlert: document.getElementById("session-tool-alert"),
-		sessionToolDanger: document.getElementById("session-tool-danger"),
-		userToolAlert: document.getElementById("user-tool-alert"),
-		userToolDanger: document.getElementById("user-tool-danger"),
-	},
-	links: {
-		accountsLink: document.getElementById("accounts-link"),
-		configLink: document.getElementById("config-link"),
-		mapLink: document.getElementById("map-link"),
-		sessionsLink: document.getElementById("sessions-link"),
-		sessionToolLink: document.getElementById("session-tool-link"),
-		settingsLink: document.getElementById("settings-link"),
-		userToolLink: document.getElementById("user-tool-link"),
-	},
-	newUserEmail: document.getElementById("email"),
-	newUserPerms: document.getElementById("perms"),
-	pages: {
-		accounts: document.getElementById("settings-page"),
-		config: document.getElementById("config-page"),
-	},
-	spinners: {
-		map: document.getElementById("map-spinner"),
-		sessions: document.getElementById("sessions-spinner"),
-		sessionTool: document.getElementById("session-tool-spinner"),
-		userTool: document.getElementById("user-tool-spinner"),
-		settings: document.getElementById("settings-spinner"),
-	},
-	workspaces: {
-		mapWorkspace: document.getElementById("map-workspace"),
-		sessionsWorkspace: document.getElementById("sessions-workspace"),
-		sessionToolWorkspace: document.getElementById("session-tool-workspace"),
-		settingsWorkspace: document.getElementById("settings-workspace"),
-		userToolWorkspace: document.getElementById("user-tool-workspace"),
-	},
 	changeAccountPage(page) {
 		// Hide all workspaces
 		this.pages.accounts.style.display = 'none';
@@ -325,59 +278,31 @@ WorkspaceHandler = {
 				});
 		}
 	},
-	changePage(page) {
-		// Hide all workspaces
-		this.workspaces.mapWorkspace.style.display = 'none';
-		this.workspaces.sessionsWorkspace.style.display = 'none';
-		this.workspaces.sessionToolWorkspace.style.display = 'none';
-		this.workspaces.settingsWorkspace.style.display = 'none';
-		this.workspaces.userToolWorkspace.style.display = 'none';
-
-		// Remove all link highlights
-		this.links.accountsLink.classList.remove("active");
-		this.links.configLink.classList.remove("active");
-		this.links.mapLink.classList.remove("active");
-		this.links.sessionsLink.classList.remove("active");
-		this.links.sessionToolLink.classList.remove("active");
-		this.links.userToolLink.classList.remove("active");
-		this.links.settingsLink.classList.remove("active");
-
-		// Run setup for selected page
+	changePage(page, options) {
 		switch (page) {
-			case 'settings':
-				this.loadSettingsPage();
-				this.workspaces.settingsWorkspace.style.display = 'block';
-				this.links.accountsLink.classList.add("active");
-				this.links.settingsLink.classList.add("active");
+			case 'map':
+				MapHandler.initMap();
 				break;
 			case 'sessions':
 				this.loadSessionsPage();
-				this.workspaces.sessionsWorkspace.style.display = 'block';
-				this.links.sessionsLink.classList.add("active");
 				break;
-			case 'session-tool':
-				WorkspaceHandler.alerts.sessionToolAlert.style.display = 'block';
-				WorkspaceHandler.alerts.sessionToolDanger.style.display = 'none';
-
-				Object.assign(sessionDetailsVue.$data, {...defaultSessionDetailsVue});
-				document.getElementById("session-id-input").value = '';
-				this.workspaces.sessionToolWorkspace.style.display = 'block';
-				this.links.sessionToolLink.classList.add("active");
+			case 'sessionTool':
+				let id = options || '';
+				Object.assign(rootComponent.$data.pages.sessionTool, {
+					danger: false,
+					id: id,
+					info: id == '',
+					showDetails: false
+				});
+				id != '' ? this.fetchSessionInfo() : null;
 				break;
-			case 'user-tool':
-				WorkspaceHandler.alerts.userToolAlert.style.display = 'block';
-				WorkspaceHandler.alerts.userToolDanger.style.display = 'none';
-
-				Object.assign(userSessionTable.$data, {...defaultUserSessionTable});
-
-				document.getElementById("user-hash-input").value = '';
-				this.workspaces.userToolWorkspace.style.display = 'block';
-				this.links.userToolLink.classList.add("active");
-				break;
-			default:
-				this.workspaces.mapWorkspace.style.display = 'block';
-				this.links.mapLink.classList.add("active");
 		}
+
+		Object.keys(rootComponent.$data.pages).forEach((page) => {
+			Object.assign(rootComponent.$data.pages[page], {show: false});
+		});
+
+		Object.assign(rootComponent.$data.pages[page], {show: true});
 	},
 	editUser(accountInfo, index) {
 		settingsPage.$set(settingsPage.$data.accounts[index], 'delete', false);
@@ -535,13 +460,106 @@ WorkspaceHandler = {
 	},
 	loadSessionsPage() {
 		let buyerId = !UserHandler.isAdmin() ? UserHandler.userInfo.id : "";
-		updateSessionFilter({
+		this.updateSessionFilter({
 			buyerId: buyerId,
 			sessionType: 'all'
 		});
 	},
+	fetchSessionInfo() {
+		let id = rootComponent.$data.pages.sessionTool.id;
+
+		if (id == '') {
+			Object.assign(rootComponent.$data.pages.sessionTool, {
+				info: false,
+				danger: true,
+			});
+			return;
+		}
+
+		JSONRPCClient
+			.call("BuyersService.SessionDetails", {session_id: id})
+			.then((response) => {
+				let meta = response.meta;
+				meta.nearby_relays = meta.nearby_relays ?? [];
+				Object.assign(rootComponent.$data.pages.sessionTool, {
+					info: false,
+					danger: false,
+					meta: meta,
+					session: response,
+					slices: response.slices,
+					showDetails: true,
+				});
+
+				setTimeout(() => {
+					generateCharts(response.slices);
+
+					var sessionToolMapInstance = new mapboxgl.Map({
+						container: 'session-tool-map',
+						style: 'mapbox://styles/mapbox/dark-v10',
+						center: [meta.location.latitude, meta.location.longitude],
+						zoom: 2
+					});
+				});
+			})
+			.catch((e) => {
+				Object.assign(rootComponent.$data.pages.sessionTool, {
+					danger: true,
+					id: '',
+					info: false,
+					meta: null,
+					slices: [],
+					showDetails: false,
+				});
+				console.log("Something went wrong fetching session details: ");
+				Sentry.captureException(e);
+			});
+	},
 	loadUsersPage() {
 		// No Endpoint for this yet
+	},
+	updateSessionFilter(filter) {
+		Object.assign(rootComponent.$data.pages.sessions, {filter: filter});
+		this.refreshSessionTable();
+	},
+	refreshSessionTable() {
+		setTimeout(() => {
+			let filter = rootComponent.$data.pages.sessions.filter;
+
+			JSONRPCClient
+				.call('BuyersService.TopSessions', {buyer_id: filter.buyerId})
+				.then((response) => {
+					let sessions = response.sessions || [];
+					let onNN = sessions.filter((point) => {
+						return point.on_network_next;
+					});
+					let direct = sessions.filter((point) => {
+						return !point.on_network_next;
+					});
+
+					switch (filter.sessionType) {
+						case 'direct':
+							data = direct;
+							break;
+						case 'nn':
+							data = onNN;
+							break;
+						default:
+							data = sessions;
+					}
+					/**
+					 * I really dislike this but it is apparently the way to reload/update the data within a vue
+					 */
+					Object.assign(rootComponent.$data.pages.sessions, {
+						sessions: data,
+						showTable: true,
+					});
+				})
+				.catch((e) => {
+					console.log("Something went wrong fetching the top sessions list");
+					console.log(e);
+					Sentry.captureException(e);
+				});
+		});
 	}
 }
 
@@ -554,23 +572,13 @@ function startApp() {
 	UserHandler
 		.fetchCurrentUserInfo()
 		.then(() => {
-			return JSONRPCClient
-				.call('BuyersService.Buyers', {})
-				.then((response) => {
-					allBuyers = response.Buyers;
-				})
-				.catch((e) => {
-					console.log("Something went wrong fetching buyers");
-					console.log(e);
-					Sentry.captureException(e);
-				});
-		}).then(() => {
 			createVueComponents();
 			document.getElementById("app").style.display = 'block';
-			MapHandler
-				.initMap()
+			WorkspaceHandler.changePage('map');
+			JSONRPCClient
+				.call('BuyersService.Buyers', {})
 				.then((response) => {
-					console.log("Map init successful");
+					Object.assign(rootComponent.$data, {allBuyers: response.Buyers});
 				})
 				.catch((e) => {
 					console.log("Something went wrong initializing the map");
@@ -585,7 +593,74 @@ function startApp() {
 }
 
 function createVueComponents() {
-	settingsPage = new Vue({
+	rootComponent = new Vue({
+		el: '#root',
+		data: {
+			allBuyers: [],
+			showCount: false,
+			mapSessions: [],
+			onNN: [],
+			direct: [],
+			handlers: {
+				mapHandler: MapHandler,
+				userHandler: UserHandler,
+				workspaceHandler: WorkspaceHandler,
+			},
+			pages: {
+				map: {
+					filter: {
+						buyerId: '',
+						sessionType: '',
+					},
+					show: false,
+				},
+				sessions: {
+					filter: {
+						buyerId: '',
+						sessionType: '',
+					},
+					sessions: [],
+					show: false,
+					showTable: false,
+				},
+				sessionTool: {
+					danger: false,
+					id: '',
+					info: false,
+					meta: null,
+					session: null,
+					show: false,
+					showDetails: false,
+					showFailure: false,
+					showSuccess: false,
+					slices: [],
+				},
+				settings: {
+					accounts: [],
+					show: false,
+					showAccounts: true,
+					showConfig: false,
+				},
+				userTool: {
+					failure: {
+						message: ''
+					},
+					sessions: [],
+					show: false,
+					showFailure: false,
+					showSessions: false,
+					showSuccess: false,
+					success: {
+						message: ''
+					},
+				}
+			}
+		},
+		methods: {
+		}
+	});
+
+	/* settingsPage = new Vue({
 		el: '#settings-page',
 		data: {
 			accounts: null,
@@ -671,7 +746,7 @@ function createVueComponents() {
 		methods: {
 			fetchSessionInfo: fetchSessionInfo
 		}
-	})
+	}); */
 }
 
 function updateAccountsTableFilter(filter) {
@@ -794,56 +869,6 @@ function refreshAccountsTable() {
 			console.log(errors);
 			Sentry.captureException(errors);
 		});
-	});
-}
-
-function updateSessionFilter(filter) {
-	Object.assign(sessionsTable.$data, {filter: filter});
-	refreshSessionTable();
-}
-
-function refreshSessionTable() {
-	setTimeout(() => {
-		let filter = sessionsTable.$data.filter;
-
-		JSONRPCClient
-			.call('BuyersService.TopSessions', {buyer_id: filter.buyerId})
-			.then((response) => {
-				let sessions = response.sessions || [];
-				let onNN = sessions.filter((point) => {
-					return point.on_network_next;
-				});
-				let direct = sessions.filter((point) => {
-					return !point.on_network_next;
-				});
-				let data = [];
-
-				switch (filter.sessionType) {
-					case 'direct':
-						data = direct;
-						break;
-					case 'nn':
-						data = onNN;
-						break;
-					default:
-						data = sessions;
-				}
-				/**
-				 * I really dislike this but it is apparently the way to reload/update the data within a vue
-				 */
-				Object.assign(sessionsTable.$data, {
-					direct: direct.length,
-					onNN: onNN.length,
-					totalSessions: sessions.length,
-					sessions: data,
-					showCount: true,
-				});
-			})
-			.catch((e) => {
-				console.log("Something went wrong fetching the top sessions list");
-				console.log(e);
-				Sentry.captureException(e);
-			});
 	});
 }
 
@@ -985,62 +1010,6 @@ function saveAutoSignIn(event) {
 
 	// Make JSONRPC call
 }
-
-function fetchSessionInfo(sessionId = '') {
-	WorkspaceHandler.alerts.sessionToolAlert.style.display = 'none';
-	WorkspaceHandler.alerts.sessionToolDanger.style.display = 'none';
-
-	let id = '';
-
-	if (sessionId != '') {
-		WorkspaceHandler.changePage('session-tool');
-		id = sessionId;
-		document.getElementById("session-id-input").value = id;
-	} else {
-		id = document.getElementById("session-id-input").value;
-	}
-
-	if (id == '') {
-		Object.assign(sessionDetailsVue.$data, {...defaultSessionDetailsVue});
-		document.getElementById("session-id-input").value = '';
-		WorkspaceHandler.alerts.sessionToolDanger.style.display = 'block';
-		return;
-	}
-
-	JSONRPCClient
-		.call("BuyersService.SessionDetails", {session_id: id})
-		.then((response) => {
-			let meta = response.meta;
-			meta.nearby_relays = meta.nearby_relays ?? [];
-			Object.assign(sessionDetailsVue.$data, {
-				meta: meta,
-				slices: response.slices,
-				showDetails: true,
-			});
-
-			setTimeout(() => {
-				generateCharts(response.slices);
-
-				var sessionToolMapInstance = new mapboxgl.Map({
-					container: 'session-tool-map',
-					style: 'mapbox://styles/mapbox/dark-v10',
-					center: [0, 0],
-					zoom: 2
-				});
-			});
-
-			WorkspaceHandler.alerts.sessionToolAlert.style.display = 'none';
-			WorkspaceHandler.alerts.sessionToolDanger.style.display = 'none';
-		})
-		.catch((e) => {
-			Object.assign(sessionDetailsVue.$data, {...defaultSessionDetailsVue});
-			console.log("Something went wrong fetching session details: ");
-			Sentry.captureException(e);
-			WorkspaceHandler.alerts.sessionToolDanger.style.display = 'block';
-			document.getElementById("session-id-input").value = '';
-		});
-}
-
 
 function generateCharts(data) {
 	let latencyData = {
