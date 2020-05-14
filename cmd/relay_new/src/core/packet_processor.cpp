@@ -114,13 +114,13 @@ namespace core
      */
     switch (packet.Buffer[0]) {
       case RELAY_PING_PACKET: {
-        LogDebug("got ping packet for: ", packet.Addr);
         if (!mShouldProcess) {
           Log("relay in process of shutting down, rejecting relay ping packet");
           return;
         }
 
         if (packet.Len == RELAY_PING_PACKET_BYTES) {
+          LogDebug("received ping from: ", packet.Addr);
           mRecorder.addToReceived(wholePacketSize);
           mStats.BytesPerSecMeasurementRx += wholePacketSize;
 

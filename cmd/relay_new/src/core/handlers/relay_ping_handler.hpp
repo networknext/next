@@ -20,7 +20,8 @@ namespace core
        GenericPacket<>& packet,
        const os::Socket& socket,
        const net::Address& mRecvAddr,
-       util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats);
+       util::ThroughputRecorder& recorder,
+       legacy::v3::TrafficStats& stats);
 
       void handle();
 
@@ -35,23 +36,26 @@ namespace core
      GenericPacket<>& packet,
      const os::Socket& socket,
      const net::Address& receivingAddress,
-     util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats)
+     util::ThroughputRecorder& recorder,
+     legacy::v3::TrafficStats& stats)
      : BaseHandler(packet), mSocket(socket), mRecvAddr(receivingAddress), mRecorder(recorder), mStats(stats)
     {}
 
     inline void RelayPingHandler::handle()
     {
-      net::Address sendingAddr;  // where it actually came from
-      packets::RelayPingPacket packet(mPacket);
+      packets::RelayPingPacket packetWrapper(mPacket);
 
-      packet.Internal.Buffer[0] = RELAY_PONG_PACKET;
-      sendingAddr = packet.getFromAddr();
-      packet.writeFromAddr(mRecvAddr);
+      packetWrapper.Internal.Buffer[0] = RELAY_PONG_PACKET;
+      mPacket.Addr = packetWrapper.getFromAddr();
+      packetWrapper.writeFromAddr(mRecvAddr);
+      mPacket.Len = RELAY_PING_PACKET_BYTES;
 
-      mRecorder.addToSent(RELAY_PING_PACKET_BYTES);
-      mStats.BytesPerSecMeasurementTx += RELAY_PING_PACKET_BYTES;
+      mRecorder.addToSent(mPacket.Len);
+      mStats.BytesPerSecMeasurementTx += mPacket.Len;
 
-      if (!mSocket.send(sendingAddr, packet.Internal.Buffer.data(), RELAY_PING_PACKET_BYTES)) {
+
+      LogDebug("sending pong to ", mPacket.Addr);
+      if (!mSocket.send(mPacket)) {
         Log("failed to send data");
       }
     }
