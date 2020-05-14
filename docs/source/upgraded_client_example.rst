@@ -1,8 +1,8 @@
 
-Simple Client Example
----------------------
+Upgraded Client Example
+-----------------------
 
-In this example we setup the simplest possible client using Network Next.
+In this example we setup a client that connects to a server and is upgraded for monitoring and acceleration by Network Next.
 
 First, initialize the SDK:
 
@@ -23,9 +23,7 @@ Next, define a function to be called when packets are received:
 	    printf( "client received packet (%d bytes)", packet_bytes );
 	}
 
-Create the client.
-
-In this case we bind the client to any IPv4 address and port zero, so the system selects a port to use.
+Create the client:
 
 .. code-block:: c++
 

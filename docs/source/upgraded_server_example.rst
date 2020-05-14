@@ -1,8 +1,8 @@
 
-Simple Server Example
----------------------
+Upgraded Server Example
+-----------------------
 
-In this example we setup the simplest possible server using Network Next.
+In this example we setup a server that upgrades clients for monitoring and acceleration by Network Next.
 
 First, initialize the SDK:
 

@@ -251,6 +251,10 @@ int main()
         return 1;
     }
 
+    uint16_t client_port = next_client_port( client );
+
+    next_printf( NEXT_LOG_LEVEL_INFO, "client port is %d", client_port );
+
     next_client_open_session( client, server_address );
 
     while ( !quit )

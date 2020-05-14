@@ -253,6 +253,10 @@ int main()
         return 1;
     }
     
+    uint16_t server_port = next_server_port( server );
+
+    next_printf( NEXT_LOG_LEVEL_INFO, "server port is %d", server_port );
+
     while ( !quit )
     {
         next_server_update( server );
