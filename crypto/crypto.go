@@ -1,20 +1,25 @@
 package crypto
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/binary"
+	"errors"
+	"hash"
 	"hash/fnv"
 
+	"golang.org/x/crypto/blake2b"
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/nacl/box"
 	"golang.org/x/crypto/poly1305"
 )
 
 const (
-	MACSize   = poly1305.TagSize
-	NonceSize = chacha20poly1305.NonceSizeX
-	KeySize   = chacha20poly1305.KeySize
+	MACSize        = poly1305.TagSize
+	NonceSize      = chacha20poly1305.NonceSizeX
+	KeySize        = chacha20poly1305.KeySize
+	PacketHashSize = 8
 )
 
 var (
@@ -35,7 +40,54 @@ var (
 		0xf5, 0x22, 0xad, 0xc1, 0xee, 0x04, 0x6a, 0xbe, 0x7d, 0x89, 0x0c, 0x81, 0x3a, 0x08, 0x31, 0xba,
 		0xdc, 0xdd, 0xb5, 0x52, 0xcb, 0x73, 0x56, 0x10, 0xda, 0xa9, 0xc0, 0xae, 0x08, 0xa2, 0xcf, 0x5e,
 	}
+
+	// PacketHashKey for the Blake2b hashing of each packet
+	PacketHashKey = []byte{
+		0xe3, 0x18, 0x61, 0x72, 0xee, 0x70, 0x62, 0x37, 0x40, 0xf6, 0x0a, 0xea, 0xe0, 0xb5, 0x1a, 0x2c,
+		0x2a, 0x47, 0x98, 0x8f, 0x27, 0xec, 0x63, 0x2c, 0x25, 0x04, 0x74, 0x89, 0xaf, 0x5a, 0xeb, 0x24,
+	}
 )
+
+type PacketHash struct {
+	blake2b hash.Hash
+}
+
+// NewHash creates a Blake2b hash with the given key
+func NewPacketHash(key []byte) (*PacketHash, error) {
+	h, err := blake2b.New256(key)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PacketHash{blake2b: h}, nil
+}
+
+func (ph *PacketHash) Sum(data []byte) []byte {
+	hash := ph.blake2b.Sum(data)
+
+	// The hash is message:checksum to get just the checksum
+	checksum := hash[len(data):]
+
+	// Prepend only the first 8 bytes of the checksum to the original data
+	return append(checksum[:PacketHashSize], data...)
+}
+
+// Check verifies the data with the hash of itself
+func (ph *PacketHash) Check(data []byte) error {
+	if len(data) < PacketHashSize {
+		return errors.New("data len too short")
+	}
+
+	// Get the hash of just the message at offset 8
+	hash := ph.Sum(data[PacketHashSize:])
+
+	// Compare the original checksum:message with the new hash checksum:message
+	if !bytes.Equal(data, hash) {
+		return errors.New("checksum failed")
+	}
+
+	return nil
+}
 
 // HashID hashes a string to a uint64 so it can be used as IDs for Relays, Datacenters, etc.
 func HashID(s string) uint64 {

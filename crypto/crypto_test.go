@@ -11,6 +11,34 @@ import (
 	"golang.org/x/crypto/nacl/box"
 )
 
+func TestHashCheck(t *testing.T) {
+	msg := []byte("just some data to hash")
+
+	packetHash, err := crypto.NewPacketHash(crypto.PacketHashKey)
+	assert.NoError(t, err)
+
+	expected := []byte{
+		// Checksum
+		0x00, 0x91, 0x36, 0x91, 0xef, 0x2d, 0x8f, 0xe2,
+
+		// Message "just some data to hash"
+		0x6a, 0x75, 0x73, 0x74, 0x20, 0x73, 0x6f, 0x6d, 0x65, 0x20, 0x64, 0x61, 0x74, 0x61, 0x20, 0x74, 0x6f, 0x20, 0x68, 0x61, 0x73, 0x68,
+	}
+	checksum := packetHash.Sum(msg)
+	assert.Equal(t, crypto.PacketHashSize+len(msg), len(checksum))
+	assert.Equal(t, expected, checksum)
+
+	err = packetHash.Check(checksum)
+	assert.NoError(t, err)
+
+	err = packetHash.Check([]byte("short"))
+	assert.Error(t, err)
+
+	msg = append([]byte("bad chksm"), msg...)
+	err = packetHash.Check(msg)
+	assert.Error(t, err)
+}
+
 func TestSignVerify(t *testing.T) {
 	// Note: when using these we need to offset the keys by 8 bytes since the first 8 bytes is the CustomerID
 	publicKey, _ := base64.StdEncoding.DecodeString("leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==")
