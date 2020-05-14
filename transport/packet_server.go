@@ -102,7 +102,7 @@ func (packet *ServerInitRequestPacket) MarshalBinary() ([]byte, error) {
 	}
 	ws.Flush()
 
-	return ws.GetData(), nil
+	return ws.GetData()[:ws.GetBytesProcessed()], nil
 }
 
 type ServerInitResponsePacket struct {
@@ -148,7 +148,7 @@ func (packet *ServerInitResponsePacket) MarshalBinary() ([]byte, error) {
 	}
 	ws.Flush()
 
-	return ws.GetData(), nil
+	return ws.GetData()[:ws.GetBytesProcessed()], nil
 }
 
 type ServerUpdatePacket struct {
@@ -233,7 +233,7 @@ func (packet *ServerUpdatePacket) MarshalBinary() ([]byte, error) {
 	}
 	ws.Flush()
 
-	return ws.GetData(), nil
+	return ws.GetData()[:ws.GetBytesProcessed()], nil
 }
 
 type SessionUpdatePacket struct {
@@ -465,7 +465,7 @@ func (packet *SessionUpdatePacket) MarshalBinary() ([]byte, error) {
 	}
 	ws.Flush()
 
-	return ws.GetData(), nil
+	return ws.GetData()[:ws.GetBytesProcessed()], nil
 }
 
 type SessionResponsePacket struct {
@@ -590,5 +590,5 @@ func (packet *SessionResponsePacket) MarshalBinary() ([]byte, error) {
 	}
 	ws.Flush()
 
-	return ws.GetData(), nil
+	return ws.GetData()[:ws.GetBytesProcessed()], nil
 }

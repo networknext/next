@@ -323,16 +323,9 @@ func main() {
 			os.Exit(1)
 		}
 
-		packetHash, err := crypto.NewPacketHash(crypto.PacketHashKey)
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			os.Exit(1)
-		}
-
 		mux := transport.UDPServerMux{
 			Conn:          conn,
 			MaxPacketSize: transport.DefaultMaxPacketSize,
-			PacketHash:    packetHash,
 
 			ServerInitHandlerFunc:    transport.ServerInitHandlerFunc(logger, db, serverInitMetrics, serverPrivateKey),
 			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClientCache, db, serverUpdateMetrics),
