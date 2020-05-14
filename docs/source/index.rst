@@ -78,7 +78,7 @@ When you have finished your session with the server, close it:
 
 	next_client_close_session( client );
 
-When you are finished using your client, destroy it:
+When you have finished using your client, destroy it:
 
 .. code-block:: c++
 
@@ -122,11 +122,24 @@ Now create the server. In this example, we bind the server to port 50000 on 127.
         return 1;
     }
 
-Make sure the server gets updated once every frame:
+Make sure the server gets updated every frame:
 
 .. code-block:: c++
 
 	next_server_update( server );
+
+When you have finished using your server, destroy it:
+
+.. code-block:: c++
+
+	next_server_destroy( server );
+
+Before your application terminates, please shut down the SDK:
+
+.. code-block:: c++
+
+	next_term();
+
 
 .. toctree::
    :maxdepth: 2
