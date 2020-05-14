@@ -65,7 +65,6 @@ JSONRPCClient = {
 
 
 		return response.json().then((json) => {
-			console.log(json)
 			if (json.error) {
 				throw new Error(json.error);
 			}
@@ -236,14 +235,14 @@ UserHandler = {
 	async fetchCurrentUserInfo() {
 		return Promise.all([
 			loginClient.getUser(),
-			loginClient.getTokenSilently()
+			loginClient.getIdTokenClaims(),
 		]).then((responses) => {
 			this.userInfo = {
 				email: responses[0].email,
 				name: responses[0].name,
 				nickname: responses[0].nickname,
 				userId: responses[0].sub,
-				token: responses[1],
+				token: responses[1].__raw,
 			};
 			return JSONRPCClient.call("AuthService.UserAccount", {user_id: this.userInfo.userId})
 		})
@@ -525,10 +524,11 @@ WorkspaceHandler = {
 		JSONRPCClient
 			.call('OpsService.Relays', {})
 			.then((response) => {
+				let relays = response.relays;
 				/**
 				 * I really dislike this but it is apparently the way to reload/update the data within a vue
 				 */
-				Object.assign(relaysTable.$data, {relays: response.relays});
+				Object.assign(relaysTable.$data, {relays: relays});
 			})
 			.catch((e) => {
 				console.log("Something went wrong fetching the top sessions list");
@@ -568,18 +568,18 @@ function startApp() {
 					console.log(e);
 					Sentry.captureException(e);
 				});
+			JSONRPCClient
+				.call('BuyersService.Buyers', {})
+				.then((response) => {
+					allBuyers = response.Buyers;
+				})
+				.catch((e) => {
+					console.log("Something went wrong fetching buyers");
+					console.log(e);
+					Sentry.captureException(e);
+				});
 		}).catch((e) => {
 			console.log("Something went wrong getting the current user information");
-			console.log(e);
-			Sentry.captureException(e);
-		});
-	JSONRPCClient
-		.call('BuyersService.Buyers', {})
-		.then((response) => {
-			allBuyers = response.Buyers;
-		})
-		.catch((e) => {
-			console.log("Something went wrong fetching buyers");
 			console.log(e);
 			Sentry.captureException(e);
 		});
@@ -645,6 +645,7 @@ function createVueComponents() {
 			meta: null,
 			slices: [],
 			showDetails: false,
+			allBuyers: allBuyers
 		}
 	});
 	sessionsTable = new Vue({
