@@ -248,7 +248,6 @@ UserHandler = {
 				this.userInfo.id = response.account.id;
 				this.userInfo.company = response.account.company_name;
 				this.userInfo.roles = response.account.roles;
-				console.log(this.userInfo)
 			}).catch((e) => {
 				console.log("Something went wrong getting the current user information");
 				console.log(e);
