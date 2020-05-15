@@ -12,7 +12,7 @@ First define configuration values for the client:
 	const char * server_address = "127.0.0.1:50000";
 	const char * customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
 
-These includes the bind address for the client socket, the server address we're going to connect to, and the test customer public key we're using in this example. A customer public key is required to enable acceleration by Network Next.
+These includes the bind address for the client socket, the server address to connect to, and the test customer public key we're using in this example. A customer public key is required to enable acceleration by Network Next.
 
 Next, initialize a configuration struct to defaults, then copy the customer public key on top.
 
@@ -40,7 +40,7 @@ Initialize the SDK, this time passing in the configuration struct.
 
 This activates the customer public key so it's used by the client. 
 
-Network Next needs a customer public key on the client in order to monitor and potentially accelerate players. Without a customer public key specified on the client, Network Next will just send player traffic across the public internet.
+Network Next needs a customer public key to monitor and accelerate players. Without a customer public key, Network Next just sends player traffic across the public internet.
 
 Next, define a function to be called when packets are received:
 
