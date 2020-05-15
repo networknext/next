@@ -11,7 +11,7 @@ Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, tur
 next_client_create
 ------------------
 
-Creates an instance of a client, binding a socket to the address specified.
+Creates an instance of a client, binding a socket to the specified address and port.
 
 .. code-block:: c++
 
