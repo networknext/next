@@ -31,7 +31,9 @@ Next, initialize a configuration struct to defaults, then copy the hostname and 
 	    return 1;
 	}
 
-Initialize the SDK, this time passing in the configuration struct. 
+IMPORTANT: Generally speaking it's bad form to include a private key in your codebase like this, it's done here only to make this example easy to use. In production environments, we strongly recommend passing in "" for your customer private key, and setting it via the environment variable: *NEXT_CUSTOMER_PRIVATE_KEY* which overrides the value specified in code.
+
+Next we initialize the SDK, this time passing in the configuration struct. 
 
 .. code-block:: c++
 
@@ -41,7 +43,7 @@ Initialize the SDK, this time passing in the configuration struct.
 	    return 1;
 	}
 
-Next, define a function to be called when packets are received from clients.
+Now we define a function to be called when packets are received from clients.
 
 Here is one that reflects the packet back to the client that sent it, and upgrades the client that sent the packet for monitoring and acceleration by Network Next.
 
@@ -61,15 +63,13 @@ Generally you would *not* want to upgrade every client session you receive a pac
 
 Instead, you should only upgrade sessions that have passed whatever security and protocol level checks you have in your game so you are 100% confident this is a real player joining your game.
 
-This is important because you are paying to monitor and accelerate any players you upgrade.
-
 Also notice that you can pass in a user id as a string to the upgrade call.
 
 .. code-block:: c++
 
 	next_server_upgrade_session( server, from, user_id_string, NULL );
 
-This user id is very important because it allows you to look up users by that id in our portal. This user id is hashed before sending to our backend for privacy reasons.
+This user id is very important because it allows you to look up users by that id in our portal. Please make sure you set the user id to however you uniquely identify users in your game. For example, PSN ids, Steam Ids and so on. For privacy reasons, this user id is hashed before sending to our backend.
 
 Now, create the server. 
 
