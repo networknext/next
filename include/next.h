@@ -241,6 +241,8 @@ struct next_client_t;
 
 NEXT_EXPORT_FUNC next_client_t * next_client_create( void * context, const char * bind_address, void (*packet_received_callback)( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes ) );
 
+NEXT_EXPORT_FUNC void next_client_destroy( next_client_t * client );
+
 NEXT_EXPORT_FUNC uint16_t next_client_port( next_client_t * client );
 
 NEXT_EXPORT_FUNC void next_client_open_session( next_client_t * client, const char * server_address );
@@ -264,8 +266,6 @@ NEXT_EXPORT_FUNC uint64_t next_client_session_id( next_client_t * client );
 NEXT_EXPORT_FUNC const next_client_stats_t * next_client_stats( next_client_t * client );
 
 NEXT_EXPORT_FUNC void next_client_set_user_flags( next_client_t * client, uint64_t user_flags );
-
-NEXT_EXPORT_FUNC void next_client_destroy( next_client_t * client );
 
 // -----------------------------------------
 
