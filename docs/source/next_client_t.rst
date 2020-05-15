@@ -33,32 +33,46 @@ Creates an instance of a client, binding a socket to the specified address and p
 
 	Typically, NULL is only returned when another socket is already bound on the same port, or if an invalid bind address is passed in.
 
-**Examples:**
+**Example:**
 
-	First define a callback for received packets:
+First define a callback for received packets:
 
-	.. code-block:: c++
+.. code-block:: c++
 
-		void client_packet_received( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
-		{
-		    printf( "client received packet from server (%d bytes)\n", packet_bytes );
-		}
+	void client_packet_received( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
+	{
+	    printf( "client received packet from server (%d bytes)\n", packet_bytes );
+	}
 
-	Then, create a client:
+Then, create a client:
 
-	.. code-block:: c++
+.. code-block:: c++
 
-	    next_client_t * client = next_client_create( NULL, "0.0.0.0:0", client_packet_received );
-	    if ( client == NULL )
-	    {
-	        printf( "error: failed to create client\n" );
-	        return 1;
-	    }
+    next_client_t * client = next_client_create( NULL, "0.0.0.0:0", client_packet_received );
+    if ( client == NULL )
+    {
+        printf( "error: failed to create client\n" );
+        return 1;
+    }
 
 next_client_destroy
 -------------------
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+Destroys a client instance, and the socket it manages internally.
+
+.. code-block:: c++
+
+	void next_client_destroy( next_client_t * client );
+
+**Parameters:**
+
+	- **client** -- The client instance to destroy. Must be a valid client instance created by *next_client_create*. Do not pass in NULL.
+
+**Example:**
+
+.. code-block:: c++
+
+	next_client_destroy( client );
 
 next_client_port
 ----------------
