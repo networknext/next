@@ -25,8 +25,6 @@ Next, define a function to be called when packets are received:
 
 Create the client.
 
-In this case we bind the client to any IPv4 address and port zero, so the system selects a port to use.
-
 .. code-block:: c++
 
     next_client_t * client = next_client_create( NULL, "0.0.0.0:0", client_packet_received );
@@ -36,7 +34,9 @@ In this case we bind the client to any IPv4 address and port zero, so the system
 	    return 1;
     }
 
-Open a session between the client and the server:
+In this case we bind the client to any IPv4 address and port zero, so the system selects a port to use.
+
+Next, open a session between the client and the server:
 
 .. code-block:: c++
 
