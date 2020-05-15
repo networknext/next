@@ -41,6 +41,53 @@ JSONRPCClient = {
 	}
 }
 
+AuthHandler = {
+	async init() {
+		const domain = 'networknext.auth0.com';
+		const clientID = 'qR60cjo6FceoTWPYLNZSQmNiP2WIAQr9';
+
+		this.auth0Client = await createAuth0Client({
+			domain: domain,
+			client_id: clientID
+		})
+		.catch((e) => {
+			Sentry.captureException(e);
+		});
+
+		const isAuthenticated =
+			await this.auth0Client.isAuthenticated()
+				.catch((e) => {
+					Sentry.captureException(e);
+				});
+
+		if (isAuthenticated) {
+			startApp();
+			return;
+		}
+		const query = window.location.search;
+		if (query.includes("code=") && query.includes("state=")) {
+
+			await this.auth0Client.handleRedirectCallback()
+				.catch((e) => {
+					Sentry.captureException(e);
+				});
+
+			window.history.replaceState({}, document.title, "/");
+			startApp();
+		} else {
+			await this.auth0Client.loginWithRedirect({
+				redirect_uri: window.location.origin
+			}).catch((e) => {
+				Sentry.captureException(e);
+			});
+		}
+	},
+	auth0Client: null,
+	logout() {
+		this.auth0Client.logout();
+	}
+}
+
 MapHandler = {
 	defaultUSA: {
 		initialViewState: {
@@ -195,7 +242,7 @@ UserHandler = {
 		userId: "",
 	},
 	async fetchCurrentUserInfo() {
-		return loginClient.getIdTokenClaims()
+		return AuthHandler.auth0Client.getIdTokenClaims()
 			.then((response) => {
 				this.userInfo = {
 					email: response.email,
@@ -734,6 +781,7 @@ function createVueComponents() {
 			onNN: [],
 			direct: [],
 			handlers: {
+				authHandler: AuthHandler,
 				mapHandler: MapHandler,
 				userHandler: UserHandler,
 				workspaceHandler: WorkspaceHandler,

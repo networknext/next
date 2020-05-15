@@ -234,7 +234,7 @@
                             User Tool
                         </a>
                     </li>
-                    <li class="nav-item text-nowrap">
+                    <li class="nav-item text-nowrap" v-if="handlers.userHandler.isOwner() || handlers.userHandler.isAdmin()">
                         <a class="nav-link" href="#" v-bind:class="{ active: pages.settings.show }" v-on:click="handlers.workspaceHandler.changePage('settings')">
                             Settings
                         </a>
@@ -242,7 +242,7 @@
                 </ul>
                 <ul class="navbar-nav px-3">
                     <li class="nav-item text-nowrap  ">
-                        <a class="nav-link" href="#" onclick="loginClient.logout()">
+                        <a class="nav-link" href="#" onclick="AuthHandler.auth0Client.logout()">
                             Logout
                         </a>
                     </li>
@@ -308,7 +308,7 @@
                         </div>
                         <div style="width: 100%; height: calc(-160px + 100vh); border: 1px solid rgb(136, 136, 136); background-color: rgb(27, 27, 27);" id="map-container"></div>
                     </main>
-                    <main role="main" class="col-md-12 col-lg-12 px-4" v-show="pages.sessions.show">
+                    <main role="main" class="col-md-12 col-lg-12 px-4" v-if="pages.sessions.show">
                         <div id="sessions">
                             <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                                 <h1 class="h2" id="workspace-title" v-if="showCount">
@@ -444,7 +444,7 @@
                                                         {{ parseFloat(session.delta_rtt).toFixed(2) }}
                                                     </b>
                                                 </span>
-                                                <span style="color: orange;" v-if="session.delta_rtt > 2">
+                                                <span style="color: orange;" v-if="session.delta_rtt > 2 && session.delta_rtt <= 5">
                                                     <b>
                                                         {{ parseFloat(session.delta_rtt).toFixed(2) }}
                                                     </b>
@@ -461,7 +461,7 @@
                             </div>
                         </div>
                     </main>
-                    <main role="main" class="col-md-12 col-lg-12 px-4" v-show="pages.sessionTool.show">
+                    <main role="main" class="col-md-12 col-lg-12 px-4" v-if="pages.sessionTool.show">
                         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                             <h1 class="h2">
                                 Session Tool
@@ -759,7 +759,7 @@
                             </div>
                         </div>
                     </main>
-                    <main role="main" class="col-md-12 col-lg-12 px-4" v-show="pages.userTool.show">
+                    <main role="main" class="col-md-12 col-lg-12 px-4" v-if="pages.userTool.show">
                         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                             <h1 class="h2">
                                 User Tool
@@ -871,7 +871,7 @@
                             </div>
                         </div>
                     </main>
-                    <main role="main" class="col-md-12 col-lg-12 px-4" v-show="pages.settings.show">
+                    <main role="main" class="col-md-12 col-lg-12 px-4" v-if="pages.settings.show">
                         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                             <h1 class="h2">
                                 Settings
@@ -888,7 +888,7 @@
                                             Users
                                         </a>
                                     </li>
-                                    <li class="nav-item">
+                                    <li class="nav-item" v-if="handlers.userHandler.isOwner()">
                                         <a class="nav-link" id="config-link" href="#" v-bind:class="{ active: pages.settings.showConfig }" v-on:click="handlers.workspaceHandler.changeSettingsPage('config')">
                                             Game Configuration
                                         </a>
@@ -896,7 +896,7 @@
                                 </ul>
                             </div>
                             <div id="settings-page">
-                                <div class="card-body" v-show="pages.settings.showSettings">
+                                <div class="card-body" v-if="pages.settings.showSettings">
                                     <h5 class="card-title">
                                         Automatic sign-in
                                     </h5>
@@ -1164,44 +1164,7 @@
         <script>
             Sentry.init({ dsn: 'https://e24b8397eac44e1eb7ac090b5492d29e@o382503.ingest.sentry.io/5211452' });
             window.onload = async () => {
-                const domain = 'networknext.auth0.com';
-                const clientID = 'qR60cjo6FceoTWPYLNZSQmNiP2WIAQr9';
-
-                loginClient = await createAuth0Client({
-                    domain: domain,
-                    client_id: clientID
-                })
-                .catch((e) => {
-                    Sentry.captureException(e);
-                });
-
-                const isAuthenticated =
-                    await loginClient.isAuthenticated()
-                        .catch((e) => {
-                            Sentry.captureException(e);
-                        });
-
-                if (isAuthenticated) {
-                    startApp();
-                    return;
-                }
-                const query = window.location.search;
-                if (query.includes("code=") && query.includes("state=")) {
-
-                    await loginClient.handleRedirectCallback()
-                        .catch((e) => {
-                            Sentry.captureException(e);
-                        });
-
-                    window.history.replaceState({}, document.title, "/");
-                    startApp();
-                } else {
-                    await loginClient.loginWithRedirect({
-                        redirect_uri: window.location.origin
-                    }).catch((e) => {
-                        Sentry.captureException(e);
-                    });
-                }
+                AuthHandler.init();
             }
         </script>
     </body>
