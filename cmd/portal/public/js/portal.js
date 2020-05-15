@@ -6,31 +6,6 @@ mapboxgl.accessToken = 'pk.eyJ1IjoiYmF1bWJhY2hhbmRyZXciLCJhIjoiY2s4dDFwcGo2MGowZ
 
 const DEC_TO_PERC = 100;
 
-var defaultSessionDetailsVue = {
-	meta: null,
-	slices: [],
-	showDetails: false,
-};
-
-var defaultSessionsTable = {
-	sessions: [],
-	showCount: false,
-	totalSessions: 0,
-};
-
-var defaultUserSessionTable = {
-	sessions: [],
-	showTable: false,
-}
-
-var settingsPage = null;
-var mapSessionsCount = null;
-var pubKeyInput = null;
-var relaysTable = null;
-var sessionDetailsVue = null;
-var sessionsTable = null;
-var userSessionTable = null;
-
 var autoSigninPermissions = null;
 var addUserPermissions = null;
 var editUserPermissions = [];
@@ -57,9 +32,7 @@ JSONRPCClient = {
         	})
 		});
 
-
 		return response.json().then((json) => {
-			console.log(json)
 			if (json.error) {
 				throw new Error(json.error);
 			}
@@ -300,6 +273,10 @@ WorkspaceHandler = {
 					showAccounts: false,
 					showConfig: false,
 					showSettings: true,
+					updateKey: {
+						failure: '',
+						success: '',
+					},
 					updateUser: {
 						failure: '',
 						success: '',
@@ -434,12 +411,6 @@ WorkspaceHandler = {
 			.call('BuyersService.GameConfiguration', {buyer_id: UserHandler.userInfo.id})
 			.then((response) => {
 				UserHandler.userInfo.pubKey = response.game_config.public_key;
-				/**
-				 * I really dislike this but it is apparently the way to reload/update the data within a vue
-				 */
-				Object.assign(pubKeyInput.$data, {
-					pubKey: UserHandler.userInfo.pubKey,
-				});
 			})
 			.catch((e) => {
 				console.log("Something went wrong fetching relays");
@@ -450,11 +421,7 @@ WorkspaceHandler = {
 		JSONRPCClient
 			.call('OpsService.Relays', {})
 			.then((response) => {
-				let relays = response.relays;
-				/**
-				 * I really dislike this but it is apparently the way to reload/update the data within a vue
-				 */
-				Object.assign(relaysTable.$data, {relays: relays});
+				// Save Relays somewhere
 			})
 			.catch((e) => {
 				console.log("Something went wrong fetching the top sessions list");
