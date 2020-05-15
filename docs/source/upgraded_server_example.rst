@@ -16,13 +16,14 @@ First define configuration values for the server:
 
 This includes the test customer private key we're using in this example. A customer private key is required on the server to enable acceleration by Network Next.
 
-Next, initialize a configuration struct to defaults, then copy the customer public key on top.
+Next, initialize a configuration struct to defaults, then copy the hostname and the customer private key on top.
 
 .. code-block:: c++
 
-	next_config_t config;
-	next_default_config( &config );
-	strncpy( config.customer_public_key, customer_public_key, sizeof(config.customer_public_key) - 1 );
+    next_config_t config;
+    next_default_config( &config );
+    strncpy( config.hostname, backend_hostname, sizeof(config.hostname) - 1 );
+    strncpy( config.customer_private_key, customer_private_key, sizeof(config.customer_private_key) - 1 );
 
 	if ( next_init( NULL, &config ) != NEXT_OK )
 	{

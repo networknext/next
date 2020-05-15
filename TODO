@@ -30,6 +30,14 @@ DONE
 
 TODO
 
+	Server should not need to specify platform id of player. 
+
+	That's creating work for the integrator!
+
+	Platform should be passed up from client -> server during upgrade negotiation.
+
+	----------------------------------------
+
 	Write SDK docs with https://readthedocs.com
 
 	----------------------------------------

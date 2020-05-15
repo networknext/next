@@ -76,9 +76,6 @@
 #define NEXT_PLATFORM_IOS                                         6
 #define NEXT_PLATFORM_XBOX_ONE                                    7
 
-#define NEXT_PLATFORM_STEAM                                  (1<<9)
-#define NEXT_PLATFORM_EGS                                   (1<<10)
-
 #define NEXT_FLAGS_BAD_ROUTE_TOKEN                           (1<<0)
 #define NEXT_FLAGS_NO_ROUTE_TO_CONTINUE                      (1<<1)
 #define NEXT_FLAGS_PREVIOUS_UPDATE_STILL_PENDING             (1<<2)

@@ -6768,9 +6768,6 @@ void next_client_internal_update_stats( next_client_internal_t * client )
     if ( next_global_config.disable_network_next )
         return;
 
-    if ( !client->upgraded )
-        return;
-
     double current_time = next_time();
 
     if ( client->last_stats_update_time + ( 1.0 / NEXT_CLIENT_STATS_UPDATES_PER_SECOND ) < current_time )
@@ -13708,7 +13705,7 @@ static void test_packets()
         in.flags = NEXT_FLAGS_BAD_ROUTE_TOKEN | NEXT_FLAGS_DIRECT_ROUTE_EXPIRED;
         in.flagged = true;
         in.fallback_to_direct = true;
-        in.platform_id = NEXT_PLATFORM_WINDOWS | NEXT_PLATFORM_EGS;
+        in.platform_id = NEXT_PLATFORM_WINDOWS;
         in.connection_type = NEXT_CONNECTION_TYPE_CELLULAR;
         in.direct_min_rtt = 50.0f;
         in.direct_max_rtt = 110.0f;

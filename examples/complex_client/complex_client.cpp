@@ -257,8 +257,9 @@ int main()
 
     next_client_open_session( client, server_address );
 
-    // todo: accum and print stats every 10 seconds
-    // double accumulator = 0.0;
+    double accumulator = 0.0;
+
+    const double delta_time = 0.25;
 
     while ( !quit )
     {
@@ -277,7 +278,98 @@ int main()
         generate_packet( packet_data, packet_bytes );
         next_client_send_packet( client, packet_data, packet_bytes );
         
-        next_sleep( 0.25 );
+        next_sleep( delta_time );
+
+        accumulator += delta_time;
+        if ( accumulator > 10.0 )
+        {
+            accumulator = 0.0;
+
+            printf( "================================================================\n" );
+            
+            const next_client_stats_t * stats = next_client_stats( client );
+
+            const char * connection_type = "unknown";
+            
+            switch ( stats->connection_type )
+            {
+                case NEXT_CONNECTION_TYPE_WIRED:
+                    connection_type = "wired";
+                    break;
+
+                case NEXT_CONNECTION_TYPE_WIFI:
+                    connection_type = "wifi";
+                    break;
+
+                case NEXT_CONNECTION_TYPE_CELLULAR:
+                    connection_type = "cellular";
+                    break;
+
+                default:
+                    break;
+            }
+
+            printf( "connection type: %s (%d)\n", connection_type, stats->connection_type );
+
+            const char * platform = "unknown";
+
+            switch ( stats->platform_id )
+            {
+                case NEXT_PLATFORM_WINDOWS:
+                    platform = "windows";
+                    break;
+
+                case NEXT_PLATFORM_MAC:
+                    platform = "mac";
+                    break;
+
+                case NEXT_PLATFORM_LINUX:
+                    platform = "linux";
+                    break;
+
+#define NEXT_PLATFORM_LINUX                                       3
+#define NEXT_PLATFORM_SWITCH                                      4
+#define NEXT_PLATFORM_PS4                                         5
+#define NEXT_PLATFORM_IOS                                         6
+#define NEXT_PLATFORM_XBOX_ONE                                    7
+
+            }
+
+            // todo
+
+            /*
+            struct next_client_stats_t
+            {
+                uint64_t flags;
+                uint64_t platform_id;
+                int connection_type;
+                bool multipath;
+                bool committed;
+                bool flagged;
+                float direct_min_rtt;
+                float direct_max_rtt;
+                float direct_mean_rtt;
+                float direct_jitter;
+                float direct_packet_loss;
+                bool next;
+                float next_min_rtt;
+                float next_max_rtt;
+                float next_mean_rtt;
+                float next_jitter;
+                float next_packet_loss;
+                float next_kbps_up;
+                float next_kbps_down;
+                uint64_t packets_sent_client_to_server;
+                uint64_t packets_sent_server_to_client;
+                uint64_t packets_lost_client_to_server;
+                uint64_t packets_lost_server_to_client;
+                uint64_t user_flags;
+            };
+            */
+
+
+            printf( "================================================================\n" );
+        }
     }
 
     next_client_destroy( client );
