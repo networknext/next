@@ -50,7 +50,8 @@ void server_packet_received( next_server_t * server, void * context, const next_
 
     if ( !next_server_session_upgraded( server, from ) )
     {
-        next_server_upgrade_session( server, from, 0, 0, NULL );
+        const char * user_id_string = "12345";
+        next_server_upgrade_session( server, from, user_id_string, 0, NULL );
     }
 }
 

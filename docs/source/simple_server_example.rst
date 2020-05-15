@@ -14,7 +14,7 @@ First, initialize the SDK:
 	    return 1;
 	}
 
-Next, define a function to be called when packets are received. 
+Next, define a function to be called when packets are received from clients.
 
 Here is one that reflects the packet back to the client that sent it:
 
@@ -44,13 +44,13 @@ Make sure the server gets updated every frame:
 
 	next_server_update( server );
 
-When you have finished using your server, destroy it:
+When you have finished using your server, please destroy it:
 
 .. code-block:: c++
 
 	next_server_destroy( server );
 
-Before your application terminates, shut down the SDK:
+Before your application terminates, please shut down the SDK:
 
 .. code-block:: c++
 

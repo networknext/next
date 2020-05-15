@@ -82,19 +82,19 @@ Make sure the client is updated once every frame:
 
 	next_client_update( client );
 
-When you have finished your session with the server, close it:
+When you have finished your session with the server, please close it:
 
 .. code-block:: c++
 
 	next_client_close_session( client );
 
-When you have finished using your client, destroy it:
+When you have finished using your client, please destroy it:
 
 .. code-block:: c++
 
 	next_client_destroy( client );
 
-Before your application terminates, shut down the SDK:
+Before your application terminates, please shut down the SDK:
 
 .. code-block:: c++
 
