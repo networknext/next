@@ -6,22 +6,23 @@ namespace core
   {
     enum class Type : uint8_t
     {
-      RelayPing = 75,
-      RelayPong = 76,
       RouteRequest = 1,
       RouteResponse = 2,
       ClientToServer = 3,
       ServerToClient = 4,
+      OldRelayPing = 5,
+      OldRelayPong = 6,
+      NewRelayPing = 7,
+      NewRelayPong = 8,
       SessionPing = 11,
       SessionPong = 12,
       ContinueRequest = 13,
       ContinueResponse = 14,
-      NearPing = 73,
-      NearPong = 74,
-
       V3BackendUpdateResponse = 49,
       V3BackendConfigResponse = 51,
       V3BackendInitResponse = 52,
+      NearPing = 73,  // client -> relay
+      NearPong = 74,  // relay -> client
     };
 
     template <typename T>

@@ -8,8 +8,10 @@
 #include "handlers/continue_request_handler.hpp"
 #include "handlers/continue_response_handler.hpp"
 #include "handlers/near_ping_handler.hpp"
-#include "handlers/relay_ping_handler.hpp"
-#include "handlers/relay_pong_handler.hpp"
+#include "handlers/new_relay_ping_handler.hpp"
+#include "handlers/new_relay_pong_handler.hpp"
+#include "handlers/old_relay_ping_handler.hpp"
+#include "handlers/old_relay_pong_handler.hpp"
 #include "handlers/route_request_handler.hpp"
 #include "handlers/route_response_handler.hpp"
 #include "handlers/server_to_client_handler.hpp"
@@ -19,13 +21,6 @@
 #include "packets/types.hpp"
 #include "relay/relay.hpp"
 #include "relay/relay_platform.hpp"
-
-namespace
-{
-  const uint8_t V3BackendRelayResponse = 49;
-  const uint8_t V3BackendConfigResponse = 51;
-  const uint8_t V3BackendInitResponse = 52;
-}  // namespace
 
 namespace core
 {
@@ -116,17 +111,17 @@ namespace core
      * handled until the global killswitch is flagged
      */
     switch (static_cast<packets::Type>(packet.Buffer[0])) {
-      case packets::Type::RelayPing: {
+      case packets::Type::NewRelayPing: {
         if (!mShouldProcess) {
           Log("relay in process of shutting down, rejecting relay ping packet");
           return;
         }
 
-        if (packet.Len == packets::RelayPingPacket::ByteSize) {
+        if (packet.Len == packets::NewRelayPingPacket::ByteSize) {
           mRecorder.addToReceived(wholePacketSize);
           mStats.BytesPerSecMeasurementRx += wholePacketSize;
 
-          handlers::RelayPingHandler handler(packet, mSocket, mRecvAddr, mRecorder, mStats);
+          handlers::NewRelayPingHandler handler(packet, mSocket, mRecvAddr, mRecorder, mStats);
 
           handler.handle();
         } else {
@@ -134,18 +129,22 @@ namespace core
           mStats.BytesPerSecInvalidRx += wholePacketSize;
         }
       } break;
-      case packets::Type::RelayPong: {
-        if (packet.Len == packets::RelayPingPacket::ByteSize) {
+      case packets::Type::NewRelayPong: {
+        if (packet.Len == packets::NewRelayPingPacket::ByteSize) {
           mRecorder.addToReceived(wholePacketSize);
           mStats.BytesPerSecMeasurementRx += wholePacketSize;
 
-          handlers::RelayPongHandler handler(packet, mRelayManager, mV3RelayManager);
+          handlers::NewRelayPongHandler handler(packet, mRelayManager);
 
           handler.handle();
         } else {
           mRecorder.addToUnknown(wholePacketSize);
           mStats.BytesPerSecInvalidRx += wholePacketSize;
         }
+      } break;
+      case packets::Type::OldRelayPing: {
+      } break;
+      case packets::Type::OldRelayPong: {
       } break;
       case packets::Type::RouteRequest: {
         mRecorder.addToReceived(wholePacketSize);

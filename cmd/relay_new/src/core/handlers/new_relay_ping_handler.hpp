@@ -1,8 +1,7 @@
-#ifndef CORE_HANDLERS_RELAY_PING_HANDLER
-#define CORE_HANDLERS_RELAY_PING_HANDLER
+#pragma once
 
 #include "base_handler.hpp"
-#include "core/packets/relay_ping_packet.hpp"
+#include "core/packets/new_relay_ping_packet.hpp"
 #include "core/packets/types.hpp"
 #include "encoding/read.hpp"
 #include "legacy/v3/traffic_stats.hpp"
@@ -14,10 +13,10 @@ namespace core
 {
   namespace handlers
   {
-    class RelayPingHandler: public BaseHandler
+    class NewRelayPingHandler: public BaseHandler
     {
      public:
-      RelayPingHandler(
+      NewRelayPingHandler(
        GenericPacket<>& packet,
        const os::Socket& socket,
        const net::Address& mRecvAddr,
@@ -33,7 +32,7 @@ namespace core
       legacy::v3::TrafficStats& mStats;
     };
 
-    inline RelayPingHandler::RelayPingHandler(
+    inline NewRelayPingHandler::NewRelayPingHandler(
      GenericPacket<>& packet,
      const os::Socket& socket,
      const net::Address& receivingAddress,
@@ -42,14 +41,14 @@ namespace core
      : BaseHandler(packet), mSocket(socket), mRecvAddr(receivingAddress), mRecorder(recorder), mStats(stats)
     {}
 
-    inline void RelayPingHandler::handle()
+    inline void NewRelayPingHandler::handle()
     {
-      packets::RelayPingPacket packetWrapper(mPacket);
+      packets::NewRelayPingPacket packetWrapper(mPacket);
 
-      packetWrapper.Internal.Buffer[0] = static_cast<uint8_t>(packets::Type::RelayPong);
+      packetWrapper.Internal.Buffer[0] = static_cast<uint8_t>(packets::Type::NewRelayPong);
       mPacket.Addr = packetWrapper.getFromAddr();
       packetWrapper.writeFromAddr(mRecvAddr);
-      mPacket.Len = packets::RelayPingPacket::ByteSize;
+      mPacket.Len = packets::NewRelayPingPacket::ByteSize;
 
       mRecorder.addToSent(mPacket.Len);
       mStats.BytesPerSecMeasurementTx += mPacket.Len;
@@ -61,4 +60,3 @@ namespace core
     }
   }  // namespace handlers
 }  // namespace core
-#endif
