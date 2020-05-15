@@ -214,6 +214,7 @@ int main(int argc, const char* argv[])
   legacy::v3::TrafficStats v3TrafficStats;
   core::RouterInfo routerInfo;
   core::RelayManager relayManager(relayClock);
+  core::RelayManager v3RelayManager(relayClock);
   util::ThroughputRecorder recorder;
   auto chan = util::makeChannel<core::GenericPacket<>>();
   auto sender = std::get<0>(chan);
@@ -315,6 +316,7 @@ int main(int argc, const char* argv[])
                                                    &keychain,
                                                    &sessions,
                                                    &relayManager,
+                                                   &v3RelayManager,
                                                    &recorder,
                                                    &relayAddr,
                                                    &sender,
@@ -326,6 +328,7 @@ int main(int argc, const char* argv[])
          keychain,
          sessions,
          relayManager,
+         v3RelayManager,
          gAlive,
          recorder,
          relayAddr,
@@ -375,7 +378,7 @@ int main(int argc, const char* argv[])
     // relays use it to know where the receiving port of other relays are
     auto thread = std::make_shared<std::thread>(
      [&waitVar, &socketAndThreadReady, socket, &relayManager, &relayAddr, &recorder, &v3TrafficStats] {
-       core::PingProcessor pingProcessor(*socket, relayManager, gAlive, relayAddr, recorder, v3TrafficStats);
+       core::PingProcessor pingProcessor(*socket, relayManager, gAlive, relayAddr, recorder, v3TrafficStats, false);
        pingProcessor.process(waitVar, socketAndThreadReady);
      });
 
@@ -395,6 +398,37 @@ int main(int argc, const char* argv[])
 
   // v3 backend compatability setup
   {
+    // ping proc setup
+    {
+      net::Address bindAddr = relayAddr;
+      {
+        bindAddr.Port = 0;
+      }
+
+      auto socket = makeSocket(bindAddr.Port);
+      if (!socket) {
+        Log("could not create pingSocket");
+        cleanup();
+        return 1;
+      }
+
+      auto thread = std::make_shared<std::thread>(
+       [&waitVar, &socketAndThreadReady, socket, &v3RelayManager, &relayAddr, &recorder, &v3TrafficStats] {
+         core::PingProcessor pingProcessor(*socket, v3RelayManager, gAlive, relayAddr, recorder, v3TrafficStats, true);
+         pingProcessor.process(waitVar, socketAndThreadReady);
+       });
+
+      wait();
+
+      sockets.push_back(socket);
+      threads.push_back(thread);
+
+      int error;
+      if (!os::SetThreadAffinity(*thread, getPingProcNum(numProcessors), error)) {
+        Log("error setting thread affinity: ", error);
+      }
+    }
+
     // backend setup
     {
       auto socket = makeSocket(relayAddr.Port);
@@ -404,10 +438,10 @@ int main(int argc, const char* argv[])
         return 1;
       }
 
-      auto thread = std::make_shared<std::thread>(
-       [&receiver, &env, socket, &cleanup, &v3BackendSuccess, &relayClock, &v3TrafficStats, &relayManager] {
+      auto thread =
+       std::make_shared<std::thread>([&receiver, &env, socket, &cleanup, &v3BackendSuccess, &relayClock, &v3TrafficStats, &v3RelayManager] {
          size_t speed = std::stoi(env.RelayV3Speed);
-         legacy::v3::Backend backend(receiver, env, *socket, relayClock, v3TrafficStats, relayManager, speed);
+         legacy::v3::Backend backend(receiver, env, *socket, relayClock, v3TrafficStats, v3RelayManager, speed);
 
          if (!backend.init()) {
            Log("could not initialize relay with old backend");

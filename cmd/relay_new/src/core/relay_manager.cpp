@@ -44,7 +44,7 @@ namespace core
     return pongReceived;
   }
 
-  void RelayManager::getStats(bool forV3, RelayStats& stats)
+  void RelayManager::getStats(RelayStats& stats)
   {
     auto currentTime = mClock.elapsed<util::Second>();
 
@@ -56,7 +56,7 @@ namespace core
       for (unsigned int i = 0; i < mNumRelays; i++) {
         auto& relay = mRelays[i];
         RouteStats rs(*relay.History, currentTime - RELAY_STATS_WINDOW, currentTime, RELAY_PING_SAFETY);
-        stats.IDs[i] = (forV3 ? relay.V3ID : relay.ID);
+        stats.IDs[i] = relay.ID;
         stats.RTT[i] = rs.RTT;
         stats.Jitter[i] = rs.Jitter;
         stats.PacketLoss[i] = rs.PacketLoss;

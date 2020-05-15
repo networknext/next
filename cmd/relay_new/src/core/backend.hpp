@@ -302,7 +302,7 @@ namespace core
         return false;
       }
 
-      mRelayManager.update(false, count, relayIDs, relayAddresses);
+      mRelayManager.update(count, relayIDs, relayAddresses);
     } else if (relays.memberIs(util::JSON::Type::Null)) {
       Log("no relays received from backend, ping data is null");
     } else {
@@ -395,7 +395,7 @@ namespace core
       util::JSON pingStats;
 
       core::RelayStats stats;
-      mRelayManager.getStats(false, stats);
+      mRelayManager.getStats(stats);
       pingStats.setArray();
 
       for (unsigned int i = 0; i < stats.NumRelays; ++i) {

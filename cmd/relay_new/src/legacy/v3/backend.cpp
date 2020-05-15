@@ -284,7 +284,7 @@ namespace legacy
           return false;
         }
 
-        mRelayManager.update(true, count, relayIDs, relayAddresses);
+        mRelayManager.update(count, relayIDs, relayAddresses);
       } else if (relays.memberIs(util::JSON::Type::Null)) {
         Log("no relays received from backend, ping data is null");
       } else {
@@ -400,7 +400,7 @@ namespace legacy
         pingStats.setArray();
 
         core::RelayStats stats;
-        mRelayManager.getStats(true, stats);
+        mRelayManager.getStats(stats);
 
         for (unsigned int i = 0; i < stats.NumRelays; ++i) {
           util::JSON pingStat;

@@ -13,25 +13,32 @@ namespace core
     class RelayPongHandler: public BaseHandler
     {
      public:
-      RelayPongHandler(GenericPacket<>& packet, RelayManager& manager);
+      RelayPongHandler(GenericPacket<>& packet, RelayManager& manager, RelayManager& v3Manager);
 
       void handle();
 
      private:
       RelayManager& mRelayManager;
+      RelayManager& mV3RelayManager;
     };
 
-    inline RelayPongHandler::RelayPongHandler(GenericPacket<>& packet, RelayManager& manager)
-     : BaseHandler(packet), mRelayManager(manager)
+    inline RelayPongHandler::RelayPongHandler(GenericPacket<>& packet, RelayManager& manager, RelayManager& v3Manager)
+     : BaseHandler(packet), mRelayManager(manager), mV3RelayManager(v3Manager)
     {}
 
     inline void RelayPongHandler::handle()
     {
       packets::RelayPingPacket packet(mPacket);
 
+      // TODO move the v3 stuff completely out of here
       // process the pong time
-      LogDebug("got pong packet from ", packet.getFromAddr());
-      mRelayManager.processPong(packet.getFromAddr(), packet.getSeqNum());
+      if (packet.isV3()) {
+        LogDebug("got v3 pong packet from ", packet.getFromAddr());
+        mV3RelayManager.processPong(packet.getFromAddr(), packet.getSeqNum());
+      } else {
+        LogDebug("got pong packet from ", packet.getFromAddr());
+        mRelayManager.processPong(packet.getFromAddr(), packet.getSeqNum());
+      }
     }
   }  // namespace handlers
 }  // namespace core
