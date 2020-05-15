@@ -30,6 +30,8 @@
 const char * bind_address = "0.0.0.0:50000";
 const char * server_address = "127.0.0.1:50000";
 const char * server_datacenter = "local";
+const char * backend_hostname = "dev.networknext.com";
+const char * customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn";
 
 static volatile int quit = 0;
 
@@ -41,15 +43,27 @@ void interrupt_handler( int signal )
 void server_packet_received( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
 {
     (void) context;
+
     next_server_send_packet( server, from, packet_data, packet_bytes );
+
     next_printf( NEXT_LOG_LEVEL_INFO, "server received packet from client (%d bytes)", packet_bytes );
+
+    if ( !next_server_session_upgraded( server, from ) )
+    {
+        next_server_upgrade_session( server, from, 0, 0, NULL );
+    }
 }
 
 int main()
 {
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
 
-    if ( next_init( NULL, NULL ) != NEXT_OK )
+    next_config_t config;
+    next_default_config( &config );
+    strncpy( config.hostname, backend_hostname, sizeof(config.hostname) - 1 );
+    strncpy( config.customer_private_key, customer_private_key, sizeof(config.customer_private_key) - 1 );
+
+    if ( next_init( NULL, &config ) != NEXT_OK )
     {
         printf( "error: could not initialize network next\n" );
         return 1;

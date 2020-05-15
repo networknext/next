@@ -261,6 +261,8 @@ int main()
     {
         next_server_update( server );
 
+        // todo: extend to print out stats
+
         next_sleep( 1.0 / 60.0 );
     }
     

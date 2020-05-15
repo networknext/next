@@ -2,7 +2,7 @@
 Upgraded Client Example
 -----------------------
 
-In this example we setup a client that connects to a server and is upgraded for monitoring and acceleration by Network Next.
+In this example we setup a client for monitoring and acceleration by network next.
 
 First, initialize the SDK:
 

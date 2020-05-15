@@ -174,6 +174,34 @@ project "simple_server"
 	filter "system:macosx"
 		linkoptions { "-framework SystemConfiguration -framework CoreFoundation" }
 
+project "upgraded_client"
+	kind "ConsoleApp"
+	links { "next", "sodium" }
+	files { "examples/upgraded_client/upgraded_client.cpp" }
+	includedirs { "include" }
+	defines { "SODIUM_STATIC" }
+	filter "system:windows"
+		disablewarnings { "4324" }
+		includedirs { "sodium/include/" }
+	filter "system:not windows"
+		links { "pthread" }
+	filter "system:macosx"
+		linkoptions { "-framework SystemConfiguration -framework CoreFoundation" }
+
+project "upgraded_server"
+	kind "ConsoleApp"
+	links { "next", "sodium" }
+	files { "examples/upgraded_server/upgraded_server.cpp" }
+	includedirs { "include" }
+	defines { "SODIUM_STATIC" }
+	filter "system:windows"
+		disablewarnings { "4324" }
+		includedirs { "sodium/include/" }
+	filter "system:not windows"
+		links { "pthread" }
+	filter "system:macosx"
+		linkoptions { "-framework SystemConfiguration -framework CoreFoundation" }
+
 project "complex_client"
 	kind "ConsoleApp"
 	links { "next", "sodium" }
