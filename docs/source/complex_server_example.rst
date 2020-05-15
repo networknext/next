@@ -29,7 +29,7 @@ When creating a server, we create it with a server context as follows:
 	    return 1;
 	}
 
-The overridden malloc and free functions with the server context including our custom allocator:
+The overridden malloc and free functions are now called with the server context including our custom allocator:
 
 .. code-block:: c++
 
