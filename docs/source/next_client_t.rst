@@ -21,7 +21,7 @@ Creates an instance of a client, binding a socket to the specified address and p
 
 **Parameters:**
 
-	- **context** -- An optional pointer to context to be passed in any callbacks made from the client. Also passed to custom malloc and free functions called for allocations on behalf of this client instance.
+	- **context** -- An optional pointer to context passed to any callbacks made from the client.
 
 	- **bind_address** -- An address string describing the bind address and port to bind to. Typically "0.0.0.0:0" is passed in, which binds to any IPv4 interface and lets the system pick a port. Alternatively, you can bind to a specific port "0.0.0.0:50000".
 
