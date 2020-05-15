@@ -417,6 +417,8 @@ func (packet *NextBackendSessionUpdatePacket) GetSignData(versionMajor int32, ve
 	binary.Write(buf, binary.LittleEndian, packet.KbpsUp)
 	binary.Write(buf, binary.LittleEndian, packet.KbpsDown)
 
+	binary.Write(buf, binary.LittleEndian, packet.PacketsSentClientToServer)
+	binary.Write(buf, binary.LittleEndian, packet.PacketsSentServerToClient)
 	binary.Write(buf, binary.LittleEndian, packet.PacketsLostClientToServer)
 	binary.Write(buf, binary.LittleEndian, packet.PacketsLostServerToClient)
 
