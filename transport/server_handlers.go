@@ -434,6 +434,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 				newSession = true
 			}
 		}
+		packet.Version = serverCacheEntry.SDKVersion
 
 		locallogger = log.With(locallogger, "datacenter_id", serverCacheEntry.Datacenter.ID)
 
