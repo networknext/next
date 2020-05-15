@@ -759,16 +759,7 @@
                             </div>
                         </div>
                     </main>
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-                    <main role="main" class="col-md-12 col-lg-12 px-4 hidden" id="user-tool-workspace">
-=======
-                    <main role="main" class="col-md-12 col-lg-12 px-4 hidden" v-show="pages.userTool.show">
->>>>>>> Got everything in. Need to patch usertool and settings page still
-=======
                     <main role="main" class="col-md-12 col-lg-12 px-4" v-show="pages.userTool.show">
->>>>>>> back up to feature parity under vue. Weird bug with map refresh though
                         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                             <h1 class="h2">
                                 User Tool
@@ -802,11 +793,7 @@
                         </div>
                         <div id="user-sessions">
                             <div class="table-responsive table-no-top-line">
-<<<<<<< HEAD
-                                <table class="table table-sm" v-if="showTable">
-=======
                                 <table class="table table-sm" v-if="pages.userTool.showTable">
->>>>>>> Got everything in. Need to patch usertool and settings page still
                                     <thead>
                                         <tr>
                                             <th>
@@ -884,11 +871,7 @@
                             </div>
                         </div>
                     </main>
-<<<<<<< HEAD
-                    <main role="main" class="col-md-12 col-lg-12 px-4 hidden" id="settings-workspace">
-=======
                     <main role="main" class="col-md-12 col-lg-12 px-4" v-show="pages.settings.show">
->>>>>>> Got everything in. Need to patch usertool and settings page still
                         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                             <h1 class="h2">
                                 Settings
@@ -897,11 +880,7 @@
                                 <div class="mr-auto"></div>
                             </div>
                         </div>
-<<<<<<< HEAD
-                        <div class="card" style="margin-bottom: 250px;" id="settings-page">
-=======
                         <div class="card" style="margin-bottom: 250px;">
->>>>>>> Got everything in. Need to patch usertool and settings page still
                             <div class="card-header">
                                 <ul class="nav nav-tabs card-header-tabs">
                                     <li class="nav-item">
@@ -909,247 +888,13 @@
                                             Users
                                         </a>
                                     </li>
-<<<<<<< HEAD
-                                    <li class="nav-item" v-if="isOwner()">
-=======
                                     <li class="nav-item">
-<<<<<<< HEAD
->>>>>>> Got everything in. Need to patch usertool and settings page still
-                                        <a class="nav-link" id="config-link" href="#" onclick="WorkspaceHandler.changeAccountPage('config')">
-=======
                                         <a class="nav-link" id="config-link" href="#" v-bind:class="{ active: pages.settings.showConfig }" v-on:click="handlers.workspaceHandler.changeSettingsPage('config')">
->>>>>>> back up to feature parity under vue. Weird bug with map refresh though
                                             Game Configuration
                                         </a>
                                     </li>
                                 </ul>
                             </div>
-<<<<<<< HEAD
-                            <div class="card-body" v-if="showSettings">
-                                <h5 class="card-title">
-                                    Automatic sign-in
-                                </h5>
-                                <p class="card-text">
-                                    Save time by allowing users with verified email addresses automatic access to your Network Next account.
-                                </p>
-                                <div id="auto-sign-in-spinner" v-if="!showAccounts">
-                                    <div class="spinner-border" role="status">
-                                        <span class="sr-only">Loading...</span>
-                                    </div>
-                                </div>
-                                <form onsubmit="saveAutoSignIn(event)" v-if="showAccounts">
-                                    <div class="form-group">
-                                        <label for="customerId">
-                                            Automatic Sign-in Domain
-                                        </label>
-                                        <input type="text" class="form-control form-control-sm" value="networknext.com" id="auto-sign-in-domain">
-                                        <small class="form-text text-muted">
-                                            If you set this to a domain, such as "example.com", then anyone with a verified email address with this domain will automatically join your account when logging in. You can set this so that you don't need to manually onboard everyone in your organization.
-                                        </small>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="customerId">
-                                            Permission Level
-                                        </label>
-                                        <select
-                                            class="form-control"
-                                            id="auto-signin-permissions"
-                                            multiple
-                                        >
-                                        </select>
-                                        <small class="form-text text-muted">
-                                            The permission level to grant accounts that join your account via automatic sign-in.
-                                        </small>
-                                    </div>
-                                    <button type="submit" class="btn btn-primary btn-sm">
-                                        Save Automatic Sign-in
-                                    </button>
-                                    <p class="text-muted text-small mt-2"></p>
-                                </form>
-                                <hr class="mt-4 mb-4">
-                                <h5 class="card-title">
-                                    Add new users
-                                </h5>
-                                <p class="card-text">
-                                    Provide other people with access to your account.
-                                </p>
-                                <div id="add-user-spinner" v-if="!showAccounts">
-                                    <div class="spinner-border" role="status">
-                                        <span class="sr-only">Loading...</span>
-                                    </div>
-                                </div>
-                                <div class="alert alert-success" role="alert" id="session-tool-alert" v-if="newUser.success.message != ''">
-                                    {{ newUser.success.message }}
-                                </div>
-                                <div class="alert alert-danger" role="alert" id="session-tool-alert" v-if="newUser.failure.message != ''">
-                                    {{ newUser.failure.message }}
-                                </div>
-                                <form onsubmit="addUsers(event)" v-if="showAccounts">
-                                    <div class="form-group">
-                                        <label for="customerId">
-                                            Add users by email address
-                                        </label>
-                                        <textarea class="form-control form-control-sm" id="new-user-emails"></textarea>
-                                        <small class="form-text text-muted">
-                                            Enter a newline or comma-delimited list of email addresses to add users to your account.
-                                        </small>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="customerId">
-                                            Permission Level
-                                        </label>
-                                        <select
-                                            class="form-control"
-                                            id="add-user-permissions"
-                                            placeholder="Select..."
-                                            multiple
-                                        >
-                                        </select>
-                                        <small class="form-text text-muted">
-                                            The permission level to grant the added user accounts.
-                                        </small>
-                                    </div>
-                                    <button type="submit" class="btn btn-primary btn-sm">
-                                        Add Users
-                                    </button>
-                                    <p class="text-muted text-small mt-2"></p>
-                                </form>
-                                <hr class="mt-4 mb-4">
-                                <h5 class="card-title">
-                                    Manage existing users
-                                </h5>
-                                <p class="card-text">
-                                    Manage the list of users that currently have access to your Network Next account.
-                                </p>
-                                <div id="account-table-spinner" v-if="!showAccounts">
-                                    <div class="spinner-border" role="status">
-                                        <span class="sr-only">Loading...</span>
-                                    </div>
-                                </div>
-                                <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" v-if="showAccounts && isAdmin()">
-                                    <div class="mr-auto"></div>
-                                    <div class="px-2">
-                                        <select class="form-control">
-                                            <option value="all" v-on:click="updateAccountsTableFilter({buyerId: ''})">
-                                                All
-                                            </option>
-                                            <option v-for="buyer in allBuyers" v-on:click="updateAccountsTableFilter({buyerId: buyer.id})">
-                                                {{ buyer.name }}
-                                            </option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <table class="table table-sm mt-4" v-if="showAccounts">
-                                    <thead class="thead-light">
-                                        <tr>
-                                            <th style="width: 20%;">
-                                                Email Address
-                                            </th>
-                                            <th style="width: 70%;">
-                                                Permissions
-                                            </th>
-                                            <th style="width: 10%;">
-                                                Actions
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr v-for="(account, index) in accounts">
-                                            <div
-                                                class="alert alert-success"
-                                                role="alert"
-                                                v-if="updateUser.success.message != ''"
-                                            >
-                                                {{ updateUser.success.message }}
-                                            </div>
-                                            <div
-                                                class="alert alert-danger"
-                                                role="alert"
-                                                v-if="updateUser.failure.message != ''"
-                                            >
-                                                {{ updateUser.failure.message }}
-                                            </div>
-                                            <td>
-                                                {{ account.email }}
-                                            </td>
-                                            <td>
-                                                <select
-                                                    class="form-control"
-                                                    :id="`edit-user-permissions-${account.user_id}`"
-                                                    multiple
-                                                >
-                                                </select>
-                                            </td>
-                                            <td class="td-btn" v-if="!account.edit && !account.delete">
-                                                <button
-                                                    class="btn btn-xs btn-primary"
-                                                    data-toggle="tooltip"
-                                                    data-placement="bottom"
-                                                    title="Change this user's permissions"
-                                                    v-on:click="editUser(account, index)"
-                                                >
-                                                    <i class="fas fa-pen fa-w-16 fa-fw"></i>
-                                                </button>&nbsp;
-                                                <button
-                                                    class="btn btn-xs btn-danger"
-                                                    data-toggle="tooltip"
-                                                    data-placement="bottom"
-                                                    title="Remove this user"
-                                                    v-on:click="deleteUser(index)"
-                                                >
-                                                    <i class="fas fa-trash fa-w-14 fa-fw"></i>
-                                                </button>&nbsp;
-                                            </td>
-                                            <td class="td-btn" v-if="account.edit || account.delete">
-                                                <button
-                                                    class="btn btn-xs btn-success"
-                                                    data-toggle="tooltip"
-                                                    data-placement="bottom"
-                                                    title="Save Changes"
-                                                    v-on:click="saveUser(account, index)"
-                                                >
-                                                    <i class="fas fa-check fa-w-16 fa-fw"></i>
-                                                </button>&nbsp;
-                                                <button
-                                                    class="btn btn-xs btn-secondary"
-                                                    data-toggle="tooltip"
-                                                    data-placement="bottom"
-                                                    title="Cancel Changes"
-                                                    v-on:click="cancelEditUser(account, index)"
-                                                >
-                                                    <i class="fas fa-times fa-w-14 fa-fw"></i>
-                                                </button>&nbsp;
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div class="card-body" id="config-page" v-if="!showSettings">
-                                <h5 class="card-title">
-                                    Game Configuration
-                                </h5>
-                                <p class="card-text">
-                                    Manage how your game connects to Network Next.
-                                </p>
-                                <form onsubmit="updatePubKey()">
-                                    <div class="form-group" id="pubKey">
-                                        <label>
-                                            Public Key
-                                        </label>
-                                        <textarea class="form-control" placeholder="Enter your base64-encoded public key" id="pubkey-input" v-model="pubKey">
-                                        </textarea>
-                                    </div>
-                                    <button type="submit" class="btn btn-primary btn-sm">
-                                        Save game configuration
-                                    </button>
-                                    <p class="text-muted text-small mt-2"></p>
-                                </form>
-                            </div>
-                        </div>
-                    </main>
-=======
->>>>>>> converted map -> sessionTool to single vue page
-=======
                             <div id="settings-page">
                                 <div class="card-body" v-show="pages.settings.showSettings">
                                     <h5 class="card-title">
@@ -1388,7 +1133,6 @@
                             </div>
                         </div>
                     </main>
->>>>>>> Got everything in. Need to patch usertool and settings page still
                 </div>
             </div>
         </div>
