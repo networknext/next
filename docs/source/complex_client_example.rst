@@ -11,7 +11,7 @@ We demonstrate:
 - Setting a custom assert handler
 - Setting a custom allocator
 - Querying the port the client socket is bound to
-- Getting statistics from the client and displaying them periodically
+- Getting statistics from the client
 
 This is going to be a huge example, so let's get started!
 
