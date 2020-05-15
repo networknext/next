@@ -89,7 +89,7 @@ There are three types of allocations done by the Network Next SDK:
 
 Each of these situations corresponds to what is called a "context" in the Network Next SDK. 
 
-A context is simply a void* to a type that you define which is passed in to malloc and free callbacks that we call to perform allocations on behalf of the SDK. The context passed is gives you the flexibility to have a specific memory pool for Network Next (most common), or even to have a completely different allocation pool for each client and server instance. That's what we're going to do in this example.
+A context is simply a void* to a type that you define which is passed in to malloc and free callbacks that we call to perform allocations on behalf of the SDK. The context passed is gives you the flexibility to have a specific memory pool for Network Next (most common), or even to have a completely different allocation pool used for each client and server instance. That's what we're going to do in this example.
 
 Let's define a base context that will be used for global allocations:
 
