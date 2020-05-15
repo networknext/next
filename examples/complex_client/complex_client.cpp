@@ -356,30 +356,18 @@ int main()
 
             printf( " + Flagged = %s\n", stats->flagged ? "yes" : "no" );
 
-            /*
-            struct next_client_stats_t
-            {
-                float direct_min_rtt;
-                float direct_max_rtt;
-                float direct_mean_rtt;
-                float direct_jitter;
-                float direct_packet_loss;
-                bool next;
-                float next_min_rtt;
-                float next_max_rtt;
-                float next_mean_rtt;
-                float next_jitter;
-                float next_packet_loss;
-                float next_kbps_up;
-                float next_kbps_down;
-                uint64_t packets_sent_client_to_server;
-                uint64_t packets_sent_server_to_client;
-                uint64_t packets_lost_client_to_server;
-                uint64_t packets_lost_server_to_client;
-                uint64_t user_flags;
-            };
-            */
+            printf( " + Direct RTT = %.2fms\n", stats->direct_min_rtt );
+            printf( " + Direct Jitter = %.2fms\n", stats->direct_jitter );
+            printf( " + Direct Packet Loss = %.1f%%\n", stats->direct_packet_loss );
 
+            if ( stats->next )
+            {
+                printf( " + Next RTT = %.2fms\n", stats->next_min_rtt );
+                printf( " + Next Jitter = %.2fms\n", stats->next_jitter );
+                printf( " + Next Packet Loss = %.1f%%\n", stats->next_packet_loss );
+                printf( " + Next Bandwidth Up = %.1fkbps\n", stats->next_kbps_up );
+                printf( " + Next Bandwidth Down = %.1fkbps\n", stats->next_kbps_down );
+            }
 
             printf( "================================================================\n" );
         }
