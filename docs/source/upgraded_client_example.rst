@@ -55,12 +55,12 @@ Create the client:
 
 .. code-block:: c++
 
-    next_client_t * client = next_client_create( NULL, bind_address, client_packet_received );
-    if ( client == NULL )
-    {
+	next_client_t * client = next_client_create( NULL, bind_address, client_packet_received );
+	if ( client == NULL )
+	{
 	    printf( "error: failed to create client\n" );
 	    return 1;
-    }
+	}
 
 Open a session between the client and the server:
 
