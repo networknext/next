@@ -16,6 +16,7 @@
 #include "handlers/session_ping_handler.hpp"
 #include "handlers/session_pong_handler.hpp"
 #include "packet_processor.hpp"
+#include "packets/types.hpp"
 #include "relay/relay.hpp"
 #include "relay/relay_platform.hpp"
 
@@ -51,7 +52,7 @@ namespace core
      mShouldProcess(handle),
      mRecorder(logger),
      mRecvAddr(receivingAddr),
-     mSender(sender),
+     mChannel(sender),
      mStats(stats)
   {}
 
@@ -114,14 +115,14 @@ namespace core
      * However to not disrupt player experience the remaining packets are still
      * handled until the global killswitch is flagged
      */
-    switch (packet.Buffer[0]) {
-      case RELAY_PING_PACKET: {
+    switch (static_cast<packets::Type>(packet.Buffer[0])) {
+      case packets::Type::RelayPing: {
         if (!mShouldProcess) {
           Log("relay in process of shutting down, rejecting relay ping packet");
           return;
         }
 
-        if (packet.Len == RELAY_PING_PACKET_BYTES) {
+        if (packet.Len == packets::RelayPingPacket::ByteSize) {
           mRecorder.addToReceived(wholePacketSize);
           mStats.BytesPerSecMeasurementRx += wholePacketSize;
 
@@ -133,8 +134,8 @@ namespace core
           mStats.BytesPerSecInvalidRx += wholePacketSize;
         }
       } break;
-      case RELAY_PONG_PACKET: {
-        if (packet.Len == RELAY_PING_PACKET_BYTES) {
+      case packets::Type::RelayPong: {
+        if (packet.Len == packets::RelayPingPacket::ByteSize) {
           mRecorder.addToReceived(wholePacketSize);
           mStats.BytesPerSecMeasurementRx += wholePacketSize;
 
@@ -146,7 +147,7 @@ namespace core
           mStats.BytesPerSecInvalidRx += wholePacketSize;
         }
       } break;
-      case RELAY_ROUTE_REQUEST_PACKET: {
+      case packets::Type::RouteRequest: {
         mRecorder.addToReceived(wholePacketSize);
         mStats.BytesPerSecManagementRx += wholePacketSize;
 
@@ -154,7 +155,7 @@ namespace core
 
         handler.handle(outputBuff);
       } break;
-      case RELAY_ROUTE_RESPONSE_PACKET: {
+      case packets::Type::RouteResponse: {
         mRecorder.addToReceived(wholePacketSize);
         mStats.BytesPerSecManagementRx += wholePacketSize;
 
@@ -162,7 +163,7 @@ namespace core
 
         handler.handle(outputBuff);
       } break;
-      case RELAY_CONTINUE_REQUEST_PACKET: {
+      case packets::Type::ContinueRequest: {
         mRecorder.addToReceived(wholePacketSize);
         mStats.BytesPerSecManagementRx += wholePacketSize;
 
@@ -170,7 +171,7 @@ namespace core
 
         handler.handle(outputBuff);
       } break;
-      case RELAY_CONTINUE_RESPONSE_PACKET: {
+      case packets::Type::ContinueResponse: {
         mRecorder.addToReceived(wholePacketSize);
         mStats.BytesPerSecManagementRx += wholePacketSize;
 
@@ -178,7 +179,7 @@ namespace core
 
         handler.handle(outputBuff);
       } break;
-      case RELAY_CLIENT_TO_SERVER_PACKET: {
+      case packets::Type::ClientToServer: {
         mRecorder.addToReceived(wholePacketSize);
         mStats.BytesPerSecPaidRx += wholePacketSize;
 
@@ -186,7 +187,7 @@ namespace core
 
         handler.handle(outputBuff);
       } break;
-      case RELAY_SERVER_TO_CLIENT_PACKET: {
+      case packets::Type::ServerToClient: {
         mRecorder.addToReceived(wholePacketSize);
         mStats.BytesPerSecPaidRx += wholePacketSize;
 
@@ -194,7 +195,7 @@ namespace core
 
         handler.handle(outputBuff);
       } break;
-      case RELAY_SESSION_PING_PACKET: {
+      case packets::Type::SessionPing: {
         mRecorder.addToReceived(wholePacketSize);
         mStats.BytesPerSecMeasurementRx += wholePacketSize;
 
@@ -202,7 +203,7 @@ namespace core
 
         handler.handle();
       } break;
-      case RELAY_SESSION_PONG_PACKET: {
+      case packets::Type::SessionPong: {
         mRecorder.addToReceived(wholePacketSize);
         mStats.BytesPerSecMeasurementRx += wholePacketSize;
 
@@ -210,7 +211,7 @@ namespace core
 
         handler.handle();
       } break;
-      case RELAY_NEAR_PING_PACKET: {
+      case packets::Type::NearPing: {
         mRecorder.addToReceived(wholePacketSize);
         mStats.BytesPerSecMeasurementRx += wholePacketSize;
 
@@ -219,23 +220,23 @@ namespace core
         handler.handle();
       } break;
       // Next three all do the same thing
-      case V3BackendInitResponse: {
+      case packets::Type::V3BackendInitResponse: {
         mRecorder.addToReceived(wholePacketSize);
         mStats.BytesPerSecManagementRx += wholePacketSize;
-        mSender.send(packet);
-        LogDebug("got init response, current number of items in channel ", mSender.size());
+        mChannel.send(packet);
+        LogDebug("got init response, current number of items in channel ", mChannel.size());
       } break;
-      case V3BackendConfigResponse: {
+      case packets::Type::V3BackendConfigResponse: {
         mRecorder.addToReceived(wholePacketSize);
         mStats.BytesPerSecManagementRx += wholePacketSize;
-        mSender.send(packet);
-        LogDebug("got config response, current number of items in channel ", mSender.size());
+        mChannel.send(packet);
+        LogDebug("got config response, current number of items in channel ", mChannel.size());
       } break;
-      case V3BackendRelayResponse: {
+      case packets::Type::V3BackendUpdateResponse: {
         mRecorder.addToReceived(wholePacketSize);
         mStats.BytesPerSecManagementRx += wholePacketSize;
-        mSender.send(packet);
-        LogDebug("got relay response, current number of items in channel ", mSender.size());
+        mChannel.send(packet);
+        LogDebug("got relay response, current number of items in channel ", mChannel.size());
       } break;
       default: {
         LogDebug("received unknown packet type: ", std::hex, (int)packet.Buffer[0], std::dec);

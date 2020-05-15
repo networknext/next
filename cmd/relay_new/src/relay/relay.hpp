@@ -7,6 +7,7 @@
 
 #include "os/platform.hpp"
 #include "core/replay_protection.hpp"
+#include "core/packets/types.hpp"
 
 namespace relay
 {
@@ -15,7 +16,7 @@ namespace relay
   void relay_term();
 
   int relay_write_header(int direction,
-   uint8_t type,
+   core::packets::Type type,
    uint64_t sequence,
    uint64_t session_id,
    uint8_t session_version,
@@ -24,7 +25,7 @@ namespace relay
    int buffer_length);
 
   int relay_peek_header(int direction,
-   uint8_t* type,
+   core::packets::Type* type,
    uint64_t* sequence,
    uint64_t* session_id,
    uint8_t* session_version,

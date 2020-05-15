@@ -18,7 +18,8 @@ namespace core
        GenericPacket<>& packet,
        core::SessionMap& sessions,
        const os::Socket& socket,
-       util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats);
+       util::ThroughputRecorder& recorder,
+       legacy::v3::TrafficStats& stats);
 
       void handle();
 
@@ -33,7 +34,8 @@ namespace core
      GenericPacket<>& packet,
      core::SessionMap& sessions,
      const os::Socket& socket,
-     util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats)
+     util::ThroughputRecorder& recorder,
+     legacy::v3::TrafficStats& stats)
      : BaseHandler(packet), mSessionMap(sessions), mSocket(socket), mRecorder(recorder), mStats(stats)
     {}
 
@@ -43,7 +45,7 @@ namespace core
         return;
       }
 
-      uint8_t type;
+      packets::Type type;
       uint64_t sequence;
       uint64_t session_id;
       uint8_t session_version;

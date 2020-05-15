@@ -2,12 +2,13 @@
 #define CORE_HANDLERS_ROUTE_REQUEST_HANDLER_HPP
 
 #include "base_handler.hpp"
+#include "core/packets/types.hpp"
 #include "core/session_map.hpp"
 #include "crypto/keychain.hpp"
+#include "legacy/v3/traffic_stats.hpp"
 #include "net/address.hpp"
 #include "os/platform.hpp"
 #include "util/throughput_recorder.hpp"
-#include "legacy/v3/traffic_stats.hpp"
 
 namespace core
 {
@@ -22,7 +23,8 @@ namespace core
        const net::Address& from,
        const crypto::Keychain& keychain,
        core::SessionMap& sessions,
-       util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats);
+       util::ThroughputRecorder& recorder,
+       legacy::v3::TrafficStats& stats);
 
       template <size_t Size>
       void handle(core::GenericPacketBuffer<Size>& size);
@@ -42,7 +44,8 @@ namespace core
      const net::Address& from,
      const crypto::Keychain& keychain,
      core::SessionMap& sessions,
-     util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats)
+     util::ThroughputRecorder& recorder,
+     legacy::v3::TrafficStats& stats)
      : BaseHandler(packet),
        mRelayClock(relayClock),
        mFrom(from),
@@ -107,7 +110,7 @@ namespace core
       }  // TODO else what?
 
       // remove this part of the token by offseting it the request packet bytes
-      mPacket.Buffer[RouteToken::EncryptedByteSize] = RELAY_ROUTE_REQUEST_PACKET;
+      mPacket.Buffer[RouteToken::EncryptedByteSize] = static_cast<uint8_t>(packets::Type::RouteRequest);
 
       LogDebug("sending route request to ", token.NextAddr);
 

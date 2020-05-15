@@ -2,11 +2,12 @@
 #define CORE_HANDLERS_CONTINUE_REQUEST_HANDLER
 
 #include "base_handler.hpp"
+#include "core/packets/types.hpp"
 #include "core/session_map.hpp"
 #include "crypto/keychain.hpp"
+#include "legacy/v3/traffic_stats.hpp"
 #include "os/platform.hpp"
 #include "util/throughput_recorder.hpp"
-#include "legacy/v3/traffic_stats.hpp"
 
 namespace core
 {
@@ -20,7 +21,8 @@ namespace core
        GenericPacket<>& packet,
        core::SessionMap& sessions,
        const crypto::Keychain& keychain,
-       util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats);
+       util::ThroughputRecorder& recorder,
+       legacy::v3::TrafficStats& stats);
 
       template <size_t Size>
       void handle(core::GenericPacketBuffer<Size>& buff);
@@ -38,8 +40,14 @@ namespace core
      GenericPacket<>& packet,
      core::SessionMap& sessions,
      const crypto::Keychain& keychain,
-     util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats)
-     : BaseHandler(packet), mRelayClock(relayClock), mSessionMap(sessions), mKeychain(keychain), mRecorder(recorder), mStats(stats)
+     util::ThroughputRecorder& recorder,
+     legacy::v3::TrafficStats& stats)
+     : BaseHandler(packet),
+       mRelayClock(relayClock),
+       mSessionMap(sessions),
+       mKeychain(keychain),
+       mRecorder(recorder),
+       mStats(stats)
     {}
 
     template <size_t Size>
@@ -82,7 +90,7 @@ namespace core
       }
 
       session->ExpireTimestamp = token.ExpireTimestamp;
-      mPacket.Buffer[ContinueToken::EncryptedByteSize] = RELAY_CONTINUE_REQUEST_PACKET;
+      mPacket.Buffer[ContinueToken::EncryptedByteSize] = static_cast<uint8_t>(packets::Type::ContinueRequest);
 
       auto length = mPacket.Len - ContinueToken::EncryptedByteSize;
       mRecorder.addToSent(length);

@@ -13,6 +13,8 @@ namespace core
     class RelayPingPacket
     {
      public:
+      static const size_t ByteSize = 1 + 8 + net::Address::ByteSize + 1; // type | sequence | addr
+
       RelayPingPacket(GenericPacket<>& packet);
 
       // getters do no cache, just make the indexes of the packet clearer
@@ -42,7 +44,8 @@ namespace core
       return addr;
     }
 
-    inline auto RelayPingPacket::isV3() -> bool {
+    inline auto RelayPingPacket::isV3() -> bool
+    {
       size_t index = 28;
       return encoding::ReadUint8(Internal.Buffer, index);
     }

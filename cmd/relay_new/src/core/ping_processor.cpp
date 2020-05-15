@@ -2,6 +2,8 @@
 #include "ping_processor.hpp"
 
 #include "encoding/write.hpp"
+#include "packets/relay_ping_packet.hpp"
+#include "packets/types.hpp"
 
 using namespace std::chrono_literals;
 namespace
@@ -35,7 +37,7 @@ namespace core
     readyToSend = true;
     var.notify_one();
 
-    GenericPacketBuffer<MaxPacketsToSend, RELAY_PING_PACKET_BYTES> buffer;
+    GenericPacketBuffer<MaxPacketsToSend, packets::RelayPingPacket::ByteSize> buffer;
 
     while (mShouldProcess) {
       std::this_thread::sleep_for(10ms);
@@ -62,12 +64,12 @@ namespace core
 
         // write data to the buffer
         {
-          encoding::WriteUint8(pkt.Buffer, index, RELAY_PING_PACKET);
+          encoding::WriteUint8(pkt.Buffer, index, static_cast<uint8_t>(packets::Type::RelayPing));
           encoding::WriteUint64(pkt.Buffer, index, pings[i].Seq);
 
           // use the recv port addr here so the receiving relay knows where to send it back to
           encoding::WriteAddress(pkt.Buffer, index, mRelayAddress);
-          encoding::WriteUint8(pkt.Buffer, index, mIsV3 ? 1 : 0); // bools are not always 1 byte
+          encoding::WriteUint8(pkt.Buffer, index, mIsV3 ? 1 : 0);  // bools are not always 1 byte
         }
 
         pkt.Len = index;

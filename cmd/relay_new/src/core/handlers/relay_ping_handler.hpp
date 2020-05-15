@@ -3,11 +3,12 @@
 
 #include "base_handler.hpp"
 #include "core/packets/relay_ping_packet.hpp"
+#include "core/packets/types.hpp"
 #include "encoding/read.hpp"
+#include "legacy/v3/traffic_stats.hpp"
 #include "net/address.hpp"
 #include "os/platform.hpp"
 #include "util/throughput_recorder.hpp"
-#include "legacy/v3/traffic_stats.hpp"
 
 namespace core
 {
@@ -45,10 +46,10 @@ namespace core
     {
       packets::RelayPingPacket packetWrapper(mPacket);
 
-      packetWrapper.Internal.Buffer[0] = RELAY_PONG_PACKET;
+      packetWrapper.Internal.Buffer[0] = static_cast<uint8_t>(packets::Type::RelayPong);
       mPacket.Addr = packetWrapper.getFromAddr();
       packetWrapper.writeFromAddr(mRecvAddr);
-      mPacket.Len = RELAY_PING_PACKET_BYTES;
+      mPacket.Len = packets::RelayPingPacket::ByteSize;
 
       mRecorder.addToSent(mPacket.Len);
       mStats.BytesPerSecMeasurementTx += mPacket.Len;

@@ -50,7 +50,7 @@ namespace core
     const volatile bool& mShouldProcess;
     util::ThroughputRecorder& mRecorder;
     const net::Address& mRecvAddr;
-    util::Sender<core::GenericPacket<>>& mSender;
+    util::Sender<core::GenericPacket<>>& mChannel;
     legacy::v3::TrafficStats& mStats;
 
     void processPacket(GenericPacket<>& packet, mmsghdr& header, GenericPacketBuffer<MaxPacketsToSend>& outputBuff);

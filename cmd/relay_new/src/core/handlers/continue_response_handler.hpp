@@ -39,7 +39,7 @@ namespace core
         return;
       }
 
-      uint8_t type;
+      packets::Type type;
       uint64_t sequence;
       uint64_t session_id;
       uint8_t session_version;

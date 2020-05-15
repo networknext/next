@@ -2,12 +2,13 @@
 #include "testing/test.hpp"
 
 #include "core/packets/relay_ping_packet.hpp"
+#include "core/packets/types.hpp"
 #include "crypto/bytes.hpp"
 #include "encoding/write.hpp"
 
 Test(core_packets_RelayPingPacket_general)
 {
-  uint8_t type = RELAY_PING_PACKET;
+  uint8_t type = static_cast<uint8_t>(core::packets::Type::RelayPing);
   auto seqnum = crypto::Random<uint64_t>();
   net::Address addr = testing::RandomAddress();
   core::GenericPacket<> packet;
@@ -18,11 +19,11 @@ Test(core_packets_RelayPingPacket_general)
   encoding::WriteUint64(packet.Buffer, index, seqnum);
   encoding::WriteAddress(packet.Buffer, index, addr);
 
-  packet.Len = RELAY_PING_PACKET_BYTES;
+  packet.Len = core::packets::RelayPingPacket::ByteSize;
   core::packets::RelayPingPacket pingPacket(packet);
 
   // make sure packet is passed values correctly
-  check(pingPacket.Internal.Buffer[0] == RELAY_PING_PACKET);
+  check(pingPacket.Internal.Buffer[0] == static_cast<uint8_t>(core::packets::Type::RelayPing));
 
   // ensure getters work
   check(pingPacket.getSeqNum() == seqnum);

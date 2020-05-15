@@ -15,7 +15,10 @@ namespace core
     {
      public:
       RouteResponseHandler(
-       GenericPacket<>& packet, core::SessionMap& sessions, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats);
+       GenericPacket<>& packet,
+       core::SessionMap& sessions,
+       util::ThroughputRecorder& recorder,
+       legacy::v3::TrafficStats& stats);
 
       template <size_t Size>
       void handle(core::GenericPacketBuffer<Size>& buff);
@@ -39,7 +42,7 @@ namespace core
         return;
       }
 
-      uint8_t type;
+      packets::Type type;
       uint64_t sequence;
       uint64_t session_id;
       uint8_t session_version;
