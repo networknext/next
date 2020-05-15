@@ -11,13 +11,13 @@ Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, tur
 next_client_create
 ------------------
 
+Creates an instance of a client, binding a socket to the address specified.
+
 .. code-block:: c++
 
 	next_client_t * next_client_create( void * context, 
 	                                    const char * bind_address, 
 	                                    void (*packet_received_callback)( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes ) );
-
-Creates an instance of a client, binding a socket to the address specified.
 
 **Parameters:**
 
