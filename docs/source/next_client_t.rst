@@ -29,9 +29,9 @@ Creates an instance of a client, binding a socket to the address specified.
 
 **Return value:** 
 
-The newly created client instance or NULL if the client could not be created. 
+The newly created client instance, or NULL, if the client could not be created. 
 
-Typically, NULL is only returned when another socket is already bound on the same port, or if an invalid bind address was passed in.
+Typically, NULL is only returned when another socket is already bound on the same port, or if an invalid bind address is passed in.
 
 **Examples:**
 
