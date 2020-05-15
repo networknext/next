@@ -556,7 +556,7 @@ Set user flags.
 
 This feature was added to allow you to define your own set of flags, mapping to important events in *your* game, and pass them up to our backend.
 
-For example, you could define (1<<0) as "low framerate", (1<<1) as "player died", (1<<2) as "large frame hitch" and so on. Then, as we study reported sessions for your player base, our data scientists look for correlations between the user flags you specify and player reported sessions.
+For example, you could define (1<<0) as "low framerate", (1<<1) as "player died", (1<<2) as "large frame hitch" and so on. Then, as we study reported sessions for your player base, our data scientists look for correlations with user flags you specify.
 
 **Parameters:**
 
