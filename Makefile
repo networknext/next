@@ -280,7 +280,7 @@ dev-relay: build-relay-new ## runs a local relay
 	@$(DIST_DIR)/$(RELAY_EXE)
 
 .PHONY: dev-multi-relays
-dev-multi-relays: build-new-relay ## runs 10 local relays
+dev-multi-relays: build-relay-new ## runs 10 local relays
 	./cmd/tools/scripts/relay-spawner.sh -n 10 -p 10000
 
 #######################
