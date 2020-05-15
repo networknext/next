@@ -289,6 +289,44 @@ int main()
             
             const next_client_stats_t * stats = next_client_stats( client );
 
+            const char * platform = "unknown";
+
+            switch ( stats->platform_id )
+            {
+                case NEXT_PLATFORM_WINDOWS:
+                    platform = "windows";
+                    break;
+
+                case NEXT_PLATFORM_MAC:
+                    platform = "mac";
+                    break;
+
+                case NEXT_PLATFORM_LINUX:
+                    platform = "linux";
+                    break;
+
+                case NEXT_PLATFORM_SWITCH:
+                    platform = "nintendo switch";
+                    break;
+
+                case NEXT_PLATFORM_PS4:
+                    platform = "ps4";
+                    break;
+
+                case NEXT_PLATFORM_IOS:
+                    platform = "ios";
+                    break;
+
+                case NEXT_PLATFORM_XBOX_ONE:
+                    platform = "xbox one";
+                    break;
+
+                default:
+                    break;
+            }
+
+            printf( "platform: %s (%d)\n", platform, (int) stats->platform_id );
+
             const char * connection_type = "unknown";
             
             switch ( stats->connection_type )
@@ -311,38 +349,9 @@ int main()
 
             printf( "connection type: %s (%d)\n", connection_type, stats->connection_type );
 
-            const char * platform = "unknown";
-
-            switch ( stats->platform_id )
-            {
-                case NEXT_PLATFORM_WINDOWS:
-                    platform = "windows";
-                    break;
-
-                case NEXT_PLATFORM_MAC:
-                    platform = "mac";
-                    break;
-
-                case NEXT_PLATFORM_LINUX:
-                    platform = "linux";
-                    break;
-
-#define NEXT_PLATFORM_LINUX                                       3
-#define NEXT_PLATFORM_SWITCH                                      4
-#define NEXT_PLATFORM_PS4                                         5
-#define NEXT_PLATFORM_IOS                                         6
-#define NEXT_PLATFORM_XBOX_ONE                                    7
-
-            }
-
-            // todo
-
             /*
             struct next_client_stats_t
             {
-                uint64_t flags;
-                uint64_t platform_id;
-                int connection_type;
                 bool multipath;
                 bool committed;
                 bool flagged;

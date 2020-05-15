@@ -76,19 +76,6 @@
 #define NEXT_PLATFORM_IOS                                         6
 #define NEXT_PLATFORM_XBOX_ONE                                    7
 
-#define NEXT_FLAGS_BAD_ROUTE_TOKEN                           (1<<0)
-#define NEXT_FLAGS_NO_ROUTE_TO_CONTINUE                      (1<<1)
-#define NEXT_FLAGS_PREVIOUS_UPDATE_STILL_PENDING             (1<<2)
-#define NEXT_FLAGS_BAD_CONTINUE_TOKEN                        (1<<3)
-#define NEXT_FLAGS_ROUTE_EXPIRED                             (1<<4)
-#define NEXT_FLAGS_ROUTE_REQUEST_TIMED_OUT                   (1<<5)
-#define NEXT_FLAGS_CONTINUE_REQUEST_TIMED_OUT                (1<<6)
-#define NEXT_FLAGS_CLIENT_TIMED_OUT                          (1<<7)
-#define NEXT_FLAGS_TRY_BEFORE_YOU_BUY_ABORT                  (1<<8)
-#define NEXT_FLAGS_DIRECT_ROUTE_EXPIRED                      (1<<9)
-#define NEXT_FLAGS_UPGRADE_RESPONSE_TIMED_OUT               (1<<10)
-#define NEXT_FLAGS_COUNT                                         11
-
 #if defined(_WIN32)
 #define NOMINMAX
 #endif
@@ -217,7 +204,6 @@ NEXT_EXPORT_FUNC int next_address_equal( const next_address_t * a, const next_ad
 
 struct next_client_stats_t
 {
-    uint64_t flags;
     uint64_t platform_id;
     int connection_type;
     bool multipath;

@@ -106,6 +106,19 @@
 
 #define NEXT_PACKET_HASH_BYTES                                          8
 
+#define NEXT_FLAGS_BAD_ROUTE_TOKEN                                 (1<<0)
+#define NEXT_FLAGS_NO_ROUTE_TO_CONTINUE                            (1<<1)
+#define NEXT_FLAGS_PREVIOUS_UPDATE_STILL_PENDING                   (1<<2)
+#define NEXT_FLAGS_BAD_CONTINUE_TOKEN                              (1<<3)
+#define NEXT_FLAGS_ROUTE_EXPIRED                                   (1<<4)
+#define NEXT_FLAGS_ROUTE_REQUEST_TIMED_OUT                         (1<<5)
+#define NEXT_FLAGS_CONTINUE_REQUEST_TIMED_OUT                      (1<<6)
+#define NEXT_FLAGS_CLIENT_TIMED_OUT                                (1<<7)
+#define NEXT_FLAGS_TRY_BEFORE_YOU_BUY_ABORT                        (1<<8)
+#define NEXT_FLAGS_DIRECT_ROUTE_EXPIRED                            (1<<9)
+#define NEXT_FLAGS_UPGRADE_RESPONSE_TIMED_OUT                     (1<<10)
+#define NEXT_FLAGS_COUNT                                               11
+
 static const uint8_t next_backend_public_key[] = 
 { 
      76,  97, 202, 140,  71, 135,  62, 212, 
@@ -6776,10 +6789,8 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         const bool network_next = client->route_manager->route_data.current_route;
         const bool fallback_to_direct = client->route_manager->fallback_to_direct;
         const bool committed = network_next && client->route_manager->route_data.current_route_committed;
-        const uint64_t flags = client->route_manager->flags;
         next_platform_mutex_release( &client->route_manager_mutex );
 
-        client->client_stats.flags = flags;
         client->client_stats.next = network_next;
         client->client_stats.flagged = client->flagged;
         client->client_stats.multipath = client->multipath;
@@ -6862,7 +6873,11 @@ void next_client_internal_update_stats( next_client_internal_t * client )
     {
         NextClientStatsPacket packet;
 
-        packet.flags = client->client_stats.flags;
+        next_platform_mutex_acquire( &client->route_manager_mutex );
+        const uint64_t flags = client->route_manager->flags;
+        next_platform_mutex_release( &client->route_manager_mutex );
+
+        packet.flags = flags;
         packet.flagged = client->flagged;
         packet.fallback_to_direct = client->fallback_to_direct;
         packet.multipath = client->multipath;

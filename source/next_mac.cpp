@@ -96,8 +96,6 @@ int next_platform_init()
     }
     CFRelease( dynamic_store );
 
-    printf( "connection type = %d\n", connection_type );
-
     return NEXT_OK;
 }
 
