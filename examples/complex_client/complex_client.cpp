@@ -326,6 +326,9 @@ int main()
             }
 
             printf( "Client Stats:\n" );
+
+            printf( " + Session Id = %" PRIx64 "\n", next_client_session_id( client ) );
+
             printf( " + Platform = %s (%d)\n", platform, (int) stats->platform_id );
 
             const char * connection = "unknown";
