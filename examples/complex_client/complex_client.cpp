@@ -325,36 +325,40 @@ int main()
                     break;
             }
 
-            printf( "platform: %s (%d)\n", platform, (int) stats->platform_id );
+            printf( "Client Stats:\n" );
+            printf( " + Platform = %s (%d)\n", platform, (int) stats->platform_id );
 
-            const char * connection_type = "unknown";
+            const char * connection = "unknown";
             
             switch ( stats->connection_type )
             {
                 case NEXT_CONNECTION_TYPE_WIRED:
-                    connection_type = "wired";
+                    connection = "wired";
                     break;
 
                 case NEXT_CONNECTION_TYPE_WIFI:
-                    connection_type = "wifi";
+                    connection = "wifi";
                     break;
 
                 case NEXT_CONNECTION_TYPE_CELLULAR:
-                    connection_type = "cellular";
+                    connection = "cellular";
                     break;
 
                 default:
                     break;
             }
 
-            printf( "connection type: %s (%d)\n", connection_type, stats->connection_type );
+            printf( " + Connection = %s (%d)\n", connection, stats->connection_type );
+
+            printf( " + Committed = %s\n", stats->committed ? "yes" : "no" );
+
+            printf( " + Multipath = %s\n", stats->multipath ? "yes" : "no" );
+
+            printf( " + Flagged = %s\n", stats->flagged ? "yes" : "no" );
 
             /*
             struct next_client_stats_t
             {
-                bool multipath;
-                bool committed;
-                bool flagged;
                 float direct_min_rtt;
                 float direct_max_rtt;
                 float direct_mean_rtt;

@@ -206,8 +206,8 @@ struct next_client_stats_t
 {
     uint64_t platform_id;
     int connection_type;
-    bool multipath;
     bool committed;
+    bool multipath;
     bool flagged;
     float direct_min_rtt;
     float direct_max_rtt;
