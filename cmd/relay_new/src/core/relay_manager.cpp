@@ -32,8 +32,9 @@ namespace core
     {
       std::lock_guard<std::mutex> lk(mLock);
       for (unsigned int i = 0; i < mNumRelays; i++) {
-        if (from == mRelays[i].Addr) {
-          mRelays[i].History->pongReceived(seq, mClock.elapsed<util::Second>());
+        auto& relay = mRelays[i];
+        if (from == relay.Addr) {
+          relay.History->pongReceived(seq, mClock.elapsed<util::Second>());
           pongReceived = true;
           break;
         }

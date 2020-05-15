@@ -120,7 +120,6 @@ namespace core
         }
 
         if (packet.Len == RELAY_PING_PACKET_BYTES) {
-          LogDebug("received ping from: ", packet.Addr);
           mRecorder.addToReceived(wholePacketSize);
           mStats.BytesPerSecMeasurementRx += wholePacketSize;
 
