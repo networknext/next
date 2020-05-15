@@ -11,9 +11,9 @@ We demonstrate:
 - Setting a custom assert handler
 - Setting a custom allocator
 
-In this example, everything is the same as per the complex client example, specifically setting up the allocator, a global context, override functions for malloc and free, custom log function, custom assert function as in the previous example.
+In this example, everything is as per the complex client example: setting up the allocator, a global context, override functions for malloc and free, custom log function, custom assert function as in the previous example.
 
-Now when creating a server, we create it with a server context as follows:
+When creating a server, we create it with a server context as follows:
 
 .. code-block:: c++
 
@@ -29,7 +29,7 @@ Now when creating a server, we create it with a server context as follows:
 	    return 1;
 	}
 
-And now this calls the overridden malloc and free functions with the server context:
+The overridden malloc and free functions with the server context including our custom allocator:
 
 .. code-block:: c++
 
@@ -49,4 +49,28 @@ And now this calls the overridden malloc and free functions with the server cont
 	    return context->allocator->Free( p );
 	}
 
-more...
+And the packet received callback with the server context, allowing you to get a pointer to your own internal server data structure passed in to the packet received callback:
+
+.. code-block:: c++
+
+	void server_packet_received( next_server_t * server, void * _context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
+	{
+	    ServerContext * context = (ServerContext*) _context;
+
+	    (void) context;
+
+	    next_assert( context );
+	    next_assert( context->allocator != NULL );
+	    next_assert( context->server_data == 0x12345678 );
+
+	    verify_packet( packet_data, packet_bytes );
+
+	    next_server_send_packet( server, from, packet_data, packet_bytes );
+	    
+	    next_printf( NEXT_LOG_LEVEL_INFO, "server received packet from client (%d bytes)", packet_bytes );
+
+	    if ( !next_server_session_upgraded( server, from ) )
+	    {
+	        next_server_upgrade_session( server, from, NULL, NULL );
+	    }
+	}
