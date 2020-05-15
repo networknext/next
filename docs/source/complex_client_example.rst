@@ -430,3 +430,5 @@ Finally, the client has been extended to print out all the useful stats you can 
 
 	    printf( "================================================================\n" );
 	}
+
+Thanks to Jacob Langworthy and the whole crew at Velan Studios for inspiring this example!
