@@ -28,7 +28,9 @@ DONE
 
 	Rebuild all binaries without memory checks.
 
-TODO
+	Complete simple, upgraded and complex client/server examples.
+
+	Add client stats print out every 10 seconds to complex example.
 
 	Server should not need to specify platform id of player. 
 
@@ -36,9 +38,13 @@ TODO
 
 	Platform should be passed up from client -> server during upgrade negotiation.
 
+	Upgrade all example programs and documentation so far to use the simpler upgrade function without the platform id in it.
+
+TODO
+
 	----------------------------------------
 
-	Write SDK docs with https://readthedocs.com
+	Sketch out "Reference" section of documentation. Find somewhere that has a template I can copy for documenting functions and args etc.
 
 	----------------------------------------
 
@@ -48,6 +54,9 @@ TODO
 
 	----------------------------------------
 
+	Reach out to Cam@recroom.com (Rec Room).
+
+	----------------------------------------
 
 
 

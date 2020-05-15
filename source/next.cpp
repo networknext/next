@@ -7916,7 +7916,6 @@ struct next_pending_session_entry_t
     next_address_t address;
     uint64_t session_id;
     uint64_t user_hash;
-    uint64_t platform_id;
     uint64_t tag;
     double upgrade_time;
     double last_packet_send_time;
@@ -8511,7 +8510,6 @@ struct next_session_entry_t
     uint64_t internal_send_sequence;
     uint64_t stats_sequence;
     uint64_t user_hash;
-    uint64_t platform_id_override;
     uint64_t tag;
     uint8_t client_open_session_sequence;
 
@@ -9701,7 +9699,6 @@ struct next_server_command_upgrade_session_t : public next_server_command_t
     next_address_t address;
     uint64_t session_id;
     uint64_t user_hash;
-    uint64_t platform_id;
     uint64_t tag;
 };
 
@@ -10789,7 +10786,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             memcpy( entry->client_route_public_key, packet.client_route_public_key, crypto_box_PUBLICKEYBYTES );
             entry->last_client_stats_update = next_time();
             entry->user_hash = pending_entry->user_hash;
-            entry->platform_id_override = pending_entry->platform_id;
             entry->tag = pending_entry->tag;
             entry->client_open_session_sequence = packet.client_open_session_sequence;
 
@@ -11261,7 +11257,7 @@ void next_server_internal_block_and_receive_packet( next_server_internal_t * ser
     }
 }
 
-void next_server_internal_upgrade_session( next_server_internal_t * server, const next_address_t * address, uint64_t session_id, uint64_t user_hash, uint32_t platform_id, uint64_t tag )
+void next_server_internal_upgrade_session( next_server_internal_t * server, const next_address_t * address, uint64_t session_id, uint64_t user_hash, uint64_t tag )
 {
     next_assert( server );
     next_assert( address );
@@ -11311,7 +11307,6 @@ void next_server_internal_upgrade_session( next_server_internal_t * server, cons
     }
 
     entry->user_hash = user_hash;
-    entry->platform_id = platform_id;
     entry->tag = tag;
 }
 
@@ -11362,7 +11357,7 @@ bool next_server_internal_pump_commands( next_server_internal_t * server, bool q
             case NEXT_SERVER_COMMAND_UPGRADE_SESSION:
             {
                 next_server_command_upgrade_session_t * upgrade_session = (next_server_command_upgrade_session_t*) command;
-                next_server_internal_upgrade_session( server, &upgrade_session->address, upgrade_session->session_id, upgrade_session->user_hash, upgrade_session->platform_id, upgrade_session->tag );
+                next_server_internal_upgrade_session( server, &upgrade_session->address, upgrade_session->session_id, upgrade_session->user_hash, upgrade_session->tag );
             }
             break;
 
@@ -11635,12 +11630,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.customer_id = server->customer_id;
             packet.session_id = session->session_id;
             packet.platform_id = session->stats_platform_id;
-            if ( ( session->platform_id_override & 0xFF ) != 0 )
-            {
-                packet.platform_id &= ~0xFF;
-                packet.platform_id |= session->platform_id_override & 0xFF;
-            }
-            packet.platform_id |= session->platform_id_override & ~0xFF;
             packet.user_hash = session->user_hash;
             packet.tag = session->tag;
             packet.flags = session->stats_flags;
@@ -12009,7 +11998,7 @@ uint64_t next_generate_session_id()
     return session_id;
 }
 
-uint64_t next_server_upgrade_session( next_server_t * server, const next_address_t * address, const char * user_id, uint32_t platform_id, const char * tag )
+uint64_t next_server_upgrade_session( next_server_t * server, const next_address_t * address, const char * user_id, const char * tag )
 {
     next_server_verify_sentinels( server );
 
@@ -12052,7 +12041,6 @@ uint64_t next_server_upgrade_session( next_server_t * server, const next_address
     command->type = NEXT_SERVER_COMMAND_UPGRADE_SESSION;
     command->address = *address;
     command->user_hash = user_hash;
-    command->platform_id = platform_id;
     command->session_id = session_id;
     command->tag = tag_id;
 

@@ -1,6 +1,7 @@
 .. toctree::
    :maxdepth: 1
 
+   introduction
    how_it_works
    getting_started
    building_the_sdk

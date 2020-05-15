@@ -54,7 +54,7 @@ Here is one that reflects the packet back to the client that sent it, and upgrad
 	if ( !next_server_session_upgraded( server, from ) )
 	{
 	    const char * user_id_string = "12345";
-	    next_server_upgrade_session( server, from, user_id_string, 0, NULL );
+	    next_server_upgrade_session( server, from, user_id_string, NULL );
 	}
 
 Generally you would *not* want to upgrade every client session you receive a packet from. This is just done to make this example easy to implement.
@@ -67,7 +67,7 @@ Also notice that you can pass in a user id as a string to the upgrade call.
 
 .. code-block:: c++
 
-	next_server_upgrade_session( server, from, user_id_string, 0, NULL );
+	next_server_upgrade_session( server, from, user_id_string, NULL );
 
 This user id is very important because it allows you to look up users by that id in our portal. This user id is hashed before sending to our backend for privacy reasons.
 

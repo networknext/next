@@ -282,7 +282,7 @@ NEXT_EXPORT_FUNC int next_server_state( next_server_t * server );
 
 NEXT_EXPORT_FUNC void next_server_update( next_server_t * server );
 
-NEXT_EXPORT_FUNC uint64_t next_server_upgrade_session( next_server_t * server, const next_address_t * address, const char * user_id, uint32_t platform_id, const char * tag );
+NEXT_EXPORT_FUNC uint64_t next_server_upgrade_session( next_server_t * server, const next_address_t * address, const char * user_id, const char * tag );
 
 NEXT_EXPORT_FUNC void next_server_tag_session( next_server_t * server, const next_address_t * address, const char * tag );
 
