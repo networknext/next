@@ -2,7 +2,7 @@
 Complex Client Example
 ----------------------
 
-In this example we build the kitchen sink version of a client where we show off all the features.
+In this example we build the kitchen sink version of a client where we show off all the features :)
 
 We demonstrate:
 

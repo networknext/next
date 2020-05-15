@@ -2,7 +2,7 @@
 Complex Server Example
 ----------------------
 
-In this example we build the kitchen sink version of a server where we show off all the features.
+In this example we build the kitchen sink version of a server where we show off all the features :)
 
 We demonstrate:
 
