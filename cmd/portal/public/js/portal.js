@@ -185,7 +185,8 @@ MapHandler = {
 
 				let layers = data.length > 0 ? [layer] : [];
 				if (this.mapInstance) {
-					this.mapInstance.setProps({layers})
+					this.mapInstance.setProps({layers: []})
+					this.mapInstance.setProps({layers: layers})
 				} else {
 					this.mapInstance = new deck.DeckGL({
 						mapboxApiAccessToken: mapboxgl.accessToken,
