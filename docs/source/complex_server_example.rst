@@ -11,7 +11,7 @@ We demonstrate:
 - Setting a custom assert handler
 - Setting a custom allocator
 
-In this example, everything is as per the complex client example: setting up the allocator, a global context, override functions for malloc and free, custom log function, custom assert function as in the previous example.
+In this example, everything is as per the complex client example: setting up the allocator, a global context, override functions for malloc and free, custom log function and a custom assert function.
 
 When creating a server, we create it with a server context as follows:
 
