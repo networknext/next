@@ -23,9 +23,7 @@ Creates an instance of a client, binding a socket to the address specified.
 
 - **context** -- An optional pointer to context to be passed in any callbacks made from the client. Also passed to custom malloc and free functions called for allocations on behalf of this client instance.
 
-
-- **bind_address** -- An address string describing the bind address and port to bind to. Typically "0.0.0.0:0" is passed in, which binds to any IPv4 interface and lets the system pick a port to bind the client to. Alternatively, you can bind to a specif port as follows: "0.0.0.0:50000".
-
+- **bind_address** -- An address string describing the bind address and port to bind to. Typically "0.0.0.0:0" is passed in, which binds to any IPv4 interface and lets the system pick a port to bind the client to. Alternatively, you can bind to a specific port "0.0.0.0:50000".
 
 - **packet_received_callback** -- Called from the same thread that calls *next_client_update*, whenever a packet is received from the server. Required.
 
