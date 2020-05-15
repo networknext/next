@@ -257,6 +257,9 @@ int main()
 
     next_client_open_session( client, server_address );
 
+    // todo: accum and print stats every 10 seconds
+    // double accumulator = 0.0;
+
     while ( !quit )
     {
         next_client_update( client );

@@ -20,7 +20,7 @@ Next, define a function to be called when packets are received:
 
 	void client_packet_received( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
 	{
-	    printf( "client received packet (%d bytes)", packet_bytes );
+	    next_printf( NEXT_LOG_LEVEL_INFO, "client received packet (%d bytes)", packet_bytes );
 	}
 
 Create the client.
