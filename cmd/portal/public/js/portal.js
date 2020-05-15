@@ -256,27 +256,21 @@ UserHandler = {
 }
 
 WorkspaceHandler = {
-	changeAccountPage(page) {
-		// Hide all workspaces
-		this.pages.accounts.style.display = 'none';
-		this.pages.config.style.display = 'none';
-
-		// Run setup for selected page
+	changeSettingsPage(page) {
+		let showSettings = false;
+		let showConfig = false;
 		switch (page) {
-			case 'config':
-				this.links.accountsLink.classList.remove("active");
-				this.links.configLink.classList.add("active");
-				Object.assign(settingsPage.$data, {
-					showSettings: false,
-				});
+			case 'users':
+				showSettings = true;
 				break;
-			default:
-				this.links.configLink.classList.remove("active");
-				this.links.accountsLink.classList.add("active");
-				Object.assign(settingsPage.$data, {
-					showSettings: true,
-				});
+			case 'config':
+				showConfig = true;
+				break;
 		}
+		Object.assign(rootComponent.$data.pages.settings, {
+			showConfig: showConfig,
+			showSettings: showSettings,
+		});
 	},
 	changePage(page, options) {
 		switch (page) {
@@ -296,6 +290,33 @@ WorkspaceHandler = {
 				});
 				id != '' ? this.fetchSessionInfo() : null;
 				break;
+			case 'settings':
+				Object.assign(rootComponent.$data.pages.settings, {
+					newUser: {
+						failure: '',
+						success: '',
+					},
+					showAccounts: false,
+					showConfig: false,
+					showSettings: true,
+					updateUser: {
+						failure: '',
+						success: '',
+					},
+				});
+				this.loadSettingsPage();
+				break;
+			case 'userTool':
+				let hash = options || '';
+				Object.assign(rootComponent.$data.pages.userTool, {
+					danger: false,
+					hash: hash,
+					info: hash == '',
+					showTable: false,
+					sessions: []
+				});
+				hash != '' ? this.fetchUserSessions() : null;
+				break;
 		}
 
 		Object.keys(rootComponent.$data.pages).forEach((page) => {
@@ -305,8 +326,8 @@ WorkspaceHandler = {
 		Object.assign(rootComponent.$data.pages[page], {show: true});
 	},
 	editUser(accountInfo, index) {
-		settingsPage.$set(settingsPage.$data.accounts[index], 'delete', false);
-		settingsPage.$set(settingsPage.$data.accounts[index], 'edit', true);
+		rootComponent.$set(rootComponent.$data.pages.settings.accounts[index], 'delete', false);
+		rootComponent.$set(rootComponent.$data.pages.settings.accounts[index], 'edit', true);
 
 		editUserPermissions[accountInfo.user_id].enable();
 	},
@@ -317,25 +338,25 @@ WorkspaceHandler = {
 				.call('AuthService.UpdateUserRoles', {user_id: `auth0|${accountInfo.user_id}`, roles: roles})
 				.then((response) => {
 					accountInfo.roles = response.roles || [];
-					WorkspaceHandler.cancelEditUser(accountInfo);
-					Object.assign(settingsPage.$data.updateUser.success, {
-						message: 'Updated user account successfully',
+					this.cancelEditUser(accountInfo);
+					Object.assign(rootComponent.$data.pages.settings.updateUser, {
+						success: 'Updated user account successfully',
 					});
 					setTimeout(() => {
-						Object.assign(settingsPage.$data.updateUser.success, {
-							message: '',
+						Object.assign(rootComponent.$data.pages.settings.updateUser, {
+							success: '',
 						});
 					}, 5000);
 				})
 				.catch((e) => {
 					console.log("Something went wrong updating the users permissions");
 					Sentry.captureException(e);
-					Object.assign(settingsPage.$data.updateUser.failure, {
-						message: 'Failed to update user',
+					Object.assign(rootComponent.$data.pages.settings.updateUser, {
+						failure: 'Failed to update user',
 					});
 					setTimeout(() => {
-						Object.assign(settingsPage.$data.updateUser.failure, {
-							message: '',
+						Object.assign(rootComponent.$data.pages.settings.updateUser, {
+							failure: '',
 						});
 					}, 5000);
 				});
@@ -345,28 +366,28 @@ WorkspaceHandler = {
 			JSONRPCClient
 				.call('AuthService.DeleteUserAccount', {user_id: `auth0|${accountInfo.user_id}`})
 				.then((response) => {
-					let accounts = settingsPage.$data.accounts;
+					let accounts = rootComponent.$data.pages.settings.accounts;
 					accounts.splice(index, 1);
-					Object.assign(settingsPage.$data, {accounts: accounts});
+					Object.assign(rootComponent.$data.pages.settings, {accounts: accounts});
 					editUserPermissions[accountInfo.user_id] = null;
-					Object.assign(settingsPage.$data.updateUser.success, {
-						message: 'Deleted user account successfully',
+					Object.assign(rootComponent.$data.pages.settings.updateUser, {
+						success: 'Deleted user account successfully',
 					});
 					setTimeout(() => {
-						Object.assign(settingsPage.$data.updateUser.success, {
-							message: '',
+						Object.assign(rootComponent.$data.pages.settings.updateUser, {
+							success: '',
 						});
 					}, 5000);
 				})
 				.catch((e) => {
 					console.log("Something went wrong updating the users permissions");
 					Sentry.captureException(e);
-					Object.assign(settingsPage.$data.updateUser.failure, {
-						message: 'Failed to delete user',
+					Object.assign(rootComponent.$data.pages.settings.updateUser, {
+						failure: 'Failed to delete user',
 					});
 					setTimeout(() => {
-						Object.assign(settingsPage.$data.updateUser.failure, {
-							message: '',
+						Object.assign(rootComponent.$data.pages.settings.updateUser, {
+							failure: '',
 						});
 					}, 5000);
 				});
@@ -374,55 +395,36 @@ WorkspaceHandler = {
 		}
 	},
 	deleteUser(index) {
-		settingsPage.$set(settingsPage.$data.accounts[index], 'delete', true);
-		settingsPage.$set(settingsPage.$data.accounts[index], 'edit', false);
+		rootComponent.$set(rootComponent.$data.pages.settings.accounts[index], 'delete', true);
+		rootComponent.$set(rootComponent.$data.pages.settings.accounts[index], 'edit', false);
 	},
 	cancelEditUser(accountInfo, index) {
 		editUserPermissions[accountInfo.user_id].disable();
-		let accounts = settingsPage.$data.accounts;
+		let accounts = rootComponent.$data.pages.settings.accounts;
 		accountInfo.delete = false;
 		accountInfo.edit = false;
 		accounts[index] = accountInfo;
-		Object.assign(settingsPage.$data, {accounts: accounts});
+		Object.assign(rootComponent.$data.pages.settings, {accounts: accounts});
 	},
 	loadSettingsPage() {
-		this.changeAccountPage();
-
 		if (UserHandler.userInfo.id != '') {
 			JSONRPCClient
 				.call('BuyersService.GameConfiguration', {buyer_id: UserHandler.userInfo.id})
 				.then((response) => {
 					UserHandler.userInfo.pubKey = response.game_config.public_key;
-					/**
-					 * I really dislike this but it is apparently the way to reload/update the data within a vue
-					 */
-					Object.assign(settingsPage.$data, {
-						pubKey: UserHandler.userInfo.pubKey,
-					});
 				})
 				.catch((e) => {
 					console.log("Something went wrong fetching public key");
 					console.log(e)
 					Sentry.captureException(e);
 					UserHandler.userInfo.pubKey = "";
-					/**
-					 * I really dislike this but it is apparently the way to reload/update the data within a vue
-					 */
-					Object.assign(settingsPage.$data, {
-						pubKey: "",
-					});
 				});
 		} else {
-			/**
-			 * I really dislike this but it is apparently the way to reload/update the data within a vue
-			 */
-			Object.assign(settingsPage.$data, {
-				pubKey: '',
-			});
+			UserHandler.userInfo.pubkey = "";
 		}
 
 		let buyerId = !UserHandler.isAdmin() ? UserHandler.userInfo.id : "";
-		updateAccountsTableFilter({
+		this.updateAccountsTableFilter({
 			buyerId: buyerId,
 		});
 	},
@@ -472,6 +474,10 @@ WorkspaceHandler = {
 			Object.assign(rootComponent.$data.pages.sessionTool, {
 				info: false,
 				danger: true,
+				meta: null,
+				session: null,
+				slices: [],
+				showDetails: false,
 			});
 			return;
 		}
@@ -511,6 +517,43 @@ WorkspaceHandler = {
 					showDetails: false,
 				});
 				console.log("Something went wrong fetching session details: ");
+				Sentry.captureException(e);
+			});
+	},
+	fetchUserSessions() {
+		let hash = rootComponent.$data.pages.userTool.hash;
+
+		if (hash == '') {
+			Object.assign(rootComponent.$data.pages.userTool, {
+				info: false,
+				danger: true,
+				sessions: [],
+				showTable: false,
+			});
+			return;
+		}
+
+		JSONRPCClient
+			.call("BuyersService.UserSessions", {user_hash: hash})
+			.then((response) => {
+				let sessions = response.sessions || [];
+
+				Object.assign(rootComponent.$data.pages.userTool, {
+					danger: false,
+					info: false,
+					sessions: sessions,
+					showTable: true,
+				});
+			})
+			.catch((e) => {
+				Object.assign(rootComponent.$data.pages.userTool, {
+					danger: true,
+					hash: '',
+					info: false,
+					sessions: [],
+					showTable: false,
+				});
+				console.log("Something went wrong fetching user sessions: ");
 				Sentry.captureException(e);
 			});
 	},
@@ -559,6 +602,127 @@ WorkspaceHandler = {
 					console.log(e);
 					Sentry.captureException(e);
 				});
+		});
+	},
+	updateAccountsTableFilter(filter) {
+		Object.assign(rootComponent.$data.pages.settings, {filter: filter});
+		this.refreshAccountsTable();
+	},
+	refreshAccountsTable() {
+		setTimeout(() => {
+			let filter = rootComponent.$data.pages.settings.filter;
+
+			let promises = [
+				JSONRPCClient
+					.call('AuthService.AllAccounts', {buyer_id: filter.buyerId}),
+				JSONRPCClient
+					.call('AuthService.AllRoles', {})
+			];
+			Promise.all(promises)
+				.then((responses) => {
+					allRoles = responses[1].roles;
+					let accounts = responses[0].accounts || [];
+
+					/**
+					 * I really dislike this but it is apparently the way to reload/update the data within a vue
+					 */
+					Object.assign(rootComponent.$data.pages.settings, {
+						accounts: accounts,
+						showAccounts: true,
+					});
+
+					setTimeout(() => {
+						let choices = allRoles.map((role) => {
+							return {
+								value: role,
+								label: role.name,
+								customProperties: {
+									description: role.description,
+								},
+							};
+						});
+
+						if (!addUserPermissions) {
+							addUserPermissions = new Choices(
+								document.getElementById("add-user-permissions"),
+								{
+									removeItemButton: true,
+									choices: choices,
+								}
+							);
+						}
+
+						choices = allRoles.map((role) => {
+							return {
+								value: role,
+								label: role.name,
+								customProperties: {
+									description: role.description,
+								},
+								selected: role.name === 'Viewer'
+							};
+						});
+
+						if (!autoSigninPermissions) {
+							autoSigninPermissions = new Choices(
+								document.getElementById("auto-signin-permissions"),
+								{
+									removeItemButton: true,
+									choices: choices,
+								}
+							);
+						}
+
+						choices = allRoles.map((role) => {
+							return {
+								value: role,
+								label: role.name,
+								customProperties: {
+									description: role.description,
+								},
+							};
+						});
+
+						if (!addUserPermissions) {
+							addUserPermissions = new Choices(
+								document.getElementById("add-user-permissions"),
+								{
+									removeItemButton: true,
+									choices: choices,
+								}
+							);
+						}
+
+						choices = allRoles.map((role) => {
+							return {
+								value: role,
+								label: role.name,
+								customProperties: {
+									description: role.description,
+								},
+								selected: role.name === 'Viewer'
+							};
+						});
+
+						if (!autoSigninPermissions) {
+							autoSigninPermissions = new Choices(
+								document.getElementById("auto-signin-permissions"),
+								{
+									removeItemButton: true,
+									choices: choices,
+								}
+							);
+						}
+
+						generateRolesDropdown(accounts);
+					});
+				}
+			)
+			.catch((errors) => {
+				console.log("Something went wrong loading settings page");
+				console.log(errors);
+				Sentry.captureException(errors);
+			});
 		});
 	}
 }
@@ -637,287 +801,40 @@ function createVueComponents() {
 				},
 				settings: {
 					accounts: [],
+					filter: {
+						buyerId: '',
+					},
+					newUser: {
+						failure: '',
+						success: '',
+					},
 					pubKey: '',
 					show: false,
-					showAccounts: true,
+					showAccounts: false,
 					showConfig: false,
+					showSettings: false,
+					updateKey: {
+						failure: '',
+						success: '',
+					},
+					updateUser: {
+						failure: '',
+						success: '',
+					},
 				},
 				userTool: {
-					failure: {
-						message: ''
-					},
+					danger: false,
+					hash: '',
+					info: false,
 					sessions: [],
 					show: false,
-					showFailure: false,
-					showSessions: false,
-					showSuccess: false,
 					showTable: false,
-					success: {
-						message: ''
-					},
 				}
 			}
 		},
 		methods: {
 		}
 	});
-
-	/* settingsPage = new Vue({
-		el: '#settings-page',
-		data: {
-			accounts: null,
-			allBuyers: allBuyers,
-			filter: {buyerId: UserHandler.userInfo.id},
-			newUser: {
-				failure: {
-					message: '',
-				},
-				success: {
-					message: '',
-				},
-			},
-			pubKey: UserHandler.userInfo.pubKey,
-			showAccounts: false,
-			showSettings: true,
-			updateUser: {
-				failure: {
-					message: '',
-				},
-				success: {
-					message: '',
-				},
-			},
-		},
-		methods: {
-			cancelEditUser: WorkspaceHandler.cancelEditUser,
-			deleteUser: WorkspaceHandler.deleteUser,
-			editUser: WorkspaceHandler.editUser,
-			isAdmin: UserHandler.isAdmin,
-			isOwner: UserHandler.isOwner,
-			refreshAccountsTable: refreshAccountsTable,
-			saveUser: WorkspaceHandler.saveUser,
-			updateAccountsTableFilter: updateAccountsTableFilter,
-			updatePubKey: updatePubKey
-		}
-	});
-	mapSessionsCount = new Vue({
-		el: '#map-sessions-count',
-		data: {
-			allBuyers: allBuyers,
-			filter: {buyerId: UserHandler.userInfo.id, sessionType: 'all'},
-			showCount: false,
-			sessions: [],
-			userInfo: UserHandler.userInfo,
-			onNN: [],
-		},
-		methods: {
-			isAdmin: UserHandler.isAdmin,
-			refreshMapSessions: MapHandler.refreshMapSessions,
-			updateFilter: MapHandler.updateFilter,
-		}
-	});
-	sessionDetailsVue = new Vue({
-		el: '#session-details',
-		data: {
-			meta: null,
-			slices: [],
-			showDetails: false,
-			allBuyers: allBuyers
-		}
-	});
-	sessionsTable = new Vue({
-		el: '#sessions',
-		data: {
-			allBuyers: allBuyers,
-			filter: {buyerId: UserHandler.userInfo.id, sessionType: 'all'},
-			...defaultSessionsTable,
-			allMapSessions: [],
-			nnSessions: [],
-		},
-		methods: {
-			fetchSessionInfo: fetchSessionInfo,
-			fetchUserSessions: fetchUserSessions,
-			isAdmin: UserHandler.isAdmin,
-			updateSessionFilter: updateSessionFilter,
-			refreshSessionTable: refreshSessionTable,
-		}
-	});
-	userSessionTable = new Vue({
-		el: '#user-sessions',
-		data: {...defaultUserSessionTable},
-		methods: {
-			fetchSessionInfo: fetchSessionInfo
-		}
-	}); */
-}
-
-function updateAccountsTableFilter(filter) {
-	Object.assign(settingsPage.$data, {filter: filter});
-	refreshAccountsTable();
-}
-
-function refreshAccountsTable() {
-	setTimeout(() => {
-		let filter = settingsPage.$data.filter;
-
-		let promises = [
-			JSONRPCClient
-				.call('AuthService.AllAccounts', {buyer_id: filter.buyerId}),
-			JSONRPCClient
-				.call('AuthService.AllRoles', {})
-		];
-		Promise.all(promises)
-			.then((responses) => {
-				allRoles = responses[1].roles;
-				let accounts = responses[0].accounts || [];
-
-				/**
-				 * I really dislike this but it is apparently the way to reload/update the data within a vue
-				 */
-				Object.assign(settingsPage.$data, {
-					accounts: accounts,
-					showAccounts: true,
-				});
-
-				setTimeout(() => {
-					let choices = allRoles.map((role) => {
-						return {
-							value: role,
-							label: role.name,
-							customProperties: {
-								description: role.description,
-							},
-						};
-					});
-
-					if (!addUserPermissions) {
-						addUserPermissions = new Choices(
-							document.getElementById("add-user-permissions"),
-							{
-								removeItemButton: true,
-								choices: choices,
-							}
-						);
-					}
-
-					choices = allRoles.map((role) => {
-						return {
-							value: role,
-							label: role.name,
-							customProperties: {
-								description: role.description,
-							},
-							selected: role.name === 'Viewer'
-						};
-					});
-
-					if (!autoSigninPermissions) {
-						autoSigninPermissions = new Choices(
-							document.getElementById("auto-signin-permissions"),
-							{
-								removeItemButton: true,
-								choices: choices,
-							}
-						);
-					}
-
-					choices = allRoles.map((role) => {
-						return {
-							value: role,
-							label: role.name,
-							customProperties: {
-								description: role.description,
-							},
-						};
-					});
-
-					if (!addUserPermissions) {
-						addUserPermissions = new Choices(
-							document.getElementById("add-user-permissions"),
-							{
-								removeItemButton: true,
-								choices: choices,
-							}
-						);
-					}
-
-					choices = allRoles.map((role) => {
-						return {
-							value: role,
-							label: role.name,
-							customProperties: {
-								description: role.description,
-							},
-							selected: role.name === 'Viewer'
-						};
-					});
-
-					if (!autoSigninPermissions) {
-						autoSigninPermissions = new Choices(
-							document.getElementById("auto-signin-permissions"),
-							{
-								removeItemButton: true,
-								choices: choices,
-							}
-						);
-					}
-
-					generateRolesDropdown(accounts);
-				});
-			}
-		)
-		.catch((errors) => {
-			console.log("Something went wrong loading settings page");
-			console.log(errors);
-			Sentry.captureException(errors);
-		});
-	});
-}
-
-function fetchUserSessions(userHash = '') {
-	WorkspaceHandler.alerts.userToolAlert.style.display = 'none';
-	WorkspaceHandler.alerts.userToolDanger.style.display = 'none';
-
-	let hash = '';
-
-	if (userHash != '') {
-		WorkspaceHandler.changePage('user-tool');
-		hash = userHash;
-		document.getElementById("user-hash-input").value = hash;
-	} else {
-		hash = document.getElementById("user-hash-input").value;
-	}
-
-	if (hash == '') {
-		Object.assign(userSessionTable.$data, {...defaultUserSessionTable});
-		document.getElementById("user-hash-input").value = '';
-		WorkspaceHandler.alerts.userToolDanger.style.display = 'block';
-		return;
-	}
-
-	JSONRPCClient
-		.call("BuyersService.UserSessions", {user_hash: hash})
-		.then((response) => {
-			let sessions = response.sessions || [];
-
-			/**
-			 * I really dislike this but it is apparently the way to reload/update the data within a vue
-			 */
-			Object.assign(userSessionTable.$data, {
-				sessions: sessions,
-				showTable: true,
-			});
-
-			WorkspaceHandler.alerts.userToolAlert.style.display = 'none';
-			WorkspaceHandler.alerts.userToolDanger.style.display = 'none';
-		})
-		.catch((e) => {
-			Object.assign(userSessionTable.$data, {...defaultUserSessionTable});
-			console.log("Something went wrong fetching user sessions: ");
-			Sentry.captureException(e);
-			WorkspaceHandler.alerts.userToolDanger.style.display = 'block';
-			document.getElementById("user-hash-input").value = '';
-		});
 }
 
 function updatePubKey() {
@@ -927,10 +844,26 @@ function updatePubKey() {
 		.call("BuyersService.UpdateGameConfiguration", {buyer_id: UserHandler.userInfo.id, new_public_key: newPubkey})
 		.then((response) => {
 			UserHandler.userInfo.pubkey = response.game_config.public_key;
+			Object.assign(rootComponent.$data.pages.settings.updateKey, {
+				success: 'Updated public key successfully',
+			});
+			setTimeout(() => {
+				Object.assign(rootComponent.$data.pages.settings.updateKey, {
+					success: '',
+				});
+			}, 5000);
 		})
 		.catch((e) => {
 			console.log("Something went wrong updating the public key");
 			Sentry.captureException(e);
+			Object.assign(rootComponent.$data.pages.settings.updateKey, {
+				failure: 'Failed to update public key',
+			});
+			setTimeout(() => {
+				Object.assign(rootComponent.$data.pages.settings.updateKey, {
+					failure: '',
+				});
+			}, 5000);
 		});
 }
 
@@ -953,28 +886,28 @@ function addUsers(event) {
 		.call("AuthService.AddUserAccount", {emails: emails, roles: roles})
 		.then((response) => {
 			let newAccounts = response.accounts;
-			Object.assign(settingsPage.$data, {accounts: settingsPage.$data.accounts.concat(newAccounts)});
+			Object.assign(rootComponent.$data.pages.settings, {accounts: rootComponent.$data.pages.settings.accounts.concat(newAccounts)});
 			setTimeout(() => {
 				generateRolesDropdown(newAccounts);
 			});
-			Object.assign(settingsPage.$data.newUser.success, {
-				message: 'User account added successfully',
+			Object.assign(rootComponent.$data.pages.settings.newUser, {
+				success: 'User account added successfully',
 			});
 			setTimeout(() => {
-				Object.assign(settingsPage.$data.newUser.success, {
-					message: '',
+				Object.assign(rootComponent.$data.pages.settings.newUser, {
+					success: '',
 				});
 			}, 5000);
 		})
 		.catch((e) => {
 			console.log("Something went wrong creating new users");
 			Sentry.captureException(e);
-			Object.assign(settingsPage.$data.newUser.failure, {
-				message: 'Failed to add user account',
+			Object.assign(rootComponent.$data.pages.settings.newUser, {
+				failure: 'Failed to add user account',
 			});
 			setTimeout(() => {
-				Object.assign(settingsPage.$data.newUser.failure, {
-					message: '',
+				Object.assign(rootComponent.$data.pages.settings.newUser, {
+					failure: '',
 				});
 			}, 5000);
 		});
