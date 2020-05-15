@@ -207,9 +207,11 @@ typedef __int64 int64_t;
 #pragma warning(disable:4244)
 #endif
 
+void next_printf( const char * format, ... );
+
 static void default_assert_function( const char * condition, const char * function, const char * file, int line )
 {
-    printf( "assert failed: ( %s ), function %s, file %s, line %d\n", condition, function, file, line );
+    next_printf( "assert failed: ( %s ), function %s, file %s, line %d\n", condition, function, file, line );
     fflush( stdout );
     #if defined(_MSC_VER)
         __debugbreak();

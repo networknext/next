@@ -2,6 +2,51 @@
 Complex Server Example
 ----------------------
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+In this example we build the kitchen sink version of a server where we show off all the features.
 
-Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris. Integer in mauris eu nibh euismod gravida. Duis ac tellus et risus vulputate vehicula. Donec lobortis risus a elit. Etiam tempor. Ut ullamcorper, ligula eu tempor congue, eros est euismod turpis, id tincidunt sapien risus a quam. Maecenas fermentum consequat mi. Donec fermentum. Pellentesque malesuada nulla a mi. Duis sapien sem, aliquet nec, commodo eget, consequat quis, neque. Aliquam faucibus, elit ut dictum aliquet, felis nisl adipiscing sapien, sed malesuada diam lacus eget erat. Cras mollis scelerisque nunc. Nullam arcu. Aliquam consequat. Curabitur augue lorem, dapibus quis, laoreet et, pretium ac, nisi. Aenean magna nisl, mollis quis, molestie eu, feugiat in, orci. In hac habitasse platea dictumst.
+We demonstrate:
+
+- Setting the network next log level
+- Setting a custom log function
+- Setting a custom assert handler
+- Setting a custom allocator
+
+In this example, everything is the same as per the complex client example, specifically setting up the allocator, a global context, override functions for malloc and free, custom log function, custom assert function as in the previous example.
+
+Now when creating a server, we create it with a server context as follows:
+
+.. code-block:: c++
+
+	Allocator server_allocator;
+	ServerContext server_context;
+	server_context.allocator = &server_allocator;
+	server_context.server_data = 0x12345678;
+
+	next_server_t * server = next_server_create( &server_context, server_address, bind_address, server_datacenter, server_packet_received );
+	if ( server == NULL )
+	{
+	    printf( "error: failed to create server\n" );
+	    return 1;
+	}
+
+And now this calls the overridden malloc and free functions with the server context:
+
+.. code-block:: c++
+
+	void * malloc_function( void * _context, size_t bytes )
+	{
+	    Context * context = (Context*) _context;
+	    next_assert( context );
+	    next_assert( context->allocator );
+	    return context->allocator->Alloc( bytes );
+	}
+
+	void free_function( void * _context, void * p )
+	{
+	    Context * context = (Context*) _context;
+	    next_assert( context );
+	    next_assert( context->allocator );
+	    return context->allocator->Free( p );
+	}
+
+more...

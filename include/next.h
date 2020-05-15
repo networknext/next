@@ -154,6 +154,8 @@ NEXT_EXPORT_FUNC double next_time();
 
 NEXT_EXPORT_FUNC void next_sleep( double time_seconds );
 
+NEXT_EXPORT_FUNC void next_printf( const char * format, ... );
+
 NEXT_EXPORT_FUNC void next_printf( int level, const char * format, ... );
 
 extern void (*next_assert_function_pointer)( const char * condition, const char * function, const char * file, int line );

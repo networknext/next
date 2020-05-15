@@ -10,7 +10,7 @@ We demonstrate:
 - Setting a custom log function
 - Setting a custom assert handler
 - Setting a custom allocator
-- Querying the port the client socket is bound to running on
+- Querying the port the client socket is bound to
 - Getting statistics from the client and displaying them periodically
 
 This is going to be a huge example, so let's get started!
@@ -110,9 +110,9 @@ And a per-client context that is binary compatible with the base context, to be 
 	    uint32_t client_data;
 	};
 
-As you can see, the client context can contain additional information aside from the allocator. The context is not *just* passed into allocator callbacks, but all callbacks from the client and server, so you can use it to integrate with your own client and server objects in your game. 
+As you can see, the client context can contain additional information aside from the allocator. The context is not *just* passed into allocator callbacks, but to all callbacks from the client and server, so you can use it to integrate with your own client and server objects in your game. 
 
-Here we just set a dummy uint32_t and check that the value to verify it's being passed through correctly. For example, in the received packet callback, we have access to the client context and check the value is what we expect:
+Here we just put a dummy uint32_t in the client context and check its value to verify it's being passed through correctly. For example, in the received packet callback, we have access to the client context and check the dummy value is what we expect:
 
 .. code-block:: c++
 
@@ -131,7 +131,7 @@ Here we just set a dummy uint32_t and check that the value to verify it's being 
 	    verify_packet( packet_data, packet_bytes );
 	}
 
-Next we define malloc and free functions to pass in to the SDK. These same functions are used for global, per-client and per-server allocations. The only difference is the context passed in to each.
+Next we define custom malloc and free functions to pass in to the SDK. These same functions are used for global, per-client and per-server allocations. The only difference is the context passed in to each.
 
 .. code-block:: c++
 
@@ -151,3 +151,282 @@ Next we define malloc and free functions to pass in to the SDK. These same funct
 	    return context->allocator->Free( p );
 	}
 
+Moving past allocations for the moment, we set up a callback for our own custom logging function:
+
+.. code-block:: c++
+
+	extern const char * log_level_string( int level )
+	{
+	    if ( level == NEXT_LOG_LEVEL_DEBUG )
+	        return "debug";
+	    else if ( level == NEXT_LOG_LEVEL_INFO )
+	        return "info";
+	    else if ( level == NEXT_LOG_LEVEL_ERROR )
+	        return "error";
+	    else if ( level == NEXT_LOG_LEVEL_WARN )
+	        return "warning";
+	    else
+	        return "???";
+	}
+
+	void log_function( int level, const char * format, ... ) 
+	{
+	    va_list args;
+	    va_start( args, format );
+	    char buffer[1024];
+	    vsnprintf( buffer, sizeof( buffer ), format, args );
+	    if ( level != NEXT_LOG_LEVEL_NONE )
+	    {
+	        const char * level_string = log_level_string( level );
+	        printf( "%.2f: %s: %s\n", next_time(), level_string, buffer );
+	    }
+	    else
+	    {
+	        printf( "%s\n", buffer );
+	    }
+	    va_end( args );
+	    fflush( stdout );
+	}
+
+There are four different log levels in Network Next:
+
+1. NEXT_LOG_LEVEL_NONE (0)
+2. NEXT_LOG_LEVEL_ERROR (1)
+3. NEXT_LOG_LEVEL_INFO (2)
+4. NEXT_LOG_LEVEL_WARN (3)
+5. NEXT_LOG_LEVEL_DEBUG (4)
+
+The default log level is NEXT_LOG_LEVEL_INFO, which shows both info and error logs. This is a good default, as these messages are infrequent. Warnings can be more frequent, and aren't important enough to be errors, so are off by default. Debug logs are incredibly spammy and should only be turned on when debugging a specific issue in the Network Next SDK.
+
+How you handle each of these log levels in the log function callback is up to you. We just pass them in, but depending on the log level we will not call the callback unless the level of the log is <= the current log level value set.
+
+Finally, there is a small feature where a log with NEXT_LOG_LEVEL_NONE is used to indicate an unadorned regular printf. This is useful for console platforms like XBoxOne where hoops need to be jumped through just to get text printed to stdout. This is used by our unit tests and by the default assert handler function in the Network Next SDK.
+
+Next we define a custom assert handler:
+
+.. code-block:: c++
+
+	void assert_function( const char * condition, const char * function, const char * file, int line )
+	{
+	    next_printf( "assert failed: ( %s ), function %s, file %s, line %d\n", condition, function, file, line );
+	    fflush( stdout );
+	    #if defined(_MSC_VER)
+	        __debugbreak();
+	    #elif defined(__ORBIS__)
+	        __builtin_trap();
+	    #elif defined(__clang__)
+	        __builtin_debugtrap();
+	    #elif defined(__GNUC__)
+	        __builtin_trap();
+	    #elif defined(linux) || defined(__linux) || defined(__linux__) || defined(__APPLE__)
+	        raise(SIGTRAP);
+	    #else
+	        #error "asserts not supported on this platform!"
+	    #endif
+	}
+
+Here we print out the assert message and force a break. Again, typically you would override this to point to your own assert handler in your game. The code above actually corresponds exactly to our default handler, so you can see what we do if you choose to not override it.
+
+Now instead of sending zero byte packets, let's send some packets with real intent.
+
+.. code-block:: c++
+
+	void generate_packet( uint8_t * packet_data, int & packet_bytes )
+	{
+	    packet_bytes = 1 + ( rand() % NEXT_MTU );
+	    const int start = packet_bytes % 256;
+	    for ( int i = 0; i < packet_bytes; ++i )
+	        packet_data[i] = (uint8_t) ( start + i ) % 256;
+	}
+
+	void verify_packet( const uint8_t * packet_data, int packet_bytes )
+	{
+	    const int start = packet_bytes % 256;
+	    for ( int i = 0; i < packet_bytes; ++i )
+	    {
+	        if ( packet_data[i] != (uint8_t) ( ( start + i ) % 256 ) )
+	        {
+	            printf( "%d: %d != %d (%d)\n", i, packet_data[i], ( start + i ) % 256, packet_bytes );
+	        }
+	        next_assert( packet_data[i] == (uint8_t) ( ( start + i ) % 256 ) );
+	    }
+	}
+
+The functions above generate packets of random length from 1 to the maximum size packet that can be sent across Network Next -- NEXT_MTU (1300 bytes). These packets have contents that can be inferred by the size of the packet, making it possible for us to test a packet and with high probability, ensure that the packet has not been incorrectly truncated or padded, and that it contains the exact bytes sent.
+
+Now we are ready to set a custom log level, set our custom log function, allocators and assert handler. 
+
+Before initializing Network Next, do this:
+
+.. code-block:: c++
+
+    next_log_level( NEXT_LOG_LEVEL_INFO );
+
+    next_log_function( log_function );
+
+    next_assert_function( assert_function );
+
+    next_allocator( malloc_function, free_function );
+
+Next, create a global context and pass it in to *next_init* to be used for any global allocations made by the Network Next SDK:
+
+.. code-block:: c++
+
+    Context global_context;
+    global_context.allocator = &global_allocator;
+
+    next_config_t config;
+    next_default_config( &config );
+    strncpy( config.customer_public_key, customer_public_key, sizeof(config.customer_public_key) - 1 );
+
+Now when the Network Next SDK makes any global allocations, they will be made by calling the malloc_function and free_function callbacks, passing in the global context pointer as a void*.
+
+Next, create a per-client context and pass it in as the context when creating the client:
+
+.. code-block:: c++
+
+    Allocator client_allocator;
+    ClientContext client_context;
+    client_context.allocator = &client_allocator;
+    client_context.client_data = 0x12345;
+
+    next_client_t * client = next_client_create( &client_context, bind_address, client_packet_received );
+    if ( client == NULL )
+    {
+        printf( "error: failed to create client\n" );
+        return 1;
+    }
+
+Now when the client makes any allocations, and when it calls callbacks like *packet_received* it will pass in the client context as a void*.
+
+Since we are binding the client to port 0, the system will choose the actual port number. We can retrieve this port number as follows and print it out for posterity:
+
+.. code-block:: c++
+
+	uint16_t client_port = next_client_port( client );
+
+	next_printf( NEXT_LOG_LEVEL_INFO, "client port is %d", client_port );
+
+Finally, the client has been extended to print out all the useful stats you can retrieve from a network next client, once every ten seconds:
+
+.. code-block:: c++
+
+	accumulator += delta_time;
+
+	if ( accumulator > 10.0 )
+	{
+	    accumulator = 0.0;
+
+	    printf( "================================================================\n" );
+	    
+	    printf( "Client Stats:\n" );
+
+	    const next_client_stats_t * stats = next_client_stats( client );
+
+	    const char * platform = "unknown";
+
+	    switch ( stats->platform_id )
+	    {
+	        case NEXT_PLATFORM_WINDOWS:
+	            platform = "windows";
+	            break;
+
+	        case NEXT_PLATFORM_MAC:
+	            platform = "mac";
+	            break;
+
+	        case NEXT_PLATFORM_LINUX:
+	            platform = "linux";
+	            break;
+
+	        case NEXT_PLATFORM_SWITCH:
+	            platform = "nintendo switch";
+	            break;
+
+	        case NEXT_PLATFORM_PS4:
+	            platform = "ps4";
+	            break;
+
+	        case NEXT_PLATFORM_IOS:
+	            platform = "ios";
+	            break;
+
+	        case NEXT_PLATFORM_XBOX_ONE:
+	            platform = "xbox one";
+	            break;
+
+	        default:
+	            break;
+	    }
+
+	    const char * state = "???";
+
+	    const int client_state = next_client_state( client );
+	    
+	    switch ( client_state )
+	    {
+	        case NEXT_CLIENT_STATE_CLOSED:
+	            state = "closed";
+	            break;
+
+	        case NEXT_CLIENT_STATE_OPEN:
+	            state = "open";
+	            break;
+
+	        case NEXT_CLIENT_STATE_ERROR:
+	            state = "error";
+	            break;
+
+	        default:
+	            break;
+	    }
+
+	    printf( " + State = %s (%d)\n", state, client_state );
+
+	    printf( " + Session Id = %" PRIx64 "\n", next_client_session_id( client ) );
+
+	    printf( " + Platform = %s (%d)\n", platform, (int) stats->platform_id );
+
+	    const char * connection = "unknown";
+	    
+	    switch ( stats->connection_type )
+	    {
+	        case NEXT_CONNECTION_TYPE_WIRED:
+	            connection = "wired";
+	            break;
+
+	        case NEXT_CONNECTION_TYPE_WIFI:
+	            connection = "wifi";
+	            break;
+
+	        case NEXT_CONNECTION_TYPE_CELLULAR:
+	            connection = "cellular";
+	            break;
+
+	        default:
+	            break;
+	    }
+
+	    printf( " + Connection = %s (%d)\n", connection, stats->connection_type );
+
+	    printf( " + Committed = %s\n", stats->committed ? "yes" : "no" );
+
+	    printf( " + Multipath = %s\n", stats->multipath ? "yes" : "no" );
+
+	    printf( " + Flagged = %s\n", stats->flagged ? "yes" : "no" );
+
+	    printf( " + Direct RTT = %.2fms\n", stats->direct_min_rtt );
+	    printf( " + Direct Jitter = %.2fms\n", stats->direct_jitter );
+	    printf( " + Direct Packet Loss = %.1f%%\n", stats->direct_packet_loss );
+
+	    if ( stats->next )
+	    {
+	        printf( " + Next RTT = %.2fms\n", stats->next_min_rtt );
+	        printf( " + Next Jitter = %.2fms\n", stats->next_jitter );
+	        printf( " + Next Packet Loss = %.1f%%\n", stats->next_packet_loss );
+	        printf( " + Next Bandwidth Up = %.1fkbps\n", stats->next_kbps_up );
+	        printf( " + Next Bandwidth Down = %.1fkbps\n", stats->next_kbps_down );
+	    }
+
+	    printf( "================================================================\n" );
+	}

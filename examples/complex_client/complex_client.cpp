@@ -152,7 +152,7 @@ void log_function( int level, const char * format, ... )
 
 void assert_function( const char * condition, const char * function, const char * file, int line )
 {
-    printf( "assert failed: ( %s ), function %s, file %s, line %d\n", condition, function, file, line );
+    next_printf( "assert failed: ( %s ), function %s, file %s, line %d\n", condition, function, file, line );
     fflush( stdout );
     #if defined(_MSC_VER)
         __debugbreak();
@@ -218,9 +218,6 @@ int main()
 {
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
     
-    Context global_context;
-    global_context.allocator = &global_allocator;
-
     next_log_level( NEXT_LOG_LEVEL_INFO );
 
     next_log_function( log_function );
@@ -228,6 +225,9 @@ int main()
     next_assert_function( assert_function );
 
     next_allocator( malloc_function, free_function );
+
+    Context global_context;
+    global_context.allocator = &global_allocator;
 
     next_config_t config;
     next_default_config( &config );
@@ -281,12 +281,15 @@ int main()
         next_sleep( delta_time );
 
         accumulator += delta_time;
+
         if ( accumulator > 10.0 )
         {
             accumulator = 0.0;
 
             printf( "================================================================\n" );
             
+            printf( "Client Stats:\n" );
+
             const next_client_stats_t * stats = next_client_stats( client );
 
             const char * platform = "unknown";
@@ -325,7 +328,29 @@ int main()
                     break;
             }
 
-            printf( "Client Stats:\n" );
+            const char * state = "???";
+
+            const int client_state = next_client_state( client );
+            
+            switch ( client_state )
+            {
+                case NEXT_CLIENT_STATE_CLOSED:
+                    state = "closed";
+                    break;
+
+                case NEXT_CLIENT_STATE_OPEN:
+                    state = "open";
+                    break;
+
+                case NEXT_CLIENT_STATE_ERROR:
+                    state = "error";
+                    break;
+
+                default:
+                    break;
+            }
+
+            printf( " + State = %s (%d)\n", state, client_state );
 
             printf( " + Session Id = %" PRIx64 "\n", next_client_session_id( client ) );
 
