@@ -2468,7 +2468,7 @@ uint64_t next_random_uint64()
     return value;
 }
 
-int next_is_network_next_packet( const uint8_t * packet_data, int packet_bytes )
+bool next_is_network_next_packet( const uint8_t * packet_data, int packet_bytes )
 {
     if ( packet_bytes <= NEXT_PACKET_HASH_BYTES )
         return 0;

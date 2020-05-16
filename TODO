@@ -46,9 +46,11 @@ DONE
 
 	Sketch out next_address_t
 
+	Sketch out global functions.
+
 TODO
 
-	Sketch out global functions.
+	Add real world client and server examples (environment variables) with client.sh and server.sh wrappers.
 
 	----------------------------------------
 
