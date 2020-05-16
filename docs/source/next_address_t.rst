@@ -2,7 +2,7 @@
 next_address_t
 ==============
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+This is a struct that can represent any IPv4 or IPv6 address and port.
 
 .. code-block:: c++
 
@@ -12,6 +12,8 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor i
 	    uint16_t port;
 	    uint8_t type;
 	};
+
+It's used when sending and receiving packets. For example, in the server packet received callback, the address of the client is passed to you via this structure.
 
 next_address_parse
 ------------------
