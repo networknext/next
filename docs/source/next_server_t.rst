@@ -2,17 +2,21 @@
 next_server_t
 =============
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+A server instance wraps a socket. The server has logic to monitor the network performance between your client and server, and send packets across a network next route, when we find one that meets your network optimization requirements.
 
-Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris. Integer in mauris eu nibh euismod gravida. Duis ac tellus et risus vulputate vehicula. Donec lobortis risus a elit. Etiam tempor. Ut ullamcorper, ligula eu tempor congue, eros est euismod turpis, id tincidunt sapien risus a quam. Maecenas fermentum consequat mi. Donec fermentum. Pellentesque malesuada nulla a mi. Duis sapien sem, aliquet nec, commodo eget, consequat quis, neque. Aliquam faucibus, elit ut dictum aliquet, felis nisl adipiscing sapien, sed malesuada diam lacus eget erat. Cras mollis scelerisque nunc. Nullam arcu. Aliquam consequat. Curabitur augue lorem, dapibus quis, laoreet et, pretium ac, nisi. Aenean magna nisl, mollis quis, molestie eu, feugiat in, orci. In hac habitasse platea dictumst.
+To use a server, just create one and it automatically starts accepting sessions from clients.
+
+To upgrade a session and mark it for monitoring and *potential* acceleration, call *next_server_upgrade_session* on the client's address.
+
+Packets received from clients are passed to you via a callback function, including the address of the client that sent the packet.
+
+Make sure to pump the server update once per frame.
 
 **Examples:**
 
-(link to examples)
-
--   simple_server_example
--   upgraded_server_example
--   complex_server_example
+-   :doc:`simple_server_example`
+-   :doc:`upgraded_server_example`
+-   :doc:`complex_server_example`
 
 next_server_create
 ------------------
