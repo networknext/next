@@ -278,6 +278,8 @@ struct next_server_t;
 
 NEXT_EXPORT_FUNC next_server_t * next_server_create( void * context, const char * server_address, const char * bind_address, const char * datacenter, void (*packet_received_callback)( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes ) );
 
+NEXT_EXPORT_FUNC void next_server_destroy( next_server_t * server );
+
 NEXT_EXPORT_FUNC uint16_t next_server_port( next_server_t * server );
 
 NEXT_EXPORT_FUNC int next_server_state( next_server_t * server );
@@ -288,13 +290,11 @@ NEXT_EXPORT_FUNC uint64_t next_server_upgrade_session( next_server_t * server, c
 
 NEXT_EXPORT_FUNC void next_server_tag_session( next_server_t * server, const next_address_t * address, const char * tag );
 
-NEXT_EXPORT_FUNC int next_server_session_upgraded( next_server_t * server, const next_address_t * address );
+NEXT_EXPORT_FUNC bool next_server_session_upgraded( next_server_t * server, const next_address_t * address );
 
 NEXT_EXPORT_FUNC void next_server_send_packet( next_server_t * server, const next_address_t * to_address, const uint8_t * packet_data, int packet_bytes );
 
 NEXT_EXPORT_FUNC void next_server_send_packet_direct( next_server_t * server, const next_address_t * to_address, const uint8_t * packet_data, int packet_bytes );
-
-NEXT_EXPORT_FUNC void next_server_destroy( next_server_t * server );
 
 // -----------------------------------------
 
@@ -304,11 +304,11 @@ struct next_mutex_t { uint8_t dummy[NEXT_MUTEX_BYTES]; };
 
 NEXT_EXPORT_FUNC int next_mutex_create( next_mutex_t * mutex );
 
+NEXT_EXPORT_FUNC void next_mutex_destroy( next_mutex_t * mutex );
+
 NEXT_EXPORT_FUNC void next_mutex_acquire( next_mutex_t * mutex );
 
 NEXT_EXPORT_FUNC void next_mutex_release( next_mutex_t * mutex );
-
-NEXT_EXPORT_FUNC void next_mutex_destroy( next_mutex_t * mutex );
 
 struct next_mutex_helper_t
 {

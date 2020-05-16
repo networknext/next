@@ -202,3 +202,154 @@ IMPORTANT: Make sure you only call this function when you are 100% sure this is 
 **Return value:**
 
 	The session id assigned the session that was upgraded.
+
+**Example:**
+
+The address struct is defined as follows:
+
+.. code-block:: c++
+
+	struct next_address_t
+	{
+	    union { uint8_t ipv4[4]; uint16_t ipv6[8]; } data;
+	    uint16_t port;
+	    uint8_t type;
+	};
+
+You can parse an address from a string like this:
+
+.. code-block:: c++
+
+	next_address_t address;
+	if ( next_address_parse( &address, "127.0.0.1:50000" ) != NEXT_OK )
+	{
+	    printf( "error: failed to parse address\n" );
+	}
+
+The address struct is passed in when you receive packet from a client:
+
+.. code-block:: c++
+
+	void server_packet_received( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
+	{
+	    char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+	    next_printf( NEXT_LOG_LEVEL_INFO, "server received packet from client %s (%d bytes)", next_address_to_string( from, address_buffer ), packet_bytes );
+	}
+
+Once you have the address, upgrading a session is easy:
+
+.. code-block:: c++
+
+	next_server_upgrade_session( server, client_address, user_id );
+
+next_server_tag_session
+-----------------------
+
+Tags a session for potentially different network optimization parameters.
+
+.. code-block:: c++
+
+	void next_server_tag_session( next_server_t * server, const next_address_t * address, const char * tag );
+
+**Parameters:**
+
+	- **server** -- The server instance.
+
+	- **address** -- The address of the client to tag.
+
+	- **tag** -- The tag to be applied to the client. Some ideas: "pro", "streamer" or "dev".
+
+**Example:**
+
+.. code-block:: c++
+
+	next_server_tag_session( server, client_address, "pro" );
+
+next_server_session_upgraded
+----------------------------
+
+Checks if a session has been upgraded.
+
+.. code-block:: c++
+
+	bool next_server_session_upgraded( next_server_t * server, const next_address_t * address );
+
+**Parameters:**
+
+	- **server** -- The server instance.
+
+	- **address** -- The address of the client to check.
+
+**Return value:**
+
+	True if the session has been upgraded, false otherwise.
+
+**Example:**
+
+.. code-block:: c++
+
+	const bool upgraded = next_server_session_upgraded( server, client_address );
+
+	printf( "session upgraded = %s\n", upgraded ? "true" : "false" );
+
+next_server_send_packet
+-----------------------
+
+Send a packet to a client.
+
+.. code-block:: c++
+
+	void next_server_send_packet( next_server_t * server, const next_address_t * to_address, const uint8_t * packet_data, int packet_bytes );
+
+Sends a packet to a client. If the client is upgraded and accelerated by network next, the packet will be sent across our private network of networks.
+
+Otherwise, the packet will be sent across the public internet.
+
+**Parameters:**
+
+	- **server** -- The server instance.
+
+	- **to_address** -- The address of the client to send the packet to.
+
+	- **packet_data** -- The packet data to send.
+
+	- **packet_bytes** -- The size of the packet. Must be in the range 1 to NEXT_MTU (1300).
+
+**Example:**
+
+.. code-block:: c++
+
+	uint8_t packet_data[32];
+	memset( packet_data, 0, sizeof(packet_data) );
+	next_server_send_packet( server, client_address, packet_data, sizeof(packet_data) );
+
+next_server_send_packet_direct
+------------------------------
+
+Send a packet to a client, forcing the packet to be sent over the public internet.
+
+.. code-block:: c++
+
+	void next_server_send_packet_direct( next_server_t * server, const next_address_t * to_address, const uint8_t * packet_data, int packet_bytes );
+
+This function is useful when you need to send non-latency sensitive packets to the client, for example, during a load screen.
+
+Packets sent via this function do not apply to your network next bandwidth envelope.
+
+**Parameters:**
+
+	- **server** -- The server instance.
+
+	- **to_address** -- The address of the client to send the packet to.
+
+	- **packet_data** -- The packet data to send.
+
+	- **packet_bytes** -- The size of the packet. Must be in the range 1 to NEXT_MTU (1300).
+
+**Example:**
+
+.. code-block:: c++
+
+	uint8_t packet_data[32];
+	memset( packet_data, 0, sizeof(packet_data) );
+	next_server_send_packet_direct( server, client_address, packet_data, sizeof(packet_data) );

@@ -12093,7 +12093,7 @@ void next_server_tag_session( next_server_t * server, const next_address_t * add
     }
 }
 
-int next_server_session_upgraded( next_server_t * server, const next_address_t * address )
+bool next_server_session_upgraded( next_server_t * server, const next_address_t * address )
 {
     next_server_verify_sentinels( server );
 
@@ -12101,13 +12101,13 @@ int next_server_session_upgraded( next_server_t * server, const next_address_t *
     
     next_proxy_session_entry_t * pending_entry = next_proxy_session_manager_find( server->pending_session_manager, address );
     if ( pending_entry != NULL )
-        return 1;
+        return true;
 
     next_proxy_session_entry_t * entry = next_proxy_session_manager_find( server->session_manager, address );
     if ( entry != NULL )
-        return 1;
+        return true;
 
-    return 0;
+    return false;
 }
 
 void next_server_send_packet( next_server_t * server, const next_address_t * to_address, const uint8_t * packet_data, int packet_bytes )
