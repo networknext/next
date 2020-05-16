@@ -13,7 +13,7 @@ Install *premake5* from https://premake.github.io/download.html
 
 Generate a visual studio solution by running premake at the root directory of the SDK:
 
-.. code-block::
+.. code-block:: console
 
     $ premake5 vs2017
 
@@ -26,7 +26,7 @@ Mac
 
 Make sure the XCode command line tools are installed:
 
-.. code-block::
+.. code-block:: console
 
 	$ xcode-select --install
 
@@ -34,19 +34,19 @@ Install *premake5* from https://premake.github.io/download.html
 
 Generate makefiles by running premake at the root directory of the SDK:
 
-.. code-block::
+.. code-block:: console
 
     $ premake5 gmake
 
 Build the SDK:
 
-.. code-block::
+.. code-block:: console
 
 	$ make
 
 Run the unit tests:
 
-.. code-block::
+.. code-block:: console
 
 	$ ./bin/test
 
@@ -55,7 +55,7 @@ Linux
 
 Make sure the build essential package is installed:
 
-.. code-block::
+.. code-block:: console
 
 	$ sudo apt install build-essential
 
@@ -63,18 +63,18 @@ Install *premake5* from https://premake.github.io/download.html
 
 Generate makefiles by running premake at the root directory of the SDK:
 
-.. code-block::
+.. code-block:: console
 
     $ premake5 gmake
 
 Build the SDK:
 
-.. code-block::
+.. code-block:: console
 
 	$ make
 
 Run the unit tests:
 
-.. code-block::
+.. code-block:: console
 
 	$ ./bin/test
