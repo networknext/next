@@ -2,12 +2,27 @@
 Building the SDK
 ================
 
-Prebuilt binaries for Windows and console have already been built for you in the "lib" directory.
+Official binaries for Windows and consoles have already been built for you in the "lib" directory. 
 
-To build directly from source, see the instructions below:
+To build the SDK yourself, and the example programs, see the instructions below:
 
-MacOS
------
+Windows
+-------
+
+Install *premake5* from https://premake.github.io/download.html
+
+Generate a visual studio solution via premake:
+
+.. code-block::
+
+    $ premake5 vs2017
+
+Open the generated solution file and build all.
+
+Native Visual Studio solutions are also available in the "build" directory.
+
+Mac
+---
 
 Make sure the XCode command line tools are installed:
 
@@ -17,7 +32,7 @@ Make sure the XCode command line tools are installed:
 
 Install *premake5* from https://premake.github.io/download.html
 
-Generate makefiles via premake at the root at the SDK directory:
+Generate makefiles by running premake at the root directory of the SDK:
 
 .. code-block::
 
@@ -38,7 +53,7 @@ Run the unit tests:
 Linux
 -----
 
-Make sure the C++ build essentials package is installed:
+Make sure the build essential package is installed:
 
 .. code-block::
 
@@ -46,7 +61,7 @@ Make sure the C++ build essentials package is installed:
 
 Install *premake5* from https://premake.github.io/download.html
 
-Generate makefiles via premake at the root of the SDK directory:
+Generate makefiles by running premake at the root directory of the SDK:
 
 .. code-block::
 
@@ -63,16 +78,3 @@ Run the unit tests:
 .. code-block::
 
 	$ ./bin/test
-
-Windows
--------
-
-Install *premake5* from https://premake.github.io/download.html
-
-Generate the visual studio solution via premake:
-
-.. code-block::
-
-    $ premake5 vs2017
-
-Open the generated solution file and build all.
