@@ -1,56 +1,24 @@
 DONE
 
-	Soak test run overnight on Mac and Linux.
-
-	Found server -> client offset problem with packet hash. Fixed.
-
-	Run soak overnight on mac.
-
-	Get windows build working and run testbed. Verify unit test passes.
-
-	Get PS4 build working and run testbed. Verify unit test passes.
-
-	Verify soak test passes on Win64,
-
-	Fix nintendo platform mutex.
-
-	Verify nintendo platform can build.
-
-	Fix iOS platform mutex.
-
-	Update SDK version in all build and testbed projects, rebuild and individually test each platform.
-
-	Verify testbed runs on X1
-
-	Verify testbed runs on PS4
-
-	Disable the memory checks.
-
-	Rebuild all binaries without memory checks.
-
-	Complete simple, upgraded and complex client/server examples.
-
-	Add client stats print out every 10 seconds to complex example.
-
-	Server should not need to specify platform id of player. 
-
-	That's creating work for the integrator!
-
-	Platform should be passed up from client -> server during upgrade negotiation.
-
-	Upgrade all example programs and documentation so far to use the simpler upgrade function without the platform id in it.
-
-	Sketch out next_server_t
-
-	Sketch out next_client_t
-
-	Sketch out next_address_t
-
-	Sketch out global functions.
-
 TODO
 
-	Add real world client and server examples (environment variables) with client.sh and server.sh wrappers.
+	Getting started
+
+	----------------------------------------
+
+	How it works
+
+	----------------------------------------
+
+	Add section documenting environment variables.
+
+	----------------------------------------
+
+	Real world client
+
+	----------------------------------------
+
+	Real world server
 
 	----------------------------------------
 
@@ -61,10 +29,6 @@ TODO
 	Wait for the backend to catch up to us and become 3.4.5 compatible.
 
 	Make SDK 3.4.5 release.
-
-	----------------------------------------
-
-	Reach out to Cam@recroom.com (Rec Room).
 
 	----------------------------------------
 
