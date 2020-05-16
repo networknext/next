@@ -30,7 +30,7 @@ Creates an instance of a client, binding a socket to the specified address and p
 
 	- **context** -- An optional pointer to context passed to any callbacks made from the client.
 
-	- **bind_address** -- An address string describing the bind address and port to bind to. Typically "0.0.0.0:0" is passed in, which binds to any IPv4 interface and lets the system pick a port. Alternatively, you can bind to a specific port "0.0.0.0:50000".
+	- **bind_address** -- An address string describing the bind address and port to bind to. Typically "0.0.0.0:0" is passed in, which binds to any IPv4 interface and lets the system pick a port. Alternatively, you can bind to a specific port, for example: "0.0.0.0:50000".
 
 	- **packet_received_callback** -- Called from the same thread that calls *next_client_update*, whenever a packet is received from the server. Required.
 
@@ -75,10 +75,6 @@ Destroys a client instance, and the socket it manages internally.
 
 	- **client** -- The client instance to destroy. Must be a valid client instance created by *next_client_create*. Do not pass in NULL.
 
-**Return value:** 
-
-	The newly created client instance, or NULL, if the client could not be created. 
-
 **Example:**
 
 .. code-block:: c++
@@ -96,7 +92,7 @@ Gets the port the client socket is bound to.
 
 **Return value:** 
 
-	The actual port number the client socket is bound to.
+	The port number the client socket is bound to.
 
 	This makes it possible to look up what specific port the client is bound to when you bind to port zero and the system chooses a port.
 

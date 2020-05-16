@@ -23,22 +23,28 @@ Creates an instance of a server, binding a socket to the specified address and p
 .. code-block:: c++
 
 	next_server_t * next_server_create( void * context, 
+	                                    const char * server_address, 
 	                                    const char * bind_address, 
-	                                    void (*packet_received_callback)( next_server_t * server, void * context, const uint8_t * packet_data, int packet_bytes ) );
+	                                    const char * datacenter, 
+	                                    void (*packet_received_callback)( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes ) );
 
 **Parameters:**
 
 	- **context** -- An optional pointer to context passed to any callbacks made from the server.
 
-	- **bind_address** -- An address string describing the bind address and port to bind to. Typically "0.0.0.0:0" is passed in, which binds to any IPv4 interface and lets the system pick a port. Alternatively, you can bind to a specific port "0.0.0.0:50000".
+	- **server_address** -- The public IP address and port that clients will connect to.
 
-	- **packet_received_callback** -- Called from the same thread that calls *next_server_update*, whenever a packet is received from the server. Required.
+	- **bind_address** -- The address and port to bind to. Typically "0.0.0.0:[portnum]" is passed in, binding the server socket to any IPv4 interface on a specific port, for example: "0.0.0.0:50000".
+
+	- **datacenter** -- The name of the datacenter that the game server is running in. Please pass in "local" until we work with you to determine the set of datacenters you host servers in.
+
+	- **packet_received_callback** -- Called from the same thread that calls *next_server_update*, whenever a packet is received from a client. Required.
 
 **Return value:** 
 
 	The newly created server instance, or NULL, if the server could not be created. 
 
-	Typically, NULL is only returned when another socket is already bound on the same port, or if an invalid bind address is passed in.
+	Typically, NULL is only returned when another socket is already bound on the same port, or if an invalid server or bind address is passed in.
 
 **Example:**
 
@@ -62,3 +68,137 @@ Then, create a server:
         printf( "error: failed to create server\n" );
         return 1;
     }
+
+next_server_destroy
+-------------------
+
+Destroys a server instance, and the socket it manages internally.
+
+.. code-block:: c++
+
+	void next_server_destroy( next_server_t * server );
+
+**Parameters:**
+
+	- **server** -- The server instance to destroy. Must be a valid server instance created by *next_server_create*. Do not pass in NULL.
+
+**Example:**
+
+.. code-block:: c++
+
+	next_server_destroy( server );
+
+next_server_port
+----------------
+
+Gets the port the server socket is bound to.
+
+.. code-block:: c++
+
+	uint16_t next_server_port( next_server_t * server );
+
+**Return value:** 
+
+	The port number the server socket is bound to.
+
+**Example:**
+
+.. code-block:: c++
+
+    next_server_t * server = next_server_create( NULL, "127.0.0.1", "0.0.0.0:50000", "local", server_packet_received );
+    if ( server == NULL )
+    {
+        printf( "error: failed to create server\n" );
+        return 1;
+    }
+
+    const uint16_t server_port = next_server_port( client );
+
+    printf( "the client is bound to port %d\n", server_port );
+
+next_server_state
+-----------------
+
+Gets the state the server is in.
+
+.. code-block:: c++
+
+	int next_server_state( next_server_t * server );
+
+**Parameters:**
+
+	- **server** -- The server instance.
+
+**Return value:** 
+
+	The server state, which is one of the following:
+	
+		- NEXT_SERVER_STATE_DIRECT_ONLY
+		- NEXT_SERVER_STATE_RESOLVING_HOSTNAME
+		- NEXT_SERVER_STATE_INITIALIZING
+		- NEXT_SERVER_STATE_INITIALIZED
+
+	The server is initially in the direct only state. 
+
+	If a valid customer private key is setup, the server will first try to resolve the backend hostname, which is "prod.networknext.com" by default.
+
+	Once the backend hostname is resolved, the server initializes with the backend. When everything works, the server lands in the initialized state and is ready to accelerate players.
+
+	If anything fails, the server falls back to the direct only state, and only serves up direct routes over the public internet.
+
+**Example:**
+
+.. code-block:: c++
+
+    const char * state = "???";
+
+    const int server_state = next_server_state( server );
+    
+    switch ( server_state )
+    {
+        case NEXT_SERVER_STATE_DIRECT_ONLY:
+            state = "direct only";
+            break;
+
+        case NEXT_SERVER_STATE_RESOLVING_HOSTNAME:
+            state = "resolving hostname";
+            break;
+
+        case NEXT_SERVER_STATE_INITIALIZING:
+            state = "initializing";
+            break;
+
+        case NEXT_SERVER_STATE_INITIALIZED:
+            state = "initialized";
+            break;
+
+        default:
+            break;
+    }
+
+    printf( "server state = %s (%d)\n", state, server_state );
+
+next_server_upgrade_session
+---------------------------
+
+Upgrades a session for monitoring and *potential* acceleration by Network Next.
+
+.. code-block:: c++
+
+	uint64_t next_server_upgrade_session( next_server_t * server, 
+	                                      const next_address_t * address, 
+	                                      const char * user_id );
+
+IMPORTANT: Make sure you only call this function when you are 100% sure this is a real player in your game.
+
+**Parameters:**
+
+	- **server** -- The server instance.
+
+	- **address** -- The address of the client to be upgraded.
+
+	- **user_id** -- The user id for the session. Pass in any unique per-user identifier you have.
+
+**Return value:**
+
+	The session id assigned the session that was upgraded.

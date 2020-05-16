@@ -9701,7 +9701,6 @@ struct next_server_command_upgrade_session_t : public next_server_command_t
     next_address_t address;
     uint64_t session_id;
     uint64_t user_hash;
-    uint64_t tag;
 };
 
 struct next_server_command_tag_session_t : public next_server_command_t
@@ -11259,7 +11258,7 @@ void next_server_internal_block_and_receive_packet( next_server_internal_t * ser
     }
 }
 
-void next_server_internal_upgrade_session( next_server_internal_t * server, const next_address_t * address, uint64_t session_id, uint64_t user_hash, uint64_t tag )
+void next_server_internal_upgrade_session( next_server_internal_t * server, const next_address_t * address, uint64_t session_id, uint64_t user_hash )
 {
     next_assert( server );
     next_assert( address );
@@ -11309,7 +11308,6 @@ void next_server_internal_upgrade_session( next_server_internal_t * server, cons
     }
 
     entry->user_hash = user_hash;
-    entry->tag = tag;
 }
 
 void next_server_internal_tag_session( next_server_internal_t * server, const next_address_t * address, uint64_t tag )
@@ -11359,7 +11357,7 @@ bool next_server_internal_pump_commands( next_server_internal_t * server, bool q
             case NEXT_SERVER_COMMAND_UPGRADE_SESSION:
             {
                 next_server_command_upgrade_session_t * upgrade_session = (next_server_command_upgrade_session_t*) command;
-                next_server_internal_upgrade_session( server, &upgrade_session->address, upgrade_session->session_id, upgrade_session->user_hash, upgrade_session->tag );
+                next_server_internal_upgrade_session( server, &upgrade_session->address, upgrade_session->session_id, upgrade_session->user_hash );
             }
             break;
 
@@ -12000,7 +11998,7 @@ uint64_t next_generate_session_id()
     return session_id;
 }
 
-uint64_t next_server_upgrade_session( next_server_t * server, const next_address_t * address, const char * user_id, const char * tag )
+uint64_t next_server_upgrade_session( next_server_t * server, const next_address_t * address, const char * user_id )
 {
     next_server_verify_sentinels( server );
 
@@ -12031,21 +12029,13 @@ uint64_t next_server_upgrade_session( next_server_t * server, const next_address
 
     uint64_t session_id = next_generate_session_id();
 
-    uint64_t tag_id = next_tag_id( tag );
-    
-    if ( tag_id != 0 )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server tagged session %" PRIx64 " as '%s' [%" PRIx64 "]", session_id, tag, tag_id );
-    }
-
     uint64_t user_hash = ( user_id != NULL ) ? next_hash_string( user_id ) : 0;
 
     command->type = NEXT_SERVER_COMMAND_UPGRADE_SESSION;
     command->address = *address;
     command->user_hash = user_hash;
     command->session_id = session_id;
-    command->tag = tag_id;
-
+    
     {    
         next_platform_mutex_guard( &server->internal->command_mutex );
         next_queue_push( server->internal->command_queue, command );

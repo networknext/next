@@ -67,10 +67,12 @@ And the packet received callback with the server context, allowing you to get a 
 
 	    next_server_send_packet( server, from, packet_data, packet_bytes );
 	    
-	    next_printf( NEXT_LOG_LEVEL_INFO, "server received packet from client (%d bytes)", packet_bytes );
+	    char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+
+	    next_printf( NEXT_LOG_LEVEL_INFO, "server received packet from client %s (%d bytes)", next_address_to_string( from, address_buffer ), packet_bytes );
 
 	    if ( !next_server_session_upgraded( server, from ) )
 	    {
-	        next_server_upgrade_session( server, from, NULL, NULL );
+	        next_server_upgrade_session( server, from, NULL );
 	    }
 	}
