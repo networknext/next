@@ -40,9 +40,15 @@ DONE
 
 	Upgrade all example programs and documentation so far to use the simpler upgrade function without the platform id in it.
 
+	Sketch out next_server_t
+
+	Sketch out next_client_t
+
+	Sketch out next_address_t
+
 TODO
 
-	Make sure all example servers print out the from address.
+	Sketch out global functions.
 
 	----------------------------------------
 

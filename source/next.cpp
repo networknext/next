@@ -7875,38 +7875,38 @@ const char * next_address_to_string( const next_address_t * address, char * buff
     }
 }
 
-int next_address_equal( const next_address_t * a, const next_address_t * b )
+bool next_address_equal( const next_address_t * a, const next_address_t * b )
 {
     next_assert( a );
     next_assert( b );
 
     if ( a->type != b->type )
-        return 0;
+        return false;
 
     if ( a->type == NEXT_ADDRESS_IPV4 )
     {
         if ( a->port != b->port )
-            return 0;
+            return false;
 
         for ( int i = 0; i < 4; ++i )
         {
             if ( a->data.ipv4[i] != b->data.ipv4[i] )
-                return 0;
+                return false;
         }
     }
     else if ( a->type == NEXT_ADDRESS_IPV6 )
     {
         if ( a->port != b->port )
-            return 0;
+            return false;
 
         for ( int i = 0; i < 8; ++i )
         {
             if ( a->data.ipv6[i] != b->data.ipv6[i] )
-                return 0;
+                return false;
         }
     }
 
-    return 1;
+    return true;
 }
 
 // ---------------------------------------------------------------

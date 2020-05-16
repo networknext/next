@@ -196,11 +196,11 @@ struct next_address_t
     uint8_t type;
 };
 
-NEXT_EXPORT_FUNC int next_address_parse( next_address_t * address, const char * address_string_in );
+NEXT_EXPORT_FUNC int next_address_parse( next_address_t * address, const char * address_string );
 
 NEXT_EXPORT_FUNC const char * next_address_to_string( const next_address_t * address, char * buffer );
 
-NEXT_EXPORT_FUNC int next_address_equal( const next_address_t * a, const next_address_t * b );
+NEXT_EXPORT_FUNC bool next_address_equal( const next_address_t * a, const next_address_t * b );
 
 // -----------------------------------------
 
