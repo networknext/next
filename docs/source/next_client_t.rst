@@ -8,12 +8,11 @@ Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, tur
 
 **Examples:**
 
-.. toctree::
-   :maxdepth: 1
+(link to examples)
 
-   simple_client_example
-   upgraded_client_example
-   complex_client_example
+-   simple_client_example
+-   upgraded_client_example
+-   complex_client_example
 
 next_client_create
 ------------------
