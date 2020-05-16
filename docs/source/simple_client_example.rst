@@ -56,13 +56,13 @@ Make sure the client is updated once every frame:
 
 	next_client_update( client );
 
-When you have finished your session with the server, please close it:
+When you have finished your session with the server, close it:
 
 .. code-block:: c++
 
 	next_client_close_session( client );
 
-When you have finished using your client, please destroy it:
+When you have finished using your client, destroy it:
 
 .. code-block:: c++
 
