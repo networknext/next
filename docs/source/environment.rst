@@ -2,7 +2,7 @@
 environment
 ===========
 
-You can fully configure Network Next SDK via environment variables.
+You can fully configure the Network Next SDK via environment variables.
 
 Values set in the environment override values set by code.
 
@@ -25,3 +25,14 @@ Example:
 	$ set NEXT_LOG_LEVEL=4
 	$ ./bin/simple_server
 	(extreme spam follows...)
+
+NEXT_CUSTOMER_PUBLIC_KEY
+------------------------
+
+Set the customer public key.
+
+Example:
+
+.. code-block:: console
+
+	$ set NEXT_CUSTOMER_PUBLIC_KEY=
