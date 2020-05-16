@@ -11,7 +11,7 @@ Windows
 
 Install *premake5* from https://premake.github.io/download.html
 
-Generate a visual studio solution via premake:
+Generate a visual studio solution by running premake at the root directory of the SDK:
 
 .. code-block::
 
