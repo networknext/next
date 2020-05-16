@@ -303,7 +303,7 @@ extern int next_platform_inet_pton6( const char * address_string, uint16_t * add
 
 extern int next_platform_inet_ntop6( const uint16_t * address, char * address_string, size_t address_string_size );
 
-extern next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size, bool enable_tagging );
+extern next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size, bool enable_packet_tagging );
 
 extern void next_platform_socket_destroy( next_platform_socket_t * socket );
 
@@ -3702,7 +3702,7 @@ int next_init( void * context, next_config_t * config_in )
         next_printf( NEXT_LOG_LEVEL_INFO, "network next is disabled" );
     }
 
-    config.disable_tagging = config_in ? config_in->disable_tagging : false;
+    config.disable_tagging = config_in ? config_in->disable_packet_tagging : false;
 
     const char * next_disable_tagging_override = next_platform_getenv( "NEXT_DISABLE_TAGGING" );
     {

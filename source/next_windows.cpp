@@ -318,7 +318,7 @@ int next_set_socket_codepoint( SOCKET socket, QOS_TRAFFIC_TYPE trafficType, QOS_
 	return 0;
 }
 
-next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size, bool enable_tagging )
+next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size, bool enable_packet_tagging )
 {
     next_platform_socket_t * s = (next_platform_socket_t *) next_malloc( context, sizeof( next_platform_socket_t ) );
 
@@ -468,7 +468,7 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
 
 	// tag as latency sensitive
 
-    if ( enable_tagging )
+    if ( enable_packet_tagging )
     {
         next_set_socket_codepoint( s->handle, QOSTrafficTypeAudioVideo, 0, addr );
     }
