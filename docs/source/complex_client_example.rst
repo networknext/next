@@ -208,7 +208,7 @@ Next we define a custom assert handler:
 
 	void assert_function( const char * condition, const char * function, const char * file, int line )
 	{
-	    next_printf( "assert failed: ( %s ), function %s, file %s, line %d\n", condition, function, file, line );
+	    next_printf( NEXT_LOG_LEVEL_NONE, "assert failed: ( %s ), function %s, file %s, line %d\n", condition, function, file, line );
 	    fflush( stdout );
 	    #if defined(_MSC_VER)
 	        __debugbreak();
