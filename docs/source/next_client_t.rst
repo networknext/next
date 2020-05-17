@@ -2,13 +2,13 @@
 next_client_t
 =============
 
-A client instance wraps a socket. This client has logic to monitor the network performance between your client and server, and send packets across a network next route, when we find one that meets your network optimization requirements.
+A client instance wraps a socket and monitors network performance, switching packets to be sent across network next when we find a route that meets your optimization requirements.
 
-To use a client, just create one, then open a session to the server address and start sending packets.
+To use a client just create one then open a session to the server address and you're ready to start sending packets.
 
 Packets received from the server are passed to you via a callback function.
 
-Make sure to pump the client update once per frame.
+Make sure you pump the client update once per frame.
 
 **Examples:**
 

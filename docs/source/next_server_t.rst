@@ -2,11 +2,11 @@
 next_server_t
 =============
 
-A server instance wraps a socket. The server has logic to monitor the network performance between your client and server, and send packets across a network next route, when we find one that meets your network optimization requirements.
+A server instance wraps a socket.
 
-To use a server, just create one and it automatically starts accepting sessions from clients.
+To use a server, create it and it automatically starts accepting sessions from clients.
 
-To upgrade a session and mark it for monitoring and *potential* acceleration, call *next_server_upgrade_session* on the client's address.
+To upgrade a session for monitoring and *potential* acceleration, call *next_server_upgrade_session* on a client's address.
 
 Packets received from clients are passed to you via a callback function, including the address of the client that sent the packet.
 
