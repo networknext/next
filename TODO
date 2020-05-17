@@ -4,7 +4,13 @@ DONE
 
 	Getting started
 
+	Rebuild windows and console libraries.
+
 TODO
+
+	README
+
+	LICENCE
 
 	----------------------------------------
 
@@ -12,11 +18,7 @@ TODO
 
 	----------------------------------------
 
-	Rebuild windows and console libraries.
-
-	----------------------------------------
-
-	Make SDK 3.4.5 release.
+	Make trial SDK 3.4.5 release for team.
 
 	Make sure to include:
 
@@ -30,7 +32,9 @@ TODO
 
 	----------------------------------------
 
+	Make official 3.4.5 release.
 
+	----------------------------------------
 
 
 
