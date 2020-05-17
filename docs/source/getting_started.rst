@@ -2,6 +2,60 @@
 Getting Started
 ===============
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+To use Network Next, you need a customer private and public key.
 
-Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris. Integer in mauris eu nibh euismod gravida. Duis ac tellus et risus vulputate vehicula. Donec lobortis risus a elit. Etiam tempor. Ut ullamcorper, ligula eu tempor congue, eros est euismod turpis, id tincidunt sapien risus a quam. Maecenas fermentum consequat mi. Donec fermentum. Pellentesque malesuada nulla a mi. Duis sapien sem, aliquet nec, commodo eget, consequat quis, neque. Aliquam faucibus, elit ut dictum aliquet, felis nisl adipiscing sapien, sed malesuada diam lacus eget erat. Cras mollis scelerisque nunc. Nullam arcu. Aliquam consequat. Curabitur augue lorem, dapibus quis, laoreet et, pretium ac, nisi. Aenean magna nisl, mollis quis, molestie eu, feugiat in, orci. In hac habitasse platea dictumst.
+You can generate this keypair with the keygen tool in the "keygen" directory of the SDK.
+
+- **keygen.exe** -- windows
+- **keygen_mac** -- mac
+- **keygen_linux** -- linux
+
+When you run the keygen, you should see something like this:
+
+.. code-block:: console
+
+	Welcome to Network Next!
+
+	This is your public key:
+
+	    OGivr2IM0k7oLTQ3lmGXVnZJpxDRPFsZrKxYLn7fQAosTpQAfs464w==
+
+	This is your private key:
+
+	    OGivr2IM0k4lCfbM/VZCVK99KkDSCbzi8fzM2WnZCQb7R6k4UHc51+gtNDeWYZdWdkmnENE8WxmsrFguft9ACixOlAB+zjrj
+
+	IMPORTANT: Save your private key in a secure place and don't share it with anybody, not even us!
+
+Next, go into the Network Next portal and copy your public key into the game settings page to associate the keypair with your account:
+
+.. image:: images/game_settings_public_key.png
+
+Now set the public key on the client. 
+
+For example, take the *upgraded_client.cpp* example, and replace the test customer public key with your own:
+
+.. code-block:: c++
+
+	const char * customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
+
+Set the customer private key on the server.
+
+You can set it directly in code:
+
+.. code-block:: c++
+
+	const char * customer_private_key = "OGivr2IM0k4lCfbM/VZCVK99KkDSCbzi8fzM2WnZCQb7R6k4UHc51+gtNDeWYZdWdkmnENE8WxmsrFguft9ACixOlAB+zjrj";
+
+Or pass it in with an environment variable:
+
+.. code-block:: console
+
+	export NEXT_CUSTOMER_PRIVATE_KEY=OGivr2IM0k4lCfbM/VZCVK99KkDSCbzi8fzM2WnZCQb7R6k4UHc51+gtNDeWYZdWdkmnENE8WxmsrFguft9ACixOlAB+zjrj
+
+Now that you have the customer private and public key setup, you should now be able to run the upgraded client and server example and see your session in the portal.
+
+Congratulations, Network Next is ready to use :)
+
+Welcome to Network Next, we look forward to working with you!
+
+- *Glenn Fiedler, CEO, Network Next.*

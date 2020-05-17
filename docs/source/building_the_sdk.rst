@@ -2,9 +2,9 @@
 Building the SDK
 ================
 
-Official binaries for Windows and consoles have already been built for you in the "lib" directory. 
+Official binaries for Windows and consoles are in the "lib" directory. 
 
-To build the SDK yourself, and the example programs, see the instructions below:
+To build the example programs, see the instructions below:
 
 Windows
 -------
@@ -19,7 +19,7 @@ Generate a visual studio solution by running premake at the root directory of th
 
 Open the generated solution file and build all.
 
-Native Visual Studio solutions are also available in the "build" directory.
+Native Visual Studio solutions are also available in the "build" and "testbed" directories.
 
 Mac
 ---
