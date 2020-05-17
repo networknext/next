@@ -6,6 +6,10 @@
 
 ## Network Next SDK
 
+Documentation:
+
+* https://network-next-sdk.readthedocs-hosted.com/en/latest/
+
 Supported platforms:
 
 * Windows
