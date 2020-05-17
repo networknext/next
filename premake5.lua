@@ -118,38 +118,10 @@ project "soak"
 	filter "system:macosx"
 		linkoptions { "-framework SystemConfiguration -framework CoreFoundation" }
 
-project "client"
-	kind "ConsoleApp"
-	links { "next", "sodium" }
-	files { "client.cpp" }
-	includedirs { "include" }
-	defines { "SODIUM_STATIC" }
-	filter "system:windows"
-		disablewarnings { "4324" }
-		includedirs { "sodium/include/" }
-	filter "system:not windows"
-		links { "pthread" }
-	filter "system:macosx"
-		linkoptions { "-framework SystemConfiguration -framework CoreFoundation" }
-
-project "server"
-	kind "ConsoleApp"
-	links { "next", "sodium" }
-	files { "server.cpp" }
-	includedirs { "include" }
-	defines { "SODIUM_STATIC" }
-	filter "system:windows"
-		disablewarnings { "4324" }
-		includedirs { "sodium/include/" }
-	filter "system:not windows"
-		links { "pthread" }
-	filter "system:macosx"
-		linkoptions { "-framework SystemConfiguration -framework CoreFoundation" }
-
 project "simple_client"
 	kind "ConsoleApp"
 	links { "next", "sodium" }
-	files { "examples/simple_client/simple_client.cpp" }
+	files { "examples/simple_client.cpp" }
 	includedirs { "include" }
 	defines { "SODIUM_STATIC" }
 	filter "system:windows"
@@ -163,7 +135,7 @@ project "simple_client"
 project "simple_server"
 	kind "ConsoleApp"
 	links { "next", "sodium" }
-	files { "examples/simple_server/simple_server.cpp" }
+	files { "examples/simple_server.cpp" }
 	includedirs { "include" }
 	defines { "SODIUM_STATIC" }
 	filter "system:windows"
@@ -177,7 +149,7 @@ project "simple_server"
 project "upgraded_client"
 	kind "ConsoleApp"
 	links { "next", "sodium" }
-	files { "examples/upgraded_client/upgraded_client.cpp" }
+	files { "examples/upgraded_client.cpp" }
 	includedirs { "include" }
 	defines { "SODIUM_STATIC" }
 	filter "system:windows"
@@ -191,7 +163,7 @@ project "upgraded_client"
 project "upgraded_server"
 	kind "ConsoleApp"
 	links { "next", "sodium" }
-	files { "examples/upgraded_server/upgraded_server.cpp" }
+	files { "examples/upgraded_server.cpp" }
 	includedirs { "include" }
 	defines { "SODIUM_STATIC" }
 	filter "system:windows"
@@ -205,7 +177,7 @@ project "upgraded_server"
 project "complex_client"
 	kind "ConsoleApp"
 	links { "next", "sodium" }
-	files { "examples/complex_client/complex_client.cpp" }
+	files { "examples/complex_client.cpp" }
 	includedirs { "include" }
 	defines { "SODIUM_STATIC" }
 	filter "system:windows"
@@ -219,7 +191,7 @@ project "complex_client"
 project "complex_server"
 	kind "ConsoleApp"
 	links { "next", "sodium" }
-	files { "examples/complex_server/complex_server.cpp" }
+	files { "examples/complex_server.cpp" }
 	includedirs { "include" }
 	defines { "SODIUM_STATIC" }
 	filter "system:windows"

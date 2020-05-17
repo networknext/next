@@ -14,10 +14,10 @@ The SDK then measures network performance between your client and server and com
 
 Every 10 seconds the SDK looks for a Network Next route with lower packet loss or latency than the public internet for your player.
 
-When we find one, we steer traffic for that session across our network of private networks. Reducing the amount of latency and packet loss they experience while playing you game.
+When we find one, we steer that player's traffic across our network of private networks, reducing the amount of latency and packet loss they experience while playing your game.
 
 When the public internet is already good enough, or we can't find a route that's significantly better, the SDK keeps sending packets across the public internet.
 
 If for any reason, the SDK cannot communicate with the Network Next backend, it falls back seamlessly and just sends packets across the public internet.
 
-This way no matter what happens, your players can always play your game.
+This way no matter what happens, *your players can always play your game*.

@@ -40,9 +40,22 @@ func main() {
 	bash("rm -rf %s", basedir)
 	bash("mkdir -p %s", basedir)
 
-	// create the include dir and copy across next.h
+	// copy across the README and LICENCE text files
+	bash("cp README %s", basedir)
+	bash("cp LICENCE %s", basedir)
+
+	// copy across the examples
+	bash("mkdir -p %s/%s", basedir, "examples")
+	bash("cp examples/*.cpp %s/examples", basedir)
+
+	// copy across the include files
 	bash("mkdir -p %s/include", basedir)
-	bash("cp include/next.h %s/include", basedir)
+	bash("cp include/*.h %s/include", basedir)
+
+	// copy across the source code
+	bash("mkdir -p %s/%s", basedir, "source")
+	bash("cp source/*.h %s/source", basedir)
+	bash("cp source/*.cpp %s/source", basedir)
 
 	// copy across the debug win64 libraries
 	libdir := "lib/Win64/Debug"
@@ -138,7 +151,26 @@ func main() {
 
 	manifest := make([]string, 0)
 
+	manifest = append(manifest, fmt.Sprintf("%s/README", basedir))
+
+	manifest = append(manifest, fmt.Sprintf("%s/LICENCE", basedir))
+
+	manifest = append(manifest, fmt.Sprintf("%s/examples/simple_client.cpp", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/examples/simple_server.cpp", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/examples/upgraded_client.cpp", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/examples/upgraded_server.cpp", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/examples/complex_client.cpp", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/examples/complex_server.cpp", basedir))
+
 	manifest = append(manifest, fmt.Sprintf("%s/include/next.h", basedir))
+
+	manifest = append(manifest, fmt.Sprintf("%s/source/next.cpp", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/source/next_mac.h", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/source/next_mac.cpp", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/source/next_linux.h", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/source/next_linux.cpp", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/source/next_windows.h", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/source/next_windows.cpp", basedir))
 
 	manifest = append(manifest, fmt.Sprintf("%s/lib/Win64/Debug/next-win64-%s.lib", basedir, version))
 	manifest = append(manifest, fmt.Sprintf("%s/lib/Win64/Debug/next-win64-%s.pdb", basedir, version))
