@@ -44,6 +44,10 @@ func main() {
 	bash("cp README %s", basedir)
 	bash("cp LICENCE %s", basedir)
 
+	// copy across the unit test and soak test
+	bash("cp test.cpp %s", basedir)
+	bash("cp soak.cpp %s", basedir)
+
 	// copy across the examples
 	bash("mkdir -p %s/%s", basedir, "examples")
 	bash("cp examples/*.cpp %s/examples", basedir)
@@ -152,8 +156,9 @@ func main() {
 	manifest := make([]string, 0)
 
 	manifest = append(manifest, fmt.Sprintf("%s/README", basedir))
-
 	manifest = append(manifest, fmt.Sprintf("%s/LICENCE", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/test.cpp", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/soak.cpp", basedir))
 
 	manifest = append(manifest, fmt.Sprintf("%s/examples/simple_client.cpp", basedir))
 	manifest = append(manifest, fmt.Sprintf("%s/examples/simple_server.cpp", basedir))
