@@ -40,6 +40,9 @@ func main() {
 	bash("rm -rf %s", basedir)
 	bash("mkdir -p %s", basedir)
 
+	// copy across the premake file
+	bash("cp premake5.lua %s", basedir)
+
 	// copy across the README and LICENCE text files
 	bash("cp README %s", basedir)
 	bash("cp LICENCE %s", basedir)
@@ -154,6 +157,8 @@ func main() {
 	// build manifest
 
 	manifest := make([]string, 0)
+
+	manifest = append(manifest, fmt.Sprintf("%s/premake5.lua", basedir))
 
 	manifest = append(manifest, fmt.Sprintf("%s/README", basedir))
 	manifest = append(manifest, fmt.Sprintf("%s/LICENCE", basedir))
