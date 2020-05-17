@@ -4,7 +4,7 @@ How it works
 
 The SDK has two main components. *next_client_t* and *next_server_t*.
 
-These components integrate with your game and replaces how you currently send and receive packets between your game client and server:
+These components integrate with your game and replace how you currently send and receive packets between your game client and server:
 
 .. image:: images/client_server.png
 
