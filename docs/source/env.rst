@@ -133,4 +133,4 @@ Overrides the datacenter passed in to *next_server_create*.
 
 .. code-block:: console
 
-	$ export NEXT_DATACENTER_ADDRESS=i3d.rotterdam
+	$ export NEXT_DATACENTER=i3d.rotterdam
