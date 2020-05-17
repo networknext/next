@@ -2,9 +2,9 @@
 next_client_t
 =============
 
-A client instance wraps a socket and monitors network performance, switching packets to be sent across network next when we find a route that meets your optimization requirements.
+The client side of a client/server connection.
 
-To use a client just create one then open a session to the server address and you're ready to start sending packets.
+To use a client, create it, then open a session to the server address and start sending packets.
 
 Packets received from the server are passed to you via a callback function.
 

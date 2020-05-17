@@ -2,7 +2,7 @@
 next_server_t
 =============
 
-A server instance wraps a socket.
+The server side of a client/server connection.
 
 To use a server, create it and it automatically starts accepting sessions from clients.
 
@@ -55,10 +55,10 @@ First define a callback for received packets:
 
 .. code-block:: c++
 
-	void server_packet_received( next_server_t * server, void * context, const uint8_t * packet_data, int packet_bytes )
+	void server_packet_received( next_server_t * server, void * _context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
 	{
-		// todo: print address here
-	    printf( "server received packet from client ... (%d bytes)\n", packet_bytes );
+	    char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+	    next_printf( NEXT_LOG_LEVEL_INFO, "server received packet from client %s (%d bytes)", next_address_to_string( from, address_buffer ), packet_bytes );
 	}
 
 Then, create a server:
