@@ -32,7 +32,7 @@ Next, go into the Network Next portal and copy your public key into the game set
 
 Now set the public key on the client. 
 
-For example, take the *upgraded_client.cpp* example, and replace the test customer public key with your own:
+For example, in *upgraded_client.cpp* example, replace the test customer public key with your own:
 
 .. code-block:: c++
 
