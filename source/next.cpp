@@ -3685,7 +3685,7 @@ int next_init( void * context, next_config_t * config_in )
 
     config.disable_network_next = config_in ? config_in->disable_network_next : false;
 
-    const char * next_disable_override = next_platform_getenv( "NEXT_DISABLE" );
+    const char * next_disable_override = next_platform_getenv( "NEXT_DISABLE_NETWORK_NEXT" );
     {
         if ( next_disable_override != NULL )
         {
@@ -3704,7 +3704,7 @@ int next_init( void * context, next_config_t * config_in )
 
     config.disable_tagging = config_in ? config_in->disable_packet_tagging : false;
 
-    const char * next_disable_tagging_override = next_platform_getenv( "NEXT_DISABLE_TAGGING" );
+    const char * next_disable_tagging_override = next_platform_getenv( "NEXT_DISABLE_PACKET_TAGGING" );
     {
         if ( next_disable_tagging_override != NULL )
         {
