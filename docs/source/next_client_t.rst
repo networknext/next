@@ -4,7 +4,7 @@ next_client_t
 
 The client side of a client/server connection.
 
-To use a client, create it, then open a session to the server address and start sending packets.
+To use a client, create it, open a session to the server address and start sending packets.
 
 Packets received from the server are passed to you via a callback function.
 
