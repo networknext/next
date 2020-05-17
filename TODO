@@ -1,14 +1,10 @@
 DONE
 
-TODO
-
-	----------------------------------------
-
 	Add section documenting environment variables.
 
-	----------------------------------------
-
 	Getting started
+
+TODO
 
 	----------------------------------------
 
@@ -16,9 +12,21 @@ TODO
 
 	----------------------------------------
 
-	Wait for the backend to catch up to us and become 3.4.5 compatible.
+	Rebuild windows and console libraries.
+
+	----------------------------------------
 
 	Make SDK 3.4.5 release.
+
+	Make sure to include:
+
+		docs
+		keygen
+		testbed
+
+	----------------------------------------
+
+	Wait for the backend to catch up to us and become 3.4.5 compatible.
 
 	----------------------------------------
 
