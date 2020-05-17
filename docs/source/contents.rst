@@ -1,5 +1,4 @@
-Index
-=====
+.. include:: introduction.rst
 
 .. toctree::
    :maxdepth: 1

@@ -40,7 +40,7 @@ For example, in *upgraded_client.cpp* example, replace the test customer public 
 
 Set the customer private key on the server.
 
-You can set it directly in code:
+You can change the code in the *upgraded_server.cpp* example:
 
 .. code-block:: c++
 
