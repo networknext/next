@@ -2,36 +2,22 @@
 How it works
 ============
 
-The SDK has two main components. A client and a server.
+The SDK has two main components. *next_client_t* and *next_server_t*.
 
-These components are integrated in your game and replace how you send and receive packets:
+These components integrate with your game and replaces how you currently send and receive packets between your game client and server:
 
-(diagram)
+.. image:: images/client_server.png
 
-On the server, you *enable* a player for monitoring and acceleration by *upgrading* that player's session.
+You enable a player for monitoring and acceleration by *upgrading* that player's session on your server.
 
-(diagram)
+The SDK then measures network performance between your client and server and communicates this up to the network next backend.
 
-Network Next has its own network protocol that runs in parallel with your game network protocol. 
+Every 10 seconds the SDK looks for a Network Next route with lower packet loss or latency than the public internet for your player.
 
-This protocol measures network performance between the client and server and communicates this up to the network next backend.
+When we find one, we steer traffic for that session across our network of private networks. Reducing the amount of latency and packet loss they experience while playing you game.
 
-(diagram)
-
-The backend looks for a Network Next route for upgraded sessions on our marketplace once every 10 seconds.
-
-(diagram)
-
-When we find a route that has lower packet loss or latency than the public internet, we steer traffic for that session away from the public internet, and across the network next route on our network of private networks.
-
-(diagram)
-
-Players for whom the public internet is already good enough, or when we can't find a route that's significantly, continue to send packets across the public internet.
-
-(diagram)
+When the public internet is already good enough, or we can't find a route that's significantly better, the SDK keeps sending packets across the public internet.
 
 If for any reason, the SDK cannot communicate with the Network Next backend, it falls back seamlessly and just sends packets across the public internet.
-
-(diagram).
 
 This way no matter what happens, your players can always play your game.
