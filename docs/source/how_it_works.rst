@@ -8,7 +8,7 @@ These components integrate with your game and replaces how you currently send an
 
 .. image:: images/client_server.png
 
-You enable a player for monitoring and acceleration by *upgrading* that player's session on your server.
+You enable monitoring and acceleration for a player by *upgrading* that player's session on your server.
 
 The SDK then measures network performance between your client and server and communicates this up to the network next backend.
 
