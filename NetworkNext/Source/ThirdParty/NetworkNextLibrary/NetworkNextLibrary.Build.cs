@@ -34,18 +34,18 @@ public class NetworkNextLibrary : ModuleRules
         if (Target.Platform == UnrealTargetPlatform.Win64)
         {
             PublicLibraryPaths.Add(Path.Combine(ModuleDirectory, "next", "lib", "Win64", "Release"));
-            PublicAdditionalLibraries.Add("next-win64-3.4.4.lib");
-            PublicDelayLoadDLLs.Add("next-win64-3.4.4.dll");
+            PublicAdditionalLibraries.Add("next-win64-3.4.5.lib");
+            PublicDelayLoadDLLs.Add("next-win64-3.4.5.dll");
 
-            RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "next", "lib", "Win64", "Release", "next-win64-3.4.4.dll"), StagedFileType.NonUFS);
+            RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "next", "lib", "Win64", "Release", "next-win64-3.4.5.dll"), StagedFileType.NonUFS);
 
             // This makes the editor work, because RuntimeDependencies do not apply to builds of the editor.
             Directory.CreateDirectory(Path.Combine(ModuleDirectory, "..", "..", "..", "Binaries", "Win64"));
             try
             {
                 File.Copy(
-                    Path.Combine(ModuleDirectory, "next", "lib", "Win64", "Release", "next-win64-3.4.4.dll"),
-                    Path.Combine(ModuleDirectory, "..", "..", "..", "Binaries", "Win64", "next-win64-3.4.4.dll"),
+                    Path.Combine(ModuleDirectory, "next", "lib", "Win64", "Release", "next-win64-3.4.5.dll"),
+                    Path.Combine(ModuleDirectory, "..", "..", "..", "Binaries", "Win64", "next-win64-3.4.5.dll"),
                     true
                 );
             }
@@ -56,18 +56,18 @@ public class NetworkNextLibrary : ModuleRules
         else if (Target.Platform == UnrealTargetPlatform.Win32)
         {
             PublicLibraryPaths.Add(Path.Combine(ModuleDirectory, "next", "lib", "Win32", "Release"));
-            PublicAdditionalLibraries.Add("next-win32-3.4.4.lib");
-            PublicDelayLoadDLLs.Add("next-win32-3.4.4.dll");
+            PublicAdditionalLibraries.Add("next-win32-3.4.5.lib");
+            PublicDelayLoadDLLs.Add("next-win32-3.4.5.dll");
 
-            RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "next", "lib", "Win32", "Release", "next-win32-3.4.4.dll"), StagedFileType.NonUFS);
+            RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "next", "lib", "Win32", "Release", "next-win32-3.4.5.dll"), StagedFileType.NonUFS);
 
             // This makes the editor work, because RuntimeDependencies do not apply to builds of the editor.
             Directory.CreateDirectory(Path.Combine(ModuleDirectory, "..", "..", "..", "Binaries", "Win32"));
             try
             {
                 File.Copy(
-                    Path.Combine(ModuleDirectory, "next", "lib", "Win32", "Release", "next-win32-3.4.4.dll"),
-                    Path.Combine(ModuleDirectory, "..", "..", "..", "Binaries", "Win32", "next-win32-3.4.4.dll"),
+                    Path.Combine(ModuleDirectory, "next", "lib", "Win32", "Release", "next-win32-3.4.5.dll"),
+                    Path.Combine(ModuleDirectory, "..", "..", "..", "Binaries", "Win32", "next-win32-3.4.5.dll"),
                     true
                 );
             }
@@ -77,17 +77,17 @@ public class NetworkNextLibrary : ModuleRules
         }
         else if (Target.Platform == UnrealTargetPlatform.XboxOne)
         {
-            PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "next", "lib", "XboxOne", "Release", "next-xboxone-3.4.4.lib"));
-            RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "next", "lib", "XboxOne", "Release", "next-xboxone-3.4.4.dll"), StagedFileType.NonUFS);
+            PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "next", "lib", "XboxOne", "Release", "next-xboxone-3.4.5.lib"));
+            RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "next", "lib", "XboxOne", "Release", "next-xboxone-3.4.5.dll"), StagedFileType.NonUFS);
         }
         else if (Target.Platform == UnrealTargetPlatform.PS4)
         {
-            PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "next", "lib", "Playstation4", "Release", "next-ps4-3.4.4_stub.a"));
-            RuntimeDependencies.Add(new RuntimeDependency(Path.Combine(ModuleDirectory, "next", "lib", "Playstation4", "Release", "next-ps4-3.4.4.prx")));
+            PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "next", "lib", "Playstation4", "Release", "next-ps4-3.4.5_stub.a"));
+            RuntimeDependencies.Add(new RuntimeDependency(Path.Combine(ModuleDirectory, "next", "lib", "Playstation4", "Release", "next-ps4-3.4.5.prx")));
         }
         else if (Target.Platform == UnrealTargetPlatform.Switch)
         {
-            PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "next", "lib", "NintendoSwitch-NX64", "Release", "next-nx64-3.4.4.nro"));
+            PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "next", "lib", "NintendoSwitch-NX64", "Release", "next-nx64-3.4.5.nro"));
         }
     }
 }

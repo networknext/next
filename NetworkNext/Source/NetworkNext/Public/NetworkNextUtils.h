@@ -25,9 +25,7 @@
 #include "NetworkNextBuildConfig.h"
 #include "CoreMinimal.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
-#include "NetworkNextPlatformType.h"
 #include "NetworkNextClientStats.h"
-#include "NetworkNextPlatformType.h"
 #include "NetworkNextConfig.h"
 #include "NetworkNextServerConfig.h"
 #include "NetworkNextUtils.generated.h"
@@ -68,7 +66,7 @@ public:
 	 * Upgrades a player session to Network Next.
 	 */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Network Next", meta = (WorldContext = "WorldContextObject", DisplayName = "Upgrade Player Session"))
-	static void UpgradePlayer(UObject* WorldContextObject, APlayerController* PlayerController, const FString& UserId, ENetworkNextPlatformType Platform, const FString& Tag);
+	static void UpgradePlayer(UObject* WorldContextObject, APlayerController* PlayerController, const FString& UserId);
 	
 	/**
 	 * Returns the current client session ID.

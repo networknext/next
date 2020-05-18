@@ -62,7 +62,7 @@ struct FNetworkNextConfig
 
 	/** Disable tagging */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	bool DisableTagging;
+	bool DisablePacketTagging;
 
 	FNetworkNextConfig()
 	{
@@ -73,6 +73,6 @@ struct FNetworkNextConfig
 		this->SocketSendBufferSize = default_config.socket_send_buffer_size;
 		this->SocketReceiveBufferSize = default_config.socket_receive_buffer_size;
 		this->DisableNetworkNext = default_config.disable_network_next;
-		this->DisableTagging = default_config.disable_tagging;
+		this->DisablePacketTagging = default_config.disable_packet_tagging;
 	}
 };

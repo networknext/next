@@ -35,7 +35,6 @@
 #include "NetworkNextLibrary/next/include/next.h"
 #endif
 #include "Queue.h"
-#include "NetworkNextPlatformType.h"
 
 class UNetworkNextNetDriver;
 
@@ -73,7 +72,7 @@ public:
 
 	virtual ~FSocketNetworkNextServer();
 
-	void UpgradeClient(const TSharedPtr<FInternetAddr>& RemoteAddr, const FString& UserId, ENetworkNextPlatformType Platform, const FString& Tag);
+	void UpgradeClient(const TSharedPtr<FInternetAddr>& RemoteAddr, const FString& UserId);
 
 	virtual void UpdateNetworkNextSocket() override;
 

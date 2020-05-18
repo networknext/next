@@ -108,8 +108,8 @@ void FSocketNetworkNextClient::UpdateNetworkNextSocket()
 		this->ClientStats.NetworkNextMaxRtt = client_stats->next_max_rtt;
 		this->ClientStats.NetworkNextJitter = client_stats->next_jitter;
 		this->ClientStats.NetworkNextPacketLoss = client_stats->next_packet_loss;
-		this->ClientStats.KbpsUp = client_stats->kbps_up;
-		this->ClientStats.KbpsDown = client_stats->kbps_down;
+		this->ClientStats.NetworkNextKbpsUp = client_stats->next_kbps_up;
+		this->ClientStats.NetworkNextKbpsDown = client_stats->next_kbps_down;
 	}
 }
 

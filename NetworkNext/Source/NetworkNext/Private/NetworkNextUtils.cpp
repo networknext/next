@@ -115,7 +115,7 @@ FNetworkNextClientStats UNetworkNextUtils::GetClientStats(UObject* WorldContextO
 	return ClientSocket->GetClientStats();
 }
 
-void UNetworkNextUtils::UpgradePlayer(UObject* WorldContextObject, APlayerController* PlayerController, const FString& UserId, ENetworkNextPlatformType Platform, const FString& Tag)
+void UNetworkNextUtils::UpgradePlayer(UObject* WorldContextObject, APlayerController* PlayerController, const FString& UserId)
 {
 	if (PlayerController == nullptr)
 	{
@@ -170,5 +170,5 @@ void UNetworkNextUtils::UpgradePlayer(UObject* WorldContextObject, APlayerContro
 	);
 #endif
 
-	ServerSocket->UpgradeClient(RemoteAddr, UserId, Platform, Tag);
+	ServerSocket->UpgradeClient(RemoteAddr, UserId);
 }

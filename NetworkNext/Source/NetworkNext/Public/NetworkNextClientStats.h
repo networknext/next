@@ -61,9 +61,9 @@ struct FNetworkNextClientStats
 	float DirectPacketLoss;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float KbpsUp;
+	float NetworkNextKbpsUp;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float KbpsDown;
+	float NetworkNextKbpsDown;
 
 PACKAGE_SCOPE:
 

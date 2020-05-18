@@ -47,11 +47,11 @@ void FNetworkNextModule::StartupModule()
 	FString BaseDir = IPluginManager::Get().FindPlugin("NetworkNext")->GetBaseDir();
 
 #if defined(NETWORKNEXT_ENABLE_DELAY_LOAD_WIN64)
-	FString LibraryPath = FPaths::Combine(*BaseDir, TEXT("Source/ThirdParty/NetworkNextLibrary/next/lib/Win64/Release/next-win64-3.4.4.dll"));
+	FString LibraryPath = FPaths::Combine(*BaseDir, TEXT("Source/ThirdParty/NetworkNextLibrary/next/lib/Win64/Release/next-win64-3.4.5.dll"));
 #elif defined(NETWORKNEXT_ENABLE_DELAY_LOAD_WIN32)
-	FString LibraryPath = FPaths::Combine(*BaseDir, TEXT("Source/ThirdParty/NetworkNextLibrary/next/lib/Win32/Release/next-win32-3.4.4.dll"));
+	FString LibraryPath = FPaths::Combine(*BaseDir, TEXT("Source/ThirdParty/NetworkNextLibrary/next/lib/Win32/Release/next-win32-3.4.5.dll"));
 #elif defined(NETWORKNEXT_ENABLE_DELAY_LOAD_PS4)
-	FString LibraryPath = "next-ps4-3.4.4.prx";
+	FString LibraryPath = "next-ps4-3.4.5.prx";
 #else
 #error Unsupported delay load path in NetworkNext.cpp
 #endif
@@ -91,11 +91,8 @@ void FNetworkNextModule::InitializeNetworkNextIfRequired()
 		next_config_t config;
 		next_default_config(&config);
 
-		// temporary. force UE4 plugin to point to pubg specific hostname. make configurable later.
-		strcpy_s(config.hostname, "pubg.networknext.com");
-
-		bool publicKeySet = false;
-		bool privateKeySet = false;
+		// todo: make configurable
+		strcpy_s(config.hostname, "prod.networknext.com");
 
 		// Use values from engine / game config. We just make a UNetworkNextNetDriver
 		// here to get at the config.
@@ -109,8 +106,6 @@ void FNetworkNextModule::InitializeNetworkNextIfRequired()
 			{
 				config.customer_public_key[i] = PublicKey[i];
 			}
-
-			publicKeySet = true;
 		}
 		if (NetDriver->CustomerPrivateKeyBase64.Len() > 0)
 		{
@@ -121,8 +116,6 @@ void FNetworkNextModule::InitializeNetworkNextIfRequired()
 			{
 				config.customer_private_key[i] = PrivateKey[i];
 			}
-
-			privateKeySet = true;
 		}
 
 		// Use values from programmatic config.
@@ -136,8 +129,6 @@ void FNetworkNextModule::InitializeNetworkNextIfRequired()
 				{
 					config.customer_public_key[i] = this->NetworkNextConfig->PublicKeyBase64[i];
 				}
-
-				publicKeySet = true;
 			}
 			if (this->NetworkNextConfig->PrivateKeyBase64.Len() > 0)
 			{
@@ -147,43 +138,12 @@ void FNetworkNextModule::InitializeNetworkNextIfRequired()
 				{
 					config.customer_private_key[i] = this->NetworkNextConfig->PrivateKeyBase64[i];
 				}
-
-				privateKeySet = true;
 			}
 
 			config.socket_send_buffer_size = this->NetworkNextConfig->SocketSendBufferSize;
 			config.socket_receive_buffer_size = this->NetworkNextConfig->SocketReceiveBufferSize;
 			config.disable_network_next = this->NetworkNextConfig->DisableNetworkNext;
-			config.disable_tagging = this->NetworkNextConfig->DisableTagging;
-		}
-
-		// If failed to get keys at this point - fall back to environment variables
-		if (!publicKeySet)
-		{
-			FString publicKey = GetEnvironmentVariable(FString(TEXT("NEXT_CUSTOMER_PUBLIC_KEY")));
-
-			int Len = FMath::Min(publicKey.Len(), 256);
-			FMemory::Memzero(&config.customer_public_key, sizeof(config.customer_public_key));
-			for (int i = 0; i < Len; i++)
-			{
-				config.customer_public_key[i] = publicKey[i];
-			}
-
-			publicKeySet = true;
-		}
-		
-		if (!privateKeySet)
-		{
-			FString privateKey = GetEnvironmentVariable(FString(TEXT("NEXT_CUSTOMER_PRIVATE_KEY")));
-
-			int Len = FMath::Min(privateKey.Len(), 256);
-			FMemory::Memzero(&config.customer_private_key, sizeof(config.customer_private_key));
-			for (int i = 0; i < Len; i++)
-			{
-				config.customer_private_key[i] = privateKey[i];
-			}
-
-			privateKeySet = true;
+			config.disable_packet_tagging = this->NetworkNextConfig->DisablePacketTagging;
 		}
 
 		FString hostname = FString(config.hostname);

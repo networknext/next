@@ -37,7 +37,7 @@ FNetworkNextClientStats FNetworkNextClientStats::GetDisconnectedStats()
 	Stats.NetworkNextMaxRtt = 0;
 	Stats.NetworkNextJitter = 0;
 	Stats.NetworkNextPacketLoss = 0;
-	Stats.KbpsUp = 0;
-	Stats.KbpsDown = 0;
+	Stats.NetworkNextKbpsUp = 0;
+	Stats.NetworkNextKbpsDown = 0;
 	return Stats;
 }

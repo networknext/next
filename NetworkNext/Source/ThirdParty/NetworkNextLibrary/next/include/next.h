@@ -28,13 +28,12 @@
 #endif
 
 #include <stdint.h>
-#include <stddef.h>
 
 #if !defined(NEXT_DEVELOPMENT)
-#define NEXT_VERSION_FULL                                   "3.4.4"
+#define NEXT_VERSION_FULL                                   "3.4.5"
 #define NEXT_VERSION_MAJOR_INT                                    3
 #define NEXT_VERSION_MINOR_INT                                    4
-#define NEXT_VERSION_PATCH_INT                                    4
+#define NEXT_VERSION_PATCH_INT                                    5
 #else // #if !NEXT_DEVELOPMENT
 #define NEXT_VERSION_FULL                                     "dev"
 #define NEXT_VERSION_MAJOR_INT                                    0
@@ -46,6 +45,9 @@
 #define NEXT_ERROR                                               -1
 
 #define NEXT_MTU                                               1300
+#define NEXT_ETHERNET_HEADER_BYTES                               18
+#define NEXT_IPV4_HEADER_BYTES                                   20
+#define NEXT_UDP_HEADER_BYTES                                     8
 #define NEXT_HEADER_BYTES                                        35
 
 #define NEXT_LOG_LEVEL_NONE                                       0
@@ -72,22 +74,6 @@
 #define NEXT_PLATFORM_PS4                                         5
 #define NEXT_PLATFORM_IOS                                         6
 #define NEXT_PLATFORM_XBOX_ONE                                    7
-
-#define NEXT_PLATFORM_STEAM                                  (1<<9)
-#define NEXT_PLATFORM_EGS                                   (1<<10)
-
-#define NEXT_FLAGS_BAD_ROUTE_TOKEN                           (1<<0)
-#define NEXT_FLAGS_NO_ROUTE_TO_CONTINUE                      (1<<1)
-#define NEXT_FLAGS_PREVIOUS_UPDATE_STILL_PENDING             (1<<2)
-#define NEXT_FLAGS_BAD_CONTINUE_TOKEN                        (1<<3)
-#define NEXT_FLAGS_ROUTE_EXPIRED                             (1<<4)
-#define NEXT_FLAGS_ROUTE_REQUEST_TIMED_OUT                   (1<<5)
-#define NEXT_FLAGS_CONTINUE_REQUEST_TIMED_OUT                (1<<6)
-#define NEXT_FLAGS_CLIENT_TIMED_OUT                          (1<<7)
-#define NEXT_FLAGS_TRY_BEFORE_YOU_BUY_ABORT                  (1<<8)
-#define NEXT_FLAGS_DIRECT_ROUTE_EXPIRED                      (1<<9)
-#define NEXT_FLAGS_UPGRADE_RESPONSE_TIMED_OUT               (1<<10)
-#define NEXT_FLAGS_COUNT                                         11
 
 #if defined(_WIN32)
 #define NOMINMAX
@@ -152,7 +138,7 @@ struct next_config_t
     int socket_send_buffer_size;
     int socket_receive_buffer_size;
     bool disable_network_next;
-    bool disable_tagging;
+    bool disable_packet_tagging;
 };
 
 NEXT_EXPORT_FUNC void next_default_config( next_config_t * config );
@@ -196,6 +182,8 @@ NEXT_EXPORT_FUNC void next_allocator( void * (*malloc_function)( void * context,
 
 NEXT_EXPORT_FUNC const char * next_user_id_string( uint64_t user_id, char * buffer );
 
+NEXT_EXPORT_FUNC bool next_is_network_next_packet( const uint8_t * packet_data, int packet_bytes );
+
 // -----------------------------------------
 
 struct next_address_t
@@ -205,35 +193,36 @@ struct next_address_t
     uint8_t type;
 };
 
-NEXT_EXPORT_FUNC int next_address_parse( next_address_t * address, const char * address_string_in );
+NEXT_EXPORT_FUNC int next_address_parse( next_address_t * address, const char * address_string );
 
 NEXT_EXPORT_FUNC const char * next_address_to_string( const next_address_t * address, char * buffer );
 
-NEXT_EXPORT_FUNC int next_address_equal( const next_address_t * a, const next_address_t * b );
+NEXT_EXPORT_FUNC bool next_address_equal( const next_address_t * a, const next_address_t * b );
 
 // -----------------------------------------
 
 struct next_client_stats_t
 {
-    uint64_t flags;
     uint64_t platform_id;
     int connection_type;
-    bool multipath;
     bool committed;
+    bool multipath;
     bool flagged;
+    float direct_min_rtt;
+    float direct_max_rtt;
+    float direct_mean_rtt;
+    float direct_jitter;
+    float direct_packet_loss;
     bool next;
     float next_min_rtt;
     float next_max_rtt;
     float next_mean_rtt;
     float next_jitter;
     float next_packet_loss;
-    float direct_min_rtt;
-    float direct_max_rtt;
-    float direct_mean_rtt;
-    float direct_jitter;
-    float direct_packet_loss;
-    float kbps_up;
-    float kbps_down;
+    float next_kbps_up;
+    float next_kbps_down;
+    uint64_t packets_sent_client_to_server;
+    uint64_t packets_sent_server_to_client;
     uint64_t packets_lost_client_to_server;
     uint64_t packets_lost_server_to_client;
     uint64_t user_flags;
@@ -241,9 +230,15 @@ struct next_client_stats_t
 
 // -----------------------------------------
 
+#define NEXT_CLIENT_STATE_CLOSED        0
+#define NEXT_CLIENT_STATE_OPEN          1                               
+#define NEXT_CLIENT_STATE_ERROR         2
+
 struct next_client_t;
 
 NEXT_EXPORT_FUNC next_client_t * next_client_create( void * context, const char * bind_address, void (*packet_received_callback)( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes ) );
+
+NEXT_EXPORT_FUNC void next_client_destroy( next_client_t * client );
 
 NEXT_EXPORT_FUNC uint16_t next_client_port( next_client_t * client );
 
@@ -252,6 +247,8 @@ NEXT_EXPORT_FUNC void next_client_open_session( next_client_t * client, const ch
 NEXT_EXPORT_FUNC void next_client_close_session( next_client_t * client );
 
 NEXT_EXPORT_FUNC bool next_client_is_session_open( next_client_t * client );
+
+NEXT_EXPORT_FUNC int next_client_state( next_client_t * client );
 
 NEXT_EXPORT_FUNC void next_client_update( next_client_t * client );
 
@@ -267,33 +264,63 @@ NEXT_EXPORT_FUNC const next_client_stats_t * next_client_stats( next_client_t * 
 
 NEXT_EXPORT_FUNC void next_client_set_user_flags( next_client_t * client, uint64_t user_flags );
 
-NEXT_EXPORT_FUNC void next_client_destroy( next_client_t * client );
-
 // -----------------------------------------
+
+#define NEXT_SERVER_STATE_DIRECT_ONLY               0
+#define NEXT_SERVER_STATE_RESOLVING_HOSTNAME        1
+#define NEXT_SERVER_STATE_INITIALIZING              2
+#define NEXT_SERVER_STATE_INITIALIZED               3
 
 struct next_server_t;
 
 NEXT_EXPORT_FUNC next_server_t * next_server_create( void * context, const char * server_address, const char * bind_address, const char * datacenter, void (*packet_received_callback)( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes ) );
 
+NEXT_EXPORT_FUNC void next_server_destroy( next_server_t * server );
+
 NEXT_EXPORT_FUNC uint16_t next_server_port( next_server_t * server );
+
+NEXT_EXPORT_FUNC int next_server_state( next_server_t * server );
 
 NEXT_EXPORT_FUNC void next_server_update( next_server_t * server );
 
-NEXT_EXPORT_FUNC uint64_t next_server_upgrade_session( next_server_t * server, const next_address_t * address, const char * user_id, uint32_t platform_id, const char * tag );
+NEXT_EXPORT_FUNC uint64_t next_server_upgrade_session( next_server_t * server, const next_address_t * address, const char * user_id );
 
 NEXT_EXPORT_FUNC void next_server_tag_session( next_server_t * server, const next_address_t * address, const char * tag );
 
-NEXT_EXPORT_FUNC int next_server_session_upgraded( next_server_t * server, const next_address_t * address );
+NEXT_EXPORT_FUNC bool next_server_session_upgraded( next_server_t * server, const next_address_t * address );
 
 NEXT_EXPORT_FUNC void next_server_send_packet( next_server_t * server, const next_address_t * to_address, const uint8_t * packet_data, int packet_bytes );
 
 NEXT_EXPORT_FUNC void next_server_send_packet_direct( next_server_t * server, const next_address_t * to_address, const uint8_t * packet_data, int packet_bytes );
 
-NEXT_EXPORT_FUNC void next_server_destroy( next_server_t * server );
+// -----------------------------------------
+
+#define NEXT_MUTEX_BYTES 256
+
+struct next_mutex_t { uint8_t dummy[NEXT_MUTEX_BYTES]; };
+
+NEXT_EXPORT_FUNC int next_mutex_create( next_mutex_t * mutex );
+
+NEXT_EXPORT_FUNC void next_mutex_destroy( next_mutex_t * mutex );
+
+NEXT_EXPORT_FUNC void next_mutex_acquire( next_mutex_t * mutex );
+
+NEXT_EXPORT_FUNC void next_mutex_release( next_mutex_t * mutex );
+
+struct next_mutex_helper_t
+{
+    next_mutex_t * _mutex;
+    next_mutex_helper_t( next_mutex_t * mutex ) : _mutex( mutex ) { next_assert( mutex ); next_mutex_acquire( _mutex ); }
+    ~next_mutex_helper_t() { next_assert( _mutex ); next_mutex_release( _mutex ); _mutex = NULL; }
+};
+
+#define next_mutex_guard( _mutex ) next_mutex_helper_t __mutex_helper( _mutex )
 
 // -----------------------------------------
 
 NEXT_EXPORT_FUNC void next_test();
+
+// -----------------------------------------
 
 NEXT_PACK_POP()
 

@@ -61,7 +61,7 @@ void FSocketNetworkNextServer::UpdateNetworkNextSocket()
 	}
 }
 
-void FSocketNetworkNextServer::UpgradeClient(const TSharedPtr<FInternetAddr>& RemoteAddr, const FString& UserId, ENetworkNextPlatformType Platform, const FString& Tag)
+void FSocketNetworkNextServer::UpgradeClient(const TSharedPtr<FInternetAddr>& RemoteAddr, const FString& UserId)
 {
 	UE_LOG(LogNetworkNext, Display, TEXT("Upgrade Client"));
 
@@ -79,36 +79,6 @@ void FSocketNetworkNextServer::UpgradeClient(const TSharedPtr<FInternetAddr>& Re
 
 	FString ClientAddress = RemoteAddr.Get()->ToString(true);
 
-	uint32_t next_platform;
-	switch (Platform)
-	{
-	case ENetworkNextPlatformType::PlatformType_Windows:
-		next_platform = NEXT_PLATFORM_WINDOWS;
-		break;
-	case ENetworkNextPlatformType::PlatformType_Mac:
-		next_platform = NEXT_PLATFORM_MAC;
-		break;
-	case ENetworkNextPlatformType::PlatformType_Linux:
-		next_platform = NEXT_PLATFORM_LINUX;
-		break;
-	case ENetworkNextPlatformType::PlatformType_Switch:
-		next_platform = NEXT_PLATFORM_SWITCH;
-		break;
-	case ENetworkNextPlatformType::PlatformType_PS4:
-		next_platform = NEXT_PLATFORM_PS4;
-		break;
-	case ENetworkNextPlatformType::PlatformType_XboxOne:
-		next_platform = NEXT_PLATFORM_XBOX_ONE;
-		break;
-	case ENetworkNextPlatformType::PlatformType_iOS:
-		next_platform = NEXT_PLATFORM_IOS;
-		break;
-	default:
-	case ENetworkNextPlatformType::PlatformType_Unknown:
-		next_platform = 0 /* Unknown */;
-		break;
-	}
-
 	next_address_t from;
 	if (next_address_parse(&from, TCHAR_TO_ANSI(*ClientAddress)) != NEXT_OK)
 	{
@@ -119,9 +89,7 @@ void FSocketNetworkNextServer::UpgradeClient(const TSharedPtr<FInternetAddr>& Re
 	next_server_upgrade_session(
 		this->NetworkNextServer,
 		&from,
-		TCHAR_TO_ANSI(*UserId),
-		next_platform,
-		TCHAR_TO_ANSI(*Tag)
+		TCHAR_TO_ANSI(*UserId)
 	);
 }
 
