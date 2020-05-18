@@ -117,7 +117,6 @@ namespace core
           return;
         }
 
-        LogDebug("new ping");
         if (packet.Len == packets::NewRelayPingPacket::ByteSize) {
           mRecorder.addToReceived(wholePacketSize);
           mStats.BytesPerSecMeasurementRx += wholePacketSize;
@@ -126,12 +125,12 @@ namespace core
 
           handler.handle();
         } else {
+          LogDebug("got invalid new ping packet from ", packet.Addr);
           mRecorder.addToUnknown(wholePacketSize);
           mStats.BytesPerSecInvalidRx += wholePacketSize;
         }
       } break;
       case packets::Type::NewRelayPong: {
-        LogDebug("new pong");
         if (packet.Len == packets::NewRelayPingPacket::ByteSize) {
           mRecorder.addToReceived(wholePacketSize);
           mStats.BytesPerSecMeasurementRx += wholePacketSize;
@@ -140,12 +139,12 @@ namespace core
 
           handler.handle();
         } else {
+          LogDebug("got invalid new pong packet from ", packet.Addr);
           mRecorder.addToUnknown(wholePacketSize);
           mStats.BytesPerSecInvalidRx += wholePacketSize;
         }
       } break;
       case packets::Type::OldRelayPing: {
-        LogDebug("old ping");
         if (packet.Len == packets::OldRelayPingPacket::ByteSize) {
           mRecorder.addToReceived(wholePacketSize);
           mStats.BytesPerSecMeasurementRx += wholePacketSize;
@@ -160,7 +159,6 @@ namespace core
         }
       } break;
       case packets::Type::OldRelayPong: {
-        LogDebug("old pong");
         if (packet.Len == packets::OldRelayPongPacket::ByteSize) {
           mRecorder.addToReceived(wholePacketSize);
           mStats.BytesPerSecMeasurementRx += wholePacketSize;
