@@ -10,27 +10,31 @@ DONE
 
 	LICENCE
 
-TODO
-
 	How it works
-
-	----------------------------------------
 
 	Make trial SDK 3.4.5 release for team.
 
-	Make sure to include:
+	Fix problem on GCC.
 
-		docs
-		keygen
-		testbed
+	Semaphore runs make && ./bin/test
+
+	Copy across "build" directory properly.
+
+	Copy across "keygen" directory.
+
+	Copy across "testbed" directory.
+
+	Zip up file: next-[version].zip
+
+	Remove .DS_Store
+
+TODO
+
+	Make official 3.4.5 release.
 
 	----------------------------------------
 
 	Wait for the backend to catch up to us and become 3.4.5 compatible.
-
-	----------------------------------------
-
-	Make official 3.4.5 release.
 
 	----------------------------------------
 

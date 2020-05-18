@@ -36,6 +36,9 @@ func main() {
 
 	fmt.Printf("\nMaking release %s in \"%s\"\n", version, basedir)
 
+	// remove zip files
+	bash("rm *.zip")
+
 	// create the release directory clean
 	bash("rm -rf %s", basedir)
 	bash("mkdir -p %s", basedir)
@@ -154,6 +157,74 @@ func main() {
 	bash("cp %s/next-nx32-%s.nrr %s/%s/next-nx32-%s.nrr", libdir, version, basedir, libdir, version)
 	bash("cp %s/next-nx32-%s.nrs %s/%s/next-nx32-%s.nrs", libdir, version, basedir, libdir, version)
 
+	// copy across the win64 build solution
+	bash("mkdir -p %s/build/win64", basedir)
+	bash("mkdir -p %s/build/win64/next", basedir)
+	bash("mkdir -p %s/build/win64/sodium", basedir)
+	bash("cp build/win64/build_win64.sln %s/build/win64", basedir)
+	bash("cp build/win64/next/next.vcxproj %s/build/win64/next", basedir)
+	bash("cp build/win64/sodium/sodium.vcxproj %s/build/win64/sodium", basedir)
+
+	// copy across the win32 build solution
+	bash("mkdir -p %s/build/win32", basedir)
+	bash("mkdir -p %s/build/win32/next", basedir)
+	bash("mkdir -p %s/build/win32/sodium", basedir)
+	bash("cp build/win32/build_win32.sln %s/build/win32", basedir)
+	bash("cp build/win32/next/next.vcxproj %s/build/win32/next", basedir)
+	bash("cp build/win32/sodium/sodium.vcxproj %s/build/win32/sodium", basedir)
+
+	// copy across the ps4 build solution
+	bash("mkdir -p %s/build/ps4", basedir)
+	bash("mkdir -p %s/build/ps4/next", basedir)
+	bash("mkdir -p %s/build/ps4/sodium", basedir)
+	bash("cp build/ps4/build_ps4.sln %s/build/ps4", basedir)
+	bash("cp build/ps4/next/next.vcxproj %s/build/ps4/next", basedir)
+	bash("cp build/ps4/sodium/sodium.vcxproj %s/build/ps4/sodium", basedir)
+
+	// copy across the xboxone build solution
+	bash("mkdir -p %s/build/xboxone", basedir)
+	bash("mkdir -p %s/build/xboxone/next", basedir)
+	bash("mkdir -p %s/build/xboxone/sodium", basedir)
+	bash("cp build/xboxone/build_xboxone.sln %s/build/xboxone", basedir)
+	bash("cp build/xboxone/next/next.vcxproj %s/build/xboxone/next", basedir)
+	bash("cp build/xboxone/sodium/sodium.vcxproj %s/build/xboxone/sodium", basedir)
+
+	// copy across the nx64 build solution
+	bash("mkdir -p %s/build/nx64", basedir)
+	bash("mkdir -p %s/build/nx64/next", basedir)
+	bash("mkdir -p %s/build/nx64/sodium", basedir)
+	bash("cp build/nx64/build_nx64.sln %s/build/nx64", basedir)
+	bash("cp build/nx64/ImportNintendoSdk.props %s/build/nx64", basedir)
+	bash("cp build/nx64/next/next.vcxproj %s/build/nx64/next", basedir)
+	bash("cp build/nx64/sodium/sodium.vcxproj %s/build/nx64/sodium", basedir)
+
+	// copy across the nx32 build solution
+	bash("mkdir -p %s/build/nx32", basedir)
+	bash("mkdir -p %s/build/nx32/next", basedir)
+	bash("mkdir -p %s/build/nx32/sodium", basedir)
+	bash("cp build/nx32/build_nx32.sln %s/build/nx32", basedir)
+	bash("cp build/nx32/ImportNintendoSdk.props %s/build/nx32", basedir)
+	bash("cp build/nx32/next/next.vcxproj %s/build/nx32/next", basedir)
+	bash("cp build/nx32/sodium/sodium.vcxproj %s/build/nx32/sodium", basedir)
+
+	// copy across keygen directory
+	bash("mkdir -p %s/keygen", basedir)
+	bash("cp keygen/keygen.exe %s/keygen", basedir)
+	bash("cp keygen/keygen_mac %s/keygen", basedir)
+	bash("cp keygen/keygen_arm %s/keygen", basedir)
+	bash("cp keygen/keygen_linux %s/keygen", basedir)
+	bash("cp keygen/keygen_freebsd %s/keygen", basedir)
+	bash("cp keygen/keygen_openbsd %s/keygen", basedir)
+
+	// copy across entire sodium directory
+	bash("cp -a sodium %s", basedir)
+
+	// copy across testbeds
+	bash("mkdir -p %s/testbed", basedir)
+	bash("cp -a testbed/ps4 %s/testbed", basedir)
+	bash("cp -a testbed/win64 %s/testbed", basedir)
+	bash("cp -a testbed/xboxone %s/testbed", basedir)
+
 	// build manifest
 
 	manifest := make([]string, 0)
@@ -246,6 +317,45 @@ func main() {
 	manifest = append(manifest, fmt.Sprintf("%s/lib/NintendoSwitch-NX32/Release/next-nx32-%s.nrr", basedir, version))
 	manifest = append(manifest, fmt.Sprintf("%s/lib/NintendoSwitch-NX32/Release/next-nx32-%s.nrs", basedir, version))
 
+	manifest = append(manifest, fmt.Sprintf("%s/build/win64/build_win64.sln", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/build/win64/next/next.vcxproj", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/build/win64/sodium/sodium.vcxproj", basedir))
+
+	manifest = append(manifest, fmt.Sprintf("%s/build/win32/build_win32.sln", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/build/win32/next/next.vcxproj", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/build/win32/sodium/sodium.vcxproj", basedir))
+
+	manifest = append(manifest, fmt.Sprintf("%s/build/ps4/build_ps4.sln", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/build/ps4/next/next.vcxproj", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/build/ps4/sodium/sodium.vcxproj", basedir))
+
+	manifest = append(manifest, fmt.Sprintf("%s/build/xboxone/build_xboxone.sln", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/build/xboxone/next/next.vcxproj", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/build/xboxone/sodium/sodium.vcxproj", basedir))
+
+	manifest = append(manifest, fmt.Sprintf("%s/build/nx64/build_nx64.sln", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/build/nx64/ImportNintendoSdk.props", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/build/nx64/next/next.vcxproj", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/build/nx64/sodium/sodium.vcxproj", basedir))
+
+	manifest = append(manifest, fmt.Sprintf("%s/build/nx32/build_nx32.sln", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/build/nx32/ImportNintendoSdk.props", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/build/nx32/next/next.vcxproj", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/build/nx32/sodium/sodium.vcxproj", basedir))
+
+	manifest = append(manifest, fmt.Sprintf("%s/keygen/keygen.exe", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/keygen/keygen_mac", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/keygen/keygen_arm", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/keygen/keygen_linux", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/keygen/keygen_freebsd", basedir))
+	manifest = append(manifest, fmt.Sprintf("%s/keygen/keygen_openbsd", basedir))
+
+	// todo: manifest for sodium directory
+
+	// todo: manifest for testbed directory
+
+	bash("find . -name '.DS_Store' -type f -delete .") 
+
 	fmt.Printf("\nManifest:\n\n" )
 	for _, file := range manifest {
 		fmt.Printf("    %s\n", file)
@@ -254,6 +364,11 @@ func main() {
 			os.Exit(1)
 		}
 	}
+	fmt.Printf("\n")
+
+	bash("zip -r -9 next-%s.zip %s", version, basedir)
+
+	bash("rm -rf %s", basedir)
 
 	fmt.Printf("\nSuccessfully made release %s\n\n", version)
 
