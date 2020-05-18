@@ -41,20 +41,19 @@ project "sodium"
 	kind "StaticLib"
 	defines { "SODIUM_STATIC", "SODIUM_EXPORT=", "CONFIGURED=1" }
 	includedirs { "sodium/include/sodium" }
-	linkoptions { "/ignore:4221" }
 	files {
 		"sodium/**.c",
 		"sodium/**.h"
 	}
 	filter "system:windows"
-		disablewarnings { "4244", "4715", "4197", "4146", "4324", "4456", "4100", "4459", "4245" }
-	linkoptions { "/ignore:4221" }
+		disablewarnings { "4221", "4244", "4715", "4197", "4146", "4324", "4456", "4100", "4459", "4245" }
+		linkoptions { "/ignore:4221" }
 	filter "options:not internal"
 		vectorextensions "AVX"
 	filter { "action:vs2010"}
 		defines { "inline=__inline;NATIVE_LITTLE_ENDIAN;_CRT_SECURE_NO_WARNINGS;" }
 	configuration { "gmake" }
-  		buildoptions { "-Wno-unused-parameter", "-Wno-unused-function", "-Wno-unknown-pragmas", "-Wno-unused-variable" }
+  		buildoptions { "-Wno-unused-parameter", "-Wno-unused-function", "-Wno-unknown-pragmas", "-Wno-unused-variable", "-Wno-type-limits" }
 
 project "test"
 	kind "ConsoleApp"
