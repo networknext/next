@@ -180,7 +180,6 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 		if !runCommandEnv("deploy/relay-update.sh", []string{env.SSHKeyFilePath, info.user + "@" + info.sshAddr}, nil) {
 			log.Fatal("could not execute the relay-update.sh script")
 		}
-		updateRelayState(rpcClient, info, routing.RelayStateEnabled)
 	}
 }
 
@@ -192,7 +191,6 @@ func revertRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 			testForSSHKey(env)
 			con := NewSSHConn(info.user, info.sshAddr, info.sshPort, env.SSHKeyFilePath)
 			con.ConnectAndIssueCmd("./install.sh -r")
-			updateRelayState(rpcClient, info, routing.RelayStateEnabled)
 		}
 	} else {
 		for _, relayName := range relayNames {
@@ -201,7 +199,6 @@ func revertRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 			testForSSHKey(env)
 			con := NewSSHConn(info.user, info.sshAddr, info.sshPort, env.SSHKeyFilePath)
 			con.ConnectAndIssueCmd("./install.sh -r")
-			updateRelayState(rpcClient, info, routing.RelayStateEnabled)
 		}
 	}
 }
@@ -213,7 +210,6 @@ func enableRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 		testForSSHKey(env)
 		con := NewSSHConn(info.user, info.sshAddr, info.sshPort, env.SSHKeyFilePath)
 		con.ConnectAndIssueCmd(EnableRelayScript)
-		updateRelayState(rpcClient, info, routing.RelayStateEnabled)
 	}
 }
 
