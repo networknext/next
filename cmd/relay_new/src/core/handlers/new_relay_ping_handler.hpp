@@ -53,7 +53,8 @@ namespace core
       mRecorder.addToSent(mPacket.Len);
       mStats.BytesPerSecMeasurementTx += mPacket.Len;
 
-      LogDebug("sending pong to ", mPacket.Addr);
+      LogDebug("got new ping from ", mPacket.Addr);
+
       if (!mSocket.send(mPacket)) {
         Log("failed to send data");
       }

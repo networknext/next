@@ -18,15 +18,15 @@ namespace core {
       auto getSequence() -> uint64_t;
     };
 
-    inline OldRelayPingPacket::OldRelayPingPacket(GenericPacket<>& packet): Internal(packet) {}
+    inline OldRelayPongPacket::OldRelayPongPacket(GenericPacket<>& packet): Internal(packet) {}
 
-    inline auto OldRelayPingPacket::getID() -> uint64_t
+    inline auto OldRelayPongPacket::getID() -> uint64_t
     {
       size_t index = 1;
       return encoding::ReadUint64(Internal.Buffer, index);
     }
 
-    inline auto OldRelayPingPacket::getSequence() -> uint64_t
+    inline auto OldRelayPongPacket::getSequence() -> uint64_t
     {
       size_t index = 9;
       return encoding::ReadUint64(Internal.Buffer, index);

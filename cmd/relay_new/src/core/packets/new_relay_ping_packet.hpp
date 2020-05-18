@@ -46,7 +46,9 @@ namespace core
     inline void NewRelayPingPacket::writeFromAddr(const net::Address& addr)
     {
       size_t index = 9;
-      encoding::WriteAddress(Internal.Buffer, index, addr);
+      if (!encoding::WriteAddress(Internal.Buffer, index, addr)) {
+        LogDebug("could not write address");
+      }
     }
   }  // namespace packets
 }  // namespace core

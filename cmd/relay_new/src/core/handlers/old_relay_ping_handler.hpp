@@ -38,11 +38,27 @@ namespace core
       core::GenericPacket<> outgoing;
 
       size_t index = 0;
-      encoding::WriteUint8(outgoing.Buffer, index, static_cast<uint8_t>(packets::Type::OldRelayPong));
-      encoding::WriteUint64(outgoing.Buffer, index, packetWrapper.getID());
-      encoding::WriteUint64(outgoing.Buffer, index, packetWrapper.getSequence());
+
+      if (!encoding::WriteUint8(outgoing.Buffer, index, static_cast<uint8_t>(packets::Type::OldRelayPong))) {
+        LogDebug("could not write ");
+        return;
+      }
+
+      if (!encoding::WriteUint64(outgoing.Buffer, index, packetWrapper.getID())) {
+        LogDebug("could not write ");
+        return;
+      }
+
+      if (!encoding::WriteUint64(outgoing.Buffer, index, packetWrapper.getSequence())) {
+        LogDebug("could not write ");
+        return;
+      }
+
+      LogDebug("got new ping from ", mPacket.Addr);
+
       outgoing.Addr = mPacket.Addr;
       outgoing.Len = index;
+
       mSocket.send(outgoing);
     };
   }  // namespace handlers

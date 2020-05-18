@@ -61,8 +61,7 @@ namespace core
   };
 
   template <typename T>
-  Packet<T>::Packet(Packet<T>&& other)
-   : Addr(std::move(other.Addr)), Buffer(std::move(other.Buffer)), Len(std::move(other.Len))
+  Packet<T>::Packet(Packet<T>&& other): Addr(std::move(other.Addr)), Buffer(std::move(other.Buffer)), Len(std::move(other.Len))
   {}
 
   template <typename T>
@@ -75,7 +74,7 @@ namespace core
   }
 
   template <size_t BuffSize, size_t PacketSize>
-  GenericPacketBuffer<BuffSize, PacketSize>::GenericPacketBuffer(): mRawAddrBuff(BuffSize), mIOVecBuff(BuffSize)
+  GenericPacketBuffer<BuffSize, PacketSize>::GenericPacketBuffer(): Count(0), mRawAddrBuff(BuffSize), mIOVecBuff(BuffSize)
   {
     for (size_t i = 0; i < BuffSize; i++) {
       auto& pkt = Packets[i];

@@ -20,7 +20,10 @@ namespace core
     std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
     crypto::RandomBytes(nonce, nonce.size());  // fill nonce
 
-    encoding::WriteBytes(packet.Buffer, index, nonce, nonce.size());
+    if (!encoding::WriteBytes(packet.Buffer, index, nonce, nonce.size())) {
+      Log("could not write nonce");
+      return false;
+    }
 
     const size_t afterNonce = index;
 
@@ -66,10 +69,25 @@ namespace core
     (void)start;
 
     Token::write(packet, index);
-    encoding::WriteUint32(packet.Buffer, index, KbpsUp);
-    encoding::WriteUint32(packet.Buffer, index, KbpsDown);
-    encoding::WriteAddress(packet.Buffer, index, NextAddr);
-    encoding::WriteBytes(packet.Buffer, index, PrivateKey, crypto_box_SECRETKEYBYTES);
+    if (!encoding::WriteUint32(packet.Buffer, index, KbpsUp)) {
+      LogDebug("could not write kbps up");
+      assert(false);
+    }
+
+    if (!encoding::WriteUint32(packet.Buffer, index, KbpsDown)) {
+      LogDebug("could not write kbps down");
+      assert(false);
+    }
+
+    if (!encoding::WriteAddress(packet.Buffer, index, NextAddr)) {
+      LogDebug("could not write next addr");
+      assert(false);
+    }
+
+    if (!encoding::WriteBytes(packet.Buffer, index, PrivateKey, crypto_box_SECRETKEYBYTES)) {
+      LogDebug("could not write prev addr");
+      assert(false);
+    }
 
     assert(index - start == RouteToken::ByteSize);
   }

@@ -7,6 +7,7 @@
 #include "legacy/v3/traffic_stats.hpp"
 #include "os/platform.hpp"
 #include "packets/new_relay_ping_packet.hpp"
+#include "packets/old_relay_ping_packet.hpp"
 #include "packets/types.hpp"
 #include "util/throughput_recorder.hpp"
 
@@ -84,12 +85,13 @@ namespace core
       }
 
       for (unsigned int i = 0; i < numberOfRelaysToPing; i++) {
+        auto& ping = pings[i];
         auto& pkt = buffer.Packets[i];
 
         auto& mhdr = buffer.Headers[i];
         auto& hdr = mhdr.msg_hdr;
 
-        auto& addr = pings[i].Addr;
+        auto& addr = ping.Addr;
 
         fillMsgHdrWithAddr(hdr, addr);
 
@@ -97,13 +99,24 @@ namespace core
 
         // write data to the buffer
         {
-          encoding::WriteUint8(
-           pkt.Buffer, index, static_cast<uint8_t>(packets::Type::NewRelayPing));  // TODO make template param
-          encoding::WriteUint64(pkt.Buffer, index, pings[i].Seq);
+          if (!encoding::WriteUint8(pkt.Buffer, index, static_cast<uint8_t>(packets::Type::NewRelayPing))) {
+            LogDebug("could not write packet type");
+            assert(false);
+          }
+
+          if (!encoding::WriteUint64(pkt.Buffer, index, ping.Seq)) {
+            LogDebug("could not write sequence");
+            assert(false);
+          }
 
           // use the recv port addr here so the receiving relay knows where to send it back to
-          encoding::WriteAddress(pkt.Buffer, index, mRelayAddress);
+          if (!encoding::WriteAddress(pkt.Buffer, index, mRelayAddress)) {
+            LogDebug("could not write receiving address");
+            assert(false);
+          }
         }
+
+        LogDebug("sending new ping to ", addr);
 
         pkt.Len = index;
         hdr.msg_iov[0].iov_len = index;
@@ -135,7 +148,7 @@ namespace core
   {
     readyToSend = true;
     var.notify_one();
-    GenericPacketBuffer<MaxPingsToSend, packets::NewRelayPingPacket::ByteSize> buffer;
+    GenericPacketBuffer<MaxPingsToSend, packets::OldRelayPingPacket::ByteSize> buffer;
 
     while (mShouldProcess) {
       std::this_thread::sleep_for(10ms);
@@ -149,12 +162,13 @@ namespace core
       }
 
       for (unsigned int i = 0; i < numberOfRelaysToPing; i++) {
+        auto& ping = pings[i];
         auto& pkt = buffer.Packets[i];
 
         auto& mhdr = buffer.Headers[i];
         auto& hdr = mhdr.msg_hdr;
 
-        auto& addr = pings[i].Addr;
+        auto& addr = ping.Addr;
 
         fillMsgHdrWithAddr(hdr, addr);
 
@@ -163,12 +177,25 @@ namespace core
         // write data to the buffer
         {
           std::array<uint8_t, 48> token;
-          encoding::base64::Decode(pings[i].PingToken, token);  // TODO decrypt this in relay manager update
+          auto tokenLen = encoding::base64::Decode(ping.PingToken, token);
 
-          encoding::WriteUint8(pkt.Buffer, index, static_cast<uint8_t>(packets::Type::OldRelayPing));
-          encoding::WriteBytes(pkt.Buffer, index, token, sizeof(token));
-          encoding::WriteUint64(pkt.Buffer, index, pings[i].Seq);
+          if (!encoding::WriteUint8(pkt.Buffer, index, static_cast<uint8_t>(packets::Type::OldRelayPing))) {
+            LogDebug("could not write packet type");
+            continue;
+          }
+
+          if (!encoding::WriteBytes(pkt.Buffer, index, token, sizeof(token))) {
+            LogDebug("could not write ping token");
+            continue;
+          }
+
+          if (!encoding::WriteUint64(pkt.Buffer, index, ping.Seq)) {
+            LogDebug("could not write sequence");
+            continue;
+          }
         }
+
+        LogDebug("sending old ping to ", addr);
 
         pkt.Len = index;
         hdr.msg_iov[0].iov_len = index;
@@ -198,7 +225,7 @@ namespace core
   template <typename T>
   inline void PingProcessor<T>::fillMsgHdrWithAddr(msghdr& hdr, const net::Address& addr)
   {
-    // TODO need error handling here
+    assert(addr.Type != net::AddressType::None);
     if (addr.Type == net::AddressType::IPv4) {
       auto sin = reinterpret_cast<sockaddr_in*>(hdr.msg_name);
       addr.to(*sin);

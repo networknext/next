@@ -250,12 +250,12 @@ namespace core
       Log("warning, version number missing in update response");
     }
 
+    size_t count = 0;
+    std::array<Relay, MAX_RELAYS> incoming{};
+
     bool allValid = true;
     auto relays = doc.get<util::JSON>("ping_data");
     if (relays.isArray()) {
-      size_t count = 0;
-      std::array<Relay, MAX_RELAYS> incoming{};
-
       // 'return' functions like 'continue' within the lambda
       relays.foreach([&allValid, &count, &incoming](rapidjson::Value& relayData) {
         if (!relayData.HasMember("relay_id")) {
@@ -302,8 +302,6 @@ namespace core
         Log("error: too many relays to ping. max is ", MAX_RELAYS, ", got ", count, '\n');
         return false;
       }
-
-      mRelayManager.update(count, incoming);
     } else if (relays.memberIs(util::JSON::Type::Null)) {
       Log("no relays received from backend, ping data is null");
     } else {
@@ -314,6 +312,8 @@ namespace core
     if (!allValid) {
       Log("some or all of the update ping data was invalid");
     }
+
+    mRelayManager.update(count, incoming);
 
     return true;
   }

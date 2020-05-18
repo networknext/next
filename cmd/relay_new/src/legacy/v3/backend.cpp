@@ -234,12 +234,12 @@ namespace legacy
         Log(err);
       }
 
+      size_t count = 0;
+      std::array<core::V3Relay, MAX_RELAYS> incoming{};
+
       bool allValid = true;
       auto relays = doc.get<util::JSON>("PingTargets");
       if (relays.isArray()) {
-        size_t count = 0;
-        std::array<core::V3Relay, MAX_RELAYS> incoming{};
-
         // 'return' functions like 'continue' within the lambda
         relays.foreach([&allValid, &count, &incoming](rapidjson::Value& relayData) {
           if (!relayData.HasMember("Id")) {
@@ -297,7 +297,6 @@ namespace legacy
           return false;
         }
 
-        mRelayManager.update(count, incoming);
       } else if (relays.memberIs(util::JSON::Type::Null)) {
         Log("no relays received from backend, ping data is null");
       } else {
@@ -308,6 +307,9 @@ namespace legacy
       if (!allValid) {
         Log("some or all of the update ping data was invalid");
       }
+
+      mRelayManager.update(count, incoming);
+
       return true;
     }
 

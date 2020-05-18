@@ -40,12 +40,35 @@ namespace legacy
       std::vector<uint8_t> buffer(total_bytes - 1);
 
       size_t index = 0;
-      encoding::WriteAddress(buffer, index, master_token.Address);
-      encoding::WriteBytes(buffer, index, master_token.HMAC, master_token.HMAC.size());
-      encoding::WriteUint64(buffer, index, id);
-      encoding::WriteUint8(buffer, index, fragmentIndex);
-      encoding::WriteUint8(buffer, index, fragmentTotal);
-      encoding::WriteBytes(buffer, index, packet.Buffer, packet.Len);
+      if (!encoding::WriteAddress(buffer, index, master_token.Address)) {
+        LogDebug("could not write addr");
+        return false;
+      }
+
+      if (!encoding::WriteBytes(buffer, index, master_token.HMAC, master_token.HMAC.size())) {
+        LogDebug("could not write master hmac");
+        return false;
+      }
+
+      if (!encoding::WriteUint64(buffer, index, id)) {
+        LogDebug("could not write request id");
+        return false;
+      }
+
+      if (!encoding::WriteUint8(buffer, index, fragmentIndex)) {
+        LogDebug("could not write frag index");
+        return false;
+      }
+
+      if (!encoding::WriteUint8(buffer, index, fragmentTotal)) {
+        LogDebug("could not write could not frag total");
+        return false;
+      }
+
+      if (!encoding::WriteBytes(buffer, index, packet.Buffer, packet.Len)) {
+        LogDebug("could not write packet data");
+        return false;
+      }
 
       out.Buffer.resize(total_bytes);
       out.Len = total_bytes;
@@ -61,10 +84,7 @@ namespace legacy
     }
 
     auto packet_send(
-     const os::Socket& socket,
-     const BackendToken& master_token,
-     core::GenericPacket<>& packet,
-     BackendRequest& request) -> bool
+     const os::Socket& socket, const BackendToken& master_token, core::GenericPacket<>& packet, BackendRequest& request) -> bool
     {
       if (packet.Addr.Type == net::AddressType::None) {
         Log("can't send master UDP packet: address has not resolved");
