@@ -208,41 +208,41 @@
     <body class="hidden" id="app">
         <div id="root">
             <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark p-0 shadow">
-                <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="/">
+                <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="#">
                     <div class="logo-container">
                         <img class="logo-fit" src="logo.png">
                     </div>
                 </a>
                 <ul class="navbar-nav px-3 w-100 mr-auto">
                     <li class="nav-item text-nowrap ">
-                        <a class="nav-link active" href="#" id="map-link" onclick="WorkspaceHandler.changePage('map')">
+                        <a class="nav-link" href="#" v-bind:class="{ active: pages.map.show }" v-on:click="handlers.workspaceHandler.changePage('map')">
                             Map
                         </a>
                     </li>
                     <li class="nav-item text-nowrap">
-                        <a class="nav-link" href="#" id="sessions-link" onclick="WorkspaceHandler.changePage('sessions')">
+                        <a class="nav-link" href="#" v-bind:class="{ active: pages.sessions.show }" v-on:click="handlers.workspaceHandler.changePage('sessions')">
                             Sessions
                         </a>
                     </li>
                     <li class="nav-item text-nowrap">
-                        <a class="nav-link" href="#" id="session-tool-link" onclick="WorkspaceHandler.changePage('session-tool')">
+                        <a class="nav-link" href="#" v-bind:class="{ active: pages.sessionTool.show }" v-on:click="handlers.workspaceHandler.changePage('sessionTool', '')">
                             Session Tool
                         </a>
                     </li>
                     <li class="nav-item text-nowrap">
-                        <a class="nav-link" href="#" id="user-tool-link" onclick="WorkspaceHandler.changePage('user-tool')">
+                        <a class="nav-link" href="#" v-bind:class="{ active: pages.userTool.show }" v-on:click="handlers.workspaceHandler.changePage('userTool', '')">
                             User Tool
                         </a>
                     </li>
-                    <li class="nav-item text-nowrap">
-                        <a class="nav-link" href="#" id="settings-link" onclick="WorkspaceHandler.changePage('settings')">
+                    <li class="nav-item text-nowrap" v-if="handlers.userHandler.isOwner() || handlers.userHandler.isAdmin()">
+                        <a class="nav-link" href="#" v-bind:class="{ active: pages.settings.show }" v-on:click="handlers.workspaceHandler.changePage('settings')">
                             Settings
                         </a>
                     </li>
                 </ul>
                 <ul class="navbar-nav px-3">
                     <li class="nav-item text-nowrap  ">
-                        <a class="nav-link" href="#" onclick="loginClient.logout()">
+                        <a class="nav-link" href="#" onclick="AuthHandler.auth0Client.logout()">
                             Logout
                         </a>
                     </li>
@@ -250,7 +250,7 @@
             </nav>
             <div class="container-fluid">
                 <div class="row">
-                    <main role="main" class="col-md-12 col-lg-12 px-4" id="map-workspace">
+                    <main role="main" class="col-md-12 col-lg-12 px-4" v-show="pages.map.show">
                         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom" id="map-sessions-count">
                             <div id="map-spinner" v-if="!showCount">
                                 <div class="spinner-border" role="status">
@@ -260,7 +260,7 @@
                             <h1 class="h2" id="workspace-title" v-if="showCount">
                                 Map&nbsp;
                                 <span class="badge badge-dark">
-                                    {{ sessions.length }} Total Sessions
+                                    {{ mapSessions.length }} Total Sessions
                                 </span>&nbsp;
                                 <span class="badge badge-success">
                                     {{ onNN.length }} on Network Next
@@ -270,37 +270,37 @@
                                 <div class="mr-auto"></div>
                                 <div class="px-2">
                                     <select class="form-control">
-                                        <option onclick="MapHandler.updateMap('WORLD')">
+                                        <option v-on:click="handlers.mapHandler.updateMap('WORLD')">
                                             World
                                         </option>
-                                        <option onclick="MapHandler.updateMap('USA')">
+                                        <option v-on:click="handlers.mapHandler.updateMap('USA')">
                                             United States
                                         </option>
                                     </select>
                                 </div>
                                 <div class="px-2">
                                     <select class="form-control">
-                                        <option value="everything" v-on:click="updateFilter({buyerId: filter.buyerId, sessionType: 'all'})">
+                                        <option value="everything" v-on:click="handlers.mapHandler.updateFilter({buyerId: pages.map.filter.buyerId, sessionType: 'all'})">
                                             Everything
                                         </option>
-                                        <option value="direct" v-on:click="updateFilter({buyerId: filter.buyerId, sessionType: 'direct'})">
+                                        <option value="direct" v-on:click="handlers.mapHandler.updateFilter({buyerId: pages.map.filter.buyerId, sessionType: 'direct'})">
                                             Direct Only
                                         </option>
-                                        <option value="next" v-on:click="updateFilter({buyerId: filter.buyerId, sessionType: 'nn'})">
+                                        <option value="next" v-on:click="handlers.mapHandler.updateFilter({buyerId: pages.map.filter.buyerId, sessionType: 'nn'})">
                                             Network Next Only
                                         </option>
                                     </select>
                                 </div>
                                 <div class="px-2">
                                     <select class="form-control">
-                                        <option value="all" v-on:click="updateFilter({buyerId: '', sessionType: filter.sessionType})">
+                                        <option value="all" v-on:click="handlers.mapHandler.updateFilter({buyerId: '', sessionType: pages.map.filter.sessionType})">
                                             All
                                         </option>
-                                        <option v-for="buyer in allBuyers" v-on:click="updateFilter({buyerId: buyer.id, sessionType: filter.sessionType})" v-if="isAdmin()">
+                                        <option v-for="buyer in allBuyers" v-on:click="handlers.mapHandler.updateFilter({buyerId: buyer.id, sessionType: pages.map.filter.sessionType})" v-if="handlers.userHandler.isAdmin()">
                                             {{ buyer.name }}
                                         </option>
-                                        <option v-on:click="updateFilter({buyerId: UserHandler.userInfo.id, sessionType: filter.sessionType})" v-if="!isAdmin()">
-                                            {{ UserHandler.userInfo.company }}
+                                        <option v-on:click="handlers.mapHandler.updateFilter({buyerId: handlers.userHandler.userInfo.id, sessionType: pages.map.filter.sessionType})" v-if="!handlers.userHandler.isAdmin()">
+                                            {{ handlers.userHandler.userInfo.name }}
                                         </option>
                                     </select>
                                 </div>
@@ -308,19 +308,16 @@
                         </div>
                         <div style="width: 100%; height: calc(-160px + 100vh); border: 1px solid rgb(136, 136, 136); background-color: rgb(27, 27, 27);" id="map-container"></div>
                     </main>
-                    <main role="main" class="col-md-12 col-lg-12 px-4 hidden" id="sessions-workspace">
+                    <main role="main" class="col-md-12 col-lg-12 px-4" v-if="pages.sessions.show">
                         <div id="sessions">
                             <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                                <div class="spinner-border" role="status" id="sessions-spinner" v-if="!showCount">
-                                    <span class="sr-only">Loading...</span>
-                                </div>
-                                <h1 class="h2" v-if="showCount">
+                                <h1 class="h2" id="workspace-title" v-if="showCount">
                                     Sessions&nbsp;
                                     <span class="badge badge-dark">
-                                        {{ allMapSessions.length }} Total Sessions
+                                        {{ mapSessions.length }} Total Sessions
                                     </span>&nbsp;
                                     <span class="badge badge-success">
-                                        {{ nnSessions.length }} on Network Next
+                                        {{ onNN.length }} on Network Next
                                     </span>
                                 </h1>
                                 <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1">
@@ -334,35 +331,38 @@
                                     </div>
                                     <div class="px-2">
                                         <select class="form-control">
-                                            <option value="everything" v-on:click="updateSessionFilter({buyerId: filter.buyerId, sessionType: 'all'})">
+                                            <option value="everything" v-on:click="handlers.workspaceHandler.updateSessionFilter({buyerId: pages.sessions.filter.buyerId, sessionType: 'all'})">
                                                 Everything
                                             </option>
-                                            <option value="direct" v-on:click="updateSessionFilter({buyerId: filter.buyerId, sessionType: 'direct'})">
+                                            <option value="direct" v-on:click="handlers.workspaceHandler.updateSessionFilter({buyerId: pages.sessions.filter.buyerId, sessionType: 'direct'})">
                                                 Direct Only
                                             </option>
-                                            <option value="next" v-on:click="updateSessionFilter({buyerId: filter.buyerId, sessionType: 'nn'})">
+                                            <option value="next" v-on:click="handlers.workspaceHandler.updateSessionFilter({buyerId: pages.sessions.filter.buyerId, sessionType: 'nn'})">
                                                 Network Next Only
                                             </option>
                                         </select>
                                     </div>
                                     <div class="px-2">
-                                        <select class="form-control" v-if="isAdmin()">
-                                            <option value="all" v-on:click="updateSessionFilter({buyerId: '', sessionType: filter.sessionType})">
+                                        <select class="form-control" v-if="handlers.userHandler.isAdmin()">
+                                            <option value="all" v-on:click="handlers.workspaceHandler.updateSessionFilter({buyerId: '', sessionType: pages.sessions.filter.sessionType})">
                                                 All
                                             </option>
-                                            <option v-for="buyer in allBuyers" v-on:click="updateSessionFilter({buyerId: buyer.id, sessionType: filter.sessionType})">
+                                            <option v-for="buyer in allBuyers" v-on:click="handlers.workspaceHandler.updateSessionFilter({buyerId: buyer.id, sessionType: pages.sessions.filter.sessionType})">
                                                 {{ buyer.name }}
                                             </option>
                                         </select>
-                                        <select class="form-control" v-if="!isAdmin()">
-                                            <option v-on:click="updateSessionFilter({buyerId: UserHandler.userInfo.id, sessionType: filter.sessionType})">
+                                        <select class="form-control" v-if="!handlers.userHandler.isAdmin()">
+                                            <option v-on:click="handlers.workspaceHandler.updateSessionFilter({buyerId: UserHandler.userInfo.id, sessionType: pages.sessions.filter.sessionType})">
                                                 {{ UserHandler.userInfo.name }}
                                             </option>
                                         </select>
                                     </div>
                                 </div>
                             </div>
-                            <div class="table-responsive table-no-top-line" v-if="showCount">
+                            <div class="spinner-border" role="status" id="sessions-spinner" v-if="!pages.sessions.showTable">
+                                <span class="sr-only">Loading...</span>
+                            </div>
+                            <div class="table-responsive table-no-top-line" v-if="pages.sessions.showTable">
                                 <table class="table table-sm table-striped table-hover">
                                     <thead>
                                         <tr>
@@ -409,18 +409,18 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr v-for="(session, index) in sessions">
+                                        <tr v-for="(session, index) in pages.sessions.sessions">
                                             <td>
                                                 <i class="fas fa-circle fa-w-16 fa-fw text-success" v-if="session.on_network_next"></i>
                                                 <i class="fas fa-circle fa-w-16 fa-fw text-primary" v-if="!session.on_network_next"></i>
                                             </td>
                                             <td>
-                                                <a class="text-dark fixed-width" href="#" v-on:click="fetchSessionInfo(session.id)">
+                                                <a class="text-dark fixed-width" href="#" v-on:click="handlers.workspaceHandler.changePage('sessionTool', session.id)">
                                                     {{ session.id }}
                                                 </a>
                                             </td>
                                             <td>
-                                                <a class="text-dark fixed-width" href="#" v-on:click="fetchUserSessions(session.user_hash)">
+                                                <a class="text-dark fixed-width" href="#" v-on:click="handlers.workspaceHandler.changePage('userTool', session.user_hash)">
                                                     {{ session.user_hash }}
                                                 </a>
                                             </td>
@@ -451,7 +451,7 @@
                             </div>
                         </div>
                     </main>
-                    <main role="main" class="col-md-12 col-lg-12 px-4 hidden" id="session-tool-workspace">
+                    <main role="main" class="col-md-12 col-lg-12 px-4" v-if="pages.sessionTool.show">
                         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                             <h1 class="h2">
                                 Session Tool
@@ -460,14 +460,14 @@
                                 <div class="mr-auto"></div>
                             </div>
                         </div>
-                        <form class="flow-stats-form" onsubmit="fetchSessionInfo()">
+                        <form class="flow-stats-form" onsubmit="WorkspaceHandler.fetchSessionInfo()">
                             <div class="form-group">
                                 <label for="session-id-input">
                                     Session ID
                                 </label>
                                 <div class="row">
                                     <div class="col">
-                                        <input id="session-id-input" class="form-control" type="text" placeholder="Enter a Session ID to view statistics" value="">
+                                        <input v-model="pages.sessionTool.id" class="form-control" type="text" placeholder="Enter a Session ID to view statistics">
                                     </div>
                                     <div class="col-auto">
                                         <button class="btn btn-primary" type="submit">
@@ -477,14 +477,14 @@
                                 </div>
                             </div>
                         </form>
-                        <div class="alert alert-info" role="alert" id="session-tool-alert">
+                        <div class="alert alert-info" role="alert" id="session-tool-alert" v-if="pages.sessionTool.info">
                             Please enter a valid session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.
                         </div>
-                        <div class="alert alert-danger hidden" role="alert" id="session-tool-danger">
+                        <div class="alert alert-danger" role="alert" id="session-tool-danger" v-if="pages.sessionTool.danger">
                             Failed to fetch session details
                         </div>
                         <div id="session-details">
-                            <div v-if="showDetails">
+                            <div v-if="pages.sessionTool.showDetails">
                                 <div class="row">
                                     <div class="col-12 col-lg-8">
                                         <div class="card mb-2">
@@ -610,7 +610,7 @@
                                                         </dt>
                                                         <dd>
                                                             <em>
-                                                                {{ meta.location.isp }}
+                                                                {{ pages.sessionTool.meta.location.isp }}
                                                             </em>
                                                         </dd>
                                                         <div>
@@ -619,7 +619,7 @@
                                                             </dt>
                                                             <dd>
                                                                 <a class="text-dark">
-                                                                    {{ meta.user_hash }}
+                                                                    {{ pages.sessionTool.meta.user_hash }}
                                                                 </a>
                                                             </dd>
                                                         </div>
@@ -627,13 +627,13 @@
                                                             User IP Address
                                                         </dt>
                                                         <dd>
-                                                            {{ meta.client_addr }}
+                                                            {{ pages.sessionTool.meta.client_addr }}
                                                         </dd>
                                                         <dt>
                                                             Platform
                                                         </dt>
                                                         <dd>
-                                                            {{ meta.platform }}
+                                                            {{ pages.sessionTool.meta.platform }}
                                                         </dd>
                                                         <dt>
                                                             Customer
@@ -641,7 +641,7 @@
                                                         <dd>
                                                             {{
                                                                 allBuyers.find((buyer) => {
-                                                                    return buyer.id == meta.customer_id
+                                                                    return buyer.id == pages.sessionTool.meta.customer_id
                                                                 }).name
                                                             }}
                                                         </dd>
@@ -649,21 +649,21 @@
                                                             SDK Version
                                                         </dt>
                                                         <dd>
-                                                            {{ meta.sdk }}
+                                                            {{ pages.sessionTool.meta.sdk }}
                                                         </dd>
                                                         <dt>
                                                             Connection Type
                                                         </dt>
                                                         <dd>
-                                                            {{ meta.connection }}
+                                                            {{ pages.sessionTool.meta.connection }}
                                                         </dd>
                                                         <dt>
                                                             Nearby Relays
                                                         </dt>
-                                                        <dd v-if="meta.nearby_relays == 0">
+                                                        <dd v-if="pages.sessionTool.meta.nearby_relays == 0">
                                                             No Nearby Relays
                                                         </dd>
-                                                        <table class="table table-sm mt-1" v-if="meta.nearby_relays.length > 0">
+                                                        <table class="table table-sm mt-1" v-if="pages.sessionTool.meta.nearby_relays.length > 0">
                                                             <thead>
                                                                 <tr>
                                                                     <th style="width: 50%;">
@@ -681,7 +681,7 @@
                                                                 </tr>
                                                             </thead>
                                                             <tbody>
-                                                                <tr v-for="relay in meta.nearby_relays">
+                                                                <tr v-for="relay in pages.sessionTool.meta.nearby_relays">
                                                                     <td>
                                                                         <a class="text-dark">{{ relay.name }}</a>&nbsp;
                                                                     </td>
@@ -714,7 +714,7 @@
                                                             <tbody>
                                                                 <tr>
                                                                     <td>
-                                                                        {{ meta.client_addr }}
+                                                                        {{ pages.sessionTool.meta.client_addr }}
                                                                     </td>
                                                                     <td>
                                                                         <em>
@@ -722,7 +722,7 @@
                                                                         </em>
                                                                     </td>
                                                                 </tr>
-                                                                <tr v-for="(hop, index) in meta.hops" scope="row">
+                                                                <tr v-for="(hop, index) in pages.sessionTool.meta.hops" scope="row">
                                                                     <td>
                                                                         {{ hop.name }}
                                                                     </td>
@@ -732,7 +732,7 @@
                                                                 </tr>
                                                                 <tr>
                                                                     <td>
-                                                                        {{ meta.server_addr}}
+                                                                        {{ pages.sessionTool.meta.server_addr}}
                                                                     </td>
                                                                     <td>
                                                                         <em>Destination Server</em>
@@ -749,7 +749,7 @@
                             </div>
                         </div>
                     </main>
-                    <main role="main" class="col-md-12 col-lg-12 px-4 hidden" id="user-tool-workspace">
+                    <main role="main" class="col-md-12 col-lg-12 px-4" v-if="pages.userTool.show">
                         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                             <h1 class="h2">
                                 User Tool
@@ -758,14 +758,14 @@
                                 <div class="mr-auto"></div>
                             </div>
                         </div>
-                        <form class="flow-stats-form" onsubmit="fetchUserSessions()">
+                        <form class="flow-stats-form" v-on:submit="handlers.workspaceHandler.fetchUserSessions()">
                             <div class="form-group">
                                 <label for="user-hash-input">
                                     User ID
                                 </label>
                                 <div class="row">
                                     <div class="col">
-                                        <input id="user-hash-input" class="form-control" type="text" placeholder="Enter a Session ID to view statistics" value="">
+                                        <input v-model="pages.userTool.hash" class="form-control" type="text" placeholder="Enter a Session ID to view statistics">
                                     </div>
                                     <div class="col-auto">
                                         <button class="btn btn-primary" type="submit">
@@ -775,15 +775,15 @@
                                 </div>
                             </div>
                         </form>
-                        <div class="alert alert-info" role="alert" id="user-tool-alert">
+                        <div class="alert alert-info" role="alert" id="user-tool-alert" v-if="pages.userTool.info">
                             Please enter a user ID to view their sessions.
                         </div>
-                        <div class="alert alert-danger hidden" role="alert" id="user-tool-danger">
+                        <div class="alert alert-danger" role="alert" id="user-tool-danger" v-if="pages.userTool.danger">
                             Failed to fetch user sessions
                         </div>
                         <div id="user-sessions">
                             <div class="table-responsive table-no-top-line">
-                                <table class="table table-sm" v-if="showTable">
+                                <table class="table table-sm" v-if="pages.userTool.showTable">
                                     <thead>
                                         <tr>
                                             <th>
@@ -823,10 +823,10 @@
                                             </th>
                                         </tr>
                                     </thead>
-                                    <tbody v-if="sessions.length > 0">
-                                        <tr v-for="session in sessions">
+                                    <tbody v-if="pages.userTool.sessions.length > 0">
+                                        <tr v-for="session in pages.userTool.sessions">
                                             <td>
-                                                <a class="text-dark fixed-width" href="#" v-on:click="fetchSessionInfo(session.id)">
+                                                <a class="text-dark fixed-width" href="#" v-on:click="handlers.workspaceHandler.changePage('sessionTool', session.id)">
                                                     {{ session.id }}
                                                 </a>
                                             </td>
@@ -850,7 +850,7 @@
                                             </td>
                                         </tr>
                                     </tbody>
-                                    <tbody v-if="sessions.length == 0">
+                                    <tbody v-if="pages.userTool.sessions.length == 0">
                                         <tr>
                                             <td colspan="7" class="text-muted">
                                                 There are no sessions belonging to this user.
@@ -861,7 +861,7 @@
                             </div>
                         </div>
                     </main>
-                    <main role="main" class="col-md-12 col-lg-12 px-4 hidden" id="settings-workspace">
+                    <main role="main" class="col-md-12 col-lg-12 px-4" v-if="pages.settings.show">
                         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                             <h1 class="h2">
                                 Settings
@@ -870,240 +870,256 @@
                                 <div class="mr-auto"></div>
                             </div>
                         </div>
-                        <div class="card" style="margin-bottom: 250px;" id="settings-page">
+                        <div class="card" style="margin-bottom: 250px;">
                             <div class="card-header">
                                 <ul class="nav nav-tabs card-header-tabs">
                                     <li class="nav-item">
-                                        <a class="nav-link active" id="accounts-link" href="#" onclick="WorkspaceHandler.changeAccountPage('accounts')">
+                                        <a class="nav-link" id="accounts-link" href="#" v-bind:class="{ active: pages.settings.showSettings }" v-on:click="handlers.workspaceHandler.changeSettingsPage('users')">
                                             Users
                                         </a>
                                     </li>
-                                    <li class="nav-item" v-if="isOwner()">
-                                        <a class="nav-link" id="config-link" href="#" onclick="WorkspaceHandler.changeAccountPage('config')">
+                                    <li class="nav-item" v-if="handlers.userHandler.isOwner()">
+                                        <a class="nav-link" id="config-link" href="#" v-bind:class="{ active: pages.settings.showConfig }" v-on:click="handlers.workspaceHandler.changeSettingsPage('config')">
                                             Game Configuration
                                         </a>
                                     </li>
                                 </ul>
                             </div>
-                            <div class="card-body" v-if="showSettings">
-                                <h5 class="card-title">
-                                    Automatic sign-in
-                                </h5>
-                                <p class="card-text">
-                                    Save time by allowing users with verified email addresses automatic access to your Network Next account.
-                                </p>
-                                <div id="auto-sign-in-spinner" v-if="!showAccounts">
-                                    <div class="spinner-border" role="status">
-                                        <span class="sr-only">Loading...</span>
+                            <div id="settings-page">
+                                <div class="card-body" v-if="pages.settings.showSettings">
+                                    <h5 class="card-title">
+                                        Automatic sign-in
+                                    </h5>
+                                    <p class="card-text">
+                                        Save time by allowing users with verified email addresses automatic access to your Network Next account.
+                                    </p>
+                                    <div id="auto-sign-in-spinner" v-show="!pages.settings.showAccounts">
+                                        <div class="spinner-border" role="status">
+                                            <span class="sr-only">Loading...</span>
+                                        </div>
                                     </div>
-                                </div>
-                                <form onsubmit="saveAutoSignIn(event)" v-if="showAccounts">
-                                    <div class="form-group">
-                                        <label for="customerId">
-                                            Automatic Sign-in Domain
-                                        </label>
-                                        <input type="text" class="form-control form-control-sm" value="networknext.com" id="auto-sign-in-domain">
-                                        <small class="form-text text-muted">
-                                            If you set this to a domain, such as "example.com", then anyone with a verified email address with this domain will automatically join your account when logging in. You can set this so that you don't need to manually onboard everyone in your organization.
-                                        </small>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="customerId">
-                                            Permission Level
-                                        </label>
-                                        <select
-                                            class="form-control"
-                                            id="auto-signin-permissions"
-                                            multiple
-                                        >
-                                        </select>
-                                        <small class="form-text text-muted">
-                                            The permission level to grant accounts that join your account via automatic sign-in.
-                                        </small>
-                                    </div>
-                                    <button type="submit" class="btn btn-primary btn-sm">
-                                        Save Automatic Sign-in
-                                    </button>
-                                    <p class="text-muted text-small mt-2"></p>
-                                </form>
-                                <hr class="mt-4 mb-4">
-                                <h5 class="card-title">
-                                    Add new users
-                                </h5>
-                                <p class="card-text">
-                                    Provide other people with access to your account.
-                                </p>
-                                <div id="add-user-spinner" v-if="!showAccounts">
-                                    <div class="spinner-border" role="status">
-                                        <span class="sr-only">Loading...</span>
-                                    </div>
-                                </div>
-                                <div class="alert alert-success" role="alert" id="session-tool-alert" v-if="newUser.success.message != ''">
-                                    {{ newUser.success.message }}
-                                </div>
-                                <div class="alert alert-danger" role="alert" id="session-tool-alert" v-if="newUser.failure.message != ''">
-                                    {{ newUser.failure.message }}
-                                </div>
-                                <form onsubmit="addUsers(event)" v-if="showAccounts">
-                                    <div class="form-group">
-                                        <label for="customerId">
-                                            Add users by email address
-                                        </label>
-                                        <textarea class="form-control form-control-sm" id="new-user-emails"></textarea>
-                                        <small class="form-text text-muted">
-                                            Enter a newline or comma-delimited list of email addresses to add users to your account.
-                                        </small>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="customerId">
-                                            Permission Level
-                                        </label>
-                                        <select
-                                            class="form-control"
-                                            id="add-user-permissions"
-                                            placeholder="Select..."
-                                            multiple
-                                        >
-                                        </select>
-                                        <small class="form-text text-muted">
-                                            The permission level to grant the added user accounts.
-                                        </small>
-                                    </div>
-                                    <button type="submit" class="btn btn-primary btn-sm">
-                                        Add Users
-                                    </button>
-                                    <p class="text-muted text-small mt-2"></p>
-                                </form>
-                                <hr class="mt-4 mb-4">
-                                <h5 class="card-title">
-                                    Manage existing users
-                                </h5>
-                                <p class="card-text">
-                                    Manage the list of users that currently have access to your Network Next account.
-                                </p>
-                                <div id="account-table-spinner" v-if="!showAccounts">
-                                    <div class="spinner-border" role="status">
-                                        <span class="sr-only">Loading...</span>
-                                    </div>
-                                </div>
-                                <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" v-if="showAccounts && isAdmin()">
-                                    <div class="mr-auto"></div>
-                                    <div class="px-2">
-                                        <select class="form-control">
-                                            <option value="all" v-on:click="updateAccountsTableFilter({buyerId: ''})">
-                                                All
-                                            </option>
-                                            <option v-for="buyer in allBuyers" v-on:click="updateAccountsTableFilter({buyerId: buyer.id})">
-                                                {{ buyer.name }}
-                                            </option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <table class="table table-sm mt-4" v-if="showAccounts">
-                                    <thead class="thead-light">
-                                        <tr>
-                                            <th style="width: 20%;">
-                                                Email Address
-                                            </th>
-                                            <th style="width: 70%;">
-                                                Permissions
-                                            </th>
-                                            <th style="width: 10%;">
-                                                Actions
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr v-for="(account, index) in accounts">
-                                            <div
-                                                class="alert alert-success"
-                                                role="alert"
-                                                v-if="updateUser.success.message != ''"
+                                    <form onsubmit="saveAutoSignIn(event)" v-show="pages.settings.showAccounts">
+                                        <div class="form-group">
+                                            <label for="customerId">
+                                                Automatic Sign-in Domain
+                                            </label>
+                                            <input type="text" class="form-control form-control-sm" value="networknext.com" id="auto-sign-in-domain">
+                                            <small class="form-text text-muted">
+                                                If you set this to a domain, such as "example.com", then anyone with a verified email address with this domain will automatically join your account when logging in. You can set this so that you don't need to manually onboard everyone in your organization.
+                                            </small>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="customerId">
+                                                Permission Level
+                                            </label>
+                                            <select
+                                                class="form-control"
+                                                id="auto-signin-permissions"
+                                                multiple
                                             >
-                                                {{ updateUser.success.message }}
-                                            </div>
-                                            <div
-                                                class="alert alert-danger"
-                                                role="alert"
-                                                v-if="updateUser.failure.message != ''"
-                                            >
-                                                {{ updateUser.failure.message }}
-                                            </div>
-                                            <td>
-                                                {{ account.email }}
-                                            </td>
-                                            <td>
-                                                <select
-                                                    class="form-control"
-                                                    :id="`edit-user-permissions-${account.user_id}`"
-                                                    multiple
-                                                >
-                                                </select>
-                                            </td>
-                                            <td class="td-btn" v-if="!account.edit && !account.delete">
-                                                <button
-                                                    class="btn btn-xs btn-primary"
-                                                    data-toggle="tooltip"
-                                                    data-placement="bottom"
-                                                    title="Change this user's permissions"
-                                                    v-on:click="editUser(account, index)"
-                                                >
-                                                    <i class="fas fa-pen fa-w-16 fa-fw"></i>
-                                                </button>&nbsp;
-                                                <button
-                                                    class="btn btn-xs btn-danger"
-                                                    data-toggle="tooltip"
-                                                    data-placement="bottom"
-                                                    title="Remove this user"
-                                                    v-on:click="deleteUser(index)"
-                                                >
-                                                    <i class="fas fa-trash fa-w-14 fa-fw"></i>
-                                                </button>&nbsp;
-                                            </td>
-                                            <td class="td-btn" v-if="account.edit || account.delete">
-                                                <button
-                                                    class="btn btn-xs btn-success"
-                                                    data-toggle="tooltip"
-                                                    data-placement="bottom"
-                                                    title="Save Changes"
-                                                    v-on:click="saveUser(account, index)"
-                                                >
-                                                    <i class="fas fa-check fa-w-16 fa-fw"></i>
-                                                </button>&nbsp;
-                                                <button
-                                                    class="btn btn-xs btn-secondary"
-                                                    data-toggle="tooltip"
-                                                    data-placement="bottom"
-                                                    title="Cancel Changes"
-                                                    v-on:click="cancelEditUser(account, index)"
-                                                >
-                                                    <i class="fas fa-times fa-w-14 fa-fw"></i>
-                                                </button>&nbsp;
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div class="card-body" id="config-page" v-if="!showSettings">
-                                <h5 class="card-title">
-                                    Game Configuration
-                                </h5>
-                                <p class="card-text">
-                                    Manage how your game connects to Network Next.
-                                </p>
-                                <form onsubmit="updatePubKey()">
-                                    <div class="form-group" id="pubKey">
-                                        <label>
-                                            Public Key
-                                        </label>
-                                        <textarea class="form-control" placeholder="Enter your base64-encoded public key" id="pubkey-input" v-model="pubKey">
-                                        </textarea>
+                                            </select>
+                                            <small class="form-text text-muted">
+                                                The permission level to grant accounts that join your account via automatic sign-in.
+                                            </small>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary btn-sm">
+                                            Save Automatic Sign-in
+                                        </button>
+                                        <p class="text-muted text-small mt-2"></p>
+                                    </form>
+                                    <hr class="mt-4 mb-4">
+                                    <h5 class="card-title">
+                                        Add new users
+                                    </h5>
+                                    <p class="card-text">
+                                        Provide other people with access to your account.
+                                    </p>
+                                    <div id="add-user-spinner" v-show="!pages.settings.showAccounts">
+                                        <div class="spinner-border" role="status">
+                                            <span class="sr-only">Loading...</span>
+                                        </div>
                                     </div>
-                                    <button type="submit" class="btn btn-primary btn-sm">
-                                        Save game configuration
-                                    </button>
-                                    <p class="text-muted text-small mt-2"></p>
-                                </form>
+                                    <div class="alert alert-success" role="alert" id="session-tool-alert" v-show="pages.settings.newUser.success != ''">
+                                        {{ pages.settings.newUser.success }}
+                                    </div>
+                                    <div class="alert alert-danger" role="alert" id="session-tool-alert" v-show="pages.settings.newUser.failure != ''">
+                                        {{ pages.settings.newUser.failure }}
+                                    </div>
+                                    <form onsubmit="addUsers(event)" v-show="pages.settings.showAccounts">
+                                        <div class="form-group">
+                                            <label for="customerId">
+                                                Add users by email address
+                                            </label>
+                                            <textarea class="form-control form-control-sm" id="new-user-emails"></textarea>
+                                            <small class="form-text text-muted">
+                                                Enter a newline or comma-delimited list of email addresses to add users to your account.
+                                            </small>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="customerId">
+                                                Permission Level
+                                            </label>
+                                            <select
+                                                class="form-control"
+                                                id="add-user-permissions"
+                                                placeholder="Select..."
+                                                multiple
+                                            >
+                                            </select>
+                                            <small class="form-text text-muted">
+                                                The permission level to grant the added user accounts.
+                                            </small>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary btn-sm">
+                                            Add Users
+                                        </button>
+                                        <p class="text-muted text-small mt-2"></p>
+                                    </form>
+                                    <hr class="mt-4 mb-4">
+                                    <h5 class="card-title">
+                                        Manage existing users
+                                    </h5>
+                                    <p class="card-text">
+                                        Manage the list of users that currently have access to your Network Next account.
+                                    </p>
+                                    <div id="account-table-spinner" v-show="!pages.settings.showAccounts">
+                                        <div class="spinner-border" role="status">
+                                            <span class="sr-only">Loading...</span>
+                                        </div>
+                                    </div>
+                                    <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" v-show="pages.settings.showAccounts && handlers.userHandler.isAdmin()">
+                                        <div class="mr-auto"></div>
+                                        <div class="px-2">
+                                            <select class="form-control">
+                                                <option value="all" v-on:click="handlers.workspaceHandler.updateAccountsTableFilter({buyerId: ''})">
+                                                    All
+                                                </option>
+                                                <option v-for="buyer in allBuyers" v-on:click="handlers.workspaceHandler.updateAccountsTableFilter({buyerId: buyer.id})">
+                                                    {{ buyer.name }}
+                                                </option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <table class="table table-sm mt-4" v-show="pages.settings.showAccounts">
+                                        <thead class="thead-light">
+                                            <tr>
+                                                <th style="width: 20%;">
+                                                    Email Address
+                                                </th>
+                                                <th style="width: 70%;">
+                                                    Permissions
+                                                </th>
+                                                <th style="width: 10%;">
+                                                    Actions
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="(account, index) in pages.settings.accounts">
+                                                <div
+                                                    class="alert alert-success"
+                                                    role="alert"
+                                                    v-show="pages.settings.updateUser.success != ''"
+                                                >
+                                                    {{ pages.settings.updateUser.success }}
+                                                </div>
+                                                <div
+                                                    class="alert alert-danger"
+                                                    role="alert"
+                                                    v-show="pages.settings.updateUser.failure != ''"
+                                                >
+                                                    {{ pages.settings.updateUser.failure }}
+                                                </div>
+                                                <td>
+                                                    {{ account.email }}
+                                                </td>
+                                                <td>
+                                                    <select
+                                                        class="form-control"
+                                                        :id="`edit-user-permissions-${account.user_id}`"
+                                                        multiple
+                                                    >
+                                                    </select>
+                                                </td>
+                                                <td class="td-btn" v-show="!account.edit && !account.delete">
+                                                    <button
+                                                        class="btn btn-xs btn-primary"
+                                                        data-toggle="tooltip"
+                                                        data-placement="bottom"
+                                                        title="Change this user's permissions"
+                                                        v-on:click="handlers.workspaceHandler.editUser(account, index)"
+                                                    >
+                                                        <i class="fas fa-pen fa-w-16 fa-fw"></i>
+                                                    </button>&nbsp;
+                                                    <button
+                                                        class="btn btn-xs btn-danger"
+                                                        data-toggle="tooltip"
+                                                        data-placement="bottom"
+                                                        title="Remove this user"
+                                                        v-on:click="handlers.workspaceHandler.deleteUser(index)"
+                                                    >
+                                                        <i class="fas fa-trash fa-w-14 fa-fw"></i>
+                                                    </button>&nbsp;
+                                                </td>
+                                                <td class="td-btn" v-show="account.edit || account.delete">
+                                                    <button
+                                                        class="btn btn-xs btn-success"
+                                                        data-toggle="tooltip"
+                                                        data-placement="bottom"
+                                                        title="Save Changes"
+                                                        v-on:click="handlers.workspaceHandler.saveUser(account, index)"
+                                                    >
+                                                        <i class="fas fa-check fa-w-16 fa-fw"></i>
+                                                    </button>&nbsp;
+                                                    <button
+                                                        class="btn btn-xs btn-secondary"
+                                                        data-toggle="tooltip"
+                                                        data-placement="bottom"
+                                                        title="Cancel Changes"
+                                                        v-on:click="handlers.workspaceHandler.cancelEditUser(account, index)"
+                                                    >
+                                                        <i class="fas fa-times fa-w-14 fa-fw"></i>
+                                                    </button>&nbsp;
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="card-body" id="config-page" v-show="pages.settings.showConfig">
+                                    <h5 class="card-title">
+                                        Game Configuration
+                                    </h5>
+                                    <p class="card-text">
+                                        Manage how your game connects to Network Next.
+                                    </p>
+                                    <div
+                                        class="alert alert-success"
+                                        role="alert"
+                                        v-show="pages.settings.updateKey.success != ''"
+                                    >
+                                        {{ pages.settings.updateKey.success }}
+                                    </div>
+                                    <div
+                                        class="alert alert-danger"
+                                        role="alert"
+                                        v-show="pages.settings.updateKey.failure != ''"
+                                    >
+                                        {{ pages.settings.updateKey.failure }}
+                                    </div>
+                                    <form onsubmit="updatePubKey()">
+                                        <div class="form-group" id="pubKey">
+                                            <label>
+                                                Public Key
+                                            </label>
+                                            <textarea class="form-control" placeholder="Enter your base64-encoded public key" id="pubkey-input" v-model="handlers.userHandler.userInfo.pubKey">
+                                            </textarea>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary btn-sm">
+                                            Save game configuration
+                                        </button>
+                                        <p class="text-muted text-small mt-2"></p>
+                                    </form>
+                                </div>
                             </div>
                         </div>
                     </main>
@@ -1138,44 +1154,7 @@
         <script>
             Sentry.init({ dsn: 'https://e24b8397eac44e1eb7ac090b5492d29e@o382503.ingest.sentry.io/5211452' });
             window.onload = async () => {
-                const domain = 'networknext.auth0.com';
-                const clientID = 'qR60cjo6FceoTWPYLNZSQmNiP2WIAQr9';
-
-                loginClient = await createAuth0Client({
-                    domain: domain,
-                    client_id: clientID
-                })
-                .catch((e) => {
-                    Sentry.captureException(e);
-                });
-
-                const isAuthenticated =
-                    await loginClient.isAuthenticated()
-                        .catch((e) => {
-                            Sentry.captureException(e);
-                        });
-
-                if (isAuthenticated) {
-                    startApp();
-                    return;
-                }
-                const query = window.location.search;
-                if (query.includes("code=") && query.includes("state=")) {
-
-                    await loginClient.handleRedirectCallback()
-                        .catch((e) => {
-                            Sentry.captureException(e);
-                        });
-
-                    window.history.replaceState({}, document.title, "/");
-                    startApp();
-                } else {
-                    await loginClient.loginWithRedirect({
-                        redirect_uri: window.location.origin
-                    }).catch((e) => {
-                        Sentry.captureException(e);
-                    });
-                }
+                AuthHandler.init();
             }
         </script>
     </body>
