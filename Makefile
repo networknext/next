@@ -117,10 +117,10 @@ ifndef AUTH_DOMAIN
 export AUTH_DOMAIN = networknext.auth0.com
 endif
 ifndef AUTH_CLIENTID
-export AUTH_CLIENTID = NIwrWYmG9U3tCQP6QxJqCx8n2xGSTCvf
+export AUTH_CLIENTID = KxEiJeUh5tE1cZrI64GXHs455XcxRDKX
 endif
 ifndef AUTH_CLIENTSECRET
-export AUTH_CLIENTSECRET = GZ9l7xF0dggtvz-jxbG7_-yX2YlvkGas4sIq2RJK4glxkHvT0t-WwMtyJlP5qix0
+export AUTH_CLIENTSECRET = d6w4zWBUT07UQlpDIA52pBMDukeuhvWJjCEnHWkkkZypd453qRn4e18Nz84GkfkO
 endif
 
 .PHONY: help
