@@ -26,8 +26,28 @@ func TestAuthMiddleware(t *testing.T) {
 		res := httptest.NewRecorder()
 
 		authMiddleware.ServeHTTP(res, req)
-		assert.Equal(t, res.Code, http.StatusOK)
+		assert.Equal(t, http.StatusOK, res.Code)
 	})
+
+	t.Run("check auth claims", func(t *testing.T) {
+
+		// JWT from john@nn, obtained from Localhost Test network response viewer
+		jwtSideload := "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik5rWXpOekkwTkVVNVFrSTVNRVF4TURRMk5UWTBNakkzTmpOQlJESkVNa1E0TnpGRFF6QkdRdyJ9.eyJuaWNrbmFtZSI6ImpvaG4iLCJuYW1lIjoiam9obkBuZXR3b3JrbmV4dC5jb20iLCJwaWN0dXJlIjoiaHR0cHM6Ly9zLmdyYXZhdGFyLmNvbS9hdmF0YXIvMGIzZTgwMDFjYTJkN2NlM2I2ZmZlMTU2ZTczODRlZTU_cz00ODAmcj1wZyZkPWh0dHBzJTNBJTJGJTJGY2RuLmF1dGgwLmNvbSUyRmF2YXRhcnMlMkZqby5wbmciLCJ1cGRhdGVkX2F0IjoiMjAyMC0wNS0xNFQxNjozMDozMy44MTZaIiwiZW1haWwiOiJqb2huQG5ldHdvcmtuZXh0LmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJpc3MiOiJodHRwczovL25ldHdvcmtuZXh0LmF1dGgwLmNvbS8iLCJzdWIiOiJhdXRoMHw1ZWJhYzhiMjA3ZWU4YjFjMTliNGMwZTIiLCJhdWQiOiJxUjYwY2pvNkZjZW9UV1BZTE5aU1FtTmlQMldJQVFyOSIsImlhdCI6MTU4OTQ3Mzg0NiwiZXhwIjoxNTg5NTA5ODQ2LCJub25jZSI6IlpUVmxSRU4wZFhKeFZYaHVORjkrYmtGVGJsRm5kV0pCZW1Jek9HdGFhV1psYVRoMVVuZ3dNRk5wVlE9PSJ9.lqOnVS8iCc1xK-YgQ5FG522zbO4HGaD1RlElpZKe4IqFu2qHvI4ENbsTZun2NsO9Hg9VJv3u-DvlA4ohOz0sI-YH83jfC7FY2UJuC17tk-4Y429R1fRJrrWGLacfjyb16BW704AnZZ9nXgLeL8rVY_gSW8ksVbPHThsKiJq2fas3TDXhYFUSRROi1EYe-hxk9DNQOJbkakS823vSUdEqvSZ8th1clucoGBYrSUgBHLEkbyH4Qan3Z6R-_Yiy5aCrvAicwicpHg8RrnlfyqWJMonzpAyezQ53OpBeDDHRqHBCHAycyzPrPB7lXqFWHIiFFeohi60IGPr7P7dE3MFSCw"
+
+		noopHandler := func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		}
+
+		authMiddleware := jsonrpc.AuthMiddleware("qR60cjo6FceoTWPYLNZSQmNiP2WIAQr9", http.HandlerFunc(noopHandler))
+
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Add("Authorization", "Bearer "+jwtSideload)
+		res := httptest.NewRecorder()
+
+		authMiddleware.ServeHTTP(res, req)
+		assert.Equal(t, http.StatusOK, res.Code)
+	})
+
 }
 
 func TestAuthClient(t *testing.T) {
