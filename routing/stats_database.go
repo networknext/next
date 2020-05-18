@@ -18,6 +18,19 @@ const (
 	MaxPacketLoss = 0.1
 )
 
+// TriMatrixLength returns the length of a triangular shaped matrix
+func TriMatrixLength(size int) int {
+	return (size * (size - 1)) / 2
+}
+
+// TriMatrixIndex returns the index of the ij coord for a triangular shaped matrix
+func TriMatrixIndex(i, j int) int {
+	if i <= j {
+		i, j = j, i
+	}
+	return i*(i+1)/2 - i + j
+}
+
 // HistoryMax returns the max value in the history array
 func HistoryMax(history []float32) float32 {
 	var max float32
@@ -56,6 +69,14 @@ func HistoryMean(history []float32) float32 {
 
 // InvalidRouteValue ...
 const InvalidRouteValue = 10000.0
+
+// RelayStatsPing is the ping stats for a relay
+type RelayStatsPing struct {
+	RelayID    uint64  `json:"RelayId"`
+	RTT        float32 `json:"RTT"`
+	Jitter     float32 `json:"Jitter"`
+	PacketLoss float32 `json:"PacketLoss"`
+}
 
 // RelayStatsUpdate is a struct for updating relay stats
 type RelayStatsUpdate struct {

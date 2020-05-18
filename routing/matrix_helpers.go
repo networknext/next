@@ -41,16 +41,3 @@ func readBytesNew(data []byte, index *int, storage *[]byte, length uint32, errms
 	}
 	return nil
 }
-
-// TriMatrixLength returns the length of a triangular shaped matrix
-func TriMatrixLength(size int) int {
-	return (size * (size - 1)) / 2
-}
-
-// TriMatrixIndex returns the index of the ij coord for a triangular shaped matrix
-func TriMatrixIndex(i, j int) int {
-	if i <= j {
-		i, j = j, i
-	}
-	return i*(i+1)/2 - i + j
-}
