@@ -51,6 +51,7 @@ public:
     Allocator()
     {
         int result = next_mutex_create( &mutex );
+		(void) result;
         next_assert( result == NEXT_OK );
         num_allocations = 0;
     }
@@ -206,6 +207,8 @@ void client_packet_received( next_client_t * client, void * _context, const uint
 
     ClientContext * context = (ClientContext*) _context;
 
+	(void) context;
+
     next_assert( context );
     next_assert( context->allocator != NULL );
     next_assert( context->client_data == 0x12345 );
@@ -232,7 +235,7 @@ int main()
 
     next_config_t config;
     next_default_config( &config );
-    strncpy( config.customer_public_key, customer_public_key, sizeof(config.customer_public_key) - 1 );
+    strncpy_s( config.customer_public_key, customer_public_key, sizeof(config.customer_public_key) - 1 );
 
     if ( next_init( &global_context, &config ) != NEXT_OK )
     {
@@ -266,9 +269,9 @@ int main()
     {
         next_client_update( client );
 
-        const int state = next_client_state( client );
+        const int client_state = next_client_state( client );
 
-        if ( state == NEXT_CLIENT_STATE_ERROR )
+        if ( client_state == NEXT_CLIENT_STATE_ERROR )
         {
             printf( "error: client is in an error state\n" );
             break;
@@ -329,29 +332,29 @@ int main()
                     break;
             }
 
-            const char * state = "???";
+            const char * state_string = "???";
 
-            const int client_state = next_client_state( client );
+            const int state = next_client_state( client );
             
-            switch ( client_state )
+            switch ( state )
             {
                 case NEXT_CLIENT_STATE_CLOSED:
-                    state = "closed";
+                    state_string = "closed";
                     break;
 
                 case NEXT_CLIENT_STATE_OPEN:
-                    state = "open";
+                    state_string = "open";
                     break;
 
                 case NEXT_CLIENT_STATE_ERROR:
-                    state = "error";
+                    state_string = "error";
                     break;
 
                 default:
                     break;
             }
 
-            printf( " + State = %s (%d)\n", state, client_state );
+            printf( " + State = %s (%d)\n", state_string, state );
 
             printf( " + Session Id = %" PRIx64 "\n", next_client_session_id( client ) );
 
