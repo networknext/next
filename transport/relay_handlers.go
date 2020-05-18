@@ -251,6 +251,12 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 
 			// Remove the relay cache entry if it exists
 			if exists.Val() == 1 {
+				if err := params.RedisClient.Del(relayCacheEntry.Key()).Err(); err != nil {
+					level.Error(locallogger).Log("msg", "failed to remove relay key from redis", "err", err)
+					http.Error(writer, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
 				if err := RemoveRelayCacheEntry(ctx, relayCacheEntry.ID, relayCacheEntry.Key(), params.RedisClient, params.GeoClient, params.StatsDb, params.Storer); err != nil {
 					level.Error(locallogger).Log("err", err)
 					http.Error(writer, err.Error(), http.StatusInternalServerError)
@@ -697,6 +703,12 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 
 			// Remove the relay cache entry if it exists
 			if exists.Val() == 1 {
+				if err := params.RedisClient.Del(relayCacheEntry.Key()).Err(); err != nil {
+					level.Error(locallogger).Log("msg", "failed to remove relay key from redis", "err", err)
+					http.Error(writer, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
 				if err := RemoveRelayCacheEntry(ctx, relayCacheEntry.ID, relayCacheEntry.Key(), params.RedisClient, params.GeoClient, params.StatsDb, params.Storer); err != nil {
 					level.Error(locallogger).Log("err", err)
 					http.Error(writer, err.Error(), http.StatusInternalServerError)

@@ -153,6 +153,7 @@ func (r RelayRequest) MarshalJSON() ([]byte, error) {
 	trafficStats["bytes_tx"] = r.TrafficStats.BytesSent
 	trafficStats["bytes_rx"] = r.TrafficStats.BytesReceived
 	data["traffic_stats"] = trafficStats
+	data["shutting_down"] = r.ShuttingDown
 
 	return json.Marshal(data)
 }
