@@ -14,7 +14,6 @@ Enabled : Relay is online and\ncommunicating with\nthe backend
     Enabled --> Maintenance : clean shutdown
     Enabled --> Disabled : `next relay disable`
     Maintenance --> Enabled : `next relay enable`
-    Quarantined --> Enabled : `next relay enable`
     Quarantined --> Disabled : `next relay disable`
     Maintenance --> Disabled : `next relay disable`
     Disabled --> Enabled : `next relay enable`
