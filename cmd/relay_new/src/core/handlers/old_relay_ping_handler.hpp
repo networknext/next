@@ -17,22 +17,23 @@ namespace core
     {
      public:
       OldRelayPingHandler(
-       GenericPacket<>& packet, const os::Socket& socket, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats);
+       GenericPacket<>& packet, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats);
 
-      void handle();
+      template <size_t Size>
+      void handle(core::GenericPacketBuffer<Size>& buff);
 
      private:
-      const os::Socket& mSocket;
       util::ThroughputRecorder& mRecorder;
       legacy::v3::TrafficStats& mStats;
     };
 
     inline OldRelayPingHandler::OldRelayPingHandler(
-     GenericPacket<>& packet, const os::Socket& socket, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats)
-     : BaseHandler(packet), mSocket(socket), mRecorder(recorder), mStats(stats)
+     GenericPacket<>& packet, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats)
+     : BaseHandler(packet), mRecorder(recorder), mStats(stats)
     {}
 
-    inline void OldRelayPingHandler::handle()
+    template <size_t Size>
+    inline void OldRelayPingHandler::handle(core::GenericPacketBuffer<Size>& buff)
     {
       packets::OldRelayPingPacket packetWrapper(mPacket);
       core::GenericPacket<> outgoing;
@@ -54,12 +55,12 @@ namespace core
         return;
       }
 
-      LogDebug("got new ping from ", mPacket.Addr);
+      LogDebug("got old ping from ", mPacket.Addr);
 
       outgoing.Addr = mPacket.Addr;
       outgoing.Len = index;
 
-      mSocket.send(outgoing);
+      buff.push(outgoing);
     };
   }  // namespace handlers
 }  // namespace core

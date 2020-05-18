@@ -17,15 +17,14 @@ namespace core
       SessionPingHandler(
        GenericPacket<>& packet,
        core::SessionMap& sessions,
-       const os::Socket& socket,
        util::ThroughputRecorder& recorder,
        legacy::v3::TrafficStats& stats);
 
-      void handle();
+      template <size_t Size>
+      void handle(core::GenericPacketBuffer<Size>& buff);
 
      private:
       core::SessionMap& mSessionMap;
-      const os::Socket& mSocket;
       util::ThroughputRecorder& mRecorder;
       legacy::v3::TrafficStats& mStats;
     };
@@ -33,13 +32,13 @@ namespace core
     inline SessionPingHandler::SessionPingHandler(
      GenericPacket<>& packet,
      core::SessionMap& sessions,
-     const os::Socket& socket,
      util::ThroughputRecorder& recorder,
      legacy::v3::TrafficStats& stats)
-     : BaseHandler(packet), mSessionMap(sessions), mSocket(socket), mRecorder(recorder), mStats(stats)
+     : BaseHandler(packet), mSessionMap(sessions), mRecorder(recorder), mStats(stats)
     {}
 
-    inline void SessionPingHandler::handle()
+    template <size_t Size>
+    inline void SessionPingHandler::handle(core::GenericPacketBuffer<Size>& buff)
     {
       if (mPacket.Len > RELAY_HEADER_BYTES + 32) {
         return;
@@ -89,7 +88,8 @@ namespace core
 
       mRecorder.addToSent(mPacket.Len);
       mStats.BytesPerSecMeasurementTx += mPacket.Len;
-      mSocket.send(session->NextAddr, mPacket.Buffer.data(), mPacket.Len);
+
+      buff.push(session->NextAddr, mPacket.Buffer.data(), mPacket.Len);
     }
   }  // namespace handlers
 }  // namespace core

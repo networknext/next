@@ -18,15 +18,14 @@ namespace core
      public:
       NewRelayPingHandler(
        GenericPacket<>& packet,
-       const os::Socket& socket,
        const net::Address& mRecvAddr,
        util::ThroughputRecorder& recorder,
        legacy::v3::TrafficStats& stats);
 
-      void handle();
+      template <size_t Size>
+      void handle(core::GenericPacketBuffer<Size>& buff);
 
      private:
-      const os::Socket& mSocket;
       const net::Address& mRecvAddr;
       util::ThroughputRecorder& mRecorder;
       legacy::v3::TrafficStats& mStats;
@@ -34,14 +33,14 @@ namespace core
 
     inline NewRelayPingHandler::NewRelayPingHandler(
      GenericPacket<>& packet,
-     const os::Socket& socket,
      const net::Address& receivingAddress,
      util::ThroughputRecorder& recorder,
      legacy::v3::TrafficStats& stats)
-     : BaseHandler(packet), mSocket(socket), mRecvAddr(receivingAddress), mRecorder(recorder), mStats(stats)
+     : BaseHandler(packet), mRecvAddr(receivingAddress), mRecorder(recorder), mStats(stats)
     {}
 
-    inline void NewRelayPingHandler::handle()
+    template <size_t Size>
+    inline void NewRelayPingHandler::handle(core::GenericPacketBuffer<Size>& buff)
     {
       packets::NewRelayPingPacket packetWrapper(mPacket);
 
@@ -55,9 +54,7 @@ namespace core
 
       LogDebug("got new ping from ", mPacket.Addr);
 
-      if (!mSocket.send(mPacket)) {
-        Log("failed to send data");
-      }
+      buff.push(mPacket);
     }
   }  // namespace handlers
 }  // namespace core

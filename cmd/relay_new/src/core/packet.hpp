@@ -37,6 +37,7 @@ namespace core
 
     // for sending packets
     void push(const net::Address& dest, const uint8_t* data, size_t length);
+    void push(const GenericPacket<PacketSize>& pkt);
 
     // for debugging
     void print();
@@ -58,6 +59,8 @@ namespace core
 
     // buffer for iovec structs
     std::vector<iovec> mIOVecBuff;
+
+    std::mutex mLock;
   };
 
   template <typename T>
@@ -104,11 +107,13 @@ namespace core
     }
   }
 
-  // TODO make thread safe
   template <size_t BuffSize, size_t PacketSize>
   void GenericPacketBuffer<BuffSize, PacketSize>::push(const net::Address& dest, const uint8_t* data, size_t len)
   {
     assert(len <= PacketSize);
+
+    std::lock_guard<std::mutex> lk(mLock);
+
     auto& pkt = Packets[Count];
     pkt.Len = len;
     auto& iov = mIOVecBuff[Count];
@@ -118,6 +123,12 @@ namespace core
     dest.to(Headers[Count]);
 
     Count++;
+  }
+
+  template <size_t BuffSize, size_t PacketSize>
+  void GenericPacketBuffer<BuffSize, PacketSize>::push(const GenericPacket<PacketSize>& pkt)
+  {
+    push(pkt.Addr, pkt.Buffer.data(), pkt.Len);
   }
 
   template <size_t BuffSize, size_t PacketSize>

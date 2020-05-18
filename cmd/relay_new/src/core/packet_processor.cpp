@@ -121,9 +121,9 @@ namespace core
           mRecorder.addToReceived(wholePacketSize);
           mStats.BytesPerSecMeasurementRx += wholePacketSize;
 
-          handlers::NewRelayPingHandler handler(packet, mSocket, mRecvAddr, mRecorder, mStats);
+          handlers::NewRelayPingHandler handler(packet, mRecvAddr, mRecorder, mStats);
 
-          handler.handle();
+          handler.handle(outputBuff);
         } else {
           LogDebug("got invalid new ping packet from ", packet.Addr);
           mRecorder.addToUnknown(wholePacketSize);
@@ -149,9 +149,9 @@ namespace core
           mRecorder.addToReceived(wholePacketSize);
           mStats.BytesPerSecMeasurementRx += wholePacketSize;
 
-          handlers::OldRelayPingHandler handler(packet, mSocket, mRecorder, mStats);
+          handlers::OldRelayPingHandler handler(packet, mRecorder, mStats);
 
-          handler.handle();
+          handler.handle(outputBuff);
         } else {
           LogDebug("got invalid old ping packet from ", packet.Addr);
           mRecorder.addToUnknown(wholePacketSize);
@@ -224,25 +224,25 @@ namespace core
         mRecorder.addToReceived(wholePacketSize);
         mStats.BytesPerSecMeasurementRx += wholePacketSize;
 
-        handlers::SessionPingHandler handler(packet, mSessionMap, mSocket, mRecorder, mStats);
+        handlers::SessionPingHandler handler(packet, mSessionMap, mRecorder, mStats);
 
-        handler.handle();
+        handler.handle(outputBuff);
       } break;
       case packets::Type::SessionPong: {
         mRecorder.addToReceived(wholePacketSize);
         mStats.BytesPerSecMeasurementRx += wholePacketSize;
 
-        handlers::SessionPongHandler handler(packet, mSessionMap, mSocket, mRecorder, mStats);
+        handlers::SessionPongHandler handler(packet, mSessionMap, mRecorder, mStats);
 
-        handler.handle();
+        handler.handle(outputBuff);
       } break;
       case packets::Type::NearPing: {
         mRecorder.addToReceived(wholePacketSize);
         mStats.BytesPerSecMeasurementRx += wholePacketSize;
 
-        handlers::NearPingHandler handler(packet, packet.Addr, mSocket, mRecorder, mStats);
+        handlers::NearPingHandler handler(packet, packet.Addr, mRecorder, mStats);
 
-        handler.handle();
+        handler.handle(outputBuff);
       } break;
       // Next three all do the same thing
       case packets::Type::V3BackendInitResponse: {
