@@ -19,5 +19,5 @@ blocks:
         - name: SDK
           commands:
             - ./premake5 gmake
-            - make test
+            - make
             - ./bin/test
