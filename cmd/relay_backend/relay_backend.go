@@ -346,38 +346,10 @@ func main() {
 				// Log the ID
 				level.Warn(logger).Log("msg", fmt.Sprintf("relay with id %v has disconnected.", rawID))
 
-				// Remove geo location data associated with this relay
-				if err := geoClient.Remove(rawID); err != nil {
-					level.Error(logger).Log("msg", fmt.Sprintf("Failed to remove geoClient entry for relay with ID %v", rawID), "err", err)
+				// Remove the relay cache entry
+				if err := transport.RemoveRelayCacheEntry(ctx, rawID, msg.Payload, redisClientRelays, &geoClient, statsdb, db); err != nil {
+					level.Error(logger).Log("err", err)
 					os.Exit(1)
-				}
-
-				// Remove relay entry from Hashmap
-				if err := redisClientRelays.HDel(routing.HashKeyAllRelays, msg.Payload).Err(); err != nil {
-					level.Error(logger).Log("msg", fmt.Sprintf("Failed to remove hashmap entry for relay with ID %v", rawID), "err", err)
-					os.Exit(1)
-				}
-
-				// Remove relay entry from statsDB (which in turn means it won't appear in cost matrix)
-				statsdb.DeleteEntry(rawID)
-
-				// Set the relay's state to offline in storage if it was previously enabled
-				relay, err := db.Relay(rawID)
-				if err != nil {
-					level.Error(logger).Log("msg", fmt.Sprintf("Failed to retrieve relay with ID %v from storage when attempting to set relay state to offline", rawID), "err", err)
-					os.Exit(1)
-				}
-
-				// The relay was enabled and running properly but has failed to communicate to the backend for some reason
-				// This check is necessary so that if a relay is shut down by the backend, by the supplier, or manually
-				// then it won't incorrectly overwrite that state.
-				if relay.State == routing.RelayStateEnabled {
-					relay.State = routing.RelayStateOffline
-
-					if err := db.SetRelay(ctx, relay); err != nil {
-						level.Error(logger).Log("msg", fmt.Sprintf("Failed to set relay with ID %v in storage when attempting to set relay state to offline", rawID), "err", err)
-						os.Exit(1)
-					}
 				}
 			}
 		}
@@ -394,6 +366,7 @@ func main() {
 
 	commonUpdateParams := transport.RelayUpdateHandlerConfig{
 		RedisClient:           redisClientRelays,
+		GeoClient:             &geoClient,
 		StatsDb:               statsdb,
 		Metrics:               relayUpdateMetrics,
 		TrafficStatsPublisher: trafficStatsPublisher,

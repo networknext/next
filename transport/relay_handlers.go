@@ -53,10 +53,46 @@ type RelayInitHandlerConfig struct {
 
 type RelayUpdateHandlerConfig struct {
 	RedisClient           redis.Cmdable
+	GeoClient             *routing.GeoClient
 	StatsDb               *routing.StatsDatabase
 	Metrics               *metrics.RelayUpdateMetrics
 	TrafficStatsPublisher stats.Publisher
 	Storer                storage.Storer
+}
+
+// RemoveRelayCacheEntry cleans up a relay cache entry and all its associated data
+func RemoveRelayCacheEntry(ctx context.Context, relayID uint64, redisKey string, redisClient redis.Cmdable, geoClient *routing.GeoClient, statsdb *routing.StatsDatabase, db storage.Storer) error {
+	// Remove geo location data associated with this relay
+	if err := geoClient.Remove(relayID); err != nil {
+		return fmt.Errorf("Failed to remove geoClient entry for relay with ID %v: %v", relayID, err)
+	}
+
+	// Remove relay entry from Hashmap
+	if err := redisClient.HDel(routing.HashKeyAllRelays, redisKey).Err(); err != nil {
+		return fmt.Errorf("Failed to remove hashmap entry for relay with ID %v: %v", relayID, err)
+	}
+
+	// Remove relay entry from statsDB (which in turn means it won't appear in cost matrix)
+	statsdb.DeleteEntry(relayID)
+
+	// Set the relay's state to offline in storage if it was previously enabled
+	relay, err := db.Relay(relayID)
+	if err != nil {
+		return fmt.Errorf("Failed to retrieve relay with ID %v from storage when attempting to set relay state to offline: %v", relayID, err)
+	}
+
+	// The relay was enabled and running properly but has failed to communicate to the backend for some reason
+	// This check is necessary so that if a relay is shut down by the backend, by the supplier, or manually
+	// then it won't incorrectly overwrite that state.
+	if relay.State == routing.RelayStateEnabled {
+		relay.State = routing.RelayStateOffline
+
+		if err := db.SetRelay(ctx, relay); err != nil {
+			return fmt.Errorf("Failed to set relay with ID %v in storage when attempting to set relay state to offline: %v", relayID, err)
+		}
+	}
+
+	return nil
 }
 
 // RelayHandlerFunc returns the function for the relays endpoint
@@ -199,6 +235,32 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 			return
 		}
 
+		// If the relay is shutting down, set the state to maintenance if it was previously operating correctly
+		if relayRequest.ShuttingDown {
+			if relay.State == routing.RelayStateEnabled {
+				relay.State = routing.RelayStateMaintenance
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+			if err := params.Storer.SetRelay(ctx, relay); err != nil {
+				level.Error(locallogger).Log("msg", "failed to set relay state in storage while shutting down", "err", err)
+				http.Error(writer, "failed to set relay state in storage while shutting down", http.StatusInternalServerError)
+				return
+			}
+
+			// Remove the relay cache entry if it exists
+			if exists.Val() == 1 {
+				if err := RemoveRelayCacheEntry(ctx, relayCacheEntry.ID, relayCacheEntry.Key(), params.RedisClient, params.GeoClient, params.StatsDb, params.Storer); err != nil {
+					level.Error(locallogger).Log("err", err)
+					http.Error(writer, err.Error(), http.StatusInternalServerError)
+					return
+				}
+			}
+
+			return
+		}
+
 		// If the relay doesn't exist, add it
 		if exists.Val() == 0 {
 			// Set the relay's lat long
@@ -300,28 +362,6 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 
 		// Update the relay's traffic stats
 		relayCacheEntry.TrafficStats = relayRequest.TrafficStats
-
-		// If the relay is shutting down, set the state to maintenance if it was previously operating correctly
-		if relayRequest.ShuttingDown {
-			relay, err := params.Storer.Relay(relayCacheEntry.ID)
-			if err != nil {
-				level.Error(locallogger).Log("msg", "failed to get relay from storage while shutting down", "err", err)
-				http.Error(writer, "failed to get relay from storage while shutting down", http.StatusInternalServerError)
-				return
-			}
-
-			if relay.State == routing.RelayStateEnabled {
-				relay.State = routing.RelayStateMaintenance
-			}
-
-			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-			defer cancel()
-			if err := params.Storer.SetRelay(ctx, relay); err != nil {
-				level.Error(locallogger).Log("msg", "failed to set relay state in storage while shutting down", "err", err)
-				http.Error(writer, "failed to set relay state in storage while shutting down", http.StatusInternalServerError)
-				return
-			}
-		}
 
 		// Store the relay back in redis
 
@@ -634,6 +674,39 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			return
 		}
 
+		// If the relay is shutting down, set the state to maintenance if it was previously operating correctly
+		if relayUpdateRequest.ShuttingDown {
+			relay, err := params.Storer.Relay(relayCacheEntry.ID)
+			if err != nil {
+				level.Error(locallogger).Log("msg", "failed to get relay from storage while shutting down", "err", err)
+				http.Error(writer, "failed to get relay from storage while shutting down", http.StatusInternalServerError)
+				return
+			}
+
+			if relay.State == routing.RelayStateEnabled {
+				relay.State = routing.RelayStateMaintenance
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+			if err := params.Storer.SetRelay(ctx, relay); err != nil {
+				level.Error(locallogger).Log("msg", "failed to set relay state in storage while shutting down", "err", err)
+				http.Error(writer, "failed to set relay state in storage while shutting down", http.StatusInternalServerError)
+				return
+			}
+
+			// Remove the relay cache entry if it exists
+			if exists.Val() == 1 {
+				if err := RemoveRelayCacheEntry(ctx, relayCacheEntry.ID, relayCacheEntry.Key(), params.RedisClient, params.GeoClient, params.StatsDb, params.Storer); err != nil {
+					level.Error(locallogger).Log("err", err)
+					http.Error(writer, err.Error(), http.StatusInternalServerError)
+					return
+				}
+			}
+
+			return
+		}
+
 		if exists.Val() == 0 {
 			sentry.CaptureMessage("relay not initalized")
 			level.Warn(locallogger).Log("msg", "relay not initialized")
@@ -681,28 +754,6 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		relayCacheEntry.LastUpdateTime = time.Now()
 
 		relayCacheEntry.TrafficStats = relayUpdateRequest.TrafficStats
-
-		// If the relay is shutting down, set the state to maintenance if it was previously operating correctly
-		if relayUpdateRequest.ShuttingDown {
-			relay, err := params.Storer.Relay(relayCacheEntry.ID)
-			if err != nil {
-				level.Error(locallogger).Log("msg", "failed to get relay from storage while shutting down", "err", err)
-				http.Error(writer, "failed to get relay from storage while shutting down", http.StatusInternalServerError)
-				return
-			}
-
-			if relay.State == routing.RelayStateEnabled {
-				relay.State = routing.RelayStateMaintenance
-			}
-
-			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-			defer cancel()
-			if err := params.Storer.SetRelay(ctx, relay); err != nil {
-				level.Error(locallogger).Log("msg", "failed to set relay state in storage while shutting down", "err", err)
-				http.Error(writer, "failed to set relay state in storage while shutting down", http.StatusInternalServerError)
-				return
-			}
-		}
 
 		// Regular set for expiry
 		if res := params.RedisClient.Set(relayCacheEntry.Key(), 0, routing.RelayTimeout); res.Err() != nil {
