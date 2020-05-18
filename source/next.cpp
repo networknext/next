@@ -2487,7 +2487,7 @@ bool next_is_network_next_packet( const uint8_t * packet_data, int packet_bytes 
     return memcmp( hash, packet_data, NEXT_PACKET_HASH_BYTES ) == 0;
 }
 
-void next_sign_network_next_packet( uint8_t * packet_data, int packet_bytes )
+void next_sign_network_next_packet( uint8_t * packet_data, size_t packet_bytes )
 {
     next_assert( packet_bytes > NEXT_PACKET_HASH_BYTES );
     crypto_generichash( packet_data, NEXT_PACKET_HASH_BYTES, packet_data + NEXT_PACKET_HASH_BYTES, packet_bytes - NEXT_PACKET_HASH_BYTES, next_packet_hash_key, crypto_generichash_KEYBYTES );
@@ -6376,7 +6376,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
         notify->direct = false;
         notify->payload_bytes = packet_bytes - ( NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES );
-        memcpy( notify->payload_data, packet_data + NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES, packet_bytes - ( NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES ) );
+        memcpy( notify->payload_data, packet_data + NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES, size_t(packet_bytes) - ( NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES ) );
         {
             next_platform_mutex_guard( &client->notify_mutex );
             next_queue_push( client->notify_queue, notify );            
@@ -7604,7 +7604,7 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
             next_write_uint8( &p, client->open_session_sequence );
             next_write_uint64( &p, send_sequence );
             memcpy( buffer+NEXT_PACKET_HASH_BYTES+10, packet_data, packet_bytes );
-            crypto_generichash( buffer, NEXT_PACKET_HASH_BYTES, buffer+NEXT_PACKET_HASH_BYTES, packet_bytes+10, next_packet_hash_key, crypto_generichash_KEYBYTES );
+            crypto_generichash( buffer, NEXT_PACKET_HASH_BYTES, buffer+NEXT_PACKET_HASH_BYTES, size_t(packet_bytes) + 10, next_packet_hash_key, crypto_generichash_KEYBYTES );
             next_platform_socket_send_packet( client->internal->socket, &client->server_address, buffer, packet_bytes + NEXT_PACKET_HASH_BYTES + 10 );
             client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
         }
@@ -11176,10 +11176,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     // route update ack packet
 
-    if ( packet_id == NEXT_ROUTE_UPDATE_ACK_PACKET )
+    if ( packet_id == NEXT_ROUTE_UPDATE_ACK_PACKET && session != NULL )
     {
-        next_assert( session );
-
         NextRouteUpdateAckPacket packet;
 
         uint64_t packet_sequence = 0;
@@ -12234,8 +12232,8 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
                 next_write_uint8( &p, open_session_sequence );
                 next_write_uint64( &p, send_sequence );
                 memcpy( buffer+NEXT_PACKET_HASH_BYTES+10, packet_data, packet_bytes );
-                crypto_generichash( buffer, NEXT_PACKET_HASH_BYTES, buffer+NEXT_PACKET_HASH_BYTES, packet_bytes+10, next_packet_hash_key, crypto_generichash_KEYBYTES );
-                next_platform_socket_send_packet( server->internal->socket, to_address, buffer, packet_bytes + NEXT_PACKET_HASH_BYTES + 10 );
+                crypto_generichash( buffer, NEXT_PACKET_HASH_BYTES, buffer+NEXT_PACKET_HASH_BYTES, size_t(packet_bytes) + 10, next_packet_hash_key, crypto_generichash_KEYBYTES );
+                next_platform_socket_send_packet( server->internal->socket, to_address, buffer, size_t(packet_bytes) + NEXT_PACKET_HASH_BYTES + 10 );
             }
         }
     }
