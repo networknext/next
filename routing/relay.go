@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	jsoniter "github.com/json-iterator/go"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
 )
@@ -27,7 +28,6 @@ const (
 	// 10 seconds + a 1 second grace period
 	RelayTimeout = 11 * time.Second
 
-	/* Duplicated in package: transport */
 	// MaxRelayAddressLength ...
 	MaxRelayAddressLength = 256
 )
@@ -281,9 +281,37 @@ func (r Relay) MarshalBinary() (data []byte, err error) {
 	return data, err
 }
 
+type RelayCacheEntry struct {
+	ID             uint64
+	Name           string
+	Addr           net.UDPAddr
+	PublicKey      []byte
+	Seller         Seller
+	Datacenter     Datacenter
+	LastUpdateTime time.Time
+	TrafficStats   RelayTrafficStats
+	MaxSessions    uint32
+}
+
+func (e *RelayCacheEntry) UnmarshalBinary(data []byte) error {
+	return jsoniter.Unmarshal(data, e)
+}
+
+func (e RelayCacheEntry) MarshalBinary() ([]byte, error) {
+	return jsoniter.Marshal(e)
+}
+
 // Key returns the key used for Redis
-func (r *Relay) Key() string {
+func (r *RelayCacheEntry) Key() string {
 	return HashKeyPrefixRelay + strconv.FormatUint(r.ID, 10)
+}
+
+// RelayStatsPing is the ping stats for a relay
+type RelayStatsPing struct {
+	RelayID    uint64  `json:"RelayId"`
+	RTT        float32 `json:"RTT"`
+	Jitter     float32 `json:"Jitter"`
+	PacketLoss float32 `json:"PacketLoss"`
 }
 
 // RelayTrafficStats describes the measured relay traffic statistics reported from the relay

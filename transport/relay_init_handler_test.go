@@ -68,10 +68,6 @@ func pingRelayBackendInit(t *testing.T, contentType string, relay routing.Relay,
 	request.Header.Add("Content-Type", contentType)
 
 	if inMemory == nil {
-		rtodcnameMap := make(map[uint32]string)
-		rtodcnameMap[uint32(relay.ID)] = relay.Datacenter.Name
-		rpubkeyMap := make(map[uint32][]byte)
-		rpubkeyMap[uint32(relay.ID)] = relay.PublicKey
 		inMemory = &storage.InMemory{}
 		err = inMemory.AddBuyer(context.Background(), routing.Buyer{
 			PublicKey: customerPublicKey,
@@ -103,7 +99,7 @@ func relayInitErrorAssertions(t *testing.T, recorder *httptest.ResponseRecorder,
 	assert.Equal(t, 1.0, errMetric.ValueReset())
 }
 
-func relayInitSuccessAssertions(t *testing.T, recorder *httptest.ResponseRecorder, expectedContentType string, errMetrics metrics.RelayInitErrorMetrics, geoClient *routing.GeoClient, redisClient *redis.Client, location routing.Location, addr string, before uint64, expected routing.Relay) {
+func relayInitSuccessAssertions(t *testing.T, recorder *httptest.ResponseRecorder, expectedContentType string, errMetrics metrics.RelayInitErrorMetrics, geoClient *routing.GeoClient, redisClient *redis.Client, relay routing.Relay, location routing.Location, addr string, before uint64, expected routing.RelayCacheEntry) {
 	assert.Equal(t, http.StatusOK, recorder.Code)
 
 	header := recorder.Header()
@@ -115,7 +111,7 @@ func relayInitSuccessAssertions(t *testing.T, recorder *httptest.ResponseRecorde
 
 	entry := redisClient.HGet(routing.HashKeyAllRelays, expected.Key())
 
-	var actual routing.Relay
+	var actual routing.RelayCacheEntry
 	entryBytes, err := entry.Bytes()
 	assert.NoError(t, err)
 
@@ -157,7 +153,7 @@ func relayInitSuccessAssertions(t *testing.T, recorder *httptest.ResponseRecorde
 		assert.Equal(t, location.Longitude, math.Round(relay.Datacenter.Location.Longitude*1000)/1000)
 	}
 
-	assert.Equal(t, routing.RelayStateEnabled, actual.State)
+	assert.Equal(t, routing.RelayStateEnabled, relay.State)
 
 	errMetricsStruct := reflect.ValueOf(errMetrics)
 	for i := 0; i < errMetricsStruct.NumField(); i++ {
@@ -626,15 +622,11 @@ func TestRelayInitRelayExists(t *testing.T) {
 	assert.NoError(t, err)
 	dcname := "another name"
 
-	entry := routing.Relay{
+	entry := routing.RelayCacheEntry{
 		ID:        crypto.HashID(addr),
 		Name:      name,
 		Addr:      *udpAddr,
 		PublicKey: token,
-		Seller: routing.Seller{
-			ID:   "sellerID",
-			Name: "seller name",
-		},
 		Datacenter: routing.Datacenter{
 			ID:   crypto.HashID(dcname),
 			Name: dcname,
@@ -825,7 +817,24 @@ func TestRelayInitSuccess(t *testing.T) {
 			ID:   crypto.HashID("some datacenter"),
 			Name: "some datacenter",
 		},
+		State: routing.RelayStateOffline,
 	}
+
+	inMemory := &storage.InMemory{}
+
+	customerPublicKey := make([]byte, crypto.KeySize)
+	rand.Read(customerPublicKey)
+
+	err = inMemory.AddBuyer(context.Background(), routing.Buyer{
+		PublicKey: customerPublicKey,
+	})
+	assert.NoError(t, err)
+	err = inMemory.AddSeller(context.Background(), relay.Seller)
+	assert.NoError(t, err)
+	err = inMemory.AddDatacenter(context.Background(), relay.Datacenter)
+	assert.NoError(t, err)
+	err = inMemory.AddRelay(context.Background(), relay)
+	assert.NoError(t, err)
 
 	packet := transport.RelayInitRequest{
 		Magic:          transport.InitRequestMagic,
@@ -834,13 +843,9 @@ func TestRelayInitSuccess(t *testing.T) {
 		EncryptedToken: encryptedToken,
 	}
 
-	expected := routing.Relay{
+	expected := routing.RelayCacheEntry{
 		ID:   crypto.HashID(addr),
 		Addr: *udpAddr,
-		Seller: routing.Seller{
-			ID:   "sellerID",
-			Name: "seller name",
-		},
 		Datacenter: routing.Datacenter{
 			ID:   crypto.HashID("some datacenter"),
 			Name: "some datacenter",
@@ -867,8 +872,13 @@ func TestRelayInitSuccess(t *testing.T) {
 		buff, err := packet.MarshalBinary()
 		assert.NoError(t, err)
 
-		recorder := pingRelayBackendInit(t, "application/octet-stream", relay, buff, initMetrics, &geoClient, ipfunc, nil, redisClient, routerPrivateKey[:])
-		relayInitSuccessAssertions(t, recorder, "application/octet-stream", initMetrics.ErrorMetrics, &geoClient, redisClient, location, addr, before, expected)
+		recorder := pingRelayBackendInit(t, "application/octet-stream", relay, buff, initMetrics, &geoClient, ipfunc, inMemory, redisClient, routerPrivateKey[:])
+
+		// Get the modified relay from storage
+		relayInStorage, err := inMemory.Relay(relay.ID)
+		assert.NoError(t, err)
+
+		relayInitSuccessAssertions(t, recorder, "application/octet-stream", initMetrics.ErrorMetrics, &geoClient, redisClient, relayInStorage, location, addr, before, expected)
 	}
 
 	// clear redis
@@ -876,12 +886,20 @@ func TestRelayInitSuccess(t *testing.T) {
 	assert.NoError(t, err)
 	redisClient = redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
+	// reset relay state
+	inMemory.SetRelay(context.Background(), relay)
+
 	// JSON version
 	{
 		buff, err := packet.MarshalJSON()
 		assert.NoError(t, err)
 
-		recorder := pingRelayBackendInit(t, "application/json", relay, buff, initMetrics, &geoClient, ipfunc, nil, redisClient, routerPrivateKey[:])
-		relayInitSuccessAssertions(t, recorder, "application/json", initMetrics.ErrorMetrics, &geoClient, redisClient, location, addr, before, expected)
+		recorder := pingRelayBackendInit(t, "application/json", relay, buff, initMetrics, &geoClient, ipfunc, inMemory, redisClient, routerPrivateKey[:])
+
+		// Get the modified relay from storage
+		relayInStorage, err := inMemory.Relay(relay.ID)
+		assert.NoError(t, err)
+
+		relayInitSuccessAssertions(t, recorder, "application/json", initMetrics.ErrorMetrics, &geoClient, redisClient, relayInStorage, location, addr, before, expected)
 	}
 }

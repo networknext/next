@@ -176,7 +176,6 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 	for _, relayName := range relayNames {
 		fmt.Printf("Updating %s\n", relayName)
 		info := getRelayInfo(rpcClient, relayName)
-		updateRelayState(rpcClient, info, routing.RelayStateEnabled)
 		makeEnv(info)
 		if !runCommandEnv("deploy/relay-update.sh", []string{env.SSHKeyFilePath, info.user + "@" + info.sshAddr}, nil) {
 			log.Fatal("could not execute the relay-update.sh script")
@@ -190,7 +189,6 @@ func revertRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 		for _, info := range relays {
 			fmt.Printf("Reverting relay '%s' (id = %d)\n", info.name, info.id)
 			testForSSHKey(env)
-			updateRelayState(rpcClient, info, routing.RelayStateEnabled)
 			con := NewSSHConn(info.user, info.sshAddr, info.sshPort, env.SSHKeyFilePath)
 			con.ConnectAndIssueCmd("./install.sh -r")
 		}
@@ -199,7 +197,6 @@ func revertRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 			info := getRelayInfo(rpcClient, relayName)
 			fmt.Printf("Reverting relay '%s' (id = %d)\n", info.name, info.id)
 			testForSSHKey(env)
-			updateRelayState(rpcClient, info, routing.RelayStateEnabled)
 			con := NewSSHConn(info.user, info.sshAddr, info.sshPort, env.SSHKeyFilePath)
 			con.ConnectAndIssueCmd("./install.sh -r")
 		}
@@ -211,7 +208,6 @@ func enableRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 		info := getRelayInfo(rpcClient, relayName)
 		fmt.Printf("Enabling relay '%s' (id = %d)\n", relayName, info.id)
 		testForSSHKey(env)
-		updateRelayState(rpcClient, info, routing.RelayStateEnabled)
 		con := NewSSHConn(info.user, info.sshAddr, info.sshPort, env.SSHKeyFilePath)
 		con.ConnectAndIssueCmd(EnableRelayScript)
 	}
@@ -222,9 +218,9 @@ func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []st
 		info := getRelayInfo(rpcClient, relayName)
 		fmt.Printf("Disabling relay '%s' (id = %d)\n", relayName, info.id)
 		testForSSHKey(env)
-		updateRelayState(rpcClient, info, routing.RelayStateDisabled)
 		con := NewSSHConn(info.user, info.sshAddr, info.sshPort, env.SSHKeyFilePath)
 		con.ConnectAndIssueCmd(DisableRelayScript)
+		updateRelayState(rpcClient, info, routing.RelayStateDisabled)
 	}
 }
 

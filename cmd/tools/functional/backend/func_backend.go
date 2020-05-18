@@ -106,7 +106,7 @@ func TimeoutThread() {
 		}
 		hgetallResult := backend.redisClient.HGetAll(routing.HashKeyAllRelays)
 		for _, raw := range hgetallResult.Val() {
-			var r routing.Relay
+			var r routing.RelayCacheEntry
 			r.UnmarshalBinary([]byte(raw))
 			if currentTimestamp-r.LastUpdateTime.Unix() > unixTimeout {
 				backend.redisClient.HDel(routing.HashKeyAllRelays, r.Key())
@@ -118,7 +118,7 @@ func TimeoutThread() {
 			fmt.Printf("-----------------------------\n")
 			hgetallResult := backend.redisClient.HGetAll(routing.HashKeyAllRelays)
 			for _, raw := range hgetallResult.Val() {
-				var r routing.Relay
+				var r routing.RelayCacheEntry
 				r.UnmarshalBinary([]byte(raw))
 				fmt.Printf("relay: %v\n", &r.Addr)
 			}
@@ -673,7 +673,7 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	relay := routing.Relay{
+	relay := routing.RelayCacheEntry{
 		ID:             crypto.HashID(relay_address),
 		Addr:           *udpAddr,
 		PublicKey:      crypto.RelayPublicKey[:],
@@ -728,7 +728,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	relay := routing.Relay{
+	relay := routing.RelayCacheEntry{
 		ID:             crypto.HashID(relay_address),
 		Addr:           *udpAddr,
 		PublicKey:      token,

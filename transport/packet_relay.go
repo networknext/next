@@ -38,6 +38,7 @@ type RelayRequest struct {
 	Address      net.UDPAddr
 	PingStats    []RelayPingStats
 	TrafficStats routing.RelayTrafficStats
+	ShuttingDown bool
 }
 
 func (r *RelayRequest) UnmarshalJSON(buf []byte) error {
@@ -120,6 +121,11 @@ func (r *RelayRequest) UnmarshalJSON(buf []byte) error {
 		if bytesRx, ok := trafficStatsMap["bytes_rx"].(float64); ok {
 			r.TrafficStats.BytesReceived = uint64(bytesRx)
 		}
+	}
+
+	// Get the shutting down flag from the map
+	if shuttingDown, ok := data["shutting_down"].(bool); ok {
+		r.ShuttingDown = shuttingDown
 	}
 
 	return nil
@@ -220,7 +226,7 @@ func (r *RelayInitRequest) UnmarshalBinary(buf []byte) error {
 	if !(encoding.ReadUint32(buf, &index, &r.Magic) &&
 		encoding.ReadUint32(buf, &index, &r.Version) &&
 		encoding.ReadBytes(buf, &index, &r.Nonce, crypto.NonceSize) &&
-		encoding.ReadString(buf, &index, &addr, MaxRelayAddressLength) &&
+		encoding.ReadString(buf, &index, &addr, routing.MaxRelayAddressLength) &&
 		encoding.ReadBytes(buf, &index, &r.EncryptedToken, routing.EncryptedRelayTokenSize)) {
 		return errors.New("invalid packet")
 	}
@@ -362,7 +368,7 @@ func (r *RelayUpdateRequest) UnmarshalBinary(buff []byte) error {
 	index := 0
 	var addr string
 	if !(encoding.ReadUint32(buff, &index, &r.Version) &&
-		encoding.ReadString(buff, &index, &addr, MaxRelayAddressLength) &&
+		encoding.ReadString(buff, &index, &addr, routing.MaxRelayAddressLength) &&
 		encoding.ReadBytes(buff, &index, &r.Token, crypto.KeySize) &&
 		encoding.ReadUint32(buff, &index, &numRelays)) {
 		return errors.New("invalid packet")
@@ -487,7 +493,7 @@ func (r *RelayUpdateResponse) UnmarshalBinary(buff []byte) error {
 		}
 
 		var addr string
-		if !encoding.ReadString(buff, &index, &addr, MaxRelayAddressLength) {
+		if !encoding.ReadString(buff, &index, &addr, routing.MaxRelayAddressLength) {
 			return errors.New("failed to unmarshal relay update response relay address")
 		}
 
@@ -519,12 +525,12 @@ func (r RelayUpdateResponse) MarshalBinary() ([]byte, error) {
 	encoding.WriteUint32(responseData, &index, uint32(len(r.RelaysToPing)))
 	for i := range r.RelaysToPing {
 		encoding.WriteUint64(responseData, &index, r.RelaysToPing[i].RelayPingData.ID)
-		encoding.WriteString(responseData, &index, r.RelaysToPing[i].RelayPingData.Address, MaxRelayAddressLength)
+		encoding.WriteString(responseData, &index, r.RelaysToPing[i].RelayPingData.Address, routing.MaxRelayAddressLength)
 	}
 
 	return responseData, nil
 }
 
 func (r *RelayUpdateResponse) size() int {
-	return 4 + 4 + (4+MaxRelayAddressLength)*len(r.RelaysToPing)
+	return 4 + 4 + (4+routing.MaxRelayAddressLength)*len(r.RelaysToPing)
 }

@@ -861,10 +861,7 @@ func TestDatacenterDisabled(t *testing.T) {
 		Namespace:   "GEO_TEST",
 	}
 
-	nearbyRelay := routing.Relay{
-		ID: 1,
-	}
-	err = geoClient.Add(nearbyRelay)
+	err = geoClient.Add(1, 0, 0)
 	assert.NoError(t, err)
 
 	rp := mockRouteProvider{}
@@ -954,10 +951,7 @@ func TestNoRelaysInDatacenter(t *testing.T) {
 		Namespace:   "GEO_TEST",
 	}
 
-	nearbyRelay := routing.Relay{
-		ID: 1,
-	}
-	err = geoClient.Add(nearbyRelay)
+	err = geoClient.Add(1, 0, 0)
 	assert.NoError(t, err)
 
 	rp := mockRouteProvider{}
@@ -1051,10 +1045,7 @@ func TestNoRoutesFound(t *testing.T) {
 		Namespace:   "GEO_TEST",
 	}
 
-	nearbyRelay := routing.Relay{
-		ID: 1,
-	}
-	err = geoClient.Add(nearbyRelay)
+	err = geoClient.Add(1, 0, 0)
 	assert.NoError(t, err)
 
 	rp := mockRouteProvider{
@@ -1152,10 +1143,7 @@ func TestTokenEncryptionFailure(t *testing.T) {
 		Namespace:   "GEO_TEST",
 	}
 
-	nearbyRelay := routing.Relay{
-		ID: 1,
-	}
-	err = geoClient.Add(nearbyRelay)
+	err = geoClient.Add(1, 0, 0)
 	assert.NoError(t, err)
 
 	rp := mockRouteProvider{
@@ -1264,10 +1252,7 @@ func TestBadWriteResponse(t *testing.T) {
 		Namespace:   "GEO_TEST",
 	}
 
-	nearbyRelay := routing.Relay{
-		ID: 1,
-	}
-	err = geoClient.Add(nearbyRelay)
+	err = geoClient.Add(1, 0, 0)
 	assert.NoError(t, err)
 
 	rp := mockRouteProvider{
@@ -1380,10 +1365,7 @@ func TestBillingFailure(t *testing.T) {
 		Namespace:   "GEO_TEST",
 	}
 
-	nearbyRelay := routing.Relay{
-		ID: 1,
-	}
-	err = geoClient.Add(nearbyRelay)
+	err = geoClient.Add(1, 0, 0)
 	assert.NoError(t, err)
 
 	rp := mockRouteProvider{
@@ -1500,10 +1482,7 @@ func TestNextRouteResponse(t *testing.T) {
 		Namespace:   "GEO_TEST",
 	}
 
-	nearbyRelay := routing.Relay{
-		ID: 1,
-	}
-	err = geoClient.Add(nearbyRelay)
+	err = geoClient.Add(1, 0, 0)
 	assert.NoError(t, err)
 
 	rp := mockRouteProvider{
@@ -1640,10 +1619,8 @@ func TestContinueRouteResponse(t *testing.T) {
 		Namespace:   "GEO_TEST",
 	}
 
-	nearbyRelay := routing.Relay{
-		ID: 1,
-	}
-	geoClient.Add(nearbyRelay)
+	err = geoClient.Add(1, 0, 0)
+	assert.NoError(t, err)
 
 	rp := mockRouteProvider{
 		datacenterRelays: []routing.Relay{{}},
@@ -1787,10 +1764,7 @@ func TestCachedRouteResponse(t *testing.T) {
 		Namespace:   "GEO_TEST",
 	}
 
-	nearbyRelay := routing.Relay{
-		ID: 1,
-	}
-	err = geoClient.Add(nearbyRelay)
+	err = geoClient.Add(1, 0, 0)
 	assert.NoError(t, err)
 
 	rp := mockRouteProvider{
@@ -1933,10 +1907,7 @@ func TestVetoedRTT(t *testing.T) {
 		Namespace:   "GEO_TEST",
 	}
 
-	nearbyRelay := routing.Relay{
-		ID: 1,
-	}
-	err = geoClient.Add(nearbyRelay)
+	err = geoClient.Add(1, 0, 0)
 	assert.NoError(t, err)
 
 	rp := mockRouteProvider{
@@ -2057,10 +2028,7 @@ func TestVetoExpiredRTT(t *testing.T) {
 		Namespace:   "GEO_TEST",
 	}
 
-	nearbyRelay := routing.Relay{
-		ID: 1,
-	}
-	err = geoClient.Add(nearbyRelay)
+	err = geoClient.Add(1, 0, 0)
 	assert.NoError(t, err)
 
 	rp := mockRouteProvider{
@@ -2181,10 +2149,7 @@ func TestVetoedPacketLoss(t *testing.T) {
 		Namespace:   "GEO_TEST",
 	}
 
-	nearbyRelay := routing.Relay{
-		ID: 1,
-	}
-	err = geoClient.Add(nearbyRelay)
+	err = geoClient.Add(1, 0, 0)
 	assert.NoError(t, err)
 
 	rp := mockRouteProvider{
@@ -2305,10 +2270,7 @@ func TestVetoExpiredPacketLoss(t *testing.T) {
 		Namespace:   "GEO_TEST",
 	}
 
-	nearbyRelay := routing.Relay{
-		ID: 1,
-	}
-	err = geoClient.Add(nearbyRelay)
+	err = geoClient.Add(1, 0, 0)
 	assert.NoError(t, err)
 
 	rp := mockRouteProvider{
@@ -2432,10 +2394,7 @@ func TestVetoYOLONoReturn(t *testing.T) {
 		Namespace:   "GEO_TEST",
 	}
 
-	nearbyRelay := routing.Relay{
-		ID: 1,
-	}
-	err = geoClient.Add(nearbyRelay)
+	err = geoClient.Add(1, 0, 0)
 	assert.NoError(t, err)
 
 	rp := mockRouteProvider{
@@ -2559,10 +2518,7 @@ func TestForceDirect(t *testing.T) {
 			Namespace:   "GEO_TEST",
 		}
 
-		nearbyRelay := routing.Relay{
-			ID: 1,
-		}
-		err = geoClient.Add(nearbyRelay)
+		err = geoClient.Add(1, 0, 0)
 		assert.NoError(t, err)
 
 		rp := mockRouteProvider{
@@ -2679,10 +2635,7 @@ func TestForceDirect(t *testing.T) {
 			Namespace:   "GEO_TEST",
 		}
 
-		nearbyRelay := routing.Relay{
-			ID: 1,
-		}
-		err = geoClient.Add(nearbyRelay)
+		err = geoClient.Add(1, 0, 0)
 		assert.NoError(t, err)
 
 		rp := mockRouteProvider{
@@ -2801,10 +2754,7 @@ func TestForceNext(t *testing.T) {
 		Namespace:   "GEO_TEST",
 	}
 
-	nearbyRelay := routing.Relay{
-		ID: 1,
-	}
-	err = geoClient.Add(nearbyRelay)
+	err = geoClient.Add(1, 0, 0)
 	assert.NoError(t, err)
 
 	rp := mockRouteProvider{
@@ -2921,10 +2871,7 @@ func TestABTest(t *testing.T) {
 		Namespace:   "GEO_TEST",
 	}
 
-	nearbyRelay := routing.Relay{
-		ID: 1,
-	}
-	err = geoClient.Add(nearbyRelay)
+	err = geoClient.Add(1, 0, 0)
 	assert.NoError(t, err)
 
 	rp := mockRouteProvider{
@@ -3043,10 +2990,7 @@ func TestVetoCommit(t *testing.T) {
 		Namespace:   "GEO_TEST",
 	}
 
-	nearbyRelay := routing.Relay{
-		ID: 1,
-	}
-	err = geoClient.Add(nearbyRelay)
+	err = geoClient.Add(1, 0, 0)
 	assert.NoError(t, err)
 
 	rp := mockRouteProvider{
@@ -3176,10 +3120,7 @@ func TestCommitted(t *testing.T) {
 		Namespace:   "GEO_TEST",
 	}
 
-	nearbyRelay := routing.Relay{
-		ID: 1,
-	}
-	err = geoClient.Add(nearbyRelay)
+	err = geoClient.Add(1, 0, 0)
 	assert.NoError(t, err)
 
 	rp := mockRouteProvider{
@@ -3309,10 +3250,7 @@ func TestMultipathRTT(t *testing.T) {
 		Namespace:   "GEO_TEST",
 	}
 
-	nearbyRelay := routing.Relay{
-		ID: 1,
-	}
-	err = geoClient.Add(nearbyRelay)
+	err = geoClient.Add(1, 0, 0)
 	assert.NoError(t, err)
 
 	rp := mockRouteProvider{
@@ -3434,10 +3372,7 @@ func TestMultipathJitter(t *testing.T) {
 		Namespace:   "GEO_TEST",
 	}
 
-	nearbyRelay := routing.Relay{
-		ID: 1,
-	}
-	err = geoClient.Add(nearbyRelay)
+	err = geoClient.Add(1, 0, 0)
 	assert.NoError(t, err)
 
 	rp := mockRouteProvider{
@@ -3559,10 +3494,7 @@ func TestMultipathPacketLoss(t *testing.T) {
 		Namespace:   "GEO_TEST",
 	}
 
-	nearbyRelay := routing.Relay{
-		ID: 1,
-	}
-	err = geoClient.Add(nearbyRelay)
+	err = geoClient.Add(1, 0, 0)
 	assert.NoError(t, err)
 
 	rp := mockRouteProvider{

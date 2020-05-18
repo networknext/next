@@ -185,11 +185,11 @@ type GeoClient struct {
 	Namespace   string
 }
 
-func (c *GeoClient) Add(r Relay) error {
+func (c *GeoClient) Add(relayID uint64, latitude float64, longitude float64) error {
 	geoloc := redis.GeoLocation{
-		Name:      strconv.FormatUint(r.ID, 10),
-		Latitude:  r.Datacenter.Location.Latitude,
-		Longitude: r.Datacenter.Location.Longitude,
+		Name:      strconv.FormatUint(relayID, 10),
+		Latitude:  latitude,
+		Longitude: longitude,
 	}
 
 	return c.RedisClient.GeoAdd(c.Namespace, &geoloc).Err()

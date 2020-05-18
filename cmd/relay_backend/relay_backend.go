@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/getsentry/sentry-go"
-	"github.com/go-redis/redis"
 	"github.com/gorilla/mux"
 	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/logging"
@@ -374,39 +373,13 @@ func main() {
 				// then it won't incorrectly overwrite that state.
 				if relay.State == routing.RelayStateEnabled {
 					relay.State = routing.RelayStateOffline
-				}
 
-				if err := db.SetRelay(ctx, relay); err != nil {
-					level.Error(logger).Log("msg", fmt.Sprintf("Failed to set relay with ID %v in storage when attempting to set relay state to offline", rawID), "err", err)
-					os.Exit(1)
-				}
-			}
-		}
-	}()
-
-	// Periodically update relays' state
-	go func() {
-		for {
-			hgetallResult := redisClientRelays.HGetAll(routing.HashKeyAllRelays)
-			if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
-				level.Error(logger).Log("msg", "failed to get relays", "err", hgetallResult.Err())
-				os.Exit(1)
-			}
-
-			for _, v := range hgetallResult.Val() {
-				var relay routing.Relay
-				if err := relay.UnmarshalBinary([]byte(v)); err != nil {
-					level.Error(logger).Log("msg", "failed to unmarshal relay", "err", err)
-					continue
-				}
-
-				if err := db.SetRelay(ctx, relay); err != nil {
-					level.Error(logger).Log("msg", "failed to set relay in storage", "id", relay.ID, "err", err)
-					continue
+					if err := db.SetRelay(ctx, relay); err != nil {
+						level.Error(logger).Log("msg", fmt.Sprintf("Failed to set relay with ID %v in storage when attempting to set relay state to offline", rawID), "err", err)
+						os.Exit(1)
+					}
 				}
 			}
-
-			time.Sleep(10 * time.Second)
 		}
 	}()
 

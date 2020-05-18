@@ -18,19 +18,6 @@ const (
 	MaxPacketLoss = 0.1
 )
 
-// TriMatrixLength returns the length of a triangular shaped matrix
-func TriMatrixLength(size int) int {
-	return (size * (size - 1)) / 2
-}
-
-// TriMatrixLength returns the index of the ij coord for a triangular shaped matrix
-func TriMatrixIndex(i, j int) int {
-	if i <= j {
-		i, j = j, i
-	}
-	return i*(i+1)/2 - i + j
-}
-
 // HistoryMax returns the max value in the history array
 func HistoryMax(history []float32) float32 {
 	var max float32
@@ -69,14 +56,6 @@ func HistoryMean(history []float32) float32 {
 
 // InvalidRouteValue ...
 const InvalidRouteValue = 10000.0
-
-// RelayStatsPing is the ping stats for a relay
-type RelayStatsPing struct {
-	RelayID    uint64  `json:"RelayId"`
-	RTT        float32 `json:"RTT"`
-	Jitter     float32 `json:"Jitter"`
-	PacketLoss float32 `json:"PacketLoss"`
-}
 
 // RelayStatsUpdate is a struct for updating relay stats
 type RelayStatsUpdate struct {
@@ -236,9 +215,9 @@ func (database *StatsDatabase) GetCostMatrix(costMatrix *CostMatrix, redisClient
 
 	datacenterNameMap := make(map[uint64]string)
 
-	var stableRelays []Relay
+	var stableRelays []RelayCacheEntry
 	for _, rawRelay := range hgetallResult.Val() {
-		var relay Relay
+		var relay RelayCacheEntry
 		if err := relay.UnmarshalBinary([]byte(rawRelay)); err != nil {
 			return fmt.Errorf("failed to unmarshal relay when creating cost matrix: %v", err)
 		}
@@ -254,7 +233,7 @@ func (database *StatsDatabase) GetCostMatrix(costMatrix *CostMatrix, redisClient
 		costMatrix.RelayNames[i] = relayData.Name
 		costMatrix.RelaySellers[i] = relayData.Seller
 		costMatrix.RelaySessionCounts[i] = uint32(relayData.TrafficStats.SessionCount)
-		costMatrix.RelayMaxSessionCounts[i] = uint32(relayData.MaxSessions)
+		costMatrix.RelayMaxSessionCounts[i] = relayData.MaxSessions
 
 		costMatrix.RelayAddresses[i] = make([]byte, MaxRelayAddressLength)
 		copy(costMatrix.RelayAddresses[i], []byte(relayData.Addr.String()))
