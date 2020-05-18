@@ -6,8 +6,6 @@ solution "next"
 	warnings "Extra"
 	floatingpoint "Fast"
 	flags { "FatalWarnings" }
-	filter { "action:gmake*", "toolset:gcc" }
-		disablewarnings{ "class-memaccess" }
 	filter "configurations:Debug"
 		symbols "On"
 		defines { "_DEBUG" }
