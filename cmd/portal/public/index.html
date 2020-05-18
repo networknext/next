@@ -439,17 +439,7 @@
                                                 {{ parseFloat(session.next_rtt).toFixed(2) }}
                                             </td>
                                             <td class="text-right ">
-                                                <span class="text-success" v-if="session.delta_rtt > 5">
-                                                    <b>
-                                                        {{ parseFloat(session.delta_rtt).toFixed(2) }}
-                                                    </b>
-                                                </span>
-                                                <span style="color: orange;" v-if="session.delta_rtt > 2 && session.delta_rtt <= 5">
-                                                    <b>
-                                                        {{ parseFloat(session.delta_rtt).toFixed(2) }}
-                                                    </b>
-                                                </span>
-                                                <span class="text-danger" v-if="session.delta_rtt <= 2">
+                                                <span v-if="session.next_rtt > 0" v-bind:class="{ 'text-success': session.delta_rtt >= 5, 'text-warning': session.delta_rtt > 2 && session.delta_rtt < 5, 'text-danger': session.delta_rtt <= 2 }">
                                                     <b>
                                                         {{ parseFloat(session.delta_rtt).toFixed(2) }}
                                                     </b>
