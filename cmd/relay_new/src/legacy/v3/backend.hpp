@@ -24,6 +24,7 @@ namespace legacy
       Backend(
        util::Receiver<core::GenericPacket<>>& receiver,
        util::Env& env,
+       const uint64_t relayID,
        os::Socket& socket,
        const util::Clock& relayClock,
        TrafficStats& stats,
@@ -46,7 +47,7 @@ namespace legacy
       const size_t mSpeed;
       BackendToken mToken;
       uint64_t mInitTimestamp;
-      uint64_t mRelayID;
+      const uint64_t mRelayID;
       std::string mGroup;
       uint64_t mGroupID;
       std::string mPingKey;

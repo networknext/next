@@ -1,10 +1,11 @@
 #include "includes.h"
 #include "backend.hpp"
-#include "packet_send.hpp"
+
+#include "core/relay_stats.hpp"
+#include "crypto/hash.hpp"
 #include "encoding/base64.hpp"
 #include "encoding/read.hpp"
-#include "crypto/hash.hpp"
-#include "core/relay_stats.hpp"
+#include "packet_send.hpp"
 
 using namespace std::chrono_literals;
 
@@ -20,6 +21,7 @@ namespace legacy
     Backend::Backend(
      util::Receiver<core::GenericPacket<>>& receiver,
      util::Env& env,
+     const uint64_t relayID,
      os::Socket& socket,
      const util::Clock& relayClock,
      TrafficStats& stats,
@@ -32,7 +34,7 @@ namespace legacy
        mStats(stats),
        mRelayManager(manager),
        mSpeed(speed),
-       mRelayID(crypto::FNV(mEnv.RelayV3Name))
+       mRelayID(relayID)
     {
       std::array<uint8_t, PingKeySize> key;
       crypto_auth_keygen(key.data());

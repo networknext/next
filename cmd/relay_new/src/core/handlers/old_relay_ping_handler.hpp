@@ -44,9 +44,15 @@ namespace core
     inline void OldRelayPingHandler::handle()
     {
       packets::OldRelayPingPacket packetWrapper(mPacket);
-      packetWrapper.Internal.Buffer[0] = static_cast<uint8_t>(packets::Type::OldRelayPong);
+      core::GenericPacket<> outgoing;
 
-      mSocket.send(mPacket);
+      size_t index = 0;
+      encoding::WriteUint8(outgoing.Buffer, index, static_cast<uint8_t>(packets::Type::OldRelayPong));
+      encoding::WriteUint64(outgoing.Buffer, index, packetWrapper.getID());
+      encoding::WriteUint64(outgoing.Buffer, index, packetWrapper.getSequence());
+      outgoing.Addr = mPacket.Addr;
+      outgoing.Len = index;
+      mSocket.send(outgoing);
     };
   }  // namespace handlers
 }  // namespace core

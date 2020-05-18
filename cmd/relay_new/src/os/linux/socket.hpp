@@ -57,6 +57,8 @@ namespace os
     int mSockFD = 0;
     const SocketType mType;
     std::atomic<bool> mClosed;
+    mutable std::mutex mWriteLock;
+    mutable std::mutex mReadLock;
 
     bool setBufferSizes(size_t sendBufferSize, size_t recvBufferSize);
     bool setLingerTime(int lingerTime);
@@ -91,6 +93,8 @@ namespace os
   bool Socket::multisend(std::array<mmsghdr, BuffSize>& headers, int count) const
   {
     static_assert(BuffSize <= 1024);  // max sendmmsg will allow
+
+    std::lock_guard<std::mutex> lk(mWriteLock);
     assert(count > 0);
     assert(count <= 1024);
 
@@ -120,6 +124,7 @@ namespace os
   template <size_t BuffSize, size_t PacketSize>
   bool Socket::multirecv(core::GenericPacketBuffer<BuffSize, PacketSize>& packetBuff) const
   {
+    std::lock_guard<std::mutex> lk(mReadLock);
     packetBuff.Count = recvmmsg(
      mSockFD,
      packetBuff.Headers.data(),

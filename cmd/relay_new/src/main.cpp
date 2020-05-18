@@ -10,9 +10,10 @@
 #include "core/packet_processor.hpp"
 #include "core/ping_processor.hpp"
 #include "core/router_info.hpp"
-#include "legacy/v3/backend.hpp"
+#include "crypto/hash.hpp"
 #include "crypto/keychain.hpp"
 #include "encoding/base64.hpp"
+#include "legacy/v3/backend.hpp"
 #include "relay/relay.hpp"
 #include "relay/relay_platform.hpp"
 #include "testing/test.hpp"
@@ -230,6 +231,9 @@ int main(int argc, const char* argv[])
   std::vector<os::SocketPtr> sockets;
   std::vector<std::shared_ptr<std::thread>> threads;
 
+  // only used for v3 compatability
+  const auto relayID = crypto::FNV(env.RelayV3Name);
+
   // the relay address that should be exposed to other relays.
   // do not set this using the value from the env var.
   // if using port 0, another port will be selected byt the os
@@ -377,8 +381,8 @@ int main(int argc, const char* argv[])
     // setup the ping processor to use the external address
     // relays use it to know where the receiving port of other relays are
     auto thread = std::make_shared<std::thread>(
-     [&waitVar, &socketAndThreadReady, socket, &relayManager, &relayAddr, &recorder, &v3TrafficStats] {
-       core::PingProcessor pingProcessor(*socket, relayManager, gAlive, relayAddr, recorder, v3TrafficStats);
+     [&waitVar, &socketAndThreadReady, socket, &relayManager, &relayAddr, &recorder, &v3TrafficStats, &relayID] {
+       core::PingProcessor pingProcessor(*socket, relayManager, gAlive, relayAddr, recorder, v3TrafficStats, relayID);
        pingProcessor.process(waitVar, socketAndThreadReady);
      });
 
@@ -413,8 +417,8 @@ int main(int argc, const char* argv[])
       }
 
       auto thread = std::make_shared<std::thread>(
-       [&waitVar, &socketAndThreadReady, socket, &v3RelayManager, &relayAddr, &recorder, &v3TrafficStats] {
-         core::PingProcessor pingProcessor(*socket, v3RelayManager, gAlive, relayAddr, recorder, v3TrafficStats);
+       [&waitVar, &socketAndThreadReady, socket, &v3RelayManager, &relayAddr, &recorder, &v3TrafficStats, &relayID] {
+         core::PingProcessor pingProcessor(*socket, v3RelayManager, gAlive, relayAddr, recorder, v3TrafficStats, relayID);
          pingProcessor.process(waitVar, socketAndThreadReady);
        });
 
@@ -439,9 +443,9 @@ int main(int argc, const char* argv[])
       }
 
       auto thread = std::make_shared<std::thread>(
-       [&receiver, &env, socket, &cleanup, &v3BackendSuccess, &relayClock, &v3TrafficStats, &v3RelayManager] {
+       [&receiver, &env, socket, &cleanup, &v3BackendSuccess, &relayClock, &v3TrafficStats, &v3RelayManager, &relayID] {
          size_t speed = std::stoi(env.RelayV3Speed);
-         legacy::v3::Backend backend(receiver, env, *socket, relayClock, v3TrafficStats, v3RelayManager, speed);
+         legacy::v3::Backend backend(receiver, env, relayID, *socket, relayClock, v3TrafficStats, v3RelayManager, speed);
 
          if (!backend.init()) {
            Log("could not initialize relay with old backend");

@@ -12,7 +12,7 @@ namespace core
       static const size_t MACByteSize = 32;
       static const size_t PingKeyBytes = 32;
 
-      // type | expire timestamp | relay id | ping mac | sequence
+      // type | token [expire timestamp | relay id | ping mac] | sequence
       static const size_t PingByteSize = 1 + 8 + 8 + MACByteSize + 8;
       // type | relay id | sequence
       static const size_t PongByteSize = 1 + 8 + 8;

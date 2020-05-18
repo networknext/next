@@ -2,6 +2,7 @@
 #define CORE_PING_PROCESSOR_HPP
 
 #include "core/relay_manager.hpp"
+#include "encoding/base64.hpp"
 #include "encoding/write.hpp"
 #include "legacy/v3/traffic_stats.hpp"
 #include "os/platform.hpp"
@@ -25,7 +26,8 @@ namespace core
      const volatile bool& shouldProcess,
      const net::Address& relayAddr,
      util::ThroughputRecorder& recorder,
-     legacy::v3::TrafficStats& stats);
+     legacy::v3::TrafficStats& stats,
+     const uint64_t relayID);
     ~PingProcessor() = default;
 
     void process(std::condition_variable& var, std::atomic<bool>& readyToSend);
@@ -37,6 +39,7 @@ namespace core
     const net::Address& mRelayAddress;
     util::ThroughputRecorder& mRecorder;
     legacy::v3::TrafficStats& mStats;
+    const uint64_t mRelayID;
 
     void fillMsgHdrWithAddr(msghdr& hdr, const net::Address& addr);
   };
@@ -48,13 +51,15 @@ namespace core
    const volatile bool& shouldProcess,
    const net::Address& relayAddress,
    util::ThroughputRecorder& recorder,
-   legacy::v3::TrafficStats& stats)
+   legacy::v3::TrafficStats& stats,
+   const uint64_t relayID)
    : mSocket(socket),
      mRelayManager(relayManager),
      mShouldProcess(shouldProcess),
      mRelayAddress(relayAddress),
      mRecorder(recorder),
-     mStats(stats)
+     mStats(stats),
+     mRelayID(relayID)
   {
     LogDebug("sending pings using this addr: ", relayAddress);
   }
@@ -157,12 +162,12 @@ namespace core
 
         // write data to the buffer
         {
-          encoding::WriteUint8(
-           pkt.Buffer, index, static_cast<uint8_t>(packets::Type::NewRelayPing));  // TODO make template param
-          encoding::WriteUint64(pkt.Buffer, index, pings[i].Seq);
+          std::array<uint8_t, 48> token;
+          encoding::base64::Decode(pings[i].PingToken, token);  // TODO decrypt this in relay manager update
 
-          // use the recv port addr here so the receiving relay knows where to send it back to
-          encoding::WriteAddress(pkt.Buffer, index, mRelayAddress);
+          encoding::WriteUint8(pkt.Buffer, index, static_cast<uint8_t>(packets::Type::OldRelayPing));
+          encoding::WriteBytes(pkt.Buffer, index, token, sizeof(token));
+          encoding::WriteUint64(pkt.Buffer, index, pings[i].Seq);
         }
 
         pkt.Len = index;
