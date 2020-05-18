@@ -1,6 +1,5 @@
 
 solution "next"
-	language "C++"
 	configurations { "Debug", "Release" }
 	targetdir "bin/"
 	rtti "Off"
@@ -18,6 +17,8 @@ solution "next"
 		defines { "NDEBUG" }
 	filter "system:windows"
 		architecture "x86_64"
+	filter "system:windows"
+		location ("visualstudio")
 
 project "next"
 	kind "StaticLib"
@@ -30,9 +31,6 @@ project "next"
 		"source/next_*.cpp",
 	}
 	includedirs { "include", "sodium/include/" }
-	filter "system:not windows"
-		links { "pthread" }
-		targetname "next-%{cfg.platform}-%{cfg.buildcfg}"
 	filter "system:windows"
 		linkoptions { "/ignore:4221" }
 		disablewarnings { "4324" }
