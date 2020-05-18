@@ -236,3 +236,5 @@ fill_segment_ssse3(const argon2_instance_t *instance,
     }
 }
 #endif
+
+int argon2_fill_block_sse3_link_warning_dummy = 0;

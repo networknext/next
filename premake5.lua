@@ -6,8 +6,6 @@ solution "next"
 	warnings "Extra"
 	floatingpoint "Fast"
 	flags { "FatalWarnings" }
-	filter { "action:gmake*", "toolset:gcc" }
-		disablewarnings{ "type-limits" }
 	filter "configurations:Debug"
 		symbols "On"
 		defines { "_DEBUG" }
@@ -48,8 +46,6 @@ project "sodium"
 	filter "system:windows"
 		disablewarnings { "4221", "4244", "4715", "4197", "4146", "4324", "4456", "4100", "4459", "4245" }
 		linkoptions { "/ignore:4221" }
-	filter "options:not internal"
-		vectorextensions "AVX"
 	filter { "action:vs2010"}
 		defines { "inline=__inline;NATIVE_LITTLE_ENDIAN;_CRT_SECURE_NO_WARNINGS;" }
 	configuration { "gmake" }

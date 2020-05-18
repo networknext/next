@@ -88,3 +88,5 @@ blake2b_compress_ssse3(blake2b_state *S,
 }
 
 #endif
+
+int blake2b_compress_sse3_link_warning_dummy = 0;

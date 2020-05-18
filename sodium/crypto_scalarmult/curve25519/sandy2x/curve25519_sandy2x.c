@@ -112,3 +112,5 @@ crypto_scalarmult_curve25519_sandy2x_implementation = {
 };
 
 #endif
+
+int curve_25519_sandy2x_link_warning_dummy = 0;

@@ -76,3 +76,5 @@ fe_frombytes(fe h, const unsigned char *s)
 }
 
 #endif
+
+int fe_frombytes_sandy2x_link_warning_dummy = 0;

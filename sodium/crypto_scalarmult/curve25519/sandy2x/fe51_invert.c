@@ -56,3 +56,5 @@ fe51_invert(fe51 *r, const fe51 *x)
 }
 
 #endif
+
+int fe51_invert_link_warning_dummy = 0;

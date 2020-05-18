@@ -29,3 +29,5 @@ struct crypto_stream_salsa20_implementation
     };
 
 #endif
+
+int salsa20_xmm6_link_warning_dummy = 0;

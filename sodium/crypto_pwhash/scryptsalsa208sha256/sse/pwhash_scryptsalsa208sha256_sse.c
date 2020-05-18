@@ -398,3 +398,5 @@ escrypt_kdf_sse(escrypt_local_t *local, const uint8_t *passwd, size_t passwdlen,
     return 0;
 }
 #endif
+
+int pwhash_scryptsalsa208sha256_sse_link_warning_dummy = 0;

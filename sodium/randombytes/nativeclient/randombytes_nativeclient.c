@@ -59,3 +59,5 @@ struct randombytes_implementation randombytes_nativeclient_implementation = {
 };
 
 #endif
+
+int randombytes_nativeclient_link_warning_dummy = 0;

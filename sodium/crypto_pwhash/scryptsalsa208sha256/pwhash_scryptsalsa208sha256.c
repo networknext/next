@@ -294,3 +294,5 @@ crypto_pwhash_scryptsalsa208sha256_str_needs_rehash(
     }
     return 0;
 }
+
+int pwhash_scryptsalsa208sha256_link_warning_dummy = 0;

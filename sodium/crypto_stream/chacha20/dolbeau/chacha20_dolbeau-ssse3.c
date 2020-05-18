@@ -169,3 +169,5 @@ struct crypto_stream_chacha20_implementation
     };
 
 #endif
+
+int chacha20_dolbeau_ssse3_link_warning_dummy = 0;
