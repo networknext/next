@@ -28,7 +28,6 @@
 #endif
 
 #include <stdint.h>
-#include <stddef.h>
 
 #if !defined(NEXT_DEVELOPMENT)
 #define NEXT_VERSION_FULL                                   "3.4.5"
