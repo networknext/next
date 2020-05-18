@@ -306,14 +306,6 @@ func (r *RelayCacheEntry) Key() string {
 	return HashKeyPrefixRelay + strconv.FormatUint(r.ID, 10)
 }
 
-// RelayStatsPing is the ping stats for a relay
-type RelayStatsPing struct {
-	RelayID    uint64  `json:"RelayId"`
-	RTT        float32 `json:"RTT"`
-	Jitter     float32 `json:"Jitter"`
-	PacketLoss float32 `json:"PacketLoss"`
-}
-
 // RelayTrafficStats describes the measured relay traffic statistics reported from the relay
 type RelayTrafficStats struct {
 	SessionCount  uint64
