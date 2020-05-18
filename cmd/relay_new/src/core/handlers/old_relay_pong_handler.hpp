@@ -1,7 +1,7 @@
 #pragma once
 
 #include "base_handler.hpp"
-#include "core/packets/old_relay_ping_packet.hpp"
+#include "core/packets/old_relay_pong_packet.hpp"
 #include "core/relay_manager.hpp"
 #include "util/logger.hpp"
 
@@ -24,8 +24,12 @@ namespace core
      : BaseHandler(packet), mRelayManager(manager)
     {}
 
-    inline void OldRelayPongHandler::handle() {
-      packets::OldRelayPingPacket packet(mPacket);
+    inline void OldRelayPongHandler::handle()
+    {
+      packets::OldRelayPongPacket packetWrapper(mPacket);
+
+      LogDebug("got old pong packet from ", mPacket.Addr);
+      mRelayManager.processPong(mPacket.Addr, packetWrapper.getSequence());
     }
   }  // namespace handlers
 }  // namespace core

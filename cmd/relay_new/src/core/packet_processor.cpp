@@ -143,8 +143,32 @@ namespace core
         }
       } break;
       case packets::Type::OldRelayPing: {
+        if (packet.Len == packets::OldRelayPingPacket::ByteSize) {
+          mRecorder.addToReceived(wholePacketSize);
+          mStats.BytesPerSecMeasurementRx += wholePacketSize;
+
+          handlers::OldRelayPingHandler handler(packet, mSocket, mRecorder, mStats);
+
+          handler.handle();
+        } else {
+          LogDebug("got invalid old ping packet from ", packet.Addr);
+          mRecorder.addToUnknown(wholePacketSize);
+          mStats.BytesPerSecInvalidRx += wholePacketSize;
+        }
       } break;
       case packets::Type::OldRelayPong: {
+        if (packet.Len == packets::OldRelayPongPacket::ByteSize) {
+          mRecorder.addToReceived(wholePacketSize);
+          mStats.BytesPerSecMeasurementRx += wholePacketSize;
+
+          handlers::OldRelayPongHandler handler(packet, mV3RelayManager);
+
+          handler.handle();
+        } else {
+          LogDebug("got invalid old pong packet from ", packet.Addr);
+          mRecorder.addToUnknown(wholePacketSize);
+          mStats.BytesPerSecInvalidRx += wholePacketSize;
+        }
       } break;
       case packets::Type::RouteRequest: {
         mRecorder.addToReceived(wholePacketSize);

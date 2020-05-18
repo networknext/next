@@ -17,28 +17,19 @@ namespace core
     {
      public:
       OldRelayPingHandler(
-       GenericPacket<>& packet,
-       const os::Socket& socket,
-       const net::Address& mRecvAddr,
-       util::ThroughputRecorder& recorder,
-       legacy::v3::TrafficStats& stats);
+       GenericPacket<>& packet, const os::Socket& socket, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats);
 
       void handle();
 
      private:
       const os::Socket& mSocket;
-      const net::Address& mRecvAddr;
       util::ThroughputRecorder& mRecorder;
       legacy::v3::TrafficStats& mStats;
     };
 
     inline OldRelayPingHandler::OldRelayPingHandler(
-     GenericPacket<>& packet,
-     const os::Socket& socket,
-     const net::Address& receivingAddress,
-     util::ThroughputRecorder& recorder,
-     legacy::v3::TrafficStats& stats)
-     : BaseHandler(packet), mSocket(socket), mRecvAddr(receivingAddress), mRecorder(recorder), mStats(stats)
+     GenericPacket<>& packet, const os::Socket& socket, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats)
+     : BaseHandler(packet), mSocket(socket), mRecorder(recorder), mStats(stats)
     {}
 
     inline void OldRelayPingHandler::handle()
