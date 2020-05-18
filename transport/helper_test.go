@@ -126,6 +126,7 @@ func seedRedis(t *testing.T, redisServer *miniredis.Miniredis, addressesToAdd []
 		relay.ID = crypto.HashID(addr)
 		bin, err := relay.MarshalBinary()
 		assert.NoError(t, err)
+		redisServer.Set(relay.Key(), "0")
 		redisServer.HSet(routing.HashKeyAllRelays, relay.Key(), string(bin))
 	}
 

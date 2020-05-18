@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"fmt"
 	"math"
 	mrand "math/rand"
 	"net"
@@ -639,10 +640,9 @@ func TestRelayHandlerRelayUnmarshalFailure(t *testing.T) {
 	}
 
 	// Set a bad entry in redis
-	entry := routing.RelayCacheEntry{
-		ID: relay.ID,
-	}
-	redisServer.HSet(routing.HashKeyAllRelays, entry.Key(), "bad relay entry")
+	entry := "bad relay entry"
+	redisServer.Set(fmt.Sprintf("RELAY-%d", relay.ID), "0")
+	redisServer.HSet(routing.HashKeyAllRelays, fmt.Sprintf("RELAY-%d", relay.ID), entry)
 
 	inMemory := &storage.InMemory{}
 	err = inMemory.AddSeller(context.Background(), relay.Seller)

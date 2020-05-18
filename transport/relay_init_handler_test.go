@@ -655,6 +655,7 @@ func TestRelayInitRelayExists(t *testing.T) {
 	assert.NoError(t, err)
 
 	// set it in the redis instance
+	redisServer.Set(entry.Key(), "0")
 	redisServer.HSet(routing.HashKeyAllRelays, entry.Key(), string(data))
 
 	initMetrics := metrics.EmptyRelayInitMetrics

@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -188,7 +189,7 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 		}
 
 		// Check if the relay exists in redis
-		exists := params.RedisClient.HExists(routing.HashKeyAllRelays, relayCacheEntry.Key())
+		exists := params.RedisClient.Exists(relayCacheEntry.Key())
 
 		if exists.Err() != nil && exists.Err() != redis.Nil {
 			sentry.CaptureException(exists.Err())
@@ -199,7 +200,7 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 		}
 
 		// If the relay doesn't exist, add it
-		if !exists.Val() {
+		if exists.Val() == 0 {
 			// Set the relay's lat long
 			if loc, err := params.IpLocator.LocateIP(relayCacheEntry.Addr.IP); err == nil {
 				relayCacheEntry.Datacenter.Location.Latitude = loc.Latitude
@@ -478,8 +479,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			return
 		}
 
-		exists := params.RedisClient.HExists(routing.HashKeyAllRelays, relayCacheEntry.Key())
-
+		exists := params.RedisClient.Exists(relayCacheEntry.Key())
 		if exists.Err() != nil && exists.Err() != redis.Nil {
 			sentry.CaptureException(exists.Err())
 			level.Error(locallogger).Log("msg", "failed to check if relay is registered", "err", exists.Err())
@@ -488,7 +488,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			return
 		}
 
-		if exists.Val() {
+		if exists.Val() == 1 {
 			sentry.CaptureMessage("relay already initialized")
 			level.Warn(locallogger).Log("msg", "relay already initialized")
 			http.Error(writer, "relay already initialized", http.StatusConflict)
@@ -624,7 +624,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			ID: crypto.HashID(relayUpdateRequest.Address.String()),
 		}
 
-		exists := params.RedisClient.HExists(routing.HashKeyAllRelays, relayCacheEntry.Key())
+		exists := params.RedisClient.Exists(relayCacheEntry.Key())
 
 		if exists.Err() != nil && exists.Err() != redis.Nil {
 			sentry.CaptureException(exists.Err())
@@ -634,7 +634,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			return
 		}
 
-		if !exists.Val() {
+		if exists.Val() == 0 {
 			sentry.CaptureMessage("relay not initalized")
 			level.Warn(locallogger).Log("msg", "relay not initialized")
 			http.Error(writer, "relay not initialized", http.StatusNotFound)
@@ -800,5 +800,144 @@ func HealthzHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(http.StatusText(http.StatusOK)))
+	}
+}
+
+func statsTable(stats map[string]map[string]routing.Stats) template.HTML {
+	html := strings.Builder{}
+	html.WriteString("<table>")
+
+	addrs := make([]string, 0)
+	for addr := range stats {
+		addrs = append(addrs, addr)
+	}
+
+	html.WriteString("<tr>")
+	html.WriteString("<th>Address</th>")
+	for _, addr := range addrs {
+		html.WriteString("<th>" + addr + "</th>")
+	}
+	html.WriteString("</tr>")
+
+	for _, a := range addrs {
+		html.WriteString("<tr>")
+		html.WriteString("<th>" + a + "</th>")
+
+		for _, b := range addrs {
+			if a == b {
+				html.WriteString("<td>&nbsp;</td>")
+				continue
+			}
+
+			html.WriteString("<td>" + stats[a][b].String() + "</td>")
+		}
+
+		html.WriteString("</tr>")
+	}
+
+	html.WriteString("</table>")
+
+	return template.HTML(html.String())
+}
+
+func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.RouteMatrix, statsdb *routing.StatsDatabase, username string, password string) func(writer http.ResponseWriter, request *http.Request) {
+	type response struct {
+		Analysis string
+		Relays   []routing.Relay
+		Stats    map[string]map[string]routing.Stats
+	}
+
+	funcmap := template.FuncMap{
+		"statsTable": statsTable,
+	}
+
+	tmpl := template.Must(template.New("dashboard").Funcs(funcmap).Parse(`
+		<html>
+			<head>
+				<title>Relay Dashboard</title>
+				<style>
+					body { font-family: monospace; }
+					table { width: 100%; border-collapse: collapse; }
+					table, th, td { padding: 3px; border: 1px solid black; }
+					td { text-align: center; }
+				</style>
+			</head>
+			<body>
+				<h1>Relay Dashboard</h1>
+
+				<h2>Route Matrix Analysis</h2>
+				<pre>{{ .Analysis }}</pre>
+
+				<h2>Relays</h2>
+				<table>
+					<tr>
+						<th>Address</th>
+						<th>Datacenter</th>
+						<th>Lat / Long</th>
+						<th>Seller</th>
+						<th>Ingress / Egress</th>
+					</tr>
+					{{ range .Relays }}
+					<tr>
+						<td>{{ .Addr }}</td>
+						<td>{{ .Datacenter.Name }}</td>
+						<td>{{ .Datacenter.Location.Latitude }} / {{ .Datacenter.Location.Longitude }}</td>
+						<td>{{ .Seller.Name }}</td>
+						<td>{{ .Seller.IngressPriceCents }} / {{ .Seller.EgressPriceCents }}</td>
+					</tr>
+					{{ end }}
+				</table>
+
+				<h2>Stats</h2>
+				{{ .Stats | statsTable }}
+			</body>
+		</html>
+	`))
+
+	return func(writer http.ResponseWriter, request *http.Request) {
+		writer.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+
+		u, p, _ := request.BasicAuth()
+		if u != username && p != password {
+			writer.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+			writer.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		var res response
+
+		buf := bytes.Buffer{}
+
+		routeMatrix.WriteAnalysisTo(&buf)
+		res.Analysis = buf.String()
+
+		hgetallResult := redisClient.HGetAll(routing.HashKeyAllRelays)
+		if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
+			fmt.Println(hgetallResult.Err())
+			return
+		}
+
+		for _, rawRelay := range hgetallResult.Val() {
+			var relay routing.Relay
+			if err := relay.UnmarshalBinary([]byte(rawRelay)); err != nil {
+				fmt.Println(err)
+				return
+			}
+			res.Relays = append(res.Relays, relay)
+		}
+
+		res.Stats = make(map[string]map[string]routing.Stats)
+		for _, a := range res.Relays {
+			res.Stats[a.Name] = make(map[string]routing.Stats)
+
+			for _, b := range res.Relays {
+				rtt, jitter, packetloss := statsdb.GetSample(a.ID, b.ID)
+				res.Stats[a.Name][a.Name] = routing.Stats{RTT: float64(rtt), Jitter: float64(jitter), PacketLoss: float64(packetloss)}
+			}
+		}
+
+		if err := tmpl.Execute(writer, res); err != nil {
+			fmt.Println(err)
+		}
 	}
 }
