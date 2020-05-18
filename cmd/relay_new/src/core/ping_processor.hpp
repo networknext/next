@@ -2,18 +2,26 @@
 #define CORE_PING_PROCESSOR_HPP
 
 #include "core/relay_manager.hpp"
-#include "os/platform.hpp"
-#include "util/throughput_recorder.hpp"
+#include "encoding/write.hpp"
 #include "legacy/v3/traffic_stats.hpp"
+#include "os/platform.hpp"
+#include "packets/new_relay_ping_packet.hpp"
+#include "packets/types.hpp"
+#include "util/throughput_recorder.hpp"
+
+using namespace std::chrono_literals;
 
 namespace core
 {
+  const size_t MaxPingsToSend = MAX_RELAYS;
+
+  template <typename T>
   class PingProcessor
   {
    public:
     PingProcessor(
      const os::Socket& socket,
-     core::RelayManager& relayManger,
+     core::RelayManager<T>& relayManger,
      const volatile bool& shouldProcess,
      const net::Address& relayAddr,
      util::ThroughputRecorder& recorder,
@@ -21,11 +29,10 @@ namespace core
     ~PingProcessor() = default;
 
     void process(std::condition_variable& var, std::atomic<bool>& readyToSend);
-    void processV3(std::condition_variable& var, std::atomic<bool>& readyToSend);
 
    private:
     const os::Socket& mSocket;
-    core::RelayManager& mRelayManager;
+    core::RelayManager<T>& mRelayManager;
     const volatile bool& mShouldProcess;
     const net::Address& mRelayAddress;
     util::ThroughputRecorder& mRecorder;
@@ -33,5 +40,169 @@ namespace core
 
     void fillMsgHdrWithAddr(msghdr& hdr, const net::Address& addr);
   };
+
+  template <typename T>
+  PingProcessor<T>::PingProcessor(
+   const os::Socket& socket,
+   core::RelayManager<T>& relayManager,
+   const volatile bool& shouldProcess,
+   const net::Address& relayAddress,
+   util::ThroughputRecorder& recorder,
+   legacy::v3::TrafficStats& stats)
+   : mSocket(socket),
+     mRelayManager(relayManager),
+     mShouldProcess(shouldProcess),
+     mRelayAddress(relayAddress),
+     mRecorder(recorder),
+     mStats(stats)
+  {
+    LogDebug("sending pings using this addr: ", relayAddress);
+  }
+
+  template <>
+  void PingProcessor<Relay>::process(std::condition_variable& var, std::atomic<bool>& readyToSend)
+  {
+    readyToSend = true;
+    var.notify_one();
+
+    GenericPacketBuffer<MaxPingsToSend, packets::NewRelayPingPacket::ByteSize> buffer;
+
+    while (mShouldProcess) {
+      std::this_thread::sleep_for(10ms);
+
+      std::array<core::PingData, MAX_RELAYS> pings;
+
+      auto numberOfRelaysToPing = mRelayManager.getPingData(pings);
+
+      if (numberOfRelaysToPing == 0) {
+        continue;
+      }
+
+      for (unsigned int i = 0; i < numberOfRelaysToPing; i++) {
+        auto& pkt = buffer.Packets[i];
+
+        auto& mhdr = buffer.Headers[i];
+        auto& hdr = mhdr.msg_hdr;
+
+        auto& addr = pings[i].Addr;
+
+        fillMsgHdrWithAddr(hdr, addr);
+
+        size_t index = 0;
+
+        // write data to the buffer
+        {
+          encoding::WriteUint8(
+           pkt.Buffer, index, static_cast<uint8_t>(packets::Type::NewRelayPing));  // TODO make template param
+          encoding::WriteUint64(pkt.Buffer, index, pings[i].Seq);
+
+          // use the recv port addr here so the receiving relay knows where to send it back to
+          encoding::WriteAddress(pkt.Buffer, index, mRelayAddress);
+        }
+
+        pkt.Len = index;
+        hdr.msg_iov[0].iov_len = index;
+
+        size_t headerSize = 0;
+        if (addr.Type == net::AddressType::IPv4) {
+          headerSize = net::IPv4UDPHeaderSize;
+        } else if (addr.Type == net::AddressType::IPv6) {
+          headerSize = net::IPv6UDPHeaderSize;
+        }
+
+        size_t wholePacketSize = headerSize + pkt.Len;
+
+        // could also just do: (1 + 8 + net::Address::ByteSize) * number of relays to ping to make this faster
+        mRecorder.addToSent(wholePacketSize);
+        mStats.BytesPerSecManagementTx += wholePacketSize;
+      }
+
+      buffer.Count = numberOfRelaysToPing;
+
+      if (!mSocket.multisend(buffer)) {
+        Log("failed to send messages, amount to send: ", numberOfRelaysToPing, ", actual sent: ", buffer.Count);
+      }
+    }
+  }
+
+  template <>
+  void PingProcessor<V3Relay>::process(std::condition_variable& var, std::atomic<bool>& readyToSend)
+  {
+    readyToSend = true;
+    var.notify_one();
+    GenericPacketBuffer<MaxPingsToSend, packets::NewRelayPingPacket::ByteSize> buffer;
+
+    while (mShouldProcess) {
+      std::this_thread::sleep_for(10ms);
+
+      std::array<core::V3PingData, MAX_RELAYS> pings;
+
+      auto numberOfRelaysToPing = mRelayManager.getPingData(pings);
+
+      if (numberOfRelaysToPing == 0) {
+        continue;
+      }
+
+      for (unsigned int i = 0; i < numberOfRelaysToPing; i++) {
+        auto& pkt = buffer.Packets[i];
+
+        auto& mhdr = buffer.Headers[i];
+        auto& hdr = mhdr.msg_hdr;
+
+        auto& addr = pings[i].Addr;
+
+        fillMsgHdrWithAddr(hdr, addr);
+
+        size_t index = 0;
+
+        // write data to the buffer
+        {
+          encoding::WriteUint8(
+           pkt.Buffer, index, static_cast<uint8_t>(packets::Type::NewRelayPing));  // TODO make template param
+          encoding::WriteUint64(pkt.Buffer, index, pings[i].Seq);
+
+          // use the recv port addr here so the receiving relay knows where to send it back to
+          encoding::WriteAddress(pkt.Buffer, index, mRelayAddress);
+        }
+
+        pkt.Len = index;
+        hdr.msg_iov[0].iov_len = index;
+
+        size_t headerSize = 0;
+        if (addr.Type == net::AddressType::IPv4) {
+          headerSize = net::IPv4UDPHeaderSize;
+        } else if (addr.Type == net::AddressType::IPv6) {
+          headerSize = net::IPv6UDPHeaderSize;
+        }
+
+        size_t wholePacketSize = headerSize + pkt.Len;
+
+        // could also just do: (1 + 8 + net::Address::ByteSize) * number of relays to ping to make this faster
+        mRecorder.addToSent(wholePacketSize);
+        mStats.BytesPerSecManagementTx += wholePacketSize;
+      }
+
+      buffer.Count = numberOfRelaysToPing;
+
+      if (!mSocket.multisend(buffer)) {
+        Log("failed to send messages, amount to send: ", numberOfRelaysToPing, ", actual sent: ", buffer.Count);
+      }
+    }
+  }
+
+  template <typename T>
+  inline void PingProcessor<T>::fillMsgHdrWithAddr(msghdr& hdr, const net::Address& addr)
+  {
+    // TODO need error handling here
+    if (addr.Type == net::AddressType::IPv4) {
+      auto sin = reinterpret_cast<sockaddr_in*>(hdr.msg_name);
+      addr.to(*sin);
+      hdr.msg_namelen = sizeof(*sin);
+    } else if (addr.Type == net::AddressType::IPv6) {
+      auto sin = reinterpret_cast<sockaddr_in6*>(hdr.msg_name);
+      addr.to(*sin);
+      hdr.msg_namelen = sizeof(*sin);
+    }
+  }
 }  // namespace core
 #endif

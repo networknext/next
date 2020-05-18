@@ -12,15 +12,15 @@ namespace core
     class OldRelayPongHandler: public BaseHandler
     {
      public:
-      OldRelayPongHandler(GenericPacket<>& packet, RelayManager& manager);
+      OldRelayPongHandler(GenericPacket<>& packet, RelayManager<V3Relay>& manager);
 
       void handle();
 
      private:
-      RelayManager& mRelayManager;
+      RelayManager<V3Relay>& mRelayManager;
     };
 
-    inline OldRelayPongHandler::OldRelayPongHandler(GenericPacket<>& packet, RelayManager& manager)
+    inline OldRelayPongHandler::OldRelayPongHandler(GenericPacket<>& packet, RelayManager<V3Relay>& manager)
      : BaseHandler(packet), mRelayManager(manager)
     {}
 

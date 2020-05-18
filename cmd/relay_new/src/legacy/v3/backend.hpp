@@ -27,7 +27,7 @@ namespace legacy
        os::Socket& socket,
        const util::Clock& relayClock,
        TrafficStats& stats,
-       core::RelayManager& manager,
+       core::RelayManager<core::V3Relay>& manager,
        const size_t speed);
       ~Backend() = default;
 
@@ -42,7 +42,7 @@ namespace legacy
       os::Socket& mSocket;
       const util::Clock& mClock;
       TrafficStats& mStats;
-      core::RelayManager& mRelayManager;
+      core::RelayManager<core::V3Relay>& mRelayManager;
       const size_t mSpeed;
       BackendToken mToken;
       uint64_t mInitTimestamp;

@@ -50,7 +50,7 @@ namespace core
      const std::string address,
      const crypto::Keychain& keychain,
      RouterInfo& routerInfo,
-     RelayManager& relayManager,
+     RelayManager<Relay>& relayManager,
      std::string base64RelayPublicKey,
      const core::SessionMap& sessions,
      legacy::v3::TrafficStats& stats);
@@ -74,7 +74,7 @@ namespace core
     const std::string mAddressStr;
     const crypto::Keychain& mKeychain;
     RouterInfo& mRouterInfo;
-    RelayManager& mRelayManager;
+    RelayManager<Relay>& mRelayManager;
     const std::string mBase64RelayPublicKey;
     const core::SessionMap& mSessionMap;
     legacy::v3::TrafficStats& mStats;
@@ -91,7 +91,7 @@ namespace core
    std::string address,
    const crypto::Keychain& keychain,
    RouterInfo& routerInfo,
-   RelayManager& relayManager,
+   RelayManager<Relay>& relayManager,
    std::string base64RelayPublicKey,
    const core::SessionMap& sessions,
    legacy::v3::TrafficStats& stats)
@@ -254,9 +254,10 @@ namespace core
     auto relays = doc.get<util::JSON>("ping_data");
     if (relays.isArray()) {
       size_t count = 0;
-      std::array<uint64_t, MAX_RELAYS> relayIDs = {};
-      std::array<net::Address, MAX_RELAYS> relayAddresses;
-      relays.foreach([&allValid, &count, &relayIDs, &relayAddresses](rapidjson::Value& relayData) {
+      std::array<Relay, MAX_RELAYS> incoming{};
+
+      // 'return' functions like 'continue' within the lambda
+      relays.foreach([&allValid, &count, &incoming](rapidjson::Value& relayData) {
         if (!relayData.HasMember("relay_id")) {
           Log("ping data missing 'relay_id'");
           allValid = false;
@@ -287,8 +288,8 @@ namespace core
 
         std::string address = addrMember.GetString();
 
-        relayIDs[count] = id;
-        if (!relayAddresses[count].parse(address)) {
+        incoming[count].ID = id;
+        if (!incoming[count].Addr.parse(address)) {
           Log("failed to parse address for relay '", id, "': ", address);
           allValid = false;
           return;
@@ -302,7 +303,7 @@ namespace core
         return false;
       }
 
-      mRelayManager.update(count, relayIDs, relayAddresses);
+      mRelayManager.update(count, incoming);
     } else if (relays.memberIs(util::JSON::Type::Null)) {
       Log("no relays received from backend, ping data is null");
     } else {

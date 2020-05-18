@@ -12,15 +12,15 @@ namespace core
     class NewRelayPongHandler: public BaseHandler
     {
      public:
-      NewRelayPongHandler(GenericPacket<>& packet, RelayManager& manager);
+      NewRelayPongHandler(GenericPacket<>& packet, RelayManager<Relay>& manager);
 
       void handle();
 
      private:
-      RelayManager& mRelayManager;
+      RelayManager<Relay>& mRelayManager;
     };
 
-    inline NewRelayPongHandler::NewRelayPongHandler(GenericPacket<>& packet, RelayManager& manager)
+    inline NewRelayPongHandler::NewRelayPongHandler(GenericPacket<>& packet, RelayManager<Relay>& manager)
      : BaseHandler(packet), mRelayManager(manager)
     {}
 

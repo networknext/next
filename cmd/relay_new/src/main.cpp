@@ -213,8 +213,8 @@ int main(int argc, const char* argv[])
 
   legacy::v3::TrafficStats v3TrafficStats;
   core::RouterInfo routerInfo;
-  core::RelayManager relayManager(relayClock);
-  core::RelayManager v3RelayManager(relayClock);
+  core::RelayManager<core::Relay> relayManager(relayClock);
+  core::RelayManager<core::V3Relay> v3RelayManager(relayClock);
   util::ThroughputRecorder recorder;
   auto chan = util::makeChannel<core::GenericPacket<>>();
   auto sender = std::get<0>(chan);
@@ -438,8 +438,8 @@ int main(int argc, const char* argv[])
         return 1;
       }
 
-      auto thread =
-       std::make_shared<std::thread>([&receiver, &env, socket, &cleanup, &v3BackendSuccess, &relayClock, &v3TrafficStats, &v3RelayManager] {
+      auto thread = std::make_shared<std::thread>(
+       [&receiver, &env, socket, &cleanup, &v3BackendSuccess, &relayClock, &v3TrafficStats, &v3RelayManager] {
          size_t speed = std::stoi(env.RelayV3Speed);
          legacy::v3::Backend backend(receiver, env, *socket, relayClock, v3TrafficStats, v3RelayManager, speed);
 

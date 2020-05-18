@@ -23,7 +23,7 @@ namespace legacy
      os::Socket& socket,
      const util::Clock& relayClock,
      TrafficStats& stats,
-     core::RelayManager& manager,
+     core::RelayManager<core::V3Relay>& manager,
      const size_t speed)
      : mReceiver(receiver),
        mEnv(env),
@@ -32,7 +32,7 @@ namespace legacy
        mStats(stats),
        mRelayManager(manager),
        mSpeed(speed),
-       mRelayID(crypto::FNV(mEnv.RelayV3Name).Value)
+       mRelayID(crypto::FNV(mEnv.RelayV3Name))
     {
       std::array<uint8_t, PingKeySize> key;
       crypto_auth_keygen(key.data());
@@ -158,7 +158,7 @@ namespace legacy
 
       mGroup = doc.get<std::string>("Group");
 
-      mGroupID = crypto::FNV(mGroup).Value;
+      mGroupID = crypto::FNV(mGroup);
 
       return true;
     }
@@ -236,9 +236,10 @@ namespace legacy
       auto relays = doc.get<util::JSON>("PingTargets");
       if (relays.isArray()) {
         size_t count = 0;
-        std::array<uint64_t, MAX_RELAYS> relayIDs = {};
-        std::array<net::Address, MAX_RELAYS> relayAddresses;
-        relays.foreach([&allValid, &count, &relayIDs, &relayAddresses](rapidjson::Value& relayData) {
+        std::array<core::V3Relay, MAX_RELAYS> incoming{};
+
+        // 'return' functions like 'continue' within the lambda
+        relays.foreach([&allValid, &count, &incoming](rapidjson::Value& relayData) {
           if (!relayData.HasMember("Id")) {
             Log("ping targets missing 'Id'");
             allValid = false;
@@ -269,12 +270,22 @@ namespace legacy
 
           std::string address = addrMember.GetString();
 
-          relayIDs[count] = id;
-          if (!relayAddresses[count].parse(address)) {
+          auto tokenMember = std::move(relayData["PingToken"]);
+          if (tokenMember.GetType() != rapidjson::Type::kStringType) {
+            Log("ping token not string type");
+            allValid = false;
+            return;
+          }
+
+          std::string token = tokenMember.GetString();
+
+          incoming[count].ID = id;
+          if (!incoming[count].Addr.parse(address)) {
             Log("failed to parse address for relay '", id, "': ", address);
             allValid = false;
             return;
           }
+          incoming[count].PingToken = token;
 
           count++;
         });
@@ -284,7 +295,7 @@ namespace legacy
           return false;
         }
 
-        mRelayManager.update(count, relayIDs, relayAddresses);
+        mRelayManager.update(count, incoming);
       } else if (relays.memberIs(util::JSON::Type::Null)) {
         Log("no relays received from backend, ping data is null");
       } else {
@@ -375,7 +386,8 @@ namespace legacy
 
         doc.set(trafficStats, "TrafficStats");
 
-        auto total = bytesPerSecInvalidRx + bytesPerSecPaidRx + bytesPerSecManagementRx + bytesPerSecMeasurementRx + bytesPerSecPaidTx + bytesPerSecManagementTx + bytesPerSecManagementTx;
+        auto total = bytesPerSecInvalidRx + bytesPerSecPaidRx + bytesPerSecManagementRx + bytesPerSecMeasurementRx +
+                     bytesPerSecPaidTx + bytesPerSecManagementTx + bytesPerSecManagementTx;
         double usage = 100.0 * 8.0 * total / mSpeed;
         doc.set(usage, "Usage");
       }
