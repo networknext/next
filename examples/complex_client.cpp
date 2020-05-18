@@ -218,6 +218,10 @@ void client_packet_received( next_client_t * client, void * _context, const uint
     verify_packet( packet_data, packet_bytes );
 }
 
+#if NEXT_PLATFORM != NEXT_PLATFORM_WINDOWS
+#define strncpy_s strncpy
+#endif // #if NEXT_PLATFORM != NEXT_PLATFORM_WINDOWS
+
 int main()
 {
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
@@ -235,7 +239,7 @@ int main()
 
     next_config_t config;
     next_default_config( &config );
-    strncpy_s( config.customer_public_key, customer_public_key, sizeof(config.customer_public_key) - 1 );
+    strncpy( config.customer_public_key, customer_public_key, sizeof(config.customer_public_key) - 1 );
 
     if ( next_init( &global_context, &config ) != NEXT_OK )
     {

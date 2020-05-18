@@ -44,6 +44,10 @@ void client_packet_received( next_client_t * client, void * context, const uint8
     next_printf( NEXT_LOG_LEVEL_INFO, "client received packet from server (%d bytes)", packet_bytes );
 }
 
+#if NEXT_PLATFORM != NEXT_PLATFORM_WINDOWS
+#define strncpy_s strncpy
+#endif // #if NEXT_PLATFORM != NEXT_PLATFORM_WINDOWS
+
 int main()
 {
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );

@@ -61,3 +61,7 @@ TODO
 	^--- functional tests for each of the ping cases above.
 
 	--------------------------------
+
+	Add encryption + signature support to Network Next. By doing this, we could help our customers avoid double signing/encrypting packets.
+
+	--------------------------------

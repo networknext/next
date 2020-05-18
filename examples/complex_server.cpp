@@ -219,6 +219,10 @@ void server_packet_received( next_server_t * server, void * _context, const next
     }
 }
 
+#if NEXT_PLATFORM != NEXT_PLATFORM_WINDOWS
+#define strncpy_s strncpy
+#endif // #if NEXT_PLATFORM != NEXT_PLATFORM_WINDOWS
+
 int main()
 {
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
