@@ -53,6 +53,7 @@ public:
     Allocator()
     {
         int result = next_mutex_create( &mutex );
+		(void) result;
         next_assert( result == NEXT_OK );
         num_allocations = 0;
     }
@@ -235,8 +236,8 @@ int main()
 
     next_config_t config;
     next_default_config( &config );
-    strncpy( config.hostname, backend_hostname, sizeof(config.hostname) - 1 );
-    strncpy( config.customer_private_key, customer_private_key, sizeof(config.customer_private_key) - 1 );
+    strncpy_s( config.hostname, backend_hostname, sizeof(config.hostname) - 1 );
+    strncpy_s( config.customer_private_key, customer_private_key, sizeof(config.customer_private_key) - 1 );
 
     if ( next_init( &global_context, &config ) != NEXT_OK )
     {

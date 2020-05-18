@@ -58,6 +58,7 @@ public:
     Allocator()
     {
         int result = next_mutex_create( &mutex );
+		(void) result;
         next_assert( result == NEXT_OK );
         num_allocations = 0;
     }
