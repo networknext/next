@@ -555,7 +555,10 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 		clientRelays, err := geoClient.RelaysWithin(location.Latitude, location.Longitude, 500, "mi")
 
 		if len(clientRelays) == 0 || err != nil {
-			sentry.CaptureException(err)
+			if err != nil {
+				sentry.CaptureException(err)
+			}
+
 			level.Error(locallogger).Log("msg", "failed to locate relays near client", "err", err)
 			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.NearRelaysLocateFailure)
 
