@@ -1,89 +1,24 @@
 @startuml
-node RelayStates {
-    node Enabled [
-        <b>Enabled</b>
+Enabled : Relay is online and\ncommunicating with\nthe backend
+    Offline : Relay hasn't shutdown\nbut isn't communicating\nwith the backend
+    Quarantined : Relay continuously\ndisconnects or has\nother problems
+    Maintenance : Relay has cleanly\nshut down
+    Disabled : Relay has been\nmanually shut down
+    Decommissioned : Final state before\npermanent shutdown
 
-        -Relay is online and
-        communicating with
-        the backend
-    ]
-    node Maintenance [
-        <b>Maintenance</b>
-
-        - State for relays
-        intentionally shut down
-    ]
-    node Disabled [
-        <b>Disabled</b>
-
-        -Temporary state before
-        decommissioning
-    ]
-    node Quarantined [
-        <b>Quarantined</b>
-
-        -State for problematic relays
-
-        -Can only go back
-        to maintenance manually
-    ]
-    node Decommissioned [
-        <b>Decommissioned</b>
-
-        -Relay is no longer
-        part of the system
-    ]
-    node Offline [
-        <b>Offline</b>
-
-        -Relay hasn't shutdown
-        but isn't communicating
-        with the backend
-    ]
-}
-
-Enabled ..> Maintenance : Clean shutdown
-Maintenance ..> Enabled : Relay manually\nre-enabled
-Disabled ..> Maintenance : Manual only
-Maintenance ..> Disabled : Manual only
-Disabled ..> Decommissioned : Manual only
-
-Enabled ..> Offline : Communication with the\nbackend stops
-Offline ..> Enabled : Communication with the\nbackend resumes
-Enabled ..> Quarantined : When the backend detects\na problematic relay
-Quarantined ..> Maintenance : Manual only
-
-node Relations {
-    node RelayBackend [
-        <b>RelayBackend</b>
-
-        -State set to Enabled
-        when communicating with relay
-
-        -State set to Offline
-        when not communicating with relay
-
-        -State set to Quarantine
-        when relay is problematic
-    ]
-    node OpsCLITool [
-        <b>Ops CLI Tool</b>
-
-        -State set to Maintenance
-        when relay shuts down cleanly
-
-        -State set to Disabled
-        when `next relay disable`
-        is used
-
-        -Decommissioned is unimplemented
-    ]
-    node Relay [
-        <b>Relay</b>
-    ]
-}
-
-RelayBackend <..> Relay : Enabled,\nOffline,\nQuarantine
-OpsCLITool <..> Relay : Maintenance,\nDisabled,\nDecommissioned
+    [*] --> Enabled : connected
+    Enabled --> Offline : disconnected
+    Offline --> Enabled : reconnected
+    Offline --> Disabled : `next relay disable`
+    Enabled --> Quarantined : problematic
+    Enabled --> Maintenance : clean shutdown
+    Enabled --> Disabled : `next relay disable`
+    Maintenance --> Enabled : `next relay enable`
+    Quarantined --> Enabled : `next relay enable`
+    Quarantined --> Disabled : `next relay disable`
+    Maintenance --> Disabled : `next relay disable`
+    Disabled --> Enabled : `next relay enable`
+    Disabled --> Decommissioned : manual only
+    Decommissioned --> [*]
 @enduml
 
