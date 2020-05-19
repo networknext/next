@@ -6,6 +6,7 @@
 #include "encoding/base64.hpp"
 #include "encoding/read.hpp"
 #include "packet_send.hpp"
+#include "core/packets/types.hpp"
 
 using namespace std::chrono_literals;
 
@@ -77,7 +78,7 @@ namespace legacy
       }
       BackendRequest request = {};
       {
-        request.Type = PacketType::InitRequest;
+        request.Type = core::packets::Type::V3InitRequest;
       }
       BackendResponse response;
       util::JSON doc;
@@ -142,7 +143,7 @@ namespace legacy
       }
       BackendRequest request = {};
       {
-        request.Type = PacketType::ConfigRequest;
+        request.Type = core::packets::Type::V3ConfigRequest;
       }
       BackendResponse response;
       util::JSON doc;
@@ -224,7 +225,7 @@ namespace legacy
       }
       BackendRequest request = {};
       {
-        request.Type = PacketType::UpdateRequest;
+        request.Type = core::packets::Type::V3UpdateRequest;
       }
       BackendResponse response;
       util::JSON doc;
@@ -554,7 +555,7 @@ namespace legacy
         return false;
       }
 
-      response.Type = static_cast<PacketType>(packet.Buffer[0]);
+      response.Type = static_cast<core::packets::Type>(packet.Buffer[0]);
 
       if (request.FragmentTotal == 0) {
         request.Type = response.Type;

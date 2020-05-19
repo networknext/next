@@ -25,7 +25,7 @@ namespace legacy
     // 64 byte MAC -- handled automatically by sodium
     auto build_udp_fragment(
 
-     PacketType packet_type,
+     core::packets::Type packet_type,
      const BackendToken& master_token,
      uint64_t id,
      uint8_t fragmentIndex,

@@ -757,8 +757,6 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			return
 		}
 
-		fmt.Printf("Relay (%s) state: %d\n", relay.Addr.String(), relay.State)
-
 		statsUpdate := &routing.RelayStatsUpdate{}
 		statsUpdate.ID = relayCacheEntry.ID
 		statsUpdate.PingStats = append(statsUpdate.PingStats, relayUpdateRequest.PingStats...)

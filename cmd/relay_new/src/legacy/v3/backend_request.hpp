@@ -1,6 +1,7 @@
 #pragma once
 
 #include "constants.hpp"
+#include "core/packets/types.hpp"
 
 namespace legacy
 {
@@ -18,8 +19,8 @@ namespace legacy
       uint64_t ID;
       std::array<BackendRequestFragment, FragmentMax> Fragments;
       uint8_t FragmentTotal;
-      PacketType Type;
-      uint64_t At; // when the request was made
+      core::packets::Type Type;
+      uint64_t At;  // when the request was made
     };
   }  // namespace v3
 }  // namespace legacy

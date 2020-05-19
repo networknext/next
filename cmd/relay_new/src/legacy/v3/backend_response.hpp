@@ -2,6 +2,7 @@
 
 #include "core/packet.hpp"
 #include "constants.hpp"
+#include "core/packets/types.hpp"
 
 namespace legacy
 {
@@ -9,7 +10,7 @@ namespace legacy
   {
     struct BackendResponse
     {
-      PacketType Type;
+      core::packets::Type Type;
       std::array<uint8_t, 64> Signature;
       uint64_t GUID;
       uint8_t FragIndex;

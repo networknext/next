@@ -121,7 +121,10 @@ namespace core
      * However to not disrupt player experience the remaining packets are still
      * handled until the global killswitch is flagged
      */
-    switch (static_cast<packets::Type>(packet.Buffer[0])) {
+
+    auto type = static_cast<packets::Type>(packet.Buffer[0]);
+    LogDebug("incoming packet, type = ", type);
+    switch (type) {
       case packets::Type::NewRelayPing: {
         if (!mShouldProcess) {
           Log("relay in process of shutting down, rejecting relay ping packet");

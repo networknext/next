@@ -39,33 +39,5 @@ namespace legacy
      0x31, 0xcd, 0x6d, 0xeb, 0x94, 0xc2, 0xef, 0x7a, 0xa2, 0xee, 0x6d, 0xc1, 0x96, 0x2c, 0x45, 0xf9, 0x00, 0xf3, 0x69, 0x8e,
      0x83, 0x55, 0x31, 0xd2, 0x14, 0xb2, 0x47, 0xee, 0x10, 0x08, 0x60, 0xe4, 0x41, 0x6d, 0xb2, 0x10,
     };
-
-    enum class PacketType : uint8_t
-    {
-      InitRequest   = 43,
-      ConfigRequest = 50,
-      UpdateRequest = 48,  // relay report
-    };
-
-    inline std::ostream& operator<<(std::ostream& os, const PacketType& type)
-    {
-      std::string str;
-      switch (type) {
-        case PacketType::InitRequest: {
-          str = "Init Request";
-        } break;
-        case PacketType::ConfigRequest: {
-          str = "Config Request";
-        } break;
-        case PacketType::UpdateRequest: {
-          str = "Update Request";
-        } break;
-        default: {
-          str = "Unknown";
-        } break;
-      }
-
-      return os << str << " (" << static_cast<uint32_t>(type) << ')';
-    }
   }  // namespace v3
 }  // namespace legacy
