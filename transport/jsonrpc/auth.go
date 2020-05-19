@@ -1,22 +1,29 @@
 package jsonrpc
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"gopkg.in/auth0.v4/management"
 )
 
 type AuthService struct {
-	Auth0 storage.Auth0
+	Auth0   storage.Auth0
+	Storage storage.Storer
 }
 
 type AccountsArgs struct {
+	Emails []string           `json:"emails"`
+	Roles  []*management.Role `json:"roles"`
 }
 
 type AccountsReply struct {
@@ -32,10 +39,12 @@ type AccountReply struct {
 }
 
 type account struct {
-	UserID string             `json:"user_id"`
-	Name   string             `json:"name"`
-	Email  string             `json:"email"`
-	Roles  []*management.Role `json:"roles"`
+	UserID      string             `json:"user_id"`
+	ID          string             `json:"id"`
+	CompanyName string             `json:"company_name"`
+	Name        string             `json:"name"`
+	Email       string             `json:"email"`
+	Roles       []*management.Role `json:"roles"`
 }
 
 func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
@@ -49,8 +58,17 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 		if err != nil {
 			return fmt.Errorf("failed to fetch user roles: %w", err)
 		}
-		reply.UserAccounts = append(reply.UserAccounts, UnMarshalUser(a, userRoles))
+		emailParts := strings.Split(*a.Email, "@")
+		if len(emailParts) <= 0 {
+			return fmt.Errorf("failed to parse email %s for domain", *a.Email)
+		}
+		domain := emailParts[len(emailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
+
+		buyer, err := s.Storage.BuyerWithDomain(domain)
+
+		reply.UserAccounts = append(reply.UserAccounts, newAccount(a, userRoles.Roles, buyer))
 	}
+
 	return nil
 }
 
@@ -64,13 +82,20 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 		return fmt.Errorf("failed to fetch user account: %w", err)
 	}
 
-	userRoles, err := s.Auth0.Manager.User.Roles(args.UserID)
+	emailParts := strings.Split(*userAccount.Email, "@")
+	if len(emailParts) <= 0 {
+		return fmt.Errorf("failed to parse email %s for domain", *userAccount.Email)
+	}
+	domain := emailParts[len(emailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
 
+	buyer, err := s.Storage.BuyerWithDomain(domain)
+
+	userRoles, err := s.Auth0.Manager.User.Roles(*userAccount.ID)
 	if err != nil {
-		return fmt.Errorf("failed to get user roles: %w", err)
+		return fmt.Errorf("failed to fetch user roles: %w", err)
 	}
 
-	reply.UserAccount = UnMarshalUser(userAccount, userRoles)
+	reply.UserAccount = newAccount(userAccount, userRoles.Roles, buyer)
 
 	return nil
 }
@@ -86,19 +111,90 @@ func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, repl
 	return nil
 }
 
-func UnMarshalUser(u *management.User, r *management.RoleList) account {
+func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
+	connectionID := "Username-Password-Authentication"
+	emails := args.Emails
+	roles := args.Roles
+	falseValue := false
+
+	var accounts []account
+
+	newCustomerIDsMap := make(map[string]interface{})
+
+	for _, e := range emails {
+
+		emailParts := strings.Split(e, "@")
+		if len(emailParts) <= 0 {
+			return fmt.Errorf("failed to parse email %s for domain", e)
+		}
+		domain := emailParts[len(emailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
+
+		buyer, err := s.Storage.BuyerWithDomain(domain)
+
+		pw, err := GenerateRandomString(32)
+		if err != nil {
+			fmt.Errorf("failed to generate a random password: %w", err)
+		}
+		newUser := &management.User{
+			Connection:    &connectionID,
+			Email:         &e,
+			EmailVerified: &falseValue,
+			VerifyEmail:   &falseValue,
+			Password:      &pw,
+			AppMetadata: map[string]interface{}{
+				"customer": newCustomerIDsMap,
+			},
+		}
+		if err = s.Auth0.Manager.User.Create(newUser); err != nil {
+			return fmt.Errorf("failed to create new user: %w", err)
+		}
+
+		if err = s.Auth0.Manager.User.AssignRoles(*newUser.ID, args.Roles...); err != nil {
+			return fmt.Errorf("failed to add user roles: %w", err)
+		}
+
+		accounts = append(accounts, newAccount(newUser, roles, buyer))
+	}
+	reply.UserAccounts = accounts
+	return nil
+}
+
+func GenerateRandomString(n int) (string, error) {
+	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
+	bytes, err := GenerateRandomBytes(n)
+	if err != nil {
+		return "", err
+	}
+	for i, b := range bytes {
+		bytes[i] = letters[b%byte(len(letters))]
+	}
+	return string(bytes), nil
+}
+
+func GenerateRandomBytes(n int) ([]byte, error) {
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+	// Note that err == nil only if we read len(b) bytes.
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
+}
+
+func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer) account {
+	id := strconv.FormatUint(buyer.ID, 10)
+
 	account := account{
-		UserID: *u.Identities[0].UserID,
-		Name:   *u.Name,
-		Email:  *u.Email,
-		Roles:  r.Roles,
+		UserID:      *u.Identities[0].UserID,
+		ID:          id,
+		CompanyName: buyer.Name,
+		Name:        *u.Name,
+		Email:       *u.Email,
+		Roles:       r,
 	}
 
 	return account
-}
-
-func MarshalUser(a account) *management.User {
-	return nil
 }
 
 type RolesArgs struct {
@@ -148,23 +244,22 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 		return fmt.Errorf("failed to fetch user roles: %w", err)
 	}
 
-	for _, r := range userRoles.Roles {
-		err := s.Auth0.Manager.User.RemoveRoles(args.UserID, r)
-		if err != nil {
-			return fmt.Errorf("failed to remove current user role: %w", err)
-		}
+	if len(userRoles.Roles) > 0 {
+		err = s.Auth0.Manager.User.RemoveRoles(args.UserID, userRoles.Roles...)
+	}
+	if err != nil {
+		return fmt.Errorf("failed to remove current user role: %w", err)
 	}
 
 	if len(args.Roles) == 0 {
 		return nil
 	}
 
-	for _, r := range args.Roles {
-		err := s.Auth0.Manager.User.AssignRoles(args.UserID, r)
-		if err != nil {
-			return fmt.Errorf("failed to assign role: %w", err)
-		}
+	err = s.Auth0.Manager.User.AssignRoles(args.UserID, args.Roles...)
+	if err != nil {
+		return fmt.Errorf("failed to assign role: %w", err)
 	}
+
 	reply.Roles = args.Roles
 	return nil
 }

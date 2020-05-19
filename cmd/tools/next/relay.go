@@ -169,7 +169,7 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 		}
 	}
 
-	if !runCommandEnv("make", []string{"build-relay"}, nil) {
+	if !runCommandEnv("make", []string{"build-relay-new"}, nil) {
 		log.Fatal("Failed to build relay")
 	}
 

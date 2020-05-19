@@ -127,3 +127,28 @@ func SelectRandomRoute(source rand.Source) SelectorFunc {
 		return []Route{routes[randgen.Intn(len(routes))]}
 	}
 }
+
+// SelectUnencumberedRoutes returns routes whose relays don't have too many sessions using them
+// For example if sessionThreshold was 0.8 (80%), then all routes that have at least one relay whose session count
+// is 80% or more of its max allowed session count would be filtered out
+func SelectUnencumberedRoutes(sessionThreshold float64) SelectorFunc {
+	return func(routes []Route) []Route {
+		unencumberedRoutes := make([]Route, 0)
+
+		for _, route := range routes {
+			isRouteUnencumbered := true
+			for _, relay := range route.Relays {
+				if float64(relay.TrafficStats.SessionCount)/float64(relay.MaxSessions) >= sessionThreshold {
+					isRouteUnencumbered = false
+					break
+				}
+			}
+
+			if isRouteUnencumbered {
+				unencumberedRoutes = append(unencumberedRoutes, route)
+			}
+		}
+
+		return unencumberedRoutes
+	}
+}

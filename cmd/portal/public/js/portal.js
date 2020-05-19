@@ -6,40 +6,6 @@ mapboxgl.accessToken = 'pk.eyJ1IjoiYmF1bWJhY2hhbmRyZXciLCJhIjoiY2s4dDFwcGo2MGowZ
 
 const DEC_TO_PERC = 100;
 
-var userInfo = {
-	email: "",
-	name: "",
-	pubKey: "",
-	nickname: "",
-	token: "",
-	userId: "",
-};
-
-var defaultSessionDetailsVue = {
-	meta: null,
-	slices: [],
-	showDetails: false,
-};
-
-var defaultSessionsTable = {
-	onNN: [],
-	sessions: [],
-	showCount: false,
-};
-
-var defaultUserSessionTable = {
-	sessions: [],
-	showTable: false,
-}
-
-var accountsTable = null;
-var mapSessionsCount = null;
-var pubKeyInput = null;
-var relaysTable = null;
-var sessionDetailsVue = null;
-var sessionsTable = null;
-var userSessionTable = null;
-
 var autoSigninPermissions = null;
 var addUserPermissions = null;
 var editUserPermissions = [];
@@ -50,7 +16,7 @@ JSONRPCClient = {
 			'Accept':		'application/json',
 			'Accept-Encoding':	'gzip',
 			'Content-Type':		'application/json',
-			'Authorization': `Bearer ${userInfo.token}`
+			'Authorization': `Bearer ${UserHandler.userInfo.token}`
 		}
 
 		params = params || {}
@@ -66,13 +32,59 @@ JSONRPCClient = {
         	})
 		});
 
-
 		return response.json().then((json) => {
 			if (json.error) {
 				throw new Error(json.error);
 			}
 			return json.result
 		});
+	}
+}
+
+AuthHandler = {
+	async init() {
+		const domain = 'networknext.auth0.com';
+		const clientID = 'qR60cjo6FceoTWPYLNZSQmNiP2WIAQr9';
+
+		this.auth0Client = await createAuth0Client({
+			domain: domain,
+			client_id: clientID
+		})
+		.catch((e) => {
+			Sentry.captureException(e);
+		});
+
+		const isAuthenticated =
+			await this.auth0Client.isAuthenticated()
+				.catch((e) => {
+					Sentry.captureException(e);
+				});
+
+		if (isAuthenticated) {
+			startApp();
+			return;
+		}
+		const query = window.location.search;
+		if (query.includes("code=") && query.includes("state=")) {
+
+			await this.auth0Client.handleRedirectCallback()
+				.catch((e) => {
+					Sentry.captureException(e);
+				});
+
+			window.history.replaceState({}, document.title, "/");
+			startApp();
+		} else {
+			await this.auth0Client.loginWithRedirect({
+				redirect_uri: window.location.origin
+			}).catch((e) => {
+				Sentry.captureException(e);
+			});
+		}
+	},
+	auth0Client: null,
+	logout() {
+		this.auth0Client.logout();
 	}
 }
 
@@ -94,15 +106,43 @@ MapHandler = {
 		},
 	},
 	mapInstance: null,
-	async initMap() {
+	initMap() {
+		let buyerId = !UserHandler.isAdmin() ? UserHandler.userInfo.id : "";
+		this.updateFilter('map', {
+			buyerId: buyerId,
+			sessionType: 'all'
+		});
+	},
+	updateFilter(filter) {
+		Object.assign(rootComponent.$data.pages.map, {filter: filter});
+		this.refreshMapSessions();
+	},
+	updateMap(mapType) {
+		switch (mapType) {
+			case 'USA':
+				this.mapInstance.setProps({
+					...this.defaultUSA
+				});
+				break;
+			case 'WORLD':
+				this.mapInstance.setProps({
+					...this.defaultWorld
+				});
+				break;
+			default:
+				// Nothing for now
+		}
+	},
+	refreshMapSessions() {
+		let filter = rootComponent.$data.pages.map.filter;
 		JSONRPCClient
-			.call('BuyersService.SessionMapPoints', {})
+			.call('BuyersService.SessionMapPoints', {buyer_id: filter.buyerId})
 			.then((response) => {
 				/**
 				 * This code is used for demo purposes -> it uses around 580k points over NYC
 				 */
 				/* const DATA_URL =
-					  'https://raw.githubusercontent.com/uber-common/deck.gl-data/master/examples/screen-grid/uber-pickup-locations.json';
+					'https://raw.githubusercontent.com/uber-common/deck.gl-data/master/examples/screen-grid/uber-pickup-locations.json';
 				let data = DATA_URL;
 				const cellSize = 5, gpuAggregation = true, aggregation = 'SUM';
 				let sessionGridLayer = new deck.ScreenGridLayer({
@@ -116,13 +156,33 @@ MapHandler = {
 					gpuAggregation,
 					aggregation
 				}); */
-				let data = response.map_points;
-				Object.assign(mapSessionsCount.$data, {
-					onNN: data.filter((point) => {
-						return point.on_network_next == true;
-					}),
-					sessions: data,
+
+				let sessions = response.map_points || [];
+				let onNN = sessions.filter((point) => {
+					return point.on_network_next;
 				});
+				let direct = sessions.filter((point) => {
+					return !point.on_network_next;
+				});
+				let data = [];
+
+				switch (filter.sessionType) {
+					case 'direct':
+						data = direct;
+						break;
+					case 'nn':
+						data = onNN;
+						break;
+					default:
+						data = sessions;
+				}
+
+				Object.assign(rootComponent.$data, {
+					direct: direct,
+					mapSessions: sessions,
+					onNN: onNN,
+				});
+
 				let layer = new deck.ScreenGridLayer({
 					id: 'sessions-layer',
 					data,
@@ -142,154 +202,157 @@ MapHandler = {
 					gpuAggregation: true,
 					aggregation: 'SUM'
 				});
-				let layers = [layer];
-				this.mapInstance = new deck.DeckGL({
-					mapboxApiAccessToken: mapboxgl.accessToken,
-					mapStyle: 'mapbox://styles/mapbox/dark-v10',
-					initialViewState: {
-						...this.defaultWorld.initialViewState
-					},
-					container: 'map-container',
-					controller: true,
-					layers: layers,
-				});
-				Object.assign(mapSessionsCount.$data, {showCount: true});
+
+				let layers = data.length > 0 ? [layer] : [];
+				if (this.mapInstance) {
+					this.mapInstance.setProps({layers: []})
+					this.mapInstance.setProps({layers: layers})
+				} else {
+					this.mapInstance = new deck.DeckGL({
+						mapboxApiAccessToken: mapboxgl.accessToken,
+						mapStyle: 'mapbox://styles/mapbox/dark-v10',
+						initialViewState: {
+							...MapHandler.defaultWorld.initialViewState
+						},
+						container: 'map-container',
+						controller: true,
+						layers: layers,
+					});
+				}
+				Object.assign(rootComponent.$data, {showCount: true});
 			})
 			.catch((e) => {
 				console.log("Something went wrong with map init");
 				console.log(e);
+				Sentry.captureException(e);
 			});
 	},
-	updateMap(mapType) {
-		switch (mapType) {
-			case 'USA':
-				this.mapInstance.setProps({
-					...this.defaultUSA
-				});
-				break;
-			case 'WORLD':
-				this.mapInstance.setProps({
-					...this.defaultWorld
-				});
-				break;
-			default:
-				// Nothing for now
-		}
-	}
+}
+
+UserHandler = {
+	userInfo: {
+		company: "",
+		email: "",
+		id: "",
+		name: "",
+		nickname: "",
+		pubKey: "",
+		roles: [],
+		token: "",
+		userId: "",
+	},
+	async fetchCurrentUserInfo() {
+		return AuthHandler.auth0Client.getIdTokenClaims()
+			.then((response) => {
+				this.userInfo = {
+					email: response.email,
+					name: response.name,
+					nickname: response.nickname,
+					userId: response.sub,
+					token: response.__raw,
+				};
+				return JSONRPCClient.call("AuthService.UserAccount", {user_id: this.userInfo.userId})
+			})
+			.then((response) => {
+				this.userInfo.id = response.account.id;
+				this.userInfo.company = response.account.company_name;
+				this.userInfo.roles = response.account.roles;
+			}).catch((e) => {
+				console.log("Something went wrong getting the current user information");
+				console.log(e);
+				Sentry.captureException(e);
+
+				// Need to handle no BuyerID gracefully
+			});
+	},
+	isAdmin() {
+		return UserHandler.userInfo.roles.findIndex((role) => role.name == "Admin") !== -1
+	},
+	isOwner() {
+		return UserHandler.userInfo.roles.findIndex((role) => role.name == "Owner") !== -1
+	},
+	isViewer() {
+		return UserHandler.userInfo.roles.findIndex((role) => role.name == "Viewer") !== -1
+	},
 }
 
 WorkspaceHandler = {
-	alerts: {
-		sessionToolAlert: document.getElementById("session-tool-alert"),
-		sessionToolDanger: document.getElementById("session-tool-danger"),
-		userToolAlert: document.getElementById("user-tool-alert"),
-		userToolDanger: document.getElementById("user-tool-danger"),
-	},
-	links: {
-		accountsLink: document.getElementById("accounts-link"),
-		configLink: document.getElementById("config-link"),
-		mapLink: document.getElementById("map-link"),
-		sessionsLink: document.getElementById("sessions-link"),
-		sessionToolLink: document.getElementById("session-tool-link"),
-		settingsLink: document.getElementById("settings-link"),
-		userToolLink: document.getElementById("user-tool-link"),
-	},
-	newUserEmail: document.getElementById("email"),
-	newUserPerms: document.getElementById("perms"),
-	pages: {
-		accounts: document.getElementById("accounts-page"),
-		config: document.getElementById("config-page"),
-	},
-	spinners: {
-		map: document.getElementById("map-spinner"),
-		sessions: document.getElementById("sessions-spinner"),
-		sessionTool: document.getElementById("session-tool-spinner"),
-		userTool: document.getElementById("user-tool-spinner"),
-		settings: document.getElementById("settings-spinner"),
-	},
-	workspaces: {
-		mapWorkspace: document.getElementById("map-workspace"),
-		sessionsWorkspace: document.getElementById("sessions-workspace"),
-		sessionToolWorkspace: document.getElementById("session-tool-workspace"),
-		settingsWorkspace: document.getElementById("settings-workspace"),
-		userToolWorkspace: document.getElementById("user-tool-workspace"),
-	},
-	changeAccountPage(page) {
-		// Hide all workspaces
-		this.pages.accounts.style.display = 'none';
-		this.pages.config.style.display = 'none';
-
-		// Run setup for selected page
+	changeSettingsPage(page) {
+		let showSettings = false;
+		let showConfig = false;
 		switch (page) {
-			case 'config':
-				this.loadConfigPage();
-				this.links.accountsLink.classList.remove("active");
-				this.links.configLink.classList.add("active");
-				this.pages.config.style.display = 'block';
+			case 'users':
+				showSettings = true;
 				break;
-			default:
-				this.links.configLink.classList.remove("active");
-				this.links.accountsLink.classList.add("active");
-				this.pages.accounts.style.display = 'block';
+			case 'config':
+				showConfig = true;
+				break;
 		}
+		Object.assign(rootComponent.$data.pages.settings, {
+			showConfig: showConfig,
+			showSettings: showSettings,
+		});
 	},
-	changePage(page) {
-		// Hide all workspaces
-		this.workspaces.mapWorkspace.style.display = 'none';
-		this.workspaces.sessionsWorkspace.style.display = 'none';
-		this.workspaces.sessionToolWorkspace.style.display = 'none';
-		this.workspaces.settingsWorkspace.style.display = 'none';
-		this.workspaces.userToolWorkspace.style.display = 'none';
-
-		// Remove all link highlights
-		this.links.accountsLink.classList.remove("active");
-		this.links.configLink.classList.remove("active");
-		this.links.mapLink.classList.remove("active");
-		this.links.sessionsLink.classList.remove("active");
-		this.links.sessionToolLink.classList.remove("active");
-		this.links.userToolLink.classList.remove("active");
-		this.links.settingsLink.classList.remove("active");
-
-		// Run setup for selected page
+	changePage(page, options) {
 		switch (page) {
-			case 'settings':
-				this.loadSettingsPage();
-				this.workspaces.settingsWorkspace.style.display = 'block';
-				this.links.accountsLink.classList.add("active");
-				this.links.settingsLink.classList.add("active");
+			case 'map':
+				MapHandler.initMap();
 				break;
 			case 'sessions':
 				this.loadSessionsPage();
-				this.workspaces.sessionsWorkspace.style.display = 'block';
-				this.links.sessionsLink.classList.add("active");
 				break;
-			case 'session-tool':
-				WorkspaceHandler.alerts.sessionToolAlert.style.display = 'block';
-				WorkspaceHandler.alerts.sessionToolDanger.style.display = 'none';
-
-				Object.assign(sessionDetailsVue.$data, {...defaultSessionDetailsVue});
-				document.getElementById("session-id-input").value = '';
-				this.workspaces.sessionToolWorkspace.style.display = 'block';
-				this.links.sessionToolLink.classList.add("active");
+			case 'sessionTool':
+				let id = options || '';
+				Object.assign(rootComponent.$data.pages.sessionTool, {
+					danger: false,
+					id: id,
+					info: id == '',
+					showDetails: false
+				});
+				id != '' ? this.fetchSessionInfo() : null;
 				break;
-			case 'user-tool':
-				WorkspaceHandler.alerts.userToolAlert.style.display = 'block';
-				WorkspaceHandler.alerts.userToolDanger.style.display = 'none';
-
-				Object.assign(userSessionTable.$data, {...defaultUserSessionTable});
-
-				document.getElementById("user-hash-input").value = '';
-				this.workspaces.userToolWorkspace.style.display = 'block';
-				this.links.userToolLink.classList.add("active");
+			case 'settings':
+				Object.assign(rootComponent.$data.pages.settings, {
+					newUser: {
+						failure: '',
+						success: '',
+					},
+					showAccounts: false,
+					showConfig: false,
+					showSettings: true,
+					updateKey: {
+						failure: '',
+						success: '',
+					},
+					updateUser: {
+						failure: '',
+						success: '',
+					},
+				});
+				this.loadSettingsPage();
 				break;
-			default:
-				this.workspaces.mapWorkspace.style.display = 'block';
-				this.links.mapLink.classList.add("active");
+			case 'userTool':
+				let hash = options || '';
+				Object.assign(rootComponent.$data.pages.userTool, {
+					danger: false,
+					hash: hash,
+					info: hash == '',
+					showTable: false,
+					sessions: []
+				});
+				hash != '' ? this.fetchUserSessions() : null;
+				break;
 		}
+
+		Object.keys(rootComponent.$data.pages).forEach((page) => {
+			Object.assign(rootComponent.$data.pages[page], {show: false});
+		});
+
+		Object.assign(rootComponent.$data.pages[page], {show: true});
 	},
 	editUser(accountInfo, index) {
-		accountsTable.$set(accountsTable.$data.accounts[index], 'delete', false);
-		accountsTable.$set(accountsTable.$data.accounts[index], 'edit', true);
+		rootComponent.$set(rootComponent.$data.pages.settings.accounts[index], 'delete', false);
+		rootComponent.$set(rootComponent.$data.pages.settings.accounts[index], 'edit', true);
 
 		editUserPermissions[accountInfo.user_id].enable();
 	},
@@ -300,11 +363,27 @@ WorkspaceHandler = {
 				.call('AuthService.UpdateUserRoles', {user_id: `auth0|${accountInfo.user_id}`, roles: roles})
 				.then((response) => {
 					accountInfo.roles = response.roles || [];
-					WorkspaceHandler.cancelEditUser(accountInfo);
+					this.cancelEditUser(accountInfo);
+					Object.assign(rootComponent.$data.pages.settings.updateUser, {
+						success: 'Updated user account successfully',
+					});
+					setTimeout(() => {
+						Object.assign(rootComponent.$data.pages.settings.updateUser, {
+							success: '',
+						});
+					}, 5000);
 				})
 				.catch((e) => {
 					console.log("Something went wrong updating the users permissions");
-					console.log(e);
+					Sentry.captureException(e);
+					Object.assign(rootComponent.$data.pages.settings.updateUser, {
+						failure: 'Failed to update user',
+					});
+					setTimeout(() => {
+						Object.assign(rootComponent.$data.pages.settings.updateUser, {
+							failure: '',
+						});
+					}, 5000);
 				});
 			return;
 		}
@@ -312,173 +391,354 @@ WorkspaceHandler = {
 			JSONRPCClient
 				.call('AuthService.DeleteUserAccount', {user_id: `auth0|${accountInfo.user_id}`})
 				.then((response) => {
-					let accounts = accountsTable.$data.accounts;
+					let accounts = rootComponent.$data.pages.settings.accounts;
 					accounts.splice(index, 1);
-					Object.assign(accountsTable.$data, {accounts: accounts});
+					Object.assign(rootComponent.$data.pages.settings, {accounts: accounts});
 					editUserPermissions[accountInfo.user_id] = null;
+					Object.assign(rootComponent.$data.pages.settings.updateUser, {
+						success: 'Deleted user account successfully',
+					});
+					setTimeout(() => {
+						Object.assign(rootComponent.$data.pages.settings.updateUser, {
+							success: '',
+						});
+					}, 5000);
 				})
 				.catch((e) => {
 					console.log("Something went wrong updating the users permissions");
-					console.log(e);
+					Sentry.captureException(e);
+					Object.assign(rootComponent.$data.pages.settings.updateUser, {
+						failure: 'Failed to delete user',
+					});
+					setTimeout(() => {
+						Object.assign(rootComponent.$data.pages.settings.updateUser, {
+							failure: '',
+						});
+					}, 5000);
 				});
 			return;
 		}
 	},
 	deleteUser(index) {
-		accountsTable.$set(accountsTable.$data.accounts[index], 'delete', true);
-		accountsTable.$set(accountsTable.$data.accounts[index], 'edit', false);
+		rootComponent.$set(rootComponent.$data.pages.settings.accounts[index], 'delete', true);
+		rootComponent.$set(rootComponent.$data.pages.settings.accounts[index], 'edit', false);
 	},
 	cancelEditUser(accountInfo, index) {
 		editUserPermissions[accountInfo.user_id].disable();
-		let accounts = accountsTable.$data.accounts;
+		let accounts = rootComponent.$data.pages.settings.accounts;
 		accountInfo.delete = false;
 		accountInfo.edit = false;
 		accounts[index] = accountInfo;
-		Object.assign(accountsTable.$data, {accounts: accounts});
+		Object.assign(rootComponent.$data.pages.settings, {accounts: accounts});
 	},
 	loadSettingsPage() {
-		this.changeAccountPage();
-		let promises = [
+		if (UserHandler.userInfo.id != '') {
 			JSONRPCClient
-				.call('AuthService.AllAccounts', {buyer_id: '13672574147039585173'}),
-			JSONRPCClient
-				.call('AuthService.AllRoles', {})
-		];
-		Promise.all(promises)
-			.then(
-				(responses) => {
-					let roles = responses[1].roles;
-					let accounts = responses[0].accounts;
-					let choices = roles.map((role) => {
-						return {
-							value: role,
-							label: role.name,
-							customProperties: {
-								description: role.description,
-							},
-						};
-					});
+				.call('BuyersService.GameConfiguration', {buyer_id: UserHandler.userInfo.id})
+				.then((response) => {
+					UserHandler.userInfo.pubKey = response.game_config.public_key;
+				})
+				.catch((e) => {
+					console.log("Something went wrong fetching public key");
+					console.log(e)
+					Sentry.captureException(e);
+					UserHandler.userInfo.pubKey = "";
+				});
+		} else {
+			UserHandler.userInfo.pubkey = "";
+		}
 
-					if (!addUserPermissions) {
-						addUserPermissions = new Choices(
-							document.getElementById("add-user-permissions"),
-							{
-								removeItemButton: true,
-								choices: choices,
-							}
-						);
-					}
-
-					choices = roles.map((role) => {
-						return {
-							value: role,
-							label: role.name,
-							customProperties: {
-								description: role.description,
-							},
-							selected: role.name === 'Viewer'
-						};
-					});
-
-					if (!autoSigninPermissions) {
-						autoSigninPermissions = new Choices(
-							document.getElementById("auto-signin-permissions"),
-							{
-								removeItemButton: true,
-								choices: choices,
-							}
-						);
-					}
-
-					/**
-					 * I really dislike this but it is apparently the way to reload/update the data within a vue
-					 */
-					Object.assign(accountsTable.$data, {
-						accounts: accounts,
-						showAccounts: true,
-					});
-
-					setTimeout(() => {
-						accounts.forEach((account) => {
-							if (!editUserPermissions[account.user_id]) {
-								editUserPermissions[account.user_id] = new Choices(
-									document.getElementById(`edit-user-permissions-${account.user_id}`),
-									{
-										removeItemButton: true,
-										choices: roles.map((role) => {
-											return {
-												value: role,
-												label: role.name,
-												customProperties: {
-													description: role.description,
-												},
-												selected: account.roles.findIndex((userRole) => role.name == userRole.name) !== -1
-											};
-										}),
-									}
-								).disable();
-							}
-						});
-					});
-				}
-			)
-			.catch((errors) => {
-				console.log("Something went wrong loading settings page");
-				console.log(errors);
-			});
+		let buyerId = !UserHandler.isAdmin() ? UserHandler.userInfo.id : "";
+		this.updateAccountsTableFilter({
+			buyerId: buyerId,
+		});
 	},
 	loadConfigPage() {
 		JSONRPCClient
-			.call('BuyersService.GameConfiguration', {buyer_id: '13672574147039585173'})
+			.call('BuyersService.GameConfiguration', {buyer_id: UserHandler.userInfo.id})
 			.then((response) => {
-				userInfo.pubKey = response.game_config.public_key;
-				/**
-				 * I really dislike this but it is apparently the way to reload/update the data within a vue
-				 */
-				Object.assign(pubKeyInput.$data, {pubKey: userInfo.pubKey});
+				UserHandler.userInfo.pubKey = response.game_config.public_key;
 			})
 			.catch((e) => {
-				console.log("Something went wrong fetching public key");
-				console.log(e);
+				console.log("Something went wrong fetching relays");
+				Sentry.captureException(e);
 			});
 	},
 	loadRelayPage() {
 		JSONRPCClient
 			.call('OpsService.Relays', {})
 			.then((response) => {
-				/**
-				 * I really dislike this but it is apparently the way to reload/update the data within a vue
-				 */
-				Object.assign(relaysTable.$data, {relays: response.relays});
-			})
-			.catch((e) => {
-				console.log("Something went wrong fetching relays");
-				console.log(e);
-			});
-	},
-	loadSessionsPage() {
-		JSONRPCClient
-			.call('BuyersService.TopSessions', {})
-			.then((response) => {
-				let sessions = response.sessions;
-				/**
-				 * I really dislike this but it is apparently the way to reload/update the data within a vue
-				 */
-				Object.assign(sessionsTable.$data, {
-					onNN: sessions.filter((session) => {
-						return session.on_network_next;
-					}),
-					sessions: sessions,
-					showCount: true,
-				});
+				// Save Relays somewhere
 			})
 			.catch((e) => {
 				console.log("Something went wrong fetching the top sessions list");
-				console.log(e);
+				Sentry.captureException(e);
+			});
+	},
+	loadSessionsPage() {
+		let buyerId = !UserHandler.isAdmin() ? UserHandler.userInfo.id : "";
+		this.updateSessionFilter({
+			buyerId: buyerId,
+			sessionType: 'all'
+		});
+	},
+	fetchSessionInfo() {
+		let id = rootComponent.$data.pages.sessionTool.id;
+
+		if (id == '') {
+			Object.assign(rootComponent.$data.pages.sessionTool, {
+				info: false,
+				danger: true,
+				meta: null,
+				session: null,
+				slices: [],
+				showDetails: false,
+			});
+			return;
+		}
+
+		JSONRPCClient
+			.call("BuyersService.SessionDetails", {session_id: id})
+			.then((response) => {
+				let meta = response.meta;
+				meta.nearby_relays = meta.nearby_relays ?? [];
+				Object.assign(rootComponent.$data.pages.sessionTool, {
+					info: false,
+					danger: false,
+					meta: meta,
+					session: response,
+					slices: response.slices,
+					showDetails: true,
+				});
+
+				setTimeout(() => {
+					generateCharts(response.slices);
+
+					var sessionToolMapInstance = new mapboxgl.Map({
+						container: 'session-tool-map',
+						style: 'mapbox://styles/mapbox/dark-v10',
+						center: [meta.location.latitude, meta.location.longitude],
+						zoom: 2
+					});
+				});
+			})
+			.catch((e) => {
+				Object.assign(rootComponent.$data.pages.sessionTool, {
+					danger: true,
+					id: '',
+					info: false,
+					meta: null,
+					slices: [],
+					showDetails: false,
+				});
+				console.log("Something went wrong fetching session details: ");
+				Sentry.captureException(e);
+			});
+	},
+	fetchUserSessions() {
+		let hash = rootComponent.$data.pages.userTool.hash;
+
+		if (hash == '') {
+			Object.assign(rootComponent.$data.pages.userTool, {
+				info: false,
+				danger: true,
+				sessions: [],
+				showTable: false,
+			});
+			return;
+		}
+
+		JSONRPCClient
+			.call("BuyersService.UserSessions", {user_hash: hash})
+			.then((response) => {
+				let sessions = response.sessions || [];
+
+				Object.assign(rootComponent.$data.pages.userTool, {
+					danger: false,
+					info: false,
+					sessions: sessions,
+					showTable: true,
+				});
+			})
+			.catch((e) => {
+				Object.assign(rootComponent.$data.pages.userTool, {
+					danger: true,
+					hash: '',
+					info: false,
+					sessions: [],
+					showTable: false,
+				});
+				console.log("Something went wrong fetching user sessions: ");
+				Sentry.captureException(e);
 			});
 	},
 	loadUsersPage() {
 		// No Endpoint for this yet
+	},
+	updateSessionFilter(filter) {
+		Object.assign(rootComponent.$data.pages.sessions, {filter: filter});
+		this.refreshSessionTable();
+	},
+	refreshSessionTable() {
+		setTimeout(() => {
+			let filter = rootComponent.$data.pages.sessions.filter;
+
+			JSONRPCClient
+				.call('BuyersService.TopSessions', {buyer_id: filter.buyerId})
+				.then((response) => {
+					let sessions = response.sessions || [];
+					let onNN = sessions.filter((point) => {
+						return point.on_network_next;
+					});
+					let direct = sessions.filter((point) => {
+						return !point.on_network_next;
+					});
+
+					switch (filter.sessionType) {
+						case 'direct':
+							data = direct;
+							break;
+						case 'nn':
+							data = onNN;
+							break;
+						default:
+							data = sessions;
+					}
+					/**
+					 * I really dislike this but it is apparently the way to reload/update the data within a vue
+					 */
+					Object.assign(rootComponent.$data.pages.sessions, {
+						sessions: data,
+						showTable: true,
+					});
+				})
+				.catch((e) => {
+					console.log("Something went wrong fetching the top sessions list");
+					console.log(e);
+					Sentry.captureException(e);
+				});
+		});
+	},
+	updateAccountsTableFilter(filter) {
+		Object.assign(rootComponent.$data.pages.settings, {filter: filter});
+		this.refreshAccountsTable();
+	},
+	refreshAccountsTable() {
+		setTimeout(() => {
+			let filter = rootComponent.$data.pages.settings.filter;
+
+			let promises = [
+				JSONRPCClient
+					.call('AuthService.AllAccounts', {buyer_id: filter.buyerId}),
+				JSONRPCClient
+					.call('AuthService.AllRoles', {})
+			];
+			Promise.all(promises)
+				.then((responses) => {
+					allRoles = responses[1].roles;
+					let accounts = responses[0].accounts || [];
+
+					/**
+					 * I really dislike this but it is apparently the way to reload/update the data within a vue
+					 */
+					Object.assign(rootComponent.$data.pages.settings, {
+						accounts: accounts,
+						showAccounts: true,
+					});
+
+					setTimeout(() => {
+						let choices = allRoles.map((role) => {
+							return {
+								value: role,
+								label: role.name,
+								customProperties: {
+									description: role.description,
+								},
+							};
+						});
+
+						if (!addUserPermissions) {
+							addUserPermissions = new Choices(
+								document.getElementById("add-user-permissions"),
+								{
+									removeItemButton: true,
+									choices: choices,
+								}
+							);
+						}
+
+						choices = allRoles.map((role) => {
+							return {
+								value: role,
+								label: role.name,
+								customProperties: {
+									description: role.description,
+								},
+								selected: role.name === 'Viewer'
+							};
+						});
+
+						if (!autoSigninPermissions) {
+							autoSigninPermissions = new Choices(
+								document.getElementById("auto-signin-permissions"),
+								{
+									removeItemButton: true,
+									choices: choices,
+								}
+							);
+						}
+
+						choices = allRoles.map((role) => {
+							return {
+								value: role,
+								label: role.name,
+								customProperties: {
+									description: role.description,
+								},
+							};
+						});
+
+						if (!addUserPermissions) {
+							addUserPermissions = new Choices(
+								document.getElementById("add-user-permissions"),
+								{
+									removeItemButton: true,
+									choices: choices,
+								}
+							);
+						}
+
+						choices = allRoles.map((role) => {
+							return {
+								value: role,
+								label: role.name,
+								customProperties: {
+									description: role.description,
+								},
+								selected: role.name === 'Viewer'
+							};
+						});
+
+						if (!autoSigninPermissions) {
+							autoSigninPermissions = new Choices(
+								document.getElementById("auto-signin-permissions"),
+								{
+									removeItemButton: true,
+									choices: choices,
+								}
+							);
+						}
+
+						generateRolesDropdown(accounts);
+					});
+				}
+			)
+			.catch((errors) => {
+				console.log("Something went wrong loading settings page");
+				console.log(errors);
+				Sentry.captureException(errors);
+			});
+		});
 	}
 }
 
@@ -487,204 +747,220 @@ function startApp() {
 	 * QUESTION: Instead of grabbing the user here can we use the token to then go off and get everything from the backend?
 	 * TODO:	 There are 3 different promises going off to get user details. There should be a better way to do this
 	 */
-	Promise.all([
-		loginClient.getUser(),
-		loginClient.getTokenSilently()
-	]).then((response) => {
-		userInfo = {
-			email: response[0].email,
-			name: response[0].name,
-			nickname: response[0].nickname,
-			userId: response[0].sub,
-			token: response[1]
-		};
-		createVueComponents();
-		document.getElementById("app").style.display = 'block';
-		MapHandler
-			.initMap()
-			.then((response) => {
-				console.log("Map init successful");
-			})
-			.catch((e) => {
-				console.log("Something went wrong initializing the map");
-				console.log(e);
-			});
-	}).catch((e) => {
-		console.log("Something went wrong getting the current user information");
-	});
+
+	UserHandler
+		.fetchCurrentUserInfo()
+		.then(() => {
+			createVueComponents();
+			document.getElementById("app").style.display = 'block';
+			WorkspaceHandler.changePage('map');
+			JSONRPCClient
+				.call('BuyersService.Buyers', {})
+				.then((response) => {
+					Object.assign(rootComponent.$data, {allBuyers: response.Buyers});
+				})
+				.catch((e) => {
+					console.log("Something went wrong initializing the map");
+					console.log(e);
+					Sentry.captureException(e);
+				});
+		}).catch((e) => {
+			console.log("Something went wrong getting the current user information");
+			console.log(e);
+			Sentry.captureException(e);
+		});
 }
 
 function createVueComponents() {
-	accountsTable = new Vue({
-		el: '#accounts',
+	rootComponent = new Vue({
+		el: '#root',
 		data: {
-			accounts: null,
-			showAccounts: false,
-		},
-		methods: {
-			cancelEditUser: WorkspaceHandler.cancelEditUser,
-			deleteUser: WorkspaceHandler.deleteUser,
-			editUser: WorkspaceHandler.editUser,
-			saveUser: WorkspaceHandler.saveUser,
-		}
-	});
-	mapSessionsCount = new Vue({
-		el: '#map-sessions-count',
-		data: {
-			onNN: [],
-			sessions: [],
+			allBuyers: [],
 			showCount: false,
-		}
-	});
-	pubKeyInput = new Vue({
-		el: '#pubKey',
-		data: {
-			pubKey: userInfo.pubKey
+			mapSessions: [],
+			onNN: [],
+			direct: [],
+			handlers: {
+				authHandler: AuthHandler,
+				mapHandler: MapHandler,
+				userHandler: UserHandler,
+				workspaceHandler: WorkspaceHandler,
+			},
+			pages: {
+				map: {
+					filter: {
+						buyerId: '',
+						sessionType: '',
+					},
+					show: false,
+				},
+				sessions: {
+					filter: {
+						buyerId: '',
+						sessionType: '',
+					},
+					sessions: [],
+					show: false,
+					showTable: false,
+				},
+				sessionTool: {
+					danger: false,
+					id: '',
+					info: false,
+					meta: null,
+					session: null,
+					show: false,
+					showDetails: false,
+					showFailure: false,
+					showSuccess: false,
+					slices: [],
+				},
+				settings: {
+					accounts: [],
+					filter: {
+						buyerId: '',
+					},
+					newUser: {
+						failure: '',
+						success: '',
+					},
+					pubKey: '',
+					show: false,
+					showAccounts: false,
+					showConfig: false,
+					showSettings: false,
+					updateKey: {
+						failure: '',
+						success: '',
+					},
+					updateUser: {
+						failure: '',
+						success: '',
+					},
+				},
+				userTool: {
+					danger: false,
+					hash: '',
+					info: false,
+					sessions: [],
+					show: false,
+					showTable: false,
+				}
+			}
 		},
 		methods: {
-			updatePubKey: updatePubKey
 		}
 	});
-	sessionDetailsVue = new Vue({
-		el: '#session-details',
-		data: {
-			meta: null,
-			slices: [],
-			showDetails: false,
-		}
-	});
-	sessionsTable = new Vue({
-		el: '#sessions',
-		data: {...defaultSessionsTable},
-		methods: {
-			fetchSessionInfo: fetchSessionInfo,
-			fetchUserSessions: fetchUserSessions,
-		}
-	});
-	userSessionTable = new Vue({
-		el: '#user-sessions',
-		data: {...defaultUserSessionTable},
-		methods: {
-			fetchSessionInfo: fetchSessionInfo
-		}
-	})
-}
-
-function fetchUserSessions(userHash = '') {
-	WorkspaceHandler.alerts.userToolAlert.style.display = 'none';
-	WorkspaceHandler.alerts.userToolDanger.style.display = 'none';
-
-	let hash = '';
-
-	if (userHash != '') {
-		WorkspaceHandler.changePage('user-tool');
-		hash = userHash;
-		document.getElementById("user-hash-input").value = hash;
-	} else {
-		hash = document.getElementById("user-hash-input").value;
-	}
-
-	if (hash == '') {
-		Object.assign(userSessionTable.$data, {...defaultUserSessionTable});
-		document.getElementById("user-hash-input").value = '';
-		WorkspaceHandler.alerts.userToolDanger.style.display = 'block';
-		return;
-	}
-
-	JSONRPCClient
-		.call("BuyersService.UserSessions", {user_hash: hash})
-		.then((response) => {
-			let sessions = response.sessions || [];
-
-			/**
-			 * I really dislike this but it is apparently the way to reload/update the data within a vue
-			 */
-			Object.assign(userSessionTable.$data, {
-				sessions: sessions,
-				showTable: true,
-			});
-
-			WorkspaceHandler.alerts.userToolAlert.style.display = 'none';
-			WorkspaceHandler.alerts.userToolDanger.style.display = 'none';
-		})
-		.catch((e) => {
-			Object.assign(userSessionTable.$data, {...defaultUserSessionTable});
-			console.log("Something went wrong fetching user sessions: ");
-			console.log(e);
-			WorkspaceHandler.alerts.userToolDanger.style.display = 'block';
-			document.getElementById("user-hash-input").value = '';
-		});
 }
 
 function updatePubKey() {
 	let newPubkey = document.getElementById("pubkey-input").value;
 
 	JSONRPCClient
-		.call("BuyersService.UpdateGameConfiguration", {buyer_id: '13672574147039585173', new_public_key: newPubkey})
+		.call("BuyersService.UpdateGameConfiguration", {buyer_id: UserHandler.userInfo.id, new_public_key: newPubkey})
 		.then((response) => {
-			userInfo.pubkey = response.game_config.public_key;
+			UserHandler.userInfo.pubkey = response.game_config.public_key;
+			Object.assign(rootComponent.$data.pages.settings.updateKey, {
+				success: 'Updated public key successfully',
+			});
+			setTimeout(() => {
+				Object.assign(rootComponent.$data.pages.settings.updateKey, {
+					success: '',
+				});
+			}, 5000);
 		})
 		.catch((e) => {
 			console.log("Something went wrong updating the public key");
-			console.log(e);
+			Sentry.captureException(e);
+			Object.assign(rootComponent.$data.pages.settings.updateKey, {
+				failure: 'Failed to update public key',
+			});
+			setTimeout(() => {
+				Object.assign(rootComponent.$data.pages.settings.updateKey, {
+					failure: '',
+				});
+			}, 5000);
 		});
 }
 
-function fetchSessionInfo(sessionId = '') {
-	WorkspaceHandler.alerts.sessionToolAlert.style.display = 'none';
-	WorkspaceHandler.alerts.sessionToolDanger.style.display = 'none';
+function addUsers(event) {
+	event.preventDefault();
+	let roles = addUserPermissions.getValue(true);
+	let emails = String(document.getElementById("new-user-emails").value)
+		.split(/(,|\n)/g)
+		.map((x) => x.trim())
+		.filter((x) => x !== "" && x !== ",");
 
-	let id = '';
-
-	if (sessionId != '') {
-		WorkspaceHandler.changePage('session-tool');
-		id = sessionId;
-		document.getElementById("session-id-input").value = id;
-	} else {
-		id = document.getElementById("session-id-input").value;
+	if (roles.length == 0) {
+		roles = [{
+			description: "Can see current sessions and the map.",
+			id: "rol_ScQpWhLvmTKRlqLU",
+			name: "Viewer",
+		}];
 	}
-
-	if (id == '') {
-		Object.assign(sessionDetailsVue.$data, {...defaultSessionDetailsVue});
-		document.getElementById("session-id-input").value = '';
-		WorkspaceHandler.alerts.sessionToolDanger.style.display = 'block';
-		return;
-	}
-
 	JSONRPCClient
-		.call("BuyersService.SessionDetails", {session_id: id})
+		.call("AuthService.AddUserAccount", {emails: emails, roles: roles})
 		.then((response) => {
-			let meta = response.meta;
-			meta.nearby_relays = meta.nearby_relays ?? [];
-			Object.assign(sessionDetailsVue.$data, {
-				meta: meta,
-				slices: response.slices,
-				showDetails: true,
-			});
-
+			let newAccounts = response.accounts;
+			Object.assign(rootComponent.$data.pages.settings, {accounts: rootComponent.$data.pages.settings.accounts.concat(newAccounts)});
 			setTimeout(() => {
-				generateCharts(response.slices);
-
-				var sessionToolMapInstance = new mapboxgl.Map({
-					container: 'session-tool-map',
-					style: 'mapbox://styles/mapbox/dark-v10',
-					center: [0, 0],
-					zoom: 2
-				});
+				generateRolesDropdown(newAccounts);
 			});
-
-			WorkspaceHandler.alerts.sessionToolAlert.style.display = 'none';
-			WorkspaceHandler.alerts.sessionToolDanger.style.display = 'none';
+			Object.assign(rootComponent.$data.pages.settings.newUser, {
+				success: 'User account added successfully',
+			});
+			setTimeout(() => {
+				Object.assign(rootComponent.$data.pages.settings.newUser, {
+					success: '',
+				});
+			}, 5000);
 		})
 		.catch((e) => {
-			Object.assign(sessionDetailsVue.$data, {...defaultSessionDetailsVue});
-			console.log("Something went wrong fetching session details: ");
-			console.log(e);
-			WorkspaceHandler.alerts.sessionToolDanger.style.display = 'block';
-			document.getElementById("session-id-input").value = '';
+			console.log("Something went wrong creating new users");
+			Sentry.captureException(e);
+			Object.assign(rootComponent.$data.pages.settings.newUser, {
+				failure: 'Failed to add user account',
+			});
+			setTimeout(() => {
+				Object.assign(rootComponent.$data.pages.settings.newUser, {
+					failure: '',
+				});
+			}, 5000);
 		});
+	addUserPermissions.removeActiveItems();
+	document.getElementById("new-user-emails").value = '';
 }
 
+function generateRolesDropdown(accounts) {
+	accounts.forEach((account) => {
+		if (!editUserPermissions[account.user_id]) {
+			editUserPermissions[account.user_id] = new Choices(
+				document.getElementById(`edit-user-permissions-${account.user_id}`),
+				{
+					removeItemButton: true,
+					choices: allRoles.map((role) => {
+						return {
+							value: role,
+							label: role.name,
+							customProperties: {
+								description: role.description,
+							},
+							selected: account.roles.findIndex((userRole) => role.name == userRole.name) !== -1
+						};
+					}),
+				}
+			).disable();
+		}
+	});
+}
+
+function saveAutoSignIn(event) {
+	event.preventDefault();
+	let roles = autoSigninPermissions.getValue(true);
+	let domain = document.getElementById("auto-sign-in-domain").value;
+
+	// Make JSONRPC call
+}
 
 function generateCharts(data) {
 	let latencyData = {

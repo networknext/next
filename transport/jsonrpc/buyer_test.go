@@ -14,6 +14,24 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestBuyersList(t *testing.T) {
+	storer := storage.InMemory{}
+	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "local.local.1"})
+
+	svc := jsonrpc.BuyersService{
+		Storage: &storer,
+	}
+
+	t.Run("list", func(t *testing.T) {
+		var reply jsonrpc.BuyerListReply
+		err := svc.Buyers(nil, &jsonrpc.BuyerListArgs{}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, reply.Buyers[0].ID, "1")
+		assert.Equal(t, reply.Buyers[0].Name, "local.local.1")
+	})
+}
+
 func TestUserSessions(t *testing.T) {
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
@@ -131,8 +149,12 @@ func TestSessionDetails(t *testing.T) {
 		Location:   routing.Location{Latitude: 10, Longitude: 20},
 		ClientAddr: "127.0.0.1:1313",
 		ServerAddr: "10.0.0.1:50000",
-		Hops:       3,
-		SDK:        "3.4.4",
+		Hops: []routing.Relay{
+			{ID: 1234},
+			{ID: 1234},
+			{ID: 1234},
+		},
+		SDK: "3.4.4",
 		NearbyRelays: []routing.Relay{
 			{ID: 1, ClientStats: routing.Stats{RTT: 1, Jitter: 2, PacketLoss: 3}},
 		},
@@ -150,7 +172,7 @@ func TestSessionDetails(t *testing.T) {
 		Envelope:  routing.Envelope{Up: 1500, Down: 1500},
 	}
 
-	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID), meta, 720*time.Hour)
+	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID), meta, 30*time.Second)
 	redisClient.SAdd(fmt.Sprintf("session-%s-slices", sessionID), slice1, slice2)
 
 	// After setting the cache without the name, set the name to the expected output we need

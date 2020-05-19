@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/networknext/backend/routing"
 )
@@ -23,7 +22,17 @@ func (m *InMemory) Buyer(id uint64) (routing.Buyer, error) {
 		}
 	}
 
-	return routing.Buyer{}, fmt.Errorf("buyer with id %d not found in memory storage", id)
+	return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: id}
+}
+
+func (m *InMemory) BuyerWithDomain(domain string) (routing.Buyer, error) {
+	for _, buyer := range m.localBuyers {
+		if buyer.Domain == domain {
+			return buyer, nil
+		}
+	}
+
+	return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: domain}
 }
 
 func (m *InMemory) Buyers() []routing.Buyer {
@@ -38,7 +47,7 @@ func (m *InMemory) Buyers() []routing.Buyer {
 func (m *InMemory) AddBuyer(ctx context.Context, buyer routing.Buyer) error {
 	for _, b := range m.localBuyers {
 		if b.ID == buyer.ID {
-			return fmt.Errorf("buyer with id %d already exists in memory storage", buyer.ID)
+			return &AlreadyExistsError{resourceType: "buyer", resourceRef: buyer.ID}
 		}
 	}
 
@@ -55,7 +64,7 @@ func (m *InMemory) RemoveBuyer(ctx context.Context, id uint64) error {
 	}
 
 	if buyerIndex < 0 {
-		return fmt.Errorf("buyer with id %d not found in memory storage", id)
+		return &DoesNotExistError{resourceType: "buyer", resourceRef: id}
 	}
 
 	if buyerIndex+1 == len(m.localBuyers) {
@@ -77,7 +86,7 @@ func (m *InMemory) SetBuyer(ctx context.Context, buyer routing.Buyer) error {
 		}
 	}
 
-	return fmt.Errorf("buyer with id %d not found in memory storage", buyer.ID)
+	return &DoesNotExistError{resourceType: "buyer", resourceRef: buyer.ID}
 }
 
 func (m *InMemory) Seller(id string) (routing.Seller, error) {
@@ -87,7 +96,7 @@ func (m *InMemory) Seller(id string) (routing.Seller, error) {
 		}
 	}
 
-	return routing.Seller{}, fmt.Errorf("seller with id %s not found in memory storage", id)
+	return routing.Seller{}, &DoesNotExistError{resourceType: "seller", resourceRef: id}
 }
 
 func (m *InMemory) Sellers() []routing.Seller {
@@ -102,7 +111,7 @@ func (m *InMemory) Sellers() []routing.Seller {
 func (m *InMemory) AddSeller(ctx context.Context, seller routing.Seller) error {
 	for _, b := range m.localSellers {
 		if b.ID == seller.ID {
-			return fmt.Errorf("seller with id %s already exists in memory storage", seller.ID)
+			return &AlreadyExistsError{resourceType: "seller", resourceRef: seller.ID}
 		}
 	}
 
@@ -119,7 +128,7 @@ func (m *InMemory) RemoveSeller(ctx context.Context, id string) error {
 	}
 
 	if sellerIndex < 0 {
-		return fmt.Errorf("seller with id %s not found in memory storage", id)
+		return &DoesNotExistError{resourceType: "seller", resourceRef: id}
 	}
 
 	if sellerIndex+1 == len(m.localSellers) {
@@ -141,7 +150,7 @@ func (m *InMemory) SetSeller(ctx context.Context, seller routing.Seller) error {
 		}
 	}
 
-	return fmt.Errorf("seller with id %s not found in memory storage", seller.ID)
+	return &DoesNotExistError{resourceType: "seller", resourceRef: seller.ID}
 }
 
 func (m *InMemory) Relay(id uint64) (routing.Relay, error) {
@@ -156,7 +165,7 @@ func (m *InMemory) Relay(id uint64) (routing.Relay, error) {
 		return m.localRelays[0], nil
 	}
 
-	return routing.Relay{}, fmt.Errorf("relay with id %d not found in memory storage", id)
+	return routing.Relay{}, &DoesNotExistError{resourceType: "relay", resourceRef: id}
 }
 
 func (m *InMemory) Relays() []routing.Relay {
@@ -171,7 +180,7 @@ func (m *InMemory) Relays() []routing.Relay {
 func (m *InMemory) AddRelay(ctx context.Context, relay routing.Relay) error {
 	for _, r := range m.localRelays {
 		if r.ID == relay.ID {
-			return fmt.Errorf("relay with id %d already exists in memory storage", relay.ID)
+			return &AlreadyExistsError{resourceType: "relay", resourceRef: relay.ID}
 		}
 	}
 
@@ -184,7 +193,7 @@ func (m *InMemory) AddRelay(ctx context.Context, relay routing.Relay) error {
 	}
 
 	if !foundSeller {
-		return fmt.Errorf("unknown seller with ID %s - be sure to create the seller in storage first", relay.Seller.ID)
+		return &DoesNotExistError{resourceType: "seller", resourceRef: relay.Seller.ID}
 	}
 
 	foundDatacenter := false
@@ -195,7 +204,7 @@ func (m *InMemory) AddRelay(ctx context.Context, relay routing.Relay) error {
 	}
 
 	if !foundDatacenter {
-		return fmt.Errorf("unknown datacenter with ID %d - be sure to create the datacenter in storage first", relay.Datacenter.ID)
+		return &DoesNotExistError{resourceType: "datacenter", resourceRef: relay.Datacenter.ID}
 	}
 
 	m.localRelays = append(m.localRelays, relay)
@@ -211,7 +220,7 @@ func (m *InMemory) RemoveRelay(ctx context.Context, id uint64) error {
 	}
 
 	if relayIndex < 0 {
-		return fmt.Errorf("relay with id %d not found in memory storage", id)
+		return &DoesNotExistError{resourceType: "relay", resourceRef: id}
 	}
 
 	if relayIndex+1 == len(m.localRelays) {
@@ -239,7 +248,7 @@ func (m *InMemory) SetRelay(ctx context.Context, relay routing.Relay) error {
 		return nil
 	}
 
-	return fmt.Errorf("relay with id %d not found in memory storage", relay.ID)
+	return &DoesNotExistError{resourceType: "relay", resourceRef: relay.ID}
 }
 
 func (m *InMemory) Datacenter(id uint64) (routing.Datacenter, error) {
@@ -249,7 +258,7 @@ func (m *InMemory) Datacenter(id uint64) (routing.Datacenter, error) {
 		}
 	}
 
-	return routing.Datacenter{}, fmt.Errorf("datacenter with id %d not found in memory storage", id)
+	return routing.Datacenter{}, &DoesNotExistError{resourceType: "datacenter", resourceRef: id}
 }
 
 func (m *InMemory) Datacenters() []routing.Datacenter {
@@ -264,7 +273,7 @@ func (m *InMemory) Datacenters() []routing.Datacenter {
 func (m *InMemory) AddDatacenter(ctx context.Context, datacenter routing.Datacenter) error {
 	for _, d := range m.localDatacenters {
 		if d.ID == datacenter.ID {
-			return fmt.Errorf("datacenter with id %d already exists in memory storage", datacenter.ID)
+			return &AlreadyExistsError{resourceType: "datacenter", resourceRef: datacenter.ID}
 		}
 	}
 
@@ -281,7 +290,7 @@ func (m *InMemory) RemoveDatacenter(ctx context.Context, id uint64) error {
 	}
 
 	if datacenterIndex < 0 {
-		return fmt.Errorf("datacenter with id %d not found in memory storage", id)
+		return &DoesNotExistError{resourceType: "datacenter", resourceRef: id}
 	}
 
 	if datacenterIndex+1 == len(m.localDatacenters) {
@@ -303,5 +312,5 @@ func (m *InMemory) SetDatacenter(ctx context.Context, datacenter routing.Datacen
 		}
 	}
 
-	return fmt.Errorf("datacenter with id %d not found in memory storage", datacenter.ID)
+	return &DoesNotExistError{resourceType: "datacenter", resourceRef: datacenter.ID}
 }

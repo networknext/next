@@ -18,7 +18,7 @@ import (
 const (
 	// CostMatrixVersion ...
 	// IMPORTANT: Bump this version whenever you change the binary format
-	CostMatrixVersion = 4
+	CostMatrixVersion = 5
 )
 
 // CostMatrix ...
@@ -27,15 +27,17 @@ type CostMatrix struct {
 
 	RelayIndicies map[uint64]int
 
-	RelayIDs         []uint64
-	RelayNames       []string
-	RelayAddresses   [][]byte
-	RelayPublicKeys  [][]byte
-	DatacenterIDs    []uint64
-	DatacenterNames  []string
-	DatacenterRelays map[uint64][]uint64
-	RTT              []int32
-	RelaySellers     []Seller
+	RelayIDs              []uint64
+	RelayNames            []string
+	RelayAddresses        [][]byte
+	RelayPublicKeys       [][]byte
+	DatacenterIDs         []uint64
+	DatacenterNames       []string
+	DatacenterRelays      map[uint64][]uint64
+	RTT                   []int32
+	RelaySellers          []Seller
+	RelaySessionCounts    []uint32
+	RelayMaxSessionCounts []uint32
 }
 
 // ReadFrom implements the io.ReadFrom interface
@@ -75,7 +77,7 @@ func (m *CostMatrix) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-/* Binary data outline for CostMatrix v4: "->" means seqential elements in memory and not another section
+/* Binary data outline for CostMatrix v5: "->" means seqential elements in memory and not another section
  * Version number { uint32 }
  * Number of relays { uint32 }
  * Relay IDs { [NumberOfRelays]uint64 }
@@ -93,6 +95,8 @@ func (m *CostMatrix) ServeHTTP(w http.ResponseWriter, r *http.Request) {
  * 	IngressPriceCents { uint64 }
  *	EgressPriceCents { uint64 }
  * )
+ * Relay Session Counts { [NumberOfRelays]uint32 }
+ * Relay Max Session Counts { [NumberOfRelays]uint32 }
  */
 
 // UnmarshalBinary ...
@@ -240,6 +244,24 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 		}
 	}
 
+	m.RelaySessionCounts = make([]uint32, numRelays)
+	if version >= 5 {
+		for i := range m.RelaySessionCounts {
+			if !encoding.ReadUint32(data, &index, &m.RelaySessionCounts[i]) {
+				return errors.New("[CostMatrix] invalid read on relay session count")
+			}
+		}
+	}
+
+	m.RelayMaxSessionCounts = make([]uint32, numRelays)
+	if version >= 5 {
+		for i := range m.RelayMaxSessionCounts {
+			if !encoding.ReadUint32(data, &index, &m.RelayMaxSessionCounts[i]) {
+				return errors.New("[CostMatrix] invalid read on relay max session count")
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -322,6 +344,14 @@ func (m *CostMatrix) MarshalBinary() ([]byte, error) {
 		encoding.WriteUint64(data, &index, seller.EgressPriceCents)
 	}
 
+	for i := range m.RelaySessionCounts {
+		encoding.WriteUint32(data, &index, m.RelaySessionCounts[i])
+	}
+
+	for i := range m.RelayMaxSessionCounts {
+		encoding.WriteUint32(data, &index, m.RelayMaxSessionCounts[i])
+	}
+
 	return data, nil
 }
 
@@ -348,6 +378,8 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 	routes.DatacenterRelays = m.DatacenterRelays
 	routes.Entries = make([]RouteMatrixEntry, entryCount)
 	routes.RelaySellers = m.RelaySellers
+	routes.RelaySessionCounts = m.RelaySessionCounts
+	routes.RelayMaxSessionCounts = m.RelaySessionCounts
 
 	type Indirect struct {
 		relay uint64
@@ -617,6 +649,12 @@ func (m *CostMatrix) Size() uint64 {
 	for _, seller := range m.RelaySellers {
 		length += uint64(4 + len(seller.ID) + 4 + len(seller.Name) + 8 + 8)
 	}
+
+	// Add length of relay session counts
+	length += uint64(len(m.RelaySessionCounts) * 4)
+
+	// Add length of relay max session counts
+	length += uint64(len(m.RelayMaxSessionCounts) * 4)
 
 	return length
 }

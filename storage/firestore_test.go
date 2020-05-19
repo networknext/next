@@ -100,7 +100,7 @@ func TestFirestore(t *testing.T) {
 
 			buyer, err := fs.Buyer(0)
 			assert.Empty(t, buyer)
-			assert.EqualError(t, err, "buyer with id 0 not found in firestore")
+			assert.EqualError(t, err, "buyer with reference 0 not found")
 		})
 
 		t.Run("success", func(t *testing.T) {
@@ -206,7 +206,7 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			err = fs.RemoveBuyer(ctx, 0)
-			assert.EqualError(t, err, "buyer with id 0 not found in firestore")
+			assert.EqualError(t, err, "buyer with reference 0 not found")
 		})
 
 		t.Run("success", func(t *testing.T) {
@@ -255,7 +255,7 @@ func TestFirestore(t *testing.T) {
 			}
 
 			err = fs.SetBuyer(ctx, buyer)
-			assert.EqualError(t, err, "buyer with id 1 not found in firestore")
+			assert.EqualError(t, err, "buyer with reference 1 not found")
 		})
 
 		t.Run("success", func(t *testing.T) {
@@ -308,7 +308,7 @@ func TestFirestore(t *testing.T) {
 
 			seller, err := fs.Seller("id")
 			assert.Empty(t, seller)
-			assert.EqualError(t, err, "seller with id id not found in firestore")
+			assert.EqualError(t, err, "seller with reference id not found")
 		})
 
 		t.Run("success", func(t *testing.T) {
@@ -389,7 +389,7 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 
 			err = fs.AddSeller(ctx, expected)
-			assert.EqualError(t, err, "seller with id id already exists in firestore")
+			assert.EqualError(t, err, "seller with reference id already exists")
 		})
 
 		t.Run("success", func(t *testing.T) {
@@ -429,7 +429,7 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			err = fs.RemoveSeller(ctx, "id")
-			assert.EqualError(t, err, "seller with id id not found in firestore")
+			assert.EqualError(t, err, "seller with reference id not found")
 		})
 
 		t.Run("success", func(t *testing.T) {
@@ -474,7 +474,7 @@ func TestFirestore(t *testing.T) {
 			}
 
 			err = fs.SetSeller(ctx, seller)
-			assert.EqualError(t, err, "seller with id id not found in firestore")
+			assert.EqualError(t, err, "seller with reference id not found")
 		})
 
 		t.Run("success", func(t *testing.T) {
@@ -525,7 +525,7 @@ func TestFirestore(t *testing.T) {
 
 			relay, err := fs.Relay(0)
 			assert.Empty(t, relay)
-			assert.EqualError(t, err, "relay with id 0 not found in firestore")
+			assert.EqualError(t, err, "relay with reference 0 not found")
 		})
 
 		t.Run("success", func(t *testing.T) {
@@ -669,7 +669,7 @@ func TestFirestore(t *testing.T) {
 			}
 
 			err = fs.AddRelay(ctx, expected)
-			assert.EqualError(t, err, "seller with id  not found in firestore")
+			assert.EqualError(t, err, "seller with reference  not found")
 		})
 
 		t.Run("datacenter not found", func(t *testing.T) {
@@ -703,7 +703,7 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 
 			err = fs.AddRelay(ctx, expected)
-			assert.EqualError(t, err, "datacenter with id 0 not found in firestore")
+			assert.EqualError(t, err, "datacenter with reference 0 not found")
 		})
 
 		t.Run("success", func(t *testing.T) {
@@ -771,7 +771,7 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			err = fs.RemoveRelay(ctx, 0)
-			assert.EqualError(t, err, "relay with id 0 not found in firestore")
+			assert.EqualError(t, err, "relay with reference 0 not found")
 		})
 
 		t.Run("success", func(t *testing.T) {
@@ -847,7 +847,7 @@ func TestFirestore(t *testing.T) {
 			}
 
 			err = fs.SetRelay(ctx, relay)
-			assert.EqualError(t, err, "relay with id 1 not found in firestore")
+			assert.EqualError(t, err, "relay with reference 1 not found")
 		})
 
 		t.Run("success", func(t *testing.T) {
@@ -930,7 +930,7 @@ func TestFirestore(t *testing.T) {
 
 			datacenter, err := fs.Datacenter(0)
 			assert.Empty(t, datacenter)
-			assert.EqualError(t, err, "datacenter with id 0 not found in firestore")
+			assert.EqualError(t, err, "datacenter with reference 0 not found")
 		})
 
 		t.Run("success", func(t *testing.T) {
@@ -1040,7 +1040,7 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			err = fs.RemoveDatacenter(ctx, 0)
-			assert.EqualError(t, err, "datacenter with id 0 not found in firestore")
+			assert.EqualError(t, err, "datacenter with reference 0 not found")
 		})
 
 		t.Run("success", func(t *testing.T) {
@@ -1091,7 +1091,7 @@ func TestFirestore(t *testing.T) {
 			}
 
 			err = fs.SetDatacenter(ctx, datacenter)
-			assert.EqualError(t, err, "datacenter with id 1 not found in firestore")
+			assert.EqualError(t, err, "datacenter with reference 1 not found")
 		})
 
 		t.Run("success", func(t *testing.T) {
@@ -1143,6 +1143,7 @@ func TestFirestore(t *testing.T) {
 		expectedBuyer := routing.Buyer{
 			ID:                   1,
 			Name:                 "local",
+			Domain:               "example.com",
 			Active:               true,
 			Live:                 false,
 			PublicKey:            make([]byte, crypto.KeySize),
@@ -1170,12 +1171,13 @@ func TestFirestore(t *testing.T) {
 		assert.NoError(t, err)
 
 		expectedRelay := routing.Relay{
-			ID:         crypto.HashID(addr.String()),
-			Name:       "local",
-			Addr:       *addr,
-			PublicKey:  make([]byte, crypto.KeySize),
-			Seller:     expectedSeller,
-			Datacenter: expectedDatacenter,
+			ID:          crypto.HashID(addr.String()),
+			Name:        "local",
+			Addr:        *addr,
+			PublicKey:   make([]byte, crypto.KeySize),
+			Seller:      expectedSeller,
+			Datacenter:  expectedDatacenter,
+			MaxSessions: 3000,
 		}
 
 		err = fs.AddBuyer(ctx, expectedBuyer)
@@ -1183,6 +1185,28 @@ func TestFirestore(t *testing.T) {
 
 		err = fs.AddSeller(ctx, expectedSeller)
 		assert.NoError(t, err)
+
+		// Need to inject a Customer above the Buyer and Seller since Sync requires the Customer exist to get the Domain
+		// This saves us from adding Customer(), AddCustomer(), RemoveCustomer() for now to get the portal working requiring
+		// the Buyer.ID based on Customer.Domain
+		{
+			snap, err := fs.Client.Collection("Buyer").Where("name", "==", "local").Documents(ctx).Next()
+			assert.NoError(t, err)
+			bdoc := snap.Ref
+
+			snap, err = fs.Client.Collection("Seller").Where("name", "==", "local").Documents(ctx).Next()
+			assert.NoError(t, err)
+			sdoc := snap.Ref
+
+			_, err = fs.Client.Collection("Customer").NewDoc().Create(ctx, map[string]interface{}{
+				"buyer":                 bdoc,
+				"seller":                sdoc,
+				"automaticSigninDomain": "example.com",
+				"name":                  "local",
+				"active":                true,
+			})
+			assert.NoError(t, err)
+		}
 
 		err = fs.AddDatacenter(ctx, expectedDatacenter)
 		assert.NoError(t, err)
