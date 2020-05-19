@@ -75,9 +75,10 @@ namespace core
 
       for (int i = 0; i < inputBuffer.Count; i++) {
         auto& pkt = inputBuffer.Packets[i];
-        packet.Len = header.msg_len;
-        getAddrFromMsgHdr(pkt.Addr, inputBuffer.Headers[i].msg_hdr);
-        processPacket(pkt, inputBuffer.Headers[i], outputBuffer);
+        auto& header = inputBuffer.Headers[i];
+        pkt.Len = header.msg_len;
+        getAddrFromMsgHdr(pkt.Addr, header.msg_hdr);
+        processPacket(pkt, outputBuffer);
       }
 
       if (outputBuffer.Count > 0) {
