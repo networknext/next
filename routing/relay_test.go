@@ -235,12 +235,4 @@ func TestRelay(t *testing.T) {
 			assert.NoError(t, actual.UnmarshalBinary(buff))
 		})
 	})
-
-	t.Run("Key()", func(t *testing.T) {
-		relay := routing.Relay{
-			ID: 123,
-		}
-
-		assert.Equal(t, "RELAY-123", relay.Key())
-	})
 }

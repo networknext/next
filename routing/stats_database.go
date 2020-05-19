@@ -23,7 +23,7 @@ func TriMatrixLength(size int) int {
 	return (size * (size - 1)) / 2
 }
 
-// TriMatrixLength returns the index of the ij coord for a triangular shaped matrix
+// TriMatrixIndex returns the index of the ij coord for a triangular shaped matrix
 func TriMatrixIndex(i, j int) int {
 	if i <= j {
 		i, j = j, i
@@ -236,9 +236,9 @@ func (database *StatsDatabase) GetCostMatrix(costMatrix *CostMatrix, redisClient
 
 	datacenterNameMap := make(map[uint64]string)
 
-	var stableRelays []Relay
+	var stableRelays []RelayCacheEntry
 	for _, rawRelay := range hgetallResult.Val() {
-		var relay Relay
+		var relay RelayCacheEntry
 		if err := relay.UnmarshalBinary([]byte(rawRelay)); err != nil {
 			return fmt.Errorf("failed to unmarshal relay when creating cost matrix: %v", err)
 		}
@@ -254,7 +254,7 @@ func (database *StatsDatabase) GetCostMatrix(costMatrix *CostMatrix, redisClient
 		costMatrix.RelayNames[i] = relayData.Name
 		costMatrix.RelaySellers[i] = relayData.Seller
 		costMatrix.RelaySessionCounts[i] = uint32(relayData.TrafficStats.SessionCount)
-		costMatrix.RelayMaxSessionCounts[i] = uint32(relayData.MaxSessions)
+		costMatrix.RelayMaxSessionCounts[i] = relayData.MaxSessions
 
 		costMatrix.RelayAddresses[i] = make([]byte, MaxRelayAddressLength)
 		copy(costMatrix.RelayAddresses[i], []byte(relayData.Addr.String()))
