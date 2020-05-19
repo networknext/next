@@ -270,13 +270,12 @@ int main(int argc, const char* argv[])
   };
 
   // makes a shared ptr to a socket object
-  auto makeSocket = [&sockets, socketSendBuffSize, socketRecvBuffSize](
-                     os::SocketType t, uint16_t& portNumber) -> os::SocketPtr {
+  auto makeSocket = [&sockets, socketSendBuffSize, socketRecvBuffSize](uint16_t& portNumber) -> os::SocketPtr {
     // don't set addr, so that it's 0.0.0.0:some-port
     net::Address addr;
     addr.Port = portNumber;
     addr.Type = net::AddressType::IPv4;
-    auto socket = std::make_shared<os::Socket>(t);
+    auto socket = std::make_shared<os::Socket>(os::SocketType::Blocking);
     if (!socket->create(addr, socketSendBuffSize, socketRecvBuffSize, 0.0f, true)) {
       return nullptr;
     }
@@ -297,18 +296,16 @@ int main(int argc, const char* argv[])
   Log("creating ", numProcessors, " packet processing threads");
   {
     for (unsigned int i = 0; i < numProcessors; i++) {
-      auto packetSocket = makeSocket(os::SocketType::Blocking, receivingAddr.Port);
-      {
-        if (!packetSocket) {
-          Log("could not create packetSocket");
-          cleanup();
-          return 1;
-        }
+      auto socket = makeSocket(receivingAddr.Port);
+      if (!socket) {
+        Log("could not create socket");
+        cleanup();
+        return 1;
       }
 
       auto thread = std::make_shared<std::thread>([&socketAndThreadReady,
                                                    &shouldReceive,
-                                                   packetSocket,
+                                                   socket,
                                                    &relayClock,
                                                    &keychain,
                                                    &sessions,
@@ -320,7 +317,7 @@ int main(int argc, const char* argv[])
                                                    &v3TrafficStats] {
         core::PacketProcessor processor(
          shouldReceive,
-         *packetSocket,
+         *socket,
          relayClock,
          keychain,
          sessions,
@@ -336,7 +333,7 @@ int main(int argc, const char* argv[])
 
       wait();  // wait the the packet processor is ready to receive
 
-      sockets.push_back(packetSocket);
+      sockets.push_back(socket);
       threads.push_back(thread);
 
       LogDebug("created packet processer using ", receivingAddr);
@@ -359,7 +356,7 @@ int main(int argc, const char* argv[])
     }
 
     // socket used for receiving and sending
-    auto socket = makeSocket(os::SocketType::NonBlocking, bindAddr.Port);
+    auto socket = makeSocket(bindAddr.Port);
     if (!socket) {
       Log("could not create pingSocket");
       cleanup();
@@ -391,34 +388,36 @@ int main(int argc, const char* argv[])
   bool v3BackendSuccess = false;
 
   // v3 backend compatability setup
-  if (false)
   {
     // ping proc setup
     {
       // socket only used for sending
-      auto socket = makeSocket(os::SocketType::NonBlocking, receivingAddr.Port);
+      uint16_t tmp = 0;
+      auto socket = makeSocket(tmp);
       if (!socket) {
         Log("could not create pingSocket");
         cleanup();
         return 1;
       }
 
-      auto thread = std::make_shared<std::thread>(
-       [&socketAndThreadReady, socket, &v3RelayManager, &receivingAddr, &recorder, &v3TrafficStats, &relayID] {
-         core::PingProcessor pingProcessor(*socket, v3RelayManager, gAlive, receivingAddr, recorder, v3TrafficStats, relayID);
-         pingProcessor.process(socketAndThreadReady);
-       });
+      {
+        auto thread = std::make_shared<std::thread>(
+         [&socketAndThreadReady, socket, &v3RelayManager, &receivingAddr, &recorder, &v3TrafficStats, &relayID] {
+           core::PingProcessor pingProcessor(*socket, v3RelayManager, gAlive, receivingAddr, recorder, v3TrafficStats, relayID);
+           pingProcessor.process(socketAndThreadReady);
+         });
 
-      wait();
+        wait();
 
-      sockets.push_back(socket);
-      threads.push_back(thread);
+        sockets.push_back(socket);
+        threads.push_back(thread);
 
-      LogDebug("created v3 ping processor using ", receivingAddr);
+        LogDebug("created v3 ping processor using ", receivingAddr);
 
-      int error;
-      if (!os::SetThreadAffinity(*thread, getPingProcNum(numProcessors), error)) {
-        Log("error setting thread affinity: ", error);
+        int error;
+        if (!os::SetThreadAffinity(*thread, getPingProcNum(numProcessors), error)) {
+          Log("error setting thread affinity: ", error);
+        }
       }
     }
 
@@ -426,43 +425,46 @@ int main(int argc, const char* argv[])
     {
       // socket only used for sending
       // use the receiving address b/c the old relay doesn't use the appended addr
-      auto socket = makeSocket(os::SocketType::NonBlocking, receivingAddr.Port);
+      uint16_t tmp = 0;
+      auto socket = makeSocket(tmp);
       if (!socket) {
         Log("could not create v3 backend socket");
         cleanup();
         return 1;
       }
 
-      auto thread = std::make_shared<std::thread>(
-       [&receiver, &env, socket, &cleanup, &v3BackendSuccess, &relayClock, &v3TrafficStats, &v3RelayManager, &relayID] {
-         size_t speed = std::stoi(env.RelayV3Speed);
-         legacy::v3::Backend backend(receiver, env, relayID, *socket, relayClock, v3TrafficStats, v3RelayManager, speed);
+      {
+        auto thread = std::make_shared<std::thread>(
+         [&receiver, &env, socket, &cleanup, &v3BackendSuccess, &relayClock, &v3TrafficStats, &v3RelayManager, &relayID] {
+           size_t speed = std::stoi(env.RelayV3Speed);
+           legacy::v3::Backend backend(receiver, env, relayID, *socket, relayClock, v3TrafficStats, v3RelayManager, speed);
 
-         if (!backend.init()) {
-           Log("could not initialize relay with old backend");
-           cleanup();
-           return;
-         }
+           if (!backend.init()) {
+             Log("could not initialize relay with old backend");
+             cleanup();
+             return;
+           }
 
-         Log("relay initialized with old backend");
+           Log("relay initialized with old backend");
 
-         if (!backend.config()) {
-           Log("could not configure relay with old backend");
-           cleanup();
-           return;
-         }
+           if (!backend.config()) {
+             Log("could not configure relay with old backend");
+             cleanup();
+             return;
+           }
 
-         Log("old backend entering update cycle");
+           Log("old backend entering update cycle");
 
-         v3BackendSuccess = backend.updateCycle(gAlive);
+           v3BackendSuccess = backend.updateCycle(gAlive);
 
-         gAlive = false;
-       });
+           gAlive = false;
+         });
 
-      sockets.push_back(socket);
-      threads.push_back(thread);
+        sockets.push_back(socket);
+        threads.push_back(thread);
 
-      Log("relay configured with old backend using address ", receivingAddr);
+        Log("relay configured with old backend using address ", receivingAddr);
+      }
     }
   }
 
