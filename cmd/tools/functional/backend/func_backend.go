@@ -464,7 +464,7 @@ func main() {
 						SessionID: sessionUpdate.SessionID,
 
 						SessionVersion: sessionEntry.Version,
-						SessionFlags:   0, // Haven't figured out what this is for
+						SessionFlags:   0, // Haven't figured out what this is for. // glenn: it's unused, but left in for binary compatibility reasons until we migrate to new backend.
 
 						Client: routing.Client{
 							Addr:      sessionUpdate.ClientAddress,
@@ -477,6 +477,8 @@ func main() {
 						},
 
 						Relays: nextRoute.Relays,
+
+						// todo: real backend should be setting these from the values in the route shader. that's where they are specified.
 
 						// Seems we have to do this as bandwidth limits are disabled according to comment in core_sodium.go
 						// Not sure how real backend gets away without setting this...
