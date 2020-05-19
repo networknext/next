@@ -47,8 +47,8 @@ AuthHandler = {
 		const clientID = 'oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n';
 
 		this.auth0Client = await createAuth0Client({
+			client_id: clientID,
 			domain: domain,
-			client_id: clientID
 		})
 		.catch((e) => {
 			Sentry.captureException(e);
