@@ -34,11 +34,6 @@ namespace core
 
   struct V3Relay: public Relay
   {
-    uint64_t ID;
-    double LastPingTime = INVALID_PING_TIME;
-    net::Address Addr;
-    PingHistory* History = nullptr;
-
     std::string PingToken;  // base64
   };
 
@@ -121,9 +116,9 @@ namespace core
         auto& relay = mRelays[i];
         RouteStats rs(*relay.History, currentTime - RELAY_STATS_WINDOW, currentTime, RELAY_PING_SAFETY);
         stats.IDs[i] = relay.ID;
-        stats.RTT[i] = rs.RTT;
-        stats.Jitter[i] = rs.Jitter;
-        stats.PacketLoss[i] = rs.PacketLoss;
+        stats.RTT[i] = rs.getRTT();
+        stats.Jitter[i] = rs.getJitter();
+        stats.PacketLoss[i] = rs.getPacketLoss();
       }
     }
   }
@@ -132,18 +127,20 @@ namespace core
   template <>
   inline auto RelayManager<Relay>::getPingData(std::array<PingData, MAX_RELAYS>& data) -> size_t
   {
-    double current_time = mClock.elapsed<util::Second>();
-    unsigned int numPings = 0;
+    double currentTime = mClock.elapsed<util::Second>();
+    size_t numPings = 0;
 
     // locked mutex scope
     {
       std::lock_guard<std::mutex> lk(mLock);
       for (unsigned int i = 0; i < mNumRelays; ++i) {
-        if (mRelays[i].LastPingTime + RELAY_PING_TIME <= current_time) {
-          data[numPings].Seq = mRelays[i].History->pingSent(current_time);
-          data[numPings].Addr = mRelays[i].Addr;
-          mRelays[i].LastPingTime = current_time;
-          numPings++;
+        if (mRelays[i].LastPingTime + RELAY_PING_TIME <= currentTime) {
+          auto& relay = mRelays[i];
+          auto& pingData = data[numPings++];
+
+          pingData.Seq = relay.History->pingSent(currentTime);
+          pingData.Addr = relay.Addr;
+          relay.LastPingTime = currentTime;
         }
       }
     }
@@ -155,19 +152,21 @@ namespace core
   template <>
   inline auto RelayManager<V3Relay>::getPingData(std::array<V3PingData, MAX_RELAYS>& data) -> size_t
   {
-    double current_time = mClock.elapsed<util::Second>();
-    unsigned int numPings = 0;
+    double currentTime = mClock.elapsed<util::Second>();
+    size_t numPings = 0;
 
     // locked mutex scope
     {
       std::lock_guard<std::mutex> lk(mLock);
       for (unsigned int i = 0; i < mNumRelays; ++i) {
-        if (mRelays[i].LastPingTime + RELAY_PING_TIME <= current_time) {
-          data[numPings].Seq = mRelays[i].History->pingSent(current_time);
-          data[numPings].Addr = mRelays[i].Addr;
-          data[numPings].PingToken = mRelays[i].PingToken;
-          mRelays[i].LastPingTime = current_time;
-          numPings++;
+        if (mRelays[i].LastPingTime + RELAY_PING_TIME <= currentTime) {
+          auto& relay = mRelays[i];
+          auto& pingData = data[numPings++];
+
+          pingData.Seq = relay.History->pingSent(currentTime);
+          pingData.Addr = relay.Addr;
+          pingData.PingToken = relay.PingToken;
+          relay.LastPingTime = currentTime;
         }
       }
     }
@@ -184,7 +183,7 @@ namespace core
 
     // first copy all current relays that are also in the update lists
 
-    std::array<bool, MAX_RELAYS> historySlotToken{};
+    std::array<bool, MAX_RELAYS> historySlotTaken{};
     std::array<bool, MAX_RELAYS> found{};
     std::array<Relay, MAX_RELAYS> newRelays{};
 
@@ -200,10 +199,10 @@ namespace core
             found[j] = true;
             newRelays[index++] = relay;
 
-            const auto slot = relay.History - mPingHistoryBuff.data();  // TODO make this more readable
+            const auto slot = relay.History - mPingHistoryBuff.data();
             assert(slot >= 0);
             assert(slot < MAX_RELAYS);
-            historySlotToken[slot] = true;
+            historySlotTaken[slot] = true;
           }
         }
       }
@@ -215,11 +214,16 @@ namespace core
           auto& newRelay = newRelays[index];
           newRelay.ID = incoming[i].ID;
           newRelay.Addr = incoming[i].Addr;
+
+          // find a history slot for this relay
+          // helps when updating and copying in the above loop
+          // instead of copying the while ping history array
+          // it just copies the pointer
           for (int j = 0; j < MAX_RELAYS; j++) {
-            if (!historySlotToken[j]) {
+            if (!historySlotTaken[j]) {
               newRelay.History = &mPingHistoryBuff[j];
               newRelay.History->clear();
-              historySlotToken[j] = true;
+              historySlotTaken[j] = true;
               break;
             }
           }
@@ -280,7 +284,7 @@ namespace core
 
     // first copy all current relays that are also in the update lists
 
-    std::array<bool, MAX_RELAYS> historySlotToken{};
+    std::array<bool, MAX_RELAYS> historySlotTaken{};
     std::array<bool, MAX_RELAYS> found{};
     std::array<V3Relay, MAX_RELAYS> newRelays{};
 
@@ -298,10 +302,10 @@ namespace core
             newRelays[index].PingToken = incoming[j].PingToken;
             index++;
 
-            const auto slot = relay.History - mPingHistoryBuff.data();  // TODO make this more readable
+            const auto slot = relay.History - mPingHistoryBuff.data();
             assert(slot >= 0);
             assert(slot < MAX_RELAYS);
-            historySlotToken[slot] = true;
+            historySlotTaken[slot] = true;
           }
         }
       }
@@ -315,10 +319,10 @@ namespace core
           newRelay.Addr = incoming[i].Addr;
           newRelay.PingToken = incoming[i].PingToken;
           for (int j = 0; j < MAX_RELAYS; j++) {
-            if (!historySlotToken[j]) {
+            if (!historySlotTaken[j]) {
               newRelay.History = &mPingHistoryBuff[j];
               newRelay.History->clear();
-              historySlotToken[j] = true;
+              historySlotTaken[j] = true;
               break;
             }
           }

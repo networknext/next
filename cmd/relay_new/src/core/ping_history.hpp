@@ -46,19 +46,7 @@ namespace core
     GCC_NO_OPT_OUT;
     mSeq = 0;
 
-    // method 1 - equal
     mEntries.fill(HistoryEntry());
-
-    // method 2 - 3x slower
-    // std::array<HistoryEntry, RELAY_PING_HISTORY_ENTRY_COUNT> tmp;
-    // mEntries.swap(tmp);
-
-    // method 3 - identical to 1, no suprise
-    // std::fill(mEntries.begin(), mEntries.end(), HistoryEntry());
-
-    // method 4 - identical to 1
-    // HistoryEntry base;
-    // mEntries.fill(base);
   }
 
   inline auto PingHistory::seq() -> uint64_t

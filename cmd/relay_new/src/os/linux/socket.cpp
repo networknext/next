@@ -103,7 +103,7 @@ namespace os
 
       auto res = sendto(mSockFD, data, size, 0, reinterpret_cast<sockaddr*>(&socket_address), sizeof(sockaddr_in6));
       if (res < 0) {
-        LogError("sendto (", to.toString(), ") failed");
+        LogError("sendto (", to, ") failed");
         return false;
       }
     } else if (to.Type == net::AddressType::IPv4) {
@@ -112,7 +112,7 @@ namespace os
 
       auto res = sendto(mSockFD, data, size, 0, reinterpret_cast<sockaddr*>(&socket_address), sizeof(sockaddr_in6));
       if (res < 0) {
-        LogError("sendto (", to.toString(), ") failed");
+        LogError("sendto (", to, ") failed");
         return false;
       }
     } else {

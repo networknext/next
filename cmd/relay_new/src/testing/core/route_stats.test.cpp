@@ -53,14 +53,13 @@ Test(new_and_legacy_route_stats_basic)
   l_stats.rtt = std::floor(l_stats.rtt * 100) / 100;
 
   core::RouteStats stats(ph, 0.0, 1000.0, 0.0);
-  const_cast<float&>(stats.RTT) = std::floor(stats.RTT * 100) / 100;
 
   // of the three fields, skipping jitter, too much time to check, relying on legacy code being correct
 
   check(l_stats.packet_loss == expectedPacketloss);
   check(l_stats.rtt == expectedRTT);
 
-  check(stats.RTT == l_stats.rtt);
-  check(stats.PacketLoss == l_stats.packet_loss);
-  check(stats.Jitter == l_stats.jitter);
+  check(stats.getRTT() == l_stats.rtt);
+  check(stats.getPacketLoss() == l_stats.packet_loss);
+  check(stats.getJitter() == l_stats.jitter);
 }

@@ -280,12 +280,13 @@ int main(int argc, const char* argv[])
   };
 
   // makes a shared ptr to a socket object
-  auto makeSocket = [&sockets, socketSendBuffSize, socketRecvBuffSize](uint16_t& portNumber) -> os::SocketPtr {
+  auto makeSocket = [&sockets, socketSendBuffSize, socketRecvBuffSize](
+                     os::SocketType t, uint16_t& portNumber) -> os::SocketPtr {
     net::Address addr;
     addr.Port = portNumber;
     addr.Type = net::AddressType::IPv4;
     // don't set addr, so that it's 0.0.0.0
-    auto socket = std::make_shared<os::Socket>(os::SocketType::Blocking);
+    auto socket = std::make_shared<os::Socket>(t);
     if (!socket->create(addr, socketSendBuffSize, socketRecvBuffSize, 0.0f, true)) {
       return nullptr;
     }
@@ -306,7 +307,7 @@ int main(int argc, const char* argv[])
   Log("creating ", numProcessors, " packet processing threads");
   {
     for (unsigned int i = 0; i < numProcessors; i++) {
-      auto packetSocket = makeSocket(relayAddr.Port);
+      auto packetSocket = makeSocket(os::SocketType::Blocking, relayAddr.Port);
       {
         if (!packetSocket) {
           Log("could not create packetSocket");
@@ -362,7 +363,7 @@ int main(int argc, const char* argv[])
   // too for that same reason
   relayAddr.toString(relayAddrString);
 
-  LogDebug("Receiving Address: ", relayAddrString);
+  LogDebug("Receiving Address: ", relayAddr);
 
   // ping processing setup
   // pings are sent out on a different port number than received
@@ -374,7 +375,8 @@ int main(int argc, const char* argv[])
       bindAddr.Port = 0;  // make sure the port is dynamically assigned
     }
 
-    auto socket = makeSocket(bindAddr.Port);
+    // socket used for receiving and sending
+    auto socket = makeSocket(os::SocketType::NonBlocking, bindAddr.Port);
     if (!socket) {
       Log("could not create pingSocket");
       cleanup();
@@ -412,7 +414,8 @@ int main(int argc, const char* argv[])
         bindAddr.Port = 0;
       }
 
-      auto socket = makeSocket(bindAddr.Port);
+      // socket only used for sending
+      auto socket = makeSocket(os::SocketType::NonBlocking, bindAddr.Port);
       if (!socket) {
         Log("could not create pingSocket");
         cleanup();
@@ -438,7 +441,8 @@ int main(int argc, const char* argv[])
 
     // backend setup
     {
-      auto socket = makeSocket(relayAddr.Port);
+      // socket only used for sending
+      auto socket = makeSocket(os::SocketType::NonBlocking, relayAddr.Port);
       if (!socket) {
         Log("could not create v3 backend socket");
         cleanup();

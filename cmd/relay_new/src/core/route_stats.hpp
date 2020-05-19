@@ -10,10 +10,30 @@ namespace core
    public:
     RouteStats(const PingHistory& ph, double start, double end, double safety);
 
-    const float RTT;
-    const float Jitter;
-    const float PacketLoss;
+    auto getRTT() const -> float;
+    auto getJitter() const -> float;
+    auto getPacketLoss() const -> float;
+
+   private:
+    float mRTT;
+    float mJitter;
+    float mPacketLoss;
   };
+
+  inline auto RouteStats::getRTT() const -> float
+  {
+    return mRTT;
+  }
+
+  inline auto RouteStats::getJitter() const -> float
+  {
+    return mJitter;
+  }
+
+  inline auto RouteStats::getPacketLoss() const -> float
+  {
+    return mPacketLoss;
+  }
 }  // namespace core
 
 namespace legacy

@@ -93,6 +93,7 @@ namespace core
 
         auto& addr = ping.Addr;
 
+        pkt.Addr = addr;
         fillMsgHdrWithAddr(hdr, addr);
 
         size_t index = 0;
@@ -133,13 +134,19 @@ namespace core
         // could also just do: (1 + 8 + net::Address::ByteSize) * number of relays to ping to make this faster
         mRecorder.addToSent(wholePacketSize);
         mStats.BytesPerSecManagementTx += wholePacketSize;
+#ifndef RELAY_MULTISEND
+        if (!mSocket.send(pkt)) {
+          Log("failed to send new ping to ", pkt.Addr);
+        }
+#endif
       }
 
       buffer.Count = numberOfRelaysToPing;
-
+#ifdef RELAY_MULTISEND
       if (!mSocket.multisend(buffer)) {
         Log("failed to send messages, amount to send: ", numberOfRelaysToPing, ", actual sent: ", buffer.Count);
       }
+#endif
     }
   }
 
@@ -216,7 +223,7 @@ namespace core
 
 #ifndef RELAY_MULTISEND
         if (!mSocket.send(pkt)) {
-          Log("failed to send ping to ", pkt.Addr);
+          Log("failed to send old ping to ", pkt.Addr);
         }
 #endif
       }
