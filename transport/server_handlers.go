@@ -58,9 +58,11 @@ func (m *UDPServerMux) Start(ctx context.Context) error {
 }
 
 func (m *UDPServerMux) handler(ctx context.Context, id int) {
-	data := make([]byte, m.MaxPacketSize)
 
 	for {
+
+		data := make([]byte, m.MaxPacketSize)
+		
 		numbytes, addr, _ := m.Conn.ReadFromUDP(data)
 		if numbytes <= 0 {
 			continue
