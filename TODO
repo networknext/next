@@ -32,6 +32,14 @@ DONE
 
 TODO
 
+	Get functional tests passing.
+
+	----------------------------------------
+
+	The resend of the session update may be broken.
+
+	Test the resend of session update and the resend for init update.
+
 	----------------------------------------
 
 	Fix up release with windows changes (zip)
