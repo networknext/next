@@ -526,3 +526,7 @@ build-all: build-relay-backend build-server-backend build-relay-ref build-client
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all
+
+.PHONY: sync
+sync: 
+	git pull && cd sdk && git pull
