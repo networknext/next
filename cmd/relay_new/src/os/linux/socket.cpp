@@ -8,7 +8,7 @@
 
 namespace os
 {
-  Socket::Socket(SocketType type): mType(type) {}
+  Socket::Socket(SocketType type): mType(type), mClosed(false) {}
 
   Socket::~Socket()
   {
@@ -17,8 +17,7 @@ namespace os
     }
   }
 
-  bool Socket::create(
-   net::Address& addr, size_t sendBuffSize, size_t recvBuffSize, float timeout, bool reuse)
+  bool Socket::create(net::Address& addr, size_t sendBuffSize, size_t recvBuffSize, float timeout, bool reuse)
   {
     assert(addr.Type != net::AddressType::None);
 

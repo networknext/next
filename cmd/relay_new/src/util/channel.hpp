@@ -63,7 +63,7 @@ namespace util
   template <typename T>
   inline std::tuple<Sender<T>, Receiver<T>> makeChannel()
   {
-    auto closed = std::make_shared<std::atomic<bool>>();
+    auto closed = std::make_shared<std::atomic<bool>>(false);
     auto lock = std::make_shared<std::mutex>();
     auto queue = std::make_shared<std::list<T>>();
     auto var = std::make_shared<std::condition_variable>();
