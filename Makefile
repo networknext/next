@@ -518,7 +518,7 @@ build-client: build-sdk ## builds the client
 	@printf "done\n"
 
 .PHONY: build-all
-build-all: build-relay-backend build-server-backend build-relay-new build-relay-ref build-client build-server build-functional build-sdk-test build-soak-test build-tools ## builds everything
+build-all: build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-sdk-test build-soak-test build-tools ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all
