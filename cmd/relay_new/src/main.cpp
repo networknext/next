@@ -284,10 +284,13 @@ int main(int argc, const char* argv[])
     net::Address addr;
     addr.Port = portNumber;
     addr.Type = net::AddressType::IPv4;
+    // don't set addr, so that it's 0.0.0.0
     auto socket = std::make_shared<os::Socket>(os::SocketType::Blocking);
-    if (!socket->create(addr, socketSendBuffSize, socketRecvBuffSize, 0.0f, true, 0)) {
+    if (!socket->create(addr, socketSendBuffSize, socketRecvBuffSize, 0.0f, true)) {
       return nullptr;
     }
+
+    // if port was 0, this will set the reference parameter to what it changed to
     portNumber = addr.Port;
 
     sockets.push_back(socket);

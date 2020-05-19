@@ -18,7 +18,7 @@ namespace os
   }
 
   bool Socket::create(
-   net::Address& addr, size_t sendBuffSize, size_t recvBuffSize, float timeout, bool reuse, int lingerTimeInSeconds)
+   net::Address& addr, size_t sendBuffSize, size_t recvBuffSize, float timeout, bool reuse)
   {
     assert(addr.Type != net::AddressType::None);
 
@@ -45,10 +45,6 @@ namespace os
     }
 
     if (!setBufferSizes(sendBuffSize, recvBuffSize)) {
-      return false;
-    }
-
-    if (!setLingerTime(lingerTimeInSeconds)) {
       return false;
     }
 
@@ -133,7 +129,7 @@ namespace os
     assert(data != nullptr);
     assert(maxSize > 0);
 
-    sockaddr_storage sockaddr_from;
+    sockaddr_storage sockaddr_from = {};
 
     socklen_t len = sizeof(sockaddr_from);
     auto res = recvfrom(

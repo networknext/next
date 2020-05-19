@@ -27,7 +27,7 @@ namespace os
     ~Socket();
 
     bool create(
-     net::Address& addr, size_t sendBuffSize, size_t recvBuffSize, float timeout, bool reuse, int lingerTimeInSeconds);
+     net::Address& addr, size_t sendBuffSize, size_t recvBuffSize, float timeout, bool reuse);
 
     bool send(const net::Address& to, const uint8_t* data, size_t size) const;
 
