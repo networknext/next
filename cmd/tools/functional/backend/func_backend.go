@@ -279,14 +279,17 @@ func main() {
 		},
 
 		SessionUpdateHandlerFunc: func(w io.Writer, incoming *transport.UDPPacket) {
+
+			fmt.Printf( "session update packet\n" );
+
 			sessionUpdate := &transport.SessionUpdatePacket{}
 			if err = sessionUpdate.UnmarshalBinary(incoming.Data); err != nil {
-				// fmt.Printf("error: failed to read server session update packet: %v\n", err)
+				fmt.Printf("error: failed to read server session update packet: %v\n", err)
 				return
 			}
 
 			if sessionUpdate.FallbackToDirect {
-				// fmt.Printf("error: fallback to direct %s\n", incoming.SourceAddr)
+				fmt.Printf("error: fallback to direct %s\n", incoming.SourceAddr)
 				return
 			}
 
@@ -294,7 +297,7 @@ func main() {
 			serverEntry, ok := backend.serverDatabase[string(incoming.SourceAddr.String())]
 			backend.mutex.RUnlock()
 			if !ok {
-				// fmt.Printf("error: could not find server %s\n", incoming.SourceAddr)
+				fmt.Printf("error: could not find server %s\n", incoming.SourceAddr)
 				return
 			}
 
