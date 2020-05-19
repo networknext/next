@@ -31,7 +31,7 @@ func fillRelayDatabase(redisClient *redis.Client) {
 	fillData := func(addr string, updateTime time.Time) {
 		id := crypto.HashID(addr)
 		udp, _ := net.ResolveUDPAddr("udp", addr)
-		data := routing.Relay{
+		data := routing.RelayCacheEntry{
 			ID:   id,
 			Name: addr,
 			Addr: *udp,

@@ -866,10 +866,10 @@ func TestRelayUpdateResponseUnmarshalBinary(t *testing.T) {
 		addr := "127.0.0.1:40000"
 		index := 0
 		buff := make([]byte, 4+4+8+(4+len(addr)))
-		encoding.WriteUint32(buff, &index, rand.Uint32())                         //version
-		encoding.WriteUint32(buff, &index, 1)                                     //numRelaysToPing
-		encoding.WriteUint64(buff, &index, rand.Uint64())                         //id
-		encoding.WriteString(buff, &index, addr, transport.MaxRelayAddressLength) //address
+		encoding.WriteUint32(buff, &index, rand.Uint32())                       //version
+		encoding.WriteUint32(buff, &index, 1)                                   //numRelaysToPing
+		encoding.WriteUint64(buff, &index, rand.Uint64())                       //id
+		encoding.WriteString(buff, &index, addr, routing.MaxRelayAddressLength) //address
 		assert.NoError(t, packet.UnmarshalBinary(buff))
 	})
 }

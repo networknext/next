@@ -106,7 +106,7 @@ func TimeoutThread() {
 		}
 		hgetallResult := backend.redisClient.HGetAll(routing.HashKeyAllRelays)
 		for _, raw := range hgetallResult.Val() {
-			var r routing.Relay
+			var r routing.RelayCacheEntry
 			r.UnmarshalBinary([]byte(raw))
 			if currentTimestamp-r.LastUpdateTime.Unix() > unixTimeout {
 				backend.redisClient.HDel(routing.HashKeyAllRelays, r.Key())
@@ -118,7 +118,7 @@ func TimeoutThread() {
 			fmt.Printf("-----------------------------\n")
 			hgetallResult := backend.redisClient.HGetAll(routing.HashKeyAllRelays)
 			for _, raw := range hgetallResult.Val() {
-				var r routing.Relay
+				var r routing.RelayCacheEntry
 				r.UnmarshalBinary([]byte(raw))
 				fmt.Printf("relay: %v\n", &r.Addr)
 			}
@@ -229,6 +229,7 @@ func main() {
 		MaxPacketSize: transport.DefaultMaxPacketSize,
 
 		ServerInitHandlerFunc: func(w io.Writer, incoming *transport.UDPPacket) {
+
 			initRequest := &transport.ServerInitRequestPacket{}
 			if err = initRequest.UnmarshalBinary(incoming.Data); err != nil {
 				fmt.Printf("error: failed to read server init request packet: %v\n", err)
@@ -256,6 +257,7 @@ func main() {
 		},
 
 		ServerUpdateHandlerFunc: func(w io.Writer, incoming *transport.UDPPacket) {
+
 			serverUpdate := &transport.ServerUpdatePacket{}
 			if err = serverUpdate.UnmarshalBinary(incoming.Data); err != nil {
 				fmt.Printf("error: failed to read server update packet: %v\n", err)
@@ -279,14 +281,15 @@ func main() {
 		},
 
 		SessionUpdateHandlerFunc: func(w io.Writer, incoming *transport.UDPPacket) {
+
 			sessionUpdate := &transport.SessionUpdatePacket{}
 			if err = sessionUpdate.UnmarshalBinary(incoming.Data); err != nil {
-				// fmt.Printf("error: failed to read server session update packet: %v\n", err)
+				fmt.Printf("error: failed to read server session update packet: %v\n", err)
 				return
 			}
 
 			if sessionUpdate.FallbackToDirect {
-				// fmt.Printf("error: fallback to direct %s\n", incoming.SourceAddr)
+				fmt.Printf("error: fallback to direct %s\n", incoming.SourceAddr)
 				return
 			}
 
@@ -294,7 +297,7 @@ func main() {
 			serverEntry, ok := backend.serverDatabase[string(incoming.SourceAddr.String())]
 			backend.mutex.RUnlock()
 			if !ok {
-				// fmt.Printf("error: could not find server %s\n", incoming.SourceAddr)
+				fmt.Printf("error: could not find server %s\n", incoming.SourceAddr)
 				return
 			}
 
@@ -326,6 +329,7 @@ func main() {
 			}
 
 			sessionEntry.TimestampExpire = time.Now().Add(time.Minute * 5)
+
 			takeNetworkNext := len(nearRelays) > 0
 
 			if backend.mode == BACKEND_MODE_IDEMPOTENT && rand.Intn(10) == 0 {
@@ -454,7 +458,7 @@ func main() {
 						SessionID: sessionUpdate.SessionID,
 
 						SessionVersion: sessionEntry.Version,
-						SessionFlags:   0, // Haven't figured out what this is for
+						SessionFlags:   0, // Haven't figured out what this is for. // glenn: it's unused, but left in for binary compatibility reasons until we migrate to new backend.
 
 						Client: routing.Client{
 							Addr:      sessionUpdate.ClientAddress,
@@ -467,6 +471,8 @@ func main() {
 						},
 
 						Relays: nextRoute.Relays,
+
+						// todo: real backend should be setting these from the values in the route shader. that's where they are specified.
 
 						// Seems we have to do this as bandwidth limits are disabled according to comment in core_sodium.go
 						// Not sure how real backend gets away without setting this...
@@ -673,7 +679,7 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	relay := routing.Relay{
+	relay := routing.RelayCacheEntry{
 		ID:             crypto.HashID(relay_address),
 		Addr:           *udpAddr,
 		PublicKey:      crypto.RelayPublicKey[:],
@@ -728,7 +734,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	relay := routing.Relay{
+	relay := routing.RelayCacheEntry{
 		ID:             crypto.HashID(relay_address),
 		Addr:           *udpAddr,
 		PublicKey:      token,

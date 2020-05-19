@@ -117,10 +117,10 @@ ifndef AUTH_DOMAIN
 export AUTH_DOMAIN = networknext.auth0.com
 endif
 ifndef AUTH_CLIENTID
-export AUTH_CLIENTID = NIwrWYmG9U3tCQP6QxJqCx8n2xGSTCvf
+export AUTH_CLIENTID = KxEiJeUh5tE1cZrI64GXHs455XcxRDKX
 endif
 ifndef AUTH_CLIENTSECRET
-export AUTH_CLIENTSECRET = GZ9l7xF0dggtvz-jxbG7_-yX2YlvkGas4sIq2RJK4glxkHvT0t-WwMtyJlP5qix0
+export AUTH_CLIENTSECRET = d6w4zWBUT07UQlpDIA52pBMDukeuhvWJjCEnHWkkkZypd453qRn4e18Nz84GkfkO
 endif
 
 .PHONY: help
@@ -257,15 +257,14 @@ dev-route: ## prints routes from relay to datacenter in route matrix
 # Relay Build Process #
 #######################
 
-RELAY_DIR	:= ./cmd/relay
 NEW_RELAY_DIR := ./cmd/relay_new
 NEW_RELAY_MAKEFILE := Makefile
-RELAY_EXE	:= relay
+RELAY_EXE := relay
 
 .PHONY: build-relay-ref
 build-relay-ref: ## builds the reference relay
 	@printf "Building reference relay... "
-	@$(CXX) $(CXX_FLAGS) -o $(DIST_DIR)/$(RELAY_EXE) cmd/relay/*.cpp $(LDFLAGS)
+	@$(CXX) $(CXX_FLAGS) -o $(DIST_DIR)/reference_relay reference/relay/*.cpp $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-relay-new
@@ -308,11 +307,11 @@ dev-server-backend: ## runs a local server backend
 
 .PHONY: dev-reference-backend
 dev-reference-backend: ## runs a local reference backend
-	$(GO) run cmd/tools/functional/backend/*.go
+	$(GO) run reference/backend/*.go
 
 .PHONY: dev-reference-relay 
 dev-reference-relay: build-relay-ref ## runs a local reference relay
-	@$(DIST_DIR)/$(RELAY_EXE)
+	@$(DIST_DIR)/reference_relay
 
 .PHONY: dev-server
 dev-server: build-sdk build-server  ## runs a local server
@@ -523,7 +522,7 @@ build-client: build-sdk ## builds the client
 	@printf "done\n"
 
 .PHONY: build-all
-build-all: build-relay-backend build-server-backend build-relay-new build-relay-ref build-client build-server build-functional build-sdk-test build-soak-test build-tools ## builds everything
+build-all: build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-sdk-test build-soak-test build-tools ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all

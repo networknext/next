@@ -139,62 +139,26 @@ func TestGeoClient(t *testing.T) {
 	}
 
 	t.Run("Add", func(t *testing.T) {
-		r1 := routing.Relay{
-			ID: 1,
-			Datacenter: routing.Datacenter{
-				Location: routing.Location{
-					Latitude:  38.115556,
-					Longitude: 13.361389,
-				},
-			},
-		}
-		err := geoclient.Add(r1)
+		err := geoclient.Add(1, 38.115556, 13.361389)
 		assert.NoError(t, err)
 
-		r2 := routing.Relay{
-			ID: 2,
-			Datacenter: routing.Datacenter{
-				Location: routing.Location{
-					Latitude:  37.502669,
-					Longitude: 15.087269,
-				},
-			},
-		}
-		err = geoclient.Add(r2)
+		err = geoclient.Add(2, 37.502669, 15.087269)
 		assert.NoError(t, err)
 	})
 
 	t.Run("RelaysWithin", func(t *testing.T) {
-		r1 := routing.Relay{
-			ID: 1,
-			Datacenter: routing.Datacenter{
-				Location: routing.Location{
-					Latitude:  38.115556,
-					Longitude: 13.361389,
-				},
-			},
-		}
-		err := geoclient.Add(r1)
+		err := geoclient.Add(1, 38.115556, 13.361389)
 		assert.NoError(t, err)
 
-		r2 := routing.Relay{
-			ID: 2,
-			Datacenter: routing.Datacenter{
-				Location: routing.Location{
-					Latitude:  37.502669,
-					Longitude: 15.087269,
-				},
-			},
-		}
-		err = geoclient.Add(r2)
+		err = geoclient.Add(2, 37.502669, 15.087269)
 		assert.NoError(t, err)
 
 		relays, err := geoclient.RelaysWithin(37, 15, 200, "km")
 		assert.NoError(t, err)
 
 		assert.Equal(t, 2, len(relays))
-		assert.Equal(t, r2.ID, relays[0].ID)
-		assert.Equal(t, r1.ID, relays[1].ID)
+		assert.Equal(t, uint64(2), relays[0].ID)
+		assert.Equal(t, uint64(1), relays[1].ID)
 
 		// Bad georadius call to redis
 		_, err = geoclient.RelaysWithin(37, 15, 200, "invalid")

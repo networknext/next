@@ -1,7 +1,9 @@
 package transport_test
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"testing"
@@ -9,6 +11,7 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
+	"github.com/networknext/backend/storage"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -114,9 +117,8 @@ func NewTestHTTPClient(fn RoundTripFunc) *http.Client {
 
 func seedRedis(t *testing.T, redisServer *miniredis.Miniredis, addressesToAdd []string) {
 	addEntry := func(addr string) {
-		relay := routing.Relay{
+		relay := routing.RelayCacheEntry{
 			PublicKey: make([]byte, crypto.KeySize),
-			State:     routing.RelayStateEnabled,
 		}
 		udpAddr, err := net.ResolveUDPAddr("udp", addr)
 		assert.NoError(t, err)
@@ -124,10 +126,43 @@ func seedRedis(t *testing.T, redisServer *miniredis.Miniredis, addressesToAdd []
 		relay.ID = crypto.HashID(addr)
 		bin, err := relay.MarshalBinary()
 		assert.NoError(t, err)
+		redisServer.Set(relay.Key(), "0")
 		redisServer.HSet(routing.HashKeyAllRelays, relay.Key(), string(bin))
 	}
 
 	for _, addr := range addressesToAdd {
 		addEntry(addr)
+	}
+}
+
+func seedStorage(t *testing.T, inMemory *storage.InMemory, addressesToAdd []string) {
+	for i, addrString := range addressesToAdd {
+		addr, err := net.ResolveUDPAddr("udp", addrString)
+		assert.NoError(t, err)
+
+		relay := routing.Relay{
+			ID:   crypto.HashID(addrString),
+			Name: fmt.Sprintf("Relay %d", i),
+			Addr: *addr,
+			Seller: routing.Seller{
+				ID:   fmt.Sprintf("%d", i),
+				Name: fmt.Sprintf("Seller %d", i),
+			},
+			Datacenter: routing.Datacenter{
+				ID:      crypto.HashID(fmt.Sprintf("Datacenter %d", i)),
+				Name:    fmt.Sprintf("Datacenter %d", i),
+				Enabled: true,
+			},
+			State: routing.RelayStateEnabled,
+		}
+
+		err = inMemory.AddSeller(context.Background(), relay.Seller)
+		assert.NoError(t, err)
+
+		err = inMemory.AddDatacenter(context.Background(), relay.Datacenter)
+		assert.NoError(t, err)
+
+		err = inMemory.AddRelay(context.Background(), relay)
+		assert.NoError(t, err)
 	}
 }

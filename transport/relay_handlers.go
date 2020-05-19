@@ -2,9 +2,11 @@ package transport
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -26,8 +28,7 @@ import (
 const (
 	InitRequestMagic = 0x9083708f
 
-	MaxRelays             = 1024
-	MaxRelayAddressLength = 256
+	MaxRelays = 1024
 )
 
 type RelayHandlerConfig struct {
@@ -52,10 +53,46 @@ type RelayInitHandlerConfig struct {
 
 type RelayUpdateHandlerConfig struct {
 	RedisClient           redis.Cmdable
+	GeoClient             *routing.GeoClient
 	StatsDb               *routing.StatsDatabase
 	Metrics               *metrics.RelayUpdateMetrics
 	TrafficStatsPublisher stats.Publisher
 	Storer                storage.Storer
+}
+
+// RemoveRelayCacheEntry cleans up a relay cache entry and all its associated data
+func RemoveRelayCacheEntry(ctx context.Context, relayID uint64, redisKey string, redisClient redis.Cmdable, geoClient *routing.GeoClient, statsdb *routing.StatsDatabase, db storage.Storer) error {
+	// Remove geo location data associated with this relay
+	if err := geoClient.Remove(relayID); err != nil {
+		return fmt.Errorf("Failed to remove geoClient entry for relay with ID %v: %v", relayID, err)
+	}
+
+	// Remove relay entry from Hashmap
+	if err := redisClient.HDel(routing.HashKeyAllRelays, redisKey).Err(); err != nil {
+		return fmt.Errorf("Failed to remove hashmap entry for relay with ID %v: %v", relayID, err)
+	}
+
+	// Remove relay entry from statsDB (which in turn means it won't appear in cost matrix)
+	statsdb.DeleteEntry(relayID)
+
+	// Set the relay's state to offline in storage if it was previously enabled
+	relay, err := db.Relay(relayID)
+	if err != nil {
+		return fmt.Errorf("Failed to retrieve relay with ID %v from storage when attempting to set relay state to offline: %v", relayID, err)
+	}
+
+	// The relay was enabled and running properly but has failed to communicate to the backend for some reason
+	// This check is necessary so that if a relay is shut down by the backend, by the supplier, or manually
+	// then it won't incorrectly overwrite that state.
+	if relay.State == routing.RelayStateEnabled {
+		relay.State = routing.RelayStateOffline
+
+		if err := db.SetRelay(ctx, relay); err != nil {
+			return fmt.Errorf("Failed to set relay with ID %v in storage when attempting to set relay state to offline: %v", relayID, err)
+		}
+	}
+
+	return nil
 }
 
 // RelayHandlerFunc returns the function for the relays endpoint
@@ -105,7 +142,7 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 		id := crypto.HashID(relayRequest.Address.String())
 
 		// Check if the relay is registered in firestore
-		relayEntry, err := params.Storer.Relay(id)
+		relay, err := params.Storer.Relay(id)
 		if err != nil {
 			sentry.CaptureException(err)
 			level.Error(locallogger).Log("msg", "failed to get relay from storage", "err", err)
@@ -114,18 +151,16 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 			return
 		}
 
-		// Set the relay to the firestore entry for now
-		relay := relayEntry
-
-		level.Info(relayslogger).Log(
-			"id", relay.ID,
-			"name", relay.Name,
-			"datacenter", relay.Datacenter.Name,
-			"addr", relay.Addr.String(),
-			"session_count", relayRequest.TrafficStats.SessionCount,
-			"bytes_received", relayRequest.TrafficStats.BytesReceived,
-			"bytes_send", relayRequest.TrafficStats.BytesSent,
-		)
+		// Ideally the ID and address should be the same as firestore,
+		// but when running locally they're not, so take them from the request packet
+		relayCacheEntry := routing.RelayCacheEntry{
+			ID:             id,
+			Name:           relay.Name,
+			Addr:           relayRequest.Address,
+			PublicKey:      relay.PublicKey,
+			Datacenter:     relay.Datacenter,
+			LastUpdateTime: time.Now(),
+		}
 
 		// Get the relay's HTTP authorization header
 		authorizationHeader := request.Header.Get("Authorization")
@@ -181,7 +216,7 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 		}
 
 		// Decrypt the address
-		if _, ok := crypto.Open(encryptedAddress, nonce, relay.PublicKey, params.RouterPrivateKey); !ok {
+		if _, ok := crypto.Open(encryptedAddress, nonce, relayCacheEntry.PublicKey, params.RouterPrivateKey); !ok {
 			sentry.CaptureMessage("crypto open failed")
 			level.Error(locallogger).Log("msg", "crypto open failed")
 			http.Error(writer, "crypto open failed", http.StatusUnauthorized)
@@ -190,7 +225,7 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 		}
 
 		// Check if the relay exists in redis
-		exists := params.RedisClient.HExists(routing.HashKeyAllRelays, relay.Key())
+		exists := params.RedisClient.Exists(relayCacheEntry.Key())
 
 		if exists.Err() != nil && exists.Err() != redis.Nil {
 			sentry.CaptureException(exists.Err())
@@ -200,40 +235,83 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 			return
 		}
 
+		// If the relay is shutting down, set the state to maintenance if it was previously operating correctly
+		if relayRequest.ShuttingDown {
+			if relay.State == routing.RelayStateEnabled {
+				relay.State = routing.RelayStateMaintenance
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+			if err := params.Storer.SetRelay(ctx, relay); err != nil {
+				level.Error(locallogger).Log("msg", "failed to set relay state in storage while shutting down", "err", err)
+				http.Error(writer, "failed to set relay state in storage while shutting down", http.StatusInternalServerError)
+				return
+			}
+
+			// Remove the relay cache entry if it exists
+			if exists.Val() == 1 {
+				if err := params.RedisClient.Del(relayCacheEntry.Key()).Err(); err != nil {
+					level.Error(locallogger).Log("msg", "failed to remove relay key from redis", "err", err)
+					http.Error(writer, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
+				if err := RemoveRelayCacheEntry(ctx, relayCacheEntry.ID, relayCacheEntry.Key(), params.RedisClient, params.GeoClient, params.StatsDb, params.Storer); err != nil {
+					level.Error(locallogger).Log("err", err)
+					http.Error(writer, err.Error(), http.StatusInternalServerError)
+					return
+				}
+			}
+
+			return
+		}
+
 		// If the relay doesn't exist, add it
-		if !exists.Val() {
+		if exists.Val() == 0 {
 			// Set the relay's lat long
-			if loc, err := params.IpLocator.LocateIP(relay.Addr.IP); err == nil {
-				relay.Datacenter.Location.Latitude = loc.Latitude
-				relay.Datacenter.Location.Longitude = loc.Longitude
+			if loc, err := params.IpLocator.LocateIP(relayCacheEntry.Addr.IP); err == nil {
+				relayCacheEntry.Datacenter.Location.Latitude = loc.Latitude
+				relayCacheEntry.Datacenter.Location.Longitude = loc.Longitude
 			} else {
 				level.Warn(locallogger).Log("msg", "using default geolocation from storage for relay")
 			}
 
 			// Regular set for expiry
-			if res := params.RedisClient.Set(relay.Key(), relay.ID, routing.RelayTimeout); res.Err() != nil && res.Err() != redis.Nil {
+			if res := params.RedisClient.Set(relayCacheEntry.Key(), relayCacheEntry.ID, routing.RelayTimeout); res.Err() != nil && res.Err() != redis.Nil {
 				level.Error(locallogger).Log("msg", "failed to set relay expiry in redis", "err", res.Err())
 				http.Error(writer, "failed to initialize relay", http.StatusInternalServerError)
 				return
 			}
 
 			// HSet for full relay data
-			if res := params.RedisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay); res.Err() != nil && res.Err() != redis.Nil {
+			if res := params.RedisClient.HSet(routing.HashKeyAllRelays, relayCacheEntry.Key(), relayCacheEntry); res.Err() != nil && res.Err() != redis.Nil {
 				level.Error(locallogger).Log("msg", "failed to store relay in redis", "err", res.Err())
 				http.Error(writer, "failed to initialize relay", http.StatusInternalServerError)
 				return
 			}
 
-			if err := params.GeoClient.Add(relay); err != nil {
+			if err := params.GeoClient.Add(relayCacheEntry.ID, relayCacheEntry.Datacenter.Location.Latitude, relayCacheEntry.Datacenter.Location.Longitude); err != nil {
 				level.Error(locallogger).Log("msg", "failed to add relay to geoclient", "err", err)
 				http.Error(writer, "failed to initialize relay", http.StatusInternalServerError)
+				return
+			}
+
+			// Set the relay's state to enabled
+			relay.State = routing.RelayStateEnabled
+
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+			if err := params.Storer.SetRelay(ctx, relay); err != nil {
+				level.Error(locallogger).Log("msg", "failed to set relay state in storage", "err", err)
+				http.Error(writer, "failed to set relay state in storage", http.StatusInternalServerError)
 				return
 			}
 
 			level.Debug(locallogger).Log("msg", "relay initialized")
 		} else { // If the relay exists in redis, then get it and use that instead of the firestore version
 			// Get the relay from redis
-			hgetResult := params.RedisClient.HGet(routing.HashKeyAllRelays, relay.Key())
+			hgetResult := params.RedisClient.HGet(routing.HashKeyAllRelays, relayCacheEntry.Key())
 			if hgetResult.Err() != nil && hgetResult.Err() != redis.Nil {
 				level.Error(locallogger).Log("msg", "failed to get relay", "err", exists.Err())
 				http.Error(writer, "failed to get relay", http.StatusNotFound)
@@ -248,7 +326,7 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 			}
 
 			// Unmarshal the relay entry
-			if err = relay.UnmarshalBinary(data); err != nil {
+			if err = relayCacheEntry.UnmarshalBinary(data); err != nil {
 				sentry.CaptureException(err)
 				level.Error(locallogger).Log("msg", "failed to unmarshal relay data", "err", err)
 				http.Error(writer, "failed to unmarshal relay data", http.StatusInternalServerError)
@@ -257,12 +335,22 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 			}
 		}
 
+		level.Info(relayslogger).Log(
+			"id", relayCacheEntry.ID,
+			"name", relayCacheEntry.Name,
+			"addr", relayCacheEntry.Addr.String(),
+			"datacenter", relayCacheEntry.Datacenter.Name,
+			"session_count", relayRequest.TrafficStats.SessionCount,
+			"bytes_received", relayRequest.TrafficStats.BytesReceived,
+			"bytes_send", relayRequest.TrafficStats.BytesSent,
+		)
+
 		// Update the relay's last update time
-		relay.LastUpdateTime = time.Now()
+		relayCacheEntry.LastUpdateTime = time.Now()
 
 		// Update the relay's ping stats in statsdb
 		statsUpdate := &routing.RelayStatsUpdate{}
-		statsUpdate.ID = relay.ID
+		statsUpdate.ID = relayCacheEntry.ID
 
 		// For compatibility, convert the ping stats to the old struct for now
 		relayStatsPing := make([]routing.RelayStatsPing, len(relayRequest.PingStats))
@@ -279,19 +367,19 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 		params.StatsDb.ProcessStats(statsUpdate)
 
 		// Update the relay's traffic stats
-		relay.TrafficStats = relayRequest.TrafficStats
+		relayCacheEntry.TrafficStats = relayRequest.TrafficStats
 
 		// Store the relay back in redis
 
 		// Regular set for expiry
-		if res := params.RedisClient.Set(relay.Key(), relay.ID, routing.RelayTimeout); res.Err() != nil {
+		if res := params.RedisClient.Set(relayCacheEntry.Key(), relayCacheEntry.ID, routing.RelayTimeout); res.Err() != nil {
 			level.Error(locallogger).Log("msg", "failed to set relay expiry in redis", "err", res.Err())
 			http.Error(writer, "failed to update relay", http.StatusInternalServerError)
 			return
 		}
 
 		// HSet for full relay data
-		if res := params.RedisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay); res.Err() != nil {
+		if res := params.RedisClient.HSet(routing.HashKeyAllRelays, relayCacheEntry.Key(), relayCacheEntry); res.Err() != nil {
 			level.Error(locallogger).Log("msg", "failed to store relay in redis", "err", res.Err())
 			http.Error(writer, "failed to update relay", http.StatusInternalServerError)
 			return
@@ -310,24 +398,34 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 		// Create the list of relays to ping
 		relaysToPing := make([]RelayPingStats, 0)
 		for k, v := range hgetallResult.Val() {
-			if k != relay.Key() {
-				var unmarshaledValue routing.Relay
+			if k != relayCacheEntry.Key() {
+				var unmarshaledValue routing.RelayCacheEntry
 				if err := unmarshaledValue.UnmarshalBinary([]byte(v)); err != nil {
 					level.Error(locallogger).Log("msg", "failed to get other relay", "err", err)
 					continue
 				}
 
-				relaysToPing = append(relaysToPing, RelayPingStats{
-					ID:      unmarshaledValue.ID,
-					Address: unmarshaledValue.Addr.String(),
-				})
+				// Get the relay's state so that we only ping across enabled relays
+				// Even though it's cached, maybe find a better way to do this than hitting storage for every other relay every update
+				relay, err := params.Storer.Relay(unmarshaledValue.ID)
+				if err != nil {
+					level.Error(locallogger).Log("msg", "failed to get other relay from storage", "err", err)
+					continue
+				}
+
+				if relay.State == routing.RelayStateEnabled {
+					relaysToPing = append(relaysToPing, RelayPingStats{
+						ID:      unmarshaledValue.ID,
+						Address: unmarshaledValue.Addr.String(),
+					})
+				}
 			}
 		}
 
 		// Send back the response
 		var responseData []byte
 		response := RelayRequest{}
-		response.Address = relay.Addr
+		response.Address = relayCacheEntry.Addr
 		response.PingStats = relaysToPing
 
 		responseData, err = response.MarshalJSON()
@@ -399,7 +497,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 
 		id := crypto.HashID(relayInitRequest.Address.String())
 
-		relayEntry, err := params.Storer.Relay(id)
+		relay, err := params.Storer.Relay(id)
 		if err != nil {
 			sentry.CaptureException(err)
 			level.Error(locallogger).Log("msg", "failed to get relay from storage", "err", err)
@@ -408,16 +506,18 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			return
 		}
 
-		relay := relayEntry
-
 		// Ideally the ID and address should be the same as firestore,
 		// but when running locally they're not, so take them from the request packet
-		relay.ID = id
-		relay.Addr = relayInitRequest.Address
+		relayCacheEntry := routing.RelayCacheEntry{
+			ID:             id,
+			Name:           relay.Name,
+			Addr:           relayInitRequest.Address,
+			PublicKey:      relay.PublicKey,
+			Datacenter:     relay.Datacenter,
+			LastUpdateTime: time.Now(),
+		}
 
-		relay.LastUpdateTime = time.Now()
-
-		if _, ok := crypto.Open(relayInitRequest.EncryptedToken, relayInitRequest.Nonce, relay.PublicKey, params.RouterPrivateKey); !ok {
+		if _, ok := crypto.Open(relayInitRequest.EncryptedToken, relayInitRequest.Nonce, relayCacheEntry.PublicKey, params.RouterPrivateKey); !ok {
 			sentry.CaptureMessage("crypto open failed")
 			level.Error(locallogger).Log("msg", "crypto open failed")
 			http.Error(writer, "crypto open failed", http.StatusUnauthorized)
@@ -425,8 +525,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			return
 		}
 
-		exists := params.RedisClient.HExists(routing.HashKeyAllRelays, relay.Key())
-
+		exists := params.RedisClient.Exists(relayCacheEntry.Key())
 		if exists.Err() != nil && exists.Err() != redis.Nil {
 			sentry.CaptureException(exists.Err())
 			level.Error(locallogger).Log("msg", "failed to check if relay is registered", "err", exists.Err())
@@ -435,7 +534,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			return
 		}
 
-		if exists.Val() {
+		if exists.Val() == 1 {
 			sentry.CaptureMessage("relay already initialized")
 			level.Warn(locallogger).Log("msg", "relay already initialized")
 			http.Error(writer, "relay already initialized", http.StatusConflict)
@@ -443,9 +542,9 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			return
 		}
 
-		if loc, err := params.IpLocator.LocateIP(relay.Addr.IP); err == nil {
-			relay.Datacenter.Location.Latitude = loc.Latitude
-			relay.Datacenter.Location.Longitude = loc.Longitude
+		if loc, err := params.IpLocator.LocateIP(relayCacheEntry.Addr.IP); err == nil {
+			relayCacheEntry.Datacenter.Location.Latitude = loc.Latitude
+			relayCacheEntry.Datacenter.Location.Longitude = loc.Longitude
 		} else {
 			sentry.CaptureMessage("failed to lookup message")
 			level.Warn(locallogger).Log("msg", "using default geolocation from storage for relay")
@@ -453,22 +552,33 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 		}
 
 		// Regular set for expiry
-		if res := params.RedisClient.Set(relay.Key(), relay.ID, routing.RelayTimeout); res.Err() != nil && res.Err() != redis.Nil {
+		if res := params.RedisClient.Set(relayCacheEntry.Key(), relayCacheEntry.ID, routing.RelayTimeout); res.Err() != nil && res.Err() != redis.Nil {
 			level.Error(locallogger).Log("msg", "failed to initialize relay", "err", res.Err())
 			http.Error(writer, "failed to initialize relay", http.StatusInternalServerError)
 			return
 		}
 
 		// HSet for full relay data
-		if res := params.RedisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay); res.Err() != nil && res.Err() != redis.Nil {
+		if res := params.RedisClient.HSet(routing.HashKeyAllRelays, relayCacheEntry.Key(), relayCacheEntry); res.Err() != nil && res.Err() != redis.Nil {
 			level.Error(locallogger).Log("msg", "failed to initialize relay", "err", res.Err())
 			http.Error(writer, "failed to initialize relay", http.StatusInternalServerError)
 			return
 		}
 
-		if err := params.GeoClient.Add(relay); err != nil {
+		if err := params.GeoClient.Add(relayCacheEntry.ID, relayCacheEntry.Datacenter.Location.Latitude, relayCacheEntry.Datacenter.Location.Longitude); err != nil {
 			level.Error(locallogger).Log("msg", "failed to initialize relay", "err", err)
 			http.Error(writer, "failed to initialize relay", http.StatusInternalServerError)
+			return
+		}
+
+		// Set the relay's state to enabled
+		relay.State = routing.RelayStateEnabled
+
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		if err := params.Storer.SetRelay(ctx, relay); err != nil {
+			level.Error(locallogger).Log("msg", "failed to set relay state in storage", "err", err)
+			http.Error(writer, "failed to set relay state in storage", http.StatusInternalServerError)
 			return
 		}
 
@@ -477,8 +587,8 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 		var responseData []byte
 		response := RelayInitResponse{
 			Version:   VersionNumberInitResponse,
-			Timestamp: uint64(relay.LastUpdateTime.Unix()),
-			PublicKey: relay.PublicKey,
+			Timestamp: uint64(relayCacheEntry.LastUpdateTime.Unix()),
+			PublicKey: relayCacheEntry.PublicKey,
 		}
 
 		switch request.Header.Get("Content-Type") {
@@ -556,11 +666,11 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			return
 		}
 
-		relay := routing.Relay{
+		relayCacheEntry := routing.RelayCacheEntry{
 			ID: crypto.HashID(relayUpdateRequest.Address.String()),
 		}
 
-		exists := params.RedisClient.HExists(routing.HashKeyAllRelays, relay.Key())
+		exists := params.RedisClient.Exists(relayCacheEntry.Key())
 
 		if exists.Err() != nil && exists.Err() != redis.Nil {
 			sentry.CaptureException(exists.Err())
@@ -570,7 +680,46 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			return
 		}
 
-		if !exists.Val() {
+		// If the relay is shutting down, set the state to maintenance if it was previously operating correctly
+		if relayUpdateRequest.ShuttingDown {
+			relay, err := params.Storer.Relay(relayCacheEntry.ID)
+			if err != nil {
+				level.Error(locallogger).Log("msg", "failed to get relay from storage while shutting down", "err", err)
+				http.Error(writer, "failed to get relay from storage while shutting down", http.StatusInternalServerError)
+				return
+			}
+
+			if relay.State == routing.RelayStateEnabled {
+				relay.State = routing.RelayStateMaintenance
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+			if err := params.Storer.SetRelay(ctx, relay); err != nil {
+				level.Error(locallogger).Log("msg", "failed to set relay state in storage while shutting down", "err", err)
+				http.Error(writer, "failed to set relay state in storage while shutting down", http.StatusInternalServerError)
+				return
+			}
+
+			// Remove the relay cache entry if it exists
+			if exists.Val() == 1 {
+				if err := params.RedisClient.Del(relayCacheEntry.Key()).Err(); err != nil {
+					level.Error(locallogger).Log("msg", "failed to remove relay key from redis", "err", err)
+					http.Error(writer, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
+				if err := RemoveRelayCacheEntry(ctx, relayCacheEntry.ID, relayCacheEntry.Key(), params.RedisClient, params.GeoClient, params.StatsDb, params.Storer); err != nil {
+					level.Error(locallogger).Log("err", err)
+					http.Error(writer, err.Error(), http.StatusInternalServerError)
+					return
+				}
+			}
+
+			return
+		}
+
+		if exists.Val() == 0 {
 			sentry.CaptureMessage("relay not initalized")
 			level.Warn(locallogger).Log("msg", "relay not initialized")
 			http.Error(writer, "relay not initialized", http.StatusNotFound)
@@ -578,7 +727,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			return
 		}
 
-		hgetResult := params.RedisClient.HGet(routing.HashKeyAllRelays, relay.Key())
+		hgetResult := params.RedisClient.HGet(routing.HashKeyAllRelays, relayCacheEntry.Key())
 		if hgetResult.Err() != nil && hgetResult.Err() != redis.Nil {
 			level.Error(locallogger).Log("msg", "failed to get relays", "err", exists.Err())
 			http.Error(writer, "failed to get relays", http.StatusNotFound)
@@ -592,7 +741,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			return
 		}
 
-		if err = relay.UnmarshalBinary(data); err != nil {
+		if err = relayCacheEntry.UnmarshalBinary(data); err != nil {
 			sentry.CaptureException(err)
 			level.Error(locallogger).Log("msg", "failed to unmarshal relay data", "err", err)
 			http.Error(writer, "failed to unmarshal relay data", http.StatusInternalServerError)
@@ -600,7 +749,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			return
 		}
 
-		if !bytes.Equal(relayUpdateRequest.Token, relay.PublicKey) {
+		if !bytes.Equal(relayUpdateRequest.Token, relayCacheEntry.PublicKey) {
 			sentry.CaptureMessage("relay public key doesn't match")
 			level.Error(locallogger).Log("msg", "relay public key doesn't match")
 			http.Error(writer, "relay public key doesn't match", http.StatusBadRequest)
@@ -611,34 +760,24 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		fmt.Printf("Relay (%s) state: %d\n", relay.Addr.String(), relay.State)
 
 		statsUpdate := &routing.RelayStatsUpdate{}
-		statsUpdate.ID = relay.ID
+		statsUpdate.ID = relayCacheEntry.ID
 		statsUpdate.PingStats = append(statsUpdate.PingStats, relayUpdateRequest.PingStats...)
 
 		params.StatsDb.ProcessStats(statsUpdate)
 
-		relay.LastUpdateTime = time.Now()
+		relayCacheEntry.LastUpdateTime = time.Now()
 
-		relay.TrafficStats = routing.RelayTrafficStats{
-			SessionCount:  relayUpdateRequest.TrafficStats.SessionCount,
-			BytesSent:     relayUpdateRequest.TrafficStats.BytesSent,
-			BytesReceived: relayUpdateRequest.TrafficStats.BytesReceived,
-		}
-
-		relaysToPing := make([]routing.RelayPingData, 0)
+		relayCacheEntry.TrafficStats = relayUpdateRequest.TrafficStats
 
 		// Regular set for expiry
-		if res := params.RedisClient.Set(relay.Key(), 0, routing.RelayTimeout); res.Err() != nil {
+		if res := params.RedisClient.Set(relayCacheEntry.Key(), 0, routing.RelayTimeout); res.Err() != nil {
 			level.Error(locallogger).Log("msg", "failed to store relay update expiry", "err", res.Err())
 			http.Error(writer, "failed to store relay update expiry", http.StatusInternalServerError)
 			return
 		}
 
-		if relayUpdateRequest.ShuttingDown && relay.State != routing.RelayStateDisabled {
-			relay.State = routing.RelayStateMaintenance
-		}
-
 		// HSet for full relay data
-		if res := params.RedisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay); res.Err() != nil {
+		if res := params.RedisClient.HSet(routing.HashKeyAllRelays, relayCacheEntry.Key(), relayCacheEntry); res.Err() != nil {
 			level.Error(locallogger).Log("msg", "failed to store relay update", "err", res.Err())
 			http.Error(writer, "failed to store relay update", http.StatusInternalServerError)
 			return
@@ -651,25 +790,34 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			return
 		}
 
+		relaysToPing := make([]routing.RelayPingData, 0)
 		for k, v := range hgetallResult.Val() {
-			if k != relay.Key() {
-				var unmarshaledValue routing.Relay
+			if k != relayCacheEntry.Key() {
+				var unmarshaledValue routing.RelayCacheEntry
 				if err := unmarshaledValue.UnmarshalBinary([]byte(v)); err != nil {
-					level.Error(locallogger).Log("msg", "failed to get other relay", "err", err)
+					level.Error(locallogger).Log("msg", "failed to get other relay from redis", "err", err)
 					continue
 				}
 
-				//if unmarshaledValue.State == routing.RelayStateEnabled {
-				relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(unmarshaledValue.ID), Address: unmarshaledValue.Addr.String()})
-				//}
+				// Get the relay's state so that we only ping across enabled relays
+				// Even though it's cached, maybe find a better way to do this than hitting storage for every other relay every update
+				relay, err := params.Storer.Relay(unmarshaledValue.ID)
+				if err != nil {
+					level.Error(locallogger).Log("msg", "failed to get other relay from storage", "err", err)
+					continue
+				}
+
+				if relay.State == routing.RelayStateEnabled {
+					relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(unmarshaledValue.ID), Address: unmarshaledValue.Addr.String()})
+				}
 			}
 		}
 
 		level.Info(relayslogger).Log(
-			"id", relay.ID,
-			"name", relay.Name,
-			"datacenter", relay.Datacenter.Name,
-			"addr", relay.Addr.String(),
+			"id", relayCacheEntry.ID,
+			"name", relayCacheEntry.Name,
+			"addr", relayCacheEntry.Addr.String(),
+			"datacenter", relayCacheEntry.Datacenter.Name,
 			"session_count", relayUpdateRequest.TrafficStats.SessionCount,
 			"bytes_received", relayUpdateRequest.TrafficStats.BytesReceived,
 			"bytes_send", relayUpdateRequest.TrafficStats.BytesSent,
@@ -717,5 +865,144 @@ func HealthzHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(http.StatusText(http.StatusOK)))
+	}
+}
+
+func statsTable(stats map[string]map[string]routing.Stats) template.HTML {
+	html := strings.Builder{}
+	html.WriteString("<table>")
+
+	addrs := make([]string, 0)
+	for addr := range stats {
+		addrs = append(addrs, addr)
+	}
+
+	html.WriteString("<tr>")
+	html.WriteString("<th>Address</th>")
+	for _, addr := range addrs {
+		html.WriteString("<th>" + addr + "</th>")
+	}
+	html.WriteString("</tr>")
+
+	for _, a := range addrs {
+		html.WriteString("<tr>")
+		html.WriteString("<th>" + a + "</th>")
+
+		for _, b := range addrs {
+			if a == b {
+				html.WriteString("<td>&nbsp;</td>")
+				continue
+			}
+
+			html.WriteString("<td>" + stats[a][b].String() + "</td>")
+		}
+
+		html.WriteString("</tr>")
+	}
+
+	html.WriteString("</table>")
+
+	return template.HTML(html.String())
+}
+
+func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.RouteMatrix, statsdb *routing.StatsDatabase, username string, password string) func(writer http.ResponseWriter, request *http.Request) {
+	type response struct {
+		Analysis string
+		Relays   []routing.Relay
+		Stats    map[string]map[string]routing.Stats
+	}
+
+	funcmap := template.FuncMap{
+		"statsTable": statsTable,
+	}
+
+	tmpl := template.Must(template.New("dashboard").Funcs(funcmap).Parse(`
+		<html>
+			<head>
+				<title>Relay Dashboard</title>
+				<style>
+					body { font-family: monospace; }
+					table { width: 100%; border-collapse: collapse; }
+					table, th, td { padding: 3px; border: 1px solid black; }
+					td { text-align: center; }
+				</style>
+			</head>
+			<body>
+				<h1>Relay Dashboard</h1>
+
+				<h2>Route Matrix Analysis</h2>
+				<pre>{{ .Analysis }}</pre>
+
+				<h2>Relays</h2>
+				<table>
+					<tr>
+						<th>Address</th>
+						<th>Datacenter</th>
+						<th>Lat / Long</th>
+						<th>Seller</th>
+						<th>Ingress / Egress</th>
+					</tr>
+					{{ range .Relays }}
+					<tr>
+						<td>{{ .Addr }}</td>
+						<td>{{ .Datacenter.Name }}</td>
+						<td>{{ .Datacenter.Location.Latitude }} / {{ .Datacenter.Location.Longitude }}</td>
+						<td>{{ .Seller.Name }}</td>
+						<td>{{ .Seller.IngressPriceCents }} / {{ .Seller.EgressPriceCents }}</td>
+					</tr>
+					{{ end }}
+				</table>
+
+				<h2>Stats</h2>
+				{{ .Stats | statsTable }}
+			</body>
+		</html>
+	`))
+
+	return func(writer http.ResponseWriter, request *http.Request) {
+		writer.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+
+		u, p, _ := request.BasicAuth()
+		if u != username && p != password {
+			writer.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+			writer.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		var res response
+
+		buf := bytes.Buffer{}
+
+		routeMatrix.WriteAnalysisTo(&buf)
+		res.Analysis = buf.String()
+
+		hgetallResult := redisClient.HGetAll(routing.HashKeyAllRelays)
+		if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
+			fmt.Println(hgetallResult.Err())
+			return
+		}
+
+		for _, rawRelay := range hgetallResult.Val() {
+			var relay routing.Relay
+			if err := relay.UnmarshalBinary([]byte(rawRelay)); err != nil {
+				fmt.Println(err)
+				return
+			}
+			res.Relays = append(res.Relays, relay)
+		}
+
+		res.Stats = make(map[string]map[string]routing.Stats)
+		for _, a := range res.Relays {
+			res.Stats[a.Name] = make(map[string]routing.Stats)
+
+			for _, b := range res.Relays {
+				rtt, jitter, packetloss := statsdb.GetSample(a.ID, b.ID)
+				res.Stats[a.Name][a.Name] = routing.Stats{RTT: float64(rtt), Jitter: float64(jitter), PacketLoss: float64(packetloss)}
+			}
+		}
+
+		if err := tmpl.Execute(writer, res); err != nil {
+			fmt.Println(err)
+		}
 	}
 }

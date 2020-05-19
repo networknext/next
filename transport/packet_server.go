@@ -133,7 +133,7 @@ func (packet *ServerInitRequestPacket) MarshalBinary() ([]byte, error) {
 	}
 	ws.Flush()
 
-	return ws.GetData(), nil
+	return ws.GetData()[:ws.GetBytesProcessed()], nil
 }
 
 type ServerInitResponsePacket struct {
@@ -179,7 +179,7 @@ func (packet *ServerInitResponsePacket) MarshalBinary() ([]byte, error) {
 	}
 	ws.Flush()
 
-	return ws.GetData(), nil
+	return ws.GetData()[:ws.GetBytesProcessed()], nil
 }
 
 type ServerUpdatePacket struct {
@@ -264,7 +264,7 @@ func (packet *ServerUpdatePacket) MarshalBinary() ([]byte, error) {
 	}
 	ws.Flush()
 
-	return ws.GetData(), nil
+	return ws.GetData()[:ws.GetBytesProcessed()], nil
 }
 
 type SessionUpdatePacket struct {
@@ -303,6 +303,8 @@ type SessionUpdatePacket struct {
 	ClientRoutePublicKey      []byte
 	KbpsUp                    uint32
 	KbpsDown                  uint32
+	PacketsSentClientToServer uint64
+	PacketsSentServerToClient uint64
 	PacketsLostClientToServer uint64
 	PacketsLostServerToClient uint64
 	UserFlags                 uint64
@@ -382,6 +384,10 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint32(&packet.KbpsUp)
 	stream.SerializeUint32(&packet.KbpsDown)
 	if packet.Version.AtLeast(SDKVersion{3, 3, 2}) {
+		if packet.Version.AtLeast(SDKVersion{3, 4, 5}) {
+			stream.SerializeUint64(&packet.PacketsSentClientToServer)
+			stream.SerializeUint64(&packet.PacketsSentServerToClient)
+		}
 		stream.SerializeUint64(&packet.PacketsLostClientToServer)
 		stream.SerializeUint64(&packet.PacketsLostServerToClient)
 	}
@@ -465,6 +471,10 @@ func (packet *SessionUpdatePacket) GetSignData() []byte {
 	binary.Write(buf, binary.LittleEndian, packet.KbpsDown)
 
 	if packet.Version.AtLeast(SDKVersion{3, 3, 4}) {
+		if packet.Version.AtLeast(SDKVersion{3, 4, 5}) {
+			binary.Write(buf, binary.LittleEndian, packet.PacketsSentClientToServer)
+			binary.Write(buf, binary.LittleEndian, packet.PacketsSentServerToClient)
+		}
 		binary.Write(buf, binary.LittleEndian, packet.PacketsLostClientToServer)
 		binary.Write(buf, binary.LittleEndian, packet.PacketsLostServerToClient)
 	}
@@ -496,7 +506,7 @@ func (packet *SessionUpdatePacket) MarshalBinary() ([]byte, error) {
 	}
 	ws.Flush()
 
-	return ws.GetData(), nil
+	return ws.GetData()[:ws.GetBytesProcessed()], nil
 }
 
 type SessionResponsePacket struct {
@@ -621,5 +631,5 @@ func (packet *SessionResponsePacket) MarshalBinary() ([]byte, error) {
 	}
 	ws.Flush()
 
-	return ws.GetData(), nil
+	return ws.GetData()[:ws.GetBytesProcessed()], nil
 }

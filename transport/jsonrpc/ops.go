@@ -240,7 +240,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 		return fmt.Errorf("failed to get all relays: %v", hgetallResult.Err())
 	}
 
-	relaysInRedis := hgetallResult.Val()
+	relayCacheEntries := hgetallResult.Val()
 
 	for _, r := range s.Storage.Relays() {
 		relay := relay{
@@ -258,13 +258,16 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			StateUpdateTime:     r.LastUpdateTime,
 		}
 
+		relayCacheEntry := routing.RelayCacheEntry{
+			ID: r.ID,
+		}
+
 		// If the relay is in redis, get its traffic stats
-		if relayInRedisString, ok := relaysInRedis[r.Key()]; ok {
-			var relayInRedis routing.Relay
-			if err := relayInRedis.UnmarshalBinary([]byte(relayInRedisString)); err == nil {
-				relay.SessionCount = relayInRedis.TrafficStats.SessionCount
-				relay.BytesSent = relayInRedis.TrafficStats.BytesSent
-				relay.BytesReceived = relayInRedis.TrafficStats.BytesReceived
+		if relayCacheEntryString, ok := relayCacheEntries[relayCacheEntry.Key()]; ok {
+			if err := relayCacheEntry.UnmarshalBinary([]byte(relayCacheEntryString)); err == nil {
+				relay.SessionCount = relayCacheEntry.TrafficStats.SessionCount
+				relay.BytesSent = relayCacheEntry.TrafficStats.BytesSent
+				relay.BytesReceived = relayCacheEntry.TrafficStats.BytesReceived
 			}
 		}
 

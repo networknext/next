@@ -94,13 +94,13 @@ func TestStatsDatabase(t *testing.T) {
 		update := routing.RelayStatsUpdate{
 			ID: sourceID,
 			PingStats: []routing.RelayStatsPing{
-				routing.RelayStatsPing{
+				{
 					RelayID:    relay1ID,
 					RTT:        0.5,
 					Jitter:     0.7,
 					PacketLoss: 0.9,
 				},
-				routing.RelayStatsPing{
+				{
 					RelayID:    relay2ID,
 					RTT:        0,
 					Jitter:     0,
@@ -212,9 +212,9 @@ func TestStatsDatabase(t *testing.T) {
 		id2 := relay1ID
 
 		makeBasicConnection := func(statsdb *routing.StatsDatabase, id1, id2 uint64) {
-			stats := routing.NewStatsEntryRelay()
+			statsEntryRelay := routing.NewStatsEntryRelay()
 			entry := routing.NewStatsEntry()
-			entry.Relays[id2] = stats
+			entry.Relays[id2] = statsEntryRelay
 			statsdb.Entries[id1] = *entry
 		}
 
@@ -293,7 +293,7 @@ func TestStatsDatabase(t *testing.T) {
 
 			i := 0
 			for _, raw := range hgetallResult.Val() {
-				var r routing.Relay
+				var r routing.RelayCacheEntry
 				r.UnmarshalBinary([]byte(raw))
 				if i == 0 {
 					r.Datacenter.ID = 0
@@ -334,11 +334,11 @@ func TestStatsDatabase(t *testing.T) {
 
 			// assert each entry in the relay db is present in the cost matrix
 			for _, raw := range hgetallResult.Val() {
-				var relay routing.Relay
-				relay.UnmarshalBinary([]byte(raw))
-				assert.Contains(t, costMatrix.RelayIDs, relay.ID)
-				assert.Contains(t, costMatrix.RelayNames, relay.Name)
-				assert.Contains(t, costMatrix.RelayPublicKeys, relay.PublicKey)
+				var relayCacheEntry routing.RelayCacheEntry
+				relayCacheEntry.UnmarshalBinary([]byte(raw))
+				assert.Contains(t, costMatrix.RelayIDs, relayCacheEntry.ID)
+				assert.Contains(t, costMatrix.RelayNames, relayCacheEntry.Name)
+				assert.Contains(t, costMatrix.RelayPublicKeys, relayCacheEntry.PublicKey)
 			}
 
 			// assert the length of the valid ids equals the length of all the datacenter ids in the matrix
@@ -351,10 +351,10 @@ func TestStatsDatabase(t *testing.T) {
 				// find the relays whose datacenter id matches this one
 				validRelayIDs := make([]uint64, 0)
 				for _, raw := range hgetallResult.Val() {
-					var relay routing.Relay
-					relay.UnmarshalBinary([]byte(raw))
-					if relay.Datacenter.ID == id {
-						validRelayIDs = append(validRelayIDs, relay.ID)
+					var relayCacheEntry routing.RelayCacheEntry
+					relayCacheEntry.UnmarshalBinary([]byte(raw))
+					if relayCacheEntry.Datacenter.ID == id {
+						validRelayIDs = append(validRelayIDs, relayCacheEntry.ID)
 						break
 					}
 				}
@@ -417,7 +417,7 @@ func TestStatsDatabase(t *testing.T) {
 			addr := "127.0.0.1:40000"
 			id := crypto.HashID(addr)
 			udp, _ := net.ResolveUDPAddr("udp", addr)
-			relay := routing.Relay{
+			relayCacheEntry := routing.RelayCacheEntry{
 				ID:   id,
 				Name: addr,
 				Addr: *udp,
@@ -429,19 +429,19 @@ func TestStatsDatabase(t *testing.T) {
 				LastUpdateTime: time.Now(),
 			}
 
-			buff, err := relay.MarshalBinary()
+			buff, err := relayCacheEntry.MarshalBinary()
 			assert.NoError(t, err)
 
 			// Malform the relay data
 			buff = buff[:len(buff)-1]
 
-			redisClient.HSet(routing.HashKeyAllRelays, relay.Key(), buff)
+			redisClient.HSet(routing.HashKeyAllRelays, relayCacheEntry.Key(), buff)
 
 			statsdb := routing.NewStatsDatabase()
 
 			var costMatrix routing.CostMatrix
 			err = statsdb.GetCostMatrix(&costMatrix, redisClient)
-			assert.EqualError(t, err, "failed to unmarshal relay when creating cost matrix: failed to unmarshal relay max sessions")
+			assert.Contains(t, err.Error(), "failed to unmarshal relay when creating cost matrix:")
 		})
 	})
 }
