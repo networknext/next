@@ -230,8 +230,6 @@ func main() {
 
 		ServerInitHandlerFunc: func(w io.Writer, incoming *transport.UDPPacket) {
 
-			fmt.Printf( "server init request packet\n" )
-
 			initRequest := &transport.ServerInitRequestPacket{}
 			if err = initRequest.UnmarshalBinary(incoming.Data); err != nil {
 				fmt.Printf("error: failed to read server init request packet: %v\n", err)
@@ -260,8 +258,6 @@ func main() {
 
 		ServerUpdateHandlerFunc: func(w io.Writer, incoming *transport.UDPPacket) {
 
-			fmt.Printf( "server update packet\n" )
-
 			serverUpdate := &transport.ServerUpdatePacket{}
 			if err = serverUpdate.UnmarshalBinary(incoming.Data); err != nil {
 				fmt.Printf("error: failed to read server update packet: %v\n", err)
@@ -285,8 +281,6 @@ func main() {
 		},
 
 		SessionUpdateHandlerFunc: func(w io.Writer, incoming *transport.UDPPacket) {
-
-			fmt.Printf( "session update packet\n" )
 
 			sessionUpdate := &transport.SessionUpdatePacket{}
 			if err = sessionUpdate.UnmarshalBinary(incoming.Data); err != nil {
@@ -533,8 +527,6 @@ func main() {
 				fmt.Printf("error: failed to send udp response: %v\n", err)
 				return
 			}
-
-			fmt.Printf( "*** sent session response ***\n" )
 		},
 	}
 
