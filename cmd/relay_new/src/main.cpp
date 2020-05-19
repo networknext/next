@@ -391,6 +391,7 @@ int main(int argc, const char* argv[])
   bool v3BackendSuccess = false;
 
   // v3 backend compatability setup
+  if (false)
   {
     // ping proc setup
     {
