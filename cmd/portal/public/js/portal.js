@@ -44,7 +44,7 @@ JSONRPCClient = {
 AuthHandler = {
 	async init() {
 		const domain = 'networknext.auth0.com';
-		const clientID = 'qR60cjo6FceoTWPYLNZSQmNiP2WIAQr9';
+		const clientID = 'oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n';
 
 		this.auth0Client = await createAuth0Client({
 			domain: domain,
