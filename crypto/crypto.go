@@ -12,9 +12,10 @@ import (
 )
 
 const (
-	MACSize   = poly1305.TagSize
-	NonceSize = chacha20poly1305.NonceSizeX
-	KeySize   = chacha20poly1305.KeySize
+	MACSize        = poly1305.TagSize
+	NonceSize      = chacha20poly1305.NonceSizeX
+	KeySize        = chacha20poly1305.KeySize
+	PacketHashSize = 8
 )
 
 var (
@@ -34,6 +35,12 @@ var (
 	RelayPublicKey = [...]byte{
 		0xf5, 0x22, 0xad, 0xc1, 0xee, 0x04, 0x6a, 0xbe, 0x7d, 0x89, 0x0c, 0x81, 0x3a, 0x08, 0x31, 0xba,
 		0xdc, 0xdd, 0xb5, 0x52, 0xcb, 0x73, 0x56, 0x10, 0xda, 0xa9, 0xc0, 0xae, 0x08, 0xa2, 0xcf, 0x5e,
+	}
+
+	// PacketHashKey for the Blake2b hashing of each packet
+	PacketHashKey = []byte{
+		0xe3, 0x18, 0x61, 0x72, 0xee, 0x70, 0x62, 0x37, 0x40, 0xf6, 0x0a, 0xea, 0xe0, 0xb5, 0x1a, 0x2c,
+		0x2a, 0x47, 0x98, 0x8f, 0x27, 0xec, 0x63, 0x2c, 0x25, 0x04, 0x74, 0x89, 0xaf, 0x5a, 0xeb, 0x24,
 	}
 )
 
@@ -113,4 +120,18 @@ func Sign(privateKey []byte, data []byte) []byte {
 // code linting
 func Verify(publicKey []byte, data []byte, sig []byte) bool {
 	return sodiumVerify(data, sig, publicKey)
+}
+
+// Hash wraps sodiumHash with is a wrapper around libsodium
+// We wrap this to avoid inclding C in other libs breaking
+// code linting
+func Hash(key []byte, data []byte) []byte {
+	return sodiumHash(data, key)
+}
+
+// Check wraps sodiumCheck with is a wrapper around libsodium
+// We wrap this to avoid inclding C in other libs breaking
+// code linting
+func Check(key []byte, data []byte) bool {
+	return sodiumCheck(data, key)
 }

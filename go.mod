@@ -12,7 +12,7 @@ require (
 	github.com/alicebob/miniredis/v2 v2.11.2
 	github.com/auth0/go-jwt-middleware v0.0.0-20190805220309-36081240882b
 	github.com/aybabtme/iocontrol v0.0.0-20150809002002-ad15bcfc95a0 // indirect
-	github.com/benbjohnson/clock v1.0.0 // indirect
+	github.com/benbjohnson/clock v1.0.1 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/getsentry/sentry-go v0.6.0
 	github.com/go-kit/kit v0.9.0
@@ -32,8 +32,9 @@ require (
 	github.com/tidwall/gjson v1.6.0
 	github.com/tidwall/pretty v1.0.1 // indirect
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
-	golang.org/x/crypto v0.0.0-20200115085410-6d4e4cb37c7d
+	golang.org/x/crypto v0.0.0-20200510223506-06a226fb4e37
 	golang.org/x/exp v0.0.0-20200213203834-85f925bdd4d0 // indirect
+	golang.org/x/sys v0.0.0-20200513112337-417ce2331b5c // indirect
 	golang.org/x/tools v0.0.0-20200214144324-88be01311a71 // indirect
 	google.golang.org/api v0.17.0
 	google.golang.org/genproto v0.0.0-20200212174721-66ed5ce911ce

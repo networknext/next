@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	relayBin   = "./dist/relay"
+	relayBin   = "./dist/reference_relay"
 	backendBin = "./dist/func_backend"
 	clientBin  = "./dist/func_client"
 	serverBin  = "./dist/func_server"
@@ -1463,9 +1463,7 @@ func main() {
 		tests = allTests // No command line args, run all tests
 	}
 
-	// for {
-		for i := range tests {
-			tests[i]()
-		}
-	// }
+	for i := range tests {
+		tests[i]()
+	}
 }
