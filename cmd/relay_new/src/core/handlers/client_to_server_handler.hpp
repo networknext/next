@@ -16,10 +16,13 @@ namespace core
     {
      public:
       ClientToServerHandler(
-       GenericPacket<>& packet, core::SessionMap& sessions, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats);
+       GenericPacket<>& packet,
+       core::SessionMap& sessions,
+       util::ThroughputRecorder& recorder,
+       legacy::v3::TrafficStats& stats);
 
       template <size_t Size>
-      void handle(core::GenericPacketBuffer<Size>& buff);
+      void handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket);
 
      private:
       core::SessionMap& mSessionMap;
@@ -33,8 +36,10 @@ namespace core
     {}
 
     template <size_t Size>
-    inline void ClientToServerHandler::handle(core::GenericPacketBuffer<Size>& buff)
+    inline void ClientToServerHandler::handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket)
     {
+      (void)buff;
+      (void)socket;
       if (mPacket.Len <= RELAY_HEADER_BYTES || mPacket.Len > RELAY_HEADER_BYTES + RELAY_MTU) {
         return;
       }
@@ -85,7 +90,13 @@ namespace core
       LogDebug("sending client packet to ", session->NextAddr);
       mRecorder.addToSent(mPacket.Len);
       mStats.BytesPerSecPaidTx += mPacket.Len;
+#ifdef RELAY_MULTISEND
       buff.push(session->NextAddr, mPacket.Buffer.data(), mPacket.Len);
+#else
+      if (!socket.send(session->NextAddr, mPacket.Buffer.data(), mPacket.Len)) {
+        Log("failed to forward client packet");
+      }
+#endif
     }
   }  // namespace handlers
 }  // namespace core

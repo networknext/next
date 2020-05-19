@@ -40,10 +40,10 @@ namespace os
     template <size_t BuffSize, size_t PacketSize>
     bool multisend(core::GenericPacketBuffer<BuffSize, PacketSize>& packetBuff) const;
 
-    size_t recv(net::Address& from, uint8_t* data, size_t maxSize) const;
+    auto recv(net::Address& from, uint8_t* data, size_t maxSize) const -> int;
 
     template <typename T>
-    void recv(core::Packet<T>& packet) const;
+    auto recv(core::Packet<T>& packet) const -> bool;
 
     template <size_t BuffSize, size_t PacketSize>
     bool multirecv(core::GenericPacketBuffer<BuffSize, PacketSize>& packetBuff) const;
@@ -79,7 +79,8 @@ namespace os
     shutdown(mSockFD, SHUT_RDWR);
   }
 
-  [[gnu::always_inline]] inline auto Socket::closed() -> bool {
+  [[gnu::always_inline]] inline auto Socket::closed() -> bool
+  {
     return mClosed;
   }
 
@@ -110,15 +111,17 @@ namespace os
   }
 
   template <size_t BuffSize, size_t PacketSize>
-  bool Socket::multisend(core::GenericPacketBuffer<BuffSize, PacketSize>& packetBuff) const
+  inline bool Socket::multisend(core::GenericPacketBuffer<BuffSize, PacketSize>& packetBuff) const
   {
     return multisend(packetBuff.Headers, packetBuff.Count);
   }
 
   template <typename T>
-  void Socket::recv(core::Packet<T>& packet) const
+  inline auto Socket::recv(core::Packet<T>& packet) const -> bool
   {
-    packet.Len = this->recv(packet.Addr, packet.Buffer.data(), packet.Buffer.size());
+    auto len = this->recv(packet.Addr, packet.Buffer.data(), packet.Buffer.size());
+    packet.Len = static_cast<size_t>(len);
+    return len > 0;
   }
 
   template <size_t BuffSize, size_t PacketSize>

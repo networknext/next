@@ -25,7 +25,7 @@ namespace core
        legacy::v3::TrafficStats& stats);
 
       template <size_t Size>
-      void handle(core::GenericPacketBuffer<Size>& buff);
+      void handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket);
 
      private:
       const util::Clock& mRelayClock;
@@ -51,8 +51,10 @@ namespace core
     {}
 
     template <size_t Size>
-    inline void ContinueRequestHandler::handle(core::GenericPacketBuffer<Size>& buff)
+    inline void ContinueRequestHandler::handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket)
     {
+      (void)buff;
+      (void)socket;
       if (mPacket.Len < int(1 + ContinueToken::EncryptedByteSize * 2)) {
         Log("ignoring continue request. bad packet size (", mPacket.Len, ")");
         return;
@@ -95,7 +97,14 @@ namespace core
       auto length = mPacket.Len - ContinueToken::EncryptedByteSize;
       mRecorder.addToSent(length);
       mStats.BytesPerSecManagementTx += length;
+
+#ifdef RELAY_MULTISEND
       buff.push(session->NextAddr, &mPacket.Buffer[ContinueToken::EncryptedByteSize], length);
+#else
+      if (!socket.send(session->NextAddr, &mPacket.Buffer[ContinueToken::EncryptedByteSize], length)) {
+        Log("failed to forward continue request");
+      }
+#endif
     }
   }  // namespace handlers
 }  // namespace core

@@ -21,7 +21,7 @@ namespace core
        legacy::v3::TrafficStats& stats);
 
       template <size_t Size>
-      void handle(core::GenericPacketBuffer<Size>& buff);
+      void handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket);
 
      private:
       core::SessionMap& mSessionMap;
@@ -35,8 +35,10 @@ namespace core
     {}
 
     template <size_t Size>
-    inline void ServerToClientHandler::handle(core::GenericPacketBuffer<Size>& buff)
+    inline void ServerToClientHandler::handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket)
     {
+      (void)buff;
+      (void)socket;
       if (mPacket.Len <= RELAY_HEADER_BYTES || mPacket.Len > RELAY_HEADER_BYTES + RELAY_MTU) {
         return;
       }
@@ -85,8 +87,14 @@ namespace core
 
       mRecorder.addToSent(mPacket.Len);
       mStats.BytesPerSecPaidTx += mPacket.Len;
-      buff.push(session->PrevAddr, mPacket.Buffer.data(), mPacket.Len);
       LogDebug("sent server response to ", session->PrevAddr);
+#ifdef RELAY_MULTISEND
+      buff.push(session->PrevAddr, mPacket.Buffer.data(), mPacket.Len);
+#else
+      if (!socket.send(session->PrevAddr, mPacket.Buffer.data(), mPacket.Len)) {
+        Log("failed to forward server packet to ", session->PrevAddr);
+      }
+#endif
     }
   }  // namespace handlers
 }  // namespace core

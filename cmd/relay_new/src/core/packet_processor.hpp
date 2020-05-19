@@ -53,7 +53,7 @@ namespace core
     util::Sender<GenericPacket<>>& mChannel;
     legacy::v3::TrafficStats& mStats;
 
-    void processPacket(GenericPacket<>& packet, mmsghdr& header, GenericPacketBuffer<MaxPacketsToSend>& outputBuff);
+    void processPacket(GenericPacket<>& packet, GenericPacketBuffer<MaxPacketsToSend>& outputBuff);
 
     bool getAddrFromMsgHdr(net::Address& addr, const msghdr& hdr) const;
   };

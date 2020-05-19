@@ -21,7 +21,7 @@ namespace core
        legacy::v3::TrafficStats& stats);
 
       template <size_t Size>
-      void handle(core::GenericPacketBuffer<Size>& buff);
+      void handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket);
 
      private:
       core::SessionMap& mSessionMap;
@@ -35,8 +35,10 @@ namespace core
     {}
 
     template <size_t Size>
-    inline void RouteResponseHandler::handle(core::GenericPacketBuffer<Size>& buff)
+    inline void RouteResponseHandler::handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket)
     {
+      (void)buff;
+      (void)socket;
       if (mPacket.Len != RELAY_HEADER_BYTES) {
         Log("ignoring route response, header byte count invalid: ", mPacket.Len, " != ", RELAY_HEADER_BYTES);
         return;
@@ -90,7 +92,13 @@ namespace core
 
       mRecorder.addToSent(mPacket.Len);
       mStats.BytesPerSecManagementTx += mPacket.Len;
+#ifdef RELAY_MULTISEND
       buff.push(session->PrevAddr, mPacket.Buffer.data(), mPacket.Len);
+#else
+      if (!socket.send(session->PrevAddr, mPacket.Buffer.data(), mPacket.Len)) {
+        Log("failed to forward route response to ", session->PrevAddr);
+      }
+#endif
     }
   }  // namespace handlers
 }  // namespace core

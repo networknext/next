@@ -16,11 +16,10 @@ namespace core
     class OldRelayPingHandler: public BaseHandler
     {
      public:
-      OldRelayPingHandler(
-       GenericPacket<>& packet, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats);
+      OldRelayPingHandler(GenericPacket<>& packet, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats);
 
       template <size_t Size>
-      void handle(core::GenericPacketBuffer<Size>& buff);
+      void handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket);
 
      private:
       util::ThroughputRecorder& mRecorder;
@@ -33,8 +32,10 @@ namespace core
     {}
 
     template <size_t Size>
-    inline void OldRelayPingHandler::handle(core::GenericPacketBuffer<Size>& buff)
+    inline void OldRelayPingHandler::handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket)
     {
+      (void)buff;
+      (void)socket;
       packets::OldRelayPingPacket packetWrapper(mPacket);
       core::GenericPacket<> outgoing;
 
@@ -60,7 +61,13 @@ namespace core
       outgoing.Addr = mPacket.Addr;
       outgoing.Len = index;
 
+#ifdef RELAY_MULTISEND
       buff.push(outgoing);
+#else
+      if (!socket.send(outgoing)) {
+        Log("failed to send old pong to ", outgoing.Addr);
+      }
+#endif
     };
   }  // namespace handlers
 }  // namespace core

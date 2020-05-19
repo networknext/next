@@ -57,15 +57,17 @@ namespace core
     int listenIndx = listenCounter.fetch_add(1);
     (void)listenIndx;
 
-    GenericPacketBuffer<MaxPacketsToReceive> inputBuffer;
-    GenericPacketBuffer<MaxPacketsToReceive> outputBuffer;
-
     LogDebug("listening for packets {", listenIndx, '}');
 
     readyToReceive = true;
     var.notify_one();
 
+    GenericPacketBuffer<MaxPacketsToReceive> outputBuffer;
+
     while (mShouldReceive) {
+#ifdef RELAY_MULTISEND
+      GenericPacketBuffer<MaxPacketsToReceive> inputBuffer;
+
       if (!mSocket.multirecv(inputBuffer)) {
         Log("failed to recv packets");
       }
@@ -73,22 +75,31 @@ namespace core
       // LogDebug("got packets on {", listenIndx, "} / count: ", inputBuffer.Count);
 
       for (int i = 0; i < inputBuffer.Count; i++) {
-        getAddrFromMsgHdr(inputBuffer.Packets[i].Addr, inputBuffer.Headers[i].msg_hdr);
-        processPacket(inputBuffer.Packets[i], inputBuffer.Headers[i], outputBuffer);
+        auto& pkt = inputBuffer.Packets[i];
+        packet.Len = header.msg_len;
+        getAddrFromMsgHdr(pkt.Addr, inputBuffer.Headers[i].msg_hdr);
+        processPacket(pkt, inputBuffer.Headers[i], outputBuffer);
       }
 
       if (outputBuffer.Count > 0) {
         mSocket.multisend(outputBuffer);
         outputBuffer.Count = 0;
       }
+#else
+      core::GenericPacket<> pkt;
+
+      if (!mSocket.recv(pkt)) {
+        Log("failed to receive packet");
+        continue;
+      }
+
+      processPacket(pkt, outputBuffer);
+#endif
     }
   }
 
-  inline void PacketProcessor::processPacket(
-   GenericPacket<>& packet, mmsghdr& header, GenericPacketBuffer<MaxPacketsToSend>& outputBuff)
+  inline void PacketProcessor::processPacket(GenericPacket<>& packet, GenericPacketBuffer<MaxPacketsToSend>& outputBuff)
   {
-    packet.Len = header.msg_len;
-
     size_t headerBytes = 0;
 
     if (packet.Addr.Type == net::AddressType::IPv4) {
@@ -123,7 +134,7 @@ namespace core
 
           handlers::NewRelayPingHandler handler(packet, mRecvAddr, mRecorder, mStats);
 
-          handler.handle(outputBuff);
+          handler.handle(outputBuff, mSocket);
         } else {
           LogDebug("got invalid new ping packet from ", packet.Addr);
           mRecorder.addToUnknown(wholePacketSize);
@@ -151,7 +162,7 @@ namespace core
 
           handlers::OldRelayPingHandler handler(packet, mRecorder, mStats);
 
-          handler.handle(outputBuff);
+          handler.handle(outputBuff, mSocket);
         } else {
           LogDebug("got invalid old ping packet from ", packet.Addr);
           mRecorder.addToUnknown(wholePacketSize);
@@ -178,7 +189,7 @@ namespace core
 
         handlers::RouteRequestHandler handler(mRelayClock, packet, packet.Addr, mKeychain, mSessionMap, mRecorder, mStats);
 
-        handler.handle(outputBuff);
+        handler.handle(outputBuff, mSocket);
       } break;
       case packets::Type::RouteResponse: {
         mRecorder.addToReceived(wholePacketSize);
@@ -186,7 +197,7 @@ namespace core
 
         handlers::RouteResponseHandler handler(packet, mSessionMap, mRecorder, mStats);
 
-        handler.handle(outputBuff);
+        handler.handle(outputBuff, mSocket);
       } break;
       case packets::Type::ContinueRequest: {
         mRecorder.addToReceived(wholePacketSize);
@@ -194,7 +205,7 @@ namespace core
 
         handlers::ContinueRequestHandler handler(mRelayClock, packet, mSessionMap, mKeychain, mRecorder, mStats);
 
-        handler.handle(outputBuff);
+        handler.handle(outputBuff, mSocket);
       } break;
       case packets::Type::ContinueResponse: {
         mRecorder.addToReceived(wholePacketSize);
@@ -202,7 +213,7 @@ namespace core
 
         handlers::ContinueResponseHandler handler(packet, mSessionMap, mRecorder, mStats);
 
-        handler.handle(outputBuff);
+        handler.handle(outputBuff, mSocket);
       } break;
       case packets::Type::ClientToServer: {
         mRecorder.addToReceived(wholePacketSize);
@@ -210,7 +221,7 @@ namespace core
 
         handlers::ClientToServerHandler handler(packet, mSessionMap, mRecorder, mStats);
 
-        handler.handle(outputBuff);
+        handler.handle(outputBuff, mSocket);
       } break;
       case packets::Type::ServerToClient: {
         mRecorder.addToReceived(wholePacketSize);
@@ -218,7 +229,7 @@ namespace core
 
         handlers::ServerToClientHandler handler(packet, mSessionMap, mRecorder, mStats);
 
-        handler.handle(outputBuff);
+        handler.handle(outputBuff, mSocket);
       } break;
       case packets::Type::SessionPing: {
         mRecorder.addToReceived(wholePacketSize);
@@ -226,7 +237,7 @@ namespace core
 
         handlers::SessionPingHandler handler(packet, mSessionMap, mRecorder, mStats);
 
-        handler.handle(outputBuff);
+        handler.handle(outputBuff, mSocket);
       } break;
       case packets::Type::SessionPong: {
         mRecorder.addToReceived(wholePacketSize);
@@ -234,7 +245,7 @@ namespace core
 
         handlers::SessionPongHandler handler(packet, mSessionMap, mRecorder, mStats);
 
-        handler.handle(outputBuff);
+        handler.handle(outputBuff, mSocket);
       } break;
       case packets::Type::NearPing: {
         mRecorder.addToReceived(wholePacketSize);
@@ -242,7 +253,7 @@ namespace core
 
         handlers::NearPingHandler handler(packet, packet.Addr, mRecorder, mStats);
 
-        handler.handle(outputBuff);
+        handler.handle(outputBuff, mSocket);
       } break;
       // Next three all do the same thing
       case packets::Type::V3BackendInitResponse: {

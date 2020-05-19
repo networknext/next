@@ -16,13 +16,10 @@ namespace core
     {
      public:
       NearPingHandler(
-       GenericPacket<>& packet,
-       const net::Address& from,
-       util::ThroughputRecorder& recorder,
-       legacy::v3::TrafficStats& stats);
+       GenericPacket<>& packet, const net::Address& from, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats);
 
       template <size_t Size>
-      void handle(core::GenericPacketBuffer<Size>& buff);
+      void handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket);
 
      private:
       const net::Address& mFrom;
@@ -31,16 +28,15 @@ namespace core
     };
 
     inline NearPingHandler::NearPingHandler(
-     GenericPacket<>& packet,
-     const net::Address& from,
-     util::ThroughputRecorder& recorder,
-     legacy::v3::TrafficStats& stats)
+     GenericPacket<>& packet, const net::Address& from, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats)
      : BaseHandler(packet), mFrom(from), mRecorder(recorder), mStats(stats)
     {}
 
     template <size_t Size>
-    inline void NearPingHandler::handle(core::GenericPacketBuffer<Size>& buff)
+    inline void NearPingHandler::handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket)
     {
+      (void)buff;
+      (void)socket;
       if (mPacket.Len != 1 + 8 + 8 + 8 + 8) {
         return;
       }
@@ -49,7 +45,14 @@ namespace core
       auto length = mPacket.Len - 16;  // ? why 16
       mRecorder.addToSent(length);
       mStats.BytesPerSecMeasurementTx += length;
-      buff.push(mFrom, mPacket.Buffer.data(), length);  // ? why 16?
+
+#ifdef RELAY_MULTISEND
+      buff.push(mFrom, mPacket.Buffer.data(), length);
+#else
+      if (!socket.send(mFrom, mPacket.Buffer.data(), length)) {
+        Log("failed to send near pong to ", mFrom);
+      }
+#endif
     }
   }  // namespace handlers
 }  // namespace core

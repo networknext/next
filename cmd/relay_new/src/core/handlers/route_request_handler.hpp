@@ -27,7 +27,7 @@ namespace core
        legacy::v3::TrafficStats& stats);
 
       template <size_t Size>
-      void handle(core::GenericPacketBuffer<Size>& size);
+      void handle(core::GenericPacketBuffer<Size>& size, const os::Socket& socket);
 
      private:
       const util::Clock& mRelayClock;
@@ -56,8 +56,10 @@ namespace core
     {}
 
     template <size_t Size>
-    inline void RouteRequestHandler::handle(core::GenericPacketBuffer<Size>& buff)
+    inline void RouteRequestHandler::handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket)
     {
+      (void)buff;
+      (void)socket;
       LogDebug("got route request from ", mFrom);
 
       if (mPacket.Len < int(1 + RouteToken::EncryptedByteSize * 2)) {
@@ -117,7 +119,14 @@ namespace core
       auto length = mPacket.Len - RouteToken::EncryptedByteSize;
       mRecorder.addToSent(length);
       mStats.BytesPerSecManagementTx += length;
+
+#ifdef RELAY_MULTISEND
       buff.push(token.NextAddr, &mPacket.Buffer[RouteToken::EncryptedByteSize], length);
+#else
+      if (!socket.send(token.NextAddr, &mPacket.Buffer[RouteToken::EncryptedByteSize], length)) {
+        Log("failed to forward route request to ", token.NextAddr);
+      }
+#endif
     }
   }  // namespace handlers
 }  // namespace core
