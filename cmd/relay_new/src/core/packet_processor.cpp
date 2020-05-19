@@ -51,7 +51,7 @@ namespace core
      mStats(stats)
   {}
 
-  void PacketProcessor::process(std::condition_variable& var, std::atomic<bool>& readyToReceive)
+  void PacketProcessor::process(std::atomic<bool>& readyToReceive)
   {
     static std::atomic<int> listenCounter;
     int listenIndx = listenCounter.fetch_add(1);
@@ -60,7 +60,6 @@ namespace core
     LogDebug("listening for packets {", listenIndx, '}');
 
     readyToReceive = true;
-    var.notify_one();
 
     GenericPacketBuffer<MaxPacketsToReceive> outputBuffer;
 
@@ -98,6 +97,17 @@ namespace core
     }
   }
 
+  /*
+   * Switch based on packet type.
+   *
+   * If the relay is shutting down only reject ping packets
+   *
+   * This is so that other relays stop receiving proper stats and this one
+   * is slowly removed from route decisions
+   *
+   * However to not disrupt player experience the remaining packets are still
+   * handled until the global killswitch is flagged
+   */
   inline void PacketProcessor::processPacket(GenericPacket<>& packet, GenericPacketBuffer<MaxPacketsToSend>& outputBuff)
   {
     size_t headerBytes = 0;
@@ -109,18 +119,6 @@ namespace core
     }
 
     size_t wholePacketSize = packet.Len + headerBytes;
-
-    /*
-     * Switch based on packet type.
-     *
-     * If the relay is shutting down only reject ping packets
-     *
-     * This is so that other relays stop receiving proper stats and this one
-     * is slowly removed from route decisions
-     *
-     * However to not disrupt player experience the remaining packets are still
-     * handled until the global killswitch is flagged
-     */
 
     auto type = static_cast<packets::Type>(packet.Buffer[0]);
     LogDebug("incoming packet, type = ", type);

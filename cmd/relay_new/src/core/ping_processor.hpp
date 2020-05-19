@@ -31,13 +31,13 @@ namespace core
      const uint64_t relayID);
     ~PingProcessor() = default;
 
-    void process(std::condition_variable& var, std::atomic<bool>& readyToSend);
+    void process(std::atomic<bool>& readyToSend);
 
    private:
     const os::Socket& mSocket;
     core::RelayManager<T>& mRelayManager;
     const volatile bool& mShouldProcess;
-    const net::Address& mRelayAddress;
+    const net::Address& mReceivingAddr;
     util::ThroughputRecorder& mRecorder;
     legacy::v3::TrafficStats& mStats;
     const uint64_t mRelayID;
@@ -57,20 +57,16 @@ namespace core
    : mSocket(socket),
      mRelayManager(relayManager),
      mShouldProcess(shouldProcess),
-     mRelayAddress(relayAddress),
+     mReceivingAddr(relayAddress),
      mRecorder(recorder),
      mStats(stats),
      mRelayID(relayID)
-  {
-    LogDebug("sending pings using this addr: ", relayAddress);
-  }
+  {}
 
   template <>
-  void PingProcessor<Relay>::process(std::condition_variable& var, std::atomic<bool>& readyToSend)
+  void PingProcessor<Relay>::process(std::atomic<bool>& readyToSend)
   {
     readyToSend = true;
-    var.notify_one();
-
     GenericPacketBuffer<MaxPingsToSend, packets::NewRelayPingPacket::ByteSize> buffer;
 
     while (mShouldProcess) {
@@ -111,13 +107,13 @@ namespace core
           }
 
           // use the recv port addr here so the receiving relay knows where to send it back to
-          if (!encoding::WriteAddress(pkt.Buffer, index, mRelayAddress)) {
+          if (!encoding::WriteAddress(pkt.Buffer, index, mReceivingAddr)) {
             LogDebug("could not write receiving address");
             assert(false);
           }
         }
 
-        LogDebug("sending new ping to ", addr);
+        LogDebug("creating new ping, dest = ", addr, ", recv addr = ", mReceivingAddr);
 
         pkt.Len = index;
         hdr.msg_iov[0].iov_len = index;
@@ -151,10 +147,9 @@ namespace core
   }
 
   template <>
-  void PingProcessor<V3Relay>::process(std::condition_variable& var, std::atomic<bool>& readyToSend)
+  void PingProcessor<V3Relay>::process(std::atomic<bool>& readyToSend)
   {
     readyToSend = true;
-    var.notify_one();
     GenericPacketBuffer<MaxPingsToSend, packets::OldRelayPingPacket::ByteSize> buffer;
 
     while (mShouldProcess) {
@@ -203,7 +198,7 @@ namespace core
           }
         }
 
-        LogDebug("sending old ping to ", addr);
+        LogDebug("creating old ping, dest = ", addr);
 
         pkt.Len = index;
         hdr.msg_iov[0].iov_len = index;

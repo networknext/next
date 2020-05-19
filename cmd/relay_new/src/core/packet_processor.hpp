@@ -37,7 +37,7 @@ namespace core
      legacy::v3::TrafficStats& stats);
     ~PacketProcessor() = default;
 
-    void process(std::condition_variable& var, std::atomic<bool>& readyToReceive);
+    void process(std::atomic<bool>& readyToReceive);
 
    private:
     const std::atomic<bool>& mShouldReceive;

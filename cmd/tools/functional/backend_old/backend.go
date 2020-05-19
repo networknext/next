@@ -1034,12 +1034,13 @@ func TerribleOldShite() {
 	go listener.Listen(
 		&packetsReceivedCount,
 		func(packet *UDPPacketToMaster, from *net.UDPAddr, conn *net.UDPConn) error {
-			fmt.Printf("got a packet, id: %d\n", packet.ID)
+			fmt.Printf("got a packet from %s\n", from.String())
 			if packet.Type == NEXT_PACKET_TYPE_RELAY_INIT_REQUEST {
 				fmt.Println("got init request")
 				var token [MasterTokenBytes]byte
 				err := WriteMasterToken(token[:], &net.UDPAddr{IP: from.IP, Port: 0})
 				if err != nil {
+					fmt.Printf("could not write master token: %v\n", err)
 					return fmt.Errorf("could not write master token: %v", err)
 				}
 
@@ -1054,6 +1055,7 @@ func TerribleOldShite() {
 
 				packets, err := builder.Build(&UDPPacketToClient{Type: NEXT_PACKET_TYPE_RELAY_INIT_RESPONSE, ID: packet.ID, Status: uint16(200), Data: responseData})
 				if err != nil {
+					fmt.Printf("could not build relay init response packet: %v\n", err)
 					return fmt.Errorf("could not build relay init response packet: %v", err)
 				}
 

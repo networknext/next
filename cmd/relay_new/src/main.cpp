@@ -178,14 +178,14 @@ int main(int argc, const char* argv[])
 
   // relay address - the address other devices should use to talk to this
   // sent to the relay backend and is the addr everything communicates with
-  net::Address relayAddr;
+  net::Address receivingAddr;
   {
-    if (!relayAddr.parse(env.RelayAddress)) {
+    if (!receivingAddr.parse(env.RelayAddress)) {
       Log("error: invalid relay address: ", env.RelayAddress);
       return 1;
     }
 
-    std::cout << "    relay address is '" << relayAddr << "'\n";
+    std::cout << "    relay address is '" << receivingAddr << "'\n";
   }
 
   crypto::Keychain keychain;
@@ -221,25 +221,14 @@ int main(int argc, const char* argv[])
   auto sender = std::get<0>(chan);
   auto receiver = std::get<1>(chan);
 
-  // these next four variables are used to force the threads to be
-  // created serially
+  // used to make sockets and threads serially
   std::atomic<bool> socketAndThreadReady(false);
-  std::mutex lock;
-  std::unique_lock<std::mutex> waitLock(lock);
-  std::condition_variable waitVar;
 
   std::vector<os::SocketPtr> sockets;
   std::vector<std::shared_ptr<std::thread>> threads;
 
   // only used for v3 compatability
   const auto relayID = crypto::FNV(env.RelayV3Name);
-
-  // the relay address that should be exposed to other relays.
-  // do not set this using the value from the env var.
-  // if using port 0, another port will be selected byt the os
-  // which will cause a mismatch between what this value contains
-  // and the port selected by the os
-  std::string relayAddrString;
 
   // decides if the relay should receive packets
   std::atomic<bool> shouldReceive = true;
@@ -251,10 +240,11 @@ int main(int argc, const char* argv[])
   // serializes the thread spawning so the relay doesn't
   // communicate with the backend until it is fully ready
   // to receive packets
-  auto wait = [&waitVar, &waitLock, &socketAndThreadReady] {
-    waitVar.wait(waitLock, [&socketAndThreadReady]() -> bool {
-      return socketAndThreadReady;
-    });
+  auto wait = [&socketAndThreadReady] {
+    while (!socketAndThreadReady) {
+      std::this_thread::sleep_for(10ms);
+    }
+
     socketAndThreadReady = false;
   };
 
@@ -282,10 +272,10 @@ int main(int argc, const char* argv[])
   // makes a shared ptr to a socket object
   auto makeSocket = [&sockets, socketSendBuffSize, socketRecvBuffSize](
                      os::SocketType t, uint16_t& portNumber) -> os::SocketPtr {
+    // don't set addr, so that it's 0.0.0.0:some-port
     net::Address addr;
     addr.Port = portNumber;
     addr.Type = net::AddressType::IPv4;
-    // don't set addr, so that it's 0.0.0.0
     auto socket = std::make_shared<os::Socket>(t);
     if (!socket->create(addr, socketSendBuffSize, socketRecvBuffSize, 0.0f, true)) {
       return nullptr;
@@ -307,7 +297,7 @@ int main(int argc, const char* argv[])
   Log("creating ", numProcessors, " packet processing threads");
   {
     for (unsigned int i = 0; i < numProcessors; i++) {
-      auto packetSocket = makeSocket(os::SocketType::Blocking, relayAddr.Port);
+      auto packetSocket = makeSocket(os::SocketType::Blocking, receivingAddr.Port);
       {
         if (!packetSocket) {
           Log("could not create packetSocket");
@@ -316,8 +306,7 @@ int main(int argc, const char* argv[])
         }
       }
 
-      auto thread = std::make_shared<std::thread>([&waitVar,
-                                                   &socketAndThreadReady,
+      auto thread = std::make_shared<std::thread>([&socketAndThreadReady,
                                                    &shouldReceive,
                                                    packetSocket,
                                                    &relayClock,
@@ -326,7 +315,7 @@ int main(int argc, const char* argv[])
                                                    &relayManager,
                                                    &v3RelayManager,
                                                    &recorder,
-                                                   &relayAddr,
+                                                   &receivingAddr,
                                                    &sender,
                                                    &v3TrafficStats] {
         core::PacketProcessor processor(
@@ -339,16 +328,18 @@ int main(int argc, const char* argv[])
          v3RelayManager,
          gAlive,
          recorder,
-         relayAddr,
+         receivingAddr,
          sender,
          v3TrafficStats);
-        processor.process(waitVar, socketAndThreadReady);
+        processor.process(socketAndThreadReady);
       });
 
       wait();  // wait the the packet processor is ready to receive
 
       sockets.push_back(packetSocket);
       threads.push_back(thread);
+
+      LogDebug("created packet processer using ", receivingAddr);
 
       int error;
       if (!os::SetThreadAffinity(*thread, i, error)) {
@@ -357,20 +348,12 @@ int main(int argc, const char* argv[])
     }
   }
 
-  // if using port 0, it is discovered in the first socket's create() function.
-  // That being said packet sockets must be created before communicating with the
-  // backend otherwise port 0 will be sent, and this string must be set afterwards
-  // too for that same reason
-  relayAddr.toString(relayAddrString);
-
-  LogDebug("Receiving Address: ", relayAddr);
-
   // ping processing setup
   // pings are sent out on a different port number than received
   // if they are the same the relay behaves weird: it'll sometimes behave right
   // othertimes it'll just ignore everything coming to it
   {
-    net::Address bindAddr = relayAddr;
+    net::Address bindAddr = receivingAddr;
     {
       bindAddr.Port = 0;  // make sure the port is dynamically assigned
     }
@@ -386,15 +369,17 @@ int main(int argc, const char* argv[])
     // setup the ping processor to use the external address
     // relays use it to know where the receiving port of other relays are
     auto thread = std::make_shared<std::thread>(
-     [&waitVar, &socketAndThreadReady, socket, &relayManager, &relayAddr, &recorder, &v3TrafficStats, &relayID] {
-       core::PingProcessor pingProcessor(*socket, relayManager, gAlive, relayAddr, recorder, v3TrafficStats, relayID);
-       pingProcessor.process(waitVar, socketAndThreadReady);
+     [&socketAndThreadReady, socket, &relayManager, &receivingAddr, &recorder, &v3TrafficStats, &relayID] {
+       core::PingProcessor pingProcessor(*socket, relayManager, gAlive, receivingAddr, recorder, v3TrafficStats, relayID);
+       pingProcessor.process(socketAndThreadReady);
      });
 
     wait();
 
     sockets.push_back(socket);
     threads.push_back(thread);
+
+    LogDebug("created regular ping processor using ", bindAddr);
 
     int error;
     if (!os::SetThreadAffinity(*thread, getPingProcNum(numProcessors), error)) {
@@ -409,13 +394,8 @@ int main(int argc, const char* argv[])
   {
     // ping proc setup
     {
-      net::Address bindAddr = relayAddr;
-      {
-        bindAddr.Port = 0;
-      }
-
       // socket only used for sending
-      auto socket = makeSocket(os::SocketType::NonBlocking, bindAddr.Port);
+      auto socket = makeSocket(os::SocketType::NonBlocking, receivingAddr.Port);
       if (!socket) {
         Log("could not create pingSocket");
         cleanup();
@@ -423,15 +403,17 @@ int main(int argc, const char* argv[])
       }
 
       auto thread = std::make_shared<std::thread>(
-       [&waitVar, &socketAndThreadReady, socket, &v3RelayManager, &relayAddr, &recorder, &v3TrafficStats, &relayID] {
-         core::PingProcessor pingProcessor(*socket, v3RelayManager, gAlive, relayAddr, recorder, v3TrafficStats, relayID);
-         pingProcessor.process(waitVar, socketAndThreadReady);
+       [&socketAndThreadReady, socket, &v3RelayManager, &receivingAddr, &recorder, &v3TrafficStats, &relayID] {
+         core::PingProcessor pingProcessor(*socket, v3RelayManager, gAlive, receivingAddr, recorder, v3TrafficStats, relayID);
+         pingProcessor.process(socketAndThreadReady);
        });
 
       wait();
 
       sockets.push_back(socket);
       threads.push_back(thread);
+
+      LogDebug("created v3 ping processor using ", receivingAddr);
 
       int error;
       if (!os::SetThreadAffinity(*thread, getPingProcNum(numProcessors), error)) {
@@ -442,7 +424,8 @@ int main(int argc, const char* argv[])
     // backend setup
     {
       // socket only used for sending
-      auto socket = makeSocket(os::SocketType::NonBlocking, relayAddr.Port);
+      // use the receiving address b/c the old relay doesn't use the appended addr
+      auto socket = makeSocket(os::SocketType::NonBlocking, receivingAddr.Port);
       if (!socket) {
         Log("could not create v3 backend socket");
         cleanup();
@@ -468,7 +451,7 @@ int main(int argc, const char* argv[])
            return;
          }
 
-         Log("relay configured with old backend");
+         Log("old backend entering update cycle");
 
          v3BackendSuccess = backend.updateCycle(gAlive);
 
@@ -477,11 +460,20 @@ int main(int argc, const char* argv[])
 
       sockets.push_back(socket);
       threads.push_back(thread);
+
+      Log("relay configured with old backend using address ", receivingAddr);
     }
   }
 
+  // the relay address that should be exposed to other relays.
+  // do not set this using the value from the env var.
+  // if using port 0, another port will be selected byt the os
+  // which will cause a mismatch between what this value contains
+  // and the port selected by the os
+  LogDebug("Receiving Address: ", receivingAddr);
+
   core::Backend<net::CurlWrapper> backend(
-   env.BackendHostname, relayAddrString, keychain, routerInfo, relayManager, b64RelayPubKey, sessions, v3TrafficStats);
+   env.BackendHostname, receivingAddr.toString(), keychain, routerInfo, relayManager, b64RelayPubKey, sessions, v3TrafficStats);
 
   for (int i = 0; i < 60; ++i) {
     if (backend.init()) {
@@ -516,8 +508,7 @@ int main(int argc, const char* argv[])
 
   cleanup();
 
-  LogDebug("Receiving Address: ", relayAddrString);
-  LogDebug("Relay terminated. Address: ", relayAddr);
+  LogDebug("Receiving Address: ", receivingAddr);
 
   return (success && v3BackendSuccess) ? 0 : 1;
 }
