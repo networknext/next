@@ -713,13 +713,13 @@
                                                                         <a class="text-dark">{{ relay.name }}</a>&nbsp;
                                                                     </td>
                                                                     <td>
-                                                                        {{ relay.client_stats.rtt }}
+                                                                        {{ parseFloat(relay.client_stats.rtt).toFixed(2) }}
                                                                     </td>
                                                                     <td>
-                                                                        {{ relay.client_stats.jitter }}
+                                                                        {{ parseFloat(relay.client_stats.jitter).toFixed(2) }}
                                                                     </td>
                                                                     <td>
-                                                                        {{ relay.client_stats.packet_loss }}
+                                                                        {{ parseFloat(relay.client_stats.packet_loss * 100).toFixed(2) }}%
                                                                     </td>
                                                                 </tr>
                                                             </tbody>
