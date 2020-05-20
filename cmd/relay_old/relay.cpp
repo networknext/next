@@ -1540,6 +1540,7 @@ int flow_ping_read( uint8_t * packet_data, int packet_bytes, uint64_t timestamp,
     }
 
     *id = next_read_uint64( &p );
+    relay_printf( NEXT_LOG_LEVEL_DEBUG, "ping received, id = %lu", *id );
     uint8_t * ping_mac = p;
 
     // if ( crypto_auth_verify( ping_mac, &packet_data[1], 8 + 8, global.relay_ping_key ) != 0 )
@@ -2249,6 +2250,7 @@ next_thread_return_t NEXT_THREAD_FUNC flow_thread( void * param )
                     }
                     case MSG_MANAGE_RELAY_PONG_OUTGOING:
                     {
+                        relay_printf( NEXT_LOG_LEVEL_DEBUG, "sending pong, id = %lu, sequence = %lu\n", msg->relay_pong.id, msg->relay_pong.sequence );
                         flow_relay_pong_send( &socket, &msg->relay_pong.address, msg->relay_pong.id, msg->relay_pong.sequence );
                         break;
                     }
@@ -2565,7 +2567,7 @@ void manage_update_callback( manage_environment_t * env, int status, next_json_d
         {
             const char * address_base64 = (*i)["Address"].GetString();
 
-            char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
+            char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH] = {};
             if ( next_base64_decode_string( address_base64, address_string, sizeof( address_string ) ) <= 0 )
             {
                 relay_printf( NEXT_LOG_LEVEL_DEBUG, "failed to base64 decode ping target address: %s", address_base64 );
@@ -2575,7 +2577,7 @@ void manage_update_callback( manage_environment_t * env, int status, next_json_d
 
             if ( next_address_parse( &address, address_string ) != NEXT_OK )
             {
-                relay_printf( NEXT_LOG_LEVEL_DEBUG, "failed to parse ping target address" );
+                relay_printf( NEXT_LOG_LEVEL_DEBUG, "failed to parse ping target address: '%s'", address_string );
                 metric_count( RELAY_COUNTER_UPDATE_PING_TARGETS_READ_RESPONSE_JSON_FAILED, 1 );
                 return;
             }
@@ -3247,6 +3249,7 @@ next_thread_return_t NEXT_THREAD_FUNC manage_thread( void * )
 
     for ( int i = 0; i < manage.env_count; i++ )
     {
+      break;
         if ( quit )
             break;
 
@@ -3487,13 +3490,19 @@ next_thread_return_t NEXT_THREAD_FUNC manage_thread( void * )
                         // check if any environment has a relay with this IP and ID
                         bool match = false;
                         // bool bandwidth_over_budget = false;
+                        relay_printf( NEXT_LOG_LEVEL_DEBUG, "ping incoming, id = %lu\n", msg->relay_ping_incoming.id );
                         for ( int i = 0; i < manage.env_count; i++ )
                         {
                             manage_environment_t * env = &manage.envs[i];
                             manage_peer_map_t::iterator j = env->peers.find( msg->relay_ping_incoming.address );
                             manage_peer_t * peer = j == env->peers.end() ? NULL : &j->second;
 
-                            if ( !peer || msg->relay_ping_incoming.id != peer->relay_id )
+                            if ( !peer )
+                                continue;
+
+                            relay_printf( NEXT_LOG_LEVEL_DEBUG, "checking against id = %lu", peer->relay_id );
+
+                            if ( msg->relay_ping_incoming.id != peer->relay_id )
                                 continue;
 
                             match = true;
@@ -3943,11 +3952,14 @@ next_thread_return_t NEXT_THREAD_FUNC manage_thread( void * )
                 }
 
                 resolver_update( &env->master );
+
                 /******** Begin Relay Http Compat *********/
                 json::JSON respDoc;
+                respDoc.parse(request_buffer.GetString());
+                relay_printf( NEXT_LOG_LEVEL_DEBUG, "Update json: %s", respDoc.toPrettyString().c_str() );
                 char addr_buff[NEXT_ADDRESS_BYTES + NEXT_ADDRESS_BUFFER_SAFETY] = {};
                 next_address_to_string( &env->relay.address, addr_buff);
-                if (compat::next_curl_update(global.backend_hostname, request_buffer.GetString(), addr_buff, global.bind_port, env->relay.name, respDoc)) {
+                if (false && compat::next_curl_update(global.backend_hostname, request_buffer.GetString(), addr_buff, global.bind_port, env->relay.name, respDoc)) {
                     if (respDoc.memberExists("ping_data")) {
                         auto member = respDoc.get<rapidjson::Value*>("ping_data");
                           if (member->IsArray()) {

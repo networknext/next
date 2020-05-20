@@ -271,7 +271,7 @@ namespace legacy
             return;
           }
 
-          std::string address = addrMember.GetString();
+          std::string b64Address = addrMember.GetString();
 
           auto tokenMember = std::move(relayData["PingToken"]);
           if (tokenMember.GetType() != rapidjson::Type::kStringType) {
@@ -281,6 +281,10 @@ namespace legacy
           }
 
           std::string token = tokenMember.GetString();
+
+          std::array<uint8_t, 64> addrBuff{};
+          size_t len = encoding::base64::Decode(b64Address, addrBuff);
+          std::string address(addrBuff.begin(), addrBuff.begin() + len);
 
           incoming[count].ID = id;
           if (!incoming[count].Addr.parse(address)) {

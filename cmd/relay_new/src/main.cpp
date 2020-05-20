@@ -10,6 +10,7 @@
 #include "core/packet_processor.hpp"
 #include "core/ping_processor.hpp"
 #include "core/router_info.hpp"
+#include "crypto/bytes.hpp"
 #include "crypto/hash.hpp"
 #include "crypto/keychain.hpp"
 #include "encoding/base64.hpp"
@@ -314,7 +315,8 @@ int main(int argc, const char* argv[])
                                                    &recorder,
                                                    &receivingAddr,
                                                    &sender,
-                                                   &v3TrafficStats] {
+                                                   &v3TrafficStats,
+                                                   relayID] {
         core::PacketProcessor processor(
          shouldReceive,
          *socket,
@@ -327,7 +329,8 @@ int main(int argc, const char* argv[])
          recorder,
          receivingAddr,
          sender,
-         v3TrafficStats);
+         v3TrafficStats,
+         relayID);
         processor.process(socketAndThreadReady);
       });
 
@@ -350,19 +353,8 @@ int main(int argc, const char* argv[])
   // if they are the same the relay behaves weird: it'll sometimes behave right
   // othertimes it'll just ignore everything coming to it
   {
-    net::Address bindAddr = receivingAddr;
-    {
-      bindAddr.Port = 0;  // make sure the port is dynamically assigned
-    }
-
     // socket used for receiving and sending
-    auto socket = makeSocket(bindAddr.Port);
-    if (!socket) {
-      Log("could not create pingSocket");
-      cleanup();
-      return 1;
-    }
-
+    auto socket = sockets[crypto::Random<uint8_t>() % sockets.size()];
     // setup the ping processor to use the external address
     // relays use it to know where the receiving port of other relays are
     auto thread = std::make_shared<std::thread>(
@@ -376,7 +368,7 @@ int main(int argc, const char* argv[])
     sockets.push_back(socket);
     threads.push_back(thread);
 
-    LogDebug("created regular ping processor using ", bindAddr);
+    LogDebug("created regular ping processor using ", receivingAddr);
 
     int error;
     if (!os::SetThreadAffinity(*thread, getPingProcNum(numProcessors), error)) {
@@ -391,14 +383,7 @@ int main(int argc, const char* argv[])
   {
     // ping proc setup
     {
-      // socket only used for sending
-      uint16_t tmp = 0;
-      auto socket = makeSocket(tmp);
-      if (!socket) {
-        Log("could not create pingSocket");
-        cleanup();
-        return 1;
-      }
+      auto socket = sockets[crypto::Random<uint8_t>() & sockets.size()];
 
       {
         auto thread = std::make_shared<std::thread>(
@@ -425,13 +410,7 @@ int main(int argc, const char* argv[])
     {
       // socket only used for sending
       // use the receiving address b/c the old relay doesn't use the appended addr
-      uint16_t tmp = 0;
-      auto socket = makeSocket(tmp);
-      if (!socket) {
-        Log("could not create v3 backend socket");
-        cleanup();
-        return 1;
-      }
+      auto socket = sockets[crypto::Random<uint8_t>() & sockets.size()];
 
       {
         auto thread = std::make_shared<std::thread>(

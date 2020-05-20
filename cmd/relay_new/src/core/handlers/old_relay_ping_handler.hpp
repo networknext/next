@@ -16,7 +16,7 @@ namespace core
     class OldRelayPingHandler: public BaseHandler
     {
      public:
-      OldRelayPingHandler(GenericPacket<>& packet, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats);
+      OldRelayPingHandler(GenericPacket<>& packet, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats, const uint64_t oldRealyID);
 
       template <size_t Size>
       void handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket);
@@ -24,11 +24,12 @@ namespace core
      private:
       util::ThroughputRecorder& mRecorder;
       legacy::v3::TrafficStats& mStats;
+      const uint64_t mOldRelayID;
     };
 
     inline OldRelayPingHandler::OldRelayPingHandler(
-     GenericPacket<>& packet, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats)
-     : BaseHandler(packet), mRecorder(recorder), mStats(stats)
+     GenericPacket<>& packet, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats, const uint64_t oldRelayID)
+     : BaseHandler(packet), mRecorder(recorder), mStats(stats), mOldRelayID(oldRelayID)
     {}
 
     template <size_t Size>
@@ -42,21 +43,21 @@ namespace core
       size_t index = 0;
 
       if (!encoding::WriteUint8(outgoing.Buffer, index, static_cast<uint8_t>(packets::Type::OldRelayPong))) {
-        LogDebug("could not write ");
+        LogDebug("could not write packet type");
         return;
       }
 
-      if (!encoding::WriteUint64(outgoing.Buffer, index, packetWrapper.getID())) {
-        LogDebug("could not write ");
+      if (!encoding::WriteUint64(outgoing.Buffer, index, mOldRelayID)) {
+        LogDebug("could not write old relay id");
         return;
       }
 
       if (!encoding::WriteUint64(outgoing.Buffer, index, packetWrapper.getSequence())) {
-        LogDebug("could not write ");
+        LogDebug("could not write sequence");
         return;
       }
 
-      LogDebug("got old ping from ", mPacket.Addr);
+      LogDebug("sending pong, ", "id = ", packetWrapper.getID(), ", sequence = ", packetWrapper.getSequence());
 
       outgoing.Addr = mPacket.Addr;
       outgoing.Len = index;

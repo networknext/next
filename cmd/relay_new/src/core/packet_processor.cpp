@@ -36,7 +36,8 @@ namespace core
    util::ThroughputRecorder& logger,
    const net::Address& receivingAddr,
    util::Sender<GenericPacket<>>& sender,
-   legacy::v3::TrafficStats& stats)
+   legacy::v3::TrafficStats& stats,
+   const uint64_t oldRelayID)
    : mShouldReceive(shouldReceive),
      mSocket(socket),
      mRelayClock(relayClock),
@@ -48,7 +49,8 @@ namespace core
      mRecorder(logger),
      mRecvAddr(receivingAddr),
      mChannel(sender),
-     mStats(stats)
+     mStats(stats),
+     mOldRelayID(oldRelayID)
   {}
 
   void PacketProcessor::process(std::atomic<bool>& readyToReceive)
@@ -162,7 +164,7 @@ namespace core
           mRecorder.addToReceived(wholePacketSize);
           mStats.BytesPerSecMeasurementRx += wholePacketSize;
 
-          handlers::OldRelayPingHandler handler(packet, mRecorder, mStats);
+          handlers::OldRelayPingHandler handler(packet, mRecorder, mStats, mOldRelayID);
 
           handler.handle(outputBuff, mSocket);
         } else {

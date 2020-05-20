@@ -34,7 +34,8 @@ namespace core
      util::ThroughputRecorder& recorder,
      const net::Address& receivingAddr,
      util::Sender<GenericPacket<>>& sender,
-     legacy::v3::TrafficStats& stats);
+     legacy::v3::TrafficStats& stats,
+     const uint64_t oldRelayID);
     ~PacketProcessor() = default;
 
     void process(std::atomic<bool>& readyToReceive);
@@ -52,6 +53,7 @@ namespace core
     const net::Address& mRecvAddr;
     util::Sender<GenericPacket<>>& mChannel;
     legacy::v3::TrafficStats& mStats;
+    const uint64_t mOldRelayID;
 
     void processPacket(GenericPacket<>& packet, GenericPacketBuffer<MaxPacketsToSend>& outputBuff);
 

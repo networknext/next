@@ -10,6 +10,7 @@ package main
 import "C"
 
 import (
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -182,7 +183,7 @@ func TimeoutThread() {
 		if backend.dirty {
 			fmt.Printf("-----------------------------\n")
 			for _, v := range backend.relayDatabase {
-				fmt.Printf("relay: %s\n", v.address)
+				fmt.Printf("relay, address = %s, id = %d\n", v.address, v.id)
 			}
 			for _, v := range backend.serverDatabase {
 				fmt.Printf("server: %s\n", v.address)
@@ -1094,6 +1095,12 @@ func TerribleOldShite() {
 				}
 			} else if packet.Type == NEXT_PACKET_TYPE_RELAY_REPORT_REQUEST {
 				fmt.Println("got update request")
+				makeToken := func(token []byte, id uint64) {
+					index := 0
+					WriteUint64(token, &index, math.MaxUint64)
+					WriteUint64(token, &index, id)
+				}
+
 				relayEntry := RelayEntry{}
 				relayEntry.name = from.String()
 				relayEntry.id = GetRelayId(from.String())
@@ -1115,10 +1122,12 @@ func TerribleOldShite() {
 				for _, relay := range backend.relayDatabase {
 					if relay.id != relayEntry.id {
 						target := &response.PingTargets[i]
-						target.Address = relay.address.String()
+						target.Address = base64.StdEncoding.EncodeToString([]byte(relay.address.String()))
 						target.Id = relay.id
 						target.Group = "group"
-						target.PingToken = "ping token"
+						pingToken := make([]byte, 48)
+						makeToken(pingToken, relay.id)
+						target.PingToken = base64.StdEncoding.EncodeToString(token)
 						i++
 					}
 				}
@@ -1143,4 +1152,16 @@ func TerribleOldShite() {
 		},
 		"127.0.0.1:40000",
 	)
+}
+
+func WriteUint64(data []byte, index *int, value uint64) {
+	binary.LittleEndian.PutUint64(data[*index:], value)
+	*index += 8
+}
+
+func WriteBytes(data []byte, index *int, value []byte, numBytes int) {
+	for i := 0; i < numBytes; i++ {
+		data[*index] = value[i]
+		*index++
+	}
 }
