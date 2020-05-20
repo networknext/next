@@ -213,11 +213,14 @@ MapHandler = {
 				const cellSize = 5, gpuAggregation = true, aggregation = 'SUM';
 
 				onNN = data.filter((point) => {
-					return point[2] > 3;
+					return Math.round(Math.random());
 				});
 				direct = data.filter((point) => {
-					return point[2] <= 3;
+					return Math.round(Math.random());
 				});
+
+				console.log(onNN.length);
+				console.log(direct.length);
 
 				let nnLayer = new deck.ScreenGridLayer({
 					id: 'nn-layer',
@@ -227,9 +230,6 @@ MapHandler = {
 					getWeight: d => d[2],
 					cellSizePixels: cellSize,
 					colorRange: [
-						[237,248,233],
-						[199,233,192],
-						[161,217,155],
 						[116,196,118],
 						[49,163,84],
 						[0,109,44],
@@ -246,9 +246,6 @@ MapHandler = {
 					getWeight: d => d[2],
 					cellSizePixels: cellSize,
 					colorRange: [
-						[239,243,255],
-						[198,219,239],
-						[158,202,225],
 						[107,174,214],
 						[49,130,189],
 						[8,81,156]
