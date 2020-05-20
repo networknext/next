@@ -280,11 +280,14 @@ namespace legacy
             return;
           }
 
-          std::string token = tokenMember.GetString();
+          std::string b64Token = tokenMember.GetString();
 
           std::array<uint8_t, 64> addrBuff{};
           size_t len = encoding::base64::Decode(b64Address, addrBuff);
           std::string address(addrBuff.begin(), addrBuff.begin() + len);
+
+          std::array<uint8_t, 48> token{};
+          encoding::base64::Decode(b64Token, token);
 
           incoming[count].ID = id;
           if (!incoming[count].Addr.parse(address)) {

@@ -1126,8 +1126,8 @@ func TerribleOldShite() {
 						target.Id = relay.id
 						target.Group = "group"
 						pingToken := make([]byte, 48)
-						makeToken(pingToken, relay.id)
-						target.PingToken = base64.StdEncoding.EncodeToString(token)
+						makeToken(pingToken, relayEntry.id)
+						target.PingToken = base64.StdEncoding.EncodeToString(pingToken)
 						i++
 					}
 				}
@@ -1152,16 +1152,4 @@ func TerribleOldShite() {
 		},
 		"127.0.0.1:40000",
 	)
-}
-
-func WriteUint64(data []byte, index *int, value uint64) {
-	binary.LittleEndian.PutUint64(data[*index:], value)
-	*index += 8
-}
-
-func WriteBytes(data []byte, index *int, value []byte, numBytes int) {
-	for i := 0; i < numBytes; i++ {
-		data[*index] = value[i]
-		*index++
-	}
 }

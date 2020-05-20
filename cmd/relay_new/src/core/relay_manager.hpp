@@ -21,7 +21,7 @@ namespace core
 
   struct V3PingData: public PingData
   {
-    std::string PingToken;
+    std::array<uint8_t, 48> PingToken;
   };
 
   struct Relay
@@ -34,7 +34,7 @@ namespace core
 
   struct V3Relay: public Relay
   {
-    std::string PingToken;  // base64
+    std::array<uint8_t, 48> PingToken;  // base64
   };
 
   // where T == Relay || V3Relay

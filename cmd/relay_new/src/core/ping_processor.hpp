@@ -179,15 +179,12 @@ namespace core
 
         // write data to the buffer
         {
-          std::array<uint8_t, 48> token;
-          auto tokenLen = encoding::base64::Decode(ping.PingToken, token);
-
           if (!encoding::WriteUint8(pkt.Buffer, index, static_cast<uint8_t>(packets::Type::OldRelayPing))) {
             LogDebug("could not write packet type");
             continue;
           }
 
-          if (!encoding::WriteBytes(pkt.Buffer, index, token, sizeof(token))) {
+          if (!encoding::WriteBytes(pkt.Buffer, index, ping.PingToken, sizeof(ping.PingToken))) {
             LogDebug("could not write ping token");
             continue;
           }
