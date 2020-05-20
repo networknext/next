@@ -532,7 +532,7 @@ WorkspaceHandler = {
 			.call("BuyersService.SessionDetails", {session_id: id})
 			.then((response) => {
 				let meta = response.meta;
-				meta.nearby_relays = meta.nearby_relays ?? [];
+				meta.nearby_relays = meta.nearby_relays || [];
 				Object.assign(rootComponent.$data.pages.sessionTool, {
 					info: false,
 					danger: false,
