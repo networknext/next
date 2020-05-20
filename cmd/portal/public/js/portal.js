@@ -880,6 +880,9 @@ function createVueComponents() {
 			}
 		},
 		methods: {
+			addUsers: addUsers,
+			saveAutoSignIn: saveAutoSignIn,
+			updatePubKey: updatePubKey,
 		}
 	});
 }
@@ -914,8 +917,7 @@ function updatePubKey() {
 		});
 }
 
-function addUsers(event) {
-	event.preventDefault();
+function addUsers() {
 	let roles = addUserPermissions.getValue(true);
 	let emails = String(document.getElementById("new-user-emails").value)
 		.split(/(,|\n)/g)
@@ -985,8 +987,7 @@ function generateRolesDropdown(accounts) {
 	});
 }
 
-function saveAutoSignIn(event) {
-	event.preventDefault();
+function saveAutoSignIn() {
 	let roles = autoSigninPermissions.getValue(true);
 	let domain = document.getElementById("auto-sign-in-domain").value;
 
