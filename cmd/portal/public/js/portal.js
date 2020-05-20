@@ -514,7 +514,7 @@ WorkspaceHandler = {
 		});
 	},
 	fetchSessionInfo() {
-		let id = rootComponent.$data.pages.sessionTool.id;
+		let id = rootComponent.$data.pages.sessionTool.id.replace(/^0+/, '');
 
 		if (id == '') {
 			Object.assign(rootComponent.$data.pages.sessionTool, {

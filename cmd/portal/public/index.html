@@ -428,7 +428,7 @@
                                             </td>
                                             <td>
                                                 <a class="text-dark fixed-width" href="#" v-on:click="handlers.workspaceHandler.changePage('sessionTool', session.id)">
-                                                    {{ session.id }}
+                                                    {{ session.id.padStart(16, '0') }}
                                                 </a>
                                             </td>
                                             <td>
