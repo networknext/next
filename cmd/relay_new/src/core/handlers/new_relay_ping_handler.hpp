@@ -44,17 +44,10 @@ namespace core
     {
       (void)buff;
       (void)socket;
-      packets::NewRelayPingPacket packetWrapper(mPacket);
 
-      packetWrapper.Internal.Buffer[0] = static_cast<uint8_t>(packets::Type::NewRelayPong);
-      mPacket.Addr = packetWrapper.getFromAddr();
-      packetWrapper.writeFromAddr(mRecvAddr);
-      mPacket.Len = packets::NewRelayPingPacket::ByteSize;
-
+      mPacket.Buffer[0] = static_cast<uint8_t>(packets::Type::NewRelayPong);
       mRecorder.addToSent(mPacket.Len);
       mStats.BytesPerSecMeasurementTx += mPacket.Len;
-
-      LogDebug("got new ping from ", mPacket.Addr);
 
 #ifdef RELAY_MULTISEND
       buff.push(mPacket);
@@ -63,6 +56,8 @@ namespace core
         Log("failed to send new pong to ", mPacket.Addr);
       }
 #endif
+
+      LogDebug("got new ping from ", mPacket.Addr);
     }
   }  // namespace handlers
 }  // namespace core

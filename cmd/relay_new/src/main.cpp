@@ -179,14 +179,14 @@ int main(int argc, const char* argv[])
 
   // relay address - the address other devices should use to talk to this
   // sent to the relay backend and is the addr everything communicates with
-  net::Address receivingAddr;
+  net::Address relayAddr;
   {
-    if (!receivingAddr.parse(env.RelayAddress)) {
+    if (!relayAddr.parse(env.RelayAddress)) {
       Log("error: invalid relay address: ", env.RelayAddress);
       return 1;
     }
 
-    std::cout << "    relay address is '" << receivingAddr << "'\n";
+    std::cout << "    relay address is '" << relayAddr << "'\n";
   }
 
   crypto::Keychain keychain;
@@ -297,7 +297,7 @@ int main(int argc, const char* argv[])
   Log("creating ", numProcessors, " packet processing threads");
   {
     for (unsigned int i = 0; i < numProcessors; i++) {
-      auto socket = makeSocket(receivingAddr.Port);
+      auto socket = makeSocket(relayAddr.Port);
       if (!socket) {
         Log("could not create socket");
         cleanup();
@@ -313,7 +313,7 @@ int main(int argc, const char* argv[])
                                                    &relayManager,
                                                    &v3RelayManager,
                                                    &recorder,
-                                                   &receivingAddr,
+                                                   &relayAddr,
                                                    &sender,
                                                    &v3TrafficStats,
                                                    relayID] {
@@ -327,7 +327,7 @@ int main(int argc, const char* argv[])
          v3RelayManager,
          gAlive,
          recorder,
-         receivingAddr,
+         relayAddr,
          sender,
          v3TrafficStats,
          relayID);
@@ -339,7 +339,7 @@ int main(int argc, const char* argv[])
       sockets.push_back(socket);
       threads.push_back(thread);
 
-      LogDebug("created packet processer using ", receivingAddr);
+      LogDebug("created packet processer using ", relayAddr);
 
       int error;
       if (!os::SetThreadAffinity(*thread, i, error)) {
@@ -358,8 +358,8 @@ int main(int argc, const char* argv[])
     // setup the ping processor to use the external address
     // relays use it to know where the receiving port of other relays are
     auto thread = std::make_shared<std::thread>(
-     [&socketAndThreadReady, socket, &relayManager, &receivingAddr, &recorder, &v3TrafficStats, &relayID] {
-       core::PingProcessor pingProcessor(*socket, relayManager, gAlive, receivingAddr, recorder, v3TrafficStats, relayID);
+     [&socketAndThreadReady, socket, &relayManager, &recorder, &v3TrafficStats, &relayID] {
+       core::PingProcessor pingProcessor(*socket, relayManager, gAlive, recorder, v3TrafficStats, relayID);
        pingProcessor.process(socketAndThreadReady);
      });
 
@@ -368,7 +368,7 @@ int main(int argc, const char* argv[])
     sockets.push_back(socket);
     threads.push_back(thread);
 
-    LogDebug("created regular ping processor using ", receivingAddr);
+    LogDebug("created regular ping processor using ", relayAddr);
 
     int error;
     if (!os::SetThreadAffinity(*thread, getPingProcNum(numProcessors), error)) {
@@ -387,8 +387,8 @@ int main(int argc, const char* argv[])
 
       {
         auto thread = std::make_shared<std::thread>(
-         [&socketAndThreadReady, socket, &v3RelayManager, &receivingAddr, &recorder, &v3TrafficStats, &relayID] {
-           core::PingProcessor pingProcessor(*socket, v3RelayManager, gAlive, receivingAddr, recorder, v3TrafficStats, relayID);
+         [&socketAndThreadReady, socket, &v3RelayManager, &recorder, &v3TrafficStats, &relayID] {
+           core::PingProcessor pingProcessor(*socket, v3RelayManager, gAlive, recorder, v3TrafficStats, relayID);
            pingProcessor.process(socketAndThreadReady);
          });
 
@@ -397,7 +397,7 @@ int main(int argc, const char* argv[])
         sockets.push_back(socket);
         threads.push_back(thread);
 
-        LogDebug("created v3 ping processor using ", receivingAddr);
+        LogDebug("created v3 ping processor using ", relayAddr);
 
         int error;
         if (!os::SetThreadAffinity(*thread, getPingProcNum(numProcessors), error)) {
@@ -442,7 +442,7 @@ int main(int argc, const char* argv[])
         sockets.push_back(socket);
         threads.push_back(thread);
 
-        Log("relay configured with old backend using address ", receivingAddr);
+        Log("relay configured with old backend using address ", relayAddr);
       }
     }
   }
@@ -452,10 +452,10 @@ int main(int argc, const char* argv[])
   // if using port 0, another port will be selected byt the os
   // which will cause a mismatch between what this value contains
   // and the port selected by the os
-  LogDebug("Receiving Address: ", receivingAddr);
+  LogDebug("Receiving Address: ", relayAddr);
 
   core::Backend<net::CurlWrapper> backend(
-   env.BackendHostname, receivingAddr.toString(), keychain, routerInfo, relayManager, b64RelayPubKey, sessions, v3TrafficStats);
+   env.BackendHostname, relayAddr.toString(), keychain, routerInfo, relayManager, b64RelayPubKey, sessions, v3TrafficStats);
 
   for (int i = 0; i < 60; ++i) {
     if (backend.init()) {
@@ -490,7 +490,7 @@ int main(int argc, const char* argv[])
 
   cleanup();
 
-  LogDebug("Receiving Address: ", receivingAddr);
+  LogDebug("Receiving Address: ", relayAddr);
 
   return (success && v3BackendSuccess) ? 0 : 1;
 }

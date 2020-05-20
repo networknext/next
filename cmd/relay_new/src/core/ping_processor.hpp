@@ -25,7 +25,6 @@ namespace core
      const os::Socket& socket,
      core::RelayManager<T>& relayManger,
      const volatile bool& shouldProcess,
-     const net::Address& relayAddr,
      util::ThroughputRecorder& recorder,
      legacy::v3::TrafficStats& stats,
      const uint64_t relayID);
@@ -37,7 +36,6 @@ namespace core
     const os::Socket& mSocket;
     core::RelayManager<T>& mRelayManager;
     const volatile bool& mShouldProcess;
-    const net::Address& mReceivingAddr;
     util::ThroughputRecorder& mRecorder;
     legacy::v3::TrafficStats& mStats;
     const uint64_t mRelayID;
@@ -50,14 +48,12 @@ namespace core
    const os::Socket& socket,
    core::RelayManager<T>& relayManager,
    const volatile bool& shouldProcess,
-   const net::Address& relayAddress,
    util::ThroughputRecorder& recorder,
    legacy::v3::TrafficStats& stats,
    const uint64_t relayID)
    : mSocket(socket),
      mRelayManager(relayManager),
      mShouldProcess(shouldProcess),
-     mReceivingAddr(relayAddress),
      mRecorder(recorder),
      mStats(stats),
      mRelayID(relayID)
@@ -108,15 +104,7 @@ namespace core
             LogDebug("could not write sequence");
             assert(false);
           }
-
-          // use the recv port addr here so the receiving relay knows where to send it back to
-          if (!encoding::WriteAddress(pkt.Buffer, index, mReceivingAddr)) {
-            LogDebug("could not write receiving address");
-            assert(false);
-          }
         }
-
-        LogDebug("creating new ping, dest = ", addr, ", recv addr = ", mReceivingAddr);
 
         pkt.Len = index;
         hdr.msg_iov[0].iov_len = index;
@@ -130,7 +118,7 @@ namespace core
 
         size_t wholePacketSize = headerSize + pkt.Len;
 
-        // could also just do: (1 + 8 + net::Address::ByteSize) * number of relays to ping to make this faster
+        // could also just do: (1 + 8) * number of relays to ping to make this faster
         mRecorder.addToSent(wholePacketSize);
         mStats.BytesPerSecManagementTx += wholePacketSize;
 #ifndef RELAY_MULTISEND

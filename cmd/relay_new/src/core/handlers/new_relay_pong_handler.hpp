@@ -27,9 +27,8 @@ namespace core
     inline void NewRelayPongHandler::handle()
     {
       packets::NewRelayPingPacket packet(mPacket);
-
-      LogDebug("got new pong packet from ", packet.getFromAddr());
-      mRelayManager.processPong(packet.getFromAddr(), packet.getSeqNum());
+      mRelayManager.processPong(mPacket.Addr, packet.getSeqNum());
+      LogDebug("got new pong packet from ", mPacket.Addr);
     }
   }  // namespace handlers
 }  // namespace core
