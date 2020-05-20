@@ -167,12 +167,8 @@ MapHandler = {
 				});
 
 				const cellSize = 10, aggregation = 'MEAN';
-				let gpuAggregation = false;
-
-				const gl = document.createElement('canvas').getContext('webgl2');
-				if (gl) {
-					gpuAggregation = true;
-				}
+				console.log(navigator.appVersion.indexOf("Win") != -1)
+				let gpuAggregation = navigator.appVersion.indexOf("Win") == -1;
 
 				data = onNN;
 
