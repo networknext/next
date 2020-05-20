@@ -534,7 +534,7 @@ func TestFallbackToDirect(t *testing.T) {
 	directMetric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "direct metric"})
 	assert.NoError(t, err)
 
-	sessionMetrics.ErrorMetrics.FallbackToDirect = errMetric
+	sessionMetrics.DecisionMetrics.FallbackToDirect = errMetric
 	sessionMetrics.DirectSessions = directMetric
 
 	db := storage.InMemory{}
@@ -589,7 +589,7 @@ func TestFallbackToDirect(t *testing.T) {
 	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, redisClient, 10*time.Second, &db, nil, nil, nil, &sessionMetrics, &billing.NoOpBiller{}, TestServerBackendPrivateKey, nil)
 	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
-	validateDirectResponsePacket(t, resbuf, sessionMetrics.DirectSessions, sessionMetrics.ErrorMetrics.FallbackToDirect)
+	validateDirectResponsePacket(t, resbuf, sessionMetrics.DirectSessions, sessionMetrics.DecisionMetrics.FallbackToDirect)
 }
 
 func TestEarlyFallbackToDirect(t *testing.T) {

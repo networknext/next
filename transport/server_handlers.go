@@ -425,7 +425,11 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 					// This error case should never happen, can't produce it in test cases, but leaving it in anyway
 					sentry.CaptureException(err)
 					level.Error(locallogger).Log("msg", "failed to get session bytes", "err", err)
-					writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.GetSessionDataFailure)
+					if err := writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.GetSessionDataFailure); err != nil {
+						sentry.CaptureException(err)
+						level.Error(locallogger).Log("msg", "failed to write session error response", "err", err)
+						metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+					}
 					return
 				}
 
@@ -433,7 +437,11 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 					if err := sessionCacheEntry.UnmarshalBinary(sessionCacheData); err != nil {
 						sentry.CaptureException(err)
 						level.Error(locallogger).Log("msg", "failed to unmarshal session bytes", "err", err)
-						writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.UnmarshalSessionDataFailure)
+						if err := writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.UnmarshalSessionDataFailure); err != nil {
+							sentry.CaptureException(err)
+							level.Error(locallogger).Log("msg", "failed to write session error response", "err", err)
+							metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+						}
 						return
 					}
 				}
@@ -455,7 +463,11 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 		if err != nil {
 			sentry.CaptureException(err)
 			level.Error(locallogger).Log("msg", "failed to get buyer from storage", "err", err, "customer_id", packet.CustomerID)
-			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.BuyerNotFound)
+			if err := writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.BuyerNotFound); err != nil {
+				sentry.CaptureException(err)
+				level.Error(locallogger).Log("msg", "failed to write session error response", "err", err)
+				metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+			}
 			return
 		}
 
@@ -465,7 +477,11 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			sentry.CaptureException(err)
 			err := errors.New("failed to verify packet signature with buyer public key")
 			level.Error(locallogger).Log("err", err)
-			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.VerifyFailure)
+			if err := writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.VerifyFailure); err != nil {
+				sentry.CaptureException(err)
+				level.Error(locallogger).Log("msg", "failed to write session error response", "err", err)
+				metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+			}
 			return
 		}
 
@@ -474,7 +490,11 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			err := fmt.Errorf("packet sequence too old. current_sequence %v, previous sequence %v", packet.Sequence, sessionCacheEntry.Sequence)
 			sentry.CaptureException(err)
 			level.Error(locallogger).Log("err", err)
-			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.OldSequence)
+			if err := writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.OldSequence); err != nil {
+				sentry.CaptureException(err)
+				level.Error(locallogger).Log("msg", "failed to write session error response", "err", err)
+				metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+			}
 			return
 		case seq == sessionCacheEntry.Sequence:
 			if _, err := w.Write(sessionCacheEntry.Response); err != nil {
@@ -528,11 +548,27 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			if timestampNow.Sub(sessionCacheEntry.TimestampStart) < (billing.BillingSliceSeconds*1.5*time.Second) &&
 				timestampNow.Sub(sessionCacheEntry.TimestampStart) > (billing.BillingSliceSeconds*0.5*time.Second) {
 				level.Error(logger).Log("err", "early fallback to direct")
-				writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.EarlyFallbackToDirect)
-			} else {
-				level.Error(logger).Log("err", "fallback to direct")
-				writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.FallbackToDirect)
+				if err := writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.EarlyFallbackToDirect); err != nil {
+					sentry.CaptureException(err)
+					level.Error(locallogger).Log("msg", "failed to write session error response", "err", err)
+					metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+				}
+				return
 			}
+
+			level.Error(logger).Log("err", "fallback to direct")
+
+			if _, err = writeSessionResponse(w, response, serverPrivateKey); err != nil {
+				sentry.CaptureException(err)
+				level.Error(locallogger).Log("msg", "failed to write session response", "err", err)
+				metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+				return
+			}
+
+			metrics.DirectSessions.Add(1)
+
+			routeDecision = routing.Decision{OnNetworkNext: false, Reason: routing.DecisionFallbackToDirect}
+			addRouteDecisionMetric(routeDecision, metrics)
 
 			if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, routing.LocationNullIsland); err != nil {
 				sentry.CaptureException(err)
@@ -540,7 +576,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			}
 
 			if err := submitBillingEntry(biller, serverCacheEntry, sessionCacheEntry, packet, response, buyer, chosenRoute, routing.LocationNullIsland, storer, nil,
-				routing.Decision{OnNetworkNext: false, Reason: routing.DecisionFallbackToDirect}, sliceDuration, timestampStart, timestampNow, newSession); err != nil {
+				routeDecision, sliceDuration, timestampStart, timestampNow, newSession); err != nil {
 				sentry.CaptureException(err)
 				level.Error(locallogger).Log("msg", "billing failed", "err", err)
 				metrics.ErrorMetrics.BillingFailure.Add(1)
@@ -554,7 +590,12 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 		if err != nil {
 			sentry.CaptureException(err)
 			level.Error(locallogger).Log("msg", "failed to locate client", "err", err)
-			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.ClientLocateFailure)
+			if err := writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.ClientLocateFailure); err != nil {
+				sentry.CaptureException(err)
+				level.Error(locallogger).Log("msg", "failed to write session error response", "err", err)
+				metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+				return
+			}
 
 			if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, location); err != nil {
 				sentry.CaptureException(err)
@@ -580,7 +621,12 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			}
 
 			level.Error(locallogger).Log("msg", "failed to locate relays near client", "err", err)
-			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.NearRelaysLocateFailure)
+			if err := writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.NearRelaysLocateFailure); err != nil {
+				sentry.CaptureException(err)
+				level.Error(locallogger).Log("msg", "failed to write session error response", "err", err)
+				metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+				return
+			}
 
 			if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, location); err != nil {
 				sentry.CaptureException(err)
@@ -612,7 +658,12 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			// datacenter is disabled, so next routes can't be made
 			sentry.CaptureMessage(fmt.Sprintf("Datacenter %s is disabled", serverCacheEntry.Datacenter.Name))
 			level.Error(locallogger).Log("msg", "datacenter is disabled", "datacenter", serverCacheEntry.Datacenter.Name)
-			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.DatacenterDisabled)
+			if err := writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.DatacenterDisabled); err != nil {
+				sentry.CaptureException(err)
+				level.Error(locallogger).Log("msg", "failed to write session error response", "err", err)
+				metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+				return
+			}
 
 			if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, location); err != nil {
 				sentry.CaptureException(err)
@@ -636,7 +687,12 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 		if len(dsRelays) == 0 {
 			sentry.CaptureMessage(fmt.Sprintf("No relays in datacenter %s", serverCacheEntry.Datacenter.Name))
 			level.Error(locallogger).Log("msg", "no relays in datacenter", "datacenter", serverCacheEntry.Datacenter.Name)
-			writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.NoRelaysInDatacenter)
+			if err := writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.NoRelaysInDatacenter); err != nil {
+				sentry.CaptureException(err)
+				level.Error(locallogger).Log("msg", "failed to write session error response", "err", err)
+				metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+				return
+			}
 
 			if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, location); err != nil {
 				sentry.CaptureException(err)
@@ -700,7 +756,12 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			)
 			if err != nil {
 				level.Error(locallogger).Log("err", err)
-				writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.RouteFailure)
+				if err := writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.RouteFailure); err != nil {
+					sentry.CaptureException(err)
+					level.Error(locallogger).Log("msg", "failed to write session error response", "err", err)
+					metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+					return
+				}
 
 				if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, location); err != nil {
 					sentry.CaptureException(err)
@@ -822,7 +883,11 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 				if err != nil {
 					sentry.CaptureException(err)
 					level.Error(locallogger).Log("msg", "failed to encrypt route token", "err", err)
-					writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.WriteResponseFailure, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.EncryptionFailure)
+					if err := writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.EncryptionFailure); err != nil {
+						sentry.CaptureException(err)
+						level.Error(locallogger).Log("msg", "failed to write session error response", "err", err)
+						metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+					}
 					return
 				}
 
@@ -1064,14 +1129,15 @@ func writeSessionResponse(w io.Writer, response SessionResponsePacket, privateKe
 	return responseData, nil
 }
 
-func writeSessionErrorResponse(w io.Writer, response SessionResponsePacket, privateKey []byte, directSessions metrics.Counter, writeResponseFailure metrics.Counter, unserviceableUpdateCounter metrics.Counter, errCounter metrics.Counter) {
+func writeSessionErrorResponse(w io.Writer, response SessionResponsePacket, privateKey []byte, directSessions metrics.Counter, unserviceableUpdateCounter metrics.Counter, errCounter metrics.Counter) error {
 	if _, err := writeSessionResponse(w, response, privateKey); err != nil {
-		writeResponseFailure.Add(1)
-		return
+		return err
 	}
 
 	directSessions.Add(1)
 
 	unserviceableUpdateCounter.Add(1)
 	errCounter.Add(1)
+
+	return nil
 }
