@@ -31,7 +31,7 @@ run: $(BIN)/$(EXE)
 	@$<
 
 .PHONY: clean
-clean: 
+clean:
 	@rm -f $(BIN)/$(EXE) $(SRC_OBJ_FILES) $(SRC_DEP_FILES) $(LIB_OBJ_FILES) $(LIB_DEP_FILES) $(GCH)
 
 ##############
@@ -43,7 +43,7 @@ $(GCH): $(PCH) Makefile
 	$(COMMON_COMPILE_FLAGS) -o $@ $(INCLUDE_DIRS) -x c++-header $<
 
 # all object files
-$(OBJ)/%.test.o: %.cpp $(GCH)
+$(OBJ)/%.o: %.cpp $(GCH)
 	$(COMMON_COMPILE_FLAGS) -o $@ $(INCLUDE_DIRS) -MMD -MP $<
 
 # the executable
@@ -58,4 +58,3 @@ $(BIN)/$(EXE): $(SRC_OBJ_FILES) $(LIB_OBJ_FILES)
 
 $(DIST_DIR)/$(EXE): $(BIN)/$(EXE)
 	cp $< $@
-

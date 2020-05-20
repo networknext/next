@@ -3,7 +3,7 @@
 
 namespace core
 {
-  RouteStats::RouteStats(const core::PingHistory& ph, double start, double end, double safety): mRTT(0), mJitter(0), mPacketLoss(0)
+  RouteStats::RouteStats(const core::PingHistory& ph, double start, double end, double safety): mRTT(0), mJitter(-1.0), mPacketLoss(-1.0)
   {
     // Packet loss calc
     // and RTT calc

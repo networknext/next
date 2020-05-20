@@ -136,7 +136,7 @@ int next_address_resolve( const char * in, next_address_t * out )
     addrinfo hints;
     memset( &hints, 0, sizeof(hints) );
     addrinfo * result;
-    if ( getaddrinfo( in, "40000", &hints, &result ) == 0 )
+    if ( getaddrinfo( in, "40002", &hints, &result ) == 0 )
     {
         if ( result )
         {
