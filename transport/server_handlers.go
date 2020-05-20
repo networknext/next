@@ -63,7 +63,7 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 	for {
 
 		data := make([]byte, m.MaxPacketSize)
-		
+
 		numbytes, addr, _ := m.Conn.ReadFromUDP(data)
 		if numbytes <= 0 {
 			continue
@@ -896,7 +896,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 		}
 
 		// Set portal data
-		if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, location); err != nil {
+		if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, chosenRoute.Stats, directStats, chosenRoute.Relays, routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, location); err != nil {
 			sentry.CaptureException(err)
 			level.Error(locallogger).Log("msg", "failed to update portal data", "err", err)
 		}
