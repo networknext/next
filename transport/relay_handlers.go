@@ -151,6 +151,15 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 			return
 		}
 
+		// Don't allow quarantined relays back in
+		if relay.State == routing.RelayStateQuarantine {
+			sentry.CaptureMessage(fmt.Sprintf("Quarantined relay %s attempted to reconnect to relay backend", relay.Name))
+			level.Error(locallogger).Log("msg", "quaratined relay attempted to reconnect", "relay", relay.Name)
+			params.Metrics.ErrorMetrics.RelayQuarantined.Add(1)
+			http.Error(writer, "cannot permit quarantined relay", http.StatusUnauthorized)
+			return
+		}
+
 		// Ideally the ID and address should be the same as firestore,
 		// but when running locally they're not, so take them from the request packet
 		relayCacheEntry := routing.RelayCacheEntry{
@@ -294,14 +303,6 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 			if err := params.GeoClient.Add(relayCacheEntry.ID, relayCacheEntry.Datacenter.Location.Latitude, relayCacheEntry.Datacenter.Location.Longitude); err != nil {
 				level.Error(locallogger).Log("msg", "failed to add relay to geoclient", "err", err)
 				http.Error(writer, "failed to initialize relay", http.StatusInternalServerError)
-				return
-			}
-
-			// Don't allow quarantined relays back in
-			if relay.State == routing.RelayStateQuarantine {
-				sentry.CaptureMessage(fmt.Sprintf("Quarantined relay %s attempted to reconnect to relay backend", relay.Name))
-				level.Error(locallogger).Log("msg", "quaratined relay attempted to reconnect", "relay", relay.Name)
-				http.Error(writer, "cannot permit quarantined relay", http.StatusUnauthorized)
 				return
 			}
 
@@ -514,6 +515,15 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			return
 		}
 
+		// Don't allow quarantined relays back in
+		if relay.State == routing.RelayStateQuarantine {
+			sentry.CaptureMessage(fmt.Sprintf("Quarantined relay %s attempted to reconnect to relay backend", relay.Name))
+			level.Error(locallogger).Log("msg", "quaratined relay attempted to reconnect", "relay", relay.Name)
+			params.Metrics.ErrorMetrics.RelayQuarantined.Add(1)
+			http.Error(writer, "cannot permit quarantined relay", http.StatusUnauthorized)
+			return
+		}
+
 		// Ideally the ID and address should be the same as firestore,
 		// but when running locally they're not, so take them from the request packet
 		relayCacheEntry := routing.RelayCacheEntry{
@@ -576,14 +586,6 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 		if err := params.GeoClient.Add(relayCacheEntry.ID, relayCacheEntry.Datacenter.Location.Latitude, relayCacheEntry.Datacenter.Location.Longitude); err != nil {
 			level.Error(locallogger).Log("msg", "failed to initialize relay", "err", err)
 			http.Error(writer, "failed to initialize relay", http.StatusInternalServerError)
-			return
-		}
-
-		// Don't allow quarantined relays back in
-		if relay.State == routing.RelayStateQuarantine {
-			sentry.CaptureMessage(fmt.Sprintf("Quarantined relay %s attempted to reconnect to relay backend", relay.Name))
-			level.Error(locallogger).Log("msg", "quaratined relay attempted to reconnect", "relay", relay.Name)
-			http.Error(writer, "cannot permit quarantined relay", http.StatusUnauthorized)
 			return
 		}
 

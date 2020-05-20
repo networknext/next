@@ -406,6 +406,76 @@ func TestRelayInitRelayNotFound(t *testing.T) {
 	}
 }
 
+func TestRelayInitQuarantinedRelay(t *testing.T) {
+	addr := "127.0.0.1:40000"
+	udpAddr, err := net.ResolveUDPAddr("udp", addr)
+	assert.NoError(t, err)
+
+	relay := routing.Relay{
+		ID: crypto.HashID(addr),
+		Seller: routing.Seller{
+			ID:   "sellerID",
+			Name: "seller name",
+		},
+		Datacenter: routing.Datacenter{
+			ID:   crypto.HashID("some datacenter"),
+			Name: "some datacenter",
+			Location: routing.Location{
+				Latitude:  13,
+				Longitude: 13,
+			},
+		},
+		State: routing.RelayStateQuarantine,
+	}
+
+	packet := transport.RelayInitRequest{
+		Magic:          transport.InitRequestMagic,
+		Nonce:          make([]byte, crypto.NonceSize),
+		Address:        *udpAddr,
+		EncryptedToken: make([]byte, routing.EncryptedRelayTokenSize),
+	}
+
+	inMemory := &storage.InMemory{}
+
+	customerPublicKey := make([]byte, crypto.KeySize)
+	rand.Read(customerPublicKey)
+
+	err = inMemory.AddBuyer(context.Background(), routing.Buyer{
+		PublicKey: customerPublicKey,
+	})
+	assert.NoError(t, err)
+	err = inMemory.AddSeller(context.Background(), relay.Seller)
+	assert.NoError(t, err)
+	err = inMemory.AddDatacenter(context.Background(), relay.Datacenter)
+	assert.NoError(t, err)
+	err = inMemory.AddRelay(context.Background(), relay)
+	assert.NoError(t, err)
+
+	initMetrics := metrics.EmptyRelayInitMetrics
+	localMetrics := metrics.LocalHandler{}
+
+	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
+	assert.NoError(t, err)
+
+	initMetrics.ErrorMetrics.RelayQuarantined = metric
+
+	// Binary version
+	{
+		buff, err := packet.MarshalBinary()
+		assert.NoError(t, err)
+		recorder := pingRelayBackendInit(t, "application/octet-stream", relay, buff, initMetrics, nil, nil, nil, nil, nil)
+		relayInitErrorAssertions(t, recorder, http.StatusUnauthorized, metric)
+	}
+
+	// JSON version
+	{
+		buff, err := packet.MarshalJSON()
+		assert.NoError(t, err)
+		recorder := pingRelayBackendInit(t, "application/json", relay, buff, initMetrics, nil, nil, nil, nil, nil)
+		relayInitErrorAssertions(t, recorder, http.StatusUnauthorized, metric)
+	}
+}
+
 func TestRelayInitInvalidToken(t *testing.T) {
 	_, routerPrivateKey, err := box.GenerateKey(rand.Reader)
 	assert.NoError(t, err)
