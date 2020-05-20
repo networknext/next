@@ -483,7 +483,7 @@
                                 <div class="mr-auto"></div>
                             </div>
                         </div>
-                        <form class="flow-stats-form" onsubmit="WorkspaceHandler.fetchSessionInfo()">
+                        <form class="flow-stats-form" v-on:submit.prevent="handlers.workspaceHandler.fetchSessionInfo()">
                             <div class="form-group">
                                 <label for="session-id-input">
                                     Session ID
@@ -793,7 +793,7 @@
                                 <div class="mr-auto"></div>
                             </div>
                         </div>
-                        <form class="flow-stats-form" v-on:submit="handlers.workspaceHandler.fetchUserSessions()">
+                        <form class="flow-stats-form" v-on:submit.prevent="handlers.workspaceHandler.fetchUserSessions()">
                             <div class="form-group">
                                 <label for="user-hash-input">
                                     User ID
@@ -933,7 +933,7 @@
                                             <span class="sr-only">Loading...</span>
                                         </div>
                                     </div>
-                                    <form onsubmit="saveAutoSignIn(event)" v-show="pages.settings.showAccounts">
+                                    <form v-on:submit.prevent="saveAutoSignIn()" v-show="pages.settings.showAccounts">
                                         <div class="form-group">
                                             <label for="customerId">
                                                 Automatic Sign-in Domain
@@ -980,7 +980,7 @@
                                     <div class="alert alert-danger" role="alert" id="session-tool-alert" v-show="pages.settings.newUser.failure != ''">
                                         {{ pages.settings.newUser.failure }}
                                     </div>
-                                    <form onsubmit="addUsers(event)" v-show="pages.settings.showAccounts">
+                                    <form v-on:submit.prevent="addUsers()" v-show="pages.settings.showAccounts">
                                         <div class="form-group">
                                             <label for="customerId">
                                                 Add users by email address
@@ -1141,7 +1141,7 @@
                                     >
                                         {{ pages.settings.updateKey.failure }}
                                     </div>
-                                    <form onsubmit="updatePubKey()">
+                                    <form v-on:submit.prevent="updatePubKey()">
                                         <div class="form-group" id="pubKey">
                                             <label>
                                                 Public Key
