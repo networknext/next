@@ -2,7 +2,7 @@
  * TODO:
  * 	Refactor all of this into something more reasonable
  */
-mapboxgl.accessToken = 'pk.eyJ1IjoiYmF1bWJhY2hhbmRyZXciLCJhIjoiY2s4dDFwcGo2MGowZTNtcXpsbDN6dHBwdyJ9.Sr1lDY9i9o9yz84fJ-PSlg';
+mapboxgl.accessToken = 'pk.eyJ1Ijoibm5zZWN1cml0eSIsImEiOiJja2FmaXE1Y2cwZGRiMzBub2p3cnE4c3czIn0.3QIueg8fpEy5cBtqRuXMxw';
 
 const DEC_TO_PERC = 100;
 
@@ -140,25 +140,6 @@ MapHandler = {
 		JSONRPCClient
 			.call('BuyersService.SessionMapPoints', {buyer_id: filter.buyerId})
 			.then((response) => {
-				/**
-				 * This code is used for demo purposes -> it uses around 580k points over NYC
-				 */
-				/* const DATA_URL =
-					'https://raw.githubusercontent.com/uber-common/deck.gl-data/master/examples/screen-grid/uber-pickup-locations.json';
-				let data = DATA_URL;
-				const cellSize = 5, gpuAggregation = true, aggregation = 'SUM';
-				let sessionGridLayer = new deck.ScreenGridLayer({
-					id: 'session-layer',
-					data,
-					opacity: 0.8,
-					getPosition: d => [d[0], d[1]],
-					getWeight: d => d[2],
-					cellSizePixels: cellSize,
-					colorRange: [[0,109,44], [8,81,156]],
-					gpuAggregation,
-					aggregation
-				}); */
-
 				let sessions = response.map_points || [];
 				let onNN = sessions.filter((point) => {
 					return point.on_network_next;
@@ -185,27 +166,75 @@ MapHandler = {
 					onNN: onNN,
 				});
 
-				let layer = new deck.ScreenGridLayer({
-					id: 'sessions-layer',
+				const cellSize = 10, gpuAggregation = true, aggregation = 'MEAN';
+
+				data = onNN;
+
+				let nnLayer = new deck.ScreenGridLayer({
+					id: 'nn-layer',
 					data,
-					pickable: false,
 					opacity: 0.8,
-					cellSizePixels: 10,
-					colorRange: [
-						[40, 167, 69],
-						[36, 163, 113],
-						[27, 153, 159],
-						[18, 143, 206],
-						[9, 133, 252],
-						[0, 123, 255]
-					],
 					getPosition: d => [d.longitude, d.latitude],
-					getWeight: d => d.on_network_next ? 100 : 1, // Need to come up with a weight system. It won't map anything if the array of points are all identical
-					gpuAggregation: true,
-					aggregation: 'SUM'
+					getWeight: d => 1,
+					cellSizePixels: cellSize,
+					colorRange: [
+						[0,109,44],
+					],
+					gpuAggregation,
+					aggregation
 				});
 
-				let layers = data.length > 0 ? [layer] : [];
+				/* let nnLayer = new deck.ScatterplotLayer({
+					id: 'nn-layer',
+					data,
+					pickable: true,
+					opacity: 0.8,
+					stroked: true,
+					filled: true,
+					radiusScale: 6,
+					radiusMinPixels: 1,
+					radiusMaxPixels: 100,
+					lineWidthMinPixels: 1,
+					getPosition: d => [d[0], d[1]],
+					getRadius: d => 10,
+					getFillColor: d => [0,109,44],
+					getLineColor: d => [0,109,44]
+				}); */
+
+				data = direct;
+
+				let directLayer = new deck.ScreenGridLayer({
+					id: 'direct-layer',
+					data,
+					opacity: 0.8,
+					getPosition: d => [d.longitude, d.latitude],
+					getWeight: d => 1,
+					cellSizePixels: cellSize,
+					colorRange: [
+						[49,130,189],
+					],
+					gpuAggregation,
+					aggregation
+				});
+
+				/* let directLayer = new deck.ScatterplotLayer({
+					id: 'direct-layer',
+					data,
+					pickable: true,
+					opacity: 0.8,
+					stroked: true,
+					filled: true,
+					radiusScale: 6,
+					radiusMinPixels: 1,
+					radiusMaxPixels: 100,
+					lineWidthMinPixels: 1,
+					getPosition: d => [d[0], d[1]],
+					getRadius: d => 10,
+					getFillColor: d => [49,130,189],
+					getLineColor: d => [49,130,189]
+				  }); */
+
+				let layers = (onNN.length > 0 || direct.length > 0) ? [directLayer, nnLayer] : [];
 				if (this.mapInstance) {
 					this.mapInstance.setProps({layers: []})
 					this.mapInstance.setProps({layers: layers})
