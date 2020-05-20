@@ -456,6 +456,11 @@
                                                         {{ parseFloat(session.delta_rtt).toFixed(2) }}
                                                     </b>
                                                 </span>
+                                                <span v-if="session.next_rtt < 0">
+                                                    <b>
+                                                        -
+                                                    </b>
+                                                </span>
                                             </td>
                                         </tr>
                                     </tbody>
