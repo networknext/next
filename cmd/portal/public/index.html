@@ -96,6 +96,18 @@
                 border-top: none !important;
             }
 
+            .mapboxgl-ctrl-bottom-left {
+                display: none;
+            }
+
+            .mapboxgl-ctrl-bottom-right {
+                display: none;
+            }
+
+            .h2 {
+	            font-size: 2rem;
+            }
+
             /*
             * Sidebar
             */
@@ -268,7 +280,7 @@
                             </h1>
                             <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1">
                                 <div class="mr-auto"></div>
-                                <div class="px-2">
+                                <div class="px-2 hidden">
                                     <select class="form-control">
                                         <option v-on:click="handlers.mapHandler.updateMap('WORLD')">
                                             World
@@ -278,7 +290,7 @@
                                         </option>
                                     </select>
                                 </div>
-                                <div class="px-2">
+                                <div class="px-2 hidden">
                                     <select class="form-control">
                                         <option value="everything" v-on:click="handlers.mapHandler.updateFilter({buyerId: pages.map.filter.buyerId, sessionType: 'all'})">
                                             Everything
@@ -329,7 +341,7 @@
                                             </option>
                                         </select>
                                     </div>
-                                    <div class="px-2">
+                                    <div class="px-2 hidden">
                                         <select class="form-control">
                                             <option value="everything" v-on:click="handlers.workspaceHandler.updateSessionFilter({buyerId: pages.sessions.filter.buyerId, sessionType: 'all'})">
                                                 Everything
@@ -478,7 +490,7 @@
                             </div>
                         </form>
                         <div class="alert alert-info" role="alert" id="session-tool-alert" v-if="pages.sessionTool.info">
-                            Please enter a valid session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.
+                            Please enter a valid Session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.
                         </div>
                         <div class="alert alert-danger" role="alert" id="session-tool-danger" v-if="pages.sessionTool.danger">
                             Failed to fetch session details
@@ -765,7 +777,7 @@
                                 </label>
                                 <div class="row">
                                     <div class="col">
-                                        <input v-model="pages.userTool.hash" class="form-control" type="text" placeholder="Enter a Session ID to view statistics">
+                                        <input v-model="pages.userTool.hash" class="form-control" type="text" placeholder="Enter a User ID to view statistics">
                                     </div>
                                     <div class="col-auto">
                                         <button class="btn btn-primary" type="submit">
@@ -776,7 +788,7 @@
                             </div>
                         </form>
                         <div class="alert alert-info" role="alert" id="user-tool-alert" v-if="pages.userTool.info">
-                            Please enter a user ID to view their sessions.
+                            Please enter a User ID to view their sessions.
                         </div>
                         <div class="alert alert-danger" role="alert" id="user-tool-danger" v-if="pages.userTool.danger">
                             Failed to fetch user sessions
