@@ -2,6 +2,7 @@
 #define CORE_PING_PROCESSOR_HPP
 
 #include "core/relay_manager.hpp"
+#include "crypto/hash.hpp"
 #include "encoding/base64.hpp"
 #include "encoding/write.hpp"
 #include "legacy/v3/traffic_stats.hpp"
@@ -91,7 +92,7 @@ namespace core
         pkt.Addr = addr;
         fillMsgHdrWithAddr(hdr, addr);
 
-        size_t index = 0;
+        size_t index = crypto::RelayPacketHashLength;
 
         // write data to the buffer
         {
@@ -104,6 +105,8 @@ namespace core
             LogDebug("could not write sequence");
             assert(false);
           }
+
+          crypto::SignNetworkNextPacket(pkt.Buffer, index);
         }
 
         pkt.Len = index;
@@ -166,7 +169,7 @@ namespace core
         pkt.Addr = addr;
         fillMsgHdrWithAddr(hdr, addr);
 
-        size_t index = 0;
+        size_t index = crypto::PacketHashKeySize;
 
         // write data to the buffer
         {

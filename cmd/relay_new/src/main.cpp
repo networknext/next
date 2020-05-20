@@ -313,7 +313,6 @@ int main(int argc, const char* argv[])
                                                    &relayManager,
                                                    &v3RelayManager,
                                                    &recorder,
-                                                   &relayAddr,
                                                    &sender,
                                                    &v3TrafficStats,
                                                    relayID] {
@@ -327,7 +326,6 @@ int main(int argc, const char* argv[])
          v3RelayManager,
          gAlive,
          recorder,
-         relayAddr,
          sender,
          v3TrafficStats,
          relayID);
@@ -357,8 +355,8 @@ int main(int argc, const char* argv[])
     auto socket = sockets[crypto::Random<uint8_t>() % sockets.size()];
     // setup the ping processor to use the external address
     // relays use it to know where the receiving port of other relays are
-    auto thread = std::make_shared<std::thread>(
-     [&socketAndThreadReady, socket, &relayManager, &recorder, &v3TrafficStats, &relayID] {
+    auto thread =
+     std::make_shared<std::thread>([&socketAndThreadReady, socket, &relayManager, &recorder, &v3TrafficStats, &relayID] {
        core::PingProcessor pingProcessor(*socket, relayManager, gAlive, recorder, v3TrafficStats, relayID);
        pingProcessor.process(socketAndThreadReady);
      });
@@ -386,8 +384,8 @@ int main(int argc, const char* argv[])
       auto socket = sockets[crypto::Random<uint8_t>() & sockets.size()];
 
       {
-        auto thread = std::make_shared<std::thread>(
-         [&socketAndThreadReady, socket, &v3RelayManager, &recorder, &v3TrafficStats, &relayID] {
+        auto thread =
+         std::make_shared<std::thread>([&socketAndThreadReady, socket, &v3RelayManager, &recorder, &v3TrafficStats, &relayID] {
            core::PingProcessor pingProcessor(*socket, v3RelayManager, gAlive, recorder, v3TrafficStats, relayID);
            pingProcessor.process(socketAndThreadReady);
          });

@@ -1,8 +1,30 @@
 #pragma once
 
+namespace legacy
+{
+  bool relay_is_network_next_packet(const uint8_t* packet_data, size_t packet_length);
+
+  void relay_sign_network_next_packet(uint8_t* packet_data, size_t packet_length);
+}  // namespace legacy
+
 namespace crypto
 {
+  const size_t PacketHashKeySize = crypto_generichash_KEYBYTES;
+
+  const size_t RelayPacketHashLength = 8;
+
   // fnv1a 64
+  auto FNV(const std::string& str) -> uint64_t;
+
+  // Both signing functions require the buffer to be the whole packet
+  // and the length to be the packet's whole length, including the hash
+
+  template <typename T>
+  auto IsNetworkNextPacket(const T& buffer, size_t length) -> bool;
+
+  template <typename T>
+  void SignNetworkNextPacket(T& buffer, size_t length);
+
   [[gnu::always_inline]] inline auto FNV(const std::string& str) -> uint64_t
   {
     uint64_t fnv = 0xCBF29CE484222325;
@@ -12,50 +34,16 @@ namespace crypto
     }
     return fnv;
   }
+
   template <typename T>
-  [[gnu::always_inline]] inline void IsNetworkNextPacket(T& buffer, int bytes)
+  [[gnu::always_inline]] inline auto IsNetworkNextPacket(const T& buffer, size_t length) -> bool
   {
-    // TODO
+    return legacy::relay_is_network_next_packet(buffer.data(), length);
   }
 
   template <typename T>
-  [[gnu::always_inline]] inline void SignNetworkNextPacket(T& buffer, int bytes)
+  [[gnu::always_inline]] inline void SignNetworkNextPacket(T& buffer, size_t length)
   {
-    // TODO
+    legacy::relay_sign_network_next_packet(buffer.data(), length);
   }
 }  // namespace crypto
-
-namespace legacy
-{
-//  inline int relay_is_network_next_packet(const uint8_t* packet_data, int packet_bytes)
-//  {
-//    if (packet_bytes <= RELAY_PACKET_HASH_BYTES)
-//      return 0;
-//
-//    if (packet_bytes > RELAY_MAX_PACKET_BYTES)
-//      return false;
-//
-//    const uint8_t* message = packet_data + RELAY_PACKET_HASH_BYTES;
-//    const int message_length = packet_bytes - RELAY_PACKET_HASH_BYTES;
-//
-//    assert(message_length > 0);
-//
-//    uint8_t hash[RELAY_PACKET_HASH_BYTES];
-//    crypto_generichash(
-//     hash, RELAY_PACKET_HASH_BYTES, message, message_length, relay_packet_hash_key, crypto_generichash_KEYBYTES);
-//
-//    return memcmp(hash, packet_data, RELAY_PACKET_HASH_BYTES) == 0;
-//  }
-//
-//  inline void relay_sign_network_next_packet(uint8_t* packet_data, int packet_bytes)
-//  {
-//    assert(packet_bytes > RELAY_PACKET_HASH_BYTES);
-//    crypto_generichash(
-//     packet_data,
-//     RELAY_PACKET_HASH_BYTES,
-//     packet_data + RELAY_PACKET_HASH_BYTES,
-//     packet_bytes - RELAY_PACKET_HASH_BYTES,
-//     relay_packet_hash_key,
-//     crypto_generichash_KEYBYTES);
-//  }
-}  // namespace legacy

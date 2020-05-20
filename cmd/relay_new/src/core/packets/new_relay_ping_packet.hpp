@@ -2,6 +2,7 @@
 #define CORE_PACKETS_RELAY_PING_PACKET_HPP
 
 #include "core/packet.hpp"
+#include "crypto/hash.hpp"
 #include "encoding/read.hpp"
 #include "encoding/write.hpp"
 #include "net/address.hpp"
@@ -13,7 +14,7 @@ namespace core
     class NewRelayPingPacket
     {
      public:
-      static const size_t ByteSize = 1 + 8;  // type | sequence | addr
+      static const size_t ByteSize = crypto::RelayPacketHashLength + 1 + 8;  // hash | type | sequence
 
       NewRelayPingPacket(GenericPacket<>& packet);
 
@@ -27,7 +28,7 @@ namespace core
 
     inline auto NewRelayPingPacket::getSeqNum() -> uint64_t
     {
-      size_t index = 1;
+      size_t index = crypto::RelayPacketHashLength + 1;
       return encoding::ReadUint64(Internal.Buffer, index);
     }
   }  // namespace packets

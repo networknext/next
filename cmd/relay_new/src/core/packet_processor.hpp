@@ -32,7 +32,6 @@ namespace core
      RelayManager<V3Relay>& v3RelayManager,
      const volatile bool& handle,
      util::ThroughputRecorder& recorder,
-     const net::Address& receivingAddr,
      util::Sender<GenericPacket<>>& sender,
      legacy::v3::TrafficStats& stats,
      const uint64_t oldRelayID);
@@ -50,7 +49,6 @@ namespace core
     RelayManager<V3Relay>& mV3RelayManager;
     const volatile bool& mShouldProcess;
     util::ThroughputRecorder& mRecorder;
-    const net::Address& mRecvAddr;
     util::Sender<GenericPacket<>>& mChannel;
     legacy::v3::TrafficStats& mStats;
     const uint64_t mOldRelayID;

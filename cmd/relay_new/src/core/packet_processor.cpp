@@ -2,6 +2,7 @@
 
 #include "core/continue_token.hpp"
 #include "core/route_token.hpp"
+#include "crypto/hash.hpp"
 #include "encoding/read.hpp"
 #include "encoding/write.hpp"
 #include "handlers/client_to_server_handler.hpp"
@@ -34,7 +35,6 @@ namespace core
    RelayManager<V3Relay>& v3RelayManager,
    const volatile bool& handle,
    util::ThroughputRecorder& logger,
-   const net::Address& receivingAddr,
    util::Sender<GenericPacket<>>& sender,
    legacy::v3::TrafficStats& stats,
    const uint64_t oldRelayID)
@@ -47,7 +47,6 @@ namespace core
      mV3RelayManager(v3RelayManager),
      mShouldProcess(handle),
      mRecorder(logger),
-     mRecvAddr(receivingAddr),
      mChannel(sender),
      mStats(stats),
      mOldRelayID(oldRelayID)
@@ -123,7 +122,17 @@ namespace core
 
     size_t wholePacketSize = packet.Len + headerBytes;
 
-    auto type = static_cast<packets::Type>(packet.Buffer[0]);
+    packets::Type type;
+    if (!crypto::IsNetworkNextPacket(packet.Buffer, packet.Len)) {
+      Log("packet is not on network next");
+      // TODO uncomment below once all packets coming through have the hash
+      // return;
+      type = static_cast<packets::Type>(packet.Buffer[0]);
+    } else {
+      LogDebug("packet is from network next");
+      type = static_cast<packets::Type>(packet.Buffer[crypto::RelayPacketHashLength]);
+    }
+
     LogDebug("incoming packet, type = ", type);
     switch (type) {
       case packets::Type::NewRelayPing: {
@@ -136,7 +145,7 @@ namespace core
           mRecorder.addToReceived(wholePacketSize);
           mStats.BytesPerSecMeasurementRx += wholePacketSize;
 
-          handlers::NewRelayPingHandler handler(packet, mRecvAddr, mRecorder, mStats);
+          handlers::NewRelayPingHandler handler(packet, mRecorder, mStats);
 
           handler.handle(outputBuff, mSocket);
         } else {
