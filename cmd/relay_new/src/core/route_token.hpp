@@ -29,31 +29,35 @@ namespace core
     std::array<uint8_t, crypto_box_SECRETKEYBYTES> PrivateKey;
 
     bool writeEncrypted(
-     GenericPacket<>& packet,
+     uint8_t* packet,
+     size_t packetLength,
      size_t& index,
      const crypto::GenericKey& senderPrivateKey,
      const crypto::GenericKey& receiverPublicKey);
 
     bool readEncrypted(
-     GenericPacket<>& packet,
+     uint8_t* packet,
+     size_t packetLength,
      size_t& index,
      const crypto::GenericKey& senderPublicKey,
      const crypto::GenericKey& receiverPrivateKey);
 
    private:
-    void write(GenericPacket<>& packet, size_t& index);
+    void write(uint8_t* packetData, size_t packetLength, size_t& index);
 
-    void read(GenericPacket<>& packet, size_t& index);
+    void read(uint8_t* packetData, size_t packetLength, size_t& index);
 
     bool encrypt(
-     GenericPacket<>& packet,
+     uint8_t* packetData,
+     size_t packetLength,
      const size_t& index,
      const crypto::GenericKey& senderPrivateKey,
      const crypto::GenericKey& receiverPublicKey,
      const std::array<uint8_t, crypto_box_NONCEBYTES>& nonce);
 
     bool decrypt(
-     GenericPacket<>& packet,
+     uint8_t* packetData,
+     size_t packetLength,
      const size_t& index,
      const crypto::GenericKey& senderPublicKey,
      const crypto::GenericKey& receiverPrivateKey,

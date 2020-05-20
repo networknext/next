@@ -9,9 +9,7 @@ namespace legacy
 
 namespace crypto
 {
-  const size_t PacketHashKeySize = crypto_generichash_KEYBYTES;
-
-  const size_t RelayPacketHashLength = 8;
+  const size_t PacketHashLength = 8;
 
   // fnv1a 64
   auto FNV(const std::string& str) -> uint64_t;

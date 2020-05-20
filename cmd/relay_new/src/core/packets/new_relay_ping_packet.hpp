@@ -14,7 +14,7 @@ namespace core
     class NewRelayPingPacket
     {
      public:
-      static const size_t ByteSize = crypto::RelayPacketHashLength + 1 + 8;  // hash | type | sequence
+      static const size_t ByteSize = crypto::PacketHashLength + 1 + 8;  // hash | type | sequence
 
       NewRelayPingPacket(GenericPacket<>& packet);
 
@@ -28,7 +28,7 @@ namespace core
 
     inline auto NewRelayPingPacket::getSeqNum() -> uint64_t
     {
-      size_t index = crypto::RelayPacketHashLength + 1;
+      size_t index = crypto::PacketHashLength + 1;
       return encoding::ReadUint64(Internal.Buffer, index);
     }
   }  // namespace packets

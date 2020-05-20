@@ -11,7 +11,8 @@
 namespace core
 {
   bool ContinueToken::writeEncrypted(
-   GenericPacket<>& packet,
+   uint8_t* packetData,
+   size_t packetLength,
    size_t& index,
    const crypto::GenericKey& senderPrivateKey,
    const crypto::GenericKey& receiverPublicKey)
@@ -23,17 +24,17 @@ namespace core
     crypto::RandomBytes(nonce, nonce.size());  // fill nonce
 
     // write nonce to the buffer
-    if (!encoding::WriteBytes(packet.Buffer, index, nonce, nonce.size())) {
+    if (!encoding::WriteBytes(packetData, packetLength, index, nonce.data(), nonce.size())) {
       Log("could not write nonce");
       return false;
     }
 
     const size_t afterNonce = index;
 
-    write(packet, index);  // write the token data to the buffer
+    write(packetData, packetLength, index);  // write the token data to the buffer
 
     // encrypt at the start of the packet, function knows where to end
-    if (!encrypt(packet, afterNonce, senderPrivateKey, receiverPublicKey, nonce)) {
+    if (!encrypt(packetData, packetLength, afterNonce, senderPrivateKey, receiverPublicKey, nonce)) {
       return false;
     }
 
@@ -45,7 +46,8 @@ namespace core
   }
 
   bool ContinueToken::readEncrypted(
-   GenericPacket<>& packet,
+   uint8_t* packetData,
+   size_t packetLength,
    size_t& index,
    const crypto::GenericKey& senderPublicKey,
    const crypto::GenericKey& receiverPrivateKey)
@@ -53,53 +55,54 @@ namespace core
     const auto nonceIndex = index;   // nonce is first in the packet's data
     index += crypto_box_NONCEBYTES;  // followed by actual data
 
-    if (!decrypt(packet, index, senderPublicKey, receiverPrivateKey, nonceIndex)) {
+    if (!decrypt(packetData, packetLength, index, senderPublicKey, receiverPrivateKey, nonceIndex)) {
       Log("failed to decrypt continue token");
       return false;
     }
 
-    read(packet, index);
+    read(packetData, packetLength, index);
 
     index += crypto_box_MACBYTES;  // adjust the index past the decrypted data
 
     return true;
   }
 
-  void ContinueToken::write(GenericPacket<>& packet, size_t& index)
+  void ContinueToken::write(uint8_t* packetData, size_t packetLength, size_t& index)
   {
-    assert(index + ContinueToken::ByteSize < packet.Buffer.size());
+    assert(index + ContinueToken::ByteSize < packetLength);
 
     const size_t start = index;
     (void)start;
 
-    Token::write(packet, index);
+    Token::write(packetData, packetLength, index);
 
     assert(index - start == ContinueToken::ByteSize);
   }
 
-  void ContinueToken::read(GenericPacket<>& packet, size_t& index)
+  void ContinueToken::read(uint8_t* packetData, size_t packetLength, size_t& index)
   {
     const size_t start = index;
     (void)start;
 
-    Token::read(packet, index);
+    Token::read(packetData, packetLength, index);
 
     assert(index - start == ContinueToken::ByteSize);
   }
 
   bool ContinueToken::encrypt(
-   GenericPacket<>& packet,
+     uint8_t* packetData,
+     size_t packetLength,
    const size_t& index,
    const crypto::GenericKey& senderPrivateKey,
    const crypto::GenericKey& receiverPublicKey,
    const std::array<uint8_t, crypto_box_NONCEBYTES>& nonce)
   {
-    assert(packet.Buffer.size() >= ContinueToken::EncryptionLength);
+    assert(packetLength >= ContinueToken::EncryptionLength);
 
     if (
      crypto_box_easy(
-      &packet.Buffer[index],
-      &packet.Buffer[index],
+      &packetData[index],
+      &packetData[index],
       ContinueToken::ByteSize,
       nonce.data(),
       receiverPublicKey.data(),
@@ -111,20 +114,21 @@ namespace core
   }
 
   bool ContinueToken::decrypt(
-   GenericPacket<>& packet,
+     uint8_t* packetData,
+     size_t packetLength,
    const size_t& index,
    const crypto::GenericKey& senderPublicKey,
    const crypto::GenericKey& receiverPrivateKey,
    const size_t nonceIndex)
   {
-    assert(packet.Buffer.size() >= ContinueToken::EncryptionLength);
+    assert(packetLength >= ContinueToken::EncryptionLength);
 
     if (
      crypto_box_open_easy(
-      &packet.Buffer[index],
-      &packet.Buffer[index],
+      &packetData[index],
+      &packetData[index],
       ContinueToken::EncryptionLength,
-      &packet.Buffer[nonceIndex],
+      &packetData[nonceIndex],
       senderPublicKey.data(),
       receiverPrivateKey.data()) != 0) {
       return false;

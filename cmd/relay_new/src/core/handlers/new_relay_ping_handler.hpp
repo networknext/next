@@ -38,7 +38,7 @@ namespace core
       (void)buff;
       (void)socket;
 
-      mPacket.Buffer[crypto::RelayPacketHashLength] = static_cast<uint8_t>(packets::Type::NewRelayPong);
+      mPacket.Buffer[crypto::PacketHashLength] = static_cast<uint8_t>(packets::Type::NewRelayPong);
       mRecorder.addToSent(mPacket.Len);
       mStats.BytesPerSecMeasurementTx += mPacket.Len;
 

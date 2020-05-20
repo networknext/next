@@ -21,8 +21,12 @@ namespace encoding
   template <typename T>
   uint64_t ReadUint64(const T& buff, size_t& index);
 
+  void ReadBytes(const uint8_t* buff, size_t buffLength, size_t& index, uint8_t* storage, size_t storageLength, size_t len);
+
   template <typename T, typename U>
   void ReadBytes(const T& buff, size_t& index, U& storage, size_t len);
+
+  void ReadAddress(const uint8_t* buff, size_t buffLength, size_t& index, net::Address& addr);
 
   template <typename T>
   void ReadAddress(const T& buff, size_t& index, net::Address& addr);
@@ -69,6 +73,15 @@ namespace encoding
     return retval;
   }
 
+  [[gnu::always_inline]] inline void ReadBytes(
+   const uint8_t* buff, size_t buffLength, size_t& index, uint8_t* storage, size_t storageLength, size_t len)
+  {
+    assert(buffLength <= storageLength);
+    assert(index + len <= buffLength);
+    std::copy(buff + index, buff + index + len, storage);
+    index += len;
+  }
+
   template <typename T, typename U>
   [[gnu::always_inline]] inline void ReadBytes(const T& buff, size_t& index, U& storage, size_t len)
   {
@@ -76,6 +89,29 @@ namespace encoding
     assert(index + len <= buff.size());
     std::copy(buff.begin() + index, buff.begin() + index + len, storage.begin());
     index += len;
+  }
+
+  [[gnu::always_inline]] inline void ReadAddress(const uint8_t* buff, size_t buffLength, size_t& index, net::Address& addr)
+  {
+#ifndef NDEBUG
+    auto start = index;
+#endif
+    addr.Type = static_cast<net::AddressType>(ReadUint8(buff, index));  // read the type
+
+    if (addr.Type == net::AddressType::IPv4) {
+      std::copy(buff + index, buff + index + 4, addr.IPv4.begin());  // copy the address
+      index += 4;                                                    // increment the index
+      addr.Port = ReadUint16(buff, index);                           // read the port
+      index += 12;                                                   // increment the index past the reserved area
+    } else if (addr.Type == net::AddressType::IPv6) {
+      for (int i = 0; i < 8; i++) {
+        addr.IPv6[i] = ReadUint16(buff, index);
+      }
+      addr.Port = ReadUint16(buff, index);  // read the port
+    } else {
+      addr.reset();
+      index += net::Address::ByteSize - 1;  // if no type, increment the index past the address area
+    }
   }
 
   template <typename T>

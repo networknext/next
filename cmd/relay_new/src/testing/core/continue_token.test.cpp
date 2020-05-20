@@ -44,13 +44,13 @@ Test(core_ContinueToken_general)
 
   {
     size_t index = 0;
-    check(inputToken.writeEncrypted(packet, index, sender_private_key, receiver_public_key));
+    check(inputToken.writeEncrypted(packet.Buffer.data(), packet.Len, index, sender_private_key, receiver_public_key));
   }
 
   core::ContinueToken outputToken = std::move(makeToken());
   {
     size_t index = 0;
-    check(outputToken.readEncrypted(packet, index, sender_public_key, receiver_private_key));
+    check(outputToken.readEncrypted(packet.Buffer.data(), packet.Len, index, sender_public_key, receiver_private_key));
   }
 
   // make sure nothing changed

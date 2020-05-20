@@ -25,7 +25,7 @@ namespace core
        legacy::v3::TrafficStats& stats);
 
       template <size_t Size>
-      void handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket);
+      void handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket, bool isSigned);
 
      private:
       const util::Clock& mRelayClock;
@@ -51,18 +51,30 @@ namespace core
     {}
 
     template <size_t Size>
-    inline void ContinueRequestHandler::handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket)
+    inline void ContinueRequestHandler::handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket, bool isSigned)
     {
       (void)buff;
       (void)socket;
-      if (mPacket.Len < int(1 + ContinueToken::EncryptedByteSize * 2)) {
-        Log("ignoring continue request. bad packet size (", mPacket.Len, ")");
+
+      uint8_t* data;
+      size_t length;
+
+      if (isSigned) {
+        data = &mPacket.Buffer[crypto::PacketHashLength];
+        length = mPacket.Len - crypto::PacketHashLength;
+      } else {
+        data = &mPacket.Buffer[0];
+        length = mPacket.Len;
+      }
+
+      if (length < int(1 + ContinueToken::EncryptedByteSize * 2)) {
+        Log("ignoring continue request. bad packet size (", length, ")");
         return;
       }
 
       size_t index = 1;
       core::ContinueToken token(mRelayClock);
-      if (!token.readEncrypted(mPacket, index, mKeychain.RouterPublicKey, mKeychain.RelayPrivateKey)) {
+      if (!token.readEncrypted(data, length, index, mKeychain.RouterPublicKey, mKeychain.RelayPrivateKey)) {
         Log("ignoring continue request. could not read continue token");
         return;
       }
@@ -92,9 +104,15 @@ namespace core
       }
 
       session->ExpireTimestamp = token.ExpireTimestamp;
-      mPacket.Buffer[ContinueToken::EncryptedByteSize] = static_cast<uint8_t>(packets::Type::ContinueRequest);
+      data[ContinueToken::EncryptedByteSize] = static_cast<uint8_t>(packets::Type::ContinueRequest);
 
-      auto length = mPacket.Len - ContinueToken::EncryptedByteSize;
+      length = mPacket.Len - ContinueToken::EncryptedByteSize;
+
+      if (isSigned) {
+        length += crypto::PacketHashLength;
+        legacy::relay_sign_network_next_packet(&mPacket.Buffer[ContinueToken::EncryptedByteSize], length);
+      }
+
       mRecorder.addToSent(length);
       mStats.BytesPerSecManagementTx += length;
 
@@ -105,6 +123,8 @@ namespace core
         Log("failed to forward continue request");
       }
 #endif
+
+      LogDebug("sending continue request to ", session->NextAddr);
     }
   }  // namespace handlers
 }  // namespace core

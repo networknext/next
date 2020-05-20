@@ -92,7 +92,7 @@ namespace core
         pkt.Addr = addr;
         fillMsgHdrWithAddr(hdr, addr);
 
-        size_t index = crypto::RelayPacketHashLength;
+        size_t index = crypto::PacketHashLength;
 
         // write data to the buffer
         {
@@ -169,7 +169,7 @@ namespace core
         pkt.Addr = addr;
         fillMsgHdrWithAddr(hdr, addr);
 
-        size_t index = crypto::PacketHashKeySize;
+        size_t index = 0;
 
         // write data to the buffer
         {

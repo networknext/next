@@ -123,14 +123,18 @@ namespace core
     size_t wholePacketSize = packet.Len + headerBytes;
 
     packets::Type type;
+
+    bool isSigned;
     if (!crypto::IsNetworkNextPacket(packet.Buffer, packet.Len)) {
       Log("packet is not on network next");
       // TODO uncomment below once all packets coming through have the hash
       // return;
       type = static_cast<packets::Type>(packet.Buffer[0]);
+      isSigned = false;
     } else {
       LogDebug("packet is from network next");
-      type = static_cast<packets::Type>(packet.Buffer[crypto::RelayPacketHashLength]);
+      type = static_cast<packets::Type>(packet.Buffer[crypto::PacketHashLength]);
+      isSigned = true;
     }
 
     LogDebug("incoming packet, type = ", type);
@@ -202,7 +206,7 @@ namespace core
 
         handlers::RouteRequestHandler handler(mRelayClock, packet, packet.Addr, mKeychain, mSessionMap, mRecorder, mStats);
 
-        handler.handle(outputBuff, mSocket);
+        handler.handle(outputBuff, mSocket, isSigned);
       } break;
       case packets::Type::RouteResponse: {
         mRecorder.addToReceived(wholePacketSize);
@@ -218,7 +222,7 @@ namespace core
 
         handlers::ContinueRequestHandler handler(mRelayClock, packet, mSessionMap, mKeychain, mRecorder, mStats);
 
-        handler.handle(outputBuff, mSocket);
+        handler.handle(outputBuff, mSocket, isSigned);
       } break;
       case packets::Type::ContinueResponse: {
         mRecorder.addToReceived(wholePacketSize);
@@ -234,7 +238,7 @@ namespace core
 
         handlers::ClientToServerHandler handler(packet, mSessionMap, mRecorder, mStats);
 
-        handler.handle(outputBuff, mSocket);
+        handler.handle(outputBuff, mSocket, isSigned);
       } break;
       case packets::Type::ServerToClient: {
         mRecorder.addToReceived(wholePacketSize);
