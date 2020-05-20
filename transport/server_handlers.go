@@ -896,7 +896,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 		}
 
 		// Set portal data
-		if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, chosenRoute.Stats, directStats, chosenRoute.Relays, routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, location); err != nil {
+		if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, location); err != nil {
 			sentry.CaptureException(err)
 			level.Error(locallogger).Log("msg", "failed to update portal data", "err", err)
 		}
@@ -913,20 +913,21 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 
 func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration, packet SessionUpdatePacket, nnStats routing.Stats, directStats routing.Stats, relayHops []routing.Relay, onNetworkNext bool, datacenterName string, location routing.Location) error {
 	meta := routing.SessionMeta{
-		ID:         fmt.Sprintf("%x", packet.SessionID),
-		UserHash:   fmt.Sprintf("%x", packet.UserHash),
-		Datacenter: datacenterName,
-		NextRTT:    nnStats.RTT,
-		DirectRTT:  directStats.RTT,
-		DeltaRTT:   directStats.RTT - nnStats.RTT,
-		Location:   location,
-		ClientAddr: packet.ClientAddress.String(),
-		ServerAddr: packet.ServerAddress.String(),
-		Hops:       relayHops,
-		SDK:        packet.Version.String(),
-		Connection: ConnectionTypeText(packet.ConnectionType),
-		Platform:   PlatformTypeText(packet.PlatformID),
-		CustomerID: strconv.FormatUint(packet.CustomerID, 10),
+		ID:            fmt.Sprintf("%x", packet.SessionID),
+		UserHash:      fmt.Sprintf("%x", packet.UserHash),
+		Datacenter:    datacenterName,
+		OnNetworkNext: onNetworkNext,
+		NextRTT:       nnStats.RTT,
+		DirectRTT:     directStats.RTT,
+		DeltaRTT:      directStats.RTT - nnStats.RTT,
+		Location:      location,
+		ClientAddr:    packet.ClientAddress.String(),
+		ServerAddr:    packet.ServerAddress.String(),
+		Hops:          relayHops,
+		SDK:           packet.Version.String(),
+		Connection:    ConnectionTypeText(packet.ConnectionType),
+		Platform:      PlatformTypeText(packet.PlatformID),
+		CustomerID:    strconv.FormatUint(packet.CustomerID, 10),
 	}
 	// Only fill in the essential information here to then let the portal fill in additional relay info
 	// so we don't spend time fetching info from storage here
