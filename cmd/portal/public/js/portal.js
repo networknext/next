@@ -548,7 +548,7 @@ WorkspaceHandler = {
 					var sessionToolMapInstance = new mapboxgl.Map({
 						container: 'session-tool-map',
 						style: 'mapbox://styles/mapbox/dark-v10',
-						center: [meta.location.latitude, meta.location.longitude],
+						center: [meta.location.longitude, meta.location.latitude],
 						zoom: 2
 					});
 				});
