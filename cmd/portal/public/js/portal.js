@@ -166,7 +166,13 @@ MapHandler = {
 					onNN: onNN,
 				});
 
-				const cellSize = 10, gpuAggregation = true, aggregation = 'MEAN';
+				const cellSize = 10, aggregation = 'MEAN';
+				let gpuAggregation = false;
+
+				const gl = document.createElement('canvas').getContext('webgl2');
+				if (gl) {
+					gpuAggregation = true;
+				}
 
 				data = onNN;
 
