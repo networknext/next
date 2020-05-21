@@ -286,10 +286,13 @@ func AuthMiddleware(audience string, next http.Handler) http.Handler {
 
 	mw := jwtmiddleware.New(jwtmiddleware.Options{
 		ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
-			// Verify 'aud' claim
-			checkAud := token.Claims.(jwt.MapClaims).VerifyAudience(audience, false)
-			if !checkAud {
-				return token, errors.New("Invalid audience.")
+			// Check if OpsService token
+			claims := token.Claims.(jwt.MapClaims)
+
+			if _, ok := claims["scope"]; !ok {
+				if !claims.VerifyAudience(audience, false) {
+					return token, errors.New("Invalid audience.")
+				}
 			}
 			// Verify 'iss' claim
 			iss := "https://networknext.auth0.com/"

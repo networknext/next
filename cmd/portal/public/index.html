@@ -96,6 +96,18 @@
                 border-top: none !important;
             }
 
+            .mapboxgl-ctrl-bottom-left {
+                display: none;
+            }
+
+            .mapboxgl-ctrl-bottom-right {
+                display: none;
+            }
+
+            .h2 {
+	            font-size: 2rem;
+            }
+
             /*
             * Sidebar
             */
@@ -268,7 +280,7 @@
                             </h1>
                             <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1">
                                 <div class="mr-auto"></div>
-                                <div class="px-2">
+                                <div class="px-2 hidden">
                                     <select class="form-control">
                                         <option v-on:click="handlers.mapHandler.updateMap('WORLD')">
                                             World
@@ -278,7 +290,7 @@
                                         </option>
                                     </select>
                                 </div>
-                                <div class="px-2">
+                                <div class="px-2 hidden">
                                     <select class="form-control">
                                         <option value="everything" v-on:click="handlers.mapHandler.updateFilter({buyerId: pages.map.filter.buyerId, sessionType: 'all'})">
                                             Everything
@@ -329,7 +341,7 @@
                                             </option>
                                         </select>
                                     </div>
-                                    <div class="px-2">
+                                    <div class="px-2 hidden">
                                         <select class="form-control">
                                             <option value="everything" v-on:click="handlers.workspaceHandler.updateSessionFilter({buyerId: pages.sessions.filter.buyerId, sessionType: 'all'})">
                                                 Everything
@@ -439,9 +451,20 @@
                                                 {{ parseFloat(session.next_rtt).toFixed(2) }}
                                             </td>
                                             <td class="text-right ">
-                                                <span v-if="session.next_rtt > 0" v-bind:class="{ 'text-success': session.delta_rtt >= 5, 'text-warning': session.delta_rtt > 2 && session.delta_rtt < 5, 'text-danger': session.delta_rtt <= 2 }">
+                                                <span v-if="session.next_rtt > 0 && session.on_network_next"
+                                                        v-bind:class="{
+                                                            'text-success': session.delta_rtt >= 5,
+                                                            'text-warning': session.delta_rtt >= 2 && session.delta_rtt < 5,
+                                                            'text-danger': session.delta_rtt < 2 && session.delta_rtt > 0
+                                                        }"
+                                                >
                                                     <b>
                                                         {{ parseFloat(session.delta_rtt).toFixed(2) }}
+                                                    </b>
+                                                </span>
+                                                <span v-if="session.next_rtt < 0">
+                                                    <b>
+                                                        -
                                                     </b>
                                                 </span>
                                             </td>
@@ -460,7 +483,7 @@
                                 <div class="mr-auto"></div>
                             </div>
                         </div>
-                        <form class="flow-stats-form" onsubmit="WorkspaceHandler.fetchSessionInfo()">
+                        <form class="flow-stats-form" v-on:submit.prevent="handlers.workspaceHandler.fetchSessionInfo()">
                             <div class="form-group">
                                 <label for="session-id-input">
                                     Session ID
@@ -478,7 +501,7 @@
                             </div>
                         </form>
                         <div class="alert alert-info" role="alert" id="session-tool-alert" v-if="pages.sessionTool.info">
-                            Please enter a valid session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.
+                            Please enter a valid Session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.
                         </div>
                         <div class="alert alert-danger" role="alert" id="session-tool-danger" v-if="pages.sessionTool.danger">
                             Failed to fetch session details
@@ -627,7 +650,11 @@
                                                             User IP Address
                                                         </dt>
                                                         <dd>
-                                                            {{ pages.sessionTool.meta.client_addr }}
+                                                            {{
+                                                                allBuyers.findIndex((buyer) => {
+                                                                    return buyer.id == pages.sessionTool.meta.customer_id
+                                                                }) !== -1 ? pages.sessionTool.meta.client_addr : ""
+                                                            }}
                                                         </dd>
                                                         <dt>
                                                             Platform
@@ -642,7 +669,7 @@
                                                             {{
                                                                 allBuyers.find((buyer) => {
                                                                     return buyer.id == pages.sessionTool.meta.customer_id
-                                                                }).name
+                                                                }).name || ""
                                                             }}
                                                         </dd>
                                                         <dt>
@@ -686,13 +713,13 @@
                                                                         <a class="text-dark">{{ relay.name }}</a>&nbsp;
                                                                     </td>
                                                                     <td>
-                                                                        {{ relay.client_stats.rtt }}
+                                                                        {{ parseFloat(relay.client_stats.rtt).toFixed(2) }}
                                                                     </td>
                                                                     <td>
-                                                                        {{ relay.client_stats.jitter }}
+                                                                        {{ parseFloat(relay.client_stats.jitter).toFixed(2) }}
                                                                     </td>
                                                                     <td>
-                                                                        {{ relay.client_stats.packet_loss }}
+                                                                        {{ parseFloat(relay.client_stats.packet_loss * 100).toFixed(2) }}%
                                                                     </td>
                                                                 </tr>
                                                             </tbody>
@@ -714,7 +741,11 @@
                                                             <tbody>
                                                                 <tr>
                                                                     <td>
-                                                                        {{ pages.sessionTool.meta.client_addr }}
+                                                                        {{
+                                                                            allBuyers.findIndex((buyer) => {
+                                                                                return buyer.id == pages.sessionTool.meta.customer_id
+                                                                            }) !== -1 ? pages.sessionTool.meta.client_addr : "Player"
+                                                                        }}
                                                                     </td>
                                                                     <td>
                                                                         <em>
@@ -732,7 +763,11 @@
                                                                 </tr>
                                                                 <tr>
                                                                     <td>
-                                                                        {{ pages.sessionTool.meta.server_addr}}
+                                                                        {{
+                                                                            allBuyers.findIndex((buyer) => {
+                                                                                return buyer.id == pages.sessionTool.meta.customer_id
+                                                                            }) !== -1 ? pages.sessionTool.meta.server_addr : "Game Server"
+                                                                        }}
                                                                     </td>
                                                                     <td>
                                                                         <em>Destination Server</em>
@@ -758,14 +793,14 @@
                                 <div class="mr-auto"></div>
                             </div>
                         </div>
-                        <form class="flow-stats-form" v-on:submit="handlers.workspaceHandler.fetchUserSessions()">
+                        <form class="flow-stats-form" v-on:submit.prevent="handlers.workspaceHandler.fetchUserSessions()">
                             <div class="form-group">
                                 <label for="user-hash-input">
                                     User ID
                                 </label>
                                 <div class="row">
                                     <div class="col">
-                                        <input v-model="pages.userTool.hash" class="form-control" type="text" placeholder="Enter a Session ID to view statistics">
+                                        <input v-model="pages.userTool.hash" class="form-control" type="text" placeholder="Enter a User ID to view statistics">
                                     </div>
                                     <div class="col-auto">
                                         <button class="btn btn-primary" type="submit">
@@ -776,7 +811,7 @@
                             </div>
                         </form>
                         <div class="alert alert-info" role="alert" id="user-tool-alert" v-if="pages.userTool.info">
-                            Please enter a user ID to view their sessions.
+                            Please enter a User ID to view their sessions.
                         </div>
                         <div class="alert alert-danger" role="alert" id="user-tool-danger" v-if="pages.userTool.danger">
                             Failed to fetch user sessions
@@ -898,7 +933,7 @@
                                             <span class="sr-only">Loading...</span>
                                         </div>
                                     </div>
-                                    <form onsubmit="saveAutoSignIn(event)" v-show="pages.settings.showAccounts">
+                                    <form v-on:submit.prevent="saveAutoSignIn()" v-show="pages.settings.showAccounts">
                                         <div class="form-group">
                                             <label for="customerId">
                                                 Automatic Sign-in Domain
@@ -945,7 +980,7 @@
                                     <div class="alert alert-danger" role="alert" id="session-tool-alert" v-show="pages.settings.newUser.failure != ''">
                                         {{ pages.settings.newUser.failure }}
                                     </div>
-                                    <form onsubmit="addUsers(event)" v-show="pages.settings.showAccounts">
+                                    <form v-on:submit.prevent="addUsers()" v-show="pages.settings.showAccounts">
                                         <div class="form-group">
                                             <label for="customerId">
                                                 Add users by email address
@@ -1106,7 +1141,7 @@
                                     >
                                         {{ pages.settings.updateKey.failure }}
                                     </div>
-                                    <form onsubmit="updatePubKey()">
+                                    <form v-on:submit.prevent="updatePubKey()">
                                         <div class="form-group" id="pubKey">
                                             <label>
                                                 Public Key

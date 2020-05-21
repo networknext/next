@@ -1,22 +1,23 @@
 @startuml
 Enabled : Relay is online and\ncommunicating with\nthe backend
-    Offline : Relay hasn't shutdown\nbut isn't communicating\nwith the backend
-    Quarantined : Relay continuously\ndisconnects or has\nother problems
+    Offline : Relay is operating\nbut isn't communicating\nwith the backend yet
+    Quarantined : Relay has disconnected\nfor some reason and is\nawaiting operator\napproval before going\nback online
     Maintenance : Relay has cleanly\nshut down
     Disabled : Relay has been\nmanually shut down
     Decommissioned : Final state before\npermanent shutdown
 
-    [*] --> Enabled : connected
-    Enabled --> Offline : disconnected
-    Offline --> Enabled : reconnected
+    [*] --> Offline : startup
+    Offline --> Enabled : connected
     Offline --> Disabled : `next relay disable`
-    Enabled --> Quarantined : problematic
+    Enabled --> Quarantined : disconnected
     Enabled --> Maintenance : clean shutdown
     Enabled --> Disabled : `next relay disable`
-    Maintenance --> Enabled : `next relay enable`
+    Maintenance --> Enabled : automatic restart
+    Maintenance --> Offline : `next relay enable`
+    Quarantined --> Offline : `next relay enable`
     Quarantined --> Disabled : `next relay disable`
     Maintenance --> Disabled : `next relay disable`
-    Disabled --> Enabled : `next relay enable`
+    Disabled --> Offline : `next relay enable`
     Disabled --> Decommissioned : manual only
     Decommissioned --> [*]
 @enduml

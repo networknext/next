@@ -136,7 +136,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	}
 
 	sort.Slice(reply.Sessions, func(i int, j int) bool {
-		return reply.Sessions[i].DeltaRTT < reply.Sessions[j].DeltaRTT
+		return reply.Sessions[i].DeltaRTT > reply.Sessions[j].DeltaRTT
 	})
 
 	return nil

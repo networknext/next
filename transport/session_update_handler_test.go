@@ -534,7 +534,7 @@ func TestFallbackToDirect(t *testing.T) {
 	directMetric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "direct metric"})
 	assert.NoError(t, err)
 
-	sessionMetrics.ErrorMetrics.FallbackToDirect = errMetric
+	sessionMetrics.DecisionMetrics.FallbackToDirect = errMetric
 	sessionMetrics.DirectSessions = directMetric
 
 	db := storage.InMemory{}
@@ -589,7 +589,7 @@ func TestFallbackToDirect(t *testing.T) {
 	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, redisClient, 10*time.Second, &db, nil, nil, nil, &sessionMetrics, &billing.NoOpBiller{}, TestServerBackendPrivateKey, nil)
 	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
-	validateDirectResponsePacket(t, resbuf, sessionMetrics.DirectSessions, sessionMetrics.ErrorMetrics.FallbackToDirect)
+	validateDirectResponsePacket(t, resbuf, sessionMetrics.DirectSessions, sessionMetrics.DecisionMetrics.FallbackToDirect)
 }
 
 func TestEarlyFallbackToDirect(t *testing.T) {
@@ -1561,22 +1561,22 @@ func TestNextRouteResponse(t *testing.T) {
 	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, redisClient, 10*time.Second, &db, &rp, &iploc, &geoClient, &sessionMetrics, &billing.NoOpBiller{}, TestServerBackendPrivateKey[:], TestRouterPrivateKey[:])
 	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
-	globalDelta, err := redisServer.ZScore("top-global", fmt.Sprintf("%x", packet.SessionID))
+	globalDelta, err := redisServer.ZScore("top-global", fmt.Sprintf("%016x", packet.SessionID))
 	assert.NoError(t, err)
 	assert.Equal(t, globalDelta, float64(20))
 
-	buyerDelta, err := redisServer.ZScore(fmt.Sprintf("top-buyer-%x", packet.CustomerID), fmt.Sprintf("%x", packet.SessionID))
+	buyerDelta, err := redisServer.ZScore(fmt.Sprintf("top-buyer-%x", packet.CustomerID), fmt.Sprintf("%016x", packet.SessionID))
 	assert.NoError(t, err)
 	assert.Equal(t, buyerDelta, float64(20))
 
-	assert.True(t, redisServer.Exists(fmt.Sprintf("session-%x-meta", packet.SessionID)))
-	assert.Greater(t, redisServer.TTL(fmt.Sprintf("session-%x-meta", packet.SessionID)).Hours(), float64(-1))
+	assert.True(t, redisServer.Exists(fmt.Sprintf("session-%016x-meta", packet.SessionID)))
+	assert.Greater(t, redisServer.TTL(fmt.Sprintf("session-%016x-meta", packet.SessionID)).Hours(), float64(-1))
 
-	assert.True(t, redisServer.Exists(fmt.Sprintf("session-%x-slices", packet.SessionID)))
-	assert.Greater(t, redisServer.TTL(fmt.Sprintf("session-%x-slices", packet.SessionID)).Hours(), float64(-1))
+	assert.True(t, redisServer.Exists(fmt.Sprintf("session-%016x-slices", packet.SessionID)))
+	assert.Greater(t, redisServer.TTL(fmt.Sprintf("session-%016x-slices", packet.SessionID)).Hours(), float64(-1))
 
-	assert.True(t, redisServer.Exists(fmt.Sprintf("user-%x-sessions", 0)))
-	assert.Greater(t, redisServer.TTL(fmt.Sprintf("user-%x-sessions", 0)).Hours(), float64(-1))
+	assert.True(t, redisServer.Exists(fmt.Sprintf("user-%016x-sessions", 0)))
+	assert.Greater(t, redisServer.TTL(fmt.Sprintf("user-%016x-sessions", 0)).Hours(), float64(-1))
 
 	validateNextResponsePacket(t, resbuf, packet.SessionID, packet.Sequence, 5, routing.RouteTypeNew, sessionMetrics.NextSessions, sessionMetrics.DecisionMetrics.RTTReduction)
 }
@@ -1699,22 +1699,22 @@ func TestContinueRouteResponse(t *testing.T) {
 	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, redisClient, 10*time.Second, &db, &rp, &iploc, &geoClient, &sessionMetrics, &billing.NoOpBiller{}, TestServerBackendPrivateKey[:], TestRouterPrivateKey[:])
 	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
-	globalDelta, err := redisServer.ZScore("top-global", fmt.Sprintf("%x", packet.SessionID))
+	globalDelta, err := redisServer.ZScore("top-global", fmt.Sprintf("%016x", packet.SessionID))
 	assert.NoError(t, err)
 	assert.Equal(t, globalDelta, float64(20))
 
-	buyerDelta, err := redisServer.ZScore(fmt.Sprintf("top-buyer-%x", packet.CustomerID), fmt.Sprintf("%x", packet.SessionID))
+	buyerDelta, err := redisServer.ZScore(fmt.Sprintf("top-buyer-%x", packet.CustomerID), fmt.Sprintf("%016x", packet.SessionID))
 	assert.NoError(t, err)
 	assert.Equal(t, buyerDelta, float64(20))
 
-	assert.True(t, redisServer.Exists(fmt.Sprintf("session-%x-meta", packet.SessionID)))
-	assert.Greater(t, redisServer.TTL(fmt.Sprintf("session-%x-meta", packet.SessionID)).Hours(), float64(-1))
+	assert.True(t, redisServer.Exists(fmt.Sprintf("session-%016x-meta", packet.SessionID)))
+	assert.Greater(t, redisServer.TTL(fmt.Sprintf("session-%016x-meta", packet.SessionID)).Hours(), float64(-1))
 
-	assert.True(t, redisServer.Exists(fmt.Sprintf("session-%x-slices", packet.SessionID)))
-	assert.Greater(t, redisServer.TTL(fmt.Sprintf("session-%x-slices", packet.SessionID)).Hours(), float64(-1))
+	assert.True(t, redisServer.Exists(fmt.Sprintf("session-%016x-slices", packet.SessionID)))
+	assert.Greater(t, redisServer.TTL(fmt.Sprintf("session-%016x-slices", packet.SessionID)).Hours(), float64(-1))
 
-	assert.True(t, redisServer.Exists(fmt.Sprintf("user-%x-sessions", 0)))
-	assert.Greater(t, redisServer.TTL(fmt.Sprintf("user-%x-sessions", 0)).Hours(), float64(-1))
+	assert.True(t, redisServer.Exists(fmt.Sprintf("user-%016x-sessions", 0)))
+	assert.Greater(t, redisServer.TTL(fmt.Sprintf("user-%016x-sessions", 0)).Hours(), float64(-1))
 
 	var actual transport.SessionResponsePacket
 	err = actual.UnmarshalBinary(resbuf.Bytes())

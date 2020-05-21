@@ -85,10 +85,10 @@ func RemoveRelayCacheEntry(ctx context.Context, relayID uint64, redisKey string,
 	// This check is necessary so that if a relay is shut down by the backend, by the supplier, or manually
 	// then it won't incorrectly overwrite that state.
 	if relay.State == routing.RelayStateEnabled {
-		relay.State = routing.RelayStateOffline
+		relay.State = routing.RelayStateQuarantine
 
 		if err := db.SetRelay(ctx, relay); err != nil {
-			return fmt.Errorf("Failed to set relay with ID %v in storage when attempting to set relay state to offline: %v", relayID, err)
+			return fmt.Errorf("Failed to set relay with ID %v in storage when attempting to set relay state to quarantined: %v", relayID, err)
 		}
 	}
 
@@ -148,6 +148,15 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 			level.Error(locallogger).Log("msg", "failed to get relay from storage", "err", err)
 			http.Error(writer, "failed to get relay from storage", http.StatusNotFound)
 			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
+			return
+		}
+
+		// Don't allow quarantined relays back in
+		if relay.State == routing.RelayStateQuarantine {
+			sentry.CaptureMessage(fmt.Sprintf("Quarantined relay %s attempted to reconnect to relay backend", relay.Name))
+			level.Error(locallogger).Log("msg", "quaratined relay attempted to reconnect", "relay", relay.Name)
+			params.Metrics.ErrorMetrics.RelayQuarantined.Add(1)
+			http.Error(writer, "cannot permit quarantined relay", http.StatusUnauthorized)
 			return
 		}
 
@@ -503,6 +512,15 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			level.Error(locallogger).Log("msg", "failed to get relay from storage", "err", err)
 			http.Error(writer, "failed to get relay from storage", http.StatusNotFound)
 			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
+			return
+		}
+
+		// Don't allow quarantined relays back in
+		if relay.State == routing.RelayStateQuarantine {
+			sentry.CaptureMessage(fmt.Sprintf("Quarantined relay %s attempted to reconnect to relay backend", relay.Name))
+			level.Error(locallogger).Log("msg", "quaratined relay attempted to reconnect", "relay", relay.Name)
+			params.Metrics.ErrorMetrics.RelayQuarantined.Add(1)
+			http.Error(writer, "cannot permit quarantined relay", http.StatusUnauthorized)
 			return
 		}
 
@@ -870,23 +888,23 @@ func statsTable(stats map[string]map[string]routing.Stats) template.HTML {
 	html := strings.Builder{}
 	html.WriteString("<table>")
 
-	addrs := make([]string, 0)
-	for addr := range stats {
-		addrs = append(addrs, addr)
+	names := make([]string, 0)
+	for name := range stats {
+		names = append(names, name)
 	}
 
 	html.WriteString("<tr>")
-	html.WriteString("<th>Address</th>")
-	for _, addr := range addrs {
-		html.WriteString("<th>" + addr + "</th>")
+	html.WriteString("<th>Name</th>")
+	for _, name := range names {
+		html.WriteString("<th>" + name + "</th>")
 	}
 	html.WriteString("</tr>")
 
-	for _, a := range addrs {
+	for _, a := range names {
 		html.WriteString("<tr>")
 		html.WriteString("<th>" + a + "</th>")
 
-		for _, b := range addrs {
+		for _, b := range names {
 			if a == b {
 				html.WriteString("<td>&nbsp;</td>")
 				continue
@@ -934,6 +952,7 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.R
 				<h2>Relays</h2>
 				<table>
 					<tr>
+						<th>Name</th>
 						<th>Address</th>
 						<th>Datacenter</th>
 						<th>Lat / Long</th>
@@ -942,6 +961,7 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.R
 					</tr>
 					{{ range .Relays }}
 					<tr>
+						<td>{{ .Name }}</td>
 						<td>{{ .Addr }}</td>
 						<td>{{ .Datacenter.Name }}</td>
 						<td>{{ .Datacenter.Location.Latitude }} / {{ .Datacenter.Location.Longitude }}</td>
@@ -991,11 +1011,21 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.R
 
 		res.Stats = make(map[string]map[string]routing.Stats)
 		for _, a := range res.Relays {
-			res.Stats[a.Name] = make(map[string]routing.Stats)
+			aKey := a.Name
+			if aKey == "" {
+				aKey = a.Addr.String()
+			}
+
+			res.Stats[aKey] = make(map[string]routing.Stats)
 
 			for _, b := range res.Relays {
+				bKey := b.Name
+				if bKey == "" {
+					bKey = b.Addr.String()
+				}
+
 				rtt, jitter, packetloss := statsdb.GetSample(a.ID, b.ID)
-				res.Stats[a.Name][a.Name] = routing.Stats{RTT: float64(rtt), Jitter: float64(jitter), PacketLoss: float64(packetloss)}
+				res.Stats[aKey][bKey] = routing.Stats{RTT: float64(rtt), Jitter: float64(jitter), PacketLoss: float64(packetloss)}
 			}
 		}
 

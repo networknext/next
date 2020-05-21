@@ -25,7 +25,6 @@ var EmptySessionMetrics SessionMetrics = SessionMetrics{
 type SessionErrorMetrics struct {
 	UnserviceableUpdate         Counter
 	ReadPacketFailure           Counter
-	FallbackToDirect            Counter
 	EarlyFallbackToDirect       Counter
 	PipelineExecFailure         Counter
 	GetServerDataFailure        Counter
@@ -50,7 +49,6 @@ type SessionErrorMetrics struct {
 var EmptySessionErrorMetrics SessionErrorMetrics = SessionErrorMetrics{
 	UnserviceableUpdate:         &EmptyCounter{},
 	ReadPacketFailure:           &EmptyCounter{},
-	FallbackToDirect:            &EmptyCounter{},
 	EarlyFallbackToDirect:       &EmptyCounter{},
 	PipelineExecFailure:         &EmptyCounter{},
 	GetServerDataFailure:        &EmptyCounter{},
@@ -191,6 +189,7 @@ type RelayInitErrorMetrics struct {
 	InvalidMagic       Counter
 	InvalidVersion     Counter
 	RelayNotFound      Counter
+	RelayQuarantined   Counter
 	DecryptionFailure  Counter
 	RedisFailure       Counter
 	RelayAlreadyExists Counter
@@ -202,6 +201,7 @@ var EmptyRelayInitErrorMetrics RelayInitErrorMetrics = RelayInitErrorMetrics{
 	InvalidMagic:       &EmptyCounter{},
 	InvalidVersion:     &EmptyCounter{},
 	RelayNotFound:      &EmptyCounter{},
+	RelayQuarantined:   &EmptyCounter{},
 	DecryptionFailure:  &EmptyCounter{},
 	RedisFailure:       &EmptyCounter{},
 	RelayAlreadyExists: &EmptyCounter{},
@@ -256,6 +256,7 @@ type RelayHandlerErrorMetrics struct {
 	UnmarshalFailure      Counter
 	ExceedMaxRelays       Counter
 	RelayNotFound         Counter
+	RelayQuarantined      Counter
 	NoAuthHeader          Counter
 	BadAuthHeaderLength   Counter
 	BadAuthHeaderToken    Counter
@@ -270,6 +271,7 @@ var EmptyRelayHandlerErrorMetrics RelayHandlerErrorMetrics = RelayHandlerErrorMe
 	UnmarshalFailure:      &EmptyCounter{},
 	ExceedMaxRelays:       &EmptyCounter{},
 	RelayNotFound:         &EmptyCounter{},
+	RelayQuarantined:      &EmptyCounter{},
 	NoAuthHeader:          &EmptyCounter{},
 	BadAuthHeaderLength:   &EmptyCounter{},
 	BadAuthHeaderToken:    &EmptyCounter{},
@@ -563,16 +565,6 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		DisplayName: "Session Encryption Failure",
 		ServiceName: "server_backend",
 		ID:          "session.error.encryption_failure",
-		Unit:        "errors",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	sessionMetrics.ErrorMetrics.FallbackToDirect, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Session Fallback To Direct",
-		ServiceName: "server_backend",
-		ID:          "session.error.fallback_to_direct",
 		Unit:        "errors",
 	})
 	if err != nil {
