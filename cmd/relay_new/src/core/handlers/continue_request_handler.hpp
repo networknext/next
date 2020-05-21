@@ -108,11 +108,11 @@ namespace core
       length = mPacket.Len - ContinueToken::EncryptedByteSize;
 
       if (isSigned) {
-        mPacket.Buffer[RouteToken::EncryptedByteSize + crypto::PacketHashLength] =
+        mPacket.Buffer[ContinueToken::EncryptedByteSize + crypto::PacketHashLength] =
          static_cast<uint8_t>(packets::Type::ContinueRequest);
         legacy::relay_sign_network_next_packet(&mPacket.Buffer[ContinueToken::EncryptedByteSize], length);
       } else {
-        mPacket.Buffer[RouteToken::EncryptedByteSize] = static_cast<uint8_t>(packets::Type::RouteRequest);
+        mPacket.Buffer[ContinueToken::EncryptedByteSize] = static_cast<uint8_t>(packets::Type::ContinueRequest);
       }
 
       mRecorder.addToSent(length);
@@ -125,8 +125,6 @@ namespace core
         Log("failed to forward continue request");
       }
 #endif
-
-      LogDebug("sending continue request to ", session->NextAddr);
     }
   }  // namespace handlers
 }  // namespace core

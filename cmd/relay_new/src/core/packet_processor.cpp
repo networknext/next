@@ -246,7 +246,7 @@ namespace core
 
         handlers::SessionPingHandler handler(packet, mSessionMap, mRecorder, mStats);
 
-        handler.handle(outputBuff, mSocket);
+        handler.handle(outputBuff, mSocket, isSigned);
       } break;
       case packets::Type::SessionPong: {
         mRecorder.addToReceived(wholePacketSize);
@@ -254,15 +254,15 @@ namespace core
 
         handlers::SessionPongHandler handler(packet, mSessionMap, mRecorder, mStats);
 
-        handler.handle(outputBuff, mSocket);
+        handler.handle(outputBuff, mSocket, isSigned);
       } break;
       case packets::Type::NearPing: {
         mRecorder.addToReceived(wholePacketSize);
         mStats.BytesPerSecMeasurementRx += wholePacketSize;
 
-        handlers::NearPingHandler handler(packet, packet.Addr, mRecorder, mStats);
+        handlers::NearPingHandler handler(packet, mRecorder, mStats);
 
-        handler.handle(outputBuff, mSocket);
+        handler.handle(outputBuff, mSocket, isSigned);
       } break;
       // Next three all do the same thing
       case packets::Type::V3BackendInitResponse: {

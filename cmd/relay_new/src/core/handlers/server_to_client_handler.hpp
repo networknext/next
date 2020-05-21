@@ -84,13 +84,17 @@ namespace core
 
       uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
       if (relay_replay_protection_already_received(&session->ServerToClientProtection, clean_sequence)) {
-        Log("session packet already received: ", session_id, '.', session_version);
+        Log(
+         "ignoring server to client packet, clean sequence less then server to client sequence: ",
+         session_id,
+         '.',
+         session_version);
         return;
       }
 
       relay_replay_protection_advance_sequence(&session->ServerToClientProtection, clean_sequence);
       if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->PrivateKey.data(), data, length) != RELAY_OK) {
-        Log("failed to verify session packet header: ", session_id, '.', session_version);
+        Log("ignoring server to client packet, could not verify header: ", session_id, '.', session_version);
         return;
       }
 

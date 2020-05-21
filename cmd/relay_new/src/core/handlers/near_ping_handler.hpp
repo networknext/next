@@ -15,42 +15,57 @@ namespace core
     class NearPingHandler: public BaseHandler
     {
      public:
-      NearPingHandler(
-       GenericPacket<>& packet, const net::Address& from, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats);
+      NearPingHandler(GenericPacket<>& packet, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats);
 
       template <size_t Size>
-      void handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket);
+      void handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket, bool isSigned);
 
      private:
-      const net::Address& mFrom;
       util::ThroughputRecorder& mRecorder;
       legacy::v3::TrafficStats& mStats;
     };
 
     inline NearPingHandler::NearPingHandler(
-     GenericPacket<>& packet, const net::Address& from, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats)
-     : BaseHandler(packet), mFrom(from), mRecorder(recorder), mStats(stats)
+     GenericPacket<>& packet, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats)
+     : BaseHandler(packet), mRecorder(recorder), mStats(stats)
     {}
 
     template <size_t Size>
-    inline void NearPingHandler::handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket)
+    inline void NearPingHandler::handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket, bool isSigned)
     {
       (void)buff;
       (void)socket;
-      if (mPacket.Len != 1 + 8 + 8 + 8 + 8) {
+
+      size_t length;
+
+      if (isSigned) {
+        length = mPacket.Len - crypto::PacketHashLength;
+      } else {
+        length = mPacket.Len;
+      }
+
+      if (length != 1 + 8 + 8 + 8 + 8) {
+        Log("ignoring near ping packet, length invalid: ", length);
         return;
       }
 
-      mPacket.Buffer[0] = static_cast<uint8_t>(packets::Type::NearPong);
-      auto length = mPacket.Len - 16;  // ? why 16
+      length = mPacket.Len - 16;
+
+      if (isSigned) {
+        mPacket.Buffer[crypto::PacketHashLength] = static_cast<uint8_t>(packets::Type::NearPong);
+        crypto::SignNetworkNextPacket(mPacket.Buffer, length);
+      } else {
+        mPacket.Buffer[0] = static_cast<uint8_t>(packets::Type::NearPong);
+      }
+
       mRecorder.addToSent(length);
       mStats.BytesPerSecMeasurementTx += length;
 
 #ifdef RELAY_MULTISEND
-      buff.push(mFrom, mPacket.Buffer.data(), length);
+      buff.push(mPacket.Addr, mPacket.Buffer.data(), length);
 #else
-      if (!socket.send(mFrom, mPacket.Buffer.data(), length)) {
-        Log("failed to send near pong to ", mFrom);
+      if (!socket.send(mPacket.Addr, mPacket.Buffer.data(), length)) {
+        Log("failed to send near pong to ", mPacket.Addr);
       }
 #endif
     }

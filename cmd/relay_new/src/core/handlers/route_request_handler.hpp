@@ -142,8 +142,6 @@ namespace core
         Log("failed to forward route request to ", token.NextAddr);
       }
 #endif
-
-      LogDebug("sending route request to ", token.NextAddr);
     }
   }  // namespace handlers
 }  // namespace core
