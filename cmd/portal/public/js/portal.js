@@ -657,6 +657,10 @@ WorkspaceHandler = {
 	refreshAccountsTable() {
 		setTimeout(() => {
 			let filter = rootComponent.$data.pages.settings.filter;
+			let allAccountsPromise = 
+				UserHandler.isAdmin()
+					? JSONRPCClient.call('AuthService.AllAccounts', {emails: []})
+					: JSONRPCClient.call('AuthService.AllAccounts', {emails: [UserHandler.userInfo.email]});
 
 			let promises = [
 				JSONRPCClient
