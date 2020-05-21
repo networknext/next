@@ -229,6 +229,7 @@ type relay struct {
 	ManagementAddr      string    `json:"management_addr"`
 	SSHUser             string    `json:"ssh_user"`
 	SSHPort             int64     `json:"ssh_port"`
+	MaxSessionCount     uint32    `json:"maxSessionCount"`
 	SessionCount        uint64    `json:"sessionCount"`
 	BytesSent           uint64    `json:"bytesTx"`
 	BytesReceived       uint64    `json:"bytesRx"`
@@ -256,6 +257,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			SSHPort:             r.SSHPort,
 			State:               r.State.String(),
 			StateUpdateTime:     r.LastUpdateTime,
+			MaxSessionCount:     r.MaxSessions,
 		}
 
 		relayCacheEntry := routing.RelayCacheEntry{
