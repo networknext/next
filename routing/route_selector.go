@@ -8,7 +8,7 @@ import (
 // SelectorFunc reduces a slice of routes according to the selector function.
 // Takes in a slice of routes as input and returns a new slice of selected routes.
 // A RouteSelector never modifies the input.
-// If the selector couldn't product a non-empty slice of routes, then it returns nil.
+// If the selector couldn't produce a non-empty slice of routes, then it returns nil.
 type SelectorFunc func(routes []Route) []Route
 
 // SelectBestRTT returns the best routes based on lowest RTT, or nil if no best route is found.
@@ -63,7 +63,8 @@ func SelectAcceptableRoutesFromBestRTT(rttEpsilon float64) SelectorFunc {
 	}
 }
 
-// SelectContainsRouteHash returns the route if its route hash matches a route in the current list of routes, or nil if it is not.
+// SelectContainsRouteHash returns the route if its route hash matches a route in the current list of routes.
+// If the route has doesn't match any of the routes, then it will return the existing list of routes to not break route selection.
 func SelectContainsRouteHash(routeHash uint64) SelectorFunc {
 	return func(routes []Route) []Route {
 		for _, route := range routes {
@@ -73,7 +74,7 @@ func SelectContainsRouteHash(routeHash uint64) SelectorFunc {
 			}
 		}
 
-		return nil
+		return routes
 	}
 }
 
