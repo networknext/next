@@ -273,7 +273,8 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	}
 
 	if buyer, err = s.Storage.Buyer(buyerID); err != nil {
-		return fmt.Errorf("failed to fetch buyer info from Storer")
+		reply.GameConfiguration.PublicKey = ""
+		return nil
 	}
 
 	reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
