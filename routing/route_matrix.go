@@ -166,24 +166,16 @@ func (m *RouteMatrix) Routes(from []Relay, to []Relay, routeSelectors ...Selecto
 		}
 	}
 
-	routeLength := len(routes)
-
 	// No routes found
-	if routeLength == 0 {
-		return nil, errors.New("no routes found")
+	if len(routes) == 0 {
+		return nil, errors.New("no routes in route matrix")
 	}
 
 	// Apply the selectors in order
 	for _, selector := range routeSelectors {
-		selectedRoutes := selector(routes)
-		if len(selectedRoutes) == 0 {
-			break // If the list of selected routes is empty, it means that it couldn't select the set of routes, so stop early
-		}
+		routes = selector(routes)
 
-		routes = selectedRoutes
-		routeLength = len(routes)
-
-		if routeLength <= 1 {
+		if len(routes) <= 1 {
 			break
 		}
 	}

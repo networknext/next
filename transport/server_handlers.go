@@ -545,8 +545,8 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			// back to direct, then this is an early fallback. the first slice we issue is
 			// always a direct route, so the client can never have been on a Network Next route
 			// at this point, and thus they shouldn't be falling back from anything.
-			if timestampNow.Sub(sessionCacheEntry.TimestampStart) < (billing.BillingSliceSeconds*1.5*time.Second) &&
-				timestampNow.Sub(sessionCacheEntry.TimestampStart) > (billing.BillingSliceSeconds*0.5*time.Second) {
+			if timestampNow.Sub(timestampStart) < (billing.BillingSliceSeconds*1.5*time.Second) &&
+				timestampNow.Sub(timestampStart) > (billing.BillingSliceSeconds*0.5*time.Second) {
 				level.Error(logger).Log("err", "early fallback to direct")
 				if err := writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.EarlyFallbackToDirect); err != nil {
 					sentry.CaptureException(err)
@@ -748,12 +748,13 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			level.Debug(locallogger).Log("buyer_rtt_epsilon", buyer.RoutingRulesSettings.RTTEpsilon, "cached_route_hash", sessionCacheEntry.RouteHash)
 			// Get a set of possible routes from the RouteProvider and on error ensure it falls back to direct
 			routes, err := rp.Routes(dsRelays, clientRelays,
+				routing.SelectUnencumberedRoutes(0.8),
 				routing.SelectAcceptableRoutesFromBestRTT(float64(buyer.RoutingRulesSettings.RTTEpsilon)),
 				routing.SelectContainsRouteHash(sessionCacheEntry.RouteHash),
-				routing.SelectUnencumberedRoutes(0.8),
 				routing.SelectRoutesByRandomDestRelay(rand.NewSource(rand.Int63())),
 				routing.SelectRandomRoute(rand.NewSource(rand.Int63())),
 			)
+
 			if err != nil {
 				level.Error(locallogger).Log("err", err)
 				if err := writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.RouteFailure); err != nil {
@@ -770,6 +771,32 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 
 				if err := submitBillingEntry(biller, serverCacheEntry, sessionCacheEntry, packet, response, buyer, chosenRoute, location, storer, clientRelays,
 					routing.Decision{OnNetworkNext: false, Reason: routing.DecisionNoNextRoute}, sliceDuration, timestampStart, timestampNow, newSession); err != nil {
+					sentry.CaptureException(err)
+					level.Error(locallogger).Log("msg", "billing failed", "err", err)
+					metrics.ErrorMetrics.BillingFailure.Add(1)
+				}
+
+				return
+			}
+
+			if len(routes) == 0 {
+				level.Error(locallogger).Log("msg", "no routes from the route matrix could be selected")
+				if err := writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.RouteFailure); err != nil {
+					sentry.CaptureMessage("No routes from the route matrix could be selected")
+					level.Error(locallogger).Log("msg", "failed to write session error response", "err", err)
+					metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+					return
+				}
+
+				routeDecision = routing.Decision{OnNetworkNext: false, Reason: routing.DecisionNoNextRoute}
+
+				if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, location); err != nil {
+					sentry.CaptureException(err)
+					level.Error(locallogger).Log("msg", "failed to update portal data", "err", err)
+				}
+
+				if err := submitBillingEntry(biller, serverCacheEntry, sessionCacheEntry, packet, response, buyer, chosenRoute, location, storer, clientRelays,
+					routeDecision, sliceDuration, timestampStart, timestampNow, newSession); err != nil {
 					sentry.CaptureException(err)
 					level.Error(locallogger).Log("msg", "billing failed", "err", err)
 					metrics.ErrorMetrics.BillingFailure.Add(1)

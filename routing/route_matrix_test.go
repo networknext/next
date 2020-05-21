@@ -2200,6 +2200,16 @@ func TestRoutes(t *testing.T) {
 	err = costMatrix.Optimize(&routeMatrix, 1)
 	assert.NoError(t, err)
 
+	// Hack to insert relay session counts without regenerating a new route matrix
+	numRelays := len(routeMatrix.RelayIDs)
+	for i := 0; i < numRelays; i++ {
+		routeMatrix.RelaySessionCounts[i] = uint32(i)
+		routeMatrix.RelayMaxSessionCounts[i] = 3000
+	}
+
+	// Have a relay be encumbered
+	routeMatrix.RelaySessionCounts[3] = 3000
+
 	tests := []struct {
 		name        string
 		from        []routing.Relay
@@ -2208,9 +2218,9 @@ func TestRoutes(t *testing.T) {
 		expectedErr error
 		selectors   []routing.SelectorFunc
 	}{
-		{"empty from/to sets", []routing.Relay{}, []routing.Relay{}, nil, errors.New("no routes found"), nil},
-		{"relays not found", []routing.Relay{{ID: 1}}, []routing.Relay{{ID: 2}}, nil, errors.New("no routes found"), nil},
-		{"one relay found", []routing.Relay{{ID: 1}}, []routing.Relay{{ID: 1500948990}}, nil, errors.New("no routes found"), nil},
+		{"empty from/to sets", []routing.Relay{}, []routing.Relay{}, nil, errors.New("no routes in route matrix"), nil},
+		{"relays not found", []routing.Relay{{ID: 1}}, []routing.Relay{{ID: 2}}, nil, errors.New("no routes in route matrix"), nil},
+		{"one relay found", []routing.Relay{{ID: 1}}, []routing.Relay{{ID: 1500948990}}, nil, errors.New("no routes in route matrix"), nil},
 		{
 			"no selectors",
 			[]routing.Relay{{ID: 2836356269}},
@@ -2373,10 +2383,6 @@ func TestRoutes(t *testing.T) {
 				routing.Route{
 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 4058587524}, {ID: 1350942731}, {ID: 3263834878}},
 					Stats:  routing.Stats{RTT: 184},
-				},
-				routing.Route{
-					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1500948990}},
-					Stats:  routing.Stats{RTT: 311},
 				},
 			},
 			nil,
