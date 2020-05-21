@@ -95,11 +95,12 @@ namespace core
         return;
       }
 
-      relay_replay_protection_advance_sequence(&session->ServerToClientProtection, clean_sequence);
       if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->PrivateKey.data(), data, length) != RELAY_OK) {
         Log("ignoring server to client packet, could not verify header: ", session_id, '.', session_version);
         return;
       }
+
+      relay_replay_protection_advance_sequence(&session->ServerToClientProtection, clean_sequence);
 
       mRecorder.addToSent(mPacket.Len);
       mStats.BytesPerSecPaidTx += mPacket.Len;

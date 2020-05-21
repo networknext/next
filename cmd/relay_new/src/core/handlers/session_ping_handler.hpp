@@ -84,16 +84,18 @@ namespace core
       }
 
       uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
+
       if (clean_sequence <= session->ClientToServerSeq) {
         Log("ignoring session ping packet, clean sequence <= server to client sequence: ", session_id, '.', session_version);
         return;
       }
 
-      session->ClientToServerSeq = clean_sequence;
       if (relay::relay_verify_header(RELAY_DIRECTION_CLIENT_TO_SERVER, session->PrivateKey.data(), data, length) != RELAY_OK) {
         Log("ignoring session ping packet, could not verify header: ", session_id, '.', session_version);
         return;
       }
+
+      session->ClientToServerSeq = clean_sequence;
 
       mRecorder.addToSent(mPacket.Len);
       mStats.BytesPerSecMeasurementTx += mPacket.Len;

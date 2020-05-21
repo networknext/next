@@ -88,11 +88,12 @@ namespace core
         return;
       }
 
-      session->ServerToClientSeq = clean_sequence;
       if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->PrivateKey.data(), data, length) != RELAY_OK) {
         Log("ignoring route response, header is invalid: ", session_id, '.', session_version);
         return;
       }
+
+      session->ServerToClientSeq = clean_sequence;
 
       mRecorder.addToSent(mPacket.Len);
       mStats.BytesPerSecManagementTx += mPacket.Len;
