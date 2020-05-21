@@ -90,8 +90,8 @@ namespace core
   }
 
   bool ContinueToken::encrypt(
-     uint8_t* packetData,
-     size_t packetLength,
+   uint8_t* packetData,
+   size_t packetLength,
    const size_t& index,
    const crypto::GenericKey& senderPrivateKey,
    const crypto::GenericKey& receiverPublicKey,
@@ -115,8 +115,8 @@ namespace core
   }
 
   bool ContinueToken::decrypt(
-     uint8_t* packetData,
-     size_t packetLength,
+   uint8_t* packetData,
+   size_t packetLength,
    const size_t& index,
    const crypto::GenericKey& senderPublicKey,
    const crypto::GenericKey& receiverPrivateKey,

@@ -232,12 +232,15 @@ int main(int argc, const char* argv[])
   const auto relayID = crypto::FNV(env.RelayV3Name);
 
   // decides if the relay should receive packets
-  std::atomic<bool> shouldReceive = true;
+  std::atomic<bool> shouldReceive(true);
 
   // session map to be shared across packet processors
   core::SessionMap sessions;
 
-  size_t socketChooser = 0;
+  auto nextSocket = [&sockets] {
+    static size_t socketChooser = 0;
+    return sockets[socketChooser++ % sockets.size()];
+  };
 
   // wait until a thread is ready to do its job.
   // serializes the thread spawning so the relay doesn't
@@ -351,7 +354,7 @@ int main(int argc, const char* argv[])
   // if they are the same the relay behaves weird: it'll sometimes behave right
   // othertimes it'll just ignore everything coming to it
   {
-    auto socket = sockets[socketChooser++ % sockets.size()];
+    auto socket = nextSocket();
     // setup the ping processor to use the external address
     // relays use it to know where the receiving port of other relays are
     auto thread =
@@ -378,7 +381,7 @@ int main(int argc, const char* argv[])
   {
     // ping proc setup
     {
-      auto socket = sockets[socketChooser++ & sockets.size()];
+      auto socket = nextSocket();
 
       {
         auto thread =
@@ -403,7 +406,7 @@ int main(int argc, const char* argv[])
     {
       // socket only used for sending
       // use the receiving address b/c the old relay doesn't use the appended addr
-      auto socket = sockets[socketChooser++ & sockets.size()];
+      auto socket = nextSocket();
 
       {
         auto thread = std::make_shared<std::thread>(
