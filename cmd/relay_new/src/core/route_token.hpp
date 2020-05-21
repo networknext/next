@@ -57,7 +57,6 @@ namespace core
 
     bool decrypt(
      uint8_t* packetData,
-     size_t packetLength,
      const size_t& index,
      const crypto::GenericKey& senderPublicKey,
      const crypto::GenericKey& receiverPrivateKey,

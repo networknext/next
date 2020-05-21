@@ -14,7 +14,7 @@ Test(core_packets_RelayPingPacket_general)
   core::GenericPacket<> packet;
 
   // get test data into buffer
-  size_t index = 0;
+  size_t index = crypto::PacketHashLength;
   encoding::WriteUint8(packet.Buffer, index, type);
   encoding::WriteUint64(packet.Buffer, index, seqnum);
 
@@ -22,7 +22,7 @@ Test(core_packets_RelayPingPacket_general)
   core::packets::NewRelayPingPacket pingPacket(packet);
 
   // make sure packet is passed values correctly
-  check(pingPacket.Internal.Buffer[0] == static_cast<uint8_t>(core::packets::Type::NewRelayPing));
+  check(pingPacket.Internal.Buffer[crypto::PacketHashLength] == static_cast<uint8_t>(core::packets::Type::NewRelayPing));
 
   // ensure getters work
   check(pingPacket.getSeqNum() == seqnum);

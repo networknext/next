@@ -167,7 +167,7 @@ namespace encoding
       return false;
     }
 
-    std::copy(data, data + dataLength, buff);
+    std::copy(data, data + dataLength, buff + index);
     index += dataLength;
 
     return true;

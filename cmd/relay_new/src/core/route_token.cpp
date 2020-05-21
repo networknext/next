@@ -53,7 +53,8 @@ namespace core
     const auto nonceIndex = index;   // nonce is first in the packet's data
     index += crypto_box_NONCEBYTES;  // followed by actual data
 
-    if (!decrypt(packetData, packetLength, index, senderPublicKey, receiverPrivateKey, nonceIndex)) {
+    if (!decrypt(packetData, index, senderPublicKey, receiverPrivateKey, nonceIndex)) {
+      Log("could not decrypt route token");
       return false;
     }
 
@@ -119,6 +120,7 @@ namespace core
    const crypto::GenericKey& receiverPublicKey,
    const std::array<uint8_t, crypto_box_NONCEBYTES>& nonce)
   {
+    (void)packetLength;
     assert(packetLength >= RouteToken::EncryptionLength);
 
     if (
@@ -136,8 +138,7 @@ namespace core
   }
 
   bool RouteToken::decrypt(
-    uint8_t* packetData,
-    size_t packetLength,
+   uint8_t* packetData,
    const size_t& index,
    const crypto::GenericKey& senderPublicKey,
    const crypto::GenericKey& receiverPrivateKey,
