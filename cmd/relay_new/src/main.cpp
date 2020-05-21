@@ -369,10 +369,11 @@ int main(int argc, const char* argv[])
     }
   }
 
-  bool v3BackendSuccess = false;
+  bool v3BackendSuccess = true;
 
   // v3 backend compatability setup
-  {
+  if (env.RelayV3Enabled == "1") {
+    v3BackendSuccess = false;
     // ping proc setup
     {
       auto socket = nextSocket();

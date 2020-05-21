@@ -17,6 +17,7 @@ namespace util
     std::string RecvBufferSize;
     std::string ProcessorCount;
 
+    std::string RelayV3Enabled;          // whether or not the old backend compatability is turned on
     std::string RelayV3Name;             // Firestore ID
     std::string RelayV3BackendHostname;  // just the hostname, no http prefix
     std::string RelayV3BackendPort;      // port that should be used to talk to the backend
@@ -40,6 +41,7 @@ namespace util
     };
 
     std::unordered_map<const char*, std::string*> optionalVars = {
+     {"RELAY_V3_ENABLED", &RelayV3Enabled},
      {"RELAY_SEND_BUFFER_SIZE", &SendBufferSize},
      {"RELAY_RECV_BUFFER_SIZE", &RecvBufferSize},
      {"RELAY_PROCESSOR_COUNT", &ProcessorCount},
