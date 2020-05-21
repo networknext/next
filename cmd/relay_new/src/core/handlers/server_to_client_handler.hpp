@@ -51,7 +51,9 @@ namespace core
         length = mPacket.Len;
       }
 
-      if (length <= RELAY_HEADER_BYTES || length > RELAY_HEADER_BYTES + RELAY_MTU) {
+      // check if length excluding the hash is right,
+      // and then check if the hash + everything else is too large
+      if (length <= RELAY_HEADER_BYTES || mPacket.Len > RELAY_HEADER_BYTES + RELAY_MTU) {
         Log("ignoring server to client packet, invalid size: ", length);
         return;
       }
