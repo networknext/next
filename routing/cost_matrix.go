@@ -379,7 +379,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 	routes.Entries = make([]RouteMatrixEntry, entryCount)
 	routes.RelaySellers = m.RelaySellers
 	routes.RelaySessionCounts = m.RelaySessionCounts
-	routes.RelayMaxSessionCounts = m.RelaySessionCounts
+	routes.RelayMaxSessionCounts = m.RelayMaxSessionCounts
 
 	type Indirect struct {
 		relay uint64
