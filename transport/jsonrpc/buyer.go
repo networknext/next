@@ -28,6 +28,9 @@ type UserSessionsReply struct {
 
 func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, reply *UserSessionsReply) error {
 	var sessionIDs []string
+
+	reply.Sessions = make([]routing.SessionMeta, 0)
+
 	err := s.RedisClient.SMembers(fmt.Sprintf("user-%s-sessions", args.UserHash)).ScanSlice(&sessionIDs)
 	if err != nil {
 		return err
@@ -86,6 +89,8 @@ type TopSessionsReply struct {
 func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, reply *TopSessionsReply) error {
 	var err error
 	var result []redis.Z
+
+	reply.Sessions = make([]routing.SessionMeta, 0)
 
 	switch args.BuyerID {
 	case "":
@@ -171,6 +176,8 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		reply.Meta.NearbyRelays[idx].Name = r.Name
 	}
 
+	reply.Slices = make([]routing.SessionSlice, 0)
+
 	err = s.RedisClient.SMembers(fmt.Sprintf("session-%s-slices", args.SessionID)).ScanSlice(&reply.Slices)
 	if err != nil {
 		return err
@@ -194,6 +201,8 @@ type MapPointsReply struct {
 func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, reply *MapPointsReply) error {
 	var err error
 	var sessionIDs []string
+
+	reply.Points = make([]routing.SessionMapPoint, 0)
 
 	switch args.BuyerID {
 	case "":
@@ -264,6 +273,8 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	var buyerID uint64
 	var buyer routing.Buyer
 
+	reply.GameConfiguration.PublicKey = ""
+
 	if args.BuyerID == "" {
 		return fmt.Errorf("buyer_id is required")
 	}
@@ -273,7 +284,6 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	}
 
 	if buyer, err = s.Storage.Buyer(buyerID); err != nil {
-		reply.GameConfiguration.PublicKey = ""
 		return nil
 	}
 
@@ -326,6 +336,7 @@ type buyerAccount struct {
 }
 
 func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *BuyerListReply) error {
+	reply.Buyers = make([]buyerAccount, 0)
 	for _, b := range s.Storage.Buyers() {
 		id := strconv.FormatUint(b.ID, 10)
 		account := buyerAccount{
