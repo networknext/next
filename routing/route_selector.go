@@ -138,7 +138,7 @@ func SelectUnencumberedRoutes(sessionThreshold float64) SelectorFunc {
 		for _, route := range routes {
 			isRouteUnencumbered := true
 			for _, relay := range route.Relays {
-				if float64(relay.TrafficStats.SessionCount)/float64(relay.MaxSessions) >= sessionThreshold {
+				if relay.MaxSessions == 0 || float64(relay.TrafficStats.SessionCount)/float64(relay.MaxSessions) >= sessionThreshold {
 					isRouteUnencumbered = false
 					break
 				}
