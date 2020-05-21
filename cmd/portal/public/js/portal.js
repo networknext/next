@@ -657,21 +657,24 @@ WorkspaceHandler = {
 	refreshAccountsTable() {
 		setTimeout(() => {
 			let filter = rootComponent.$data.pages.settings.filter;
-			let allAccountsPromise = 
-				UserHandler.isAdmin()
-					? JSONRPCClient.call('AuthService.AllAccounts', {emails: []})
-					: JSONRPCClient.call('AuthService.AllAccounts', {emails: [UserHandler.userInfo.email]});
 
 			let promises = [
 				JSONRPCClient
-					.call('AuthService.AllAccounts', {buyer_id: filter.buyerId}),
+					.call('AuthService.AllAccounts', {}),
 				JSONRPCClient
 					.call('AuthService.AllRoles', {})
 			];
 			Promise.all(promises)
 				.then((responses) => {
+					console.log(responses)
 					allRoles = responses[1].roles;
 					let accounts = responses[0].accounts || [];
+
+					if (filter.buyerId != '') {
+						accounts = accounts.filter((account) => {
+							return account.id == filter.buyerId;
+						});
+					}
 
 					/**
 					 * I really dislike this but it is apparently the way to reload/update the data within a vue

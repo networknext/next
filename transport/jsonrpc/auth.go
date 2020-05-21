@@ -48,12 +48,7 @@ type account struct {
 }
 
 func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
-	if len(args.Emails) == 0 {
-		accountList, err = s.Auth0.Manager.User.List()
-	} else {
-		emailParts := strings.Split(args.Emails[0], "@")
-		accountList, err = s.Auth0.Manager.User.ListByEmail(fmt.Sprintf("*%sl", emailParts))
-	}
+	accountList, err := s.Auth0.Manager.User.List()
 	if err != nil {
 		return fmt.Errorf("failed to fetch user list: %w", err)
 	}
