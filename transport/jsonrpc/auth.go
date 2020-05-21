@@ -185,6 +185,10 @@ func GenerateRandomBytes(n int) ([]byte, error) {
 func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer) account {
 	id := strconv.FormatUint(buyer.ID, 10)
 
+	if id == "0" {
+		id = ""
+	}
+
 	account := account{
 		UserID:      *u.Identities[0].UserID,
 		ID:          id,
