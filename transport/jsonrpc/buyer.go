@@ -176,12 +176,12 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		reply.Meta.NearbyRelays[idx].Name = r.Name
 	}
 
+	reply.Slices = make([]routing.SessionSlice, 0)
+
 	err = s.RedisClient.SMembers(fmt.Sprintf("session-%s-slices", args.SessionID)).ScanSlice(&reply.Slices)
 	if err != nil {
 		return err
 	}
-
-	reply.Slices = make([]routing.SessionSlice, 0)
 
 	sort.Slice(reply.Slices, func(i int, j int) bool {
 		return reply.Slices[i].Timestamp.Before(reply.Slices[j].Timestamp)
