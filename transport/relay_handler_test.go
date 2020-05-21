@@ -94,26 +94,26 @@ func relayHandlerErrorAssertions(t *testing.T, recorder *httptest.ResponseRecord
 func relayHandlerShutdownAssertions(t *testing.T, errMetrics metrics.RelayHandlerErrorMetrics, entry routing.RelayCacheEntry, redisClient *redis.Client, inMemory *storage.InMemory, statsdb *routing.StatsDatabase, addr string) {
 	res := redisClient.HGet(routing.HashKeyAllRelays, entry.Key())
 	assert.NotNil(t, res.Err())
-	// assert.EqualError(t, redis.Nil, res.Err().Error())
+	assert.EqualError(t, redis.Nil, res.Err().Error())
 
-	// relay, err := inMemory.Relay(crypto.HashID(addr))
-	// assert.NoError(t, err)
+	relay, err := inMemory.Relay(crypto.HashID(addr))
+	assert.NoError(t, err)
 
-	// assert.Equal(t, routing.RelayStateMaintenance, relay.State)
+	assert.Equal(t, routing.RelayStateMaintenance, relay.State)
 
-	// for i, stat := range statsdb.Entries {
-	// 	assert.NotEqual(t, i, relay.ID)
-	// 	for j := range stat.Relays {
-	// 		assert.NotEqual(t, j, relay.ID)
-	// 	}
-	// }
+	for i, stat := range statsdb.Entries {
+		assert.NotEqual(t, i, relay.ID)
+		for j := range stat.Relays {
+			assert.NotEqual(t, j, relay.ID)
+		}
+	}
 
-	// errMetricsStruct := reflect.ValueOf(errMetrics)
-	// for i := 0; i < errMetricsStruct.NumField(); i++ {
-	// 	if errMetricsStruct.Field(i).CanInterface() {
-	// 		assert.Equal(t, 0.0, errMetricsStruct.Field(i).Interface().(metrics.Counter).ValueReset())
-	// 	}
-	// }
+	errMetricsStruct := reflect.ValueOf(errMetrics)
+	for i := 0; i < errMetricsStruct.NumField(); i++ {
+		if errMetricsStruct.Field(i).CanInterface() {
+			assert.Equal(t, 0.0, errMetricsStruct.Field(i).Interface().(metrics.Counter).ValueReset())
+		}
+	}
 }
 
 func relayHandlerSuccessAssertions(t *testing.T, recorder *httptest.ResponseRecorder, errMetrics metrics.RelayHandlerErrorMetrics, geoClient *routing.GeoClient, redisClient *redis.Client, location routing.Location, inMemory *storage.InMemory, statsdb *routing.StatsDatabase, addr string, expected routing.RelayCacheEntry, statIps []string) {
@@ -257,6 +257,51 @@ func TestRelayHandlerRelayNotFound(t *testing.T) {
 	assert.NoError(t, err)
 	recorder := pingRelayBackendHandler(t, nil, buff, handlerMetrics, nil, nil, inMemory, nil, nil, nil)
 	relayHandlerErrorAssertions(t, recorder, http.StatusNotFound, metric)
+}
+
+func TestRelayHandlerQuarantinedRelay(t *testing.T) {
+	addr := "127.0.0.1:40000"
+	udpAddr, err := net.ResolveUDPAddr("udp", addr)
+	assert.NoError(t, err)
+
+	relay := routing.Relay{
+		ID:   crypto.HashID(addr),
+		Addr: *udpAddr,
+		Seller: routing.Seller{
+			ID:   "sellerID",
+			Name: "seller name",
+		},
+		Datacenter: routing.Datacenter{
+			ID:   crypto.HashID("some datacenter"),
+			Name: "some datacenter",
+		},
+		State: routing.RelayStateQuarantine,
+	}
+
+	inMemory := &storage.InMemory{}
+	err = inMemory.AddSeller(context.Background(), relay.Seller)
+	assert.NoError(t, err)
+	err = inMemory.AddDatacenter(context.Background(), relay.Datacenter)
+	assert.NoError(t, err)
+	err = inMemory.AddRelay(context.Background(), relay)
+	assert.NoError(t, err)
+
+	request := transport.RelayRequest{
+		Address: *udpAddr,
+	}
+
+	handlerMetrics := metrics.EmptyRelayHandlerMetrics
+	localMetrics := metrics.LocalHandler{}
+
+	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
+	assert.NoError(t, err)
+
+	handlerMetrics.ErrorMetrics.RelayQuarantined = metric
+
+	buff, err := request.MarshalJSON()
+	assert.NoError(t, err)
+	recorder := pingRelayBackendHandler(t, nil, buff, handlerMetrics, nil, nil, inMemory, nil, nil, nil)
+	relayHandlerErrorAssertions(t, recorder, http.StatusUnauthorized, metric)
 }
 
 func TestRelayHandlerNoAuthHeader(t *testing.T) {

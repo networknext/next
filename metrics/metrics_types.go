@@ -189,6 +189,7 @@ type RelayInitErrorMetrics struct {
 	InvalidMagic       Counter
 	InvalidVersion     Counter
 	RelayNotFound      Counter
+	RelayQuarantined   Counter
 	DecryptionFailure  Counter
 	RedisFailure       Counter
 	RelayAlreadyExists Counter
@@ -200,6 +201,7 @@ var EmptyRelayInitErrorMetrics RelayInitErrorMetrics = RelayInitErrorMetrics{
 	InvalidMagic:       &EmptyCounter{},
 	InvalidVersion:     &EmptyCounter{},
 	RelayNotFound:      &EmptyCounter{},
+	RelayQuarantined:   &EmptyCounter{},
 	DecryptionFailure:  &EmptyCounter{},
 	RedisFailure:       &EmptyCounter{},
 	RelayAlreadyExists: &EmptyCounter{},
@@ -254,6 +256,7 @@ type RelayHandlerErrorMetrics struct {
 	UnmarshalFailure      Counter
 	ExceedMaxRelays       Counter
 	RelayNotFound         Counter
+	RelayQuarantined      Counter
 	NoAuthHeader          Counter
 	BadAuthHeaderLength   Counter
 	BadAuthHeaderToken    Counter
@@ -268,6 +271,7 @@ var EmptyRelayHandlerErrorMetrics RelayHandlerErrorMetrics = RelayHandlerErrorMe
 	UnmarshalFailure:      &EmptyCounter{},
 	ExceedMaxRelays:       &EmptyCounter{},
 	RelayNotFound:         &EmptyCounter{},
+	RelayQuarantined:      &EmptyCounter{},
 	NoAuthHeader:          &EmptyCounter{},
 	BadAuthHeaderLength:   &EmptyCounter{},
 	BadAuthHeaderToken:    &EmptyCounter{},

@@ -85,10 +85,10 @@ func RemoveRelayCacheEntry(ctx context.Context, relayID uint64, redisKey string,
 	// This check is necessary so that if a relay is shut down by the backend, by the supplier, or manually
 	// then it won't incorrectly overwrite that state.
 	if relay.State == routing.RelayStateEnabled {
-		relay.State = routing.RelayStateOffline
+		relay.State = routing.RelayStateQuarantine
 
 		if err := db.SetRelay(ctx, relay); err != nil {
-			return fmt.Errorf("Failed to set relay with ID %v in storage when attempting to set relay state to offline: %v", relayID, err)
+			return fmt.Errorf("Failed to set relay with ID %v in storage when attempting to set relay state to quarantined: %v", relayID, err)
 		}
 	}
 
@@ -148,6 +148,15 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 			level.Error(locallogger).Log("msg", "failed to get relay from storage", "err", err)
 			http.Error(writer, "failed to get relay from storage", http.StatusNotFound)
 			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
+			return
+		}
+
+		// Don't allow quarantined relays back in
+		if relay.State == routing.RelayStateQuarantine {
+			sentry.CaptureMessage(fmt.Sprintf("Quarantined relay %s attempted to reconnect to relay backend", relay.Name))
+			level.Error(locallogger).Log("msg", "quaratined relay attempted to reconnect", "relay", relay.Name)
+			params.Metrics.ErrorMetrics.RelayQuarantined.Add(1)
+			http.Error(writer, "cannot permit quarantined relay", http.StatusUnauthorized)
 			return
 		}
 
@@ -503,6 +512,15 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			level.Error(locallogger).Log("msg", "failed to get relay from storage", "err", err)
 			http.Error(writer, "failed to get relay from storage", http.StatusNotFound)
 			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
+			return
+		}
+
+		// Don't allow quarantined relays back in
+		if relay.State == routing.RelayStateQuarantine {
+			sentry.CaptureMessage(fmt.Sprintf("Quarantined relay %s attempted to reconnect to relay backend", relay.Name))
+			level.Error(locallogger).Log("msg", "quaratined relay attempted to reconnect", "relay", relay.Name)
+			params.Metrics.ErrorMetrics.RelayQuarantined.Add(1)
+			http.Error(writer, "cannot permit quarantined relay", http.StatusUnauthorized)
 			return
 		}
 
