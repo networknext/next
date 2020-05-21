@@ -666,7 +666,6 @@ WorkspaceHandler = {
 			];
 			Promise.all(promises)
 				.then((responses) => {
-					console.log(responses)
 					allRoles = responses[1].roles;
 					let accounts = responses[0].accounts || [];
 
