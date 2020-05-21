@@ -31,7 +31,19 @@ This can be thought of as version 2 of the relay. Version 1 being the relay in t
 - `RELAY_ROUTER_PUBLIC_KEY`: The router's public key encoded in base64, used to encrypt data for relay verification.
   - Example `RELAY_ROUTER_PUBLIC_KEY='SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y='`
 - `RELAY_BACKEND_HOSTNAME`: The backend's hostname
-   - Example `RELAY_BACKEND_HOSTNAME='http://localhost:30000'`
+  - Example `RELAY_BACKEND_HOSTNAME='http://localhost:30000'`
+- `RELAY_V3_NAME`: On servers this must be the firestore id, for local development this can be anything.
+  - Example `RELAY_V3_NAME='fake-relay-name'`
+- `RELAY_V3_BACKEND_HOSTNAME`: The old relay backend, no http prefix, just the hostname.
+  - Example `RELAY_V3_BACKEND_HOSTNAME='localhost'`
+- `RELAY_V3_BACKEND_PORT`: The port the old relay backend is running on. This must be separate from the hostname.
+  - Example `RELAY_V3_BACKEND_PORT='40000'`
+- `RELAY_V3_UPDATE_KEY`: The key in firestore that allows a relay to update with the old backend. For local dev this can be any base64 decryptable string
+  - Example `RELAY_V3_UPDATE_KEY='fake-update-key'`
+- `RELAY_V3_SPEED`: The speed in mega bits per second of the relay's NIC. Needed to calculate utilization. Must be a number (not 10Gb or anything like that).
+  - Example `RELAY_V3_SPEED='10000000000'`
+
+
 
 ### Optional
 

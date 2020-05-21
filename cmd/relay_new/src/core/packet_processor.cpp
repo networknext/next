@@ -126,7 +126,7 @@ namespace core
       type = static_cast<packets::Type>(packet.Buffer[crypto::PacketHashLength]);
       isSigned = true;
     } else {
-      Log("packet is not on network next");
+      LogDebug("packet is not on network next");
       // TODO uncomment below once all packets coming through have the hash
       // return;
       type = static_cast<packets::Type>(packet.Buffer[0]);
