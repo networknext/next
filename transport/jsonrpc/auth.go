@@ -48,7 +48,9 @@ type account struct {
 }
 
 func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
+	reply.UserAccounts = make([]account, 0)
 	accountList, err := s.Auth0.Manager.User.List()
+
 	if err != nil {
 		return fmt.Errorf("failed to fetch user list: %w", err)
 	}
@@ -238,6 +240,8 @@ func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesRe
 }
 
 func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
+	var err error
+
 	if args.UserID == "" {
 		return fmt.Errorf("user_id is required")
 	}
@@ -256,6 +260,7 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 	}
 
 	if len(args.Roles) == 0 {
+		reply.Roles = make([]*management.Role, 0)
 		return nil
 	}
 

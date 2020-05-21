@@ -145,7 +145,7 @@ MapHandler = {
 		JSONRPCClient
 			.call('BuyersService.SessionMapPoints', {buyer_id: filter.buyerId})
 			.then((response) => {
-				let sessions = response.map_points || [];
+				let sessions = response.map_points;
 				let onNN = sessions.filter((point) => {
 					return point.on_network_next;
 				});
@@ -404,7 +404,7 @@ WorkspaceHandler = {
 			JSONRPCClient
 				.call('AuthService.UpdateUserRoles', {user_id: `auth0|${accountInfo.user_id}`, roles: roles})
 				.then((response) => {
-					accountInfo.roles = response.roles || [];
+					accountInfo.roles = response.roles;
 					this.cancelEditUser(accountInfo);
 					Object.assign(rootComponent.$data.pages.settings.updateUser, {
 						success: 'Updated user account successfully',
@@ -547,7 +547,7 @@ WorkspaceHandler = {
 			.call("BuyersService.SessionDetails", {session_id: id})
 			.then((response) => {
 				let meta = response.meta;
-				meta.nearby_relays = meta.nearby_relays || [];
+
 				Object.assign(rootComponent.$data.pages.sessionTool, {
 					info: false,
 					danger: false,
@@ -597,7 +597,7 @@ WorkspaceHandler = {
 		JSONRPCClient
 			.call("BuyersService.UserSessions", {user_hash: hash})
 			.then((response) => {
-				let sessions = response.sessions || [];
+				let sessions = response.sessions;
 
 				Object.assign(rootComponent.$data.pages.userTool, {
 					danger: false,
@@ -631,7 +631,7 @@ WorkspaceHandler = {
 			JSONRPCClient
 				.call('BuyersService.TopSessions', {buyer_id: filter.buyerId})
 				.then((response) => {
-					let sessions = response.sessions || [];
+					let sessions = response.sessions;
 					let onNN = sessions.filter((point) => {
 						return point.on_network_next;
 					});
@@ -680,8 +680,8 @@ WorkspaceHandler = {
 			];
 			Promise.all(promises)
 				.then((responses) => {
+					let accounts = responses[0].accounts;
 					allRoles = responses[1].roles;
-					let accounts = responses[0].accounts || [];
 
 					/**
 					 * I really dislike this but it is apparently the way to reload/update the data within a vue

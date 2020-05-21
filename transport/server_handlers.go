@@ -520,7 +520,8 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 		}
 
 		chosenRoute := routing.Route{
-			Stats: directStats,
+			Stats:  directStats,
+			Relays: make([]routing.Relay, 0),
 		}
 
 		routeDecision := sessionCacheEntry.RouteDecision
@@ -1003,6 +1004,9 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 		Platform:      PlatformTypeText(packet.PlatformID),
 		CustomerID:    strconv.FormatUint(packet.CustomerID, 10),
 	}
+
+	meta.NearbyRelays = make([]routing.Relay, 0)
+
 	// Only fill in the essential information here to then let the portal fill in additional relay info
 	// so we don't spend time fetching info from storage here
 	for idx := 0; idx < int(packet.NumNearRelays); idx++ {
