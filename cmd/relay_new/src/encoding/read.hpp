@@ -76,6 +76,8 @@ namespace encoding
   [[gnu::always_inline]] inline void ReadBytes(
    const uint8_t* buff, size_t buffLength, size_t& index, uint8_t* storage, size_t storageLength, size_t len)
   {
+    (void)buffLength;
+    (void)storageLength;
     assert(len <= storageLength);
     assert(index + len <= buffLength);
     std::copy(buff + index, buff + index + len, storage);
@@ -93,9 +95,11 @@ namespace encoding
 
   [[gnu::always_inline]] inline void ReadAddress(const uint8_t* buff, size_t buffLength, size_t& index, net::Address& addr)
   {
+    (void)buffLength;
 #ifndef NDEBUG
     auto start = index;
 #endif
+    assert(buffLength >= net::Address::ByteSize);
     addr.Type = static_cast<net::AddressType>(ReadUint8(buff, index));  // read the type
 
     if (addr.Type == net::AddressType::IPv4) {
@@ -112,6 +116,8 @@ namespace encoding
       addr.reset();
       index += net::Address::ByteSize - 1;  // if no type, increment the index past the address area
     }
+
+    assert(index - start == net::Address::ByteSize);
   }
 
   template <typename T>

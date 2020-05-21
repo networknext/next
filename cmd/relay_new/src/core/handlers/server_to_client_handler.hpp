@@ -52,6 +52,7 @@ namespace core
       }
 
       if (length <= RELAY_HEADER_BYTES || length > RELAY_HEADER_BYTES + RELAY_MTU) {
+        Log("ignoring server to client packet, invalid size: ", length);
         return;
       }
 

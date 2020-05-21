@@ -64,6 +64,7 @@ namespace core
 
   [[gnu::always_inline]] inline void Token::read(uint8_t* packetData, size_t packetLength, size_t& index)
   {
+    (void)packetLength;
     assert(index + Token::ByteSize < packetLength);
     ExpireTimestamp = encoding::ReadUint64(packetData, index);
     SessionID = encoding::ReadUint64(packetData, index);

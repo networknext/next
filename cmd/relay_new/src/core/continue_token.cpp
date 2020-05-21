@@ -97,6 +97,7 @@ namespace core
    const crypto::GenericKey& receiverPublicKey,
    const std::array<uint8_t, crypto_box_NONCEBYTES>& nonce)
   {
+    (void)packetLength;
     assert(packetLength >= ContinueToken::EncryptionLength);
 
     if (
@@ -121,6 +122,7 @@ namespace core
    const crypto::GenericKey& receiverPrivateKey,
    const size_t nonceIndex)
   {
+    (void)packetLength;
     assert(packetLength >= ContinueToken::EncryptionLength);
 
     if (
