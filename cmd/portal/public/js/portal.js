@@ -108,16 +108,21 @@ MapHandler = {
 		},
 	},
 	mapInstance: null,
+	mapLoop: null,
 	initMap() {
 		let buyerId = !UserHandler.isAdmin() ? UserHandler.userInfo.id : "";
 		this.updateFilter('map', {
 			buyerId: buyerId,
 			sessionType: 'all'
 		});
+
+		this.refreshMapSessions();
+		this.mapLoop = setInterval(() => {
+			this.refreshMapSessions();
+		}, 10000);
 	},
 	updateFilter(filter) {
 		Object.assign(rootComponent.$data.pages.map, {filter: filter});
-		this.refreshMapSessions();
 	},
 	updateMap(mapType) {
 		switch (mapType) {
@@ -309,6 +314,7 @@ UserHandler = {
 }
 
 WorkspaceHandler = {
+	sessionLoop: null,
 	changeSettingsPage(page) {
 		let showSettings = false;
 		let showConfig = false;
@@ -326,6 +332,10 @@ WorkspaceHandler = {
 		});
 	},
 	changePage(page, options) {
+		// Clear all polling loops
+		MapHandler.mapLoop ? clearInterval(MapHandler.mapLoop) : null;
+		this.sessionLoop ? clearInterval(this.sessionLoop) : null;
+
 		switch (page) {
 			case 'map':
 				MapHandler.initMap();
@@ -513,6 +523,10 @@ WorkspaceHandler = {
 			buyerId: buyerId,
 			sessionType: 'all'
 		});
+		this.refreshSessionTable();
+		this.sessionLoop = setInterval(() => {
+			this.refreshSessionTable();
+		}, 10000);
 	},
 	fetchSessionInfo() {
 		let id = rootComponent.$data.pages.sessionTool.id;
@@ -609,7 +623,6 @@ WorkspaceHandler = {
 	},
 	updateSessionFilter(filter) {
 		Object.assign(rootComponent.$data.pages.sessions, {filter: filter});
-		this.refreshSessionTable();
 	},
 	refreshSessionTable() {
 		setTimeout(() => {
@@ -679,89 +692,83 @@ WorkspaceHandler = {
 					});
 
 					setTimeout(() => {
-						let choices = allRoles.map((role) => {
-							return {
-								value: role,
-								label: role.name,
-								customProperties: {
-									description: role.description,
-								},
-							};
-						});
+						try {
+							let choices = allRoles.map((role) => {
+								return {
+									value: role,
+									label: role.name,
+									customProperties: {
+										description: role.description,
+									},
+								};
+							});
 
-						if (!addUserPermissions) {
-							addUserPermissions = new Choices(
-								document.getElementById("add-user-permissions"),
-								{
-									removeItemButton: true,
-									choices: choices,
-								}
-							);
+							if (!addUserPermissions) {
+								addUserPermissions = new Choices(
+									document.getElementById("add-user-permissions"),
+									{
+										removeItemButton: true,
+										choices: choices,
+									}
+								);
+							}
+
+							choices = allRoles.map((role) => {
+								return {
+									value: role,
+									label: role.name,
+									customProperties: {
+										description: role.description,
+									},
+									selected: role.name === 'Viewer'
+								};
+							});
+
+							choices = allRoles.map((role) => {
+								return {
+									value: role,
+									label: role.name,
+									customProperties: {
+										description: role.description,
+									},
+								};
+							});
+
+							if (!addUserPermissions) {
+								addUserPermissions = new Choices(
+									document.getElementById("add-user-permissions"),
+									{
+										removeItemButton: true,
+										choices: choices,
+									}
+								);
+							}
+
+							/* choices = allRoles.map((role) => {
+								return {
+									value: role,
+									label: role.name,
+									customProperties: {
+										description: role.description,
+									},
+									selected: role.name === 'Viewer'
+								};
+							});
+
+							if (!autoSigninPermissions) {
+								autoSigninPermissions = new Choices(
+									document.getElementById("auto-signin-permissions"),
+									{
+										removeItemButton: true,
+										choices: choices,
+									}
+								);
+							} */
+
+							generateRolesDropdown(accounts);
+						} catch(e) {
+							rootComponent.$data.pages.settings.show ? Sentry.captureException(e) : null;
 						}
-
-						choices = allRoles.map((role) => {
-							return {
-								value: role,
-								label: role.name,
-								customProperties: {
-									description: role.description,
-								},
-								selected: role.name === 'Viewer'
-							};
-						});
-
-						if (!autoSigninPermissions) {
-							autoSigninPermissions = new Choices(
-								document.getElementById("auto-signin-permissions"),
-								{
-									removeItemButton: true,
-									choices: choices,
-								}
-							);
-						}
-
-						choices = allRoles.map((role) => {
-							return {
-								value: role,
-								label: role.name,
-								customProperties: {
-									description: role.description,
-								},
-							};
-						});
-
-						if (!addUserPermissions) {
-							addUserPermissions = new Choices(
-								document.getElementById("add-user-permissions"),
-								{
-									removeItemButton: true,
-									choices: choices,
-								}
-							);
-						}
-
-						choices = allRoles.map((role) => {
-							return {
-								value: role,
-								label: role.name,
-								customProperties: {
-									description: role.description,
-								},
-								selected: role.name === 'Viewer'
-							};
-						});
-
-						if (!autoSigninPermissions) {
-							autoSigninPermissions = new Choices(
-								document.getElementById("auto-signin-permissions"),
-								{
-									removeItemButton: true,
-									choices: choices,
-								}
-							);
-						}
-
-						generateRolesDropdown(accounts);
 					});
 				}
 			)
