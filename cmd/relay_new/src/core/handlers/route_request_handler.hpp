@@ -119,16 +119,17 @@ namespace core
         mSessionMap.set(hash, session);
 
         Log("session created: ", std::hex, token.SessionID, '.', std::dec, static_cast<unsigned int>(token.SessionVersion));
-      }  // TODO else what?
+      }
 
       // remove this part of the token by offseting it the request packet bytes
-      mPacket.Buffer[RouteToken::EncryptedByteSize] = static_cast<uint8_t>(packets::Type::RouteRequest);
 
       length = mPacket.Len - RouteToken::EncryptedByteSize;
 
       if (isSigned) {
-        length += crypto::PacketHashLength;
+        mPacket.Buffer[RouteToken::EncryptedByteSize + crypto::PacketHashLength] = static_cast<uint8_t>(packets::Type::RouteRequest);
         legacy::relay_sign_network_next_packet(&mPacket.Buffer[RouteToken::EncryptedByteSize], length);
+      } else {
+        mPacket.Buffer[RouteToken::EncryptedByteSize] = static_cast<uint8_t>(packets::Type::RouteRequest);
       }
 
       mRecorder.addToSent(length);

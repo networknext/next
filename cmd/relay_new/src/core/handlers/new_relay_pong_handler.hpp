@@ -28,7 +28,6 @@ namespace core
     {
       packets::NewRelayPingPacket packet(mPacket);
       mRelayManager.processPong(mPacket.Addr, packet.getSeqNum());
-      LogDebug("got new pong packet from ", mPacket.Addr);
     }
   }  // namespace handlers
 }  // namespace core

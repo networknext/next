@@ -58,8 +58,6 @@ namespace core
     int listenIndx = listenCounter.fetch_add(1);
     (void)listenIndx;
 
-    LogDebug("listening for packets {", listenIndx, '}');
-
     readyToReceive = true;
 
     GenericPacketBuffer<MaxPacketsToReceive> outputBuffer;
@@ -71,8 +69,6 @@ namespace core
       if (!mSocket.multirecv(inputBuffer)) {
         Log("failed to recv packets");
       }
-
-      // LogDebug("got packets on {", listenIndx, "} / count: ", inputBuffer.Count);
 
       for (int i = 0; i < inputBuffer.Count; i++) {
         auto& pkt = inputBuffer.Packets[i];
@@ -125,16 +121,16 @@ namespace core
     packets::Type type;
 
     bool isSigned;
-    if (!crypto::IsNetworkNextPacket(packet.Buffer, packet.Len)) {
+    if (crypto::IsNetworkNextPacket(packet.Buffer, packet.Len)) {
+      LogDebug("packet is from network next");
+      type = static_cast<packets::Type>(packet.Buffer[crypto::PacketHashLength]);
+      isSigned = true;
+    } else {
       Log("packet is not on network next");
       // TODO uncomment below once all packets coming through have the hash
       // return;
       type = static_cast<packets::Type>(packet.Buffer[0]);
       isSigned = false;
-    } else {
-      LogDebug("packet is from network next");
-      type = static_cast<packets::Type>(packet.Buffer[crypto::PacketHashLength]);
-      isSigned = true;
     }
 
     LogDebug("incoming packet, type = ", type);
@@ -153,7 +149,6 @@ namespace core
 
           handler.handle(outputBuff, mSocket);
         } else {
-          LogDebug("got invalid new ping packet from ", packet.Addr);
           mRecorder.addToUnknown(wholePacketSize);
           mStats.BytesPerSecInvalidRx += wholePacketSize;
         }
@@ -167,7 +162,6 @@ namespace core
 
           handler.handle();
         } else {
-          LogDebug("got invalid new pong packet from ", packet.Addr);
           mRecorder.addToUnknown(wholePacketSize);
           mStats.BytesPerSecInvalidRx += wholePacketSize;
         }
@@ -181,7 +175,6 @@ namespace core
 
           handler.handle(outputBuff, mSocket);
         } else {
-          LogDebug("got invalid old ping packet from ", packet.Addr);
           mRecorder.addToUnknown(wholePacketSize);
           mStats.BytesPerSecInvalidRx += wholePacketSize;
         }
@@ -195,7 +188,6 @@ namespace core
 
           handler.handle();
         } else {
-          LogDebug("got invalid old pong packet from ", packet.Addr);
           mRecorder.addToUnknown(wholePacketSize);
           mStats.BytesPerSecInvalidRx += wholePacketSize;
         }
@@ -214,7 +206,7 @@ namespace core
 
         handlers::RouteResponseHandler handler(packet, mSessionMap, mRecorder, mStats);
 
-        handler.handle(outputBuff, mSocket);
+        handler.handle(outputBuff, mSocket, isSigned);
       } break;
       case packets::Type::ContinueRequest: {
         mRecorder.addToReceived(wholePacketSize);
@@ -230,7 +222,7 @@ namespace core
 
         handlers::ContinueResponseHandler handler(packet, mSessionMap, mRecorder, mStats);
 
-        handler.handle(outputBuff, mSocket);
+        handler.handle(outputBuff, mSocket, isSigned);
       } break;
       case packets::Type::ClientToServer: {
         mRecorder.addToReceived(wholePacketSize);
@@ -246,7 +238,7 @@ namespace core
 
         handlers::ServerToClientHandler handler(packet, mSessionMap, mRecorder, mStats);
 
-        handler.handle(outputBuff, mSocket);
+        handler.handle(outputBuff, mSocket, isSigned);
       } break;
       case packets::Type::SessionPing: {
         mRecorder.addToReceived(wholePacketSize);
@@ -277,19 +269,16 @@ namespace core
         mRecorder.addToReceived(wholePacketSize);
         mStats.BytesPerSecManagementRx += wholePacketSize;
         mChannel.send(packet);
-        LogDebug("got init response, current number of items in channel ", mChannel.size());
       } break;
       case packets::Type::V3BackendConfigResponse: {
         mRecorder.addToReceived(wholePacketSize);
         mStats.BytesPerSecManagementRx += wholePacketSize;
         mChannel.send(packet);
-        LogDebug("got config response, current number of items in channel ", mChannel.size());
       } break;
       case packets::Type::V3BackendUpdateResponse: {
         mRecorder.addToReceived(wholePacketSize);
         mStats.BytesPerSecManagementRx += wholePacketSize;
         mChannel.send(packet);
-        LogDebug("got relay response, current number of items in channel ", mChannel.size());
       } break;
       default: {
         LogDebug("received unknown packet type: ", std::hex, (int)packet.Buffer[0], std::dec);

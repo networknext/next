@@ -41,14 +41,6 @@ namespace core
     {
       (void)buff;
       (void)socket;
-      if (mPacket.Len <= RELAY_HEADER_BYTES || mPacket.Len > RELAY_HEADER_BYTES + RELAY_MTU) {
-        return;
-      }
-
-      packets::Type type;
-      uint64_t sequence;
-      uint64_t session_id;
-      uint8_t session_version;
 
       uint8_t* data;
       size_t length;
@@ -61,48 +53,57 @@ namespace core
         length = mPacket.Len;
       }
 
+      if (length <= RELAY_HEADER_BYTES || length > RELAY_HEADER_BYTES + RELAY_MTU) {
+        return;
+      }
+
+      packets::Type type;
+      uint64_t sequence;
+      uint64_t session_id;
+      uint8_t session_version;
+
       if (
        relay::relay_peek_header(
         RELAY_DIRECTION_CLIENT_TO_SERVER, &type, &sequence, &session_id, &session_version, data, length) != RELAY_OK) {
+        Log("ignoring client to server packet, relay header could not be read");
         return;
       }
 
       uint64_t hash = session_id ^ session_version;
 
-      // check if the session is registered
       if (!mSessionMap.exists(hash)) {
+        Log("session does not exist: ", session_id, '.', session_version);
         return;
       }
 
       auto session = mSessionMap.get(hash);
 
       if (session->expired()) {
+        Log("session expired: ", session_id, '.', session_version);
         mSessionMap.erase(hash);
         return;
       }
 
       uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
       if (relay_replay_protection_already_received(&session->ClientToServerProtection, clean_sequence)) {
-        LogDebug("client to server packet already received");
+        Log("session packet already received: ", session_id, '.', session_version);
         return;
       }
 
       relay_replay_protection_advance_sequence(&session->ClientToServerProtection, clean_sequence);
       if (relay::relay_verify_header(RELAY_DIRECTION_CLIENT_TO_SERVER, session->PrivateKey.data(), data, length) != RELAY_OK) {
-        Log("failed to verify client to server packet header");
+        Log("failed to verify session packet header: ", session_id, '.', session_version);
         return;
       }
 
-      LogDebug("sending client packet to ", session->NextAddr);
       mRecorder.addToSent(mPacket.Len);
       mStats.BytesPerSecPaidTx += mPacket.Len;
 
-// no signing required, packet doesn't change
 #ifdef RELAY_MULTISEND
       buff.push(session->NextAddr, mPacket.Buffer.data(), mPacket.Len);
 #else
       if (!socket.send(session->NextAddr, mPacket.Buffer.data(), mPacket.Len)) {
-        Log("failed to forward client packet");
+        Log("failed to forward client packet to ", session->NextAddr);
       }
 #endif
     }

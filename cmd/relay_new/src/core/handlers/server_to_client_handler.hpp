@@ -21,7 +21,7 @@ namespace core
        legacy::v3::TrafficStats& stats);
 
       template <size_t Size>
-      void handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket);
+      void handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket, bool isSigned);
 
      private:
       core::SessionMap& mSessionMap;
@@ -35,11 +35,23 @@ namespace core
     {}
 
     template <size_t Size>
-    inline void ServerToClientHandler::handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket)
+    inline void ServerToClientHandler::handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket, bool isSigned)
     {
       (void)buff;
       (void)socket;
-      if (mPacket.Len <= RELAY_HEADER_BYTES || mPacket.Len > RELAY_HEADER_BYTES + RELAY_MTU) {
+
+      uint8_t* data;
+      size_t length;
+
+      if (isSigned) {
+        data = &mPacket.Buffer[crypto::PacketHashLength];
+        length = mPacket.Len - crypto::PacketHashLength;
+      } else {
+        data = &mPacket.Buffer[0];
+        length = mPacket.Len;
+      }
+
+      if (length <= RELAY_HEADER_BYTES || length > RELAY_HEADER_BYTES + RELAY_MTU) {
         return;
       }
 
@@ -50,44 +62,41 @@ namespace core
 
       if (
        relay::relay_peek_header(
-        RELAY_DIRECTION_SERVER_TO_CLIENT,
-        &type,
-        &sequence,
-        &session_id,
-        &session_version,
-        mPacket.Buffer.data(),
-        mPacket.Len) != RELAY_OK) {
+        RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, data, length) != RELAY_OK) {
+        Log("ignoring server to client packet, relay header could not be read");
         return;
       }
 
       uint64_t hash = session_id ^ session_version;
 
       if (!mSessionMap.exists(hash)) {
+        Log("session does not exist: ", session_id, '.', session_version);
         return;
       }
 
       auto session = mSessionMap.get(hash);
 
       if (session->expired()) {
+        Log("session expired: ", session_id, '.', session_version);
         mSessionMap.erase(hash);
         return;
       }
 
       uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
       if (relay_replay_protection_already_received(&session->ServerToClientProtection, clean_sequence)) {
+        Log("session packet already received: ", session_id, '.', session_version);
         return;
       }
 
       relay_replay_protection_advance_sequence(&session->ServerToClientProtection, clean_sequence);
-      if (
-       relay::relay_verify_header(
-        RELAY_DIRECTION_SERVER_TO_CLIENT, session->PrivateKey.data(), mPacket.Buffer.data(), mPacket.Len) != RELAY_OK) {
+      if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->PrivateKey.data(), data, length) != RELAY_OK) {
+        Log("failed to verify session packet header: ", session_id, '.', session_version);
         return;
       }
 
       mRecorder.addToSent(mPacket.Len);
       mStats.BytesPerSecPaidTx += mPacket.Len;
-      LogDebug("sent server response to ", session->PrevAddr);
+
 #ifdef RELAY_MULTISEND
       buff.push(session->PrevAddr, mPacket.Buffer.data(), mPacket.Len);
 #else

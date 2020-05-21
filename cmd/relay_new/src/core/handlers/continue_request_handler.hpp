@@ -104,13 +104,15 @@ namespace core
       }
 
       session->ExpireTimestamp = token.ExpireTimestamp;
-      data[ContinueToken::EncryptedByteSize] = static_cast<uint8_t>(packets::Type::ContinueRequest);
 
       length = mPacket.Len - ContinueToken::EncryptedByteSize;
 
       if (isSigned) {
-        length += crypto::PacketHashLength;
+        mPacket.Buffer[RouteToken::EncryptedByteSize + crypto::PacketHashLength] =
+         static_cast<uint8_t>(packets::Type::ContinueRequest);
         legacy::relay_sign_network_next_packet(&mPacket.Buffer[ContinueToken::EncryptedByteSize], length);
+      } else {
+        mPacket.Buffer[RouteToken::EncryptedByteSize] = static_cast<uint8_t>(packets::Type::RouteRequest);
       }
 
       mRecorder.addToSent(length);

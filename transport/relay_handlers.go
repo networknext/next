@@ -906,7 +906,7 @@ func statsTable(stats map[string]map[string]routing.Stats) template.HTML {
 func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.RouteMatrix, statsdb *routing.StatsDatabase, username string, password string) func(writer http.ResponseWriter, request *http.Request) {
 	type response struct {
 		Analysis string
-		Relays   []routing.Relay
+		Relays   []routing.RelayCacheEntry
 		Stats    map[string]map[string]routing.Stats
 	}
 
@@ -981,7 +981,7 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.R
 		}
 
 		for _, rawRelay := range hgetallResult.Val() {
-			var relay routing.Relay
+			var relay routing.RelayCacheEntry
 			if err := relay.UnmarshalBinary([]byte(rawRelay)); err != nil {
 				fmt.Println(err)
 				return

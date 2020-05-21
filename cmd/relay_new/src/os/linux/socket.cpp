@@ -84,8 +84,6 @@ namespace os
       return false;
     }
 
-    LogDebug("created socket for ", addr);
-
     return true;
   }
 

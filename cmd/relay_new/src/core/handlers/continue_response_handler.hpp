@@ -22,7 +22,7 @@ namespace core
        legacy::v3::TrafficStats& stats);
 
       template <size_t Size>
-      void handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket);
+      void handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket, bool isSigned);
 
      private:
       core::SessionMap& mSessionMap;
@@ -36,11 +36,23 @@ namespace core
     {}
 
     template <size_t Size>
-    inline void ContinueResponseHandler::handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket)
+    inline void ContinueResponseHandler::handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket, bool isSigned)
     {
       (void)buff;
       (void)socket;
-      if (mPacket.Len != RELAY_HEADER_BYTES) {
+
+      uint8_t* data;
+      size_t length;
+
+      if (isSigned) {
+        data = &mPacket.Buffer[crypto::PacketHashLength];
+        length = mPacket.Len - crypto::PacketHashLength;
+      } else {
+        data = &mPacket.Buffer[0];
+        length = mPacket.Len;
+      }
+
+      if (length != RELAY_HEADER_BYTES) {
         return;
       }
 
@@ -51,25 +63,22 @@ namespace core
 
       if (
        relay::relay_peek_header(
-        RELAY_DIRECTION_SERVER_TO_CLIENT,
-        &type,
-        &sequence,
-        &session_id,
-        &session_version,
-        mPacket.Buffer.data(),
-        mPacket.Len) != RELAY_OK) {
+        RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, data, length) != RELAY_OK) {
+        Log("ignoring continue response, relay header could not be read");
         return;
       }
 
       uint64_t hash = session_id ^ session_version;
 
       if (!mSessionMap.exists(hash)) {
+        Log("ignoring continue response, could not find session: ", session_id, '.', session_version);
         return;
       }
 
       auto session = mSessionMap.get(hash);
 
       if (session->expired()) {
+        Log("ignoring continue response, session expired: ", session_id, '.', session_version);
         mSessionMap.erase(hash);
         return;
       }
@@ -77,14 +86,15 @@ namespace core
       uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
 
       if (clean_sequence <= session->ServerToClientSeq) {
+        Log(
+         "ignoring continue response, clean sequence less then server to client sequence: ", session_id, '.', session_version);
         return;
       }
 
       session->ServerToClientSeq = clean_sequence;
 
-      if (
-       relay::relay_verify_header(
-        RELAY_DIRECTION_SERVER_TO_CLIENT, session->PrivateKey.data(), mPacket.Buffer.data(), mPacket.Len) != RELAY_OK) {
+      if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->PrivateKey.data(), data, length) != RELAY_OK) {
+        Log("ignoring continue response, could not find session: ", session_id, '.', session_version);
         return;
       }
 

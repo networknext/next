@@ -97,12 +97,12 @@ namespace core
         // write data to the buffer
         {
           if (!encoding::WriteUint8(pkt.Buffer, index, static_cast<uint8_t>(packets::Type::NewRelayPing))) {
-            LogDebug("could not write packet type");
+            Log("could not write packet type");
             assert(false);
           }
 
           if (!encoding::WriteUint64(pkt.Buffer, index, ping.Seq)) {
-            LogDebug("could not write sequence");
+            Log("could not write sequence");
             assert(false);
           }
 
@@ -175,21 +175,19 @@ namespace core
         {
           if (!encoding::WriteUint8(pkt.Buffer, index, static_cast<uint8_t>(packets::Type::OldRelayPing))) {
             LogDebug("could not write packet type");
-            continue;
+            assert(false);
           }
 
           if (!encoding::WriteBytes(pkt.Buffer, index, ping.PingToken, sizeof(ping.PingToken))) {
             LogDebug("could not write ping token");
-            continue;
+            assert(false);
           }
 
           if (!encoding::WriteUint64(pkt.Buffer, index, ping.Seq)) {
             LogDebug("could not write sequence");
-            continue;
+            assert(false);
           }
         }
-
-        LogDebug("creating old ping, dest = ", addr);
 
         pkt.Len = index;
         hdr.msg_iov[0].iov_len = index;

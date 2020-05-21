@@ -43,18 +43,22 @@ namespace core
 
     if (!encoding::WriteUint64(packetData, packetLength, index, ExpireTimestamp)) {
       LogDebug("could not write expire timestamp");
+      assert(false);
     }
 
     if (!encoding::WriteUint64(packetData, packetLength, index, SessionID)) {
       LogDebug("could not write session id");
+      assert(false);
     }
 
     if (!encoding::WriteUint8(packetData, packetLength, index, SessionVersion)) {
       LogDebug("could not write session version");
+      assert(false);
     }
 
     if (!encoding::WriteUint8(packetData, packetLength, index, SessionFlags)) {
       LogDebug("could not write session flags");
+      assert(false);
     }
   }
 

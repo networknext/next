@@ -76,7 +76,7 @@ namespace encoding
   [[gnu::always_inline]] inline void ReadBytes(
    const uint8_t* buff, size_t buffLength, size_t& index, uint8_t* storage, size_t storageLength, size_t len)
   {
-    assert(buffLength <= storageLength);
+    assert(len <= storageLength);
     assert(index + len <= buffLength);
     std::copy(buff + index, buff + index + len, storage);
     index += len;

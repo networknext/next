@@ -51,8 +51,6 @@ namespace core
         Log("failed to send new pong to ", mPacket.Addr);
       }
 #endif
-
-      LogDebug("got new ping from ", mPacket.Addr);
     }
   }  // namespace handlers
 }  // namespace core

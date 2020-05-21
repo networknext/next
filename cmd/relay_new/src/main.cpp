@@ -237,6 +237,8 @@ int main(int argc, const char* argv[])
   // session map to be shared across packet processors
   core::SessionMap sessions;
 
+  size_t socketChooser = 0;
+
   // wait until a thread is ready to do its job.
   // serializes the thread spawning so the relay doesn't
   // communicate with the backend until it is fully ready
@@ -337,8 +339,6 @@ int main(int argc, const char* argv[])
       sockets.push_back(socket);
       threads.push_back(thread);
 
-      LogDebug("created packet processer using ", relayAddr);
-
       int error;
       if (!os::SetThreadAffinity(*thread, i, error)) {
         Log("Error setting thread affinity: ", error);
@@ -351,8 +351,7 @@ int main(int argc, const char* argv[])
   // if they are the same the relay behaves weird: it'll sometimes behave right
   // othertimes it'll just ignore everything coming to it
   {
-    // socket used for receiving and sending
-    auto socket = sockets[crypto::Random<uint8_t>() % sockets.size()];
+    auto socket = sockets[socketChooser++ % sockets.size()];
     // setup the ping processor to use the external address
     // relays use it to know where the receiving port of other relays are
     auto thread =
@@ -365,8 +364,6 @@ int main(int argc, const char* argv[])
 
     sockets.push_back(socket);
     threads.push_back(thread);
-
-    LogDebug("created regular ping processor using ", relayAddr);
 
     int error;
     if (!os::SetThreadAffinity(*thread, getPingProcNum(numProcessors), error)) {
@@ -381,7 +378,7 @@ int main(int argc, const char* argv[])
   {
     // ping proc setup
     {
-      auto socket = sockets[crypto::Random<uint8_t>() & sockets.size()];
+      auto socket = sockets[socketChooser++ & sockets.size()];
 
       {
         auto thread =
@@ -395,8 +392,6 @@ int main(int argc, const char* argv[])
         sockets.push_back(socket);
         threads.push_back(thread);
 
-        LogDebug("created v3 ping processor using ", relayAddr);
-
         int error;
         if (!os::SetThreadAffinity(*thread, getPingProcNum(numProcessors), error)) {
           Log("error setting thread affinity: ", error);
@@ -408,7 +403,7 @@ int main(int argc, const char* argv[])
     {
       // socket only used for sending
       // use the receiving address b/c the old relay doesn't use the appended addr
-      auto socket = sockets[crypto::Random<uint8_t>() & sockets.size()];
+      auto socket = sockets[socketChooser++ & sockets.size()];
 
       {
         auto thread = std::make_shared<std::thread>(
@@ -444,13 +439,6 @@ int main(int argc, const char* argv[])
       }
     }
   }
-
-  // the relay address that should be exposed to other relays.
-  // do not set this using the value from the env var.
-  // if using port 0, another port will be selected byt the os
-  // which will cause a mismatch between what this value contains
-  // and the port selected by the os
-  LogDebug("Receiving Address: ", relayAddr);
 
   core::Backend<net::CurlWrapper> backend(
    env.BackendHostname, relayAddr.toString(), keychain, routerInfo, relayManager, b64RelayPubKey, sessions, v3TrafficStats);
