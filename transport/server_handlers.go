@@ -803,14 +803,20 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 					deciderFuncs = append(deciderFuncs,
 						routing.DecideCommitted(sessionCacheEntry.RouteDecision.OnNetworkNext, uint8(buyer.RoutingRulesSettings.TryBeforeYouBuyMaxSlices), buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce,
 							&sessionCacheEntry.CommitPending, &sessionCacheEntry.CommitObservedSliceCounter, &sessionCacheEntry.Committed))
+				} else {
+					sessionCacheEntry.CommitPending = false
+					sessionCacheEntry.CommitObservedSliceCounter = 0
+					sessionCacheEntry.Committed = true
 				}
 
 				routeDecision = nextRoute.Decide(sessionCacheEntry.RouteDecision, nnStats, directStats, deciderFuncs...)
 
-				if routing.IsVetoed(routeDecision) {
+				if !routing.IsVetoed(sessionCacheEntry.RouteDecision) && routing.IsVetoed(routeDecision) {
 					// Session was vetoed this update, so set the veto timeout
 					sessionCacheEntry.VetoTimestamp = timestampNow.Add(time.Hour)
-				} else if sessionCacheEntry.Committed {
+				}
+
+				if sessionCacheEntry.Committed {
 					// If the session is committed, set the committed flag in the response
 					response.Committed = true
 				}
@@ -864,6 +870,9 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 
 						SessionVersion: sessionCacheEntry.Version,
 						SessionFlags:   0, // Haven't figured out what this is for
+
+						KbpsUp:   uint32(buyer.RoutingRulesSettings.EnvelopeKbpsUp),
+						KbpsDown: uint32(buyer.RoutingRulesSettings.EnvelopeKbpsDown),
 
 						Client: routing.Client{
 							Addr:      packet.ClientAddress,
