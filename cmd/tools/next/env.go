@@ -22,6 +22,10 @@ const (
 	RelayBackendHostnameLocal = "localhost:30000"
 	RelayBackendHostnameDev   = "http://relay_backend.dev.networknext.com:40000"
 	RelayBackendHostnameProd  = "http://relay_backend.prod.networknext.com"
+
+	OldRelayBackendHostnameLocal = "localhost"
+	OldRelayBackendHostnameDev   = ""
+	OldRelayBackendHostnameProd  = ""
 )
 
 type Environment struct {
@@ -120,6 +124,10 @@ func (e *Environment) RouterPublicKey() (string, error) {
 
 func (e *Environment) RelayBackendHostname() (string, error) {
 	return e.localDevOrProd(RelayBackendHostnameLocal, RelayBackendHostnameDev, RelayBackendHostnameProd)
+}
+
+func (e *Environment) OldRelayBackendHostname() (string, error) {
+	return e.localDevOrProd(OldRelayBackendHostnameLocal, OldRelayBackendHostnameDev, OldRelayBackendHostnameProd)
 }
 
 func (e *Environment) localDevOrProd(ifIsLocal, ifIsDev, ifIsProd string) (string, error) {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/networknext/backend/routing"
 	localjsonrpc "github.com/networknext/backend/transport/jsonrpc"
@@ -48,12 +49,15 @@ const (
 )
 
 type relayInfo struct {
-	id         uint64
-	name       string
-	user       string
-	sshAddr    string
-	sshPort    string
-	publicAddr string
+	id          uint64
+	name        string
+	user        string
+	sshAddr     string
+	sshPort     string
+	publicAddr  string
+	updateKey   string
+	nicSpeed    string
+	firestoreID string
 }
 
 func getRelayInfo(rpcClient jsonrpc.RPCClient, relayName string) relayInfo {
@@ -72,12 +76,15 @@ func getRelayInfo(rpcClient jsonrpc.RPCClient, relayName string) relayInfo {
 
 	relay := reply.Relays[0]
 	return relayInfo{
-		id:         relay.ID,
-		name:       relay.Name,
-		user:       relay.SSHUser,
-		sshAddr:    relay.ManagementAddr,
-		sshPort:    fmt.Sprintf("%d", relay.SSHPort),
-		publicAddr: relay.Addr,
+		id:          relay.ID,
+		name:        relay.Name,
+		user:        relay.SSHUser,
+		sshAddr:     relay.ManagementAddr,
+		sshPort:     fmt.Sprintf("%d", relay.SSHPort),
+		publicAddr:  relay.Addr,
+		updateKey:   relay.UpdateKey,
+		nicSpeed:    strconv.FormatUint(relay.NICSpeedMbps, 10),
+		firestoreID: relay.FirestoreID,
 	}
 }
 
@@ -143,12 +150,24 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 			log.Fatalf("could not get backend hostname: %v", err)
 		}
 
+		oldBackendHostname, err := env.OldRelayBackendHostname()
+
+		if err != nil {
+			log.Fatalf("could not get old backend hostname: %v", err)
+		}
+
 		envvars := make(map[string]string)
 		envvars["RELAY_ADDRESS"] = info.publicAddr
 		envvars["RELAY_PUBLIC_KEY"] = publicKeyB64
 		envvars["RELAY_PRIVATE_KEY"] = privateKeyB64
 		envvars["RELAY_ROUTER_PUBLIC_KEY"] = routerPublicKey
 		envvars["RELAY_BACKEND_HOSTNAME"] = backendHostname
+		envvars["RELAY_V3_ENABLED"] = "1"
+		envvars["RELAY_V3_BACKEND_HOSTNAME"] = oldBackendHostname
+		envvars["RELAY_V3_BACKEND_PORT"] = "40000"
+		envvars["RELAY_V3_UPDATE_KEY"] = info.updateKey
+		envvars["RELAY_V3_SPEED"] = info.nicSpeed
+		envvars["RELAY_V3_NAME"] = info.firestoreID
 
 		f, err := os.Create("deploy/relay/relay.env")
 		defer f.Close()

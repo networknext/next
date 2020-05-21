@@ -94,6 +94,9 @@ type Relay struct {
 	ClientStats  Stats             `json:"client_stats"`
 
 	MaxSessions uint32 `json:"-"`
+
+	UpdateKey   []byte `json:"-"`
+	FirestoreID string `json:"-"`
 }
 
 func (r *Relay) EncodedPublicKey() string {
