@@ -11,23 +11,20 @@ Bench(RelayManager_update)
 
   // new
   {
-    std::array<uint64_t, MAX_RELAYS> ids;
-    ids.fill(0);
-    std::array<net::Address, MAX_RELAYS> addrs;
-    addrs.fill(net::Address());
+    std::array<core::Relay, MAX_RELAYS> incoming{};
     util::Clock clock;  // satisfy the constructor dependency
-    core::RelayManager manager(clock);
+    core::RelayManager<core::Relay> manager(clock);
 
     for (auto i = 0U; i < MaxRelays; i++) {
-      ids[i] = i;
+      incoming[i].ID = i;
       std::stringstream ss;
       ss << "127.0.0.1:" << i;
-      addrs[i].parse(ss.str());
+      incoming[i].Addr.parse(ss.str());
     }
 
     Do(REPS)
     {
-      manager.update(MaxRelays, ids, addrs);
+      manager.update(MaxRelays, incoming);
     }
 
     auto elapsed = Timer.elapsed<util::Microsecond>() / REPS;

@@ -22,7 +22,7 @@ namespace util
     /* Timestamps the clock */
     void reset();
 
-    /* Get how much time as elasped since starting */
+    /* Get how much time as elapsed since starting */
     template <typename U>
     double elapsed() const;
 

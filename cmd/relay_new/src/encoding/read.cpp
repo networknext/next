@@ -1,7 +1,7 @@
 #include "includes.h"
 #include "read.hpp"
 
-namespace encoding
+namespace legacy
 {
   uint8_t read_uint8(const uint8_t** p)
   {

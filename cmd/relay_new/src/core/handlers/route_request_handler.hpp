@@ -2,8 +2,10 @@
 #define CORE_HANDLERS_ROUTE_REQUEST_HANDLER_HPP
 
 #include "base_handler.hpp"
+#include "core/packets/types.hpp"
 #include "core/session_map.hpp"
 #include "crypto/keychain.hpp"
+#include "legacy/v3/traffic_stats.hpp"
 #include "net/address.hpp"
 #include "os/platform.hpp"
 #include "util/throughput_recorder.hpp"
@@ -18,14 +20,14 @@ namespace core
       RouteRequestHandler(
        const util::Clock& relayClock,
        GenericPacket<>& packet,
-       const int size,
        const net::Address& from,
        const crypto::Keychain& keychain,
        core::SessionMap& sessions,
-       util::ThroughputRecorder& recorder);
+       util::ThroughputRecorder& recorder,
+       legacy::v3::TrafficStats& stats);
 
       template <size_t Size>
-      void handle(core::GenericPacketBuffer<Size>& size);
+      void handle(core::GenericPacketBuffer<Size>& size, const os::Socket& socket);
 
      private:
       const util::Clock& mRelayClock;
@@ -33,31 +35,35 @@ namespace core
       const crypto::Keychain& mKeychain;
       core::SessionMap& mSessionMap;
       util::ThroughputRecorder& mRecorder;
+      legacy::v3::TrafficStats& mStats;
     };
 
     inline RouteRequestHandler::RouteRequestHandler(
      const util::Clock& relayClock,
      GenericPacket<>& packet,
-     const int size,
      const net::Address& from,
      const crypto::Keychain& keychain,
      core::SessionMap& sessions,
-     util::ThroughputRecorder& recorder)
-     : BaseHandler(packet, size),
+     util::ThroughputRecorder& recorder,
+     legacy::v3::TrafficStats& stats)
+     : BaseHandler(packet),
        mRelayClock(relayClock),
        mFrom(from),
        mKeychain(keychain),
        mSessionMap(sessions),
-       mRecorder(recorder)
+       mRecorder(recorder),
+       mStats(stats)
     {}
 
     template <size_t Size>
-    inline void RouteRequestHandler::handle(core::GenericPacketBuffer<Size>& buff)
+    inline void RouteRequestHandler::handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket)
     {
+      (void)buff;
+      (void)socket;
       LogDebug("got route request from ", mFrom);
 
-      if (mPacketSize < int(1 + RouteToken::EncryptedByteSize * 2)) {
-        Log("ignoring route request. bad packet size (", mPacketSize, ")");
+      if (mPacket.Len < int(1 + RouteToken::EncryptedByteSize * 2)) {
+        Log("ignoring route request. bad packet size (", mPacket.Len, ")");
         return;
       }
 
@@ -106,13 +112,21 @@ namespace core
       }  // TODO else what?
 
       // remove this part of the token by offseting it the request packet bytes
-      mPacket.Buffer[RouteToken::EncryptedByteSize] = RELAY_ROUTE_REQUEST_PACKET;
+      mPacket.Buffer[RouteToken::EncryptedByteSize] = static_cast<uint8_t>(packets::Type::RouteRequest);
 
       LogDebug("sending route request to ", token.NextAddr);
 
-      auto length = mPacketSize - RouteToken::EncryptedByteSize;
+      auto length = mPacket.Len - RouteToken::EncryptedByteSize;
       mRecorder.addToSent(length);
+      mStats.BytesPerSecManagementTx += length;
+
+#ifdef RELAY_MULTISEND
       buff.push(token.NextAddr, &mPacket.Buffer[RouteToken::EncryptedByteSize], length);
+#else
+      if (!socket.send(token.NextAddr, &mPacket.Buffer[RouteToken::EncryptedByteSize], length)) {
+        Log("failed to forward route request to ", token.NextAddr);
+      }
+#endif
     }
   }  // namespace handlers
 }  // namespace core

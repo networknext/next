@@ -8,7 +8,9 @@
 #include "router_info.hpp"
 #include "session_map.hpp"
 #include "token.hpp"
+#include "util/channel.hpp"
 #include "util/throughput_recorder.hpp"
+#include "legacy/v3/traffic_stats.hpp"
 
 namespace core
 {
@@ -25,27 +27,35 @@ namespace core
      os::Socket& socket,
      const util::Clock& relayClock,
      const crypto::Keychain& keychain,
-     core::SessionMap& sessions,
-     core::RelayManager& relayManager,
+     SessionMap& sessions,
+     RelayManager<Relay>& relayManager,
+     RelayManager<V3Relay>& v3RelayManager,
      const volatile bool& handle,
      util::ThroughputRecorder& recorder,
-     const net::Address& receivingAddr);
+     const net::Address& receivingAddr,
+     util::Sender<GenericPacket<>>& sender,
+     legacy::v3::TrafficStats& stats,
+     const uint64_t oldRelayID);
     ~PacketProcessor() = default;
 
-    void process(std::condition_variable& var, std::atomic<bool>& readyToReceive);
+    void process(std::atomic<bool>& readyToReceive);
 
    private:
     const std::atomic<bool>& mShouldReceive;
     const os::Socket& mSocket;
     const util::Clock& mRelayClock;
     const crypto::Keychain& mKeychain;
-    core::SessionMap& mSessionMap;
-    core::RelayManager& mRelayManager;
+    SessionMap& mSessionMap;
+    RelayManager<Relay>& mRelayManager;
+    RelayManager<V3Relay>& mV3RelayManager;
     const volatile bool& mShouldProcess;
     util::ThroughputRecorder& mRecorder;
     const net::Address& mRecvAddr;
+    util::Sender<GenericPacket<>>& mChannel;
+    legacy::v3::TrafficStats& mStats;
+    const uint64_t mOldRelayID;
 
-    void processPacket(GenericPacket<>& packet, mmsghdr& header, GenericPacketBuffer<MaxPacketsToSend>& outputBuff);
+    void processPacket(GenericPacket<>& packet, GenericPacketBuffer<MaxPacketsToSend>& outputBuff);
 
     bool getAddrFromMsgHdr(net::Address& addr, const msghdr& hdr) const;
   };

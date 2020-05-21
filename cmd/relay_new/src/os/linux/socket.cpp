@@ -8,7 +8,7 @@
 
 namespace os
 {
-  Socket::Socket(SocketType type): mType(type) {}
+  Socket::Socket(SocketType type): mType(type), mClosed(false) {}
 
   Socket::~Socket()
   {
@@ -17,8 +17,7 @@ namespace os
     }
   }
 
-  bool Socket::create(
-   net::Address& addr, size_t sendBuffSize, size_t recvBuffSize, float timeout, bool reuse, int lingerTimeInSeconds)
+  bool Socket::create(net::Address& addr, size_t sendBuffSize, size_t recvBuffSize, float timeout, bool reuse)
   {
     assert(addr.Type != net::AddressType::None);
 
@@ -45,10 +44,6 @@ namespace os
     }
 
     if (!setBufferSizes(sendBuffSize, recvBuffSize)) {
-      return false;
-    }
-
-    if (!setLingerTime(lingerTimeInSeconds)) {
       return false;
     }
 
@@ -96,6 +91,7 @@ namespace os
 
   bool Socket::send(const net::Address& to, const uint8_t* data, size_t size) const
   {
+    std::lock_guard<std::mutex> lk(mWriteLock);
     assert(to.Type == net::AddressType::IPv4 || to.Type == net::AddressType::IPv6);
     assert(data != nullptr);
     assert(size > 0);
@@ -106,7 +102,7 @@ namespace os
 
       auto res = sendto(mSockFD, data, size, 0, reinterpret_cast<sockaddr*>(&socket_address), sizeof(sockaddr_in6));
       if (res < 0) {
-        LogError("sendto (", to.toString(), ") failed");
+        LogError("sendto (", to, ") failed");
         return false;
       }
     } else if (to.Type == net::AddressType::IPv4) {
@@ -115,7 +111,7 @@ namespace os
 
       auto res = sendto(mSockFD, data, size, 0, reinterpret_cast<sockaddr*>(&socket_address), sizeof(sockaddr_in6));
       if (res < 0) {
-        LogError("sendto (", to.toString(), ") failed");
+        LogError("sendto (", to, ") failed");
         return false;
       }
     } else {
@@ -126,40 +122,38 @@ namespace os
     return true;
   }
 
-  size_t Socket::recv(net::Address& from, uint8_t* data, size_t maxSize) const
+  auto Socket::recv(net::Address& from, uint8_t* data, size_t maxSize) const -> int
   {
+    std::lock_guard<std::mutex> lk(mReadLock);
     assert(data != nullptr);
     assert(maxSize > 0);
 
-    sockaddr_storage sockaddr_from;
+    sockaddr_storage sockaddr_from = {};
 
     socklen_t len = sizeof(sockaddr_from);
-    auto res = recvfrom(mSockFD,
+    auto res = recvfrom(
+     mSockFD,
      data,
      maxSize,
      (mType == SocketType::NonBlocking) ? MSG_DONTWAIT : 0,
      reinterpret_cast<sockaddr*>(&sockaddr_from),
      &len);
 
-    if (res <= 0) {
+    if (res > 0) {
+      if (sockaddr_from.ss_family == AF_INET6) {
+        from = reinterpret_cast<sockaddr_in6&>(sockaddr_from);
+      } else if (sockaddr_from.ss_family == AF_INET) {
+        from = reinterpret_cast<sockaddr_in&>(sockaddr_from);
+      } else {
+        Log("received packet with invalid ss family: ", sockaddr_from.ss_family);
+        return 0;
+      }
+    } else {
       // if not a timeout, log the error
       if (errno != EAGAIN && errno != EINTR) {
         LogError("recvfrom failed");
       }
-
-      return 0;
     }
-
-    if (sockaddr_from.ss_family == AF_INET6) {
-      from = reinterpret_cast<sockaddr_in6&>(sockaddr_from);
-    } else if (sockaddr_from.ss_family == AF_INET) {
-      from = reinterpret_cast<sockaddr_in&>(sockaddr_from);
-    } else {
-      Log("received packet with invalid ss family: ", sockaddr_from.ss_family);
-      return 0;
-    }
-
-    assert(res >= 0);
 
     return res;
   }
@@ -491,7 +485,8 @@ namespace legacy
     sockaddr_storage sockaddr_from;
     socklen_t from_length = sizeof(sockaddr_from);
 
-    int result = int(recvfrom(socket->handle,
+    int result = int(recvfrom(
+     socket->handle,
      (char*)packet_data,
      max_packet_size,
      socket->type == RELAY_PLATFORM_SOCKET_NON_BLOCKING ? MSG_DONTWAIT : 0,

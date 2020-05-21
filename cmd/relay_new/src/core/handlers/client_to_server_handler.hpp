@@ -4,7 +4,9 @@
 #include "base_handler.hpp"
 #include "core/session_map.hpp"
 #include "os/platform.hpp"
+#include "relay/relay.hpp"
 #include "util/throughput_recorder.hpp"
+#include "legacy/v3/traffic_stats.hpp"
 
 namespace core
 {
@@ -14,29 +16,35 @@ namespace core
     {
      public:
       ClientToServerHandler(
-       GenericPacket<>& packet, const int packetSize, core::SessionMap& sessions, util::ThroughputRecorder& recorder);
+       GenericPacket<>& packet,
+       core::SessionMap& sessions,
+       util::ThroughputRecorder& recorder,
+       legacy::v3::TrafficStats& stats);
 
       template <size_t Size>
-      void handle(core::GenericPacketBuffer<Size>& buff);
+      void handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket);
 
      private:
       core::SessionMap& mSessionMap;
       util::ThroughputRecorder& mRecorder;
+      legacy::v3::TrafficStats& mStats;
     };
 
     inline ClientToServerHandler::ClientToServerHandler(
-     GenericPacket<>& packet, const int packetSize, core::SessionMap& sessions, util::ThroughputRecorder& recorder)
-     : BaseHandler(packet, packetSize), mSessionMap(sessions), mRecorder(recorder)
+     GenericPacket<>& packet, core::SessionMap& sessions, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats)
+     : BaseHandler(packet), mSessionMap(sessions), mRecorder(recorder), mStats(stats)
     {}
 
     template <size_t Size>
-    inline void ClientToServerHandler::handle(core::GenericPacketBuffer<Size>& buff)
+    inline void ClientToServerHandler::handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket)
     {
-      if (mPacketSize <= RELAY_HEADER_BYTES || mPacketSize > RELAY_HEADER_BYTES + RELAY_MTU) {
+      (void)buff;
+      (void)socket;
+      if (mPacket.Len <= RELAY_HEADER_BYTES || mPacket.Len > RELAY_HEADER_BYTES + RELAY_MTU) {
         return;
       }
 
-      uint8_t type;
+      packets::Type type;
       uint64_t sequence;
       uint64_t session_id;
       uint8_t session_version;
@@ -49,7 +57,7 @@ namespace core
         &session_id,
         &session_version,
         mPacket.Buffer.data(),
-        mPacketSize) != RELAY_OK) {
+        mPacket.Len) != RELAY_OK) {
         return;
       }
 
@@ -75,13 +83,20 @@ namespace core
       relay_replay_protection_advance_sequence(&session->ClientToServerProtection, clean_sequence);
       if (
        relay::relay_verify_header(
-        RELAY_DIRECTION_CLIENT_TO_SERVER, session->PrivateKey.data(), mPacket.Buffer.data(), mPacketSize) != RELAY_OK) {
+        RELAY_DIRECTION_CLIENT_TO_SERVER, session->PrivateKey.data(), mPacket.Buffer.data(), mPacket.Len) != RELAY_OK) {
         return;
       }
 
       LogDebug("sending client packet to ", session->NextAddr);
-      mRecorder.addToSent(mPacketSize);
-      buff.push(session->NextAddr, mPacket.Buffer.data(), mPacketSize);
+      mRecorder.addToSent(mPacket.Len);
+      mStats.BytesPerSecPaidTx += mPacket.Len;
+#ifdef RELAY_MULTISEND
+      buff.push(session->NextAddr, mPacket.Buffer.data(), mPacket.Len);
+#else
+      if (!socket.send(session->NextAddr, mPacket.Buffer.data(), mPacket.Len)) {
+        Log("failed to forward client packet");
+      }
+#endif
     }
   }  // namespace handlers
 }  // namespace core

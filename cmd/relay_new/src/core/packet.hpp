@@ -11,13 +11,22 @@ namespace core
 {
   const size_t GenericPacketMaxSize = RELAY_MAX_PACKET_BYTES;
 
-  template <size_t BuffSize = GenericPacketMaxSize>
-  struct GenericPacket
+  template <typename T>
+  struct Packet
   {
+    Packet() = default;
+    Packet(Packet<T>&& other);
+    ~Packet() = default;
+
+    Packet<T>& operator=(Packet<T>&& other);
+
     net::Address Addr;
-    std::array<uint8_t, BuffSize> Buffer;
+    T Buffer;
     size_t Len;
   };
+
+  template <size_t BuffSize = GenericPacketMaxSize>
+  using GenericPacket = Packet<std::array<uint8_t, BuffSize>>;
 
   // holds BuffSize packets and shares memory between the header and the packet, packet interface is meant to be easy to use
   template <size_t BuffSize, size_t PacketSize = GenericPacketMaxSize>
@@ -28,6 +37,7 @@ namespace core
 
     // for sending packets
     void push(const net::Address& dest, const uint8_t* data, size_t length);
+    void push(const GenericPacket<PacketSize>& pkt);
 
     // for debugging
     void print();
@@ -49,10 +59,25 @@ namespace core
 
     // buffer for iovec structs
     std::vector<iovec> mIOVecBuff;
+
+    std::mutex mLock;
   };
 
+  template <typename T>
+  Packet<T>::Packet(Packet<T>&& other): Addr(std::move(other.Addr)), Buffer(std::move(other.Buffer)), Len(std::move(other.Len))
+  {}
+
+  template <typename T>
+  Packet<T>& Packet<T>::operator=(Packet<T>&& other)
+  {
+    this->Addr = std::move(other.Addr);
+    this->Buffer = std::move(other.Buffer);
+    this->Len = std::move(other.Len);
+    return *this;
+  }
+
   template <size_t BuffSize, size_t PacketSize>
-  GenericPacketBuffer<BuffSize, PacketSize>::GenericPacketBuffer(): mRawAddrBuff(BuffSize), mIOVecBuff(BuffSize)
+  GenericPacketBuffer<BuffSize, PacketSize>::GenericPacketBuffer(): Count(0), mRawAddrBuff(BuffSize), mIOVecBuff(BuffSize)
   {
     for (size_t i = 0; i < BuffSize; i++) {
       auto& pkt = Packets[i];
@@ -82,11 +107,13 @@ namespace core
     }
   }
 
-  // TODO make thread safe
   template <size_t BuffSize, size_t PacketSize>
   void GenericPacketBuffer<BuffSize, PacketSize>::push(const net::Address& dest, const uint8_t* data, size_t len)
   {
     assert(len <= PacketSize);
+
+    std::lock_guard<std::mutex> lk(mLock);
+
     auto& pkt = Packets[Count];
     pkt.Len = len;
     auto& iov = mIOVecBuff[Count];
@@ -96,6 +123,12 @@ namespace core
     dest.to(Headers[Count]);
 
     Count++;
+  }
+
+  template <size_t BuffSize, size_t PacketSize>
+  void GenericPacketBuffer<BuffSize, PacketSize>::push(const GenericPacket<PacketSize>& pkt)
+  {
+    push(pkt.Addr, pkt.Buffer.data(), pkt.Len);
   }
 
   template <size_t BuffSize, size_t PacketSize>

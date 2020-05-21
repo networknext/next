@@ -10,7 +10,8 @@
 
 namespace core
 {
-  bool ContinueToken::writeEncrypted(GenericPacket<>& packet,
+  bool ContinueToken::writeEncrypted(
+   GenericPacket<>& packet,
    size_t& index,
    const crypto::GenericKey& senderPrivateKey,
    const crypto::GenericKey& receiverPublicKey)
@@ -21,7 +22,11 @@ namespace core
     std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
     crypto::RandomBytes(nonce, nonce.size());  // fill nonce
 
-    encoding::WriteBytes(packet.Buffer, index, nonce, nonce.size());  // write nonce to the buffer
+    // write nonce to the buffer
+    if (!encoding::WriteBytes(packet.Buffer, index, nonce, nonce.size())) {
+      Log("could not write nonce");
+      return false;
+    }
 
     const size_t afterNonce = index;
 
@@ -39,7 +44,8 @@ namespace core
     return true;
   }
 
-  bool ContinueToken::readEncrypted(GenericPacket<>& packet,
+  bool ContinueToken::readEncrypted(
+   GenericPacket<>& packet,
    size_t& index,
    const crypto::GenericKey& senderPublicKey,
    const crypto::GenericKey& receiverPrivateKey)
@@ -81,7 +87,8 @@ namespace core
     assert(index - start == ContinueToken::ByteSize);
   }
 
-  bool ContinueToken::encrypt(GenericPacket<>& packet,
+  bool ContinueToken::encrypt(
+   GenericPacket<>& packet,
    const size_t& index,
    const crypto::GenericKey& senderPrivateKey,
    const crypto::GenericKey& receiverPublicKey,
@@ -89,19 +96,22 @@ namespace core
   {
     assert(packet.Buffer.size() >= ContinueToken::EncryptionLength);
 
-    if (crypto_box_easy(&packet.Buffer[index],
-         &packet.Buffer[index],
-         ContinueToken::ByteSize,
-         nonce.data(),
-         receiverPublicKey.data(),
-         senderPrivateKey.data()) != 0) {
+    if (
+     crypto_box_easy(
+      &packet.Buffer[index],
+      &packet.Buffer[index],
+      ContinueToken::ByteSize,
+      nonce.data(),
+      receiverPublicKey.data(),
+      senderPrivateKey.data()) != 0) {
       return false;
     }
 
     return true;
   }
 
-  bool ContinueToken::decrypt(GenericPacket<>& packet,
+  bool ContinueToken::decrypt(
+   GenericPacket<>& packet,
    const size_t& index,
    const crypto::GenericKey& senderPublicKey,
    const crypto::GenericKey& receiverPrivateKey,
@@ -109,12 +119,14 @@ namespace core
   {
     assert(packet.Buffer.size() >= ContinueToken::EncryptionLength);
 
-    if (crypto_box_open_easy(&packet.Buffer[index],
-         &packet.Buffer[index],
-         ContinueToken::EncryptionLength,
-         &packet.Buffer[nonceIndex],
-         senderPublicKey.data(),
-         receiverPrivateKey.data()) != 0) {
+    if (
+     crypto_box_open_easy(
+      &packet.Buffer[index],
+      &packet.Buffer[index],
+      ContinueToken::EncryptionLength,
+      &packet.Buffer[nonceIndex],
+      senderPublicKey.data(),
+      receiverPrivateKey.data()) != 0) {
       return false;
     }
 
@@ -136,10 +148,10 @@ namespace legacy
 
     (void)start;
 
-    encoding::write_uint64(&buffer, token->expire_timestamp);
-    encoding::write_uint64(&buffer, token->session_id);
-    encoding::write_uint8(&buffer, token->session_version);
-    encoding::write_uint8(&buffer, token->session_flags);
+    write_uint64(&buffer, token->expire_timestamp);
+    write_uint64(&buffer, token->session_id);
+    write_uint8(&buffer, token->session_version);
+    write_uint8(&buffer, token->session_flags);
 
     assert(buffer - start == core::ContinueToken::ByteSize);
   }
@@ -153,10 +165,10 @@ namespace legacy
 
     (void)start;
 
-    token->expire_timestamp = encoding::read_uint64(&buffer);
-    token->session_id = encoding::read_uint64(&buffer);
-    token->session_version = encoding::read_uint8(&buffer);
-    token->session_flags = encoding::read_uint8(&buffer);
+    token->expire_timestamp = read_uint64(&buffer);
+    token->session_id = read_uint64(&buffer);
+    token->session_version = read_uint8(&buffer);
+    token->session_flags = read_uint8(&buffer);
 
     assert(buffer - start == core::ContinueToken::ByteSize);
   }
@@ -185,9 +197,10 @@ namespace legacy
     assert(receiver_private_key);
     assert(buffer);
 
-    if (crypto_box_open_easy(
-         buffer, buffer, core::ContinueToken::ByteSize + crypto_box_MACBYTES, nonce, sender_public_key, receiver_private_key) !=
-        0) {
+    if (
+     crypto_box_open_easy(
+      buffer, buffer, core::ContinueToken::ByteSize + crypto_box_MACBYTES, nonce, sender_public_key, receiver_private_key) !=
+     0) {
       return RELAY_ERROR;
     }
 
@@ -207,13 +220,14 @@ namespace legacy
 
     uint8_t* start = *buffer;
 
-    encoding::write_bytes(buffer, nonce, crypto_box_NONCEBYTES);
+    write_bytes(buffer, nonce, crypto_box_NONCEBYTES);
 
     relay_write_continue_token(token, *buffer, core::ContinueToken::ByteSize);
 
-    if (relay_encrypt_continue_token(
-         sender_private_key, receiver_public_key, nonce, *buffer, core::ContinueToken::ByteSize + crypto_box_NONCEBYTES) !=
-        RELAY_OK)
+    if (
+     relay_encrypt_continue_token(
+      sender_private_key, receiver_public_key, nonce, *buffer, core::ContinueToken::ByteSize + crypto_box_NONCEBYTES) !=
+     RELAY_OK)
       return RELAY_ERROR;
 
     *buffer += core::ContinueToken::ByteSize + crypto_box_MACBYTES;

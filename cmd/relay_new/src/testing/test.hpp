@@ -32,24 +32,22 @@
  * The second is whether to disable it. If any one test is disabled regardless of if the others pass, then the program will
  * exit with an error. So all written tests must pass.
  *
- * The above macros result in the creation of a class with the name being the name of the test prefixed by "_test_" and postfixed with a single '_'
- * Because of that you can test private functions of regular classes in the code base.
+ * The above macros result in the creation of a class with the name being the name of the test prefixed by "_test_" and
+ * postfixed with a single '_' Because of that you can test private functions of regular classes in the code base.
  *
  * To do so first forward declare the complete name of the test (with the pre & postfix) within the testing namespace.
  * Then simply use the friend keyword within the class you'd like to test the private functions of.
  */
-
 #define Test(...) TEST_MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__)
 
-#define check(condition) \
-  testing::check_handler((condition), #condition, (const char*)__FUNCTION__, (const char*)__FILE__, __LINE__);
+#define check(cond) testing::CheckHandler((cond), #cond, __FUNCTION__, __FILE__, __LINE__)
 
 namespace testing
 {
   class SpecTest
   {
    public:
-    static bool Run();
+    static bool Run(int argc, const char* argv[]);
 
     const char* TestName;
     const bool Disabled;
@@ -60,28 +58,57 @@ namespace testing
     SpecTest(const char* name, bool disabled);
   };
 
-  template <typename T>
-  void check_handler(T result, const char* condition, const char* function, const char* file, int line);
-
-  template <>
-  inline void check_handler(bool result, const char* condition, const char* function, const char* file, int line)
+  class SpecCheck
   {
-    if (!result) {
-      printf("check failed: ( %s ), function %s, file %s, line %d\n", condition, function, file, line);
-      fflush(stdout);
-#ifndef NDEBUG
+   public:
+    SpecCheck(bool result, const char* condition, const char* function, const char* file, int line);
+    ~SpecCheck();
+
+    void onFail(std::function<void(void)> failFunc);
+
+   private:
+    bool mResult;
+    const char* mCondition;
+    const char* mFunction;
+    const char* mFile;
+    const int mLine;
+    std::function<void(void)> mOnFail;
+  };
+
+  inline SpecCheck::SpecCheck(bool result, const char* condition, const char* function, const char* file, int line)
+   : mResult(result), mCondition(condition), mFunction(function), mFile(file), mLine(line)
+  {}
+
+  inline SpecCheck::~SpecCheck()
+  {
+    if (!mResult) {
+      std::cout << "check failed: ( " << mCondition << " ), function " << mFunction << ", file " << mFile << ", line  " << mLine
+                << std::endl;
+      if (mOnFail) {
+        mOnFail();
+      }
 #if defined(__GNUC__)
       __builtin_trap();
 #elif defined(_MSC_VER)
       __debugbreak();
 #endif
-#endif
-      exit(1);
+      std::exit(1);
     }
   }
 
+  inline void SpecCheck::onFail(std::function<void(void)> failFunc)
+  {
+    mOnFail = failFunc;
+  }
+
   template <typename T>
-  std::enable_if_t<std::numeric_limits<T>::is_integer, T> Random();
+  SpecCheck CheckHandler(T result, const char* condition, const char* function, const char* file, int line);
+
+  template <>
+  inline SpecCheck CheckHandler(bool result, const char* condition, const char* function, const char* file, int line)
+  {
+    return SpecCheck(result, condition, function, file, line);
+  }
 
   template <typename T>
   std::enable_if_t<std::is_floating_point<T>::value, T> RandomDecimal();
@@ -92,13 +119,6 @@ namespace testing
   // valid return types are std string/vector
   template <class ReturnType>
   ReturnType ReadFile(std::string filename);
-
-  template <typename T>
-  std::enable_if_t<std::numeric_limits<T>::is_integer, T> Random()
-  {
-    static auto rand = std::bind(std::uniform_int_distribution<T>(), std::default_random_engine());
-    return static_cast<T>(rand());
-  }
 
   template <typename T>
   std::enable_if_t<std::is_floating_point<T>::value, T> RandomDecimal()
@@ -140,14 +160,15 @@ namespace testing
     static std::string Endpoint;  // The endpoint to hit
 
     template <typename ReqType, typename RespType>
-    static bool SendTo(const std::string hostname, const std::string endpoint, const ReqType& request, RespType& response);
+    static bool SendTo(const std::string hostname, const std::string endpoint, const ReqType& request, RespType& response, size_t& bytesSent);
   };
 
   template <typename ReqType, typename RespType>
   bool StubbedCurlWrapper::SendTo(
-   const std::string hostname, const std::string endpoint, const ReqType& request, RespType& response)
+   const std::string hostname, const std::string endpoint, const ReqType& request, RespType& response, size_t& bytesSent)
   {
     Request.assign(request.begin(), request.end());
+    bytesSent = Request.size();
     response.assign(Response.begin(), Response.end());
     Hostname = hostname;
     Endpoint = endpoint;

@@ -23,7 +23,7 @@ extern util::Console _console_;
 #define Log(...) LogDebug(__VA_ARGS__)
 #define LogDebug(...)                                          \
   _console_.log(__FILE__, " (", __LINE__, "): ", __VA_ARGS__); \
-  _console_.flush();
+  _console_.flush()
 #define LogTest(...)
 #define LogError(...)    \
   LogDebug(__VA_ARGS__); \
@@ -34,7 +34,7 @@ extern util::Console _console_;
 #define LogDebug(...)
 #define LogTest(...)                                           \
   _console_.log(__FILE__, " (", __LINE__, "): ", __VA_ARGS__); \
-  _console_.flush();
+  _console_.flush()
 #define LogError(...)
 #elif defined BENCH_BUILD
 // disable all logging to not clutter output

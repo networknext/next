@@ -64,7 +64,7 @@ namespace util
 
     /* Iterates over each element if the document is an array and returns true, simply returns false if not an array */
     template <typename Callback>  // template so lambdas are used directly and inlined rather than wrapped in a std::function
-    bool foreach (Callback function);
+    bool foreach(Callback function);
 
     /* Returns true if the specified member's underlying type is correct, false otherwise, even if the member does not exist */
     template <typename... Args>
@@ -222,7 +222,7 @@ namespace util
   }
 
   template <typename Callback>
-  inline bool JSON::foreach (Callback function)
+  inline bool JSON::foreach(Callback function)
   {
     if (mDoc.IsArray()) {
       for (auto i = mDoc.Begin(); i != mDoc.End(); i++) {
@@ -304,12 +304,6 @@ namespace util
   template <>
   inline void JSON::setValue(rapidjson::Value* member, JSON& other)
   {
-    if (other.isArray()) {
-      member->SetArray();
-    } else {
-      member->SetObject();
-    }
-
     member->CopyFrom(other.mDoc, mDoc.GetAllocator());
   }
 
@@ -369,7 +363,19 @@ namespace util
   }
 
   template <>
+  inline void JSON::setValue(rapidjson::Value* member, const uint8_t& value)
+  {
+    member->SetUint(value);
+  }
+
+  template <>
   inline void JSON::setValue(rapidjson::Value* member, uint16_t& value)
+  {
+    member->SetUint(value);
+  }
+
+  template <>
+  inline void JSON::setValue(rapidjson::Value* member, const uint16_t& value)
   {
     member->SetUint(value);
   }
@@ -390,6 +396,24 @@ namespace util
   inline void JSON::setValue(rapidjson::Value* member, uint64_t& value)
   {
     member->SetUint64(value);
+  }
+
+  template <>
+  inline void JSON::setValue(rapidjson::Value* member, const uint64_t& value)
+  {
+    member->SetUint64(value);
+  }
+
+  template <>
+  inline void JSON::setValue(rapidjson::Value* member, double& value)
+  {
+    member->SetDouble(value);
+  }
+
+  template <>
+  inline void JSON::setValue(rapidjson::Value* member, const double& value)
+  {
+    member->SetDouble(value);
   }
 
   template <size_t Size>
@@ -532,18 +556,12 @@ namespace util
     }
   }
 
-  template <typename T>
-  inline void JSON::pushBack(T& value)
-  {
-    rapidjson::Value v;
-    v.Set(value);
-    mDoc.PushBack(v, mDoc.GetAllocator());
-  }
-
   template <>
   inline void JSON::pushBack(JSON& value)
   {
-    mDoc.PushBack(value.mDoc, mDoc.GetAllocator());
+    rapidjson::Value tmp;
+    tmp.CopyFrom(value.mDoc, mDoc.GetAllocator());
+    mDoc.PushBack(tmp, mDoc.GetAllocator());
   }
 
   template <>
@@ -559,6 +577,14 @@ namespace util
   {
     rapidjson::Value v;
     v.SetString(rapidjson::StringRef(value, Size), mDoc.GetAllocator());
+    mDoc.PushBack(v, mDoc.GetAllocator());
+  }
+
+  template <typename T>
+  inline void JSON::pushBack(T& value)
+  {
+    rapidjson::Value v;
+    v.Set(value);
     mDoc.PushBack(v, mDoc.GetAllocator());
   }
 }  // namespace ftypes

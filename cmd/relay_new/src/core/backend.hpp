@@ -12,6 +12,7 @@
 #include "util/json.hpp"
 #include "util/logger.hpp"
 #include "util/throughput_recorder.hpp"
+#include "legacy/v3/traffic_stats.hpp"
 
 // forward declare test names to allow private functions to be visible them
 namespace testing
@@ -30,7 +31,7 @@ namespace core
   const uint32_t UpdateRequestVersion = 0;
   const uint32_t UpdateResponseVersion = 0;
 
-  const uint8_t MaxUpdateAttempts = 11; // 1 initial + 10 more for failures
+  const uint8_t MaxUpdateAttempts = 11;  // 1 initial + 10 more for failures
 
   /*
    * A class that's responsible for backend related tasks
@@ -49,9 +50,10 @@ namespace core
      const std::string address,
      const crypto::Keychain& keychain,
      RouterInfo& routerInfo,
-     RelayManager& relayManager,
+     RelayManager<Relay>& relayManager,
      std::string base64RelayPublicKey,
-     const core::SessionMap& sessions);
+     const core::SessionMap& sessions,
+     legacy::v3::TrafficStats& stats);
     ~Backend() = default;
 
     auto init() -> bool;
@@ -72,11 +74,12 @@ namespace core
     const std::string mAddressStr;
     const crypto::Keychain& mKeychain;
     RouterInfo& mRouterInfo;
-    RelayManager& mRelayManager;
+    RelayManager<Relay>& mRelayManager;
     const std::string mBase64RelayPublicKey;
     const core::SessionMap& mSessionMap;
+    legacy::v3::TrafficStats& mStats;
 
-    auto update(const util::ThroughputRecorder& recorder, bool shutdown) -> bool;
+    auto update(util::ThroughputRecorder& recorder, bool shutdown) -> bool;
     auto buildInitRequest(util::JSON& doc) -> std::tuple<bool, const char*>;
     auto buildUpdateRequest(util::JSON& doc, const util::ThroughputRecorder& recorder, bool shutdown)
      -> std::tuple<bool, const char*>;
@@ -88,16 +91,18 @@ namespace core
    std::string address,
    const crypto::Keychain& keychain,
    RouterInfo& routerInfo,
-   RelayManager& relayManager,
+   RelayManager<Relay>& relayManager,
    std::string base64RelayPublicKey,
-   const core::SessionMap& sessions)
+   const core::SessionMap& sessions,
+   legacy::v3::TrafficStats& stats)
    : mHostname(hostname),
      mAddressStr(address),
      mKeychain(keychain),
      mRouterInfo(routerInfo),
      mRelayManager(relayManager),
      mBase64RelayPublicKey(base64RelayPublicKey),
-     mSessionMap(sessions)
+     mSessionMap(sessions),
+     mStats(stats)
   {}
 
   template <typename T>
@@ -112,9 +117,8 @@ namespace core
     std::string request = doc.toString();
     std::vector<char> response;
 
-    LogDebug("init request: ", doc.toPrettyString());
-
-    if (!T::SendTo(mHostname, "/relay_init", request, response)) {
+    size_t bytesSent = 0;
+    if (!T::SendTo(mHostname, "/relay_init", request, response, bytesSent)) {
       Log("curl request failed in init");
       return false;
     }
@@ -123,8 +127,6 @@ namespace core
       Log("could not parse json response in init: ", doc.err(), "\nResponse: ", std::string(response.begin(), response.end()));
       return false;
     }
-
-    LogDebug("init response: ", doc.toPrettyString());
 
     if (doc.memberExists("version")) {
       if (doc.memberIs(util::JSON::Type::Number, "version")) {
@@ -206,7 +208,7 @@ namespace core
   }
 
   template <typename T>
-  auto Backend<T>::update(const util::ThroughputRecorder& recorder, bool shutdown) -> bool
+  auto Backend<T>::update(util::ThroughputRecorder& recorder, bool shutdown) -> bool
   {
     util::JSON doc;
     auto [ok, err] = buildUpdateRequest(doc, recorder, shutdown);
@@ -216,20 +218,23 @@ namespace core
     }
     std::string request = doc.toString();
     std::vector<char> response;
+    size_t bytesSent = 0;
 
-    LogDebug("update request: ", doc.toPrettyString());
+    LogDebug("Sending new: ", doc.toPrettyString());
 
-    if (!T::SendTo(mHostname, "/relay_update", request, response)) {
+    if (!T::SendTo(mHostname, "/relay_update", request, response, bytesSent)) {
       Log("curl request failed in update");
       return false;
     }
+    recorder.addToSent(bytesSent);
+    mStats.BytesPerSecManagementTx += bytesSent;
 
     if (!doc.parse(response)) {
       Log("could not parse json response in update: ", doc.err(), "\nReponse: ", std::string(response.begin(), response.end()));
       return false;
     }
 
-    LogDebug("update response: ", doc.toPrettyString());
+    LogDebug("Received new: ", doc.toPrettyString());
 
     if (doc.memberExists("version")) {
       if (doc.memberIs(util::JSON::Type::Number, "version")) {
@@ -239,19 +244,20 @@ namespace core
           return false;
         }
       } else {
-        Log("warning: update version not number");
+        Log("warning, update version not number");
       }
     } else {
       Log("warning, version number missing in update response");
     }
 
+    size_t count = 0;
+    std::array<Relay, MAX_RELAYS> incoming{};
+
     bool allValid = true;
     auto relays = doc.get<util::JSON>("ping_data");
     if (relays.isArray()) {
-      size_t count = 0;
-      std::array<uint64_t, MAX_RELAYS> relayIDs = {};
-      std::array<net::Address, MAX_RELAYS> relayAddresses;
-      relays.foreach([&allValid, &count, &relayIDs, &relayAddresses](rapidjson::Value& relayData) {
+      // 'return' functions like 'continue' within the lambda
+      relays.foreach([&allValid, &count, &incoming](rapidjson::Value& relayData) {
         if (!relayData.HasMember("relay_id")) {
           Log("ping data missing 'relay_id'");
           allValid = false;
@@ -282,8 +288,8 @@ namespace core
 
         std::string address = addrMember.GetString();
 
-        relayIDs[count] = id;
-        if (!relayAddresses[count].parse(address)) {
+        incoming[count].ID = id;
+        if (!incoming[count].Addr.parse(address)) {
           Log("failed to parse address for relay '", id, "': ", address);
           allValid = false;
           return;
@@ -296,8 +302,6 @@ namespace core
         Log("error: too many relays to ping. max is ", MAX_RELAYS, ", got ", count, '\n');
         return false;
       }
-
-      mRelayManager.update(count, relayIDs, relayAddresses);
     } else if (relays.memberIs(util::JSON::Type::Null)) {
       Log("no relays received from backend, ping data is null");
     } else {
@@ -308,6 +312,8 @@ namespace core
     if (!allValid) {
       Log("some or all of the update ping data was invalid");
     }
+
+    mRelayManager.update(count, incoming);
 
     return true;
   }
@@ -374,8 +380,10 @@ namespace core
     doc.set(mAddressStr, "relay_address");
     doc.set(mBase64RelayPublicKey, "Metadata", "PublicKey");
 
-    util::JSON trafficStats;
+    // traffic stats
     {
+      util::JSON trafficStats;
+
       auto stats = recorder.get();
       trafficStats.set(stats.Sent.ByteCount, "BytesMeasurementTx");
       trafficStats.set(stats.Received.ByteCount, "BytesMeasurementRx");
@@ -383,15 +391,16 @@ namespace core
       doc.set(trafficStats, "TrafficStats");
     }
 
-    core::RelayStats stats;
+    // ping stats
     {
-      mRelayManager.getStats(stats);
       util::JSON pingStats;
+
+      core::RelayStats stats;
+      mRelayManager.getStats(stats);
       pingStats.setArray();
 
-      // pushing behaves really weird when the pushed value goes out of scope, must be declared outside of for loop
-      util::JSON pingStat;
       for (unsigned int i = 0; i < stats.NumRelays; ++i) {
+        util::JSON pingStat;
         pingStat.set(stats.IDs[i], "RelayId");
         pingStat.set(stats.RTT[i], "RTT");
         pingStat.set(stats.Jitter[i], "Jitter");
@@ -402,8 +411,6 @@ namespace core
         }
       }
 
-      // performs a deep copy, so it's ok for things to go out of scope after this, regular move seems to be weird due to the
-      // allocator concept
       doc.set(pingStats, "PingStats");
     }
 

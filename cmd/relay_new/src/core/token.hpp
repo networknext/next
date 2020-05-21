@@ -40,10 +40,22 @@ namespace core
   [[gnu::always_inline]] inline void Token::write(GenericPacket<>& packet, size_t& index)
   {
     assert(index + Token::ByteSize < packet.Buffer.size());
-    encoding::WriteUint64(packet.Buffer, index, ExpireTimestamp);
-    encoding::WriteUint64(packet.Buffer, index, SessionID);
-    encoding::WriteUint8(packet.Buffer, index, SessionVersion);
-    encoding::WriteUint8(packet.Buffer, index, SessionFlags);
+
+    if (!encoding::WriteUint64(packet.Buffer, index, ExpireTimestamp)) {
+      LogDebug("could not write expire timestamp");
+    }
+
+    if (!encoding::WriteUint64(packet.Buffer, index, SessionID)) {
+      LogDebug("could not write session id");
+    }
+
+    if (!encoding::WriteUint8(packet.Buffer, index, SessionVersion)) {
+      LogDebug("could not write session version");
+    }
+
+    if (!encoding::WriteUint8(packet.Buffer, index, SessionFlags)) {
+      LogDebug("could not write session flags");
+    }
   }
 
   [[gnu::always_inline]] inline void Token::read(GenericPacket<>& packet, size_t& index)

@@ -20,7 +20,10 @@ namespace core
     std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
     crypto::RandomBytes(nonce, nonce.size());  // fill nonce
 
-    encoding::WriteBytes(packet.Buffer, index, nonce, nonce.size());
+    if (!encoding::WriteBytes(packet.Buffer, index, nonce, nonce.size())) {
+      Log("could not write nonce");
+      return false;
+    }
 
     const size_t afterNonce = index;
 
@@ -66,10 +69,25 @@ namespace core
     (void)start;
 
     Token::write(packet, index);
-    encoding::WriteUint32(packet.Buffer, index, KbpsUp);
-    encoding::WriteUint32(packet.Buffer, index, KbpsDown);
-    encoding::WriteAddress(packet.Buffer, index, NextAddr);
-    encoding::WriteBytes(packet.Buffer, index, PrivateKey, crypto_box_SECRETKEYBYTES);
+    if (!encoding::WriteUint32(packet.Buffer, index, KbpsUp)) {
+      LogDebug("could not write kbps up");
+      assert(false);
+    }
+
+    if (!encoding::WriteUint32(packet.Buffer, index, KbpsDown)) {
+      LogDebug("could not write kbps down");
+      assert(false);
+    }
+
+    if (!encoding::WriteAddress(packet.Buffer, index, NextAddr)) {
+      LogDebug("could not write next addr");
+      assert(false);
+    }
+
+    if (!encoding::WriteBytes(packet.Buffer, index, PrivateKey, crypto_box_SECRETKEYBYTES)) {
+      LogDebug("could not write prev addr");
+      assert(false);
+    }
 
     assert(index - start == RouteToken::ByteSize);
   }
@@ -143,14 +161,14 @@ namespace legacy
 
     (void)start;
 
-    encoding::write_uint64(&buffer, token->expire_timestamp);
-    encoding::write_uint64(&buffer, token->session_id);
-    encoding::write_uint8(&buffer, token->session_version);
-    encoding::write_uint8(&buffer, token->session_flags);
-    encoding::write_uint32(&buffer, token->kbps_up);
-    encoding::write_uint32(&buffer, token->kbps_down);
-    encoding::write_address(&buffer, &token->next_address);
-    encoding::write_bytes(&buffer, token->private_key, crypto_box_SECRETKEYBYTES);
+    write_uint64(&buffer, token->expire_timestamp);
+    write_uint64(&buffer, token->session_id);
+    write_uint8(&buffer, token->session_version);
+    write_uint8(&buffer, token->session_flags);
+    write_uint32(&buffer, token->kbps_up);
+    write_uint32(&buffer, token->kbps_down);
+    write_address(&buffer, &token->next_address);
+    write_bytes(&buffer, token->private_key, crypto_box_SECRETKEYBYTES);
 
     assert(buffer - start == core::RouteToken::ByteSize);
   }
@@ -164,14 +182,14 @@ namespace legacy
 
     (void)start;
 
-    token->expire_timestamp = encoding::read_uint64(&buffer);
-    token->session_id = encoding::read_uint64(&buffer);
-    token->session_version = encoding::read_uint8(&buffer);
-    token->session_flags = encoding::read_uint8(&buffer);
-    token->kbps_up = encoding::read_uint32(&buffer);
-    token->kbps_down = encoding::read_uint32(&buffer);
-    encoding::read_address(&buffer, &token->next_address);
-    encoding::read_bytes(&buffer, token->private_key, crypto_box_SECRETKEYBYTES);
+    token->expire_timestamp = read_uint64(&buffer);
+    token->session_id = read_uint64(&buffer);
+    token->session_version = read_uint8(&buffer);
+    token->session_flags = read_uint8(&buffer);
+    token->kbps_up = read_uint32(&buffer);
+    token->kbps_down = read_uint32(&buffer);
+    read_address(&buffer, &token->next_address);
+    read_bytes(&buffer, token->private_key, crypto_box_SECRETKEYBYTES);
     assert(buffer - start == core::RouteToken::ByteSize);
   }
 
@@ -223,7 +241,7 @@ namespace legacy
 
     (void)start;
 
-    encoding::write_bytes(buffer, nonce, crypto_box_NONCEBYTES);
+    write_bytes(buffer, nonce, crypto_box_NONCEBYTES);
 
     relay_write_route_token(token, *buffer, core::RouteToken::ByteSize);
 

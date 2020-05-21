@@ -15,6 +15,7 @@
 #include "net/address.hpp"
 #include "relay/relay_bandwidth_limiter.hpp"
 #include "relay/relay_platform.hpp"
+#include "core/packets/types.hpp"
 
 namespace
 {
@@ -316,7 +317,8 @@ namespace
     crypto_aead_chacha20poly1305_keygen(key);
     randombytes_buf(nonce, sizeof(nonce));
 
-    crypto_aead_chacha20poly1305_encrypt(ciphertext,
+    crypto_aead_chacha20poly1305_encrypt(
+     ciphertext,
      &ciphertext_len,
      CRYPTO_AEAD_MESSAGE,
      CRYPTO_AEAD_MESSAGE_LEN,
@@ -328,15 +330,17 @@ namespace
 
     unsigned char decrypted[CRYPTO_AEAD_MESSAGE_LEN];
     unsigned long long decrypted_len;
-    check(crypto_aead_chacha20poly1305_decrypt(decrypted,
-           &decrypted_len,
-           NULL,
-           ciphertext,
-           ciphertext_len,
-           CRYPTO_AEAD_ADDITIONAL_DATA,
-           CRYPTO_AEAD_ADDITIONAL_DATA_LEN,
-           nonce,
-           key) == 0);
+    check(
+     crypto_aead_chacha20poly1305_decrypt(
+      decrypted,
+      &decrypted_len,
+      NULL,
+      ciphertext,
+      ciphertext_len,
+      CRYPTO_AEAD_ADDITIONAL_DATA,
+      CRYPTO_AEAD_ADDITIONAL_DATA_LEN,
+      nonce,
+      key) == 0);
   }
 
   static void test_crypto_aead_ietf()
@@ -354,7 +358,8 @@ namespace
     crypto_aead_xchacha20poly1305_ietf_keygen(key);
     randombytes_buf(nonce, sizeof(nonce));
 
-    crypto_aead_xchacha20poly1305_ietf_encrypt(ciphertext,
+    crypto_aead_xchacha20poly1305_ietf_encrypt(
+     ciphertext,
      &ciphertext_len,
      CRYPTO_AEAD_IETF_MESSAGE,
      CRYPTO_AEAD_IETF_MESSAGE_LEN,
@@ -366,15 +371,17 @@ namespace
 
     unsigned char decrypted[CRYPTO_AEAD_IETF_MESSAGE_LEN];
     unsigned long long decrypted_len;
-    check(crypto_aead_xchacha20poly1305_ietf_decrypt(decrypted,
-           &decrypted_len,
-           NULL,
-           ciphertext,
-           ciphertext_len,
-           CRYPTO_AEAD_IETF_ADDITIONAL_DATA,
-           CRYPTO_AEAD_IETF_ADDITIONAL_DATA_LEN,
-           nonce,
-           key) == 0);
+    check(
+     crypto_aead_xchacha20poly1305_ietf_decrypt(
+      decrypted,
+      &decrypted_len,
+      NULL,
+      ciphertext,
+      ciphertext_len,
+      CRYPTO_AEAD_IETF_ADDITIONAL_DATA,
+      CRYPTO_AEAD_IETF_ADDITIONAL_DATA_LEN,
+      nonce,
+      key) == 0);
   }
 
   static void test_crypto_sign()
@@ -435,13 +442,15 @@ namespace
 
     uint8_t client_send_key[crypto_kx_SESSIONKEYBYTES];
     uint8_t client_receive_key[crypto_kx_SESSIONKEYBYTES];
-    check(crypto_kx_client_session_keys(
-           client_receive_key, client_send_key, client_public_key, client_private_key, server_public_key) == 0);
+    check(
+     crypto_kx_client_session_keys(
+      client_receive_key, client_send_key, client_public_key, client_private_key, server_public_key) == 0);
 
     uint8_t server_send_key[crypto_kx_SESSIONKEYBYTES];
     uint8_t server_receive_key[crypto_kx_SESSIONKEYBYTES];
-    check(crypto_kx_server_session_keys(
-           server_receive_key, server_send_key, server_public_key, server_private_key, client_public_key) == 0);
+    check(
+     crypto_kx_server_session_keys(
+      server_receive_key, server_send_key, server_public_key, server_private_key, client_public_key) == 0);
 
     check(memcmp(client_send_key, server_receive_key, crypto_kx_SESSIONKEYBYTES) == 0);
     check(memcmp(server_send_key, client_receive_key, crypto_kx_SESSIONKEYBYTES) == 0);
@@ -677,29 +686,33 @@ namespace
       uint64_t session_id = 0x12313131;
       uint8_t session_version = 0x12;
 
-      check(relay::relay_write_header(RELAY_DIRECTION_CLIENT_TO_SERVER,
-             RELAY_CLIENT_TO_SERVER_PACKET,
-             sequence,
-             session_id,
-             session_version,
-             private_key,
-             buffer,
-             sizeof(buffer)) == RELAY_OK);
+      check(
+       relay::relay_write_header(
+        RELAY_DIRECTION_CLIENT_TO_SERVER,
+        core::packets::Type::ClientToServer,
+        sequence,
+        session_id,
+        session_version,
+        private_key,
+        buffer,
+        sizeof(buffer)) == RELAY_OK);
 
-      uint8_t read_type = 0;
+      core::packets::Type read_type = {};
       uint64_t read_sequence = 0;
       uint64_t read_session_id = 0;
       uint8_t read_session_version = 0;
 
-      check(relay::relay_peek_header(RELAY_DIRECTION_CLIENT_TO_SERVER,
-             &read_type,
-             &read_sequence,
-             &read_session_id,
-             &read_session_version,
-             buffer,
-             sizeof(buffer)) == RELAY_OK);
+      check(
+       relay::relay_peek_header(
+        RELAY_DIRECTION_CLIENT_TO_SERVER,
+        &read_type,
+        &read_sequence,
+        &read_session_id,
+        &read_session_version,
+        buffer,
+        sizeof(buffer)) == RELAY_OK);
 
-      check(read_type == RELAY_CLIENT_TO_SERVER_PACKET);
+      check(read_type == static_cast<uint8_t>(core::packets::Type::ClientToServer));
       check(read_sequence == sequence);
       check(read_session_id == session_id);
       check(read_session_version == session_version);
@@ -713,29 +726,33 @@ namespace
       uint64_t session_id = 0x12313131;
       uint8_t session_version = 0x12;
 
-      check(relay::relay_write_header(RELAY_DIRECTION_SERVER_TO_CLIENT,
-             RELAY_SERVER_TO_CLIENT_PACKET,
-             sequence,
-             session_id,
-             session_version,
-             private_key,
-             buffer,
-             sizeof(buffer)) == RELAY_OK);
+      check(
+       relay::relay_write_header(
+        RELAY_DIRECTION_SERVER_TO_CLIENT,
+        core::packets::Type::ServerToClient,
+        sequence,
+        session_id,
+        session_version,
+        private_key,
+        buffer,
+        sizeof(buffer)) == RELAY_OK);
 
-      uint8_t read_type = 0;
+      core::packets::Type read_type = {};
       uint64_t read_sequence = 0;
       uint64_t read_session_id = 0;
       uint8_t read_session_version = 0;
 
-      check(relay::relay_peek_header(RELAY_DIRECTION_SERVER_TO_CLIENT,
-             &read_type,
-             &read_sequence,
-             &read_session_id,
-             &read_session_version,
-             buffer,
-             sizeof(buffer)) == RELAY_OK);
+      check(
+       relay::relay_peek_header(
+        RELAY_DIRECTION_SERVER_TO_CLIENT,
+        &read_type,
+        &read_sequence,
+        &read_session_id,
+        &read_session_version,
+        buffer,
+        sizeof(buffer)) == RELAY_OK);
 
-      check(read_type == RELAY_SERVER_TO_CLIENT_PACKET);
+      check(read_type == static_cast<uint8_t>(core::packets::Type::ServerToClient));
       check(read_sequence == sequence);
       check(read_session_id == session_id);
       check(read_session_version == session_version);

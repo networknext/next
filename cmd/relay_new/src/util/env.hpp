@@ -16,6 +16,12 @@ namespace util
     std::string SendBufferSize;
     std::string RecvBufferSize;
     std::string ProcessorCount;
+
+    std::string RelayV3Name;             // Firestore ID
+    std::string RelayV3BackendHostname;  // just the hostname, no http prefix
+    std::string RelayV3BackendPort;      // port that should be used to talk to the backend
+    std::string RelayV3UpdateKey;        // From firestore
+    std::string RelayV3Speed;            // May take away the v3 when it comes time to implement utilization
   };
 
   inline Env::Env()
@@ -26,6 +32,11 @@ namespace util
      {"RELAY_PUBLIC_KEY", &RelayPublicKey},
      {"RELAY_ROUTER_PUBLIC_KEY", &RelayRouterPublicKey},
      {"RELAY_BACKEND_HOSTNAME", &BackendHostname},
+     {"RELAY_V3_NAME", &RelayV3Name},
+     {"RELAY_V3_BACKEND_HOSTNAME", &RelayV3BackendHostname},
+     {"RELAY_V3_BACKEND_PORT", &RelayV3BackendPort},
+     {"RELAY_V3_UPDATE_KEY", &RelayV3UpdateKey},
+     {"RELAY_V3_SPEED", &RelayV3Speed},
     };
 
     std::unordered_map<const char*, std::string*> optionalVars = {

@@ -2,19 +2,20 @@
 #define CORE_PACKETS_RELAY_PING_PACKET_HPP
 
 #include "core/packet.hpp"
-
 #include "encoding/read.hpp"
-
+#include "encoding/write.hpp"
 #include "net/address.hpp"
 
 namespace core
 {
   namespace packets
   {
-    class RelayPingPacket
+    class NewRelayPingPacket
     {
      public:
-      RelayPingPacket(GenericPacket<>& packet, int size);
+      static const size_t ByteSize = 1 + 8 + net::Address::ByteSize;  // type | sequence | addr
+
+      NewRelayPingPacket(GenericPacket<>& packet);
 
       // getters do no cache, just make the indexes of the packet clearer
       auto getSeqNum() -> uint64_t;
@@ -24,18 +25,17 @@ namespace core
       void writeFromAddr(const net::Address& addr);
 
       GenericPacket<>& Internal;
-      const int Size;
     };
 
-    inline RelayPingPacket::RelayPingPacket(GenericPacket<>& packet, int size): Internal(packet), Size(size) {}
+    inline NewRelayPingPacket::NewRelayPingPacket(GenericPacket<>& packet): Internal(packet) {}
 
-    inline auto RelayPingPacket::getSeqNum() -> uint64_t
+    inline auto NewRelayPingPacket::getSeqNum() -> uint64_t
     {
       size_t index = 1;
       return encoding::ReadUint64(Internal.Buffer, index);
     }
 
-    inline auto RelayPingPacket::getFromAddr() -> net::Address
+    inline auto NewRelayPingPacket::getFromAddr() -> net::Address
     {
       size_t index = 9;
       net::Address addr;
@@ -43,10 +43,12 @@ namespace core
       return addr;
     }
 
-    inline void RelayPingPacket::writeFromAddr(const net::Address& addr)
+    inline void NewRelayPingPacket::writeFromAddr(const net::Address& addr)
     {
       size_t index = 9;
-      encoding::WriteAddress(Internal.Buffer, index, addr);
+      if (!encoding::WriteAddress(Internal.Buffer, index, addr)) {
+        LogDebug("could not write address");
+      }
     }
   }  // namespace packets
 }  // namespace core

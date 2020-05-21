@@ -27,9 +27,12 @@ namespace os
     ~Socket();
 
     bool create(
-     net::Address& addr, size_t sendBuffSize, size_t recvBuffSize, float timeout, bool reuse, int lingerTimeInSeconds);
+     net::Address& addr, size_t sendBuffSize, size_t recvBuffSize, float timeout, bool reuse);
 
     bool send(const net::Address& to, const uint8_t* data, size_t size) const;
+
+    template <typename T>
+    bool send(const core::Packet<T>& packet) const;
 
     template <size_t BuffSize>
     bool multisend(std::array<mmsghdr, BuffSize>& packetBuff, int count) const;
@@ -37,18 +40,25 @@ namespace os
     template <size_t BuffSize, size_t PacketSize>
     bool multisend(core::GenericPacketBuffer<BuffSize, PacketSize>& packetBuff) const;
 
-    size_t recv(net::Address& from, uint8_t* data, size_t maxSize) const;
+    auto recv(net::Address& from, uint8_t* data, size_t maxSize) const -> int;
+
+    template <typename T>
+    auto recv(core::Packet<T>& packet) const -> bool;
 
     template <size_t BuffSize, size_t PacketSize>
     bool multirecv(core::GenericPacketBuffer<BuffSize, PacketSize>& packetBuff) const;
 
     void close();
+    auto closed() -> bool;
 
     const net::Address& getAddress() const;
 
    private:
     int mSockFD = 0;
     const SocketType mType;
+    std::atomic<bool> mClosed;
+    mutable std::mutex mWriteLock;
+    mutable std::mutex mReadLock;
 
     bool setBufferSizes(size_t sendBufferSize, size_t recvBufferSize);
     bool setLingerTime(int lingerTime);
@@ -65,13 +75,27 @@ namespace os
 
   [[gnu::always_inline]] inline void Socket::close()
   {
+    mClosed = true;
     shutdown(mSockFD, SHUT_RDWR);
+  }
+
+  [[gnu::always_inline]] inline auto Socket::closed() -> bool
+  {
+    return mClosed;
+  }
+
+  template <typename T>
+  bool Socket::send(const core::Packet<T>& packet) const
+  {
+    return send(packet.Addr, packet.Buffer.data(), packet.Len);
   }
 
   template <size_t BuffSize>
   bool Socket::multisend(std::array<mmsghdr, BuffSize>& headers, int count) const
   {
     static_assert(BuffSize <= 1024);  // max sendmmsg will allow
+
+    std::lock_guard<std::mutex> lk(mWriteLock);
     assert(count > 0);
     assert(count <= 1024);
 
@@ -87,15 +111,25 @@ namespace os
   }
 
   template <size_t BuffSize, size_t PacketSize>
-  bool Socket::multisend(core::GenericPacketBuffer<BuffSize, PacketSize>& packetBuff) const
+  inline bool Socket::multisend(core::GenericPacketBuffer<BuffSize, PacketSize>& packetBuff) const
   {
     return multisend(packetBuff.Headers, packetBuff.Count);
+  }
+
+  template <typename T>
+  inline auto Socket::recv(core::Packet<T>& packet) const -> bool
+  {
+    auto len = this->recv(packet.Addr, packet.Buffer.data(), packet.Buffer.size());
+    packet.Len = static_cast<size_t>(len);
+    return len > 0;
   }
 
   template <size_t BuffSize, size_t PacketSize>
   bool Socket::multirecv(core::GenericPacketBuffer<BuffSize, PacketSize>& packetBuff) const
   {
-    packetBuff.Count = recvmmsg(mSockFD,
+    std::lock_guard<std::mutex> lk(mReadLock);
+    packetBuff.Count = recvmmsg(
+     mSockFD,
      packetBuff.Headers.data(),
      BuffSize,
      MSG_WAITFORONE,

@@ -3,94 +3,6 @@
 
 #include <cstring>
 
-#include "core/route_stats.hpp"
-#include "relay/relay_platform.hpp"
-
-#include "util/logger.hpp"
-
-namespace core
-{
-  RelayManager::RelayManager(const util::Clock& clock): mClock(clock)
-  {
-    mRelayIDs.resize(MAX_RELAYS);
-    mLastRelayPingTime.resize(MAX_RELAYS);
-    mRelayAddresses.resize(MAX_RELAYS);
-    mRelayPingHistory.resize(MAX_RELAYS);
-    mPingHistoryArray.resize(MAX_RELAYS);
-    reset();
-  }
-
-  void RelayManager::reset()
-  {
-    // locked mutex scope
-    std::lock_guard<std::mutex> lk(mLock);
-    mNumRelays = 0;
-    std::fill(mRelayIDs.begin(), mRelayIDs.end(), 0);
-    std::fill(mLastRelayPingTime.begin(), mLastRelayPingTime.end(), 0);
-    std::fill(mRelayAddresses.begin(), mRelayAddresses.end(), net::Address());
-    std::fill(mRelayPingHistory.begin(), mRelayPingHistory.end(), nullptr);
-    std::fill(mPingHistoryArray.begin(), mPingHistoryArray.end(), PingHistory());
-  }
-
-  auto RelayManager::processPong(const net::Address& from, uint64_t seq) -> bool
-  {
-    bool retval = false;
-
-    // locked mutex scope
-    {
-      std::lock_guard<std::mutex> lk(mLock);
-      for (unsigned int i = 0; i < mNumRelays; i++) {
-        if (from == mRelayAddresses[i]) {
-          mRelayPingHistory[i]->pongReceived(seq, mClock.elapsed<util::Second>());
-          retval = true;
-          break;
-        }
-      }
-    }
-    return retval;
-  }
-
-  void RelayManager::getStats(RelayStats& stats)
-  {
-    auto currentTime = mClock.elapsed<util::Second>();
-
-    // locked mutex scope
-    {
-      std::lock_guard<std::mutex> lk(mLock);
-      stats.NumRelays = mNumRelays;
-
-      for (unsigned int i = 0; i < mNumRelays; i++) {
-        RouteStats rs(*mRelayPingHistory[i], currentTime - RELAY_STATS_WINDOW, currentTime, RELAY_PING_SAFETY);
-        stats.IDs[i] = mRelayIDs[i];
-        stats.RTT[i] = rs.RTT;
-        stats.Jitter[i] = rs.Jitter;
-        stats.PacketLoss[i] = rs.PacketLoss;
-      }
-    }
-  }
-
-  unsigned int RelayManager::getPingData(std::array<PingData, MAX_RELAYS>& data)
-  {
-    double current_time = relay::relay_platform_time();  // TODO replace with clock
-    unsigned int numPings = 0;
-
-    // locked mutex scope
-    {
-      std::lock_guard<std::mutex> lk(mLock);
-      for (unsigned int i = 0; i < mNumRelays; ++i) {
-        if (mLastRelayPingTime[i] + RELAY_PING_TIME <= current_time) {
-          data[numPings].Seq = mRelayPingHistory[i]->pingSent(current_time);
-          data[numPings].Addr = mRelayAddresses[i];
-          mLastRelayPingTime[i] = current_time;
-          numPings++;
-        }
-      }
-    }
-
-    return numPings;
-  }
-}  // namespace core
-
 namespace legacy
 {
   relay_manager_t* relay_manager_create()
@@ -205,8 +117,8 @@ namespace legacy
     int num_found = 0;
     for (int i = 0; i < num_relays; ++i) {
       for (int j = 0; j < manager->num_relays; ++j) {
-        if (relay_ids[i] == manager->relay_ids[j] &&
-            relay_address_equal(&relay_addresses[i], &manager->relay_addresses[j]) == 1) {
+        if (
+         relay_ids[i] == manager->relay_ids[j] && relay_address_equal(&relay_addresses[i], &manager->relay_addresses[j]) == 1) {
           num_found++;
           break;
         }

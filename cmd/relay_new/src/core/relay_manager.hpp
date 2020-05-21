@@ -1,11 +1,11 @@
 #ifndef CORE_RELAY_MANAGER_HPP
 #define CORE_RELAY_MANAGER_HPP
 
-#include "relay_stats.hpp"
-#include "ping_history.hpp"
-
+#include "core/route_stats.hpp"
 #include "net/address.hpp"
-
+#include "ping_history.hpp"
+#include "relay/relay_platform.hpp"
+#include "relay_stats.hpp"
 #include "util/clock.hpp"
 #include "util/logger.hpp"
 
@@ -19,6 +19,26 @@ namespace core
     net::Address Addr;
   };
 
+  struct V3PingData: public PingData
+  {
+    std::array<uint8_t, 48> PingToken;
+  };
+
+  struct Relay
+  {
+    uint64_t ID;
+    double LastPingTime = INVALID_PING_TIME;
+    net::Address Addr;
+    PingHistory* History = nullptr;
+  };
+
+  struct V3Relay: public Relay
+  {
+    std::array<uint8_t, 48> PingToken;  // base64
+  };
+
+  // where T == Relay || V3Relay
+  template <typename T>
   class RelayManager
   {
    public:
@@ -27,69 +47,145 @@ namespace core
 
     void reset();
 
-    void update(unsigned int numRelays,
-     const std::array<uint64_t, MAX_RELAYS>& relayIDs,
-     const std::array<net::Address, MAX_RELAYS>& relayAddrs);
+    void update(size_t numRelays, const std::array<T, MAX_RELAYS>& newRelays);
 
     auto processPong(const net::Address& from, uint64_t seq) -> bool;
 
     void getStats(RelayStats& stats);
 
-    unsigned int getPingData(std::array<PingData, MAX_RELAYS>& data);
+    // where U == PingData || V3PingData
+    template <typename U>
+    auto getPingData(std::array<U, MAX_RELAYS>& data) -> size_t;
 
    private:
     std::mutex mLock;
     const util::Clock& mClock;
     unsigned int mNumRelays;
-    std::vector<uint64_t> mRelayIDs;
-    std::vector<double> mLastRelayPingTime;
-    std::vector<net::Address> mRelayAddresses;
-    std::vector<PingHistory*> mRelayPingHistory;
-    std::vector<PingHistory> mPingHistoryArray;
+    std::array<T, MAX_RELAYS> mRelays;
+    std::vector<PingHistory> mPingHistoryBuff;
   };
 
-  /*
-    things attempted to make faster:
+  template <typename T>
+  RelayManager<T>::RelayManager(const util::Clock& clock): mClock(clock)
+  {
+    mPingHistoryBuff.resize(MAX_RELAYS);
+    reset();
+  }
 
-    - using an unordered_map encapsulating the 5 arrays, and also reducing the n^2 loop to just n, reducing the 5 copy() calls
-    to just a single map.insert(begin, end) call, and combining the 3'rd for loop into the first to reduce overall complexity
-    from O(n^2 + 7n) to just O(3n).
-    -- results: the maps iteration at the end took far longer than the amount of time saved by the other optimizations (which
-    would cause getStats() to become much, much slower even if that last loop was brought into the main), if the max relay size
-    ever exceeds a million then maybe the map solution will be more beneficial, but anything under arrays seem to win, even with
-    the bad time complexity
+  template <typename T>
+  void RelayManager<T>::reset()
+  {
+    // locked mutex scope
+    std::lock_guard<std::mutex> lk(mLock);
+    mNumRelays = 0;
+    std::fill(mRelays.begin(), mRelays.end(), T());
+  }
 
-    - using an unordered_set as a relay id cache, reducing the n^2 loop to just n and combinging
-    -- results: doing so meant the PingHistory pointer array coudn't be used, and instead the constructor or clear() had to be
-    used to reset the index, and that was slower than the n^2 loop iteration with the pointers
+  template <typename T>
+  auto RelayManager<T>::processPong(const net::Address& from, uint64_t seq) -> bool
+  {
+    bool pongReceived = false;
 
-    - End result, this is as fast as it's gonna get until there's spare time for someone to really rework it
+    // locked mutex scope
+    {
+      std::lock_guard<std::mutex> lk(mLock);
+      for (unsigned int i = 0; i < mNumRelays; i++) {
+        auto& relay = mRelays[i];
+        if (from == relay.Addr) {
+          relay.History->pongReceived(seq, mClock.elapsed<util::Second>());
+          pongReceived = true;
+          break;
+        }
+      }
+    }
 
-    - One last idea, maybe go back to the unordered map concept, and since iterating the first loop is blazingly fast bring the
-    last loop (the one with the time stuff) into the first. And use an array of struct pointers where the struct is the
-    encapsulated info currently in the 5 arrays. So getStats() can be iterated just as fast while the relay data can be updated
-    in just O(2n) time. Doing so would require the relay array to have it's internal's shifted a lot during the function, which
-    may be more expensive than the time saved by reducing all the loops again.
+    return pongReceived;
+  }
 
-    -- after refactoring, this isn't that concering, previously this was called in the ping thread, but now it is within the
-    update function (main thread) which only executes once a second so it's far less critical
-  */
+  template <typename T>
+  void RelayManager<T>::getStats(RelayStats& stats)
+  {
+    auto currentTime = mClock.elapsed<util::Second>();
+
+    // locked mutex scope
+    {
+      std::lock_guard<std::mutex> lk(mLock);
+      stats.NumRelays = mNumRelays;
+
+      for (unsigned int i = 0; i < mNumRelays; i++) {
+        auto& relay = mRelays[i];
+        RouteStats rs(*relay.History, currentTime - RELAY_STATS_WINDOW, currentTime, RELAY_PING_SAFETY);
+        stats.IDs[i] = relay.ID;
+        stats.RTT[i] = rs.getRTT();
+        stats.Jitter[i] = rs.getJitter();
+        stats.PacketLoss[i] = rs.getPacketLoss();
+      }
+    }
+  }
+
+  template <>
+  template <>
+  inline auto RelayManager<Relay>::getPingData(std::array<PingData, MAX_RELAYS>& data) -> size_t
+  {
+    double currentTime = mClock.elapsed<util::Second>();
+    size_t numPings = 0;
+
+    // locked mutex scope
+    {
+      std::lock_guard<std::mutex> lk(mLock);
+      for (unsigned int i = 0; i < mNumRelays; ++i) {
+        if (mRelays[i].LastPingTime + RELAY_PING_TIME <= currentTime) {
+          auto& relay = mRelays[i];
+          auto& pingData = data[numPings++];
+
+          pingData.Seq = relay.History->pingSent(currentTime);
+          pingData.Addr = relay.Addr;
+          relay.LastPingTime = currentTime;
+        }
+      }
+    }
+
+    return numPings;
+  }
+
+  template <>
+  template <>
+  inline auto RelayManager<V3Relay>::getPingData(std::array<V3PingData, MAX_RELAYS>& data) -> size_t
+  {
+    double currentTime = mClock.elapsed<util::Second>();
+    size_t numPings = 0;
+
+    // locked mutex scope
+    {
+      std::lock_guard<std::mutex> lk(mLock);
+      for (unsigned int i = 0; i < mNumRelays; ++i) {
+        if (mRelays[i].LastPingTime + RELAY_PING_TIME <= currentTime) {
+          auto& relay = mRelays[i];
+          auto& pingData = data[numPings++];
+
+          pingData.Seq = relay.History->pingSent(currentTime);
+          pingData.Addr = relay.Addr;
+          pingData.PingToken = relay.PingToken;
+          relay.LastPingTime = currentTime;
+        }
+      }
+    }
+
+    return numPings;
+  }
 
   // it is used in one place throughout the codebase, so always inline it, no sense in doing a function call
-  [[gnu::always_inline]] inline void RelayManager::update(unsigned int numRelays,
-   const std::array<uint64_t, MAX_RELAYS>& relayIDs,
-   const std::array<net::Address, MAX_RELAYS>& relayAddrs)
+  template <>
+  [[gnu::always_inline]] inline void RelayManager<Relay>::update(
+   size_t numRelays, const std::array<Relay, MAX_RELAYS>& incoming)
   {
     assert(numRelays <= MAX_RELAYS);
 
     // first copy all current relays that are also in the update lists
 
-    std::array<bool, MAX_RELAYS> historySlotToken{};
+    std::array<bool, MAX_RELAYS> historySlotTaken{};
     std::array<bool, MAX_RELAYS> found{};
-    std::array<uint64_t, MAX_RELAYS> newRelayIDs{};
-    std::array<double, MAX_RELAYS> newRelayLastPingTime{};
-    std::array<net::Address, MAX_RELAYS> newRelayAddresses;
-    std::array<PingHistory*, MAX_RELAYS> newRelayPingHistory{};
+    std::array<Relay, MAX_RELAYS> newRelays{};
 
     unsigned int index = 0;
 
@@ -97,20 +193,16 @@ namespace core
     {
       std::lock_guard<std::mutex> lk(mLock);
       for (unsigned int i = 0; i < mNumRelays; i++) {
+        const auto& relay = mRelays[i];
         for (unsigned int j = 0; j < numRelays; j++) {
-          if (mRelayIDs[i] == relayIDs[j]) {
+          if (relay.ID == incoming[j].ID) {
             found[j] = true;
+            newRelays[index++] = relay;
 
-            newRelayIDs[index] = mRelayIDs[i];
-            newRelayLastPingTime[index] = mLastRelayPingTime[i];
-            newRelayAddresses[index] = mRelayAddresses[i];
-            newRelayPingHistory[index] = mRelayPingHistory[i];
-
-            const auto slot = mRelayPingHistory[i] - mPingHistoryArray.data();  // TODO make this more readable
+            const auto slot = relay.History - mPingHistoryBuff.data();
             assert(slot >= 0);
             assert(slot < MAX_RELAYS);
-            historySlotToken[slot] = true;
-            index++;
+            historySlotTaken[slot] = true;
           }
         }
       }
@@ -119,37 +211,37 @@ namespace core
 
       for (unsigned int i = 0; i < numRelays; i++) {
         if (!found[i]) {
-          newRelayIDs[index] = relayIDs[i];
-          newRelayLastPingTime[index] = INVALID_PING_TIME;
-          newRelayAddresses[index] = relayAddrs[i];
-          newRelayPingHistory[index] = nullptr;
+          auto& newRelay = newRelays[index];
+          newRelay.ID = incoming[i].ID;
+          newRelay.Addr = incoming[i].Addr;
+
+          // find a history slot for this relay
+          // helps when updating and copying in the above loop
+          // instead of copying the while ping history array
+          // it just copies the pointer
           for (int j = 0; j < MAX_RELAYS; j++) {
-            if (!historySlotToken[j]) {
-              newRelayPingHistory[index] = &mPingHistoryArray[j];
-              newRelayPingHistory[index]->clear();
-              historySlotToken[j] = true;
+            if (!historySlotTaken[j]) {
+              newRelay.History = &mPingHistoryBuff[j];
+              newRelay.History->clear();
+              historySlotTaken[j] = true;
               break;
             }
           }
-          assert(newRelayPingHistory[index] != nullptr);
+          assert(newRelay.History != nullptr);
           index++;
         }
       }
 
       // commit the updated relay array
       mNumRelays = index;
-
-      std::copy(newRelayIDs.begin(), newRelayIDs.begin() + index, mRelayIDs.begin());
-      std::copy(newRelayLastPingTime.begin(), newRelayLastPingTime.begin() + index, mLastRelayPingTime.begin());
-      std::copy(newRelayAddresses.begin(), newRelayAddresses.begin() + index, mRelayAddresses.begin());
-      std::copy(newRelayPingHistory.begin(), newRelayPingHistory.begin() + index, mRelayPingHistory.begin());
+      std::copy(newRelays.begin(), newRelays.begin() + index, mRelays.begin());
 
       // make sure all the ping times are evenly distributed to avoid clusters of ping packets
 
       auto currentTime = mClock.elapsed<util::Second>();
 
       for (unsigned int i = 0; i < mNumRelays; i++) {
-        mLastRelayPingTime[i] = currentTime - RELAY_PING_TIME + i * RELAY_PING_TIME / mNumRelays;
+        mRelays[i].LastPingTime = currentTime - RELAY_PING_TIME + i * RELAY_PING_TIME / mNumRelays;
       }
 
 #ifndef NDEBUG
@@ -161,7 +253,9 @@ namespace core
       unsigned int numFound = 0;
       for (unsigned int i = 0; i < numRelays; i++) {
         for (unsigned int j = 0; j < mNumRelays; j++) {
-          if (relayIDs[i] == mRelayIDs[j] && relayAddrs[i] == mRelayAddresses[j]) {
+          const auto& incomingRelay = incoming[i];
+          const auto& relay = mRelays[j];
+          if (incomingRelay.ID == relay.ID && incomingRelay.Addr == relay.Addr) {
             numFound++;
             break;
           }
@@ -175,7 +269,106 @@ namespace core
           if (i == j) {
             continue;
           }
-          assert(mRelayPingHistory[i] != mRelayPingHistory[j]);
+          assert(mRelays[i].History != mRelays[j].History);
+        }
+      }
+#endif
+    }
+  }
+
+  template <>
+  [[gnu::always_inline]] inline void RelayManager<V3Relay>::update(
+   size_t numRelays, const std::array<V3Relay, MAX_RELAYS>& incoming)
+  {
+    assert(numRelays <= MAX_RELAYS);
+
+    // first copy all current relays that are also in the update lists
+
+    std::array<bool, MAX_RELAYS> historySlotTaken{};
+    std::array<bool, MAX_RELAYS> found{};
+    std::array<V3Relay, MAX_RELAYS> newRelays{};
+
+    unsigned int index = 0;
+
+    // locked mutex scope
+    {
+      std::lock_guard<std::mutex> lk(mLock);
+      for (unsigned int i = 0; i < mNumRelays; i++) {
+        const auto& relay = mRelays[i];
+        for (unsigned int j = 0; j < numRelays; j++) {
+          if (relay.ID == incoming[j].ID) {
+            found[j] = true;
+            newRelays[index] = relay;
+            newRelays[index].PingToken = incoming[j].PingToken;
+            index++;
+
+            const auto slot = relay.History - mPingHistoryBuff.data();
+            assert(slot >= 0);
+            assert(slot < MAX_RELAYS);
+            historySlotTaken[slot] = true;
+          }
+        }
+      }
+
+      // copy all near relays not found in the current relay list
+
+      for (unsigned int i = 0; i < numRelays; i++) {
+        if (!found[i]) {
+          auto& newRelay = newRelays[index];
+          newRelay.ID = incoming[i].ID;
+          newRelay.Addr = incoming[i].Addr;
+          newRelay.PingToken = incoming[i].PingToken;
+          for (int j = 0; j < MAX_RELAYS; j++) {
+            if (!historySlotTaken[j]) {
+              newRelay.History = &mPingHistoryBuff[j];
+              newRelay.History->clear();
+              historySlotTaken[j] = true;
+              break;
+            }
+          }
+          assert(newRelay.History != nullptr);
+          index++;
+        }
+      }
+
+      // commit the updated relay array
+      mNumRelays = index;
+      std::copy(newRelays.begin(), newRelays.begin() + index, mRelays.begin());
+
+      // make sure all the ping times are evenly distributed to avoid clusters of ping packets
+
+      auto currentTime = mClock.elapsed<util::Second>();
+
+      for (unsigned int i = 0; i < mNumRelays; i++) {
+        mRelays[i].LastPingTime = currentTime - RELAY_PING_TIME + i * RELAY_PING_TIME / mNumRelays;
+      }
+
+#ifndef NDEBUG
+
+      // make sure everything is correct
+
+      assert(mNumRelays == index);
+
+      unsigned int numFound = 0;
+      for (unsigned int i = 0; i < numRelays; i++) {
+        for (unsigned int j = 0; j < mNumRelays; j++) {
+          const auto& incomingRelay = incoming[i];
+          const auto& relay = mRelays[j];
+          if (incomingRelay.ID == relay.ID && incomingRelay.Addr == relay.Addr && incomingRelay.PingToken == relay.PingToken) {
+            numFound++;
+            break;
+          }
+        }
+      }
+
+      assert(numFound == mNumRelays);
+
+      for (unsigned int i = 0; i < numRelays; i++) {
+        for (unsigned int j = 0; j < numRelays; j++) {
+          if (i == j) {
+            continue;
+          }
+          assert(mRelays[i].History != mRelays[j].History);
         }
       }
 #endif

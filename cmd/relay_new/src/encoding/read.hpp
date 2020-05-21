@@ -9,53 +9,32 @@
 
 namespace encoding
 {
-  // Prototypes
+  template <typename T>
+  uint8_t ReadUint8(const T& buff, size_t& index);
 
-  uint8_t read_uint8(const uint8_t** p);
+  template <typename T>
+  uint16_t ReadUint16(const T& buff, size_t& index);
 
-  uint16_t read_uint16(const uint8_t** p);
+  template <typename T>
+  uint32_t ReadUint32(const T& buff, size_t& index);
 
-  uint32_t read_uint32(const uint8_t** p);
+  template <typename T>
+  uint64_t ReadUint64(const T& buff, size_t& index);
 
-  uint64_t read_uint64(const uint8_t** p);
+  template <typename T, typename U>
+  void ReadBytes(const T& buff, size_t& index, U& storage, size_t len);
 
-  float read_float32(const uint8_t** p);
+  template <typename T>
+  void ReadAddress(const T& buff, size_t& index, net::Address& addr);
 
-  double read_float64(const uint8_t** p);
-
-  void read_bytes(const uint8_t** p, uint8_t* byte_array, int num_bytes);
-
-  void read_string(const uint8_t** p, char* string_data, uint32_t max_length);
-
-  void read_address(const uint8_t** buffer, legacy::relay_address_t* address);
-
-  template <size_t BuffSize>
-  uint8_t ReadUint8(const std::array<uint8_t, BuffSize>& buff, size_t& index);
-
-  template <size_t BuffSize>
-  uint16_t ReadUint16(const std::array<uint8_t, BuffSize>& buff, size_t& index);
-
-  template <size_t BuffSize>
-  uint32_t ReadUint32(const std::array<uint8_t, BuffSize>& buff, size_t& index);
-
-  template <size_t BuffSize>
-  uint64_t ReadUint64(const std::array<uint8_t, BuffSize>& buff, size_t& index);
-
-  template <size_t BuffSize, size_t StorageBufferSize>
-  void ReadBytes(
-   const std::array<uint8_t, BuffSize>& buff, size_t& index, std::array<uint8_t, StorageBufferSize>& storage, size_t len);
-
-  template <size_t BuffSize>
-  void ReadAddress(const std::array<uint8_t, BuffSize>& buff, size_t& index, net::Address& addr);
-
-  template <size_t BuffSize>
-  [[gnu::always_inline]] inline uint8_t ReadUint8(const std::array<uint8_t, BuffSize>& buff, size_t& index)
+  template <typename T>
+  [[gnu::always_inline]] inline uint8_t ReadUint8(const T& buff, size_t& index)
   {
     return buff[index++];
   }
 
-  template <size_t BuffSize>
-  [[gnu::always_inline]] inline uint16_t ReadUint16(const std::array<uint8_t, BuffSize>& buff, size_t& index)
+  template <typename T>
+  [[gnu::always_inline]] inline uint16_t ReadUint16(const T& buff, size_t& index)
   {
     GCC_NO_OPT_OUT;
     uint16_t retval;
@@ -64,8 +43,8 @@ namespace encoding
     return retval;
   }
 
-  template <size_t BuffSize>
-  [[gnu::always_inline]] inline uint32_t ReadUint32(const std::array<uint8_t, BuffSize>& buff, size_t& index)
+  template <typename T>
+  [[gnu::always_inline]] inline uint32_t ReadUint32(const T& buff, size_t& index)
   {
     uint32_t retval;
     retval = buff[index++];
@@ -75,8 +54,8 @@ namespace encoding
     return retval;
   }
 
-  template <size_t BuffSize>
-  [[gnu::always_inline]] inline uint64_t ReadUint64(const std::array<uint8_t, BuffSize>& buff, size_t& index)
+  template <typename T>
+  [[gnu::always_inline]] inline uint64_t ReadUint64(const T& buff, size_t& index)
   {
     uint64_t retval;
     retval = buff[index++];
@@ -90,18 +69,17 @@ namespace encoding
     return retval;
   }
 
-  template <size_t BuffSize, size_t StorageBufferSize>
-  [[gnu::always_inline]] inline void ReadBytes(
-   const std::array<uint8_t, BuffSize>& buff, size_t& index, std::array<uint8_t, StorageBufferSize>& storage, size_t len)
+  template <typename T, typename U>
+  [[gnu::always_inline]] inline void ReadBytes(const T& buff, size_t& index, U& storage, size_t len)
   {
-    assert(len <= StorageBufferSize);
-    assert(index + len <= BuffSize);
+    assert(len <= storage.size());
+    assert(index + len <= buff.size());
     std::copy(buff.begin() + index, buff.begin() + index + len, storage.begin());
     index += len;
   }
 
-  template <size_t BuffSize>
-  [[gnu::always_inline]] inline void ReadAddress(const std::array<uint8_t, BuffSize>& buff, size_t& index, net::Address& addr)
+  template <typename T>
+  [[gnu::always_inline]] inline void ReadAddress(const T& buff, size_t& index, net::Address& addr)
   {
     GCC_NO_OPT_OUT;
 #ifndef NDEBUG
@@ -127,4 +105,26 @@ namespace encoding
     assert(index - start == net::Address::ByteSize);
   }
 }  // namespace encoding
+
+namespace legacy
+{
+  uint8_t read_uint8(const uint8_t** p);
+
+  uint16_t read_uint16(const uint8_t** p);
+
+  uint32_t read_uint32(const uint8_t** p);
+
+  uint64_t read_uint64(const uint8_t** p);
+
+  float read_float32(const uint8_t** p);
+
+  double read_float64(const uint8_t** p);
+
+  void read_bytes(const uint8_t** p, uint8_t* byte_array, int num_bytes);
+
+  void read_string(const uint8_t** p, char* string_data, uint32_t max_length);
+
+  void read_address(const uint8_t** buffer, legacy::relay_address_t* address);
+
+}  // namespace legacy
 #endif

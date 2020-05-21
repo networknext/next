@@ -1,32 +1,26 @@
 #include "includes.h"
-#include "packet_processor.hpp"
 
+#include "core/continue_token.hpp"
+#include "core/route_token.hpp"
 #include "encoding/read.hpp"
 #include "encoding/write.hpp"
-
-#include "relay/relay_platform.hpp"
-#include "relay/relay.hpp"
-
-#include "core/route_token.hpp"
-#include "core/continue_token.hpp"
-
-#include "handlers/relay_ping_handler.hpp"
-#include "handlers/relay_pong_handler.hpp"
-#include "handlers/route_request_handler.hpp"
-#include "handlers/route_response_handler.hpp"
+#include "handlers/client_to_server_handler.hpp"
 #include "handlers/continue_request_handler.hpp"
 #include "handlers/continue_response_handler.hpp"
-#include "handlers/client_to_server_handler.hpp"
+#include "handlers/near_ping_handler.hpp"
+#include "handlers/new_relay_ping_handler.hpp"
+#include "handlers/new_relay_pong_handler.hpp"
+#include "handlers/old_relay_ping_handler.hpp"
+#include "handlers/old_relay_pong_handler.hpp"
+#include "handlers/route_request_handler.hpp"
+#include "handlers/route_response_handler.hpp"
 #include "handlers/server_to_client_handler.hpp"
 #include "handlers/session_ping_handler.hpp"
 #include "handlers/session_pong_handler.hpp"
-#include "handlers/near_ping_handler.hpp"
-
-namespace
-{
-  const uint8_t IPv4UDPHeaderSize = 28;
-  const uint8_t IPv6UDPHeaderSize = 48;
-}  // namespace
+#include "packet_processor.hpp"
+#include "packets/types.hpp"
+#include "relay/relay.hpp"
+#include "relay/relay_platform.hpp"
 
 namespace core
 {
@@ -35,37 +29,46 @@ namespace core
    os::Socket& socket,
    const util::Clock& relayClock,
    const crypto::Keychain& keychain,
-   core::SessionMap& sessions,
-   core::RelayManager& relayManager,
+   SessionMap& sessions,
+   RelayManager<Relay>& relayManager,
+   RelayManager<V3Relay>& v3RelayManager,
    const volatile bool& handle,
    util::ThroughputRecorder& logger,
-   const net::Address& receivingAddr)
+   const net::Address& receivingAddr,
+   util::Sender<GenericPacket<>>& sender,
+   legacy::v3::TrafficStats& stats,
+   const uint64_t oldRelayID)
    : mShouldReceive(shouldReceive),
      mSocket(socket),
      mRelayClock(relayClock),
      mKeychain(keychain),
      mSessionMap(sessions),
      mRelayManager(relayManager),
+     mV3RelayManager(v3RelayManager),
      mShouldProcess(handle),
      mRecorder(logger),
-     mRecvAddr(receivingAddr)
+     mRecvAddr(receivingAddr),
+     mChannel(sender),
+     mStats(stats),
+     mOldRelayID(oldRelayID)
   {}
 
-  void PacketProcessor::process(std::condition_variable& var, std::atomic<bool>& readyToReceive)
+  void PacketProcessor::process(std::atomic<bool>& readyToReceive)
   {
     static std::atomic<int> listenCounter;
     int listenIndx = listenCounter.fetch_add(1);
     (void)listenIndx;
 
-    GenericPacketBuffer<MaxPacketsToReceive> inputBuffer;
-    GenericPacketBuffer<MaxPacketsToReceive> outputBuffer;
-
     LogDebug("listening for packets {", listenIndx, '}');
 
     readyToReceive = true;
-    var.notify_one();
+
+    GenericPacketBuffer<MaxPacketsToReceive> outputBuffer;
 
     while (mShouldReceive) {
+#ifdef RELAY_MULTISEND
+      GenericPacketBuffer<MaxPacketsToReceive> inputBuffer;
+
       if (!mSocket.multirecv(inputBuffer)) {
         Log("failed to recv packets");
       }
@@ -73,127 +76,207 @@ namespace core
       // LogDebug("got packets on {", listenIndx, "} / count: ", inputBuffer.Count);
 
       for (int i = 0; i < inputBuffer.Count; i++) {
-        getAddrFromMsgHdr(inputBuffer.Packets[i].Addr, inputBuffer.Headers[i].msg_hdr);
-        processPacket(inputBuffer.Packets[i], inputBuffer.Headers[i], outputBuffer);
+        auto& pkt = inputBuffer.Packets[i];
+        auto& header = inputBuffer.Headers[i];
+        pkt.Len = header.msg_len;
+        getAddrFromMsgHdr(pkt.Addr, header.msg_hdr);
+        processPacket(pkt, outputBuffer);
       }
 
       if (outputBuffer.Count > 0) {
         mSocket.multisend(outputBuffer);
         outputBuffer.Count = 0;
       }
+#else
+      core::GenericPacket<> pkt;
+
+      if (!mSocket.recv(pkt)) {
+        Log("failed to receive packet");
+        continue;
+      }
+
+      processPacket(pkt, outputBuffer);
+#endif
     }
   }
 
-  inline void PacketProcessor::processPacket(
-   GenericPacket<>& packet, mmsghdr& header, GenericPacketBuffer<MaxPacketsToSend>& outputBuff)
+  /*
+   * Switch based on packet type.
+   *
+   * If the relay is shutting down only reject ping packets
+   *
+   * This is so that other relays stop receiving proper stats and this one
+   * is slowly removed from route decisions
+   *
+   * However to not disrupt player experience the remaining packets are still
+   * handled until the global killswitch is flagged
+   */
+  inline void PacketProcessor::processPacket(GenericPacket<>& packet, GenericPacketBuffer<MaxPacketsToSend>& outputBuff)
   {
-    packet.Len = header.msg_len;
-
     size_t headerBytes = 0;
 
     if (packet.Addr.Type == net::AddressType::IPv4) {
-      headerBytes = IPv4UDPHeaderSize;
+      headerBytes = net::IPv4UDPHeaderSize;
     } else if (packet.Addr.Type == net::AddressType::IPv6) {
-      headerBytes = IPv6UDPHeaderSize;
+      headerBytes = net::IPv6UDPHeaderSize;
     }
 
-    /*
-     * Switch based on packet type.
-     *
-     * If the relay is shutting down only reject ping packets
-     *
-     * This is so that other relays stop receiving proper stats and this one
-     * is slowly removed from route decisions
-     *
-     * However to not disrupt player experience the remaining packets are still
-     * handled until the global killswitch is flagged
-     */
-    switch (packet.Buffer[0]) {
-      case RELAY_PING_PACKET: {
+    size_t wholePacketSize = packet.Len + headerBytes;
+
+    auto type = static_cast<packets::Type>(packet.Buffer[0]);
+    LogDebug("incoming packet, type = ", type);
+    switch (type) {
+      case packets::Type::NewRelayPing: {
         if (!mShouldProcess) {
           Log("relay in process of shutting down, rejecting relay ping packet");
           return;
         }
 
-        if (packet.Len == RELAY_PING_PACKET_BYTES) {
-          mRecorder.addToReceived(packet.Len + headerBytes);
+        if (packet.Len == packets::NewRelayPingPacket::ByteSize) {
+          mRecorder.addToReceived(wholePacketSize);
+          mStats.BytesPerSecMeasurementRx += wholePacketSize;
 
-          handlers::RelayPingHandler handler(packet, packet.Len, mSocket, mRecvAddr, mRecorder);
+          handlers::NewRelayPingHandler handler(packet, mRecvAddr, mRecorder, mStats);
 
-          handler.handle();
+          handler.handle(outputBuff, mSocket);
+        } else {
+          LogDebug("got invalid new ping packet from ", packet.Addr);
+          mRecorder.addToUnknown(wholePacketSize);
+          mStats.BytesPerSecInvalidRx += wholePacketSize;
         }
       } break;
-      case RELAY_PONG_PACKET: {
-        if (packet.Len == RELAY_PING_PACKET_BYTES) {
-          mRecorder.addToReceived(packet.Len + headerBytes);
+      case packets::Type::NewRelayPong: {
+        if (packet.Len == packets::NewRelayPingPacket::ByteSize) {
+          mRecorder.addToReceived(wholePacketSize);
+          mStats.BytesPerSecMeasurementRx += wholePacketSize;
 
-          handlers::RelayPongHandler handler(packet, packet.Len, mRelayManager);
+          handlers::NewRelayPongHandler handler(packet, mRelayManager);
 
           handler.handle();
+        } else {
+          LogDebug("got invalid new pong packet from ", packet.Addr);
+          mRecorder.addToUnknown(wholePacketSize);
+          mStats.BytesPerSecInvalidRx += wholePacketSize;
         }
       } break;
-      case RELAY_ROUTE_REQUEST_PACKET: {
-        mRecorder.addToReceived(packet.Len + headerBytes);
+      case packets::Type::OldRelayPing: {
+        if (packet.Len == packets::OldRelayPingPacket::ByteSize) {
+          mRecorder.addToReceived(wholePacketSize);
+          mStats.BytesPerSecMeasurementRx += wholePacketSize;
 
-        handlers::RouteRequestHandler handler(mRelayClock, packet, packet.Len, packet.Addr, mKeychain, mSessionMap, mRecorder);
+          handlers::OldRelayPingHandler handler(packet, mRecorder, mStats, mOldRelayID);
 
-        handler.handle(outputBuff);
+          handler.handle(outputBuff, mSocket);
+        } else {
+          LogDebug("got invalid old ping packet from ", packet.Addr);
+          mRecorder.addToUnknown(wholePacketSize);
+          mStats.BytesPerSecInvalidRx += wholePacketSize;
+        }
       } break;
-      case RELAY_ROUTE_RESPONSE_PACKET: {
-        mRecorder.addToReceived(packet.Len + headerBytes);
+      case packets::Type::OldRelayPong: {
+        if (packet.Len == packets::OldRelayPongPacket::ByteSize) {
+          mRecorder.addToReceived(wholePacketSize);
+          mStats.BytesPerSecMeasurementRx += wholePacketSize;
 
-        handlers::RouteResponseHandler handler(packet, packet.Len, mSessionMap, mRecorder);
+          handlers::OldRelayPongHandler handler(packet, mV3RelayManager);
 
-        handler.handle(outputBuff);
+          handler.handle();
+        } else {
+          LogDebug("got invalid old pong packet from ", packet.Addr);
+          mRecorder.addToUnknown(wholePacketSize);
+          mStats.BytesPerSecInvalidRx += wholePacketSize;
+        }
       } break;
-      case RELAY_CONTINUE_REQUEST_PACKET: {
-        mRecorder.addToReceived(packet.Len + headerBytes);
+      case packets::Type::RouteRequest: {
+        mRecorder.addToReceived(wholePacketSize);
+        mStats.BytesPerSecManagementRx += wholePacketSize;
 
-        handlers::ContinueRequestHandler handler(mRelayClock, packet, packet.Len, mSessionMap, mKeychain, mRecorder);
+        handlers::RouteRequestHandler handler(mRelayClock, packet, packet.Addr, mKeychain, mSessionMap, mRecorder, mStats);
 
-        handler.handle(outputBuff);
+        handler.handle(outputBuff, mSocket);
       } break;
-      case RELAY_CONTINUE_RESPONSE_PACKET: {
-        mRecorder.addToReceived(packet.Len + headerBytes);
+      case packets::Type::RouteResponse: {
+        mRecorder.addToReceived(wholePacketSize);
+        mStats.BytesPerSecManagementRx += wholePacketSize;
 
-        handlers::ContinueResponseHandler handler(packet, packet.Len, mSessionMap, mRecorder);
+        handlers::RouteResponseHandler handler(packet, mSessionMap, mRecorder, mStats);
 
-        handler.handle(outputBuff);
+        handler.handle(outputBuff, mSocket);
       } break;
-      case RELAY_CLIENT_TO_SERVER_PACKET: {
-        mRecorder.addToReceived(packet.Len + headerBytes);
+      case packets::Type::ContinueRequest: {
+        mRecorder.addToReceived(wholePacketSize);
+        mStats.BytesPerSecManagementRx += wholePacketSize;
 
-        handlers::ClientToServerHandler handler(packet, packet.Len, mSessionMap, mRecorder);
+        handlers::ContinueRequestHandler handler(mRelayClock, packet, mSessionMap, mKeychain, mRecorder, mStats);
 
-        handler.handle(outputBuff);
+        handler.handle(outputBuff, mSocket);
       } break;
-      case RELAY_SERVER_TO_CLIENT_PACKET: {
-        mRecorder.addToReceived(packet.Len + headerBytes);
+      case packets::Type::ContinueResponse: {
+        mRecorder.addToReceived(wholePacketSize);
+        mStats.BytesPerSecManagementRx += wholePacketSize;
 
-        handlers::ServerToClientHandler handler(packet, packet.Len, mSessionMap, mRecorder);
+        handlers::ContinueResponseHandler handler(packet, mSessionMap, mRecorder, mStats);
 
-        handler.handle(outputBuff);
+        handler.handle(outputBuff, mSocket);
       } break;
-      case RELAY_SESSION_PING_PACKET: {
-        mRecorder.addToReceived(packet.Len + headerBytes);
+      case packets::Type::ClientToServer: {
+        mRecorder.addToReceived(wholePacketSize);
+        mStats.BytesPerSecPaidRx += wholePacketSize;
 
-        handlers::SessionPingHandler handler(packet, packet.Len, mSessionMap, mSocket, mRecorder);
+        handlers::ClientToServerHandler handler(packet, mSessionMap, mRecorder, mStats);
 
-        handler.handle();
+        handler.handle(outputBuff, mSocket);
       } break;
-      case RELAY_SESSION_PONG_PACKET: {
-        mRecorder.addToReceived(packet.Len + headerBytes);
+      case packets::Type::ServerToClient: {
+        mRecorder.addToReceived(wholePacketSize);
+        mStats.BytesPerSecPaidRx += wholePacketSize;
 
-        handlers::SessionPongHandler handler(packet, packet.Len, mSessionMap, mSocket, mRecorder);
+        handlers::ServerToClientHandler handler(packet, mSessionMap, mRecorder, mStats);
 
-        handler.handle();
+        handler.handle(outputBuff, mSocket);
       } break;
-      case RELAY_NEAR_PING_PACKET: {
-        mRecorder.addToReceived(packet.Len + headerBytes);
+      case packets::Type::SessionPing: {
+        mRecorder.addToReceived(wholePacketSize);
+        mStats.BytesPerSecMeasurementRx += wholePacketSize;
 
-        handlers::NearPingHandler handler(packet, packet.Len, packet.Addr, mSocket, mRecorder);
+        handlers::SessionPingHandler handler(packet, mSessionMap, mRecorder, mStats);
 
-        handler.handle();
+        handler.handle(outputBuff, mSocket);
+      } break;
+      case packets::Type::SessionPong: {
+        mRecorder.addToReceived(wholePacketSize);
+        mStats.BytesPerSecMeasurementRx += wholePacketSize;
+
+        handlers::SessionPongHandler handler(packet, mSessionMap, mRecorder, mStats);
+
+        handler.handle(outputBuff, mSocket);
+      } break;
+      case packets::Type::NearPing: {
+        mRecorder.addToReceived(wholePacketSize);
+        mStats.BytesPerSecMeasurementRx += wholePacketSize;
+
+        handlers::NearPingHandler handler(packet, packet.Addr, mRecorder, mStats);
+
+        handler.handle(outputBuff, mSocket);
+      } break;
+      // Next three all do the same thing
+      case packets::Type::V3BackendInitResponse: {
+        mRecorder.addToReceived(wholePacketSize);
+        mStats.BytesPerSecManagementRx += wholePacketSize;
+        mChannel.send(packet);
+        LogDebug("got init response, current number of items in channel ", mChannel.size());
+      } break;
+      case packets::Type::V3BackendConfigResponse: {
+        mRecorder.addToReceived(wholePacketSize);
+        mStats.BytesPerSecManagementRx += wholePacketSize;
+        mChannel.send(packet);
+        LogDebug("got config response, current number of items in channel ", mChannel.size());
+      } break;
+      case packets::Type::V3BackendUpdateResponse: {
+        mRecorder.addToReceived(wholePacketSize);
+        mStats.BytesPerSecManagementRx += wholePacketSize;
+        mChannel.send(packet);
+        LogDebug("got relay response, current number of items in channel ", mChannel.size());
       } break;
       default: {
         LogDebug("received unknown packet type: ", std::hex, (int)packet.Buffer[0], std::dec);

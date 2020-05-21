@@ -21,14 +21,15 @@ namespace
    })";
 
   core::Backend<testing::StubbedCurlWrapper> makeBackend(
-   core::RouterInfo& info, core::RelayManager& manager, core::SessionMap& sessions)
+   core::RouterInfo& info, core::RelayManager<core::Relay>& manager, core::SessionMap& sessions)
   {
-    crypto::Keychain keychain;
+    static crypto::Keychain keychain;
+    static legacy::v3::TrafficStats ts;
 
     check(keychain.parse(Base64RelayPublicKey, Base64RelayPrivateKey, Base64RouterPublicKey));
 
     return core::Backend<testing::StubbedCurlWrapper>(
-     BackendHostname, RelayAddr, keychain, info, manager, Base64RelayPublicKey, sessions);
+     BackendHostname, RelayAddr, keychain, info, manager, Base64RelayPublicKey, sessions, ts);
   }
 }  // namespace
 
@@ -36,7 +37,7 @@ Test(core_backend_init_valid)
 {
   core::RouterInfo routerInfo;
   util::Clock clock;
-  core::RelayManager manager(clock);
+  core::RelayManager<core::Relay> manager(clock);
   core::SessionMap sessions;
   auto backend = std::move(makeBackend(routerInfo, manager, sessions));
 
@@ -74,7 +75,7 @@ Test(core_Backend_updateCycle_shutdown_60s)
 
   core::RouterInfo info;
   util::Clock backendClock;
-  core::RelayManager manager(backendClock);
+  core::RelayManager<core::Relay> manager(backendClock);
   core::SessionMap sessions;
   auto backend = std::move(makeBackend(info, manager, sessions));
   volatile bool handle = true;
@@ -107,7 +108,7 @@ Test(core_Backend_updateCycle_ack_and_30s)
 
   core::RouterInfo info;
   util::Clock backendClock;
-  core::RelayManager manager(backendClock);
+  core::RelayManager<core::Relay> manager(backendClock);
   core::SessionMap sessions;
   auto backend = std::move(makeBackend(info, manager, sessions));
   volatile bool handle = true;
@@ -140,7 +141,7 @@ Test(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
 
   core::RouterInfo info;
   util::Clock backendClock;
-  core::RelayManager manager(backendClock);
+  core::RelayManager<core::Relay> manager(backendClock);
   core::SessionMap sessions;
   auto backend = std::move(makeBackend(info, manager, sessions));
   volatile bool handle = true;
@@ -176,7 +177,7 @@ Test(core_Backend_updateCycle_update_fails_for_max_number_of_attempts)
 
   core::RouterInfo info;
   util::Clock backendClock;
-  core::RelayManager manager(backendClock);
+  core::RelayManager<core::Relay> manager(backendClock);
   core::SessionMap sessions;
   auto backend = std::move(makeBackend(info, manager, sessions));
   volatile bool handle = true;
@@ -207,7 +208,7 @@ Test(core_Backend_updateCycle_no_clean_shutdown)
 
   core::RouterInfo info;
   util::Clock backendClock;
-  core::RelayManager manager(backendClock);
+  core::RelayManager<core::Relay> manager(backendClock);
   core::SessionMap sessions;
   auto backend = std::move(makeBackend(info, manager, sessions));
   volatile bool handle = true;
@@ -233,7 +234,7 @@ Test(core_Backend_update_valid)
 {
   core::RouterInfo routerInfo;
   util::Clock clock;
-  core::RelayManager manager(clock);
+  core::RelayManager<core::Relay> manager(clock);
   core::SessionMap sessions;
   auto backend = std::move(makeBackend(routerInfo, manager, sessions));
   util::ThroughputRecorder recorder;
@@ -243,14 +244,13 @@ Test(core_Backend_update_valid)
   // seed relay manager
   {
     const size_t numRelays = 1;
-    std::array<uint64_t, MAX_RELAYS> ids;
-    std::array<net::Address, MAX_RELAYS> addrs;
+    std::array<core::Relay, MAX_RELAYS> incoming;
     std::array<core::PingData, MAX_RELAYS> pingData;
-    ids[0] = 987654321;
+    incoming[0].ID = 987654321;
     net::Address addr;
     check(addr.parse("127.0.0.1:12345"));
-    addrs[0] = addr;
-    manager.update(numRelays, ids, addrs);
+    incoming[0].Addr = addr;
+    manager.update(numRelays, incoming);
     check(manager.getPingData(pingData) == 1);
     manager.processPong(pingData[0].Addr, pingData[0].Seq);
   }
@@ -292,7 +292,6 @@ Test(core_Backend_update_valid)
   auto pingStats = doc.get<util::JSON>("PingStats");
 
   check(pingStats.isArray());
-
   auto& value = pingStats[0];
 
   check(value.HasMember("RelayId"));
@@ -301,26 +300,18 @@ Test(core_Backend_update_valid)
   check(value.HasMember("PacketLoss"));
 
   auto& relayID = value["RelayId"];
-  // auto& rtt = value["RTT"];
-  // auto& jitter = value["Jitter"];
-  // auto& packetLoss = value["PacketLoss"];
 
   check(relayID.Get<uint64_t>() == 987654321);
 
-  // not set up right, the actual tests pass for this
-  // so not currently concerned with it passing here,
-  // need to learn how the logic actually works to
-  // set this up right
-
-  // check(rtt.Get<float>() != 10000.0f);
-  // check(jitter.Get<float>() == 0.0f);
-  // check(packetLoss.Get<float>() == 0.0f);
+  std::this_thread::sleep_for(1s);  // needed for getPingData()
 
   std::array<core::PingData, MAX_RELAYS> pingData;
   std::this_thread::sleep_for(1s);  // needed so that getPingData() will always return the right number
   auto count = manager.getPingData(pingData);
 
-  check(count == 2);
+  check(count == 2).onFail([&] {
+    std::cout << "count is " << count << '\n';
+  });
   check(pingData[0].Addr.toString() == "127.0.0.1:54321");
   check(pingData[1].Addr.toString() == "127.0.0.1:13524");
 }
@@ -329,7 +320,7 @@ Test(core_Backend_update_shutting_down_true)
 {
   core::RouterInfo routerInfo;
   util::Clock clock;
-  core::RelayManager manager(clock);
+  core::RelayManager<core::Relay> manager(clock);
   core::SessionMap sessions;
   auto backend = std::move(makeBackend(routerInfo, manager, sessions));
   util::ThroughputRecorder recorder;

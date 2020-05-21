@@ -1,16 +1,17 @@
 #include "includes.h"
 #include "testing/test.hpp"
 
+#include "core/packets/new_relay_ping_packet.hpp"
+#include "core/packets/types.hpp"
+#include "crypto/bytes.hpp"
 #include "encoding/write.hpp"
-
-#include "core/packets/relay_ping_packet.hpp"
 
 Test(core_packets_RelayPingPacket_general)
 {
-  uint8_t type = RELAY_PING_PACKET;
-  auto seqnum = testing::Random<uint64_t>();
+  uint8_t type = static_cast<uint8_t>(core::packets::Type::NewRelayPing);
+  auto seqnum = crypto::Random<uint64_t>();
   net::Address addr = testing::RandomAddress();
-  core::GenericPacket packet;
+  core::GenericPacket<> packet;
 
   // get test data into buffer
   size_t index = 0;
@@ -18,12 +19,11 @@ Test(core_packets_RelayPingPacket_general)
   encoding::WriteUint64(packet.Buffer, index, seqnum);
   encoding::WriteAddress(packet.Buffer, index, addr);
 
-  const int size = RELAY_PING_PACKET_BYTES;
-  core::packets::RelayPingPacket pingPacket(packet, size);
+  packet.Len = core::packets::NewRelayPingPacket::ByteSize;
+  core::packets::NewRelayPingPacket pingPacket(packet);
 
   // make sure packet is passed values correctly
-  check(pingPacket.Internal.Buffer[0] == RELAY_PING_PACKET);
-  check(pingPacket.Size == size);
+  check(pingPacket.Internal.Buffer[0] == static_cast<uint8_t>(core::packets::Type::NewRelayPing));
 
   // ensure getters work
   check(pingPacket.getSeqNum() == seqnum);
@@ -36,7 +36,7 @@ Test(core_packets_RelayPingPacket_general)
   pingPacket.writeFromAddr(addr);
 
   // since the first packet has its addr filled, create another for reading purposes
-  core::packets::RelayPingPacket followup(packet, size);
+  core::packets::NewRelayPingPacket followup(packet);
 
   // ensure the new addr was written to the buffer
   check(followup.getFromAddr() == addr);

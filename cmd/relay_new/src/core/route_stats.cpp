@@ -3,17 +3,17 @@
 
 namespace core
 {
-  RouteStats::RouteStats(const core::PingHistory& ph, double start, double end, double safety): RTT(0), Jitter(0), PacketLoss(0)
+  RouteStats::RouteStats(const core::PingHistory& ph, double start, double end, double safety): mRTT(0), mJitter(-1.0), mPacketLoss(-1.0)
   {
     // Packet loss calc
     // and RTT calc
 
-    auto numPingsSent = 0u;
-    auto numPongsReceived = 0u;
+    size_t numPingsSent = 0u;
+    size_t numPongsReceived = 0u;
 
-    auto meanRTT = 0.0;
-    auto numPings = 0;
-    auto numPongs = 0;
+    double meanRTT = 0.0;
+    int numPings = 0;
+    int numPongs = 0;
 
     for (const auto& entry : ph.mEntries) {
       if (entry.TimePingSent >= start) {
@@ -40,10 +40,10 @@ namespace core
     assert(meanRTT >= 0.0);
 
     if (numPingsSent > 0) {
-      const_cast<float&>(PacketLoss) = (float)(100.0 * (1.0 - (double(numPongsReceived) / double(numPingsSent))));
+      mPacketLoss = static_cast<float>(100.0 * (1.0 - (double(numPongsReceived) / double(numPingsSent))));
     }
 
-    const_cast<float&>(RTT) = static_cast<float>(meanRTT);
+    mRTT = static_cast<float>(meanRTT);
 
     // Jitter calc
 
@@ -65,7 +65,7 @@ namespace core
     }
 
     if (numJitterSamples > 0) {
-      const_cast<float&>(Jitter) = 3.0f * static_cast<float>(std::sqrt(stdDevRTT / numJitterSamples));
+      mJitter = 3.0f * static_cast<float>(std::sqrt(stdDevRTT / numJitterSamples));
     }
   }
 }  // namespace core
@@ -89,7 +89,7 @@ namespace legacy
     int num_pongs_received = 0;
 
     for (int i = 0; i < RELAY_PING_HISTORY_ENTRY_COUNT; i++) {
-      const legacy::relay_ping_history_entry_t* entry = &history->entries[i];
+      const relay_ping_history_entry_t* entry = &history->entries[i];
 
       if (entry->time_ping_sent >= start && entry->time_ping_sent <= end - ping_safety) {
         num_pings_sent++;
@@ -110,7 +110,7 @@ namespace legacy
     int num_pongs = 0;
 
     for (int i = 0; i < RELAY_PING_HISTORY_ENTRY_COUNT; i++) {
-      const legacy::relay_ping_history_entry_t* entry = &history->entries[i];
+      const relay_ping_history_entry_t* entry = &history->entries[i];
 
       if (entry->time_ping_sent >= start && entry->time_ping_sent <= end) {
         if (entry->time_pong_received > entry->time_ping_sent) {
@@ -134,7 +134,7 @@ namespace legacy
     double stddev_rtt = 0.0;
 
     for (int i = 0; i < RELAY_PING_HISTORY_ENTRY_COUNT; i++) {
-      const legacy::relay_ping_history_entry_t* entry = &history->entries[i];
+      const relay_ping_history_entry_t* entry = &history->entries[i];
 
       if (entry->time_ping_sent >= start && entry->time_ping_sent <= end) {
         if (entry->time_pong_received > entry->time_ping_sent) {
