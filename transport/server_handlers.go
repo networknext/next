@@ -979,7 +979,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration, packet SessionUpdatePacket, nnStats routing.Stats, directStats routing.Stats, relayHops []routing.Relay, onNetworkNext bool, datacenterName string, location routing.Location) error {
 	meta := routing.SessionMeta{
 		ID:            fmt.Sprintf("%016x", packet.SessionID),
-		UserHash:      fmt.Sprintf("%x", packet.UserHash),
+		UserHash:      fmt.Sprintf("%016x", packet.UserHash),
 		Datacenter:    datacenterName,
 		OnNetworkNext: onNetworkNext,
 		NextRTT:       nnStats.RTT,
@@ -1027,8 +1027,8 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 	tx.Set(fmt.Sprintf("session-%016x-meta", packet.SessionID), meta, redisClientPortalExp)
 	tx.SAdd(fmt.Sprintf("session-%016x-slices", packet.SessionID), slice)
 	tx.Expire(fmt.Sprintf("session-%016x-slices", packet.SessionID), redisClientPortalExp)
-	tx.SAdd(fmt.Sprintf("user-%x-sessions", packet.UserHash), meta.ID)
-	tx.Expire(fmt.Sprintf("user-%x-sessions", packet.UserHash), redisClientPortalExp)
+	tx.SAdd(fmt.Sprintf("user-%016x-sessions", packet.UserHash), meta.ID)
+	tx.Expire(fmt.Sprintf("user-%016x-sessions", packet.UserHash), redisClientPortalExp)
 	tx.SAdd("map-points-global", meta.ID)
 	tx.SAdd(fmt.Sprintf("map-points-buyer-%x", packet.CustomerID), meta.ID)
 	tx.Expire(fmt.Sprintf("map-points-buyer-%x", packet.CustomerID), redisClientPortalExp)
