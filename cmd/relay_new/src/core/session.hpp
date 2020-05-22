@@ -15,8 +15,9 @@ namespace core
 
     uint64_t SessionID;
     uint8_t SessionVersion;
-    uint64_t ClientToServerSeq;
     uint64_t ServerToClientSeq;
+    uint64_t SessionPingSeq;
+    uint64_t SessionPongSeq;
     int KbpsUp;
     int KbpsDown;
     net::Address PrevAddr;

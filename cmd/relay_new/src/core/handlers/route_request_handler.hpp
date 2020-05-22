@@ -104,8 +104,9 @@ namespace core
         session->ExpireTimestamp = token.ExpireTimestamp;
         session->SessionID = token.SessionID;
         session->SessionVersion = token.SessionVersion;
-        session->ClientToServerSeq = 0;
         session->ServerToClientSeq = 0;
+        session->SessionPingSeq = 0;
+        session->SessionPongSeq = 0;
         session->KbpsUp = token.KbpsUp;
         session->KbpsDown = token.KbpsDown;
         session->PrevAddr = mFrom;
