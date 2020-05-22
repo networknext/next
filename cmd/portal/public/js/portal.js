@@ -674,7 +674,7 @@ WorkspaceHandler = {
 
 			let promises = [
 				JSONRPCClient
-					.call('AuthService.AllAccounts', {buyer_id: filter.buyerId}),
+					.call('AuthService.AllAccounts', {}),
 				JSONRPCClient
 					.call('AuthService.AllRoles', {})
 			];
@@ -682,6 +682,12 @@ WorkspaceHandler = {
 				.then((responses) => {
 					let accounts = responses[0].accounts;
 					allRoles = responses[1].roles;
+
+					if (filter.buyerId != '') {
+						accounts = accounts.filter((account) => {
+							return account.id == filter.buyerId;
+						});
+					}
 
 					/**
 					 * I really dislike this but it is apparently the way to reload/update the data within a vue
