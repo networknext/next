@@ -78,6 +78,7 @@ AuthHandler = {
 			startApp();
 		} else {
 			await this.auth0Client.loginWithRedirect({
+				connection: "Username-Password-Authentication",
 				redirect_uri: window.location.origin
 			}).catch((e) => {
 				Sentry.captureException(e);
