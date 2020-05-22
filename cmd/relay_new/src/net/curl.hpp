@@ -70,7 +70,7 @@ namespace net
     }
 
     if (!curl_easy_getinfo(wrapper.mHandle, CURLINFO_REQUEST_SIZE, &bytesSent)) {
-      LogDebug("curl could not get the last request size");  // non-critical failure, don't return false
+      //LogDebug("curl could not get the last request size");  // non-critical failure, don't return false
     }
 
     long code = 0;

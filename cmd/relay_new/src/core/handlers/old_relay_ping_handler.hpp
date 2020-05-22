@@ -44,20 +44,18 @@ namespace core
 
       if (!encoding::WriteUint8(outgoing.Buffer, index, static_cast<uint8_t>(packets::Type::OldRelayPong))) {
         LogDebug("could not write packet type");
-        return;
+        assert(false);
       }
 
       if (!encoding::WriteUint64(outgoing.Buffer, index, mOldRelayID)) {
         LogDebug("could not write old relay id");
-        return;
+        assert(false);
       }
 
       if (!encoding::WriteUint64(outgoing.Buffer, index, packetWrapper.getSequence())) {
         LogDebug("could not write sequence");
-        return;
+        assert(false);
       }
-
-      LogDebug("sending pong, ", "id = ", packetWrapper.getID(), ", sequence = ", packetWrapper.getSequence());
 
       outgoing.Addr = mPacket.Addr;
       outgoing.Len = index;

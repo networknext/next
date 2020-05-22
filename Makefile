@@ -62,6 +62,32 @@ ifndef RELAY_PRIVATE_KEY
 export RELAY_PRIVATE_KEY = lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=
 endif
 
+## These variables are only used for old backend compatability
+
+ifndef RELAY_V3_ENABLED
+export RELAY_V3_ENABLED = 0
+endif
+
+ifndef RELAY_V3_BACKEND_HOSTNAME
+export RELAY_V3_BACKEND_HOSTNAME = localhost
+endif
+
+ifndef RELAY_V3_BACKEND_PORT
+export RELAY_V3_BACKEND_PORT = 40002
+endif
+
+ifndef RELAY_V3_UPDATE_KEY
+export RELAY_V3_UPDATE_KEY = some-key
+endif
+
+ifndef RELAY_V3_SPEED
+export RELAY_V3_SPEED = 1000000000
+endif
+
+ifndef RELAY_V3_NAME
+export RELAY_V3_NAME = some name
+endif
+
 ######################
 ##    BACKEND ENV   ##
 ######################
@@ -309,7 +335,7 @@ dev-server-backend: ## runs a local server backend
 dev-reference-backend: ## runs a local reference backend
 	$(GO) run reference/backend/*.go
 
-.PHONY: dev-reference-relay 
+.PHONY: dev-reference-relay
 dev-reference-relay: build-relay-ref ## runs a local reference relay
 	@$(DIST_DIR)/reference_relay
 
@@ -324,6 +350,11 @@ dev-client: build-client  ## runs a local client
 .PHONY: dev-multi-clients
 dev-multi-clients: build-client ## runs 20 local clients
 	./cmd/tools/scripts/client-spawner.sh -n 20
+
+.PHONY: dev-relay-backend-old
+dev-relay-backend-old:
+	$(GO) run ./cmd/tools/functional/backend_old/*.go
+
 
 $(DIST_DIR)/$(SDKNAME).so:
 	@printf "Building sdk... "

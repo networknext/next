@@ -26,8 +26,8 @@ namespace core
     uint64_t key();
 
    protected:
-    void write(GenericPacket<>& packet, size_t& index);
-    void read(GenericPacket<>& packet, size_t& index);
+    void write(uint8_t* packetData, size_t packetLength, size_t& index);
+    void read(uint8_t* packetData, size_t packetLength, size_t& index);
   };
 
   inline Token::Token(const util::Clock& relayClock): Expireable(relayClock) {}
@@ -37,34 +37,39 @@ namespace core
     return SessionID ^ SessionVersion;
   }
 
-  [[gnu::always_inline]] inline void Token::write(GenericPacket<>& packet, size_t& index)
+  [[gnu::always_inline]] inline void Token::write(uint8_t* packetData, size_t packetLength, size_t& index)
   {
-    assert(index + Token::ByteSize < packet.Buffer.size());
+    assert(index + Token::ByteSize < packetLength);
 
-    if (!encoding::WriteUint64(packet.Buffer, index, ExpireTimestamp)) {
+    if (!encoding::WriteUint64(packetData, packetLength, index, ExpireTimestamp)) {
       LogDebug("could not write expire timestamp");
+      assert(false);
     }
 
-    if (!encoding::WriteUint64(packet.Buffer, index, SessionID)) {
+    if (!encoding::WriteUint64(packetData, packetLength, index, SessionID)) {
       LogDebug("could not write session id");
+      assert(false);
     }
 
-    if (!encoding::WriteUint8(packet.Buffer, index, SessionVersion)) {
+    if (!encoding::WriteUint8(packetData, packetLength, index, SessionVersion)) {
       LogDebug("could not write session version");
+      assert(false);
     }
 
-    if (!encoding::WriteUint8(packet.Buffer, index, SessionFlags)) {
+    if (!encoding::WriteUint8(packetData, packetLength, index, SessionFlags)) {
       LogDebug("could not write session flags");
+      assert(false);
     }
   }
 
-  [[gnu::always_inline]] inline void Token::read(GenericPacket<>& packet, size_t& index)
+  [[gnu::always_inline]] inline void Token::read(uint8_t* packetData, size_t packetLength, size_t& index)
   {
-    assert(index + Token::ByteSize < packet.Buffer.size());
-    ExpireTimestamp = encoding::ReadUint64(packet.Buffer, index);
-    SessionID = encoding::ReadUint64(packet.Buffer, index);
-    SessionVersion = encoding::ReadUint8(packet.Buffer, index);
-    SessionFlags = encoding::ReadUint8(packet.Buffer, index);
+    (void)packetLength;
+    assert(index + Token::ByteSize < packetLength);
+    ExpireTimestamp = encoding::ReadUint64(packetData, index);
+    SessionID = encoding::ReadUint64(packetData, index);
+    SessionVersion = encoding::ReadUint8(packetData, index);
+    SessionFlags = encoding::ReadUint8(packetData, index);
   }
 }  // namespace core
 #endif

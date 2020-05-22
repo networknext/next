@@ -21,7 +21,7 @@ namespace core
        legacy::v3::TrafficStats& stats);
 
       template <size_t Size>
-      void handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket);
+      void handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket, bool isSigned);
 
      private:
       core::SessionMap& mSessionMap;
@@ -35,11 +35,24 @@ namespace core
     {}
 
     template <size_t Size>
-    inline void SessionPingHandler::handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket)
+    inline void SessionPingHandler::handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket, bool isSigned)
     {
       (void)buff;
       (void)socket;
-      if (mPacket.Len > RELAY_HEADER_BYTES + 32) {
+
+      uint8_t* data;
+      size_t length;
+
+      if (isSigned) {
+        data = &mPacket.Buffer[crypto::PacketHashLength];
+        length = mPacket.Len - crypto::PacketHashLength;
+      } else {
+        data = &mPacket.Buffer[0];
+        length = mPacket.Len;
+      }
+
+      if (length > RELAY_HEADER_BYTES + 32) {
+        Log("ignoring session ping, packet size too large: ", length);
         return;
       }
 
@@ -50,40 +63,67 @@ namespace core
 
       if (
        relay::relay_peek_header(
-        RELAY_DIRECTION_CLIENT_TO_SERVER,
-        &type,
-        &sequence,
-        &session_id,
-        &session_version,
-        mPacket.Buffer.data(),
-        mPacket.Len) != RELAY_OK) {
+        RELAY_DIRECTION_CLIENT_TO_SERVER, &type, &sequence, &session_id, &session_version, data, length) != RELAY_OK) {
+        Log("ignoring session ping packet, relay header could not be read");
         return;
       }
 
       uint64_t hash = session_id ^ session_version;
 
       if (!mSessionMap.exists(hash)) {
+        Log(
+         "ignoring session ping packet, session does not exist: session = ",
+         std::hex,
+         session_id,
+         '.',
+         std::dec,
+         static_cast<unsigned int>(session_version));
         return;
       }
 
       auto session = mSessionMap.get(hash);
 
       if (session->expired()) {
+        Log(
+         "ignoring session ping packet, session expired: session = ",
+         std::hex,
+         session_id,
+         '.',
+         std::dec,
+         static_cast<unsigned int>(session_version));
         mSessionMap.erase(hash);
         return;
       }
 
       uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
+
       if (clean_sequence <= session->ClientToServerSeq) {
+        Log(
+         "ignoring session ping packet, clean sequence <= server to client sequence: session = ",
+         std::hex,
+         session_id,
+         '.',
+         std::dec,
+         static_cast<unsigned int>(session_version),
+         ", ",
+         clean_sequence,
+         " <= ",
+         sequence);
+        return;
+      }
+
+      if (relay::relay_verify_header(RELAY_DIRECTION_CLIENT_TO_SERVER, session->PrivateKey.data(), data, length) != RELAY_OK) {
+        Log(
+         "ignoring session ping packet, could not verify header: session = ",
+         std::hex,
+         session_id,
+         '.',
+         std::dec,
+         static_cast<unsigned int>(session_version));
         return;
       }
 
       session->ClientToServerSeq = clean_sequence;
-      if (
-       relay::relay_verify_header(
-        RELAY_DIRECTION_CLIENT_TO_SERVER, session->PrivateKey.data(), mPacket.Buffer.data(), mPacket.Len) != RELAY_OK) {
-        return;
-      }
 
       mRecorder.addToSent(mPacket.Len);
       mStats.BytesPerSecMeasurementTx += mPacket.Len;
