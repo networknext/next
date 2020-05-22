@@ -2,6 +2,7 @@
 #define CORE_PING_PROCESSOR_HPP
 
 #include "core/relay_manager.hpp"
+#include "crypto/hash.hpp"
 #include "encoding/base64.hpp"
 #include "encoding/write.hpp"
 #include "legacy/v3/traffic_stats.hpp"
@@ -25,7 +26,6 @@ namespace core
      const os::Socket& socket,
      core::RelayManager<T>& relayManger,
      const volatile bool& shouldProcess,
-     const net::Address& relayAddr,
      util::ThroughputRecorder& recorder,
      legacy::v3::TrafficStats& stats,
      const uint64_t relayID);
@@ -37,7 +37,6 @@ namespace core
     const os::Socket& mSocket;
     core::RelayManager<T>& mRelayManager;
     const volatile bool& mShouldProcess;
-    const net::Address& mReceivingAddr;
     util::ThroughputRecorder& mRecorder;
     legacy::v3::TrafficStats& mStats;
     const uint64_t mRelayID;
@@ -50,14 +49,12 @@ namespace core
    const os::Socket& socket,
    core::RelayManager<T>& relayManager,
    const volatile bool& shouldProcess,
-   const net::Address& relayAddress,
    util::ThroughputRecorder& recorder,
    legacy::v3::TrafficStats& stats,
    const uint64_t relayID)
    : mSocket(socket),
      mRelayManager(relayManager),
      mShouldProcess(shouldProcess),
-     mReceivingAddr(relayAddress),
      mRecorder(recorder),
      mStats(stats),
      mRelayID(relayID)
@@ -95,28 +92,22 @@ namespace core
         pkt.Addr = addr;
         fillMsgHdrWithAddr(hdr, addr);
 
-        size_t index = 0;
+        size_t index = crypto::PacketHashLength;
 
         // write data to the buffer
         {
           if (!encoding::WriteUint8(pkt.Buffer, index, static_cast<uint8_t>(packets::Type::NewRelayPing))) {
-            LogDebug("could not write packet type");
+            Log("could not write packet type");
             assert(false);
           }
 
           if (!encoding::WriteUint64(pkt.Buffer, index, ping.Seq)) {
-            LogDebug("could not write sequence");
+            Log("could not write sequence");
             assert(false);
           }
 
-          // use the recv port addr here so the receiving relay knows where to send it back to
-          if (!encoding::WriteAddress(pkt.Buffer, index, mReceivingAddr)) {
-            LogDebug("could not write receiving address");
-            assert(false);
-          }
+          crypto::SignNetworkNextPacket(pkt.Buffer, index);
         }
-
-        LogDebug("creating new ping, dest = ", addr, ", recv addr = ", mReceivingAddr);
 
         pkt.Len = index;
         hdr.msg_iov[0].iov_len = index;
@@ -130,7 +121,7 @@ namespace core
 
         size_t wholePacketSize = headerSize + pkt.Len;
 
-        // could also just do: (1 + 8 + net::Address::ByteSize) * number of relays to ping to make this faster
+        // could also just do: (1 + 8) * number of relays to ping to make this faster
         mRecorder.addToSent(wholePacketSize);
         mStats.BytesPerSecManagementTx += wholePacketSize;
 #ifndef RELAY_MULTISEND
@@ -184,21 +175,19 @@ namespace core
         {
           if (!encoding::WriteUint8(pkt.Buffer, index, static_cast<uint8_t>(packets::Type::OldRelayPing))) {
             LogDebug("could not write packet type");
-            continue;
+            assert(false);
           }
 
           if (!encoding::WriteBytes(pkt.Buffer, index, ping.PingToken, sizeof(ping.PingToken))) {
             LogDebug("could not write ping token");
-            continue;
+            assert(false);
           }
 
           if (!encoding::WriteUint64(pkt.Buffer, index, ping.Seq)) {
             LogDebug("could not write sequence");
-            continue;
+            assert(false);
           }
         }
-
-        LogDebug("creating old ping, dest = ", addr);
 
         pkt.Len = index;
         hdr.msg_iov[0].iov_len = index;

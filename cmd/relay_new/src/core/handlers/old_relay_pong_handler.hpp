@@ -27,8 +27,6 @@ namespace core
     inline void OldRelayPongHandler::handle()
     {
       packets::OldRelayPongPacket packetWrapper(mPacket);
-
-      LogDebug("got old pong packet from ", mPacket.Addr);
       mRelayManager.processPong(mPacket.Addr, packetWrapper.getSequence());
     }
   }  // namespace handlers

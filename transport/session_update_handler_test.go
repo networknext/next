@@ -1007,7 +1007,7 @@ func TestNoRelaysInDatacenter(t *testing.T) {
 	validateDirectResponsePacket(t, resbuf, sessionMetrics.DirectSessions, sessionMetrics.ErrorMetrics.NoRelaysInDatacenter)
 }
 
-func TestNoRoutesFound(t *testing.T) {
+func TestNoRoutesInRouteMatrix(t *testing.T) {
 	redisServer, err := miniredis.Run()
 	assert.NoError(t, err)
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
@@ -1103,6 +1103,133 @@ func TestNoRoutesFound(t *testing.T) {
 	validateDirectResponsePacket(t, resbuf, sessionMetrics.DirectSessions, sessionMetrics.ErrorMetrics.RouteFailure)
 }
 
+func TestNoRoutesSelected(t *testing.T) {
+	redisServer, err := miniredis.Run()
+	assert.NoError(t, err)
+	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+	sessionMetrics := metrics.EmptySessionMetrics
+	localMetrics := metrics.LocalHandler{}
+
+	errMetric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "err metric"})
+	assert.NoError(t, err)
+	directMetric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "direct metric"})
+	assert.NoError(t, err)
+
+	sessionMetrics.ErrorMetrics.RouteFailure = errMetric
+	sessionMetrics.DirectSessions = directMetric
+
+	db := storage.InMemory{}
+	db.AddBuyer(context.Background(), routing.Buyer{
+		PublicKey:            TestBuyersServerPublicKey,
+		RoutingRulesSettings: routing.LocalRoutingRulesSettings,
+	})
+
+	iploc := routing.LocateIPFunc(func(ip net.IP) (routing.Location, error) {
+		return routing.Location{
+			Continent: "NA",
+			Country:   "US",
+			Region:    "NY",
+			City:      "Troy",
+			Latitude:  0,
+			Longitude: 0,
+		}, nil
+	})
+
+	geoClient := routing.GeoClient{
+		RedisClient: redisClient,
+		Namespace:   "GEO_TEST",
+	}
+
+	err = geoClient.Add(1, 0, 0)
+	assert.NoError(t, err)
+
+	relayAddr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
+	assert.NoError(t, err)
+
+	dsRelayAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+	assert.NoError(t, err)
+
+	relay := routing.Relay{
+		ID:          crypto.HashID(relayAddr.String()),
+		Name:        "client.relay",
+		Addr:        *relayAddr,
+		MaxSessions: 3000,
+	}
+
+	dsRelay := routing.Relay{
+		ID:          crypto.HashID(dsRelayAddr.String()),
+		Name:        "datacenter.relay",
+		Addr:        *dsRelayAddr,
+		MaxSessions: 0,
+	}
+
+	rp := mockRouteProvider{
+		relay:            relay,
+		datacenterRelays: []routing.Relay{dsRelay},
+		routes: []routing.Route{
+			{
+				Relays: []routing.Relay{
+					relay,
+					dsRelay,
+				},
+				Stats: routing.Stats{
+					RTT:        30,
+					Jitter:     0,
+					PacketLoss: 0,
+				},
+			},
+		},
+	}
+
+	serverCacheEntry := transport.ServerCacheEntry{
+		Sequence: 13,
+		Server: routing.Server{
+			Addr:      *relayAddr,
+			PublicKey: TestServerBackendPublicKey,
+		},
+		Datacenter: routing.Datacenter{
+			Enabled: true,
+		},
+	}
+	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
+	assert.NoError(t, err)
+
+	err = redisServer.Set("SERVER-0-0.0.0.0:13", string(serverCacheEntryData))
+	assert.NoError(t, err)
+
+	sessionCacheEntry := transport.SessionCacheEntry{
+		SessionID: 9999,
+		Sequence:  13,
+	}
+	sessionCacheEntryData, err := sessionCacheEntry.MarshalBinary()
+	assert.NoError(t, err)
+
+	err = redisServer.Set("SESSION-0-9999", string(sessionCacheEntryData))
+	assert.NoError(t, err)
+
+	packet := transport.SessionUpdatePacket{
+		SessionID:     9999,
+		Sequence:      14,
+		ServerAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
+
+		ClientRoutePublicKey: make([]byte, crypto.KeySize),
+
+		Signature: make([]byte, ed25519.SignatureSize),
+	}
+	packet.Signature = crypto.Sign(TestBuyersServerPrivateKey, packet.GetSignData())
+
+	data, err := packet.MarshalBinary()
+	assert.NoError(t, err)
+
+	var resbuf bytes.Buffer
+
+	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, redisClient, 10*time.Second, &db, &rp, &iploc, &geoClient, &sessionMetrics, &billing.NoOpBiller{}, TestServerBackendPrivateKey, nil)
+	handler(&resbuf, &transport.UDPPacket{SourceAddr: relayAddr, Data: data})
+
+	validateDirectResponsePacket(t, resbuf, sessionMetrics.DirectSessions, sessionMetrics.ErrorMetrics.RouteFailure)
+}
+
 func TestTokenEncryptionFailure(t *testing.T) {
 	redisServer, err := miniredis.Run()
 	assert.NoError(t, err)
@@ -1151,9 +1278,9 @@ func TestTokenEncryptionFailure(t *testing.T) {
 		routes: []routing.Route{
 			{
 				Relays: []routing.Relay{
-					{ID: 1, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
-					{ID: 2, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 123}},
-					{ID: 3, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
+					{ID: 1, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 123}, PublicKey: TestRelayPublicKey[:], MaxSessions: 3000},
+					{ID: 2, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 123}, MaxSessions: 3000},
+					{ID: 3, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 123}, PublicKey: TestRelayPublicKey[:], MaxSessions: 3000},
 				},
 			},
 		},
@@ -1490,9 +1617,9 @@ func TestNextRouteResponse(t *testing.T) {
 		routes: []routing.Route{
 			{
 				Relays: []routing.Relay{
-					{ID: 1, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
-					{ID: 2, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
-					{ID: 3, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
+					{ID: 1, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 123}, PublicKey: TestRelayPublicKey[:], MaxSessions: 3000},
+					{ID: 2, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 123}, PublicKey: TestRelayPublicKey[:], MaxSessions: 3000},
+					{ID: 3, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 123}, PublicKey: TestRelayPublicKey[:], MaxSessions: 3000},
 				},
 			},
 		},
@@ -1627,9 +1754,9 @@ func TestContinueRouteResponse(t *testing.T) {
 		routes: []routing.Route{
 			{
 				Relays: []routing.Relay{
-					{ID: 1, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
-					{ID: 2, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
-					{ID: 3, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
+					{ID: 1, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 123}, PublicKey: TestRelayPublicKey[:], MaxSessions: 3000},
+					{ID: 2, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 123}, PublicKey: TestRelayPublicKey[:], MaxSessions: 3000},
+					{ID: 3, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 123}, PublicKey: TestRelayPublicKey[:], MaxSessions: 3000},
 				},
 			},
 		},
@@ -1915,9 +2042,9 @@ func TestVetoedRTT(t *testing.T) {
 		routes: []routing.Route{
 			{
 				Relays: []routing.Relay{
-					{ID: 1, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
-					{ID: 2, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
-					{ID: 3, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
+					{ID: 1, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 123}, PublicKey: TestRelayPublicKey[:], MaxSessions: 3000},
+					{ID: 2, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 123}, PublicKey: TestRelayPublicKey[:], MaxSessions: 3000},
+					{ID: 3, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 123}, PublicKey: TestRelayPublicKey[:], MaxSessions: 3000},
 				},
 			},
 		},
@@ -2157,9 +2284,9 @@ func TestVetoedPacketLoss(t *testing.T) {
 		routes: []routing.Route{
 			{
 				Relays: []routing.Relay{
-					{ID: 1, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
-					{ID: 2, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
-					{ID: 3, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
+					{ID: 1, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 123}, PublicKey: TestRelayPublicKey[:], MaxSessions: 3000},
+					{ID: 2, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 123}, PublicKey: TestRelayPublicKey[:], MaxSessions: 3000},
+					{ID: 3, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 123}, PublicKey: TestRelayPublicKey[:], MaxSessions: 3000},
 				},
 			},
 		},
@@ -2762,9 +2889,9 @@ func TestForceNext(t *testing.T) {
 		routes: []routing.Route{
 			{
 				Relays: []routing.Relay{
-					{ID: 1, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
-					{ID: 2, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
-					{ID: 3, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
+					{ID: 1, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 123}, PublicKey: TestRelayPublicKey[:], MaxSessions: 3000},
+					{ID: 2, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 123}, PublicKey: TestRelayPublicKey[:], MaxSessions: 3000},
+					{ID: 3, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 123}, PublicKey: TestRelayPublicKey[:], MaxSessions: 3000},
 				},
 			},
 		},
@@ -2998,9 +3125,9 @@ func TestVetoCommit(t *testing.T) {
 		routes: []routing.Route{
 			{
 				Relays: []routing.Relay{
-					{ID: 1, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
-					{ID: 2, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
-					{ID: 3, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
+					{ID: 1, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 123}, PublicKey: TestRelayPublicKey[:], MaxSessions: 3000},
+					{ID: 2, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 123}, PublicKey: TestRelayPublicKey[:], MaxSessions: 3000},
+					{ID: 3, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 123}, PublicKey: TestRelayPublicKey[:], MaxSessions: 3000},
 				},
 			},
 		},
@@ -3128,9 +3255,9 @@ func TestCommitted(t *testing.T) {
 		routes: []routing.Route{
 			{
 				Relays: []routing.Relay{
-					{ID: 1, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
-					{ID: 2, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
-					{ID: 3, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
+					{ID: 1, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 123}, PublicKey: TestRelayPublicKey[:], MaxSessions: 3000},
+					{ID: 2, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 123}, PublicKey: TestRelayPublicKey[:], MaxSessions: 3000},
+					{ID: 3, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 123}, PublicKey: TestRelayPublicKey[:], MaxSessions: 3000},
 				},
 			},
 		},
@@ -3258,9 +3385,9 @@ func TestMultipathRTT(t *testing.T) {
 		routes: []routing.Route{
 			{
 				Relays: []routing.Relay{
-					{ID: 1, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
-					{ID: 2, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
-					{ID: 3, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
+					{ID: 1, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 123}, PublicKey: TestRelayPublicKey[:], MaxSessions: 3000},
+					{ID: 2, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 123}, PublicKey: TestRelayPublicKey[:], MaxSessions: 3000},
+					{ID: 3, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 123}, PublicKey: TestRelayPublicKey[:], MaxSessions: 3000},
 				},
 			},
 		},
@@ -3380,9 +3507,9 @@ func TestMultipathJitter(t *testing.T) {
 		routes: []routing.Route{
 			{
 				Relays: []routing.Relay{
-					{ID: 1, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
-					{ID: 2, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
-					{ID: 3, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
+					{ID: 1, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 123}, PublicKey: TestRelayPublicKey[:], MaxSessions: 3000},
+					{ID: 2, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 123}, PublicKey: TestRelayPublicKey[:], MaxSessions: 3000},
+					{ID: 3, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 123}, PublicKey: TestRelayPublicKey[:], MaxSessions: 3000},
 				},
 			},
 		},
@@ -3502,9 +3629,9 @@ func TestMultipathPacketLoss(t *testing.T) {
 		routes: []routing.Route{
 			{
 				Relays: []routing.Relay{
-					{ID: 1, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
-					{ID: 2, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
-					{ID: 3, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 123}, PublicKey: TestRelayPublicKey[:]},
+					{ID: 1, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 123}, PublicKey: TestRelayPublicKey[:], MaxSessions: 3000},
+					{ID: 2, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 123}, PublicKey: TestRelayPublicKey[:], MaxSessions: 3000},
+					{ID: 3, Addr: net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 123}, PublicKey: TestRelayPublicKey[:], MaxSessions: 3000},
 				},
 			},
 		},

@@ -220,7 +220,7 @@ namespace core
     std::vector<char> response;
     size_t bytesSent = 0;
 
-    LogDebug("Sending new: ", doc.toPrettyString());
+    //LogDebug("Sending new: ", doc.toPrettyString());
 
     if (!T::SendTo(mHostname, "/relay_update", request, response, bytesSent)) {
       Log("curl request failed in update");
@@ -234,7 +234,7 @@ namespace core
       return false;
     }
 
-    LogDebug("Received new: ", doc.toPrettyString());
+    //LogDebug("Received new: ", doc.toPrettyString());
 
     if (doc.memberExists("version")) {
       if (doc.memberIs(util::JSON::Type::Number, "version")) {

@@ -27,7 +27,7 @@ namespace core
        legacy::v3::TrafficStats& stats);
 
       template <size_t Size>
-      void handle(core::GenericPacketBuffer<Size>& size, const os::Socket& socket);
+      void handle(core::GenericPacketBuffer<Size>& size, const os::Socket& socket, bool isSigned);
 
      private:
       const util::Clock& mRelayClock;
@@ -56,11 +56,21 @@ namespace core
     {}
 
     template <size_t Size>
-    inline void RouteRequestHandler::handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket)
+    inline void RouteRequestHandler::handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket, bool isSigned)
     {
       (void)buff;
       (void)socket;
-      LogDebug("got route request from ", mFrom);
+
+      uint8_t* data;
+      size_t length;
+
+      if (isSigned) {
+        data = &mPacket.Buffer[crypto::PacketHashLength];
+        length = mPacket.Len - crypto::PacketHashLength;
+      } else {
+        data = &mPacket.Buffer[0];
+        length = mPacket.Len;
+      }
 
       if (mPacket.Len < int(1 + RouteToken::EncryptedByteSize * 2)) {
         Log("ignoring route request. bad packet size (", mPacket.Len, ")");
@@ -71,7 +81,7 @@ namespace core
       size_t index = 1;
       core::RouteToken token(mRelayClock);
 
-      if (!token.readEncrypted(mPacket, index, mKeychain.RouterPublicKey, mKeychain.RelayPrivateKey)) {
+      if (!token.readEncrypted(data, length, index, mKeychain.RouterPublicKey, mKeychain.RelayPrivateKey)) {
         Log("ignoring route request. could not read route token");
         return;
       }
@@ -109,14 +119,19 @@ namespace core
         mSessionMap.set(hash, session);
 
         Log("session created: ", std::hex, token.SessionID, '.', std::dec, static_cast<unsigned int>(token.SessionVersion));
-      }  // TODO else what?
+      }
 
       // remove this part of the token by offseting it the request packet bytes
-      mPacket.Buffer[RouteToken::EncryptedByteSize] = static_cast<uint8_t>(packets::Type::RouteRequest);
 
-      LogDebug("sending route request to ", token.NextAddr);
+      length = mPacket.Len - RouteToken::EncryptedByteSize;
 
-      auto length = mPacket.Len - RouteToken::EncryptedByteSize;
+      if (isSigned) {
+        mPacket.Buffer[RouteToken::EncryptedByteSize + crypto::PacketHashLength] = static_cast<uint8_t>(packets::Type::RouteRequest);
+        legacy::relay_sign_network_next_packet(&mPacket.Buffer[RouteToken::EncryptedByteSize], length);
+      } else {
+        mPacket.Buffer[RouteToken::EncryptedByteSize] = static_cast<uint8_t>(packets::Type::RouteRequest);
+      }
+
       mRecorder.addToSent(length);
       mStats.BytesPerSecManagementTx += length;
 

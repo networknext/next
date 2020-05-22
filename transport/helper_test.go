@@ -94,13 +94,22 @@ func (rp *mockRouteProvider) RelaysIn(ds routing.Datacenter) []routing.Relay {
 	return rp.datacenterRelays
 }
 
-func (rp *mockRouteProvider) Routes(from []routing.Relay, to []routing.Relay, selectors ...routing.SelectorFunc) ([]routing.Route, error) {
-	// Routes() will never return a nil or empty slice with no error, so recreate that logic here.
+func (rp *mockRouteProvider) Routes(from []routing.Relay, to []routing.Relay, routeSelectors ...routing.SelectorFunc) ([]routing.Route, error) {
 	if rp.routes == nil || len(rp.routes) == 0 {
-		return nil, errors.New("No routes found")
+		return nil, errors.New("No routes in route matrix")
 	}
 
-	return rp.routes, nil
+	// Apply the selectors in order
+	routes := rp.routes
+	for _, selector := range routeSelectors {
+		routes = selector(routes)
+
+		if len(routes) <= 1 {
+			break
+		}
+	}
+
+	return routes, nil
 }
 
 type RoundTripFunc func(req *http.Request) *http.Response

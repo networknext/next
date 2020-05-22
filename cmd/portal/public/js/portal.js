@@ -108,16 +108,21 @@ MapHandler = {
 		},
 	},
 	mapInstance: null,
+	mapLoop: null,
 	initMap() {
 		let buyerId = !UserHandler.isAdmin() ? UserHandler.userInfo.id : "";
 		this.updateFilter('map', {
 			buyerId: buyerId,
 			sessionType: 'all'
 		});
+
+		this.refreshMapSessions();
+		this.mapLoop = setInterval(() => {
+			this.refreshMapSessions();
+		}, 10000);
 	},
 	updateFilter(filter) {
 		Object.assign(rootComponent.$data.pages.map, {filter: filter});
-		this.refreshMapSessions();
 	},
 	updateMap(mapType) {
 		switch (mapType) {
@@ -140,7 +145,7 @@ MapHandler = {
 		JSONRPCClient
 			.call('BuyersService.SessionMapPoints', {buyer_id: filter.buyerId})
 			.then((response) => {
-				let sessions = response.map_points || [];
+				let sessions = response.map_points;
 				let onNN = sessions.filter((point) => {
 					return point.on_network_next;
 				});
@@ -309,6 +314,7 @@ UserHandler = {
 }
 
 WorkspaceHandler = {
+	sessionLoop: null,
 	changeSettingsPage(page) {
 		let showSettings = false;
 		let showConfig = false;
@@ -326,6 +332,10 @@ WorkspaceHandler = {
 		});
 	},
 	changePage(page, options) {
+		// Clear all polling loops
+		MapHandler.mapLoop ? clearInterval(MapHandler.mapLoop) : null;
+		this.sessionLoop ? clearInterval(this.sessionLoop) : null;
+
 		switch (page) {
 			case 'map':
 				MapHandler.initMap();
@@ -394,7 +404,7 @@ WorkspaceHandler = {
 			JSONRPCClient
 				.call('AuthService.UpdateUserRoles', {user_id: `auth0|${accountInfo.user_id}`, roles: roles})
 				.then((response) => {
-					accountInfo.roles = response.roles || [];
+					accountInfo.roles = response.roles;
 					this.cancelEditUser(accountInfo);
 					Object.assign(rootComponent.$data.pages.settings.updateUser, {
 						success: 'Updated user account successfully',
@@ -513,6 +523,10 @@ WorkspaceHandler = {
 			buyerId: buyerId,
 			sessionType: 'all'
 		});
+		this.refreshSessionTable();
+		this.sessionLoop = setInterval(() => {
+			this.refreshSessionTable();
+		}, 10000);
 	},
 	fetchSessionInfo() {
 		let id = rootComponent.$data.pages.sessionTool.id;
@@ -533,7 +547,7 @@ WorkspaceHandler = {
 			.call("BuyersService.SessionDetails", {session_id: id})
 			.then((response) => {
 				let meta = response.meta;
-				meta.nearby_relays = meta.nearby_relays || [];
+
 				Object.assign(rootComponent.$data.pages.sessionTool, {
 					info: false,
 					danger: false,
@@ -583,7 +597,7 @@ WorkspaceHandler = {
 		JSONRPCClient
 			.call("BuyersService.UserSessions", {user_hash: hash})
 			.then((response) => {
-				let sessions = response.sessions || [];
+				let sessions = response.sessions;
 
 				Object.assign(rootComponent.$data.pages.userTool, {
 					danger: false,
@@ -609,7 +623,6 @@ WorkspaceHandler = {
 	},
 	updateSessionFilter(filter) {
 		Object.assign(rootComponent.$data.pages.sessions, {filter: filter});
-		this.refreshSessionTable();
 	},
 	refreshSessionTable() {
 		setTimeout(() => {
@@ -618,7 +631,7 @@ WorkspaceHandler = {
 			JSONRPCClient
 				.call('BuyersService.TopSessions', {buyer_id: filter.buyerId})
 				.then((response) => {
-					let sessions = response.sessions || [];
+					let sessions = response.sessions;
 					let onNN = sessions.filter((point) => {
 						return point.on_network_next;
 					});
@@ -661,14 +674,20 @@ WorkspaceHandler = {
 
 			let promises = [
 				JSONRPCClient
-					.call('AuthService.AllAccounts', {buyer_id: filter.buyerId}),
+					.call('AuthService.AllAccounts', {}),
 				JSONRPCClient
 					.call('AuthService.AllRoles', {})
 			];
 			Promise.all(promises)
 				.then((responses) => {
+					let accounts = responses[0].accounts;
 					allRoles = responses[1].roles;
-					let accounts = responses[0].accounts || [];
+
+					if (filter.buyerId != '') {
+						accounts = accounts.filter((account) => {
+							return account.id == filter.buyerId;
+						});
+					}
 
 					/**
 					 * I really dislike this but it is apparently the way to reload/update the data within a vue
@@ -679,89 +698,83 @@ WorkspaceHandler = {
 					});
 
 					setTimeout(() => {
-						let choices = allRoles.map((role) => {
-							return {
-								value: role,
-								label: role.name,
-								customProperties: {
-									description: role.description,
-								},
-							};
-						});
+						try {
+							let choices = allRoles.map((role) => {
+								return {
+									value: role,
+									label: role.name,
+									customProperties: {
+										description: role.description,
+									},
+								};
+							});
 
-						if (!addUserPermissions) {
-							addUserPermissions = new Choices(
-								document.getElementById("add-user-permissions"),
-								{
-									removeItemButton: true,
-									choices: choices,
-								}
-							);
+							if (!addUserPermissions) {
+								addUserPermissions = new Choices(
+									document.getElementById("add-user-permissions"),
+									{
+										removeItemButton: true,
+										choices: choices,
+									}
+								);
+							}
+
+							choices = allRoles.map((role) => {
+								return {
+									value: role,
+									label: role.name,
+									customProperties: {
+										description: role.description,
+									},
+									selected: role.name === 'Viewer'
+								};
+							});
+
+							choices = allRoles.map((role) => {
+								return {
+									value: role,
+									label: role.name,
+									customProperties: {
+										description: role.description,
+									},
+								};
+							});
+
+							if (!addUserPermissions) {
+								addUserPermissions = new Choices(
+									document.getElementById("add-user-permissions"),
+									{
+										removeItemButton: true,
+										choices: choices,
+									}
+								);
+							}
+
+							/* choices = allRoles.map((role) => {
+								return {
+									value: role,
+									label: role.name,
+									customProperties: {
+										description: role.description,
+									},
+									selected: role.name === 'Viewer'
+								};
+							});
+
+							if (!autoSigninPermissions) {
+								autoSigninPermissions = new Choices(
+									document.getElementById("auto-signin-permissions"),
+									{
+										removeItemButton: true,
+										choices: choices,
+									}
+								);
+							} */
+
+							generateRolesDropdown(accounts);
+						} catch(e) {
+							rootComponent.$data.pages.settings.show ? Sentry.captureException(e) : null;
 						}
-
-						choices = allRoles.map((role) => {
-							return {
-								value: role,
-								label: role.name,
-								customProperties: {
-									description: role.description,
-								},
-								selected: role.name === 'Viewer'
-							};
-						});
-
-						if (!autoSigninPermissions) {
-							autoSigninPermissions = new Choices(
-								document.getElementById("auto-signin-permissions"),
-								{
-									removeItemButton: true,
-									choices: choices,
-								}
-							);
-						}
-
-						choices = allRoles.map((role) => {
-							return {
-								value: role,
-								label: role.name,
-								customProperties: {
-									description: role.description,
-								},
-							};
-						});
-
-						if (!addUserPermissions) {
-							addUserPermissions = new Choices(
-								document.getElementById("add-user-permissions"),
-								{
-									removeItemButton: true,
-									choices: choices,
-								}
-							);
-						}
-
-						choices = allRoles.map((role) => {
-							return {
-								value: role,
-								label: role.name,
-								customProperties: {
-									description: role.description,
-								},
-								selected: role.name === 'Viewer'
-							};
-						});
-
-						if (!autoSigninPermissions) {
-							autoSigninPermissions = new Choices(
-								document.getElementById("auto-signin-permissions"),
-								{
-									removeItemButton: true,
-									choices: choices,
-								}
-							);
-						}
-
-						generateRolesDropdown(accounts);
 					});
 				}
 			)

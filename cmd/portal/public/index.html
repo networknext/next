@@ -364,8 +364,8 @@
                                             </option>
                                         </select>
                                         <select class="form-control" v-if="!handlers.userHandler.isAdmin()">
-                                            <option v-on:click="handlers.workspaceHandler.updateSessionFilter({buyerId: UserHandler.userInfo.id, sessionType: pages.sessions.filter.sessionType})">
-                                                {{ UserHandler.userInfo.name }}
+                                            <option v-on:click="handlers.userHandler.workspaceHandler.updateSessionFilter({buyerId: handlers.userHandler.userInfo.id, sessionType: pages.sessions.filter.sessionType})">
+                                                {{ handlers.userHandler.userInfo.name }}
                                             </option>
                                         </select>
                                     </div>
@@ -922,47 +922,49 @@
                             </div>
                             <div id="settings-page">
                                 <div class="card-body" v-if="pages.settings.showSettings">
-                                    <h5 class="card-title">
-                                        Automatic sign-in
-                                    </h5>
-                                    <p class="card-text">
-                                        Save time by allowing users with verified email addresses automatic access to your Network Next account.
-                                    </p>
-                                    <div id="auto-sign-in-spinner" v-show="!pages.settings.showAccounts">
-                                        <div class="spinner-border" role="status">
-                                            <span class="sr-only">Loading...</span>
+                                    <div id="auto-signin" class="hidden">
+                                        <h5 class="card-title">
+                                            Automatic sign-in
+                                        </h5>
+                                        <p class="card-text">
+                                            Save time by allowing users with verified email addresses automatic access to your Network Next account.
+                                        </p>
+                                        <div id="auto-sign-in-spinner" v-show="!pages.settings.showAccounts">
+                                            <div class="spinner-border" role="status">
+                                                <span class="sr-only">Loading...</span>
+                                            </div>
                                         </div>
+                                        <form v-on:submit.prevent="saveAutoSignIn()" v-show="pages.settings.showAccounts">
+                                            <div class="form-group">
+                                                <label for="customerId">
+                                                    Automatic Sign-in Domain
+                                                </label>
+                                                <input type="text" class="form-control form-control-sm" value="networknext.com" id="auto-sign-in-domain">
+                                                <small class="form-text text-muted">
+                                                    If you set this to a domain, such as "example.com", then anyone with a verified email address with this domain will automatically join your account when logging in. You can set this so that you don't need to manually onboard everyone in your organization.
+                                                </small>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="customerId">
+                                                    Permission Level
+                                                </label>
+                                                <select
+                                                    class="form-control"
+                                                    id="auto-signin-permissions"
+                                                    multiple
+                                                >
+                                                </select>
+                                                <small class="form-text text-muted">
+                                                    The permission level to grant accounts that join your account via automatic sign-in.
+                                                </small>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary btn-sm">
+                                                Save Automatic Sign-in
+                                            </button>
+                                            <p class="text-muted text-small mt-2"></p>
+                                        </form>
+                                        <hr class="mt-4 mb-4">
                                     </div>
-                                    <form v-on:submit.prevent="saveAutoSignIn()" v-show="pages.settings.showAccounts">
-                                        <div class="form-group">
-                                            <label for="customerId">
-                                                Automatic Sign-in Domain
-                                            </label>
-                                            <input type="text" class="form-control form-control-sm" value="networknext.com" id="auto-sign-in-domain">
-                                            <small class="form-text text-muted">
-                                                If you set this to a domain, such as "example.com", then anyone with a verified email address with this domain will automatically join your account when logging in. You can set this so that you don't need to manually onboard everyone in your organization.
-                                            </small>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="customerId">
-                                                Permission Level
-                                            </label>
-                                            <select
-                                                class="form-control"
-                                                id="auto-signin-permissions"
-                                                multiple
-                                            >
-                                            </select>
-                                            <small class="form-text text-muted">
-                                                The permission level to grant accounts that join your account via automatic sign-in.
-                                            </small>
-                                        </div>
-                                        <button type="submit" class="btn btn-primary btn-sm">
-                                            Save Automatic Sign-in
-                                        </button>
-                                        <p class="text-muted text-small mt-2"></p>
-                                    </form>
-                                    <hr class="mt-4 mb-4">
                                     <h5 class="card-title">
                                         Add new users
                                     </h5>

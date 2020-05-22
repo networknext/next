@@ -216,7 +216,7 @@ namespace legacy
           return false;
         }
 
-        LogDebug("sending update v3: ", doc.toPrettyString());
+        // LogDebug("sending update v3: ", doc.toPrettyString());
 
         auto jsonStr = doc.toString();
         std::copy(jsonStr.begin(), jsonStr.end(), packet.Buffer.begin());
@@ -452,7 +452,7 @@ namespace legacy
       bool done = false;
       unsigned int attempts = 0;
       do {
-        LogDebug("sending ", request.Type, " packet");
+        // LogDebug("sending ", request.Type, " packet");
         request.At = mClock.elapsed<util::Nanosecond>();
         bool sendSuccess = packet_send(mSocket, mToken, packet, request);
 
@@ -470,7 +470,6 @@ namespace legacy
         // if + while so that I can log something for the sake of debugging
         if (mReceiver.hasItems()) {
           while (mReceiver.hasItems()) {
-            LogDebug("got packet data");
             mReceiver.recv(packet);
 
             // this will return true once all the fragments have been received
@@ -478,8 +477,6 @@ namespace legacy
               done = true;
             }
           }
-        } else {
-          LogDebug("no received packets yet");
         }
       } while (!done && !mSocket.closed() && !mReceiver.closed() && attempts < 60);
 
@@ -496,7 +493,7 @@ namespace legacy
         return {false, err};
       }
 
-      LogDebug("received v3: ", doc.toPrettyString());
+      // LogDebug("received v3: ", doc.toPrettyString());
 
       return {true, ""};
     }

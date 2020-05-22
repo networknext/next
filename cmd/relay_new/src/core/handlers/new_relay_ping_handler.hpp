@@ -3,6 +3,7 @@
 #include "base_handler.hpp"
 #include "core/packets/new_relay_ping_packet.hpp"
 #include "core/packets/types.hpp"
+#include "crypto/hash.hpp"
 #include "encoding/read.hpp"
 #include "legacy/v3/traffic_stats.hpp"
 #include "net/address.hpp"
@@ -16,27 +17,19 @@ namespace core
     class NewRelayPingHandler: public BaseHandler
     {
      public:
-      NewRelayPingHandler(
-       GenericPacket<>& packet,
-       const net::Address& mRecvAddr,
-       util::ThroughputRecorder& recorder,
-       legacy::v3::TrafficStats& stats);
+      NewRelayPingHandler(GenericPacket<>& packet, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats);
 
       template <size_t Size>
       void handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket);
 
      private:
-      const net::Address& mRecvAddr;
       util::ThroughputRecorder& mRecorder;
       legacy::v3::TrafficStats& mStats;
     };
 
     inline NewRelayPingHandler::NewRelayPingHandler(
-     GenericPacket<>& packet,
-     const net::Address& receivingAddress,
-     util::ThroughputRecorder& recorder,
-     legacy::v3::TrafficStats& stats)
-     : BaseHandler(packet), mRecvAddr(receivingAddress), mRecorder(recorder), mStats(stats)
+     GenericPacket<>& packet, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats)
+     : BaseHandler(packet), mRecorder(recorder), mStats(stats)
     {}
 
     template <size_t Size>
@@ -44,17 +37,12 @@ namespace core
     {
       (void)buff;
       (void)socket;
-      packets::NewRelayPingPacket packetWrapper(mPacket);
 
-      packetWrapper.Internal.Buffer[0] = static_cast<uint8_t>(packets::Type::NewRelayPong);
-      mPacket.Addr = packetWrapper.getFromAddr();
-      packetWrapper.writeFromAddr(mRecvAddr);
-      mPacket.Len = packets::NewRelayPingPacket::ByteSize;
-
+      mPacket.Buffer[crypto::PacketHashLength] = static_cast<uint8_t>(packets::Type::NewRelayPong);
       mRecorder.addToSent(mPacket.Len);
       mStats.BytesPerSecMeasurementTx += mPacket.Len;
 
-      LogDebug("got new ping from ", mPacket.Addr);
+      crypto::SignNetworkNextPacket(mPacket.Buffer, mPacket.Len);
 
 #ifdef RELAY_MULTISEND
       buff.push(mPacket);

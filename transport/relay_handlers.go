@@ -169,6 +169,7 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 			PublicKey:      relay.PublicKey,
 			Datacenter:     relay.Datacenter,
 			LastUpdateTime: time.Now(),
+			MaxSessions:    relay.MaxSessions,
 		}
 
 		// Get the relay's HTTP authorization header
@@ -533,6 +534,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			PublicKey:      relay.PublicKey,
 			Datacenter:     relay.Datacenter,
 			LastUpdateTime: time.Now(),
+			MaxSessions:    relay.MaxSessions,
 		}
 
 		if _, ok := crypto.Open(relayInitRequest.EncryptedToken, relayInitRequest.Nonce, relayCacheEntry.PublicKey, params.RouterPrivateKey); !ok {

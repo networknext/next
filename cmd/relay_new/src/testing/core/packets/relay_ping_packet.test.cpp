@@ -14,30 +14,16 @@ Test(core_packets_RelayPingPacket_general)
   core::GenericPacket<> packet;
 
   // get test data into buffer
-  size_t index = 0;
+  size_t index = crypto::PacketHashLength;
   encoding::WriteUint8(packet.Buffer, index, type);
   encoding::WriteUint64(packet.Buffer, index, seqnum);
-  encoding::WriteAddress(packet.Buffer, index, addr);
 
   packet.Len = core::packets::NewRelayPingPacket::ByteSize;
   core::packets::NewRelayPingPacket pingPacket(packet);
 
   // make sure packet is passed values correctly
-  check(pingPacket.Internal.Buffer[0] == static_cast<uint8_t>(core::packets::Type::NewRelayPing));
+  check(pingPacket.Internal.Buffer[crypto::PacketHashLength] == static_cast<uint8_t>(core::packets::Type::NewRelayPing));
 
   // ensure getters work
   check(pingPacket.getSeqNum() == seqnum);
-  check(pingPacket.getFromAddr() == addr);
-
-  // create another addr
-  addr = testing::RandomAddress();
-
-  // write it to the buffer
-  pingPacket.writeFromAddr(addr);
-
-  // since the first packet has its addr filled, create another for reading purposes
-  core::packets::NewRelayPingPacket followup(packet);
-
-  // ensure the new addr was written to the buffer
-  check(followup.getFromAddr() == addr);
 }
