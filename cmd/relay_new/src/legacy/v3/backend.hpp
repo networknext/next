@@ -44,7 +44,7 @@ namespace legacy
       const util::Clock& mClock;
       TrafficStats& mStats;
       core::RelayManager<core::V3Relay>& mRelayManager;
-      const size_t mSpeed;
+      const size_t mSpeed; // Relay nic speed in bits/second
       BackendToken mToken;
       uint64_t mInitTimestamp;
       const uint64_t mRelayID;
