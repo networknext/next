@@ -1178,6 +1178,7 @@ func TestFirestore(t *testing.T) {
 			Seller:      expectedSeller,
 			Datacenter:  expectedDatacenter,
 			MaxSessions: 3000,
+			UpdateKey:   make([]byte, 32),
 		}
 
 		err = fs.AddBuyer(ctx, expectedBuyer)
