@@ -737,6 +737,11 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 				OnNetworkNext: true,
 				Reason:        routing.DecisionForceNext,
 			}
+
+			// Since the route mode is forced next, always commit to next routes
+			sessionCacheEntry.CommitPending = false
+			sessionCacheEntry.CommitObservedSliceCounter = 0
+			sessionCacheEntry.Committed = true
 		} else if buyer.RoutingRulesSettings.EnableABTest && packet.SessionID%2 == 1 {
 			shouldSelect = false
 			routeDecision = routing.Decision{
@@ -843,16 +848,16 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 					// Session was vetoed this update, so set the veto timeout
 					sessionCacheEntry.VetoTimestamp = timestampNow.Add(time.Hour)
 				}
+			}
 
-				if sessionCacheEntry.Committed {
-					// If the session is committed, set the committed flag in the response
-					response.Committed = true
-				}
+			if sessionCacheEntry.Committed {
+				// If the session is committed, set the committed flag in the response
+				response.Committed = true
+			}
 
-				// If the route decision logic has decided to use multipath, then set the multipath flag in the response
-				if routing.IsMultipath(routeDecision) {
-					response.Multipath = true
-				}
+			// If the route decision logic has decided to use multipath, then set the multipath flag in the response
+			if routing.IsMultipath(routeDecision) {
+				response.Multipath = true
 			}
 
 			level.Debug(locallogger).Log(

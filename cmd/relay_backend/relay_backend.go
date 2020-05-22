@@ -194,9 +194,10 @@ func main() {
 		}
 
 		if err := db.AddRelay(ctx, routing.Relay{
-			PublicKey:  relayPublicKey,
-			Seller:     seller,
-			Datacenter: datacenter,
+			PublicKey:   relayPublicKey,
+			Seller:      seller,
+			Datacenter:  datacenter,
+			MaxSessions: 3000,
 		}); err != nil {
 			level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
 			os.Exit(1)
