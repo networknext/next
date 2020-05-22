@@ -75,30 +75,38 @@ namespace core
       uint64_t hash = session_id ^ session_version;
 
       if (!mSessionMap.exists(hash)) {
-        Log("session does not exist: ", session_id, '.', session_version);
+        Log("session does not exist: session = ", std::hex, session_id, '.', std::dec, static_cast<unsigned int>(session_version));
         return;
       }
 
       auto session = mSessionMap.get(hash);
 
       if (session->expired()) {
-        Log("session expired: ", session_id, '.', session_version);
+        Log("session expired: session = ", std::hex, session_id, '.', std::dec, static_cast<unsigned int>(session_version));
         mSessionMap.erase(hash);
         return;
       }
 
       uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
+
       if (relay_replay_protection_already_received(&session->ClientToServerProtection, clean_sequence)) {
         Log(
-         "ignoring client to server packet, clean sequence less then server to client sequence: ",
+         "ignoring client to server packet, already received packet: session = ",
+         std::hex,
          session_id,
          '.',
-         session_version);
+         std::dec,
+         static_cast<unsigned int>(session_version));
         return;
       }
 
       if (relay::relay_verify_header(RELAY_DIRECTION_CLIENT_TO_SERVER, session->PrivateKey.data(), data, length) != RELAY_OK) {
-        Log("ignoring client to server packet, could not verify header: ", session_id, '.', session_version);
+        Log(
+         "ignoring client to server packet, could not verify header: session = ",
+         session_id,
+         '.',
+         std::dec,
+         static_cast<unsigned int>(session_version));
         return;
       }
 

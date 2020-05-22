@@ -71,14 +71,14 @@ namespace core
       uint64_t hash = session_id ^ session_version;
 
       if (!mSessionMap.exists(hash)) {
-        Log("ignoring session pong packet, session does not exist: ", session_id, '.', session_version);
+        Log("ignoring session pong packet, session does not exist: session = ", std::hex, session_id, '.', std::dec, static_cast<unsigned int>(session_version));
         return;
       }
 
       auto session = mSessionMap.get(hash);
 
       if (session->expired()) {
-        Log("ignoring session pong packet, session expired: ", session_id, '.', session_version);
+        Log("ignoring session pong packet, session expired: session = ", std::hex, session_id, '.', std::dec, static_cast<unsigned int>(session_version));
         mSessionMap.erase(hash);
         return;
       }
@@ -86,14 +86,24 @@ namespace core
       uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
 
       if (clean_sequence <= session->ServerToClientSeq) {
-        Log("ignoring session pong packet, clean sequence <= server to client sequence: ", session_id, '.', session_version);
+        Log(
+         "ignoring session pong packet, clean sequence <= server to client sequence: session = ",
+         std::hex,
+         session_id,
+         '.',
+         std::dec,
+         static_cast<unsigned int>(session_version),
+         ", ",
+         clean_sequence,
+         " <= ",
+         sequence);
         return;
       }
 
       if (
        relay::relay_verify_header(
         RELAY_DIRECTION_SERVER_TO_CLIENT, session->PrivateKey.data(), data, length) != RELAY_OK) {
-        Log("ignoring session pong packet, could not verify header: ", session_id, '.', session_version);
+        Log("ignoring session pong packet, could not verify header: session = ", std::hex, session_id, '.', std::dec, static_cast<unsigned int>(session_version));
         return;
       }
 
