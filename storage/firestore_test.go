@@ -1232,6 +1232,11 @@ func TestFirestore(t *testing.T) {
 		assert.Equal(t, expectedBuyer, actualBuyer)
 		assert.Equal(t, expectedSeller, actualSeller)
 		assert.Equal(t, expectedDatacenter, actualDatacenter)
+
+		// this is random, no easy way to test so just assert it is present
+		expectedRelay.FirestoreID = actualRelay.FirestoreID
+		assert.NotEmpty(t, expectedRelay.FirestoreID)
+
 		assert.Equal(t, expectedRelay, actualRelay)
 	})
 }
