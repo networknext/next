@@ -24,8 +24,8 @@ const (
 	RelayBackendHostnameProd  = "http://relay_backend.prod.networknext.com"
 
 	OldRelayBackendHostnameLocal = "localhost"
-	OldRelayBackendHostnameDev   = ""
-	OldRelayBackendHostnameProd  = ""
+	OldRelayBackendHostnameDev   = "relays.v3-dev.networknext.com"
+	OldRelayBackendHostnameProd  = "relays.v3.networknext.com"
 )
 
 type Environment struct {
