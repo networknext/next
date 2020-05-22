@@ -400,7 +400,7 @@ namespace legacy
 
         auto total = bytesPerSecInvalidRx + bytesPerSecPaidRx + bytesPerSecManagementRx + bytesPerSecMeasurementRx +
                      bytesPerSecPaidTx + bytesPerSecManagementTx + bytesPerSecManagementTx;
-        double usage = 100.0 * 8.0 * total / mSpeed;
+        double usage = 100.0 * (8.0 * total) / mSpeed;
         doc.set(usage, "Usage");
       }
 
