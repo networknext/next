@@ -399,7 +399,7 @@ int main(int argc, const char* argv[])
       auto socket = nextSocket();
       auto thread = std::make_shared<std::thread>(
        [&receiver, &env, socket, &cleanup, &v3BackendSuccess, &relayClock, &v3TrafficStats, &v3RelayManager, &relayID] {
-         size_t speed = std::stoi(env.RelayV3Speed);
+         size_t speed = std::stoi(env.RelayV3Speed) * 1000000;
          legacy::v3::Backend backend(receiver, env, relayID, *socket, relayClock, v3TrafficStats, v3RelayManager, speed);
 
          if (!backend.init()) {

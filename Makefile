@@ -81,7 +81,7 @@ export RELAY_V3_UPDATE_KEY = some-key
 endif
 
 ifndef RELAY_V3_SPEED
-export RELAY_V3_SPEED = 1000000000
+export RELAY_V3_SPEED = 10000
 endif
 
 ifndef RELAY_V3_NAME

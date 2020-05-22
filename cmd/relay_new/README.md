@@ -41,7 +41,7 @@ This can be thought of as version 2 of the relay. Version 1 being the relay in t
 - `RELAY_V3_UPDATE_KEY`: The key in firestore that allows a relay to update with the old backend. For local dev this can be any base64 decryptable string
   - Example `RELAY_V3_UPDATE_KEY='fake-update-key'`
 - `RELAY_V3_SPEED`: The speed in mega bits per second of the relay's NIC. Needed to calculate utilization. Must be a number (not 10Gb or anything like that).
-  - Example `RELAY_V3_SPEED='10000000000'`
+  - Example `RELAY_V3_SPEED='10000'`
 
 
 
