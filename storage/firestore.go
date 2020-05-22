@@ -934,6 +934,8 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 			State:               r.State,
 			LastUpdateTime:      r.StateUpdateTime,
 			MaxSessions:         uint32(r.MaxSessions),
+			UpdateKey:           r.UpdateKey,
+			FirestoreID:         rdoc.Ref.ID,
 		}
 
 		// Set a default max session count of 3000 if the value isn't set in firestore

@@ -233,6 +233,8 @@ type relay struct {
 	SessionCount        uint64    `json:"sessionCount"`
 	BytesSent           uint64    `json:"bytesTx"`
 	BytesReceived       uint64    `json:"bytesRx"`
+	UpdateKey           string    `json:"update_key"`
+	FirestoreID         string    `json:"firestore_id"`
 }
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {
@@ -257,6 +259,8 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			SSHPort:             r.SSHPort,
 			State:               r.State.String(),
 			StateUpdateTime:     r.LastUpdateTime,
+			UpdateKey:           base64.StdEncoding.EncodeToString(r.UpdateKey),
+			FirestoreID:         r.FirestoreID,
 			MaxSessionCount:     r.MaxSessions,
 		}
 
