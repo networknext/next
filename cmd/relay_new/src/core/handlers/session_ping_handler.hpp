@@ -70,7 +70,9 @@ namespace core
 
       uint64_t hash = session_id ^ session_version;
 
-      if (!mSessionMap.exists(hash)) {
+      auto session = mSessionMap.get(hash);
+
+      if (!session) {
         Log(
          "ignoring session ping packet, session does not exist: session = ",
          std::hex,
@@ -80,8 +82,6 @@ namespace core
          static_cast<unsigned int>(session_version));
         return;
       }
-
-      auto session = mSessionMap.get(hash);
 
       if (session->expired()) {
         Log(
@@ -97,7 +97,7 @@ namespace core
 
       uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
 
-      if (clean_sequence <= session->SessionPingSeq) {
+      if (clean_sequence <= session->getSessionPingSeq()) {
         Log(
          "ignoring session ping packet, clean sequence <= server to client sequence: session = ",
          std::hex,
@@ -108,7 +108,7 @@ namespace core
          ", ",
          clean_sequence,
          " <= ",
-         sequence);
+         session->getSessionPingSeq());
         return;
       }
 
@@ -123,7 +123,7 @@ namespace core
         return;
       }
 
-      session->SessionPingSeq = clean_sequence;
+      session->setSessionPingSeq(clean_sequence);
 
       mRecorder.addToSent(mPacket.Len);
       mStats.BytesPerSecMeasurementTx += mPacket.Len;

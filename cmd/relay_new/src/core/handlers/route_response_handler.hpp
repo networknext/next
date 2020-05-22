@@ -69,7 +69,9 @@ namespace core
 
       uint64_t hash = session_id ^ session_version;
 
-      if (!mSessionMap.exists(hash)) {
+      auto session = mSessionMap.get(hash);
+
+      if (!session) {
         Log(
          "ignoring route response, could not find session: session = ",
          std::hex,
@@ -79,8 +81,6 @@ namespace core
          static_cast<unsigned int>(session_version));
         return;
       }
-
-      auto session = mSessionMap.get(hash);
 
       if (session->expired()) {
         Log(
@@ -95,7 +95,8 @@ namespace core
       }
 
       uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
-      if (clean_sequence <= session->ServerToClientSeq) {
+
+      if (clean_sequence <= session->getServerToClientSeq()) {
         Log(
          "ignoring route response, clean sequence <= server to client sequence: session = ",
          std::hex,
@@ -106,7 +107,7 @@ namespace core
          ", ",
          clean_sequence,
          " <= ",
-         sequence);
+         session->getServerToClientSeq());
         return;
       }
 
@@ -121,7 +122,7 @@ namespace core
         return;
       }
 
-      session->ServerToClientSeq = clean_sequence;
+      session->setServerToClientSeq(clean_sequence);
 
       mRecorder.addToSent(mPacket.Len);
       mStats.BytesPerSecManagementTx += mPacket.Len;

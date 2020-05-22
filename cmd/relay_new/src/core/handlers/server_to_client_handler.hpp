@@ -72,12 +72,12 @@ namespace core
 
       uint64_t hash = session_id ^ session_version;
 
-      if (!mSessionMap.exists(hash)) {
+      auto session = mSessionMap.get(hash);
+
+      if (!session) {
         Log("session does not exist: session = ", std::hex, session_id, '.', std::dec, static_cast<unsigned int>(session_version));
         return;
       }
-
-      auto session = mSessionMap.get(hash);
 
       if (session->expired()) {
         Log("session expired: session = ", std::hex, session_id, '.', std::dec, static_cast<unsigned int>(session_version));

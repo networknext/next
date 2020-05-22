@@ -70,22 +70,34 @@ namespace core
 
       uint64_t hash = session_id ^ session_version;
 
-      if (!mSessionMap.exists(hash)) {
-        Log("ignoring session pong packet, session does not exist: session = ", std::hex, session_id, '.', std::dec, static_cast<unsigned int>(session_version));
+      auto session = mSessionMap.get(hash);
+
+      if (!session) {
+        Log(
+         "ignoring session pong packet, session does not exist: session = ",
+         std::hex,
+         session_id,
+         '.',
+         std::dec,
+         static_cast<unsigned int>(session_version));
         return;
       }
 
-      auto session = mSessionMap.get(hash);
-
       if (session->expired()) {
-        Log("ignoring session pong packet, session expired: session = ", std::hex, session_id, '.', std::dec, static_cast<unsigned int>(session_version));
+        Log(
+         "ignoring session pong packet, session expired: session = ",
+         std::hex,
+         session_id,
+         '.',
+         std::dec,
+         static_cast<unsigned int>(session_version));
         mSessionMap.erase(hash);
         return;
       }
 
       uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
 
-      if (clean_sequence <= session->SessionPongSeq) {
+      if (clean_sequence <= session->getSessionPongSeq()) {
         Log(
          "ignoring session pong packet, clean sequence <= server to client sequence: session = ",
          std::hex,
@@ -96,18 +108,22 @@ namespace core
          ", ",
          clean_sequence,
          " <= ",
-         sequence);
+         session->getSessionPongSeq());
         return;
       }
 
-      if (
-       relay::relay_verify_header(
-        RELAY_DIRECTION_SERVER_TO_CLIENT, session->PrivateKey.data(), data, length) != RELAY_OK) {
-        Log("ignoring session pong packet, could not verify header: session = ", std::hex, session_id, '.', std::dec, static_cast<unsigned int>(session_version));
+      if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->PrivateKey.data(), data, length) != RELAY_OK) {
+        Log(
+         "ignoring session pong packet, could not verify header: session = ",
+         std::hex,
+         session_id,
+         '.',
+         std::dec,
+         static_cast<unsigned int>(session_version));
         return;
       }
 
-      session->SessionPongSeq = clean_sequence;
+      session->setSessionPongSeq(clean_sequence);
 
       mRecorder.addToSent(mPacket.Len);
       mStats.BytesPerSecMeasurementTx += mPacket.Len;

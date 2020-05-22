@@ -86,12 +86,12 @@ namespace core
 
       auto hash = token.key();
 
-      if (!mSessionMap.exists(hash)) {
+      auto session = mSessionMap.get(hash);
+
+      if (!session) {
         Log("ignoring continue request. session does not exist");
         return;
       }
-
-      auto session = mSessionMap.get(hash);
 
       if (session->expired()) {
         Log("ignoring continue request. session is expired");

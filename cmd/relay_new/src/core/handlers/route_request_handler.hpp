@@ -95,7 +95,7 @@ namespace core
       // create a new session and add it to the session map
       uint64_t hash = token.key();
 
-      if (!mSessionMap.exists(hash)) {
+      if (!mSessionMap.get(hash)) {
         // create the session
         auto session = std::make_shared<Session>(mRelayClock);
         assert(session);
@@ -104,22 +104,21 @@ namespace core
         session->ExpireTimestamp = token.ExpireTimestamp;
         session->SessionID = token.SessionID;
         session->SessionVersion = token.SessionVersion;
-        session->ServerToClientSeq = 0;
-        session->SessionPingSeq = 0;
-        session->SessionPongSeq = 0;
         session->KbpsUp = token.KbpsUp;
         session->KbpsDown = token.KbpsDown;
         session->PrevAddr = mFrom;
         session->NextAddr = token.NextAddr;
+        std::copy(token.PrivateKey.begin(), token.PrivateKey.end(), session->PrivateKey.begin());
 
         // store it
-        std::copy(token.PrivateKey.begin(), token.PrivateKey.end(), session->PrivateKey.begin());
         relay_replay_protection_reset(&session->ClientToServerProtection);
         relay_replay_protection_reset(&session->ServerToClientProtection);
 
         mSessionMap.set(hash, session);
 
         Log("session created: ", std::hex, token.SessionID, '.', std::dec, static_cast<unsigned int>(token.SessionVersion));
+      } else {
+        Log("received additional route request for session: ", std::hex, token.SessionID, '.', std::dec, static_cast<unsigned int>(token.SessionVersion));
       }
 
       // remove this part of the token by offseting it the request packet bytes

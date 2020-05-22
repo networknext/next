@@ -70,22 +70,34 @@ namespace core
 
       uint64_t hash = session_id ^ session_version;
 
-      if (!mSessionMap.exists(hash)) {
-        Log("ignoring continue response, could not find session: session = ", std::hex, session_id, '.', std::dec, static_cast<unsigned int>(session_version));
+      auto session = mSessionMap.get(hash);
+
+      if (!session) {
+        Log(
+         "ignoring continue response, could not find session: session = ",
+         std::hex,
+         session_id,
+         '.',
+         std::dec,
+         static_cast<unsigned int>(session_version));
         return;
       }
 
-      auto session = mSessionMap.get(hash);
-
       if (session->expired()) {
-        Log("ignoring continue response, session expired: session = ", std::hex, session_id, '.', std::dec, static_cast<unsigned int>(session_version));
+        Log(
+         "ignoring continue response, session expired: session = ",
+         std::hex,
+         session_id,
+         '.',
+         std::dec,
+         static_cast<unsigned int>(session_version));
         mSessionMap.erase(hash);
         return;
       }
 
       uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
 
-      if (clean_sequence <= session->ServerToClientSeq) {
+      if (clean_sequence <= session->getServerToClientSeq()) {
         Log(
          "ignoring continue response, clean sequence <= server to client sequence: session = ",
          std::hex,
@@ -96,16 +108,22 @@ namespace core
          ", ",
          clean_sequence,
          " <= ",
-         sequence);
+         session->getServerToClientSeq());
         return;
       }
 
       if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->PrivateKey.data(), data, length) != RELAY_OK) {
-        Log("ignoring continue response, could not verify header: session = ", std::hex, session_id, '.', std::dec, static_cast<unsigned int>(session_version));
+        Log(
+         "ignoring continue response, could not verify header: session = ",
+         std::hex,
+         session_id,
+         '.',
+         std::dec,
+         static_cast<unsigned int>(session_version));
         return;
       }
 
-      session->ServerToClientSeq = clean_sequence;
+      session->setServerToClientSeq(clean_sequence);
 
       mRecorder.addToSent(mPacket.Len);
       mStats.BytesPerSecManagementTx += mPacket.Len;
