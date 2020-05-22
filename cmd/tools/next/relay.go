@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strconv"
 
 	"github.com/networknext/backend/routing"
 	localjsonrpc "github.com/networknext/backend/transport/jsonrpc"
@@ -83,7 +82,7 @@ func getRelayInfo(rpcClient jsonrpc.RPCClient, relayName string) relayInfo {
 		sshPort:     fmt.Sprintf("%d", relay.SSHPort),
 		publicAddr:  relay.Addr,
 		updateKey:   relay.UpdateKey,
-		nicSpeed:    strconv.FormatUint(relay.NICSpeedMbps, 10),
+		nicSpeed:    fmt.Sprintf("%d", relay.NICSpeedMbps),
 		firestoreID: relay.FirestoreID,
 	}
 }
