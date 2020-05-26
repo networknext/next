@@ -19,6 +19,7 @@
 #include "relay/relay_platform.hpp"
 #include "testing/test.hpp"
 #include "util/env.hpp"
+#include "legacy/v3/constants.hpp"
 
 using namespace std::chrono_literals;
 
@@ -231,6 +232,8 @@ int main(int argc, const char* argv[])
   // only used for v3 compatability
   const auto relayID = crypto::FNV(env.RelayV3Name);
 
+  std::atomic<legacy::v3::ResponseState> state(legacy::v3::ResponseState::Invalid);
+
   // decides if the relay should receive packets
   std::atomic<bool> shouldReceive(true);
 
@@ -271,7 +274,6 @@ int main(int argc, const char* argv[])
   auto cleanup = [&closeSockets, &joinThreads] {
     gAlive = false;
     closeSockets();
-    joinThreads();
     relay::relay_term();
   };
 
@@ -467,6 +469,7 @@ int main(int argc, const char* argv[])
   shouldReceive = false;
 
   cleanup();
+  joinThreads();
 
   LogDebug("Receiving Address: ", relayAddr);
 

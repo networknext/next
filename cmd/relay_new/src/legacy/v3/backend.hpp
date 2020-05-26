@@ -29,7 +29,8 @@ namespace legacy
        const util::Clock& relayClock,
        TrafficStats& stats,
        core::RelayManager<core::V3Relay>& manager,
-       const size_t speed);
+       const size_t speed,
+       std::atomic<ResponseState>& state);
       ~Backend() = default;
 
       auto init() -> bool;
@@ -46,13 +47,14 @@ namespace legacy
       core::RelayManager<core::V3Relay>& mRelayManager;
       const size_t mSpeed;  // Relay nic speed in bits/second
       BackendToken mToken;
-      uint64_t mInitTimestamp; // in seconds
-      uint64_t mInitReceived; // in nanoseconds
+      uint64_t mInitTimestamp;  // in seconds
+      uint64_t mInitReceived;   // in nanoseconds
       const uint64_t mRelayID;
       std::string mGroup;
       uint64_t mGroupID;
       std::string mPingKey;
       std::array<uint8_t, 64> mUpdateKey;
+      std::atomic<ResponseState>& mState;
 
       auto tryInit() -> bool;
       auto update(bool shuttingDown) -> bool;

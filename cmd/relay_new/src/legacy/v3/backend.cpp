@@ -28,7 +28,8 @@ namespace legacy
      const util::Clock& relayClock,
      TrafficStats& stats,
      core::RelayManager<core::V3Relay>& manager,
-     const size_t speed)
+     const size_t speed,
+     std::atomic<ResponseState>& state)
      : mReceiver(receiver),
        mEnv(env),
        mSocket(socket),
@@ -36,7 +37,8 @@ namespace legacy
        mStats(stats),
        mRelayManager(manager),
        mSpeed(speed),
-       mRelayID(relayID)
+       mRelayID(relayID),
+       mState(state)
     {
       std::array<uint8_t, PingKeySize> key;
       crypto_auth_keygen(key.data());
@@ -86,6 +88,7 @@ namespace legacy
       BackendResponse response;
       util::JSON doc;
 
+      mState = ResponseState::Init;
       auto [ok, err] = sendAndRecv(packet, request, response, doc);
       if (!ok) {
         Log(err);
@@ -155,6 +158,7 @@ namespace legacy
       BackendResponse response;
       util::JSON doc;
 
+      mState = ResponseState::Config;
       auto [ok, err] = sendAndRecv(packet, request, response, doc);
       if (!ok) {
         Log(err);
@@ -236,6 +240,7 @@ namespace legacy
       BackendResponse response;
       util::JSON doc;
 
+      mState = ResponseState::Update;
       auto [ok, err] = sendAndRecv(packet, request, response, doc);
       if (!ok) {
         Log(err);
@@ -473,7 +478,7 @@ namespace legacy
         std::this_thread::sleep_for(1s);
 
         if (!sendSuccess) {
-          Log("failed to send init packet");
+          Log("failed to send v3 packet");
           continue;
         }
 
