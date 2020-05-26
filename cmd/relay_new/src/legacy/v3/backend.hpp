@@ -44,13 +44,15 @@ namespace legacy
       const util::Clock& mClock;
       TrafficStats& mStats;
       core::RelayManager<core::V3Relay>& mRelayManager;
-      const size_t mSpeed; // Relay nic speed in bits/second
+      const size_t mSpeed;  // Relay nic speed in bits/second
       BackendToken mToken;
-      uint64_t mInitTimestamp;
+      uint64_t mInitTimestamp; // in seconds
+      uint64_t mInitReceived; // in nanoseconds
       const uint64_t mRelayID;
       std::string mGroup;
       uint64_t mGroupID;
       std::string mPingKey;
+      std::array<uint8_t, 64> mUpdateKey;
 
       auto tryInit() -> bool;
       auto update(bool shuttingDown) -> bool;
@@ -66,6 +68,8 @@ namespace legacy
        BackendResponse& response,
        std::vector<uint8_t>& completeResponse) -> bool;
       auto buildCompleteResponse(std::vector<uint8_t>& completeBuffer, util::JSON& doc) -> std::tuple<bool, std::string>;
+      void signRequest(util::JSON& doc);
+      auto timestamp() -> uint64_t;
     };
   }  // namespace v3
 }  // namespace legacy
