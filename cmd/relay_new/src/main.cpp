@@ -322,7 +322,8 @@ int main(int argc, const char* argv[])
                                                    &recorder,
                                                    &sender,
                                                    &v3TrafficStats,
-                                                   relayID] {
+                                                   relayID,
+                                                   &state] {
         core::PacketProcessor processor(
          shouldReceive,
          *socket,
@@ -335,7 +336,8 @@ int main(int argc, const char* argv[])
          recorder,
          sender,
          v3TrafficStats,
-         relayID);
+         relayID,
+         state);
         processor.process(socketAndThreadReady);
       });
 
@@ -400,9 +402,9 @@ int main(int argc, const char* argv[])
     {
       auto socket = nextSocket();
       auto thread = std::make_shared<std::thread>(
-       [&receiver, &env, socket, &cleanup, &v3BackendSuccess, &relayClock, &v3TrafficStats, &v3RelayManager, &relayID] {
+       [&receiver, &env, socket, &cleanup, &v3BackendSuccess, &relayClock, &v3TrafficStats, &v3RelayManager, &relayID, &state] {
          size_t speed = std::stoi(env.RelayV3Speed) * 1000000;
-         legacy::v3::Backend backend(receiver, env, relayID, *socket, relayClock, v3TrafficStats, v3RelayManager, speed);
+         legacy::v3::Backend backend(receiver, env, relayID, *socket, relayClock, v3TrafficStats, v3RelayManager, speed, state);
 
          if (!backend.init()) {
            Log("could not initialize relay with old backend");
