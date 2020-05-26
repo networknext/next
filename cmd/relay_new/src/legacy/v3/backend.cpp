@@ -38,7 +38,8 @@ namespace legacy
        mRelayManager(manager),
        mSpeed(speed),
        mRelayID(relayID),
-       mState(state)
+       mState(state),
+       mUpdateKey({})
     {
       std::array<uint8_t, PingKeySize> key;
       crypto_auth_keygen(key.data());
@@ -110,7 +111,7 @@ namespace legacy
       }
 
       // "Timestamp" is in milliseconds, convert to nanos
-      mInitTimestamp = doc.get<uint64_t>("Timestamp") / 1000000 - (response.At - request.At) / 2;
+      mInitTimestamp = doc.get<uint64_t>("Timestamp") * (OneSecInNanos / 1000ULL) + (response.At - request.At) / 2;
       auto b64TokenBuff = doc.get<std::string>("Token");
       std::array<uint8_t, TokenBytes> tokenBuff;
       if (encoding::base64::Decode(b64TokenBuff, tokenBuff) == 0) {
@@ -342,8 +343,7 @@ namespace legacy
     auto Backend::buildConfigJSON(util::JSON& doc) -> bool
     {
       doc.set(mRelayID, "RelayId");
-      signRequest(doc);
-      return true;
+      return signRequest(doc);
     }
 
     // clang-format off
@@ -456,9 +456,7 @@ namespace legacy
         doc.set(pingStats, "PingStats");
       }
 
-      signRequest(doc);
-
-      return true;
+      return signRequest(doc);
     }
 
     auto Backend::sendAndRecv(
@@ -469,7 +467,8 @@ namespace legacy
       bool done = false;
       unsigned int attempts = 0;
       do {
-        request.At = mClock.elapsed<util::Nanosecond>();
+        LogDebug("sending ", request.Type, " request, attempts ", attempts);
+        request.At = mClock.elapsed<util::Second>();
         bool sendSuccess = packet_send(mSocket, mToken, packet, request);
 
         attempts++;
@@ -483,20 +482,14 @@ namespace legacy
         }
 
         // receive response(s) if it exists, if not resend
-        // if + while so that I can log something for the sake of debugging
-        if (mReceiver.hasItems()) {
-          while (mReceiver.hasItems()) {
-            mReceiver.recv(packet);
-
-            // this will return true once all the fragments have been received
-            if (readResponse(packet, request, response, completeResponse)) {
-              done = true;
-            }
-          }
+        while (mReceiver.hasItems()) {
+          mReceiver.recv(packet);
+          // this will return true once all the fragments have been received
+          done = readResponse(packet, request, response, completeResponse);
         }
       } while (!done && !mSocket.closed() && !mReceiver.closed() && attempts < 60);
 
-      response.At = mClock.elapsed<util::Nanosecond>();
+      response.At = mClock.elapsed<util::Second>();
 
       if (mSocket.closed() || mReceiver.closed() || attempts == 60) {
         std::stringstream ss;
@@ -692,7 +685,7 @@ namespace legacy
       return {true, ""};
     }
 
-    void Backend::signRequest(util::JSON& doc)
+    auto Backend::signRequest(util::JSON& doc) -> bool
     {
       // timestamp and signature
 
@@ -701,17 +694,26 @@ namespace legacy
       doc.set(ts, "Timestamp");
 
       std::array<uint8_t, crypto_sign_BYTES> signature{};
-      crypto_sign_detached(signature.data(), nullptr, reinterpret_cast<uint8_t*>(&ts), sizeof(ts), mUpdateKey.data());
+      unsigned long long len = signature.size();
+      crypto_sign_detached(signature.data(), &len, reinterpret_cast<uint8_t*>(&ts), sizeof(ts), mUpdateKey.data());
+
+      if (len != crypto_sign_BYTES) {
+        LogDebug("failed to sign packet, length is ", len);
+        return false;
+      }
 
       std::array<char, signature.size() * 2> b64Sig{};
       size_t sigLen = encoding::base64::Encode(signature, b64Sig);
 
       doc.set(std::string(b64Sig.begin(), b64Sig.begin() + sigLen), "Signature");
+
+      return true;
     }
 
+    // one second resolution
     auto Backend::timestamp() -> uint64_t
     {
-      return (mInitTimestamp + (mClock.unixTime<util::Nanosecond>() - mInitReceived)) / OneSecInNanos;
+      return (mInitTimestamp + mClock.unixTime<util::Nanosecond>() - mInitReceived) / OneSecInNanos;
     }
   }  // namespace v3
 }  // namespace legacy

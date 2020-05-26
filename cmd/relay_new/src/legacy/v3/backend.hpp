@@ -70,7 +70,7 @@ namespace legacy
        BackendResponse& response,
        std::vector<uint8_t>& completeResponse) -> bool;
       auto buildCompleteResponse(std::vector<uint8_t>& completeBuffer, util::JSON& doc) -> std::tuple<bool, std::string>;
-      void signRequest(util::JSON& doc);
+      auto signRequest(util::JSON& doc) -> bool;
       auto timestamp() -> uint64_t;
     };
   }  // namespace v3
