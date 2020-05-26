@@ -183,7 +183,7 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 		var reply localjsonrpc.RelayStateUpdateReply
 
 		if err := rpcClient.CallFor(&reply, "OpsService.RelayPublicKeyUpdate", &args); err != nil {
-			log.Fatalf("could not update relay state: %v", err)
+			log.Fatalf("could not update relay public key: %v", err)
 		}
 	}
 
@@ -194,8 +194,8 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 	for _, relayName := range relayNames {
 		fmt.Printf("Updating %s\n", relayName)
 		info := getRelayInfo(rpcClient, relayName)
-		makeEnv(info)
 		updateRelayState(rpcClient, info, routing.RelayStateOffline)
+		makeEnv(info)
 		if !runCommandEnv("deploy/relay-update.sh", []string{env.SSHKeyFilePath, info.user + "@" + info.sshAddr}, nil) {
 			log.Fatal("could not execute the relay-update.sh script")
 		}
