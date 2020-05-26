@@ -13,7 +13,8 @@ using namespace std::chrono_literals;
 namespace
 {
   const uint8_t PacketType = 123;
-}
+  const uint64_t OneSecInNanos = 1000000000ULL;
+}  // namespace
 
 namespace legacy
 {
@@ -41,6 +42,8 @@ namespace legacy
       crypto_auth_keygen(key.data());
       mPingKey.resize(PingKeySize * 2);                          // allocate enough space for the encoding
       mPingKey.resize(encoding::base64::Encode(key, mPingKey));  // truncate the length
+
+      encoding::base64::Decode(env.RelayV3UpdateKey, mUpdateKey);
     }
 
     // clang-format off
@@ -89,6 +92,8 @@ namespace legacy
         return false;
       }
 
+      mInitReceived = mClock.unixTime<util::Nanosecond>();
+
       // process response
 
       if (!doc.memberExists("Timestamp")) {
@@ -101,6 +106,7 @@ namespace legacy
         return false;
       }
 
+      // "Timestamp" is in milliseconds, convert to nanos
       mInitTimestamp = doc.get<uint64_t>("Timestamp") / 1000000 - (response.At - request.At) / 2;
       auto b64TokenBuff = doc.get<std::string>("Token");
       std::array<uint8_t, TokenBytes> tokenBuff;
@@ -140,6 +146,7 @@ namespace legacy
         std::copy(jsonStr.begin(), jsonStr.end(), packet.Buffer.begin());
         packet.Len = jsonStr.length();
         packet.Addr = backendAddr;
+        LogDebug("sending v3: ", doc.toPrettyString());
       }
       BackendRequest request = {};
       {
@@ -216,12 +223,11 @@ namespace legacy
           return false;
         }
 
-        // LogDebug("sending update v3: ", doc.toPrettyString());
-
         auto jsonStr = doc.toString();
         std::copy(jsonStr.begin(), jsonStr.end(), packet.Buffer.begin());
         packet.Len = jsonStr.length();
         packet.Addr = backendAddr;
+        LogDebug("sending v3: ", doc.toPrettyString());
       }
       BackendRequest request = {};
       {
@@ -324,19 +330,23 @@ namespace legacy
     /*
      *  {
      *    "RelayId": uint64,
+     *    "Timestamp": uint64,
+     *    "Signature": string,
      *  }
      */
     auto Backend::buildConfigJSON(util::JSON& doc) -> bool
     {
       doc.set(mRelayID, "RelayId");
+      signRequest(doc);
       return true;
     }
 
     // clang-format off
     /*
      *  {
+     *    "Timestamp": uint64,
+     *    "Signature": string,
      *    "Usage": double, // 100.0 * 8.0 * (bytes_per_sec_total_tx + bytes_per_sec_total_rx) / relaySpeed
-
      *    "TrafficStats": {
      *      "BytesPaidTx": uint64, // number of bytes sent between game client <-> server
      *      "BytesPaidRx": uint64, // ditto but received
@@ -441,6 +451,8 @@ namespace legacy
         doc.set(pingStats, "PingStats");
       }
 
+      signRequest(doc);
+
       return true;
     }
 
@@ -452,7 +464,6 @@ namespace legacy
       bool done = false;
       unsigned int attempts = 0;
       do {
-        // LogDebug("sending ", request.Type, " packet");
         request.At = mClock.elapsed<util::Nanosecond>();
         bool sendSuccess = packet_send(mSocket, mToken, packet, request);
 
@@ -493,7 +504,7 @@ namespace legacy
         return {false, err};
       }
 
-      // LogDebug("received v3: ", doc.toPrettyString());
+      LogDebug("received v3: ", doc.toPrettyString());
 
       return {true, ""};
     }
@@ -674,6 +685,28 @@ namespace legacy
       }
 
       return {true, ""};
+    }
+
+    void Backend::signRequest(util::JSON& doc)
+    {
+      // timestamp and signature
+
+      auto ts = timestamp();
+
+      doc.set(ts, "Timestamp");
+
+      std::array<uint8_t, crypto_sign_BYTES> signature{};
+      crypto_sign_detached(signature.data(), nullptr, reinterpret_cast<uint8_t*>(&ts), sizeof(ts), mUpdateKey.data());
+
+      std::array<char, signature.size() * 2> b64Sig{};
+      size_t sigLen = encoding::base64::Encode(signature, b64Sig);
+
+      doc.set(std::string(b64Sig.begin(), b64Sig.begin() + sigLen), "Signature");
+    }
+
+    auto Backend::timestamp() -> uint64_t
+    {
+      return (mInitTimestamp + (mClock.unixTime<util::Nanosecond>() - mInitReceived)) / OneSecInNanos;
     }
   }  // namespace v3
 }  // namespace legacy
