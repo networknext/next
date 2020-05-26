@@ -27,23 +27,26 @@ namespace core
     legacy::relay_replay_protection_t ServerToClientProtection;
     legacy::relay_replay_protection_t ClientToServerProtection;
 
+    void setClientToServerSeq(uint64_t seq);
     void setServerToClientSeq(uint64_t seq);
-    void setSessionPingSeq(uint64_t seq);
-    void setSessionPongSeq(uint64_t seq);
 
+    auto getClientToServerSeq() -> uint64_t;
     auto getServerToClientSeq() -> uint64_t;
-    auto getSessionPingSeq() -> uint64_t;
-    auto getSessionPongSeq() -> uint64_t;
 
    private:
+    uint64_t mClientToServer = 0;
     uint64_t mServerToClientSeq = 0;
-    uint64_t mSessionPingSeq = 0;
-    uint64_t mSessionPongSeq = 0;
   };
 
   inline Session::Session(const util::Clock& relayClock)
-   : Expireable(relayClock), mServerToClientSeq(0), mSessionPingSeq(0), mSessionPongSeq(0)
+   : Expireable(relayClock), mServerToClientSeq(0), mClientToServer(0)
   {}
+
+  inline void Session::setClientToServerSeq(uint64_t seq)
+  {
+    LogDebug("setting session ping seq: ", seq);
+    mClientToServer = seq;
+  }
 
   inline void Session::setServerToClientSeq(uint64_t seq)
   {
@@ -51,31 +54,14 @@ namespace core
     mServerToClientSeq = seq;
   }
 
-  inline void Session::setSessionPingSeq(uint64_t seq)
+  inline auto Session::getClientToServerSeq() -> uint64_t
   {
-    LogDebug("setting session ping seq: ", seq);
-    mSessionPingSeq = seq;
-  }
-
-  inline void Session::setSessionPongSeq(uint64_t seq)
-  {
-    LogDebug("setting session pong seq: ", seq);
-    mSessionPongSeq = seq;
+    return mClientToServer;
   }
 
   inline auto Session::getServerToClientSeq() -> uint64_t
   {
     return mServerToClientSeq;
-  }
-
-  inline auto Session::getSessionPingSeq() -> uint64_t
-  {
-    return mSessionPingSeq;
-  }
-
-  inline auto Session::getSessionPongSeq() -> uint64_t
-  {
-    return mSessionPongSeq;
   }
 
   using SessionPtr = std::shared_ptr<Session>;

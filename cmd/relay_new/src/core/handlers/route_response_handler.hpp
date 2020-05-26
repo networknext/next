@@ -122,6 +122,7 @@ namespace core
         return;
       }
 
+      LogDebug("route response set seq");
       session->setServerToClientSeq(clean_sequence);
 
       mRecorder.addToSent(mPacket.Len);

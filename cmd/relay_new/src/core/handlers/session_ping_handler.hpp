@@ -97,7 +97,7 @@ namespace core
 
       uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
 
-      if (clean_sequence <= session->getSessionPingSeq()) {
+      if (clean_sequence <= session->getClientToServerSeq()) {
         Log(
          "ignoring session ping packet, clean sequence <= server to client sequence: session = ",
          std::hex,
@@ -108,7 +108,7 @@ namespace core
          ", ",
          clean_sequence,
          " <= ",
-         session->getSessionPingSeq());
+         session->getClientToServerSeq());
         return;
       }
 
@@ -123,7 +123,8 @@ namespace core
         return;
       }
 
-      session->setSessionPingSeq(clean_sequence);
+      LogDebug("session ping set seq");
+      session->setClientToServerSeq(clean_sequence);
 
       mRecorder.addToSent(mPacket.Len);
       mStats.BytesPerSecMeasurementTx += mPacket.Len;
