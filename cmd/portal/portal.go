@@ -289,6 +289,8 @@ func main() {
 			Storage: db,
 		}, "")
 
+		s.RegisterValidateRequestFunc(jsonrpc.PermsValidator)
+
 		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), s))
 
 		http.Handle("/", http.FileServer(http.Dir(uiDir)))
