@@ -54,6 +54,7 @@ type relayInfo struct {
 	sshAddr     string
 	sshPort     string
 	publicAddr  string
+	publicKey   string
 	updateKey   string
 	nicSpeed    string
 	firestoreID string
@@ -81,6 +82,7 @@ func getRelayInfo(rpcClient jsonrpc.RPCClient, relayName string) relayInfo {
 		sshAddr:     relay.ManagementAddr,
 		sshPort:     fmt.Sprintf("%d", relay.SSHPort),
 		publicAddr:  relay.Addr,
+		publicKey:   relay.PublicKey,
 		updateKey:   relay.UpdateKey,
 		nicSpeed:    fmt.Sprintf("%d", relay.NICSpeedMbps),
 		firestoreID: relay.FirestoreID,
