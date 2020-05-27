@@ -64,7 +64,7 @@ namespace core
 
     GenericPacketBuffer<MaxPacketsToReceive> outputBuffer;
 
-    while (mShouldReceive) {
+    while (!mSocket.closed() && mShouldReceive) {
 #ifdef RELAY_MULTISEND
       GenericPacketBuffer<MaxPacketsToReceive> inputBuffer;
 
@@ -75,9 +75,11 @@ namespace core
       for (int i = 0; i < inputBuffer.Count; i++) {
         auto& pkt = inputBuffer.Packets[i];
         auto& header = inputBuffer.Headers[i];
-        pkt.Len = header.msg_len;
-        getAddrFromMsgHdr(pkt.Addr, header.msg_hdr);
-        processPacket(pkt, outputBuffer);
+        if (header.msg_len > 0) {
+          pkt.Len = header.msg_len;
+          getAddrFromMsgHdr(pkt.Addr, header.msg_hdr);
+          processPacket(pkt, outputBuffer);
+        }
       }
 
       if (outputBuffer.Count > 0) {

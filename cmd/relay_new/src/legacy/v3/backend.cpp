@@ -29,7 +29,8 @@ namespace legacy
      TrafficStats& stats,
      core::RelayManager<core::V3Relay>& manager,
      const size_t speed,
-     std::atomic<ResponseState>& state)
+     std::atomic<ResponseState>& state,
+     const crypto::Keychain& keychain)
      : mReceiver(receiver),
        mEnv(env),
        mSocket(socket),
@@ -39,14 +40,12 @@ namespace legacy
        mSpeed(speed),
        mRelayID(relayID),
        mState(state),
-       mUpdateKey({})
+       mKeychain(keychain)
     {
       std::array<uint8_t, PingKeySize> key;
       crypto_auth_keygen(key.data());
       mPingKey.resize(PingKeySize * 2);                          // allocate enough space for the encoding
       mPingKey.resize(encoding::base64::Encode(key, mPingKey));  // truncate the length
-
-      encoding::base64::Decode(env.RelayV3UpdateKey, mUpdateKey);
     }
 
     // clang-format off
@@ -90,7 +89,7 @@ namespace legacy
       util::JSON doc;
 
       mState = ResponseState::Init;
-      auto [ok, err] = sendAndRecv(packet, request, response, doc);
+      auto [ok, err] = sendAndRecvBin(packet, request, response, doc);
       if (!ok) {
         Log(err);
         return false;
@@ -137,41 +136,35 @@ namespace legacy
       }
 
       core::GenericPacket<> packet;
+      util::JSON reqDoc;
       {
-        util::JSON doc;
-        {
-          if (!buildConfigJSON(doc)) {
-            Log("failed to build config json");
-            return false;
-          }
+        if (!buildConfigJSON(reqDoc)) {
+          Log("failed to build config json");
+          return false;
         }
-
-        auto jsonStr = doc.toString();
-        std::copy(jsonStr.begin(), jsonStr.end(), packet.Buffer.begin());
-        packet.Len = jsonStr.length();
-        packet.Addr = backendAddr;
-        LogDebug("sending v3: ", doc.toPrettyString());
       }
+      packet.Addr = backendAddr;
+
       BackendRequest request = {};
       {
         request.Type = core::packets::Type::V3ConfigRequest;
       }
       BackendResponse response;
-      util::JSON doc;
+      util::JSON respDoc;
 
       mState = ResponseState::Config;
-      auto [ok, err] = sendAndRecv(packet, request, response, doc);
+      auto [ok, err] = sendAndRecvJSON(packet, reqDoc, request, response, respDoc);
       if (!ok) {
         Log(err);
         return false;
       }
 
-      if (!doc.memberExists("Group")) {
+      if (!respDoc.memberExists("Group")) {
         Log("v3 backend json does not contain 'Group' member");
         return false;
       }
 
-      mGroup = doc.get<std::string>("Group");
+      mGroup = respDoc.get<std::string>("Group");
 
       mGroupID = crypto::FNV(mGroup);
 
@@ -221,28 +214,25 @@ namespace legacy
       }
 
       core::GenericPacket<> packet;
-      {
-        util::JSON doc;
-        if (!buildUpdateJSON(doc, shuttingDown)) {
-          Log("could not build v3 update json");
-          return false;
-        }
+      packet.Addr = backendAddr;
 
-        auto jsonStr = doc.toString();
-        std::copy(jsonStr.begin(), jsonStr.end(), packet.Buffer.begin());
-        packet.Len = jsonStr.length();
-        packet.Addr = backendAddr;
-        LogDebug("sending v3: ", doc.toPrettyString());
+      util::JSON reqDoc;
+      if (!buildUpdateJSON(reqDoc, shuttingDown)) {
+        Log("could not build v3 update json");
+        return false;
       }
+
+      LogDebug("sending v3: ", reqDoc.toPrettyString());
+
       BackendRequest request = {};
       {
         request.Type = core::packets::Type::V3UpdateRequest;
       }
       BackendResponse response;
-      util::JSON doc;
+      util::JSON respDoc;
 
       mState = ResponseState::Update;
-      auto [ok, err] = sendAndRecv(packet, request, response, doc);
+      auto [ok, err] = sendAndRecvJSON(packet, reqDoc, request, response, respDoc);
       if (!ok) {
         Log(err);
       }
@@ -251,7 +241,7 @@ namespace legacy
       std::array<core::V3Relay, MAX_RELAYS> incoming{};
 
       bool allValid = true;
-      auto relays = doc.get<util::JSON>("PingTargets");
+      auto relays = respDoc.get<util::JSON>("PingTargets");
       if (relays.isArray()) {
         // 'return' functions like 'continue' within the lambda
         relays.foreach([&allValid, &count, &incoming](rapidjson::Value& relayData) {
@@ -459,7 +449,7 @@ namespace legacy
       return signRequest(doc);
     }
 
-    auto Backend::sendAndRecv(
+    auto Backend::sendAndRecvBin(
      core::GenericPacket<>& packet, BackendRequest& request, BackendResponse& response, util::JSON& doc)
      -> std::tuple<bool, std::string>
     {
@@ -467,6 +457,63 @@ namespace legacy
       bool done = false;
       unsigned int attempts = 0;
       do {
+        LogDebug("sending ", request.Type, " request, attempts ", attempts);
+        request.At = mClock.elapsed<util::Second>();
+        bool sendSuccess = packet_send(mSocket, mToken, packet, request);
+
+        attempts++;
+
+        // wait a second for the response to come in or if send failed
+        std::this_thread::sleep_for(1s);
+
+        if (!sendSuccess) {
+          Log("failed to send v3 packet");
+          continue;
+        }
+
+        // receive response(s) if it exists, if not resend
+        while (mReceiver.hasItems()) {
+          mReceiver.recv(packet);
+          // this will return true once all the fragments have been received
+          done = readResponse(packet, request, response, completeResponse);
+        }
+      } while (!done && !mSocket.closed() && !mReceiver.closed() && attempts < 60);
+
+      response.At = mClock.elapsed<util::Second>();
+
+      if (mSocket.closed() || mReceiver.closed() || attempts == 60) {
+        std::stringstream ss;
+        ss << "could not send request, attempts: " << attempts;
+        return {false, ss.str()};
+      }
+
+      auto [ok, err] = this->buildCompleteResponse(completeResponse, doc);
+      if (!ok) {
+        return {false, err};
+      }
+
+      LogDebug("received v3: ", doc.toPrettyString());
+
+      return {true, ""};
+    }
+
+    auto Backend::sendAndRecvJSON(
+     core::GenericPacket<>& packet,
+     util::JSON& requestData,
+     BackendRequest& request,
+     BackendResponse& response,
+     util::JSON& doc) -> std::tuple<bool, std::string>
+    {
+      std::vector<uint8_t> completeResponse;
+      bool done = false;
+      unsigned int attempts = 0;
+      do {
+        signRequest(requestData);
+
+        auto jsonStr = doc.toString();
+        std::copy(jsonStr.begin(), jsonStr.end(), packet.Buffer.begin());
+        packet.Len = jsonStr.length();
+
         LogDebug("sending ", request.Type, " request, attempts ", attempts);
         request.At = mClock.elapsed<util::Second>();
         bool sendSuccess = packet_send(mSocket, mToken, packet, request);
@@ -694,8 +741,8 @@ namespace legacy
       doc.set(ts, "Timestamp");
 
       std::array<uint8_t, crypto_sign_BYTES> signature{};
-      unsigned long long len = signature.size();
-      crypto_sign_detached(signature.data(), &len, reinterpret_cast<uint8_t*>(&ts), sizeof(ts), mUpdateKey.data());
+      unsigned long long len = 0;
+      crypto_sign_detached(signature.data(), &len, reinterpret_cast<uint8_t*>(&ts), sizeof(ts), mKeychain.UpdateKey.data());
 
       if (len != crypto_sign_BYTES) {
         LogDebug("failed to sign packet, length is ", len);
@@ -706,7 +753,6 @@ namespace legacy
       size_t sigLen = encoding::base64::Encode(signature, b64Sig);
 
       doc.set(std::string(b64Sig.begin(), b64Sig.begin() + sigLen), "Signature");
-
       return true;
     }
 

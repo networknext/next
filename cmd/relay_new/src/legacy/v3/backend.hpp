@@ -5,6 +5,7 @@
 #include "backend_token.hpp"
 #include "core/packet.hpp"
 #include "core/relay_manager.hpp"
+#include "crypto/keychain.hpp"
 #include "net/address.hpp"
 #include "os/platform.hpp"
 #include "traffic_stats.hpp"
@@ -30,7 +31,8 @@ namespace legacy
        TrafficStats& stats,
        core::RelayManager<core::V3Relay>& manager,
        const size_t speed,
-       std::atomic<ResponseState>& state);
+       std::atomic<ResponseState>& state,
+       const crypto::Keychain& keychain);
       ~Backend() = default;
 
       auto init() -> bool;
@@ -53,8 +55,8 @@ namespace legacy
       std::string mGroup;
       uint64_t mGroupID;
       std::string mPingKey;
-      std::array<uint8_t, 64> mUpdateKey;
       std::atomic<ResponseState>& mState;
+      const crypto::Keychain& mKeychain;
 
       auto tryInit() -> bool;
       auto update(bool shuttingDown) -> bool;
@@ -62,7 +64,9 @@ namespace legacy
       auto buildConfigJSON(util::JSON& doc) -> bool;
       auto buildUpdateJSON(util::JSON& doc, bool shuttingDown) -> bool;
 
-      auto sendAndRecv(core::GenericPacket<>& packet, BackendRequest& request, BackendResponse& response, util::JSON& doc)
+      auto sendAndRecvBin(core::GenericPacket<>& packet, BackendRequest& request, BackendResponse& response, util::JSON& doc)
+       -> std::tuple<bool, std::string>;
+      auto sendAndRecvJSON(core::GenericPacket<>& packetBuff, util::JSON& requestData, BackendRequest& request, BackendResponse& response, util::JSON& doc)
        -> std::tuple<bool, std::string>;
       auto readResponse(
        core::GenericPacket<>& packet,

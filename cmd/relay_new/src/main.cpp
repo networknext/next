@@ -66,6 +66,18 @@ namespace
       std::cout << "    router public key is '" << env.RelayRouterPublicKey << "'\n";
     }
 
+    // update key
+    {
+      std::string b64UpdateKey = env.RelayV3UpdateKey;
+      auto len = encoding::base64::Decode(b64UpdateKey, keychain.UpdateKey);
+      if (len != crypto_sign_SECRETKEYBYTES) {
+        std::cout << "error: invalid update key\n";
+        return false;
+      }
+
+      std::cout << "    update key is '" << env.RelayV3UpdateKey << "'\n";
+    }
+
     return true;
   }
 
@@ -402,9 +414,9 @@ int main(int argc, const char* argv[])
     {
       auto socket = nextSocket();
       auto thread = std::make_shared<std::thread>(
-       [&receiver, &env, socket, &cleanup, &v3BackendSuccess, &relayClock, &v3TrafficStats, &v3RelayManager, &relayID, &state] {
+       [&receiver, &env, socket, &cleanup, &v3BackendSuccess, &relayClock, &v3TrafficStats, &v3RelayManager, &relayID, &state, &keychain] {
          size_t speed = std::stoi(env.RelayV3Speed) * 1000000;
-         legacy::v3::Backend backend(receiver, env, relayID, *socket, relayClock, v3TrafficStats, v3RelayManager, speed, state);
+         legacy::v3::Backend backend(receiver, env, relayID, *socket, relayClock, v3TrafficStats, v3RelayManager, speed, state, keychain);
 
          if (!backend.init()) {
            Log("could not initialize relay with old backend");
