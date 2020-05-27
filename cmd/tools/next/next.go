@@ -23,7 +23,6 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
@@ -655,7 +654,6 @@ func main() {
 								},
 								NICSpeedMbps:        relay.NicSpeedMbps,
 								IncludedBandwidthGB: relay.IncludedBandwidthGB,
-								LastUpdateTime:      time.Now(),
 								State:               routing.RelayStateMaintenance,
 								ManagementAddr:      relay.ManagementAddr,
 								SSHUser:             relay.SSHUser,

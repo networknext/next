@@ -815,7 +815,6 @@ func TestRelayHandlerShuttingDown(t *testing.T) {
 			ID:   crypto.HashID("some datacenter"),
 			Name: "some datacenter",
 		},
-		LastUpdateTime: time.Now().Add(-time.Second),
 	}
 
 	customerPublicKey := make([]byte, crypto.KeySize)
@@ -896,7 +895,8 @@ func TestRelayHandlerShuttingDown(t *testing.T) {
 			ID:   1,
 			Name: "some name",
 		},
-		PublicKey: relayPublicKey[:],
+		PublicKey:      relayPublicKey[:],
+		LastUpdateTime: time.Now().Add(-time.Second),
 	}
 
 	localMetrics := metrics.LocalHandler{}
@@ -983,7 +983,6 @@ func TestRelayHandlerSuccess(t *testing.T) {
 			ID:   crypto.HashID("some datacenter"),
 			Name: "some datacenter",
 		},
-		LastUpdateTime: time.Now().Add(-time.Second),
 	}
 
 	customerPublicKey := make([]byte, crypto.KeySize)
@@ -1063,7 +1062,8 @@ func TestRelayHandlerSuccess(t *testing.T) {
 			ID:   1,
 			Name: "some name",
 		},
-		PublicKey: relayPublicKey[:],
+		PublicKey:      relayPublicKey[:],
+		LastUpdateTime: time.Now().Add(-time.Second),
 	}
 
 	localMetrics := metrics.LocalHandler{}
