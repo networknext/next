@@ -5,6 +5,7 @@
 #include "backend_token.hpp"
 #include "core/packet.hpp"
 #include "core/relay_manager.hpp"
+#include "crypto/keychain.hpp"
 #include "net/address.hpp"
 #include "os/platform.hpp"
 #include "traffic_stats.hpp"
@@ -29,7 +30,9 @@ namespace legacy
        const util::Clock& relayClock,
        TrafficStats& stats,
        core::RelayManager<core::V3Relay>& manager,
-       const size_t speed);
+       const size_t speed,
+       std::atomic<ResponseState>& state,
+       const crypto::Keychain& keychain);
       ~Backend() = default;
 
       auto init() -> bool;
@@ -46,13 +49,14 @@ namespace legacy
       core::RelayManager<core::V3Relay>& mRelayManager;
       const size_t mSpeed;  // Relay nic speed in bits/second
       BackendToken mToken;
-      uint64_t mInitTimestamp; // in nanoseconds
-      uint64_t mInitReceived; // in nanoseconds
+      uint64_t mInitTimestamp;  // in seconds
+      uint64_t mInitReceived;   // in nanoseconds
       const uint64_t mRelayID;
       std::string mGroup;
       uint64_t mGroupID;
       std::string mPingKey;
-      std::array<uint8_t, 64> mUpdateKey;
+      std::atomic<ResponseState>& mState;
+      const crypto::Keychain& mKeychain;
 
       auto tryInit() -> bool;
       auto update(bool shuttingDown) -> bool;
@@ -60,7 +64,9 @@ namespace legacy
       auto buildConfigJSON(util::JSON& doc) -> bool;
       auto buildUpdateJSON(util::JSON& doc, bool shuttingDown) -> bool;
 
-      auto sendAndRecv(core::GenericPacket<>& packet, BackendRequest& request, BackendResponse& response, util::JSON& doc)
+      auto sendAndRecvBin(core::GenericPacket<>& packet, BackendRequest& request, BackendResponse& response, util::JSON& doc)
+       -> std::tuple<bool, std::string>;
+      auto sendAndRecvJSON(core::GenericPacket<>& packetBuff, util::JSON& requestData, BackendRequest& request, BackendResponse& response, util::JSON& doc)
        -> std::tuple<bool, std::string>;
       auto readResponse(
        core::GenericPacket<>& packet,
@@ -68,7 +74,7 @@ namespace legacy
        BackendResponse& response,
        std::vector<uint8_t>& completeResponse) -> bool;
       auto buildCompleteResponse(std::vector<uint8_t>& completeBuffer, util::JSON& doc) -> std::tuple<bool, std::string>;
-      void signRequest(util::JSON& doc);
+      auto signRequest(util::JSON& doc) -> bool;
       auto timestamp() -> uint64_t;
     };
   }  // namespace v3

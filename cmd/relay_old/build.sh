@@ -41,6 +41,22 @@ elif [[ "$1" == "run" ]]; then
 
 	export RELAYNAME="$RELAYADDRESS" # originally these were names, but now the id is the address:port hash instead of the name hash
 
+	# export RELAYNAME_0=local
+	# export RELAYADDRESS_0=98.11.240.228:40000
+	# export RELAYPORT_0=40000
+	# export RELAYMASTER_0=relays.v3-dev.networknext.com
+	# export RELAYUPDATEKEY_0=ycOUBHcxeThec42twkVJkO7QaVqlZUk3pApu7Ki58SrvELV+iIfiMpgxuJcTASVaCs1XD2BNDoGcEu9JkHv/sQ==
+	# export RELAYNAME_1=
+	# export RELAYADDRESS_1=
+	# export RELAYPORT_1=40000
+	# export RELAYMASTER_1=
+	# export RELAYUPDATEKEY_1=
+	# export RELAYNAME_2=
+	# export RELAYADDRESS_2=
+	# export RELAYPORT_2=40000
+	# export RELAYMASTER_2=
+	# export RELAYUPDATEKEY_2=
+	# export RELAY_MAX_CORES=
+
 	bin/relay
 fi
-

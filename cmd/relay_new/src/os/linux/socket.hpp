@@ -49,7 +49,7 @@ namespace os
     bool multirecv(core::GenericPacketBuffer<BuffSize, PacketSize>& packetBuff) const;
 
     void close();
-    auto closed() -> bool;
+    auto closed() const -> bool;
 
     const net::Address& getAddress() const;
 
@@ -79,7 +79,7 @@ namespace os
     shutdown(mSockFD, SHUT_RDWR);
   }
 
-  [[gnu::always_inline]] inline auto Socket::closed() -> bool
+  [[gnu::always_inline]] inline auto Socket::closed() const -> bool
   {
     return mClosed;
   }

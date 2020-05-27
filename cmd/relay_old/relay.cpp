@@ -3399,6 +3399,12 @@ next_thread_return_t NEXT_THREAD_FUNC manage_thread( void * )
                 next_json_writer_t writer( request_buffer );
                 doc.Accept( writer );
 
+                rapidjson::StringBuffer buff;
+                rapidjson::PrettyWriter<rapidjson::StringBuffer> pwriter(buff);
+                doc.Accept(pwriter);
+                std::string s = buff.GetString();
+                relay_printf( NEXT_LOG_LEVEL_DEBUG, "sending :%s\n", s.c_str() );
+
                 manage_master_packet_send
                 (
                     &producer_token,

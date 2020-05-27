@@ -19,15 +19,17 @@ namespace crypto
     std::array<uint8_t, RELAY_PUBLIC_KEY_BYTES> RelayPublicKey;
     std::array<uint8_t, RELAY_PRIVATE_KEY_BYTES> RelayPrivateKey;
     std::array<uint8_t, crypto_sign_PUBLICKEYBYTES> RouterPublicKey;
+    std::array<uint8_t, crypto_sign_SECRETKEYBYTES> UpdateKey;
 
-    auto parse(std::string relayPublicKey, std::string relayPrivateKey, std::string routerPublicKey) -> bool;
+    auto parse(std::string relayPublicKey, std::string relayPrivateKey, std::string routerPublicKey, std::string updateKey) -> bool;
   };
 
-  inline auto Keychain::parse(std::string relayPublicKey, std::string relayPrivateKey, std::string routerPublicKey) -> bool
+  inline auto Keychain::parse(std::string relayPublicKey, std::string relayPrivateKey, std::string routerPublicKey, std::string updateKey) -> bool
   {
     return encoding::base64::Decode(relayPublicKey, RelayPublicKey) &&
            encoding::base64::Decode(relayPrivateKey, RelayPrivateKey) &&
-           encoding::base64::Decode(routerPublicKey, RouterPublicKey);
+           encoding::base64::Decode(routerPublicKey, RouterPublicKey) &&
+           encoding::base64::Decode(updateKey, UpdateKey);
   }
 }  // namespace crypto
 #endif

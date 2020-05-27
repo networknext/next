@@ -21,9 +21,9 @@ const (
 		exit
 	fi
 
-	sudo systemctl stop relay || exit 1
-
 	echo "Waiting for the relay service to clean shutdown"
+
+	sudo systemctl stop relay || exit 1
 
 	while systemctl is-active --quiet relay; do
 		sleep 1
