@@ -110,7 +110,7 @@ namespace legacy
       }
 
       // "Timestamp" is in milliseconds, convert to nanos
-      mInitTimestamp = doc.get<uint64_t>("Timestamp") * (OneSecInNanos / 1000ULL) + (response.At - request.At) / 2;
+      mInitTimestamp = doc.get<uint64_t>("Timestamp") * 1000000 + (response.At - request.At) / 2;
       auto b64TokenBuff = doc.get<std::string>("Token");
       std::array<uint8_t, TokenBytes> tokenBuff;
       if (encoding::base64::Decode(b64TokenBuff, tokenBuff) == 0) {
