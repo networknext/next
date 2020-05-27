@@ -21,6 +21,7 @@ namespace legacy
   namespace v3
   {
     Backend::Backend(
+     volatile bool& shouldComm,
      util::Receiver<core::GenericPacket<>>& receiver,
      util::Env& env,
      const uint64_t relayID,
@@ -31,7 +32,8 @@ namespace legacy
      const size_t speed,
      std::atomic<ResponseState>& state,
      const crypto::Keychain& keychain)
-     : mReceiver(receiver),
+     : mShouldCommunicate(shouldComm),
+       mReceiver(receiver),
        mEnv(env),
        mSocket(socket),
        mClock(relayClock),
@@ -534,11 +536,12 @@ namespace legacy
           // this will return true once all the fragments have been received
           done = readResponse(packet, request, response, completeResponse);
         }
-      } while (!done && !mSocket.closed() && !mReceiver.closed() && attempts < 60);
+      } while (!done && !mSocket.closed() && !mReceiver.closed() &&
+               mShouldCommunicate);  // TODO restore this: && attempts < 60);
 
       response.At = mClock.elapsed<util::Second>();
 
-      if (mSocket.closed() || mReceiver.closed() || attempts == 60) {
+      if (mSocket.closed() || mReceiver.closed() || !mShouldCommunicate) {  // TODO restore this: || attempts == 60) {
         std::stringstream ss;
         ss << "could not send request, attempts: " << attempts;
         return {false, ss.str()};

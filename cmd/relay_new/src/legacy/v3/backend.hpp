@@ -23,6 +23,7 @@ namespace legacy
     {
      public:
       Backend(
+       volatile bool& shouldComm,
        util::Receiver<core::GenericPacket<>>& receiver,
        util::Env& env,
        const uint64_t relayID,
@@ -41,6 +42,7 @@ namespace legacy
       auto updateCycle(const volatile bool& handle) -> bool;
 
      private:
+      volatile bool& mShouldCommunicate;
       util::Receiver<core::GenericPacket<>>& mReceiver;
       const util::Env& mEnv;
       os::Socket& mSocket;
@@ -66,8 +68,12 @@ namespace legacy
 
       auto sendAndRecvBin(core::GenericPacket<>& packet, BackendRequest& request, BackendResponse& response, util::JSON& doc)
        -> std::tuple<bool, std::string>;
-      auto sendAndRecvJSON(core::GenericPacket<>& packetBuff, util::JSON& requestData, BackendRequest& request, BackendResponse& response, util::JSON& doc)
-       -> std::tuple<bool, std::string>;
+      auto sendAndRecvJSON(
+       core::GenericPacket<>& packetBuff,
+       util::JSON& requestData,
+       BackendRequest& request,
+       BackendResponse& response,
+       util::JSON& doc) -> std::tuple<bool, std::string>;
       auto readResponse(
        core::GenericPacket<>& packet,
        BackendRequest& request,
