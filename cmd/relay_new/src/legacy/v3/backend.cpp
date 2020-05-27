@@ -514,7 +514,7 @@ namespace legacy
         std::copy(jsonStr.begin(), jsonStr.end(), packet.Buffer.begin());
         packet.Len = jsonStr.length();
 
-        LogDebug("sending a ", request.Type, ", attempts ", attempts, ": ", jsonStr);
+        LogDebug("sending a ", request.Type, ", attempts ", attempts, ": ", requestData.toPrettyString());
         request.At = mClock.elapsed<util::Second>();
         bool sendSuccess = packet_send(mSocket, mToken, packet, request);
 
