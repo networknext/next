@@ -54,7 +54,7 @@ func relays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 			Location:    fmt.Sprintf("%.2f, %.2f", relay.Latitude, relay.Longitude),
 			Speed:       fmt.Sprintf("%dGB", relay.NICSpeedMbps/1000),
 			Bandwidth:   fmt.Sprintf("%dGB", relay.IncludedBandwidthGB),
-			LastUpdated: time.Since(relay.StateUpdateTime).Truncate(time.Second).String(),
+			LastUpdated: time.Since(relay.LastUpdateTime).Truncate(time.Second).String(),
 			Sessions:    fmt.Sprintf("%d/%d", relay.SessionCount, relay.MaxSessionCount),
 			BytesTxRx:   fmt.Sprintf("%d/%d", relay.BytesSent, relay.BytesReceived),
 		})
