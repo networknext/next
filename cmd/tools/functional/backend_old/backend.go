@@ -1024,6 +1024,8 @@ type RelayUpdateJSON struct {
 	PingTargets []PingTarget
 }
 
+const Base64SharedUpdateKey = "7xC1foiH4jKYMbiXEwElWgrNVw9gTQ6BnBLvSZB7/7E="
+
 func TerribleOldShite() {
 
 	listener := UDPListenerMasterCreate(MasterTokenSignKey, MasterUDPSealPublicKey, MasterUDPSealPrivateKey)
@@ -1031,6 +1033,8 @@ func TerribleOldShite() {
 	builder := UDPPacketToClientBuilderCreate(MasterUDPSignPrivateKey)
 
 	var packetsReceivedCount int64
+
+	sharedUpdateKey, _ := base64.StdEncoding.DecodeString(Base64SharedUpdateKey)
 
 	go listener.Listen(
 		&packetsReceivedCount,
@@ -1070,6 +1074,17 @@ func TerribleOldShite() {
 				var request RelayConfigRequest
 				if err := json.Unmarshal(packet.Data, &request); err != nil {
 					fmt.Printf("could not parse relay config request json: %s", err)
+					return nil
+				}
+
+				if request.Timestamp < uint64(time.Now().Unix())-10 {
+					fmt.Println("expired relay update signature")
+					return nil
+				}
+
+				timestampBytes := make([]byte, 8)
+				binary.LittleEndian.PutUint64(timestampBytes, request.Timestamp)
+				if !CryptoSignVerify(timestampBytes, sharedUpdateKey, request.Signature) {
 					return nil
 				}
 
@@ -1152,4 +1167,23 @@ func TerribleOldShite() {
 		},
 		"127.0.0.1:40002",
 	)
+}
+
+func CryptoSignVerify(data []byte, publicKey []byte, signature []byte) bool {
+	if len(publicKey) != C.crypto_sign_PUBLICKEYBYTES {
+		fmt.Printf("pk length invalid: %d\n", len(publicKey))
+		return false
+	}
+
+	if len(signature) != C.crypto_sign_BYTES {
+		fmt.Printf("sig length invalid: %d\n", len(signature))
+		return false
+	}
+
+	if C.crypto_sign_verify_detached((*C.uchar)(&signature[0]), (*C.uchar)(&data[0]), C.ulonglong(len(data)), (*C.uchar)(&publicKey[0])) != 0 {
+		fmt.Println("failed to verify signature")
+		return false
+	}
+
+	return true
 }
