@@ -606,9 +606,10 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 		if rid == r.ID {
 			// Set the data to update the relay with
 			newRelayData := map[string]interface{}{
-				"state":        r.State,
-				"publicKey":    r.PublicKey,
-				"nicSpeedMbps": int64(r.NICSpeedMbps),
+				"state":          r.State,
+				"publicKey":      r.PublicKey,
+				"nicSpeedMbps":   int64(r.NICSpeedMbps),
+				"lastUpdateTime": time.Now(),
 			}
 
 			// Update the relay in firestore
