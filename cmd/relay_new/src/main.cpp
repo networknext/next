@@ -432,7 +432,7 @@ int main(int argc, const char* argv[])
            return;
          }
 
-         Log("old backend entering update cycle");
+         Log("relay configured with old backend");
 
          v3BackendSuccess = backend.updateCycle(gAlive);
 
@@ -441,8 +441,6 @@ int main(int argc, const char* argv[])
 
       sockets.push_back(socket);
       threads.push_back(thread);
-
-      Log("relay configured with old backend using address ", relayAddr);
     }
   }
 

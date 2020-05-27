@@ -502,7 +502,7 @@ namespace legacy
      util::JSON& requestData,
      BackendRequest& request,
      BackendResponse& response,
-     util::JSON& doc) -> std::tuple<bool, std::string>
+     util::JSON& responseDoc) -> std::tuple<bool, std::string>
     {
       std::vector<uint8_t> completeResponse;
       bool done = false;
@@ -510,11 +510,11 @@ namespace legacy
       do {
         signRequest(requestData);
 
-        auto jsonStr = doc.toString();
+        auto jsonStr = requestData.toString();
         std::copy(jsonStr.begin(), jsonStr.end(), packet.Buffer.begin());
         packet.Len = jsonStr.length();
 
-        LogDebug("sending ", request.Type, " request, attempts ", attempts);
+        LogDebug("sending a ", request.Type, ", attempts ", attempts, ": ", jsonStr);
         request.At = mClock.elapsed<util::Second>();
         bool sendSuccess = packet_send(mSocket, mToken, packet, request);
 
@@ -544,12 +544,12 @@ namespace legacy
         return {false, ss.str()};
       }
 
-      auto [ok, err] = this->buildCompleteResponse(completeResponse, doc);
+      auto [ok, err] = this->buildCompleteResponse(completeResponse, responseDoc);
       if (!ok) {
         return {false, err};
       }
 
-      LogDebug("received v3: ", doc.toPrettyString());
+      LogDebug("received v3: ", responseDoc.toPrettyString());
 
       return {true, ""};
     }
