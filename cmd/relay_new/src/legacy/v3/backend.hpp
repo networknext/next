@@ -46,7 +46,7 @@ namespace legacy
       core::RelayManager<core::V3Relay>& mRelayManager;
       const size_t mSpeed;  // Relay nic speed in bits/second
       BackendToken mToken;
-      uint64_t mInitTimestamp; // in seconds
+      uint64_t mInitTimestamp; // in nanoseconds
       uint64_t mInitReceived; // in nanoseconds
       const uint64_t mRelayID;
       std::string mGroup;
