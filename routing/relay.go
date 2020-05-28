@@ -82,6 +82,8 @@ type Relay struct {
 	NICSpeedMbps        uint64 `json:"-"`
 	IncludedBandwidthGB uint64 `json:"-"`
 
+	LastUpdateTime time.Time `json:"-"`
+
 	State RelayState `json:"-"`
 
 	ManagementAddr string `json:"-"`
@@ -117,6 +119,7 @@ func (r *Relay) Size() uint64 {
 		8 + // Datacenter Location Longitude
 		8 + // NIC Speed Mbps
 		8 + // Included Bandwidth GB
+		8 + // Last Update Time
 		4 + // Relay State
 		4 + len(r.ManagementAddr) + // Management Address
 		4 + len(r.SSHUser) + // SSH Username
@@ -201,6 +204,12 @@ func (r *Relay) UnmarshalBinary(data []byte) error {
 		return errors.New("failed to unmarshal relay included bandwidth")
 	}
 
+	var lastUpdateTime uint64
+	if !encoding.ReadUint64(data, &index, &lastUpdateTime) {
+		return errors.New("failed to unmarshal relay last update time")
+	}
+	r.LastUpdateTime = time.Unix(0, int64(lastUpdateTime))
+
 	var state uint32
 	if !encoding.ReadUint32(data, &index, &state) {
 		return errors.New("failed to unmarshal relay state")
@@ -262,6 +271,7 @@ func (r Relay) MarshalBinary() (data []byte, err error) {
 	encoding.WriteFloat64(data, &index, r.Datacenter.Location.Longitude)
 	encoding.WriteUint64(data, &index, r.NICSpeedMbps)
 	encoding.WriteUint64(data, &index, r.IncludedBandwidthGB)
+	encoding.WriteUint64(data, &index, uint64(r.LastUpdateTime.UnixNano()))
 	encoding.WriteUint32(data, &index, uint32(r.State))
 	encoding.WriteString(data, &index, r.ManagementAddr, uint32(len(r.ManagementAddr)))
 	encoding.WriteString(data, &index, r.SSHUser, uint32(len(r.SSHUser)))

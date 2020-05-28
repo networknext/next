@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"net"
 	"testing"
+	"time"
 
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
@@ -36,7 +37,8 @@ func TestRelay(t *testing.T) {
 				Longitude: 654.321,
 			},
 		},
-		State: routing.RelayStateEnabled,
+		LastUpdateTime: time.Now().Round(0), // Round(0) drops any monoatomic clock reading so that deep equal passes
+		State:          routing.RelayStateEnabled,
 	}
 
 	t.Run("MarshalBinary()", func(t *testing.T) {
@@ -161,10 +163,17 @@ func TestRelay(t *testing.T) {
 			assert.EqualError(t, actual.UnmarshalBinary(buff), "failed to unmarshal relay included bandwidth")
 		})
 
-		t.Run("missing state", func(t *testing.T) {
+		t.Run("missing last update time", func(t *testing.T) {
 			size += 8
 			buff = buff[:size]
 			encoding.WriteUint64(buff, &index, uint64(expected.IncludedBandwidthGB))
+			assert.EqualError(t, actual.UnmarshalBinary(buff), "failed to unmarshal relay last update time")
+		})
+
+		t.Run("missing state", func(t *testing.T) {
+			size += 8
+			buff = buff[:size]
+			encoding.WriteUint64(buff, &index, uint64(expected.LastUpdateTime.Unix()))
 			assert.EqualError(t, actual.UnmarshalBinary(buff), "failed to unmarshal relay state")
 		})
 
