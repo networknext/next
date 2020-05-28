@@ -30,7 +30,7 @@ func bash(format string, args ...interface{}) bool {
 
 func main() {
 
-	version := "3.4.5"
+	version := "3.4.6"
 
 	basedir := fmt.Sprintf("next-%s", version)
 
@@ -354,7 +354,7 @@ func main() {
 
 	// todo: manifest for testbed directory
 
-	bash("find . -name '.DS_Store' -type f -delete .") 
+	bash("find . -name '.DS_Store' -type f -delete") 
 
 	fmt.Printf("\nManifest:\n\n" )
 	for _, file := range manifest {
