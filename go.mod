@@ -4,9 +4,11 @@ go 1.13
 
 require (
 	cloud.google.com/go v0.53.0
+	cloud.google.com/go/bigquery v1.3.0
 	cloud.google.com/go/firestore v1.1.1
 	cloud.google.com/go/logging v1.0.0
 	cloud.google.com/go/pubsub v1.1.0
+	cloud.google.com/go/storage v1.5.0
 	github.com/VividCortex/gohistogram v1.0.0 // indirect
 	github.com/alicebob/miniredis v2.5.0+incompatible
 	github.com/alicebob/miniredis/v2 v2.11.2
@@ -31,6 +33,7 @@ require (
 	github.com/stretchr/testify v1.4.0
 	github.com/tidwall/gjson v1.6.0
 	github.com/tidwall/pretty v1.0.1 // indirect
+	github.com/urfave/cli v1.22.4
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
 	golang.org/x/crypto v0.0.0-20200510223506-06a226fb4e37
 	golang.org/x/exp v0.0.0-20200213203834-85f925bdd4d0 // indirect
