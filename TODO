@@ -1,35 +1,5 @@
 DONE
 
-	Add section documenting environment variables.
-
-	Getting started
-
-	Rebuild windows and console libraries.
-
-	README
-
-	LICENCE
-
-	How it works
-
-	Make trial SDK 3.4.5 release for team.
-
-	Fix problem on GCC.
-
-	Semaphore runs make && ./bin/test
-
-	Copy across "build" directory properly.
-
-	Copy across "keygen" directory.
-
-	Copy across "testbed" directory.
-
-	Zip up file: next-[version].zip
-
-	Remove .DS_Store
-
-	Make official 3.4.5 release.
-
 	Add DOCSIS 3.1 packet tagging for Nintendo Switch (from cablelabs.com)
 
 TODO
