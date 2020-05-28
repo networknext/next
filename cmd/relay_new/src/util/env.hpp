@@ -23,6 +23,8 @@ namespace util
     std::string RelayV3BackendPort;      // port that should be used to talk to the backend
     std::string RelayV3UpdateKey;        // From firestore
     std::string RelayV3Speed;            // May take away the v3 when it comes time to implement utilization
+
+    std::string DummyData;
   };
 
   inline Env::Env()
@@ -45,6 +47,7 @@ namespace util
      {"RELAY_SEND_BUFFER_SIZE", &SendBufferSize},
      {"RELAY_RECV_BUFFER_SIZE", &RecvBufferSize},
      {"RELAY_PROCESSOR_COUNT", &ProcessorCount},
+     {"RELAY_DUMMY_DATA", &DummyData},
     };
 
     for (auto& pair : requiredVars) {

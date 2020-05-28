@@ -422,10 +422,11 @@ int main(int argc, const char* argv[])
                                                    &v3RelayManager,
                                                    &relayID,
                                                    &state,
-                                                   &keychain] {
+                                                   &keychain,
+                                                   &sessions] {
         size_t speed = std::stoi(env.RelayV3Speed) * 1000000;
         legacy::v3::Backend backend(
-         gAlive, receiver, env, relayID, *socket, relayClock, v3TrafficStats, v3RelayManager, speed, state, keychain);
+         gAlive, receiver, env, relayID, *socket, relayClock, v3TrafficStats, v3RelayManager, speed, state, keychain, sessions);
 
         if (!backend.init()) {
           Log("could not initialize relay with old backend");

@@ -13,6 +13,7 @@
 #include "util/clock.hpp"
 #include "util/env.hpp"
 #include "util/json.hpp"
+#include "core/session_map.hpp"
 
 namespace legacy
 {
@@ -33,7 +34,8 @@ namespace legacy
        core::RelayManager<core::V3Relay>& manager,
        const size_t speed,
        std::atomic<ResponseState>& state,
-       const crypto::Keychain& keychain);
+       const crypto::Keychain& keychain,
+       const core::SessionMap& sessions);
       ~Backend() = default;
 
       auto init() -> bool;
@@ -59,6 +61,7 @@ namespace legacy
       std::string mPingKey;
       std::atomic<ResponseState>& mState;
       const crypto::Keychain& mKeychain;
+      const core::SessionMap& mSessions;
 
       auto tryInit() -> bool;
       auto update(bool shuttingDown) -> bool;
@@ -66,22 +69,17 @@ namespace legacy
       auto buildConfigJSON(util::JSON& doc) -> bool;
       auto buildUpdateJSON(util::JSON& doc, bool shuttingDown) -> bool;
 
-      auto sendAndRecvBin(core::GenericPacket<>& packet, BackendRequest& request, BackendResponse& response, util::JSON& doc)
+      auto sendBinRecvJSON(
+       BackendRequest& request, std::vector<uint8_t>& reqData, BackendResponse& response, util::JSON& respBuff)
        -> std::tuple<bool, std::string>;
-      auto sendAndRecvJSON(
-       core::GenericPacket<>& packetBuff,
-       util::JSON& requestData,
-       BackendRequest& request,
-       BackendResponse& response,
-       util::JSON& doc) -> std::tuple<bool, std::string>;
-      auto readResponse(
-       core::GenericPacket<>& packet,
-       BackendRequest& request,
-       BackendResponse& response,
-       std::vector<uint8_t>& completeResponse) -> bool;
-      auto buildCompleteResponse(std::vector<uint8_t>& completeBuffer, util::JSON& doc) -> std::tuple<bool, std::string>;
+
+      auto sendJSONRecvJSON(BackendRequest& request, util::JSON& reqData, BackendResponse& response, util::JSON& respBuff)
+       -> std::tuple<bool, std::string>;
+
       auto signRequest(util::JSON& doc) -> bool;
       auto timestamp() -> uint64_t;
+
+      auto buildCompleteResponse(std::vector<uint8_t>& completeBuffer, util::JSON& doc) -> std::tuple<bool, std::string>;
     };
   }  // namespace v3
 }  // namespace legacy

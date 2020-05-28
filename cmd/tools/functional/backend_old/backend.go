@@ -1020,7 +1020,44 @@ type PingTarget struct {
 	PingToken string
 }
 
-type RelayUpdateJSON struct {
+type RelayDataJSON struct {
+	Id        uint64
+	PublicKey []byte
+	PingKey   []byte
+	Role      string
+	Shutdown  bool
+	Group     string
+}
+
+type RelayPingStatsJSON struct {
+	RelayId    uint64
+	RTT        float32
+	Jitter     float32
+	PacketLoss float32
+}
+
+type TrafficStats struct {
+	BytesPaidTx        uint64
+	BytesPaidRx        uint64
+	BytesManagementTx  uint64
+	BytesManagementRx  uint64
+	BytesMeasurementTx uint64
+	BytesMeasurementRx uint64
+	BytesInvalidRx     uint64
+	SessionCount       uint64
+	FlowCount          uint64
+}
+
+type RelayUpdateJSONRequest struct {
+	Metadata     RelayDataJSON
+	Timestamp    uint64
+	Signature    []byte
+	PingStats    []RelayPingStatsJSON
+	Usage        float32
+	TrafficStats *TrafficStats
+}
+
+type RelayUpdateJSONResponse struct {
 	PingTargets []PingTarget
 }
 
@@ -1110,6 +1147,13 @@ func TerribleOldShite() {
 				}
 			} else if packet.Type == NEXT_PACKET_TYPE_RELAY_REPORT_REQUEST {
 				fmt.Println("got update request")
+
+				var update RelayUpdateJSONRequest
+				if err := json.Unmarshal(packet.Data, &update); err != nil {
+					fmt.Printf("could not unmarshal update json: %v\n", err)
+					return err
+				}
+
 				makeToken := func(token []byte, id uint64) {
 					index := 0
 					WriteUint64(token, &index, math.MaxUint64)
@@ -1129,7 +1173,7 @@ func TerribleOldShite() {
 				backend.relayDatabase[key] = relayEntry
 
 				relayCount := len(backend.relayDatabase)
-				response := RelayUpdateJSON{
+				response := RelayUpdateJSONResponse{
 					PingTargets: make([]PingTarget, relayCount-1),
 				}
 

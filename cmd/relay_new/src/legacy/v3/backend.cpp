@@ -1,12 +1,13 @@
 #include "includes.h"
 #include "backend.hpp"
 
+#include "core/packets/types.hpp"
 #include "core/relay_stats.hpp"
 #include "crypto/hash.hpp"
 #include "encoding/base64.hpp"
 #include "encoding/read.hpp"
+#include "packet_recv.hpp"
 #include "packet_send.hpp"
-#include "core/packets/types.hpp"
 
 using namespace std::chrono_literals;
 
@@ -31,7 +32,8 @@ namespace legacy
      core::RelayManager<core::V3Relay>& manager,
      const size_t speed,
      std::atomic<ResponseState>& state,
-     const crypto::Keychain& keychain)
+     const crypto::Keychain& keychain,
+     const core::SessionMap& sessions)
      : mShouldCommunicate(shouldComm),
        mReceiver(receiver),
        mEnv(env),
@@ -42,7 +44,8 @@ namespace legacy
        mSpeed(speed),
        mRelayID(relayID),
        mState(state),
-       mKeychain(keychain)
+       mKeychain(keychain),
+       mSessions(sessions)
     {
       std::array<uint8_t, PingKeySize> key;
       crypto_auth_keygen(key.data());
@@ -71,51 +74,39 @@ namespace legacy
     {
       // prep
 
-      net::Address backendAddr;
-      if (!backendAddr.resolve(mEnv.RelayV3BackendHostname, mEnv.RelayV3BackendPort)) {
-        Log("Could not resolve the v3 backend hostname to an ip address");
-        return 1;
-      }
+      std::vector<uint8_t> reqData(std::begin(InitKey), std::end(InitKey));
 
-      core::GenericPacket<> packet;
-      {
-        std::copy(std::begin(InitKey), std::end(InitKey), packet.Buffer.begin());
-        packet.Len = sizeof(InitKey);
-        packet.Addr = backendAddr;
-      }
       BackendRequest request = {};
       {
         request.Type = core::packets::Type::V3InitRequest;
       }
       BackendResponse response;
-      util::JSON doc;
+      util::JSON respDoc;
 
       mState = ResponseState::Init;
-      auto [ok, err] = sendAndRecvBin(packet, request, response, doc);
+      auto [ok, err] = sendBinRecvJSON(request, reqData, response, respDoc);
       if (!ok) {
         Log(err);
         return false;
       }
 
-      mInitReceived = mClock.unixTime<util::Nanosecond>();
-
       // process response
 
-      if (!doc.memberExists("Timestamp")) {
+      if (!respDoc.memberExists("Timestamp")) {
         Log("v3 backend json does not contain 'Timestamp' member");
         return false;
       }
 
-      if (!doc.memberExists("Token")) {
+      if (!respDoc.memberExists("Token")) {
         Log("v3 backend json does not contain 'Token' member");
         return false;
       }
 
       // "Timestamp" is in milliseconds, convert to nanos
-      mInitTimestamp = doc.get<uint64_t>("Timestamp") * 1000000 + (response.At - request.At) / 2;
-      auto b64TokenBuff = doc.get<std::string>("Token");
+      mInitTimestamp = respDoc.get<uint64_t>("Timestamp") * 1000000 + (response.At - request.At) / 2;
+      auto b64TokenBuff = respDoc.get<std::string>("Token");
       std::array<uint8_t, TokenBytes> tokenBuff;
-      if (encoding::base64::Decode(b64TokenBuff, tokenBuff) == 0) {
+      if (encoding::base64::Decode(b64TokenBuff, tokenBuff) != 51) {
         Log("failed to decode master token: ", b64TokenBuff);
         return false;
       }
@@ -124,20 +115,13 @@ namespace legacy
       encoding::ReadAddress(tokenBuff, index, mToken.Address);
       encoding::ReadBytes(tokenBuff, index, mToken.HMAC, mToken.HMAC.size());
 
+      mInitReceived = mClock.unixTime<util::Nanosecond>();
+
       return true;
     }
 
     auto Backend::config() -> bool
     {
-      net::Address backendAddr;
-      {
-        if (!backendAddr.resolve(mEnv.RelayV3BackendHostname, mEnv.RelayV3BackendPort)) {
-          Log("Could not resolve the v3 backend hostname to an ip address");
-          return 1;
-        }
-      }
-
-      core::GenericPacket<> packet;
       util::JSON reqDoc;
       {
         if (!buildConfigJSON(reqDoc)) {
@@ -145,7 +129,6 @@ namespace legacy
           return false;
         }
       }
-      packet.Addr = backendAddr;
 
       BackendRequest request = {};
       {
@@ -155,7 +138,7 @@ namespace legacy
       util::JSON respDoc;
 
       mState = ResponseState::Config;
-      auto [ok, err] = sendAndRecvJSON(packet, reqDoc, request, response, respDoc);
+      auto [ok, err] = sendJSONRecvJSON(request, reqDoc, response, respDoc);
       if (!ok) {
         Log(err);
         return false;
@@ -207,24 +190,11 @@ namespace legacy
 
     auto Backend::update(bool shuttingDown) -> bool
     {
-      net::Address backendAddr;
-      {
-        if (!backendAddr.resolve(mEnv.RelayV3BackendHostname, mEnv.RelayV3BackendPort)) {
-          Log("Could not resolve the v3 backend hostname to an ip address");
-          return 1;
-        }
-      }
-
-      core::GenericPacket<> packet;
-      packet.Addr = backendAddr;
-
       util::JSON reqDoc;
       if (!buildUpdateJSON(reqDoc, shuttingDown)) {
         Log("could not build v3 update json");
         return false;
       }
-
-      LogDebug("sending v3: ", reqDoc.toPrettyString());
 
       BackendRequest request = {};
       {
@@ -234,7 +204,7 @@ namespace legacy
       util::JSON respDoc;
 
       mState = ResponseState::Update;
-      auto [ok, err] = sendAndRecvJSON(packet, reqDoc, request, response, respDoc);
+      auto [ok, err] = sendJSONRecvJSON(request, reqDoc, response, respDoc);
       if (!ok) {
         Log(err);
       }
@@ -402,6 +372,7 @@ namespace legacy
         trafficStats.set(bytesPerSecMeasurementTx, "BytesMeasurementTx");
         trafficStats.set(bytesPerSecMeasurementRx, "BytesMeasurementRx");
         trafficStats.set(bytesPerSecInvalidRx, "BytesInvalidRx");
+        trafficStats.set(mSessions.size(), "SessionCount");
 
         doc.set(trafficStats, "TrafficStats");
 
@@ -416,10 +387,11 @@ namespace legacy
         util::JSON metadata;
 
         metadata.set(mRelayID, "Id");
-        metadata.set(mEnv.RelayPublicKey, "PublicKey");
+        metadata.set(mEnv.RelayV3UpdateKey, "PublicKey");
         metadata.set(mPingKey, "PingKey");
         metadata.set(mGroup, "Group");
         metadata.set(shuttingDown, "Shutdown");
+        metadata.set(mEnv.DummyData, "DummyData");
 
         doc.set(metadata, "Metadata");
       }
@@ -451,17 +423,23 @@ namespace legacy
       return signRequest(doc);
     }
 
-    auto Backend::sendAndRecvBin(
-     core::GenericPacket<>& packet, BackendRequest& request, BackendResponse& response, util::JSON& doc)
+    auto Backend::sendBinRecvJSON(
+     BackendRequest& request, std::vector<uint8_t>& reqData, BackendResponse& response, util::JSON& respBuff)
      -> std::tuple<bool, std::string>
     {
       std::vector<uint8_t> completeResponse;
       bool done = false;
       unsigned int attempts = 0;
+
       do {
+        net::Address masterAddr;
+        if (!masterAddr.resolve(mEnv.RelayV3BackendHostname, mEnv.RelayV3BackendPort)) {
+          return {false, "Could not resolve the v3 backend hostname to an ip address"};
+        }
+
         LogDebug("sending ", request.Type, " request, attempts ", attempts);
         request.At = mClock.elapsed<util::Second>();
-        bool sendSuccess = packet_send(mSocket, mToken, packet, request);
+        bool sendSuccess = packet_send(mSocket, masterAddr, mToken, reqData, request);
 
         attempts++;
 
@@ -475,9 +453,10 @@ namespace legacy
 
         // receive response(s) if it exists, if not resend
         while (mReceiver.hasItems()) {
-          mReceiver.recv(packet);
+          core::GenericPacket<> pkt;
+          mReceiver.recv(pkt);
           // this will return true once all the fragments have been received
-          done = readResponse(packet, request, response, completeResponse);
+          done = packet_recv(pkt, request, response, completeResponse);
         }
       } while (!done && !mSocket.closed() && !mReceiver.closed() && attempts < 60);
 
@@ -489,36 +468,35 @@ namespace legacy
         return {false, ss.str()};
       }
 
-      auto [ok, err] = this->buildCompleteResponse(completeResponse, doc);
+      auto [ok, err] = this->buildCompleteResponse(completeResponse, respBuff);
       if (!ok) {
         return {false, err};
       }
 
-      LogDebug("received v3: ", doc.toPrettyString());
-
       return {true, ""};
     }
 
-    auto Backend::sendAndRecvJSON(
-     core::GenericPacket<>& packet,
-     util::JSON& requestData,
-     BackendRequest& request,
-     BackendResponse& response,
-     util::JSON& responseDoc) -> std::tuple<bool, std::string>
+    auto Backend::sendJSONRecvJSON(
+     BackendRequest& request, util::JSON& reqData, BackendResponse& response, util::JSON& respBuff)
+     -> std::tuple<bool, std::string>
     {
-      std::vector<uint8_t> completeResponse;
+      std::vector<uint8_t> completeResponse(0);
+
       bool done = false;
       unsigned int attempts = 0;
       do {
-        signRequest(requestData);
+        net::Address masterAddr;
+        if (!masterAddr.resolve(mEnv.RelayV3BackendHostname, mEnv.RelayV3BackendPort)) {
+          return {false, "Could not resolve the v3 backend hostname to an ip address"};
+        }
+        signRequest(reqData);
 
-        auto jsonStr = requestData.toString();
-        std::copy(jsonStr.begin(), jsonStr.end(), packet.Buffer.begin());
-        packet.Len = jsonStr.length();
+        auto jsonStr = reqData.toString();
+        std::vector<uint8_t> requestBuffer(jsonStr.begin(), jsonStr.end());
 
-        LogDebug("sending a ", request.Type, ", attempts ", attempts, ": ", requestData.toPrettyString());
+        LogDebug("sending a ", request.Type, ", attempts ", attempts);
         request.At = mClock.elapsed<util::Second>();
-        bool sendSuccess = packet_send(mSocket, mToken, packet, request);
+        bool sendSuccess = packet_send(mSocket, masterAddr, mToken, requestBuffer, request);
 
         attempts++;
 
@@ -532,9 +510,10 @@ namespace legacy
 
         // receive response(s) if it exists, if not resend
         while (mReceiver.hasItems()) {
-          mReceiver.recv(packet);
+          core::GenericPacket<> pkt;
+          mReceiver.recv(pkt);
           // this will return true once all the fragments have been received
-          done = readResponse(packet, request, response, completeResponse);
+          done = packet_recv(pkt, request, response, completeResponse);
         }
       } while (!done && !mSocket.closed() && !mReceiver.closed() &&
                mShouldCommunicate);  // TODO restore this: && attempts < 60);
@@ -547,149 +526,14 @@ namespace legacy
         return {false, ss.str()};
       }
 
-      auto [ok, err] = this->buildCompleteResponse(completeResponse, responseDoc);
+      auto [ok, err] = this->buildCompleteResponse(completeResponse, respBuff);
       if (!ok) {
         return {false, err};
       }
 
-      LogDebug("received v3: ", responseDoc.toPrettyString());
+      LogDebug("received v3: ", respBuff.toPrettyString());
 
       return {true, ""};
-    }
-
-    // 1 byte packet type
-    // 64 byte signature
-    // <signed>
-    //   8 byte GUID
-    //   1 byte fragment index
-    //   1 byte fragment count
-    //   2 byte status code
-    //   <zipped>
-    //     JSON string
-    //   </zipped>
-    // </signed>
-    auto Backend::readResponse(
-     core::GenericPacket<>& packet, BackendRequest& request, BackendResponse& response, std::vector<uint8_t>& completeBuffer)
-     -> bool
-    {
-      size_t zip_start = (size_t)(1 + crypto_sign_BYTES + sizeof(uint64_t) + sizeof(uint16_t) + sizeof(uint16_t));
-
-      if (packet.Len < zip_start || packet.Len > zip_start + FragmentSize) {
-        Log(
-         "invalid master UDP packet. expected between ",
-         zip_start,
-         " and ",
-         zip_start + FragmentSize,
-         " bytes, got ",
-         packet.Len);
-        return false;
-      }
-
-      if (
-       crypto_sign_verify_detached(
-        &packet.Buffer[1], &packet.Buffer[1 + crypto_sign_BYTES], packet.Len - (1 + crypto_sign_BYTES), UDPSignKey) != 0) {
-        Log("invalid master UDP packet. bad cryptographic signature.");
-        return false;
-      }
-
-      size_t index = 1 + crypto_sign_BYTES;
-      uint64_t packet_id = encoding::ReadUint64(packet.Buffer, index);
-      if (packet_id != request.ID) {
-        Log("discarding unexpected master UDP packet, expected ID ", request.ID, ", got ", packet_id);
-        return false;
-      }
-
-      response.FragIndex = encoding::ReadUint8(packet.Buffer, index);
-      response.FragCount = encoding::ReadUint8(packet.Buffer, index);
-      response.StatusCode = encoding::ReadUint16(packet.Buffer, index);
-
-      if (response.FragCount == 0) {
-        Log("invalid master fragment count (", static_cast<uint32_t>(response.FragCount), "), discarding packet");
-        return false;
-      }
-
-      if (response.FragIndex >= response.FragCount) {
-        Log(
-         "invalid master fragment index (",
-         static_cast<uint32_t>(response.FragIndex + 1),
-         "/",
-         static_cast<uint32_t>(response.FragCount),
-         "), discarding packet");
-        return false;
-      }
-
-      response.Type = static_cast<core::packets::Type>(packet.Buffer[0]);
-
-      if (request.FragmentTotal == 0) {
-        request.Type = response.Type;
-        request.FragmentTotal = response.FragCount;
-      }
-
-      if (response.Type != request.Type) {
-        Log("expected packet type ", request.Type, ", got ", static_cast<uint32_t>(packet.Buffer[0]), ", discarding packet");
-        return false;
-      }
-
-      if (response.FragCount != request.FragmentTotal) {
-        Log(
-         "expected ",
-         request.FragmentTotal,
-         " fragments, got fragment ",
-         static_cast<uint32_t>(response.FragIndex + 1),
-         "/",
-         static_cast<uint32_t>(response.FragCount),
-         ", discarding packet");
-        return false;
-      }
-
-      if (request.Fragments[response.FragIndex].Received) {
-        Log(
-         "already received master fragment ",
-         static_cast<uint32_t>(response.FragIndex + 1),
-         "/",
-         static_cast<uint32_t>(response.FragCount),
-         ", ignoring packet");
-        return false;
-      }
-
-      // save this fragment
-      {
-        auto& fragment = request.Fragments[response.FragIndex];
-        fragment.Length = static_cast<uint16_t>(packet.Len - zip_start);
-        std::copy(
-         packet.Buffer.begin() + zip_start, packet.Buffer.begin() + zip_start + fragment.Length, fragment.Data.begin());
-        fragment.Received = true;
-      }
-
-      // check received fragments
-
-      int complete_bytes = 0;
-
-      for (int i = 0; i < request.FragmentTotal; i++) {
-        auto& fragment = request.Fragments[i];
-        if (fragment.Received) {
-          complete_bytes += fragment.Length;
-        } else {
-          return false;  // not all fragments have been received yet
-        }
-      }
-
-      // all fragments have been received
-
-      request.ID = 0;  // reset request
-
-      completeBuffer.resize(complete_bytes);
-
-      int bytes = 0;
-      for (int i = 0; i < request.FragmentTotal; i++) {
-        auto& fragment = request.Fragments[i];
-        std::copy(fragment.Data.begin(), fragment.Data.begin() + fragment.Length, completeBuffer.begin() + bytes);
-        bytes += fragment.Length;
-      }
-
-      assert(bytes == complete_bytes);
-
-      return true;
     }
 
     auto Backend::buildCompleteResponse(std::vector<uint8_t>& completeBuffer, util::JSON& doc) -> std::tuple<bool, std::string>
