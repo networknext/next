@@ -30,21 +30,9 @@ DONE
 
 	Make official 3.4.5 release.
 
+	Add DOCSIS 3.1 packet tagging for Nintendo Switch (from cablelabs.com)
+
 TODO
-
-	Get functional tests passing.
-
-	----------------------------------------
-
-	The resend of the session update may be broken.
-
-	Test the resend of session update and the resend for init update.
-
-	----------------------------------------
-
-	Fix up release with windows changes (zip)
-
-	----------------------------------------
 
 	Wait for the backend to catch up to us and become 3.4.5 compatible.
 
@@ -71,9 +59,5 @@ TODO
 	--------------------------------
 
 	^--- functional tests for each of the ping cases above.
-
-	--------------------------------
-
-	Add encryption + signature support to Network Next. By doing this, we could help our customers avoid double signing/encrypting packets.
 
 	--------------------------------
