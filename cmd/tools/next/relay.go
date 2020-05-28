@@ -10,7 +10,6 @@ import (
 	"github.com/networknext/backend/routing"
 	localjsonrpc "github.com/networknext/backend/transport/jsonrpc"
 	"github.com/ybbus/jsonrpc"
-	"golang.org/x/crypto/ed25519"
 	"golang.org/x/crypto/nacl/box"
 )
 
@@ -140,16 +139,6 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 			log.Fatal("could not generate public private keypair")
 		}
 
-		// Generate old backend update keypair
-		v3UpdatePublicKey, v3UpdatePrivateKey, err := ed25519.GenerateKey(nil)
-
-		v3UpdatePublicKeyB64 := base64.StdEncoding.EncodeToString(v3UpdatePublicKey)
-		v3UpdatePrivateKeyB64 := base64.StdEncoding.EncodeToString(v3UpdatePrivateKey)
-
-		if err != nil {
-			log.Fatal("could not generate v3 update public private keypair")
-		}
-
 		routerPublicKey, err := env.RouterPublicKey()
 
 		if err != nil {
@@ -177,7 +166,7 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 		envvars["RELAY_V3_ENABLED"] = "1"
 		envvars["RELAY_V3_BACKEND_HOSTNAME"] = oldBackendHostname
 		envvars["RELAY_V3_BACKEND_PORT"] = "40000"
-		envvars["RELAY_V3_UPDATE_KEY"] = v3UpdatePrivateKeyB64
+		envvars["RELAY_V3_UPDATE_KEY"] = info.updateKey
 		envvars["RELAY_V3_SPEED"] = info.nicSpeed
 		envvars["RELAY_V3_NAME"] = info.firestoreID
 
@@ -191,10 +180,9 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 		args := localjsonrpc.RelayPublicKeyUpdateArgs{
 			RelayID:        info.id,
 			RelayPublicKey: publicKeyB64,
-			RelayUpdateKey: v3UpdatePublicKeyB64,
 		}
 
-		var reply localjsonrpc.RelayPublicKeyUpdateReply
+		var reply localjsonrpc.RelayStateUpdateReply
 
 		if err := rpcClient.CallFor(&reply, "OpsService.RelayPublicKeyUpdate", &args); err != nil {
 			log.Fatalf("could not update relay public key: %v", err)

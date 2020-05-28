@@ -349,7 +349,6 @@ func (s *OpsService) RelayStateUpdate(r *http.Request, args *RelayStateUpdateArg
 type RelayPublicKeyUpdateArgs struct {
 	RelayID        uint64 `json:"relay_id"`
 	RelayPublicKey string `json:"relay_public_key"`
-	RelayUpdateKey string `json:"relay_update_key"`
 }
 
 type RelayPublicKeyUpdateReply struct {
@@ -362,20 +361,10 @@ func (s *OpsService) RelayPublicKeyUpdate(r *http.Request, args *RelayPublicKeyU
 		return err
 	}
 
-	if args.RelayPublicKey != "" {
-		relay.PublicKey, err = base64.StdEncoding.DecodeString(args.RelayPublicKey)
+	relay.PublicKey, err = base64.StdEncoding.DecodeString(args.RelayPublicKey)
 
-		if err != nil {
-			return fmt.Errorf("could not decode relay public key: %v", err)
-		}
-	}
-
-	if args.RelayUpdateKey != "" {
-		relay.UpdateKey, err = base64.StdEncoding.DecodeString(args.RelayUpdateKey)
-
-		if err != nil {
-			return fmt.Errorf("could not decode relay update key: %v", err)
-		}
+	if err != nil {
+		return fmt.Errorf("could not decode relay public key: %v", err)
 	}
 
 	return s.Storage.SetRelay(context.Background(), relay)
