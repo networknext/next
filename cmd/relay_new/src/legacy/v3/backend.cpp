@@ -514,12 +514,11 @@ namespace legacy
           // this will return true once all the fragments have been received
           done = packet_recv(pkt, request, response, completeResponse);
         }
-      } while (!done && !mSocket.closed() && !mReceiver.closed() &&
-               mShouldCommunicate);  // TODO restore this: && attempts < 60);
+      } while (!done && !mSocket.closed() && !mReceiver.closed() && mShouldCommunicate && attempts < 60);
 
       response.At = mClock.elapsed<util::Second>();
 
-      if (mSocket.closed() || mReceiver.closed() || !mShouldCommunicate) {  // TODO restore this: || attempts == 60) {
+      if (mSocket.closed() || mReceiver.closed() || !mShouldCommunicate || attempts == 60) {
         std::stringstream ss;
         ss << "could not send request, attempts: " << attempts;
         return {false, ss.str()};
