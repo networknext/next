@@ -886,6 +886,7 @@ func TestFirestore(t *testing.T) {
 				PublicKey:  make([]byte, crypto.KeySize),
 				Seller:     seller,
 				Datacenter: datacenter,
+				State:      routing.RelayStateEnabled,
 			}
 
 			err = fs.AddSeller(ctx, seller)
@@ -898,7 +899,7 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 
 			actual := expected
-			actual.Name = "new name"
+			actual.State = routing.RelayStateDisabled
 
 			err = fs.SetRelay(ctx, actual)
 			assert.NoError(t, err)
@@ -907,7 +908,7 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 
 			assert.NotEqual(t, expected, actual)
-			actual.Name = "local"
+			actual.State = routing.RelayStateEnabled
 
 			assert.Equal(t, expected.ID, actual.ID)
 			assert.Equal(t, expected.Name, actual.Name)
