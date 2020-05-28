@@ -8,15 +8,13 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
-	"github.com/networknext/backend/storage"
+	"cloud.google.com/go/storage"
 
 	"google.golang.org/api/iterator"
 )
 
 // InvoiceService brings in the storage types.
 type InvoiceService struct {
-	Auth0   storage.Auth0
-	Storage storage.Storer
 }
 
 // InvoiceArgs maintains the start and end dates for the invoice query
