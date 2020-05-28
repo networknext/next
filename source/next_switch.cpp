@@ -370,7 +370,19 @@ int next_platform_socket_init( next_platform_socket_t * s, next_address_t * addr
         // timeout < 0, socket is blocking with no timeout
     }
 
-    return NEXT_OK;
+	// tag as latency sensitive
+
+	if ( enable_packet_tagging )
+	{
+		next_assert( address->type == NEXT_ADDRESS_IPV4 );
+		int tos = 0xA0;
+		if ( nn::socket::SetSockOpt( s->handle, IPPROTO_IP, IP_TOS, (const char*) &tos, sizeof(tos) ) != 0)
+		{
+			next_printf(NEXT_LOG_LEVEL_DEBUG, "failed to set socket tos (ipv4)");
+		}
+	}
+	
+	return NEXT_OK;
 }
 
 next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size, bool enable_packet_tagging )
