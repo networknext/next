@@ -391,7 +391,6 @@ namespace legacy
         metadata.set(mPingKey, "PingKey");
         metadata.set(mGroup, "Group");
         metadata.set(shuttingDown, "Shutdown");
-        metadata.set(mEnv.DummyData, "DummyData");
 
         doc.set(metadata, "Metadata");
       }
