@@ -3459,11 +3459,6 @@ next_thread_return_t NEXT_THREAD_FUNC manage_thread( void * )
         // shutdown
         value.SetBool( false );
         env->relay_data_json.AddMember( "Shutdown", value, allocator );
-
-        // test data
-        std::string test = std::getenv("RELAY_DUMMY_DATA");
-        value.SetString(test.c_str(), test.length(), allocator);
-        env->relay_data_json.AddMember( "DummyData", value, allocator );
     }
 
     // started!
