@@ -572,7 +572,7 @@ func (fs *Firestore) RemoveRelay(ctx context.Context, id uint64) error {
 	return &DoesNotExistError{resourceType: "relay", resourceRef: id}
 }
 
-// Only relay state, public key, update key, last update time, and NIC speed are updated in firestore for now
+// Only relay state, public key, and NIC speed are updated in firestore for now
 func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 	// Get a copy of the relay in cached storage
 	fs.relayMutex.RLock()
@@ -613,7 +613,6 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 				"lastUpdateTime":  lastUpdateTime,
 				"stateUpdateTime": time.Now(),
 				"publicKey":       r.PublicKey,
-				"updateKey":       r.UpdateKey,
 				"nicSpeedMbps":    int64(r.NICSpeedMbps),
 			}
 

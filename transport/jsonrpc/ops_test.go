@@ -611,7 +611,6 @@ func TestRelayPublicKeyUpdate(t *testing.T) {
 		err := storer.AddRelay(context.Background(), routing.Relay{
 			ID:         1,
 			PublicKey:  []byte("oldpublickey"),
-			UpdateKey:  []byte("oldupdatekey"),
 			Seller:     seller,
 			Datacenter: datacenter,
 		})
@@ -619,7 +618,6 @@ func TestRelayPublicKeyUpdate(t *testing.T) {
 		err = storer.AddRelay(context.Background(), routing.Relay{
 			ID:         2,
 			PublicKey:  []byte("oldpublickey"),
-			UpdateKey:  []byte("oldupdatekey"),
 			Seller:     seller,
 			Datacenter: datacenter,
 		})
@@ -635,19 +633,16 @@ func TestRelayPublicKeyUpdate(t *testing.T) {
 		err := svc.RelayPublicKeyUpdate(nil, &jsonrpc.RelayPublicKeyUpdateArgs{
 			RelayID:        1,
 			RelayPublicKey: "newpublickey",
-			RelayUpdateKey: "newupdatekey",
 		}, &jsonrpc.RelayPublicKeyUpdateReply{})
 		assert.NoError(t, err)
 
 		relay, err := svc.Storage.Relay(1)
 		assert.NoError(t, err)
 		assert.Equal(t, "newpublickey", base64.StdEncoding.EncodeToString(relay.PublicKey))
-		assert.Equal(t, "newupdatekey", base64.StdEncoding.EncodeToString(relay.UpdateKey))
 
 		relay, err = svc.Storage.Relay(2)
 		assert.NoError(t, err)
 		assert.Equal(t, []byte("oldpublickey"), relay.PublicKey)
-		assert.Equal(t, []byte("oldupdatekey"), relay.UpdateKey)
 	})
 
 	t.Run("not found", func(t *testing.T) {
@@ -655,37 +650,16 @@ func TestRelayPublicKeyUpdate(t *testing.T) {
 		err := svc.RelayPublicKeyUpdate(nil, &jsonrpc.RelayPublicKeyUpdateArgs{
 			RelayID:        987654321,
 			RelayPublicKey: "newpublickey",
-			RelayUpdateKey: "newupdatekey",
 		}, &jsonrpc.RelayPublicKeyUpdateReply{})
 		assert.Error(t, err)
 
 		relay, err := svc.Storage.Relay(1)
 		assert.NoError(t, err)
 		assert.Equal(t, []byte("oldpublickey"), relay.PublicKey)
-		assert.Equal(t, []byte("oldupdatekey"), relay.UpdateKey)
 
 		relay, err = svc.Storage.Relay(2)
 		assert.NoError(t, err)
 		assert.Equal(t, []byte("oldpublickey"), relay.PublicKey)
-		assert.Equal(t, []byte("oldupdatekey"), relay.UpdateKey)
-	})
-
-	t.Run("no change", func(t *testing.T) {
-		svc := makeSvc()
-		err := svc.RelayPublicKeyUpdate(nil, &jsonrpc.RelayPublicKeyUpdateArgs{
-			RelayID: 1,
-		}, &jsonrpc.RelayPublicKeyUpdateReply{})
-		assert.NoError(t, err)
-
-		relay, err := svc.Storage.Relay(1)
-		assert.NoError(t, err)
-		assert.Equal(t, []byte("oldpublickey"), relay.PublicKey)
-		assert.Equal(t, []byte("oldupdatekey"), relay.UpdateKey)
-
-		relay, err = svc.Storage.Relay(2)
-		assert.NoError(t, err)
-		assert.Equal(t, []byte("oldpublickey"), relay.PublicKey)
-		assert.Equal(t, []byte("oldupdatekey"), relay.UpdateKey)
 	})
 }
 
