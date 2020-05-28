@@ -24,7 +24,7 @@ elif [[ "$1" == "run" ]]; then
 	export RELAYSPEED="1G"
 	export RELAYDEV="1" # 1 for enabling dev mode || !1 for disabling dev mode, dev mode doesn't kill your system
 	export RELAYMASTER="127.0.0.1" # ip addr of the backend, unused with http since that requires http + this and I was lazy
-	export RELAYUPDATEKEY="$RELAY_V3_UPDATE_KEY" # not correct, just satisfy's the base64 decryption, not used with http, comes from firestore
+	export RELAYUPDATEKEY="$RELAY_V3_UPDATE_KEY" # should be something that satisfy's the base64 decryption, not used with http, private key
 	export RELAYPUBLICKEY="$RELAY_PUBLIC_KEY" # actual relay public key
 	export RELAYPRIVATEKEY="$RELAY_PRIVATE_KEY" # actual relay private key
 	export RELAYROUTERPUBLICKEY="$RELAY_ROUTER_PUBLIC_KEY" # new to the codebase, made the var similar to the others for the sake of consitency, original router key is hardcoded at top of relay_internal.cpp
