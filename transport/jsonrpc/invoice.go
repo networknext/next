@@ -17,7 +17,8 @@ import (
 // InvoiceService brings in the Google storage service. InvoiceService.Storage
 // *must* be initialized by the caller before use (requires context)
 type InvoiceService struct {
-	Storage *storage.Client
+	Storage  *storage.Client
+	BqClient *bigquery.Client
 }
 
 // InvoiceArgs maintains the start and end dates for the invoice query
@@ -35,6 +36,8 @@ type InvoiceReply struct {
 // a provided data range and return them in a single JSON reply.
 func (s InvoiceService) InvoiceAllBuyers(r *http.Request, args *InvoiceArgs, reply *InvoiceReply) error {
 
+	ctx := context.Background()
+
 	// needs to check for future date?
 	startDate := args.StartDate.Format("2006-01-02")
 	endDate := args.EndDate.Format("2006-01-02")
@@ -43,7 +46,7 @@ func (s InvoiceService) InvoiceAllBuyers(r *http.Request, args *InvoiceArgs, rep
 	cacheName := "cache-" + startDate + "-to-" + endDate + ".json"
 	rc, err := s.Storage.Bucket("network-next-invoice-cache").Object(cacheName).NewReader(context.Background())
 
-	if err == nil {
+	if err == storage.ErrBucketNotExist {
 		// Cache file found, skip BQ query
 		existingData, err := ioutil.ReadAll(rc)
 		if err != nil {
@@ -62,7 +65,7 @@ func (s InvoiceService) InvoiceAllBuyers(r *http.Request, args *InvoiceArgs, rep
 
 	}
 
-	if err == storage.ErrBucketNotExist {
+	if err == nil {
 		// cache file not found so query db
 		fmt.Printf("Reading query from 'query.sql'...\n")
 		queryText, err := ioutil.ReadFile("query.sql")
@@ -71,15 +74,15 @@ func (s InvoiceService) InvoiceAllBuyers(r *http.Request, args *InvoiceArgs, rep
 		}
 
 		// fmt.Printf("Connecting to BigQuery...\n")
-		ctx := context.Background()
-		client, err := bigquery.NewClient(ctx, "network-next-v3-prod")
-		if err != nil {
-			return err
-		}
-		defer client.Close()
+		// ctx := context.Background()
+		// client, err := s.BqClient.NewClient(ctx, "network-next-v3-prod")
+		// if err != nil {
+		// 	return err
+		// }
+		// defer client.Close()
 
 		// fmt.Printf("Preparing query...\n")
-		q := client.Query(string(queryText))
+		q := s.BqClient.Query(string(queryText))
 		q.Parameters = []bigquery.QueryParameter{
 			{
 				Name:  "start",
