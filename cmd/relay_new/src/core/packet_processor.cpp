@@ -135,7 +135,9 @@ namespace core
       isSigned = false;
     }
 
-    if (type != packets::Type::NewRelayPing && type != packets::Type::NewRelayPong) {
+    if (
+     type != packets::Type::NewRelayPing && type != packets::Type::NewRelayPong && type != packets::Type::OldRelayPing &&
+     type != packets::Type::OldRelayPong) {
       if (isSigned) {
         LogDebug("packet is from network next");
       } else {

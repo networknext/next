@@ -216,7 +216,7 @@ namespace legacy
       auto relays = respDoc.get<util::JSON>("PingTargets");
       if (relays.isArray()) {
         // 'return' functions like 'continue' within the lambda
-        relays.foreach([&allValid, &count, &incoming](rapidjson::Value& relayData) {
+        relays.foreach([this, &allValid, &count, &incoming](rapidjson::Value& relayData) {
           if (!relayData.HasMember("Id")) {
             Log("ping targets missing 'Id'");
             allValid = false;
@@ -231,6 +231,11 @@ namespace legacy
           }
 
           auto id = idMember.GetUint64();
+
+          // mustn't ping thyself
+          if (id == this->mRelayID) {
+            return;
+          }
 
           if (!relayData.HasMember("Address")) {
             Log("ping data missing member 'Address' for relay id: ", id);
@@ -499,7 +504,7 @@ namespace legacy
         auto jsonStr = reqData.toString();
         std::vector<uint8_t> requestBuffer(jsonStr.begin(), jsonStr.end());
 
-        LogDebug("sending a ", request.Type, ", attempts ", attempts);
+        LogDebug("sending a ", request.Type, ", attempts ", attempts, ", json: ", reqData.toPrettyString());
         request.At = mClock.elapsed<util::Second>();
         bool sendSuccess = packet_send(mSocket, masterAddr, mToken, requestBuffer, request);
 
