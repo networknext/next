@@ -1,15 +1,19 @@
 package jsonrpc_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
 
+	"cloud.google.com/go/storage"
 	"github.com/networknext/backend/transport/jsonrpc"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestInvoiceAllBuyers(t *testing.T) {
+
+	var err error
 
 	args := jsonrpc.InvoiceArgs{
 		StartDate: time.Date(2020, 4, 1, 0, 0, 0, 0, time.Local),
@@ -20,6 +24,9 @@ func TestInvoiceAllBuyers(t *testing.T) {
 
 	t.Run("generate April, 2020 invoices", func(t *testing.T) {
 		var reply jsonrpc.InvoiceReply
+
+		svc.Storage, err = storage.NewClient(context.Background())
+		assert.NoError(t, err)
 
 		err := svc.InvoiceAllBuyers(nil, &args, &reply)
 		assert.NoError(t, err)

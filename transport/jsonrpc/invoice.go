@@ -13,8 +13,10 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-// InvoiceService brings in the storage types.
+// InvoiceService brings in the Google storage service. InvoiceService.Storage
+// *must* be initialized by the caller before use (requires context)
 type InvoiceService struct {
+	Storage *storage.Client
 }
 
 // InvoiceArgs maintains the start and end dates for the invoice query
@@ -30,20 +32,21 @@ type InvoiceReply struct {
 
 // InvoiceAllBuyers issues a BigQuery to generate invoices for all buyers within
 // a provided data range and return them in a single JSON reply.
-func (s *InvoiceService) InvoiceAllBuyers(r *http.Request, args *InvoiceArgs, reply *InvoiceReply) error {
+func (s InvoiceService) InvoiceAllBuyers(r *http.Request, args *InvoiceArgs, reply *InvoiceReply) error {
 
 	// needs to check for future date?
 	startDate := args.StartDate.Format("2006-01-02")
 	endDate := args.EndDate.Format("2006-01-02")
 
-	storageSrv, err := storage.NewClient(context.Background())
-	if err != nil {
-		return err
-	}
+	// storageSrv, err := storage.NewClient(context.Background())
+	// if err != nil {
+	// 	return err
+	// }
+	// defer storageSrv.Close()
 
 	// fmt.Printf("Checking for cached result...\n")
-	cacheName := "cache-" + startDate + "-to-" + endDate + ".cache"
-	rc, err := storageSrv.Bucket("network-next-bill-cache").Object(cacheName).NewReader(context.Background())
+	cacheName := "cache-" + startDate + "-to-" + endDate + ".json"
+	rc, err := s.Storage.Bucket("network-next-bill-cache").Object(cacheName).NewReader(context.Background())
 	if err == nil {
 		defer rc.Close()
 
@@ -74,6 +77,7 @@ func (s *InvoiceService) InvoiceAllBuyers(r *http.Request, args *InvoiceArgs, re
 	if err != nil {
 		return err
 	}
+	defer client.Close()
 
 	// fmt.Printf("Preparing query...\n")
 	q := client.Query(string(queryText))
