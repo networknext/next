@@ -40,7 +40,7 @@ Next, open a session between the client and the server:
 
 .. code-block:: c++
 
-	next_client_open_session( client, "127.0.0.0:50000" );
+	next_client_open_session( client, "127.0.0.1:50000" );
 
 Now you can send packets to the server like this:
 
