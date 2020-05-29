@@ -90,7 +90,7 @@ AuthHandler = {
 	},
 	auth0Client: null,
 	logout() {
-		this.auth0Client.logout({ localOnly: true });
+		this.auth0Client.logout({ returnTo: window.location.origin });
 	},
 	login() {
 		this.auth0Client.loginWithRedirect({
