@@ -196,6 +196,21 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 	for _, relayName := range relayNames {
 		fmt.Printf("Updating %s\n", relayName)
 		info := getRelayInfo(rpcClient, relayName)
+
+		// Retrieve the update key that exists on the relay
+		success, output := runCommandQuiet("deploy/relay/retrieve-update-key.sh", []string{env.SSHKeyFilePath, info.user + "@" + info.sshAddr}, true)
+		if !success {
+			log.Fatalf("could not execute the retrieve-update-key.sh script: %s", output)
+		}
+
+		// Make sure the update key env var on the relay wasn't empty
+		if len(output) == 0 {
+			log.Fatalln("no update key found on relay")
+		}
+
+		// Remove extra newline and assign to relay info
+		info.updateKey = output[:len(output)-1]
+
 		updateRelayState(rpcClient, info, routing.RelayStateOffline)
 		makeEnv(info)
 		if !runCommandEnv("deploy/relay-update.sh", []string{env.SSHKeyFilePath, info.user + "@" + info.sshAddr}, nil) {
