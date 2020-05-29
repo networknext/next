@@ -366,7 +366,30 @@ func main() {
 	}
 	fmt.Printf("\n")
 
+	// make version with consoles
+
+	bash("zip -r -9 next-%s-consoles.zip %s", version, basedir)
+
+	// make version without consoles
+
+	bash("rm %s/source/*ps4*", basedir)
+	bash("rm %s/source/*switch*", basedir)
+	bash("rm %s/source/*xboxone*", basedir)
+	bash("rm -rf %s/testbed/ps4", basedir)
+	bash("rm -rf %s/testbed/switch", basedir)
+	bash("rm -rf %s/testbed/xboxone", basedir)
+	bash("rm -rf %s/lib/NintendoSwitch-NX32", basedir)
+	bash("rm -rf %s/lib/NintendoSwitch-NX64", basedir)
+	bash("rm -rf %s/lib/Playstation4", basedir)
+	bash("rm -rf %s/lib/XBoxOne", basedir)
+	bash("rm -rf %s/build/nx32", basedir)
+	bash("rm -rf %s/build/nx64", basedir)
+	bash("rm -rf %s/build/ps4", basedir)
+	bash("rm -rf %s/build/xboxone", basedir)
+
 	bash("zip -r -9 next-%s.zip %s", version, basedir)
+
+	// clean everything up
 
 	bash("rm -rf %s", basedir)
 
