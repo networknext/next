@@ -15,6 +15,7 @@ namespace
 {
   const uint8_t PacketType = 123;
   const uint64_t OneSecInNanos = 1000000000ULL;
+
 }  // namespace
 
 namespace legacy
@@ -335,7 +336,7 @@ namespace legacy
      *    ],
      *    "Metadata": {
      *      "Id": uint64, // this relay's id
-     *      "PublicKey": string, // base64 of the public key
+     *      "PublicKey": string, // base64 of the public key from the keychain. Old relay generates it, need to resuse it here to make things compatable
      *      "PingKey": string, // base64 of the ping key, relay.cpp (4362) crypto_auth_keygen
      *      "Group": string, // from config response
      *      "Shutdown": bool, // false until shutdown handle is true
@@ -393,7 +394,7 @@ namespace legacy
         util::JSON metadata;
 
         metadata.set(mRelayID, "Id");
-        metadata.set(mEnv.RelayV3UpdateKey, "PublicKey");
+        metadata.set(mEnv.RelayPublicKey, "PublicKey");
         metadata.set(mPingKey, "PingKey");
         metadata.set(mGroup, "Group");
         metadata.set(shuttingDown, "Shutdown");

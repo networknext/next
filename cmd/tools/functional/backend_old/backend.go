@@ -1154,6 +1154,12 @@ func TerribleOldShite() {
 					return err
 				}
 
+				const KeyBytes = 32
+				if len(update.Metadata.PublicKey) != KeyBytes {
+					fmt.Printf("length of public key not 32: %d\n", len(update.Metadata.PublicKey))
+					return nil
+				}
+
 				makeToken := func(token []byte, id uint64) {
 					index := 0
 					WriteUint64(token, &index, math.MaxUint64)
