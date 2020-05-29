@@ -241,7 +241,7 @@
                             Session Tool
                         </a>
                     </li>
-                    <li class="nav-item text-nowrap">
+                    <li class="nav-item text-nowrap" v-if="!handlers.userHandler.isAnonymous()">
                         <a class="nav-link" href="#" v-bind:class="{ active: pages.userTool.show }" v-on:click="handlers.workspaceHandler.changePage('userTool', '')">
                             User Tool
                         </a>
@@ -252,7 +252,21 @@
                         </a>
                     </li>
                 </ul>
-                <ul class="navbar-nav px-3">
+                <ul class="navbar-nav px-3" v-if="handlers.userHandler.isAnonymous()">
+                    <li class="nav-item text-nowrap  ">
+                        <a class="nav-link" href="#">
+                            Signup
+                        </a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav px-3" v-if="handlers.userHandler.isAnonymous()">
+                    <li class="nav-item text-nowrap  ">
+                        <a class="nav-link" href="#" onclick="AuthHandler.login()">
+                            Login
+                        </a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav px-3" v-if="!handlers.userHandler.isAnonymous()">
                     <li class="nav-item text-nowrap  ">
                         <a class="nav-link" href="#" onclick="AuthHandler.auth0Client.logout()">
                             Logout
@@ -311,7 +325,7 @@
                                         <option v-for="buyer in allBuyers" v-on:click="handlers.mapHandler.updateFilter({buyerId: buyer.id, sessionType: pages.map.filter.sessionType})" v-if="handlers.userHandler.isAdmin()">
                                             {{ buyer.name }}
                                         </option>
-                                        <option v-on:click="handlers.mapHandler.updateFilter({buyerId: handlers.userHandler.userInfo.id, sessionType: pages.map.filter.sessionType})" v-if="!handlers.userHandler.isAdmin()">
+                                        <option v-on:click="handlers.mapHandler.updateFilter({buyerId: handlers.userHandler.userInfo.id, sessionType: pages.map.filter.sessionType})" v-if="!handlers.userHandler.isAdmin() && !handlers.userHandler.isAnonymous()">
                                             {{ handlers.userHandler.userInfo.name }}
                                         </option>
                                     </select>
@@ -363,7 +377,7 @@
                                                 {{ buyer.name }}
                                             </option>
                                         </select>
-                                        <select class="form-control" v-if="!handlers.userHandler.isAdmin()">
+                                        <select class="form-control" v-if="!handlers.userHandler.isAdmin() && !handlers.userHandler.isAnonymous()">
                                             <option v-on:click="handlers.userHandler.workspaceHandler.updateSessionFilter({buyerId: handlers.userHandler.userInfo.id, sessionType: pages.sessions.filter.sessionType})">
                                                 {{ handlers.userHandler.userInfo.name }}
                                             </option>
@@ -641,15 +655,15 @@
                                                                 User ID
                                                             </dt>
                                                             <dd>
-                                                                <a class="text-dark">
+                                                                <a class="text-dark" href="#" v-on:click="handlers.workspaceHandler.changePage('userTool', pages.sessionTool.meta.user_hash)">
                                                                     {{ pages.sessionTool.meta.user_hash }}
                                                                 </a>
                                                             </dd>
                                                         </div>
-                                                        <dt>
+                                                        <dt v-if="!handlers.userHandler.isAnonymous()">
                                                             User IP Address
                                                         </dt>
-                                                        <dd>
+                                                        <dd v-if="!handlers.userHandler.isAnonymous()">
                                                             {{
                                                                 allBuyers.findIndex((buyer) => {
                                                                     return buyer.id == pages.sessionTool.meta.customer_id
@@ -662,10 +676,10 @@
                                                         <dd>
                                                             {{ pages.sessionTool.meta.platform }}
                                                         </dd>
-                                                        <dt>
+                                                        <dt v-if="!handlers.userHandler.isAnonymous()">
                                                             Customer
                                                         </dt>
-                                                        <dd>
+                                                        <dd v-if="!handlers.userHandler.isAnonymous()">
                                                             {{
                                                                 allBuyers.find((buyer) => {
                                                                     return buyer.id == pages.sessionTool.meta.customer_id
@@ -724,10 +738,10 @@
                                                                 </tr>
                                                             </tbody>
                                                         </table>
-                                                        <dt>
+                                                        <dt v-if="!handlers.userHandler.isAnonymous()">
                                                             Route
                                                         </dt>
-                                                        <table class="table table-sm mt-1">
+                                                        <table class="table table-sm mt-1" v-if="!handlers.userHandler.isAnonymous()">
                                                             <thead>
                                                                 <tr>
                                                                     <th style="width: 50%;">
@@ -742,7 +756,7 @@
                                                                 <tr>
                                                                     <td>
                                                                         {{
-                                                                            allBuyers.findIndex((buyer) => {
+                                                                            !handlers.userHandler.isAnonymous() && allBuyers.findIndex((buyer) => {
                                                                                 return buyer.id == pages.sessionTool.meta.customer_id
                                                                             }) !== -1 ? pages.sessionTool.meta.client_addr : "Player"
                                                                         }}
@@ -764,7 +778,7 @@
                                                                 <tr>
                                                                     <td>
                                                                         {{
-                                                                            allBuyers.findIndex((buyer) => {
+                                                                            !handlers.userHandler.isAnonymous() && allBuyers.findIndex((buyer) => {
                                                                                 return buyer.id == pages.sessionTool.meta.customer_id
                                                                             }) !== -1 ? pages.sessionTool.meta.server_addr : "Game Server"
                                                                         }}
@@ -793,7 +807,7 @@
                                 <div class="mr-auto"></div>
                             </div>
                         </div>
-                        <form class="flow-stats-form" v-on:submit.prevent="handlers.workspaceHandler.fetchUserSessions()">
+                        <form class="flow-stats-form" v-on:submit.prevent="handlers.workspaceHandler.fetchUserSessions()" v-if="!handlers.userHandler.isAnonymous()">
                             <div class="form-group">
                                 <label for="user-hash-input">
                                     User ID
@@ -846,7 +860,7 @@
                                                     Datacenter
                                                 </span>
                                             </th>
-                                            <th>
+                                            <th v-if="!handlers.userHandler.isAnonymous()">
                                                 <span>
                                                     Server Address
                                                 </span>
@@ -877,7 +891,7 @@
                                             <td>
                                                 {{ session.datacenter }}
                                             </td>
-                                            <td>
+                                            <td v-if="!handlers.userHandler.isAnonymous()">
                                                 {{ session.server_addr }}
                                             </td>
                                             <td>

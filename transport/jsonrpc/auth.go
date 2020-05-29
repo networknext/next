@@ -293,6 +293,12 @@ func AuthMiddleware(audience string, next http.Handler) http.Handler {
 		return next
 	}
 
+	anonHandler := http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.Header.Get("X-anonymous") == "" {
+			next.ServeHTTP(rw, req)
+		}
+	})
+
 	mw := jwtmiddleware.New(jwtmiddleware.Options{
 		ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
 			// Check if OpsService token
@@ -320,7 +326,7 @@ func AuthMiddleware(audience string, next http.Handler) http.Handler {
 		SigningMethod: jwt.SigningMethodRS256,
 	})
 
-	return mw.Handler(next)
+	return mw.Handler(anonHandler)
 }
 
 func getPemCert(token *jwt.Token) (string, error) {

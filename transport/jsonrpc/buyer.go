@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/routing"
@@ -173,7 +175,9 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 			continue
 		}
 
-		reply.Meta.NearbyRelays[idx].Name = r.Name
+		pieces := strings.Split(r.Name, ".")
+		pieces[0] = strings.Repeat("*", utf8.RuneCountInString(pieces[0]))
+		reply.Meta.NearbyRelays[idx].Name = strings.Join(pieces, ".")
 	}
 
 	reply.Slices = make([]routing.SessionSlice, 0)
