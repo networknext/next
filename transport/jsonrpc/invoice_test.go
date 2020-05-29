@@ -6,7 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/storage"
+
 	"github.com/networknext/backend/transport/jsonrpc"
 	"github.com/stretchr/testify/assert"
 )
@@ -25,9 +27,15 @@ func TestInvoiceAllBuyers(t *testing.T) {
 	t.Run("generate April, 2020 invoices", func(t *testing.T) {
 		var reply jsonrpc.InvoiceReply
 
-		svc.Storage, err = storage.NewClient(context.Background())
+		ctx := context.Background()
+
+		svc.Storage, err = storage.NewClient(ctx)
 		assert.NoError(t, err)
 		defer svc.Storage.Close()
+
+		svc.BqClient, err = bigquery.NewClient(ctx, "network-next-v3-prod")
+		assert.NoError(t, err)
+		defer svc.BqClient.Close()
 
 		err := svc.InvoiceAllBuyers(nil, &args, &reply)
 		assert.NoError(t, err)
