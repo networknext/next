@@ -246,6 +246,11 @@
                             User Tool
                         </a>
                     </li>
+                    <li class="nav-item text-nowrap" v-if="!handlers.userHandler.isAnonymous()">
+                        <a class="nav-link" href="#" v-bind:class="{ active: pages.downloads.show }" v-on:click="handlers.workspaceHandler.changePage('downloads', '')">
+                            Downloads
+                        </a>
+                    </li>
                     <li class="nav-item text-nowrap" v-if="handlers.userHandler.isOwner() || handlers.userHandler.isAdmin()">
                         <a class="nav-link" href="#" v-bind:class="{ active: pages.settings.show }" v-on:click="handlers.workspaceHandler.changePage('settings')">
                             Settings
