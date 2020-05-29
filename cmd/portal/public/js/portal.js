@@ -511,6 +511,7 @@ WorkspaceHandler = {
 			});
 		},
 		loadDownloadsPage() {
+			// Empty for now
 		},
 	loadRelayPage() {
 		JSONRPCClient
