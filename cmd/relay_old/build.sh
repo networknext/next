@@ -24,7 +24,7 @@ elif [[ "$1" == "run" ]]; then
 	export RELAYSPEED="1G"
 	export RELAYDEV="1" # 1 for enabling dev mode || !1 for disabling dev mode, dev mode doesn't kill your system
 	export RELAYMASTER="127.0.0.1" # ip addr of the backend, unused with http since that requires http + this and I was lazy
-	export RELAYUPDATEKEY="$RELAY_PUBLIC_KEY" # not correct, just satisfy's the base64 decryption, not used with http, comes from firestore
+	export RELAYUPDATEKEY="$RELAY_V3_UPDATE_KEY" # should be something that satisfy's the base64 decryption, not used with http, private key
 	export RELAYPUBLICKEY="$RELAY_PUBLIC_KEY" # actual relay public key
 	export RELAYPRIVATEKEY="$RELAY_PRIVATE_KEY" # actual relay private key
 	export RELAYROUTERPUBLICKEY="$RELAY_ROUTER_PUBLIC_KEY" # new to the codebase, made the var similar to the others for the sake of consitency, original router key is hardcoded at top of relay_internal.cpp
@@ -41,6 +41,22 @@ elif [[ "$1" == "run" ]]; then
 
 	export RELAYNAME="$RELAYADDRESS" # originally these were names, but now the id is the address:port hash instead of the name hash
 
+	# export RELAYNAME_0=local
+	# export RELAYADDRESS_0=98.11.240.228:40000
+	# export RELAYPORT_0=40000
+	# export RELAYMASTER_0=relays.v3-dev.networknext.com
+	# export RELAYUPDATEKEY_0=ycOUBHcxeThec42twkVJkO7QaVqlZUk3pApu7Ki58SrvELV+iIfiMpgxuJcTASVaCs1XD2BNDoGcEu9JkHv/sQ==
+	# export RELAYNAME_1=
+	# export RELAYADDRESS_1=
+	# export RELAYPORT_1=40000
+	# export RELAYMASTER_1=
+	# export RELAYUPDATEKEY_1=
+	# export RELAYNAME_2=
+	# export RELAYADDRESS_2=
+	# export RELAYPORT_2=40000
+	# export RELAYMASTER_2=
+	# export RELAYUPDATEKEY_2=
+	# export RELAY_MAX_CORES=
+
 	bin/relay
 fi
-

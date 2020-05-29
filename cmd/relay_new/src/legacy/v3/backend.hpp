@@ -5,6 +5,7 @@
 #include "backend_token.hpp"
 #include "core/packet.hpp"
 #include "core/relay_manager.hpp"
+#include "crypto/keychain.hpp"
 #include "net/address.hpp"
 #include "os/platform.hpp"
 #include "traffic_stats.hpp"
@@ -12,6 +13,7 @@
 #include "util/clock.hpp"
 #include "util/env.hpp"
 #include "util/json.hpp"
+#include "core/session_map.hpp"
 
 namespace legacy
 {
@@ -22,6 +24,7 @@ namespace legacy
     {
      public:
       Backend(
+       volatile bool& shouldComm,
        util::Receiver<core::GenericPacket<>>& receiver,
        util::Env& env,
        const uint64_t relayID,
@@ -29,7 +32,10 @@ namespace legacy
        const util::Clock& relayClock,
        TrafficStats& stats,
        core::RelayManager<core::V3Relay>& manager,
-       const size_t speed);
+       const size_t speed,
+       std::atomic<ResponseState>& state,
+       const crypto::Keychain& keychain,
+       const core::SessionMap& sessions);
       ~Backend() = default;
 
       auto init() -> bool;
@@ -38,6 +44,7 @@ namespace legacy
       auto updateCycle(const volatile bool& handle) -> bool;
 
      private:
+      volatile bool& mShouldCommunicate;
       util::Receiver<core::GenericPacket<>>& mReceiver;
       const util::Env& mEnv;
       os::Socket& mSocket;
@@ -46,13 +53,15 @@ namespace legacy
       core::RelayManager<core::V3Relay>& mRelayManager;
       const size_t mSpeed;  // Relay nic speed in bits/second
       BackendToken mToken;
-      uint64_t mInitTimestamp; // in seconds
-      uint64_t mInitReceived; // in nanoseconds
+      uint64_t mInitTimestamp;  // in seconds
+      uint64_t mInitReceived;   // in nanoseconds
       const uint64_t mRelayID;
       std::string mGroup;
       uint64_t mGroupID;
       std::string mPingKey;
-      std::array<uint8_t, 64> mUpdateKey;
+      std::atomic<ResponseState>& mState;
+      const crypto::Keychain& mKeychain;
+      const core::SessionMap& mSessions;
 
       auto tryInit() -> bool;
       auto update(bool shuttingDown) -> bool;
@@ -60,16 +69,17 @@ namespace legacy
       auto buildConfigJSON(util::JSON& doc) -> bool;
       auto buildUpdateJSON(util::JSON& doc, bool shuttingDown) -> bool;
 
-      auto sendAndRecv(core::GenericPacket<>& packet, BackendRequest& request, BackendResponse& response, util::JSON& doc)
+      auto sendBinRecvJSON(
+       BackendRequest& request, std::vector<uint8_t>& reqData, BackendResponse& response, util::JSON& respBuff)
        -> std::tuple<bool, std::string>;
-      auto readResponse(
-       core::GenericPacket<>& packet,
-       BackendRequest& request,
-       BackendResponse& response,
-       std::vector<uint8_t>& completeResponse) -> bool;
-      auto buildCompleteResponse(std::vector<uint8_t>& completeBuffer, util::JSON& doc) -> std::tuple<bool, std::string>;
-      void signRequest(util::JSON& doc);
+
+      auto sendJSONRecvJSON(BackendRequest& request, util::JSON& reqData, BackendResponse& response, util::JSON& respBuff)
+       -> std::tuple<bool, std::string>;
+
+      auto signRequest(util::JSON& doc) -> bool;
       auto timestamp() -> uint64_t;
+
+      auto buildCompleteResponse(std::vector<uint8_t>& completeBuffer, util::JSON& doc) -> std::tuple<bool, std::string>;
     };
   }  // namespace v3
 }  // namespace legacy

@@ -139,9 +139,14 @@ func (backend *Backend) GetNearRelays() []routing.Relay {
 	var nearRelays = make([]routing.Relay, 0)
 	hgetallResult := backend.redisClient.HGetAll(routing.HashKeyAllRelays)
 	for _, raw := range hgetallResult.Val() {
-		var r routing.Relay
+		var r routing.RelayCacheEntry
 		r.UnmarshalBinary([]byte(raw))
-		nearRelays = append(nearRelays, r)
+		nearRelays = append(nearRelays, routing.Relay{
+			ID:         r.ID,
+			Addr:       r.Addr,
+			Datacenter: r.Datacenter,
+			PublicKey:  r.PublicKey,
+		})
 	}
 	sort.SliceStable(nearRelays[:], func(i, j int) bool { return nearRelays[i].ID < nearRelays[j].ID })
 	if len(nearRelays) > int(transport.MaxNearRelays) {
@@ -481,7 +486,11 @@ func main() {
 					}
 				}
 
-				tokens, numtokens, _ := token.Encrypt(crypto.RouterPrivateKey)
+				tokens, numtokens, err := token.Encrypt(crypto.RouterPrivateKey)
+				if err != nil {
+					fmt.Printf("error: failed to encrypt route token: %v\n", err)
+					return
+				}
 				sessionEntry.RouteHash = nextRoute.Hash64()
 
 				sessionResponse = &transport.SessionResponsePacket{
@@ -785,7 +794,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	hgetallResult := backend.redisClient.HGetAll(routing.HashKeyAllRelays)
 	for k, v := range hgetallResult.Val() {
 		if k != relay.Key() {
-			var unmarshaledValue routing.Relay
+			var unmarshaledValue routing.RelayCacheEntry
 			unmarshaledValue.UnmarshalBinary([]byte(v))
 			relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(unmarshaledValue.ID), Address: unmarshaledValue.Addr.String()})
 		}

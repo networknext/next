@@ -225,7 +225,7 @@ type relay struct {
 	NICSpeedMbps        uint64    `json:"nic_speed_mpbs"`
 	IncludedBandwidthGB uint64    `json:"included_bandwidth_gb"`
 	State               string    `json:"state"`
-	StateUpdateTime     time.Time `json:"stateUpdateTime"`
+	LastUpdateTime      time.Time `json:"lastUpdateTime"`
 	ManagementAddr      string    `json:"management_addr"`
 	SSHUser             string    `json:"ssh_user"`
 	SSHPort             int64     `json:"ssh_port"`
@@ -233,6 +233,7 @@ type relay struct {
 	SessionCount        uint64    `json:"sessionCount"`
 	BytesSent           uint64    `json:"bytesTx"`
 	BytesReceived       uint64    `json:"bytesRx"`
+	PublicKey           string    `json:"public_key"`
 	UpdateKey           string    `json:"update_key"`
 	FirestoreID         string    `json:"firestore_id"`
 }
@@ -258,7 +259,8 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			SSHUser:             r.SSHUser,
 			SSHPort:             r.SSHPort,
 			State:               r.State.String(),
-			StateUpdateTime:     r.LastUpdateTime,
+			LastUpdateTime:      r.LastUpdateTime,
+			PublicKey:           base64.StdEncoding.EncodeToString(r.PublicKey),
 			UpdateKey:           base64.StdEncoding.EncodeToString(r.UpdateKey),
 			FirestoreID:         r.FirestoreID,
 			MaxSessionCount:     r.MaxSessions,
@@ -268,12 +270,14 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			ID: r.ID,
 		}
 
-		// If the relay is in redis, get its traffic stats
+		// If the relay is in redis, get its traffic stats and last update time
 		if relayCacheEntryString, ok := relayCacheEntries[relayCacheEntry.Key()]; ok {
 			if err := relayCacheEntry.UnmarshalBinary([]byte(relayCacheEntryString)); err == nil {
 				relay.SessionCount = relayCacheEntry.TrafficStats.SessionCount
 				relay.BytesSent = relayCacheEntry.TrafficStats.BytesSent
 				relay.BytesReceived = relayCacheEntry.TrafficStats.BytesReceived
+
+				relay.LastUpdateTime = relayCacheEntry.LastUpdateTime
 			}
 		}
 

@@ -14,6 +14,7 @@ namespace
   const auto Base64RelayPublicKey = "9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=";
   const auto Base64RelayPrivateKey = "lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=";
   const auto Base64RouterPublicKey = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=";
+  const auto Base64UpdateKey = "ycOUBHcxeThec42twkVJkO7QaVqlZUk3pApu7Ki58SrvELV+iIfiMpgxuJcTASVaCs1XD2BNDoGcEu9JkHv/sQ==";
 
   const auto BasicValidUpdateResponse = R"({
      "version": 0,
@@ -26,7 +27,7 @@ namespace
     static crypto::Keychain keychain;
     static legacy::v3::TrafficStats ts;
 
-    check(keychain.parse(Base64RelayPublicKey, Base64RelayPrivateKey, Base64RouterPublicKey));
+    check(keychain.parse(Base64RelayPublicKey, Base64RelayPrivateKey, Base64RouterPublicKey, Base64UpdateKey));
 
     return core::Backend<testing::StubbedCurlWrapper>(
      BackendHostname, RelayAddr, keychain, info, manager, Base64RelayPublicKey, sessions, ts);

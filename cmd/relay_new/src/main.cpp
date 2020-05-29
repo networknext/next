@@ -19,6 +19,7 @@
 #include "relay/relay_platform.hpp"
 #include "testing/test.hpp"
 #include "util/env.hpp"
+#include "legacy/v3/constants.hpp"
 
 using namespace std::chrono_literals;
 
@@ -63,6 +64,18 @@ namespace
       }
 
       std::cout << "    router public key is '" << env.RelayRouterPublicKey << "'\n";
+    }
+
+    // update key
+    {
+      std::string b64UpdateKey = env.RelayV3UpdateKey;
+      auto len = encoding::base64::Decode(b64UpdateKey, keychain.UpdateKey);
+      if (len != crypto_sign_SECRETKEYBYTES) {
+        std::cout << "error: invalid update key\n";
+        return false;
+      }
+
+      std::cout << "    update key is '" << env.RelayV3UpdateKey << "'\n";
     }
 
     return true;
@@ -231,6 +244,8 @@ int main(int argc, const char* argv[])
   // only used for v3 compatability
   const auto relayID = crypto::FNV(env.RelayV3Name);
 
+  std::atomic<legacy::v3::ResponseState> state(legacy::v3::ResponseState::Invalid);
+
   // decides if the relay should receive packets
   std::atomic<bool> shouldReceive(true);
 
@@ -271,7 +286,6 @@ int main(int argc, const char* argv[])
   auto cleanup = [&closeSockets, &joinThreads] {
     gAlive = false;
     closeSockets();
-    joinThreads();
     relay::relay_term();
   };
 
@@ -301,12 +315,11 @@ int main(int argc, const char* argv[])
    */
   Log("creating ", numProcessors, " packet processing threads");
   {
-    for (unsigned int i = 0; i < numProcessors; i++) {
+    for (unsigned int i = 0; i < numProcessors && gAlive; i++) {
       auto socket = makeSocket(relayAddr.Port);
       if (!socket) {
         Log("could not create socket");
         cleanup();
-        return 1;
       }
 
       auto thread = std::make_shared<std::thread>([&socketAndThreadReady,
@@ -320,7 +333,8 @@ int main(int argc, const char* argv[])
                                                    &recorder,
                                                    &sender,
                                                    &v3TrafficStats,
-                                                   relayID] {
+                                                   relayID,
+                                                   &state] {
         core::PacketProcessor processor(
          shouldReceive,
          *socket,
@@ -333,7 +347,8 @@ int main(int argc, const char* argv[])
          recorder,
          sender,
          v3TrafficStats,
-         relayID);
+         relayID,
+         state);
         processor.process(socketAndThreadReady);
       });
 
@@ -350,7 +365,7 @@ int main(int argc, const char* argv[])
   }
 
   // ping processing setup
-  {
+  if (gAlive) {
     auto socket = nextSocket();
     auto thread =
      std::make_shared<std::thread>([&socketAndThreadReady, socket, &relayManager, &recorder, &v3TrafficStats, &relayID] {
@@ -372,7 +387,7 @@ int main(int argc, const char* argv[])
   bool v3BackendSuccess = true;
 
   // v3 backend compatability setup
-  if (env.RelayV3Enabled == "1") {
+  if (env.RelayV3Enabled == "1" && gAlive) {
     v3BackendSuccess = false;
     // ping proc setup
     {
@@ -397,36 +412,45 @@ int main(int argc, const char* argv[])
     // backend setup
     {
       auto socket = nextSocket();
-      auto thread = std::make_shared<std::thread>(
-       [&receiver, &env, socket, &cleanup, &v3BackendSuccess, &relayClock, &v3TrafficStats, &v3RelayManager, &relayID] {
-         size_t speed = std::stoi(env.RelayV3Speed) * 1000000;
-         legacy::v3::Backend backend(receiver, env, relayID, *socket, relayClock, v3TrafficStats, v3RelayManager, speed);
+      auto thread = std::make_shared<std::thread>([&receiver,
+                                                   &env,
+                                                   socket,
+                                                   &cleanup,
+                                                   &v3BackendSuccess,
+                                                   &relayClock,
+                                                   &v3TrafficStats,
+                                                   &v3RelayManager,
+                                                   &relayID,
+                                                   &state,
+                                                   &keychain,
+                                                   &sessions] {
+        size_t speed = std::stoi(env.RelayV3Speed) * 1000000;
+        legacy::v3::Backend backend(
+         gAlive, receiver, env, relayID, *socket, relayClock, v3TrafficStats, v3RelayManager, speed, state, keychain, sessions);
 
-         if (!backend.init()) {
-           Log("could not initialize relay with old backend");
-           cleanup();
-           return;
-         }
+        if (!backend.init()) {
+          Log("could not initialize relay with old backend");
+          cleanup();
+          return;
+        }
 
-         Log("relay initialized with old backend");
+        Log("relay initialized with old backend");
 
-         if (!backend.config()) {
-           Log("could not configure relay with old backend");
-           cleanup();
-           return;
-         }
+        if (!backend.config()) {
+          Log("could not configure relay with old backend");
+          cleanup();
+          return;
+        }
 
-         Log("old backend entering update cycle");
+        Log("relay configured with old backend");
 
-         v3BackendSuccess = backend.updateCycle(gAlive);
+        v3BackendSuccess = backend.updateCycle(gAlive);
 
-         gAlive = false;
-       });
+        gAlive = false;
+      });
 
       sockets.push_back(socket);
       threads.push_back(thread);
-
-      Log("relay configured with old backend using address ", relayAddr);
     }
   }
 
@@ -450,14 +474,17 @@ int main(int argc, const char* argv[])
   if (!relayInitialized) {
     Log("error: could not initialize relay");
     cleanup();
-    return 1;
   }
 
   Log("relay initialized with new backend");
 
-  setupSignalHandlers();
+  bool success = false;
 
-  bool success = backend.updateCycle(gAlive, gShouldCleanShutdown, recorder, sessions, relayClock);
+  if (gAlive) {
+    setupSignalHandlers();
+
+    success = backend.updateCycle(gAlive, gShouldCleanShutdown, recorder, sessions, relayClock);
+  }
 
   Log("cleaning up");
 
@@ -467,6 +494,7 @@ int main(int argc, const char* argv[])
   shouldReceive = false;
 
   cleanup();
+  joinThreads();
 
   LogDebug("Receiving Address: ", relayAddr);
 

@@ -11,6 +11,7 @@
 #include "util/channel.hpp"
 #include "util/throughput_recorder.hpp"
 #include "legacy/v3/traffic_stats.hpp"
+#include "legacy/v3/constants.hpp"
 
 namespace core
 {
@@ -34,7 +35,8 @@ namespace core
      util::ThroughputRecorder& recorder,
      util::Sender<GenericPacket<>>& sender,
      legacy::v3::TrafficStats& stats,
-     const uint64_t oldRelayID);
+     const uint64_t oldRelayID,
+     const std::atomic<legacy::v3::ResponseState>& state);
     ~PacketProcessor() = default;
 
     void process(std::atomic<bool>& readyToReceive);
@@ -52,6 +54,8 @@ namespace core
     util::Sender<GenericPacket<>>& mChannel;
     legacy::v3::TrafficStats& mStats;
     const uint64_t mOldRelayID;
+    const std::atomic<legacy::v3::ResponseState>& mState;
+
 
     void processPacket(GenericPacket<>& packet, GenericPacketBuffer<MaxPacketsToSend>& outputBuff);
 

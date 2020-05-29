@@ -37,7 +37,8 @@ namespace core
    util::ThroughputRecorder& logger,
    util::Sender<GenericPacket<>>& sender,
    legacy::v3::TrafficStats& stats,
-   const uint64_t oldRelayID)
+   const uint64_t oldRelayID,
+   const std::atomic<legacy::v3::ResponseState>& state)
    : mShouldReceive(shouldReceive),
      mSocket(socket),
      mRelayClock(relayClock),
@@ -49,7 +50,8 @@ namespace core
      mRecorder(logger),
      mChannel(sender),
      mStats(stats),
-     mOldRelayID(oldRelayID)
+     mOldRelayID(oldRelayID),
+     mState(state)
   {}
 
   void PacketProcessor::process(std::atomic<bool>& readyToReceive)
@@ -62,7 +64,7 @@ namespace core
 
     GenericPacketBuffer<MaxPacketsToReceive> outputBuffer;
 
-    while (mShouldReceive) {
+    while (!mSocket.closed() && mShouldReceive) {
 #ifdef RELAY_MULTISEND
       GenericPacketBuffer<MaxPacketsToReceive> inputBuffer;
 
@@ -73,9 +75,11 @@ namespace core
       for (int i = 0; i < inputBuffer.Count; i++) {
         auto& pkt = inputBuffer.Packets[i];
         auto& header = inputBuffer.Headers[i];
-        pkt.Len = header.msg_len;
-        getAddrFromMsgHdr(pkt.Addr, header.msg_hdr);
-        processPacket(pkt, outputBuffer);
+        if (header.msg_len > 0) {
+          pkt.Len = header.msg_len;
+          getAddrFromMsgHdr(pkt.Addr, header.msg_hdr);
+          processPacket(pkt, outputBuffer);
+        }
       }
 
       if (outputBuffer.Count > 0) {
@@ -122,18 +126,25 @@ namespace core
 
     bool isSigned;
     if (crypto::IsNetworkNextPacket(packet.Buffer, packet.Len)) {
-      //LogDebug("packet is from network next");
       type = static_cast<packets::Type>(packet.Buffer[crypto::PacketHashLength]);
       isSigned = true;
     } else {
-      //LogDebug("packet is not on network next");
       // TODO uncomment below once all packets coming through have the hash
       // return;
       type = static_cast<packets::Type>(packet.Buffer[0]);
       isSigned = false;
     }
 
-    //LogDebug("incoming packet, type = ", type);
+    if (
+     type != packets::Type::NewRelayPing && type != packets::Type::NewRelayPong && type != packets::Type::OldRelayPing &&
+     type != packets::Type::OldRelayPong) {
+      if (isSigned) {
+        LogDebug("packet is from network next");
+      } else {
+        LogDebug("packet is not on network next");
+      }
+      LogDebug("incoming packet, type = ", type);
+    }
     switch (type) {
       case packets::Type::NewRelayPing: {
         if (!mShouldProcess) {
@@ -266,23 +277,39 @@ namespace core
       } break;
       // Next three all do the same thing
       case packets::Type::V3BackendInitResponse: {
-        mRecorder.addToReceived(wholePacketSize);
-        mStats.BytesPerSecManagementRx += wholePacketSize;
-        mChannel.send(packet);
+        if (mState == legacy::v3::ResponseState::Init) {
+          mRecorder.addToReceived(wholePacketSize);
+          mStats.BytesPerSecManagementRx += wholePacketSize;
+          mChannel.send(packet);
+        } else {
+          mRecorder.addToUnknown(wholePacketSize);
+          mStats.BytesPerSecInvalidRx += wholePacketSize;
+        }
       } break;
       case packets::Type::V3BackendConfigResponse: {
-        mRecorder.addToReceived(wholePacketSize);
-        mStats.BytesPerSecManagementRx += wholePacketSize;
-        mChannel.send(packet);
+        if (mState == legacy::v3::ResponseState::Config) {
+          mRecorder.addToReceived(wholePacketSize);
+          mStats.BytesPerSecManagementRx += wholePacketSize;
+          mChannel.send(packet);
+        } else {
+          mRecorder.addToUnknown(wholePacketSize);
+          mStats.BytesPerSecInvalidRx += wholePacketSize;
+        }
       } break;
       case packets::Type::V3BackendUpdateResponse: {
-        mRecorder.addToReceived(wholePacketSize);
-        mStats.BytesPerSecManagementRx += wholePacketSize;
-        mChannel.send(packet);
+        if (mState == legacy::v3::ResponseState::Update) {
+          mRecorder.addToReceived(wholePacketSize);
+          mStats.BytesPerSecManagementRx += wholePacketSize;
+          mChannel.send(packet);
+        } else {
+          mRecorder.addToUnknown(wholePacketSize);
+          mStats.BytesPerSecInvalidRx += wholePacketSize;
+        }
       } break;
       default: {
         LogDebug("received unknown packet type: ", std::hex, (int)packet.Buffer[0], std::dec);
-        mRecorder.addToUnknown(packet.Len + headerBytes);
+        mRecorder.addToUnknown(wholePacketSize);
+        mStats.BytesPerSecInvalidRx += wholePacketSize;
       } break;
     }
   }

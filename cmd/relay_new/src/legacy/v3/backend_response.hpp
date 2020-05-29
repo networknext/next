@@ -10,14 +10,14 @@ namespace legacy
   {
     struct BackendResponse
     {
-      core::packets::Type Type;
-      std::array<uint8_t, 64> Signature;
-      uint64_t GUID;
-      uint8_t FragIndex;
-      uint8_t FragCount;
-      uint16_t StatusCode;
-      core::Packet<std::vector<uint8_t>> Data;
-      uint64_t At;
+      core::packets::Type Type = core::packets::Type::None;
+      std::array<uint8_t, 64> Signature = {};
+      uint64_t GUID = 0;
+      uint8_t FragIndex = 0;
+      uint8_t FragCount = 0;
+      uint16_t StatusCode = 0;
+      core::Packet<std::vector<uint8_t>> Data = {};
+      uint64_t At = 0;
     };
   }  // namespace v3
 }  // namespace legacy

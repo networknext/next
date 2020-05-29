@@ -67,7 +67,7 @@ type relay struct {
 	SSHUser            string                 `firestore:"sshUser"`
 	SSHPort            int64                  `firestore:"sshPort"`
 	State              routing.RelayState     `firestore:"state"`
-	StateUpdateTime    time.Time              `firestore:"stateUpdateTime"`
+	LastUpdateTime     time.Time              `firestore:"lastUpdateTime"`
 	MaxSessions        int32                  `firestore:"maxSessions"`
 }
 
@@ -509,7 +509,7 @@ func (fs *Firestore) AddRelay(ctx context.Context, r routing.Relay) error {
 		SSHUser:            r.SSHUser,
 		SSHPort:            r.SSHPort,
 		State:              r.State,
-		StateUpdateTime:    r.LastUpdateTime,
+		LastUpdateTime:     r.LastUpdateTime,
 	}
 
 	// Add the relay in remote storage
@@ -607,10 +607,11 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 		rid := crypto.HashID(relayInRemoteStorage.Address)
 		if rid == r.ID {
 			// Set the data to update the relay with
-			stateUpdateTime := time.Now()
+			lastUpdateTime := time.Now()
 			newRelayData := map[string]interface{}{
 				"state":           r.State,
-				"stateUpdateTime": stateUpdateTime,
+				"lastUpdateTime":  lastUpdateTime,
+				"stateUpdateTime": time.Now(),
 				"publicKey":       r.PublicKey,
 				"nicSpeedMbps":    int64(r.NICSpeedMbps),
 			}
@@ -622,7 +623,7 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 
 			// Update the cached version
 			relayInCachedStorage.State = r.State
-			relayInCachedStorage.LastUpdateTime = stateUpdateTime
+			relayInCachedStorage.LastUpdateTime = lastUpdateTime
 
 			fs.relayMutex.Lock()
 			fs.relays[r.ID] = relayInCachedStorage
@@ -932,7 +933,7 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 			SSHUser:             r.SSHUser,
 			SSHPort:             r.SSHPort,
 			State:               r.State,
-			LastUpdateTime:      r.StateUpdateTime,
+			LastUpdateTime:      r.LastUpdateTime,
 			MaxSessions:         uint32(r.MaxSessions),
 			UpdateKey:           r.UpdateKey,
 			FirestoreID:         rdoc.Ref.ID,

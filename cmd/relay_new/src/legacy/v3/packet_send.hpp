@@ -12,8 +12,9 @@ namespace legacy
   {
     auto packet_send(
      const os::Socket& socket,
+     const net::Address& masterAddr,
      const BackendToken& master_token,
-     core::GenericPacket<>& packet,
+     std::vector<uint8_t>& data,
      BackendRequest& request) -> bool;
   }
 }  // namespace legacy

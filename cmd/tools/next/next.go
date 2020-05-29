@@ -23,7 +23,6 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
@@ -655,7 +654,6 @@ func main() {
 								},
 								NICSpeedMbps:        relay.NicSpeedMbps,
 								IncludedBandwidthGB: relay.IncludedBandwidthGB,
-								LastUpdateTime:      time.Now(),
 								State:               routing.RelayStateMaintenance,
 								ManagementAddr:      relay.ManagementAddr,
 								SSHUser:             relay.SSHUser,
@@ -746,6 +744,19 @@ func main() {
 			{
 				Name: "relay",
 				Subcommands: []*ffcli.Command{
+					{
+						Name:       "keys",
+						ShortUsage: "next relay keys <relay name...>",
+						ShortHelp:  "Show the public keys for the relay",
+						Exec: func(ctx context.Context, args []string) error {
+							relay := getRelayInfo(rpcClient, args[0])
+
+							fmt.Printf("Public Key: %s\n", relay.publicKey)
+							fmt.Printf("Update Key: %s\n", relay.updateKey)
+
+							return nil
+						},
+					},
 					{
 						Name:       "update",
 						ShortUsage: "next relay update <relay name...>",
