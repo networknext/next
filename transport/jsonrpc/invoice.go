@@ -46,7 +46,7 @@ func (s InvoiceService) InvoiceAllBuyers(r *http.Request, args *InvoiceArgs, rep
 	cacheName := "cache-" + startDate + "-to-" + endDate + ".json"
 	rc, err := s.Storage.Bucket("network-next-invoice-cache").Object(cacheName).NewReader(context.Background())
 
-	if err == storage.ErrBucketNotExist {
+	if err == nil {
 		// Cache file found, skip BQ query
 		existingData, err := ioutil.ReadAll(rc)
 		if err != nil {
@@ -65,7 +65,7 @@ func (s InvoiceService) InvoiceAllBuyers(r *http.Request, args *InvoiceArgs, rep
 
 	}
 
-	if err == nil {
+	if err == storage.ErrBucketNotExist {
 		// cache file not found so query db
 		fmt.Printf("Reading query from 'query.sql'...\n")
 		queryText, err := ioutil.ReadFile("query.sql")
