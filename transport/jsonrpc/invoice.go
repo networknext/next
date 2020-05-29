@@ -14,8 +14,8 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-// InvoiceService brings in the Google storage service. InvoiceService.Storage
-// *must* be initialized by the caller before use (requires context)
+// InvoiceService brings in the Google storage service and BigQuery client.
+// Both Storage and BqClient *must* be initialized by the caller before use (requires context)
 type InvoiceService struct {
 	Storage  *storage.Client
 	BqClient *bigquery.Client
@@ -72,14 +72,6 @@ func (s InvoiceService) InvoiceAllBuyers(r *http.Request, args *InvoiceArgs, rep
 		if err != nil {
 			return err
 		}
-
-		// fmt.Printf("Connecting to BigQuery...\n")
-		// ctx := context.Background()
-		// client, err := s.BqClient.NewClient(ctx, "network-next-v3-prod")
-		// if err != nil {
-		// 	return err
-		// }
-		// defer client.Close()
 
 		// fmt.Printf("Preparing query...\n")
 		q := s.BqClient.Query(string(queryText))
