@@ -246,6 +246,11 @@
                             User Tool
                         </a>
                     </li>
+                    <li class="nav-item text-nowrap">
+                        <a class="nav-link" href="#" v-bind:class="{ active: pages.downloads.show }" v-on:click="handlers.workspaceHandler.changePage('downloads', '')">
+                            Downloads
+                        </a>
+                    </li>
                     <li class="nav-item text-nowrap" v-if="handlers.userHandler.isOwner() || handlers.userHandler.isAdmin()">
                         <a class="nav-link" href="#" v-bind:class="{ active: pages.settings.show }" v-on:click="handlers.workspaceHandler.changePage('settings')">
                             Settings
@@ -896,6 +901,45 @@
                             </div>
                         </div>
                     </main>
+                    <main role="main" class="col-md-12 col-lg-12 px-4" v-show="pages.downloads.show">
+                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                            <h1 class="h2">
+                                Downloads
+                            </h1>
+                            <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1 hidden">
+                                <div class="mr-auto"></div>
+                            </div>
+                        </div>
+                        <div class="card mb-2">
+                            <div class="card-body">
+                                <div class="btn-group-vertical btn-group-sm float-right">
+                                    <a
+                                        href="#"
+                                        onclick="window.open('https://storage.cloud.google.com/portal_sdk_download_storage/next-3.4.6.zip?_ga=2.102239489.-1004716554.1585744318')"
+                                        class="btn btn-primary m-1"
+                                        title="SDK v3.4.6"
+                                        style='width: "160px"'
+                                    >
+                                        <i class="fas fa-download fa-w-16 fa-fw"></i>
+                                        SDK v3.4.6
+                                    </a>
+                                    <a
+                                        href="#"
+                                        onclick="window.open('https://network-next-sdk.readthedocs-hosted.com/en/latest/')"
+                                        class="btn btn-primary m-1"
+                                        title="v3.4.6 Documentation"
+                                        style='width: "160px"'
+                                    >
+                                        <i class="fas fa-download fa-w-16 fa-fw"></i>
+                                        v3.4.6 Documentation
+                                    </a>
+                                </div>
+                                <h5 class="card-title">
+                                    Network Next SDK
+                                </h5>
+                            </div>
+                          </div>
+                    </main>
                     <main role="main" class="col-md-12 col-lg-12 px-4" v-if="pages.settings.show">
                         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                             <h1 class="h2">
@@ -1189,6 +1233,9 @@
         <script src="./js/choices/scripts/choices.js"></script>
         <script src="./js/portal.js"></script>
         <script>
+            /* Vue.config.devtools = false
+            Vue.config.debug = false
+            Vue.config.silent = true */
             Sentry.init({ dsn: 'https://e24b8397eac44e1eb7ac090b5492d29e@o382503.ingest.sentry.io/5211452' });
             window.onload = async () => {
                 AuthHandler.init();
