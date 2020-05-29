@@ -348,6 +348,9 @@ WorkspaceHandler = {
 		this.sessionLoop ? clearInterval(this.sessionLoop) : null;
 
 		switch (page) {
+			case 'downloads':
+				this.loadDownloadsPage();
+				break;
 			case 'map':
 				MapHandler.initMap();
 				break;
@@ -522,6 +525,9 @@ WorkspaceHandler = {
 				console.log("Something went wrong fetching relays");
 				Sentry.captureException(e);
 			});
+	},
+	loadDownloadsPage() {
+
 	},
 	loadRelayPage() {
 		JSONRPCClient
@@ -849,6 +855,9 @@ function createVueComponents() {
 				workspaceHandler: WorkspaceHandler,
 			},
 			pages: {
+				downloads: {
+					show: false
+				},
 				map: {
 					filter: {
 						buyerId: '',
