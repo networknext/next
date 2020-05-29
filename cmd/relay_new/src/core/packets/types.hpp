@@ -11,6 +11,7 @@ namespace core
   {
     enum class Type : uint8_t
     {
+      None = 0,
       RouteRequest = 1,
       RouteResponse = 2,
       ClientToServer = 3,

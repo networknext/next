@@ -1020,9 +1020,48 @@ type PingTarget struct {
 	PingToken string
 }
 
-type RelayUpdateJSON struct {
+type RelayDataJSON struct {
+	Id        uint64
+	PublicKey []byte
+	PingKey   []byte
+	Role      string
+	Shutdown  bool
+	Group     string
+}
+
+type RelayPingStatsJSON struct {
+	RelayId    uint64
+	RTT        float32
+	Jitter     float32
+	PacketLoss float32
+}
+
+type TrafficStats struct {
+	BytesPaidTx        uint64
+	BytesPaidRx        uint64
+	BytesManagementTx  uint64
+	BytesManagementRx  uint64
+	BytesMeasurementTx uint64
+	BytesMeasurementRx uint64
+	BytesInvalidRx     uint64
+	SessionCount       uint64
+	FlowCount          uint64
+}
+
+type RelayUpdateJSONRequest struct {
+	Metadata     RelayDataJSON
+	Timestamp    uint64
+	Signature    []byte
+	PingStats    []RelayPingStatsJSON
+	Usage        float32
+	TrafficStats *TrafficStats
+}
+
+type RelayUpdateJSONResponse struct {
 	PingTargets []PingTarget
 }
+
+const Base64SharedUpdateKey = "7xC1foiH4jKYMbiXEwElWgrNVw9gTQ6BnBLvSZB7/7E="
 
 func TerribleOldShite() {
 
@@ -1031,6 +1070,8 @@ func TerribleOldShite() {
 	builder := UDPPacketToClientBuilderCreate(MasterUDPSignPrivateKey)
 
 	var packetsReceivedCount int64
+
+	sharedUpdateKey, _ := base64.StdEncoding.DecodeString(Base64SharedUpdateKey)
 
 	go listener.Listen(
 		&packetsReceivedCount,
@@ -1073,6 +1114,17 @@ func TerribleOldShite() {
 					return nil
 				}
 
+				if request.Timestamp < uint64(time.Now().Unix())-10 {
+					fmt.Println("expired relay update signature")
+					return nil
+				}
+
+				timestampBytes := make([]byte, 8)
+				binary.LittleEndian.PutUint64(timestampBytes, request.Timestamp)
+				if !CryptoSignVerify(timestampBytes, sharedUpdateKey, request.Signature) {
+					return nil
+				}
+
 				response := &RelayJSON{
 					Name:              "local",
 					UpdateKey:         make([]byte, 32),
@@ -1095,6 +1147,13 @@ func TerribleOldShite() {
 				}
 			} else if packet.Type == NEXT_PACKET_TYPE_RELAY_REPORT_REQUEST {
 				fmt.Println("got update request")
+
+				var update RelayUpdateJSONRequest
+				if err := json.Unmarshal(packet.Data, &update); err != nil {
+					fmt.Printf("could not unmarshal update json: %v\n", err)
+					return err
+				}
+
 				makeToken := func(token []byte, id uint64) {
 					index := 0
 					WriteUint64(token, &index, math.MaxUint64)
@@ -1114,7 +1173,7 @@ func TerribleOldShite() {
 				backend.relayDatabase[key] = relayEntry
 
 				relayCount := len(backend.relayDatabase)
-				response := RelayUpdateJSON{
+				response := RelayUpdateJSONResponse{
 					PingTargets: make([]PingTarget, relayCount-1),
 				}
 
@@ -1152,4 +1211,23 @@ func TerribleOldShite() {
 		},
 		"127.0.0.1:40002",
 	)
+}
+
+func CryptoSignVerify(data []byte, publicKey []byte, signature []byte) bool {
+	if len(publicKey) != C.crypto_sign_PUBLICKEYBYTES {
+		fmt.Printf("pk length invalid: %d\n", len(publicKey))
+		return false
+	}
+
+	if len(signature) != C.crypto_sign_BYTES {
+		fmt.Printf("sig length invalid: %d\n", len(signature))
+		return false
+	}
+
+	if C.crypto_sign_verify_detached((*C.uchar)(&signature[0]), (*C.uchar)(&data[0]), C.ulonglong(len(data)), (*C.uchar)(&publicKey[0])) != 0 {
+		fmt.Println("failed to verify signature")
+		return false
+	}
+
+	return true
 }

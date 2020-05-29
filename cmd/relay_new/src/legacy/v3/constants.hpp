@@ -6,7 +6,7 @@ namespace legacy
 {
   namespace v3
   {
-    const uint8_t FragmentMax  = 255;
+    const size_t FragmentMax  = 255;
     const size_t  FragmentSize = 1024;
 
     const size_t TokenBytes  = net::Address::ByteSize + 32;

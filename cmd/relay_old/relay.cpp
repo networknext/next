@@ -2977,6 +2977,8 @@ int manage_master_packet_send(
         return NEXT_ERROR;
     }
 
+    relay_printf( NEXT_LOG_LEVEL_DEBUG, "sending %d fragments ", fragment_total );
+
     for ( int i = 0; i < fragment_total; i++ )
     {
         int fragment_bytes;
