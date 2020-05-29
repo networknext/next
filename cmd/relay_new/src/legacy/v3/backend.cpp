@@ -76,7 +76,7 @@ namespace legacy
 
       std::vector<uint8_t> reqData(std::begin(InitKey), std::end(InitKey));
 
-      BackendRequest request = {};
+      BackendRequest request;
       {
         request.Type = core::packets::Type::V3InitRequest;
       }
@@ -130,7 +130,7 @@ namespace legacy
         }
       }
 
-      BackendRequest request = {};
+      BackendRequest request;
       {
         request.Type = core::packets::Type::V3ConfigRequest;
       }
@@ -196,7 +196,7 @@ namespace legacy
         return false;
       }
 
-      BackendRequest request = {};
+      BackendRequest request;
       {
         request.Type = core::packets::Type::V3UpdateRequest;
       }
@@ -378,7 +378,13 @@ namespace legacy
 
         auto total = bytesPerSecInvalidRx + bytesPerSecPaidRx + bytesPerSecManagementRx + bytesPerSecMeasurementRx +
                      bytesPerSecPaidTx + bytesPerSecManagementTx + bytesPerSecManagementTx;
-        double usage = 100.0 * (8.0 * total) / mSpeed;
+
+        double usage = 100.0;
+
+        if (mSpeed > 0) {
+          usage *= 8.0 * total / mSpeed;
+        }
+
         doc.set(usage, "Usage");
       }
 
