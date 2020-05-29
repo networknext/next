@@ -28,14 +28,13 @@ type InvoiceReply struct {
 	Invoices string `json:"invoice_list"`
 }
 
-// AllBuyers issues a BigQuery to generate invoices for all buyers within
+// InvoiceAllBuyers issues a BigQuery to generate invoices for all buyers within
 // a provided data range and return them in a single JSON reply.
-func (s *InvoiceService) AllBuyers(r *http.Request, args *InvoiceArgs, reply *InvoiceReply) error {
+func (s *InvoiceService) InvoiceAllBuyers(r *http.Request, args *InvoiceArgs, reply *InvoiceReply) error {
 
+	// needs to check for future date?
 	startDate := args.StartDate.Format("2006-01-02")
 	endDate := args.EndDate.Format("2006-01-02")
-
-	reply.Invoices = ""
 
 	storageSrv, err := storage.NewClient(context.Background())
 	if err != nil {
