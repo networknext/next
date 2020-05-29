@@ -18,7 +18,7 @@ JSONRPCClient = {
 				'Accept':		'application/json',
 				'Accept-Encoding':	'gzip',
 				'Content-Type':		'application/json',
-				'X-anonymous': true
+				'X-anonymous': 'true'
 			}
 		} else {
 			headers = {

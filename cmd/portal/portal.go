@@ -289,7 +289,12 @@ func main() {
 			Storage: db,
 		}, "")
 
-		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), s))
+		http.Handle("/rpc", http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			s.ServeHTTP(rw, req)
+			jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), req.Header.Get("X-anonymous"), s)
+		}))
+
+		// jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), s)
 
 		http.Handle("/", http.FileServer(http.Dir(uiDir)))
 

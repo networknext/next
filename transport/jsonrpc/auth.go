@@ -288,16 +288,10 @@ type jwks struct {
 	} `json:"keys"`
 }
 
-func AuthMiddleware(audience string, next http.Handler) http.Handler {
-	if audience == "" {
+func AuthMiddleware(audience string, anonymous string, next http.Handler) http.Handler {
+	if anonymous == "true" || audience == "" {
 		return next
 	}
-
-	anonHandler := http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		if req.Header.Get("X-anonymous") == "" {
-			next.ServeHTTP(rw, req)
-		}
-	})
 
 	mw := jwtmiddleware.New(jwtmiddleware.Options{
 		ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
@@ -326,7 +320,7 @@ func AuthMiddleware(audience string, next http.Handler) http.Handler {
 		SigningMethod: jwt.SigningMethodRS256,
 	})
 
-	return mw.Handler(anonHandler)
+	return mw.Handler(next)
 }
 
 func getPemCert(token *jwt.Token) (string, error) {
