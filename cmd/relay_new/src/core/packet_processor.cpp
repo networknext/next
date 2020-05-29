@@ -126,18 +126,23 @@ namespace core
 
     bool isSigned;
     if (crypto::IsNetworkNextPacket(packet.Buffer, packet.Len)) {
-      LogDebug("packet is from network next");
       type = static_cast<packets::Type>(packet.Buffer[crypto::PacketHashLength]);
       isSigned = true;
     } else {
-      LogDebug("packet is not on network next");
       // TODO uncomment below once all packets coming through have the hash
       // return;
       type = static_cast<packets::Type>(packet.Buffer[0]);
       isSigned = false;
     }
 
-    LogDebug("incoming packet, type = ", type);
+    if (type != packets::Type::NewRelayPing && type != packets::Type::NewRelayPong) {
+      if (isSigned) {
+        LogDebug("packet is from network next");
+      } else {
+        LogDebug("packet is not on network next");
+      }
+      LogDebug("incoming packet, type = ", type);
+    }
     switch (type) {
       case packets::Type::NewRelayPing: {
         if (!mShouldProcess) {
