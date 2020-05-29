@@ -27,6 +27,7 @@ func TestInvoiceAllBuyers(t *testing.T) {
 
 		svc.Storage, err = storage.NewClient(context.Background())
 		assert.NoError(t, err)
+		defer svc.Storage.Close()
 
 		err := svc.InvoiceAllBuyers(nil, &args, &reply)
 		assert.NoError(t, err)
