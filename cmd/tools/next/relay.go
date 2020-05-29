@@ -203,7 +203,7 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 			log.Fatalf("could not execute the retrieve-update-key.sh script: %s", output)
 		}
 
-		// Remove extra newline
+		// Make sure the update key env var on the relay wasn't empty
 		if len(output) == 0 {
 			log.Fatalln("no update key found on relay")
 		}
