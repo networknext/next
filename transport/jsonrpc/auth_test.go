@@ -15,12 +15,26 @@ import (
 )
 
 func TestAuthMiddleware(t *testing.T) {
+	t.Run("anonymous auth", func(t *testing.T) {
+		noopHandler := func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		}
+
+		authMiddleware := jsonrpc.AuthMiddleware("", "true", http.HandlerFunc(noopHandler))
+
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		res := httptest.NewRecorder()
+
+		authMiddleware.ServeHTTP(res, req)
+		assert.Equal(t, http.StatusOK, res.Code)
+	})
+
 	t.Run("skip auth", func(t *testing.T) {
 		noopHandler := func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusOK)
 		}
 
-		authMiddleware := jsonrpc.AuthMiddleware("", http.HandlerFunc(noopHandler))
+		authMiddleware := jsonrpc.AuthMiddleware("", "", http.HandlerFunc(noopHandler))
 
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 		res := httptest.NewRecorder()
@@ -39,7 +53,7 @@ func TestAuthMiddleware(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		}
 
-		authMiddleware := jsonrpc.AuthMiddleware("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler))
+		authMiddleware := jsonrpc.AuthMiddleware("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", "", http.HandlerFunc(noopHandler))
 
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 		req.Header.Add("Authorization", "Bearer "+jwtSideload)
