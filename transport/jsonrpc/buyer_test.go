@@ -27,8 +27,8 @@ func TestBuyersList(t *testing.T) {
 		err := svc.Buyers(nil, &jsonrpc.BuyerListArgs{}, &reply)
 		assert.NoError(t, err)
 
-		assert.Equal(t, reply.Buyers[0].ID, "1")
-		assert.Equal(t, reply.Buyers[0].Name, "local.local.1")
+		assert.Equal(t, "1", reply.Buyers[0].ID)
+		assert.Equal(t, "local.local.1", reply.Buyers[0].Name)
 	})
 }
 
@@ -176,7 +176,7 @@ func TestSessionDetails(t *testing.T) {
 	redisClient.SAdd(fmt.Sprintf("session-%s-slices", sessionID), slice1, slice2)
 
 	// After setting the cache without the name, set the name to the expected output we need
-	meta.NearbyRelays[0].Name = "local"
+	meta.NearbyRelays[0].Name = "*****"
 
 	inMemory := storage.InMemory{}
 	inMemory.AddSeller(context.Background(), routing.Seller{ID: "local"})
