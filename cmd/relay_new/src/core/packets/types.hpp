@@ -18,6 +18,8 @@ namespace core
       ServerToClient = 4,
       OldRelayPing = 5,
       OldRelayPong = 6,
+      NewRelayPing = 7,
+      NewRelayPong = 8,
       SessionPing = 11,
       SessionPong = 12,
       ContinueRequest = 13,
@@ -30,8 +32,6 @@ namespace core
       V3BackendInitResponse = 52,
       NearPing = 73,
       NearPong = 74,
-      NewRelayPing = 75,
-      NewRelayPong = 76,
     };
 
     template <typename T>

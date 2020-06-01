@@ -145,6 +145,7 @@ namespace core
       }
       LogDebug("incoming packet, type = ", type);
     }
+
     switch (type) {
       case packets::Type::NewRelayPing: {
         if (!mShouldProcess) {

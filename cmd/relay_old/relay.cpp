@@ -1542,6 +1542,8 @@ int flow_ping_read( uint8_t * packet_data, int packet_bytes, uint64_t timestamp,
     *id = next_read_uint64( &p );
     uint8_t * ping_mac = p;
 
+    relay_printf( NEXT_LOG_LEVEL_DEBUG, "got ping from %lu\n", *id );
+
     // if ( crypto_auth_verify( ping_mac, &packet_data[1], 8 + 8, global.relay_ping_key ) != 0 )
     // {
     //   std::cout << "failed to verify ping packet";
@@ -1696,6 +1698,7 @@ next_thread_return_t NEXT_THREAD_FUNC flow_thread( void * param )
                         uint64_t sequence;
                         if ( flow_ping_read( packet_data, packet_bytes, timestamp, &relay_id, &sequence ) == NEXT_OK )
                         {
+                            printf("got relay ping with sequence %lu\n", sequence);
                             msg_manage msg_out;
                             msg_out.type = MSG_MANAGE_RELAY_PING_INCOMING;
                             msg_out.relay_ping_incoming.address = from;
@@ -3502,6 +3505,8 @@ next_thread_return_t NEXT_THREAD_FUNC manage_thread( void * )
 
                             match = true;
 
+                            printf("forming pong for id %lu\n", msg->relay_ping_incoming.id);
+
                             /*
                             if ( next_flow_bandwidth_over_budget( &peer->ping_bandwidth, time, NEXT_ONE_SECOND_NS, NEXT_RELAY_PING_KBPS, BYTES_V3_PING ) )
                             {
@@ -3549,15 +3554,28 @@ next_thread_return_t NEXT_THREAD_FUNC manage_thread( void * )
                             manage_environment_t * env = &manage.envs[i];
                             manage_peer_map_t::iterator j = env->peers.find( msg->relay_pong.address );
 
-                            if ( j == env->peers.end() )
+                            if ( j == env->peers.end() ) {
+                                char addr[256] = {};
+                                printf("could not find based on address %s\n", next_address_to_string(&msg->relay_pong.address, addr));
                                 continue;
+                            }
 
                             manage_peer_t * peer = &j->second;
 
-                            if ( peer && msg->relay_pong.id == env->relay.id )
+                            if (peer == nullptr) {
+                              printf("peer is null\n");
+                              continue;
+                            }
+
+                            if ( msg->relay_pong.id == env->relay.id )
                             {
+                                printf("received pong from %lu\n", msg->relay_pong.id);
                                 match = true;
                                 break;
+                            }
+                            else
+                            {
+                              printf("id did not match %lu != %lu\n", msg->relay_pong.id, env->relay.id );
                             }
                         }
 
@@ -3953,6 +3971,7 @@ next_thread_return_t NEXT_THREAD_FUNC manage_thread( void * )
                 respDoc.parse(request_buffer.GetString());
                 char addr_buff[NEXT_ADDRESS_BYTES + NEXT_ADDRESS_BUFFER_SAFETY] = {};
                 next_address_to_string( &env->relay.address, addr_buff);
+                printf( "sending update %s\n", respDoc.toPrettyString().c_str() );
                 if (false && compat::next_curl_update(global.backend_hostname, request_buffer.GetString(), addr_buff, global.bind_port, env->relay.name, respDoc)) {
                     if (respDoc.memberExists("ping_data")) {
                         auto member = respDoc.get<rapidjson::Value*>("ping_data");
@@ -4069,6 +4088,7 @@ next_thread_return_t NEXT_THREAD_FUNC manage_thread( void * )
 
                     if ( manage_should_ping( env, peer ) && ping_map.find( peer->address ) == ping_map.end() )
                     {
+                        printf("sending ping to %lu\n", peer->relay_id);
                         // ping only in the first environment that has this relay
                         uint64_t sequence = manage_peer_history_insert( &peer->history, time );
 

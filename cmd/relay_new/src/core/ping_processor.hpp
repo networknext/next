@@ -187,6 +187,8 @@ namespace core
             LogDebug("could not write sequence");
             assert(false);
           }
+
+          LogDebug("sending ping to ", addr, " with sequence ", ping.Seq);
         }
 
         pkt.Len = index;
