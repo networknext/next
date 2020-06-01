@@ -660,14 +660,12 @@
                                                                 </a>
                                                             </dd>
                                                         </div>
-                                                        <dt v-if="!handlers.userHandler.isAnonymous()">
+                                                        <dt>
                                                             User IP Address
                                                         </dt>
-                                                        <dd v-if="!handlers.userHandler.isAnonymous()">
+                                                        <dd>
                                                             {{
-                                                                allBuyers.findIndex((buyer) => {
-                                                                    return buyer.id == pages.sessionTool.meta.customer_id
-                                                                }) !== -1 ? pages.sessionTool.meta.client_addr : ""
+                                                                pages.sessionTool.meta.client_addr
                                                             }}
                                                         </dd>
                                                         <dt>
@@ -676,14 +674,14 @@
                                                         <dd>
                                                             {{ pages.sessionTool.meta.platform }}
                                                         </dd>
-                                                        <dt v-if="!handlers.userHandler.isAnonymous()">
+                                                        <dt>
                                                             Customer
                                                         </dt>
-                                                        <dd v-if="!handlers.userHandler.isAnonymous()">
+                                                        <dd>
                                                             {{
-                                                                allBuyers.find((buyer) => {
+                                                                allBuyers.length > 0 ? allBuyers.find((buyer) => {
                                                                     return buyer.id == pages.sessionTool.meta.customer_id
-                                                                }).name || ""
+                                                                }).name || "Private" : "Private"
                                                             }}
                                                         </dd>
                                                         <dt>
@@ -860,7 +858,7 @@
                                                     Datacenter
                                                 </span>
                                             </th>
-                                            <th v-if="!handlers.userHandler.isAnonymous()">
+                                            <th>
                                                 <span>
                                                     Server Address
                                                 </span>
@@ -891,7 +889,7 @@
                                             <td>
                                                 {{ session.datacenter }}
                                             </td>
-                                            <td v-if="!handlers.userHandler.isAnonymous()">
+                                            <td>
                                                 {{ session.server_addr }}
                                             </td>
                                             <td>

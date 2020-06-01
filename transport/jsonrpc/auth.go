@@ -1,6 +1,7 @@
 package jsonrpc
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/json"
 	"errors"
@@ -15,6 +16,10 @@ import (
 	"github.com/networknext/backend/storage"
 	"gopkg.in/auth0.v4/management"
 )
+
+type contextType string
+
+const anonymousCallKey contextType = "anonymous"
 
 type AuthService struct {
 	Auth0   storage.Auth0
@@ -48,6 +53,10 @@ type account struct {
 }
 
 func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
+	if r.Context().Value(anonymousCallKey) == true {
+		return fmt.Errorf("insufficient privileges")
+	}
+
 	reply.UserAccounts = make([]account, 0)
 	accountList, err := s.Auth0.Manager.User.List()
 
@@ -75,6 +84,10 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 }
 
 func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *AccountReply) error {
+	if r.Context().Value(anonymousCallKey) == true {
+		return fmt.Errorf("insufficient privileges")
+	}
+
 	if args.UserID == "" {
 		return fmt.Errorf("user_id is required")
 	}
@@ -103,6 +116,10 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 }
 
 func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, reply *AccountReply) error {
+	if r.Context().Value(anonymousCallKey) == true {
+		return fmt.Errorf("insufficient privileges")
+	}
+
 	if args.UserID == "" {
 		return fmt.Errorf("user_id is required")
 	}
@@ -114,6 +131,10 @@ func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, repl
 }
 
 func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
+	if r.Context().Value(anonymousCallKey) == true {
+		return fmt.Errorf("insufficient privileges")
+	}
+
 	connectionID := "Username-Password-Authentication"
 	emails := args.Emails
 	roles := args.Roles
@@ -135,7 +156,7 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 
 		pw, err := GenerateRandomString(32)
 		if err != nil {
-			fmt.Errorf("failed to generate a random password: %w", err)
+			return fmt.Errorf("failed to generate a random password: %w", err)
 		}
 		newUser := &management.User{
 			Connection:    &connectionID,
@@ -213,6 +234,10 @@ type RolesReply struct {
 }
 
 func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
+	if r.Context().Value(anonymousCallKey) == true {
+		return fmt.Errorf("insufficient privileges")
+	}
+
 	roleList, err := s.Auth0.Manager.Role.List()
 	if err != nil {
 		fmt.Errorf("failed to fetch role list: %w", err)
@@ -224,6 +249,10 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 }
 
 func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
+	if r.Context().Value(anonymousCallKey) == true {
+		return fmt.Errorf("insufficient privileges")
+	}
+
 	if args.UserID == "" {
 		return fmt.Errorf("user_id is required")
 	}
@@ -240,6 +269,10 @@ func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesRe
 }
 
 func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
+	if r.Context().Value(anonymousCallKey) == true {
+		return fmt.Errorf("insufficient privileges")
+	}
+
 	var err error
 
 	if args.UserID == "" {
@@ -288,8 +321,8 @@ type jwks struct {
 	} `json:"keys"`
 }
 
-func AuthMiddleware(audience string, anonymous string, next http.Handler) http.Handler {
-	if anonymous == "true" || audience == "" {
+func AuthMiddleware(audience string, next http.Handler) http.Handler {
+	if audience == "" {
 		return next
 	}
 
@@ -317,7 +350,8 @@ func AuthMiddleware(audience string, anonymous string, next http.Handler) http.H
 
 			return jwt.ParseRSAPublicKeyFromPEM([]byte(cert))
 		},
-		SigningMethod: jwt.SigningMethodRS256,
+		SigningMethod:       jwt.SigningMethodRS256,
+		CredentialsOptional: true,
 	})
 
 	return mw.Handler(next)
@@ -351,4 +385,14 @@ func getPemCert(token *jwt.Token) (string, error) {
 	}
 
 	return cert, nil
+}
+
+func SetIsAnonymous(r *http.Request, value bool) *http.Request {
+	ctx := r.Context()
+	ctx = context.WithValue(ctx, anonymousCallKey, value)
+	return r.WithContext(ctx)
+}
+
+func IsAnonymous(r *http.Request) bool {
+	return r.Context().Value(anonymousCallKey).(bool)
 }

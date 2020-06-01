@@ -275,6 +275,12 @@ func main() {
 		level.Info(logger).Log("msg", fmt.Sprintf("Starting portal on port %s", port))
 
 		s := rpc.NewServer()
+		s.RegisterInterceptFunc(func(i *rpc.RequestInfo) *http.Request {
+			if i.Request.Header.Get("Authorization") == "" {
+				return jsonrpc.SetIsAnonymous(i.Request, true)
+			}
+			return jsonrpc.SetIsAnonymous(i.Request, false)
+		})
 		s.RegisterCodec(json2.NewCodec(), "application/json")
 		s.RegisterService(&jsonrpc.OpsService{
 			RedisClient: redisClientRelays,
@@ -289,10 +295,7 @@ func main() {
 			Storage: db,
 		}, "")
 
-		http.Handle("/rpc", http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-			s.ServeHTTP(rw, req)
-			jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), req.Header.Get("X-anonymous"), s)
-		}))
+		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), s))
 
 		// jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), s)
 

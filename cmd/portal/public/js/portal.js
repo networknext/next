@@ -12,21 +12,13 @@ var editUserPermissions = [];
 
 JSONRPCClient = {
 	async call(method, params) {
-		let headers = null
-		if (UserHandler.isAnonymous()) {
-			headers = {
-				'Accept':		'application/json',
-				'Accept-Encoding':	'gzip',
-				'Content-Type':		'application/json',
-				'X-anonymous': 'true'
-			}
-		} else {
-			headers = {
-				'Accept':		'application/json',
-				'Accept-Encoding':	'gzip',
-				'Content-Type':		'application/json',
-				'Authorization': `Bearer ${UserHandler.userInfo.token}`
-			}
+		let headers = {
+			'Accept':		'application/json',
+			'Accept-Encoding':	'gzip',
+			'Content-Type':		'application/json',
+		}
+		if (!UserHandler.isAnonymous()) {
+				headers['Authorization'] = `Bearer ${UserHandler.userInfo.token}`
 		}
 
 		params = params || {}

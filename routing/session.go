@@ -1,7 +1,9 @@
 package routing
 
 import (
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	jsoniter "github.com/json-iterator/go"
 )
@@ -31,6 +33,32 @@ func (s *SessionMeta) UnmarshalBinary(data []byte) error {
 
 func (s SessionMeta) MarshalBinary() ([]byte, error) {
 	return jsoniter.Marshal(s)
+}
+
+func (s SessionMeta) Anonymize(meta SessionMeta) SessionMeta {
+	meta.ServerAddr = ObscureString(meta.ServerAddr, ".", -1)
+	meta.CustomerID = ""
+	for idx, relay := range meta.NearbyRelays {
+		meta.NearbyRelays[idx].Name = ObscureString(relay.Name, ".", 1)
+	}
+	for idx, relay := range meta.Hops {
+		meta.Hops[idx].Name = ObscureString(relay.Name, ".", 1)
+	}
+	return meta
+}
+
+func ObscureString(source string, delim string, count int) string {
+	numPieces := count
+	pieces := strings.Split(source, delim)
+
+	if numPieces == -1 {
+		numPieces = len(pieces)
+	}
+
+	for i := 0; i < numPieces; i++ {
+		pieces[i] = strings.Repeat("*", utf8.RuneCountInString(pieces[i]))
+	}
+	return strings.Join(pieces, delim)
 }
 
 type SessionSlice struct {

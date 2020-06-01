@@ -6,9 +6,7 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
-	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/routing"
@@ -30,6 +28,7 @@ type UserSessionsReply struct {
 
 func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, reply *UserSessionsReply) error {
 	var sessionIDs []string
+	var isAnon = r.Context().Value(anonymousCallKey) == true
 
 	reply.Sessions = make([]routing.SessionMeta, 0)
 
@@ -65,6 +64,10 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 				continue
 			}
 
+			if isAnon {
+				meta = meta.Anonymize(meta)
+			}
+
 			reply.Sessions = append(reply.Sessions, meta)
 		}
 	}
@@ -91,6 +94,7 @@ type TopSessionsReply struct {
 func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, reply *TopSessionsReply) error {
 	var err error
 	var result []redis.Z
+	var isAnon = r.Context().Value(anonymousCallKey) == true
 
 	reply.Sessions = make([]routing.SessionMeta, 0)
 
@@ -134,6 +138,10 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 				continue
 			}
 
+			if isAnon {
+				meta = meta.Anonymize(meta)
+			}
+
 			reply.Sessions = append(reply.Sessions, meta)
 		}
 	}
@@ -175,9 +183,11 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 			continue
 		}
 
-		pieces := strings.Split(r.Name, ".")
-		pieces[0] = strings.Repeat("*", utf8.RuneCountInString(pieces[0]))
-		reply.Meta.NearbyRelays[idx].Name = strings.Join(pieces, ".")
+		reply.Meta.NearbyRelays[idx].Name = r.Name
+	}
+
+	if IsAnonymous(r) {
+		reply.Meta = reply.Meta.Anonymize(reply.Meta)
 	}
 
 	reply.Slices = make([]routing.SessionSlice, 0)
@@ -279,6 +289,10 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 
 	reply.GameConfiguration.PublicKey = ""
 
+	if r.Context().Value(anonymousCallKey) == true {
+		return nil
+	}
+
 	if args.BuyerID == "" {
 		return fmt.Errorf("buyer_id is required")
 	}
@@ -297,6 +311,9 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 }
 
 func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfigurationArgs, reply *GameConfigurationReply) error {
+	if r.Context().Value(anonymousCallKey) == true {
+		return fmt.Errorf("insufficient privileges")
+	}
 	var err error
 	var buyerID uint64
 	var buyer routing.Buyer
@@ -339,8 +356,13 @@ type buyerAccount struct {
 	Name string `json:"name"`
 }
 
+type ctxKey string
+
 func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *BuyerListReply) error {
 	reply.Buyers = make([]buyerAccount, 0)
+	if r.Context().Value(anonymousCallKey) == true {
+		return nil
+	}
 	for _, b := range s.Storage.Buyers() {
 		id := strconv.FormatUint(b.ID, 10)
 		account := buyerAccount{
