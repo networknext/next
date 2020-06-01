@@ -107,7 +107,6 @@ namespace core
         return;
       }
 
-      LogDebug("session ping set seq");
       session->ClientToServerSeq = clean_sequence;
 
       mRecorder.addToSent(mPacket.Len);

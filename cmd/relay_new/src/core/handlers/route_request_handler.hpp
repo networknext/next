@@ -104,6 +104,8 @@ namespace core
         session->ExpireTimestamp = token.ExpireTimestamp;
         session->SessionID = token.SessionID;
         session->SessionVersion = token.SessionVersion;
+
+        // initialize the rest of the fields
         session->ClientToServerSeq = 0;
         session->ServerToClientSeq = 0;
         session->KbpsUp = token.KbpsUp;
@@ -111,8 +113,6 @@ namespace core
         session->PrevAddr = mFrom;
         session->NextAddr = token.NextAddr;
         std::copy(token.PrivateKey.begin(), token.PrivateKey.end(), session->PrivateKey.begin());
-
-        // store it
         relay_replay_protection_reset(&session->ClientToServerProtection);
         relay_replay_protection_reset(&session->ServerToClientProtection);
 
