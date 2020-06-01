@@ -77,12 +77,13 @@ namespace core
       auto session = mSessionMap.get(hash);
 
       if (!session) {
-        Log("session does not exist: session = ", std::hex, session_id, '.', std::dec, static_cast<unsigned int>(session_version));
+        Log(
+         "session does not exist: session = ", std::hex, session_id, '.', std::dec, static_cast<unsigned int>(session_version));
         return;
       }
 
       if (session->expired()) {
-        Log("session expired: session = ", std::hex, session_id, '.', std::dec, static_cast<unsigned int>(session_version));
+        Log("session expired: session = ", *session);
         mSessionMap.erase(hash);
         return;
       }
@@ -90,23 +91,12 @@ namespace core
       uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
 
       if (relay_replay_protection_already_received(&session->ClientToServerProtection, clean_sequence)) {
-        Log(
-         "ignoring client to server packet, already received packet: session = ",
-         std::hex,
-         session_id,
-         '.',
-         std::dec,
-         static_cast<unsigned int>(session_version));
+        Log("ignoring client to server packet, already received packet: session = ", *session);
         return;
       }
 
       if (relay::relay_verify_header(RELAY_DIRECTION_CLIENT_TO_SERVER, session->PrivateKey.data(), data, length) != RELAY_OK) {
-        Log(
-         "ignoring client to server packet, could not verify header: session = ",
-         session_id,
-         '.',
-         std::dec,
-         static_cast<unsigned int>(session_version));
+        Log("ignoring client to server packet, could not verify header: session = ", *session);
         return;
       }
 

@@ -38,9 +38,7 @@ namespace core
     uint64_t mServerToClientSeq = 0;
   };
 
-  inline Session::Session(const util::Clock& relayClock)
-   : Expireable(relayClock), mServerToClientSeq(0), mClientToServer(0)
-  {}
+  inline Session::Session(const util::Clock& relayClock): Expireable(relayClock) {}
 
   inline void Session::setClientToServerSeq(uint64_t seq)
   {
@@ -65,5 +63,10 @@ namespace core
   }
 
   using SessionPtr = std::shared_ptr<Session>;
+
+  inline std::ostream& operator<<(std::ostream& os, const Session& session)
+  {
+    return os << std::hex << session.SessionID << '.' << std::dec << static_cast<unsigned int>(session.SessionVersion);
+  }
 }  // namespace core
 #endif

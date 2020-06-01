@@ -100,7 +100,7 @@ namespace core
       }
 
       if (session->ExpireTimestamp != token.ExpireTimestamp) {
-        Log("session continued: ", std::hex, token.SessionID, '.', std::dec, static_cast<unsigned int>(token.SessionVersion));
+        Log("session continued: ", token);
       }
 
       session->ExpireTimestamp = token.ExpireTimestamp;

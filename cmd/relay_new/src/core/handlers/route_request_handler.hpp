@@ -116,9 +116,9 @@ namespace core
 
         mSessionMap.set(hash, session);
 
-        Log("session created: ", std::hex, token.SessionID, '.', std::dec, static_cast<unsigned int>(token.SessionVersion));
+        Log("session created: ", *session);
       } else {
-        Log("received additional route request for session: ", std::hex, token.SessionID, '.', std::dec, static_cast<unsigned int>(token.SessionVersion));
+        Log("received additional route request for session: ", token);
       }
 
       // remove this part of the token by offseting it the request packet bytes

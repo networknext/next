@@ -84,13 +84,7 @@ namespace core
       }
 
       if (session->expired()) {
-        Log(
-         "ignoring session ping packet, session expired: session = ",
-         std::hex,
-         session_id,
-         '.',
-         std::dec,
-         static_cast<unsigned int>(session_version));
+        Log("ignoring session ping packet, session expired: session = ", *session);
         mSessionMap.erase(hash);
         return;
       }
@@ -100,11 +94,7 @@ namespace core
       if (clean_sequence <= session->getClientToServerSeq()) {
         Log(
          "ignoring session ping packet, clean sequence <= server to client sequence: session = ",
-         std::hex,
-         session_id,
-         '.',
-         std::dec,
-         static_cast<unsigned int>(session_version),
+         *session,
          ", ",
          clean_sequence,
          " <= ",
@@ -113,13 +103,7 @@ namespace core
       }
 
       if (relay::relay_verify_header(RELAY_DIRECTION_CLIENT_TO_SERVER, session->PrivateKey.data(), data, length) != RELAY_OK) {
-        Log(
-         "ignoring session ping packet, could not verify header: session = ",
-         std::hex,
-         session_id,
-         '.',
-         std::dec,
-         static_cast<unsigned int>(session_version));
+        Log("ignoring session ping packet, could not verify header: session = ", *session);
         return;
       }
 

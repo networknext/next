@@ -1540,7 +1540,6 @@ int flow_ping_read( uint8_t * packet_data, int packet_bytes, uint64_t timestamp,
     }
 
     *id = next_read_uint64( &p );
-    relay_printf( NEXT_LOG_LEVEL_DEBUG, "ping received, id = %lu", *id );
     uint8_t * ping_mac = p;
 
     // if ( crypto_auth_verify( ping_mac, &packet_data[1], 8 + 8, global.relay_ping_key ) != 0 )
@@ -2250,7 +2249,6 @@ next_thread_return_t NEXT_THREAD_FUNC flow_thread( void * param )
                     }
                     case MSG_MANAGE_RELAY_PONG_OUTGOING:
                     {
-                        relay_printf( NEXT_LOG_LEVEL_DEBUG, "sending pong, id = %lu, sequence = %lu\n", msg->relay_pong.id, msg->relay_pong.sequence );
                         flow_relay_pong_send( &socket, &msg->relay_pong.address, msg->relay_pong.id, msg->relay_pong.sequence );
                         break;
                     }
@@ -2977,8 +2975,6 @@ int manage_master_packet_send(
         return NEXT_ERROR;
     }
 
-    relay_printf( NEXT_LOG_LEVEL_DEBUG, "sending %d fragments ", fragment_total );
-
     for ( int i = 0; i < fragment_total; i++ )
     {
         int fragment_bytes;
@@ -3401,12 +3397,6 @@ next_thread_return_t NEXT_THREAD_FUNC manage_thread( void * )
                 next_json_writer_t writer( request_buffer );
                 doc.Accept( writer );
 
-                rapidjson::StringBuffer buff;
-                rapidjson::PrettyWriter<rapidjson::StringBuffer> pwriter(buff);
-                doc.Accept(pwriter);
-                std::string s = buff.GetString();
-                relay_printf( NEXT_LOG_LEVEL_DEBUG, "sending :%s\n", s.c_str() );
-
                 manage_master_packet_send
                 (
                     &producer_token,
@@ -3498,7 +3488,6 @@ next_thread_return_t NEXT_THREAD_FUNC manage_thread( void * )
                         // check if any environment has a relay with this IP and ID
                         bool match = false;
                         // bool bandwidth_over_budget = false;
-                        relay_printf( NEXT_LOG_LEVEL_DEBUG, "ping incoming, id = %lu\n", msg->relay_ping_incoming.id );
                         for ( int i = 0; i < manage.env_count; i++ )
                         {
                             manage_environment_t * env = &manage.envs[i];
@@ -3507,8 +3496,6 @@ next_thread_return_t NEXT_THREAD_FUNC manage_thread( void * )
 
                             if ( !peer )
                                 continue;
-
-                            relay_printf( NEXT_LOG_LEVEL_DEBUG, "checking against id = %lu", peer->relay_id );
 
                             if ( msg->relay_ping_incoming.id != peer->relay_id )
                                 continue;
@@ -3964,7 +3951,6 @@ next_thread_return_t NEXT_THREAD_FUNC manage_thread( void * )
                 /******** Begin Relay Http Compat *********/
                 json::JSON respDoc;
                 respDoc.parse(request_buffer.GetString());
-                relay_printf( NEXT_LOG_LEVEL_DEBUG, "Update json: %s", respDoc.toPrettyString().c_str() );
                 char addr_buff[NEXT_ADDRESS_BYTES + NEXT_ADDRESS_BUFFER_SAFETY] = {};
                 next_address_to_string( &env->relay.address, addr_buff);
                 if (false && compat::next_curl_update(global.backend_hostname, request_buffer.GetString(), addr_buff, global.bind_port, env->relay.name, respDoc)) {

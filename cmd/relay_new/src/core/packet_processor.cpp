@@ -307,7 +307,6 @@ namespace core
         }
       } break;
       default: {
-        LogDebug("received unknown packet type: ", std::hex, (int)packet.Buffer[0], std::dec);
         mRecorder.addToUnknown(wholePacketSize);
         mStats.BytesPerSecInvalidRx += wholePacketSize;
       } break;
