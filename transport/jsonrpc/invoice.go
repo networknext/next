@@ -103,7 +103,11 @@ func (s InvoiceService) InvoiceAllBuyers(r *http.Request, args *InvoiceArgs, rep
 
 		// fmt.Printf("Reading result rows...\n")
 		var rows [][]bigquery.Value
-		it, _ := job.Read(ctx)
+		it, err := job.Read(ctx)
+		if err != nil {
+			return err
+		}
+
 		for {
 			var row []bigquery.Value
 			err := it.Next(&row)
@@ -118,6 +122,9 @@ func (s InvoiceService) InvoiceAllBuyers(r *http.Request, args *InvoiceArgs, rep
 
 		// fmt.Printf("Writing result to output...\n")
 		data, err := json.Marshal(rows)
+		if err != nil {
+			return err
+		}
 		reply.Invoices = string(data)
 
 		return nil
