@@ -1542,8 +1542,6 @@ int flow_ping_read( uint8_t * packet_data, int packet_bytes, uint64_t timestamp,
     *id = next_read_uint64( &p );
     uint8_t * ping_mac = p;
 
-    relay_printf( NEXT_LOG_LEVEL_DEBUG, "got ping from %lu\n", *id );
-
     // if ( crypto_auth_verify( ping_mac, &packet_data[1], 8 + 8, global.relay_ping_key ) != 0 )
     // {
     //   std::cout << "failed to verify ping packet";
