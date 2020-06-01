@@ -104,6 +104,8 @@ namespace core
         session->ExpireTimestamp = token.ExpireTimestamp;
         session->SessionID = token.SessionID;
         session->SessionVersion = token.SessionVersion;
+        session->ClientToServerSeq = 0;
+        session->ServerToClientSeq = 0;
         session->KbpsUp = token.KbpsUp;
         session->KbpsDown = token.KbpsDown;
         session->PrevAddr = mFrom;
@@ -126,7 +128,8 @@ namespace core
       length = mPacket.Len - RouteToken::EncryptedByteSize;
 
       if (isSigned) {
-        mPacket.Buffer[RouteToken::EncryptedByteSize + crypto::PacketHashLength] = static_cast<uint8_t>(packets::Type::RouteRequest);
+        mPacket.Buffer[RouteToken::EncryptedByteSize + crypto::PacketHashLength] =
+         static_cast<uint8_t>(packets::Type::RouteRequest);
         legacy::relay_sign_network_next_packet(&mPacket.Buffer[RouteToken::EncryptedByteSize], length);
       } else {
         mPacket.Buffer[RouteToken::EncryptedByteSize] = static_cast<uint8_t>(packets::Type::RouteRequest);

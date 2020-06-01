@@ -16,6 +16,8 @@ namespace core
 
     uint64_t SessionID;
     uint8_t SessionVersion;
+    uint64_t ClientToServerSeq;
+    uint64_t ServerToClientSeq;
     int KbpsUp;
     int KbpsDown;
     net::Address PrevAddr;
@@ -26,41 +28,9 @@ namespace core
     // ReplayProtection ClientToServerProtection;
     legacy::relay_replay_protection_t ServerToClientProtection;
     legacy::relay_replay_protection_t ClientToServerProtection;
-
-    void setClientToServerSeq(uint64_t seq);
-    void setServerToClientSeq(uint64_t seq);
-
-    auto getClientToServerSeq() -> uint64_t;
-    auto getServerToClientSeq() -> uint64_t;
-
-   private:
-    uint64_t mClientToServer = 0;
-    uint64_t mServerToClientSeq = 0;
   };
 
   inline Session::Session(const util::Clock& relayClock): Expireable(relayClock) {}
-
-  inline void Session::setClientToServerSeq(uint64_t seq)
-  {
-    LogDebug("setting session ping seq: ", seq);
-    mClientToServer = seq;
-  }
-
-  inline void Session::setServerToClientSeq(uint64_t seq)
-  {
-    LogDebug("setting server to client seq: ", seq);
-    mServerToClientSeq = seq;
-  }
-
-  inline auto Session::getClientToServerSeq() -> uint64_t
-  {
-    return mClientToServer;
-  }
-
-  inline auto Session::getServerToClientSeq() -> uint64_t
-  {
-    return mServerToClientSeq;
-  }
 
   using SessionPtr = std::shared_ptr<Session>;
 

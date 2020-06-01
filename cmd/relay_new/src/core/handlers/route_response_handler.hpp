@@ -90,14 +90,14 @@ namespace core
 
       uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
 
-      if (clean_sequence <= session->getServerToClientSeq()) {
+      if (clean_sequence <= session->ServerToClientSeq) {
         Log(
-         "ignoring route response, clean sequence <= server to client sequence: session = ",
+         "ignoring route response, packet already received: session = ",
          *session,
          ", ",
          clean_sequence,
          " <= ",
-         session->getServerToClientSeq());
+         session->ServerToClientSeq);
         return;
       }
 
@@ -106,8 +106,7 @@ namespace core
         return;
       }
 
-      LogDebug("route response set seq");
-      session->setServerToClientSeq(clean_sequence);
+      session->ServerToClientSeq = clean_sequence;
 
       mRecorder.addToSent(mPacket.Len);
       mStats.BytesPerSecManagementTx += mPacket.Len;
