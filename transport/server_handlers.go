@@ -105,7 +105,7 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 	}
 }
 
-func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, metrics *metrics.ServerInitMetrics, serverPrivateKey []byte) UDPHandlerFunc {
+func ServerInitHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, metrics *metrics.ServerInitMetrics, serverPrivateKey []byte) UDPHandlerFunc {
 	logger = log.With(logger, "handler", "init")
 
 	return func(w io.Writer, incoming *UDPPacket) {
@@ -175,6 +175,31 @@ func ServerInitHandlerFunc(logger log.Logger, storer storage.Storer, metrics *me
 			response.Response = InitResponseSignatureCheckFailed
 			metrics.ErrorMetrics.VerificationFailure.Add(1)
 			return
+		}
+
+		// Check if a cache entry exists for this server already in redis, and if so, remove it
+		// so that the server can update probably without packet sequence issues.
+		// This prevents the case where a server restarts but doesn't give the backend enough
+		// time to expire the entry in redis.
+		serverCacheKey := fmt.Sprintf("SERVER-%d-%s", packet.CustomerID, incoming.SourceAddr.String())
+		result := redisClient.Get(serverCacheKey)
+		if result.Err() != nil && result.Err() != redis.Nil {
+			level.Error(locallogger).Log("msg", "failed to get server in init", "err", result.Err())
+			return
+		}
+
+		// If there was no error, then the entry was found, so remove it
+		if err == nil {
+			result := redisClient.Del(serverCacheKey)
+			if result.Err() != nil {
+				level.Error(locallogger).Log("msg", "failed to delete server cache entry in init", "server", serverCacheKey, "err", result.Err())
+				return
+			}
+
+			if result.Val() == 0 {
+				level.Error(locallogger).Log("msg", "could not find server cache entry in init to delete", "server", serverCacheKey, "err", result.Err())
+				return
+			}
 		}
 	}
 }
@@ -295,7 +320,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 			Datacenter: datacenter,
 			SDKVersion: packet.Version,
 		}
-		result := redisClient.Set(serverCacheKey, serverentry, 5*time.Minute)
+		result := redisClient.Set(serverCacheKey, serverentry, 60*time.Second)
 		if result.Err() != nil {
 			level.Error(locallogger).Log("msg", "failed to update server", "err", result.Err())
 			return
@@ -993,7 +1018,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 				NextRTT:                    nnStats.RTT,
 				Location:                   location,
 			}
-			result := redisClientCache.Set(sessionCacheKey, updatedSessionCacheEntry, 5*time.Minute)
+			result := redisClientCache.Set(sessionCacheKey, updatedSessionCacheEntry, 30*time.Second)
 			if result.Err() != nil {
 				// This error case should never happen, can't produce it in test cases, but leaving it in anyway
 				sentry.CaptureException(err)
