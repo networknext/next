@@ -69,7 +69,9 @@ namespace core
 
       uint64_t hash = session_id ^ session_version;
 
-      if (!mSessionMap.exists(hash)) {
+      auto session = mSessionMap.get(hash);
+
+      if (!session) {
         Log(
          "ignoring route response, could not find session: session = ",
          std::hex,
@@ -80,44 +82,27 @@ namespace core
         return;
       }
 
-      auto session = mSessionMap.get(hash);
-
       if (session->expired()) {
-        Log(
-         "ignoring route response, session expired: session = ",
-         std::hex,
-         session_id,
-         '.',
-         std::dec,
-         static_cast<unsigned int>(session_version));
+        Log("ignoring route response, session expired: session = ", *session);
         mSessionMap.erase(hash);
         return;
       }
 
       uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
+
       if (clean_sequence <= session->ServerToClientSeq) {
         Log(
-         "ignoring route response, clean sequence <= server to client sequence: session = ",
-         std::hex,
-         session_id,
-         '.',
-         std::dec,
-         static_cast<unsigned int>(session_version),
+         "ignoring route response, packet already received: session = ",
+         *session,
          ", ",
          clean_sequence,
          " <= ",
-         sequence);
+         session->ServerToClientSeq);
         return;
       }
 
       if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->PrivateKey.data(), data, length) != RELAY_OK) {
-        Log(
-         "ignoring route response, header is invalid: session = ",
-         std::hex,
-         session_id,
-         '.',
-         std::dec,
-         static_cast<unsigned int>(session_version));
+        Log("ignoring route response, header is invalid: session = ", *session);
         return;
       }
 

@@ -75,6 +75,7 @@ type RelayEntry struct {
 	address    *net.UDPAddr
 	lastUpdate int64
 	token      []byte
+	pingKey    []byte
 }
 
 type ServerEntry struct {
@@ -1160,10 +1161,12 @@ func TerribleOldShite() {
 					return nil
 				}
 
-				makeToken := func(token []byte, id uint64) {
-					index := 0
-					WriteUint64(token, &index, math.MaxUint64)
-					WriteUint64(token, &index, id)
+				makeToken := func(token []byte, pingKey []byte, id uint64) {
+					expireTimestamp := uint64(time.Now().Unix() + PingTokenTimeout)
+					token, err := GeneratePingToken(pingKey, id, expireTimestamp)
+					if err != nil {
+						fmt.Printf("bad ping token: %v", err)
+					}
 				}
 
 				relayEntry := RelayEntry{}
@@ -1171,6 +1174,7 @@ func TerribleOldShite() {
 				relayEntry.id = GetRelayId(from.String())
 				relayEntry.address = from
 				relayEntry.lastUpdate = time.Now().Unix()
+				relayEntry.pingKey = update.Metadata.PingKey
 
 				key := from.String()
 
@@ -1191,7 +1195,7 @@ func TerribleOldShite() {
 						target.Id = relay.id
 						target.Group = "group"
 						pingToken := make([]byte, 48)
-						makeToken(pingToken, relayEntry.id)
+						makeToken(pingToken, relayEntry.pingKey, relayEntry.id)
 						target.PingToken = base64.StdEncoding.EncodeToString(pingToken)
 						i++
 					}
@@ -1236,4 +1240,22 @@ func CryptoSignVerify(data []byte, publicKey []byte, signature []byte) bool {
 	}
 
 	return true
+}
+
+const PingMacBytes = C.crypto_auth_BYTES // 32
+const PingTokenBytes = 8 + 8 + PingMacBytes
+const PingTokenTimeout = 10
+
+// ping key, RELAY id, expire timestamp
+func GeneratePingToken(relayPingKey []byte, flowId uint64, expireTimestamp uint64) ([]byte, error) {
+	if len(relayPingKey) != C.crypto_auth_KEYBYTES {
+		return nil, fmt.Errorf("invalid relay ping key, expected %d bytes, got %d", C.crypto_auth_KEYBYTES, len(relayPingKey))
+	}
+	var token [PingTokenBytes]byte
+	binary.LittleEndian.PutUint64(token[0:], expireTimestamp)
+	binary.LittleEndian.PutUint64(token[8:], flowId)
+	if C.crypto_auth((*C.uchar)(&token[16]), (*C.uchar)(&token[0]), C.ulonglong(8+8), (*C.uchar)(&relayPingKey[0])) != 0 {
+		return nil, fmt.Errorf("failed to sign ping token")
+	}
+	return token[:], nil
 }

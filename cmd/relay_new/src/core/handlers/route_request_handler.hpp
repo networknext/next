@@ -95,7 +95,7 @@ namespace core
       // create a new session and add it to the session map
       uint64_t hash = token.key();
 
-      if (!mSessionMap.exists(hash)) {
+      if (!mSessionMap.get(hash)) {
         // create the session
         auto session = std::make_shared<Session>(mRelayClock);
         assert(session);
@@ -104,21 +104,23 @@ namespace core
         session->ExpireTimestamp = token.ExpireTimestamp;
         session->SessionID = token.SessionID;
         session->SessionVersion = token.SessionVersion;
+
+        // initialize the rest of the fields
         session->ClientToServerSeq = 0;
         session->ServerToClientSeq = 0;
         session->KbpsUp = token.KbpsUp;
         session->KbpsDown = token.KbpsDown;
         session->PrevAddr = mFrom;
         session->NextAddr = token.NextAddr;
-
-        // store it
         std::copy(token.PrivateKey.begin(), token.PrivateKey.end(), session->PrivateKey.begin());
         relay_replay_protection_reset(&session->ClientToServerProtection);
         relay_replay_protection_reset(&session->ServerToClientProtection);
 
         mSessionMap.set(hash, session);
 
-        Log("session created: ", std::hex, token.SessionID, '.', std::dec, static_cast<unsigned int>(token.SessionVersion));
+        Log("session created: ", *session);
+      } else {
+        Log("received additional route request for session: ", token);
       }
 
       // remove this part of the token by offseting it the request packet bytes
@@ -126,7 +128,8 @@ namespace core
       length = mPacket.Len - RouteToken::EncryptedByteSize;
 
       if (isSigned) {
-        mPacket.Buffer[RouteToken::EncryptedByteSize + crypto::PacketHashLength] = static_cast<uint8_t>(packets::Type::RouteRequest);
+        mPacket.Buffer[RouteToken::EncryptedByteSize + crypto::PacketHashLength] =
+         static_cast<uint8_t>(packets::Type::RouteRequest);
         legacy::relay_sign_network_next_packet(&mPacket.Buffer[RouteToken::EncryptedByteSize], length);
       } else {
         mPacket.Buffer[RouteToken::EncryptedByteSize] = static_cast<uint8_t>(packets::Type::RouteRequest);

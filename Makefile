@@ -40,15 +40,15 @@ export NEXT_PORT = 40000
 ##    RELAY ENV   ##
 ####################
 
-ifndef RELAY_ADDRESS
+ifndef RELAY_BACKEND_HOSTNAME
 export RELAY_BACKEND_HOSTNAME = http://127.0.0.1:30000
 endif
 
 ifndef RELAY_ADDRESS
-export RELAY_ADDRESS = 127.0.0.1
+export RELAY_ADDRESS = 127.0.0.1:0
 endif
 
-ifndef RELAY_ADDRESS
+ifndef RELAY_DEBUG
 export RELAY_DEBUG = 0
 endif
 

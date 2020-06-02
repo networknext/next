@@ -59,13 +59,10 @@ Test(new_and_legacy_route_stats_basic)
   check(l_stats.packet_loss == expectedPacketloss);
   check(l_stats.rtt == expectedRTT);
 
-  // there's some floating point impricesion going on
-  // uncomment when running tests
-  // when cout-ing the values, they are completely equal
 
-  //check(stats.getRTT() == l_stats.rtt).onFail([&] {
-  //  std::cout << "stats rtt = " << stats.getRTT() << ", legacy stats = " << l_stats.rtt << std::endl;
-  //});
-  //check(stats.getPacketLoss() == l_stats.packet_loss);
-  //check(stats.getJitter() == l_stats.jitter);
+  check(fabs(stats.getRTT() - l_stats.rtt) <= 0.1).onFail([&] {
+    std::cout << "stats rtt = " << stats.getRTT() << ", legacy stats = " << l_stats.rtt << std::endl;
+  });
+  check(stats.getPacketLoss() == l_stats.packet_loss);
+  check(stats.getJitter() == l_stats.jitter);
 }

@@ -303,7 +303,7 @@ namespace core
         return false;
       }
     } else if (relays.memberIs(util::JSON::Type::Null)) {
-      Log("no relays received from backend, ping data is null");
+      LogDebug("no relays received from new backend, ping data is null");
     } else {
       Log("update ping data not array");
       // TODO how to handle

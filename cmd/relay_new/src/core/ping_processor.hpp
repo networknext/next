@@ -147,7 +147,7 @@ namespace core
     GenericPacketBuffer<MaxPingsToSend, packets::OldRelayPingPacket::ByteSize> buffer;
 
     while (mShouldProcess) {
-      std::this_thread::sleep_for(10ms);
+      std::this_thread::sleep_for(100ms);
 
       std::array<core::V3PingData, MAX_RELAYS> pings;
 
@@ -187,6 +187,8 @@ namespace core
             LogDebug("could not write sequence");
             assert(false);
           }
+
+          LogDebug("sending ping to ", addr, " with sequence ", ping.Seq);
         }
 
         pkt.Len = index;
