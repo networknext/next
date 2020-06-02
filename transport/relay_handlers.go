@@ -34,7 +34,6 @@ const (
 type RelayHandlerConfig struct {
 	RedisClient           redis.Cmdable
 	GeoClient             *routing.GeoClient
-	IpLocator             routing.IPLocator
 	Storer                storage.Storer
 	StatsDb               *routing.StatsDatabase
 	TrafficStatsPublisher stats.Publisher
@@ -45,7 +44,6 @@ type RelayHandlerConfig struct {
 type RelayInitHandlerConfig struct {
 	RedisClient      redis.Cmdable
 	GeoClient        *routing.GeoClient
-	IpLocator        routing.IPLocator
 	Storer           storage.Storer
 	Metrics          *metrics.RelayInitMetrics
 	RouterPrivateKey []byte
@@ -279,14 +277,6 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 
 		// If the relay doesn't exist, add it
 		if exists.Val() == 0 {
-			// Set the relay's lat long
-			if loc, err := params.IpLocator.LocateIP(relayCacheEntry.Addr.IP); err == nil {
-				relayCacheEntry.Datacenter.Location.Latitude = loc.Latitude
-				relayCacheEntry.Datacenter.Location.Longitude = loc.Longitude
-			} else {
-				level.Warn(locallogger).Log("msg", "using default geolocation from storage for relay")
-			}
-
 			// Regular set for expiry
 			if res := params.RedisClient.Set(relayCacheEntry.Key(), relayCacheEntry.ID, routing.RelayTimeout); res.Err() != nil && res.Err() != redis.Nil {
 				level.Error(locallogger).Log("msg", "failed to set relay expiry in redis", "err", res.Err())
@@ -560,15 +550,6 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			http.Error(writer, "relay already initialized", http.StatusConflict)
 			params.Metrics.ErrorMetrics.RelayAlreadyExists.Add(1)
 			return
-		}
-
-		if loc, err := params.IpLocator.LocateIP(relayCacheEntry.Addr.IP); err == nil {
-			relayCacheEntry.Datacenter.Location.Latitude = loc.Latitude
-			relayCacheEntry.Datacenter.Location.Longitude = loc.Longitude
-		} else {
-			sentry.CaptureMessage("failed to lookup message")
-			level.Warn(locallogger).Log("msg", "using default geolocation from storage for relay")
-			params.Metrics.ErrorMetrics.IPLookupFailure.Add(1)
 		}
 
 		// Regular set for expiry

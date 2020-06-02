@@ -30,8 +30,6 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 
-	"github.com/oschwald/geoip2-golang"
-
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
@@ -141,24 +139,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	var ipLocator routing.IPLocator = routing.NullIsland
-	if uri, ok := os.LookupEnv("MAXMIND_DB_URI"); ok {
-		mmreader, err := geoip2.Open(uri)
-		if err != nil {
-			level.Error(logger).Log("envvar", "MAXMIND_DB_URI", "value", uri, "err", err)
-		}
-		ipLocator = &routing.MaxmindDB{
-			Reader: mmreader,
-		}
-		defer mmreader.Close()
-	}
-	if key, ok := os.LookupEnv("IPSTACK_ACCESS_KEY"); ok {
-		ipLocator = &routing.IPStack{
-			Client:    http.DefaultClient,
-			AccessKey: key,
-		}
-	}
-
 	geoClient := routing.GeoClient{
 		RedisClient: redisClientRelays,
 		Namespace:   "RELAY_LOCATIONS",
@@ -179,8 +159,9 @@ func main() {
 		}
 
 		datacenter := routing.Datacenter{
-			ID:   crypto.HashID("local"),
-			Name: "local",
+			ID:       crypto.HashID("local"),
+			Name:     "local",
+			Location: routing.LocationNullIsland,
 		}
 
 		if err := db.AddSeller(ctx, seller); err != nil {
@@ -359,7 +340,6 @@ func main() {
 	commonInitParams := transport.RelayInitHandlerConfig{
 		RedisClient:      redisClientRelays,
 		GeoClient:        &geoClient,
-		IpLocator:        ipLocator,
 		Storer:           db,
 		Metrics:          relayInitMetrics,
 		RouterPrivateKey: routerPrivateKey,
@@ -377,7 +357,6 @@ func main() {
 	commonHandlerParams := transport.RelayHandlerConfig{
 		RedisClient:           redisClientRelays,
 		GeoClient:             &geoClient,
-		IpLocator:             ipLocator,
 		Storer:                db,
 		StatsDb:               statsdb,
 		TrafficStatsPublisher: trafficStatsPublisher,

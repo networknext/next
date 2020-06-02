@@ -28,7 +28,7 @@ import (
 	"golang.org/x/crypto/nacl/box"
 )
 
-func pingRelayBackendHandler(t *testing.T, headers map[string]string, body []byte, metrics metrics.RelayHandlerMetrics, geoClient *routing.GeoClient, ipfunc routing.LocateIPFunc, inMemory *storage.InMemory, redisClient *redis.Client, statsdb *routing.StatsDatabase, routerPrivateKey []byte) *httptest.ResponseRecorder {
+func pingRelayBackendHandler(t *testing.T, headers map[string]string, body []byte, metrics metrics.RelayHandlerMetrics, geoClient *routing.GeoClient, inMemory *storage.InMemory, redisClient *redis.Client, statsdb *routing.StatsDatabase, routerPrivateKey []byte) *httptest.ResponseRecorder {
 	if redisClient == nil {
 		redisServer, err := miniredis.Run()
 		assert.NoError(t, err)
@@ -42,19 +42,6 @@ func pingRelayBackendHandler(t *testing.T, headers map[string]string, body []byt
 		geoClient = &routing.GeoClient{
 			RedisClient: cli,
 			Namespace:   "RELAY_LOCATIONS",
-		}
-	}
-
-	if ipfunc == nil {
-		ipfunc = func(ip net.IP) (routing.Location, error) {
-			return routing.Location{
-				Continent: "a continent on the Earth",
-				Country:   "a country in the continent",
-				Region:    "a region in the country",
-				City:      "a city in the region",
-				Latitude:  mrand.Float64(),
-				Longitude: mrand.Float64(),
-			}, nil
 		}
 	}
 
@@ -74,7 +61,6 @@ func pingRelayBackendHandler(t *testing.T, headers map[string]string, body []byt
 	handler := transport.RelayHandlerFunc(log.NewNopLogger(), log.NewNopLogger(), &transport.RelayHandlerConfig{
 		RedisClient:           redisClient,
 		GeoClient:             geoClient,
-		IpLocator:             ipfunc,
 		Storer:                inMemory,
 		StatsDb:               statsdb,
 		TrafficStatsPublisher: &stats.NoOpTrafficStatsPublisher{},
@@ -206,7 +192,7 @@ func TestRelayHandlerUnmarshalFailure(t *testing.T) {
 	handlerMetrics.ErrorMetrics.UnmarshalFailure = metric
 
 	buff := []byte("{")
-	recorder := pingRelayBackendHandler(t, nil, buff, handlerMetrics, nil, nil, nil, nil, nil, nil)
+	recorder := pingRelayBackendHandler(t, nil, buff, handlerMetrics, nil, nil, nil, nil, nil)
 	relayHandlerErrorAssertions(t, recorder, http.StatusBadRequest, metric)
 }
 
@@ -230,7 +216,7 @@ func TestRelayHandlerExceedMaxRelays(t *testing.T) {
 
 	buff, err := request.MarshalJSON()
 	assert.NoError(t, err)
-	recorder := pingRelayBackendHandler(t, nil, buff, handlerMetrics, nil, nil, nil, nil, nil, nil)
+	recorder := pingRelayBackendHandler(t, nil, buff, handlerMetrics, nil, nil, nil, nil, nil)
 	relayHandlerErrorAssertions(t, recorder, http.StatusBadRequest, metric)
 }
 
@@ -255,7 +241,7 @@ func TestRelayHandlerRelayNotFound(t *testing.T) {
 
 	buff, err := request.MarshalJSON()
 	assert.NoError(t, err)
-	recorder := pingRelayBackendHandler(t, nil, buff, handlerMetrics, nil, nil, inMemory, nil, nil, nil)
+	recorder := pingRelayBackendHandler(t, nil, buff, handlerMetrics, nil, inMemory, nil, nil, nil)
 	relayHandlerErrorAssertions(t, recorder, http.StatusNotFound, metric)
 }
 
@@ -300,7 +286,7 @@ func TestRelayHandlerQuarantinedRelay(t *testing.T) {
 
 	buff, err := request.MarshalJSON()
 	assert.NoError(t, err)
-	recorder := pingRelayBackendHandler(t, nil, buff, handlerMetrics, nil, nil, inMemory, nil, nil, nil)
+	recorder := pingRelayBackendHandler(t, nil, buff, handlerMetrics, nil, inMemory, nil, nil, nil)
 	relayHandlerErrorAssertions(t, recorder, http.StatusUnauthorized, metric)
 }
 
@@ -344,7 +330,7 @@ func TestRelayHandlerNoAuthHeader(t *testing.T) {
 
 	buff, err := request.MarshalJSON()
 	assert.NoError(t, err)
-	recorder := pingRelayBackendHandler(t, nil, buff, handlerMetrics, nil, nil, inMemory, nil, nil, nil)
+	recorder := pingRelayBackendHandler(t, nil, buff, handlerMetrics, nil, inMemory, nil, nil, nil)
 	relayHandlerErrorAssertions(t, recorder, http.StatusUnauthorized, metric)
 }
 
@@ -393,7 +379,7 @@ func TestRelayHandlerBadAuthHeaderLength(t *testing.T) {
 	headers := make(map[string]string)
 	headers["Authorization"] = "bad"
 
-	recorder := pingRelayBackendHandler(t, headers, buff, handlerMetrics, nil, nil, inMemory, nil, nil, nil)
+	recorder := pingRelayBackendHandler(t, headers, buff, handlerMetrics, nil, inMemory, nil, nil, nil)
 	relayHandlerErrorAssertions(t, recorder, http.StatusBadRequest, metric)
 }
 
@@ -442,7 +428,7 @@ func TestRelayHandlerBadAuthHeaderToken(t *testing.T) {
 	headers := make(map[string]string)
 	headers["Authorization"] = "Bearer bad token"
 
-	recorder := pingRelayBackendHandler(t, headers, buff, handlerMetrics, nil, nil, inMemory, nil, nil, nil)
+	recorder := pingRelayBackendHandler(t, headers, buff, handlerMetrics, nil, inMemory, nil, nil, nil)
 	relayHandlerErrorAssertions(t, recorder, http.StatusBadRequest, metric)
 }
 
@@ -491,7 +477,7 @@ func TestRelayHandlerBadNonce(t *testing.T) {
 	headers := make(map[string]string)
 	headers["Authorization"] = "Bearer invalid:base64"
 
-	recorder := pingRelayBackendHandler(t, headers, buff, handlerMetrics, nil, nil, inMemory, nil, nil, nil)
+	recorder := pingRelayBackendHandler(t, headers, buff, handlerMetrics, nil, inMemory, nil, nil, nil)
 	relayHandlerErrorAssertions(t, recorder, http.StatusBadRequest, metric)
 }
 
@@ -548,7 +534,7 @@ func TestRelayHandlerBadEncryptedAddress(t *testing.T) {
 	headers := make(map[string]string)
 	headers["Authorization"] = "Bearer " + token
 
-	recorder := pingRelayBackendHandler(t, headers, buff, handlerMetrics, nil, nil, inMemory, nil, nil, nil)
+	recorder := pingRelayBackendHandler(t, headers, buff, handlerMetrics, nil, inMemory, nil, nil, nil)
 	relayHandlerErrorAssertions(t, recorder, http.StatusBadRequest, metric)
 }
 
@@ -614,7 +600,7 @@ func TestRelayHandlerDecryptFailure(t *testing.T) {
 	headers := make(map[string]string)
 	headers["Authorization"] = "Bearer " + token
 
-	recorder := pingRelayBackendHandler(t, headers, buff, handlerMetrics, nil, nil, inMemory, nil, nil, nil)
+	recorder := pingRelayBackendHandler(t, headers, buff, handlerMetrics, nil, inMemory, nil, nil, nil)
 	relayHandlerErrorAssertions(t, recorder, http.StatusUnauthorized, metric)
 }
 
@@ -682,7 +668,7 @@ func TestRelayHandlerRedisFailure(t *testing.T) {
 	headers := make(map[string]string)
 	headers["Authorization"] = "Bearer " + token
 
-	recorder := pingRelayBackendHandler(t, headers, buff, handlerMetrics, nil, nil, inMemory, redisClient, nil, routerPrivateKey[:])
+	recorder := pingRelayBackendHandler(t, headers, buff, handlerMetrics, nil, inMemory, redisClient, nil, routerPrivateKey[:])
 	relayHandlerErrorAssertions(t, recorder, http.StatusInternalServerError, metric)
 }
 
@@ -757,7 +743,7 @@ func TestRelayHandlerRelayUnmarshalFailure(t *testing.T) {
 	headers := make(map[string]string)
 	headers["Authorization"] = "Bearer " + token
 
-	recorder := pingRelayBackendHandler(t, headers, buff, handlerMetrics, nil, nil, inMemory, redisClient, nil, routerPrivateKey[:])
+	recorder := pingRelayBackendHandler(t, headers, buff, handlerMetrics, nil, inMemory, redisClient, nil, routerPrivateKey[:])
 	relayHandlerErrorAssertions(t, recorder, http.StatusInternalServerError, metric)
 }
 
@@ -786,15 +772,6 @@ func TestRelayHandlerShuttingDown(t *testing.T) {
 			RedisClient: redisClient,
 			Namespace:   "RELAY_LOCATIONS",
 		}
-	}
-
-	location := routing.Location{
-		Latitude:  math.Round(mrand.Float64()*1000) / 1000,
-		Longitude: math.Round(mrand.Float64()*1000) / 1000,
-	}
-
-	ipfunc := func(ip net.IP) (routing.Location, error) {
-		return location, nil
 	}
 
 	statIps := []string{"127.0.0.2:40000", "127.0.0.3:40000", "127.0.0.4:40000", "127.0.0.5:40000"}
@@ -921,11 +898,11 @@ func TestRelayHandlerShuttingDown(t *testing.T) {
 	headers := make(map[string]string)
 	headers["Authorization"] = "Bearer " + token
 
-	pingRelayBackendHandler(t, headers, buff, handlerMetrics, &geoClient, ipfunc, inMemory, redisClient, statsdb, routerPrivateKey[:])
+	pingRelayBackendHandler(t, headers, buff, handlerMetrics, &geoClient, inMemory, redisClient, statsdb, routerPrivateKey[:])
 	relayHandlerShutdownAssertions(t, handlerMetrics.ErrorMetrics, expected, redisClient, inMemory, statsdb, addr)
 
 	// Now make the same request again, with the relay now initialized
-	pingRelayBackendHandler(t, headers, buff, handlerMetrics, &geoClient, ipfunc, inMemory, redisClient, statsdb, routerPrivateKey[:])
+	pingRelayBackendHandler(t, headers, buff, handlerMetrics, &geoClient, inMemory, redisClient, statsdb, routerPrivateKey[:])
 	relayHandlerShutdownAssertions(t, handlerMetrics.ErrorMetrics, expected, redisClient, inMemory, statsdb, addr)
 }
 
@@ -961,10 +938,6 @@ func TestRelayHandlerSuccess(t *testing.T) {
 		Longitude: math.Round(mrand.Float64()*1000) / 1000,
 	}
 
-	ipfunc := func(ip net.IP) (routing.Location, error) {
-		return location, nil
-	}
-
 	statIps := []string{"127.0.0.2:40000", "127.0.0.3:40000", "127.0.0.4:40000", "127.0.0.5:40000"}
 
 	// Populate redis with the relays to ping
@@ -980,8 +953,9 @@ func TestRelayHandlerSuccess(t *testing.T) {
 			Name: "seller name",
 		},
 		Datacenter: routing.Datacenter{
-			ID:   crypto.HashID("some datacenter"),
-			Name: "some datacenter",
+			ID:       crypto.HashID("some datacenter"),
+			Name:     "some datacenter",
+			Location: location,
 		},
 	}
 
@@ -1088,10 +1062,10 @@ func TestRelayHandlerSuccess(t *testing.T) {
 	headers := make(map[string]string)
 	headers["Authorization"] = "Bearer " + token
 
-	recorder := pingRelayBackendHandler(t, headers, buff, handlerMetrics, &geoClient, ipfunc, inMemory, redisClient, statsdb, routerPrivateKey[:])
+	recorder := pingRelayBackendHandler(t, headers, buff, handlerMetrics, &geoClient, inMemory, redisClient, statsdb, routerPrivateKey[:])
 	relayHandlerSuccessAssertions(t, recorder, handlerMetrics.ErrorMetrics, &geoClient, redisClient, location, inMemory, statsdb, addr, expected, statIps)
 
 	// Now make the same request again, with the relay now initialized
-	recorder = pingRelayBackendHandler(t, headers, buff, handlerMetrics, &geoClient, ipfunc, inMemory, redisClient, statsdb, routerPrivateKey[:])
+	recorder = pingRelayBackendHandler(t, headers, buff, handlerMetrics, &geoClient, inMemory, redisClient, statsdb, routerPrivateKey[:])
 	relayHandlerSuccessAssertions(t, recorder, handlerMetrics.ErrorMetrics, &geoClient, redisClient, location, inMemory, statsdb, addr, expected, statIps)
 }

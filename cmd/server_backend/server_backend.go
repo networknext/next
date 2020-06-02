@@ -333,7 +333,7 @@ func main() {
 			Conn:          conn,
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
-			ServerInitHandlerFunc:    transport.ServerInitHandlerFunc(logger, db, serverInitMetrics, serverPrivateKey),
+			ServerInitHandlerFunc:    transport.ServerInitHandlerFunc(logger, redisClientCache, db, serverInitMetrics, serverPrivateKey),
 			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClientCache, db, serverUpdateMetrics),
 			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClientCache, redisClientPortal, redisPortalHostExpiration, db, &routeMatrix, ipLocator, &geoClient, sessionMetrics, biller, serverPrivateKey, routerPrivateKey),
 		}

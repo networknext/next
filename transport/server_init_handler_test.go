@@ -6,8 +6,11 @@ import (
 	"crypto/ed25519"
 	"net"
 	"testing"
+	"time"
 
+	"github.com/alicebob/miniredis/v2"
 	"github.com/go-kit/kit/log"
+	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
@@ -29,7 +32,7 @@ func TestServerInitHandlerFunc(t *testing.T) {
 
 		initMetrics.ErrorMetrics.UnmarshalFailure = metric
 
-		handler := transport.ServerInitHandlerFunc(log.NewNopLogger(), nil, &initMetrics, nil)
+		handler := transport.ServerInitHandlerFunc(log.NewNopLogger(), nil, nil, &initMetrics, nil)
 		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: []byte("this is not a proper packet")})
 
 		assert.Equal(t, 1.0, initMetrics.ErrorMetrics.UnmarshalFailure.Value())
@@ -60,7 +63,7 @@ func TestServerInitHandlerFunc(t *testing.T) {
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
 
-		handler := transport.ServerInitHandlerFunc(log.NewNopLogger(), nil, &initMetrics, nil)
+		handler := transport.ServerInitHandlerFunc(log.NewNopLogger(), nil, nil, &initMetrics, nil)
 		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		assert.Equal(t, 1.0, initMetrics.ErrorMetrics.SDKTooOld.Value())
@@ -93,7 +96,7 @@ func TestServerInitHandlerFunc(t *testing.T) {
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
 
-		handler := transport.ServerInitHandlerFunc(log.NewNopLogger(), &db, &initMetrics, nil)
+		handler := transport.ServerInitHandlerFunc(log.NewNopLogger(), nil, &db, &initMetrics, nil)
 		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		assert.Equal(t, 1.0, initMetrics.ErrorMetrics.DatacenterNotFound.Value())
@@ -127,7 +130,7 @@ func TestServerInitHandlerFunc(t *testing.T) {
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
 
-		handler := transport.ServerInitHandlerFunc(log.NewNopLogger(), &db, &initMetrics, nil)
+		handler := transport.ServerInitHandlerFunc(log.NewNopLogger(), nil, &db, &initMetrics, nil)
 		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		assert.Equal(t, 1.0, initMetrics.ErrorMetrics.BuyerNotFound.Value())
@@ -162,7 +165,7 @@ func TestServerInitHandlerFunc(t *testing.T) {
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
 
-		handler := transport.ServerInitHandlerFunc(log.NewNopLogger(), &db, &initMetrics, nil)
+		handler := transport.ServerInitHandlerFunc(log.NewNopLogger(), nil, &db, &initMetrics, nil)
 		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		assert.Equal(t, 1.0, initMetrics.ErrorMetrics.VerificationFailure.Value())
@@ -171,6 +174,12 @@ func TestServerInitHandlerFunc(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		buyersServerPubKey, buyersServerPrivKey, err := ed25519.GenerateKey(nil)
 		assert.NoError(t, err)
+
+		redisServer, err := miniredis.Run()
+		assert.NoError(t, err)
+		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+		redisClient.Set("SERVER-2-0.0.0.0:13", 0, 10*time.Second)
 
 		db := storage.InMemory{}
 		db.AddDatacenter(context.Background(), routing.Datacenter{ID: 13})
@@ -209,12 +218,16 @@ func TestServerInitHandlerFunc(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Initialize the UDP handler with the required redis client
-		handler := transport.ServerInitHandlerFunc(log.NewNopLogger(), &db, &metrics.EmptyServerInitMetrics, buyersServerPrivKey)
+		handler := transport.ServerInitHandlerFunc(log.NewNopLogger(), redisClient, &db, &initMetrics, buyersServerPrivKey)
 		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		assert.Equal(t, 0.0, initMetrics.ErrorMetrics.SDKTooOld.Value())
 		assert.Equal(t, 0.0, initMetrics.ErrorMetrics.BuyerNotFound.Value())
 		assert.Equal(t, 0.0, initMetrics.ErrorMetrics.DatacenterNotFound.Value())
 		assert.Equal(t, 0.0, initMetrics.ErrorMetrics.VerificationFailure.Value())
+
+		cmd := redisClient.Get("SERVER-2-0.0.0.0:13")
+		assert.EqualError(t, cmd.Err(), "redis: nil")
+		assert.Equal(t, "", cmd.Val())
 	})
 }
