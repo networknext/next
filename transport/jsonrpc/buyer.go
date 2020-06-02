@@ -403,6 +403,9 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 }
 
 func (s *BuyersService) IsSameBuyer(r *http.Request, buyerID string) (bool, error) {
+	if buyerID == "" {
+		return false, nil
+	}
 
 	requestUser := r.Context().Value("user")
 

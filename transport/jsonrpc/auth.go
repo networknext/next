@@ -489,11 +489,24 @@ func SetIsAnonymous(r *http.Request, value bool) *http.Request {
 }
 
 func IsAnonymous(r *http.Request) bool {
-	return r.Context().Value(anonymousCallKey).(bool)
+	isAnon := r.Context().Value(anonymousCallKey)
+	if isAnon != nil {
+		return isAnon.(bool)
+	}
+	return false
 }
 
 func SetRoles(r *http.Request, roles management.RoleList) *http.Request {
 	ctx := r.Context()
 	ctx = context.WithValue(ctx, rolesKey, roles)
 	return r.WithContext(ctx)
+}
+
+func RequestRoles(r *http.Request) management.RoleList {
+	roles := r.Context().Value(rolesKey)
+
+	if roles != nil {
+		return roles.(management.RoleList)
+	}
+	return management.RoleList{}
 }
