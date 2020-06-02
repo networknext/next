@@ -13,7 +13,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestInvoiceAllBuyers(t *testing.T) {
+func mockGetInvoices(s *jsonrpc.InvoiceService, cacheName string) ([]byte, error) {
+
+	existingData := []byte("Fred Scuttle")
+
+	return existingData, nil
+}
+
+func TestInvoiceService(t *testing.T) {
 
 	var err error
 
@@ -22,20 +29,25 @@ func TestInvoiceAllBuyers(t *testing.T) {
 		EndDate:   time.Date(2020, 4, 30, 0, 0, 0, 0, time.Local),
 	}
 
-	svc := jsonrpc.InvoiceService{}
+	svc := &jsonrpc.InvoiceService{}
+
+	ctx := context.Background()
+
+	svc.Storage, err = storage.NewClient(ctx)
+	assert.NoError(t, err)
+	defer svc.Storage.Close()
+
+	svc.BqClient, err = bigquery.NewClient(ctx, "network-next-v3-prod")
+	assert.NoError(t, err)
+	defer svc.BqClient.Close()
 
 	t.Run("generate April, 2020 invoices", func(t *testing.T) {
 		var reply jsonrpc.InvoiceReply
 
-		ctx := context.Background()
-
-		svc.Storage, err = storage.NewClient(ctx)
-		assert.NoError(t, err)
-		defer svc.Storage.Close()
-
-		svc.BqClient, err = bigquery.NewClient(ctx, "network-next-v3-prod")
-		assert.NoError(t, err)
-		defer svc.BqClient.Close()
+		// Use real GCS fetch
+		// svc.Invoices = jsonrpc.GetInvoices
+		// Mock fetch
+		svc.Invoices = mockGetInvoices
 
 		err := svc.InvoiceAllBuyers(nil, &args, &reply)
 		assert.NoError(t, err)
@@ -44,58 +56,17 @@ func TestInvoiceAllBuyers(t *testing.T) {
 		fmt.Printf("data:\n%s\n", reply.Invoices)
 
 	})
+
+	t.Run("test GetInvoices() directly", func(t *testing.T) {
+		t.Skip() // makes a network call so skip by default
+
+		svc.Invoices = mockGetInvoices
+
+		data, err := jsonrpc.GetInvoices(svc, "cache-2020-04-01-to-2020-04-30.json")
+		assert.NoError(t, err)
+
+		// assert.Equal(t, dataCheck, data)
+		fmt.Printf("data: %v", data)
+
+	})
 }
-
-// func mustParse(d string) time.Time {
-// 	const timeFmt string = "2006-01-02"
-// 	a1, err := time.Parse(timeFmt, d)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	return a1
-// }
-
-// func assertDate(t *testing.T, v time.Time, year int, month time.Month, day int) {
-// 	y, m, d := v.Date()
-// 	assert.Equal(t, y, year)
-// 	assert.Equal(t, m, month)
-// 	assert.Equal(t, d, day)
-// }
-
-// func startOfLastMonth(now time.Time) time.Time {
-// 	y, m, _ := now.Date()
-// 	return time.Date(y, m-1, 1, 0, 0, 0, 0, now.Location())
-// }
-
-// func endOfLastMonth(now time.Time) time.Time {
-// 	y, m, _ := now.Date()
-// 	return time.Date(y, m, 1, 0, 0, 0, 0, now.Location()).Add(-time.Nanosecond)
-// }
-
-// func TestStartOfLastMonth(t *testing.T) {
-// 	assertDate(t, startOfLastMonth(mustParse("2018-01-30")), 2017, 12, 1)
-// 	assertDate(t, startOfLastMonth(mustParse("2018-01-01")), 2017, 12, 1)
-// 	assertDate(t, startOfLastMonth(mustParse("2018-01-15")), 2017, 12, 1)
-// 	assertDate(t, startOfLastMonth(mustParse("2020-01-30")), 2019, 12, 1)
-// 	assertDate(t, startOfLastMonth(mustParse("2020-01-01")), 2019, 12, 1)
-// 	assertDate(t, startOfLastMonth(mustParse("2020-01-15")), 2019, 12, 1)
-// 	assertDate(t, startOfLastMonth(mustParse("2020-02-29")), 2020, 1, 1)
-// 	assertDate(t, startOfLastMonth(mustParse("2020-02-01")), 2020, 1, 1)
-// 	assertDate(t, startOfLastMonth(mustParse("2020-02-15")), 2020, 1, 1)
-// }
-
-// func TestEndOfLastMonth(t *testing.T) {
-// 	assertDate(t, endOfLastMonth(mustParse("2018-01-30")), 2017, 12, 31)
-// 	assertDate(t, endOfLastMonth(mustParse("2018-01-01")), 2017, 12, 31)
-// 	assertDate(t, endOfLastMonth(mustParse("2018-01-15")), 2017, 12, 31)
-// 	assertDate(t, endOfLastMonth(mustParse("2020-01-30")), 2019, 12, 31)
-// 	assertDate(t, endOfLastMonth(mustParse("2020-01-01")), 2019, 12, 31)
-// 	assertDate(t, endOfLastMonth(mustParse("2020-01-15")), 2019, 12, 31)
-// 	assertDate(t, endOfLastMonth(mustParse("2020-02-29")), 2020, 1, 31)
-// 	assertDate(t, endOfLastMonth(mustParse("2020-02-01")), 2020, 1, 31)
-// 	assertDate(t, endOfLastMonth(mustParse("2020-02-15")), 2020, 1, 31)
-// 	assertDate(t, endOfLastMonth(mustParse("2020-12-31")), 2020, 11, 30)
-// 	assertDate(t, endOfLastMonth(mustParse("2020-12-01")), 2020, 11, 30)
-// 	assertDate(t, endOfLastMonth(mustParse("2020-12-15")), 2020, 11, 30)
-// 	assertDate(t, endOfLastMonth(mustParse("2020-03-15")), 2020, 2, 29)
-// }

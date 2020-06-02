@@ -18,7 +18,9 @@ import (
 	"github.com/gorilla/rpc/v2/json2"
 	"gopkg.in/auth0.v4/management"
 
+	"cloud.google.com/go/bigquery"
 	gcplogging "cloud.google.com/go/logging"
+	gcpstorage "cloud.google.com/go/storage"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -265,6 +267,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	gcsClient, err := gcpstorage.NewClient(ctx)
+	if err != nil {
+		level.Error(logger).Log("err", "error creating new GCS storage client", "err", err)
+		os.Exit(1)
+	}
+
+	bqClient, err := bigquery.NewClient(ctx, "network-next-v3-prod")
+	if err != nil {
+		level.Error(logger).Log("err", "error creating new BigQuery client", "err", err)
+		os.Exit(1)
+	}
+
 	go func() {
 		port, ok := os.LookupEnv("PORT")
 		if !ok {
@@ -287,6 +301,11 @@ func main() {
 		s.RegisterService(&jsonrpc.AuthService{
 			Auth0:   auth0Client,
 			Storage: db,
+		}, "")
+		s.RegisterService(&jsonrpc.InvoiceService{
+			Storage:  gcsClient,
+			BqClient: bqClient,
+			Invoices: jsonrpc.GetInvoices,
 		}, "")
 
 		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), s))
