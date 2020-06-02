@@ -145,6 +145,7 @@ namespace core
       }
       LogDebug("incoming packet, type = ", type);
     }
+
     switch (type) {
       case packets::Type::NewRelayPing: {
         if (!mShouldProcess) {
@@ -307,7 +308,6 @@ namespace core
         }
       } break;
       default: {
-        LogDebug("received unknown packet type: ", std::hex, (int)packet.Buffer[0], std::dec);
         mRecorder.addToUnknown(wholePacketSize);
         mStats.BytesPerSecInvalidRx += wholePacketSize;
       } break;

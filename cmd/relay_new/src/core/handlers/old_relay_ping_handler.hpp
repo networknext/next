@@ -40,6 +40,8 @@ namespace core
       packets::OldRelayPingPacket packetWrapper(mPacket);
       core::GenericPacket<> outgoing;
 
+      LogDebug("got ping from ", packetWrapper.getID());
+
       size_t index = 0;
 
       if (!encoding::WriteUint8(outgoing.Buffer, index, static_cast<uint8_t>(packets::Type::OldRelayPong))) {
@@ -47,7 +49,7 @@ namespace core
         assert(false);
       }
 
-      if (!encoding::WriteUint64(outgoing.Buffer, index, mOldRelayID)) {
+      if (!encoding::WriteUint64(outgoing.Buffer, index, packetWrapper.getID())) {
         LogDebug("could not write old relay id");
         assert(false);
       }

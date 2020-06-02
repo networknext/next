@@ -4,6 +4,7 @@
 #include "expireable.hpp"
 #include "net/address.hpp"
 #include "replay_protection.hpp"
+#include "util/logger.hpp"
 
 namespace core
 {
@@ -32,5 +33,10 @@ namespace core
   inline Session::Session(const util::Clock& relayClock): Expireable(relayClock) {}
 
   using SessionPtr = std::shared_ptr<Session>;
+
+  inline std::ostream& operator<<(std::ostream& os, const Session& session)
+  {
+    return os << std::hex << session.SessionID << '.' << std::dec << static_cast<unsigned int>(session.SessionVersion);
+  }
 }  // namespace core
 #endif

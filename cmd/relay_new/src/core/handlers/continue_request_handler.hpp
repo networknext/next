@@ -86,12 +86,12 @@ namespace core
 
       auto hash = token.key();
 
-      if (!mSessionMap.exists(hash)) {
+      auto session = mSessionMap.get(hash);
+
+      if (!session) {
         Log("ignoring continue request. session does not exist");
         return;
       }
-
-      auto session = mSessionMap.get(hash);
 
       if (session->expired()) {
         Log("ignoring continue request. session is expired");
@@ -100,7 +100,7 @@ namespace core
       }
 
       if (session->ExpireTimestamp != token.ExpireTimestamp) {
-        Log("session continued: ", std::hex, token.SessionID, '.', std::dec, static_cast<unsigned int>(token.SessionVersion));
+        Log("session continued: ", token);
       }
 
       session->ExpireTimestamp = token.ExpireTimestamp;

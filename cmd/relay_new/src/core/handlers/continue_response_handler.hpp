@@ -70,15 +70,21 @@ namespace core
 
       uint64_t hash = session_id ^ session_version;
 
-      if (!mSessionMap.exists(hash)) {
-        Log("ignoring continue response, could not find session: session = ", std::hex, session_id, '.', std::dec, static_cast<unsigned int>(session_version));
+      auto session = mSessionMap.get(hash);
+
+      if (!session) {
+        Log(
+         "ignoring continue response, could not find session: session = ",
+         std::hex,
+         session_id,
+         '.',
+         std::dec,
+         static_cast<unsigned int>(session_version));
         return;
       }
 
-      auto session = mSessionMap.get(hash);
-
       if (session->expired()) {
-        Log("ignoring continue response, session expired: session = ", std::hex, session_id, '.', std::dec, static_cast<unsigned int>(session_version));
+        Log("ignoring continue response, session expired: session = ", *session);
         mSessionMap.erase(hash);
         return;
       }
@@ -87,21 +93,17 @@ namespace core
 
       if (clean_sequence <= session->ServerToClientSeq) {
         Log(
-         "ignoring continue response, clean sequence <= server to client sequence: session = ",
-         std::hex,
-         session_id,
-         '.',
-         std::dec,
-         static_cast<unsigned int>(session_version),
+         "ignoring continue response, packet already received: session = ",
+         *session,
          ", ",
          clean_sequence,
          " <= ",
-         sequence);
+         session->ServerToClientSeq);
         return;
       }
 
       if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->PrivateKey.data(), data, length) != RELAY_OK) {
-        Log("ignoring continue response, could not verify header: session = ", std::hex, session_id, '.', std::dec, static_cast<unsigned int>(session_version));
+        Log("ignoring continue response, could not verify header: session = ", *session);
         return;
       }
 

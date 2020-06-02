@@ -71,5 +71,10 @@ namespace core
     SessionVersion = encoding::ReadUint8(packetData, index);
     SessionFlags = encoding::ReadUint8(packetData, index);
   }
+
+  inline std::ostream& operator<<(std::ostream& os, const Token& token)
+  {
+    return os << std::hex << token.SessionID << '.' << std::dec << static_cast<unsigned int>(token.SessionVersion);
+  }
 }  // namespace core
 #endif
