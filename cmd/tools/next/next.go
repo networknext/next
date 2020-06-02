@@ -259,7 +259,12 @@ func main() {
 	}
 	env.Read()
 
-	rpcClient := jsonrpc.NewClientWithOpts("https://"+env.PortalHostname()+"/rpc", &jsonrpc.RPCClientOpts{
+	protocol := "https"
+	if env.PortalHostname() == PortalHostnameLocal {
+		protocol = "http"
+	}
+
+	rpcClient := jsonrpc.NewClientWithOpts(protocol+"://"+env.PortalHostname()+"/rpc", &jsonrpc.RPCClientOpts{
 		CustomHeaders: map[string]string{
 			"Authorization": fmt.Sprintf("Bearer %s", env.AuthToken),
 		},

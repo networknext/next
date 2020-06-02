@@ -607,10 +607,9 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 		rid := crypto.HashID(relayInRemoteStorage.Address)
 		if rid == r.ID {
 			// Set the data to update the relay with
-			lastUpdateTime := time.Now()
 			newRelayData := map[string]interface{}{
 				"state":           r.State,
-				"lastUpdateTime":  lastUpdateTime,
+				"lastUpdateTime":  r.LastUpdateTime,
 				"stateUpdateTime": time.Now(),
 				"publicKey":       r.PublicKey,
 				"nicSpeedMbps":    int64(r.NICSpeedMbps),
@@ -623,7 +622,7 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 
 			// Update the cached version
 			relayInCachedStorage.State = r.State
-			relayInCachedStorage.LastUpdateTime = lastUpdateTime
+			relayInCachedStorage.LastUpdateTime = r.LastUpdateTime
 
 			fs.relayMutex.Lock()
 			fs.relays[r.ID] = relayInCachedStorage
