@@ -1036,19 +1036,6 @@
                                             <span class="sr-only">Loading...</span>
                                         </div>
                                     </div>
-                                    <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" v-show="pages.settings.showAccounts && handlers.userHandler.isAdmin()">
-                                        <div class="mr-auto"></div>
-                                        <div class="px-2">
-                                            <select class="form-control">
-                                                <option value="all" v-on:click="handlers.workspaceHandler.updateAccountsTableFilter({buyerId: ''})">
-                                                    All
-                                                </option>
-                                                <option v-for="buyer in allBuyers" v-on:click="handlers.workspaceHandler.updateAccountsTableFilter({buyerId: buyer.id})">
-                                                    {{ buyer.name }}
-                                                </option>
-                                            </select>
-                                        </div>
-                                    </div>
                                     <table class="table table-sm mt-4" v-show="pages.settings.showAccounts">
                                         <thead class="thead-light">
                                             <tr>

@@ -6,8 +6,10 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
@@ -64,7 +66,10 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 				continue
 			}
 
-			if isAnon {
+			isAdmin, _ := CheckRoles(r, "Admin")
+			isSameBuyer, _ := s.IsSameBuyer(r, meta.CustomerID)
+
+			if isAnon || (!isSameBuyer && !isAdmin) {
 				meta = meta.Anonymize(meta)
 			}
 
@@ -96,6 +101,9 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	var result []redis.Z
 	var isAnon = r.Context().Value(anonymousCallKey) == true
 
+	isSameBuyer, _ := s.IsSameBuyer(r, args.BuyerID)
+	isAdmin, _ := CheckRoles(r, "Admin")
+
 	reply.Sessions = make([]routing.SessionMeta, 0)
 
 	switch args.BuyerID {
@@ -105,6 +113,9 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 			return err
 		}
 	default:
+		if !isSameBuyer && !isAdmin {
+			return fmt.Errorf("insufficient privileges")
+		}
 		result, err = s.RedisClient.ZRangeWithScores(fmt.Sprintf("top-buyer-%s", args.BuyerID), 0, 1000).Result()
 		if err != nil {
 			return err
@@ -138,7 +149,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 				continue
 			}
 
-			if isAnon {
+			if isAnon || (!isSameBuyer && !isAdmin) {
 				meta = meta.Anonymize(meta)
 			}
 
@@ -167,6 +178,10 @@ type SessionDetailsReply struct {
 }
 
 func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs, reply *SessionDetailsReply) error {
+	var isAnon = r.Context().Value(anonymousCallKey) == true
+
+	isAdmin, _ := CheckRoles(r, "Admin")
+
 	data, err := s.RedisClient.Get(fmt.Sprintf("session-%s-meta", args.SessionID)).Bytes()
 	if err != nil {
 		return err
@@ -175,6 +190,8 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	if err != nil {
 		return err
 	}
+
+	isSameBuyer, _ := s.IsSameBuyer(r, reply.Meta.CustomerID)
 
 	// We fill in the name on the portal side so we don't spend time doing it while serving sessions
 	for idx, relay := range reply.Meta.NearbyRelays {
@@ -186,7 +203,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		reply.Meta.NearbyRelays[idx].Name = r.Name
 	}
 
-	if IsAnonymous(r) {
+	if isAnon || (!isSameBuyer && !isAdmin) {
 		reply.Meta = reply.Meta.Anonymize(reply.Meta)
 	}
 
@@ -216,6 +233,9 @@ func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, r
 	var err error
 	var sessionIDs []string
 
+	isSameBuyer, _ := s.IsSameBuyer(r, args.BuyerID)
+	isAdmin, _ := CheckRoles(r, "Admin")
+
 	reply.Points = make([]routing.SessionMapPoint, 0)
 
 	switch args.BuyerID {
@@ -225,6 +245,9 @@ func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, r
 			return err
 		}
 	default:
+		if !isSameBuyer && !isAdmin {
+			return fmt.Errorf("insufficient privileges")
+		}
 		sessionIDs, err = s.RedisClient.SMembers(fmt.Sprintf("map-points-buyer-%s", args.BuyerID)).Result()
 		if err != nil {
 			return err
@@ -287,11 +310,11 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	var buyerID uint64
 	var buyer routing.Buyer
 
-	reply.GameConfiguration.PublicKey = ""
-
-	if r.Context().Value(anonymousCallKey) == true {
-		return nil
+	if IsAnonymous(r) {
+		return fmt.Errorf("insufficient privileges")
 	}
+
+	reply.GameConfiguration.PublicKey = ""
 
 	if args.BuyerID == "" {
 		return fmt.Errorf("buyer_id is required")
@@ -360,7 +383,7 @@ type ctxKey string
 
 func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *BuyerListReply) error {
 	reply.Buyers = make([]buyerAccount, 0)
-	if r.Context().Value(anonymousCallKey) == true {
+	if IsAnonymous(r) {
 		return nil
 	}
 	for _, b := range s.Storage.Buyers() {
@@ -377,4 +400,23 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 	})
 
 	return nil
+}
+
+func (s *BuyersService) IsSameBuyer(r *http.Request, buyerID string) (bool, error) {
+
+	requestUser := r.Context().Value("user")
+
+	if requestUser == nil {
+		return false, fmt.Errorf("failed to look up user context")
+	}
+	requestEmailParts := strings.Split(requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["email"].(string), "@")
+	requestDomain := requestEmailParts[len(requestEmailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
+	buyer, err := s.Storage.BuyerWithDomain(requestDomain)
+
+	if err != nil {
+		return false, err
+	}
+
+	return buyerID != strconv.FormatUint(buyer.ID, 10), nil
+
 }

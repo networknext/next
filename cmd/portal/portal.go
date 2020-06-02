@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/rpc/v2"
 	"github.com/gorilla/rpc/v2/json2"
 	"gopkg.in/auth0.v4/management"
@@ -29,6 +30,11 @@ import (
 	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/jsonrpc"
 )
+
+type contextType string
+
+const anonymousCallKey contextType = "anonymous"
+const rolesKey contextType = "roles"
 
 func main() {
 	ctx := context.Background()
@@ -276,6 +282,20 @@ func main() {
 
 		s := rpc.NewServer()
 		s.RegisterInterceptFunc(func(i *rpc.RequestInfo) *http.Request {
+			var userRoles = management.RoleList{}
+			user := i.Request.Context().Value("user")
+			if user != nil {
+				claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+
+				if requestID, ok := claims["sub"]; ok {
+					roles, err := auth0Client.Manager.User.Roles(requestID.(string))
+
+					if err == nil {
+						userRoles = *roles
+					}
+				}
+				return jsonrpc.SetRoles(i.Request, userRoles)
+			}
 			return jsonrpc.SetIsAnonymous(i.Request, i.Request.Header.Get("Authorization") == "")
 		})
 		s.RegisterCodec(json2.NewCodec(), "application/json")
