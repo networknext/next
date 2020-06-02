@@ -80,7 +80,7 @@ namespace core
       }
 
       if (token.expired()) {
-        LogDebug("ignoring continue request. token is expired");
+        Log("ignoring continue request. token is expired");
         return;
       }
 
