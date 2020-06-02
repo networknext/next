@@ -34,7 +34,6 @@ const (
 type RelayHandlerConfig struct {
 	RedisClient           redis.Cmdable
 	GeoClient             *routing.GeoClient
-	IpLocator             routing.IPLocator
 	Storer                storage.Storer
 	StatsDb               *routing.StatsDatabase
 	TrafficStatsPublisher stats.Publisher
@@ -45,7 +44,6 @@ type RelayHandlerConfig struct {
 type RelayInitHandlerConfig struct {
 	RedisClient      redis.Cmdable
 	GeoClient        *routing.GeoClient
-	IpLocator        routing.IPLocator
 	Storer           storage.Storer
 	Metrics          *metrics.RelayInitMetrics
 	RouterPrivateKey []byte
