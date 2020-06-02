@@ -31,7 +31,7 @@ type InvoiceArgs struct {
 // InvoiceReply contains the JSON reply string
 type InvoiceReply struct {
 	// Invoices []InvoiceRecord `json:"invoice_list"`
-	Invoices string `json:"invoice_list"`
+	Invoices []byte `json:"invoice_list"`
 }
 
 // InvoiceGetter is a utility function that allows the actual GCS
@@ -84,15 +84,15 @@ func (s *InvoiceService) InvoiceAllBuyers(r *http.Request, args *InvoiceArgs, re
 	d := NewGetter(s.Invoices)
 	rc, err := d.download(s, cacheName)
 
-	// if err != nil { // force BQ query
-	if err == nil {
+	if err != nil { // force BQ query
+		// if err == nil {
 		// cache file found, skip BQ query
-		reply.Invoices = string(rc)
+		reply.Invoices = rc
 		return nil
 	}
 
-	// if err == nil { // force BQ query
-	if err == storage.ErrBucketNotExist {
+	if err == nil { // force BQ query
+		// if err == storage.ErrBucketNotExist {
 		// cache file not found so query db
 		fmt.Printf("Reading query from 'query.sql'...\n")
 		queryText, err := ioutil.ReadFile("query.sql")
@@ -100,7 +100,7 @@ func (s *InvoiceService) InvoiceAllBuyers(r *http.Request, args *InvoiceArgs, re
 			return err
 		}
 
-		fmt.Printf("Preparing query...\n")
+		// fmt.Printf("Preparing query...\n")
 		q := s.BqClient.Query(string(queryText))
 		q.Parameters = []bigquery.QueryParameter{
 			{
@@ -113,13 +113,13 @@ func (s *InvoiceService) InvoiceAllBuyers(r *http.Request, args *InvoiceArgs, re
 			},
 		}
 
-		fmt.Printf("Starting query...\n")
+		// fmt.Printf("Starting query...\n")
 		job, err := q.Run(ctx)
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("Waiting for query to complete...\n")
+		// fmt.Printf("Waiting for query to complete...\n")
 		status, err := job.Wait(ctx)
 		if err != nil {
 			return err
@@ -128,7 +128,7 @@ func (s *InvoiceService) InvoiceAllBuyers(r *http.Request, args *InvoiceArgs, re
 			return err
 		}
 
-		fmt.Printf("Reading result rows...\n")
+		// fmt.Printf("Reading result rows...\n")
 		// var rows [][]bigquery.Value
 		var rows []InvoiceRecord
 
@@ -149,24 +149,12 @@ func (s *InvoiceService) InvoiceAllBuyers(r *http.Request, args *InvoiceArgs, re
 			rows = append(rows, rec)
 		}
 
-		// for {
-		// 	var row []bigquery.Value
-		// 	err := it.Next(&row)
-		// 	if err == iterator.Done {
-		// 		break
-		// 	}
-		// 	if err != nil {
-		// 		return err
-		// 	}
-		// 	rows = append(rows, row)
-		// }
-
 		// fmt.Printf("Writing result to output...\n")
 		data, err := json.Marshal(rows)
 		if err != nil {
 			return err
 		}
-		reply.Invoices = string(data)
+		reply.Invoices = data
 
 		return nil
 
