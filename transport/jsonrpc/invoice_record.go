@@ -20,14 +20,14 @@ type InvoiceRecord struct {
 	HoursOnNetworkNext      bigquery.NullFloat64 `json:"hoursOnNetworkNext"`
 	HoursImproved           bigquery.NullFloat64 `json:"hoursImproved"`
 	HoursDegraded           bigquery.NullFloat64 `json:"hoursDegraded"`
-	hoursNoMeasurement      bigquery.NullFloat64 `json:"hoursNoMeasurement"`
-	hours0To5Ms             bigquery.NullFloat64 `json:"hours0To5Ms"`
-	hours5To10Ms            bigquery.NullFloat64 `json:"hours5To10Ms"`
-	hours10To15Ms           bigquery.NullFloat64 `json:"hours10To15Ms"`
-	hours15To20Ms           bigquery.NullFloat64 `json:"hours15To20Ms"`
-	hours20To30Ms           bigquery.NullFloat64 `json:"hours20To30Ms"`
-	hours30To50Ms           bigquery.NullFloat64 `json:"hours30To50Ms"`
-	hours50To100Ms          bigquery.NullFloat64 `json:"hours50To100Ms"`
-	hours100PlusMs          bigquery.NullFloat64 `json:"hours100PlusMs"`
-	hoursPacketLossReduced  bigquery.NullFloat64 `json:"hoursPacketLossReduced"`
+	HoursNoMeasurement      bigquery.NullFloat64 `json:"hoursNoMeasurement"`
+	Hours0To5Ms             bigquery.NullFloat64 `json:"hours0To5Ms"`
+	Hours5To10Ms            bigquery.NullFloat64 `json:"hours5To10Ms"`
+	Hours10To15Ms           bigquery.NullFloat64 `json:"hours10To15Ms"`
+	Hours15To20Ms           bigquery.NullFloat64 `json:"hours15To20Ms"`
+	Hours20To30Ms           bigquery.NullFloat64 `json:"hours20To30Ms"`
+	Hours30To50Ms           bigquery.NullFloat64 `json:"hours30To50Ms"`
+	Hours50To100Ms          bigquery.NullFloat64 `json:"hours50To100Ms"`
+	Hours100PlusMs          bigquery.NullFloat64 `json:"hours100PlusMs"`
+	HoursPacketLossReduced  bigquery.NullFloat64 `json:"hoursPacketLossReduced"`
 }
