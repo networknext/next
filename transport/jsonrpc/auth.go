@@ -53,33 +53,41 @@ type account struct {
 }
 
 func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
+	var accountList *management.UserList
 	if r.Context().Value(anonymousCallKey) == true {
 		return fmt.Errorf("insufficient privileges")
 	}
-
-	if err := s.CheckRoles(r, "Admin"); err != nil {
-		if err := s.CheckRoles(r, "Owner"); err != nil {
+	isAdmin, err := s.CheckRoles(r, "Admin")
+	if err != nil {
+		if _, err := s.CheckRoles(r, "Owner"); err != nil {
 			return err
 		}
 	}
 
+	accountList, err = s.Auth0.Manager.User.List()
+
 	reply.UserAccounts = make([]account, 0)
-	accountList, err := s.Auth0.Manager.User.List()
 
 	if err != nil {
 		return fmt.Errorf("failed to fetch user list: %w", err)
 	}
+	requestUser := r.Context().Value("user")
+	requestEmailParts := strings.Split(requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["email"].(string), "@")
+	requestDomain := requestEmailParts[len(requestEmailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
 
 	for _, a := range accountList.Users {
-		userRoles, err := s.Auth0.Manager.User.Roles(*a.ID)
-		if err != nil {
-			return fmt.Errorf("failed to fetch user roles: %w", err)
-		}
 		emailParts := strings.Split(*a.Email, "@")
 		if len(emailParts) <= 0 {
 			return fmt.Errorf("failed to parse email %s for domain", *a.Email)
 		}
 		domain := emailParts[len(emailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
+		if !isAdmin && requestDomain != domain {
+			continue
+		}
+		userRoles, err := s.Auth0.Manager.User.Roles(*a.ID)
+		if err != nil {
+			return fmt.Errorf("failed to fetch user roles: %w", err)
+		}
 
 		buyer, err := s.Storage.BuyerWithDomain(domain)
 
@@ -110,8 +118,8 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 
 	if requestID, ok := claims["sub"]; ok && requestID != args.UserID {
 		// If they want a different user profile they need perms
-		if err := s.CheckRoles(r, "Admin"); err != nil {
-			if err := s.CheckRoles(r, "Owner"); err != nil {
+		if _, err := s.CheckRoles(r, "Admin"); err != nil {
+			if _, err := s.CheckRoles(r, "Owner"); err != nil {
 				return err
 			}
 		}
@@ -145,8 +153,8 @@ func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, repl
 		return fmt.Errorf("insufficient privileges")
 	}
 
-	if err := s.CheckRoles(r, "Admin"); err != nil {
-		if err := s.CheckRoles(r, "Owner"); err != nil {
+	if _, err := s.CheckRoles(r, "Admin"); err != nil {
+		if _, err := s.CheckRoles(r, "Owner"); err != nil {
 			return err
 		}
 	}
@@ -166,8 +174,8 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 		return fmt.Errorf("insufficient privileges")
 	}
 
-	if err := s.CheckRoles(r, "Admin"); err != nil {
-		if err := s.CheckRoles(r, "Owner"); err != nil {
+	if _, err := s.CheckRoles(r, "Admin"); err != nil {
+		if _, err := s.CheckRoles(r, "Owner"); err != nil {
 			return err
 		}
 	}
@@ -271,12 +279,13 @@ type RolesReply struct {
 }
 
 func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
+	reply.Roles = make([]*management.Role, 0)
 	if r.Context().Value(anonymousCallKey) == true {
 		return fmt.Errorf("insufficient privileges")
 	}
-
-	if err := s.CheckRoles(r, "Admin"); err != nil {
-		if err := s.CheckRoles(r, "Owner"); err != nil {
+	isAdmin, err := s.CheckRoles(r, "Admin")
+	if err != nil {
+		if _, err := s.CheckRoles(r, "Owner"); err != nil {
 			return err
 		}
 	}
@@ -286,7 +295,15 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 		fmt.Errorf("failed to fetch role list: %w", err)
 	}
 
-	reply.Roles = roleList.Roles
+	if !isAdmin {
+		for _, role := range roleList.Roles {
+			if *role.Name != "Admin" {
+				reply.Roles = append(reply.Roles, role)
+			}
+		}
+	} else {
+		reply.Roles = roleList.Roles
+	}
 
 	return nil
 }
@@ -296,8 +313,8 @@ func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesRe
 		return fmt.Errorf("insufficient privileges")
 	}
 
-	if err := s.CheckRoles(r, "Admin"); err != nil {
-		if err := s.CheckRoles(r, "Owner"); err != nil {
+	if _, err := s.CheckRoles(r, "Admin"); err != nil {
+		if _, err := s.CheckRoles(r, "Owner"); err != nil {
 			return err
 		}
 	}
@@ -323,8 +340,8 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 		return fmt.Errorf("insufficient privileges")
 	}
 
-	if err := s.CheckRoles(r, "Admin"); err != nil {
-		if err := s.CheckRoles(r, "Owner"); err != nil {
+	if _, err := s.CheckRoles(r, "Admin"); err != nil {
+		if _, err := s.CheckRoles(r, "Owner"); err != nil {
 			return err
 		}
 	}
@@ -441,12 +458,12 @@ func getPemCert(token *jwt.Token) (string, error) {
 	return cert, nil
 }
 
-func (s *AuthService) CheckRoles(r *http.Request, requiredRole string) error {
+func (s *AuthService) CheckRoles(r *http.Request, requiredRole string) (bool, error) {
 
 	requestUser := r.Context().Value("user")
 
 	if requestUser == nil {
-		return fmt.Errorf("user not set. should be anonymous")
+		return false, fmt.Errorf("user not set. should be anonymous")
 	}
 
 	claims := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)
@@ -455,7 +472,7 @@ func (s *AuthService) CheckRoles(r *http.Request, requiredRole string) error {
 		userRoles, err := s.Auth0.Manager.User.Roles(requestID.(string))
 
 		if err != nil {
-			return fmt.Errorf("failed to get user roles: %w", err)
+			return false, fmt.Errorf("failed to get user roles: %w", err)
 		}
 
 		found := false
@@ -469,11 +486,11 @@ func (s *AuthService) CheckRoles(r *http.Request, requiredRole string) error {
 			}
 		}
 		if found {
-			return nil
+			return true, nil
 		}
-		return fmt.Errorf("insufficient privileges")
+		return false, fmt.Errorf("insufficient privileges")
 	}
-	return fmt.Errorf("failed to get user id for permissions validation")
+	return false, fmt.Errorf("failed to get user id for permissions validation")
 }
 
 func SetIsAnonymous(r *http.Request, value bool) *http.Request {
