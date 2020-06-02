@@ -141,4 +141,4 @@ FROM (
   GROUP BY buyerId, sessionId, DATE(timestampStart)
 )
 GROUP BY buyerId, date
-ORDER BY date ASC AS json_text
+ORDER BY date ASC
