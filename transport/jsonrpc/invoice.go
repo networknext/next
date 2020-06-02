@@ -19,6 +19,7 @@ import (
 type InvoiceService struct {
 	Storage  *storage.Client
 	BqClient *bigquery.Client
+	Invoices InvoiceGetter
 }
 
 // InvoiceArgs maintains the start and end dates for the invoice query
@@ -29,12 +30,47 @@ type InvoiceArgs struct {
 
 // InvoiceReply contains the JSON reply string
 type InvoiceReply struct {
+	// Invoices []InvoiceRecord `json:"invoice_list"`
 	Invoices string `json:"invoice_list"`
+}
+
+// InvoiceGetter is a utility function that allows the actual GCS
+// call to be mocked out in unit test.
+type InvoiceGetter func(s *InvoiceService, cachename string) ([]byte, error)
+
+// Getter provides an implementation of InvoiceGetter
+type Getter struct {
+	getInvoices InvoiceGetter
+}
+
+// NewGetter mounts the download function attached to the service
+func NewGetter(ig InvoiceGetter) *Getter {
+	return &Getter{getInvoices: ig}
+}
+
+func (d *Getter) download(s *InvoiceService, cacheName string) ([]byte, error) {
+	return d.getInvoices(s, cacheName)
+}
+
+// GetInvoices is the real Google call. It is replaced by a mocked version in test
+func GetInvoices(s *InvoiceService, cacheName string) ([]byte, error) {
+	ctx := context.Background()
+	rc, err := s.Storage.Bucket("network-next-invoice-cache").Object(cacheName).NewReader(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	existingData, err := ioutil.ReadAll(rc)
+	if err != nil {
+		return nil, err
+	}
+
+	return existingData, nil
 }
 
 // InvoiceAllBuyers issues a BigQuery to generate invoices for all buyers within
 // a provided data range and return them in a single JSON reply.
-func (s InvoiceService) InvoiceAllBuyers(r *http.Request, args *InvoiceArgs, reply *InvoiceReply) error {
+func (s *InvoiceService) InvoiceAllBuyers(r *http.Request, args *InvoiceArgs, reply *InvoiceReply) error {
 
 	ctx := context.Background()
 
@@ -42,27 +78,16 @@ func (s InvoiceService) InvoiceAllBuyers(r *http.Request, args *InvoiceArgs, rep
 	startDate := args.StartDate.Format("2006-01-02")
 	endDate := args.EndDate.Format("2006-01-02")
 
-	fmt.Printf("Checking for cached result...\n")
+	// fmt.Printf("Checking for cached result...\n")
 	cacheName := "cache-" + startDate + "-to-" + endDate + ".json"
-	rc, err := s.Storage.Bucket("network-next-invoice-cache").Object(cacheName).NewReader(context.Background())
+	fmt.Printf("cacheName: %s\n", cacheName)
+	d := NewGetter(s.Invoices)
+	rc, err := d.download(s, cacheName)
 
 	if err == nil {
-		// Cache file found, skip BQ query
-		existingData, err := ioutil.ReadAll(rc)
-		if err != nil {
-			return err
-		}
-
-		var existingRows [][]bigquery.Value
-		err = json.Unmarshal(existingData, &existingRows)
-		if err != nil {
-			return err
-		}
-		fmt.Printf("Found cached result, using that instead.\n")
-		data, err := json.Marshal(existingRows)
-		reply.Invoices = string(data)
+		// cache file found, skip BQ query
+		reply.Invoices = string(rc)
 		return nil
-
 	}
 
 	if err == storage.ErrBucketNotExist {
