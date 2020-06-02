@@ -101,8 +101,8 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	var result []redis.Z
 	var isAnon = r.Context().Value(anonymousCallKey) == true
 
-	isSameBuyer, _ := s.IsSameBuyer(r, args.BuyerID)
-	isAdmin, _ := CheckRoles(r, "Admin")
+	isSameBuyer, err := s.IsSameBuyer(r, args.BuyerID)
+	isAdmin, err := CheckRoles(r, "Admin")
 
 	reply.Sessions = make([]routing.SessionMeta, 0)
 
@@ -153,6 +153,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 				meta = meta.Anonymize(meta)
 			}
 
+			fmt.Println(meta)
 			reply.Sessions = append(reply.Sessions, meta)
 		}
 	}
@@ -421,5 +422,4 @@ func (s *BuyersService) IsSameBuyer(r *http.Request, buyerID string) (bool, erro
 	}
 
 	return buyerID != strconv.FormatUint(buyer.ID, 10), nil
-
 }
