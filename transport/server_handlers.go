@@ -184,12 +184,13 @@ func ServerInitHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer 
 		serverCacheKey := fmt.Sprintf("SERVER-%d-%s", packet.CustomerID, incoming.SourceAddr.String())
 		result := redisClient.Get(serverCacheKey)
 		if result.Err() != nil && result.Err() != redis.Nil {
+			sentry.CaptureException(result.Err())
 			level.Error(locallogger).Log("msg", "failed to get server in init", "err", result.Err())
 			return
 		}
 
 		// If there was no error, then the entry was found, so remove it
-		if err == nil {
+		if err == nil && result.Val() != "" {
 			result := redisClient.Del(serverCacheKey)
 			if result.Err() != nil {
 				level.Error(locallogger).Log("msg", "failed to delete server cache entry in init", "server", serverCacheKey, "err", result.Err())
