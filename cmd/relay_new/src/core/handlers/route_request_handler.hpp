@@ -88,7 +88,7 @@ namespace core
 
       // don't do anything if the token is expired - probably should log something here
       if (token.expired()) {
-        Log("ignoring route request. token expired");
+        LogDebug("ignoring route request. token expired");
         return;
       }
 
@@ -120,7 +120,7 @@ namespace core
 
         Log("session created: ", *session);
       } else {
-        Log("received additional route request for session: ", token);
+        LogDebug("received additional route request for session: ", token);
       }
 
       // remove this part of the token by offseting it the request packet bytes
