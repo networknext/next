@@ -276,10 +276,7 @@ func main() {
 
 		s := rpc.NewServer()
 		s.RegisterInterceptFunc(func(i *rpc.RequestInfo) *http.Request {
-			if i.Request.Header.Get("Authorization") == "" {
-				return jsonrpc.SetIsAnonymous(i.Request, true)
-			}
-			return jsonrpc.SetIsAnonymous(i.Request, false)
+			return jsonrpc.SetIsAnonymous(i.Request, i.Request.Header.Get("Authorization") == "")
 		})
 		s.RegisterCodec(json2.NewCodec(), "application/json")
 		s.RegisterService(&jsonrpc.OpsService{

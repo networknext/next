@@ -57,6 +57,12 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 		return fmt.Errorf("insufficient privileges")
 	}
 
+	if err := s.CheckRoles(r, "Admin"); err != nil {
+		if err := s.CheckRoles(r, "Owner"); err != nil {
+			return err
+		}
+	}
+
 	reply.UserAccounts = make([]account, 0)
 	accountList, err := s.Auth0.Manager.User.List()
 
@@ -92,6 +98,25 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 		return fmt.Errorf("user_id is required")
 	}
 
+	// Check if this is for authed user profile or other users
+
+	user := r.Context().Value("user")
+
+	if user == nil {
+		return fmt.Errorf("failed to fetch calling user from token")
+	}
+
+	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+
+	if requestID, ok := claims["sub"]; ok && requestID != args.UserID {
+		// If they want a different user profile they need perms
+		if err := s.CheckRoles(r, "Admin"); err != nil {
+			if err := s.CheckRoles(r, "Owner"); err != nil {
+				return err
+			}
+		}
+	}
+
 	userAccount, err := s.Auth0.Manager.User.Read(args.UserID)
 	if err != nil {
 		return fmt.Errorf("failed to fetch user account: %w", err)
@@ -120,6 +145,12 @@ func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, repl
 		return fmt.Errorf("insufficient privileges")
 	}
 
+	if err := s.CheckRoles(r, "Admin"); err != nil {
+		if err := s.CheckRoles(r, "Owner"); err != nil {
+			return err
+		}
+	}
+
 	if args.UserID == "" {
 		return fmt.Errorf("user_id is required")
 	}
@@ -133,6 +164,12 @@ func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, repl
 func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
 	if r.Context().Value(anonymousCallKey) == true {
 		return fmt.Errorf("insufficient privileges")
+	}
+
+	if err := s.CheckRoles(r, "Admin"); err != nil {
+		if err := s.CheckRoles(r, "Owner"); err != nil {
+			return err
+		}
 	}
 
 	connectionID := "Username-Password-Authentication"
@@ -238,6 +275,12 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 		return fmt.Errorf("insufficient privileges")
 	}
 
+	if err := s.CheckRoles(r, "Admin"); err != nil {
+		if err := s.CheckRoles(r, "Owner"); err != nil {
+			return err
+		}
+	}
+
 	roleList, err := s.Auth0.Manager.Role.List()
 	if err != nil {
 		fmt.Errorf("failed to fetch role list: %w", err)
@@ -251,6 +294,12 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
 	if r.Context().Value(anonymousCallKey) == true {
 		return fmt.Errorf("insufficient privileges")
+	}
+
+	if err := s.CheckRoles(r, "Admin"); err != nil {
+		if err := s.CheckRoles(r, "Owner"); err != nil {
+			return err
+		}
 	}
 
 	if args.UserID == "" {
@@ -269,11 +318,16 @@ func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesRe
 }
 
 func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
+	var err error
 	if r.Context().Value(anonymousCallKey) == true {
 		return fmt.Errorf("insufficient privileges")
 	}
 
-	var err error
+	if err := s.CheckRoles(r, "Admin"); err != nil {
+		if err := s.CheckRoles(r, "Owner"); err != nil {
+			return err
+		}
+	}
 
 	if args.UserID == "" {
 		return fmt.Errorf("user_id is required")
@@ -385,6 +439,41 @@ func getPemCert(token *jwt.Token) (string, error) {
 	}
 
 	return cert, nil
+}
+
+func (s *AuthService) CheckRoles(r *http.Request, requiredRole string) error {
+
+	requestUser := r.Context().Value("user")
+
+	if requestUser == nil {
+		return fmt.Errorf("user not set. should be anonymous")
+	}
+
+	claims := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)
+
+	if requestID, ok := claims["sub"]; ok {
+		userRoles, err := s.Auth0.Manager.User.Roles(requestID.(string))
+
+		if err != nil {
+			return fmt.Errorf("failed to get user roles: %w", err)
+		}
+
+		found := false
+
+		for _, role := range userRoles.Roles {
+			if found {
+				continue
+			}
+			if *role.Name == requiredRole {
+				found = true
+			}
+		}
+		if found {
+			return nil
+		}
+		return fmt.Errorf("insufficient privileges")
+	}
+	return fmt.Errorf("failed to get user id for permissions validation")
 }
 
 func SetIsAnonymous(r *http.Request, value bool) *http.Request {
