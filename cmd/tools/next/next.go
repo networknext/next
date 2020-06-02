@@ -259,11 +259,9 @@ func main() {
 	}
 	env.Read()
 
-	var protocol string
+	protocol := "https"
 	if env.PortalHostname() == PortalHostnameLocal {
 		protocol = "http"
-	} else {
-		protocol = "https"
 	}
 
 	rpcClient := jsonrpc.NewClientWithOpts(protocol+"://"+env.PortalHostname()+"/rpc", &jsonrpc.RPCClientOpts{
