@@ -25,8 +25,8 @@ func TestInvoiceService(t *testing.T) {
 	var err error
 
 	args := jsonrpc.InvoiceArgs{
-		StartDate: time.Date(2020, 4, 1, 0, 0, 0, 0, time.Local),
-		EndDate:   time.Date(2020, 4, 30, 0, 0, 0, 0, time.Local),
+		StartDate: time.Date(2020, 5, 1, 0, 0, 0, 0, time.Local),
+		EndDate:   time.Date(2020, 5, 31, 0, 0, 0, 0, time.Local),
 	}
 
 	svc := &jsonrpc.InvoiceService{}
