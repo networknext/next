@@ -88,7 +88,7 @@ namespace core
 
       // don't do anything if the token is expired - probably should log something here
       if (token.expired()) {
-        LogDebug("ignoring route request. token expired");
+        Log("ignoring route request. token expired");
         return;
       }
 
