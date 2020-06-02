@@ -361,6 +361,11 @@ int main(int argc, const char* argv[])
       if (!os::SetThreadAffinity(*thread, i, error)) {
         Log("Error setting thread affinity: ", error);
       }
+
+      auto [ok, err] = os::SetThreadSchedMax(*thread);
+      if (!ok) {
+        Log(err);
+      }
     }
   }
 
@@ -381,6 +386,11 @@ int main(int argc, const char* argv[])
     int error;
     if (!os::SetThreadAffinity(*thread, getPingProcNum(numProcessors), error)) {
       Log("error setting thread affinity: ", error);
+    }
+
+    auto [ok, err] = os::SetThreadSchedMax(*thread);
+    if (!ok) {
+      Log(err);
     }
   }
 
@@ -406,6 +416,11 @@ int main(int argc, const char* argv[])
       int error;
       if (!os::SetThreadAffinity(*thread, getPingProcNum(numProcessors), error)) {
         Log("error setting thread affinity: ", error);
+      }
+
+      auto [ok, err] = os::SetThreadSchedMax(*thread);
+      if (!ok) {
+        Log(err);
       }
     }
 
@@ -448,6 +463,11 @@ int main(int argc, const char* argv[])
 
         gAlive = false;
       });
+
+      auto [ok, err] = os::SetThreadSchedMax(*thread);
+      if (!ok) {
+        Log(err);
+      }
 
       sockets.push_back(socket);
       threads.push_back(thread);

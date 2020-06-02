@@ -120,7 +120,7 @@ namespace core
 
         Log("session created: ", *session);
       } else {
-        Log("received additional route request for session: ", token);
+        LogDebug("received additional route request for session: ", token);
       }
 
       // remove this part of the token by offseting it the request packet bytes
