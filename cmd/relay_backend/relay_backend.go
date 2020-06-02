@@ -159,8 +159,9 @@ func main() {
 		}
 
 		datacenter := routing.Datacenter{
-			ID:   crypto.HashID("local"),
-			Name: "local",
+			ID:       crypto.HashID("local"),
+			Name:     "local",
+			Location: routing.LocationNullIsland,
 		}
 
 		if err := db.AddSeller(ctx, seller); err != nil {
