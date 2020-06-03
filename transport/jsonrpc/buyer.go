@@ -70,7 +70,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 			isSameBuyer, _ := s.IsSameBuyer(r, meta.CustomerID)
 
 			if isAnon || (!isSameBuyer && !isAdmin) {
-				meta = meta.Anonymize(meta)
+				meta.Anonymise()
 			}
 
 			reply.Sessions = append(reply.Sessions, meta)
@@ -150,7 +150,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 			}
 
 			if isAnon || (!isSameBuyer && !isAdmin) {
-				meta = meta.Anonymize(meta)
+				meta.Anonymise()
 			}
 
 			fmt.Println(meta)
@@ -205,7 +205,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	}
 
 	if isAnon || (!isSameBuyer && !isAdmin) {
-		reply.Meta = reply.Meta.Anonymize(reply.Meta)
+		reply.Meta.Anonymise()
 	}
 
 	reply.Slices = make([]routing.SessionSlice, 0)

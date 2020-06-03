@@ -19,8 +19,10 @@ import (
 
 type contextType string
 
-const anonymousCallKey contextType = "anonymous"
-const rolesKey contextType = "roles"
+const (
+	anonymousCallKey contextType = "anonymous"
+	rolesKey         contextType = "roles"
+)
 
 type AuthService struct {
 	Auth0   storage.Auth0
@@ -55,7 +57,7 @@ type account struct {
 
 func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
 	var accountList *management.UserList
-	if r.Context().Value(anonymousCallKey) == true {
+	if IsAnonymous(r) {
 		return fmt.Errorf("insufficient privileges")
 	}
 	_, err := CheckRoles(r, "Admin")
@@ -489,11 +491,8 @@ func SetIsAnonymous(r *http.Request, value bool) *http.Request {
 }
 
 func IsAnonymous(r *http.Request) bool {
-	isAnon := r.Context().Value(anonymousCallKey)
-	if isAnon != nil {
-		return isAnon.(bool)
-	}
-	return false
+	anon, ok := r.Context().Value(anonymousCallKey).(bool)
+	return ok && anon
 }
 
 func SetRoles(r *http.Request, roles management.RoleList) *http.Request {

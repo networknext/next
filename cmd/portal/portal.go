@@ -31,11 +31,6 @@ import (
 	"github.com/networknext/backend/transport/jsonrpc"
 )
 
-type contextType string
-
-const anonymousCallKey contextType = "anonymous"
-const rolesKey contextType = "roles"
-
 func main() {
 	ctx := context.Background()
 
@@ -313,8 +308,6 @@ func main() {
 		}, "")
 
 		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), s))
-
-		// jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), s)
 
 		http.Handle("/", http.FileServer(http.Dir(uiDir)))
 

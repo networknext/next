@@ -35,16 +35,15 @@ func (s SessionMeta) MarshalBinary() ([]byte, error) {
 	return jsoniter.Marshal(s)
 }
 
-func (s SessionMeta) Anonymize(meta SessionMeta) SessionMeta {
-	meta.ServerAddr = ObscureString(meta.ServerAddr, ".", -1)
-	meta.CustomerID = ""
-	for idx, relay := range meta.NearbyRelays {
-		meta.NearbyRelays[idx].Name = ObscureString(relay.Name, ".", 1)
+func (s *SessionMeta) Anonymise() {
+	s.ServerAddr = ObscureString(s.ServerAddr, ".", -1)
+	s.CustomerID = ""
+	for idx, relay := range s.NearbyRelays {
+		s.NearbyRelays[idx].Name = ObscureString(relay.Name, ".", 1)
 	}
-	for idx, relay := range meta.Hops {
-		meta.Hops[idx].Name = ObscureString(relay.Name, ".", 1)
+	for idx, relay := range s.Hops {
+		s.Hops[idx].Name = ObscureString(relay.Name, ".", 1)
 	}
-	return meta
 }
 
 func ObscureString(source string, delim string, count int) string {
