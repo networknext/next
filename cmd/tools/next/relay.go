@@ -197,7 +197,7 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 			envvars["RELAY_PRIVATE_KEY"] = privateKeyB64
 			envvars["RELAY_ROUTER_PUBLIC_KEY"] = routerPublicKey
 			envvars["RELAY_BACKEND_HOSTNAME"] = backendHostname
-			envvars["RELAY_V3_ENABLED"] = "1"
+			envvars["RELAY_V3_ENABLED"] = "0"
 			envvars["RELAY_V3_BACKEND_HOSTNAME"] = oldBackendHostname
 			envvars["RELAY_V3_BACKEND_PORT"] = "40000"
 			envvars["RELAY_V3_UPDATE_KEY"] = info.updateKey
