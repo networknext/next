@@ -97,7 +97,7 @@ MapHandler = {
 			zoom: 4.6,
 			longitude: -98.583333, // 'Center' of the US
 			latitude: 39.833333,
-			maxZoom: 14,
+			minZoom: 5,
 		},
 	},
 	defaultWorld: {
@@ -105,7 +105,7 @@ MapHandler = {
 			zoom: 2,
 			longitude: 0, // 'Center' of the world map
 			latitude: 0,
-			maxZoom: 14,
+			minZoom: 2,
 		},
 	},
 	mapInstance: null,
@@ -191,23 +191,6 @@ MapHandler = {
 					aggregation
 				});
 
-				/* let nnLayer = new deck.ScatterplotLayer({
-					id: 'nn-layer',
-					data,
-					pickable: true,
-					opacity: 0.8,
-					stroked: true,
-					filled: true,
-					radiusScale: 6,
-					radiusMinPixels: 1,
-					radiusMaxPixels: 100,
-					lineWidthMinPixels: 1,
-					getPosition: d => [d[0], d[1]],
-					getRadius: d => 10,
-					getFillColor: d => [0,109,44],
-					getLineColor: d => [0,109,44]
-				}); */
-
 				data = direct;
 
 				let directLayer = new deck.ScreenGridLayer({
@@ -223,23 +206,6 @@ MapHandler = {
 					gpuAggregation,
 					aggregation
 				});
-
-				/* let directLayer = new deck.ScatterplotLayer({
-					id: 'direct-layer',
-					data,
-					pickable: true,
-					opacity: 0.8,
-					stroked: true,
-					filled: true,
-					radiusScale: 6,
-					radiusMinPixels: 1,
-					radiusMaxPixels: 100,
-					lineWidthMinPixels: 1,
-					getPosition: d => [d[0], d[1]],
-					getRadius: d => 10,
-					getFillColor: d => [49,130,189],
-					getLineColor: d => [49,130,189]
-				  }); */
 
 				let layers = (onNN.length > 0 || direct.length > 0) ? [directLayer, nnLayer] : [];
 				if (this.mapInstance) {
