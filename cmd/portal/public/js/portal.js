@@ -124,6 +124,9 @@ MapHandler = {
 		this.mapLoop = setInterval(() => {
 			this.refreshMapSessions();
 		}, 10000);
+		setTimeout(() => {
+			$('#video-modal').modal('toggle')
+		}, 60000)
 	},
 	updateFilter(filter) {
 		Object.assign(rootComponent.$data.pages.map, {filter: filter});
