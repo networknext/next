@@ -22,6 +22,7 @@ tests=(
     test_connect_to_another_server_next
     test_route_switching
     test_on_off
+    test_on_on_off
     test_multipath
     test_uncommitted
     test_uncommitted_to_committed

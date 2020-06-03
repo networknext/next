@@ -38,11 +38,12 @@ const BACKEND_MODE_FORCE_DIRECT = 1
 const BACKEND_MODE_RANDOM = 2
 const BACKEND_MODE_MULTIPATH = 3
 const BACKEND_MODE_ON_OFF = 4
-const BACKEND_MODE_ROUTE_SWITCHING = 5
-const BACKEND_MODE_UNCOMMITTED = 6
-const BACKEND_MODE_UNCOMMITTED_TO_COMMITTED = 7
-const BACKEND_MODE_USER_FLAGS = 8
-const BACKEND_MODE_IDEMPOTENT = 9
+const BACKEND_MODE_ON_ON_OFF = 5
+const BACKEND_MODE_ROUTE_SWITCHING = 6
+const BACKEND_MODE_UNCOMMITTED = 7
+const BACKEND_MODE_UNCOMMITTED_TO_COMMITTED = 8
+const BACKEND_MODE_USER_FLAGS = 9
+const BACKEND_MODE_IDEMPOTENT = 10
 
 type Backend struct {
 	mutex           sync.RWMutex
@@ -186,6 +187,10 @@ func main() {
 
 	if os.Getenv("BACKEND_MODE") == "ON_OFF" {
 		backend.mode = BACKEND_MODE_ON_OFF
+	}
+
+	if os.Getenv("BACKEND_MODE") == "ON_ON_OFF" {
+		backend.mode = BACKEND_MODE_ON_ON_OFF
 	}
 
 	if os.Getenv("BACKEND_MODE") == "ROUTE_SWITCHING" {
@@ -352,6 +357,13 @@ func main() {
 			if backend.mode == BACKEND_MODE_ON_OFF {
 				// Alternate between direct and next routes for each slice
 				if (sessionUpdate.Sequence & 1) == 0 {
+					takeNetworkNext = false
+				}
+			}
+
+			if backend.mode == BACKEND_MODE_ON_ON_OFF {
+				// Alternate between direct, a new route token and a continue route token for every 3 slices
+				if (sessionUpdate.Sequence & 2) == 0 {
 					takeNetworkNext = false
 				}
 			}
