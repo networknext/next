@@ -33,18 +33,18 @@ namespace util
      {"RELAY_PUBLIC_KEY", &RelayPublicKey},
      {"RELAY_ROUTER_PUBLIC_KEY", &RelayRouterPublicKey},
      {"RELAY_BACKEND_HOSTNAME", &BackendHostname},
+    };
+
+    std::unordered_map<const char*, std::string*> optionalVars = {
+     {"RELAY_SEND_BUFFER_SIZE", &SendBufferSize},
+     {"RELAY_RECV_BUFFER_SIZE", &RecvBufferSize},
+     {"RELAY_PROCESSOR_COUNT", &ProcessorCount},
+     {"RELAY_V3_ENABLED", &RelayV3Enabled},
      {"RELAY_V3_NAME", &RelayV3Name},
      {"RELAY_V3_BACKEND_HOSTNAME", &RelayV3BackendHostname},
      {"RELAY_V3_BACKEND_PORT", &RelayV3BackendPort},
      {"RELAY_V3_UPDATE_KEY", &RelayV3UpdateKey},
      {"RELAY_V3_SPEED", &RelayV3Speed},
-    };
-
-    std::unordered_map<const char*, std::string*> optionalVars = {
-     {"RELAY_V3_ENABLED", &RelayV3Enabled},
-     {"RELAY_SEND_BUFFER_SIZE", &SendBufferSize},
-     {"RELAY_RECV_BUFFER_SIZE", &RecvBufferSize},
-     {"RELAY_PROCESSOR_COUNT", &ProcessorCount},
     };
 
     for (auto& pair : requiredVars) {
