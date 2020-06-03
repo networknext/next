@@ -43,6 +43,8 @@ var (
 func main() {
 	ctx := context.Background()
 
+	env := os.Getenv("ENV")
+
 	// Configure logging
 	logger := log.NewLogfmtLogger(os.Stdout)
 	relayslogger := log.NewLogfmtLogger(os.Stdout)
@@ -331,7 +333,7 @@ func main() {
 				level.Warn(logger).Log("msg", fmt.Sprintf("relay with id %v has disconnected.", rawID))
 
 				// Remove the relay cache entry
-				if err := transport.RemoveRelayCacheEntry(ctx, rawID, msg.Payload, http.DefaultClient, redisClientRelays, &geoClient, statsdb, db); err != nil {
+				if err := transport.RemoveRelayCacheEntry(ctx, rawID, msg.Payload, env, http.DefaultClient, redisClientRelays, &geoClient, statsdb, db); err != nil {
 					level.Error(logger).Log("err", err)
 					os.Exit(1)
 				}
@@ -348,6 +350,7 @@ func main() {
 	}
 
 	commonUpdateParams := transport.RelayUpdateHandlerConfig{
+		Environment:           env,
 		HTTPClient:            http.DefaultClient,
 		RedisClient:           redisClientRelays,
 		GeoClient:             &geoClient,
@@ -358,6 +361,7 @@ func main() {
 	}
 
 	commonHandlerParams := transport.RelayHandlerConfig{
+		Environment:           env,
 		HTTPClient:            http.DefaultClient,
 		RedisClient:           redisClientRelays,
 		GeoClient:             &geoClient,

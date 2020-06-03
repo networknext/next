@@ -33,6 +33,7 @@ const (
 )
 
 type RelayHandlerConfig struct {
+	Environment           string
 	HTTPClient            *http.Client
 	RedisClient           redis.Cmdable
 	GeoClient             *routing.GeoClient
@@ -52,6 +53,7 @@ type RelayInitHandlerConfig struct {
 }
 
 type RelayUpdateHandlerConfig struct {
+	Environment           string
 	HTTPClient            *http.Client
 	RedisClient           redis.Cmdable
 	GeoClient             *routing.GeoClient
@@ -62,7 +64,7 @@ type RelayUpdateHandlerConfig struct {
 }
 
 // RemoveRelayCacheEntry cleans up a relay cache entry and all its associated data
-func RemoveRelayCacheEntry(ctx context.Context, relayID uint64, redisKey string, httpClient *http.Client, redisClient redis.Cmdable, geoClient *routing.GeoClient, statsdb *routing.StatsDatabase, db storage.Storer) error {
+func RemoveRelayCacheEntry(ctx context.Context, relayID uint64, redisKey string, env string, httpClient *http.Client, redisClient redis.Cmdable, geoClient *routing.GeoClient, statsdb *routing.StatsDatabase, db storage.Storer) error {
 	// Remove geo location data associated with this relay
 	if err := geoClient.Remove(relayID); err != nil {
 		return fmt.Errorf("Failed to remove geoClient entry for relay with ID %v: %v", relayID, err)
@@ -94,7 +96,7 @@ func RemoveRelayCacheEntry(ctx context.Context, relayID uint64, redisKey string,
 
 		notification := map[string]string{
 			"icon_emoji": ":biohazard_sign:",
-			"username":   "Relay Backend",
+			"username":   fmt.Sprintf("Relay Backend (%s)", env),
 			"text":       fmt.Sprintf("Relay %s (%s) has been placed into quarantine.", relay.Name, relay.Addr.String()),
 		}
 
@@ -282,7 +284,7 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 					return
 				}
 
-				if err := RemoveRelayCacheEntry(ctx, relayCacheEntry.ID, relayCacheEntry.Key(), params.HTTPClient, params.RedisClient, params.GeoClient, params.StatsDb, params.Storer); err != nil {
+				if err := RemoveRelayCacheEntry(ctx, relayCacheEntry.ID, relayCacheEntry.Key(), params.Environment, params.HTTPClient, params.RedisClient, params.GeoClient, params.StatsDb, params.Storer); err != nil {
 					level.Error(locallogger).Log("err", err)
 					http.Error(writer, err.Error(), http.StatusInternalServerError)
 					return
@@ -727,7 +729,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 					return
 				}
 
-				if err := RemoveRelayCacheEntry(ctx, relayCacheEntry.ID, relayCacheEntry.Key(), params.HTTPClient, params.RedisClient, params.GeoClient, params.StatsDb, params.Storer); err != nil {
+				if err := RemoveRelayCacheEntry(ctx, relayCacheEntry.ID, relayCacheEntry.Key(), params.Environment, params.HTTPClient, params.RedisClient, params.GeoClient, params.StatsDb, params.Storer); err != nil {
 					level.Error(locallogger).Log("err", err)
 					http.Error(writer, err.Error(), http.StatusInternalServerError)
 					return
@@ -764,6 +766,20 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			level.Error(locallogger).Log("msg", "failed to unmarshal relay data", "err", err)
 			http.Error(writer, "failed to unmarshal relay data", http.StatusInternalServerError)
 			params.Metrics.ErrorMetrics.RelayUnmarshalFailure.Add(1)
+			return
+		}
+
+		notification := map[string]string{
+			"icon_emoji": ":biohazard_sign:",
+			"username":   fmt.Sprintf("Relay Backend (%s)", params.Environment),
+			"text":       fmt.Sprintf("Relay %s (%s) has been placed into quarantine.", relayCacheEntry.Name, relayCacheEntry.Addr.String()),
+		}
+
+		var buf bytes.Buffer
+		if err := json.NewEncoder(&buf).Encode(notification); err != nil {
+			return
+		}
+		if _, err := params.HTTPClient.Post("https://hooks.slack.com/services/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", "application/json", &buf); err != nil {
 			return
 		}
 
