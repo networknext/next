@@ -56,8 +56,8 @@ using namespace std::chrono_literals;
 
 #define RELAY_PING_TIME                                          0.1
 
-#define RELAY_STATS_WINDOW                                       100
-#define RELAY_PING_SAFETY                                         10
+#define RELAY_STATS_WINDOW                                      10.0
+#define RELAY_PING_SAFETY                                        1.0
 
 #define RELAY_MAX_PACKET_BYTES                                  1500
 

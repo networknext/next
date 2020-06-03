@@ -318,6 +318,7 @@ func main() {
 				sentry.CaptureMessage("no routes within route matrix")
 			}
 
+			// todo: should be one
 			time.Sleep(10 * time.Second)
 		}
 	}()
