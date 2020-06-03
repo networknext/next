@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/modood/table"
@@ -21,36 +22,43 @@ func relays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 		return
 	}
 
+	sort.Slice(reply.Relays, func(i int, j int) bool {
+		return reply.Relays[i].SessionCount > reply.Relays[j].SessionCount
+	})
+
 	relays := []struct {
 		Name        string
 		State       string
-		Location    string
-		Speed       string
-		Bandwidth   string
-		LastUpdated string
 		Sessions    string
-		BytesTxRx   string
+		Tx          string
+		Rx          string
+		LastUpdated string
 	}{}
 
 	for _, relay := range reply.Relays {
+		tx := fmt.Sprintf("%.02fGB", float64(relay.BytesSent)/float64(1000000000))
+		if relay.BytesSent < 1000000000 {
+			tx = fmt.Sprintf("%.02fMB", float64(relay.BytesSent)/float64(1000000))
+		}
+		rx := fmt.Sprintf("%.02fGB", float64(relay.BytesReceived)/float64(1000000000))
+		if relay.BytesReceived < 1000000000 {
+			rx = fmt.Sprintf("%.02fMB", float64(relay.BytesReceived)/float64(1000000))
+		}
+
 		relays = append(relays, struct {
 			Name        string
 			State       string
-			Location    string
-			Speed       string
-			Bandwidth   string
-			LastUpdated string
 			Sessions    string
-			BytesTxRx   string
+			Tx          string
+			Rx          string
+			LastUpdated string
 		}{
 			Name:        relay.Name,
 			State:       relay.State,
-			Location:    fmt.Sprintf("%.2f, %.2f", relay.Latitude, relay.Longitude),
-			Speed:       fmt.Sprintf("%dGB", relay.NICSpeedMbps/1000),
-			Bandwidth:   fmt.Sprintf("%dGB", relay.IncludedBandwidthGB),
+			Sessions:    fmt.Sprintf("%d", relay.SessionCount),
+			Tx:          tx,
+			Rx:          rx,
 			LastUpdated: time.Since(relay.LastUpdateTime).Truncate(time.Second).String(),
-			Sessions:    fmt.Sprintf("%d/%d", relay.SessionCount, relay.MaxSessionCount),
-			BytesTxRx:   fmt.Sprintf("%d/%d", relay.BytesSent, relay.BytesReceived),
 		})
 	}
 
