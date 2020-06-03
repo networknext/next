@@ -45,8 +45,6 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		}
 		hashedID := fmt.Sprintf("%x", hash.Sum64())
 
-		fmt.Println(hashedID)
-
 		err = s.RedisClient.SMembers(fmt.Sprintf("user-%s-sessions", hashedID)).ScanSlice(&sessionIDs)
 	}
 
