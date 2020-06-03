@@ -132,6 +132,10 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 				continue
 			}
 
+			if meta.NextRTT == 0 {
+				continue
+			}
+
 			reply.Sessions = append(reply.Sessions, meta)
 		}
 	}
