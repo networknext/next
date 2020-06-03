@@ -1083,6 +1083,9 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 }
 
 func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration, packet SessionUpdatePacket, nnStats routing.Stats, directStats routing.Stats, relayHops []routing.Relay, onNetworkNext bool, datacenterName string, location routing.Location) error {
+	if (nnStats.RTT == 0 && directStats.RTT == 0) || (onNetworkNext && nnStats.RTT == 0) {
+		return nil
+	}
 	meta := routing.SessionMeta{
 		ID:            fmt.Sprintf("%016x", packet.SessionID),
 		UserHash:      fmt.Sprintf("%016x", packet.UserHash),
