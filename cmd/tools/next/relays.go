@@ -64,6 +64,7 @@ func relays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 
 	table.Output(relays)
 }
+
 func addRelay(rpcClient jsonrpc.RPCClient, env Environment, relay routing.Relay) {
 	args := localjsonrpc.AddRelayArgs{
 		Relay: relay,
