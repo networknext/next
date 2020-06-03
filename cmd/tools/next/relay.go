@@ -161,17 +161,18 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 		// Update the relay's state to offline in storage
 		updateRelayState(rpcClient, info, routing.RelayStateOffline)
 
+		// Create the public and private keys for the relay
+		publicKey, privateKey, err := box.GenerateKey(rand.Reader)
+
+		if err != nil {
+			log.Fatal("could not generate public private keypair")
+		}
+
+		publicKeyB64 := base64.StdEncoding.EncodeToString(publicKey[:])
+		privateKeyB64 := base64.StdEncoding.EncodeToString(privateKey[:])
+
 		// Create the environment
 		{
-			publicKey, privateKey, err := box.GenerateKey(rand.Reader)
-
-			publicKeyB64 := base64.StdEncoding.EncodeToString(publicKey[:])
-			privateKeyB64 := base64.StdEncoding.EncodeToString(privateKey[:])
-
-			if err != nil {
-				log.Fatal("could not generate public private keypair")
-			}
-
 			routerPublicKey, err := env.RouterPublicKey()
 
 			if err != nil {
