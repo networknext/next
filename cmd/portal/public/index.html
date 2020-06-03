@@ -445,13 +445,13 @@
                                                 </span>
                                             </td>
                                             <td class="text-right ">
-                                                {{ parseFloat(session.direct_rtt).toFixed(2) }}
+                                                {{ parseFloat(session.direct_rtt).toFixed(2) || "-" }}
                                             </td>
                                             <td class="text-right ">
-                                                {{ parseFloat(session.next_rtt).toFixed(2) }}
+                                                {{ parseFloat(session.next_rtt).toFixed(2) || "-"}}
                                             </td>
                                             <td class="text-right ">
-                                                <span v-if="session.next_rtt > 0 && session.on_network_next"
+                                                <span v-if="session.delta_rtt > 0 && session.on_network_next"
                                                         v-bind:class="{
                                                             'text-success': session.delta_rtt >= 5,
                                                             'text-warning': session.delta_rtt >= 2 && session.delta_rtt < 5,
@@ -462,7 +462,7 @@
                                                         {{ parseFloat(session.delta_rtt).toFixed(2) }}
                                                     </b>
                                                 </span>
-                                                <span v-if="session.next_rtt < 0">
+                                                <span v-if="session.delta_rtt < 0 || !session.on_network_next">
                                                     <b>
                                                         -
                                                     </b>
