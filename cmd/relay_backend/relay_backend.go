@@ -175,6 +175,7 @@ func main() {
 		}
 
 		if err := db.AddRelay(ctx, routing.Relay{
+			Name:        "local",
 			PublicKey:   relayPublicKey,
 			Seller:      seller,
 			Datacenter:  datacenter,
@@ -329,7 +330,7 @@ func main() {
 				level.Warn(logger).Log("msg", fmt.Sprintf("relay with id %v has disconnected.", rawID))
 
 				// Remove the relay cache entry
-				if err := transport.RemoveRelayCacheEntry(ctx, rawID, msg.Payload, redisClientRelays, &geoClient, statsdb, db); err != nil {
+				if err := transport.RemoveRelayCacheEntry(ctx, rawID, msg.Payload, http.DefaultClient, redisClientRelays, &geoClient, statsdb, db); err != nil {
 					level.Error(logger).Log("err", err)
 					os.Exit(1)
 				}
@@ -346,6 +347,7 @@ func main() {
 	}
 
 	commonUpdateParams := transport.RelayUpdateHandlerConfig{
+		HTTPClient:            http.DefaultClient,
 		RedisClient:           redisClientRelays,
 		GeoClient:             &geoClient,
 		StatsDb:               statsdb,
@@ -355,6 +357,7 @@ func main() {
 	}
 
 	commonHandlerParams := transport.RelayHandlerConfig{
+		HTTPClient:            http.DefaultClient,
 		RedisClient:           redisClientRelays,
 		GeoClient:             &geoClient,
 		Storer:                db,
