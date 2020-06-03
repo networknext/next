@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/modood/table"
 	"github.com/networknext/backend/routing"
@@ -18,7 +19,26 @@ func buyers(rpcClient jsonrpc.RPCClient, env Environment) {
 		return
 	}
 
-	table.Output(reply.Buyers)
+	sort.Slice(reply.Buyers, func(i int, j int) bool {
+		return reply.Buyers[i].ID > reply.Buyers[j].ID
+	})
+
+	buyers := []struct {
+		Name      string
+		ID        uint64
+	}{}
+
+	for _, buyer := range reply.Buyers {
+		buyers = append(buyers, struct {
+			Name       string
+			ID         uint64
+		}{
+			Name:        buyer.Name,
+			ID:          buyer.ID,
+		})
+	}
+
+	table.Output(buyers)
 }
 
 func addBuyer(rpcClient jsonrpc.RPCClient, env Environment, buyer routing.Buyer) {
