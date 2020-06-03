@@ -599,18 +599,18 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			addRouteDecisionMetric(routeDecision, metrics)
 
 			if err := updateSessionCacheEntry(redisClientCache, sessionCacheKey, sessionCacheEntry, packet, chosenRoute.Hash64(), routeDecision, timestampStart, timestampExpire,
-				responseData, directStats.RTT, nnStats.RTT, routing.LocationNullIsland); err != nil {
+				responseData, directStats.RTT, nnStats.RTT, sessionCacheEntry.Location); err != nil {
 				sentry.CaptureException(err)
 				level.Error(locallogger).Log("msg", "failed to update session", "err", err)
 				metrics.ErrorMetrics.UpdateSessionFailure.Add(1)
 			}
 
-			if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, routing.LocationNullIsland); err != nil {
+			if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, routeDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, sessionCacheEntry.Location); err != nil {
 				sentry.CaptureException(err)
 				level.Error(locallogger).Log("msg", "failed to update portal data", "err", err)
 			}
 
-			if err := submitBillingEntry(biller, serverCacheEntry, sessionCacheEntry, packet, response, buyer, chosenRoute, routing.LocationNullIsland, storer, nil,
+			if err := submitBillingEntry(biller, serverCacheEntry, sessionCacheEntry, packet, response, buyer, chosenRoute, sessionCacheEntry.Location, storer, nil,
 				routeDecision, sliceDuration, timestampStart, timestampNow, newSession); err != nil {
 				sentry.CaptureException(err)
 				level.Error(locallogger).Log("msg", "billing failed", "err", err)
