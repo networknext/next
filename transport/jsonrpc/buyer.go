@@ -30,7 +30,7 @@ type UserSessionsReply struct {
 
 func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, reply *UserSessionsReply) error {
 	var sessionIDs []string
-	var isAnon = r.Context().Value(anonymousCallKey) == true
+	var isAnon = IsAnonymous(r)
 
 	reply.Sessions = make([]routing.SessionMeta, 0)
 
@@ -66,8 +66,15 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 				continue
 			}
 
-			isAdmin, _ := CheckRoles(r, "Admin")
-			isSameBuyer, _ := s.IsSameBuyer(r, meta.CustomerID)
+			isAdmin, err := CheckRoles(r, "Admin")
+			if err != nil {
+				return err
+			}
+
+			isSameBuyer, err := s.IsSameBuyer(r, meta.CustomerID)
+			if err != nil {
+				return err
+			}
 
 			if isAnon || (!isSameBuyer && !isAdmin) {
 				meta.Anonymise()
@@ -99,10 +106,17 @@ type TopSessionsReply struct {
 func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, reply *TopSessionsReply) error {
 	var err error
 	var result []redis.Z
-	var isAnon = r.Context().Value(anonymousCallKey) == true
+	var isAnon = IsAnonymous(r)
+
+	isAdmin, err := CheckRoles(r, "Admin")
+	if err != nil {
+		return err
+	}
 
 	isSameBuyer, err := s.IsSameBuyer(r, args.BuyerID)
-	isAdmin, err := CheckRoles(r, "Admin")
+	if err != nil {
+		return err
+	}
 
 	reply.Sessions = make([]routing.SessionMeta, 0)
 
@@ -179,9 +193,12 @@ type SessionDetailsReply struct {
 }
 
 func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs, reply *SessionDetailsReply) error {
-	var isAnon = r.Context().Value(anonymousCallKey) == true
+	var isAnon = IsAnonymous(r)
 
-	isAdmin, _ := CheckRoles(r, "Admin")
+	isAdmin, err := CheckRoles(r, "Admin")
+	if err != nil {
+		return err
+	}
 
 	data, err := s.RedisClient.Get(fmt.Sprintf("session-%s-meta", args.SessionID)).Bytes()
 	if err != nil {
@@ -192,7 +209,10 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		return err
 	}
 
-	isSameBuyer, _ := s.IsSameBuyer(r, reply.Meta.CustomerID)
+	isSameBuyer, err := s.IsSameBuyer(r, reply.Meta.CustomerID)
+	if err != nil {
+		return err
+	}
 
 	// We fill in the name on the portal side so we don't spend time doing it while serving sessions
 	for idx, relay := range reply.Meta.NearbyRelays {
@@ -234,8 +254,15 @@ func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, r
 	var err error
 	var sessionIDs []string
 
-	isSameBuyer, _ := s.IsSameBuyer(r, args.BuyerID)
-	isAdmin, _ := CheckRoles(r, "Admin")
+	isAdmin, err := CheckRoles(r, "Admin")
+	if err != nil {
+		return err
+	}
+
+	isSameBuyer, err := s.IsSameBuyer(r, args.BuyerID)
+	if err != nil {
+		return err
+	}
 
 	reply.Points = make([]routing.SessionMapPoint, 0)
 
@@ -335,7 +362,7 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 }
 
 func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfigurationArgs, reply *GameConfigurationReply) error {
-	if r.Context().Value(anonymousCallKey) == true {
+	if IsAnonymous(r) {
 		return fmt.Errorf("insufficient privileges")
 	}
 	var err error
@@ -380,13 +407,12 @@ type buyerAccount struct {
 	Name string `json:"name"`
 }
 
-type ctxKey string
-
 func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *BuyerListReply) error {
 	reply.Buyers = make([]buyerAccount, 0)
 	if IsAnonymous(r) {
 		return nil
 	}
+
 	for _, b := range s.Storage.Buyers() {
 		id := strconv.FormatUint(b.ID, 10)
 		account := buyerAccount{
@@ -409,14 +435,17 @@ func (s *BuyersService) IsSameBuyer(r *http.Request, buyerID string) (bool, erro
 	}
 
 	requestUser := r.Context().Value("user")
-
-	if requestUser == nil {
-		return false, fmt.Errorf("failed to look up user context")
+	if _, ok := requestUser.(string); !ok {
+		return false, fmt.Errorf("unable to parse user from token")
 	}
-	requestEmailParts := strings.Split(requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["email"].(string), "@")
+
+	requestEmail, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["email"].(string)
+	if !ok {
+		return false, fmt.Errorf("unable to parse email from token")
+	}
+	requestEmailParts := strings.Split(requestEmail, "@")
 	requestDomain := requestEmailParts[len(requestEmailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
 	buyer, err := s.Storage.BuyerWithDomain(requestDomain)
-
 	if err != nil {
 		return false, err
 	}
