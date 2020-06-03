@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"html/template"
@@ -32,6 +33,7 @@ const (
 )
 
 type RelayHandlerConfig struct {
+	HTTPClient            *http.Client
 	RedisClient           redis.Cmdable
 	GeoClient             *routing.GeoClient
 	Storer                storage.Storer
@@ -50,6 +52,7 @@ type RelayInitHandlerConfig struct {
 }
 
 type RelayUpdateHandlerConfig struct {
+	HTTPClient            *http.Client
 	RedisClient           redis.Cmdable
 	GeoClient             *routing.GeoClient
 	StatsDb               *routing.StatsDatabase
@@ -59,7 +62,7 @@ type RelayUpdateHandlerConfig struct {
 }
 
 // RemoveRelayCacheEntry cleans up a relay cache entry and all its associated data
-func RemoveRelayCacheEntry(ctx context.Context, relayID uint64, redisKey string, redisClient redis.Cmdable, geoClient *routing.GeoClient, statsdb *routing.StatsDatabase, db storage.Storer) error {
+func RemoveRelayCacheEntry(ctx context.Context, relayID uint64, redisKey string, httpClient *http.Client, redisClient redis.Cmdable, geoClient *routing.GeoClient, statsdb *routing.StatsDatabase, db storage.Storer) error {
 	// Remove geo location data associated with this relay
 	if err := geoClient.Remove(relayID); err != nil {
 		return fmt.Errorf("Failed to remove geoClient entry for relay with ID %v: %v", relayID, err)
@@ -87,6 +90,20 @@ func RemoveRelayCacheEntry(ctx context.Context, relayID uint64, redisKey string,
 
 		if err := db.SetRelay(ctx, relay); err != nil {
 			return fmt.Errorf("Failed to set relay with ID %v in storage when attempting to set relay state to quarantined: %v", relayID, err)
+		}
+
+		notification := map[string]string{
+			"icon_emoji": ":biohazard_sign:",
+			"username":   "Relay Backend",
+			"text":       fmt.Sprintf("Relay %s (%s) has been placed into quarantine.", relay.Name, relay.Addr.String()),
+		}
+
+		var buf bytes.Buffer
+		if err := json.NewEncoder(&buf).Encode(notification); err != nil {
+			return fmt.Errorf("failed to encode notification to JSON: %v", err)
+		}
+		if _, err := httpClient.Post("https://hooks.slack.com/services/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", "application/json", &buf); err != nil {
+			return fmt.Errorf("failed to post notification to webhook: %v", err)
 		}
 	}
 
@@ -265,7 +282,7 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 					return
 				}
 
-				if err := RemoveRelayCacheEntry(ctx, relayCacheEntry.ID, relayCacheEntry.Key(), params.RedisClient, params.GeoClient, params.StatsDb, params.Storer); err != nil {
+				if err := RemoveRelayCacheEntry(ctx, relayCacheEntry.ID, relayCacheEntry.Key(), params.HTTPClient, params.RedisClient, params.GeoClient, params.StatsDb, params.Storer); err != nil {
 					level.Error(locallogger).Log("err", err)
 					http.Error(writer, err.Error(), http.StatusInternalServerError)
 					return
@@ -710,7 +727,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 					return
 				}
 
-				if err := RemoveRelayCacheEntry(ctx, relayCacheEntry.ID, relayCacheEntry.Key(), params.RedisClient, params.GeoClient, params.StatsDb, params.Storer); err != nil {
+				if err := RemoveRelayCacheEntry(ctx, relayCacheEntry.ID, relayCacheEntry.Key(), params.HTTPClient, params.RedisClient, params.GeoClient, params.StatsDb, params.Storer); err != nil {
 					level.Error(locallogger).Log("err", err)
 					http.Error(writer, err.Error(), http.StatusInternalServerError)
 					return
