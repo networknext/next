@@ -10,6 +10,7 @@ import (
 	"net"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/getsentry/sentry-go"
@@ -1086,6 +1087,15 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 	if (nnStats.RTT == 0 && directStats.RTT == 0) || (onNetworkNext && nnStats.RTT == 0) {
 		return nil
 	}
+
+	clientAddr := packet.ClientAddress.String()
+	addrPieces := strings.Split(clientAddr, ".")
+	endPieces := strings.Split(addrPieces[len(addrPieces)-1], ":")
+	endPieces[0] = "0"
+	lastTuple := strings.Join(endPieces, ":")
+	addrPieces[len(addrPieces)-1] = lastTuple
+	clientAddr = strings.Join(addrPieces, ".")
+
 	meta := routing.SessionMeta{
 		ID:            fmt.Sprintf("%016x", packet.SessionID),
 		UserHash:      fmt.Sprintf("%016x", packet.UserHash),
@@ -1095,7 +1105,7 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 		DirectRTT:     directStats.RTT,
 		DeltaRTT:      directStats.RTT - nnStats.RTT,
 		Location:      location,
-		ClientAddr:    packet.ClientAddress.String(),
+		ClientAddr:    clientAddr,
 		ServerAddr:    packet.ServerAddress.String(),
 		Hops:          relayHops,
 		SDK:           packet.Version.String(),
