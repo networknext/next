@@ -26,6 +26,7 @@ type InvoiceService struct {
 type InvoiceArgs struct {
 	StartDate time.Time `json:"start_date"`
 	EndDate   time.Time `json:"end_date"`
+	BuyerID   string    `json:"buyerid"`
 }
 
 // InvoiceReply contains the JSON reply string
@@ -84,15 +85,15 @@ func (s *InvoiceService) InvoiceAllBuyers(r *http.Request, args *InvoiceArgs, re
 	d := NewGetter(s.Invoices)
 	rc, err := d.download(s, cacheName)
 
-	if err != nil { // force BQ query
-		// if err == nil {
+	// if err != nil { // force BQ query
+	if err == nil {
 		// cache file found, skip BQ query
 		reply.Invoices = rc
 		return nil
 	}
 
-	if err == nil { // force BQ query
-		// if err == storage.ErrBucketNotExist {
+	// if err == nil { // force BQ query
+	if err == storage.ErrBucketNotExist {
 		// cache file not found so query db
 		fmt.Printf("Reading query from 'query.sql'...\n")
 		queryText, err := ioutil.ReadFile("query.sql")
@@ -110,6 +111,10 @@ func (s *InvoiceService) InvoiceAllBuyers(r *http.Request, args *InvoiceArgs, re
 			{
 				Name:  "end",
 				Value: endDate,
+			},
+			{
+				Name:  "buyerid",
+				Value: args.BuyerID,
 			},
 		}
 

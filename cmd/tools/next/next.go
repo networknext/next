@@ -606,7 +606,7 @@ func main() {
 			{
 				Name:       "relays",
 				ShortUsage: "next relays <name>",
-				ShortHelp:  "Manage relays",
+				ShortHelp:  "Add and remove relays",
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) > 0 {
 						relays(rpcClient, env, args[0])
@@ -742,7 +742,9 @@ func main() {
 				},
 			},
 			{
-				Name: "relay",
+				Name:       "relay",
+				ShortUsage: "next relay <command>",
+				ShortHelp:  "Misc relay commands",
 				Subcommands: []*ffcli.Command{
 					{
 						Name:       "keys",

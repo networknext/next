@@ -24,9 +24,13 @@ func TestInvoiceService(t *testing.T) {
 
 	var err error
 
+	// Liquid Bit: ZPYZSrXJcXyOqPzL6zam
+	// Psyonix   : dtqb5J5pAGMS7IizFfWD
+
 	args := jsonrpc.InvoiceArgs{
 		StartDate: time.Date(2020, 5, 1, 0, 0, 0, 0, time.Local),
 		EndDate:   time.Date(2020, 5, 31, 0, 0, 0, 0, time.Local),
+		BuyerID:   "Buyer/ZPYZSrXJcXyOqPzL6zam",
 	}
 
 	svc := &jsonrpc.InvoiceService{}

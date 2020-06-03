@@ -107,7 +107,7 @@ FROM (
           (networkNext AND ARRAY_LENGTH(route) > 0) AS wasRouteIssued,
           COALESCE(maxImprovementRtt, 0) AS maxImprovementRtt,
           COALESCE(slicesNetImprovedPacketLoss, 0) AS slicesNetImprovedPacketLoss,          
-        FROM `network-next-v3-prod.v3.billing_may_dev` AS a
+        FROM `network-next-v3-prod.v3.billing` AS a
         LEFT JOIN (
           SELECT
             sessionId,
@@ -125,7 +125,7 @@ FROM (
                 LEAD(nextPacketLoss, 1) OVER (PARTITION BY sessionId, timestampStart ORDER BY timestamp ASC) AS nextPacketLoss,
                 LEAD(directPacketLoss, 1) OVER (PARTITION BY sessionId, timestampStart ORDER BY timestamp ASC) AS directPacketLoss,
                 LEAD(directPacketLoss, 1) OVER (PARTITION BY sessionId, timestampStart ORDER BY timestamp ASC) - LEAD(nextPacketLoss, 1) OVER (PARTITION BY sessionId, timestampStart ORDER BY timestamp ASC) AS improvementPacketLoss,
-              FROM `network-next-v3-prod.v3.billing_may_dev`
+              FROM `network-next-v3-prod.v3.billing`
               WHERE DATE(timestampStart) >= @start AND DATE(timestampStart) <= @end
             ) 
             WHERE nextRtt > 0
@@ -136,7 +136,7 @@ FROM (
       )
       WHERE (NOT buyerId = "Buyer/dtqb5J5pAGMS7IizFfWD") OR (maxImprovementRtt >= 20 OR slicesNetImprovedPacketLoss >= 3)
     )
-    WHERE DATE(timestampStart) >= @start AND DATE(timestampStart) <= @end
+    WHERE DATE(timestampStart) >= @start AND DATE(timestampStart) <= @end and buyerId = @buyerid
   )
   GROUP BY buyerId, sessionId, DATE(timestampStart)
 )
