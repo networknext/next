@@ -75,7 +75,7 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 		return fmt.Errorf("failed to fetch user list: %w", err)
 	}
 	requestUser := r.Context().Value("user")
-	if _, ok := requestUser.(string); !ok {
+	if requestUser == nil {
 		return fmt.Errorf("unable to parse user from token")
 	}
 

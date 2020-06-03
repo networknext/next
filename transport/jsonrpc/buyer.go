@@ -435,7 +435,7 @@ func (s *BuyersService) IsSameBuyer(r *http.Request, buyerID string) (bool, erro
 	}
 
 	requestUser := r.Context().Value("user")
-	if _, ok := requestUser.(string); !ok {
+	if requestUser == nil {
 		return false, fmt.Errorf("unable to parse user from token")
 	}
 
