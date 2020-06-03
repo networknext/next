@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/networknext/backend/routing"
 	localjsonrpc "github.com/networknext/backend/transport/jsonrpc"
@@ -129,66 +130,7 @@ func updateRelayState(rpcClient jsonrpc.RPCClient, info relayInfo, state routing
 }
 
 func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []string) {
-	makeEnv := func(info relayInfo) {
-		publicKey, privateKey, err := box.GenerateKey(rand.Reader)
-
-		publicKeyB64 := base64.StdEncoding.EncodeToString(publicKey[:])
-		privateKeyB64 := base64.StdEncoding.EncodeToString(privateKey[:])
-
-		if err != nil {
-			log.Fatal("could not generate public private keypair")
-		}
-
-		routerPublicKey, err := env.RouterPublicKey()
-
-		if err != nil {
-			log.Fatalf("could not get router public key: %v", err)
-		}
-
-		backendHostname, err := env.RelayBackendHostname()
-
-		if err != nil {
-			log.Fatalf("could not get backend hostname: %v", err)
-		}
-
-		oldBackendHostname, err := env.OldRelayBackendHostname()
-
-		if err != nil {
-			log.Fatalf("could not get old backend hostname: %v", err)
-		}
-
-		envvars := make(map[string]string)
-		envvars["RELAY_ADDRESS"] = info.publicAddr
-		envvars["RELAY_PUBLIC_KEY"] = publicKeyB64
-		envvars["RELAY_PRIVATE_KEY"] = privateKeyB64
-		envvars["RELAY_ROUTER_PUBLIC_KEY"] = routerPublicKey
-		envvars["RELAY_BACKEND_HOSTNAME"] = backendHostname
-		envvars["RELAY_V3_ENABLED"] = "1"
-		envvars["RELAY_V3_BACKEND_HOSTNAME"] = oldBackendHostname
-		envvars["RELAY_V3_BACKEND_PORT"] = "40000"
-		envvars["RELAY_V3_UPDATE_KEY"] = info.updateKey
-		envvars["RELAY_V3_SPEED"] = info.nicSpeed
-		envvars["RELAY_V3_NAME"] = info.firestoreID
-
-		f, err := os.Create("deploy/relay/relay.env")
-		defer f.Close()
-
-		for k, v := range envvars {
-			f.WriteString(fmt.Sprintf("%s=%s\n", k, v))
-		}
-
-		args := localjsonrpc.RelayPublicKeyUpdateArgs{
-			RelayID:        info.id,
-			RelayPublicKey: publicKeyB64,
-		}
-
-		var reply localjsonrpc.RelayStateUpdateReply
-
-		if err := rpcClient.CallFor(&reply, "OpsService.RelayPublicKeyUpdate", &args); err != nil {
-			log.Fatalf("could not update relay public key: %v", err)
-		}
-	}
-
+	// Make sure the relay is built
 	if !runCommandEnv("make", []string{"build-relay-new"}, nil) {
 		log.Fatal("Failed to build relay")
 	}
@@ -197,22 +139,106 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 		fmt.Printf("Updating %s\n", relayName)
 		info := getRelayInfo(rpcClient, relayName)
 
-		// Retrieve the update key that exists on the relay
-		success, output := runCommandQuiet("deploy/relay/retrieve-update-key.sh", []string{env.SSHKeyFilePath, info.user + "@" + info.sshAddr}, true)
-		if !success {
-			log.Fatalf("could not execute the retrieve-update-key.sh script: %s", output)
+		// Use the update key that exists on the relay already so that the relay
+		// can configure with the old backend correctly.
+		// Once we drop the old backend we can remove this block of code.
+		{
+			// Retrieve the update key that exists on the relay
+			success, output := runCommandQuiet("deploy/relay/retrieve-update-key.sh", []string{env.SSHKeyFilePath, info.user + "@" + info.sshAddr}, true)
+			if !success {
+				log.Fatalf("could not execute the retrieve-update-key.sh script: %s", output)
+			}
+
+			// Make sure the update key env var on the relay wasn't empty
+			if len(output) == 0 {
+				log.Fatalln("no update key found on relay")
+			}
+
+			// Remove extra newline and assign to relay info
+			info.updateKey = output[:len(output)-1]
 		}
 
-		// Make sure the update key env var on the relay wasn't empty
-		if len(output) == 0 {
-			log.Fatalln("no update key found on relay")
-		}
-
-		// Remove extra newline and assign to relay info
-		info.updateKey = output[:len(output)-1]
-
+		// Update the relay's state to offline in storage
 		updateRelayState(rpcClient, info, routing.RelayStateOffline)
-		makeEnv(info)
+
+		// Create the public and private keys for the relay
+		publicKey, privateKey, err := box.GenerateKey(rand.Reader)
+
+		if err != nil {
+			log.Fatal("could not generate public private keypair")
+		}
+
+		publicKeyB64 := base64.StdEncoding.EncodeToString(publicKey[:])
+		privateKeyB64 := base64.StdEncoding.EncodeToString(privateKey[:])
+
+		// Create the environment
+		{
+			routerPublicKey, err := env.RouterPublicKey()
+
+			if err != nil {
+				log.Fatalf("could not get router public key: %v", err)
+			}
+
+			backendHostname, err := env.RelayBackendHostname()
+
+			if err != nil {
+				log.Fatalf("could not get backend hostname: %v", err)
+			}
+
+			oldBackendHostname, err := env.OldRelayBackendHostname()
+
+			if err != nil {
+				log.Fatalf("could not get old backend hostname: %v", err)
+			}
+
+			envvars := make(map[string]string)
+			envvars["RELAY_ADDRESS"] = info.publicAddr
+			envvars["RELAY_PUBLIC_KEY"] = publicKeyB64
+			envvars["RELAY_PRIVATE_KEY"] = privateKeyB64
+			envvars["RELAY_ROUTER_PUBLIC_KEY"] = routerPublicKey
+			envvars["RELAY_BACKEND_HOSTNAME"] = backendHostname
+			envvars["RELAY_V3_ENABLED"] = "1"
+			envvars["RELAY_V3_BACKEND_HOSTNAME"] = oldBackendHostname
+			envvars["RELAY_V3_BACKEND_PORT"] = "40000"
+			envvars["RELAY_V3_UPDATE_KEY"] = info.updateKey
+			envvars["RELAY_V3_SPEED"] = info.nicSpeed
+			envvars["RELAY_V3_NAME"] = info.firestoreID
+
+			f, err := os.Create("deploy/relay/relay.env")
+			if err != nil {
+				log.Fatalf("could not create relay.env file locally in deploy/relay/relay.env: %v", err)
+			}
+
+			for k, v := range envvars {
+				if _, err := f.WriteString(fmt.Sprintf("%s=%s\n", k, v)); err != nil {
+					f.Close()
+					log.Fatalf("could not write %s=%s to relay.env file locally in deploy/relay/relay.env: %v", k, v, err)
+				}
+			}
+
+			f.Close()
+		}
+
+		// Set the public key in storage
+		{
+			args := localjsonrpc.RelayPublicKeyUpdateArgs{
+				RelayID:        info.id,
+				RelayPublicKey: publicKeyB64,
+			}
+
+			var reply localjsonrpc.RelayStateUpdateReply
+
+			if err := rpcClient.CallFor(&reply, "OpsService.RelayPublicKeyUpdate", &args); err != nil {
+				log.Fatalf("could not update relay public key: %v", err)
+			}
+		}
+
+		// Give the relay backend enough time to pull down the new public key so that
+		// we don't get crypto open failed logs when the relay tries to initialize at first
+		fmt.Println("Waiting for backend to sync changes...")
+		time.Sleep(10 * time.Second)
+
+		// Run the relay update script
 		if !runCommandEnv("deploy/relay-update.sh", []string{env.SSHKeyFilePath, info.user + "@" + info.sshAddr}, nil) {
 			log.Fatal("could not execute the relay-update.sh script")
 		}
