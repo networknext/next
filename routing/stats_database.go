@@ -14,8 +14,8 @@ const (
 	HistoryInvalidValue = -1
 	HistorySize         = 6
 
-	MaxJitter     = 10.0
-	MaxPacketLoss = 0.1
+	MaxJitter     = 250 // 10.0
+	MaxPacketLoss = 10.0 // 0.1
 )
 
 // TriMatrixLength returns the length of a triangular shaped matrix
