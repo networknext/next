@@ -25,6 +25,8 @@ SYSTEMD_SERVICE_FILE = app.service
 COST_FILE = $(DIST_DIR)/cost.bin
 OPTIMIZE_FILE = $(DIST_DIR)/optimize.bin
 
+export ENV = local
+
 ##################
 ##    SDK ENV   ##
 ##################
