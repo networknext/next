@@ -19,17 +19,17 @@ func sellers(rpcClient jsonrpc.RPCClient, env Environment) {
 	}
 
 	sellers := []struct {
-		ID        string
 		Name      string
+		ID        string
 	}{}
 
 	for _, seller := range reply.Sellers {
 		sellers = append(sellers, struct {
-			ID         string
 			Name       string
+			ID         string
 		}{
-			ID:          seller.ID,
 			Name:        seller.Name,
+			ID:          seller.ID,
 		})
 	}
 
