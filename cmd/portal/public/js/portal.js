@@ -97,7 +97,7 @@ MapHandler = {
 			zoom: 4.6,
 			longitude: -98.583333, // 'Center' of the US
 			latitude: 39.833333,
-			maxZoom: 14,
+			minZoom: 5,
 		},
 	},
 	defaultWorld: {
@@ -105,7 +105,7 @@ MapHandler = {
 			zoom: 2,
 			longitude: 0, // 'Center' of the world map
 			latitude: 0,
-			maxZoom: 14,
+			minZoom: 2,
 		},
 	},
 	mapInstance: null,
@@ -191,23 +191,6 @@ MapHandler = {
 					aggregation
 				});
 
-				/* let nnLayer = new deck.ScatterplotLayer({
-					id: 'nn-layer',
-					data,
-					pickable: true,
-					opacity: 0.8,
-					stroked: true,
-					filled: true,
-					radiusScale: 6,
-					radiusMinPixels: 1,
-					radiusMaxPixels: 100,
-					lineWidthMinPixels: 1,
-					getPosition: d => [d[0], d[1]],
-					getRadius: d => 10,
-					getFillColor: d => [0,109,44],
-					getLineColor: d => [0,109,44]
-				}); */
-
 				data = direct;
 
 				let directLayer = new deck.ScreenGridLayer({
@@ -223,23 +206,6 @@ MapHandler = {
 					gpuAggregation,
 					aggregation
 				});
-
-				/* let directLayer = new deck.ScatterplotLayer({
-					id: 'direct-layer',
-					data,
-					pickable: true,
-					opacity: 0.8,
-					stroked: true,
-					filled: true,
-					radiusScale: 6,
-					radiusMinPixels: 1,
-					radiusMaxPixels: 100,
-					lineWidthMinPixels: 1,
-					getPosition: d => [d[0], d[1]],
-					getRadius: d => 10,
-					getFillColor: d => [49,130,189],
-					getLineColor: d => [49,130,189]
-				  }); */
 
 				let layers = (onNN.length > 0 || direct.length > 0) ? [directLayer, nnLayer] : [];
 				if (this.mapInstance) {
@@ -869,6 +835,16 @@ function createVueComponents() {
 					showFailure: false,
 					showSuccess: false,
 					slices: [],
+					graphs: {
+						bandwidthUpChart: null,
+						bandwidthDownChart: null,
+						jitterImprovementChart: null,
+						jitterComparisonChart: null,
+						latencyImprovementChart: null,
+						latencyComparisonChart: null,
+						packetLossImprovementChart: null,
+						packetLossComparisonChart: null
+					}
 				},
 				settings: {
 					accounts: [],
@@ -1244,15 +1220,70 @@ function generateCharts(data) {
 		]
 	};
 
-	let latencyImprovementChart = new uPlot(latencyImprovementOpts, latencyData.improvement, document.getElementById("latency-chart-1"));
-	let latencyComparisonChart = new uPlot(latencycomparisonOpts, latencyData.comparison, document.getElementById("latency-chart-2"));
+	if (rootComponent.$data.pages.sessionTool.graphs.latencyImprovementChart != null) {
+		rootComponent.$data.pages.sessionTool.graphs.latencyImprovementChart.destroy();
+	}
 
-	let jitterImprovementChart = new uPlot(latencyImprovementOpts, jitterData.improvement, document.getElementById("jitter-chart-1"));
-	let jitterComparisonChart = new uPlot(latencycomparisonOpts, jitterData.comparison, document.getElementById("jitter-chart-2"));
+	Object.assign(rootComponent.$data.pages.sessionTool.graphs, {
+		latencyImprovementChart: new uPlot(latencyImprovementOpts, latencyData.improvement, document.getElementById("latency-chart-1"))
+	});
 
-	let packetLossImprovementChart = new uPlot(packetLossImprovementOpts, packetLossData.improvement, document.getElementById("packet-loss-chart-1"));
-	let packetLossComparisonChart = new uPlot(packetLossComparisonOpts, packetLossData.comparison, document.getElementById("packet-loss-chart-2"));
+	if (rootComponent.$data.pages.sessionTool.graphs.latencyComparisonChart != null) {
+		rootComponent.$data.pages.sessionTool.graphs.latencyComparisonChart.destroy();
+	}
 
-	let bandwidthUpChart = new uPlot(bandwidthUpOpts, bandwidthData.up, document.getElementById("bandwidth-chart-1"));
-	let bandwidthDownChart = new uPlot(bandwidthDownOpts, bandwidthData.down, document.getElementById("bandwidth-chart-2"));
+	Object.assign(rootComponent.$data.pages.sessionTool.graphs, {
+		latencyComparisonChart: new uPlot(latencycomparisonOpts, latencyData.comparison, document.getElementById("latency-chart-2"))
+	});
+
+	// let jitterImprovementChart = new uPlot(latencyImprovementOpts, jitterData.improvement, document.getElementById("jitter-chart-1"));
+	// let jitterComparisonChart = new uPlot(latencycomparisonOpts, jitterData.comparison, document.getElementById("jitter-chart-2"));
+
+	if (rootComponent.$data.pages.sessionTool.graphs.jitterImprovementChart != null) {
+		rootComponent.$data.pages.sessionTool.graphs.jitterImprovementChart.destroy();
+	}
+
+	Object.assign(rootComponent.$data.pages.sessionTool.graphs, {
+		jitterImprovementChart: new uPlot(latencyImprovementOpts, jitterData.improvement, document.getElementById("jitter-chart-1"))
+	});
+
+	if (rootComponent.$data.pages.sessionTool.graphs.jitterComparisonChart != null) {
+		rootComponent.$data.pages.sessionTool.graphs.jitterComparisonChart.destroy();
+	}
+
+	Object.assign(rootComponent.$data.pages.sessionTool.graphs, {
+		jitterComparisonChart: new uPlot(latencycomparisonOpts, jitterData.comparison, document.getElementById("jitter-chart-2"))
+	});
+
+	if (rootComponent.$data.pages.sessionTool.graphs.packetLossImprovementChart != null) {
+		rootComponent.$data.pages.sessionTool.graphs.packetLossImprovementChart.destroy();
+	}
+
+	Object.assign(rootComponent.$data.pages.sessionTool.graphs, {
+		packetLossImprovementChart: new uPlot(packetLossImprovementOpts, packetLossData.improvement, document.getElementById("packet-loss-chart-1"))
+	});
+
+	if (rootComponent.$data.pages.sessionTool.graphs.packetLossComparisonChart != null) {
+		rootComponent.$data.pages.sessionTool.graphs.packetLossComparisonChart.destroy();
+	}
+
+	Object.assign(rootComponent.$data.pages.sessionTool.graphs, {
+		packetLossComparisonChart: new uPlot(packetLossComparisonOpts, packetLossData.comparison, document.getElementById("packet-loss-chart-2"))
+	});
+
+	if (rootComponent.$data.pages.sessionTool.graphs.bandwidthUpChart != null) {
+		rootComponent.$data.pages.sessionTool.graphs.bandwidthUpChart.destroy();
+	}
+
+	Object.assign(rootComponent.$data.pages.sessionTool.graphs, {
+		bandwidthUpChart: new uPlot(bandwidthUpOpts, bandwidthData.up, document.getElementById("bandwidth-chart-1"))
+	});
+
+	if (rootComponent.$data.pages.sessionTool.graphs.bandwidthDownChart != null) {
+		rootComponent.$data.pages.sessionTool.graphs.bandwidthDownChart.destroy();
+	}
+
+	Object.assign(rootComponent.$data.pages.sessionTool.graphs, {
+		bandwidthDownChart: new uPlot(bandwidthDownOpts, bandwidthData.down, document.getElementById("bandwidth-chart-2"))
+	});
 }

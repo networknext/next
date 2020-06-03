@@ -395,7 +395,7 @@
                                             </th>
                                             <th>
                                                 <span>
-                                                    User ID
+                                                    User Hash
                                                 </span>
                                             </th>
                                             <th>
@@ -628,7 +628,7 @@
                                     <div class="col-12 col-lg-4">
                                         <div class="card">
                                             <div class="card-img-top">
-                                                <div id="session-tool-map" style="width: 100%; height: 20vh; margin: 0px; padding: 0px; position: relative;"></div>
+                                                <div id="session-tool-map" style="width: 100%; height: 40vh; margin: 0px; padding: 0px; position: relative;"></div>
                                             </div>
                                             <div class="card-body">
                                                 <div class="card-text">
@@ -643,7 +643,7 @@
                                                         </dd>
                                                         <div>
                                                             <dt>
-                                                                User ID
+                                                                User Hash
                                                             </dt>
                                                             <dd>
                                                                 <a class="text-dark">
@@ -801,11 +801,11 @@
                         <form class="flow-stats-form" v-on:submit.prevent="handlers.workspaceHandler.fetchUserSessions()">
                             <div class="form-group">
                                 <label for="user-hash-input">
-                                    User ID
+                                    User Hash
                                 </label>
                                 <div class="row">
                                     <div class="col">
-                                        <input v-model="pages.userTool.hash" class="form-control" type="text" placeholder="Enter a User ID to view statistics">
+                                        <input v-model="pages.userTool.hash" class="form-control" type="text" placeholder="Enter a User Hash to view statistics">
                                     </div>
                                     <div class="col-auto">
                                         <button class="btn btn-primary" type="submit">
@@ -816,7 +816,7 @@
                             </div>
                         </form>
                         <div class="alert alert-info" role="alert" id="user-tool-alert" v-if="pages.userTool.info">
-                            Please enter a User ID to view their sessions.
+                            Please enter a User ID or Hash to view their sessions.
                         </div>
                         <div class="alert alert-danger" role="alert" id="user-tool-danger" v-if="pages.userTool.danger">
                             Failed to fetch user sessions
@@ -856,11 +856,6 @@
                                                     Server Address
                                                 </span>
                                             </th>
-                                            <th>
-                                                <span>
-                                                    Started
-                                                </span>
-                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody v-if="pages.userTool.sessions.length > 0">
@@ -884,9 +879,6 @@
                                             </td>
                                             <td>
                                                 {{ session.server_addr }}
-                                            </td>
-                                            <td>
-                                                IMPLEMENT
                                             </td>
                                         </tr>
                                     </tbody>
