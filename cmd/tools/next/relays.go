@@ -24,8 +24,6 @@ func relays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 	relays := []struct {
 		Name        string
 		State       string
-		BindAddr    string
-		SSHAddr     string
 		Location    string
 		Speed       string
 		Bandwidth   string
@@ -38,8 +36,6 @@ func relays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 		relays = append(relays, struct {
 			Name        string
 			State       string
-			BindAddr    string
-			SSHAddr     string
 			Location    string
 			Speed       string
 			Bandwidth   string
@@ -49,8 +45,6 @@ func relays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 		}{
 			Name:        relay.Name,
 			State:       relay.State,
-			BindAddr:    relay.Addr,
-			SSHAddr:     fmt.Sprintf("%s@%s:%d", relay.SSHUser, relay.ManagementAddr, relay.SSHPort),
 			Location:    fmt.Sprintf("%.2f, %.2f", relay.Latitude, relay.Longitude),
 			Speed:       fmt.Sprintf("%dGB", relay.NICSpeedMbps/1000),
 			Bandwidth:   fmt.Sprintf("%dGB", relay.IncludedBandwidthGB),
