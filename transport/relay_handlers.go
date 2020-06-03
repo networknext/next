@@ -769,20 +769,6 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			return
 		}
 
-		notification := map[string]string{
-			"icon_emoji": ":biohazard_sign:",
-			"username":   fmt.Sprintf("Relay Backend (%s)", params.Environment),
-			"text":       fmt.Sprintf("Relay %s (%s) has been placed into quarantine.", relayCacheEntry.Name, relayCacheEntry.Addr.String()),
-		}
-
-		var buf bytes.Buffer
-		if err := json.NewEncoder(&buf).Encode(notification); err != nil {
-			return
-		}
-		if _, err := params.HTTPClient.Post("https://hooks.slack.com/services/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", "application/json", &buf); err != nil {
-			return
-		}
-
 		if !bytes.Equal(relayUpdateRequest.Token, relayCacheEntry.PublicKey) {
 			sentry.CaptureMessage("relay public key doesn't match")
 			level.Error(locallogger).Log("msg", "relay public key doesn't match")
