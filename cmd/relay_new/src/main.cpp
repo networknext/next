@@ -67,7 +67,8 @@ namespace
     }
 
     // update key
-    {
+
+    if (env.RelayV3Enabled == "1") {
       std::string b64UpdateKey = env.RelayV3UpdateKey;
       auto len = encoding::base64::Decode(b64UpdateKey, keychain.UpdateKey);
       if (len != crypto_sign_SECRETKEYBYTES) {
