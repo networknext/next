@@ -1,9 +1,11 @@
 package transport_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"testing"
@@ -123,6 +125,14 @@ func NewTestHTTPClient(fn RoundTripFunc) *http.Client {
 		Transport: RoundTripFunc(fn),
 	}
 }
+
+var NoopHTTPClient = NewTestHTTPClient(func(req *http.Request) *http.Response {
+	return &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     make(http.Header),
+		Body:       ioutil.NopCloser(bytes.NewBufferString(`{}`)),
+	}
+})
 
 func seedRedis(t *testing.T, redisServer *miniredis.Miniredis, addressesToAdd []string) {
 	addEntry := func(addr string) {
