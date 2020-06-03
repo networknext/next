@@ -235,6 +235,7 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 
 		// Give the relay backend enough time to pull down the new public key so that
 		// we don't get crypto open failed logs when the relay tries to initialize at first
+		fmt.Println("Waiting for backend to sync changes...")
 		time.Sleep(10 * time.Second)
 
 		// Run the relay update script
