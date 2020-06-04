@@ -39,6 +39,8 @@ check_if_running() {
 install_relay() {
 	check_if_running 'error, please disable relay before installing'
 
+  sudo apt install libsodium23
+
 	if [[ ! -d '/app' ]]; then
 		sudo mkdir '/app'
 	fi
