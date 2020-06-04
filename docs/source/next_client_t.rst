@@ -25,7 +25,8 @@ Creates an instance of a client, binding a socket to the specified address and p
 
 	next_client_t * next_client_create( void * context, 
 	                                    const char * bind_address, 
-	                                    void (*packet_received_callback)( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes ) );
+	                                    void (*packet_received_callback)( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes ),
+	                                    void (*wake_up_callback)( void * context ) );
 
 **Parameters:**
 
@@ -34,6 +35,8 @@ Creates an instance of a client, binding a socket to the specified address and p
 	- **bind_address** -- An address string describing the bind address and port to bind to. Typically "0.0.0.0:0" is passed in, which binds to any IPv4 interface and lets the system pick a port. Alternatively, you can bind to a specific port, for example: "0.0.0.0:50000".
 
 	- **packet_received_callback** -- Called from the same thread that calls *next_client_update*, whenever a packet is received from the server. Required.
+
+	- **wake_up_callback** -- Optional callback. Pass NULL if not used. Sets a callback function to be called from an internal network next thread when a packet is ready to be received for this client. Intended to let you set an event of your own creation when a packet is ready to receive, making it possible to use Network Next with applications built around traditional select or wait for multiple event style blocking socket loops. Call next_client_update to pump received packets to the packet_received_callback when you wake up on your main thread from your event.
 
 **Return value:** 
 

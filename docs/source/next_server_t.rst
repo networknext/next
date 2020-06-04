@@ -43,6 +43,8 @@ Creates an instance of a server, binding a socket to the specified address and p
 
 	- **packet_received_callback** -- Called from the same thread that calls *next_server_update*, whenever a packet is received from a client. Required.
 
+	- **wake_up_callback** -- Optional callback. Pass NULL if not used. Sets a callback function to be called from an internal network next thread when a packet is ready to be received for this server. Intended to let you set an event of your own creation when a packet is ready to receive, making it possible to use Network Next with applications built around traditional select or wait for multiple event style blocking socket loops. Call next_server_update to pump received packets to the packet_received_callback when you wake up on main thread from your event.
+
 **Return value:** 
 
 	The newly created server instance, or NULL, if the server could not be created. 
