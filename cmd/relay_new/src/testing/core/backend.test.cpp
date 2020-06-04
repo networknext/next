@@ -39,7 +39,7 @@ Test(core_backend_init_valid)
 {
   util::Clock clock;
   core::RouterInfo routerInfo(clock);
-  core::RelayManager<core::Relay> manager(clock);
+  core::RelayManager<core::Relay> manager(routerInfo);
   core::SessionMap sessions;
   auto backend = std::move(makeBackend(routerInfo, manager, sessions, clock));
 
@@ -77,7 +77,7 @@ Test(core_Backend_updateCycle_shutdown_60s)
 
   util::Clock clock;
   core::RouterInfo info(clock);
-  core::RelayManager<core::Relay> manager(clock);
+  core::RelayManager<core::Relay> manager(info);
   core::SessionMap sessions;
   auto backend = std::move(makeBackend(info, manager, sessions, clock));
   volatile bool handle = true;
@@ -110,7 +110,7 @@ Test(core_Backend_updateCycle_ack_and_30s)
 
   util::Clock clock;
   core::RouterInfo info(clock);
-  core::RelayManager<core::Relay> manager(clock);
+  core::RelayManager<core::Relay> manager(info);
   core::SessionMap sessions;
   auto backend = std::move(makeBackend(info, manager, sessions, clock));
   volatile bool handle = true;
@@ -143,7 +143,7 @@ Test(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
 
   util::Clock clock;
   core::RouterInfo info(clock);
-  core::RelayManager<core::Relay> manager(clock);
+  core::RelayManager<core::Relay> manager(info);
   core::SessionMap sessions;
   auto backend = std::move(makeBackend(info, manager, sessions, clock));
   volatile bool handle = true;
@@ -179,7 +179,7 @@ Test(core_Backend_updateCycle_update_fails_for_max_number_of_attempts)
 
   util::Clock clock;
   core::RouterInfo info(clock);
-  core::RelayManager<core::Relay> manager(clock);
+  core::RelayManager<core::Relay> manager(info);
   core::SessionMap sessions;
   auto backend = std::move(makeBackend(info, manager, sessions, clock));
   volatile bool handle = true;
@@ -210,7 +210,7 @@ Test(core_Backend_updateCycle_no_clean_shutdown)
 
   util::Clock clock;
   core::RouterInfo info(clock);
-  core::RelayManager<core::Relay> manager(clock);
+  core::RelayManager<core::Relay> manager(info);
   core::SessionMap sessions;
   auto backend = std::move(makeBackend(info, manager, sessions, clock));
   volatile bool handle = true;
@@ -332,7 +332,7 @@ Test(core_Backend_update_shutting_down_true)
 {
   util::Clock clock;
   core::RouterInfo routerInfo(clock);
-  core::RelayManager<core::Relay> manager(clock);
+  core::RelayManager<core::Relay> manager(routerInfo);
   core::SessionMap sessions;
   auto backend = std::move(makeBackend(routerInfo, manager, sessions, clock));
   util::ThroughputRecorder recorder;
