@@ -326,6 +326,20 @@ func main() {
 			// commands to print out helpful info in this section
 
 			{
+				Name:       "sessions",
+				ShortUsage: "next sessions",
+				ShortHelp:  "List sessions",
+				Exec: func(_ context.Context, args []string) error {
+					if len(args) > 0 {
+						sessions(rpcClient, env, args[0])
+						return nil
+					}
+					sessions(rpcClient, env, "")
+					return nil
+				},
+			},
+
+			{
 				Name:       "relays",
 				ShortUsage: "next relays <name>",
 				ShortHelp:  "List relays",
@@ -867,19 +881,6 @@ func main() {
 							return nil
 						},
 					},
-				},
-			},
-			{
-				Name:       "sessions",
-				ShortUsage: "next sessions",
-				ShortHelp:  "View sessions",
-				Exec: func(_ context.Context, args []string) error {
-					if len(args) > 0 {
-						sessions(rpcClient, env, args[0])
-						return nil
-					}
-					sessions(rpcClient, env, "")
-					return nil
 				},
 			},
 		},
