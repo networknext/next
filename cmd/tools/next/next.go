@@ -175,15 +175,6 @@ func secureShell(user string, address string, port int) {
 	}
 }
 
-func sshToRelay(env Environment, relayName string) {
-	fmt.Printf("(ssh to relay %s)\n", relayName)
-	// todo: look up relay by name, get ssh data from relay entry.
-	user := "root"
-	address := "173.255.241.176"
-	port := 22
-	secureShell(user, address, port)
-}
-
 func readJSONData(entity string, args []string) []byte {
 	// Check if the input is piped or a filepath
 	fileInfo, err := os.Stdin.Stat()
@@ -849,7 +840,12 @@ func main() {
 		},
 	}
 
+	fmt.Printf( "\n")
+
 	if err := root.ParseAndRun(context.Background(), os.Args[1:]); err != nil {
+		fmt.Printf( "\n")
 		log.Fatal(err)
 	}
+
+	fmt.Printf( "\n")
 }
