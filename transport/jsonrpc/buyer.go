@@ -141,9 +141,15 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	}
 
 	sort.Slice(reply.Sessions, func(i int, j int) bool {
-		if reply.Sessions[i].OnNetworkNext {
+		// if comparing NN to Direct
+		if reply.Sessions[i].OnNetworkNext && !reply.Sessions[j].OnNetworkNext {
+			return true
+		}
+		// if comparing NN to NN
+		if reply.Sessions[i].OnNetworkNext && reply.Sessions[j].OnNetworkNext {
 			return reply.Sessions[i].DeltaRTT > reply.Sessions[j].DeltaRTT
 		}
+		// if comparing Direct to NN or Direct to Direct
 		return false
 	})
 
