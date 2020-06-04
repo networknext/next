@@ -73,30 +73,30 @@ type Relay struct {
 	ID   uint64 `json:"id"`
 	Name string `json:"name"`
 
-	Addr      net.UDPAddr `json:"-"`
-	PublicKey []byte      `json:"-"`
+	Addr      net.UDPAddr `json:"addr"`
+	PublicKey []byte      `json:"public_key"`
 
-	Seller     Seller     `json:"-"`
-	Datacenter Datacenter `json:"-"`
+	Seller     Seller     `json:"seller"`
+	Datacenter Datacenter `json:"datacenter"`
 
-	NICSpeedMbps        uint64 `json:"-"`
-	IncludedBandwidthGB uint64 `json:"-"`
+	NICSpeedMbps        uint64 `json:"nic_speed_mbps"`
+	IncludedBandwidthGB uint64 `json:"included_bandwidth_GB"`
 
-	LastUpdateTime time.Time `json:"-"`
+	LastUpdateTime time.Time `json:"last_udpate_time"`
 
-	State RelayState `json:"-"`
+	State RelayState `json:"state"`
 
-	ManagementAddr string `json:"-"`
-	SSHUser        string `json:"-"`
-	SSHPort        int64  `json:"-"`
+	ManagementAddr string `json:"management_addr"`
+	SSHUser        string `json:"ssh_user"`
+	SSHPort        int64  `json:"ssh_port"`
 
-	TrafficStats RelayTrafficStats `json:"-"`
+	TrafficStats RelayTrafficStats `json:"traffic_stats"`
 	ClientStats  Stats             `json:"client_stats"`
 
-	MaxSessions uint32 `json:"-"`
+	MaxSessions uint32 `json:"max_sessions"`
 
-	UpdateKey   []byte `json:"-"`
-	FirestoreID string `json:"-"`
+	UpdateKey   []byte `json:"update_key"`
+	FirestoreID string `json:"firestore_id"`
 }
 
 func (r *Relay) EncodedPublicKey() string {
