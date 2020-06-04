@@ -31,10 +31,10 @@
 #include <stddef.h>
 
 #if !defined(NEXT_DEVELOPMENT)
-#define NEXT_VERSION_FULL                                   "3.4.6"
+#define NEXT_VERSION_FULL                                   "3.4.7"
 #define NEXT_VERSION_MAJOR_INT                                    3
 #define NEXT_VERSION_MINOR_INT                                    4
-#define NEXT_VERSION_PATCH_INT                                    6
+#define NEXT_VERSION_PATCH_INT                                    7
 #else // #if !NEXT_DEVELOPMENT
 #define NEXT_VERSION_FULL                                     "dev"
 #define NEXT_VERSION_MAJOR_INT                                    0
@@ -237,7 +237,7 @@ struct next_client_stats_t
 
 struct next_client_t;
 
-NEXT_EXPORT_FUNC next_client_t * next_client_create( void * context, const char * bind_address, void (*packet_received_callback)( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes ) );
+NEXT_EXPORT_FUNC next_client_t * next_client_create( void * context, const char * bind_address, void (*packet_received_callback)( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes ), void (*wake_up_callback)( void * context ) );
 
 NEXT_EXPORT_FUNC void next_client_destroy( next_client_t * client );
 
@@ -265,6 +265,8 @@ NEXT_EXPORT_FUNC const next_client_stats_t * next_client_stats( next_client_t * 
 
 NEXT_EXPORT_FUNC void next_client_set_user_flags( next_client_t * client, uint64_t user_flags );
 
+NEXT_EXPORT_FUNC void next_client_set_wake_up_callback( next_client_t * client, void (*wake_up_callback)( next_client_t * client, void * context ) );
+
 // -----------------------------------------
 
 #define NEXT_SERVER_STATE_DIRECT_ONLY               0
@@ -274,7 +276,7 @@ NEXT_EXPORT_FUNC void next_client_set_user_flags( next_client_t * client, uint64
 
 struct next_server_t;
 
-NEXT_EXPORT_FUNC next_server_t * next_server_create( void * context, const char * server_address, const char * bind_address, const char * datacenter, void (*packet_received_callback)( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes ) );
+NEXT_EXPORT_FUNC next_server_t * next_server_create( void * context, const char * server_address, const char * bind_address, const char * datacenter, void (*packet_received_callback)( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes ), void (*wake_up_callback)( void * context ) );
 
 NEXT_EXPORT_FUNC void next_server_destroy( next_server_t * server );
 
@@ -293,6 +295,8 @@ NEXT_EXPORT_FUNC bool next_server_session_upgraded( next_server_t * server, cons
 NEXT_EXPORT_FUNC void next_server_send_packet( next_server_t * server, const next_address_t * to_address, const uint8_t * packet_data, int packet_bytes );
 
 NEXT_EXPORT_FUNC void next_server_send_packet_direct( next_server_t * server, const next_address_t * to_address, const uint8_t * packet_data, int packet_bytes );
+
+NEXT_EXPORT_FUNC void next_server_set_wake_up_callback( next_server_t * server, void (*wake_up_callback)( next_server_t * server, void * context ) );
 
 // -----------------------------------------
 

@@ -74,7 +74,7 @@ int main()
         return 1;
     }
 
-    next_server_t * server = next_server_create( NULL, server_address, bind_address, server_datacenter, server_packet_received );
+    next_server_t * server = next_server_create( NULL, server_address, bind_address, server_datacenter, server_packet_received, NULL );
     if ( server == NULL )
     {
         printf( "error: failed to create server\n" );

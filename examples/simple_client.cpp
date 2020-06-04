@@ -53,7 +53,7 @@ int main()
         return 1;
     }
 
-    next_client_t * client = next_client_create( NULL, bind_address, client_packet_received );
+    next_client_t * client = next_client_create( NULL, bind_address, client_packet_received, NULL );
     if ( client == NULL )
     {
         printf( "error: failed to create client\n" );

@@ -200,7 +200,7 @@ int main( int argc, char ** argv )
             {
                 next_assert( client_allocator[i] == NULL );
                 client_allocator[i] = new Allocator();
-                clients[i] = next_client_create( client_allocator[i], "0.0.0.0:0", client_packet_received );
+                clients[i] = next_client_create( client_allocator[i], "0.0.0.0:0", client_packet_received, NULL );
                 next_assert( clients[i] );
                 next_printf( NEXT_LOG_LEVEL_INFO, "created client %d", i );
             }
@@ -265,7 +265,7 @@ int main( int argc, char ** argv )
                 char bind_address_string[256];
                 sprintf( server_address_string, "127.0.0.1:%d", 20000 + i );
                 sprintf( bind_address_string, "0.0.0.0:%d", 20000 + i );
-                servers[i] = next_server_create( server_allocator[i], server_address_string, bind_address_string, "local", server_packet_received );
+                servers[i] = next_server_create( server_allocator[i], server_address_string, bind_address_string, "local", server_packet_received, NULL );
                 next_assert( servers[i] );
                 next_printf( NEXT_LOG_LEVEL_INFO, "created server %d", i );
             }

@@ -254,7 +254,7 @@ int main()
     server_context.allocator = &server_allocator;
     server_context.server_data = 0x12345678;
 
-    next_server_t * server = next_server_create( &server_context, server_address, bind_address, server_datacenter, server_packet_received );
+    next_server_t * server = next_server_create( &server_context, server_address, bind_address, server_datacenter, server_packet_received, NULL );
     if ( server == NULL )
     {
         printf( "error: failed to create server\n" );
@@ -268,8 +268,6 @@ int main()
     while ( !quit )
     {
         next_server_update( server );
-
-        // todo: extend to print out stats
 
         next_sleep( 1.0 / 60.0 );
     }

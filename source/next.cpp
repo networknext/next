@@ -5556,6 +5556,7 @@ struct next_client_internal_t
 {
     NEXT_DECLARE_SENTINEL(0)
 
+    void (*wake_up_callback)( void * context );
     void * context;
     next_queue_t * command_queue;
     next_queue_t * notify_queue;
@@ -5719,7 +5720,7 @@ void next_client_internal_verify_sentinels( next_client_internal_t * client )
 
 void next_client_internal_destroy( next_client_internal_t * client );
 
-next_client_internal_t * next_client_internal_create( void * context, const char * bind_address_string )
+next_client_internal_t * next_client_internal_create( void * context, const char * bind_address_string, void (*wake_up_callback)( void * context ) )
 {
 #if !NEXT_DEVELOPMENT
     next_printf( NEXT_LOG_LEVEL_INFO, "client sdk version is %s", NEXT_VERSION_FULL );
@@ -5740,6 +5741,8 @@ next_client_internal_t * next_client_internal_create( void * context, const char
     }
 
     memset( client, 0, sizeof( next_client_internal_t) );
+
+    client->wake_up_callback = wake_up_callback;
 
     next_client_internal_initialize_sentinels( client );
 
@@ -6582,9 +6585,14 @@ void next_client_internal_process_game_packet( next_client_internal_t * client, 
         memcpy( notify->payload_data, packet_data, size_t(packet_bytes) );
         {
             next_platform_mutex_guard( &client->notify_mutex );
-            next_queue_push( client->notify_queue, notify );            
+            next_queue_push( client->notify_queue, notify );
         }
         client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT]++;
+    }
+
+    if ( client->wake_up_callback )
+    {
+        client->wake_up_callback( client->context );
     }
 }
 
@@ -7252,7 +7260,7 @@ void next_client_verify_sentinels( next_client_t * client )
 
 void next_client_destroy( next_client_t * client );
 
-next_client_t * next_client_create( void * context, const char * bind_address, void (*packet_received_callback)( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes ) )
+next_client_t * next_client_create( void * context, const char * bind_address, void (*packet_received_callback)( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes ), void (*wake_up_callback)( void * context ) )
 {
     next_assert( bind_address );
     next_assert( packet_received_callback );
@@ -7268,7 +7276,7 @@ next_client_t * next_client_create( void * context, const char * bind_address, v
     client->context = context;
     client->packet_received_callback = packet_received_callback;
 
-    client->internal = next_client_internal_create( client->context, bind_address );
+    client->internal = next_client_internal_create( client->context, bind_address, wake_up_callback );
     if ( !client->internal )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client could not create internal client" );
@@ -9770,6 +9778,7 @@ struct next_server_internal_t
 {
     NEXT_DECLARE_SENTINEL(0)
 
+    void (*wake_up_callback)( void * context );
     void * context;
     int state;
     uint64_t datacenter_id;
@@ -9849,7 +9858,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
 static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_internal_thread_function( void * context );
 
-next_server_internal_t * next_server_internal_create( void * context, const char * server_address_string, const char * bind_address_string, const char * datacenter_string )
+next_server_internal_t * next_server_internal_create( void * context, const char * server_address_string, const char * bind_address_string, const char * datacenter_string, void (*wake_up_callback)( void * context ) )
 {
 #if !NEXT_DEVELOPMENT
     next_printf( NEXT_LOG_LEVEL_INFO, "server sdk version is %s", NEXT_VERSION_FULL );
@@ -9894,6 +9903,8 @@ next_server_internal_t * next_server_internal_create( void * context, const char
     }
 
     memset( server, 0, sizeof( next_server_internal_t) );
+
+    server->wake_up_callback = wake_up_callback;
 
     next_server_internal_initialize_sentinels( server );
 
@@ -11224,6 +11235,11 @@ void next_server_internal_process_game_packet( next_server_internal_t * server, 
             next_queue_push( server->notify_queue, notify );            
         }
     }
+
+    if ( server->wake_up_callback )
+    {
+        server->wake_up_callback( server->context );
+    }
 }
 
 void next_server_internal_block_and_receive_packet( next_server_internal_t * server )
@@ -11795,7 +11811,7 @@ void next_server_verify_sentinels( next_server_t * server )
 
 void next_server_destroy( next_server_t * server );
 
-next_server_t * next_server_create( void * context, const char * server_address, const char * bind_address, const char * datacenter, void (*packet_received_callback)( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes ) )
+next_server_t * next_server_create( void * context, const char * server_address, const char * bind_address, const char * datacenter, void (*packet_received_callback)( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes ), void (*wake_up_callback)( void * context ) )
 {
     next_assert( server_address );
     next_assert( bind_address );
@@ -11811,7 +11827,7 @@ next_server_t * next_server_create( void * context, const char * server_address,
 
     server->context = context;
 
-    server->internal = next_server_internal_create( context, server_address, bind_address, datacenter );
+    server->internal = next_server_internal_create( context, server_address, bind_address, datacenter, wake_up_callback );
     if ( !server->internal )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "server could not create internal server" );
@@ -12266,6 +12282,14 @@ void next_server_send_packet_direct( next_server_t * server, const next_address_
     }
 
     next_platform_socket_send_packet( server->internal->socket, to_address, packet_data, packet_bytes );
+}
+
+void next_server_set_wake_up_callback( next_server_t * server, void (*wake_up_callback)( next_server_t * server, void * context ) )
+{
+    (void) server;
+    (void) wake_up_callback;
+
+    // todo
 }
 
 // ---------------------------------------------------------------
@@ -13495,7 +13519,7 @@ static void test_client_packet_received_callback( next_client_t * client, void *
 
 static void test_client_ipv4()
 {
-    next_client_t * client = next_client_create( NULL, "0.0.0.0:0", test_client_packet_received_callback );
+    next_client_t * client = next_client_create( NULL, "0.0.0.0:0", test_client_packet_received_callback, NULL );
     check( client );
     check( next_client_port( client ) != 0 );
     next_client_open_session( client, "127.0.0.1:12345" );
@@ -13518,7 +13542,7 @@ static void test_server_packet_received_callback( next_server_t * server, void *
 
 static void test_server_ipv4()
 {
-    next_server_t * server = next_server_create( NULL, "127.0.0.1:0", "0.0.0.0:0", "local", test_server_packet_received_callback );
+    next_server_t * server = next_server_create( NULL, "127.0.0.1:0", "0.0.0.0:0", "local", test_server_packet_received_callback, NULL );
     check( server );
     check( next_server_port( server ) != 0 );
     next_address_t address;
@@ -13535,7 +13559,7 @@ static void test_server_ipv4()
 
 static void test_client_ipv6()
 {
-	next_client_t * client = next_client_create( NULL, "[::0]:0", test_client_packet_received_callback );
+	next_client_t * client = next_client_create( NULL, "[::0]:0", test_client_packet_received_callback, NULL );
 	check( client );
 	check( next_client_port( client ) != 0 );
 	next_client_open_session( client, "[::1]:12345" );
@@ -13549,7 +13573,7 @@ static void test_client_ipv6()
 
 static void test_server_ipv6()
 {
-	next_server_t * server = next_server_create( NULL, "[::1]:0", "[::0]:0", "local", test_server_packet_received_callback );
+	next_server_t * server = next_server_create( NULL, "[::1]:0", "[::0]:0", "local", test_server_packet_received_callback, NULL );
 	check( server );
 	check( next_server_port(server) != 0 );
 	next_address_t address;
@@ -15024,6 +15048,66 @@ static void test_packet_loss_tracker()
     check( next_packet_loss_tracker_update( &tracker ) == 0 );
 }
 
+static bool client_woke_up = false;
+static bool server_woke_up = false;
+
+void client_wake_up_callback( void * context )
+{
+    (void) context;
+    client_woke_up = true;
+}
+
+void server_wake_up_callback( void * context )
+{
+    (void) context;
+    server_woke_up = true;
+}
+
+void server_packet_received_reflect_packet( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
+{
+    (void) context;
+    next_server_send_packet( server, from, packet_data, packet_bytes );
+}
+
+static void test_wake_up()
+{
+    next_server_t * server = next_server_create( NULL, "127.0.0.1", "0.0.0.0:12345", "local", server_packet_received_reflect_packet, server_wake_up_callback );
+
+    check( server );
+
+    next_client_t * client = next_client_create( NULL, "0.0.0.0:0", test_client_packet_received_callback, client_wake_up_callback );
+
+    check( client );
+    
+    check( next_client_port( client ) != 0 );
+    
+    next_client_open_session( client, "127.0.0.1:12345" );
+
+    uint8_t packet[256];
+    memset( packet, 0, sizeof(packet) );
+    
+    for ( int i = 0; i < 10000; ++i )
+    {
+        next_client_send_packet( client, packet, sizeof(packet) );
+        
+        next_client_update( client );
+
+        next_server_update( server );
+
+        if ( client_woke_up && server_woke_up )
+            break;
+    }
+    
+    next_client_close_session( client );
+    
+    next_client_destroy( client );
+
+    next_server_destroy( server );
+
+    check( client_woke_up );
+    check( server_woke_up );
+}
+
 #define RUN_TEST( test_function )                                           \
     do                                                                      \
     {                                                                       \
@@ -15080,6 +15164,7 @@ void next_test()
     RUN_TEST( test_bandwidth_limiter );
     RUN_TEST( test_free_retains_context );
     RUN_TEST( test_packet_loss_tracker );
+    RUN_TEST( test_wake_up );
 }
 
 NEXT_PACK_POP()
