@@ -3,6 +3,7 @@ package jsonrpc
 import (
 	"context"
 	"fmt"
+	fnv "hash/fnv"
 	"net/http"
 	"sort"
 	"strconv"
@@ -34,6 +35,24 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	err := s.RedisClient.SMembers(fmt.Sprintf("user-%s-sessions", args.UserHash)).ScanSlice(&sessionIDs)
 	if err != nil {
 		return err
+	}
+
+	if len(sessionIDs) == 0 {
+		hash := fnv.New64a()
+		_, err := hash.Write([]byte(args.UserHash))
+		if err != nil {
+			return err
+		}
+		hashedID := fmt.Sprintf("%x", hash.Sum64())
+
+		err = s.RedisClient.SMembers(fmt.Sprintf("user-%s-sessions", hashedID)).ScanSlice(&sessionIDs)
+		if err != nil {
+			return err
+		}
+	}
+
+	if len(sessionIDs) == 0 {
+		return nil
 	}
 
 	var getCmds []*redis.StringCmd

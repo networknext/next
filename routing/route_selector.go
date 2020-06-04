@@ -103,6 +103,11 @@ func SelectRoutesByRandomDestRelay(source rand.Source) SelectorFunc {
 			destRelayRouteMap[destRelay.ID] = append(destRelayRouteMap[destRelay.ID], route)
 		}
 
+		// Don't continue if there are no routes in the map
+		if len(destRelayRouteMap) == 0 {
+			return nil
+		}
+
 		// Get a slice of all destination relay IDs
 		var destinationRelayIDs []uint64
 		for destRelayID := range destRelayRouteMap {
@@ -125,6 +130,11 @@ func SelectRandomRoute(source rand.Source) SelectorFunc {
 	randgen := rand.New(source)
 
 	return func(routes []Route) []Route {
+		// Don't select a random route if there are no routes to select
+		if len(routes) == 0 {
+			return nil
+		}
+
 		return []Route{routes[randgen.Intn(len(routes))]}
 	}
 }

@@ -9,6 +9,7 @@
 #include "net/address.hpp"
 #include "os/platform.hpp"
 #include "util/throughput_recorder.hpp"
+#include "core/router_info.hpp"
 
 namespace core
 {
@@ -24,7 +25,8 @@ namespace core
        const crypto::Keychain& keychain,
        core::SessionMap& sessions,
        util::ThroughputRecorder& recorder,
-       legacy::v3::TrafficStats& stats);
+       legacy::v3::TrafficStats& stats,
+       const RouterInfo& routerInfo);
 
       template <size_t Size>
       void handle(core::GenericPacketBuffer<Size>& size, const os::Socket& socket, bool isSigned);
@@ -36,6 +38,7 @@ namespace core
       core::SessionMap& mSessionMap;
       util::ThroughputRecorder& mRecorder;
       legacy::v3::TrafficStats& mStats;
+      const RouterInfo& mRouterInfo;
     };
 
     inline RouteRequestHandler::RouteRequestHandler(
@@ -45,14 +48,16 @@ namespace core
      const crypto::Keychain& keychain,
      core::SessionMap& sessions,
      util::ThroughputRecorder& recorder,
-     legacy::v3::TrafficStats& stats)
+     legacy::v3::TrafficStats& stats,
+     const RouterInfo& routerInfo)
      : BaseHandler(packet),
        mRelayClock(relayClock),
        mFrom(from),
        mKeychain(keychain),
        mSessionMap(sessions),
        mRecorder(recorder),
-       mStats(stats)
+       mStats(stats),
+       mRouterInfo(routerInfo)
     {}
 
     template <size_t Size>
@@ -79,7 +84,7 @@ namespace core
 
       // ignore the header byte of the packet
       size_t index = 1;
-      core::RouteToken token(mRelayClock);
+      core::RouteToken token(mRelayClock, mRouterInfo);
 
       if (!token.readEncrypted(data, length, index, mKeychain.RouterPublicKey, mKeychain.RelayPrivateKey)) {
         Log("ignoring route request. could not read route token");
@@ -97,7 +102,7 @@ namespace core
 
       if (!mSessionMap.get(hash)) {
         // create the session
-        auto session = std::make_shared<Session>(mRelayClock);
+        auto session = std::make_shared<Session>(mRelayClock, mRouterInfo);
         assert(session);
 
         // fill it with data in the token

@@ -36,7 +36,8 @@ namespace core
      util::Sender<GenericPacket<>>& sender,
      legacy::v3::TrafficStats& stats,
      const uint64_t oldRelayID,
-     const std::atomic<legacy::v3::ResponseState>& state);
+     const std::atomic<legacy::v3::ResponseState>& state,
+     const RouterInfo& routerInfo);
     ~PacketProcessor() = default;
 
     void process(std::atomic<bool>& readyToReceive);
@@ -55,6 +56,7 @@ namespace core
     legacy::v3::TrafficStats& mStats;
     const uint64_t mOldRelayID;
     const std::atomic<legacy::v3::ResponseState>& mState;
+    const RouterInfo& mRouterInfo;
 
 
     void processPacket(GenericPacket<>& packet, GenericPacketBuffer<MaxPacketsToSend>& outputBuff);

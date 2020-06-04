@@ -22,15 +22,18 @@ namespace core
     uint64_t ExpireTimestamp;
 
    protected:
-    Expireable(const util::Clock& relayClock);
+    Expireable(const util::Clock& relayClock, const RouterInfo& routerInfo);
 
    private:
     const util::Clock& mRelayClock;
+    const RouterInfo& mRouterInfo;
 
     inline auto timestamp() -> uint64_t;
   };
 
-  inline Expireable::Expireable(const util::Clock& relayClock): mRelayClock(relayClock) {}
+  inline Expireable::Expireable(const util::Clock& relayClock, const RouterInfo& routerInfo)
+   : mRelayClock(relayClock), mRouterInfo(routerInfo)
+  {}
 
   inline auto Expireable::expired() -> bool
   {
@@ -44,7 +47,8 @@ namespace core
 
   inline auto Expireable::timestamp() -> uint64_t
   {
-    return mRelayClock.unixTime<util::Second>();
+    // elapsed time is the amount of seconds since the relay initialized with the backend
+    return mRouterInfo.InitializeTimeInSeconds + mRelayClock.elapsed<util::Second>();
   }
 }  // namespace core
 #endif

@@ -38,7 +38,8 @@ namespace core
    util::Sender<GenericPacket<>>& sender,
    legacy::v3::TrafficStats& stats,
    const uint64_t oldRelayID,
-   const std::atomic<legacy::v3::ResponseState>& state)
+   const std::atomic<legacy::v3::ResponseState>& state,
+   const RouterInfo& routerInfo)
    : mShouldReceive(shouldReceive),
      mSocket(socket),
      mRelayClock(relayClock),
@@ -51,7 +52,8 @@ namespace core
      mChannel(sender),
      mStats(stats),
      mOldRelayID(oldRelayID),
-     mState(state)
+     mState(state),
+     mRouterInfo(routerInfo)
   {}
 
   void PacketProcessor::process(std::atomic<bool>& readyToReceive)
@@ -208,7 +210,7 @@ namespace core
         mRecorder.addToReceived(wholePacketSize);
         mStats.BytesPerSecManagementRx += wholePacketSize;
 
-        handlers::RouteRequestHandler handler(mRelayClock, packet, packet.Addr, mKeychain, mSessionMap, mRecorder, mStats);
+        handlers::RouteRequestHandler handler(mRelayClock, packet, packet.Addr, mKeychain, mSessionMap, mRecorder, mStats, mRouterInfo);
 
         handler.handle(outputBuff, mSocket, isSigned);
       } break;
@@ -224,7 +226,7 @@ namespace core
         mRecorder.addToReceived(wholePacketSize);
         mStats.BytesPerSecManagementRx += wholePacketSize;
 
-        handlers::ContinueRequestHandler handler(mRelayClock, packet, mSessionMap, mKeychain, mRecorder, mStats);
+        handlers::ContinueRequestHandler handler(mRelayClock, packet, mSessionMap, mKeychain, mRecorder, mStats, mRouterInfo);
 
         handler.handle(outputBuff, mSocket, isSigned);
       } break;

@@ -146,12 +146,20 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 			// Retrieve the update key that exists on the relay
 			success, output := runCommandQuiet("deploy/relay/retrieve-update-key.sh", []string{env.SSHKeyFilePath, info.user + "@" + info.sshAddr}, true)
 			if !success {
-				log.Fatalf("could not execute the retrieve-update-key.sh script: %s", output)
+				// Relay does not have the update key on it yet, so just make it blank for now
+				// This won't work if RELAY_V3_ENABLED=1 but it will make spinning up relays in dev
+				// faster for now
+
+				info.updateKey = ""
+
+				// log.Fatalf("could not execute the retrieve-update-key.sh script: %s", output)
 			}
 
 			// Make sure the update key env var on the relay wasn't empty
 			if len(output) == 0 {
-				log.Fatalln("no update key found on relay")
+				info.updateKey = ""
+
+				// log.Fatalln("no update key found on relay")
 			}
 
 			// Remove extra newline and assign to relay info
