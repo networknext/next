@@ -27,7 +27,7 @@ Create the client.
 
 .. code-block:: c++
 
-    next_client_t * client = next_client_create( NULL, "0.0.0.0:0", client_packet_received );
+    next_client_t * client = next_client_create( NULL, "0.0.0.0:0", client_packet_received, NULL );
     if ( client == NULL )
     {
 	    printf( "error: failed to create client\n" );

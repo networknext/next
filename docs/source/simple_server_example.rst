@@ -31,7 +31,7 @@ In this example, we bind the server to port 50000 on 127.0.0.1 IPv4 address (loc
 
 .. code-block:: c++
 
-    next_server_t * server = next_server_create( NULL, "127.0.0.1:50000", "0.0.0.0:50000", "local", server_packet_received );
+    next_server_t * server = next_server_create( NULL, "127.0.0.1:50000", "0.0.0.0:50000", "local", server_packet_received, NULL );
     if ( server == NULL )
     {
         printf( "error: failed to create server\n" );

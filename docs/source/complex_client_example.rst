@@ -290,7 +290,7 @@ Next, create a per-client context and pass it in as the context when creating th
     client_context.allocator = &client_allocator;
     client_context.client_data = 0x12345;
 
-    next_client_t * client = next_client_create( &client_context, bind_address, client_packet_received );
+    next_client_t * client = next_client_create( &client_context, bind_address, client_packet_received, NULL );
     if ( client == NULL )
     {
         printf( "error: failed to create client\n" );
