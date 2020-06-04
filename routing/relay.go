@@ -7,6 +7,7 @@ import (
 	"math"
 	"net"
 	"strconv"
+	"strings"
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
@@ -349,4 +350,14 @@ func (l LegacyPingToken) MarshalBinary() (data []byte, err error) {
 type LegacyPingData struct {
 	RelayPingData
 	PingToken string `json:"ping_info"` // base64 of LegacyPingToken binary form
+}
+
+func RelayAddrs(relays []Relay) string {
+	var b strings.Builder
+	for _, relay := range relays {
+		b.WriteString("{")
+		b.WriteString(relay.Addr.String())
+		b.WriteString("}")
+	}
+	return b.String()
 }
