@@ -364,7 +364,9 @@ func main() {
 								ShortHelp:  "Displays an example buyer for the correct JSON schema",
 								Exec: func(_ context.Context, args []string) error {
 									example := routing.Buyer{
-										Name:      "name",
+										ID:        11818940844188991616,
+										Name:      "Psyonix",
+										Domain:    "example.com",
 										PublicKey: make([]byte, crypto.KeySize),
 									}
 
@@ -500,8 +502,8 @@ func main() {
 								ShortHelp:  "Displays an example seller for the correct JSON schema",
 								Exec: func(_ context.Context, args []string) error {
 									example := routing.Seller{
-										ID:   "vultr",
-										Name: "name",
+										ID:   "5tCm7KjOw3EBYojLe6PC",
+										Name: "amazon",
 									}
 
 									jsonBytes, err := json.MarshalIndent(example, "", "\t")
@@ -576,7 +578,7 @@ func main() {
 								ShortHelp:  "Displays an example datacenter for the correct JSON schema",
 								Exec: func(_ context.Context, args []string) error {
 									example := datacenter{
-										Name:     "name",
+										Name:     "amazon.ohio.2",
 										Enabled:  false,
 										Location: routing.LocationNullIsland,
 									}
@@ -676,11 +678,11 @@ func main() {
 								ShortHelp:  "Displays an example relay for the correct JSON schema",
 								Exec: func(_ context.Context, args []string) error {
 									example := relay{
-										Name:                "name",
+										Name:                "amazon.ohio.2",
 										Addr:                "127.0.0.1:40000",
 										PublicKey:           "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-										SellerID:            "sellerID",
-										DatacenterName:      "datacenter.name",
+										SellerID:            "5tCm7KjOw3EBYojLe6PC",
+										DatacenterName:      "amazon.ohio.2",
 										NicSpeedMbps:        1000,
 										IncludedBandwidthGB: 1,
 										ManagementAddr:      "127.0.0.1",
@@ -751,7 +753,7 @@ func main() {
 				Subcommands: []*ffcli.Command{
 					{
 						Name:       "keys",
-						ShortUsage: "next relay keys <relay name...>",
+						ShortUsage: "next relay keys <relay name>",
 						ShortHelp:  "Show the public keys for the relay",
 						Exec: func(ctx context.Context, args []string) error {
 							relay := getRelayInfo(rpcClient, args[0])
