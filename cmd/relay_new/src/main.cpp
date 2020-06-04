@@ -183,7 +183,7 @@ int main(int argc, const char* argv[])
   return 0;
 #endif
 
-  const util::Clock relayClock;
+  util::Clock relayClock;
 
   std::cout << "\nNetwork Next Relay\n";
 
@@ -335,7 +335,8 @@ int main(int argc, const char* argv[])
                                                    &sender,
                                                    &v3TrafficStats,
                                                    relayID,
-                                                   &state] {
+                                                   &state,
+                                                   &routerInfo] {
         core::PacketProcessor processor(
          shouldReceive,
          *socket,
@@ -349,7 +350,8 @@ int main(int argc, const char* argv[])
          sender,
          v3TrafficStats,
          relayID,
-         state);
+         state,
+         routerInfo);
         processor.process(socketAndThreadReady);
       });
 
@@ -498,6 +500,7 @@ int main(int argc, const char* argv[])
   }
 
   Log("relay initialized with new backend");
+  relayClock.reset();
 
   bool success = false;
 

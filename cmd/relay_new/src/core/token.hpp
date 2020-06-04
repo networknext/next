@@ -5,13 +5,14 @@
 #include "encoding/write.hpp"
 #include "expireable.hpp"
 #include "packet.hpp"
+#include "router_info.hpp"
 
 namespace core
 {
   class Token: public Expireable
   {
    public:
-    Token(const util::Clock& relayClock);
+    Token(const util::Clock& relayClock, const RouterInfo& routerInfo);
     virtual ~Token() override = default;
     // Expireable (8) +
     // session id (8) +
@@ -30,7 +31,7 @@ namespace core
     void read(uint8_t* packetData, size_t packetLength, size_t& index);
   };
 
-  inline Token::Token(const util::Clock& relayClock): Expireable(relayClock) {}
+  inline Token::Token(const util::Clock& relayClock, const RouterInfo& routerInfo): Expireable(relayClock, routerInfo) {}
 
   [[gnu::always_inline]] inline uint64_t Token::key()
   {

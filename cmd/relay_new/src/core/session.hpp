@@ -5,13 +5,14 @@
 #include "net/address.hpp"
 #include "replay_protection.hpp"
 #include "util/logger.hpp"
+#include "router_info.hpp"
 
 namespace core
 {
   class Session: public Expireable
   {
    public:
-    Session(const util::Clock& relayClock);
+    Session(const util::Clock& relayClock, const RouterInfo& routerInfo);
     virtual ~Session() override = default;
 
     uint64_t SessionID;
@@ -30,7 +31,7 @@ namespace core
     legacy::relay_replay_protection_t ClientToServerProtection;
   };
 
-  inline Session::Session(const util::Clock& relayClock): Expireable(relayClock) {}
+  inline Session::Session(const util::Clock& relayClock, const RouterInfo& routerInfo): Expireable(relayClock, routerInfo) {}
 
   using SessionPtr = std::shared_ptr<Session>;
 
