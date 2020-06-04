@@ -151,7 +151,6 @@ namespace core
         // for old relay compat the router sends this back in millis, so convert back to seconds
         mRouterInfo.BackendTimestamp = doc.get<uint64_t>("Timestamp") / 1000;
         mClock.reset();
-        LogDebug("synced time");
       } else {
         Log("init timestamp not a number");
         return false;
