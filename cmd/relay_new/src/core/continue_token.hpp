@@ -1,17 +1,17 @@
 #ifndef CORE_CONTINUE_TOKEN_HPP
 #define CORE_CONTINUE_TOKEN_HPP
 
-#include "token.hpp"
-#include "packet.hpp"
-
 #include "crypto/keychain.hpp"
+#include "packet.hpp"
+#include "router_info.hpp"
+#include "token.hpp"
 
 namespace core
 {
   class ContinueToken: public Token
   {
    public:
-    ContinueToken(const util::Clock& relayClock);
+    ContinueToken(const util::Clock& relayClock, const RouterInfo& routerInfo);
     virtual ~ContinueToken() override = default;
 
     static const size_t ByteSize = Token::ByteSize;
@@ -54,7 +54,9 @@ namespace core
      const size_t nonceIndex);
   };
 
-  inline ContinueToken::ContinueToken(const util::Clock& relayClock): Token(relayClock) {}
+  inline ContinueToken::ContinueToken(const util::Clock& relayClock, const RouterInfo& routerInfo)
+   : Token(relayClock, routerInfo)
+  {}
 }  // namespace core
 
 namespace legacy

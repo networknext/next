@@ -8,6 +8,7 @@
 #include "legacy/v3/traffic_stats.hpp"
 #include "os/platform.hpp"
 #include "util/throughput_recorder.hpp"
+#include "core/router_info.hpp"
 
 namespace core
 {
@@ -22,7 +23,8 @@ namespace core
        core::SessionMap& sessions,
        const crypto::Keychain& keychain,
        util::ThroughputRecorder& recorder,
-       legacy::v3::TrafficStats& stats);
+       legacy::v3::TrafficStats& stats,
+       const RouterInfo& routerInfo);
 
       template <size_t Size>
       void handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket, bool isSigned);
@@ -33,6 +35,7 @@ namespace core
       const crypto::Keychain& mKeychain;
       util::ThroughputRecorder& mRecorder;
       legacy::v3::TrafficStats& mStats;
+      const RouterInfo& mRouterInfo;
     };
 
     inline ContinueRequestHandler::ContinueRequestHandler(
@@ -41,13 +44,15 @@ namespace core
      core::SessionMap& sessions,
      const crypto::Keychain& keychain,
      util::ThroughputRecorder& recorder,
-     legacy::v3::TrafficStats& stats)
+     legacy::v3::TrafficStats& stats,
+     const RouterInfo& routerInfo)
      : BaseHandler(packet),
        mRelayClock(relayClock),
        mSessionMap(sessions),
        mKeychain(keychain),
        mRecorder(recorder),
-       mStats(stats)
+       mStats(stats),
+       mRouterInfo(routerInfo)
     {}
 
     template <size_t Size>
@@ -73,7 +78,7 @@ namespace core
       }
 
       size_t index = 1;
-      core::ContinueToken token(mRelayClock);
+      core::ContinueToken token(mRelayClock, mRouterInfo);
       if (!token.readEncrypted(data, length, index, mKeychain.RouterPublicKey, mKeychain.RelayPrivateKey)) {
         Log("ignoring continue request. could not read continue token");
         return;
