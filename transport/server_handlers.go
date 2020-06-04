@@ -1087,6 +1087,13 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 	if (nnStats.RTT == 0 && directStats.RTT == 0) || (onNetworkNext && nnStats.RTT == 0) {
 		return nil
 	}
+
+	clientAddr := AnonymizeAddr(packet.ClientAddress)
+
+	if clientAddr.IP == nil {
+		return fmt.Errorf("failed to anonymize client addr")
+	}
+
 	meta := routing.SessionMeta{
 		ID:            fmt.Sprintf("%016x", packet.SessionID),
 		UserHash:      fmt.Sprintf("%016x", packet.UserHash),
@@ -1096,7 +1103,7 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 		DirectRTT:     directStats.RTT,
 		DeltaRTT:      directStats.RTT - nnStats.RTT,
 		Location:      location,
-		ClientAddr:    packet.ClientAddress.String(),
+		ClientAddr:    clientAddr.String(),
 		ServerAddr:    packet.ServerAddress.String(),
 		Hops:          relayHops,
 		SDK:           packet.Version.String(),
