@@ -871,11 +871,12 @@ func main() {
 			},
 		},
 		Exec: func(context.Context, []string) error {
+			fmt.Printf( "\nNetwork Next Operator Tool\n")
 			return flag.ErrHelp
 		},
 	}
 
-	fmt.Printf( "\nNetwork Next Operator Tool\n\n")
+	fmt.Printf("\n")
 
 	if err := root.ParseAndRun(context.Background(), os.Args[1:]); err != nil {
 		fmt.Printf( "\n")
