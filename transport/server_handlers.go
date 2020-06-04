@@ -10,7 +10,6 @@ import (
 	"net"
 	"runtime"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/getsentry/sentry-go"
@@ -1088,13 +1087,7 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 		return nil
 	}
 
-	clientAddr := packet.ClientAddress.String()
-	addrPieces := strings.Split(clientAddr, ".")
-	endPieces := strings.Split(addrPieces[len(addrPieces)-1], ":")
-	endPieces[0] = "0"
-	lastTuple := strings.Join(endPieces, ":")
-	addrPieces[len(addrPieces)-1] = lastTuple
-	clientAddr = strings.Join(addrPieces, ".")
+	clientIP := AnonymizeIP(packet.ClientAddress.IP)
 
 	meta := routing.SessionMeta{
 		ID:            fmt.Sprintf("%016x", packet.SessionID),
@@ -1105,7 +1098,7 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 		DirectRTT:     directStats.RTT,
 		DeltaRTT:      directStats.RTT - nnStats.RTT,
 		Location:      location,
-		ClientAddr:    clientAddr,
+		ClientAddr:    clientIP.String(),
 		ServerAddr:    packet.ServerAddress.String(),
 		Hops:          relayHops,
 		SDK:           packet.Version.String(),
@@ -1293,4 +1286,22 @@ func writeSessionErrorResponse(w io.Writer, response SessionResponsePacket, priv
 	errCounter.Add(1)
 
 	return responseData, nil
+}
+
+func AnonymizeIP(ip net.IP) net.IP {
+	// If it is IPv4 make a []byte of 4 "segments" of an IP so they are all "0"
+	// then copy only the first 3 "segments" leaving the last "segment" as a "0"
+	if ipv4 := ip.To4(); ipv4 != nil {
+		buf := make([]byte, 4)
+		copy(buf, ipv4[0:3])
+		return net.IP(buf)
+	}
+
+	// Do the same just in case it is IPv6 for whatever reason
+	if ipv6 := ip.To16(); ipv6 != nil {
+		buf := make([]byte, 16)
+		copy(buf, ipv6[0:6])
+		return net.IP(buf)
+	}
+	return nil
 }
