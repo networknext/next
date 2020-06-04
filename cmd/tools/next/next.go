@@ -869,6 +869,19 @@ func main() {
 					},
 				},
 			},
+			{
+				Name:       "sessions",
+				ShortUsage: "next sessions",
+				ShortHelp:  "View sessions",
+				Exec: func(_ context.Context, args []string) error {
+					if len(args) > 0 {
+						sessions(rpcClient, env, args[0])
+						return nil
+					}
+					sessions(rpcClient, env, "")
+					return nil
+				},
+			},
 		},
 		Exec: func(context.Context, []string) error {
 			fmt.Printf( "Network Next Operator Tool\n\n")
