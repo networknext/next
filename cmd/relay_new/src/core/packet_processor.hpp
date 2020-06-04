@@ -26,7 +26,6 @@ namespace core
     PacketProcessor(
      const std::atomic<bool>& shouldReceive,
      os::Socket& socket,
-     const util::Clock& relayClock,
      const crypto::Keychain& keychain,
      SessionMap& sessions,
      RelayManager<Relay>& relayManager,
@@ -45,7 +44,6 @@ namespace core
    private:
     const std::atomic<bool>& mShouldReceive;
     const os::Socket& mSocket;
-    const util::Clock& mRelayClock;
     const crypto::Keychain& mKeychain;
     SessionMap& mSessionMap;
     RelayManager<Relay>& mRelayManager;
@@ -57,7 +55,6 @@ namespace core
     const uint64_t mOldRelayID;
     const std::atomic<legacy::v3::ResponseState>& mState;
     const RouterInfo& mRouterInfo;
-
 
     void processPacket(GenericPacket<>& packet, GenericPacketBuffer<MaxPacketsToSend>& outputBuff);
 

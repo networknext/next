@@ -85,7 +85,7 @@ namespace
   inline bool getNumProcessors(const util::Env& env, unsigned int& numProcs)
   {
     if (env.ProcessorCount.empty()) {
-      numProcs = std::thread::hardware_concurrency();
+      numProcs = std::thread::hardware_concurrency();  // first core reserved for updates/outgoing pings
       if (numProcs > 0) {
         Log("RELAY_PROCESSOR_COUNT not set, autodetected number of processors available: ", numProcs);
       } else {
@@ -101,15 +101,6 @@ namespace
     }
 
     return true;
-  }
-
-  inline bool getPingProcNum(unsigned int numProcs)
-  {
-    auto actualProcCount = std::thread::hardware_concurrency();
-
-    // if already using all available procs, just use the first
-    // else use the next one
-    return actualProcCount > 0 && numProcs == actualProcCount ? 0 : numProcs + 1;
   }
 
   inline int getBufferSize(const std::string& envvar)
@@ -228,9 +219,9 @@ int main(int argc, const char* argv[])
   Log("Initializing relay");
 
   legacy::v3::TrafficStats v3TrafficStats;
-  core::RouterInfo routerInfo;
-  core::RelayManager<core::Relay> relayManager(relayClock);
-  core::RelayManager<core::V3Relay> v3RelayManager(relayClock);
+  core::RouterInfo routerInfo(relayClock);
+  core::RelayManager<core::Relay> relayManager(routerInfo);
+  core::RelayManager<core::V3Relay> v3RelayManager(routerInfo);
   util::ThroughputRecorder recorder;
   auto chan = util::makeChannel<core::GenericPacket<>>();
   auto sender = std::get<0>(chan);
@@ -309,14 +300,10 @@ int main(int argc, const char* argv[])
     return socket;
   };
 
-  /* packet processing setup
-   * must come before ping setup
-   * otherwise ping may take the port that is reserved for packet processing, usually 40000
-   * odds are slim but it may happen
-   */
-  Log("creating ", numProcessors, " packet processing threads");
+  // packet processing setup
+  Log("creating ", (numProcessors == 1) ? 1 : numProcessors - 1, " packet processing threads");
   {
-    for (unsigned int i = 0; i < numProcessors && gAlive; i++) {
+    for (unsigned int i = ((numProcessors == 1) ? 0 : 1); i < numProcessors && gAlive; i++) {
       auto socket = makeSocket(relayAddr.Port);
       if (!socket) {
         Log("could not create socket");
@@ -326,7 +313,6 @@ int main(int argc, const char* argv[])
       auto thread = std::make_shared<std::thread>([&socketAndThreadReady,
                                                    &shouldReceive,
                                                    socket,
-                                                   &relayClock,
                                                    &keychain,
                                                    &sessions,
                                                    &relayManager,
@@ -340,7 +326,6 @@ int main(int argc, const char* argv[])
         core::PacketProcessor processor(
          shouldReceive,
          *socket,
-         relayClock,
          keychain,
          sessions,
          relayManager,
@@ -361,7 +346,7 @@ int main(int argc, const char* argv[])
       threads.push_back(thread);
 
       int error;
-      if (!os::SetThreadAffinity(*thread, i, error)) {
+      if (!os::SetThreadAffinity(*thread, (std::thread::hardware_concurrency() == 1) ? 0 : i, error)) {
         Log("Error setting thread affinity: ", error);
       }
 
@@ -387,7 +372,7 @@ int main(int argc, const char* argv[])
     threads.push_back(thread);
 
     int error;
-    if (!os::SetThreadAffinity(*thread, getPingProcNum(numProcessors), error)) {
+    if (!os::SetThreadAffinity(*thread, 0, error)) {
       Log("error setting thread affinity: ", error);
     }
 
@@ -417,7 +402,7 @@ int main(int argc, const char* argv[])
       threads.push_back(thread);
 
       int error;
-      if (!os::SetThreadAffinity(*thread, getPingProcNum(numProcessors), error)) {
+      if (!os::SetThreadAffinity(*thread, 0, error)) {
         Log("error setting thread affinity: ", error);
       }
 
@@ -467,6 +452,11 @@ int main(int argc, const char* argv[])
         gAlive = false;
       });
 
+      int error;
+      if (!os::SetThreadAffinity(*thread, 0, error)) {
+        Log("error setting thread affinity: ", error);
+      }
+
       auto [ok, err] = os::SetThreadSchedMax(*thread);
       if (!ok) {
         Log(err);
@@ -478,7 +468,15 @@ int main(int argc, const char* argv[])
   }
 
   core::Backend<net::CurlWrapper> backend(
-   env.BackendHostname, relayAddr.toString(), keychain, routerInfo, relayManager, b64RelayPubKey, sessions, v3TrafficStats);
+   env.BackendHostname,
+   relayAddr.toString(),
+   keychain,
+   routerInfo,
+   relayManager,
+   b64RelayPubKey,
+   sessions,
+   v3TrafficStats,
+   relayClock);
 
   bool relayInitialized = false;
 
@@ -500,14 +498,13 @@ int main(int argc, const char* argv[])
   }
 
   Log("relay initialized with new backend");
-  relayClock.reset();
 
   bool success = false;
 
   if (gAlive) {
     setupSignalHandlers();
 
-    success = backend.updateCycle(gAlive, gShouldCleanShutdown, recorder, sessions, relayClock);
+    success = backend.updateCycle(gAlive, gShouldCleanShutdown, recorder, sessions);
   }
 
   Log("cleaning up");

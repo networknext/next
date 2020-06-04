@@ -4,15 +4,16 @@
 #include "crypto/bytes.hpp"
 #include "crypto/keychain.hpp"
 #include "encoding/base64.hpp"
+#include "legacy/v3/traffic_stats.hpp"
 #include "net/curl.hpp"
 #include "relay_manager.hpp"
 #include "router_info.hpp"
 #include "session_map.hpp"
 #include "testing/test.hpp"
+#include "util/clock.hpp"
 #include "util/json.hpp"
 #include "util/logger.hpp"
 #include "util/throughput_recorder.hpp"
-#include "legacy/v3/traffic_stats.hpp"
 
 // forward declare test names to allow private functions to be visible them
 namespace testing
@@ -53,7 +54,8 @@ namespace core
      RelayManager<Relay>& relayManager,
      std::string base64RelayPublicKey,
      const core::SessionMap& sessions,
-     legacy::v3::TrafficStats& stats);
+     legacy::v3::TrafficStats& stats,
+     util::Clock& relayClock);
     ~Backend() = default;
 
     auto init() -> bool;
@@ -66,8 +68,7 @@ namespace core
      const volatile bool& loopHandle,
      const volatile bool& shouldCleanShutdown,
      util::ThroughputRecorder& logger,
-     core::SessionMap& sessions,
-     const util::Clock& relayClock) -> bool;
+     core::SessionMap& sessions) -> bool;
 
    private:
     const std::string mHostname;
@@ -78,6 +79,7 @@ namespace core
     const std::string mBase64RelayPublicKey;
     const core::SessionMap& mSessionMap;
     legacy::v3::TrafficStats& mStats;
+    util::Clock& mClock;
 
     auto update(util::ThroughputRecorder& recorder, bool shutdown) -> bool;
     auto buildInitRequest(util::JSON& doc) -> std::tuple<bool, const char*>;
@@ -94,7 +96,8 @@ namespace core
    RelayManager<Relay>& relayManager,
    std::string base64RelayPublicKey,
    const core::SessionMap& sessions,
-   legacy::v3::TrafficStats& stats)
+   legacy::v3::TrafficStats& stats,
+   util::Clock& relayClock)
    : mHostname(hostname),
      mAddressStr(address),
      mKeychain(keychain),
@@ -102,7 +105,8 @@ namespace core
      mRelayManager(relayManager),
      mBase64RelayPublicKey(base64RelayPublicKey),
      mSessionMap(sessions),
-     mStats(stats)
+     mStats(stats),
+     mClock(relayClock)
   {}
 
   template <typename T>
@@ -145,7 +149,8 @@ namespace core
     if (doc.memberExists("Timestamp")) {
       if (doc.memberIs(util::JSON::Type::Number, "Timestamp")) {
         // for old relay compat the router sends this back in millis, so convert back to seconds
-        mRouterInfo.InitializeTimeInSeconds = doc.get<uint64_t>("Timestamp") / 1000;
+        mRouterInfo.BackendTimestamp = doc.get<uint64_t>("Timestamp") / 1000;
+        mClock.reset();
       } else {
         Log("init timestamp not a number");
         return false;
@@ -163,8 +168,7 @@ namespace core
    const volatile bool& loopHandle,
    const volatile bool& shouldCleanShutdown,
    util::ThroughputRecorder& recorder,
-   core::SessionMap& sessions,
-   const util::Clock& relayClock)
+   core::SessionMap& sessions)
   {
     bool successfulRoutine = true;
     std::vector<uint8_t> update_response_memory;
@@ -187,7 +191,7 @@ namespace core
         Log("could not update relay, attempts: ", (unsigned int)updateAttempts);
       }
 
-      sessions.purge(relayClock.unixTime<util::Second>());
+      sessions.purge(mRouterInfo.currentTime());
       recorder.reset();
 
       std::this_thread::sleep_for(1s);
@@ -220,7 +224,7 @@ namespace core
     std::vector<char> response;
     size_t bytesSent = 0;
 
-    //LogDebug("Sending new: ", doc.toPrettyString());
+    LogDebug("Sending new: ", doc.toPrettyString());
 
     if (!T::SendTo(mHostname, "/relay_update", request, response, bytesSent)) {
       Log("curl request failed in update");
@@ -234,7 +238,7 @@ namespace core
       return false;
     }
 
-    //LogDebug("Received new: ", doc.toPrettyString());
+    LogDebug("Received new: ", doc.toPrettyString());
 
     if (doc.memberExists("version")) {
       if (doc.memberIs(util::JSON::Type::Number, "version")) {
@@ -248,6 +252,19 @@ namespace core
       }
     } else {
       Log("warning, version number missing in update response");
+    }
+
+    if (doc.memberExists("timestamp")) {
+      if (doc.memberIs(util::JSON::Type::Number, "timestamp")) {
+        mRouterInfo.BackendTimestamp = doc.get<uint64_t>("timestamp");
+        mClock.reset();
+      } else {
+        Log("init timestamp not a number");
+        return false;
+      }
+    } else {
+      Log("response json missing member 'timestamp'");
+      return false;
     }
 
     size_t count = 0;

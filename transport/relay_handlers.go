@@ -858,6 +858,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 
 			response.RelaysToPing = append(response.RelaysToPing, legacy)
 		}
+		response.Timestamp = time.Now().Unix()
 
 		switch request.Header.Get("Content-Type") {
 		case "application/json":

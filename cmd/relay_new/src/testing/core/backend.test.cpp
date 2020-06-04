@@ -18,11 +18,12 @@ namespace
 
   const auto BasicValidUpdateResponse = R"({
      "version": 0,
+     "timestamp": 0,
      "ping_data": []
    })";
 
   core::Backend<testing::StubbedCurlWrapper> makeBackend(
-   core::RouterInfo& info, core::RelayManager<core::Relay>& manager, core::SessionMap& sessions)
+   core::RouterInfo& info, core::RelayManager<core::Relay>& manager, core::SessionMap& sessions, util::Clock& clock)
   {
     static crypto::Keychain keychain;
     static legacy::v3::TrafficStats ts;
@@ -30,17 +31,17 @@ namespace
     check(keychain.parse(Base64RelayPublicKey, Base64RelayPrivateKey, Base64RouterPublicKey, Base64UpdateKey));
 
     return core::Backend<testing::StubbedCurlWrapper>(
-     BackendHostname, RelayAddr, keychain, info, manager, Base64RelayPublicKey, sessions, ts);
+     BackendHostname, RelayAddr, keychain, info, manager, Base64RelayPublicKey, sessions, ts, clock);
   }
 }  // namespace
 
 Test(core_backend_init_valid)
 {
-  core::RouterInfo routerInfo;
   util::Clock clock;
-  core::RelayManager<core::Relay> manager(clock);
+  core::RouterInfo routerInfo(clock);
+  core::RelayManager<core::Relay> manager(routerInfo);
   core::SessionMap sessions;
-  auto backend = std::move(makeBackend(routerInfo, manager, sessions));
+  auto backend = std::move(makeBackend(routerInfo, manager, sessions, clock));
 
   testing::StubbedCurlWrapper::Response = R"({
     "version": 0,
@@ -51,7 +52,7 @@ Test(core_backend_init_valid)
 
   check(testing::StubbedCurlWrapper::Hostname == BackendHostname);
   check(testing::StubbedCurlWrapper::Endpoint == "/relay_init");
-  check(routerInfo.InitializeTimeInSeconds == 123456789 / 1000);
+  check(routerInfo.BackendTimestamp == 123456789 / 1000);
 
   util::JSON doc;
 
@@ -74,11 +75,11 @@ Test(core_Backend_updateCycle_shutdown_60s)
 {
   util::Clock testClock;
 
-  core::RouterInfo info;
-  util::Clock backendClock;
-  core::RelayManager<core::Relay> manager(backendClock);
+  util::Clock clock;
+  core::RouterInfo info(clock);
+  core::RelayManager<core::Relay> manager(info);
   core::SessionMap sessions;
-  auto backend = std::move(makeBackend(info, manager, sessions));
+  auto backend = std::move(makeBackend(info, manager, sessions, clock));
   volatile bool handle = true;
   volatile bool shouldCleanShutdown = false;
   util::ThroughputRecorder logger;
@@ -94,7 +95,7 @@ Test(core_Backend_updateCycle_shutdown_60s)
     handle = false;
   });
 
-  check(backend.updateCycle(handle, shouldCleanShutdown, logger, sessions, backendClock));
+  check(backend.updateCycle(handle, shouldCleanShutdown, logger, sessions));
   auto elapsed = testClock.elapsed<util::Second>();
   check(elapsed >= 62.0);
 }
@@ -107,11 +108,11 @@ Test(core_Backend_updateCycle_ack_and_30s)
 {
   util::Clock testClock;
 
-  core::RouterInfo info;
-  util::Clock backendClock;
-  core::RelayManager<core::Relay> manager(backendClock);
+  util::Clock clock;
+  core::RouterInfo info(clock);
+  core::RelayManager<core::Relay> manager(info);
   core::SessionMap sessions;
-  auto backend = std::move(makeBackend(info, manager, sessions));
+  auto backend = std::move(makeBackend(info, manager, sessions, clock));
   volatile bool handle = true;
   volatile bool shouldCleanShutdown = false;
   util::ThroughputRecorder logger;
@@ -126,7 +127,7 @@ Test(core_Backend_updateCycle_ack_and_30s)
     handle = false;
   });
 
-  check(backend.updateCycle(handle, shouldCleanShutdown, logger, sessions, backendClock));
+  check(backend.updateCycle(handle, shouldCleanShutdown, logger, sessions));
   auto elapsed = testClock.elapsed<util::Second>();
   check(elapsed >= 32.0);
 }
@@ -140,11 +141,11 @@ Test(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
 {
   util::Clock testClock;
 
-  core::RouterInfo info;
-  util::Clock backendClock;
-  core::RelayManager<core::Relay> manager(backendClock);
+  util::Clock clock;
+  core::RouterInfo info(clock);
+  core::RelayManager<core::Relay> manager(info);
   core::SessionMap sessions;
-  auto backend = std::move(makeBackend(info, manager, sessions));
+  auto backend = std::move(makeBackend(info, manager, sessions, clock));
   volatile bool handle = true;
   volatile bool shouldCleanShutdown = false;
   util::ThroughputRecorder recorder;
@@ -162,7 +163,7 @@ Test(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
     testing::StubbedCurlWrapper::Success = true;
   });
 
-  check(backend.updateCycle(handle, shouldCleanShutdown, recorder, sessions, backendClock));
+  check(backend.updateCycle(handle, shouldCleanShutdown, recorder, sessions));
   auto elapsed = testClock.elapsed<util::Second>();
   check(elapsed >= 63.0);
 }
@@ -176,11 +177,11 @@ Test(core_Backend_updateCycle_update_fails_for_max_number_of_attempts)
 {
   util::Clock testClock;
 
-  core::RouterInfo info;
-  util::Clock backendClock;
-  core::RelayManager<core::Relay> manager(backendClock);
+  util::Clock clock;
+  core::RouterInfo info(clock);
+  core::RelayManager<core::Relay> manager(info);
   core::SessionMap sessions;
-  auto backend = std::move(makeBackend(info, manager, sessions));
+  auto backend = std::move(makeBackend(info, manager, sessions, clock));
   volatile bool handle = true;
   volatile bool shouldCleanShutdown = false;
   util::ThroughputRecorder recorder;
@@ -194,7 +195,7 @@ Test(core_Backend_updateCycle_update_fails_for_max_number_of_attempts)
     testing::StubbedCurlWrapper::Success = false;  // set to false here to trigger failed updates
   });
 
-  check(!backend.updateCycle(handle, shouldCleanShutdown, recorder, sessions, backendClock));
+  check(!backend.updateCycle(handle, shouldCleanShutdown, recorder, sessions));
   auto elapsed = testClock.elapsed<util::Second>();
   // time will be 2 seconds of good updates and
   // 10 seconds of bad updates, which will cause
@@ -207,11 +208,11 @@ Test(core_Backend_updateCycle_no_clean_shutdown)
 {
   util::Clock testClock;
 
-  core::RouterInfo info;
-  util::Clock backendClock;
-  core::RelayManager<core::Relay> manager(backendClock);
+  util::Clock clock;
+  core::RouterInfo info(clock);
+  core::RelayManager<core::Relay> manager(info);
   core::SessionMap sessions;
-  auto backend = std::move(makeBackend(info, manager, sessions));
+  auto backend = std::move(makeBackend(info, manager, sessions, clock));
   volatile bool handle = true;
   volatile bool shouldCleanShutdown = false;
   util::ThroughputRecorder recorder;
@@ -226,21 +227,21 @@ Test(core_Backend_updateCycle_no_clean_shutdown)
     handle = false;
   });
 
-  check(backend.updateCycle(handle, shouldCleanShutdown, recorder, sessions, backendClock));
+  check(backend.updateCycle(handle, shouldCleanShutdown, recorder, sessions));
   auto elapsed = testClock.elapsed<util::Second>();
   check(elapsed >= 2.0);
 }
 
 Test(core_Backend_update_valid)
 {
-  core::RouterInfo routerInfo;
   util::Clock clock;
-  core::RelayManager<core::Relay> manager(clock);
+  core::RouterInfo routerInfo(clock);
+  core::RelayManager<core::Relay> manager(routerInfo);
   core::SessionMap sessions;
-  auto backend = std::move(makeBackend(routerInfo, manager, sessions));
+  auto backend = std::move(makeBackend(routerInfo, manager, sessions, clock));
   util::ThroughputRecorder recorder;
 
-  sessions.set(1234, std::make_shared<core::Session>(clock, routerInfo));  // just add one thing to the map to make it non-zero
+  sessions.set(1234, std::make_shared<core::Session>(routerInfo));  // just add one thing to the map to make it non-zero
 
   // seed relay manager
   {
@@ -258,6 +259,7 @@ Test(core_Backend_update_valid)
 
   testing::StubbedCurlWrapper::Response = R"({
     "version": 0,
+    "timestamp": 123456789,
     "ping_data": [
       {
         "relay_id": 135792468,
@@ -278,52 +280,61 @@ Test(core_Backend_update_valid)
 
   check(backend.update(recorder, false));
 
-  util::JSON doc;
+  // check the request
+  {
+    util::JSON doc;
 
-  check(doc.parse(testing::StubbedCurlWrapper::Request));
+    check(doc.parse(testing::StubbedCurlWrapper::Request));
 
-  check(doc.get<uint32_t>("version") == 0);
-  check(doc.get<std::string>("relay_address") == RelayAddr);
-  check(doc.get<std::string>("Metadata", "PublicKey") == Base64RelayPublicKey);
-  check(doc.get<uint64_t>("TrafficStats", "BytesMeasurementTx") == bytesSent);
-  check(doc.get<uint64_t>("TrafficStats", "BytesMeasurementRx") == bytesReceived);
-  check(doc.get<size_t>("TrafficStats", "SessionCount") == sessions.size());
-  check(!doc.get<bool>("shutting_down"));
+    check(doc.get<uint32_t>("version") == 0);
+    check(doc.get<std::string>("relay_address") == RelayAddr);
+    check(doc.get<std::string>("Metadata", "PublicKey") == Base64RelayPublicKey);
+    check(doc.get<uint64_t>("TrafficStats", "BytesMeasurementTx") == bytesSent);
+    check(doc.get<uint64_t>("TrafficStats", "BytesMeasurementRx") == bytesReceived);
+    check(doc.get<size_t>("TrafficStats", "SessionCount") == sessions.size());
+    check(!doc.get<bool>("shutting_down"));
 
-  auto pingStats = doc.get<util::JSON>("PingStats");
+    auto pingStats = doc.get<util::JSON>("PingStats");
 
-  check(pingStats.isArray());
-  auto& value = pingStats[0];
+    check(pingStats.isArray());
+    auto& value = pingStats[0];
 
-  check(value.HasMember("RelayId"));
-  check(value.HasMember("RTT"));
-  check(value.HasMember("Jitter"));
-  check(value.HasMember("PacketLoss"));
+    check(value.HasMember("RelayId"));
+    check(value.HasMember("RTT"));
+    check(value.HasMember("Jitter"));
+    check(value.HasMember("PacketLoss"));
 
-  auto& relayID = value["RelayId"];
+    auto& relayID = value["RelayId"];
 
-  check(relayID.Get<uint64_t>() == 987654321);
+    check(relayID.Get<uint64_t>() == 987654321);
+  }
 
-  std::this_thread::sleep_for(1s);  // needed for getPingData()
+  // check that the response was processed
+  {
+    std::array<core::PingData, MAX_RELAYS> pingData;
 
-  std::array<core::PingData, MAX_RELAYS> pingData;
-  std::this_thread::sleep_for(1s);  // needed so that getPingData() will always return the right number
-  auto count = manager.getPingData(pingData);
+    std::this_thread::sleep_for(1s);  // needed so that getPingData() will always return the right number
+    auto count = manager.getPingData(pingData);
 
-  check(count == 2).onFail([&] {
-    std::cout << "count is " << count << '\n';
-  });
-  check(pingData[0].Addr.toString() == "127.0.0.1:54321");
-  check(pingData[1].Addr.toString() == "127.0.0.1:13524");
+    check(count == 2).onFail([&] {
+      std::cout << "count is " << count << '\n';
+    });
+    check(pingData[0].Addr.toString() == "127.0.0.1:54321");
+    check(pingData[1].Addr.toString() == "127.0.0.1:13524");
+
+    check(routerInfo.BackendTimestamp == 123456789).onFail([&] {
+      std::cout << "info timestamp = " << routerInfo.BackendTimestamp << '\n';
+    });
+  }
 }
 
 Test(core_Backend_update_shutting_down_true)
 {
-  core::RouterInfo routerInfo;
   util::Clock clock;
-  core::RelayManager<core::Relay> manager(clock);
+  core::RouterInfo routerInfo(clock);
+  core::RelayManager<core::Relay> manager(routerInfo);
   core::SessionMap sessions;
-  auto backend = std::move(makeBackend(routerInfo, manager, sessions));
+  auto backend = std::move(makeBackend(routerInfo, manager, sessions, clock));
   util::ThroughputRecorder recorder;
 
   testing::StubbedCurlWrapper::Response = ::BasicValidUpdateResponse;

@@ -19,7 +19,6 @@ namespace core
     {
      public:
       RouteRequestHandler(
-       const util::Clock& relayClock,
        GenericPacket<>& packet,
        const net::Address& from,
        const crypto::Keychain& keychain,
@@ -32,7 +31,6 @@ namespace core
       void handle(core::GenericPacketBuffer<Size>& size, const os::Socket& socket, bool isSigned);
 
      private:
-      const util::Clock& mRelayClock;
       const net::Address& mFrom;
       const crypto::Keychain& mKeychain;
       core::SessionMap& mSessionMap;
@@ -42,7 +40,6 @@ namespace core
     };
 
     inline RouteRequestHandler::RouteRequestHandler(
-     const util::Clock& relayClock,
      GenericPacket<>& packet,
      const net::Address& from,
      const crypto::Keychain& keychain,
@@ -51,7 +48,6 @@ namespace core
      legacy::v3::TrafficStats& stats,
      const RouterInfo& routerInfo)
      : BaseHandler(packet),
-       mRelayClock(relayClock),
        mFrom(from),
        mKeychain(keychain),
        mSessionMap(sessions),
@@ -84,7 +80,7 @@ namespace core
 
       // ignore the header byte of the packet
       size_t index = 1;
-      core::RouteToken token(mRelayClock, mRouterInfo);
+      core::RouteToken token(mRouterInfo);
 
       if (!token.readEncrypted(data, length, index, mKeychain.RouterPublicKey, mKeychain.RelayPrivateKey)) {
         Log("ignoring route request. could not read route token");
@@ -102,7 +98,7 @@ namespace core
 
       if (!mSessionMap.get(hash)) {
         // create the session
-        auto session = std::make_shared<Session>(mRelayClock, mRouterInfo);
+        auto session = std::make_shared<Session>(mRouterInfo);
         assert(session);
 
         // fill it with data in the token

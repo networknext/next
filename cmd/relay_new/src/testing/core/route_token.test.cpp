@@ -8,7 +8,7 @@
 Test(core_RouteToken_general)
 {
   util::Clock clock;
-  core::RouterInfo info;
+  core::RouterInfo info(clock);
   core::GenericPacket<> packet;
 
   std::array<uint8_t, crypto_box_PUBLICKEYBYTES> sender_public_key;
@@ -38,7 +38,7 @@ Test(core_RouteToken_general)
   std::array<uint8_t, crypto_box_SECRETKEYBYTES> PrivateKey;
   crypto::RandomBytes(PrivateKey, PrivateKey.size());
 
-  core::RouteToken inputToken(clock, info);
+  core::RouteToken inputToken(info);
   {
     inputToken.ExpireTimestamp = ExpireTimestamp;
     inputToken.SessionID = SessionID;
@@ -56,7 +56,7 @@ Test(core_RouteToken_general)
      inputToken.writeEncrypted(packet.Buffer.data(), packet.Buffer.size(), index, sender_private_key, receiver_public_key));
   }
 
-  core::RouteToken outputToken(clock, info);
+  core::RouteToken outputToken(info);
   {
     size_t index = 0;
     check(

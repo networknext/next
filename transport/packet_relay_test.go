@@ -898,6 +898,7 @@ func TestRelayUpdateResponseMarshalJSON(t *testing.T) {
 
 	response := transport.RelayUpdateResponse{
 		RelaysToPing: relaysToPing,
+		Timestamp:    12345,
 	}
 
 	expected := `{
@@ -906,7 +907,8 @@ func TestRelayUpdateResponseMarshalJSON(t *testing.T) {
 			"relay_address":"127.0.0.1:40000",
 			"ping_info":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
 		}],
-		"version":0
+		"version":0,
+		"timestamp":12345
 	}`
 
 	buff, err := response.MarshalJSON()
