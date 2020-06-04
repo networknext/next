@@ -301,7 +301,7 @@ int main(int argc, const char* argv[])
   };
 
   // packet processing setup
-  Log("creating ", (numProcessors == 1) ? numProcessors : numProcessors - 1, " packet processing threads");
+  Log("creating ", (numProcessors == 1) ? 1 : numProcessors - 1, " packet processing threads");
   {
     for (unsigned int i = ((numProcessors == 1) ? 0 : 1); i < numProcessors && gAlive; i++) {
       auto socket = makeSocket(relayAddr.Port);
