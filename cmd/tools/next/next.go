@@ -303,7 +303,7 @@ func main() {
 					env.AuthToken = gjson.ParseBytes(body).Get("access_token").String()
 					env.Write()
 
-					fmt.Println(env.String())
+					fmt.Print(env.String())
 
 					return nil
 				},
