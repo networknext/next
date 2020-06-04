@@ -463,6 +463,12 @@ namespace util
   }
 
   template <>
+  inline int64_t JSON::getValue(rapidjson::Value* member)
+  {
+    return (member && member->IsInt64()) ? member->GetInt64() : 0;
+  }
+
+  template <>
   inline bool JSON::getValue(rapidjson::Value* member)
   {
     return (member && (member->GetType() == rapidjson::Type::kTrueType || member->GetType() == rapidjson::Type::kFalseType))

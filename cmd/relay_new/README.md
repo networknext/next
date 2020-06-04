@@ -43,12 +43,10 @@ This can be thought of as version 2 of the relay. Version 1 being the relay in t
 - `RELAY_V3_SPEED`: The speed in mega bits per second of the relay's NIC. Needed to calculate utilization. Must be a number (not 10Gb or anything like that).
   - Example `RELAY_V3_SPEED='10000'`
 
-
-
 ### Optional
 - `RELAY_V3_ENABLED`: Controls whether or not the old backend communication is enabled or not. In the makefile it is defaulted to "0". Set to "1", and only that, to enable.
   - Example `RELAY_V3_ENABLED="1"`
-- `RELAY_PROCESSOR_COUNT`: Number of processors to allocate to the relay. Each relay thread is assigned affinity starting at core 0 to n. If unset the relay will attempt to auto detect the number of processors on the system.
+- `RELAY_PROCESSOR_COUNT`: Number of processors to allocate to the relay. Each relay thread is assigned affinity starting at core 1 to n. If unset the relay will attempt to auto detect the number of processors on the system. For VM's in the cloud, this should be set to 1/2 the available processors.
   - Example `RELAY_PROCESSOR_COUNT='1'` or `RELAY_PROCESSOR_COUNT="$(( $(nproc) / 4 ))"`
 - `RELAY_SEND_BUFFER_SIZE` & `RELAY_RECV_BUFFER_SIZE`: In bytes, lets you set the amount of memory to use for each socket's send & receive buffers.
   - Example `RELAY_SOCKET_BUFFER_SIZE="4000000"`

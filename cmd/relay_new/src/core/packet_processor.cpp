@@ -28,7 +28,6 @@ namespace core
   PacketProcessor::PacketProcessor(
    const std::atomic<bool>& shouldReceive,
    os::Socket& socket,
-   const util::Clock& relayClock,
    const crypto::Keychain& keychain,
    SessionMap& sessions,
    RelayManager<Relay>& relayManager,
@@ -42,7 +41,6 @@ namespace core
    const RouterInfo& routerInfo)
    : mShouldReceive(shouldReceive),
      mSocket(socket),
-     mRelayClock(relayClock),
      mKeychain(keychain),
      mSessionMap(sessions),
      mRelayManager(relayManager),
@@ -210,7 +208,7 @@ namespace core
         mRecorder.addToReceived(wholePacketSize);
         mStats.BytesPerSecManagementRx += wholePacketSize;
 
-        handlers::RouteRequestHandler handler(mRelayClock, packet, packet.Addr, mKeychain, mSessionMap, mRecorder, mStats, mRouterInfo);
+        handlers::RouteRequestHandler handler(packet, packet.Addr, mKeychain, mSessionMap, mRecorder, mStats, mRouterInfo);
 
         handler.handle(outputBuff, mSocket, isSigned);
       } break;
@@ -226,7 +224,7 @@ namespace core
         mRecorder.addToReceived(wholePacketSize);
         mStats.BytesPerSecManagementRx += wholePacketSize;
 
-        handlers::ContinueRequestHandler handler(mRelayClock, packet, mSessionMap, mKeychain, mRecorder, mStats, mRouterInfo);
+        handlers::ContinueRequestHandler handler(packet, mSessionMap, mKeychain, mRecorder, mStats, mRouterInfo);
 
         handler.handle(outputBuff, mSocket, isSigned);
       } break;

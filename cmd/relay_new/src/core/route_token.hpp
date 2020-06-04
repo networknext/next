@@ -12,7 +12,7 @@ namespace core
   class RouteToken: public Token
   {
    public:
-    RouteToken(const util::Clock& relayClock, const RouterInfo& routerInfo);
+    RouteToken(const RouterInfo& routerInfo);
     virtual ~RouteToken() override = default;
     // KbpsUp (4) +
     // KbpsDown (4) +
@@ -62,7 +62,7 @@ namespace core
      const size_t nonceIndex);
   };
 
-  inline RouteToken::RouteToken(const util::Clock& relayClock, const RouterInfo& routerInfo): Token(relayClock, routerInfo) {}
+  inline RouteToken::RouteToken(const RouterInfo& routerInfo): Token(routerInfo) {}
 }  // namespace core
 
 namespace legacy

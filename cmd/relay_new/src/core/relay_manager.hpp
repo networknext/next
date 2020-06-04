@@ -8,6 +8,7 @@
 #include "relay_stats.hpp"
 #include "util/clock.hpp"
 #include "util/logger.hpp"
+#include "router_info.hpp"
 
 namespace core
 {
@@ -42,7 +43,7 @@ namespace core
   class RelayManager
   {
    public:
-    RelayManager(const util::Clock& clock);
+    RelayManager(const RouterInfo& routerInfo);
     ~RelayManager() = default;
 
     void reset();
@@ -59,14 +60,14 @@ namespace core
 
    private:
     std::mutex mLock;
-    const util::Clock& mClock;
     unsigned int mNumRelays;
     std::array<T, MAX_RELAYS> mRelays;
     std::vector<PingHistory> mPingHistoryBuff;
+    const RouterInfo& mRouterInfo;
   };
 
   template <typename T>
-  RelayManager<T>::RelayManager(const util::Clock& clock): mClock(clock)
+  RelayManager<T>::RelayManager(const RouterInfo& routerInfo): mRouterInfo(routerInfo)
   {
     mPingHistoryBuff.resize(MAX_RELAYS);
     reset();
@@ -92,7 +93,7 @@ namespace core
       for (unsigned int i = 0; i < mNumRelays; i++) {
         auto& relay = mRelays[i];
         if (from == relay.Addr) {
-          relay.History->pongReceived(seq, mClock.elapsed<util::Second>());
+          relay.History->pongReceived(seq, mRouterInfo.currentTime());
           pongReceived = true;
           break;
         }
@@ -105,7 +106,7 @@ namespace core
   template <typename T>
   void RelayManager<T>::getStats(RelayStats& stats)
   {
-    auto currentTime = mClock.elapsed<util::Second>();
+    auto currentTime = mRouterInfo.currentTime();
 
     // locked mutex scope
     {
@@ -127,7 +128,7 @@ namespace core
   template <>
   inline auto RelayManager<Relay>::getPingData(std::array<PingData, MAX_RELAYS>& data) -> size_t
   {
-    double currentTime = mClock.elapsed<util::Second>();
+    double currentTime = mRouterInfo.currentTime();
     size_t numPings = 0;
 
     // locked mutex scope
@@ -152,7 +153,7 @@ namespace core
   template <>
   inline auto RelayManager<V3Relay>::getPingData(std::array<V3PingData, MAX_RELAYS>& data) -> size_t
   {
-    double currentTime = mClock.elapsed<util::Second>();
+    double currentTime = mRouterInfo.currentTime();
     size_t numPings = 0;
 
     // locked mutex scope
@@ -238,7 +239,7 @@ namespace core
 
       // make sure all the ping times are evenly distributed to avoid clusters of ping packets
 
-      auto currentTime = mClock.elapsed<util::Second>();
+      auto currentTime = mRouterInfo.currentTime();
 
       for (unsigned int i = 0; i < mNumRelays; i++) {
         mRelays[i].LastPingTime = currentTime - RELAY_PING_TIME + i * RELAY_PING_TIME / mNumRelays;
@@ -337,7 +338,7 @@ namespace core
 
       // make sure all the ping times are evenly distributed to avoid clusters of ping packets
 
-      auto currentTime = mClock.elapsed<util::Second>();
+      auto currentTime = mRouterInfo.currentTime();
 
       for (unsigned int i = 0; i < mNumRelays; i++) {
         mRelays[i].LastPingTime = currentTime - RELAY_PING_TIME + i * RELAY_PING_TIME / mNumRelays;

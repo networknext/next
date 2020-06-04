@@ -472,6 +472,7 @@ func (r *RelayUpdateRequest) size() uint {
 }
 
 type RelayUpdateResponse struct {
+	Timestamp    int64
 	RelaysToPing []routing.LegacyPingData `json:"ping_data"`
 }
 
@@ -514,6 +515,7 @@ func (r RelayUpdateResponse) MarshalJSON() ([]byte, error) {
 
 	data["version"] = VersionNumberUpdateResponse
 	data["ping_data"] = r.RelaysToPing
+	data["timestamp"] = r.Timestamp
 
 	return json.Marshal(data)
 }

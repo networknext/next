@@ -10,8 +10,8 @@ namespace
   core::ContinueToken makeToken()
   {
     static util::Clock clock;
-    static core::RouterInfo info;
-    return core::ContinueToken(clock, info);
+    static core::RouterInfo info(clock);
+    return core::ContinueToken(info);
   }
 }  // namespace
 
