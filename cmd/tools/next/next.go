@@ -871,7 +871,7 @@ func main() {
 			},
 		},
 		Exec: func(context.Context, []string) error {
-			fmt.Printf( "\nNetwork Next Operator Tool\n")
+			fmt.Printf( "Network Next Operator Tool\n\n")
 			return flag.ErrHelp
 		},
 	}
