@@ -29,7 +29,8 @@ Creates an instance of a server, binding a socket to the specified address and p
 	                                    const char * server_address, 
 	                                    const char * bind_address, 
 	                                    const char * datacenter, 
-	                                    void (*packet_received_callback)( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes ) );
+	                                    void (*packet_received_callback)( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes ),
+	                                    void (*wake_up_callback)( void * context ) );
 
 **Parameters:**
 
