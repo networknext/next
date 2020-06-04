@@ -741,7 +741,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 
 		dsRelays := rp.RelaysIn(serverCacheEntry.Datacenter)
 
-		level.Debug(locallogger).Log("num_datacenter_relays", len(dsRelays), "num_client_relays", len(clientRelays))
+		level.Debug(locallogger).Log("datacenter_relays", routing.RelayAddrs(dsRelays), "client_relays", routing.RelayAddrs(clientRelays))
 
 		if len(dsRelays) == 0 {
 			sentry.CaptureMessage(fmt.Sprintf("No relays in datacenter %s", serverCacheEntry.Datacenter.Name))
@@ -900,6 +900,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			nextRoute := routes[0]
 
 			level.Debug(locallogger).Log(
+				"relays", routing.RelayAddrs(nextRoute.Relays),
 				"selected_next_route_stats", nextRoute.Stats.String(),
 				"packet_next_stats", nnStats.String(),
 				"packet_direct_stats", directStats.String(),
