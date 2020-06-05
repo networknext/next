@@ -30,17 +30,18 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string) {
 
 		fmt.Println("Session ID:", sessionID)
 		fmt.Println("User Hash:", reply.Meta.UserHash)
-		fmt.Printf("Current Route: %s, %s ->", reply.Meta.Location.City, reply.Meta.Location.Region)
-		for _, hop := range reply.Meta.Hops {
+		fmt.Println("Current Route:")
+		fmt.Printf("\t%s, %s (Client's Location)\n", reply.Meta.Location.City, reply.Meta.Location.Region)
+		for idx, hop := range reply.Meta.Hops {
 			for _, relay := range relaysreply.Relays {
 				if hop.ID == relay.ID {
 					hop.Name = relay.Name
 				}
 			}
 
-			fmt.Printf(" %s ->", hop.Name)
+			fmt.Printf("\t%s (Hop %d)\n", hop.Name, idx+1)
 		}
-		fmt.Println(" ", reply.Meta.Datacenter)
+		fmt.Printf("\t%s (Server's Datacenter)\n", reply.Meta.Datacenter)
 
 		return
 	}
@@ -64,6 +65,10 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string) {
 	}{}
 
 	for _, session := range reply.Sessions {
+		improvement := fmt.Sprintf("%.02f", session.DeltaRTT)
+		if session.NextRTT <= 0 || session.DeltaRTT <= 0 {
+			improvement = "-"
+		}
 		sessions = append(sessions, struct {
 			ID          string
 			UserHash    string
@@ -79,7 +84,7 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string) {
 			Datacenter:  session.Datacenter,
 			DirectRTT:   fmt.Sprintf("%.02f", session.DirectRTT),
 			NextRTT:     fmt.Sprintf("%.02f", session.NextRTT),
-			Improvement: fmt.Sprintf("%.02f", session.DeltaRTT),
+			Improvement: improvement,
 		})
 	}
 
