@@ -182,6 +182,57 @@ func (fs *Firestore) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		return &FirestoreError{err: err}
 	}
 
+	// Check if a customer already exists for this buyer
+	var customerFound bool
+
+	cdocs := fs.Client.Collection("Customer").Documents(ctx)
+	defer cdocs.Stop()
+	for {
+		cdoc, err := cdocs.Next()
+		if err == iterator.Done {
+			break
+		}
+
+		if err != nil {
+			return &FirestoreError{err: err}
+		}
+
+		// Unmarshal the customer in firestore to see if it's the customer we want to add the buyer to
+		var customerInRemoteStorage customer
+		err = cdoc.DataTo(&customerInRemoteStorage)
+		if err != nil {
+			return &UnmarshalError{err: err}
+		}
+
+		if customerInRemoteStorage.Name == b.Name && customerInRemoteStorage.Buyer == nil {
+			customerFound = true
+
+			customerInRemoteStorage.Buyer = ref
+
+			// Update the customer references
+			if _, err := cdoc.Ref.Set(ctx, customerInRemoteStorage); err != nil {
+				return &FirestoreError{err: err}
+			}
+
+			break
+		}
+	}
+
+	if !customerFound {
+		// Customer was not found, so make a new one
+		newCustomerData := customer{
+			Name:   b.Name,
+			Active: b.Active,
+			Domain: b.Domain,
+			Buyer:  ref,
+		}
+
+		// Create the customer object in remote storage
+		if _, _, err = fs.Client.Collection("Customer").Add(ctx, newCustomerData); err != nil {
+			return &FirestoreError{err: err}
+		}
+	}
+
 	// Add the buyer in cached storage
 	fs.buyerMutex.Lock()
 	fs.buyers[b.ID] = b
@@ -228,6 +279,47 @@ func (fs *Firestore) RemoveBuyer(ctx context.Context, id uint64) error {
 			// Delete the buyer in remote storage
 			if _, err := bdoc.Ref.Delete(ctx); err != nil {
 				return &FirestoreError{err: err}
+			}
+
+			// Find the associated customer, remove the link to the buyer, and check if we should remove the customer
+			cdocs := fs.Client.Collection("Customer").Documents(ctx)
+			defer cdocs.Stop()
+			for {
+				cdoc, err := cdocs.Next()
+				if err == iterator.Done {
+					break
+				}
+
+				if err != nil {
+					return &FirestoreError{err: err}
+				}
+
+				// Unmarshal the customer in firestore to see if it's the customer we need
+				var customerInRemoteStorage customer
+				err = cdoc.DataTo(&customerInRemoteStorage)
+				if err != nil {
+					return &UnmarshalError{err: err}
+				}
+
+				if customerInRemoteStorage.Buyer != nil && customerInRemoteStorage.Buyer.ID == bdoc.Ref.ID {
+					customerInRemoteStorage.Buyer = nil
+
+					if customerInRemoteStorage.Buyer == nil && customerInRemoteStorage.Seller == nil {
+						// Remove the customer
+						if _, err := cdoc.Ref.Delete(ctx); err != nil {
+							return &FirestoreError{err: err}
+						}
+
+						break
+					}
+
+					// Customer is still needed, but update the references
+					if _, err := cdoc.Ref.Set(ctx, customerInRemoteStorage); err != nil {
+						return &FirestoreError{err: err}
+					}
+
+					break
+				}
 			}
 
 			// Delete the buyer in cached storage
@@ -346,9 +438,60 @@ func (fs *Firestore) AddSeller(ctx context.Context, s routing.Seller) error {
 	}
 
 	// Add the seller in remote storage
-	_, err := fs.Client.Collection("Seller").Doc(s.ID).Set(ctx, newSellerData)
+	ref := fs.Client.Collection("Seller").Doc(s.ID)
+	_, err := ref.Set(ctx, newSellerData)
 	if err != nil {
 		return &FirestoreError{err: err}
+	}
+
+	// Check if a customer already exists for this seller
+	var customerFound bool
+
+	cdocs := fs.Client.Collection("Customer").Documents(ctx)
+	defer cdocs.Stop()
+	for {
+		cdoc, err := cdocs.Next()
+		if err == iterator.Done {
+			break
+		}
+
+		if err != nil {
+			return &FirestoreError{err: err}
+		}
+
+		// Unmarshal the customer in firestore to see if it's the customer we want to add the seller to
+		var customerInRemoteStorage customer
+		err = cdoc.DataTo(&customerInRemoteStorage)
+		if err != nil {
+			return &UnmarshalError{err: err}
+		}
+
+		if customerInRemoteStorage.Name == s.Name && customerInRemoteStorage.Seller == nil {
+			customerFound = true
+
+			customerInRemoteStorage.Seller = ref
+
+			// Update the customer references
+			if _, err := cdoc.Ref.Set(ctx, customerInRemoteStorage); err != nil {
+				return &FirestoreError{err: err}
+			}
+
+			break
+		}
+	}
+
+	if !customerFound {
+		// Customer was not found, so make a new one
+		newCustomerData := customer{
+			Name:   s.Name,
+			Active: true,
+			Seller: ref,
+		}
+
+		// Create the customer object in remote storage
+		if _, _, err = fs.Client.Collection("Customer").Add(ctx, newCustomerData); err != nil {
+			return &FirestoreError{err: err}
+		}
 	}
 
 	// Add the seller in cached storage
@@ -370,8 +513,50 @@ func (fs *Firestore) RemoveSeller(ctx context.Context, id string) error {
 	}
 
 	// Delete the seller in remote storage
-	if _, err := fs.Client.Collection("Seller").Doc(id).Delete(ctx); err != nil {
+	sdoc := fs.Client.Collection("Seller").Doc(id)
+	if _, err := sdoc.Delete(ctx); err != nil {
 		return &FirestoreError{err: err}
+	}
+
+	// Find the associated customer, remove the link to the seller, and check if we should remove the customer
+	cdocs := fs.Client.Collection("Customer").Documents(ctx)
+	defer cdocs.Stop()
+	for {
+		cdoc, err := cdocs.Next()
+		if err == iterator.Done {
+			break
+		}
+
+		if err != nil {
+			return &FirestoreError{err: err}
+		}
+
+		// Unmarshal the customer in firestore to see if it's the customer we need
+		var customerInRemoteStorage customer
+		err = cdoc.DataTo(&customerInRemoteStorage)
+		if err != nil {
+			return &UnmarshalError{err: err}
+		}
+
+		if customerInRemoteStorage.Seller != nil && customerInRemoteStorage.Seller.ID == sdoc.ID {
+			customerInRemoteStorage.Seller = nil
+
+			if customerInRemoteStorage.Buyer == nil && customerInRemoteStorage.Seller == nil {
+				// Remove the customer
+				if _, err := cdoc.Ref.Delete(ctx); err != nil {
+					return &FirestoreError{err: err}
+				}
+
+				break
+			}
+
+			// Customer is still needed, but update the references
+			if _, err := cdoc.Ref.Set(ctx, customerInRemoteStorage); err != nil {
+				return &FirestoreError{err: err}
+			}
+
+			break
+		}
 	}
 
 	// Delete the seller in cached storage
