@@ -31,7 +31,12 @@ type UserSessionsReply struct {
 
 func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, reply *UserSessionsReply) error {
 	var sessionIDs []string
-	var isAnon = IsAnonymous(r)
+
+	var isAdmin bool = false
+	var isSameBuyer bool = false
+	var isAnon bool = true
+
+	isAnon = IsAnonymous(r)
 
 	reply.Sessions = make([]routing.SessionMeta, 0)
 
@@ -85,14 +90,20 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 				continue
 			}
 
-			isAdmin, err := CheckRoles(r, "Admin")
-			if err != nil {
-				return err
+			if !isAnon {
+				isAdmin, err = CheckRoles(r, "Admin")
+				if err != nil {
+					return err
+				}
 			}
 
-			isSameBuyer, err := s.IsSameBuyer(r, meta.CustomerID)
-			if err != nil {
-				return err
+			if !isAdmin {
+				isSameBuyer, err = s.IsSameBuyer(r, meta.CustomerID)
+				if err != nil {
+					return err
+				}
+			} else {
+				isSameBuyer = true
 			}
 
 			if isAnon || (!isSameBuyer && !isAdmin) {
@@ -125,16 +136,27 @@ type TopSessionsReply struct {
 func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, reply *TopSessionsReply) error {
 	var err error
 	var result []redis.Z
-	var isAnon = IsAnonymous(r)
 
-	isAdmin, err := CheckRoles(r, "Admin")
-	if err != nil {
-		return err
+	var isAdmin bool = false
+	var isSameBuyer bool = false
+	var isAnon bool = true
+
+	isAnon = IsAnonymous(r)
+
+	if !isAnon {
+		isAdmin, err = CheckRoles(r, "Admin")
+		if err != nil {
+			return err
+		}
 	}
 
-	isSameBuyer, err := s.IsSameBuyer(r, args.BuyerID)
-	if err != nil {
-		return err
+	if !isAdmin {
+		isSameBuyer, err = s.IsSameBuyer(r, args.BuyerID)
+		if err != nil {
+			return err
+		}
+	} else {
+		isSameBuyer = true
 	}
 
 	reply.Sessions = make([]routing.SessionMeta, 0)
@@ -186,7 +208,6 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 				meta.Anonymise()
 			}
 
-			fmt.Println(meta)
 			reply.Sessions = append(reply.Sessions, meta)
 		}
 	}
@@ -221,11 +242,27 @@ type SessionDetailsReply struct {
 }
 
 func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs, reply *SessionDetailsReply) error {
-	var isAnon = IsAnonymous(r)
+	var err error
+	var isAdmin bool = false
+	var isSameBuyer bool = false
+	var isAnon bool = true
 
-	isAdmin, err := CheckRoles(r, "Admin")
-	if err != nil {
-		return err
+	isAnon = IsAnonymous(r)
+
+	if !isAnon {
+		isAdmin, err = CheckRoles(r, "Admin")
+		if err != nil {
+			return err
+		}
+	}
+
+	if !isAdmin {
+		isSameBuyer, err = s.IsSameBuyer(r, reply.Meta.CustomerID)
+		if err != nil {
+			return err
+		}
+	} else {
+		isSameBuyer = true
 	}
 
 	data, err := s.RedisClient.Get(fmt.Sprintf("session-%s-meta", args.SessionID)).Bytes()
@@ -233,11 +270,6 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		return err
 	}
 	err = reply.Meta.UnmarshalBinary(data)
-	if err != nil {
-		return err
-	}
-
-	isSameBuyer, err := s.IsSameBuyer(r, reply.Meta.CustomerID)
 	if err != nil {
 		return err
 	}
@@ -282,14 +314,25 @@ func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, r
 	var err error
 	var sessionIDs []string
 
-	isAdmin, err := CheckRoles(r, "Admin")
-	if err != nil {
-		return err
+	var isAdmin bool = false
+	var isSameBuyer bool = false
+	var isAnon bool = true
+
+	isAnon = IsAnonymous(r)
+	if !isAnon {
+		isAdmin, err = CheckRoles(r, "Admin")
+		if err != nil {
+			return err
+		}
 	}
 
-	isSameBuyer, err := s.IsSameBuyer(r, args.BuyerID)
-	if err != nil {
-		return err
+	if !isAdmin {
+		isSameBuyer, err = s.IsSameBuyer(r, args.BuyerID)
+		if err != nil {
+			return err
+		}
+	} else {
+		isSameBuyer = true
 	}
 
 	reply.Points = make([]routing.SessionMapPoint, 0)
