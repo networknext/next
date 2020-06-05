@@ -124,14 +124,6 @@ MapHandler = {
 		this.mapLoop = setInterval(() => {
 			this.refreshMapSessions();
 		}, 10000);
-		if (UserHandler.isAnonymous())
-			setTimeout(() => {
-				$('#video-modal').modal('toggle')
-				$('#video-modal').on('hidden.bs.modal', function () {
-						let videoPlayer = document.getElementById("video-player");
-						videoPlayer.parentElement.removeChild(videoPlayer);
-				});
-			}, 60000)
 	},
 	updateFilter(filter) {
 		Object.assign(rootComponent.$data.pages.map, {filter: filter});
@@ -803,6 +795,15 @@ function startApp() {
 			console.log(e);
 			Sentry.captureException(e);
 		});
+	if (UserHandler.isAnonymous()) {
+		setTimeout(() => {
+			$('#video-modal').modal('toggle')
+			$('#video-modal').on('hidden.bs.modal', function () {
+					let videoPlayer = document.getElementById("video-player");
+					videoPlayer.parentElement.removeChild(videoPlayer);
+			});
+		}, 60000)
+	}
 }
 
 function createVueComponents() {
