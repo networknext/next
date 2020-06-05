@@ -1071,8 +1071,8 @@ function generateCharts(data) {
 		jitterData.comparison[2].push(direct);
 
 		// Packetloss
-		next = parseFloat(entry.next.packet_loss * DEC_TO_PERC);
-		direct = parseFloat(entry.direct.packet_loss * DEC_TO_PERC);
+		next = parseFloat(entry.next.packet_loss);
+		direct = parseFloat(entry.direct.packet_loss);
 		improvement = direct - next;
 		packetLossData.improvement[0].push(timestamp);
 		packetLossData.improvement[1].push(improvement);
