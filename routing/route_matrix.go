@@ -688,7 +688,7 @@ func (m *RouteMatrix) WriteRoutesTo(writer io.Writer) {
 				if err != nil {
 					fmt.Println(err)
 				}
-				b.WriteString(relay.Name)
+				b.WriteString(relay.Addr.String())
 				b.WriteString(" ")
 			}
 			b.WriteByte('\n')
