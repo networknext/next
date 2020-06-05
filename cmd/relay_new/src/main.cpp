@@ -174,8 +174,6 @@ int main(int argc, const char* argv[])
   return 0;
 #endif
 
-  util::Clock relayClock;
-
   std::cout << "\nNetwork Next Relay\n";
 
   std::cout << "\nEnvironment:\n\n";
@@ -218,11 +216,11 @@ int main(int argc, const char* argv[])
 
   Log("Initializing relay");
 
-  legacy::v3::TrafficStats v3TrafficStats;
-  core::RouterInfo routerInfo(relayClock);
+  core::RouterInfo routerInfo;
   core::RelayManager<core::Relay> relayManager(routerInfo);
   core::RelayManager<core::V3Relay> v3RelayManager(routerInfo);
   util::ThroughputRecorder recorder;
+  legacy::v3::TrafficStats v3TrafficStats;
   auto chan = util::makeChannel<core::GenericPacket<>>();
   auto sender = std::get<0>(chan);
   auto receiver = std::get<1>(chan);
@@ -420,16 +418,16 @@ int main(int argc, const char* argv[])
                                                    socket,
                                                    &cleanup,
                                                    &v3BackendSuccess,
-                                                   &relayClock,
                                                    &v3TrafficStats,
                                                    &v3RelayManager,
                                                    &relayID,
                                                    &state,
                                                    &keychain,
                                                    &sessions] {
+        util::Clock clock;
         size_t speed = std::stoi(env.RelayV3Speed) * 1000000;
         legacy::v3::Backend backend(
-         gAlive, receiver, env, relayID, *socket, relayClock, v3TrafficStats, v3RelayManager, speed, state, keychain, sessions);
+         gAlive, receiver, env, relayID, *socket, clock, v3TrafficStats, v3RelayManager, speed, state, keychain, sessions);
 
         if (!backend.init()) {
           Log("could not initialize relay with old backend");
@@ -468,15 +466,7 @@ int main(int argc, const char* argv[])
   }
 
   core::Backend<net::CurlWrapper> backend(
-   env.BackendHostname,
-   relayAddr.toString(),
-   keychain,
-   routerInfo,
-   relayManager,
-   b64RelayPubKey,
-   sessions,
-   v3TrafficStats,
-   relayClock);
+   env.BackendHostname, relayAddr.toString(), keychain, routerInfo, relayManager, b64RelayPubKey, sessions, v3TrafficStats);
 
   bool relayInitialized = false;
 

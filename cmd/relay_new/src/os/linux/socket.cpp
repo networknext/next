@@ -122,7 +122,6 @@ namespace os
 
   auto Socket::recv(net::Address& from, uint8_t* data, size_t maxSize) const -> int
   {
-    std::lock_guard<std::mutex> lk(mReadLock);
     assert(data != nullptr);
     assert(maxSize > 0);
 

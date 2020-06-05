@@ -58,7 +58,6 @@ namespace os
     const SocketType mType;
     std::atomic<bool> mClosed;
     mutable std::mutex mWriteLock;
-    mutable std::mutex mReadLock;
 
     bool setBufferSizes(size_t sendBufferSize, size_t recvBufferSize);
     bool setLingerTime(int lingerTime);
@@ -127,7 +126,6 @@ namespace os
   template <size_t BuffSize, size_t PacketSize>
   bool Socket::multirecv(core::GenericPacketBuffer<BuffSize, PacketSize>& packetBuff) const
   {
-    std::lock_guard<std::mutex> lk(mReadLock);
     packetBuff.Count = recvmmsg(
      mSockFD,
      packetBuff.Headers.data(),

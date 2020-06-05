@@ -67,9 +67,7 @@ namespace core
     GenericPacketBuffer<MaxPingsToSend, packets::NewRelayPingPacket::ByteSize> buffer;
 
     while (mShouldProcess) {
-      // TODO figure out if this should be 100ms.
-      // reference relay sleeps for 1% of 1 second,
-      // but RELAY_PING_TIME is 0.1 which would be 10% of a second
+      // Sleep for 10ms, but the actual ping rate is controlled by RELAY_PING_TIME
       std::this_thread::sleep_for(10ms);
 
       std::array<core::PingData, MAX_RELAYS> pings;

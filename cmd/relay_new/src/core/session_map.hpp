@@ -66,14 +66,10 @@ namespace core
 
   inline void SessionMap::purge(double seconds)
   {
-    // TODO instead of locking for the whole operation,
-    // find a way to lock only when deleting objects so
-    // that the packet processing threads aren't held up
-    // by this operation
-    std::lock_guard<std::mutex> lk(mLock);
     auto iter = mInternal.begin();
     while (iter != mInternal.end()) {
       if (iter->second && iter->second->expired(seconds)) {
+        std::lock_guard<std::mutex> lk(mLock);
         iter = mInternal.erase(iter);
       } else {
         iter++;

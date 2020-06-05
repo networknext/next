@@ -10,7 +10,6 @@
 #include "router_info.hpp"
 #include "session_map.hpp"
 #include "testing/test.hpp"
-#include "util/clock.hpp"
 #include "util/json.hpp"
 #include "util/logger.hpp"
 #include "util/throughput_recorder.hpp"
@@ -54,8 +53,7 @@ namespace core
      RelayManager<Relay>& relayManager,
      std::string base64RelayPublicKey,
      const core::SessionMap& sessions,
-     legacy::v3::TrafficStats& stats,
-     util::Clock& relayClock);
+     legacy::v3::TrafficStats& stats);
     ~Backend() = default;
 
     auto init() -> bool;
@@ -79,11 +77,10 @@ namespace core
     const std::string mBase64RelayPublicKey;
     const core::SessionMap& mSessionMap;
     legacy::v3::TrafficStats& mStats;
-    util::Clock& mClock;
 
     auto update(util::ThroughputRecorder& recorder, bool shutdown) -> bool;
     auto buildInitRequest(util::JSON& doc) -> std::tuple<bool, const char*>;
-    auto buildUpdateRequest(util::JSON& doc, const util::ThroughputRecorder& recorder, bool shutdown)
+    auto buildUpdateRequest(util::JSON& doc, util::ThroughputRecorder& recorder, bool shutdown)
      -> std::tuple<bool, const char*>;
   };
 
@@ -96,8 +93,7 @@ namespace core
    RelayManager<Relay>& relayManager,
    std::string base64RelayPublicKey,
    const core::SessionMap& sessions,
-   legacy::v3::TrafficStats& stats,
-   util::Clock& relayClock)
+   legacy::v3::TrafficStats& stats)
    : mHostname(hostname),
      mAddressStr(address),
      mKeychain(keychain),
@@ -105,8 +101,7 @@ namespace core
      mRelayManager(relayManager),
      mBase64RelayPublicKey(base64RelayPublicKey),
      mSessionMap(sessions),
-     mStats(stats),
-     mClock(relayClock)
+     mStats(stats)
   {}
 
   template <typename T>
@@ -149,8 +144,7 @@ namespace core
     if (doc.memberExists("Timestamp")) {
       if (doc.memberIs(util::JSON::Type::Number, "Timestamp")) {
         // for old relay compat the router sends this back in millis, so convert back to seconds
-        mRouterInfo.BackendTimestamp = doc.get<uint64_t>("Timestamp") / 1000;
-        mClock.reset();
+        mRouterInfo.setTimestamp(doc.get<uint64_t>("Timestamp") / 1000);
       } else {
         Log("init timestamp not a number");
         return false;
@@ -192,7 +186,6 @@ namespace core
       }
 
       sessions.purge(mRouterInfo.currentTime());
-      recorder.reset();
 
       std::this_thread::sleep_for(1s);
     }
@@ -256,8 +249,7 @@ namespace core
 
     if (doc.memberExists("timestamp")) {
       if (doc.memberIs(util::JSON::Type::Number, "timestamp")) {
-        mRouterInfo.BackendTimestamp = doc.get<uint64_t>("timestamp");
-        mClock.reset();
+        mRouterInfo.setTimestamp(doc.get<int64_t>("timestamp"));
       } else {
         Log("init timestamp not a number");
         return false;
@@ -387,7 +379,7 @@ namespace core
   }
 
   template <typename T>
-  auto Backend<T>::buildUpdateRequest(util::JSON& doc, const util::ThroughputRecorder& recorder, bool shutdown)
+  auto Backend<T>::buildUpdateRequest(util::JSON& doc, util::ThroughputRecorder& recorder, bool shutdown)
    -> std::tuple<bool, const char*>
   {
     // TODO once the other stats are finally added, pull out the json parts that are always the same, no sense rebuilding those
@@ -401,9 +393,9 @@ namespace core
     {
       util::JSON trafficStats;
 
-      auto stats = recorder.get();
-      trafficStats.set(stats.Sent.ByteCount, "BytesMeasurementTx");
-      trafficStats.set(stats.Received.ByteCount, "BytesMeasurementRx");
+      util::ThroughputStatsCollection stats(std::move(recorder.get()));
+      trafficStats.set(stats.Sent.ByteCount.load(), "BytesMeasurementTx");
+      trafficStats.set(stats.Received.ByteCount.load(), "BytesMeasurementRx");
       trafficStats.set(mSessionMap.size(), "SessionCount");
       doc.set(trafficStats, "TrafficStats");
     }

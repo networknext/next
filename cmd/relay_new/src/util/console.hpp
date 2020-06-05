@@ -30,7 +30,7 @@ namespace util
   template <typename... Args>
   inline void Console::write(Args&&... args)
   {
-    std::lock_guard<std::mutex> lk(mLock);
+    std::lock_guard<std::mutex> lk(mLock); // prevents log messages from merging into unreadable messes
     ((mStream << std::forward<Args>(args)), ...);
   }
 

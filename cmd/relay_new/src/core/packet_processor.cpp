@@ -64,10 +64,14 @@ namespace core
 
     GenericPacketBuffer<MaxPacketsToReceive> outputBuffer;
 
+#ifdef RELAY_MULTISEND
+    GenericPacketBuffer<MaxPacketsToReceive> inputBuffer;
+#else
+    core::GenericPacket<> pkt;
+#endif
+
     while (!mSocket.closed() && mShouldReceive) {
 #ifdef RELAY_MULTISEND
-      GenericPacketBuffer<MaxPacketsToReceive> inputBuffer;
-
       if (!mSocket.multirecv(inputBuffer)) {
         Log("failed to recv packets");
       }
@@ -87,8 +91,6 @@ namespace core
         outputBuffer.Count = 0;
       }
 #else
-      core::GenericPacket<> pkt;
-
       if (!mSocket.recv(pkt)) {
         Log("failed to receive packet");
         continue;

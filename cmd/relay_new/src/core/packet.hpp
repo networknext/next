@@ -112,6 +112,11 @@ namespace core
   {
     assert(len <= PacketSize);
 
+    // TODO if ever going back to sendmmsg/recvmmsg
+    // replace count with an atomic
+    // and set by auto count = Count.exchange(Count + 1)
+    // or something of the like, it should be possible
+    // to prevent a mutex lock within this
     std::lock_guard<std::mutex> lk(mLock);
 
     auto& pkt = Packets[Count];

@@ -177,7 +177,7 @@ func main() {
 		}
 
 		if err := db.AddRelay(ctx, routing.Relay{
-			Name:        "local",
+			Name:        "", // needs to be blank so the relay_dashboard shows ips and the stats
 			PublicKey:   relayPublicKey,
 			Seller:      seller,
 			Datacenter:  datacenter,

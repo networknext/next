@@ -9,22 +9,22 @@ namespace util
   struct ThroughputStats
   {
     ThroughputStats() = default;
+    ThroughputStats(ThroughputStats&& other);
 
     void add(size_t count);
 
-    size_t PacketCount = 0;
-    size_t ByteCount = 0;
-
-    void reset();
+    std::atomic<size_t> PacketCount = 0;
+    std::atomic<size_t> ByteCount = 0;
   };
 
   struct ThroughputStatsCollection
   {
+    ThroughputStatsCollection() = default;
+    ThroughputStatsCollection(ThroughputStatsCollection&& other);
+
     ThroughputStats Sent;
     ThroughputStats Received;
     ThroughputStats Unknown;
-
-    void reset();
   };
 
   class ThroughputRecorder
@@ -37,60 +37,43 @@ namespace util
     void addToReceived(size_t count);
     void addToUnknown(size_t count);
 
-    auto get() const -> ThroughputStatsCollection;
-
-    void reset();
+    auto get() -> ThroughputStatsCollection&;
 
    private:
-    std::mutex mLock;
-
     ThroughputStatsCollection mStats;
   };
 
-  inline void ThroughputStats::add(size_t count)
+  inline ThroughputStats::ThroughputStats(ThroughputStats&& other)
+   : PacketCount(other.PacketCount.exchange(0)), ByteCount(other.ByteCount.exchange(0))
+  {}
+
+  inline ThroughputStatsCollection::ThroughputStatsCollection(ThroughputStatsCollection&& other)
+   : Sent(std::move(other.Sent)), Received(std::move(other.Received)), Unknown(std::move(other.Unknown))
+  {}
+
+  [[gnu::always_inline]] inline void ThroughputStats::add(size_t count)
   {
     this->ByteCount += count;
     this->PacketCount++;
   }
 
-  inline void ThroughputStats::reset()
-  {
-    ByteCount = 0;
-    PacketCount = 0;
-  }
-
-  inline void ThroughputStatsCollection::reset()
-  {
-    Sent.reset();
-    Received.reset();
-    Unknown.reset();
-  }
-
-  inline auto ThroughputRecorder::get() const -> ThroughputStatsCollection
+  [[gnu::always_inline]] inline auto ThroughputRecorder::get() -> ThroughputStatsCollection&
   {
     return mStats;
   }
 
-  inline void ThroughputRecorder::reset()
+  [[gnu::always_inline]] inline void ThroughputRecorder::addToSent(size_t count)
   {
-    mStats.reset();
-  }
-
-  inline void ThroughputRecorder::addToSent(size_t count)
-  {
-    std::lock_guard<std::mutex> lk(mLock);
     mStats.Sent.add(count);
   }
 
-  inline void ThroughputRecorder::addToReceived(size_t count)
+  [[gnu::always_inline]] inline void ThroughputRecorder::addToReceived(size_t count)
   {
-    std::lock_guard<std::mutex> lk(mLock);
     mStats.Received.add(count);
   }
 
-  inline void ThroughputRecorder::addToUnknown(size_t count)
+  [[gnu::always_inline]] inline void ThroughputRecorder::addToUnknown(size_t count)
   {
-    std::lock_guard<std::mutex> lk(mLock);
     mStats.Unknown.add(count);
   }
 }  // namespace util
