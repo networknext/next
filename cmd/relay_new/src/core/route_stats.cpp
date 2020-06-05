@@ -3,7 +3,8 @@
 
 namespace core
 {
-  RouteStats::RouteStats(const core::PingHistory& ph, double start, double end, double safety): mRTT(0), mJitter(-1.0), mPacketLoss(-1.0)
+  RouteStats::RouteStats(const core::PingHistory& ph, double start, double end, double safety)
+   : mRTT(0), mJitter(-1.0), mPacketLoss(-1.0)
   {
     // Packet loss calc
     // and RTT calc
@@ -51,15 +52,13 @@ namespace core
     auto stdDevRTT = 0.0;
 
     for (const auto& entry : ph.mEntries) {
-      if (entry.TimePingSent >= start && entry.TimePingSent <= end) {
-        if (entry.TimePongReceived > entry.TimePingSent) {
-          // pong received
-          double rtt = 1000.0 * (entry.TimePongReceived - entry.TimePingSent);
-          if (rtt >= meanRTT) {
-            double error = rtt - meanRTT;
-            stdDevRTT += error * error;
-            numJitterSamples++;
-          }
+      // if the entry is within the window and the pong was received
+      if (entry.TimePingSent >= start && entry.TimePingSent <= end && entry.TimePongReceived > entry.TimePingSent) {
+        double rtt = 1000.0 * (entry.TimePongReceived - entry.TimePingSent);
+        if (rtt >= meanRTT) {
+          double error = rtt - meanRTT;
+          stdDevRTT += error * error;
+          numJitterSamples++;
         }
       }
     }
