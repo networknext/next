@@ -12,11 +12,13 @@ var editUserPermissions = [];
 
 JSONRPCClient = {
 	async call(method, params) {
-		const headers = {
+		let headers = {
 			'Accept':		'application/json',
 			'Accept-Encoding':	'gzip',
 			'Content-Type':		'application/json',
-			'Authorization': `Bearer ${UserHandler.userInfo.token}`
+		}
+		if (!UserHandler.isAnonymous()) {
+				headers['Authorization'] = `Bearer ${UserHandler.userInfo.token}`
 		}
 
 		params = params || {}
@@ -75,19 +77,20 @@ AuthHandler = {
 				});
 
 			window.history.replaceState({}, document.title, "/");
-			startApp();
-		} else {
-			await this.auth0Client.loginWithRedirect({
-				connection: "Username-Password-Authentication",
-				redirect_uri: window.location.origin
-			}).catch((e) => {
-				Sentry.captureException(e);
-			});
 		}
+		startApp();
 	},
 	auth0Client: null,
 	logout() {
-		this.auth0Client.logout();
+		this.auth0Client.logout({ returnTo: window.location.origin });
+	},
+	login() {
+		this.auth0Client.loginWithRedirect({
+			connection: "Username-Password-Authentication",
+			redirect_uri: window.location.origin
+		}).catch((e) => {
+			Sentry.captureException(e);
+		});
 	}
 }
 
@@ -111,7 +114,7 @@ MapHandler = {
 	mapInstance: null,
 	mapLoop: null,
 	initMap() {
-		let buyerId = !UserHandler.isAdmin() ? UserHandler.userInfo.id : "";
+		let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
 		this.updateFilter('map', {
 			buyerId: buyerId,
 			sessionType: 'all'
@@ -234,20 +237,13 @@ MapHandler = {
 }
 
 UserHandler = {
-	userInfo: {
-		company: "",
-		email: "",
-		id: "",
-		name: "",
-		nickname: "",
-		pubKey: "",
-		roles: [],
-		token: "",
-		userId: "",
-	},
+	userInfo: null,
 	async fetchCurrentUserInfo() {
 		return AuthHandler.auth0Client.getIdTokenClaims()
 			.then((response) => {
+				if (!response) {
+					return;
+				}
 				this.userInfo = {
 					email: response.email,
 					name: response.name,
@@ -255,9 +251,12 @@ UserHandler = {
 					userId: response.sub,
 					token: response.__raw,
 				};
-				return JSONRPCClient.call("AuthService.UserAccount", {user_id: this.userInfo.userId})
+				return JSONRPCClient.call("AuthService.UserAccount", {user_id: this.userInfo.userId});
 			})
 			.then((response) => {
+				if (!response) {
+					return;
+				}
 				this.userInfo.id = response.account.id;
 				this.userInfo.company = response.account.company_name;
 				this.userInfo.roles = response.account.roles;
@@ -270,13 +269,16 @@ UserHandler = {
 			});
 	},
 	isAdmin() {
-		return UserHandler.userInfo.roles.findIndex((role) => role.name == "Admin") !== -1
+		return !this.isAnonymous() ? this.userInfo.roles.findIndex((role) => role.name == "Admin") !== -1 : false;
+	},
+	isAnonymous() {
+		return this.userInfo == null;
 	},
 	isOwner() {
-		return UserHandler.userInfo.roles.findIndex((role) => role.name == "Owner") !== -1
+		return !this.isAnonymous() ? this.userInfo.roles.findIndex((role) => role.name == "Owner") !== -1 : false;
 	},
 	isViewer() {
-		return UserHandler.userInfo.roles.findIndex((role) => role.name == "Viewer") !== -1
+		return !this.isAnonymous() ? this.userInfo.roles.findIndex((role) => role.name == "Viewer") !== -1 : false;
 	},
 }
 
@@ -444,6 +446,9 @@ WorkspaceHandler = {
 		Object.assign(rootComponent.$data.pages.settings, {accounts: accounts});
 	},
 	loadSettingsPage() {
+		if (UserHandler.userInfo == null) {
+			return;
+		}
 		if (UserHandler.userInfo.id != '') {
 			JSONRPCClient
 				.call('BuyersService.GameConfiguration', {buyer_id: UserHandler.userInfo.id})
@@ -460,12 +465,15 @@ WorkspaceHandler = {
 			UserHandler.userInfo.pubkey = "";
 		}
 
-		let buyerId = !UserHandler.isAdmin() ? UserHandler.userInfo.id : "";
+		let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
 		this.updateAccountsTableFilter({
 			buyerId: buyerId,
 		});
 	},
 	loadConfigPage() {
+		if (UserHandler.isAnonymous()) {
+			return;
+		}
 		JSONRPCClient
 			.call('BuyersService.GameConfiguration', {buyer_id: UserHandler.userInfo.id})
 			.then((response) => {
@@ -491,7 +499,7 @@ WorkspaceHandler = {
 			});
 	},
 	loadSessionsPage() {
-		let buyerId = !UserHandler.isAdmin() ? UserHandler.userInfo.id : "";
+		let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
 		this.updateSessionFilter({
 			buyerId: buyerId,
 			sessionType: 'all'
@@ -1063,8 +1071,8 @@ function generateCharts(data) {
 		jitterData.comparison[2].push(direct);
 
 		// Packetloss
-		next = parseFloat(entry.next.packet_loss * DEC_TO_PERC);
-		direct = parseFloat(entry.direct.packet_loss * DEC_TO_PERC);
+		next = parseFloat(entry.next.packet_loss);
+		direct = parseFloat(entry.direct.packet_loss);
 		improvement = direct - next;
 		packetLossData.improvement[0].push(timestamp);
 		packetLossData.improvement[1].push(improvement);

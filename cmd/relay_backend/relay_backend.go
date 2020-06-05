@@ -381,6 +381,7 @@ func main() {
 	router.Handle("/route_matrix", &routematrix).Methods("GET")
 	router.Handle("/debug/vars", expvar.Handler())
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(redisClientRelays, &routematrix, statsdb, "local", "local"))
+	router.HandleFunc("/routes", transport.RoutesHandlerFunc(redisClientRelays, &routematrix, statsdb, "local", "local"))
 
 	go func() {
 		port, ok := os.LookupEnv("PORT")

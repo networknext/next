@@ -41,7 +41,7 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string) {
 
 			fmt.Printf("\t%s (Hop %d)\n", hop.Name, idx+1)
 		}
-		fmt.Printf("\t%s (Server's Datacenter)\n", reply.Meta.Datacenter)
+		fmt.Printf("\t%s (Game Server)\n", reply.Meta.ServerAddr)
 
 		return
 	}

@@ -929,6 +929,7 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.R
 		Analysis string
 		Relays   []routing.RelayCacheEntry
 		Stats    map[string]map[string]routing.Stats
+		Routes   string
 	}
 
 	funcmap := template.FuncMap{
@@ -976,6 +977,9 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.R
 
 				<h2>Stats</h2>
 				{{ .Stats | statsTable }}
+
+				<h2>Routes</h2>
+				<pre>{{ .Routes }}</pre>
 			</body>
 		</html>
 	`))
@@ -1032,8 +1036,84 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.R
 			}
 		}
 
+		buf.Reset()
+		routeMatrix.WriteRoutesTo(&buf)
+		res.Routes = buf.String()
+
 		if err := tmpl.Execute(writer, res); err != nil {
 			fmt.Println(err)
 		}
+	}
+}
+
+func RoutesHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.RouteMatrix, statsdb *routing.StatsDatabase, username string, password string) func(writer http.ResponseWriter, request *http.Request) {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		writer.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+
+		u, p, _ := request.BasicAuth()
+		if u != username && p != password {
+			writer.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+			writer.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		qs := request.URL.Query()
+		relayName := qs["relay"][0]
+		datacenterName := qs["datacenter"][0]
+
+		var relayIndex int
+		for i := range routeMatrix.RelayNames {
+			if routeMatrix.RelayNames[i] == relayName {
+				relayIndex = i
+			}
+		}
+
+		var datacenterIndex int
+		for i := range routeMatrix.DatacenterNames {
+			if routeMatrix.DatacenterNames[i] == datacenterName {
+				datacenterIndex = i
+			}
+		}
+
+		datacenterID := routeMatrix.DatacenterIDs[datacenterIndex]
+		datacenterRelays := routeMatrix.DatacenterRelays[datacenterID]
+
+		var buf bytes.Buffer
+		buf.WriteString(fmt.Sprintf("Relay: %s, Datacenter: %s\n\n", relayName, datacenterName))
+
+		numRelays := len(routeMatrix.RelayIDs)
+		a := relayIndex
+		for b := 0; b < numRelays; b++ {
+			if a == b {
+				continue
+			}
+			index := routing.TriMatrixIndex(a, b)
+			if routeMatrix.Entries[index].NumRoutes != 0 {
+				buf.WriteString(fmt.Sprintf("%*dms (%d) %s\n\n", 5, routeMatrix.Entries[index].RouteRTT[0], routeMatrix.Entries[index].NumRoutes, routeMatrix.RelayNames[b]))
+			} else {
+				buf.WriteString(fmt.Sprintf("---- (0) %s\n\n", routeMatrix.RelayNames[b]))
+			}
+		}
+
+		buf.WriteString(fmt.Sprintf("%d relays in datacenter\n", len(datacenterRelays)))
+
+		for i := range datacenterRelays {
+
+			destRelayID := datacenterRelays[i]
+
+			var destRelayIndex int
+			for i := range routeMatrix.RelayIDs {
+				if routeMatrix.RelayIDs[i] == destRelayID {
+					destRelayIndex = i
+				}
+			}
+
+			destRelayName := routeMatrix.RelayNames[destRelayIndex]
+
+			buf.WriteString(fmt.Sprintf("%s -> %s\n", relayName, destRelayName))
+		}
+
+		writer.Header().Add("Content-Type", "text/plain")
+		writer.Write(buf.Bytes())
 	}
 }

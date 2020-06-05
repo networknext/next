@@ -674,6 +674,30 @@ func (m *RouteMatrix) Size() uint64 {
 	return length
 }
 
+func (m *RouteMatrix) WriteRoutesTo(writer io.Writer) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	var b bytes.Buffer
+	for _, routeEntry := range m.Entries {
+		for routeidx := int32(0); routeidx < routeEntry.NumRoutes; routeidx++ {
+			b.WriteString(fmt.Sprintf("RTT(%d) ", routeEntry.RouteRTT[routeidx]))
+
+			for relayidx := int32(0); relayidx < routeEntry.RouteNumRelays[routeidx]; relayidx++ {
+				relay, err := m.ResolveRelay(m.RelayIDs[routeEntry.RouteRelays[routeidx][relayidx]])
+				if err != nil {
+					fmt.Println(err)
+				}
+				b.WriteString(relay.Addr.String())
+				b.WriteString(" ")
+			}
+			b.WriteByte('\n')
+		}
+		b.WriteByte('\n')
+	}
+	writer.Write(b.Bytes())
+}
+
 func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()

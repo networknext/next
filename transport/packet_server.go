@@ -41,6 +41,19 @@ const (
 	PlatformTypePS4     = 5
 	PlatformTypeIOS     = 6
 	PlatformTypeXBOXOne = 7
+
+	FallbackFlagsBadRouteToken              = (1 << 0)
+	FallbackFlagsNoNextRouteToContinue      = (1 << 1)
+	FallbackFlagsPreviousUpdateStillPending = (1 << 2)
+	FallbackFlagsBadContinueToken           = (1 << 3)
+	FallbackFlagsRouteExpired               = (1 << 4)
+	FallbackFlagsRouteRequestTimedOut       = (1 << 5)
+	FallbackFlagsContinueRequestTimedOut    = (1 << 6)
+	FallbackFlagsClientTimedOut             = (1 << 7)
+	FallbackFlagsTryBeforeYouBuyAbort       = (1 << 8)
+	FallbackFlagsDirectRouteExpired         = (1 << 9)
+	FallbackFlagsUpgradeResponseTimedOut    = (1 << 10)
+	FallbackFlagsCount                      = 11
 )
 
 // ConnectionTypeText is similar to http.StatusText(int) which converts the code to a readable text format
@@ -74,6 +87,36 @@ func PlatformTypeText(platformType uint64) string {
 		return "IOS"
 	case PlatformTypeXBOXOne:
 		return "XBOXOne"
+	default:
+		return "unknown"
+	}
+}
+
+// FallbackFlagText is similar to http.StatusText(int) which converts the code to a readable text format
+func FallbackFlagText(fallbackFlag uint32) string {
+	switch fallbackFlag {
+	case FallbackFlagsBadRouteToken:
+		return "bad route token"
+	case FallbackFlagsNoNextRouteToContinue:
+		return "no next route to continue"
+	case FallbackFlagsPreviousUpdateStillPending:
+		return "previous update still pending"
+	case FallbackFlagsBadContinueToken:
+		return "bad continue token"
+	case FallbackFlagsRouteExpired:
+		return "route expired"
+	case FallbackFlagsRouteRequestTimedOut:
+		return "route request timed out"
+	case FallbackFlagsContinueRequestTimedOut:
+		return "continue request timed out"
+	case FallbackFlagsClientTimedOut:
+		return "client timed out"
+	case FallbackFlagsTryBeforeYouBuyAbort:
+		return "try before you buy abort"
+	case FallbackFlagsDirectRouteExpired:
+		return "direct route expired"
+	case FallbackFlagsUpgradeResponseTimedOut:
+		return "upgrade response timed out"
 	default:
 		return "unknown"
 	}
