@@ -466,6 +466,19 @@ func getPemCert(token *jwt.Token) (string, error) {
 	return cert, nil
 }
 
+func CheckIsOps(r *http.Request) bool {
+	user := r.Context().Value("user")
+
+	if user != nil {
+		claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+
+		if _, ok := claims["scope"]; ok {
+			return true
+		}
+	}
+	return false
+}
+
 func CheckRoles(r *http.Request, requiredRole string) (bool, error) {
 	requestRoles := r.Context().Value(rolesKey)
 

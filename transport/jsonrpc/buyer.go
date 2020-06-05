@@ -140,8 +140,10 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	var isAdmin bool = false
 	var isSameBuyer bool = false
 	var isAnon bool = true
+	var isOps bool = false
 
 	isAnon = IsAnonymous(r)
+	isOps = CheckIsOps(r)
 
 	if !isAnon {
 		isAdmin, err = CheckRoles(r, "Admin")
@@ -168,7 +170,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 			return err
 		}
 	default:
-		if !isSameBuyer && !isAdmin {
+		if !isSameBuyer && !isAdmin && !isOps {
 			return fmt.Errorf("insufficient privileges")
 		}
 		result, err = s.RedisClient.ZRangeWithScores(fmt.Sprintf("top-buyer-%s", args.BuyerID), 0, 1000).Result()
