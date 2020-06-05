@@ -89,7 +89,6 @@ namespace os
 
   bool Socket::send(const net::Address& to, const uint8_t* data, size_t size) const
   {
-    std::lock_guard<std::mutex> lk(mWriteLock);
     assert(to.Type == net::AddressType::IPv4 || to.Type == net::AddressType::IPv6);
     assert(data != nullptr);
     assert(size > 0);

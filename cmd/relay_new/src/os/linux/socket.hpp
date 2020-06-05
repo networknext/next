@@ -57,7 +57,6 @@ namespace os
     int mSockFD = 0;
     const SocketType mType;
     std::atomic<bool> mClosed;
-    mutable std::mutex mWriteLock;
 
     bool setBufferSizes(size_t sendBufferSize, size_t recvBufferSize);
     bool setLingerTime(int lingerTime);
@@ -94,7 +93,6 @@ namespace os
   {
     static_assert(BuffSize <= 1024);  // max sendmmsg will allow
 
-    std::lock_guard<std::mutex> lk(mWriteLock);
     assert(count > 0);
     assert(count <= 1024);
 
