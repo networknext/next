@@ -118,26 +118,6 @@ namespace core
       for (unsigned int i = 0; i < mNumRelays; i++) {
         auto& relay = mRelays[i];
 
-        // TODO Delete
-        {
-          if (relay.Addr.toString() == "45.76.58.249:40000") {
-            for (size_t i = 0; i < RELAY_PING_HISTORY_ENTRY_COUNT; i++) {
-              const auto& entry = (*relay.History)[i];
-              Log(
-               "entry ",
-               i,
-               ", sequence = ",
-               entry.Sequence,
-               ", ping sent = ",
-               entry.TimePingSent,
-               ", pong received = ",
-               entry.TimePongReceived,
-               ", difference = ",
-               entry.TimePongReceived - entry.TimePingSent);
-            }
-          }
-        }
-
         RouteStats rs(*relay.History, currentTime - RELAY_STATS_WINDOW, currentTime, RELAY_PING_SAFETY);
         stats.IDs[i] = relay.ID;
         stats.RTT[i] = rs.getRTT();
