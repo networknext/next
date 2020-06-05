@@ -819,7 +819,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 		if shouldSelect { // Only select a route if we should, early out for initial slice and force direct mode
 			level.Debug(locallogger).Log("buyer_rtt_epsilon", buyer.RoutingRulesSettings.RTTEpsilon, "cached_route_hash", sessionCacheEntry.RouteHash)
 			// Get a set of possible routes from the RouteProvider and on error ensure it falls back to direct
-			routes, err := rp.Routes(dsRelays, clientRelays,
+			routes, err := rp.Routes(clientRelays, dsRelays,
 				routing.SelectUnencumberedRoutes(0.8),
 				routing.SelectAcceptableRoutesFromBestRTT(float64(buyer.RoutingRulesSettings.RTTEpsilon)),
 				routing.SelectContainsRouteHash(sessionCacheEntry.RouteHash),
