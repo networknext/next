@@ -7,8 +7,10 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
@@ -29,6 +31,7 @@ type UserSessionsReply struct {
 
 func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, reply *UserSessionsReply) error {
 	var sessionIDs []string
+	var isAnon = IsAnonymous(r)
 
 	reply.Sessions = make([]routing.SessionMeta, 0)
 
@@ -82,6 +85,20 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 				continue
 			}
 
+			isAdmin, err := CheckRoles(r, "Admin")
+			if err != nil {
+				return err
+			}
+
+			isSameBuyer, err := s.IsSameBuyer(r, meta.CustomerID)
+			if err != nil {
+				return err
+			}
+
+			if isAnon || (!isSameBuyer && !isAdmin) {
+				meta.Anonymise()
+			}
+
 			reply.Sessions = append(reply.Sessions, meta)
 		}
 	}
@@ -108,6 +125,17 @@ type TopSessionsReply struct {
 func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, reply *TopSessionsReply) error {
 	var err error
 	var result []redis.Z
+	var isAnon = IsAnonymous(r)
+
+	isAdmin, err := CheckRoles(r, "Admin")
+	if err != nil {
+		return err
+	}
+
+	isSameBuyer, err := s.IsSameBuyer(r, args.BuyerID)
+	if err != nil {
+		return err
+	}
 
 	reply.Sessions = make([]routing.SessionMeta, 0)
 
@@ -118,6 +146,9 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 			return err
 		}
 	default:
+		if !isSameBuyer && !isAdmin {
+			return fmt.Errorf("insufficient privileges")
+		}
 		result, err = s.RedisClient.ZRangeWithScores(fmt.Sprintf("top-buyer-%s", args.BuyerID), 0, 1000).Result()
 		if err != nil {
 			return err
@@ -151,6 +182,11 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 				continue
 			}
 
+			if isAnon || (!isSameBuyer && !isAdmin) {
+				meta.Anonymise()
+			}
+
+			fmt.Println(meta)
 			reply.Sessions = append(reply.Sessions, meta)
 		}
 	}
@@ -185,11 +221,23 @@ type SessionDetailsReply struct {
 }
 
 func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs, reply *SessionDetailsReply) error {
+	var isAnon = IsAnonymous(r)
+
+	isAdmin, err := CheckRoles(r, "Admin")
+	if err != nil {
+		return err
+	}
+
 	data, err := s.RedisClient.Get(fmt.Sprintf("session-%s-meta", args.SessionID)).Bytes()
 	if err != nil {
 		return err
 	}
 	err = reply.Meta.UnmarshalBinary(data)
+	if err != nil {
+		return err
+	}
+
+	isSameBuyer, err := s.IsSameBuyer(r, reply.Meta.CustomerID)
 	if err != nil {
 		return err
 	}
@@ -202,6 +250,10 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		}
 
 		reply.Meta.NearbyRelays[idx].Name = r.Name
+	}
+
+	if isAnon || (!isSameBuyer && !isAdmin) {
+		reply.Meta.Anonymise()
 	}
 
 	reply.Slices = make([]routing.SessionSlice, 0)
@@ -230,6 +282,16 @@ func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, r
 	var err error
 	var sessionIDs []string
 
+	isAdmin, err := CheckRoles(r, "Admin")
+	if err != nil {
+		return err
+	}
+
+	isSameBuyer, err := s.IsSameBuyer(r, args.BuyerID)
+	if err != nil {
+		return err
+	}
+
 	reply.Points = make([]routing.SessionMapPoint, 0)
 
 	switch args.BuyerID {
@@ -239,6 +301,9 @@ func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, r
 			return err
 		}
 	default:
+		if !isSameBuyer && !isAdmin {
+			return fmt.Errorf("insufficient privileges")
+		}
 		sessionIDs, err = s.RedisClient.SMembers(fmt.Sprintf("map-points-buyer-%s", args.BuyerID)).Result()
 		if err != nil {
 			return err
@@ -301,6 +366,10 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	var buyerID uint64
 	var buyer routing.Buyer
 
+	if IsAnonymous(r) {
+		return fmt.Errorf("insufficient privileges")
+	}
+
 	reply.GameConfiguration.PublicKey = ""
 
 	if args.BuyerID == "" {
@@ -321,6 +390,9 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 }
 
 func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfigurationArgs, reply *GameConfigurationReply) error {
+	if IsAnonymous(r) {
+		return fmt.Errorf("insufficient privileges")
+	}
 	var err error
 	var buyerID uint64
 	var buyer routing.Buyer
@@ -365,6 +437,10 @@ type buyerAccount struct {
 
 func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *BuyerListReply) error {
 	reply.Buyers = make([]buyerAccount, 0)
+	if IsAnonymous(r) {
+		return nil
+	}
+
 	for _, b := range s.Storage.Buyers() {
 		id := strconv.FormatUint(b.ID, 10)
 		account := buyerAccount{
@@ -379,4 +455,28 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 	})
 
 	return nil
+}
+
+func (s *BuyersService) IsSameBuyer(r *http.Request, buyerID string) (bool, error) {
+	if buyerID == "" {
+		return false, nil
+	}
+
+	requestUser := r.Context().Value("user")
+	if requestUser == nil {
+		return false, fmt.Errorf("unable to parse user from token")
+	}
+
+	requestEmail, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["email"].(string)
+	if !ok {
+		return false, fmt.Errorf("unable to parse email from token")
+	}
+	requestEmailParts := strings.Split(requestEmail, "@")
+	requestDomain := requestEmailParts[len(requestEmailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
+	buyer, err := s.Storage.BuyerWithDomain(requestDomain)
+	if err != nil {
+		return false, err
+	}
+
+	return buyerID != strconv.FormatUint(buyer.ID, 10), nil
 }
