@@ -145,14 +145,14 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	isAnon = IsAnonymous(r)
 	isOps = CheckIsOps(r)
 
-	if !isAnon {
+	if !isAnon && !isOps {
 		isAdmin, err = CheckRoles(r, "Admin")
 		if err != nil {
 			return err
 		}
 	}
 
-	if !isAdmin {
+	if !isAdmin && !isOps {
 		isSameBuyer, err = s.IsSameBuyer(r, args.BuyerID)
 		if err != nil {
 			return err
