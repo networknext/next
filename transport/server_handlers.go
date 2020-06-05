@@ -574,7 +574,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			// at this point, and thus they shouldn't be falling back from anything.
 			if timestampNow.Sub(timestampStart) < (billing.BillingSliceSeconds*1.5*time.Second) &&
 				timestampNow.Sub(timestampStart) > (billing.BillingSliceSeconds*0.5*time.Second) {
-				level.Error(logger).Log("err", "early fallback to direct")
+				level.Error(locallogger).Log("err", "early fallback to direct", "flag", FallbackFlagText(packet.Flags))
 				if _, err := writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.EarlyFallbackToDirect); err != nil {
 					sentry.CaptureException(err)
 					level.Error(locallogger).Log("msg", "failed to write session error response", "err", err)
@@ -583,7 +583,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 				return
 			}
 
-			level.Error(logger).Log("err", "fallback to direct")
+			level.Error(locallogger).Log("err", "fallback to direct", "flag", FallbackFlagText(packet.Flags))
 
 			responseData, err := writeSessionResponse(w, response, serverPrivateKey)
 			if err != nil {
