@@ -217,8 +217,8 @@ int main(int argc, const char* argv[])
   Log("Initializing relay");
 
   core::RouterInfo routerInfo;
-  core::RelayManager<core::Relay> relayManager(routerInfo);
-  core::RelayManager<core::V3Relay> v3RelayManager(routerInfo);
+  core::RelayManager<core::Relay> relayManager;
+  core::RelayManager<core::V3Relay> v3RelayManager;
   util::ThroughputRecorder recorder;
   legacy::v3::TrafficStats v3TrafficStats;
   auto chan = util::makeChannel<core::GenericPacket<>>();

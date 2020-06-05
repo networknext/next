@@ -9,7 +9,6 @@ Test(RelayManager)
   const int NumRelays = 32;
 
   std::array<core::Relay, MAX_RELAYS> incoming;
-  core::RouterInfo info;
 
   for (int i = 0; i < MaxRelays; ++i) {
     auto& relay = incoming[i];
@@ -20,7 +19,7 @@ Test(RelayManager)
     check(relay.Addr.Port == 40000 + i);
   }
 
-  core::RelayManager<core::Relay> manager(info);
+  core::RelayManager<core::Relay> manager;
 
   // should be no relays when manager is first created
   {
