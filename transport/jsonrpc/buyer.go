@@ -76,11 +76,15 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 				if err != nil {
 					return err
 				}
+			}
 
+			if !isAdmin {
 				isSameBuyer, err = s.IsSameBuyer(r, meta.CustomerID)
 				if err != nil {
 					return err
 				}
+			} else {
+				isSameBuyer = true
 			}
 
 			if isAnon || (!isSameBuyer && !isAdmin) {
@@ -125,11 +129,15 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 		if err != nil {
 			return err
 		}
+	}
 
+	if !isAdmin {
 		isSameBuyer, err = s.IsSameBuyer(r, args.BuyerID)
 		if err != nil {
 			return err
 		}
+	} else {
+		isSameBuyer = true
 	}
 
 	reply.Sessions = make([]routing.SessionMeta, 0)
@@ -218,11 +226,15 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		if err != nil {
 			return err
 		}
+	}
 
+	if !isAdmin {
 		isSameBuyer, err = s.IsSameBuyer(r, reply.Meta.CustomerID)
 		if err != nil {
 			return err
 		}
+	} else {
+		isSameBuyer = true
 	}
 
 	data, err := s.RedisClient.Get(fmt.Sprintf("session-%s-meta", args.SessionID)).Bytes()
@@ -284,11 +296,15 @@ func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, r
 		if err != nil {
 			return err
 		}
+	}
 
+	if !isAdmin {
 		isSameBuyer, err = s.IsSameBuyer(r, args.BuyerID)
 		if err != nil {
 			return err
 		}
+	} else {
+		isSameBuyer = true
 	}
 
 	reply.Points = make([]routing.SessionMapPoint, 0)
