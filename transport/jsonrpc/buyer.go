@@ -288,7 +288,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		reply.Meta.NearbyRelays[idx].Name = r.Name
 	}
 
-	if isAnon || (!isSameBuyer && !isAdmin && !isOPs) {
+	if isAnon || (!isSameBuyer && !isAdmin && !isOps) {
 		reply.Meta.Anonymise()
 	}
 
