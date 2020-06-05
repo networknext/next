@@ -14,7 +14,7 @@ const (
 	HistoryInvalidValue = -1
 	HistorySize         = 6
 
-	MaxJitter     = 250 // 10.0
+	MaxJitter     = 250  // 10.0
 	MaxPacketLoss = 10.0 // 0.1
 )
 
@@ -224,6 +224,7 @@ func (database *StatsDatabase) GetCostMatrix(costMatrix *CostMatrix, redisClient
 	}
 	numRelays := len(hgetallResult.Val())
 
+	costMatrix.RelayIndicies = make(map[uint64]int)
 	costMatrix.RelayIDs = make([]uint64, numRelays)
 	costMatrix.RelayNames = make([]string, numRelays)
 	costMatrix.RelayAddresses = make([][]byte, numRelays)
@@ -250,6 +251,7 @@ func (database *StatsDatabase) GetCostMatrix(costMatrix *CostMatrix, redisClient
 	})
 
 	for i, relayData := range stableRelays {
+		costMatrix.RelayIndicies[relayData.ID] = i
 		costMatrix.RelayIDs[i] = relayData.ID
 		costMatrix.RelayNames[i] = relayData.Name
 		costMatrix.RelaySellers[i] = relayData.Seller

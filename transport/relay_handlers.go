@@ -929,6 +929,7 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.R
 		Analysis string
 		Relays   []routing.RelayCacheEntry
 		Stats    map[string]map[string]routing.Stats
+		Routes   string
 	}
 
 	funcmap := template.FuncMap{
@@ -976,6 +977,9 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.R
 
 				<h2>Stats</h2>
 				{{ .Stats | statsTable }}
+
+				<h2>Routes</h2>
+				<pre>{{ .Routes }}</pre>
 			</body>
 		</html>
 	`))
@@ -1031,6 +1035,10 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.R
 				res.Stats[aKey][bKey] = routing.Stats{RTT: float64(rtt), Jitter: float64(jitter), PacketLoss: float64(packetloss)}
 			}
 		}
+
+		buf.Reset()
+		routeMatrix.WriteRoutesTo(&buf)
+		res.Routes = buf.String()
 
 		if err := tmpl.Execute(writer, res); err != nil {
 			fmt.Println(err)
