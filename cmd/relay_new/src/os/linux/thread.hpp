@@ -2,12 +2,19 @@
 #define OS_LINUX_THREAD_HPP
 namespace os
 {
-  inline auto SetThreadAffinity(std::thread& thread, int cpuNumber, int& error) -> bool
+  inline auto SetThreadAffinity(std::thread& thread, int cpuNumber) -> std::tuple<bool, std::string>
   {
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
     CPU_SET(cpuNumber, &cpuset);
-    return (error = pthread_setaffinity_np(thread.native_handle(), sizeof(cpuset), &cpuset)) == 0;
+    auto res = pthread_setaffinity_np(thread.native_handle(), sizeof(cpuset), &cpuset);
+    if (res == 0) {
+      return {true, std::string()};
+    } else {
+      std::stringstream ss;
+      ss << "error setting thread affinity: " << res;
+      return {false, ss.str()};
+    }
   }
 
   inline auto SetThreadSchedMax(std::thread& thread) -> std::tuple<bool, std::string>
