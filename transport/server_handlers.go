@@ -901,6 +901,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 
 			level.Debug(locallogger).Log(
 				"relays", routing.RelayAddrs(nextRoute.Relays),
+				"cached_route", sessionCacheEntry.RouteHash == nextRoute.Hash64(),
 				"selected_next_route_stats", nextRoute.Stats.String(),
 				"packet_next_stats", nnStats.String(),
 				"packet_direct_stats", directStats.String(),
