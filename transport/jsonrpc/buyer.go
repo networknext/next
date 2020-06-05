@@ -253,14 +253,14 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	isAnon = IsAnonymous(r)
 	isOps = CheckIsOps(r)
 
-	if !isAnon && !isOps{
+	if !isAnon && !isOps {
 		isAdmin, err = CheckRoles(r, "Admin")
 		if err != nil {
 			return err
 		}
 	}
 
-	if !isAdmin && !isOps{
+	if !isAdmin && !isOps {
 		isSameBuyer, err = s.IsSameBuyer(r, reply.Meta.CustomerID)
 		if err != nil {
 			return err
@@ -288,7 +288,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		reply.Meta.NearbyRelays[idx].Name = r.Name
 	}
 
-	if isAnon || (!isSameBuyer && !isAdmin && !isOPs) {
+	if isAnon || (!isSameBuyer && !isAdmin && !isOps) {
 		reply.Meta.Anonymise()
 	}
 
