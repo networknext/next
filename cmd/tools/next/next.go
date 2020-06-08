@@ -379,8 +379,12 @@ func main() {
 				ShortHelp:  "List routes between relays",
 				Exec: func(_ context.Context, args []string) error {
 
-					routes(rpcClient, env, []string{args[0]}, []string{args[1]}, 0, 0)
+					if len(args) == 0 {
+						routes(rpcClient, env, []string{}, []string{}, 0, 0)
+						return nil
+					}
 
+					routes(rpcClient, env, []string{args[0]}, []string{args[1]}, 0, 0)
 					return nil
 				},
 				Subcommands: []*ffcli.Command{
