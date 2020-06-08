@@ -279,13 +279,15 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	}
 
 	// We fill in the name on the portal side so we don't spend time doing it while serving sessions
-	for idx, relay := range reply.Meta.NearbyRelays {
-		r, err := s.Storage.Relay(relay.ID)
-		if err != nil {
-			continue
-		}
+	if isAdmin {
+		for idx, relay := range reply.Meta.NearbyRelays {
+			r, err := s.Storage.Relay(relay.ID)
+			if err != nil {
+				continue
+			}
 
-		reply.Meta.NearbyRelays[idx].Name = r.Name
+			reply.Meta.NearbyRelays[idx].Name = r.Name
+		}
 	}
 
 	if isAnon || (!isSameBuyer && !isAdmin && !isOps) {

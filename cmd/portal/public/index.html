@@ -670,7 +670,7 @@
                                                         </dt>
                                                         <dd>
                                                             {{
-                                                                pages.sessionTool.meta.client_addr
+                                                                pages.sessionTool.meta.client_addr.split(":")[0]
                                                             }}
                                                         </dd>
                                                         <dt>
@@ -701,13 +701,13 @@
                                                         <dd>
                                                             {{ pages.sessionTool.meta.connection }}
                                                         </dd>
-                                                        <dt>
+                                                        <dt v-if="handlers.userHandler.isAdmin()">
                                                             Nearby Relays
                                                         </dt>
-                                                        <dd v-if="pages.sessionTool.meta.nearby_relays == 0">
+                                                        <dd v-if="pages.sessionTool.meta.nearby_relays == 0 && handlers.userHandler.isAdmin()">
                                                             No Nearby Relays
                                                         </dd>
-                                                        <table class="table table-sm mt-1" v-if="pages.sessionTool.meta.nearby_relays.length > 0">
+                                                        <table class="table table-sm mt-1" v-if="pages.sessionTool.meta.nearby_relays.length > 0 && handlers.userHandler.isAdmin()">
                                                             <thead>
                                                                 <tr>
                                                                     <th style="width: 50%;">
@@ -741,10 +741,10 @@
                                                                 </tr>
                                                             </tbody>
                                                         </table>
-                                                        <dt v-if="!handlers.userHandler.isAnonymous()">
+                                                        <dt  v-if="handlers.userHandler.isAdmin()">
                                                             Route
                                                         </dt>
-                                                        <table class="table table-sm mt-1" v-if="!handlers.userHandler.isAnonymous()">
+                                                        <table class="table table-sm mt-1" v-if="handlers.userHandler.isAdmin()">
                                                             <thead>
                                                                 <tr>
                                                                     <th style="width: 50%;">
