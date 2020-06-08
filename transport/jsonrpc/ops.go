@@ -483,6 +483,9 @@ func (s *OpsService) RouteSelection(r *http.Request, args *RouteSelectionArgs, r
 			}
 		}
 	}
+	if len(srcrelays) == 0 {
+		srcrelays = relays
+	}
 
 	var destrelays []routing.Relay
 	for _, relay := range relays {
@@ -491,6 +494,9 @@ func (s *OpsService) RouteSelection(r *http.Request, args *RouteSelectionArgs, r
 				destrelays = append(destrelays, relay)
 			}
 		}
+	}
+	if len(destrelays) == 0 {
+		destrelays = relays
 	}
 
 	var selectors []routing.SelectorFunc
@@ -517,6 +523,10 @@ func (s *OpsService) RouteSelection(r *http.Request, args *RouteSelectionArgs, r
 			}
 		}
 	}
+
+	sort.Slice(routes, func(i int, j int) bool {
+		return routes[i].Stats.RTT < routes[j].Stats.RTT && routes[i].Relays[0].Name < routes[j].Relays[0].Name
+	})
 
 	reply.Routes = routes
 

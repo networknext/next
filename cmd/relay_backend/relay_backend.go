@@ -6,8 +6,10 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"expvar"
 	"fmt"
 	"net/http"
@@ -281,6 +283,30 @@ func main() {
 	var costmatrix routing.CostMatrix
 	var routematrix routing.RouteMatrix
 
+	// Clean up any relays that may have expired while the relay_backend was down (due to a deploy, maintenance, etc.)
+	hgetallResult := redisClientRelays.HGetAll(routing.HashKeyAllRelays)
+	for key, raw := range hgetallResult.Val() {
+		// Check if the key has expired and if it should be removed from the hash set
+		getCmd := redisClientRelays.Get(key)
+		if getCmd.Val() == "" {
+
+			level.Debug(logger).Log("msg", "Found lingering relay", "key", key)
+
+			var relay routing.RelayCacheEntry
+			if err := relay.UnmarshalBinary([]byte(raw)); err != nil {
+				level.Error(logger).Log("msg", "detected lingering relay but failed to unmarshal relay from redis hash set", "err", err)
+				os.Exit(1)
+			}
+
+			if err := transport.RemoveRelayCacheEntry(ctx, relay.ID, key, redisClientRelays, &geoClient, statsdb); err != nil {
+				level.Error(logger).Log("msg", "detected lingering relay but failed to remove relay from redis hash set", "err", err)
+				os.Exit(1)
+			}
+
+			level.Debug(logger).Log("msg", "Lingering relay removed", "relay_id", relay.ID)
+		}
+	}
+
 	// Periodically generate cost matrix from stats db
 	go func() {
 		for {
@@ -333,9 +359,44 @@ func main() {
 				level.Warn(logger).Log("msg", fmt.Sprintf("relay with id %v has disconnected.", rawID))
 
 				// Remove the relay cache entry
-				if err := transport.RemoveRelayCacheEntry(ctx, rawID, msg.Payload, env, http.DefaultClient, redisClientRelays, &geoClient, statsdb, db); err != nil {
+				if err := transport.RemoveRelayCacheEntry(ctx, rawID, msg.Payload, redisClientRelays, &geoClient, statsdb); err != nil {
 					level.Error(logger).Log("err", err)
 					os.Exit(1)
+				}
+
+				// Set the relay's state to quarantined in storage if it was previously enabled
+				relay, err := db.Relay(rawID)
+				if err != nil {
+					level.Error(logger).Log("msg", "Failed to retrieve relay from storage when attempting to set relay state to quarantined", "relayID", rawID, "err", err)
+					continue
+				}
+
+				// The relay was enabled and running properly but has failed to communicate to the backend for some reason
+				// This check is necessary so that if a relay is shut down by the backend, by the supplier, or manually
+				// then it won't incorrectly overwrite that state.
+				if relay.State == routing.RelayStateEnabled {
+					relay.State = routing.RelayStateQuarantine
+
+					if err := db.SetRelay(ctx, relay); err != nil {
+						level.Error(logger).Log("msg", "Failed to set relay in storage when attempting to set relay state to quarantined", "relayID", relay.ID, "err", err)
+						continue
+					}
+
+					notification := map[string]string{
+						"icon_emoji": ":biohazard_sign:",
+						"username":   fmt.Sprintf("Relay Backend (%s)", env),
+						"text":       fmt.Sprintf("Relay %s (%s) has been placed into quarantine.", relay.Name, relay.Addr.String()),
+					}
+
+					var buf bytes.Buffer
+					if err := json.NewEncoder(&buf).Encode(notification); err != nil {
+						level.Error(logger).Log("msg", "failed to encode notification to JSON", "err", err)
+						continue
+					}
+					if _, err := http.DefaultClient.Post("https://hooks.slack.com/services/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", "application/json", &buf); err != nil {
+						level.Error(logger).Log("msg", "failed to post notification to webhook", "err", err)
+						continue
+					}
 				}
 			}
 		}
@@ -350,8 +411,6 @@ func main() {
 	}
 
 	commonUpdateParams := transport.RelayUpdateHandlerConfig{
-		Environment:           env,
-		HTTPClient:            http.DefaultClient,
 		RedisClient:           redisClientRelays,
 		GeoClient:             &geoClient,
 		StatsDb:               statsdb,
@@ -361,8 +420,6 @@ func main() {
 	}
 
 	commonHandlerParams := transport.RelayHandlerConfig{
-		Environment:           env,
-		HTTPClient:            http.DefaultClient,
 		RedisClient:           redisClientRelays,
 		GeoClient:             &geoClient,
 		Storer:                db,
