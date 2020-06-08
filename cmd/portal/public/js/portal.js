@@ -529,6 +529,8 @@ WorkspaceHandler = {
 			.then((response) => {
 				let meta = response.meta;
 
+				meta.connection = meta.connection == "wifi" ? "Wifi" : meta.connection.charAt(0).toUpperCase() + meta.connection.slice(1);
+
 				Object.assign(rootComponent.$data.pages.sessionTool, {
 					info: false,
 					danger: false,
@@ -560,8 +562,8 @@ WorkspaceHandler = {
 						mapStyle: 'mapbox://styles/mapbox/dark-v10',
 						initialViewState: {
 							zoom: 4,
-							longitude: d.location.longitude, // 'Center' of the world map
-							latitude: d.location.latitude,
+							longitude: meta.location.longitude, // 'Center' of the world map
+							latitude: meta.location.latitude,
 							minZoom: 2,
 						},
 						container: 'session-tool-map',
