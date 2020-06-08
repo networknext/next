@@ -577,7 +577,10 @@ WorkspaceHandler = {
 							pitch: 0
 						},
 						container: 'session-tool-map',
-						controller: true,
+						controller: {
+							dragPan: false,
+							dragRotate: false
+						},
 						layers: [sessionLocationLayer],
 					});
 				});
@@ -833,7 +836,8 @@ function startApp() {
 			$('#video-modal').modal('toggle')
 			$('#video-modal').on('hidden.bs.modal', function () {
 					let videoPlayer = document.getElementById("video-player");
-					videoPlayer.parentElement.removeChild(videoPlayer);
+					videoPlayer.parentElement.removeChild(videoPlayer)
+					videoPlayer.innerHTML = "<div></div>"
 			});
 		}, 60000)
 	}
