@@ -236,7 +236,7 @@
                             Sessions
                         </a>
                     </li>
-                    <li class="nav-item text-nowrap">
+                    <li class="nav-item text-nowrap" v-if="!handlers.userHandler.isAnonymous()">
                         <a class="nav-link" href="#" v-bind:class="{ active: pages.sessionTool.show }" v-on:click="handlers.workspaceHandler.changePage('sessionTool', '')">
                             Session Tool
                         </a>
@@ -322,7 +322,7 @@
                                         </option>
                                     </select>
                                 </div>
-                                <div class="px-2">
+                                <div class="px-2" v-if="!handlers.userHandler.isAnonymous()">
                                     <select class="form-control">
                                         <option value="all" v-on:click="handlers.mapHandler.updateFilter({buyerId: '', sessionType: pages.map.filter.sessionType})">
                                             All
@@ -502,7 +502,7 @@
                                 <div class="mr-auto"></div>
                             </div>
                         </div>
-                        <form class="flow-stats-form" v-on:submit.prevent="handlers.workspaceHandler.fetchSessionInfo()">
+                        <form class="flow-stats-form" v-on:submit.prevent="handlers.workspaceHandler.fetchSessionInfo()" v-if="!handlers.userHandler.isAnonymous()">
                             <div class="form-group">
                                 <label for="session-id-input">
                                     Session ID
@@ -519,7 +519,7 @@
                                 </div>
                             </div>
                         </form>
-                        <div class="alert alert-info" role="alert" id="session-tool-alert" v-if="pages.sessionTool.info">
+                        <div class="alert alert-info" role="alert" id="session-tool-alert" v-if="pages.sessionTool.info && !handlers.userHandler.isAnonymous()">
                             Please enter a valid Session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.
                         </div>
                         <div class="alert alert-danger" role="alert" id="session-tool-danger" v-if="pages.sessionTool.danger">
@@ -679,10 +679,10 @@
                                                         <dd>
                                                             {{ pages.sessionTool.meta.platform }}
                                                         </dd>
-                                                        <dt>
+                                                        <dt v-if="!handlers.userHandler.isAnonymous()">
                                                             Customer
                                                         </dt>
-                                                        <dd>
+                                                        <dd v-if="!handlers.userHandler.isAnonymous()">
                                                             {{
                                                                 allBuyers.length > 0 ? allBuyers.find((buyer) => {
                                                                     return buyer.id == pages.sessionTool.meta.customer_id
