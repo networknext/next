@@ -821,10 +821,15 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			// Get a set of possible routes from the RouteProvider and on error ensure it falls back to direct
 			routes, err := rp.Routes(clientRelays, dsRelays,
 				routing.SelectUnencumberedRoutes(0.8),
+				routing.SelectLogger(log.With(locallogger, "step", "start")),
 				routing.SelectAcceptableRoutesFromBestRTT(float64(buyer.RoutingRulesSettings.RTTEpsilon)),
+				routing.SelectLogger(log.With(locallogger, "step", "best-rtt", "rtt", buyer.RoutingRulesSettings.RTTEpsilon)),
 				routing.SelectContainsRouteHash(sessionCacheEntry.RouteHash),
+				routing.SelectLogger(log.With(locallogger, "step", "route-hash", "hash", sessionCacheEntry.RouteHash)),
 				routing.SelectRoutesByRandomDestRelay(rand.NewSource(rand.Int63())),
+				routing.SelectLogger(log.With(locallogger, "step", "rand-destination-relay")),
 				routing.SelectRandomRoute(rand.NewSource(rand.Int63())),
+				routing.SelectLogger(log.With(locallogger, "step", "rand-route")),
 			)
 
 			if err != nil {
