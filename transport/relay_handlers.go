@@ -907,7 +907,6 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.R
 		Name       string
 		Addr       string
 		Datacenter routing.Datacenter
-		Seller     routing.Seller
 	}
 
 	type response struct {
@@ -945,8 +944,6 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.R
 						<th>Address</th>
 						<th>Datacenter</th>
 						<th>Lat / Long</th>
-						<th>Seller</th>
-						<th>Ingress / Egress</th>
 					</tr>
 					{{ range .Relays }}
 					<tr>
@@ -954,8 +951,6 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.R
 						<td>{{ .Addr }}</td>
 						<td>{{ .Datacenter.Name }}</td>
 						<td>{{ .Datacenter.Location.Latitude }} / {{ .Datacenter.Location.Longitude }}</td>
-						<td>{{ .Seller.Name }}</td>
-						<td>{{ .Seller.IngressPriceCents }} / {{ .Seller.EgressPriceCents }}</td>
 					</tr>
 					{{ end }}
 				</table>
@@ -999,11 +994,12 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.R
 				return
 			}
 			display := displayRelay{
-				ID:         relay.ID,
-				Name:       relay.Name,
-				Addr:       relay.Addr.String(), // needed otherwise braces are displayed surrounding the ip
+				ID:   relay.ID,
+				Name: relay.Name,
+				// needs to be stringified before html,
+				//otherwise braces are displayed surrounding the ip
+				Addr:       relay.Addr.String(),
 				Datacenter: relay.Datacenter,
-				Seller:     relay.Seller,
 			}
 			res.Relays = append(res.Relays, display)
 		}
