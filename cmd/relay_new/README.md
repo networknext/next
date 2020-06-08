@@ -32,22 +32,10 @@ This can be thought of as version 2 of the relay. Version 1 being the relay in t
   - Example `RELAY_ROUTER_PUBLIC_KEY='SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y='`
 - `RELAY_BACKEND_HOSTNAME`: The backend's hostname
   - Example `RELAY_BACKEND_HOSTNAME='http://localhost:30000'`
-- `RELAY_V3_NAME`: On servers this must be the firestore id, for local development this can be anything.
-  - Example `RELAY_V3_NAME='fake-relay-name'`
-- `RELAY_V3_BACKEND_HOSTNAME`: The old relay backend, no http prefix, just the hostname.
-  - Example `RELAY_V3_BACKEND_HOSTNAME='localhost'`
-- `RELAY_V3_BACKEND_PORT`: The port the old relay backend is running on. This must be separate from the hostname.
-  - Example `RELAY_V3_BACKEND_PORT='40000'`
-- `RELAY_V3_UPDATE_KEY`: The key in firestore that allows a relay to update with the old backend. For local dev this can be any base64 decryptable string
-  - Example `RELAY_V3_UPDATE_KEY='fake-update-key'`
-- `RELAY_V3_SPEED`: The speed in mega bits per second of the relay's NIC. Needed to calculate utilization. Must be a number (not 10Gb or anything like that).
-  - Example `RELAY_V3_SPEED='10000'`
 
 ### Optional
-- `RELAY_V3_ENABLED`: Controls whether or not the old backend communication is enabled or not. In the makefile it is defaulted to "0". Set to "1", and only that, to enable.
-  - Example `RELAY_V3_ENABLED="1"`
-- `RELAY_PROCESSOR_COUNT`: Number of processors to allocate to the relay. Each relay thread is assigned affinity starting at core 0 to n - 1. If unset the relay will attempt to auto detect the number of processors on the system. For VM's in the cloud, this should be set to 1/2 the available processors.
-  - Example `RELAY_PROCESSOR_COUNT='1'` or `RELAY_PROCESSOR_COUNT="$(( $(nproc) / 4 ))"`
+- `RELAY_MAX_CORES`: Number of cores to allocate to the relay. Each relay thread is assigned affinity starting at core 0 to n - 1. If unset the relay will attempt to auto detect the number of processors on the system. For VMs in the cloud, this should be set to 1/2 the available processors.
+  - Example `RELAY_MAX_CORES='1'` or `RELAY_MAX_CORES="$(( $(nproc) / 4 ))"`
 - `RELAY_SEND_BUFFER_SIZE` & `RELAY_RECV_BUFFER_SIZE`: In bytes, lets you set the amount of memory to use for each socket's send & receive buffers.
   - Example `RELAY_SOCKET_BUFFER_SIZE="4000000"`
   - Note, Macs apparently have issues with values above a million, thus "1000000" is the default value if not set
