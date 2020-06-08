@@ -35,7 +35,7 @@ func relays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 		LastUpdated string
 	}{}
 
-	relayUpdateTime := func(state string, updateTime time.Time) string {
+	formatLastUpdated := func(state string, updateTime time.Time) string {
 		if state == "enabled" {
 			return time.Since(updateTime).Truncate(time.Second).String()
 		}
@@ -66,7 +66,7 @@ func relays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 			Sessions:    fmt.Sprintf("%d", relay.SessionCount),
 			Tx:          tx,
 			Rx:          rx,
-			LastUpdated: relayUpdateTime(relay.State, relay.LastUpdateTime),
+			LastUpdated: formatLastUpdated(relay.State, relay.LastUpdateTime),
 		})
 	}
 
