@@ -747,7 +747,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			return
 		}
 
-		//If the relay does not exist in redis and also does not exist in Firestore it's a ghost, ignore it
+		// If the relay does not exist in Firestore it's a ghost, ignore it
 		_, err = params.Storer.Relay(relayCacheEntry.ID)
 		if err != nil {
 			sentry.CaptureException(err)
