@@ -489,7 +489,7 @@ func (s *OpsService) RouteSelection(r *http.Request, args *RouteSelectionArgs, r
 
 	var destrelays []routing.Relay
 	for _, relay := range relays {
-		for _, destrelay := range args.SourceRelays {
+		for _, destrelay := range args.DestinationRelays {
 			if relay.Name == destrelay {
 				destrelays = append(destrelays, relay)
 			}
