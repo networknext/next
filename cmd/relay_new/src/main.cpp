@@ -87,16 +87,16 @@ namespace
     if (env.ProcessorCount.empty()) {
       numProcs = std::thread::hardware_concurrency();  // first core reserved for updates/outgoing pings
       if (numProcs > 0) {
-        Log("RELAY_PROCESSOR_COUNT not set, autodetected number of processors available: ", numProcs);
+        Log("RELAY_MAX_CORES not set, autodetected number of processors available: ", numProcs);
       } else {
-        Log("error: RELAY_PROCESSOR_COUNT not set, could not detect processor count, please set the env var");
+        Log("error: RELAY_MAX_CORES not set, could not detect processor count, please set the env var");
         return false;
       }
     } else {
       try {
         numProcs = std::stoi(env.ProcessorCount);
       } catch (std::exception& e) {
-        Log("could not parse RELAY_PROCESSOR_COUNT to a number, value: ", env.ProcessorCount);
+        Log("could not parse RELAY_MAX_CORES to a number, value: ", env.ProcessorCount);
       }
     }
 

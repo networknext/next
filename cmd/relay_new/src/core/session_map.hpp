@@ -66,10 +66,10 @@ namespace core
 
   inline void SessionMap::purge(double seconds)
   {
+    std::lock_guard<std::mutex> lk(mLock);
     auto iter = mInternal.begin();
     while (iter != mInternal.end()) {
       if (iter->second && iter->second->expired(seconds)) {
-        std::lock_guard<std::mutex> lk(mLock);
         iter = mInternal.erase(iter);
       } else {
         iter++;

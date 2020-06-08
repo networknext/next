@@ -38,7 +38,7 @@ namespace util
     std::unordered_map<const char*, std::string*> optionalVars = {
      {"RELAY_SEND_BUFFER_SIZE", &SendBufferSize},
      {"RELAY_RECV_BUFFER_SIZE", &RecvBufferSize},
-     {"RELAY_PROCESSOR_COUNT", &ProcessorCount},
+     {"RELAY_MAX_CORES", &ProcessorCount},
      {"RELAY_V3_ENABLED", &RelayV3Enabled},
      {"RELAY_V3_NAME", &RelayV3Name},
      {"RELAY_V3_BACKEND_HOSTNAME", &RelayV3BackendHostname},
