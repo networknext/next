@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"io/ioutil"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -869,6 +870,8 @@ func statsTable(stats map[string]map[string]routing.Stats) template.HTML {
 	for name := range stats {
 		names = append(names, name)
 	}
+
+	sort.Strings(names)
 
 	html.WriteString("<tr>")
 	html.WriteString("<th>Name</th>")

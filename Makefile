@@ -327,6 +327,7 @@ dev-portal: ## runs a local portal web server
 
 .PHONY: dev-relay-backend
 dev-relay-backend: ## runs a local relay backend
+	@redis-cli FLUSHALL
 	@PORT=30000 $(GO) run cmd/relay_backend/relay_backend.go
 
 .PHONY: dev-server-backend
