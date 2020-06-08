@@ -8,6 +8,7 @@ namespace core
   class RouteStats
   {
    public:
+   // start, end, & safety are in seconds
     RouteStats(const PingHistory& ph, double start, double end, double safety);
 
     auto getRTT() const -> float;

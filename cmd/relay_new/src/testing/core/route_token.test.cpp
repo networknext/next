@@ -7,8 +7,7 @@
 
 Test(core_RouteToken_general)
 {
-  util::Clock clock;
-  core::RouterInfo info(clock);
+  core::RouterInfo info;
   core::GenericPacket<> packet;
 
   std::array<uint8_t, crypto_box_PUBLICKEYBYTES> sender_public_key;

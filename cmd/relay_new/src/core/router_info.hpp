@@ -8,21 +8,28 @@ namespace core
   class RouterInfo
   {
    public:
-    RouterInfo(const util::Clock& clock);
+    RouterInfo() = default;
 
+    void setTimestamp(int64_t ts);
     auto currentTime() const -> double;
 
-    int64_t BackendTimestamp = 0;  // in seconds, so the backend and relays have a time sync
-
    private:
-    const util::Clock& mClock;
+    mutable std::mutex mLock;
+    int64_t mBackendTimestamp = 0;  // in seconds, so the backend and relays have a time sync
+    util::Clock mClock;
   };
 
-  inline RouterInfo::RouterInfo(const util::Clock& clock): mClock(clock) {}
+  [[gnu::always_inline]] inline void RouterInfo::setTimestamp(int64_t ts)
+  {
+    std::lock_guard<std::mutex> lk(mLock);
+    mBackendTimestamp = ts;
+    mClock.reset();
+  }
 
   [[gnu::always_inline]] inline auto RouterInfo::currentTime() const -> double
   {
-    return this->BackendTimestamp + mClock.elapsed<util::Second>();
+    std::lock_guard<std::mutex> lk(mLock);
+    return mBackendTimestamp + mClock.elapsed<util::Second>();
   }
 }  // namespace core
 #endif

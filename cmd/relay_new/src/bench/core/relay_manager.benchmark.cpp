@@ -12,8 +12,7 @@ Bench(RelayManager_update)
   // new
   {
     std::array<core::Relay, MAX_RELAYS> incoming{};
-    util::Clock clock;  // satisfy the constructor dependency
-    core::RelayManager<core::Relay> manager(clock);
+    core::RelayManager<core::Relay> manager;
 
     for (auto i = 0U; i < MaxRelays; i++) {
       incoming[i].ID = i;

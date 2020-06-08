@@ -87,16 +87,16 @@ namespace
     if (env.ProcessorCount.empty()) {
       numProcs = std::thread::hardware_concurrency();  // first core reserved for updates/outgoing pings
       if (numProcs > 0) {
-        Log("RELAY_PROCESSOR_COUNT not set, autodetected number of processors available: ", numProcs);
+        Log("RELAY_MAX_CORES not set, autodetected number of processors available: ", numProcs);
       } else {
-        Log("error: RELAY_PROCESSOR_COUNT not set, could not detect processor count, please set the env var");
+        Log("error: RELAY_MAX_CORES not set, could not detect processor count, please set the env var");
         return false;
       }
     } else {
       try {
         numProcs = std::stoi(env.ProcessorCount);
       } catch (std::exception& e) {
-        Log("could not parse RELAY_PROCESSOR_COUNT to a number, value: ", env.ProcessorCount);
+        Log("could not parse RELAY_MAX_CORES to a number, value: ", env.ProcessorCount);
       }
     }
 
@@ -174,8 +174,6 @@ int main(int argc, const char* argv[])
   return 0;
 #endif
 
-  util::Clock relayClock;
-
   std::cout << "\nNetwork Next Relay\n";
 
   std::cout << "\nEnvironment:\n\n";
@@ -218,11 +216,13 @@ int main(int argc, const char* argv[])
 
   Log("Initializing relay");
 
-  legacy::v3::TrafficStats v3TrafficStats;
-  core::RouterInfo routerInfo(relayClock);
-  core::RelayManager<core::Relay> relayManager(routerInfo);
-  core::RelayManager<core::V3Relay> v3RelayManager(routerInfo);
+  bool success = false;
+
+  core::RouterInfo routerInfo;
+  core::RelayManager<core::Relay> relayManager;
+  core::RelayManager<core::V3Relay> v3RelayManager;
   util::ThroughputRecorder recorder;
+  legacy::v3::TrafficStats v3TrafficStats;
   auto chan = util::makeChannel<core::GenericPacket<>>();
   auto sender = std::get<0>(chan);
   auto receiver = std::get<1>(chan);
@@ -345,14 +345,18 @@ int main(int argc, const char* argv[])
       sockets.push_back(socket);
       threads.push_back(thread);
 
-      int error;
-      if (!os::SetThreadAffinity(*thread, (std::thread::hardware_concurrency() == 1) ? 0 : i, error)) {
-        Log("Error setting thread affinity: ", error);
+      {
+        auto [ok, err] = os::SetThreadAffinity(*thread, (std::thread::hardware_concurrency() == 1) ? 0 : i);
+        if (!ok) {
+          Log(err);
+        }
       }
 
-      auto [ok, err] = os::SetThreadSchedMax(*thread);
-      if (!ok) {
-        Log(err);
+      {
+        auto [ok, err] = os::SetThreadSchedMax(*thread);
+        if (!ok) {
+          Log(err);
+        }
       }
     }
   }
@@ -371,14 +375,18 @@ int main(int argc, const char* argv[])
     sockets.push_back(socket);
     threads.push_back(thread);
 
-    int error;
-    if (!os::SetThreadAffinity(*thread, 0, error)) {
-      Log("error setting thread affinity: ", error);
+    {
+      auto [ok, err] = os::SetThreadAffinity(*thread, 0);
+      if (!ok) {
+        Log(err);
+      }
     }
 
-    auto [ok, err] = os::SetThreadSchedMax(*thread);
-    if (!ok) {
-      Log(err);
+    {
+      auto [ok, err] = os::SetThreadSchedMax(*thread);
+      if (!ok) {
+        Log(err);
+      }
     }
   }
 
@@ -401,14 +409,18 @@ int main(int argc, const char* argv[])
       sockets.push_back(socket);
       threads.push_back(thread);
 
-      int error;
-      if (!os::SetThreadAffinity(*thread, 0, error)) {
-        Log("error setting thread affinity: ", error);
+      {
+        auto [ok, err] = os::SetThreadAffinity(*thread, 0);
+        if (!ok) {
+          Log(err);
+        }
       }
 
-      auto [ok, err] = os::SetThreadSchedMax(*thread);
-      if (!ok) {
-        Log(err);
+      {
+        auto [ok, err] = os::SetThreadSchedMax(*thread);
+        if (!ok) {
+          Log(err);
+        }
       }
     }
 
@@ -420,16 +432,16 @@ int main(int argc, const char* argv[])
                                                    socket,
                                                    &cleanup,
                                                    &v3BackendSuccess,
-                                                   &relayClock,
                                                    &v3TrafficStats,
                                                    &v3RelayManager,
                                                    &relayID,
                                                    &state,
                                                    &keychain,
                                                    &sessions] {
+        util::Clock clock;
         size_t speed = std::stoi(env.RelayV3Speed) * 1000000;
         legacy::v3::Backend backend(
-         gAlive, receiver, env, relayID, *socket, relayClock, v3TrafficStats, v3RelayManager, speed, state, keychain, sessions);
+         gAlive, receiver, env, relayID, *socket, clock, v3TrafficStats, v3RelayManager, speed, state, keychain, sessions);
 
         if (!backend.init()) {
           Log("could not initialize relay with old backend");
@@ -452,14 +464,18 @@ int main(int argc, const char* argv[])
         gAlive = false;
       });
 
-      int error;
-      if (!os::SetThreadAffinity(*thread, 0, error)) {
-        Log("error setting thread affinity: ", error);
+      {
+        auto [ok, err] = os::SetThreadAffinity(*thread, 0);
+        if (!ok) {
+          Log(err);
+        }
       }
 
-      auto [ok, err] = os::SetThreadSchedMax(*thread);
-      if (!ok) {
-        Log(err);
+      {
+        auto [ok, err] = os::SetThreadSchedMax(*thread);
+        if (!ok) {
+          Log(err);
+        }
       }
 
       sockets.push_back(socket);
@@ -467,44 +483,65 @@ int main(int argc, const char* argv[])
     }
   }
 
-  core::Backend<net::CurlWrapper> backend(
-   env.BackendHostname,
-   relayAddr.toString(),
-   keychain,
-   routerInfo,
-   relayManager,
-   b64RelayPubKey,
-   sessions,
-   v3TrafficStats,
-   relayClock);
+  // new backend setup
+  {
+    std::thread updateThread([&env,
+                              &relayAddr,
+                              &keychain,
+                              &routerInfo,
+                              &relayManager,
+                              &b64RelayPubKey,
+                              &sessions,
+                              &v3TrafficStats,
+                              &cleanup,
+                              &recorder,
+                              &success] {
+      bool relayInitialized = false;
 
-  bool relayInitialized = false;
+      core::Backend<net::CurlWrapper> backend(
+       env.BackendHostname, relayAddr.toString(), keychain, routerInfo, relayManager, b64RelayPubKey, sessions, v3TrafficStats);
 
-  for (int i = 0; i < 60; ++i) {
-    if (backend.init()) {
-      std::cout << '\n';
-      relayInitialized = true;
-      break;
+      for (int i = 0; i < 60; ++i) {
+        if (backend.init()) {
+          std::cout << '\n';
+          relayInitialized = true;
+          break;
+        }
+
+        std::cout << '.' << std::flush;
+
+        std::this_thread::sleep_for(1s);
+      }
+
+      if (!relayInitialized) {
+        Log("error: could not initialize relay");
+        cleanup();
+      }
+
+      Log("relay initialized with new backend");
+
+      if (gAlive) {
+        setupSignalHandlers();
+
+        success = backend.updateCycle(gAlive, gShouldCleanShutdown, recorder, sessions);
+      }
+    });
+
+    {
+      auto [ok, err] = os::SetThreadAffinity(updateThread, 0);
+      if (!ok) {
+        Log(err);
+      }
     }
 
-    std::cout << '.' << std::flush;
+    {
+      auto [ok, err] = os::SetThreadSchedMax(updateThread);
+      if (!ok) {
+        Log(err);
+      }
+    }
 
-    std::this_thread::sleep_for(1s);
-  }
-
-  if (!relayInitialized) {
-    Log("error: could not initialize relay");
-    cleanup();
-  }
-
-  Log("relay initialized with new backend");
-
-  bool success = false;
-
-  if (gAlive) {
-    setupSignalHandlers();
-
-    success = backend.updateCycle(gAlive, gShouldCleanShutdown, recorder, sessions);
+    updateThread.join();
   }
 
   Log("cleaning up");

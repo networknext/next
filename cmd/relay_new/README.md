@@ -5,7 +5,7 @@ The Relay is responsible for:
 1. Routing packets across other relays in the network to and from the game client and server
 2. Sending stats updates to the relay_backend that are optimized for route generation
 
-This can be thought of as version 2 of the relay. Version 1 being the relay in the `relay_old` directory. This is not currently deployed and is under active development.
+This can be thought of as version 2 of the relay. Version 1 being the relay in the `relay_old` directory.
 
 # Pre-build setup
 
