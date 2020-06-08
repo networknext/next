@@ -101,6 +101,8 @@ MapHandler = {
 			longitude: -98.583333, // 'Center' of the US
 			latitude: 39.833333,
 			minZoom: 5,
+			bearing: 0,
+			pitch: 0,
 		},
 	},
 	defaultWorld: {
@@ -109,6 +111,8 @@ MapHandler = {
 			longitude: 0, // 'Center' of the world map
 			latitude: 0,
 			minZoom: 2,
+			bearing: 0,
+			pitch: 0
 		},
 	},
 	mapInstance: null,
@@ -546,15 +550,19 @@ WorkspaceHandler = {
 					const NNCOLOR = [0,109,44];
 					const DIRECTCOLOR = [49,130,189];
 
-					let sessionLocationLayer = new deck.ScatterplotLayer({
+					const cellSize = 10, aggregation = 'MEAN';
+					let gpuAggregation = navigator.appVersion.indexOf("Win") == -1;
+
+					let sessionLocationLayer = new deck.ScreenGridLayer({
 						id: 'session-location-layer',
 						data: [meta],
-						radiusScale: 10,
-						radiusMinPixels: 0.5,
-						getPosition: d => [d.location.longitude, d.location.latitude],
-						getFillColor: d => (d.on_network_next ? NNCOLOR : DIRECTCOLOR),
-						getLineColor: d => (d.on_network_next ? NNCOLOR : DIRECTCOLOR),
-						getRadius: d => 5000
+						opacity: 0.8,
+						getPosition: d => [d.longitude, d.latitude],
+						getWeight: d => 1,
+						cellSizePixels: cellSize,
+						colorRange: meta.on_network_next ? [NNCOLOR] : [DIRECTCOLOR],
+						gpuAggregation,
+						aggregation
 					});
 
 					let sessionToolMapInstance = new deck.DeckGL({
@@ -565,6 +573,8 @@ WorkspaceHandler = {
 							longitude: meta.location.longitude, // 'Center' of the world map
 							latitude: meta.location.latitude,
 							minZoom: 2,
+							bearing: 0,
+							pitch: 0
 						},
 						container: 'session-tool-map',
 						controller: true,
