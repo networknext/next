@@ -8,14 +8,19 @@ import (
 )
 
 type Route struct {
-	Relays []Relay `json:"relays"`
-	Stats  Stats   `json:"stats"`
+	Relays      []Relay `json:"relays"`
+	Stats       Stats   `json:"stats"`
+	DirectStats Stats   `json:"direct_stats"`
 }
 
 func (r Route) String() string {
 	var sb strings.Builder
-	sb.WriteString("stats=")
+	sb.WriteString("next_stats=")
 	sb.WriteString(r.Stats.String())
+	sb.WriteString(" ")
+
+	sb.WriteString("direct_stats=")
+	sb.WriteString(r.DirectStats.String())
 	sb.WriteString(" ")
 
 	sb.WriteString("hash=")
