@@ -913,12 +913,12 @@ func statsTable(stats map[string]map[string]routing.Stats) template.HTML {
 	}
 	html.WriteString("</tr>")
 
-	for _, a := range names {
+	for x, a := range names {
 		html.WriteString("<tr>")
 		html.WriteString("<th>" + a + "</th>")
 
-		for _, b := range names {
-			if a == b {
+		for y, b := range names {
+			if a == b || y > x {
 				html.WriteString("<td>&nbsp;</td>")
 				continue
 			}
