@@ -38,6 +38,7 @@ func (s SessionMeta) MarshalBinary() ([]byte, error) {
 func (s *SessionMeta) Anonymise() {
 	s.ServerAddr = ObscureString(s.ServerAddr, ".", -1)
 	s.CustomerID = ""
+	s.UserHash = ""
 	for idx, relay := range s.NearbyRelays {
 		s.NearbyRelays[idx].Name = ObscureString(relay.Name, ".", 1)
 	}

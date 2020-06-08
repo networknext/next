@@ -407,7 +407,7 @@
                                                     Session ID
                                                 </span>
                                             </th>
-                                            <th>
+                                            <th v-if="!handlers.userHandler.isAnonymous()">
                                                 <span>
                                                     User Hash
                                                 </span>
@@ -450,7 +450,7 @@
                                                     {{ session.id }}
                                                 </a>
                                             </td>
-                                            <td>
+                                            <td v-if="!handlers.userHandler.isAnonymous()">
                                                 <a class="text-dark fixed-width" href="#" v-on:click="handlers.workspaceHandler.changePage('userTool', session.user_hash)">
                                                     {{ session.user_hash }}
                                                 </a>
@@ -655,7 +655,7 @@
                                                                 {{ pages.sessionTool.meta.location.isp }}
                                                             </em>
                                                         </dd>
-                                                        <div>
+                                                        <div v-if="!handlers.userHandler.isAnonymous() && pages.sessionTool.meta.customer_id !== ''">
                                                             <dt>
                                                                 User Hash
                                                             </dt>
