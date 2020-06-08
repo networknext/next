@@ -237,6 +237,9 @@ func (m *RouteMatrix) fillRoutes(routes []Route, routeIndex *int, fromtoidx int,
 			Stats: Stats{
 				RTT: float64(m.Entries[fromtoidx].RouteRTT[i]),
 			},
+			DirectStats: Stats{
+				RTT: float64(m.Entries[fromtoidx].DirectRTT),
+			},
 		}
 		m.mu.RUnlock()
 
