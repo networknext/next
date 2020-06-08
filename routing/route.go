@@ -2,12 +2,34 @@ package routing
 
 import (
 	"encoding/binary"
+	"fmt"
 	"hash/fnv"
+	"strings"
 )
 
 type Route struct {
 	Relays []Relay
 	Stats  Stats
+}
+
+func (r Route) String() string {
+	var sb strings.Builder
+	sb.WriteString("stats=")
+	sb.WriteString(r.Stats.String())
+	sb.WriteString(" ")
+
+	sb.WriteString("hash=")
+	sb.WriteString(fmt.Sprintf("%d", r.Hash64()))
+	sb.WriteString(" ")
+
+	sb.WriteString("relays=")
+	for idx, relay := range r.Relays {
+		sb.WriteString(relay.Addr.String())
+		if idx < len(r.Relays) {
+			sb.WriteString(" ")
+		}
+	}
+	return sb.String()
 }
 
 func (r *Route) Decide(prevDecision Decision, nnStats Stats, directStats Stats, routeDecisions ...DecisionFunc) Decision {

@@ -3,6 +3,9 @@ package routing
 import (
 	"math/rand"
 	"sort"
+
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 )
 
 // SelectorFunc reduces a slice of routes according to the selector function.
@@ -10,6 +13,16 @@ import (
 // A RouteSelector never modifies the input.
 // If the selector couldn't produce a non-empty slice of routes, then it returns nil.
 type SelectorFunc func(routes []Route) []Route
+
+func SelectLogger(logger log.Logger) SelectorFunc {
+	return func(routes []Route) []Route {
+		for _, route := range routes {
+			level.Debug(logger).Log("route", route.String())
+		}
+
+		return routes
+	}
+}
 
 // SelectBestRTT returns the best routes based on lowest RTT, or nil if no best route is found.
 // This will return multiple routes if the routes have the same RTT.
