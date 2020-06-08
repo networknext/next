@@ -8,8 +8,28 @@ import (
 )
 
 type Route struct {
-	Relays []Relay
-	Stats  Stats
+	Relays []Relay `json:"relays"`
+	Stats  Stats   `json:"stats"`
+}
+
+func (r Route) String() string {
+	var sb strings.Builder
+	sb.WriteString("stats=")
+	sb.WriteString(r.Stats.String())
+	sb.WriteString(" ")
+
+	sb.WriteString("hash=")
+	sb.WriteString(fmt.Sprintf("%d", r.Hash64()))
+	sb.WriteString(" ")
+
+	sb.WriteString("relays=")
+	for idx, relay := range r.Relays {
+		sb.WriteString(relay.Addr.String())
+		if idx < len(r.Relays) {
+			sb.WriteString(" ")
+		}
+	}
+	return sb.String()
 }
 
 func (r Route) String() string {

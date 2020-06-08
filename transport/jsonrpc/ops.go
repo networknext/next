@@ -18,6 +18,7 @@ import (
 type OpsService struct {
 	RedisClient redis.Cmdable
 	Storage     storage.Storer
+	RouteMatrix *routing.RouteMatrix
 }
 
 type BuyersArgs struct{}
@@ -458,4 +459,66 @@ func (s *OpsService) RemoveDatacenter(r *http.Request, args *RemoveDatacenterArg
 	id := crypto.HashID(args.Name)
 
 	return s.Storage.RemoveDatacenter(ctx, id)
+}
+
+type RouteSelectionArgs struct {
+	SourceRelays      []string `json:"src_relays"`
+	DestinationRelays []string `json:"dest_relays"`
+	RTT               float64  `json:"rtt"`
+	RouteHash         uint64   `json:"route_hash"`
+}
+
+type RouteSelectionReply struct {
+	Routes []routing.Route `json:"routes"`
+}
+
+func (s *OpsService) RouteSelection(r *http.Request, args *RouteSelectionArgs, reply *RouteSelectionReply) error {
+	relays := s.Storage.Relays()
+
+	var srcrelays []routing.Relay
+	for _, relay := range relays {
+		for _, srcrelay := range args.SourceRelays {
+			if relay.Name == srcrelay {
+				srcrelays = append(srcrelays, relay)
+			}
+		}
+	}
+
+	var destrelays []routing.Relay
+	for _, relay := range relays {
+		for _, destrelay := range args.SourceRelays {
+			if relay.Name == destrelay {
+				destrelays = append(destrelays, relay)
+			}
+		}
+	}
+
+	var selectors []routing.SelectorFunc
+	selectors = append(selectors, routing.SelectUnencumberedRoutes(0.8))
+
+	if args.RTT > 0 {
+		selectors = append(selectors, routing.SelectAcceptableRoutesFromBestRTT(args.RTT))
+	}
+
+	if args.RouteHash > 0 {
+		selectors = append(selectors, routing.SelectContainsRouteHash(args.RouteHash))
+	}
+
+	routes, err := s.RouteMatrix.Routes(srcrelays, destrelays, selectors...)
+	if err != nil {
+		return err
+	}
+
+	for routeidx := range routes {
+		for relayidx := range routes[routeidx].Relays {
+			routes[routeidx].Relays[relayidx], err = s.Storage.Relay(routes[routeidx].Relays[relayidx].ID)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	reply.Routes = routes
+
+	return nil
 }

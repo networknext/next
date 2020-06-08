@@ -297,6 +297,7 @@ func main() {
 		s.RegisterService(&jsonrpc.OpsService{
 			RedisClient: redisClientRelays,
 			Storage:     db,
+			RouteMatrix: &routeMatrix,
 		}, "")
 		s.RegisterService(&jsonrpc.BuyersService{
 			RedisClient: redisClientPortal,
