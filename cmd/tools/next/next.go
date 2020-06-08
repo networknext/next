@@ -375,14 +375,26 @@ func main() {
 			},
 			{
 				Name:       "routes",
-				ShortUsage: "next routes <name>",
+				ShortUsage: "next routes <name-1> <name-2>",
 				ShortHelp:  "List routes between relays",
-				FlagSet:    routesfs,
 				Exec: func(_ context.Context, args []string) error {
 
-					routes(rpcClient, env, srcRelays, destRelays, routeRTT, routeHash)
+					routes(rpcClient, env, []string{args[0]}, []string{args[1]}, 0, 0)
 
 					return nil
+				},
+				Subcommands: []*ffcli.Command{
+					{
+						Name:       "selection",
+						ShortUsage: "next routes selection <relay name>",
+						ShortHelp:  "Select routes between sets of relays",
+						FlagSet:    routesfs,
+						Exec: func(ctx context.Context, args []string) error {
+							routes(rpcClient, env, srcRelays, destRelays, routeRTT, routeHash)
+
+							return nil
+						},
+					},
 				},
 			},
 			{
