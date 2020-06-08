@@ -279,7 +279,7 @@ func main() {
 	routesfs := flag.NewFlagSet("routes", flag.ExitOnError)
 	routesfs.Var(&srcRelays, "src", "source relay names")
 	routesfs.Var(&destRelays, "dest", "destination relay names")
-	routesfs.Float64Var(&routeRTT, "rtt", 5, "route RTT required for selection")
+	routesfs.Float64Var(&routeRTT, "rtt", 0, "route RTT required for selection")
 	routesfs.Uint64Var(&routeHash, "hash", 0, "a previous hash to use")
 
 	root := &ffcli.Command{
@@ -379,12 +379,17 @@ func main() {
 				ShortHelp:  "List routes between relays",
 				Exec: func(_ context.Context, args []string) error {
 
-					if len(args) == 0 {
-						routes(rpcClient, env, []string{}, []string{}, 0, 0)
-						return nil
+					src := []string{}
+					if len(args) >= 1 {
+						src = append(src, args[0])
 					}
 
-					routes(rpcClient, env, []string{args[0]}, []string{args[1]}, 0, 0)
+					dest := []string{}
+					if len(args) == 2 {
+						dest = append(dest, args[1])
+					}
+
+					routes(rpcClient, env, src, dest, 0, 0)
 					return nil
 				},
 				Subcommands: []*ffcli.Command{

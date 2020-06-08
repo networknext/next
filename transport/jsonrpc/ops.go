@@ -476,26 +476,28 @@ func (s *OpsService) RouteSelection(r *http.Request, args *RouteSelectionArgs, r
 	relays := s.Storage.Relays()
 
 	var srcrelays []routing.Relay
-	for _, relay := range relays {
-		for _, srcrelay := range args.SourceRelays {
-			if relay.Name == srcrelay {
-				srcrelays = append(srcrelays, relay)
+	if len(args.SourceRelays) > 0 {
+		for _, relay := range relays {
+			for _, srcrelay := range args.SourceRelays {
+				if relay.Name == srcrelay {
+					srcrelays = append(srcrelays, relay)
+				}
 			}
 		}
-	}
-	if len(srcrelays) == 0 {
+	} else {
 		srcrelays = relays
 	}
 
 	var destrelays []routing.Relay
-	for _, relay := range relays {
-		for _, destrelay := range args.SourceRelays {
-			if relay.Name == destrelay {
-				destrelays = append(destrelays, relay)
+	if len(args.DestinationRelays) > 0 {
+		for _, relay := range relays {
+			for _, destrelay := range args.SourceRelays {
+				if relay.Name == destrelay {
+					destrelays = append(destrelays, relay)
+				}
 			}
 		}
-	}
-	if len(destrelays) == 0 {
+	} else {
 		destrelays = relays
 	}
 
@@ -525,7 +527,7 @@ func (s *OpsService) RouteSelection(r *http.Request, args *RouteSelectionArgs, r
 	}
 
 	sort.Slice(routes, func(i int, j int) bool {
-		return routes[i].Stats.RTT < routes[j].Stats.RTT && routes[i].Relays[0].Name < routes[j].Relays[0].Name
+		return routes[i].Stats.RTT < routes[j].Stats.RTT
 	})
 
 	reply.Routes = routes

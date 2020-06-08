@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"text/tabwriter"
 
 	localjsonrpc "github.com/networknext/backend/transport/jsonrpc"
 	"github.com/ybbus/jsonrpc"
@@ -21,12 +23,18 @@ func routes(rpcClient jsonrpc.RPCClient, env Environment, srcrelays []string, de
 		return
 	}
 
+	tw := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', tabwriter.TabIndent)
+
+	fmt.Fprint(tw, "Next\tDirect\tRoute\n")
 	for _, route := range reply.Routes {
-		fmt.Printf("Next RTT(%v) ", route.Stats.RTT)
-		fmt.Printf("Direct RTT(%v) ", route.DirectStats.RTT)
-		for _, relay := range route.Relays {
-			fmt.Print(relay.Name, " ")
+		fmt.Fprintf(tw, "%.1f\t%.1f\t", route.Stats.RTT, route.DirectStats.RTT)
+		for idx, relay := range route.Relays {
+			fmt.Fprint(tw, relay.Name)
+			if idx+1 < len(route.Relays) {
+				fmt.Fprint(tw, " - ")
+			}
 		}
-		fmt.Println()
+		fmt.Fprint(tw, "\n")
 	}
+	tw.Flush()
 }
