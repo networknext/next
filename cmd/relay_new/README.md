@@ -11,7 +11,7 @@ This can be thought of as version 2 of the relay. Version 1 being the relay in t
 
 ## Dependencies
 
-`sudo apt install g++-8 rapidjson-dev libcurl4 libcurl4-openssl-dev libsodium23 libsodum-dev`
+`sudo apt install g++-8 rapidjson-dev libcurl4 libcurl4-openssl-dev libsodium23 libsodium-dev`
 
 - `g++-8`: Specifically version 8. This is because newer versions of Ubuntu come with g++-9 as a default and compiling with that doesn't let the Ubuntu 18.04 servers run the relay.
 - `RapidJSON`: Fast JSON parsing header only library.
@@ -34,7 +34,7 @@ This can be thought of as version 2 of the relay. Version 1 being the relay in t
   - Example `RELAY_BACKEND_HOSTNAME='http://localhost:30000'`
 
 ### Optional
-- `RELAY_MAX_CORES`: Number of processors to allocate to the relay. Each relay thread is assigned affinity starting at core 0 to n - 1. If unset the relay will attempt to auto detect the number of processors on the system. For VM's in the cloud, this should be set to 1/2 the available processors.
+- `RELAY_MAX_CORES`: Number of cores to allocate to the relay. Each relay thread is assigned affinity starting at core 0 to n - 1. If unset the relay will attempt to auto detect the number of processors on the system. For VMs in the cloud, this should be set to 1/2 the available processors.
   - Example `RELAY_MAX_CORES='1'` or `RELAY_MAX_CORES="$(( $(nproc) / 4 ))"`
 - `RELAY_SEND_BUFFER_SIZE` & `RELAY_RECV_BUFFER_SIZE`: In bytes, lets you set the amount of memory to use for each socket's send & receive buffers.
   - Example `RELAY_SOCKET_BUFFER_SIZE="4000000"`
@@ -84,22 +84,22 @@ Several makefiles are available for building. If you are not developing the rela
 
 The relay can be shutdown in a few ways depending on the signals you give it.
 
-### Graceful shutdown
-
-Signals: SIGINT, SIGTERM
-
-This is just a standard graceful shutdown. The relay will join threads, clean up memory, and log it's shutting down.
-
 ### Clean shutdown
 
 Signal: SIGHUP
 
-This shutdown performs like the graceful shutdown, but additionally it will do one of two things:
+This shutdown makes sure that any sessions going across the relay have time to redirect to another route before the relay shuts down.
 
   1. Tell the backend it is shutting down, and then upon getting a response wait an additional 30 seconds.
   2. Wait 60 seconds and then proceed with shutting down if there is no communication with the backend.
 
-This is so the relay can keep serving game clients connected to it until it is removed from any routes.
+### Hard shutdown
+
+Signals: SIGINT, SIGTERM
+
+The relay will join threads, clean up memory, and log it's shutting down.
+
+Any sessions running across the relay will be disrupted and potentially time out or disconnect.
 
 ### Regular process termination
 
