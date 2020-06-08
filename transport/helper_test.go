@@ -106,7 +106,7 @@ func (rp *mockRouteProvider) Routes(from []routing.Relay, to []routing.Relay, ro
 	for _, selector := range routeSelectors {
 		routes = selector(routes)
 
-		if len(routes) <= 1 {
+		if len(routes) == 0 {
 			break
 		}
 	}
